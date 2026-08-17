@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { BookOpen, BookOpenCheck, Boxes, Braces, Cat, ChevronLeft, ChevronRight, CircleHelp, Eye, EyeOff, FilePlus2, Files, Images, LayoutPanelTop, Settings2, SlidersHorizontal, Sparkles, UsersRound, Workflow, X } from 'lucide-preact';
+import { BookOpen, BookOpenCheck, Boxes, Braces, Cat, ChevronLeft, ChevronRight, CircleHelp, Eye, EyeOff, FilePlus2, Files, Images, LayoutPanelTop, ScanLine, Settings2, SlidersHorizontal, Sparkles, UsersRound, Workflow, X } from 'lucide-preact';
 import sampleYaml from '../content/sample.omny.yaml?raw';
 import { version as appVersion, versionCode as appVersionCode } from '../../package.json';
 import { sampleMangaPages } from '../lib/sampleMangaImages';
@@ -17,6 +17,7 @@ import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEd
 import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga } from '../lib/manga';
 import { resizePanelToBounds, translatePanel } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
+import { openMacScanner, recognizePanelLayout, type LayoutRecognitionResult } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -39,6 +40,7 @@ const TABS: {
 ];
 
 type MobileStoryboardPane = 'pages' | 'editor' | 'panel';
+type NewLayoutTask = 'idle' | 'scanner' | 'analyzing';
 
 const HOWTO_INTRO_KEY = 'manga-name-studio.howto-intro.v1';
 const DOCS_LANG_KEY = 'manga-name-studio.docs-lang.v1';
@@ -102,6 +104,11 @@ export default function App() {
   const [showHowtoIntro, setShowHowtoIntro] = useState(false);
   const [mangaViewerPage, setMangaViewerPage] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState('B');
+  const [newLayoutFile, setNewLayoutFile] = useState<File | null>(null);
+  const [newLayoutPreviewUrl, setNewLayoutPreviewUrl] = useState<string | null>(null);
+  const [newLayoutAnalysis, setNewLayoutAnalysis] = useState<LayoutRecognitionResult | null>(null);
+  const [newLayoutMessage, setNewLayoutMessage] = useState<string | null>(null);
+  const [newLayoutTask, setNewLayoutTask] = useState<NewLayoutTask>('idle');
   const [rawSource, setRawSource] = useState(() => toMangaYaml(document));
   const [rawError, setRawError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -109,6 +116,7 @@ export default function App() {
   const [past, setPast] = useState<MangaDocument[]>([]);
   const [future, setFuture] = useState<MangaDocument[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
+  const newLayoutImageInput = useRef<HTMLInputElement>(null);
   const saveTimer = useRef<number | undefined>(undefined);
   const lastHistoryPush = useRef(0);
 
@@ -186,6 +194,10 @@ export default function App() {
 
   useEffect(() => { setSelectedElement(null); }, [activePage, activePanel]);
 
+  useEffect(() => () => {
+    if (newLayoutPreviewUrl) URL.revokeObjectURL(newLayoutPreviewUrl);
+  }, [newLayoutPreviewUrl]);
+
   useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 2600);
@@ -254,6 +266,50 @@ export default function App() {
     if (fileInput.current) fileInput.current.value = '';
   };
 
+  const chooseNewLayoutImage = (file?: File) => {
+    if (!file) return;
+    setNewLayoutFile(file);
+    setNewLayoutPreviewUrl(URL.createObjectURL(file));
+    setNewLayoutAnalysis(null);
+    setNewLayoutMessage('画像を読み込みました。「VLMでコマ割りを判定」を押すまで画像は送信されません。');
+    if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
+  };
+
+  const analyzeNewLayout = async () => {
+    if (!newLayoutFile || newLayoutTask !== 'idle') return;
+    setNewLayoutTask('analyzing');
+    setNewLayoutAnalysis(null);
+    setNewLayoutMessage('コマ枠を検出し、Qwen3-VLがパターンA〜Yの候補を比較しています…');
+    try {
+      const result = await recognizePanelLayout(newLayoutFile, PANEL_TEMPLATES);
+      setNewLayoutAnalysis(result);
+      if (result.templateId) {
+        setNewLayoutMessage(`パターン${result.templateId}を候補として選択しました。確認してから開始してください。`);
+        window.requestAnimationFrame(() => window.document.getElementById(`new-template-${result.templateId}`)?.scrollIntoView({ block: 'nearest' }));
+      } else {
+        setNewLayoutMessage(`近い既定パターンを特定できませんでした。${result.reason}`);
+      }
+    } catch (error) {
+      setNewLayoutMessage(error instanceof Error ? error.message : 'コマ割りの判定に失敗しました');
+    } finally {
+      setNewLayoutTask('idle');
+    }
+  };
+
+  const launchScanner = async () => {
+    if (newLayoutTask !== 'idle') return;
+    setNewLayoutTask('scanner');
+    setNewLayoutMessage('macOSのスキャナーアプリを起動しています…');
+    try {
+      await openMacScanner();
+      setNewLayoutMessage('イメージキャプチャを起動しました。取り込み後、「画像を読み込む」から保存した画像を選んでください。');
+    } catch (error) {
+      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
+    } finally {
+      setNewLayoutTask('idle');
+    }
+  };
+
   const createNewDocument = (template?: PanelTemplate) => {
     const sample = parseMangaYaml(sampleYaml);
     const firstPage = newPage(1);
@@ -280,6 +336,7 @@ export default function App() {
     lastHistoryPush.current = 0;
     setDocument(fresh);
     setActivePage(0); setActivePanel(0); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor'); setShowNewDialog(false);
+    setNewLayoutFile(null); setNewLayoutPreviewUrl(null); setNewLayoutAnalysis(null); setNewLayoutMessage(null);
     setToast(template ? `パターン${template.id}で新規作成しました` : 'まっさらな漫画を作成しました');
   };
 
@@ -478,9 +535,32 @@ export default function App() {
         <div class="new-dialog-body">
           <p class="new-dialog-note">作画・演出ルール、レイアウト仕様、NDMスキーマ名・バージョンはサンプルから引き継ぎ、それ以外がまっさらな1ページの漫画を作ります。いまの編集内容は「元に戻す」で復帰できます。</p>
           <button class="new-blank-button" onClick={() => createNewDocument()}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
+          <section class="new-layout-import" aria-labelledby="new-layout-import-title">
+            <div class="new-layout-import-head">
+              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>画像は「VLMでコマ割りを判定」を押した時だけ、Mac内のQwen3-VLへ渡されます。</p></div>
+              <div class="new-layout-import-actions">
+                <button type="button" onClick={() => newLayoutImageInput.current?.click()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
+                <button type="button" onClick={launchScanner} disabled={newLayoutTask !== 'idle'}><ScanLine size={15} />スキャナーを起動</button>
+              </div>
+            </div>
+            <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" hidden onChange={(event) => chooseNewLayoutImage(event.currentTarget.files?.[0])} />
+            {newLayoutFile && newLayoutPreviewUrl && <div class="new-layout-preview">
+              <img src={newLayoutPreviewUrl} alt="読み込んだネーム画像のプレビュー" />
+              <div><strong>{newLayoutFile.name}</strong><span>{(newLayoutFile.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" class="primary-button" onClick={analyzeNewLayout} disabled={newLayoutTask !== 'idle'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '判定中…' : 'VLMでコマ割りを判定'}</button></div>
+            </div>}
+            {newLayoutMessage && <p class={`new-layout-message ${newLayoutAnalysis?.templateId ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
+            {newLayoutAnalysis?.templateId && (() => {
+              const template = findPanelTemplate(newLayoutAnalysis.templateId);
+              if (!template) return null;
+              return <div class="new-layout-result">
+                <TemplateThumb shapes={template.shapes} />
+                <div><span>自動選択候補 · 確信度 {Math.round(newLayoutAnalysis.confidence * 100)}%</span><strong>パターン{template.id} · {template.name}</strong><p>{newLayoutAnalysis.reason}</p><button type="button" class="primary-button" onClick={() => createNewDocument(template)}>このコマ割りで開始</button></div>
+              </div>;
+            })()}
+          </section>
           <h3 class="new-dialog-subtitle">コマ割りを選んで開始</h3>
           <div class="new-template-grid">
-            {PANEL_TEMPLATES.map((template) => <button class="new-template-card" key={template.id} onClick={() => createNewDocument(template)}>
+            {PANEL_TEMPLATES.map((template) => <button id={`new-template-${template.id}`} class={`new-template-card ${newLayoutAnalysis?.templateId === template.id ? 'is-vlm-suggestion' : ''}`} key={template.id} onClick={() => createNewDocument(template)}>
               <TemplateThumb shapes={template.shapes} />
               <strong>パターン{template.id} · {template.name}</strong>
               <small>{template.shapes.length}コマ · {template.usage}</small>

@@ -23,6 +23,8 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "bridge": "node scripts/start-local-bridge.mjs",
+    "bridge:check": "node scripts/start-local-bridge.mjs --check",
     "build": "astro build && npm run build:standalone && mkdir -p dist/standalone && cp dist-standalone/index.html dist/standalone/nyamuru-manga-name-studio.html && cp dist-standalone/THIRD_PARTY_NOTICES.txt dist/standalone/",
     "build:standalone": "vite build --config vite.standalone.config.mjs",
     "preview": "astro preview",
