@@ -12,6 +12,8 @@ export interface InteractionGeometry {
 }
 
 export const MIN_SIZE_MM = 6;
+export const INNER_FRAME_BOUNDS: Readonly<BBox> = { x: 10, y: 10, w: 190, h: 277 };
+export const PANEL_SNAP_THRESHOLD_MM = 3;
 
 export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -141,6 +143,85 @@ export function clampedPanelDelta(bounds: BBox, deltaX: number, deltaY: number):
   return {
     x: roundMm(clamp(deltaX, -bounds.x, 210 - (bounds.x + bounds.w))),
     y: roundMm(clamp(deltaY, -bounds.y, 297 - (bounds.y + bounds.h))),
+  };
+}
+
+function snapCoordinate(value: number, targets: number[], threshold = PANEL_SNAP_THRESHOLD_MM): number {
+  const nearest = targets.reduce((best, target) => (
+    Math.abs(target - value) < Math.abs(best - value) ? target : best
+  ), targets[0]);
+  return Math.abs(nearest - value) <= threshold ? nearest : value;
+}
+
+/** コマ移動量を紙面内へ収め、外接矩形の四辺を内枠へ吸着させる。 */
+export function snapPanelDeltaToInnerFrame(
+  bounds: BBox,
+  deltaX: number,
+  deltaY: number,
+  threshold = PANEL_SNAP_THRESHOLD_MM,
+): { x: number; y: number } {
+  const clamped = clampedPanelDelta(bounds, deltaX, deltaY);
+  let nextX = bounds.x + clamped.x;
+  let nextY = bounds.y + clamped.y;
+  const innerRight = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
+  const innerBottom = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+
+  const leftSnap = INNER_FRAME_BOUNDS.x - nextX;
+  const rightSnap = innerRight - (nextX + bounds.w);
+  if (Math.min(Math.abs(leftSnap), Math.abs(rightSnap)) <= threshold) {
+    nextX += Math.abs(leftSnap) <= Math.abs(rightSnap) ? leftSnap : rightSnap;
+  }
+
+  const topSnap = INNER_FRAME_BOUNDS.y - nextY;
+  const bottomSnap = innerBottom - (nextY + bounds.h);
+  if (Math.min(Math.abs(topSnap), Math.abs(bottomSnap)) <= threshold) {
+    nextY += Math.abs(topSnap) <= Math.abs(bottomSnap) ? topSnap : bottomSnap;
+  }
+
+  return clampedPanelDelta(bounds, nextX - bounds.x, nextY - bounds.y);
+}
+
+/** リサイズ中に動かしている辺だけを内枠へ吸着させる。 */
+export function snapPanelResizeToInnerFrame(
+  bounds: BBox,
+  handle: Exclude<ResizeHandle, 'move'>,
+  minSize = 20,
+  threshold = PANEL_SNAP_THRESHOLD_MM,
+): BBox {
+  let { x, y, w, h } = bounds;
+  const right = x + w;
+  const bottom = y + h;
+  const innerRight = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
+  const innerBottom = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+
+  if (handle.includes('w')) {
+    const snappedX = snapCoordinate(x, [INNER_FRAME_BOUNDS.x], threshold);
+    if (right - snappedX >= minSize) { x = snappedX; w = right - snappedX; }
+  }
+  if (handle.includes('e')) {
+    const snappedRight = snapCoordinate(right, [innerRight], threshold);
+    if (snappedRight - x >= minSize) w = snappedRight - x;
+  }
+  if (handle.includes('n')) {
+    const snappedY = snapCoordinate(y, [INNER_FRAME_BOUNDS.y], threshold);
+    if (bottom - snappedY >= minSize) { y = snappedY; h = bottom - snappedY; }
+  }
+  if (handle.includes('s')) {
+    const snappedBottom = snapCoordinate(bottom, [innerBottom], threshold);
+    if (snappedBottom - y >= minSize) h = snappedBottom - y;
+  }
+  return { x: roundMm(x), y: roundMm(y), w: roundMm(w), h: roundMm(h) };
+}
+
+/** 多角形コマの頂点を、近い場合だけ内枠の縦横線へ吸着させる。 */
+export function snapPointToInnerFrame(
+  x: number,
+  y: number,
+  threshold = PANEL_SNAP_THRESHOLD_MM,
+): { x: number; y: number } {
+  return {
+    x: roundMm(snapCoordinate(x, [INNER_FRAME_BOUNDS.x, INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w], threshold)),
+    y: roundMm(snapCoordinate(y, [INNER_FRAME_BOUNDS.y, INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h], threshold)),
   };
 }
 

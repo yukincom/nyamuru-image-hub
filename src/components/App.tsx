@@ -45,6 +45,7 @@ type NewLayoutTask = 'idle' | 'scanner' | 'analyzing';
 const HOWTO_INTRO_KEY = 'manga-name-studio.howto-intro.v1';
 const DOCS_LANG_KEY = 'manga-name-studio.docs-lang.v1';
 const AUTO_ANCHOR_KEY = 'manga-name-studio.auto-anchor.v1';
+const INNER_FRAME_SNAP_KEY = 'manga-name-studio.inner-frame-snap.v1';
 
 function initialDocsLang(): DocsLanguage {
   try {
@@ -58,6 +59,13 @@ function initialAutoAnchor(): boolean {
     return localStorage.getItem(AUTO_ANCHOR_KEY) === '1';
   } catch { /* private mode */ }
   return false;
+}
+
+function initialInnerFrameSnap(): boolean {
+  try {
+    return localStorage.getItem(INNER_FRAME_SNAP_KEY) !== '0';
+  } catch { /* private mode */ }
+  return true;
 }
 
 // 見開きは右綴じ（1ページ目が右）。ビューアはこの配列順にめくる
@@ -98,6 +106,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showGuides, setShowGuides] = useState(true);
   const [autoAnchor, setAutoAnchor] = useState(initialAutoAnchor);
+  const [innerFrameSnap, setInnerFrameSnap] = useState(initialInnerFrameSnap);
   const [spreadView, setSpreadView] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -404,6 +413,11 @@ export default function App() {
     setAutoAnchor(next);
     try { localStorage.setItem(AUTO_ANCHOR_KEY, next ? '1' : '0'); } catch { /* private mode */ }
   };
+  const toggleInnerFrameSnap = () => {
+    const next = !innerFrameSnap;
+    setInnerFrameSnap(next);
+    try { localStorage.setItem(INNER_FRAME_SNAP_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+  };
   // ドラッグ確定時の自動アンカー。このハンドラはドラッグ開始時のdocumentを閉じ込めたまま
   // 呼ばれるため、anchorだけ書くとドラッグ中のbbox更新を巻き戻してしまう。確定bboxも同時に書く
   const changeElementAnchor = (selection: CanvasElementSelection, anchor: Anchor, bbox: BBox) => {
@@ -498,10 +512,10 @@ export default function App() {
               </div>
             </div>
             {(() => {
-              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} activePanel={activePanel} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} onSelectPanel={(index) => { setActivePanel(index); if (index === activePanel) setSelectedElement(null); }} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} />;
+              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} activePanel={activePanel} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} onSelectPanel={(index) => { setActivePanel(index); if (index === activePanel) setSelectedElement(null); }} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} />;
               if (spreadPartnerIndex === null) return activeCanvas;
               const switchToPartner = (panelIndex = 0) => { setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); };
-              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} activePanel={-1} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} />;
+              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} activePanel={-1} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} />;
               // 右綴じ: 若いページが右（flexの後ろ）に来る
               const leftIndex = Math.max(activePage, spreadPartnerIndex);
               return <div class="canvas-spread">

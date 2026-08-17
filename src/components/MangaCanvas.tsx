@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, resizedBox, resolveOverlapClick, roundMm, type InteractionGeometry, type ResizeHandle } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, resizedBox, resolveOverlapClick, roundMm, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type ResizeHandle } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -15,6 +15,8 @@ interface Props {
   showGuides: boolean;
   autoAnchor: boolean;
   onToggleAutoAnchor: () => void;
+  innerFrameSnap: boolean;
+  onToggleInnerFrameSnap: () => void;
   onSelectPanel: (index: number) => void;
   onSelectElement: (selection: CanvasElementSelection | null) => void;
   onChangeElementBBox: (selection: CanvasElementSelection, bbox: BBox) => void;
@@ -113,7 +115,7 @@ function layerClipStyle(panel: Panel): Record<string, string> {
   return { clipPath: `polygon(${points})` };
 }
 
-export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex }: Props) {
+export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex }: Props) {
   const paperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -328,7 +330,9 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
       pointerEvent.preventDefault();
       const rawX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
       const rawY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
-      const delta = clampedPanelDelta(selectedBounds, rawX, rawY);
+      const delta = innerFrameSnap
+        ? snapPanelDeltaToInnerFrame(selectedBounds, rawX, rawY)
+        : clampedPanelDelta(selectedBounds, rawX, rawY);
       onMovePanel(activePanel, delta.x, delta.y);
     };
     const finish = () => {
@@ -366,7 +370,8 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      onResizePanel(activePanel, resizedBox(interaction, pointerEvent.clientX, pointerEvent.clientY, 20));
+      const bounds = resizedBox(interaction, pointerEvent.clientX, pointerEvent.clientY, 20);
+      onResizePanel(activePanel, innerFrameSnap ? snapPanelResizeToInnerFrame(bounds, handle, 20) : bounds);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -399,7 +404,8 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
       pointerEvent.preventDefault();
       const x = clamp(roundMm(startX + (pointerEvent.clientX - startClientX) * (210 / paperRect.width)), 0, 210);
       const y = clamp(roundMm(startY + (pointerEvent.clientY - startClientY) * (297 / paperRect.height)), 0, 297);
-      onMoveVertex(activePanel, vertexIndex, x, y);
+      const point = innerFrameSnap ? snapPointToInnerFrame(x, y) : { x, y };
+      onMoveVertex(activePanel, vertexIndex, point.x, point.y);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -600,10 +606,16 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
       </svg>}
       </div>
       </div>
-      <label class="canvas-auto-anchor" title="ドラッグ移動を終えたとき、bbox中心に最も近いコマ内アンカーへ自動で再設定します">
-        <input type="checkbox" checked={autoAnchor} onChange={onToggleAutoAnchor} />
-        自動アンカー
-      </label>
+      <div class="canvas-assist-controls">
+        <label class="canvas-auto-anchor" title="ドラッグ移動を終えたとき、bbox中心に最も近いコマ内アンカーへ自動で再設定します">
+          <input type="checkbox" checked={autoAnchor} onChange={onToggleAutoAnchor} />
+          自動アンカー
+        </label>
+        <label class="canvas-inner-frame-snap" title="コマ枠を内枠（上下左右10mm）へ近づけると吸着します">
+          <input type="checkbox" checked={innerFrameSnap} onChange={onToggleInnerFrameSnap} />
+          内枠スナップ
+        </label>
+      </div>
       <div class="canvas-zoom-controls">
         <button type="button" onClick={() => zoomAt(1 / 1.25)} aria-label="縮小" title="縮小（Ctrl+ホイール / 二本指ピンチ）"><ZoomOut size={14} /></button>
         <button type="button" class="zoom-reset" onClick={resetZoom} title="ズームをリセット">{zoomPercent}%</button>

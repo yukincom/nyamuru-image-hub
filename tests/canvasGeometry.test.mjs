@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, nearestAnchor, panelBounds, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, nearestAnchor, panelBounds, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -52,6 +52,22 @@ test('コマ移動量をキャンバス内へ制限する', () => {
   assert.deepEqual(clampedPanelDelta({ x: 10, y: 20, w: 80, h: 100 }, 25.24, 30.26), { x: 25.2, y: 30.3 });
   assert.deepEqual(clampedPanelDelta({ x: 10, y: 20, w: 80, h: 100 }, -50, -50), { x: -10, y: -20 });
   assert.deepEqual(clampedPanelDelta({ x: 150, y: 230, w: 50, h: 60 }, 50, 50), { x: 10, y: 7 });
+});
+
+test('コマ移動時に近い辺だけを内枠へスナップする', () => {
+  assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 12, y: 13, w: 80, h: 100 }, 0, 0), { x: -2, y: -3 });
+  assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 117, y: 184, w: 80, h: 100 }, 0, 0), { x: 3, y: 3 });
+  assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 20, y: 30, w: 80, h: 100 }, 0, 0), { x: 0, y: 0 });
+});
+
+test('リサイズ中に操作中の辺だけを内枠へスナップする', () => {
+  assert.deepEqual(snapPanelResizeToInnerFrame({ x: 12, y: 20, w: 80, h: 100 }, 'nw'), { x: 10, y: 20, w: 82, h: 100 });
+  assert.deepEqual(snapPanelResizeToInnerFrame({ x: 20, y: 30, w: 178, h: 255 }, 'se'), { x: 20, y: 30, w: 180, h: 257 });
+});
+
+test('多角形頂点を近い内枠線へスナップする', () => {
+  assert.deepEqual(snapPointToInnerFrame(12, 285), { x: 10, y: 287 });
+  assert.deepEqual(snapPointToInnerFrame(100, 120), { x: 100, y: 120 });
 });
 
 test('コマ移動時に形状・人物・フキダシを一緒に移動する', () => {
