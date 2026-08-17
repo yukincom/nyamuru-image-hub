@@ -29,7 +29,8 @@
     "build:standalone": "vite build --config vite.standalone.config.mjs",
     "preview": "astro preview",
     "check": "astro check",
-    "test": "node --no-warnings --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --no-warnings --experimental-strip-types --test tests/*.test.mjs && npm run test:bridge",
+    "test:bridge": "python3 -m unittest tests/test_scanner_bridge.py"
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",

@@ -7,12 +7,46 @@ export interface LayoutRecognitionResult {
   templateId: string | null;
   confidence: number;
   reason: string;
+  rotationDegrees: 0 | 90 | 180 | 270;
 }
 
 interface BridgeLayoutResponse {
   template_id?: unknown;
   confidence?: unknown;
   reason?: unknown;
+  rotation_degrees?: unknown;
+}
+
+export interface ScannerSession {
+  id: string;
+  startedAt: string;
+  expiresInSeconds: number;
+  maxFiles: number;
+  directory: string;
+}
+
+export interface ScannedImage {
+  id: string;
+  file: File;
+  modifiedAt: string;
+}
+
+export interface ScannerCollection {
+  files: ScannedImage[];
+  complete: boolean;
+  remainingSeconds: number;
+  total: number;
+}
+
+export interface PendingScannerSession {
+  startedAt: string;
+  directory: string;
+  count: number;
+}
+
+export interface ResumedScannerSession {
+  session: ScannerSession;
+  files: ScannedImage[];
 }
 
 function bridgeUrl(path: string): string {
@@ -31,7 +65,9 @@ export function normalizeLayoutRecognition(
   const reason = typeof payload.reason === 'string' && payload.reason.trim()
     ? payload.reason.trim()
     : templateId ? '画像内のコマ枠配置に最も近い候補です。' : '近いコマ割りを特定できませんでした。';
-  return { templateId, confidence, reason };
+  const rawRotation = Number(payload.rotation_degrees);
+  const rotationDegrees = ([0, 90, 180, 270] as const).find((value) => value === rawRotation) ?? 0;
+  return { templateId, confidence, reason, rotationDegrees };
 }
 
 async function imageDataUrl(file: File): Promise<string> {
@@ -105,6 +141,102 @@ export async function recognizePanelLayout(
   return normalizeLayoutRecognition(payload, templates.map((template) => template.id));
 }
 
-export async function openMacScanner(): Promise<void> {
-  await postJson('/api/scanner/open', {}, 10_000);
+function dataUrlFile(dataUrl: unknown, filename: unknown): File {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/') || !dataUrl.includes(',')) {
+    throw new Error('スキャン画像の形式が正しくありません');
+  }
+  const [header, encoded] = dataUrl.split(',', 2);
+  const mimeType = header.slice(5).split(';', 1)[0] || 'image/jpeg';
+  const binary = window.atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const safeName = typeof filename === 'string' && filename.trim() ? filename.trim() : 'scan.jpg';
+  return new File([bytes], safeName, { type: mimeType });
+}
+
+function scannerSessionFromPayload(payload: Record<string, unknown>): ScannerSession {
+  if (typeof payload.session_id !== 'string' || typeof payload.started_at !== 'string') {
+    throw new Error('スキャン待機を開始できませんでした');
+  }
+  return {
+    id: payload.session_id,
+    startedAt: payload.started_at,
+    expiresInSeconds: Math.max(1, Number(payload.expires_in_seconds) || 300),
+    maxFiles: Math.min(10, Math.max(1, Number(payload.max_files) || 10)),
+    directory: typeof payload.directory === 'string' ? payload.directory : '',
+  };
+}
+
+function scannerFilesFromPayload(payload: Record<string, unknown>): ScannedImage[] {
+  const rawFiles = Array.isArray(payload.files) ? payload.files.slice(0, 10) : [];
+  return rawFiles.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const item = entry as Record<string, unknown>;
+    if (typeof item.id !== 'string') return [];
+    try {
+      return [{
+        id: item.id,
+        file: dataUrlFile(item.image, item.filename),
+        modifiedAt: typeof item.modified_at === 'string' ? item.modified_at : '',
+      }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+export async function openMacScanner(): Promise<ScannerSession> {
+  const payload = await postJson('/api/scanner/open', {}, 10_000) as Record<string, unknown>;
+  return scannerSessionFromPayload(payload);
+}
+
+export async function collectScannerImages(sessionId: string): Promise<ScannerCollection> {
+  const payload = await postJson('/api/scanner/collect', { session_id: sessionId }, 15_000) as Record<string, unknown>;
+  const files = scannerFilesFromPayload(payload);
+  return {
+    files,
+    complete: payload.complete === true,
+    remainingSeconds: Math.max(0, Number(payload.remaining_seconds) || 0),
+    total: Math.min(10, Math.max(files.length, Number(payload.total) || 0)),
+  };
+}
+
+export async function commitScannerSession(sessionId: string): Promise<void> {
+  const payload = await postJson('/api/scanner/commit', { session_id: sessionId }, 15_000) as { errors?: unknown };
+  if (Array.isArray(payload.errors) && payload.errors.length) {
+    throw new Error(`スキャン元を削除できませんでした: ${payload.errors.join(', ')}`);
+  }
+}
+
+export async function finishScannerSession(sessionId: string): Promise<void> {
+  await postJson('/api/scanner/finish', { session_id: sessionId }, 10_000);
+}
+
+export async function cancelScannerSession(sessionId: string): Promise<void> {
+  const payload = await postJson('/api/scanner/cancel', { session_id: sessionId }, 15_000) as { errors?: unknown };
+  if (Array.isArray(payload.errors) && payload.errors.length) {
+    throw new Error(`スキャン元を削除できませんでした: ${payload.errors.join(', ')}`);
+  }
+}
+
+export async function getPendingScannerSession(): Promise<PendingScannerSession | null> {
+  const payload = await postJson('/api/scanner/pending', {}, 10_000) as Record<string, unknown>;
+  if (payload.pending !== true) return null;
+  return {
+    startedAt: typeof payload.started_at === 'string' ? payload.started_at : '',
+    directory: typeof payload.directory === 'string' ? payload.directory : '',
+    count: Math.min(10, Math.max(1, Number(payload.count) || 1)),
+  };
+}
+
+export async function resumePendingScannerSession(): Promise<ResumedScannerSession> {
+  const payload = await postJson('/api/scanner/resume', {}, 30_000) as Record<string, unknown>;
+  return { session: scannerSessionFromPayload(payload), files: scannerFilesFromPayload(payload) };
+}
+
+export async function discardPendingScannerSession(): Promise<void> {
+  const payload = await postJson('/api/scanner/discard-pending', {}, 15_000) as { errors?: unknown };
+  if (Array.isArray(payload.errors) && payload.errors.length) {
+    throw new Error(`残っているスキャン元を削除できませんでした: ${payload.errors.join(', ')}`);
+  }
 }

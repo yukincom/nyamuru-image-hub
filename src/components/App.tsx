@@ -17,7 +17,7 @@ import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEd
 import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga } from '../lib/manga';
 import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
-import { openMacScanner, recognizePanelLayout, type LayoutRecognitionResult } from '../lib/localBridge';
+import { cancelScannerSession, collectScannerImages, commitScannerSession, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -41,6 +41,17 @@ const TABS: {
 
 type MobileStoryboardPane = 'pages' | 'editor' | 'panel';
 type NewLayoutTask = 'idle' | 'scanner' | 'analyzing';
+type NewLayoutSource = 'manual' | 'scanner';
+
+interface NewLayoutItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  source: NewLayoutSource;
+  analysis: LayoutRecognitionResult | null;
+  analyzing: boolean;
+  error?: string;
+}
 
 const HOWTO_INTRO_KEY = 'manga-name-studio.howto-intro.v1';
 const DOCS_LANG_KEY = 'manga-name-studio.docs-lang.v1';
@@ -122,11 +133,13 @@ export default function App() {
   const [showHowtoIntro, setShowHowtoIntro] = useState(false);
   const [mangaViewerPage, setMangaViewerPage] = useState<number | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState('B');
-  const [newLayoutFile, setNewLayoutFile] = useState<File | null>(null);
-  const [newLayoutPreviewUrl, setNewLayoutPreviewUrl] = useState<string | null>(null);
-  const [newLayoutAnalysis, setNewLayoutAnalysis] = useState<LayoutRecognitionResult | null>(null);
+  const [newLayoutItems, setNewLayoutItems] = useState<NewLayoutItem[]>([]);
+  const [newLayoutActiveIndex, setNewLayoutActiveIndex] = useState(0);
   const [newLayoutMessage, setNewLayoutMessage] = useState<string | null>(null);
   const [newLayoutTask, setNewLayoutTask] = useState<NewLayoutTask>('idle');
+  const [scannerSession, setScannerSession] = useState<ScannerSession | null>(null);
+  const [pendingScannerSession, setPendingScannerSession] = useState<PendingScannerSession | null>(null);
+  const [scannerReceivedCount, setScannerReceivedCount] = useState(0);
   const [rawSource, setRawSource] = useState(() => toMangaYaml(document));
   const [rawError, setRawError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -135,6 +148,9 @@ export default function App() {
   const [future, setFuture] = useState<MangaDocument[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
   const newLayoutImageInput = useRef<HTMLInputElement>(null);
+  const newLayoutItemsRef = useRef<NewLayoutItem[]>([]);
+  const scannerSessionRef = useRef<ScannerSession | null>(null);
+  const scannerStopRequested = useRef(false);
   const saveTimer = useRef<number | undefined>(undefined);
   const lastHistoryPush = useRef(0);
 
@@ -185,6 +201,60 @@ export default function App() {
     setToast('作業をやり直しました');
   };
 
+  const discardNewLayoutItems = () => {
+    newLayoutItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    newLayoutItemsRef.current = [];
+    setNewLayoutItems([]);
+    setNewLayoutActiveIndex(0);
+    setNewLayoutMessage(null);
+    setScannerReceivedCount(0);
+    if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
+  };
+
+  const cancelActiveScannerSession = async () => {
+    const session = scannerSessionRef.current;
+    scannerSessionRef.current = null;
+    setScannerSession(null);
+    setPendingScannerSession(null);
+    if (session) await cancelScannerSession(session.id);
+  };
+
+  const detachActiveScannerSession = () => {
+    scannerSessionRef.current = null;
+    setScannerSession(null);
+  };
+
+  const discardPendingScannerRecovery = async () => {
+    await discardPendingScannerSession();
+    setPendingScannerSession(null);
+  };
+
+  const discardScannerSources = async () => {
+    if (scannerSessionRef.current) await cancelActiveScannerSession();
+    else await discardPendingScannerRecovery();
+  };
+
+  const commitActiveScannerSession = async () => {
+    const session = scannerSessionRef.current;
+    if (!session) return;
+    await commitScannerSession(session.id);
+    scannerSessionRef.current = null;
+    setScannerSession(null);
+    setPendingScannerSession(null);
+  };
+
+  const finishScannerWatching = async () => {
+    const session = scannerSessionRef.current;
+    if (session) await finishScannerSession(session.id);
+  };
+
+  const closeNewDialog = () => {
+    void discardScannerSources().catch(() => undefined);
+    discardNewLayoutItems();
+    setNewLayoutTask('idle');
+    setShowNewDialog(false);
+  };
+
   useEffect(() => {
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
@@ -212,9 +282,22 @@ export default function App() {
 
   useEffect(() => { setSelectedElement(null); }, [activePage, activePanel]);
 
+  useEffect(() => { newLayoutItemsRef.current = newLayoutItems; }, [newLayoutItems]);
+
+  useEffect(() => {
+    if (!showNewDialog || scannerSessionRef.current || pendingScannerSession) return;
+    let ignored = false;
+    void getPendingScannerSession()
+      .then((pending) => { if (!ignored) setPendingScannerSession(pending); })
+      .catch(() => undefined);
+    return () => { ignored = true; };
+  }, [showNewDialog, pendingScannerSession]);
+
   useEffect(() => () => {
-    if (newLayoutPreviewUrl) URL.revokeObjectURL(newLayoutPreviewUrl);
-  }, [newLayoutPreviewUrl]);
+    newLayoutItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    // 強制終了・再読み込みではbridge側の復旧記録と元スキャンを残す。
+    // 明示的に閉じた場合だけcloseNewDialogから削除を依頼する。
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -231,7 +314,7 @@ export default function App() {
         return;
       }
       if (key === 'escape' && mangaViewerPage !== null) { setMangaViewerPage(null); return; }
-      if (key === 'escape' && showNewDialog) { setShowNewDialog(false); return; }
+      if (key === 'escape' && showNewDialog) { closeNewDialog(); return; }
       if (key === 'escape' && showHowtoIntro) { setShowHowtoIntro(false); return; }
       const target = event.target as HTMLElement | null;
       if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable)) return;
@@ -240,7 +323,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [document, past, future, showNewDialog, showHowtoIntro, mangaViewerPage]);
+  }, [document, past, future, showNewDialog, showHowtoIntro, mangaViewerPage, pendingScannerSession]);
 
   const changeTab = (next: WorkspaceTab) => { setTab(next); if (next !== 'storyboard' && window.innerWidth < 800) setSidebarCollapsed(true); };
   const changeDocsLang = (next: DocsLanguage) => {
@@ -284,61 +367,191 @@ export default function App() {
     if (fileInput.current) fileInput.current.value = '';
   };
 
-  const chooseNewLayoutImage = (file?: File) => {
-    if (!file) return;
-    setNewLayoutFile(file);
-    setNewLayoutPreviewUrl(URL.createObjectURL(file));
-    setNewLayoutAnalysis(null);
-    setNewLayoutMessage('画像を読み込みました。「VLMでコマ割りを判定」を押すまで画像は送信されません。');
+  const chooseNewLayoutImages = (files?: FileList | null) => {
+    const selected = Array.from(files ?? []).slice(0, 10);
+    if (!selected.length) return;
+    // スキャンから手動ファイルへ切り替える操作は明示的な破棄として扱う。
+    void discardScannerSources().catch(() => undefined);
+    discardNewLayoutItems();
+    const items = selected.map((file) => ({
+      id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), source: 'manual' as const,
+      analysis: null, analyzing: false,
+    }));
+    newLayoutItemsRef.current = items;
+    setNewLayoutItems(items);
+    setNewLayoutActiveIndex(0);
+    setNewLayoutMessage(`${items.length}枚を読み込みました。「VLMでまとめて判定」を押すまで画像は送信されません。元ファイルは変更しません。`);
     if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
   };
 
-  const analyzeNewLayout = async () => {
-    if (!newLayoutFile || newLayoutTask !== 'idle') return;
+  const analyzeNewLayouts = async () => {
+    if (!newLayoutItemsRef.current.length || newLayoutTask !== 'idle') return;
     setNewLayoutTask('analyzing');
-    setNewLayoutAnalysis(null);
-    setNewLayoutMessage('コマ枠を検出し、Qwen3-VLがパターンA〜Yの候補を比較しています…');
-    try {
-      const result = await recognizePanelLayout(newLayoutFile, PANEL_TEMPLATES);
-      setNewLayoutAnalysis(result);
-      if (result.templateId) {
-        setNewLayoutMessage(`パターン${result.templateId}を候補として選択しました。確認してから開始してください。`);
-        window.requestAnimationFrame(() => window.document.getElementById(`new-template-${result.templateId}`)?.scrollIntoView({ block: 'nearest' }));
-      } else {
-        setNewLayoutMessage(`近い既定パターンを特定できませんでした。${result.reason}`);
+    let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
+    setNewLayoutItems(working);
+    for (let index = 0; index < working.length; index += 1) {
+      setNewLayoutActiveIndex(index);
+      working = working.map((item, itemIndex) => ({ ...item, analyzing: itemIndex === index }));
+      newLayoutItemsRef.current = working;
+      setNewLayoutItems(working);
+      setNewLayoutMessage(`${index + 1} / ${working.length}枚目：文字の向きとコマ枠を確認し、Qwen3-VLが候補を比較しています…`);
+      try {
+        const result = await recognizePanelLayout(working[index].file, PANEL_TEMPLATES);
+        working = working.map((item, itemIndex) => itemIndex === index
+          ? { ...item, analysis: result, analyzing: false, error: undefined }
+          : item);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'コマ割りの判定に失敗しました';
+        working = working.map((item, itemIndex) => itemIndex === index
+          ? { ...item, analysis: null, analyzing: false, error: message }
+          : item);
       }
-    } catch (error) {
-      setNewLayoutMessage(error instanceof Error ? error.message : 'コマ割りの判定に失敗しました');
-    } finally {
-      setNewLayoutTask('idle');
+      newLayoutItemsRef.current = working;
+      setNewLayoutItems(working);
     }
+    const matched = working.filter((item) => item.analysis?.templateId).length;
+    setNewLayoutMessage(`${working.length}枚の判定が終わりました。${matched}枚でコマ割り候補を選択できました。`);
+    setNewLayoutTask('idle');
   };
 
   const launchScanner = async () => {
     if (newLayoutTask !== 'idle') return;
+    await discardScannerSources().catch(() => undefined);
+    discardNewLayoutItems();
+    scannerStopRequested.current = false;
     setNewLayoutTask('scanner');
     setNewLayoutMessage('macOSのスキャナーアプリを起動しています…');
     try {
-      await openMacScanner();
-      setNewLayoutMessage('イメージキャプチャを起動しました。取り込み後、「画像を読み込む」から保存した画像を選んでください。');
+      const session = await openMacScanner();
+      scannerSessionRef.current = session;
+      setScannerSession(session);
+      setNewLayoutMessage(`スキャン画像を自動待機中です（最大${session.maxFiles}枚・5分）。続けてスキャンし、終わったら「取り込みを終了」を押してください。`);
+      while (scannerSessionRef.current?.id === session.id) {
+        const batch = await collectScannerImages(session.id);
+        if (scannerSessionRef.current?.id !== session.id) break;
+        if (batch.files.length) {
+          const additions = batch.files.map(({ id, file }) => ({
+            id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
+            analysis: null, analyzing: false,
+          }));
+          const existing = newLayoutItemsRef.current;
+          const known = new Set(existing.map((item) => item.id));
+          const next = [...existing, ...additions.filter((item) => !known.has(item.id))].slice(0, session.maxFiles);
+          newLayoutItemsRef.current = next;
+          setNewLayoutItems(next);
+          setNewLayoutActiveIndex(Math.max(0, next.length - 1));
+          setScannerReceivedCount(next.length);
+          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元はコマ割りを確定するまで保持します。続けてスキャンできます。`);
+        }
+        if (batch.complete || scannerStopRequested.current) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+      }
+      if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
+      const count = newLayoutItemsRef.current.length;
+      setNewLayoutMessage(count
+        ? `${count}枚の取り込みを完了しました。スキャン元とNyamuruの一時画像は、コマ割り確定または画面を閉じた時に破棄します。`
+        : '5分以内に新しいスキャン画像が見つかりませんでした。');
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
+      // 予期しない切断では元画像を消さず、次回の復旧候補として残す。
+      detachActiveScannerSession();
+      void getPendingScannerSession().then(setPendingScannerSession).catch(() => undefined);
+    } finally {
+      scannerStopRequested.current = false;
+      setNewLayoutTask('idle');
+    }
+  };
+
+  const resumeScanner = async () => {
+    if (newLayoutTask !== 'idle') return;
+    setNewLayoutTask('scanner');
+    setNewLayoutMessage('前回のスキャン画像へつなぎ直しています…');
+    try {
+      discardNewLayoutItems();
+      const resumed = await resumePendingScannerSession();
+      scannerSessionRef.current = resumed.session;
+      setScannerSession(resumed.session);
+      setPendingScannerSession(null);
+      const items = resumed.files.map(({ id, file }) => ({
+        id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
+        analysis: null, analyzing: false,
+      }));
+      newLayoutItemsRef.current = items;
+      setNewLayoutItems(items);
+      setNewLayoutActiveIndex(0);
+      setScannerReceivedCount(items.length);
+      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。コマ割りの判定を続けられます。`);
+    } catch (error) {
+      setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');
     } finally {
       setNewLayoutTask('idle');
     }
   };
 
-  const createNewDocument = (template?: PanelTemplate) => {
+  const discardRecoveredScans = async () => {
+    if (newLayoutTask !== 'idle') return;
+    setNewLayoutTask('scanner');
+    try {
+      await discardPendingScannerRecovery();
+      setNewLayoutMessage('前回残ったスキャン画像を破棄しました。');
+    } catch (error) {
+      setNewLayoutMessage(error instanceof Error ? error.message : '残っているスキャン画像を破棄できませんでした');
+    } finally {
+      setNewLayoutTask('idle');
+    }
+  };
+
+  const requestScannerFinish = () => {
+    scannerStopRequested.current = true;
+    setNewLayoutMessage('現在の取り込みを確認して終了しています…');
+  };
+
+  const assignTemplateToActiveImage = (template: PanelTemplate) => {
+    const index = newLayoutActiveIndex;
+    const working = newLayoutItemsRef.current.map((item, itemIndex) => itemIndex === index
+      ? {
+        ...item,
+        analysis: {
+          templateId: template.id,
+          confidence: 1,
+          reason: '利用者がコマ割りを選択しました。',
+          rotationDegrees: item.analysis?.rotationDegrees ?? 0,
+        },
+        error: undefined,
+      }
+      : item);
+    newLayoutItemsRef.current = working;
+    setNewLayoutItems(working);
+    setNewLayoutMessage(`${index + 1}枚目にパターン${template.id}を割り当てました。全ページを確認してから確定してください。`);
+  };
+
+  const createNewDocument = async (
+    templateOrTemplates?: PanelTemplate | PanelTemplate[],
+    confirmScannedLayouts = false,
+  ) => {
+    try {
+      if (confirmScannedLayouts) await commitActiveScannerSession();
+      else await discardScannerSources();
+    } catch (error) {
+      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン処理を完了できませんでした');
+      return;
+    }
     const sample = parseMangaYaml(sampleYaml);
-    const firstPage = newPage(1);
-    if (template) { firstPage.panels = []; applyPanelTemplate(firstPage, template); }
-    else firstPage.panels[0].bubbles = [];
+    const templates = Array.isArray(templateOrTemplates)
+      ? templateOrTemplates
+      : templateOrTemplates ? [templateOrTemplates] : [];
+    const pages = (templates.length ? templates : [undefined]).map((template, index) => {
+      const page = newPage(index + 1);
+      if (template) { page.panels = []; applyPanelTemplate(page, template); }
+      else page.panels[0].bubbles = [];
+      return page;
+    });
     const fresh: MangaDocument = {
       manga: {
         schema_name: sample.manga.schema_name,
         schema_version: sample.manga.schema_version,
         meta: {
-          title: '', author: '', format: '', page_count: 1,
+          title: '', author: '', format: '', page_count: pages.length,
           reading_direction: sample.manga.meta.reading_direction,
           text_orientation: sample.manga.meta.text_orientation,
           font: sample.manga.meta.font,
@@ -348,14 +561,16 @@ export default function App() {
         setting: { location: '', time: '', weather: '', background: [], props: [], situation: '' },
         characters: [],
         materials: [],
-        pages: [firstPage],
+        pages,
       },
     };
     lastHistoryPush.current = 0;
     setDocument(fresh);
     setActivePage(0); setActivePanel(0); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor'); setShowNewDialog(false);
-    setNewLayoutFile(null); setNewLayoutPreviewUrl(null); setNewLayoutAnalysis(null); setNewLayoutMessage(null);
-    setToast(template ? `パターン${template.id}で新規作成しました` : 'まっさらな漫画を作成しました');
+    discardNewLayoutItems();
+    setToast(templates.length > 1
+      ? `${templates.length}枚のコマ割りで新規作成しました`
+      : templates[0] ? `パターン${templates[0].id}で新規作成しました` : 'まっさらな漫画を作成しました');
   };
 
   const resetSample = () => {
@@ -494,6 +709,13 @@ export default function App() {
     catch (error) { setRawError(error instanceof Error ? error.message : '不明なエラー'); }
   };
 
+  const activeLayoutItem = newLayoutItems[newLayoutActiveIndex] ?? null;
+  const activeLayoutAnalysis = activeLayoutItem?.analysis ?? null;
+  const hasScannedLayoutItems = newLayoutItems.some((item) => item.source === 'scanner');
+  const analyzedTemplates = newLayoutItems.map((item) => item.analysis?.templateId ? findPanelTemplate(item.analysis.templateId) : undefined);
+  const canCreateAnalyzedPages = newLayoutItems.length > 0 && analyzedTemplates.every((template) => Boolean(template));
+  const resolvedAnalyzedTemplates = analyzedTemplates.filter((template): template is PanelTemplate => Boolean(template));
+
   return <div class="app-shell">
     <Header title={document.manga.meta.title} version={document.manga.schema_version} issues={issues} savedAt={savedAt} canUndo={past.length > 0} canRedo={future.length > 0} onUndo={undo} onRedo={redo} onNew={() => setShowNewDialog(true)} onImport={() => fileInput.current?.click()} onCopy={copyYaml} onDownload={download} onReset={resetSample} onValidate={() => setShowValidation(true)} />
     <input ref={fileInput} type="file" accept=".yaml,.yml,text/yaml,application/yaml" hidden onChange={(event) => importFile(event.currentTarget.files?.[0])} />
@@ -559,38 +781,54 @@ export default function App() {
     <footer class="app-footer"><span><Boxes size={13} />オフライン対応 · 変更はこの端末に自動保存</span><span class="footer-links"><a class="license-link" href={import.meta.env.PUBLIC_STANDALONE ? `${REPO_URL}/blob/main/LICENSE` : '/licenses/'} target={import.meta.env.PUBLIC_STANDALONE ? '_blank' : undefined}>© 2026 sa-san10 · MIT License</a><a class="license-link" href={import.meta.env.PUBLIC_STANDALONE ? `${REPO_URL}/blob/main/src/content/changelog.md` : '/changelog/'} target={import.meta.env.PUBLIC_STANDALONE ? '_blank' : undefined} title={`バージョン履歴 · バージョンコード ${appVersionCode}`}>v{appVersion}</a></span><button onClick={() => setShowValidation(true)}>{issues.length ? `${issues.length} 件のNDM確認` : 'NDM検査OK'}</button></footer>
     {showValidation && <><button class="drawer-backdrop" onClick={() => setShowValidation(false)} aria-label="検査結果を閉じる" /><ValidationPanel issues={issues} onClose={() => setShowValidation(false)} /></>}
     {showNewDialog && <>
-      <button class="drawer-backdrop" onClick={() => setShowNewDialog(false)} aria-label="新規作成を閉じる" />
+      <button class="drawer-backdrop" onClick={closeNewDialog} aria-label="新規作成を閉じる" />
       <section class="new-dialog" role="dialog" aria-modal="true" aria-label="新規作成">
-        <div class="drawer-head new-dialog-head"><h2>新規作成</h2><button onClick={() => setShowNewDialog(false)} aria-label="閉じる"><X size={16} /></button></div>
+        <div class="drawer-head new-dialog-head"><h2>新規作成</h2><button onClick={closeNewDialog} aria-label="閉じる"><X size={16} /></button></div>
         <div class="new-dialog-body">
           <p class="new-dialog-note">作画・演出ルール、レイアウト仕様、NDMスキーマ名・バージョンはサンプルから引き継ぎ、それ以外がまっさらな1ページの漫画を作ります。いまの編集内容は「元に戻す」で復帰できます。</p>
           <button class="new-blank-button" onClick={() => createNewDocument()}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
           <section class="new-layout-import" aria-labelledby="new-layout-import-title">
             <div class="new-layout-import-head">
-              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>画像は「VLMでコマ割りを判定」を押した時だけ、Mac内のQwen3-VLへ渡されます。</p></div>
+              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>最大10枚。文字から上下を直し、Mac内のQwen3-VLでページごとに判定します。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
               <div class="new-layout-import-actions">
                 <button type="button" onClick={() => newLayoutImageInput.current?.click()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
-                <button type="button" onClick={launchScanner} disabled={newLayoutTask !== 'idle'}><ScanLine size={15} />スキャナーを起動</button>
+                {newLayoutTask === 'scanner'
+                  ? <button type="button" onClick={requestScannerFinish}><ScanLine size={15} />取り込みを終了{scannerReceivedCount ? `（${scannerReceivedCount}枚）` : ''}</button>
+                  : <button type="button" onClick={launchScanner} disabled={newLayoutTask !== 'idle' || Boolean(pendingScannerSession)}><ScanLine size={15} />スキャナーを起動</button>}
               </div>
             </div>
-            <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" hidden onChange={(event) => chooseNewLayoutImage(event.currentTarget.files?.[0])} />
-            {newLayoutFile && newLayoutPreviewUrl && <div class="new-layout-preview">
-              <img src={newLayoutPreviewUrl} alt="読み込んだネーム画像のプレビュー" />
-              <div><strong>{newLayoutFile.name}</strong><span>{(newLayoutFile.size / 1024 / 1024).toFixed(1)} MB</span><button type="button" class="primary-button" onClick={analyzeNewLayout} disabled={newLayoutTask !== 'idle'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '判定中…' : 'VLMでコマ割りを判定'}</button></div>
+            {pendingScannerSession && <div class="new-layout-recovery" role="status">
+              <div><strong>前回のスキャン画像が{pendingScannerSession.count}枚残っています</strong><span>{new Date(pendingScannerSession.startedAt).toLocaleString('ja-JP')} · {pendingScannerSession.directory}</span><p>強制終了などで処理が中断された可能性があります。前回の画像へつなぎ直しますか？</p></div>
+              <div><button type="button" class="primary-button" onClick={resumeScanner} disabled={newLayoutTask !== 'idle'}>つなぎ直す</button><button type="button" onClick={discardRecoveredScans} disabled={newLayoutTask !== 'idle'}>破棄する</button></div>
             </div>}
-            {newLayoutMessage && <p class={`new-layout-message ${newLayoutAnalysis?.templateId ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
-            {newLayoutAnalysis?.templateId && (() => {
-              const template = findPanelTemplate(newLayoutAnalysis.templateId);
+            <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" multiple hidden onChange={(event) => chooseNewLayoutImages(event.currentTarget.files)} />
+            {newLayoutItems.length > 1 && <div class="new-layout-queue" aria-label="読み込んだネーム画像">
+              {newLayoutItems.map((item, index) => <button type="button" class={newLayoutActiveIndex === index ? 'is-active' : ''} onClick={() => setNewLayoutActiveIndex(index)} key={item.id}>
+                <span>{index + 1}</span><img src={item.previewUrl} alt="" style={{ transform: `rotate(${item.analysis?.rotationDegrees ?? 0}deg) scale(${(item.analysis?.rotationDegrees ?? 0) % 180 ? .78 : 1})` }} />
+                <small>{item.analyzing ? '判定中' : item.analysis?.templateId ? `候補 ${item.analysis.templateId}` : item.error ? 'エラー' : '未判定'}</small>
+              </button>)}
+            </div>}
+            {activeLayoutItem && <div class="new-layout-preview">
+              <div class="new-layout-preview-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={{ transform: `rotate(${activeLayoutAnalysis?.rotationDegrees ?? 0}deg) scale(${(activeLayoutAnalysis?.rotationDegrees ?? 0) % 180 ? .78 : 1})` }} /></div>
+              <div><strong>{activeLayoutItem.file.name}</strong><span>{(activeLayoutItem.file.size / 1024 / 1024).toFixed(1)} MB · {activeLayoutItem.source === 'scanner' ? 'スキャン元は確定まで保持' : '元ファイルは保持'}</span>{activeLayoutAnalysis ? <span>{activeLayoutAnalysis.rotationDegrees ? `${activeLayoutAnalysis.rotationDegrees}°回転して向きを補正` : '向き補正は不要'}</span> : null}<button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '判定中…' : `VLMでまとめて判定（${newLayoutItems.length}枚）`}</button></div>
+            </div>}
+            {newLayoutMessage && <p class={`new-layout-message ${activeLayoutAnalysis?.templateId ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
+            {scannerSession && <p class="new-layout-session">開始 {new Date(scannerSession.startedAt).toLocaleTimeString('ja-JP')} · 保存先 {scannerSession.directory}</p>}
+            {activeLayoutItem?.error && <p class="new-layout-message">{activeLayoutItem.error}</p>}
+            {activeLayoutAnalysis && !activeLayoutAnalysis.templateId && <p class="new-layout-message">{activeLayoutAnalysis.reason}</p>}
+            {activeLayoutAnalysis?.templateId && (() => {
+              const template = findPanelTemplate(activeLayoutAnalysis.templateId);
               if (!template) return null;
               return <div class="new-layout-result">
                 <TemplateThumb shapes={template.shapes} />
-                <div><span>自動選択候補 · 確信度 {Math.round(newLayoutAnalysis.confidence * 100)}%</span><strong>パターン{template.id} · {template.name}</strong><p>{newLayoutAnalysis.reason}</p><button type="button" class="primary-button" onClick={() => createNewDocument(template)}>このコマ割りで開始</button></div>
+                <div><span>{newLayoutActiveIndex + 1}枚目の候補 · 確信度 {Math.round(activeLayoutAnalysis.confidence * 100)}%</span><strong>パターン{template.id} · {template.name}</strong><p>{activeLayoutAnalysis.reason}</p>{newLayoutItems.length === 1 && <button type="button" class="primary-button" onClick={() => createNewDocument(template, hasScannedLayoutItems)}>このコマ割りで開始</button>}</div>
               </div>;
             })()}
+            {newLayoutItems.length > 1 && canCreateAnalyzedPages && <button type="button" class="primary-button new-layout-batch-create" onClick={() => createNewDocument(resolvedAnalyzedTemplates, hasScannedLayoutItems)}>{newLayoutItems.length}ページのコマ割りで開始</button>}
           </section>
           <h3 class="new-dialog-subtitle">コマ割りを選んで開始</h3>
           <div class="new-template-grid">
-            {PANEL_TEMPLATES.map((template) => <button id={`new-template-${template.id}`} class={`new-template-card ${newLayoutAnalysis?.templateId === template.id ? 'is-vlm-suggestion' : ''}`} key={template.id} onClick={() => createNewDocument(template)}>
+            {PANEL_TEMPLATES.map((template) => <button id={`new-template-${template.id}`} class={`new-template-card ${activeLayoutAnalysis?.templateId === template.id ? 'is-vlm-suggestion' : ''}`} key={template.id} onClick={() => newLayoutItems.length > 1 ? assignTemplateToActiveImage(template) : createNewDocument(template, hasScannedLayoutItems)}>
               <TemplateThumb shapes={template.shapes} />
               <strong>パターン{template.id} · {template.name}</strong>
               <small>{template.shapes.length}コマ · {template.usage}</small>

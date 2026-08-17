@@ -1,0 +1,133 @@
+import importlib.util
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+
+MODULE_PATH = Path(__file__).parents[1] / "scripts" / "nyamuru_local_bridge.py"
+SPEC = importlib.util.spec_from_file_location("nyamuru_local_bridge", MODULE_PATH)
+bridge = importlib.util.module_from_spec(SPEC)
+assert SPEC and SPEC.loader
+sys.modules[SPEC.name] = bridge
+SPEC.loader.exec_module(bridge)
+
+
+class ScannerSessionsTest(unittest.TestCase):
+    def test_decodes_cocoa_unicode_escape_in_document_name(self):
+        completed = type("Completed", (), {"stdout": r"\u30b9\u30ad\u30e3\u30f3" + "\n"})()
+        with patch.object(bridge.subprocess, "run", return_value=completed):
+            self.assertEqual(bridge.image_capture_preference("IK_documentName", "scan"), "スキャン")
+
+    def test_keeps_scans_until_human_commit_and_deletes_only_then(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            old_scan = directory / "スキャン.jpeg"
+            old_scan.write_bytes(b"old")
+            manager = bridge.ScannerSessions(directory / "scanner-state.json")
+            with (
+                patch.object(bridge, "scanner_destination", return_value=directory),
+                patch.object(bridge, "scanner_document_prefix", return_value="スキャン"),
+                patch.object(bridge, "scanner_preview", return_value=("image/jpeg", "cHJldmlldw==")),
+                patch.object(bridge, "SCANNER_STABLE_SECONDS", 0),
+            ):
+                session = manager.start()
+                new_scan = directory / "スキャン 1.jpeg"
+                new_scan.write_bytes(b"new")
+                unrelated = directory / "vacation.jpeg"
+                unrelated.write_bytes(b"keep")
+
+                self.assertEqual(manager.collect(session["session_id"])["files"], [])
+                batch = manager.collect(session["session_id"])
+                self.assertEqual([item["filename"] for item in batch["files"]], ["スキャン 1.jpeg"])
+                self.assertTrue(new_scan.exists())
+
+                self.assertEqual(manager.finish(session["session_id"]), {"ok": True, "retained": ["スキャン 1.jpeg"]})
+                self.assertTrue(new_scan.exists())
+                result = manager.commit(session["session_id"])
+                self.assertEqual(result, {"deleted": 1, "errors": []})
+                self.assertFalse(new_scan.exists())
+                self.assertTrue(old_scan.exists())
+                self.assertTrue(unrelated.exists())
+                self.assertIsNone(manager.active)
+
+    def test_explicit_cancel_deletes_scan_source(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            manager = bridge.ScannerSessions(directory / "scanner-state.json")
+            with (
+                patch.object(bridge, "scanner_destination", return_value=directory),
+                patch.object(bridge, "scanner_document_prefix", return_value="scan"),
+                patch.object(bridge, "scanner_preview", return_value=("image/jpeg", "cHJldmlldw==")),
+                patch.object(bridge, "SCANNER_STABLE_SECONDS", 0),
+            ):
+                session = manager.start()
+                source = directory / "scan 1.jpg"
+                source.write_bytes(b"source")
+                manager.collect(session["session_id"])
+                self.assertEqual(len(manager.collect(session["session_id"])["files"]), 1)
+                result = manager.cancel(session["session_id"])
+                self.assertEqual(result, {"deleted": 1, "errors": []})
+                self.assertFalse(source.exists())
+                self.assertIsNone(manager.active)
+
+    def test_recovers_scan_after_forced_restart_without_deleting_it(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            state_path = directory / "scanner-state.json"
+            with (
+                patch.object(bridge, "scanner_destination", return_value=directory),
+                patch.object(bridge, "scanner_document_prefix", return_value="scan"),
+                patch.object(bridge, "scanner_preview", return_value=("image/jpeg", "cHJldmlldw==")),
+            ):
+                first_manager = bridge.ScannerSessions(state_path)
+                first_manager.start()
+                source = directory / "scan 1.jpg"
+                source.write_bytes(b"source")
+
+                restarted_manager = bridge.ScannerSessions(state_path)
+                pending = restarted_manager.pending()
+                self.assertTrue(pending["pending"])
+                self.assertEqual(pending["count"], 1)
+                self.assertTrue(source.exists())
+
+                resumed = restarted_manager.resume()
+                self.assertEqual([item["filename"] for item in resumed["files"]], ["scan 1.jpg"])
+                self.assertTrue(source.exists())
+                restarted_manager.commit(resumed["session_id"])
+                self.assertFalse(source.exists())
+                self.assertFalse(state_path.exists())
+
+    def test_caps_one_session_at_ten_files(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            directory = Path(directory_name)
+            manager = bridge.ScannerSessions(directory / "scanner-state.json")
+            with (
+                patch.object(bridge, "scanner_destination", return_value=directory),
+                patch.object(bridge, "scanner_document_prefix", return_value="scan"),
+                patch.object(bridge, "scanner_preview", return_value=("image/jpeg", "cHJldmlldw==")),
+                patch.object(bridge, "SCANNER_STABLE_SECONDS", 0),
+            ):
+                session = manager.start()
+                for index in range(12):
+                    (directory / f"scan {index:02}.jpg").write_bytes(str(index).encode())
+                manager.collect(session["session_id"])
+                batch = manager.collect(session["session_id"])
+                self.assertEqual(len(batch["files"]), 10)
+                self.assertTrue(batch["complete"])
+                self.assertEqual(batch["total"], 10)
+                result = manager.cancel(session["session_id"])
+                self.assertEqual(result, {"deleted": 10, "errors": []})
+                self.assertTrue((directory / "scan 10.jpg").exists())
+                self.assertTrue((directory / "scan 11.jpg").exists())
+
+
+class OrientationResultTest(unittest.TestCase):
+    def test_accepts_only_right_angle_rotation(self):
+        self.assertEqual(bridge.parse_orientation_result('{"rotation_degrees":270}', 0), 270)
+        self.assertEqual(bridge.parse_orientation_result('{"rotation_degrees":45}', 180), 180)
+
+
+if __name__ == "__main__":
+    unittest.main()
