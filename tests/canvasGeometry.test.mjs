@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, findLinkedPanelEdges, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, findLinkedPanelEdges, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -133,7 +133,7 @@ test('連動頂点が紙端へ達したら全頂点を同じ移動量で止め�
   assert.deepEqual(panels[1].shape.points[3], [98.4, 297]);
 });
 
-test('横に分割された同一直線上の辺も同じ境界グループとして連動する', () => {
+test('横に分割されて少しズレた辺は隣辺へ吸着し、揃った後は連動する', () => {
   const panels = [
     { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 88.1], [10, 88.1]] } },
     { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[104, 95.5], [200, 95.5], [200, 171], [104, 171]] } },
@@ -141,13 +141,48 @@ test('横に分割された同一直線上の辺も同じ境界グループと�
     { ...rectPanel, id: 4, shape: { type: 'rect', x: 1, y: 177, w: 209, h: 120 } },
   ];
   assert.deepEqual(findLinkedPanelEdges(panels, 1, 0), [
+    { panelIndex: 0, edgeIndex: 2 },
+  ]);
+  const snapped = snapPanelEdgeDeltaToNeighbor(panels, 1, 0, 0, 0);
+  assert.deepEqual(snapped, { x: 0, y: -0.4, snapped: true, target: { panelIndex: 2, edgeIndex: 0 } });
+  movePanelEdge(panels, 1, 0, snapped.x, snapped.y, true, snapped.target);
+  assert.deepEqual(panels[1].shape.points.slice(0, 2), [[104, 95.1], [200, 95.1]]);
+  assert.deepEqual(panels[2].shape, { type: 'rect', x: 10, y: 95.1, w: 90, h: 75.9 });
+  assert.deepEqual(panels[0].shape.points.slice(2), [[200, 87.7], [10, 87.7]]);
+
+  assert.deepEqual(findLinkedPanelEdges(panels, 1, 0), [
     { panelIndex: 2, edgeIndex: 0 },
     { panelIndex: 0, edgeIndex: 2 },
   ]);
   movePanelEdge(panels, 1, 0, 0, 5, true);
-  assert.deepEqual(panels[1].shape.points.slice(0, 2), [[104, 100.5], [200, 100.5]]);
+  assert.deepEqual(panels[1].shape.points.slice(0, 2), [[104, 100.1], [200, 100.1]]);
   assert.deepEqual(panels[2].shape, { type: 'rect', x: 10, y: 100.1, w: 90, h: 70.9 });
-  assert.deepEqual(panels[0].shape.points.slice(2), [[200, 93.1], [10, 93.1]]);
+  assert.deepEqual(panels[0].shape.points.slice(2), [[200, 92.7], [10, 92.7]]);
+});
+
+test('コマスナップOFF相当ではズレた隣辺へ干渉しない', () => {
+  const panels = [
+    { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 88.1], [10, 88.1]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[104, 95.5], [200, 95.5], [200, 171], [104, 171]] } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 10, y: 95.1, w: 90, h: 75.9 } },
+  ];
+  movePanelEdge(panels, 1, 0, 0, 5, false);
+  assert.deepEqual(panels[1].shape.points.slice(0, 2), [[104, 100.5], [200, 100.5]]);
+  assert.equal(panels[2].shape.y, 95.1);
+  assert.deepEqual(panels[0].shape.points.slice(2), [[200, 88.1], [10, 88.1]]);
+});
+
+test('斜めに延長された隣辺にも角度を保って吸着する', () => {
+  const panels = [
+    { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [50, 50], [45, 90], [5, 50]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[54, 56], [90, 92], [86, 110], [50, 74]] } },
+  ];
+  assert.deepEqual(snapPanelEdgeDeltaToNeighbor(panels, 0, 0, 0, 0), {
+    x: -1,
+    y: 1,
+    snapped: true,
+    target: { panelIndex: 1, edgeIndex: 0 },
+  });
 });
 
 test('同一直線上の辺グループは隣接関係をたどって端まで連動する', () => {

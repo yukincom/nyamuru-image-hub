@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type ResizeHandle } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type PanelEdgeReference, type ResizeHandle } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -26,7 +26,7 @@ interface Props {
   onMovePanel: (panelIndex: number, deltaX: number, deltaY: number) => void;
   onResizePanel: (panelIndex: number, bounds: BBox) => void;
   onMoveVertex: (panelIndex: number, vertexIndex: number, x: number, y: number, linkPanels?: boolean) => void;
-  onMovePanelEdge: (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels?: boolean) => void;
+  onMovePanelEdge: (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels?: boolean, excludedEdge?: PanelEdgeReference) => void;
 }
 
 interface Interaction extends InteractionGeometry {
@@ -424,7 +424,14 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
         if (edgeIndex === 0 || edgeIndex === 2) deltaX = 0;
         if (edgeIndex === 1 || edgeIndex === 3) deltaY = 0;
       }
-      onMovePanelEdge(activePanel, edgeIndex, roundMm(deltaX), roundMm(deltaY), panelSnap);
+      let snapTarget: PanelEdgeReference | undefined;
+      if (panelSnap) {
+        const snapped = snapPanelEdgeDeltaToNeighbor(page.panels, activePanel, edgeIndex, deltaX, deltaY);
+        deltaX = snapped.x;
+        deltaY = snapped.y;
+        snapTarget = snapped.target;
+      }
+      onMovePanelEdge(activePanel, edgeIndex, roundMm(deltaX), roundMm(deltaY), panelSnap, snapTarget);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -678,7 +685,7 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
           <input type="checkbox" checked={innerFrameSnap} onChange={onToggleInnerFrameSnap} />
           内枠スナップ
         </label>
-        <label class="canvas-panel-snap" title="同じ境界線上の辺と隣接する平行辺を連動し、コマ間隔と傾きを保ちます">
+        <label class="canvas-panel-snap" title="揃った境界線上の辺を連動し、少しズレた隣辺は同じ直線へ吸着します">
           <input type="checkbox" checked={panelSnap} onChange={onTogglePanelSnap} />
           コマスナップ
         </label>

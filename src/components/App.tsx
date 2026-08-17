@@ -15,7 +15,7 @@ import HowToGuide from './HowToGuide';
 import NyamurutanGuide from './NyamurutanGuide';
 import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEditor, ValidationPanel } from './DocumentEditors';
 import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga } from '../lib/manga';
-import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel } from '../lib/canvasGeometry';
+import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
 import { openMacScanner, recognizePanelLayout, type LayoutRecognitionResult } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, WorkspaceTab } from '../types';
@@ -466,10 +466,10 @@ export default function App() {
       if (panels) movePanelVertexWithSnap(panels, panelIndex, vertexIndex, x, y, linkPanels);
     });
   };
-  const movePanelEdge = (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels = false) => {
+  const movePanelEdge = (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels = false, excludedEdge?: PanelEdgeReference) => {
     mutate((draft) => {
       const panels = draft.manga.pages[activePage]?.panels;
-      if (panels) movePanelEdgeGeometry(panels, panelIndex, edgeIndex, deltaX, deltaY, linkPanels);
+      if (panels) movePanelEdgeGeometry(panels, panelIndex, edgeIndex, deltaX, deltaY, linkPanels, excludedEdge);
     });
   };
   const applyTemplate = () => {

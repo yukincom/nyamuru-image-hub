@@ -15,6 +15,7 @@ export const MIN_SIZE_MM = 6;
 export const INNER_FRAME_BOUNDS: Readonly<BBox> = { x: 10, y: 10, w: 190, h: 277 };
 export const PANEL_SNAP_THRESHOLD_MM = 3;
 export const PANEL_EDGE_LINK_DISTANCE_MM = 8;
+export const PANEL_EDGE_ALIGNMENT_TOLERANCE_MM = 0.15;
 
 export interface PanelEdgeReference {
   panelIndex: number;
@@ -99,12 +100,79 @@ export function findLinkedPanelEdges(
           ? projectionMin - length
           : 0;
       const sharesProjection = overlap >= Math.min(8, Math.min(length, candidateLength) * 0.25);
-      const continuesSameLine = projectionGap <= maxDistance && distance <= Math.min(2, maxDistance * 0.25);
+      const continuesSameLine = projectionGap <= maxDistance && distance <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM;
       if (!sharesProjection && !continuesSameLine) return;
       linked.push({ panelIndex: candidatePanelIndex, edgeIndex: candidateEdgeIndex, distance });
     });
   });
   return linked.sort((left, right) => left.distance - right.distance).map(({ panelIndex: pi, edgeIndex: ei }) => ({ panelIndex: pi, edgeIndex: ei }));
+}
+
+/**
+ * 平行な延長辺が少しズレているとき、隣辺を固定したまま選択辺を同一直線へ吸着する。
+ * すでに同じ境界グループへ入っている辺と、投影が重なる対向辺（コマ間の空き）は対象外。
+ */
+export function snapPanelEdgeDeltaToNeighbor(
+  panels: Panel[],
+  panelIndex: number,
+  edgeIndex: number,
+  deltaX: number,
+  deltaY: number,
+  threshold = PANEL_SNAP_THRESHOLD_MM,
+  maxAlongGap = PANEL_EDGE_LINK_DISTANCE_MM,
+): { x: number; y: number; snapped: boolean; target?: PanelEdgeReference } {
+  const selectedPanel = panels[panelIndex];
+  const selectedEdge = selectedPanel && edgePoints(selectedPanel, edgeIndex);
+  if (!selectedEdge) return { x: roundMm(deltaX), y: roundMm(deltaY), snapped: false };
+  const [start, end] = selectedEdge;
+  const vectorX = end[0] - start[0], vectorY = end[1] - start[1];
+  const length = Math.hypot(vectorX, vectorY);
+  if (!length) return { x: roundMm(deltaX), y: roundMm(deltaY), snapped: false };
+  const unitX = vectorX / length, unitY = vectorY / length;
+  const normalX = -unitY, normalY = unitX;
+  const movedStart: [number, number] = [start[0] + deltaX, start[1] + deltaY];
+  const linked = new Set(findLinkedPanelEdges(panels, panelIndex, edgeIndex).map((reference) => `${reference.panelIndex}:${reference.edgeIndex}`));
+  const candidates: { correction: number; target: PanelEdgeReference }[] = [];
+
+  panels.forEach((panel, candidatePanelIndex) => {
+    if (candidatePanelIndex === panelIndex) return;
+    const points = panelShapePoints(panel);
+    points.forEach((candidateStart, candidateEdgeIndex) => {
+      if (linked.has(`${candidatePanelIndex}:${candidateEdgeIndex}`)) return;
+      const candidateEnd = points[(candidateEdgeIndex + 1) % points.length];
+      const candidateVectorX = candidateEnd[0] - candidateStart[0], candidateVectorY = candidateEnd[1] - candidateStart[1];
+      const candidateLength = Math.hypot(candidateVectorX, candidateVectorY);
+      if (!candidateLength) return;
+      const parallelError = Math.abs(vectorX * candidateVectorY - vectorY * candidateVectorX) / (length * candidateLength);
+      if (parallelError > 0.08) return;
+      const projectionA = (candidateStart[0] - movedStart[0]) * unitX + (candidateStart[1] - movedStart[1]) * unitY;
+      const projectionB = (candidateEnd[0] - movedStart[0]) * unitX + (candidateEnd[1] - movedStart[1]) * unitY;
+      const projectionMin = Math.min(projectionA, projectionB);
+      const projectionMax = Math.max(projectionA, projectionB);
+      const overlap = Math.max(0, Math.min(length, projectionMax) - Math.max(0, projectionMin));
+      const alongGap = projectionMax < 0
+        ? -projectionMax
+        : projectionMin > length
+          ? projectionMin - length
+          : 0;
+      if (alongGap > maxAlongGap || overlap > Math.min(2, Math.min(length, candidateLength) * 0.08)) return;
+      const signedDistance = (
+        (candidateStart[0] - movedStart[0]) * normalX + (candidateStart[1] - movedStart[1]) * normalY
+          + (candidateEnd[0] - movedStart[0]) * normalX + (candidateEnd[1] - movedStart[1]) * normalY
+      ) / 2;
+      if (Math.abs(signedDistance) > threshold) return;
+      candidates.push({ correction: signedDistance, target: { panelIndex: candidatePanelIndex, edgeIndex: candidateEdgeIndex } });
+    });
+  });
+
+  const best = candidates.sort((left, right) => Math.abs(left.correction) - Math.abs(right.correction))[0];
+  if (!best) return { x: roundMm(deltaX), y: roundMm(deltaY), snapped: false };
+  return {
+    x: roundMm(deltaX + normalX * best.correction),
+    y: roundMm(deltaY + normalY * best.correction),
+    snapped: true,
+    target: best.target,
+  };
 }
 
 // アンカー種別が指すコマ内の位置（mm）。端寄せは枠から少し内側に取る
@@ -324,11 +392,18 @@ export function snapEdgeDeltaToInnerFrame(
   };
 }
 
-function edgeReferences(panels: Panel[], panelIndex: number, edgeIndex: number, linkPanels: boolean): PanelEdgeReference[] {
+function edgeReferences(
+  panels: Panel[],
+  panelIndex: number,
+  edgeIndex: number,
+  linkPanels: boolean,
+  excludedEdge?: PanelEdgeReference,
+): PanelEdgeReference[] {
   const first = { panelIndex, edgeIndex };
   if (!linkPanels) return [first];
   const references: PanelEdgeReference[] = [first];
   const visited = new Set([`${panelIndex}:${edgeIndex}`]);
+  if (excludedEdge) visited.add(`${excludedEdge.panelIndex}:${excludedEdge.edgeIndex}`);
   for (let cursor = 0; cursor < references.length; cursor += 1) {
     const reference = references[cursor];
     findLinkedPanelEdges(panels, reference.panelIndex, reference.edgeIndex).forEach((linked) => {
@@ -410,10 +485,11 @@ export function movePanelEdge(
   deltaX: number,
   deltaY: number,
   linkPanels = false,
+  excludedEdge?: PanelEdgeReference,
 ): { x: number; y: number; linkedEdges: number } {
   const selected = panels[panelIndex] && edgePoints(panels[panelIndex], edgeIndex);
   if (!selected) return { x: 0, y: 0, linkedEdges: 0 };
-  const references = edgeReferences(panels, panelIndex, edgeIndex, linkPanels);
+  const references = edgeReferences(panels, panelIndex, edgeIndex, linkPanels, excludedEdge);
   const delta = clampedEdgeDelta(panels, references, deltaX, deltaY);
   references.forEach((reference) => {
     const panel = panels[reference.panelIndex];
