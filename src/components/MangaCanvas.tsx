@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, resizedBox, resolveOverlapClick, roundMm, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type ResizeHandle } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type ResizeHandle } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -17,13 +17,16 @@ interface Props {
   onToggleAutoAnchor: () => void;
   innerFrameSnap: boolean;
   onToggleInnerFrameSnap: () => void;
+  panelSnap: boolean;
+  onTogglePanelSnap: () => void;
   onSelectPanel: (index: number) => void;
   onSelectElement: (selection: CanvasElementSelection | null) => void;
   onChangeElementBBox: (selection: CanvasElementSelection, bbox: BBox) => void;
   onChangeElementAnchor: (selection: CanvasElementSelection, anchor: Anchor, bbox: BBox) => void;
   onMovePanel: (panelIndex: number, deltaX: number, deltaY: number) => void;
   onResizePanel: (panelIndex: number, bounds: BBox) => void;
-  onMoveVertex: (panelIndex: number, vertexIndex: number, x: number, y: number) => void;
+  onMoveVertex: (panelIndex: number, vertexIndex: number, x: number, y: number, linkPanels?: boolean) => void;
+  onMovePanelEdge: (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels?: boolean) => void;
 }
 
 interface Interaction extends InteractionGeometry {
@@ -115,11 +118,12 @@ function layerClipStyle(panel: Panel): Record<string, string> {
   return { clipPath: `polygon(${points})` };
 }
 
-export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex }: Props) {
+export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, panelSnap, onTogglePanelSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
   const paperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
-  const [interactionMode, setInteractionMode] = useState<ResizeHandle | 'panel' | 'panel-resize' | null>(null);
+  const [interactionMode, setInteractionMode] = useState<ResizeHandle | 'panel' | 'panel-resize' | 'panel-edge' | null>(null);
+  const [activeEdgeIndex, setActiveEdgeIndex] = useState<number | null>(null);
   // ズームは直接DOMの幅を書き換える（ジェスチャ中の再レンダー回避）。stateは%表示のみ
   const [zoomPercent, setZoomPercent] = useState(100);
   // 紙面の実サイズが変わるたびに増やして、テキスト自動縮小の再測定を促す
@@ -388,6 +392,56 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
     window.addEventListener('pointercancel', finish);
   };
 
+  const startPanelEdgeDrag = (event: PointerEvent, edgeIndex: number) => {
+    if (!selectedPanel || !paperRef.current) return;
+    const points = panelShapePoints(selectedPanel);
+    const start = points[edgeIndex], end = points[(edgeIndex + 1) % points.length];
+    if (!start || !end) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelectElement(null);
+    const startClientX = event.clientX, startClientY = event.clientY;
+    const paperRect = paperRef.current.getBoundingClientRect();
+    setInteractionMode('panel-edge');
+    setActiveEdgeIndex(edgeIndex);
+    document.body.classList.add('is-panel-edge-dragging');
+
+    const move = (pointerEvent: PointerEvent) => {
+      pointerEvent.preventDefault();
+      let deltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
+      let deltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
+      // 矩形は矩形性を維持するため、辺の法線方向だけを使う。
+      if (selectedPanel.shape.type === 'rect') {
+        if (edgeIndex === 0 || edgeIndex === 2) deltaX = 0;
+        if (edgeIndex === 1 || edgeIndex === 3) deltaY = 0;
+      }
+      if (innerFrameSnap) {
+        const snapped = snapEdgeDeltaToInnerFrame(start, end, deltaX, deltaY);
+        deltaX = snapped.x;
+        deltaY = snapped.y;
+      }
+      if (selectedPanel.shape.type === 'rect') {
+        if (edgeIndex === 0 || edgeIndex === 2) deltaX = 0;
+        if (edgeIndex === 1 || edgeIndex === 3) deltaY = 0;
+      }
+      onMovePanelEdge(activePanel, edgeIndex, roundMm(deltaX), roundMm(deltaY), panelSnap);
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      document.body.classList.remove('is-panel-edge-dragging');
+      setInteractionMode(null);
+      setActiveEdgeIndex(null);
+      cleanupRef.current = null;
+    };
+    cleanupRef.current?.();
+    cleanupRef.current = finish;
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  };
+
   const startVertexDrag = (event: PointerEvent, vertexIndex: number) => {
     if (!selectedPanel || selectedPanel.shape.type !== 'polygon' || !paperRef.current) return;
     event.preventDefault();
@@ -405,7 +459,7 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
       const x = clamp(roundMm(startX + (pointerEvent.clientX - startClientX) * (210 / paperRect.width)), 0, 210);
       const y = clamp(roundMm(startY + (pointerEvent.clientY - startClientY) * (297 / paperRect.height)), 0, 297);
       const point = innerFrameSnap ? snapPointToInnerFrame(x, y) : { x, y };
-      onMoveVertex(activePanel, vertexIndex, point.x, point.y);
+      onMoveVertex(activePanel, vertexIndex, point.x, point.y, panelSnap);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -586,6 +640,15 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
           <polygon class="panel-selection-shape" points={selectedPanel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} />
           <polygon class="panel-selection-hit-area" points={selectedPanel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} onPointerDown={startPanelMove} />
         </>}
+        {panelShapePoints(selectedPanel).map((point, edgeIndex, points) => {
+          const next = points[(edgeIndex + 1) % points.length];
+          return <g class={`panel-edge-handle ${activeEdgeIndex === edgeIndex ? 'is-active' : ''}`} key={`edge-${edgeIndex}`}>
+            <line class="panel-edge-guide" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} />
+            <line class="panel-edge-hit" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} onPointerDown={(event) => startPanelEdgeDrag(event, edgeIndex)}>
+              <title>辺 {edgeIndex + 1} を平行移動</title>
+            </line>
+          </g>;
+        })}
         <g class="panel-selection-label" transform={`translate(${selectedBounds.x + 1} ${Math.max(8, selectedBounds.y - 2)})`} onPointerDown={startPanelMove}>
           <rect x="0" y="-7.5" width="35" height="9" rx="2" />
           <text x="3" y="-1.5">PANEL {String(selectedPanel.id).padStart(2, '0')}</text>
@@ -614,6 +677,10 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
         <label class="canvas-inner-frame-snap" title="コマ枠を内枠（上下左右10mm）へ近づけると吸着します">
           <input type="checkbox" checked={innerFrameSnap} onChange={onToggleInnerFrameSnap} />
           内枠スナップ
+        </label>
+        <label class="canvas-panel-snap" title="辺の平行関係とX/Yが揃った頂点を保ち、隣接するコマ枠を連動させます">
+          <input type="checkbox" checked={panelSnap} onChange={onTogglePanelSnap} />
+          コマスナップ
         </label>
       </div>
       <div class="canvas-zoom-controls">

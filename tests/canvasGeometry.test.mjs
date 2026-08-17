@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, nearestAnchor, panelBounds, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, findLinkedPanelEdges, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -68,6 +68,79 @@ test('リサイズ中に操作中の辺だけを内枠へスナップする', ()
 test('多角形頂点を近い内枠線へスナップする', () => {
   assert.deepEqual(snapPointToInnerFrame(12, 285), { x: 10, y: 287 });
   assert.deepEqual(snapPointToInnerFrame(100, 120), { x: 100, y: 120 });
+});
+
+test('矩形も辺操作用の時計回り頂点列として扱う', () => {
+  assert.deepEqual(panelShapePoints(rectPanel), [[10, 10], [200, 10], [200, 110], [10, 110]]);
+});
+
+test('辺の角度を保ったまま内枠へスナップする', () => {
+  const delta = snapEdgeDeltaToInnerFrame([12, 30], [22, 100], 0, 0);
+  assert.deepEqual(delta, { x: -2, y: 0 });
+  assert.deepEqual([[12 + delta.x, 30 + delta.y], [22 + delta.x, 100 + delta.y]], [[10, 30], [20, 100]]);
+});
+
+test('近接する斜め平行辺をコマ間の連動対象として見つける', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[105, 10], [195, 10], [195, 100], [95, 100]] } },
+  ];
+  assert.deepEqual(findLinkedPanelEdges(panels, 0, 1), [{ panelIndex: 1, edgeIndex: 3 }]);
+});
+
+test('辺ドラッグは選択した2頂点を同量移動して傾きを維持する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
+  ];
+  movePanelEdge(panels, 0, 1, 5, 3);
+  assert.deepEqual(panels[0].shape.points, [[10, 10], [105, 13], [95, 103], [10, 100]]);
+});
+
+test('コマスナップ中の辺ドラッグは隣接する斜め平行辺も連動する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[105, 10], [195, 10], [195, 100], [95, 100]] } },
+  ];
+  const result = movePanelEdge(panels, 0, 1, 4, 2, true);
+  assert.equal(result.linkedEdges, 1);
+  assert.deepEqual(panels[0].shape.points, [[10, 10], [104, 12], [94, 102], [10, 100]]);
+  assert.deepEqual(panels[1].shape.points, [[109, 12], [195, 10], [195, 100], [99, 102]]);
+});
+
+test('1頂点ドラッグではX/Yが揃った頂点が対応する軸だけ追従する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [100, 100], [10, 100]] } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 15, 13, true);
+  assert.deepEqual(panels[0].shape.points, [[15, 13], [100, 13], [100, 100], [15, 100]]);
+});
+
+test('コマスナップOFFなら1頂点だけを移動する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [100, 100], [10, 100]] } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 15, 13, false);
+  assert.deepEqual(panels[0].shape.points, [[15, 13], [100, 10], [100, 100], [10, 100]]);
+});
+
+test('連動頂点が紙端へ達したら全頂点を同じ移動量で止める', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 200], [100, 250], [90, 290], [10, 290]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[105, 257], [195, 257], [195, 297], [95, 297]] } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 2, 93, 297, true);
+  assert.deepEqual(panels[0].shape.points[2], [93, 290]);
+  assert.deepEqual(panels[1].shape.points[3], [98, 297]);
+});
+
+test('平行辺の中央だけが近い場合は離れた端点を連動させない', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[101.7, 40], [150, 40], [150, 70], [98.3, 70]] } },
+  ];
+  const before = structuredClone(panels[1].shape.points);
+  movePanelVertexWithSnap(panels, 0, 1, 105, 13, true);
+  assert.deepEqual(panels[1].shape.points, before);
 });
 
 test('コマ移動時に形状・人物・フキダシを一緒に移動する', () => {

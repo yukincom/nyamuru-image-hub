@@ -49,16 +49,19 @@ export default function PanelInspector({ manga, panel, panelIndex, selectedEleme
       {panel.shape.type === 'rect' ? <div class="shape-coordinates">
         <span class="sub-label">座標 <small>mm</small></span>
         <BBoxEditor value={panel.shape} onChange={(box) => update((draft) => { resizePanelToBounds(draft, box); })} />
-      </div> : <Field label="頂点座標" hint="x,y を1行ずつ" wide>
-        <textarea rows={4} value={panel.shape.points.map((point) => point.join(', ')).join('\n')} onBlur={(event) => {
-          const points = event.currentTarget.value.split(/\n/).map((line) => line.split(',').map(Number)).filter((point) => point.length === 2 && point.every(Number.isFinite)) as [number, number][];
-          if (points.length >= 3) update((draft) => {
-            const xs = points.map(([x]) => x), ys = points.map(([, y]) => y);
-            resizePanelToBounds(draft, { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) });
-            draft.shape = { type: 'polygon', points };
-          });
-        }} />
-      </Field>}
+      </div> : <details class="advanced-coordinate-editor">
+        <summary>頂点座標を数値で編集</summary>
+        <Field label="頂点座標" hint="x,y を1行ずつ" wide>
+          <textarea rows={4} value={panel.shape.points.map((point) => point.join(', ')).join('\n')} onBlur={(event) => {
+            const points = event.currentTarget.value.split(/\n/).map((line) => line.split(',').map(Number)).filter((point) => point.length === 2 && point.every(Number.isFinite)) as [number, number][];
+            if (points.length >= 3) update((draft) => {
+              const xs = points.map(([x]) => x), ys = points.map(([, y]) => y);
+              resizePanelToBounds(draft, { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) });
+              draft.shape = { type: 'polygon', points };
+            });
+          }} />
+        </Field>
+      </details>}
       {panel.shape.type === 'rect' && <div class="bleed-selector">
         <span class="sub-label">タチキリ（断ち切り辺） <small>紙端に接する辺のみ</small></span>
         <div class="bleed-options">{BLEED_EDGES.map((edge) => <label class="check-row" key={edge}>
