@@ -57,8 +57,8 @@ function pointLineDistance(point: [number, number], start: [number, number], end
 }
 
 /**
- * 選択辺と近接し、十分な投影区間を共有する平行辺を探す。
- * 水平・垂直だけでなく、辺ベクトルの外積で斜めのコマ境界も判定する。
+ * 選択辺と同じ境界グループに属する平行辺を探す。
+ * 投影が重なる隣接辺だけでなく、同一直線上で横に分割された辺も連結する。
  */
 export function findLinkedPanelEdges(
   panels: Panel[],
@@ -93,7 +93,14 @@ export function findLinkedPanelEdges(
       const projectionMin = Math.min(projectionA, projectionB);
       const projectionMax = Math.max(projectionA, projectionB);
       const overlap = Math.max(0, Math.min(length, projectionMax) - Math.max(0, projectionMin));
-      if (overlap < Math.min(8, Math.min(length, candidateLength) * 0.25)) return;
+      const projectionGap = projectionMax < 0
+        ? -projectionMax
+        : projectionMin > length
+          ? projectionMin - length
+          : 0;
+      const sharesProjection = overlap >= Math.min(8, Math.min(length, candidateLength) * 0.25);
+      const continuesSameLine = projectionGap <= maxDistance && distance <= Math.min(2, maxDistance * 0.25);
+      if (!sharesProjection && !continuesSameLine) return;
       linked.push({ panelIndex: candidatePanelIndex, edgeIndex: candidateEdgeIndex, distance });
     });
   });
@@ -318,10 +325,20 @@ export function snapEdgeDeltaToInnerFrame(
 }
 
 function edgeReferences(panels: Panel[], panelIndex: number, edgeIndex: number, linkPanels: boolean): PanelEdgeReference[] {
-  return [
-    { panelIndex, edgeIndex },
-    ...(linkPanels ? findLinkedPanelEdges(panels, panelIndex, edgeIndex) : []),
-  ];
+  const first = { panelIndex, edgeIndex };
+  if (!linkPanels) return [first];
+  const references: PanelEdgeReference[] = [first];
+  const visited = new Set([`${panelIndex}:${edgeIndex}`]);
+  for (let cursor = 0; cursor < references.length; cursor += 1) {
+    const reference = references[cursor];
+    findLinkedPanelEdges(panels, reference.panelIndex, reference.edgeIndex).forEach((linked) => {
+      const key = `${linked.panelIndex}:${linked.edgeIndex}`;
+      if (visited.has(key)) return;
+      visited.add(key);
+      references.push(linked);
+    });
+  }
+  return references;
 }
 
 function clampedEdgeDelta(
@@ -406,13 +423,46 @@ export function movePanelEdge(
 }
 
 interface VertexMove {
-  moveX: boolean;
-  moveY: boolean;
+  weightX: number;
+  weightY: number;
+}
+
+interface EdgeDeformation {
+  selectedEdgeIndex: number;
+  panelIndex: number;
+  edgeIndex: number;
+}
+
+interface LineConstraint {
+  point: [number, number];
+  vector: [number, number];
+}
+
+function constrainedPointOnLine(provisional: [number, number], line: LineConstraint): [number, number] {
+  const [dx, dy] = line.vector;
+  if (Math.abs(dy) >= Math.abs(dx) && Math.abs(dy) > 1e-6) {
+    const t = (provisional[1] - line.point[1]) / dy;
+    return [line.point[0] + dx * t, provisional[1]];
+  }
+  if (Math.abs(dx) > 1e-6) {
+    const t = (provisional[0] - line.point[0]) / dx;
+    return [provisional[0], line.point[1] + dy * t];
+  }
+  return provisional;
+}
+
+function lineIntersection(first: LineConstraint, second: LineConstraint): [number, number] | null {
+  const denominator = first.vector[0] * second.vector[1] - first.vector[1] * second.vector[0];
+  if (Math.abs(denominator) <= 1e-6) return null;
+  const offsetX = second.point[0] - first.point[0], offsetY = second.point[1] - first.point[1];
+  const t = (offsetX * second.vector[1] - offsetY * second.vector[0]) / denominator;
+  return [first.point[0] + first.vector[0] * t, first.point[1] + first.vector[1] * t];
 }
 
 /**
  * 多角形の1頂点を動かす。linkPanels=true では、開始時にX/Yが一致する頂点は
- * 対応軸だけ追従し、近接する斜め平行辺の対応端点は両軸とも追従する。
+ * 対応軸だけ追従する。隣接する平行辺には、選択頂点からの距離に応じて変位を
+ * 線形補間して渡し、コマ間の空きを保ったまま同じ傾きへ変形する。
  */
 export function movePanelVertexWithSnap(
   panels: Panel[],
@@ -430,102 +480,157 @@ export function movePanelVertexWithSnap(
   const targetX = roundMm(clamp(x, 0, 210)), targetY = roundMm(clamp(y, 0, 297));
   const deltaX = targetX - selectedPoint[0], deltaY = targetY - selectedPoint[1];
   const moves = new Map<string, VertexMove>();
-  const mark = (pi: number, vi: number, moveX: boolean, moveY: boolean) => {
+  const edgeDeformations: EdgeDeformation[] = [];
+  const deformationKeys = new Set<string>();
+  const mark = (pi: number, vi: number, weightX: number, weightY: number) => {
+    if (weightX <= 0 && weightY <= 0) return;
     const key = `${pi}:${vi}`;
-    const current = moves.get(key) ?? { moveX: false, moveY: false };
-    current.moveX ||= moveX;
-    current.moveY ||= moveY;
+    const current = moves.get(key) ?? { weightX: 0, weightY: 0 };
+    current.weightX = Math.max(current.weightX, clamp(weightX, 0, 1));
+    current.weightY = Math.max(current.weightY, clamp(weightY, 0, 1));
     moves.set(key, current);
   };
-  mark(panelIndex, vertexIndex, true, true);
+  mark(panelIndex, vertexIndex, 1, 1);
 
   if (linkPanels) {
     panels.forEach((panel, pi) => {
       panelShapePoints(panel).forEach((point, vi) => {
         if (pi === panelIndex && vi === vertexIndex) return;
-        mark(pi, vi, Math.abs(point[0] - selectedPoint[0]) <= alignmentTolerance, Math.abs(point[1] - selectedPoint[1]) <= alignmentTolerance);
+        mark(
+          pi,
+          vi,
+          Math.abs(point[0] - selectedPoint[0]) <= alignmentTolerance ? 1 : 0,
+          Math.abs(point[1] - selectedPoint[1]) <= alignmentTolerance ? 1 : 0,
+        );
       });
     });
     const count = selectedPanel.shape.points.length;
     const incidentEdges = [vertexIndex, (vertexIndex - 1 + count) % count];
     incidentEdges.forEach((selectedEdgeIndex) => {
+      const selectedEdge = edgePoints(selectedPanel, selectedEdgeIndex);
+      if (!selectedEdge) return;
+      const fixedPoint = selectedEdgeIndex === vertexIndex ? selectedEdge[1] : selectedEdge[0];
+      const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
+      const lengthSquared = vectorX * vectorX + vectorY * vectorY;
+      if (!lengthSquared) return;
       findLinkedPanelEdges(panels, panelIndex, selectedEdgeIndex).forEach((reference) => {
-        const edge = edgePoints(panels[reference.panelIndex], reference.edgeIndex);
-        if (!edge) return;
-        const distances = edge.map((point) => Math.hypot(point[0] - selectedPoint[0], point[1] - selectedPoint[1]));
-        // 辺の中央付近だけが平行なケースは「隣接頂点」ではないため端点連動させない。
-        if (Math.min(...distances) > PANEL_EDGE_LINK_DISTANCE_MM * 2) return;
-        const linkedVertexIndex = distances[0] <= distances[1]
-          ? reference.edgeIndex
-          : (reference.edgeIndex + 1) % panelShapePoints(panels[reference.panelIndex]).length;
-        mark(reference.panelIndex, linkedVertexIndex, true, true);
+        const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
+        const deformationKey = `${selectedEdgeIndex}>${reference.panelIndex}:${reference.edgeIndex}`;
+        if (!deformationKeys.has(deformationKey)) {
+          deformationKeys.add(deformationKey);
+          edgeDeformations.push({ selectedEdgeIndex, ...reference });
+        }
+        const candidateVertexIndices = [reference.edgeIndex, (reference.edgeIndex + 1) % candidatePoints.length];
+        candidateVertexIndices.forEach((candidateVertexIndex) => {
+          const point = candidatePoints[candidateVertexIndex];
+          const t = ((point[0] - selectedPoint[0]) * vectorX + (point[1] - selectedPoint[1]) * vectorY) / lengthSquared;
+          const weight = clamp(1 - t, 0, 1);
+          mark(reference.panelIndex, candidateVertexIndex, weight, weight);
+        });
       });
     });
   }
 
-  const rectMoves = new Map<number, { left: boolean; right: boolean; top: boolean; bottom: boolean }>();
-  moves.forEach((move, key) => {
-    if (!move.moveX && !move.moveY) return;
-    const [pi, vi] = key.split(':').map(Number);
-    const panel = panels[pi];
-    if (!panel || panel.shape.type !== 'rect') return;
-    const state = rectMoves.get(pi) ?? { left: false, right: false, top: false, bottom: false };
-    if (move.moveX && (vi === 0 || vi === 3)) state.left = true;
-    if (move.moveX && (vi === 1 || vi === 2)) state.right = true;
-    if (move.moveY && (vi === 0 || vi === 1)) state.top = true;
-    if (move.moveY && (vi === 2 || vi === 3)) state.bottom = true;
-    rectMoves.set(pi, state);
-  });
-
-  // 追従頂点のどれかが紙端や最小サイズへ先に達した場合は、全頂点を同じ量で止める。
+  // 追従頂点のどれかが紙端へ先に達した場合は、全頂点を同じ比率の移動量で止める。
   // 個別に clamp すると斜め辺の角度や揃っていたX/Yが崩れるため、移動量を一括制限する。
   let minDeltaX = -Infinity, maxDeltaX = Infinity, minDeltaY = -Infinity, maxDeltaY = Infinity;
   moves.forEach((move, key) => {
-    if (!move.moveX && !move.moveY) return;
     const [pi, vi] = key.split(':').map(Number);
     const point = panels[pi] && panelShapePoints(panels[pi])[vi];
     if (!point) return;
-    if (move.moveX) {
-      minDeltaX = Math.max(minDeltaX, -point[0]);
-      maxDeltaX = Math.min(maxDeltaX, 210 - point[0]);
+    if (move.weightX > 0) {
+      minDeltaX = Math.max(minDeltaX, -point[0] / move.weightX);
+      maxDeltaX = Math.min(maxDeltaX, (210 - point[0]) / move.weightX);
     }
-    if (move.moveY) {
-      minDeltaY = Math.max(minDeltaY, -point[1]);
-      maxDeltaY = Math.min(maxDeltaY, 297 - point[1]);
+    if (move.weightY > 0) {
+      minDeltaY = Math.max(minDeltaY, -point[1] / move.weightY);
+      maxDeltaY = Math.min(maxDeltaY, (297 - point[1]) / move.weightY);
     }
-  });
-  rectMoves.forEach((move, pi) => {
-    const panel = panels[pi];
-    if (!panel || panel.shape.type !== 'rect') return;
-    if (move.left && !move.right) maxDeltaX = Math.min(maxDeltaX, panel.shape.w - MIN_SIZE_MM);
-    if (move.right && !move.left) minDeltaX = Math.max(minDeltaX, MIN_SIZE_MM - panel.shape.w);
-    if (move.top && !move.bottom) maxDeltaY = Math.min(maxDeltaY, panel.shape.h - MIN_SIZE_MM);
-    if (move.bottom && !move.top) minDeltaY = Math.max(minDeltaY, MIN_SIZE_MM - panel.shape.h);
   });
   const linkedDeltaX = roundMm(clamp(deltaX, minDeltaX, maxDeltaX));
   const linkedDeltaY = roundMm(clamp(deltaY, minDeltaY, maxDeltaY));
 
-  moves.forEach((move, key) => {
-    if (!move.moveX && !move.moveY) return;
+  const originalPanelPoints = panels.map(panelShapePoints);
+  const nextPanelPoints = originalPanelPoints.map((points, pi) => points.map((point, vi): [number, number] => {
+    const move = moves.get(`${pi}:${vi}`) ?? { weightX: 0, weightY: 0 };
+    return [
+      roundMm(point[0] + linkedDeltaX * move.weightX),
+      roundMm(point[1] + linkedDeltaY * move.weightY),
+    ];
+  }));
+  const constraints = new Map<string, LineConstraint[]>();
+  edgeDeformations.forEach((deformation) => {
+    const selectedPoints = originalPanelPoints[panelIndex];
+    const selectedNextPoints = nextPanelPoints[panelIndex];
+    const selectedStartIndex = deformation.selectedEdgeIndex;
+    const selectedEndIndex = (selectedStartIndex + 1) % selectedPoints.length;
+    const oldStart = selectedPoints[selectedStartIndex], oldEnd = selectedPoints[selectedEndIndex];
+    const newStart = selectedNextPoints[selectedStartIndex], newEnd = selectedNextPoints[selectedEndIndex];
+    const oldVectorX = oldEnd[0] - oldStart[0], oldVectorY = oldEnd[1] - oldStart[1];
+    const newVectorX = newEnd[0] - newStart[0], newVectorY = newEnd[1] - newStart[1];
+    const oldLength = Math.hypot(oldVectorX, oldVectorY), newLength = Math.hypot(newVectorX, newVectorY);
+    if (!oldLength || !newLength) return;
+    const oldNormal: [number, number] = [-oldVectorY / oldLength, oldVectorX / oldLength];
+    const newNormal: [number, number] = [-newVectorY / newLength, newVectorX / newLength];
+    const candidatePoints = originalPanelPoints[deformation.panelIndex];
+    const candidateIndices = [deformation.edgeIndex, (deformation.edgeIndex + 1) % candidatePoints.length];
+    const distance = candidateIndices.reduce((sum, candidateIndex) => {
+      const point = candidatePoints[candidateIndex];
+      return sum + (point[0] - oldStart[0]) * oldNormal[0] + (point[1] - oldStart[1]) * oldNormal[1];
+    }, 0) / candidateIndices.length;
+    const line: LineConstraint = {
+      point: [newStart[0] + newNormal[0] * distance, newStart[1] + newNormal[1] * distance],
+      vector: [newVectorX, newVectorY],
+    };
+    candidateIndices.forEach((candidateIndex) => {
+      const key = `${deformation.panelIndex}:${candidateIndex}`;
+      constraints.set(key, [...(constraints.get(key) ?? []), line]);
+    });
+  });
+
+  constraints.forEach((lines, key) => {
     const [pi, vi] = key.split(':').map(Number);
-    const panel = panels[pi];
-    if (!panel || panel.shape.type !== 'polygon') return;
-    const point = panel.shape.points[vi];
-    if (!point) return;
-    panel.shape.points[vi] = [
-      roundMm(point[0] + (move.moveX ? linkedDeltaX : 0)),
-      roundMm(point[1] + (move.moveY ? linkedDeltaY : 0)),
+    const provisional = nextPanelPoints[pi]?.[vi];
+    if (!provisional || !lines.length) return;
+    let target: [number, number] | null = null;
+    for (let first = 0; first < lines.length && !target; first += 1) {
+      for (let second = first + 1; second < lines.length && !target; second += 1) {
+        target = lineIntersection(lines[first], lines[second]);
+      }
+    }
+    target ??= constrainedPointOnLine(provisional, lines[0]);
+    nextPanelPoints[pi][vi] = [
+      roundMm(clamp(target[0], 0, 210)),
+      roundMm(clamp(target[1], 0, 297)),
     ];
   });
-  rectMoves.forEach((move, pi) => {
-    const panel = panels[pi];
-    if (!panel || panel.shape.type !== 'rect') return;
-    const next = { ...panel.shape };
-    if (move.left) { next.x += linkedDeltaX; next.w -= linkedDeltaX; }
-    if (move.right) next.w += linkedDeltaX;
-    if (move.top) { next.y += linkedDeltaY; next.h -= linkedDeltaY; }
-    if (move.bottom) next.h += linkedDeltaY;
-    resizePanelToBounds(panel, next);
+
+  const affectedPanels = new Set<number>();
+  moves.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
+  constraints.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
+  panels.forEach((panel, pi) => {
+    if (!affectedPanels.has(pi)) return;
+    const nextPoints = nextPanelPoints[pi];
+    if (panel.shape.type === 'polygon') {
+      panel.shape.points = nextPoints;
+      return;
+    }
+    const remainsRect = Math.abs(nextPoints[0][1] - nextPoints[1][1]) <= 0.05
+      && Math.abs(nextPoints[1][0] - nextPoints[2][0]) <= 0.05
+      && Math.abs(nextPoints[2][1] - nextPoints[3][1]) <= 0.05
+      && Math.abs(nextPoints[3][0] - nextPoints[0][0]) <= 0.05
+      && nextPoints[1][0] - nextPoints[0][0] >= MIN_SIZE_MM
+      && nextPoints[3][1] - nextPoints[0][1] >= MIN_SIZE_MM;
+    if (remainsRect) {
+      resizePanelToBounds(panel, {
+        x: nextPoints[0][0],
+        y: nextPoints[0][1],
+        w: nextPoints[1][0] - nextPoints[0][0],
+        h: nextPoints[3][1] - nextPoints[0][1],
+      });
+    } else {
+      panel.shape = { type: 'polygon', points: nextPoints };
+    }
   });
 }
 

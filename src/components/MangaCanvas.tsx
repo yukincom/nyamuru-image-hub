@@ -678,7 +678,7 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
           <input type="checkbox" checked={innerFrameSnap} onChange={onToggleInnerFrameSnap} />
           内枠スナップ
         </label>
-        <label class="canvas-panel-snap" title="辺の平行関係とX/Yが揃った頂点を保ち、隣接するコマ枠を連動させます">
+        <label class="canvas-panel-snap" title="同じ境界線上の辺と隣接する平行辺を連動し、コマ間隔と傾きを保ちます">
           <input type="checkbox" checked={panelSnap} onChange={onTogglePanelSnap} />
           コマスナップ
         </label>

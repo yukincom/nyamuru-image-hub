@@ -130,17 +130,71 @@ test('連動頂点が紙端へ達したら全頂点を同じ移動量で止め�
   ];
   movePanelVertexWithSnap(panels, 0, 2, 93, 297, true);
   assert.deepEqual(panels[0].shape.points[2], [93, 290]);
-  assert.deepEqual(panels[1].shape.points[3], [98, 297]);
+  assert.deepEqual(panels[1].shape.points[3], [98.4, 297]);
 });
 
-test('平行辺の中央だけが近い場合は離れた端点を連動させない', () => {
+test('横に分割された同一直線上の辺も同じ境界グループとして連動する', () => {
   const panels = [
-    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
-    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[101.7, 40], [150, 40], [150, 70], [98.3, 70]] } },
+    { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 88.1], [10, 88.1]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[104, 95.5], [200, 95.5], [200, 171], [104, 171]] } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 10, y: 95.1, w: 90, h: 75.9 } },
+    { ...rectPanel, id: 4, shape: { type: 'rect', x: 1, y: 177, w: 209, h: 120 } },
   ];
-  const before = structuredClone(panels[1].shape.points);
-  movePanelVertexWithSnap(panels, 0, 1, 105, 13, true);
-  assert.deepEqual(panels[1].shape.points, before);
+  assert.deepEqual(findLinkedPanelEdges(panels, 1, 0), [
+    { panelIndex: 2, edgeIndex: 0 },
+    { panelIndex: 0, edgeIndex: 2 },
+  ]);
+  movePanelEdge(panels, 1, 0, 0, 5, true);
+  assert.deepEqual(panels[1].shape.points.slice(0, 2), [[104, 100.5], [200, 100.5]]);
+  assert.deepEqual(panels[2].shape, { type: 'rect', x: 10, y: 100.1, w: 90, h: 70.9 });
+  assert.deepEqual(panels[0].shape.points.slice(2), [[200, 93.1], [10, 93.1]]);
+});
+
+test('同一直線上の辺グループは隣接関係をたどって端まで連動する', () => {
+  const panels = [
+    { ...rectPanel, id: 1, shape: { type: 'rect', x: 10, y: 10, w: 40, h: 80 } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 54, y: 10, w: 40, h: 80 } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 98, y: 10, w: 40, h: 80 } },
+  ];
+  movePanelEdge(panels, 0, 0, 0, 5, true);
+  assert.deepEqual(panels.map((panel) => panel.shape.y), [15, 15, 15]);
+});
+
+test('長い斜め境界の1頂点変位を隣接する分割辺全体へ補間する', () => {
+  const selectedBefore = [[90.9, 10], [88.5, 287]];
+  const adjacentBefore = [
+    [[82.6, 9.9], [82.6, 96.1]],
+    [[82.6, 100], [82.6, 191]],
+    [[82.6, 194.9], [82.6, 287]],
+  ];
+  const panels = [
+    { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[90.9, 10], [210, 9.9], [207.6, 286.9], [88.5, 287]] } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 10, y: 9.9, w: 72.6, h: 86.2 } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 10, y: 100, w: 72.6, h: 91 } },
+    { ...rectPanel, id: 4, shape: { type: 'rect', x: 10, y: 194.9, w: 72.6, h: 92.1 } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 100.9, 10, true);
+
+  for (const panel of panels.slice(1)) assert.equal(panel.shape.type, 'polygon');
+  const rightEdgeX = panels.slice(1).flatMap((panel) => [panel.shape.points[1][0], panel.shape.points[2][0]]);
+  assert.deepEqual(rightEdgeX, [93, 89.1, 89.7, 85.7, 86.3, 82.2]);
+  assert.deepEqual(panels.slice(1).map((panel) => [panel.shape.points[0][0], panel.shape.points[3][0]]), [
+    [10, 10], [10, 10], [10, 10],
+  ]);
+
+  const selectedAfter = [panels[0].shape.points[0], panels[0].shape.points[3]];
+  const slope = (edge) => (edge[1][0] - edge[0][0]) / (edge[1][1] - edge[0][1]);
+  const lineDistance = (line, point) => Math.abs(
+    (line[1][0] - line[0][0]) * (line[0][1] - point[1])
+      - (line[0][0] - point[0]) * (line[1][1] - line[0][1]),
+  ) / Math.hypot(line[1][0] - line[0][0], line[1][1] - line[0][1]);
+  panels.slice(1).forEach((panel, index) => {
+    const edge = [panel.shape.points[1], panel.shape.points[2]];
+    assert.ok(Math.abs(slope(edge) - slope(selectedAfter)) < 0.002);
+    const gapBefore = adjacentBefore[index].reduce((sum, point) => sum + lineDistance(selectedBefore, point), 0) / 2;
+    const gapAfter = edge.reduce((sum, point) => sum + lineDistance(selectedAfter, point), 0) / 2;
+    assert.ok(Math.abs(gapBefore - gapAfter) < 0.02);
+  });
 });
 
 test('コマ移動時に形状・人物・フキダシを一緒に移動する', () => {
