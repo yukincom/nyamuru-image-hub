@@ -108,12 +108,38 @@ test('コマスナップ中の辺ドラッグは隣接する斜め平行辺も�
   assert.deepEqual(panels[1].shape.points, [[109, 12], [195, 10], [195, 100], [99, 102]]);
 });
 
-test('1頂点ドラッグではX/Yが揃った頂点が対応する軸だけ追従する', () => {
+test('1頂点ドラッグでは同じX/Yにあるだけの頂点や離れたコマへ影響しない', () => {
   const panels = [
     { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [100, 100], [10, 100]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[110, 10], [200, 10], [200, 100], [110, 100]] } },
   ];
   movePanelVertexWithSnap(panels, 0, 0, 15, 13, true);
-  assert.deepEqual(panels[0].shape.points, [[15, 13], [100, 13], [100, 100], [15, 100]]);
+  assert.deepEqual(panels[0].shape.points, [[15, 13], [100, 10], [100, 100], [10, 100]]);
+  assert.deepEqual(panels[1].shape.points, [[110, 10], [200, 10], [200, 100], [110, 100]]);
+});
+
+test('頂点ドラッグは隣接辺だけを5mm間隔で傾け、外側の遠い角を動かさない', () => {
+  const panels = [
+    { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 90], [10, 90]] } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 105, y: 95, w: 95, h: 55 } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 10, y: 95, w: 90, h: 55 } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 2, 200, 65, true);
+
+  assert.deepEqual(panels[0].shape.points, [[10, 10], [200, 10], [200, 65], [10, 90]]);
+  assert.equal(panels[1].shape.type, 'polygon');
+  assert.equal(panels[2].shape.type, 'polygon');
+  assert.deepEqual(panels[1].shape.points.slice(2), [[200, 150], [105, 150]]);
+  assert.deepEqual(panels[2].shape.points.slice(2), [[100, 150], [10, 150]]);
+
+  const selectedEdge = [panels[0].shape.points[2], panels[0].shape.points[3]];
+  const distance = (point) => Math.abs(
+    (selectedEdge[1][0] - selectedEdge[0][0]) * (selectedEdge[0][1] - point[1])
+      - (selectedEdge[0][0] - point[0]) * (selectedEdge[1][1] - selectedEdge[0][1]),
+  ) / Math.hypot(selectedEdge[1][0] - selectedEdge[0][0], selectedEdge[1][1] - selectedEdge[0][1]);
+  for (const point of [...panels[1].shape.points.slice(0, 2), ...panels[2].shape.points.slice(0, 2)]) {
+    assert.ok(Math.abs(distance(point) - 5) < 0.1);
+  }
 });
 
 test('コマスナップOFFなら1頂点だけを移動する', () => {

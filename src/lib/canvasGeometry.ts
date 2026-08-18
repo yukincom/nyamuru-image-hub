@@ -66,6 +66,7 @@ export function findLinkedPanelEdges(
   panelIndex: number,
   edgeIndex: number,
   maxDistance = PANEL_EDGE_LINK_DISTANCE_MM,
+  includeCollinearContinuations = true,
 ): PanelEdgeReference[] {
   const selectedPanel = panels[panelIndex];
   const selectedEdge = selectedPanel && edgePoints(selectedPanel, edgeIndex);
@@ -101,7 +102,7 @@ export function findLinkedPanelEdges(
           : 0;
       const sharesProjection = overlap >= Math.min(8, Math.min(length, candidateLength) * 0.25);
       const continuesSameLine = projectionGap <= maxDistance && distance <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM;
-      if (!sharesProjection && !continuesSameLine) return;
+      if (!sharesProjection && !(includeCollinearContinuations && continuesSameLine)) return;
       linked.push({ panelIndex: candidatePanelIndex, edgeIndex: candidateEdgeIndex, distance });
     });
   });
@@ -536,9 +537,9 @@ function lineIntersection(first: LineConstraint, second: LineConstraint): [numbe
 }
 
 /**
- * 多角形の1頂点を動かす。linkPanels=true では、開始時にX/Yが一致する頂点は
- * 対応軸だけ追従する。隣接する平行辺には、選択頂点からの距離に応じて変位を
- * 線形補間して渡し、コマ間の空きを保ったまま同じ傾きへ変形する。
+ * 多角形の1頂点を動かす。linkPanels=true では、選択頂点に接する辺と横に並ぶ
+ * 隣接辺だけへ、選択頂点からの距離に応じた変位を線形補間して渡す。
+ * 同じX/Yにあるだけの頂点や、選択辺の延長線上にある外枠は動かさない。
  */
 export function movePanelVertexWithSnap(
   panels: Panel[],
@@ -547,7 +548,6 @@ export function movePanelVertexWithSnap(
   x: number,
   y: number,
   linkPanels = false,
-  alignmentTolerance = 0.15,
 ): void {
   const selectedPanel = panels[panelIndex];
   if (!selectedPanel || selectedPanel.shape.type !== 'polygon') return;
@@ -569,17 +569,6 @@ export function movePanelVertexWithSnap(
   mark(panelIndex, vertexIndex, 1, 1);
 
   if (linkPanels) {
-    panels.forEach((panel, pi) => {
-      panelShapePoints(panel).forEach((point, vi) => {
-        if (pi === panelIndex && vi === vertexIndex) return;
-        mark(
-          pi,
-          vi,
-          Math.abs(point[0] - selectedPoint[0]) <= alignmentTolerance ? 1 : 0,
-          Math.abs(point[1] - selectedPoint[1]) <= alignmentTolerance ? 1 : 0,
-        );
-      });
-    });
     const count = selectedPanel.shape.points.length;
     const incidentEdges = [vertexIndex, (vertexIndex - 1 + count) % count];
     incidentEdges.forEach((selectedEdgeIndex) => {
@@ -589,7 +578,13 @@ export function movePanelVertexWithSnap(
       const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
       const lengthSquared = vectorX * vectorX + vectorY * vectorY;
       if (!lengthSquared) return;
-      findLinkedPanelEdges(panels, panelIndex, selectedEdgeIndex).forEach((reference) => {
+      findLinkedPanelEdges(
+        panels,
+        panelIndex,
+        selectedEdgeIndex,
+        PANEL_EDGE_LINK_DISTANCE_MM,
+        false,
+      ).forEach((reference) => {
         const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
         const deformationKey = `${selectedEdgeIndex}>${reference.panelIndex}:${reference.edgeIndex}`;
         if (!deformationKeys.has(deformationKey)) {
