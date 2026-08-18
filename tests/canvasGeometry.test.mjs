@@ -45,7 +45,7 @@ test('Shiftドラッグは変化量の大きい軸だけを残す', () => {
   assert.deepEqual(constrainDragDeltaToAxis(-12, -12), { x: -12, y: 0 });
 });
 
-test('Shiftドラッグは固定軸上の原点へ戻れば、ポインタが斜め位置でも別軸へ切り替えられる', () => {
+test('Shiftドラッグは原点へ戻るまで最初の軸を維持し、原点を経てから別軸へ切り替える', () => {
   let state = {};
   let result = resolveShiftAxisDrag(12, 2, state, true);
   assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 12, y: 0, axis: 'x' });
@@ -55,12 +55,12 @@ test('Shiftドラッグは固定軸上の原点へ戻れば、ポインタが斜
   assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 8, y: 0, axis: 'x' });
 
   state = result.state;
-  result = resolveShiftAxisDrag(3, 25, state, true);
+  result = resolveShiftAxisDrag(2, 1, state, true);
   assert.deepEqual({ x: result.x, y: result.y, snappedToOrigin: result.snappedToOrigin }, { x: 0, y: 0, snappedToOrigin: true });
 
   state = result.state;
-  result = resolveShiftAxisDrag(2, 26, state, true);
-  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 0, y: 26, axis: 'y' });
+  result = resolveShiftAxisDrag(1, 8, state, true);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 0, y: 8, axis: 'y' });
 });
 
 test('コマスナップOFFのShiftドラッグは原点付近の微調整値を残す', () => {
