@@ -733,8 +733,9 @@ export function movePanelVertexWithSnap(
   linkPanels = false,
 ): void {
   const selectedPanel = panels[panelIndex];
-  if (!selectedPanel || selectedPanel.shape.type !== 'polygon') return;
-  const selectedPoint = selectedPanel.shape.points[vertexIndex];
+  if (!selectedPanel) return;
+  const selectedPoints = panelShapePoints(selectedPanel);
+  const selectedPoint = selectedPoints[vertexIndex];
   if (!selectedPoint) return;
   const selectedLocks = pointBoundaryLocks(selectedPanel, selectedPoint);
   const targetX = selectedLocks.x ?? roundMm(clamp(x, 0, 210));
@@ -757,7 +758,7 @@ export function movePanelVertexWithSnap(
   mark(clampInfluences, panelIndex, vertexIndex, 1, 1);
 
   if (linkPanels) {
-    const count = selectedPanel.shape.points.length;
+    const count = selectedPoints.length;
     const incidentEdges = [vertexIndex, (vertexIndex - 1 + count) % count];
     incidentEdges.forEach((selectedEdgeIndex) => {
       const selectedEdge = edgePoints(selectedPanel, selectedEdgeIndex);

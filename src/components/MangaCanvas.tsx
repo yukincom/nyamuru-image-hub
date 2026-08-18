@@ -452,12 +452,14 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
   };
 
   const startVertexDrag = (event: PointerEvent, vertexIndex: number) => {
-    if (!selectedPanel || selectedPanel.shape.type !== 'polygon' || !paperRef.current) return;
+    if (!selectedPanel || !paperRef.current) return;
     event.preventDefault();
     event.stopPropagation();
     onSelectElement(null);
     const paperRect = paperRef.current.getBoundingClientRect();
-    const [startX, startY] = selectedPanel.shape.points[vertexIndex];
+    const startPoint = panelShapePoints(selectedPanel)[vertexIndex];
+    if (!startPoint) return;
+    const [startX, startY] = startPoint;
     const startClientX = event.clientX;
     const startClientY = event.clientY;
     setInteractionMode('panel-resize');
@@ -681,12 +683,17 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
           <rect x="0" y="-7.5" width="35" height="9" rx="2" />
           <text x="3" y="-1.5">PANEL {String(selectedPanel.id).padStart(2, '0')}</text>
         </g>
-        {(['nw', 'ne', 'sw', 'se'] as const).map((handle) => {
+        {([{ handle: 'nw', vertexIndex: 0 }, { handle: 'ne', vertexIndex: 1 }, { handle: 'sw', vertexIndex: 3 }, { handle: 'se', vertexIndex: 2 }] as const).map(({ handle, vertexIndex }) => {
           const x = handle.includes('w') ? selectedBounds.x : selectedBounds.x + selectedBounds.w;
           const y = handle.includes('n') ? selectedBounds.y : selectedBounds.y + selectedBounds.h;
           return <g class={`panel-handle-${handle}`} key={handle}>
             <rect class="panel-resize-handle" x={x - 3} y={y - 3} width="6" height="6" rx=".9" />
-            <rect class="panel-resize-hit" x={x - 6.5} y={y - 6.5} width="13" height="13" onPointerDown={(event) => startPanelResize(event, handle)} />
+            <rect class="panel-resize-hit" x={x - 6.5} y={y - 6.5} width="13" height="13" onPointerDown={(event) => {
+              if (selectedPanel.shape.type === 'rect' && event.shiftKey) startVertexDrag(event, vertexIndex);
+              else startPanelResize(event, handle);
+            }}>
+              <title>{selectedPanel.shape.type === 'rect' ? 'ドラッグでリサイズ・Shift+ドラッグで頂点を水平または垂直移動' : 'ドラッグでリサイズ'}</title>
+            </rect>
           </g>;
         })}
         {selectedPanel.shape.type === 'polygon' && selectedPanel.shape.points.map(([x, y], vertexIndex) => <g class="panel-vertex-handle" key={`vertex-${vertexIndex}`}>

@@ -172,6 +172,29 @@ test('コマスナップOFFなら1頂点だけを移動する', () => {
   assert.deepEqual(panels[0].shape.points, [[25, 23], [100, 20], [100, 100], [20, 100]]);
 });
 
+test('矩形の頂点もShift相当の水平・垂直移動で多角形化し、隣接コマへ連動する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'rect', x: 20, y: 20, w: 80, h: 80 } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 105, y: 20, w: 85, h: 80 } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 1, 110, 20, true);
+
+  assert.equal(panels[0].shape.type, 'polygon');
+  assert.deepEqual(panels[0].shape.points, [[20, 20], [110, 20], [100, 100], [20, 100]]);
+  assert.equal(panels[1].shape.type, 'polygon');
+  assert.notDeepEqual(panels[1].shape.points, [[105, 20], [190, 20], [190, 100], [105, 100]]);
+
+  const verticalPanels = [
+    { ...rectPanel, shape: { type: 'rect', x: 20, y: 20, w: 80, h: 80 } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 20, y: 105, w: 80, h: 85 } },
+  ];
+  movePanelVertexWithSnap(verticalPanels, 0, 2, 100, 110, true);
+  assert.equal(verticalPanels[0].shape.type, 'polygon');
+  assert.deepEqual(verticalPanels[0].shape.points, [[20, 20], [100, 20], [100, 110], [20, 100]]);
+  assert.equal(verticalPanels[1].shape.type, 'polygon');
+  assert.notDeepEqual(verticalPanels[1].shape.points, [[20, 105], [100, 105], [100, 190], [20, 190]]);
+});
+
 test('内枠とタチキリ上の頂点は境界線に沿う方向だけへ動く', () => {
   const innerFramePanel = { ...rectPanel, shape: { type: 'polygon', points: [[10, 20], [100, 20], [100, 100], [10, 100]] } };
   movePanelVertexWithSnap([innerFramePanel], 0, 0, 30, 35, false);
