@@ -273,8 +273,18 @@ export default function App() {
     if (session) await finishScannerSession(session.id);
   };
 
-  const closeNewDialog = () => {
-    void discardScannerSources().catch(() => undefined);
+  const closeNewDialog = async () => {
+    scannerStopRequested.current = true;
+    setNewLayoutTask('scanner');
+    setNewLayoutMessage('取り込みを中止し、スキャン元を破棄しています…');
+    try {
+      await discardScannerSources();
+    } catch (error) {
+      scannerStopRequested.current = false;
+      setNewLayoutTask('idle');
+      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン元を破棄できませんでした');
+      return;
+    }
     discardNewLayoutItems();
     setNewLayoutTask('idle');
     setShowNewDialog(false);
@@ -533,6 +543,7 @@ export default function App() {
         if (batch.complete || scannerStopRequested.current) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
       }
+      if (scannerSessionRef.current?.id !== session.id) return;
       if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
       const count = newLayoutItemsRef.current.length;
       setNewLayoutMessage(count
@@ -961,7 +972,7 @@ export default function App() {
                   <div class="new-layout-focus-controls">
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
                     <strong title={activeLayoutItem.file.name}>{activeLayoutItem.file.name}</strong>
-                    <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
+                    <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask === 'analyzing'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask === 'analyzing'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask === 'analyzing'}>右90°</button></div>
                     <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} title="現在表示している向きで解析します"><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : '解析開始'}</button>
                     <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} title={canCreateAnalyzedPages ? '検出したコマから編集を開始します' : 'すべての画像の解析完了後に使用できます'}><FilePlus2 size={15} />編集開始</button>
                   </div>
