@@ -1,4 +1,6 @@
 import type { PanelTemplate } from './panelTemplates';
+import { clamp, nearestAnchor, panelBounds, pointInPanel, roundMm } from './canvasGeometry.ts';
+import type { BBox, MangaPage, Panel } from '../types';
 
 const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8787';
 const REQUEST_TIMEOUT_MS = 180_000;
@@ -8,6 +10,27 @@ export interface LayoutRecognitionResult {
   confidence: number;
   reason: string;
   rotationDegrees: 0 | 90 | 180 | 270;
+  detectedPanelCount: number;
+  structureEngine: string;
+  ocrEngine: string;
+  ocrLines: RecognizedTextLine[];
+  qwenMode: 'off' | 'auto' | 'compare';
+  qwenOrientationUsed: boolean;
+  qwenLayoutUsed: boolean;
+  qwenLayoutAgreed: boolean | null;
+  qwenOcrUsed: boolean;
+  qwenOcrChanged: number;
+}
+
+export interface RecognizedTextLine {
+  id: string;
+  text: string;
+  bbox: BBox;
+  confidence: number;
+  vertical: boolean;
+  source: string;
+  needsReview: boolean;
+  qwenText?: string;
 }
 
 interface BridgeLayoutResponse {
@@ -15,6 +38,10 @@ interface BridgeLayoutResponse {
   confidence?: unknown;
   reason?: unknown;
   rotation_degrees?: unknown;
+  detected_panel_count?: unknown;
+  structure?: unknown;
+  ocr?: unknown;
+  qwen?: unknown;
 }
 
 export interface ScannerSession {
@@ -67,7 +94,113 @@ export function normalizeLayoutRecognition(
     : templateId ? '画像内のコマ枠配置に最も近い候補です。' : '近いコマ割りを特定できませんでした。';
   const rawRotation = Number(payload.rotation_degrees);
   const rotationDegrees = ([0, 90, 180, 270] as const).find((value) => value === rawRotation) ?? 0;
-  return { templateId, confidence, reason, rotationDegrees };
+  const detectedPanelCount = Math.max(0, Math.round(Number(payload.detected_panel_count) || 0));
+  const structure = payload.structure && typeof payload.structure === 'object'
+    ? payload.structure as Record<string, unknown>
+    : {};
+  const ocr = payload.ocr && typeof payload.ocr === 'object'
+    ? payload.ocr as Record<string, unknown>
+    : {};
+  const qwen = payload.qwen && typeof payload.qwen === 'object'
+    ? payload.qwen as Record<string, unknown>
+    : {};
+  const qwenLayout = qwen.layout && typeof qwen.layout === 'object'
+    ? qwen.layout as Record<string, unknown>
+    : {};
+  const qwenMode = qwen.mode === 'off' || qwen.mode === 'compare' ? qwen.mode : 'auto';
+  const ocrLines = (Array.isArray(ocr.lines) ? ocr.lines : []).flatMap((entry, index): RecognizedTextLine[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const item = entry as Record<string, unknown>;
+    const rawBox = Array.isArray(item.bbox) ? item.bbox.map(Number) : [];
+    if (rawBox.length !== 4 || rawBox.some((value) => !Number.isFinite(value))) return [];
+    const text = typeof item.text === 'string' ? item.text.trim() : '';
+    if (!text) return [];
+    const [x, y, w, h] = rawBox;
+    const rawLineConfidence = Number(item.confidence);
+    return [{
+      id: typeof item.id === 'string' && item.id ? item.id : `ocr-${index}`,
+      text,
+      bbox: {
+        x: Math.min(1, Math.max(0, x)),
+        y: Math.min(1, Math.max(0, y)),
+        w: Math.min(1, Math.max(0, w)),
+        h: Math.min(1, Math.max(0, h)),
+      },
+      confidence: Number.isFinite(rawLineConfidence) ? Math.min(1, Math.max(0, rawLineConfidence)) : 0,
+      vertical: item.vertical === true,
+      source: typeof item.source === 'string' ? item.source : 'ndlocr',
+      needsReview: item.needs_review !== false,
+      ...(typeof item.qwen_text === 'string' && item.qwen_text.trim() ? { qwenText: item.qwen_text.trim() } : {}),
+    }];
+  });
+  return {
+    templateId,
+    confidence,
+    reason,
+    rotationDegrees,
+    detectedPanelCount,
+    structureEngine: typeof structure.engine === 'string' ? structure.engine : '',
+    ocrEngine: typeof ocr.engine === 'string' ? ocr.engine : '',
+    ocrLines,
+    qwenMode,
+    qwenOrientationUsed: qwen.orientation_used === true,
+    qwenLayoutUsed: qwenLayout.used === true,
+    qwenLayoutAgreed: typeof qwenLayout.agreed === 'boolean' ? qwenLayout.agreed : null,
+    qwenOcrUsed: qwen.ocr_used === true,
+    qwenOcrChanged: Math.max(0, Math.round(Number(qwen.ocr_changed) || 0)),
+  };
+}
+
+function nearestPanel(panels: Panel[], x: number, y: number): Panel | undefined {
+  return panels.find((panel) => pointInPanel(panel, x, y)) ?? [...panels].sort((left, right) => {
+    const distance = (panel: Panel) => {
+      const bounds = panelBounds(panel);
+      const nearestX = clamp(x, bounds.x, bounds.x + bounds.w);
+      const nearestY = clamp(y, bounds.y, bounds.y + bounds.h);
+      return (x - nearestX) ** 2 + (y - nearestY) ** 2;
+    };
+    return distance(left) - distance(right);
+  })[0];
+}
+
+/** OCR領域を紙面座標へ変換し、中心が入る（または最も近い）コマへ編集可能なフキダシとして追加する。 */
+export function attachRecognizedTextToPage(
+  page: MangaPage,
+  lines: readonly RecognizedTextLine[],
+): { added: number; needsReview: number } {
+  let added = 0;
+  let needsReview = 0;
+  for (const line of lines) {
+    if (!line.text.trim() || !page.panels.length) continue;
+    const sourceBox = {
+      x: line.bbox.x * page.canvas.w,
+      y: line.bbox.y * page.canvas.h,
+      w: line.bbox.w * page.canvas.w,
+      h: line.bbox.h * page.canvas.h,
+    };
+    const centerX = sourceBox.x + sourceBox.w / 2;
+    const centerY = sourceBox.y + sourceBox.h / 2;
+    const panel = nearestPanel(page.panels, centerX, centerY);
+    if (!panel) continue;
+    const bounds = panelBounds(panel);
+    const width = Math.min(bounds.w, Math.max(6, sourceBox.w));
+    const height = Math.min(bounds.h, Math.max(6, sourceBox.h));
+    const bbox: BBox = {
+      x: roundMm(clamp(sourceBox.x, bounds.x, bounds.x + bounds.w - width)),
+      y: roundMm(clamp(sourceBox.y, bounds.y, bounds.y + bounds.h - height)),
+      w: roundMm(width),
+      h: roundMm(height),
+    };
+    panel.bubbles.push({
+      text: line.text.trim(),
+      shape: 'normal',
+      bbox,
+      anchor: nearestAnchor(bounds, bbox),
+    });
+    added += 1;
+    if (line.needsReview) needsReview += 1;
+  }
+  return { added, needsReview };
 }
 
 async function imageDataUrl(file: File): Promise<string> {
@@ -118,7 +251,7 @@ async function postJson(path: string, body: object, timeoutMs = REQUEST_TIMEOUT_
     return payload;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('VLMの応答が時間内に返りませんでした');
+      throw new Error('ローカル画像解析の応答が時間内に返りませんでした');
     }
     if (error instanceof TypeError) {
       throw new Error('ローカル連携が起動していません。ターミナルで npm run bridge を実行してください。');

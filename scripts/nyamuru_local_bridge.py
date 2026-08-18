@@ -12,6 +12,7 @@ import re
 import secrets
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
@@ -23,6 +24,9 @@ from urllib.parse import urlparse
 
 
 DEFAULT_MODEL = "Qwen3-VL-8B-NSFW-Caption-V4.5-heretic.i1-Q5_K_M.gguf"
+TOOLS_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_MANGA_BABBLE_ROOT = TOOLS_ROOT / "manga-babble-maker"
+DEFAULT_NDLOCR_ROOT = TOOLS_ROOT / "ndlocr-lite"
 # 高解像度TIFFをブラウザ側で縮小できない場合にも、ローカルbridgeで受け取れる上限。
 MAX_BODY_BYTES = 96 * 1024 * 1024
 ALLOWED_ORIGIN = re.compile(r"^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?$")
@@ -41,6 +45,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--comfy-root", type=Path, required=True)
     parser.add_argument("--model", default=os.environ.get("NYAMURU_QWEN_MODEL", DEFAULT_MODEL))
+    parser.add_argument(
+        "--manga-babble-root",
+        type=Path,
+        default=Path(os.environ.get("NYAMURU_MANGA_BABBLE_ROOT", DEFAULT_MANGA_BABBLE_ROOT)),
+    )
+    parser.add_argument(
+        "--ndlocr-root",
+        type=Path,
+        default=Path(os.environ.get("NYAMURU_NDLOCR_ROOT", DEFAULT_NDLOCR_ROOT)),
+    )
+    parser.add_argument(
+        "--qwen-mode",
+        choices=("off", "auto", "compare"),
+        default=os.environ.get("NYAMURU_QWEN_MODE", "auto"),
+        help="off: 専用モデルのみ / auto: 不確実時だけ補助 / compare: 常に比較",
+    )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -474,6 +494,10 @@ def detect_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, fl
     image = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise ValueError("画像を展開できませんでした")
+    original_height, original_width = image.shape
+    scale = min(1.0, 1600 / max(original_width, original_height))
+    if scale < 1.0:
+        image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
     height, width = image.shape
     edges = cv2.Canny(image, 50, 150)
     kernel_size = max(3, round(min(width, height) * 0.004))
@@ -554,14 +578,255 @@ def layout_distance(source: list[tuple[float, float, float, float]], candidate: 
 
 def rank_candidates(image_bytes: bytes, candidates: list[dict[str, Any]]) -> tuple[list[tuple[dict[str, Any], float]], int]:
     boxes = detect_panel_boxes(image_bytes)
-    ranked = sorted(((candidate, layout_distance(boxes, candidate)) for candidate in candidates), key=lambda item: item[1])
+    if not boxes:
+        boxes = detect_separator_panel_boxes(image_bytes)
+    ranked = rank_candidates_from_boxes(boxes, candidates)
     return ranked, len(boxes)
+
+
+def rank_candidates_from_boxes(
+    boxes: list[tuple[float, float, float, float]],
+    candidates: list[dict[str, Any]],
+) -> list[tuple[dict[str, Any], float]]:
+    return sorted(((candidate, layout_distance(boxes, candidate)) for candidate in candidates), key=lambda item: item[1])
+
+
+def detector_boxes(
+    detection: dict[str, Any],
+    key: str,
+    *,
+    min_score: float = 0.2,
+    max_area_ratio: float = 0.82,
+) -> list[tuple[float, float, float, float]]:
+    page = detection.get("page") if isinstance(detection.get("page"), dict) else {}
+    width = float(page.get("width", 0) or 0)
+    height = float(page.get("height", 0) or 0)
+    buckets = detection.get("detections") if isinstance(detection.get("detections"), dict) else {}
+    items = buckets.get(key) if isinstance(buckets.get(key), list) else []
+    if width <= 0 or height <= 0:
+        return []
+    boxes: list[tuple[float, float, float, float]] = []
+    for item in items:
+        if not isinstance(item, dict) or float(item.get("score", 0) or 0) < min_score:
+            continue
+        bbox = item.get("bbox")
+        if not isinstance(bbox, list) or len(bbox) != 4:
+            continue
+        try:
+            x1, y1, x2, y2 = (float(value) for value in bbox)
+        except (TypeError, ValueError):
+            continue
+        box_width, box_height = max(0.0, x2 - x1), max(0.0, y2 - y1)
+        area_ratio = box_width * box_height / (width * height)
+        if box_width <= 0 or box_height <= 0 or area_ratio > max_area_ratio:
+            continue
+        boxes.append((x1 / width, y1 / height, box_width / width, box_height / height))
+    return boxes
+
+
+def detect_separator_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, float]]:
+    """Recover simple horizontal panel bands from faint storyboard separator lines."""
+    import cv2
+    import numpy as np
+
+    gray = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+    if gray is None:
+        return []
+    original_height, original_width = gray.shape
+    scale = min(1.0, 1600 / max(original_width, original_height))
+    if scale < 1.0:
+        gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    height, width = gray.shape
+    enhanced = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)).apply(gray)
+    edges = cv2.Canny(enhanced, 18, 75)
+    lines = cv2.HoughLinesP(
+        edges,
+        1,
+        np.pi / 180,
+        threshold=max(24, round(width * 0.07)),
+        minLineLength=max(50, round(width * 0.42)),
+        maxLineGap=max(12, round(width * 0.14)),
+    )
+    candidates: list[tuple[float, float, float]] = []
+    if lines is not None:
+        for raw in lines.reshape(-1, 4):
+            x1, y1, x2, y2 = (float(value) for value in raw)
+            length = abs(x2 - x1)
+            if length < width * 0.42 or abs(y2 - y1) > max(5, height * 0.015):
+                continue
+            y = (y1 + y2) / 2
+            if height * 0.06 < y < height * 0.94:
+                candidates.append((y, min(x1, x2), max(x1, x2)))
+    clusters: list[list[tuple[float, float, float]]] = []
+    for line in sorted(candidates):
+        if not clusters or abs(line[0] - sum(item[0] for item in clusters[-1]) / len(clusters[-1])) > height * 0.025:
+            clusters.append([line])
+        else:
+            clusters[-1].append(line)
+    separators: list[float] = []
+    for cluster in clusters:
+        intervals = sorted((left, right) for _, left, right in cluster)
+        covered = 0.0
+        cursor_left = cursor_right = None
+        for left, right in intervals:
+            if cursor_left is None:
+                cursor_left, cursor_right = left, right
+            elif left <= float(cursor_right) + width * 0.04:
+                cursor_right = max(float(cursor_right), right)
+            else:
+                covered += float(cursor_right) - float(cursor_left)
+                cursor_left, cursor_right = left, right
+        if cursor_left is not None:
+            covered += float(cursor_right) - float(cursor_left)
+        if covered >= width * 0.62:
+            separators.append(sum(item[0] for item in cluster) / len(cluster) / height)
+    # 鉛筆の薄い長線はCanny/Houghで途切れやすい。ページ幅の大部分に共通する
+    # 水平方向の明度勾配も使い、ネームの段境界を補う。
+    if not separators:
+        sobel_y = np.abs(cv2.Sobel(gray.astype(np.float32), cv2.CV_32F, 0, 1, ksize=3))
+        margin = max(4, round(width * 0.04))
+        row_scores = np.percentile(sobel_y[:, margin:-margin], 80, axis=1)
+        median = float(np.median(row_scores))
+        deviation = float(np.median(np.abs(row_scores - median)))
+        threshold = max(30.0, float(np.percentile(row_scores, 98)), median + deviation * 8)
+        strong_rows = [
+            index for index, score in enumerate(row_scores)
+            if score >= threshold and height * 0.06 < index < height * 0.94
+        ]
+        row_clusters: list[list[int]] = []
+        for row in strong_rows:
+            if not row_clusters or row - row_clusters[-1][-1] > max(3, round(height * 0.025)):
+                row_clusters.append([row])
+            else:
+                row_clusters[-1].append(row)
+        for cluster in row_clusters:
+            peak = max(cluster, key=lambda row: row_scores[row])
+            separators.append(peak / height)
+    separators = separators[:5]
+    if not separators:
+        return []
+    boundaries = [0.015, *separators, 0.985]
+    boxes = []
+    for top, bottom in zip(boundaries, boundaries[1:]):
+        if bottom - top >= 0.07:
+            boxes.append((0.015, top, 0.97, bottom - top))
+    return boxes if 2 <= len(boxes) <= 6 else []
+
+
+def run_local_worker(
+    *,
+    python: Path,
+    engine: str,
+    root: Path,
+    image_bytes: bytes,
+    model: Path | None = None,
+    confidence: float = 0.2,
+    request: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    worker = Path(__file__).with_name("local_vision_worker.py")
+    if not python.is_file() or not worker.is_file():
+        raise FileNotFoundError(f"{engine}のローカル実行環境が見つかりません")
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix="nyamuru-vision-", suffix=".jpg", delete=False) as temporary:
+            temporary.write(image_bytes)
+            temporary_path = Path(temporary.name)
+        command = [
+            str(python), str(worker), "--engine", engine, "--root", str(root),
+            "--image", str(temporary_path), "--confidence", str(confidence),
+        ]
+        if model is not None:
+            command.extend(("--model", str(model)))
+        completed = subprocess.run(
+            command,
+            input=json.dumps(request or {}, ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        try:
+            payload = json.loads(completed.stdout.strip())
+        except json.JSONDecodeError as exc:
+            detail = completed.stderr.strip()[-500:]
+            raise RuntimeError(f"{engine}の応答を解釈できません: {detail}") from exc
+        if completed.returncode != 0 or payload.get("ok") is not True or not isinstance(payload.get("result"), dict):
+            raise RuntimeError(str(payload.get("error") or completed.stderr.strip() or f"{engine} failed"))
+        return payload["result"]
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
+def ocr_text_quality(text: str) -> float:
+    compact = "".join(text.split())
+    if not compact:
+        return 0.0
+    japanese = sum("\u3040" <= char <= "\u30ff" or "\u3400" <= char <= "\u9fff" for char in compact)
+    latin = sum(char.isascii() and char.isalpha() for char in compact)
+    repeated = max((compact.count(char) for char in set(compact)), default=0)
+    return japanese * 2.0 + min(len(compact), 24) * 0.08 - latin * 0.6 - max(0, repeated - 5)
+
+
+def usable_ocr_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    width = float(payload.get("width", 0) or 0)
+    height = float(payload.get("height", 0) or 0)
+    if width <= 0 or height <= 0:
+        return []
+    raw = []
+    if isinstance(payload.get("region_lines"), list):
+        raw.extend(payload["region_lines"])
+    if isinstance(payload.get("detected_lines"), list):
+        raw.extend(payload["detected_lines"])
+    selected: list[dict[str, Any]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        bbox = item.get("bbox")
+        if not isinstance(bbox, list) or len(bbox) != 4:
+            continue
+        try:
+            x, y, box_width, box_height = (float(value) for value in bbox)
+        except (TypeError, ValueError):
+            continue
+        text = str(item.get("text", "")).strip()
+        quality = ocr_text_quality(text)
+        area_ratio = max(0.0, box_width) * max(0.0, box_height) / (width * height)
+        if not text or area_ratio > 0.18 or quality < -1.0:
+            continue
+        normalized = {
+            "id": str(item.get("id", f"ocr-{len(selected)}")),
+            "text": text[:500],
+            "bbox": [x / width, y / height, box_width / width, box_height / height],
+            "confidence": max(0.0, min(1.0, float(item.get("confidence", 0) or 0))),
+            "vertical": bool(item.get("vertical", False)),
+            "source": str(item.get("detection_source", "ndlocr")),
+            "quality": round(quality, 3),
+            "needs_review": quality < 2.0 or float(item.get("confidence", 0) or 0) < 0.45,
+        }
+        duplicate = False
+        for previous in selected:
+            px, py, pw, ph = previous["bbox"]
+            cx, cy, cw, ch = normalized["bbox"]
+            overlap_w = max(0.0, min(px + pw, cx + cw) - max(px, cx))
+            overlap_h = max(0.0, min(py + ph, cy + ch) - max(py, cy))
+            overlap = overlap_w * overlap_h
+            smaller = min(pw * ph, cw * ch)
+            if smaller > 0 and overlap / smaller > 0.72:
+                duplicate = True
+                if normalized["quality"] > previous["quality"]:
+                    previous.update(normalized)
+                break
+        if not duplicate:
+            selected.append(normalized)
+    return sorted(selected, key=lambda item: (round((item["bbox"][1] + item["bbox"][3] / 2) / 0.12), -(item["bbox"][0] + item["bbox"][2] / 2)))[:24]
 
 
 def rotated_image_bytes(image_bytes: bytes, degrees_clockwise: int) -> bytes:
     from PIL import Image, ImageOps
 
     with Image.open(io.BytesIO(image_bytes)) as source:
+        if not degrees_clockwise and source.getexif().get(274, 1) == 1:
+            return image_bytes
         image = ImageOps.exif_transpose(source).convert("RGB")
         if degrees_clockwise:
             image = image.rotate(-degrees_clockwise, expand=True, fillcolor="white")
@@ -648,6 +913,69 @@ def make_comparison_image(image_bytes: bytes, candidates: list[dict[str, Any]]):
     return torch.from_numpy(array).unsqueeze(0)
 
 
+def make_ocr_review_image(image_bytes: bytes, lines: list[dict[str, Any]]):
+    import numpy as np
+    import torch
+    from PIL import Image, ImageDraw, ImageOps
+
+    source = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
+    source.thumbnail((1500, 1900))
+    draw = ImageDraw.Draw(source)
+    width, height = source.size
+    for line in lines:
+        x, y, box_width, box_height = line["bbox"]
+        left, top = round(x * width), round(y * height)
+        right, bottom = round((x + box_width) * width), round((y + box_height) * height)
+        draw.rectangle((left, top, right, bottom), outline="#e00000", width=max(2, width // 450))
+        label = line["id"]
+        label_box = draw.textbbox((left, max(0, top - 18)), label)
+        draw.rectangle(label_box, fill="white")
+        draw.text((left, max(0, top - 18)), label, fill="#c00000")
+    array = np.asarray(source, dtype=np.float32) / 255.0
+    return torch.from_numpy(array).unsqueeze(0)
+
+
+def parse_ocr_review(raw: str, valid_ids: set[str]) -> dict[str, str]:
+    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+    if not match:
+        return {}
+    try:
+        parsed = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return {}
+    items = parsed.get("lines") if isinstance(parsed, dict) else None
+    if not isinstance(items, list):
+        return {}
+    result: dict[str, str] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        line_id = str(item.get("id", ""))
+        text = str(item.get("text", "")).strip()
+        if line_id in valid_ids and text and text.upper() not in {"UNREADABLE", "NONE", "N/A"}:
+            result[line_id] = text[:500]
+    return result
+
+
+def apply_qwen_ocr_suggestions(lines: list[dict[str, Any]], suggestions: dict[str, str]) -> int:
+    changed = 0
+    for line in lines:
+        suggestion = suggestions.get(line["id"])
+        if not suggestion or suggestion == line["text"]:
+            continue
+        line["qwen_text"] = suggestion
+        line["needs_review"] = True
+        # Qwen is only an explicitly marked fallback for obviously broken OCR.
+        # Plausible NDLOCR text remains primary so semantic guessing cannot silently replace transcription.
+        if line["quality"] < 1.0 and ocr_text_quality(suggestion) >= line["quality"] + 2.0:
+            line["text"] = suggestion
+            line["source"] = "qwen-fallback"
+            line["quality"] = round(ocr_text_quality(suggestion), 3)
+            changed += 1
+    return changed
+
+
 def parse_model_result(raw: str, valid_ids: set[str]) -> dict[str, Any]:
     cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
     match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
@@ -700,13 +1028,30 @@ def parse_orientation_result(raw: str, fallback_rotation: int) -> int:
 
 
 class VlmState:
-    def __init__(self, comfy_root: Path, model_name: str):
+    def __init__(
+        self,
+        comfy_root: Path,
+        model_name: str,
+        manga_babble_root: Path,
+        ndlocr_root: Path,
+        qwen_mode: str,
+    ):
         self.comfy_root = comfy_root.resolve()
         self.node_root = self.comfy_root / "custom_nodes" / "ComfyUI-QwenVL"
         self.model_name = model_name
+        self.manga_babble_root = manga_babble_root.resolve()
+        self.rtdetr_python = self.manga_babble_root / ".venv" / "bin" / "python"
+        self.rtdetr_model = self.manga_babble_root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
+        self.ndlocr_root = ndlocr_root.resolve()
+        self.ndlocr_python = self.ndlocr_root / ".venv" / "bin" / "python"
+        self.qwen_mode = qwen_mode
         self.node = None
         self.lock = threading.Lock()
         self.scanners = ScannerSessions()
+
+    def qwen_available(self) -> bool:
+        model_paths = list((self.comfy_root / "models" / "llm").rglob(self.model_name))
+        return (self.node_root / "AILab_QwenVL_GGUF.py").is_file() and bool(model_paths)
 
     def check(self) -> dict[str, Any]:
         model_paths = list((self.comfy_root / "models" / "llm").rglob(self.model_name))
@@ -716,6 +1061,11 @@ class VlmState:
             "model_available": bool(model_paths),
             "model": self.model_name,
             "model_loaded": self.node is not None,
+            "qwen_mode": self.qwen_mode,
+            "rtdetr_available": self.rtdetr_python.is_file() and self.rtdetr_model.is_file(),
+            "rtdetr_model": str(self.rtdetr_model),
+            "ndlocr_available": self.ndlocr_python.is_file() and (self.ndlocr_root / "src" / "model").is_dir(),
+            "ndlocr_root": str(self.ndlocr_root),
             "scanner_available": Path("/System/Applications/Image Capture.app").is_dir(),
         }
 
@@ -752,26 +1102,73 @@ class VlmState:
             )
         return raw
 
+    def _review_ocr(self, upright_bytes: bytes, lines: list[dict[str, Any]]) -> dict[str, str]:
+        current = "\n".join(f"{line['id']}: {line['text']}" for line in lines)
+        prompt = f"""This is a faint handwritten Japanese manga storyboard page. Red boxes identify OCR regions.
+Transcribe only characters that are actually visible inside each labeled box. Preserve Japanese writing order inside each region. Do not infer missing dialogue from context. If unreadable, write UNREADABLE.
+Current specialized-OCR guesses (they may be wrong):
+{current}
+Return exactly one JSON object and no other text:
+{{"lines":[{{"id":"region id","text":"exact visible transcription or UNREADABLE"}}]}}"""
+        raw = self._process(make_ocr_review_image(upright_bytes, lines), prompt, min(768, 96 + len(lines) * 80))
+        return parse_ocr_review(raw, {line["id"] for line in lines})
+
     def analyze(self, image_bytes: bytes, candidates: list[dict[str, Any]]) -> dict[str, Any]:
         if not candidates:
             raise ValueError("比較するコマ割り候補がありません")
         _, fallback_rotation, _ = rank_candidates_with_orientation(image_bytes, candidates)
-        orientation_prompt = """The image shows the same Japanese manga storyboard page in four labeled rotation options.
+        qwen_ready = self.qwen_available() and self.qwen_mode != "off"
+        rotation = fallback_rotation
+        qwen_orientation_used = False
+        if qwen_ready:
+            orientation_prompt = """The image shows the same Japanese manga storyboard page in four labeled rotation options.
 Read Japanese handwriting, speech, page numbers, and inspect the drawings. Choose the one option where text and drawings are upright and naturally readable.
 Return exactly one JSON object and no other text:
 {"rotation_degrees":0}
 rotation_degrees must be exactly one of 0, 90, 180, or 270 and means clockwise correction applied to the original image."""
-        orientation_raw = self._process(make_orientation_image(image_bytes), orientation_prompt, 64)
-        rotation = parse_orientation_result(orientation_raw, fallback_rotation)
+            orientation_raw = self._process(make_orientation_image(image_bytes), orientation_prompt, 64)
+            rotation = parse_orientation_result(orientation_raw, fallback_rotation)
+            qwen_orientation_used = True
         width, height = normalized_image_size(image_bytes)
         expected_rotations = {90, 270} if width > height else {0, 180}
         if rotation not in expected_rotations:
             rotation = fallback_rotation if fallback_rotation in expected_rotations else min(expected_rotations)
         upright_bytes = rotated_image_bytes(image_bytes, rotation)
-        ranked, detected_count = rank_candidates(upright_bytes, candidates)
-        shortlist = [candidate for candidate, _ in ranked[:5]] if detected_count else candidates
-        names = "\n".join(f"{item['id']}: {item['name']} ({len(item['shapes'])} panels)" for item in shortlist)
-        prompt = f"""The left side is an upright scanned or photographed manga storyboard page.
+
+        detection = run_local_worker(
+            python=self.rtdetr_python,
+            engine="rtdetr",
+            root=self.manga_babble_root,
+            image_bytes=upright_bytes,
+            model=self.rtdetr_model,
+            confidence=0.2,
+        )
+        rtdetr_boxes = detector_boxes(detection, "frames")
+        opencv_boxes = detect_panel_boxes(upright_bytes)
+        separator_boxes = detect_separator_panel_boxes(upright_bytes)
+        if len(rtdetr_boxes) >= 2:
+            layout_boxes, detector_name = rtdetr_boxes, "RT-DETR"
+        elif separator_boxes:
+            layout_boxes, detector_name = separator_boxes, "RT-DETR＋罫線補助"
+        elif rtdetr_boxes:
+            layout_boxes, detector_name = rtdetr_boxes, "RT-DETR"
+        else:
+            layout_boxes, detector_name = opencv_boxes, "OpenCV"
+        ranked = rank_candidates_from_boxes(layout_boxes, candidates)
+        detected_count = len(layout_boxes)
+        structural_best, structural_score = ranked[0]
+        second_score = ranked[1][1] if len(ranked) > 1 else structural_score + 1
+        structural_gap = max(0.0, second_score - structural_score)
+        structural_confidence = max(0.0, min(0.92, 1 / (1 + structural_score))) if detected_count else 0.0
+
+        qwen_layout: dict[str, Any] = {"used": False, "template_id": None, "agreed": None}
+        should_compare_layout = qwen_ready and (
+            self.qwen_mode == "compare" or not detected_count or structural_gap < 0.18
+        )
+        if should_compare_layout:
+            shortlist = [candidate for candidate, _ in ranked[:5]] if detected_count else candidates
+            names = "\n".join(f"{item['id']}: {item['name']} ({len(item['shapes'])} panels)" for item in shortlist)
+            prompt = f"""The left side is an upright scanned or photographed manga storyboard page.
 The right side is a labeled grid of candidate panel-layout templates A through Y.
 Ignore drawings, handwriting, speech balloons, and page content. Compare only the panel-border count, positions, sizes, diagonals, overlaps, and page-edge bleed.
 Choose the single closest template. If the source has no readable panel borders or no reasonable match, choose NONE.
@@ -779,29 +1176,83 @@ Candidates:
 {names}
 Return exactly one JSON object and no other text:
 {{"template_id":"A-Y or NONE","confidence":0.0,"reason":"short Japanese explanation"}}"""
-        raw = self._process(make_comparison_image(upright_bytes, shortlist), prompt, 192)
-        result = parse_model_result(raw, {item["id"] for item in shortlist})
-        result["rotation_degrees"] = rotation
-        cv_best, cv_score = ranked[0]
-        if result["template_id"] == "NONE" or result["confidence"] < 0.35:
-            if detected_count:
-                result = {
-                    "template_id": cv_best["id"],
-                    "confidence": max(0.35, min(0.85, 1 / (1 + cv_score))),
-                    "reason": f"画像処理で{detected_count}個のコマ枠を検出し、候補を絞って比較しました。",
-                    "rotation_degrees": result["rotation_degrees"],
-                }
-            else:
-                result = {
-                    "template_id": "NONE",
-                    "confidence": 0.0,
-                    "reason": "読み取れるコマ枠が見つかりませんでした。画像の向きや明るさを確認してください。",
-                    "rotation_degrees": result["rotation_degrees"],
-                }
+            raw = self._process(make_comparison_image(upright_bytes, shortlist), prompt, 192)
+            qwen_result = parse_model_result(raw, {item["id"] for item in shortlist})
+            qwen_template = (
+                qwen_result["template_id"]
+                if qwen_result["template_id"] != "NONE" and qwen_result["confidence"] >= 0.35
+                else None
+            )
+            qwen_layout = {
+                "used": True,
+                "template_id": qwen_template,
+                "confidence": qwen_result["confidence"],
+                "agreed": qwen_template == structural_best["id"] if detected_count and qwen_template else None,
+            }
+
+        text_regions = []
+        buckets = detection.get("detections") if isinstance(detection.get("detections"), dict) else {}
+        if isinstance(buckets.get("texts"), list):
+            text_regions = [item for item in buckets["texts"] if isinstance(item, dict)]
+        ocr_payload = run_local_worker(
+            python=self.ndlocr_python,
+            engine="ndlocr",
+            root=self.ndlocr_root,
+            image_bytes=upright_bytes,
+            request={"regions": text_regions},
+        )
+        ocr_lines = usable_ocr_lines(ocr_payload)
+        qwen_ocr_used = False
+        qwen_ocr_changed = 0
+        should_review_ocr = qwen_ready and ocr_lines and (
+            self.qwen_mode == "compare" or any(line["needs_review"] for line in ocr_lines)
+        )
+        if should_review_ocr:
+            suggestions = self._review_ocr(upright_bytes, ocr_lines)
+            qwen_ocr_used = True
+            qwen_ocr_changed = apply_qwen_ocr_suggestions(ocr_lines, suggestions)
+
+        if detected_count:
+            result = {
+                "template_id": structural_best["id"],
+                "confidence": structural_confidence,
+                "reason": f"{detector_name}で{detected_count}個のコマ領域を検出し、座標からパターン{structural_best['id']}を選びました。",
+            }
+            if qwen_layout.get("agreed") is True:
+                result["confidence"] = min(0.97, max(result["confidence"], float(qwen_layout.get("confidence", 0))))
+                result["reason"] += " Qwen3-VLの比較結果も一致しました。"
+            elif qwen_layout.get("used") and qwen_layout.get("template_id"):
+                result["reason"] += f" Qwen3-VLは{qwen_layout['template_id']}を提案したため、確定後の目視確認が必要です。"
         else:
-            result["reason"] = f"画像処理で{detected_count}個のコマ枠を検出し、Qwen3-VLが候補{len(shortlist)}件から選びました。"
+            result = {
+                "template_id": "NONE",
+                "confidence": 0.0,
+                "reason": "専用検出器で読み取れるコマ領域が見つからなかったため、自動候補を確定しませんでした。",
+            }
+        result["rotation_degrees"] = rotation
         result["detected_panel_count"] = detected_count
         result["alternatives"] = [item["id"] for item, _ in ranked[:5]]
+        result["structure"] = {
+            "engine": detector_name,
+            "rtdetr_frame_count": len(rtdetr_boxes),
+            "opencv_frame_count": len(opencv_boxes),
+            "separator_panel_count": len(separator_boxes),
+            "score_gap": round(structural_gap, 4),
+        }
+        result["ocr"] = {
+            "engine": "NDLOCR-Lite",
+            "lines": ocr_lines,
+            "line_count": len(ocr_lines),
+            "qwen_used": qwen_ocr_used,
+            "qwen_changed": qwen_ocr_changed,
+        }
+        result["qwen"] = {
+            "mode": self.qwen_mode,
+            "orientation_used": qwen_orientation_used,
+            "layout": qwen_layout,
+            "ocr_used": qwen_ocr_used,
+            "ocr_changed": qwen_ocr_changed,
+        }
         return result
 
 
@@ -926,15 +1377,23 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
 def main() -> int:
     args = parse_args()
-    state = VlmState(args.comfy_root, args.model)
+    state = VlmState(
+        args.comfy_root,
+        args.model,
+        args.manga_babble_root,
+        args.ndlocr_root,
+        args.qwen_mode,
+    )
     status = state.check()
     if args.check:
         print(json.dumps(status, ensure_ascii=False, indent=2))
-        return 0 if status["node_available"] and status["model_available"] else 1
+        return 0 if status["rtdetr_available"] and status["ndlocr_available"] else 1
     server = ThreadingHTTPServer((args.host, args.port), BridgeHandler)
     server.state = state  # type: ignore[attr-defined]
     print(f"Nyamuru local bridge: http://{args.host}:{args.port}")
-    print(f"Qwen3-VL: {args.model}")
+    print(f"RT-DETR: {state.rtdetr_model}")
+    print(f"NDLOCR-Lite: {state.ndlocr_root}")
+    print(f"Qwen3-VL ({args.qwen_mode}): {args.model}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

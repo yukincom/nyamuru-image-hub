@@ -155,6 +155,24 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 
+Optional local image-analysis components (not bundled)
+------------------------------------------------------
+
+NDLOCR-Lite — Creative Commons Attribution 4.0 International (CC BY 4.0)
+Copyright / provider: National Diet Library, Japan
+https://github.com/ndl-lab/ndlocr-lite
+
+NDLOCR-Lite, its Python environment, and its ONNX model files are installed in
+an independent local repository and are not copied into this project's source
+or web bundle. If they are shared or redistributed, the attribution and change
+indication requirements in the upstream LICENCE file apply. Its dependencies
+remain subject to their respective licenses.
+
+The optional manga structure detector and Qwen3-VL integration likewise use
+code and model files from independent local installations. They are not bundled
+with this project. See docs/LOCAL_VISION_COMPONENTS.md for the local boundary
+and source links.
+
 Build and development dependencies
 ----------------------------------
 

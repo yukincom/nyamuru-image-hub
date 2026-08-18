@@ -129,5 +129,33 @@ class OrientationResultTest(unittest.TestCase):
         self.assertEqual(bridge.parse_orientation_result('{"rotation_degrees":45}', 180), 180)
 
 
+class LocalVisionResultTest(unittest.TestCase):
+    def test_rejects_full_page_frame_from_rtdetr(self):
+        detection = {
+            "page": {"width": 1000, "height": 1400},
+            "detections": {"frames": [
+                {"score": 0.9, "bbox": [0, 0, 1000, 1400]},
+                {"score": 0.8, "bbox": [40, 50, 960, 600]},
+            ]},
+        }
+        self.assertEqual(bridge.detector_boxes(detection, "frames"), [(0.04, 50 / 1400, 0.92, 550 / 1400)])
+
+    def test_filters_giant_and_latin_garbage_ocr_regions(self):
+        payload = {
+            "width": 1000,
+            "height": 1400,
+            "region_lines": [
+                {"id": "good", "text": "ものようになる。", "bbox": [600, 100, 140, 180], "confidence": 0.7},
+                {"id": "bad", "text": "AAAAAAAAAAAA", "bbox": [50, 50, 100, 100], "confidence": 0.8},
+            ],
+            "detected_lines": [
+                {"id": "page", "text": "誤検出", "bbox": [0, 0, 1000, 1400], "confidence": 0.9},
+            ],
+        }
+        lines = bridge.usable_ocr_lines(payload)
+        self.assertEqual([line["id"] for line in lines], ["good"])
+        self.assertFalse(lines[0]["needs_review"])
+
+
 if __name__ == "__main__":
     unittest.main()

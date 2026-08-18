@@ -1,4 +1,7 @@
 node_modules/
+.venv/
+__pycache__/
+*.pyc
 dist/
 dist-standalone/
 .astro/
@@ -6,6 +9,17 @@ dist-standalone/
 .DS_Store
 *.log
 scratch-brand/
+
+# ローカル画像解析モデルと生成物は各専用環境に置き、このリポジトリへ含めない
+models/
+ocr-output/
+*.bin
+*.ckpt
+*.gguf
+*.onnx
+*.pt
+*.pth
+*.safetensors
 
 # AIエージェントの作業ファイル（誤コミット防止）
 .claude/
