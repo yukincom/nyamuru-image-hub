@@ -11,7 +11,6 @@ test('検出した正規化座標をA4紙面上の編集可能な矩形へ変換
       ['bad', 0, 1, 1],
     ],
     reason: '検出した矩形を直接使用します',
-    rotation_degrees: 90,
   });
   assert.deepEqual(result.detectedPanels, [
     { type: 'rect', x: 105, y: 29.7, w: 84, h: 59.4 },
@@ -19,7 +18,6 @@ test('検出した正規化座標をA4紙面上の編集可能な矩形へ変換
   ]);
   assert.equal(result.detectedPanelCount, 2);
   assert.match(result.reason, /^検出した矩形を直接使用します。? 内枠内へ収め/);
-  assert.equal(result.rotationDegrees, 90);
 });
 
 test('コマ未検出時は安全な空配列と案内文を返す', () => {
@@ -29,16 +27,9 @@ test('コマ未検出時は安全な空配列と案内文を返す', () => {
   assert.match(result.reason, /特定できません/);
 });
 
-test('画像の回転補正は直角だけを受け入れる', () => {
-  assert.equal(normalizeLayoutRecognition({ rotation_degrees: 270 }).rotationDegrees, 270);
-  assert.equal(normalizeLayoutRecognition({ rotation_degrees: 45 }).rotationDegrees, 0);
-});
-
 test('OCR候補と人物領域を安全に正規化する', () => {
   const result = normalizeLayoutRecognition({
     panel_boxes: [[0.05, 0.04, 0.9, 0.42], [0.05, 0.5, 0.9, 0.44]],
-    detected_panel_count: 3,
-    orientation: { engine: '手動確認済み', confidence: 1, high_confidence: true },
     structure: {
       engine: 'RT-DETR',
       excluded_as_text_count: 2,
@@ -65,9 +56,6 @@ test('OCR候補と人物領域を安全に正規化する', () => {
     ] },
   });
   assert.equal(result.detectedPanelCount, 2);
-  assert.equal(result.orientationEngine, '手動確認済み');
-  assert.equal(result.orientationConfidence, 1);
-  assert.equal(result.orientationHighConfidence, true);
   assert.equal(result.structureEngine, 'RT-DETR');
   assert.equal(result.excludedNonPanelCount, 3);
   assert.equal(result.detectedTextRegionCount, 5);

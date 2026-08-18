@@ -823,15 +823,7 @@ class LocalVisionState:
     ) -> dict[str, Any]:
         if rotation_override is None:
             raise ValueError("解析前にプレビューで画像を正立させてください")
-        rotation = rotation_override
-        orientation: dict[str, Any] = {
-            "engine": "手動確認済み",
-            "confidence": 1.0,
-            "high_confidence": True,
-            "observed_rotation_degrees": None,
-            "correction_degrees": rotation,
-        }
-        upright_bytes = rotated_image_bytes(image_bytes, rotation)
+        upright_bytes = rotated_image_bytes(image_bytes, rotation_override)
 
         detection = run_local_worker(
             python=self.rtdetr_python,
@@ -880,15 +872,8 @@ class LocalVisionState:
                 "panel_boxes": [],
                 "reason": "専用検出器で読み取れるコマ領域が見つかりませんでした。手動プリセットを選ぶか、コマ枠を描き足して再解析してください。",
             }
-        result["rotation_degrees"] = rotation
-        result["orientation"] = orientation
-        result["detected_panel_count"] = detected_count
         result["structure"] = {
             "engine": detector_name,
-            "rtdetr_frame_count": len(rtdetr_boxes),
-            "rtdetr_raw_frame_count": len(raw_rtdetr_boxes),
-            "opencv_frame_count": len(opencv_boxes),
-            "opencv_raw_frame_count": len(raw_opencv_boxes),
             "excluded_as_text_count": selected_excluded["texts"],
             "excluded_as_face_count": selected_excluded["faces"],
             "excluded_as_body_count": selected_excluded["bodies"],
@@ -899,10 +884,8 @@ class LocalVisionState:
         result["ocr"] = {
             "engine": "NDLOCR-Lite",
             "lines": ocr_lines,
-            "line_count": len(ocr_lines),
         }
         result["people"] = {
-            "engine": "RT-DETR",
             "regions": detected_person_regions(detection),
         }
         return result

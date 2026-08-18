@@ -57,6 +57,10 @@ OSS公開用リポジトリは [sa-san10/nyamuru-manga-name-studio](https://gith
 
 LLMと画像生成AIをつないで、テーマから完成漫画まで進む3ステップのワークフローを、アプリ内「使い方」タブで案内しています。同じ内容をハウツーガイド [how-to-guide.md](./src/content/how-to-guide.md) として同梱しているので、アプリを開かずに読むこともできます。
 
+## アナログネーム取り込み（任意）
+
+新規作成画面で紙のネーム画像を読み込み、検出したコマ・人物あたり・フキダシ内の文字を編集可能なページとして取り込めます。この機能はローカル画像解析連携を必要とし、画像を外部サービスへ送信しません。導入、起動、スキャン画像の取り扱いは [LOCAL_VISION_BRIDGE.md](./docs/LOCAL_VISION_BRIDGE.md)、別途導入する解析ソフトウェアとモデルの条件は [LOCAL_VISION_COMPONENTS.md](./docs/LOCAL_VISION_COMPONENTS.md) を参照してください。
+
 ## 開発
 
 ```bash

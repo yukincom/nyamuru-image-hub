@@ -25,15 +25,6 @@ NDLOCR-LiteはMITライセンスではありません。共有・再配布する
 
 RT-DETRが返す `frame` をコマ候補、`text` を文字・フキダシ相当領域、`face` と `body` を人物領域として扱います。`frame` とほぼ同一の文字・顔・身体領域がある場合はコマ誤検出候補として除外しますが、コマ内に人物や文字が含まれる通常の配置は除外しません。残った `frame` はA〜Zのプリセットへ分類せず、正規化した検出座標を編集可能なコマとして直接Nyamuruへ渡します。人物領域は身体を優先して重複する顔をまとめ、登場人物を決めつけない編集可能な「人物あたり」として所属コマへ配置します。
 
-## RapidOrientation（解析パイプラインでは不使用）
-
-- 配布元: <https://github.com/RapidAI/RapidOrientation>
-- 使用確認版: `rapid-orientation 0.0.11`
-- ライセンス: Apache License 2.0
-- 実行モデル: パッケージ同梱の `rapid_orientation.onnx`（約6.3MB）
-
-この開発環境では `/Users/yukin_co/Desktop/tools/rapid-orientation/.venv` に独立して導入されていますが、現在のNyamuruはモデルを呼び出しません。漫画ネームでは正立画像を逆さまにする誤判定を防げないため、画像の向きは解析前に利用者がプレビューで確定します。仮想環境とONNXモデルはNyamuruのGit履歴や配布物へ含めません。
-
 ## Gitへの混入防止
 
 Nyamuruの `.gitignore` は一般的なモデル拡張子（`.onnx`、`.safetensors`、`.gguf`、`.pt`、`.pth`、`.ckpt`、`.bin`）と `models/` を除外します。コミット前には次も確認します。
