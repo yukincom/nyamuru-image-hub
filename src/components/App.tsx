@@ -42,6 +42,7 @@ const TABS: {
 type MobileStoryboardPane = 'pages' | 'editor' | 'panel';
 type NewLayoutTask = 'idle' | 'scanner' | 'analyzing';
 type NewLayoutSource = 'manual' | 'scanner';
+type RightAngle = 0 | 90 | 180 | 270;
 
 interface NewLayoutItem {
   id: string;
@@ -50,7 +51,7 @@ interface NewLayoutItem {
   source: NewLayoutSource;
   analysis: LayoutRecognitionResult | null;
   analyzing: boolean;
-  rotationOverride: 0 | 90 | 180 | 270 | null;
+  rotationOverride: RightAngle;
   error?: string;
 }
 
@@ -59,12 +60,10 @@ interface DetectedPageLayout {
   analysis: LayoutRecognitionResult;
 }
 
-type RightAngle = NonNullable<NewLayoutItem['rotationOverride']>;
-
 const NEW_LAYOUT_SPREAD_ORDER = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8] as const;
 
 function displayedLayoutRotation(item: NewLayoutItem): RightAngle {
-  return (item.rotationOverride ?? 0) as RightAngle;
+  return item.rotationOverride;
 }
 
 function nextLayoutIndexFromArrow(current: number, key: string, length: number): number {
@@ -441,23 +440,17 @@ export default function App() {
     discardNewLayoutItems();
     const items = selected.map((file) => ({
       id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), source: 'manual' as const,
-      analysis: null, analyzing: false, rotationOverride: null,
+      analysis: null, analyzing: false, rotationOverride: 0 as const,
     }));
     newLayoutItemsRef.current = items;
     setNewLayoutItems(items);
     setNewLayoutActiveIndex(0);
-    setNewLayoutMessage(`${items.length}枚を読み込みました。画像ごとに正立させて「この向きを使用」を押してください。`);
+    setNewLayoutMessage(`${items.length}枚を読み込みました。必要な画像だけ回転してから、そのまま解析できます。`);
     if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
   };
 
   const analyzeNewLayouts = async () => {
     if (!newLayoutItemsRef.current.length || newLayoutTask !== 'idle') return;
-    const unconfirmedIndex = newLayoutItemsRef.current.findIndex((item) => item.rotationOverride === null);
-    if (unconfirmedIndex >= 0) {
-      setNewLayoutActiveIndex(unconfirmedIndex);
-      setNewLayoutMessage(`${unconfirmedIndex + 1}枚目の画像を正立させ、「この向きを使用」を押してから解析してください。`);
-      return;
-    }
     setNewLayoutTask('analyzing');
     let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
     setNewLayoutItems(working);
@@ -470,7 +463,7 @@ export default function App() {
       try {
         const result = await recognizePanelLayout(
           working[index].file,
-          working[index].rotationOverride as RightAngle,
+          working[index].rotationOverride,
         );
         working = working.map((item, itemIndex) => itemIndex === index
           ? { ...item, analysis: result, analyzing: false, error: undefined }
@@ -497,7 +490,7 @@ export default function App() {
       : item);
     newLayoutItemsRef.current = working;
     setNewLayoutItems(working);
-    setNewLayoutMessage(`${index + 1}枚目の向きを確認しました。時計回り${rotation}°の状態で解析します。`);
+    setNewLayoutMessage(`${index + 1}枚目を時計回り${rotation}°の向きにしました。このまま解析できます。`);
   };
 
   const rotateActiveLayoutImage = (delta: 90 | 180 | 270) => {
@@ -524,7 +517,7 @@ export default function App() {
         if (batch.files.length) {
           const additions = batch.files.map(({ id, file }) => ({
             id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
-            analysis: null, analyzing: false, rotationOverride: null,
+            analysis: null, analyzing: false, rotationOverride: 0 as const,
           }));
           const existing = newLayoutItemsRef.current;
           const known = new Set(existing.map((item) => item.id));
@@ -533,7 +526,7 @@ export default function App() {
           setNewLayoutItems(next);
           setNewLayoutActiveIndex(Math.max(0, next.length - 1));
           setScannerReceivedCount(next.length);
-          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。取り込み後、画像ごとに向きを確認してください。`);
+          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。必要な画像だけ回転してください。`);
         }
         if (batch.complete || scannerStopRequested.current) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -541,7 +534,7 @@ export default function App() {
       if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
       const count = newLayoutItemsRef.current.length;
       setNewLayoutMessage(count
-        ? `${count}枚の取り込みを完了しました。画像ごとに正立させて「この向きを使用」を押してください。スキャン元とNyamuruの一時画像は、ページ作成の確定または画面を閉じた時に破棄します。`
+        ? `${count}枚の取り込みを完了しました。必要な画像だけ回転してから、そのまま解析できます。スキャン元とNyamuruの一時画像は、ページ作成の確定または画面を閉じた時に破棄します。`
         : '5分以内に新しいスキャン画像が見つかりませんでした。');
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
@@ -566,13 +559,13 @@ export default function App() {
       setPendingScannerSession(null);
       const items = resumed.files.map(({ id, file }) => ({
         id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
-        analysis: null, analyzing: false, rotationOverride: null,
+        analysis: null, analyzing: false, rotationOverride: 0 as const,
       }));
       newLayoutItemsRef.current = items;
       setNewLayoutItems(items);
       setNewLayoutActiveIndex(0);
       setScannerReceivedCount(items.length);
-      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。画像ごとに向きを確認してからコマを解析できます。`);
+      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。必要な画像だけ回転してから、そのままコマを解析できます。`);
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');
     } finally {
@@ -817,7 +810,6 @@ export default function App() {
   const activeLayoutItem = newLayoutItems[newLayoutActiveIndex] ?? null;
   const activeLayoutAnalysis = activeLayoutItem?.analysis ?? null;
   const hasScannedLayoutItems = newLayoutItems.some((item) => item.source === 'scanner');
-  const allLayoutOrientationsConfirmed = newLayoutItems.length > 0 && newLayoutItems.every((item) => item.rotationOverride !== null);
   const detectedPageLayouts = newLayoutItems.flatMap((item): DetectedPageLayout[] => item.analysis?.detectedPanels.length
     ? [{ shapes: item.analysis.detectedPanels, analysis: item.analysis }]
     : []);
@@ -945,9 +937,9 @@ export default function App() {
                   <div class="new-layout-focus-controls">
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
                     <strong title={activeLayoutItem.file.name}>{activeLayoutItem.file.name}</strong>
-                    <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button><button type="button" class={activeLayoutItem.rotationOverride !== null ? 'is-confirmed' : ''} onClick={() => setActiveLayoutRotation(displayedLayoutRotation(activeLayoutItem))} disabled={newLayoutTask !== 'idle'}>この向きを使用</button></div>
+                    <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
                     <small class="new-layout-key-hint">矢印キーで画像を切替</small>
-                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle' || !allLayoutOrientationsConfirmed} title={allLayoutOrientationsConfirmed ? undefined : 'すべての画像の向きを確認してください'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button>
+                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} title="現在表示している向きで解析します"><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button>
                     <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} title={canCreateAnalyzedPages ? '検出したコマから編集を開始します' : 'すべての画像の解析完了後に使用できます'}><FilePlus2 size={15} />新規作成完了・編集へ</button>
                   </div>
                 </div>
