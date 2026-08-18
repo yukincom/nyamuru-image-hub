@@ -16,6 +16,7 @@ export const INNER_FRAME_BOUNDS: Readonly<BBox> = { x: 10, y: 10, w: 190, h: 277
 export const PANEL_SNAP_THRESHOLD_MM = 4;
 export const PANEL_EDGE_LINK_DISTANCE_MM = 8;
 export const PANEL_EDGE_ALIGNMENT_TOLERANCE_MM = 0.15;
+const PANEL_VERTEX_CONTINUATION_OFFSET_MM = PANEL_SNAP_THRESHOLD_MM;
 export const PANEL_CORNER_LINK_DISTANCE_MM = 9;
 
 export interface PanelEdgeReference {
@@ -94,11 +95,12 @@ function edgeIsLockedBoundary(panel: Panel, edgeIndex: number): boolean {
  * 選択辺と同じ境界グループに属する平行辺を探す。
  * 投影が重なる隣接辺だけでなく、同一直線上で横に分割された辺も連結する。
  */
-export function findLinkedPanelEdges(
+function findRelatedPanelEdges(
   panels: Panel[],
   panelIndex: number,
   edgeIndex: number,
-  maxDistance = PANEL_EDGE_LINK_DISTANCE_MM,
+  maxDistance: number,
+  continuationOffsetTolerance: number,
 ): PanelEdgeReference[] {
   const selectedPanel = panels[panelIndex];
   const selectedEdge = selectedPanel && edgePoints(selectedPanel, edgeIndex);
@@ -133,12 +135,45 @@ export function findLinkedPanelEdges(
           ? projectionMin - length
           : 0;
       const sharesProjection = overlap >= Math.min(8, Math.min(length, candidateLength) * 0.25);
-      const continuesSameLine = projectionGap <= maxDistance && distance <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM;
-      if (!sharesProjection && !continuesSameLine) return;
+      const continuesBoundary = projectionGap <= maxDistance && distance <= continuationOffsetTolerance;
+      if (!sharesProjection && !continuesBoundary) return;
       linked.push({ panelIndex: candidatePanelIndex, edgeIndex: candidateEdgeIndex, distance });
     });
   });
   return linked.sort((left, right) => left.distance - right.distance).map(({ panelIndex: pi, edgeIndex: ei }) => ({ panelIndex: pi, edgeIndex: ei }));
+}
+
+export function findLinkedPanelEdges(
+  panels: Panel[],
+  panelIndex: number,
+  edgeIndex: number,
+  maxDistance = PANEL_EDGE_LINK_DISTANCE_MM,
+): PanelEdgeReference[] {
+  return findRelatedPanelEdges(
+    panels,
+    panelIndex,
+    edgeIndex,
+    maxDistance,
+    PANEL_EDGE_ALIGNMENT_TOLERANCE_MM,
+  );
+}
+
+/**
+ * 頂点変形では、交差する溝をまたいだ延長辺に数mmのズレがあっても同じ境界として扱う。
+ * 辺ドラッグの「一度吸着してから連動する」判定とは分け、既存の吸着操作を維持する。
+ */
+function findVertexLinkedPanelEdges(
+  panels: Panel[],
+  panelIndex: number,
+  edgeIndex: number,
+): PanelEdgeReference[] {
+  return findRelatedPanelEdges(
+    panels,
+    panelIndex,
+    edgeIndex,
+    PANEL_EDGE_LINK_DISTANCE_MM,
+    PANEL_VERTEX_CONTINUATION_OFFSET_MM,
+  );
 }
 
 interface PanelVertexReference {
@@ -504,6 +539,43 @@ function edgeReferences(
   return references;
 }
 
+/** 頂点から伸びる境界線を、向かい合う辺・延長辺の連結成分として最後までたどる。 */
+function vertexEdgeReferences(
+  panels: Panel[],
+  panelIndex: number,
+  edgeIndex: number,
+  selectedPoint: [number, number],
+  fixedPoint: [number, number],
+): PanelEdgeReference[] {
+  const references: PanelEdgeReference[] = [{ panelIndex, edgeIndex }];
+  const queue: PanelEdgeReference[] = [{ panelIndex, edgeIndex }];
+  const visited = new Set([`${panelIndex}:${edgeIndex}`]);
+  const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
+  const lengthSquared = vectorX * vectorX + vectorY * vectorY;
+  if (!lengthSquared) return references;
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const reference = queue[cursor];
+    findVertexLinkedPanelEdges(panels, reference.panelIndex, reference.edgeIndex).forEach((linked) => {
+      const key = `${linked.panelIndex}:${linked.edgeIndex}`;
+      if (visited.has(key)) return;
+      visited.add(key);
+      // 内枠・タチキリそのものは変形させず、境界の反対側へも伝播させない。
+      if (edgeIsLockedBoundary(panels[linked.panelIndex], linked.edgeIndex)) return;
+      references.push(linked);
+      const candidatePoints = panelShapePoints(panels[linked.panelIndex]);
+      const candidateIndices = [linked.edgeIndex, (linked.edgeIndex + 1) % candidatePoints.length];
+      // 片端だけが動く辺は角の局所変形で止める。両端が動く辺だけを次の境界へ渡す。
+      const propagates = candidateIndices.every((candidateIndex) => {
+        const point = candidatePoints[candidateIndex];
+        const t = ((point[0] - selectedPoint[0]) * vectorX + (point[1] - selectedPoint[1]) * vectorY) / lengthSquared;
+        return clamp(1 - t, 0, 1) > 1e-6;
+      });
+      if (propagates) queue.push(linked);
+    });
+  }
+  return references;
+}
+
 function clampedEdgeDelta(
   panels: Panel[],
   references: PanelEdgeReference[],
@@ -667,7 +739,7 @@ export function movePanelVertexWithSnap(
       const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
       const lengthSquared = vectorX * vectorX + vectorY * vectorY;
       if (!lengthSquared) return;
-      findLinkedPanelEdges(panels, panelIndex, selectedEdgeIndex).forEach((reference) => {
+      vertexEdgeReferences(panels, panelIndex, selectedEdgeIndex, selectedPoint, fixedPoint).slice(1).forEach((reference) => {
         const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
         if (edgeIsLockedBoundary(panels[reference.panelIndex], reference.edgeIndex)) return;
         const deformationKey = `${selectedEdgeIndex}>${reference.panelIndex}:${reference.edgeIndex}`;

@@ -10,6 +10,22 @@ const rectPanel = {
   action: null,
 };
 
+const page1TopologyPanels = () => [
+  { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 115.2], [10, 115.2]] } },
+  { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[10, 120.2], [200, 120.2], [200, 167.9], [10, 167.5]] } },
+  { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[126.6, 172.9], [200, 172.9], [200, 287], [126.6, 287]] } },
+  { ...rectPanel, id: 4, shape: { type: 'polygon', points: [[10, 173.2], [120.3, 173.2], [120.3, 224.1], [10, 224.1]] } },
+  { ...rectPanel, id: 5, shape: { type: 'polygon', points: [[10, 229.1], [121.6, 228.8], [121.6, 287], [10, 287]] } },
+];
+
+const page2TopologyPanels = () => [
+  { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[96.8, 10], [200, 10], [200, 97.2], [96.8, 97.2]] } },
+  { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[10, 10], [91.8, 10], [91.8, 97.4], [10, 97.4]] } },
+  { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[108, 102.4], [200, 102.4], [200, 202.1], [108, 202.1]] } },
+  { ...rectPanel, id: 4, shape: { type: 'polygon', points: [[10, 102.4], [103, 102.4], [103, 202.1], [10, 202.1]] } },
+  { ...rectPanel, id: 5, shape: { type: 'polygon', points: [[10, 208.4], [200, 208.4], [200, 287], [10, 287]] } },
+];
+
 const baseInteraction = {
   mode: 'move',
   startClientX: 100,
@@ -164,7 +180,7 @@ test('内枠とタチキリ上の頂点は境界線に沿う方向だけへ動�
   assert.deepEqual(bleedPanel.shape.points[0], [0, 55]);
 });
 
-test('page 2型の角連動と境界連動を分け、指定された周辺頂点だけを追従させる', () => {
+test('page 2型の角連動と境界連動を分け、無関係な下段へ変形を漏らさない', () => {
   const makePanels = () => [
     { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[96.8, 10], [200, 10], [200, 97.2], [96.8, 97.2]] } },
     { ...rectPanel, id: 2, shape: { type: 'rect', x: 10, y: 10, w: 81.8, h: 87.4 } },
@@ -176,8 +192,7 @@ test('page 2型の角連動と境界連動を分け、指定された周辺頂�
   const fromPanel1 = makePanels();
   movePanelVertexWithSnap(fromPanel1, 0, 3, 96.8, 92.2, true);
   assert.equal(fromPanel1[3].shape.type, 'polygon');
-  assert.deepEqual(fromPanel1[3].shape.points[1], [103, 97.4]);
-  assert.deepEqual(fromPanel1[3].shape.points[0], [10, 102.4]);
+  assert.notEqual(fromPanel1[3].shape.points[1][1], 102.4);
   assert.deepEqual(fromPanel1[3].shape.points.slice(2), [[103, 202.1], [10, 202.1]]);
   assert.deepEqual(fromPanel1[4].shape, { type: 'rect', x: 10, y: 208.4, w: 190, h: 78.6 });
 
@@ -190,6 +205,35 @@ test('page 2型の角連動と境界連動を分け、指定された周辺頂�
   assert.equal(fromPanel3[4].shape.points[0][0], 10);
   assert.equal(fromPanel3[4].shape.points[1][0], 200);
   assert.deepEqual(fromPanel3[4].shape.points.slice(2), [[200, 287], [10, 287]]);
+});
+
+test('page 2型の頂点変形は同じ境界グループの2段先まで伝播する', () => {
+  const fromPanel3 = page2TopologyPanels();
+  movePanelVertexWithSnap(fromPanel3, 2, 0, 108, 112.4, true);
+  const panel2Bottom = panelShapePoints(fromPanel3[1]).slice(2);
+  assert.notEqual(panel2Bottom[0][1], 97.4);
+  assert.notEqual(panel2Bottom[1][1], 97.4);
+  assert.deepEqual(panelShapePoints(fromPanel3[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
+
+  const fromPanel4 = page2TopologyPanels();
+  movePanelVertexWithSnap(fromPanel4, 3, 1, 103, 112.4, true);
+  assert.equal(panelShapePoints(fromPanel4[0])[2][0], 200);
+  assert.notEqual(panelShapePoints(fromPanel4[0])[2][1], 97.2);
+  assert.deepEqual(panelShapePoints(fromPanel4[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
+});
+
+test('page 1型の頂点変形は数mmずれた延長辺へ傾きを伝播する', () => {
+  const fromPanel5 = page1TopologyPanels();
+  movePanelVertexWithSnap(fromPanel5, 4, 1, 131.6, 228.8, true);
+  assert.equal(panelShapePoints(fromPanel5[3])[1][1], 173.2);
+  assert.notEqual(panelShapePoints(fromPanel5[3])[1][0], 120.3);
+  assert.deepEqual(panelShapePoints(fromPanel5[3])[0], [10, 173.2]);
+
+  const fromPanel4 = page1TopologyPanels();
+  movePanelVertexWithSnap(fromPanel4, 3, 0, 10, 183.2, true);
+  assert.equal(panelShapePoints(fromPanel4[2])[1][0], 200);
+  assert.notEqual(panelShapePoints(fromPanel4[2])[1][1], 172.9);
+  assert.deepEqual(panelShapePoints(fromPanel4[2]).slice(2), [[200, 287], [126.6, 287]]);
 });
 
 test('連動頂点が紙端へ達したら全頂点を同じ移動量で止める', () => {
