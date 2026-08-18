@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, fallbackBox, findLinkedPanelEdges, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -103,6 +103,33 @@ test('辺の角度を保ったまま内枠へスナップする', () => {
   assert.deepEqual([[12 + delta.x, 30 + delta.y], [22 + delta.x, 100 + delta.y]], [[10, 30], [20, 100]]);
 });
 
+test('テンプレートのコマ座標から上下・左右の代表間隔を求める', () => {
+  assert.deepEqual(inferPanelGutters([
+    { type: 'rect', x: 10, y: 10, w: 190, h: 60 },
+    { type: 'rect', x: 10, y: 76, w: 90, h: 80 },
+    { type: 'rect', x: 105, y: 76, w: 95, h: 80 },
+    { type: 'rect', x: 10, y: 162, w: 190, h: 125 },
+  ]), { rowGapMm: 6, columnGapMm: 5 });
+});
+
+test('辺を設定済みの上下・左右コマ間隔へ近づけると吸着する', () => {
+  const rowPanels = [
+    { ...rectPanel, shape: { type: 'rect', x: 10, y: 10, w: 190, h: 80 } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 10, y: 96, w: 190, h: 80 } },
+  ];
+  const rowSnap = snapPanelEdgeDeltaToGutter(rowPanels, 0, 2, 0, 0, { rowGapMm: 5, columnGapMm: 3 });
+  assert.equal(rowSnap.snapped, true);
+  assert.deepEqual({ x: rowSnap.x, y: rowSnap.y }, { x: 0, y: 1 });
+
+  const columnPanels = [
+    { ...rectPanel, shape: { type: 'rect', x: 10, y: 10, w: 90, h: 100 } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 104, y: 10, w: 90, h: 100 } },
+  ];
+  const columnSnap = snapPanelEdgeDeltaToGutter(columnPanels, 0, 1, 0, 0, { rowGapMm: 5, columnGapMm: 3 });
+  assert.equal(columnSnap.snapped, true);
+  assert.deepEqual({ x: columnSnap.x, y: columnSnap.y }, { x: 1, y: 0 });
+});
+
 test('近接する斜め平行辺をコマ間の連動対象として見つける', () => {
   const panels = [
     { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
@@ -119,7 +146,7 @@ test('辺ドラッグは選択した2頂点を同量移動して傾きを維持�
   assert.deepEqual(panels[0].shape.points, [[10, 10], [105, 13], [95, 103], [10, 100]]);
 });
 
-test('コマスナップ中の辺ドラッグは隣接する斜め平行辺も連動する', () => {
+test('コマシンクロ中の辺ドラッグは隣接する斜め平行辺も連動する', () => {
   const panels = [
     { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [100, 10], [90, 100], [10, 100]] } },
     { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[105, 10], [195, 10], [195, 100], [95, 100]] } },
@@ -164,7 +191,7 @@ test('頂点ドラッグは隣接辺だけを5mm間隔で傾け、外側の遠�
   }
 });
 
-test('コマスナップOFFなら1頂点だけを移動する', () => {
+test('コマシンクロOFFなら1頂点だけを移動する', () => {
   const panels = [
     { ...rectPanel, shape: { type: 'polygon', points: [[20, 20], [100, 20], [100, 100], [20, 100]] } },
   ];
@@ -314,7 +341,7 @@ test('横に分割されて少しズレた辺は隣辺へ吸着し、揃った�
   assert.deepEqual(panels[0].shape.points.slice(2), [[200, 92.7], [10, 92.7]]);
 });
 
-test('コマスナップOFF相当ではズレた隣辺へ干渉しない', () => {
+test('コマシンクロOFF相当ではズレた隣辺へ干渉しない', () => {
   const panels = [
     { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 88.1], [10, 88.1]] } },
     { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[104, 95.5], [200, 95.5], [200, 171], [104, 171]] } },

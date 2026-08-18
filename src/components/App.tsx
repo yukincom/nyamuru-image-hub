@@ -14,10 +14,10 @@ import GenerationPromptGuide from './GenerationPromptGuide';
 import HowToGuide from './HowToGuide';
 import NyamurutanGuide from './NyamurutanGuide';
 import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEditor, ValidationPanel } from './DocumentEditors';
-import { cloneDocument, newPage, newPanel, omnyFileName, panelFrameLineWidthFromStyleNotes, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga, withPanelFrameLineWidthStyleNote } from '../lib/manga';
-import { clamp, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
+import { cloneDocument, newPage, newPanel, omnyFileName, panelFrameLineWidthFromStyleNotes, panelGuttersFromStyleNotes, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga, withPanelFrameLineWidthStyleNote, withPanelGutterStyleNote } from '../lib/manga';
+import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
-import { attachDetectedFiguresToPage, attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, DEFAULT_PANEL_GUTTERS, DETECTED_FIGURE_NAME, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type DetectedFigureRegion, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
+import { attachDetectedFiguresToPage, attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, DETECTED_FIGURE_NAME, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type DetectedFigureRegion, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, PanelShape, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -87,7 +87,9 @@ const HOWTO_INTRO_KEY = 'manga-name-studio.howto-intro.v1';
 const DOCS_LANG_KEY = 'manga-name-studio.docs-lang.v1';
 const AUTO_ANCHOR_KEY = 'manga-name-studio.auto-anchor.v1';
 const INNER_FRAME_SNAP_KEY = 'manga-name-studio.inner-frame-snap.v1';
-const PANEL_SNAP_KEY = 'manga-name-studio.panel-snap.v1';
+const PANEL_SYNC_KEY = 'manga-name-studio.panel-sync.v1';
+const LEGACY_PANEL_SYNC_KEY = 'manga-name-studio.panel-snap.v1';
+const PANEL_GAP_SNAP_KEY = 'manga-name-studio.panel-gap-snap.v1';
 
 function initialDocsLang(): DocsLanguage {
   try {
@@ -110,9 +112,17 @@ function initialInnerFrameSnap(): boolean {
   return true;
 }
 
-function initialPanelSnap(): boolean {
+function initialPanelSync(): boolean {
   try {
-    return localStorage.getItem(PANEL_SNAP_KEY) !== '0';
+    const saved = localStorage.getItem(PANEL_SYNC_KEY);
+    return saved === null ? localStorage.getItem(LEGACY_PANEL_SYNC_KEY) !== '0' : saved !== '0';
+  } catch { /* private mode */ }
+  return true;
+}
+
+function initialPanelGapSnap(): boolean {
+  try {
+    return localStorage.getItem(PANEL_GAP_SNAP_KEY) !== '0';
   } catch { /* private mode */ }
   return true;
 }
@@ -159,7 +169,8 @@ export default function App() {
   const [showGuides, setShowGuides] = useState(true);
   const [autoAnchor, setAutoAnchor] = useState(initialAutoAnchor);
   const [innerFrameSnap, setInnerFrameSnap] = useState(initialInnerFrameSnap);
-  const [panelSnap, setPanelSnap] = useState(initialPanelSnap);
+  const [panelGapSnap, setPanelGapSnap] = useState(initialPanelGapSnap);
+  const [panelSync, setPanelSync] = useState(initialPanelSync);
   const [spreadView, setSpreadView] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -194,6 +205,10 @@ export default function App() {
   const page = document.manga.pages[activePage];
   const panel = page?.panels[activePanel];
   const panelFrameLineWidthMm = panelFrameLineWidthFromStyleNotes(document.manga.meta.style_notes);
+  const panelGutters = panelGuttersFromStyleNotes(
+    document.manga.meta.style_notes,
+    inferPanelGutters(page?.panels.map((item) => item.shape) ?? [], { rowGapMm: 5, columnGapMm: 5 }),
+  );
   // 見開きの相方ページ。右綴じなので若いページが右に並ぶ
   const spreadPartnerIndex = spreadView && document.manga.pages.length > 1
     ? (activePage + 1 < document.manga.pages.length ? activePage + 1 : activePage - 1)
@@ -700,6 +715,12 @@ export default function App() {
         pages[0].panels[0].bubbles = [];
       }
     }
+    const creationGutters = detectedLayouts.length
+      ? { rowGapMm: newLayoutRowGapMm, columnGapMm: newLayoutColumnGapMm }
+      : inferPanelGutters(
+        pages[0].panels.map((item) => item.shape),
+        template ? { rowGapMm: 5, columnGapMm: 5 } : DEFAULT_PANEL_GUTTERS,
+      );
     const fresh: MangaDocument = {
       manga: {
         schema_name: sample.manga.schema_name,
@@ -709,7 +730,10 @@ export default function App() {
           reading_direction: sample.manga.meta.reading_direction,
           text_orientation: sample.manga.meta.text_orientation,
           font: sample.manga.meta.font,
-          style_notes: withPanelFrameLineWidthStyleNote(sample.manga.meta.style_notes, newLayoutFrameLineWidthMm),
+          style_notes: withPanelGutterStyleNote(
+            withPanelFrameLineWidthStyleNote(sample.manga.meta.style_notes, newLayoutFrameLineWidthMm),
+            creationGutters,
+          ),
         },
         layout_spec: sample.manga.layout_spec,
         setting: { location: '', time: '', weather: '', background: [], props: [], situation: '' },
@@ -806,10 +830,15 @@ export default function App() {
     setInnerFrameSnap(next);
     try { localStorage.setItem(INNER_FRAME_SNAP_KEY, next ? '1' : '0'); } catch { /* private mode */ }
   };
-  const togglePanelSnap = () => {
-    const next = !panelSnap;
-    setPanelSnap(next);
-    try { localStorage.setItem(PANEL_SNAP_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+  const togglePanelGapSnap = () => {
+    const next = !panelGapSnap;
+    setPanelGapSnap(next);
+    try { localStorage.setItem(PANEL_GAP_SNAP_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+  };
+  const togglePanelSync = () => {
+    const next = !panelSync;
+    setPanelSync(next);
+    try { localStorage.setItem(PANEL_SYNC_KEY, next ? '1' : '0'); } catch { /* private mode */ }
   };
   // ドラッグ確定時の自動アンカー。このハンドラはドラッグ開始時のdocumentを閉じ込めたまま
   // 呼ばれるため、anchorだけ書くとドラッグ中のbbox更新を巻き戻してしまう。確定bboxも同時に書く
@@ -858,7 +887,13 @@ export default function App() {
     if (page.panels.length > template.shapes.length && !confirm(
       `パターン${template.id}は${template.shapes.length}コマです。現在の${page.panels.length}コマを読み順で統合し、人物・フキダシをすべて再配置します。続けますか？`,
     )) return;
-    mutate((draft) => applyPanelTemplate(draft.manga.pages[activePage], template));
+    mutate((draft) => {
+      applyPanelTemplate(draft.manga.pages[activePage], template);
+      draft.manga.meta.style_notes = withPanelGutterStyleNote(
+        draft.manga.meta.style_notes,
+        inferPanelGutters(template.shapes, { rowGapMm: 5, columnGapMm: 5 }),
+      );
+    });
     const nextPanelIndex = Math.min(activePanel, template.shapes.length - 1);
     setActivePanel(nextPanelIndex);
     setSelectedPanels([nextPanelIndex]);
@@ -918,10 +953,10 @@ export default function App() {
               </div>
             </div>
             {(() => {
-              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} frameLineWidthMm={panelFrameLineWidthMm} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} panelSnap={panelSnap} onTogglePanelSnap={togglePanelSnap} onSelectPanel={selectCanvasPanel} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
+              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} frameLineWidthMm={panelFrameLineWidthMm} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} onTogglePanelGapSnap={togglePanelGapSnap} panelSync={panelSync} onTogglePanelSync={togglePanelSync} onSelectPanel={selectCanvasPanel} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
               if (spreadPartnerIndex === null) return activeCanvas;
               const switchToPartner = (panelIndex = 0) => { setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]); };
-              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} frameLineWidthMm={panelFrameLineWidthMm} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} panelSnap={panelSnap} onTogglePanelSnap={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
+              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} frameLineWidthMm={panelFrameLineWidthMm} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} panelGutters={panelGutters} panelGapSnap={panelGapSnap} onTogglePanelGapSnap={() => {}} panelSync={panelSync} onTogglePanelSync={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
               // 右綴じ: 若いページが右（flexの後ろ）に来る
               const leftIndex = Math.max(activePage, spreadPartnerIndex);
               return <div class="canvas-spread">

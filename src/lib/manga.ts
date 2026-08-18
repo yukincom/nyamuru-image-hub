@@ -1,5 +1,6 @@
 import { parse, stringify } from 'yaml';
 import type { Manga, MangaDocument, MangaPage, Panel, ValidationIssue } from '../types';
+import { DEFAULT_PANEL_GUTTERS, type PanelGutterSettings } from './canvasGeometry.ts';
 
 export const STORAGE_KEY = 'manga-name-studio.document.v1';
 export const NDM_SCHEMA_NAME = 'Nyamuru Data Model' as const;
@@ -13,6 +14,7 @@ export const BLEED_EDGES = ['left', 'right', 'top', 'bottom'] as const;
 export const SCREEN_TEXT_ORIENTATIONS = ['horizontal', 'vertical'] as const;
 export const DEFAULT_PANEL_FRAME_LINE_WIDTH_MM = 1.6;
 const PANEL_FRAME_STYLE_NOTE_PREFIX = '[style] コマ枠線幅:';
+const PANEL_GUTTER_STYLE_NOTE_PREFIX = '[layout] コマ間隔:';
 
 function normalizedFrameLineWidth(value: number): number {
   if (!Number.isFinite(value)) return 1;
@@ -41,6 +43,42 @@ export function panelFrameLineWidthFromStyleNotes(
   const note = notes.find((item) => item.startsWith(PANEL_FRAME_STYLE_NOTE_PREFIX));
   const match = note?.slice(PANEL_FRAME_STYLE_NOTE_PREFIX.length).match(/\s*([0-9]+(?:\.[0-9]+)?)\s*mm/i);
   return match ? normalizedFrameLineWidth(Number(match[1])) : fallback;
+}
+
+function normalizedPanelGutters(settings: PanelGutterSettings): PanelGutterSettings {
+  const normalize = (value: number, fallback: number) => Number.isFinite(value)
+    ? Math.round(Math.min(20, Math.max(0, value)) * 10) / 10
+    : fallback;
+  return {
+    rowGapMm: normalize(settings.rowGapMm, DEFAULT_PANEL_GUTTERS.rowGapMm),
+    columnGapMm: normalize(settings.columnGapMm, DEFAULT_PANEL_GUTTERS.columnGapMm),
+  };
+}
+
+/** コマスナップで再利用する縦横間隔を、OMAYへ書き出せる作品固有設定として保存する。 */
+export function withPanelGutterStyleNote(notes: readonly string[], settings: PanelGutterSettings): string[] {
+  const gutters = normalizedPanelGutters(settings);
+  const gutterNote = `${PANEL_GUTTER_STYLE_NOTE_PREFIX} 上下${gutters.rowGapMm}mm・左右${gutters.columnGapMm}mm`;
+  let replaced = false;
+  const next = notes.flatMap((note) => {
+    if (!note.startsWith(PANEL_GUTTER_STYLE_NOTE_PREFIX)) return [note];
+    if (replaced) return [];
+    replaced = true;
+    return [gutterNote];
+  });
+  return replaced ? next : [...next, gutterNote];
+}
+
+/** 保存値がない既存作品では、現在のコマ座標から推定した間隔をフォールバックに使う。 */
+export function panelGuttersFromStyleNotes(
+  notes: readonly string[],
+  fallback: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
+): PanelGutterSettings {
+  const note = notes.find((item) => item.startsWith(PANEL_GUTTER_STYLE_NOTE_PREFIX));
+  const match = note?.slice(PANEL_GUTTER_STYLE_NOTE_PREFIX.length).match(/上下\s*([0-9]+(?:\.[0-9]+)?)\s*mm・左右\s*([0-9]+(?:\.[0-9]+)?)\s*mm/i);
+  return match
+    ? normalizedPanelGutters({ rowGapMm: Number(match[1]), columnGapMm: Number(match[2]) })
+    : normalizedPanelGutters(fallback);
 }
 
 export function parseMangaYaml(source: string): MangaDocument {

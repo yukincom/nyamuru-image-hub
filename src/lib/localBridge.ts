@@ -1,4 +1,4 @@
-import { clamp, INNER_FRAME_BOUNDS, nearestAnchor, panelBounds, pointInPanel, roundMm } from './canvasGeometry.ts';
+import { clamp, DEFAULT_PANEL_GUTTERS, INNER_FRAME_BOUNDS, nearestAnchor, panelBounds, pointInPanel, roundMm, type PanelGutterSettings } from './canvasGeometry.ts';
 import type { BBox, MangaPage, Panel, PanelShape } from '../types';
 
 const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8787';
@@ -17,18 +17,6 @@ export interface LayoutRecognitionResult {
   ocrEngine: string;
   ocrLines: RecognizedTextLine[];
 }
-
-export interface PanelGutterSettings {
-  /** 上下に並ぶコマ同士の間隔。 */
-  rowGapMm: number;
-  /** 左右に並ぶコマ同士の間隔。 */
-  columnGapMm: number;
-}
-
-export const DEFAULT_PANEL_GUTTERS: Readonly<PanelGutterSettings> = {
-  rowGapMm: 5,
-  columnGapMm: 3,
-};
 
 export interface RecognizedTextLine {
   id: string;

@@ -1,4 +1,4 @@
-import type { Anchor, BBox, CanvasElementType, Panel } from '../types';
+import type { Anchor, BBox, CanvasElementType, Panel, PanelShape } from '../types';
 
 export type ResizeHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 
@@ -18,6 +18,18 @@ export const PANEL_EDGE_LINK_DISTANCE_MM = 8;
 export const PANEL_EDGE_ALIGNMENT_TOLERANCE_MM = 0.15;
 const PANEL_VERTEX_CONTINUATION_OFFSET_MM = PANEL_SNAP_THRESHOLD_MM;
 export const PANEL_CORNER_LINK_DISTANCE_MM = 9;
+
+export interface PanelGutterSettings {
+  /** 上下に並ぶコマ同士の間隔。 */
+  rowGapMm: number;
+  /** 左右に並ぶコマ同士の間隔。 */
+  columnGapMm: number;
+}
+
+export const DEFAULT_PANEL_GUTTERS: Readonly<PanelGutterSettings> = {
+  rowGapMm: 5,
+  columnGapMm: 3,
+};
 
 export interface PanelEdgeReference {
   panelIndex: number;
@@ -51,6 +63,47 @@ export function panelShapePoints(panel: Panel): [number, number][] {
   if (panel.shape.type === 'polygon') return panel.shape.points.map(([x, y]) => [x, y]);
   const { x, y, w, h } = panel.shape;
   return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+}
+
+/** テンプレートや既存ページの実座標から、近接する縦横の代表間隔（中央値）を求める。 */
+export function inferPanelGutters(
+  shapes: readonly PanelShape[],
+  fallback: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
+): PanelGutterSettings {
+  const bounds = shapes.map((shape): BBox => {
+    if (shape.type === 'rect') return { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
+    const xs = shape.points.map(([x]) => x), ys = shape.points.map(([, y]) => y);
+    return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+  });
+  const rowGaps: number[] = [], columnGaps: number[] = [];
+  for (let firstIndex = 0; firstIndex < bounds.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < bounds.length; secondIndex += 1) {
+      const first = bounds[firstIndex], second = bounds[secondIndex];
+      const horizontalOverlap = Math.max(0, Math.min(first.x + first.w, second.x + second.w) - Math.max(first.x, second.x));
+      const verticalOverlap = Math.max(0, Math.min(first.y + first.h, second.y + second.h) - Math.max(first.y, second.y));
+      const normalizedHorizontalDistance = Math.abs((first.x + first.w / 2) - (second.x + second.w / 2)) / Math.max(1, (first.w + second.w) / 2);
+      const normalizedVerticalDistance = Math.abs((first.y + first.h / 2) - (second.y + second.h / 2)) / Math.max(1, (first.h + second.h) / 2);
+      if (normalizedVerticalDistance >= normalizedHorizontalDistance && horizontalOverlap >= Math.min(first.w, second.w) * 0.25) {
+        const [upper, lower] = first.y + first.h / 2 <= second.y + second.h / 2 ? [first, second] : [second, first];
+        const gap = lower.y - (upper.y + upper.h);
+        if (gap > 0 && gap <= 12) rowGaps.push(gap);
+      } else if (verticalOverlap >= Math.min(first.h, second.h) * 0.25) {
+        const [left, right] = first.x + first.w / 2 <= second.x + second.w / 2 ? [first, second] : [second, first];
+        const gap = right.x - (left.x + left.w);
+        if (gap > 0 && gap <= 12) columnGaps.push(gap);
+      }
+    }
+  }
+  const median = (values: number[], fallbackValue: number) => {
+    if (!values.length) return roundMm(clamp(fallbackValue, 0, 20));
+    const sorted = values.sort((left, right) => left - right);
+    const middle = Math.floor(sorted.length / 2);
+    return roundMm(sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2);
+  };
+  return {
+    rowGapMm: median(rowGaps, fallback.rowGapMm),
+    columnGapMm: median(columnGaps, fallback.columnGapMm),
+  };
 }
 
 function edgePoints(panel: Panel, edgeIndex: number): [[number, number], [number, number]] | null {
@@ -246,6 +299,79 @@ function findCornerLinkedPanelVertices(
   });
   return [...unique.values()]
     .sort((left, right) => left.edgeDistance - right.edgeDistance || left.cornerDistance - right.cornerDistance);
+}
+
+/** 対向する平行辺との距離が作品の縦横コマ間隔へ近づいたとき、選択辺を正確な間隔へ吸着する。 */
+export function snapPanelEdgeDeltaToGutter(
+  panels: Panel[],
+  panelIndex: number,
+  edgeIndex: number,
+  deltaX: number,
+  deltaY: number,
+  gutters: PanelGutterSettings,
+  threshold = PANEL_SNAP_THRESHOLD_MM,
+  axis?: 'x' | 'y',
+): { x: number; y: number; snapped: boolean; target?: PanelEdgeReference } {
+  const selectedPanel = panels[panelIndex];
+  const selectedEdge = selectedPanel && edgePoints(selectedPanel, edgeIndex);
+  if (!selectedEdge) return { x: roundMm(deltaX), y: roundMm(deltaY), snapped: false };
+  const [start, end] = selectedEdge;
+  const vectorX = end[0] - start[0], vectorY = end[1] - start[1];
+  const length = Math.hypot(vectorX, vectorY);
+  if (!length) return { x: roundMm(deltaX), y: roundMm(deltaY), snapped: false };
+  const unitX = vectorX / length, unitY = vectorY / length;
+  const normalX = -unitY, normalY = unitX;
+  const targetGap = Math.abs(vectorX) >= Math.abs(vectorY)
+    ? clamp(gutters.rowGapMm, 0, 20)
+    : clamp(gutters.columnGapMm, 0, 20);
+  const movedStart: [number, number] = [start[0] + deltaX, start[1] + deltaY];
+  const candidates: Array<{ error: number; correctionX: number; correctionY: number; target: PanelEdgeReference }> = [];
+
+  panels.forEach((panel, candidatePanelIndex) => {
+    if (candidatePanelIndex === panelIndex) return;
+    const points = panelShapePoints(panel);
+    points.forEach((candidateStart, candidateEdgeIndex) => {
+      const candidateEnd = points[(candidateEdgeIndex + 1) % points.length];
+      const candidateVectorX = candidateEnd[0] - candidateStart[0], candidateVectorY = candidateEnd[1] - candidateStart[1];
+      const candidateLength = Math.hypot(candidateVectorX, candidateVectorY);
+      if (!candidateLength) return;
+      const parallelError = Math.abs(vectorX * candidateVectorY - vectorY * candidateVectorX) / (length * candidateLength);
+      if (parallelError > 0.08) return;
+      const projectionA = (candidateStart[0] - movedStart[0]) * unitX + (candidateStart[1] - movedStart[1]) * unitY;
+      const projectionB = (candidateEnd[0] - movedStart[0]) * unitX + (candidateEnd[1] - movedStart[1]) * unitY;
+      const overlap = Math.max(0, Math.min(length, Math.max(projectionA, projectionB)) - Math.max(0, Math.min(projectionA, projectionB)));
+      if (overlap < Math.min(8, Math.min(length, candidateLength) * 0.25)) return;
+      const signedDistance = (
+        (candidateStart[0] - movedStart[0]) * normalX + (candidateStart[1] - movedStart[1]) * normalY
+          + (candidateEnd[0] - movedStart[0]) * normalX + (candidateEnd[1] - movedStart[1]) * normalY
+      ) / 2;
+      if (targetGap > 0 && Math.abs(signedDistance) <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM) return;
+      const error = Math.abs(Math.abs(signedDistance) - targetGap);
+      if (error > threshold) return;
+      const desiredDistance = (signedDistance < 0 ? -1 : 1) * targetGap;
+      const normalCorrection = signedDistance - desiredDistance;
+      let correctionX = normalX * normalCorrection, correctionY = normalY * normalCorrection;
+      if (axis === 'x') {
+        if (Math.abs(normalX) <= 1e-6) return;
+        correctionX = normalCorrection / normalX;
+        correctionY = 0;
+      } else if (axis === 'y') {
+        if (Math.abs(normalY) <= 1e-6) return;
+        correctionX = 0;
+        correctionY = normalCorrection / normalY;
+      }
+      candidates.push({ error, correctionX, correctionY, target: { panelIndex: candidatePanelIndex, edgeIndex: candidateEdgeIndex } });
+    });
+  });
+
+  const best = candidates.sort((left, right) => left.error - right.error || Math.hypot(left.correctionX, left.correctionY) - Math.hypot(right.correctionX, right.correctionY))[0];
+  if (!best) return { x: roundMm(deltaX), y: roundMm(deltaY), snapped: false };
+  return {
+    x: roundMm(deltaX + best.correctionX),
+    y: roundMm(deltaY + best.correctionY),
+    snapped: true,
+    target: best.target,
+  };
 }
 
 /**

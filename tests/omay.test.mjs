@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parse } from 'yaml';
-import { OMAY_SPEC_NAME, omayFileName, omnyFileName, panelFrameLineWidthFromStyleNotes, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml, withPanelFrameLineWidthStyleNote } from '../src/lib/manga.ts';
+import { OMAY_SPEC_NAME, omayFileName, omnyFileName, panelFrameLineWidthFromStyleNotes, panelGuttersFromStyleNotes, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml, withPanelFrameLineWidthStyleNote, withPanelGutterStyleNote } from '../src/lib/manga.ts';
 
 const omaySource = readFileSync(new URL('../src/content/standard.omay.yaml', import.meta.url), 'utf8');
 const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
@@ -62,6 +62,13 @@ test('新規取り込みの枠線幅を重複なく作画指定へ保存して�
   assert.equal(panelFrameLineWidthFromStyleNotes(updated), 2.2);
   assert.match(updated[1], /太さ約2.2mm/);
   assert.equal(panelFrameLineWidthFromStyleNotes(original), 1.6);
+});
+
+test('新規取り込みまたはテンプレートのコマ間隔を作品設定へ保存して読み戻す', () => {
+  const updated = withPanelGutterStyleNote(['[style] モノクロ漫画'], { rowGapMm: 6, columnGapMm: 3 });
+  assert.equal(updated.length, 2);
+  assert.deepEqual(panelGuttersFromStyleNotes(updated), { rowGapMm: 6, columnGapMm: 3 });
+  assert.deepEqual(panelGuttersFromStyleNotes([], { rowGapMm: 5, columnGapMm: 5 }), { rowGapMm: 5, columnGapMm: 5 });
 });
 
 test('保存2種類とOMAYのファイル名に対応する拡張子が付く', () => {
