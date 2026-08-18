@@ -523,6 +523,9 @@ export default function App() {
           reason: '利用者がコマ割りを選択しました。',
           rotationDegrees: 0,
           detectedPanelCount: 0,
+          orientationEngine: '',
+          orientationConfidence: 0,
+          orientationHighConfidence: false,
           structureEngine: '',
           ocrEngine: '',
           ocrLines: [],
@@ -845,6 +848,7 @@ export default function App() {
             {activeLayoutItem?.error && <p class="new-layout-message">{activeLayoutItem.error}</p>}
             {activeLayoutAnalysis && !activeLayoutAnalysis.templateId && <p class="new-layout-message">{activeLayoutAnalysis.reason}</p>}
             {activeLayoutAnalysis && <div class="new-layout-analysis-detail">
+              <span>向き: {activeLayoutAnalysis.orientationEngine || '構造補助'} · {Math.round(activeLayoutAnalysis.orientationConfidence * 100)}%{activeLayoutAnalysis.orientationHighConfidence ? '' : '（低確信）'}</span>
               <span>コマ: {activeLayoutAnalysis.structureEngine || '検出なし'} · {activeLayoutAnalysis.detectedPanelCount}領域</span>
               <span>文字: {activeLayoutAnalysis.ocrEngine || '検出なし'} · {activeLayoutAnalysis.ocrLines.length}件</span>
               <span>Qwen補助: {activeLayoutAnalysis.qwenOrientationUsed || activeLayoutAnalysis.qwenLayoutUsed || activeLayoutAnalysis.qwenOcrUsed ? `使用（文字置換${activeLayoutAnalysis.qwenOcrChanged}件）` : '未使用'}</span>

@@ -27,6 +27,8 @@ DEFAULT_MODEL = "Qwen3-VL-8B-NSFW-Caption-V4.5-heretic.i1-Q5_K_M.gguf"
 TOOLS_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MANGA_BABBLE_ROOT = TOOLS_ROOT / "manga-babble-maker"
 DEFAULT_NDLOCR_ROOT = TOOLS_ROOT / "ndlocr-lite"
+DEFAULT_RAPID_ORIENTATION_ROOT = TOOLS_ROOT / "rapid-orientation"
+RAPID_ORIENTATION_CONFIDENCE = 0.25
 # 高解像度TIFFをブラウザ側で縮小できない場合にも、ローカルbridgeで受け取れる上限。
 MAX_BODY_BYTES = 96 * 1024 * 1024
 ALLOWED_ORIGIN = re.compile(r"^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?$")
@@ -56,10 +58,15 @@ def parse_args() -> argparse.Namespace:
         default=Path(os.environ.get("NYAMURU_NDLOCR_ROOT", DEFAULT_NDLOCR_ROOT)),
     )
     parser.add_argument(
+        "--rapid-orientation-root",
+        type=Path,
+        default=Path(os.environ.get("NYAMURU_RAPID_ORIENTATION_ROOT", DEFAULT_RAPID_ORIENTATION_ROOT)),
+    )
+    parser.add_argument(
         "--qwen-mode",
         choices=("off", "auto", "compare"),
         default=os.environ.get("NYAMURU_QWEN_MODE", "auto"),
-        help="off: 専用モデルのみ / auto: 不確実時だけ補助 / compare: 常に比較",
+        help="off: 専用モデルのみ / auto: RapidOrientation低確信時だけ向きを補助 / compare: 常にQwenとも比較",
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -737,12 +744,17 @@ def run_local_worker(
         ]
         if model is not None:
             command.extend(("--model", str(model)))
+        worker_environment = os.environ.copy()
+        if engine == "orientation":
+            # ONNX Runtime 1.29 otherwise leaves a stray `:memory:.ses` file on macOS.
+            worker_environment["ORT_DISABLE_TELEMETRY"] = "1"
         completed = subprocess.run(
             command,
             input=json.dumps(request or {}, ensure_ascii=False),
             capture_output=True,
             text=True,
             timeout=90,
+            env=worker_environment,
         )
         try:
             payload = json.loads(completed.stdout.strip())
@@ -1034,6 +1046,7 @@ class VlmState:
         model_name: str,
         manga_babble_root: Path,
         ndlocr_root: Path,
+        rapid_orientation_root: Path,
         qwen_mode: str,
     ):
         self.comfy_root = comfy_root.resolve()
@@ -1044,6 +1057,14 @@ class VlmState:
         self.rtdetr_model = self.manga_babble_root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
         self.ndlocr_root = ndlocr_root.resolve()
         self.ndlocr_python = self.ndlocr_root / ".venv" / "bin" / "python"
+        self.rapid_orientation_root = rapid_orientation_root.resolve()
+        self.rapid_orientation_python = self.rapid_orientation_root / ".venv" / "bin" / "python"
+        rapid_models = list(
+            (self.rapid_orientation_root / ".venv" / "lib").glob(
+                "python*/site-packages/rapid_orientation/models/rapid_orientation.onnx"
+            )
+        )
+        self.rapid_orientation_model = rapid_models[0] if rapid_models else None
         self.qwen_mode = qwen_mode
         self.node = None
         self.lock = threading.Lock()
@@ -1066,6 +1087,12 @@ class VlmState:
             "rtdetr_model": str(self.rtdetr_model),
             "ndlocr_available": self.ndlocr_python.is_file() and (self.ndlocr_root / "src" / "model").is_dir(),
             "ndlocr_root": str(self.ndlocr_root),
+            "rapid_orientation_available": (
+                self.rapid_orientation_python.is_file()
+                and self.rapid_orientation_model is not None
+                and self.rapid_orientation_model.is_file()
+            ),
+            "rapid_orientation_root": str(self.rapid_orientation_root),
             "scanner_available": Path("/System/Applications/Image Capture.app").is_dir(),
         }
 
@@ -1119,15 +1146,57 @@ Return exactly one JSON object and no other text:
         _, fallback_rotation, _ = rank_candidates_with_orientation(image_bytes, candidates)
         qwen_ready = self.qwen_available() and self.qwen_mode != "off"
         rotation = fallback_rotation
+        orientation: dict[str, Any] = {
+            "engine": "panel-structure fallback",
+            "confidence": 0.0,
+            "threshold": RAPID_ORIENTATION_CONFIDENCE,
+            "high_confidence": False,
+            "observed_rotation_degrees": None,
+            "correction_degrees": fallback_rotation,
+        }
+        if self.rapid_orientation_python.is_file():
+            try:
+                rapid = run_local_worker(
+                    python=self.rapid_orientation_python,
+                    engine="orientation",
+                    root=self.rapid_orientation_root,
+                    image_bytes=image_bytes,
+                )
+                rapid_rotation = int(rapid.get("correction_degrees", fallback_rotation))
+                rapid_confidence = max(0.0, min(1.0, float(rapid.get("confidence", 0) or 0)))
+                rapid_high_confidence = (
+                    rapid_rotation in {0, 90, 180, 270}
+                    and rapid_confidence >= RAPID_ORIENTATION_CONFIDENCE
+                )
+                orientation = {
+                    **rapid,
+                    "threshold": RAPID_ORIENTATION_CONFIDENCE,
+                    "high_confidence": rapid_high_confidence,
+                }
+                if rapid_high_confidence:
+                    rotation = rapid_rotation
+            except (OSError, RuntimeError, ValueError) as exc:
+                orientation["error"] = str(exc)
         qwen_orientation_used = False
-        if qwen_ready:
+        should_use_qwen_orientation = qwen_ready and (
+            self.qwen_mode == "compare" or not orientation["high_confidence"]
+        )
+        if should_use_qwen_orientation:
             orientation_prompt = """The image shows the same Japanese manga storyboard page in four labeled rotation options.
 Read Japanese handwriting, speech, page numbers, and inspect the drawings. Choose the one option where text and drawings are upright and naturally readable.
 Return exactly one JSON object and no other text:
 {"rotation_degrees":0}
 rotation_degrees must be exactly one of 0, 90, 180, or 270 and means clockwise correction applied to the original image."""
             orientation_raw = self._process(make_orientation_image(image_bytes), orientation_prompt, 64)
-            rotation = parse_orientation_result(orientation_raw, fallback_rotation)
+            qwen_rotation = parse_orientation_result(orientation_raw, fallback_rotation)
+            orientation["qwen_correction_degrees"] = qwen_rotation
+            orientation["qwen_agreed"] = (
+                qwen_rotation == orientation.get("correction_degrees")
+                if orientation.get("engine") == "RapidOrientation"
+                else None
+            )
+            if not orientation["high_confidence"]:
+                rotation = qwen_rotation
             qwen_orientation_used = True
         width, height = normalized_image_size(image_bytes)
         expected_rotations = {90, 270} if width > height else {0, 180}
@@ -1162,9 +1231,7 @@ rotation_degrees must be exactly one of 0, 90, 180, or 270 and means clockwise c
         structural_confidence = max(0.0, min(0.92, 1 / (1 + structural_score))) if detected_count else 0.0
 
         qwen_layout: dict[str, Any] = {"used": False, "template_id": None, "agreed": None}
-        should_compare_layout = qwen_ready and (
-            self.qwen_mode == "compare" or not detected_count or structural_gap < 0.18
-        )
+        should_compare_layout = qwen_ready and self.qwen_mode == "compare"
         if should_compare_layout:
             shortlist = [candidate for candidate, _ in ranked[:5]] if detected_count else candidates
             names = "\n".join(f"{item['id']}: {item['name']} ({len(item['shapes'])} panels)" for item in shortlist)
@@ -1204,9 +1271,7 @@ Return exactly one JSON object and no other text:
         ocr_lines = usable_ocr_lines(ocr_payload)
         qwen_ocr_used = False
         qwen_ocr_changed = 0
-        should_review_ocr = qwen_ready and ocr_lines and (
-            self.qwen_mode == "compare" or any(line["needs_review"] for line in ocr_lines)
-        )
+        should_review_ocr = qwen_ready and bool(ocr_lines) and self.qwen_mode == "compare"
         if should_review_ocr:
             suggestions = self._review_ocr(upright_bytes, ocr_lines)
             qwen_ocr_used = True
@@ -1230,6 +1295,7 @@ Return exactly one JSON object and no other text:
                 "reason": "専用検出器で読み取れるコマ領域が見つからなかったため、自動候補を確定しませんでした。",
             }
         result["rotation_degrees"] = rotation
+        result["orientation"] = orientation
         result["detected_panel_count"] = detected_count
         result["alternatives"] = [item["id"] for item, _ in ranked[:5]]
         result["structure"] = {
@@ -1382,17 +1448,23 @@ def main() -> int:
         args.model,
         args.manga_babble_root,
         args.ndlocr_root,
+        args.rapid_orientation_root,
         args.qwen_mode,
     )
     status = state.check()
     if args.check:
         print(json.dumps(status, ensure_ascii=False, indent=2))
-        return 0 if status["rtdetr_available"] and status["ndlocr_available"] else 1
+        return 0 if (
+            status["rtdetr_available"]
+            and status["ndlocr_available"]
+            and status["rapid_orientation_available"]
+        ) else 1
     server = ThreadingHTTPServer((args.host, args.port), BridgeHandler)
     server.state = state  # type: ignore[attr-defined]
     print(f"Nyamuru local bridge: http://{args.host}:{args.port}")
     print(f"RT-DETR: {state.rtdetr_model}")
     print(f"NDLOCR-Lite: {state.ndlocr_root}")
+    print(f"RapidOrientation: {state.rapid_orientation_root}")
     print(f"Qwen3-VL ({args.qwen_mode}): {args.model}")
     try:
         server.serve_forever()

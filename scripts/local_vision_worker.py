@@ -2,8 +2,8 @@
 """One-shot workers for optional local manga detectors.
 
 The parent bridge intentionally launches these workers with each project's own
-Python environment.  This keeps ComfyUI, manga-babble-maker, and NDLOCR-Lite
-dependencies isolated from one another.
+Python environment.  This keeps ComfyUI, RapidOrientation,
+manga-babble-maker, and NDLOCR-Lite dependencies isolated from one another.
 """
 
 from __future__ import annotations
@@ -18,12 +18,79 @@ from typing import Any
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--engine", choices=("rtdetr", "ndlocr"), required=True)
+    parser.add_argument("--engine", choices=("orientation", "rtdetr", "ndlocr"), required=True)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--model", type=Path)
     parser.add_argument("--confidence", type=float, default=0.2)
     return parser.parse_args()
+
+
+def run_orientation(root: Path, image: Path) -> dict[str, Any]:
+    """Classify page orientation using several real crops and page geometry.
+
+    RapidOrientation 0.0.11's public wrapper repeats the same center crop three
+    times.  Sparse manga storyboards need coverage across the long page axis,
+    so this adapter samples five distinct crops and averages the model output.
+    A portrait page can only be upright/upside-down; a landscape page can only
+    be left/right rotated.  Restricting the labels by geometry prevents the
+    model from confusing vertical Japanese writing with a sideways document.
+    """
+    import cv2
+    import numpy as np
+    from PIL import Image, ImageOps
+    from rapid_orientation import RapidOrientation
+
+    engine = RapidOrientation()
+    labels = [int(label) for label in engine.labels]
+    with Image.open(image) as source:
+        rgb = np.asarray(ImageOps.exif_transpose(source).convert("RGB"))
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    height, width = bgr.shape[:2]
+    scale = 256 / min(width, height)
+    resized = cv2.resize(
+        bgr,
+        (round(width * scale), round(height * scale)),
+        interpolation=cv2.INTER_LANCZOS4,
+    )
+    resized_height, resized_width = resized.shape[:2]
+    if resized_height >= resized_width:
+        offsets = [
+            ((resized_width - 224) // 2, round(value))
+            for value in np.linspace(0, resized_height - 224, 5)
+        ]
+        allowed_labels = {0, 180}
+    else:
+        offsets = [
+            (round(value), (resized_height - 224) // 2)
+            for value in np.linspace(0, resized_width - 224, 5)
+        ]
+        allowed_labels = {90, 270}
+
+    mean = np.asarray([0.485, 0.456, 0.406], dtype=np.float32).reshape(1, 1, 3)
+    std = np.asarray([0.229, 0.224, 0.225], dtype=np.float32).reshape(1, 1, 3)
+    samples = []
+    for left, top in offsets:
+        crop = resized[top : top + 224, left : left + 224].astype(np.float32) / 255
+        samples.append(((crop - mean) / std).transpose(2, 0, 1))
+    output = engine.session(np.stack(samples))[0]
+    scores = np.asarray(output, dtype=np.float32).mean(axis=0)
+    allowed_indexes = [index for index, label in enumerate(labels) if label in allowed_labels]
+    selected_index = max(allowed_indexes, key=lambda index: float(scores[index]))
+    alternate_index = min(allowed_indexes, key=lambda index: float(scores[index]))
+    observed_rotation = labels[selected_index]
+    confidence = max(0.0, min(1.0, float(scores[selected_index])))
+    margin = max(0.0, float(scores[selected_index] - scores[alternate_index]))
+    return {
+        "engine": "RapidOrientation",
+        "version": "0.0.11",
+        "observed_rotation_degrees": observed_rotation,
+        "correction_degrees": (-observed_rotation) % 360,
+        "confidence": confidence,
+        "margin": margin,
+        "crop_count": len(samples),
+        "crop_predictions": [labels[int(index)] for index in np.argmax(output, axis=1)],
+    }
 
 
 def run_rtdetr(root: Path, image: Path, model: Path | None, confidence: float) -> dict[str, Any]:
@@ -161,7 +228,9 @@ def main() -> int:
             value = json.loads(raw_request)
             if isinstance(value, dict):
                 request = value
-        if args.engine == "rtdetr":
+        if args.engine == "orientation":
+            result = run_orientation(args.root.resolve(), args.image.resolve())
+        elif args.engine == "rtdetr":
             result = run_rtdetr(args.root.resolve(), args.image.resolve(), args.model, args.confidence)
         else:
             regions = request.get("regions") if isinstance(request.get("regions"), list) else []

@@ -5,7 +5,8 @@
 - RT-DETR（manga-babble-maker）: コマ・文字領域の検出
 - 罫線補助: 薄い鉛筆の段境界を検出
 - NDLOCR-Lite: 検出した領域の手書き文字認識
-- Qwen3-VL: 文字を読まないと決めにくい向き、不確実なレイアウト、低品質OCRの確認候補
+- RapidOrientation: 5領域とページ形状を使う高速な向き判定
+- Qwen3-VL: RapidOrientationが低確信の向き、または明示的な比較評価
 
 画像はファイルを選択しただけでは解析処理へ渡されません。「ローカル解析」を押した時だけ、`127.0.0.1`で待ち受けるローカル連携へ1枚ずつ送られます。外部サービスへの送信は行いません。コマ割りと文字候補は利用者が確認してから新規作成へ反映し、文字候補は位置に対応するコマの編集可能なフキダシとして配置します。誤読を前提に、低確信度またはQwen補助の文字は画面で「要確認」と表示します。
 
@@ -27,17 +28,17 @@ npm run bridge:check
 
 既定ではリポジトリと同じ親フォルダにある `ComfyUI-current`、`ComfyUI-v0.32.0`、`ComfyUI` の順で探索します。別の場所にある場合は `NYAMURU_COMFY_ROOT` にComfyUIルートを指定します。
 
-既定の専用環境は、同じ親フォルダの `manga-babble-maker` と `ndlocr-lite` です。それぞれ独立した `.venv` で一回限りのワーカーを実行するため、ComfyUIのPython依存関係とは混在しません。場所を変える場合は `NYAMURU_MANGA_BABBLE_ROOT` と `NYAMURU_NDLOCR_ROOT` を指定します。モデル重みはNyamuruへコピーしません。
+既定の専用環境は、同じ親フォルダの `manga-babble-maker`、`ndlocr-lite`、`rapid-orientation` です。それぞれ独立した `.venv` で一回限りのワーカーを実行するため、ComfyUIのPython依存関係とは混在しません。場所を変える場合は `NYAMURU_MANGA_BABBLE_ROOT`、`NYAMURU_NDLOCR_ROOT`、`NYAMURU_RAPID_ORIENTATION_ROOT` を指定します。モデル重みはNyamuruへコピーしません。
 
 Qwenの使用範囲は起動時に切り替えられます。
 
 ```bash
-npm run bridge -- --qwen-mode off      # 専用モデルのみ
-npm run bridge -- --qwen-mode auto     # 向きと、不確実・低品質な箇所だけ補助（既定）
-npm run bridge -- --qwen-mode compare  # 評価用に毎回比較
+npm run bridge -- --qwen-mode off      # RapidOrientationだけ（低確信時は構造補助）
+npm run bridge -- --qwen-mode auto     # RapidOrientation低確信時だけQwenで向きを補助（既定）
+npm run bridge -- --qwen-mode compare  # 向き・レイアウト・OCRをQwenとも毎回比較
 ```
 
-`auto`でもQwenの提案が低確信度ならレイアウトを上書きしません。OCRの提案は元の専用OCR結果と紐付け、明らかな文字化けを置き換える場合も「要確認」のままにします。関連ライセンスとモデル配置方針は `docs/LOCAL_VISION_COMPONENTS.md` を参照してください。
+`auto`ではQwenを向きのフォールバックに限定するため、通常ページでは8Bモデルを起動しません。`compare`で得たOCR提案は元の専用OCR結果と紐付け、明らかな文字化けを置き換える場合も「要確認」のままにします。関連ライセンスとモデル配置方針は `docs/LOCAL_VISION_COMPONENTS.md` を参照してください。
 
 ## スキャナー
 

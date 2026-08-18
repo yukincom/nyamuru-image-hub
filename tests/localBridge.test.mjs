@@ -10,6 +10,9 @@ test('bridgeの有効なテンプレート候補を正規化する', () => {
   }, ids), {
     templateId: 'B', confidence: 0.84, reason: '6コマの配置が近い', rotationDegrees: 90,
     detectedPanelCount: 0,
+    orientationEngine: '',
+    orientationConfidence: 0,
+    orientationHighConfidence: false,
     structureEngine: '',
     ocrEngine: '',
     ocrLines: [],
@@ -42,6 +45,7 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
   const result = normalizeLayoutRecognition({
     template_id: 'A',
     detected_panel_count: 3,
+    orientation: { engine: 'RapidOrientation', confidence: 0.42, high_confidence: true },
     structure: { engine: 'RT-DETR' },
     ocr: { engine: 'NDLOCR-Lite', lines: [{
       id: 'line-1', text: 'こんにちは', bbox: [0.6, 0.1, 0.2, 0.12], confidence: 1.4,
@@ -50,6 +54,9 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
     qwen: { mode: 'compare', orientation_used: true, layout: { used: true, agreed: false }, ocr_used: true, ocr_changed: 1 },
   }, ids);
   assert.equal(result.detectedPanelCount, 3);
+  assert.equal(result.orientationEngine, 'RapidOrientation');
+  assert.equal(result.orientationConfidence, 0.42);
+  assert.equal(result.orientationHighConfidence, true);
   assert.equal(result.structureEngine, 'RT-DETR');
   assert.equal(result.ocrLines[0].text, 'こんにちは');
   assert.equal(result.ocrLines[0].confidence, 1);

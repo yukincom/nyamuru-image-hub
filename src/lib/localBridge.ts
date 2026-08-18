@@ -11,6 +11,9 @@ export interface LayoutRecognitionResult {
   reason: string;
   rotationDegrees: 0 | 90 | 180 | 270;
   detectedPanelCount: number;
+  orientationEngine: string;
+  orientationConfidence: number;
+  orientationHighConfidence: boolean;
   structureEngine: string;
   ocrEngine: string;
   ocrLines: RecognizedTextLine[];
@@ -39,6 +42,7 @@ interface BridgeLayoutResponse {
   reason?: unknown;
   rotation_degrees?: unknown;
   detected_panel_count?: unknown;
+  orientation?: unknown;
   structure?: unknown;
   ocr?: unknown;
   qwen?: unknown;
@@ -98,6 +102,9 @@ export function normalizeLayoutRecognition(
   const structure = payload.structure && typeof payload.structure === 'object'
     ? payload.structure as Record<string, unknown>
     : {};
+  const orientation = payload.orientation && typeof payload.orientation === 'object'
+    ? payload.orientation as Record<string, unknown>
+    : {};
   const ocr = payload.ocr && typeof payload.ocr === 'object'
     ? payload.ocr as Record<string, unknown>
     : {};
@@ -108,6 +115,10 @@ export function normalizeLayoutRecognition(
     ? qwen.layout as Record<string, unknown>
     : {};
   const qwenMode = qwen.mode === 'off' || qwen.mode === 'compare' ? qwen.mode : 'auto';
+  const rawOrientationConfidence = Number(orientation.confidence);
+  const orientationConfidence = Number.isFinite(rawOrientationConfidence)
+    ? Math.min(1, Math.max(0, rawOrientationConfidence))
+    : 0;
   const ocrLines = (Array.isArray(ocr.lines) ? ocr.lines : []).flatMap((entry, index): RecognizedTextLine[] => {
     if (!entry || typeof entry !== 'object') return [];
     const item = entry as Record<string, unknown>;
@@ -139,6 +150,9 @@ export function normalizeLayoutRecognition(
     reason,
     rotationDegrees,
     detectedPanelCount,
+    orientationEngine: typeof orientation.engine === 'string' ? orientation.engine : '',
+    orientationConfidence,
+    orientationHighConfidence: orientation.high_confidence === true,
     structureEngine: typeof structure.engine === 'string' ? structure.engine : '',
     ocrEngine: typeof ocr.engine === 'string' ? ocr.engine : '',
     ocrLines,

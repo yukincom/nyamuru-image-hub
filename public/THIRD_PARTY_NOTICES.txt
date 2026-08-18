@@ -168,6 +168,13 @@ or web bundle. If they are shared or redistributed, the attribution and change
 indication requirements in the upstream LICENCE file apply. Its dependencies
 remain subject to their respective licenses.
 
+RapidOrientation 0.0.11 — Apache License 2.0
+https://github.com/RapidAI/RapidOrientation
+
+RapidOrientation, its independent Python environment, and its bundled ONNX
+model are optional local components and are not copied into this project's
+source or web bundle. The upstream Apache-2.0 terms apply to that installation.
+
 The optional manga structure detector and Qwen3-VL integration likewise use
 code and model files from independent local installations. They are not bundled
 with this project. See docs/LOCAL_VISION_COMPONENTS.md for the local boundary
