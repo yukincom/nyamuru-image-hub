@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { BookOpen, BookOpenCheck, Boxes, Braces, Cat, ChevronLeft, ChevronRight, CircleHelp, Eye, EyeOff, FilePlus2, Files, Images, LayoutPanelTop, ScanLine, Settings2, SlidersHorizontal, Sparkles, UsersRound, Workflow, X } from 'lucide-preact';
+import { BookOpen, BookOpenCheck, Boxes, Braces, Cat, ChevronLeft, ChevronRight, CircleHelp, Combine, Eye, EyeOff, FilePlus2, Files, Images, LayoutPanelTop, ScanLine, Settings2, SlidersHorizontal, Sparkles, UsersRound, Workflow, X } from 'lucide-preact';
 import sampleYaml from '../content/sample.omny.yaml?raw';
 import { version as appVersion, versionCode as appVersionCode } from '../../package.json';
 import { sampleMangaPages } from '../lib/sampleMangaImages';
@@ -16,7 +16,7 @@ import NyamurutanGuide from './NyamurutanGuide';
 import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEditor, ValidationPanel } from './DocumentEditors';
 import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga } from '../lib/manga';
 import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
-import { applyPanelTemplate, findPanelTemplate, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
+import { applyPanelTemplate, findPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
 import { attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, PanelShape, WorkspaceTab } from '../types';
 
@@ -140,6 +140,7 @@ export default function App() {
   const [document, setDocumentState] = useState<MangaDocument>(initialDocument);
   const [activePage, setActivePage] = useState(0);
   const [activePanel, setActivePanel] = useState(0);
+  const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
   const [selectedElement, setSelectedElement] = useState<CanvasElementSelection | null>(null);
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
   const [docsLang, setDocsLangState] = useState<DocsLanguage>(initialDocsLang);
@@ -199,7 +200,9 @@ export default function App() {
     setDocumentState(target);
     const pageIndex = Math.min(activePage, target.manga.pages.length - 1);
     setActivePage(pageIndex);
-    setActivePanel(Math.min(activePanel, Math.max(0, (target.manga.pages[pageIndex]?.panels.length ?? 1) - 1)));
+    const panelIndex = Math.min(activePanel, Math.max(0, (target.manga.pages[pageIndex]?.panels.length ?? 1) - 1));
+    setActivePanel(panelIndex);
+    setSelectedPanels([panelIndex]);
     setSelectedElement(null);
     lastHistoryPush.current = 0;
     if (tab === 'yaml') { setRawSource(toMangaYaml(target)); setRawError(null); }
@@ -277,6 +280,36 @@ export default function App() {
     setShowNewDialog(false);
   };
 
+  const selectCanvasPanel = (index: number, additive = false) => {
+    if (!additive) {
+      setActivePanel(index);
+      setSelectedPanels([index]);
+      if (index === activePanel) setSelectedElement(null);
+      return;
+    }
+    const next = selectedPanels.includes(index)
+      ? selectedPanels.length > 1 ? selectedPanels.filter((item) => item !== index) : selectedPanels
+      : [...selectedPanels, index].sort((left, right) => left - right);
+    setSelectedPanels(next);
+    setActivePanel(next.includes(index) ? index : next.includes(activePanel) ? activePanel : next[next.length - 1]);
+    setSelectedElement(null);
+  };
+
+  const mergeSelectedPanelGroup = () => {
+    if (selectedPanels.length < 2) {
+      setToast('Shift+クリックで合体するコマを2つ以上選択してください');
+      return;
+    }
+    const next = cloneDocument(document);
+    const mergedIndex = mergeSelectedPanels(next.manga.pages[activePage], selectedPanels);
+    if (mergedIndex === null) return;
+    setDocument(next);
+    setActivePanel(mergedIndex);
+    setSelectedPanels([mergedIndex]);
+    setSelectedElement(null);
+    setToast(`${selectedPanels.length}コマを吹き出しごと合体しました`);
+  };
+
   useEffect(() => {
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(() => {
@@ -340,6 +373,11 @@ export default function App() {
       if (key === 'escape' && showHowtoIntro) { setShowHowtoIntro(false); return; }
       const target = event.target as HTMLElement | null;
       if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable)) return;
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'm' && tab === 'storyboard' && !showNewDialog && !showHowtoIntro && mangaViewerPage === null) {
+        event.preventDefault();
+        mergeSelectedPanelGroup();
+        return;
+      }
       if (showNewDialog && newLayoutTask === 'idle' && newLayoutItems.length > 1 && event.key.startsWith('Arrow')) {
         const nextIndex = nextLayoutIndexFromArrow(newLayoutActiveIndex, event.key, newLayoutItems.length);
         if (nextIndex !== newLayoutActiveIndex) setNewLayoutActiveIndex(nextIndex);
@@ -351,7 +389,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [document, past, future, showNewDialog, showHowtoIntro, mangaViewerPage, pendingScannerSession, newLayoutItems.length, newLayoutActiveIndex, newLayoutTask]);
+  }, [document, past, future, showNewDialog, showHowtoIntro, mangaViewerPage, pendingScannerSession, newLayoutItems.length, newLayoutActiveIndex, newLayoutTask, selectedPanels, tab]);
 
   const changeTab = (next: WorkspaceTab) => { setTab(next); if (next !== 'storyboard' && window.innerWidth < 800) setSidebarCollapsed(true); };
   const changeDocsLang = (next: DocsLanguage) => {
@@ -390,7 +428,7 @@ export default function App() {
     if (!file) return;
     try {
       const parsed = parseMangaYaml(await file.text());
-      setDocument(parsed); setActivePage(0); setActivePanel(0); setTab('storyboard'); setMobileStoryboardPane('editor'); setToast(`${file.name} を読み込みました`);
+      setDocument(parsed); setActivePage(0); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); setToast(`${file.name} を読み込みました`);
     } catch (error) { setToast(`読み込み失敗: ${error instanceof Error ? error.message : '不明なエラー'}`); }
     if (fileInput.current) fileInput.current.value = '';
   };
@@ -627,7 +665,7 @@ export default function App() {
     };
     lastHistoryPush.current = 0;
     setDocument(fresh);
-    setActivePage(0); setActivePanel(0); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor'); setShowNewDialog(false);
+    setActivePage(0); setActivePanel(0); setSelectedPanels([0]); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor'); setShowNewDialog(false);
     discardNewLayoutItems();
     const creationMessage = detectedLayouts.length
       ? `検出したコマ領域から${detectedLayouts.length}ページを新規作成しました`
@@ -639,17 +677,17 @@ export default function App() {
 
   const resetSample = () => {
     if (!confirm('編集中の内容をサンプル漫画に戻しますか？\nブラウザに保存された内容も上書きされます。')) return;
-    setDocument(parseMangaYaml(sampleYaml)); setActivePage(0); setActivePanel(0); setTab('storyboard'); setMobileStoryboardPane('editor'); setToast('サンプル漫画に戻しました');
+    setDocument(parseMangaYaml(sampleYaml)); setActivePage(0); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); setToast('サンプル漫画に戻しました');
   };
 
-  const addPage = () => mutate((draft) => { const index = draft.manga.pages.length; draft.manga.pages.push(newPage(index + 1)); setActivePage(index); setActivePanel(0); setTab('storyboard'); setMobileStoryboardPane('editor'); });
+  const addPage = () => mutate((draft) => { const index = draft.manga.pages.length; draft.manga.pages.push(newPage(index + 1)); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });
   const duplicatePage = () => {
     if (!page) return;
-    mutate((draft) => { const copy = structuredClone(draft.manga.pages[activePage]); draft.manga.pages.splice(activePage + 1, 0, copy); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(activePage + 1); });
+    mutate((draft) => { const copy = structuredClone(draft.manga.pages[activePage]); draft.manga.pages.splice(activePage + 1, 0, copy); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(activePage + 1); setSelectedPanels([activePanel]); });
   };
   const deletePage = () => {
     if (document.manga.pages.length <= 1 || !confirm(`ページ ${activePage + 1} を削除しますか？`)) return;
-    mutate((draft) => { draft.manga.pages.splice(activePage, 1); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); });
+    mutate((draft) => { draft.manga.pages.splice(activePage, 1); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); setSelectedPanels([0]); });
   };
   const reorderPage = (from: number, to: number) => {
     if (from === to) return;
@@ -666,19 +704,20 @@ export default function App() {
       : activePage;
     setActivePage(next);
     setActivePanel(0);
+    setSelectedPanels([0]);
     setToast(`ページ ${from + 1} を ${to + 1} 番目へ移動しました`);
   };
   const addPanel = () => {
     if (!page || page.panels.length >= 6) { setToast('1ページに追加できるのは6コマまでです'); return; }
-    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.push(newPanel(panels.length + 1, Math.min(210, panels.length * 45))); setActivePanel(panels.length - 1); });
+    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.push(newPanel(panels.length + 1, Math.min(210, panels.length * 45))); setActivePanel(panels.length - 1); setSelectedPanels([panels.length - 1]); });
   };
   const duplicatePanel = () => {
     if (!panel || !page || page.panels.length >= 6) { setToast('1ページに追加できるのは6コマまでです'); return; }
-    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(activePanel + 1, 0, structuredClone(panels[activePanel])); panels.forEach((item, index) => { item.id = index + 1; }); setActivePanel(activePanel + 1); });
+    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(activePanel + 1, 0, structuredClone(panels[activePanel])); panels.forEach((item, index) => { item.id = index + 1; }); setActivePanel(activePanel + 1); setSelectedPanels([activePanel + 1]); });
   };
   const deletePanel = () => {
     if (!panel || !confirm(`コマ ${panel.id} を削除しますか？`)) return;
-    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(activePanel, 1); panels.forEach((item, index) => { item.id = index + 1; }); setActivePanel(Math.max(0, activePanel - 1)); });
+    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(activePanel, 1); panels.forEach((item, index) => { item.id = index + 1; }); const nextIndex = Math.max(0, activePanel - 1); setActivePanel(nextIndex); setSelectedPanels([nextIndex]); });
   };
   const changeElementBBox = (selection: CanvasElementSelection, bbox: BBox) => {
     mutate((draft) => {
@@ -759,7 +798,9 @@ export default function App() {
       `パターン${template.id}は${template.shapes.length}コマです。現在の${page.panels.length}コマを読み順で統合し、人物・フキダシをすべて再配置します。続けますか？`,
     )) return;
     mutate((draft) => applyPanelTemplate(draft.manga.pages[activePage], template));
-    setActivePanel(Math.min(activePanel, template.shapes.length - 1));
+    const nextPanelIndex = Math.min(activePanel, template.shapes.length - 1);
+    setActivePanel(nextPanelIndex);
+    setSelectedPanels([nextPanelIndex]);
     setSelectedElement(null);
     setToast(`パターン${template.id}「${template.name}」を適用しました`);
   };
@@ -791,7 +832,7 @@ export default function App() {
     </nav>
 
     <main class={`workspace-shell ${tab === 'storyboard' ? 'is-storyboard' : ''} mobile-pane-${mobileStoryboardPane}`}>
-      <PageSidebar document={document} activePage={activePage} tab={tab} issues={issues} collapsed={sidebarCollapsed} onCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} onSelectPage={(index) => { setActivePage(index); setActivePanel(0); setTab('storyboard'); setMobileStoryboardPane('editor'); }} onAddPage={addPage} onDuplicatePage={duplicatePage} onDeletePage={deletePage} onReorderPage={reorderPage} />
+      <PageSidebar document={document} activePage={activePage} tab={tab} issues={issues} collapsed={sidebarCollapsed} onCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} onSelectPage={(index) => { setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); }} onAddPage={addPage} onDuplicatePage={duplicatePage} onDeletePage={deletePage} onReorderPage={reorderPage} />
 
       <section class={`workspace-main ${tab === 'storyboard' ? 'has-mobile-storyboard-tabs' : ''}`}>
         {tab === 'storyboard' && <nav class="mobile-storyboard-tabs" aria-label="ネーム作業エリア" role="tablist">
@@ -802,7 +843,7 @@ export default function App() {
         {tab === 'storyboard' && page && <div class="storyboard-workspace">
           <div id="mobile-editor-pane" class="canvas-stage">
             <div class="canvas-toolbar">
-              <div class="page-switcher"><button onClick={() => { setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); }} disabled={activePage === 0}><ChevronLeft size={17} /></button><span>PAGE <strong>{String(activePage + 1).padStart(2, '0')}</strong> / {String(document.manga.pages.length).padStart(2, '0')}</span><button onClick={() => { setActivePage(Math.min(document.manga.pages.length - 1, activePage + 1)); setActivePanel(0); }} disabled={activePage === document.manga.pages.length - 1}><ChevronRight size={17} /></button></div>
+              <div class="page-switcher"><button onClick={() => { setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); setSelectedPanels([0]); }} disabled={activePage === 0}><ChevronLeft size={17} /></button><span>PAGE <strong>{String(activePage + 1).padStart(2, '0')}</strong> / {String(document.manga.pages.length).padStart(2, '0')}</span><button onClick={() => { setActivePage(Math.min(document.manga.pages.length - 1, activePage + 1)); setActivePanel(0); setSelectedPanels([0]); }} disabled={activePage === document.manga.pages.length - 1}><ChevronRight size={17} /></button></div>
               <div class="canvas-toolbar-actions">
                 <div class="layout-template-control" title={findPanelTemplate(selectedTemplate)?.usage}>
                   <label for="panel-template">コマ割り</label>
@@ -811,15 +852,16 @@ export default function App() {
                   </select>
                   <button onClick={applyTemplate}>適用</button>
                 </div>
+                <button class="guide-toggle merge-panels-button" onClick={mergeSelectedPanelGroup} disabled={selectedPanels.length < 2} title="Shift+クリックで複数選択し、⌘/Ctrl+Shift+Mで合体"><Combine size={16} />コマ合体{selectedPanels.length > 1 ? ` (${selectedPanels.length})` : ''}</button>
                 <button class={`guide-toggle ${spreadView ? 'is-active' : ''}`} onClick={() => setSpreadView(!spreadView)} disabled={document.manga.pages.length < 2} title="2ページを見開きで並べて表示"><BookOpen size={16} />見開き</button>
                 <button class={`guide-toggle ${showGuides ? 'is-active' : ''}`} onClick={() => setShowGuides(!showGuides)}>{showGuides ? <Eye size={16} /> : <EyeOff size={16} />}ガイド</button>
               </div>
             </div>
             {(() => {
-              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} activePanel={activePanel} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} panelSnap={panelSnap} onTogglePanelSnap={togglePanelSnap} onSelectPanel={(index) => { setActivePanel(index); if (index === activePanel) setSelectedElement(null); }} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
+              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} panelSnap={panelSnap} onTogglePanelSnap={togglePanelSnap} onSelectPanel={selectCanvasPanel} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
               if (spreadPartnerIndex === null) return activeCanvas;
-              const switchToPartner = (panelIndex = 0) => { setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); };
-              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} activePanel={-1} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} panelSnap={panelSnap} onTogglePanelSnap={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
+              const switchToPartner = (panelIndex = 0) => { setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]); };
+              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} panelSnap={panelSnap} onTogglePanelSnap={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
               // 右綴じ: 若いページが右（flexの後ろ）に来る
               const leftIndex = Math.max(activePage, spreadPartnerIndex);
               return <div class="canvas-spread">
@@ -827,7 +869,7 @@ export default function App() {
                 <div class={`spread-pane ${leftIndex === activePage ? 'is-spread-partner' : ''}`} title={leftIndex === activePage ? `ページ ${spreadPartnerIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? partnerCanvas : activeCanvas}</div>
               </div>;
             })()}
-            <div class="canvas-legend"><span><i class="legend-figure" />人物 bbox</span><span><i class="legend-bubble" />フキダシ bbox</span><span>赤いコマ線をドラッグで移動</span><span>要素はドラッグ · 四隅でリサイズ</span></div>
+            <div class="canvas-legend"><span><i class="legend-figure" />人物 bbox</span><span><i class="legend-bubble" />フキダシ bbox</span><span>赤いコマ線をドラッグで移動</span><span>Shift+クリックで複数コマ選択</span><span>要素はドラッグ · 四隅でリサイズ</span></div>
           </div>
           <aside id="mobile-panel-pane" class="inspector-pane"><PanelInspector manga={document.manga} panel={panel} panelIndex={activePanel} selectedElement={selectedElement} onSelectElement={setSelectedElement} onChange={(nextPanel) => mutate((draft) => { draft.manga.pages[activePage].panels[activePanel] = nextPanel; })} onAdd={addPanel} onDuplicate={duplicatePanel} onDelete={deletePanel} /></aside>
         </div>}

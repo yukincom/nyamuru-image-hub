@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyPanelTemplate, PANEL_TEMPLATES } from '../src/lib/panelTemplates.ts';
+import { applyPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES } from '../src/lib/panelTemplates.ts';
 
 const rect = (x, y, w, h) => ({ type: 'rect', x, y, w, h });
 
@@ -110,4 +110,33 @@ test('テンプレートの方が少なくても全コマの内容を統合し�
     assert.ok(item.bbox.x >= 10 && item.bbox.y >= 10);
     assert.ok(item.bbox.x + item.bbox.w <= 200 && item.bbox.y + item.bbox.h <= 287);
   }
+});
+
+test('選択したコマを吹き出しごと外接矩形へ合体する', () => {
+  const page = pageWith([
+    panel(1, rect(10, 10, 90, 80), {
+      figures: [{ name: '人物', bbox: { x: 20, y: 20, w: 30, h: 50 } }],
+      bubbles: [{ text: '右', bbox: { x: 60, y: 20, w: 30, h: 30 } }],
+      assets: ['人物素材'], action: '右を見る', bg: 1,
+    }),
+    panel(2, rect(105, 10, 95, 80), {
+      bubbles: [{ text: '左', bbox: { x: 150, y: 20, w: 30, h: 30 } }],
+      screen_text: [{ text: '看板', bbox: { x: 115, y: 60, w: 30, h: 12 } }],
+      assets: ['背景素材'], action: '左を見る', bg: 2,
+    }),
+    panel(3, rect(10, 95, 190, 90), { bubbles: [{ text: '残る' }] }),
+  ]);
+
+  assert.equal(mergeSelectedPanels(page, [1, 0, 1]), 0);
+  assert.equal(page.panels.length, 2);
+  assert.deepEqual(page.panels[0].shape, rect(10, 10, 190, 80));
+  assert.deepEqual(page.panels[0].bubbles.map((bubble) => bubble.text), ['右', '左']);
+  assert.deepEqual(page.panels[0].bubbles.map((bubble) => bubble.bbox.x), [60, 150]);
+  assert.deepEqual(page.panels[0].figures.map((figure) => figure.name), ['人物']);
+  assert.deepEqual(page.panels[0].screen_text.map((item) => item.text), ['看板']);
+  assert.deepEqual(page.panels[0].assets, ['人物素材', '背景素材']);
+  assert.equal(page.panels[0].action, '右を見る\n左を見る');
+  assert.equal(page.panels[0].bg, 2);
+  assert.equal(page.panels[1].id, 2);
+  assert.equal(page.panels[1].bubbles[0].text, '残る');
 });

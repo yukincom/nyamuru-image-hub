@@ -15,10 +15,10 @@ test('検出した正規化座標をA4紙面上の編集可能な矩形へ変換
   });
   assert.deepEqual(result.detectedPanels, [
     { type: 'rect', x: 105, y: 29.7, w: 84, h: 59.4 },
-    { type: 'rect', x: 0, y: 59.4, w: 21, h: 89.1 },
+    { type: 'rect', x: 10, y: 59.4, w: 11, h: 89.1 },
   ]);
   assert.equal(result.detectedPanelCount, 2);
-  assert.equal(result.reason, '検出した矩形を直接使用します');
+  assert.match(result.reason, /^検出した矩形を直接使用します。? 内枠内へ収め/);
   assert.equal(result.rotationDegrees, 90);
 });
 
@@ -109,6 +109,27 @@ test('文字を持つ最小のコマだけを残し、重複候補を除いて�
       const verticalGap = Math.max(first.y, second.y) - Math.min(first.y + first.h, second.y + second.h);
       assert.ok(horizontalGap >= 4.9 || verticalGap >= 4.9, `コマ${index + 1}と${otherIndex + 1}の間隔`);
     }
+  }
+});
+
+test('検出コマを内枠内に収め、4mm以内の隣接辺を整列して5mm空ける', () => {
+  const result = normalizeLayoutRecognition({
+    panel_boxes: [
+      [0.05, 0.04, 0.44, 0.25],
+      [0.50, 0.05, 0.45, 0.24],
+    ],
+  });
+  const [left, right] = result.detectedPanels;
+  assert.equal(left.type, 'rect');
+  assert.equal(right.type, 'rect');
+  assert.equal(left.x, 10);
+  assert.equal(right.x + right.w, 200);
+  assert.equal(left.y, 10);
+  assert.equal(right.y, 10);
+  assert.ok(Math.abs(right.x - (left.x + left.w) - 5) < 0.11);
+  for (const panel of result.detectedPanels) {
+    assert.ok(panel.x >= 10 && panel.y >= 10);
+    assert.ok(panel.x + panel.w <= 200 && panel.y + panel.h <= 287);
   }
 });
 

@@ -1,4 +1,4 @@
-import { clamp, nearestAnchor, panelBounds, pointInPanel, roundMm } from './canvasGeometry.ts';
+import { clamp, INNER_FRAME_BOUNDS, nearestAnchor, panelBounds, pointInPanel, roundMm } from './canvasGeometry.ts';
 import type { BBox, MangaPage, Panel, PanelShape } from '../types';
 
 const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8787';
@@ -133,6 +133,77 @@ function deduplicateDetectedPanels(shapes: readonly PanelShape[]): PanelShape[] 
   return shapes.filter((_, index) => kept.has(index)).map((shape) => structuredClone(shape));
 }
 
+type MutableRectEdges = { left: number; right: number; top: number; bottom: number };
+
+function constrainDetectedPanelsToInnerFrame(shapes: readonly PanelShape[]): PanelShape[] {
+  const innerRight = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
+  const innerBottom = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+  return shapes.map((shape) => {
+    if (shape.type === 'polygon') return {
+      type: 'polygon',
+      points: shape.points.map(([x, y]) => [
+        roundMm(clamp(x, INNER_FRAME_BOUNDS.x, innerRight)),
+        roundMm(clamp(y, INNER_FRAME_BOUNDS.y, innerBottom)),
+      ]),
+    };
+    const left = clamp(shape.x, INNER_FRAME_BOUNDS.x, innerRight - 8);
+    const top = clamp(shape.y, INNER_FRAME_BOUNDS.y, innerBottom - 8);
+    const right = clamp(shape.x + shape.w, left + 8, innerRight);
+    const bottom = clamp(shape.y + shape.h, top + 8, innerBottom);
+    return {
+      type: 'rect',
+      x: roundMm(left),
+      y: roundMm(top),
+      w: roundMm(right - left),
+      h: roundMm(bottom - top),
+    };
+  });
+}
+
+function alignNearRectEdges(shapes: readonly PanelShape[], threshold = 4): PanelShape[] {
+  const next = shapes.map((shape) => structuredClone(shape));
+  const rects = next.flatMap((shape, index): Array<{ index: number; edges: MutableRectEdges }> => shape.type === 'rect' ? [{
+    index,
+    edges: { left: shape.x, right: shape.x + shape.w, top: shape.y, bottom: shape.y + shape.h },
+  }] : []);
+  const alignAxis = (
+    start: 'left' | 'top',
+    end: 'right' | 'bottom',
+    minimum: number,
+    maximum: number,
+  ) => {
+    const references = rects.flatMap((rect) => ([
+      { rect, edge: start, value: rect.edges[start] },
+      { rect, edge: end, value: rect.edges[end] },
+    ]));
+    const sorted = references.sort((left, right) => left.value - right.value);
+    for (let cursor = 0; cursor < sorted.length;) {
+      let endCursor = cursor + 1;
+      while (endCursor < sorted.length && sorted[endCursor].value - sorted[cursor].value <= threshold) endCursor += 1;
+      const cluster = sorted.slice(cursor, endCursor);
+      const boundaryTarget = cluster.some((reference) => Math.abs(reference.value - minimum) <= threshold) ? minimum
+        : cluster.some((reference) => Math.abs(reference.value - maximum) <= threshold) ? maximum
+          : null;
+      if (boundaryTarget !== null || new Set(cluster.map((reference) => reference.rect.index)).size >= 2) {
+        const target = boundaryTarget ?? roundMm(cluster.reduce((sum, reference) => sum + reference.value, 0) / cluster.length);
+        cluster.forEach((reference) => { reference.rect.edges[reference.edge] = target; });
+      }
+      cursor = endCursor;
+    }
+  };
+  alignAxis('left', 'right', INNER_FRAME_BOUNDS.x, INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w);
+  alignAxis('top', 'bottom', INNER_FRAME_BOUNDS.y, INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h);
+  rects.forEach(({ index, edges }) => {
+    const shape = next[index];
+    if (shape.type !== 'rect') return;
+    shape.x = roundMm(edges.left);
+    shape.y = roundMm(edges.top);
+    shape.w = roundMm(Math.max(8, edges.right - edges.left));
+    shape.h = roundMm(Math.max(8, edges.bottom - edges.top));
+  });
+  return next;
+}
+
 /** Adjacent detected rectangles are separated by a 5mm gutter without moving their outer edges. */
 export function ensureDetectedPanelGutters(shapes: readonly PanelShape[], gutter = 5): PanelShape[] {
   const next = shapes.map((shape) => structuredClone(shape));
@@ -184,7 +255,11 @@ export function refineDetectedPanels(
   lines: readonly RecognizedTextLine[],
 ): PanelShape[] {
   const deduplicated = deduplicateDetectedPanels(shapes);
-  if (!deduplicated.length || !lines.length) return ensureDetectedPanelGutters(deduplicated);
+  if (!deduplicated.length) return [];
+  const normalizeGeometry = (targets: readonly PanelShape[]) => ensureDetectedPanelGutters(
+    alignNearRectEdges(constrainDetectedPanelsToInnerFrame(targets)),
+  );
+  if (!lines.length) return normalizeGeometry(deduplicated);
   const supported = new Set<number>();
   for (const line of lines) {
     const centerX = (line.bbox.x + line.bbox.w / 2) * 210;
@@ -193,7 +268,7 @@ export function refineDetectedPanels(
     if (index >= 0) supported.add(index);
   }
   const textBearing = deduplicated.filter((_, index) => supported.has(index));
-  return ensureDetectedPanelGutters(textBearing.length ? textBearing : deduplicated);
+  return normalizeGeometry(textBearing.length ? textBearing : deduplicated);
 }
 
 export function groupRecognizedTextLines(lines: readonly RecognizedTextLine[]): RecognizedTextLine[] {
@@ -299,11 +374,14 @@ export function normalizeLayoutRecognition(
   });
   const detectedPanels = refineDetectedPanels(rawDetectedPanels, ocrLines);
   const removedPanelCount = rawDetectedPanels.length - detectedPanels.length;
-  const reason = removedPanelCount > 0
-    ? `重複または文字に対応しない候補を${removedPanelCount}個除外し、${detectedPanels.length}個のコマ領域を編集開始位置として使用します。コマ間は5mm空けています。`
+  const baseReason = removedPanelCount > 0
+    ? `重複または文字に対応しない候補を${removedPanelCount}個除外し、${detectedPanels.length}個のコマ領域を編集開始位置として使用します。`
     : typeof payload.reason === 'string' && payload.reason.trim()
       ? payload.reason.trim()
       : detectedPanels.length ? '検出したコマ領域を編集開始位置として使用できます。' : '読み取れるコマ領域を特定できませんでした。';
+  const reason = detectedPanels.length
+    ? `${baseReason} 内枠内へ収め、4mm以内の辺を整列し、コマ間は5mm空けています。`
+    : baseReason;
   const detectedPanelCount = detectedPanels.length;
   return {
     detectedPanels,

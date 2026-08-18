@@ -11,6 +11,7 @@ interface Props {
   page: MangaPage;
   pageCount: number;
   activePanel: number;
+  selectedPanels: readonly number[];
   selectedElement: CanvasElementSelection | null;
   showGuides: boolean;
   autoAnchor: boolean;
@@ -19,7 +20,7 @@ interface Props {
   onToggleInnerFrameSnap: () => void;
   panelSnap: boolean;
   onTogglePanelSnap: () => void;
-  onSelectPanel: (index: number) => void;
+  onSelectPanel: (index: number, additive?: boolean) => void;
   onSelectElement: (selection: CanvasElementSelection | null) => void;
   onChangeElementBBox: (selection: CanvasElementSelection, bbox: BBox) => void;
   onChangeElementAnchor: (selection: CanvasElementSelection, anchor: Anchor, bbox: BBox) => void;
@@ -118,7 +119,7 @@ function layerClipStyle(panel: Panel): Record<string, string> {
   return { clipPath: `polygon(${points})` };
 }
 
-export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, panelSnap, onTogglePanelSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
+export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedPanels, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, panelSnap, onTogglePanelSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
   const paperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -505,7 +506,7 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
     }
     const x = (event.clientX - rect.left) * (210 / rect.width);
     const y = (event.clientY - rect.top) * (297 / rect.height);
-    onSelectPanel(resolveOverlapClick(page.panels, panelIndex, activePanel, x, y));
+    onSelectPanel(resolveOverlapClick(page.panels, panelIndex, activePanel, x, y), event.shiftKey);
   };
 
   // 非選択パネルはパネル内（パネル基準%・クリップあり）、選択中パネルは最前面のエレメント
@@ -606,12 +607,13 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
       <div class="safe-area" aria-hidden="true" />
       {page.panels.map((panel, panelIndex) => (
         <div
-          class={`manga-panel panel-bg-${panel.bg} ${activePanel === panelIndex ? 'is-selected' : ''}`}
+          class={`manga-panel panel-bg-${panel.bg} ${activePanel === panelIndex ? 'is-selected' : ''} ${selectedPanels.includes(panelIndex) ? 'is-group-selected' : ''}`}
           style={panelStyle(panel)}
           onClick={(event) => selectPanelAt(event, panelIndex)}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectPanel(panelIndex); } }}
+          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectPanel(panelIndex, event.shiftKey); } }}
           key={`${panel.id}-${panelIndex}`}
           role="button"
+          aria-pressed={selectedPanels.includes(panelIndex)}
           tabIndex={0}
           aria-label={`コマ ${panel.id} を編集`}
           title={panel.action ? `コマ ${panel.id}: ${panel.action}` : `コマ ${panel.id}`}
@@ -639,6 +641,15 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
           </g>;
         })}
       </svg>
+      {selectedPanels.length > 1 && <svg class="panel-group-selection-overlay" viewBox="0 0 210 297" aria-hidden="true">
+        {selectedPanels.filter((panelIndex) => panelIndex !== activePanel).map((panelIndex) => {
+          const panel = page.panels[panelIndex];
+          if (!panel) return null;
+          return panel.shape.type === 'rect'
+            ? <rect x={panel.shape.x} y={panel.shape.y} width={panel.shape.w} height={panel.shape.h} key={`group-${panelIndex}`} />
+            : <polygon points={panel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} key={`group-${panelIndex}`} />;
+        })}
+      </svg>}
       {selectedPanel && selectedBounds && <svg class="panel-selection-overlay" viewBox="0 0 210 297" aria-hidden="true">
         {selectedPanel.shape.type === 'rect' ? <>
           <rect class="panel-selection-shape" x={selectedPanel.shape.x} y={selectedPanel.shape.y} width={selectedPanel.shape.w} height={selectedPanel.shape.h} />

@@ -214,6 +214,51 @@ function mergeAction(left: string | null, right: string | null): string | null {
 }
 
 /**
+ * 選択したコマを外接矩形ひとつへ合体する。人物・フキダシ等のbboxは用紙上の
+ * 絶対座標なので移動せず、そのまま読み順で新しいコマへまとめる。
+ * 戻り値は合体後のコマ添字。2コマ未満なら null。
+ */
+export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly number[]): number | null {
+  const indices = [...new Set(selectedIndices)]
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < page.panels.length)
+    .sort((left, right) => left - right);
+  if (indices.length < 2) return null;
+
+  const selectedSet = new Set(indices);
+  const sources = indices.map((index) => structuredClone(page.panels[index]));
+  sources.forEach(materializeElementBoxes);
+  const bounds = sources.map(panelBounds);
+  const left = Math.min(...bounds.map((box) => box.x));
+  const top = Math.min(...bounds.map((box) => box.y));
+  const right = Math.max(...bounds.map((box) => box.x + box.w));
+  const bottom = Math.max(...bounds.map((box) => box.y + box.h));
+  const merged = sources[0];
+  merged.shape = { type: 'rect', x: left, y: top, w: right - left, h: bottom - top };
+  merged.bg = Math.max(...sources.map((panel) => panel.bg)) as Panel['bg'];
+  delete merged.bleed;
+
+  for (const source of sources.slice(1)) {
+    merged.figures = [...(merged.figures ?? []), ...(source.figures ?? [])];
+    merged.bubbles = [...merged.bubbles, ...source.bubbles];
+    const screenText = [...(merged.screen_text ?? []), ...(source.screen_text ?? [])];
+    screenText.length ? merged.screen_text = screenText : delete merged.screen_text;
+    merged.assets = mergeUnique(merged.assets, source.assets);
+    merged.action = mergeAction(merged.action, source.action);
+  }
+  if (merged.figures?.length) delete merged.no_figures;
+  else if (sources.every((panel) => panel.no_figures)) merged.no_figures = true;
+  else delete merged.no_figures;
+
+  const insertAt = indices[0];
+  page.panels = page.panels.flatMap((panel, index) => {
+    if (index === insertAt) return [merged];
+    return selectedSet.has(index) ? [] : [panel];
+  });
+  page.panels.forEach((panel, index) => { panel.id = index + 1; });
+  return insertAt;
+}
+
+/**
  * 現在のコマと中身を読み順でテンプレートへ再配置する。
  * bbox は旧コマ内の比率を新コマの外接矩形へ写し、A4上の絶対mm座標として保存する。
  * コマ数を減らす場合も内容は破棄せず、同じ割当先になったコマへ統合する。

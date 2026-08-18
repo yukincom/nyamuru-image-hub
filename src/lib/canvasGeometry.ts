@@ -13,7 +13,7 @@ export interface InteractionGeometry {
 
 export const MIN_SIZE_MM = 6;
 export const INNER_FRAME_BOUNDS: Readonly<BBox> = { x: 10, y: 10, w: 190, h: 277 };
-export const PANEL_SNAP_THRESHOLD_MM = 3;
+export const PANEL_SNAP_THRESHOLD_MM = 4;
 export const PANEL_EDGE_LINK_DISTANCE_MM = 8;
 export const PANEL_EDGE_ALIGNMENT_TOLERANCE_MM = 0.15;
 

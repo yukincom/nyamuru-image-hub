@@ -56,6 +56,7 @@ test('コマ移動量をキャンバス内へ制限する', () => {
 
 test('コマ移動時に近い辺だけを内枠へスナップする', () => {
   assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 12, y: 13, w: 80, h: 100 }, 0, 0), { x: -2, y: -3 });
+  assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 14, y: 40, w: 80, h: 100 }, 0, 0), { x: -4, y: 0 });
   assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 117, y: 184, w: 80, h: 100 }, 0, 0), { x: 3, y: 3 });
   assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 20, y: 30, w: 80, h: 100 }, 0, 0), { x: 0, y: 0 });
 });
