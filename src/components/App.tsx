@@ -445,7 +445,7 @@ export default function App() {
     newLayoutItemsRef.current = items;
     setNewLayoutItems(items);
     setNewLayoutActiveIndex(0);
-    setNewLayoutMessage(`${items.length}枚を読み込みました。必要な画像だけ回転してから、そのまま解析できます。`);
+    setNewLayoutMessage(`${items.length}枚を読み込みました。`);
     if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
   };
 
@@ -526,7 +526,7 @@ export default function App() {
           setNewLayoutItems(next);
           setNewLayoutActiveIndex(Math.max(0, next.length - 1));
           setScannerReceivedCount(next.length);
-          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。必要な画像だけ回転してください。`);
+          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。`);
         }
         if (batch.complete || scannerStopRequested.current) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -534,7 +534,7 @@ export default function App() {
       if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
       const count = newLayoutItemsRef.current.length;
       setNewLayoutMessage(count
-        ? `${count}枚の取り込みを完了しました。必要な画像だけ回転してから、そのまま解析できます。スキャン元とNyamuruの一時画像は、ページ作成の確定または画面を閉じた時に破棄します。`
+        ? `${count}枚の取り込みを完了しました。スキャン元とNyamuruの一時画像は、ページ作成の確定または画面を閉じた時に破棄します。`
         : '5分以内に新しいスキャン画像が見つかりませんでした。');
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
@@ -565,7 +565,7 @@ export default function App() {
       setNewLayoutItems(items);
       setNewLayoutActiveIndex(0);
       setScannerReceivedCount(items.length);
-      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。必要な画像だけ回転してから、そのままコマを解析できます。`);
+      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。`);
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');
     } finally {
@@ -904,12 +904,12 @@ export default function App() {
             <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" multiple hidden onChange={(event) => chooseNewLayoutImages(event.currentTarget.files)} />
             {activeLayoutItem && <div class="new-layout-workbench">
               <section class="new-layout-thumb-pane" aria-labelledby="new-layout-source-title">
-                <h4 id="new-layout-source-title">元絵</h4>
+                <h4 id="new-layout-source-title">原画</h4>
                 <div class="new-layout-spread-grid">
                   {NEW_LAYOUT_SPREAD_ORDER.map((itemIndex) => {
                     const item = newLayoutItems[itemIndex];
                     if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`source-empty-${itemIndex}`} />;
-                    return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''}`} aria-label={`元絵 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`source-${item.id}`}>
+                    return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''}`} aria-label={`原画 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`source-${item.id}`}>
                       <span class="new-layout-thumb-media"><img src={item.previewUrl} alt="" style={{ transform: `rotate(${displayedLayoutRotation(item)}deg) scale(${displayedLayoutRotation(item) % 180 ? .78 : 1})` }} /></span>
                       <em>{String(itemIndex + 1).padStart(2, '0')}</em>
                     </button>;
@@ -917,7 +917,7 @@ export default function App() {
                 </div>
               </section>
               <section class="new-layout-thumb-pane is-analysis" aria-labelledby="new-layout-analysis-title">
-                <h4 id="new-layout-analysis-title">解析済みコマ割り</h4>
+                <h4 id="new-layout-analysis-title">解析結果</h4>
                 <div class="new-layout-spread-grid">
                   {NEW_LAYOUT_SPREAD_ORDER.map((itemIndex) => {
                     const item = newLayoutItems[itemIndex];
@@ -938,9 +938,8 @@ export default function App() {
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
                     <strong title={activeLayoutItem.file.name}>{activeLayoutItem.file.name}</strong>
                     <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
-                    <small class="new-layout-key-hint">矢印キーで画像を切替</small>
-                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} title="現在表示している向きで解析します"><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button>
-                    <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} title={canCreateAnalyzedPages ? '検出したコマから編集を開始します' : 'すべての画像の解析完了後に使用できます'}><FilePlus2 size={15} />新規作成完了・編集へ</button>
+                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} title="現在表示している向きで解析します"><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : '解析開始'}</button>
+                    <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} title={canCreateAnalyzedPages ? '検出したコマから編集を開始します' : 'すべての画像の解析完了後に使用できます'}><FilePlus2 size={15} />編集開始</button>
                   </div>
                 </div>
               </section>

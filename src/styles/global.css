@@ -506,7 +506,6 @@ input:disabled { background: #faf6f7; color: #9b9398; }
 .new-layout-focus-controls { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 7px; }
 .new-layout-focus-controls strong { width: 100%; overflow: hidden; color: #45424a; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .new-layout-page-number { color: var(--accent-dark); font: 900 8px/1 ui-monospace, SFMono-Regular, monospace; letter-spacing: .06em; }
-.new-layout-key-hint { color: var(--muted); font-size: 8px; }
 .new-layout-rotation-controls { display: flex; flex-wrap: wrap; gap: 4px; }
 .new-layout-rotation-controls button { min-height: 24px; padding: 4px 7px; border: 1px solid var(--soft-line); border-radius: 6px; background: #f8f8fa; color: #5d5962; font-size: 8px; font-weight: 800; cursor: pointer; }
 .new-layout-rotation-controls button:hover:not(:disabled) { border-color: var(--retro-blue); color: var(--blue); }
