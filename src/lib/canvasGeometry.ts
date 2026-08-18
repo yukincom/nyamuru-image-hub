@@ -51,6 +51,72 @@ export function constrainDragDeltaToAxis(deltaX: number, deltaY: number): { x: n
     : { x: 0, y: deltaY };
 }
 
+export type DragAxis = 'x' | 'y';
+
+export interface ShiftAxisDragState {
+  axis?: DragAxis;
+  /** 一度ドラッグ原点へ戻り、別軸へ出直せる状態。 */
+  switchArmed?: boolean;
+}
+
+const SHIFT_AXIS_FREE_RETURN_MM = 1;
+const SHIFT_AXIS_SWITCH_MM = 6;
+const SHIFT_AXIS_DOMINANCE_MM = 1;
+
+/**
+ * Shiftドラッグの軸を開始地点基準で固定する。
+ * 途中で大小関係が変わっただけでは軸を切り替えず、一度原点へ戻ってから
+ * 別軸へ明確に引いた場合だけ切り替える。
+ */
+export function resolveShiftAxisDrag(
+  deltaX: number,
+  deltaY: number,
+  state: ShiftAxisDragState,
+  snapToOrigin: boolean,
+): { x: number; y: number; state: ShiftAxisDragState; snappedToOrigin: boolean } {
+  const originThreshold = snapToOrigin ? PANEL_SNAP_THRESHOLD_MM : SHIFT_AXIS_FREE_RETURN_MM;
+  const distance = Math.hypot(deltaX, deltaY);
+  let axis = state.axis;
+  let switchArmed = state.switchArmed === true;
+
+  if (!axis) {
+    if (snapToOrigin && distance <= originThreshold) {
+      return { x: 0, y: 0, state: {}, snappedToOrigin: true };
+    }
+    if (distance <= 0.1) return { x: 0, y: 0, state: {}, snappedToOrigin: false };
+    const initial = constrainDragDeltaToAxis(deltaX, deltaY);
+    axis = initial.y === 0 ? 'x' : 'y';
+  }
+
+  if (distance <= originThreshold) {
+    return {
+      x: snapToOrigin ? 0 : axis === 'x' ? deltaX : 0,
+      y: snapToOrigin ? 0 : axis === 'y' ? deltaY : 0,
+      state: { axis, switchArmed: true },
+      snappedToOrigin: snapToOrigin,
+    };
+  }
+
+  if (switchArmed) {
+    const currentMagnitude = axis === 'x' ? Math.abs(deltaX) : Math.abs(deltaY);
+    const otherMagnitude = axis === 'x' ? Math.abs(deltaY) : Math.abs(deltaX);
+    if (otherMagnitude > currentMagnitude + SHIFT_AXIS_DOMINANCE_MM) {
+      if (otherMagnitude < SHIFT_AXIS_SWITCH_MM) {
+        return { x: 0, y: 0, state: { axis, switchArmed: true }, snappedToOrigin: snapToOrigin };
+      }
+      axis = axis === 'x' ? 'y' : 'x';
+    }
+    switchArmed = false;
+  }
+
+  return {
+    x: axis === 'x' ? deltaX : 0,
+    y: axis === 'y' ? deltaY : 0,
+    state: { axis, switchArmed },
+    snappedToOrigin: false,
+  };
+}
+
 export function panelBounds(panel: Panel): BBox {
   if (panel.shape.type === 'rect') return panel.shape;
   const xs = panel.shape.points.map(([x]) => x);
@@ -371,6 +437,79 @@ export function snapPanelEdgeDeltaToGutter(
     y: roundMm(deltaY + best.correctionY),
     snapped: true,
     target: best.target,
+  };
+}
+
+/**
+ * 頂点を、別コマの辺から作品設定の上下・左右間隔だけ離れた位置へ吸着する。
+ * Shift固定中は許可された1軸だけを補正する。
+ */
+export function snapPanelVertexPointToGutter(
+  panels: Panel[],
+  panelIndex: number,
+  vertexIndex: number,
+  x: number,
+  y: number,
+  gutters: PanelGutterSettings,
+  threshold = PANEL_SNAP_THRESHOLD_MM,
+  axis?: DragAxis,
+): { x: number; y: number; snapped: boolean } {
+  const selectedPanel = panels[panelIndex];
+  const selectedPoints = selectedPanel && panelShapePoints(selectedPanel);
+  if (!selectedPoints || vertexIndex < 0 || vertexIndex >= selectedPoints.length) {
+    return { x: roundMm(x), y: roundMm(y), snapped: false };
+  }
+  const xCandidates: Array<{ value: number; error: number }> = [];
+  const yCandidates: Array<{ value: number; error: number }> = [];
+  const rowGap = clamp(gutters.rowGapMm, 0, 20);
+  const columnGap = clamp(gutters.columnGapMm, 0, 20);
+
+  panels.forEach((panel, candidatePanelIndex) => {
+    if (candidatePanelIndex === panelIndex) return;
+    const points = panelShapePoints(panel);
+    points.forEach((start, edgeIndex) => {
+      const end = points[(edgeIndex + 1) % points.length];
+      const dx = end[0] - start[0], dy = end[1] - start[1];
+      const length = Math.hypot(dx, dy);
+      if (!length) return;
+      const parameterSlack = threshold / length;
+
+      if (axis !== 'y' && Math.abs(dy) >= Math.abs(dx) && Math.abs(dy) > 1e-6) {
+        const parameter = (y - start[1]) / dy;
+        if (parameter >= -parameterSlack && parameter <= 1 + parameterSlack) {
+          const lineX = start[0] + dx * parameter;
+          for (const direction of [-1, 1]) {
+            const targetX = lineX + direction * columnGap;
+            const error = Math.abs(targetX - x);
+            if (error <= threshold && (columnGap === 0 || !pointInPanel(panel, targetX, y))) {
+              xCandidates.push({ value: targetX, error });
+            }
+          }
+        }
+      }
+
+      if (axis !== 'x' && Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 1e-6) {
+        const parameter = (x - start[0]) / dx;
+        if (parameter >= -parameterSlack && parameter <= 1 + parameterSlack) {
+          const lineY = start[1] + dy * parameter;
+          for (const direction of [-1, 1]) {
+            const targetY = lineY + direction * rowGap;
+            const error = Math.abs(targetY - y);
+            if (error <= threshold && (rowGap === 0 || !pointInPanel(panel, x, targetY))) {
+              yCandidates.push({ value: targetY, error });
+            }
+          }
+        }
+      }
+    });
+  });
+
+  const snappedX = xCandidates.sort((left, right) => left.error - right.error)[0];
+  const snappedY = yCandidates.sort((left, right) => left.error - right.error)[0];
+  return {
+    x: roundMm(snappedX?.value ?? x),
+    y: roundMm(snappedY?.value ?? y),
+    snapped: Boolean(snappedX || snappedY),
   };
 }
 

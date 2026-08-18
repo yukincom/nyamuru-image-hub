@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -43,6 +43,30 @@ test('Shiftドラッグは変化量の大きい軸だけを残す', () => {
   assert.deepEqual(constrainDragDeltaToAxis(20, 8), { x: 20, y: 0 });
   assert.deepEqual(constrainDragDeltaToAxis(-7, 18), { x: 0, y: 18 });
   assert.deepEqual(constrainDragDeltaToAxis(-12, -12), { x: -12, y: 0 });
+});
+
+test('Shiftドラッグは原点へ戻るまで最初の軸を維持し、原点を経てから別軸へ切り替える', () => {
+  let state = {};
+  let result = resolveShiftAxisDrag(12, 2, state, true);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 12, y: 0, axis: 'x' });
+
+  state = result.state;
+  result = resolveShiftAxisDrag(8, 25, state, true);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 8, y: 0, axis: 'x' });
+
+  state = result.state;
+  result = resolveShiftAxisDrag(2, 1, state, true);
+  assert.deepEqual({ x: result.x, y: result.y, snappedToOrigin: result.snappedToOrigin }, { x: 0, y: 0, snappedToOrigin: true });
+
+  state = result.state;
+  result = resolveShiftAxisDrag(1, 8, state, true);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 0, y: 8, axis: 'y' });
+});
+
+test('コマスナップOFFのShiftドラッグは原点付近の微調整値を残す', () => {
+  const horizontal = resolveShiftAxisDrag(10, 1, {}, false);
+  const nearOrigin = resolveShiftAxisDrag(0.6, 0.2, horizontal.state, false);
+  assert.deepEqual({ x: nearOrigin.x, y: nearOrigin.y, snappedToOrigin: nearOrigin.snappedToOrigin }, { x: 0.6, y: 0, snappedToOrigin: false });
 });
 
 test('ドラッグした要素をコマ境界内へ収める', () => {
@@ -128,6 +152,22 @@ test('辺を設定済みの上下・左右コマ間隔へ近づけると吸着�
   const columnSnap = snapPanelEdgeDeltaToGutter(columnPanels, 0, 1, 0, 0, { rowGapMm: 5, columnGapMm: 3 });
   assert.equal(columnSnap.snapped, true);
   assert.deepEqual({ x: columnSnap.x, y: columnSnap.y }, { x: 1, y: 0 });
+});
+
+test('頂点を設定済みの上下・左右コマ間隔へ近づけると許可軸上で吸着する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[10, 10], [99, 10], [99, 90], [10, 90]] } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 105, y: 10, w: 95, h: 80 } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 10, y: 95, w: 190, h: 80 } },
+  ];
+  const horizontal = snapPanelVertexPointToGutter(panels, 0, 1, 101, 13, { rowGapMm: 5, columnGapMm: 5 }, undefined, 'x');
+  assert.deepEqual({ x: horizontal.x, y: horizontal.y, snapped: horizontal.snapped }, { x: 100, y: 13, snapped: true });
+
+  const vertical = snapPanelVertexPointToGutter(panels, 0, 2, 99, 91, { rowGapMm: 5, columnGapMm: 5 }, undefined, 'y');
+  assert.deepEqual({ x: vertical.x, y: vertical.y, snapped: vertical.snapped }, { x: 99, y: 90, snapped: true });
+
+  const free = snapPanelVertexPointToGutter(panels, 0, 2, 101, 91, { rowGapMm: 5, columnGapMm: 5 });
+  assert.deepEqual({ x: free.x, y: free.y, snapped: free.snapped }, { x: 100, y: 90, snapped: true });
 });
 
 test('近接する斜め平行辺をコマ間の連動対象として見つける', () => {

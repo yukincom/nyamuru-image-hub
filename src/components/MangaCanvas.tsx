@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, constrainDragDeltaToAxis, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisDrag, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle, type ShiftAxisDragState } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -410,28 +410,47 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     setInteractionMode('panel-edge');
     setActiveEdgeIndex(edgeIndex);
     document.body.classList.add('is-panel-edge-dragging');
+    let shiftDragState: ShiftAxisDragState = {};
+    let shiftWasPressed = false;
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
       let deltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
       let deltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
-      let axis: 'x' | 'y' | undefined;
+      let axis: DragAxis | undefined;
+      let snappedToOrigin = false;
       if (pointerEvent.shiftKey) {
+        if (!shiftWasPressed) shiftDragState = {};
+        shiftWasPressed = true;
         if (selectedPanel.shape.type === 'rect') {
           axis = edgeIndex === 0 || edgeIndex === 2 ? 'y' : 'x';
-        } else {
-          const constrained = constrainDragDeltaToAxis(deltaX, deltaY);
+          const constrained = resolveShiftAxisDrag(
+            axis === 'x' ? deltaX : 0,
+            axis === 'y' ? deltaY : 0,
+            { axis },
+            panelGapSnap,
+          );
           deltaX = constrained.x;
           deltaY = constrained.y;
-          axis = constrained.y === 0 ? 'x' : 'y';
+          snappedToOrigin = constrained.snappedToOrigin;
+        } else {
+          const constrained = resolveShiftAxisDrag(deltaX, deltaY, shiftDragState, panelGapSnap);
+          shiftDragState = constrained.state;
+          deltaX = constrained.x;
+          deltaY = constrained.y;
+          axis = constrained.state.axis;
+          snappedToOrigin = constrained.snappedToOrigin;
         }
+      } else {
+        shiftWasPressed = false;
+        shiftDragState = {};
       }
       // 矩形は矩形性を維持するため、辺の法線方向だけを使う。
       if (selectedPanel.shape.type === 'rect') {
         if (edgeIndex === 0 || edgeIndex === 2) deltaX = 0;
         if (edgeIndex === 1 || edgeIndex === 3) deltaY = 0;
       }
-      if (innerFrameSnap) {
+      if (innerFrameSnap && !snappedToOrigin) {
         const snapped = snapEdgeDeltaToInnerFrame(start, end, deltaX, deltaY);
         deltaX = snapped.x;
         deltaY = snapped.y;
@@ -444,7 +463,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       }
       let snapTarget: PanelEdgeReference | undefined;
       let snappedToGutter = false;
-      if (panelGapSnap) {
+      if (panelGapSnap && !snappedToOrigin) {
         const snapped = snapPanelEdgeDeltaToGutter(
           page.panels,
           activePanel,
@@ -459,7 +478,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
         deltaY = snapped.y;
         snappedToGutter = snapped.snapped;
       }
-      if (panelSync && !snappedToGutter) {
+      if (panelSync && !snappedToGutter && !snappedToOrigin) {
         const snapped = snapPanelEdgeDeltaToNeighbor(page.panels, activePanel, edgeIndex, deltaX, deltaY);
         deltaX = snapped.x;
         deltaY = snapped.y;
@@ -498,21 +517,49 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     const startClientY = event.clientY;
     setInteractionMode('panel-resize');
     document.body.classList.add('is-panel-dragging');
+    let shiftDragState: ShiftAxisDragState = {};
+    let shiftWasPressed = false;
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
       const rawDeltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
       const rawDeltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
-      const delta = pointerEvent.shiftKey
-        ? constrainDragDeltaToAxis(rawDeltaX, rawDeltaY)
-        : { x: rawDeltaX, y: rawDeltaY };
+      let delta = { x: rawDeltaX, y: rawDeltaY };
+      let axis: DragAxis | undefined;
+      let snappedToOrigin = false;
+      if (pointerEvent.shiftKey) {
+        if (!shiftWasPressed) shiftDragState = {};
+        shiftWasPressed = true;
+        const constrained = resolveShiftAxisDrag(rawDeltaX, rawDeltaY, shiftDragState, panelGapSnap);
+        shiftDragState = constrained.state;
+        delta = { x: constrained.x, y: constrained.y };
+        axis = constrained.state.axis;
+        snappedToOrigin = constrained.snappedToOrigin;
+      } else {
+        shiftWasPressed = false;
+        shiftDragState = {};
+      }
       const x = clamp(roundMm(startX + delta.x), 0, 210);
       const y = clamp(roundMm(startY + delta.y), 0, 297);
-      const snapped = innerFrameSnap ? snapPointToInnerFrame(x, y) : { x, y };
+      const snapped = innerFrameSnap && !snappedToOrigin ? snapPointToInnerFrame(x, y) : { x, y };
       // Shift固定中は、内枠スナップにも非選択軸を動かさせない。
-      const point = pointerEvent.shiftKey
-        ? (delta.y === 0 ? { x: snapped.x, y: startY } : { x: startX, y: snapped.y })
+      let point = pointerEvent.shiftKey && axis
+        ? (axis === 'x' ? { x: snapped.x, y: startY } : { x: startX, y: snapped.y })
         : snapped;
+      if (panelGapSnap && !snappedToOrigin) {
+        point = snapPanelVertexPointToGutter(
+          page.panels,
+          activePanel,
+          vertexIndex,
+          point.x,
+          point.y,
+          panelGutters,
+          undefined,
+          axis,
+        );
+      }
+      if (axis === 'x') point.y = startY;
+      if (axis === 'y') point.x = startX;
       onMoveVertex(activePanel, vertexIndex, point.x, point.y, panelSync);
     };
     const finish = () => {
@@ -709,7 +756,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
           return <g class={`panel-edge-handle ${activeEdgeIndex === edgeIndex ? 'is-active' : ''}`} key={`edge-${edgeIndex}`}>
             <line class="panel-edge-guide" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} />
             <line class="panel-edge-hit" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} onPointerDown={(event) => startPanelEdgeDrag(event, edgeIndex)}>
-              <title>辺 {edgeIndex + 1} を平行移動（Shiftで水平・垂直に固定）</title>
+              <title>辺 {edgeIndex + 1} を平行移動（Shiftで開始位置基準の水平・垂直に固定）</title>
             </line>
           </g>;
         })}
@@ -726,14 +773,14 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
               if (selectedPanel.shape.type === 'rect' && event.shiftKey) startVertexDrag(event, vertexIndex);
               else startPanelResize(event, handle);
             }}>
-              <title>{selectedPanel.shape.type === 'rect' ? 'ドラッグでリサイズ・Shift+ドラッグで頂点を水平または垂直移動' : 'ドラッグでリサイズ'}</title>
+              <title>{selectedPanel.shape.type === 'rect' ? 'ドラッグでリサイズ・Shift+ドラッグで頂点を開始位置基準の水平または垂直移動' : 'ドラッグでリサイズ'}</title>
             </rect>
           </g>;
         })}
         {selectedPanel.shape.type === 'polygon' && selectedPanel.shape.points.map(([x, y], vertexIndex) => <g class="panel-vertex-handle" key={`vertex-${vertexIndex}`}>
           <circle class="panel-vertex-dot" cx={x} cy={y} r="2.4" />
           <rect class="panel-resize-hit" x={x - 5.5} y={y - 5.5} width="11" height="11" onPointerDown={(event) => startVertexDrag(event, vertexIndex)}>
-            <title>頂点 {vertexIndex + 1} を移動（Shiftで水平・垂直に固定）</title>
+            <title>頂点 {vertexIndex + 1} を移動（Shiftで開始位置基準の水平・垂直に固定）</title>
           </rect>
         </g>)}
         {renderAnchorIndicator()}
@@ -749,7 +796,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
           <input type="checkbox" checked={innerFrameSnap} onChange={onToggleInnerFrameSnap} />
           内枠スナップ
         </label>
-        <label class="canvas-panel-snap" title={`コマ間を上下${panelGutters.rowGapMm}mm・左右${panelGutters.columnGapMm}mmへ近づけると吸着します`}>
+        <label class="canvas-panel-snap" title={`コマの辺・頂点を上下${panelGutters.rowGapMm}mm・左右${panelGutters.columnGapMm}mmの間隔へ近づけると吸着します`}>
           <input type="checkbox" checked={panelGapSnap} onChange={onTogglePanelGapSnap} />
           コマスナップ
         </label>
