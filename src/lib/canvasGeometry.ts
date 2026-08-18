@@ -179,6 +179,8 @@ function findVertexLinkedPanelEdges(
 interface PanelVertexReference {
   panelIndex: number;
   vertexIndex: number;
+  edgeDistance: number;
+  cornerDistance: number;
 }
 
 /** 選択頂点の近くで角だけが接する、平行な隣辺の頂点を探す。 */
@@ -197,7 +199,7 @@ function findCornerLinkedPanelVertices(
   const dx = end[0] - start[0], dy = end[1] - start[1];
   const length = Math.hypot(dx, dy);
   if (!length) return [];
-  const references: Array<PanelVertexReference & { distance: number }> = [];
+  const references: PanelVertexReference[] = [];
 
   panels.forEach((panel, candidatePanelIndex) => {
     if (candidatePanelIndex === panelIndex) return;
@@ -217,18 +219,26 @@ function findCornerLinkedPanelVertices(
         { vertexIndex: candidateEndIndex, distance: Math.hypot(candidateEnd[0] - selectedPoint[0], candidateEnd[1] - selectedPoint[1]) },
       ];
       const nearest = candidates.sort((left, right) => left.distance - right.distance)[0];
-      if (nearest.distance <= maxCornerDistance) references.push({ panelIndex: candidatePanelIndex, ...nearest });
+      if (nearest.distance <= maxCornerDistance) references.push({
+        panelIndex: candidatePanelIndex,
+        vertexIndex: nearest.vertexIndex,
+        edgeDistance,
+        cornerDistance: nearest.distance,
+      });
     });
   });
-  const unique = new Map<string, PanelVertexReference & { distance: number }>();
+  const unique = new Map<string, PanelVertexReference>();
   references.forEach((reference) => {
     const key = `${reference.panelIndex}:${reference.vertexIndex}`;
     const current = unique.get(key);
-    if (!current || reference.distance < current.distance) unique.set(key, reference);
+    if (!current
+      || reference.edgeDistance < current.edgeDistance
+      || (reference.edgeDistance === current.edgeDistance && reference.cornerDistance < current.cornerDistance)) {
+      unique.set(key, reference);
+    }
   });
   return [...unique.values()]
-    .sort((left, right) => left.distance - right.distance)
-    .map(({ panelIndex: pi, vertexIndex: vi }) => ({ panelIndex: pi, vertexIndex: vi }));
+    .sort((left, right) => left.edgeDistance - right.edgeDistance || left.cornerDistance - right.cornerDistance);
 }
 
 /**
@@ -669,6 +679,13 @@ interface EdgeDeformation {
   edgeIndex: number;
 }
 
+interface CornerProjection {
+  normalX: number;
+  normalY: number;
+  edgeDistance: number;
+  cornerDistance: number;
+}
+
 interface LineConstraint {
   point: [number, number];
   vector: [number, number];
@@ -717,17 +734,20 @@ export function movePanelVertexWithSnap(
   const targetY = selectedLocks.y ?? roundMm(clamp(y, 0, 297));
   const deltaX = targetX - selectedPoint[0], deltaY = targetY - selectedPoint[1];
   const moves = new Map<string, VertexMove>();
+  const clampInfluences = new Map<string, VertexMove>();
+  const cornerProjections = new Map<string, CornerProjection>();
   const edgeDeformations: EdgeDeformation[] = [];
   const deformationKeys = new Set<string>();
-  const mark = (pi: number, vi: number, weightX: number, weightY: number) => {
+  const mark = (target: Map<string, VertexMove>, pi: number, vi: number, weightX: number, weightY: number) => {
     if (weightX <= 0 && weightY <= 0) return;
     const key = `${pi}:${vi}`;
-    const current = moves.get(key) ?? { weightX: 0, weightY: 0 };
+    const current = target.get(key) ?? { weightX: 0, weightY: 0 };
     current.weightX = Math.max(current.weightX, clamp(weightX, 0, 1));
     current.weightY = Math.max(current.weightY, clamp(weightY, 0, 1));
-    moves.set(key, current);
+    target.set(key, current);
   };
-  mark(panelIndex, vertexIndex, 1, 1);
+  mark(moves, panelIndex, vertexIndex, 1, 1);
+  mark(clampInfluences, panelIndex, vertexIndex, 1, 1);
 
   if (linkPanels) {
     const count = selectedPanel.shape.points.length;
@@ -740,23 +760,37 @@ export function movePanelVertexWithSnap(
       const lengthSquared = vectorX * vectorX + vectorY * vectorY;
       if (!lengthSquared) return;
       vertexEdgeReferences(panels, panelIndex, selectedEdgeIndex, selectedPoint, fixedPoint).slice(1).forEach((reference) => {
-        const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
         if (edgeIsLockedBoundary(panels[reference.panelIndex], reference.edgeIndex)) return;
         const deformationKey = `${selectedEdgeIndex}>${reference.panelIndex}:${reference.edgeIndex}`;
         if (!deformationKeys.has(deformationKey)) {
           deformationKeys.add(deformationKey);
           edgeDeformations.push({ selectedEdgeIndex, ...reference });
         }
+        const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
         const candidateVertexIndices = [reference.edgeIndex, (reference.edgeIndex + 1) % candidatePoints.length];
         candidateVertexIndices.forEach((candidateVertexIndex) => {
           const point = candidatePoints[candidateVertexIndex];
           const t = ((point[0] - selectedPoint[0]) * vectorX + (point[1] - selectedPoint[1]) * vectorY) / lengthSquared;
           const weight = clamp(1 - t, 0, 1);
-          mark(reference.panelIndex, candidateVertexIndex, weight, weight);
+          mark(clampInfluences, reference.panelIndex, candidateVertexIndex, weight, weight);
         });
       });
       findCornerLinkedPanelVertices(panels, panelIndex, selectedEdgeIndex, selectedPoint).forEach((reference) => {
-        mark(reference.panelIndex, reference.vertexIndex, 1, 1);
+        const length = Math.sqrt(lengthSquared);
+        const candidate: CornerProjection = {
+          normalX: -vectorY / length,
+          normalY: vectorX / length,
+          edgeDistance: reference.edgeDistance,
+          cornerDistance: reference.cornerDistance,
+        };
+        const key = `${reference.panelIndex}:${reference.vertexIndex}`;
+        const current = cornerProjections.get(key);
+        if (!current
+          || candidate.edgeDistance < current.edgeDistance
+          || (candidate.edgeDistance === current.edgeDistance && candidate.cornerDistance < current.cornerDistance)) {
+          cornerProjections.set(key, candidate);
+        }
+        mark(clampInfluences, reference.panelIndex, reference.vertexIndex, 1, 1);
       });
     });
   }
@@ -764,7 +798,7 @@ export function movePanelVertexWithSnap(
   // 追従頂点のどれかが紙端へ先に達した場合は、全頂点を同じ比率の移動量で止める。
   // 個別に clamp すると斜め辺の角度や揃っていたX/Yが崩れるため、移動量を一括制限する。
   let minDeltaX = -Infinity, maxDeltaX = Infinity, minDeltaY = -Infinity, maxDeltaY = Infinity;
-  moves.forEach((move, key) => {
+  clampInfluences.forEach((move, key) => {
     const [pi, vi] = key.split(':').map(Number);
     const point = panels[pi] && panelShapePoints(panels[pi])[vi];
     if (!point) return;
@@ -784,10 +818,12 @@ export function movePanelVertexWithSnap(
   const originalPanelPoints = panels.map(panelShapePoints);
   const nextPanelPoints = originalPanelPoints.map((points, pi) => points.map((point, vi): [number, number] => {
     const move = moves.get(`${pi}:${vi}`) ?? { weightX: 0, weightY: 0 };
+    const projection = cornerProjections.get(`${pi}:${vi}`);
+    const normalDelta = projection ? linkedDeltaX * projection.normalX + linkedDeltaY * projection.normalY : 0;
     const locks = pointBoundaryLocks(panels[pi], point);
     return [
-      locks.x ?? roundMm(point[0] + linkedDeltaX * move.weightX),
-      locks.y ?? roundMm(point[1] + linkedDeltaY * move.weightY),
+      locks.x ?? roundMm(point[0] + linkedDeltaX * move.weightX + (projection?.normalX ?? 0) * normalDelta),
+      locks.y ?? roundMm(point[1] + linkedDeltaY * move.weightY + (projection?.normalY ?? 0) * normalDelta),
     ];
   }));
   const constraints = new Map<string, LineConstraint[]>();
@@ -857,6 +893,7 @@ export function movePanelVertexWithSnap(
 
   const affectedPanels = new Set<number>();
   moves.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
+  cornerProjections.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
   constraints.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
   panels.forEach((panel, pi) => {
     if (!affectedPanels.has(pi)) return;

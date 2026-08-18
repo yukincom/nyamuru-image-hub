@@ -222,6 +222,17 @@ test('page 2型の頂点変形は同じ境界グループの2段先まで伝播�
   assert.deepEqual(panelShapePoints(fromPanel4[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
 });
 
+test('頂点を辺に沿って動かしても、平行な下段コマの幅を変えない', () => {
+  for (const targetX of [86.8, 106.8]) {
+    const panels = page2TopologyPanels();
+    const panel3Before = panelShapePoints(panels[2]);
+    const panel4Before = panelShapePoints(panels[3]);
+    movePanelVertexWithSnap(panels, 0, 3, targetX, 97.2, true);
+    assert.deepEqual(panelShapePoints(panels[2]), panel3Before);
+    assert.deepEqual(panelShapePoints(panels[3]), panel4Before);
+  }
+});
+
 test('page 1型の頂点変形は数mmずれた延長辺へ傾きを伝播する', () => {
   const fromPanel5 = page1TopologyPanels();
   movePanelVertexWithSnap(fromPanel5, 4, 1, 131.6, 228.8, true);
@@ -236,14 +247,15 @@ test('page 1型の頂点変形は数mmずれた延長辺へ傾きを伝播する
   assert.deepEqual(panelShapePoints(fromPanel4[2]).slice(2), [[200, 287], [126.6, 287]]);
 });
 
-test('連動頂点が紙端へ達したら全頂点を同じ移動量で止める', () => {
+test('連動頂点が紙端へ達したら法線方向だけを止め、接線方向は維持する', () => {
   const panels = [
     { ...rectPanel, shape: { type: 'polygon', points: [[10, 200], [100, 250], [90, 290], [10, 290]] } },
     { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[105, 257], [195, 257], [195, 297], [95, 297]] } },
   ];
   movePanelVertexWithSnap(panels, 0, 2, 93, 297, true);
   assert.deepEqual(panels[0].shape.points[2], [93, 290]);
-  assert.deepEqual(panels[1].shape.points[3], [98.4, 297]);
+  assert.equal(panels[1].shape.points[3][1], 297);
+  assert.ok(panels[1].shape.points[3][0] > 95);
 });
 
 test('横に分割されて少しズレた辺は隣辺へ吸着し、揃った後は連動する', () => {
