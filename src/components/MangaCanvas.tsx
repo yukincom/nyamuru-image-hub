@@ -39,6 +39,16 @@ interface Interaction extends InteractionGeometry {
   paperRect: DOMRect;
 }
 
+type PanelDragOrigin = {
+  kind: 'edge';
+  start: [number, number];
+  end: [number, number];
+  anchor: [number, number];
+} | {
+  kind: 'vertex';
+  anchor: [number, number];
+};
+
 function panelStyle(panel: Panel): Record<string, string | number> {
   if (panel.shape.type === 'rect') {
     return {
@@ -129,6 +139,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
   const cleanupRef = useRef<(() => void) | null>(null);
   const [interactionMode, setInteractionMode] = useState<ResizeHandle | 'panel' | 'panel-resize' | 'panel-edge' | null>(null);
   const [activeEdgeIndex, setActiveEdgeIndex] = useState<number | null>(null);
+  const [panelDragOrigin, setPanelDragOrigin] = useState<PanelDragOrigin | null>(null);
   // ズームは直接DOMの幅を書き換える（ジェスチャ中の再レンダー回避）。stateは%表示のみ
   const [zoomPercent, setZoomPercent] = useState(100);
   // 紙面の実サイズが変わるたびに増やして、テキスト自動縮小の再測定を促す
@@ -407,8 +418,13 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     onSelectElement(null);
     const startClientX = event.clientX, startClientY = event.clientY;
     const paperRect = paperRef.current.getBoundingClientRect();
+    const originAnchor: [number, number] = [
+      clamp((event.clientX - paperRect.left) * (210 / paperRect.width), 0, 210),
+      clamp((event.clientY - paperRect.top) * (297 / paperRect.height), 0, 297),
+    ];
     setInteractionMode('panel-edge');
     setActiveEdgeIndex(edgeIndex);
+    setPanelDragOrigin({ kind: 'edge', start: [start[0], start[1]], end: [end[0], end[1]], anchor: originAnchor });
     document.body.classList.add('is-panel-edge-dragging');
     let shiftDragState: ShiftAxisDragState = {};
     let shiftWasPressed = false;
@@ -495,6 +511,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       document.body.classList.remove('is-panel-edge-dragging');
       setInteractionMode(null);
       setActiveEdgeIndex(null);
+      setPanelDragOrigin(null);
       cleanupRef.current = null;
     };
     cleanupRef.current?.();
@@ -516,6 +533,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     const startClientX = event.clientX;
     const startClientY = event.clientY;
     setInteractionMode('panel-resize');
+    setPanelDragOrigin({ kind: 'vertex', anchor: [startX, startY] });
     document.body.classList.add('is-panel-dragging');
     let shiftDragState: ShiftAxisDragState = {};
     let shiftWasPressed = false;
@@ -568,6 +586,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       window.removeEventListener('pointercancel', finish);
       document.body.classList.remove('is-panel-dragging');
       setInteractionMode(null);
+      setPanelDragOrigin(null);
       cleanupRef.current = null;
     };
     cleanupRef.current?.();
@@ -751,13 +770,25 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
           <polygon class="panel-selection-shape" points={selectedPanel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} />
           <polygon class="panel-selection-hit-area" points={selectedPanel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} onPointerDown={startPanelMove} />
         </>}
+        {panelDragOrigin && <g class="panel-drag-origin-guide">
+          {panelDragOrigin.kind === 'edge' && <line class="panel-drag-origin-edge" x1={panelDragOrigin.start[0]} y1={panelDragOrigin.start[1]} x2={panelDragOrigin.end[0]} y2={panelDragOrigin.end[1]} />}
+          <line class="panel-drag-origin-axis" x1={Math.max(0, panelDragOrigin.anchor[0] - 16)} y1={panelDragOrigin.anchor[1]} x2={Math.min(210, panelDragOrigin.anchor[0] + 16)} y2={panelDragOrigin.anchor[1]} />
+          <line class="panel-drag-origin-axis" x1={panelDragOrigin.anchor[0]} y1={Math.max(0, panelDragOrigin.anchor[1] - 16)} x2={panelDragOrigin.anchor[0]} y2={Math.min(297, panelDragOrigin.anchor[1] + 16)} />
+          <circle class="panel-drag-origin-point" cx={panelDragOrigin.anchor[0]} cy={panelDragOrigin.anchor[1]} r="2.2" />
+          <text class="panel-drag-origin-label" x={clamp(panelDragOrigin.anchor[0] + 3.5, 2, 190)} y={clamp(panelDragOrigin.anchor[1] - 3.5, 7, 292)}>{panelDragOrigin.kind === 'edge' ? '辺の基点' : '頂点の基点'}</text>
+        </g>}
         {panelShapePoints(selectedPanel).map((point, edgeIndex, points) => {
           const next = points[(edgeIndex + 1) % points.length];
+          const midpoint: [number, number] = [(point[0] + next[0]) / 2, (point[1] + next[1]) / 2];
           return <g class={`panel-edge-handle ${activeEdgeIndex === edgeIndex ? 'is-active' : ''}`} key={`edge-${edgeIndex}`}>
             <line class="panel-edge-guide" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} />
             <line class="panel-edge-hit" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} onPointerDown={(event) => startPanelEdgeDrag(event, edgeIndex)}>
               <title>辺 {edgeIndex + 1} を平行移動（Shiftで開始位置基準の水平・垂直に固定）</title>
             </line>
+            <circle class="panel-edge-midpoint" cx={midpoint[0]} cy={midpoint[1]} r="1.8" />
+            <circle class="panel-edge-midpoint-hit" cx={midpoint[0]} cy={midpoint[1]} r="5" onPointerDown={(event) => startPanelEdgeDrag(event, edgeIndex)}>
+              <title>辺 {edgeIndex + 1} の中央つまみ（辺全体を移動）</title>
+            </circle>
           </g>;
         })}
         <g class="panel-selection-label" transform={`translate(${selectedBounds.x + 1} ${Math.max(8, selectedBounds.y - 2)})`} onPointerDown={startPanelMove}>

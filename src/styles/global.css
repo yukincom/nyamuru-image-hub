@@ -201,6 +201,14 @@ input:disabled { background: #faf6f7; color: #9b9398; }
 .panel-edge-hit { stroke: transparent; stroke-width: 14; vector-effect: non-scaling-stroke; pointer-events: stroke; cursor: move; touch-action: none; }
 .panel-edge-handle:hover .panel-edge-guide, .panel-edge-handle.is-active .panel-edge-guide { opacity: 1; }
 .panel-edge-handle.is-active .panel-edge-guide { stroke: #f0b51d; stroke-width: 4; }
+.panel-edge-midpoint { fill: white; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(31,29,35,.3)); }
+.panel-edge-midpoint-hit { fill: transparent; stroke: none; pointer-events: all; cursor: move; touch-action: none; }
+.panel-edge-handle:hover .panel-edge-midpoint, .panel-edge-handle.is-active .panel-edge-midpoint { fill: #f0b51d; stroke: white; }
+.panel-drag-origin-guide { pointer-events: none; }
+.panel-drag-origin-edge { stroke: #f0b51d; stroke-width: 2; stroke-dasharray: 4 2.5; vector-effect: non-scaling-stroke; opacity: .95; }
+.panel-drag-origin-axis { stroke: rgba(40,119,214,.88); stroke-width: 1.4; stroke-dasharray: 2.5 2; vector-effect: non-scaling-stroke; }
+.panel-drag-origin-point { fill: #f0b51d; stroke: white; stroke-width: 1.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 1px rgba(31,29,35,.3)); }
+.panel-drag-origin-label { fill: #51440d; font: 700 4.2px/1 ui-sans-serif, sans-serif; paint-order: stroke; stroke: rgba(255,255,255,.9); stroke-width: 2.5; stroke-linejoin: round; }
 .panel-resize-handle { fill: white; stroke: var(--accent); stroke-width: 1.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 1px 1px rgba(31,29,35,.3)); }
 .panel-resize-hit { fill: transparent; stroke: none; pointer-events: all; touch-action: none; }
 .panel-handle-nw, .panel-handle-se { cursor: nwse-resize; }
