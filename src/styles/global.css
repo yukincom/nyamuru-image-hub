@@ -495,6 +495,9 @@ input:disabled { background: #faf6f7; color: #9b9398; }
 .new-layout-preview > .new-layout-preview-image { display: grid; align-items: center; }
 .new-layout-preview strong { max-width: 100%; overflow: hidden; color: #45424a; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .new-layout-preview span { color: var(--muted); font-size: 8px; }
+.new-layout-rotation-controls { display: flex; flex-wrap: wrap; gap: 4px; }
+.new-layout-rotation-controls button { min-height: 24px; padding: 4px 7px; border: 1px solid var(--soft-line); border-radius: 6px; background: #f8f8fa; color: #5d5962; font-size: 8px; font-weight: 800; cursor: pointer; }
+.new-layout-rotation-controls button:hover:not(:disabled) { border-color: var(--retro-blue); color: var(--blue); }
 .new-layout-preview .primary-button { margin-top: 2px; padding: 7px 10px; font-size: 9px; }
 .new-layout-message { margin: 0; padding: 7px 9px; border-radius: 7px; background: #f4f4f6; color: #66626b; font-size: 9px; line-height: 1.6; }
 .new-layout-message.is-match { background: #edf9f2; color: #326c4c; }

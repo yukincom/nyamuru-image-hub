@@ -279,11 +279,13 @@ async function postJson(path: string, body: object, timeoutMs = REQUEST_TIMEOUT_
 export async function recognizePanelLayout(
   file: File,
   templates: readonly PanelTemplate[],
+  rotationOverride: 0 | 90 | 180 | 270 | null = null,
 ): Promise<LayoutRecognitionResult> {
   const payload = await postJson('/api/layout/analyze', {
     filename: file.name,
     image: await imageDataUrl(file),
-    candidates: templates.map(({ id, name, usage, shapes }) => ({ id, name, usage, shapes })),
+    candidates: templates.map(({ id, name, usage, shapes, bleeds }) => ({ id, name, usage, shapes, bleeds })),
+    ...(rotationOverride === null ? {} : { rotation_override_degrees: rotationOverride }),
   }) as BridgeLayoutResponse;
   return normalizeLayoutRecognition(payload, templates.map((template) => template.id));
 }

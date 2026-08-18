@@ -1,4 +1,5 @@
 import importlib.util
+import io
 import sys
 import tempfile
 import unittest
@@ -128,8 +129,30 @@ class OrientationResultTest(unittest.TestCase):
         self.assertEqual(bridge.parse_orientation_result('{"rotation_degrees":270}', 0), 270)
         self.assertEqual(bridge.parse_orientation_result('{"rotation_degrees":45}', 180), 180)
 
+    def test_accepts_only_valid_manual_rotation_override(self):
+        self.assertIsNone(bridge.normalized_rotation_override(None))
+        self.assertEqual(bridge.normalized_rotation_override("180"), 180)
+        with self.assertRaisesRegex(ValueError, "0・90・180・270"):
+            bridge.normalized_rotation_override(45)
+
 
 class LocalVisionResultTest(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("cv2"), "OpenCV is provided by the local bridge runtime")
+    def test_grid_detector_recovers_a_slightly_slanted_pencil_rule(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("L", (600, 900), "white")
+        drawing = ImageDraw.Draw(image)
+        drawing.line((8, 300, 592, 300), fill="black", width=6)
+        drawing.line((8, 600, 592, 600), fill="black", width=6)
+        drawing.line((390, 300, 370, 600), fill="black", width=6)
+        encoded = io.BytesIO()
+        image.save(encoded, "PNG")
+
+        boxes = bridge.detect_grid_panel_boxes(encoded.getvalue())
+        self.assertEqual(len(boxes), 4)
+        self.assertEqual(sum(0.32 <= top < 0.50 for _, top, _, _ in boxes), 2)
+
     def test_rejects_full_page_frame_from_rtdetr(self):
         detection = {
             "page": {"width": 1000, "height": 1400},

@@ -13,7 +13,7 @@ export interface PanelTemplate {
 const rect = (x: number, y: number, w: number, h: number): PanelShape => ({ type: 'rect', x, y, w, h });
 const polygon = (points: [number, number][]): PanelShape => ({ type: 'polygon', points });
 
-/** NDM v10で定義したコマ割りパターンA〜U。 */
+/** NDM v10で定義したコマ割りパターンA〜Uと追加パターン。 */
 export const PANEL_TEMPLATES: PanelTemplate[] = [
   {
     id: 'A', name: '3コマ縦積み', usage: '落ち着いた会話・ナレーション',
@@ -160,6 +160,16 @@ export const PANEL_TEMPLATES: PanelTemplate[] = [
       polygon([[52.6, 82.7], [135.8, 71], [145.4, 139.3], [62.2, 151]]),
       polygon([[44.4, 138.3], [123.7, 143.8], [119.2, 208.1], [39.9, 202.6]]),
       polygon([[88.1, 172.6], [171.7, 163.8], [178.9, 232.4], [95.3, 241.2]]),
+    ],
+  },
+  {
+    id: 'Z', name: '受けから三連', usage: '大きな導入と受けのあと、下段3コマで畳みかける',
+    shapes: [
+      rect(10, 10, 190, 105),
+      rect(10, 120, 190, 95),
+      rect(105, 220, 95, 67),
+      rect(65, 220, 35, 67),
+      rect(10, 220, 50, 67),
     ],
   },
 ];

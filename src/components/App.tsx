@@ -50,7 +50,14 @@ interface NewLayoutItem {
   source: NewLayoutSource;
   analysis: LayoutRecognitionResult | null;
   analyzing: boolean;
+  rotationOverride: 0 | 90 | 180 | 270 | null;
   error?: string;
+}
+
+type RightAngle = NonNullable<NewLayoutItem['rotationOverride']>;
+
+function displayedLayoutRotation(item: NewLayoutItem): RightAngle {
+  return (item.analysis?.rotationDegrees ?? item.rotationOverride ?? 0) as RightAngle;
 }
 
 const HOWTO_INTRO_KEY = 'manga-name-studio.howto-intro.v1';
@@ -375,7 +382,7 @@ export default function App() {
     discardNewLayoutItems();
     const items = selected.map((file) => ({
       id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), source: 'manual' as const,
-      analysis: null, analyzing: false,
+      analysis: null, analyzing: false, rotationOverride: null,
     }));
     newLayoutItemsRef.current = items;
     setNewLayoutItems(items);
@@ -396,7 +403,11 @@ export default function App() {
       setNewLayoutItems(working);
       setNewLayoutMessage(`${index + 1} / ${working.length}枚目：RT-DETRでコマと文字領域を検出し、NDLOCR-Liteで文字を読んでいます…`);
       try {
-        const result = await recognizePanelLayout(working[index].file, PANEL_TEMPLATES);
+        const result = await recognizePanelLayout(
+          working[index].file,
+          PANEL_TEMPLATES,
+          working[index].rotationOverride,
+        );
         working = working.map((item, itemIndex) => itemIndex === index
           ? { ...item, analysis: result, analyzing: false, error: undefined }
           : item);
@@ -413,6 +424,24 @@ export default function App() {
     const recognized = working.reduce((total, item) => total + (item.analysis?.ocrLines.length ?? 0), 0);
     setNewLayoutMessage(`${working.length}枚の解析が終わりました。${matched}枚でコマ割り候補、${recognized}件の文字候補を取得しました。文字は確定後も編集できます。`);
     setNewLayoutTask('idle');
+  };
+
+  const setActiveLayoutRotation = (rotation: RightAngle | null) => {
+    const index = newLayoutActiveIndex;
+    const working = newLayoutItemsRef.current.map((item, itemIndex) => itemIndex === index
+      ? { ...item, rotationOverride: rotation, analysis: null, analyzing: false, error: undefined }
+      : item);
+    newLayoutItemsRef.current = working;
+    setNewLayoutItems(working);
+    setNewLayoutMessage(rotation === null
+      ? `${index + 1}枚目を自動向き判定へ戻しました。もう一度ローカル解析してください。`
+      : `${index + 1}枚目は時計回り${rotation}°の向きで解析します。`);
+  };
+
+  const rotateActiveLayoutImage = (delta: 90 | 180 | 270) => {
+    const item = newLayoutItemsRef.current[newLayoutActiveIndex];
+    if (!item) return;
+    setActiveLayoutRotation(((displayedLayoutRotation(item) + delta) % 360) as RightAngle);
   };
 
   const launchScanner = async () => {
@@ -433,7 +462,7 @@ export default function App() {
         if (batch.files.length) {
           const additions = batch.files.map(({ id, file }) => ({
             id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
-            analysis: null, analyzing: false,
+            analysis: null, analyzing: false, rotationOverride: null,
           }));
           const existing = newLayoutItemsRef.current;
           const known = new Set(existing.map((item) => item.id));
@@ -475,7 +504,7 @@ export default function App() {
       setPendingScannerSession(null);
       const items = resumed.files.map(({ id, file }) => ({
         id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
-        analysis: null, analyzing: false,
+        analysis: null, analyzing: false, rotationOverride: null,
       }));
       newLayoutItemsRef.current = items;
       setNewLayoutItems(items);
@@ -820,7 +849,7 @@ export default function App() {
           <button class="new-blank-button" onClick={() => createNewDocument()}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
           <section class="new-layout-import" aria-labelledby="new-layout-import-title">
             <div class="new-layout-import-head">
-              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>最大10枚。RT-DETRでコマと文字領域を検出し、NDLOCR-Liteで文字候補を作ります。Qwen3-VLは向きや不確実な箇所だけ補助します。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
+              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>最大10枚。RT-DETRと罫線検出でコマを、NDLOCR-Liteで文字候補を作ります。曖昧な向きは画像ごとに手動確認し、Qwen3-VLは明示的な比較モードだけで使用します。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
               <div class="new-layout-import-actions">
                 <button type="button" onClick={() => newLayoutImageInput.current?.click()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
                 {newLayoutTask === 'scanner'
@@ -835,13 +864,13 @@ export default function App() {
             <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" multiple hidden onChange={(event) => chooseNewLayoutImages(event.currentTarget.files)} />
             {newLayoutItems.length > 1 && <div class="new-layout-queue" aria-label="読み込んだネーム画像">
               {newLayoutItems.map((item, index) => <button type="button" class={newLayoutActiveIndex === index ? 'is-active' : ''} onClick={() => setNewLayoutActiveIndex(index)} key={item.id}>
-                <span>{index + 1}</span><img src={item.previewUrl} alt="" style={{ transform: `rotate(${item.analysis?.rotationDegrees ?? 0}deg) scale(${(item.analysis?.rotationDegrees ?? 0) % 180 ? .78 : 1})` }} />
+                <span>{index + 1}</span><img src={item.previewUrl} alt="" style={{ transform: `rotate(${displayedLayoutRotation(item)}deg) scale(${displayedLayoutRotation(item) % 180 ? .78 : 1})` }} />
                 <small>{item.analyzing ? '解析中' : item.analysis?.templateId ? `候補 ${item.analysis.templateId} · 文字${item.analysis.ocrLines.length}` : item.error ? 'エラー' : '未解析'}</small>
               </button>)}
             </div>}
             {activeLayoutItem && <div class="new-layout-preview">
-              <div class="new-layout-preview-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={{ transform: `rotate(${activeLayoutAnalysis?.rotationDegrees ?? 0}deg) scale(${(activeLayoutAnalysis?.rotationDegrees ?? 0) % 180 ? .78 : 1})` }} /></div>
-              <div><strong>{activeLayoutItem.file.name}</strong><span>{(activeLayoutItem.file.size / 1024 / 1024).toFixed(1)} MB · {activeLayoutItem.source === 'scanner' ? 'スキャン元は確定まで保持' : '元ファイルは保持'}</span>{activeLayoutAnalysis ? <span>{activeLayoutAnalysis.rotationDegrees ? `${activeLayoutAnalysis.rotationDegrees}°回転して向きを補正` : '向き補正は不要'}</span> : null}<button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button></div>
+              <div class="new-layout-preview-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={{ transform: `rotate(${displayedLayoutRotation(activeLayoutItem)}deg) scale(${displayedLayoutRotation(activeLayoutItem) % 180 ? .78 : 1})` }} /></div>
+              <div><strong>{activeLayoutItem.file.name}</strong><span>{(activeLayoutItem.file.size / 1024 / 1024).toFixed(1)} MB · {activeLayoutItem.source === 'scanner' ? 'スキャン元は確定まで保持' : '元ファイルは保持'}</span>{activeLayoutItem.rotationOverride !== null ? <span>手動指定: 時計回り{activeLayoutItem.rotationOverride}°</span> : activeLayoutAnalysis ? <span>{activeLayoutAnalysis.rotationDegrees ? `${activeLayoutAnalysis.rotationDegrees}°回転して向きを補正` : '向き補正は不要'}</span> : null}<div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button><button type="button" onClick={() => setActiveLayoutRotation(displayedLayoutRotation(activeLayoutItem))} disabled={newLayoutTask !== 'idle'}>この向きを使用</button>{activeLayoutItem.rotationOverride !== null && <button type="button" onClick={() => setActiveLayoutRotation(null)} disabled={newLayoutTask !== 'idle'}>自動へ戻す</button>}</div><button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button></div>
             </div>}
             {newLayoutMessage && <p class={`new-layout-message ${activeLayoutAnalysis?.templateId ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
             {scannerSession && <p class="new-layout-session">開始 {new Date(scannerSession.startedAt).toLocaleTimeString('ja-JP')} · 保存先 {scannerSession.directory}</p>}

@@ -3,10 +3,11 @@
 新規作成画面では、紙のネーム画像を最大10枚まで読み込み、次の役割分担で解析します。
 
 - RT-DETR（manga-babble-maker）: コマ・文字領域の検出
-- 罫線補助: 薄い鉛筆の段境界を検出
+- 罫線補助: 薄い鉛筆の段境界と、少し傾いた縦のコマ線を検出
 - NDLOCR-Lite: 検出した領域の手書き文字認識
 - RapidOrientation: 5領域とページ形状を使う高速な向き判定
-- Qwen3-VL: RapidOrientationが低確信の向き、または明示的な比較評価
+- 手動確認: 自動判定が曖昧なページだけ、画像ごとに0°・90°・180°・270°を指定
+- Qwen3-VL: 明示的な比較評価だけ（通常解析では起動しない）
 
 画像はファイルを選択しただけでは解析処理へ渡されません。「ローカル解析」を押した時だけ、`127.0.0.1`で待ち受けるローカル連携へ1枚ずつ送られます。外部サービスへの送信は行いません。コマ割りと文字候補は利用者が確認してから新規作成へ反映し、文字候補は位置に対応するコマの編集可能なフキダシとして配置します。誤読を前提に、低確信度またはQwen補助の文字は画面で「要確認」と表示します。
 
@@ -33,12 +34,12 @@ npm run bridge:check
 Qwenの使用範囲は起動時に切り替えられます。
 
 ```bash
-npm run bridge -- --qwen-mode off      # RapidOrientationだけ（低確信時は構造補助）
-npm run bridge -- --qwen-mode auto     # RapidOrientation低確信時だけQwenで向きを補助（既定）
+npm run bridge -- --qwen-mode off      # RapidOrientation＋手動向き確認
+npm run bridge -- --qwen-mode auto     # offと同じ通常運用（既定、互換性のため名称を維持）
 npm run bridge -- --qwen-mode compare  # 向き・レイアウト・OCRをQwenとも毎回比較
 ```
 
-`auto`ではQwenを向きのフォールバックに限定するため、通常ページでは8Bモデルを起動しません。`compare`で得たOCR提案は元の専用OCR結果と紐付け、明らかな文字化けを置き換える場合も「要確認」のままにします。関連ライセンスとモデル配置方針は `docs/LOCAL_VISION_COMPONENTS.md` を参照してください。
+実際の手書きネーム2枚ではQwenも上下を区別できなかったため、`auto`は8Bモデルを自動起動しません。RapidOrientationが低確信の場合はコマ・OCR解析をいったん止め、プレビューの回転ボタンで利用者が向きを確定します。`compare`で得たOCR提案は元の専用OCR結果と紐付け、明らかな文字化けを置き換える場合も「要確認」のままにします。関連ライセンスとモデル配置方針は `docs/LOCAL_VISION_COMPONENTS.md` を参照してください。
 
 ## スキャナー
 

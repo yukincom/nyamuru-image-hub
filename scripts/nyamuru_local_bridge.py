@@ -28,7 +28,7 @@ TOOLS_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MANGA_BABBLE_ROOT = TOOLS_ROOT / "manga-babble-maker"
 DEFAULT_NDLOCR_ROOT = TOOLS_ROOT / "ndlocr-lite"
 DEFAULT_RAPID_ORIENTATION_ROOT = TOOLS_ROOT / "rapid-orientation"
-RAPID_ORIENTATION_CONFIDENCE = 0.25
+RAPID_ORIENTATION_CONFIDENCE = 0.45
 # 高解像度TIFFをブラウザ側で縮小できない場合にも、ローカルbridgeで受け取れる上限。
 MAX_BODY_BYTES = 96 * 1024 * 1024
 ALLOWED_ORIGIN = re.compile(r"^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?$")
@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
         "--qwen-mode",
         choices=("off", "auto", "compare"),
         default=os.environ.get("NYAMURU_QWEN_MODE", "auto"),
-        help="off: 専用モデルのみ / auto: RapidOrientation低確信時だけ向きを補助 / compare: 常にQwenとも比較",
+        help="off/auto: 専用モデル＋手動向き確認 / compare: 常にQwenとも比較",
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -94,7 +94,20 @@ def normalized_candidate(candidate: object) -> dict[str, Any] | None:
         "name": str(candidate.get("name", ""))[:80],
         "usage": str(candidate.get("usage", ""))[:160],
         "shapes": shapes[:8],
+        "has_bleed": isinstance(candidate.get("bleeds"), dict) and bool(candidate.get("bleeds")),
     }
+
+
+def normalized_rotation_override(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        rotation = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("手動の向き指定は0・90・180・270度のいずれかです") from None
+    if rotation not in {0, 90, 180, 270}:
+        raise ValueError("手動の向き指定は0・90・180・270度のいずれかです")
+    return rotation
 
 
 def image_capture_preference(key: str, fallback: str) -> str:
@@ -580,7 +593,11 @@ def layout_distance(source: list[tuple[float, float, float, float]], candidate: 
     source_to_target = sum(min(box_distance(box, other) for other in target) for box in source) / len(source)
     target_to_source = sum(min(box_distance(box, other) for other in source) for box in target) / len(target)
     count_penalty = abs(len(source) - len(target)) * 0.9
-    return source_to_target + target_to_source + count_penalty
+    # A cropped scan cannot reliably prove that a line intentionally bleeds to
+    # the finished page edge. Prefer the non-bleed equivalent for automatic
+    # suggestions; the user can still choose a bleed template explicitly.
+    bleed_uncertainty_penalty = 0.12 if candidate.get("has_bleed") else 0.0
+    return source_to_target + target_to_source + count_penalty + bleed_uncertainty_penalty
 
 
 def rank_candidates(image_bytes: bytes, candidates: list[dict[str, Any]]) -> tuple[list[tuple[dict[str, Any], float]], int]:
@@ -718,6 +735,107 @@ def detect_separator_panel_boxes(image_bytes: bytes) -> list[tuple[float, float,
         if bottom - top >= 0.07:
             boxes.append((0.015, top, 0.97, bottom - top))
     return boxes if 2 <= len(boxes) <= 6 else []
+
+
+def detect_grid_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, float]]:
+    """Split horizontal storyboard bands at strong, possibly hand-drawn vertical rules."""
+    import cv2
+    import numpy as np
+
+    bands = detect_separator_panel_boxes(image_bytes)
+    if not bands:
+        return []
+    gray = cv2.imdecode(np.frombuffer(image_bytes, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+    if gray is None:
+        return bands
+    height, width = gray.shape
+    ink = gray < 205
+    boxes: list[tuple[float, float, float, float]] = []
+    for left, top, band_width, band_height in bands:
+        top_px = max(0, round(top * height))
+        bottom_px = min(height, round((top + band_height) * height))
+        if bottom_px - top_px < 24:
+            boxes.append((left, top, band_width, band_height))
+            continue
+        crop = ink[top_px:bottom_px]
+        edge_length = max(8, crop.shape[0] // 8)
+        candidates: list[tuple[int, float]] = []
+        for x in range(max(4, round(width * 0.08)), min(width - 4, round(width * 0.92))):
+            strip = np.max(crop[:, x - 3 : x + 4], axis=1)
+            coverage = float(np.mean(strip))
+            end_coverage = min(float(np.mean(strip[:edge_length])), float(np.mean(strip[-edge_length:])))
+            if coverage >= 0.72 and end_coverage >= 0.45:
+                candidates.append((x, coverage + end_coverage))
+        clusters: list[list[tuple[int, float]]] = []
+        for candidate in candidates:
+            if not clusters or candidate[0] - clusters[-1][-1][0] > max(5, round(width * 0.035)):
+                clusters.append([candidate])
+            else:
+                clusters[-1].append(candidate)
+        split_candidates = [max(cluster, key=lambda item: item[1]) for cluster in clusters]
+
+        # Pencil panel rules are often slightly diagonal, so one fixed x-column may
+        # not stay dark from the top edge to the bottom edge. Hough line segments
+        # recover those rules while requiring them to span nearly the whole band;
+        # this excludes most character and text strokes inside a panel.
+        edges = cv2.Canny(gray[top_px:bottom_px], 35, 110)
+        lines = cv2.HoughLinesP(
+            edges,
+            1,
+            np.pi / 360,
+            threshold=max(20, crop.shape[0] // 6),
+            minLineLength=max(55, round(crop.shape[0] * 0.58)),
+            maxLineGap=max(18, round(crop.shape[0] * 0.15)),
+        )
+        if lines is not None:
+            for x1, y1, x2, y2 in lines.reshape(-1, 4):
+                delta_x = abs(int(x2) - int(x1))
+                delta_y = abs(int(y2) - int(y1))
+                line_top = min(int(y1), int(y2))
+                line_bottom = max(int(y1), int(y2))
+                midpoint_x = round((int(x1) + int(x2)) / 2)
+                if (
+                    delta_y >= crop.shape[0] * 0.62
+                    and delta_x <= max(22, delta_y * 0.28)
+                    and line_top <= crop.shape[0] * 0.13
+                    and line_bottom >= crop.shape[0] * 0.87
+                    and round(width * 0.08) <= midpoint_x <= round(width * 0.92)
+                ):
+                    line_score = 2.0 + delta_y / crop.shape[0] - delta_x / max(delta_y, 1)
+                    split_candidates.append((midpoint_x, line_score))
+        split_candidates.sort(key=lambda item: item[0])
+        merged_splits: list[list[tuple[int, float]]] = []
+        for split in split_candidates:
+            if not merged_splits or split[0] - merged_splits[-1][-1][0] > max(5, round(width * 0.06)):
+                merged_splits.append([split])
+            else:
+                merged_splits[-1].append(split)
+        scored_splits = [max(cluster, key=lambda item: item[1]) for cluster in merged_splits]
+
+        # A long balloon edge or handwritten stroke can resemble a panel rule.
+        # Reject any candidate that would leave an implausibly narrow cell, and
+        # keep the stronger line when two candidates crowd the same cell.
+        minimum_cell_width = 0.16
+        while scored_splits:
+            positions = [left, *(x / width for x, _ in scored_splits), left + band_width]
+            gaps = [right - cell_left for cell_left, right in zip(positions, positions[1:])]
+            narrowest = min(range(len(gaps)), key=gaps.__getitem__)
+            if gaps[narrowest] >= minimum_cell_width:
+                break
+            if narrowest == 0:
+                del scored_splits[0]
+            elif narrowest == len(gaps) - 1:
+                scored_splits.pop()
+            elif scored_splits[narrowest - 1][1] < scored_splits[narrowest][1]:
+                del scored_splits[narrowest - 1]
+            else:
+                del scored_splits[narrowest]
+        splits = [x / width for x, _ in scored_splits]
+        boundaries = [left, *splits, left + band_width]
+        for cell_left, cell_right in zip(boundaries, boundaries[1:]):
+            if cell_right - cell_left >= minimum_cell_width:
+                boxes.append((cell_left, top, cell_right - cell_left, band_height))
+    return boxes if 2 <= len(boxes) <= 8 else bands
 
 
 def run_local_worker(
@@ -1001,7 +1119,7 @@ def parse_model_result(raw: str, valid_ids: set[str]) -> dict[str, Any]:
             pass
     candidate_id = str(parsed.get("template_id", "NONE")).strip().upper()
     if candidate_id not in valid_ids:
-        fallback = re.search(r"(?:PATTERN|TEMPLATE|パターン)\s*([A-Y])\b", cleaned, flags=re.IGNORECASE)
+        fallback = re.search(r"(?:PATTERN|TEMPLATE|パターン)\s*([A-Z])\b", cleaned, flags=re.IGNORECASE)
         candidate_id = fallback.group(1).upper() if fallback else "NONE"
     try:
         confidence = max(0.0, min(1.0, float(parsed.get("confidence", 0.5 if candidate_id != "NONE" else 0))))
@@ -1140,7 +1258,12 @@ Return exactly one JSON object and no other text:
         raw = self._process(make_ocr_review_image(upright_bytes, lines), prompt, min(768, 96 + len(lines) * 80))
         return parse_ocr_review(raw, {line["id"] for line in lines})
 
-    def analyze(self, image_bytes: bytes, candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    def analyze(
+        self,
+        image_bytes: bytes,
+        candidates: list[dict[str, Any]],
+        rotation_override: int | None = None,
+    ) -> dict[str, Any]:
         if not candidates:
             raise ValueError("比較するコマ割り候補がありません")
         _, fallback_rotation, _ = rank_candidates_with_orientation(image_bytes, candidates)
@@ -1154,7 +1277,17 @@ Return exactly one JSON object and no other text:
             "observed_rotation_degrees": None,
             "correction_degrees": fallback_rotation,
         }
-        if self.rapid_orientation_python.is_file():
+        if rotation_override is not None:
+            rotation = rotation_override
+            orientation = {
+                "engine": "手動指定",
+                "confidence": 1.0,
+                "threshold": RAPID_ORIENTATION_CONFIDENCE,
+                "high_confidence": True,
+                "observed_rotation_degrees": None,
+                "correction_degrees": rotation_override,
+            }
+        elif self.rapid_orientation_python.is_file():
             try:
                 rapid = run_local_worker(
                     python=self.rapid_orientation_python,
@@ -1178,8 +1311,12 @@ Return exactly one JSON object and no other text:
             except (OSError, RuntimeError, ValueError) as exc:
                 orientation["error"] = str(exc)
         qwen_orientation_used = False
-        should_use_qwen_orientation = qwen_ready and (
-            self.qwen_mode == "compare" or not orientation["high_confidence"]
+        # A live rough-name comparison showed that Qwen chose 0° for both the
+        # upright page and the upside-down page. Keep it as an explicit
+        # diagnostic comparison, not an automatic fallback that starts an 8B
+        # model without improving this decision.
+        should_use_qwen_orientation = (
+            rotation_override is None and qwen_ready and self.qwen_mode == "compare"
         )
         if should_use_qwen_orientation:
             orientation_prompt = """The image shows the same Japanese manga storyboard page in four labeled rotation options.
@@ -1202,6 +1339,38 @@ rotation_degrees must be exactly one of 0, 90, 180, or 270 and means clockwise c
         expected_rotations = {90, 270} if width > height else {0, 180}
         if rotation not in expected_rotations:
             rotation = fallback_rotation if fallback_rotation in expected_rotations else min(expected_rotations)
+        if rotation_override is None and not orientation["high_confidence"]:
+            return {
+                "template_id": "NONE",
+                "confidence": 0.0,
+                "reason": "画像の上下を自動判定できませんでした。プレビュー下の回転ボタンで正立にし、もう一度ローカル解析してください。",
+                "rotation_degrees": rotation,
+                "orientation": {**orientation, "requires_review": True},
+                "detected_panel_count": 0,
+                "alternatives": [],
+                "structure": {
+                    "engine": "向き確認待ち",
+                    "rtdetr_frame_count": 0,
+                    "opencv_frame_count": 0,
+                    "separator_panel_count": 0,
+                    "grid_panel_count": 0,
+                    "score_gap": 0.0,
+                },
+                "ocr": {
+                    "engine": "NDLOCR-Lite",
+                    "lines": [],
+                    "line_count": 0,
+                    "qwen_used": False,
+                    "qwen_changed": 0,
+                },
+                "qwen": {
+                    "mode": self.qwen_mode,
+                    "orientation_used": qwen_orientation_used,
+                    "layout": {"used": False, "template_id": None, "agreed": None},
+                    "ocr_used": False,
+                    "ocr_changed": 0,
+                },
+            }
         upright_bytes = rotated_image_bytes(image_bytes, rotation)
 
         detection = run_local_worker(
@@ -1215,7 +1384,10 @@ rotation_degrees must be exactly one of 0, 90, 180, or 270 and means clockwise c
         rtdetr_boxes = detector_boxes(detection, "frames")
         opencv_boxes = detect_panel_boxes(upright_bytes)
         separator_boxes = detect_separator_panel_boxes(upright_bytes)
-        if len(rtdetr_boxes) >= 2:
+        grid_boxes = detect_grid_panel_boxes(upright_bytes)
+        if grid_boxes:
+            layout_boxes, detector_name = grid_boxes, "罫線グリッド"
+        elif len(rtdetr_boxes) >= 2:
             layout_boxes, detector_name = rtdetr_boxes, "RT-DETR"
         elif separator_boxes:
             layout_boxes, detector_name = separator_boxes, "RT-DETR＋罫線補助"
@@ -1236,13 +1408,13 @@ rotation_degrees must be exactly one of 0, 90, 180, or 270 and means clockwise c
             shortlist = [candidate for candidate, _ in ranked[:5]] if detected_count else candidates
             names = "\n".join(f"{item['id']}: {item['name']} ({len(item['shapes'])} panels)" for item in shortlist)
             prompt = f"""The left side is an upright scanned or photographed manga storyboard page.
-The right side is a labeled grid of candidate panel-layout templates A through Y.
+The right side is a labeled grid of candidate panel-layout templates A through Z.
 Ignore drawings, handwriting, speech balloons, and page content. Compare only the panel-border count, positions, sizes, diagonals, overlaps, and page-edge bleed.
 Choose the single closest template. If the source has no readable panel borders or no reasonable match, choose NONE.
 Candidates:
 {names}
 Return exactly one JSON object and no other text:
-{{"template_id":"A-Y or NONE","confidence":0.0,"reason":"short Japanese explanation"}}"""
+{{"template_id":"A-Z or NONE","confidence":0.0,"reason":"short Japanese explanation"}}"""
             raw = self._process(make_comparison_image(upright_bytes, shortlist), prompt, 192)
             qwen_result = parse_model_result(raw, {item["id"] for item in shortlist})
             qwen_template = (
@@ -1303,6 +1475,7 @@ Return exactly one JSON object and no other text:
             "rtdetr_frame_count": len(rtdetr_boxes),
             "opencv_frame_count": len(opencv_boxes),
             "separator_panel_count": len(separator_boxes),
+            "grid_panel_count": len(grid_boxes),
             "score_gap": round(structural_gap, 4),
         }
         result["ocr"] = {
@@ -1425,7 +1598,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/layout/analyze":
                 candidates = [candidate for item in body.get("candidates", []) if (candidate := normalized_candidate(item))]
-                result = self.state.analyze(decode_image_data(body.get("image")), candidates)
+                rotation_override = normalized_rotation_override(body.get("rotation_override_degrees"))
+                result = self.state.analyze(decode_image_data(body.get("image")), candidates, rotation_override)
                 self.send_json(200, result)
                 return
             self.send_json(404, {"error": "Not found"})
@@ -1465,7 +1639,8 @@ def main() -> int:
     print(f"RT-DETR: {state.rtdetr_model}")
     print(f"NDLOCR-Lite: {state.ndlocr_root}")
     print(f"RapidOrientation: {state.rapid_orientation_root}")
-    print(f"Qwen3-VL ({args.qwen_mode}): {args.model}")
+    qwen_usage = "比較時のみ" if args.qwen_mode != "compare" else "常時比較"
+    print(f"Qwen3-VL ({args.qwen_mode}, {qwen_usage}): {args.model}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
