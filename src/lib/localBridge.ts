@@ -1,13 +1,11 @@
-import type { PanelTemplate } from './panelTemplates';
 import { clamp, nearestAnchor, panelBounds, pointInPanel, roundMm } from './canvasGeometry.ts';
-import type { BBox, MangaPage, Panel } from '../types';
+import type { BBox, MangaPage, Panel, PanelShape } from '../types';
 
 const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8787';
 const REQUEST_TIMEOUT_MS = 180_000;
 
 export interface LayoutRecognitionResult {
-  templateId: string | null;
-  confidence: number;
+  detectedPanels: PanelShape[];
   reason: string;
   rotationDegrees: 0 | 90 | 180 | 270;
   detectedPanelCount: number;
@@ -22,9 +20,6 @@ export interface LayoutRecognitionResult {
   ocrEngine: string;
   ocrLines: RecognizedTextLine[];
   qwenMode: 'off' | 'auto' | 'compare';
-  qwenOrientationUsed: boolean;
-  qwenLayoutUsed: boolean;
-  qwenLayoutAgreed: boolean | null;
   qwenOcrUsed: boolean;
   qwenOcrChanged: number;
 }
@@ -41,8 +36,7 @@ export interface RecognizedTextLine {
 }
 
 interface BridgeLayoutResponse {
-  template_id?: unknown;
-  confidence?: unknown;
+  panel_boxes?: unknown;
   reason?: unknown;
   rotation_degrees?: unknown;
   detected_panel_count?: unknown;
@@ -91,18 +85,30 @@ function bridgeUrl(path: string): string {
 
 export function normalizeLayoutRecognition(
   payload: BridgeLayoutResponse,
-  validTemplateIds: readonly string[],
 ): LayoutRecognitionResult {
-  const rawId = typeof payload.template_id === 'string' ? payload.template_id.trim().toUpperCase() : '';
-  const templateId = validTemplateIds.includes(rawId) ? rawId : null;
-  const rawConfidence = typeof payload.confidence === 'number' ? payload.confidence : Number(payload.confidence);
-  const confidence = Number.isFinite(rawConfidence) ? Math.min(1, Math.max(0, rawConfidence)) : 0;
+  const detectedPanels = (Array.isArray(payload.panel_boxes) ? payload.panel_boxes : []).flatMap((entry): PanelShape[] => {
+    const rawBox = Array.isArray(entry) ? entry.map(Number) : [];
+    if (rawBox.length !== 4 || rawBox.some((value) => !Number.isFinite(value))) return [];
+    const [rawX, rawY, rawWidth, rawHeight] = rawBox;
+    const left = clamp(rawX, 0, 1);
+    const top = clamp(rawY, 0, 1);
+    const right = clamp(rawX + rawWidth, 0, 1);
+    const bottom = clamp(rawY + rawHeight, 0, 1);
+    if (right - left < 0.005 || bottom - top < 0.005) return [];
+    return [{
+      type: 'rect',
+      x: roundMm(left * 210),
+      y: roundMm(top * 297),
+      w: roundMm((right - left) * 210),
+      h: roundMm((bottom - top) * 297),
+    }];
+  });
   const reason = typeof payload.reason === 'string' && payload.reason.trim()
     ? payload.reason.trim()
-    : templateId ? '画像内のコマ枠配置に最も近い候補です。' : '近いコマ割りを特定できませんでした。';
+    : detectedPanels.length ? '検出したコマ領域を編集開始位置として使用できます。' : '読み取れるコマ領域を特定できませんでした。';
   const rawRotation = Number(payload.rotation_degrees);
   const rotationDegrees = ([0, 90, 180, 270] as const).find((value) => value === rawRotation) ?? 0;
-  const detectedPanelCount = Math.max(0, Math.round(Number(payload.detected_panel_count) || 0));
+  const detectedPanelCount = detectedPanels.length;
   const structure = payload.structure && typeof payload.structure === 'object'
     ? payload.structure as Record<string, unknown>
     : {};
@@ -114,9 +120,6 @@ export function normalizeLayoutRecognition(
     : {};
   const qwen = payload.qwen && typeof payload.qwen === 'object'
     ? payload.qwen as Record<string, unknown>
-    : {};
-  const qwenLayout = qwen.layout && typeof qwen.layout === 'object'
-    ? qwen.layout as Record<string, unknown>
     : {};
   const qwenMode = qwen.mode === 'off' || qwen.mode === 'compare' ? qwen.mode : 'auto';
   const rawOrientationConfidence = Number(orientation.confidence);
@@ -149,8 +152,7 @@ export function normalizeLayoutRecognition(
     }];
   });
   return {
-    templateId,
-    confidence,
+    detectedPanels,
     reason,
     rotationDegrees,
     detectedPanelCount,
@@ -169,9 +171,6 @@ export function normalizeLayoutRecognition(
     ocrEngine: typeof ocr.engine === 'string' ? ocr.engine : '',
     ocrLines,
     qwenMode,
-    qwenOrientationUsed: qwen.orientation_used === true,
-    qwenLayoutUsed: qwenLayout.used === true,
-    qwenLayoutAgreed: typeof qwenLayout.agreed === 'boolean' ? qwenLayout.agreed : null,
     qwenOcrUsed: qwen.ocr_used === true,
     qwenOcrChanged: Math.max(0, Math.round(Number(qwen.ocr_changed) || 0)),
   };
@@ -290,16 +289,14 @@ async function postJson(path: string, body: object, timeoutMs = REQUEST_TIMEOUT_
 
 export async function recognizePanelLayout(
   file: File,
-  templates: readonly PanelTemplate[],
   rotationOverride: 0 | 90 | 180 | 270,
 ): Promise<LayoutRecognitionResult> {
   const payload = await postJson('/api/layout/analyze', {
     filename: file.name,
     image: await imageDataUrl(file),
-    candidates: templates.map(({ id, name, usage, shapes, bleeds }) => ({ id, name, usage, shapes, bleeds })),
     rotation_override_degrees: rotationOverride,
   }) as BridgeLayoutResponse;
-  return normalizeLayoutRecognition(payload, templates.map((template) => template.id));
+  return normalizeLayoutRecognition(payload);
 }
 
 function dataUrlFile(dataUrl: unknown, filename: unknown): File {

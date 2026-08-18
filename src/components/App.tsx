@@ -18,7 +18,7 @@ import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFil
 import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
 import { attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
-import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, WorkspaceTab } from '../types';
+import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, PanelShape, WorkspaceTab } from '../types';
 
 const TABS: {
   id: WorkspaceTab;
@@ -52,6 +52,11 @@ interface NewLayoutItem {
   analyzing: boolean;
   rotationOverride: 0 | 90 | 180 | 270 | null;
   error?: string;
+}
+
+interface DetectedPageLayout {
+  shapes: PanelShape[];
+  analysis: LayoutRecognitionResult;
 }
 
 type RightAngle = NonNullable<NewLayoutItem['rotationOverride']>;
@@ -97,7 +102,7 @@ function initialPanelSnap(): boolean {
 // 見開きは右綴じ（1ページ目が右）。ビューアはこの配列順にめくる
 const SAMPLE_MANGA_PAGES = [sampleMangaPages.page1, sampleMangaPages.page2];
 
-function TemplateThumb({ shapes }: { shapes: PanelTemplate['shapes'] }) {
+function TemplateThumb({ shapes }: { shapes: readonly PanelShape[] }) {
   return <svg viewBox="0 0 210 297" aria-hidden="true">
     {shapes.map((shape, index) => shape.type === 'rect'
       ? <rect key={index} x={shape.x} y={shape.y} width={shape.w} height={shape.h} />
@@ -411,14 +416,13 @@ export default function App() {
       try {
         const result = await recognizePanelLayout(
           working[index].file,
-          PANEL_TEMPLATES,
           working[index].rotationOverride as RightAngle,
         );
         working = working.map((item, itemIndex) => itemIndex === index
           ? { ...item, analysis: result, analyzing: false, error: undefined }
           : item);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'コマ割りの判定に失敗しました';
+        const message = error instanceof Error ? error.message : 'コマの検出に失敗しました';
         working = working.map((item, itemIndex) => itemIndex === index
           ? { ...item, analysis: null, analyzing: false, error: message }
           : item);
@@ -426,9 +430,9 @@ export default function App() {
       newLayoutItemsRef.current = working;
       setNewLayoutItems(working);
     }
-    const matched = working.filter((item) => item.analysis?.templateId).length;
+    const matched = working.filter((item) => item.analysis?.detectedPanels.length).length;
     const recognized = working.reduce((total, item) => total + (item.analysis?.ocrLines.length ?? 0), 0);
-    setNewLayoutMessage(`${working.length}枚の解析が終わりました。${matched}枚でコマ割り候補、${recognized}件の文字候補を取得しました。文字は確定後も編集できます。`);
+    setNewLayoutMessage(`${working.length}枚の解析が終わりました。${matched}枚でコマ領域、${recognized}件の文字候補を取得しました。検出したコマはそのまま編集開始位置に使えます。`);
     setNewLayoutTask('idle');
   };
 
@@ -475,7 +479,7 @@ export default function App() {
           setNewLayoutItems(next);
           setNewLayoutActiveIndex(Math.max(0, next.length - 1));
           setScannerReceivedCount(next.length);
-          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元はコマ割りを確定するまで保持します。取り込み後、画像ごとに向きを確認してください。`);
+          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。取り込み後、画像ごとに向きを確認してください。`);
         }
         if (batch.complete || scannerStopRequested.current) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -483,7 +487,7 @@ export default function App() {
       if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
       const count = newLayoutItemsRef.current.length;
       setNewLayoutMessage(count
-        ? `${count}枚の取り込みを完了しました。画像ごとに正立させて「この向きを使用」を押してください。スキャン元とNyamuruの一時画像は、コマ割り確定または画面を閉じた時に破棄します。`
+        ? `${count}枚の取り込みを完了しました。画像ごとに正立させて「この向きを使用」を押してください。スキャン元とNyamuruの一時画像は、ページ作成の確定または画面を閉じた時に破棄します。`
         : '5分以内に新しいスキャン画像が見つかりませんでした。');
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
@@ -514,7 +518,7 @@ export default function App() {
       setNewLayoutItems(items);
       setNewLayoutActiveIndex(0);
       setScannerReceivedCount(items.length);
-      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。画像ごとに向きを確認してからコマ割りを解析できます。`);
+      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。画像ごとに向きを確認してからコマを解析できます。`);
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');
     } finally {
@@ -540,49 +544,8 @@ export default function App() {
     setNewLayoutMessage('現在の取り込みを確認して終了しています…');
   };
 
-  const assignTemplateToActiveImage = (template: PanelTemplate) => {
-    const index = newLayoutActiveIndex;
-    const working = newLayoutItemsRef.current.map((item, itemIndex) => itemIndex === index
-      ? {
-        ...item,
-        analysis: (item.analysis ? {
-          ...item.analysis,
-          templateId: template.id,
-          confidence: 1,
-          reason: '利用者がコマ割りを選択しました。',
-        } : {
-          templateId: template.id,
-          confidence: 1,
-          reason: '利用者がコマ割りを選択しました。',
-          rotationDegrees: 0,
-          detectedPanelCount: 0,
-          orientationEngine: '',
-          orientationConfidence: 0,
-          orientationHighConfidence: false,
-          structureEngine: '',
-          excludedNonPanelCount: 0,
-          detectedTextRegionCount: 0,
-          detectedFaceRegionCount: 0,
-          detectedBodyRegionCount: 0,
-          ocrEngine: '',
-          ocrLines: [],
-          qwenMode: 'auto',
-          qwenOrientationUsed: false,
-          qwenLayoutUsed: false,
-          qwenLayoutAgreed: null,
-          qwenOcrUsed: false,
-          qwenOcrChanged: 0,
-        }) as LayoutRecognitionResult,
-        error: undefined,
-      }
-      : item);
-    newLayoutItemsRef.current = working;
-    setNewLayoutItems(working);
-    setNewLayoutMessage(`${index + 1}枚目にパターン${template.id}を割り当てました。全ページを確認してから確定してください。`);
-  };
-
   const createNewDocument = async (
-    templateOrTemplates?: PanelTemplate | PanelTemplate[],
+    layout?: PanelTemplate | DetectedPageLayout[],
     confirmScannedLayouts = false,
   ) => {
     const analyzedItems = [...newLayoutItemsRef.current];
@@ -594,23 +557,40 @@ export default function App() {
       return;
     }
     const sample = parseMangaYaml(sampleYaml);
-    const templates = Array.isArray(templateOrTemplates)
-      ? templateOrTemplates
-      : templateOrTemplates ? [templateOrTemplates] : [];
+    const detectedLayouts = Array.isArray(layout) ? layout : [];
+    const template = layout && !Array.isArray(layout) ? layout : undefined;
     let importedTextCount = 0;
     let reviewTextCount = 0;
-    const pages = (templates.length ? templates : [undefined]).map((template, index) => {
+    const pages = detectedLayouts.length ? detectedLayouts.map((detectedLayout, index) => {
       const page = newPage(index + 1);
-      if (template) { page.panels = []; applyPanelTemplate(page, template); }
-      else page.panels[0].bubbles = [];
-      const analysis = analyzedItems[index]?.analysis;
-      if (template && analysis?.ocrLines.length) {
-        const attached = attachRecognizedTextToPage(page, analysis.ocrLines);
+      page.panels = detectedLayout.shapes.map((shape, panelIndex) => ({
+        id: panelIndex + 1,
+        shape: structuredClone(shape),
+        bg: 1,
+        bubbles: [],
+        action: null,
+      }));
+      if (detectedLayout.analysis.ocrLines.length) {
+        const attached = attachRecognizedTextToPage(page, detectedLayout.analysis.ocrLines);
         importedTextCount += attached.added;
         reviewTextCount += attached.needsReview;
       }
       return page;
-    });
+    }) : [newPage(1)];
+    if (!detectedLayouts.length) {
+      if (template) {
+        pages[0].panels = [];
+        applyPanelTemplate(pages[0], template);
+        const analysis = analyzedItems[0]?.analysis;
+        if (analysis?.ocrLines.length) {
+          const attached = attachRecognizedTextToPage(pages[0], analysis.ocrLines);
+          importedTextCount += attached.added;
+          reviewTextCount += attached.needsReview;
+        }
+      } else {
+        pages[0].panels[0].bubbles = [];
+      }
+    }
     const fresh: MangaDocument = {
       manga: {
         schema_name: sample.manga.schema_name,
@@ -633,9 +613,9 @@ export default function App() {
     setDocument(fresh);
     setActivePage(0); setActivePanel(0); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor'); setShowNewDialog(false);
     discardNewLayoutItems();
-    const creationMessage = templates.length > 1
-      ? `${templates.length}枚のコマ割りで新規作成しました`
-      : templates[0] ? `パターン${templates[0].id}で新規作成しました` : 'まっさらな漫画を作成しました';
+    const creationMessage = detectedLayouts.length
+      ? `検出したコマ領域から${detectedLayouts.length}ページを新規作成しました`
+      : template ? `パターン${template.id}で新規作成しました` : 'まっさらな漫画を作成しました';
     setToast(importedTextCount
       ? `${creationMessage}。文字候補${importedTextCount}件をフキダシへ配置しました${reviewTextCount ? `（要確認${reviewTextCount}件）` : ''}`
       : creationMessage);
@@ -781,9 +761,10 @@ export default function App() {
   const activeLayoutAnalysis = activeLayoutItem?.analysis ?? null;
   const hasScannedLayoutItems = newLayoutItems.some((item) => item.source === 'scanner');
   const allLayoutOrientationsConfirmed = newLayoutItems.length > 0 && newLayoutItems.every((item) => item.rotationOverride !== null);
-  const analyzedTemplates = newLayoutItems.map((item) => item.analysis?.templateId ? findPanelTemplate(item.analysis.templateId) : undefined);
-  const canCreateAnalyzedPages = newLayoutItems.length > 0 && analyzedTemplates.every((template) => Boolean(template));
-  const resolvedAnalyzedTemplates = analyzedTemplates.filter((template): template is PanelTemplate => Boolean(template));
+  const detectedPageLayouts = newLayoutItems.flatMap((item): DetectedPageLayout[] => item.analysis?.detectedPanels.length
+    ? [{ shapes: item.analysis.detectedPanels, analysis: item.analysis }]
+    : []);
+  const canCreateAnalyzedPages = newLayoutItems.length > 0 && detectedPageLayouts.length === newLayoutItems.length;
 
   return <div class="app-shell">
     <Header title={document.manga.meta.title} version={document.manga.schema_version} issues={issues} savedAt={savedAt} canUndo={past.length > 0} canRedo={future.length > 0} onUndo={undo} onRedo={redo} onNew={() => setShowNewDialog(true)} onImport={() => fileInput.current?.click()} onCopy={copyYaml} onDownload={download} onReset={resetSample} onValidate={() => setShowValidation(true)} />
@@ -858,7 +839,7 @@ export default function App() {
           <button class="new-blank-button" onClick={() => createNewDocument()}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
           <section class="new-layout-import" aria-labelledby="new-layout-import-title">
             <div class="new-layout-import-head">
-              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>最大10枚。各画像を人間が正立させてから、RT-DETRでコマ・文字・顔・身体を検出します。文字・顔・身体はコマ候補の誤検出除外に使い、NDLOCR-Liteで文字候補を作ります。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
+              <div><h3 id="new-layout-import-title">紙のネームからコマを読み取る</h3><p>最大10枚。各画像を人間が正立させてから、RT-DETRでコマ・文字・顔・身体を検出します。検出したコマはA〜Zへ変換せず、その座標のまま編集開始位置にします。文字・顔・身体はコマ候補の誤検出除外に使い、NDLOCR-Liteで文字候補を作ります。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
               <div class="new-layout-import-actions">
                 <button type="button" onClick={() => newLayoutImageInput.current?.click()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
                 {newLayoutTask === 'scanner'
@@ -874,38 +855,34 @@ export default function App() {
             {newLayoutItems.length > 1 && <div class="new-layout-queue" aria-label="読み込んだネーム画像">
               {newLayoutItems.map((item, index) => <button type="button" class={newLayoutActiveIndex === index ? 'is-active' : ''} onClick={() => setNewLayoutActiveIndex(index)} key={item.id}>
                 <span>{index + 1}</span><img src={item.previewUrl} alt="" style={{ transform: `rotate(${displayedLayoutRotation(item)}deg) scale(${displayedLayoutRotation(item) % 180 ? .78 : 1})` }} />
-                <small>{item.analyzing ? '解析中' : item.analysis?.templateId ? `候補 ${item.analysis.templateId} · 文字${item.analysis.ocrLines.length}` : item.error ? 'エラー' : item.rotationOverride === null ? '向き未確認' : '向き確認済み'}</small>
+                <small>{item.analyzing ? '解析中' : item.analysis?.detectedPanels.length ? `コマ${item.analysis.detectedPanels.length} · 文字${item.analysis.ocrLines.length}` : item.error ? 'エラー' : item.analysis ? 'コマ未検出' : item.rotationOverride === null ? '向き未確認' : '向き確認済み'}</small>
               </button>)}
             </div>}
             {activeLayoutItem && <div class="new-layout-preview">
               <div class="new-layout-preview-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={{ transform: `rotate(${displayedLayoutRotation(activeLayoutItem)}deg) scale(${displayedLayoutRotation(activeLayoutItem) % 180 ? .78 : 1})` }} /></div>
               <div><strong>{activeLayoutItem.file.name}</strong><span>{(activeLayoutItem.file.size / 1024 / 1024).toFixed(1)} MB · {activeLayoutItem.source === 'scanner' ? 'スキャン元は確定まで保持' : '元ファイルは保持'}</span><span>{activeLayoutItem.rotationOverride === null ? '向きを確認してください' : `向き確認済み: 時計回り${activeLayoutItem.rotationOverride}°`}</span><div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button><button type="button" onClick={() => setActiveLayoutRotation(displayedLayoutRotation(activeLayoutItem))} disabled={newLayoutTask !== 'idle'}>この向きを使用</button></div><button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle' || !allLayoutOrientationsConfirmed} title={allLayoutOrientationsConfirmed ? undefined : 'すべての画像の向きを確認してください'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button></div>
             </div>}
-            {newLayoutMessage && <p class={`new-layout-message ${activeLayoutAnalysis?.templateId ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
+            {newLayoutMessage && <p class={`new-layout-message ${activeLayoutAnalysis?.detectedPanels.length ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
             {scannerSession && <p class="new-layout-session">開始 {new Date(scannerSession.startedAt).toLocaleTimeString('ja-JP')} · 保存先 {scannerSession.directory}</p>}
             {activeLayoutItem?.error && <p class="new-layout-message">{activeLayoutItem.error}</p>}
-            {activeLayoutAnalysis && !activeLayoutAnalysis.templateId && <p class="new-layout-message">{activeLayoutAnalysis.reason}</p>}
+            {activeLayoutAnalysis && !activeLayoutAnalysis.detectedPanels.length && <p class="new-layout-message">{activeLayoutAnalysis.reason}</p>}
             {activeLayoutAnalysis && <div class="new-layout-analysis-detail">
               <span>向き: 人間が確認済み · 時計回り{activeLayoutAnalysis.rotationDegrees}°</span>
               <span>コマ: {activeLayoutAnalysis.structureEngine || '検出なし'} · {activeLayoutAnalysis.detectedPanelCount}領域</span>
               <span>誤検出除外: {activeLayoutAnalysis.excludedNonPanelCount}領域 · 補助検出 文字{activeLayoutAnalysis.detectedTextRegionCount} / 顔{activeLayoutAnalysis.detectedFaceRegionCount} / 身体{activeLayoutAnalysis.detectedBodyRegionCount}</span>
               <span>文字: {activeLayoutAnalysis.ocrEngine || '検出なし'} · {activeLayoutAnalysis.ocrLines.length}件</span>
-              <span>Qwen補助: {activeLayoutAnalysis.qwenOrientationUsed || activeLayoutAnalysis.qwenLayoutUsed || activeLayoutAnalysis.qwenOcrUsed ? `使用（文字置換${activeLayoutAnalysis.qwenOcrChanged}件）` : '未使用'}</span>
+              <span>Qwen補助: {activeLayoutAnalysis.qwenOcrUsed ? `OCR比較に使用（文字置換${activeLayoutAnalysis.qwenOcrChanged}件）` : '未使用'}</span>
               {activeLayoutAnalysis.ocrLines.length > 0 && <ul>{activeLayoutAnalysis.ocrLines.map((line) => <li key={line.id}><strong>{line.text}</strong><small>{line.source}{line.needsReview ? ' · 要確認' : ''}{line.qwenText && line.qwenText !== line.text ? ` · Qwen候補: ${line.qwenText}` : ''}</small></li>)}</ul>}
             </div>}
-            {activeLayoutAnalysis?.templateId && (() => {
-              const template = findPanelTemplate(activeLayoutAnalysis.templateId);
-              if (!template) return null;
-              return <div class="new-layout-result">
-                <TemplateThumb shapes={template.shapes} />
-                <div><span>{newLayoutActiveIndex + 1}枚目の候補 · 確信度 {Math.round(activeLayoutAnalysis.confidence * 100)}%</span><strong>パターン{template.id} · {template.name}</strong><p>{activeLayoutAnalysis.reason}</p>{newLayoutItems.length === 1 && <button type="button" class="primary-button" onClick={() => createNewDocument(template, hasScannedLayoutItems)}>このコマ割りで開始</button>}</div>
-              </div>;
-            })()}
-            {newLayoutItems.length > 1 && canCreateAnalyzedPages && <button type="button" class="primary-button new-layout-batch-create" onClick={() => createNewDocument(resolvedAnalyzedTemplates, hasScannedLayoutItems)}>{newLayoutItems.length}ページのコマ割りで開始</button>}
+            {activeLayoutAnalysis?.detectedPanels.length ? <div class="new-layout-result">
+              <TemplateThumb shapes={activeLayoutAnalysis.detectedPanels} />
+              <div><span>{newLayoutActiveIndex + 1}枚目 · {activeLayoutAnalysis.detectedPanels.length}コマを検出</span><strong>検出したコマをそのまま使用</strong><p>{activeLayoutAnalysis.reason}</p>{newLayoutItems.length === 1 && <button type="button" class="primary-button" onClick={() => createNewDocument([{ shapes: activeLayoutAnalysis.detectedPanels, analysis: activeLayoutAnalysis }], hasScannedLayoutItems)}>このコマから編集を開始</button>}</div>
+            </div> : null}
+            {newLayoutItems.length > 1 && canCreateAnalyzedPages && <button type="button" class="primary-button new-layout-batch-create" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)}>検出したコマから{newLayoutItems.length}ページを開始</button>}
           </section>
           <h3 class="new-dialog-subtitle">コマ割りを選んで開始</h3>
           <div class="new-template-grid">
-            {PANEL_TEMPLATES.map((template) => <button id={`new-template-${template.id}`} class={`new-template-card ${activeLayoutAnalysis?.templateId === template.id ? 'is-vlm-suggestion' : ''}`} key={template.id} onClick={() => newLayoutItems.length > 1 ? assignTemplateToActiveImage(template) : createNewDocument(template, hasScannedLayoutItems)}>
+            {PANEL_TEMPLATES.map((template) => <button id={`new-template-${template.id}`} class="new-template-card" key={template.id} onClick={() => createNewDocument(template, hasScannedLayoutItems)}>
               <TemplateThumb shapes={template.shapes} />
               <strong>パターン{template.id} · {template.name}</strong>
               <small>{template.shapes.length}コマ · {template.usage}</small>

@@ -131,12 +131,25 @@ class OrientationResultTest(unittest.TestCase):
             bridge.normalized_rotation_override(45)
 
     def test_analysis_refuses_an_unconfirmed_orientation(self):
-        candidates = [{"id": "A", "name": "one", "shapes": [{"type": "rect"}]}]
         with self.assertRaisesRegex(ValueError, "この向きを使用"):
-            bridge.VlmState.analyze(object(), b"image", candidates, None)
+            bridge.VlmState.analyze(object(), b"image", None)
 
 
 class LocalVisionResultTest(unittest.TestCase):
+    def test_orders_detected_panels_top_to_bottom_and_right_to_left(self):
+        boxes = [
+            (0.05, 0.52, 0.4, 0.4),
+            (0.55, 0.04, 0.4, 0.4),
+            (0.05, 0.05, 0.4, 0.4),
+            (0.55, 0.53, 0.4, 0.4),
+        ]
+        self.assertEqual(bridge.sort_panel_boxes_reading_order(boxes), [
+            (0.55, 0.04, 0.4, 0.4),
+            (0.05, 0.05, 0.4, 0.4),
+            (0.55, 0.53, 0.4, 0.4),
+            (0.05, 0.52, 0.4, 0.4),
+        ])
+
     def test_rejects_full_page_frame_from_rtdetr(self):
         detection = {
             "page": {"width": 1000, "height": 1400},

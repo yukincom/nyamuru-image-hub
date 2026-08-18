@@ -2,52 +2,41 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { attachRecognizedTextToPage, normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
 
-const ids = ['A', 'B', 'C'];
-
-test('bridgeの有効なテンプレート候補を正規化する', () => {
-  assert.deepEqual(normalizeLayoutRecognition({
-    template_id: ' b ', confidence: 0.84, reason: '6コマの配置が近い', rotation_degrees: 90,
-  }, ids), {
-    templateId: 'B', confidence: 0.84, reason: '6コマの配置が近い', rotationDegrees: 90,
-    detectedPanelCount: 0,
-    orientationEngine: '',
-    orientationConfidence: 0,
-    orientationHighConfidence: false,
-    structureEngine: '',
-    excludedNonPanelCount: 0,
-    detectedTextRegionCount: 0,
-    detectedFaceRegionCount: 0,
-    detectedBodyRegionCount: 0,
-    ocrEngine: '',
-    ocrLines: [],
-    qwenMode: 'auto',
-    qwenOrientationUsed: false,
-    qwenLayoutUsed: false,
-    qwenLayoutAgreed: null,
-    qwenOcrUsed: false,
-    qwenOcrChanged: 0,
+test('検出した正規化座標をA4紙面上の編集可能な矩形へ変換する', () => {
+  const result = normalizeLayoutRecognition({
+    panel_boxes: [
+      [0.5, 0.1, 0.4, 0.2],
+      [-0.1, 0.2, 0.2, 0.3],
+      [0.1, 0.1, -0.05, 0.1],
+      ['bad', 0, 1, 1],
+    ],
+    reason: '検出した矩形を直接使用します',
+    rotation_degrees: 90,
   });
+  assert.deepEqual(result.detectedPanels, [
+    { type: 'rect', x: 105, y: 29.7, w: 84, h: 59.4 },
+    { type: 'rect', x: 0, y: 59.4, w: 21, h: 89.1 },
+  ]);
+  assert.equal(result.detectedPanelCount, 2);
+  assert.equal(result.reason, '検出した矩形を直接使用します');
+  assert.equal(result.rotationDegrees, 90);
 });
 
-test('未知のテンプレートIDは自動適用候補にしない', () => {
-  const result = normalizeLayoutRecognition({ template_id: 'Z', confidence: 2 }, ids);
-  assert.equal(result.templateId, null);
-  assert.equal(result.confidence, 1);
-});
-
-test('確信度の欠損や範囲外を安全な範囲へ収める', () => {
-  assert.equal(normalizeLayoutRecognition({ template_id: 'A', confidence: -0.5 }, ids).confidence, 0);
-  assert.equal(normalizeLayoutRecognition({ template_id: 'A', confidence: 'not-a-number' }, ids).confidence, 0);
+test('コマ未検出時は安全な空配列と案内文を返す', () => {
+  const result = normalizeLayoutRecognition({});
+  assert.deepEqual(result.detectedPanels, []);
+  assert.equal(result.detectedPanelCount, 0);
+  assert.match(result.reason, /特定できません/);
 });
 
 test('画像の回転補正は直角だけを受け入れる', () => {
-  assert.equal(normalizeLayoutRecognition({ template_id: 'A', rotation_degrees: 270 }, ids).rotationDegrees, 270);
-  assert.equal(normalizeLayoutRecognition({ template_id: 'A', rotation_degrees: 45 }, ids).rotationDegrees, 0);
+  assert.equal(normalizeLayoutRecognition({ rotation_degrees: 270 }).rotationDegrees, 270);
+  assert.equal(normalizeLayoutRecognition({ rotation_degrees: 45 }).rotationDegrees, 0);
 });
 
 test('OCR候補とQwen使用箇所を安全に正規化する', () => {
   const result = normalizeLayoutRecognition({
-    template_id: 'A',
+    panel_boxes: [[0.05, 0.04, 0.9, 0.42], [0.05, 0.5, 0.9, 0.44]],
     detected_panel_count: 3,
     orientation: { engine: '手動確認済み', confidence: 1, high_confidence: true },
     structure: {
@@ -63,9 +52,9 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
       id: 'line-1', text: 'こんにちは', bbox: [0.6, 0.1, 0.2, 0.12], confidence: 1.4,
       vertical: true, source: 'qwen-fallback', needs_review: true, qwen_text: 'こんにちは',
     }] },
-    qwen: { mode: 'compare', orientation_used: false, layout: { used: true, agreed: false }, ocr_used: true, ocr_changed: 1 },
-  }, ids);
-  assert.equal(result.detectedPanelCount, 3);
+    qwen: { mode: 'compare', ocr_used: true, ocr_changed: 1 },
+  });
+  assert.equal(result.detectedPanelCount, 2);
   assert.equal(result.orientationEngine, '手動確認済み');
   assert.equal(result.orientationConfidence, 1);
   assert.equal(result.orientationHighConfidence, true);
@@ -77,7 +66,7 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
   assert.equal(result.ocrLines[0].text, 'こんにちは');
   assert.equal(result.ocrLines[0].confidence, 1);
   assert.equal(result.qwenMode, 'compare');
-  assert.equal(result.qwenLayoutAgreed, false);
+  assert.equal(result.qwenOcrUsed, true);
   assert.equal(result.qwenOcrChanged, 1);
 });
 

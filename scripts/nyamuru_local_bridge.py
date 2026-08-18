@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
         "--qwen-mode",
         choices=("off", "auto", "compare"),
         default=os.environ.get("NYAMURU_QWEN_MODE", "auto"),
-        help="off/auto: 専用モデルのみ / compare: レイアウトとOCRをQwenとも比較",
+        help="off/auto: 専用モデルのみ / compare: OCRをQwenとも比較",
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -73,22 +73,6 @@ def decode_image_data(value: object) -> bytes:
         return base64.b64decode(encoded, validate=True)
     except Exception as exc:
         raise ValueError("画像データをデコードできませんでした") from exc
-
-
-def normalized_candidate(candidate: object) -> dict[str, Any] | None:
-    if not isinstance(candidate, dict):
-        return None
-    candidate_id = str(candidate.get("id", "")).strip().upper()
-    shapes = candidate.get("shapes")
-    if not re.fullmatch(r"[A-Z]", candidate_id) or not isinstance(shapes, list) or not shapes:
-        return None
-    return {
-        "id": candidate_id,
-        "name": str(candidate.get("name", ""))[:80],
-        "usage": str(candidate.get("usage", ""))[:160],
-        "shapes": shapes[:8],
-        "has_bleed": isinstance(candidate.get("bleeds"), dict) and bool(candidate.get("bleeds")),
-    }
 
 
 def normalized_rotation_override(value: object) -> int | None:
@@ -469,37 +453,6 @@ class ScannerSessions:
             return self._delete_session_files(session)
 
 
-def draw_candidate(draw, candidate: dict[str, Any], box: tuple[int, int, int, int]) -> None:
-    left, top, right, bottom = box
-    draw.rectangle(box, fill="white", outline="#b8b8b8", width=2)
-    draw.text((left + 6, top + 4), f"{candidate['id']}  {candidate['name']}", fill="black")
-    page_left, page_top = left + 14, top + 24
-    page_right, page_bottom = right - 14, bottom - 10
-    page_w, page_h = page_right - page_left, page_bottom - page_top
-    draw.rectangle((page_left, page_top, page_right, page_bottom), fill="#fafafa", outline="#888888", width=1)
-
-    def point(x: float, y: float) -> tuple[float, float]:
-        return (page_left + float(x) / 210 * page_w, page_top + float(y) / 297 * page_h)
-
-    for shape in candidate["shapes"]:
-        if not isinstance(shape, dict):
-            continue
-        if shape.get("type") == "rect":
-            try:
-                x1, y1 = point(shape["x"], shape["y"])
-                x2, y2 = point(float(shape["x"]) + float(shape["w"]), float(shape["y"]) + float(shape["h"]))
-                draw.rectangle((x1, y1, x2, y2), fill="#efeff4", outline="black", width=2)
-            except (KeyError, TypeError, ValueError):
-                continue
-        elif shape.get("type") == "polygon" and isinstance(shape.get("points"), list):
-            try:
-                points = [point(x, y) for x, y in shape["points"]]
-                draw.polygon(points, fill="#efeff4", outline="black")
-                draw.line([*points, points[0]], fill="black", width=2)
-            except (TypeError, ValueError):
-                continue
-
-
 def detect_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, float]]:
     import cv2
     import numpy as np
@@ -555,49 +508,29 @@ def detect_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, fl
     return [(x / width, y / height, box_width / width, box_height / height) for x, y, box_width, box_height, _ in selected]
 
 
-def shape_box(shape: dict[str, Any]) -> tuple[float, float, float, float] | None:
-    try:
-        if shape.get("type") == "rect":
-            return float(shape["x"]) / 210, float(shape["y"]) / 297, float(shape["w"]) / 210, float(shape["h"]) / 297
-        if shape.get("type") == "polygon":
-            points = [(float(x), float(y)) for x, y in shape["points"]]
-            xs, ys = [point[0] for point in points], [point[1] for point in points]
-            return min(xs) / 210, min(ys) / 297, (max(xs) - min(xs)) / 210, (max(ys) - min(ys)) / 297
-    except (KeyError, TypeError, ValueError):
-        return None
-    return None
-
-
-def box_distance(left: tuple[float, float, float, float], right: tuple[float, float, float, float]) -> float:
-    lx, ly, lw, lh = left
-    rx, ry, rw, rh = right
-    return (
-        abs((lx + lw / 2) - (rx + rw / 2)) * 1.4
-        + abs((ly + lh / 2) - (ry + rh / 2)) * 1.4
-        + abs(lw - rw) * 0.7
-        + abs(lh - rh) * 0.7
-    )
-
-
-def layout_distance(source: list[tuple[float, float, float, float]], candidate: dict[str, Any]) -> float:
-    target = [box for shape in candidate["shapes"] if (box := shape_box(shape))]
-    if not source or not target:
-        return 99.0
-    source_to_target = sum(min(box_distance(box, other) for other in target) for box in source) / len(source)
-    target_to_source = sum(min(box_distance(box, other) for other in source) for box in target) / len(target)
-    count_penalty = abs(len(source) - len(target)) * 0.9
-    # A cropped scan cannot reliably prove that a line intentionally bleeds to
-    # the finished page edge. Prefer the non-bleed equivalent for automatic
-    # suggestions; the user can still choose a bleed template explicitly.
-    bleed_uncertainty_penalty = 0.12 if candidate.get("has_bleed") else 0.0
-    return source_to_target + target_to_source + count_penalty + bleed_uncertainty_penalty
-
-
-def rank_candidates_from_boxes(
+def sort_panel_boxes_reading_order(
     boxes: list[tuple[float, float, float, float]],
-    candidates: list[dict[str, Any]],
-) -> list[tuple[dict[str, Any], float]]:
-    return sorted(((candidate, layout_distance(boxes, candidate)) for candidate in candidates), key=lambda item: item[1])
+) -> list[tuple[float, float, float, float]]:
+    """上段から下段、同じ上段では右から左の順にコマを並べる。"""
+    rows: list[dict[str, Any]] = []
+    for box in sorted(boxes, key=lambda item: (item[1], -(item[0] + item[2] / 2))):
+        _, top, _, height = box
+        matching_rows = [
+            row for row in rows
+            if abs(top - row["top"]) <= max(0.035, min(height, row["min_height"]) * 0.35)
+        ]
+        if matching_rows:
+            row = min(matching_rows, key=lambda item: abs(top - item["top"]))
+            row["boxes"].append(box)
+            row["top"] = min(row["top"], top)
+            row["min_height"] = min(row["min_height"], height)
+        else:
+            rows.append({"top": top, "min_height": height, "boxes": [box]})
+
+    ordered: list[tuple[float, float, float, float]] = []
+    for row in sorted(rows, key=lambda item: item["top"]):
+        ordered.extend(sorted(row["boxes"], key=lambda item: -(item[0] + item[2] / 2)))
+    return ordered
 
 
 def detector_boxes(
@@ -816,32 +749,6 @@ def rotated_image_bytes(image_bytes: bytes, degrees_clockwise: int) -> bytes:
     return output.getvalue()
 
 
-def make_comparison_image(image_bytes: bytes, candidates: list[dict[str, Any]]):
-    import numpy as np
-    import torch
-    from PIL import Image, ImageDraw, ImageOps
-
-    source = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
-    canvas = Image.new("RGB", (1800, 1270), "white")
-    draw = ImageDraw.Draw(canvas)
-    draw.text((20, 12), "UPRIGHT SOURCE PAGE", fill="black")
-    source_box = (30, 44, 870, 1240)
-    fitted = ImageOps.contain(source, (source_box[2] - source_box[0], source_box[3] - source_box[1]))
-    canvas.paste(fitted, (source_box[0] + (840 - fitted.width) // 2, source_box[1] + (1196 - fitted.height) // 2))
-    draw.rectangle(source_box, outline="#444444", width=3)
-    draw.text((920, 12), "CANDIDATE TEMPLATES", fill="black")
-    columns = 2 if len(candidates) <= 6 else 5
-    candidate_cell_w = 435 if columns == 2 else 174
-    rows = max(1, (len(candidates) + columns - 1) // columns)
-    candidate_cell_h = min(390, 1200 // rows)
-    for index, candidate in enumerate(candidates[:25]):
-        col, row = index % columns, index // columns
-        left, top = 910 + col * candidate_cell_w, 40 + row * candidate_cell_h
-        draw_candidate(draw, candidate, (left, top, left + candidate_cell_w - 8, top + candidate_cell_h - 8))
-    array = np.asarray(canvas, dtype=np.float32) / 255.0
-    return torch.from_numpy(array).unsqueeze(0)
-
-
 def make_ocr_review_image(image_bytes: bytes, lines: list[dict[str, Any]]):
     import numpy as np
     import torch
@@ -903,29 +810,6 @@ def apply_qwen_ocr_suggestions(lines: list[dict[str, Any]], suggestions: dict[st
             line["quality"] = round(ocr_text_quality(suggestion), 3)
             changed += 1
     return changed
-
-
-def parse_model_result(raw: str, valid_ids: set[str]) -> dict[str, Any]:
-    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
-    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
-    parsed: dict[str, Any] = {}
-    if match:
-        try:
-            value = json.loads(match.group(0))
-            if isinstance(value, dict):
-                parsed = value
-        except json.JSONDecodeError:
-            pass
-    candidate_id = str(parsed.get("template_id", "NONE")).strip().upper()
-    if candidate_id not in valid_ids:
-        fallback = re.search(r"(?:PATTERN|TEMPLATE|パターン)\s*([A-Z])\b", cleaned, flags=re.IGNORECASE)
-        candidate_id = fallback.group(1).upper() if fallback else "NONE"
-    try:
-        confidence = max(0.0, min(1.0, float(parsed.get("confidence", 0.5 if candidate_id != "NONE" else 0))))
-    except (TypeError, ValueError):
-        confidence = 0.5 if candidate_id != "NONE" else 0.0
-    reason = str(parsed.get("reason") or "画像内のコマ枠配置に最も近い候補です。" if candidate_id != "NONE" else "近い候補を特定できませんでした。")
-    return {"template_id": candidate_id, "confidence": confidence, "reason": reason[:500]}
 
 
 class VlmState:
@@ -1017,11 +901,8 @@ Return exactly one JSON object and no other text:
     def analyze(
         self,
         image_bytes: bytes,
-        candidates: list[dict[str, Any]],
         rotation_override: int | None = None,
     ) -> dict[str, Any]:
-        if not candidates:
-            raise ValueError("比較するコマ割り候補がありません")
         if rotation_override is None:
             raise ValueError("解析前にプレビューで画像を正立させ、「この向きを使用」を押してください")
         qwen_ready = self.qwen_available() and self.qwen_mode != "off"
@@ -1033,7 +914,6 @@ Return exactly one JSON object and no other text:
             "observed_rotation_degrees": None,
             "correction_degrees": rotation,
         }
-        qwen_orientation_used = False
         upright_bytes = rotated_image_bytes(image_bytes, rotation)
 
         detection = run_local_worker(
@@ -1054,39 +934,8 @@ Return exactly one JSON object and no other text:
         else:
             layout_boxes, detector_name = opencv_boxes, "OpenCV補助"
             selected_excluded = opencv_excluded
-        ranked = rank_candidates_from_boxes(layout_boxes, candidates)
+        layout_boxes = sort_panel_boxes_reading_order(layout_boxes)
         detected_count = len(layout_boxes)
-        structural_best, structural_score = ranked[0]
-        second_score = ranked[1][1] if len(ranked) > 1 else structural_score + 1
-        structural_gap = max(0.0, second_score - structural_score)
-        structural_confidence = max(0.0, min(0.92, 1 / (1 + structural_score))) if detected_count else 0.0
-
-        qwen_layout: dict[str, Any] = {"used": False, "template_id": None, "agreed": None}
-        should_compare_layout = qwen_ready and self.qwen_mode == "compare"
-        if should_compare_layout:
-            shortlist = [candidate for candidate, _ in ranked[:5]] if detected_count else candidates
-            names = "\n".join(f"{item['id']}: {item['name']} ({len(item['shapes'])} panels)" for item in shortlist)
-            prompt = f"""The left side is an upright scanned or photographed manga storyboard page.
-The right side is a labeled grid of candidate panel-layout templates A through Z.
-Ignore drawings, handwriting, speech balloons, and page content. Compare only the panel-border count, positions, sizes, diagonals, overlaps, and page-edge bleed.
-Choose the single closest template. If the source has no readable panel borders or no reasonable match, choose NONE.
-Candidates:
-{names}
-Return exactly one JSON object and no other text:
-{{"template_id":"A-Z or NONE","confidence":0.0,"reason":"short Japanese explanation"}}"""
-            raw = self._process(make_comparison_image(upright_bytes, shortlist), prompt, 192)
-            qwen_result = parse_model_result(raw, {item["id"] for item in shortlist})
-            qwen_template = (
-                qwen_result["template_id"]
-                if qwen_result["template_id"] != "NONE" and qwen_result["confidence"] >= 0.35
-                else None
-            )
-            qwen_layout = {
-                "used": True,
-                "template_id": qwen_template,
-                "confidence": qwen_result["confidence"],
-                "agreed": qwen_template == structural_best["id"] if detected_count and qwen_template else None,
-            }
 
         text_regions = []
         buckets = detection.get("detections") if isinstance(detection.get("detections"), dict) else {}
@@ -1111,27 +960,19 @@ Return exactly one JSON object and no other text:
         if detected_count:
             excluded_count = sum(selected_excluded.values())
             result = {
-                "template_id": structural_best["id"],
-                "confidence": structural_confidence,
-                "reason": f"{detector_name}で{detected_count}個のコマ領域を検出し、座標からパターン{structural_best['id']}を選びました。",
+                "panel_boxes": [[round(value, 6) for value in box] for box in layout_boxes],
+                "reason": f"{detector_name}で検出した{detected_count}個のコマ領域を、テンプレートへ変換せず編集開始位置として使用します。",
             }
             if excluded_count:
                 result["reason"] += f" 文字・人物と同一領域の誤検出候補を{excluded_count}個除外しました。"
-            if qwen_layout.get("agreed") is True:
-                result["confidence"] = min(0.97, max(result["confidence"], float(qwen_layout.get("confidence", 0))))
-                result["reason"] += " Qwen3-VLの比較結果も一致しました。"
-            elif qwen_layout.get("used") and qwen_layout.get("template_id"):
-                result["reason"] += f" Qwen3-VLは{qwen_layout['template_id']}を提案したため、確定後の目視確認が必要です。"
         else:
             result = {
-                "template_id": "NONE",
-                "confidence": 0.0,
-                "reason": "専用検出器で読み取れるコマ領域が見つからなかったため、自動候補を確定しませんでした。",
+                "panel_boxes": [],
+                "reason": "専用検出器で読み取れるコマ領域が見つかりませんでした。手動プリセットを選ぶか、コマ枠を描き足して再解析してください。",
             }
         result["rotation_degrees"] = rotation
         result["orientation"] = orientation
         result["detected_panel_count"] = detected_count
-        result["alternatives"] = [item["id"] for item, _ in ranked[:5]]
         result["structure"] = {
             "engine": detector_name,
             "rtdetr_frame_count": len(rtdetr_boxes),
@@ -1144,7 +985,6 @@ Return exactly one JSON object and no other text:
             "text_region_count": len(detector_boxes(detection, "texts", max_area_ratio=0.45)),
             "face_region_count": len(detector_boxes(detection, "faces", max_area_ratio=0.45)),
             "body_region_count": len(detector_boxes(detection, "bodies", max_area_ratio=0.82)),
-            "score_gap": round(structural_gap, 4),
         }
         result["ocr"] = {
             "engine": "NDLOCR-Lite",
@@ -1155,8 +995,6 @@ Return exactly one JSON object and no other text:
         }
         result["qwen"] = {
             "mode": self.qwen_mode,
-            "orientation_used": qwen_orientation_used,
-            "layout": qwen_layout,
             "ocr_used": qwen_ocr_used,
             "ocr_changed": qwen_ocr_changed,
         }
@@ -1265,9 +1103,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self.send_json(200, self.state.scanners.cancel(session_id))
                 return
             if path == "/api/layout/analyze":
-                candidates = [candidate for item in body.get("candidates", []) if (candidate := normalized_candidate(item))]
                 rotation_override = normalized_rotation_override(body.get("rotation_override_degrees"))
-                result = self.state.analyze(decode_image_data(body.get("image")), candidates, rotation_override)
+                result = self.state.analyze(decode_image_data(body.get("image")), rotation_override)
                 self.send_json(200, result)
                 return
             self.send_json(404, {"error": "Not found"})
@@ -1305,7 +1142,7 @@ def main() -> int:
     print(f"RT-DETR: {state.rtdetr_model}")
     print(f"NDLOCR-Lite: {state.ndlocr_root}")
     print("Orientation: manual confirmation required")
-    qwen_usage = "未使用" if args.qwen_mode != "compare" else "レイアウト・OCR比較"
+    qwen_usage = "未使用" if args.qwen_mode != "compare" else "OCR比較"
     print(f"Qwen3-VL ({args.qwen_mode}, {qwen_usage}): {args.model}")
     try:
         server.serve_forever()
