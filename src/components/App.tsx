@@ -66,6 +66,15 @@ function displayedLayoutRotation(item: NewLayoutItem): RightAngle {
   return item.rotationOverride;
 }
 
+function layoutPreviewImageStyle(rotation: RightAngle) {
+  if (rotation % 180 === 0) return { transform: `rotate(${rotation}deg)` };
+  return {
+    width: '141.4214%',
+    height: '70.7107%',
+    transform: `rotate(${rotation}deg)`,
+  };
+}
+
 function nextLayoutIndexFromArrow(current: number, key: string, length: number): number {
   if (key === 'ArrowLeft' && current % 2 === 0 && current + 1 < length) return current + 1;
   if (key === 'ArrowRight' && current % 2 === 1) return current - 1;
@@ -928,7 +937,7 @@ export default function App() {
               <div class="new-layout-import-actions">
                 <button type="button" onClick={() => newLayoutImageInput.current?.click()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
                 {newLayoutTask === 'scanner'
-                  ? <button type="button" onClick={requestScannerFinish}><ScanLine size={15} />取り込みを終了{scannerReceivedCount ? `（${scannerReceivedCount}枚）` : ''}</button>
+                  ? <button type="button" class="scanner-finish-button" onClick={requestScannerFinish}><ScanLine size={15} />取り込みを終了{scannerReceivedCount ? `（${scannerReceivedCount}枚）` : ''}</button>
                   : <button type="button" onClick={launchScanner} disabled={newLayoutTask !== 'idle' || Boolean(pendingScannerSession)}><ScanLine size={15} />スキャナーを起動</button>}
               </div>
             </div>
@@ -945,7 +954,7 @@ export default function App() {
                     const item = newLayoutItems[itemIndex];
                     if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`source-empty-${itemIndex}`} />;
                     return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''}`} aria-label={`原画 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`source-${item.id}`}>
-                      <span class="new-layout-thumb-media"><img src={item.previewUrl} alt="" style={{ transform: `rotate(${displayedLayoutRotation(item)}deg) scale(${displayedLayoutRotation(item) % 180 ? .78 : 1})` }} /></span>
+                      <span class="new-layout-thumb-media"><img src={item.previewUrl} alt="" style={layoutPreviewImageStyle(displayedLayoutRotation(item))} /></span>
                       <em>{String(itemIndex + 1).padStart(2, '0')}</em>
                     </button>;
                   })}
@@ -968,7 +977,7 @@ export default function App() {
               <section class="new-layout-focus-pane" aria-labelledby="new-layout-focus-title">
                 <h4 id="new-layout-focus-title">フォーカス中</h4>
                 <div class="new-layout-focus-body">
-                  <div class="new-layout-focus-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={{ transform: `rotate(${displayedLayoutRotation(activeLayoutItem)}deg) scale(${displayedLayoutRotation(activeLayoutItem) % 180 ? .78 : 1})` }} /></div>
+                  <div class="new-layout-focus-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={layoutPreviewImageStyle(displayedLayoutRotation(activeLayoutItem))} /></div>
                   <div class="new-layout-focus-controls">
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
                     <strong title={activeLayoutItem.file.name}>{activeLayoutItem.file.name}</strong>

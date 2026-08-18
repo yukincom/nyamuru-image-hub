@@ -27,6 +27,22 @@ class ScannerSessionsTest(unittest.TestCase):
         with patch.object(bridge.subprocess, "run", return_value=completed):
             self.assertEqual(bridge.image_capture_preference("IK_documentName", "scan"), "スキャン")
 
+    def test_quits_image_capture_by_bundle_identifier(self):
+        with patch.object(bridge.subprocess, "run") as run:
+            bridge.quit_image_capture()
+
+        run.assert_called_once_with(
+            [
+                "/usr/bin/osascript",
+                "-e",
+                'if application id "com.apple.Image_Capture" is running then tell application id "com.apple.Image_Capture" to quit',
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
     def test_keeps_scans_until_human_commit_and_deletes_only_then(self):
         with tempfile.TemporaryDirectory() as directory_name:
             directory = Path(directory_name)

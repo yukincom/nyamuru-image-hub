@@ -97,6 +97,20 @@ def image_capture_preference(key: str, fallback: str) -> str:
         return fallback
 
 
+def quit_image_capture() -> None:
+    subprocess.run(
+        [
+            "/usr/bin/osascript",
+            "-e",
+            'if application id "com.apple.Image_Capture" is running then tell application id "com.apple.Image_Capture" to quit',
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+
 def scanner_destination() -> Path:
     configured = image_capture_preference("IK_Scanner_downloadURL", "~/Pictures")
     if configured.startswith("file://"):
@@ -987,12 +1001,14 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self.send_json(200, self.state.scanners.commit(body.get("session_id")))
                 return
             if path == "/api/scanner/finish":
+                quit_image_capture()
                 self.send_json(200, self.state.scanners.finish(body.get("session_id")))
                 return
             if path == "/api/scanner/cancel":
                 session_id = body.get("session_id")
                 if not isinstance(session_id, str):
                     raise ValueError("スキャン待機セッションが見つかりません")
+                quit_image_capture()
                 self.send_json(200, self.state.scanners.cancel(session_id))
                 return
             if path == "/api/layout/analyze":
@@ -1004,7 +1020,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
         except subprocess.SubprocessError as exc:
-            self.send_json(500, {"error": f"スキャナーアプリを起動できませんでした: {exc}"})
+            self.send_json(500, {"error": f"スキャナーアプリを操作できませんでした: {exc}"})
         except Exception as exc:
             print(f"[bridge] error: {exc}", file=sys.stderr)
             self.send_json(500, {"error": f"ローカル処理に失敗しました: {exc}"})
