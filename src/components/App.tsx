@@ -513,6 +513,7 @@ export default function App() {
       setScannerSession(session);
       setNewLayoutMessage(`スキャン画像を自動待機中です（最大${session.maxFiles}枚・5分）。続けてスキャンし、終わったら「取り込みを終了」を押してください。`);
       while (scannerSessionRef.current?.id === session.id) {
+        if (scannerStopRequested.current) break;
         const batch = await collectScannerImages(session.id);
         if (scannerSessionRef.current?.id !== session.id) break;
         if (batch.files.length) {
@@ -587,9 +588,18 @@ export default function App() {
     }
   };
 
-  const requestScannerFinish = () => {
+  const requestScannerFinish = async () => {
+    if (scannerStopRequested.current) return;
     scannerStopRequested.current = true;
     setNewLayoutMessage('現在の取り込みを確認して終了しています…');
+    const session = scannerSessionRef.current;
+    if (!session) return;
+    try {
+      await finishScannerSession(session.id);
+    } catch (error) {
+      scannerStopRequested.current = false;
+      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン待機を終了できませんでした');
+    }
   };
 
   const createNewDocument = async (
