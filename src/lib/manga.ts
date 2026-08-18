@@ -11,6 +11,37 @@ export const FIGURE_SIZES = ['full', 'waist-up', 'bust-up', 'face', 'hand', 'foo
 export const FIGURE_ROLES = ['main', 'sub'] as const;
 export const BLEED_EDGES = ['left', 'right', 'top', 'bottom'] as const;
 export const SCREEN_TEXT_ORIENTATIONS = ['horizontal', 'vertical'] as const;
+export const DEFAULT_PANEL_FRAME_LINE_WIDTH_MM = 1.6;
+const PANEL_FRAME_STYLE_NOTE_PREFIX = '[style] コマ枠線幅:';
+
+function normalizedFrameLineWidth(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.round(Math.min(5, Math.max(0.1, value)) * 10) / 10;
+}
+
+/** 新規作品の枠線幅を、OMAYへ書き出せる作品固有の作画指定として保存する。 */
+export function withPanelFrameLineWidthStyleNote(notes: readonly string[], widthMm: number): string[] {
+  const width = normalizedFrameLineWidth(widthMm);
+  const frameNote = `${PANEL_FRAME_STYLE_NOTE_PREFIX} ${width}mm。通常の辺(bleed なし): 外周に約2〜3mmの白マージンを取り、太さ約${width}mmの黒い枠線を描く。隣接コマの枠線は共有せず独立して描く`;
+  let replaced = false;
+  const next = notes.flatMap((note) => {
+    if (!note.startsWith(PANEL_FRAME_STYLE_NOTE_PREFIX) && !note.includes('通常の辺(bleed なし)')) return [note];
+    if (replaced) return [];
+    replaced = true;
+    return [frameNote];
+  });
+  return replaced ? next : [...next, frameNote];
+}
+
+/** 専用の作画指定が無い既存作品は、従来の編集画面表示幅を維持する。 */
+export function panelFrameLineWidthFromStyleNotes(
+  notes: readonly string[],
+  fallback = DEFAULT_PANEL_FRAME_LINE_WIDTH_MM,
+): number {
+  const note = notes.find((item) => item.startsWith(PANEL_FRAME_STYLE_NOTE_PREFIX));
+  const match = note?.slice(PANEL_FRAME_STYLE_NOTE_PREFIX.length).match(/\s*([0-9]+(?:\.[0-9]+)?)\s*mm/i);
+  return match ? normalizedFrameLineWidth(Number(match[1])) : fallback;
+}
 
 export function parseMangaYaml(source: string): MangaDocument {
   const value = parse(source) as MangaDocument;

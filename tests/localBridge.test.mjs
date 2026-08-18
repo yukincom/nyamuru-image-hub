@@ -70,7 +70,7 @@ test('OCR候補と人物領域を安全に正規化する', () => {
   assert.equal(result.ocrLines[0].groupId, 'block-1');
 });
 
-test('文字を持つ最小のコマだけを残し、重複候補を除いてコマ間を5mm空ける', () => {
+test('文字を持つ最小のコマだけを残し、上下5mm・左右3mmの間隔を空ける', () => {
   const result = normalizeLayoutRecognition({
     panel_boxes: [
       [0, 0, 1, 0.38],
@@ -98,14 +98,18 @@ test('文字を持つ最小のコマだけを残し、重複候補を除いて�
     for (let otherIndex = index + 1; otherIndex < result.detectedPanels.length; otherIndex += 1) {
       const second = result.detectedPanels[otherIndex];
       assert.equal(second.type, 'rect');
+      const horizontalOverlap = Math.max(0, Math.min(first.x + first.w, second.x + second.w) - Math.max(first.x, second.x));
+      const verticalOverlap = Math.max(0, Math.min(first.y + first.h, second.y + second.h) - Math.max(first.y, second.y));
       const horizontalGap = Math.max(first.x, second.x) - Math.min(first.x + first.w, second.x + second.w);
       const verticalGap = Math.max(first.y, second.y) - Math.min(first.y + first.h, second.y + second.h);
-      assert.ok(horizontalGap >= 4.9 || verticalGap >= 4.9, `コマ${index + 1}と${otherIndex + 1}の間隔`);
+      if (horizontalOverlap > 0) assert.ok(verticalGap >= 4.9, `コマ${index + 1}と${otherIndex + 1}の上下間隔`);
+      else if (verticalOverlap > 0) assert.ok(horizontalGap >= 2.9, `コマ${index + 1}と${otherIndex + 1}の左右間隔`);
+      else assert.ok(horizontalGap >= 2.9 || verticalGap >= 4.9, `コマ${index + 1}と${otherIndex + 1}の間隔`);
     }
   }
 });
 
-test('検出コマを内枠内に収め、4mm以内の隣接辺を整列して5mm空ける', () => {
+test('検出コマを内枠内に収め、4mm以内の隣接辺を整列して左右3mm空ける', () => {
   const result = normalizeLayoutRecognition({
     panel_boxes: [
       [0.05, 0.04, 0.44, 0.25],
@@ -119,11 +123,28 @@ test('検出コマを内枠内に収め、4mm以内の隣接辺を整列して5m
   assert.equal(right.x + right.w, 200);
   assert.equal(left.y, 10);
   assert.equal(right.y, 10);
-  assert.ok(Math.abs(right.x - (left.x + left.w) - 5) < 0.11);
+  assert.ok(Math.abs(right.x - (left.x + left.w) - 3) < 0.11);
   for (const panel of result.detectedPanels) {
     assert.ok(panel.x >= 10 && panel.y >= 10);
     assert.ok(panel.x + panel.w <= 200 && panel.y + panel.h <= 287);
   }
+});
+
+test('新規取り込みで指定した上下・左右の間隔を別々に適用する', () => {
+  const result = normalizeLayoutRecognition({
+    panel_boxes: [
+      [0.05, 0.04, 0.44, 0.25],
+      [0.50, 0.04, 0.45, 0.25],
+      [0.05, 0.31, 0.44, 0.25],
+      [0.50, 0.31, 0.45, 0.25],
+    ],
+  }, { rowGapMm: 7, columnGapMm: 2 });
+  const [topLeft, topRight, bottomLeft, bottomRight] = result.detectedPanels;
+  assert.ok(Math.abs(topRight.x - (topLeft.x + topLeft.w) - 2) < 0.11);
+  assert.ok(Math.abs(bottomRight.x - (bottomLeft.x + bottomLeft.w) - 2) < 0.11);
+  assert.ok(Math.abs(bottomLeft.y - (topLeft.y + topLeft.h) - 7) < 0.11);
+  assert.ok(Math.abs(bottomRight.y - (topRight.y + topRight.h) - 7) < 0.11);
+  assert.match(result.reason, /上下7mm・左右2mm/);
 });
 
 test('同一テキストブロックの縦書き行を右から改行で一つにまとめる', () => {

@@ -18,6 +18,18 @@ export interface LayoutRecognitionResult {
   ocrLines: RecognizedTextLine[];
 }
 
+export interface PanelGutterSettings {
+  /** 上下に並ぶコマ同士の間隔。 */
+  rowGapMm: number;
+  /** 左右に並ぶコマ同士の間隔。 */
+  columnGapMm: number;
+}
+
+export const DEFAULT_PANEL_GUTTERS: Readonly<PanelGutterSettings> = {
+  rowGapMm: 5,
+  columnGapMm: 3,
+};
+
 export interface RecognizedTextLine {
   id: string;
   text: string;
@@ -201,9 +213,36 @@ function alignNearRectEdges(shapes: readonly PanelShape[], threshold = 4): Panel
   return next;
 }
 
-/** Adjacent detected rectangles are separated by a 5mm gutter without moving their outer edges. */
-export function ensureDetectedPanelGutters(shapes: readonly PanelShape[], gutter = 5): PanelShape[] {
+/** 隣接する検出矩形の外端を保ったまま、上下・左右それぞれのコマ間隔へ整える。 */
+export function ensureDetectedPanelGutters(
+  shapes: readonly PanelShape[],
+  settings: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
+): PanelShape[] {
   const next = shapes.map((shape) => structuredClone(shape));
+  const rowGap = roundMm(clamp(settings.rowGapMm, 0, 20));
+  const columnGap = roundMm(clamp(settings.columnGapMm, 0, 20));
+  const hasInterveningPanel = (firstIndex: number, secondIndex: number, axis: 'row' | 'column') => {
+    const first = next[firstIndex], second = next[secondIndex];
+    if (first.type !== 'rect' || second.type !== 'rect') return false;
+    const firstCenter = axis === 'row' ? first.y + first.h / 2 : first.x + first.w / 2;
+    const secondCenter = axis === 'row' ? second.y + second.h / 2 : second.x + second.w / 2;
+    const minimum = Math.min(firstCenter, secondCenter), maximum = Math.max(firstCenter, secondCenter);
+    return next.some((candidate, candidateIndex) => {
+      if (candidateIndex === firstIndex || candidateIndex === secondIndex || candidate.type !== 'rect') return false;
+      const center = axis === 'row' ? candidate.y + candidate.h / 2 : candidate.x + candidate.w / 2;
+      if (center <= minimum || center >= maximum) return false;
+      if (axis === 'row') {
+        const overlapFirst = Math.max(0, Math.min(first.x + first.w, candidate.x + candidate.w) - Math.max(first.x, candidate.x));
+        const overlapSecond = Math.max(0, Math.min(second.x + second.w, candidate.x + candidate.w) - Math.max(second.x, candidate.x));
+        return overlapFirst >= Math.min(first.w, candidate.w) * 0.2
+          && overlapSecond >= Math.min(second.w, candidate.w) * 0.2;
+      }
+      const overlapFirst = Math.max(0, Math.min(first.y + first.h, candidate.y + candidate.h) - Math.max(first.y, candidate.y));
+      const overlapSecond = Math.max(0, Math.min(second.y + second.h, candidate.y + candidate.h) - Math.max(second.y, candidate.y));
+      return overlapFirst >= Math.min(first.h, candidate.h) * 0.2
+        && overlapSecond >= Math.min(second.h, candidate.h) * 0.2;
+    });
+  };
   for (let leftIndex = 0; leftIndex < next.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < next.length; rightIndex += 1) {
       const first = next[leftIndex];
@@ -216,11 +255,13 @@ export function ensureDetectedPanelGutters(shapes: readonly PanelShape[], gutter
 
       if (normalizedVerticalDistance >= normalizedHorizontalDistance && horizontalOverlap >= Math.min(first.w, second.w) * 0.25) {
         const [upper, lower] = first.y + first.h / 2 <= second.y + second.h / 2 ? [first, second] : [second, first];
+        if (hasInterveningPanel(leftIndex, rightIndex, 'row')) continue;
         const currentGap = lower.y - (upper.y + upper.h);
-        if (currentGap >= gutter) continue;
+        if (currentGap > Math.max(12, rowGap + 4)) continue;
+        if (Math.abs(currentGap - rowGap) <= 0.05) continue;
         const boundary = ((upper.y + upper.h) + lower.y) / 2;
-        const upperBottom = boundary - gutter / 2;
-        const lowerTop = boundary + gutter / 2;
+        const upperBottom = boundary - rowGap / 2;
+        const lowerTop = boundary + rowGap / 2;
         if (upperBottom - upper.y >= 8 && lower.y + lower.h - lowerTop >= 8) {
           upper.h = roundMm(upperBottom - upper.y);
           const lowerBottom = lower.y + lower.h;
@@ -229,11 +270,13 @@ export function ensureDetectedPanelGutters(shapes: readonly PanelShape[], gutter
         }
       } else if (verticalOverlap >= Math.min(first.h, second.h) * 0.25) {
         const [left, right] = first.x + first.w / 2 <= second.x + second.w / 2 ? [first, second] : [second, first];
+        if (hasInterveningPanel(leftIndex, rightIndex, 'column')) continue;
         const currentGap = right.x - (left.x + left.w);
-        if (currentGap >= gutter) continue;
+        if (currentGap > Math.max(12, columnGap + 4)) continue;
+        if (Math.abs(currentGap - columnGap) <= 0.05) continue;
         const boundary = ((left.x + left.w) + right.x) / 2;
-        const leftEdge = boundary - gutter / 2;
-        const rightEdge = boundary + gutter / 2;
+        const leftEdge = boundary - columnGap / 2;
+        const rightEdge = boundary + columnGap / 2;
         if (leftEdge - left.x >= 8 && right.x + right.w - rightEdge >= 8) {
           left.w = roundMm(leftEdge - left.x);
           const rightBoundary = right.x + right.w;
@@ -250,11 +293,13 @@ export function ensureDetectedPanelGutters(shapes: readonly PanelShape[], gutter
 export function refineDetectedPanels(
   shapes: readonly PanelShape[],
   lines: readonly RecognizedTextLine[],
+  gutterSettings: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
 ): PanelShape[] {
   const deduplicated = deduplicateDetectedPanels(shapes);
   if (!deduplicated.length) return [];
   const normalizeGeometry = (targets: readonly PanelShape[]) => ensureDetectedPanelGutters(
     alignNearRectEdges(constrainDetectedPanelsToInnerFrame(targets)),
+    gutterSettings,
   );
   if (!lines.length) return normalizeGeometry(deduplicated);
   const supported = new Set<number>();
@@ -306,6 +351,7 @@ export function groupRecognizedTextLines(lines: readonly RecognizedTextLine[]): 
 
 export function normalizeLayoutRecognition(
   payload: BridgeLayoutResponse,
+  gutterSettings: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
 ): LayoutRecognitionResult {
   const rawDetectedPanels = (Array.isArray(payload.panel_boxes) ? payload.panel_boxes : []).flatMap((entry): PanelShape[] => {
     const rawBox = Array.isArray(entry) ? entry.map(Number) : [];
@@ -388,7 +434,7 @@ export function normalizeLayoutRecognition(
     const smaller = Math.min(candidateArea, keptArea);
     return smaller > 0 && (intersection / smaller >= 0.88 || (union > 0 && intersection / union >= 0.58));
   }));
-  const detectedPanels = refineDetectedPanels(rawDetectedPanels, ocrLines);
+  const detectedPanels = refineDetectedPanels(rawDetectedPanels, ocrLines, gutterSettings);
   const removedPanelCount = rawDetectedPanels.length - detectedPanels.length;
   const baseReason = removedPanelCount > 0
     ? `重複または文字に対応しない候補を${removedPanelCount}個除外し、${detectedPanels.length}個のコマ領域を編集開始位置として使用します。`
@@ -396,7 +442,7 @@ export function normalizeLayoutRecognition(
       ? payload.reason.trim()
       : detectedPanels.length ? '検出したコマ領域を編集開始位置として使用できます。' : '読み取れるコマ領域を特定できませんでした。';
   const reason = detectedPanels.length
-    ? `${baseReason} 内枠内へ収め、4mm以内の辺を整列し、コマ間は5mm空けています。`
+    ? `${baseReason} 内枠内へ収め、4mm以内の辺を整列し、コマ間は上下${roundMm(clamp(gutterSettings.rowGapMm, 0, 20))}mm・左右${roundMm(clamp(gutterSettings.columnGapMm, 0, 20))}mmに整えています。`
     : baseReason;
   const detectedPanelCount = detectedPanels.length;
   return {
@@ -583,13 +629,14 @@ async function postJson(path: string, body: object, timeoutMs = REQUEST_TIMEOUT_
 export async function recognizePanelLayout(
   file: File,
   rotationOverride: 0 | 90 | 180 | 270,
+  gutterSettings: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
 ): Promise<LayoutRecognitionResult> {
   const payload = await postJson('/api/layout/analyze', {
     filename: file.name,
     image: await imageDataUrl(file),
     rotation_override_degrees: rotationOverride,
   }) as BridgeLayoutResponse;
-  return normalizeLayoutRecognition(payload);
+  return normalizeLayoutRecognition(payload, gutterSettings);
 }
 
 function dataUrlFile(dataUrl: unknown, filename: unknown): File {

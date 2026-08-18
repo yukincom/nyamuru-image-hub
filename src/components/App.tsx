@@ -14,10 +14,10 @@ import GenerationPromptGuide from './GenerationPromptGuide';
 import HowToGuide from './HowToGuide';
 import NyamurutanGuide from './NyamurutanGuide';
 import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEditor, ValidationPanel } from './DocumentEditors';
-import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga } from '../lib/manga';
-import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
+import { cloneDocument, newPage, newPanel, omnyFileName, panelFrameLineWidthFromStyleNotes, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga, withPanelFrameLineWidthStyleNote } from '../lib/manga';
+import { clamp, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
-import { attachDetectedFiguresToPage, attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, DETECTED_FIGURE_NAME, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type DetectedFigureRegion, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
+import { attachDetectedFiguresToPage, attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, DEFAULT_PANEL_GUTTERS, DETECTED_FIGURE_NAME, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type DetectedFigureRegion, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, PanelShape, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -120,11 +120,12 @@ function initialPanelSnap(): boolean {
 // 見開きは右綴じ（1ページ目が右）。ビューアはこの配列順にめくる
 const SAMPLE_MANGA_PAGES = [sampleMangaPages.page1, sampleMangaPages.page2];
 
-function TemplateThumb({ shapes, figures = [] }: { shapes: readonly PanelShape[]; figures?: readonly DetectedFigureRegion[] }) {
+function TemplateThumb({ shapes, figures = [], frameLineWidthMm }: { shapes: readonly PanelShape[]; figures?: readonly DetectedFigureRegion[]; frameLineWidthMm?: number }) {
+  const frameStyle = frameLineWidthMm === undefined ? undefined : { strokeWidth: Math.max(1, frameLineWidthMm * 4) };
   return <svg viewBox="0 0 210 297" aria-hidden="true">
     {shapes.map((shape, index) => shape.type === 'rect'
-      ? <rect key={index} x={shape.x} y={shape.y} width={shape.w} height={shape.h} />
-      : <polygon key={index} points={shape.points.map((point) => point.join(',')).join(' ')} />)}
+      ? <rect key={index} x={shape.x} y={shape.y} width={shape.w} height={shape.h} style={frameStyle} />
+      : <polygon key={index} points={shape.points.map((point) => point.join(',')).join(' ')} style={frameStyle} />)}
     {figures.map((figure, index) => <rect class="detected-figure-thumb" key={`figure-${index}`} x={figure.bbox.x * 210} y={figure.bbox.y * 297} width={figure.bbox.w * 210} height={figure.bbox.h * 297} rx="2" />)}
   </svg>;
 }
@@ -169,6 +170,9 @@ export default function App() {
   const [newLayoutActiveIndex, setNewLayoutActiveIndex] = useState(0);
   const [newLayoutMessage, setNewLayoutMessage] = useState<string | null>(null);
   const [newLayoutTask, setNewLayoutTask] = useState<NewLayoutTask>('idle');
+  const [newLayoutRowGapMm, setNewLayoutRowGapMm] = useState(DEFAULT_PANEL_GUTTERS.rowGapMm);
+  const [newLayoutColumnGapMm, setNewLayoutColumnGapMm] = useState(DEFAULT_PANEL_GUTTERS.columnGapMm);
+  const [newLayoutFrameLineWidthMm, setNewLayoutFrameLineWidthMm] = useState(1);
   const [scannerSession, setScannerSession] = useState<ScannerSession | null>(null);
   const [pendingScannerSession, setPendingScannerSession] = useState<PendingScannerSession | null>(null);
   const [scannerReceivedCount, setScannerReceivedCount] = useState(0);
@@ -189,6 +193,7 @@ export default function App() {
   const issues = useMemo(() => validateManga(document), [document]);
   const page = document.manga.pages[activePage];
   const panel = page?.panels[activePanel];
+  const panelFrameLineWidthMm = panelFrameLineWidthFromStyleNotes(document.manga.meta.style_notes);
   // 見開きの相方ページ。右綴じなので若いページが右に並ぶ
   const spreadPartnerIndex = spreadView && document.manga.pages.length > 1
     ? (activePage + 1 < document.manga.pages.length ? activePage + 1 : activePage - 1)
@@ -469,6 +474,24 @@ export default function App() {
     if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
   };
 
+  const updateNewLayoutGutter = (axis: 'row' | 'column', value: number) => {
+    if (!Number.isFinite(value)) return;
+    const nextValue = roundMm(clamp(value, 0, 20));
+    if (axis === 'row') setNewLayoutRowGapMm(nextValue);
+    else setNewLayoutColumnGapMm(nextValue);
+    const hasAnalysis = newLayoutItemsRef.current.some((item) => item.analysis || item.error);
+    if (!hasAnalysis) return;
+    const working = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
+    newLayoutItemsRef.current = working;
+    setNewLayoutItems(working);
+    setNewLayoutMessage('コマ間隔を変更しました。「解析開始」で解析結果へ反映してください。');
+  };
+
+  const updateNewLayoutFrameLineWidth = (value: number) => {
+    if (!Number.isFinite(value)) return;
+    setNewLayoutFrameLineWidthMm(roundMm(clamp(value, 0.1, 5)));
+  };
+
   const analyzeNewLayouts = async () => {
     if (!newLayoutItemsRef.current.length || newLayoutTask !== 'idle') return;
     setNewLayoutTask('analyzing');
@@ -484,6 +507,7 @@ export default function App() {
         const result = await recognizePanelLayout(
           working[index].file,
           working[index].rotationOverride,
+          { rowGapMm: newLayoutRowGapMm, columnGapMm: newLayoutColumnGapMm },
         );
         working = working.map((item, itemIndex) => itemIndex === index
           ? { ...item, analysis: result, analyzing: false, error: undefined }
@@ -685,7 +709,7 @@ export default function App() {
           reading_direction: sample.manga.meta.reading_direction,
           text_orientation: sample.manga.meta.text_orientation,
           font: sample.manga.meta.font,
-          style_notes: sample.manga.meta.style_notes,
+          style_notes: withPanelFrameLineWidthStyleNote(sample.manga.meta.style_notes, newLayoutFrameLineWidthMm),
         },
         layout_spec: sample.manga.layout_spec,
         setting: { location: '', time: '', weather: '', background: [], props: [], situation: '' },
@@ -894,10 +918,10 @@ export default function App() {
               </div>
             </div>
             {(() => {
-              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} panelSnap={panelSnap} onTogglePanelSnap={togglePanelSnap} onSelectPanel={selectCanvasPanel} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
+              const activeCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} frameLineWidthMm={panelFrameLineWidthMm} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={toggleAutoAnchor} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={toggleInnerFrameSnap} panelSnap={panelSnap} onTogglePanelSnap={togglePanelSnap} onSelectPanel={selectCanvasPanel} onSelectElement={setSelectedElement} onChangeElementBBox={changeElementBBox} onChangeElementAnchor={changeElementAnchor} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
               if (spreadPartnerIndex === null) return activeCanvas;
               const switchToPartner = (panelIndex = 0) => { setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]); };
-              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} panelSnap={panelSnap} onTogglePanelSnap={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
+              const partnerCanvas = <MangaCanvas title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} frameLineWidthMm={panelFrameLineWidthMm} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} autoAnchor={autoAnchor} onToggleAutoAnchor={() => {}} innerFrameSnap={innerFrameSnap} onToggleInnerFrameSnap={() => {}} panelSnap={panelSnap} onTogglePanelSnap={() => {}} onSelectPanel={switchToPartner} onSelectElement={() => switchToPartner()} onChangeElementBBox={() => {}} onChangeElementAnchor={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
               // 右綴じ: 若いページが右（flexの後ろ）に来る
               const leftIndex = Math.max(activePage, spreadPartnerIndex);
               return <div class="canvas-spread">
@@ -941,6 +965,12 @@ export default function App() {
                   : <button type="button" onClick={launchScanner} disabled={newLayoutTask !== 'idle' || Boolean(pendingScannerSession)}><ScanLine size={15} />スキャナーを起動</button>}
               </div>
             </div>
+            <div class="new-layout-style-controls" role="group" aria-label="取り込み後のコマ枠設定">
+              <label><span>上下の間隔</span><span><input type="number" min="0" max="20" step="0.5" value={newLayoutRowGapMm} disabled={newLayoutTask !== 'idle'} onInput={(event) => updateNewLayoutGutter('row', event.currentTarget.valueAsNumber)} />mm</span></label>
+              <label><span>左右の間隔</span><span><input type="number" min="0" max="20" step="0.5" value={newLayoutColumnGapMm} disabled={newLayoutTask !== 'idle'} onInput={(event) => updateNewLayoutGutter('column', event.currentTarget.valueAsNumber)} />mm</span></label>
+              <label><span>枠線の太さ</span><span><input type="number" min="0.1" max="5" step="0.1" value={newLayoutFrameLineWidthMm} disabled={newLayoutTask !== 'idle'} onInput={(event) => updateNewLayoutFrameLineWidth(event.currentTarget.valueAsNumber)} />mm</span></label>
+              <small>間隔は解析結果の座標へ、枠線幅は新しい作品の作画指定へ保存します。</small>
+            </div>
             {pendingScannerSession && <div class="new-layout-recovery" role="status">
               <div><strong>前回のスキャン画像が{pendingScannerSession.count}枚残っています</strong><span>{new Date(pendingScannerSession.startedAt).toLocaleString('ja-JP')} · {pendingScannerSession.directory}</span><p>強制終了などで処理が中断された可能性があります。前回の画像へつなぎ直しますか？</p></div>
               <div><button type="button" class="primary-button" onClick={resumeScanner} disabled={newLayoutTask !== 'idle'}>つなぎ直す</button><button type="button" onClick={discardRecoveredScans} disabled={newLayoutTask !== 'idle'}>破棄する</button></div>
@@ -968,7 +998,7 @@ export default function App() {
                     if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`analysis-empty-${itemIndex}`} />;
                     const hasPanels = Boolean(item.analysis?.detectedPanels.length);
                     return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''} ${hasPanels ? 'is-ready' : ''} ${item.analyzing ? 'is-analyzing' : ''} ${item.error ? 'is-error' : ''}`} aria-label={`解析結果 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`analysis-${item.id}`}>
-                      <span class="new-layout-thumb-media">{hasPanels && item.analysis ? <TemplateThumb shapes={item.analysis.detectedPanels} figures={item.analysis.detectedFigures} /> : <span class="new-layout-analysis-placeholder">{item.analyzing ? '解析中' : item.error ? '!' : ''}</span>}</span>
+                      <span class="new-layout-thumb-media">{hasPanels && item.analysis ? <TemplateThumb shapes={item.analysis.detectedPanels} figures={item.analysis.detectedFigures} frameLineWidthMm={newLayoutFrameLineWidthMm} /> : <span class="new-layout-analysis-placeholder">{item.analyzing ? '解析中' : item.error ? '!' : ''}</span>}</span>
                       <em>{String(itemIndex + 1).padStart(2, '0')}</em>
                     </button>;
                   })}

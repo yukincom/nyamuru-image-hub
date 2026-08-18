@@ -10,6 +10,7 @@ interface Props {
   author: string;
   page: MangaPage;
   pageCount: number;
+  frameLineWidthMm: number;
   activePanel: number;
   selectedPanels: readonly number[];
   selectedElement: CanvasElementSelection | null;
@@ -119,7 +120,7 @@ function layerClipStyle(panel: Panel): Record<string, string> {
   return { clipPath: `polygon(${points})` };
 }
 
-export default function MangaCanvas({ title, author, page, pageCount, activePanel, selectedPanels, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, panelSnap, onTogglePanelSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
+export default function MangaCanvas({ title, author, page, pageCount, frameLineWidthMm, activePanel, selectedPanels, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, panelSnap, onTogglePanelSnap, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
   const paperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -634,7 +635,7 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
       {selectedPanel && <div class="panel-element-layer" style={layerClipStyle(selectedPanel)}>
         {renderElements(selectedPanel, activePanel, paperBoxStyle)}
       </div>}
-      <svg class="panel-frame-overlay" viewBox="0 0 210 297" aria-hidden="true">
+      <svg class="panel-frame-overlay" viewBox="0 0 210 297" strokeWidth={frameLineWidthMm} aria-hidden="true">
         {page.panels.map((panel, panelIndex) => {
           const key = `frame-${panel.id}-${panelIndex}`;
           if (panel.shape.type !== 'rect') return <polygon points={panel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} key={key} />;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parse } from 'yaml';
-import { OMAY_SPEC_NAME, omayFileName, omnyFileName, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml } from '../src/lib/manga.ts';
+import { OMAY_SPEC_NAME, omayFileName, omnyFileName, panelFrameLineWidthFromStyleNotes, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml, withPanelFrameLineWidthStyleNote } from '../src/lib/manga.ts';
 
 const omaySource = readFileSync(new URL('../src/content/standard.omay.yaml', import.meta.url), 'utf8');
 const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
@@ -50,6 +50,18 @@ test('作品情報のルールをOMAYとして書き出すと読み戻せる', (
   assert.equal(omay.layout_spec, document.manga.layout_spec);
   // OMAYの版数はOMNYのschema_versionと独立管理のため、書き出しには刻印されない
   assert.equal(omay.spec_version, undefined);
+});
+
+test('新規取り込みの枠線幅を重複なく作画指定へ保存して読み戻す', () => {
+  const original = [
+    '[style] カラー漫画',
+    '[style] 通常の辺(bleed なし): 太さ約1mmの黒い枠線を描く',
+  ];
+  const updated = withPanelFrameLineWidthStyleNote(original, 2.2);
+  assert.equal(updated.length, 2);
+  assert.equal(panelFrameLineWidthFromStyleNotes(updated), 2.2);
+  assert.match(updated[1], /太さ約2.2mm/);
+  assert.equal(panelFrameLineWidthFromStyleNotes(original), 1.6);
 });
 
 test('保存2種類とOMAYのファイル名に対応する拡張子が付く', () => {
