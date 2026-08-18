@@ -14,6 +14,10 @@ test('bridgeの有効なテンプレート候補を正規化する', () => {
     orientationConfidence: 0,
     orientationHighConfidence: false,
     structureEngine: '',
+    excludedNonPanelCount: 0,
+    detectedTextRegionCount: 0,
+    detectedFaceRegionCount: 0,
+    detectedBodyRegionCount: 0,
     ocrEngine: '',
     ocrLines: [],
     qwenMode: 'auto',
@@ -45,19 +49,31 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
   const result = normalizeLayoutRecognition({
     template_id: 'A',
     detected_panel_count: 3,
-    orientation: { engine: 'RapidOrientation', confidence: 0.42, high_confidence: true },
-    structure: { engine: 'RT-DETR' },
+    orientation: { engine: '手動確認済み', confidence: 1, high_confidence: true },
+    structure: {
+      engine: 'RT-DETR',
+      excluded_as_text_count: 2,
+      excluded_as_face_count: 1,
+      excluded_as_body_count: 0,
+      text_region_count: 5,
+      face_region_count: 2,
+      body_region_count: 3,
+    },
     ocr: { engine: 'NDLOCR-Lite', lines: [{
       id: 'line-1', text: 'こんにちは', bbox: [0.6, 0.1, 0.2, 0.12], confidence: 1.4,
       vertical: true, source: 'qwen-fallback', needs_review: true, qwen_text: 'こんにちは',
     }] },
-    qwen: { mode: 'compare', orientation_used: true, layout: { used: true, agreed: false }, ocr_used: true, ocr_changed: 1 },
+    qwen: { mode: 'compare', orientation_used: false, layout: { used: true, agreed: false }, ocr_used: true, ocr_changed: 1 },
   }, ids);
   assert.equal(result.detectedPanelCount, 3);
-  assert.equal(result.orientationEngine, 'RapidOrientation');
-  assert.equal(result.orientationConfidence, 0.42);
+  assert.equal(result.orientationEngine, '手動確認済み');
+  assert.equal(result.orientationConfidence, 1);
   assert.equal(result.orientationHighConfidence, true);
   assert.equal(result.structureEngine, 'RT-DETR');
+  assert.equal(result.excludedNonPanelCount, 3);
+  assert.equal(result.detectedTextRegionCount, 5);
+  assert.equal(result.detectedFaceRegionCount, 2);
+  assert.equal(result.detectedBodyRegionCount, 3);
   assert.equal(result.ocrLines[0].text, 'こんにちは');
   assert.equal(result.ocrLines[0].confidence, 1);
   assert.equal(result.qwenMode, 'compare');

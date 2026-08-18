@@ -15,6 +15,10 @@ export interface LayoutRecognitionResult {
   orientationConfidence: number;
   orientationHighConfidence: boolean;
   structureEngine: string;
+  excludedNonPanelCount: number;
+  detectedTextRegionCount: number;
+  detectedFaceRegionCount: number;
+  detectedBodyRegionCount: number;
   ocrEngine: string;
   ocrLines: RecognizedTextLine[];
   qwenMode: 'off' | 'auto' | 'compare';
@@ -154,6 +158,14 @@ export function normalizeLayoutRecognition(
     orientationConfidence,
     orientationHighConfidence: orientation.high_confidence === true,
     structureEngine: typeof structure.engine === 'string' ? structure.engine : '',
+    excludedNonPanelCount: Math.max(0, Math.round(
+      (Number(structure.excluded_as_text_count) || 0)
+      + (Number(structure.excluded_as_face_count) || 0)
+      + (Number(structure.excluded_as_body_count) || 0),
+    )),
+    detectedTextRegionCount: Math.max(0, Math.round(Number(structure.text_region_count) || 0)),
+    detectedFaceRegionCount: Math.max(0, Math.round(Number(structure.face_region_count) || 0)),
+    detectedBodyRegionCount: Math.max(0, Math.round(Number(structure.body_region_count) || 0)),
     ocrEngine: typeof ocr.engine === 'string' ? ocr.engine : '',
     ocrLines,
     qwenMode,
@@ -279,13 +291,13 @@ async function postJson(path: string, body: object, timeoutMs = REQUEST_TIMEOUT_
 export async function recognizePanelLayout(
   file: File,
   templates: readonly PanelTemplate[],
-  rotationOverride: 0 | 90 | 180 | 270 | null = null,
+  rotationOverride: 0 | 90 | 180 | 270,
 ): Promise<LayoutRecognitionResult> {
   const payload = await postJson('/api/layout/analyze', {
     filename: file.name,
     image: await imageDataUrl(file),
     candidates: templates.map(({ id, name, usage, shapes, bleeds }) => ({ id, name, usage, shapes, bleeds })),
-    ...(rotationOverride === null ? {} : { rotation_override_degrees: rotationOverride }),
+    rotation_override_degrees: rotationOverride,
   }) as BridgeLayoutResponse;
   return normalizeLayoutRecognition(payload, templates.map((template) => template.id));
 }

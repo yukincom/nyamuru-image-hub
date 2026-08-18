@@ -57,7 +57,7 @@ interface NewLayoutItem {
 type RightAngle = NonNullable<NewLayoutItem['rotationOverride']>;
 
 function displayedLayoutRotation(item: NewLayoutItem): RightAngle {
-  return (item.analysis?.rotationDegrees ?? item.rotationOverride ?? 0) as RightAngle;
+  return (item.rotationOverride ?? 0) as RightAngle;
 }
 
 const HOWTO_INTRO_KEY = 'manga-name-studio.howto-intro.v1';
@@ -387,12 +387,18 @@ export default function App() {
     newLayoutItemsRef.current = items;
     setNewLayoutItems(items);
     setNewLayoutActiveIndex(0);
-    setNewLayoutMessage(`${items.length}枚を読み込みました。「ローカル解析」を押すまで画像は解析処理へ渡されません。元ファイルは変更しません。`);
+    setNewLayoutMessage(`${items.length}枚を読み込みました。画像ごとに正立させて「この向きを使用」を押してください。解析開始まで画像は処理へ渡されず、元ファイルも変更しません。`);
     if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
   };
 
   const analyzeNewLayouts = async () => {
     if (!newLayoutItemsRef.current.length || newLayoutTask !== 'idle') return;
+    const unconfirmedIndex = newLayoutItemsRef.current.findIndex((item) => item.rotationOverride === null);
+    if (unconfirmedIndex >= 0) {
+      setNewLayoutActiveIndex(unconfirmedIndex);
+      setNewLayoutMessage(`${unconfirmedIndex + 1}枚目の画像を正立させ、「この向きを使用」を押してから解析してください。`);
+      return;
+    }
     setNewLayoutTask('analyzing');
     let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
     setNewLayoutItems(working);
@@ -401,12 +407,12 @@ export default function App() {
       working = working.map((item, itemIndex) => ({ ...item, analyzing: itemIndex === index }));
       newLayoutItemsRef.current = working;
       setNewLayoutItems(working);
-      setNewLayoutMessage(`${index + 1} / ${working.length}枚目：RT-DETRでコマと文字領域を検出し、NDLOCR-Liteで文字を読んでいます…`);
+      setNewLayoutMessage(`${index + 1} / ${working.length}枚目：RT-DETRでコマ・文字・顔・身体を検出し、NDLOCR-Liteで文字を読んでいます…`);
       try {
         const result = await recognizePanelLayout(
           working[index].file,
           PANEL_TEMPLATES,
-          working[index].rotationOverride,
+          working[index].rotationOverride as RightAngle,
         );
         working = working.map((item, itemIndex) => itemIndex === index
           ? { ...item, analysis: result, analyzing: false, error: undefined }
@@ -426,16 +432,14 @@ export default function App() {
     setNewLayoutTask('idle');
   };
 
-  const setActiveLayoutRotation = (rotation: RightAngle | null) => {
+  const setActiveLayoutRotation = (rotation: RightAngle) => {
     const index = newLayoutActiveIndex;
     const working = newLayoutItemsRef.current.map((item, itemIndex) => itemIndex === index
       ? { ...item, rotationOverride: rotation, analysis: null, analyzing: false, error: undefined }
       : item);
     newLayoutItemsRef.current = working;
     setNewLayoutItems(working);
-    setNewLayoutMessage(rotation === null
-      ? `${index + 1}枚目を自動向き判定へ戻しました。もう一度ローカル解析してください。`
-      : `${index + 1}枚目は時計回り${rotation}°の向きで解析します。`);
+    setNewLayoutMessage(`${index + 1}枚目の向きを確認しました。時計回り${rotation}°の状態で解析します。`);
   };
 
   const rotateActiveLayoutImage = (delta: 90 | 180 | 270) => {
@@ -471,7 +475,7 @@ export default function App() {
           setNewLayoutItems(next);
           setNewLayoutActiveIndex(Math.max(0, next.length - 1));
           setScannerReceivedCount(next.length);
-          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元はコマ割りを確定するまで保持します。続けてスキャンできます。`);
+          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元はコマ割りを確定するまで保持します。取り込み後、画像ごとに向きを確認してください。`);
         }
         if (batch.complete || scannerStopRequested.current) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -479,7 +483,7 @@ export default function App() {
       if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
       const count = newLayoutItemsRef.current.length;
       setNewLayoutMessage(count
-        ? `${count}枚の取り込みを完了しました。スキャン元とNyamuruの一時画像は、コマ割り確定または画面を閉じた時に破棄します。`
+        ? `${count}枚の取り込みを完了しました。画像ごとに正立させて「この向きを使用」を押してください。スキャン元とNyamuruの一時画像は、コマ割り確定または画面を閉じた時に破棄します。`
         : '5分以内に新しいスキャン画像が見つかりませんでした。');
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
@@ -510,7 +514,7 @@ export default function App() {
       setNewLayoutItems(items);
       setNewLayoutActiveIndex(0);
       setScannerReceivedCount(items.length);
-      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。コマ割りの判定を続けられます。`);
+      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。画像ごとに向きを確認してからコマ割りを解析できます。`);
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');
     } finally {
@@ -556,6 +560,10 @@ export default function App() {
           orientationConfidence: 0,
           orientationHighConfidence: false,
           structureEngine: '',
+          excludedNonPanelCount: 0,
+          detectedTextRegionCount: 0,
+          detectedFaceRegionCount: 0,
+          detectedBodyRegionCount: 0,
           ocrEngine: '',
           ocrLines: [],
           qwenMode: 'auto',
@@ -772,6 +780,7 @@ export default function App() {
   const activeLayoutItem = newLayoutItems[newLayoutActiveIndex] ?? null;
   const activeLayoutAnalysis = activeLayoutItem?.analysis ?? null;
   const hasScannedLayoutItems = newLayoutItems.some((item) => item.source === 'scanner');
+  const allLayoutOrientationsConfirmed = newLayoutItems.length > 0 && newLayoutItems.every((item) => item.rotationOverride !== null);
   const analyzedTemplates = newLayoutItems.map((item) => item.analysis?.templateId ? findPanelTemplate(item.analysis.templateId) : undefined);
   const canCreateAnalyzedPages = newLayoutItems.length > 0 && analyzedTemplates.every((template) => Boolean(template));
   const resolvedAnalyzedTemplates = analyzedTemplates.filter((template): template is PanelTemplate => Boolean(template));
@@ -849,7 +858,7 @@ export default function App() {
           <button class="new-blank-button" onClick={() => createNewDocument()}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
           <section class="new-layout-import" aria-labelledby="new-layout-import-title">
             <div class="new-layout-import-head">
-              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>最大10枚。RT-DETRと罫線検出でコマを、NDLOCR-Liteで文字候補を作ります。曖昧な向きは画像ごとに手動確認し、Qwen3-VLは明示的な比較モードだけで使用します。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
+              <div><h3 id="new-layout-import-title">紙のネームからコマ割りを選ぶ</h3><p>最大10枚。各画像を人間が正立させてから、RT-DETRでコマ・文字・顔・身体を検出します。文字・顔・身体はコマ候補の誤検出除外に使い、NDLOCR-Liteで文字候補を作ります。スキャン元は確定または画面を閉じた時に破棄し、強制終了時だけ次回へ引き継ぎます。</p></div>
               <div class="new-layout-import-actions">
                 <button type="button" onClick={() => newLayoutImageInput.current?.click()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
                 {newLayoutTask === 'scanner'
@@ -865,20 +874,21 @@ export default function App() {
             {newLayoutItems.length > 1 && <div class="new-layout-queue" aria-label="読み込んだネーム画像">
               {newLayoutItems.map((item, index) => <button type="button" class={newLayoutActiveIndex === index ? 'is-active' : ''} onClick={() => setNewLayoutActiveIndex(index)} key={item.id}>
                 <span>{index + 1}</span><img src={item.previewUrl} alt="" style={{ transform: `rotate(${displayedLayoutRotation(item)}deg) scale(${displayedLayoutRotation(item) % 180 ? .78 : 1})` }} />
-                <small>{item.analyzing ? '解析中' : item.analysis?.templateId ? `候補 ${item.analysis.templateId} · 文字${item.analysis.ocrLines.length}` : item.error ? 'エラー' : '未解析'}</small>
+                <small>{item.analyzing ? '解析中' : item.analysis?.templateId ? `候補 ${item.analysis.templateId} · 文字${item.analysis.ocrLines.length}` : item.error ? 'エラー' : item.rotationOverride === null ? '向き未確認' : '向き確認済み'}</small>
               </button>)}
             </div>}
             {activeLayoutItem && <div class="new-layout-preview">
               <div class="new-layout-preview-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={{ transform: `rotate(${displayedLayoutRotation(activeLayoutItem)}deg) scale(${displayedLayoutRotation(activeLayoutItem) % 180 ? .78 : 1})` }} /></div>
-              <div><strong>{activeLayoutItem.file.name}</strong><span>{(activeLayoutItem.file.size / 1024 / 1024).toFixed(1)} MB · {activeLayoutItem.source === 'scanner' ? 'スキャン元は確定まで保持' : '元ファイルは保持'}</span>{activeLayoutItem.rotationOverride !== null ? <span>手動指定: 時計回り{activeLayoutItem.rotationOverride}°</span> : activeLayoutAnalysis ? <span>{activeLayoutAnalysis.rotationDegrees ? `${activeLayoutAnalysis.rotationDegrees}°回転して向きを補正` : '向き補正は不要'}</span> : null}<div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button><button type="button" onClick={() => setActiveLayoutRotation(displayedLayoutRotation(activeLayoutItem))} disabled={newLayoutTask !== 'idle'}>この向きを使用</button>{activeLayoutItem.rotationOverride !== null && <button type="button" onClick={() => setActiveLayoutRotation(null)} disabled={newLayoutTask !== 'idle'}>自動へ戻す</button>}</div><button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button></div>
+              <div><strong>{activeLayoutItem.file.name}</strong><span>{(activeLayoutItem.file.size / 1024 / 1024).toFixed(1)} MB · {activeLayoutItem.source === 'scanner' ? 'スキャン元は確定まで保持' : '元ファイルは保持'}</span><span>{activeLayoutItem.rotationOverride === null ? '向きを確認してください' : `向き確認済み: 時計回り${activeLayoutItem.rotationOverride}°`}</span><div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button><button type="button" onClick={() => setActiveLayoutRotation(displayedLayoutRotation(activeLayoutItem))} disabled={newLayoutTask !== 'idle'}>この向きを使用</button></div><button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle' || !allLayoutOrientationsConfirmed} title={allLayoutOrientationsConfirmed ? undefined : 'すべての画像の向きを確認してください'}><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : `ローカル解析（${newLayoutItems.length}枚）`}</button></div>
             </div>}
             {newLayoutMessage && <p class={`new-layout-message ${activeLayoutAnalysis?.templateId ? 'is-match' : ''}`}>{newLayoutMessage}</p>}
             {scannerSession && <p class="new-layout-session">開始 {new Date(scannerSession.startedAt).toLocaleTimeString('ja-JP')} · 保存先 {scannerSession.directory}</p>}
             {activeLayoutItem?.error && <p class="new-layout-message">{activeLayoutItem.error}</p>}
             {activeLayoutAnalysis && !activeLayoutAnalysis.templateId && <p class="new-layout-message">{activeLayoutAnalysis.reason}</p>}
             {activeLayoutAnalysis && <div class="new-layout-analysis-detail">
-              <span>向き: {activeLayoutAnalysis.orientationEngine || '構造補助'} · {Math.round(activeLayoutAnalysis.orientationConfidence * 100)}%{activeLayoutAnalysis.orientationHighConfidence ? '' : '（低確信）'}</span>
+              <span>向き: 人間が確認済み · 時計回り{activeLayoutAnalysis.rotationDegrees}°</span>
               <span>コマ: {activeLayoutAnalysis.structureEngine || '検出なし'} · {activeLayoutAnalysis.detectedPanelCount}領域</span>
+              <span>誤検出除外: {activeLayoutAnalysis.excludedNonPanelCount}領域 · 補助検出 文字{activeLayoutAnalysis.detectedTextRegionCount} / 顔{activeLayoutAnalysis.detectedFaceRegionCount} / 身体{activeLayoutAnalysis.detectedBodyRegionCount}</span>
               <span>文字: {activeLayoutAnalysis.ocrEngine || '検出なし'} · {activeLayoutAnalysis.ocrLines.length}件</span>
               <span>Qwen補助: {activeLayoutAnalysis.qwenOrientationUsed || activeLayoutAnalysis.qwenLayoutUsed || activeLayoutAnalysis.qwenOcrUsed ? `使用（文字置換${activeLayoutAnalysis.qwenOcrChanged}件）` : '未使用'}</span>
               {activeLayoutAnalysis.ocrLines.length > 0 && <ul>{activeLayoutAnalysis.ocrLines.map((line) => <li key={line.id}><strong>{line.text}</strong><small>{line.source}{line.needsReview ? ' · 要確認' : ''}{line.qwenText && line.qwenText !== line.text ? ` · Qwen候補: ${line.qwenText}` : ''}</small></li>)}</ul>}
