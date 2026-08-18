@@ -60,7 +60,7 @@ export interface ShiftAxisDragState {
 }
 
 const SHIFT_AXIS_FREE_RETURN_MM = 1;
-const SHIFT_AXIS_SWITCH_MM = 6;
+const SHIFT_AXIS_SWITCH_MM = 5;
 const SHIFT_AXIS_DOMINANCE_MM = 1;
 
 /**
@@ -88,18 +88,19 @@ export function resolveShiftAxisDrag(
     axis = initial.y === 0 ? 'x' : 'y';
   }
 
-  if (distance <= originThreshold) {
+  const currentMagnitude = axis === 'x' ? Math.abs(deltaX) : Math.abs(deltaY);
+  const otherMagnitude = axis === 'x' ? Math.abs(deltaY) : Math.abs(deltaX);
+  if (!switchArmed && currentMagnitude <= originThreshold) {
+    const holdAtOrigin = snapToOrigin || otherMagnitude > currentMagnitude + SHIFT_AXIS_DOMINANCE_MM;
     return {
-      x: snapToOrigin ? 0 : axis === 'x' ? deltaX : 0,
-      y: snapToOrigin ? 0 : axis === 'y' ? deltaY : 0,
+      x: holdAtOrigin ? 0 : axis === 'x' ? deltaX : 0,
+      y: holdAtOrigin ? 0 : axis === 'y' ? deltaY : 0,
       state: { axis, switchArmed: true },
       snappedToOrigin: snapToOrigin,
     };
   }
 
   if (switchArmed) {
-    const currentMagnitude = axis === 'x' ? Math.abs(deltaX) : Math.abs(deltaY);
-    const otherMagnitude = axis === 'x' ? Math.abs(deltaY) : Math.abs(deltaX);
     if (otherMagnitude > currentMagnitude + SHIFT_AXIS_DOMINANCE_MM) {
       if (otherMagnitude < SHIFT_AXIS_SWITCH_MM) {
         return { x: 0, y: 0, state: { axis, switchArmed: true }, snappedToOrigin: snapToOrigin };
