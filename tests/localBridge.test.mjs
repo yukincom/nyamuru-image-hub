@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { attachRecognizedTextToPage, groupRecognizedTextLines, normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
+import { attachDetectedFiguresToPage, attachRecognizedTextToPage, DETECTED_FIGURE_NAME, groupRecognizedTextLines, normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
 
 test('検出した正規化座標をA4紙面上の編集可能な矩形へ変換する', () => {
   const result = normalizeLayoutRecognition({
@@ -48,6 +48,11 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
       face_region_count: 2,
       body_region_count: 3,
     },
+    people: { engine: 'RT-DETR', regions: [
+      { source: 'body', bbox: [0.18, 0.12, 0.2, 0.3] },
+      { source: 'face', bbox: [0.22, 0.15, 0.08, 0.08] },
+      { source: 'face', bbox: [0.7, 0.62, 0.1, 0.1] },
+    ] },
     ocr: { engine: 'NDLOCR-Lite', lines: [
       {
         id: 'line-1', text: 'こんにちは', bbox: [0.6, 0.1, 0.2, 0.12], confidence: 1.4,
@@ -69,6 +74,10 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
   assert.equal(result.detectedTextRegionCount, 5);
   assert.equal(result.detectedFaceRegionCount, 2);
   assert.equal(result.detectedBodyRegionCount, 3);
+  assert.deepEqual(result.detectedFigures, [
+    { source: 'body', bbox: { x: 0.18, y: 0.12, w: 0.2, h: 0.3 } },
+    { source: 'face', bbox: { x: 0.7, y: 0.62, w: 0.1, h: 0.1 } },
+  ]);
   assert.equal(result.ocrLines[0].text, 'こんにちは');
   assert.equal(result.ocrLines[0].confidence, 1);
   assert.equal(result.ocrLines[0].groupId, 'block-1');
@@ -164,6 +173,27 @@ test('重なるコマでは文字を最小の内側コマへ割り当てる', ()
   }]);
   assert.equal(page.panels[0].bubbles.length, 0);
   assert.equal(page.panels[1].bubbles[0].text, '内側');
+});
+
+test('検出した身体と顔を所属コマの編集可能な人物あたりへ配置する', () => {
+  const page = {
+    page: 1,
+    canvas: { w: 210, h: 297, unit: 'mm' },
+    panels: [
+      { id: 1, shape: { type: 'rect', x: 10, y: 10, w: 90, h: 277 }, bg: 0, bubbles: [], action: null },
+      { id: 2, shape: { type: 'rect', x: 110, y: 10, w: 90, h: 277 }, bg: 0, bubbles: [], action: null },
+    ],
+  };
+  const result = attachDetectedFiguresToPage(page, [
+    { source: 'body', bbox: { x: 0.62, y: 0.12, w: 0.18, h: 0.5 } },
+    { source: 'body', bbox: { x: 0.625, y: 0.125, w: 0.17, h: 0.49 } },
+    { source: 'face', bbox: { x: 0.18, y: 0.2, w: 0.1, h: 0.1 } },
+  ]);
+  assert.deepEqual(result, { added: 2 });
+  assert.equal(page.panels[0].figures[0].name, DETECTED_FIGURE_NAME);
+  assert.equal(page.panels[0].figures[0].size, 'face');
+  assert.equal(page.panels[1].figures[0].name, DETECTED_FIGURE_NAME);
+  assert.ok(page.panels[1].figures[0].bbox.x >= 110);
 });
 
 test('認識文字を位置に対応するコマの編集可能なフキダシへ配置する', () => {

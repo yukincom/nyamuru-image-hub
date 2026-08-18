@@ -6,6 +6,7 @@ const REQUEST_TIMEOUT_MS = 180_000;
 
 export interface LayoutRecognitionResult {
   detectedPanels: PanelShape[];
+  detectedFigures: DetectedFigureRegion[];
   reason: string;
   rotationDegrees: 0 | 90 | 180 | 270;
   detectedPanelCount: number;
@@ -36,6 +37,13 @@ export interface RecognizedTextLine {
   qwenText?: string;
 }
 
+export interface DetectedFigureRegion {
+  bbox: BBox;
+  source: 'body' | 'face';
+}
+
+export const DETECTED_FIGURE_NAME = '人物あたり';
+
 interface BridgeLayoutResponse {
   panel_boxes?: unknown;
   reason?: unknown;
@@ -43,6 +51,7 @@ interface BridgeLayoutResponse {
   detected_panel_count?: unknown;
   orientation?: unknown;
   structure?: unknown;
+  people?: unknown;
   ocr?: unknown;
   qwen?: unknown;
 }
@@ -341,6 +350,9 @@ export function normalizeLayoutRecognition(
   const qwen = payload.qwen && typeof payload.qwen === 'object'
     ? payload.qwen as Record<string, unknown>
     : {};
+  const people = payload.people && typeof payload.people === 'object'
+    ? payload.people as Record<string, unknown>
+    : {};
   const qwenMode = qwen.mode === 'off' || qwen.mode === 'compare' ? qwen.mode : 'auto';
   const rawOrientationConfidence = Number(orientation.confidence);
   const orientationConfidence = Number.isFinite(rawOrientationConfidence)
@@ -372,6 +384,36 @@ export function normalizeLayoutRecognition(
       ...(typeof item.qwen_text === 'string' && item.qwen_text.trim() ? { qwenText: item.qwen_text.trim() } : {}),
     }];
   });
+  const normalizedFigureRegions = (Array.isArray(people.regions) ? people.regions : []).flatMap((entry): DetectedFigureRegion[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const item = entry as Record<string, unknown>;
+    const source = item.source === 'face' ? 'face' : item.source === 'body' ? 'body' : null;
+    const rawBox = Array.isArray(item.bbox) ? item.bbox.map(Number) : [];
+    if (!source || rawBox.length !== 4 || rawBox.some((value) => !Number.isFinite(value))) return [];
+    const [rawX, rawY, rawWidth, rawHeight] = rawBox;
+    const left = clamp(rawX, 0, 1);
+    const top = clamp(rawY, 0, 1);
+    const right = clamp(rawX + rawWidth, 0, 1);
+    const bottom = clamp(rawY + rawHeight, 0, 1);
+    if (right - left < 0.005 || bottom - top < 0.005) return [];
+    return [{
+      source,
+      bbox: {
+        x: Number(left.toFixed(6)),
+        y: Number(top.toFixed(6)),
+        w: Number((right - left).toFixed(6)),
+        h: Number((bottom - top).toFixed(6)),
+      },
+    }];
+  }).sort((left, right) => Number(left.source === 'face') - Number(right.source === 'face'));
+  const detectedFigures = normalizedFigureRegions.filter((candidate, index) => !normalizedFigureRegions.slice(0, index).some((kept) => {
+    const intersection = overlapArea(candidate.bbox, kept.bbox);
+    const candidateArea = candidate.bbox.w * candidate.bbox.h;
+    const keptArea = kept.bbox.w * kept.bbox.h;
+    const union = candidateArea + keptArea - intersection;
+    const smaller = Math.min(candidateArea, keptArea);
+    return smaller > 0 && (intersection / smaller >= 0.88 || (union > 0 && intersection / union >= 0.58));
+  }));
   const detectedPanels = refineDetectedPanels(rawDetectedPanels, ocrLines);
   const removedPanelCount = rawDetectedPanels.length - detectedPanels.length;
   const baseReason = removedPanelCount > 0
@@ -385,6 +427,7 @@ export function normalizeLayoutRecognition(
   const detectedPanelCount = detectedPanels.length;
   return {
     detectedPanels,
+    detectedFigures,
     reason,
     rotationDegrees,
     detectedPanelCount,
@@ -423,6 +466,52 @@ function nearestPanel(panels: Panel[], x: number, y: number): Panel | undefined 
     };
     return distance(left) - distance(right);
   })[0];
+}
+
+/** 人物検出領域を紙面座標へ変換し、所属コマへ編集可能な人物あたりとして追加する。 */
+export function attachDetectedFiguresToPage(
+  page: MangaPage,
+  regions: readonly DetectedFigureRegion[],
+): { added: number } {
+  let added = 0;
+  for (const region of regions) {
+    if (!page.panels.length) continue;
+    const sourceBox = {
+      x: region.bbox.x * page.canvas.w,
+      y: region.bbox.y * page.canvas.h,
+      w: region.bbox.w * page.canvas.w,
+      h: region.bbox.h * page.canvas.h,
+    };
+    const centerX = sourceBox.x + sourceBox.w / 2;
+    const centerY = sourceBox.y + sourceBox.h / 2;
+    const panel = nearestPanel(page.panels, centerX, centerY);
+    if (!panel) continue;
+    const bounds = panelBounds(panel);
+    const width = Math.min(bounds.w, Math.max(6, sourceBox.w));
+    const height = Math.min(bounds.h, Math.max(6, sourceBox.h));
+    const bbox: BBox = {
+      x: roundMm(clamp(sourceBox.x, bounds.x, bounds.x + bounds.w - width)),
+      y: roundMm(clamp(sourceBox.y, bounds.y, bounds.y + bounds.h - height)),
+      w: roundMm(width),
+      h: roundMm(height),
+    };
+    const duplicate = (panel.figures ?? []).some((figure) => {
+      if (!figure.bbox) return false;
+      const intersection = overlapArea(bbox, figure.bbox);
+      const smaller = Math.min(bbox.w * bbox.h, figure.bbox.w * figure.bbox.h);
+      return smaller > 0 && intersection / smaller >= 0.78;
+    });
+    if (duplicate) continue;
+    (panel.figures ??= []).push({
+      name: DETECTED_FIGURE_NAME,
+      bbox,
+      anchor: nearestAnchor(bounds, bbox),
+      ...(region.source === 'face' ? { size: 'face' as const } : {}),
+    });
+    delete panel.no_figures;
+    added += 1;
+  }
+  return { added };
 }
 
 /** OCR領域を紙面座標へ変換し、中心が入る（または最も近い）コマへ編集可能なフキダシとして追加する。 */

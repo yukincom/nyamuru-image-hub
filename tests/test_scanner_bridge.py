@@ -204,6 +204,25 @@ class LocalVisionResultTest(unittest.TestCase):
         self.assertEqual(kept, boxes)
         self.assertEqual(excluded, {"texts": 0, "faces": 0, "bodies": 0})
 
+    def test_fuses_bodies_with_only_unmatched_faces_as_person_regions(self):
+        detection = {
+            "page": {"width": 1000, "height": 1400},
+            "detections": {
+                "faces": [
+                    {"score": 0.9, "bbox": [300, 220, 420, 340]},
+                    {"score": 0.8, "bbox": [700, 180, 800, 280]},
+                ],
+                "bodies": [
+                    {"score": 0.9, "bbox": [260, 200, 480, 620]},
+                    {"score": 0.7, "bbox": [270, 210, 475, 610]},
+                ],
+            },
+        }
+        self.assertEqual(bridge.detected_person_regions(detection), [
+            {"source": "body", "bbox": [0.26, 0.142857, 0.22, 0.3]},
+            {"source": "face", "bbox": [0.7, 0.128571, 0.1, 0.071429]},
+        ])
+
     def test_filters_giant_and_latin_garbage_ocr_regions(self):
         payload = {
             "width": 1000,

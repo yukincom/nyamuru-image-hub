@@ -17,7 +17,7 @@ import { CharactersEditor, MaterialsEditor, MetaEditor, RawYamlEditor, SettingEd
 import { cloneDocument, newPage, newPanel, omnyFileName, parseMangaYaml, safeFileName, STORAGE_KEY, toMangaYaml, toSeparatedMangaYaml, validateManga } from '../lib/manga';
 import { movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, findPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, type PanelTemplate } from '../lib/panelTemplates';
-import { attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
+import { attachDetectedFiguresToPage, attachRecognizedTextToPage, cancelScannerSession, collectScannerImages, commitScannerSession, DETECTED_FIGURE_NAME, discardPendingScannerSession, finishScannerSession, getPendingScannerSession, openMacScanner, recognizePanelLayout, resumePendingScannerSession, type DetectedFigureRegion, type LayoutRecognitionResult, type PendingScannerSession, type ScannerSession } from '../lib/localBridge';
 import type { Anchor, BBox, CanvasElementSelection, DocsLanguage, MangaDocument, PanelShape, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -111,11 +111,12 @@ function initialPanelSnap(): boolean {
 // 見開きは右綴じ（1ページ目が右）。ビューアはこの配列順にめくる
 const SAMPLE_MANGA_PAGES = [sampleMangaPages.page1, sampleMangaPages.page2];
 
-function TemplateThumb({ shapes }: { shapes: readonly PanelShape[] }) {
+function TemplateThumb({ shapes, figures = [] }: { shapes: readonly PanelShape[]; figures?: readonly DetectedFigureRegion[] }) {
   return <svg viewBox="0 0 210 297" aria-hidden="true">
     {shapes.map((shape, index) => shape.type === 'rect'
       ? <rect key={index} x={shape.x} y={shape.y} width={shape.w} height={shape.h} />
       : <polygon key={index} points={shape.points.map((point) => point.join(',')).join(' ')} />)}
+    {figures.map((figure, index) => <rect class="detected-figure-thumb" key={`figure-${index}`} x={figure.bbox.x * 210} y={figure.bbox.y * 297} width={figure.bbox.w * 210} height={figure.bbox.h * 297} rx="2" />)}
   </svg>;
 }
 
@@ -606,6 +607,7 @@ export default function App() {
     const sample = parseMangaYaml(sampleYaml);
     const detectedLayouts = Array.isArray(layout) ? layout : [];
     const template = layout && !Array.isArray(layout) ? layout : undefined;
+    let importedFigureCount = 0;
     let importedTextCount = 0;
     let reviewTextCount = 0;
     const pages = detectedLayouts.length ? detectedLayouts.map((detectedLayout, index) => {
@@ -617,6 +619,9 @@ export default function App() {
         bubbles: [],
         action: null,
       }));
+      if (detectedLayout.analysis.detectedFigures.length) {
+        importedFigureCount += attachDetectedFiguresToPage(page, detectedLayout.analysis.detectedFigures).added;
+      }
       if (detectedLayout.analysis.ocrLines.length) {
         const attached = attachRecognizedTextToPage(page, detectedLayout.analysis.ocrLines);
         importedTextCount += attached.added;
@@ -629,6 +634,9 @@ export default function App() {
         pages[0].panels = [];
         applyPanelTemplate(pages[0], template);
         const analysis = analyzedItems[0]?.analysis;
+        if (analysis?.detectedFigures.length) {
+          importedFigureCount += attachDetectedFiguresToPage(pages[0], analysis.detectedFigures).added;
+        }
         if (analysis?.ocrLines.length) {
           const attached = attachRecognizedTextToPage(pages[0], analysis.ocrLines);
           importedTextCount += attached.added;
@@ -651,7 +659,9 @@ export default function App() {
         },
         layout_spec: sample.manga.layout_spec,
         setting: { location: '', time: '', weather: '', background: [], props: [], situation: '' },
-        characters: [],
+        characters: importedFigureCount
+          ? [{ name: DETECTED_FIGURE_NAME, role: '画像解析で検出した仮配置。各コマで実際の登場人物へ置き換えてください。' }]
+          : [],
         materials: [],
         pages,
       },
@@ -663,8 +673,12 @@ export default function App() {
     const creationMessage = detectedLayouts.length
       ? `検出したコマ領域から${detectedLayouts.length}ページを新規作成しました`
       : template ? `パターン${template.id}で新規作成しました` : 'まっさらな漫画を作成しました';
-    setToast(importedTextCount
-      ? `${creationMessage}。文字候補${importedTextCount}件をフキダシへ配置しました${reviewTextCount ? `（要確認${reviewTextCount}件）` : ''}`
+    const importedDetails = [
+      importedFigureCount ? `人物あたり${importedFigureCount}件` : '',
+      importedTextCount ? `文字候補${importedTextCount}件` : '',
+    ].filter(Boolean).join('、');
+    setToast(importedDetails
+      ? `${creationMessage}。${importedDetails}を配置しました${reviewTextCount ? `（文字要確認${reviewTextCount}件）` : ''}`
       : creationMessage);
   };
 
@@ -924,7 +938,7 @@ export default function App() {
                     if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`analysis-empty-${itemIndex}`} />;
                     const hasPanels = Boolean(item.analysis?.detectedPanels.length);
                     return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''} ${hasPanels ? 'is-ready' : ''} ${item.analyzing ? 'is-analyzing' : ''} ${item.error ? 'is-error' : ''}`} aria-label={`解析結果 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`analysis-${item.id}`}>
-                      <span class="new-layout-thumb-media">{hasPanels && item.analysis ? <TemplateThumb shapes={item.analysis.detectedPanels} /> : <span class="new-layout-analysis-placeholder">{item.analyzing ? '解析中' : item.error ? '!' : ''}</span>}</span>
+                      <span class="new-layout-thumb-media">{hasPanels && item.analysis ? <TemplateThumb shapes={item.analysis.detectedPanels} figures={item.analysis.detectedFigures} /> : <span class="new-layout-analysis-placeholder">{item.analyzing ? '解析中' : item.error ? '!' : ''}</span>}</span>
                       <em>{String(itemIndex + 1).padStart(2, '0')}</em>
                     </button>;
                   })}
@@ -953,6 +967,7 @@ export default function App() {
               <div class="new-layout-analysis-detail">
                 <span>コマ: {activeLayoutAnalysis.structureEngine || '検出なし'} · {activeLayoutAnalysis.detectedPanelCount}領域</span>
                 <span>誤検出除外: {activeLayoutAnalysis.excludedNonPanelCount}領域 · 補助検出 文字{activeLayoutAnalysis.detectedTextRegionCount} / 顔{activeLayoutAnalysis.detectedFaceRegionCount} / 身体{activeLayoutAnalysis.detectedBodyRegionCount}</span>
+                <span>人物あたり: {activeLayoutAnalysis.detectedFigures.length}件</span>
                 <span>文字: {activeLayoutAnalysis.ocrEngine || '検出なし'} · {activeLayoutAnalysis.ocrLines.length}件</span>
                 <span>Qwen補助: {activeLayoutAnalysis.qwenOcrUsed ? `OCR比較に使用（文字置換${activeLayoutAnalysis.qwenOcrChanged}件）` : '未使用'}</span>
                 {activeLayoutAnalysis.ocrLines.length > 0 && <ul>{activeLayoutAnalysis.ocrLines.map((line) => <li key={line.id}><strong>{line.text}</strong><small>{line.source}{line.needsReview ? ' · 要確認' : ''}{line.qwenText && line.qwenText !== line.text ? ` · Qwen候補: ${line.qwenText}` : ''}</small></li>)}</ul>}

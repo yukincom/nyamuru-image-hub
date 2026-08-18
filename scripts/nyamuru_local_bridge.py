@@ -566,6 +566,44 @@ def detector_boxes(
     return boxes
 
 
+def detected_person_regions(detection: dict[str, Any]) -> list[dict[str, Any]]:
+    """Fuse body detections with unmatched faces into editable person regions."""
+    bodies = detector_boxes(detection, "bodies", max_area_ratio=0.82)
+    faces = detector_boxes(detection, "faces", max_area_ratio=0.45)
+    regions: list[dict[str, Any]] = []
+    kept_bodies: list[tuple[float, float, float, float]] = []
+    for body in bodies:
+        if any(
+            box_overlap_ratios(body, kept)[0] >= 0.58
+            or box_overlap_ratios(body, kept)[1] >= 0.88
+            for kept in kept_bodies
+        ):
+            continue
+        kept_bodies.append(body)
+        regions.append({"source": "body", "bbox": [round(value, 6) for value in body]})
+
+    kept_faces: list[tuple[float, float, float, float]] = []
+    for face in faces:
+        face_x, face_y, face_w, face_h = face
+        face_center = (face_x + face_w / 2, face_y + face_h / 2)
+        matched_body = any(
+            body_x <= face_center[0] <= body_x + body_w
+            and body_y <= face_center[1] <= body_y + body_h
+            for body_x, body_y, body_w, body_h in kept_bodies
+        )
+        if matched_body:
+            continue
+        if any(
+            box_overlap_ratios(face, kept)[0] >= 0.58
+            or box_overlap_ratios(face, kept)[1] >= 0.88
+            for kept in kept_faces
+        ):
+            continue
+        kept_faces.append(face)
+        regions.append({"source": "face", "bbox": [round(value, 6) for value in face]})
+    return regions
+
+
 def box_overlap_ratios(
     left: tuple[float, float, float, float],
     right: tuple[float, float, float, float],
@@ -994,6 +1032,10 @@ Return exactly one JSON object and no other text:
             "line_count": len(ocr_lines),
             "qwen_used": qwen_ocr_used,
             "qwen_changed": qwen_ocr_changed,
+        }
+        result["people"] = {
+            "engine": "RT-DETR",
+            "regions": detected_person_regions(detection),
         }
         result["qwen"] = {
             "mode": self.qwen_mode,
