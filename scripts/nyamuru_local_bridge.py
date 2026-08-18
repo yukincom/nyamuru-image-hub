@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local-only bridge for Nyamuru's optional scanner and Qwen3-VL features."""
+"""Local-only bridge for Nyamuru's scanner and manga image analysis features."""
 
 from __future__ import annotations
 
@@ -23,7 +23,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-DEFAULT_MODEL = "Qwen3-VL-8B-NSFW-Caption-V4.5-heretic.i1-Q5_K_M.gguf"
 TOOLS_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MANGA_BABBLE_ROOT = TOOLS_ROOT / "manga-babble-maker"
 DEFAULT_NDLOCR_ROOT = TOOLS_ROOT / "ndlocr-lite"
@@ -43,8 +42,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
-    parser.add_argument("--comfy-root", type=Path, required=True)
-    parser.add_argument("--model", default=os.environ.get("NYAMURU_QWEN_MODEL", DEFAULT_MODEL))
     parser.add_argument(
         "--manga-babble-root",
         type=Path,
@@ -54,12 +51,6 @@ def parse_args() -> argparse.Namespace:
         "--ndlocr-root",
         type=Path,
         default=Path(os.environ.get("NYAMURU_NDLOCR_ROOT", DEFAULT_NDLOCR_ROOT)),
-    )
-    parser.add_argument(
-        "--qwen-mode",
-        choices=("off", "auto", "compare"),
-        default=os.environ.get("NYAMURU_QWEN_MODE", "auto"),
-        help="off/auto: 専用モデルのみ / compare: OCRをQwenとも比較",
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -789,104 +780,21 @@ def rotated_image_bytes(image_bytes: bytes, degrees_clockwise: int) -> bytes:
     return output.getvalue()
 
 
-def make_ocr_review_image(image_bytes: bytes, lines: list[dict[str, Any]]):
-    import numpy as np
-    import torch
-    from PIL import Image, ImageDraw, ImageOps
-
-    source = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert("RGB")
-    source.thumbnail((1500, 1900))
-    draw = ImageDraw.Draw(source)
-    width, height = source.size
-    for line in lines:
-        x, y, box_width, box_height = line["bbox"]
-        left, top = round(x * width), round(y * height)
-        right, bottom = round((x + box_width) * width), round((y + box_height) * height)
-        draw.rectangle((left, top, right, bottom), outline="#e00000", width=max(2, width // 450))
-        label = line["id"]
-        label_box = draw.textbbox((left, max(0, top - 18)), label)
-        draw.rectangle(label_box, fill="white")
-        draw.text((left, max(0, top - 18)), label, fill="#c00000")
-    array = np.asarray(source, dtype=np.float32) / 255.0
-    return torch.from_numpy(array).unsqueeze(0)
-
-
-def parse_ocr_review(raw: str, valid_ids: set[str]) -> dict[str, str]:
-    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
-    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
-    if not match:
-        return {}
-    try:
-        parsed = json.loads(match.group(0))
-    except json.JSONDecodeError:
-        return {}
-    items = parsed.get("lines") if isinstance(parsed, dict) else None
-    if not isinstance(items, list):
-        return {}
-    result: dict[str, str] = {}
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        line_id = str(item.get("id", ""))
-        text = str(item.get("text", "")).strip()
-        if line_id in valid_ids and text and text.upper() not in {"UNREADABLE", "NONE", "N/A"}:
-            result[line_id] = text[:500]
-    return result
-
-
-def apply_qwen_ocr_suggestions(lines: list[dict[str, Any]], suggestions: dict[str, str]) -> int:
-    changed = 0
-    for line in lines:
-        suggestion = suggestions.get(line["id"])
-        if not suggestion or suggestion == line["text"]:
-            continue
-        line["qwen_text"] = suggestion
-        line["needs_review"] = True
-        # Qwen is only an explicitly marked fallback for obviously broken OCR.
-        # Plausible NDLOCR text remains primary so semantic guessing cannot silently replace transcription.
-        if line["quality"] < 1.0 and ocr_text_quality(suggestion) >= line["quality"] + 2.0:
-            line["text"] = suggestion
-            line["source"] = "qwen-fallback"
-            line["quality"] = round(ocr_text_quality(suggestion), 3)
-            changed += 1
-    return changed
-
-
-class VlmState:
+class LocalVisionState:
     def __init__(
         self,
-        comfy_root: Path,
-        model_name: str,
         manga_babble_root: Path,
         ndlocr_root: Path,
-        qwen_mode: str,
     ):
-        self.comfy_root = comfy_root.resolve()
-        self.node_root = self.comfy_root / "custom_nodes" / "ComfyUI-QwenVL"
-        self.model_name = model_name
         self.manga_babble_root = manga_babble_root.resolve()
         self.rtdetr_python = self.manga_babble_root / ".venv" / "bin" / "python"
         self.rtdetr_model = self.manga_babble_root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
         self.ndlocr_root = ndlocr_root.resolve()
         self.ndlocr_python = self.ndlocr_root / ".venv" / "bin" / "python"
-        self.qwen_mode = qwen_mode
-        self.node = None
-        self.lock = threading.Lock()
         self.scanners = ScannerSessions()
 
-    def qwen_available(self) -> bool:
-        model_paths = list((self.comfy_root / "models" / "llm").rglob(self.model_name))
-        return (self.node_root / "AILab_QwenVL_GGUF.py").is_file() and bool(model_paths)
-
     def check(self) -> dict[str, Any]:
-        model_paths = list((self.comfy_root / "models" / "llm").rglob(self.model_name))
         return {
-            "comfy_root": str(self.comfy_root),
-            "node_available": (self.node_root / "AILab_QwenVL_GGUF.py").is_file(),
-            "model_available": bool(model_paths),
-            "model": self.model_name,
-            "model_loaded": self.node is not None,
-            "qwen_mode": self.qwen_mode,
             "rtdetr_available": self.rtdetr_python.is_file() and self.rtdetr_model.is_file(),
             "rtdetr_model": str(self.rtdetr_model),
             "ndlocr_available": self.ndlocr_python.is_file() and (self.ndlocr_root / "src" / "model").is_dir(),
@@ -894,58 +802,13 @@ class VlmState:
             "scanner_available": Path("/System/Applications/Image Capture.app").is_dir(),
         }
 
-    def _node(self):
-        if self.node is None:
-            sys.path.insert(0, str(self.comfy_root))
-            sys.path.insert(0, str(self.node_root))
-            from AILab_QwenVL_GGUF import AILab_QwenVL_GGUF_Advanced
-
-            self.node = AILab_QwenVL_GGUF_Advanced()
-        return self.node
-
-    def _process(self, image, prompt: str, max_tokens: int) -> str:
-        with self.lock:
-            (raw,) = self._node().process(
-                model_name=self.model_name,
-                device="mps",
-                preset_prompt="🖼️ Simple Description",
-                custom_prompt=prompt,
-                max_tokens=max_tokens,
-                temperature=0.1,
-                top_p=0.8,
-                repetition_penalty=1.05,
-                frame_count=1,
-                ctx=8192,
-                n_batch=512,
-                gpu_layers=-1,
-                image_max_tokens=2048,
-                top_k=0,
-                pool_size=4194304,
-                keep_model_loaded=True,
-                seed=1,
-                image=image,
-            )
-        return raw
-
-    def _review_ocr(self, upright_bytes: bytes, lines: list[dict[str, Any]]) -> dict[str, str]:
-        current = "\n".join(f"{line['id']}: {line['text']}" for line in lines)
-        prompt = f"""This is a faint handwritten Japanese manga storyboard page. Red boxes identify OCR regions.
-Transcribe only characters that are actually visible inside each labeled box. Preserve Japanese writing order inside each region. Do not infer missing dialogue from context. If unreadable, write UNREADABLE.
-Current specialized-OCR guesses (they may be wrong):
-{current}
-Return exactly one JSON object and no other text:
-{{"lines":[{{"id":"region id","text":"exact visible transcription or UNREADABLE"}}]}}"""
-        raw = self._process(make_ocr_review_image(upright_bytes, lines), prompt, min(768, 96 + len(lines) * 80))
-        return parse_ocr_review(raw, {line["id"] for line in lines})
-
     def analyze(
         self,
         image_bytes: bytes,
         rotation_override: int | None = None,
     ) -> dict[str, Any]:
         if rotation_override is None:
-            raise ValueError("解析前にプレビューで画像を正立させ、「この向きを使用」を押してください")
-        qwen_ready = self.qwen_available() and self.qwen_mode != "off"
+            raise ValueError("解析前にプレビューで画像を正立させてください")
         rotation = rotation_override
         orientation: dict[str, Any] = {
             "engine": "手動確認済み",
@@ -989,13 +852,6 @@ Return exactly one JSON object and no other text:
             request={"regions": text_regions},
         )
         ocr_lines = usable_ocr_lines(ocr_payload)
-        qwen_ocr_used = False
-        qwen_ocr_changed = 0
-        should_review_ocr = qwen_ready and bool(ocr_lines) and self.qwen_mode == "compare"
-        if should_review_ocr:
-            suggestions = self._review_ocr(upright_bytes, ocr_lines)
-            qwen_ocr_used = True
-            qwen_ocr_changed = apply_qwen_ocr_suggestions(ocr_lines, suggestions)
 
         if detected_count:
             excluded_count = sum(selected_excluded.values())
@@ -1030,17 +886,10 @@ Return exactly one JSON object and no other text:
             "engine": "NDLOCR-Lite",
             "lines": ocr_lines,
             "line_count": len(ocr_lines),
-            "qwen_used": qwen_ocr_used,
-            "qwen_changed": qwen_ocr_changed,
         }
         result["people"] = {
             "engine": "RT-DETR",
             "regions": detected_person_regions(detection),
-        }
-        result["qwen"] = {
-            "mode": self.qwen_mode,
-            "ocr_used": qwen_ocr_used,
-            "ocr_changed": qwen_ocr_changed,
         }
         return result
 
@@ -1049,7 +898,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     server_version = "NyamuruLocalBridge/0.1"
 
     @property
-    def state(self) -> VlmState:
+    def state(self) -> LocalVisionState:
         return self.server.state  # type: ignore[attr-defined]
 
     def allowed_origin(self) -> str | None:
@@ -1166,12 +1015,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
 def main() -> int:
     args = parse_args()
-    state = VlmState(
-        args.comfy_root,
-        args.model,
+    state = LocalVisionState(
         args.manga_babble_root,
         args.ndlocr_root,
-        args.qwen_mode,
     )
     status = state.check()
     if args.check:
@@ -1186,8 +1032,6 @@ def main() -> int:
     print(f"RT-DETR: {state.rtdetr_model}")
     print(f"NDLOCR-Lite: {state.ndlocr_root}")
     print("Orientation: manual confirmation required")
-    qwen_usage = "未使用" if args.qwen_mode != "compare" else "OCR比較"
-    print(f"Qwen3-VL ({args.qwen_mode}, {qwen_usage}): {args.model}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

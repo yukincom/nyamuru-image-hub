@@ -969,8 +969,7 @@ export default function App() {
                 <span>誤検出除外: {activeLayoutAnalysis.excludedNonPanelCount}領域 · 補助検出 文字{activeLayoutAnalysis.detectedTextRegionCount} / 顔{activeLayoutAnalysis.detectedFaceRegionCount} / 身体{activeLayoutAnalysis.detectedBodyRegionCount}</span>
                 <span>人物あたり: {activeLayoutAnalysis.detectedFigures.length}件</span>
                 <span>文字: {activeLayoutAnalysis.ocrEngine || '検出なし'} · {activeLayoutAnalysis.ocrLines.length}件</span>
-                <span>Qwen補助: {activeLayoutAnalysis.qwenOcrUsed ? `OCR比較に使用（文字置換${activeLayoutAnalysis.qwenOcrChanged}件）` : '未使用'}</span>
-                {activeLayoutAnalysis.ocrLines.length > 0 && <ul>{activeLayoutAnalysis.ocrLines.map((line) => <li key={line.id}><strong>{line.text}</strong><small>{line.source}{line.needsReview ? ' · 要確認' : ''}{line.qwenText && line.qwenText !== line.text ? ` · Qwen候補: ${line.qwenText}` : ''}</small></li>)}</ul>}
+                {activeLayoutAnalysis.ocrLines.length > 0 && <ul>{activeLayoutAnalysis.ocrLines.map((line) => <li key={line.id}><strong>{line.text}</strong><small>{line.source}{line.needsReview ? ' · 要確認' : ''}</small></li>)}</ul>}
               </div>
             </details>}
           </section>

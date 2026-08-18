@@ -175,10 +175,9 @@ RapidOrientation, its independent Python environment, and its bundled ONNX
 model are optional local components and are not copied into this project's
 source or web bundle. The upstream Apache-2.0 terms apply to that installation.
 
-The optional manga structure detector and Qwen3-VL integration likewise use
-code and model files from independent local installations. They are not bundled
-with this project. See docs/LOCAL_VISION_COMPONENTS.md for the local boundary
-and source links.
+The optional manga structure detector likewise uses code and model files from
+an independent local installation. They are not bundled with this project. See
+docs/LOCAL_VISION_COMPONENTS.md for the local boundary and source links.
 
 Build and development dependencies
 ----------------------------------

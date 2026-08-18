@@ -2,8 +2,8 @@
 """One-shot workers for optional local manga detectors.
 
 The parent bridge intentionally launches these workers with each project's own
-Python environment. This keeps ComfyUI, manga-babble-maker, and NDLOCR-Lite
-dependencies isolated from one another.
+Python environment. This keeps manga-babble-maker and NDLOCR-Lite dependencies
+isolated from one another.
 """
 
 from __future__ import annotations

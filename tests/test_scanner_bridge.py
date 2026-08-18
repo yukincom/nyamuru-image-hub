@@ -138,8 +138,8 @@ class OrientationResultTest(unittest.TestCase):
             bridge.normalized_rotation_override(45)
 
     def test_analysis_refuses_an_unconfirmed_orientation(self):
-        with self.assertRaisesRegex(ValueError, "この向きを使用"):
-            bridge.VlmState.analyze(object(), b"image", None)
+        with self.assertRaisesRegex(ValueError, "画像を正立"):
+            bridge.LocalVisionState.analyze(object(), b"image", None)
 
 
 class LocalVisionResultTest(unittest.TestCase):

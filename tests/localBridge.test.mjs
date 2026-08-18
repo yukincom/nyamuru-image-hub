@@ -34,7 +34,7 @@ test('画像の回転補正は直角だけを受け入れる', () => {
   assert.equal(normalizeLayoutRecognition({ rotation_degrees: 45 }).rotationDegrees, 0);
 });
 
-test('OCR候補とQwen使用箇所を安全に正規化する', () => {
+test('OCR候補と人物領域を安全に正規化する', () => {
   const result = normalizeLayoutRecognition({
     panel_boxes: [[0.05, 0.04, 0.9, 0.42], [0.05, 0.5, 0.9, 0.44]],
     detected_panel_count: 3,
@@ -56,14 +56,13 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
     ocr: { engine: 'NDLOCR-Lite', lines: [
       {
         id: 'line-1', text: 'こんにちは', bbox: [0.6, 0.1, 0.2, 0.12], confidence: 1.4,
-        vertical: true, source: 'qwen-fallback', needs_review: true, qwen_text: 'こんにちは', group_id: 'block-1',
+        vertical: true, source: 'ndlocr', needs_review: true, group_id: 'block-1',
       },
       {
         id: 'line-2', text: '次のコマ', bbox: [0.6, 0.62, 0.2, 0.12], confidence: 0.8,
         vertical: true, source: 'ndlocr', needs_review: false, group_id: 'block-2',
       },
     ] },
-    qwen: { mode: 'compare', ocr_used: true, ocr_changed: 1 },
   });
   assert.equal(result.detectedPanelCount, 2);
   assert.equal(result.orientationEngine, '手動確認済み');
@@ -81,9 +80,6 @@ test('OCR候補とQwen使用箇所を安全に正規化する', () => {
   assert.equal(result.ocrLines[0].text, 'こんにちは');
   assert.equal(result.ocrLines[0].confidence, 1);
   assert.equal(result.ocrLines[0].groupId, 'block-1');
-  assert.equal(result.qwenMode, 'compare');
-  assert.equal(result.qwenOcrUsed, true);
-  assert.equal(result.qwenOcrChanged, 1);
 });
 
 test('文字を持つ最小のコマだけを残し、重複候補を除いてコマ間を5mm空ける', () => {

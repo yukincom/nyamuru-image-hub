@@ -534,7 +534,6 @@ input:disabled { background: #faf6f7; color: #9b9398; }
 .new-template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(122px, 1fr)); gap: 9px; }
 .new-template-card { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: white; text-align: left; cursor: pointer; transition: transform .12s, border-color .12s, box-shadow .12s; }
 .new-template-card:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 6px 16px rgba(255,107,129,.18); }
-.new-template-card.is-vlm-suggestion { border: 2px solid var(--green); background: #f3fbf6; box-shadow: 0 6px 18px rgba(58,139,92,.16); }
 .new-template-card svg { width: 100%; aspect-ratio: 210 / 297; border-radius: 5px; background: #fdfbf7; }
 .new-template-card svg rect, .new-template-card svg polygon { fill: var(--accent-soft); stroke: var(--accent-dark); stroke-width: 4; }
 .new-template-card strong { font-size: 9px; color: #45424a; }

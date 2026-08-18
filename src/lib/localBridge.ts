@@ -20,9 +20,6 @@ export interface LayoutRecognitionResult {
   detectedBodyRegionCount: number;
   ocrEngine: string;
   ocrLines: RecognizedTextLine[];
-  qwenMode: 'off' | 'auto' | 'compare';
-  qwenOcrUsed: boolean;
-  qwenOcrChanged: number;
 }
 
 export interface RecognizedTextLine {
@@ -34,7 +31,6 @@ export interface RecognizedTextLine {
   source: string;
   needsReview: boolean;
   groupId?: string;
-  qwenText?: string;
 }
 
 export interface DetectedFigureRegion {
@@ -53,7 +49,6 @@ interface BridgeLayoutResponse {
   structure?: unknown;
   people?: unknown;
   ocr?: unknown;
-  qwen?: unknown;
 }
 
 export interface ScannerSession {
@@ -347,13 +342,9 @@ export function normalizeLayoutRecognition(
   const ocr = payload.ocr && typeof payload.ocr === 'object'
     ? payload.ocr as Record<string, unknown>
     : {};
-  const qwen = payload.qwen && typeof payload.qwen === 'object'
-    ? payload.qwen as Record<string, unknown>
-    : {};
   const people = payload.people && typeof payload.people === 'object'
     ? payload.people as Record<string, unknown>
     : {};
-  const qwenMode = qwen.mode === 'off' || qwen.mode === 'compare' ? qwen.mode : 'auto';
   const rawOrientationConfidence = Number(orientation.confidence);
   const orientationConfidence = Number.isFinite(rawOrientationConfidence)
     ? Math.min(1, Math.max(0, rawOrientationConfidence))
@@ -381,7 +372,6 @@ export function normalizeLayoutRecognition(
       source: typeof item.source === 'string' ? item.source : 'ndlocr',
       needsReview: item.needs_review !== false,
       ...(typeof item.group_id === 'string' && item.group_id.trim() ? { groupId: item.group_id.trim() } : {}),
-      ...(typeof item.qwen_text === 'string' && item.qwen_text.trim() ? { qwenText: item.qwen_text.trim() } : {}),
     }];
   });
   const normalizedFigureRegions = (Array.isArray(people.regions) ? people.regions : []).flatMap((entry): DetectedFigureRegion[] => {
@@ -445,9 +435,6 @@ export function normalizeLayoutRecognition(
     detectedBodyRegionCount: Math.max(0, Math.round(Number(structure.body_region_count) || 0)),
     ocrEngine: typeof ocr.engine === 'string' ? ocr.engine : '',
     ocrLines,
-    qwenMode,
-    qwenOcrUsed: qwen.ocr_used === true,
-    qwenOcrChanged: Math.max(0, Math.round(Number(qwen.ocr_changed) || 0)),
   };
 }
 
