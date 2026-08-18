@@ -13,6 +13,13 @@ assert SPEC and SPEC.loader
 sys.modules[SPEC.name] = bridge
 SPEC.loader.exec_module(bridge)
 
+WORKER_MODULE_PATH = Path(__file__).parents[1] / "scripts" / "local_vision_worker.py"
+WORKER_SPEC = importlib.util.spec_from_file_location("local_vision_worker", WORKER_MODULE_PATH)
+worker = importlib.util.module_from_spec(WORKER_SPEC)
+assert WORKER_SPEC and WORKER_SPEC.loader
+sys.modules[WORKER_SPEC.name] = worker
+WORKER_SPEC.loader.exec_module(worker)
+
 
 class ScannerSessionsTest(unittest.TestCase):
     def test_decodes_cocoa_unicode_escape_in_document_name(self):
@@ -136,6 +143,15 @@ class OrientationResultTest(unittest.TestCase):
 
 
 class LocalVisionResultTest(unittest.TestCase):
+    def test_reads_ndlocr_text_block_ids_in_line_order(self):
+        page_xml = """<PAGE>
+          <TEXTBLOCK BLOCKID="7"><LINE X="1"/><LINE X="2"/></TEXTBLOCK>
+          <LINE X="3"/>
+        </PAGE>"""
+        self.assertEqual(worker.ndlocr_line_group_ids(page_xml), [
+            "ndl-block-7", "ndl-block-7", None,
+        ])
+
     def test_orders_detected_panels_top_to_bottom_and_right_to_left(self):
         boxes = [
             (0.05, 0.52, 0.4, 0.4),
@@ -193,7 +209,7 @@ class LocalVisionResultTest(unittest.TestCase):
             "width": 1000,
             "height": 1400,
             "region_lines": [
-                {"id": "good", "text": "ものようになる。", "bbox": [600, 100, 140, 180], "confidence": 0.7},
+                {"id": "good", "text": "ものようになる。", "bbox": [600, 100, 140, 180], "confidence": 0.7, "group_id": "ndl-block-2"},
                 {"id": "bad", "text": "AAAAAAAAAAAA", "bbox": [50, 50, 100, 100], "confidence": 0.8},
             ],
             "detected_lines": [
@@ -202,6 +218,7 @@ class LocalVisionResultTest(unittest.TestCase):
         }
         lines = bridge.usable_ocr_lines(payload)
         self.assertEqual([line["id"] for line in lines], ["good"])
+        self.assertEqual(lines[0]["group_id"], "ndl-block-2")
         self.assertFalse(lines[0]["needs_review"])
 
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -80,10 +81,26 @@ def direct_region_lines(image_array, regions: list[dict[str, Any]], recognizers)
                 "confidence": float(region.get("score", 0.0) or 0.0),
                 "vertical": (bottom - top) > (right - left),
                 "detection_source": "rtdetr-text",
+                "group_id": f"rtdetr-text-{region.get('id', index)}",
                 "alternatives": options,
             }
         )
     return lines
+
+
+def ndlocr_line_group_ids(page_xml: str) -> list[str | None]:
+    """Return the NDL text-block id for each LINE in document order."""
+    try:
+        root = ET.fromstring(page_xml)
+    except (ET.ParseError, TypeError):
+        return []
+    grouped_elements: dict[int, str] = {}
+    for block_index, block in enumerate(root.findall(".//TEXTBLOCK")):
+        block_id = block.get("BLOCKID") or str(block_index)
+        group_id = f"ndl-block-{block_id}"
+        for line in block.findall(".//LINE"):
+            grouped_elements[id(line)] = group_id
+    return [grouped_elements.get(id(line)) for line in root.findall(".//LINE")]
 
 
 def run_ndlocr(root: Path, image: Path, regions: list[dict[str, Any]]) -> dict[str, Any]:
@@ -125,24 +142,26 @@ def run_ndlocr(root: Path, image: Path, regions: list[dict[str, Any]]) -> dict[s
         outputpath="/tmp",
         save_viz=False,
     )
+    line_group_ids = ndlocr_line_group_ids(str(result.get("page_xml", "")))
     detected_lines: list[dict[str, Any]] = []
     for index, line in enumerate(result.get("text_layer_lines", [])):
         json_line = result.get("json_lines", [])[index] if index < len(result.get("json_lines", [])) else {}
-        detected_lines.append(
-            {
-                "id": f"ndl-{index}",
-                "text": str(line.get("text", "")).strip(),
-                "bbox": [
-                    int(line.get("x", 0)),
-                    int(line.get("y", 0)),
-                    int(line.get("width", 0)),
-                    int(line.get("height", 0)),
-                ],
-                "confidence": float(json_line.get("confidence", 0.0) or 0.0),
-                "vertical": bool(line.get("is_vertical", False)),
-                "detection_source": "ndlocr",
-            }
-        )
+        detected_line = {
+            "id": f"ndl-{index}",
+            "text": str(line.get("text", "")).strip(),
+            "bbox": [
+                int(line.get("x", 0)),
+                int(line.get("y", 0)),
+                int(line.get("width", 0)),
+                int(line.get("height", 0)),
+            ],
+            "confidence": float(json_line.get("confidence", 0.0) or 0.0),
+            "vertical": bool(line.get("is_vertical", False)),
+            "detection_source": "ndlocr",
+        }
+        if index < len(line_group_ids) and line_group_ids[index]:
+            detected_line["group_id"] = line_group_ids[index]
+        detected_lines.append(detected_line)
     return {
         "engine": "NDLOCR-Lite",
         "width": int(result.get("img_width", image_array.shape[1])),

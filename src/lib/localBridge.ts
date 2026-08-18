@@ -32,6 +32,7 @@ export interface RecognizedTextLine {
   vertical: boolean;
   source: string;
   needsReview: boolean;
+  groupId?: string;
   qwenText?: string;
 }
 
@@ -83,10 +84,158 @@ function bridgeUrl(path: string): string {
   return `${configured || DEFAULT_BRIDGE_URL}${path}`;
 }
 
+function shapeBounds(shape: PanelShape): BBox {
+  return panelBounds({ id: 0, shape, bg: 0, bubbles: [], action: null });
+}
+
+function overlapArea(left: BBox, right: BBox): number {
+  return Math.max(0, Math.min(left.x + left.w, right.x + right.w) - Math.max(left.x, right.x))
+    * Math.max(0, Math.min(left.y + left.h, right.y + right.h) - Math.max(left.y, right.y));
+}
+
+function nearestShapeIndex(shapes: readonly PanelShape[], x: number, y: number): number {
+  const ranked = shapes.map((shape, index) => {
+    const bounds = shapeBounds(shape);
+    const contains = x >= bounds.x && x <= bounds.x + bounds.w && y >= bounds.y && y <= bounds.y + bounds.h;
+    const nearestX = clamp(x, bounds.x, bounds.x + bounds.w);
+    const nearestY = clamp(y, bounds.y, bounds.y + bounds.h);
+    return {
+      index,
+      contains,
+      area: bounds.w * bounds.h,
+      distance: (x - nearestX) ** 2 + (y - nearestY) ** 2,
+    };
+  });
+  const containing = ranked.filter((item) => item.contains).sort((left, right) => left.area - right.area);
+  return containing[0]?.index ?? ranked.sort((left, right) => left.distance - right.distance || left.area - right.area)[0]?.index ?? -1;
+}
+
+function deduplicateDetectedPanels(shapes: readonly PanelShape[]): PanelShape[] {
+  const bounds = shapes.map(shapeBounds);
+  const bySmallestArea = bounds.map((box, index) => ({ index, area: box.w * box.h })).sort((left, right) => left.area - right.area);
+  const kept = new Set<number>();
+  for (const candidate of bySmallestArea) {
+    const candidateBox = bounds[candidate.index];
+    const duplicate = [...kept].some((keptIndex) => {
+      const keptBox = bounds[keptIndex];
+      const intersection = overlapArea(candidateBox, keptBox);
+      const candidateArea = candidateBox.w * candidateBox.h;
+      const keptArea = keptBox.w * keptBox.h;
+      const smaller = Math.min(candidateArea, keptArea);
+      const larger = Math.max(candidateArea, keptArea);
+      const union = candidateArea + keptArea - intersection;
+      return smaller > 0 && larger > 0
+        && smaller / larger >= 0.68
+        && (intersection / smaller >= 0.9 || (union > 0 && intersection / union >= 0.72));
+    });
+    if (!duplicate) kept.add(candidate.index);
+  }
+  return shapes.filter((_, index) => kept.has(index)).map((shape) => structuredClone(shape));
+}
+
+/** Adjacent detected rectangles are separated by a 5mm gutter without moving their outer edges. */
+export function ensureDetectedPanelGutters(shapes: readonly PanelShape[], gutter = 5): PanelShape[] {
+  const next = shapes.map((shape) => structuredClone(shape));
+  for (let leftIndex = 0; leftIndex < next.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < next.length; rightIndex += 1) {
+      const first = next[leftIndex];
+      const second = next[rightIndex];
+      if (first.type !== 'rect' || second.type !== 'rect') continue;
+      const horizontalOverlap = Math.max(0, Math.min(first.x + first.w, second.x + second.w) - Math.max(first.x, second.x));
+      const verticalOverlap = Math.max(0, Math.min(first.y + first.h, second.y + second.h) - Math.max(first.y, second.y));
+      const normalizedHorizontalDistance = Math.abs((first.x + first.w / 2) - (second.x + second.w / 2)) / Math.max(1, (first.w + second.w) / 2);
+      const normalizedVerticalDistance = Math.abs((first.y + first.h / 2) - (second.y + second.h / 2)) / Math.max(1, (first.h + second.h) / 2);
+
+      if (normalizedVerticalDistance >= normalizedHorizontalDistance && horizontalOverlap >= Math.min(first.w, second.w) * 0.25) {
+        const [upper, lower] = first.y + first.h / 2 <= second.y + second.h / 2 ? [first, second] : [second, first];
+        const currentGap = lower.y - (upper.y + upper.h);
+        if (currentGap >= gutter) continue;
+        const boundary = ((upper.y + upper.h) + lower.y) / 2;
+        const upperBottom = boundary - gutter / 2;
+        const lowerTop = boundary + gutter / 2;
+        if (upperBottom - upper.y >= 8 && lower.y + lower.h - lowerTop >= 8) {
+          upper.h = roundMm(upperBottom - upper.y);
+          const lowerBottom = lower.y + lower.h;
+          lower.y = roundMm(lowerTop);
+          lower.h = roundMm(lowerBottom - lower.y);
+        }
+      } else if (verticalOverlap >= Math.min(first.h, second.h) * 0.25) {
+        const [left, right] = first.x + first.w / 2 <= second.x + second.w / 2 ? [first, second] : [second, first];
+        const currentGap = right.x - (left.x + left.w);
+        if (currentGap >= gutter) continue;
+        const boundary = ((left.x + left.w) + right.x) / 2;
+        const leftEdge = boundary - gutter / 2;
+        const rightEdge = boundary + gutter / 2;
+        if (leftEdge - left.x >= 8 && right.x + right.w - rightEdge >= 8) {
+          left.w = roundMm(leftEdge - left.x);
+          const rightBoundary = right.x + right.w;
+          right.x = roundMm(rightEdge);
+          right.w = roundMm(rightBoundary - right.x);
+        }
+      }
+    }
+  }
+  return next;
+}
+
+/** Prefer the smallest text-bearing frame and discard enclosing/empty detector artifacts. */
+export function refineDetectedPanels(
+  shapes: readonly PanelShape[],
+  lines: readonly RecognizedTextLine[],
+): PanelShape[] {
+  const deduplicated = deduplicateDetectedPanels(shapes);
+  if (!deduplicated.length || !lines.length) return ensureDetectedPanelGutters(deduplicated);
+  const supported = new Set<number>();
+  for (const line of lines) {
+    const centerX = (line.bbox.x + line.bbox.w / 2) * 210;
+    const centerY = (line.bbox.y + line.bbox.h / 2) * 297;
+    const index = nearestShapeIndex(deduplicated, centerX, centerY);
+    if (index >= 0) supported.add(index);
+  }
+  const textBearing = deduplicated.filter((_, index) => supported.has(index));
+  return ensureDetectedPanelGutters(textBearing.length ? textBearing : deduplicated);
+}
+
+export function groupRecognizedTextLines(lines: readonly RecognizedTextLine[]): RecognizedTextLine[] {
+  const groups: { key: string; lines: RecognizedTextLine[] }[] = [];
+  const byKey = new Map<string, { key: string; lines: RecognizedTextLine[] }>();
+  lines.forEach((line, index) => {
+    const key = line.groupId ? `group:${line.groupId}` : `line:${index}`;
+    let group = byKey.get(key);
+    if (!group) {
+      group = { key, lines: [] };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.lines.push(line);
+  });
+  return groups.map((group) => {
+    if (group.lines.length === 1) return group.lines[0];
+    const vertical = group.lines.filter((line) => line.vertical).length * 2 >= group.lines.length;
+    const ordered = [...group.lines].sort((left, right) => vertical
+      ? (right.bbox.x + right.bbox.w / 2) - (left.bbox.x + left.bbox.w / 2) || left.bbox.y - right.bbox.y
+      : (left.bbox.y + left.bbox.h / 2) - (right.bbox.y + right.bbox.h / 2) || left.bbox.x - right.bbox.x);
+    const left = Math.min(...ordered.map((line) => line.bbox.x));
+    const top = Math.min(...ordered.map((line) => line.bbox.y));
+    const right = Math.max(...ordered.map((line) => line.bbox.x + line.bbox.w));
+    const bottom = Math.max(...ordered.map((line) => line.bbox.y + line.bbox.h));
+    return {
+      ...ordered[0],
+      text: ordered.map((line) => line.text.trim()).filter(Boolean).join('\n'),
+      bbox: { x: left, y: top, w: right - left, h: bottom - top },
+      confidence: ordered.reduce((sum, line) => sum + line.confidence, 0) / ordered.length,
+      vertical,
+      source: [...new Set(ordered.map((line) => line.source))].join('+'),
+      needsReview: ordered.some((line) => line.needsReview),
+      groupId: ordered[0].groupId,
+    };
+  });
+}
+
 export function normalizeLayoutRecognition(
   payload: BridgeLayoutResponse,
 ): LayoutRecognitionResult {
-  const detectedPanels = (Array.isArray(payload.panel_boxes) ? payload.panel_boxes : []).flatMap((entry): PanelShape[] => {
+  const rawDetectedPanels = (Array.isArray(payload.panel_boxes) ? payload.panel_boxes : []).flatMap((entry): PanelShape[] => {
     const rawBox = Array.isArray(entry) ? entry.map(Number) : [];
     if (rawBox.length !== 4 || rawBox.some((value) => !Number.isFinite(value))) return [];
     const [rawX, rawY, rawWidth, rawHeight] = rawBox;
@@ -103,12 +252,8 @@ export function normalizeLayoutRecognition(
       h: roundMm((bottom - top) * 297),
     }];
   });
-  const reason = typeof payload.reason === 'string' && payload.reason.trim()
-    ? payload.reason.trim()
-    : detectedPanels.length ? '検出したコマ領域を編集開始位置として使用できます。' : '読み取れるコマ領域を特定できませんでした。';
   const rawRotation = Number(payload.rotation_degrees);
   const rotationDegrees = ([0, 90, 180, 270] as const).find((value) => value === rawRotation) ?? 0;
-  const detectedPanelCount = detectedPanels.length;
   const structure = payload.structure && typeof payload.structure === 'object'
     ? payload.structure as Record<string, unknown>
     : {};
@@ -148,9 +293,18 @@ export function normalizeLayoutRecognition(
       vertical: item.vertical === true,
       source: typeof item.source === 'string' ? item.source : 'ndlocr',
       needsReview: item.needs_review !== false,
+      ...(typeof item.group_id === 'string' && item.group_id.trim() ? { groupId: item.group_id.trim() } : {}),
       ...(typeof item.qwen_text === 'string' && item.qwen_text.trim() ? { qwenText: item.qwen_text.trim() } : {}),
     }];
   });
+  const detectedPanels = refineDetectedPanels(rawDetectedPanels, ocrLines);
+  const removedPanelCount = rawDetectedPanels.length - detectedPanels.length;
+  const reason = removedPanelCount > 0
+    ? `重複または文字に対応しない候補を${removedPanelCount}個除外し、${detectedPanels.length}個のコマ領域を編集開始位置として使用します。コマ間は5mm空けています。`
+    : typeof payload.reason === 'string' && payload.reason.trim()
+      ? payload.reason.trim()
+      : detectedPanels.length ? '検出したコマ領域を編集開始位置として使用できます。' : '読み取れるコマ領域を特定できませんでした。';
+  const detectedPanelCount = detectedPanels.length;
   return {
     detectedPanels,
     reason,
@@ -164,7 +318,7 @@ export function normalizeLayoutRecognition(
       (Number(structure.excluded_as_text_count) || 0)
       + (Number(structure.excluded_as_face_count) || 0)
       + (Number(structure.excluded_as_body_count) || 0),
-    )),
+    )) + Math.max(0, removedPanelCount),
     detectedTextRegionCount: Math.max(0, Math.round(Number(structure.text_region_count) || 0)),
     detectedFaceRegionCount: Math.max(0, Math.round(Number(structure.face_region_count) || 0)),
     detectedBodyRegionCount: Math.max(0, Math.round(Number(structure.body_region_count) || 0)),
@@ -177,7 +331,12 @@ export function normalizeLayoutRecognition(
 }
 
 function nearestPanel(panels: Panel[], x: number, y: number): Panel | undefined {
-  return panels.find((panel) => pointInPanel(panel, x, y)) ?? [...panels].sort((left, right) => {
+  const containing = panels.filter((panel) => pointInPanel(panel, x, y)).sort((left, right) => {
+    const leftBounds = panelBounds(left);
+    const rightBounds = panelBounds(right);
+    return leftBounds.w * leftBounds.h - rightBounds.w * rightBounds.h;
+  });
+  return containing[0] ?? [...panels].sort((left, right) => {
     const distance = (panel: Panel) => {
       const bounds = panelBounds(panel);
       const nearestX = clamp(x, bounds.x, bounds.x + bounds.w);
@@ -195,7 +354,7 @@ export function attachRecognizedTextToPage(
 ): { added: number; needsReview: number } {
   let added = 0;
   let needsReview = 0;
-  for (const line of lines) {
+  for (const line of groupRecognizedTextLines(lines)) {
     if (!line.text.trim() || !page.panels.length) continue;
     const sourceBox = {
       x: line.bbox.x * page.canvas.w,

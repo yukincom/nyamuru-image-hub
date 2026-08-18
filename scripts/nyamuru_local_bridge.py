@@ -717,6 +717,8 @@ def usable_ocr_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "quality": round(quality, 3),
             "needs_review": quality < 2.0 or float(item.get("confidence", 0) or 0) < 0.45,
         }
+        if item.get("group_id"):
+            normalized["group_id"] = str(item["group_id"])
         duplicate = False
         for previous in selected:
             px, py, pw, ph = previous["bbox"]
