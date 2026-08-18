@@ -218,16 +218,17 @@ export function ensureDetectedPanelGutters(
   shapes: readonly PanelShape[],
   settings: PanelGutterSettings = DEFAULT_PANEL_GUTTERS,
 ): PanelShape[] {
+  const source = shapes.map((shape) => structuredClone(shape));
   const next = shapes.map((shape) => structuredClone(shape));
   const rowGap = roundMm(clamp(settings.rowGapMm, 0, 20));
   const columnGap = roundMm(clamp(settings.columnGapMm, 0, 20));
   const hasInterveningPanel = (firstIndex: number, secondIndex: number, axis: 'row' | 'column') => {
-    const first = next[firstIndex], second = next[secondIndex];
+    const first = source[firstIndex], second = source[secondIndex];
     if (first.type !== 'rect' || second.type !== 'rect') return false;
     const firstCenter = axis === 'row' ? first.y + first.h / 2 : first.x + first.w / 2;
     const secondCenter = axis === 'row' ? second.y + second.h / 2 : second.x + second.w / 2;
     const minimum = Math.min(firstCenter, secondCenter), maximum = Math.max(firstCenter, secondCenter);
-    return next.some((candidate, candidateIndex) => {
+    return source.some((candidate, candidateIndex) => {
       if (candidateIndex === firstIndex || candidateIndex === secondIndex || candidate.type !== 'rect') return false;
       const center = axis === 'row' ? candidate.y + candidate.h / 2 : candidate.x + candidate.w / 2;
       if (center <= minimum || center >= maximum) return false;
@@ -243,10 +244,14 @@ export function ensureDetectedPanelGutters(
         && overlapSecond >= Math.min(second.h, candidate.h) * 0.2;
     });
   };
-  for (let leftIndex = 0; leftIndex < next.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < next.length; rightIndex += 1) {
-      const first = next[leftIndex];
-      const second = next[rightIndex];
+
+  type GutterPair = { beforeIndex: number; afterIndex: number; boundary: number };
+  const rowPairs: GutterPair[] = [];
+  const columnPairs: GutterPair[] = [];
+  for (let leftIndex = 0; leftIndex < source.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < source.length; rightIndex += 1) {
+      const first = source[leftIndex];
+      const second = source[rightIndex];
       if (first.type !== 'rect' || second.type !== 'rect') continue;
       const horizontalOverlap = Math.max(0, Math.min(first.x + first.w, second.x + second.w) - Math.max(first.x, second.x));
       const verticalOverlap = Math.max(0, Math.min(first.y + first.h, second.y + second.h) - Math.max(first.y, second.y));
@@ -254,38 +259,88 @@ export function ensureDetectedPanelGutters(
       const normalizedVerticalDistance = Math.abs((first.y + first.h / 2) - (second.y + second.h / 2)) / Math.max(1, (first.h + second.h) / 2);
 
       if (normalizedVerticalDistance >= normalizedHorizontalDistance && horizontalOverlap >= Math.min(first.w, second.w) * 0.25) {
-        const [upper, lower] = first.y + first.h / 2 <= second.y + second.h / 2 ? [first, second] : [second, first];
+        const [upperIndex, lowerIndex] = first.y + first.h / 2 <= second.y + second.h / 2
+          ? [leftIndex, rightIndex]
+          : [rightIndex, leftIndex];
         if (hasInterveningPanel(leftIndex, rightIndex, 'row')) continue;
+        const upper = source[upperIndex], lower = source[lowerIndex];
+        if (upper.type !== 'rect' || lower.type !== 'rect') continue;
         const currentGap = lower.y - (upper.y + upper.h);
         if (currentGap > Math.max(12, rowGap + 4)) continue;
-        if (Math.abs(currentGap - rowGap) <= 0.05) continue;
-        const boundary = ((upper.y + upper.h) + lower.y) / 2;
-        const upperBottom = boundary - rowGap / 2;
-        const lowerTop = boundary + rowGap / 2;
-        if (upperBottom - upper.y >= 8 && lower.y + lower.h - lowerTop >= 8) {
-          upper.h = roundMm(upperBottom - upper.y);
-          const lowerBottom = lower.y + lower.h;
-          lower.y = roundMm(lowerTop);
-          lower.h = roundMm(lowerBottom - lower.y);
-        }
+        rowPairs.push({ beforeIndex: upperIndex, afterIndex: lowerIndex, boundary: ((upper.y + upper.h) + lower.y) / 2 });
       } else if (verticalOverlap >= Math.min(first.h, second.h) * 0.25) {
-        const [left, right] = first.x + first.w / 2 <= second.x + second.w / 2 ? [first, second] : [second, first];
+        const [leftPanelIndex, rightPanelIndex] = first.x + first.w / 2 <= second.x + second.w / 2
+          ? [leftIndex, rightIndex]
+          : [rightIndex, leftIndex];
         if (hasInterveningPanel(leftIndex, rightIndex, 'column')) continue;
+        const left = source[leftPanelIndex], right = source[rightPanelIndex];
+        if (left.type !== 'rect' || right.type !== 'rect') continue;
         const currentGap = right.x - (left.x + left.w);
         if (currentGap > Math.max(12, columnGap + 4)) continue;
-        if (Math.abs(currentGap - columnGap) <= 0.05) continue;
-        const boundary = ((left.x + left.w) + right.x) / 2;
-        const leftEdge = boundary - columnGap / 2;
-        const rightEdge = boundary + columnGap / 2;
-        if (leftEdge - left.x >= 8 && right.x + right.w - rightEdge >= 8) {
-          left.w = roundMm(leftEdge - left.x);
-          const rightBoundary = right.x + right.w;
-          right.x = roundMm(rightEdge);
-          right.w = roundMm(rightBoundary - right.x);
-        }
+        columnPairs.push({ beforeIndex: leftPanelIndex, afterIndex: rightPanelIndex, boundary: ((left.x + left.w) + right.x) / 2 });
       }
     }
   }
+
+  type EdgeTargets = { left: number[]; right: number[]; top: number[]; bottom: number[] };
+  const targets = new Map<number, EdgeTargets>();
+  const addTarget = (index: number, edge: keyof EdgeTargets, value: number) => {
+    const existing = targets.get(index) ?? { left: [], right: [], top: [], bottom: [] };
+    existing[edge].push(value);
+    targets.set(index, existing);
+  };
+  const applyPairGroups = (pairs: GutterPair[], axis: 'row' | 'column', gap: number) => {
+    const remaining = new Set(pairs.map((_, index) => index));
+    while (remaining.size) {
+      const seed = remaining.values().next().value;
+      if (seed === undefined) break;
+      remaining.delete(seed);
+      const group = [pairs[seed]];
+      for (let cursor = 0; cursor < group.length; cursor += 1) {
+        const current = group[cursor];
+        for (const candidateIndex of [...remaining]) {
+          const candidate = pairs[candidateIndex];
+          const sharesSameEdge = current.beforeIndex === candidate.beforeIndex
+            || current.afterIndex === candidate.afterIndex;
+          if (!sharesSameEdge && Math.abs(current.boundary - candidate.boundary) > 4) continue;
+          remaining.delete(candidateIndex);
+          group.push(candidate);
+        }
+      }
+      const boundary = roundMm(group.reduce((sum, pair) => sum + pair.boundary, 0) / group.length);
+      for (const pair of group) {
+        if (axis === 'row') {
+          addTarget(pair.beforeIndex, 'bottom', boundary - gap / 2);
+          addTarget(pair.afterIndex, 'top', boundary + gap / 2);
+        } else {
+          addTarget(pair.beforeIndex, 'right', boundary - gap / 2);
+          addTarget(pair.afterIndex, 'left', boundary + gap / 2);
+        }
+      }
+    }
+  };
+  applyPairGroups(rowPairs, 'row', rowGap);
+  applyPairGroups(columnPairs, 'column', columnGap);
+
+  targets.forEach((edges, index) => {
+    const original = source[index], shape = next[index];
+    if (original.type !== 'rect' || shape.type !== 'rect') return;
+    const average = (values: number[], fallback: number) => values.length
+      ? roundMm(values.reduce((sum, value) => sum + value, 0) / values.length)
+      : fallback;
+    const left = average(edges.left, original.x);
+    const right = average(edges.right, original.x + original.w);
+    const top = average(edges.top, original.y);
+    const bottom = average(edges.bottom, original.y + original.h);
+    if (right - left >= 8) {
+      shape.x = left;
+      shape.w = roundMm(right - left);
+    }
+    if (bottom - top >= 8) {
+      shape.y = top;
+      shape.h = roundMm(bottom - top);
+    }
+  });
   return next;
 }
 

@@ -147,6 +147,32 @@ test('新規取り込みで指定した上下・左右の間隔を別々に適�
   assert.match(result.reason, /上下7mm・左右2mm/);
 });
 
+test('一つのコマに複数のコマが隣接しても共有境界を一直線に保つ', () => {
+  const rowSplit = normalizeLayoutRecognition({
+    panel_boxes: [
+      [0.05, 0.04, 0.90, 0.25],
+      [0.05, 0.29, 0.44, 0.25],
+      [0.50, 0.29, 0.45, 0.25],
+    ],
+  }, { rowGapMm: 7, columnGapMm: 2 });
+  const [upper, lowerLeft, lowerRight] = rowSplit.detectedPanels;
+  assert.equal(lowerLeft.y, lowerRight.y);
+  assert.equal(upper.y + upper.h, lowerLeft.y - 7);
+  assert.equal(upper.y + upper.h, lowerRight.y - 7);
+
+  const columnSplit = normalizeLayoutRecognition({
+    panel_boxes: [
+      [0.05, 0.04, 0.44, 0.25],
+      [0.05, 0.31, 0.44, 0.25],
+      [0.49, 0.04, 0.46, 0.52],
+    ],
+  }, { rowGapMm: 7, columnGapMm: 2 });
+  const [leftUpper, leftLower, right] = columnSplit.detectedPanels;
+  assert.equal(leftUpper.x + leftUpper.w, leftLower.x + leftLower.w);
+  assert.equal(right.x, leftUpper.x + leftUpper.w + 2);
+  assert.equal(right.x, leftLower.x + leftLower.w + 2);
+});
+
 test('同一テキストブロックの縦書き行を右から改行で一つにまとめる', () => {
   const grouped = groupRecognizedTextLines([
     { id: 'left', text: '左の行', bbox: { x: 0.65, y: 0.1, w: 0.05, h: 0.2 }, confidence: 0.7, vertical: true, source: 'ndlocr', needsReview: false, groupId: 'bubble-1' },
