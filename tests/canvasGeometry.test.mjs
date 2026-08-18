@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, convertPanelShape, fallbackBox, findLinkedPanelEdges, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, fallbackBox, findLinkedPanelEdges, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -37,6 +37,12 @@ const baseInteraction = {
 
 test('ドラッグの画面座標をキャンバスmmへ変換する', () => {
   assert.deepEqual(resizedBox(baseInteraction, 142, 120), { x: 41, y: 30, w: 40, h: 50 });
+});
+
+test('Shiftドラッグは変化量の大きい軸だけを残す', () => {
+  assert.deepEqual(constrainDragDeltaToAxis(20, 8), { x: 20, y: 0 });
+  assert.deepEqual(constrainDragDeltaToAxis(-7, 18), { x: 0, y: 18 });
+  assert.deepEqual(constrainDragDeltaToAxis(-12, -12), { x: -12, y: 0 });
 });
 
 test('ドラッグした要素をコマ境界内へ収める', () => {

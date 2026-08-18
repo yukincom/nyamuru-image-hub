@@ -32,6 +32,13 @@ export function roundMm(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+/** ドラッグ開始点から変化量の大きい軸だけを残し、水平または垂直移動へ制限する。 */
+export function constrainDragDeltaToAxis(deltaX: number, deltaY: number): { x: number; y: number } {
+  return Math.abs(deltaX) >= Math.abs(deltaY)
+    ? { x: deltaX, y: 0 }
+    : { x: 0, y: deltaY };
+}
+
 export function panelBounds(panel: Panel): BBox {
   if (panel.shape.type === 'rect') return panel.shape;
   const xs = panel.shape.points.map(([x]) => x);

@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type PanelEdgeReference, type ResizeHandle } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, constrainDragDeltaToAxis, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPointToInnerFrame, type InteractionGeometry, type PanelEdgeReference, type ResizeHandle } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -464,9 +464,18 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      const x = clamp(roundMm(startX + (pointerEvent.clientX - startClientX) * (210 / paperRect.width)), 0, 210);
-      const y = clamp(roundMm(startY + (pointerEvent.clientY - startClientY) * (297 / paperRect.height)), 0, 297);
-      const point = innerFrameSnap ? snapPointToInnerFrame(x, y) : { x, y };
+      const rawDeltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
+      const rawDeltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
+      const delta = pointerEvent.shiftKey
+        ? constrainDragDeltaToAxis(rawDeltaX, rawDeltaY)
+        : { x: rawDeltaX, y: rawDeltaY };
+      const x = clamp(roundMm(startX + delta.x), 0, 210);
+      const y = clamp(roundMm(startY + delta.y), 0, 297);
+      const snapped = innerFrameSnap ? snapPointToInnerFrame(x, y) : { x, y };
+      // Shift固定中は、内枠スナップにも非選択軸を動かさせない。
+      const point = pointerEvent.shiftKey
+        ? (delta.y === 0 ? { x: snapped.x, y: startY } : { x: startX, y: snapped.y })
+        : snapped;
       onMoveVertex(activePanel, vertexIndex, point.x, point.y, panelSnap);
     };
     const finish = () => {
@@ -681,7 +690,9 @@ export default function MangaCanvas({ title, author, page, pageCount, activePane
         })}
         {selectedPanel.shape.type === 'polygon' && selectedPanel.shape.points.map(([x, y], vertexIndex) => <g class="panel-vertex-handle" key={`vertex-${vertexIndex}`}>
           <circle class="panel-vertex-dot" cx={x} cy={y} r="2.4" />
-          <rect class="panel-resize-hit" x={x - 5.5} y={y - 5.5} width="11" height="11" onPointerDown={(event) => startVertexDrag(event, vertexIndex)} />
+          <rect class="panel-resize-hit" x={x - 5.5} y={y - 5.5} width="11" height="11" onPointerDown={(event) => startVertexDrag(event, vertexIndex)}>
+            <title>頂点 {vertexIndex + 1} を移動（Shiftで水平・垂直に固定）</title>
+          </rect>
         </g>)}
         {renderAnchorIndicator()}
       </svg>}
