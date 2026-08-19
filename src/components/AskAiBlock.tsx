@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Check, Copy } from 'lucide-preact';
 
-export const REPO_URL = 'https://github.com/sa-san10/nyamuru-manga-name-studio';
+export const REPO_URL = 'https://github.com/yukincom/nyamuru-manga-name-studio';
 
 const ASK_AI_TEXT = `このリポジトリについて教えて！\n${REPO_URL}`;
 

@@ -2,6 +2,16 @@ name: 機能要望
 description: 追加・改善してほしいことはこちら
 labels: ["enhancement"]
 body:
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 対象
+      options:
+        - フォーク固有機能（アナログ取込・ローカル解析・コマ編集支援）
+        - 本家Nyamuruにも関係する機能
+        - 分からない
+    validations:
+      required: true
   - type: textarea
     id: proposal
     attributes:

@@ -12,11 +12,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sa-san10/nyamuru-manga-name-studio.git"
+    "url": "git+https://github.com/yukincom/nyamuru-manga-name-studio.git"
   },
-  "homepage": "https://github.com/sa-san10/nyamuru-manga-name-studio#readme",
+  "homepage": "https://github.com/yukincom/nyamuru-manga-name-studio#readme",
   "bugs": {
-    "url": "https://github.com/sa-san10/nyamuru-manga-name-studio/issues"
+    "url": "https://github.com/yukincom/nyamuru-manga-name-studio/issues"
   },
   "engines": {
     "node": ">=22.12.0"

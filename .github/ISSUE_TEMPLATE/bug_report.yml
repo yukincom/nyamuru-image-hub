@@ -2,6 +2,19 @@ name: バグ報告
 description: 動作がおかしいときはこちら
 labels: ["bug"]
 body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: 問題が起きた機能
+      options:
+        - 通常のネーム編集・OMNY／OMAY
+        - アナログ画像の読み込み・解析
+        - macOSスキャナー取り込み
+        - コマスナップ・コマシンクロ・コマ合体
+        - ビルド・スタンドアロン版
+        - その他
+    validations:
+      required: true
   - type: textarea
     id: what-happened
     attributes:
@@ -23,10 +36,16 @@ body:
     id: environment
     attributes:
       label: 環境
-      placeholder: 例）Windows 11 / Chrome 145 / サイト版 or スタンドアロン版
+      placeholder: 例）macOS / Chrome / Node.js / ローカル版・サイト版
+  - type: textarea
+    id: local-analysis
+    attributes:
+      label: ローカル解析環境（該当する場合）
+      description: npm run bridge:checkの結果から、個人パスを除いた利用可否とエラーだけを書いてください
+      placeholder: RT-DETR 利用可／NDLOCR-Lite 利用可／scanner 利用可
   - type: textarea
     id: omny
     attributes:
       label: 関係するOMNY（任意）
-      description: 差し支えなければ、再現に使えるOMNYの抜粋を貼ってください
+      description: 差し支えなければ、個人情報を除いた最小の再現用OMNYだけを貼ってください。実際の原稿画像や未公開作品は添付しないでください
       render: yaml

@@ -12,12 +12,37 @@
 
 ファイル選択で読み込んだ元画像は変更・削除しません。解析用の一時画像は各処理の終了時に削除します。プレビュー用の一時File、Object URL、回転情報、判定結果はブラウザ保存へ含めず、検出コマからページ作成を確定した時または新規作成画面を閉じた時に破棄します。
 
-## 起動
+## 前提
 
-別のターミナルで次を実行します。
+通常のNyamuru編集にはこのbridgeは不要です。「紙のネームからコマを読み取る」で画像解析を行う場合だけ準備してください。
+
+- Node.js 22.12.0以上
+- `manga-babble-maker`の独立したPython仮想環境
+- RT-DETRのONNXモデル
+- `ndlocr-lite`の独立したPython仮想環境と公式モデル
+- スキャナー連携を使う場合はmacOSのイメージキャプチャ
+
+既定では3つのリポジトリを同じ親フォルダに置きます。
+
+```text
+tools/
+├── nyamuru-manga-name-studio/
+├── manga-babble-maker/
+│   ├── .venv/bin/python
+│   └── models/rtdetrv4-x-manga109s_v2/model.onnx
+└── ndlocr-lite/
+    ├── .venv/bin/python
+    └── src/model/
+```
+
+Nyamuruは外部リポジトリ、仮想環境、モデルを自動ダウンロードしません。それぞれを配布元の手順とライセンスに従って別途導入してください。使用確認版と再配布上の注意は [LOCAL_VISION_COMPONENTS.md](./LOCAL_VISION_COMPONENTS.md) に記載しています。
+
+## 起動と終了
+
+最初にNyamuru本体のJavaScript依存を導入します。
 
 ```bash
-npm run bridge
+npm ci
 ```
 
 環境確認だけを行う場合は次を使います。
@@ -26,7 +51,41 @@ npm run bridge
 npm run bridge:check
 ```
 
+RT-DETR、NDLOCR-Lite、スキャナー連携の検出状態と参照先が表示されます。どれかが見つからない場合は、下記の環境変数または配置を確認してください。
+
+ターミナル1でbridgeを起動します。
+
+```bash
+npm run bridge
+```
+
+ターミナル2でNyamuruを起動します。
+
+```bash
+npm run dev
+```
+
+ブラウザで表示されたlocalhostのURLを開きます。bridgeを終了する場合は、ターミナル1でCtrl+Cを押します。
+
 既定の専用環境は、同じ親フォルダの `manga-babble-maker` と `ndlocr-lite` です。bridge本体とRT-DETRワーカーには `manga-babble-maker/.venv`、文字認識ワーカーには `ndlocr-lite/.venv` を使い、処理ごとの依存関係を分離します。ComfyUIやVLMは不要です。場所を変える場合は `NYAMURU_MANGA_BABBLE_ROOT`、`NYAMURU_NDLOCR_ROOT` を指定します。bridge本体のPythonだけを明示する場合は `NYAMURU_BRIDGE_PYTHON` を指定できます。モデル重みはNyamuruへコピーしません。関連ライセンスとモデル配置方針は `docs/LOCAL_VISION_COMPONENTS.md` を参照してください。
+
+```bash
+NYAMURU_MANGA_BABBLE_ROOT=/path/to/manga-babble-maker \
+NYAMURU_NDLOCR_ROOT=/path/to/ndlocr-lite \
+npm run bridge
+```
+
+`NYAMURU_BRIDGE_PYTHON`を指定しても、RT-DETRとNDLOCR-Liteのワーカーは各リポジトリの`.venv/bin/python`を使用します。
+
+## 解析中の処理
+
+1. ブラウザが表示中の向きで画像をJPEGへ正規化します。
+2. RT-DETRを`manga-babble-maker/.venv`で起動し、コマ・文字・顔・身体を検出します。
+3. RT-DETRでコマが見つからない場合だけ、OpenCVの輪郭候補を使います。
+4. NDLOCR-Liteを`ndlocr-lite/.venv`で起動し、文字を認識します。
+5. 結果JSONだけをブラウザへ返し、bridge側の一時画像を削除します。
+
+解析は1画像ずつ実行します。最大10枚の一括読込でも、モデルを複数同時起動してメモリを競合させません。
 
 ## スキャナー
 
@@ -39,3 +98,42 @@ npm run bridge:check
 ## 接続範囲
 
 ローカル連携は `127.0.0.1:8787` のみに待ち受け、`localhost`または`127.0.0.1`で開いたNyamuruからのリクエストだけを受け付けます。
+
+この制限により、GitHub PagesやChatGPT Sitesなどの公開URLからローカルbridgeを呼び出すことはできません。ホスト版では通常の編集・OMNY入出力・コマ編集支援を利用し、アナログ解析はローカル起動時だけ利用してください。
+
+## トラブルシューティング
+
+### `manga-babble-makerのPython環境が見つかりません`
+
+`manga-babble-maker/.venv/bin/python`が存在するか確認します。別の場所に置いた場合は`NYAMURU_MANGA_BABBLE_ROOT`を指定します。
+
+### `bridge:check`でRT-DETRが利用不可
+
+次の2ファイルが必要です。
+
+```text
+manga-babble-maker/.venv/bin/python
+manga-babble-maker/models/rtdetrv4-x-manga109s_v2/model.onnx
+```
+
+モデルをNyamuru側へコピーしないでください。
+
+### `bridge:check`でNDLOCR-Liteが利用不可
+
+次を確認します。
+
+```text
+ndlocr-lite/.venv/bin/python
+ndlocr-lite/src/model/
+```
+
+### 解析ボタンを押しても接続できない
+
+- `npm run bridge`が終了していないか確認します。
+- Nyamuruを`localhost`または`127.0.0.1`で開いているか確認します。
+- ポート8787を別のプロセスが使用していないか確認します。
+- 公開サイトからローカルbridgeへ接続しようとしていないか確認します。
+
+### スキャンが終わらない
+
+イメージキャプチャで必要な画像を保存した後、Nyamuruの「取り込みを終了」を押します。これは監視を終了し、イメージキャプチャも閉じます。強制終了で画像が残った場合は、次回の新規作成画面で「つなぎ直す」または「破棄する」を選びます。
