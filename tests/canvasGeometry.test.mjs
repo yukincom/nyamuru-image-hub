@@ -335,6 +335,23 @@ test('A+頂点連動は近い接合点だけへ選択点の拘束後変位を同
   });
 });
 
+test('短い投影重なりでも選択点をまたぐ直近の対向頂点は同量追従する', () => {
+  const panels = [
+    { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 65], [10, 90]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[200, 70], [200, 175.7], [112, 175.7], [122, 80]] } },
+    { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[117, 81], [107, 175.7], [10, 175.7], [10, 95]] } },
+    { ...rectPanel, id: 4, shape: { type: 'polygon', points: [[200, 180.7], [200, 287], [82, 287], [100, 180.7]] } },
+    { ...rectPanel, id: 5, shape: { type: 'polygon', points: [[95, 180.7], [77, 287], [10, 287], [10, 180.7]] } },
+  ];
+
+  movePanelVertexWithSnap(panels, 2, 1, 115, 175.7, true);
+
+  assert.deepEqual(panelShapePoints(panels[1])[2], [120, 175.7]);
+  assert.deepEqual(panelShapePoints(panels[2])[1], [115, 175.7]);
+  assert.deepEqual(panelShapePoints(panels[3])[3], [108, 180.7]);
+  assert.deepEqual(panelShapePoints(panels[4])[0], [95, 180.7]);
+});
+
 test('追従点の境界制限は選択頂点の到達位置を短縮しない', () => {
   const panels = liveAPlusPanels();
   movePanelVertexWithSnap(panels, 2, 0, 69.1, 10, true);

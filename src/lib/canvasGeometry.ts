@@ -1208,10 +1208,12 @@ export function movePanelVertexWithSnap(
       if (!selectedEdge) return;
       const fixedPoint = selectedEdgeIndex === vertexIndex ? selectedEdge[1] : selectedEdge[0];
       const candidates = vertexEdgeCandidates(panels, panelIndex, selectedPoint, fixedPoint);
-      const originWallCandidates = candidates.filter((candidate) => candidate.sharesProjection
-        && candidate.projectionMin <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
+      const originWallCandidates = candidates.filter((candidate) => (
+        // 選択点をまたぐ辺は、投影の重なりが8mm未満でも局所接合の対向壁になり得る。
+        candidate.projectionMin <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
         && candidate.projectionMax >= -PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
-        && candidate.nearestDistance <= PANEL_VERTEX_JUNCTION_CORNER_MM);
+        && candidate.nearestDistance <= PANEL_VERTEX_JUNCTION_CORNER_MM
+      ));
       const visibleOriginWalls = nearestOriginWallLayer(originWallCandidates);
       const splitOriginWallCandidates = candidates.filter((candidate) => candidate.sharesProjection
         // 分割壁は選択点を横切らなくても、近端が局所接合の範囲内なら同じ壁層として扱う。
