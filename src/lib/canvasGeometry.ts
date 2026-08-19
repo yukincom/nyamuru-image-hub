@@ -16,8 +16,9 @@ export const INNER_FRAME_BOUNDS: Readonly<BBox> = { x: 10, y: 10, w: 190, h: 277
 export const PANEL_SNAP_THRESHOLD_MM = 4;
 export const PANEL_EDGE_LINK_DISTANCE_MM = 8;
 export const PANEL_EDGE_ALIGNMENT_TOLERANCE_MM = 0.15;
-const PANEL_VERTEX_CONTINUATION_OFFSET_MM = PANEL_SNAP_THRESHOLD_MM;
-export const PANEL_CORNER_LINK_DISTANCE_MM = 9;
+const PANEL_VERTEX_JUNCTION_ALONG_GAP_MM = PANEL_EDGE_LINK_DISTANCE_MM + PANEL_SNAP_THRESHOLD_MM;
+const PANEL_VERTEX_JUNCTION_CORNER_MM = 13;
+const PANEL_VERTEX_WALL_OFFSET_TOLERANCE_MM = PANEL_SNAP_THRESHOLD_MM;
 
 export interface PanelGutterSettings {
   /** 上下に並ぶコマ同士の間隔。 */
@@ -241,6 +242,69 @@ function pointBoundaryLocks(
   return locks;
 }
 
+interface PointLegalBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
+/** 既に内枠外にある点は現位置まで許容するが、それ以上外側へは動かさない。 */
+function pointLegalBounds(panel: Panel, original: [number, number]): PointLegalBounds {
+  const minX = panel.bleed?.includes('left') ? 0 : INNER_FRAME_BOUNDS.x;
+  const maxX = panel.bleed?.includes('right') ? 210 : INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
+  const minY = panel.bleed?.includes('top') ? 0 : INNER_FRAME_BOUNDS.y;
+  const maxY = panel.bleed?.includes('bottom') ? 297 : INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+  return {
+    minX: Math.min(original[0], minX),
+    maxX: Math.max(original[0], maxX),
+    minY: Math.min(original[1], minY),
+    maxY: Math.max(original[1], maxY),
+  };
+}
+
+function pointWithinLegalBounds(point: [number, number], bounds: PointLegalBounds, tolerance = 1e-6): boolean {
+  return point[0] >= bounds.minX - tolerance && point[0] <= bounds.maxX + tolerance
+    && point[1] >= bounds.minY - tolerance && point[1] <= bounds.maxY + tolerance;
+}
+
+/** 斜め移動が境界へ達した時、成分別clampではなく移動線分上の最後の合法点で止める。 */
+function lastLegalPointOnSegment(
+  original: [number, number],
+  target: [number, number],
+  bounds: PointLegalBounds,
+): [number, number] {
+  const deltaX = target[0] - original[0], deltaY = target[1] - original[1];
+  let ratio = 1;
+  if (deltaX > 0) ratio = Math.min(ratio, (bounds.maxX - original[0]) / deltaX);
+  else if (deltaX < 0) ratio = Math.min(ratio, (bounds.minX - original[0]) / deltaX);
+  if (deltaY > 0) ratio = Math.min(ratio, (bounds.maxY - original[1]) / deltaY);
+  else if (deltaY < 0) ratio = Math.min(ratio, (bounds.minY - original[1]) / deltaY);
+  ratio = clamp(ratio, 0, 1);
+  return [
+    roundMm(original[0] + deltaX * ratio),
+    roundMm(original[1] + deltaY * ratio),
+  ];
+}
+
+function constrainedJunctionPoint(
+  panel: Panel,
+  original: [number, number],
+  x: number,
+  y: number,
+): [number, number] {
+  const locks = pointBoundaryLocks(panel, original);
+  const bounds = pointLegalBounds(panel, original);
+  if (locks.x !== undefined && locks.y !== undefined) return [locks.x, locks.y];
+  if (locks.x !== undefined) {
+    return [locks.x, roundMm(clamp(y, bounds.minY, bounds.maxY))];
+  }
+  if (locks.y !== undefined) {
+    return [roundMm(clamp(x, bounds.minX, bounds.maxX)), locks.y];
+  }
+  return lastLegalPointOnSegment(original, [x, y], bounds);
+}
+
 function edgeIsLockedBoundary(panel: Panel, edgeIndex: number): boolean {
   const edge = edgePoints(panel, edgeIndex);
   if (!edge) return false;
@@ -314,89 +378,6 @@ export function findLinkedPanelEdges(
     maxDistance,
     PANEL_EDGE_ALIGNMENT_TOLERANCE_MM,
   );
-}
-
-/**
- * 頂点変形では、交差する溝をまたいだ延長辺に数mmのズレがあっても同じ境界として扱う。
- * 辺ドラッグの「一度吸着してから連動する」判定とは分け、既存の吸着操作を維持する。
- */
-function findVertexLinkedPanelEdges(
-  panels: Panel[],
-  panelIndex: number,
-  edgeIndex: number,
-): PanelEdgeReference[] {
-  return findRelatedPanelEdges(
-    panels,
-    panelIndex,
-    edgeIndex,
-    PANEL_EDGE_LINK_DISTANCE_MM,
-    PANEL_VERTEX_CONTINUATION_OFFSET_MM,
-  );
-}
-
-interface PanelVertexReference {
-  panelIndex: number;
-  vertexIndex: number;
-  edgeDistance: number;
-  cornerDistance: number;
-}
-
-/** 選択頂点の近くで角だけが接する、平行な隣辺の頂点を探す。 */
-function findCornerLinkedPanelVertices(
-  panels: Panel[],
-  panelIndex: number,
-  edgeIndex: number,
-  selectedPoint: [number, number],
-  maxEdgeDistance = PANEL_EDGE_LINK_DISTANCE_MM,
-  maxCornerDistance = PANEL_CORNER_LINK_DISTANCE_MM,
-): PanelVertexReference[] {
-  const selectedPanel = panels[panelIndex];
-  const selectedEdge = selectedPanel && edgePoints(selectedPanel, edgeIndex);
-  if (!selectedEdge) return [];
-  const [start, end] = selectedEdge;
-  const dx = end[0] - start[0], dy = end[1] - start[1];
-  const length = Math.hypot(dx, dy);
-  if (!length) return [];
-  const references: PanelVertexReference[] = [];
-
-  panels.forEach((panel, candidatePanelIndex) => {
-    if (candidatePanelIndex === panelIndex) return;
-    const points = panelShapePoints(panel);
-    points.forEach((candidateStart, candidateEdgeIndex) => {
-      const candidateEndIndex = (candidateEdgeIndex + 1) % points.length;
-      const candidateEnd = points[candidateEndIndex];
-      const cdx = candidateEnd[0] - candidateStart[0], cdy = candidateEnd[1] - candidateStart[1];
-      const candidateLength = Math.hypot(cdx, cdy);
-      if (!candidateLength) return;
-      const parallelError = Math.abs(dx * cdy - dy * cdx) / (length * candidateLength);
-      if (parallelError > 0.08) return;
-      const edgeDistance = (pointLineDistance(candidateStart, start, end) + pointLineDistance(candidateEnd, start, end)) / 2;
-      if (edgeDistance > maxEdgeDistance) return;
-      const candidates = [
-        { vertexIndex: candidateEdgeIndex, distance: Math.hypot(candidateStart[0] - selectedPoint[0], candidateStart[1] - selectedPoint[1]) },
-        { vertexIndex: candidateEndIndex, distance: Math.hypot(candidateEnd[0] - selectedPoint[0], candidateEnd[1] - selectedPoint[1]) },
-      ];
-      const nearest = candidates.sort((left, right) => left.distance - right.distance)[0];
-      if (nearest.distance <= maxCornerDistance) references.push({
-        panelIndex: candidatePanelIndex,
-        vertexIndex: nearest.vertexIndex,
-        edgeDistance,
-        cornerDistance: nearest.distance,
-      });
-    });
-  });
-  const unique = new Map<string, PanelVertexReference>();
-  references.forEach((reference) => {
-    const key = `${reference.panelIndex}:${reference.vertexIndex}`;
-    const current = unique.get(key);
-    if (!current
-      || reference.edgeDistance < current.edgeDistance
-      || (reference.edgeDistance === current.edgeDistance && reference.cornerDistance < current.cornerDistance)) {
-      unique.set(key, reference);
-    }
-  });
-  return [...unique.values()]
-    .sort((left, right) => left.edgeDistance - right.edgeDistance || left.cornerDistance - right.cornerDistance);
 }
 
 /** 対向する平行辺との距離が作品の縦横コマ間隔へ近づいたとき、選択辺を正確な間隔へ吸着する。 */
@@ -807,6 +788,34 @@ export function snapPointToInnerFrame(
   };
 }
 
+/**
+ * ドラッグ開始直後は既存のコマ間隔スナップを抑え、元位置へ戻った時は厳密に復元する。
+ * これにより、開始点のすぐ横にある別の吸着候補へ逆向きに飛ばない。
+ * コマスナップOFFでは0.1mm単位の微調整を許し、丸め後の完全な開始位置だけ復元する。
+ */
+export function resolveVertexDragStartZone(
+  x: number,
+  y: number,
+  startX: number,
+  startY: number,
+  enabled = true,
+  restoreThreshold = 0.5,
+  suppressSnapThreshold = PANEL_SNAP_THRESHOLD_MM,
+): { x: number; y: number; suppressOtherSnaps: boolean; restored: boolean } {
+  const distance = Math.hypot(x - startX, y - startY);
+  const effectiveRestoreThreshold = enabled ? restoreThreshold : 0.05;
+  if (distance <= effectiveRestoreThreshold) {
+    return { x: startX, y: startY, suppressOtherSnaps: true, restored: true };
+  }
+  if (!enabled) return { x, y, suppressOtherSnaps: false, restored: false };
+  return {
+    x,
+    y,
+    suppressOtherSnaps: distance <= suppressSnapThreshold,
+    restored: false,
+  };
+}
+
 /** 辺の2端点へ同じ移動量を適用したまま、最も近い内枠線へ吸着させる。 */
 export function snapEdgeDeltaToInnerFrame(
   start: [number, number],
@@ -848,43 +857,6 @@ function edgeReferences(
       if (visited.has(key)) return;
       visited.add(key);
       references.push(linked);
-    });
-  }
-  return references;
-}
-
-/** 頂点から伸びる境界線を、向かい合う辺・延長辺の連結成分として最後までたどる。 */
-function vertexEdgeReferences(
-  panels: Panel[],
-  panelIndex: number,
-  edgeIndex: number,
-  selectedPoint: [number, number],
-  fixedPoint: [number, number],
-): PanelEdgeReference[] {
-  const references: PanelEdgeReference[] = [{ panelIndex, edgeIndex }];
-  const queue: PanelEdgeReference[] = [{ panelIndex, edgeIndex }];
-  const visited = new Set([`${panelIndex}:${edgeIndex}`]);
-  const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
-  const lengthSquared = vectorX * vectorX + vectorY * vectorY;
-  if (!lengthSquared) return references;
-  for (let cursor = 0; cursor < queue.length; cursor += 1) {
-    const reference = queue[cursor];
-    findVertexLinkedPanelEdges(panels, reference.panelIndex, reference.edgeIndex).forEach((linked) => {
-      const key = `${linked.panelIndex}:${linked.edgeIndex}`;
-      if (visited.has(key)) return;
-      visited.add(key);
-      // 内枠・タチキリそのものは変形させず、境界の反対側へも伝播させない。
-      if (edgeIsLockedBoundary(panels[linked.panelIndex], linked.edgeIndex)) return;
-      references.push(linked);
-      const candidatePoints = panelShapePoints(panels[linked.panelIndex]);
-      const candidateIndices = [linked.edgeIndex, (linked.edgeIndex + 1) % candidatePoints.length];
-      // 片端だけが動く辺は角の局所変形で止める。両端が動く辺だけを次の境界へ渡す。
-      const propagates = candidateIndices.every((candidateIndex) => {
-        const point = candidatePoints[candidateIndex];
-        const t = ((point[0] - selectedPoint[0]) * vectorX + (point[1] - selectedPoint[1]) * vectorY) / lengthSquared;
-        return clamp(1 - t, 0, 1) > 1e-6;
-      });
-      if (propagates) queue.push(linked);
     });
   }
   return references;
@@ -972,27 +944,61 @@ export function movePanelEdge(
   return { ...delta, linkedEdges: Math.max(0, references.length - 1) };
 }
 
-interface VertexMove {
-  weightX: number;
-  weightY: number;
+interface VertexEdgeCandidate extends PanelEdgeReference {
+  signedNormalDistance: number;
+  projectionMin: number;
+  projectionMax: number;
+  sharesProjection: boolean;
+  originGap: number;
+  nearestVertexIndex: number;
+  nearestDistance: number;
 }
 
-interface EdgeDeformation {
+interface VertexSplitDeformation {
   selectedEdgeIndex: number;
   panelIndex: number;
   edgeIndex: number;
 }
 
-interface CornerProjection {
-  normalX: number;
-  normalY: number;
-  edgeDistance: number;
-  cornerDistance: number;
+interface VertexJunctionReference {
+  panelIndex: number;
+  vertexIndex: number;
+  distance: number;
 }
 
 interface LineConstraint {
   point: [number, number];
   vector: [number, number];
+  preferred?: [number, number];
+}
+
+/** 直線を合法矩形で切り、preferredに最も近い直線上の点を返す。 */
+function pointOnLineWithinBounds(
+  line: LineConstraint,
+  preferred: [number, number],
+  bounds: PointLegalBounds,
+): [number, number] | null {
+  let minimumParameter = -Infinity;
+  let maximumParameter = Infinity;
+  const restrict = (origin: number, direction: number, minimum: number, maximum: number): boolean => {
+    if (Math.abs(direction) <= 1e-6) return origin >= minimum - 1e-6 && origin <= maximum + 1e-6;
+    const first = (minimum - origin) / direction;
+    const second = (maximum - origin) / direction;
+    minimumParameter = Math.max(minimumParameter, Math.min(first, second));
+    maximumParameter = Math.min(maximumParameter, Math.max(first, second));
+    return minimumParameter <= maximumParameter + 1e-6;
+  };
+  if (!restrict(line.point[0], line.vector[0], bounds.minX, bounds.maxX)
+    || !restrict(line.point[1], line.vector[1], bounds.minY, bounds.maxY)) return null;
+  const lengthSquared = line.vector[0] ** 2 + line.vector[1] ** 2;
+  if (lengthSquared <= 1e-12) return null;
+  const preferredParameter = ((preferred[0] - line.point[0]) * line.vector[0]
+    + (preferred[1] - line.point[1]) * line.vector[1]) / lengthSquared;
+  const parameter = clamp(preferredParameter, minimumParameter, maximumParameter);
+  return [
+    roundMm(line.point[0] + line.vector[0] * parameter),
+    roundMm(line.point[1] + line.vector[1] * parameter),
+  ];
 }
 
 function constrainedPointOnLine(provisional: [number, number], line: LineConstraint): [number, number] {
@@ -1016,10 +1022,152 @@ function lineIntersection(first: LineConstraint, second: LineConstraint): [numbe
   return [first.point[0] + first.vector[0] * t, first.point[1] + first.vector[1] * t];
 }
 
+function intervalGap(firstMin: number, firstMax: number, secondMin: number, secondMax: number): number {
+  if (firstMax < secondMin) return secondMin - firstMax;
+  if (secondMax < firstMin) return firstMin - secondMax;
+  return 0;
+}
+
+function intervalOverlap(firstMin: number, firstMax: number, secondMin: number, secondMax: number): number {
+  return Math.max(0, Math.min(firstMax, secondMax) - Math.max(firstMin, secondMin));
+}
+
+function sameNormalSide(first: number, second: number): boolean {
+  const firstOnLine = Math.abs(first) <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM;
+  const secondOnLine = Math.abs(second) <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM;
+  return (firstOnLine && secondOnLine)
+    || (!firstOnLine && !secondOnLine && Math.sign(first) === Math.sign(second));
+}
+
+/** 選択頂点から伸びる1本の入射辺に、直接向かい合う辺だけを分類する。 */
+function vertexEdgeCandidates(
+  panels: Panel[],
+  selectedPanelIndex: number,
+  selectedPoint: [number, number],
+  fixedPoint: [number, number],
+): VertexEdgeCandidate[] {
+  const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
+  const length = Math.hypot(vectorX, vectorY);
+  if (!length) return [];
+  const unitX = vectorX / length, unitY = vectorY / length;
+  const normalX = -unitY, normalY = unitX;
+  const candidates: VertexEdgeCandidate[] = [];
+
+  panels.forEach((panel, panelIndex) => {
+    if (panelIndex === selectedPanelIndex) return;
+    const points = panelShapePoints(panel);
+    points.forEach((candidateStart, edgeIndex) => {
+      if (edgeIsLockedBoundary(panel, edgeIndex)) return;
+      const endIndex = (edgeIndex + 1) % points.length;
+      const candidateEnd = points[endIndex];
+      const candidateVectorX = candidateEnd[0] - candidateStart[0];
+      const candidateVectorY = candidateEnd[1] - candidateStart[1];
+      const candidateLength = Math.hypot(candidateVectorX, candidateVectorY);
+      if (!candidateLength) return;
+      const parallelError = Math.abs(vectorX * candidateVectorY - vectorY * candidateVectorX) / (length * candidateLength);
+      if (parallelError > 0.08) return;
+
+      const signedDistanceStart = (candidateStart[0] - selectedPoint[0]) * normalX
+        + (candidateStart[1] - selectedPoint[1]) * normalY;
+      const signedDistanceEnd = (candidateEnd[0] - selectedPoint[0]) * normalX
+        + (candidateEnd[1] - selectedPoint[1]) * normalY;
+      const normalDistance = (Math.abs(signedDistanceStart) + Math.abs(signedDistanceEnd)) / 2;
+      if (normalDistance > PANEL_EDGE_LINK_DISTANCE_MM) return;
+
+      const projectionA = (candidateStart[0] - selectedPoint[0]) * unitX
+        + (candidateStart[1] - selectedPoint[1]) * unitY;
+      const projectionB = (candidateEnd[0] - selectedPoint[0]) * unitX
+        + (candidateEnd[1] - selectedPoint[1]) * unitY;
+      const projectionMin = Math.min(projectionA, projectionB);
+      const projectionMax = Math.max(projectionA, projectionB);
+      const projectionOverlap = Math.max(0, Math.min(length, projectionMax) - Math.max(0, projectionMin));
+      const sharesProjection = projectionOverlap >= Math.min(8, Math.min(length, candidateLength) * 0.25);
+      const originGap = projectionMin <= 0 && projectionMax >= 0
+        ? 0
+        : Math.min(Math.abs(projectionMin), Math.abs(projectionMax));
+      const startDistance = Math.hypot(candidateStart[0] - selectedPoint[0], candidateStart[1] - selectedPoint[1]);
+      const endDistance = Math.hypot(candidateEnd[0] - selectedPoint[0], candidateEnd[1] - selectedPoint[1]);
+      const nearestIsStart = startDistance <= endDistance;
+      candidates.push({
+        panelIndex,
+        edgeIndex,
+        signedNormalDistance: (signedDistanceStart + signedDistanceEnd) / 2,
+        projectionMin,
+        projectionMax,
+        sharesProjection,
+        originGap,
+        nearestVertexIndex: nearestIsStart ? edgeIndex : endIndex,
+        nearestDistance: nearestIsStart ? startDistance : endDistance,
+      });
+    });
+  });
+  return candidates;
+}
+
+/** 同じ対向壁を分割している辺を、選択入射辺から直接見える範囲だけでまとめる。 */
+function splitWallGroups(candidates: VertexEdgeCandidate[]): VertexEdgeCandidate[][] {
+  const projected = candidates.filter((candidate) => candidate.sharesProjection);
+  const visited = new Set<number>();
+  const groups: VertexEdgeCandidate[][] = [];
+  projected.forEach((candidate, startIndex) => {
+    if (visited.has(startIndex)) return;
+    visited.add(startIndex);
+    const group: VertexEdgeCandidate[] = [candidate];
+    const queue = [startIndex];
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const current = projected[queue[cursor]];
+      projected.forEach((other, otherIndex) => {
+        if (visited.has(otherIndex)) return;
+        if (!sameNormalSide(current.signedNormalDistance, other.signedNormalDistance)) return;
+        if (Math.abs(current.signedNormalDistance - other.signedNormalDistance) > PANEL_VERTEX_WALL_OFFSET_TOLERANCE_MM) return;
+        const gap = intervalGap(current.projectionMin, current.projectionMax, other.projectionMin, other.projectionMax);
+        const overlap = intervalOverlap(current.projectionMin, current.projectionMax, other.projectionMin, other.projectionMax);
+        if (gap > PANEL_VERTEX_JUNCTION_ALONG_GAP_MM || overlap > PANEL_VERTEX_WALL_OFFSET_TOLERANCE_MM) return;
+        visited.add(otherIndex);
+        queue.push(otherIndex);
+        group.push(other);
+      });
+    }
+    if (group.length >= 2) groups.push(group);
+  });
+  return groups;
+}
+
+/** 選択点へ届く対向壁が重なる場合、同じ法線側で最も近い壁層だけを可視とする。 */
+function nearestOriginWallLayer(candidates: VertexEdgeCandidate[]): VertexEdgeCandidate[] {
+  return candidates.filter((candidate) => {
+    const sameSide = candidates.filter((other) => sameNormalSide(
+      candidate.signedNormalDistance,
+      other.signedNormalDistance,
+    ));
+    const nearestDistance = Math.min(...sameSide.map((other) => Math.abs(other.signedNormalDistance)));
+    return Math.abs(candidate.signedNormalDistance) - nearestDistance <= PANEL_VERTEX_WALL_OFFSET_TOLERANCE_MM;
+  });
+}
+
+/** 選択点は自分自身の内枠・タチキリ線だけを守り、追従点の都合では止めない。 */
+function constrainedSelectedPoint(panel: Panel, original: [number, number], x: number, y: number): [number, number] {
+  const locks = pointBoundaryLocks(panel, original);
+  let nextX = roundMm(clamp(x, 0, 210));
+  let nextY = roundMm(clamp(y, 0, 297));
+  if (locks.x !== undefined) {
+    nextX = locks.x;
+    if (locks.x === INNER_FRAME_BOUNDS.x || locks.x === INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w) {
+      nextY = roundMm(clamp(nextY, INNER_FRAME_BOUNDS.y, INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h));
+    }
+  }
+  if (locks.y !== undefined) {
+    nextY = locks.y;
+    if (locks.y === INNER_FRAME_BOUNDS.y || locks.y === INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h) {
+      nextX = roundMm(clamp(nextX, INNER_FRAME_BOUNDS.x, INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w));
+    }
+  }
+  return [nextX, nextY];
+}
+
 /**
- * 多角形の1頂点を動かす。linkPanels=true では、向かい合う辺へ間隔を保った
- * 変形を渡し、同じ境界線上の隣辺へ傾きをつなぐ。角だけが近い場合はその頂点
- * だけを追従させる。内枠・タチキリ上の頂点は線上に拘束し、外側へ動かさない。
+ * 多角形の1頂点を動かす。linkPanels=true のA+連動は開始配置から直接見える
+ * 接合点と、複数辺に分割された対向壁だけへ限定し、次の溝へは伝播しない。
  */
 export function movePanelVertexWithSnap(
   panels: Panel[],
@@ -1034,25 +1182,23 @@ export function movePanelVertexWithSnap(
   const selectedPoints = panelShapePoints(selectedPanel);
   const selectedPoint = selectedPoints[vertexIndex];
   if (!selectedPoint) return;
-  const selectedLocks = pointBoundaryLocks(selectedPanel, selectedPoint);
-  const targetX = selectedLocks.x ?? roundMm(clamp(x, 0, 210));
-  const targetY = selectedLocks.y ?? roundMm(clamp(y, 0, 297));
-  const deltaX = targetX - selectedPoint[0], deltaY = targetY - selectedPoint[1];
-  const moves = new Map<string, VertexMove>();
-  const clampInfluences = new Map<string, VertexMove>();
-  const cornerProjections = new Map<string, CornerProjection>();
-  const edgeDeformations: EdgeDeformation[] = [];
-  const deformationKeys = new Set<string>();
-  const mark = (target: Map<string, VertexMove>, pi: number, vi: number, weightX: number, weightY: number) => {
-    if (weightX <= 0 && weightY <= 0) return;
-    const key = `${pi}:${vi}`;
-    const current = target.get(key) ?? { weightX: 0, weightY: 0 };
-    current.weightX = Math.max(current.weightX, clamp(weightX, 0, 1));
-    current.weightY = Math.max(current.weightY, clamp(weightY, 0, 1));
-    target.set(key, current);
+  const selectedTarget = constrainedSelectedPoint(selectedPanel, selectedPoint, x, y);
+  const deltaX = roundMm(selectedTarget[0] - selectedPoint[0]);
+  const deltaY = roundMm(selectedTarget[1] - selectedPoint[1]);
+  const junctions = new Map<string, VertexJunctionReference>();
+  const splitDeformations: VertexSplitDeformation[] = [];
+  const splitKeys = new Set<string>();
+  const addJunction = (candidate: VertexEdgeCandidate) => {
+    const key = `${candidate.panelIndex}:${candidate.nearestVertexIndex}`;
+    const current = junctions.get(key);
+    if (!current || candidate.nearestDistance < current.distance) {
+      junctions.set(key, {
+        panelIndex: candidate.panelIndex,
+        vertexIndex: candidate.nearestVertexIndex,
+        distance: candidate.nearestDistance,
+      });
+    }
   };
-  mark(moves, panelIndex, vertexIndex, 1, 1);
-  mark(clampInfluences, panelIndex, vertexIndex, 1, 1);
 
   if (linkPanels) {
     const count = selectedPoints.length;
@@ -1061,84 +1207,81 @@ export function movePanelVertexWithSnap(
       const selectedEdge = edgePoints(selectedPanel, selectedEdgeIndex);
       if (!selectedEdge) return;
       const fixedPoint = selectedEdgeIndex === vertexIndex ? selectedEdge[1] : selectedEdge[0];
-      const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
-      const lengthSquared = vectorX * vectorX + vectorY * vectorY;
-      if (!lengthSquared) return;
-      vertexEdgeReferences(panels, panelIndex, selectedEdgeIndex, selectedPoint, fixedPoint).slice(1).forEach((reference) => {
-        if (edgeIsLockedBoundary(panels[reference.panelIndex], reference.edgeIndex)) return;
-        const deformationKey = `${selectedEdgeIndex}>${reference.panelIndex}:${reference.edgeIndex}`;
-        if (!deformationKeys.has(deformationKey)) {
-          deformationKeys.add(deformationKey);
-          edgeDeformations.push({ selectedEdgeIndex, ...reference });
-        }
-        const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
-        const candidateVertexIndices = [reference.edgeIndex, (reference.edgeIndex + 1) % candidatePoints.length];
-        candidateVertexIndices.forEach((candidateVertexIndex) => {
-          const point = candidatePoints[candidateVertexIndex];
-          const t = ((point[0] - selectedPoint[0]) * vectorX + (point[1] - selectedPoint[1]) * vectorY) / lengthSquared;
-          const weight = clamp(1 - t, 0, 1);
-          mark(clampInfluences, reference.panelIndex, candidateVertexIndex, weight, weight);
+      const candidates = vertexEdgeCandidates(panels, panelIndex, selectedPoint, fixedPoint);
+      const originWallCandidates = candidates.filter((candidate) => candidate.sharesProjection
+        && candidate.projectionMin <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
+        && candidate.projectionMax >= -PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
+        && candidate.nearestDistance <= PANEL_VERTEX_JUNCTION_CORNER_MM);
+      const visibleOriginWalls = nearestOriginWallLayer(originWallCandidates);
+      const splitOriginWallCandidates = candidates.filter((candidate) => candidate.sharesProjection
+        // 分割壁は選択点を横切らなくても、近端が局所接合の範囲内なら同じ壁層として扱う。
+        && candidate.originGap <= PANEL_VERTEX_JUNCTION_ALONG_GAP_MM
+        && candidate.nearestDistance <= PANEL_VERTEX_JUNCTION_CORNER_MM);
+      const visibleSplitOriginWalls = nearestOriginWallLayer(splitOriginWallCandidates);
+      const groups = splitWallGroups(candidates)
+        // 分割壁も選択点から見える最前面レイヤーだけ。狭いコマの反対壁へ渡らない。
+        .filter((group) => group.some((candidate) => visibleSplitOriginWalls.includes(candidate)));
+      const groupedEdges = new Set<string>();
+      groups.forEach((group) => group.forEach((candidate) => {
+        const key = `${candidate.panelIndex}:${candidate.edgeIndex}`;
+        groupedEdges.add(key);
+        const deformationKey = `${selectedEdgeIndex}>${key}`;
+        if (splitKeys.has(deformationKey)) return;
+        splitKeys.add(deformationKey);
+        splitDeformations.push({ selectedEdgeIndex, panelIndex: candidate.panelIndex, edgeIndex: candidate.edgeIndex });
+      }));
+
+      const nearbyExtensions = candidates.filter((candidate) => !candidate.sharesProjection
+        && candidate.originGap <= PANEL_VERTEX_JUNCTION_ALONG_GAP_MM
+        && candidate.nearestDistance <= PANEL_VERTEX_JUNCTION_CORNER_MM);
+      const continuations = nearbyExtensions.filter((candidate) => (
+        // 局所接合は選択点側へ続く辺だけ。固定端の先にある無関係な短辺は拾わない。
+        candidate.projectionMax <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
+      ));
+      continuations.forEach(addJunction);
+
+      // 単独の対向壁は辺全体を平行化せず、開始点側の近端だけを接合として動かす。
+      const singletonOpposingJunctions = visibleOriginWalls
+        .filter((candidate) => !groupedEdges.has(`${candidate.panelIndex}:${candidate.edgeIndex}`))
+        .filter((candidate) => {
+          const sameWallContinuation = continuations.some((continuation) => sameNormalSide(
+            continuation.signedNormalDistance,
+            candidate.signedNormalDistance,
+          ) && Math.abs(continuation.signedNormalDistance - candidate.signedNormalDistance)
+            <= PANEL_VERTEX_WALL_OFFSET_TOLERANCE_MM);
+          return !sameWallContinuation;
         });
-      });
-      findCornerLinkedPanelVertices(panels, panelIndex, selectedEdgeIndex, selectedPoint).forEach((reference) => {
-        const length = Math.sqrt(lengthSquared);
-        const candidate: CornerProjection = {
-          normalX: -vectorY / length,
-          normalY: vectorX / length,
-          edgeDistance: reference.edgeDistance,
-          cornerDistance: reference.cornerDistance,
-        };
-        const key = `${reference.panelIndex}:${reference.vertexIndex}`;
-        const current = cornerProjections.get(key);
-        if (!current
-          || candidate.edgeDistance < current.edgeDistance
-          || (candidate.edgeDistance === current.edgeDistance && candidate.cornerDistance < current.cornerDistance)) {
-          cornerProjections.set(key, candidate);
-        }
-        mark(clampInfluences, reference.panelIndex, reference.vertexIndex, 1, 1);
-      });
+      singletonOpposingJunctions.forEach(addJunction);
     });
   }
 
-  // 追従頂点のどれかが紙端へ先に達した場合は、全頂点を同じ比率の移動量で止める。
-  // 個別に clamp すると斜め辺の角度や揃っていたX/Yが崩れるため、移動量を一括制限する。
-  let minDeltaX = -Infinity, maxDeltaX = Infinity, minDeltaY = -Infinity, maxDeltaY = Infinity;
-  clampInfluences.forEach((move, key) => {
-    const [pi, vi] = key.split(':').map(Number);
-    const point = panels[pi] && panelShapePoints(panels[pi])[vi];
-    if (!point) return;
-    const locks = pointBoundaryLocks(panels[pi], point);
-    if (move.weightX > 0 && locks.x === undefined) {
-      minDeltaX = Math.max(minDeltaX, -point[0] / move.weightX);
-      maxDeltaX = Math.min(maxDeltaX, (210 - point[0]) / move.weightX);
-    }
-    if (move.weightY > 0 && locks.y === undefined) {
-      minDeltaY = Math.max(minDeltaY, -point[1] / move.weightY);
-      maxDeltaY = Math.min(maxDeltaY, (297 - point[1]) / move.weightY);
-    }
-  });
-  const linkedDeltaX = roundMm(clamp(deltaX, minDeltaX, maxDeltaX));
-  const linkedDeltaY = roundMm(clamp(deltaY, minDeltaY, maxDeltaY));
-
   const originalPanelPoints = panels.map(panelShapePoints);
-  const nextPanelPoints = originalPanelPoints.map((points, pi) => points.map((point, vi): [number, number] => {
-    const move = moves.get(`${pi}:${vi}`) ?? { weightX: 0, weightY: 0 };
-    const projection = cornerProjections.get(`${pi}:${vi}`);
-    const normalDelta = projection ? linkedDeltaX * projection.normalX + linkedDeltaY * projection.normalY : 0;
-    const locks = pointBoundaryLocks(panels[pi], point);
-    return [
-      locks.x ?? roundMm(point[0] + linkedDeltaX * move.weightX + (projection?.normalX ?? 0) * normalDelta),
-      locks.y ?? roundMm(point[1] + linkedDeltaY * move.weightY + (projection?.normalY ?? 0) * normalDelta),
-    ];
-  }));
+  const nextPanelPoints = originalPanelPoints.map((points) => points.map((point): [number, number] => [
+    roundMm(point[0]),
+    roundMm(point[1]),
+  ]));
+  nextPanelPoints[panelIndex][vertexIndex] = selectedTarget;
+
+  junctions.forEach((reference) => {
+    const original = originalPanelPoints[reference.panelIndex]?.[reference.vertexIndex];
+    const panel = panels[reference.panelIndex];
+    if (!original || !panel) return;
+    nextPanelPoints[reference.panelIndex][reference.vertexIndex] = constrainedJunctionPoint(
+      panel,
+      original,
+      original[0] + deltaX,
+      original[1] + deltaY,
+    );
+  });
+
   const constraints = new Map<string, LineConstraint[]>();
-  edgeDeformations.forEach((deformation) => {
-    const selectedPoints = originalPanelPoints[panelIndex];
-    const selectedNextPoints = nextPanelPoints[panelIndex];
+  splitDeformations.forEach((deformation) => {
     const selectedStartIndex = deformation.selectedEdgeIndex;
     const selectedEndIndex = (selectedStartIndex + 1) % selectedPoints.length;
-    const oldStart = selectedPoints[selectedStartIndex], oldEnd = selectedPoints[selectedEndIndex];
-    const newStart = selectedNextPoints[selectedStartIndex], newEnd = selectedNextPoints[selectedEndIndex];
+    const oldStart = originalPanelPoints[panelIndex][selectedStartIndex];
+    const oldEnd = originalPanelPoints[panelIndex][selectedEndIndex];
+    const newStart = nextPanelPoints[panelIndex][selectedStartIndex];
+    const newEnd = nextPanelPoints[panelIndex][selectedEndIndex];
     const oldVectorX = oldEnd[0] - oldStart[0], oldVectorY = oldEnd[1] - oldStart[1];
     const newVectorX = newEnd[0] - newStart[0], newVectorY = newEnd[1] - newStart[1];
     const oldLength = Math.hypot(oldVectorX, oldVectorY), newLength = Math.hypot(newVectorX, newVectorY);
@@ -1151,55 +1294,83 @@ export function movePanelVertexWithSnap(
       const point = candidatePoints[candidateIndex];
       return sum + (point[0] - oldStart[0]) * oldNormal[0] + (point[1] - oldStart[1]) * oldNormal[1];
     }, 0) / candidateIndices.length;
-    const line: LineConstraint = {
-      point: [newStart[0] + newNormal[0] * distance, newStart[1] + newNormal[1] * distance],
-      vector: [newVectorX, newVectorY],
-    };
+    const linePoint: [number, number] = [
+      newStart[0] + newNormal[0] * distance,
+      newStart[1] + newNormal[1] * distance,
+    ];
+    const oldLengthSquared = oldVectorX * oldVectorX + oldVectorY * oldVectorY;
+    const directionChange = Math.abs(oldVectorX * newVectorY - oldVectorY * newVectorX) / (oldLength * newLength);
     candidateIndices.forEach((candidateIndex) => {
       const key = `${deformation.panelIndex}:${candidateIndex}`;
+      if (junctions.has(key)) return;
+      const candidate = candidatePoints[candidateIndex];
+      const parameter = ((candidate[0] - oldStart[0]) * oldVectorX
+        + (candidate[1] - oldStart[1]) * oldVectorY) / oldLengthSquared;
+      const line: LineConstraint = {
+        point: linePoint,
+        vector: [newVectorX, newVectorY],
+        preferred: directionChange > 0.01 ? [
+          linePoint[0] + newVectorX * parameter,
+          linePoint[1] + newVectorY * parameter,
+        ] : undefined,
+      };
       constraints.set(key, [...(constraints.get(key) ?? []), line]);
     });
   });
 
   constraints.forEach((lines, key) => {
     const [pi, vi] = key.split(':').map(Number);
-    const provisional = nextPanelPoints[pi]?.[vi];
-    if (!provisional || !lines.length) return;
-    const original = originalPanelPoints[pi][vi];
-    const locks = pointBoundaryLocks(panels[pi], original);
+    const original = originalPanelPoints[pi]?.[vi];
+    const panel = panels[pi];
+    if (!original || !panel || !lines.length) return;
+    const locks = pointBoundaryLocks(panel, original);
+    const bounds = pointLegalBounds(panel, original);
     if (locks.x !== undefined && locks.y !== undefined) {
       nextPanelPoints[pi][vi] = [locks.x, locks.y];
       return;
     }
-    let target: [number, number] | null = null;
     if (locks.x !== undefined || locks.y !== undefined) {
       const boundary: LineConstraint = locks.x !== undefined
         ? { point: [locks.x, 0], vector: [0, 1] }
         : { point: [0, locks.y!], vector: [1, 0] };
-      const intersections = lines
-        .map((line) => lineIntersection(line, boundary))
+      const target = lines.map((line) => lineIntersection(line, boundary))
         .filter((point): point is [number, number] => point !== null)
-        .sort((left, right) => Math.hypot(left[0] - provisional[0], left[1] - provisional[1])
-          - Math.hypot(right[0] - provisional[0], right[1] - provisional[1]));
-      target = intersections[0] ?? provisional;
-    } else {
-      for (let first = 0; first < lines.length && !target; first += 1) {
-        for (let second = first + 1; second < lines.length && !target; second += 1) {
-          target = lineIntersection(lines[first], lines[second]);
-        }
-      }
-      target ??= constrainedPointOnLine(provisional, lines[0]);
+        .filter((point) => pointWithinLegalBounds(point, bounds))
+        .sort((left, right) => Math.hypot(left[0] - original[0], left[1] - original[1])
+          - Math.hypot(right[0] - original[0], right[1] - original[1]))[0] ?? original;
+      nextPanelPoints[pi][vi] = [roundMm(target[0]), roundMm(target[1])];
+      return;
     }
-    nextPanelPoints[pi][vi] = [
-      locks.x ?? roundMm(clamp(target[0], 0, 210)),
-      locks.y ?? roundMm(clamp(target[1], 0, 297)),
-    ];
+
+    const intersections: [number, number][] = [];
+    let hasNonParallelPair = false;
+    for (let first = 0; first < lines.length; first += 1) {
+      for (let second = first + 1; second < lines.length; second += 1) {
+        const intersection = lineIntersection(lines[first], lines[second]);
+        if (!intersection) continue;
+        hasNonParallelPair = true;
+        if (pointWithinLegalBounds(intersection, bounds)) intersections.push(intersection);
+      }
+    }
+    if (intersections.length) {
+      const target = intersections.sort((left, right) => Math.hypot(left[0] - original[0], left[1] - original[1])
+        - Math.hypot(right[0] - original[0], right[1] - original[1]))[0];
+      nextPanelPoints[pi][vi] = [roundMm(target[0]), roundMm(target[1])];
+      return;
+    }
+    if (hasNonParallelPair) {
+      // 2本の拘束を同時に満たす合法点がない時は、成分別に歪めず開始時の合法点へ残す。
+      nextPanelPoints[pi][vi] = [roundMm(original[0]), roundMm(original[1])];
+      return;
+    }
+    const preferred = lines[0].preferred ?? constrainedPointOnLine(original, lines[0]);
+    nextPanelPoints[pi][vi] = pointOnLineWithinBounds(lines[0], preferred, bounds)
+      ?? [roundMm(original[0]), roundMm(original[1])];
   });
 
-  const affectedPanels = new Set<number>();
-  moves.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
-  cornerProjections.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
-  constraints.forEach((_, key) => affectedPanels.add(Number(key.split(':')[0])));
+  const affectedPanels = new Set<number>([panelIndex]);
+  junctions.forEach((reference) => affectedPanels.add(reference.panelIndex));
+  splitDeformations.forEach((deformation) => affectedPanels.add(deformation.panelIndex));
   panels.forEach((panel, pi) => {
     if (!affectedPanels.has(pi)) return;
     const nextPoints = nextPanelPoints[pi];

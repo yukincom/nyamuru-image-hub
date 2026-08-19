@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, createShiftAxisSession, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisSession, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, createShiftAxisSession, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisSession, resolveVertexDragStartZone, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -568,27 +568,36 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       const shiftPending = constrained.state.shiftActive && !axis;
       const lockedX = clamp(roundMm(startX + constrained.x), 0, 210);
       const lockedY = clamp(roundMm(startY + constrained.y), 0, 297);
-      const snapped = innerFrameSnap && !shiftPending ? snapPointToInnerFrame(lockedX, lockedY) : { x: lockedX, y: lockedY };
-      // Shift固定中は、内枠スナップにも非選択軸を動かさせない。
-      let point = axis
-        ? (axis === 'x' ? { x: snapped.x, y: lockedY } : { x: lockedX, y: snapped.y })
-        : snapped;
-      if (panelGapSnap && !shiftPending) {
-        point = snapPanelVertexPointToGutter(
-          page.panels,
-          activePanel,
-          vertexIndex,
-          point.x,
-          point.y,
-          panelGutters,
-          undefined,
-          axis,
-        );
+      const startZone = resolveVertexDragStartZone(lockedX, lockedY, startX, startY, panelGapSnap);
+      let point: { x: number; y: number };
+      if (startZone.restored) {
+        point = { x: startZone.x, y: startZone.y };
+      } else {
+        const snapped = innerFrameSnap && !shiftPending
+          ? snapPointToInnerFrame(startZone.x, startZone.y)
+          : { x: startZone.x, y: startZone.y };
+        // Shift固定中は、内枠スナップにも非選択軸を動かさせない。
+        point = axis
+          ? (axis === 'x' ? { x: snapped.x, y: lockedY } : { x: lockedX, y: snapped.y })
+          : snapped;
+        if (panelGapSnap && !shiftPending && !startZone.suppressOtherSnaps) {
+          point = snapPanelVertexPointToGutter(
+            page.panels,
+            activePanel,
+            vertexIndex,
+            point.x,
+            point.y,
+            panelGutters,
+            undefined,
+            axis,
+          );
+        }
       }
       if (axis === 'x') point.y = lockedY;
       if (axis === 'y') point.x = lockedX;
       lastAppliedX = point.x - startX;
       lastAppliedY = point.y - startY;
+      // ドラッグ開始時のコールバックへ絶対座標を渡し、各イベントを開始配置から再計算する。
       onMoveVertex(activePanel, vertexIndex, point.x, point.y, panelSync);
     };
     const finish = () => {

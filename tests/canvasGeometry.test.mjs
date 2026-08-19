@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, createShiftAxisSession, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, resolveShiftAxisSession, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, createShiftAxisSession, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, resolveShiftAxisSession, resolveVertexDragStartZone, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -24,6 +24,15 @@ const page2TopologyPanels = () => [
   { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[108, 102.4], [200, 102.4], [200, 202.1], [108, 202.1]] } },
   { ...rectPanel, id: 4, shape: { type: 'polygon', points: [[10, 102.4], [103, 102.4], [103, 202.1], [10, 202.1]] } },
   { ...rectPanel, id: 5, shape: { type: 'polygon', points: [[10, 208.4], [200, 208.4], [200, 287], [10, 287]] } },
+];
+
+const liveAPlusPanels = () => [
+  { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[110, 10], [200, 10], [200, 72.1], [66.6, 53.9]] } },
+  { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[10, 10], [101.6, 10], [60.2, 53.1], [10, 46.3]] } },
+  { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[69.1, 60.4], [200, 78.2], [200, 140], [122, 140]] } },
+  { ...rectPanel, id: 4, shape: { type: 'polygon', points: [[10, 52.4], [62.6, 59.5], [116.1, 140], [10, 140]] } },
+  { ...rectPanel, id: 5, shape: { type: 'rect', x: 10, y: 146, w: 190, h: 64 } },
+  { ...rectPanel, id: 6, shape: { type: 'rect', x: 10, y: 216, w: 190, h: 71 } },
 ];
 
 const baseInteraction = {
@@ -146,6 +155,27 @@ test('多角形頂点を近い内枠線へスナップする', () => {
   assert.deepEqual(snapPointToInnerFrame(100, 120), { x: 100, y: 120 });
 });
 
+test('頂点ドラッグ開始付近では別のスナップを抑え、元位置へ正確に戻せる', () => {
+  assert.deepEqual(resolveVertexDragStartZone(69.1, 60.4, 69.1, 60.4), {
+    x: 69.1, y: 60.4, suppressOtherSnaps: true, restored: true,
+  });
+  assert.deepEqual(resolveVertexDragStartZone(70.1, 60.4, 69.1, 60.4), {
+    x: 70.1, y: 60.4, suppressOtherSnaps: true, restored: false,
+  });
+  assert.deepEqual(resolveVertexDragStartZone(74.1, 60.4, 69.1, 60.4), {
+    x: 74.1, y: 60.4, suppressOtherSnaps: false, restored: false,
+  });
+  assert.deepEqual(resolveVertexDragStartZone(69.4, 60.4, 69.1, 60.4, false), {
+    x: 69.4, y: 60.4, suppressOtherSnaps: false, restored: false,
+  });
+  assert.deepEqual(resolveVertexDragStartZone(12, 50, 12, 50, false), {
+    x: 12, y: 50, suppressOtherSnaps: true, restored: true,
+  });
+  assert.deepEqual(resolveVertexDragStartZone(12.1, 50, 12, 50, false), {
+    x: 12.1, y: 50, suppressOtherSnaps: false, restored: false,
+  });
+});
+
 test('矩形も辺操作用の時計回り頂点列として扱う', () => {
   assert.deepEqual(panelShapePoints(rectPanel), [[10, 10], [200, 10], [200, 110], [10, 110]]);
 });
@@ -236,6 +266,158 @@ test('1頂点ドラッグでは同じX/Yにあるだけの頂点や離れたコ�
   assert.deepEqual(panels[1].shape.points, [[110, 20], [190, 20], [190, 100], [110, 100]]);
 });
 
+test('局所接合は選択点側の延長だけを追従し、固定端の先にある短辺を拾わない', () => {
+  const selected = { ...rectPanel, shape: { type: 'polygon', points: [[20, 20], [26, 20], [20, 80]] } };
+
+  const beyondFixedEnd = [
+    structuredClone(selected),
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[28, 15], [34, 15], [31, 5]] } },
+  ];
+  movePanelVertexWithSnap(beyondFixedEnd, 0, 0, 15, 20, true);
+  assert.deepEqual(panelShapePoints(beyondFixedEnd[1]), [[28, 15], [34, 15], [31, 5]]);
+
+  const overlappingOnlyAtFixedEnd = [
+    structuredClone(selected),
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[24, 15], [30, 15], [27, 5]] } },
+  ];
+  movePanelVertexWithSnap(overlappingOnlyAtFixedEnd, 0, 0, 15, 20, true);
+  assert.deepEqual(panelShapePoints(overlappingOnlyAtFixedEnd[1]), [[24, 15], [30, 15], [27, 5]]);
+
+  const beforeSelectedPoint = [
+    structuredClone(selected),
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[6, 15], [18, 15], [12, 5]] } },
+  ];
+  movePanelVertexWithSnap(beforeSelectedPoint, 0, 0, 15, 20, true);
+  assert.deepEqual(panelShapePoints(beforeSelectedPoint[1]), [[6, 15], [13, 15], [12, 5]]);
+
+  const touchingSelectedPoint = [
+    structuredClone(selected),
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[12, 15], [20, 15], [16, 5]] } },
+  ];
+  movePanelVertexWithSnap(touchingSelectedPoint, 0, 0, 15, 20, true);
+  assert.deepEqual(panelShapePoints(touchingSelectedPoint[1]), [[12, 15], [15, 15], [16, 5]]);
+
+  const selectedSideWallWithFixedEndNoise = [
+    structuredClone(selected),
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[14, 15], [22, 15], [18, 5]] } },
+    { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[28, 15], [34, 15], [31, 5]] } },
+  ];
+  movePanelVertexWithSnap(selectedSideWallWithFixedEndNoise, 0, 0, 15, 20, true);
+  assert.deepEqual(panelShapePoints(selectedSideWallWithFixedEndNoise[1]), [[14, 15], [17, 15], [18, 5]]);
+  assert.deepEqual(panelShapePoints(selectedSideWallWithFixedEndNoise[2]), [[28, 15], [34, 15], [31, 5]]);
+});
+
+test('A+頂点連動は近い接合点だけへ選択点の拘束後変位を同量伝える', () => {
+  const unchanged = [
+    { panelIndex: 0, vertexIndex: 3, point: [66.6, 53.9] },
+    { panelIndex: 1, vertexIndex: 1, point: [101.6, 10] },
+    { panelIndex: 1, vertexIndex: 3, point: [10, 46.3] },
+    { panelIndex: 3, vertexIndex: 0, point: [10, 52.4] },
+    { panelIndex: 3, vertexIndex: 2, point: [116.1, 140] },
+  ];
+
+  const horizontal = liveAPlusPanels();
+  movePanelVertexWithSnap(horizontal, 2, 0, 77.1, 60.4, true);
+  assert.deepEqual(panelShapePoints(horizontal[2])[0], [77.1, 60.4]);
+  assert.deepEqual(panelShapePoints(horizontal[1])[2], [68.2, 53.1]);
+  assert.deepEqual(panelShapePoints(horizontal[3])[1], [70.6, 59.5]);
+  unchanged.forEach(({ panelIndex, vertexIndex, point }) => {
+    assert.deepEqual(panelShapePoints(horizontal[panelIndex])[vertexIndex], point);
+  });
+
+  const vertical = liveAPlusPanels();
+  movePanelVertexWithSnap(vertical, 2, 0, 69.1, 68.4, true);
+  assert.deepEqual(panelShapePoints(vertical[2])[0], [69.1, 68.4]);
+  assert.deepEqual(panelShapePoints(vertical[1])[2], [60.2, 61.1]);
+  assert.deepEqual(panelShapePoints(vertical[3])[1], [62.6, 67.5]);
+  unchanged.forEach(({ panelIndex, vertexIndex, point }) => {
+    assert.deepEqual(panelShapePoints(vertical[panelIndex])[vertexIndex], point);
+  });
+});
+
+test('追従点の境界制限は選択頂点の到達位置を短縮しない', () => {
+  const panels = liveAPlusPanels();
+  movePanelVertexWithSnap(panels, 2, 0, 69.1, 10, true);
+  assert.deepEqual(panelShapePoints(panels[2])[0], [69.1, 10]);
+  for (const panel of panels) {
+    for (const [x, y] of panelShapePoints(panel)) {
+      assert.ok(x >= 0 && x <= 210 && y >= 0 && y <= 297);
+    }
+  }
+});
+
+test('局所追従点だけが内枠上の合法位置で止まり、選択頂点は要求位置まで動く', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[15, 25], [100, 25], [15, 100]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[5, 20], [10, 20], [7.5, 10]] } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 15, 10, true);
+  assert.deepEqual(panelShapePoints(panels[0]), [[15, 10], [100, 25], [15, 100]]);
+  assert.deepEqual(panelShapePoints(panels[1]), [[5, 20], [10, 10], [7.5, 10]]);
+});
+
+test('狭いコマでは選択点に近い壁だけを局所接合にし、反対側の壁へ渡らない', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[20, 20], [20, 150], [100, 150], [100, 20]] } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 12, y: 20, w: 6, h: 130 } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 20, 30, true);
+  assert.deepEqual(panelShapePoints(panels[0]), [[20, 30], [20, 150], [100, 150], [100, 20]]);
+  assert.deepEqual(panelShapePoints(panels[1]), [[12, 20], [18, 30], [18, 150], [12, 150]]);
+});
+
+test('狭いコマの両壁が分割されていても最前面の分割壁だけを補間する', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[20, 20], [20, 150], [100, 150], [100, 20]] } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 12, y: 20, w: 6, h: 60 } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 12, y: 85, w: 6, h: 65 } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 30, 20, true);
+  const selectedEdge = [panelShapePoints(panels[0])[0], panelShapePoints(panels[0])[1]];
+  const selectedVector = [selectedEdge[1][0] - selectedEdge[0][0], selectedEdge[1][1] - selectedEdge[0][1]];
+  panels.slice(1).forEach((panel, index) => {
+    const points = panelShapePoints(panel);
+    const expectedFarY = index === 0 ? [20, 80] : [85, 150];
+    assert.deepEqual([points[0], points[3]], [[12, expectedFarY[0]], [12, expectedFarY[1]]]);
+    const nearVector = [points[2][0] - points[1][0], points[2][1] - points[1][1]];
+    const parallelError = Math.abs(selectedVector[0] * nearVector[1] - selectedVector[1] * nearVector[0])
+      / (Math.hypot(...selectedVector) * Math.hypot(...nearVector));
+    assert.ok(parallelError < 0.002);
+  });
+});
+
+test('斜めの局所追従点は境界で移動線分上の最後の合法点に止まる', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[190, 95], [100, 95], [100, 50]] } },
+    { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[195, 100], [150, 100], [150, 150], [195, 150]] } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 200, 105, true);
+  assert.deepEqual(panelShapePoints(panels[0])[0], [200, 105]);
+  assert.deepEqual(panelShapePoints(panels[1]), [[200, 105], [150, 100], [150, 150], [195, 150]]);
+});
+
+test('分割対向壁が境界へ達しても変形後の平行線上に残る', () => {
+  const panels = [
+    { ...rectPanel, shape: { type: 'polygon', points: [[20, 20], [200, 20], [200, 280], [20, 280]] } },
+    { ...rectPanel, id: 2, shape: { type: 'rect', x: 28, y: 30, w: 50, h: 100 } },
+    { ...rectPanel, id: 3, shape: { type: 'rect', x: 28, y: 135, w: 50, h: 100 } },
+  ];
+  movePanelVertexWithSnap(panels, 0, 0, 210, 20, true);
+  const selectedEdge = [panelShapePoints(panels[0])[3], panelShapePoints(panels[0])[0]];
+  const selectedVector = [selectedEdge[1][0] - selectedEdge[0][0], selectedEdge[1][1] - selectedEdge[0][1]];
+  for (const panel of panels.slice(1)) {
+    const points = panelShapePoints(panel);
+    const followerVector = [points[0][0] - points[3][0], points[0][1] - points[3][1]];
+    const parallelError = Math.abs(selectedVector[0] * followerVector[1] - selectedVector[1] * followerVector[0])
+      / (Math.hypot(...selectedVector) * Math.hypot(...followerVector));
+    assert.ok(parallelError < 0.002);
+    assert.ok(points[0][0] >= 10 && points[0][0] <= 200 && points[0][1] >= 10 && points[0][1] <= 287);
+    assert.ok(points[3][0] >= 10 && points[3][0] <= 200 && points[3][1] >= 10 && points[3][1] <= 287);
+  }
+  assert.deepEqual(panelShapePoints(panels[1]).slice(1, 3), [[78, 30], [78, 130]]);
+  assert.deepEqual(panelShapePoints(panels[2]).slice(1, 3), [[78, 135], [78, 235]]);
+});
+
 test('頂点ドラッグは隣接辺だけを5mm間隔で傾け、外側の遠い角を動かさない', () => {
   const panels = [
     { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[10, 10], [200, 10], [200, 90], [10, 90]] } },
@@ -305,7 +487,7 @@ test('内枠とタチキリ上の頂点は境界線に沿う方向だけへ動�
   assert.deepEqual(bleedPanel.shape.points[0], [0, 55]);
 });
 
-test('page 2型の角連動と境界連動を分け、無関係な下段へ変形を漏らさない', () => {
+test('page 2型でも接合点だけを同量動かし、遠端や下段へ変形を漏らさない', () => {
   const makePanels = () => [
     { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[96.8, 10], [200, 10], [200, 97.2], [96.8, 97.2]] } },
     { ...rectPanel, id: 2, shape: { type: 'rect', x: 10, y: 10, w: 81.8, h: 87.4 } },
@@ -316,71 +498,67 @@ test('page 2型の角連動と境界連動を分け、無関係な下段へ変�
 
   const fromPanel1 = makePanels();
   movePanelVertexWithSnap(fromPanel1, 0, 3, 96.8, 92.2, true);
-  assert.equal(fromPanel1[3].shape.type, 'polygon');
-  assert.notEqual(fromPanel1[3].shape.points[1][1], 102.4);
-  assert.deepEqual(fromPanel1[3].shape.points.slice(2), [[103, 202.1], [10, 202.1]]);
-  assert.deepEqual(fromPanel1[4].shape, { type: 'rect', x: 10, y: 208.4, w: 190, h: 78.6 });
+  assert.deepEqual(panelShapePoints(fromPanel1[1]), [[10, 10], [91.8, 10], [91.8, 92.4], [10, 97.4]]);
+  assert.deepEqual(panelShapePoints(fromPanel1[3]), [[10, 102.4], [103, 97.4], [103, 202.1], [10, 202.1]]);
+  assert.deepEqual(panelShapePoints(fromPanel1[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
 
   const fromPanel3 = makePanels();
   movePanelVertexWithSnap(fromPanel3, 2, 3, 108, 192.1, true);
-  assert.equal(fromPanel3[3].shape.type, 'polygon');
-  assert.notEqual(fromPanel3[3].shape.points[3][1], 202.1);
-  assert.equal(fromPanel3[3].shape.points[3][0], 10);
-  assert.equal(fromPanel3[4].shape.type, 'polygon');
-  assert.equal(fromPanel3[4].shape.points[0][0], 10);
-  assert.equal(fromPanel3[4].shape.points[1][0], 200);
-  assert.deepEqual(fromPanel3[4].shape.points.slice(2), [[200, 287], [10, 287]]);
+  assert.deepEqual(panelShapePoints(fromPanel3[3]), [[10, 102.4], [103, 102.4], [103, 192.1], [10, 202.1]]);
+  assert.deepEqual(panelShapePoints(fromPanel3[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
 });
 
-test('page 2型の頂点変形は同じ境界グループの2段先まで伝播する', () => {
+test('page 2型の頂点変形は直接接する溝だけで止まり、2段先へ伝播しない', () => {
   const fromPanel3 = page2TopologyPanels();
   movePanelVertexWithSnap(fromPanel3, 2, 0, 108, 112.4, true);
-  const panel2Bottom = panelShapePoints(fromPanel3[1]).slice(2);
-  assert.notEqual(panel2Bottom[0][1], 97.4);
-  assert.notEqual(panel2Bottom[1][1], 97.4);
+  assert.deepEqual(panelShapePoints(fromPanel3[0]), [[96.8, 10], [200, 10], [200, 97.2], [96.8, 107.2]]);
+  assert.deepEqual(panelShapePoints(fromPanel3[1]), [[10, 10], [91.8, 10], [91.8, 97.4], [10, 97.4]]);
+  assert.deepEqual(panelShapePoints(fromPanel3[3]), [[10, 102.4], [103, 112.4], [103, 202.1], [10, 202.1]]);
   assert.deepEqual(panelShapePoints(fromPanel3[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
 
   const fromPanel4 = page2TopologyPanels();
   movePanelVertexWithSnap(fromPanel4, 3, 1, 103, 112.4, true);
-  assert.equal(panelShapePoints(fromPanel4[0])[2][0], 200);
-  assert.notEqual(panelShapePoints(fromPanel4[0])[2][1], 97.2);
+  assert.deepEqual(panelShapePoints(fromPanel4[0]), [[96.8, 10], [200, 10], [200, 97.2], [96.8, 107.2]]);
+  assert.deepEqual(panelShapePoints(fromPanel4[1]), [[10, 10], [91.8, 10], [91.8, 97.4], [10, 97.4]]);
+  assert.deepEqual(panelShapePoints(fromPanel4[2]), [[108, 112.4], [200, 102.4], [200, 202.1], [108, 202.1]]);
   assert.deepEqual(panelShapePoints(fromPanel4[4]), [[10, 208.4], [200, 208.4], [200, 287], [10, 287]]);
 });
 
-test('頂点を辺に沿って動かしても、平行な下段コマの幅を変えない', () => {
+test('頂点を辺に沿って動かすと近い接合点だけが同量追従する', () => {
   for (const targetX of [86.8, 106.8]) {
     const panels = page2TopologyPanels();
+    const deltaX = targetX - 96.8;
     const panel3Before = panelShapePoints(panels[2]);
     const panel4Before = panelShapePoints(panels[3]);
     movePanelVertexWithSnap(panels, 0, 3, targetX, 97.2, true);
     assert.deepEqual(panelShapePoints(panels[2]), panel3Before);
-    assert.deepEqual(panelShapePoints(panels[3]), panel4Before);
+    assert.deepEqual(panelShapePoints(panels[1]), [[10, 10], [91.8, 10], [91.8 + deltaX, 97.4], [10, 97.4]]);
+    assert.deepEqual(panelShapePoints(panels[3]), [panel4Before[0], [103 + deltaX, 102.4], panel4Before[2], panel4Before[3]]);
   }
 });
 
-test('page 1型の頂点変形は数mmずれた延長辺へ傾きを伝播する', () => {
+test('page 1型の短い切れ目でも近端だけが接合追従し、遠端は動かない', () => {
   const fromPanel5 = page1TopologyPanels();
   movePanelVertexWithSnap(fromPanel5, 4, 1, 131.6, 228.8, true);
-  assert.equal(panelShapePoints(fromPanel5[3])[1][1], 173.2);
-  assert.notEqual(panelShapePoints(fromPanel5[3])[1][0], 120.3);
-  assert.deepEqual(panelShapePoints(fromPanel5[3])[0], [10, 173.2]);
+  assert.deepEqual(panelShapePoints(fromPanel5[3]), [[10, 173.2], [120.3, 173.2], [130.3, 224.1], [10, 224.1]]);
+  assert.deepEqual(panelShapePoints(fromPanel5[2]), [[126.6, 172.9], [200, 172.9], [200, 287], [126.6, 287]]);
 
   const fromPanel4 = page1TopologyPanels();
   movePanelVertexWithSnap(fromPanel4, 3, 0, 10, 183.2, true);
-  assert.equal(panelShapePoints(fromPanel4[2])[1][0], 200);
-  assert.notEqual(panelShapePoints(fromPanel4[2])[1][1], 172.9);
-  assert.deepEqual(panelShapePoints(fromPanel4[2]).slice(2), [[200, 287], [126.6, 287]]);
+  assert.deepEqual(panelShapePoints(fromPanel4[1]), [[10, 120.2], [200, 120.2], [200, 167.9], [10, 177.5]]);
+  assert.deepEqual(panelShapePoints(fromPanel4[2]), [[126.6, 172.9], [200, 172.9], [200, 287], [126.6, 287]]);
+  assert.deepEqual(panelShapePoints(fromPanel4[4]), [[10, 229.1], [121.6, 228.8], [121.6, 287], [10, 287]]);
 });
 
-test('連動頂点が紙端へ達したら法線方向だけを止め、接線方向は維持する', () => {
+test('追従点が紙端に留まっても選択頂点は自身の要求位置まで動く', () => {
   const panels = [
     { ...rectPanel, shape: { type: 'polygon', points: [[10, 200], [100, 250], [90, 290], [10, 290]] } },
     { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[105, 257], [195, 257], [195, 297], [95, 297]] } },
   ];
   movePanelVertexWithSnap(panels, 0, 2, 93, 297, true);
-  assert.deepEqual(panels[0].shape.points[2], [93, 290]);
+  assert.deepEqual(panels[0].shape.points[2], [93, 297]);
   assert.equal(panels[1].shape.points[3][1], 297);
-  assert.ok(panels[1].shape.points[3][0] > 95);
+  assert.deepEqual(panels[1].shape.points[3], [95, 297]);
 });
 
 test('横に分割されて少しズレた辺は隣辺へ吸着し、揃った後は連動する', () => {
