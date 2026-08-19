@@ -55,65 +55,97 @@ export type DragAxis = 'x' | 'y';
 
 export interface ShiftAxisDragState {
   axis?: DragAxis;
-  /** 一度ドラッグ原点へ戻り、別軸へ出直せる状態。 */
-  switchArmed?: boolean;
 }
 
-const SHIFT_AXIS_FREE_RETURN_MM = 1;
-const SHIFT_AXIS_SWITCH_MM = 6;
-const SHIFT_AXIS_DOMINANCE_MM = 1;
+export interface ShiftAxisSessionState {
+  shiftActive: boolean;
+  anchorRawX: number;
+  anchorRawY: number;
+  anchorAppliedX: number;
+  anchorAppliedY: number;
+  constraint: ShiftAxisDragState;
+}
+
+const SHIFT_AXIS_LOCK_MM = 2.5;
 
 /**
- * Shiftドラッグの軸を開始地点基準で固定する。
- * 途中で大小関係が変わっただけでは軸を切り替えず、一度原点へ戻ってから
- * 別軸へ明確に引いた場合だけ切り替える。
+ * Shiftドラッグは2.5mmの初動後、最初に優勢だった水平・垂直軸へ固定する。
+ * 同じShift押下中はポインタが別方向へ動いても軸を切り替えない。
  */
 export function resolveShiftAxisDrag(
   deltaX: number,
   deltaY: number,
   state: ShiftAxisDragState,
-  snapToOrigin: boolean,
-): { x: number; y: number; state: ShiftAxisDragState; snappedToOrigin: boolean } {
-  const originThreshold = snapToOrigin ? PANEL_SNAP_THRESHOLD_MM : SHIFT_AXIS_FREE_RETURN_MM;
-  const distance = Math.hypot(deltaX, deltaY);
+): { x: number; y: number; state: ShiftAxisDragState } {
   let axis = state.axis;
-  let switchArmed = state.switchArmed === true;
 
   if (!axis) {
-    if (snapToOrigin && distance <= originThreshold) {
-      return { x: 0, y: 0, state: {}, snappedToOrigin: true };
+    if (Math.hypot(deltaX, deltaY) < SHIFT_AXIS_LOCK_MM) {
+      return { x: 0, y: 0, state: {} };
     }
-    if (distance <= 0.1) return { x: 0, y: 0, state: {}, snappedToOrigin: false };
     const initial = constrainDragDeltaToAxis(deltaX, deltaY);
     axis = initial.y === 0 ? 'x' : 'y';
-  }
-
-  if (distance <= originThreshold) {
-    return {
-      x: snapToOrigin ? 0 : axis === 'x' ? deltaX : 0,
-      y: snapToOrigin ? 0 : axis === 'y' ? deltaY : 0,
-      state: { axis, switchArmed: true },
-      snappedToOrigin: snapToOrigin,
-    };
-  }
-
-  if (switchArmed) {
-    const currentMagnitude = axis === 'x' ? Math.abs(deltaX) : Math.abs(deltaY);
-    const otherMagnitude = axis === 'x' ? Math.abs(deltaY) : Math.abs(deltaX);
-    if (otherMagnitude > currentMagnitude + SHIFT_AXIS_DOMINANCE_MM) {
-      if (otherMagnitude < SHIFT_AXIS_SWITCH_MM) {
-        return { x: 0, y: 0, state: { axis, switchArmed: true }, snappedToOrigin: snapToOrigin };
-      }
-      axis = axis === 'x' ? 'y' : 'x';
-    }
-    switchArmed = false;
   }
 
   return {
     x: axis === 'x' ? deltaX : 0,
     y: axis === 'y' ? deltaY : 0,
-    state: { axis, switchArmed },
-    snappedToOrigin: false,
+    state: { axis },
+  };
+}
+
+export function createShiftAxisSession(shiftActive: boolean): ShiftAxisSessionState {
+  return {
+    shiftActive,
+    anchorRawX: 0,
+    anchorRawY: 0,
+    anchorAppliedX: 0,
+    anchorAppliedY: 0,
+    constraint: {},
+  };
+}
+
+/**
+ * Shiftの押下状態が変わった地点を新しい基準にする。
+ * 押し直し・解除の瞬間は直前の表示位置を保ち、次の移動から新しい軸を選ぶ。
+ */
+export function resolveShiftAxisSession(
+  rawX: number,
+  rawY: number,
+  shiftActive: boolean,
+  state: ShiftAxisSessionState,
+  lastAppliedX: number,
+  lastAppliedY: number,
+): { x: number; y: number; axis?: DragAxis; state: ShiftAxisSessionState } {
+  let nextState = state;
+  if (shiftActive !== state.shiftActive) {
+    nextState = {
+      shiftActive,
+      anchorRawX: rawX,
+      anchorRawY: rawY,
+      anchorAppliedX: lastAppliedX,
+      anchorAppliedY: lastAppliedY,
+      constraint: {},
+    };
+  }
+
+  const localX = rawX - nextState.anchorRawX;
+  const localY = rawY - nextState.anchorRawY;
+  if (!shiftActive) {
+    return {
+      x: nextState.anchorAppliedX + localX,
+      y: nextState.anchorAppliedY + localY,
+      state: nextState,
+    };
+  }
+
+  const constrained = resolveShiftAxisDrag(localX, localY, nextState.constraint);
+  const constrainedState = { ...nextState, constraint: constrained.state };
+  return {
+    x: constrainedState.anchorAppliedX + constrained.x,
+    y: constrainedState.anchorAppliedY + constrained.y,
+    axis: constrained.state.axis,
+    state: constrainedState,
   };
 }
 

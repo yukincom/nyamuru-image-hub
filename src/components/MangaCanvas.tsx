@@ -3,7 +3,7 @@ import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisDrag, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle, type ShiftAxisDragState } from '../lib/canvasGeometry';
+import { anchorPoint, clamp, clampedPanelDelta, createShiftAxisSession, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisSession, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
 
 interface Props {
   title: string;
@@ -410,60 +410,65 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     setInteractionMode('panel-edge');
     setActiveEdgeIndex(edgeIndex);
     document.body.classList.add('is-panel-edge-dragging');
-    let shiftDragState: ShiftAxisDragState = {};
-    let shiftWasPressed = false;
+    let shiftSession = createShiftAxisSession(event.shiftKey);
+    let lastRawX = 0;
+    let lastRawY = 0;
+    let lastAppliedX = 0;
+    let lastAppliedY = 0;
+    const updateShiftState = (keyboardEvent: KeyboardEvent) => {
+      if (keyboardEvent.key !== 'Shift') return;
+      const shiftActive = keyboardEvent.type === 'keydown';
+      if (shiftSession.shiftActive === shiftActive) return;
+      shiftSession = resolveShiftAxisSession(
+        lastRawX,
+        lastRawY,
+        shiftActive,
+        shiftSession,
+        lastAppliedX,
+        lastAppliedY,
+      ).state;
+    };
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      let deltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
-      let deltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
-      let axis: DragAxis | undefined;
-      let snappedToOrigin = false;
-      if (pointerEvent.shiftKey) {
-        if (!shiftWasPressed) shiftDragState = {};
-        shiftWasPressed = true;
-        if (selectedPanel.shape.type === 'rect') {
-          axis = edgeIndex === 0 || edgeIndex === 2 ? 'y' : 'x';
-          const constrained = resolveShiftAxisDrag(
-            axis === 'x' ? deltaX : 0,
-            axis === 'y' ? deltaY : 0,
-            { axis },
-            panelGapSnap,
-          );
-          deltaX = constrained.x;
-          deltaY = constrained.y;
-          snappedToOrigin = constrained.snappedToOrigin;
-        } else {
-          const constrained = resolveShiftAxisDrag(deltaX, deltaY, shiftDragState, panelGapSnap);
-          shiftDragState = constrained.state;
-          deltaX = constrained.x;
-          deltaY = constrained.y;
-          axis = constrained.state.axis;
-          snappedToOrigin = constrained.snappedToOrigin;
-        }
-      } else {
-        shiftWasPressed = false;
-        shiftDragState = {};
-      }
+      let rawDeltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
+      let rawDeltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
       // 矩形は矩形性を維持するため、辺の法線方向だけを使う。
       if (selectedPanel.shape.type === 'rect') {
-        if (edgeIndex === 0 || edgeIndex === 2) deltaX = 0;
-        if (edgeIndex === 1 || edgeIndex === 3) deltaY = 0;
+        if (edgeIndex === 0 || edgeIndex === 2) rawDeltaX = 0;
+        if (edgeIndex === 1 || edgeIndex === 3) rawDeltaY = 0;
       }
-      if (innerFrameSnap && !snappedToOrigin) {
+      lastRawX = rawDeltaX;
+      lastRawY = rawDeltaY;
+      const constrained = resolveShiftAxisSession(
+        rawDeltaX,
+        rawDeltaY,
+        pointerEvent.shiftKey,
+        shiftSession,
+        lastAppliedX,
+        lastAppliedY,
+      );
+      shiftSession = constrained.state;
+      let deltaX = constrained.x;
+      let deltaY = constrained.y;
+      const axis: DragAxis | undefined = constrained.axis;
+      const shiftPending = constrained.state.shiftActive && !axis;
+      const lockedDeltaX = deltaX;
+      const lockedDeltaY = deltaY;
+      if (innerFrameSnap && !shiftPending) {
         const snapped = snapEdgeDeltaToInnerFrame(start, end, deltaX, deltaY);
         deltaX = snapped.x;
         deltaY = snapped.y;
       }
-      if (axis === 'x') deltaY = 0;
-      if (axis === 'y') deltaX = 0;
+      if (axis === 'x') deltaY = lockedDeltaY;
+      if (axis === 'y') deltaX = lockedDeltaX;
       if (selectedPanel.shape.type === 'rect') {
         if (edgeIndex === 0 || edgeIndex === 2) deltaX = 0;
         if (edgeIndex === 1 || edgeIndex === 3) deltaY = 0;
       }
       let snapTarget: PanelEdgeReference | undefined;
       let snappedToGutter = false;
-      if (panelGapSnap && !snappedToOrigin) {
+      if (panelGapSnap && !shiftPending) {
         const snapped = snapPanelEdgeDeltaToGutter(
           page.panels,
           activePanel,
@@ -478,20 +483,26 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
         deltaY = snapped.y;
         snappedToGutter = snapped.snapped;
       }
-      if (panelSync && !snappedToGutter && !snappedToOrigin) {
+      if (panelSync && !shiftPending && !snappedToGutter) {
         const snapped = snapPanelEdgeDeltaToNeighbor(page.panels, activePanel, edgeIndex, deltaX, deltaY);
         deltaX = snapped.x;
         deltaY = snapped.y;
         snapTarget = snapped.target;
       }
-      if (axis === 'x') deltaY = 0;
-      if (axis === 'y') deltaX = 0;
-      onMovePanelEdge(activePanel, edgeIndex, roundMm(deltaX), roundMm(deltaY), panelSync, snapTarget);
+      if (axis === 'x') deltaY = lockedDeltaY;
+      if (axis === 'y') deltaX = lockedDeltaX;
+      const appliedX = roundMm(deltaX);
+      const appliedY = roundMm(deltaY);
+      lastAppliedX = appliedX;
+      lastAppliedY = appliedY;
+      onMovePanelEdge(activePanel, edgeIndex, appliedX, appliedY, panelSync, snapTarget);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', finish);
       window.removeEventListener('pointercancel', finish);
+      window.removeEventListener('keydown', updateShiftState);
+      window.removeEventListener('keyup', updateShiftState);
       document.body.classList.remove('is-panel-edge-dragging');
       setInteractionMode(null);
       setActiveEdgeIndex(null);
@@ -502,6 +513,8 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', finish);
     window.addEventListener('pointercancel', finish);
+    window.addEventListener('keydown', updateShiftState);
+    window.addEventListener('keyup', updateShiftState);
   };
 
   const startVertexDrag = (event: PointerEvent, vertexIndex: number) => {
@@ -517,36 +530,50 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     const startClientY = event.clientY;
     setInteractionMode('panel-resize');
     document.body.classList.add('is-panel-dragging');
-    let shiftDragState: ShiftAxisDragState = {};
-    let shiftWasPressed = false;
+    let shiftSession = createShiftAxisSession(event.shiftKey);
+    let lastRawX = 0;
+    let lastRawY = 0;
+    let lastAppliedX = 0;
+    let lastAppliedY = 0;
+    const updateShiftState = (keyboardEvent: KeyboardEvent) => {
+      if (keyboardEvent.key !== 'Shift') return;
+      const shiftActive = keyboardEvent.type === 'keydown';
+      if (shiftSession.shiftActive === shiftActive) return;
+      shiftSession = resolveShiftAxisSession(
+        lastRawX,
+        lastRawY,
+        shiftActive,
+        shiftSession,
+        lastAppliedX,
+        lastAppliedY,
+      ).state;
+    };
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
       const rawDeltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
       const rawDeltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
-      let delta = { x: rawDeltaX, y: rawDeltaY };
-      let axis: DragAxis | undefined;
-      let snappedToOrigin = false;
-      if (pointerEvent.shiftKey) {
-        if (!shiftWasPressed) shiftDragState = {};
-        shiftWasPressed = true;
-        const constrained = resolveShiftAxisDrag(rawDeltaX, rawDeltaY, shiftDragState, panelGapSnap);
-        shiftDragState = constrained.state;
-        delta = { x: constrained.x, y: constrained.y };
-        axis = constrained.state.axis;
-        snappedToOrigin = constrained.snappedToOrigin;
-      } else {
-        shiftWasPressed = false;
-        shiftDragState = {};
-      }
-      const x = clamp(roundMm(startX + delta.x), 0, 210);
-      const y = clamp(roundMm(startY + delta.y), 0, 297);
-      const snapped = innerFrameSnap && !snappedToOrigin ? snapPointToInnerFrame(x, y) : { x, y };
+      lastRawX = rawDeltaX;
+      lastRawY = rawDeltaY;
+      const constrained = resolveShiftAxisSession(
+        rawDeltaX,
+        rawDeltaY,
+        pointerEvent.shiftKey,
+        shiftSession,
+        lastAppliedX,
+        lastAppliedY,
+      );
+      shiftSession = constrained.state;
+      const axis: DragAxis | undefined = constrained.axis;
+      const shiftPending = constrained.state.shiftActive && !axis;
+      const lockedX = clamp(roundMm(startX + constrained.x), 0, 210);
+      const lockedY = clamp(roundMm(startY + constrained.y), 0, 297);
+      const snapped = innerFrameSnap && !shiftPending ? snapPointToInnerFrame(lockedX, lockedY) : { x: lockedX, y: lockedY };
       // Shift固定中は、内枠スナップにも非選択軸を動かさせない。
-      let point = pointerEvent.shiftKey && axis
-        ? (axis === 'x' ? { x: snapped.x, y: startY } : { x: startX, y: snapped.y })
+      let point = axis
+        ? (axis === 'x' ? { x: snapped.x, y: lockedY } : { x: lockedX, y: snapped.y })
         : snapped;
-      if (panelGapSnap && !snappedToOrigin) {
+      if (panelGapSnap && !shiftPending) {
         point = snapPanelVertexPointToGutter(
           page.panels,
           activePanel,
@@ -558,14 +585,18 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
           axis,
         );
       }
-      if (axis === 'x') point.y = startY;
-      if (axis === 'y') point.x = startX;
+      if (axis === 'x') point.y = lockedY;
+      if (axis === 'y') point.x = lockedX;
+      lastAppliedX = point.x - startX;
+      lastAppliedY = point.y - startY;
       onMoveVertex(activePanel, vertexIndex, point.x, point.y, panelSync);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', finish);
       window.removeEventListener('pointercancel', finish);
+      window.removeEventListener('keydown', updateShiftState);
+      window.removeEventListener('keyup', updateShiftState);
       document.body.classList.remove('is-panel-dragging');
       setInteractionMode(null);
       cleanupRef.current = null;
@@ -575,6 +606,8 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', finish);
     window.addEventListener('pointercancel', finish);
+    window.addEventListener('keydown', updateShiftState);
+    window.addEventListener('keyup', updateShiftState);
   };
 
   const renderHandles = (panelIndex: number, selection: CanvasElementSelection, box: BBox) => (

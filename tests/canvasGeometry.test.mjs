@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, createShiftAxisSession, fallbackBox, findLinkedPanelEdges, inferPanelGutters, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, resolveShiftAxisSession, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -45,28 +45,57 @@ test('Shiftドラッグは変化量の大きい軸だけを残す', () => {
   assert.deepEqual(constrainDragDeltaToAxis(-12, -12), { x: -12, y: 0 });
 });
 
-test('Shiftドラッグは原点へ戻るまで最初の軸を維持し、原点を経てから別軸へ切り替える', () => {
+test('Shiftドラッグは2.5mmの初動後に最初の軸を固定し、途中で切り替えない', () => {
   let state = {};
-  let result = resolveShiftAxisDrag(12, 2, state, true);
-  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 12, y: 0, axis: 'x' });
+  let result = resolveShiftAxisDrag(2, 1, state);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 0, y: 0, axis: undefined });
 
   state = result.state;
-  result = resolveShiftAxisDrag(8, 25, state, true);
-  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 8, y: 0, axis: 'x' });
+  result = resolveShiftAxisDrag(3, 1, state);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 3, y: 0, axis: 'x' });
 
   state = result.state;
-  result = resolveShiftAxisDrag(2, 1, state, true);
-  assert.deepEqual({ x: result.x, y: result.y, snappedToOrigin: result.snappedToOrigin }, { x: 0, y: 0, snappedToOrigin: true });
+  result = resolveShiftAxisDrag(1, 20, state);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 1, y: 0, axis: 'x' });
 
   state = result.state;
-  result = resolveShiftAxisDrag(1, 8, state, true);
-  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: 0, y: 8, axis: 'y' });
+  result = resolveShiftAxisDrag(-4, -30, state);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.state.axis }, { x: -4, y: 0, axis: 'x' });
 });
 
-test('コマスナップOFFのShiftドラッグは原点付近の微調整値を残す', () => {
-  const horizontal = resolveShiftAxisDrag(10, 1, {}, false);
-  const nearOrigin = resolveShiftAxisDrag(0.6, 0.2, horizontal.state, false);
-  assert.deepEqual({ x: nearOrigin.x, y: nearOrigin.y, snappedToOrigin: nearOrigin.snappedToOrigin }, { x: 0.6, y: 0, snappedToOrigin: false });
+test('Shiftを離して押し直すと現在位置を保ったまま新しい軸を選べる', () => {
+  let session = createShiftAxisSession(true);
+  let result = resolveShiftAxisSession(8, 1, true, session, 0, 0);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.axis }, { x: 8, y: 0, axis: 'x' });
+
+  session = result.state;
+  result = resolveShiftAxisSession(8, 20, true, session, 8, 0);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.axis }, { x: 8, y: 0, axis: 'x' });
+
+  session = result.state;
+  result = resolveShiftAxisSession(8, 20, false, session, 8, 0);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.axis }, { x: 8, y: 0, axis: undefined });
+
+  session = result.state;
+  result = resolveShiftAxisSession(8, 20, true, session, 8, 0);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.axis }, { x: 8, y: 0, axis: undefined });
+
+  session = result.state;
+  result = resolveShiftAxisSession(8, 23, true, session, 8, 0);
+  assert.deepEqual({ x: result.x, y: result.y, axis: result.axis }, { x: 8, y: 3, axis: 'y' });
+});
+
+test('Shift解除後の自由移動も解除地点から継続してワープしない', () => {
+  let session = createShiftAxisSession(true);
+  let result = resolveShiftAxisSession(10, 1, true, session, 0, 0);
+  session = result.state;
+
+  result = resolveShiftAxisSession(10, 8, false, session, 10, 0);
+  assert.deepEqual({ x: result.x, y: result.y }, { x: 10, y: 0 });
+
+  session = result.state;
+  result = resolveShiftAxisSession(12, 11, false, session, 10, 0);
+  assert.deepEqual({ x: result.x, y: result.y }, { x: 12, y: 3 });
 });
 
 test('ドラッグした要素をコマ境界内へ収める', () => {
