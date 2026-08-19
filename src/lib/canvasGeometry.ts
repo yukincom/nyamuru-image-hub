@@ -224,7 +224,7 @@ interface PointBoundaryLocks {
 
 /** 内枠または宣言済みタチキリの線上にある頂点を、その線へ拘束する。 */
 function pointBoundaryLocks(
-  _panel: Panel,
+  panel: Panel,
   point: [number, number],
   tolerance = PANEL_EDGE_ALIGNMENT_TOLERANCE_MM,
 ): PointBoundaryLocks {
@@ -232,25 +232,13 @@ function pointBoundaryLocks(
   const locks: PointBoundaryLocks = {};
   if (near(point[0], INNER_FRAME_BOUNDS.x)) locks.x = INNER_FRAME_BOUNDS.x;
   else if (near(point[0], INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w)) locks.x = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
-  else if (near(point[0], 0)) locks.x = 0;
-  else if (near(point[0], 210)) locks.x = 210;
+  else if (panel.bleed?.includes('left') && near(point[0], 0)) locks.x = 0;
+  else if (panel.bleed?.includes('right') && near(point[0], 210)) locks.x = 210;
   if (near(point[1], INNER_FRAME_BOUNDS.y)) locks.y = INNER_FRAME_BOUNDS.y;
   else if (near(point[1], INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h)) locks.y = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
-  else if (near(point[1], 0)) locks.y = 0;
-  else if (near(point[1], 297)) locks.y = 297;
+  else if (panel.bleed?.includes('top') && near(point[1], 0)) locks.y = 0;
+  else if (panel.bleed?.includes('bottom') && near(point[1], 297)) locks.y = 297;
   return locks;
-}
-
-/** 既に内枠外にある点は現位置まで許容するが、それ以上外側へは動かさない。 */
-function clampMovedPoint(panel: Panel, original: [number, number], x: number, y: number): [number, number] {
-  const minX = panel.bleed?.includes('left') ? 0 : INNER_FRAME_BOUNDS.x;
-  const maxX = panel.bleed?.includes('right') ? 210 : INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
-  const minY = panel.bleed?.includes('top') ? 0 : INNER_FRAME_BOUNDS.y;
-  const maxY = panel.bleed?.includes('bottom') ? 297 : INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
-  return [
-    roundMm(clamp(x, Math.min(original[0], minX), Math.max(original[0], maxX))),
-    roundMm(clamp(y, Math.min(original[1], minY), Math.max(original[1], maxY))),
-  ];
 }
 
 function edgeIsLockedBoundary(panel: Panel, edgeIndex: number): boolean {
@@ -1005,7 +993,6 @@ interface CornerProjection {
 interface LineConstraint {
   point: [number, number];
   vector: [number, number];
-  preferred?: [number, number];
 }
 
 function constrainedPointOnLine(provisional: [number, number], line: LineConstraint): [number, number] {
@@ -1052,6 +1039,7 @@ export function movePanelVertexWithSnap(
   const targetY = selectedLocks.y ?? roundMm(clamp(y, 0, 297));
   const deltaX = targetX - selectedPoint[0], deltaY = targetY - selectedPoint[1];
   const moves = new Map<string, VertexMove>();
+  const clampInfluences = new Map<string, VertexMove>();
   const cornerProjections = new Map<string, CornerProjection>();
   const edgeDeformations: EdgeDeformation[] = [];
   const deformationKeys = new Set<string>();
@@ -1064,6 +1052,7 @@ export function movePanelVertexWithSnap(
     target.set(key, current);
   };
   mark(moves, panelIndex, vertexIndex, 1, 1);
+  mark(clampInfluences, panelIndex, vertexIndex, 1, 1);
 
   if (linkPanels) {
     const count = selectedPoints.length;
@@ -1082,6 +1071,14 @@ export function movePanelVertexWithSnap(
           deformationKeys.add(deformationKey);
           edgeDeformations.push({ selectedEdgeIndex, ...reference });
         }
+        const candidatePoints = panelShapePoints(panels[reference.panelIndex]);
+        const candidateVertexIndices = [reference.edgeIndex, (reference.edgeIndex + 1) % candidatePoints.length];
+        candidateVertexIndices.forEach((candidateVertexIndex) => {
+          const point = candidatePoints[candidateVertexIndex];
+          const t = ((point[0] - selectedPoint[0]) * vectorX + (point[1] - selectedPoint[1]) * vectorY) / lengthSquared;
+          const weight = clamp(1 - t, 0, 1);
+          mark(clampInfluences, reference.panelIndex, candidateVertexIndex, weight, weight);
+        });
       });
       findCornerLinkedPanelVertices(panels, panelIndex, selectedEdgeIndex, selectedPoint).forEach((reference) => {
         const length = Math.sqrt(lengthSquared);
@@ -1098,14 +1095,30 @@ export function movePanelVertexWithSnap(
           || (candidate.edgeDistance === current.edgeDistance && candidate.cornerDistance < current.cornerDistance)) {
           cornerProjections.set(key, candidate);
         }
+        mark(clampInfluences, reference.panelIndex, reference.vertexIndex, 1, 1);
       });
     });
   }
 
-  // 選択頂点は要求位置まで動かす。追従側が紙端へ達した場合は、その頂点だけを
-  // 後段で境界内へ収め、選択中の頂点まで途中停止させない。
-  const linkedDeltaX = roundMm(deltaX);
-  const linkedDeltaY = roundMm(deltaY);
+  // 追従頂点のどれかが紙端へ先に達した場合は、全頂点を同じ比率の移動量で止める。
+  // 個別に clamp すると斜め辺の角度や揃っていたX/Yが崩れるため、移動量を一括制限する。
+  let minDeltaX = -Infinity, maxDeltaX = Infinity, minDeltaY = -Infinity, maxDeltaY = Infinity;
+  clampInfluences.forEach((move, key) => {
+    const [pi, vi] = key.split(':').map(Number);
+    const point = panels[pi] && panelShapePoints(panels[pi])[vi];
+    if (!point) return;
+    const locks = pointBoundaryLocks(panels[pi], point);
+    if (move.weightX > 0 && locks.x === undefined) {
+      minDeltaX = Math.max(minDeltaX, -point[0] / move.weightX);
+      maxDeltaX = Math.min(maxDeltaX, (210 - point[0]) / move.weightX);
+    }
+    if (move.weightY > 0 && locks.y === undefined) {
+      minDeltaY = Math.max(minDeltaY, -point[1] / move.weightY);
+      maxDeltaY = Math.min(maxDeltaY, (297 - point[1]) / move.weightY);
+    }
+  });
+  const linkedDeltaX = roundMm(clamp(deltaX, minDeltaX, maxDeltaX));
+  const linkedDeltaY = roundMm(clamp(deltaY, minDeltaY, maxDeltaY));
 
   const originalPanelPoints = panels.map(panelShapePoints);
   const nextPanelPoints = originalPanelPoints.map((points, pi) => points.map((point, vi): [number, number] => {
@@ -1113,15 +1126,9 @@ export function movePanelVertexWithSnap(
     const projection = cornerProjections.get(`${pi}:${vi}`);
     const normalDelta = projection ? linkedDeltaX * projection.normalX + linkedDeltaY * projection.normalY : 0;
     const locks = pointBoundaryLocks(panels[pi], point);
-    const moved = clampMovedPoint(
-      panels[pi],
-      point,
-      point[0] + linkedDeltaX * move.weightX + (projection?.normalX ?? 0) * normalDelta,
-      point[1] + linkedDeltaY * move.weightY + (projection?.normalY ?? 0) * normalDelta,
-    );
     return [
-      locks.x ?? moved[0],
-      locks.y ?? moved[1],
+      locks.x ?? roundMm(point[0] + linkedDeltaX * move.weightX + (projection?.normalX ?? 0) * normalDelta),
+      locks.y ?? roundMm(point[1] + linkedDeltaY * move.weightY + (projection?.normalY ?? 0) * normalDelta),
     ];
   }));
   const constraints = new Map<string, LineConstraint[]>();
@@ -1140,44 +1147,15 @@ export function movePanelVertexWithSnap(
     const newNormal: [number, number] = [-newVectorY / newLength, newVectorX / newLength];
     const candidatePoints = originalPanelPoints[deformation.panelIndex];
     const candidateIndices = [deformation.edgeIndex, (deformation.edgeIndex + 1) % candidatePoints.length];
-    const candidateStart = candidatePoints[candidateIndices[0]], candidateEnd = candidatePoints[candidateIndices[1]];
-    const oldUnitX = oldVectorX / oldLength, oldUnitY = oldVectorY / oldLength;
-    const projectionA = (candidateStart[0] - oldStart[0]) * oldUnitX + (candidateStart[1] - oldStart[1]) * oldUnitY;
-    const projectionB = (candidateEnd[0] - oldStart[0]) * oldUnitX + (candidateEnd[1] - oldStart[1]) * oldUnitY;
-    const candidateLength = Math.hypot(candidateEnd[0] - candidateStart[0], candidateEnd[1] - candidateStart[1]);
-    const projectionOverlap = Math.max(
-      0,
-      Math.min(oldLength, Math.max(projectionA, projectionB)) - Math.max(0, Math.min(projectionA, projectionB)),
-    );
-    const sharesProjection = projectionOverlap >= Math.min(8, Math.min(oldLength, candidateLength) * 0.25);
     const distance = candidateIndices.reduce((sum, candidateIndex) => {
       const point = candidatePoints[candidateIndex];
       return sum + (point[0] - oldStart[0]) * oldNormal[0] + (point[1] - oldStart[1]) * oldNormal[1];
     }, 0) / candidateIndices.length;
-    const linePoint: [number, number] = [
-      newStart[0] + newNormal[0] * distance,
-      newStart[1] + newNormal[1] * distance,
-    ];
-    const lineVector: [number, number] = [newVectorX, newVectorY];
-    const oldLengthSquared = oldVectorX * oldVectorX + oldVectorY * oldVectorY;
-    if (!oldLengthSquared) return;
-    const directionChange = Math.abs(oldVectorX * newVectorY - oldVectorY * newVectorX) / (oldLength * newLength);
+    const line: LineConstraint = {
+      point: [newStart[0] + newNormal[0] * distance, newStart[1] + newNormal[1] * distance],
+      vector: [newVectorX, newVectorY],
+    };
     candidateIndices.forEach((candidateIndex) => {
-      const candidate = candidatePoints[candidateIndex];
-      const parameter = (
-        (candidate[0] - oldStart[0]) * oldVectorX
-          + (candidate[1] - oldStart[1]) * oldVectorY
-      ) / oldLengthSquared;
-      const line: LineConstraint = {
-        point: linePoint,
-        vector: lineVector,
-        // 辺が実際に回転した場合だけ対応端点を写す。単なる接線方向の伸縮では
-        // 隣の平行辺まで伸縮させず、従来どおり現在位置から新しい平行線へ投影する。
-        preferred: directionChange > 0.01 && sharesProjection ? [
-          linePoint[0] + newVectorX * parameter,
-          linePoint[1] + newVectorY * parameter,
-        ] : undefined,
-      };
       const key = `${deformation.panelIndex}:${candidateIndex}`;
       constraints.set(key, [...(constraints.get(key) ?? []), line]);
     });
@@ -1210,12 +1188,11 @@ export function movePanelVertexWithSnap(
           target = lineIntersection(lines[first], lines[second]);
         }
       }
-      target ??= lines[0].preferred ?? constrainedPointOnLine(provisional, lines[0]);
+      target ??= constrainedPointOnLine(provisional, lines[0]);
     }
-    const bounded = clampMovedPoint(panels[pi], original, target[0], target[1]);
     nextPanelPoints[pi][vi] = [
-      locks.x ?? bounded[0],
-      locks.y ?? bounded[1],
+      locks.x ?? roundMm(clamp(target[0], 0, 210)),
+      locks.y ?? roundMm(clamp(target[1], 0, 297)),
     ];
   });
 
