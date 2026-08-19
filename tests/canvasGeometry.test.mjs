@@ -26,6 +26,15 @@ const page2TopologyPanels = () => [
   { ...rectPanel, id: 5, shape: { type: 'polygon', points: [[10, 208.4], [200, 208.4], [200, 287], [10, 287]] } },
 ];
 
+const currentIrregularPanels = () => [
+  { ...rectPanel, id: 1, shape: { type: 'polygon', points: [[110, 10], [200, 10], [200, 72.1], [66.6, 53.7]] } },
+  { ...rectPanel, id: 2, shape: { type: 'polygon', points: [[10, 10], [101.6, 10], [60.2, 52.9], [10, 45.9]] } },
+  { ...rectPanel, id: 3, shape: { type: 'polygon', points: [[70.9, 60.4], [200, 78.2], [200, 140], [122, 140]] } },
+  { ...rectPanel, id: 4, shape: { type: 'polygon', points: [[10, 52], [64.4, 59.5], [116.1, 140], [10, 140]] } },
+  { ...rectPanel, id: 5, shape: { type: 'rect', x: 10, y: 146, w: 190, h: 64 } },
+  { ...rectPanel, id: 6, shape: { type: 'rect', x: 10, y: 216, w: 190, h: 71 } },
+];
+
 const baseInteraction = {
   mode: 'move',
   startClientX: 100,
@@ -381,6 +390,35 @@ test('連動頂点が紙端へ達したら法線方向だけを止め、接線�
   assert.deepEqual(panels[0].shape.points[2], [93, 290]);
   assert.equal(panels[1].shape.points[3][1], 297);
   assert.ok(panels[1].shape.points[3][0] > 95);
+});
+
+test('追従頂点が先に内枠へ達しても、選択中のコマ3左上は左内枠まで動く', () => {
+  const panels = currentIrregularPanels();
+  movePanelVertexWithSnap(panels, 2, 0, 10, 60.4, true);
+
+  assert.deepEqual(panelShapePoints(panels[2])[0], [10, 60.4]);
+  panelShapePoints(panels[3]).forEach(([x, y]) => {
+    assert.ok(x >= 10 && x <= 200);
+    assert.ok(y >= 10 && y <= 287);
+  });
+});
+
+test('コマ3左下を右内枠へ動かしても、コマ4右辺は対応位置を保って追従する', () => {
+  const panels = currentIrregularPanels();
+  movePanelVertexWithSnap(panels, 2, 3, 200, 140, true);
+
+  const panel3 = panelShapePoints(panels[2]);
+  const panel4 = panelShapePoints(panels[3]);
+  assert.deepEqual(panel3[3], [200, 140]);
+  assert.ok(panel4[2][0] > 180 && panel4[2][1] > 130);
+  assert.ok(Math.abs(panel4[1][1] - panel3[0][1]) < 2);
+
+  const selectedVector = [panel3[3][0] - panel3[0][0], panel3[3][1] - panel3[0][1]];
+  const followerVector = [panel4[2][0] - panel4[1][0], panel4[2][1] - panel4[1][1]];
+  const parallelError = Math.abs(
+    selectedVector[0] * followerVector[1] - selectedVector[1] * followerVector[0],
+  ) / (Math.hypot(...selectedVector) * Math.hypot(...followerVector));
+  assert.ok(parallelError < 0.03);
 });
 
 test('横に分割されて少しズレた辺は隣辺へ吸着し、揃った後は連動する', () => {
