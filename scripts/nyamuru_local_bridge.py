@@ -23,9 +23,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-TOOLS_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MANGA_BABBLE_ROOT = TOOLS_ROOT / "manga-babble-maker"
-DEFAULT_NDLOCR_ROOT = TOOLS_ROOT / "ndlocr-lite"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_VISION_ROOT = REPO_ROOT / ".local-vision"
 # 高解像度TIFFをブラウザ側で縮小できない場合にも、ローカルbridgeで受け取れる上限。
 MAX_BODY_BYTES = 96 * 1024 * 1024
 ALLOWED_ORIGIN = re.compile(r"^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?$")
@@ -38,20 +37,60 @@ DEFAULT_SCANNER_STATE_PATH = (
 )
 
 
+def venv_python(venv_root: Path) -> Path:
+    if os.name == "nt":
+        return venv_root / "Scripts" / "python.exe"
+    return venv_root / "bin" / "python"
+
+
+def default_vision_paths() -> dict[str, Path]:
+    vision_root = Path(os.environ.get("NYAMURU_VISION_ROOT", DEFAULT_VISION_ROOT)).expanduser()
+    primary_python = venv_python(vision_root / ".venv")
+    vision_python = Path(
+        os.environ.get(
+            "NYAMURU_VISION_PYTHON",
+            primary_python,
+        )
+    ).expanduser()
+    primary_model = vision_root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
+    rtdetr_model = Path(
+        os.environ.get(
+            "NYAMURU_RTDETR_MODEL",
+            primary_model,
+        )
+    ).expanduser()
+    primary_ndlocr_root = vision_root / "ndlocr-lite"
+    ndlocr_root = Path(
+        os.environ.get(
+            "NYAMURU_NDLOCR_ROOT",
+            primary_ndlocr_root,
+        )
+    ).expanduser()
+    ndlocr_python = Path(
+        os.environ.get(
+            "NYAMURU_NDLOCR_PYTHON",
+            primary_python,
+        )
+    ).expanduser()
+    return {
+        "vision_root": vision_root,
+        "vision_python": vision_python,
+        "rtdetr_model": rtdetr_model,
+        "ndlocr_root": ndlocr_root,
+        "ndlocr_python": ndlocr_python,
+    }
+
+
 def parse_args() -> argparse.Namespace:
+    defaults = default_vision_paths()
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
-    parser.add_argument(
-        "--manga-babble-root",
-        type=Path,
-        default=Path(os.environ.get("NYAMURU_MANGA_BABBLE_ROOT", DEFAULT_MANGA_BABBLE_ROOT)),
-    )
-    parser.add_argument(
-        "--ndlocr-root",
-        type=Path,
-        default=Path(os.environ.get("NYAMURU_NDLOCR_ROOT", DEFAULT_NDLOCR_ROOT)),
-    )
+    parser.add_argument("--vision-root", type=Path, default=defaults["vision_root"])
+    parser.add_argument("--vision-python", type=Path, default=defaults["vision_python"])
+    parser.add_argument("--rtdetr-model", type=Path, default=defaults["rtdetr_model"])
+    parser.add_argument("--ndlocr-root", type=Path, default=defaults["ndlocr_root"])
+    parser.add_argument("--ndlocr-python", type=Path, default=defaults["ndlocr_python"])
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
 
@@ -797,19 +836,23 @@ def rotated_image_bytes(image_bytes: bytes, degrees_clockwise: int) -> bytes:
 class LocalVisionState:
     def __init__(
         self,
-        manga_babble_root: Path,
+        vision_root: Path,
+        vision_python: Path,
+        rtdetr_model: Path,
         ndlocr_root: Path,
+        ndlocr_python: Path,
     ):
-        self.manga_babble_root = manga_babble_root.resolve()
-        self.rtdetr_python = self.manga_babble_root / ".venv" / "bin" / "python"
-        self.rtdetr_model = self.manga_babble_root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
-        self.ndlocr_root = ndlocr_root.resolve()
-        self.ndlocr_python = self.ndlocr_root / ".venv" / "bin" / "python"
+        self.vision_root = vision_root.expanduser().absolute()
+        self.rtdetr_python = vision_python.expanduser().absolute()
+        self.rtdetr_model = rtdetr_model.expanduser().absolute()
+        self.ndlocr_root = ndlocr_root.expanduser().absolute()
+        self.ndlocr_python = ndlocr_python.expanduser().absolute()
         self.scanners = ScannerSessions()
 
     def check(self) -> dict[str, Any]:
         return {
             "rtdetr_available": self.rtdetr_python.is_file() and self.rtdetr_model.is_file(),
+            "vision_python": str(self.rtdetr_python),
             "rtdetr_model": str(self.rtdetr_model),
             "ndlocr_available": self.ndlocr_python.is_file() and (self.ndlocr_root / "src" / "model").is_dir(),
             "ndlocr_root": str(self.ndlocr_root),
@@ -828,7 +871,7 @@ class LocalVisionState:
         detection = run_local_worker(
             python=self.rtdetr_python,
             engine="rtdetr",
-            root=self.manga_babble_root,
+            root=self.vision_root,
             image_bytes=upright_bytes,
             model=self.rtdetr_model,
             confidence=0.2,
@@ -1015,8 +1058,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
 def main() -> int:
     args = parse_args()
     state = LocalVisionState(
-        args.manga_babble_root,
+        args.vision_root,
+        args.vision_python,
+        args.rtdetr_model,
         args.ndlocr_root,
+        args.ndlocr_python,
     )
     status = state.check()
     if args.check:

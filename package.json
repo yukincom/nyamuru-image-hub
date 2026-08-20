@@ -1,10 +1,10 @@
 {
-  "name": "nyamuru-manga-name-studio",
+  "name": "nyamuru-image-hub",
   "version": "1.13.2",
   "versionCode": 21,
   "private": true,
   "type": "module",
-  "description": "Nyamuru Data Model（NDM）をOpen Manga Name YAML（OMNY）形式で閲覧・編集するPWA",
+  "description": "紙の漫画ネームを解析し、編集可能なOMNYへ取り込めるNyamuru派生版",
   "license": "MIT",
   "author": {
     "name": "sa-san10",
@@ -12,20 +12,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yukincom/nyamuru-manga-name-studio.git"
+    "url": "git+https://github.com/yukincom/nyamuru-image-hub.git"
   },
-  "homepage": "https://github.com/yukincom/nyamuru-manga-name-studio#readme",
+  "homepage": "https://github.com/yukincom/nyamuru-image-hub#readme",
   "bugs": {
-    "url": "https://github.com/yukincom/nyamuru-manga-name-studio/issues"
+    "url": "https://github.com/yukincom/nyamuru-image-hub/issues"
   },
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "astro dev",
+    "setup:vision": "node scripts/setup-local-vision.mjs",
     "bridge": "node scripts/start-local-bridge.mjs",
     "bridge:check": "node scripts/start-local-bridge.mjs --check",
-    "build": "astro build && npm run build:standalone && mkdir -p dist/standalone && cp dist-standalone/index.html dist/standalone/nyamuru-manga-name-studio.html && cp dist-standalone/THIRD_PARTY_NOTICES.txt dist/standalone/",
+    "build": "astro build && npm run build:standalone && mkdir -p dist/standalone && cp dist-standalone/index.html dist/standalone/nyamuru-image-hub.html && cp dist-standalone/THIRD_PARTY_NOTICES.txt dist/standalone/",
     "build:standalone": "vite build --config vite.standalone.config.mjs",
     "preview": "astro preview",
     "check": "astro check",

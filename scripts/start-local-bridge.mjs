@@ -4,13 +4,13 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const toolsRoot = resolve(repoRoot, '..');
-const mangaBabbleRoot = resolve(process.env.NYAMURU_MANGA_BABBLE_ROOT || resolve(toolsRoot, 'manga-babble-maker'));
-const bundledPython = resolve(mangaBabbleRoot, '.venv/bin/python');
-const python = process.env.NYAMURU_BRIDGE_PYTHON || bundledPython;
+const visionRoot = resolve(process.env.NYAMURU_VISION_ROOT || resolve(repoRoot, '.local-vision'));
+const pythonRelativePath = process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python';
+const visionPython = resolve(visionRoot, '.venv', pythonRelativePath);
+const python = process.env.NYAMURU_BRIDGE_PYTHON || visionPython;
 
-if (!process.env.NYAMURU_BRIDGE_PYTHON && !existsSync(bundledPython)) {
-  console.error('manga-babble-makerのPython環境が見つかりません。NYAMURU_MANGA_BABBLE_ROOTまたはNYAMURU_BRIDGE_PYTHONを指定してください。');
+if (!process.env.NYAMURU_BRIDGE_PYTHON && !existsSync(python)) {
+  console.error('ローカル画像解析環境が見つかりません。先に `npm run setup:vision` を実行してください。');
   process.exit(1);
 }
 

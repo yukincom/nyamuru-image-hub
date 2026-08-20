@@ -2,7 +2,7 @@
 
 本フォークでは、次のリモート名を推奨します。
 
-- `origin`: 自分のフォーク（例: `yukincom/nyamuru-manga-name-studio`）
+- `origin`: 自分のフォーク（例: `yukincom/nyamuru-image-hub`）
 - `upstream`: 本家（`sa-san10/nyamuru-manga-name-studio`）
 
 ## 初回確認

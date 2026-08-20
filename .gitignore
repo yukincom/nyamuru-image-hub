@@ -1,5 +1,6 @@
 node_modules/
 .venv/
+.local-vision/
 __pycache__/
 *.pyc
 dist/
@@ -9,6 +10,9 @@ dist-standalone/
 .DS_Store
 *.log
 scratch-brand/
+
+# 公開準備メモ・診断結果などの内部文書
+/doc/
 
 # ローカル画像解析モデルと生成物は各専用環境に置き、このリポジトリへ含めない
 models/

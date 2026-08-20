@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""One-shot workers for optional local manga detectors.
-
-The parent bridge intentionally launches these workers with each project's own
-Python environment. This keeps manga-babble-maker and NDLOCR-Lite dependencies
-isolated from one another.
-"""
+"""One-shot workers for the optional local manga detectors."""
 
 from __future__ import annotations
 
@@ -28,8 +23,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_rtdetr(root: Path, image: Path, model: Path | None, confidence: float) -> dict[str, Any]:
-    sys.path.insert(0, str(root))
-    from manga_babble.detect.rtdetr_onnx import detect_page
+    from rtdetr_onnx import detect_page
 
     model_path = model or root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
     return detect_page(image, model_path=model_path, conf_threshold=confidence)

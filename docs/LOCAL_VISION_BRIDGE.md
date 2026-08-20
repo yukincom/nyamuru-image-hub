@@ -2,7 +2,7 @@
 
 新規作成画面では、紙のネーム画像を最大10枚まで読み込み、次の役割分担で解析します。
 
-- RT-DETR（manga-babble-maker）: コマ・文字領域の検出
+- RT-DETRv4-X Manga109-s v2: コマ・文字領域・顔・身体の検出
 - RT-DETRの顔・身体・文字領域: コマ候補と同一領域にある誤検出の除外
 - OpenCV: RT-DETRがコマを検出できない場合だけ使う輪郭補助
 - NDLOCR-Lite: 検出した領域の手書き文字認識
@@ -12,40 +12,54 @@
 
 ファイル選択で読み込んだ元画像は変更・削除しません。解析用の一時画像は各処理の終了時に削除します。プレビュー用の一時File、Object URL、回転情報、判定結果はブラウザ保存へ含めず、検出コマからページ作成を確定した時または新規作成画面を閉じた時に破棄します。
 
-## 前提
+## セットアップ
 
 通常のNyamuru編集にはこのbridgeは不要です。「紙のネームからコマを読み取る」で画像解析を行う場合だけ準備してください。
 
 - Node.js 22.12.0以上
-- `manga-babble-maker`の独立したPython仮想環境
-- RT-DETRのONNXモデル
-- `ndlocr-lite`の独立したPython仮想環境と公式モデル
+- Python 3.10〜3.13
+- 初回セットアップ時のインターネット接続
 - スキャナー連携を使う場合はmacOSのイメージキャプチャ
 
-既定では3つのリポジトリを同じ親フォルダに置きます。
-
-```text
-tools/
-├── nyamuru-manga-name-studio/
-├── manga-babble-maker/
-│   ├── .venv/bin/python
-│   └── models/rtdetrv4-x-manga109s_v2/model.onnx
-└── ndlocr-lite/
-    ├── .venv/bin/python
-    └── src/model/
-```
-
-Nyamuruは外部リポジトリ、仮想環境、モデルを自動ダウンロードしません。それぞれを配布元の手順とライセンスに従って別途導入してください。使用確認版と再配布上の注意は [LOCAL_VISION_COMPONENTS.md](./LOCAL_VISION_COMPONENTS.md) に記載しています。
-
-## 起動と終了
-
-最初にNyamuru本体のJavaScript依存を導入します。
+最初にJavaScript依存を導入し、続いて明示的な画像解析セットアップを実行します。
 
 ```bash
 npm ci
+npm run setup:vision
 ```
 
-環境確認だけを行う場合は次を使います。
+`setup:vision`は取得対象、保存先、容量、ライセンスを表示し、利用者が同意した場合だけ次を `.local-vision/` へ導入します。
+
+- 画像解析専用Python仮想環境
+- [NDLOCR-Lite v1.2.3](https://github.com/ndl-lab/ndlocr-lite/releases/tag/1.2.3) と公式モデル
+- [RT-DETRv4-X Manga109-s v2](https://huggingface.co/tori29umai/rtdetrv4-x-manga109s_v2) のONNXモデル
+
+RT-DETRモデルは固定した公式リビジョンから取得し、SHA-256が一致した場合だけ確定します。モデルや外部リポジトリはGit、Webビルド、スタンドアロンHTMLへ含まれません。アプリ起動時の自動取得も行いません。
+
+既定の配置は次のとおりです。
+
+```text
+nyamuru-image-hub/
+└── .local-vision/                 # Git対象外
+    ├── .venv/
+    ├── models/
+    │   └── rtdetrv4-x-manga109s_v2/model.onnx
+    └── ndlocr-lite/
+        └── src/model/
+```
+
+非対話環境で、表示された条件を別途確認済みの場合は `npm run setup:vision -- --yes` を使用できます。保存先を変更する場合は、セットアップと起動の両方で同じルートを指定します。
+
+```bash
+npm run setup:vision -- --root /path/to/nyamuru-vision
+NYAMURU_VISION_ROOT=/path/to/nyamuru-vision npm run bridge
+```
+
+使用版と再配布上の注意は [LOCAL_VISION_COMPONENTS.md](./LOCAL_VISION_COMPONENTS.md) に記載しています。
+
+## 起動と終了
+
+環境確認は次を使います。
 
 ```bash
 npm run bridge:check
@@ -67,22 +81,21 @@ npm run dev
 
 ブラウザで表示されたlocalhostのURLを開きます。bridgeを終了する場合は、ターミナル1でCtrl+Cを押します。
 
-既定の専用環境は、同じ親フォルダの `manga-babble-maker` と `ndlocr-lite` です。bridge本体とRT-DETRワーカーには `manga-babble-maker/.venv`、文字認識ワーカーには `ndlocr-lite/.venv` を使い、処理ごとの依存関係を分離します。ComfyUIやVLMは不要です。場所を変える場合は `NYAMURU_MANGA_BABBLE_ROOT`、`NYAMURU_NDLOCR_ROOT` を指定します。bridge本体のPythonだけを明示する場合は `NYAMURU_BRIDGE_PYTHON` を指定できます。モデル重みはNyamuruへコピーしません。関連ライセンスとモデル配置方針は `docs/LOCAL_VISION_COMPONENTS.md` を参照してください。
+ComfyUIやVLMは不要です。個別の保存先を指定する必要がある場合は、`NYAMURU_VISION_PYTHON`、`NYAMURU_RTDETR_MODEL`、`NYAMURU_NDLOCR_ROOT`、`NYAMURU_NDLOCR_PYTHON`を使用できます。bridge本体だけ別のPythonで起動する場合は`NYAMURU_BRIDGE_PYTHON`を指定します。
 
 ```bash
-NYAMURU_MANGA_BABBLE_ROOT=/path/to/manga-babble-maker \
+NYAMURU_VISION_PYTHON=/path/to/python \
+NYAMURU_RTDETR_MODEL=/path/to/model.onnx \
 NYAMURU_NDLOCR_ROOT=/path/to/ndlocr-lite \
 npm run bridge
 ```
 
-`NYAMURU_BRIDGE_PYTHON`を指定しても、RT-DETRとNDLOCR-Liteのワーカーは各リポジトリの`.venv/bin/python`を使用します。
-
 ## 解析中の処理
 
 1. ブラウザが表示中の向きで画像をJPEGへ正規化します。
-2. RT-DETRを`manga-babble-maker/.venv`で起動し、コマ・文字・顔・身体を検出します。
+2. Nyamuru内の推論コードからRT-DETRを起動し、コマ・文字・顔・身体を検出します。
 3. RT-DETRでコマが見つからない場合だけ、OpenCVの輪郭候補を使います。
-4. NDLOCR-Liteを`ndlocr-lite/.venv`で起動し、文字を認識します。
+4. 同じ画像解析専用環境からNDLOCR-Liteを起動し、文字を認識します。
 5. 結果JSONだけをブラウザへ返し、bridge側の一時画像を削除します。
 
 解析は1画像ずつ実行します。最大10枚の一括読込でも、モデルを複数同時起動してメモリを競合させません。
@@ -103,28 +116,28 @@ npm run bridge
 
 ## トラブルシューティング
 
-### `manga-babble-makerのPython環境が見つかりません`
+### `ローカル画像解析環境が見つかりません`
 
-`manga-babble-maker/.venv/bin/python`が存在するか確認します。別の場所に置いた場合は`NYAMURU_MANGA_BABBLE_ROOT`を指定します。
+`npm run setup:vision`を実行してから、`npm run bridge:check`で保存先を確認します。
 
 ### `bridge:check`でRT-DETRが利用不可
 
 次の2ファイルが必要です。
 
 ```text
-manga-babble-maker/.venv/bin/python
-manga-babble-maker/models/rtdetrv4-x-manga109s_v2/model.onnx
+.local-vision/.venv/bin/python
+.local-vision/models/rtdetrv4-x-manga109s_v2/model.onnx
 ```
 
-モデルをNyamuru側へコピーしないでください。
+別の保存先を使用した場合は`NYAMURU_VISION_ROOT`または`NYAMURU_RTDETR_MODEL`を指定します。
 
 ### `bridge:check`でNDLOCR-Liteが利用不可
 
 次を確認します。
 
 ```text
-ndlocr-lite/.venv/bin/python
-ndlocr-lite/src/model/
+.local-vision/.venv/bin/python
+.local-vision/ndlocr-lite/src/model/
 ```
 
 ### 解析ボタンを押しても接続できない

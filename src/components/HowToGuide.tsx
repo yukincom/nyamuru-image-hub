@@ -15,7 +15,7 @@ const TAB_LINK_TARGETS = new Set<WorkspaceTab>(['storyboard', 'meta', 'nyamuruta
 // スタンドアロン版（file://起動）では配信元サイトのURLが確定しないため、
 // ダウンロードリンクの代わりに配布元リポジトリを開き、NOTICESは同梱ファイルへの相対リンクにする
 const IS_STANDALONE = Boolean(import.meta.env.PUBLIC_STANDALONE);
-const STANDALONE_URL = '/standalone/nyamuru-manga-name-studio.html';
+const STANDALONE_URL = '/standalone/nyamuru-image-hub.html';
 const NOTICES_URL = IS_STANDALONE ? './THIRD_PARTY_NOTICES.txt' : '/standalone/THIRD_PARTY_NOTICES.txt';
 
 function download(url: string, fileName: string) {
@@ -41,10 +41,10 @@ export default function HowToGuide({ onNavigate, onNotify }: Props) {
       }
       return;
     }
-    if (href.endsWith('nyamuru-manga-name-studio.html')) {
+    if (href.endsWith('nyamuru-image-hub.html')) {
       event.preventDefault();
       if (IS_STANDALONE) window.open(REPO_URL, '_blank', 'noreferrer');
-      else download(STANDALONE_URL, 'nyamuru-manga-name-studio.html');
+      else download(STANDALONE_URL, 'nyamuru-image-hub.html');
       return;
     }
     if (href.endsWith('THIRD_PARTY_NOTICES.txt')) {

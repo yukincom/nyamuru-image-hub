@@ -26,7 +26,8 @@
 ### ローカル実行とライセンス
 
 - `127.0.0.1:8787`だけで待ち受けるローカルbridgeを追加
-- RT-DETRとNDLOCR-Liteを別々の仮想環境で実行し、依存関係を分離
+- RT-DETRのONNX推論をNyamuru内へ移し、`manga-babble-maker`への実行時依存を撤去
+- `npm run setup:vision`で、利用者の確認後に専用仮想環境・固定版NDLOCR-Lite・検証済みRT-DETRモデルをGit対象外領域へ導入
 - モデル重みと一般的なモデル拡張子をGit対象外へ追加
 - NDLOCR-LiteがCC BY 4.0であることと、外部モデルを同梱しない境界を文書化
 

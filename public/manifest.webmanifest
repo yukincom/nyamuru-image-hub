@@ -1,7 +1,7 @@
 {
-  "name": "Nyamuru🐱Manga Name Studio",
-  "short_name": "Nyamuru🐱",
-  "description": "Nyamuru🐱のNDMをOpen Manga Name YAML（OMNY）形式で編集できるPWA",
+  "name": "Nyamuru 🐱 Image Hub",
+  "short_name": "Nyamuru Hub",
+  "description": "紙の漫画ネームを解析し、編集可能なOMNYへ取り込めるPWA",
   "lang": "ja",
   "start_url": "/",
   "scope": "/",

@@ -1,4 +1,4 @@
-# Nyamuru🐱 Manga Name Studio の使い方
+# Nyamuru 🐱 Image Hub の使い方
 
 > SPDX-License-Identifier: MIT
 >
@@ -6,7 +6,7 @@
 >
 > この文書はリポジトリルートの `LICENSE` に記載されたMIT Licenseで提供されます。
 
-LLMと画像生成AIをつないで、テーマから完成漫画まで進む3ステップのワークフローです。Nyamuru🐱 Manga Name Studio（このアプリ）は真ん中に立って、ネーム（OMNY形式）の確認・調整を受け持ちます。
+LLMと画像生成AIをつないで、テーマから完成漫画まで進む3ステップのワークフローです。Nyamuru 🐱 Image Hub（このアプリ）は真ん中に立って、ネーム（OMNY形式）の確認・調整を受け持ちます。
 
 ## とりあえず、あなたの創作パートナーのAIに聞いてみる
 
@@ -14,7 +14,7 @@ LLMと画像生成AIをつないで、テーマから完成漫画まで進む3�
 
 ```
 このリポジトリについて教えて！
-https://github.com/yukincom/nyamuru-manga-name-studio
+https://github.com/yukincom/nyamuru-image-hub
 ```
 
 ## 作業の流れ
@@ -99,4 +99,4 @@ Nyamuru🐱 Manga Name Studioがあれば、STEP 1を飛ばしてゼロからの
 
 CSS・JS・アイコンまで全部入りの単一HTMLファイル版です。ダウンロードしたファイルをダブルクリックするだけで、サーバー不要・オフラインで起動します。USBメモリで持ち運んだり、ネットのない環境でネームを編集したいときにどうぞ。再配布するときは [THIRD_PARTY_NOTICES.txt](/standalone/THIRD_PARTY_NOTICES.txt) を一緒に添付してください。
 
-→ [スタンドアロン版をダウンロード](/standalone/nyamuru-manga-name-studio.html)（スタンドアロン版で開いているときは、代わりに配布元リポジトリ（GitHub）を開きます）
+→ [スタンドアロン版をダウンロード](/standalone/nyamuru-image-hub.html)（スタンドアロン版で開いているときは、代わりに配布元リポジトリ（GitHub）を開きます）

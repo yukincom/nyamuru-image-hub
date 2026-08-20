@@ -159,6 +159,23 @@ class OrientationResultTest(unittest.TestCase):
 
 
 class LocalVisionResultTest(unittest.TestCase):
+    def test_formats_rtdetr_outputs_without_manga_babble_dependency(self):
+        detector_path = Path(__file__).parents[1] / "scripts" / "rtdetr_onnx.py"
+        detector_spec = importlib.util.spec_from_file_location("rtdetr_onnx", detector_path)
+        detector = importlib.util.module_from_spec(detector_spec)
+        assert detector_spec and detector_spec.loader
+        detector_spec.loader.exec_module(detector)
+        buckets = detector.detection_buckets(
+            [2, 0, 1, 3, 99],
+            [[1, 2, 30, 40], [4, 5, 20, 50], [6, 7, 8, 9], [10, 11, 12, 13], [0, 0, 1, 1]],
+            [0.9, 0.8, 0.1, 0.7, 0.99],
+            0.2,
+        )
+        self.assertEqual([item["id"] for item in buckets["frames"]], ["f0"])
+        self.assertEqual([item["id"] for item in buckets["bodies"]], ["b0"])
+        self.assertEqual(buckets["texts"], [])
+        self.assertEqual([item["id"] for item in buckets["faces"]], ["face0"])
+
     def test_reads_ndlocr_text_block_ids_in_line_order(self):
         page_xml = """<PAGE>
           <TEXTBLOCK BLOCKID="7"><LINE X="1"/><LINE X="2"/></TEXTBLOCK>
