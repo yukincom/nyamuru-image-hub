@@ -41,3 +41,5 @@ Git LFSによる配布は、公開forkに新しいLFS objectを追加できな�
 Release方式への変更後、Python分類・音声bridge 42件とsetup 13件が成功。正常取得と再実行、サイズ不足・超過・誤hash、既存重みとsymlinkの保護を確認した。
 
 新規cloneのmacOS/Python 3.13で、標準のCA参照先が無いためRelease取得のTLS検証に失敗することを確認した。取得時にはsetupで更新済みのcertifiを使い、certifiが無い単独実行ではPython標準の証明書検証を使う。証明書とホスト名の検証は無効化しない。CIでも証明書更新をモデル取得より先に実行する。
+
+修正後の公開 `22543b8` を使い、新規clone環境で `npm ci`、`npm run setup:vision -- --yes`、`pip check`、モデルの `--check` が成功した。重みはReleaseから自動取得してSHA-256を照合した。新規環境自身のPythonと正本Pythonで「保存して」「次のページへ」「これを変えて」の全19確率が完全一致し、研究フォルダへの依存がないことを確認した。最終全体検証はNode1085成功・3skip、Python435件（50skip）／18件（1skip）／45件（21skip）、型検査と両build成功。公開・ローカル整理の完了状態は[公開統合の記録](2026-10-24-public-repository-consolidation.md)に記載した。
