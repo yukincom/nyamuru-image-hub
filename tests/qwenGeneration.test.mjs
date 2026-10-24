@@ -6,6 +6,8 @@ import {paintScene} from '../src/lib/paintDocument.ts';
 import {buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint} from '../src/lib/qwenGeneration.ts';
 import {setWorkStylePrompt,artworkSettingsFromSource,applyArtworkSettings} from '../src/lib/artworkRules.ts';
 import {FIGURE_SIZE_LABELS,parseMangaYaml,parseOmayYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
+import {confirmHumanPoseCameraPrompt} from '../src/lib/humanPoseScene.ts';
+import {selectHumanPose} from '../src/lib/humanPoseSelection.ts';
 function fixture(){
  const {manga}=createEmptyWorkspaceDocument();manga.meta.series_id='series';manga.meta.episode_id='episode';manga.meta.format='モノクロ漫画';
  manga.characters=[{localId:'person-id',name:'確認用',catalog_id:'catalog'}];
@@ -13,6 +15,50 @@ function fixture(){
  manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:90,h:150},bg:1,background_description:'室内',action:null,bubbles:[],figures:[{name:'確認用',refId:'person-id',size:'full',action:'下を見る',bbox:{x:0,y:0,w:25,h:50}}]}];
  return manga;
 }
+function posePlan(mode='image'){
+ const manga=fixture(),figure=manga.pages[0].panels[0].figures[0],digest='a'.repeat(64);
+ const row=JSON.parse(readFileSync(new URL('../scripts/human_pose/data/curated-standing.json',import.meta.url)))[0];
+ figure.human_pose=selectHumanPose({...row,template_revision:1,production_status:'ready',review:{status:'confirmed',user_confirmed:true},
+   asset_files:{preview:{}},prompt_segments:[{id:'pose',text_ja:row.pose_text_ja,template_en:row.pose_template}]},digest);
+ Object.assign(figure.human_pose,{input_mode:mode,edited_text_ja:'右腕を上げ、左膝を曲げる。',scene:{version:1,
+   source:{base_sha256:digest,rig_sha256:digest,pose_sha256:digest,rig_signature:digest,pose_revision:1},
+   placement:{position:[0,0,0],yaw_degrees:0},camera:{position:[3,2,5],target:[0,1,0],fov:40},projection:'perspective',up:[0,1,0],frame:{width:512,height:1024}}});
+ figure.human_pose.camera_prompt=confirmHumanPoseCameraPrompt(figure.human_pose.scene,{centre:[0,1,0],world_facing_degrees:0});
+ figure.human_pose.camera_prompt.overrides.angle_ja='左斜め前から少し見下ろす';
+ figure.action='驚いた表情で左を見る';figure.size='bust-up';manga.characters[0].visual_prompt='細い眉と短い黒髪';
+ return {manga,plan:buildQwenGenerationPlan(manga,0,0,false,paintScene(manga.pages[0].panels[0],100,[]).owners[1])};
+}
+test('pose, action, angle, framing and identity survive normal, sketch and correction prompts',()=>{
+ for(const mode of ['prompt','image']){
+  const {manga,plan}=posePlan(mode),before=structuredClone(manga);
+  for(const prompt of [plan.prompt,plan.sketchPrompt,qwenGenerationPrompt(plan,{kind:'paint'}, {kind:'paint'})]){
+   for(const text of ['確認用','胸から上','驚いた表情で左を見る','左斜め前から少し見下ろす','細い眉と短い黒髪'])assert.ok(prompt.includes(text),text);
+   assert.ok(prompt.includes(mode==='image'?'3Dポーズ参照':'右腕を上げ、左膝を曲げる。'));
+   if(mode==='image')assert.ok(!prompt.includes('右腕を上げ、左膝を曲げる。'));
+  }
+  assert.deepEqual(manga,before);
+ }
+});
+test('3D image remains separate from identity sheets and cannot be omitted or sent in text mode',()=>{
+ const {plan}=posePlan(),refs=[{label:'人物資料',characterKeys:['person-id'],image:'data:character'}];
+ const value=qwenGenerationPayload(plan,refs,undefined,undefined,undefined,'data:pose');
+ assert.equal(value.mode,'new');assert.equal(value.references.length,2);assert.deepEqual(value.references[1].character_keys,[]);assert.equal(value.references[1].image,'data:pose');
+ assert.throws(()=>qwenGenerationPayload(plan,refs),/撮影画像を用意/);
+ assert.throws(()=>qwenGenerationPayload(plan,[],undefined,undefined,undefined,'data:pose'),/登場人物の参照資料/);
+ assert.throws(()=>qwenGenerationPayload(posePlan('prompt').plan,refs,undefined,undefined,undefined,'data:pose'),/ポーズ文/);
+ assert.equal(qwenGenerationPayload(posePlan('prompt').plan,refs).references.length,1);
+ assert.throws(()=>qwenGenerationPayload(plan,Array(9).fill(refs[0]),undefined,undefined,undefined,'data:pose'),/合計9枚/);
+ assert.throws(()=>qwenGenerationPayload(plan,Array(8).fill(refs[0]),'data:source',undefined,'data:correction','data:pose'),/合計10枚/);
+});
+test('pose-directed drawing uses a reference instead of conflicting paint preservation and sketch images have exact roles',()=>{
+ const {plan}=posePlan(),refs=[{label:'人物資料',characterKeys:['person-id'],image:'data:character'}, {label:'衣服の参考',characterKeys:[],image:'data:clothing'}];
+ const paint=qwenGenerationPayload(plan,refs,'data:source',undefined,undefined,'data:pose');
+ assert.equal(paint.mode,'new');assert.equal(paint.paint_image,undefined);assert.equal(paint.references[0].image,'data:source');
+ const correction=qwenGenerationPayload(plan,refs,'data:source',undefined,'data:mask','data:pose');
+ assert.equal(correction.mode,'paint');assert.equal(correction.paint_image,'data:source');
+ const sketch=qwenGenerationPayload({...plan,prompt:plan.sketchPrompt},refs,undefined,'data:rough',undefined,'data:pose');
+ assert.equal(sketch.mode,'sketch');assert.match(sketch.prompt,/<image2>：キャラクター設定画/);assert.match(sketch.prompt,/<image3>：衣服の参考/);assert.match(sketch.prompt,/<image4>：3Dポーズ参照/);
+});
 test('Qwen plans retain exact owner, stable character binding and whole-sheet references',()=>{
  const manga=fixture(),before=structuredClone(manga),scene=paintScene(manga.pages[0].panels[0],100,[]);
  const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);

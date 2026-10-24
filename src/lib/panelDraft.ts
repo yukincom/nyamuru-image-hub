@@ -92,7 +92,7 @@ export function buildPanelDraftPlan(manga: Manga, pageIndex: number, panelIndex:
   const page = manga.pages[pageIndex];
   const panel = page?.panels[panelIndex];
   if (!page || !panel) throw new Error('作画用ラフを生成するコマが見つかりません');
-  if (panel.figures?.some(figure => figure.human_pose)) throw new Error('選択した人体ポーズの作画用ラフへの反映は準備中です。');
+  if (panel.figures?.some(figure => figure.human_pose)) throw new Error('人体ポーズを使う場合は、人物フォルダの「生成」からQwenで生成してください。コマ全体の作画用ラフには3D参照を送れません。');
 
   const people = (panel.figures ?? []).filter((figure) => !isPropPlacement(figure)).map((figure) => figurePrompt(manga, figure));
   const props = (panel.figures ?? []).filter(isPropPlacement).map((figure) => figurePrompt(manga, figure));

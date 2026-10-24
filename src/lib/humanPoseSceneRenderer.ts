@@ -9,7 +9,8 @@ import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
 import { humanPoseCameraFacing, humanPoseSceneFrame, sameHumanPoseSource, validateHumanPoseScene } from './humanPoseScene.ts';
 import { disposeThreeObject } from './threeSceneResources.ts';
 import type { HumanPoseCameraSubject, HumanPoseRig, HumanPoseData, HumanPoseSceneAssets, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, PoseVector } from './humanPoseTypes.ts';
-import type { BackgroundStage } from '../types.ts';
+import type { BackgroundStage, FigureSize } from '../types.ts';
+import { applyHumanPoseFraming, humanPoseFraming } from './humanPoseFraming.ts';
 import { CUBE_STAGE_ID } from './background3d.ts';
 import { loadBackgroundStage } from './backgroundStageStore.ts';
 import { loadStageShape, stageClipPlanes, type StageShape } from './background3dRenderer.ts';
@@ -109,6 +110,15 @@ export class HumanPoseSceneRenderer {
     return changeHumanPoseMotion(this.motions, this.rig, this.basePose, settings, clipId, phase);
   }
   snapshot(): HumanPoseSceneSettings { return structuredClone(this.settings); }
+  frameFor(size: FigureSize, aspect = this.settings.frame.width / this.settings.frame.height): HumanPoseSceneSettings {
+    const before = this.snapshot();
+    try {
+      this.settings = { ...before, frame: humanPoseSceneFrame(aspect), framing: undefined };
+      this.render();
+      const points = new Map([...this.runtime.points].map(([id, point]) => [id, this.placement.localToWorld(point.clone())]));
+      return { ...this.snapshot(), framing: humanPoseFraming(points, this.camera, size) };
+    } finally { this.settings = before; this.render(); }
+  }
   centre(): PoseVector { return this.runtime.bounds().applyMatrix4(this.placement.matrixWorld).getCenter(new Vector3()).toArray(); }
   cameraSubject(): HumanPoseCameraSubject {
     const pose = editedHumanPose(this.rig, this.baseline(this.settings), this.settings);
@@ -182,7 +192,7 @@ export class HumanPoseSceneRenderer {
     const point = this.runtime.points.get(id === 'head' ? 'headCentre' : id); if (!point) return this.snapshot();
     const world = this.placement.localToWorld(point.clone());
     const offset = new Vector3(...this.settings.camera.position).sub(new Vector3(...this.settings.camera.target)).normalize().multiplyScalar(.55 * (this.settings.placement.scale ?? 1));
-    return { ...this.snapshot(), camera: { ...this.settings.camera, target: world.toArray(), position: world.clone().add(offset).toArray(), shift: [0, 0] } };
+    return { ...this.snapshot(), ...(this.settings.framing ? { framing: { size: this.settings.framing.size, crop: { x: 0, y: 0, w: 1, h: 1 } } } : {}), camera: { ...this.settings.camera, target: world.toArray(), position: world.clone().add(offset).toArray(), shift: [0, 0] } };
   }
   private pointerRay(x: number, y: number): Raycaster {
     const rect = this.canvas.getBoundingClientRect(), ray = new Raycaster();
@@ -252,11 +262,11 @@ export class HumanPoseSceneRenderer {
     return cancel && start ? structuredClone(start) : null;
   }
   focus(): HumanPoseSceneSettings {
-    return { ...this.snapshot(), camera: focusBackgroundCamera(this.settings.camera, this.bounds(), this.settings.frame.width / this.settings.frame.height) };
+    return { ...this.snapshot(), framing: undefined, camera: focusBackgroundCamera(this.settings.camera, this.bounds(), this.settings.frame.width / this.settings.frame.height) };
   }
   focusBackground(): HumanPoseSceneSettings {
     if (!this.background) return this.focus();
-    return { ...this.snapshot(), camera: focusBackgroundCamera(this.settings.camera, this.background.shape.bounds.clone().union(this.bounds()), this.settings.frame.width / this.settings.frame.height) };
+    return { ...this.snapshot(), framing: undefined, camera: focusBackgroundCamera(this.settings.camera, this.background.shape.bounds.clone().union(this.bounds()), this.settings.frame.width / this.settings.frame.height) };
   }
   placeAtBackgroundCentre(): HumanPoseSceneSettings {
     if (!this.background) return this.snapshot();
@@ -278,7 +288,7 @@ export class HumanPoseSceneRenderer {
       const indices = visible && new Set(visible);
       this.backgroundGroup.children.forEach((mesh, index) => { mesh.visible = !indices || indices.has(index); });
     }
-    applyBackgroundCameraShift(this.camera, this.settings.camera); this.camera.updateProjectionMatrix();
+    applyBackgroundCameraShift(this.camera, this.settings.camera); applyHumanPoseFraming(this.camera, this.settings); this.camera.updateProjectionMatrix();
     this.renderer.render(this.scene, this.camera);
   }
   capture(includeBackground = false): string {
@@ -287,8 +297,10 @@ export class HumanPoseSceneRenderer {
     const target = new WebGLRenderTarget(width, height, { samples: 4 });
     target.texture.colorSpace = SRGBColorSpace;
     const handlesVisible = this.runtime.handles.visible;
+    const supportsVisible = this.supports.map(mesh => mesh.visible);
     const previous = this.renderer.getRenderTarget(), gridVisible = this.grid.visible, backgroundVisible = this.backgroundGroup.visible, surfaceVisible = this.surfaceMarker.visible;
     try {
+      if (!includeBackground) this.supports.forEach(mesh => { mesh.visible = false; });
       this.runtime.handles.visible = false; this.surfaceMarker.visible = false; this.grid.visible = false; this.backgroundGroup.visible = false; this.renderer.setRenderTarget(target); this.render();
       const pixels = new Uint8Array(width * height * 4); this.renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
       let visible = false;
@@ -309,7 +321,7 @@ export class HumanPoseSceneRenderer {
         if (alpha > 0 && alpha < 255) for (let c = 0; c < 3; c++) data.data[i + c] = Math.round(data.data[i + c] * 255 / alpha);
       }
       context.putImageData(data, 0, 0); return canvas.toDataURL('image/png');
-    } finally { this.runtime.handles.visible = handlesVisible; this.surfaceMarker.visible = surfaceVisible; this.renderer.setRenderTarget(previous); this.grid.visible = gridVisible; this.backgroundGroup.visible = backgroundVisible; target.dispose(); this.render(); }
+    } finally { this.supports.forEach((mesh, index) => { mesh.visible = supportsVisible[index]; }); this.runtime.handles.visible = handlesVisible; this.surfaceMarker.visible = surfaceVisible; this.renderer.setRenderTarget(previous); this.grid.visible = gridVisible; this.backgroundGroup.visible = backgroundVisible; target.dispose(); this.render(); }
   }
   dispose(): void {
     if (this.disposed) return;

@@ -1,5 +1,5 @@
 import type { HumanPoseMotionSelection } from './humanPoseMotion.ts';
-import type { BackgroundCapture, CharacterGender } from '../types.ts';
+import type { BackgroundCapture, CharacterGender, FigureSize } from '../types.ts';
 
 // ポーズ素材と検索・生成で共有する値。
 export type HumanPoseInputMode = 'prompt' | 'image';
@@ -64,6 +64,10 @@ export interface HumanPoseJointEdits {
   motion_foot_offsets?: Partial<Record<'L' | 'R', [number, number]>>;
 }
 export type HumanPoseSurfaceAnchor = 'feet' | 'left_foot' | 'right_foot' | 'hips';
+export interface HumanPoseFraming {
+  size: FigureSize;
+  crop: { x: number; y: number; w: number; h: number };
+}
 export interface HumanPoseSurfacePlacement {
   version: 1;
   point: PoseVector;
@@ -87,6 +91,7 @@ export interface HumanPoseSceneSettings {
   projection: 'perspective';
   up: [0, 1, 0];
   frame: { width: number; height: number };
+  framing?: HumanPoseFraming;
 }
 export interface HumanPoseSceneAssets {
   catalog_sha256: string;

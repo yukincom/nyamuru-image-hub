@@ -6,7 +6,8 @@ import { dollyBackgroundCamera, shiftBackgroundCamera } from '../lib/background3
 import { HumanPoseSceneRenderer, loadHumanPoseBackground } from '../lib/humanPoseSceneRenderer.ts';
 import { humanPoseCameraParts, humanPoseSceneFrame, useHumanPoseBackgroundCamera } from '../lib/humanPoseScene.ts';
 import { CUBE_STAGE_ID } from '../lib/background3d.ts';
-import type { BackgroundCapture, BackgroundStage } from '../types.ts';
+import type { BackgroundCapture, BackgroundStage, FigureSize } from '../types.ts';
+import { MANUAL_HUMAN_POSE_FRAMING } from '../lib/humanPoseFraming.ts';
 import type { HumanPoseCameraSubject, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, HumanPoseSurfacePlacement, HumanPoseTextSelection, PoseVector } from '../lib/humanPoseTypes.ts';
 import HumanPoseMotionControls from './HumanPoseMotionControls.tsx';
 import HumanPoseSurfaceControls, { type HumanPoseSurfacePickMode } from './HumanPoseSurfaceControls.tsx';
@@ -18,6 +19,7 @@ interface Props {
   value: HumanPoseTextSelection;
   aspect?: number;
   framingLabel?: string;
+  framingSize?: FigureSize;
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
   onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject) => void;
@@ -25,7 +27,7 @@ interface Props {
 }
 type Camera = HumanPoseSceneSettings['camera'];
 
-export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, stages = [], backgroundCaptures = [], onConfirm, onClose }: Props) {
+export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, framingSize = 'bust-up', stages = [], backgroundCaptures = [], onConfirm, onClose }: Props) {
   const id = useId(), dialog = useRef<HTMLDialogElement>(null), host = useRef<HTMLDivElement>(null);
   const renderer = useRef<HumanPoseSceneRenderer | null>(null);
   const initial = useRef<HumanPoseSceneSettings | null>(null);
@@ -93,6 +95,7 @@ export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, 
         if (cancelled || !host.current) return;
         active = await HumanPoseSceneRenderer.create(host.current, assets, saved, aspect, background);
         if (cancelled) { active.dispose(); return; }
+        if (saved?.framing?.size !== framingSize || Math.abs(active.snapshot().frame.width / active.snapshot().frame.height / aspect - 1) > .01) active.apply(active.frameFor(framingSize, aspect));
         renderer.current = active; initial.current = active.snapshot(); setDraft(active.snapshot());
       } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : '3D表示を開けませんでした'); }
       finally { if (!cancelled) setLoading(false); }
@@ -165,7 +168,9 @@ export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, 
   const description = draft && renderer.current ? humanPoseCameraParts(draft, renderer.current.cameraSubject()) : null;
   const capture = (includeBackground = false) => {
     stopMotion();
-    try { setPreview(renderer.current?.capture(includeBackground) ?? ''); setPreviewBackground(includeBackground); setError(''); }
+    try {
+      if (renderer.current && !renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect));
+      setPreview(renderer.current?.capture(includeBackground) ?? ''); setPreviewBackground(includeBackground); setError(''); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '撮影できませんでした'); }
   };
   const close = () => { cancelInteraction(); dialog.current?.close(); onClose(); };
@@ -251,7 +256,7 @@ export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, 
                 const dx = event.clientX - start.x, dy = event.clientY - start.y;
                 if (!start.moved && !dx && !dy) return;
                 start.moved = true;
-                const next = shiftBackgroundCamera(start.camera, dx / Math.max(1, event.currentTarget.clientWidth), dy / Math.max(1, event.currentTarget.clientHeight));
+                const next = shiftBackgroundCamera(start.camera, dx / Math.max(1, event.currentTarget.clientWidth) * (draft?.framing?.crop.w ?? 1), dy / Math.max(1, event.currentTarget.clientHeight) * (draft?.framing?.crop.h ?? 1));
                 next.shift = next.shift!.map(v => Math.max(-2, Math.min(2, v))) as [number, number]; camera(next);
               }}
               onPointerUp={event => { if (jointDrag.current?.pointer === event.pointerId) finishJoint(); if (drag.current?.pointer === event.pointerId) finishPan(); }}
@@ -343,8 +348,8 @@ export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, 
               <button type="button" class="secondary-button" onClick={() => { if (renderer.current) update(renderer.current.focus()); }}>全体を収める</button>
             </div>
             <p>撮影寸法：{frame.width}×{frame.height}</p>
-            <button type="button" class="secondary-button" onClick={() => update({ ...draft, frame: humanPoseSceneFrame(aspect) })}>現在の人物枠の縦横比に合わせる</button>
-            <p class="field-note">描写範囲：{framingLabel || '未指定'}。自動切り取りは行いません。映り方は撮影プレビューで確認してください。</p>
+            <button type="button" class="secondary-button" onClick={() => { if (renderer.current) update(renderer.current.frameFor(framingSize, aspect)); }}>描写範囲と人物枠に合わせる</button>
+            <p class="field-note">描写範囲：{framingLabel || '胸から上'}。撮影プレビューと同じ範囲を生成に送ります。{MANUAL_HUMAN_POSE_FRAMING.includes(framingSize) ? '使いたい部位を選び、拡大と移動で撮影範囲を調整してください。' : 'カメラの角度を保って切り取り、移動・拡大で映り方を調整できます。'}</p>
           </fieldset>
           {description && <section class="human-pose-scene-description"><strong>撮影設定からの説明</strong>
             <p>アングル：{description.angle.ja || '判定できません'}</p><p>レンズ：{description.lens.ja}</p>
@@ -356,9 +361,13 @@ export default function HumanPoseSceneDialog({ value, aspect = 1, framingLabel, 
             {draft.background && <button type="button" class="secondary-button" disabled={backgroundBusy} onClick={() => capture(true)}>背景と一緒に撮影</button>}</div>
         </aside>}
       </div>
-      <footer><p class="field-note">動きの位置・微調整・配置・撮影設定を保存します。PNGの保存と画像生成への反映は次の工程です。</p>
+      <footer><p class="field-note">姿勢・配置・撮影範囲を保存します。撮影画像で送る場合は、この範囲をポーズ参照に使います。</p>
         <button type="button" class="secondary-button" onClick={close}>取消</button>
-        <button type="button" class="primary-button" disabled={!draft || loading || backgroundBusy} onClick={() => { if (renderer.current) { stopMotion(); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject()); close(); } }}>確定</button></footer>
+        <button type="button" class="primary-button" disabled={!draft || loading || backgroundBusy} onClick={() => {
+          if (!renderer.current) return;
+          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); renderer.current.capture(); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject()); close(); }
+          catch (cause) { setError(cause instanceof Error ? cause.message : '撮影範囲を確認してください'); }
+        }}>確定</button></footer>
     </div>
   </dialog>, document.body);
 }

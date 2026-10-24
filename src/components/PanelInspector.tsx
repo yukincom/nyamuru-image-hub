@@ -632,7 +632,7 @@ export default function PanelInspector({ onEditText, onOpenBubbleMaterials, pane
           </div>
           <FigureHumanPoseEditor key={`${manga.meta.series_id}:${manga.meta.episode_id}:${pageIndex}:${panelIndex}:${figure.layerId ?? index}`}
             stages={manga.background_stages} backgroundCaptures={(panel.background_images ?? []).flatMap((image, i) => image.paint?.background3d ? [{ label: `このコマの背景 ${i + 1}`, capture: image.paint.background3d }] : [])}
-            aspect={figure.bbox && figure.bbox.h > 0 ? figure.bbox.w / figure.bbox.h : 1} framingLabel={figure.size ? FIGURE_SIZE_LABELS[figure.size] : undefined}
+            aspect={figure.bbox && figure.bbox.h > 0 ? figure.bbox.w / figure.bbox.h : 1} framingLabel={FIGURE_SIZE_LABELS[figure.size ?? 'bust-up']} framingSize={figure.size ?? 'bust-up'}
             value={figure.human_pose} onChange={value => update(draft => {
               if (value) draft.figures![index].human_pose = value;
               else delete draft.figures![index].human_pose;

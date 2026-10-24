@@ -198,21 +198,41 @@ test('反転だけ異なる人物を合体で落とさず、不正な反転指�
   assert.throws(() => validateHumanPoseSelection(right.human_pose));
 });
 
-test('生成未接続のポーズを黙って捨てず、人物生成とコマ下絵の入口で止める', () => {
+test('確定したポーズを文と画像の両方式で計画に渡し、古い対象と未確定の撮影を拒否する', () => {
   for (const input_mode of ['prompt', 'image']) {
     const { manga } = document(), panel = manga.pages[0].panels[0];
-    panel.figures[0].human_pose.input_mode = input_mode;
-    const scene = paintScene(panel, 100, []);
-    const owner = scene.owners.find(owner => owner.figure);
-    assert.ok(owner);
-    assert.throws(() => buildQwenGenerationPlan(manga, 0, 0, false, owner), /人体ポーズ/);
-    const staleOwner = structuredClone(owner);
-    delete staleOwner.figure.human_pose;
-    assert.throws(() => buildQwenGenerationPlan(manga, 0, 0, false, staleOwner), /人体ポーズ/);
-    assert.throws(() => buildPanelDraftPlan(manga, 0, 0), /人体ポーズ/);
-    delete panel.figures[0].human_pose;
-    const plain = paintScene(panel, 100, []).owners.find(owner => owner.figure);
-    assert.doesNotThrow(() => buildQwenGenerationPlan(manga, 0, 0, false, plain));
+    const pose = panel.figures[0].human_pose;
+    pose.input_mode = input_mode;
+    pose.camera_prompt = confirmHumanPoseCameraPrompt(pose.scene, { centre: [1, 1.3, -2], world_facing_degrees: 70 });
+    const owner = paintScene(panel, 100, []).owners.find(owner => owner.figure);
+    const plan = buildQwenGenerationPlan(manga, 0, 0, false, owner);
+    assert.deepEqual(plan.humanPose.selection, pose);
+    assert.match(plan.prompt, /元のアクション/);
+    assert.match(plan.prompt, /アングル・レンズの説明/);
+    if (input_mode === 'prompt') assert.ok(plan.prompt.includes(pose.edited_text_ja));
+    else { assert.match(plan.prompt, /3Dポーズ参照/); assert.ok(!plan.prompt.includes(pose.edited_text_ja)); }
+    const staleOwner = structuredClone(owner); delete staleOwner.figure.human_pose;
+    assert.throws(() => buildQwenGenerationPlan(manga, 0, 0, false, staleOwner), /人体ポーズが変更/);
+    assert.throws(() => buildPanelDraftPlan(manga, 0, 0), /Qwenで生成/);
+    pose.camera_prompt.review_required = true;
+    assert.throws(() => buildQwenGenerationPlan(manga, 0, 0, false, paintScene(panel, 100, []).owners[1]), /手修正文/);
+    pose.camera_prompt.review_required = false; pose.scene.camera.fov++;
+    assert.throws(() => buildQwenGenerationPlan(manga, 0, 0, false, paintScene(panel, 100, []).owners[1]), /確定し直し/);
+  }
+});
+
+test('切り取り範囲はコマ・ページ前景のOMNYへ保存される', () => {
+  const doc = document();
+  for (const figure of [doc.manga.pages[0].panels[0].figures[0], doc.manga.pages[0].page_overlay.figures[0]]) {
+    figure.human_pose.scene.framing = { size: 'bust-up', crop: { x: .2, y: .1, w: .4, h: .4 } };
+    figure.human_pose.camera_prompt = confirmHumanPoseCameraPrompt(figure.human_pose.scene, { centre: [1, 1.3, -2], world_facing_degrees: 70 });
+  }
+  for (const serialize of [toStoredMangaYaml, toMangaYaml]) {
+    const restoredDocument = parseMangaYaml(serialize(doc)), restored = restoredDocument.manga.pages[0];
+    assert.deepEqual(restored.panels[0].figures[0].human_pose, doc.manga.pages[0].panels[0].figures[0].human_pose);
+    assert.deepEqual(restored.page_overlay.figures[0].human_pose, doc.manga.pages[0].page_overlay.figures[0].human_pose);
+    const owner = paintScene({ ...restored.page_overlay, id: 0, bg: -1, shape: { type: 'rect', x: 0, y: 0, w: 100, h: 150 } }, 100, []).owners.find(o => o.figure);
+    assert.equal(buildQwenGenerationPlan(restoredDocument.manga, 0, 0, true, owner).overlay, true);
   }
 });
 

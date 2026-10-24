@@ -29,6 +29,13 @@ export function validateHumanPoseScene(value: unknown): asserts value is HumanPo
     throw new Error('人体ポーズの配置・撮影設定が不正です');
   }
   if (value.motion !== undefined) validateHumanPoseMotion(value.motion);
+  if (value.framing !== undefined) {
+    const framing = value.framing;
+    if (!object(framing) || typeof framing.size !== 'string' || !['long', 'full', 'knee-up', 'waist-up', 'bust-up', 'shoulder-up', 'face', 'face-detail', 'hand', 'foot', 'part'].includes(framing.size)
+      || !object(framing.crop) || !finite(framing.crop.x, -100, 100) || !finite(framing.crop.y, -100, 100)
+      || !finite(framing.crop.w, .0001, 100) || !finite(framing.crop.h, .0001, 100)
+      || Math.abs(framing.crop.w / framing.crop.h - 1) > .00001) throw new Error('人体ポーズの切り取り範囲が不正です');
+  }
   if (value.joint_edits !== undefined) validateHumanPoseJointEdits(value.joint_edits);
   const target = camera.target;
   const distance = Math.hypot(...camera.position.map((v, i) => v - target[i]));
@@ -47,7 +54,7 @@ export function validateHumanPoseScene(value: unknown): asserts value is HumanPo
 export function useHumanPoseBackgroundCamera(scene: HumanPoseSceneSettings, capture: BackgroundCapture): HumanPoseSceneSettings {
   validateBackgroundCapture(capture);
   if (scene.background?.sourceId !== capture.sourceId) throw new Error('選択中の舞台と背景カメラの舞台が異なります');
-  const next = { ...structuredClone(scene), camera: structuredClone(capture.camera), frame: humanPoseSceneFrame(capture.frame.w / capture.frame.h),
+  const next = { ...structuredClone(scene), framing: undefined, camera: structuredClone(capture.camera), frame: humanPoseSceneFrame(capture.frame.w / capture.frame.h),
     background: { ...structuredClone(scene.background), sourceId: capture.sourceId, cutaway: structuredClone(capture.cutaway), objectVisibility: structuredClone(capture.objectVisibility) } };
   validateHumanPoseScene(next);
   return next;

@@ -1,6 +1,6 @@
 import type { HumanPoseCatalogEntry, HumanPoseTag, HumanPoseTextSelection } from './humanPoseTypes.ts';
 import { renderHumanPoseTemplate } from './humanPoseTemplate.ts';
-import { validateHumanPoseCameraPrompt, validateHumanPoseScene } from './humanPoseScene.ts';
+import { humanPoseCameraPromptCurrent, validateHumanPoseCameraPrompt, validateHumanPoseScene } from './humanPoseScene.ts';
 
 const POSE_ID = /^pose-[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 export const HUMAN_POSE_SHA256 = /^[a-f0-9]{64}$/u;
@@ -50,9 +50,14 @@ export function selectHumanPose(pose: HumanPoseCatalogEntry, digest: string): Hu
   return selection;
 }
 
-// 送信統合前のポーズ指定を生成で黙って捨てない。
+// 保存内容を捨てず、未確定の撮影説明や画像を送信しない。
 export function requireHumanPoseGenerationReady(value?: HumanPoseTextSelection): void {
-  if (value) throw new Error('選択した人体ポーズの画像生成への反映は準備中です。ポーズ指定を解除すると現在のアクション欄で生成できます。');
+  if (!value) return;
+  validateHumanPoseSelection(value);
+  if (value.input_mode === 'prompt' && !value.edited_text_ja.trim()) throw new Error('ポーズの説明を入力するか、撮影画像で送る方法を選んでください');
+  if (value.input_mode === 'image' && !value.scene) throw new Error('3Dでポーズ・アングルを調整して確定してください');
+  if (value.scene && (!value.camera_prompt || !humanPoseCameraPromptCurrent(value.camera_prompt, value.scene))) throw new Error('3D画面で撮影設定を確定し直してください。ポーズを解除する必要はありません');
+  if (value.camera_prompt?.review_required) throw new Error('撮影設定の手修正文を確認してください');
 }
 
 // UIで使う配列と識別子は受信時にも確認する。

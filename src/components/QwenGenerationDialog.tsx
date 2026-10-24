@@ -50,9 +50,22 @@ export default function QwenGenerationDialog({plan,agentRequest,layers=[],loadLa
   const [history,setHistory]=useState<QwenJob[]>([]),[attempt,setAttempt]=useState<string|null>(null);
   const [historyScope,setHistoryScope]=useState<QwenHistoryScope|null>(null),[selectedJobs,setSelectedJobs]=useState<string[]>([]);
   const [phase,setPhase]=useState(''),[notice,setNotice]=useState('');
+  const [poseImage,setPoseImage]=useState(''),[poseError,setPoseError]=useState(''),[poseAttempt,setPoseAttempt]=useState(0);
+  const posePending=useRef<Promise<string|undefined>>();
+  const usesPoseImage=plan.humanPose?.selection.input_mode==='image';
+  const referenceLimit=usesPoseImage?8:9;
   const submitted=useRef(false);
   const alive=useRef(true),working=useRef(false),close=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLElement>(null);
   useEffect(()=>{alive.current=true;const before=document.activeElement;close.current?.focus();return()=>{alive.current=false;if(before instanceof HTMLElement)before.focus();};},[]);
+  useEffect(()=>{
+    if(!usesPoseImage||!plan.humanPose)return;
+    let cancelled=false;setPoseImage('');setPoseError('');
+    const {selection,framing}=plan.humanPose;
+    posePending.current=import('../lib/humanPoseGeneration.ts').then(({captureHumanPoseReference})=>captureHumanPoseReference(selection,framing,plan.width/plan.height)).then(image=>{
+      if(!cancelled){setPoseImage(image);return image;}
+    }).catch(cause=>{if(!cancelled)setPoseError(cause instanceof Error?cause.message:'3Dポーズを撮影できませんでした');return undefined;});
+    return()=>{cancelled=true;};
+  },[plan,poseAttempt]);
   const draft=useRef({prompt,references,reference,correction});draft.current={prompt,references,reference,correction};
   const attempted=useRef<string|null>(null);attempted.current=attempt;
   const updateReferences=(value:QwenReference[])=>{draft.current.references=value;setReferences(value);};
@@ -65,7 +78,7 @@ export default function QwenGenerationDialog({plan,agentRequest,layers=[],loadLa
   async function loadRegistered(propagate=false){await operation(async()=>{
     if(attempted.current)throw new Error('生成を開始した資料は変更できません');
     if(!plan.candidates.length)throw new Error('登録済みの人物資料がありません。資料画像を追加してください');
-    if(plan.candidates.length>9)throw new Error('登録資料が9枚を超えています。使う資料を画像から選んで追加してください');
+    if(plan.candidates.length>referenceLimit)throw new Error(`登録資料が${referenceLimit}枚を超えています。使う資料を画像から選んで追加してください`);
     const loaded=await withNewCreationBridgeSession(async()=>{
       const result:QwenReference[]=[];
       for(const candidate of plan.candidates){
@@ -79,7 +92,7 @@ export default function QwenGenerationDialog({plan,agentRequest,layers=[],loadLa
   },propagate);}
   async function addFiles(files:File[],role:QwenReferenceRole='character',propagate=false){await operation(async()=>{
     if(attempted.current)throw new Error('生成を開始した資料は変更できません');
-    if(draft.current.references.length+files.length>9)throw new Error('参照資料は最大9枚です');
+    if(draft.current.references.length+files.length>referenceLimit)throw new Error(`参照資料は最大${referenceLimit}枚です${usesPoseImage?'（3Dポーズ画像を別に1枚送ります）':''}`);
     const loaded:QwenReference[]=[];
     for(const file of files)loaded.push({label:file.name,characterKeys:role==='character'?plan.characterKeys:[],image:(await qwenInputImage(file)).image});
     if(alive.current)updateReferences([...draft.current.references,...loaded]);
@@ -102,9 +115,13 @@ export default function QwenGenerationDialog({plan,agentRequest,layers=[],loadLa
   async function generate(autoInsert=false,inputIsCurrent:()=>boolean=()=>true){return operation(async()=>{
     if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
     const {prompt,references,reference,correction}=draft.current;
+    const isCurrent=()=>alive.current&&inputIsCurrent();
+    if(usesPoseImage)setPhase('3Dポーズの撮影を確認中');
+    const capturedPose=usesPoseImage?await posePending.current:undefined;
+    if(!isCurrent())throw new Error('生成を中止しました');
     const sketch=reference?.kind==='sketch'&&!correction;
-    const payload=qwenGenerationPayload({...plan,prompt},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image);
-    const id=crypto.randomUUID(),isCurrent=()=>alive.current&&inputIsCurrent();
+    const payload=qwenGenerationPayload({...plan,prompt},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,capturedPose);
+    const id=crypto.randomUUID();
     submitted.current=false;
     return executeQwenGeneration({id,payload,plan,isCurrent,
       prepare:(id,payload)=>{attempted.current=id;setAttempt(id);return prepareQwenJob(id,payload);},
@@ -181,6 +198,11 @@ export default function QwenGenerationDialog({plan,agentRequest,layers=[],loadLa
     <section ref={dialog} class="layer-generation-dialog qwen-generation-dialog qwen-with-conversation" role="dialog" aria-modal="true" aria-labelledby="qwen-generation-title">
       <header><div><h2 id="qwen-generation-title">生成</h2><p>Qwen-Image-2.1 Turbo · {plan.overlay?'ページ前景':`コマ ${plan.panelId}`} · {plan.label}</p></div><button ref={close} disabled={busy} onClick={onClose}>閉じる</button></header>
       <div class="qwen-conversation-layout"><div class="qwen-generation-controls">
+      {usesPoseImage&&<fieldset><legend>送信する3Dポーズ</legend>
+        {poseImage?<figure class="qwen-paint-reference"><img src={poseImage} alt="描写範囲に合わせた3Dポーズ参照"/><figcaption>姿勢・アングル・切り取り範囲の参照</figcaption></figure>
+          :poseError?<><p role="alert">{poseError}</p><button disabled={busy||Boolean(attempt)} onClick={()=>setPoseAttempt(value=>value+1)}>撮影を再試行</button></>:<p role="status">保存した3Dポーズを撮影しています…</p>}
+        <p>人物の外見と画風には、下のキャラクター設定画を使います。</p>
+      </fieldset>}
       <fieldset disabled={busy||Boolean(attempt)}><legend>「{plan.label}」フォルダのレイヤー</legend>
         <p>参照画像とピンポイント修正用を、それぞれ1枚まで選べます。どちらも任意です。</p>
         <div class="qwen-layer-inputs">{(['reference','correction'] as const).map(slot=>{
@@ -201,7 +223,7 @@ export default function QwenGenerationDialog({plan,agentRequest,layers=[],loadLa
       </fieldset>}
       <label class="qwen-prompt">生成指示<textarea rows={8} value={prompt} disabled={busy||Boolean(attempt)} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>
       <div class="paint-entry-actions">
-        <button class="primary-button" disabled={busy||Boolean(attempt)} onClick={()=>void generate()}>Qwenで実行</button>
+        <button class="primary-button" disabled={busy||Boolean(attempt)||usesPoseImage&&!poseImage} onClick={()=>void generate()}>Qwenで実行</button>
         {attempt&&<button disabled={busy} onClick={()=>void check(attempt)}>生成状況を確認</button>}
         <button disabled={busy} aria-pressed={historyScope==='owner'} onClick={()=>void loadHistory('owner')}>生成履歴</button>
         <button disabled={busy} aria-pressed={historyScope==='work'} onClick={()=>void loadHistory('work')}>作品の生成履歴</button>
