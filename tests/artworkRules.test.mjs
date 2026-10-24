@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { parse } from 'yaml';
-import { artworkSettingsFromSource, compileArtworkRules, getArtworkSettings, applyArtworkSettings, appendArtworkSettings, artworkNumberControls, setArtworkNumber, parseArtworkSettings, getWorkStylePrompt, setWorkStylePrompt } from '../src/lib/artworkRules.ts';
+import { artworkSettingsFromSource, compileArtworkRules, compileArtworkForMode, getArtworkSettings, applyArtworkSettings, appendArtworkSettings, artworkNumberControls, setArtworkNumber, parseArtworkSettings, getWorkStylePrompt, setWorkStylePrompt } from '../src/lib/artworkRules.ts';
 import { parseMangaYaml, parseOmayYaml, toStoredMangaYaml, toMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml, toOmayYaml, toArtworkSettingsYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 
@@ -54,6 +54,38 @@ test('共通だけの生成にページ・文字・背景・検品の一体型�
   const source = standard();
   source.layout_spec = source.layout_spec.replace('### 画風を変えてもキャラを保つ', '### 画風を変えてもキャラを保つ\n追加: 必ずページ番号を描く');
   assert.doesNotMatch(compileArtworkRules(artworkSettingsFromSource(source), 'character').layout_spec, /追加:|キャラクターの識別記号/);
+});
+
+test('背景の追加ルールは全体生成だけへ届き、下書きや人物生成へ漏れない', () => {
+  const settings = artworkSettingsFromSource(standard());
+  const before = structuredClone(settings);
+  const backgroundRule = /背後の要素を少なくとも1点|bg:-1=背景無描画（プレースホルダー）/;
+  assert.match(JSON.stringify(compileArtworkForMode(settings, 'integrated')), backgroundRule);
+  for (const rules of [compileArtworkForMode(settings, 'draft'), compileArtworkRules(settings, 'character')]) {
+    assert.doesNotMatch(JSON.stringify(rules), backgroundRule);
+  }
+  assert.deepEqual(settings, before);
+});
+
+test('標準候補の追加で既存作品の背景ルールを自動更新せず、保存後も元の指定を保つ', () => {
+  const document = sample();
+  document.manga.meta.style_notes = [...document.manga.meta.style_notes.filter(note => note.startsWith('[style] 作品の出力形式')), '作者独自の背景色'];
+  document.manga.layout_spec = document.manga.layout_spec.replace(/### 背景詳細度\(bg\)\n[\s\S]*?(?=\n### ト書き)/,
+    '### 背景詳細度(bg)\n- [const] bg:-1=背景無描画。1色のベタ塗りのみを敷く。キャラクター・フキダシ・コマ枠・キャラに付随する漫符(頭上の汗・怒りマーク等)は通常どおり描く\n');
+  delete document.manga.artwork_settings;
+  const original = structuredClone(document);
+  const current = getArtworkSettings(document.manga);
+  const added = appendArtworkSettings(current, artworkSettingsFromSource(standard()), '標準');
+  assert.deepEqual(document, original);
+  assert.ok(added.groups.length > current.groups.length);
+  assert.ok(added.groups.slice(current.groups.length).every(group => !group.enabled));
+  assert.deepEqual(compileArtworkRules(added, 'integrated'), compileArtworkRules(current, 'integrated'));
+  applyArtworkSettings(document.manga, added);
+  const restored = parseMangaYaml(toStoredMangaYaml(document));
+  assert.deepEqual(restored.manga.meta.style_notes, original.manga.meta.style_notes);
+  assert.equal(restored.manga.layout_spec, original.manga.layout_spec);
+  assert.deepEqual(restored.manga.pages, original.manga.pages);
+  assert.deepEqual(getArtworkSettings(restored.manga), added);
 });
 
 test('OFFは非反映だけ。保存・再読込・再ONでルールも数値も戻る', () => {

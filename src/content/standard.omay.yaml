@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 sa-san10
-# Open Manga Artwork YAML (OMAY) v10.5 — Image-generation instruction file
+# Open Manga Artwork YAML (OMAY) v10.7 — Image-generation instruction file
 # Nickname: Nyamuru🐱
 #
 # Artwork and visual-direction styles (style_notes) and layout specifications (layout_spec)
@@ -22,7 +22,7 @@
 #   [const] > layout_spec,style_notes in omny.yaml > [must] > [panel] > [style] > [default]
 
 spec_name: "Open Manga Artwork YAML"
-spec_version: "10.5"
+spec_version: "10.7"
 
 style_notes:
   # ### Dialogue text
@@ -42,7 +42,8 @@ style_notes:
   - "[style] Follow OMNY meta.format for the work's output format. Render color manga with line art and flat colors (gradients as needed), monochrome manga with black-and-white line art, solid fills and screentones, and grayscale manga with gray tonal values."
 
   # ### Background colors
-  - "[style] Background color by bg value: bg:-1 uses the default single mid-gray flat fill (no gradients). Prioritize panels[].background_description for background colors, effects and concrete objects; only when it is unspecified may explicit instructions in action be used as a reference. bg:0 uses a background color appropriate to the scene and emotion (flat fill or gradient; for example, anger=reds / joy=warm colors / surprise=yellows / tension=purple to navy / being moved=gold to pink / stillness=blues). bg:1 uses a background-color gradient appropriate to the scene. A solid-white background is prohibited for bg:0/1; always use a color appropriate to the scene."
+  - "[default] The default background color for bg:-1 is a single mid-gray flat fill (no gradients). Override the flat-fill color when action explicitly specifies a color."
+  - "[style] Background color by bg value: prioritize panels[].background_description for background colors, effects and concrete objects; only when it is unspecified may explicit instructions in action be used as a reference. bg:0 uses a background color appropriate to the scene and emotion (flat fill or gradient; for example, anger=reds / joy=warm colors / surprise=yellows / tension=purple to navy / being moved=gold to pink / stillness=blues). bg:1 uses a background-color gradient appropriate to the scene with 1–2 concrete objects indicating the setting (do not use color alone; see the bg section in layout_spec). A solid-white background is prohibited for bg:0/1; always use a color appropriate to the scene."
 
   # ### Image size
   - "[style] Image size: the default is A4 portrait (width 210mm × height 297mm). Follow any size specified by the work instead (OMNY panel and bbox coordinates are written relative to that paper size)."
@@ -129,8 +130,15 @@ layout_spec: |
        Are there any characters not listed in figures? Are panels with no_figures: true unoccupied?
     7. Bubble overlap: do speech bubbles avoid characters' faces (the top 1/3 of each figure bbox)?
        Do their tails point toward the speakers' mouths?
-    8. Background instructions: do bg:-1 panels contain only a single flat-color background? Do bg:0 panels
-       avoid concrete background details such as scenery, interiors or props?
+    8. Background instructions: do bg:-1 panels follow the default (a single flat-color fill) or the instructions in action / style_notes? Do bg:0 panels
+       avoid concrete background details such as scenery, interiors or props? Do bg:1 panels have
+       elements indicating the setting behind the characters (rather than just a color gradient or the edge of a foreground desk)?
+       Do bg:1 panels on the same page avoid repeating the same elements, including incidental props?
+       In regenerated versions, do bg:0 panels still contain only emotional colors and effects,
+       and do bg:-1 panels retain their initial rendering treatment without unintended background additions?
+       Do bg:2 panels render the location in detail?
+       Even if a bg:1 background seems to contain more elements, do not regenerate it unless those elements
+       draw more attention than the characters and dialogue (reduce the background only when it overwhelms the main subjects).
   - [const] Count the pages, panels and speech bubbles to verify their numbers,
     and report numerically whether they match OMNY.
   - [const] For any item still incorrect after regeneration, explicitly report its name and the remaining defect.
@@ -204,16 +212,23 @@ layout_spec: |
 
   ### Background detail (bg)
   - [const] Each panel's bg value (-1/0/1/2) specifies the amount of background detail. Follow bg strictly for each panel. Refer to style_notes for background colors and color treatment.
-  - [const] bg:-1=no background drawing. Use only a single flat-color fill. Draw characters, speech bubbles, panel borders and character-attached manga symbols (such as sweat drops or anger marks above the head) normally.
+  - [default] bg:-1=no background drawing (placeholder). By default, use only a single flat-color fill and draw characters, speech bubbles, panel borders and character-attached manga symbols (such as sweat drops or anger marks above the head) normally. Follow any alternative rendering instructions in action or style_notes.
   - [const] bg:0=no concrete background. Add effects such as focus lines, manga symbols, tones, auras or sparkles over the background color to direct attention to the character's expression and emotions.
-  - [const] bg:1=simple background. Over a background-color gradient, add 1–2 symbolic details indicating the setting (such as a wall line, window frame, desk edge or silhouette of a foreground prop). A foreground object with a background-color gradient behind it is also an acceptable depth composition.
+  - [const] bg:1=simple background. Over a background-color gradient, add 1–2 symbolic details indicating the setting (objects behind the characters, such as window frames, shelves, wall lines, notices or houseplants; foreground objects, such as a desk edge or prop silhouettes). A foreground object with a background-color gradient behind it is also an acceptable depth composition.
+  - [const] Do not omit the elements in bg:1. Prioritize panels[].background_description for background instructions; only when it is unspecified may explicit instructions in action be used as a reference. If the selected instructions specify only a background color, treat it as the gradient's color, not an instruction to omit objects. If no elements are specified, choose objects that should be visible behind the characters from that panel's camera angle, using OMNY setting (background / props) or the locations of adjacent panels. Include at least 1 element behind the characters; the edge of a foreground desk alone is insufficient.
+  - [const] Do not keep repeating the same elements in bg:1 panels on the same page. In adjacent panels, show different elements (such as the window side, shelf side or wall side) according to the camera angle. Do not repeat the same incidental props (such as houseplants, framed pictures or mugs) in every panel either. Incidental props are optional.
+  - [const] The bg:1 element requirements above (draw elements behind the characters, avoid repetition, and treat 1–2 elements as a minimum guideline) apply only to bg:1 panels. They do not apply to bg:0 or bg:-1: bg:0 uses only emotional-color flat fills / gradients plus effects, and bg:-1 follows its own rules.
+  - [const] The 1–2 elements for bg:1 are a minimum guideline, not an upper limit. A room, furniture or windows in the distance may remain recognizable through blur or pale colors within bg:1. The difference between bg:1 and bg:2 is detail density and visual prominence: keep bg:1 backgrounds less prominent than the characters and dialogue using blur, pale colors or simplified lines; bg:2 showcases the location itself.
   - [const] bg:2=detailed background. A showcase panel with a thoroughly rendered location.
   - [default] Limit bg:2 to 2 panels per page (at any positions). bg:-1 does not count toward this 2-panel limit.
-  - [const] Ground-contact shadows at characters' feet are determined by bg: always include them for every value other than bg:-1, and do not draw them in bg:-1 panels (shadows are added with the background in a later stage).
-  - [const] Mixing bg:-1 is completely unrestricted (it may appear with other bg values on the same page, and all panels may use bg:-1).
+  - [const] Ground-contact shadows at characters' feet are determined by bg: always include them in bg:0, bg:1 and bg:2 panels.
+  - [default] Do not draw ground-contact shadows in bg:-1 panels (shadows are added with the background in a later stage).
+  - [default] Mixing bg:-1 is completely unrestricted (it may appear with other bg values on the same page, and all panels may use bg:-1).
   Prohibitions:
-  - [const] In bg:-1 panels, do not draw any background content beyond a single flat-color fill: no scenery, interiors or background-side effects (focus lines, tones, manga symbols, auras, etc.).
+  - [default] In bg:-1 panels, do not draw any background content beyond a single flat-color fill: no scenery, interiors or background-side effects (focus lines, tones, manga symbols, auras, etc.).
   - [const] Do not draw concrete backgrounds such as scenery, interiors or props in bg:0 panels (only emotional-color flat fills / gradients plus effects).
+  - [const] Even when regenerating a page (including for dimensions, layout, text or other reasons unrelated to backgrounds), preserve each panel's bg value as specified in OMNY. Do not add backgrounds to bg:0 panels or change bg values as part of regeneration.
+  - [default] When regenerating, retain the initial rendering treatment of bg:-1 panels (the default single flat-color fill or the instructions in action / style_notes).
 
   ### Stage directions (action)
   - [const] panels[].action contains dialogue-independent stage directions for the whole panel's scene, camera and composition.

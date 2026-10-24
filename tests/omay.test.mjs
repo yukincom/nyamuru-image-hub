@@ -10,7 +10,7 @@ const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', imp
 test('標準OMAYテンプレートがspec情報と両ルールを持つ', () => {
   const omay = parseOmayYaml(omaySource);
   assert.equal(omay.spec_name, OMAY_SPEC_NAME);
-  assert.equal(omay.spec_version, '10.5');
+  assert.equal(omay.spec_version, '10.7');
   assert.ok(omay.style_notes.length > 0);
   assert.ok(omay.layout_spec.includes('出力枚数(最重要)'));
   assert.ok(omay.layout_spec.includes('ページヘッダー・フッター'));
@@ -29,6 +29,27 @@ test('生成プロンプト本体には定型ブロックが残っていない',
   assert.ok(!prompt.includes('style_notes の内容（作画・演出ルール一般）'));
   assert.ok(!prompt.includes('layout_spec の内容（画像生成AI向け'));
   assert.ok(prompt.includes('OMAY'));
+});
+
+test('標準とサンプルの背景ルールは一致し、bg:-1の既定値とbg:0/1/2の制約を区別する', () => {
+  const standard = parseOmayYaml(omaySource);
+  const { manga } = parseMangaYaml(sampleSource);
+  const background = source => source.layout_spec.split('### 背景詳細度(bg)\n')[1].split('\n### ')[0];
+  assert.equal(background(standard), background(manga));
+  const colors = notes => notes.filter(note => /bg ごとの背景色|bg:-1 の背景色/.test(note));
+  assert.deepEqual(colors(standard.style_notes), colors(manga.meta.style_notes));
+  assert.equal(colors(standard.style_notes).length, 2);
+  assert.match(colors(standard.style_notes)[0], /^\[default\].*中間グレー1色.*action/);
+  const rules = background(standard);
+  assert.match(rules, /\[default\] bg:-1=.*action・style_notes/);
+  assert.match(rules, /\[default\] bg:-1 のコマには接地影を描かない/);
+  for (const bg of [0, 1, 2]) assert.ok(rules.includes(`[const] bg:${bg}=`));
+  assert.match(rules, /background_description を優先し、未指定の場合だけ action/);
+  assert.match(rules, /背後の要素を少なくとも1点/);
+  assert.match(rules, /添え物の小物.*毎コマ同じ物を入れない/);
+  assert.match(rules, /bg:1 のコマだけに適用する。bg:0・bg:-1 のコマには適用しない/);
+  assert.match(rules, /下限の目安で、上限ではない/);
+  assert.match(rules, /描き直しでも、bg:-1 のコマは最初の版と同じ描き方/);
 });
 
 test('ストーリーOMNYはスタイルOMNYのルールを含まず、作品データを保持する', () => {

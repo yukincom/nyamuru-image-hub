@@ -1158,5 +1158,97 @@
   {
     "ja": "[const] 最終原稿のサイズ・解像度・塗り足し・文字・コマ枠は finish_layout を正本とする。画像サイズに関する他の既定値より優先する。ネームの座標は各ページの source_width_mm / source_height_mm を基準とし、最終原稿へ配置するときだけ page_transforms で換算する。線幅・文字寸法は最終原稿上のmmとし、二重に拡縮しない。塗り足しは仕上がり線の外側へ描き足す余白であり、コマのタチキリ指定とは別である。",
     "en": "[const] finish_layout is the authoritative specification for the final manuscript's size, resolution, print bleed, typography and panel borders. It takes precedence over other image-size defaults. Storyboard coordinates use each page's source_width_mm / source_height_mm; apply page_transforms only when placing content on the final manuscript. Line widths and text sizes are measured in final-manuscript mm; do not scale them twice. Print bleed extends artwork beyond the trim edge and is distinct from a panel's edge-to-edge bleed declaration."
+  },
+  {
+    "ja": "[default] bg:-1 の背景色は既定の中間グレー1色のベタ塗り（グラデーション禁止）。ベタ塗り色は action に色指定があればそれで上書きする",
+    "en": "[default] The default background color for bg:-1 is a single mid-gray flat fill (no gradients). Override the flat-fill color when action explicitly specifies a color."
+  },
+  {
+    "ja": "[style] bg ごとの背景色——背景の色・効果・具体物は panels[].background_description を優先し、未指定の場合だけ action の明示指定を参考にする。bg:0 はシーン・感情に合った背景カラー（ベタ塗り or グラデーション。怒り=赤系/喜び=暖色/驚き=黄系/緊張=紫〜紺/感動=金〜桃/静寂=青系など）を敷く。bg:1 はシーンに合った背景色グラデーションを敷き、その上にその場を示す具体物を1〜2点描く（色だけで済ませない。layout_spec の bg 節を参照）。bg:0/1 で白一色の背景は禁止——必ずシーンに合った色を敷く",
+    "en": "[style] Background color by bg value: prioritize panels[].background_description for background colors, effects and concrete objects; only when it is unspecified may explicit instructions in action be used as a reference. bg:0 uses a background color appropriate to the scene and emotion (flat fill or gradient; for example, anger=reds / joy=warm colors / surprise=yellows / tension=purple to navy / being moved=gold to pink / stillness=blues). bg:1 uses a background-color gradient appropriate to the scene with 1–2 concrete objects indicating the setting (do not use color alone; see the bg section in layout_spec). A solid-white background is prohibited for bg:0/1; always use a color appropriate to the scene."
+  },
+  {
+    "ja": "8. 背景の指定: bg:-1 のコマが既定（1色ベタ塗りのみ）または action・style_notes の指定どおりか。bg:0 のコマに",
+    "en": "8. Background instructions: do bg:-1 panels follow the default (a single flat-color fill) or the instructions in action / style_notes? Do bg:0 panels"
+  },
+  {
+    "ja": "風景・室内・小物などの具体的背景が描かれていないか。bg:1 のコマに",
+    "en": "avoid concrete background details such as scenery, interiors or props? Do bg:1 panels have"
+  },
+  {
+    "ja": "人物の背後にその場を示す要素があるか（色グラデだけ・手前の机の縁だけに",
+    "en": "elements indicating the setting behind the characters (rather than just a color gradient or the edge of a foreground desk)?"
+  },
+  {
+    "ja": "なっていないか）。同じページの bg:1 が同じ要素（添え物の小物を含む）の",
+    "en": "Do bg:1 panels on the same page avoid repeating the same elements, including incidental props?"
+  },
+  {
+    "ja": "繰り返しになっていないか。描き直した版でも、bg:0 のコマが感情色＋効果だけ・",
+    "en": "In regenerated versions, do bg:0 panels still contain only emotional colors and effects,"
+  },
+  {
+    "ja": "bg:-1 のコマが最初の版と同じ描き方のままか（背景が入りこんでいないか）。",
+    "en": "and do bg:-1 panels retain their initial rendering treatment without unintended background additions?"
+  },
+  {
+    "ja": "bg:2 のコマでロケーションが描き込まれているか。",
+    "en": "Do bg:2 panels render the location in detail?"
+  },
+  {
+    "ja": "bg:1 の背景に要素が多めに見えても、キャラとセリフより目立っていなければ",
+    "en": "Even if a bg:1 background seems to contain more elements, do not regenerate it unless those elements"
+  },
+  {
+    "ja": "描き直しの理由にしない（背景を減らす方向の描き直しは、背景が主役を食っているときだけ）",
+    "en": "draw more attention than the characters and dialogue (reduce the background only when it overwhelms the main subjects)."
+  },
+  {
+    "ja": "- [default] bg:-1=背景無描画（プレースホルダー）。既定では1色のベタ塗りのみを敷き、キャラクター・フキダシ・コマ枠・キャラに付随する漫符(頭上の汗・怒りマーク等)は通常どおり描く。action・style_notes に別の描き方の指定があればそれに従う",
+    "en": "- [default] bg:-1=no background drawing (placeholder). By default, use only a single flat-color fill and draw characters, speech bubbles, panel borders and character-attached manga symbols (such as sweat drops or anger marks above the head) normally. Follow any alternative rendering instructions in action or style_notes."
+  },
+  {
+    "ja": "- [const] bg:1=簡易背景。背景色グラデーションの上に、その場を示す記号的な要素を1〜2点(人物の背後に見える物＝窓枠・棚・壁の線・掲示物・観葉植物など／手前に置く物＝机の縁・小物のシルエットなど)。手前オブジェクト＋奥は色グラデの奥行き構成も良い",
+    "en": "- [const] bg:1=simple background. Over a background-color gradient, add 1–2 symbolic details indicating the setting (objects behind the characters, such as window frames, shelves, wall lines, notices or houseplants; foreground objects, such as a desk edge or prop silhouettes). A foreground object with a background-color gradient behind it is also an acceptable depth composition."
+  },
+  {
+    "ja": "- [const] bg:1 の要素は省略しない。背景指示は panels[].background_description を優先し、未指定の場合だけ action の明示指定を参考にする。採用する指示に背景色だけが書かれていても、色は「グラデの色味の指定」であって要素を描かない指示ではない。要素の指定が無ければ、そのコマのカメラの向きで人物の背後に見えるはずの物を、OMNY の setting（background / props）や前後のコマの場所から選んで描く。背後の要素を少なくとも1点入れ、手前の机の縁だけで済ませない",
+    "en": "- [const] Do not omit the elements in bg:1. Prioritize panels[].background_description for background instructions; only when it is unspecified may explicit instructions in action be used as a reference. If the selected instructions specify only a background color, treat it as the gradient's color, not an instruction to omit objects. If no elements are specified, choose objects that should be visible behind the characters from that panel's camera angle, using OMNY setting (background / props) or the locations of adjacent panels. Include at least 1 element behind the characters; the edge of a foreground desk alone is insufficient."
+  },
+  {
+    "ja": "- [const] 同じページの bg:1 のコマで同じ要素ばかりを繰り返さない。隣り合うコマでは、カメラの向きに合わせて違う要素（窓側・棚側・壁側など）を見せる。主な要素だけでなく、添え物の小物（観葉植物・額・マグカップなど）も毎コマ同じ物を入れない。添え物は無くてよい",
+    "en": "- [const] Do not keep repeating the same elements in bg:1 panels on the same page. In adjacent panels, show different elements (such as the window side, shelf side or wall side) according to the camera angle. Do not repeat the same incidental props (such as houseplants, framed pictures or mugs) in every panel either. Incidental props are optional."
+  },
+  {
+    "ja": "- [const] 上の bg:1 の要素の規定（背後の要素を描く・繰り返さない・1〜2点は下限）は bg:1 のコマだけに適用する。bg:0・bg:-1 のコマには適用しない——bg:0 は感情色ベタ/グラデ＋効果だけ、bg:-1 は bg:-1 の規定のまま",
+    "en": "- [const] The bg:1 element requirements above (draw elements behind the characters, avoid repetition, and treat 1–2 elements as a minimum guideline) apply only to bg:1 panels. They do not apply to bg:0 or bg:-1: bg:0 uses only emotional-color flat fills / gradients plus effects, and bg:-1 follows its own rules."
+  },
+  {
+    "ja": "- [const] bg:1 の「1〜2点」は要素の下限の目安で、上限ではない。奥の部屋・家具・窓がぼかしや淡い色でそれと分かる程度に見えていても bg:1 の範囲。bg:1 と bg:2 の違いは描き込みの密度と主役度——bg:1 の背景はぼかし・淡色・省略した線でキャラとセリフより目立たせず、bg:2 はロケーションそのものを見せる",
+    "en": "- [const] The 1–2 elements for bg:1 are a minimum guideline, not an upper limit. A room, furniture or windows in the distance may remain recognizable through blur or pale colors within bg:1. The difference between bg:1 and bg:2 is detail density and visual prominence: keep bg:1 backgrounds less prominent than the characters and dialogue using blur, pale colors or simplified lines; bg:2 showcases the location itself."
+  },
+  {
+    "ja": "- [const] キャラの足元の接地影は bg で決まる——bg:0・bg:1・bg:2 のコマは必ず入れる",
+    "en": "- [const] Ground-contact shadows at characters' feet are determined by bg: always include them in bg:0, bg:1 and bg:2 panels."
+  },
+  {
+    "ja": "- [default] bg:-1 のコマには接地影を描かない(影は後工程で背景と一緒に足す)",
+    "en": "- [default] Do not draw ground-contact shadows in bg:-1 panels (shadows are added with the background in a later stage)."
+  },
+  {
+    "ja": "- [default] bg:-1 の混在は完全に自由(同一ページ内で他の bg 値と混在してよく、全コマ bg:-1 も可)",
+    "en": "- [default] Mixing bg:-1 is completely unrestricted (it may appear with other bg values on the same page, and all panels may use bg:-1)."
+  },
+  {
+    "ja": "- [default] bg:-1 のコマでは、1色のベタ塗り以外の背景描写——風景・室内・背景側の効果(集中線・トーン・漫符・オーラ等)——を一切描かない",
+    "en": "- [default] In bg:-1 panels, do not draw any background content beyond a single flat-color fill: no scenery, interiors or background-side effects (focus lines, tones, manga symbols, auras, etc.)."
+  },
+  {
+    "ja": "- [const] 描き直し（寸法・レイアウト・文字など背景以外の理由によるものを含む）でも、各コマの bg 値は OMNY の指定どおりに守る。描き直しのついでに、bg:0 のコマへ背景を足したり、bg 値を変えたりしてはいけない",
+    "en": "- [const] Even when regenerating a page (including for dimensions, layout, text or other reasons unrelated to backgrounds), preserve each panel's bg value as specified in OMNY. Do not add backgrounds to bg:0 panels or change bg values as part of regeneration."
+  },
+  {
+    "ja": "- [default] 描き直しでも、bg:-1 のコマは最初の版と同じ描き方（既定の1色ベタ塗り、または action・style_notes の指定）を保つ",
+    "en": "- [default] When regenerating, retain the initial rendering treatment of bg:-1 panels (the default single flat-color fill or the instructions in action / style_notes)."
   }
 ]

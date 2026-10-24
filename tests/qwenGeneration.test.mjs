@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
 import {buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint} from '../src/lib/qwenGeneration.ts';
-import {setWorkStylePrompt} from '../src/lib/artworkRules.ts';
-import {FIGURE_SIZE_LABELS,parseMangaYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
+import {setWorkStylePrompt,artworkSettingsFromSource,applyArtworkSettings} from '../src/lib/artworkRules.ts';
+import {FIGURE_SIZE_LABELS,parseMangaYaml,parseOmayYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 function fixture(){
  const {manga}=createEmptyWorkspaceDocument();manga.meta.series_id='series';manga.meta.episode_id='episode';manga.meta.format='モノクロ漫画';
  manga.characters=[{localId:'person-id',name:'確認用',catalog_id:'catalog'}];
@@ -20,6 +21,31 @@ test('Qwen plans retain exact owner, stable character binding and whole-sheet re
  assert.equal(plan.width,scene.owners[1].paint.width);assert.deepEqual(manga,before);
  const background=buildQwenGenerationPlan(manga,0,0,false,scene.owners[0]);
  assert.deepEqual(background.characterKeys,[]);assert.equal(background.candidates.length,0);assert.match(background.prompt,/室内/);
+});
+test('whole-page background rules leave individual figure and background generation plans unchanged for every bg value',()=>{
+ const standard=parseOmayYaml(readFileSync(new URL('../src/content/standard.omay.yaml',import.meta.url),'utf8'));
+ for(const bg of [-1,0,1,2]){
+  const manga=fixture(),panel=manga.pages[0].panels[0];panel.bg=bg;
+  panel.background_description='薄い青の壁、背後に窓枠';panel.action='コマ全体の別の演出';
+  const settings=artworkSettingsFromSource(standard);
+  // Compare exactly the same common rules, with all integrated fragments absent versus present.
+  const common=structuredClone(settings);
+  common.groups=common.groups.filter(group=>group.scope==='common');
+  common.fragments=common.fragments.filter(part=>common.groups.some(group=>group.id===part.groupId));
+  applyArtworkSettings(manga,common);
+  const scene=paintScene(panel,100,[]);
+  const expected=scene.owners.map(owner=>buildQwenGenerationPlan(manga,0,0,false,owner));
+  applyArtworkSettings(manga,settings);
+  const before=structuredClone(manga);
+  assert.equal(scene.owners.length,2);
+  for(const [index,owner] of scene.owners.entries()){
+   const actual=buildQwenGenerationPlan(manga,0,0,false,owner);
+   assert.deepEqual(actual,expected[index],`bg:${bg}, owner:${owner.kind}`);
+   assert.doesNotMatch(actual.prompt,/bg:-1|bg:1|プレースホルダー|コマ全体の別の演出/);
+   if(owner.kind==='background')assert.ok(actual.prompt.includes(panel.background_description));
+  }
+  assert.deepEqual(manga,before);
+ }
 });
 test('names do not silently resolve an unbound character',()=>{
  const manga=fixture();delete manga.pages[0].panels[0].figures[0].refId;
