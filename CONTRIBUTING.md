@@ -5,16 +5,14 @@ IssueやPull Requestを歓迎します。
 このリポジトリは [sa-san10/nyamuru-manga-name-studio](https://github.com/sa-san10/nyamuru-manga-name-studio) のフォークです。報告・提案の前に、対象がどちらに属するか確認してください。
 
 - NDM・OMNY・OMAY・生成プロンプトや、本家にも存在する一般機能: 原則として本家へ報告
-- アナログネーム取込、ローカルbridge、RT-DETR／NDLOCR連携、コマ編集支援: このフォークへ報告
+- アナログネーム取込、ローカルbridge、RT-DETR／Baberu OCR連携、コマ編集支援: このフォークへ報告
 - 両方へ影響する変更: 先にIssueで適用範囲を相談し、同じ修正を別々に重複実装しない
 
 このプロジェクトへ意図的に提出したコントリビューションは、別途明示的な合意がない限り、プロジェクトと同じMIT Licenseで提供することに同意したものとして扱います。第三者のコード、文章、画像、その他の素材を含める場合は、再配布とMITプロジェクトでの利用が可能であることを確認し、出典とライセンスをPull Requestへ記載してください。
 
-NDLOCR-Lite、RT-DETRモデル、学習データは本フォークへ同梱しません。外部コンポーネントへ変更が必要な場合は、その配布元へ別の変更として提出し、このフォークでは互換性のある呼び出し境界だけを扱ってください。詳細は [LOCAL_VISION_COMPONENTS.md](./docs/LOCAL_VISION_COMPONENTS.md) を参照してください。
+Baberu OCR、RT-DETRモデル、学習データは本フォークへ同梱しません。外部コンポーネントへ変更が必要な場合は、その配布元へ別の変更として提出し、このフォークでは互換性のある呼び出し境界だけを扱ってください。詳細は [LOCAL_VISION_COMPONENTS.md](./docs/LOCAL_VISION_COMPONENTS.md) を参照してください。
 
 バグ報告・機能要望は、Issueテンプレート（バグ報告／機能要望）を利用してください。セキュリティ上の問題は公開Issueに書かず、[SECURITY.md](./SECURITY.md) の手順で非公開に報告してください。参加にあたっては [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) に従ってください。
-
-公開前は [OSS-PUBLISHING-CHECKLIST.md](./OSS-PUBLISHING-CHECKLIST.md) も確認してください。
 
 ## 開発と検証
 

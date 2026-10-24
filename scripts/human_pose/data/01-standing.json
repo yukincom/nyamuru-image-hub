@@ -1,0 +1,111 @@
+[
+  {
+    "slug": "standing-relaxed-with-her-weight-on-one-leg",
+    "label_ja": "片脚に体重をかけて立つ",
+    "pose_text_ja": "力を抜き、片脚に体重をかけて立つ。",
+    "tags": [
+      "standing"
+    ]
+  },
+  {
+    "slug": "standing-with-her-arms-crossed",
+    "label_ja": "腕を組んで立つ",
+    "pose_text_ja": "腕を組んで立つ。",
+    "tags": [
+      "standing",
+      "arms-crossed"
+    ]
+  },
+  {
+    "slug": "standing-with-her-hands-in-her-pockets",
+    "label_ja": "ポケットに手を入れる",
+    "pose_text_ja": "両手をポケットに入れて立つ。",
+    "tags": [
+      "standing",
+      "pockets"
+    ]
+  },
+  {
+    "slug": "standing-with-one-hand-on-her-hip",
+    "label_ja": "片手を腰に当てる",
+    "pose_text_ja": "片手を腰に当てて立つ。",
+    "tags": [
+      "standing",
+      "one-hand"
+    ]
+  },
+  {
+    "slug": "standing-with-both-hands-on-her-hips",
+    "label_ja": "両手を腰に当てる",
+    "pose_text_ja": "両手を腰に当てて立つ。",
+    "tags": [
+      "standing",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "leaning-back-against-a-wall",
+    "label_ja": "壁に背をもたれる",
+    "pose_text_ja": "壁に背をもたせかける。",
+    "tags": [
+      "leaning",
+      "wall"
+    ]
+  },
+  {
+    "slug": "standing-with-one-foot-flat-against-the-wall-behind-her",
+    "label_ja": "背後の壁に片足をつける",
+    "pose_text_ja": "立ったまま、背後の壁に片足の足裏を平らにつける。",
+    "tags": [
+      "standing",
+      "wall"
+    ]
+  },
+  {
+    "slug": "walking-mid-stride",
+    "label_ja": "歩いている途中",
+    "pose_text_ja": "歩行の途中の姿勢をとる。",
+    "tags": [
+      "walking"
+    ]
+  },
+  {
+    "slug": "looking-back-over-her-shoulder",
+    "label_ja": "肩越しに振り返る",
+    "pose_text_ja": "肩越しに後ろを向くように頭を回す。",
+    "tags": [
+      "head-turn"
+    ],
+    "normalized_text": "she turns her head back over her shoulder",
+    "normalization_note": "目線を指定せず、肩越しに頭を回す動作を保持する。原文だけでは回転角や左右は確定しない。"
+  },
+  {
+    "slug": "stretching-with-her-arms-raised-overhead",
+    "label_ja": "腕を頭上に伸ばす",
+    "pose_text_ja": "両腕を頭上に上げて伸びをする。",
+    "tags": [
+      "standing",
+      "hands-overhead",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "standing-with-her-hands-clasped-behind-her-back",
+    "label_ja": "背中で手を組む",
+    "pose_text_ja": "背中の後ろで両手を組んで立つ。",
+    "tags": [
+      "standing",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "standing-with-both-hands-running-through-her-hair",
+    "label_ja": "両手を髪に通す",
+    "pose_text_ja": "立ったまま両手を髪に通す。",
+    "tags": [
+      "standing",
+      "two-hands",
+      "hair-contact"
+    ]
+  }
+]

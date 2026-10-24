@@ -1,73 +1,40 @@
-import { useState } from 'preact/hooks';
-import { CheckCircle2, ChevronDown, ClipboardCopy, Download, FilePlus2, FileUp, Redo2, RotateCcw, Save, TriangleAlert, Undo2 } from 'lucide-preact';
-import type { ValidationIssue } from '../types';
-
-// 全部入り版（.yaml・ルール込み）と画像生成指示分離版（.omny.yaml・純粋なネームデータ）
-export type OmnyDownloadKind = 'full' | 'separated';
+import { usePaintWorkspace } from '../lib/paintWorkspace';
+import { Save, Settings, X, FilePlus2, FolderOpen, Redo2, Undo2 } from 'lucide-preact';
 
 interface Props {
-  title: string;
-  version: number;
-  issues: ValidationIssue[];
-  savedAt: Date | null;
+  hasDocument: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onNew: () => void;
-  onImport: () => void;
-  onCopy: () => void;
-  onDownload: (kind: OmnyDownloadKind) => void;
-  onReset: () => void;
-  onValidate: () => void;
+  onSettings: () => void;
+  settingsOpen: boolean;
+  workspaceBlocked: boolean;
+  busy: boolean;
+  saveDirectory?: string;
+  onOpen: () => void;
+  onSave: () => void;
 }
 
-export default function Header({ title, version, issues, savedAt, canUndo, canRedo, onUndo, onRedo, onNew, onImport, onCopy, onDownload, onReset, onValidate }: Props) {
-  const errors = issues.filter((issue) => issue.level === 'error').length;
-  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
-  const chooseDownload = (kind: OmnyDownloadKind) => { setDownloadMenuOpen(false); onDownload(kind); };
+export default function Header({ hasDocument, canUndo, canRedo, busy, saveDirectory, onUndo, onRedo, onNew, onOpen, onSave, onSettings, settingsOpen, workspaceBlocked }: Props) {
+  const paint=usePaintWorkspace();
   return (
     <header class="app-header">
       <div class="brand-wrap">
         <div class="brand-mark" aria-hidden="true"><span>🐱</span></div>
         <div class="brand-copy">
-          <div class="eyebrow">Nyamuru🐱 · MANGA NAME STUDIO</div>
-          <h1>{title || '無題の漫画'}</h1>
+          <h1>NYAMURU - Image Hub</h1>
         </div>
-        <span class="version-badge">NDM v{version}</span>
       </div>
 
       <div class="header-actions">
-        <button class={`validation-pill ${errors ? 'has-errors' : issues.length ? 'has-warnings' : 'is-valid'}`} title="NDM検査結果" onClick={onValidate}>
-          {errors ? <TriangleAlert size={15} /> : <CheckCircle2 size={15} />}
-          <span>{errors ? `${errors} エラー` : issues.length ? `${issues.length} 件の確認` : '検査OK'}</span>
-        </button>
-        <div class="save-state" title="ブラウザに自動保存されます">
-          <Save size={14} />
-          <span>{savedAt ? `${savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })} 保存` : '自動保存'}</span>
-        </div>
-        <button class="icon-button history-button" onClick={onUndo} disabled={!canUndo} title="元に戻す (Ctrl+Z)" aria-label="元に戻す"><Undo2 size={18} /></button>
-        <button class="icon-button history-button" onClick={onRedo} disabled={!canRedo} title="やり直す (Ctrl+Shift+Z)" aria-label="やり直す"><Redo2 size={18} /></button>
-        <button class="icon-button" onClick={onReset} title="サンプルに戻す" aria-label="サンプルに戻す"><RotateCcw size={18} /></button>
-        <button class="secondary-button new-button" onClick={onNew} title="新しい漫画を作成"><FilePlus2 size={17} />新規</button>
-        <button class="secondary-button import-button" title="OMNYファイルを読み込む" aria-label="OMNYファイルを読み込む" onClick={onImport}><FileUp size={17} />読み込む</button>
-        <button class="secondary-button copy-button" onClick={onCopy} title="OMNY形式の全文をクリップボードにコピー"><ClipboardCopy size={17} />OMNYコピー</button>
-        <div class="download-menu-wrap">
-          <button class="primary-button" onClick={() => setDownloadMenuOpen(!downloadMenuOpen)} aria-haspopup="menu" aria-expanded={downloadMenuOpen} title="ネームYAMLをダウンロード"><Download size={17} />OMNY保存<ChevronDown size={14} /></button>
-          {downloadMenuOpen && <>
-            <button class="menu-backdrop" onClick={() => setDownloadMenuOpen(false)} aria-label="保存メニューを閉じる" />
-            <div class="download-menu" role="menu" aria-label="ネームYAMLの保存形式">
-              <button type="button" role="menuitem" onClick={() => chooseDownload('separated')}>
-                <strong>画像生成指示分離版（.omny.yaml）</strong>
-                <small>画像生成ルールを含まない純粋なネームデータ。OMAYと組み合わせて使う標準形</small>
-              </button>
-              <button type="button" role="menuitem" onClick={() => chooseDownload('full')}>
-                <strong>全部入り版（.yaml）</strong>
-                <small>作画・演出ルールとレイアウト仕様を含む一枚もの。一枚で完結させたい場面用</small>
-              </button>
-            </div>
-          </>}
-        </div>
+        <button class="icon-button history-button" data-project-history onClick={paint?paint.undo:onUndo} disabled={workspaceBlocked || (paint?!paint.canUndo:!canUndo)} title="元に戻す (Ctrl+Z)" aria-label="元に戻す"><Undo2 size={18} /></button>
+        <button class="icon-button history-button" data-project-history onClick={paint?paint.redo:onRedo} disabled={workspaceBlocked || (paint?!paint.canRedo:!canRedo)} title="やり直す (Ctrl+Shift+Z)" aria-label="やり直す"><Redo2 size={18} /></button>
+        <button class="primary-button new-button" onClick={onNew} disabled={busy || workspaceBlocked} title="新しい漫画を作成"><FilePlus2 size={17} />新規</button>
+        <button class="secondary-button import-button" title="作品フォルダを開く" aria-label="作品フォルダを開く" onClick={onOpen} disabled={busy || workspaceBlocked}><FolderOpen size={17} />開く</button>
+        <button class="primary-button" data-project-save disabled={!hasDocument || busy || workspaceBlocked} onClick={onSave} title={saveDirectory ? `${saveDirectory} に保存 (⌘S / Ctrl+S)` : '保存先フォルダを選んで保存 (⌘S / Ctrl+S)'}><Save size={17} />{busy ? '処理中…' : '保存'}</button>
+        <button type="button" class="icon-button header-settings-button" data-environment-settings title={settingsOpen ? '環境設定を閉じる' : '環境設定'} aria-label={settingsOpen ? '環境設定を閉じる' : '環境設定'} aria-expanded={settingsOpen} aria-controls="environment-dialog" onClick={onSettings} disabled={busy && !settingsOpen}>{settingsOpen ? <X size={21} strokeWidth={2.5} /> : <Settings size={18} />}</button>
       </div>
     </header>
   );

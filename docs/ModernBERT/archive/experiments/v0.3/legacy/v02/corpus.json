@@ -1,0 +1,22 @@
+{
+  "version": "v0.2",
+  "n": 924,
+  "sources": [
+    {
+      "path": "source/candidates.jsonl",
+      "n": 316,
+      "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b"
+    },
+    {
+      "path": "curation/2026-10-17-v02-variants/candidates.jsonl",
+      "n": 608,
+      "sha256": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74"
+    }
+  ],
+  "minimum_per_label": {
+    "train": 12,
+    "dev": 4,
+    "test": 4
+  },
+  "provenance": "Original handoff preserved; new author-generated variations, not collected real utterances."
+}

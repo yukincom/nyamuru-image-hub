@@ -1,0 +1,20 @@
+{
+  "version": "v0.1",
+  "source_git_head": "d7588ccdc13fa184a972584a344766a12549de26",
+  "status": "prepared_never_trained",
+  "files": {
+    "data/train.jsonl": "5ecb6be3442686bdc7c776d848500d2e472629742abfd39441ed919f652f98cb",
+    "data/dev.jsonl": "9e7a222afa9f3a142b18a66ef2c8054338cf35c4b048862223ad10ffa1f86afe",
+    "data/test.jsonl": "b9c6c78aac2c8e6d08ff35218b47bd794b5feae0ad8c203b9728a8962bc37cf1",
+    "data-report.json": "6fa2667279b80e41de6e4d5dfb2c8b92f1cd4985fdebaf674d73b706b904ed29",
+    "split-plan.json": "8526f29d76639b06f5789e536f2e335916905aa8056eedac5aec373549296737",
+    "family-review.json": "9a2dc7cff399be565c3779a533583b50c271567b80c00879cfc3e49b29b6f28b",
+    "experiment.json": "c6b51424ebe8b3b122b16afb24db0c303185bc538cd7dd08c5b41b7347b68ef6",
+    "tokenization-check.json": "ace9568bd8b5a173121854bbf71bdecee0e2e71079b7da6a7e1d2cecc1e462c9",
+    "preparation-verification.json": "f75d87d1237360bba94ab8ec3fa3b342436ddb760993de237c7dc63fe5eb727c",
+    "input-sha256.json": "988cc83a950b2bc7e229b11de8aa1d19ec4351671105412a7e2993f4c889316b"
+  },
+  "notebook": "Nyamuru_Voice_ModernBERT_19分類_2026-10-17.ipynb",
+  "input_archive": "nyamuru-voice-inputs.zip",
+  "archive_sha256": "405728fc81801fc46fd2a66733a375e27d41c821954c79ee80e7cd34af661d2c"
+}

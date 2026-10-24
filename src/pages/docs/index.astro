@@ -1,0 +1,70 @@
+---
+import { Bot, Cat, FileCode2, Workflow } from 'lucide-preact';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+
+const guides = [
+  {
+    href: '/docs/prompt/',
+    icon: Bot,
+    category: 'LLM GUIDE',
+    title: '生成プロンプト',
+    description: 'ストーリー原稿をNDMへ構造化し、編集可能なネームデータとして出力するための指示です。',
+  },
+  {
+    href: '/docs/workflow/',
+    icon: Workflow,
+    category: 'GENERATION GUIDE',
+    title: '生成ワークフロー',
+    description: 'ネームデータと素材から漫画画像を生成・検品するエージェント向けの手順です。',
+  },
+  {
+    href: '/docs/ndm/',
+    icon: FileCode2,
+    category: 'MODEL · DEVELOPER REFERENCE',
+    title: 'NDM仕様',
+    description: 'モデルや外部ツールがNyamuru Image Hubのデータを正しく読み書きするためのモデル仕様です。',
+  },
+  {
+    href: '/docs/nyamurutan/',
+    icon: Cat,
+    category: 'CHARACTER REFERENCE',
+    title: 'にゃむるたん',
+    description: '公式マスコットの設定、画像資料、ライセンス情報をまとめています。',
+  },
+];
+---
+
+<DocsLayout title="公開ドキュメント" description="Nyamuru Image Hubの生成ガイド、NDM仕様、キャラクター資料">
+  <header class="docs-index-head">
+    <span>Nyamuru Image Hub</span>
+    <h1>公開ドキュメント</h1>
+    <p>制作画面から分離した、モデル・外部ツールとの連携資料と公開リファレンスです。</p>
+  </header>
+  <div class="docs-card-grid">
+    {guides.map(({ href, icon: Icon, category, title, description }) => <a class="docs-card" href={href}>
+      <Icon size={24} aria-hidden="true" />
+      <span>{category}</span>
+      <h2>{title}</h2>
+      <p>{description}</p>
+      <strong>開く →</strong>
+    </a>)}
+  </div>
+</DocsLayout>
+
+<style>
+  .docs-index-head { padding: 42px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(135deg, var(--accent-soft), var(--control)); }
+  .docs-index-head span, .docs-card > span { color: var(--accent-dark); font: 800 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; }
+  h1 { margin: 11px 0 12px; font-size: clamp(30px, 6vw, 50px); }
+  .docs-index-head p { margin: 0; color: #646976; line-height: 1.8; }
+  .docs-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+  .docs-card { display: grid; grid-template-columns: auto 1fr; gap: 8px 13px; padding: 24px; border: 1px solid var(--soft-line); border-radius: 16px; background: rgba(255,255,255,.96); color: #30333a; text-decoration: none; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+  .docs-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 12px 30px rgba(70, 74, 66, .09); }
+  .docs-card svg { grid-row: 1 / 3; color: var(--accent-dark); }
+  .docs-card h2 { margin: 1px 0 0; font-size: 20px; }
+  .docs-card p { grid-column: 1 / -1; margin: 7px 0 12px; color: #646976; line-height: 1.75; }
+  .docs-card strong { grid-column: 1 / -1; color: var(--accent-dark); font-size: 12px; }
+  @media (max-width: 620px) {
+    .docs-index-head { padding: 26px 22px; }
+    .docs-card-grid { grid-template-columns: 1fr; }
+  }
+</style>

@@ -1,0 +1,7051 @@
+{
+  "status": "verified",
+  "checked_predictions": 2772,
+  "models": {
+    "seed-42": {
+      "train": {
+        "n": 647,
+        "correct": 647,
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "macro_f1_supported": 1.0,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 29,
+            "predicted_count": 29
+          },
+          "undo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "page_navigate": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 33,
+            "predicted_count": 33
+          },
+          "view_change": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 37,
+            "predicted_count": 37
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 43,
+            "predicted_count": 43
+          },
+          "needs_clarification": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 36,
+            "predicted_count": 36
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 29,
+            "predicted_count": 29
+          },
+          "compound_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 34,
+            "predicted_count": 34
+          },
+          "out_of_scope_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 31,
+            "predicted_count": 31
+          },
+          "not_command": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 54,
+            "predicted_count": 54
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "inner_frame_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "panel_gap_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "generate_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 47,
+            "predicted_count": 47
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 40,
+            "predicted_count": 40
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 32,
+            "predicted_count": 32
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            29,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            37,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            43,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            36,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            29,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            34,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            54,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            47,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            40,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            32,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 0,
+          "denominator": 54,
+          "rate": 0.0
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 0,
+          "denominator": 101,
+          "rate": 0.0
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 0,
+          "denominator": 463,
+          "rate": 0.0
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "accidental_operation": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "boundary": {
+            "count": 234,
+            "denominator": 234,
+            "rate": 1.0
+          },
+          "correction": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "current_result": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "desired_state": {
+            "count": 60,
+            "denominator": 60,
+            "rate": 1.0
+          },
+          "explicit_count": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_destination": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "explicit_request_question": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_setting_value": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_step": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_value": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "negative_other_action": {
+            "count": 16,
+            "denominator": 16,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "quoted_text": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "reject_completed_edit": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "request_reason": {
+            "count": 28,
+            "denominator": 28,
+            "rate": 1.0
+          },
+          "reverse_previous_undo": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "selected_target": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 160,
+            "denominator": 160,
+            "rate": 1.0
+          },
+          "tool_selection_only": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 136,
+            "denominator": 136,
+            "rate": 1.0
+          },
+          "work_status": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 7,
+          "denominator": 7,
+          "rate": 1.0
+        },
+        "families": {
+          "n": 92,
+          "mean_accuracy": 1.0,
+          "all_correct": 92,
+          "mixed_label_families": {
+            "alignment_unspecified": {
+              "count": 40,
+              "denominator": 40,
+              "rate": 1.0
+            },
+            "ambiguous_bubble_value": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            },
+            "bubble_keep": {
+              "count": 14,
+              "denominator": 14,
+              "rate": 1.0
+            },
+            "compound_page_tab": {
+              "count": 16,
+              "denominator": 16,
+              "rate": 1.0
+            },
+            "generate_character": {
+              "count": 39,
+              "denominator": 39,
+              "rate": 1.0
+            },
+            "inner_frame_snap_set_correction": {
+              "count": 91,
+              "denominator": 91,
+              "rate": 1.0
+            },
+            "mode_draft": {
+              "count": 26,
+              "denominator": 26,
+              "rate": 1.0
+            },
+            "page_negative": {
+              "count": 29,
+              "denominator": 29,
+              "rate": 1.0
+            },
+            "paint_pen_choice": {
+              "count": 21,
+              "denominator": 21,
+              "rate": 1.0
+            },
+            "placement_guide": {
+              "count": 7,
+              "denominator": 7,
+              "rate": 1.0
+            },
+            "registered_background_candidates": {
+              "count": 51,
+              "denominator": 51,
+              "rate": 1.0
+            },
+            "save_basic": {
+              "count": 5,
+              "denominator": 5,
+              "rate": 1.0
+            },
+            "save_self_correction": {
+              "count": 6,
+              "denominator": 6,
+              "rate": 1.0
+            },
+            "v02_core_redo_self_correction": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            },
+            "v02_edit_setting_global": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            }
+          }
+        }
+      },
+      "dev": {
+        "n": 138,
+        "correct": 116,
+        "accuracy": 0.8405797101449275,
+        "macro_f1": 0.8470303067924053,
+        "macro_f1_supported": 0.8470303067924053,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 6,
+            "predicted_count": 6
+          },
+          "undo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted_count": 5
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted_count": 5
+          },
+          "page_navigate": {
+            "precision": 0.4,
+            "recall": 0.8571428571428571,
+            "f1": 0.5454545454545455,
+            "support": 7,
+            "predicted_count": 15
+          },
+          "view_change": {
+            "precision": 0.5,
+            "recall": 0.14285714285714285,
+            "f1": 0.22222222222222224,
+            "support": 7,
+            "predicted_count": 2
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 9,
+            "predicted_count": 9
+          },
+          "needs_clarification": {
+            "precision": 1.0,
+            "recall": 0.875,
+            "f1": 0.9333333333333333,
+            "support": 8,
+            "predicted_count": 7
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 6,
+            "predicted_count": 6
+          },
+          "compound_request": {
+            "precision": 0.6666666666666666,
+            "recall": 0.75,
+            "f1": 0.7058823529411765,
+            "support": 8,
+            "predicted_count": 9
+          },
+          "out_of_scope_request": {
+            "precision": 0.8,
+            "recall": 0.5714285714285714,
+            "f1": 0.6666666666666666,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "not_command": {
+            "precision": 0.8461538461538461,
+            "recall": 0.9166666666666666,
+            "f1": 0.8799999999999999,
+            "support": 12,
+            "predicted_count": 13
+          },
+          "panel_sync_set": {
+            "precision": 0.8,
+            "recall": 1.0,
+            "f1": 0.888888888888889,
+            "support": 8,
+            "predicted_count": 10
+          },
+          "inner_frame_snap_set": {
+            "precision": 0.8571428571428571,
+            "recall": 0.75,
+            "f1": 0.7999999999999999,
+            "support": 8,
+            "predicted_count": 7
+          },
+          "panel_gap_snap_set": {
+            "precision": 0.8333333333333334,
+            "recall": 0.625,
+            "f1": 0.7142857142857143,
+            "support": 8,
+            "predicted_count": 6
+          },
+          "generate_request": {
+            "precision": 0.7777777777777778,
+            "recall": 0.7,
+            "f1": 0.7368421052631577,
+            "support": 10,
+            "predicted_count": 9
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            5,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            6,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            1,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            11,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            5,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 0,
+          "denominator": 12,
+          "rate": 0.0
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 4,
+          "denominator": 23,
+          "rate": 0.17391304347826086
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 16,
+          "denominator": 98,
+          "rate": 0.16326530612244897
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "boundary": {
+            "count": 40,
+            "denominator": 49,
+            "rate": 0.8163265306122449
+          },
+          "correction": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "desired_state": {
+            "count": 19,
+            "denominator": 28,
+            "rate": 0.6785714285714286
+          },
+          "explicit_count": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "negative_other_action": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 11,
+            "denominator": 16,
+            "rate": 0.6875
+          },
+          "report_then_request": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 23,
+            "denominator": 28,
+            "rate": 0.8214285714285714
+          },
+          "tool_selection_only": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 20,
+            "denominator": 24,
+            "rate": 0.8333333333333334
+          }
+        },
+        "user_examples": {
+          "count": 1,
+          "denominator": 1,
+          "rate": 1.0
+        },
+        "families": {
+          "n": 35,
+          "mean_accuracy": 0.8923809523809523,
+          "all_correct": 29,
+          "mixed_label_families": {
+            "compound_save_page": {
+              "count": 4,
+              "denominator": 6,
+              "rate": 0.6666666666666666
+            },
+            "generate_current_page": {
+              "count": 13,
+              "denominator": 20,
+              "rate": 0.65
+            },
+            "redo_count": {
+              "count": 10,
+              "denominator": 10,
+              "rate": 1.0
+            },
+            "spread_negative": {
+              "count": 3,
+              "denominator": 9,
+              "rate": 0.3333333333333333
+            },
+            "v02_edit_setting_current": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            },
+            "v02_edit_setting_other_preserve": {
+              "count": 7,
+              "denominator": 12,
+              "rate": 0.5833333333333334
+            }
+          }
+        }
+      },
+      "test": {
+        "n": 139,
+        "correct": 118,
+        "accuracy": 0.8489208633093526,
+        "macro_f1": 0.8466329924913285,
+        "macro_f1_supported": 0.8466329924913285,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 7,
+            "predicted_count": 7
+          },
+          "undo": {
+            "precision": 0.7,
+            "recall": 1.0,
+            "f1": 0.8235294117647058,
+            "support": 7,
+            "predicted_count": 10
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 0.5714285714285714,
+            "f1": 0.7272727272727273,
+            "support": 7,
+            "predicted_count": 4
+          },
+          "page_navigate": {
+            "precision": 0.6153846153846154,
+            "recall": 1.0,
+            "f1": 0.761904761904762,
+            "support": 8,
+            "predicted_count": 13
+          },
+          "view_change": {
+            "precision": 1.0,
+            "recall": 0.625,
+            "f1": 0.7692307692307693,
+            "support": 8,
+            "predicted_count": 5
+          },
+          "artwork_mode_set": {
+            "precision": 0.8888888888888888,
+            "recall": 1.0,
+            "f1": 0.9411764705882353,
+            "support": 8,
+            "predicted_count": 9
+          },
+          "bubble_set": {
+            "precision": 0.8,
+            "recall": 0.8888888888888888,
+            "f1": 0.8421052631578948,
+            "support": 9,
+            "predicted_count": 10
+          },
+          "needs_clarification": {
+            "precision": 0.75,
+            "recall": 0.75,
+            "f1": 0.75,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 0.7142857142857143,
+            "f1": 0.8333333333333333,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "compound_request": {
+            "precision": 0.6,
+            "recall": 0.42857142857142855,
+            "f1": 0.5,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "out_of_scope_request": {
+            "precision": 0.625,
+            "recall": 0.7142857142857143,
+            "f1": 0.6666666666666666,
+            "support": 7,
+            "predicted_count": 8
+          },
+          "not_command": {
+            "precision": 1.0,
+            "recall": 0.9166666666666666,
+            "f1": 0.9565217391304348,
+            "support": 12,
+            "predicted_count": 11
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "inner_frame_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "panel_gap_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "generate_request": {
+            "precision": 0.8333333333333334,
+            "recall": 0.625,
+            "f1": 0.7142857142857143,
+            "support": 8,
+            "predicted_count": 6
+          },
+          "background_3d_candidates": {
+            "precision": 0.6666666666666666,
+            "recall": 1.0,
+            "f1": 0.8,
+            "support": 4,
+            "predicted_count": 6
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            3,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            2,
+            0,
+            1,
+            1,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            11,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            5,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 1,
+          "denominator": 12,
+          "rate": 0.08333333333333333
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 6,
+          "denominator": 22,
+          "rate": 0.2727272727272727
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 14,
+          "denominator": 102,
+          "rate": 0.13725490196078433
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "boundary": {
+            "count": 39,
+            "denominator": 53,
+            "rate": 0.7358490566037735
+          },
+          "desired_state": {
+            "count": 24,
+            "denominator": 24,
+            "rate": 1.0
+          },
+          "existing_history_action": {
+            "count": 6,
+            "denominator": 8,
+            "rate": 0.75
+          },
+          "explicit_request": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "request_reason": {
+            "count": 15,
+            "denominator": 16,
+            "rate": 0.9375
+          },
+          "self_correction": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 27,
+            "denominator": 36,
+            "rate": 0.75
+          },
+          "tool_selection_only": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 29,
+            "denominator": 32,
+            "rate": 0.90625
+          },
+          "work_status": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "families": {
+          "n": 38,
+          "mean_accuracy": 0.8030075187969924,
+          "all_correct": 24,
+          "mixed_label_families": {
+            "bubble_move": {
+              "count": 4,
+              "denominator": 5,
+              "rate": 0.8
+            },
+            "redo_basic": {
+              "count": 3,
+              "denominator": 3,
+              "rate": 1.0
+            },
+            "redo_button": {
+              "count": 7,
+              "denominator": 10,
+              "rate": 0.7
+            },
+            "v02_edit_setting_before_work": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            },
+            "v02_edit_setting_motive": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            }
+          }
+        }
+      }
+    },
+    "seed-43": {
+      "train": {
+        "n": 647,
+        "correct": 647,
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "macro_f1_supported": 1.0,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 29,
+            "predicted_count": 29
+          },
+          "undo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "page_navigate": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 33,
+            "predicted_count": 33
+          },
+          "view_change": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 37,
+            "predicted_count": 37
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 43,
+            "predicted_count": 43
+          },
+          "needs_clarification": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 36,
+            "predicted_count": 36
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 29,
+            "predicted_count": 29
+          },
+          "compound_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 34,
+            "predicted_count": 34
+          },
+          "out_of_scope_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 31,
+            "predicted_count": 31
+          },
+          "not_command": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 54,
+            "predicted_count": 54
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "inner_frame_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "panel_gap_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "generate_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 47,
+            "predicted_count": 47
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 40,
+            "predicted_count": 40
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 32,
+            "predicted_count": 32
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            29,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            37,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            43,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            36,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            29,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            34,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            54,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            47,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            40,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            32,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 0,
+          "denominator": 54,
+          "rate": 0.0
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 0,
+          "denominator": 101,
+          "rate": 0.0
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 0,
+          "denominator": 463,
+          "rate": 0.0
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "accidental_operation": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "boundary": {
+            "count": 234,
+            "denominator": 234,
+            "rate": 1.0
+          },
+          "correction": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "current_result": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "desired_state": {
+            "count": 60,
+            "denominator": 60,
+            "rate": 1.0
+          },
+          "explicit_count": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_destination": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "explicit_request_question": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_setting_value": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_step": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_value": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "negative_other_action": {
+            "count": 16,
+            "denominator": 16,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "quoted_text": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "reject_completed_edit": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "request_reason": {
+            "count": 28,
+            "denominator": 28,
+            "rate": 1.0
+          },
+          "reverse_previous_undo": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "selected_target": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 160,
+            "denominator": 160,
+            "rate": 1.0
+          },
+          "tool_selection_only": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 136,
+            "denominator": 136,
+            "rate": 1.0
+          },
+          "work_status": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 7,
+          "denominator": 7,
+          "rate": 1.0
+        },
+        "families": {
+          "n": 92,
+          "mean_accuracy": 1.0,
+          "all_correct": 92,
+          "mixed_label_families": {
+            "alignment_unspecified": {
+              "count": 40,
+              "denominator": 40,
+              "rate": 1.0
+            },
+            "ambiguous_bubble_value": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            },
+            "bubble_keep": {
+              "count": 14,
+              "denominator": 14,
+              "rate": 1.0
+            },
+            "compound_page_tab": {
+              "count": 16,
+              "denominator": 16,
+              "rate": 1.0
+            },
+            "generate_character": {
+              "count": 39,
+              "denominator": 39,
+              "rate": 1.0
+            },
+            "inner_frame_snap_set_correction": {
+              "count": 91,
+              "denominator": 91,
+              "rate": 1.0
+            },
+            "mode_draft": {
+              "count": 26,
+              "denominator": 26,
+              "rate": 1.0
+            },
+            "page_negative": {
+              "count": 29,
+              "denominator": 29,
+              "rate": 1.0
+            },
+            "paint_pen_choice": {
+              "count": 21,
+              "denominator": 21,
+              "rate": 1.0
+            },
+            "placement_guide": {
+              "count": 7,
+              "denominator": 7,
+              "rate": 1.0
+            },
+            "registered_background_candidates": {
+              "count": 51,
+              "denominator": 51,
+              "rate": 1.0
+            },
+            "save_basic": {
+              "count": 5,
+              "denominator": 5,
+              "rate": 1.0
+            },
+            "save_self_correction": {
+              "count": 6,
+              "denominator": 6,
+              "rate": 1.0
+            },
+            "v02_core_redo_self_correction": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            },
+            "v02_edit_setting_global": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            }
+          }
+        }
+      },
+      "dev": {
+        "n": 138,
+        "correct": 126,
+        "accuracy": 0.9130434782608695,
+        "macro_f1": 0.9131709011210396,
+        "macro_f1_supported": 0.9131709011210396,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 0.8571428571428571,
+            "recall": 1.0,
+            "f1": 0.923076923076923,
+            "support": 6,
+            "predicted_count": 7
+          },
+          "undo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted_count": 5
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted_count": 5
+          },
+          "page_navigate": {
+            "precision": 0.8571428571428571,
+            "recall": 0.8571428571428571,
+            "f1": 0.8571428571428571,
+            "support": 7,
+            "predicted_count": 7
+          },
+          "view_change": {
+            "precision": 0.75,
+            "recall": 0.8571428571428571,
+            "f1": 0.7999999999999999,
+            "support": 7,
+            "predicted_count": 8
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 9,
+            "predicted_count": 9
+          },
+          "needs_clarification": {
+            "precision": 1.0,
+            "recall": 0.75,
+            "f1": 0.8571428571428571,
+            "support": 8,
+            "predicted_count": 6
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 6,
+            "predicted_count": 6
+          },
+          "compound_request": {
+            "precision": 0.7272727272727273,
+            "recall": 1.0,
+            "f1": 0.8421052631578948,
+            "support": 8,
+            "predicted_count": 11
+          },
+          "out_of_scope_request": {
+            "precision": 0.75,
+            "recall": 0.42857142857142855,
+            "f1": 0.5454545454545454,
+            "support": 7,
+            "predicted_count": 4
+          },
+          "not_command": {
+            "precision": 0.9166666666666666,
+            "recall": 0.9166666666666666,
+            "f1": 0.9166666666666666,
+            "support": 12,
+            "predicted_count": 12
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "inner_frame_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "panel_gap_snap_set": {
+            "precision": 1.0,
+            "recall": 0.875,
+            "f1": 0.9333333333333333,
+            "support": 8,
+            "predicted_count": 7
+          },
+          "generate_request": {
+            "precision": 0.75,
+            "recall": 0.9,
+            "f1": 0.8181818181818182,
+            "support": 10,
+            "predicted_count": 12
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 0.75,
+            "f1": 0.8571428571428571,
+            "support": 4,
+            "predicted_count": 3
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            11,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            9,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 0,
+          "denominator": 12,
+          "rate": 0.0
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 6,
+          "denominator": 23,
+          "rate": 0.2608695652173913
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 7,
+          "denominator": 99,
+          "rate": 0.0707070707070707
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "boundary": {
+            "count": 41,
+            "denominator": 49,
+            "rate": 0.8367346938775511
+          },
+          "correction": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "desired_state": {
+            "count": 27,
+            "denominator": 28,
+            "rate": 0.9642857142857143
+          },
+          "explicit_count": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "negative_other_action": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 15,
+            "denominator": 16,
+            "rate": 0.9375
+          },
+          "report_then_request": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 23,
+            "denominator": 28,
+            "rate": 0.8214285714285714
+          },
+          "tool_selection_only": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 24,
+            "denominator": 24,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 1,
+          "denominator": 1,
+          "rate": 1.0
+        },
+        "families": {
+          "n": 35,
+          "mean_accuracy": 0.9111111111111111,
+          "all_correct": 27,
+          "mixed_label_families": {
+            "compound_save_page": {
+              "count": 5,
+              "denominator": 6,
+              "rate": 0.8333333333333334
+            },
+            "generate_current_page": {
+              "count": 15,
+              "denominator": 20,
+              "rate": 0.75
+            },
+            "redo_count": {
+              "count": 10,
+              "denominator": 10,
+              "rate": 1.0
+            },
+            "spread_negative": {
+              "count": 8,
+              "denominator": 9,
+              "rate": 0.8888888888888888
+            },
+            "v02_edit_setting_current": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            },
+            "v02_edit_setting_other_preserve": {
+              "count": 11,
+              "denominator": 12,
+              "rate": 0.9166666666666666
+            }
+          }
+        }
+      },
+      "test": {
+        "n": 139,
+        "correct": 113,
+        "accuracy": 0.8129496402877698,
+        "macro_f1": 0.8179678079058883,
+        "macro_f1_supported": 0.8179678079058883,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 0.875,
+            "recall": 1.0,
+            "f1": 0.9333333333333333,
+            "support": 7,
+            "predicted_count": 8
+          },
+          "undo": {
+            "precision": 0.6666666666666666,
+            "recall": 0.8571428571428571,
+            "f1": 0.75,
+            "support": 7,
+            "predicted_count": 9
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 0.42857142857142855,
+            "f1": 0.6,
+            "support": 7,
+            "predicted_count": 3
+          },
+          "page_navigate": {
+            "precision": 0.8,
+            "recall": 1.0,
+            "f1": 0.888888888888889,
+            "support": 8,
+            "predicted_count": 10
+          },
+          "view_change": {
+            "precision": 0.75,
+            "recall": 0.75,
+            "f1": 0.75,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "artwork_mode_set": {
+            "precision": 0.8888888888888888,
+            "recall": 1.0,
+            "f1": 0.9411764705882353,
+            "support": 8,
+            "predicted_count": 9
+          },
+          "bubble_set": {
+            "precision": 0.8333333333333334,
+            "recall": 0.5555555555555556,
+            "f1": 0.6666666666666667,
+            "support": 9,
+            "predicted_count": 6
+          },
+          "needs_clarification": {
+            "precision": 0.8,
+            "recall": 0.5,
+            "f1": 0.6153846153846154,
+            "support": 8,
+            "predicted_count": 5
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 0.7142857142857143,
+            "f1": 0.8333333333333333,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "compound_request": {
+            "precision": 0.5714285714285714,
+            "recall": 0.5714285714285714,
+            "f1": 0.5714285714285714,
+            "support": 7,
+            "predicted_count": 7
+          },
+          "out_of_scope_request": {
+            "precision": 0.35714285714285715,
+            "recall": 0.7142857142857143,
+            "f1": 0.4761904761904762,
+            "support": 7,
+            "predicted_count": 14
+          },
+          "not_command": {
+            "precision": 0.9166666666666666,
+            "recall": 0.9166666666666666,
+            "f1": 0.9166666666666666,
+            "support": 12,
+            "predicted_count": 12
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "inner_frame_snap_set": {
+            "precision": 0.8888888888888888,
+            "recall": 1.0,
+            "f1": 0.9411764705882353,
+            "support": 8,
+            "predicted_count": 9
+          },
+          "panel_gap_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "generate_request": {
+            "precision": 0.8571428571428571,
+            "recall": 0.75,
+            "f1": 0.7999999999999999,
+            "support": 8,
+            "predicted_count": 7
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 0.75,
+            "f1": 0.8571428571428571,
+            "support": 4,
+            "predicted_count": 3
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            3,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            5,
+            1,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            4,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            5,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            11,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 0,
+          "denominator": 12,
+          "rate": 0.0
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 7,
+          "denominator": 22,
+          "rate": 0.3181818181818182
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 12,
+          "denominator": 96,
+          "rate": 0.125
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "boundary": {
+            "count": 38,
+            "denominator": 53,
+            "rate": 0.7169811320754716
+          },
+          "desired_state": {
+            "count": 24,
+            "denominator": 24,
+            "rate": 1.0
+          },
+          "existing_history_action": {
+            "count": 6,
+            "denominator": 8,
+            "rate": 0.75
+          },
+          "explicit_request": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "request_reason": {
+            "count": 16,
+            "denominator": 16,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 25,
+            "denominator": 36,
+            "rate": 0.6944444444444444
+          },
+          "tool_selection_only": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 30,
+            "denominator": 32,
+            "rate": 0.9375
+          },
+          "work_status": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "families": {
+          "n": 38,
+          "mean_accuracy": 0.8073934837092731,
+          "all_correct": 24,
+          "mixed_label_families": {
+            "bubble_move": {
+              "count": 1,
+              "denominator": 5,
+              "rate": 0.2
+            },
+            "redo_basic": {
+              "count": 2,
+              "denominator": 3,
+              "rate": 0.6666666666666666
+            },
+            "redo_button": {
+              "count": 7,
+              "denominator": 10,
+              "rate": 0.7
+            },
+            "v02_edit_setting_before_work": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            },
+            "v02_edit_setting_motive": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            }
+          }
+        }
+      }
+    },
+    "seed-44": {
+      "train": {
+        "n": 647,
+        "correct": 647,
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "macro_f1_supported": 1.0,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 29,
+            "predicted_count": 29
+          },
+          "undo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "page_navigate": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 33,
+            "predicted_count": 33
+          },
+          "view_change": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 37,
+            "predicted_count": 37
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 30,
+            "predicted_count": 30
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 43,
+            "predicted_count": 43
+          },
+          "needs_clarification": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 36,
+            "predicted_count": 36
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 29,
+            "predicted_count": 29
+          },
+          "compound_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 34,
+            "predicted_count": 34
+          },
+          "out_of_scope_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 31,
+            "predicted_count": 31
+          },
+          "not_command": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 54,
+            "predicted_count": 54
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "inner_frame_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "panel_gap_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          },
+          "generate_request": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 47,
+            "predicted_count": 47
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 40,
+            "predicted_count": 40
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 32,
+            "predicted_count": 32
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 28,
+            "predicted_count": 28
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            29,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            37,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            30,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            43,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            36,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            29,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            34,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            31,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            54,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            47,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            40,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            32,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            28
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 0,
+          "denominator": 54,
+          "rate": 0.0
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 0,
+          "denominator": 101,
+          "rate": 0.0
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 0,
+          "denominator": 463,
+          "rate": 0.0
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "accidental_operation": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "boundary": {
+            "count": 234,
+            "denominator": 234,
+            "rate": 1.0
+          },
+          "correction": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "current_result": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "desired_state": {
+            "count": 60,
+            "denominator": 60,
+            "rate": 1.0
+          },
+          "explicit_count": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_destination": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "explicit_request_question": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_setting_value": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_step": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "explicit_value": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "negative_other_action": {
+            "count": 16,
+            "denominator": 16,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "quoted_text": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "reject_completed_edit": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "request_reason": {
+            "count": 28,
+            "denominator": 28,
+            "rate": 1.0
+          },
+          "reverse_previous_undo": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "selected_target": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 12,
+            "denominator": 12,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 160,
+            "denominator": 160,
+            "rate": 1.0
+          },
+          "tool_selection_only": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 20,
+            "denominator": 20,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 136,
+            "denominator": 136,
+            "rate": 1.0
+          },
+          "work_status": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 7,
+          "denominator": 7,
+          "rate": 1.0
+        },
+        "families": {
+          "n": 92,
+          "mean_accuracy": 1.0,
+          "all_correct": 92,
+          "mixed_label_families": {
+            "alignment_unspecified": {
+              "count": 40,
+              "denominator": 40,
+              "rate": 1.0
+            },
+            "ambiguous_bubble_value": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            },
+            "bubble_keep": {
+              "count": 14,
+              "denominator": 14,
+              "rate": 1.0
+            },
+            "compound_page_tab": {
+              "count": 16,
+              "denominator": 16,
+              "rate": 1.0
+            },
+            "generate_character": {
+              "count": 39,
+              "denominator": 39,
+              "rate": 1.0
+            },
+            "inner_frame_snap_set_correction": {
+              "count": 91,
+              "denominator": 91,
+              "rate": 1.0
+            },
+            "mode_draft": {
+              "count": 26,
+              "denominator": 26,
+              "rate": 1.0
+            },
+            "page_negative": {
+              "count": 29,
+              "denominator": 29,
+              "rate": 1.0
+            },
+            "paint_pen_choice": {
+              "count": 21,
+              "denominator": 21,
+              "rate": 1.0
+            },
+            "placement_guide": {
+              "count": 7,
+              "denominator": 7,
+              "rate": 1.0
+            },
+            "registered_background_candidates": {
+              "count": 51,
+              "denominator": 51,
+              "rate": 1.0
+            },
+            "save_basic": {
+              "count": 5,
+              "denominator": 5,
+              "rate": 1.0
+            },
+            "save_self_correction": {
+              "count": 6,
+              "denominator": 6,
+              "rate": 1.0
+            },
+            "v02_core_redo_self_correction": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            },
+            "v02_edit_setting_global": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            }
+          }
+        }
+      },
+      "dev": {
+        "n": 138,
+        "correct": 114,
+        "accuracy": 0.8260869565217391,
+        "macro_f1": 0.8303450815498197,
+        "macro_f1_supported": 0.8303450815498197,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 6,
+            "predicted_count": 6
+          },
+          "undo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted_count": 5
+          },
+          "redo": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 5,
+            "predicted_count": 5
+          },
+          "page_navigate": {
+            "precision": 0.4375,
+            "recall": 1.0,
+            "f1": 0.6086956521739131,
+            "support": 7,
+            "predicted_count": 16
+          },
+          "view_change": {
+            "precision": 0.25,
+            "recall": 0.14285714285714285,
+            "f1": 0.18181818181818182,
+            "support": 7,
+            "predicted_count": 4
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 0.8888888888888888,
+            "f1": 0.9411764705882353,
+            "support": 9,
+            "predicted_count": 8
+          },
+          "needs_clarification": {
+            "precision": 0.8571428571428571,
+            "recall": 0.75,
+            "f1": 0.7999999999999999,
+            "support": 8,
+            "predicted_count": 7
+          },
+          "needs_reasoning": {
+            "precision": 0.8571428571428571,
+            "recall": 1.0,
+            "f1": 0.923076923076923,
+            "support": 6,
+            "predicted_count": 7
+          },
+          "compound_request": {
+            "precision": 1.0,
+            "recall": 0.75,
+            "f1": 0.8571428571428571,
+            "support": 8,
+            "predicted_count": 6
+          },
+          "out_of_scope_request": {
+            "precision": 0.5,
+            "recall": 0.14285714285714285,
+            "f1": 0.22222222222222224,
+            "support": 7,
+            "predicted_count": 2
+          },
+          "not_command": {
+            "precision": 1.0,
+            "recall": 0.8333333333333334,
+            "f1": 0.9090909090909091,
+            "support": 12,
+            "predicted_count": 10
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "inner_frame_snap_set": {
+            "precision": 0.875,
+            "recall": 0.875,
+            "f1": 0.875,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "panel_gap_snap_set": {
+            "precision": 0.875,
+            "recall": 0.875,
+            "f1": 0.875,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "generate_request": {
+            "precision": 0.5,
+            "recall": 0.7,
+            "f1": 0.5833333333333334,
+            "support": 10,
+            "predicted_count": 14
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            6,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            10,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            7,
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            7,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            7,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 1,
+          "denominator": 12,
+          "rate": 0.08333333333333333
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 10,
+          "denominator": 23,
+          "rate": 0.43478260869565216
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 21,
+          "denominator": 106,
+          "rate": 0.19811320754716982
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "boundary": {
+            "count": 35,
+            "denominator": 49,
+            "rate": 0.7142857142857143
+          },
+          "correction": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "desired_state": {
+            "count": 22,
+            "denominator": 28,
+            "rate": 0.7857142857142857
+          },
+          "explicit_count": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "negative_other_action": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 14,
+            "denominator": 16,
+            "rate": 0.875
+          },
+          "report_then_request": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "self_correction": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 20,
+            "denominator": 28,
+            "rate": 0.7142857142857143
+          },
+          "tool_selection_only": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 20,
+            "denominator": 24,
+            "rate": 0.8333333333333334
+          }
+        },
+        "user_examples": {
+          "count": 1,
+          "denominator": 1,
+          "rate": 1.0
+        },
+        "families": {
+          "n": 35,
+          "mean_accuracy": 0.8357142857142857,
+          "all_correct": 26,
+          "mixed_label_families": {
+            "compound_save_page": {
+              "count": 5,
+              "denominator": 6,
+              "rate": 0.8333333333333334
+            },
+            "generate_current_page": {
+              "count": 10,
+              "denominator": 20,
+              "rate": 0.5
+            },
+            "redo_count": {
+              "count": 10,
+              "denominator": 10,
+              "rate": 1.0
+            },
+            "spread_negative": {
+              "count": 3,
+              "denominator": 9,
+              "rate": 0.3333333333333333
+            },
+            "v02_edit_setting_current": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            },
+            "v02_edit_setting_other_preserve": {
+              "count": 10,
+              "denominator": 12,
+              "rate": 0.8333333333333334
+            }
+          }
+        }
+      },
+      "test": {
+        "n": 139,
+        "correct": 121,
+        "accuracy": 0.8705035971223022,
+        "macro_f1": 0.8740974089919545,
+        "macro_f1_supported": 0.8740974089919545,
+        "supported_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "missing_labels": [],
+        "per_class": {
+          "save": {
+            "precision": 0.7,
+            "recall": 1.0,
+            "f1": 0.8235294117647058,
+            "support": 7,
+            "predicted_count": 10
+          },
+          "undo": {
+            "precision": 0.8,
+            "recall": 0.5714285714285714,
+            "f1": 0.6666666666666666,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "redo": {
+            "precision": 0.8,
+            "recall": 0.5714285714285714,
+            "f1": 0.6666666666666666,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "page_navigate": {
+            "precision": 0.6666666666666666,
+            "recall": 1.0,
+            "f1": 0.8,
+            "support": 8,
+            "predicted_count": 12
+          },
+          "view_change": {
+            "precision": 1.0,
+            "recall": 0.875,
+            "f1": 0.9333333333333333,
+            "support": 8,
+            "predicted_count": 7
+          },
+          "artwork_mode_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "bubble_set": {
+            "precision": 1.0,
+            "recall": 0.8888888888888888,
+            "f1": 0.9411764705882353,
+            "support": 9,
+            "predicted_count": 8
+          },
+          "needs_clarification": {
+            "precision": 0.6666666666666666,
+            "recall": 0.75,
+            "f1": 0.7058823529411765,
+            "support": 8,
+            "predicted_count": 9
+          },
+          "needs_reasoning": {
+            "precision": 1.0,
+            "recall": 0.7142857142857143,
+            "f1": 0.8333333333333333,
+            "support": 7,
+            "predicted_count": 5
+          },
+          "compound_request": {
+            "precision": 1.0,
+            "recall": 0.5714285714285714,
+            "f1": 0.7272727272727273,
+            "support": 7,
+            "predicted_count": 4
+          },
+          "out_of_scope_request": {
+            "precision": 0.8571428571428571,
+            "recall": 0.8571428571428571,
+            "f1": 0.8571428571428571,
+            "support": 7,
+            "predicted_count": 7
+          },
+          "not_command": {
+            "precision": 0.9090909090909091,
+            "recall": 0.8333333333333334,
+            "f1": 0.8695652173913043,
+            "support": 12,
+            "predicted_count": 11
+          },
+          "panel_sync_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "inner_frame_snap_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 8,
+            "predicted_count": 8
+          },
+          "panel_gap_snap_set": {
+            "precision": 0.8888888888888888,
+            "recall": 1.0,
+            "f1": 0.9411764705882353,
+            "support": 8,
+            "predicted_count": 9
+          },
+          "generate_request": {
+            "precision": 0.7272727272727273,
+            "recall": 1.0,
+            "f1": 0.8421052631578948,
+            "support": 8,
+            "predicted_count": 11
+          },
+          "background_3d_candidates": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "paint_tool_set": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          },
+          "text_frames_align": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 4,
+            "predicted_count": 4
+          }
+        },
+        "label_order": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "needs_clarification",
+          "needs_reasoning",
+          "compound_request",
+          "out_of_scope_request",
+          "not_command",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "confusion_matrix": [
+          [
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            4,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1,
+            7,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            5,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            6,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            10,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            8,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            4
+          ]
+        ],
+        "not_command_to_dispatch_label": {
+          "count": 2,
+          "denominator": 12,
+          "rate": 0.16666666666666666
+        },
+        "unresolved_to_dispatch_label": {
+          "count": 4,
+          "denominator": 22,
+          "rate": 0.18181818181818182
+        },
+        "incorrect_dispatch_predictions": {
+          "count": 13,
+          "denominator": 103,
+          "rate": 0.1262135922330097
+        },
+        "dispatch_labels": [
+          "save",
+          "undo",
+          "redo",
+          "page_navigate",
+          "view_change",
+          "artwork_mode_set",
+          "bubble_set",
+          "panel_sync_set",
+          "inner_frame_snap_set",
+          "panel_gap_snap_set",
+          "generate_request",
+          "background_3d_candidates",
+          "paint_tool_set",
+          "text_frames_align"
+        ],
+        "subsets": {
+          "boundary": {
+            "count": 43,
+            "denominator": 53,
+            "rate": 0.8113207547169812
+          },
+          "desired_state": {
+            "count": 24,
+            "denominator": 24,
+            "rate": 1.0
+          },
+          "existing_history_action": {
+            "count": 5,
+            "denominator": 8,
+            "rate": 0.625
+          },
+          "explicit_request": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "multiple_text_frames": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "preservation_constraint": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "request_reason": {
+            "count": 15,
+            "denominator": 16,
+            "rate": 0.9375
+          },
+          "self_correction": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "synthetic_v02": {
+            "count": 28,
+            "denominator": 36,
+            "rate": 0.7777777777777778
+          },
+          "tool_selection_only": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "top_alignment": {
+            "count": 4,
+            "denominator": 4,
+            "rate": 1.0
+          },
+          "v02_variation": {
+            "count": 28,
+            "denominator": 32,
+            "rate": 0.875
+          },
+          "work_status": {
+            "count": 8,
+            "denominator": 8,
+            "rate": 1.0
+          }
+        },
+        "user_examples": {
+          "count": 0,
+          "denominator": 0,
+          "rate": null
+        },
+        "families": {
+          "n": 38,
+          "mean_accuracy": 0.8635338345864663,
+          "all_correct": 28,
+          "mixed_label_families": {
+            "bubble_move": {
+              "count": 5,
+              "denominator": 5,
+              "rate": 1.0
+            },
+            "redo_basic": {
+              "count": 3,
+              "denominator": 3,
+              "rate": 1.0
+            },
+            "redo_button": {
+              "count": 5,
+              "denominator": 10,
+              "rate": 0.5
+            },
+            "v02_edit_setting_before_work": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            },
+            "v02_edit_setting_motive": {
+              "count": 12,
+              "denominator": 12,
+              "rate": 1.0
+            }
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "train": {
+      "accuracy": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "sample_stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "macro_f1": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "sample_stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "macro_f1_supported": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "mean": 1.0,
+        "sample_stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    "dev": {
+      "accuracy": {
+        "values": [
+          0.8405797101449275,
+          0.9130434782608695,
+          0.8260869565217391
+        ],
+        "mean": 0.859903381642512,
+        "sample_stddev": 0.04658768483571474,
+        "min": 0.8260869565217391,
+        "max": 0.9130434782608695
+      },
+      "macro_f1": {
+        "values": [
+          0.8470303067924053,
+          0.9131709011210396,
+          0.8303450815498197
+        ],
+        "mean": 0.8635154298210882,
+        "sample_stddev": 0.04380466365427518,
+        "min": 0.8303450815498197,
+        "max": 0.9131709011210396
+      },
+      "macro_f1_supported": {
+        "values": [
+          0.8470303067924053,
+          0.9131709011210396,
+          0.8303450815498197
+        ],
+        "mean": 0.8635154298210882,
+        "sample_stddev": 0.04380466365427518,
+        "min": 0.8303450815498197,
+        "max": 0.9131709011210396
+      }
+    },
+    "test": {
+      "accuracy": {
+        "values": [
+          0.8489208633093526,
+          0.8129496402877698,
+          0.8705035971223022
+        ],
+        "mean": 0.8441247002398082,
+        "sample_stddev": 0.029075193412427185,
+        "min": 0.8129496402877698,
+        "max": 0.8705035971223022
+      },
+      "macro_f1": {
+        "values": [
+          0.8466329924913285,
+          0.8179678079058883,
+          0.8740974089919545
+        ],
+        "mean": 0.8462327364630571,
+        "sample_stddev": 0.028066941108470616,
+        "min": 0.8179678079058883,
+        "max": 0.8740974089919545
+      },
+      "macro_f1_supported": {
+        "values": [
+          0.8466329924913285,
+          0.8179678079058883,
+          0.8740974089919545
+        ],
+        "mean": 0.8462327364630571,
+        "sample_stddev": 0.028066941108470616,
+        "min": 0.8179678079058883,
+        "max": 0.8740974089919545
+      }
+    }
+  },
+  "coverage": {
+    "train": {
+      "n": 647,
+      "sha256": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+      "labels": {
+        "save": 29,
+        "undo": 30,
+        "redo": 30,
+        "page_navigate": 33,
+        "view_change": 37,
+        "artwork_mode_set": 30,
+        "bubble_set": 43,
+        "needs_clarification": 36,
+        "needs_reasoning": 29,
+        "compound_request": 34,
+        "out_of_scope_request": 31,
+        "not_command": 54,
+        "panel_sync_set": 28,
+        "inner_frame_snap_set": 28,
+        "panel_gap_snap_set": 28,
+        "generate_request": 47,
+        "background_3d_candidates": 40,
+        "paint_tool_set": 32,
+        "text_frames_align": 28
+      },
+      "missing_labels": [],
+      "groups": 196,
+      "families": 92,
+      "sources": {
+        "codex_synthetic": 640,
+        "user_supplied_example": 7
+      }
+    },
+    "dev": {
+      "n": 138,
+      "sha256": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+      "labels": {
+        "save": 6,
+        "undo": 5,
+        "redo": 5,
+        "page_navigate": 7,
+        "view_change": 7,
+        "artwork_mode_set": 4,
+        "bubble_set": 9,
+        "needs_clarification": 8,
+        "needs_reasoning": 6,
+        "compound_request": 8,
+        "out_of_scope_request": 7,
+        "not_command": 12,
+        "panel_sync_set": 8,
+        "inner_frame_snap_set": 8,
+        "panel_gap_snap_set": 8,
+        "generate_request": 10,
+        "background_3d_candidates": 4,
+        "paint_tool_set": 8,
+        "text_frames_align": 8
+      },
+      "missing_labels": [],
+      "groups": 49,
+      "families": 35,
+      "sources": {
+        "codex_synthetic": 137,
+        "user_supplied_example": 1
+      }
+    },
+    "test": {
+      "n": 139,
+      "sha256": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+      "labels": {
+        "save": 7,
+        "undo": 7,
+        "redo": 7,
+        "page_navigate": 8,
+        "view_change": 8,
+        "artwork_mode_set": 8,
+        "bubble_set": 9,
+        "needs_clarification": 8,
+        "needs_reasoning": 7,
+        "compound_request": 7,
+        "out_of_scope_request": 7,
+        "not_command": 12,
+        "panel_sync_set": 8,
+        "inner_frame_snap_set": 8,
+        "panel_gap_snap_set": 8,
+        "generate_request": 8,
+        "background_3d_candidates": 4,
+        "paint_tool_set": 4,
+        "text_frames_align": 4
+      },
+      "missing_labels": [],
+      "groups": 47,
+      "families": 38,
+      "sources": {
+        "codex_synthetic": 139
+      }
+    }
+  },
+  "limitation": "Saved-artifact verification; not ASR, application integration, independent real-speech evaluation, or production adoption."
+}

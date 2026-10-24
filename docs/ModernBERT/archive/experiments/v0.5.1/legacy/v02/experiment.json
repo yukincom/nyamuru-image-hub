@@ -1,0 +1,30 @@
+{
+  "name": "nyamuru-voice-v0.2-augmented-grouped",
+  "model": "sbintuitions/modernbert-ja-30m",
+  "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "learning_rates": [
+    2e-05,
+    5e-05
+  ],
+  "epochs": 10,
+  "batch_size": 16,
+  "max_length": 128,
+  "dtype": "float32",
+  "attention": "sdpa",
+  "tf32": false,
+  "model_fields": [
+    "text"
+  ],
+  "target_field": "label",
+  "selection_metric": "dev macro_f1 over all 19 labels with zero division=0; all 19 labels have support",
+  "selection": "Best dev epoch per trial, then shared learning rate by mean best-dev macro_f1 over the three seeds. Ties: lower dev loss, earlier epoch, earlier learning-rate order. Save and evaluate every selected seed.",
+  "test_used_for_selection": false,
+  "split_limitation": "All 19 labels have train/dev/test support. Original groups and reviewed close-paraphrase families are indivisible. Holdout examples are author-generated synthetic utterances, not independent real-user or ASR validation.",
+  "adoption": "No automatic production adoption or application dispatch.",
+  "source_review": "Original 316 rows preserved exactly; 608 additional Codex synthetic variations author-reviewed and cross-reviewed, individual user review pending. No model inference or training before freezing the split."
+}

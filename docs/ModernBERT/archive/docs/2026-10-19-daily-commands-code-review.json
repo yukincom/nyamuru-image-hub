@@ -1,0 +1,270 @@
+{
+  "status": "resolved",
+  "scope": "Read-only review of the daily-command evaluator and shared evaluation path. No model inference, training, installation, prediction-file reading, or repository edits performed.",
+  "source_sha256": {
+    "evaluate_daily_commands.py": "cc9d9bf88dcc7f6484e06921161cacc41a76aff4ec6e23ef902282fd63f2c91e",
+    "train.py": "e89a706df00691b363d68f594f8dcacff22ff75d0230ff706c9944a4cc1c546d",
+    "evaluation.py": "579f33c1f5b3c8f29140bbcd164f1ccd03bf4e6efa4f323778c2a2af4ae29b27",
+    "verify_results.py": "067ae6cfc0e4cc1eea4ff6c1d7e405fa2697d46bfcd0e72fe10a52e76b651280",
+    "dataset.py": "df2abf803f159eb043e6f58f987b2dc3d2d835f3702935a0f82ef9df70e3c6a6",
+    "compare_saved_models.py": "01234c3e60b39a57923b48736b95cfdbe16bae211886797c1edc4f75db1ddde5"
+  },
+  "findings": [
+    {
+      "id": "R1",
+      "priority": 2,
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/evaluate_daily_commands.py",
+      "start_line": 160,
+      "end_line": 160,
+      "title": "Capture this run environment instead of reusing the previous environment",
+      "description": "The new plan records original[\"environment\"] from the preceding fixed73 run even though runtime() imports whichever installed packages execute this run. A different interpreter or package version silently leaves false provenance in the frozen plan. The existing compare_saved_models.py lines 174-188 already show the needed lightweight metadata collection.",
+      "minimal_fix": "Collect Python/platform and installed package versions for this invocation. Keep prior environment only under an explicitly historical field if needed. Validate the copied inference settings against the actual fixed arguments, or construct them from the same constants used in the call.",
+      "known_to_parent": true
+    },
+    {
+      "id": "R2",
+      "priority": 2,
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/evaluate_daily_commands.py",
+      "start_line": 59,
+      "end_line": 81,
+      "title": "Validate the fixed protocol itself before claiming a 14 by 8 daily suite",
+      "description": "validate_questions trusts protocol.labels, n and per_label and only checks rows against those values; it never enforces the intended exact 14 supported labels, 8 questions each and 112 total. A synthetic in-memory protocol containing only two labels, n=2 and per_label=1 passes while markdown() still says 14 operations x 8 and 112 questions. Assignment split values are also not checked, and the verify branch does not independently assert the frozen model list and primary seed43.",
+      "minimal_fix": "Add a small fixed-protocol check for the agreed label list, n=112, per_label=8, daily evaluation assignment metadata, primary v04_seed43 and ordered v04 seed42/43/44 models. Apply it in run and verify. Derive displayed counts from the validated protocol.",
+      "evidence": "Executed validate_questions only with an in-memory two-row fixture and fake hash/read providers; it accepted the malformed dimensions and train assignments. No real candidate rows or predictions were evaluated.",
+      "known_to_parent": true
+    },
+    {
+      "id": "R3",
+      "priority": 2,
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/evaluate_daily_commands.py",
+      "start_line": 38,
+      "end_line": 40,
+      "title": "Check the mandatory inventory as well as the listed hash values",
+      "description": "check_hashes accepts an empty or incomplete mapping and checks no unexpected files. make_plan relies on the suite input manifest without asserting that test.jsonl, protocol.json, split-plan.json and source/labels.json are all sealed. verify likewise trusts the output inventory without comparing it with the generated file set. The copied checkpoint inventory has matching files currently, but additions are not detected before AutoTokenizer/model loading.",
+      "minimal_fix": "Require the agreed suite input keys and required shared/model keys. Compare actual checkpoint files with each model files_sha256 inventory. In verification compare output inventory keys with all output files except output-sha256.json. These checks can be local assertions; no new framework is needed.",
+      "evidence": "The pure check_hashes helper accepts an empty mapping. Current v04 seed42/43/44 checkpoints each contain exactly config.json, model.safetensors, tokenizer.json and tokenizer_config.json, and all four are represented in the inherited input hashes.",
+      "known_to_parent": true
+    }
+  ],
+  "verified_properties": [
+    {
+      "property": "No training, adoption or daily-result reselection path",
+      "evidence": "run calls shared train.evaluate_checkpoint, which calls Trainer.predict only. primary_model is fixed as v04_seed43 and the summary preserves model iteration order rather than sorting by score."
+    },
+    {
+      "property": "Only text enters tokenization and truncation fails closed",
+      "evidence": "dataset.model_example exposes text and target labels only; train.EncodedRows tokenizes text with truncation=False and raises above max_length=128."
+    },
+    {
+      "property": "The original 19-class contract is preserved",
+      "evidence": "validate_questions compares source/labels.json to the reference hash; evaluate_checkpoint checks label2id; verify_predictions checks all 19 probability labels, finite bounded probabilities, their sum, argmax, confidence, gold and metadata alignment."
+    },
+    {
+      "property": "Supported-class F1 is already correct for 14 labels",
+      "evidence": "evaluation.classification_metrics provides macro_f1 over all 19 and macro_f1_supported over supported labels. A perfect synthetic 14-of-19 fixture yields accuracy=1, macro_f1=14/19 and macro_f1_supported=1. Do not replace the 19-class head or treat macro_f1 as 14-class F1; retain missing_labels and use supported F1 if presenting it."
+    },
+    {
+      "property": "Train-overlap partition arithmetic is sound",
+      "evidence": "With unique row IDs, train_exact, train_normalized_only and not_train_normalized are disjoint and exhaust all rows. not_any_prior_normalized is a nested additional diagnostic, not a fourth partition. A synthetic three-row fixture confirmed the union and disjointness."
+    },
+    {
+      "property": "The chosen reference training text matches v04 training text",
+      "evidence": "experiments/v0.4/data/train.jsonl and experiments/v0.5.1/data/train.jsonl currently have identical SHA256 0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec. The reference currently has exactly seven split files, matching the report wording."
+    },
+    {
+      "property": "Prior preserved73 material is checked without rewriting it",
+      "evidence": "make_plan imports the previous input hashes and verifies the previous output checksums; run requires a new output directory and uses separate daily test/metadata. The prior plan itself is listed correctly in its output manifest."
+    },
+    {
+      "property": "Freeze occurs before inference",
+      "evidence": "make_plan completes, plan.json and test.jsonl are written, then the model loop begins; the input hashes are rechecked after prediction."
+    }
+  ],
+  "limitations": [
+    "The daily candidate suite had not yet been written during review, so its exact rows, final protocol and final manifest were not reviewed.",
+    "This review did not inspect saved prediction files or execute any model.",
+    "The shared code was inspected at the recorded hashes; any parent edits to evaluate_daily_commands.py require checking the final diff against these findings."
+  ],
+  "recommendation": "Resolve R1-R3, format/lint the new script and perform proportionate preflight checks before the first inference. No changes to the shared train/evaluation/dataset/verification functions are required by this review.",
+  "re_reviews": [
+    {
+      "status": "changes_requested_before_inference",
+      "source_sha256": "92c07cc5a303f22a502e38f052fe6a84fcbfcf62b3e7bdadd611a2845e6ea285",
+      "finding_resolution": {
+        "R1": {
+          "status": "resolved",
+          "lines": [
+            214,
+            228
+          ],
+          "evidence": "make_plan now reads current Python/platform and installed package versions."
+        },
+        "R2": {
+          "status": "resolved_for_fixed_suite_and_model_selection",
+          "lines": [
+            61,
+            99,
+            375,
+            387
+          ],
+          "evidence": "The exact operation-label set, n=112, per_label=8 and primary seed43 are checked on both paths. verify regenerates the plan and compares models, primary, protocol, inference, subsets, overlap and input hashes exactly. The old two-label fixture now fails.",
+          "fixture_rejected": true,
+          "rejection_message": "exactly 14 operation labels required",
+          "nonblocking_note": "Assignment family is validated but assignment split metadata is still not checked. Since the shared evaluator only consumes family and no training call exists, this is a metadata consistency note rather than a new runtime defect."
+        },
+        "R3": {
+          "status": "partially_resolved",
+          "resolved": "verify now compares output inventory keys with the complete actual output file set excluding output-sha256.json, then checks the hashes.",
+          "remaining": [
+            {
+              "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/evaluate_daily_commands.py",
+              "start_line": 193,
+              "end_line": 197,
+              "description": "The suite input hash manifest still has no mandatory-key check. It must include test.jsonl, protocol.json, split-plan.json and source/labels.json. make_plan regeneration repeats the same omission if the manifest is incomplete."
+            },
+            {
+              "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/evaluate_daily_commands.py",
+              "start_line": 204,
+              "end_line": 205,
+              "description": "The v04 checkpoint actual file set is still not compared with files_sha256. Compare each checkpoint inventory with its recorded exact file names before inference; existing hashes cover only listed files."
+            }
+          ]
+        }
+      },
+      "additional_inventory_note": {
+        "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/evaluate_daily_commands.py",
+        "start_line": 107,
+        "end_line": 110,
+        "description": "The overlap audit reads every REFERENCE/data/*.jsonl while hashes cover manifest-listed files. If retaining the fixed seven-split report wording, require the exact expected names: dev, legacy_v02_dev, legacy_v02_test, legacy_v03_dev, legacy_v03_test, test, train. This avoids an added unlisted file silently changing the audit scope."
+      },
+      "limitations": [
+        "The suite directory still did not exist during this review, so its actual manifest entries could not be checked.",
+        "No prediction files were inspected and no inference, training or repository changes were performed.",
+        "Parent is applying import formatting; the final source hash may therefore differ."
+      ]
+    },
+    {
+      "status": "resolved",
+      "source_sha256": "5b3f5ec878b4212f1534d4a28ec0a34316312e1c1846d07b1748e3f5e3e4eb0b",
+      "finding_resolution": {
+        "R1": {
+          "status": "resolved",
+          "lines": [
+            266,
+            280
+          ],
+          "evidence": "Current interpreter, platform and six package versions are captured at plan creation."
+        },
+        "R2": {
+          "status": "resolved",
+          "lines": [
+            62,
+            103,
+            230,
+            257,
+            427,
+            439
+          ],
+          "evidence": "The exact 14 operation labels and 112/8 dimensions and primary seed43 are checked. Model seed/order/IDs are checked. Inference settings are built explicitly and checked against the preserved conditions. Verification reconstructs and compares the fixed protocol and model metadata."
+        },
+        "R3": {
+          "status": "resolved",
+          "lines": [
+            207,
+            242,
+            440,
+            445
+          ],
+          "evidence": "The suite manifest is required to contain exactly the six intended files. Every hash is checked. Each checkpoint actual recursive file set must equal its recorded inventory and each hash is checked. Output verification checks the complete output inventory and each hash."
+        }
+      },
+      "prior_split_inventory_note": "Resolved at lines 112-124 by checking the exact seven split names.",
+      "assignment_metadata_note": "All 112 actual assignment entries are split=daily. The shared path consumes family only and no training operation exists.",
+      "checks": {
+        "real_suite_validation": true,
+        "six_frozen_inputs_hash_match": true,
+        "suite_actual_inventory_matches_manifest": true,
+        "all_assignments_are_daily": true,
+        "v04_seed42_inventory_matches": true,
+        "v04_seed42_hashes_match": true,
+        "v04_seed43_inventory_matches": true,
+        "v04_seed43_hashes_match": true,
+        "v04_seed44_inventory_matches": true,
+        "v04_seed44_hashes_match": true,
+        "prior_splits_exactly_seven": true
+      },
+      "suite_input_sha256": {
+        "preparation-review.json": "9224d762a2c08885424879e04ef2e304c5ae8d713018f01365aacb2b8b33cae4",
+        "protocol.json": "4dff0ab530f47830c523e8cc1608002144d2b3e7dcdcf7e165d731512f52ca0b",
+        "questions.md": "335a5e102564d8ebd79f9005a3f7b646549346fcafe545347b2497b655ac59ae",
+        "source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+        "split-plan.json": "fb5fba57f214480e76cf16f8aebd880965f9389b79a08db0113047057c5a87ed",
+        "test.jsonl": "6f8d50074a4918292e7be77f7ab43e6f301b6803cf9a40de255d2dd7375c243d"
+      },
+      "remaining_findings": [],
+      "scope": "Read-only final source and artifact integrity review. validate_questions ran on the actual input rows with the original normalization function extracted without importing ML libraries. Checkpoint bytes were hashed only. No prediction files were opened, and no inference, training, installation or repository edits were performed."
+    }
+  ],
+  "final_review": {
+    "status": "resolved",
+    "source_sha256": "5b3f5ec878b4212f1534d4a28ec0a34316312e1c1846d07b1748e3f5e3e4eb0b",
+    "finding_resolution": {
+      "R1": {
+        "status": "resolved",
+        "lines": [
+          266,
+          280
+        ],
+        "evidence": "Current interpreter, platform and six package versions are captured at plan creation."
+      },
+      "R2": {
+        "status": "resolved",
+        "lines": [
+          62,
+          103,
+          230,
+          257,
+          427,
+          439
+        ],
+        "evidence": "The exact 14 operation labels and 112/8 dimensions and primary seed43 are checked. Model seed/order/IDs are checked. Inference settings are built explicitly and checked against the preserved conditions. Verification reconstructs and compares the fixed protocol and model metadata."
+      },
+      "R3": {
+        "status": "resolved",
+        "lines": [
+          207,
+          242,
+          440,
+          445
+        ],
+        "evidence": "The suite manifest is required to contain exactly the six intended files. Every hash is checked. Each checkpoint actual recursive file set must equal its recorded inventory and each hash is checked. Output verification checks the complete output inventory and each hash."
+      }
+    },
+    "prior_split_inventory_note": "Resolved at lines 112-124 by checking the exact seven split names.",
+    "assignment_metadata_note": "All 112 actual assignment entries are split=daily. The shared path consumes family only and no training operation exists.",
+    "checks": {
+      "real_suite_validation": true,
+      "six_frozen_inputs_hash_match": true,
+      "suite_actual_inventory_matches_manifest": true,
+      "all_assignments_are_daily": true,
+      "v04_seed42_inventory_matches": true,
+      "v04_seed42_hashes_match": true,
+      "v04_seed43_inventory_matches": true,
+      "v04_seed43_hashes_match": true,
+      "v04_seed44_inventory_matches": true,
+      "v04_seed44_hashes_match": true,
+      "prior_splits_exactly_seven": true
+    },
+    "suite_input_sha256": {
+      "preparation-review.json": "9224d762a2c08885424879e04ef2e304c5ae8d713018f01365aacb2b8b33cae4",
+      "protocol.json": "4dff0ab530f47830c523e8cc1608002144d2b3e7dcdcf7e165d731512f52ca0b",
+      "questions.md": "335a5e102564d8ebd79f9005a3f7b646549346fcafe545347b2497b655ac59ae",
+      "source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "split-plan.json": "fb5fba57f214480e76cf16f8aebd880965f9389b79a08db0113047057c5a87ed",
+      "test.jsonl": "6f8d50074a4918292e7be77f7ab43e6f301b6803cf9a40de255d2dd7375c243d"
+    },
+    "remaining_findings": [],
+    "scope": "Read-only final source and artifact integrity review. validate_questions ran on the actual input rows with the original normalization function extracted without importing ML libraries. Checkpoint bytes were hashed only. No prediction files were opened, and no inference, training, installation or repository edits were performed."
+  },
+  "remaining_findings": []
+}

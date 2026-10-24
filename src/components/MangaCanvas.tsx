@@ -1,33 +1,85 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import CanvasContentSelection, { elementContentBox, elementContentHit } from './CanvasContentSelection';
+import { frameFromContentEdit } from '../lib/canvasContentGeometry';
+import {artworkLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import { pixelZoomWidth, canvasZoomPercent, clampCanvasZoom, canvasZoomShortcut } from '../lib/canvasZoom';
+import type { CanvasTextTarget } from '../lib/canvasText';
+import {textStyleOf,selectedTextWeight,textStyleCss,textWeightSegments,type TextStylePatch,type TextSelection} from '../lib/textStyle';
+import type {TextStyle,TextWeightRange} from '../types';
+import {BUBBLE_MATERIAL_DRAG_TYPE} from '../lib/bubblePresetData';
+import CanvasTextToolbar from './CanvasTextToolbar';
+import NativeTextEditor from './NativeTextEditor';
+import { bubbleVisible, panelVisible, panelFrameVisible, panelArtKeys, type BubbleTextTarget } from '../lib/panelLayers';
+import { PaintGeometryContext, PaintInputActivityContext, usePaintWorkspace } from '../lib/paintWorkspace';
+import PaintInputSurface, { PaintOwnerPreview } from './PaintSceneView';
+import { paintReferenceBox } from '../lib/paintDocument';
+import { artworkPixelSize, copyArtworkSize } from '../lib/artworkClipboard';
+import PlacedImageView from './PlacedImageView';
+import { artworkInteractionBounds, figureArtwork, resizeImageBox } from '../lib/imagePlacement';
+import type { ImageAsset, PlacedImage } from '../types';
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
+import type { VNode } from 'preact';
 import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import FigureSizeSvg from './FigureSizeSvg';
-import type { Anchor, BBox, CanvasElementSelection, MangaPage, Panel } from '../types';
-import { anchorPoint, clamp, clampedPanelDelta, createShiftAxisSession, fallbackBox, nearestAnchor, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisSession, resolveVertexDragStartZone, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
+import type { BBox, Bubble, BubbleTailTarget, CanvasElementSelection, Figure, MangaPage, Panel, PersistentAnalogAssetRef } from '../types';
+import { innerFrameBounds, type CanvasSize, anchorPoint, clamp, clampedPanelDelta, createShiftAxisSession, fallbackBox, panelBounds, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisSession, resolveVertexDragStartZone, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
+import { loadFigureCropAsset } from '../lib/figureCropStore';
+import { bubbleCssFontFamily } from '../lib/bubbleFonts';
+import { resolveBubbleSpeakerFigureIndex } from '../lib/bubbleRelations';
+import { isPropPlacement } from '../lib/catalogModel.ts';
+import { DETECTED_FIGURE_NAME } from '../lib/systemCharacters.ts';
+import { bubbleJoinGeometry, bubbleTailDisabled, bubbleTailComposite, bubbleTailTargetPoint, monologueTailEllipses, normalizedBubbleTailTarget, type BubbleSeamMask, type BubbleTailComposite } from '../lib/bubbleTail.ts';
+import { bubbleUsesMonologueTail } from '../lib/bubblePresentation.ts';
+import { bubbleTextFrame, compatibleBubbleClips } from '../lib/bubbleClip.ts';
+import { overlayFallbackBox as pageOverlayFallbackBox } from '../lib/pageCanvas.ts';
+import { panelDisplayLabel } from '../lib/displayLabels.ts';
 
 interface Props {
+  zoomTool?:boolean;
+  textTool?:boolean;
+  pageIndex?:number;
+  onTextStyle?:(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection)=>void;
+  onBubbleMaterial?:(target:CanvasTextTarget,id:string)=>void;
+  onOpenBubbleMaterials?:()=>void;
+  editingText?:CanvasTextTarget|null;
+  onEditScreenText?:(panelIndex:number,index:number)=>void;
+  onEditBubble?:(target:Omit<BubbleTextTarget,'pageIndex'>)=>void;
+  onTextHistory?:(direction:'undo'|'redo')=>void;
+  onText?:(target:CanvasTextTarget,text:string,edit?:TextSelection)=>void;
+  onEndTextEdit?:()=>void;
+  painting?: boolean;
+  paintTarget?: {panelIndex:number;overlay:boolean};
+  dpi?: number;
+  outputSize?: {width_mm:number;height_mm:number};
+  onNotify?: (message: string) => void;
+  guideVisible:(key:string,panelIndex:number,overlay?:boolean)=>boolean;
+  onToggleGuide:(key:string,panelIndex:number,overlay?:boolean)=>void;
+  onGenerateArtwork:(key:string,panelIndex:number,overlay?:boolean)=>void;
+  onReplaceArtwork?: (panelIndex: number, figureIndex?: number, overlay?: boolean, bubbleIndex?:number) => void;
+  imageAssets?: ImageAsset[];
+  onImageGesture?: (phase: 'start' | 'end') => void;
   title: string;
   author: string;
   page: MangaPage;
   pageCount: number;
+  zoomPercent: number|null;
+  onZoomPercentChange: (percent: number|null) => void;
   frameLineWidthMm: number;
+  bubbleLineWidthMm: number;
+  defaultBubbleFont: string;
   activePanel: number;
   selectedPanels: readonly number[];
   selectedElement: CanvasElementSelection | null;
   showGuides: boolean;
-  autoAnchor: boolean;
-  onToggleAutoAnchor: () => void;
   innerFrameSnap: boolean;
-  onToggleInnerFrameSnap: () => void;
   panelGutters: PanelGutterSettings;
   panelGapSnap: boolean;
-  onTogglePanelGapSnap: () => void;
   panelSync: boolean;
-  onTogglePanelSync: () => void;
   onSelectPanel: (index: number, additive?: boolean) => void;
-  onSelectElement: (selection: CanvasElementSelection | null) => void;
+  onSelectElement: (selection: CanvasElementSelection | null, panelIndex?: number, revealDetails?: boolean) => void;
   onChangeElementBBox: (selection: CanvasElementSelection, bbox: BBox) => void;
-  onChangeElementAnchor: (selection: CanvasElementSelection, anchor: Anchor, bbox: BBox) => void;
+  onChangeBubbleTail: (selection: CanvasElementSelection, tail: BubbleTailTarget) => void;
   onMovePanel: (panelIndex: number, deltaX: number, deltaY: number) => void;
   onResizePanel: (panelIndex: number, bounds: BBox) => void;
   onMoveVertex: (panelIndex: number, vertexIndex: number, x: number, y: number, linkPanels?: boolean) => void;
@@ -39,11 +91,11 @@ interface Interaction extends InteractionGeometry {
   paperRect: DOMRect;
 }
 
-function panelStyle(panel: Panel): Record<string, string | number> {
+function panelStyle(panel: Panel, canvas: CanvasSize): Record<string, string | number> {
   if (panel.shape.type === 'rect') {
     return {
-      left: `${panel.shape.x / 2.1}%`, top: `${panel.shape.y / 2.97}%`,
-      width: `${panel.shape.w / 2.1}%`, height: `${panel.shape.h / 2.97}%`,
+      left: `${panel.shape.x / (canvas.w / 100)}%`, top: `${panel.shape.y / (canvas.h / 100)}%`,
+      width: `${panel.shape.w / (canvas.w / 100)}%`, height: `${panel.shape.h / (canvas.h / 100)}%`,
     };
   }
   const xs = panel.shape.points.map(([x]) => x);
@@ -52,7 +104,7 @@ function panelStyle(panel: Panel): Record<string, string | number> {
   const width = maxX - minX || 1, height = maxY - minY || 1;
   const points = panel.shape.points.map(([x, y]) => `${((x - minX) / width) * 100}% ${((y - minY) / height) * 100}%`).join(',');
   return {
-    left: `${minX / 2.1}%`, top: `${minY / 2.97}%`, width: `${width / 2.1}%`, height: `${height / 2.97}%`,
+    left: `${minX / (canvas.w / 100)}%`, top: `${minY / (canvas.h / 100)}%`, width: `${width / (canvas.w / 100)}%`, height: `${height / (canvas.h / 100)}%`,
     clipPath: `polygon(${points})`,
   };
 }
@@ -76,21 +128,66 @@ function FigureName({ name, boxW, boxH, fitEpoch }: { name: string; boxW: number
   return <small ref={ref}>{name}</small>;
 }
 
+function isUnassignedPersonFigure(figure: Figure): boolean {
+  return !isPropPlacement(figure)
+    && (!figure.refId || figure.name.normalize('NFKC').trim() === DETECTED_FIGURE_NAME);
+}
+
+function StoredCropImage({ assetId, persistentAsset, className }: { assetId: string; persistentAsset?: PersistentAnalogAssetRef; className: string }) {
+  const [source, setSource] = useState<string | null>(null);
+  useEffect(() => {
+    let ignored = false;
+    let objectUrl: string | null = null;
+    setSource(null);
+    void loadFigureCropAsset(assetId, persistentAsset)
+      .then((blob) => {
+        if (!blob || ignored) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSource(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      ignored = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [assetId, persistentAsset?.workKey, persistentAsset?.kind, persistentAsset?.fileName]);
+  return source ? <img class={className} src={source} alt="" draggable={false} /> : null;
+}
+
 // フキダシ内テキスト。はみ出す場合は --bubble-fit（縮小率）で自動縮小する
-function BubbleText({ text, lengthClass, boxW, boxH, fitEpoch }: { text: string; lengthClass: string; boxW: number; boxH: number; fitEpoch: number }) {
+export function BubbleText({ text, font, shape, lengthClass, boxW, boxH, fitEpoch, style, weights, paperWidth=210 }: { text: string; font: string; shape?: string; lengthClass: string; boxW: number; boxH: number; fitEpoch: number; style?:TextStyle;weights?:TextWeightRange[];paperWidth?:number }) {
   const ref = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.setProperty('--bubble-fit', '1');
-    for (let i = 0; i < 2; i++) {
-      const overflow = Math.max(el.scrollWidth / Math.max(1, el.clientWidth), el.scrollHeight / Math.max(1, el.clientHeight));
-      if (overflow <= 1.02) break;
-      const current = parseFloat(el.style.getPropertyValue('--bubble-fit')) || 1;
-      el.style.setProperty('--bubble-fit', String(Math.max(0.35, current / overflow)));
-    }
-  }, [text, lengthClass, boxW, boxH, fitEpoch]);
-  return <span ref={ref} class={`vertical-text bubble-text ${lengthClass}`}>{text}</span>;
+    const layout = () => {
+      el.style.setProperty('--bubble-fit', '1');
+      el.style.setProperty('--bubble-center-x', '0px');
+      el.style.setProperty('--bubble-center-y', '0px');
+      for (let i = 0; !style?.fontSize && i < 8; i++) {
+        const overflow = Math.max(el.scrollWidth / Math.max(1, el.clientWidth), el.scrollHeight / Math.max(1, el.clientHeight));
+        if (overflow <= 1.02) break;
+        const current = parseFloat(el.style.getPropertyValue('--bubble-fit')) || 1;
+        el.style.setProperty('--bubble-fit', String(current / overflow));
+      }
+      // Wrapped columns may leave unused inline space. Center their actual text
+      // rectangle, not that available-height box; keep every column top-aligned.
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const textBox = range.getBoundingClientRect();
+      const bubbleBox = el.parentElement?.getBoundingClientRect();
+      const elementBox = el.getBoundingClientRect();
+      const width = parseFloat(getComputedStyle(el).width);
+      const scale = width > 0 ? elementBox.width / width : 0;
+      if (!bubbleBox || !textBox.width || !textBox.height || !(scale > 0)) return;
+      el.style.setProperty('--bubble-center-x', `${(bubbleBox.x + bubbleBox.width / 2 - textBox.x - textBox.width / 2) / scale}px`);
+      el.style.setProperty('--bubble-center-y', `${(bubbleBox.y + bubbleBox.height / 2 - textBox.y - textBox.height / 2) / scale}px`);
+    };
+    layout();
+    document.fonts.addEventListener('loadingdone', layout);
+    return () => document.fonts.removeEventListener('loadingdone', layout);
+  }, [text, font, shape, lengthClass, boxW, boxH, fitEpoch, style, weights]);
+  return <span ref={ref} class={`vertical-text bubble-text ${lengthClass} ${style?.fontSize?'has-fixed-text-size':''}`} style={{ fontFamily: bubbleCssFontFamily(font),...(style?textStyleCss(style,paperWidth,font):{}) }}>{weights?.length?textWeightSegments({text,text_weights:weights}).map((part,i)=><span key={i} style={part.fontWeight?{fontWeight:part.fontWeight}:undefined}>{part.text}</span>):text}</span>;
 }
 
 function bboxStyle(box: BBox, panel: Panel): Record<string, string> {
@@ -103,114 +200,257 @@ function bboxStyle(box: BBox, panel: Panel): Record<string, string> {
   };
 }
 
-// 紙面（210×297mm）基準の配置。選択中パネルのエレメントレイヤーで使う
-function paperBoxStyle(box: BBox): Record<string, string> {
+// 紙面の実寸基準の配置。選択中パネルのエレメントレイヤーで使う
+function pageBoxStyle(box: BBox, canvas: CanvasSize): Record<string, string> {
   return {
-    left: `${box.x / 2.1}%`,
-    top: `${box.y / 2.97}%`,
-    width: `${box.w / 2.1}%`,
-    height: `${box.h / 2.97}%`,
+    left: `${box.x / (canvas.w / 100)}%`,
+    top: `${box.y / (canvas.h / 100)}%`,
+    width: `${box.w / (canvas.w / 100)}%`,
+    height: `${box.h / (canvas.h / 100)}%`,
   };
 }
 
 // エレメントレイヤーをパネル形状でクロップし、パネル内描画と同じ見た目（はみ出しなし）を保つ
-function layerClipStyle(panel: Panel): Record<string, string> {
+function layerClipStyle(panel: Panel, canvas: CanvasSize): Record<string, string> {
   if (panel.shape.type === 'rect') {
     const { x, y, w, h } = panel.shape;
-    return { clipPath: `inset(${y / 2.97}% ${(210 - x - w) / 2.1}% ${(297 - y - h) / 2.97}% ${x / 2.1}%)` };
+    return { clipPath: `inset(${y / (canvas.h / 100)}% ${(canvas.w - x - w) / (canvas.w / 100)}% ${(canvas.h - y - h) / (canvas.h / 100)}% ${x / (canvas.w / 100)}%)` };
   }
-  const points = panel.shape.points.map(([x, y]) => `${x / 2.1}% ${y / 2.97}%`).join(',');
+  const points = panel.shape.points.map(([x, y]) => `${x / (canvas.w / 100)}% ${y / (canvas.h / 100)}%`).join(',');
   return { clipPath: `polygon(${points})` };
 }
 
-export default function MangaCanvas({ title, author, page, pageCount, frameLineWidthMm, activePanel, selectedPanels, selectedElement, showGuides, autoAnchor, onToggleAutoAnchor, innerFrameSnap, onToggleInnerFrameSnap, panelGutters, panelGapSnap, onTogglePanelGapSnap, panelSync, onTogglePanelSync, onSelectPanel, onSelectElement, onChangeElementBBox, onChangeElementAnchor, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
+export default function MangaCanvas({ zoomTool=false, textTool=false,pageIndex,onTextStyle,onBubbleMaterial,onOpenBubbleMaterials,editingText,onEditScreenText,onEditBubble,onText,onTextHistory,onEndTextEdit,painting=false, paintTarget, guideVisible, onToggleGuide, onGenerateArtwork, dpi = 600, outputSize, onNotify, onReplaceArtwork, imageAssets = [], onImageGesture, title, author, page, pageCount, zoomPercent, onZoomPercentChange, frameLineWidthMm, bubbleLineWidthMm, defaultBubbleFont, activePanel, selectedPanels, selectedElement, showGuides, innerFrameSnap, panelGutters, panelGapSnap, panelSync, onSelectPanel, onSelectElement:onSelectNativeElement, onChangeElementBBox, onChangeBubbleTail, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
+  const paintGeometry=useContext(PaintGeometryContext);
+  const paintInputActive=useContext(PaintInputActivityContext);
+  const paintWorkspace=usePaintWorkspace();
+  const backgroundEdit=paintTarget&&!paintTarget.overlay&&paintWorkspace?.page===page.page&&paintWorkspace.panelIndex===paintTarget.panelIndex?paintWorkspace.background3d:undefined;
+  const elementLocked=(selection:CanvasElementSelection,panelIndex=activePanel)=>{
+    if(selection.type==='image')return artworkLocked((selection.scope==='page'?page.images:page.panels[panelIndex]?.images)?.[selection.index]);
+    const target=selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex];
+    if(selection.type==='screen_text')return false;
+    const preview=paintTarget&&paintTarget.overlay===(selection.scope==='page_overlay')&&(paintTarget.overlay||paintTarget.panelIndex===panelIndex)?paintWorkspace?.scene.owners.find(o=>o.key===`${selection.type}-${selection.index}`):undefined;
+    if(preview)return paintOwnerPlacementLocked(preview);
+    return artworkLocked(selection.type==='figure'?target?.figures?.[selection.index]?.artwork:target?.bubbles?.[selection.index]?.paint_overlay);
+  };
+  const onSelectElement=(selection:CanvasElementSelection|null,panelIndex?:number,revealDetails=true)=>{
+    if(selection&&elementLocked(selection,panelIndex))return;
+    if(backgroundEdit){
+      if(selection&&(panelIndex===undefined||panelIndex===paintTarget?.panelIndex)&&selection.scope!=='page_overlay'&&(selection.type==='figure'||selection.type==='bubble'))backgroundEdit.select(`${selection.type}-${selection.index}`);
+      return;
+    }
+    onSelectNativeElement(selection,panelIndex,revealDetails);
+  };
+  const previewOwner=(key:string,index:number,overlay=false)=>paintTarget&&paintTarget.overlay===overlay&&(overlay||paintTarget.panelIndex===index)?paintGeometry?.owners.find(o=>o.key===key):undefined;
+  const nativeBox=(item:Figure|Bubble,box:BBox,key:string,index:number,overlay=false)=>{
+    const preview=previewOwner(key,index,overlay);
+    const content='name' in item?item.artwork:item.paint_overlay;
+    return paintReferenceBox(preview?.paint??content?.paint,preview?.frame??box,preview?undefined:content?.crop);
+  };
+  const nativeStyle=(box:BBox,reference:BBox)=>({left:`${(reference.x-box.x)/box.w*100}%`,top:`${(reference.y-box.y)/box.h*100}%`,width:`${reference.w/box.w*100}%`,height:`${reference.h/box.h*100}%`});
+  const canvas = page.canvas;
+  const editingPanel=(index:number)=>Boolean(paintTarget&&!paintTarget.overlay&&paintTarget.panelIndex===index);
+  const editingOverlay=Boolean(paintTarget?.overlay);
+  const inner = innerFrameBounds(canvas);
+  const panelMinSize = Math.min(20, canvas.w / 4, canvas.h / 4);
+  const paperBoxStyle = (box: BBox) => pageBoxStyle(box, canvas);
   const paperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
-  const [interactionMode, setInteractionMode] = useState<ResizeHandle | 'panel' | 'panel-resize' | 'panel-edge' | null>(null);
+  const [interactionMode, setInteractionMode] = useState<ResizeHandle | 'panel' | 'panel-resize' | 'panel-edge' | 'bubble-tail' | null>(null);
   const [activeEdgeIndex, setActiveEdgeIndex] = useState<number | null>(null);
-  // ズームは直接DOMの幅を書き換える（ジェスチャ中の再レンダー回避）。stateは%表示のみ
-  const [zoomPercent, setZoomPercent] = useState(100);
   // 紙面の実サイズが変わるたびに増やして、テキスト自動縮小の再測定を促す
   const [fitEpoch, setFitEpoch] = useState(0);
   const basePaperWidth = useRef(0);
-  const isZoomed = useRef(false);
+  const [fitPercent,setFitPercent] = useState(100);
+  const outputWidth=Math.round((outputSize?.width_mm??canvas.w)*dpi/25.4);
+  const outputHeight=Math.round((outputSize?.height_mm??canvas.h)*dpi/25.4);
+  const zoomPercentRef = useRef(zoomPercent);
+  const spacePressedRef = useRef(false);
+  const [generationMenu, setGenerationMenu] = useState<{ x: number; y: number; panelIndex: number; figureIndex?: number; bubbleIndex?:number; overlay?: boolean } | null>(null);
+  const generationMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setGenerationMenu(null); }, [page]);
+  useEffect(() => { generationMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus(); }, [generationMenu]);
+  const openGenerationMenu = (event: MouseEvent | KeyboardEvent, panelIndex: number, figureIndex?: number, isOverlay = false, bubbleIndex?:number) => {
+    event.preventDefault(); event.stopPropagation();
+    if(backgroundEdit)return;
+    const rect = (event.currentTarget as Element).getBoundingClientRect();
+    const x = 'clientX' in event && event.clientX ? event.clientX : rect.left;
+    const y = 'clientY' in event && event.clientY ? event.clientY : rect.bottom;
+    setGenerationMenu({ x, y, panelIndex, figureIndex, bubbleIndex, overlay: isOverlay });
+    // The passive facing-page canvas must stay mounted until an action is chosen.
+    if (activePanel >= 0&&!painting) {
+      if(bubbleIndex!==undefined)onSelectElement({type:'bubble',index:bubbleIndex,...(isOverlay?{scope:'page_overlay' as const}:{})},isOverlay?undefined:panelIndex);
+      else if (figureIndex === undefined) onSelectPanel(panelIndex);
+      else onSelectElement({ type: 'figure', index: figureIndex, ...(isOverlay ? { scope: 'page_overlay' as const } : {}) }, isOverlay ? undefined : panelIndex);
+    }
+  };
+  const menuPanel = generationMenu ? page.panels[generationMenu.panelIndex] : undefined;
+  const menuFigure = generationMenu?.figureIndex !== undefined
+    ? (generationMenu.overlay ? page.page_overlay?.figures : menuPanel?.figures)?.[generationMenu.figureIndex] : undefined;
+  const menuBubble=generationMenu?.bubbleIndex!==undefined?(generationMenu.overlay?page.page_overlay?.bubbles:menuPanel?.bubbles)?.[generationMenu.bubbleIndex]:undefined;
+  const menuKey=generationMenu?.figureIndex!==undefined?`figure-${generationMenu.figureIndex}`:generationMenu?.bubbleIndex!==undefined?`bubble-${generationMenu.bubbleIndex}`:'background';
+  const menuBox=generationMenu?menuFigure?(menuFigure.bbox??(generationMenu.overlay?pageOverlayFallbackBox(canvas,'figure',generationMenu.figureIndex!):fallbackBox(menuPanel!,'figure',generationMenu.figureIndex!))):menuBubble?(menuBubble.bbox??(generationMenu.overlay?pageOverlayFallbackBox(canvas,'bubble',generationMenu.bubbleIndex!):fallbackBox(menuPanel!,'bubble',generationMenu.bubbleIndex!))):menuPanel?panelBounds(menuPanel):undefined:undefined;
+  const menuSize = menuBox ? artworkPixelSize(menuBox, dpi) : undefined;
+  const copyMenuSize = () => {
+    if (!menuBox || !menuSize) return;
+    void copyArtworkSize(menuBox, dpi).then(() => onNotify?.(`${menuSize.width} × ${menuSize.height} px をサイズコピーしました。ペイントツールの「クリップボードから新規作成」で開けます`))
+      .catch(error => onNotify?.(error instanceof Error ? error.message : 'サイズをコピーできませんでした'));
+    setGenerationMenu(null);
+  };
+
 
   useEffect(() => () => cleanupRef.current?.(), []);
 
-  // 非ズーム時は紙面をスクロール領域へ収める（従来のCSSフィットの代替。ズーム基準幅もここで決まる）
-  const fitPaper = () => {
-    const scroll = scrollRef.current, paper = paperRef.current;
-    if (!scroll || !paper || isZoomed.current) return;
-    const styles = getComputedStyle(scroll);
-    const availW = scroll.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight);
-    const availH = scroll.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
-    if (availW <= 0 || availH <= 0) return;
-    const width = Math.min(availW, (availH * 210) / 297, (760 * 210) / 297);
-    paper.style.width = `${width}px`;
-    paper.style.height = 'auto';
-    basePaperWidth.current = width;
-    setFitEpoch((value) => value + 1);
-  };
+  const spreadScrollFor = () => scrollRef.current?.closest<HTMLElement>('.canvas-spread-scroll') ?? null;
 
-  useEffect(() => {
-    fitPaper();
-    const scroll = scrollRef.current;
-    if (!scroll) return;
-    const observer = new ResizeObserver(() => fitPaper());
-    observer.observe(scroll);
-    return () => observer.disconnect();
-  }, []);
-
-  const zoomAt = (factor: number, centerX?: number, centerY?: number) => {
+  const applyPaperWidth = (targetWidth: number, centerX?: number, centerY?: number) => {
     const scroll = scrollRef.current, paper = paperRef.current;
-    if (!scroll || !paper) return;
+    if (!scroll || !paper || targetWidth <= 0) return;
     const rect = paper.getBoundingClientRect();
-    if (!isZoomed.current) basePaperWidth.current = rect.width;
-    const base = basePaperWidth.current || rect.width;
-    const target = clamp(rect.width * factor, base * 0.4, base * 4);
-    const f = target / rect.width;
+    const spreadScroll = spreadScrollFor();
+    const spreadStage = spreadScroll?.querySelector<HTMLElement>('.canvas-spread-stage');
+    if (spreadScroll && spreadStage) {
+      const sourceBase = basePaperWidth.current || rect.width / Math.max(.01, (zoomPercentRef.current??fitPercent) / 100);
+      const targetRatio = targetWidth / Math.max(1, sourceBase);
+      const papers = Array.from(spreadStage.querySelectorAll<HTMLElement>('.manga-paper'));
+      const targets = papers.map((targetPaper) => {
+        const base = Number(targetPaper.dataset.basePaperWidth) || sourceBase;
+        return { targetPaper, width: base * targetRatio };
+      });
+      if (targets.every(({ targetPaper, width }) => Math.abs(targetPaper.getBoundingClientRect().width - width) < .1)) return;
+      const scrollRect = spreadScroll.getBoundingClientRect();
+      const stageBefore = spreadStage.getBoundingClientRect();
+      const midX = centerX ?? scrollRect.left + scrollRect.width / 2;
+      const midY = centerY ?? scrollRect.top + scrollRect.height / 2;
+      const ratioX = clamp((midX - stageBefore.left) / Math.max(1, stageBefore.width), 0, 1);
+      const ratioY = clamp((midY - stageBefore.top) / Math.max(1, stageBefore.height), 0, 1);
+      targets.forEach(({ targetPaper, width }) => {
+        targetPaper.style.width = `${width}px`;
+        targetPaper.style.height = 'auto';
+      });
+      const stageAfter = spreadStage.getBoundingClientRect();
+      spreadScroll.scrollLeft += stageAfter.left + stageAfter.width * ratioX - midX;
+      spreadScroll.scrollTop += stageAfter.top + stageAfter.height * ratioY - midY;
+      return;
+    }
+    if (Math.abs(rect.width - targetWidth) < 0.1) return;
+    const factor = targetWidth / Math.max(1, rect.width);
     const scrollRect = scroll.getBoundingClientRect();
     const midX = centerX ?? scrollRect.left + scrollRect.width / 2;
     const midY = centerY ?? scrollRect.top + scrollRect.height / 2;
     const pointX = scroll.scrollLeft + midX - scrollRect.left - paper.offsetLeft;
     const pointY = scroll.scrollTop + midY - scrollRect.top - paper.offsetTop;
-    paper.style.width = `${target}px`;
+    paper.style.width = `${targetWidth}px`;
     paper.style.height = 'auto';
-    isZoomed.current = true;
-    scroll.scrollLeft = paper.offsetLeft + pointX * f - (midX - scrollRect.left);
-    scroll.scrollTop = paper.offsetTop + pointY * f - (midY - scrollRect.top);
-    setZoomPercent(Math.round((target / base) * 100));
+    scroll.scrollLeft = paper.offsetLeft + pointX * factor - (midX - scrollRect.left);
+    scroll.scrollTop = paper.offsetTop + pointY * factor - (midY - scrollRect.top);
+  };
+
+  // Fit is a separate mode; 100% always uses the output pixels and display DPR.
+  const fitPaper = () => {
+    const scroll = scrollRef.current, paper = paperRef.current;
+    if (!scroll || !paper) return;
+    const spreadScroll = spreadScrollFor();
+    const spreadStage = spreadScroll?.querySelector<HTMLElement>('.canvas-spread-stage');
+    const sizingSurface = spreadScroll ?? scroll;
+    const styles = getComputedStyle(spreadStage ?? scroll);
+    const visiblePageCount = spreadStage
+      ? Math.max(1, Array.from(spreadStage.querySelectorAll<HTMLElement>('.spread-pane')).filter((pane) => getComputedStyle(pane).display !== 'none').length)
+      : 1;
+    const availW = (sizingSurface.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight)) / visiblePageCount;
+    const availH = sizingSurface.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
+    if (availW <= 0 || availH <= 0) return;
+    const width = Math.min(availW, availH * outputWidth / outputHeight, 760 * outputWidth / outputHeight);
+    const base=pixelZoomWidth(outputWidth,window.devicePixelRatio);
+    basePaperWidth.current = base;
+    paper.dataset.basePaperWidth = String(base);
+    setFitPercent(canvasZoomPercent(width,base));
+    paper.style.width = `${zoomPercentRef.current===null?width:base*zoomPercentRef.current/100}px`;
+    paper.style.height = 'auto';
+    setFitEpoch((value) => value + 1);
+  };
+
+  useEffect(() => {
+    fitPaper();
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    const sizingSurface = spreadScrollFor() ?? scroll;
+    const observer = new ResizeObserver(() => fitPaper());
+    observer.observe(sizingSurface);
+    window.addEventListener('resize',fitPaper);
+    return () => { observer.disconnect();window.removeEventListener('resize',fitPaper); };
+  }, [canvas.w, canvas.h, outputWidth, outputHeight]);
+
+  // 片方のページで変更された共有倍率を、もう片方にも同じタイミングで適用する。
+  useLayoutEffect(() => {
+    zoomPercentRef.current = zoomPercent;
+    if (zoomPercent===null || !basePaperWidth.current) {
+      fitPaper();
+      return;
+    }
+    const paper = paperRef.current;
+    if (paper) {
+      paper.style.width = `${basePaperWidth.current * zoomPercent / 100}px`;
+      paper.style.height = 'auto';
+    }
+    setFitEpoch((value) => value + 1);
+  }, [zoomPercent]);
+
+  const zoomAt = (factor: number, centerX?: number, centerY?: number) => {
+    const scroll = scrollRef.current, paper = paperRef.current;
+    if (!scroll || !paper) return;
+    const rect = paper.getBoundingClientRect();
+    const base = basePaperWidth.current || rect.width;
+    const nextPercent = clampCanvasZoom(canvasZoomPercent(rect.width * factor,base));
+    applyPaperWidth(base * nextPercent / 100, centerX, centerY);
+    zoomPercentRef.current = nextPercent;
+    onZoomPercentChange(nextPercent);
     setFitEpoch((value) => value + 1);
   };
 
   const resetZoom = () => {
-    isZoomed.current = false;
-    setZoomPercent(100);
-    fitPaper();
+    zoomPercentRef.current = 100;
+    onZoomPercentChange(100);
+    if (basePaperWidth.current) applyPaperWidth(basePaperWidth.current);
   };
+
+  useEffect(()=>{
+    const keydown=(event:KeyboardEvent)=>{
+      const scroll=scrollRef.current;
+      if(event.defaultPrevented||!scroll||scroll.closest('.is-spread-partner'))return;
+      const editing=event.target instanceof Element&&Boolean(event.target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"],[role="menu"]'));
+      const factor=canvasZoomShortcut(event,editing);if(factor===undefined)return;
+      event.preventDefault();event.stopPropagation();
+      if(!paintInputActive?.current)zoomAt(factor);
+    };
+    window.addEventListener('keydown',keydown,true);
+    return()=>window.removeEventListener('keydown',keydown,true);
+  });
 
   useEffect(() => {
     const scroll = scrollRef.current;
     if (!scroll) return;
+    const zoomSurface = spreadScrollFor() ?? scroll;
     const pointers = new Map<number, { x: number; y: number }>();
     let pinch: { dist: number; width: number; scrollLeft: number; scrollTop: number; midX: number; midY: number; paperLeft: number; paperTop: number } | null = null;
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== 'touch') return;
+      if(event.target instanceof Element&&event.target.closest('.background3d-window'))return;
+      if (paintInputActive?.current) { pointers.clear(); pinch=null; return; }
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       if (pointers.size !== 2) return;
       cleanupRef.current?.();
       const paper = paperRef.current;
       if (!paper) return;
       const rect = paper.getBoundingClientRect();
-      if (!isZoomed.current) basePaperWidth.current = rect.width;
       const [a, b] = [...pointers.values()];
       pinch = {
         dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
         width: rect.width,
-        scrollLeft: scroll.scrollLeft,
-        scrollTop: scroll.scrollTop,
+        scrollLeft: zoomSurface.scrollLeft,
+        scrollTop: zoomSurface.scrollTop,
         midX: (a.x + b.x) / 2,
         midY: (a.y + b.y) / 2,
         paperLeft: paper.offsetLeft,
@@ -218,37 +458,47 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       };
     };
     const onPointerMove = (event: PointerEvent) => {
+      if (paintInputActive?.current) { pointers.clear(); pinch=null; return; }
       if (!pointers.has(event.pointerId)) return;
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       const paper = paperRef.current;
       if (!pinch || pointers.size < 2 || !paper) return;
       const [a, b] = [...pointers.values()];
       const base = basePaperWidth.current || pinch.width;
-      const target = clamp(pinch.width * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.dist), base * 0.4, base * 4);
+      const target = base*clampCanvasZoom(canvasZoomPercent(pinch.width * (Math.hypot(a.x - b.x, a.y - b.y) / pinch.dist),base))/100;
+      const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+      if (spreadScrollFor()) {
+        applyPaperWidth(target, midX, midY);
+        return;
+      }
       const f = target / pinch.width;
       paper.style.width = `${target}px`;
       paper.style.height = 'auto';
-      isZoomed.current = true;
-      const scrollRect = scroll.getBoundingClientRect();
-      const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+      const scrollRect = zoomSurface.getBoundingClientRect();
       const pointX = pinch.scrollLeft + pinch.midX - scrollRect.left - pinch.paperLeft;
       const pointY = pinch.scrollTop + pinch.midY - scrollRect.top - pinch.paperTop;
-      scroll.scrollLeft = paper.offsetLeft + pointX * f - (midX - scrollRect.left);
-      scroll.scrollTop = paper.offsetTop + pointY * f - (midY - scrollRect.top);
+      zoomSurface.scrollLeft = paper.offsetLeft + pointX * f - (midX - scrollRect.left);
+      zoomSurface.scrollTop = paper.offsetTop + pointY * f - (midY - scrollRect.top);
     };
     const onPointerEnd = (event: PointerEvent) => {
       pointers.delete(event.pointerId);
       if (pinch && pointers.size < 2) {
         pinch = null;
         const paper = paperRef.current;
-        if (paper && basePaperWidth.current) setZoomPercent(Math.round((paper.getBoundingClientRect().width / basePaperWidth.current) * 100));
+        if (paper && basePaperWidth.current) {
+          const nextPercent = canvasZoomPercent(paper.getBoundingClientRect().width,basePaperWidth.current);
+          zoomPercentRef.current = nextPercent;
+          onZoomPercentChange(nextPercent);
+        }
         setFitEpoch((value) => value + 1);
       }
     };
     // 2本指の間はネイティブのパン/ズームを止めて自前のピンチに専念させる
     const onTouchMove = (event: TouchEvent) => { if (event.touches.length >= 2) event.preventDefault(); };
     const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey) return;
+      if (event.defaultPrevented) return;
+      if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.background3d-window')) return;
+      if (paintInputActive?.current) { event.preventDefault(); return; }
       event.preventDefault();
       zoomAt(Math.exp(-event.deltaY * 0.002), event.clientX, event.clientY);
     };
@@ -268,29 +518,146 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     };
   }, []);
 
+  useEffect(() => {
+    const scroll = scrollRef.current;
+    if (!scroll) return;
+    let finishPan: (() => void) | null = null;
+
+    const isTextEditing = (target: EventTarget | null) => target instanceof Element
+      && Boolean(target.closest('input, textarea, select, button, a, summary, [contenteditable="true"], [role="dialog"], [role="menu"]'));
+    const stopPan = () => {
+      finishPan?.();
+      finishPan = null;
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || isTextEditing(event.target)) return;
+      event.preventDefault();
+      spacePressedRef.current = true;
+      document.body.classList.add('is-canvas-space-pan-ready');
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || (!spacePressedRef.current && isTextEditing(event.target))) return;
+      event.preventDefault();
+      spacePressedRef.current = false;
+      stopPan();
+      document.body.classList.remove('is-canvas-space-pan-ready');
+    };
+    const onBlur = () => {
+      spacePressedRef.current = false;
+      stopPan();
+      document.body.classList.remove('is-canvas-space-pan-ready');
+    };
+    const onPanPointerDown = (event: PointerEvent) => {
+      if(event.target instanceof Element&&event.target.closest('.background3d-window'))return;
+      if (paintInputActive?.current) return;
+      if (!spacePressedRef.current || event.button !== 0 || event.pointerType === 'touch') return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      cleanupRef.current?.();
+
+      const spreadScroll = spreadScrollFor();
+      const targets = [spreadScroll ?? scroll];
+      const starts = targets.map((target) => ({ target, left: target.scrollLeft, top: target.scrollTop }));
+      const startX = event.clientX;
+      const startY = event.clientY;
+      document.body.classList.add('is-canvas-space-panning');
+
+      const move = (pointerEvent: PointerEvent) => {
+        pointerEvent.preventDefault();
+        const deltaX = pointerEvent.clientX - startX;
+        const deltaY = pointerEvent.clientY - startY;
+        starts.forEach(({ target, left, top }) => {
+          target.scrollLeft = left - deltaX;
+          target.scrollTop = top - deltaY;
+        });
+      };
+      const finish = () => {
+        window.removeEventListener('pointermove', move, { capture: true });
+        window.removeEventListener('pointerup', finish, { capture: true });
+        window.removeEventListener('pointercancel', finish, { capture: true });
+        document.body.classList.remove('is-canvas-space-panning');
+        cleanupRef.current = null;
+        finishPan = null;
+      };
+      finishPan = finish;
+      cleanupRef.current = finish;
+      window.addEventListener('pointermove', move, { capture: true });
+      window.addEventListener('pointerup', finish, { capture: true });
+      window.addEventListener('pointercancel', finish, { capture: true });
+    };
+
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    window.addEventListener('keyup', onKeyUp, { capture: true });
+    window.addEventListener('blur', onBlur);
+    scroll.addEventListener('pointerdown', onPanPointerDown, { capture: true });
+    return () => {
+      stopPan();
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('keyup', onKeyUp, { capture: true });
+      window.removeEventListener('blur', onBlur);
+      scroll.removeEventListener('pointerdown', onPanPointerDown, { capture: true });
+      document.body.classList.remove('is-canvas-space-pan-ready', 'is-canvas-space-panning');
+    };
+  }, []);
+
+  useEffect(()=>{
+    const scroll=scrollRef.current;if(!zoomTool||!scroll)return;
+    // The existing pinch and Space-pan capture handlers run first.
+    const down=(event:PointerEvent)=>{
+      if(event.target instanceof Element&&event.target.closest('.background3d-window'))return;
+      if(spacePressedRef.current||event.button!==0)return;
+      event.preventDefault();event.stopImmediatePropagation();
+      if(event.pointerType!=='touch')zoomAt(event.altKey?1/1.25:1.25,event.clientX,event.clientY);
+    };
+    const click=(event:MouseEvent)=>{if(event.target instanceof Element&&event.target.closest('.background3d-window'))return;event.preventDefault();event.stopImmediatePropagation();};
+    scroll.addEventListener('pointerdown',down,{capture:true,passive:false});scroll.addEventListener('click',click,true);scroll.addEventListener('dblclick',click,true);
+    return()=>{scroll.removeEventListener('pointerdown',down,true);scroll.removeEventListener('click',click,true);scroll.removeEventListener('dblclick',click,true);};
+  },[zoomTool]);
+
   const startInteraction = (
     event: PointerEvent,
-    panelIndex: number,
+    panelIndex: number | null,
     selection: CanvasElementSelection,
     box: BBox,
     mode: ResizeHandle,
+    visibleBox?: BBox,
   ) => {
-    if (panelIndex !== activePanel || !paperRef.current) return;
+    if (event.button !== 0||elementLocked(selection,panelIndex??activePanel)) return;
+    if(backgroundEdit){
+      event.preventDefault();event.stopPropagation();
+      if(mode!=='move'||panelIndex!==paintTarget?.panelIndex||selection.scope==='page_overlay'||!['figure','bubble'].includes(selection.type)||!paperRef.current)return;
+      cleanupRef.current?.();
+      if(!backgroundEdit.beginMove(`${selection.type}-${selection.index}`))return;
+      const paper=paperRef.current.getBoundingClientRect(),x=event.clientX,y=event.clientY;
+      const move=(next:PointerEvent)=>{next.preventDefault();backgroundEdit.move((next.clientX-x)*canvas.w/paper.width,(next.clientY-y)*canvas.h/paper.height);};
+      const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);window.removeEventListener('blur',finish);backgroundEdit.endMove();cleanupRef.current=null;};
+      cleanupRef.current=finish;window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);window.addEventListener('blur',finish);
+      return;
+    }
+    if(textTool&&mode==='move'&&(selection.type==='bubble'||selection.type==='screen_text'))return;
+    const pageOverlay = selection.scope === 'page_overlay' || selection.scope === 'page';
+    if ((!pageOverlay && panelIndex !== activePanel) || !paperRef.current) return;
+    const figure = selection.type === 'figure' ? (selection.scope === 'page_overlay' ? overlay?.figures : page.panels[panelIndex!]?.figures)?.[selection.index] : undefined;
+    const bubble=selection.type==='bubble'?(pageOverlay?overlay?.bubbles:page.panels[panelIndex!]?.bubbles)?.[selection.index]:undefined;
+    const isArtwork = selection.type === 'image' || Boolean(figure?.artwork||bubble?.paint_overlay);
+    const preserveAspect = isArtwork || selection.type === 'figure';
+    const visible=visibleBox??elementContentBox(event.currentTarget as Element,box);
     event.preventDefault();
     event.stopPropagation();
-    onSelectElement(selection);
+    onSelectElement(selection, panelIndex ?? undefined, false);
     const interaction: Interaction = {
-      selection, mode, startClientX: event.clientX, startClientY: event.clientY,
-      startBox: { ...box }, bounds: panelBounds(page.panels[panelIndex]), paperRect: paperRef.current.getBoundingClientRect(),
+      canvas, selection, mode, startClientX: event.clientX, startClientY: event.clientY,
+      startBox: { ...visible },
+      bounds: isArtwork ? artworkInteractionBounds(visible, canvas) : pageOverlay || bubble?.clip_to_panel ? { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h } : panelBounds(page.panels[panelIndex!]),
+      paperRect: paperRef.current.getBoundingClientRect(),
     };
     setInteractionMode(mode);
     document.body.classList.add('is-canvas-dragging');
 
-    let lastBox: BBox | null = null;
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      lastBox = resizedBox(interaction, pointerEvent.clientX, pointerEvent.clientY);
-      onChangeElementBBox(selection, lastBox);
+      const next=preserveAspect ? resizeImageBox(interaction, pointerEvent.clientX, pointerEvent.clientY) : resizedBox(interaction, pointerEvent.clientX, pointerEvent.clientY);
+      onChangeElementBBox(selection,frameFromContentEdit(box,visible,next));
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -299,9 +666,43 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       document.body.classList.remove('is-canvas-dragging');
       setInteractionMode(null);
       cleanupRef.current = null;
-      // 自動アンカー: 移動ドラッグの確定位置から、bbox中心に最も近いコマ内アンカーへ再設定する。
-      // 受け側はドラッグ開始時のdocumentを見ているため、確定bboxも一緒に渡して同時に書き込ませる
-      if (autoAnchor && mode === 'move' && lastBox) onChangeElementAnchor(selection, nearestAnchor(interaction.bounds, lastBox), lastBox);
+      if (isArtwork) onImageGesture?.('end');
+    };
+    cleanupRef.current?.();
+    if (isArtwork) onImageGesture?.('start');
+    cleanupRef.current = finish;
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  };
+
+  const startBubbleTailDrag = (
+    event: PointerEvent,
+    selection: CanvasElementSelection,
+    speakerBox: BBox,
+  ) => {
+    if (!paperRef.current||elementLocked(selection)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelectElement(selection);
+    const paperRect = paperRef.current.getBoundingClientRect();
+    setInteractionMode('bubble-tail');
+    document.body.classList.add('is-bubble-tail-dragging');
+    const move = (pointerEvent: PointerEvent) => {
+      pointerEvent.preventDefault();
+      const point = {
+        x: (pointerEvent.clientX - paperRect.left) * (canvas.w / paperRect.width),
+        y: (pointerEvent.clientY - paperRect.top) * (canvas.h / paperRect.height),
+      };
+      onChangeBubbleTail(selection, normalizedBubbleTailTarget(speakerBox, point));
+    };
+    const finish = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      document.body.classList.remove('is-bubble-tail-dragging');
+      setInteractionMode(null);
+      cleanupRef.current = null;
     };
     cleanupRef.current?.();
     cleanupRef.current = finish;
@@ -310,21 +711,27 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     window.addEventListener('pointercancel', finish);
   };
 
-  const nudgeElement = (event: KeyboardEvent, panel: Panel, selection: CanvasElementSelection, box: BBox) => {
-    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+  const nudgeElement = (event: KeyboardEvent, bounds: BBox, selection: CanvasElementSelection, box: BBox) => {
+    if (elementLocked(selection)||!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault(); event.stopPropagation();
+    if(backgroundEdit){
+      if(selection.scope==='page_overlay'||(event.currentTarget as HTMLElement).dataset.background3dOwner!==`${selection.type}-${selection.index}`||!['figure','bubble'].includes(selection.type)||!backgroundEdit.beginMove(`${selection.type}-${selection.index}`))return;
+      const amount=event.shiftKey?5:1;
+      backgroundEdit.move(event.key==='ArrowLeft'?-amount:event.key==='ArrowRight'?amount:0,event.key==='ArrowUp'?-amount:event.key==='ArrowDown'?amount:0);backgroundEdit.endMove();return;
+    }
     onSelectElement(selection);
     const amount = event.shiftKey ? 5 : 1;
-    const bounds = panelBounds(panel);
-    let x = box.x, y = box.y;
+    const visible=elementContentBox(event.currentTarget as Element,box);
+    let x = visible.x, y = visible.y;
     if (event.key === 'ArrowLeft') x -= amount;
     if (event.key === 'ArrowRight') x += amount;
     if (event.key === 'ArrowUp') y -= amount;
     if (event.key === 'ArrowDown') y += amount;
-    onChangeElementBBox(selection, { ...box, x: roundMm(clamp(x, bounds.x, bounds.x + bounds.w - box.w)), y: roundMm(clamp(y, bounds.y, bounds.y + bounds.h - box.h)) });
+    onChangeElementBBox(selection,frameFromContentEdit(box,visible,{...visible,x:roundMm(clamp(x,bounds.x,bounds.x+bounds.w-visible.w)),y:roundMm(clamp(y,bounds.y,bounds.y+bounds.h-visible.h))}));
   };
 
   const startPanelMove = (event: PointerEvent) => {
+    if (event.button !== 0) return;
     if (!selectedPanel || !selectedBounds || !paperRef.current) return;
     event.preventDefault();
     event.stopPropagation();
@@ -337,11 +744,11 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      const rawX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
-      const rawY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
+      const rawX = (pointerEvent.clientX - startClientX) * (canvas.w / paperRect.width);
+      const rawY = (pointerEvent.clientY - startClientY) * (canvas.h / paperRect.height);
       const delta = innerFrameSnap
-        ? snapPanelDeltaToInnerFrame(selectedBounds, rawX, rawY)
-        : clampedPanelDelta(selectedBounds, rawX, rawY);
+        ? snapPanelDeltaToInnerFrame(selectedBounds, rawX, rawY, undefined, canvas)
+        : clampedPanelDelta(selectedBounds, rawX, rawY, canvas);
       onMovePanel(activePanel, delta.x, delta.y);
     };
     const finish = () => {
@@ -360,6 +767,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
   };
 
   const startPanelResize = (event: PointerEvent, handle: Exclude<ResizeHandle, 'move'>) => {
+    if (event.button !== 0) return;
     if (!selectedPanel || !selectedBounds || !paperRef.current) return;
     event.preventDefault();
     event.stopPropagation();
@@ -370,7 +778,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       startClientX: event.clientX,
       startClientY: event.clientY,
       startBox: { ...selectedBounds },
-      bounds: { x: 0, y: 0, w: 210, h: 297 },
+      canvas, bounds: { x: 0, y: 0, w: canvas.w, h: canvas.h },
       paperRect,
     };
     const bodyClass = `is-panel-resizing-${handle}`;
@@ -379,8 +787,8 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      const bounds = resizedBox(interaction, pointerEvent.clientX, pointerEvent.clientY, 20);
-      onResizePanel(activePanel, innerFrameSnap ? snapPanelResizeToInnerFrame(bounds, handle, 20) : bounds);
+      const bounds = resizedBox(interaction, pointerEvent.clientX, pointerEvent.clientY, panelMinSize);
+      onResizePanel(activePanel, innerFrameSnap ? snapPanelResizeToInnerFrame(bounds, handle, panelMinSize, undefined, canvas) : bounds);
     };
     const finish = () => {
       window.removeEventListener('pointermove', move);
@@ -398,6 +806,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
   };
 
   const startPanelEdgeDrag = (event: PointerEvent, edgeIndex: number) => {
+    if (event.button !== 0) return;
     if (!selectedPanel || !paperRef.current) return;
     const points = panelShapePoints(selectedPanel);
     const start = points[edgeIndex], end = points[(edgeIndex + 1) % points.length];
@@ -431,8 +840,8 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      let rawDeltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
-      let rawDeltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
+      let rawDeltaX = (pointerEvent.clientX - startClientX) * (canvas.w / paperRect.width);
+      let rawDeltaY = (pointerEvent.clientY - startClientY) * (canvas.h / paperRect.height);
       // 矩形は矩形性を維持するため、辺の法線方向だけを使う。
       if (selectedPanel.shape.type === 'rect') {
         if (edgeIndex === 0 || edgeIndex === 2) rawDeltaX = 0;
@@ -456,7 +865,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       const lockedDeltaX = deltaX;
       const lockedDeltaY = deltaY;
       if (innerFrameSnap && !shiftPending) {
-        const snapped = snapEdgeDeltaToInnerFrame(start, end, deltaX, deltaY);
+        const snapped = snapEdgeDeltaToInnerFrame(start, end, deltaX, deltaY, undefined, canvas);
         deltaX = snapped.x;
         deltaY = snapped.y;
       }
@@ -518,6 +927,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
   };
 
   const startVertexDrag = (event: PointerEvent, vertexIndex: number) => {
+    if (event.button !== 0) return;
     if (!selectedPanel || !paperRef.current) return;
     event.preventDefault();
     event.stopPropagation();
@@ -551,8 +961,8 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
 
     const move = (pointerEvent: PointerEvent) => {
       pointerEvent.preventDefault();
-      const rawDeltaX = (pointerEvent.clientX - startClientX) * (210 / paperRect.width);
-      const rawDeltaY = (pointerEvent.clientY - startClientY) * (297 / paperRect.height);
+      const rawDeltaX = (pointerEvent.clientX - startClientX) * (canvas.w / paperRect.width);
+      const rawDeltaY = (pointerEvent.clientY - startClientY) * (canvas.h / paperRect.height);
       lastRawX = rawDeltaX;
       lastRawY = rawDeltaY;
       const constrained = resolveShiftAxisSession(
@@ -566,15 +976,15 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
       shiftSession = constrained.state;
       const axis: DragAxis | undefined = constrained.axis;
       const shiftPending = constrained.state.shiftActive && !axis;
-      const lockedX = clamp(roundMm(startX + constrained.x), 0, 210);
-      const lockedY = clamp(roundMm(startY + constrained.y), 0, 297);
+      const lockedX = clamp(roundMm(startX + constrained.x), 0, canvas.w);
+      const lockedY = clamp(roundMm(startY + constrained.y), 0, canvas.h);
       const startZone = resolveVertexDragStartZone(lockedX, lockedY, startX, startY, panelGapSnap);
       let point: { x: number; y: number };
       if (startZone.restored) {
         point = { x: startZone.x, y: startZone.y };
       } else {
         const snapped = innerFrameSnap && !shiftPending
-          ? snapPointToInnerFrame(startZone.x, startZone.y)
+          ? snapPointToInnerFrame(startZone.x, startZone.y, undefined, canvas)
           : { x: startZone.x, y: startZone.y };
         // Shift固定中は、内枠スナップにも非選択軸を動かさせない。
         point = axis
@@ -619,149 +1029,498 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
     window.addEventListener('keyup', updateShiftState);
   };
 
-  const renderHandles = (panelIndex: number, selection: CanvasElementSelection, box: BBox) => (
+  const renderHandles = (panelIndex: number | null, selection: CanvasElementSelection, box: BBox, visible: BBox=box) => elementLocked(selection,panelIndex??activePanel)?null:(
     <>
       {(['nw', 'ne', 'sw', 'se'] as const).map((handle) => <span
         class={`resize-handle handle-${handle}`}
-        onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, handle)}
+        onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, handle,visible)}
         aria-hidden="true"
         key={handle}
       />)}
-      <span class="element-size-label">{box.w.toFixed(1)} × {box.h.toFixed(1)} mm</span>
+      <span class="element-size-label">{visible.w.toFixed(1)} × {visible.h.toFixed(1)} mm</span>
     </>
   );
 
   // パネル本体のクリック。重なった空白部分は下のパネルへ貫通させる
   const selectPanelAt = (event: MouseEvent, panelIndex: number) => {
     event.stopPropagation();
+    if(backgroundEdit)return;
     const rect = paperRef.current?.getBoundingClientRect();
     if (!rect) {
       onSelectPanel(panelIndex);
       return;
     }
-    const x = (event.clientX - rect.left) * (210 / rect.width);
-    const y = (event.clientY - rect.top) * (297 / rect.height);
-    onSelectPanel(resolveOverlapClick(page.panels, panelIndex, activePanel, x, y), event.shiftKey);
+    const x = (event.clientX - rect.left) * (canvas.w / rect.width);
+    const y = (event.clientY - rect.top) * (canvas.h / rect.height);
+    onSelectPanel(resolveOverlapClick(page.panels,panelIndex,activePanel,x,y,(_panel,index)=>
+      Array.from(paperRef.current!.querySelectorAll<HTMLElement>(`[data-content-panel="${index}"]`)).some(element=>elementContentHit(element,event.clientX,event.clientY))),event.shiftKey);
+  };
+
+  const openPanelArtworkMenu = (event: MouseEvent, panelIndex: number) => {
+    const hit=Array.from(paperRef.current?.querySelectorAll<HTMLElement>(`[data-content-panel="${panelIndex}"][data-content-kind="figure"]`)??[]).reverse()
+      .find(element=>elementContentHit(element,event.clientX,event.clientY));
+    const figureIndex=hit?Number(hit.dataset.contentIndex):undefined;
+    openGenerationMenu(event, panelIndex, figureIndex);
   };
 
   // 非選択パネルはパネル内（パネル基準%・クリップあり）、選択中パネルは最前面のエレメント
   // レイヤー（紙面基準%）に描くため、配置スタイルを引数で差し替える
-  const renderElements = (panel: Panel, panelIndex: number, boxStyle: (box: BBox) => Record<string, string>) => <>
+  const isSelectedElement = (selection: CanvasElementSelection) => backgroundEdit?backgroundEdit.selectedKey===`${selection.type}-${selection.index}`:selectedElement?.type === selection.type
+    && selectedElement.index === selection.index
+    && (selectedElement.scope ?? 'panel') === (selection.scope ?? 'panel');
+  const contentSource=(selection:CanvasElementSelection,panelIndex:number|null)=>`${page.page}-${panelIndex??'page'}-${selection.scope??'panel'}-${selection.type}-${selection.index}`;
+  const renderArtwork = (image: PlacedImage, selection: CanvasElementSelection, panelIndex: number | null, boxStyle: (box: BBox) => Record<string, string>, label?: string) => {
+    if (image.hidden) return null;
+    const isLocked=artworkLocked(image);
+    const asset = imageAssets.find(item => item.id === image.assetId);
+    const selected = (panelIndex === null || activePanel === panelIndex) && isSelectedElement(selection);
+    const bounds = artworkInteractionBounds(image.bbox, canvas);
+    return <button type="button" data-content-target data-content-panel={panelIndex??undefined} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
+      style={{...boxStyle(image.bbox),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined} aria-label={`${label ?? '配置画像'} ${asset?.originalName ?? ''}`}
+      tabIndex={!isLocked&&(panelIndex === null || activePanel === panelIndex) ? 0 : -1}
+      onClick={event => { event.stopPropagation(); onSelectElement(selection, panelIndex ?? undefined); }}
+      onPointerDown={event => { if (!artworkLocked(image)) startInteraction(event, panelIndex, selection, image.bbox, 'move'); }}
+      onContextMenu={event => { if (selection.type === 'figure') openGenerationMenu(event, panelIndex ?? 0, selection.index, selection.scope === 'page_overlay'); }}
+      onKeyDown={event => {
+        if (selection.type === 'figure' && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) openGenerationMenu(event, panelIndex ?? 0, selection.index, selection.scope === 'page_overlay');
+        else if (!artworkLocked(image)) nudgeElement(event, bounds, selection, image.bbox);
+      }}>
+      <PlacedImageView assets={imageAssets} asset={asset} image={image} />
+      <CanvasContentSelection frame={image.bbox} revision={image} selected={selected&&panelIndex===null&&selection.scope!=='page'&&!isLocked} handles={visible=>renderHandles(panelIndex,selection,image.bbox,visible)}/>
+    </button>;
+  };
+  const originalGuideVisible=(key:string,panelIndex:number,overlay=false)=>{
+    const target=overlay?page.page_overlay:page.panels[panelIndex];
+    const paint=key==='background'?page.panels[panelIndex]?.background_images?.[0]?.paint:key.startsWith('figure-')?target?.figures?.[Number(key.split('-')[1])]?.artwork?.paint:undefined;
+    return !paint?.guideInitialized&&guideVisible(key,panelIndex,overlay);
+  };
+  const renderPanelBaseElements = (panel: Panel, panelIndex: number, boxStyle: (box: BBox) => Record<string, string>, only?:number|'screen') => <>
     {(panel.figures ?? []).map((figure, figureIndex) => {
+      if(only!==undefined&&only!==figureIndex)return null;
       const selection: CanvasElementSelection = { type: 'figure', index: figureIndex };
       const box = figure.bbox ?? fallbackBox(panel, 'figure', figureIndex);
-      const isSelected = activePanel === panelIndex && selectedElement?.type === 'figure' && selectedElement.index === figureIndex;
+      const referenceBox=paintReferenceBox(figure.artwork?.paint,box,figure.artwork?.crop);
+      if(editingPanel(panelIndex))return null;
+      const isSelected = activePanel === panelIndex && isSelectedElement(selection);
+      const isLocked=elementLocked(selection,panelIndex);
+      if (!originalGuideVisible(`figure-${figureIndex}`,panelIndex)) return null;
+      const cropAssetId = figure.analogImport?.assetId;
+      const isUnassigned = isUnassignedPersonFigure(figure);
       return <button
-        class={`canvas-element figure-guide ${isSelected ? 'is-element-selected' : ''}`}
-        style={boxStyle(box)}
+        data-content-target data-content-panel={panelIndex} data-content-kind="figure" data-content-index={figureIndex} class={`canvas-element figure-guide ${isPropPlacement(figure) ? 'is-object' : ''} ${isUnassigned ? 'is-unassigned' : ''} ${cropAssetId ? 'has-source-crop' : ''} ${figure.analogImport?.analysisReview ? 'is-analysis-review' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+        style={{...boxStyle(box),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined}
         onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
-        onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
-        onKeyDown={(event) => nudgeElement(event, panel, selection, box)}
-        key={`figure-${figureIndex}`}
-        title={`${figure.name}（ドラッグで移動）`}
-        tabIndex={activePanel === panelIndex ? 0 : -1}
+        onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex); }}
+        onContextMenu={(event) => openGenerationMenu(event, panelIndex, figureIndex)}
+        onKeyDown={(event) => {
+          if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, panelIndex, figureIndex);
+          else nudgeElement(event, panelBounds(panel), selection, box);
+        }}
+        key={figure.analogImport?.sourceRegionId ?? `figure-${figureIndex}`}
+        title={`${figure.name}${figure.analogImport?.draft ? '・下書き' : ''}${figure.analogImport?.analysisReviewMessage ? `・要確認：${figure.analogImport.analysisReviewMessage}` : ''}（ドラッグで移動）`}
+        tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
-        {figure.size ? <FigureSizeSvg size={figure.size} /> : figure.object ? <Box size={12} /> : <UserRound size={12} />}
-        <FigureName name={figure.name} boxW={box.w} boxH={box.h} fitEpoch={fitEpoch} />
-        {isSelected && renderHandles(panelIndex, selection, box)}
+        <span class="figure-native-reference" style={nativeStyle(box,referenceBox)}>{cropAssetId && <StoredCropImage assetId={cropAssetId} persistentAsset={figure.analogImport?.persistentAsset} className="figure-crop-image" />}
+        {!cropAssetId && (figure.size ? <FigureSizeSvg size={figure.size} /> : isPropPlacement(figure) ? <Box size={12} /> : <UserRound size={12} />)}
+        <FigureName name={figure.name} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} /></span>
+        <CanvasContentSelection frame={box} revision={figure} selected={isSelected&&!isLocked} handles={visible=>renderHandles(panelIndex,selection,box,visible)}/>
       </button>;
     })}
-    {(panel.screen_text ?? []).map((screenText, screenTextIndex) => {
+    {(typeof only==='number'?[]:panel.screen_text ?? []).map((screenText, screenTextIndex) => {
       const selection: CanvasElementSelection = { type: 'screen_text', index: screenTextIndex };
       const box = screenText.bbox ?? fallbackBox(panel, 'screen_text', screenTextIndex);
-      const isSelected = activePanel === panelIndex && selectedElement?.type === 'screen_text' && selectedElement.index === screenTextIndex;
+      const isSelected = activePanel === panelIndex && isSelectedElement(selection);
       return <button
-        class={`canvas-element screen-text-guide ${screenText.orientation === 'vertical' ? 'is-vertical' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+        data-content-panel={panelIndex} data-content-kind="screen_text" data-content-index={screenTextIndex} class={`canvas-element screen-text-guide ${screenText.orientation === 'vertical' ? 'is-vertical' : ''} ${isSelected ? 'is-element-selected' : ''}`}
         style={boxStyle(box)}
         onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
-        onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
-        onKeyDown={(event) => nudgeElement(event, panel, selection, box)}
+        onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex); if(textTool)onEditScreenText?.(panelIndex,screenTextIndex); }}
+        onDblClick={event=>{event.preventDefault();event.stopPropagation();onEditScreenText?.(panelIndex,screenTextIndex);}}
+        onKeyDown={event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();onEditScreenText?.(panelIndex,screenTextIndex);}else nudgeElement(event,panelBounds(panel),selection,box);}}
         key={`screen-text-${screenTextIndex}`}
         title={`画面内文字 ${screenTextIndex + 1}（ドラッグで移動）`}
         tabIndex={activePanel === panelIndex ? 0 : -1}
       >
-        <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`}>{screenText.text || '画面内文字'}</span>
-        {isSelected && renderHandles(panelIndex, selection, box)}
-      </button>;
-    })}
-    {panel.bubbles.map((bubble, bubbleIndex) => {
-      const selection: CanvasElementSelection = { type: 'bubble', index: bubbleIndex };
-      const box = bubble.bbox ?? fallbackBox(panel, 'bubble', bubbleIndex);
-      const isSelected = activePanel === panelIndex && selectedElement?.type === 'bubble' && selectedElement.index === bubbleIndex;
-      const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
-      return <button
-        class={`canvas-element bubble-guide bubble-${bubble.shape ?? 'normal'} ${isSelected ? 'is-element-selected' : ''}`}
-        style={boxStyle(box)}
-        onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
-        onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
-        onKeyDown={(event) => nudgeElement(event, panel, selection, box)}
-        key={`bubble-${bubbleIndex}`}
-        title={`フキダシ ${bubbleIndex + 1}（ドラッグで移動）`}
-        tabIndex={activePanel === panelIndex ? 0 : -1}
-      >
-        <BubbleShapeSvg shape={bubble.shape} />
-        <BubbleText text={bubble.text} lengthClass={textLengthClass} boxW={box.w} boxH={box.h} fitEpoch={fitEpoch} />
+        <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`} style={screenText.text_style?textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont):undefined}>{screenText.text_weights?.length?textWeightSegments(screenText).map((part,i)=><span key={i} style={part.fontWeight?{fontWeight:part.fontWeight}:undefined}>{part.text}</span>):screenText.text || '画面内文字'}</span>
         {isSelected && renderHandles(panelIndex, selection, box)}
       </button>;
     })}
   </>;
 
-  const selectedPanel = page.panels[activePanel];
+  const bubbleTailRenderData = (
+    owner: { figures?: Figure[] },
+    bubble: Bubble,
+    bubbleBox: BBox,
+    figureBox: (index: number) => BBox,
+  ) => {
+    if (bubbleTailDisabled(bubble)) return null;
+    const speakerFigureIndex = resolveBubbleSpeakerFigureIndex(owner, bubble);
+    if (speakerFigureIndex === null) return null;
+    const speakerBox = figureBox(speakerFigureIndex);
+    const target = bubbleTailTargetPoint(speakerBox, bubble.tail);
+    if (bubbleUsesMonologueTail(bubble)) {
+      const ellipses = monologueTailEllipses(bubbleBox, target, bubble.bezier);
+      return ellipses.length ? { kind: 'beads' as const, ellipses, target, speakerBox, speakerFigureIndex } : null;
+    }
+    const geometry = bubbleTailComposite(bubbleBox, target, bubble.shape ?? 'normal', bubble.bezier);
+    return geometry ? { kind: 'pointed' as const, geometry, target, speakerBox, speakerFigureIndex } : null;
+  };
+
+  const buildBubbleConnections = (
+    owner: { figures?: Figure[] },
+    bubbles: readonly Bubble[],
+    bubbleBox: (index: number) => BBox,
+    figureBox: (index: number) => BBox,
+    keyPrefix: string,
+    clipId?: string,
+  ): { elements: VNode[]; seamMasks: BubbleSeamMask[][]; composites: Array<BubbleTailComposite | undefined> } => {
+    const elements: VNode[] = [];
+    const seamMasks = bubbles.map(() => [] as BubbleSeamMask[]);
+    const composites: Array<BubbleTailComposite | undefined> = bubbles.map(() => undefined);
+
+    bubbles.forEach((bubble, bubbleIndex) => {
+      if(!bubbleVisible(bubble))return;
+      const data = bubbleTailRenderData(owner, bubble, bubbleBox(bubbleIndex), figureBox);
+      if (!data) return;
+      const key = `${keyPrefix}-tail-${bubbleIndex}`;
+      const clipPath = bubble.clip_to_panel && clipId ? `url(#${clipId})` : undefined;
+      if (data.kind === 'beads') {
+        elements.push(<g class="bubble-tail-beads" clipPath={clipPath} key={key}>{data.ellipses.map((ellipse, index) => <ellipse {...ellipse} key={`${key}-${index}`} />)}</g>);
+        return;
+      }
+      composites[bubbleIndex] = data.geometry;
+    });
+
+    bubbles.forEach((bubble, bubbleIndex) => {
+      if(!bubbleVisible(bubble))return;
+      const targetIndex = Number(bubble.join_to) - 1;
+      if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= bubbleIndex) return;
+      const targetBubble = bubbles[targetIndex];
+      if(!bubbleVisible(targetBubble))return;
+      // Different clipping modes cannot share a seam without leaving an opening.
+      if(clipId&&!compatibleBubbleClips(bubble,targetBubble))return;
+      const geometry = bubbleJoinGeometry(
+        bubbleBox(bubbleIndex),
+        bubble.shape ?? 'normal',
+        bubbleBox(targetIndex),
+        targetBubble.shape ?? 'normal',
+        bubble.bezier, targetBubble.bezier,
+      );
+      if (!geometry) return;
+      seamMasks[bubbleIndex].push(geometry.firstSeamMask);
+      seamMasks[targetIndex].push(geometry.secondSeamMask);
+      if (!geometry.fillPath && !geometry.outlinePaths.length) return;
+      const key = `${keyPrefix}-join-${bubbleIndex}-${targetIndex}`;
+      elements.push(<g key={key} clipPath={bubble.clip_to_panel&&clipId?`url(#${clipId})`:undefined}>
+        {geometry.fillPath && <path class="bubble-connector-fill" d={geometry.fillPath} />}
+        {geometry.outlinePaths.map((path, index) => <path class="bubble-connector-outline" d={path} key={`${key}-outline-${index}`} />)}
+      </g>);
+    });
+
+    return { elements, seamMasks, composites };
+  };
+
+  const panelBubblePresentations = page.panels.map((panel, panelIndex) => buildBubbleConnections(
+    panel,
+    panel.bubbles,
+    (bubbleIndex) => nativeBox(panel.bubbles[bubbleIndex],panel.bubbles[bubbleIndex].bbox ?? fallbackBox(panel, 'bubble', bubbleIndex),`bubble-${bubbleIndex}`,panelIndex),
+    (figureIndex) => nativeBox(panel.figures![figureIndex],panel.figures?.[figureIndex]?.bbox ?? fallbackBox(panel, 'figure', figureIndex),`figure-${figureIndex}`,panelIndex),
+    `page-${page.page}-panel-${panelIndex}`,
+    `bubble-clip-page-${page.page}-panel-${panelIndex}`,
+  ));
+  const panelBubbleConnectionElements = panelBubblePresentations.flatMap(({ elements },index) => panelVisible(page.panels[index])?elements:[]);
+
+  // 紙面座標でコマ枠より前に描き、明示されたフキダシだけを所属コマで切り取る。
+  const renderPanelBubbles = (panel: Panel, panelIndex: number) => !panelVisible(panel)?[]:panel.bubbles.map((bubble, bubbleIndex) => {
+    if(!bubbleVisible(bubble))return null;
+    const selection: CanvasElementSelection = { type: 'bubble', index: bubbleIndex };
+    const box = previewOwner(`bubble-${bubbleIndex}`,panelIndex)?.frame??bubble.bbox ?? fallbackBox(panel, 'bubble', bubbleIndex);
+    const referenceBox=nativeBox(bubble,box,`bubble-${bubbleIndex}`,panelIndex);
+    const referenceStyle={left:`${(referenceBox.x-box.x)/box.w*100}%`,top:`${(referenceBox.y-box.y)/box.h*100}%`,width:`${referenceBox.w/box.w*100}%`,height:`${referenceBox.h/box.h*100}%`};
+    const textFrame=bubbleTextFrame(referenceBox,panel,bubble);
+    const textFrameStyle={left:`${(textFrame.x-referenceBox.x)/referenceBox.w*100}%`,top:`${(textFrame.y-referenceBox.y)/referenceBox.h*100}%`,width:`${textFrame.w/referenceBox.w*100}%`,height:`${textFrame.h/referenceBox.h*100}%`};
+    const isSelected = activePanel === panelIndex && isSelectedElement(selection);
+    const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
+    const sourceAssetId = bubble.analogTextImport?.referenceHidden ? undefined : bubble.analogTextImport?.assetId;
+    return <div class="panel-bubble-clip" style={bubble.clip_to_panel?layerClipStyle(panel,canvas):undefined} key={`panel-${panelIndex}-bubble-${bubbleIndex}`}><button
+      onDragEnter={event=>{if(!painting&&!elementLocked(selection,panelIndex)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
+      onDragOver={event=>{if(!painting&&!elementLocked(selection,panelIndex)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
+      onDragLeave={event=>{if(!(event.relatedTarget instanceof Node)||!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('is-material-drop-target');}}
+      onDrop={event=>{event.currentTarget.classList.remove('is-material-drop-target');if(painting||elementLocked(selection,panelIndex))return;const id=event.dataTransfer?.getData(BUBBLE_MATERIAL_DRAG_TYPE);if(id){event.preventDefault();event.stopPropagation();onBubbleMaterial?.({pageIndex:pageIndex??page.page-1,panelIndex,index:bubbleIndex,overlay:false,kind:'bubble'},id);}}}
+      data-content-target data-content-panel={panelIndex} data-content-kind="bubble" data-content-index={bubbleIndex} class={`canvas-element bubble-guide bubble-${bubble.shape ?? 'normal'} ${sourceAssetId ? 'has-source-reference' : ''} ${isSelected ? 'is-element-selected' : ''} ${backgroundEdit&&editingPanel(panelIndex)?`background3d-layout-item ${isSelected?'background3d-layout-selected':''}`:''}`}
+      data-background3d-owner={backgroundEdit&&editingPanel(panelIndex)?`bubble-${bubbleIndex}`:undefined}
+      style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection,panelIndex)?'none':'auto'}} data-artwork-locked={elementLocked(selection,panelIndex)||undefined}
+      onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
+      onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex);if(textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex))onEditBubble?.({panelIndex,bubbleIndex,overlay:false}); }}
+      onDblClick={event=>{if(elementLocked(selection,panelIndex))return;event.preventDefault();event.stopPropagation();if(!backgroundEdit)onEditBubble?.({panelIndex,bubbleIndex,overlay:false});}}
+      onContextMenu={event=>openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex)}
+      onKeyDown={event=>{if(elementLocked(selection,panelIndex))return;if(!backgroundEdit&&event.key==='Enter'&&!event.isComposing){event.preventDefault();onEditBubble?.({panelIndex,bubbleIndex,overlay:false});}else if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex);else nudgeElement(event,bubble.clip_to_panel?paperBounds:panelBounds(panel),selection,box);}}
+      key={`panel-${panelIndex}-bubble-${bubbleIndex}`}
+      title={`フキダシ ${bubbleIndex + 1}（ドラッグで移動）`}
+      tabIndex={!elementLocked(selection,panelIndex)&&activePanel === panelIndex ? 0 : -1}
+    >
+      <span class="bubble-native-reference" style={referenceStyle}><BubbleShapeSvg
+        shape={bubble.shape} bezier={bubble.bezier}
+        seamMasks={panelBubblePresentations[panelIndex]?.seamMasks[bubbleIndex]}
+        composite={panelBubblePresentations[panelIndex]?.composites[bubbleIndex]}
+        maskId={`bubble-outline-mask-page-${page.page}-panel-${panelIndex}-${bubbleIndex}`}
+      />
+      {sourceAssetId
+        ? <StoredCropImage assetId={sourceAssetId} persistentAsset={bubble.analogTextImport?.persistentAsset} className="bubble-source-image" />
+        : textFrame.w>0&&textFrame.h>0&&<span class="bubble-text-frame" style={textFrameStyle}><BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={textFrame.w} boxH={textFrame.h} fitEpoch={fitEpoch} style={bubble.text_style} weights={bubble.text_weights} paperWidth={canvas.w} /></span>}</span>
+      {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(!originalGuideVisible(`bubble-${bubbleIndex}`,panelIndex) && bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
+      <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection,panelIndex)} handles={visible=>!backgroundEdit&&renderHandles(panelIndex,selection,box,visible)}/>
+    </button></div>;
+  });
+
+  const paperBounds: BBox = { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h };
+  const overlayFallbackBox = (type: 'figure' | 'bubble', index: number): BBox => pageOverlayFallbackBox(canvas, type, index);
+  const overlay = page.page_overlay;
+  const overlayBubbles = overlay?.bubbles ?? [];
+  const overlayBubblePresentation = buildBubbleConnections(
+    overlay ?? {},
+    overlayBubbles,
+    (bubbleIndex) => nativeBox(overlayBubbles[bubbleIndex],overlayBubbles[bubbleIndex].bbox ?? overlayFallbackBox('bubble', bubbleIndex),`bubble-${bubbleIndex}`,0,true),
+    (figureIndex) => nativeBox(overlay!.figures![figureIndex],overlay?.figures?.[figureIndex]?.bbox ?? overlayFallbackBox('figure', figureIndex),`figure-${figureIndex}`,0,true),
+    `page-${page.page}-overlay`,
+  );
+  const renderPageOverlayFigures = () => (overlay?.figures ?? []).map((figure, figureIndex) => {
+    const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'figure', index: figureIndex };
+    const box = figure.bbox ?? overlayFallbackBox('figure', figureIndex);
+    if(editingOverlay)return <PaintOwnerPreview key={`paint-figure-${figureIndex}`} ownerKey={`figure-${figureIndex}`} container={paperBounds}/>;
+    const referenceBox=paintReferenceBox(figure.artwork?.paint,box,figure.artwork?.crop);
+    const isSelected = isSelectedElement(selection);
+    const artwork = figureArtwork(figure);
+    if(!artwork&&!originalGuideVisible(`figure-${figureIndex}`,0,true))return null;
+    if (artwork && !originalGuideVisible(`figure-${figureIndex}`,0,true)) return renderArtwork(artwork, selection, null, paperBoxStyle, `${figure.name}の画像`);
+    const cropAssetId = figure.analogImport?.assetId;
+    const isUnassigned = isUnassignedPersonFigure(figure);
+    return <button
+      data-content-target class={`canvas-element figure-guide page-overlay-element ${isPropPlacement(figure) ? 'is-object' : ''} ${isUnassigned ? 'is-unassigned' : ''} ${cropAssetId ? 'has-source-crop' : ''} ${figure.analogImport?.analysisReview ? 'is-analysis-review' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+      style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
+      onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
+      onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
+      onContextMenu={event => openGenerationMenu(event, 0, figureIndex, true)}
+      onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, 0, figureIndex, true); else nudgeElement(event, paperBounds, selection, box); }}
+      key={figure.analogImport?.sourceRegionId ?? `page-overlay-figure-${figureIndex}`}
+      title={`${figure.name}・ページ前景${figure.analogImport?.analysisReviewMessage ? `・要確認：${figure.analogImport.analysisReviewMessage}` : ''}（ドラッグで移動）`}
+      tabIndex={!elementLocked(selection)&&activePanel >= 0 ? 0 : -1}
+    >
+      <span class="figure-native-reference" style={nativeStyle(box,referenceBox)}>{cropAssetId && <StoredCropImage assetId={cropAssetId} persistentAsset={figure.analogImport?.persistentAsset} className="figure-crop-image" />}
+      {!cropAssetId && (figure.size ? <FigureSizeSvg size={figure.size} /> : isPropPlacement(figure) ? <Box size={12} /> : <UserRound size={12} />)}
+      <FigureName name={figure.name} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} /></span>
+      <CanvasContentSelection frame={box} revision={figure} selected={isSelected&&!elementLocked(selection)} handles={visible=>renderHandles(null,selection,box,visible)}/>
+    </button>;
+  });
+  const renderPageOverlayBubbles = () => (overlay?.bubbles ?? []).map((bubble, bubbleIndex) => {
+    if(!bubbleVisible(bubble))return null;
+    const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'bubble', index: bubbleIndex };
+    const box = previewOwner(`bubble-${bubbleIndex}`,0,true)?.frame??bubble.bbox ?? overlayFallbackBox('bubble', bubbleIndex);
+    const referenceBox=nativeBox(bubble,box,`bubble-${bubbleIndex}`,0,true);
+    const referenceStyle={left:`${(referenceBox.x-box.x)/box.w*100}%`,top:`${(referenceBox.y-box.y)/box.h*100}%`,width:`${referenceBox.w/box.w*100}%`,height:`${referenceBox.h/box.h*100}%`};
+    const isSelected = isSelectedElement(selection);
+    const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
+    const sourceAssetId = bubble.analogTextImport?.referenceHidden ? undefined : bubble.analogTextImport?.assetId;
+    return <button
+      onDragEnter={event=>{if(!painting&&!elementLocked(selection)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
+      onDragOver={event=>{if(!painting&&!elementLocked(selection)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
+      onDragLeave={event=>{if(!(event.relatedTarget instanceof Node)||!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('is-material-drop-target');}}
+      onDrop={event=>{event.currentTarget.classList.remove('is-material-drop-target');if(painting||elementLocked(selection))return;const id=event.dataTransfer?.getData(BUBBLE_MATERIAL_DRAG_TYPE);if(id){event.preventDefault();event.stopPropagation();onBubbleMaterial?.({pageIndex:pageIndex??page.page-1,panelIndex:0,index:bubbleIndex,overlay:true,kind:'bubble'},id);}}}
+      data-content-overlay data-content-kind="bubble" data-content-index={bubbleIndex}
+      data-content-target class={`canvas-element bubble-guide page-overlay-element bubble-${bubble.shape ?? 'normal'} ${sourceAssetId ? 'has-source-reference' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+      style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
+      onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
+      onClick={(event) => { event.stopPropagation(); onSelectElement(selection);if(textTool&&!elementLocked(selection))onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}); }}
+      onDblClick={event=>{if(elementLocked(selection))return;event.preventDefault();event.stopPropagation();onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true});}}
+      onContextMenu={event=>openGenerationMenu(event,0,undefined,true,bubbleIndex)}
+      onKeyDown={event=>{if(elementLocked(selection))return;if(event.key==='Enter'&&!event.isComposing){event.preventDefault();onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true});}else if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,0,undefined,true,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
+      key={bubble.analogTextImport?.sourceRegionId ?? `page-overlay-bubble-${bubbleIndex}`}
+      title={`ページ前景フキダシ ${bubbleIndex + 1}（ドラッグで移動）`}
+      tabIndex={!elementLocked(selection)&&activePanel >= 0 ? 0 : -1}
+    >
+      <span class="bubble-native-reference" style={referenceStyle}><BubbleShapeSvg
+        shape={bubble.shape} bezier={bubble.bezier}
+        seamMasks={overlayBubblePresentation.seamMasks[bubbleIndex]}
+        composite={overlayBubblePresentation.composites[bubbleIndex]}
+        maskId={`bubble-outline-mask-page-${page.page}-overlay-${bubbleIndex}`}
+      />
+      {sourceAssetId
+        ? <StoredCropImage assetId={sourceAssetId} persistentAsset={bubble.analogTextImport?.persistentAsset} className="bubble-source-image" />
+        : <BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} style={bubble.text_style} weights={bubble.text_weights} paperWidth={canvas.w} />}</span>
+      {editingOverlay?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(!originalGuideVisible(`bubble-${bubbleIndex}`,0,true) && bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
+      <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection)} handles={visible=>renderHandles(null,selection,box,visible)}/>
+    </button>;
+  });
+
+  const selectedPanel = page.panels[activePanel]&&panelVisible(page.panels[activePanel])?page.panels[activePanel]:undefined;
   const selectedBounds = selectedPanel ? panelBounds(selectedPanel) : null;
-  const selectedItem = selectedPanel && selectedElement
+  const selectedItem = selectedPanel && selectedElement && selectedElement.type !== 'image' && selectedElement.scope !== 'page_overlay'
     ? (selectedElement.type === 'figure' ? selectedPanel.figures?.[selectedElement.index]
       : selectedElement.type === 'bubble' ? selectedPanel.bubbles[selectedElement.index]
       : selectedPanel.screen_text?.[selectedElement.index])
     : undefined;
   const selectedAnchor = selectedItem && 'anchor' in selectedItem ? selectedItem.anchor : undefined;
 
-  const renderAnchorIndicator = () => {
-    if (!selectedPanel || !selectedBounds || !selectedElement || !selectedItem || !selectedAnchor) return null;
-    const anchor = selectedAnchor;
-    const box = selectedItem.bbox ?? fallbackBox(selectedPanel, selectedElement.type, selectedElement.index);
-    const point = anchorPoint(selectedBounds, anchor);
-    const labelW = anchor.length * 3 + 4.5;
+  const renderBubbleTailEditor = () => {
+    if (!selectedElement || selectedElement.type !== 'bubble') return null;
+    const pageOverlay = selectedElement.scope === 'page_overlay';
+    const owner = pageOverlay ? overlay : selectedPanel;
+    const bubble = pageOverlay ? overlay?.bubbles?.[selectedElement.index] : selectedPanel?.bubbles[selectedElement.index];
+    if (!owner || !bubble || !bubbleVisible(bubble) || bubbleTailDisabled(bubble)) return null;
+    const speakerFigureIndex = resolveBubbleSpeakerFigureIndex(owner, bubble);
+    if (speakerFigureIndex === null) return null;
+    const speakerFigure = owner.figures?.[speakerFigureIndex];
+    if (!speakerFigure || !bubble.speaker) return null;
+    const speakerBox = paintReferenceBox(speakerFigure.artwork?.paint,speakerFigure.bbox ?? (pageOverlay
+      ? overlayFallbackBox('figure', speakerFigureIndex)
+      : fallbackBox(selectedPanel!, 'figure', speakerFigureIndex)),speakerFigure.artwork?.crop);
+    const target = bubbleTailTargetPoint(speakerBox, bubble.tail);
+    const labelW = Array.from(bubble.speaker).length * 3 + 4.5;
     const labelH = 6.9;
-    const labelX = clamp(point.x - labelW / 2, 1, 209 - labelW);
+    const labelX = clamp(target.x - labelW / 2, 1, canvas.w - 1 - labelW);
+    const above = target.y - 3.9 - labelH;
+    const labelY = above < 1 ? target.y + 3.9 : above;
+    return <svg class="bubble-tail-editor-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`}>
+      <circle class="bubble-tail-target-dot" cx={target.x} cy={target.y} r="2.7" />
+      <circle
+        class="bubble-tail-target-hit"
+        cx={target.x}
+        cy={target.y}
+        r="7"
+        onPointerDown={(event) => startBubbleTailDrag(event, selectedElement, speakerBox)}
+      ><title>ドラッグしてしっぽの先端を口元の方向へ、適切な長さに移動</title></circle>
+      <rect class="anchor-indicator-label-bg" x={labelX} y={labelY} width={labelW} height={labelH} rx="1.2" />
+      <text class="anchor-indicator-text" x={labelX + labelW / 2} y={labelY + 5}>{bubble.speaker}</text>
+    </svg>;
+  };
+
+  const renderAnchorIndicator = () => {
+    if (!selectedPanel || !selectedBounds || !selectedElement || !selectedItem || ('artwork' in selectedItem && selectedItem.artwork)) return null;
+    const box = selectedItem.bbox ?? fallbackBox(selectedPanel, selectedElement.type, selectedElement.index);
+    let point: { x: number; y: number };
+    let label: string;
+    if (selectedElement.type === 'bubble') {
+      const bubble = selectedPanel.bubbles[selectedElement.index];
+      if(!bubble||!bubbleVisible(bubble))return null;
+      const speakerFigureIndex = bubble ? resolveBubbleSpeakerFigureIndex(selectedPanel, bubble) : null;
+      if (speakerFigureIndex !== null) {
+        return null;
+      } else {
+        // 人物あたり・同名人物が複数・コマ内に話者がいない場合は、誤った人物へ線を引かない。
+        if (bubble?.speaker || !selectedAnchor) return null;
+        point = anchorPoint(selectedBounds, selectedAnchor);
+        label = selectedAnchor;
+      }
+    } else {
+      if (!selectedAnchor) return null;
+      point = anchorPoint(selectedBounds, selectedAnchor);
+      label = selectedAnchor;
+    }
+    const labelW = Array.from(label).length * 3 + 4.5;
+    const labelH = 6.9;
+    const labelX = clamp(point.x - labelW / 2, 1, canvas.w - 1 - labelW);
     const above = point.y - 3.9 - labelH;
     const labelY = above < 1 ? point.y + 3.9 : above;
     return <g class="anchor-indicator" aria-hidden="true">
       <line x1={box.x + box.w / 2} y1={box.y + box.h / 2} x2={point.x} y2={point.y} />
       <circle class="anchor-indicator-dot" cx={point.x} cy={point.y} r="2.7" />
       <rect class="anchor-indicator-label-bg" x={labelX} y={labelY} width={labelW} height={labelH} rx="1.2" />
-      <text class="anchor-indicator-text" x={labelX + labelW / 2} y={labelY + 5}>{anchor}</text>
+      <text class="anchor-indicator-text" x={labelX + labelW / 2} y={labelY + 5}>{label}</text>
     </g>;
   };
 
+  const currentPageIndex=pageIndex??page.page-1;
+  const [textSelection,setTextSelection]=useState<TextSelection|undefined>();
+  const textTarget=editingText;
+  const toolbarTarget:CanvasTextTarget|null=textTarget??(selectedElement&&['bubble','screen_text'].includes(selectedElement.type)?{pageIndex:currentPageIndex,panelIndex:Math.max(0,activePanel),index:selectedElement.index,overlay:selectedElement.scope==='page_overlay',kind:selectedElement.type as 'bubble'|'screen_text'}:null);
+  const toolbarItem=toolbarTarget?(toolbarTarget.kind==='bubble'?(toolbarTarget.overlay?page.page_overlay?.bubbles:page.panels[toolbarTarget.panelIndex]?.bubbles)?.[toolbarTarget.index]:page.panels[toolbarTarget.panelIndex]?.screen_text?.[toolbarTarget.index]):undefined;
+  const renderedTextStyle=(target:CanvasTextTarget):TextStyle=>{
+    const selector=target.overlay?`[data-content-overlay][data-content-kind="bubble"][data-content-index="${target.index}"]`:`[data-content-panel="${target.panelIndex}"][data-content-kind="${target.kind}"][data-content-index="${target.index}"]`;
+    const el=paperRef.current?.querySelector<HTMLElement>(`${selector} .bubble-text,${selector} .screen-text-body`),width=paperRef.current?.clientWidth;
+    if(!el||!width)return {};
+    const style=getComputedStyle(el),pt=parseFloat(style.fontSize)/width*canvas.w*72/25.4;
+    return {font:defaultBubbleFont,fontSize:Math.max(4,Math.min(144,Math.round(pt*1000)/1000)),fontWeight:Number(style.fontWeight)||600};
+  };
+  const changeStyle=(patch:TextStylePatch)=>{if(toolbarTarget&&toolbarItem)onTextStyle?.(toolbarTarget,{...(toolbarItem.text_style?.fontSize===undefined?{fontSize:renderedTextStyle(toolbarTarget).fontSize}:{}),...patch},textTarget?textSelection:undefined);};
+
+  const textPanel=textTarget&&!textTarget.overlay?page.panels[textTarget.panelIndex]:undefined;
+  const textBubble=textTarget?.kind==='bubble'?(textTarget.overlay?overlay?.bubbles:textPanel?.bubbles)?.[textTarget.index]:undefined;
+  const screenText=textTarget?.kind==='screen_text'?textPanel?.screen_text?.[textTarget.index]:undefined;
+  const textValue=textBubble?.text??screenText?.text;
+  const textBox=textTarget&&textBubble?paintReferenceBox(textBubble.paint_overlay?.paint,textBubble.bbox??(textTarget.overlay?overlayFallbackBox('bubble',textTarget.index):fallbackBox(textPanel!,'bubble',textTarget.index)),textBubble.paint_overlay?.crop):screenText&&(screenText.bbox??fallbackBox(textPanel!,'screen_text',textTarget!.index));
+  useLayoutEffect(()=>{
+    setTextSelection(undefined);
+    const item=textBubble??screenText;
+    if(textTarget&&item&&item.text_style?.fontSize===undefined)onTextStyle?.(textTarget,{fontSize:renderedTextStyle(textTarget).fontSize});
+  },[textTarget]);
   return (
-    <div class="canvas-viewport">
+    <div class={`canvas-viewport ${painting?'is-painting':''} ${backgroundEdit?'is-background3d-editing':''} ${zoomTool?'is-zoom-tool':''}`} onPointerDownCapture={event=>{if(editingText&&!(event.target as Element).closest('.bubble-inline-editor,.canvas-text-toolbar'))onEndTextEdit?.();}}>
+      {toolbarTarget&&toolbarItem&&!painting&&<CanvasTextToolbar style={{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}} defaultFont={defaultBubbleFont} selection={textTarget?textSelection:undefined} selectionWeight={textTarget&&textSelection?selectedTextWeight(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined} disabled={toolbarTarget.kind==='bubble'&&elementLocked({type:'bubble',index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex)} onChange={changeStyle} onMaterials={toolbarTarget.kind==='bubble'?onOpenBubbleMaterials:undefined}/>}
       <div ref={scrollRef} class="canvas-scroll">
-        <div ref={paperRef} class={`manga-paper ${showGuides ? 'show-guides' : ''} ${interactionMode ? 'is-interacting' : ''}`} onPointerDown={(event) => { if (event.target === event.currentTarget) onSelectElement(null); }}>
+        <div ref={paperRef} class={`manga-paper ${paintTarget?'has-paint-surface':''} ${showGuides ? 'show-guides' : ''} ${interactionMode ? 'is-interacting' : ''}`} style={{ aspectRatio: `${outputWidth} / ${outputHeight}`, '--bubble-line-width': `${Math.max(0.1, bubbleLineWidthMm) * 100 / canvas.w}cqw` }} onPointerDown={(event) => { if (event.target === event.currentTarget) onSelectElement(null); }}>
+      <div class="manga-page-content" inert={painting&&!backgroundEdit}>
       <div class="paper-header"><span>{title}</span><span>{page.page} / {pageCount}</span></div>
       {author.trim() && <div class="paper-footer"><span>{author}</span></div>}
-      <div class="safe-area" aria-hidden="true" />
-      {page.panels.map((panel, panelIndex) => (
+      <div class="safe-area" style={paperBoxStyle(inner)} aria-hidden="true" />
+      {page.panels.map((panel, panelIndex) => panelVisible(panel)&&(
         <div
-          class={`manga-panel panel-bg-${panel.bg} ${activePanel === panelIndex ? 'is-selected' : ''} ${selectedPanels.includes(panelIndex) ? 'is-group-selected' : ''}`}
-          style={panelStyle(panel)}
+          class={`manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex) ? 'has-background-artwork' : ''} panel-bg-${panel.bg} ${activePanel === panelIndex ? 'is-selected' : ''} ${selectedPanels.includes(panelIndex) ? 'is-group-selected' : ''}`}
+          style={panelStyle(panel, canvas)}
           onClick={(event) => selectPanelAt(event, panelIndex)}
-          onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectPanel(panelIndex, event.shiftKey); } }}
+          onContextMenu={(event) => openPanelArtworkMenu(event, panelIndex)}
+          onKeyDown={(event) => {
+            if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, panelIndex);
+            else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectPanel(panelIndex, event.shiftKey); }
+          }}
           key={`${panel.id}-${panelIndex}`}
           role="button"
           aria-pressed={selectedPanels.includes(panelIndex)}
           tabIndex={0}
-          aria-label={`コマ ${panel.id} を編集`}
-          title={panel.action ? `コマ ${panel.id}: ${panel.action}` : `コマ ${panel.id}`}
+          aria-label={`${panelDisplayLabel(panel.id)} を編集`}
+          title={panel.action ? `${panelDisplayLabel(panel.id)}: ${panel.action}` : panelDisplayLabel(panel.id)}
         >
-          <span class="panel-number">{panel.id}</span>
-          {panelIndex !== activePanel && renderElements(panel, panelIndex, (box) => bboxStyle(box, panel))}
+
         </div>
       ))}
-      {selectedPanel && <div class="panel-element-layer" style={layerClipStyle(selectedPanel)}>
-        {renderElements(selectedPanel, activePanel, paperBoxStyle)}
+      {page.panels.map((panel,panelIndex)=>panelVisible(panel)&&<div class={`panel-art-stack ${panelIndex===activePanel?'is-active':''}`} style={layerClipStyle(panel,canvas)} data-panel-outline={panelShapePoints(panel).map(([x,y])=>`${x/canvas.w},${y/canvas.h}`).join(' ')} key={`art-stack-${panelIndex}`}>
+        {panelArtKeys(panel).map(key=>{
+          if(key==='background')return <div class={`panel-art-background manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex)?'has-background-artwork':''} panel-bg-${panel.bg}`} style={panelStyle(panel,canvas)} key={key}>
+            {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey="background" container={panelBounds(panel)}/>:(!originalGuideVisible('background',panelIndex)&&panel.background_images?.map(image=>!image.hidden&&<span class="panel-background-artwork" key={image.id} style={bboxStyle(image.bbox,panel)}><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===image.assetId)} image={image}/></span>))}
+          </div>;
+          const index=Number(key.slice(7)),figure=panel.figures![index],image=figureArtwork(figure);
+          return <div class="panel-art-owner" data-art-owner={key} key={key}>
+            {editingPanel(panelIndex)?backgroundEdit&&previewOwner(key,panelIndex)?<button type="button" data-content-target class={`background3d-layout-item background3d-figure-move ${backgroundEdit.selectedKey===key?'background3d-layout-selected':''}`} data-background3d-owner={key} aria-label={`${figure.name}の位置を移動`} style={{...paperBoxStyle(previewOwner(key,panelIndex)!.frame),pointerEvents:elementLocked({type:'figure',index},panelIndex)?'none':'auto'}} data-artwork-locked={elementLocked({type:'figure',index},panelIndex)||undefined} tabIndex={elementLocked({type:'figure',index},panelIndex)?-1:0} onPointerDown={event=>startInteraction(event,panelIndex,{type:'figure',index},previewOwner(key,panelIndex)!.frame,'move')} onClick={event=>{event.stopPropagation();if(!elementLocked({type:'figure',index},panelIndex))backgroundEdit.select(key);}} onKeyDown={event=>nudgeElement(event,panelBounds(panel),{type:'figure',index},previewOwner(key,panelIndex)!.frame)}><PaintOwnerPreview ownerKey={key} container={previewOwner(key,panelIndex)!.frame}/><CanvasContentSelection frame={previewOwner(key,panelIndex)!.frame} revision={previewOwner(key,panelIndex)!.paint} selected={backgroundEdit.selectedKey===key}/></button>:<PaintOwnerPreview ownerKey={key} container={{x:0,y:0,w:canvas.w,h:canvas.h}}/>:image&&!originalGuideVisible(key,panelIndex)?renderArtwork(image,{type:'figure',scope:'panel',index},panelIndex,paperBoxStyle,`${figure.name}の画像`):renderPanelBaseElements(panel,panelIndex,paperBoxStyle,index)}
+          </div>;
+        })}
+        {panel.images?.map((image,index)=>renderArtwork(image,{type:'image',scope:'panel',index},panelIndex,paperBoxStyle))}
+        {panelIndex!==activePanel&&renderPanelBaseElements(panel,panelIndex,paperBoxStyle,'screen')}
+        <div class="panel-number-layer" style={panelStyle(panel,canvas)}><span class="panel-number">{panel.id}</span></div>
+      </div>)}
+      <div class="placed-image-layer">
+        {page.images?.map((image, index) => renderArtwork(image, { type: 'image', scope: 'page', index }, null, paperBoxStyle))}
+      </div>
+      {!painting && selectedElement && !(selectedElement.type==='figure'&&originalGuideVisible(`figure-${selectedElement.index}`,activePanel)) && selectedElement.scope !== 'page_overlay' && (() => {
+        const pageImage = selectedElement.scope === 'page';
+        const image = selectedElement.type === 'image'
+          ? (pageImage ? page.images : selectedPanel?.images)?.[selectedElement.index]
+          : selectedElement.type === 'figure' && selectedPanel?.figures?.[selectedElement.index]
+            ? figureArtwork(selectedPanel.figures[selectedElement.index]) : undefined;
+        if (!image || image.hidden||artworkLocked(image)) return null;
+        const panelIndex = pageImage ? null : activePanel;
+        return <div class="artwork-selection-layer" style={!pageImage && selectedPanel ? layerClipStyle(selectedPanel, canvas) : undefined}>
+          <div data-content-target class="placed-image-selection" style={paperBoxStyle(image.bbox)}
+            onContextMenu={event => { if (selectedElement.type === 'figure') openGenerationMenu(event, activePanel, selectedElement.index); }}
+            onPointerDown={event => { if (!artworkLocked(image)) startInteraction(event, panelIndex, selectedElement, image.bbox, 'move'); }}>
+            <CanvasContentSelection frame={image.bbox} source={contentSource(selectedElement,panelIndex)} revision={image} selected handles={visible=>renderHandles(panelIndex,selectedElement,image.bbox,visible)}/>
+          </div>
+        </div>;
+      })()}
+      {selectedPanel && <div class="panel-element-layer" style={layerClipStyle(selectedPanel, canvas)}>
+        {renderPanelBaseElements(selectedPanel, activePanel, paperBoxStyle,'screen')}
       </div>}
-      <svg class="panel-frame-overlay" viewBox="0 0 210 297" strokeWidth={frameLineWidthMm} aria-hidden="true">
+      <svg class="panel-frame-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} strokeWidth={frameLineWidthMm} aria-hidden="true">
         {page.panels.map((panel, panelIndex) => {
+          if(!panelFrameVisible(panel))return null;
           const key = `frame-${panel.id}-${panelIndex}`;
           if (panel.shape.type !== 'rect') return <polygon points={panel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} key={key} />;
           const bleed = panel.bleed ?? [];
@@ -776,16 +1535,28 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
           </g>;
         })}
       </svg>
-      {selectedPanels.length > 1 && <svg class="panel-group-selection-overlay" viewBox="0 0 210 297" aria-hidden="true">
+      {(overlay?.figures?.length ?? 0) > 0 && <div class="page-overlay-figure-layer">
+        {renderPageOverlayFigures()}
+      </div>}
+      {page.panels.some((panel) => panel.bubbles.length > 0) && <div class="panel-bubble-layer">
+        {panelBubbleConnectionElements.length > 0 && <svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true"><defs>{page.panels.map((panel,index)=><clipPath id={`bubble-clip-page-${page.page}-panel-${index}`} clipPathUnits="userSpaceOnUse"><polygon points={panelShapePoints(panel).map(([x,y])=>`${x},${y}`).join(' ')}/></clipPath>)}</defs>{panelBubbleConnectionElements}</svg>}
+        {page.panels.flatMap((panel, panelIndex) => renderPanelBubbles(panel, panelIndex))}
+      </div>}
+      {(overlay?.bubbles?.length ?? 0) > 0 && <div class="page-overlay-bubble-layer">
+        {overlayBubblePresentation.elements.length > 0 && <svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{overlayBubblePresentation.elements}</svg>}
+        {renderPageOverlayBubbles()}
+      </div>}
+      {!painting&&renderBubbleTailEditor()}
+      {!painting&&selectedPanels.length > 1 && <svg class="panel-group-selection-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">
         {selectedPanels.filter((panelIndex) => panelIndex !== activePanel).map((panelIndex) => {
           const panel = page.panels[panelIndex];
-          if (!panel) return null;
+          if (!panel||!panelVisible(panel)) return null;
           return panel.shape.type === 'rect'
             ? <rect x={panel.shape.x} y={panel.shape.y} width={panel.shape.w} height={panel.shape.h} key={`group-${panelIndex}`} />
             : <polygon points={panel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} key={`group-${panelIndex}`} />;
         })}
       </svg>}
-      {selectedPanel && selectedBounds && <svg class="panel-selection-overlay" viewBox="0 0 210 297" aria-hidden="true">
+      {!painting&&selectedPanel && selectedBounds && <svg class="panel-selection-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true" onContextMenu={(event) => openGenerationMenu(event, activePanel)}>
         {selectedPanel.shape.type === 'rect' ? <>
           <rect class="panel-selection-shape" x={selectedPanel.shape.x} y={selectedPanel.shape.y} width={selectedPanel.shape.w} height={selectedPanel.shape.h} />
           <rect class="panel-selection-hit-area" x={selectedPanel.shape.x} y={selectedPanel.shape.y} width={selectedPanel.shape.w} height={selectedPanel.shape.h} onPointerDown={startPanelMove} />
@@ -804,7 +1575,7 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
         })}
         <g class="panel-selection-label" transform={`translate(${selectedBounds.x + 1} ${Math.max(8, selectedBounds.y - 2)})`} onPointerDown={startPanelMove}>
           <rect x="0" y="-7.5" width="35" height="9" rx="2" />
-          <text x="3" y="-1.5">PANEL {String(selectedPanel.id).padStart(2, '0')}</text>
+          <text x="3" y="-1.5">{panelDisplayLabel(selectedPanel.id)}</text>
         </g>
         {([{ handle: 'nw', vertexIndex: 0 }, { handle: 'ne', vertexIndex: 1 }, { handle: 'sw', vertexIndex: 3 }, { handle: 'se', vertexIndex: 2 }] as const).map(({ handle, vertexIndex }) => {
           const x = handle.includes('w') ? selectedBounds.x : selectedBounds.x + selectedBounds.w;
@@ -828,30 +1599,44 @@ export default function MangaCanvas({ title, author, page, pageCount, frameLineW
         {renderAnchorIndicator()}
       </svg>}
       </div>
+      {paintTarget&&<PaintInputSurface canvas={canvas}/>}
+      {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&!painting&&<div class="bubble-inline-editor" style={paperBoxStyle(textBox)}>
+        <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} weights={(textBubble??screenText)?.text_weights} label={textTarget.kind==='bubble'?'吹き出しの文字':'画面内文字'} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
+          onText={(value,edit)=>onText?.(textTarget,value,edit)} onHistory={onTextHistory} onSelection={value=>setTextSelection(previous=>previous?.start===value.start&&previous?.end===value.end?previous:value)} onEnd={()=>onEndTextEdit?.()}/>
+
+      </div>}
       </div>
-      <div class="canvas-assist-controls">
-        <label class="canvas-auto-anchor" title="ドラッグ移動を終えたとき、bbox中心に最も近いコマ内アンカーへ自動で再設定します">
-          <input type="checkbox" checked={autoAnchor} onChange={onToggleAutoAnchor} />
-          自動アンカー
-        </label>
-        <label class="canvas-inner-frame-snap" title="コマ枠を内枠（上下左右10mm）へ近づけると吸着します">
-          <input type="checkbox" checked={innerFrameSnap} onChange={onToggleInnerFrameSnap} />
-          内枠スナップ
-        </label>
-        <label class="canvas-panel-snap" title={`コマの辺・頂点を上下${panelGutters.rowGapMm}mm・左右${panelGutters.columnGapMm}mmの間隔へ近づけると吸着します`}>
-          <input type="checkbox" checked={panelGapSnap} onChange={onTogglePanelGapSnap} />
-          コマスナップ
-        </label>
-        <label class="canvas-panel-snap" title="揃った境界線上の辺を連動し、少しズレた隣辺は同じ直線へ吸着します">
-          <input type="checkbox" checked={panelSync} onChange={onTogglePanelSync} />
-          コマシンクロ
-        </label>
       </div>
-      <div class="canvas-zoom-controls">
-        <button type="button" onClick={() => zoomAt(1 / 1.25)} aria-label="縮小" title="縮小（Ctrl+ホイール / 二本指ピンチ）"><ZoomOut size={14} /></button>
-        <button type="button" class="zoom-reset" onClick={resetZoom} title="ズームをリセット">{zoomPercent}%</button>
-        <button type="button" onClick={() => zoomAt(1.25)} aria-label="拡大" title="拡大（Ctrl+ホイール / 二本指ピンチ）"><ZoomIn size={14} /></button>
+      <div class="canvas-zoom-controls" onClick={event=>{
+        // Pointer clicks return shortcuts to the canvas; keyboard activation keeps focus.
+        if(event.detail>0&&event.target instanceof Element)event.target.closest<HTMLButtonElement>('button')?.blur();
+      }}>
+        <button type="button" class="zoom-fit" aria-pressed={zoomPercent===null} onClick={()=>{zoomPercentRef.current=null;onZoomPercentChange(null);fitPaper();}} title="紙面全体を表示">全体</button>
+        <button type="button" onClick={() => zoomAt(1 / 1.25)} aria-label="縮小" title="縮小（⌘/Ctrl − / ホイール / 二本指ピンチ）"><ZoomOut size={14} /></button>
+        <button type="button" class="zoom-reset" onClick={resetZoom} aria-label="100%表示" title="100%表示（出力画像の1pxを画面の1pxで表示）">{zoomPercent??fitPercent}%</button>
+        <button type="button" onClick={() => zoomAt(1.25)} aria-label="拡大" title="拡大（⌘/Ctrl ＋ / ホイール / 二本指ピンチ）"><ZoomIn size={14} /></button>
       </div>
+      {generationMenu && typeof window !== 'undefined' && createPortal(<>
+        <button class="canvas-generation-menu-dismiss" aria-label="操作メニューを閉じる" onClick={() => setGenerationMenu(null)} />
+        <div class="canvas-generation-menu" ref={generationMenuRef} role="menu" aria-label="あたり・画像の操作"
+          style={{ left: Math.max(8, Math.min(generationMenu.x, window.innerWidth - 284)), top: Math.max(8, Math.min(generationMenu.y, window.innerHeight - 350)), maxHeight: 'calc(100vh - 16px)', overflowY: 'auto' }}
+          onKeyDown={event => {
+            if (event.key === 'Escape') { event.preventDefault(); setGenerationMenu(null); }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+              const index = buttons.findIndex(button => button === window.document.activeElement);
+              buttons[(index + (event.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length]?.focus();
+            }
+          }}>
+          <strong>{generationMenu.overlay ? 'ページ前景' : panelDisplayLabel(menuPanel?.id ?? 0)} · {menuFigure?.name ?? (menuBubble?'吹き出し':'背景')}</strong>
+          {menuSize && <small>{menuSize.width} × {menuSize.height} px（{dpi} dpi換算）</small>}
+          <button role="menuitem" disabled={!menuBox} onClick={copyMenuSize}>サイズコピー</button>
+          {onReplaceArtwork && <button role="menuitem" disabled={Boolean(menuFigure?.artwork?.locked)} onClick={() => { onReplaceArtwork(generationMenu.panelIndex, generationMenu.figureIndex, generationMenu.overlay,generationMenu.bubbleIndex); setGenerationMenu(null); }}>画像を読み込む</button>}
+          <button role="menuitemcheckbox" aria-checked={guideVisible(menuKey,generationMenu.panelIndex,generationMenu.overlay)} onClick={()=>{onToggleGuide(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>あたり画像表示</button>
+          <button role="menuitem" onClick={()=>{onGenerateArtwork(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>生成</button>
+        </div>
+      </>, window.document.body)}
     </div>
   );
 }

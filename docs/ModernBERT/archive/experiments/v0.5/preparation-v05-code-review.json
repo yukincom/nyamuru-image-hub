@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-18T04:43:03.344532+00:00",
+  "root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17",
+  "scope": "Read-only final code review of v0.5 losses, selected-evaluation resume, full-condition freeze, local trusted artifact verification, packing and fixture tests.",
+  "source_sha256": {
+    "train.py": "6f8232fb35f98a29651e6868ffff8310dcfd038f160bd7d5049fb068ac426a0b",
+    "verify_results.py": "067ae6cfc0e4cc1eea4ff6c1d7e405fa2697d46bfcd0e72fe10a52e76b651280",
+    "comparison.py": "0616c6e5e3a4ea9fee6aae7536da92bc870b70a33bd8fed34c275a76fec4e61e",
+    "build_colab.py": "7a243b990be2da3d31eb10bf1f6d67b7bf979ad24210b46920196aa4ed53e9fa",
+    "test_comparison.py": "1fcf434b42e3d249697d0207ece2f41961670a245855cdc0a43a66f259780b75",
+    "smoke_comparison.py": "d441cd7aa975dfb46e7a2c8f7b3dbd667f727bd794806df0c0fc799ab965f3b2",
+    "experiments/v0.5/comparison-plan.json": "f77cc3d0a32a87eba6fc1ac34c5941bc5257c3d4b3828e71335c0808149a7b87",
+    "experiments/v0.5/experiment.json": "bbf9fe6b07bb94ad06f6603d1fc197e9a96f04e050b4b640103be8f9d9f27cc2"
+  },
+  "actions": {
+    "repository_edits": false,
+    "tests_run": false,
+    "model_training_or_inference": false,
+    "package_installs": false,
+    "network": false,
+    "review_report_only_written": true
+  },
+  "verdict": "No remaining high-priority bug found in reviewed code. Deterministic pack failure reported during review is now fixed in both shared and frozen code.",
+  "unresolved_findings": [],
+  "resolved_previous_findings": [
+    {
+      "issue": "Legacy objective default failed validation on second pass",
+      "status": "fixed",
+      "evidence": "train.py:538-539 now passes config.get(training_objective) to MeasuredTrainer; None is only normalized once in trainer. Existing no-objective configurations retain default model dropout behavior."
+    },
+    {
+      "issue": "Selected checkpoint metadata/tokenizer not frozen before resume",
+      "status": "fixed",
+      "evidence": "train.py:624-631 stores all selected checkpoint file hashes; resume_evaluation:661-670 and comparison.replay_selection:164-174 compare all files and weight digest before use."
+    },
+    {
+      "issue": "Selected checkpoint dictionary could contain extra/missing seeds",
+      "status": "fixed",
+      "evidence": "verify_results.py:214-219 checks exact configured seed key set."
+    },
+    {
+      "issue": "Method freeze used selection summaries without replaying epoch histories",
+      "status": "fixed in coordinator",
+      "evidence": "comparison.replay_selection:140-163 checks each history identity and exact epoch sequence, recomputes each best epoch; full shared-LR and primary selection recomputed at132-139 before freeze_comparison."
+    },
+    {
+      "issue": "Per-batch GPU synchronization from diagnostic scalar conversions",
+      "status": "fixed",
+      "evidence": "train.py:129-131 accumulates detached tensors; scalar conversion occurs at588-591 after trial."
+    },
+    {
+      "issue": "Pack completion calls integer file size",
+      "status": "fixed in shared code; frozen-copy state reflected in unresolved_findings",
+      "evidence": "comparison.py:495 now destination.stat().st_size."
+    }
+  ],
+  "reviewed_invariants": [
+    "train.two_view_terms computes mean of both example-mean CEs plus separately returned symmetric KL averaging directions, summing class terms and averaging original examples; both logits remain differentiable.",
+    "dropout_2view and rdrop planned configs have identical two views and four p0.1 dropout settings; only KL weight differs (0 vs1). Baseline is one view and four p0 fields.",
+    "MeasuredTrainer.compute_loss delegates to ordinary Trainer outside model.training and for one-view baseline. This preserves ordinary dev CE and saved-checkpoint CE reload equality.",
+    "Current gradient accumulation is one. Local Transformers5.19 training_step and compute_loss source confirm no gradient-accumulation scale discrepancy for the prescribed single-device route. Future GA>1 or distributed use would need explicit custom loss scaling review and is outside this comparison.",
+    "All three condition roots copy exactly derived parent inputs; check_input_files and replay_selection compare their hashes against expected_inputs generated from trusted parent code/config/data, not artifact-declared expectations alone.",
+    "comparison.run defers evaluations for all methods; replay_selection completes for all, freeze_comparison rejects any seed report or evaluation-start marker, then each condition resumes selected evaluation.",
+    "Saved comparison selection is recomputed from dev-only means and condition order; hash ties condition selection records to the global freeze; verification checks training_finished <= comparison_frozen <= evaluation_started.",
+    "Artifact verification invokes trusted ROOT/verify_results.py via sys.executable with NYAMURU_EXPERIMENT_ROOT selecting derived condition inputs. The downloaded train/verify/comparison Python files are hashed as data rather than executed.",
+    "Received per-condition verification uses --read-only and compares reports/verification.json with reconstructed metrics instead of writing outputs.",
+    "independent_acceptance_eligible=False propagates into all condition configs and suppresses target_assessment; test73 and older sets remain regression-only.",
+    "Existing source/labels, dataset bytes, no-truncation encoding and per-source/family invariants remain in shared validation path.",
+    "Packaging retains selected model contents, all reports, trial JSON/JSONL diagnostic files and all declared inputs. The parent fixture exercises three roots, eighteen trial runs, nine selected checkpoints, prediction recomputation and read-only verification; its completion was not independently executed in this review."
+  ],
+  "test_scope_assessment": {
+    "test_comparison": "Covers symmetric KL numerical formula, batch-size normalization, nonzero finite gradients, invalid objective cases, tiny ModernBERT train/eval/reload, one-vs-two forward counts, dev-only method selection/ties/missing methods and independent-acceptance suppression.",
+    "smoke_comparison": "Uses a tiny CPU ModernBERT and placeholder tokenizer in an isolated fixture; copies unchanged real data but changes fixture model/epochs/batch only; exercises actual shared coordinator run/pack/trusted verification; checks both downloaded artifact and real input hashes remain unchanged.",
+    "limits": "I performed static reads and local installed-API source inspection only. Parent owns execution evidence and final bundle regeneration; no T4/CUDA performance or real-model accuracy was checked."
+  },
+  "installed_api_sources": [
+    "/Users/yukin_co/Documents/DokiDoki-Dogido/.dogido_tools/request_classifier/.venv/lib/python3.11/site-packages/transformers/trainer.py:2026-2192",
+    "/Users/yukin_co/Documents/DokiDoki-Dogido/.dogido_tools/request_classifier/.venv/lib/python3.11/site-packages/transformers/models/modernbert/modeling_modernbert.py:558-639"
+  ],
+  "memory_used": false
+}

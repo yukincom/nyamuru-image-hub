@@ -1,0 +1,661 @@
+{
+  "schema_version": 3,
+  "status": "parent_review_complete_before_training",
+  "merge_groups": [
+    {
+      "groups": [
+        "massive_adapt_save",
+        "save_basic"
+      ],
+      "reason": "作品を保存する基本依頼の語調・時制差。保存しないという否定側も旧familyに従い同じpoolへ保持。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_001",
+          "candidate_text": "現在の作品を保存してください",
+          "legacy_id": "nyamuru_voice_002",
+          "legacy_text": "今の作品を保存してください",
+          "legacy_label": "save",
+          "legacy_group": "save_basic"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_002",
+          "candidate_text": "今の作品を保存してくれる",
+          "legacy_id": "nyamuru_voice_002",
+          "legacy_text": "今の作品を保存してください",
+          "legacy_label": "save",
+          "legacy_group": "save_basic"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_004",
+          "candidate_text": "作業中の作品を保存してくださいませんか",
+          "legacy_id": "nyamuru_voice_002",
+          "legacy_text": "今の作品を保存してください",
+          "legacy_label": "save",
+          "legacy_group": "save_basic"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_history",
+        "undo_last_edit",
+        "v03_redo_history_count",
+        "v03_undo_history_count"
+      ],
+      "reason": "完了済み編集の取り消しとUndo済み編集の再適用の対照。回数違い・対象の修飾差を新規holdoutにしない。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_009",
+          "candidate_text": "直前に右へ動かした吹き出しの編集を取り消して",
+          "legacy_id": "nyamuru_voice_013",
+          "legacy_text": "今動かした吹き出しの編集を一つ取り消して",
+          "legacy_label": "undo",
+          "legacy_group": "undo_last_edit"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_012",
+          "candidate_text": "直前の変更をUndoで一件取り消して",
+          "legacy_id": "nyamuru_voice_1039",
+          "legacy_text": "直前の二操作を、Undo二回で取り消してほしい。",
+          "legacy_label": "undo",
+          "legacy_group": "v03_undo_history_count"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_014",
+          "candidate_text": "Undoで取り消した直前の編集を一つ再適用して",
+          "legacy_id": "nyamuru_voice_1046",
+          "legacy_text": "最後のUndoで取り消した変更を、一件だけ再適用してください。",
+          "legacy_label": "redo",
+          "legacy_group": "v03_redo_history_count"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_page_navigation",
+        "page_first",
+        "page_last",
+        "page_previous"
+      ],
+      "reason": "前後・先頭末尾の作品ページ移動における短い対象差・語調差。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_020",
+          "candidate_text": "一つ前の作品ページを表示してください",
+          "legacy_id": "nyamuru_voice_035",
+          "legacy_text": "ひとつ前のページを見せて",
+          "legacy_label": "page_navigate",
+          "legacy_group": "page_previous"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_021",
+          "candidate_text": "作品の最初のページを開いてくれるかな",
+          "legacy_id": "nyamuru_voice_041",
+          "legacy_text": "最初のページにして",
+          "legacy_label": "page_navigate",
+          "legacy_group": "page_first"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_022",
+          "candidate_text": "作品の最後のページを開いて",
+          "legacy_id": "nyamuru_voice_042",
+          "legacy_text": "最後のページを表示して",
+          "legacy_label": "page_navigate",
+          "legacy_group": "page_last"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_zoom",
+        "v02_core_view_change_zoom_step",
+        "zoom_in"
+      ],
+      "reason": "キャンバスの倍率を一段下げる/上げるという近い対照。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_025",
+          "candidate_text": "キャンバスの表示倍率を一段下げて",
+          "legacy_id": "nyamuru_voice_452",
+          "legacy_text": "表示が大き過ぎるので、画面の倍率を一段下げてくれる？",
+          "legacy_label": "view_change",
+          "legacy_group": "v02_core_view_change_zoom_step"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_026",
+          "candidate_text": "キャンバスの表示倍率をもう一段上げて",
+          "legacy_id": "nyamuru_voice_049",
+          "legacy_text": "表示を一段拡大して",
+          "legacy_label": "view_change",
+          "legacy_group": "zoom_in"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_visual_toggle",
+        "edit_guide",
+        "placement_guide",
+        "spread_off",
+        "spread_on"
+      ],
+      "reason": "見開き、特定ガイド表示のオン/オフと短い対象差。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_027",
+          "candidate_text": "見開き表示をオンにして",
+          "legacy_id": "nyamuru_voice_055",
+          "legacy_text": "見開き表示にして",
+          "legacy_label": "view_change",
+          "legacy_group": "spread_on"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_027",
+          "candidate_text": "見開き表示をオンにして",
+          "legacy_id": "nyamuru_voice_057",
+          "legacy_text": "見開き表示をオフにして",
+          "legacy_label": "view_change",
+          "legacy_group": "spread_off"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_028",
+          "candidate_text": "配置ガイドの表示を消して",
+          "legacy_id": "nyamuru_voice_058",
+          "legacy_text": "配置ガイドを表示して",
+          "legacy_label": "view_change",
+          "legacy_group": "placement_guide"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_029",
+          "candidate_text": "編集ガイドの表示をオフにして",
+          "legacy_id": "nyamuru_voice_061",
+          "legacy_text": "編集ガイドをオフにして",
+          "legacy_label": "view_change",
+          "legacy_group": "edit_guide"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_artwork_mode",
+        "ambiguous_mode",
+        "mode_draft",
+        "mode_integrated"
+      ],
+      "reason": "作画方式の値明示/不足、下書き/一体型の近い対照。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_031",
+          "candidate_text": "作画方式を下書きに変えて",
+          "legacy_id": "nyamuru_voice_072",
+          "legacy_text": "作画方式を下書き生成にして",
+          "legacy_label": "artwork_mode_set",
+          "legacy_group": "mode_draft"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_032",
+          "candidate_text": "作品の作画設定を一体型に変更して",
+          "legacy_id": "nyamuru_voice_070",
+          "legacy_text": "作画設定の一体型を選択して",
+          "legacy_label": "artwork_mode_set",
+          "legacy_group": "mode_integrated"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_031",
+          "candidate_text": "作画方式を下書きに変えて",
+          "legacy_id": "nyamuru_voice_109",
+          "legacy_text": "作画方式を変えて",
+          "legacy_label": "needs_clarification",
+          "legacy_group": "ambiguous_mode"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_bubble_shape",
+        "bubble_shape_normal"
+      ],
+      "reason": "選択中吹き出しのふつうの形を指定する語調差。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_037",
+          "candidate_text": "選択中の吹き出しの形をふつうに変えて",
+          "legacy_id": "nyamuru_voice_079",
+          "legacy_text": "吹き出しの形をふつうに戻して",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_shape_normal"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_bubble_tail",
+        "bubble_tail"
+      ],
+      "reason": "選択中吹き出しのしっぽを消す依頼の語調差。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_038",
+          "candidate_text": "選択中の吹き出しのしっぽを消してちょうだい",
+          "legacy_id": "nyamuru_voice_082",
+          "legacy_text": "この吹き出しのしっぽを消して",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_tail"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_bubble_dimension",
+        "bubble_move",
+        "bubble_resize"
+      ],
+      "reason": "一つの吹き出しの寸法/移動の値だけを替えた近い依頼群。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_039",
+          "candidate_text": "選択中の吹き出しの横幅を七十ミリにしてください",
+          "legacy_id": "nyamuru_voice_090",
+          "legacy_text": "この吹き出しの幅を30ミリにして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_resize"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_041",
+          "candidate_text": "選択中の吹き出しを左へ五ミリ移動して",
+          "legacy_id": "nyamuru_voice_086",
+          "legacy_text": "選択中の吹き出しを右へ2ミリ動かして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_move"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_bubble_text",
+        "bubble_text"
+      ],
+      "reason": "既存吹き出しへ指定本文を入れる言い換え。引用本文の違いを独立holdoutにしない。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_040",
+          "candidate_text": "選択中の吹き出しに「ここから出発」を本文として入れて",
+          "legacy_id": "nyamuru_voice_093",
+          "legacy_text": "この吹き出しの本文を「おはよう。」にして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_text"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_bubble_clip",
+        "bubble_clip"
+      ],
+      "reason": "選択中吹き出しのコマ枠切取り設定という語調差。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_042",
+          "candidate_text": "選択中の吹き出しをコマの枠で切り取る設定に変えて",
+          "legacy_id": "nyamuru_voice_084",
+          "legacy_text": "この吹き出しをコマ枠で切り取る設定にして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_clip"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_setting_polarity",
+        "inner_frame_snap_set_desired_state",
+        "panel_gap_snap_set_desired_state",
+        "panel_sync_set_desired_state",
+        "panel_sync_set_unspecified"
+      ],
+      "reason": "三設定の名前、オン/オフ、指定あり/不足の差替え対照。完全重複3件は新規行を除外する。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_043",
+          "candidate_text": "コマシンクロをオンにしてください",
+          "legacy_id": "nyamuru_voice_165",
+          "legacy_text": "コマシンクロをオンにして",
+          "legacy_label": "panel_sync_set",
+          "legacy_group": "panel_sync_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_044",
+          "candidate_text": "コマシンクロの設定をオフにして",
+          "legacy_id": "nyamuru_voice_171",
+          "legacy_text": "コマシンクロをオフにして",
+          "legacy_label": "panel_sync_set",
+          "legacy_group": "panel_sync_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_049",
+          "candidate_text": "内枠スナップをオンにして",
+          "legacy_id": "nyamuru_voice_185",
+          "legacy_text": "内枠スナップをオンにして",
+          "legacy_label": "inner_frame_snap_set",
+          "legacy_group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_050",
+          "candidate_text": "内枠スナップをオフに切り替えて",
+          "legacy_id": "nyamuru_voice_191",
+          "legacy_text": "内枠スナップをオフにして",
+          "legacy_label": "inner_frame_snap_set",
+          "legacy_group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_055",
+          "candidate_text": "コマスナップをオンにして",
+          "legacy_id": "nyamuru_voice_205",
+          "legacy_text": "コマスナップをオンにして",
+          "legacy_label": "panel_gap_snap_set",
+          "legacy_group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_056",
+          "candidate_text": "コマスナップをオフにして",
+          "legacy_id": "nyamuru_voice_211",
+          "legacy_text": "コマスナップをオフにして",
+          "legacy_label": "panel_gap_snap_set",
+          "legacy_group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_047",
+          "candidate_text": "コマシンクロの設定をオンへ切り替えて",
+          "legacy_id": "nyamuru_voice_181",
+          "legacy_text": "コマシンクロの設定を変えて",
+          "legacy_label": "needs_clarification",
+          "legacy_group": "panel_sync_set_unspecified"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_generation",
+        "generate_current_page",
+        "generate_selected_character",
+        "generate_selected_panel",
+        "v02_routes_gen_selection"
+      ],
+      "reason": "選択対象の画像生成という共通文型の対象差。全体/人物/コマの違いを理由に評価へ分割しない。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_061",
+          "candidate_text": "選択中のコマの画像を生成してくださいませ",
+          "legacy_id": "nyamuru_voice_243",
+          "legacy_text": "このコマだけ生成",
+          "legacy_label": "generate_request",
+          "legacy_group": "generate_selected_panel"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_062",
+          "candidate_text": "今のページ全体の画像を作って",
+          "legacy_id": "nyamuru_voice_239",
+          "legacy_text": "いま表示しているページ全体の画像を生成して",
+          "legacy_label": "generate_request",
+          "legacy_group": "generate_current_page"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_063",
+          "candidate_text": "選択しているキャラクターの画像を作って",
+          "legacy_id": "nyamuru_voice_232",
+          "legacy_text": "この人物だけ画像生成して",
+          "legacy_label": "generate_request",
+          "legacy_group": "generate_selected_character"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_066",
+          "candidate_text": "選択した対象の画像を新しく生成して",
+          "legacy_id": "nyamuru_voice_864",
+          "legacy_text": "今選択した対象の画像を一度生成してみて",
+          "legacy_label": "generate_request",
+          "legacy_group": "v02_routes_gen_selection"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_background",
+        "registered_background_candidates",
+        "v02_routes_bg_count"
+      ],
+      "reason": "登録済み3D背景候補のカテゴリ名と件数を差替えた近い依頼。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_068",
+          "candidate_text": "登録済みの3Dモデルから公園の背景候補を見つけてくれませんか",
+          "legacy_id": "nyamuru_voice_256",
+          "legacy_text": "登録済みの3Dモデルから学校の背景候補を探して",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "registered_background_candidates"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_070",
+          "candidate_text": "登録済みの3Dモデルの中から病院の背景候補を三つ見せて",
+          "legacy_id": "nyamuru_voice_908",
+          "legacy_text": "登録済み3Dモデルの中から、屋上の背景候補を三つ挙げて",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "v02_routes_bg_count"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_071",
+          "candidate_text": "登録済みの3Dモデルで街の背景に使う候補を提示して",
+          "legacy_id": "nyamuru_voice_250",
+          "legacy_text": "登録済みの3Dモデルから背景候補を出して",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "registered_background_candidates"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_072",
+          "candidate_text": "登録済みの3Dモデルから背景候補が二つ欲しいので、選んで提示して",
+          "legacy_id": "nyamuru_voice_255",
+          "legacy_text": "3D背景の候補を三つ出して",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "registered_background_candidates"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_paint",
+        "paint_pen_choice"
+      ],
+      "reason": "描画ペンをラスター/ベクターへ変更する文型の対照。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_073",
+          "candidate_text": "描くペンをベクターペンに切り替えて",
+          "legacy_id": "nyamuru_voice_292",
+          "legacy_text": "ベクターペンに切り替えて",
+          "legacy_label": "paint_tool_set",
+          "legacy_group": "paint_pen_choice"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_074",
+          "candidate_text": "描画ペンをラスターペンに変えて",
+          "legacy_id": "nyamuru_voice_285",
+          "legacy_text": "ラスターペンに変えて",
+          "legacy_label": "paint_tool_set",
+          "legacy_group": "paint_pen_choice"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_075",
+          "candidate_text": "描くときのペンをベクターペンに変えて",
+          "legacy_id": "nyamuru_voice_291",
+          "legacy_text": "ベクターペンに変えて",
+          "legacy_label": "paint_tool_set",
+          "legacy_group": "paint_pen_choice"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_text_frames",
+        "text_frames_top",
+        "v02_edit_align_selected"
+      ],
+      "reason": "選択した複数文字枠の上端揃えという言い換え。枠の数や複数吹き出しの指定は同じpoolで扱う。",
+      "evidence": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_079",
+          "candidate_text": "選択中の複数の文字枠を上端で揃えて",
+          "legacy_id": "nyamuru_voice_299",
+          "legacy_text": "この複数の文字枠を上揃えにして",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "text_frames_top"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_080",
+          "candidate_text": "選択した複数の文字枠の上端を一致させてください",
+          "legacy_id": "nyamuru_voice_673",
+          "legacy_text": "選択した三つの文字枠の上端を、同じ高さへ合わせてほしい。",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "v02_edit_align_selected"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_082",
+          "candidate_text": "選択した別々の吹き出しの文字枠の上端を揃えてください",
+          "legacy_id": "nyamuru_voice_301",
+          "legacy_text": "選択した吹き出し内の文字の上端をそろえて",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "text_frames_top"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_084",
+          "candidate_text": "選択した複数の文字枠の上端揃えを実行してください",
+          "legacy_id": "nyamuru_voice_298",
+          "legacy_text": "選択した文字枠の上端をそろえて",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "text_frames_top"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "massive_adapt_generation",
+        "massive_adapt_history",
+        "massive_adapt_save",
+        "massive_adapt_text_frames",
+        "massive_alarm_remove",
+        "massive_alarm_set"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_alarm_controls"
+    },
+    {
+      "groups": [
+        "massive_adapt_generation",
+        "massive_adapt_history",
+        "massive_calendar_remove",
+        "massive_calendar_set"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_calendar_controls"
+    },
+    {
+      "groups": [
+        "massive_email_query",
+        "massive_email_sendemail"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_email"
+    },
+    {
+      "groups": [
+        "massive_adapt_artwork_mode",
+        "massive_adapt_bubble_clip",
+        "massive_adapt_bubble_dimension",
+        "massive_adapt_bubble_shape",
+        "massive_adapt_bubble_tail",
+        "massive_adapt_history",
+        "massive_adapt_page_navigation",
+        "massive_adapt_paint",
+        "massive_adapt_setting_polarity",
+        "massive_adapt_text_frames",
+        "massive_adapt_visual_toggle",
+        "massive_iot_hue_lightchange",
+        "massive_iot_hue_lightdim",
+        "massive_iot_hue_lightoff",
+        "massive_iot_hue_lighton",
+        "massive_iot_hue_lightup",
+        "massive_iot_wemo_off",
+        "massive_iot_wemo_on"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_home_control_states"
+    },
+    {
+      "groups": [
+        "massive_adapt_page_navigation",
+        "massive_adapt_setting_polarity",
+        "massive_adapt_text_frames",
+        "massive_iot_cleaning"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_iot_cleaning"
+    },
+    {
+      "groups": [
+        "massive_adapt_artwork_mode",
+        "massive_adapt_background",
+        "massive_adapt_generation",
+        "massive_adapt_save",
+        "massive_iot_coffee"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_iot_coffee"
+    },
+    {
+      "groups": [
+        "massive_adapt_generation",
+        "massive_adapt_history",
+        "massive_adapt_save",
+        "massive_adapt_text_frames",
+        "massive_lists_createoradd",
+        "massive_lists_remove"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_list_controls"
+    },
+    {
+      "groups": [
+        "massive_adapt_background",
+        "massive_adapt_bubble_dimension",
+        "massive_adapt_bubble_text",
+        "massive_adapt_history",
+        "massive_adapt_page_navigation",
+        "massive_adapt_paint",
+        "massive_adapt_save",
+        "massive_adapt_tab",
+        "massive_adapt_text_frames",
+        "massive_adapt_zoom",
+        "massive_play_music",
+        "massive_play_podcasts",
+        "massive_play_radio"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_media_controls"
+    },
+    {
+      "groups": [
+        "massive_transport_query",
+        "massive_transport_taxi",
+        "massive_transport_ticket"
+      ],
+      "reason": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。",
+      "source_family": "massive_source_transport"
+    },
+    {
+      "groups": [
+        "v03_extra_dev_quoted_setting_as_execution",
+        "v03_extra_dev_quoted_generation_is_current_request"
+      ],
+      "reason": "引用した操作文を例文ではなく現在の実行依頼と明示する同一dev内の対照。"
+    }
+  ],
+  "evaluation_review": "curation/2026-10-18-evaluation/acceptance-review.json",
+  "scope": "Declared family isolation plus pretraining manual near-example review; not proof of linguistic independence."
+}

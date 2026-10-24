@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-17",
+  "version": "v0.2",
+  "status": "prepared_not_trained",
+  "source_copy_hashes_verified": 4,
+  "original_rows_unchanged": 316,
+  "additional_synthetic_rows": 608,
+  "added_per_label": 32,
+  "total_rows": 924,
+  "input_hashes_verified": 30,
+  "notebook_code_cells_parsed": 5,
+  "notebook_embedded_python_parsed": true,
+  "unit_tests_passed": 20,
+  "tests_executed_from_final_archive": true,
+  "source_originals_unchanged": true,
+  "original_notebook_and_zip_unchanged": true,
+  "old_snapshot_files_verified": 11,
+  "splits": {
+    "train": {
+      "n": 647,
+      "families": 92,
+      "labels_present": 19,
+      "minimum_per_label": 28
+    },
+    "dev": {
+      "n": 138,
+      "families": 35,
+      "labels_present": 19,
+      "minimum_per_label": 4
+    },
+    "test": {
+      "n": 139,
+      "families": 38,
+      "labels_present": 19,
+      "minimum_per_label": 4
+    }
+  },
+  "label_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18
+  ],
+  "group_count": 292,
+  "family_count": 165,
+  "normalized_duplicate_count": 0,
+  "tokenization": "all 924 raw utterances; 3-21 tokens; no truncation; no model forward",
+  "model_training_run": false,
+  "model_inference_run": false,
+  "ASR_run": false,
+  "runtime_wired": false,
+  "archive": "nyamuru-voice-v02-inputs.zip",
+  "archive_bytes": 282994,
+  "archive_sha256": "cfe42abf00e3ae898d6197b665d48d97b3e22a96912c890a322c08047e67bc48",
+  "notebook_sha256": "4176a726b31adc201cdb38088ccfc0d81b75e842b401c5e8c9744b33130f80e1",
+  "review": "Parent reviewed all 608 texts/labels/slots and all union proposals. Author core review plus independent edit/routes and code review; wording and preparation failure handling fixed before final bundle. User review pending.",
+  "changed_behavior_checks": [
+    "corpus preserves original rows and hashes",
+    "all 19 labels represented in all splits",
+    "no metadata passed to classifier",
+    "reject source JSONL without final LF",
+    "validate staged preparation before replacing existing outputs",
+    "restore previous files on replacement failure"
+  ]
+}

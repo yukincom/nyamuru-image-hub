@@ -1,0 +1,455 @@
+{
+  "status": "pass",
+  "created_at_utc": "2026-10-18T12:38:05.541287+00:00",
+  "reviewer_method": "Independent stdlib recomputation from saved prediction files; no parent or received Python code executed; source read-only review performed.",
+  "artifact_root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/fixed73-all-models-2026-10-18",
+  "test_sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+  "script_review_sha256": "01234c3e60b39a57923b48736b95cfdbe16bae211886797c1edc4f75db1ddde5",
+  "prediction_sha256_initial": {
+    "v02_seed42": "c655ccaeed3c82aac800b0aa62030fa7e1c0e9687299eadf6fd0925bbb2d2bfb",
+    "v02_seed43": "6086abe61025ecaff178aba0cb93cec082765a50646408b1faa1b8a24e6b85bc",
+    "v02_seed44": "b165922dce8ad4182c6325a2b38bfa70b070abab3c522168cf78ac087a0d0aa9",
+    "v03_seed42": "f972238f69c38eaf95964824481a7fb67abe12463fce61e3be9bf3ff4bc097fe",
+    "v03_seed43": "a855a56b2f2d4bad92cdc694a4d44716ea92fad40dfa2488552712cf6d452324",
+    "v03_seed44": "7a46f1ef37971f1ed5b4733690addbadbe306aff2828112db1a9badcb8fc8e1d",
+    "v04_seed42": "cdbfe158a3542b5d16259cf128a1db1d7aa8ddf5f6b0af9e6b6e21134b4c585b",
+    "v04_seed43": "869ade6b18503bf7b63cc65bfd95432a298f7e86ed40dd46ebffa1d2edad095e",
+    "v04_seed44": "d2b32e2c94ac841a3c4fca601045fcb4c9ed5f92696dc89ba7b617e95b195b32",
+    "v051_baseline_seed42": "cdbfe158a3542b5d16259cf128a1db1d7aa8ddf5f6b0af9e6b6e21134b4c585b",
+    "v051_baseline_seed43": "869ade6b18503bf7b63cc65bfd95432a298f7e86ed40dd46ebffa1d2edad095e",
+    "v051_baseline_seed44": "d2b32e2c94ac841a3c4fca601045fcb4c9ed5f92696dc89ba7b617e95b195b32",
+    "v051_dropout_2view_seed42": "836d65468659b7c17615b03194b678129614751d184f4ff9829505ac7f310c02",
+    "v051_dropout_2view_seed43": "8665f39a545b7eeff7eead7e1995341b267e9a18ef29ac4feb23b48c461eb140",
+    "v051_dropout_2view_seed44": "43a4cd70004add0a49f2d9edbea07d6fe76df06cc4b5411df42a8bfa7107f0e9",
+    "v051_rdrop_seed42": "4b26a28315e8a95ecdc61f520d47841c390fa3d88ef5d85dea9f8b9a9aaaf878",
+    "v051_rdrop_seed43": "f25a4f5af2313ac45269b8324c86b7cedcd6b01843f37eb349339574d96de307",
+    "v051_rdrop_seed44": "380e75c09b0f3d00ce3390f51f880ac4d757d8da4ffab01900b1d1c251d9634f"
+  },
+  "checked_models": 18,
+  "checked_predictions": 1314,
+  "check_count": 10076,
+  "failures": [],
+  "groups": {
+    "v02": {
+      "correct_by_seed": [
+        54,
+        51,
+        50
+      ],
+      "accuracy_mean": 0.7077625570776256,
+      "accuracy_sample_stddev": 0.028515972595426466,
+      "macro_f1_mean": 0.6716858190542401,
+      "macro_f1_sample_stddev": 0.0459929295870107,
+      "historical_primary": null
+    },
+    "v03": {
+      "correct_by_seed": [
+        56,
+        55,
+        53
+      ],
+      "accuracy_mean": 0.7488584474885844,
+      "accuracy_sample_stddev": 0.020925003173314312,
+      "macro_f1_mean": 0.7459520012151591,
+      "macro_f1_sample_stddev": 0.01907686082059275,
+      "historical_primary": {
+        "name": "seed-42",
+        "seed": 42,
+        "trial": "trial-2",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      }
+    },
+    "v04": {
+      "correct_by_seed": [
+        59,
+        60,
+        59
+      ],
+      "accuracy_mean": 0.8127853881278538,
+      "accuracy_sample_stddev": 0.007908907797118128,
+      "macro_f1_mean": 0.8195790564211617,
+      "macro_f1_sample_stddev": 0.005591878638056542,
+      "historical_primary": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      }
+    },
+    "v051_baseline": {
+      "correct_by_seed": [
+        59,
+        60,
+        59
+      ],
+      "accuracy_mean": 0.8127853881278538,
+      "accuracy_sample_stddev": 0.007908907797118128,
+      "macro_f1_mean": 0.8195790564211617,
+      "macro_f1_sample_stddev": 0.005591878638056542,
+      "historical_primary": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      }
+    },
+    "v051_dropout_2view": {
+      "correct_by_seed": [
+        59,
+        57,
+        59
+      ],
+      "accuracy_mean": 0.7990867579908676,
+      "accuracy_sample_stddev": 0.015817815594236322,
+      "macro_f1_mean": 0.7879671984935143,
+      "macro_f1_sample_stddev": 0.015330053297604876,
+      "historical_primary": {
+        "name": "seed-43",
+        "seed": 43,
+        "trial": "trial-4",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      }
+    },
+    "v051_rdrop": {
+      "correct_by_seed": [
+        60,
+        60,
+        58
+      ],
+      "accuracy_mean": 0.8127853881278538,
+      "accuracy_sample_stddev": 0.015817815594236322,
+      "macro_f1_mean": 0.7996424628003576,
+      "macro_f1_sample_stddev": 0.014387637988272145,
+      "historical_primary": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      }
+    }
+  },
+  "models": {
+    "v02_seed42": {
+      "group": "v02",
+      "seed": 42,
+      "correct": 54,
+      "accuracy": 0.7397260273972602,
+      "macro_f1": 0.7221690590111642,
+      "historical_primary": false
+    },
+    "v02_seed43": {
+      "group": "v02",
+      "seed": 43,
+      "correct": 51,
+      "accuracy": 0.6986301369863014,
+      "macro_f1": 0.6321637426900585,
+      "historical_primary": false
+    },
+    "v02_seed44": {
+      "group": "v02",
+      "seed": 44,
+      "correct": 50,
+      "accuracy": 0.684931506849315,
+      "macro_f1": 0.6607246554614976,
+      "historical_primary": false
+    },
+    "v03_seed42": {
+      "group": "v03",
+      "seed": 42,
+      "correct": 56,
+      "accuracy": 0.7671232876712328,
+      "macro_f1": 0.7563605984658616,
+      "historical_primary": true
+    },
+    "v03_seed43": {
+      "group": "v03",
+      "seed": 43,
+      "correct": 55,
+      "accuracy": 0.7534246575342466,
+      "macro_f1": 0.7575605680868839,
+      "historical_primary": false
+    },
+    "v03_seed44": {
+      "group": "v03",
+      "seed": 44,
+      "correct": 53,
+      "accuracy": 0.726027397260274,
+      "macro_f1": 0.7239348370927319,
+      "historical_primary": false
+    },
+    "v04_seed42": {
+      "group": "v04",
+      "seed": 42,
+      "correct": 59,
+      "accuracy": 0.8082191780821918,
+      "macro_f1": 0.8143692564745196,
+      "historical_primary": false
+    },
+    "v04_seed43": {
+      "group": "v04",
+      "seed": 43,
+      "correct": 60,
+      "accuracy": 0.821917808219178,
+      "macro_f1": 0.8254873781189571,
+      "historical_primary": false
+    },
+    "v04_seed44": {
+      "group": "v04",
+      "seed": 44,
+      "correct": 59,
+      "accuracy": 0.8082191780821918,
+      "macro_f1": 0.8188805346700083,
+      "historical_primary": true
+    },
+    "v051_baseline_seed42": {
+      "group": "v051_baseline",
+      "seed": 42,
+      "correct": 59,
+      "accuracy": 0.8082191780821918,
+      "macro_f1": 0.8143692564745196,
+      "historical_primary": false
+    },
+    "v051_baseline_seed43": {
+      "group": "v051_baseline",
+      "seed": 43,
+      "correct": 60,
+      "accuracy": 0.821917808219178,
+      "macro_f1": 0.8254873781189571,
+      "historical_primary": false
+    },
+    "v051_baseline_seed44": {
+      "group": "v051_baseline",
+      "seed": 44,
+      "correct": 59,
+      "accuracy": 0.8082191780821918,
+      "macro_f1": 0.8188805346700083,
+      "historical_primary": true
+    },
+    "v051_dropout_2view_seed42": {
+      "group": "v051_dropout_2view",
+      "seed": 42,
+      "correct": 59,
+      "accuracy": 0.8082191780821918,
+      "macro_f1": 0.8013366750208856,
+      "historical_primary": false
+    },
+    "v051_dropout_2view_seed43": {
+      "group": "v051_dropout_2view",
+      "seed": 43,
+      "correct": 57,
+      "accuracy": 0.7808219178082192,
+      "macro_f1": 0.7712349054454317,
+      "historical_primary": true
+    },
+    "v051_dropout_2view_seed44": {
+      "group": "v051_dropout_2view",
+      "seed": 44,
+      "correct": 59,
+      "accuracy": 0.8082191780821918,
+      "macro_f1": 0.7913300150142255,
+      "historical_primary": false
+    },
+    "v051_rdrop_seed42": {
+      "group": "v051_rdrop",
+      "seed": 42,
+      "correct": 60,
+      "accuracy": 0.821917808219178,
+      "macro_f1": 0.8073283441704494,
+      "historical_primary": false
+    },
+    "v051_rdrop_seed43": {
+      "group": "v051_rdrop",
+      "seed": 43,
+      "correct": 60,
+      "accuracy": 0.821917808219178,
+      "macro_f1": 0.8085548953970007,
+      "historical_primary": false
+    },
+    "v051_rdrop_seed44": {
+      "group": "v051_rdrop",
+      "seed": 44,
+      "correct": 58,
+      "accuracy": 0.7945205479452054,
+      "macro_f1": 0.7830441488336225,
+      "historical_primary": true
+    }
+  },
+  "group_order_accuracy_then_f1": [
+    "v04",
+    "v051_baseline",
+    "v051_rdrop",
+    "v051_dropout_2view",
+    "v03",
+    "v02"
+  ],
+  "top_groups_accuracy_then_f1": [
+    "v04",
+    "v051_baseline"
+  ],
+  "top_checkpoints_accuracy_then_f1": [
+    "v04_seed43",
+    "v051_baseline_seed43"
+  ],
+  "top_checkpoints_accuracy_only": [
+    "v04_seed43",
+    "v051_baseline_seed43",
+    "v051_rdrop_seed42",
+    "v051_rdrop_seed43"
+  ],
+  "original_cuda_vs_cpu": {
+    "v04_seed42": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 5.9604644775390625e-06
+    },
+    "v04_seed43": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 8.165836334228516e-06
+    },
+    "v04_seed44": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 1.150369644165039e-05
+    },
+    "v051_baseline_seed42": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 5.9604644775390625e-06
+    },
+    "v051_baseline_seed43": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 8.165836334228516e-06
+    },
+    "v051_baseline_seed44": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 1.150369644165039e-05
+    },
+    "v051_dropout_2view_seed42": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 2.562999725341797e-06
+    },
+    "v051_dropout_2view_seed43": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 1.2010335922241211e-05
+    },
+    "v051_dropout_2view_seed44": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 3.635883331298828e-06
+    },
+    "v051_rdrop_seed42": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 2.9206275939941406e-06
+    },
+    "v051_rdrop_seed43": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 4.708766937255859e-06
+    },
+    "v051_rdrop_seed44": {
+      "label_disagreements": [],
+      "max_probability_absolute_difference": 8.106231689453125e-06
+    }
+  },
+  "code_review": {
+    "material_findings": [],
+    "verified_design": [
+      "Calls the existing evaluate_checkpoint once per saved model with fixed identical test rows, CPU float32, SDPA, batch16, max128, no training or threshold.",
+      "Checks frozen reference inputs, original selected checkpoint hashes, label mapping, shared evaluator hashes, and unchanged inputs after inference.",
+      "Preserves historical primary seed metadata; v0.2 remains unspecified.",
+      "Correctly treats v0.4 and v0.5.1 baseline as aliases.",
+      "Declared ranking uses accuracy then F1; all current accuracy/F1 ties remain represented."
+    ],
+    "notes": [
+      "Final and initial script differ only in removing the lint directive prefix from a comment; independently reconstructed original bytes match initial SHA256. All18 rerun predictions are byte-identical.",
+      "Inference on CPU is identical across models; all12 eligible original CUDA model predictions have label parity, with small floating-point probability changes."
+    ]
+  },
+  "interpretation": "Best group by accuracy then F1 is v0.4 / identical v0.5.1 baseline. Accuracy alone ties with R-Drop group; F1 favors baseline. Best saved unique checkpoint by accuracy then F1 is v0.4 seed43 (same weights as baseline seed43), 60/73. R-Drop seeds42/43 also score60/73 but lower F1. This is a retrospective fixed synthetic73 ranking, not independent future-user performance proof.",
+  "pending": [],
+  "initial_artifact_root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/fixed73-all-models-2026-10-18-initial",
+  "rerun_verified_at_utc": "2026-10-18T12:38:25.460788+00:00",
+  "final_rerun": {
+    "prediction_files": {
+      "v02_seed42": {
+        "sha256": "c655ccaeed3c82aac800b0aa62030fa7e1c0e9687299eadf6fd0925bbb2d2bfb",
+        "matches_initial": true
+      },
+      "v02_seed43": {
+        "sha256": "6086abe61025ecaff178aba0cb93cec082765a50646408b1faa1b8a24e6b85bc",
+        "matches_initial": true
+      },
+      "v02_seed44": {
+        "sha256": "b165922dce8ad4182c6325a2b38bfa70b070abab3c522168cf78ac087a0d0aa9",
+        "matches_initial": true
+      },
+      "v03_seed42": {
+        "sha256": "f972238f69c38eaf95964824481a7fb67abe12463fce61e3be9bf3ff4bc097fe",
+        "matches_initial": true
+      },
+      "v03_seed43": {
+        "sha256": "a855a56b2f2d4bad92cdc694a4d44716ea92fad40dfa2488552712cf6d452324",
+        "matches_initial": true
+      },
+      "v03_seed44": {
+        "sha256": "7a46f1ef37971f1ed5b4733690addbadbe306aff2828112db1a9badcb8fc8e1d",
+        "matches_initial": true
+      },
+      "v04_seed42": {
+        "sha256": "cdbfe158a3542b5d16259cf128a1db1d7aa8ddf5f6b0af9e6b6e21134b4c585b",
+        "matches_initial": true
+      },
+      "v04_seed43": {
+        "sha256": "869ade6b18503bf7b63cc65bfd95432a298f7e86ed40dd46ebffa1d2edad095e",
+        "matches_initial": true
+      },
+      "v04_seed44": {
+        "sha256": "d2b32e2c94ac841a3c4fca601045fcb4c9ed5f92696dc89ba7b617e95b195b32",
+        "matches_initial": true
+      },
+      "v051_baseline_seed42": {
+        "sha256": "cdbfe158a3542b5d16259cf128a1db1d7aa8ddf5f6b0af9e6b6e21134b4c585b",
+        "matches_initial": true
+      },
+      "v051_baseline_seed43": {
+        "sha256": "869ade6b18503bf7b63cc65bfd95432a298f7e86ed40dd46ebffa1d2edad095e",
+        "matches_initial": true
+      },
+      "v051_baseline_seed44": {
+        "sha256": "d2b32e2c94ac841a3c4fca601045fcb4c9ed5f92696dc89ba7b617e95b195b32",
+        "matches_initial": true
+      },
+      "v051_dropout_2view_seed42": {
+        "sha256": "836d65468659b7c17615b03194b678129614751d184f4ff9829505ac7f310c02",
+        "matches_initial": true
+      },
+      "v051_dropout_2view_seed43": {
+        "sha256": "8665f39a545b7eeff7eead7e1995341b267e9a18ef29ac4feb23b48c461eb140",
+        "matches_initial": true
+      },
+      "v051_dropout_2view_seed44": {
+        "sha256": "43a4cd70004add0a49f2d9edbea07d6fe76df06cc4b5411df42a8bfa7107f0e9",
+        "matches_initial": true
+      },
+      "v051_rdrop_seed42": {
+        "sha256": "4b26a28315e8a95ecdc61f520d47841c390fa3d88ef5d85dea9f8b9a9aaaf878",
+        "matches_initial": true
+      },
+      "v051_rdrop_seed43": {
+        "sha256": "f25a4f5af2313ac45269b8324c86b7cedcd6b01843f37eb349339574d96de307",
+        "matches_initial": true
+      },
+      "v051_rdrop_seed44": {
+        "sha256": "380e75c09b0f3d00ce3390f51f880ac4d757d8da4ffab01900b1d1c251d9634f",
+        "matches_initial": true
+      }
+    },
+    "all_18_byte_identical": true,
+    "summary_identical": true,
+    "all_output_hashes_match": true,
+    "output_file_hash_count": 58,
+    "all_plan_input_hashes_match": true,
+    "input_file_hash_count": 279,
+    "source_change_only_removed_lint_comment": true
+  }
+}

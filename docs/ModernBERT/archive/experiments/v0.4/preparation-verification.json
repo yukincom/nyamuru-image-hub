@@ -1,0 +1,46 @@
+{
+  "status": "prepared_and_locally_verified",
+  "counts": {
+    "train": 1296,
+    "dev": 68,
+    "test": 73,
+    "legacy_v03_dev": 88,
+    "legacy_v03_test": 132,
+    "legacy_v02_dev": 138,
+    "legacy_v02_test": 139
+  },
+  "checks": {
+    "notebook_5_code_cells_and_embedded_python_parse": true,
+    "zip_hash_embedded_in_upload_cell": true,
+    "notebook_unexecuted": true,
+    "isolated_zip_18_tests_passed_11_old_data_tests_skipped_without_root_env": true,
+    "zip_files_sha256_verified": 154,
+    "isolated_rebuild_identical_zip_and_notebook": true,
+    "v02_tracked_inputs_unchanged": 13,
+    "v03_frozen_input_files_unchanged": 102,
+    "v03_original_result_saved_predictions_reverified": 4731
+  },
+  "existing_unit_tests_passed": 20,
+  "v04_unit_tests_passed": 16,
+  "shared_v03_evaluation_tests_passed": 2,
+  "ruff": "passed",
+  "tokenization": {
+    "n": 1934,
+    "max_tokens": 47,
+    "truncated": 0,
+    "pinned_original_tokenizer_hashes_verified": true
+  },
+  "model_inference_run": false,
+  "training_run": false,
+  "colab_gpu_execution_verified": false,
+  "archive": {
+    "name": "nyamuru-voice-v04-inputs.zip",
+    "sha256": "f9b0998f890e9e0e7064af271fab3ac724f63ee3bd8aa227c403c1673be261e5",
+    "bytes": 3664159
+  },
+  "notebook": {
+    "name": "Nyamuru_Voice_ModernBERT_v0.4_19分類_2026-10-18.ipynb",
+    "sha256": "ceab203d364b57de10faac92473664fd4afa4dbd9edcda833e5c67f052627863"
+  },
+  "limits": "Local data/unit/package checks only. Colab dependency installation, GPU training and accuracy remain unexecuted."
+}

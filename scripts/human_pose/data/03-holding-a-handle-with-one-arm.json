@@ -1,0 +1,105 @@
+[
+  {
+    "slug": "standing-and-gripping-a-vertical-metal-pole-at-shoulder-height-with-one-hand",
+    "label_ja": "肩の高さで支柱を握る",
+    "pose_text_ja": "立ったまま片手で、垂直な金属の支柱を肩の高さで握る。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "pole"
+    ]
+  },
+  {
+    "slug": "standing-and-gripping-a-vertical-metal-pole-above-her-head-with-one-arm-extended",
+    "label_ja": "頭上で支柱を握る",
+    "pose_text_ja": "立ったまま片腕を伸ばし、頭より上で垂直な金属の支柱を握る。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "pole",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-an-overhead-hanging-strap-loop-with-one-hand",
+    "label_ja": "片手でつり革を持つ",
+    "pose_text_ja": "立ったまま片手で、頭上につり下がる輪状のつり革を持つ。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "strap",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-an-overhead-horizontal-bar-with-one-hand",
+    "label_ja": "片手で頭上の横棒を持つ",
+    "pose_text_ja": "立ったまま片手で頭上の水平な棒を持つ。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "bar",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-a-waist-high-horizontal-railing-with-one-hand",
+    "label_ja": "片手で腰高の手すりを持つ",
+    "pose_text_ja": "立ったまま片手で、腰の高さの水平な手すりを持つ。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "railing"
+    ]
+  },
+  {
+    "slug": "standing-and-pulling-a-door-handle-with-one-arm-extended",
+    "label_ja": "腕を伸ばしてドアを引く",
+    "pose_text_ja": "立ったまま片腕を伸ばし、ドアの取っ手を引く。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "door",
+      "handle"
+    ]
+  },
+  {
+    "slug": "leaning-out-slightly-while-holding-a-vertical-grab-bar-beside-her-with-one-hand",
+    "label_ja": "つかまり棒で体を傾ける",
+    "pose_text_ja": "横にある垂直なつかまり棒を片手で持ち、少し外側へ体を傾ける。",
+    "tags": [
+      "leaning",
+      "one-hand",
+      "pole"
+    ]
+  },
+  {
+    "slug": "reaching-up-with-her-arm-fully-stretched-to-hold-a-high-handle",
+    "label_ja": "高い取っ手へ腕を伸ばす",
+    "pose_text_ja": "片腕をいっぱいに上へ伸ばし、高い位置の取っ手を持つ。",
+    "tags": [
+      "one-hand",
+      "handle",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-a-ladder-rung-at-head-height-with-one-hand",
+    "label_ja": "頭の高さではしごを持つ",
+    "pose_text_ja": "立ったまま片手で、頭の高さのはしごの横木を持つ。",
+    "tags": [
+      "standing",
+      "one-hand",
+      "ladder"
+    ]
+  },
+  {
+    "slug": "swinging-out-from-a-vertical-metal-pole-holding-it-with-one-straight-arm",
+    "label_ja": "支柱から外側へ体を振る",
+    "pose_text_ja": "片腕をまっすぐにして垂直な金属の支柱を持ち、支柱から離れる方向へ体を振り出す。",
+    "tags": [
+      "one-hand",
+      "pole"
+    ]
+  }
+]

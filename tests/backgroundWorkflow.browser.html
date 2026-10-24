@@ -1,0 +1,4 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>撮影と共通履歴を検証</title><body><div id="app"></div><p id="startup">検証画面を準備中</p><script type="module">
+const status=document.getElementById('startup');
+try {await import('preact');status.textContent='画面の部品を読み込み中';await import('../src/components/App.tsx');status.textContent='検証を準備中';await import('./backgroundWorkflow.browser.tsx');status.remove();}catch(error){status.textContent=String(error.stack??error);}
+</script></body></html>

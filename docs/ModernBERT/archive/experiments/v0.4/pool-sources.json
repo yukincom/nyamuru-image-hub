@@ -1,0 +1,61 @@
+{
+  "schema_version": 4,
+  "sources": [
+    {
+      "path": "source/candidates.jsonl"
+    },
+    {
+      "path": "curation/2026-10-17-v02-variants/candidates.jsonl"
+    },
+    {
+      "path": "curation/2026-10-18-v03-boundaries/candidates.jsonl",
+      "allowed_split": "train"
+    },
+    {
+      "path": "curation/2026-10-18-public/raw-train.jsonl",
+      "allowed_split": "train"
+    },
+    {
+      "path": "curation/2026-10-18-public/accepted-adapted-train.jsonl",
+      "allowed_split": "train"
+    },
+    {
+      "path": "curation/2026-10-18-public/raw-dev.jsonl",
+      "allowed_split": "legacy_v03_dev"
+    },
+    {
+      "path": "curation/2026-10-18-public/raw-test.jsonl",
+      "allowed_split": "legacy_v03_test"
+    },
+    {
+      "path": "curation/2026-10-18-evaluation/accepted-dev.jsonl",
+      "allowed_split": "legacy_v03_dev"
+    },
+    {
+      "path": "curation/2026-10-18-evaluation/accepted-test.jsonl",
+      "allowed_split": "legacy_v03_test"
+    },
+    {
+      "path": "curation/2026-10-18-v04-contrasts/candidates.jsonl",
+      "allowed_split": "train"
+    },
+    {
+      "path": "curation/2026-10-18-v04-evaluation/accepted-dev.jsonl",
+      "allowed_split": "dev"
+    },
+    {
+      "path": "curation/2026-10-18-v04-evaluation/accepted-test.jsonl",
+      "allowed_split": "test"
+    }
+  ],
+  "review": "curation/2026-10-18-v04-evaluation/acceptance-review.json",
+  "minimum_per_label": {
+    "train": 12,
+    "dev": 2,
+    "test": 2,
+    "legacy_v03_dev": 4,
+    "legacy_v03_test": 4,
+    "legacy_v02_dev": 4,
+    "legacy_v02_test": 4
+  }
+}

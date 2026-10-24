@@ -1,0 +1,110 @@
+[
+  {
+    "slug": "sitting-upright-on-a-stool",
+    "label_ja": "スツールにまっすぐ座る",
+    "pose_text_ja": "スツールに上体をまっすぐにして座る。",
+    "tags": [
+      "seated",
+      "chair",
+      "stool"
+    ]
+  },
+  {
+    "slug": "perched-on-the-edge-of-a-stool-with-one-foot-on-the-rung",
+    "label_ja": "スツールの端に腰掛ける",
+    "pose_text_ja": "スツールの端に浅く腰掛け、片足を横木に置く。",
+    "tags": [
+      "seated",
+      "chair",
+      "stool"
+    ]
+  },
+  {
+    "slug": "sitting-on-a-chair-with-her-legs-crossed",
+    "label_ja": "椅子で脚を組む",
+    "pose_text_ja": "椅子に座り、脚を組む。",
+    "tags": [
+      "seated",
+      "chair",
+      "crossed-legs",
+      "chair-crossed-legs"
+    ]
+  },
+  {
+    "slug": "sitting-on-a-chair-leaning-forward-with-her-elbows-on-her-knees",
+    "label_ja": "椅子で膝に肘を置く",
+    "pose_text_ja": "椅子に座って前かがみになり、両肘を両膝に置く。",
+    "tags": [
+      "seated",
+      "chair"
+    ]
+  },
+  {
+    "slug": "sitting-backwards-on-a-chair-with-her-arms-folded-on-the-backrest",
+    "label_ja": "椅子に逆向きで座る",
+    "pose_text_ja": "椅子に後ろ向きに座り、背もたれの上で腕を重ねる。",
+    "tags": [
+      "seated",
+      "chair",
+      "backward-chair"
+    ]
+  },
+  {
+    "slug": "sitting-cross-legged-on-the-floor",
+    "label_ja": "床であぐらをかく",
+    "pose_text_ja": "床にあぐらをかいて座る。",
+    "tags": [
+      "seated",
+      "floor",
+      "crossed-legs",
+      "cross-legged"
+    ]
+  },
+  {
+    "slug": "sitting-on-the-floor-hugging-her-knees-to-her-chest",
+    "label_ja": "床で膝を抱える",
+    "pose_text_ja": "床に座り、両膝を胸に引き寄せて抱える。",
+    "tags": [
+      "seated",
+      "floor"
+    ]
+  },
+  {
+    "slug": "sitting-on-the-floor-with-her-legs-out-leaning-back-on-her-hands",
+    "label_ja": "脚を伸ばし後ろに手をつく",
+    "pose_text_ja": "床に脚を伸ばして座り、後ろについた両手で体を支える。",
+    "tags": [
+      "seated",
+      "floor",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "sitting-on-the-floor-with-her-legs-tucked-to-one-side",
+    "label_ja": "脚を片側に寄せて座る",
+    "pose_text_ja": "床に座り、両脚を曲げて片側に寄せる。",
+    "tags": [
+      "seated",
+      "floor"
+    ]
+  },
+  {
+    "slug": "sitting-on-the-floor-with-one-knee-up-and-an-arm-resting-on-it",
+    "label_ja": "片膝を立てて腕を置く",
+    "pose_text_ja": "床に座って片膝を立て、その膝に片腕を置く。",
+    "tags": [
+      "seated",
+      "floor",
+      "one-hand"
+    ]
+  },
+  {
+    "slug": "kneeling-and-sitting-back-on-her-heels",
+    "label_ja": "かかとに腰を下ろす",
+    "pose_text_ja": "膝をつき、かかとの上に腰を下ろす。",
+    "tags": [
+      "seated",
+      "kneeling"
+    ]
+  }
+]

@@ -1,0 +1,298 @@
+[
+  {
+    "id": "pose-mh-standing01",
+    "display_number": 10,
+    "category": "standing",
+    "label_ja": "自然に立つ",
+    "label_en": "Natural standing",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "10",
+      "立ち会話の基本",
+      "standing01"
+    ],
+    "pose_text_ja": "足を近づけて立ち、片腕は体の横に自然に下ろす。反対の肘を少し前へ曲げ、手の力を抜く。",
+    "pose_template": "standing with feet close together, one arm hanging naturally at the side, the other elbow slightly bent forward with relaxed hand",
+    "original_gemini_prompt": "standing with feet close together, one arm hanging naturally at the side, the other elbow slightly bent forward with relaxed hand",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "standing01",
+      "name": "10 自然に立つ",
+      "category": "立つ・待つ",
+      "use": "立ち会話の基本",
+      "path": "makehuman_system_poses_cc0/poses/standing01/standing01.bvh",
+      "sha256": "eeff7f89040196c50152eda4ab7257311acde08efb4c71ef8a56cd2f43760c47",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-standing02",
+    "display_number": 11,
+    "category": "standing",
+    "label_ja": "重心を寄せて立つ",
+    "label_en": "Standing with shifted weight",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "11",
+      "待機・聞き役",
+      "standing02"
+    ],
+    "pose_text_ja": "足を肩幅に開いてまっすぐ立ち、両腕を体の横に自然に下ろす。",
+    "pose_template": "standing upright with feet shoulder-width apart, both arms hanging naturally straight down at sides",
+    "original_gemini_prompt": "standing upright with feet shoulder-width apart, both arms hanging naturally straight down at sides",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "standing02",
+      "name": "11 重心を寄せて立つ",
+      "category": "立つ・待つ",
+      "use": "待機・聞き役",
+      "path": "makehuman_system_poses_cc0/poses/standing02/standing02.bvh",
+      "sha256": "8ac8b0e6cb72ca1cb56a87b8e51e0e1490ca7fb1f0bfc106e8fb5ec9e0080043",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-standing03",
+    "display_number": 12,
+    "category": "standing",
+    "label_ja": "足を前に出して立つ",
+    "label_en": "Standing with one foot forward",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "12",
+      "立ち位置の変化",
+      "standing03"
+    ],
+    "pose_text_ja": "本人の右脚（画面左の後ろ側）に重心を置いてまっすぐ立つ。左足を少し前へ出して体の中心線を越え、足首付近で脚が軽く重なるようにする。両足は接地する。両腕は体の横に静かに下ろし、肘をほぼ伸ばして手の力を抜き、腕を振らない。肩は水平。頭を起こし、顔を画面左へ少し向け、目も穏やかにそちらを見る。歩行中ではなく静止した姿勢。",
+    "pose_template": "Stand upright with weight on the anatomical right leg (screen-left/back). Place the left foot a small distance forward and across the centerline, so the legs overlap slightly near the ankles; both feet remain down. Both arms hang quietly beside the body, elbows almost straight, hands relaxed, no arm swing. Shoulders level. Head upright, face turned slightly toward screen-left, eyes looking calmly in that direction. This is a still pose, not a walking stride.",
+    "original_gemini_prompt": "walking forward, mid-stride with one leg stepping forward and one trailing, arms swinging naturally",
+    "prompt_validation": {
+      "status": "要調整",
+      "note": "前脚の左右と交差量は、文章だけでは未解決。"
+    },
+    "source": {
+      "key": "standing03",
+      "name": "12 足を前に出して立つ",
+      "category": "立つ・待つ",
+      "use": "立ち位置の変化",
+      "path": "makehuman_system_poses_cc0/poses/standing03/standing03.bvh",
+      "sha256": "98fed04a704661500b4d057cf3516f92b350e5e0ab78b8bace5423051784651b",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-standing04",
+    "display_number": 13,
+    "category": "standing",
+    "label_ja": "腰に片手",
+    "label_en": "One hand on hip",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "13",
+      "立ち会話",
+      "standing04"
+    ],
+    "pose_text_ja": "立って片手を腰に置き、肘を外へ曲げる。反対の腕は力を抜いて体の横に下ろす。",
+    "pose_template": "standing pose, one hand resting on hip with elbow bent outward, the other arm relaxed down at the side",
+    "original_gemini_prompt": "standing pose, one hand resting on hip with elbow bent outward, the other arm relaxed down at the side",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "standing04",
+      "name": "13 腰に片手",
+      "category": "立つ・待つ",
+      "use": "立ち会話",
+      "path": "makehuman_system_poses_cc0/poses/standing04/standing04.bvh",
+      "sha256": "d6d9b48b60bab8c1952bd84552cf863b7c2f8ef4ca6d07814cad1d6ee1929375",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-anrico-standing11",
+    "display_number": 14,
+    "category": "standing",
+    "label_ja": "前で腕を添える",
+    "label_en": "Holding opposite forearm",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "14",
+      "待つ・聞く",
+      "anrico_standing11"
+    ],
+    "pose_text_ja": "足をそろえて立ち、お腹の前の低い位置で腕を重ね、反対の前腕を持つ。遠慮がちな姿勢。",
+    "pose_template": "standing with feet together, arms crossed low in front of the abdomen holding the opposite forearm in a timid pose",
+    "original_gemini_prompt": "standing with feet together, arms crossed low in front of the abdomen holding the opposite forearm in a timid pose",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "anrico_standing11",
+      "name": "14 前で腕を添える",
+      "category": "立つ・待つ",
+      "use": "待つ・聞く",
+      "path": "poses03_cc0/poses/anrico_standing11/anrico_standing11.bvh",
+      "sha256": "f53f76f0e9e985c006f8127f9b48cb6cdafac1b7bba52d1bb50a9005ac6bca2f",
+      "status": "accepted",
+      "author": "Anrico",
+      "url": "http://www.makehumancommunity.org/node/2462",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  },
+  {
+    "id": "pose-mh-anrico-standing10",
+    "display_number": 15,
+    "category": "standing",
+    "label_ja": "腰の後ろに片手",
+    "label_en": "One hand behind waist",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "15",
+      "立ち会話",
+      "anrico_standing10"
+    ],
+    "pose_text_ja": "足を広く開いて立ち、片手をしっかり腰に置いて肘を外へ張る。反対の腕は下ろす。",
+    "pose_template": "standing in a wide stance, one hand resting firmly on the hip with elbow flared out, the other arm hanging down",
+    "original_gemini_prompt": "standing in a wide stance, one hand resting firmly on the hip with elbow flared out, the other arm hanging down",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "anrico_standing10",
+      "name": "15 腰の後ろに片手",
+      "category": "立つ・待つ",
+      "use": "立ち会話",
+      "path": "poses03_cc0/poses/anrico_standing10/anrico_standing10.bvh",
+      "sha256": "3a843bcf98c9919c576e922b81e15cecd9dd29d4ab69637a720276d614694aa2",
+      "status": "accepted",
+      "author": "Anrico",
+      "url": "http://www.makehumancommunity.org/node/2199",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  },
+  {
+    "id": "pose-mh-drednicolson-arms-akimbo",
+    "display_number": 16,
+    "category": "standing",
+    "label_ja": "腰に両手",
+    "label_en": "Hands on hips",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "16",
+      "強調・不満",
+      "drednicolson_arms_akimbo"
+    ],
+    "pose_text_ja": "足を広く開いて立ち、両手を腰に置き、両肘を外へ張る。自信を感じさせる姿勢。",
+    "pose_template": "standing in a wide stance, hands on hips with both elbows flared outward, confident akimbo pose",
+    "original_gemini_prompt": "standing in a wide stance, hands on hips with both elbows flared outward, confident akimbo pose",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "drednicolson_arms_akimbo",
+      "name": "16 腰に両手",
+      "category": "立つ・待つ",
+      "use": "強調・不満",
+      "path": "poses03_cc0/poses/drednicolson_arms_akimbo/drednicolson_arms_akimbo.bvh",
+      "sha256": "53d73abd4e8d6387c3f09f11fcb723f902859a9040487d79d0247c8b0f683935",
+      "status": "accepted",
+      "author": "DredNicolson",
+      "url": "http://www.makehumancommunity.org/node/375",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-sohh-sohh-embarrassed",
+    "display_number": 17,
+    "category": "standing",
+    "label_ja": "後ろ手でうつむく",
+    "label_en": "Hands behind back",
+    "tags": [
+      "standing"
+    ],
+    "search_aliases": [
+      "17",
+      "照れる・控えめな立ち姿",
+      "sohh_sohh_embarrassed"
+    ],
+    "pose_text_ja": "足を開いて立ち、上体を少し前へ丸め、両手を背中側で合わせる。",
+    "pose_template": "standing with feet apart, torso slightly hunched forward, both hands clasped behind the back",
+    "original_gemini_prompt": "standing with feet apart, torso slightly hunched forward, both hands clasped behind the back",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "sohh_sohh_embarrassed",
+      "name": "17 後ろ手でうつむく",
+      "category": "立つ・待つ",
+      "use": "照れる・控えめな立ち姿",
+      "path": "poses03_cc0/poses/sohh_sohh_embarrassed/sohh_sohh_embarrassed.bvh",
+      "sha256": "3b437e73a5b0e08ced1f48a1d8c05259a3e15d90ddb7cb2b27182507fa526b62",
+      "status": "accepted",
+      "author": "sohh",
+      "url": "http://www.makehumancommunity.org/node/2571",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  }
+]

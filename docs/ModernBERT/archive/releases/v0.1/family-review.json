@@ -1,0 +1,1263 @@
+{
+  "review_type": "read_only_independent_semantic_split_review",
+  "source_directory": "/Users/yukin_co/Desktop/tools/Comic_image_Hub/dev_tools/voice_intent_classifier/drafts/2026-10-17",
+  "source_candidates_sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+  "reviewed_rows": 316,
+  "reviewed_original_groups": 161,
+  "reviewed_labels": 19,
+  "source_mutated": false,
+  "model_or_training_run": false,
+  "decision_boundary": [
+    "原文、ID、label、元groupは変更しない。groupは不可分で、別のfamily_idをunion結果として追加する想定。",
+    "同一ラベル・共通の命令動詞だけを理由に結合しない。ほぼ同文の肯否、訂正、報告/質問、設定名だけ置換したコピー文型を優先する。",
+    "全ての意味的言い換えを一成分にする設計ではない。原groupを保ったまま明確な近接例だけを足す保守的な提案。",
+    "全19ラベルをtrainに確保する条件を優先し、dev/testの欠落ラベルを明記する。元groupの時点で19ラベルを全3splitへ入れることは不可能。"
+  ],
+  "do_not_auto_union": [
+    {
+      "groups": [
+        "save_basic",
+        "save_edits",
+        "save_button",
+        "save_report_then_request",
+        "save_self_correction"
+      ],
+      "reason": "全てsaveという意味だけでは連結しない。短い基本命令・編集状態指定・ボタン同等・未保存報告からの依頼・自己訂正は異なる全体構文。010/144は元groupの対照を保持。"
+    },
+    {
+      "groups": [
+        "compound_save_page",
+        "compound_undo_save",
+        "compound_redo_save",
+        "compound_mode_save",
+        "compound_bubble_save",
+        "generate_save",
+        "panel_sync_set_save",
+        "inner_frame_snap_set_save",
+        "panel_gap_snap_set_save"
+      ],
+      "reason": "保存という構成動詞を含むだけの全複合依頼を単一成分にしない。共通部分を全てtransitive unionすると別の対象・課題まで一成分になる。"
+    },
+    {
+      "groups": [
+        "bubble_quoted_command",
+        "panel_sync_set_quoted",
+        "inner_frame_snap_set_quoted",
+        "panel_gap_snap_set_quoted",
+        "generation_quoted",
+        "named_generation_quoted"
+      ],
+      "reason": "引用外側文型のコピー群は結合するが、引用内の命令語と一致する全実行groupには結合しない。引用から実行への違いは独立した境界テストにも記録する。"
+    },
+    {
+      "groups": [
+        "generate_current_page",
+        "generate_selection",
+        "generate_selected_character",
+        "generate_selected_panel",
+        "generate_explicit_locator"
+      ],
+      "reason": "生成という動詞だけで現在ページ全体生成まで結合しない。番号/名前が近接例を橋渡しする部分は提案済み。"
+    },
+    {
+      "groups": [
+        "registered_background_candidates",
+        "external_background_models",
+        "background_camera_candidates"
+      ],
+      "reason": "3D背景という名詞だけで登録済み候補、外部検索、カメラ構図生成を結合しない。入力の主対象と依頼内容が違う。"
+    },
+    {
+      "groups": [
+        "text_frames_top",
+        "paragraph_alignment",
+        "bubble_outline_alignment"
+      ],
+      "reason": "そろえるという述語だけで文字枠上端、文章各行の左揃え、吹き出し輪郭整列を全部結合しない。異なる対象・機能の境界は個別に評価する。"
+    },
+    {
+      "groups": [
+        "paint_pen_choice",
+        "paint_pen_question",
+        "pen_unspecified"
+      ],
+      "reason": "paint_pen_choiceは全13例不可分でtrainが必須だが、ペンという名詞だけで説明質問や切替先不明まで結合しない。"
+    }
+  ],
+  "label_review": {
+    "hard_contradictions_found": [],
+    "policy_sensitive_or_ambiguous_rows": [
+      {
+        "id": "nyamuru_voice_119",
+        "text": "この吹き出しを少し大きくして",
+        "current_label": "needs_reasoning",
+        "possible_alternative": "needs_clarification",
+        "reason": "量の不足を確認するか、適切な大きさを判断するかの境界。noteで少しの量を固定しない方針は明示されるが、単独発話で判断依頼が明示されたとは限らない。現ラベルのまま境界例として明記する。"
+      },
+      {
+        "id": "nyamuru_voice_112",
+        "text": "この場面が緊張して見える形に整えて",
+        "current_label": "needs_reasoning",
+        "possible_alternative": "needs_clarification",
+        "reason": "適切な表現の判断依頼は明確だが何の形を整えるかは本文だけでは限定されない。場面/選択参照をどこまで実行側で解決するかの方針依存。"
+      },
+      {
+        "id": "nyamuru_voice_265",
+        "text": "3D背景の候補って出せる？",
+        "current_label": "not_command",
+        "possible_alternative": "background_3d_candidates / needs_clarification",
+        "reason": "日常日本語では能力質問にも間接依頼にもなる。annotation_rulesは能力だけを尋ねる曖昧疑問形を無理に実行へ寄せないと明記しており、現ラベルはその方針と整合。能力質問としての正解率を自然発話の意図判定精度へ一般化しない。"
+      }
+    ],
+    "user_confirmed_interpretations_respected": [
+      "背景候補=登録済み3Dモデル候補",
+      "選択中の文字の頭をそろえる=複数文字枠の上端揃え",
+      "現在選択参照の解決は実行側"
+    ]
+  },
+  "evaluation_recommendations": [
+    "固定したfamily割当を先に保存し、モデルの誤答・成績を見てsplitやunionを動かさない。",
+    "dev/testは実際のsupportがあるラベルだけのmacro指標と全19ラベルのsupport表を併記する。欠落ラベルを正解率0として混ぜたり、全19分類の性能確認済みと書かない。",
+    "同一成分内の複数行は独立標本ではない。行単位accuracyだけでなくfamily単位の正解率、全例正解family数、肯否対の両方正解数を報告する。",
+    "trainにしかない操作ラベルの再代入成績は学習例への適合確認と呼ぶ。外部評価や運用採用の根拠にしない。",
+    "比較候補・ハイパーパラメータ選択はdevのみ。testは選択を凍結してから一度評価し、testを使った候補選びは探索評価として区別する。",
+    "308/316例は同一作者の合成例。評価は同じ合成資料内の保留文型であり、実ユーザー発話・ASR誤認識・発話途中・自由な口述入力・UI参照解決・実操作成功を検証していない。",
+    "全19ラベルの一般化評価には、train固定になった各ラベルにつき独立した発話収集/新しい由来群が必要。今回の分割不足を解消するためだけに原groupを細分化しない。"
+  ],
+  "merge_groups": [
+    {
+      "key": "save_direct_polarity",
+      "groups": [
+        "save_basic",
+        "save_request_question",
+        "save_negative"
+      ],
+      "example_ids": [
+        "nyamuru_voice_001",
+        "nyamuru_voice_006",
+        "nyamuru_voice_143"
+      ],
+      "reason": "短い保存依頼の丁寧形・依頼疑問形・不実行形。001の命令部をほぼ保った対照。save_self_correctionの010/144は既に同groupであり、同じ保存ラベルだけを理由に全保存例へ連結しない。"
+    },
+    {
+      "key": "undo_direct_polarity_and_correction",
+      "groups": [
+        "undo_basic",
+        "undo_request_question",
+        "undo_negative",
+        "undo_vs_page"
+      ],
+      "example_ids": [
+        "nyamuru_voice_011",
+        "nyamuru_voice_019",
+        "nyamuru_voice_020",
+        "nyamuru_voice_046",
+        "nyamuru_voice_151"
+      ],
+      "reason": "011「直前の編集を戻して」と151「直前の編集を戻さないで」がほぼ最小対。019は同じ実行依頼の疑問形。020/046は既存の撤回対象対照groupで、020は直前の編集取消依頼を残す。"
+    },
+    {
+      "key": "page_relative_direction_count",
+      "groups": [
+        "page_next",
+        "page_previous",
+        "page_relative_count",
+        "page_negative",
+        "undo_vs_page"
+      ],
+      "example_ids": [
+        "nyamuru_voice_031",
+        "nyamuru_voice_033",
+        "nyamuru_voice_034",
+        "nyamuru_voice_036",
+        "nyamuru_voice_043",
+        "nyamuru_voice_044",
+        "nyamuru_voice_046",
+        "nyamuru_voice_153"
+      ],
+      "reason": "ページを一枚進める/戻すと三ページ先/二ページ前は同じ相対移動文型で数・方向だけが違う。031と153は次ページへの移動/禁止。046は前ページへの移動を残した訂正表現。既存undo_vs_pageがUndoとページ移動の橋になることは明示的に受け入れる。"
+    },
+    {
+      "key": "redo_direct_polarity",
+      "groups": [
+        "redo_basic",
+        "redo_negative"
+      ],
+      "example_ids": [
+        "nyamuru_voice_021",
+        "nyamuru_voice_028",
+        "nyamuru_voice_152"
+      ],
+      "reason": "リドゥして/リドゥをお願いします/今回はリドゥしないで。基本命令と明示的な不実行の近接対照。"
+    },
+    {
+      "key": "paper_fit",
+      "groups": [
+        "whole_view_vs_mode",
+        "zoom_fit"
+      ],
+      "example_ids": [
+        "nyamuru_voice_047",
+        "nyamuru_voice_048"
+      ],
+      "reason": "047「紙面全体を表示して」と048「ページが全部収まる表示にして」は紙面全体表示の近い言い換え。既存whole_view_vs_modeの他ラベル例も不可分のため同じ成分へ入る。"
+    },
+    {
+      "key": "spread_state_polarity",
+      "groups": [
+        "spread_on",
+        "spread_off",
+        "spread_negative",
+        "spread_report"
+      ],
+      "example_ids": [
+        "nyamuru_voice_055",
+        "nyamuru_voice_056",
+        "nyamuru_voice_057",
+        "nyamuru_voice_155",
+        "nyamuru_voice_161"
+      ],
+      "reason": "見開き表示にして/オフにして/しないで/したよの短文対照。状態値変更、禁止、完了報告を同じ束にする。"
+    },
+    {
+      "key": "placement_guide_polarity",
+      "groups": [
+        "placement_guide",
+        "placement_guide_negative"
+      ],
+      "example_ids": [
+        "nyamuru_voice_058",
+        "nyamuru_voice_059",
+        "nyamuru_voice_154"
+      ],
+      "reason": "配置ガイドの表示・非表示と「配置ガイドは消さないで」の不実行。人物や吹き出しの配置枠は定義上同じ表示対象。"
+    },
+    {
+      "key": "integrated_mode_polarity",
+      "groups": [
+        "mode_integrated",
+        "whole_view_vs_mode",
+        "mode_negative"
+      ],
+      "example_ids": [
+        "nyamuru_voice_067",
+        "nyamuru_voice_068",
+        "nyamuru_voice_070",
+        "nyamuru_voice_156"
+      ],
+      "reason": "一体型への作画方式変更の近い言い換えと、その変更禁止。生成開始とは別という境界を共有。"
+    },
+    {
+      "key": "draft_mode_state",
+      "groups": [
+        "mode_draft",
+        "mode_keep",
+        "mode_report"
+      ],
+      "example_ids": [
+        "nyamuru_voice_072",
+        "nyamuru_voice_075",
+        "nyamuru_voice_157",
+        "nyamuru_voice_162"
+      ],
+      "reason": "下書き方式への変更・そのまま維持・現在状態報告という短い対照。"
+    },
+    {
+      "key": "mode_change_without_execution",
+      "groups": [
+        "mode_without_run",
+        "mode_integrated",
+        "mode_draft"
+      ],
+      "example_ids": [
+        "nyamuru_voice_070",
+        "nyamuru_voice_071",
+        "nyamuru_voice_075",
+        "nyamuru_voice_076"
+      ],
+      "reason": "071/076は一体型/下書きへの切替だけを肯定し、画像生成を否定した形。既存mode_without_runが二方式を同groupにするため、近い直接切替例と結合すると作画方式10例が一成分になる。"
+    },
+    {
+      "key": "bubble_shape_polarity",
+      "groups": [
+        "bubble_shape_square",
+        "bubble_keep",
+        "bubble_shape_negative"
+      ],
+      "example_ids": [
+        "nyamuru_voice_077",
+        "nyamuru_voice_150",
+        "nyamuru_voice_159"
+      ],
+      "reason": "077「この吹き出しを四角にして」と159「この吹き出しを四角には変えないで」、150「四角のままでいい」の最小に近い対照。"
+    },
+    {
+      "key": "bubble_tail_polarity",
+      "groups": [
+        "bubble_tail",
+        "bubble_tail_negative"
+      ],
+      "example_ids": [
+        "nyamuru_voice_082",
+        "nyamuru_voice_083",
+        "nyamuru_voice_158"
+      ],
+      "reason": "082「この吹き出しのしっぽを消して」と158「…消さないで」は直接の肯否対。既存bubble_tailは付与依頼083も含む。"
+    },
+    {
+      "key": "bubble_speaker_status",
+      "groups": [
+        "bubble_speaker",
+        "bubble_speaker_question"
+      ],
+      "example_ids": [
+        "nyamuru_voice_095",
+        "nyamuru_voice_096",
+        "nyamuru_voice_163"
+      ],
+      "reason": "095は小雪への話者変更、163は同じ対象・同じ名前についての状態確認。ほぼ同じ内容を変更/質問で分けた対照。"
+    },
+    {
+      "key": "bubble_move_coordinate_and_save",
+      "groups": [
+        "bubble_move",
+        "bubble_move_xy",
+        "compound_bubble_save"
+      ],
+      "example_ids": [
+        "nyamuru_voice_086",
+        "nyamuru_voice_088",
+        "nyamuru_voice_089",
+        "nyamuru_voice_128"
+      ],
+      "reason": "086右2ミリと088上1ミリを一つの移動にした089、086に保存を加えた128が近い。単一移動の複数値と独立保存の有無という明示的な境界。"
+    },
+    {
+      "key": "bubble_resize_coordinates",
+      "groups": [
+        "bubble_resize",
+        "bubble_resize_wh"
+      ],
+      "example_ids": [
+        "nyamuru_voice_090",
+        "nyamuru_voice_091",
+        "nyamuru_voice_092"
+      ],
+      "reason": "幅・高さの単独指定と同一BBoxの幅/高さ同時指定。値の置換と一つの操作への値追加に限った近接群。"
+    },
+    {
+      "key": "quoted_bubble_text_template",
+      "groups": [
+        "bubble_quoted_command",
+        "panel_sync_set_quoted",
+        "inner_frame_snap_set_quoted",
+        "panel_gap_snap_set_quoted",
+        "generation_quoted",
+        "named_generation_quoted"
+      ],
+      "example_ids": [
+        "nyamuru_voice_094",
+        "nyamuru_voice_184",
+        "nyamuru_voice_204",
+        "nyamuru_voice_224",
+        "nyamuru_voice_272",
+        "nyamuru_voice_316"
+      ],
+      "reason": "全て「この吹き出しに『…』と入れて」の同一外側文型で、引用内容だけを置換した例。引用命令そのものを実行しない対照として束ねる。引用内容に登場する全実行groupへの連結は行わない。"
+    },
+    {
+      "key": "save_then_page_polarity",
+      "groups": [
+        "compound_save_page",
+        "page_next_without_save"
+      ],
+      "example_ids": [
+        "nyamuru_voice_045",
+        "nyamuru_voice_121"
+      ],
+      "reason": "保存はしないで次ページ表示/保存してから次ページに進む。同じ保存+ページの枠で保存の肯否が変わり、compoundと単一移動が分かれる。"
+    },
+    {
+      "key": "panel_setting_state_templates",
+      "groups": [
+        "panel_sync_set_desired_state",
+        "panel_sync_set_correction",
+        "panel_sync_set_status",
+        "inner_frame_snap_set_desired_state",
+        "inner_frame_snap_set_correction",
+        "inner_frame_snap_set_status",
+        "panel_gap_snap_set_desired_state",
+        "panel_gap_snap_set_correction",
+        "panel_gap_snap_set_status"
+      ],
+      "example_ids": [
+        "nyamuru_voice_165",
+        "nyamuru_voice_170",
+        "nyamuru_voice_171",
+        "nyamuru_voice_176",
+        "nyamuru_voice_177",
+        "nyamuru_voice_178",
+        "nyamuru_voice_179",
+        "nyamuru_voice_185",
+        "nyamuru_voice_190",
+        "nyamuru_voice_197",
+        "nyamuru_voice_199",
+        "nyamuru_voice_205",
+        "nyamuru_voice_210",
+        "nyamuru_voice_217",
+        "nyamuru_voice_219"
+      ],
+      "reason": "3設定は設定名以外が同一のオン/オフ、肯定/禁止、自己訂正、今オンかの質問のコピー群。desired_stateは既に肯定10例と禁止2例を束ねる。訂正と状態質問も近接対照へ加え、設定名だけ異なる同文型を別splitへ流さない。45例となり3操作クラス全件がtrain固定になることを許容する厳格案。"
+    },
+    {
+      "key": "panel_setting_explanation_templates",
+      "groups": [
+        "panel_sync_set_explanation",
+        "inner_frame_snap_set_explanation",
+        "panel_gap_snap_set_explanation"
+      ],
+      "example_ids": [
+        "nyamuru_voice_180",
+        "nyamuru_voice_200",
+        "nyamuru_voice_220"
+      ],
+      "reason": "設定名だけ異なる「Xって何？」のコピー群。設定名を共有するだけではdesired_stateと結合しない。"
+    },
+    {
+      "key": "panel_setting_unspecified_templates",
+      "groups": [
+        "panel_sync_set_unspecified",
+        "inner_frame_snap_set_unspecified",
+        "panel_gap_snap_set_unspecified"
+      ],
+      "example_ids": [
+        "nyamuru_voice_181",
+        "nyamuru_voice_201",
+        "nyamuru_voice_221"
+      ],
+      "reason": "設定名だけ異なる「Xの設定を変えて」のコピー群。指定値不足という同一境界。"
+    },
+    {
+      "key": "panel_setting_history_templates",
+      "groups": [
+        "panel_sync_set_history",
+        "inner_frame_snap_set_history",
+        "panel_gap_snap_set_history"
+      ],
+      "example_ids": [
+        "nyamuru_voice_182",
+        "nyamuru_voice_202",
+        "nyamuru_voice_222"
+      ],
+      "reason": "設定名だけ異なる「Xを以前の設定に戻して」のコピー群。履歴のない入力契約で以前の値が不明。"
+    },
+    {
+      "key": "panel_setting_compound_templates",
+      "groups": [
+        "panel_sync_set_save",
+        "inner_frame_snap_set_save",
+        "panel_gap_snap_set_save"
+      ],
+      "example_ids": [
+        "nyamuru_voice_183",
+        "nyamuru_voice_203",
+        "nyamuru_voice_223"
+      ],
+      "reason": "設定名だけ異なる「Xをオンにして保存して」のコピー群。構成動詞の保存だけを共有する他の複合依頼へは結合しない。"
+    },
+    {
+      "key": "generation_selection_locator",
+      "groups": [
+        "generate_character",
+        "generate_selection",
+        "generate_selected_character",
+        "generate_selected_panel",
+        "generate_explicit_locator",
+        "generate_character_status"
+      ],
+      "example_ids": [
+        "nyamuru_voice_136",
+        "nyamuru_voice_225",
+        "nyamuru_voice_230",
+        "nyamuru_voice_231",
+        "nyamuru_voice_232",
+        "nyamuru_voice_233",
+        "nyamuru_voice_243",
+        "nyamuru_voice_244",
+        "nyamuru_voice_261",
+        "nyamuru_voice_262",
+        "nyamuru_voice_264",
+        "nyamuru_voice_273",
+        "nyamuru_voice_275",
+        "nyamuru_voice_276",
+        "nyamuru_voice_277",
+        "nyamuru_voice_278",
+        "nyamuru_voice_279",
+        "nyamuru_voice_280"
+      ],
+      "reason": "選択中の対象/キャラ/コマだけ生成する文型と番号・人名だけを付けた近接例。136と232も近い。既存generate_explicit_locatorは人物(273/275等)とコマ全体(276/277)を同居させ、両群への橋になる。262は同じこのキャラクターの生成済み質問。現在ページ全体生成は共通動詞だけで結合しない。"
+    },
+    {
+      "key": "registered_background_short_forms",
+      "groups": [
+        "registered_background_candidates",
+        "registered_background_locator",
+        "registered_background_capability",
+        "registered_background_report"
+      ],
+      "example_ids": [
+        "nyamuru_voice_249",
+        "nyamuru_voice_251",
+        "nyamuru_voice_255",
+        "nyamuru_voice_259",
+        "nyamuru_voice_265",
+        "nyamuru_voice_266",
+        "nyamuru_voice_281",
+        "nyamuru_voice_282",
+        "nyamuru_voice_283",
+        "nyamuru_voice_284",
+        "nyamuru_voice_308"
+      ],
+      "reason": "249「3D背景候補出して」と283「背景候補出して」、281/282はコマ番号だけ追加。284は既存の候補数/場面適合例と近い。265能力疑問と266禁止、308完了報告も同じ短い候補提示の対照。専用ラベル16例が一成分になる。"
+    },
+    {
+      "key": "text_alignment_target_omission",
+      "groups": [
+        "text_frames_top",
+        "alignment_unspecified"
+      ],
+      "example_ids": [
+        "nyamuru_voice_297",
+        "nyamuru_voice_298",
+        "nyamuru_voice_307",
+        "nyamuru_voice_310"
+      ],
+      "reason": "文字の頭/文字枠の上端をそろえる明示依頼、既存groupの禁止307、および「文字をそろえて」の指定欠落310。頭/上端の削除による近い境界。段落左揃え/輪郭整列は対象・操作が異なるため語彙一致だけでは連結しない。"
+    },
+    {
+      "key": "panel_state_added_save_and_history",
+      "groups": [
+        "panel_sync_set_desired_state",
+        "panel_sync_set_save",
+        "panel_sync_set_history"
+      ],
+      "reason": "165/183などは同じ設定依頼に保存が追加された近接対照。169/182などは設定値の明示/履歴参照の境界。設定名を置換した同文型も既存結合で同じ束になる。",
+      "reviewer": "parent"
+    },
+    {
+      "key": "history_button_templates",
+      "groups": [
+        "undo_button",
+        "redo_button"
+      ],
+      "reason": "015/024はボタン名だけを変えた同じ一回実行の文型。",
+      "reviewer": "parent"
+    },
+    {
+      "key": "history_count_templates",
+      "groups": [
+        "undo_count",
+        "redo_count"
+      ],
+      "reason": "018/026は編集を二回分undo/redoする同じ回数指定。",
+      "reviewer": "parent"
+    },
+    {
+      "key": "zoom_direction_templates",
+      "groups": [
+        "zoom_in",
+        "zoom_out"
+      ],
+      "reason": "049/051は表示を一段拡大/縮小する語の置換、050/052は対応するズーム指示。",
+      "reviewer": "parent"
+    },
+    {
+      "key": "bubble_shape_tail_composition",
+      "groups": [
+        "bubble_shape_square",
+        "bubble_tail",
+        "compound_bubble_fields"
+      ],
+      "reason": "分割後の文面レビューで077/082と127を確認。四角変更・しっぽ削除の原文をほぼそのまま連結した複合依頼なので同じ束にする。",
+      "reviewer": "parent_cross_split_review"
+    },
+    {
+      "key": "page_tab_explicit_composition",
+      "groups": [
+        "page_number",
+        "tab_scenario",
+        "compound_page_tab"
+      ],
+      "reason": "037/064と129は同じ3ページ指定・シナリオタブ指定をそのまま連結した近接例なので同じ束にする。",
+      "reviewer": "parent_cross_split_review"
+    }
+  ],
+  "parent_decision": "Accepted 25 independent-review unions, 4 adjacent-template unions, and 2 literal-composition unions after inspecting all cross-split text similarities. No model outcomes used. Original groups, IDs, text and labels unchanged. Initial proposal counts are historical; split-plan.json records final components.",
+  "initial_proposal_mechanical_effect": {
+    "original_group_count": 161,
+    "proposed_component_count": 102,
+    "max_component_rows": 45,
+    "labels_forced_train_if_train_must_cover_all_19": [
+      "artwork_mode_set",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "forced_train_component_count": 5,
+    "forced_train_rows": 105,
+    "label_coverage": {
+      "save": {
+        "rows": 10,
+        "original_group_count": 6,
+        "original_groups": [
+          "save_basic",
+          "save_button",
+          "save_edits",
+          "save_report_then_request",
+          "save_request_question",
+          "save_self_correction"
+        ],
+        "proposed_component_count": 5,
+        "proposed_components": [
+          "save_basic",
+          "save_button",
+          "save_edits",
+          "save_report_then_request",
+          "save_self_correction"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "undo": {
+        "rows": 10,
+        "original_group_count": 6,
+        "original_groups": [
+          "undo_basic",
+          "undo_button",
+          "undo_count",
+          "undo_last_edit",
+          "undo_request_question",
+          "undo_vs_page"
+        ],
+        "proposed_component_count": 4,
+        "proposed_components": [
+          "page_next",
+          "undo_button",
+          "undo_count",
+          "undo_last_edit"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "redo": {
+        "rows": 10,
+        "original_group_count": 5,
+        "original_groups": [
+          "redo_after_undo",
+          "redo_basic",
+          "redo_button",
+          "redo_count",
+          "redo_vs_generate"
+        ],
+        "proposed_component_count": 5,
+        "proposed_components": [
+          "redo_after_undo",
+          "redo_basic",
+          "redo_button",
+          "redo_count",
+          "redo_vs_generate"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "page_navigate": {
+        "rows": 16,
+        "original_group_count": 8,
+        "original_groups": [
+          "page_first",
+          "page_last",
+          "page_next",
+          "page_next_without_save",
+          "page_number",
+          "page_previous",
+          "page_relative_count",
+          "undo_vs_page"
+        ],
+        "proposed_component_count": 5,
+        "proposed_components": [
+          "compound_save_page",
+          "page_first",
+          "page_last",
+          "page_next",
+          "page_number"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "view_change": {
+        "rows": 20,
+        "original_group_count": 13,
+        "original_groups": [
+          "artwork_guide",
+          "edit_guide",
+          "placement_guide",
+          "spread_off",
+          "spread_on",
+          "tab_characters",
+          "tab_scenario",
+          "tab_storyboard",
+          "whole_view_vs_mode",
+          "zoom_100",
+          "zoom_fit",
+          "zoom_in",
+          "zoom_out"
+        ],
+        "proposed_component_count": 11,
+        "proposed_components": [
+          "artwork_guide",
+          "edit_guide",
+          "mode_without_run",
+          "placement_guide",
+          "spread_on",
+          "tab_characters",
+          "tab_scenario",
+          "tab_storyboard",
+          "zoom_100",
+          "zoom_in",
+          "zoom_out"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "artwork_mode_set": {
+        "rows": 10,
+        "original_group_count": 4,
+        "original_groups": [
+          "mode_draft",
+          "mode_integrated",
+          "mode_without_run",
+          "whole_view_vs_mode"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "mode_without_run"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "bubble_set": {
+        "rows": 29,
+        "original_group_count": 20,
+        "original_groups": [
+          "bubble_clip",
+          "bubble_join",
+          "bubble_move",
+          "bubble_move_xy",
+          "bubble_owner",
+          "bubble_preset",
+          "bubble_quoted_command",
+          "bubble_resize",
+          "bubble_resize_wh",
+          "bubble_shape_caption",
+          "bubble_shape_normal",
+          "bubble_shape_square",
+          "bubble_speaker",
+          "bubble_tail",
+          "bubble_text",
+          "generation_quoted",
+          "inner_frame_snap_set_quoted",
+          "named_generation_quoted",
+          "panel_gap_snap_set_quoted",
+          "panel_sync_set_quoted"
+        ],
+        "proposed_component_count": 13,
+        "proposed_components": [
+          "bubble_clip",
+          "bubble_join",
+          "bubble_move",
+          "bubble_owner",
+          "bubble_preset",
+          "bubble_quoted_command",
+          "bubble_resize",
+          "bubble_shape_caption",
+          "bubble_shape_normal",
+          "bubble_shape_square",
+          "bubble_speaker",
+          "bubble_tail",
+          "bubble_text"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "needs_clarification": {
+        "rows": 20,
+        "original_group_count": 20,
+        "original_groups": [
+          "alignment_unspecified",
+          "ambiguous_again",
+          "ambiguous_back",
+          "ambiguous_bubble_value",
+          "ambiguous_candidates",
+          "ambiguous_guide",
+          "ambiguous_history",
+          "ambiguous_mode",
+          "ambiguous_partial",
+          "ambiguous_reference",
+          "ambiguous_view",
+          "incomplete",
+          "inner_frame_snap_set_history",
+          "inner_frame_snap_set_unspecified",
+          "panel_gap_snap_set_history",
+          "panel_gap_snap_set_unspecified",
+          "panel_sync_set_history",
+          "panel_sync_set_unspecified",
+          "pen_unspecified",
+          "whole_view_vs_mode"
+        ],
+        "proposed_component_count": 16,
+        "proposed_components": [
+          "ambiguous_again",
+          "ambiguous_back",
+          "ambiguous_bubble_value",
+          "ambiguous_candidates",
+          "ambiguous_guide",
+          "ambiguous_history",
+          "ambiguous_mode",
+          "ambiguous_partial",
+          "ambiguous_reference",
+          "ambiguous_view",
+          "incomplete",
+          "mode_without_run",
+          "panel_sync_set_history",
+          "panel_sync_set_unspecified",
+          "pen_unspecified",
+          "text_frames_top"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "needs_reasoning": {
+        "rows": 10,
+        "original_group_count": 5,
+        "original_groups": [
+          "reason_bubble_material",
+          "reason_layout",
+          "reason_resize",
+          "reason_speaker",
+          "reason_tail"
+        ],
+        "proposed_component_count": 5,
+        "proposed_components": [
+          "reason_bubble_material",
+          "reason_layout",
+          "reason_resize",
+          "reason_speaker",
+          "reason_tail"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "compound_request": {
+        "rows": 17,
+        "original_group_count": 17,
+        "original_groups": [
+          "background_candidates_apply",
+          "compound_bubble_fields",
+          "compound_bubble_save",
+          "compound_mode_generate",
+          "compound_mode_save",
+          "compound_page_tab",
+          "compound_page_view",
+          "compound_redo_save",
+          "compound_save_page",
+          "compound_undo_save",
+          "compound_view_view",
+          "generate_multiple_targets",
+          "generate_save",
+          "inner_frame_snap_set_save",
+          "panel_gap_snap_set_save",
+          "panel_sync_set_save",
+          "pen_and_align"
+        ],
+        "proposed_component_count": 15,
+        "proposed_components": [
+          "background_candidates_apply",
+          "bubble_move",
+          "compound_bubble_fields",
+          "compound_mode_generate",
+          "compound_mode_save",
+          "compound_page_tab",
+          "compound_page_view",
+          "compound_redo_save",
+          "compound_save_page",
+          "compound_undo_save",
+          "compound_view_view",
+          "generate_multiple_targets",
+          "generate_save",
+          "panel_sync_set_save",
+          "pen_and_align"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "out_of_scope_request": {
+        "rows": 13,
+        "original_group_count": 13,
+        "original_groups": [
+          "background_camera_candidates",
+          "bubble_outline_alignment",
+          "external_background_models",
+          "out_add_bubble",
+          "out_cancel_generation",
+          "out_deferred_asset",
+          "out_delete_page",
+          "out_new_project",
+          "out_open_project",
+          "out_print_queue",
+          "out_save_as",
+          "paragraph_alignment",
+          "whole_view_vs_mode"
+        ],
+        "proposed_component_count": 13,
+        "proposed_components": [
+          "background_camera_candidates",
+          "bubble_outline_alignment",
+          "external_background_models",
+          "mode_without_run",
+          "out_add_bubble",
+          "out_cancel_generation",
+          "out_deferred_asset",
+          "out_delete_page",
+          "out_new_project",
+          "out_open_project",
+          "out_print_queue",
+          "out_save_as",
+          "paragraph_alignment"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "not_command": {
+        "rows": 46,
+        "original_group_count": 43,
+        "original_groups": [
+          "bubble_keep",
+          "bubble_shape_negative",
+          "bubble_speaker_question",
+          "bubble_tail_negative",
+          "generate_character_status",
+          "generate_current_page",
+          "generate_selected_panel",
+          "generate_selection",
+          "inner_frame_snap_set_desired_state",
+          "inner_frame_snap_set_explanation",
+          "inner_frame_snap_set_status",
+          "mode_keep",
+          "mode_negative",
+          "mode_report",
+          "page_negative",
+          "page_question",
+          "paint_pen_choice",
+          "paint_pen_question",
+          "panel_gap_snap_set_desired_state",
+          "panel_gap_snap_set_explanation",
+          "panel_gap_snap_set_status",
+          "panel_sync_set_desired_state",
+          "panel_sync_set_explanation",
+          "panel_sync_set_status",
+          "placement_guide_negative",
+          "print_capability_question",
+          "redo_negative",
+          "redo_report",
+          "registered_background_candidates",
+          "registered_background_capability",
+          "registered_background_report",
+          "save_capability_question",
+          "save_how_question",
+          "save_negative",
+          "save_report",
+          "save_self_correction",
+          "save_status_question",
+          "spread_negative",
+          "spread_report",
+          "text_frames_top",
+          "undo_negative",
+          "undo_question",
+          "whole_view_vs_mode"
+        ],
+        "proposed_component_count": 26,
+        "proposed_components": [
+          "bubble_shape_square",
+          "bubble_speaker",
+          "bubble_tail",
+          "generate_character",
+          "generate_current_page",
+          "mode_without_run",
+          "page_next",
+          "page_question",
+          "paint_pen_choice",
+          "paint_pen_question",
+          "panel_sync_set_desired_state",
+          "panel_sync_set_explanation",
+          "placement_guide",
+          "print_capability_question",
+          "redo_basic",
+          "redo_report",
+          "registered_background_candidates",
+          "save_basic",
+          "save_capability_question",
+          "save_how_question",
+          "save_report",
+          "save_self_correction",
+          "save_status_question",
+          "spread_on",
+          "text_frames_top",
+          "undo_question"
+        ],
+        "all_three_splits_possible_by_count": true
+      },
+      "panel_sync_set": {
+        "rows": 12,
+        "original_group_count": 2,
+        "original_groups": [
+          "panel_sync_set_correction",
+          "panel_sync_set_desired_state"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "panel_sync_set_desired_state"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "inner_frame_snap_set": {
+        "rows": 12,
+        "original_group_count": 2,
+        "original_groups": [
+          "inner_frame_snap_set_correction",
+          "inner_frame_snap_set_desired_state"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "panel_sync_set_desired_state"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "panel_gap_snap_set": {
+        "rows": 12,
+        "original_group_count": 2,
+        "original_groups": [
+          "panel_gap_snap_set_correction",
+          "panel_gap_snap_set_desired_state"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "panel_sync_set_desired_state"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "generate_request": {
+        "rows": 33,
+        "original_group_count": 6,
+        "original_groups": [
+          "generate_character",
+          "generate_current_page",
+          "generate_explicit_locator",
+          "generate_selected_character",
+          "generate_selected_panel",
+          "generate_selection"
+        ],
+        "proposed_component_count": 2,
+        "proposed_components": [
+          "generate_character",
+          "generate_current_page"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "background_3d_candidates": {
+        "rows": 16,
+        "original_group_count": 2,
+        "original_groups": [
+          "registered_background_candidates",
+          "registered_background_locator"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "registered_background_candidates"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "paint_tool_set": {
+        "rows": 12,
+        "original_group_count": 1,
+        "original_groups": [
+          "paint_pen_choice"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "paint_pen_choice"
+        ],
+        "all_three_splits_possible_by_count": false
+      },
+      "text_frames_align": {
+        "rows": 8,
+        "original_group_count": 1,
+        "original_groups": [
+          "text_frames_top"
+        ],
+        "proposed_component_count": 1,
+        "proposed_components": [
+          "text_frames_top"
+        ],
+        "all_three_splits_possible_by_count": false
+      }
+    },
+    "largest_components": [
+      {
+        "root": "panel_sync_set_desired_state",
+        "groups": [
+          "panel_sync_set_desired_state",
+          "panel_sync_set_correction",
+          "panel_sync_set_status",
+          "inner_frame_snap_set_desired_state",
+          "inner_frame_snap_set_correction",
+          "inner_frame_snap_set_status",
+          "panel_gap_snap_set_desired_state",
+          "panel_gap_snap_set_correction",
+          "panel_gap_snap_set_status"
+        ],
+        "rows": 45,
+        "labels": {
+          "panel_sync_set": 12,
+          "not_command": 9,
+          "inner_frame_snap_set": 12,
+          "panel_gap_snap_set": 12
+        }
+      },
+      {
+        "root": "generate_character",
+        "groups": [
+          "generate_character",
+          "generate_selection",
+          "generate_selected_character",
+          "generate_selected_panel",
+          "generate_character_status",
+          "generate_explicit_locator"
+        ],
+        "rows": 30,
+        "labels": {
+          "generate_request": 27,
+          "not_command": 3
+        }
+      },
+      {
+        "root": "registered_background_candidates",
+        "groups": [
+          "registered_background_candidates",
+          "registered_background_capability",
+          "registered_background_locator",
+          "registered_background_report"
+        ],
+        "rows": 19,
+        "labels": {
+          "background_3d_candidates": 16,
+          "not_command": 3
+        }
+      },
+      {
+        "root": "mode_without_run",
+        "groups": [
+          "whole_view_vs_mode",
+          "zoom_fit",
+          "mode_integrated",
+          "mode_without_run",
+          "mode_draft",
+          "mode_negative",
+          "mode_keep",
+          "mode_report"
+        ],
+        "rows": 18,
+        "labels": {
+          "view_change": 2,
+          "artwork_mode_set": 10,
+          "needs_clarification": 1,
+          "out_of_scope_request": 1,
+          "not_command": 4
+        }
+      },
+      {
+        "root": "page_next",
+        "groups": [
+          "undo_basic",
+          "undo_request_question",
+          "undo_vs_page",
+          "page_next",
+          "page_previous",
+          "page_relative_count",
+          "undo_negative",
+          "page_negative"
+        ],
+        "rows": 17,
+        "labels": {
+          "undo": 6,
+          "page_navigate": 9,
+          "not_command": 2
+        }
+      },
+      {
+        "root": "paint_pen_choice",
+        "groups": [
+          "paint_pen_choice"
+        ],
+        "rows": 13,
+        "labels": {
+          "paint_tool_set": 12,
+          "not_command": 1
+        }
+      },
+      {
+        "root": "text_frames_top",
+        "groups": [
+          "text_frames_top",
+          "alignment_unspecified"
+        ],
+        "rows": 10,
+        "labels": {
+          "text_frames_align": 8,
+          "not_command": 1,
+          "needs_clarification": 1
+        }
+      },
+      {
+        "root": "generate_current_page",
+        "groups": [
+          "generate_current_page"
+        ],
+        "rows": 7,
+        "labels": {
+          "generate_request": 6,
+          "not_command": 1
+        }
+      },
+      {
+        "root": "bubble_quoted_command",
+        "groups": [
+          "bubble_quoted_command",
+          "panel_sync_set_quoted",
+          "inner_frame_snap_set_quoted",
+          "panel_gap_snap_set_quoted",
+          "generation_quoted",
+          "named_generation_quoted"
+        ],
+        "rows": 6,
+        "labels": {
+          "bubble_set": 6
+        }
+      },
+      {
+        "root": "save_basic",
+        "groups": [
+          "save_basic",
+          "save_request_question",
+          "save_negative"
+        ],
+        "rows": 5,
+        "labels": {
+          "save": 4,
+          "not_command": 1
+        }
+      }
+    ]
+  }
+}

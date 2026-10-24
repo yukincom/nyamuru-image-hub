@@ -1,0 +1,15 @@
+{
+  "status": "all_required_findings_resolved",
+  "review": "curation/2026-10-18-v04-evaluation/final-holdout-audit.json",
+  "reviewed_candidates": 142,
+  "excluded_id": "nyamuru_voice_3262",
+  "final_dev": 68,
+  "final_test": 73,
+  "excluded_absent_from_training": true,
+  "gold_or_slots_changed": false,
+  "final_sha256": {
+    "train": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+    "dev": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "test": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840"
+  }
+}

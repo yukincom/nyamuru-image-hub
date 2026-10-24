@@ -1,0 +1,843 @@
+{
+  "schema_version": 1,
+  "artifact": "nyamuru_v04_test_supplement_blind_author_review",
+  "author_role": "independent_blind_test_author",
+  "review_status": "pending_user_review",
+  "input_documents": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "role": "only_external_file_read_label_contract"
+    }
+  ],
+  "blindness_attestation": {
+    "old_training_data_seen": false,
+    "old_evaluation_data_seen": false,
+    "new_dev_seen": false,
+    "other_authors_files_seen": false,
+    "predictions_or_scores_seen": false,
+    "other_authors_contacted": false,
+    "network_used": false,
+    "model_training_or_classifier_inference_run": false,
+    "repository_files_edited": false,
+    "external_file_reads": [
+      "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json"
+    ],
+    "own_supplement_read_for_review": true,
+    "parent_feedback_received": "Initial short forms had syntactic overlap; request for more diverse supplements only. No old row text, other split text, predictions or scores supplied.",
+    "slot_key_convention": "Parent field-name clarification from initial task retained; no new examples received."
+  },
+  "counts": {
+    "rows": 76,
+    "labels": 19,
+    "by_label": {
+      "save": 4,
+      "undo": 4,
+      "redo": 4,
+      "page_navigate": 4,
+      "view_change": 4,
+      "artwork_mode_set": 4,
+      "bubble_set": 4,
+      "needs_clarification": 4,
+      "needs_reasoning": 4,
+      "compound_request": 4,
+      "out_of_scope_request": 4,
+      "not_command": 4,
+      "panel_sync_set": 4,
+      "inner_frame_snap_set": 4,
+      "panel_gap_snap_set": 4,
+      "generate_request": 4,
+      "background_3d_candidates": 4,
+      "paint_tool_set": 4,
+      "text_frames_align": 4
+    },
+    "families": 55,
+    "family_count_by_label": {
+      "save": 4,
+      "undo": 4,
+      "redo": 4,
+      "page_navigate": 4,
+      "view_change": 4,
+      "artwork_mode_set": 4,
+      "bubble_set": 4,
+      "needs_clarification": 4,
+      "needs_reasoning": 4,
+      "compound_request": 4,
+      "out_of_scope_request": 4,
+      "not_command": 4,
+      "panel_sync_set": 4,
+      "inner_frame_snap_set": 4,
+      "panel_gap_snap_set": 4,
+      "generate_request": 4,
+      "background_3d_candidates": 4,
+      "paint_tool_set": 4,
+      "text_frames_align": 4
+    },
+    "id_first": "nyamuru_voice_3200",
+    "id_last": "nyamuru_voice_3275"
+  },
+  "authoring_approach": "個別の利用場面から組み立て、全19ラベルへの同じ4文型の横展開をしていない。発話内の参照解決、部分訂正、内訳と残り、引用の役割、後置の値補足など必要な構造を使った。構造が共通する操作語の差し替えは同じgroupに統合。",
+  "families": {
+    "v04_test_supp_absolute_target_vs_relative_distance": {
+      "description": "現在位置からの距離によらない絶対対象を指定する。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ],
+      "ids": [
+        "nyamuru_voice_3212"
+      ]
+    },
+    "v04_test_supp_absolute_value_not_increment": {
+      "description": "値を加算量と誤解しないよう、最終的な絶対値で指定する。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3224"
+      ]
+    },
+    "v04_test_supp_action_boundary_request": {
+      "description": "現在実行する範囲を設定変更の段階までと明示し、それ以後の操作を求めない。",
+      "count": 2,
+      "labels": [
+        "artwork_mode_set",
+        "panel_sync_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3222",
+        "nyamuru_voice_3251"
+      ]
+    },
+    "v04_test_supp_bounded_selection_request": {
+      "description": "選択状態を対象と定義し、範囲を広げずその対象だけへ操作するよう頼む。",
+      "count": 1,
+      "labels": [
+        "generate_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3260"
+      ]
+    },
+    "v04_test_supp_candidate_stage_then_user_choice": {
+      "description": "現在は候補提示までを依頼し、後の選択は利用者自身が行う予定と明示する。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ],
+      "ids": [
+        "nyamuru_voice_3267"
+      ]
+    },
+    "v04_test_supp_constrained_judgement_from_scene": {
+      "description": "具体的な場面内容と保持条件を与え、適切な形を判断に委ねる。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ],
+      "ids": [
+        "nyamuru_voice_3232"
+      ]
+    },
+    "v04_test_supp_convergent_condition_state": {
+      "description": "現在値で条件分岐するが、どちらも同じ最終状態となる指定。既に希望値なら変更不要。",
+      "count": 2,
+      "labels": [
+        "artwork_mode_set",
+        "panel_sync_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3220",
+        "nyamuru_voice_3248"
+      ]
+    },
+    "v04_test_supp_corrected_locator_request": {
+      "description": "位置を特定する番号の訂正を宣言し、最終番号の対象へ操作を頼む。",
+      "count": 1,
+      "labels": [
+        "generate_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3263"
+      ]
+    },
+    "v04_test_supp_corrected_setting_target": {
+      "description": "誤って述べた設定名を訂正し、適用先だけを明確に変更する。",
+      "count": 2,
+      "labels": [
+        "panel_gap_snap_set",
+        "panel_sync_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3249",
+        "nyamuru_voice_3259"
+      ]
+    },
+    "v04_test_supp_correction_without_replacement": {
+      "description": "現在値が違うと指摘して変更を求めるが、代わりの値を指定しない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ],
+      "ids": [
+        "nyamuru_voice_3231"
+      ]
+    },
+    "v04_test_supp_definition_then_apply": {
+      "description": "設定の意味を確認する発言に続き、同じ設定を現在変更する依頼を出す。",
+      "count": 1,
+      "labels": [
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_3217"
+      ]
+    },
+    "v04_test_supp_delegate_attribution_from_evidence": {
+      "description": "値の判断を任せることと根拠資料を明示し、人物対応の判断を求める。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ],
+      "ids": [
+        "nyamuru_voice_3234"
+      ]
+    },
+    "v04_test_supp_desired_state_with_excluded_action_question": {
+      "description": "希望状態と不要な追加操作を挙げてから、その設定だけの変更を疑問形で依頼する。",
+      "count": 1,
+      "labels": [
+        "inner_frame_snap_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3253"
+      ]
+    },
+    "v04_test_supp_focus_only_target_request": {
+      "description": "否定する対象と対比し、依頼の対象を後置の焦点として指定する。",
+      "count": 2,
+      "labels": [
+        "inner_frame_snap_set",
+        "undo"
+      ],
+      "ids": [
+        "nyamuru_voice_3206",
+        "nyamuru_voice_3255"
+      ]
+    },
+    "v04_test_supp_future_self_action_tool_request": {
+      "description": "利用者自身の描画予定でツール名を指定し、今は描画せず切替だけを依頼する。",
+      "count": 1,
+      "labels": [
+        "paint_tool_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3271"
+      ]
+    },
+    "v04_test_supp_hypothetical_setting_explanation": {
+      "description": "仮に設定変更した場合の動作を尋ね、説明だけを希望する。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_3245"
+      ]
+    },
+    "v04_test_supp_inclusive_current_snapshot": {
+      "description": "修正済みの内容を含めた現在の作品状態を対象として指定する。",
+      "count": 1,
+      "labels": [
+        "save"
+      ],
+      "ids": [
+        "nyamuru_voice_3200"
+      ]
+    },
+    "v04_test_supp_independent_afterthought": {
+      "description": "一つの現在依頼を完結させたあと、別に・も等で独立依頼を追加する。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3237"
+      ]
+    },
+    "v04_test_supp_inventory_count_request": {
+      "description": "必要な操作や完了編集の内訳を列挙し、まとめて実行するよう頼む。同一操作回数か別操作かは意味で判定する。",
+      "count": 2,
+      "labels": [
+        "compound_request",
+        "undo"
+      ],
+      "ids": [
+        "nyamuru_voice_3204",
+        "nyamuru_voice_3236"
+      ]
+    },
+    "v04_test_supp_layout_question_then_proposal": {
+      "description": "読み順の問題を述べ、どちらをどこへ置くかという間接疑問を配置案の依頼にする。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ],
+      "ids": [
+        "nyamuru_voice_3233"
+      ]
+    },
+    "v04_test_supp_locator_then_scope_limitation": {
+      "description": "コマ番号と人物名を独立した句で指定し、その人物以外へ広げないと補足する。",
+      "count": 1,
+      "labels": [
+        "generate_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3261"
+      ]
+    },
+    "v04_test_supp_meaning_definition_request": {
+      "description": "誤解されうる操作・対象範囲を否定し、意図する意味を発話内で定義して実行を依頼する。",
+      "count": 5,
+      "labels": [
+        "generate_request",
+        "paint_tool_set",
+        "redo",
+        "save",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_3201",
+        "nyamuru_voice_3209",
+        "nyamuru_voice_3218",
+        "nyamuru_voice_3262",
+        "nyamuru_voice_3268"
+      ]
+    },
+    "v04_test_supp_observation_then_adjustment_question": {
+      "description": "対象への感想から調整依頼へ続くが、少し等の量は明示しない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ],
+      "ids": [
+        "nyamuru_voice_3228"
+      ]
+    },
+    "v04_test_supp_omitted_name_relative_choice": {
+      "description": "切替先名が分からないことを述べ、相対的な別候補でしか変更先を表さない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ],
+      "ids": [
+        "nyamuru_voice_3229"
+      ]
+    },
+    "v04_test_supp_parameter_choice_then_apply": {
+      "description": "候補となる値や基準を対比して一つを選び、同一対象へ適用するよう頼む。",
+      "count": 2,
+      "labels": [
+        "panel_gap_snap_set",
+        "text_frames_align"
+      ],
+      "ids": [
+        "nyamuru_voice_3256",
+        "nyamuru_voice_3273"
+      ]
+    },
+    "v04_test_supp_postposed_condition_addition": {
+      "description": "候補への追加条件を引用句として示し、登録済み範囲で提案を求める。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ],
+      "ids": [
+        "nyamuru_voice_3266"
+      ]
+    },
+    "v04_test_supp_postposed_field_clarifier": {
+      "description": "値を先に述べ、対象オブジェクトとフィールドを後から補足する。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3227"
+      ]
+    },
+    "v04_test_supp_postposed_parameter_request": {
+      "description": "先に操作を依頼し、言い忘れた引数を後から補う。",
+      "count": 1,
+      "labels": [
+        "redo"
+      ],
+      "ids": [
+        "nyamuru_voice_3211"
+      ]
+    },
+    "v04_test_supp_postposed_uncertainty": {
+      "description": "先に変更を依頼してから、対象設定と値の不確かさを補足する。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ],
+      "ids": [
+        "nyamuru_voice_3230"
+      ]
+    },
+    "v04_test_supp_prerequisite_action_then_persist": {
+      "description": "望む結果状態に必要な編集操作と、その状態の保存を両方明示する。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3238"
+      ]
+    },
+    "v04_test_supp_prohibit_until_choice": {
+      "description": "利用者が後で対象を決めるまで現在の開始操作を禁止する。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_3246"
+      ]
+    },
+    "v04_test_supp_proposal_then_action_resolution": {
+      "description": "希望や提案を述べたあと、それを具体的な現在の操作依頼として確定する。",
+      "count": 4,
+      "labels": [
+        "out_of_scope_request",
+        "page_navigate",
+        "panel_gap_snap_set",
+        "undo"
+      ],
+      "ids": [
+        "nyamuru_voice_3207",
+        "nyamuru_voice_3214",
+        "nyamuru_voice_3241",
+        "nyamuru_voice_3257"
+      ]
+    },
+    "v04_test_supp_quoted_state_meaning_request": {
+      "description": "先に発した使うという語の意味を設定状態として説明し、その状態への変更を明示する。",
+      "count": 1,
+      "labels": [
+        "panel_sync_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3250"
+      ]
+    },
+    "v04_test_supp_quoted_target_then_apply": {
+      "description": "引用語句の役割をタブ名・本文値・ツール名と指定し、それを対象または値として適用を頼む。",
+      "count": 3,
+      "labels": [
+        "bubble_set",
+        "paint_tool_set",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_3219",
+        "nyamuru_voice_3226",
+        "nyamuru_voice_3269"
+      ]
+    },
+    "v04_test_supp_reconsider_completed_undo": {
+      "description": "完了済みの取消しを後悔・再考し、最後に取り消した編集の復元を頼む。",
+      "count": 1,
+      "labels": [
+        "redo"
+      ],
+      "ids": [
+        "nyamuru_voice_3208"
+      ]
+    },
+    "v04_test_supp_reject_rule_then_judgement": {
+      "description": "単純な規則を引用して否定し、複数の場面条件による適切さの判断を求める。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ],
+      "ids": [
+        "nyamuru_voice_3235"
+      ]
+    },
+    "v04_test_supp_relative_offset_clarification": {
+      "description": "次の次等の相対表現を数値の移動量で明確化する。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ],
+      "ids": [
+        "nyamuru_voice_3213"
+      ]
+    },
+    "v04_test_supp_reported_notification_status": {
+      "description": "引用した完了通知が出たかを尋ね、完了状態の回答だけを求める。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_3244"
+      ]
+    },
+    "v04_test_supp_request_scope_not_selection": {
+      "description": "選択し直す必要がないことを述べ、アプリ全体の設定への依頼と明示する。",
+      "count": 1,
+      "labels": [
+        "panel_gap_snap_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3258"
+      ]
+    },
+    "v04_test_supp_request_then_mechanism_constraint": {
+      "description": "戻す・止める等を依頼してから、履歴か生成ジョブかという実行対象・仕組みを限定する。",
+      "count": 2,
+      "labels": [
+        "out_of_scope_request",
+        "undo"
+      ],
+      "ids": [
+        "nyamuru_voice_3205",
+        "nyamuru_voice_3240"
+      ]
+    },
+    "v04_test_supp_request_then_scope_clarifier": {
+      "description": "先に現在依頼を出し、後から変更しない項目や実行範囲を補足する。",
+      "count": 3,
+      "labels": [
+        "artwork_mode_set",
+        "save",
+        "text_frames_align"
+      ],
+      "ids": [
+        "nyamuru_voice_3203",
+        "nyamuru_voice_3221",
+        "nyamuru_voice_3275"
+      ]
+    },
+    "v04_test_supp_result_and_filename_request": {
+      "description": "欲しい複製結果・名前・別名保存という方式を、一つの操作の引数として指定する。",
+      "count": 1,
+      "labels": [
+        "out_of_scope_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3242"
+      ]
+    },
+    "v04_test_supp_retract_then_request": {
+      "description": "先の依頼や不実行指示を撤回し、残る現在依頼を明示する。",
+      "count": 3,
+      "labels": [
+        "inner_frame_snap_set",
+        "save",
+        "text_frames_align"
+      ],
+      "ids": [
+        "nyamuru_voice_3202",
+        "nyamuru_voice_3254",
+        "nyamuru_voice_3274"
+      ]
+    },
+    "v04_test_supp_scene_locator_and_candidate_count": {
+      "description": "場面とコマ番号を提示し、同じ候補提示の件数と母集団を後から続ける。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ],
+      "ids": [
+        "nyamuru_voice_3265"
+      ]
+    },
+    "v04_test_supp_scoped_correction_keeps_other_action": {
+      "description": "二つの依頼のうち一方の値だけを訂正する。訂正していない他方の依頼は残る。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3239"
+      ]
+    },
+    "v04_test_supp_scoped_value_correction": {
+      "description": "先行指定の値の部分だけを訂正し、最終値を置き換える。",
+      "count": 2,
+      "labels": [
+        "artwork_mode_set",
+        "paint_tool_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3223",
+        "nyamuru_voice_3270"
+      ]
+    },
+    "v04_test_supp_selected_result_apply": {
+      "description": "候補選択を完了報告し、その選択済み結果の適用を現在依頼にする。",
+      "count": 1,
+      "labels": [
+        "out_of_scope_request"
+      ],
+      "ids": [
+        "nyamuru_voice_3243"
+      ]
+    },
+    "v04_test_supp_selection_description_then_align": {
+      "description": "選んだものが輪郭ではなく複数の独立文字枠と説明し、その上端整列を求める。",
+      "count": 1,
+      "labels": [
+        "text_frames_align"
+      ],
+      "ids": [
+        "nyamuru_voice_3272"
+      ]
+    },
+    "v04_test_supp_skip_intermediate_request": {
+      "description": "途中の対象は表示せず終点へ直接移動することを求める。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ],
+      "ids": [
+        "nyamuru_voice_3215"
+      ]
+    },
+    "v04_test_supp_source_filter_then_recommend": {
+      "description": "候補を出せる母集団を先に限定し、その中で場面に適合するものを求める。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ],
+      "ids": [
+        "nyamuru_voice_3264"
+      ]
+    },
+    "v04_test_supp_subset_count_with_exclusion": {
+      "description": "全体回数のうち実行する部分と保持する残りを数量で分ける。",
+      "count": 1,
+      "labels": [
+        "redo"
+      ],
+      "ids": [
+        "nyamuru_voice_3210"
+      ]
+    },
+    "v04_test_supp_tentative_then_explicit_value": {
+      "description": "いったん検討形で述べた量を、後半で明示的な現在操作の値として確定する。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3225"
+      ]
+    },
+    "v04_test_supp_unconditional_value_followup": {
+      "description": "先に最終値を選び、現在値にかかわらず同じ値を希望すると後から補足する。",
+      "count": 1,
+      "labels": [
+        "inner_frame_snap_set"
+      ],
+      "ids": [
+        "nyamuru_voice_3252"
+      ]
+    },
+    "v04_test_supp_whole_extent_fit_request": {
+      "description": "用紙の端まで画面に収めるという表示結果からfit倍率を指定する。",
+      "count": 1,
+      "labels": [
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_3216"
+      ]
+    },
+    "v04_test_supp_withdrawn_self_intention": {
+      "description": "自分の予定を撤回し、今後も現在状態で作業すると述べるだけ。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_3247"
+      ]
+    }
+  },
+  "checks": {
+    "full_text_and_gold_readback_count": 76,
+    "same_author_semantic_naturalness_review": "completed",
+    "nine_keys_and_fixed_metadata_valid": true,
+    "id_sequence_unique_and_contiguous": true,
+    "labels_all_19_four_each": true,
+    "four_distinct_groups_per_label": true,
+    "slot_contract_used_fields_validation": "passed; partial bbox values not filled",
+    "exact_text_duplicates": [],
+    "normalized_text_duplicates": [],
+    "normalization": "NFKC + casefold + remove whitespace, Unicode punctuation and separators",
+    "number_name_masked_within_label_duplicates": [],
+    "masked_template_clusters": [],
+    "masked_template_group_conflicts": [],
+    "template_mask": "normalization; numbers and literal names/title; three panel settings; two pen kinds; on/off/enabled/disabled",
+    "issues": []
+  },
+  "panel_setting_balance": {
+    "panel_sync_set": {
+      "true": 2,
+      "false": 2
+    },
+    "inner_frame_snap_set": {
+      "true": 2,
+      "false": 2
+    },
+    "panel_gap_snap_set": {
+      "true": 2,
+      "false": 2
+    }
+  },
+  "manual_review_changes": [
+    {
+      "id": "nyamuru_voice_3208",
+      "change": "消したままにしなくてよかった was rewritten to 消さないほうがよかったな for natural spoken Japanese; gold remains redo."
+    }
+  ],
+  "meaning_review_attention": [
+    {
+      "ids": [
+        "nyamuru_voice_3204",
+        "nyamuru_voice_3210",
+        "nyamuru_voice_3236"
+      ],
+      "reason": "内訳の数が二つでも、Undo/Redoの同一操作回数と異種操作二つを区別した。",
+      "texts": [
+        "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+        "さっき三回Undoしたうち、直近に取り消した二回分だけ再適用して。残り一回分は取り消したままで。",
+        "次に必要なのは二つね。ベクターペンへの切替と、コマシンクロをオンにすること。両方お願い。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3216"
+      ],
+      "reason": "用紙の全端を一度に画面に収めるという明示的な結果指定はzoom fit。曖昧な図形拡縮量とは区別した。",
+      "texts": [
+        "画面に入りきっていない用紙の端まで、一度に見える倍率へ合わせて。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3220",
+        "nyamuru_voice_3248"
+      ],
+      "reason": "条件によって変更要否は違うが希望する最終値は本文で一意。現在値を分類入力にしなくても操作ラベルに決まる。",
+      "texts": [
+        "作画方式、一体型になってなければ一体型にして。もうそうなってたら変更はいらない。",
+        "コマシンクロ、もうオンだったら何もしなくていい。オフならオンにして。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3224",
+        "nyamuru_voice_3225"
+      ],
+      "reason": "片軸・片寸法だけが明示されているため、高さやy座標の値を補っていない。",
+      "texts": [
+        "選んでいる吹き出しの幅、いまの値に足すんじゃなくて、最終的な幅を三十二ミリにして。",
+        "この吹き出し、もう二ミリ左かな。選択中のを左へ二ミリ動かして。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3226",
+        "nyamuru_voice_3244"
+      ],
+      "reason": "引用語句の役割は編集本文と状態通知で異なる。引用内の戻すや保存を実行依頼にしない。",
+      "texts": [
+        "本文に入れるのは「一つ戻して、そこで待って」。選択中の吹き出しを、この一文に書き換えて。",
+        "画面に「保存しました」って出た？　今の保存が終わったかだけ教えて。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3238",
+        "nyamuru_voice_3239"
+      ],
+      "reason": "Undo後の保存は順序依存でも二つの直接操作。部分訂正は未訂正の内枠スナップ依頼を撤回していない。",
+      "texts": [
+        "いまの修正を一回取り消した状態で保存したい。Undoを一回かけて、その結果を保存して。",
+        "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3242"
+      ],
+      "reason": "ファイル名指定は一つの別名保存操作の引数であり、独立した名前変更操作を追加していない。",
+      "texts": [
+        "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3246",
+        "nyamuru_voice_3271"
+      ],
+      "reason": "開始の禁止・将来の自身の行動を現在操作に数えない。3271は明示されたペン切替だけが残る。",
+      "texts": [
+        "まだ画像生成は始めないで。対象をどのコマにするか、私が決めてからお願いする。",
+        "この線の続きはラスターペンで描く。まだ線は描かず、ペンの切替だけ今お願い。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3267"
+      ],
+      "reason": "候補提示の後に利用者が選ぶという予定は現在の自動適用依頼ではない。",
+      "texts": [
+        "使う背景はまだ決めていない。まず登録済みの3Dモデルで候補を二つ挙げてもらって、私が選ぶことにしたい。候補の提示までお願い。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3272",
+        "nyamuru_voice_3273",
+        "nyamuru_voice_3274",
+        "nyamuru_voice_3275"
+      ],
+      "reason": "対象は複数文字枠。selection_boundsを既定参照とする契約と実装前提は初稿と同じ。",
+      "texts": [
+        "いま選んだのは輪郭じゃなくて、別々の吹き出しの中にある三つの文字枠。その三つの上端を合わせて。",
+        "文字枠を二つ選んであるよ。揃える基準は上側、下端や中央ではなく上端でお願い。",
+        "文字の内容を直す依頼は取り消すね。選択中の複数の文字枠について、書き出し位置を上端でそろえるほうを実行して。",
+        "一番のコマ内で選択中の文字枠、あの二つを上端でそろえてもらえる？　吹き出しの形はそのままでいいよ。"
+      ],
+      "decision": "retain_under_contract_pending_user_review"
+    }
+  ],
+  "limitations": [
+    "旧データ・他split・初稿との交差重複や近似構文はblind authorとして未監査。親担当が監査する。",
+    "文型groupは独立性の証明ではなく、共通構造を同じまとまりとして監査するための注釈。",
+    "すべて人工作成かつ利用者レビュー前であり、性能評価や実利用頻度についての根拠にはしていない。"
+  ],
+  "output_files": [
+    "/private/tmp/nyamuru-v04-test-supplement.jsonl",
+    "/private/tmp/nyamuru-v04-test-supplement-review.json"
+  ],
+  "candidate_sha256": "49573a117e384efe61e5384aa3962549747e226b07e019e8be81e629c42ca0bc"
+}

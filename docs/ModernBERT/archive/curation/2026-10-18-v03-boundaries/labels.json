@@ -1,0 +1,506 @@
+{
+  "schema_version": 1,
+  "name": "nyamuru_voice_intent_draft_20261017",
+  "status": "pending_user_review",
+  "input_contract": {
+    "mode": "explicit_voice_command",
+    "model_fields": [
+      "text"
+    ],
+    "target_field": "label",
+    "context": "この版は発話本文だけ。会話履歴・UI状態・スロット・注釈・groupをBERT入力にしない。",
+    "dictation": "セリフの口述入力中は操作分類へ流さず、既存の本文編集へ渡す。口述と操作の切替は別途設計する。",
+    "classification_only": true,
+    "slots": "別の引数解決処理をレビューするための正解注釈。BERT分類器が生成する出力ではない。",
+    "execution": "どのラベルも実行許可そのものではない。UI状態、対象、引数、既存処理の利用可否を確認して共通ハンドラを呼ぶ。"
+  },
+  "label2id": {
+    "save": 0,
+    "undo": 1,
+    "redo": 2,
+    "page_navigate": 3,
+    "view_change": 4,
+    "artwork_mode_set": 5,
+    "bubble_set": 6,
+    "needs_clarification": 7,
+    "needs_reasoning": 8,
+    "compound_request": 9,
+    "out_of_scope_request": 10,
+    "not_command": 11,
+    "panel_sync_set": 12,
+    "inner_frame_snap_set": 13,
+    "panel_gap_snap_set": 14,
+    "generate_request": 15,
+    "background_3d_candidates": 16,
+    "paint_tool_set": 17,
+    "text_frames_align": 18
+  },
+  "id2label": {
+    "0": "save",
+    "1": "undo",
+    "2": "redo",
+    "3": "page_navigate",
+    "4": "view_change",
+    "5": "artwork_mode_set",
+    "6": "bubble_set",
+    "7": "needs_clarification",
+    "8": "needs_reasoning",
+    "9": "compound_request",
+    "10": "out_of_scope_request",
+    "11": "not_command",
+    "12": "panel_sync_set",
+    "13": "inner_frame_snap_set",
+    "14": "panel_gap_snap_set",
+    "15": "generate_request",
+    "16": "background_3d_candidates",
+    "17": "paint_tool_set",
+    "18": "text_frames_align"
+  },
+  "labels": [
+    {
+      "id": 0,
+      "name": "save",
+      "title": "保存",
+      "include": "現在の作品を既存の保存操作で保存する依頼。",
+      "exclude": "保存先変更、別名保存、保存済みかの質問、保存方法の質問は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/App.tsx:saveProject",
+        "src/components/Header.tsx:onSave"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "undo",
+      "title": "戻す",
+      "include": "直前までに完了した編集を履歴で取り消す依頼。",
+      "exclude": "ページを前へ移動する依頼、実行中のジョブの中止、対象不明の「戻して」は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/App.tsx:undo",
+        "src/components/Header.tsx:paint.undo / onUndo"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "redo",
+      "title": "やり直す",
+      "include": "Undoで取り消した編集を履歴から再適用する依頼。",
+      "exclude": "新しく生成し直す依頼や、何を繰り返すか不明の「もう一度」は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/App.tsx:redo",
+        "src/components/Header.tsx:paint.redo / onRedo"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "page_navigate",
+      "title": "ページ移動",
+      "include": "前後、番号、先頭・末尾で作品内の表示ページを指定する依頼。",
+      "exclude": "ページの追加・削除・並べ替え、コマ選択、Undoは含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/App.tsx:PageSidebar.onSelectPage / page-switcher",
+        "src/components/PageSidebar.tsx:onSelectPage"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "view_change",
+      "title": "表示切替",
+      "include": "ズーム、見開き、表示ガイド、既存タブを指定する依頼。",
+      "exclude": "図形の大きさ・座標、作画方式、コマシンクロ、内枠スナップ、コマスナップ、ファイル保存は含めない。ガイド対象のない「ガイド」は保留する。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/MangaCanvas.tsx:zoomAt / resetZoom / fitPaper",
+        "src/components/App.tsx:changeTab / changeShowGuides / changeSpreadView",
+        "src/components/EnvironmentSettings.tsx:display"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "artwork_mode_set",
+      "title": "作画方式切替",
+      "include": "作画設定を integrated（一体型）または draft（下書き）にする依頼。",
+      "exclude": "画像生成の開始、生成対象だけの切替、部分修正との意味が曖昧な「部分生成」は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/ArtworkSettings.tsx:update / artwork-generation-mode",
+        "src/lib/artworkRules.ts:applyArtworkSettings"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "bubble_set",
+      "title": "吹き出しの指定変更",
+      "include": "既存の吹き出しについて、形・素材・しっぽ有無・切取り・位置・寸法・本文・話者・所属・結合の値を明示する依頼。",
+      "exclude": "適切な素材選び、読みやすさ判断、程度不明の移動・拡大、新規追加・削除は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/PanelInspector.tsx:update / onMoveBubble / BubbleBezierEditor.onChange",
+        "src/components/App.tsx:changeElementBBox / changeCanvasText / moveSelectedBubble",
+        "src/lib/bubblePresetData.ts:setBubbleShape",
+        "src/lib/bubblePresentation.ts:setBubbleTailEnabled"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "needs_clarification",
+      "title": "意味・指定が不足",
+      "include": "この一発話だけでは操作、値、または参照の意味を一意に決められない。",
+      "exclude": "「選択中の吹き出し」のような通常の画面選択参照は操作ラベルのまま。実際の未選択は実行側で扱う。",
+      "route": "ask_or_resolve_context",
+      "existing_source": []
+    },
+    {
+      "id": 8,
+      "name": "needs_reasoning",
+      "title": "LLMによる内容判断",
+      "include": "場面・資料を読んで形、配置、人物対応、表現などを考える依頼。",
+      "exclude": "明示された値をそのまま設定する操作、方法を尋ねる質問は含めない。",
+      "route": "llm_planning",
+      "existing_source": []
+    },
+    {
+      "id": 9,
+      "name": "compound_request",
+      "title": "複数操作",
+      "include": "独立した操作を二つ以上、現在の実行依頼として含む。",
+      "exclude": "同じ移動のx/y指定、同じBBoxの幅/高さ、繰り返し回数、入力本文の中の命令語、訂正で撤回された操作は数えない。",
+      "route": "decompose_before_dispatch",
+      "existing_source": []
+    },
+    {
+      "id": 10,
+      "name": "out_of_scope_request",
+      "title": "初期範囲外の依頼",
+      "include": "何をしてほしいかは明確だが、この定義の直接操作ラベルの範囲外。",
+      "exclude": "アプリ自体に機能がないという意味ではない。全ページ一括生成、生成中止、ページ削除などは今回の対象外。",
+      "route": "unsupported_in_initial_scope",
+      "existing_source": []
+    },
+    {
+      "id": 11,
+      "name": "not_command",
+      "title": "今回の実行依頼ではない",
+      "include": "説明・状態・能力の質問、報告、独り言、明示的な不実行・延期。",
+      "exclude": "疑問形の依頼「保存してくれる？」はsave。明確な中止依頼は対象に応じて範囲外または保留へ。",
+      "route": "no_action_dispatch",
+      "existing_source": []
+    },
+    {
+      "id": 12,
+      "name": "panel_sync_set",
+      "title": "コマシンクロのオン・オフ",
+      "include": "コマシンクロを明示的にオンまたはオフへ設定する依頼。設定変更だけでコマを移動・変形しない。",
+      "exclude": "他の二つのコマ設定、表示ガイド、状態質問、不実行の指示、変更先が不明な依頼は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/PanelControls.tsx:onTogglePanelSync",
+        "src/components/App.tsx:togglePanelSync / panelSync / PANEL_SYNC_KEY"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "inner_frame_snap_set",
+      "title": "内枠スナップのオン・オフ",
+      "include": "内枠スナップを明示的にオンまたはオフへ設定する依頼。設定変更だけでコマを移動・変形しない。",
+      "exclude": "他の二つのコマ設定、表示ガイド、状態質問、不実行の指示、変更先が不明な依頼は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/PanelControls.tsx:onToggleInnerFrameSnap",
+        "src/components/App.tsx:toggleInnerFrameSnap / innerFrameSnap / INNER_FRAME_SNAP_KEY"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "panel_gap_snap_set",
+      "title": "コマスナップのオン・オフ",
+      "include": "コマスナップを明示的にオンまたはオフへ設定する依頼。設定変更だけでコマを移動・変形しない。",
+      "exclude": "他の二つのコマ設定、表示ガイド、状態質問、不実行の指示、変更先が不明な依頼は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/PanelControls.tsx:onTogglePanelGapSnap",
+        "src/components/App.tsx:togglePanelGapSnap / panelGapSnap / PANEL_GAP_SNAP_KEY"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "generate_request",
+      "title": "指定対象の画像生成",
+      "include": "選択対象、選択中または名前で指定した人物、現在のページ全体、選択中または番号で指定したコマ全体の画像生成を依頼する。",
+      "exclude": "作画方式の設定だけ、全ページ一括生成、生成の中止、結果の自動配置は含めない。対象を一意に解決できない場合は実行側で確認する。",
+      "route": "generation_workflow_after_target_and_capability_resolution",
+      "existing_source": [
+        "src/components/App.tsx:requestOwnerGeneration / prepareQwen",
+        "src/components/QwenGenerationDialog.tsx:generate",
+        "src/lib/qwenGeneration.ts:buildQwenGenerationPlan"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "background_3d_candidates",
+      "title": "登録済み3D背景の候補提示",
+      "include": "登録済みの3Dモデルから、背景に使える候補を選んで提示する依頼。場面との適合判断にはLLMを使う。",
+      "exclude": "外部の3Dモデル検索、新規3D生成、カメラ・構図案の生成、候補の自動配置・自動適用は含めない。",
+      "route": "registered_model_candidate_workflow_with_llm_selection",
+      "existing_source": [
+        "src/components/BackgroundModelPicker.tsx:stages",
+        "src/components/DocumentEditors.tsx:SettingEditor / BackgroundModelPicker",
+        "src/components/Background3dEditor.tsx:stage selection"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "paint_tool_set",
+      "title": "描画ペンの切替",
+      "include": "ラスターペンまたはベクターペンへ切り替える依頼。",
+      "exclude": "既存の絵やレイヤーのラスター化・ベクター化、線を描く実行、切替先不明の依頼は含めない。",
+      "route": "existing_action_after_resolution",
+      "existing_source": [
+        "src/components/PaintEditor.tsx:selectTool",
+        "src/components/PaintPenTools.tsx:vector-pen",
+        "src/lib/paintToolMode.ts:nextPaintLineKind"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "text_frames_align",
+      "title": "複数文字枠の上端揃え",
+      "include": "選択した複数の文字枠の上端をそろえる依頼。別々の吹き出しの文字の書き出し位置をそろえる用途。",
+      "exclude": "一つの文章の段落・各行の揃え、吹き出し輪郭の整列、位置を判断する自由な組版依頼は含めない。",
+      "route": "pending_independent_text_frames_and_multi_selection",
+      "existing_source": [
+        "src/types.ts:Bubble / ScreenText / CanvasElementSelection",
+        "src/components/MangaCanvas.tsx:BubbleText",
+        "src/lib/localBridge.ts:attachRecognizedTextToPage"
+      ]
+    }
+  ],
+  "annotation_rules": [
+    "最終的に肯定された現在の依頼を分類する。否定された操作、撤回された依頼、報告、引用内の命令語を実行対象にしない。",
+    "「保存してくれる？」は依頼。「保存のやり方を教えて」は説明要求。能力だけを尋ねる曖昧な疑問形は無理に実行依頼へ寄せない。",
+    "複数の独立操作はcompound_request。一つのBBoxの複数値や同じ操作の回数は単一操作。",
+    "対象を画面の選択状態で解決できる依頼は操作ラベル。未選択・候補複数・範囲外の数値は実行側で止め、追加情報を求める。",
+    "操作が曖昧ならneeds_clarification、適切さを考える依頼ならneeds_reasoning。初期対応外だが明確な直接操作はout_of_scope_request。",
+    "not_commandは会話を捨てるラベルではなく、今回の編集・保存操作を発行しないという意味。状態質問には実データから回答する。",
+    "integrated/draftは既存作画設定の値。画像生成開始、モデル変更、クラウド送信を含めない。",
+    "nomalの素材綴り、セリフ本文、作者の素材分類を保持。曖昧な感情語から素材を固定対応させない。",
+    "コマシンクロ・内枠スナップ・コマスナップは別々の設定。「使わない設定にして」はオフ指定、「オンにしないで」は変更禁止として区別する。",
+    "オン・オフは希望する最終状態。同じ指示の繰り返しで反転しない。現在値が希望値と一致すれば変更しない。",
+    "生成依頼はgenerate_request、対象はslotsで分ける。ページ全体は現在の一ページであり、全ページ一括生成ではない。",
+    "「これ生成」はselection。UIの明示的な選択から解決し、対象未選択・不一致なら確認する。既存処理の背景への既定値を音声の指示対象にしない。",
+    "3D背景候補は利用者が登録済みモデルから選ぶ意味と確認済み。BERTは依頼を分類し、LLMが現在の場面と実在する登録済みモデルから候補を選ぶ。",
+    "実行先がLLMを使うことだけを理由にneeds_reasoningへ分類しない。登録済み3D背景候補の明示依頼には専用ラベルを使う。",
+    "候補提示だけでは背景に配置・適用しない。候補数が不足しても未登録モデルやIDを作らない。",
+    "コマ番号・人名はラベルにしない。locatorの正解注釈として保持し、現在ページの表示番号と人物台帳・コマ内配置へ解決する。",
+    "「〇〇ちゃん」は説明用の名前の差し込み位置。文字列〇〇を実在人物として扱わない。敬称を含む名前の原文を保持し、候補が複数なら確認する。",
+    "「背景候補」はこの音声操作で登録済み3D背景候補の略称。モデルの外部検索や新規生成へ広げない。",
+    "文字の頭揃えは利用者確認により複数文字枠の上端揃え。別々の吹き出しに入った文字を対象とし、文章の行揃えや輪郭の整列に置き換えない。"
+  ],
+  "slot_contract": {
+    "save": {
+      "target": [
+        "current_document"
+      ]
+    },
+    "undo": {
+      "count": "positive integer"
+    },
+    "redo": {
+      "count": "positive integer"
+    },
+    "page_navigate": {
+      "one_of": [
+        "page_number (1-based)",
+        "position: first|last",
+        "direction: next|previous + count"
+      ],
+      "constraints": "optional preservation constraints"
+    },
+    "view_change": {
+      "kind": [
+        "zoom",
+        "spread",
+        "guide",
+        "tab"
+      ],
+      "zoom_mode": [
+        "fit",
+        "in",
+        "out",
+        "actual"
+      ],
+      "guide": [
+        "placement",
+        "edit",
+        "artwork"
+      ],
+      "tab": [
+        "storyboard",
+        "meta",
+        "setting",
+        "characters",
+        "props",
+        "coverage",
+        "environment"
+      ]
+    },
+    "artwork_mode_set": {
+      "mode": [
+        "integrated",
+        "draft"
+      ]
+    },
+    "bubble_set": {
+      "target": [
+        "selected_bubble"
+      ],
+      "field": [
+        "shape",
+        "preset",
+        "tail_enabled",
+        "clip_to_panel",
+        "bbox",
+        "text",
+        "speaker",
+        "owner",
+        "join_to"
+      ],
+      "coordinates": "mm; x right positive; y down positive; indices are user-facing 1-based and resolved against current data"
+    },
+    "panel_sync_set": {
+      "enabled": "boolean; desired state, not toggle"
+    },
+    "inner_frame_snap_set": {
+      "enabled": "boolean; desired state, not toggle"
+    },
+    "panel_gap_snap_set": {
+      "enabled": "boolean; desired state, not toggle"
+    },
+    "generate_request": {
+      "target": [
+        "selection",
+        "selected_character",
+        "current_page",
+        "selected_panel",
+        "named_character",
+        "specified_panel"
+      ],
+      "locator": "optional shared locator",
+      "resolution": "resolve against current unsaved UI state; no widening or default-to-background fallback"
+    },
+    "background_3d_candidates": {
+      "source": [
+        "registered_3d_models"
+      ],
+      "count": "optional positive integer",
+      "query": "optional literal scene/category phrase; unspecified context resolved from current page/panel",
+      "locator": "optional shared locator"
+    },
+    "paint_tool_set": {
+      "tool": [
+        "pen",
+        "vector-pen"
+      ]
+    },
+    "text_frames_align": {
+      "target": [
+        "selected_text_frames"
+      ],
+      "alignment": [
+        "top"
+      ],
+      "reference": [
+        "selection_bounds"
+      ],
+      "locator": "optional shared locator"
+    }
+  },
+  "shared_locator_contract": {
+    "panel_number": "positive user-facing panel number on the current page; match displayed panel.id, not an assumed array offset",
+    "character_name": "literal spoken name including honorifics; resolve to exactly one existing character placement within specified/current panel",
+    "constraints": [
+      "explicit panel number wins over active panel; a deictic selected character must belong to that panel",
+      "if the number or name cannot be resolved, or multiple placements match, ask rather than substituting another target",
+      "names do not authorize changing every appearance of that character or generating across every page"
+    ]
+  },
+  "panel_setting_execution": {
+    "panel_sync_set": {
+      "ui_label": "コマシンクロ",
+      "current_state": "panelSync",
+      "existing_handler": "togglePanelSync",
+      "ui_callback": "onTogglePanelSync",
+      "persistence_key": "PANEL_SYNC_KEY",
+      "dispatch": "現在値とenabledを比較し、一致なら変更なし。不一致なら既存ハンドラを呼ぶ。共通setterへ取り出す場合もUIと状態保存の処理を共有する。",
+      "scope": "アプリの編集設定。選択コマだけへの指定ではない。変更した時点ではコマ形状を変えず、以後の編集動作に適用。"
+    },
+    "inner_frame_snap_set": {
+      "ui_label": "内枠スナップ",
+      "current_state": "innerFrameSnap",
+      "existing_handler": "toggleInnerFrameSnap",
+      "ui_callback": "onToggleInnerFrameSnap",
+      "persistence_key": "INNER_FRAME_SNAP_KEY",
+      "dispatch": "現在値とenabledを比較し、一致なら変更なし。不一致なら既存ハンドラを呼ぶ。共通setterへ取り出す場合もUIと状態保存の処理を共有する。",
+      "scope": "アプリの編集設定。選択コマだけへの指定ではない。変更した時点ではコマ形状を変えず、以後の編集動作に適用。"
+    },
+    "panel_gap_snap_set": {
+      "ui_label": "コマスナップ",
+      "current_state": "panelGapSnap",
+      "existing_handler": "togglePanelGapSnap",
+      "ui_callback": "onTogglePanelGapSnap",
+      "persistence_key": "PANEL_GAP_SNAP_KEY",
+      "dispatch": "現在値とenabledを比較し、一致なら変更なし。不一致なら既存ハンドラを呼ぶ。共通setterへ取り出す場合もUIと状態保存の処理を共有する。",
+      "scope": "アプリの編集設定。選択コマだけへの指定ではない。変更した時点ではコマ形状を変えず、以後の編集動作に適用。"
+    }
+  },
+  "capability_notes": [
+    "現在の操作の正本はUIの未保存状態。保存済み作品を別プロセスで書き換える経路は使わない。",
+    "既存の匿名onClick/onChangeは共通関数へ取り出す接続が必要な箇所がある。処理内容は重複実装しない。",
+    "clip_to_panelは作業中の変更。UI検証完了前には実行対象へ有効化しない。",
+    "ウニフラッシュ、未制作の思考雲素材、しっぽ形状変更は初期対応から除外。",
+    "印刷キュー、全ページ一括生成、実行中生成の中止、作品を開く、新規作品、ページ追加・削除、外部3Dモデル検索、3Dカメラ構図案の生成は今回の対象外。",
+    "複数文字枠の頭揃えは必須改善待ち。スキャン取込で輪郭・文字枠・原字参照・対応関係を独立に保持し、複数選択できることが前提。"
+  ],
+  "generation_and_candidates_readiness": {
+    "owner_generation": {
+      "status": "existing_ui_workflow_not_voice_wired",
+      "entry": "App.requestOwnerGeneration prepares and opens QwenGenerationDialog",
+      "execution": "QwenGenerationDialog.generate submits the job; merely opening the dialog is not generation completion",
+      "result_application": "separate existing insert action; do not imply automatic overwrite"
+    },
+    "page_generation": {
+      "status": "pending_normal_ui_integration",
+      "evidence": "ArtworkSettings changes generation instructions only; scripts/hermes_manga.py has a separate page workflow",
+      "constraint": "do not substitute the separate saved-file CLI or a background-only owner for whole-page generation"
+    },
+    "panel_generation": {
+      "status": "inactive_legacy_ui_not_voice_wired",
+      "evidence": "PanelInspector has Animagine panel draft code; App currently passes panelDraftToolbarTarget=null",
+      "constraint": "do not reactivate or switch model automatically; an owner background is not a complete panel"
+    },
+    "background_3d_candidates": {
+      "status": "registered_catalog_exists_candidate_selection_and_display_pending",
+      "evidence": "BackgroundModelPicker and Background3dEditor list registered stages manually; no automatic recommendation control found",
+      "user_confirmed_meaning": "登録済みの3Dモデルから背景候補を選ぶ",
+      "scope": "use actual registered stage IDs and current scene context; suggest only, no download, import, camera variation or placement"
+    }
+  },
+  "text_frame_improvement_requirement": {
+    "priority": "required_prerequisite_for_text_frames_align",
+    "user_confirmed_meaning": "複数の文字枠の上端をそろえる。複数の吹き出しが並ぶ場合の文字の書き出し位置を揃えたい。",
+    "current_import": "attachRecognizedTextToPage maps the recognized text bbox into Bubble.bbox; analogTextImport preserves original text crop metadata but no independent editable text frame",
+    "current_render": "BubbleText centers measured text inside the bubble-derived frame; Bubble has no independent text bbox/offset and CanvasElementSelection is singular",
+    "existing_alignment": "Nyamuru alignVectors operates on vector paths. VectorCraft object.align exists, but this audit did not establish that its text-object alignment was integrated into Nyamuru.",
+    "required_behavior": [
+      "retain outline geometry, editable text and its independent frame, source crop and explicit association separately",
+      "preserve OCR text and scan pixels; do not fabricate a detected balloon outline from a text rectangle",
+      "support selection of two or more text frames and align only those frames, keeping bubble outlines and text content unchanged",
+      "use the top of the selection bounds as the draft default reference; preserve frame size and horizontal position",
+      "retain existing visibility, clipping, ownership and edit history; verify save and reload"
+    ],
+    "implementation_status": "requirements only; no data model, OCR, rendering or selection code changes in this task"
+  }
+}

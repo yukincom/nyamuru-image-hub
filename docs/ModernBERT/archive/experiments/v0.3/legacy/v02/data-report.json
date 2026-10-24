@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "model_fields": [
+    "text"
+  ],
+  "target_field": "label",
+  "source_sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+  "corpus_sha256": "368220eff471058f5646901cd64a57e5ed291af9710f989ddb4e37c50e8ee47e",
+  "corpus": {
+    "version": "v0.2",
+    "n": 924,
+    "sources": [
+      {
+        "path": "source/candidates.jsonl",
+        "n": 316,
+        "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b"
+      },
+      {
+        "path": "curation/2026-10-17-v02-variants/candidates.jsonl",
+        "n": 608,
+        "sha256": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74"
+      }
+    ],
+    "minimum_per_label": {
+      "train": 12,
+      "dev": 4,
+      "test": 4
+    },
+    "provenance": "Original handoff preserved; new author-generated variations, not collected real utterances."
+  },
+  "label_contract_sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+  "split_plan_sha256": "a04ca6c31ecfbec0ad4ec0aad1ee4c3a2d5f5b0a1f21c781611d67059bd9d5bd",
+  "family_review_sha256": "765dfbdb49cf9594b84e5b2e2e9668a1431748f8de6ede3880b670b2b20300f7",
+  "splits": {
+    "train": {
+      "n": 647,
+      "sha256": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+      "labels": {
+        "save": 29,
+        "undo": 30,
+        "redo": 30,
+        "page_navigate": 33,
+        "view_change": 37,
+        "artwork_mode_set": 30,
+        "bubble_set": 43,
+        "needs_clarification": 36,
+        "needs_reasoning": 29,
+        "compound_request": 34,
+        "out_of_scope_request": 31,
+        "not_command": 54,
+        "panel_sync_set": 28,
+        "inner_frame_snap_set": 28,
+        "panel_gap_snap_set": 28,
+        "generate_request": 47,
+        "background_3d_candidates": 40,
+        "paint_tool_set": 32,
+        "text_frames_align": 28
+      },
+      "missing_labels": [],
+      "groups": 196,
+      "families": 92,
+      "sources": {
+        "codex_synthetic": 640,
+        "user_supplied_example": 7
+      }
+    },
+    "dev": {
+      "n": 138,
+      "sha256": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+      "labels": {
+        "save": 6,
+        "undo": 5,
+        "redo": 5,
+        "page_navigate": 7,
+        "view_change": 7,
+        "artwork_mode_set": 4,
+        "bubble_set": 9,
+        "needs_clarification": 8,
+        "needs_reasoning": 6,
+        "compound_request": 8,
+        "out_of_scope_request": 7,
+        "not_command": 12,
+        "panel_sync_set": 8,
+        "inner_frame_snap_set": 8,
+        "panel_gap_snap_set": 8,
+        "generate_request": 10,
+        "background_3d_candidates": 4,
+        "paint_tool_set": 8,
+        "text_frames_align": 8
+      },
+      "missing_labels": [],
+      "groups": 49,
+      "families": 35,
+      "sources": {
+        "codex_synthetic": 137,
+        "user_supplied_example": 1
+      }
+    },
+    "test": {
+      "n": 139,
+      "sha256": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+      "labels": {
+        "save": 7,
+        "undo": 7,
+        "redo": 7,
+        "page_navigate": 8,
+        "view_change": 8,
+        "artwork_mode_set": 8,
+        "bubble_set": 9,
+        "needs_clarification": 8,
+        "needs_reasoning": 7,
+        "compound_request": 7,
+        "out_of_scope_request": 7,
+        "not_command": 12,
+        "panel_sync_set": 8,
+        "inner_frame_snap_set": 8,
+        "panel_gap_snap_set": 8,
+        "generate_request": 8,
+        "background_3d_candidates": 4,
+        "paint_tool_set": 4,
+        "text_frames_align": 4
+      },
+      "missing_labels": [],
+      "groups": 47,
+      "families": 38,
+      "sources": {
+        "codex_synthetic": 139
+      }
+    }
+  }
+}

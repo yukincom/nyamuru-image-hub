@@ -1,0 +1,56 @@
+{
+  "status": "passed",
+  "scope": "two bounded T4 numerical-repair trials; no test evaluation or accuracy comparison",
+  "original_inputs_unchanged": true,
+  "trials": [
+    {
+      "condition": "dropout_2view",
+      "gpu": "Tesla T4",
+      "seed": [
+        42
+      ],
+      "learning_rate": [
+        2e-05
+      ],
+      "epochs": 10,
+      "all_dev_losses_finite": true,
+      "all_logged_gradient_norms_finite": true,
+      "training_finished": true,
+      "test_evaluated": false,
+      "last_dev_loss": 4.465595245361328,
+      "loss_ast_sha256": {
+        "two_view_terms": "37911d399002051091bfe0141b308426bb0a748d25aa027db2b1b650c784482a",
+        "compute_loss": "41af06fa9c8405c084cca90a8ca70db5c452004c05afbd51269ceed637bc01cc"
+      }
+    },
+    {
+      "condition": "rdrop",
+      "gpu": "Tesla T4",
+      "seed": [
+        42
+      ],
+      "learning_rate": [
+        2e-05
+      ],
+      "epochs": 10,
+      "all_dev_losses_finite": true,
+      "all_logged_gradient_norms_finite": true,
+      "training_finished": true,
+      "test_evaluated": false,
+      "last_dev_loss": 2.99289608001709,
+      "loss_ast_sha256": {
+        "two_view_terms": "37911d399002051091bfe0141b308426bb0a748d25aa027db2b1b650c784482a",
+        "compute_loss": "41af06fa9c8405c084cca90a8ca70db5c452004c05afbd51269ceed637bc01cc"
+      }
+    }
+  ],
+  "retrieval": {
+    "source": "existing user Colab runtime, terminal rendered verification.json",
+    "notebook": "https://colab.research.google.com/drive/1ZsMKoUex7i_2b1_VeDI7kjo3ix4TP99x",
+    "runtime_report": "/content/nyamuru-v051-nan-check/verification.json",
+    "local_loss_ast_matches": true,
+    "ast_comparison_python": "3.11",
+    "full_release_run": false,
+    "limit": "T4 diagnostics use original v0.5 train.py with identical repaired compute_loss and two_view_terms AST, restricted to one seed and LR per condition. They do not include the new dev-error guards or notebook logging changes; those are verified locally."
+  }
+}

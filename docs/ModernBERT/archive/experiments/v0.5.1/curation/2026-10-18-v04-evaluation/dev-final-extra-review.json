@@ -1,0 +1,325 @@
+{
+  "review_version": 1,
+  "artifact": "nyamuru-v04-dev-final-extra.jsonl",
+  "candidate_sha256": "ba17dad6bcca8bfa68cbbcd21fc8e4944d64842c8255ffb9ba130e03580b7293",
+  "read_sources": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "role": "only external file input; current label and slot contract"
+    }
+  ],
+  "blind_author_statement": {
+    "old_data_seen": false,
+    "other_splits_seen": false,
+    "model_predictions_or_scores_seen": false,
+    "network_used": false,
+    "inference_or_training_run": false,
+    "other_files_modified": false,
+    "statement": "Only labels.json was read as an external source. Own earlier candidates remain in conversation context. The two requested final-extra files are the only writes. No additional autonomous examples were created."
+  },
+  "counts": {
+    "total": 22,
+    "label_count": 11,
+    "per_label": {
+      "save": 2,
+      "undo": 2,
+      "redo": 2,
+      "page_navigate": 2,
+      "artwork_mode_set": 2,
+      "panel_sync_set": 2,
+      "inner_frame_snap_set": 2,
+      "panel_gap_snap_set": 2,
+      "background_3d_candidates": 2,
+      "paint_tool_set": 2,
+      "text_frames_align": 2
+    },
+    "family_count": 18,
+    "per_family": {
+      "v04_dev_final_extra_candidate_specification_continuation": 1,
+      "v04_dev_final_extra_choice_then_apply": 3,
+      "v04_dev_final_extra_completion_request_question": 1,
+      "v04_dev_final_extra_delegated_request_postposed_contents": 1,
+      "v04_dev_final_extra_enumerated_history_count": 1,
+      "v04_dev_final_extra_history_request_postposed_count": 1,
+      "v04_dev_final_extra_nominal_state_transition": 1,
+      "v04_dev_final_extra_nominal_transition_question": 2,
+      "v04_dev_final_extra_operation_then_closure": 1,
+      "v04_dev_final_extra_past_undo_count_to_redo": 1,
+      "v04_dev_final_extra_prepare_before_next_activity": 2,
+      "v04_dev_final_extra_quoted_action_postposed_target": 1,
+      "v04_dev_final_extra_relative_target_candidate_question": 1,
+      "v04_dev_final_extra_repeated_navigation_nominal": 1,
+      "v04_dev_final_extra_selection_bounds_alignment_question": 1,
+      "v04_dev_final_extra_target_announcement_then_ellipsis": 1,
+      "v04_dev_final_extra_topmost_frame_reference_command": 1,
+      "v04_dev_final_extra_value_before_setting": 1
+    },
+    "families_per_label": {
+      "save": 2,
+      "undo": 2,
+      "redo": 2,
+      "page_navigate": 2,
+      "artwork_mode_set": 2,
+      "panel_sync_set": 2,
+      "inner_frame_snap_set": 2,
+      "panel_gap_snap_set": 2,
+      "background_3d_candidates": 2,
+      "paint_tool_set": 2,
+      "text_frames_align": 2
+    }
+  },
+  "family_definitions": {
+    "v04_dev_final_extra_operation_then_closure": {
+      "description": "現在操作を到達点として頼んだ後、その操作で今回の作業を終えるという補足を置く。",
+      "count": 1,
+      "labels": [
+        "save"
+      ]
+    },
+    "v04_dev_final_extra_delegated_request_postposed_contents": {
+      "description": "具体作業を引き受けてもらう疑問形の依頼に、対象内容の指定を後置する。",
+      "count": 1,
+      "labels": [
+        "save"
+      ]
+    },
+    "v04_dev_final_extra_enumerated_history_count": {
+      "description": "対象の編集を相対位置で列挙し、それらに対応する同一履歴操作の合計回数を指定する。",
+      "count": 1,
+      "labels": [
+        "undo"
+      ]
+    },
+    "v04_dev_final_extra_history_request_postposed_count": {
+      "description": "完了した編集への履歴操作を依頼し、実行回数を後ろから補う。",
+      "count": 1,
+      "labels": [
+        "undo"
+      ]
+    },
+    "v04_dev_final_extra_past_undo_count_to_redo": {
+      "description": "過去に取り消した回数と対応づけて、現在の再適用件数を指定する。",
+      "count": 1,
+      "labels": [
+        "redo"
+      ]
+    },
+    "v04_dev_final_extra_quoted_action_postposed_target": {
+      "description": "引用した履歴操作名と回数で依頼し、その操作が対象とする編集を後置で示す。",
+      "count": 1,
+      "labels": [
+        "redo"
+      ]
+    },
+    "v04_dev_final_extra_repeated_navigation_nominal": {
+      "description": "ページ送りの方向と繰り返し回数を、名詞句を用いた依頼で指定する。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ]
+    },
+    "v04_dev_final_extra_target_announcement_then_ellipsis": {
+      "description": "対象を指定すると告げたうえで、番号と省略された依頼句で行き先を確定する。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ]
+    },
+    "v04_dev_final_extra_choice_then_apply": {
+      "description": "使用値・ツールを選ぶ発話に続いて、その決定を現設定へ適用するよう依頼する。作画方式・コマシンクロ・ペンで共通group。",
+      "count": 3,
+      "labels": [
+        "artwork_mode_set",
+        "paint_tool_set",
+        "panel_sync_set"
+      ]
+    },
+    "v04_dev_final_extra_prepare_before_next_activity": {
+      "description": "次の作業に入る前の準備として一つの設定値を指定する。次の作業自体は現在依頼しない。",
+      "count": 2,
+      "labels": [
+        "artwork_mode_set",
+        "inner_frame_snap_set"
+      ]
+    },
+    "v04_dev_final_extra_nominal_state_transition": {
+      "description": "使用しない状態への移行を名詞句にまとめて依頼する。",
+      "count": 1,
+      "labels": [
+        "panel_sync_set"
+      ]
+    },
+    "v04_dev_final_extra_nominal_transition_question": {
+      "description": "変更操作を名詞化し、その具体操作を頼めるかという疑問形で依頼する。設定とペンで共通group。",
+      "count": 2,
+      "labels": [
+        "inner_frame_snap_set",
+        "paint_tool_set"
+      ]
+    },
+    "v04_dev_final_extra_value_before_setting": {
+      "description": "希望値への依頼を先に発し、設定対象を後続文で確定する。",
+      "count": 1,
+      "labels": [
+        "panel_gap_snap_set"
+      ]
+    },
+    "v04_dev_final_extra_completion_request_question": {
+      "description": "具体的な状態変更を済ませるよう、授受疑問形で頼む。",
+      "count": 1,
+      "labels": [
+        "panel_gap_snap_set"
+      ]
+    },
+    "v04_dev_final_extra_candidate_specification_continuation": {
+      "description": "候補提示を依頼し、後続文で同じ候補提示の参照元と件数を補足する。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ]
+    },
+    "v04_dev_final_extra_relative_target_candidate_question": {
+      "description": "対象場面への適合と登録済みという限定を付けた候補について、提示を疑問形で頼む。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ]
+    },
+    "v04_dev_final_extra_topmost_frame_reference_command": {
+      "description": "複数選択内の最上端を持つ枠を基準として指定し、同じ集合の上端整列を依頼する。",
+      "count": 1,
+      "labels": [
+        "text_frames_align"
+      ]
+    },
+    "v04_dev_final_extra_selection_bounds_alignment_question": {
+      "description": "複数選択と選択範囲上端という基準を明示して、整列を疑問形で頼む。",
+      "count": 1,
+      "labels": [
+        "text_frames_align"
+      ]
+    }
+  },
+  "label_family_membership": {
+    "save": [
+      "v04_dev_final_extra_delegated_request_postposed_contents",
+      "v04_dev_final_extra_operation_then_closure"
+    ],
+    "undo": [
+      "v04_dev_final_extra_enumerated_history_count",
+      "v04_dev_final_extra_history_request_postposed_count"
+    ],
+    "redo": [
+      "v04_dev_final_extra_past_undo_count_to_redo",
+      "v04_dev_final_extra_quoted_action_postposed_target"
+    ],
+    "page_navigate": [
+      "v04_dev_final_extra_repeated_navigation_nominal",
+      "v04_dev_final_extra_target_announcement_then_ellipsis"
+    ],
+    "artwork_mode_set": [
+      "v04_dev_final_extra_choice_then_apply",
+      "v04_dev_final_extra_prepare_before_next_activity"
+    ],
+    "panel_sync_set": [
+      "v04_dev_final_extra_choice_then_apply",
+      "v04_dev_final_extra_nominal_state_transition"
+    ],
+    "inner_frame_snap_set": [
+      "v04_dev_final_extra_nominal_transition_question",
+      "v04_dev_final_extra_prepare_before_next_activity"
+    ],
+    "panel_gap_snap_set": [
+      "v04_dev_final_extra_completion_request_question",
+      "v04_dev_final_extra_value_before_setting"
+    ],
+    "background_3d_candidates": [
+      "v04_dev_final_extra_candidate_specification_continuation",
+      "v04_dev_final_extra_relative_target_candidate_question"
+    ],
+    "paint_tool_set": [
+      "v04_dev_final_extra_choice_then_apply",
+      "v04_dev_final_extra_nominal_transition_question"
+    ],
+    "text_frames_align": [
+      "v04_dev_final_extra_selection_bounds_alignment_question",
+      "v04_dev_final_extra_topmost_frame_reference_command"
+    ]
+  },
+  "self_review": {
+    "all_22_texts_gold_and_slots_reviewed": true,
+    "naturalness_review": "Short conversational requests were preferred. Two examples per label use different constructions, with no number/name/politeness-only substitutions. Target operation and final value are recoverable within each utterance.",
+    "ids_contiguous": "nyamuru_voice_3100 through nyamuru_voice_3121",
+    "id_duplicates": 0,
+    "raw_text_duplicates": 0,
+    "normalized_text_duplicates": 0,
+    "normalization": "Unicode NFKC, casefold, remove Unicode whitespace and punctuation",
+    "exact_nine_fields": true,
+    "slot_shape_enum_positive_count_checks": "passed",
+    "each_label_two_distinct_families": true,
+    "excluded_patterns_review": "No current-state if/on/noop branch; no retracted command replacement; no X unchanged/Y only template; no reason-so-X template; no repeated-operation emphasis; no later manual candidate-choice template. Counts are explained only to identify repetitions of one history/navigation operation.",
+    "cross_dataset_overlap_check": "Not performed by blind author. Structural family IDs are candidate annotations, not proof of cross-split independence.",
+    "frozen_count": 22,
+    "full_saved_text_gold_slot_readback": "completed for all 22 rows; no post-readback changes required",
+    "final_artifact_hash_verified": true
+  },
+  "semantic_review_points": [
+    {
+      "id": "nyamuru_voice_3100",
+      "result": "retain",
+      "point": "今日の作業は終わり is context, not an application-close command. The only requested action is save."
+    },
+    {
+      "id": "nyamuru_voice_3101",
+      "result": "retain",
+      "point": "The interrogative offers a concrete save job and is a conventional request, not an abstract capability inquiry."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3102",
+        "nyamuru_voice_3103"
+      ],
+      "result": "retain",
+      "point": "Undo targets completed edits and has an explicit count. Enumerating two prior edits remains a count of one operation."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3104",
+        "nyamuru_voice_3105"
+      ],
+      "result": "retain",
+      "point": "Redo targets previously undone edits. The historical Undo mentions are not current Undo requests."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3106",
+        "nyamuru_voice_3107"
+      ],
+      "result": "retain",
+      "point": "Forward navigation count and 1-based displayed page number are explicit. No page addition is implied."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3109",
+        "nyamuru_voice_3112"
+      ],
+      "result": "retain",
+      "point": "Preparing a setting before beginning work does not itself request artwork generation or a drawing action."
+    },
+    {
+      "id": "nyamuru_voice_3116",
+      "result": "retain",
+      "point": "The second clause adds source and count to the same candidate-presentation request; it does not introduce a second workflow or repeat the request merely for emphasis."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3120",
+        "nyamuru_voice_3121"
+      ],
+      "result": "retain",
+      "point": "Both specify multiple selected text frames. The highest selected frame top is equivalent to the top of selection_bounds; no separate absolute coordinate is invented."
+    }
+  ],
+  "review_status": "pending_user_review"
+}

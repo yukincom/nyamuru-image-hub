@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "artifact": "nyamuru_v04_test_final_extra_blind_author_review",
+  "review_status": "pending_user_review",
+  "author_role": "independent_blind_test_author",
+  "input_documents": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "role": "only_external_file_read_label_contract"
+    }
+  ],
+  "blindness_attestation": {
+    "old_training_data_seen": false,
+    "old_evaluation_data_seen": false,
+    "other_split_seen": false,
+    "predictions_or_scores_seen": false,
+    "other_authors_contacted": false,
+    "network_used": false,
+    "model_training_or_classifier_inference_run": false,
+    "repository_files_edited": false,
+    "external_file_reads": [
+      "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json"
+    ],
+    "own_final_extra_readback": true,
+    "parent_feedback_received": "Seven labels needed two more candidates after overlap removal; only label names and prohibited structural patterns were supplied."
+  },
+  "counts": {
+    "rows": 14,
+    "labels": 7,
+    "by_label": {
+      "save": 2,
+      "redo": 2,
+      "needs_clarification": 2,
+      "panel_sync_set": 2,
+      "panel_gap_snap_set": 2,
+      "paint_tool_set": 2,
+      "text_frames_align": 2
+    },
+    "families": 13,
+    "family_count_by_label": {
+      "save": 2,
+      "redo": 2,
+      "needs_clarification": 2,
+      "panel_sync_set": 2,
+      "panel_gap_snap_set": 2,
+      "paint_tool_set": 2,
+      "text_frames_align": 2
+    },
+    "first_id": "nyamuru_voice_3300",
+    "last_id": "nyamuru_voice_3313"
+  },
+  "families": {
+    "v04_test_final_announce_tool_then_choose": {
+      "description": "道具を指定すると宣言し、名前を引用して選択を依頼する。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3310"
+      ]
+    },
+    "v04_test_final_desired_result_then_named_operation": {
+      "description": "復元したい結果を述べ、その結果に対応する名前付き履歴操作と回数を指定する。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3303"
+      ]
+    },
+    "v04_test_final_desired_tool_then_reference": {
+      "description": "希望ツール名を先に述べ、同一発話内のその値を参照してツール選択を求める。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3311"
+      ]
+    },
+    "v04_test_final_dimensions_unspecified_degree": {
+      "description": "縦横という軸は指定するが、程度語による縮小しか指定せず寸法値を確定しない。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3304"
+      ]
+    },
+    "v04_test_final_focused_setting_then_apply": {
+      "description": "設定項目を焦点として後置し、続けて明示した状態への設定を頼む。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3306"
+      ]
+    },
+    "v04_test_final_named_control_reference": {
+      "description": "引用した設定名を指示先にして、その設定を変更するよう頼む。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3308"
+      ]
+    },
+    "v04_test_final_nominal_deactivation_question": {
+      "description": "無効化を名詞化し、お願いできるという疑問形の依頼として提示する。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3307"
+      ]
+    },
+    "v04_test_final_postposed_target": {
+      "description": "操作を先に頼み、後半で対象を補足する。保存と文字枠整列で同じgroupを共有する。",
+      "count": 2,
+      "ids": [
+        "nyamuru_voice_3301",
+        "nyamuru_voice_3313"
+      ]
+    },
+    "v04_test_final_relative_clause_then_reapply": {
+      "description": "完了した取り消しを説明する関係句で編集を特定し、それを履歴から再適用する。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3302"
+      ]
+    },
+    "v04_test_final_request_with_missing_kind_admission": {
+      "description": "操作を依頼してから対象種類の名前を思い出せないと補足し、種類が未指定のままになる。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3305"
+      ]
+    },
+    "v04_test_final_result_state_request": {
+      "description": "保存が済んでいるという結果状態にすることを、疑問形で現在の依頼にする。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3300"
+      ]
+    },
+    "v04_test_final_selected_frames_then_alignment_result": {
+      "description": "選択済みの複数文字枠を説明し、それらの上端が同じ高さになる結果を依頼する。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3312"
+      ]
+    },
+    "v04_test_final_topic_value_desire": {
+      "description": "設定名を主題にして、選んでほしい値を希望形で明示する。",
+      "count": 1,
+      "ids": [
+        "nyamuru_voice_3309"
+      ]
+    }
+  },
+  "checks": {
+    "full_text_meaning_naturalness_reviewed": 14,
+    "gold_and_slots_reviewed": 14,
+    "exact_nine_fields": true,
+    "unique_contiguous_ids": true,
+    "seven_labels_two_each": true,
+    "two_structures_per_label": true,
+    "slot_contract": "passed_for_all_used_fields",
+    "exact_duplicates": [],
+    "normalized_duplicates": [],
+    "normalized_number_masked_within_label_duplicates": [],
+    "normalization": "NFKC + casefold + remove Unicode punctuation, separators and whitespace",
+    "errors": []
+  },
+  "avoided_patterns_review": {
+    "current_state_branch_then_preserve": true,
+    "withdraw_x_replace_y": true,
+    "leave_x_untouched_only_y": true,
+    "reason_because_then_request": true,
+    "repeated_emphasis_request": true,
+    "data_conversion_vs_pen_selection": true,
+    "method": "all 14 utterances manually reviewed for the requested exclusions; booleans indicate avoided"
+  },
+  "semantic_notes": [
+    {
+      "ids": [
+        "nyamuru_voice_3300"
+      ],
+      "note": "状態にしてくれるという現在の実行依頼で、保存済みかという質問ではない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3302",
+        "nyamuru_voice_3303"
+      ],
+      "note": "どちらも取り消し済み編集の履歴再適用。回数は1と2で、単なる再生成や新規描画ではない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3304",
+        "nyamuru_voice_3305"
+      ],
+      "note": "通常UI選択は有効だが量が不足、またはガイド種類が不足するため保留。適切さの判断委託ではない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3307"
+      ],
+      "note": "無効化をお願いできるかな、は実行を頼む疑問形で、能力の有無を尋ねるだけの質問ではない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3311"
+      ],
+      "note": "それの参照先は同一発話内に明記されたラスターペンで、文脈不足ではない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3312",
+        "nyamuru_voice_3313"
+      ],
+      "note": "複数選択された独立文字枠の上端整列。reference=selection_bounds は契約の既定値。"
+    }
+  ],
+  "no_additional_rows_created": true,
+  "limitations": [
+    "旧データ・他splitとの交差重複と近似構文はblind authorとして未監査。親担当が監査する。",
+    "全行人工作成・利用者レビュー前。分類器の推論や学習は実行していない。"
+  ],
+  "output_files": [
+    "/private/tmp/nyamuru-v04-test-final-extra.jsonl",
+    "/private/tmp/nyamuru-v04-test-final-extra-review.json"
+  ],
+  "candidate_sha256": "19bf287571ad47d7887736f46ca7ccefb24ca5ba6ecf3283673cd1d5c01fc6ac"
+}

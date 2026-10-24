@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "name": "daily_commands_20261019",
+  "created_at_utc": "2026-10-18T15:52:57.174341+00:00",
+  "n": 112,
+  "per_label": 8,
+  "labels": [
+    "save",
+    "undo",
+    "redo",
+    "page_navigate",
+    "view_change",
+    "artwork_mode_set",
+    "bubble_set",
+    "panel_sync_set",
+    "inner_frame_snap_set",
+    "panel_gap_snap_set",
+    "generate_request",
+    "background_3d_candidates",
+    "paint_tool_set",
+    "text_frames_align"
+  ],
+  "primary_model": "v04_seed43",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "selection_basis": "前回の固定73問比較で候補とした通常学習v0.4 seed43を、今回の推論前に主評価として指定。v0.5.1 baselineと同一重み。3seedを併記し今回の結果で選び直さない。",
+  "primary_metric": "accuracy",
+  "secondary_metric": "macro_f1_supported over the 14 gold-supported labels; retain all 19 output probabilities",
+  "input": "text only",
+  "model_outputs": 19,
+  "question_rules": {
+    "max_characters": 40,
+    "single_action": true,
+    "independent_compound_actions": false,
+    "correction_or_preservation_clauses": false,
+    "explicit_off_allowed": true,
+    "count_arguments_allowed": true
+  },
+  "authoring": "Codex subagent drafted using only the label contract, without seeing existing utterances or model outputs. Parent reviewed all 112 labels/texts before any predictions. Common phrases are retained regardless of train overlap.",
+  "anchors": [
+    "保存して",
+    "次のページ"
+  ],
+  "old_benchmark": "experiments/v0.5.1/data/test.jsonl",
+  "old_benchmark_sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+  "limitations": [
+    "全112問はCodexが作成した合成の短い日本語操作文。利用者の自然発話を採取したものではない。",
+    "14分類各8問の均等配分。実際の利用頻度を反映した正解率ではない。",
+    "19分類モデルをそのまま使用し、今回は14操作分類だけを正解に含める。確認・推論・複数操作・対象外・非コマンドの判別能力はこのテストでは測らない。",
+    "学習文と同じ自然な定型句も保持する。完全一致、正規化のみ一致、一致なしを分けて報告する。一致なしでも意味的な独立性は保証しない。",
+    "同じ112問を3seedで評価する。336件の独立した発話や実利用精度の信頼区間として扱わない。",
+    "テキストからの意図分類だけを評価する。音声認識、スロット抽出、UI状態解決、実行、機能の実装済み判定は含めない。",
+    "選択中の対象は音声操作モードで解決できる前提。機能の準備状況は既存source/labels.jsonの記載を保持する。",
+    "旧73問、各版の凍結入力、モデル重み、旧予測は保持する。今回の問題・結果は訓練やseed選び直しに使わない。"
+  ]
+}

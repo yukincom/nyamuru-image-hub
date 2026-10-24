@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "generation-qa-report-v1.schema.json",
+  "title": "Nyamuru deterministic generation QA report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "analysis_key",
+    "job_id",
+    "attempt_id",
+    "artifact",
+    "rubric",
+    "analyzer",
+    "status",
+    "metrics",
+    "findings",
+    "metrics_sha256",
+    "created_at"
+  ],
+  "properties": {
+    "schema_name": { "const": "nyamuru-generation-qa-report" },
+    "schema_version": { "const": 1 },
+    "analysis_key": { "type": "string", "pattern": "^qa-[a-f0-9]{64}$" },
+    "job_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "attempt_id": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "artifact": { "$ref": "#/$defs/artifact" },
+    "rubric": { "$ref": "#/$defs/rubric" },
+    "analyzer": { "$ref": "#/$defs/analyzer" },
+    "status": { "enum": ["pass", "warn", "fail"] },
+    "metrics": { "$ref": "#/$defs/metrics" },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "metrics_sha256": { "$ref": "#/$defs/sha256" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "paletteCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ink", "dense_tone", "light_tone", "paper"],
+      "properties": {
+        "ink": { "type": "integer", "minimum": 0 },
+        "dense_tone": { "type": "integer", "minimum": 0 },
+        "light_tone": { "type": "integer", "minimum": 0 },
+        "paper": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "paletteFractions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ink", "dense_tone", "light_tone", "paper"],
+      "properties": {
+        "ink": { "$ref": "#/$defs/ratio" },
+        "dense_tone": { "$ref": "#/$defs/ratio" },
+        "light_tone": { "$ref": "#/$defs/ratio" },
+        "paper": { "$ref": "#/$defs/ratio" }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "expected_sha256",
+        "actual_sha256",
+        "source_snapshot_sha256",
+        "media_type",
+        "byte_size",
+        "expected_width_px",
+        "expected_height_px",
+        "profile",
+        "palette_version"
+      ],
+      "properties": {
+        "role": { "const": "manga_base_composite" },
+        "expected_sha256": { "$ref": "#/$defs/sha256" },
+        "actual_sha256": { "$ref": "#/$defs/sha256" },
+        "source_snapshot_sha256": { "$ref": "#/$defs/sha256" },
+        "media_type": { "const": "image/png" },
+        "byte_size": { "type": "integer", "minimum": 0 },
+        "expected_width_px": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "expected_height_px": { "type": "integer", "minimum": 1, "maximum": 8192 },
+        "profile": { "const": "manga-base" },
+        "palette_version": { "const": "manga-base-v1" }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nearly_blank_content_fraction_lte",
+        "nearly_filled_content_fraction_gte",
+        "low_ink_fraction_lte",
+        "tiny_component_max_area_px",
+        "tiny_component_pixel_fraction_gt",
+        "edge_band_ratio",
+        "edge_contact_info_fraction_gte"
+      ],
+      "properties": {
+        "nearly_blank_content_fraction_lte": { "$ref": "#/$defs/ratio" },
+        "nearly_filled_content_fraction_gte": { "$ref": "#/$defs/ratio" },
+        "low_ink_fraction_lte": { "$ref": "#/$defs/ratio" },
+        "tiny_component_max_area_px": { "type": "integer", "minimum": 1 },
+        "tiny_component_pixel_fraction_gt": { "$ref": "#/$defs/ratio" },
+        "edge_band_ratio": { "$ref": "#/$defs/ratio" },
+        "edge_contact_info_fraction_gte": { "$ref": "#/$defs/ratio" }
+      }
+    },
+    "rubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "implementation_version", "thresholds"],
+      "properties": {
+        "id": { "const": "manga-base-deterministic" },
+        "version": { "const": 1 },
+        "implementation_version": { "const": "1" },
+        "thresholds": { "$ref": "#/$defs/thresholds" }
+      }
+    },
+    "pythonDependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pillow", "numpy", "opencv"],
+      "properties": {
+        "pillow": { "type": "string" },
+        "numpy": { "type": "string" },
+        "opencv": { "type": "string" }
+      }
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "implementation", "version", "external_network", "python_dependencies"],
+      "properties": {
+        "kind": { "const": "deterministic" },
+        "implementation": { "const": "nyamuru-generation-qa" },
+        "version": { "const": "1" },
+        "external_network": { "const": false },
+        "python_dependencies": { "$ref": "#/$defs/pythonDependencies" }
+      }
+    },
+    "bbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "edgeFractions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["top", "right", "bottom", "left"],
+      "properties": {
+        "top": { "$ref": "#/$defs/ratio" },
+        "right": { "$ref": "#/$defs/ratio" },
+        "bottom": { "$ref": "#/$defs/ratio" },
+        "left": { "$ref": "#/$defs/ratio" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decoded",
+        "format",
+        "frame_count",
+        "mode",
+        "width_px",
+        "height_px",
+        "pixel_count",
+        "pixel_sha256",
+        "png_chunk_count",
+        "metadata_chunk_types",
+        "palette_counts",
+        "palette_fractions",
+        "used_palette_slots",
+        "unknown_palette_pixels",
+        "non_opaque_pixels",
+        "content_pixels",
+        "content_fraction",
+        "ink_fraction",
+        "content_bbox_px",
+        "edge_band_px",
+        "edge_content_fractions",
+        "component_count",
+        "tiny_component_count",
+        "tiny_component_pixels",
+        "tiny_component_pixel_fraction",
+        "recomposition_mismatch_pixels"
+      ],
+      "properties": {
+        "decoded": { "type": "boolean" },
+        "format": { "type": "string" },
+        "frame_count": { "type": "integer", "minimum": 0 },
+        "mode": { "type": "string" },
+        "width_px": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "height_px": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "pixel_count": { "type": "integer", "minimum": 0, "maximum": 16777216 },
+        "pixel_sha256": {
+          "anyOf": [
+            { "const": "" },
+            { "$ref": "#/$defs/sha256" }
+          ]
+        },
+        "png_chunk_count": { "type": "integer", "minimum": 0 },
+        "metadata_chunk_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["eXIf", "iCCP", "iTXt", "tEXt", "zTXt"] }
+        },
+        "palette_counts": { "$ref": "#/$defs/paletteCounts" },
+        "palette_fractions": { "$ref": "#/$defs/paletteFractions" },
+        "used_palette_slots": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "unknown_palette_pixels": { "type": "integer", "minimum": 0 },
+        "non_opaque_pixels": { "type": "integer", "minimum": 0 },
+        "content_pixels": { "type": "integer", "minimum": 0 },
+        "content_fraction": { "$ref": "#/$defs/ratio" },
+        "ink_fraction": { "$ref": "#/$defs/ratio" },
+        "content_bbox_px": {
+          "anyOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/bbox" }
+          ]
+        },
+        "edge_band_px": { "type": "integer", "minimum": 0 },
+        "edge_content_fractions": { "$ref": "#/$defs/edgeFractions" },
+        "component_count": { "type": "integer", "minimum": 0 },
+        "tiny_component_count": { "type": "integer", "minimum": 0 },
+        "tiny_component_pixels": { "type": "integer", "minimum": 0 },
+        "tiny_component_pixel_fraction": { "$ref": "#/$defs/ratio" },
+        "recomposition_mismatch_pixels": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "metric", "actual", "expected"],
+      "properties": {
+        "code": {
+          "enum": [
+            "artifact_empty",
+            "artifact_hash_mismatch",
+            "artifact_too_large",
+            "animated_png_not_allowed",
+            "decoded_shape_mismatch",
+            "dimension_mismatch",
+            "edge_contact",
+            "embedded_metadata",
+            "frame_count_mismatch",
+            "image_decode_failed",
+            "image_dimensions_unsafe",
+            "low_ink",
+            "media_format_mismatch",
+            "mode_mismatch",
+            "nearly_blank",
+            "nearly_filled",
+            "non_opaque_pixels",
+            "off_palette_pixels",
+            "png_signature_invalid",
+            "png_structure_invalid",
+            "png_trailing_bytes",
+            "recomposition_mismatch",
+            "speckle_noise"
+          ]
+        },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "metric": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "actual": {},
+        "expected": {}
+      }
+    }
+  }
+}

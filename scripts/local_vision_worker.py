@@ -4,17 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--engine", choices=("rtdetr", "ndlocr"), required=True)
+    parser.add_argument("--engine", choices=("rtdetr", "baberu", "wd-expression"), required=True)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--model", type=Path)
@@ -29,22 +28,29 @@ def run_rtdetr(root: Path, image: Path, model: Path | None, confidence: float) -
     return detect_page(image, model_path=model_path, conf_threshold=confidence)
 
 
-def text_quality(text: str) -> float:
-    compact = "".join(text.split())
-    if not compact:
-        return 0.0
-    japanese = sum(
-        "\u3040" <= char <= "\u30ff" or "\u3400" <= char <= "\u9fff"
-        for char in compact
+def load_baberu(model_dir: Path):
+    module_path = model_dir / "onnx_infer.py"
+    spec = importlib.util.spec_from_file_location("nyamuru_baberu", module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Baberu OCRを読み込めません: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.BaberuOnnxOCR(
+        model_dir / "onnx",
+        model_dir / "tokenizer",
+        vision="vision_int4.onnx",
     )
-    latin = sum(char.isascii() and char.isalpha() for char in compact)
-    repeated = max((compact.count(char) for char in set(compact)), default=0)
-    repetition_penalty = max(0, repeated - max(4, len(compact) // 2))
-    return japanese * 2.0 + min(len(compact), 24) * 0.08 - latin * 0.6 - repetition_penalty
 
 
-def direct_region_lines(image_array, regions: list[dict[str, Any]], recognizers) -> list[dict[str, Any]]:
-    height, width = image_array.shape[:2]
+def run_baberu(root: Path, image: Path, regions: list[dict[str, Any]], model: Path | None) -> dict[str, Any]:
+    """Recognize each RT-DETR text region without changing its placement box."""
+
+    from PIL import Image, ImageOps
+
+    model_dir = (model or root / "models" / "baberu-ocr").resolve()
+    engine = load_baberu(model_dir)
+    with Image.open(image) as opened:
+        page = ImageOps.exif_transpose(opened).convert("RGB")
     lines: list[dict[str, Any]] = []
     for index, region in enumerate(regions[:32]):
         bbox = region.get("bbox")
@@ -54,114 +60,38 @@ def direct_region_lines(image_array, regions: list[dict[str, Any]], recognizers)
             x1, y1, x2, y2 = (float(value) for value in bbox)
         except (TypeError, ValueError):
             continue
-        margin_x = max(2, round((x2 - x1) * 0.06))
-        margin_y = max(2, round((y2 - y1) * 0.04))
-        left = max(0, round(x1) - margin_x)
-        top = max(0, round(y1) - margin_y)
-        right = min(width, round(x2) + margin_x)
-        bottom = min(height, round(y2) + margin_y)
-        crop = image_array[top:bottom, left:right]
-        if crop.size == 0:
+        left = max(0, min(page.width, round(min(x1, x2))))
+        top = max(0, min(page.height, round(min(y1, y2))))
+        right = max(0, min(page.width, round(max(x1, x2))))
+        bottom = max(0, min(page.height, round(max(y1, y2))))
+        if right <= left or bottom <= top:
             continue
-        options = [recognizer.read(crop) for recognizer in recognizers]
-        best = max(options, key=text_quality, default="").strip()
-        if not best:
-            continue
-        lines.append(
-            {
-                "id": f"rtdetr-{index}",
-                "text": best,
-                "bbox": [left, top, right - left, bottom - top],
-                "confidence": float(region.get("score", 0.0) or 0.0),
-                "vertical": (bottom - top) > (right - left),
-                "detection_source": "rtdetr-text",
-                "group_id": f"rtdetr-text-{region.get('id', index)}",
-                "alternatives": options,
-            }
-        )
-    return lines
-
-
-def ndlocr_line_group_ids(page_xml: str) -> list[str | None]:
-    """Return the NDL text-block id for each LINE in document order."""
-    try:
-        root = ET.fromstring(page_xml)
-    except (ET.ParseError, TypeError):
-        return []
-    grouped_elements: dict[int, str] = {}
-    for block_index, block in enumerate(root.findall(".//TEXTBLOCK")):
-        block_id = block.get("BLOCKID") or str(block_index)
-        group_id = f"ndl-block-{block_id}"
-        for line in block.findall(".//LINE"):
-            grouped_elements[id(line)] = group_id
-    return [grouped_elements.get(id(line)) for line in root.findall(".//LINE")]
-
-
-def run_ndlocr(root: Path, image: Path, regions: list[dict[str, Any]]) -> dict[str, Any]:
-    import numpy as np
-    from PIL import Image, ImageOps
-
-    source_root = root / "src"
-    sys.path.insert(0, str(source_root))
-    import ocr
-
-    model_root = source_root / "model"
-    config_root = source_root / "config"
-    options = SimpleNamespace(
-        det_weights=str(model_root / "deim-s-1024x1024.onnx"),
-        det_classes=str(config_root / "ndl.yaml"),
-        det_score_threshold=0.2,
-        det_conf_threshold=0.25,
-        det_iou_threshold=0.2,
-        rec_weights30=str(model_root / "parseq-ndl-24x256-30-tiny-189epoch-tegaki3-r8data-202604.onnx"),
-        rec_weights50=str(model_root / "parseq-ndl-24x384-50-tiny-300epoch-tegaki3-r8data-202604.onnx"),
-        rec_weights=str(model_root / "parseq-ndl-24x768-100-tiny-153epoch-tegaki3-r8data-202604.onnx"),
-        rec_classes=str(config_root / "NDLmoji.yaml"),
-        device="cpu",
-        enable_tcy=False,
-    )
-    detector = ocr.get_detector(options)
-    recognizer30 = ocr.get_recognizer(options, options.rec_weights30)
-    recognizer50 = ocr.get_recognizer(options, options.rec_weights50)
-    recognizer100 = ocr.get_recognizer(options, options.rec_weights)
-    recognizers = (recognizer30, recognizer50, recognizer100)
-    image_array = np.asarray(ImageOps.exif_transpose(Image.open(image)).convert("RGB"))
-    result = ocr._run_ocr_on_image_array(
-        detector=detector,
-        recognizer30=recognizer30,
-        recognizer50=recognizer50,
-        recognizer100=recognizer100,
-        inputname=image.name,
-        img=image_array,
-        outputpath="/tmp",
-        save_viz=False,
-    )
-    line_group_ids = ndlocr_line_group_ids(str(result.get("page_xml", "")))
-    detected_lines: list[dict[str, Any]] = []
-    for index, line in enumerate(result.get("text_layer_lines", [])):
-        json_line = result.get("json_lines", [])[index] if index < len(result.get("json_lines", [])) else {}
-        detected_line = {
-            "id": f"ndl-{index}",
-            "text": str(line.get("text", "")).strip(),
-            "bbox": [
-                int(line.get("x", 0)),
-                int(line.get("y", 0)),
-                int(line.get("width", 0)),
-                int(line.get("height", 0)),
-            ],
-            "confidence": float(json_line.get("confidence", 0.0) or 0.0),
-            "vertical": bool(line.get("is_vertical", False)),
-            "detection_source": "ndlocr",
-        }
-        if index < len(line_group_ids) and line_group_ids[index]:
-            detected_line["group_id"] = line_group_ids[index]
-        detected_lines.append(detected_line)
+        # 認識だけ少し余白を持たせ、配置bboxは検出器の領域をそのまま維持する。
+        pad_x = max(2, round((right - left) * 0.04))
+        pad_y = max(2, round((bottom - top) * 0.04))
+        crop = page.crop((
+            max(0, left - pad_x),
+            max(0, top - pad_y),
+            min(page.width, right + pad_x),
+            min(page.height, bottom + pad_y),
+        ))
+        text = str(engine(crop)).strip()
+        region_id = str(region.get("id", index))
+        lines.append({
+            "id": f"rtdetr-{region_id}",
+            "text": text,
+            "bbox": [left, top, right - left, bottom - top],
+            "confidence": float(region.get("score", 0.0) or 0.0),
+            "vertical": (bottom - top) > (right - left),
+            "detection_source": "rtdetr-text",
+            "group_id": f"rtdetr-text-{region_id}",
+            "unreadable": not bool(text),
+        })
     return {
-        "engine": "NDLOCR-Lite",
-        "width": int(result.get("img_width", image_array.shape[1])),
-        "height": int(result.get("img_height", image_array.shape[0])),
-        "detected_lines": detected_lines,
-        "region_lines": direct_region_lines(image_array, regions, recognizers),
+        "engine": "Baberu OCR",
+        "width": page.width,
+        "height": page.height,
+        "region_lines": lines,
     }
 
 
@@ -176,9 +106,20 @@ def main() -> int:
                 request = value
         if args.engine == "rtdetr":
             result = run_rtdetr(args.root.resolve(), args.image.resolve(), args.model, args.confidence)
-        else:
+        elif args.engine == "baberu":
             regions = request.get("regions") if isinstance(request.get("regions"), list) else []
-            result = run_ndlocr(args.root.resolve(), args.image.resolve(), regions)
+            result = run_baberu(args.root.resolve(), args.image.resolve(), regions, args.model)
+        elif args.engine == "wd-expression":
+            from local_wd_expression_tagger import WdExpressionTagger
+
+            if args.model is None:
+                raise ValueError("WDのモデルが指定されていません")
+            tagger = WdExpressionTagger(
+                args.model, Path(request["tags_path"]), threshold=float(request["threshold"]),
+            )
+            result = tagger.analyze(args.image.read_bytes())
+        else:
+            raise ValueError(f"未対応の解析エンジンです: {args.engine}")
         print(json.dumps({"ok": True, "result": result}, ensure_ascii=False))
         return 0
     except Exception as exc:

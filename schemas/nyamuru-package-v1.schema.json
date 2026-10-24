@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/yukincom/dev-image-hub/blob/main/schemas/nyamuru-package-v1.schema.json",
+  "title": "Nyamuru production package manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "created_at",
+    "bagit",
+    "document",
+    "payloads"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "nyamuru-production-package"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "bagit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "algorithms"],
+      "properties": {
+        "version": {
+          "const": "1.0"
+        },
+        "algorithms": {
+          "const": ["sha256", "sha512"]
+        }
+      }
+    },
+    "document": {
+      "$ref": "#/$defs/document"
+    },
+    "payloads": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/payload"
+      }
+    }
+  },
+  "$defs": {
+    "bagPath": {
+      "type": "string",
+      "minLength": 6,
+      "pattern": "^data/[^\\\\\\u0000-\\u001f\\u007f]+$",
+      "not": {
+        "anyOf": [
+          { "pattern": "(^|/)\\.\\.?(/|$)" },
+          { "pattern": "//" }
+        ]
+      }
+    },
+    "managedRelativePath": {
+      "type": "string",
+      "pattern": "^(name_data|draft_data|manuscript_data)/[^\\\\\\u0000-\\u001f\\u007f]+$",
+      "not": {
+        "anyOf": [
+          { "pattern": "(^|/)\\.\\.?(/|$)" },
+          { "pattern": "//" }
+        ]
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "omny_path", "omay_path"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "series_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "episode_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "episode_number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "omny_path": {
+          "const": "data/name/document.omny.yaml"
+        },
+        "omay_path": {
+          "const": "data/style/document.omay.yaml"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "path",
+        "media_type",
+        "byte_size",
+        "sha256",
+        "sha512"
+      ],
+      "properties": {
+        "role": {
+          "enum": [
+            "story_omny",
+            "style_omay",
+            "editable_psd",
+            "reference_asset",
+            "coverage_report",
+            "workspace_payload"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/bagPath"
+        },
+        "source_relative_path": {
+          "$ref": "#/$defs/managedRelativePath"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "byte_size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "sha512": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{128}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_relative_path": true
+            },
+            "required": ["source_relative_path"]
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^data/workspace/(name_data|draft_data|manuscript_data)/"
+              }
+            }
+          },
+          "else": {
+            "oneOf": [
+              {
+                "properties": {
+                  "role": { "const": "story_omny" },
+                  "path": {
+                    "type": "string",
+                    "const": "data/name/document.omny.yaml"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "role": { "const": "style_omay" },
+                  "path": {
+                    "type": "string",
+                    "const": "data/style/document.omay.yaml"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

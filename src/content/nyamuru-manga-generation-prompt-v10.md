@@ -6,7 +6,7 @@
 >
 > このプロンプトはリポジトリルートの `LICENSE` に記載されたMIT Licenseで提供されます。
 
-本プロンプトでは、ストーリー原稿を **Nyamuru Data Model（NDM）v10.31** に従うカラー漫画ネームへ構造化し、**Open Manga Name YAML（OMNY）形式** で出力します。
+本プロンプトでは、ストーリー原稿を **Nyamuru Data Model（NDM）v10.33** に従うカラー漫画ネームへ構造化し、**Open Manga Name YAML（OMNY）形式** で出力します。
 
 **Nyamuru Data Model（NDM）** は、漫画ネームの構造、コマ割り、人物、フキダシ、素材参照を定義するデータモデルです。愛称は **Nyamuru🐱** です。
 **Open Manga Name YAML（OMNY）** は、NDMをYAMLとして保存・交換するためのシリアライズ形式です。
@@ -28,7 +28,7 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
 - **画風**：
 - **ページ数**: 
 
-タイトルは `meta.title` へ入り、各ページ左上のヘッダーに描かれる。作者名は任意で、`meta.author` へ入り、各ページ下端中央のフッターに描かれる（空欄ならフッターなし）。
+サブタイトルは `meta.title` へ入り、各ページ左上のヘッダーに描かれる。作品タイトル（シリーズ名）は `meta.series` へ入る。作者名は任意で、`meta.author` へ入り、各ページ下端中央のフッターに描かれる（空欄ならフッターなし）。
 
 作風・雰囲気と画風は役割が違う。**作風・雰囲気**は話運びの指定（任意の自由記述。例: 明るい日常コメディ）で、コマ割りパターンの選択や演出・bg配分の判断材料にする。**画風**は絵柄の指定（任意の自由記述。例: 少女漫画／週刊少年漫画／劇画／ギャグ漫画）で、`meta.style_notes` の先頭に作画指示として追加する（手順12参照）。両方指定して掛け合わせてよい（例: 作風=シリアスな復讐劇 × 画風=少女漫画）。
 
@@ -38,10 +38,11 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
 
 1. **原稿を読み、ページ／コマ（パネル）単位に分解する。**
    原稿に「◯ページ目」の区切りがあればそれに従う。区切りが無い場合は内容のまとまりで判断し、分け方を一言添える。
+   シリーズ台帳が与えられている場合、そのジャンル・対象読者・成人指定・世界観は `series_setting` に維持し、今回の原稿固有の場所・時間帯・天候・あらすじは `setting` に入れる。シリーズの世界観を今回のあらすじへ混ぜない。シリーズ情報がなければ `series_setting` は空欄にする。
 
 2. **各ページのコマ割りを設計する。**
    - キャンバスはA4（210×297mm、縦長）を基準とする。
-   - 🚨 **1ページのコマ数は最大6コマ（厳守）。** 7コマ以上入れるとセリフの描画が崩れる。コマを減らすのは自由（1〜6コマ）、増やすのは6コマまで。
+   - 🚨 **1ページのコマ数は最大10コマ（厳守）。** 通常は1〜6コマを目安にし、4コマ漫画を複数本収める場合など、細かな構成が必要なページでは7〜10コマまで使用できる。
    - 各コマは `rect`（四角）または `polygon`（多角形／対角線カット等）で指定する。
    - `id` は右上→左下の読み順で1から振る（日本漫画の右綴じ順）。
    - 内容に応じた強弱をつける：クライマックスは大コマ、テンポの速い場面は帯状の小コマ、感情の間は正方形に近いコマ、動きが激しい場面は対角線カットのポリゴン、など。
@@ -52,20 +53,20 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
    - **フキダシが3個以上入るコマは、帯（横190mm級）以上の面積を確保する。** セリフの多いコマは大きく、セリフのないコマは小さくてよい——文字量とコマ面積を連動させる（文字は作画同時生成のため、面積不足は文字潰れに直結する）。
    - 🚫 **「田の字」禁止。** 2×2配置で上下の段の縦の溝（列の区切り線）が同じ位置に揃うと、読み順が「右→左」なのか「右列を縦に」なのか曖昧になる。2×2に割るときは段ごとに縦線の位置をずらす。
    - ✂️ **タチキリ（断ち切り）を見せ場に限り許可する。** 左右は `x=0` / `x=210`、上端は `y=0`、下端は `y=297` まで紙端いっぱいにコマを拡張してよい。断ち切る辺は必ずパネルの **`bleed`（`left` / `right` / `top` / `bottom` の配列）で宣言し**、座標も紙端に一致させる（left=`x: 0`、right=`x + w = 210`、top=`y: 0`、bottom=`y + h = 297`）。top のコマはヘッダーの文字（作品タイトル・ページ番号）がコマ絵の最前面に重なるため、上端の帯（y=0〜10）に顔やフキダシを置かない。キャラ登場・見得切り・スプラッシュ等で画面の抜けを最大化したいコマに使う。多用すると効かなくなるため**1ページ1〜2コマまで**。タチキリ入りの定型は §B のパターンM〜Qを参照。
-   - 各コマの外周に約2〜3mmの白マージン、コマ枠線は約1mm幅の黒を想定して座標を組む（**タチキリコマの断ち切り辺はマージンなしで紙端まで**。枠線は断ち切り辺には引かない）。
+   - フキダシ本体としっぽの線幅は `meta.bubble_line_width_mm` に従う。コマ枠線幅は `meta.panel_frame_width_mm`、上下・左右のコマ間隔は `meta.panel_gutter_row_mm` / `meta.panel_gutter_column_mm` に従って座標を組む。値がない場合はフキダシ線0.5mm・コマ枠線1mm・上下5mm・左右3mmを使う（**タチキリコマの断ち切り辺は間隔なしで紙端まで**。枠線は断ち切り辺には引かない）。
    - 🫧 **コマ同士の重なりを演出に使ってよい**（§B の不規則コマ割り V〜Y 参照。詩的な余白の回向き）。重なるレイアウトでは **id の昇順で奥→手前**に重ねる（1コマ目が一番奥、後のコマほど手前）。奥のコマは、手前のコマに覆われる領域へフキダシ・顔を置かない。
    - 参考パターンは **§B コマ割りパターン集** を参照（シーン別の使い分け目安つき）。
 
-3. **各コマに人物配置（figures）とフキダシ配置（bbox/anchor）を指定する。**
-   - `figures` にそのコマへ描くキャラを列挙し、各々に `bbox`（キャンバス絶対座標mm）・`anchor`（相対位置語彙）・`size`（full/waist-up/bust-up/face/hand/foot/part）を付ける。主対象でない脇役には `role: sub` を付ける（既定は `main`）。コマ外の声のキャラはfiguresに入れず、そのフキダシに `offscreen: true` を付ける。
+3. **各コマに人物配置（figures）とフキダシ配置（bbox）を指定する。**
+   - `figures` にそのコマへ描くキャラを列挙し、各々に `bbox`（キャンバス絶対座標mm）・`anchor`（相対位置語彙）・`size`（long/full/knee-up/waist-up/bust-up/shoulder-up/face/face-detail/hand/foot/part）を付ける。主対象でない脇役には `role: sub` を付ける（既定は `main`）。コマ外の声のキャラはfiguresに入れず、そのフキダシに `offscreen: true` を付ける。
    - 手だけ・足だけなど**体の一部だけを描く人物**は、figures から外さずに `size` を `hand` / `foot` / `part` にする。part系は配置意図の優先順位2（役割・描写範囲の宣言）にあたり、顔ゾーンを持たない。
    - **意図的に人物を一人も描かないコマ**（暗転・風景の見せゴマ等）は `no_figures: true` を宣言する（figures の単純な省略＝構図おまかせとは意味が違う）。
    - モニター・看板・紙面など**画面の中の文字**は、フキダシにせず `screen_text`（text / bbox / orientation）で指定する。半角英数は `orientation: horizontal`（横組み）のまま崩さない。
    - 小道具など**物の配置も figures で座標管理できる**——figures は人物専用ではない。物の figure は **`object: true` を付けて宣言**し、`name` に materials の `key` を書き、`bbox` / `anchor` で置き場所を示す（`size` / `role` は人物向けの語彙なので物には付けない）。顔ゾーン・センター配置の既定・発言順規則は、**object の無い figure（人物）にのみ適用**する。
-   - 各フキダシに `bbox` と `anchor` を付ける。anchorと配列順（右上→左下）を一致させる。
+   - 各フキダシに `bbox` を付け、配列順（右上→左下）と位置を一致させる。
    - 📐 **フキダシbboxの縦横比は、文字の組み方向に合わせる。** 縦書きのフキダシは**縦長**のバウンディングボックス（通常サイズの目安: w40 × h50mm）、横書きのフキダシは**横長**のバウンディングボックス（通常サイズの目安: w50 × h40mm）にする。文字量やコマの大きさに応じた拡縮は自由だが、縦長・横長の向きは崩さない。
    - 🚨 **フキダシbboxは、全figureの顔ゾーン（bbox上部1/3）と交差禁止。胴体との重なりは許容。**（`size` が hand/foot/part の figure は顔を描かないため顔ゾーンを持たない）OMNY出力後、交差判定（x範囲重複∧y範囲重複）を全ペア自己検証し、結果を報告する。あわせて人物配置も自己検証する——**配置意図の優先順位1・2で配置したコマ**は宣言（anchor / bbox / role / size / no_figures）が揃っているか、**優先順位3（既定＝センター配置）のコマ**は人物中心ズレ±5%チェックとページの面積重心チェックを行い、結果を報告する。
-   - bboxはコマ内に収める（polygonコマは斜辺の内側）。発言順・anchor・bboxの三者が同じ配置を指すよう揃える。
+   - bboxはコマ内に収める（polygonコマは斜辺の内側）。発言順とbboxが同じ配置を指すよう揃える。
    - 🧍 **人物の配置は「配置意図の優先順位」で決める。**
      1. **演出意図のある構図（最優先）。** 対峙の左右配置、二人並びの対称配置、余白側に背景を見せる構図、ウェッジ（対角カット）で片側を削った構図、寄り・引きの緩急など。意図した構図は `anchor`（厳守指定）と `bbox` の宣言で表現する——宣言は作画AIへそのまま通る。宣言から読み取りにくい構図だけ `action` に一言添える。
      2. **役割・描写範囲の宣言。** `role: sub`（脇役）は既定＝センター配置（優先順位3）の適用対象から外す——配置そのものは role では決めず `bbox` / `anchor` の指定に従う（隅に小さく添えるのも、演出上あえて中央に置くのも自由）。`size: hand / foot / part` は体の一部だけを描く。`no_figures: true` は人物を描かない。宣言そのものが意図の表明なので、action への理由書きは不要。
@@ -83,7 +84,7 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
    - **bg: 2 = 詳細背景**。ロケーションをしっかり描き込む「見せゴマ」。**1ページに2コマまで**（導入、場面転換、風景で魅せるコマ、スプラッシュ等）。どのコマを bg:2 にするかは固定ルールではなく、**ネーム担当が「見せたいコマ」に自由に設定する**（1コマ目が必ず2、ではない）。
    - 配分の目安：会話の応酬＝1、感情・キメ・オチ＝0、見せたいコマ＝2（位置は自由。ページ頭でも中盤の風景でもラストの余韻でもよい）。**1ページ内に0と1と2が混ざっているのが良い状態**。全コマ2は禁止（情報過多になり、視線誘導が弱くなる）。
    - `bg: 0` と「顔のアップ」「emphasis」は相性が良い——キメコマは基本 `bg: 0` にする。
-   - bg:0/1 の背景カラーは、可能なら `action` に色の意図を添える（例：「背景は緊張の紫グラデ」）。指定がなければ作画AIがシーンから選ぶ。
+   - bg:0/1 の背景カラー・効果・具体物は `background_description` に記述する（例：「緊張の紫グラデと細い集中線」）。`background_description` が未指定の場合だけ `action` の明示指定を参考にする。
    - **背景色の彩度は控えめが基本**。感情色のベタ/グラデは「雰囲気を伝える」ための色であり、キャラとセリフより主張してはいけない。**低〜中彩度（くすみ・パステル寄り）に抑える**のがデフォルト。**高彩度の鮮やかな背景は、感情の爆発・キメの最大強調など明確な演出意図があるコマだけ**に限定する（シーンに応じて彩度を調整し、理由なく原色ベタを敷かない）。
 
    **🎬 迷ったら映像演出をヒントにする**
@@ -96,32 +97,37 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
    - この作品の作画に必要な**人物・背景・小道具の素材**を、トップレベルの `materials` に列挙する。
    - 各素材には、作画エージェントが**ファイル名を手がかりに素材を収集できるよう** `keywords`（検索キーワードの配列）を付ける（例: key「キャラAの普段着」→ keywords ["キャラA", "普段着", "私服", "立ち絵"]／key「キッチンの背景」→ keywords ["キッチン", "台所", "背景"]）。
    - `note` には見た目の要点を書く。**素材が見つからなかったときのデザイン指針**を兼ねる（例:「銀髪ロング・エプロン・そばかす」）。
+   - シリーズ人物の `catalog_id` と人物資料の `character_catalog_id` は、シリーズ台帳から与えられた値を維持する。名称だけを根拠に別IDを発行しない。
+   - `characters[].gender` は人間が指定した `female` / `male` / `neutral` を維持する。未指定なら省略し、名前・外見から推測しない。英文の文法だけに使う未設定時の単数theyを保存値へ補完せず、外見・服装・人数や `figures` を書き換えない。
+   - `recognition` はシリーズ台帳から与えられた観察・推定情報を維持し、原稿本文から外見特徴を創作しない。基準頭身は `default_proportion.head_count`、コマごとの描写範囲は `figures[].size`、演技は `figures[].action` として分ける。
+   - `source_image` と `recognition.analyzer` はローカル制作環境が管理するため、このプロンプトから新規作成しない。
    - 各コマの `assets` に、そのコマで使う素材の `key` を配列で書く（例: `assets: ["キャラAの普段着", "キッチンの背景"]`）。素材を使わないコマ（bg:0の感情コマ等）は省略してよい。
    - 作画エージェントは**作業前に** materials の keywords で手元の素材フォルダを検索・収集し、コマの assets に従ってリファレンスとして使う。**対応する素材が見つからない場合は、素材待ちで止まらず、noteと作品のスタイルに合わせて自由にデザインしてよい**（一度デザインした見た目は以後のコマでも維持する）。
    - ※ このプロンプトの責務は**必要素材の列挙（materials）とネーム内での素材指定（assets）まで**。素材アセットの収集・新規生成・検収・命名・フォルダ整理といった**素材管理の運用ルールは制作パイプライン側（manga-pipelineスキル等）が受け持つ**。
 
 6. **セリフは必ず `bubbles`（配列）に入れる。**（セリフをコマ直下の個別キーで書いてはならない）
    - 一つのコマに複数のフキダシを入れてよい。連続する同一話者のセリフは、意味のまとまりごとに一つのコマへ寄せる。
-   - **話者は各フキダシの `speaker` で示す。** 同じコマ内で直前のフキダシと同じ話者なら省略してよい。ナレーション（caption）・効果音（handwritten）など話者のいないフキダシも省略する。1コマに複数の話者がいる掛け合いもこれで表現できる。
+   - **話者は各フキダシの `speaker` で示す。** 同じ話者が続く場合も毎回明記する。省略はナレーション（caption）・効果音（handwritten）など話者のいないフキダシだけに使う。1コマに複数の話者がいる掛け合いもこれで表現できる。
    - **コマ内の発言順は、そのままキャラの立ち位置になる**（作画時、最初の話者がコマの右側・以降は発言順に左へ並ぶ——OMAYのstyle_notes参照）。立ち位置を動かしたいときは発言順を組み替えるか、`action` に構図を明示する。
    - ※「最初の話者がコマの右側・以降は発言順に左へ並ぶ」の立ち位置規則は、**figuresを省略したコマ専用のフォールバック**。figures（bbox/anchor）を明示したコマではそちらが常に優先され、この規則を理由に人物を右へ寄せてはならない。
-   - **長いセリフは、フキダシ1つに無理なく収まる長さに分割する。** 句点・読点・意味の切れ目で分けて、同じ `bubbles` 配列内に別の `text` 要素として並べる（話者が同じなら2つ目以降の `speaker` は省略）。目安は1フキダシあたり20〜40文字程度、縦書きで2〜3行に収まる分量。1つの `text` が長すぎるとフキダシが巨大化して画面バランスを崩したり、文字が潰れて読めなくなる。
+   - **長いセリフは、フキダシ1つに無理なく収まる長さに分割する。** 句点・読点・意味の切れ目で分けて、同じ `bubbles` 配列内に別の `text` 要素として並べる（話者が同じでも各フキダシの `speaker` は明記）。目安は1フキダシあたり20〜40文字程度、縦書きで2〜3行に収まる分量。1つの `text` が長すぎるとフキダシが巨大化して画面バランスを崩したり、文字が潰れて読めなくなる。
 
 7. **フキダシの形は、フキダシごとに `shape` で指定する。**
-   - フキダシの形は種類ごとに固定しない。ネーム担当がセリフの感情・種類に合わせて、その都度適切な形を選ぶ。
-   - 語彙は次の9種：
+   - テキストプロットからの初期配置は、セリフと独白を標準オーバルの `normal`、ナレーションを四角い `square`（`tail: false`）にする。独白は `monologue: true` を保持する。OMNYに `bezier` があれば、その編集済み輪郭を参照する。
+   - ネーム担当が感情や場面に応じた演出を明示選択した場合は、その `shape` と輪郭を尊重する。
+   - 基本の語彙は次の9種：
      | shape | 形 | 向く用途 |
      |---|---|---|
-     | `normal` | 丸い通常フキダシ | 通常の会話（**省略時のデフォルト**） |
-     | `thought` | もくもく雲形 | 心の声・想像・夢見 |
-     | `square` | 角形の枠 | 内心の独白・回想の語り・クールな内語 |
+     | `normal` | 丸い通常フキダシ | 会話・独白の初期配置（**省略時のデフォルト**） |
+     | `thought` | モノローグ（もくもく雲形） | 心の声・想像・夢見 |
+     | `square` | 角形の枠 | ナレーションの初期配置。独白などの明示的な演出にも使用可 |
      | `caption` | 枠外キャプション箱 | ナレーション・時間経過・場所説明（コマの隅） |
      | `flash` | ギザギザ | 叫び・強い驚き・電話や機械の音声 |
      | `uniflash` | ウニフラッシュ（無数の針状の線が放射状に伸びるトゲトゲ） | 最大級の絶叫・衝撃の極致・ドンデン返しの「なっ…！？」・**心の中の絶叫ツッコミ**（monologue併用可） |
      | `wobbly` | よれよれ波線 | 弱り声・恐怖・ぼそぼそ・脱力 |
      | `whisper` | 点線 | ひそひそ声・内緒話 |
      | `handwritten` | フキダシなし手描き文字 | 効果音・小さなつぶやき・ゆらぎ文字 |
-   - 迷ったら：叫んでいれば `flash`、**そのページ最大の絶叫・衝撃なら `uniflash`**（1ページ1個までが目安——多用すると効かなくなる）、心の中なら `thought` か `square`（キャラの性格で選ぶ——感情的なら雲、理性的なら角）、風で震える声・か細い声は `wobbly`、地の文は `caption`。
+   - 迷ったら：叫んでいれば `flash`、**そのページ最大の絶叫・衝撃なら `uniflash`**（1ページ1個までが目安——多用すると効かなくなる）、心の中なら初期配置は `normal` と `monologue: true`、雲形などの演出が指定されていればその指定、風で震える声・か細い声は `wobbly`、地の文の初期配置は `square`。
    - **ギャグの内心絶叫ツッコミは `monologue: true` ＋ `shape: "uniflash"` の組み合わせでよい**（例:「それは本気で言ってるのか！？」）。声には出ていないがウニフラで炸裂する、ギャグ漫画の定番演出として許可。この場合もウニフラの1ページ1個目安は守る。
 
 8. **心の声（括弧付きセリフ）のフキダシには `monologue: true` を付け、`text` からは括弧「（）」を取り除く。**
@@ -143,41 +149,76 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
 
 14. 出力後、**使用した画像アセットのリスト**（materials の一覧と各コマとの対応）を添え、続けて変更点・判断した箇所（コマの寄せ方、コマ割りの意図、bg配分の意図、表記統一など）を簡潔に添える。
 
-※ bg の定義やマージン等の数値は、本プロンプトの「手順」とOMAY側の両方に登場する（ネーム担当向けと画像生成AI向けで読者が違うための意図的な二重掲載）。ルールを改定するときは必ず両方を揃えて直すこと。
+※ bg の定義など、ネーム設計と作画の双方が必要とする規則は、本プロンプトの「手順」とスタイルOMNYの両方に登場する。作品ごとのコマ枠線幅とコマ間隔はストーリーOMNYの `meta` を唯一の値として参照する。
 
 ---
 
-## §A Nyamuru Data Model（NDM）v10.31 スキーマ定義（OMNY表現）
+## §A Nyamuru Data Model（NDM）v10.33 スキーマ定義（OMNY表現）
 
 ```
 manga:
   schema_name: "Nyamuru Data Model"   # NDMの正式な識別名・固定。絵文字は含めない
-  schema_version: 10.31               # NDMのバージョン
+  schema_version: 10.33               # NDMのバージョン
   meta:
-    title:                # 作品タイトル
+    document_type:        # "story"（通常の漫画ネーム）/ "series-catalog"（シリーズ人物・資料台帳）。本プロンプトの出力はstory
+    title:                # サブタイトル（各エピソードの題名、任意）
+    series:               # 作品タイトル（シリーズ名、任意）
+    series_id:            # シリーズ共通カタログの内部ID（任意）
+    episode_number:       # 話数表記（任意）
+    episode_id:           # エピソードの内部ID（任意）
     author:               # 作者名（任意。指定時は各ページ下端中央のフッターに描く）
     format:               # 例: カラー漫画
     page_count:           # 総ページ数（整数）※ pages 配列の要素数と一致
     reading_direction:    # "right-to-left"（右綴じ・固定）
     text_orientation:     # "vertical"（縦書き・固定）
-    font:                 # "アンチック体"（固定）
+    font:                 # 作品全体の既定書体（例: "アンチック体"）
+    bubble_line_width_mm: # フキダシ本体としっぽの線幅（mm）
+    panel_frame_width_mm: # コマ枠線幅（mm）
+    panel_gutter_row_mm:  # 上下に隣接するコマの間隔（mm）
+    panel_gutter_column_mm: # 左右に隣接するコマの間隔（mm）
     style_notes:          # この作品に固有の作画指示（配列。画風の行など。無ければ空配列。共通の作画・演出ルールはOMAY側にあり書かない）
 
-  setting:
+  series_setting:                     # シリーズの作品分類と世界観。シリーズなしでは空欄
+    genre:                            # ジャンル（例: SF・ファンタジー）
+    target_audience:                  # 対象読者（例: 少年・少女）
+    adult_content: false              # 成人指定なら true
+    situation:                        # 世界観
+
+  setting:                            # 今回のエピソード固有の舞台・状況
     location:             # 場所
     time:                 # 時間帯
     weather:              # 天候
-    background:           # 背景要素（配列）
-    props:                # 小道具（配列）
-    situation:            # シチュエーション説明
+    situation:            # この作品のあらすじ・ストーリーライン
 
   characters:             # 登場人物（配列）
     - name:               # 名前
-      role:               # 役割・キャラ属性
+      role:               # 性格・物語上の役割。人物画像生成の外見指定とは分ける
+      gender:             # 人間が指定する "female" / "male" / "neutral"（任意）。未指定なら欄ごと省略
+      visual_prompt:      # 人間が指定した画像生成用の外見・描き方（任意）。人物像から創作しない
+      scope:              # "episode"（この話だけ）/ "series"（シリーズ共通）。省略時はepisode
+      catalog_id:         # シリーズ人物を名称変更後も追跡する安定ID（scope: series の場合）
+      aliases:            # ネーム上の略称・呼び名（配列・任意）
+      default_proportion: # 人間が決めた人物単位の基準頭身（任意。1〜12）
+        head_count:
+      primary_material_catalog_id: # 代表人物資料のcatalog_id（任意）
+      recognition:        # シリーズ人物の安定した照合特徴（任意。表情・一時的なポーズ・画風は入れない）
+        hair:             # 各分類は observed（確認できた形）/ inferred（推定・要確認）の配列
+          observed: []
+          inferred: []
+        face: { observed: [], inferred: [] }
+        silhouette: { observed: [], inferred: [] }
+        outfit: { observed: [], inferred: [] }
+        accessories: { observed: [], inferred: [] }
+        ambiguous_design: { observed: [], inferred: [] }
 
   materials:              # 素材一覧（作画エージェントの収集リスト）
     - key:                # コマの assets から参照する素材名（例: "キャラAの普段着"）
       type:               # "character" / "background" / "prop"
+      scope:              # "episode"（エピソード限定）/ "series"（シリーズ共通）
+      catalog_id:         # シリーズ内で同じ素材を追跡する内部ID（scope: series の場合）
+      character_catalog_id: # 人物資料が対応するシリーズ人物のcatalog_id（type: character の場合）
+      view:               # turnaround/front/three-quarter/side/back/expression/costume/other（人物資料・任意）
+      origin:             # 最初に登録したエピソードの episode_id / episode_title / episode_number（任意）
       keywords:           # ファイル名検索の手がかり（配列。例: ["キャラA", "普段着", "立ち絵"]）
       note:               # 見た目の要点＝素材が見つからない場合のデザイン指針（任意）
 
@@ -194,58 +235,74 @@ manga:
             # rect の場合: x, y, w, h（x,yは左上座標・mm）
             # polygon の場合: points [[x1,y1],[x2,y2],...]（頂点座標・mm）
           bg:             # 背景詳細度 -1/0/1/2（必須）-1=背景無描画(依頼で指示されたコマのみ) 0=感情色＋効果のみ 1=簡易背景 2=詳細背景(1ページ2コマまで・位置自由)
+          background_description: # 背景レイヤー専用の場所・構図・パース・光・感情効果（任意。人物を含めない。bg:-1では使わない）
           bleed:          # タチキリ（断ち切り）の辺の配列（任意。left/right/top/bottom。座標も紙端に一致させる）
           no_figures:     # 意図的な無人コマなら true（任意。人物を一人も描かない宣言。人物の figure と併用しない——object: true の物は書ける）
           figures:        # コマ内の人物・物の配置（配列・任意。人物の無指定コマは発言順規則で自由構図）
             - name:       # キャラ名（characters と一致）または物の素材名（materials の key と一致）
               object:     # この figure が物（小道具等）なら true（任意。省略=人物）
+              action:     # この人物だけの表情・姿勢・視線・動作（任意。物には付けない）
               bbox:       # {x, y, w, h} キャンバス絶対座標(mm)・描画領域の目安
               anchor:     # right/left/center/top-right/top-left/bottom-right/bottom-left（厳守指定）
-              size:       # full/waist-up/bust-up/face/hand/foot/part（人物のみ。bbox寸法より優先。hand/foot/part=体の一部だけ・顔ゾーンなし。物には付けない）
+              size:       # long/full/knee-up/waist-up/bust-up/shoulder-up/face/face-detail/hand/foot/part（人物のみ。bbox寸法より優先。hand/foot/part=体の一部だけ・顔ゾーンなし。物には付けない）
               role:       # main/sub（任意。省略=main。sub=脇役＝人物センター原則の対象外）
           assets:         # このコマで使う素材（materials の key の配列・任意）
           bubbles:        # フキダシ（配列・縦書きなので右上のフキダシから順に）
             - text:       # フキダシの本文（必須）
-              speaker:    # 話者名（任意。省略=同コマ内の直前のフキダシと同じ話者。ナレーション・効果音は省略）
-              shape:      # フキダシの形（任意。normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten。省略=normal）
+              speaker:    # 話者名（会話では毎回明記。ナレーション・効果音など話者なしの場合だけ省略）
+              join_to:    # 結合相手となる、同じbubbles配列内の先行フキダシ番号（1始まり・任意）
+              shape:      # フキダシの形（任意。normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/critical/tense/toge/announce/toge_natural。省略=normal）
               emphasis:   # そのフキダシ内で大きくする語（任意）
               monologue:  # このフキダシが心の声なら true（任意。見た目は shape で指定）
               offscreen:  # コマ外の声なら true（任意。話者はコマ外＝姿を描かず、フキダシに尻尾も描かない）
+              tail:       # {x, y}=話者の人物bbox基準の相対座標にしっぽ先端を置く（枠外の0未満・1超も可。口元の方向へ短く）／false=しっぽなし（任意。通常形状の省略=人物中央）
               bbox:       # {x, y, w, h} フキダシ本体の目安(mm)。しっぽは含まない
-              anchor:     # コマ内相対位置（厳守指定。配置のみを指す。読み順の正は bubbles の配列順のみ）
           screen_text:    # 画面・看板・紙面の文字（配列・任意。フキダシにしない文字）
             - text:       # 描く文字（必須・一字一句正確に）
               bbox:       # {x, y, w, h} 描画位置と大きさの目安(mm)（任意）
               orientation: # horizontal=横組み（既定。半角英数はこのまま崩さない）/ vertical=縦書き
           action:         # 表情・動作のト書き（無ければ null）
+      page_overlay:       # 任意。複数コマをまたぐ、枠線なしのページ前景
+        frame: false      # 固定。page_overlayを囲う枠線は描かない
+        layer: above_panel_frames # 固定。全コマと枠線の後に一度だけ描く
+        figures:          # panels[].figures と同じ要素。bboxは紙面絶対座標、anchorは付けない
+        bubbles:          # panels[].bubbles と同じ要素。figuresより前面に描く
 ```
 
 ### フィールドの決まりごと
 
 - `meta.page_count` は整数、`pages` は実際のページを並べた配列。成形後、`page_count` は `pages` の要素数と一致させる。
 - `meta.author` は任意。原稿・依頼に作者名があれば入れる（勝手に創作しない）。指定時は各ページ下端中央のフッターとして作画される（座標はOMAYの `layout_spec`、作画の扱いはOMAYの `style_notes` を参照）。
-- `meta.reading_direction` / `text_orientation` / `font` は固定値（`"right-to-left"` / `"vertical"` / `"アンチック体"`）。
+- `meta.reading_direction` / `text_orientation` は固定値（`"right-to-left"` / `"vertical"`）。`meta.font` は作品全体で共通して使う基本書体。
 - `meta.style_notes` には**この作品に固有の作画指示のみ**を入れる（画風の行など。無ければ空配列）。全コマ共通の作画・演出ルールとレイアウト仕様（`layout_spec`）は画像生成指示ファイル **OMAY（Open Manga Artwork YAML）** が受け持ち、OMNYへは出力しない。
 - `materials` は**この作品で使う素材のカタログ**。`key` は日本語の分かりやすい名前、`keywords` はファイル名検索の手がかり。作画エージェントは作業前にこれで素材を収集する。素材が無い場合は `note` を指針に自由デザイン。
 - `pages.canvas` はA4基準。原則として全ページ同じ（`w:210, h:297, unit:mm`）。
 - `pages.panels` の配列順序＝読み順。並び順と `id` を一致させる。
-- `pages.panels` のコマ数は**1ページ最大6**。7コマ以上はセリフの描画が崩れるため禁止（手順2参照）。
+- `pages.panels` のコマ数は**1ページ最大10**。通常は1〜6コマを目安にし、必要なページだけ7〜10コマを使用する（手順2参照）。
+- `pages.page_overlay` は任意。複数コマをまたぎ、どの1コマにも所属しない人物・物・フキダシだけを置く。`frame: false` / `layer: above_panel_frames` 固定で、コマ数には数えない。全コマとコマ枠を描いた後、`page_overlay.figures` を紙面上へ一度だけ描く。その後、通常のコマ内フキダシと `page_overlay.bubbles` を全人物より前面へ描き、個々のコマへ複製しない。bboxは紙面絶対座標で、コマ内 `anchor` は付けない。
 - `panels.shape.type` は `"rect"` か `"polygon"` のいずれか。
 - `panels.bg` は **-1/0/1/2 の整数・全コマ必須**。-1=背景無描画（依頼で指示されたコマのみ。演出判断で自動選択しない）、0=背景なし（感情色ベタ/グラデ＋効果のみ）、1=簡易背景（シーン色＋記号的要素1〜2点）、2=詳細背景（**1ページに2コマまで**・位置は自由）。bg:2 の2コマ制限のカウントに bg:-1 は関係しない。
+- `panels.background_description` は任意。人物を含めず、背景レイヤーだけへ適用する場所・構図・パース・光・感情効果を記述する。`bg:-1` では省略する。
 - `panels.bleed` は任意。タチキリ（断ち切り）コマで**断ち切る辺を宣言する配列**（`left` / `right` / `top` / `bottom`）。宣言した辺は座標も紙端に一致させる（left=`x: 0`、right=`x + w = 210`、top=`y: 0`、bottom=`y + h = 297`）。rect コマにのみ指定できる。top のコマはヘッダーの文字がコマ絵の最前面に重なる。
 - `panels.no_figures: true` は**意図的な無人コマ**の宣言（任意）。人物を一人も描かないコマ（暗転・風景の見せゴマ等）に付け、人物の figure とは併用しない（**`object: true` の物の figure は書ける**）。figures の単純な省略（＝発言順規則で人物は描く）とは意味が違う。
 - `panels.screen_text` は任意。モニター・看板・紙面など**フキダシにしない画面内の文字**の配列。各要素は `text`（必須・一字一句正確に）・`bbox`（任意）・`orientation`（`horizontal`=横組みが既定／`vertical`=縦書き）。半角英数は横組みのまま崩さない。
-- `figures[].size` は `full` / `waist-up` / `bust-up` / `face` / `hand` / `foot` / `part`。hand/foot/part は**体の一部だけを描く**指定で、配置意図の優先順位2にあたり、顔ゾーン（bbox上部1/3）を持たない。
+- `figures[].size` は `long` / `full` / `knee-up` / `waist-up` / `bust-up` / `shoulder-up` / `face` / `face-detail` / `hand` / `foot` / `part`。long=周囲を含むロング、full=全身、knee-up=膝上、waist-up=腰上、bust-up=胸上、shoulder-up=肩上、face=顔、face-detail=顔の一部の大アップ。hand/foot/part は**体の一部だけを描く**指定で、配置意図の優先順位2にあたり、顔ゾーン（bbox上部1/3）を持たない。
 - `figures[].role` は任意（`main` / `sub`。省略=main）。**役割の宣言であり、配置は規定しない**——`sub` は主対象でない脇役＝人物センター原則（配置意図の優先順位3の既定。手順3参照）の適用対象から外れ、配置は `bbox` / `anchor` の指定に従う。顔ゾーン交差の回避は role に関わらず全員に適用する。
+- `figures[].action` は任意。対象人物だけの表情・姿勢・視線・身体の向き・手足の動き・接触を指定する。物（`object: true`）には付けない。`panels[].action` はコマ全体の場面・カメラ・構図を受け持ち、人物について両方に指示がある場合は `figures[].action` を優先する。
 - `figures` は**人物専用ではない**。物（小道具等）の配置も figures で座標管理する——物の figure は **`object: true` で宣言**し、`name` を materials の `key` に一致させ、`bbox` / `anchor` で置き場所を示す（`size` / `role` は人物向けの語彙なので物には付けない）。顔ゾーン・人物センター原則・発言順規則は **object の無い figure（人物）にのみ適用**する。
 - `panels.assets` は任意。そのコマで参照すべき素材の `key` を並べる。bg:0の感情コマなど素材不要のコマは省略。
 - `bubbles` は**常に配列**（フキダシ1個でも配列）。`text` は各フキダシの必須フィールド。長いセリフの分割は手順7に従う。
-- `bubbles[].speaker` は任意。省略時は**同じコマ内の直前のフキダシと同じ話者**。ナレーション（caption）・効果音（handwritten）など話者のいないフキダシも省略する。
-- `bubbles[].shape` は任意。9種の語彙（normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten）から選ぶ。省略時は `normal`（丸い通常フキダシ）。`uniflash` は1ページ1個までが目安。
-- `bubbles[].emphasis` は任意。フキダシ内で強調したい語だけ指定。
+- `bubbles[].speaker` は任意だが、会話では同じ話者が続く場合も毎回明記する。省略時は話者なし。ナレーション（caption）・効果音（handwritten）など話者のいないフキダシで省略する。
+- `bubbles[].join_to` は任意。同じ `bubbles` 配列内で結合する先行フキダシの1始まり番号を指定する。話者設定とは独立し、結合したフキダシも配列順で読む。
+- `bubbles[].shape` は任意。14種の語彙（normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/critical/tense/toge/announce/toge_natural）から選ぶ。省略時は `normal`（丸い通常フキダシ）。`uniflash` は1ページ1個までが目安。
+- `critical` / `tense` / `toge` / `announce` / `toge_natural` は素材作者の分類。見本と場面・発話・表情を照合して選び、固定の感情対応を仮定しない。素材分類 `nomal` は `normal` に対応する。素材選択時は輪郭の `bezier` も保持する。
+- `bubbles[].clip_to_panel: true` はコマ形状で輪郭・しっぽ・描き足しを切り取る。矩形コマでは本文を可視矩形内に組む。極端な見切れは避け、読みやすさを確認する。
+- `bubbles[].emphasis` は任意。フキダシ内で強調したいフレーズを指定し、複数ある場合は半角カンマで区切る。
+- `square` / `caption` / `flash` / `uniflash` / `handwritten` は、`tail` を省略するとしっぽなし。明示的な `{x, y}` がある場合だけ描く。
+- `shape: thought` でしっぽを描く場合は、本体から離れるほど小さくなる2〜3個の縦長楕円で表す。
 - `bubbles[].monologue: true` は心の声のフキダシにのみ付ける。原稿で括弧「（）」付きだったセリフが対象だが、`text` には括弧を残さない（手順9参照）。**見た目の枠形状は `shape` で指定する**（四角固定ではない）。
 - `bubbles[].offscreen: true` は**コマ外の声**のフキダシに付ける（任意）。話者はコマの外にいて姿を描かず、フキダシに**尻尾を描かない**。話者が明確にいる声なので `speaker` は明記する（話者のいないナレーション caption とは意味が違う）。
-- `action` は表情・動作のみ。無い場合は `null`。
+- `panels[].action` はコマ全体の場面・カメラ・構図のト書き。無い場合は `null`。
 
 ---
 
@@ -601,8 +658,9 @@ panels:
 ```yaml
 manga:
   schema_name: "Nyamuru Data Model"   # NDMの正式な識別名・固定。絵文字は含めない
-  schema_version: 10.31               # NDMのバージョン
+  schema_version: 10.33               # NDMのバージョン
   meta:
+    document_type: "story"
     title: ""
     author: ""      # 作者名（任意）。指定時は各ページ下端中央のフッターに描かれる
     format: "カラー漫画"
@@ -610,30 +668,45 @@ manga:
     reading_direction: "right-to-left"
     text_orientation: "vertical"
     font: "アンチック体"
+    bubble_line_width_mm: 0.5
+    panel_frame_width_mm: 1
+    panel_gutter_row_mm: 5
+    panel_gutter_column_mm: 3
     style_notes: []   # 作品固有の作画指示のみ（画風が指定されている場合の1行など）。無ければ空配列のまま
+
+  series_setting:
+    genre: ""
+    target_audience: ""
+    adult_content: false
+    situation: ""
 
   setting:
     location: ""
     time: ""
     weather: ""
-    background:
-      - ""
-    props:
-      - ""
     situation: ""
 
   characters:
-    - name: ""
+    - name: "キャラA"
       role: ""
+      scope: "series"
+      catalog_id: "character-cara"
+      aliases: []
+      default_proportion: {head_count: 4}
 
   materials:
     # この作品に必要な素材を列挙（作画エージェントが作業前に keywords でファイル検索して収集する）
     - key: "キャラAの普段着"
       type: "character"
+      scope: "series"
+      catalog_id: "material-cara-default"
+      character_catalog_id: "character-cara"
+      view: "costume"
       keywords: ["キャラA", "普段着", "私服", "立ち絵"]
       note: "銀髪ロング・そばかす・エプロン。素材が無ければこのnoteを指針に自由デザイン"
     - key: "キッチンの背景"
       type: "background"
+      scope: "episode"
       keywords: ["キッチン", "台所", "背景"]
       note: "木目の吊り棚と窓のある明るいキッチン"
 
@@ -673,7 +746,8 @@ manga:
               speaker: "キャラA"
               bbox: {x: 125, y: 100, w: 25, h: 25}         # figure の顔ゾーン(y:105-125,x:155-195)を避ける
               anchor: "top-right"
-            - text: "二つ目のセリフ、ここの本音を大きく"    # speaker省略=直前と同じ話者
+            - text: "二つ目のセリフ、ここの本音を大きく"
+              speaker: "キャラA"
               shape: "flash"                              # 叫びはギザギザ
               emphasis: "本音"
               bbox: {x: 115, y: 130, w: 35, h: 30}
@@ -728,7 +802,7 @@ manga:
       bbox: {x: 125, y: 100, w: 25, h: 45}
       anchor: "top-right"
     - text: "本音が漏れた瞬間、ということになります。"
-      shape: "square"     # 理性的な語りは角形枠（speaker省略=直前と同じ話者）
+      shape: "square"     # 理性的な語りは角形枠
       emphasis: "本音"
       bbox: {x: 115, y: 130, w: 35, h: 35}
       anchor: "bottom-left"

@@ -1,0 +1,62 @@
+---
+import Layout from './Layout.astro';
+import { version as appVersion, versionCode as appVersionCode } from '../../package.json';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const currentPath = Astro.url.pathname;
+const links = [
+  { href: '/docs/prompt/', label: '生成プロンプト' },
+  { href: '/docs/workflow/', label: '生成ワークフロー' },
+  { href: '/docs/ndm/', label: 'NDM仕様' },
+  { href: '/docs/nyamurutan/', label: 'にゃむるたん' },
+];
+---
+
+<Layout title={`${title} | Nyamuru 🐱 Image Hub`} description={description}>
+  <main class="docs-page">
+    <header class="docs-site-head">
+      <a class="docs-home" href="/docs/">DOCUMENTS</a>
+      <nav class="docs-primary-nav" aria-label="公開ドキュメント">
+        {links.map((link) => <a class:list={{ active: currentPath === link.href }} href={link.href}>{link.label}</a>)}
+      </nav>
+      <a class="docs-app-link" href="/">アプリへ戻る</a>
+    </header>
+    <section class="docs-content"><slot /></section>
+    <footer class="docs-public-footer">
+      <span>© 2026 sa-san10</span>
+      <a href="/licenses/">MIT License</a>
+      <a href="/changelog/" title={`バージョンコード ${appVersionCode}`}>v{appVersion}</a>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  :global(body) { overflow: auto; background: var(--canvas); }
+  .docs-page { min-height: 100vh; background-color: var(--canvas); background-image: radial-gradient(#e0e0e0 1px, transparent 1px); background-size: 20px 20px; }
+  .docs-site-head { position: sticky; z-index: 20; top: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 22px; min-height: 58px; padding: 0 24px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+  .docs-home, .docs-app-link, .docs-primary-nav a { color: #646976; text-decoration: none; }
+  .docs-home { color: var(--accent-dark); font: 900 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; }
+  .docs-app-link { background: var(--control); padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 999px; color: var(--accent-dark); font-size: 11px; font-weight: 800; }
+  .docs-app-link:hover { background: var(--accent-soft); }
+  .docs-primary-nav { display: flex; justify-content: center; gap: 4px; min-width: 0; overflow-x: auto; }
+  .docs-primary-nav a { flex: 0 0 auto; padding: 9px 11px; border-radius: 7px; font-size: 11px; font-weight: 800; }
+  .docs-primary-nav a:hover, .docs-primary-nav a.active { background: var(--accent-soft); color: var(--ink); }
+  .docs-primary-nav a.active { box-shadow: inset 0 -3px var(--accent); }
+  .docs-content { width: min(1120px, calc(100% - 32px)); margin: 24px auto 64px; }
+  .docs-content :global(.public-docs-guide .document-editor) { height: auto; min-height: calc(100vh - 146px); overflow: hidden; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 50px rgba(70, 74, 66, .08); }
+  .docs-content :global(.public-docs-guide .document-editor-body) { overflow: visible; }
+  .docs-public-footer { display: flex; justify-content: center; gap: 12px; padding: 0 18px 32px; color: var(--muted); font-size: 10px; }
+  .docs-public-footer a { color: var(--muted); font-weight: 700; text-decoration: none; }
+  .docs-public-footer a:hover { color: var(--accent-dark); text-decoration: underline; }
+
+  @media (max-width: 760px) {
+    .docs-site-head { position: static; grid-template-columns: 1fr auto; gap: 10px; padding: 11px 12px; }
+    .docs-primary-nav { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+    .docs-content { width: min(100% - 18px, 1120px); margin-top: 10px; }
+  }
+</style>

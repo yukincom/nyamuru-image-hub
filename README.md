@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-紙のネームや視覚資料を解析し、編集可能な漫画設計へつなぐ。Nyamuru Manga Name Studioのフォークです。
+紙のネームや視覚資料を解析し、編集可能な漫画設計へつなぐローカルアプリです。
 
 [本家 Nyamuru Manga Name Studio](https://github.com/sa-san10/nyamuru-manga-name-studio) のOMNY編集・生成プロンプト機能に、アナログネームの取り込みとコマ編集支援を追加しています。
 
@@ -11,6 +11,8 @@
 - スキャン画像や画像ファイルから、コマ・人物アタリ・フキダシを検出
 - 手書き文字を読み取り、アタリとしてフキダシへ配置
 - 検出結果を原画と見比べながら修正し、OMNY形式で保存
+- シリーズごとの人物設定と複数のデザイン資料画像をローカル台帳へ保存
+- 明示的に選んだ人物資料1枚から、照合用の外見特徴候補をローカルVLMで抽出
 - 内枠スナップ、コマスナップ、Shift移動、コマ合体などでコマを調整
 - Nyamuru本来のネーム編集、生成プロンプト、OMAY連携を利用
 
@@ -26,12 +28,22 @@
 
 ## 起動
 
-Node.js 22.12.0以上が必要です。
+Node.js 22.12.0以上が必要です。初回だけ、このリポジトリのフォルダで依存を導入します。
 
 ```bash
 npm ci
-npm run dev
 ```
+
+起動方法は使い方に合わせて選びます。
+
+| 使い方 | 起動するPC | コマンド |
+|---|---|---|
+| 別のPCのブラウザーから編集する（LAN） | Mac Studio | `npm run lan` |
+| このPCだけで編集する | このPC | `npm run dev` |
+
+LANでは、起動画面に表示された `https://` のアドレスを編集PCで開きます。初回の証明書登録は [別のPCから使う手順](./docs/LAN_EDITING.md) を参照してください。文章AIを使う場合は、Mac Studioで普段使う文章AIも先に起動しておきます。
+
+終了するときは作品を保存し、起動したターミナルで `Ctrl+C` を押します。
 
 アナログネーム取り込みを使う場合は、初回だけ画像解析環境を準備します。
 
@@ -39,15 +51,24 @@ npm run dev
 npm run setup:vision
 ```
 
-以後は別々のターミナルで `npm run bridge` と `npm run dev` を起動します。
+以後は用途に応じて `npm run lan` または `npm run dev` で起動します。「新規作成」を開くとローカル画像解析が自動で起動し、作成完了またはキャンセル時に自動で終了します。
+
+`npm run dev` の文章処理は8080で起動済みのローカルMLXサーバーを自動で共用します。未起動の場合は環境設定のモデルを必要な間だけ起動します。画像生成ではプロンプトを英訳して保存し、文章LLMを一時停止してからComfyUIを起動します。生成に使ったComfyUIプロセスの終了後、元から起動していたLLMを同じ設定で復帰します。共有LLMの自動復帰にはmacOSまたはLinuxと、同じユーザーで起動されたサーバーが必要です。
 
 詳しい操作とセットアップは [使い方ガイド](./docs/USAGE.md) を参照してください。
+
+別のPCのChromeから使う場合は、Mac Studioで `npm run lan` を実行します。作品は編集PCで選んだ作品フォルダーへ保存し、AI処理はMacで実行します。初回の準備から保存・終了までの手順は [LAN編集](./docs/LAN_EDITING.md) を参照してください。
+
+## 開発方針
+
+本家のネーム編集を土台に、紙のネームの取り込みとHermes Agentによる制作支援を育てるOSSフォークです。Hermesからの単発画像生成は既存のローカル生成処理に接続しています。他のPCへの導入手順と、プロットから編集可能なネームへつなぐ連携を整備中です。
 
 ## ドキュメント
 
 - [使い方](./docs/USAGE.md)
 - [このフォークの機能と既知の制限](./docs/FORK_FEATURES.md)
 - [ローカル画像解析の詳細](./docs/LOCAL_VISION_BRIDGE.md)
+- [シリーズ人物資料と照合特徴](./docs/SERIES_CHARACTER_CATALOG.md)
 - [外部コンポーネントとライセンス](./docs/LOCAL_VISION_COMPONENTS.md)
 - [本家更新の取り込み方](./docs/UPSTREAM_SYNC.md)
 - [変更履歴](./docs/FORK_CHANGELOG.md)
@@ -56,4 +77,14 @@ npm run setup:vision
 
 本プロジェクトは [sa-san10/nyamuru-manga-name-studio](https://github.com/sa-san10/nyamuru-manga-name-studio) を基にしたフォークです。Nyamuru本体と、このフォークで追加したコード・文書は、個別に別の表示があるものを除き [MIT License](./LICENSE) で提供します。
 
-RT-DETRモデル、NDLOCR-Lite、その他の第三者コンポーネントには、それぞれのライセンスが適用されます。詳しくは [外部コンポーネントとライセンス](./docs/LOCAL_VISION_COMPONENTS.md) および [THIRD_PARTY_NOTICES.txt](./public/THIRD_PARTY_NOTICES.txt) を参照してください。
+RT-DETRモデル、Baberu OCR、その他の第三者コンポーネントには、それぞれのライセンスが適用されます。詳しくは [外部コンポーネントとライセンス](./docs/LOCAL_VISION_COMPONENTS.md) および [THIRD_PARTY_NOTICES.txt](./public/THIRD_PARTY_NOTICES.txt) を参照してください。
+
+## ローカル配置
+
+このリポジトリを配置したディレクトリで、LAN利用は `npm run lan`、このPCだけの利用は `npm run dev` を実行します。モデルと既存依存は `.local-vision/` を使用し、VLMは兄弟の `ComfyUI/.venv` を引き続き利用します。
+
+既存作品との互換性のため、保存キー、NDM名、`NYAMURU_*` 環境変数、内部保存先・サービス識別子は維持しています。著作権と第三者クレジットは `LICENSE` とライセンス画面を参照してください。
+
+## 操作分類モデル
+
+採用済みのModernBERT分類器は、clone後に `npm run setup:vision` を実行すると、このリポジトリのReleaseから重み約147MBを取得し、`models/nyamuru-voice-v04-seed43/` に保存・検証します。以後の分類は本体内のモデルで動作します。[導入と検証](docs/2026-10-24-classifier-bundle.md)・[精度改善の手順と研究記録](docs/ModernBERT/README.md)。

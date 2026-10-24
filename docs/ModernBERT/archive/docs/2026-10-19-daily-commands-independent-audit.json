@@ -1,0 +1,898 @@
+{
+  "status": "passed",
+  "started_at_utc": "2026-10-18T15:56:58.847782+00:00",
+  "method": "Independent standard-library-only implementation; no project evaluator imports or inference.",
+  "finished_at_utc": "2026-10-18T15:57:01.793663+00:00",
+  "checks": [
+    {
+      "check": "preselected_seed43_and_preinference_frozen_inputs",
+      "status": "passed",
+      "evidence": "This agent reviewed and recorded the same six input hashes and evaluator source before receiving the inference-completed message."
+    },
+    {
+      "check": "all_763_frozen_inputs",
+      "files": 763,
+      "status": "passed"
+    },
+    {
+      "check": "six_suite_inputs",
+      "files": 6,
+      "status": "passed"
+    },
+    {
+      "check": "all_output_files",
+      "files": 13,
+      "status": "passed"
+    },
+    {
+      "check": "all_preserved_fixed73_outputs",
+      "files": 58,
+      "status": "passed"
+    },
+    {
+      "check": "preserved73_test_byte_hash",
+      "status": "passed",
+      "rows": 73,
+      "sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840"
+    },
+    {
+      "check": "v04_seed42_checkpoint",
+      "files": 4,
+      "status": "passed"
+    },
+    {
+      "check": "v04_seed43_checkpoint",
+      "files": 4,
+      "status": "passed"
+    },
+    {
+      "check": "v04_seed44_checkpoint",
+      "files": 4,
+      "status": "passed"
+    },
+    {
+      "check": "all_predictions_and_independent_recomputed_metrics",
+      "status": "passed",
+      "predictions": 336,
+      "probability_values": 6384,
+      "max_probability_sum_absolute_error": 1.1834831048496142e-07
+    },
+    {
+      "check": "all_overlap_records_and_subsets",
+      "status": "passed",
+      "rows": 112,
+      "partition_counts": {
+        "all": 112,
+        "train_exact": 15,
+        "train_normalized_only": 0,
+        "not_train_normalized": 97,
+        "not_any_prior_normalized": 94
+      }
+    },
+    {
+      "check": "report_score_rows_and_all_union_mistakes",
+      "status": "passed",
+      "union_mistakes": 15
+    }
+  ],
+  "failures": [],
+  "primary_model": "v04_seed43",
+  "primary_preselected": true,
+  "models": {
+    "v04_seed42": {
+      "accuracy": 0.9285714285714286,
+      "correct": 104,
+      "n": 112,
+      "macro_f1_supported": 0.9548250069258474,
+      "macro_f1_all_19": 0.7035552682611508,
+      "supported_labels": [
+        "save",
+        "undo",
+        "redo",
+        "page_navigate",
+        "view_change",
+        "artwork_mode_set",
+        "bubble_set",
+        "panel_sync_set",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "generate_request",
+        "background_3d_candidates",
+        "paint_tool_set",
+        "text_frames_align"
+      ],
+      "missing_labels": [
+        "needs_clarification",
+        "needs_reasoning",
+        "compound_request",
+        "out_of_scope_request",
+        "not_command"
+      ],
+      "subsets": {
+        "all": {
+          "n": 112,
+          "correct": 104,
+          "accuracy": 0.9285714285714286
+        },
+        "train_exact": {
+          "n": 15,
+          "correct": 15,
+          "accuracy": 1.0
+        },
+        "train_normalized_only": {
+          "n": 0,
+          "correct": 0,
+          "accuracy": null
+        },
+        "not_train_normalized": {
+          "n": 97,
+          "correct": 89,
+          "accuracy": 0.9175257731958762
+        },
+        "not_any_prior_normalized": {
+          "n": 94,
+          "correct": 86,
+          "accuracy": 0.9148936170212766
+        }
+      },
+      "mistake_ids": [
+        "daily_007",
+        "daily_008",
+        "daily_050",
+        "daily_071",
+        "daily_104",
+        "daily_106",
+        "daily_108",
+        "daily_111"
+      ]
+    },
+    "v04_seed43": {
+      "accuracy": 0.9821428571428571,
+      "correct": 110,
+      "n": 112,
+      "macro_f1_supported": 0.9820728291316527,
+      "macro_f1_all_19": 0.7236326109391126,
+      "supported_labels": [
+        "save",
+        "undo",
+        "redo",
+        "page_navigate",
+        "view_change",
+        "artwork_mode_set",
+        "bubble_set",
+        "panel_sync_set",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "generate_request",
+        "background_3d_candidates",
+        "paint_tool_set",
+        "text_frames_align"
+      ],
+      "missing_labels": [
+        "needs_clarification",
+        "needs_reasoning",
+        "compound_request",
+        "out_of_scope_request",
+        "not_command"
+      ],
+      "subsets": {
+        "all": {
+          "n": 112,
+          "correct": 110,
+          "accuracy": 0.9821428571428571
+        },
+        "train_exact": {
+          "n": 15,
+          "correct": 15,
+          "accuracy": 1.0
+        },
+        "train_normalized_only": {
+          "n": 0,
+          "correct": 0,
+          "accuracy": null
+        },
+        "not_train_normalized": {
+          "n": 97,
+          "correct": 95,
+          "accuracy": 0.979381443298969
+        },
+        "not_any_prior_normalized": {
+          "n": 94,
+          "correct": 92,
+          "accuracy": 0.9787234042553191
+        }
+      },
+      "mistake_ids": [
+        "daily_013",
+        "daily_038"
+      ]
+    },
+    "v04_seed44": {
+      "accuracy": 0.9375,
+      "correct": 105,
+      "n": 112,
+      "macro_f1_supported": 0.9523809523809523,
+      "macro_f1_all_19": 0.7017543859649122,
+      "supported_labels": [
+        "save",
+        "undo",
+        "redo",
+        "page_navigate",
+        "view_change",
+        "artwork_mode_set",
+        "bubble_set",
+        "panel_sync_set",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "generate_request",
+        "background_3d_candidates",
+        "paint_tool_set",
+        "text_frames_align"
+      ],
+      "missing_labels": [
+        "needs_clarification",
+        "needs_reasoning",
+        "compound_request",
+        "out_of_scope_request",
+        "not_command"
+      ],
+      "subsets": {
+        "all": {
+          "n": 112,
+          "correct": 105,
+          "accuracy": 0.9375
+        },
+        "train_exact": {
+          "n": 15,
+          "correct": 15,
+          "accuracy": 1.0
+        },
+        "train_normalized_only": {
+          "n": 0,
+          "correct": 0,
+          "accuracy": null
+        },
+        "not_train_normalized": {
+          "n": 97,
+          "correct": 90,
+          "accuracy": 0.9278350515463918
+        },
+        "not_any_prior_normalized": {
+          "n": 94,
+          "correct": 87,
+          "accuracy": 0.925531914893617
+        }
+      },
+      "mistake_ids": [
+        "daily_002",
+        "daily_003",
+        "daily_004",
+        "daily_005",
+        "daily_007",
+        "daily_008",
+        "daily_019"
+      ]
+    }
+  },
+  "mean_accuracy": {
+    "values": [
+      0.9285714285714286,
+      0.9821428571428571,
+      0.9375
+    ],
+    "mean": 0.9494047619047619,
+    "sample_stddev": 0.028701341550574234,
+    "min": 0.9285714285714286,
+    "max": 0.9821428571428571
+  },
+  "overlap_counts": {
+    "all": 112,
+    "train_exact": 15,
+    "train_normalized_only": 0,
+    "not_train_normalized": 97,
+    "not_any_prior_normalized": 94
+  },
+  "overlap_ids": {
+    "all": [
+      "daily_001",
+      "daily_002",
+      "daily_003",
+      "daily_004",
+      "daily_005",
+      "daily_006",
+      "daily_007",
+      "daily_008",
+      "daily_009",
+      "daily_010",
+      "daily_011",
+      "daily_012",
+      "daily_013",
+      "daily_014",
+      "daily_015",
+      "daily_016",
+      "daily_017",
+      "daily_018",
+      "daily_019",
+      "daily_020",
+      "daily_021",
+      "daily_022",
+      "daily_023",
+      "daily_024",
+      "daily_025",
+      "daily_026",
+      "daily_027",
+      "daily_028",
+      "daily_029",
+      "daily_030",
+      "daily_031",
+      "daily_032",
+      "daily_033",
+      "daily_034",
+      "daily_035",
+      "daily_036",
+      "daily_037",
+      "daily_038",
+      "daily_039",
+      "daily_040",
+      "daily_041",
+      "daily_042",
+      "daily_043",
+      "daily_044",
+      "daily_045",
+      "daily_046",
+      "daily_047",
+      "daily_048",
+      "daily_049",
+      "daily_050",
+      "daily_051",
+      "daily_052",
+      "daily_053",
+      "daily_054",
+      "daily_055",
+      "daily_056",
+      "daily_057",
+      "daily_058",
+      "daily_059",
+      "daily_060",
+      "daily_061",
+      "daily_062",
+      "daily_063",
+      "daily_064",
+      "daily_065",
+      "daily_066",
+      "daily_067",
+      "daily_068",
+      "daily_069",
+      "daily_070",
+      "daily_071",
+      "daily_072",
+      "daily_073",
+      "daily_074",
+      "daily_075",
+      "daily_076",
+      "daily_077",
+      "daily_078",
+      "daily_079",
+      "daily_080",
+      "daily_081",
+      "daily_082",
+      "daily_083",
+      "daily_084",
+      "daily_085",
+      "daily_086",
+      "daily_087",
+      "daily_088",
+      "daily_089",
+      "daily_090",
+      "daily_091",
+      "daily_092",
+      "daily_093",
+      "daily_094",
+      "daily_095",
+      "daily_096",
+      "daily_097",
+      "daily_098",
+      "daily_099",
+      "daily_100",
+      "daily_101",
+      "daily_102",
+      "daily_103",
+      "daily_104",
+      "daily_105",
+      "daily_106",
+      "daily_107",
+      "daily_108",
+      "daily_109",
+      "daily_110",
+      "daily_111",
+      "daily_112"
+    ],
+    "train_exact": [
+      "daily_001",
+      "daily_016",
+      "daily_026",
+      "daily_037",
+      "daily_052",
+      "daily_057",
+      "daily_060",
+      "daily_061",
+      "daily_065",
+      "daily_068",
+      "daily_069",
+      "daily_073",
+      "daily_076",
+      "daily_077",
+      "daily_102"
+    ],
+    "train_normalized_only": [],
+    "not_train_normalized": [
+      "daily_002",
+      "daily_003",
+      "daily_004",
+      "daily_005",
+      "daily_006",
+      "daily_007",
+      "daily_008",
+      "daily_009",
+      "daily_010",
+      "daily_011",
+      "daily_012",
+      "daily_013",
+      "daily_014",
+      "daily_015",
+      "daily_017",
+      "daily_018",
+      "daily_019",
+      "daily_020",
+      "daily_021",
+      "daily_022",
+      "daily_023",
+      "daily_024",
+      "daily_025",
+      "daily_027",
+      "daily_028",
+      "daily_029",
+      "daily_030",
+      "daily_031",
+      "daily_032",
+      "daily_033",
+      "daily_034",
+      "daily_035",
+      "daily_036",
+      "daily_038",
+      "daily_039",
+      "daily_040",
+      "daily_041",
+      "daily_042",
+      "daily_043",
+      "daily_044",
+      "daily_045",
+      "daily_046",
+      "daily_047",
+      "daily_048",
+      "daily_049",
+      "daily_050",
+      "daily_051",
+      "daily_053",
+      "daily_054",
+      "daily_055",
+      "daily_056",
+      "daily_058",
+      "daily_059",
+      "daily_062",
+      "daily_063",
+      "daily_064",
+      "daily_066",
+      "daily_067",
+      "daily_070",
+      "daily_071",
+      "daily_072",
+      "daily_074",
+      "daily_075",
+      "daily_078",
+      "daily_079",
+      "daily_080",
+      "daily_081",
+      "daily_082",
+      "daily_083",
+      "daily_084",
+      "daily_085",
+      "daily_086",
+      "daily_087",
+      "daily_088",
+      "daily_089",
+      "daily_090",
+      "daily_091",
+      "daily_092",
+      "daily_093",
+      "daily_094",
+      "daily_095",
+      "daily_096",
+      "daily_097",
+      "daily_098",
+      "daily_099",
+      "daily_100",
+      "daily_101",
+      "daily_103",
+      "daily_104",
+      "daily_105",
+      "daily_106",
+      "daily_107",
+      "daily_108",
+      "daily_109",
+      "daily_110",
+      "daily_111",
+      "daily_112"
+    ],
+    "not_any_prior_normalized": [
+      "daily_002",
+      "daily_003",
+      "daily_004",
+      "daily_005",
+      "daily_006",
+      "daily_007",
+      "daily_008",
+      "daily_009",
+      "daily_010",
+      "daily_011",
+      "daily_012",
+      "daily_013",
+      "daily_014",
+      "daily_015",
+      "daily_018",
+      "daily_019",
+      "daily_020",
+      "daily_021",
+      "daily_022",
+      "daily_023",
+      "daily_024",
+      "daily_025",
+      "daily_027",
+      "daily_028",
+      "daily_029",
+      "daily_030",
+      "daily_031",
+      "daily_032",
+      "daily_033",
+      "daily_034",
+      "daily_038",
+      "daily_039",
+      "daily_040",
+      "daily_041",
+      "daily_042",
+      "daily_043",
+      "daily_044",
+      "daily_045",
+      "daily_046",
+      "daily_047",
+      "daily_048",
+      "daily_049",
+      "daily_050",
+      "daily_051",
+      "daily_053",
+      "daily_054",
+      "daily_055",
+      "daily_056",
+      "daily_058",
+      "daily_059",
+      "daily_062",
+      "daily_063",
+      "daily_064",
+      "daily_066",
+      "daily_067",
+      "daily_070",
+      "daily_071",
+      "daily_072",
+      "daily_074",
+      "daily_075",
+      "daily_078",
+      "daily_079",
+      "daily_080",
+      "daily_081",
+      "daily_082",
+      "daily_083",
+      "daily_084",
+      "daily_085",
+      "daily_086",
+      "daily_087",
+      "daily_088",
+      "daily_089",
+      "daily_090",
+      "daily_091",
+      "daily_092",
+      "daily_093",
+      "daily_094",
+      "daily_095",
+      "daily_096",
+      "daily_097",
+      "daily_098",
+      "daily_099",
+      "daily_100",
+      "daily_101",
+      "daily_103",
+      "daily_104",
+      "daily_105",
+      "daily_106",
+      "daily_107",
+      "daily_108",
+      "daily_109",
+      "daily_110",
+      "daily_111",
+      "daily_112"
+    ]
+  },
+  "union_mistakes": [
+    {
+      "id": "daily_002",
+      "text": "作品を保存して",
+      "gold": "save",
+      "predictions": {
+        "v04_seed42": "save",
+        "v04_seed43": "save",
+        "v04_seed44": "compound_request"
+      }
+    },
+    {
+      "id": "daily_003",
+      "text": "今の作品を保存して",
+      "gold": "save",
+      "predictions": {
+        "v04_seed42": "save",
+        "v04_seed43": "save",
+        "v04_seed44": "compound_request"
+      }
+    },
+    {
+      "id": "daily_004",
+      "text": "編集内容を保存して",
+      "gold": "save",
+      "predictions": {
+        "v04_seed42": "save",
+        "v04_seed43": "save",
+        "v04_seed44": "compound_request"
+      }
+    },
+    {
+      "id": "daily_005",
+      "text": "変更を保存して",
+      "gold": "save",
+      "predictions": {
+        "v04_seed42": "save",
+        "v04_seed43": "save",
+        "v04_seed44": "compound_request"
+      }
+    },
+    {
+      "id": "daily_007",
+      "text": "ここまで保存して",
+      "gold": "save",
+      "predictions": {
+        "v04_seed42": "compound_request",
+        "v04_seed43": "save",
+        "v04_seed44": "compound_request"
+      }
+    },
+    {
+      "id": "daily_008",
+      "text": "上書き保存して",
+      "gold": "save",
+      "predictions": {
+        "v04_seed42": "compound_request",
+        "v04_seed43": "save",
+        "v04_seed44": "compound_request"
+      }
+    },
+    {
+      "id": "daily_013",
+      "text": "最後の変更を元に戻して",
+      "gold": "undo",
+      "predictions": {
+        "v04_seed42": "undo",
+        "v04_seed43": "redo",
+        "v04_seed44": "undo"
+      }
+    },
+    {
+      "id": "daily_019",
+      "text": "取り消した操作を戻して",
+      "gold": "redo",
+      "predictions": {
+        "v04_seed42": "redo",
+        "v04_seed43": "redo",
+        "v04_seed44": "needs_clarification"
+      }
+    },
+    {
+      "id": "daily_038",
+      "text": "作画ガイドを非表示にして",
+      "gold": "view_change",
+      "predictions": {
+        "v04_seed42": "view_change",
+        "v04_seed43": "artwork_mode_set",
+        "v04_seed44": "view_change"
+      }
+    },
+    {
+      "id": "daily_050",
+      "text": "選択中の吹き出しをノーマル素材にして",
+      "gold": "bubble_set",
+      "predictions": {
+        "v04_seed42": "out_of_scope_request",
+        "v04_seed43": "bubble_set",
+        "v04_seed44": "bubble_set"
+      }
+    },
+    {
+      "id": "daily_071",
+      "text": "内枠スナップを切って",
+      "gold": "inner_frame_snap_set",
+      "predictions": {
+        "v04_seed42": "out_of_scope_request",
+        "v04_seed43": "inner_frame_snap_set",
+        "v04_seed44": "inner_frame_snap_set"
+      }
+    },
+    {
+      "id": "daily_104",
+      "text": "ペンをベクター方式にして",
+      "gold": "paint_tool_set",
+      "predictions": {
+        "v04_seed42": "artwork_mode_set",
+        "v04_seed43": "paint_tool_set",
+        "v04_seed44": "paint_tool_set"
+      }
+    },
+    {
+      "id": "daily_106",
+      "text": "選択した2つの文字枠を上端でそろえて",
+      "gold": "text_frames_align",
+      "predictions": {
+        "v04_seed42": "out_of_scope_request",
+        "v04_seed43": "text_frames_align",
+        "v04_seed44": "text_frames_align"
+      }
+    },
+    {
+      "id": "daily_108",
+      "text": "選択中の文字枠を全部上端でそろえて",
+      "gold": "text_frames_align",
+      "predictions": {
+        "v04_seed42": "out_of_scope_request",
+        "v04_seed43": "text_frames_align",
+        "v04_seed44": "text_frames_align"
+      }
+    },
+    {
+      "id": "daily_111",
+      "text": "選択中の複数の文字枠の書き出しをそろえて",
+      "gold": "text_frames_align",
+      "predictions": {
+        "v04_seed42": "out_of_scope_request",
+        "v04_seed43": "text_frames_align",
+        "v04_seed44": "text_frames_align"
+      }
+    }
+  ],
+  "preserved73_sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+  "input_manifest_entries": 763,
+  "output_manifest_entries": 13,
+  "preselection_evidence": {
+    "protocol_sha256_recorded_before_inference": "4dff0ab530f47830c523e8cc1608002144d2b3e7dcdcf7e165d731512f52ca0b",
+    "same_suite_hashes": true,
+    "same_evaluator_sha256": "5b3f5ec878b4212f1534d4a28ec0a34316312e1c1846d07b1748e3f5e3e4eb0b",
+    "run_plan_frozen_at_utc": "2026-10-18T15:53:52.804667+00:00",
+    "basis": "Pre-inference review and task message sequence; filesystem timestamps alone are not relied upon."
+  },
+  "interpretation_review": {
+    "overclaims_found": [],
+    "required_boundaries": [
+      "112 synthetic balanced text commands; not sampled natural speech or usage-frequency weighted accuracy.",
+      "Only 14 gold-supported action labels are measured; all 19 classifier outputs are retained. Five excluded label classes have zero gold support.",
+      "The 15 exact training matches are included and all correct; the no-training-normalized subset contains 97 rows. No-prior-normalized subset contains 94 rows and is nested, not an additional disjoint partition.",
+      "No normalized overlap does not imply semantic independence or out-of-distribution generalization.",
+      "Three seeds repeat the same 112 questions; 336 predictions are not 336 independent utterances.",
+      "Seed43 was frozen before this run. Its 110/112 score is a result on this suite, not proof of 98.21% real-use accuracy.",
+      "Audio recognition, slot extraction, target resolution, actual app execution and adoption are outside this evaluation."
+    ],
+    "macro_f1_note": "macro_f1_supported averages the 14 supported labels. The legacy macro_f1 field still averages all 19, counting five zero-support F1s as zero; it is not the reported 14-class F1."
+  },
+  "scope_limits": [
+    "No model inference or training was run by this audit.",
+    "Saved logits are unavailable, so loss is checked for finiteness/nonnegativity but not independently reconstructed from probabilities. Timing is likewise checked for finiteness/nonnegativity only.",
+    "Hashes establish consistency with frozen artifacts; they do not independently validate human-label semantics or model execution provenance beyond the available records.",
+    "Only the temporary audit script and this temporary JSON were written; no repository files were modified."
+  ],
+  "audit_script_sha256": "4ce3bb13e3355eec97b8057f0ec436a44e8a7fd43d684405f2c901cbb2643619",
+  "document_audit": {
+    "status": "passed",
+    "checks": [
+      "Analysis protocol matches frozen suite",
+      "Analysis complete summary matches independently verified metrics",
+      "Analysis environment matches frozen plan",
+      "Analysis overlap matches frozen plan",
+      "Analysis subsets matches frozen plan",
+      "Analysis all 112 primary prediction records match verified source records exactly",
+      "Analysis input count equals 763",
+      "Analysis output manifest equals verified 13-file manifest",
+      "Analysis suite manifest equals verified six-file manifest",
+      "Analysis evaluator source hash matches",
+      "Document complete accuracy row for v04_seed42",
+      "Document complete accuracy row for v04_seed43",
+      "Document complete accuracy row for v04_seed44",
+      "Document per-label row for save",
+      "Document per-label row for undo",
+      "Document per-label row for redo",
+      "Document per-label row for page_navigate",
+      "Document per-label row for view_change",
+      "Document per-label row for artwork_mode_set",
+      "Document per-label row for bubble_set",
+      "Document per-label row for panel_sync_set",
+      "Document per-label row for inner_frame_snap_set",
+      "Document per-label row for panel_gap_snap_set",
+      "Document per-label row for generate_request",
+      "Document per-label row for background_3d_candidates",
+      "Document per-label row for paint_tool_set",
+      "Document per-label row for text_frames_align",
+      "Document complete union mistake daily_002",
+      "Document complete union mistake daily_003",
+      "Document complete union mistake daily_004",
+      "Document complete union mistake daily_005",
+      "Document complete union mistake daily_007",
+      "Document complete union mistake daily_008",
+      "Document complete union mistake daily_013",
+      "Document complete union mistake daily_019",
+      "Document complete union mistake daily_038",
+      "Document complete union mistake daily_050",
+      "Document complete union mistake daily_071",
+      "Document complete union mistake daily_104",
+      "Document complete union mistake daily_106",
+      "Document complete union mistake daily_108",
+      "Document complete union mistake daily_111",
+      "Document exactly 15 union mistake rows",
+      "Document primary mistake count two",
+      "Document primary prediction and confidence daily_013",
+      "Document primary prediction and confidence daily_038",
+      "Document preserved73 score independently recounted as 60/73",
+      "Document v04/v051-baseline weight identity matches all three stored hashes",
+      "Document text length range 4 to 22",
+      "Save anchor is an exact training match",
+      "Next-page anchor has no normalized training match",
+      "Both anchors correct for all three seeds",
+      "Document six seed44 save-to-compound errors",
+      "Document average accuracy percentage",
+      "Document runtime versions agree with saved run environment",
+      "Document interpretation boundary: 今回の結果による選び直しではない",
+      "Document interpretation boundary: 学習による改善値ではない",
+      "Document interpretation boundary: この評価だけでは断定できない",
+      "Document interpretation boundary: 336問の独立した発話として扱わない",
+      "Document interpretation boundary: 意味的に新しい発話であることを保証する指標ではない"
+    ],
+    "failures": [],
+    "files_sha256": {
+      "docs/2026-10-19-daily-commands-results.md": "5291225abe7d96b8eb46a263dc336ed2341421f299dad0afb0d7b34f91b50a18",
+      "docs/2026-10-19-daily-commands-analysis.json": "2b2473ada6f1d52168779c15e4618df017cdb626780b951d917fd0b76dca95ef"
+    },
+    "overclaims_found": [],
+    "old73_seed43": {
+      "correct": 60,
+      "n": 73,
+      "accuracy": 0.821917808219178
+    },
+    "v04_v051_baseline_weight_identity_by_seed": {
+      "42": true,
+      "43": true,
+      "44": true
+    },
+    "parent_reported_checks_not_rerun_here": [
+      "Existing tests: 33 passed, 26 old-version skips, 59 total.",
+      "Verifier mutation checks rejecting wrong primary, changed gold with updated checksum, and missing manifest item."
+    ],
+    "conclusion": "All checked numerical claims, original utterances, subset denominators, primary selection, prediction confidences and explicit interpretation limits agree with the independently verified artifacts."
+  },
+  "parent_final_document_check": {
+    "status": "passed",
+    "current_sha256": "4cc5c9a218a5d324ecad6505a0bebea96e539984d24f0a43ef2a10891847495a",
+    "independently_audited_body_sha256": "5291225abe7d96b8eb46a263dc336ed2341421f299dad0afb0d7b34f91b50a18",
+    "only_change": "Added one paragraph linking the completed independent audit and three successful verifier rejection checks. Removing that paragraph reconstructs the exact independently reviewed document."
+  }
+}

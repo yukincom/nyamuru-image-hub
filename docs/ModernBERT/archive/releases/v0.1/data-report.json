@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "model_fields": [
+    "text"
+  ],
+  "target_field": "label",
+  "source_sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+  "label_contract_sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+  "split_plan_sha256": "8526f29d76639b06f5789e536f2e335916905aa8056eedac5aec373549296737",
+  "family_review_sha256": "9a2dc7cff399be565c3779a533583b50c271567b80c00879cfc3e49b29b6f28b",
+  "splits": {
+    "train": {
+      "n": 243,
+      "sha256": "5ecb6be3442686bdc7c776d848500d2e472629742abfd39441ed919f652f98cb",
+      "labels": {
+        "save": 5,
+        "undo": 6,
+        "redo": 6,
+        "page_navigate": 10,
+        "view_change": 14,
+        "artwork_mode_set": 10,
+        "bubble_set": 20,
+        "needs_clarification": 14,
+        "needs_reasoning": 6,
+        "compound_request": 12,
+        "out_of_scope_request": 9,
+        "not_command": 32,
+        "panel_sync_set": 12,
+        "inner_frame_snap_set": 12,
+        "panel_gap_snap_set": 12,
+        "generate_request": 27,
+        "background_3d_candidates": 16,
+        "paint_tool_set": 12,
+        "text_frames_align": 8
+      },
+      "missing_labels": [],
+      "groups": 107,
+      "families": 50,
+      "sources": {
+        "codex_synthetic": 236,
+        "user_supplied_example": 7
+      }
+    },
+    "dev": {
+      "n": 40,
+      "sha256": "9e7a222afa9f3a142b18a66ef2c8054338cf35c4b048862223ad10ffa1f86afe",
+      "labels": {
+        "save": 2,
+        "undo": 2,
+        "redo": 2,
+        "page_navigate": 4,
+        "view_change": 3,
+        "artwork_mode_set": 0,
+        "bubble_set": 5,
+        "needs_clarification": 3,
+        "needs_reasoning": 2,
+        "compound_request": 2,
+        "out_of_scope_request": 2,
+        "not_command": 7,
+        "panel_sync_set": 0,
+        "inner_frame_snap_set": 0,
+        "panel_gap_snap_set": 0,
+        "generate_request": 6,
+        "background_3d_candidates": 0,
+        "paint_tool_set": 0,
+        "text_frames_align": 0
+      },
+      "missing_labels": [
+        "artwork_mode_set",
+        "panel_sync_set",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "background_3d_candidates",
+        "paint_tool_set",
+        "text_frames_align"
+      ],
+      "groups": 27,
+      "families": 21,
+      "sources": {
+        "codex_synthetic": 39,
+        "user_supplied_example": 1
+      }
+    },
+    "test": {
+      "n": 33,
+      "sha256": "b9c6c78aac2c8e6d08ff35218b47bd794b5feae0ad8c203b9728a8962bc37cf1",
+      "labels": {
+        "save": 3,
+        "undo": 2,
+        "redo": 2,
+        "page_navigate": 2,
+        "view_change": 3,
+        "artwork_mode_set": 0,
+        "bubble_set": 4,
+        "needs_clarification": 3,
+        "needs_reasoning": 2,
+        "compound_request": 3,
+        "out_of_scope_request": 2,
+        "not_command": 7,
+        "panel_sync_set": 0,
+        "inner_frame_snap_set": 0,
+        "panel_gap_snap_set": 0,
+        "generate_request": 0,
+        "background_3d_candidates": 0,
+        "paint_tool_set": 0,
+        "text_frames_align": 0
+      },
+      "missing_labels": [
+        "artwork_mode_set",
+        "panel_sync_set",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "generate_request",
+        "background_3d_candidates",
+        "paint_tool_set",
+        "text_frames_align"
+      ],
+      "groups": 27,
+      "families": 22,
+      "sources": {
+        "codex_synthetic": 33
+      }
+    }
+  }
+}

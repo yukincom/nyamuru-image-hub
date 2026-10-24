@@ -7,7 +7,7 @@
     <meta name="description" content="紙の漫画ネームを解析し、編集可能なOMNYへ取り込めるネーム制作アプリ（GitHub Pages版）" />
     <meta name="author" content="sa-san10" />
     <meta name="application-name" content="Nyamuru 🐱 Image Hub" />
-    <link rel="icon" href="./icon-192.png" type="image/png" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ctext%20x%3D%2232%22%20y%3D%2253%22%20font-size%3D%2256%22%20text-anchor%3D%22middle%22%20font-family%3D%22Apple%20Color%20Emoji%2CSegoe%20UI%20Emoji%2CNoto%20Color%20Emoji%2Csans-serif%22%3E%F0%9F%90%B1%3C%2Ftext%3E%3C%2Fsvg%3E" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- __PAGES_BASE__ はデプロイ時にワークフローがPagesの公開URLへ置換する（OGPは絶対URL必須のため） -->
@@ -21,7 +21,7 @@
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="__PAGES_BASE__/ogp.png" />
-    <title>Nyamuru 🐱 Image Hub</title>
+    <title>Nyamuru Image Hub</title>
     <style>
       body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: linear-gradient(135deg, #fff0f3, #f0f8ff); font-family: Inter, "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", sans-serif; color: #47434c; }
       .loader { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 24px; text-align: center; }
@@ -41,7 +41,7 @@
     <div class="loader">
       <div class="cat" aria-hidden="true">🐱</div>
       <h1>Nyamuru 🐱 Image Hub</h1>
-      <p id="status">にゃむるたんを召喚中…</p>
+      <p id="status">Nyamuru Image Hubを読み込み中…</p>
       <div class="bar" id="bar" role="progressbar" aria-label="読み込み進捗"><i id="fill"></i></div>
       <p id="fallback" hidden>自動で切り替わらない場合は <a href="./app.html">こちら</a> からどうぞ</p>
     </div>

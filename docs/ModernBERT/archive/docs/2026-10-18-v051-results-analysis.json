@@ -1,0 +1,3343 @@
+{
+  "date": "2026-10-18",
+  "version": "v0.5.1",
+  "status": "verified_no_accuracy_improvement_demonstrated",
+  "archive_sha256": "aa64fc304e6d16474a9e0f902edf3c3e8f131246a409d45da75a61d8d402a895",
+  "archive_bytes": 979068757,
+  "source_commit": "a000d18",
+  "trusted_verifier": "experiments/v0.5.1/comparison.py",
+  "verification": {
+    "frozen_root_inputs": 162,
+    "artifact_hashes": 982,
+    "checked_predictions": 17406,
+    "models": 9,
+    "trials": 18,
+    "epochs_each": 10,
+    "dev_history_rows": 180,
+    "logged_loss_and_grad_norm_rows": 180,
+    "logged_values_finite": true,
+    "baseline_v04_identical_prediction_files": 21,
+    "frozen_version_files_unchanged": {
+      "v0.3": 102,
+      "v0.4": 154,
+      "v0.5": 161,
+      "v0.5.1": 162
+    },
+    "archive_and_extracted_artifacts_unchanged": true,
+    "received_code_executed": false,
+    "new_training_or_inference": false
+  },
+  "selection": {
+    "selection_split": "dev",
+    "method_scores": [
+      {
+        "selection_split": "dev",
+        "learning_rate": 5e-05,
+        "trial_index": 0,
+        "macro_f1": 0.8235735512051302,
+        "loss": 3.2037627696990967,
+        "epoch": 7.333333333333333,
+        "accuracy": 0.8186274509803921,
+        "method": "baseline"
+      },
+      {
+        "selection_split": "dev",
+        "learning_rate": 5e-05,
+        "trial_index": 1,
+        "macro_f1": 0.8497710407927126,
+        "loss": 4.162084897359212,
+        "epoch": 8.333333333333334,
+        "accuracy": 0.8431372549019608,
+        "method": "dropout_2view"
+      },
+      {
+        "selection_split": "dev",
+        "learning_rate": 5e-05,
+        "trial_index": 2,
+        "macro_f1": 0.782566427380669,
+        "loss": 2.9207595189412436,
+        "epoch": 9.333333333333334,
+        "accuracy": 0.7745098039215687,
+        "method": "rdrop"
+      }
+    ],
+    "selected_method": "dropout_2view",
+    "primary_model": {
+      "name": "seed-43",
+      "seed": 43,
+      "trial": "trial-4",
+      "selection_split": "dev",
+      "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+    },
+    "independent_acceptance_eligible": false,
+    "condition_selection_sha256": {
+      "baseline": "a4262e3846d69559e9555a898657f7e504fb9ce49c7191f3ea58be812220d2d0",
+      "dropout_2view": "ae76294ff476e1c8e00857e123fa8421cdadcfadd547609489479929bb3c1660",
+      "rdrop": "ff3d610d4d1c822b87baa82bec7d844ffc338e50331b1f47f1ea1420088dc6a8"
+    },
+    "frozen_at_utc": "2026-10-18T06:14:09.437405+00:00"
+  },
+  "methods": {
+    "baseline": {
+      "selected_learning_rate": 5e-05,
+      "primary_model": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "aggregate": {
+        "train": {
+          "accuracy": {
+            "values": [
+              0.9915123456790124,
+              1.0,
+              0.9992283950617284
+            ],
+            "mean": 0.9969135802469136,
+            "sample_stddev": 0.004693489606711592,
+            "min": 0.9915123456790124,
+            "max": 1.0
+          },
+          "macro_f1": {
+            "values": [
+              0.9897389696803621,
+              1.0,
+              0.999373233722264
+            ],
+            "mean": 0.9963707344675421,
+            "sample_stddev": 0.005751820332389264,
+            "min": 0.9897389696803621,
+            "max": 1.0
+          }
+        },
+        "dev": {
+          "accuracy": {
+            "values": [
+              0.8088235294117647,
+              0.7941176470588235,
+              0.8529411764705882
+            ],
+            "mean": 0.8186274509803921,
+            "sample_stddev": 0.030612735286266655,
+            "min": 0.7941176470588235,
+            "max": 0.8529411764705882
+          },
+          "macro_f1": {
+            "values": [
+              0.8047619047619048,
+              0.7999268275584065,
+              0.8660319212950792
+            ],
+            "mean": 0.8235735512051302,
+            "sample_stddev": 0.03684941500095025,
+            "min": 0.7999268275584065,
+            "max": 0.8660319212950792
+          }
+        },
+        "test": {
+          "accuracy": {
+            "values": [
+              0.8082191780821918,
+              0.821917808219178,
+              0.8082191780821918
+            ],
+            "mean": 0.8127853881278538,
+            "sample_stddev": 0.007908907797118128,
+            "min": 0.8082191780821918,
+            "max": 0.821917808219178
+          },
+          "macro_f1": {
+            "values": [
+              0.8143692564745196,
+              0.825487378118957,
+              0.8188805346700083
+            ],
+            "mean": 0.8195790564211617,
+            "sample_stddev": 0.005591878638056484,
+            "min": 0.8143692564745196,
+            "max": 0.825487378118957
+          }
+        },
+        "legacy_v03_dev": {
+          "accuracy": {
+            "values": [
+              0.9204545454545454,
+              0.9204545454545454,
+              0.9090909090909091
+            ],
+            "mean": 0.9166666666666666,
+            "sample_stddev": 0.006560798513518469,
+            "min": 0.9090909090909091,
+            "max": 0.9204545454545454
+          },
+          "macro_f1": {
+            "values": [
+              0.9153901653901653,
+              0.9097358781569309,
+              0.9001911830859198
+            ],
+            "mean": 0.9084390755443387,
+            "sample_stddev": 0.007682026980765624,
+            "min": 0.9001911830859198,
+            "max": 0.9153901653901653
+          }
+        },
+        "legacy_v03_test": {
+          "accuracy": {
+            "values": [
+              0.8939393939393939,
+              0.9015151515151515,
+              0.8257575757575758
+            ],
+            "mean": 0.8737373737373737,
+            "sample_stddev": 0.04172401929762195,
+            "min": 0.8257575757575758,
+            "max": 0.9015151515151515
+          },
+          "macro_f1": {
+            "values": [
+              0.8996061033457157,
+              0.9034181899971374,
+              0.8486606960291171
+            ],
+            "mean": 0.8838949964573234,
+            "sample_stddev": 0.03057327176077678,
+            "min": 0.8486606960291171,
+            "max": 0.9034181899971374
+          }
+        },
+        "legacy_v02_dev": {
+          "accuracy": {
+            "values": [
+              0.8260869565217391,
+              0.8405797101449275,
+              0.8695652173913043
+            ],
+            "mean": 0.8454106280193237,
+            "sample_stddev": 0.022138046835535448,
+            "min": 0.8260869565217391,
+            "max": 0.8695652173913043
+          },
+          "macro_f1": {
+            "values": [
+              0.841101518618681,
+              0.8442332744654726,
+              0.8700645669820526
+            ],
+            "mean": 0.8517997866887353,
+            "sample_stddev": 0.015895081724965735,
+            "min": 0.841101518618681,
+            "max": 0.8700645669820526
+          }
+        },
+        "legacy_v02_test": {
+          "accuracy": {
+            "values": [
+              0.9064748201438849,
+              0.9496402877697842,
+              0.9568345323741008
+            ],
+            "mean": 0.9376498800959233,
+            "sample_stddev": 0.027236970483454546,
+            "min": 0.9064748201438849,
+            "max": 0.9568345323741008
+          },
+          "macro_f1": {
+            "values": [
+              0.9115890215735418,
+              0.9510824572744078,
+              0.9592240487111937
+            ],
+            "mean": 0.9406318425197144,
+            "sample_stddev": 0.025479118198329948,
+            "min": 0.9115890215735418,
+            "max": 0.9592240487111937
+          }
+        }
+      },
+      "seeds": {
+        "42": {
+          "epoch": 7.0,
+          "train_accuracy": 0.9915123456790124,
+          "dev_macro_f1": 0.8047619047619048,
+          "test": {
+            "n": 73,
+            "correct": 59,
+            "accuracy": 0.8082191780821918,
+            "macro_f1": 0.8143692564745196,
+            "per_class": {
+              "save": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "view_change": {
+                "precision": 0.7142857142857143,
+                "recall": 1.0,
+                "f1": 0.8333333333333333,
+                "support": 5,
+                "predicted_count": 7
+              },
+              "artwork_mode_set": {
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1": 0.8571428571428571,
+                "support": 3,
+                "predicted_count": 4
+              },
+              "bubble_set": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "needs_clarification": {
+                "precision": 0.3333333333333333,
+                "recall": 0.25,
+                "f1": 0.28571428571428575,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "needs_reasoning": {
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1": 0.8571428571428571,
+                "support": 6,
+                "predicted_count": 8
+              },
+              "compound_request": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "out_of_scope_request": {
+                "precision": 0.6,
+                "recall": 0.75,
+                "f1": 0.6666666666666665,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "not_command": {
+                "precision": 1.0,
+                "recall": 0.3333333333333333,
+                "f1": 0.5,
+                "support": 6,
+                "predicted_count": 2
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "panel_gap_snap_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2,
+                "predicted_count": 3
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 4,
+                "predicted_count": 2
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 1,
+              "denominator": 49,
+              "rate": 0.02040816326530612
+            },
+            "compound_to_single_dispatch": {
+              "count": 0,
+              "denominator": 4,
+              "rate": 0.0
+            },
+            "compound_prediction_precision": {
+              "count": 4,
+              "denominator": 6,
+              "rate": 0.6666666666666666
+            },
+            "not_command_to_dispatch_label": {
+              "count": 2,
+              "denominator": 6,
+              "rate": 0.3333333333333333
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 2,
+              "denominator": 12,
+              "rate": 0.16666666666666666
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 6,
+              "denominator": 49,
+              "rate": 0.12244897959183673
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [],
+            "regressed": [],
+            "accuracy_delta": 0.0
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2779",
+              "text": "選択中の吹き出しをコマで切り取らない設定にして。念押しだけど、切取りはオフ。",
+              "gold": "bubble_set",
+              "predicted": "compound_request",
+              "confidence": 0.8345096707344055
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2840",
+              "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+              "gold": "not_command",
+              "predicted": "needs_reasoning",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2899",
+              "text": "背景候補を三つお願い。繰り返すけど、候補は三つで。",
+              "gold": "background_3d_candidates",
+              "predicted": "needs_clarification",
+              "confidence": 0.9999969005584717
+            },
+            {
+              "id": "nyamuru_voice_3204",
+              "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+              "gold": "undo",
+              "predicted": "out_of_scope_request",
+              "confidence": 0.8966978788375854
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 0.5885950326919556
+            },
+            {
+              "id": "nyamuru_voice_3245",
+              "text": "内枠スナップ、オフにしたらコマが動くわけじゃないんだよね？　動作の説明だけ聞きたい。",
+              "gold": "not_command",
+              "predicted": "view_change",
+              "confidence": 0.5235405564308167
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "needs_clarification",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3255",
+              "text": "コマスナップは触らなくていいよ。オフにしてほしいのは内枠スナップのほう。",
+              "gold": "inner_frame_snap_set",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3273",
+              "text": "文字枠を二つ選んであるよ。揃える基準は上側、下端や中央ではなく上端でお願い。",
+              "gold": "text_frames_align",
+              "predicted": "out_of_scope_request",
+              "confidence": 0.9999252557754517
+            },
+            {
+              "id": "nyamuru_voice_3274",
+              "text": "文字の内容を直す依頼は取り消すね。選択中の複数の文字枠について、書き出し位置を上端でそろえるほうを実行して。",
+              "gold": "text_frames_align",
+              "predicted": "artwork_mode_set",
+              "confidence": 0.9726552963256836
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "compound_request",
+              "confidence": 0.9999747276306152
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "view_change",
+              "confidence": 1.0
+            }
+          ],
+          "errors_confidence_at_least_0_9": 10
+        },
+        "43": {
+          "epoch": 8.0,
+          "train_accuracy": 1.0,
+          "dev_macro_f1": 0.7999268275584065,
+          "test": {
+            "n": 73,
+            "correct": 60,
+            "accuracy": 0.821917808219178,
+            "macro_f1": 0.825487378118957,
+            "per_class": {
+              "save": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "view_change": {
+                "precision": 0.6666666666666666,
+                "recall": 0.4,
+                "f1": 0.5,
+                "support": 5,
+                "predicted_count": 3
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 0.6666666666666666,
+                "f1": 0.8,
+                "support": 3,
+                "predicted_count": 2
+              },
+              "bubble_set": {
+                "precision": 0.5714285714285714,
+                "recall": 1.0,
+                "f1": 0.7272727272727273,
+                "support": 4,
+                "predicted_count": 7
+              },
+              "needs_clarification": {
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333,
+                "support": 4,
+                "predicted_count": 2
+              },
+              "needs_reasoning": {
+                "precision": 0.8571428571428571,
+                "recall": 1.0,
+                "f1": 0.923076923076923,
+                "support": 6,
+                "predicted_count": 7
+              },
+              "compound_request": {
+                "precision": 0.42857142857142855,
+                "recall": 0.75,
+                "f1": 0.5454545454545454,
+                "support": 4,
+                "predicted_count": 7
+              },
+              "out_of_scope_request": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4,
+                "predicted_count": 1
+              },
+              "not_command": {
+                "precision": 1.0,
+                "recall": 0.8333333333333334,
+                "f1": 0.9090909090909091,
+                "support": 6,
+                "predicted_count": 5
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "panel_gap_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 3,
+              "denominator": 49,
+              "rate": 0.061224489795918366
+            },
+            "compound_to_single_dispatch": {
+              "count": 1,
+              "denominator": 4,
+              "rate": 0.25
+            },
+            "compound_prediction_precision": {
+              "count": 3,
+              "denominator": 7,
+              "rate": 0.42857142857142855
+            },
+            "not_command_to_dispatch_label": {
+              "count": 1,
+              "denominator": 6,
+              "rate": 0.16666666666666666
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 5,
+              "denominator": 12,
+              "rate": 0.4166666666666667
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 7,
+              "denominator": 51,
+              "rate": 0.13725490196078433
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [],
+            "regressed": [],
+            "accuracy_delta": 0.0
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2753",
+              "text": "絵の寸法は変えず、表示を原寸にして。",
+              "gold": "view_change",
+              "predicted": "bubble_set",
+              "confidence": 0.9867890477180481
+            },
+            {
+              "id": "nyamuru_voice_2755",
+              "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+              "gold": "view_change",
+              "predicted": "compound_request",
+              "confidence": 0.7359607815742493
+            },
+            {
+              "id": "nyamuru_voice_2770",
+              "text": "設定の変更だけ頼むね。作画は下書きモードへ。",
+              "gold": "artwork_mode_set",
+              "predicted": "compound_request",
+              "confidence": 0.9999580383300781
+            },
+            {
+              "id": "nyamuru_voice_2815",
+              "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+              "gold": "compound_request",
+              "predicted": "bubble_set",
+              "confidence": 0.9999997615814209
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 0.9998419284820557
+            },
+            {
+              "id": "nyamuru_voice_3204",
+              "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+              "gold": "undo",
+              "predicted": "compound_request",
+              "confidence": 0.9242420196533203
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "needs_clarification",
+              "confidence": 0.8034252524375916
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "bubble_set",
+              "confidence": 0.9996635913848877
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 0.9999995231628418
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 0.991168737411499
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "view_change",
+              "confidence": 0.9999994039535522
+            }
+          ],
+          "errors_confidence_at_least_0_9": 11
+        },
+        "44": {
+          "epoch": 7.0,
+          "train_accuracy": 0.9992283950617284,
+          "dev_macro_f1": 0.8660319212950792,
+          "test": {
+            "n": 73,
+            "correct": 59,
+            "accuracy": 0.8082191780821918,
+            "macro_f1": 0.8188805346700083,
+            "per_class": {
+              "save": {
+                "precision": 0.75,
+                "recall": 0.75,
+                "f1": 0.75,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "view_change": {
+                "precision": 0.75,
+                "recall": 0.6,
+                "f1": 0.6666666666666665,
+                "support": 5,
+                "predicted_count": 4
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "bubble_set": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "needs_clarification": {
+                "precision": 0.25,
+                "recall": 0.25,
+                "f1": 0.25,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "needs_reasoning": {
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1": 0.8571428571428571,
+                "support": 6,
+                "predicted_count": 8
+              },
+              "compound_request": {
+                "precision": 0.5,
+                "recall": 0.75,
+                "f1": 0.6,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "out_of_scope_request": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4,
+                "predicted_count": 1
+              },
+              "not_command": {
+                "precision": 0.75,
+                "recall": 0.5,
+                "f1": 0.6,
+                "support": 6,
+                "predicted_count": 4
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "panel_gap_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "generate_request": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2,
+                "predicted_count": 3
+              },
+              "background_3d_candidates": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 1,
+              "denominator": 49,
+              "rate": 0.02040816326530612
+            },
+            "compound_to_single_dispatch": {
+              "count": 1,
+              "denominator": 4,
+              "rate": 0.25
+            },
+            "compound_prediction_precision": {
+              "count": 3,
+              "denominator": 6,
+              "rate": 0.5
+            },
+            "not_command_to_dispatch_label": {
+              "count": 1,
+              "denominator": 6,
+              "rate": 0.16666666666666666
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 3,
+              "denominator": 12,
+              "rate": 0.25
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 5,
+              "denominator": 50,
+              "rate": 0.1
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [],
+            "regressed": [],
+            "accuracy_delta": 0.0
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2755",
+              "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+              "gold": "view_change",
+              "predicted": "compound_request",
+              "confidence": 0.8228664398193359
+            },
+            {
+              "id": "nyamuru_voice_2815",
+              "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+              "gold": "compound_request",
+              "predicted": "bubble_set",
+              "confidence": 0.9999946355819702
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2840",
+              "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+              "gold": "not_command",
+              "predicted": "needs_reasoning",
+              "confidence": 0.9985987544059753
+            },
+            {
+              "id": "nyamuru_voice_3201",
+              "text": "保存って言ったのはコピーを作る話じゃなくて、今の作品に変更を残すほう。それを実行して。",
+              "gold": "save",
+              "predicted": "generate_request",
+              "confidence": 0.9852214455604553
+            },
+            {
+              "id": "nyamuru_voice_3205",
+              "text": "たった今動かした吹き出し、動かす前の状態に戻せる？　新しく動かすんじゃなくて、履歴を一つ戻してほしい。",
+              "gold": "undo",
+              "predicted": "needs_clarification",
+              "confidence": 0.9102420806884766
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "needs_clarification",
+              "confidence": 0.999457061290741
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 0.9868775010108948
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 0.6992501616477966
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "needs_clarification",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "not_command",
+              "confidence": 0.8879255056381226
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "view_change",
+              "confidence": 1.0
+            }
+          ],
+          "errors_confidence_at_least_0_9": 11
+        }
+      },
+      "training": {
+        "trials": 6,
+        "epochs_each": 10,
+        "dev_history_rows": 60,
+        "logged_loss_and_grad_norm_rows": 60,
+        "all_logged_values_finite": true,
+        "gpu": "Tesla T4",
+        "parameters": 36776211,
+        "training_seconds": 213.34468901500009,
+        "evaluation_seconds": 11.429847039000379
+      }
+    },
+    "dropout_2view": {
+      "selected_learning_rate": 5e-05,
+      "primary_model": {
+        "name": "seed-43",
+        "seed": 43,
+        "trial": "trial-4",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "aggregate": {
+        "train": {
+          "accuracy": {
+            "values": [
+              1.0,
+              0.9992283950617284,
+              0.996141975308642
+            ],
+            "mean": 0.9984567901234568,
+            "sample_stddev": 0.002041474777055999,
+            "min": 0.996141975308642,
+            "max": 1.0
+          },
+          "macro_f1": {
+            "values": [
+              1.0,
+              0.9991552011753724,
+              0.9957209211653946
+            ],
+            "mean": 0.9982920407802557,
+            "sample_stddev": 0.00226636566311917,
+            "min": 0.9957209211653946,
+            "max": 1.0
+          }
+        },
+        "dev": {
+          "accuracy": {
+            "values": [
+              0.8382352941176471,
+              0.8382352941176471,
+              0.8529411764705882
+            ],
+            "mean": 0.8431372549019608,
+            "sample_stddev": 0.008490445135141526,
+            "min": 0.8382352941176471,
+            "max": 0.8529411764705882
+          },
+          "macro_f1": {
+            "values": [
+              0.848162518595955,
+              0.851974633553581,
+              0.8491759702286018
+            ],
+            "mean": 0.8497710407927126,
+            "sample_stddev": 0.001974496605401583,
+            "min": 0.848162518595955,
+            "max": 0.851974633553581
+          }
+        },
+        "test": {
+          "accuracy": {
+            "values": [
+              0.8082191780821918,
+              0.7808219178082192,
+              0.8082191780821918
+            ],
+            "mean": 0.7990867579908676,
+            "sample_stddev": 0.015817815594236322,
+            "min": 0.7808219178082192,
+            "max": 0.8082191780821918
+          },
+          "macro_f1": {
+            "values": [
+              0.8013366750208855,
+              0.7712349054454318,
+              0.7913300150142255
+            ],
+            "mean": 0.7879671984935143,
+            "sample_stddev": 0.015330053297604767,
+            "min": 0.7712349054454318,
+            "max": 0.8013366750208855
+          }
+        },
+        "legacy_v03_dev": {
+          "accuracy": {
+            "values": [
+              0.9431818181818182,
+              0.9431818181818182,
+              0.9090909090909091
+            ],
+            "mean": 0.9318181818181819,
+            "sample_stddev": 0.01968239554055547,
+            "min": 0.9090909090909091,
+            "max": 0.9431818181818182
+          },
+          "macro_f1": {
+            "values": [
+              0.9364612511671335,
+              0.9372195571885974,
+              0.8879313668787356
+            ],
+            "mean": 0.9205373917448222,
+            "sample_stddev": 0.02824019122069533,
+            "min": 0.8879313668787356,
+            "max": 0.9372195571885974
+          }
+        },
+        "legacy_v03_test": {
+          "accuracy": {
+            "values": [
+              0.8863636363636364,
+              0.9015151515151515,
+              0.8712121212121212
+            ],
+            "mean": 0.8863636363636364,
+            "sample_stddev": 0.015151515151515138,
+            "min": 0.8712121212121212,
+            "max": 0.9015151515151515
+          },
+          "macro_f1": {
+            "values": [
+              0.8914457996127688,
+              0.8991420974023591,
+              0.8764710608513664
+            ],
+            "mean": 0.8890196526221648,
+            "sample_stddev": 0.011528599936207532,
+            "min": 0.8764710608513664,
+            "max": 0.8991420974023591
+          }
+        },
+        "legacy_v02_dev": {
+          "accuracy": {
+            "values": [
+              0.8333333333333334,
+              0.8695652173913043,
+              0.8478260869565217
+            ],
+            "mean": 0.8502415458937198,
+            "sample_stddev": 0.01823631506104043,
+            "min": 0.8333333333333334,
+            "max": 0.8695652173913043
+          },
+          "macro_f1": {
+            "values": [
+              0.8343258897068292,
+              0.865223070341206,
+              0.8477338622849458
+            ],
+            "mean": 0.8490942741109937,
+            "sample_stddev": 0.015493449681741834,
+            "min": 0.8343258897068292,
+            "max": 0.865223070341206
+          }
+        },
+        "legacy_v02_test": {
+          "accuracy": {
+            "values": [
+              0.920863309352518,
+              0.9496402877697842,
+              0.9568345323741008
+            ],
+            "mean": 0.9424460431654677,
+            "sample_stddev": 0.019034182093989847,
+            "min": 0.920863309352518,
+            "max": 0.9568345323741008
+          },
+          "macro_f1": {
+            "values": [
+              0.9191357028899803,
+              0.9457626363280592,
+              0.9578025400088298
+            ],
+            "mean": 0.9409002930756231,
+            "sample_stddev": 0.01978668389655765,
+            "min": 0.9191357028899803,
+            "max": 0.9578025400088298
+          }
+        }
+      },
+      "seeds": {
+        "42": {
+          "epoch": 10.0,
+          "train_accuracy": 1.0,
+          "dev_macro_f1": 0.848162518595955,
+          "test": {
+            "n": 73,
+            "correct": 59,
+            "accuracy": 0.8082191780821918,
+            "macro_f1": 0.8013366750208855,
+            "per_class": {
+              "save": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "view_change": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 5,
+                "predicted_count": 3
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "bubble_set": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "needs_clarification": {
+                "precision": 0.25,
+                "recall": 0.25,
+                "f1": 0.25,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "needs_reasoning": {
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1": 0.8571428571428571,
+                "support": 6,
+                "predicted_count": 8
+              },
+              "compound_request": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 4,
+                "predicted_count": 8
+              },
+              "out_of_scope_request": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 4,
+                "predicted_count": 0
+              },
+              "not_command": {
+                "precision": 0.75,
+                "recall": 0.5,
+                "f1": 0.6,
+                "support": 6,
+                "predicted_count": 4
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "panel_gap_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 2,
+                "predicted_count": 1
+              },
+              "background_3d_candidates": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 2,
+              "denominator": 49,
+              "rate": 0.04081632653061224
+            },
+            "compound_to_single_dispatch": {
+              "count": 0,
+              "denominator": 4,
+              "rate": 0.0
+            },
+            "compound_prediction_precision": {
+              "count": 4,
+              "denominator": 8,
+              "rate": 0.5
+            },
+            "not_command_to_dispatch_label": {
+              "count": 1,
+              "denominator": 6,
+              "rate": 0.16666666666666666
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 3,
+              "denominator": 12,
+              "rate": 0.25
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 4,
+              "denominator": 49,
+              "rate": 0.08163265306122448
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [
+              "nyamuru_voice_2779",
+              "nyamuru_voice_2899",
+              "nyamuru_voice_3204",
+              "nyamuru_voice_3245",
+              "nyamuru_voice_3255",
+              "nyamuru_voice_3273",
+              "nyamuru_voice_3274"
+            ],
+            "regressed": [
+              "nyamuru_voice_2753",
+              "nyamuru_voice_2778",
+              "nyamuru_voice_2826",
+              "nyamuru_voice_3219",
+              "nyamuru_voice_3241",
+              "nyamuru_voice_3242",
+              "nyamuru_voice_3261"
+            ],
+            "accuracy_delta": 0.0
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2753",
+              "text": "絵の寸法は変えず、表示を原寸にして。",
+              "gold": "view_change",
+              "predicted": "compound_request",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2778",
+              "text": "しっぽを消して、いや、選択中の吹き出しはしっぽありにして。",
+              "gold": "bubble_set",
+              "predicted": "compound_request",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2826",
+              "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+              "gold": "out_of_scope_request",
+              "predicted": "background_3d_candidates",
+              "confidence": 0.9554943442344666
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2840",
+              "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+              "gold": "not_command",
+              "predicted": "needs_reasoning",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "needs_clarification",
+              "confidence": 0.9950878024101257
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 0.9847471714019775
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 0.9999945163726807
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "needs_clarification",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3261",
+              "text": "三番のコマの、美月さん。名前を指定したその人物だけを生成して、同じページの別の登場人物には広げないで。",
+              "gold": "generate_request",
+              "predicted": "needs_clarification",
+              "confidence": 0.9793901443481445
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "compound_request",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "not_command",
+              "confidence": 0.9998716115951538
+            }
+          ],
+          "errors_confidence_at_least_0_9": 14
+        },
+        "43": {
+          "epoch": 8.0,
+          "train_accuracy": 0.9992283950617284,
+          "dev_macro_f1": 0.851974633553581,
+          "test": {
+            "n": 73,
+            "correct": 57,
+            "accuracy": 0.7808219178082192,
+            "macro_f1": 0.7712349054454318,
+            "per_class": {
+              "save": {
+                "precision": 0.75,
+                "recall": 0.75,
+                "f1": 0.75,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "view_change": {
+                "precision": 0.6666666666666666,
+                "recall": 0.4,
+                "f1": 0.5,
+                "support": 5,
+                "predicted_count": 3
+              },
+              "artwork_mode_set": {
+                "precision": 0.75,
+                "recall": 1.0,
+                "f1": 0.8571428571428571,
+                "support": 3,
+                "predicted_count": 4
+              },
+              "bubble_set": {
+                "precision": 0.5,
+                "recall": 0.75,
+                "f1": 0.6,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "needs_clarification": {
+                "precision": 0.3333333333333333,
+                "recall": 0.25,
+                "f1": 0.28571428571428575,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "needs_reasoning": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 6,
+                "predicted_count": 6
+              },
+              "compound_request": {
+                "precision": 0.4,
+                "recall": 0.5,
+                "f1": 0.4444444444444445,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "out_of_scope_request": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 4,
+                "predicted_count": 0
+              },
+              "not_command": {
+                "precision": 0.8,
+                "recall": 0.6666666666666666,
+                "f1": 0.7272727272727272,
+                "support": 6,
+                "predicted_count": 5
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "panel_gap_snap_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2,
+                "predicted_count": 3
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 2,
+              "denominator": 49,
+              "rate": 0.04081632653061224
+            },
+            "compound_to_single_dispatch": {
+              "count": 2,
+              "denominator": 4,
+              "rate": 0.5
+            },
+            "compound_prediction_precision": {
+              "count": 2,
+              "denominator": 5,
+              "rate": 0.4
+            },
+            "not_command_to_dispatch_label": {
+              "count": 1,
+              "denominator": 6,
+              "rate": 0.16666666666666666
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 7,
+              "denominator": 12,
+              "rate": 0.5833333333333334
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 10,
+              "denominator": 54,
+              "rate": 0.18518518518518517
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [
+              "nyamuru_voice_2770",
+              "nyamuru_voice_3204"
+            ],
+            "regressed": [
+              "nyamuru_voice_2707",
+              "nyamuru_voice_2778",
+              "nyamuru_voice_2826",
+              "nyamuru_voice_3239",
+              "nyamuru_voice_3247"
+            ],
+            "accuracy_delta": -0.041095890410958846
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2707",
+              "text": "保存して。念押しだけど、今の作品を保存してね。",
+              "gold": "save",
+              "predicted": "compound_request",
+              "confidence": 0.8633888959884644
+            },
+            {
+              "id": "nyamuru_voice_2753",
+              "text": "絵の寸法は変えず、表示を原寸にして。",
+              "gold": "view_change",
+              "predicted": "bubble_set",
+              "confidence": 0.9996022582054138
+            },
+            {
+              "id": "nyamuru_voice_2755",
+              "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+              "gold": "view_change",
+              "predicted": "artwork_mode_set",
+              "confidence": 0.9999237060546875
+            },
+            {
+              "id": "nyamuru_voice_2778",
+              "text": "しっぽを消して、いや、選択中の吹き出しはしっぽありにして。",
+              "gold": "bubble_set",
+              "predicted": "compound_request",
+              "confidence": 0.9778629541397095
+            },
+            {
+              "id": "nyamuru_voice_2815",
+              "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+              "gold": "compound_request",
+              "predicted": "bubble_set",
+              "confidence": 0.9999798536300659
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2826",
+              "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+              "gold": "out_of_scope_request",
+              "predicted": "background_3d_candidates",
+              "confidence": 0.9999843835830688
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "needs_clarification",
+              "confidence": 0.9352801442146301
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "bubble_set",
+              "confidence": 0.8259264826774597
+            },
+            {
+              "id": "nyamuru_voice_3239",
+              "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+              "gold": "compound_request",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 0.9999679327011108
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "needs_clarification",
+              "confidence": 0.9999988079071045
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "not_command",
+              "confidence": 0.9999935626983643
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "view_change",
+              "confidence": 1.0
+            }
+          ],
+          "errors_confidence_at_least_0_9": 14
+        },
+        "44": {
+          "epoch": 7.0,
+          "train_accuracy": 0.996141975308642,
+          "dev_macro_f1": 0.8491759702286018,
+          "test": {
+            "n": 73,
+            "correct": 59,
+            "accuracy": 0.8082191780821918,
+            "macro_f1": 0.7913300150142255,
+            "per_class": {
+              "save": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 4,
+                "predicted_count": 8
+              },
+              "view_change": {
+                "precision": 1.0,
+                "recall": 0.6,
+                "f1": 0.7499999999999999,
+                "support": 5,
+                "predicted_count": 3
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "bubble_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "needs_clarification": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4,
+                "predicted_count": 1
+              },
+              "needs_reasoning": {
+                "precision": 0.8571428571428571,
+                "recall": 1.0,
+                "f1": 0.923076923076923,
+                "support": 6,
+                "predicted_count": 7
+              },
+              "compound_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "out_of_scope_request": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 4,
+                "predicted_count": 0
+              },
+              "not_command": {
+                "precision": 0.8,
+                "recall": 0.6666666666666666,
+                "f1": 0.7272727272727272,
+                "support": 6,
+                "predicted_count": 5
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 4,
+                "predicted_count": 2
+              },
+              "panel_gap_snap_set": {
+                "precision": 0.5,
+                "recall": 1.0,
+                "f1": 0.6666666666666666,
+                "support": 2,
+                "predicted_count": 4
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 0,
+              "denominator": 49,
+              "rate": 0.0
+            },
+            "compound_to_single_dispatch": {
+              "count": 0,
+              "denominator": 4,
+              "rate": 0.0
+            },
+            "compound_prediction_precision": {
+              "count": 4,
+              "denominator": 4,
+              "rate": 1.0
+            },
+            "not_command_to_dispatch_label": {
+              "count": 2,
+              "denominator": 6,
+              "rate": 0.3333333333333333
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 5,
+              "denominator": 12,
+              "rate": 0.4166666666666667
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 12,
+              "denominator": 56,
+              "rate": 0.21428571428571427
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [
+              "nyamuru_voice_2755",
+              "nyamuru_voice_2815",
+              "nyamuru_voice_2840",
+              "nyamuru_voice_3201",
+              "nyamuru_voice_3205"
+            ],
+            "regressed": [
+              "nyamuru_voice_2753",
+              "nyamuru_voice_2826",
+              "nyamuru_voice_3204",
+              "nyamuru_voice_3253",
+              "nyamuru_voice_3255"
+            ],
+            "accuracy_delta": 0.0
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2753",
+              "text": "絵の寸法は変えず、表示を原寸にして。",
+              "gold": "view_change",
+              "predicted": "bubble_set",
+              "confidence": 0.993535041809082
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2826",
+              "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+              "gold": "out_of_scope_request",
+              "predicted": "background_3d_candidates",
+              "confidence": 0.9872494339942932
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3204",
+              "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+              "gold": "undo",
+              "predicted": "text_frames_align",
+              "confidence": 0.998897910118103
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "page_navigate",
+              "confidence": 0.9999806880950928
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 0.9999997615814209
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "save",
+              "confidence": 0.9999852180480957
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3253",
+              "text": "内枠スナップをオフにしたいんだけど、コマのサイズ変更まではしなくていい。その設定だけ変更してもらえる？",
+              "gold": "inner_frame_snap_set",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 0.8847806453704834
+            },
+            {
+              "id": "nyamuru_voice_3255",
+              "text": "コマスナップは触らなくていいよ。オフにしてほしいのは内枠スナップのほう。",
+              "gold": "inner_frame_snap_set",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 0.99980229139328
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "bubble_set",
+              "confidence": 0.921212375164032
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "not_command",
+              "confidence": 1.0
+            }
+          ],
+          "errors_confidence_at_least_0_9": 13
+        }
+      },
+      "training": {
+        "trials": 6,
+        "epochs_each": 10,
+        "dev_history_rows": 60,
+        "logged_loss_and_grad_norm_rows": 60,
+        "all_logged_values_finite": true,
+        "gpu": "Tesla T4",
+        "parameters": 36776211,
+        "training_seconds": 346.2153745759997,
+        "evaluation_seconds": 11.151375555999948
+      }
+    },
+    "rdrop": {
+      "selected_learning_rate": 5e-05,
+      "primary_model": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "aggregate": {
+        "train": {
+          "accuracy": {
+            "values": [
+              0.9807098765432098,
+              0.9830246913580247,
+              0.9837962962962963
+            ],
+            "mean": 0.9825102880658436,
+            "sample_stddev": 0.0016062237650201802,
+            "min": 0.9807098765432098,
+            "max": 0.9837962962962963
+          },
+          "macro_f1": {
+            "values": [
+              0.9828503505668497,
+              0.9842758087534834,
+              0.9845092257896855
+            ],
+            "mean": 0.9838784617033395,
+            "sample_stddev": 0.0008979867815999205,
+            "min": 0.9828503505668497,
+            "max": 0.9845092257896855
+          }
+        },
+        "dev": {
+          "accuracy": {
+            "values": [
+              0.75,
+              0.7794117647058824,
+              0.7941176470588235
+            ],
+            "mean": 0.7745098039215687,
+            "sample_stddev": 0.022463606347822726,
+            "min": 0.75,
+            "max": 0.7941176470588235
+          },
+          "macro_f1": {
+            "values": [
+              0.743170426065163,
+              0.7912698412698412,
+              0.8132590148070026
+            ],
+            "mean": 0.782566427380669,
+            "sample_stddev": 0.03584570585091549,
+            "min": 0.743170426065163,
+            "max": 0.8132590148070026
+          }
+        },
+        "test": {
+          "accuracy": {
+            "values": [
+              0.821917808219178,
+              0.821917808219178,
+              0.7945205479452054
+            ],
+            "mean": 0.8127853881278538,
+            "sample_stddev": 0.015817815594236322,
+            "min": 0.7945205479452054,
+            "max": 0.821917808219178
+          },
+          "macro_f1": {
+            "values": [
+              0.8073283441704495,
+              0.8085548953970007,
+              0.7830441488336225
+            ],
+            "mean": 0.7996424628003576,
+            "sample_stddev": 0.014387637988272174,
+            "min": 0.7830441488336225,
+            "max": 0.8085548953970007
+          }
+        },
+        "legacy_v03_dev": {
+          "accuracy": {
+            "values": [
+              0.9318181818181818,
+              0.9204545454545454,
+              0.8977272727272727
+            ],
+            "mean": 0.9166666666666666,
+            "sample_stddev": 0.017358241268772105,
+            "min": 0.8977272727272727,
+            "max": 0.9318181818181818
+          },
+          "macro_f1": {
+            "values": [
+              0.9233114838377997,
+              0.9037127131554376,
+              0.8700636137168647
+            ],
+            "mean": 0.8990292702367007,
+            "sample_stddev": 0.026931113907222463,
+            "min": 0.8700636137168647,
+            "max": 0.9233114838377997
+          }
+        },
+        "legacy_v03_test": {
+          "accuracy": {
+            "values": [
+              0.9242424242424242,
+              0.8863636363636364,
+              0.8636363636363636
+            ],
+            "mean": 0.8914141414141414,
+            "sample_stddev": 0.030617059729752854,
+            "min": 0.8636363636363636,
+            "max": 0.9242424242424242
+          },
+          "macro_f1": {
+            "values": [
+              0.9316938028132986,
+              0.8857446217353339,
+              0.8791922259027523
+            ],
+            "mean": 0.8988768834837949,
+            "sample_stddev": 0.02860849731279281,
+            "min": 0.8791922259027523,
+            "max": 0.9316938028132986
+          }
+        },
+        "legacy_v02_dev": {
+          "accuracy": {
+            "values": [
+              0.8333333333333334,
+              0.8478260869565217,
+              0.8405797101449275
+            ],
+            "mean": 0.8405797101449275,
+            "sample_stddev": 0.00724637681159418,
+            "min": 0.8333333333333334,
+            "max": 0.8478260869565217
+          },
+          "macro_f1": {
+            "values": [
+              0.8352640896363578,
+              0.8511247648852059,
+              0.8308276828091071
+            ],
+            "mean": 0.8390721791102236,
+            "sample_stddev": 0.010670943926462118,
+            "min": 0.8308276828091071,
+            "max": 0.8511247648852059
+          }
+        },
+        "legacy_v02_test": {
+          "accuracy": {
+            "values": [
+              0.9064748201438849,
+              0.9136690647482014,
+              0.935251798561151
+            ],
+            "mean": 0.9184652278177458,
+            "sample_stddev": 0.014976014384648406,
+            "min": 0.9064748201438849,
+            "max": 0.935251798561151
+          },
+          "macro_f1": {
+            "values": [
+              0.9037210346249958,
+              0.9129402585419546,
+              0.9280971685240873
+            ],
+            "mean": 0.9149194872303459,
+            "sample_stddev": 0.012308004940579254,
+            "min": 0.9037210346249958,
+            "max": 0.9280971685240873
+          }
+        }
+      },
+      "seeds": {
+        "42": {
+          "epoch": 9.0,
+          "train_accuracy": 0.9807098765432098,
+          "dev_macro_f1": 0.743170426065163,
+          "test": {
+            "n": 73,
+            "correct": 60,
+            "accuracy": 0.821917808219178,
+            "macro_f1": 0.8073283441704495,
+            "per_class": {
+              "save": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.5714285714285714,
+                "recall": 1.0,
+                "f1": 0.7272727272727273,
+                "support": 4,
+                "predicted_count": 7
+              },
+              "view_change": {
+                "precision": 0.75,
+                "recall": 0.6,
+                "f1": 0.6666666666666665,
+                "support": 5,
+                "predicted_count": 4
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "bubble_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "needs_clarification": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4,
+                "predicted_count": 1
+              },
+              "needs_reasoning": {
+                "precision": 0.8571428571428571,
+                "recall": 1.0,
+                "f1": 0.923076923076923,
+                "support": 6,
+                "predicted_count": 7
+              },
+              "compound_request": {
+                "precision": 0.4,
+                "recall": 0.5,
+                "f1": 0.4444444444444445,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "out_of_scope_request": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 4,
+                "predicted_count": 0
+              },
+              "not_command": {
+                "precision": 1.0,
+                "recall": 0.6666666666666666,
+                "f1": 0.8,
+                "support": 6,
+                "predicted_count": 4
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "panel_gap_snap_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2,
+                "predicted_count": 3
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 1,
+              "denominator": 49,
+              "rate": 0.02040816326530612
+            },
+            "compound_to_single_dispatch": {
+              "count": 2,
+              "denominator": 4,
+              "rate": 0.5
+            },
+            "compound_prediction_precision": {
+              "count": 2,
+              "denominator": 5,
+              "rate": 0.4
+            },
+            "not_command_to_dispatch_label": {
+              "count": 2,
+              "denominator": 6,
+              "rate": 0.3333333333333333
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 6,
+              "denominator": 12,
+              "rate": 0.5
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 9,
+              "denominator": 56,
+              "rate": 0.16071428571428573
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [
+              "nyamuru_voice_2779",
+              "nyamuru_voice_2840",
+              "nyamuru_voice_2899",
+              "nyamuru_voice_3204",
+              "nyamuru_voice_3245",
+              "nyamuru_voice_3255",
+              "nyamuru_voice_3273",
+              "nyamuru_voice_3274"
+            ],
+            "regressed": [
+              "nyamuru_voice_2753",
+              "nyamuru_voice_2815",
+              "nyamuru_voice_2826",
+              "nyamuru_voice_3219",
+              "nyamuru_voice_3239",
+              "nyamuru_voice_3241",
+              "nyamuru_voice_3242"
+            ],
+            "accuracy_delta": 0.013698630136986245
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2753",
+              "text": "絵の寸法は変えず、表示を原寸にして。",
+              "gold": "view_change",
+              "predicted": "compound_request",
+              "confidence": 0.9982398748397827
+            },
+            {
+              "id": "nyamuru_voice_2815",
+              "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+              "gold": "compound_request",
+              "predicted": "bubble_set",
+              "confidence": 0.992624044418335
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2826",
+              "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+              "gold": "out_of_scope_request",
+              "predicted": "background_3d_candidates",
+              "confidence": 0.9489585161209106
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 0.9999997615814209
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "bubble_set",
+              "confidence": 0.9826850295066833
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 0.761440634727478
+            },
+            {
+              "id": "nyamuru_voice_3239",
+              "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+              "gold": "compound_request",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 0.9807277917861938
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 0.9804807305335999
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 0.6394620537757874
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "page_navigate",
+              "confidence": 0.9999052286148071
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "compound_request",
+              "confidence": 0.9008644819259644
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "view_change",
+              "confidence": 0.9999973773956299
+            }
+          ],
+          "errors_confidence_at_least_0_9": 11
+        },
+        "43": {
+          "epoch": 9.0,
+          "train_accuracy": 0.9830246913580247,
+          "dev_macro_f1": 0.7912698412698412,
+          "test": {
+            "n": 73,
+            "correct": 60,
+            "accuracy": 0.821917808219178,
+            "macro_f1": 0.8085548953970007,
+            "per_class": {
+              "save": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "undo": {
+                "precision": 1.0,
+                "recall": 0.75,
+                "f1": 0.8571428571428571,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "page_navigate": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "view_change": {
+                "precision": 0.8333333333333334,
+                "recall": 1.0,
+                "f1": 0.9090909090909091,
+                "support": 5,
+                "predicted_count": 6
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "bubble_set": {
+                "precision": 0.75,
+                "recall": 0.75,
+                "f1": 0.75,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "needs_clarification": {
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333,
+                "support": 4,
+                "predicted_count": 2
+              },
+              "needs_reasoning": {
+                "precision": 0.8571428571428571,
+                "recall": 1.0,
+                "f1": 0.923076923076923,
+                "support": 6,
+                "predicted_count": 7
+              },
+              "compound_request": {
+                "precision": 0.42857142857142855,
+                "recall": 0.75,
+                "f1": 0.5454545454545454,
+                "support": 4,
+                "predicted_count": 7
+              },
+              "out_of_scope_request": {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
+                "support": 4,
+                "predicted_count": 0
+              },
+              "not_command": {
+                "precision": 1.0,
+                "recall": 0.5,
+                "f1": 0.6666666666666666,
+                "support": 6,
+                "predicted_count": 3
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "panel_gap_snap_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 2,
+                "predicted_count": 3
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 2,
+              "denominator": 49,
+              "rate": 0.04081632653061224
+            },
+            "compound_to_single_dispatch": {
+              "count": 1,
+              "denominator": 4,
+              "rate": 0.25
+            },
+            "compound_prediction_precision": {
+              "count": 3,
+              "denominator": 7,
+              "rate": 0.42857142857142855
+            },
+            "not_command_to_dispatch_label": {
+              "count": 1,
+              "denominator": 6,
+              "rate": 0.16666666666666666
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 6,
+              "denominator": 12,
+              "rate": 0.5
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 7,
+              "denominator": 54,
+              "rate": 0.12962962962962962
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [
+              "nyamuru_voice_2753",
+              "nyamuru_voice_2755",
+              "nyamuru_voice_2770",
+              "nyamuru_voice_2815",
+              "nyamuru_voice_3219"
+            ],
+            "regressed": [
+              "nyamuru_voice_2778",
+              "nyamuru_voice_2826",
+              "nyamuru_voice_2840",
+              "nyamuru_voice_3239",
+              "nyamuru_voice_3247"
+            ],
+            "accuracy_delta": 0.0
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2778",
+              "text": "しっぽを消して、いや、選択中の吹き出しはしっぽありにして。",
+              "gold": "bubble_set",
+              "predicted": "compound_request",
+              "confidence": 0.7609280943870544
+            },
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2826",
+              "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+              "gold": "out_of_scope_request",
+              "predicted": "background_3d_candidates",
+              "confidence": 0.9999984502792358
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2840",
+              "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+              "gold": "not_command",
+              "predicted": "needs_reasoning",
+              "confidence": 0.9245213866233826
+            },
+            {
+              "id": "nyamuru_voice_3204",
+              "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+              "gold": "undo",
+              "predicted": "compound_request",
+              "confidence": 0.8834125995635986
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "bubble_set",
+              "confidence": 0.9275095462799072
+            },
+            {
+              "id": "nyamuru_voice_3239",
+              "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+              "gold": "compound_request",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 0.7492390275001526
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 0.5385408997535706
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "save",
+              "confidence": 0.9271751642227173
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "needs_clarification",
+              "confidence": 0.9924688935279846
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "compound_request",
+              "confidence": 0.9958252906799316
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "view_change",
+              "confidence": 0.9998431205749512
+            }
+          ],
+          "errors_confidence_at_least_0_9": 9
+        },
+        "44": {
+          "epoch": 10.0,
+          "train_accuracy": 0.9837962962962963,
+          "dev_macro_f1": 0.8132590148070026,
+          "test": {
+            "n": 73,
+            "correct": 58,
+            "accuracy": 0.7945205479452054,
+            "macro_f1": 0.7830441488336225,
+            "per_class": {
+              "save": {
+                "precision": 0.6,
+                "recall": 0.75,
+                "f1": 0.6666666666666665,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "undo": {
+                "precision": 0.75,
+                "recall": 0.75,
+                "f1": 0.75,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "redo": {
+                "precision": 1.0,
+                "recall": 0.6666666666666666,
+                "f1": 0.8,
+                "support": 3,
+                "predicted_count": 2
+              },
+              "page_navigate": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "view_change": {
+                "precision": 1.0,
+                "recall": 0.8,
+                "f1": 0.888888888888889,
+                "support": 5,
+                "predicted_count": 4
+              },
+              "artwork_mode_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "bubble_set": {
+                "precision": 0.6666666666666666,
+                "recall": 1.0,
+                "f1": 0.8,
+                "support": 4,
+                "predicted_count": 6
+              },
+              "needs_clarification": {
+                "precision": 0.5,
+                "recall": 0.25,
+                "f1": 0.3333333333333333,
+                "support": 4,
+                "predicted_count": 2
+              },
+              "needs_reasoning": {
+                "precision": 0.8571428571428571,
+                "recall": 1.0,
+                "f1": 0.923076923076923,
+                "support": 6,
+                "predicted_count": 7
+              },
+              "compound_request": {
+                "precision": 0.6666666666666666,
+                "recall": 0.5,
+                "f1": 0.5714285714285715,
+                "support": 4,
+                "predicted_count": 3
+              },
+              "out_of_scope_request": {
+                "precision": 1.0,
+                "recall": 0.25,
+                "f1": 0.4,
+                "support": 4,
+                "predicted_count": 1
+              },
+              "not_command": {
+                "precision": 0.6666666666666666,
+                "recall": 0.6666666666666666,
+                "f1": 0.6666666666666666,
+                "support": 6,
+                "predicted_count": 6
+              },
+              "panel_sync_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "inner_frame_snap_set": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              },
+              "panel_gap_snap_set": {
+                "precision": 0.5,
+                "recall": 0.5,
+                "f1": 0.5,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "generate_request": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 2,
+                "predicted_count": 2
+              },
+              "background_3d_candidates": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 4,
+                "predicted_count": 4
+              },
+              "paint_tool_set": {
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
+                "support": 3,
+                "predicted_count": 3
+              },
+              "text_frames_align": {
+                "precision": 0.8,
+                "recall": 1.0,
+                "f1": 0.888888888888889,
+                "support": 4,
+                "predicted_count": 5
+              }
+            },
+            "single_dispatch_to_compound": {
+              "count": 0,
+              "denominator": 49,
+              "rate": 0.0
+            },
+            "compound_to_single_dispatch": {
+              "count": 2,
+              "denominator": 4,
+              "rate": 0.5
+            },
+            "compound_prediction_precision": {
+              "count": 2,
+              "denominator": 3,
+              "rate": 0.6666666666666666
+            },
+            "not_command_to_dispatch_label": {
+              "count": 1,
+              "denominator": 6,
+              "rate": 0.16666666666666666
+            },
+            "unresolved_to_dispatch_label": {
+              "count": 5,
+              "denominator": 12,
+              "rate": 0.4166666666666667
+            },
+            "incorrect_dispatch_predictions": {
+              "count": 10,
+              "denominator": 54,
+              "rate": 0.18518518518518517
+            }
+          },
+          "paired_with_baseline": {
+            "repaired": [
+              "nyamuru_voice_2755",
+              "nyamuru_voice_2815",
+              "nyamuru_voice_2840",
+              "nyamuru_voice_3201",
+              "nyamuru_voice_3205"
+            ],
+            "regressed": [
+              "nyamuru_voice_3203",
+              "nyamuru_voice_3204",
+              "nyamuru_voice_3211",
+              "nyamuru_voice_3237",
+              "nyamuru_voice_3239",
+              "nyamuru_voice_3308"
+            ],
+            "accuracy_delta": -0.013698630136986356
+          },
+          "errors": [
+            {
+              "id": "nyamuru_voice_2823",
+              "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_2836",
+              "text": "次の休憩前に作品を保存するつもり。",
+              "gold": "not_command",
+              "predicted": "save",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3203",
+              "text": "いま保存を押してほしい。保存先や作品名は、この作品のままでいい。",
+              "gold": "save",
+              "predicted": "not_command",
+              "confidence": 0.9957647323608398
+            },
+            {
+              "id": "nyamuru_voice_3204",
+              "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+              "gold": "undo",
+              "predicted": "text_frames_align",
+              "confidence": 0.9251019358634949
+            },
+            {
+              "id": "nyamuru_voice_3211",
+              "text": "Redoをお願いします。回数の指定を先に言い忘れたけど、一回です。",
+              "gold": "redo",
+              "predicted": "undo",
+              "confidence": 0.503074049949646
+            },
+            {
+              "id": "nyamuru_voice_3219",
+              "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+              "gold": "view_change",
+              "predicted": "bubble_set",
+              "confidence": 0.9999663829803467
+            },
+            {
+              "id": "nyamuru_voice_3228",
+              "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+              "gold": "needs_clarification",
+              "predicted": "needs_reasoning",
+              "confidence": 1.0
+            },
+            {
+              "id": "nyamuru_voice_3237",
+              "text": "このページ全体を生成してほしい。あ、それとは別に、作業中の作品の保存も今お願い。",
+              "gold": "compound_request",
+              "predicted": "save",
+              "confidence": 0.6387975811958313
+            },
+            {
+              "id": "nyamuru_voice_3239",
+              "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+              "gold": "compound_request",
+              "predicted": "panel_gap_snap_set",
+              "confidence": 0.6562771201133728
+            },
+            {
+              "id": "nyamuru_voice_3241",
+              "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+              "gold": "out_of_scope_request",
+              "predicted": "page_navigate",
+              "confidence": 0.7824904918670654
+            },
+            {
+              "id": "nyamuru_voice_3242",
+              "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+              "gold": "out_of_scope_request",
+              "predicted": "compound_request",
+              "confidence": 0.9999921321868896
+            },
+            {
+              "id": "nyamuru_voice_3247",
+              "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+              "gold": "not_command",
+              "predicted": "needs_clarification",
+              "confidence": 0.987128496170044
+            },
+            {
+              "id": "nyamuru_voice_3304",
+              "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+              "gold": "needs_clarification",
+              "predicted": "bubble_set",
+              "confidence": 0.9566113352775574
+            },
+            {
+              "id": "nyamuru_voice_3305",
+              "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+              "gold": "needs_clarification",
+              "predicted": "not_command",
+              "confidence": 0.9999994039535522
+            },
+            {
+              "id": "nyamuru_voice_3308",
+              "text": "「コマスナップ」と書かれた設定があるね。そこを有効にして。",
+              "gold": "panel_gap_snap_set",
+              "predicted": "inner_frame_snap_set",
+              "confidence": 0.9884819984436035
+            }
+          ],
+          "errors_confidence_at_least_0_9": 11
+        }
+      },
+      "training": {
+        "trials": 6,
+        "epochs_each": 10,
+        "dev_history_rows": 60,
+        "logged_loss_and_grad_norm_rows": 60,
+        "all_logged_values_finite": true,
+        "gpu": "Tesla T4",
+        "parameters": 36776211,
+        "training_seconds": 355.8127190070004,
+        "evaluation_seconds": 11.452943480999693
+      }
+    }
+  },
+  "primary_comparison": {
+    "baseline": "baseline/seed-44",
+    "candidate": "dropout_2view/seed-43",
+    "repaired": [
+      "nyamuru_voice_2840",
+      "nyamuru_voice_3201",
+      "nyamuru_voice_3205"
+    ],
+    "regressed": [
+      "nyamuru_voice_2707",
+      "nyamuru_voice_2753",
+      "nyamuru_voice_2778",
+      "nyamuru_voice_2826",
+      "nyamuru_voice_3239"
+    ],
+    "correct_delta": -2
+  },
+  "rdrop_vs_dropout_2view_paired": {
+    "42": {
+      "repaired": [
+        "nyamuru_voice_2778",
+        "nyamuru_voice_2840",
+        "nyamuru_voice_3261"
+      ],
+      "regressed": [
+        "nyamuru_voice_2815",
+        "nyamuru_voice_3239"
+      ]
+    },
+    "43": {
+      "repaired": [
+        "nyamuru_voice_2707",
+        "nyamuru_voice_2753",
+        "nyamuru_voice_2755",
+        "nyamuru_voice_2815",
+        "nyamuru_voice_3219"
+      ],
+      "regressed": [
+        "nyamuru_voice_2840",
+        "nyamuru_voice_3204"
+      ]
+    },
+    "44": {
+      "repaired": [
+        "nyamuru_voice_2753",
+        "nyamuru_voice_2826",
+        "nyamuru_voice_3253",
+        "nyamuru_voice_3255"
+      ],
+      "regressed": [
+        "nyamuru_voice_3203",
+        "nyamuru_voice_3211",
+        "nyamuru_voice_3237",
+        "nyamuru_voice_3239",
+        "nyamuru_voice_3308"
+      ]
+    }
+  },
+  "limitations": [
+    "Test73 and legacy sets are previously inspected synthetic regression sets.",
+    "Dev68 is reused for method, learning-rate, epoch and seed selection.",
+    "Three seeds reuse the same 73 examples; this is not 219 independent examples.",
+    "This tests dropout=0.1 and KL weight=1 with two learning rates, not all R-Drop settings.",
+    "No new independent accuracy or 95 percent acceptance claim; no application adoption."
+  ]
+}

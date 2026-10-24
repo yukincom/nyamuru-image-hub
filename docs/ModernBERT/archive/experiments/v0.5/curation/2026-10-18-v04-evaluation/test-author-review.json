@@ -1,0 +1,923 @@
+{
+  "schema_version": 1,
+  "artifact": "nyamuru_v04_test_candidates_blind_author_review",
+  "author_role": "independent_blind_test_author",
+  "review_status": "pending_user_review",
+  "input_documents": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "role": "only_external_file_read_label_contract"
+    }
+  ],
+  "annotation_key_clarification": {
+    "channel": "parent coordination message",
+    "scope": "JSON slot field names only; no utterance examples, old data, predictions, scores, dev or training content received",
+    "details": "view spread/guide enabled; bubble value/name/preset_id/owner/panel_number/bubble_number; bbox flat operation and mm keys; empty slots for route labels"
+  },
+  "blindness_attestation": {
+    "old_training_data_seen": false,
+    "old_evaluation_data_seen": false,
+    "new_dev_seen": false,
+    "other_authors_files_seen": false,
+    "predictions_or_scores_seen": false,
+    "other_authors_contacted": false,
+    "network_used": false,
+    "model_training_or_inference_run": false,
+    "repository_files_edited": false,
+    "external_file_reads": [
+      "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json"
+    ],
+    "own_output_read_for_review": true,
+    "assertion": "発話・goldの作成時から自己レビュー完了まで、旧学習・旧評価・新dev・予測・成績・他担当の作成内容を見ていない。親とは注釈キーのみを整合した。"
+  },
+  "counts": {
+    "rows": 228,
+    "labels": 19,
+    "families": 28,
+    "by_label": {
+      "save": 12,
+      "undo": 12,
+      "redo": 12,
+      "page_navigate": 12,
+      "view_change": 12,
+      "artwork_mode_set": 12,
+      "bubble_set": 12,
+      "needs_clarification": 12,
+      "needs_reasoning": 12,
+      "compound_request": 12,
+      "out_of_scope_request": 12,
+      "not_command": 12,
+      "panel_sync_set": 12,
+      "inner_frame_snap_set": 12,
+      "panel_gap_snap_set": 12,
+      "generate_request": 12,
+      "background_3d_candidates": 12,
+      "paint_tool_set": 12,
+      "text_frames_align": 12
+    },
+    "family_count_by_label": {
+      "save": 8,
+      "undo": 10,
+      "redo": 10,
+      "page_navigate": 10,
+      "view_change": 9,
+      "artwork_mode_set": 10,
+      "bubble_set": 9,
+      "needs_clarification": 9,
+      "needs_reasoning": 8,
+      "compound_request": 7,
+      "out_of_scope_request": 9,
+      "not_command": 9,
+      "panel_sync_set": 10,
+      "inner_frame_snap_set": 10,
+      "panel_gap_snap_set": 10,
+      "generate_request": 10,
+      "background_3d_candidates": 10,
+      "paint_tool_set": 10,
+      "text_frames_align": 10
+    },
+    "minimum_family_count_per_label": 7,
+    "id_first": "nyamuru_voice_2700",
+    "id_last": "nyamuru_voice_2927"
+  },
+  "family_grouping_policy": "ラベルをまたいでも同じ構造familyは同じgroupに統合。理由・過去の報告・予定は時制だけで別familyにせずcontext_then_requestへ保守的に統合した。groupは細粒度テンプレートIDではなく漏洩監査用の広い構造family。",
+  "families": {
+    "v04_test_additive_actions": {
+      "description": "さらに・それと・もなどで独立した現在操作を追加する。",
+      "count": 3,
+      "labels": [
+        "compound_request"
+      ],
+      "ids": [
+        "nyamuru_voice_2809",
+        "nyamuru_voice_2818",
+        "nyamuru_voice_2819"
+      ]
+    },
+    "v04_test_benefactive_question": {
+      "description": "してくれる・してもらえる・お願いできる等の疑問形による実行依頼。複数対象の名詞列挙もこの大枠で統合。",
+      "count": 18,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "compound_request",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2701",
+        "nyamuru_voice_2713",
+        "nyamuru_voice_2725",
+        "nyamuru_voice_2737",
+        "nyamuru_voice_2749",
+        "nyamuru_voice_2761",
+        "nyamuru_voice_2773",
+        "nyamuru_voice_2785",
+        "nyamuru_voice_2797",
+        "nyamuru_voice_2811",
+        "nyamuru_voice_2821",
+        "nyamuru_voice_2845",
+        "nyamuru_voice_2857",
+        "nyamuru_voice_2869",
+        "nyamuru_voice_2881",
+        "nyamuru_voice_2893",
+        "nyamuru_voice_2905",
+        "nyamuru_voice_2917"
+      ]
+    },
+    "v04_test_capability_question": {
+      "description": "機能や能力の有無だけを尋ねる。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2834"
+      ]
+    },
+    "v04_test_completed_report": {
+      "description": "すでに行った操作を報告し、現在の依頼を伴わない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2835"
+      ]
+    },
+    "v04_test_context_then_request": {
+      "description": "理由・過去の報告・今後の予定・場面説明を添えて現在の依頼を出す構造。時制や接続詞だけの差で分離しない。",
+      "count": 56,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "compound_request",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2702",
+        "nyamuru_voice_2703",
+        "nyamuru_voice_2704",
+        "nyamuru_voice_2711",
+        "nyamuru_voice_2714",
+        "nyamuru_voice_2715",
+        "nyamuru_voice_2716",
+        "nyamuru_voice_2726",
+        "nyamuru_voice_2727",
+        "nyamuru_voice_2728",
+        "nyamuru_voice_2738",
+        "nyamuru_voice_2739",
+        "nyamuru_voice_2740",
+        "nyamuru_voice_2750",
+        "nyamuru_voice_2751",
+        "nyamuru_voice_2752",
+        "nyamuru_voice_2759",
+        "nyamuru_voice_2762",
+        "nyamuru_voice_2763",
+        "nyamuru_voice_2764",
+        "nyamuru_voice_2774",
+        "nyamuru_voice_2775",
+        "nyamuru_voice_2776",
+        "nyamuru_voice_2786",
+        "nyamuru_voice_2787",
+        "nyamuru_voice_2788",
+        "nyamuru_voice_2798",
+        "nyamuru_voice_2799",
+        "nyamuru_voice_2800",
+        "nyamuru_voice_2812",
+        "nyamuru_voice_2813",
+        "nyamuru_voice_2814",
+        "nyamuru_voice_2822",
+        "nyamuru_voice_2823",
+        "nyamuru_voice_2824",
+        "nyamuru_voice_2846",
+        "nyamuru_voice_2847",
+        "nyamuru_voice_2848",
+        "nyamuru_voice_2858",
+        "nyamuru_voice_2859",
+        "nyamuru_voice_2860",
+        "nyamuru_voice_2870",
+        "nyamuru_voice_2871",
+        "nyamuru_voice_2872",
+        "nyamuru_voice_2882",
+        "nyamuru_voice_2883",
+        "nyamuru_voice_2884",
+        "nyamuru_voice_2894",
+        "nyamuru_voice_2895",
+        "nyamuru_voice_2896",
+        "nyamuru_voice_2906",
+        "nyamuru_voice_2907",
+        "nyamuru_voice_2908",
+        "nyamuru_voice_2918",
+        "nyamuru_voice_2919",
+        "nyamuru_voice_2920"
+      ]
+    },
+    "v04_test_dependent_reasoning_steps": {
+      "description": "資料・場面を読む／問題箇所を見つけることに依存して案を考える一連の内容判断。",
+      "count": 3,
+      "labels": [
+        "needs_reasoning"
+      ],
+      "ids": [
+        "nyamuru_voice_2796",
+        "nyamuru_voice_2806",
+        "nyamuru_voice_2807"
+      ]
+    },
+    "v04_test_desire_request": {
+      "description": "してほしいという希望形で操作または判断を明示的に頼む。",
+      "count": 17,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2708",
+        "nyamuru_voice_2720",
+        "nyamuru_voice_2732",
+        "nyamuru_voice_2745",
+        "nyamuru_voice_2757",
+        "nyamuru_voice_2769",
+        "nyamuru_voice_2781",
+        "nyamuru_voice_2793",
+        "nyamuru_voice_2803",
+        "nyamuru_voice_2827",
+        "nyamuru_voice_2853",
+        "nyamuru_voice_2865",
+        "nyamuru_voice_2877",
+        "nyamuru_voice_2889",
+        "nyamuru_voice_2901",
+        "nyamuru_voice_2913",
+        "nyamuru_voice_2925"
+      ]
+    },
+    "v04_test_direct": {
+      "description": "対象・操作を示した単純な現在依頼。丁寧語や語順だけの違いは分けない。",
+      "count": 19,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2700",
+        "nyamuru_voice_2712",
+        "nyamuru_voice_2724",
+        "nyamuru_voice_2736",
+        "nyamuru_voice_2748",
+        "nyamuru_voice_2760",
+        "nyamuru_voice_2772",
+        "nyamuru_voice_2783",
+        "nyamuru_voice_2784",
+        "nyamuru_voice_2795",
+        "nyamuru_voice_2820",
+        "nyamuru_voice_2830",
+        "nyamuru_voice_2844",
+        "nyamuru_voice_2856",
+        "nyamuru_voice_2868",
+        "nyamuru_voice_2880",
+        "nyamuru_voice_2892",
+        "nyamuru_voice_2904",
+        "nyamuru_voice_2916"
+      ]
+    },
+    "v04_test_explanation_question": {
+      "description": "やり方・仕組み・設定時の違いを問い、現在の編集操作は求めない。",
+      "count": 2,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2833",
+        "nyamuru_voice_2841"
+      ]
+    },
+    "v04_test_explicit_deferral": {
+      "description": "操作を後に延期し、現在の不実行を明示する。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2837"
+      ]
+    },
+    "v04_test_explicit_prohibition": {
+      "description": "変更してはいけないという不実行指示であり、反対値への変更は求めない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2838"
+      ]
+    },
+    "v04_test_explicit_substitution": {
+      "description": "変更元から変更先へと両端を示した置換・変更依頼。",
+      "count": 3,
+      "labels": [
+        "artwork_mode_set",
+        "out_of_scope_request",
+        "paint_tool_set"
+      ],
+      "ids": [
+        "nyamuru_voice_2771",
+        "nyamuru_voice_2831",
+        "nyamuru_voice_2915"
+      ]
+    },
+    "v04_test_future_intention": {
+      "description": "自分の今後の予定を述べ、現在の依頼を伴わない。",
+      "count": 2,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2836",
+        "nyamuru_voice_2843"
+      ]
+    },
+    "v04_test_limited_scope": {
+      "description": "だけ・今やるのは等で対象または操作範囲を限定して依頼する。",
+      "count": 15,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2722",
+        "nyamuru_voice_2734",
+        "nyamuru_voice_2741",
+        "nyamuru_voice_2758",
+        "nyamuru_voice_2770",
+        "nyamuru_voice_2794",
+        "nyamuru_voice_2805",
+        "nyamuru_voice_2829",
+        "nyamuru_voice_2854",
+        "nyamuru_voice_2866",
+        "nyamuru_voice_2878",
+        "nyamuru_voice_2890",
+        "nyamuru_voice_2902",
+        "nyamuru_voice_2914",
+        "nyamuru_voice_2926"
+      ]
+    },
+    "v04_test_negative_desired_state": {
+      "description": "使わない状態に設定してという否定形の希望状態。変更禁止とは区別する。",
+      "count": 3,
+      "labels": [
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "panel_sync_set"
+      ],
+      "ids": [
+        "nyamuru_voice_2855",
+        "nyamuru_voice_2867",
+        "nyamuru_voice_2879"
+      ]
+    },
+    "v04_test_nominal_request": {
+      "description": "保存・生成・提示・整列などを名詞句にしてお願いしますと依頼する。",
+      "count": 6,
+      "labels": [
+        "background_3d_candidates",
+        "generate_request",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "save",
+        "text_frames_align"
+      ],
+      "ids": [
+        "nyamuru_voice_2709",
+        "nyamuru_voice_2804",
+        "nyamuru_voice_2828",
+        "nyamuru_voice_2891",
+        "nyamuru_voice_2903",
+        "nyamuru_voice_2927"
+      ]
+    },
+    "v04_test_observation": {
+      "description": "対象の見え方などの観察・独り言で実行依頼がない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2840"
+      ]
+    },
+    "v04_test_operation_count": {
+      "description": "同一操作を何回と反復回数で指定する。",
+      "count": 3,
+      "labels": [
+        "page_navigate",
+        "redo",
+        "undo"
+      ],
+      "ids": [
+        "nyamuru_voice_2719",
+        "nyamuru_voice_2731",
+        "nyamuru_voice_2743"
+      ]
+    },
+    "v04_test_ordered_actions": {
+      "description": "独立した現在操作を順接・あとでという順序で並べる。",
+      "count": 2,
+      "labels": [
+        "compound_request"
+      ],
+      "ids": [
+        "nyamuru_voice_2808",
+        "nyamuru_voice_2810"
+      ]
+    },
+    "v04_test_preserve_then_request": {
+      "description": "保持事項または実行しない事項を先に示し、肯定する現在操作を指定する。",
+      "count": 17,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "compound_request",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2705",
+        "nyamuru_voice_2717",
+        "nyamuru_voice_2729",
+        "nyamuru_voice_2753",
+        "nyamuru_voice_2765",
+        "nyamuru_voice_2777",
+        "nyamuru_voice_2789",
+        "nyamuru_voice_2801",
+        "nyamuru_voice_2815",
+        "nyamuru_voice_2825",
+        "nyamuru_voice_2849",
+        "nyamuru_voice_2861",
+        "nyamuru_voice_2873",
+        "nyamuru_voice_2885",
+        "nyamuru_voice_2897",
+        "nyamuru_voice_2909",
+        "nyamuru_voice_2921"
+      ]
+    },
+    "v04_test_quoted_literal": {
+      "description": "引用文字列そのものを編集本文値として指定する構造。引用内の操作語は実行しない。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ],
+      "ids": [
+        "nyamuru_voice_2782"
+      ]
+    },
+    "v04_test_quoted_report": {
+      "description": "命令文を引用して読んだ・述べたと報告するだけで、引用を実行しない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2839"
+      ]
+    },
+    "v04_test_relative_target": {
+      "description": "現在表示中の対象を基準とした一つ前などの相対対象指定。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ],
+      "ids": [
+        "nyamuru_voice_2746"
+      ]
+    },
+    "v04_test_relative_value": {
+      "description": "反対の設定など現在値に依存する相対値を使い、希望する最終値を本文で確定しない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ],
+      "ids": [
+        "nyamuru_voice_2791"
+      ]
+    },
+    "v04_test_repeated_same_request": {
+      "description": "同じ現在依頼を言い直す・念押しする。独立操作や反転の追加とは扱わない。",
+      "count": 14,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2707",
+        "nyamuru_voice_2723",
+        "nyamuru_voice_2735",
+        "nyamuru_voice_2747",
+        "nyamuru_voice_2755",
+        "nyamuru_voice_2767",
+        "nyamuru_voice_2779",
+        "nyamuru_voice_2851",
+        "nyamuru_voice_2863",
+        "nyamuru_voice_2875",
+        "nyamuru_voice_2887",
+        "nyamuru_voice_2899",
+        "nyamuru_voice_2911",
+        "nyamuru_voice_2923"
+      ]
+    },
+    "v04_test_self_correction": {
+      "description": "以前の指定を否定・撤回・訂正して最後に肯定する依頼を指定する。",
+      "count": 19,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "compound_request",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2706",
+        "nyamuru_voice_2710",
+        "nyamuru_voice_2718",
+        "nyamuru_voice_2730",
+        "nyamuru_voice_2742",
+        "nyamuru_voice_2754",
+        "nyamuru_voice_2766",
+        "nyamuru_voice_2778",
+        "nyamuru_voice_2790",
+        "nyamuru_voice_2802",
+        "nyamuru_voice_2816",
+        "nyamuru_voice_2826",
+        "nyamuru_voice_2850",
+        "nyamuru_voice_2862",
+        "nyamuru_voice_2874",
+        "nyamuru_voice_2886",
+        "nyamuru_voice_2898",
+        "nyamuru_voice_2910",
+        "nyamuru_voice_2922"
+      ]
+    },
+    "v04_test_status_question": {
+      "description": "現在の状態・件数を問い、変更の実行は求めない。",
+      "count": 2,
+      "labels": [
+        "not_command"
+      ],
+      "ids": [
+        "nyamuru_voice_2832",
+        "nyamuru_voice_2842"
+      ]
+    },
+    "v04_test_value_announcement": {
+      "description": "設定値・対象・回数などの値を主題として提示し、その値での実行を依頼する。",
+      "count": 15,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "compound_request",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ],
+      "ids": [
+        "nyamuru_voice_2721",
+        "nyamuru_voice_2733",
+        "nyamuru_voice_2744",
+        "nyamuru_voice_2756",
+        "nyamuru_voice_2768",
+        "nyamuru_voice_2780",
+        "nyamuru_voice_2792",
+        "nyamuru_voice_2817",
+        "nyamuru_voice_2852",
+        "nyamuru_voice_2864",
+        "nyamuru_voice_2876",
+        "nyamuru_voice_2888",
+        "nyamuru_voice_2900",
+        "nyamuru_voice_2912",
+        "nyamuru_voice_2924"
+      ]
+    }
+  },
+  "checks": {
+    "exact_nine_keys": true,
+    "unique_contiguous_ids": true,
+    "all_19_labels_present": true,
+    "each_label_12_rows": true,
+    "each_label_at_least_six_families": true,
+    "source_and_review_status_valid": true,
+    "slot_contract_validation": "passed_for_all_used_fields_with_parent_key_clarification",
+    "exact_text_duplicates": [],
+    "normalized_text_duplicates": [],
+    "normalized_duplicate_method": "Unicode NFKC + casefold + remove Unicode punctuation, separators and whitespace",
+    "number_name_masked_within_label_duplicates": [],
+    "number_name_mask_method": "normalized text; Arabic/Kanji numerals replaced; all explicit character names and save-as title masked",
+    "issues": []
+  },
+  "coverage": {
+    "panel_settings_state_counts": {
+      "panel_sync_set": {
+        "true": 6,
+        "false": 6
+      },
+      "inner_frame_snap_set": {
+        "true": 6,
+        "false": 6
+      },
+      "panel_gap_snap_set": {
+        "true": 6,
+        "false": 6
+      }
+    },
+    "generation_target_counts": {
+      "selection": 2,
+      "selected_character": 2,
+      "current_page": 2,
+      "selected_panel": 2,
+      "named_character": 2,
+      "specified_panel": 2
+    },
+    "paint_tool_counts": {
+      "pen": 6,
+      "vector-pen": 6
+    }
+  },
+  "self_review": {
+    "full_text_and_gold_readback_count": 228,
+    "slot_values_reviewed_count": 228,
+    "meaning_and_naturalness_review": "complete_by_same_blind_author",
+    "fixes": [
+      {
+        "id": "nyamuru_voice_2715",
+        "issue": "その直前の編集 could mean the edit preceding the mentioned text movement",
+        "change": "今済ませたその編集 to identify the completed edit being undone"
+      },
+      {
+        "id": "nyamuru_voice_2784",
+        "issue": "bare contract example was too close to contract wording",
+        "change": "いったん元の状態に戻して to retain an ordinary unresolved reference without copying the bare example"
+      }
+    ],
+    "gold_changes_after_predictions": false,
+    "unfilled_labels": []
+  },
+  "meaning_review_attention": [
+    {
+      "ids": [
+        "nyamuru_voice_2775",
+        "nyamuru_voice_2779"
+      ],
+      "kind": "contract_capability_gate",
+      "texts": [
+        "前はコマからはみ出させていた。今は選択中の吹き出しをコマで切り取る設定にして。",
+        "選択中の吹き出しをコマで切り取らない設定にして。念押しだけど、切取りはオフ。"
+      ],
+      "labels": [
+        "bubble_set",
+        "bubble_set"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "clip_to_panel は契約の操作ラベル内だがUI検証完了前は実行を有効化しない。分類goldと実行可否を混同しない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2784",
+        "nyamuru_voice_2787",
+        "nyamuru_voice_2790"
+      ],
+      "kind": "intentionally_unresolved_reference",
+      "texts": [
+        "いったん元の状態に戻して。",
+        "前に設定を変えたよね。あの設定に戻して。",
+        "保存して、いや、それはやめて、元に戻して。"
+      ],
+      "labels": [
+        "needs_clarification",
+        "needs_clarification",
+        "needs_clarification"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "元の状態・あの設定などの参照が本文にない。履歴や文脈を推測してundoへ寄せない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2791"
+      ],
+      "kind": "unspecified_final_state",
+      "texts": [
+        "コマシンクロを反対の設定にして。"
+      ],
+      "labels": [
+        "needs_clarification"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "反対の設定は最終値オン/オフを本文で確定できないのでneeds_clarification。現在値参照を分類入力へ追加しない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2806",
+        "nyamuru_voice_2807"
+      ],
+      "kind": "dependent_reasoning_boundary",
+      "texts": [
+        "読者がつまずきそうな所を見つけて、そこを読みやすくする案を考えて。",
+        "資料の会話を読んで、今のコマに使える短いセリフ案にまとめて。"
+      ],
+      "labels": [
+        "needs_reasoning",
+        "needs_reasoning"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "複数の節はあるが後段が前段の内容判断に依存する一つの提案タスク。独立した現在のUI操作二つとは区別した。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2880",
+        "nyamuru_voice_2886"
+      ],
+      "kind": "ui_selection_resolution",
+      "texts": [
+        "これの画像を生成して。",
+        "ページ全体じゃなくて、いま選択しているものを生成して。"
+      ],
+      "labels": [
+        "generate_request",
+        "generate_request"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "これ・いま選択しているものは契約に明記された通常のUI選択参照としてselection。実際の未選択は実行側で扱う。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2893",
+        "nyamuru_voice_2899",
+        "nyamuru_voice_2902"
+      ],
+      "kind": "confirmed_shorthand",
+      "texts": [
+        "この場面向けの背景候補を見せてもらえる？",
+        "背景候補を三つお願い。繰り返すけど、候補は三つで。",
+        "一番のコマ用に、背景候補だけ四つ出して。"
+      ],
+      "labels": [
+        "background_3d_candidates",
+        "background_3d_candidates",
+        "background_3d_candidates"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "背景候補という略称を登録済み3D背景候補と解釈する根拠はラベル契約。外部検索や自動配置は含めない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2916",
+        "nyamuru_voice_2917",
+        "nyamuru_voice_2919",
+        "nyamuru_voice_2923",
+        "nyamuru_voice_2927"
+      ],
+      "kind": "text_frame_default_and_capability",
+      "texts": [
+        "選択した三つの文字枠を、上端でそろえて。",
+        "選択中の二つの文字枠の頭をそろえてもらえる？",
+        "文字枠を三つ選んだ。この三つの上端をそろえて。",
+        "選択中の文字枠二つを頭揃えにして。念押しだけど、その二つの上端をそろえてね。",
+        "二番のコマで選択している複数の文字枠の、上端揃えをお願いします。"
+      ],
+      "labels": [
+        "text_frames_align",
+        "text_frames_align",
+        "text_frames_align",
+        "text_frames_align",
+        "text_frames_align"
+      ],
+      "review_decision": "retain_under_label_contract_pending_user_review",
+      "reason": "複数文字枠が対象で上端揃えを指定。reference=selection_bounds は契約の既定値。独立文字枠・複数選択の実装準備は別の実行条件。"
+    }
+  ],
+  "limitations": [
+    "旧学習・旧評価・新devとの一致、近似文型、意味上の漏洩はblind authorからは未監査。親が別途監査する。",
+    "保存・二値設定など意味の自由度が低いラベルは多数の自然な新意図を作れないため、理由・訂正・保持・希望形などの依頼構造で変化を付けた。ラベル名や値だけの差し替えは同じfamilyに統合した。",
+    "12件ずつの均等候補であり実利用頻度の分布を表していない。すべて利用者レビュー前。",
+    "labels.json が全ての値格納キーを厳密なJSON Schemaで定義していない部分は、親から提供された注釈キー規約のみで補った。"
+  ],
+  "output_files": [
+    "/private/tmp/nyamuru-v04-test-candidates.jsonl",
+    "/private/tmp/nyamuru-v04-test-review.json"
+  ],
+  "candidate_sha256": "4d94ce4096fc9a49cea9b7b169527090046ca11399ff359e3a60da657642e6c1"
+}

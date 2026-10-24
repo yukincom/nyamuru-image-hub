@@ -1,0 +1,35 @@
+{
+  "name": "nyamuru-voice-v0.5-fixed-data-training-method-comparison",
+  "model": "sbintuitions/modernbert-ja-30m",
+  "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "learning_rates": [
+    2e-05,
+    5e-05
+  ],
+  "epochs": 10,
+  "batch_size": 16,
+  "max_length": 128,
+  "dtype": "float32",
+  "attention": "sdpa",
+  "tf32": false,
+  "model_fields": [
+    "text"
+  ],
+  "target_field": "label",
+  "selection_metric": "dev macro_f1 over all 19 labels with zero division=0; all 19 labels have support",
+  "selection": "Best reused-dev epoch per seed/LR; shared LR by mean best-dev macro F1 over seeds. Then method by its selected-LR mean dev macro F1; ties lower dev CE, earlier mean epoch, declared condition order. Freeze primary seed from the selected method before regression predictions.",
+  "test_used_for_selection": false,
+  "split_limitation": "All data is byte-identical to v0.4. Dev68 is reused for method/epoch/LR selection. Test73 and four legacy splits have already been inspected and are regression-only. Independent unseen real-user/ASR evaluation remains pending.",
+  "adoption": "No automatic production adoption or application dispatch.",
+  "source_review": "Source row provenance and parent semantic review recorded separately; individual user review pending.",
+  "primary_selection": "Highest reused-dev macro F1 among selected seeds; lower ordinary dev CE, earlier epoch, earlier trial. Method selected by mean best dev macro F1 across seeds, before any regression predictions.",
+  "accuracy_target": 0.95,
+  "dataset_version": 4,
+  "method_version": 5,
+  "independent_acceptance_eligible": false
+}

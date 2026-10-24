@@ -1,0 +1,13 @@
+{
+  "source_directory": "/Users/yukin_co/Desktop/tools/Comic_image_Hub/dev_tools/voice_intent_classifier/drafts/2026-10-17",
+  "received_date": "2026-10-17",
+  "source_thread": "01a13435-eac8-7562-8294-097fb1567117",
+  "source_sha256": {
+    "labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "candidates.jsonl": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+    "review.md": "b74e8867658b3aa37aba0384804557930aedb8ccc5d879d1e1d7f800ee628a14",
+    "manifest.json": "fe4f2d8c84302f39eeb43b9a0832623da991f30c1e5b1447aaa8e905bba9c101"
+  },
+  "instruction": "Independent Nyamuru classifier; raw text to label only; preserve label IDs and source bytes; slots and metadata excluded.",
+  "user_review": "pending (not a prohibition on preparation or requested Colab training)"
+}

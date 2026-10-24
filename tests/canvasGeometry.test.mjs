@@ -770,3 +770,11 @@ test('重なったパネルの空白クリックは貫通する', () => {
   assert.equal(resolveOverlapClick(panels, 1, 1, 55, 80), 0);
   assert.equal(resolveOverlapClick(panels, 1, 0, 55, 80), 1);
 });
+
+
+test('overlap selection accepts rendered-content coverage instead of the paint frame',()=>{
+ const make=()=>({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:1,action:null,figures:[{name:'padded',bbox:{x:0,y:0,w:100,h:100}}],bubbles:[]});
+ const panels=[make(),make()];
+ assert.equal(resolveOverlapClick(panels,1,-1,50,50,(_panel,index)=>index===0),0);
+ assert.equal(resolveOverlapClick(panels,1,-1,50,50,(_panel,index)=>index===1),1);
+});

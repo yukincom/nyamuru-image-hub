@@ -1,0 +1,11 @@
+{
+  "reused_from": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-modernbert-ja-30m-2026-10-14/dev_tools/request_classifier",
+  "source_files_sha256": {
+    "train.py": "27785b7a23e1134f9bd2f7b2ba95d0cb41dc09fc22b0aaaed4c5c83daa70c498",
+    "evaluation.py": "e15f5945c162c00d03d73fb4024b2560639f3d25c527a095c122a1259494d35c",
+    "requirements-train.txt": "f45782d28fe9ac8e4123aaf8a8878fbf17d8b38782a8bda21958f0a6cf407ff1"
+  },
+  "method": "copy measured Trainer/evaluation primitives and pinned environment; independent data adapter, label mapping, splits and output directories; no old classifier weights used",
+  "model_card": "https://huggingface.co/sbintuitions/modernbert-ja-30m",
+  "transformers_docs": "https://huggingface.co/docs/transformers/model_doc/modernbert"
+}

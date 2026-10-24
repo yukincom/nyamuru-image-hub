@@ -1,0 +1,58 @@
+[
+  {
+    "slug": "lying-on-her-back-with-her-arms-above-her-head",
+    "label_ja": "仰向けで腕を頭上へ",
+    "pose_text_ja": "仰向けに横たわり、両腕を頭より上に置く。",
+    "tags": [
+      "lying",
+      "supine",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "lying-on-her-back-with-her-knees-bent",
+    "label_ja": "仰向けで膝を曲げる",
+    "pose_text_ja": "仰向けに横たわり、両膝を曲げる。",
+    "tags": [
+      "lying",
+      "supine"
+    ]
+  },
+  {
+    "slug": "lying-on-her-side-with-her-head-propped-on-one-hand",
+    "label_ja": "横向きで手に頭を預ける",
+    "pose_text_ja": "横向きに横たわり、片手で頭を支える。",
+    "tags": [
+      "lying",
+      "side-lying",
+      "one-hand"
+    ]
+  },
+  {
+    "slug": "lying-on-her-stomach-propped-on-her-elbows-with-her-feet-kicked-up",
+    "label_ja": "うつ伏せで足を上げる",
+    "pose_text_ja": "うつ伏せになって両肘で上体を支え、両足を上げる。",
+    "tags": [
+      "lying",
+      "prone"
+    ]
+  },
+  {
+    "slug": "lying-on-her-stomach-with-her-cheek-resting-on-her-folded-arms",
+    "label_ja": "うつ伏せで腕に頬を乗せる",
+    "pose_text_ja": "うつ伏せになり、重ねた両腕の上に頬を乗せる。",
+    "tags": [
+      "lying",
+      "prone"
+    ]
+  },
+  {
+    "slug": "curled-up-on-her-side",
+    "label_ja": "横向きで丸まる",
+    "pose_text_ja": "横向きになり、体を丸める。",
+    "tags": [
+      "lying",
+      "side-lying"
+    ]
+  }
+]

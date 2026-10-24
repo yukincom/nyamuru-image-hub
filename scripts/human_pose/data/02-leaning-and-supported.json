@@ -1,0 +1,112 @@
+[
+  {
+    "slug": "leaning-one-shoulder-against-a-wall",
+    "label_ja": "片肩を壁に預ける",
+    "pose_text_ja": "片方の肩を壁にもたせかける。",
+    "tags": [
+      "leaning",
+      "wall"
+    ]
+  },
+  {
+    "slug": "leaning-sideways-against-a-wall-with-her-arms-crossed",
+    "label_ja": "腕を組んで壁にもたれる",
+    "pose_text_ja": "腕を組み、体の側面を壁にもたせかける。",
+    "tags": [
+      "leaning",
+      "wall",
+      "arms-crossed"
+    ]
+  },
+  {
+    "slug": "leaning-back-against-a-wall-with-her-hands-tucked-behind-her",
+    "label_ja": "手を背後に置いて壁にもたれる",
+    "pose_text_ja": "両手を背後にしまい、壁に背をもたせかける。",
+    "tags": [
+      "leaning",
+      "wall",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "leaning-back-against-a-wall-with-her-head-tipped-back",
+    "label_ja": "頭を反らして壁にもたれる",
+    "pose_text_ja": "頭を後ろに傾け、壁に背をもたせかける。",
+    "tags": [
+      "leaning",
+      "wall",
+      "head-back"
+    ]
+  },
+  {
+    "slug": "leaning-against-a-wall-with-one-forearm-resting-above-her-head",
+    "label_ja": "頭上で前腕を壁に預ける",
+    "pose_text_ja": "壁にもたれ、片方の前腕を頭より上で預ける。",
+    "tags": [
+      "leaning",
+      "wall",
+      "one-hand",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "leaning-forward-with-both-palms-flat-against-a-wall",
+    "label_ja": "両手を壁について前傾",
+    "pose_text_ja": "両方の手のひらを壁に平らにつけ、前に体を傾ける。",
+    "tags": [
+      "leaning",
+      "wall",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "sliding-down-a-wall-into-a-half-sit",
+    "label_ja": "壁沿いに腰を落とす",
+    "pose_text_ja": "壁に沿って体を滑らせ、半ば座った姿勢になる。",
+    "tags": [
+      "leaning",
+      "wall"
+    ]
+  },
+  {
+    "slug": "sitting-on-the-floor-with-her-back-against-a-wall",
+    "label_ja": "壁に背をつけて床に座る",
+    "pose_text_ja": "壁に背をつけて床に座る。",
+    "tags": [
+      "seated",
+      "floor",
+      "wall"
+    ]
+  },
+  {
+    "slug": "leaning-in-a-doorframe-with-one-hand-on-the-frame",
+    "label_ja": "戸枠に手を添えてもたれる",
+    "pose_text_ja": "戸枠に片手を添え、戸口でもたれる。",
+    "tags": [
+      "leaning",
+      "doorframe",
+      "one-hand"
+    ]
+  },
+  {
+    "slug": "leaning-forward-on-a-waist-high-ledge-on-her-forearms",
+    "label_ja": "腰高の台に前腕を置く",
+    "pose_text_ja": "腰の高さの台に両前腕を置き、前に体を傾ける。",
+    "tags": [
+      "leaning",
+      "ledge",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "perched-on-a-tall-stool-leaning-back-against-a-wall",
+    "label_ja": "高いスツールで壁にもたれる",
+    "pose_text_ja": "高いスツールに浅く腰掛け、壁に背をもたせかける。",
+    "tags": [
+      "seated",
+      "chair",
+      "stool",
+      "wall"
+    ]
+  }
+]

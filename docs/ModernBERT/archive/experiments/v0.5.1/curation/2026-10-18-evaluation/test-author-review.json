@@ -1,0 +1,5075 @@
+{
+  "artifact": "/private/tmp/nyamuru-v03-test-draft.jsonl",
+  "source_contract": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+  "source_access": {
+    "read": [
+      "label_contract_only"
+    ],
+    "not_read": [
+      "training_data",
+      "old_examples",
+      "old_predictions",
+      "old_results",
+      "MASSIVE",
+      "other_writer_outputs"
+    ]
+  },
+  "status": "self_review_complete_pending_user_review",
+  "counts": {
+    "save": 16,
+    "undo": 16,
+    "redo": 16,
+    "page_navigate": 16,
+    "view_change": 16,
+    "artwork_mode_set": 16,
+    "bubble_set": 16,
+    "needs_clarification": 16,
+    "needs_reasoning": 16,
+    "compound_request": 16,
+    "out_of_scope_request": 8,
+    "not_command": 8,
+    "panel_sync_set": 16,
+    "inner_frame_snap_set": 16,
+    "panel_gap_snap_set": 16,
+    "generate_request": 16,
+    "background_3d_candidates": 16,
+    "paint_tool_set": 16,
+    "text_frames_align": 16
+  },
+  "total": 288,
+  "id_range": [
+    "nyamuru_voice_1365",
+    "nyamuru_voice_1652"
+  ],
+  "synthetic_evaluation_caveat": "Fresh synthetic heldout authoring; this is not evidence of real speech accuracy.",
+  "slots_are_model_input": false,
+  "model_input_fields": [
+    "text"
+  ],
+  "ambiguities": [
+    {
+      "kind": "slot_representation",
+      "label": "bubble_set",
+      "resolution": "The contract lists fields but does not specify the value container. The annotation uses value; bbox changes use explicit mm keys under value. These are annotation-only and not model input."
+    },
+    {
+      "kind": "slot_representation",
+      "label": "view_change",
+      "resolution": "The contract lists guide/spread kinds but does not name the desired-state key. The annotation uses enabled as a boolean for guide/spread state."
+    }
+  ],
+  "self_review": [
+    {
+      "id": "nyamuru_voice_1365",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在の作品の通常保存を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1366",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "疑問形だが現在の保存を頼んでいる。"
+    },
+    {
+      "id": "nyamuru_voice_1367",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "今ある内容を保存する一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1368",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "相手への依頼を明示した現在の保存。"
+    },
+    {
+      "id": "nyamuru_voice_1369",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完成前であるという背景説明は保存を妨げない。"
+    },
+    {
+      "id": "nyamuru_voice_1370",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ほかの操作を含まない保存依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1371",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "閉じる前という時点説明で、現在求める操作は保存だけ。"
+    },
+    {
+      "id": "nyamuru_voice_1372",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "過去の修正を含む現在作品の保存。"
+    },
+    {
+      "id": "nyamuru_voice_1373",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "通常の現在作品参照で保存する。"
+    },
+    {
+      "id": "nyamuru_voice_1374",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "次の作業内容は指定せず保存だけを求める。"
+    },
+    {
+      "id": "nyamuru_voice_1375",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ページ移動を撤回して保存だけを肯定。"
+    },
+    {
+      "id": "nyamuru_voice_1376",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "感想の後に保存を依頼している。"
+    },
+    {
+      "id": "nyamuru_voice_1377",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "実行時点を伴う疑問形の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1378",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作業の区切りを理由とする通常保存。"
+    },
+    {
+      "id": "nyamuru_voice_1379",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "保存の再実行でありUndoの再適用ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1380",
+      "label": "save",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了報告と保存一操作の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1381",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した吹き出し移動を履歴で取り消す。"
+    },
+    {
+      "id": "nyamuru_voice_1382",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した描画を一段取り消す。"
+    },
+    {
+      "id": "nyamuru_voice_1383",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "編集履歴の取り消しを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1384",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在完了した変更の取り消し。"
+    },
+    {
+      "id": "nyamuru_voice_1385",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了済み本文変更に対するUndo。"
+    },
+    {
+      "id": "nyamuru_voice_1386",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "回数指定だけなので単一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1387",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した拡大編集に対する履歴の戻し。"
+    },
+    {
+      "id": "nyamuru_voice_1388",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴の最後の編集を対象にしている。"
+    },
+    {
+      "id": "nyamuru_voice_1389",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "誤って完了した移動の取り消し依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1390",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した変更を取り消す現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1391",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同じ履歴操作を三回行う依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1392",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "確定した直前修正を一つ取り消す。"
+    },
+    {
+      "id": "nyamuru_voice_1393",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "直前の一操作という取り消し範囲が明示される。"
+    },
+    {
+      "id": "nyamuru_voice_1394",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "Redoを否定しUndoだけを現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1395",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した結合操作の取り消し。"
+    },
+    {
+      "id": "nyamuru_voice_1396",
+      "label": "undo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "評価発言の後に編集履歴の取り消しを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1397",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "Undoで取り消した描画の再適用。"
+    },
+    {
+      "id": "nyamuru_voice_1398",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "取り消し済み編集の再適用を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1399",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "取り消した移動を一回再適用。"
+    },
+    {
+      "id": "nyamuru_voice_1400",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "Undo二回分の再適用で単一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1401",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "直前に取り消した編集を再適用する。"
+    },
+    {
+      "id": "nyamuru_voice_1402",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "編集履歴のRedo一回が明示される。"
+    },
+    {
+      "id": "nyamuru_voice_1403",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "Undo自体を戻す意味が再適用で明確。"
+    },
+    {
+      "id": "nyamuru_voice_1404",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "Undo済み本文修正の再適用。"
+    },
+    {
+      "id": "nyamuru_voice_1405",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "疑問形による現在の履歴Redo依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1406",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "変更後を採用するためのUndo再適用。"
+    },
+    {
+      "id": "nyamuru_voice_1407",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "三段の同じRedoを二通りに説明した一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1408",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "取り消し済み配置変更の履歴再適用。"
+    },
+    {
+      "id": "nyamuru_voice_1409",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了済みUndoを撤回する再適用依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1410",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "Undoされた結合のRedo。"
+    },
+    {
+      "id": "nyamuru_voice_1411",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴の再適用であると明示。"
+    },
+    {
+      "id": "nyamuru_voice_1412",
+      "label": "redo",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "取り消しを撤回する明確なRedo一回。"
+    },
+    {
+      "id": "nyamuru_voice_1413",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作品内の次ページ表示。"
+    },
+    {
+      "id": "nyamuru_voice_1414",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "編集履歴ではなく表示ページを戻す。"
+    },
+    {
+      "id": "nyamuru_voice_1415",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作品内の明示番号への移動。"
+    },
+    {
+      "id": "nyamuru_voice_1416",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作品の先頭ページへの移動。"
+    },
+    {
+      "id": "nyamuru_voice_1417",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作品末尾への移動。"
+    },
+    {
+      "id": "nyamuru_voice_1418",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同じページ移動の距離指定。"
+    },
+    {
+      "id": "nyamuru_voice_1419",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "表示ページを三つ前に移動。"
+    },
+    {
+      "id": "nyamuru_voice_1420",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在の表示ページを番号指定で切替。"
+    },
+    {
+      "id": "nyamuru_voice_1421",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "続きの一ページを表示する依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1422",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "先頭という参照が同一発話内で明示。"
+    },
+    {
+      "id": "nyamuru_voice_1423",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "背景説明中の番号とは別に移動先を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1424",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "末尾ページへの表示移動。"
+    },
+    {
+      "id": "nyamuru_voice_1425",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "保存を延期しページ移動だけを現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1426",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "話題化した番号が移動先。"
+    },
+    {
+      "id": "nyamuru_voice_1427",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在位置から次のページを開く。"
+    },
+    {
+      "id": "nyamuru_voice_1428",
+      "label": "page_navigate",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "最初の移動先を訂正した単一移動。"
+    },
+    {
+      "id": "nyamuru_voice_1429",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ズームを用紙全体に合わせる。"
+    },
+    {
+      "id": "nyamuru_voice_1430",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "図形サイズではなく表示ズームの拡大。"
+    },
+    {
+      "id": "nyamuru_voice_1431",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "表示の縮小方向を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1432",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "表示倍率を等倍へ戻す。"
+    },
+    {
+      "id": "nyamuru_voice_1433",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "見開きを有効にする。"
+    },
+    {
+      "id": "nyamuru_voice_1434",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "見開きの明示オフ。"
+    },
+    {
+      "id": "nyamuru_voice_1435",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ガイド対象と表示状態が明示。"
+    },
+    {
+      "id": "nyamuru_voice_1436",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "編集ガイドを非表示にする。"
+    },
+    {
+      "id": "nyamuru_voice_1437",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作画ガイドを表示する。"
+    },
+    {
+      "id": "nyamuru_voice_1438",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "既存の絵コンテタブを選ぶ。"
+    },
+    {
+      "id": "nyamuru_voice_1439",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作品情報に対応するmetaタブの表示。"
+    },
+    {
+      "id": "nyamuru_voice_1440",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定タブの表示を一意に依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1441",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "登場人物タブを選ぶ。"
+    },
+    {
+      "id": "nyamuru_voice_1442",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同一発話内で小道具タブを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1443",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "環境設定タブの表示。"
+    },
+    {
+      "id": "nyamuru_voice_1444",
+      "label": "view_change",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ガイド対象の明示された非表示指示。"
+    },
+    {
+      "id": "nyamuru_voice_1445",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "一体型という設定値だけを変更。"
+    },
+    {
+      "id": "nyamuru_voice_1446",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "下書き方式が同一発話内で明示される。"
+    },
+    {
+      "id": "nyamuru_voice_1447",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作画モードの選択依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1448",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "生成開始を含まない作画設定。"
+    },
+    {
+      "id": "nyamuru_voice_1449",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴Undoではなく明示した作画設定値への変更。"
+    },
+    {
+      "id": "nyamuru_voice_1450",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作業意図を述べて下書き方式を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1451",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "通常の設定項目参照で値が明示。"
+    },
+    {
+      "id": "nyamuru_voice_1452",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "生成を不実行とし設定変更だけを現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1453",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "一体型への設定変更。"
+    },
+    {
+      "id": "nyamuru_voice_1454",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "適切さの判断を依頼せず値を利用者が決定。"
+    },
+    {
+      "id": "nyamuru_voice_1455",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "下書きを否定して一体型だけを肯定。"
+    },
+    {
+      "id": "nyamuru_voice_1456",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "状態の言及とは別に下書きへの変更を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1457",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "次の作業の準備として現在モードを設定。"
+    },
+    {
+      "id": "nyamuru_voice_1458",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定変更までの単一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1459",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "直前の方式言及から作画方式が明示される。"
+    },
+    {
+      "id": "nyamuru_voice_1460",
+      "label": "artwork_mode_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在作品の作画方式を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1461",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択中吹き出しのしっぽ無効化。"
+    },
+    {
+      "id": "nyamuru_voice_1462",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "通常の画面参照でしっぽ有効化。"
+    },
+    {
+      "id": "nyamuru_voice_1463",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "既存吹き出しの本文を指定原文に設定。"
+    },
+    {
+      "id": "nyamuru_voice_1464",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "本文中の命令語はUndo依頼として数えない。"
+    },
+    {
+      "id": "nyamuru_voice_1465",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "敬称を保持した話者設定。"
+    },
+    {
+      "id": "nyamuru_voice_1466",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同じBBoxのx/y差分は一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1467",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同じBBoxの幅と高さは一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1468",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "切取り有効化。実行準備状況とは別の分類。"
+    },
+    {
+      "id": "nyamuru_voice_1469",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "切取り無効化の明示値。"
+    },
+    {
+      "id": "nyamuru_voice_1470",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示した幅のみの変更。"
+    },
+    {
+      "id": "nyamuru_voice_1471",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "上方向はy負の明示差分。"
+    },
+    {
+      "id": "nyamuru_voice_1472",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "不実行を表す文も入力本文として保持。"
+    },
+    {
+      "id": "nyamuru_voice_1473",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同一発話の現在話者指定が明示。"
+    },
+    {
+      "id": "nyamuru_voice_1474",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "既存吹き出しの高さ値を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1475",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "しっぽ変更を撤回し本文だけ変更。"
+    },
+    {
+      "id": "nyamuru_voice_1476",
+      "label": "bubble_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "程度が具体的な左方向移動。"
+    },
+    {
+      "id": "nyamuru_voice_1477",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "操作・対象・戻り先が発話だけでは不明。"
+    },
+    {
+      "id": "nyamuru_voice_1478",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "対象は明示されるが寸法・拡大量が不足。"
+    },
+    {
+      "id": "nyamuru_voice_1479",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "どの表示ガイドかが不足。"
+    },
+    {
+      "id": "nyamuru_voice_1480",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ラスターペンかベクターペンか指定が不足。"
+    },
+    {
+      "id": "nyamuru_voice_1481",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "オンとオフの希望最終状態が不明。"
+    },
+    {
+      "id": "nyamuru_voice_1482",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "過去発話依存で設定値が本文から決まらない。"
+    },
+    {
+      "id": "nyamuru_voice_1483",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在状態に依存した反転指定で希望値が明示されない。"
+    },
+    {
+      "id": "nyamuru_voice_1484",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択参照は有効だが移動量が不明。"
+    },
+    {
+      "id": "nyamuru_voice_1485",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "何を繰り返すか不明。"
+    },
+    {
+      "id": "nyamuru_voice_1486",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "部分修正か作画方式か不明な語。"
+    },
+    {
+      "id": "nyamuru_voice_1487",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "前の表示設定が発話内にない。"
+    },
+    {
+      "id": "nyamuru_voice_1488",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数文字枠の上端か文章内の揃えか未指定。"
+    },
+    {
+      "id": "nyamuru_voice_1489",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択対象を仮定しても移動先が特定できない。"
+    },
+    {
+      "id": "nyamuru_voice_1490",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "話者の変更先が指定されていない。"
+    },
+    {
+      "id": "nyamuru_voice_1491",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ページ移動先が会話履歴に依存する。"
+    },
+    {
+      "id": "nyamuru_voice_1492",
+      "label": "needs_clarification",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "操作の種類も選択肢も発話中では不明。"
+    },
+    {
+      "id": "nyamuru_voice_1493",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "場面の意味を読んで形を考える判断依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1494",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "読み順と配置の内容判断。"
+    },
+    {
+      "id": "nyamuru_voice_1495",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "場面・人物から話者を推論する。"
+    },
+    {
+      "id": "nyamuru_voice_1496",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ページを読んで問題箇所と配置案を考える。"
+    },
+    {
+      "id": "nyamuru_voice_1497",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "程度の判断を伴う表現提案。"
+    },
+    {
+      "id": "nyamuru_voice_1498",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "キャラクターの口調に合わせた内容推敲。"
+    },
+    {
+      "id": "nyamuru_voice_1499",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示プリセット設定ではなく適切な素材選択。"
+    },
+    {
+      "id": "nyamuru_voice_1500",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "絵と文字の関係を判断する配置案。"
+    },
+    {
+      "id": "nyamuru_voice_1501",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "コマ内容とセリフの情報量を評価。"
+    },
+    {
+      "id": "nyamuru_voice_1502",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "内容を評価して表現案を考える依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1503",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "表現意図を解釈する自由な組版判断。"
+    },
+    {
+      "id": "nyamuru_voice_1504",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "内容の整合性判断であり設定状態質問ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1505",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "資料を読み人物に合う表現を作る。"
+    },
+    {
+      "id": "nyamuru_voice_1506",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "適切な形の判断を依頼している。"
+    },
+    {
+      "id": "nyamuru_voice_1507",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "構成を解釈して改善提案を行う。"
+    },
+    {
+      "id": "nyamuru_voice_1508",
+      "label": "needs_reasoning",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "内容に基づく余白・組版の判断。"
+    },
+    {
+      "id": "nyamuru_voice_1509",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "保存とページ移動を両方現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1510",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "異なる二設定への独立した変更。"
+    },
+    {
+      "id": "nyamuru_voice_1511",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "しっぽ有無と本文の独立変更。"
+    },
+    {
+      "id": "nyamuru_voice_1512",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "見開きオフとズームfitの二操作。"
+    },
+    {
+      "id": "nyamuru_voice_1513",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作画方式設定とページ生成を両方依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1514",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ペン切替と保存。"
+    },
+    {
+      "id": "nyamuru_voice_1515",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴Undoとページ移動。"
+    },
+    {
+      "id": "nyamuru_voice_1516",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "専用候補提示とタブ変更の両方を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1517",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数文字枠の上端揃えとガイド非表示。"
+    },
+    {
+      "id": "nyamuru_voice_1518",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "スナップ設定と描画ツール切替。"
+    },
+    {
+      "id": "nyamuru_voice_1519",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "取り消し済み編集のRedoと保存。"
+    },
+    {
+      "id": "nyamuru_voice_1520",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択人物生成と指定ガイド表示。"
+    },
+    {
+      "id": "nyamuru_voice_1521",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ページ移動と見開き設定。"
+    },
+    {
+      "id": "nyamuru_voice_1522",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "BBox移動と話者変更は独立した操作。"
+    },
+    {
+      "id": "nyamuru_voice_1523",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "二つの異なるスナップ設定を現在変更。"
+    },
+    {
+      "id": "nyamuru_voice_1524",
+      "label": "compound_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "タブ表示と通常保存の二依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1525",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "通常保存でなく明示的な別名保存。"
+    },
+    {
+      "id": "nyamuru_voice_1526",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ページ削除は初期直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_voice_1527",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "実行中ジョブの明確な中止依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1528",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在一ページの生成でなく全ページ一括。"
+    },
+    {
+      "id": "nyamuru_voice_1529",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "既存吹き出し変更でなく新規追加。"
+    },
+    {
+      "id": "nyamuru_voice_1530",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "登録済み候補提示でなく外部検索。"
+    },
+    {
+      "id": "nyamuru_voice_1531",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ペン切替でなく既存絵のベクター化。"
+    },
+    {
+      "id": "nyamuru_voice_1532",
+      "label": "out_of_scope_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数文字枠でも左端揃えは今回の上端ラベル外。"
+    },
+    {
+      "id": "nyamuru_voice_1533",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "保存済み状態への質問で実行依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1534",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴機能の説明を求める。"
+    },
+    {
+      "id": "nyamuru_voice_1535",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "機能の能力確認と明示的不実行。"
+    },
+    {
+      "id": "nyamuru_voice_1536",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "オン変更の禁止でオフ設定ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1537",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した設定変更の報告。"
+    },
+    {
+      "id": "nyamuru_voice_1538",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "形についての感想のみ。"
+    },
+    {
+      "id": "nyamuru_voice_1539",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "上端揃えを明示的に延期。"
+    },
+    {
+      "id": "nyamuru_voice_1540",
+      "label": "not_command",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "候補提示の実行ではなく操作方法の質問。"
+    },
+    {
+      "id": "nyamuru_voice_1541",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定名と希望最終状態を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1542",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "使わない設定への変更はオフ。"
+    },
+    {
+      "id": "nyamuru_voice_1543",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "未来の作業予定は別操作の現在依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1544",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示した設定のオフ依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1545",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "状態質問ではなく現在の設定変更。"
+    },
+    {
+      "id": "nyamuru_voice_1546",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "希望値オフが明示されている。"
+    },
+    {
+      "id": "nyamuru_voice_1547",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "使用する設定への変更はオン。"
+    },
+    {
+      "id": "nyamuru_voice_1548",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作業文脈と無効という設定値を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1549",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在値によらず希望最終状態はオン。"
+    },
+    {
+      "id": "nyamuru_voice_1550",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "不要という背景説明とオフ変更。"
+    },
+    {
+      "id": "nyamuru_voice_1551",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴操作ではなく設定値オンへの変更。"
+    },
+    {
+      "id": "nyamuru_voice_1552",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "オン依頼を撤回しオフ依頼だけを肯定。"
+    },
+    {
+      "id": "nyamuru_voice_1553",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定の希望値を利用者が決定。"
+    },
+    {
+      "id": "nyamuru_voice_1554",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定機能の無効化であり生成中止ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1555",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示的な現在の有効化依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1556",
+      "label": "panel_sync_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "他設定の保持は独立した変更を追加しない。"
+    },
+    {
+      "id": "nyamuru_voice_1557",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "内枠スナップの希望値オン。"
+    },
+    {
+      "id": "nyamuru_voice_1558",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "使わない設定へ変更する依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1559",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作業意図の後に明示した設定値。"
+    },
+    {
+      "id": "nyamuru_voice_1560",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "能力確認風の疑問を明確な実行依頼で補足。"
+    },
+    {
+      "id": "nyamuru_voice_1561",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "名前付き設定の有効化。"
+    },
+    {
+      "id": "nyamuru_voice_1562",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "吸着を避けるための明示した設定オフ。"
+    },
+    {
+      "id": "nyamuru_voice_1563",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択したオン値の反映を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1564",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "具体的な無効状態を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1565",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴Redoでなく明示設定の有効化。"
+    },
+    {
+      "id": "nyamuru_voice_1566",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定欄の希望最終値を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1567",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "否定されたオフを数えずオンだけを適用。"
+    },
+    {
+      "id": "nyamuru_voice_1568",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在からオフにする依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1569",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定変更だけを現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1570",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "条件にかかわらず最終状態はオフ。"
+    },
+    {
+      "id": "nyamuru_voice_1571",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "後続確認の話は現在の別操作を要求しない。"
+    },
+    {
+      "id": "nyamuru_voice_1572",
+      "label": "inner_frame_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定だけ変更し形状・位置変更は要求しない。"
+    },
+    {
+      "id": "nyamuru_voice_1573",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "コマスナップのオン指定。"
+    },
+    {
+      "id": "nyamuru_voice_1574",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "最終状態オフを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1575",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "調整予定は設定操作と別の現在依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1576",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "無効化の現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1577",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "使用するという肯定最終状態。"
+    },
+    {
+      "id": "nyamuru_voice_1578",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "手動作業を理由に設定オフ。"
+    },
+    {
+      "id": "nyamuru_voice_1579",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "具体的設定値の反映。"
+    },
+    {
+      "id": "nyamuru_voice_1580",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴の戻しではなく設定オフの明示。"
+    },
+    {
+      "id": "nyamuru_voice_1581",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "未来の使用目的に対し現在有効化を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1582",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "オンを撤回しオフを肯定。"
+    },
+    {
+      "id": "nyamuru_voice_1583",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示された最終設定オン。"
+    },
+    {
+      "id": "nyamuru_voice_1584",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "使わないという決定を設定に反映。"
+    },
+    {
+      "id": "nyamuru_voice_1585",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "希望値オンであり状態反転ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1586",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "オフを現在設定する依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1587",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在の設定操作を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1588",
+      "label": "panel_gap_snap_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "一つの設定だけをオフに変更。"
+    },
+    {
+      "id": "nyamuru_voice_1589",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "画面の選択を解決する対象参照。"
+    },
+    {
+      "id": "nyamuru_voice_1590",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択中人物の生成依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1591",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在の一ページ全体が対象。"
+    },
+    {
+      "id": "nyamuru_voice_1592",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択中コマ全体の生成。"
+    },
+    {
+      "id": "nyamuru_voice_1593",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "人名と敬称を保持し現在コマで解決。"
+    },
+    {
+      "id": "nyamuru_voice_1594",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "コマ番号は利用者向け表示番号。"
+    },
+    {
+      "id": "nyamuru_voice_1595",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択対象を勝手に背景へ置き換えない。"
+    },
+    {
+      "id": "nyamuru_voice_1596",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定変更を否定し生成だけを現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1597",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示コマ内の名前指定人物の生成。"
+    },
+    {
+      "id": "nyamuru_voice_1598",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択人物の生成開始を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1599",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "設定確定の感想と現在ページ生成。"
+    },
+    {
+      "id": "nyamuru_voice_1600",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "特定コマ全体を生成する疑問形依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1601",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "新しい画像生成であり履歴Redoではない。"
+    },
+    {
+      "id": "nyamuru_voice_1602",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "画面の選択を指す通常参照。"
+    },
+    {
+      "id": "nyamuru_voice_1603",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "番号指定コマ内の選択人物を対象にする。"
+    },
+    {
+      "id": "nyamuru_voice_1604",
+      "label": "generate_request",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在コマの明示人物で、全登場箇所へ広げない。"
+    },
+    {
+      "id": "nyamuru_voice_1605",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "登録済みモデルから場面に合う候補を提示。"
+    },
+    {
+      "id": "nyamuru_voice_1606",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "場面を指定した登録済み候補の選択提示。"
+    },
+    {
+      "id": "nyamuru_voice_1607",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "実在する登録モデルから候補数を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1608",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "適合判断があっても専用候補ラベル。"
+    },
+    {
+      "id": "nyamuru_voice_1609",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "登録済みの範囲と候補用途を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1610",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "専用ルートでの推薦提示で配置はしない。"
+    },
+    {
+      "id": "nyamuru_voice_1611",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "番号指定コマの背景候補提示。"
+    },
+    {
+      "id": "nyamuru_voice_1612",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "登録済みモデルとliteral場面を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1613",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "決定のための候補提示で自動適用しない。"
+    },
+    {
+      "id": "nyamuru_voice_1614",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "候補を並べるとは候補提示でありキャンバス配置ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1615",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "対象コマと候補数を同一候補提示に指定。"
+    },
+    {
+      "id": "nyamuru_voice_1616",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "配置は不実行、現在依頼は候補選択だけ。"
+    },
+    {
+      "id": "nyamuru_voice_1617",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "現在の候補提案依頼と登録済み範囲が明示。"
+    },
+    {
+      "id": "nyamuru_voice_1618",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "一候補の選定提示を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1619",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "場面の説明を伴う登録モデル候補提示。"
+    },
+    {
+      "id": "nyamuru_voice_1620",
+      "label": "background_3d_candidates",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "方法質問ではなく現在の候補提示依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1621",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ラスターペンへの切替だけを要求。"
+    },
+    {
+      "id": "nyamuru_voice_1622",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "疑問形のツール選択依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1623",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "今後の描画予定は現在の線描画依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1624",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "作業準備としてベクターペンを選ぶ。"
+    },
+    {
+      "id": "nyamuru_voice_1625",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "描画ツール名を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1626",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "履歴操作ではなくツール選択変更。"
+    },
+    {
+      "id": "nyamuru_voice_1627",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "否定されたベクター選択を数えない。"
+    },
+    {
+      "id": "nyamuru_voice_1628",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "決定したツール値を設定する。"
+    },
+    {
+      "id": "nyamuru_voice_1629",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "既存ラスターペンへの切替を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1630",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "同一発話内の明示ツールへの変更。"
+    },
+    {
+      "id": "nyamuru_voice_1631",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "ペン選択によりラスターペンを使う。"
+    },
+    {
+      "id": "nyamuru_voice_1632",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "描画実行や既存絵変換を含まない。"
+    },
+    {
+      "id": "nyamuru_voice_1633",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "描画は後で、現在はラスターペン切替。"
+    },
+    {
+      "id": "nyamuru_voice_1634",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "指示内でツールを明示した参照。"
+    },
+    {
+      "id": "nyamuru_voice_1635",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "明示ツールで作業継続するための切替。"
+    },
+    {
+      "id": "nyamuru_voice_1636",
+      "label": "paint_tool_set",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "指定した描画ツールへの設定変更。"
+    },
+    {
+      "id": "nyamuru_voice_1637",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数文字枠の上端揃え。左端揃え例との対照。"
+    },
+    {
+      "id": "nyamuru_voice_1638",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "吹き出し輪郭でなく二つの文字枠の上端。"
+    },
+    {
+      "id": "nyamuru_voice_1639",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "契約上の文字の頭揃えを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1640",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数文字枠の上揃えを指定。"
+    },
+    {
+      "id": "nyamuru_voice_1641",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "別々の吹き出しに属する文字枠の上端。"
+    },
+    {
+      "id": "nyamuru_voice_1642",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数の文字枠を対象とする上辺整列。"
+    },
+    {
+      "id": "nyamuru_voice_1643",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "判断の自由配置ではなく明示した上端整列。"
+    },
+    {
+      "id": "nyamuru_voice_1644",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "完了した選択の報告と上端整列一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1645",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "輪郭保持を伴う文字枠の上端揃え。"
+    },
+    {
+      "id": "nyamuru_voice_1646",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "選択完了の報告と文字枠頭揃え。"
+    },
+    {
+      "id": "nyamuru_voice_1647",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "指定コマの複数選択文字枠を上端整列。"
+    },
+    {
+      "id": "nyamuru_voice_1648",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "文字枠の上端揃えだけを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1649",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "水平位置保持は既定の上端揃えと整合。"
+    },
+    {
+      "id": "nyamuru_voice_1650",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "複数吹き出しの文字枠の上揃え。"
+    },
+    {
+      "id": "nyamuru_voice_1651",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "寸法保持を伴う上端揃え。"
+    },
+    {
+      "id": "nyamuru_voice_1652",
+      "label": "text_frames_align",
+      "reviewed": true,
+      "decision": "accept_pending_user_review",
+      "checks": [
+        "current_affirmed_intent",
+        "single_vs_multiple_operations",
+        "contract_scope",
+        "slot_text_consistency",
+        "natural_japanese",
+        "no_invented_asr_noise"
+      ],
+      "rationale": "延期ではなく現在の上端揃え実行依頼。"
+    }
+  ],
+  "groups": {
+    "v03_test_save_progress": [
+      "nyamuru_voice_1365"
+    ],
+    "v03_test_save_break": [
+      "nyamuru_voice_1366",
+      "nyamuru_voice_1533"
+    ],
+    "v03_test_save_accept": [
+      "nyamuru_voice_1367"
+    ],
+    "v03_test_save_reminder": [
+      "nyamuru_voice_1368"
+    ],
+    "v03_test_save_unfinished": [
+      "nyamuru_voice_1369"
+    ],
+    "v03_test_save_only": [
+      "nyamuru_voice_1370"
+    ],
+    "v03_test_save_before_close": [
+      "nyamuru_voice_1371"
+    ],
+    "v03_test_save_revision": [
+      "nyamuru_voice_1372"
+    ],
+    "v03_test_save_open": [
+      "nyamuru_voice_1373"
+    ],
+    "v03_test_save_transition": [
+      "nyamuru_voice_1374"
+    ],
+    "v03_test_save_retraction": [
+      "nyamuru_voice_1375"
+    ],
+    "v03_test_save_finish": [
+      "nyamuru_voice_1376"
+    ],
+    "v03_test_save_now": [
+      "nyamuru_voice_1377"
+    ],
+    "v03_test_save_milestone": [
+      "nyamuru_voice_1378"
+    ],
+    "v03_test_save_repeat": [
+      "nyamuru_voice_1379"
+    ],
+    "v03_test_save_completed_text": [
+      "nyamuru_voice_1380"
+    ],
+    "v03_test_history_bubble_move": [
+      "nyamuru_voice_1381",
+      "nyamuru_voice_1389",
+      "nyamuru_voice_1399"
+    ],
+    "v03_test_history_stroke": [
+      "nyamuru_voice_1382",
+      "nyamuru_voice_1397"
+    ],
+    "v03_test_history_request": [
+      "nyamuru_voice_1383",
+      "nyamuru_voice_1388",
+      "nyamuru_voice_1392",
+      "nyamuru_voice_1393",
+      "nyamuru_voice_1398",
+      "nyamuru_voice_1402",
+      "nyamuru_voice_1405",
+      "nyamuru_voice_1411"
+    ],
+    "v03_test_history_reject_edit": [
+      "nyamuru_voice_1384",
+      "nyamuru_voice_1390"
+    ],
+    "v03_test_history_text_change": [
+      "nyamuru_voice_1385",
+      "nyamuru_voice_1404"
+    ],
+    "v03_test_history_multi": [
+      "nyamuru_voice_1386",
+      "nyamuru_voice_1391",
+      "nyamuru_voice_1400",
+      "nyamuru_voice_1407"
+    ],
+    "v03_test_undo_resize": [
+      "nyamuru_voice_1387"
+    ],
+    "v03_test_undo_correction": [
+      "nyamuru_voice_1394"
+    ],
+    "v03_test_history_bubble_join": [
+      "nyamuru_voice_1395",
+      "nyamuru_voice_1410"
+    ],
+    "v03_test_undo_prefer_before": [
+      "nyamuru_voice_1396"
+    ],
+    "v03_test_redo_accept_change": [
+      "nyamuru_voice_1401",
+      "nyamuru_voice_1406"
+    ],
+    "v03_test_redo_retract_undo": [
+      "nyamuru_voice_1403",
+      "nyamuru_voice_1409",
+      "nyamuru_voice_1412"
+    ],
+    "v03_test_redo_layout": [
+      "nyamuru_voice_1408"
+    ],
+    "v03_test_page_next": [
+      "nyamuru_voice_1413",
+      "nyamuru_voice_1421",
+      "nyamuru_voice_1427"
+    ],
+    "v03_test_page_previous": [
+      "nyamuru_voice_1414",
+      "nyamuru_voice_1425"
+    ],
+    "v03_test_page_explicit_number": [
+      "nyamuru_voice_1415",
+      "nyamuru_voice_1420",
+      "nyamuru_voice_1423",
+      "nyamuru_voice_1426"
+    ],
+    "v03_test_page_first": [
+      "nyamuru_voice_1416",
+      "nyamuru_voice_1422"
+    ],
+    "v03_test_page_last": [
+      "nyamuru_voice_1417",
+      "nyamuru_voice_1424"
+    ],
+    "v03_test_page_forward_count": [
+      "nyamuru_voice_1418"
+    ],
+    "v03_test_page_back_count": [
+      "nyamuru_voice_1419"
+    ],
+    "v03_test_page_number_correction": [
+      "nyamuru_voice_1428"
+    ],
+    "v03_test_view_fit": [
+      "nyamuru_voice_1429"
+    ],
+    "v03_test_view_zoom_in": [
+      "nyamuru_voice_1430"
+    ],
+    "v03_test_view_zoom_out": [
+      "nyamuru_voice_1431"
+    ],
+    "v03_test_view_actual": [
+      "nyamuru_voice_1432"
+    ],
+    "v03_test_view_spread_on": [
+      "nyamuru_voice_1433"
+    ],
+    "v03_test_view_spread_off": [
+      "nyamuru_voice_1434"
+    ],
+    "v03_test_view_placement_guide": [
+      "nyamuru_voice_1435",
+      "nyamuru_voice_1444"
+    ],
+    "v03_test_view_edit_guide": [
+      "nyamuru_voice_1436"
+    ],
+    "v03_test_view_artwork_guide": [
+      "nyamuru_voice_1437"
+    ],
+    "v03_test_view_storyboard_tab": [
+      "nyamuru_voice_1438"
+    ],
+    "v03_test_view_meta_tab": [
+      "nyamuru_voice_1439"
+    ],
+    "v03_test_view_setting_tab": [
+      "nyamuru_voice_1440"
+    ],
+    "v03_test_view_characters_tab": [
+      "nyamuru_voice_1441"
+    ],
+    "v03_test_view_props_tab": [
+      "nyamuru_voice_1442"
+    ],
+    "v03_test_view_environment_tab": [
+      "nyamuru_voice_1443"
+    ],
+    "v03_test_mode_explicit_selection": [
+      "nyamuru_voice_1445",
+      "nyamuru_voice_1447",
+      "nyamuru_voice_1451",
+      "nyamuru_voice_1453"
+    ],
+    "v03_test_mode_work_purpose": [
+      "nyamuru_voice_1446",
+      "nyamuru_voice_1450",
+      "nyamuru_voice_1460"
+    ],
+    "v03_test_mode_preparation": [
+      "nyamuru_voice_1448",
+      "nyamuru_voice_1457",
+      "nyamuru_voice_1458"
+    ],
+    "v03_test_mode_restore": [
+      "nyamuru_voice_1449",
+      "nyamuru_voice_1456"
+    ],
+    "v03_test_mode_defer_generate": [
+      "nyamuru_voice_1452"
+    ],
+    "v03_test_mode_decision": [
+      "nyamuru_voice_1454",
+      "nyamuru_voice_1459"
+    ],
+    "v03_test_mode_correction": [
+      "nyamuru_voice_1455"
+    ],
+    "v03_test_bubble_tail_state": [
+      "nyamuru_voice_1461",
+      "nyamuru_voice_1462"
+    ],
+    "v03_test_bubble_text_explicit": [
+      "nyamuru_voice_1463",
+      "nyamuru_voice_1472"
+    ],
+    "v03_test_bubble_quoted_command": [
+      "nyamuru_voice_1464"
+    ],
+    "v03_test_bubble_speaker_value": [
+      "nyamuru_voice_1465",
+      "nyamuru_voice_1473",
+      "nyamuru_voice_1490"
+    ],
+    "v03_test_bubble_move_distance": [
+      "nyamuru_voice_1466",
+      "nyamuru_voice_1471",
+      "nyamuru_voice_1476",
+      "nyamuru_voice_1484"
+    ],
+    "v03_test_bubble_dimensions": [
+      "nyamuru_voice_1467",
+      "nyamuru_voice_1470",
+      "nyamuru_voice_1474",
+      "nyamuru_voice_1478"
+    ],
+    "v03_test_bubble_clip_state": [
+      "nyamuru_voice_1468",
+      "nyamuru_voice_1469"
+    ],
+    "v03_test_bubble_text_retraction": [
+      "nyamuru_voice_1475"
+    ],
+    "v03_test_ambiguous_restore": [
+      "nyamuru_voice_1477"
+    ],
+    "v03_test_ambiguous_guide": [
+      "nyamuru_voice_1479"
+    ],
+    "v03_test_ambiguous_pen": [
+      "nyamuru_voice_1480"
+    ],
+    "v03_test_ambiguous_panel_sync": [
+      "nyamuru_voice_1481"
+    ],
+    "v03_test_ambiguous_inner_snap": [
+      "nyamuru_voice_1482"
+    ],
+    "v03_test_ambiguous_gap_snap": [
+      "nyamuru_voice_1483"
+    ],
+    "v03_test_ambiguous_repeat": [
+      "nyamuru_voice_1485"
+    ],
+    "v03_test_ambiguous_partial_generation": [
+      "nyamuru_voice_1486"
+    ],
+    "v03_test_ambiguous_view_restore": [
+      "nyamuru_voice_1487"
+    ],
+    "v03_test_ambiguous_text_alignment": [
+      "nyamuru_voice_1488"
+    ],
+    "v03_test_ambiguous_deictic_move": [
+      "nyamuru_voice_1489"
+    ],
+    "v03_test_ambiguous_page": [
+      "nyamuru_voice_1491"
+    ],
+    "v03_test_ambiguous_alternative": [
+      "nyamuru_voice_1492"
+    ],
+    "v03_test_reason_bubble_emotion": [
+      "nyamuru_voice_1493"
+    ],
+    "v03_test_reason_read_order": [
+      "nyamuru_voice_1494"
+    ],
+    "v03_test_reason_speaker": [
+      "nyamuru_voice_1495"
+    ],
+    "v03_test_reason_page_flow": [
+      "nyamuru_voice_1496"
+    ],
+    "v03_test_reason_surprise": [
+      "nyamuru_voice_1497"
+    ],
+    "v03_test_reason_dialogue": [
+      "nyamuru_voice_1498"
+    ],
+    "v03_test_reason_bubble_material": [
+      "nyamuru_voice_1499"
+    ],
+    "v03_test_reason_text_placement": [
+      "nyamuru_voice_1500"
+    ],
+    "v03_test_reason_shorten": [
+      "nyamuru_voice_1501"
+    ],
+    "v03_test_reason_transition": [
+      "nyamuru_voice_1502"
+    ],
+    "v03_test_reason_silence": [
+      "nyamuru_voice_1503"
+    ],
+    "v03_test_reason_consistency": [
+      "nyamuru_voice_1504"
+    ],
+    "v03_test_reason_character_dialogue": [
+      "nyamuru_voice_1505"
+    ],
+    "v03_test_reason_monologue": [
+      "nyamuru_voice_1506"
+    ],
+    "v03_test_reason_page_ending": [
+      "nyamuru_voice_1507"
+    ],
+    "v03_test_reason_spacing": [
+      "nyamuru_voice_1508"
+    ],
+    "v03_test_compound_save_page": [
+      "nyamuru_voice_1509"
+    ],
+    "v03_test_compound_two_settings": [
+      "nyamuru_voice_1510"
+    ],
+    "v03_test_compound_bubble_fields": [
+      "nyamuru_voice_1511"
+    ],
+    "v03_test_compound_view": [
+      "nyamuru_voice_1512"
+    ],
+    "v03_test_compound_mode_generate": [
+      "nyamuru_voice_1513"
+    ],
+    "v03_test_compound_pen_save": [
+      "nyamuru_voice_1514"
+    ],
+    "v03_test_compound_undo_page": [
+      "nyamuru_voice_1515"
+    ],
+    "v03_test_compound_candidates_tab": [
+      "nyamuru_voice_1516"
+    ],
+    "v03_test_compound_align_guide": [
+      "nyamuru_voice_1517"
+    ],
+    "v03_test_compound_snap_pen": [
+      "nyamuru_voice_1518"
+    ],
+    "v03_test_compound_redo_save": [
+      "nyamuru_voice_1519"
+    ],
+    "v03_test_compound_generate_guide": [
+      "nyamuru_voice_1520"
+    ],
+    "v03_test_compound_page_spread": [
+      "nyamuru_voice_1521"
+    ],
+    "v03_test_compound_move_speaker": [
+      "nyamuru_voice_1522"
+    ],
+    "v03_test_compound_two_snaps": [
+      "nyamuru_voice_1523"
+    ],
+    "v03_test_compound_tab_save": [
+      "nyamuru_voice_1524"
+    ],
+    "v03_test_out_save_as": [
+      "nyamuru_voice_1525"
+    ],
+    "v03_test_out_delete_page": [
+      "nyamuru_voice_1526"
+    ],
+    "v03_test_out_stop_generation": [
+      "nyamuru_voice_1527"
+    ],
+    "v03_test_out_all_generation": [
+      "nyamuru_voice_1528"
+    ],
+    "v03_test_out_add_bubble": [
+      "nyamuru_voice_1529"
+    ],
+    "v03_test_out_external_3d": [
+      "nyamuru_voice_1530"
+    ],
+    "v03_test_out_vectorize": [
+      "nyamuru_voice_1531"
+    ],
+    "v03_test_align_top_left_contrast": [
+      "nyamuru_voice_1532",
+      "nyamuru_voice_1637",
+      "nyamuru_voice_1639",
+      "nyamuru_voice_1640",
+      "nyamuru_voice_1642"
+    ],
+    "v03_test_not_explain_history": [
+      "nyamuru_voice_1534"
+    ],
+    "v03_test_not_generation_capability": [
+      "nyamuru_voice_1535"
+    ],
+    "v03_test_setting_correction": [
+      "nyamuru_voice_1536",
+      "nyamuru_voice_1552",
+      "nyamuru_voice_1567",
+      "nyamuru_voice_1582"
+    ],
+    "v03_test_setting_inner_report": [
+      "nyamuru_voice_1537"
+    ],
+    "v03_test_not_bubble_comment": [
+      "nyamuru_voice_1538"
+    ],
+    "v03_test_align_defer": [
+      "nyamuru_voice_1539",
+      "nyamuru_voice_1652"
+    ],
+    "v03_test_candidates_how": [
+      "nyamuru_voice_1540"
+    ],
+    "v03_test_setting_direct_state": [
+      "nyamuru_voice_1541",
+      "nyamuru_voice_1557",
+      "nyamuru_voice_1566",
+      "nyamuru_voice_1573",
+      "nyamuru_voice_1574"
+    ],
+    "v03_test_setting_use_choice": [
+      "nyamuru_voice_1542",
+      "nyamuru_voice_1547",
+      "nyamuru_voice_1548",
+      "nyamuru_voice_1558",
+      "nyamuru_voice_1577",
+      "nyamuru_voice_1584"
+    ],
+    "v03_test_setting_work_preparation": [
+      "nyamuru_voice_1543",
+      "nyamuru_voice_1554",
+      "nyamuru_voice_1561",
+      "nyamuru_voice_1571",
+      "nyamuru_voice_1575",
+      "nyamuru_voice_1581",
+      "nyamuru_voice_1586"
+    ],
+    "v03_test_setting_disable_now": [
+      "nyamuru_voice_1544",
+      "nyamuru_voice_1562",
+      "nyamuru_voice_1564",
+      "nyamuru_voice_1568",
+      "nyamuru_voice_1576",
+      "nyamuru_voice_1578"
+    ],
+    "v03_test_setting_execute": [
+      "nyamuru_voice_1545",
+      "nyamuru_voice_1555",
+      "nyamuru_voice_1560",
+      "nyamuru_voice_1569",
+      "nyamuru_voice_1587"
+    ],
+    "v03_test_setting_sync_unlink": [
+      "nyamuru_voice_1546"
+    ],
+    "v03_test_setting_idempotent": [
+      "nyamuru_voice_1549",
+      "nyamuru_voice_1570",
+      "nyamuru_voice_1585"
+    ],
+    "v03_test_setting_sync_unneeded": [
+      "nyamuru_voice_1550"
+    ],
+    "v03_test_setting_restore": [
+      "nyamuru_voice_1551",
+      "nyamuru_voice_1565",
+      "nyamuru_voice_1580",
+      "nyamuru_voice_1583"
+    ],
+    "v03_test_setting_decision": [
+      "nyamuru_voice_1553",
+      "nyamuru_voice_1563",
+      "nyamuru_voice_1579"
+    ],
+    "v03_test_setting_only": [
+      "nyamuru_voice_1556",
+      "nyamuru_voice_1572",
+      "nyamuru_voice_1588"
+    ],
+    "v03_test_setting_inner_reason": [
+      "nyamuru_voice_1559"
+    ],
+    "v03_test_generate_selected_object": [
+      "nyamuru_voice_1589",
+      "nyamuru_voice_1595",
+      "nyamuru_voice_1602"
+    ],
+    "v03_test_generate_selected_person": [
+      "nyamuru_voice_1590",
+      "nyamuru_voice_1598"
+    ],
+    "v03_test_generate_whole_page": [
+      "nyamuru_voice_1591",
+      "nyamuru_voice_1599"
+    ],
+    "v03_test_generate_selected_panel": [
+      "nyamuru_voice_1592"
+    ],
+    "v03_test_generate_named_person": [
+      "nyamuru_voice_1593",
+      "nyamuru_voice_1604"
+    ],
+    "v03_test_generate_numbered_whole_panel": [
+      "nyamuru_voice_1594",
+      "nyamuru_voice_1600"
+    ],
+    "v03_test_generate_no_mode": [
+      "nyamuru_voice_1596"
+    ],
+    "v03_test_generate_named_locator": [
+      "nyamuru_voice_1597"
+    ],
+    "v03_test_generate_again": [
+      "nyamuru_voice_1601"
+    ],
+    "v03_test_generate_selected_locator": [
+      "nyamuru_voice_1603"
+    ],
+    "v03_test_candidates_scene_selection": [
+      "nyamuru_voice_1605",
+      "nyamuru_voice_1608",
+      "nyamuru_voice_1620"
+    ],
+    "v03_test_candidates_registered_category": [
+      "nyamuru_voice_1606",
+      "nyamuru_voice_1609",
+      "nyamuru_voice_1612",
+      "nyamuru_voice_1614",
+      "nyamuru_voice_1617",
+      "nyamuru_voice_1619"
+    ],
+    "v03_test_candidates_number": [
+      "nyamuru_voice_1607",
+      "nyamuru_voice_1610"
+    ],
+    "v03_test_candidates_panel_number": [
+      "nyamuru_voice_1611"
+    ],
+    "v03_test_candidates_only": [
+      "nyamuru_voice_1613"
+    ],
+    "v03_test_candidates_count_locator": [
+      "nyamuru_voice_1615"
+    ],
+    "v03_test_candidates_no_place": [
+      "nyamuru_voice_1616"
+    ],
+    "v03_test_candidates_one": [
+      "nyamuru_voice_1618"
+    ],
+    "v03_test_paint_direct_selection": [
+      "nyamuru_voice_1621",
+      "nyamuru_voice_1622",
+      "nyamuru_voice_1625",
+      "nyamuru_voice_1636"
+    ],
+    "v03_test_paint_work_context": [
+      "nyamuru_voice_1623",
+      "nyamuru_voice_1630",
+      "nyamuru_voice_1635"
+    ],
+    "v03_test_paint_prepare": [
+      "nyamuru_voice_1624",
+      "nyamuru_voice_1629"
+    ],
+    "v03_test_paint_vector_restore": [
+      "nyamuru_voice_1626"
+    ],
+    "v03_test_paint_raster_correction": [
+      "nyamuru_voice_1627"
+    ],
+    "v03_test_paint_decide": [
+      "nyamuru_voice_1628",
+      "nyamuru_voice_1634"
+    ],
+    "v03_test_paint_raster_ui": [
+      "nyamuru_voice_1631"
+    ],
+    "v03_test_paint_switch_only": [
+      "nyamuru_voice_1632",
+      "nyamuru_voice_1633"
+    ],
+    "v03_test_align_across_bubbles": [
+      "nyamuru_voice_1638",
+      "nyamuru_voice_1641",
+      "nyamuru_voice_1650"
+    ],
+    "v03_test_align_uneven": [
+      "nyamuru_voice_1643"
+    ],
+    "v03_test_align_selection_report": [
+      "nyamuru_voice_1644",
+      "nyamuru_voice_1646"
+    ],
+    "v03_test_align_preservation": [
+      "nyamuru_voice_1645",
+      "nyamuru_voice_1649",
+      "nyamuru_voice_1651"
+    ],
+    "v03_test_align_panel_locator": [
+      "nyamuru_voice_1647"
+    ],
+    "v03_test_align_until": [
+      "nyamuru_voice_1648"
+    ]
+  },
+  "distinct_group_count_per_label": {
+    "save": 16,
+    "undo": 10,
+    "redo": 9,
+    "page_navigate": 8,
+    "view_change": 15,
+    "artwork_mode_set": 7,
+    "bubble_set": 8,
+    "needs_clarification": 16,
+    "needs_reasoning": 16,
+    "compound_request": 16,
+    "out_of_scope_request": 8,
+    "not_command": 8,
+    "panel_sync_set": 12,
+    "inner_frame_snap_set": 11,
+    "panel_gap_snap_set": 10,
+    "generate_request": 10,
+    "background_3d_candidates": 8,
+    "paint_tool_set": 8,
+    "text_frames_align": 8
+  },
+  "validation": {
+    "expected_total": 288,
+    "exact_base_fields": true,
+    "unique_texts": true,
+    "unique_ids": true,
+    "contiguous_ids": true,
+    "label_counts": true,
+    "all_rows_self_reviewed": true,
+    "utf8_lf": true,
+    "no_model_inference_or_training": true,
+    "minimum_family_groups_per_label": 7,
+    "action_slots_checked_against_contract": true,
+    "all_288_semantic_reviews_completed": true,
+    "source_contract_sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "draft_sha256": "2641eb98e0c1e1c3d0f2022796121b635869d265079d08395b5d35438158507f",
+    "scoped_file_access_only": true,
+    "repository_untouched": true
+  },
+  "review_notes": [
+    "Every row was authored independently against the label contract.",
+    "Normal selected-UI references keep their action labels.",
+    "Undo/Redo are explicit completed-history operations.",
+    "Candidate requests explicitly constrain the source to registered 3D models.",
+    "Top alignment targets multiple text frames rather than paragraphs or bubble outlines.",
+    "No ASR corruption or prior-model-error targeting was used.",
+    "Final near-paraphrase grouping pass completed, including cross-label setting templates and explicit polarity contrasts."
+  ],
+  "label_ambiguities_remaining": [],
+  "grouping_review": {
+    "completed": true,
+    "cross_label_family_types": [
+      "Undo/Redo completed-history variants",
+      "three explicit panel-setting families including polarity",
+      "dimension/move/speaker explicit-versus-missing values",
+      "left/top text-frame alignment contrast",
+      "action-versus-status or deferred contrasts"
+    ],
+    "near_duplicate_overlap_with_existing_sets": "Not inspected by this contract-only author; parent reviews overlap independently."
+  }
+}

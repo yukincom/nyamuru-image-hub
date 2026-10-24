@@ -1,0 +1,3022 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-18T04:18:31.818549+00:00",
+  "method": "Independent Python standard-library computation only; no repository evaluation/verification imports, received scripts, model loading, inference, training, package installation, or network. Accuracy uses exact equality; per-class F1=2TP/(gold support+predicted count), undefined=0; macro F1 is mean over all 19 frozen labels.",
+  "artifact_root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18",
+  "frozen_input_root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4",
+  "single_dispatch_labels": [
+    "save",
+    "undo",
+    "redo",
+    "page_navigate",
+    "view_change",
+    "artwork_mode_set",
+    "bubble_set",
+    "panel_sync_set",
+    "inner_frame_snap_set",
+    "panel_gap_snap_set",
+    "generate_request",
+    "background_3d_candidates",
+    "paint_tool_set",
+    "text_frames_align"
+  ],
+  "selection_audit": {
+    "history_rows": 60,
+    "history_split_values": [
+      "dev"
+    ],
+    "trial_bests_recomputed_from_histories": [
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 8.0,
+        "step": 648,
+        "macro_f1": 0.8776412184306922,
+        "accuracy": 0.8676470588235294,
+        "loss": 2.5359249114990234,
+        "trial": "trial-1"
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 567,
+        "macro_f1": 0.8047619047619048,
+        "accuracy": 0.8088235294117647,
+        "loss": 3.0977792739868164,
+        "trial": "trial-2"
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 7.0,
+        "step": 567,
+        "macro_f1": 0.7853716115326023,
+        "accuracy": 0.7794117647058824,
+        "loss": 3.391145944595337,
+        "trial": "trial-3"
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 8.0,
+        "step": 648,
+        "macro_f1": 0.7999268275584065,
+        "accuracy": 0.7941176470588235,
+        "loss": 4.117234706878662,
+        "trial": "trial-4"
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 7.0,
+        "step": 567,
+        "macro_f1": 0.798852617970265,
+        "accuracy": 0.7941176470588235,
+        "loss": 2.353154420852661,
+        "trial": "trial-5"
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 567,
+        "macro_f1": 0.8660319212950792,
+        "accuracy": 0.8529411764705882,
+        "loss": 2.3962743282318115,
+        "trial": "trial-6"
+      }
+    ],
+    "learning_rate_means": [
+      {
+        "learning_rate": 2e-05,
+        "macro_f1": 0.8206218159778531,
+        "loss": 2.760075092315674,
+        "epoch": 7.333333333333333,
+        "trial_index": 0
+      },
+      {
+        "learning_rate": 5e-05,
+        "macro_f1": 0.8235735512051302,
+        "loss": 3.2037627696990967,
+        "epoch": 7.333333333333333,
+        "trial_index": 1
+      }
+    ],
+    "selected_learning_rate": 5e-05,
+    "primary_seed": 44,
+    "primary_trial": "trial-6",
+    "selection_matches_recorded": true,
+    "selected_dev_predictions_match_history_metrics": true,
+    "recorded_selection_frozen_at_utc": "2026-10-18T04:01:09.304600+00:00",
+    "limit": "History ranking and selected-seed dev metrics corroborate a dev-only selection rule. Saved records alone cannot independently prove actual execution chronology or absence of unrecorded test inspection."
+  },
+  "seeds": {
+    "42": {
+      "new_test": {
+        "n": 73,
+        "correct": 59,
+        "accuracy": 0.8082191780821918,
+        "macro_f1": 0.8143692564745196,
+        "per_label": {
+          "save": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "undo": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "redo": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "view_change": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 7,
+            "f1": 0.8333333333333334
+          },
+          "artwork_mode_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 4,
+            "f1": 0.8571428571428571
+          },
+          "bubble_set": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "needs_clarification": {
+            "true_positive": 1,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.2857142857142857
+          },
+          "needs_reasoning": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 8,
+            "f1": 0.8571428571428571
+          },
+          "compound_request": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.8
+          },
+          "out_of_scope_request": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.6666666666666666
+          },
+          "not_command": {
+            "true_positive": 2,
+            "support": 6,
+            "predicted_count": 2,
+            "f1": 0.5
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 3,
+            "f1": 0.8
+          },
+          "generate_request": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "paint_tool_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "text_frames_align": {
+            "true_positive": 2,
+            "support": 4,
+            "predicted_count": 2,
+            "f1": 0.6666666666666666
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 1,
+          "denominator": 49,
+          "ids": [
+            "nyamuru_voice_2779"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 0,
+          "denominator": 4,
+          "ids": []
+        }
+      },
+      "new_dev": {
+        "n": 68,
+        "correct": 55,
+        "accuracy": 0.8088235294117647,
+        "macro_f1": 0.8047619047619048,
+        "per_label": {
+          "save": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "undo": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 3,
+            "f1": 0.8
+          },
+          "redo": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "page_navigate": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "view_change": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 0.8
+          },
+          "artwork_mode_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 0.75
+          },
+          "needs_clarification": {
+            "true_positive": 2,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.4444444444444444
+          },
+          "needs_reasoning": {
+            "true_positive": 7,
+            "support": 8,
+            "predicted_count": 7,
+            "f1": 0.9333333333333333
+          },
+          "compound_request": {
+            "true_positive": 7,
+            "support": 7,
+            "predicted_count": 8,
+            "f1": 0.9333333333333333
+          },
+          "out_of_scope_request": {
+            "true_positive": 2,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 0.6666666666666666
+          },
+          "not_command": {
+            "true_positive": 2,
+            "support": 5,
+            "predicted_count": 3,
+            "f1": 0.5
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 5,
+            "f1": 0.75
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 3,
+            "f1": 0.8
+          },
+          "generate_request": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "background_3d_candidates": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 1,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 0.5
+          },
+          "text_frames_align": {
+            "true_positive": 1,
+            "support": 2,
+            "predicted_count": 1,
+            "f1": 0.6666666666666666
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 1,
+          "denominator": 40,
+          "ids": [
+            "nyamuru_voice_3118"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 0,
+          "denominator": 7,
+          "ids": []
+        }
+      },
+      "v03_saved_test": {
+        "n": 132,
+        "correct": 117,
+        "accuracy": 0.8863636363636364,
+        "macro_f1": 0.8819201512553313,
+        "per_label": {
+          "save": {
+            "true_positive": 4,
+            "support": 6,
+            "predicted_count": 4,
+            "f1": 0.8
+          },
+          "undo": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.8888888888888888
+          },
+          "redo": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 6,
+            "f1": 0.8333333333333334
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "view_change": {
+            "true_positive": 2,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.5714285714285714
+          },
+          "artwork_mode_set": {
+            "true_positive": 9,
+            "support": 10,
+            "predicted_count": 9,
+            "f1": 0.9473684210526315
+          },
+          "bubble_set": {
+            "true_positive": 11,
+            "support": 12,
+            "predicted_count": 12,
+            "f1": 0.9166666666666666
+          },
+          "needs_clarification": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 8,
+            "f1": 0.7142857142857143
+          },
+          "needs_reasoning": {
+            "true_positive": 12,
+            "support": 13,
+            "predicted_count": 12,
+            "f1": 0.96
+          },
+          "compound_request": {
+            "true_positive": 9,
+            "support": 9,
+            "predicted_count": 16,
+            "f1": 0.72
+          },
+          "out_of_scope_request": {
+            "true_positive": 9,
+            "support": 9,
+            "predicted_count": 10,
+            "f1": 0.9473684210526315
+          },
+          "not_command": {
+            "true_positive": 14,
+            "support": 16,
+            "predicted_count": 14,
+            "f1": 0.9333333333333333
+          },
+          "panel_sync_set": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.8888888888888888
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.8888888888888888
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "generate_request": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 7,
+          "denominator": 79,
+          "ids": [
+            "nyamuru_voice_1371",
+            "nyamuru_voice_1407",
+            "nyamuru_voice_1448",
+            "nyamuru_voice_1469",
+            "nyamuru_voice_1549",
+            "nyamuru_voice_1570",
+            "nyamuru_voice_1585"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 0,
+          "denominator": 9,
+          "ids": []
+        }
+      },
+      "v04_on_same_v03_test": {
+        "n": 132,
+        "correct": 118,
+        "accuracy": 0.8939393939393939,
+        "macro_f1": 0.8996061033457156,
+        "per_label": {
+          "save": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 6,
+            "f1": 1.0
+          },
+          "undo": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "redo": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 5,
+            "f1": 0.9090909090909091
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "view_change": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "artwork_mode_set": {
+            "true_positive": 10,
+            "support": 10,
+            "predicted_count": 11,
+            "f1": 0.9523809523809523
+          },
+          "bubble_set": {
+            "true_positive": 10,
+            "support": 12,
+            "predicted_count": 10,
+            "f1": 0.9090909090909091
+          },
+          "needs_clarification": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 9,
+            "f1": 0.8
+          },
+          "needs_reasoning": {
+            "true_positive": 11,
+            "support": 13,
+            "predicted_count": 13,
+            "f1": 0.8461538461538461
+          },
+          "compound_request": {
+            "true_positive": 9,
+            "support": 9,
+            "predicted_count": 12,
+            "f1": 0.8571428571428571
+          },
+          "out_of_scope_request": {
+            "true_positive": 8,
+            "support": 9,
+            "predicted_count": 10,
+            "f1": 0.8421052631578947
+          },
+          "not_command": {
+            "true_positive": 12,
+            "support": 16,
+            "predicted_count": 12,
+            "f1": 0.8571428571428571
+          },
+          "panel_sync_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.9090909090909091
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 3,
+            "support": 5,
+            "predicted_count": 3,
+            "f1": 0.75
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "text_frames_align": {
+            "true_positive": 2,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.5714285714285714
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 3,
+          "denominator": 79,
+          "ids": [
+            "nyamuru_voice_1407",
+            "nyamuru_voice_1469",
+            "nyamuru_voice_1569"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 0,
+          "denominator": 9,
+          "ids": []
+        }
+      },
+      "same_old_test_pairs": 132,
+      "old_test_status_counts": {
+        "both_correct": 107,
+        "repaired": 11,
+        "regressed": 10,
+        "both_wrong": 4
+      },
+      "old_test_changed_predictions": [
+        {
+          "id": "nyamuru_massive_raw_16010",
+          "text": "受信ボックスに新着メッセージがあるかどうか",
+          "gold": "not_command",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "not_command",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_massive_raw_16178",
+          "text": "今日 amazon から何かメールは",
+          "gold": "not_command",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_massive_raw_16166",
+          "text": "今後三週間はプロジェクトで忙しくなると文香さんに返信してくれますか",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "needs_reasoning",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1370",
+          "text": "保存だけ先に済ませてもらえるかな。",
+          "gold": "save",
+          "v03_predicted": "needs_clarification",
+          "v04_predicted": "save",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1371",
+          "text": "この原稿、閉じる前にまず保存をお願い。",
+          "gold": "save",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "save",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1390",
+          "text": "今の変更を残すのはやめよう。取り消しを一回お願い。",
+          "gold": "undo",
+          "v03_predicted": "redo",
+          "v04_predicted": "undo",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1432",
+          "text": "拡大表示はここまででいいよ。等倍に戻して。",
+          "gold": "view_change",
+          "v03_predicted": "needs_clarification",
+          "v04_predicted": "view_change",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1442",
+          "text": "小道具のタブ、そこへ行って。",
+          "gold": "view_change",
+          "v03_predicted": "needs_clarification",
+          "v04_predicted": "view_change",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1448",
+          "text": "まず下書きモードに切り替えておこう。",
+          "gold": "artwork_mode_set",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "artwork_mode_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1484",
+          "text": "この吹き出しを少し右のほうへ寄せて。",
+          "gold": "needs_clarification",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1505",
+          "text": "登場人物の資料を踏まえて、この言い争いのセリフを練ってほしい。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "artwork_mode_set",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1536",
+          "text": "コマシンクロをオンにするのは、今はやめておいて。",
+          "gold": "not_command",
+          "v03_predicted": "not_command",
+          "v04_predicted": "panel_sync_set",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1537",
+          "text": "内枠スナップはさっき自分でオフにしたよ。",
+          "gold": "not_command",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1549",
+          "text": "コマシンクロが切れていたらオンに、すでにオンならそのままにして。",
+          "gold": "panel_sync_set",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "panel_sync_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1565",
+          "text": "さっき解除した内枠スナップを、もう一度有効にしよう。",
+          "gold": "inner_frame_snap_set",
+          "v03_predicted": "inner_frame_snap_set",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1569",
+          "text": "内枠スナップを入れるところまでお願い。",
+          "gold": "inner_frame_snap_set",
+          "v03_predicted": "inner_frame_snap_set",
+          "v04_predicted": "compound_request",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1570",
+          "text": "内枠スナップがオンなら切って、オフなら維持してね。",
+          "gold": "inner_frame_snap_set",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "inner_frame_snap_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1585",
+          "text": "コマスナップがもう有効ならそのまま、無効なら有効にして。",
+          "gold": "panel_gap_snap_set",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "panel_gap_snap_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1641",
+          "text": "別々の吹き出しの書き出し位置を合わせたい。選んだ文字枠の上端を揃えて。",
+          "gold": "text_frames_align",
+          "v03_predicted": "text_frames_align",
+          "v04_predicted": "out_of_scope_request",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1651",
+          "text": "選択中の文字枠をまとめて上端で揃えよう。大きさは今のままでお願い。",
+          "gold": "text_frames_align",
+          "v03_predicted": "text_frames_align",
+          "v04_predicted": "out_of_scope_request",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1674",
+          "text": "セリフを直すんじゃなくて、誰の発言にするかの修正ね。選択中の吹き出しは、美咲さんの発言として設定して。",
+          "gold": "bubble_set",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "needs_reasoning",
+          "status": "regressed"
+        }
+      ],
+      "new_test_errors": [
+        {
+          "id": "nyamuru_voice_2779",
+          "text": "選択中の吹き出しをコマで切り取らない設定にして。念押しだけど、切取りはオフ。",
+          "gold": "bubble_set",
+          "predicted": "compound_request",
+          "confidence": 0.8345096707344055
+        },
+        {
+          "id": "nyamuru_voice_2823",
+          "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+          "gold": "out_of_scope_request",
+          "predicted": "page_navigate",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_2836",
+          "text": "次の休憩前に作品を保存するつもり。",
+          "gold": "not_command",
+          "predicted": "save",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_2840",
+          "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+          "gold": "not_command",
+          "predicted": "needs_reasoning",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_2899",
+          "text": "背景候補を三つお願い。繰り返すけど、候補は三つで。",
+          "gold": "background_3d_candidates",
+          "predicted": "needs_clarification",
+          "confidence": 0.9999969005584717
+        },
+        {
+          "id": "nyamuru_voice_3204",
+          "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+          "gold": "undo",
+          "predicted": "out_of_scope_request",
+          "confidence": 0.8966978788375854
+        },
+        {
+          "id": "nyamuru_voice_3228",
+          "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+          "gold": "needs_clarification",
+          "predicted": "needs_reasoning",
+          "confidence": 0.5885950326919556
+        },
+        {
+          "id": "nyamuru_voice_3245",
+          "text": "内枠スナップ、オフにしたらコマが動くわけじゃないんだよね？　動作の説明だけ聞きたい。",
+          "gold": "not_command",
+          "predicted": "view_change",
+          "confidence": 0.5235405564308167
+        },
+        {
+          "id": "nyamuru_voice_3247",
+          "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+          "gold": "not_command",
+          "predicted": "needs_clarification",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_3255",
+          "text": "コマスナップは触らなくていいよ。オフにしてほしいのは内枠スナップのほう。",
+          "gold": "inner_frame_snap_set",
+          "predicted": "panel_gap_snap_set",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_3273",
+          "text": "文字枠を二つ選んであるよ。揃える基準は上側、下端や中央ではなく上端でお願い。",
+          "gold": "text_frames_align",
+          "predicted": "out_of_scope_request",
+          "confidence": 0.9999252557754517
+        },
+        {
+          "id": "nyamuru_voice_3274",
+          "text": "文字の内容を直す依頼は取り消すね。選択中の複数の文字枠について、書き出し位置を上端でそろえるほうを実行して。",
+          "gold": "text_frames_align",
+          "predicted": "artwork_mode_set",
+          "confidence": 0.9726552963256836
+        },
+        {
+          "id": "nyamuru_voice_3304",
+          "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+          "gold": "needs_clarification",
+          "predicted": "compound_request",
+          "confidence": 0.9999747276306152
+        },
+        {
+          "id": "nyamuru_voice_3305",
+          "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+          "gold": "needs_clarification",
+          "predicted": "view_change",
+          "confidence": 1.0
+        }
+      ]
+    },
+    "43": {
+      "new_test": {
+        "n": 73,
+        "correct": 60,
+        "accuracy": 0.821917808219178,
+        "macro_f1": 0.8254873781189571,
+        "per_label": {
+          "save": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "undo": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "redo": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.8
+          },
+          "view_change": {
+            "true_positive": 2,
+            "support": 5,
+            "predicted_count": 3,
+            "f1": 0.5
+          },
+          "artwork_mode_set": {
+            "true_positive": 2,
+            "support": 3,
+            "predicted_count": 2,
+            "f1": 0.8
+          },
+          "bubble_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 7,
+            "f1": 0.7272727272727273
+          },
+          "needs_clarification": {
+            "true_positive": 1,
+            "support": 4,
+            "predicted_count": 2,
+            "f1": 0.3333333333333333
+          },
+          "needs_reasoning": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 7,
+            "f1": 0.9230769230769231
+          },
+          "compound_request": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 7,
+            "f1": 0.5454545454545454
+          },
+          "out_of_scope_request": {
+            "true_positive": 1,
+            "support": 4,
+            "predicted_count": 1,
+            "f1": 0.4
+          },
+          "not_command": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 5,
+            "f1": 0.9090909090909091
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 3,
+          "denominator": 49,
+          "ids": [
+            "nyamuru_voice_2755",
+            "nyamuru_voice_2770",
+            "nyamuru_voice_3204"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 1,
+          "denominator": 4,
+          "ids": [
+            "nyamuru_voice_2815"
+          ]
+        }
+      },
+      "new_dev": {
+        "n": 68,
+        "correct": 54,
+        "accuracy": 0.7941176470588235,
+        "macro_f1": 0.7999268275584065,
+        "per_label": {
+          "save": {
+            "true_positive": 2,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.5714285714285714
+          },
+          "undo": {
+            "true_positive": 1,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 0.5
+          },
+          "redo": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 4,
+            "f1": 0.8571428571428571
+          },
+          "page_navigate": {
+            "true_positive": 2,
+            "support": 3,
+            "predicted_count": 2,
+            "f1": 0.8
+          },
+          "view_change": {
+            "true_positive": 2,
+            "support": 5,
+            "predicted_count": 2,
+            "f1": 0.5714285714285714
+          },
+          "artwork_mode_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 7,
+            "f1": 0.7272727272727273
+          },
+          "needs_clarification": {
+            "true_positive": 2,
+            "support": 5,
+            "predicted_count": 3,
+            "f1": 0.5
+          },
+          "needs_reasoning": {
+            "true_positive": 8,
+            "support": 8,
+            "predicted_count": 8,
+            "f1": 1.0
+          },
+          "compound_request": {
+            "true_positive": 7,
+            "support": 7,
+            "predicted_count": 9,
+            "f1": 0.875
+          },
+          "out_of_scope_request": {
+            "true_positive": 2,
+            "support": 3,
+            "predicted_count": 2,
+            "f1": 0.8
+          },
+          "not_command": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 8,
+            "f1": 0.6153846153846154
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 4,
+            "f1": 0.8571428571428571
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "background_3d_candidates": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 1,
+            "support": 2,
+            "predicted_count": 1,
+            "f1": 0.6666666666666666
+          },
+          "text_frames_align": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 2,
+          "denominator": 40,
+          "ids": [
+            "nyamuru_voice_2436",
+            "nyamuru_voice_3118"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 0,
+          "denominator": 7,
+          "ids": []
+        }
+      },
+      "v03_saved_test": {
+        "n": 132,
+        "correct": 104,
+        "accuracy": 0.7878787878787878,
+        "macro_f1": 0.78779085205678,
+        "per_label": {
+          "save": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 7,
+            "f1": 0.9230769230769231
+          },
+          "undo": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 8,
+            "f1": 0.7692307692307693
+          },
+          "redo": {
+            "true_positive": 4,
+            "support": 6,
+            "predicted_count": 6,
+            "f1": 0.6666666666666666
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.8
+          },
+          "view_change": {
+            "true_positive": 2,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.5714285714285714
+          },
+          "artwork_mode_set": {
+            "true_positive": 8,
+            "support": 10,
+            "predicted_count": 9,
+            "f1": 0.8421052631578947
+          },
+          "bubble_set": {
+            "true_positive": 12,
+            "support": 12,
+            "predicted_count": 15,
+            "f1": 0.8888888888888888
+          },
+          "needs_clarification": {
+            "true_positive": 2,
+            "support": 6,
+            "predicted_count": 4,
+            "f1": 0.4
+          },
+          "needs_reasoning": {
+            "true_positive": 7,
+            "support": 13,
+            "predicted_count": 7,
+            "f1": 0.7
+          },
+          "compound_request": {
+            "true_positive": 4,
+            "support": 9,
+            "predicted_count": 4,
+            "f1": 0.6153846153846154
+          },
+          "out_of_scope_request": {
+            "true_positive": 5,
+            "support": 9,
+            "predicted_count": 5,
+            "f1": 0.7142857142857143
+          },
+          "not_command": {
+            "true_positive": 14,
+            "support": 16,
+            "predicted_count": 21,
+            "f1": 0.7567567567567568
+          },
+          "panel_sync_set": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.8888888888888888
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 7,
+            "f1": 0.8333333333333334
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.8
+          },
+          "paint_tool_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.9090909090909091
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 0,
+          "denominator": 79,
+          "ids": []
+        },
+        "compound_to_single_dispatch": {
+          "count": 5,
+          "denominator": 9,
+          "ids": [
+            "nyamuru_voice_1515",
+            "nyamuru_voice_1517",
+            "nyamuru_voice_1518",
+            "nyamuru_voice_1520",
+            "nyamuru_voice_1524"
+          ]
+        }
+      },
+      "v04_on_same_v03_test": {
+        "n": 132,
+        "correct": 119,
+        "accuracy": 0.9015151515151515,
+        "macro_f1": 0.9034181899971374,
+        "per_label": {
+          "save": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 7,
+            "f1": 0.9230769230769231
+          },
+          "undo": {
+            "true_positive": 3,
+            "support": 5,
+            "predicted_count": 3,
+            "f1": 0.75
+          },
+          "redo": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 6,
+            "f1": 0.8333333333333334
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "view_change": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "artwork_mode_set": {
+            "true_positive": 10,
+            "support": 10,
+            "predicted_count": 10,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 11,
+            "support": 12,
+            "predicted_count": 13,
+            "f1": 0.88
+          },
+          "needs_clarification": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 6,
+            "f1": 0.8333333333333334
+          },
+          "needs_reasoning": {
+            "true_positive": 11,
+            "support": 13,
+            "predicted_count": 11,
+            "f1": 0.9166666666666666
+          },
+          "compound_request": {
+            "true_positive": 7,
+            "support": 9,
+            "predicted_count": 7,
+            "f1": 0.875
+          },
+          "out_of_scope_request": {
+            "true_positive": 6,
+            "support": 9,
+            "predicted_count": 6,
+            "f1": 0.8
+          },
+          "not_command": {
+            "true_positive": 16,
+            "support": 16,
+            "predicted_count": 20,
+            "f1": 0.8888888888888888
+          },
+          "panel_sync_set": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.8888888888888888
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.9090909090909091
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "paint_tool_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 0,
+          "denominator": 79,
+          "ids": []
+        },
+        "compound_to_single_dispatch": {
+          "count": 2,
+          "denominator": 9,
+          "ids": [
+            "nyamuru_voice_1512",
+            "nyamuru_voice_1520"
+          ]
+        }
+      },
+      "same_old_test_pairs": 132,
+      "old_test_status_counts": {
+        "both_correct": 98,
+        "both_wrong": 7,
+        "repaired": 21,
+        "regressed": 6
+      },
+      "old_test_changed_predictions": [
+        {
+          "id": "nyamuru_massive_raw_16419",
+          "text": "できるよと鈴木おじさんにメールを送ってください",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "out_of_scope_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_massive_raw_16166",
+          "text": "今後三週間はプロジェクトで忙しくなると文香さんに返信してくれますか",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "not_command",
+          "v04_predicted": "bubble_set",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1385",
+          "text": "さっき文字を入れ替えたけど、あの操作を一段取り消して。",
+          "gold": "undo",
+          "v03_predicted": "undo",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1390",
+          "text": "今の変更を残すのはやめよう。取り消しを一回お願い。",
+          "gold": "undo",
+          "v03_predicted": "undo",
+          "v04_predicted": "redo",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1404",
+          "text": "文字の修正をUndoしたところだけど、その修正をもう一度反映して。",
+          "gold": "redo",
+          "v03_predicted": "undo",
+          "v04_predicted": "save",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1406",
+          "text": "取り消してみたけど、変更後を採用したい。直前のUndoをやり直して。",
+          "gold": "redo",
+          "v03_predicted": "undo",
+          "v04_predicted": "redo",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1432",
+          "text": "拡大表示はここまででいいよ。等倍に戻して。",
+          "gold": "view_change",
+          "v03_predicted": "needs_clarification",
+          "v04_predicted": "view_change",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1442",
+          "text": "小道具のタブ、そこへ行って。",
+          "gold": "view_change",
+          "v03_predicted": "page_navigate",
+          "v04_predicted": "view_change",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1449",
+          "text": "一体型のほうに作画方式を戻してほしい。",
+          "gold": "artwork_mode_set",
+          "v03_predicted": "redo",
+          "v04_predicted": "artwork_mode_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1451",
+          "text": "作画設定にある一体型、今回はそれにしておいて。",
+          "gold": "artwork_mode_set",
+          "v03_predicted": "needs_clarification",
+          "v04_predicted": "artwork_mode_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1472",
+          "text": "吹き出しの本文を直そう。選択中のものは「まだ行かない」にして。",
+          "gold": "bubble_set",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "not_command",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1482",
+          "text": "内枠スナップ、さっき言ったほうにして。",
+          "gold": "needs_clarification",
+          "v03_predicted": "inner_frame_snap_set",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1489",
+          "text": "これ、あっちに移しておいて。",
+          "gold": "needs_clarification",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1491",
+          "text": "表示するページは、さっき話したところでお願い。",
+          "gold": "needs_clarification",
+          "v03_predicted": "page_navigate",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1495",
+          "text": "この二人の表情から、いまのセリフが誰の言葉に見えるか考えてほしい。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1496",
+          "text": "このページ、視線が迷うところを見つけて配置の直し方を考えて。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "background_3d_candidates",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1501",
+          "text": "このコマの内容を伝えるには、どのセリフを短くするのがよさそうか検討して。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1505",
+          "text": "登場人物の資料を踏まえて、この言い争いのセリフを練ってほしい。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "text_frames_align",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1506",
+          "text": "吹き出しの形を決めかねてる。この独白の雰囲気に合う案を考えて。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1507",
+          "text": "このページの最後が印象に残るように、今の構成から改善案を出して。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "artwork_mode_set",
+          "v04_predicted": "background_3d_candidates",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1508",
+          "text": "並んだセリフの強弱を読み取って、どこに余白を持たせるか考えておいて。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1512",
+          "text": "見開き表示をやめて、ページ全体が入る倍率に合わせて。",
+          "gold": "compound_request",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "view_change",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1515",
+          "text": "今の編集を一回取り消したうえで、三ページへ移動して。",
+          "gold": "compound_request",
+          "v03_predicted": "undo",
+          "v04_predicted": "compound_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1517",
+          "text": "選択した複数の文字枠は上端を揃えてね。編集ガイドも非表示にしてほしい。",
+          "gold": "compound_request",
+          "v03_predicted": "text_frames_align",
+          "v04_predicted": "compound_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1518",
+          "text": "コマスナップを有効にするのと、ベクターペンへの切り替えをお願い。",
+          "gold": "compound_request",
+          "v03_predicted": "paint_tool_set",
+          "v04_predicted": "compound_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1520",
+          "text": "この人物を生成してほしい。あと、配置ガイドを表示しておいて。",
+          "gold": "compound_request",
+          "v03_predicted": "view_change",
+          "v04_predicted": "generate_request",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1524",
+          "text": "作品情報タブを出して。保存も今のうちにお願い。",
+          "gold": "compound_request",
+          "v03_predicted": "save",
+          "v04_predicted": "compound_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1537",
+          "text": "内枠スナップはさっき自分でオフにしたよ。",
+          "gold": "not_command",
+          "v03_predicted": "inner_frame_snap_set",
+          "v04_predicted": "not_command",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1540",
+          "text": "登録済みの3Dモデルから背景候補を出すには、どう操作するの？",
+          "gold": "not_command",
+          "v03_predicted": "background_3d_candidates",
+          "v04_predicted": "not_command",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1549",
+          "text": "コマシンクロが切れていたらオンに、すでにオンならそのままにして。",
+          "gold": "panel_sync_set",
+          "v03_predicted": "panel_sync_set",
+          "v04_predicted": "not_command",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1551",
+          "text": "さっきオフにしたコマシンクロ、有効な状態へ戻して。",
+          "gold": "panel_sync_set",
+          "v03_predicted": "redo",
+          "v04_predicted": "panel_sync_set",
+          "status": "repaired"
+        }
+      ],
+      "new_test_errors": [
+        {
+          "id": "nyamuru_voice_2753",
+          "text": "絵の寸法は変えず、表示を原寸にして。",
+          "gold": "view_change",
+          "predicted": "bubble_set",
+          "confidence": 0.9867890477180481
+        },
+        {
+          "id": "nyamuru_voice_2755",
+          "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+          "gold": "view_change",
+          "predicted": "compound_request",
+          "confidence": 0.7359607815742493
+        },
+        {
+          "id": "nyamuru_voice_2770",
+          "text": "設定の変更だけ頼むね。作画は下書きモードへ。",
+          "gold": "artwork_mode_set",
+          "predicted": "compound_request",
+          "confidence": 0.9999580383300781
+        },
+        {
+          "id": "nyamuru_voice_2815",
+          "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+          "gold": "compound_request",
+          "predicted": "bubble_set",
+          "confidence": 0.9999997615814209
+        },
+        {
+          "id": "nyamuru_voice_2823",
+          "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+          "gold": "out_of_scope_request",
+          "predicted": "page_navigate",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_2836",
+          "text": "次の休憩前に作品を保存するつもり。",
+          "gold": "not_command",
+          "predicted": "save",
+          "confidence": 0.9998419284820557
+        },
+        {
+          "id": "nyamuru_voice_3204",
+          "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+          "gold": "undo",
+          "predicted": "compound_request",
+          "confidence": 0.9242420196533203
+        },
+        {
+          "id": "nyamuru_voice_3219",
+          "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "confidence": 0.8034252524375916
+        },
+        {
+          "id": "nyamuru_voice_3228",
+          "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "confidence": 0.9996635913848877
+        },
+        {
+          "id": "nyamuru_voice_3241",
+          "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+          "gold": "out_of_scope_request",
+          "predicted": "page_navigate",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_3242",
+          "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+          "gold": "out_of_scope_request",
+          "predicted": "compound_request",
+          "confidence": 0.9999995231628418
+        },
+        {
+          "id": "nyamuru_voice_3304",
+          "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+          "gold": "needs_clarification",
+          "predicted": "needs_reasoning",
+          "confidence": 0.991168737411499
+        },
+        {
+          "id": "nyamuru_voice_3305",
+          "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+          "gold": "needs_clarification",
+          "predicted": "view_change",
+          "confidence": 0.9999994039535522
+        }
+      ]
+    },
+    "44": {
+      "new_test": {
+        "n": 73,
+        "correct": 59,
+        "accuracy": 0.8082191780821918,
+        "macro_f1": 0.8188805346700083,
+        "per_label": {
+          "save": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 0.75
+          },
+          "undo": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "redo": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "view_change": {
+            "true_positive": 3,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.6666666666666666
+          },
+          "artwork_mode_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "needs_clarification": {
+            "true_positive": 1,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 0.25
+          },
+          "needs_reasoning": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 8,
+            "f1": 0.8571428571428571
+          },
+          "compound_request": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.6
+          },
+          "out_of_scope_request": {
+            "true_positive": 1,
+            "support": 4,
+            "predicted_count": 1,
+            "f1": 0.4
+          },
+          "not_command": {
+            "true_positive": 3,
+            "support": 6,
+            "predicted_count": 4,
+            "f1": 0.6
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 3,
+            "f1": 0.8
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 1,
+          "denominator": 49,
+          "ids": [
+            "nyamuru_voice_2755"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 1,
+          "denominator": 4,
+          "ids": [
+            "nyamuru_voice_2815"
+          ]
+        }
+      },
+      "new_dev": {
+        "n": 68,
+        "correct": 58,
+        "accuracy": 0.8529411764705882,
+        "macro_f1": 0.8660319212950792,
+        "per_label": {
+          "save": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 0.75
+          },
+          "undo": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "redo": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "page_navigate": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 3,
+            "f1": 1.0
+          },
+          "view_change": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.9090909090909091
+          },
+          "artwork_mode_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "needs_clarification": {
+            "true_positive": 3,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.5454545454545454
+          },
+          "needs_reasoning": {
+            "true_positive": 6,
+            "support": 8,
+            "predicted_count": 6,
+            "f1": 0.8571428571428571
+          },
+          "compound_request": {
+            "true_positive": 6,
+            "support": 7,
+            "predicted_count": 6,
+            "f1": 0.9230769230769231
+          },
+          "out_of_scope_request": {
+            "true_positive": 2,
+            "support": 3,
+            "predicted_count": 2,
+            "f1": 0.8
+          },
+          "not_command": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 0.8
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 3,
+            "predicted_count": 4,
+            "f1": 0.8571428571428571
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 1,
+            "support": 2,
+            "predicted_count": 1,
+            "f1": 0.6666666666666666
+          },
+          "generate_request": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 3,
+            "f1": 0.8571428571428571
+          },
+          "background_3d_candidates": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 2,
+            "f1": 1.0
+          },
+          "paint_tool_set": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 3,
+            "f1": 0.8
+          },
+          "text_frames_align": {
+            "true_positive": 2,
+            "support": 2,
+            "predicted_count": 3,
+            "f1": 0.8
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 0,
+          "denominator": 40,
+          "ids": []
+        },
+        "compound_to_single_dispatch": {
+          "count": 1,
+          "denominator": 7,
+          "ids": [
+            "nyamuru_voice_2476"
+          ]
+        }
+      },
+      "v03_saved_test": {
+        "n": 132,
+        "correct": 104,
+        "accuracy": 0.7878787878787878,
+        "macro_f1": 0.7820355647225453,
+        "per_label": {
+          "save": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 6,
+            "f1": 0.8333333333333334
+          },
+          "undo": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 7,
+            "f1": 0.8333333333333334
+          },
+          "redo": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 9,
+            "f1": 0.8
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.8
+          },
+          "view_change": {
+            "true_positive": 3,
+            "support": 4,
+            "predicted_count": 7,
+            "f1": 0.5454545454545454
+          },
+          "artwork_mode_set": {
+            "true_positive": 10,
+            "support": 10,
+            "predicted_count": 10,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 9,
+            "support": 12,
+            "predicted_count": 10,
+            "f1": 0.8181818181818182
+          },
+          "needs_clarification": {
+            "true_positive": 1,
+            "support": 6,
+            "predicted_count": 1,
+            "f1": 0.2857142857142857
+          },
+          "needs_reasoning": {
+            "true_positive": 10,
+            "support": 13,
+            "predicted_count": 14,
+            "f1": 0.7407407407407407
+          },
+          "compound_request": {
+            "true_positive": 4,
+            "support": 9,
+            "predicted_count": 5,
+            "f1": 0.5714285714285714
+          },
+          "out_of_scope_request": {
+            "true_positive": 8,
+            "support": 9,
+            "predicted_count": 10,
+            "f1": 0.8421052631578947
+          },
+          "not_command": {
+            "true_positive": 11,
+            "support": 16,
+            "predicted_count": 14,
+            "f1": 0.7333333333333333
+          },
+          "panel_sync_set": {
+            "true_positive": 3,
+            "support": 5,
+            "predicted_count": 3,
+            "f1": 0.75
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.7272727272727273
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "paint_tool_set": {
+            "true_positive": 4,
+            "support": 5,
+            "predicted_count": 4,
+            "f1": 0.8888888888888888
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 6,
+            "f1": 0.8
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 1,
+          "denominator": 79,
+          "ids": [
+            "nyamuru_voice_1570"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 5,
+          "denominator": 9,
+          "ids": [
+            "nyamuru_voice_1512",
+            "nyamuru_voice_1515",
+            "nyamuru_voice_1517",
+            "nyamuru_voice_1520",
+            "nyamuru_voice_1524"
+          ]
+        }
+      },
+      "v04_on_same_v03_test": {
+        "n": 132,
+        "correct": 109,
+        "accuracy": 0.8257575757575758,
+        "macro_f1": 0.8486606960291171,
+        "per_label": {
+          "save": {
+            "true_positive": 5,
+            "support": 6,
+            "predicted_count": 5,
+            "f1": 0.9090909090909091
+          },
+          "undo": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.9090909090909091
+          },
+          "redo": {
+            "true_positive": 4,
+            "support": 6,
+            "predicted_count": 4,
+            "f1": 0.8
+          },
+          "page_navigate": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 7,
+            "f1": 0.7272727272727273
+          },
+          "view_change": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 7,
+            "f1": 0.7272727272727273
+          },
+          "artwork_mode_set": {
+            "true_positive": 10,
+            "support": 10,
+            "predicted_count": 10,
+            "f1": 1.0
+          },
+          "bubble_set": {
+            "true_positive": 10,
+            "support": 12,
+            "predicted_count": 12,
+            "f1": 0.8333333333333334
+          },
+          "needs_clarification": {
+            "true_positive": 6,
+            "support": 6,
+            "predicted_count": 14,
+            "f1": 0.6
+          },
+          "needs_reasoning": {
+            "true_positive": 10,
+            "support": 13,
+            "predicted_count": 13,
+            "f1": 0.7692307692307693
+          },
+          "compound_request": {
+            "true_positive": 5,
+            "support": 9,
+            "predicted_count": 6,
+            "f1": 0.6666666666666666
+          },
+          "out_of_scope_request": {
+            "true_positive": 4,
+            "support": 9,
+            "predicted_count": 4,
+            "f1": 0.6153846153846154
+          },
+          "not_command": {
+            "true_positive": 10,
+            "support": 16,
+            "predicted_count": 10,
+            "f1": 0.7692307692307693
+          },
+          "panel_sync_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "inner_frame_snap_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "panel_gap_snap_set": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          },
+          "generate_request": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 5,
+            "f1": 1.0
+          },
+          "background_3d_candidates": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 5,
+            "f1": 0.8888888888888888
+          },
+          "paint_tool_set": {
+            "true_positive": 5,
+            "support": 5,
+            "predicted_count": 6,
+            "f1": 0.9090909090909091
+          },
+          "text_frames_align": {
+            "true_positive": 4,
+            "support": 4,
+            "predicted_count": 4,
+            "f1": 1.0
+          }
+        },
+        "single_dispatch_to_compound": {
+          "count": 1,
+          "denominator": 79,
+          "ids": [
+            "nyamuru_voice_1407"
+          ]
+        },
+        "compound_to_single_dispatch": {
+          "count": 4,
+          "denominator": 9,
+          "ids": [
+            "nyamuru_voice_1512",
+            "nyamuru_voice_1515",
+            "nyamuru_voice_1520",
+            "nyamuru_voice_1522"
+          ]
+        }
+      },
+      "same_old_test_pairs": 132,
+      "old_test_status_counts": {
+        "both_correct": 92,
+        "both_wrong": 11,
+        "regressed": 12,
+        "repaired": 17
+      },
+      "old_test_changed_predictions": [
+        {
+          "id": "nyamuru_massive_raw_16010",
+          "text": "受信ボックスに新着メッセージがあるかどうか",
+          "gold": "not_command",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "view_change",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_massive_raw_16178",
+          "text": "今日 amazon から何かメールは",
+          "gold": "not_command",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_massive_raw_14465",
+          "text": "ディズニーランドへの行き方",
+          "gold": "not_command",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "needs_clarification",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_massive_raw_16717",
+          "text": "圭吾宛てに休暇中だというメールを書いて",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "needs_reasoning",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_massive_raw_16024",
+          "text": "俊太に明日は忙しいというメールを送って",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "needs_reasoning",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_massive_raw_16419",
+          "text": "できるよと鈴木おじさんにメールを送ってください",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "bubble_set",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_massive_raw_12716",
+          "text": "天ぷら前田に行くために uberpool を呼んで",
+          "gold": "out_of_scope_request",
+          "v03_predicted": "out_of_scope_request",
+          "v04_predicted": "paint_tool_set",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1370",
+          "text": "保存だけ先に済ませてもらえるかな。",
+          "gold": "save",
+          "v03_predicted": "not_command",
+          "v04_predicted": "page_navigate",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1406",
+          "text": "取り消してみたけど、変更後を採用したい。直前のUndoをやり直して。",
+          "gold": "redo",
+          "v03_predicted": "redo",
+          "v04_predicted": "undo",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1407",
+          "text": "Undoで三段戻した分を全部やり直して、編集履歴を三段進めて。",
+          "gold": "redo",
+          "v03_predicted": "redo",
+          "v04_predicted": "compound_request",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1432",
+          "text": "拡大表示はここまででいいよ。等倍に戻して。",
+          "gold": "view_change",
+          "v03_predicted": "redo",
+          "v04_predicted": "view_change",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1473",
+          "text": "この吹き出しの話者、さっきの指定は違ったね。理央に変更して。",
+          "gold": "bubble_set",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1482",
+          "text": "内枠スナップ、さっき言ったほうにして。",
+          "gold": "needs_clarification",
+          "v03_predicted": "inner_frame_snap_set",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1484",
+          "text": "この吹き出しを少し右のほうへ寄せて。",
+          "gold": "needs_clarification",
+          "v03_predicted": "bubble_set",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1487",
+          "text": "表示を前と同じに戻してもらおう。",
+          "gold": "needs_clarification",
+          "v03_predicted": "undo",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1491",
+          "text": "表示するページは、さっき話したところでお願い。",
+          "gold": "needs_clarification",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1492",
+          "text": "今の操作、そっちじゃなくてもう片方にして。",
+          "gold": "needs_clarification",
+          "v03_predicted": "undo",
+          "v04_predicted": "needs_clarification",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1496",
+          "text": "このページ、視線が迷うところを見つけて配置の直し方を考えて。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "redo",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1501",
+          "text": "このコマの内容を伝えるには、どのセリフを短くするのがよさそうか検討して。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1506",
+          "text": "吹き出しの形を決めかねてる。この独白の雰囲気に合う案を考えて。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "background_3d_candidates",
+          "v04_predicted": "needs_reasoning",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1507",
+          "text": "このページの最後が印象に残るように、今の構成から改善案を出して。",
+          "gold": "needs_reasoning",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "background_3d_candidates",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1517",
+          "text": "選択した複数の文字枠は上端を揃えてね。編集ガイドも非表示にしてほしい。",
+          "gold": "compound_request",
+          "v03_predicted": "text_frames_align",
+          "v04_predicted": "compound_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1522",
+          "text": "選択中の吹き出しを右へ三ミリ動かして、話者を蓮くんにして。",
+          "gold": "compound_request",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "bubble_set",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1524",
+          "text": "作品情報タブを出して。保存も今のうちにお願い。",
+          "gold": "compound_request",
+          "v03_predicted": "view_change",
+          "v04_predicted": "compound_request",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1533",
+          "text": "いったん休憩するけど、今の原稿はもう保存できてる？",
+          "gold": "not_command",
+          "v03_predicted": "save",
+          "v04_predicted": "not_command",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1537",
+          "text": "内枠スナップはさっき自分でオフにしたよ。",
+          "gold": "not_command",
+          "v03_predicted": "inner_frame_snap_set",
+          "v04_predicted": "needs_clarification",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1538",
+          "text": "この吹き出しの形、今のままでも悪くないね。",
+          "gold": "not_command",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "needs_clarification",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1539",
+          "text": "選択した複数の文字枠の上端揃えは、あとでやろう。今はそのままで。",
+          "gold": "not_command",
+          "v03_predicted": "not_command",
+          "v04_predicted": "needs_clarification",
+          "status": "regressed"
+        },
+        {
+          "id": "nyamuru_voice_1549",
+          "text": "コマシンクロが切れていたらオンに、すでにオンならそのままにして。",
+          "gold": "panel_sync_set",
+          "v03_predicted": "not_command",
+          "v04_predicted": "panel_sync_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1551",
+          "text": "さっきオフにしたコマシンクロ、有効な状態へ戻して。",
+          "gold": "panel_sync_set",
+          "v03_predicted": "redo",
+          "v04_predicted": "panel_sync_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1570",
+          "text": "内枠スナップがオンなら切って、オフなら維持してね。",
+          "gold": "inner_frame_snap_set",
+          "v03_predicted": "compound_request",
+          "v04_predicted": "inner_frame_snap_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1628",
+          "text": "描画用のペンはベクターにすることにしたよ。その設定にして。",
+          "gold": "paint_tool_set",
+          "v03_predicted": "view_change",
+          "v04_predicted": "paint_tool_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1674",
+          "text": "セリフを直すんじゃなくて、誰の発言にするかの修正ね。選択中の吹き出しは、美咲さんの発言として設定して。",
+          "gold": "bubble_set",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "bubble_set",
+          "status": "repaired"
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "gold": "bubble_set",
+          "v03_predicted": "needs_reasoning",
+          "v04_predicted": "needs_clarification",
+          "status": "both_wrong"
+        },
+        {
+          "id": "nyamuru_voice_1703",
+          "text": "選択中の吹き出しの形を変えてもらえる？　希望する変更先は四角です。",
+          "gold": "bubble_set",
+          "v03_predicted": "text_frames_align",
+          "v04_predicted": "bubble_set",
+          "status": "repaired"
+        }
+      ],
+      "new_test_errors": [
+        {
+          "id": "nyamuru_voice_2755",
+          "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+          "gold": "view_change",
+          "predicted": "compound_request",
+          "confidence": 0.8228664398193359
+        },
+        {
+          "id": "nyamuru_voice_2815",
+          "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+          "gold": "compound_request",
+          "predicted": "bubble_set",
+          "confidence": 0.9999946355819702
+        },
+        {
+          "id": "nyamuru_voice_2823",
+          "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+          "gold": "out_of_scope_request",
+          "predicted": "page_navigate",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_2836",
+          "text": "次の休憩前に作品を保存するつもり。",
+          "gold": "not_command",
+          "predicted": "save",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_2840",
+          "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+          "gold": "not_command",
+          "predicted": "needs_reasoning",
+          "confidence": 0.9985987544059753
+        },
+        {
+          "id": "nyamuru_voice_3201",
+          "text": "保存って言ったのはコピーを作る話じゃなくて、今の作品に変更を残すほう。それを実行して。",
+          "gold": "save",
+          "predicted": "generate_request",
+          "confidence": 0.9852214455604553
+        },
+        {
+          "id": "nyamuru_voice_3205",
+          "text": "たった今動かした吹き出し、動かす前の状態に戻せる？　新しく動かすんじゃなくて、履歴を一つ戻してほしい。",
+          "gold": "undo",
+          "predicted": "needs_clarification",
+          "confidence": 0.9102420806884766
+        },
+        {
+          "id": "nyamuru_voice_3219",
+          "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "confidence": 0.999457061290741
+        },
+        {
+          "id": "nyamuru_voice_3228",
+          "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+          "gold": "needs_clarification",
+          "predicted": "needs_reasoning",
+          "confidence": 0.9868775010108948
+        },
+        {
+          "id": "nyamuru_voice_3241",
+          "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+          "gold": "out_of_scope_request",
+          "predicted": "compound_request",
+          "confidence": 0.6992501616477966
+        },
+        {
+          "id": "nyamuru_voice_3242",
+          "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+          "gold": "out_of_scope_request",
+          "predicted": "compound_request",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_3247",
+          "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+          "gold": "not_command",
+          "predicted": "needs_clarification",
+          "confidence": 1.0
+        },
+        {
+          "id": "nyamuru_voice_3304",
+          "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+          "gold": "needs_clarification",
+          "predicted": "not_command",
+          "confidence": 0.8879255056381226
+        },
+        {
+          "id": "nyamuru_voice_3305",
+          "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+          "gold": "needs_clarification",
+          "predicted": "view_change",
+          "confidence": 1.0
+        }
+      ]
+    }
+  },
+  "primary_newtest_manual_error_review": {
+    "seed": 44,
+    "error_count": 14,
+    "clear_gold_or_slot_ambiguity_count": 0,
+    "errors": [
+      {
+        "id": "nyamuru_voice_2755",
+        "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+        "gold": "view_change",
+        "predicted": "compound_request",
+        "confidence": 0.8228664398193359,
+        "slots": {
+          "kind": "guide",
+          "guide": "artwork",
+          "enabled": false
+        },
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "作画ガイド非表示の同じ依頼を繰り返している。独立操作は一つで view_change と guide/artwork/enabled=false は一致。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_2815",
+        "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+        "gold": "compound_request",
+        "predicted": "bubble_set",
+        "confidence": 0.9999946355819702,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "本文保持は制約。しっぽ非表示と所属コマ変更は独立した二操作で compound_request。複合依頼の slots 空は分類器の出力欠落ではない。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_2823",
+        "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+        "gold": "out_of_scope_request",
+        "predicted": "page_navigate",
+        "confidence": 1.0,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "ページ並べ替えは page_navigate の明示除外。out_of_scope_request と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_2836",
+        "text": "次の休憩前に作品を保存するつもり。",
+        "gold": "not_command",
+        "predicted": "save",
+        "confidence": 1.0,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "将来の自分の予定の報告で、現在の保存依頼はない。not_command と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_2840",
+        "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+        "gold": "not_command",
+        "predicted": "needs_reasoning",
+        "confidence": 0.9985987544059753,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "大きく見えるという観察のみで適切さの判断依頼も変更依頼もない。not_command と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3201",
+        "text": "保存って言ったのはコピーを作る話じゃなくて、今の作品に変更を残すほう。それを実行して。",
+        "gold": "save",
+        "predicted": "generate_request",
+        "confidence": 0.9852214455604553,
+        "slots": {
+          "target": "current_document"
+        },
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "発話内で通常保存を明確に定義して実行依頼している。save と current_document は一致。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3205",
+        "text": "たった今動かした吹き出し、動かす前の状態に戻せる？　新しく動かすんじゃなくて、履歴を一つ戻してほしい。",
+        "gold": "undo",
+        "predicted": "needs_clarification",
+        "confidence": 0.9102420806884766,
+        "slots": {
+          "count": 1
+        },
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "履歴を一つ戻してほしいと明示されている。undo と count=1 は一致。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3219",
+        "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+        "gold": "view_change",
+        "predicted": "needs_clarification",
+        "confidence": 0.999457061290741,
+        "slots": {
+          "kind": "tab",
+          "tab": "props"
+        },
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "小道具というタブを発話内で特定している。view_change と tab/props は一致。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3228",
+        "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+        "gold": "needs_clarification",
+        "predicted": "needs_reasoning",
+        "confidence": 0.9868775010108948,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "選択対象は明確だが幅の変更量が少しと未指定。定義上 needs_clarification と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3241",
+        "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+        "gold": "out_of_scope_request",
+        "predicted": "compound_request",
+        "confidence": 0.6992501616477966,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "白紙一枚のページ追加という同じ操作の説明と依頼。初期範囲外で out_of_scope_request と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3242",
+        "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+        "gold": "out_of_scope_request",
+        "predicted": "compound_request",
+        "confidence": 1.0,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "別名保存の結果とファイル名を説明している。名前は一操作の引数であり out_of_scope_request と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3247",
+        "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+        "gold": "not_command",
+        "predicted": "needs_clarification",
+        "confidence": 1.0,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "自分のページ移動予定を撤回して現在ページを見る意思を述べるのみ。not_command と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3304",
+        "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+        "gold": "needs_clarification",
+        "predicted": "not_command",
+        "confidence": 0.8879255056381226,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "変更の依頼は明示されるが幅・高さの量がちょっとと未指定。needs_clarification と整合。"
+        }
+      },
+      {
+        "id": "nyamuru_voice_3305",
+        "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+        "gold": "needs_clarification",
+        "predicted": "view_change",
+        "confidence": 1.0,
+        "slots": {},
+        "manual_review": {
+          "clear_gold_or_slot_ambiguity": false,
+          "reason": "ガイド種別が不足していると発話内で明示。view_change のガイド対象なし除外に従い needs_clarification と整合。"
+        }
+      }
+    ],
+    "labels_changed": false,
+    "scope": "All 14 primary-seed errors reviewed against frozen source/labels.json. This is not a semantic re-review of every correct row."
+  },
+  "verification": {
+    "new_test_rows_recomputed": 219,
+    "selected_dev_rows_recomputed": 204,
+    "same_old_test_pairs": 396,
+    "old_and_current_prediction_rows_recomputed": 792,
+    "ids_text_and_gold_match_frozen_data": true,
+    "reported_accuracy_and_macro_f1_match": true,
+    "correct_flags_and_probability_argmax_match": true
+  },
+  "limits": [
+    "The new test contains 73 authored synthetic rows; no real-user or ASR accuracy claim.",
+    "The former v0.3 test is a diagnostic regression set in v0.4, not a new untouched holdout.",
+    "Same-seed old-test comparisons demonstrate observed changes on fixed rows, not causal isolation of training-data additions.",
+    "Seed 43 has the highest observed new-test accuracy, but selecting it now would use test results; keep the dev-selected primary identity seed 44.",
+    "All official metrics remain on the original frozen labels; no post-hoc relabeling or corrected-score recomputation.",
+    "No independent weight integrity or train-time provenance check was performed in this bounded audit."
+  ],
+  "source_files_sha256": {
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-42/dev-predictions.jsonl": "853c76a093366cd6896e49c0a5f4d8d00cb520c3fa38e7376faa26e73f4cd79e",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-42/legacy_v03_test-predictions.jsonl": "66252ce793bdc435b5cbe5cbc1e3605c96e6fbaa33618afdcaf40340be1407da",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-42/metrics.json": "55cf3e03ced1b65f20fd7f49b0d004b4252f1f41a9283529ed6513d3bab75d36",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-42/test-predictions.jsonl": "0664584eaff7f4b85b397c42779e48028a4b2524afd40a8c5413f10712c75152",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-43/dev-predictions.jsonl": "2be1d6d8ad0cdd4228a420dea5a56915a6b91f8e51cd02f8088a1bf93ed208ae",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-43/legacy_v03_test-predictions.jsonl": "44e3bc40a6ec506d6729c1a5093b9f1fdd48d8385f8c2efedfac5e133edc90ca",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-43/metrics.json": "f7283163f67c7b309ed4974506c2c3eac288cd9d172d1cee143153c6be2e559d",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-43/test-predictions.jsonl": "0aad8c6851830dd797a72eabad0e84256b655b2bc0a3c9675b4c9d484a2ec2d5",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-44/dev-predictions.jsonl": "08297166543487aeeb0c0e6e41810226388c48a7007406c6c8f82b16b416d883",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-44/legacy_v03_test-predictions.jsonl": "87cb4c53d6868a9c9264327ec633757b64d38a845d346edf5018d1f94ed72023",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-44/metrics.json": "d96bec5c4ffcb81915d1e87b1c2403d0efb72d87a6e810551e46a4ecf4f12541",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/seed-44/test-predictions.jsonl": "60cfddb8bef3b14a8f9c2dfae6bddb5b63b16cfbec77886bbe11ace450fe465c",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/selection.json": "235da82906600a99144ed8f8612e15d11f4a065e48b64365f59e84658002449c",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/trial-1-dev-history.jsonl": "dabdc11cfa1f26ae2f8dc2e4dd7c7b0c524f0996b4834f42d3c9282379fc1a1d",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/trial-2-dev-history.jsonl": "1c27b485b3787cccaea9e5495ae51dbab807279778a42d223909afd16ea1f21e",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/trial-3-dev-history.jsonl": "bcad9e11d46026aa71ef5d62010d373e8e71a1e6a7bef7885af679fc6a0f40ad",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/trial-4-dev-history.jsonl": "d436884ed9b749979dcfcd1487dcb362d1d9964413e66486eade797e3df97fe2",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/trial-5-dev-history.jsonl": "280d4c77882384b0133b8d5bd8d1c75401d3d55756d112daa3cbb83867cdc295",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/v04-colab-2026-10-18/reports/trial-6-dev-history.jsonl": "d13df0087c2cdc9cd455f71461d1e7c049c47a5a69ef0639e0923f70b6a6119e",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/data/dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/data/legacy_v03_test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/data/test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/legacy/v03-results/reports/seed-42/test-predictions.jsonl": "5f6f1612be79314ae3878003e0eac6ca26e0c8a5c221fe22d238849f9373c49a",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/legacy/v03-results/reports/seed-43/test-predictions.jsonl": "39eb801834cc6696f6015e9ede4c5e90fd7ac6a6fcfb477830fd9c5fb48c1212",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/legacy/v03-results/reports/seed-44/test-predictions.jsonl": "f6a22f559a324d2804a3f288c3fb8aa591334579e2b676049dd997ed2ed37df2",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9"
+  }
+}

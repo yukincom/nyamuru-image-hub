@@ -1,0 +1,1792 @@
+{
+  "schema_version": 1,
+  "audit": "v0.4_final_selected_holdout_bounded_audit",
+  "created_at_utc": "2026-10-18T02:36:40.150756+00:00",
+  "scope": {
+    "reviewed_dev": 68,
+    "reviewed_test": 74,
+    "reviewed_total": 142,
+    "full_text_label_slots_reviewed": true,
+    "all_available_top5_neighbors_reviewed": true,
+    "new_dev_test_crosscheck": true,
+    "legacy_and_additional_train_compared": true,
+    "no_predictions_or_performance_read": true,
+    "no_model_inference_training_network": true,
+    "no_repository_edits": true,
+    "no_new_examples_created": true
+  },
+  "reviewed_input_sha256": {
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/accepted-dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/accepted-test.jsonl": "87c73f3332a0b0172d489518d99757fcd2bc5c2373d5fbdb53c27e0987a47d99",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/final-selected-near.json": "7b34468b73f164799c31571a5c956e89f91ab74ad207112b753b6ff76d26b1a0",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/acceptance-review.json": "be6987c515d2857b4570b7b91a9bd010bad76d51431039ecb4233d2111ef91cf"
+  },
+  "input_sha256_at_report_write": {
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/accepted-dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/accepted-test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/final-selected-near.json": "b7a7b76620e966988a9c2ccf592499ab7c6f8721090fc559515949bd44e9e3d6",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/curation/2026-10-18-v04-evaluation/acceptance-review.json": "e2b2020d4c6c68409226b10d9d277b18f7f32e183f1503ac112e1aea1f37ab8b"
+  },
+  "counts": {
+    "major": 1,
+    "minor": 0,
+    "clear_gold_errors": 0,
+    "clear_slot_errors": 0,
+    "normalized_exact_cross_pool_duplicates": 0
+  },
+  "findings": [
+    {
+      "finding_id": "H01",
+      "severity": "major",
+      "category": "concrete_contrast_clause_reuse",
+      "must_exclude": true,
+      "candidate": {
+        "id": "nyamuru_voice_3262",
+        "split": "test",
+        "text": "このページの全部って、いま見えてる一ページ全体の意味ね。作品の全ページではなく、この一ページを生成してほしい。",
+        "label": "generate_request",
+        "slots": {
+          "target": "current_page"
+        }
+      },
+      "comparison": {
+        "id": "nyamuru_voice_881",
+        "pool": "v03_legacy_dev",
+        "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.4/legacy/v03/data/legacy_dev.jsonl",
+        "text": "作品全部ではなく、いま開いている一ページ全体を生成して",
+        "label": "generate_request"
+      },
+      "reason": "旧881の「作品全部ではなく、現在開いている一ページ全体を生成」という具体的な対比節を、3262後半が「作品の全ページではなく、この一ページを生成してほしい」と再使用している。前半は同じ一ページという範囲の説明で、新しい判断条件を加えていない。操作語の共通や一般的な後置修飾だけによる判定ではない。",
+      "gold_status": "label_and_slots_valid",
+      "parent_decision": "親が学習前の監査指摘を採用し、3262をtestから除外する方針を確定。元候補・旧レビューは履歴として保持。",
+      "resolution_condition": "最終testからnyamuru_voice_3262を除外し、学習用にも移さない。",
+      "resolved_set_counts": {
+        "dev": 68,
+        "test": 73,
+        "total": 141
+      }
+    }
+  ],
+  "normalized_exact_duplicates": [],
+  "conclusion": "確認した142件から3262を除外すれば、今回の限定監査で見つかった重大指摘は解消する。dev68/test73の計141件について、追加の必須除外、明白なgold/slots誤り、新dev/test間の明白なコピーは確認しなかった。",
+  "non_findings": [
+    {
+      "ids": [
+        "nyamuru_voice_3009",
+        "nyamuru_voice_401"
+      ],
+      "note": "新規描画とRedoの対比という意味は共有するが、目標状態の提示と依頼の構成が異なる。今回の限定監査では共通の意味だけで同じ具体的構文と断定しない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3255",
+        "nyamuru_voice_586"
+      ],
+      "note": "他スナップ保持と内枠offという状態は共有するが、要求値と対象を後置する構成が異なる。操作と一般的な保持表現の共通だけでは必須除外にしない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3039",
+        "nyamuru_voice_2129"
+      ],
+      "note": "本文差替えと保存の操作組は共有するが、引用中の操作語と実際の操作の対比、および順序の指定が異なる。同じ二操作であることだけでコピーとは判定しない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3055",
+        "nyamuru_voice_3253"
+      ],
+      "note": "設定だけ変更する点は共有するが、コマ位置整列の不要とサイズ変更の不要は別の対象対比であり、文の骨格も同一ではない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3028",
+        "nyamuru_voice_3228",
+        "nyamuru_voice_3304"
+      ],
+      "note": "具体量不足の拡大縮小をneeds_clarificationとする現在の契約に整合。内容を読んで適切寸法を判断する明示依頼とは区別した。"
+    }
+  ],
+  "parent_accepted_resolution": {
+    "excluded_id": "nyamuru_voice_3262",
+    "final_expected_dev": 68,
+    "final_expected_test": 73,
+    "final_expected_total": 141,
+    "original_candidates_and_prior_reviews_preserved": true,
+    "audit_does_not_edit_dataset": true
+  },
+  "reviewed_rows": [
+    {
+      "id": "nyamuru_voice_2407",
+      "split": "dev",
+      "text": "保存しておいてね、いま編集中の作品を。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2431",
+      "split": "dev",
+      "text": "移って、いまの一つ前のページに。",
+      "label": "page_navigate",
+      "slots": {
+        "direction": "previous",
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2435",
+      "split": "dev",
+      "text": "見開き表示は切って、いや、オンにして。",
+      "label": "view_change",
+      "slots": {
+        "kind": "spread",
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2436",
+      "split": "dev",
+      "text": "編集ガイドはそのままにして、配置ガイドだけ表示して。",
+      "label": "view_change",
+      "slots": {
+        "kind": "guide",
+        "guide": "placement",
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2439",
+      "split": "dev",
+      "text": "小さくしたいのは絵そのものじゃなくて画面の表示。ズームアウトして。",
+      "label": "view_change",
+      "slots": {
+        "kind": "zoom",
+        "zoom_mode": "out"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2447",
+      "split": "dev",
+      "text": "変更するのは作画方式。一体型を選んで。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "integrated"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2451",
+      "split": "dev",
+      "text": "選択中の吹き出しの幅は四十ミリ、いや、四十五ミリにして。高さは二十ミリで。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "bbox",
+        "operation": "resize",
+        "width_mm": 45,
+        "height_mm": 20
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2455",
+      "split": "dev",
+      "text": "つなぐのは選択中の吹き出し。二番の吹き出しへ結合して。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "join_to",
+        "bubble_number": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2463",
+      "split": "dev",
+      "text": "保存して……いや、それはやめて、元に戻して。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2466",
+      "split": "dev",
+      "text": "会話がぎこちないので、二人の関係が伝わる台詞に練り直して。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2467",
+      "split": "dev",
+      "text": "この二つの台詞案を比べて、人物らしいほうを選んで。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2468",
+      "split": "dev",
+      "text": "伝えたい内容は変えず、子どもにも伝わる台詞の言い方を考えて。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2470",
+      "split": "dev",
+      "text": "主人公の性格を設定に書き足したよ。それを読んで、この返答を主人公らしく直して。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2471",
+      "split": "dev",
+      "text": "見てほしいのはこのコマの読みやすさ。吹き出しの配置に直すべきところがあるか判断して。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2473",
+      "split": "dev",
+      "text": "画面を用紙に合わせるのと、作画方式を下書きにするのをお願い。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2476",
+      "split": "dev",
+      "text": "選択中の吹き出しのしっぽを消して。文字枠は、選択した複数の上端をそろえて。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2477",
+      "split": "dev",
+      "text": "ベクターペンにして、それに見開き表示もオンにして。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2479",
+      "split": "dev",
+      "text": "ページは移動せず、表示を原寸に戻して、人物タブも開いて。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2486",
+      "split": "dev",
+      "text": "ペンの種類はそのままで、今ある線画をベクター化して。",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2487",
+      "split": "dev",
+      "text": "吹き出しの変更じゃなくて、新しい吹き出しを一つ追加して。",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2494",
+      "split": "dev",
+      "text": "次に開くときはベクターペンを使うつもり。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2495",
+      "split": "dev",
+      "text": "吹き出しのしっぽが消えてる。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2527",
+      "split": "dev",
+      "text": "対象は三番のコマで選択している人物。これを生成して。",
+      "label": "generate_request",
+      "slots": {
+        "target": "selected_character",
+        "locator": {
+          "panel_number": 3
+        }
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2535",
+      "split": "dev",
+      "text": "候補を見たいのは二番のコマ。登録済みの3D背景から選んで見せて。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "locator": {
+          "panel_number": 2
+        }
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3000",
+      "split": "dev",
+      "text": "ここで保存を一回。まだ続きは描くけどね。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3003",
+      "split": "dev",
+      "text": "保存をお願い。さっきの「まだ保存しない」は撤回するね。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3006",
+      "split": "dev",
+      "text": "二回、編集履歴を戻して。二つ前までで止めてね。",
+      "label": "undo",
+      "slots": {
+        "count": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3009",
+      "split": "dev",
+      "text": "取り消し前の絵にしたいけど、新しく描く必要はないよ。今の取り消しを一つRedoで。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3010",
+      "split": "dev",
+      "text": "もう一度というのは、Undoした編集を戻すほうの一回ね。Redoをお願い。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3014",
+      "split": "dev",
+      "text": "七ページを開いてほしい。「七ページ追加」じゃなくて、番号七のページを見るほう。",
+      "label": "page_navigate",
+      "slots": {
+        "page_number": 7
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3016",
+      "split": "dev",
+      "text": "縮めたいのは表示のほう。紙の上の寸法は触らず、ズームアウトでお願い。",
+      "label": "view_change",
+      "slots": {
+        "kind": "zoom",
+        "zoom_mode": "out"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3019",
+      "split": "dev",
+      "text": "人物タブを開いた状態にしておいて、編集はまだ始めないでね。",
+      "label": "view_change",
+      "slots": {
+        "kind": "tab",
+        "tab": "characters"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3021",
+      "split": "dev",
+      "text": "「下書き」を選ぶところまで頼むよ、作画設定のほうで。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "draft"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3026",
+      "split": "dev",
+      "text": "しっぽはなしでお願い、選択中の吹き出しのね。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "tail_enabled",
+        "value": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3027",
+      "split": "dev",
+      "text": "この選択中の吹き出しの話者、「先生」という役名でなく、台帳の健さんに指定して。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "speaker",
+        "name": "健さん"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3028",
+      "split": "dev",
+      "text": "選択中の吹き出し、いまよりひと回り大きいくらいで頼む。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3029",
+      "split": "dev",
+      "text": "ペンはそっちに切り替えで。さっき使ったほうじゃなくて、もう片方のほう。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3030",
+      "split": "dev",
+      "text": "コマシンクロの設定、いまのままという意味ではないよ。変更をお願い。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3031",
+      "split": "dev",
+      "text": "ガイド表示を入れるところまでお願い。どのガイドかは、前に話したやつね。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3032",
+      "split": "dev",
+      "text": "主人公ならこんな返事はしなさそう。この場面での返答を、人物設定に沿って考え直して。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3033",
+      "split": "dev",
+      "text": "形はまだ決めてない。場面に合う吹き出しを選んでほしい、丸でも角ばっていてもいいから。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3035",
+      "split": "dev",
+      "text": "「怒っているから大声」と決めつけず、ここの人物の気持ちを読んでセリフを練り直してほしい。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3036",
+      "split": "dev",
+      "text": "一つは保存、もう一つは表示を原寸に戻すこと。この二つを今お願い。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3038",
+      "split": "dev",
+      "text": "ベクターペンはお願いね。それだけで終わりにせず、コマシンクロも有効に。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3039",
+      "split": "dev",
+      "text": "選択中の吹き出しの本文は「ちょっと待って」に差し替え、それから作品の保存。この順で両方お願い。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3040",
+      "split": "dev",
+      "text": "保存という言い方をしたけど、今の作品とは別ファイルに残したい。別名保存のほうをお願い。",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3044",
+      "split": "dev",
+      "text": "「保存してくれる？」って言ったら、もうそれは保存の依頼になるの？",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3045",
+      "split": "dev",
+      "text": "コマスナップはオフに、って今お願いしたいわけじゃない。使い方を先に知りたいんだ。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3047",
+      "split": "dev",
+      "text": "ベクターペンになってるのは分かった。切り替え直しは要らない、そのままで。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3050",
+      "split": "dev",
+      "text": "コマシンクロのほうをオフで。内枠スナップのことは言ってないよ。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3051",
+      "split": "dev",
+      "text": "コマシンクロはオンでお願い。「オンにしないで」じゃなくて、「オンにして」ね。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3055",
+      "split": "dev",
+      "text": "内枠スナップは有効にしておいてね。コマの位置まで今そろえなくていいから。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3058",
+      "split": "dev",
+      "text": "コマシンクロを切る件はなし。今回はコマスナップの無効化だけで。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3061",
+      "split": "dev",
+      "text": "「この人を生成」の、この人は選択中の人物のこと。画像生成をそこにお願い。",
+      "label": "generate_request",
+      "slots": {
+        "target": "selected_character"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3062",
+      "split": "dev",
+      "text": "生成してほしいのは真央ちゃん。コマは四番、その中の真央ちゃんだけね。",
+      "label": "generate_request",
+      "slots": {
+        "target": "named_character",
+        "locator": {
+          "panel_number": 4,
+          "character_name": "真央ちゃん"
+        }
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3063",
+      "split": "dev",
+      "text": "コマを増やすんじゃなくて、今選んでいるコマの絵を作るほう。コマ全体の生成をお願い。",
+      "label": "generate_request",
+      "slots": {
+        "target": "selected_panel"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3065",
+      "split": "dev",
+      "text": "舞台は小さな診療所。背景候補を二つほしい、登録済みの3Dモデルの中からね。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "count": 2,
+        "query": "小さな診療所"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3071",
+      "split": "dev",
+      "text": "ラスターペンに戻してほしい、道具の設定をね。履歴を戻す操作ではないよ。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "pen"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3072",
+      "split": "dev",
+      "text": "上をそろえたいのは、こことここの文字枠。いま複数選んである分の上端揃えをお願い。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3101",
+      "split": "dev",
+      "text": "この作品の保存、引き受けてもらえる？　ここまで直した内容で。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3103",
+      "split": "dev",
+      "text": "最後に入れた変更を、編集履歴で取り消してほしいんだ。一回分です。",
+      "label": "undo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3105",
+      "split": "dev",
+      "text": "履歴の「やり直し」を一回お願い。対象は、直前にUndoした編集。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3106",
+      "split": "dev",
+      "text": "ページをめくる操作で、先へ二回お願いします。",
+      "label": "page_navigate",
+      "slots": {
+        "direction": "next",
+        "count": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3111",
+      "split": "dev",
+      "text": "コマシンクロは有効を選ぶよ。設定に反映してもらえる？",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3112",
+      "split": "dev",
+      "text": "内枠スナップは、オンの設定で始められるようにしておいて。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3114",
+      "split": "dev",
+      "text": "オンでお願いします。設定するのはコマスナップ。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3118",
+      "split": "dev",
+      "text": "選ぶツールはベクターペン、で確定。実際の切り替えまでお願いします。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "vector-pen"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3120",
+      "split": "dev",
+      "text": "複数選んだ文字枠のうち、一番上の枠に合わせて、全部の上端をそろえて。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2707",
+      "split": "test",
+      "text": "保存して。念押しだけど、今の作品を保存してね。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2721",
+      "split": "test",
+      "text": "取り消す回数は二回でお願い。編集のUndoね。",
+      "label": "undo",
+      "slots": {
+        "count": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2723",
+      "split": "test",
+      "text": "Undoを一回お願い。繰り返すけど、取り消しは一回だけ。",
+      "label": "undo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2735",
+      "split": "test",
+      "text": "Redo一回でお願い。念押しだけど、再適用は一回だけ。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2747",
+      "split": "test",
+      "text": "次のページへ。念押しだけど、進むのは一ページね。",
+      "label": "page_navigate",
+      "slots": {
+        "direction": "next",
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2753",
+      "split": "test",
+      "text": "絵の寸法は変えず、表示を原寸にして。",
+      "label": "view_change",
+      "slots": {
+        "kind": "zoom",
+        "zoom_mode": "actual"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2754",
+      "split": "test",
+      "text": "配置ガイドじゃなくて、編集ガイドを表示して。",
+      "label": "view_change",
+      "slots": {
+        "kind": "guide",
+        "guide": "edit",
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2755",
+      "split": "test",
+      "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+      "label": "view_change",
+      "slots": {
+        "kind": "guide",
+        "guide": "artwork",
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2767",
+      "split": "test",
+      "text": "作画は一体型に設定して。繰り返すけど、一体型でお願い。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "integrated"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2770",
+      "split": "test",
+      "text": "設定の変更だけ頼むね。作画は下書きモードへ。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "draft"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2778",
+      "split": "test",
+      "text": "しっぽを消して、いや、選択中の吹き出しはしっぽありにして。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "tail_enabled",
+        "value": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2779",
+      "split": "test",
+      "text": "選択中の吹き出しをコマで切り取らない設定にして。念押しだけど、切取りはオフ。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "clip_to_panel",
+        "value": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2800",
+      "split": "test",
+      "text": "次に読者を驚かせたい。今のページをどう見せると効果的か考えて。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2801",
+      "split": "test",
+      "text": "セリフ本文は保ったまま、読み順が伝わる配置を考えて。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2807",
+      "split": "test",
+      "text": "資料の会話を読んで、今のコマに使える短いセリフ案にまとめて。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2809",
+      "split": "test",
+      "text": "見開きをオフにして、さらにコマシンクロもオフにして。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2815",
+      "split": "test",
+      "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2823",
+      "split": "test",
+      "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2826",
+      "split": "test",
+      "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2836",
+      "split": "test",
+      "text": "次の休憩前に作品を保存するつもり。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2840",
+      "split": "test",
+      "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2842",
+      "split": "test",
+      "text": "選択中の文字枠はいくつある？",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2851",
+      "split": "test",
+      "text": "コマシンクロをオフにして。念のため言うけど、オフでね。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2863",
+      "split": "test",
+      "text": "内枠スナップはオフに設定して。繰り返すね、オフにして。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2875",
+      "split": "test",
+      "text": "コマスナップをオフにしてね。もう一度、オフでお願い。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2887",
+      "split": "test",
+      "text": "選択中の人物を生成して。念押しだけど、生成するのは選択中の人物ね。",
+      "label": "generate_request",
+      "slots": {
+        "target": "selected_character"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2899",
+      "split": "test",
+      "text": "背景候補を三つお願い。繰り返すけど、候補は三つで。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "count": 3
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2900",
+      "split": "test",
+      "text": "場面は図書館。登録済み3Dモデルから背景候補をお願い。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "query": "図書館"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2911",
+      "split": "test",
+      "text": "ラスターペンにして。念押しだけど、今使うのはラスターペンね。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "pen"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_2923",
+      "split": "test",
+      "text": "選択中の文字枠二つを頭揃えにして。念押しだけど、その二つの上端をそろえてね。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3201",
+      "split": "test",
+      "text": "保存って言ったのはコピーを作る話じゃなくて、今の作品に変更を残すほう。それを実行して。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3203",
+      "split": "test",
+      "text": "いま保存を押してほしい。保存先や作品名は、この作品のままでいい。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3204",
+      "split": "test",
+      "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+      "label": "undo",
+      "slots": {
+        "count": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3205",
+      "split": "test",
+      "text": "たった今動かした吹き出し、動かす前の状態に戻せる？　新しく動かすんじゃなくて、履歴を一つ戻してほしい。",
+      "label": "undo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3210",
+      "split": "test",
+      "text": "さっき三回Undoしたうち、直近に取り消した二回分だけ再適用して。残り一回分は取り消したままで。",
+      "label": "redo",
+      "slots": {
+        "count": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3211",
+      "split": "test",
+      "text": "Redoをお願いします。回数の指定を先に言い忘れたけど、一回です。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3212",
+      "split": "test",
+      "text": "開きたいのは六ページ目。いまの表示から何ページ離れていても、六ページ目へ直接お願い。",
+      "label": "page_navigate",
+      "slots": {
+        "page_number": 6
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3213",
+      "split": "test",
+      "text": "次のページじゃなくて、その次まで進めてほしい。今から二ページ分ね。",
+      "label": "page_navigate",
+      "slots": {
+        "direction": "next",
+        "count": 2
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3215",
+      "split": "test",
+      "text": "この作品はどこで終わるか見たい。途中のページは開かなくていいから、最終ページを見せて。",
+      "label": "page_navigate",
+      "slots": {
+        "position": "last"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3217",
+      "split": "test",
+      "text": "見開きって左右を並べる表示のことだよね。それを今、オンにしてほしい。",
+      "label": "view_change",
+      "slots": {
+        "kind": "spread",
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3219",
+      "split": "test",
+      "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+      "label": "view_change",
+      "slots": {
+        "kind": "tab",
+        "tab": "props"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3222",
+      "split": "test",
+      "text": "いま変えたいのは画像の中身じゃなくて作画の設定。方式を一体型にするところまでお願い。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "integrated"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3224",
+      "split": "test",
+      "text": "選んでいる吹き出しの幅、いまの値に足すんじゃなくて、最終的な幅を三十二ミリにして。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "bbox",
+        "operation": "resize",
+        "width_mm": 32
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3227",
+      "split": "test",
+      "text": "話している人は悠里さん、という指定だけ反映して。選択中の吹き出しの話者の欄ね。",
+      "label": "bubble_set",
+      "slots": {
+        "target": "selected_bubble",
+        "field": "speaker",
+        "name": "悠里さん"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3228",
+      "split": "test",
+      "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3231",
+      "split": "test",
+      "text": "選択中の吹き出し、話者の名前が今の人じゃないんだよね。別の人に直して。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3232",
+      "split": "test",
+      "text": "このコマは、言葉では平気と言ってるけど顔は困ってる。セリフをそのまま使う前提で、吹き出しの形を場面に合わせて選んでほしい。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3233",
+      "split": "test",
+      "text": "二つの吹き出し、読む順番が逆に見える気がする。どちらをどこに置くと自然か、場面を読んで案を出して。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3235",
+      "split": "test",
+      "text": "「大きくすれば読みやすい」とは限らないと思う。選択中の吹き出しは、文章量と絵の余白を見て、ちょうどいい寸法を提案して。",
+      "label": "needs_reasoning",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3237",
+      "split": "test",
+      "text": "このページ全体を生成してほしい。あ、それとは別に、作業中の作品の保存も今お願い。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3239",
+      "split": "test",
+      "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+      "label": "compound_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3241",
+      "split": "test",
+      "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3242",
+      "split": "test",
+      "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+      "label": "out_of_scope_request",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3244",
+      "split": "test",
+      "text": "画面に「保存しました」って出た？　今の保存が終わったかだけ教えて。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3245",
+      "split": "test",
+      "text": "内枠スナップ、オフにしたらコマが動くわけじゃないんだよね？　動作の説明だけ聞きたい。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3247",
+      "split": "test",
+      "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+      "label": "not_command",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3250",
+      "split": "test",
+      "text": "今言った「使う」はコマシンクロの設定のこと。コマシンクロを有効にしておいてね。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3252",
+      "split": "test",
+      "text": "内枠スナップの設定にあるオンのほうを選んで。いまの状態にかかわらず、その値でお願い。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3253",
+      "split": "test",
+      "text": "内枠スナップをオフにしたいんだけど、コマのサイズ変更まではしなくていい。その設定だけ変更してもらえる？",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3255",
+      "split": "test",
+      "text": "コマスナップは触らなくていいよ。オフにしてほしいのは内枠スナップのほう。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3261",
+      "split": "test",
+      "text": "三番のコマの、美月さん。名前を指定したその人物だけを生成して、同じページの別の登場人物には広げないで。",
+      "label": "generate_request",
+      "slots": {
+        "target": "named_character",
+        "locator": {
+          "panel_number": 3,
+          "character_name": "美月さん"
+        }
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3264",
+      "split": "test",
+      "text": "候補に出していいのは、もう登録してある3Dモデルだけ。その中で、この場面の背景に向くものを挙げて。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3266",
+      "split": "test",
+      "text": "背景候補の条件を足すね。「雨の路地」に合うこと。登録済みの3Dモデルだけで提案して。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "query": "雨の路地"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3269",
+      "split": "test",
+      "text": "今選ぶペンの名前は「ラスターペン」。そのツールを使える状態にして。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "pen"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3273",
+      "split": "test",
+      "text": "文字枠を二つ選んであるよ。揃える基準は上側、下端や中央ではなく上端でお願い。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3274",
+      "split": "test",
+      "text": "文字の内容を直す依頼は取り消すね。選択中の複数の文字枠について、書き出し位置を上端でそろえるほうを実行して。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3300",
+      "split": "test",
+      "text": "ここまでの編集内容、保存してある状態にしてくれる？",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3304",
+      "split": "test",
+      "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3305",
+      "split": "test",
+      "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+      "label": "needs_clarification",
+      "slots": {},
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3306",
+      "split": "test",
+      "text": "有効にしたい項目は、コマシンクロ。いまオンに設定をお願い。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3308",
+      "split": "test",
+      "text": "「コマスナップ」と書かれた設定があるね。そこを有効にして。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3310",
+      "split": "test",
+      "text": "これから使う道具を指定するよ。「ベクターペン」を選んで。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "vector-pen"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3313",
+      "split": "test",
+      "text": "上端揃えをお願い。対象は選択中の二つの文字枠、別々の吹き出しに入っているほうです。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "no_required_change"
+    },
+    {
+      "id": "nyamuru_voice_3262",
+      "split": "test",
+      "text": "このページの全部って、いま見えてる一ページ全体の意味ね。作品の全ページではなく、この一ページを生成してほしい。",
+      "label": "generate_request",
+      "slots": {
+        "target": "current_page"
+      },
+      "full_text_reviewed": true,
+      "label_slots_result": "no_clear_error",
+      "result": "exclude_H01"
+    }
+  ],
+  "limitations": [
+    "最終候補142件と提示近傍に限定した意味監査であり、統計的独立性の保証ではない。",
+    "一般的な日本語構文、同じ操作語、後置修飾、一般的な言い換え現象そのものはfamily一致と判定していない。",
+    "この監査が確認したのは入力142件。除外後の最終パッケージへの反映は親が担当する。"
+  ]
+}

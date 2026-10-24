@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "current_version": "v0.4",
+  "previous_version": "v0.3",
+  "previous_plan": "legacy/v03/split-plan.json",
+  "previous_data_dir": "legacy/v03/data",
+  "split_map": {
+    "train": "train",
+    "dev": "legacy_v03_dev",
+    "test": "legacy_v03_test",
+    "legacy_dev": "legacy_v02_dev",
+    "legacy_test": "legacy_v02_test"
+  },
+  "splits": [
+    "train",
+    "dev",
+    "test",
+    "legacy_v03_dev",
+    "legacy_v03_test",
+    "legacy_v02_dev",
+    "legacy_v02_test"
+  ],
+  "inherited_row_split_map": {
+    "train": "train",
+    "dev": "legacy_v03_dev",
+    "test": "legacy_v03_test"
+  },
+  "lineage_link_files": [],
+  "baseline_reports": [
+    {
+      "version": "v0.3",
+      "reports": "legacy/v03-results/reports",
+      "split_map": {
+        "dev": "legacy_v03_dev",
+        "test": "legacy_v03_test"
+      }
+    },
+    {
+      "version": "v0.2",
+      "reports": "legacy/v02-results/reports",
+      "split_map": {
+        "dev": "legacy_v02_dev",
+        "test": "legacy_v02_test"
+      }
+    }
+  ]
+}

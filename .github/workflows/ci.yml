@@ -1,0 +1,108 @@
+name: Fork CI
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.12.0
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Download and verify adopted classifier
+        run: python scripts/install_voice_intent.py --download
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Install deterministic generation QA dependencies
+        run: |
+          node --input-type=module -e "import { updatePythonCertificates } from './scripts/setup-local-vision.mjs'; await updatePythonCertificates('python');"
+          python -m pip install --requirement requirements-qa.txt
+
+      - name: Verify deterministic generation QA imports
+        run: python -c "import cv2, jsonschema, numpy, PIL, referencing"
+
+      - name: Check changed lines for whitespace errors
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          case "$EVENT_NAME" in
+            pull_request)
+              base="$PR_BASE_SHA"
+              ;;
+            push)
+              base="$PUSH_BEFORE_SHA"
+              if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+                base="$(git rev-parse HEAD^)"
+              fi
+              ;;
+            *)
+              base="$(git rev-parse HEAD^)"
+              ;;
+          esac
+          git diff --check "$base"...HEAD
+
+      - name: Check types and Astro components
+        run: npm run check
+
+      - name: Run Node and Python tests
+        env:
+          NYAMURU_QA_REQUIRE_DEPENDENCIES: "1"
+        run: npm test
+
+      - name: Build site and standalone artifact
+        run: npm run build
+
+      - name: Check release boundaries
+        shell: bash
+        run: |
+          test -s dist/standalone/nyamuru-image-hub.html
+          test -s dist/standalone/THIRD_PARTY_NOTICES.txt
+          python scripts/install_voice_intent.py --check
+
+          blocked_model_file=0
+          shopt -s nocasematch
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              *.bin|*.ckpt|*.gguf|*.onnx|*.pt|*.pth|*.safetensors)
+                printf 'Tracked model weight: %s\n' "$path"
+                blocked_model_file=1
+                ;;
+            esac
+          done < <(git ls-files -z)
+
+          if (( blocked_model_file )); then
+            echo "Model weights are distributed through Releases and must not be tracked."
+            exit 1
+          fi
+
+      - name: Ensure verification did not modify tracked files
+        run: |
+          git diff --exit-code
+          git diff --cached --exit-code

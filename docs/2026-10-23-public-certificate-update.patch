@@ -1,0 +1,326 @@
+--- a/docs/LOCAL_VISION_BRIDGE.md
++++ b/docs/LOCAL_VISION_BRIDGE.md
+@@ -56,6 +56,18 @@
+ ```
+
+ 使用版と再配布上の注意は [LOCAL_VISION_COMPONENTS.md](./LOCAL_VISION_COMPONENTS.md) に記載しています。
++
++### Python証明書パッケージの更新
++
++セットアップは依存導入前にpip 26.2.2以上、certifi 2026.10.19以上を確認・導入します。古いpipの初回更新には[Python公式告知](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576)のSHA-256付きwheelを使います。最低版以上の場合は保持します。
++
++既存環境のpip・certifiだけを更新するには次を実行します。
++
++```bash
++npm run setup:vision -- --update-certificates
++```
++
++`--root /path/to/root`で対象の既存`ROOT/.venv`を明示できます。更新専用モードでは仮想環境、NDLOCR、モデルを作成・取得せず、他の依存も更新しません。通常起動・診断はこの更新処理や版検査を呼びません。
+
+ ## 起動と終了
+
+--- a/requirements-vision.txt
++++ b/requirements-vision.txt
+@@ -2,3 +2,4 @@
+ opencv-python-headless>=4.8,<5
+ onnxruntime>=1.17,<2
+ Pillow>=10,<13
++certifi>=2026.10.19
+--- a/tests/localVisionSetup.test.mjs
++++ b/tests/localVisionSetup.test.mjs
+@@ -1,4 +1,6 @@
+ import assert from 'node:assert/strict';
++import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
++import { tmpdir } from 'node:os';
+ import { resolve } from 'node:path';
+ import test from 'node:test';
+
+@@ -6,6 +8,9 @@
+   MODEL_REVISION,
+   MODEL_SHA256,
+   parseSetupArgs,
++  PIP_BOOTSTRAP_REQUIREMENT,
++  setup,
++  updatePythonCertificates,
+   visionLayout,
+ } from '../scripts/setup-local-vision.mjs';
+
+@@ -17,6 +22,125 @@
+   assert.ok(layout.model.startsWith(root));
+   assert.ok(layout.ndlocr.startsWith(root));
+   assert.match(layout.python, /\.venv/);
++});
++
++
++function certificateRuntime(pipCurrent = false, certifiCurrent = false) {
++  const calls = [];
++  const status = { pip: pipCurrent ? '27.0' : '24.0', certifi: certifiCurrent ? '2027.1.1' : '2026.7.22', pipCurrent, certifiCurrent };
++  return {
++    calls, status,
++    inspect: () => ({ ...status }),
++    execute: async (python, args) => {
++      calls.push({ python, args });
++      if (args.includes(PIP_BOOTSTRAP_REQUIREMENT)) Object.assign(status, { pip: '26.2.2', pipCurrent: true });
++      else Object.assign(status, { certifi: '2026.10.19', certifiCurrent: true });
++    },
++  };
++}
++
++
++test('old environments bootstrap pinned pip before updating certifi without other dependencies', async () => {
++  const runtime = certificateRuntime();
++  const result = await updatePythonCertificates('/existing/python', runtime);
++  assert.equal(runtime.calls.length, 2);
++  assert.ok(runtime.calls.every(({ python, args }) => python === '/existing/python' && args.includes('--no-deps')));
++  const bootstrap = runtime.calls[0].args;
++  assert.ok(bootstrap.includes('--no-index'));
++  assert.ok(bootstrap.includes('--disable-pip-version-check'));
++  assert.ok(bootstrap.includes('--isolated'));
++  assert.equal(bootstrap.at(-1), 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70');
++  assert.equal(runtime.calls[1].args.at(-1), 'certifi>=2026.10.19');
++  assert.equal(result.pip, '26.2.2');
++  assert.equal(result.certifi, '2026.10.19');
++});
++
++
++test('failed pip bootstrap does not proceed to an index or certifi install', async () => {
++  const runtime = certificateRuntime();
++  runtime.execute = async (...call) => { runtime.calls.push(call); throw new Error('wheel checksum mismatch'); };
++  await assert.rejects(updatePythonCertificates('/existing/python', runtime), /checksum mismatch/);
++  assert.equal(runtime.calls.length, 1);
++});
++
++
++test('a bootstrap that leaves old pip cannot proceed to certifi', async () => {
++  const runtime = certificateRuntime();
++  runtime.execute = async (...call) => { runtime.calls.push(call); };
++  await assert.rejects(updatePythonCertificates('/existing/python', runtime), /pip 26.2.2/);
++  assert.equal(runtime.calls.length, 1);
++});
++
++
++test('already current packages are preserved without downloads or downgrades', async () => {
++  const runtime = certificateRuntime(true, true);
++  const result = await updatePythonCertificates('/existing/python', runtime);
++  assert.equal(runtime.calls.length, 0);
++  assert.equal(result.pip, '27.0');
++  assert.equal(result.certifi, '2027.1.1');
++});
++
++
++test('current pip only updates an outdated certifi', async () => {
++  const runtime = certificateRuntime(true, false);
++  await updatePythonCertificates('/existing/python', runtime);
++  assert.equal(runtime.calls.length, 1);
++  assert.equal(runtime.calls[0].args.at(-1), 'certifi>=2026.10.19');
++});
++
++
++test('an ineffective certifi update reports failure', async () => {
++  const runtime = certificateRuntime(true, false);
++  runtime.execute = async (...call) => { runtime.calls.push(call); };
++  await assert.rejects(updatePythonCertificates('/existing/python', runtime), /更新後のバージョン/);
++});
++
++
++test('certificate-only setup respects the selected root and does not create models or dependencies', async () => {
++  const root = mkdtempSync(resolve(tmpdir(), 'nyamuru-certificates-'));
++  try {
++    const layout = visionLayout(root);
++    mkdirSync(resolve(layout.python, '..'), { recursive: true });
++    writeFileSync(layout.python, 'existing environment marker');
++    const calls = [];
++    await setup(parseSetupArgs(['--yes', '--update-certificates', '--root', root]), {
++      updateCertificates: async (python) => calls.push(python),
++    });
++    assert.deepEqual(calls, [layout.python]);
++    assert.deepEqual(readdirSync(root), ['.venv']);
++    assert.equal(readFileSync(layout.python, 'utf8'), 'existing environment marker');
++  } finally { rmSync(root, { recursive: true, force: true }); }
++});
++
++
++test('certificate-only setup refuses a missing environment without creating it', async () => {
++  const root = mkdtempSync(resolve(tmpdir(), 'nyamuru-certificates-'));
++  try {
++    const target = resolve(root, 'missing');
++    await assert.rejects(setup(parseSetupArgs(['--yes', '--update-certificates', '--root', target])), /既存Python環境が見つかりません/);
++    assert.equal(existsSync(target), false);
++  } finally { rmSync(root, { recursive: true, force: true }); }
++});
++
++
++test('normal setup stops before dependencies and models when certificate bootstrap fails', { skip: process.platform === 'win32' }, async () => {
++  const root = mkdtempSync(resolve(tmpdir(), 'nyamuru-setup-order-'));
++  try {
++    const layout = visionLayout(root);
++    mkdirSync(resolve(layout.python, '..'), { recursive: true });
++    // Only the supported-Python probe may run; any accidental pip invocation fails.
++    writeFileSync(layout.python, '#!/usr/bin/env node\nif (process.argv[2] !== "-c") process.exit(91);\nconsole.log("3.11");\n', { mode: 0o755 });
++    let reachedBootstrap = false;
++    await assert.rejects(setup(parseSetupArgs(['--yes', '--root', root]), {
++      updateCertificates: async (python) => {
++        assert.equal(python, layout.python);
++        reachedBootstrap = true;
++        throw new Error('bootstrap rejected fixture wheel');
++      },
++    }), /bootstrap rejected fixture wheel/);
++    assert.equal(reachedBootstrap, true);
++    assert.deepEqual(readdirSync(root), ['.venv']);
++  } finally { rmSync(root, { recursive: true, force: true }); }
+ });
+
+
+--- a/scripts/setup-local-vision.mjs
++++ b/scripts/setup-local-vision.mjs
+@@ -15,6 +15,10 @@
+ export const REPO_ROOT = resolve(scriptDirectory, '..');
+ export const NDLOCR_VERSION = '1.2.3';
+ export const NDLOCR_REPOSITORY = 'https://github.com/ndl-lab/ndlocr-lite.git';
++export const PIP_MINIMUM = '26.2.2';
++export const CERTIFI_MINIMUM = '2026.10.19';
++// Python's official incident advisory pins the first download independently of old CA bundles.
++export const PIP_BOOTSTRAP_REQUIREMENT = 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70';
+ export const MODEL_REVISION = '864c3bfb837a03ecc62557d5152a5ade5566489b';
+ export const MODEL_URL = `https://huggingface.co/tori29umai/rtdetrv4-x-manga109s_v2/resolve/${MODEL_REVISION}/model.onnx`;
+ export const MODEL_SHA256 = '5a5c27646a2ae2e9c85671a1db30504debc9b0b816dc585235435c5e86c2c2b9';
+@@ -36,6 +40,7 @@
+   const options = {
+     yes: false,
+     help: false,
++    updateCertificates: false,
+     root: resolve(process.env.NYAMURU_VISION_ROOT || resolve(REPO_ROOT, '.local-vision')),
+   };
+   for (let index = 0; index < argv.length; index += 1) {
+@@ -44,6 +49,8 @@
+       options.yes = true;
+     } else if (argument === '--help' || argument === '-h') {
+       options.help = true;
++    } else if (argument === '--update-certificates') {
++      options.updateCertificates = true;
+     } else if (argument === '--root') {
+       const value = argv[index + 1];
+       if (!value) throw new Error('--rootには保存先が必要です。');
+@@ -64,11 +71,13 @@
+   npm run setup:vision
+   npm run setup:vision -- --yes
+   npm run setup:vision -- --root /path/to/vision-data
++  npm run setup:vision -- --update-certificates
+
+ Options:
+   -y, --yes     確認に同意して非対話で進める
+   -h, --help    この説明を表示する
+-  --root PATH   Git対象外の保存先を変更する`);
++  --root PATH   Git対象外の保存先を変更する
++  --update-certificates  既存のROOT/.venvのpip・certifiだけを更新する`);
+ }
+
+
+@@ -101,6 +110,46 @@
+ }
+
+
++function certificatePackageStatus(python) {
++  const result = spawnSync(python, ['-I', '-c', `
++import json
++from importlib.metadata import version, PackageNotFoundError
++from pip._vendor.packaging.version import Version
++def installed(name):
++    try: return version(name)
++    except PackageNotFoundError: return None
++pip = installed('pip')
++certifi = installed('certifi')
++print(json.dumps({'pip': pip, 'certifi': certifi,
++    'pipCurrent': bool(pip and Version(pip) >= Version('${PIP_MINIMUM}')),
++    'certifiCurrent': bool(certifi and Version(certifi) >= Version('${CERTIFI_MINIMUM}'))}))
++`], { encoding: 'utf8' });
++  if (result.error) throw result.error;
++  if (result.status !== 0) throw new Error(`pip・certifiの状態を取得できません: ${python}\n${result.stderr}`);
++  return JSON.parse(result.stdout);
++}
++
++
++export async function updatePythonCertificates(python, { inspect = certificatePackageStatus, execute = run } = {}) {
++  let status = inspect(python);
++  const pipArgs = ['-I', '-m', 'pip', '--isolated', '--disable-pip-version-check'];
++  if (!status.pipCurrent) {
++    await execute(python, [...pipArgs, 'install', '--no-index', '--no-deps', '--no-cache-dir', PIP_BOOTSTRAP_REQUIREMENT]);
++    status = inspect(python);
++    if (!status.pipCurrent) throw new Error(`pip ${PIP_MINIMUM}以上への更新を確認できませんでした。`);
++  }
++  if (!status.certifiCurrent) {
++    await execute(python, [...pipArgs, 'install', '--no-deps', '--only-binary=:all:', `certifi>=${CERTIFI_MINIMUM}`]);
++  }
++  status = inspect(python);
++  if (!status.pipCurrent || !status.certifiCurrent) {
++    throw new Error('pip・certifiの更新後のバージョンを確認できませんでした。');
++  }
++  console.log(`Python証明書パッケージ: pip ${status.pip}, certifi ${status.certifi}`);
++  return status;
++}
++
++
+ function findPython() {
+   const candidates = [
+     process.env.PYTHON,
+@@ -180,8 +229,14 @@
+ }
+
+
+-async function confirmSetup(layout, assumeYes) {
+-  console.log(`
++async function confirmSetup(layout, assumeYes, updateCertificates) {
++  console.log(updateCertificates ? `
++既存Python環境のpip・certifiを更新します。
++
++対象: ${layout.python}
++最低版: pip ${PIP_MINIMUM}, certifi ${CERTIFI_MINIMUM}
++取得量は最大約2MB、追加ディスク使用は数MBです。
++モデル・他のPython依存・仮想環境の構成は変更しません。` : `
+ 次の外部コンポーネントを取得します。
+
+ - RT-DETRv4-X Manga109-s v2（Apache-2.0、モデル約239MB）
+@@ -204,26 +259,38 @@
+ }
+
+
+-async function setup(options) {
++export async function setup(options, { updateCertificates = updatePythonCertificates } = {}) {
+   const layout = visionLayout(options.root);
+-  if (!(await confirmSetup(layout, options.yes))) {
++  if (options.updateCertificates && !existsSync(layout.python)) {
++    throw new Error(`更新対象の既存Python環境が見つかりません: ${layout.python}`);
++  }
++  if (!(await confirmSetup(layout, options.yes, options.updateCertificates))) {
+     console.log('セットアップを中止しました。');
+     return;
+   }
+
+-  const systemPython = findPython();
++  if (options.updateCertificates) {
++    await updateCertificates(layout.python);
++    return;
++  }
++
+   await mkdir(layout.root, { recursive: true });
+   if (!existsSync(layout.python)) {
++    const systemPython = findPython();
+     console.log('画像解析専用のPython仮想環境を作成します...');
+     await run(systemPython, ['-m', 'venv', layout.venv]);
+   } else if (!supportedPython(layout.python)) {
+     throw new Error(`既存の画像解析環境がPython 3.10〜3.13ではありません: ${layout.python}`);
+   }
+
++  await updateCertificates(layout.python);
+   await ensureNdlocr(layout.ndlocr);
+   console.log('画像解析用Python依存を導入します...');
+-  await run(layout.python, ['-m', 'pip', 'install', '-r', resolve(REPO_ROOT, 'requirements-vision.txt')]);
+-  await run(layout.python, ['-m', 'pip', 'install', '-r', resolve(layout.ndlocr, 'requirements.txt')]);
++  await run(layout.python, [
++    '-m', 'pip', 'install',
++    '-r', resolve(REPO_ROOT, 'requirements-vision.txt'),
++    '-r', resolve(layout.ndlocr, 'requirements.txt'),
++  ]);
+   await downloadModel(layout.model);
+
+   console.log('導入状態を検査します...');

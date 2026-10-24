@@ -1,0 +1,197 @@
+[
+  {
+    "id": "pose-mh-mindfront-sitting-in-armchair-holding-wine-glass",
+    "display_number": 41,
+    "category": "actions",
+    "label_ja": "座ってグラスを持つ",
+    "label_en": "Seated stem-holding gesture",
+    "tags": [
+      "actions",
+      "chair",
+      "crossed-legs",
+      "mime",
+      "seated"
+    ],
+    "search_aliases": [
+      "41",
+      "飲食の会話。グラスと椅子は別途配置",
+      "mindfront_sitting_in_armchair_holding_wine_glass"
+    ],
+    "pose_text_ja": "腰を足より高い位置に置いて座り、上体を少し後ろへ傾ける。本人の右脚を左脚の膝の上で組み、上の右すねを画面左へ斜めに伸ばし、左すねを下へ向ける。両上腕を体から少し開き、両肘を約90度曲げる。画面左の右手を胸の下あたりへ上げ、細い軸を持つように親指と指を小さな空間の周りへ緩く曲げる。左手は低めで開き、指の力を抜く。頭を少し後ろへ傾け、顔を画面左へ向け、顎を少し上げて左上を見る。浮遊や飛行の表現にはしない。",
+    "pose_template": "Reclined seated posture with the hips elevated above the feet, torso leaning back slightly. Cross the anatomical right leg over the left at the knee; the upper right shin runs diagonally toward screen-left, while the left lower leg drops down. Both upper arms spread a little from the torso and both elbows bend about 90 degrees. Right hand at screen-left is raised near the lower chest, with thumb and fingers gently curved around a small empty gap as if holding a stem. Left hand is lower and open, fingers relaxed. Tilt the head back a little, turn the face toward screen-left, chin slightly raised, gaze upward toward screen-left. No floating or flying effect.",
+    "original_gemini_prompt": "floating seated posture, legs crossed at the knee (one leg over the other), both arms slightly spread and bent forward at the elbows",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "両腕の開き、右手の高さ、左手首の向きは追加調整の余地あり。"
+    },
+    "source": {
+      "key": "mindfront_sitting_in_armchair_holding_wine_glass",
+      "name": "41 座ってグラスを持つ",
+      "category": "物を持つ・動作",
+      "use": "飲食の会話。グラスと椅子は別途配置",
+      "path": "poses01_cc0/poses/mindfront_sitting_in_armchair_holding_wine_glass/mindfront_sitting_in_armchair_holding_wine_glass.bvh",
+      "sha256": "1f351ad965ba80152e4e48877a394a1e80c99ca160749b91e00fa0ac5e06b6be",
+      "status": "accepted",
+      "author": "Mindfront",
+      "url": "http://www.makehumancommunity.org/node/530",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-jjones-leaning-on-counter-hands-folded",
+    "display_number": 42,
+    "category": "actions",
+    "label_ja": "カウンターに寄りかかる",
+    "label_en": "Leaning forward with joined hands",
+    "tags": [
+      "actions",
+      "mime",
+      "standing"
+    ],
+    "search_aliases": [
+      "42",
+      "机越しの会話。台は別途配置",
+      "jjones_leaning_on_counter_hands_folded"
+    ],
+    "pose_text_ja": "本人のまっすぐな右脚（画面左）に主に体重をかけて立ち、左膝を軽く曲げ、左足を右足首の後ろに添える。腰から上体を約30度前へ倒し、肩の力を抜く。両上腕を前下方へ向け、肘を胸より明らかに低く、腰の前へ置く。両前腕を腰の高さでほぼ水平に前へ伸ばし、体の中心線付近で両手を緩く合わせる。手は胸より十分低く、顔から離す。頭も上体とともに前へ傾け、顎を少し引き、顔を前下方、目を眉の下から前へ向ける。静止してくつろいだ前傾姿勢。",
+    "pose_template": "Standing with the weight mostly on the straight anatomical right leg (screen-left), the left knee softly bent and the left foot tucked behind the right ankle. Hinge the torso forward at the hips about 30 degrees, shoulders relaxed. Both upper arms angle forward and down; elbows remain clearly below the chest and in front of the waist. Both forearms extend almost horizontally forward at waist height, with the hands loosely joined near the centerline. The hands stay well below the chest, away from the face. Head follows the forward inclination, chin slightly lowered, face directed forward and slightly down, eyes looking ahead beneath the brow. This is a stationary relaxed leaning pose.",
+    "original_gemini_prompt": "sneaking or creeping pose, torso hunched forward, both elbows bent tight against the chest with hands raised in front, knees slightly bent",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "候補は身体配置だけのB。各1枚の試行なので、counterの有無による成功率や因果は判断できない。"
+    },
+    "source": {
+      "key": "jjones_leaning_on_counter_hands_folded",
+      "name": "42 カウンターに寄りかかる",
+      "category": "物を持つ・動作",
+      "use": "机越しの会話。台は別途配置",
+      "path": "poses03_cc0/poses/jjones_leaning_on_counter_hands_folded/jjones_leaning_on_counter_hands_folded.bvh",
+      "sha256": "69b898cc6ec867ba81e76925db98b536619c573c27280c66a09247fedfaaf247",
+      "status": "accepted",
+      "author": "jjones",
+      "url": "http://www.makehumancommunity.org/node/3588",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata has no license field"
+    }
+  },
+  {
+    "id": "pose-mh-mindfront-standing-holding-wine-glass",
+    "display_number": 43,
+    "category": "actions",
+    "label_ja": "立ってグラスを持つ",
+    "label_en": "Standing stem-holding gesture",
+    "tags": [
+      "actions",
+      "mime",
+      "standing"
+    ],
+    "search_aliases": [
+      "43",
+      "飲食の会話。グラスは別途配置",
+      "mindfront_standing_holding_wine_glass"
+    ],
+    "pose_text_ja": "足を少し開き、画面右の本人の左脚に主に体重をかける。左肘を腰の近くで曲げ、左手を上腹部のすぐ前へ置き、小さな空間を囲むように指を緩く曲げる。右上腕を画面左へ広げ、肘を曲げ、前腕を斜め上へ向ける。開いた右手を肩の高さに置き、手のひらを見せ、会話の身振りとして指を開く。頭をほぼ起こして顎を少し引き、顔を前からわずかに画面左へ向け、目は前を見る。",
+    "pose_template": "Stand with feet a little apart and weight mainly on the anatomical left leg at screen-right. Bend the left elbow close to the waist and hold the left hand just in front of the upper abdomen, fingers softly curled around a small empty space. Extend the right upper arm outward toward screen-left, elbow bent, forearm slanting upward and the open right hand at shoulder height, palm visible and fingers spread in a conversational gesture. Head nearly upright, chin slightly lowered, face toward the viewer with a small turn toward screen-left, eyes forward.",
+    "original_gemini_prompt": "standing pose, one arm extended out to the side with open palm gesturing or welcoming, the other hand held close to the waist",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "元画像のより大きい指の開きと、脚への荷重は調整余地あり。"
+    },
+    "source": {
+      "key": "mindfront_standing_holding_wine_glass",
+      "name": "43 立ってグラスを持つ",
+      "category": "物を持つ・動作",
+      "use": "飲食の会話。グラスは別途配置",
+      "path": "poses03_cc0/poses/mindfront_standing_holding_wine_glass/mindfront_standing_holding_wine_glass.bvh",
+      "sha256": "d4876b6649cea874647e34546cdcfa03127d6ed53064a57d8cfc59ad0777f447",
+      "status": "accepted",
+      "author": "Mindfront",
+      "url": "http://www.makehumancommunity.org/node/531",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-punkduck-pd-fashion-handbag",
+    "display_number": 44,
+    "category": "actions",
+    "label_ja": "鞄を腕にかける",
+    "label_en": "Bent arm carrying gesture",
+    "tags": [
+      "actions",
+      "mime",
+      "standing"
+    ],
+    "search_aliases": [
+      "44",
+      "外出・買い物。鞄は別途配置",
+      "punkduck_pd_fashion_handbag"
+    ],
+    "pose_text_ja": "足を腰幅より少し広く開く。本人の右肘を画面左へ、胸下部ほどの高さで外へ曲げ、右前腕を斜め下内側へ向ける。右手を軽く丸め、右腰の横、体の少し前に置き、腰には触れない。画面右の左腕を自然に下ろし、手の力を抜く。上体をほぼ起こし、腰を少し画面右へずらす。頭を少し画面左へ傾け、顔も少し画面左へ向け、顎を水平にし、目もそちらを見る。",
+    "pose_template": "Stand with feet a little wider than hip width. Bend the anatomical right elbow outward toward screen-left around lower-chest height, with the right forearm angled downward and inward; the right hand stays beside the right waist, loosely curled, just in front of the body without touching the hip. The left arm hangs down naturally on screen-right, hand relaxed. Keep the torso nearly upright with a small hip shift toward screen-right. Tilt the head slightly toward screen-left, face turned a little toward screen-left, chin level and eyes looking that way.",
+    "original_gemini_prompt": "standing with feet apart, one arm bent with hand hovering near the ribcage, the other arm hanging down with a relaxed fist",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "顔の回転を弱くし、肘の高さを詰める余地あり。"
+    },
+    "source": {
+      "key": "punkduck_pd_fashion_handbag",
+      "name": "44 鞄を腕にかける",
+      "category": "物を持つ・動作",
+      "use": "外出・買い物。鞄は別途配置",
+      "path": "poses03_cc0/poses/punkduck_pd_fashion_handbag/punkduck_pd_fashion_handbag.bvh",
+      "sha256": "c9deb2846262bbd4f1e968993044f1430dc806293eb419856d9f339b3a2165f1",
+      "status": "accepted",
+      "author": "punkduck",
+      "url": "http://www.makehumancommunity.org/node/961",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-run01",
+    "display_number": 50,
+    "category": "actions",
+    "label_ja": "走る",
+    "label_en": "Running",
+    "tags": [
+      "actions"
+    ],
+    "search_aliases": [
+      "50",
+      "急ぐ・移動",
+      "run01"
+    ],
+    "pose_text_ja": "勢いよく走る姿勢で、上体を大きく前へ傾ける。片腕を胸の高さで前へ振り、反対の腕を後ろへ振り、全力疾走の一歩の途中を表す。",
+    "pose_template": "dynamic running pose, torso leaning heavily forward, one arm driving forward at chest height and the other swinging back, mid-sprint stride",
+    "original_gemini_prompt": "dynamic running pose, torso leaning heavily forward, one arm driving forward at chest height and the other swinging back, mid-sprint stride",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "run01",
+      "name": "50 走る",
+      "category": "物を持つ・動作",
+      "use": "急ぐ・移動",
+      "path": "makehuman_system_poses_cc0/poses/run01/run01.bvh",
+      "sha256": "b8f33a0c035f84cff8f533064159dc324be5f55db5b5c950ee4d5be1e375ea8b",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  }
+]

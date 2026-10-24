@@ -1,0 +1,114 @@
+{
+  "status": "passed_no_major_findings",
+  "major_findings": "none",
+  "issues": [],
+  "base_commit": "fa5d334",
+  "root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17",
+  "reviewed_files": [
+    "dataset.py",
+    "v03_data.py",
+    "prepare_v03.py",
+    "evaluation.py",
+    "verify_results.py",
+    "build_colab.py",
+    "test_v03_pipeline.py",
+    "test_v04_pipeline.py",
+    "experiments/v0.4/lineage-plan.json"
+  ],
+  "checks": [
+    {
+      "check": "seven_splits_and_retirement_map",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "invalid_retirement_targets_rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "frozen_baselines_align_and_identity_delta_is_zero",
+      "passed": true,
+      "detail": {
+        "seeds": 3,
+        "comparisons_per_seed": 4,
+        "method": "source-function-only execution; saved predictions only"
+      }
+    },
+    {
+      "check": "comparison_delta_is_current_minus_previous",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "changed_baseline_gold_rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "compound_direction_and_precision_denominators",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "empty_compound_precision_is_null",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "three_seed_shared_lr_and_primary_dev_selection",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "test_selection_input_rejected",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "received_source_snapshot_hashes_match",
+      "passed": true,
+      "detail": {
+        "files": 99
+      }
+    },
+    {
+      "check": "old_v03_code_is_byte_identical_to_base",
+      "passed": true,
+      "detail": {
+        "files": [
+          "dataset.py",
+          "v03_data.py",
+          "prepare_v03.py",
+          "evaluation.py",
+          "verify_results.py",
+          "build_colab.py",
+          "test_v03_pipeline.py",
+          "train.py"
+        ]
+      }
+    },
+    {
+      "check": "training_loop_is_unchanged",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "check": "changed_python_syntax",
+      "passed": true,
+      "detail": null
+    }
+  ],
+  "static_findings": [
+    "Old split mappings retain train and send every nontrain split exclusively to unique legacy destinations.",
+    "Preparation rejects reassignment of existing IDs, validates in a temporary tree, and retains atomic exclusive publication.",
+    "Validation recomputes prior family unions, checks original records and official public partition, compares retired row order and bytes, and prohibits all family overlaps involving new dev/test.",
+    "Public original partition is remapped only for IDs in the previous frozen plan; new public IDs retain original partitions.",
+    "Primary seed and shared learning rate are selected using dev before evaluate_checkpoint runs across seven splits.",
+    "Preserved v0.3 scripts retain local imports and original semantics when invoked from experiments/v0.3."
+  ],
+  "limitations": [
+    "The v0.4 dataset and bundle are still under assembly. Full seven-split validation, complete unittest discovery, notebook/ZIP execution, and old-result full re-verification were not performed in this code-only review.",
+    "No repository files modified, model imported, model inference or training performed, or network requested. Helper probes executed source functions and read saved predictions only."
+  ]
+}

@@ -1,0 +1,543 @@
+{
+  "schema_version": 1,
+  "scope": {
+    "type": "read_only_implementation_audit",
+    "root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17",
+    "head": "26a2c65d0d96f387706295d0ec8631b9a9353fb6",
+    "status_at_start": "clean",
+    "status_at_end": "clean",
+    "repository_edits": false,
+    "training_or_inference": false,
+    "tests_run": false,
+    "network_or_installs": false,
+    "scientific_method_chosen": false
+  },
+  "reusable_route": [
+    {
+      "file": "dataset.py",
+      "lines": "11-30,56-78",
+      "symbols": [
+        "ROOT",
+        "CODE_ROOT",
+        "SPLITS",
+        "input_path",
+        "SHARED_CODE"
+      ],
+      "finding": "NYAMURU_EXPERIMENT_ROOT chooses versioned inputs. input_path prefers a frozen local code copy and falls back to root shared code only if absent. Root and v0.4 copies of train/dataset/evaluation/verify_results/build_colab/v03_data/tests are byte-identical at audited HEAD. Existing frozen copies must remain immutable; root edits alone do not update bundles if a version-local copy exists."
+    },
+    {
+      "file": "train.py",
+      "lines": "305-408,408-516",
+      "symbols": [
+        "main",
+        "MeasuredTrainer",
+        "SaveBestDevelopment"
+      ],
+      "finding": "One training route constructs the model, Trainer, per-seed/LR trials, dev histories, selected checkpoints and manifests. Extend this route with explicit versioned condition configuration; do not create a parallel train_v05.py or notebook-only loop."
+    },
+    {
+      "file": "train.py",
+      "lines": "61-94,216-302",
+      "symbols": [
+        "EncodedRows",
+        "compute_metrics",
+        "evaluate_checkpoint"
+      ],
+      "finding": "Reuse exact text-only encoding, no truncation, same padding and deterministic inference path. evaluate_checkpoint works with any saved checkpoint whose label mapping and model class remain compatible."
+    },
+    {
+      "file": "evaluation.py",
+      "lines": "63-114,223-247",
+      "symbols": [
+        "selection_key",
+        "select_shared_learning_rate",
+        "select_primary_model",
+        "target_assessment"
+      ],
+      "finding": "Existing dev-only selection and metrics are reusable. More than one method makes current (seed,LR) uniqueness insufficient; either run each method through unchanged selector and compare prespecified dev means, or generalize its condition identity while retaining a backward-compatible wrapper. Do not replace the selection rule opportunistically after results."
+    },
+    {
+      "file": "verify_results.py",
+      "lines": "103-337",
+      "symbols": [
+        "verify",
+        "verify_predictions",
+        "legacy_comparison"
+      ],
+      "finding": "Reuse hashes, byte preservation, predictions, label maps, checkpoint shapes, best-epoch replay and metrics. Extend condition identity, counts, outcome roles and manifest checks together with training code."
+    },
+    {
+      "file": "build_colab.py",
+      "lines": "47-59,65-153",
+      "symbols": [
+        "main",
+        "FILES",
+        "ARCHIVE",
+        "NOTEBOOK",
+        "REMOTE",
+        "RESULT"
+      ],
+      "finding": "Reuse deterministic input bundle, fresh runtime/output refusal, pinned environment, integrity checks, train invocation, verification and archive packing. Parameterize names and trial/model counts for new method experiments."
+    }
+  ],
+  "current_training": {
+    "model": "sbintuitions/modernbert-ja-30m",
+    "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+    "parameters": 36776211,
+    "full_finetuning": true,
+    "train_loss": "Default unweighted single-label cross entropy from sequence-classification model/Trainer. No custom compute_loss, class weights, weighted sampler, augmentation or label smoothing in current source.",
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "learning_rates": [
+      2e-05,
+      5e-05
+    ],
+    "epochs": 10,
+    "batch_size": 16,
+    "max_length": 128,
+    "dtype": "float32",
+    "attention": "sdpa",
+    "tf32": false,
+    "saved_training_args": {
+      "optim": "adamw_torch",
+      "weight_decay": 0.01,
+      "adam_beta1": 0.9,
+      "adam_beta2": 0.999,
+      "adam_epsilon": 1e-08,
+      "max_grad_norm": 1.0,
+      "gradient_accumulation_steps": 1,
+      "label_smoothing_factor": 0.0,
+      "full_determinism": false,
+      "dataloader_num_workers": 0,
+      "dataloader_drop_last": false,
+      "lr_scheduler_type": "linear",
+      "warmup_steps": 0,
+      "gradient_checkpointing": false
+    },
+    "model_config": {
+      "attention_dropout": 0.0,
+      "embedding_dropout": 0.0,
+      "mlp_dropout": 0.0,
+      "classifier_dropout": 0.0,
+      "classifier_pooling": "cls",
+      "classifier_activation": "gelu",
+      "hidden_size": 256,
+      "intermediate_size": 1024,
+      "num_hidden_layers": 10,
+      "num_attention_heads": 4,
+      "vocab_size": 102400,
+      "local_attention": 128,
+      "max_position_embeddings": 8192,
+      "problem_type": "single_label_classification",
+      "transformers_version": "5.19.0"
+    },
+    "evidence": {
+      "training": "train.py:413-458",
+      "actual_defaults": "artifacts/v04-colab-2026-10-18/weights/trial-6/training_args.json:12-20,81",
+      "dropout": "artifacts/v04-colab-2026-10-18/weights/trial-6/best/config.json:6,10,16,83",
+      "packages": "artifacts/v04-colab-2026-10-18/reports/manifest.json"
+    },
+    "packages": {
+      "torch": "2.14.1",
+      "transformers": "5.19.0",
+      "accelerate": "1.15.0",
+      "numpy": "2.4.6",
+      "huggingface-hub": "2.2.0",
+      "tokenizers": "0.23.3"
+    },
+    "selection": "Each seed/LR best epoch by dev macro-F1 over all 19 labels; tie lower dev loss then earlier epoch then earlier trial index. Select one shared LR by the mean best-dev metrics across all three seeds. Select one primary seed from those three on dev by same ordering; freeze before test predictions. Selected v0.4 LR=5e-5, primary seed44; selected epochs 7/8/7."
+  },
+  "critical_extension_constraints": [
+    {
+      "severity": "critical",
+      "finding": "All four actual dropout probabilities are zero. Two ordinary training forwards have no deliberately enabled dropout perturbation; adding R-Drop KL alone would be degenerate (up to backend nondeterminism). Explicit nonzero dropout is a separate intervention. A dropout-only matched control is necessary to isolate the KL contribution. Set actual ModernBERT configuration fields before construction and verify instantiated dropout modules plus saved config."
+    },
+    {
+      "severity": "critical",
+      "finding": "Dev loss is a selection tie-break and is required to reproduce after checkpoint reload (train.py:276-286, verify_results.py:311-314). Training-only auxiliary losses should return ordinary one-pass unweighted CE in eval mode. Otherwise the raw Trainer in evaluate_checkpoint reports different loss. Keep train objective and evaluation CE separately named and logged."
+    },
+    {
+      "severity": "high",
+      "finding": "TrainingArguments label_smoothing_factor applies Trainer loss computation during evaluation too, while evaluate_checkpoint constructs fresh arguments with smoothing=0. Merely enabling that existing argument breaks current reload-loss contract. Implement training-only smoothing in the same custom loss hook or deliberately share eval-loss policy; do not silently drop the check."
+    },
+    {
+      "severity": "high",
+      "finding": "v0.4 test73 was fully inspected. For every future adaptation it is regression-only, including if same file name test is retained for compatibility. New metadata/reporting must say regression and must not issue a fresh independent 95% acceptance claim. Existing config primary_selection causes target_assessment automatically, so disentangle model selection from independent acceptance eligibility."
+    },
+    {
+      "severity": "high",
+      "finding": "v03_data.lineage_config currently requires old dev/test mapping to legacy and fresh train/dev/test names. Blindly advancing dataset lineage for a training-method-only comparison forces needless new holdouts. Reuse unchanged v0.4 dataset lineage and hashes, version the methodology separately, and add explicit evaluation roles/independent evaluation pending. Do not manufacture synthetic test rows to satisfy the schema or target."
+    },
+    {
+      "severity": "high",
+      "finding": "MeasuredTrainer timing must be retained when introducing loss or optimizer modifications. SAM-like second passes alter compute and scheduler/optimizer semantics. Preserve synchronized wall time and peak GPU memory and disclose extra training compute."
+    },
+    {
+      "severity": "medium",
+      "finding": "verify_results.py:175 hardcodes six histories; build_colab.py:116,132 assumes six trials and pack:139 three selected models; markdown:449 fixed seeds. Method matrix adds condition identity to directories, callbacks, manifests, verifier and reporting. Parameterize from explicit config to avoid an additional training path."
+    }
+  ],
+  "method_extension_options_not_recommendations": [
+    {
+      "method": "R-Drop",
+      "location": "MeasuredTrainer.compute_loss (new override on existing trainer); model construction at train.py:413-421",
+      "type": "training loss plus explicit model dropout configuration",
+      "minimal_shape": "Two stochastic forwards on the same text batch; mean CE plus coefficient times symmetric KL using stable log-softmax; no metadata input. In eval use one forward and ordinary CE. Preserve return_outputs contract. Validate coefficient and reduction convention in config.",
+      "controls": "Baseline CE/no-dropout; CE with exactly same enabled dropout; R-Drop with that dropout, same seed/LR/epochs/batch. If parent chooses it, document method formula and actual dropout sites.",
+      "test_needs": "Zero coefficient equivalence to declared CE path; KL zero at equal logits; symmetry/nonnegativity tolerance; finite logits/gradients; different stochastic outputs with dropout enabled; eval deterministic single forward and reload CE equality."
+    },
+    {
+      "method": "Label smoothing",
+      "location": "Same trainer compute_loss override; TrainingArguments hook exists but eval caution above",
+      "type": "training loss",
+      "minimal_shape": "Configured epsilon in training CE only; raw labels and 19-class mapping remain unchanged; eval ordinary CE.",
+      "controls": "Same dropout/optimizer/batches as baseline so smoothing is the only intentional difference.",
+      "test_needs": "epsilon=0 equivalent to baseline CE; valid epsilon bounds; known hand-computed loss; no smoothing in evaluation; finite gradients."
+    },
+    {
+      "method": "Supervised contrastive loss",
+      "location": "Same trainer loss override plus existing model hidden representations; evaluate_checkpoint must still reload standard classifier",
+      "type": "representation auxiliary loss, possibly sampler/representation changes",
+      "minimal_shape": "Derive documented pooled hidden representation with attention-mask handling; normalize embeddings and compute same-label positives excluding self; combine with CE. Avoid adding a new inference head unless serialization and verification are explicitly extended. Batch16 is smaller than 19 classes, so positive availability cannot be assumed.",
+      "controls": "If using multi-view dropout, matched dropout-only control; if using class-aware batching, matched sampler-only control or explicitly separate factor.",
+      "test_needs": "No-positive and singleton batch cases; no self-positive; positive/negative masks; padding-safe pooling; temperature bounds; finite gradients; output predictions remain logits rather than tuple/hidden-state outputs.",
+      "risks": "Requires output_hidden_states or equivalent observed model output support; compute_metrics and prediction_rows currently assume numpy [N,19] logits. Verify current Transformers API before implementation."
+    },
+    {
+      "method": "Mixout",
+      "location": "Model construction before Trainer creation; potential reparameterization of eligible linear weights",
+      "type": "parameter regularization/model surgery rather than only scalar loss",
+      "minimal_shape": "Fix documented reference parameters from pretrained initialization, with explicit policy for randomly initialized classifier; mix specified weights during training and restore ordinary inference representation for save/reload.",
+      "controls": "Document probability and layer coverage; keep optimizer and all other factors fixed.",
+      "test_needs": "p=0 identity; inference identity; reference weights remain fixed; serialization is standard/reload equivalent; no incompatible tensor names/shapes.",
+      "risks": "Saved checkpoints are checked for classifier.weight shape, all-F32 dtype and parameter count. Persistent reference buffers/custom modules can break parameter accounting and standard AutoModel reload."
+    },
+    {
+      "method": "SAM-like methods",
+      "location": "Existing trainer optimizer creation/training_step extension, not an auxiliary loss-only hook",
+      "type": "optimizer/gradient procedure",
+      "minimal_shape": "Two forward/backward passes around a reversible parameter perturbation; one actual base optimizer and scheduler update per logical step; restore weights in all exit paths; preserve callback semantics.",
+      "controls": "Same AdamW base parameters, LR schedule, initialization, data order and step count; report ~two-pass compute rather than comparing only epochs.",
+      "test_needs": "Parameter restoration including failure; zero-norm guard; perturbation norm; exactly one optimizer/scheduler step; clipping and grad accumulation ordering; finite gradients; correct save state.",
+      "risks": "High coupling to Transformers/Accelerate 5.19/1.15 loop. Gradient accumulation=1 reduces but does not remove integration complexity; avoid treating optimizer swap as equivalent in complexity to label smoothing/R-Drop."
+    }
+  ],
+  "dataset_audit": {
+    "unchanged_sources_and_labels_required": true,
+    "splits": {
+      "train": {
+        "n": 1296,
+        "sha256": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+        "labels": {
+          "save": 62,
+          "undo": 82,
+          "redo": 86,
+          "page_navigate": 57,
+          "view_change": 53,
+          "artwork_mode_set": 42,
+          "bubble_set": 90,
+          "needs_clarification": 48,
+          "needs_reasoning": 36,
+          "compound_request": 162,
+          "out_of_scope_request": 67,
+          "not_command": 171,
+          "panel_sync_set": 41,
+          "inner_frame_snap_set": 40,
+          "panel_gap_snap_set": 39,
+          "generate_request": 73,
+          "background_3d_candidates": 52,
+          "paint_tool_set": 50,
+          "text_frames_align": 45
+        },
+        "groups": 307,
+        "families": 58,
+        "sources": {
+          "codex_synthetic": 1144,
+          "user_supplied_example": 7,
+          "massive_human_localized": 64,
+          "massive_derived_synthetic": 81
+        }
+      },
+      "dev": {
+        "n": 68,
+        "sha256": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+        "labels": {
+          "save": 4,
+          "undo": 2,
+          "redo": 3,
+          "page_navigate": 3,
+          "view_change": 5,
+          "artwork_mode_set": 2,
+          "bubble_set": 4,
+          "needs_clarification": 5,
+          "needs_reasoning": 8,
+          "compound_request": 7,
+          "out_of_scope_request": 3,
+          "not_command": 5,
+          "panel_sync_set": 3,
+          "inner_frame_snap_set": 2,
+          "panel_gap_snap_set": 2,
+          "generate_request": 4,
+          "background_3d_candidates": 2,
+          "paint_tool_set": 2,
+          "text_frames_align": 2
+        },
+        "groups": 53,
+        "families": 52,
+        "sources": {
+          "codex_synthetic": 68
+        }
+      },
+      "test": {
+        "n": 73,
+        "sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+        "labels": {
+          "save": 4,
+          "undo": 4,
+          "redo": 3,
+          "page_navigate": 4,
+          "view_change": 5,
+          "artwork_mode_set": 3,
+          "bubble_set": 4,
+          "needs_clarification": 4,
+          "needs_reasoning": 6,
+          "compound_request": 4,
+          "out_of_scope_request": 4,
+          "not_command": 6,
+          "panel_sync_set": 3,
+          "inner_frame_snap_set": 4,
+          "panel_gap_snap_set": 2,
+          "generate_request": 2,
+          "background_3d_candidates": 4,
+          "paint_tool_set": 3,
+          "text_frames_align": 4
+        },
+        "groups": 53,
+        "families": 53,
+        "sources": {
+          "codex_synthetic": 73
+        }
+      },
+      "legacy_v03_dev": {
+        "n": 88,
+        "sha256": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+        "labels": {
+          "save": 4,
+          "undo": 4,
+          "redo": 5,
+          "page_navigate": 5,
+          "view_change": 4,
+          "artwork_mode_set": 4,
+          "bubble_set": 4,
+          "needs_clarification": 4,
+          "needs_reasoning": 8,
+          "compound_request": 4,
+          "out_of_scope_request": 4,
+          "not_command": 6,
+          "panel_sync_set": 4,
+          "inner_frame_snap_set": 4,
+          "panel_gap_snap_set": 6,
+          "generate_request": 4,
+          "background_3d_candidates": 6,
+          "paint_tool_set": 4,
+          "text_frames_align": 4
+        },
+        "groups": 29,
+        "families": 9,
+        "sources": {
+          "massive_human_localized": 8,
+          "codex_synthetic": 80
+        }
+      },
+      "legacy_v03_test": {
+        "n": 132,
+        "sha256": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+        "labels": {
+          "save": 6,
+          "undo": 5,
+          "redo": 6,
+          "page_navigate": 4,
+          "view_change": 4,
+          "artwork_mode_set": 10,
+          "bubble_set": 12,
+          "needs_clarification": 6,
+          "needs_reasoning": 13,
+          "compound_request": 9,
+          "out_of_scope_request": 9,
+          "not_command": 16,
+          "panel_sync_set": 5,
+          "inner_frame_snap_set": 5,
+          "panel_gap_snap_set": 4,
+          "generate_request": 5,
+          "background_3d_candidates": 4,
+          "paint_tool_set": 5,
+          "text_frames_align": 4
+        },
+        "groups": 106,
+        "families": 103,
+        "sources": {
+          "massive_human_localized": 16,
+          "codex_synthetic": 116
+        }
+      },
+      "legacy_v02_dev": {
+        "n": 138,
+        "sha256": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+        "labels": {
+          "save": 6,
+          "undo": 5,
+          "redo": 5,
+          "page_navigate": 7,
+          "view_change": 7,
+          "artwork_mode_set": 4,
+          "bubble_set": 9,
+          "needs_clarification": 8,
+          "needs_reasoning": 6,
+          "compound_request": 8,
+          "out_of_scope_request": 7,
+          "not_command": 12,
+          "panel_sync_set": 8,
+          "inner_frame_snap_set": 8,
+          "panel_gap_snap_set": 8,
+          "generate_request": 10,
+          "background_3d_candidates": 4,
+          "paint_tool_set": 8,
+          "text_frames_align": 8
+        },
+        "groups": 49,
+        "families": 25,
+        "sources": {
+          "codex_synthetic": 137,
+          "user_supplied_example": 1
+        }
+      },
+      "legacy_v02_test": {
+        "n": 139,
+        "sha256": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+        "labels": {
+          "save": 7,
+          "undo": 7,
+          "redo": 7,
+          "page_navigate": 8,
+          "view_change": 8,
+          "artwork_mode_set": 8,
+          "bubble_set": 9,
+          "needs_clarification": 8,
+          "needs_reasoning": 7,
+          "compound_request": 7,
+          "out_of_scope_request": 7,
+          "not_command": 12,
+          "panel_sync_set": 8,
+          "inner_frame_snap_set": 8,
+          "panel_gap_snap_set": 8,
+          "generate_request": 8,
+          "background_3d_candidates": 4,
+          "paint_tool_set": 4,
+          "text_frames_align": 4
+        },
+        "groups": 47,
+        "families": 26,
+        "sources": {
+          "codex_synthetic": 139
+        }
+      }
+    },
+    "interpretation": "Current train is 1296 examples with label counts36-171 and 58 families. Dev68 and test73 are entirely Codex synthetic with 2-8 and 2-6 examples/class respectively. They measure this curated text distribution; raw MASSIVE localized examples in old splits do not make new dev/test independent real-use speech. No existing class weighting or balancing is applied despite imbalance.",
+    "checks": [
+      "dataset.model_example exposes text and integer label only (dataset.py:94-96).",
+      "dataset.validate/v03_data.validate_v03 preserve original rows, label IDs, assignment, group/family constraints, normalized duplicates, source SHA, public official partition and train-only derivations.",
+      "test_v04_pipeline.py prevents prior holdout migration into train and checks frozen prediction comparisons on identical text/gold.",
+      "Training captures input/data hashes before and after all runs; refuses existing output/report directories."
+    ],
+    "known_test_policy": "Retain v0.4 test bytes and all older evaluations for diagnostic regression only; no selection, tuning or acceptance on them. Use same train/dev for controlled method comparison. Hold out future independent real utterances prospectively; absent here and pending. Do not generate replacement synthetic holdouts to chase95."
+  },
+  "controlled_comparison_design": [
+    "Freeze experiment definition and baseline before any run: identical v0.4 train/dev hashes, tokenizer/model revision, label contract, preprocessing, 42/43/44 seeds, float32/SDPA, epoch limit, batch16, no truncation.",
+    "Prefer a fresh CE baseline in the same run/environment to control method effects; prior saved baseline is historical reference. If comparing only fixed LR5e-5, call it a fixed-LR ablation and state applicability; if comparing tuned procedures, give every method the same predeclared LR grid [2e-5,5e-5] and the same dev-only selection procedure.",
+    "Limit method/coefficient combinations beforehand; dev68 is small and repeated trials overfit selection. Present per-seed and mean/stddev paired method differences. Three seeds are not an independent sample-size enlargement of test73, and their SD is not a confidence interval.",
+    "Retain primary seed selection only as dev-selected deployment candidate metadata, not proof of improvement. Report all three selected seeds for every method and regression direction counts, class supports and source/family metrics.",
+    "Represent test73/older splits as regression-only in config, manifest and reports; independent_real_utterance_evaluation=pending and acceptance_eligible=false. Disable misleading target assessment for these experiments while keeping old v0.4 artifacts/verifier immutable.",
+    "Use a new versioned methodology experiment root/bundle with explicit frozen shared-code copies and exact copies of current data, or add an explicit read-only dataset reference with matching manifest semantics. Avoid running data preparation to rewrite/repartition unchanged data.",
+    "No new prompts, label descriptions, relabeling, data augmentation, thresholding, production adoption or application dispatch belongs in this training-method-only comparison."
+  ],
+  "testing_requirements_before_delivery": [
+    "Run current data/metrics suites against unchanged root baseline and fixed v0.3/v0.4 copies, using their frozen source where relevant; old fixtures remain unchanged.",
+    "Add focused loss or optimizer tests only for selected scientific method; no training needed for algebra/serialization-independent unit cases. Verify baseline default path remains standard Trainer behavior.",
+    "Test method-condition uniqueness, missing/duplicate combinations, dev-only selection/tie breaks and rejection of test-based selection; method metadata must survive callbacks, histories and verifier recomputation.",
+    "Test acceptance eligibility gate: known v0.4 test can never produce independent goal-met claim, regardless of accuracy. No need for fresh synthetic examples.",
+    "Test new bundle contains all new code and config, names/counts derive from experiment, no old artifact overwritten; compile generated notebook cells and run frozen-data/hash validations.",
+    "Before launching full authorized comparison, verify actual model dropout/optimizer settings and evaluation CE/reload equality on proportionate integration check. Do not claim training results from unit checks. Preserve standard checkpoint save/reload with label mapping and parameter count checks.",
+    "Hash old data, model artifacts, fixed code and results before/after preparation/integration. Required checkpoint commit only parent after diff review and proportionate checks."
+  ],
+  "unverified_boundaries": [
+    "No method implementation, local package API inspection, model inference, training, network access, installation or tests were performed.",
+    "AdamW grouping exclusions were not inspected in installed Transformers source; current TrainingArguments and selected hyperparameters are directly confirmed.",
+    "This audit proposes implementation boundaries, not a literature-backed scientific choice or expected accuracy gain."
+  ],
+  "memory_used_for_conclusions": false,
+  "architecture_comparison": {
+    "recommended_for_minimal_change": "Separate immutable experiment root for each condition, each running the same shared train.py and the existing 3 seeds x 2 LRs = 6 trials. Add a thin comparison/orchestration layer that never implements model training itself.",
+    "condition_roots": {
+      "reuse": "One identical training implementation plus one explicit condition config in each root; preserve dataset version4, all v0.4 source/data/plan bytes and role metadata. Freeze the same new shared-code version into each new bundle; do not change archived v0.4 files. Existing tests work against each root because dataset remains unchanged.",
+      "selection": "Keep select_shared_learning_rate unchanged within each root. Compute prespecified cross-method ranking from the mean best-dev macro F1 for the selected LR (or other fully predeclared rule), using only selection.json files. Never rank by best individual seed or regression metrics. A method comparison reporter is not a duplicate training route.",
+      "advantages": [
+        "Existing exact (seed,LR) grid validation still applies without extending key shape.",
+        "Trial1-6, saved seed42-44 paths, callback, verifier loop and pack expectations remain valid within each root.",
+        "Each condition can be independently verified, rerun into a fresh root and archived; partial failures do not invalidate completed other conditions.",
+        "Loss/model changes remain in one shared trainer/model factory."
+      ],
+      "required_small_changes": [
+        "Explicit validated method/dropout/loss config and saved effective values in shared train.py.",
+        "Unambiguous experiment/bundle/remote directory/result names per condition; current build_colab.py V04 constants would collide in one Colab runtime.",
+        "New evaluation-role gate so old test73 is regression-only and independent acceptance remains pending.",
+        "A bounded batch runner may invoke the exact existing train.py command per condition ROOT, then invoke the same verifier. It must not reimplement the train loop.",
+        "Comparison verifier checks consistent baseline fields/hashes, shared implementation and complete method set before comparing dev means."
+      ],
+      "caveat": "Current train.py predicts all splits after selection inside each condition. It does not freeze cross-method choice before any condition test prediction. Because v0.4 test is already known regression data, this is not an independent test. For a mechanically enforced global no-regression-prediction-before-method-choice rule, add a shared deferred-evaluation phase; otherwise predeclare all conditions and make cross-method ranking consume only dev selection records, then report regression separately. Do not claim existing code enforces global condition selection timing."
+    },
+    "single_run_method_matrix": {
+      "description": "One config lists conditions and runs conditions x seeds x LR in a single main invocation.",
+      "required_changes": [
+        "Extend trial identity from (seed,LR) to (condition,seed,LR).",
+        "Change SaveBestDevelopment metadata, trial directory and history naming, selection return schema and primary candidate naming.",
+        "Extend verify_results exact grid and per-condition history/checkpoint/prediction associations.",
+        "Remove hardcoded six histories and three checkpoints; update notebook counts and markdown model grouping.",
+        "Preserve old function signatures or use frozen old verifiers for historical artifacts."
+      ],
+      "tradeoff": "Supports global selection-before-all-regression evaluation cleanly and one archive, but touches many coupled audit contracts and has more backward-compatibility risk. Unnecessary for a small prespecified ablation."
+    }
+  },
+  "strict_verification_for_condition_roots": {
+    "already_strict": [
+      "evaluation.select_shared_learning_rate:79-94 rejects duplicate seeds/LRs, missing or duplicate (seed,LR) pairs, non-dev selection and nonfinite macroF1/loss/epoch.",
+      "verify_results:115-135 binds manifest experiment exactly to local config and uploaded inputs exactly to local frozen hashes.",
+      "verify_results:201-237 recomputes shared LR and primary seed from stored trials, then best epoch from complete ordered histories and trial identity.",
+      "verify_results:239-314 binds selected weights to selected trial and all saved predictions to source rows/probabilities, and requires reloaded dev metrics equality.",
+      "train.py refuses pre-existing output/report directories and checks source/data hash consistency before and after training."
+    ],
+    "gaps_to_close_for_new_method_comparison": [
+      "Condition identity must be unique and validated against a predeclared list. A repeated baseline under two aliases is not an independent method. Reject unknown/inapplicable parameters rather than silently ignore them.",
+      "Compare all condition data hashes, source label contract hash, model revision, tokenizer/max length, epochs, batch size, seeds, LR grid, dtype/attention, optimizer hyperparameters and selection rule. Whitelist only the intended method fields as differences.",
+      "Current verify checks full experiment JSON equality but does not inspect actual training_args.json fields or effective dropout values against that JSON. Require and validate those files plus effective_method manifest/model.config per trial. For loss methods check config policy recorded in trial metadata.",
+      "Current required artifact set does not require all six training_args.json, best_development.json, trainer_history.json or train_metrics.json. Make method/optimizer evidence required where relied on; an optional hashed file is not proof that all necessary fields were captured.",
+      "Current selected_checkpoints dictionary is not explicitly checked for exact seed key set. Enforce exactly seed42/43/44 within each root, exactly one selected model per seed and no extras/omissions.",
+      "Verify callback metadata includes method identifier where needed, and histories/selected checkpoints all match the condition root. Across roots ensure shared source-code hashes agree for training/evaluation modules.",
+      "Current test_used_for_selection=False is a declared flag and code structure within one root; it is not a proof about later human selection across methods. The comparison selection function should only accept dev selection records and should reject regression/test fields as ranking input.",
+      "Method effect claims need same seeds paired and complete results from all prespecified conditions; do not omit failed or unfavorable runs. Three seeds and 68 dev examples constrain confidence.",
+      "A scalar loss coefficient has no meaning without formula/reduction. Explicitly record CE averaging, symmetric-KL direction average, batch/class reduction, dropout sites, and label-smoothing policy so a nominal alpha is reproducible."
+    ],
+    "focused_tests": [
+      "Missing/duplicate condition root rejected.",
+      "Same method with mismatched data/model/trainer code/optimizer settings rejected.",
+      "Training_args/model.config dropout mismatch rejected.",
+      "Swapped seed checkpoint/history rejected; extra selected checkpoint rejected.",
+      "Cross-method winner depends only on dev summary even if regression ordering reverses.",
+      "Baseline and dropout-only control differ only at permitted fields; R-Drop and dropout-only control share the exact dropout configuration.",
+      "V04 regression-only role forbids target_assessment goal-met output in new experiment.",
+      "Legacy v0.4 fixed verifier still accepts immutable historical artifacts under its frozen code; new verifier tests do not rewrite them."
+    ]
+  }
+}

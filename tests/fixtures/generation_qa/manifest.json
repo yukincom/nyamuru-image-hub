@@ -1,0 +1,246 @@
+{
+  "cases": [
+    {
+      "artifact_sha256": "f95fd986c6b73b492ea62c233000a0c57d3d8bae7927e5261fb394ca4940d1ff",
+      "case_id": "info-edge-contact",
+      "expected_finding_codes": [
+        "edge_contact"
+      ],
+      "expected_pixel_semantics": "continuous ink strip along the complete left edge",
+      "expected_status": "pass",
+      "file_name": "info-edge-contact.png",
+      "source_snapshot_sha256": "520f919fe555acc4ab27372c0d996273f9f7bfd7e1acbd2ce8af6eaf75b7796e"
+    },
+    {
+      "artifact_sha256": "f657bdaa0cb42bcd06654653c9246aa031771da66585af55147d073b38dd8b20",
+      "case_id": "info-metadata",
+      "expected_finding_codes": [
+        "embedded_metadata"
+      ],
+      "expected_pixel_semantics": "base pixels plus one project-owned tEXt chunk",
+      "expected_status": "pass",
+      "file_name": "info-metadata.png",
+      "source_snapshot_sha256": "be423eca4f8c2bdd08b5548e768b2db6f40059bb72b98d5d568162bb645df084"
+    },
+    {
+      "artifact_sha256": "16f7ef6826932caa880aa710ea8f457f75904de6854a693f76329c87057a4ad8",
+      "case_id": "invalid-alpha",
+      "expected_finding_codes": [
+        "mode_mismatch",
+        "non_opaque_pixels"
+      ],
+      "expected_pixel_semantics": "RGBA image containing one non-opaque pixel",
+      "expected_status": "fail",
+      "file_name": "invalid-alpha.png",
+      "source_snapshot_sha256": "489ec275c5d3e107d56aea13138dd834cbc36b75d4ffa980369ad998b022569e"
+    },
+    {
+      "artifact_sha256": "193f22d7f0816557b01001d042c8f9869434c56fa61a2c5250c2637ed359224e",
+      "case_id": "invalid-apng",
+      "expected_finding_codes": [
+        "animated_png_not_allowed"
+      ],
+      "expected_pixel_semantics": "two-frame RGB APNG",
+      "expected_status": "fail",
+      "file_name": "invalid-apng.png",
+      "source_snapshot_sha256": "11267f07dde172ef5e11b336582f2e06abf90a947ca7d28603b01f0b9af73978"
+    },
+    {
+      "artifact_sha256": "ad73273eaff6cff74fbb49a41db0870ee3438a1f622f2ee1eaddfbbb2b044a11",
+      "case_id": "invalid-crc",
+      "expected_finding_codes": [
+        "png_structure_invalid"
+      ],
+      "expected_pixel_semantics": "one IDAT byte changed without updating its CRC",
+      "expected_status": "fail",
+      "file_name": "invalid-crc.png",
+      "source_snapshot_sha256": "e80158a1c303ca08bc50785a72efbf86da7bdc435a35447bb8e9773a9b13136a"
+    },
+    {
+      "artifact_sha256": "e0fd5ab7512e3f7dc3c200b27e20166a35aefd4944d82b0507d6ac25f87a685f",
+      "case_id": "invalid-off-palette",
+      "expected_finding_codes": [
+        "off_palette_pixels",
+        "recomposition_mismatch"
+      ],
+      "expected_pixel_semantics": "one RGB pixel is outside the exact four-color palette",
+      "expected_status": "fail",
+      "file_name": "invalid-off-palette.png",
+      "source_snapshot_sha256": "dca6760d9208c1b1f2aff584056518f91a91d5b3b56ed40e895a6113af3b98a3"
+    },
+    {
+      "artifact_sha256": "edb68d4262f04bdb4dfd66c65f7e53a1be59b742f9eb2bc8056dda5f3b090a99",
+      "case_id": "invalid-opaque-rgba",
+      "expected_finding_codes": [
+        "mode_mismatch"
+      ],
+      "expected_pixel_semantics": "base pixels encoded as opaque RGBA",
+      "expected_status": "fail",
+      "file_name": "invalid-opaque-rgba.png",
+      "source_snapshot_sha256": "456bcf76238e269d9c080f316c1e4838fb484beca60b7c19d4ff18cfe103595f"
+    },
+    {
+      "artifact_sha256": "9c531d8a0858bf2f19f1cded08fd8a467a28ec6a76bd3cdd79dfaffecfd14e26",
+      "case_id": "invalid-palette-mode",
+      "expected_finding_codes": [
+        "mode_mismatch"
+      ],
+      "expected_pixel_semantics": "base pixels encoded as indexed P mode",
+      "expected_status": "fail",
+      "file_name": "invalid-palette-mode.png",
+      "source_snapshot_sha256": "4883c3ef15b1f3c6c93282a87f73ae363cba1f0c4c3bb2a86677d404876085b7"
+    },
+    {
+      "artifact_sha256": "088fe902ca7c7f21e599d3c58a547ba07d5048f140422b5a3d43d1948aed7246",
+      "case_id": "invalid-signature",
+      "expected_finding_codes": [
+        "png_signature_invalid"
+      ],
+      "expected_pixel_semantics": "PNG signature with the first byte changed",
+      "expected_status": "fail",
+      "file_name": "invalid-signature.png",
+      "source_snapshot_sha256": "1ea32b96360cea31edc7e772d4e17d9ec3202e0aaced87f433357c67baade04c"
+    },
+    {
+      "artifact_sha256": "cf277f59751975cba93950bb620d79953784e441ecf36f140f96adffd78e89e5",
+      "case_id": "invalid-size-large",
+      "expected_finding_codes": [
+        "dimension_mismatch"
+      ],
+      "expected_pixel_semantics": "513 by 512 RGB image",
+      "expected_status": "fail",
+      "file_name": "invalid-size-large.png",
+      "source_snapshot_sha256": "e74a266b33a682688c1949ab5a603ec9b9f06b5b02909c83ae62f646a4f1d891"
+    },
+    {
+      "artifact_sha256": "7863f92812669f372fb645fddc667beb55cb97ba273036fbc0ad252ea862464e",
+      "case_id": "invalid-size-small",
+      "expected_finding_codes": [
+        "dimension_mismatch"
+      ],
+      "expected_pixel_semantics": "511 by 512 RGB image",
+      "expected_status": "fail",
+      "file_name": "invalid-size-small.png",
+      "source_snapshot_sha256": "0c80703db0e7cb71e79e236237ff2cef0d4ec0ef0137fb2fed6cdb10ec5cd164"
+    },
+    {
+      "artifact_sha256": "0f3cb7cf5664d2d8efc531b9898ff34166b86f9b22fb686bed5f7e7c3b249be6",
+      "case_id": "invalid-trailing",
+      "expected_finding_codes": [
+        "png_trailing_bytes"
+      ],
+      "expected_pixel_semantics": "valid PNG followed by a payload after IEND",
+      "expected_status": "fail",
+      "file_name": "invalid-trailing.png",
+      "source_snapshot_sha256": "f3a47fb5f1f24ffc9b4fe64761628053699e3c085f8d8f6ba4663ef395968160"
+    },
+    {
+      "artifact_sha256": "e4a51d5426389a81917a5aed7ec3a7ee62870a0d64db1b1f114254c78ac705f3",
+      "case_id": "invalid-truncated",
+      "expected_finding_codes": [
+        "png_structure_invalid"
+      ],
+      "expected_pixel_semantics": "valid PNG truncated before terminal chunks",
+      "expected_status": "fail",
+      "file_name": "invalid-truncated.png",
+      "source_snapshot_sha256": "00d7794b18ebcfea5f76c5ea9a2872dc036fe21eb7fa559291ca8294c64013ba"
+    },
+    {
+      "artifact_sha256": "0be231402be962f2d4d624a4bdc46a3b95735f513ffba0c52e76cc65d82ef5e1",
+      "case_id": "invalid-unsafe-dimension",
+      "expected_finding_codes": [
+        "image_dimensions_unsafe"
+      ],
+      "expected_pixel_semantics": "IHDR width is 8193 pixels and rejected before decode",
+      "expected_status": "fail",
+      "file_name": "invalid-unsafe-dimension.png",
+      "source_snapshot_sha256": "efde59a6743af58aacf7871694bf9e302287889ce8e0c9dea07b5405b5f31774"
+    },
+    {
+      "artifact_sha256": "f62a018e0c40f97ca55b26137e7393500033bb3080dc1b504becbbdab6d1729f",
+      "case_id": "same-pixels-different-metadata",
+      "expected_finding_codes": [
+        "embedded_metadata"
+      ],
+      "expected_pixel_semantics": "same decoded base pixels but different PNG metadata",
+      "expected_status": "pass",
+      "file_name": "same-pixels-different-metadata.png",
+      "source_snapshot_sha256": "4deedf2dfbc4a4f881f616e091ee3f9b37e64abc5b1776223dda98e1955d7f7d"
+    },
+    {
+      "artifact_sha256": "aac8df63cb267bef1ea28bd7473aee83587a0593f67cd2415c9fb93938287f1a",
+      "case_id": "valid-black-white",
+      "expected_finding_codes": [],
+      "expected_pixel_semantics": "RGB image using only ink and paper palette slots",
+      "expected_status": "pass",
+      "file_name": "valid-black-white.png",
+      "source_snapshot_sha256": "70511686919ab51936b6a12434f568e1a8c6e7c3be432c72d0ffa4d9b568d002"
+    },
+    {
+      "artifact_sha256": "edb4221af28a00fe77ac2168eddc1864709d7672652c8093ad7b471c3e60eda9",
+      "case_id": "valid-four-color",
+      "expected_finding_codes": [],
+      "expected_pixel_semantics": "exact RGB four-color manga base",
+      "expected_status": "pass",
+      "file_name": "valid-four-color.png",
+      "source_snapshot_sha256": "2e4468b8d32b928e387baf6fce89392f8b1373bafb1b826797062874444ff39a"
+    },
+    {
+      "artifact_sha256": "edb4221af28a00fe77ac2168eddc1864709d7672652c8093ad7b471c3e60eda9",
+      "case_id": "valid-four-color-copy",
+      "expected_finding_codes": [],
+      "expected_pixel_semantics": "exact-byte duplicate of valid-four-color",
+      "expected_status": "pass",
+      "file_name": "valid-four-color-copy.png",
+      "source_snapshot_sha256": "ff1d3b2e2eb06b2eb76b2787e7a9af941b8c6bf28d8f4e10d0bea7c0e16d1f2e"
+    },
+    {
+      "artifact_sha256": "4e9b4eb8bd580e98f14bac0b00ed8866d12c6196ae6bbe73f2955d67468a4013",
+      "case_id": "warning-low-ink",
+      "expected_finding_codes": [
+        "low_ink"
+      ],
+      "expected_pixel_semantics": "100 ink pixels with a larger dense-tone field",
+      "expected_status": "warn",
+      "file_name": "warning-low-ink.png",
+      "source_snapshot_sha256": "c0fa9eeee736e5215b6b2784db34e18f14d80011497ba2b0ad0fb9f05af3d29b"
+    },
+    {
+      "artifact_sha256": "822cadeb59dd3e75883565509b2ebdb6ad7eafc56aa54577b99a8869c348d7be",
+      "case_id": "warning-nearly-blank",
+      "expected_finding_codes": [
+        "nearly_blank"
+      ],
+      "expected_pixel_semantics": "400 isolated-from-edge ink pixels on paper",
+      "expected_status": "warn",
+      "file_name": "warning-nearly-blank.png",
+      "source_snapshot_sha256": "aac648e89e5b37d1ef7da756ea26f4a742b2f9279d0512363630e163c3769d8a"
+    },
+    {
+      "artifact_sha256": "1707efe457307d0a5e2f5a1ec1cff55b2a44286f3c4d8dda32bf394be8963b8b",
+      "case_id": "warning-nearly-filled",
+      "expected_finding_codes": [
+        "edge_contact",
+        "nearly_filled"
+      ],
+      "expected_pixel_semantics": "all pixels are ink",
+      "expected_status": "warn",
+      "file_name": "warning-nearly-filled.png",
+      "source_snapshot_sha256": "7c8d5d172a8c0de4867d9f89e6aca804f4e93a35813a3445afe13d2855575e74"
+    },
+    {
+      "artifact_sha256": "ff775444fdfcd73491831a88fb0e3a72a93b3b0e57c865d996434b966535c043",
+      "case_id": "warning-speckles",
+      "expected_finding_codes": [
+        "speckle_noise"
+      ],
+      "expected_pixel_semantics": "100 isolated one-pixel components plus one large ink component",
+      "expected_status": "warn",
+      "file_name": "warning-speckles.png",
+      "source_snapshot_sha256": "c5d31e83586bb617866aab3502ee2e0b12dabc0be61d8d6faa0447d3b0a33bd2"
+    }
+  ],
+  "kind": "project-generated-synthetic",
+  "schema_name": "nyamuru-generation-qa-fixture-manifest",
+  "schema_version": 1
+}

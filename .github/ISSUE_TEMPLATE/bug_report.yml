@@ -42,7 +42,7 @@ body:
     attributes:
       label: ローカル解析環境（該当する場合）
       description: npm run bridge:checkの結果から、個人パスを除いた利用可否とエラーだけを書いてください
-      placeholder: RT-DETR 利用可／NDLOCR-Lite 利用可／scanner 利用可
+      placeholder: RT-DETR 利用可／Baberu OCR 利用可／scanner 利用可
   - type: textarea
     id: omny
     attributes:

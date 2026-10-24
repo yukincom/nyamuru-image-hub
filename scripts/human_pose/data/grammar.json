@@ -1,0 +1,45 @@
+{
+  "verbs": {
+    "stand": "stands",
+    "lean": "leans",
+    "walk": "walks",
+    "turn": "turns",
+    "stretch": "stretches",
+    "sit": "sits",
+    "be": "is",
+    "have": "has",
+    "grip": "grips",
+    "hold": "holds",
+    "pull": "pulls",
+    "reach": "reaches",
+    "swing": "swings",
+    "hang": "hangs",
+    "kneel": "kneels",
+    "squat": "squats",
+    "lie": "lies",
+    "slide": "slides"
+  },
+  "pronouns": {
+    "female": [
+      "she",
+      "her",
+      "her",
+      "hers",
+      "herself"
+    ],
+    "male": [
+      "he",
+      "him",
+      "his",
+      "his",
+      "himself"
+    ],
+    "neutral": [
+      "they",
+      "them",
+      "their",
+      "theirs",
+      "themselves"
+    ]
+  }
+}

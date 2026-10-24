@@ -1,0 +1,254 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
+import {paintScene} from '../src/lib/paintDocument.ts';
+import {buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint} from '../src/lib/qwenGeneration.ts';
+import {setWorkStylePrompt} from '../src/lib/artworkRules.ts';
+import {FIGURE_SIZE_LABELS,parseMangaYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
+function fixture(){
+ const {manga}=createEmptyWorkspaceDocument();manga.meta.series_id='series';manga.meta.episode_id='episode';manga.meta.format='モノクロ漫画';
+ manga.characters=[{localId:'person-id',name:'確認用',catalog_id:'catalog'}];
+ manga.materials=[{type:'character',key:'全身資料',characterId:'person-id',source_image:{asset_id:'full-sheet'}}];
+ manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:90,h:150},bg:1,background_description:'室内',action:null,bubbles:[],figures:[{name:'確認用',refId:'person-id',size:'full',action:'下を見る',bbox:{x:0,y:0,w:25,h:50}}]}];
+ return manga;
+}
+test('Qwen plans retain exact owner, stable character binding and whole-sheet references',()=>{
+ const manga=fixture(),before=structuredClone(manga),scene=paintScene(manga.pages[0].panels[0],100,[]);
+ const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
+ assert.equal(plan.ownerKey,'figure-0');assert.deepEqual(plan.characterKeys,['person-id']);
+ assert.equal(plan.candidates[0].source.asset_id,'full-sheet');assert.match(plan.prompt,/下を見る/);assert.match(plan.prompt,/モノクロ漫画/);
+ assert.equal(plan.width,scene.owners[1].paint.width);assert.deepEqual(manga,before);
+ const background=buildQwenGenerationPlan(manga,0,0,false,scene.owners[0]);
+ assert.deepEqual(background.characterKeys,[]);assert.equal(background.candidates.length,0);assert.match(background.prompt,/室内/);
+});
+test('names do not silently resolve an unbound character',()=>{
+ const manga=fixture();delete manga.pages[0].panels[0].figures[0].refId;
+ const scene=paintScene(manga.pages[0].panels[0],100,[]);
+ assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]),/登場人物を指定/);
+});
+test('registered references follow the character across panels, while job history follows the owner',()=>{
+ const manga=fixture();
+ manga.characters.push({localId:'other-id',name:'別人',catalog_id:'other-catalog'});
+ manga.materials.push({type:'character',key:'別人の資料',characterId:'other-id',source_image:{asset_id:'other-sheet'}});
+ const otherPanel=structuredClone(manga.pages[0].panels[0]);otherPanel.id=2;
+ manga.pages[0].panels.push(otherPanel);
+ const first=buildQwenGenerationPlan(manga,0,0,false,paintScene(manga.pages[0].panels[0],100,[]).owners[1]);
+ const second=buildQwenGenerationPlan(manga,0,1,false,paintScene(otherPanel,100,[]).owners[1]);
+ assert.deepEqual(first.candidates,second.candidates);assert.equal(first.candidates.length,1);
+ assert.equal(first.candidates[0].source.asset_id,'full-sheet');assert.notEqual(first.panelId,second.panelId);
+ otherPanel.figures[0].refId='other-id';
+ const other=buildQwenGenerationPlan(manga,0,1,false,paintScene(otherPanel,100,[]).owners[1]);
+ assert.deepEqual(other.candidates.map(item=>item.source.asset_id),['other-sheet']);
+});
+test('framing uses the visible body range, separately from output pixel size and pose',()=>{
+ for(const [size,label] of Object.entries(FIGURE_SIZE_LABELS)){
+  const manga=fixture();manga.pages[0].panels[0].figures[0].size=size;
+  manga.pages[0].panels[0].figures[0].action='顔を右に向ける';
+  manga.characters[0].visual_prompt='細い眉';
+  const scene=paintScene(manga.pages[0].panels[0],100,[]);
+  const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
+  assert.ok(plan.prompt.includes(`描写範囲は${label}。`));
+  assert.ok(plan.prompt.includes('顔を右に向ける'));
+  assert.doesNotMatch(plan.prompt,/画角：|Camera angle:|bust-up|waist-up/);
+  assert.ok(plan.prompt.indexOf('描写範囲')<plan.prompt.indexOf('人物のビジュアル指定'));
+  if(size==='bust-up')assert.ok(plan.prompt.includes('頭頂から胸までを画面に収めた構図で描く。'));
+  const payload=qwenGenerationPayload(plan,[{label:'資料',characterKeys:['person-id'],image:'data:ref'}]);
+  assert.equal(payload.width,scene.owners[1].paint.width);
+  assert.equal(payload.height,scene.owners[1].paint.height);
+ }
+});
+test('all framing values survive the existing document save and load path',()=>{
+ for(const size of Object.keys(FIGURE_SIZE_LABELS)){
+  const doc={manga:fixture()};doc.manga.pages[0].panels[0].figures[0].size=size;
+  const restored=parseMangaYaml(toStoredMangaYaml(doc));
+  assert.equal(restored.manga.pages[0].panels[0].figures[0].size,size);
+  assert.equal(validateManga(restored).filter(issue=>issue.path.endsWith('.size')).length,0);
+ }
+});
+test('only work style and the bound visual prompt reach English preparation; persona and other characters stay out', async t => {
+ const manga=fixture(),style='黒い筆線。外周は太く、内側は細い。',profile='6.5〜7頭身。\n細い眉と小さな顎。';
+ setWorkStylePrompt(manga,style);
+ manga.characters[0].role='好奇心が強く、新技術を好む性格。';
+ manga.characters[0].visual_prompt=profile;
+ manga.characters.push({localId:'other',name:'別人',role:'陽気な性格',visual_prompt:'赤い帽子の巨人'});
+ const scene=paintScene(manga.pages[0].panels[0],100,[]);
+ const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
+ assert.ok(plan.prompt.includes(style));assert.ok(plan.prompt.includes(profile));
+ assert.ok(!plan.prompt.includes(manga.characters[0].role));
+ assert.ok(!plan.prompt.includes('人物像'));
+ assert.ok(!plan.prompt.includes('赤い帽子の巨人'));
+ const background=buildQwenGenerationPlan(manga,0,0,false,scene.owners[0]);
+ assert.ok(background.prompt.includes(style));assert.ok(!background.prompt.includes(profile));
+ const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
+ globalThis.window={setTimeout,clearTimeout};
+ t.after(()=>{globalThis.window=priorWindow;globalThis.fetch=priorFetch;});
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';let preparedPrompt;
+ globalThis.fetch=async(_url,options)=>{
+   const body=options?.body?JSON.parse(options.body):null;
+   if(body)preparedPrompt=body.prompt;
+   return Response.json({service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3,protocol_version:1,
+     ...(body?{profile:'qwen-image-2.1-owner-v1',job_id:id,status:'prepared',request_sha256:'a'.repeat(64),label:'人物',width:768,height:1376}:{})});
+ };
+ const {prepareQwenJob}=await import('../src/lib/localBridge.ts');
+ await prepareQwenJob(id,qwenGenerationPayload(plan,[{label:'全身資料',characterKeys:['person-id'],image:'data:ref'}]));
+ assert.equal(preparedPrompt,plan.prompt);
+ manga.characters[0].visual_prompt='';
+ const cleared=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
+ assert.ok(!cleared.prompt.includes(profile));assert.ok(!cleared.prompt.includes(manga.characters[0].role));
+ delete manga.characters[0].visual_prompt;
+ assert.equal(buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]).prompt,cleared.prompt);
+});
+test('layer choices are confined to the captured owner and export hidden layers without changing the document',()=>{
+ const manga=fixture(),scene=paintScene(manga.pages[0].panels[0],100,[]),owner=scene.owners[1];
+ const base=owner.paint.layers[0];
+ owner.paint.layers=[{...base,id:'hidden',name:'非表示の絵',visible:false,locked:true,guide:false,
+   strokes:[{tool:'pen',color:'#000000',size:2,points:[{x:1,y:2}]}]},
+   {...base,id:'empty',name:'空',guide:false,strokes:[]},
+   {...base,id:'zero',name:'濃度0',opacity:0,guide:true}];
+ const before=structuredClone(scene),choices=qwenLayerCandidates(owner);
+ assert.deepEqual(choices.map(x=>x.id),['zero','empty','hidden']);
+ assert.equal(choices[0].empty,true);assert.equal(choices[1].empty,true);
+ assert.equal(choices[2].hidden,true);assert.equal(choices[2].empty,false);
+ const paint=qwenLayerPaint(owner,'hidden');
+ assert.equal(paint.layers.length,1);assert.equal(paint.layers[0].visible,true);assert.equal(paint.layers[0].locked,true);
+ assert.equal(paint.width,owner.paint.width);assert.deepEqual(paint.referenceFrame,owner.paint.referenceFrame);
+ assert.throws(()=>qwenLayerPaint(owner,scene.owners[0].paint.layers[0].id),/このフォルダ/);
+ assert.throws(()=>qwenLayerPaint(owner,'empty'),/空/);assert.throws(()=>qwenLayerPaint(owner,'zero'),/濃度/);
+ assert.deepEqual(scene,before);
+});
+test('generation-marker-only layers are available only as correction inputs',()=>{
+ const owner=paintScene(fixture().pages[0].panels[0],100,[]).owners[1];
+ owner.paint.layers=[{...owner.paint.layers[0],id:'mask',guide:false,image:undefined,strokes:[],
+   generationMask:{enabled:true,strokes:[{tool:'pen',color:'#ff0000',size:10,points:[{x:1,y:2}]}]}}];
+ assert.equal(qwenLayerCandidates(owner)[0].empty,false);
+ assert.throws(()=>qwenLayerPaint(owner,'mask'),/ピンポイント修正用/);
+ assert.equal(qwenLayerPaint(owner,'mask',true).layers[0].id,'mask');
+});
+test('reference and correction are independently optional and character sheets share the ten-image limit',()=>{
+ const manga=fixture(),owner=paintScene(manga.pages[0].panels[0],100,[]).owners[1],plan=buildQwenGenerationPlan(manga,0,0,false,owner);
+ const refs=[{label:'設定画',characterKeys:['person-id'],image:'data:sheet'}];
+ for(const reference of [undefined,'data:source'])for(const correction of [undefined,'data:correction']){
+   const value=qwenGenerationPayload(plan,refs,reference,undefined,correction);
+   assert.equal(value.mode,reference?'paint':'new');assert.equal(value.paint_image,reference);assert.equal(value.correction_image,correction);
+   assert.equal(value.references[0].image,'data:sheet');
+ }
+ assert.equal(qwenGenerationPayload(plan,Array(8).fill(refs[0]),'data:source',undefined,'data:correction').references.length,8);
+ assert.throws(()=>qwenGenerationPayload(plan,Array(9).fill(refs[0]),'data:source',undefined,'data:correction'),/合計10枚/);
+ const sketch={id:'guide',kind:'sketch',image:'data:rough'},correction={id:'mask',kind:'paint',image:'data:mask'};
+ assert.equal(qwenGenerationPrompt(plan),plan.prompt);assert.equal(qwenGenerationPrompt(plan,sketch),plan.sketchPrompt);
+ assert.match(qwenGenerationPrompt(plan,sketch,correction),/修正対象以外/);
+ assert.match(qwenGenerationPrompt(plan,undefined,correction),/書き込み付き画像/);
+ assert.doesNotMatch(qwenGenerationPrompt(plan,sketch,correction),/新しい絵|描写範囲は/);
+});
+test('only explicit paint mode includes its image; identity mismatch and missing refs fail before submission',()=>{
+ const manga=fixture(),scene=paintScene(manga.pages[0].panels[0],100,[]),plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
+ const refs=[{label:'全身',characterKeys:['person-id'],image:'data:ref'}];
+ const normal=qwenGenerationPayload(plan,refs);assert.equal(normal.mode,'new');assert.ok(!('paint_image' in normal));
+ const paint=qwenGenerationPayload(plan,refs,'data:paint');assert.equal(paint.mode,'paint');assert.equal(paint.paint_image,'data:paint');assert.equal(paint.references[0].image,'data:ref');
+ assert.throws(()=>qwenGenerationPayload(plan,[]),/参照資料/);
+ assert.throws(()=>qwenGenerationPayload(plan,[{...refs[0],characterKeys:['other']}]),/人物|参照資料/);
+ assert.throws(()=>qwenGenerationPayload(plan,Array(10).fill(refs[0])),/9枚/);
+});
+
+test('storyboard generation separates one rough pose from character sheets and keeps scene direction',()=>{
+ const manga=fixture(),figure=manga.pages[0].panels[0].figures[0];
+ figure.action='目線はつま先に向ける。険しい表情、冷や汗';
+ figure.analogImport={schemaVersion:1,sourceRegionId:'region',assetId:'rough',sourceBBox:{x:0,y:0,w:1,h:1},detectionSource:'body',draft:true};
+ const before=structuredClone(manga);
+ const plan=buildQwenGenerationPlan(manga,0,0,false,paintScene(manga.pages[0].panels[0],100,[]).owners[1]);
+ assert.match(plan.sketchPrompt,/つま先に向ける。険しい表情、冷や汗/);
+ assert.match(plan.sketchPrompt,/見切れを保つ/);
+ assert.doesNotMatch(plan.sketchPrompt,/背景.*透過/); // Alpha is a separate pass; it must not flatten the drawing.
+ assert.doesNotMatch(plan.sketchPrompt,/描写範囲は全身|画面に収めた/);
+ const refs=[{label:'全身資料',characterKeys:['person-id'],image:'data:sheet'}];
+ const payload=qwenGenerationPayload({...plan,prompt:plan.sketchPrompt},refs,undefined,'data:rough');
+ assert.equal(payload.mode,'sketch');assert.equal(payload.sketch_image,'data:rough');
+ assert.deepEqual(payload.references,[{label:'全身資料',character_keys:['person-id'],image:'data:sheet'}]);
+ assert.ok(!('paint_image' in payload));assert.deepEqual(manga,before);
+ assert.throws(()=>qwenGenerationPayload(plan,refs,'data:paint','data:rough'),/同時/);
+ const background=buildQwenGenerationPlan(manga,0,0,false,paintScene(manga.pages[0].panels[0],100,[]).owners[0]);
+ assert.equal(background.sketchPrompt,undefined);
+ assert.throws(()=>qwenGenerationPayload(background,[],undefined,'data:rough'),/登場人物/);
+});
+
+
+import {createHash} from 'node:crypto';
+import {decodeQwenJob} from '../src/lib/localBridge.ts';
+test('Qwen PNG decoding accepts nonsquare output only with matching job, size and digest',async t=>{
+ const prior=globalThis.window;globalThis.window={atob};t.after(()=>{globalThis.window=prior;});
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',raw=Buffer.alloc(33);
+ Buffer.from([137,80,78,71,13,10,26,10]).copy(raw);raw.writeUInt32BE(768,16);raw.writeUInt32BE(1376,20);
+ const response={profile:'qwen-image-2.1-owner-v1',job_id:id,status:'succeeded',request_sha256:'a'.repeat(64),label:'人物',width:768,height:1376,
+   image:'data:image/png;base64,'+raw.toString('base64'),image_sha256:createHash('sha256').update(raw).digest('hex'),file_name:`qwen_${id}.png`};
+ assert.equal((await decodeQwenJob(response,id)).image,response.image);
+ await assert.rejects(decodeQwenJob({...response,width:1024},id));
+ await assert.rejects(decodeQwenJob({...response,image_sha256:'0'.repeat(64)},id));
+ await assert.rejects(decodeQwenJob(response,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'));
+ await assert.rejects(decodeQwenJob(response,id,'b'.repeat(64)));
+});
+
+test('Qwen preparation persists English before a hash-bound supervisor submission', async t => {
+  const {prepareQwenJob,submitQwenJob}=await import('../src/lib/localBridge.ts');
+  const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
+  globalThis.window={setTimeout,clearTimeout};
+  t.after(()=>{globalThis.window=priorWindow;globalThis.fetch=priorFetch;});
+  const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',calls=[];
+  const job={profile:'qwen-image-2.1-owner-v1',job_id:id,status:'prepared',request_sha256:'a'.repeat(64),label:'人物',width:768,height:1376};
+  globalThis.fetch=async(url,options)=>{
+    const body=options?.body?JSON.parse(options.body):null;
+    if(body)calls.push([new URL(url).pathname,body]);
+    const supervisor=String(url).includes('8786');
+    return Response.json({service:supervisor?'nyamuru-image-hub-bridge-supervisor':'nyamuru-image-hub-local-bridge',
+      layout_protocol_version:3,protocol_version:1,...(body?{...job,status:supervisor?'queued':'prepared'}:{})});
+  };
+  const prepared=await prepareQwenJob(id,{prompt:'日本語の元入力'});
+  await submitQwenJob(prepared,'prepared-session');
+  assert.deepEqual(calls,[['/api/qwen-generation/prepare',{prompt:'日本語の元入力',job_id:id}],
+    ['/api/image-generation/submit',{lease_token:'prepared-session',payload:{job_id:id,request_sha256:'a'.repeat(64)}}]]);
+});
+
+test('Qwen deletion binds every selected file to the work and verifies the complete response', async t => {
+ const {deleteQwenJobs}=await import('../src/lib/localBridge.ts');
+ const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
+ globalThis.window={setTimeout,clearTimeout};
+ t.after(()=>{globalThis.window=priorWindow;globalThis.fetch=priorFetch;});
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',calls=[];
+ const job={jobId:id,status:'succeeded',requestSha256:'a'.repeat(64),label:'人物',width:768,height:1376,documentKey:'work'};
+ const plan={documentKey:'work'};
+ let response={document_key:'work',deleted_job_ids:[id]};
+ globalThis.fetch=async(url,options)=>{
+  const body=options?.body?JSON.parse(options.body):null;
+  if(body)calls.push([new URL(url).pathname,body]);
+  return Response.json({service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3,...(body?response:{})});
+ };
+ await deleteQwenJobs(plan,[job]);
+ assert.deepEqual(calls,[['/api/qwen-generation/delete',{document_key:'work',jobs:[{job_id:id,request_sha256:job.requestSha256}]}]]);
+ await assert.rejects(deleteQwenJobs(plan,[{...job,documentKey:'other'}]),/作品/);
+ assert.equal(calls.length,1);
+ for(const invalid of [{deleted_job_ids:[]},{deleted_job_ids:[id,id]},{deleted_job_ids:['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb']},{document_key:'other'}]){
+  response={document_key:'work',deleted_job_ids:[id],...invalid};
+  await assert.rejects(deleteQwenJobs(plan,[job]),/削除結果/);
+ }
+});
+
+test('Qwen work history allows other owners only inside the selected work',async t=>{
+ const {listQwenJobs}=await import('../src/lib/localBridge.ts');
+ const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
+ globalThis.window={setTimeout,clearTimeout};
+ t.after(()=>{globalThis.window=priorWindow;globalThis.fetch=priorFetch;});
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',calls=[];
+ const plan={documentKey:'work',pageNumber:1,panelId:1,overlay:false,ownerKey:'figure-0'};
+ let item={profile:'qwen-image-2.1-owner-v1',job_id:id,status:'succeeded',request_sha256:'a'.repeat(64),label:'別コマ',width:768,height:1376,
+  document_key:'work',page_number:2,panel_id:3,overlay:false,owner_key:'figure-1',created_at:42,file_name:`qwen_${id}.png`};
+ globalThis.fetch=async(_url,options)=>{
+  const body=options?.body?JSON.parse(options.body):null;
+  if(body)calls.push(body);
+  return Response.json({service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3,...(body?{jobs:[item]}:{})});
+ };
+ const jobs=await listQwenJobs(plan,'work');
+ assert.equal(jobs[0].pageNumber,2);assert.equal(jobs[0].panelId,3);assert.equal(jobs[0].fileName,`qwen_${id}.png`);
+ assert.equal(calls[0].scope,'work');
+ await assert.rejects(listQwenJobs(plan),/対象/);
+ item={...item,document_key:'another-work'};
+ await assert.rejects(listQwenJobs(plan,'work'),/対象/);
+});

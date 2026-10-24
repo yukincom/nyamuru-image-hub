@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+hf-cache/
+weights/
+reports/
+artifacts/
+*.zip
+.DS_Store

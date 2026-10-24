@@ -1,0 +1,153 @@
+{
+  "status": "ready_for_parent_review",
+  "counts": {
+    "background_3d_candidates": 2
+  },
+  "reviewed_input_contract": "text only; slots/notes/groups are annotations, not classifier input",
+  "comparison_pool": {
+    "old_rows": 1212,
+    "public_train_rows": 145,
+    "draft_and_extra_rows": 466,
+    "total_unique_rows": 1823,
+    "same_label_semantically_reviewed": 78
+  },
+  "method": "All-pairs normalized SequenceMatcher screening against every comparison row; manual semantic review of all 78 background candidate examples, top-scoring pairs, and cross-label hits for conditional absence / dual alternatives / grouped output. Ratios alone were not treated as evidence of independence.",
+  "inputs": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/source/candidates.jsonl",
+      "rows": 316,
+      "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b"
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/curation/2026-10-17-v02-variants/candidates.jsonl",
+      "rows": 608,
+      "sha256": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74"
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/curation/2026-10-18-v03-boundaries/candidates.jsonl",
+      "rows": 288,
+      "sha256": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760"
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/curation/2026-10-18-public/raw-train.jsonl",
+      "rows": 64,
+      "sha256": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836"
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/curation/2026-10-18-public/accepted-adapted-train.jsonl",
+      "rows": 81,
+      "sha256": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2"
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-dev-draft.jsonl",
+      "rows": 144,
+      "sha256": "66a4a722347c85f6338ca4eba4b477d1e78cd0ee107d981090737aa4e375a2c6"
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-test-draft.jsonl",
+      "rows": 288,
+      "sha256": "2641eb98e0c1e1c3d0f2022796121b635869d265079d08395b5d35438158507f"
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-dev-extra.jsonl",
+      "rows": 7,
+      "sha256": "ea5b129ce7852a74a69e9a463298f2f3b217f532d80068ab3900dacfe0bdf621"
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-bubble-replacements.jsonl",
+      "rows": 12,
+      "sha256": "e44de0f970f3336e73a66bf76ba57eee924fd78f46b4bb5de652c32b0f1ed9dd"
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-core-test-replacements.jsonl",
+      "rows": 13,
+      "sha256": "2f3246aff8736ff34fb0c01ab05ddf2579898cf0248990c86cf42fad52599ae2"
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-bubble-test-extra.jsonl",
+      "rows": 2,
+      "sha256": "0fb4c2be8ae09780d27aa5f40b8949df34baed8cd8375a91901ca2d513fb4e71"
+    }
+  ],
+  "rows": [
+    {
+      "id": "nyamuru_voice_1714",
+      "semantic_review": "clear background_3d_candidates; no generation, placement, external lookup or second independent action",
+      "max_normalized_sequence_ratio": 0.5617977528089888,
+      "top5": [
+        {
+          "id": "nyamuru_voice_1333",
+          "label": "background_3d_candidates",
+          "text": "登録してある3Dモデルから、この場面の背景に使えそうなものを見せて。",
+          "score": 0.5617977528089888
+        },
+        {
+          "id": "nyamuru_voice_893",
+          "label": "background_3d_candidates",
+          "text": "登録してある3Dモデルの中で、背景に使う候補を挙げてほしい",
+          "score": 0.4235294117647059
+        },
+        {
+          "id": "nyamuru_voice_816",
+          "label": "out_of_scope_request",
+          "text": "候補一覧の二番目の3Dモデルをこのコマの背景に配置して",
+          "score": 0.40476190476190477
+        },
+        {
+          "id": "nyamuru_voice_904",
+          "label": "background_3d_candidates",
+          "text": "カフェの背景候補がほしい。登録してある3Dモデルから提案して",
+          "score": 0.3953488372093023
+        },
+        {
+          "id": "nyamuru_voice_1614",
+          "label": "background_3d_candidates",
+          "text": "登録してある3Dモデルで室内に使えるものを、背景の候補として並べて。",
+          "score": 0.38202247191011235
+        }
+      ],
+      "structural_basis": "既存1333などは登録済みモデルから候補を提示する単純依頼。1714は候補不在を許容する出力条件を先に確定し、その条件下で照合・候補提示を依頼する。名詞や数値の差だけではこの条件分岐が生じない。候補なしは実行中止ではなく検索結果の許容形なのでnot_commandではない。"
+    },
+    {
+      "id": "nyamuru_voice_1715",
+      "semantic_review": "clear background_3d_candidates; no generation, placement, external lookup or second independent action",
+      "max_normalized_sequence_ratio": 0.5263157894736842,
+      "top5": [
+        {
+          "id": "nyamuru_massive_adapt_068",
+          "label": "background_3d_candidates",
+          "text": "登録済みの3Dモデルから公園の背景候補を見つけてくれませんか",
+          "score": 0.5263157894736842
+        },
+        {
+          "id": "nyamuru_voice_1620",
+          "label": "background_3d_candidates",
+          "text": "この場面の3D背景を選びたいな。登録済みのものから候補を見せて。",
+          "score": 0.5263157894736842
+        },
+        {
+          "id": "nyamuru_massive_adapt_070",
+          "label": "background_3d_candidates",
+          "text": "登録済みの3Dモデルの中から病院の背景候補を三つ見せて",
+          "score": 0.5205479452054794
+        },
+        {
+          "id": "nyamuru_voice_256",
+          "label": "background_3d_candidates",
+          "text": "登録済みの3Dモデルから学校の背景候補を探して",
+          "score": 0.4927536231884058
+        },
+        {
+          "id": "nyamuru_voice_1617",
+          "label": "background_3d_candidates",
+          "text": "住宅街の背景を探してる。登録済み3Dモデルの中から合いそうな候補を提案して。",
+          "score": 0.4878048780487805
+        }
+      ],
+      "structural_basis": "既存の場所指定例や1334・904などは一つの場面に適合する候補を求める。1715は場面の二択が未決定で、候補集合を室内案と屋外案に分けて提示する情報構造。数字や地名の置換だけでは、未決定の選択肢と案別提示という関係を再現できない。"
+    }
+  ],
+  "new_pair_ratio": 0.23300970873786409,
+  "ambiguities": [],
+  "limitations": "Synthetic held-out examples only; not measured user-speech accuracy. Parent retains final acceptance. No repository edits, model execution, training or inference."
+}

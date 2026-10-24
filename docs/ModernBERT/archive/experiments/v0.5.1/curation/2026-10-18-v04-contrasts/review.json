@@ -1,0 +1,6442 @@
+{
+  "version": "v04_train_contrast_candidate",
+  "status": "pending_user_review",
+  "provenance": "未学習のCodex合成原文。実利用ログでもモデル出力でもない。モデル・ネット・学習・推論は使用しない。",
+  "permitted_sources": [
+    "source/labels.json",
+    "experiments/v0.3/data/train.jsonl",
+    "experiments/v0.3/data/dev.jsonl"
+  ],
+  "model_input_fields": [
+    "text"
+  ],
+  "family_split_policy": "全familyをTRAIN限定。同一family内を他splitへ移さない。",
+  "families": [
+    {
+      "group": "v04_train_保存と後の読み返し",
+      "ids": [
+        "nyamuru_voice_2000",
+        "nyamuru_voice_2001",
+        "nyamuru_voice_2002",
+        "nyamuru_voice_2003",
+        "nyamuru_voice_2004",
+        "nyamuru_voice_2005"
+      ],
+      "meaning_material": "保存と終盤ページの読み返し",
+      "contrast_change": "後で自分がする読み返しと、現在の表示依頼を入れ替える。保存済み報告だけなら0件。",
+      "related_existing_families": [
+        "v03_save_then_navigation",
+        "v03_noaction_reports_questions"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_save_then_navigation",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1117",
+            "nyamuru_voice_1118",
+            "nyamuru_voice_1119",
+            "nyamuru_voice_1120",
+            "nyamuru_voice_1121",
+            "nyamuru_voice_1122",
+            "nyamuru_voice_1123",
+            "nyamuru_voice_1124"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_noaction_reports_questions",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_997",
+            "nyamuru_voice_998",
+            "nyamuru_voice_999",
+            "nyamuru_voice_1000",
+            "nyamuru_voice_1001",
+            "nyamuru_voice_1002",
+            "nyamuru_voice_1003",
+            "nyamuru_voice_1004"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_current_document_save",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1215",
+            "nyamuru_voice_1216",
+            "nyamuru_voice_1218",
+            "nyamuru_voice_1219",
+            "nyamuru_voice_1297"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2000",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は作品の保存。休憩後の読み返しは本人の予定で、ページ移動依頼ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2001",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は現在作品の保存。最後のページを開いたのは過去の編集場面の説明。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2002",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は作品保存。確認済みの事項と明日の予定は操作でなく、最後のセーブは同じ依頼の言い直し。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2003",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。作品の保存と末尾ページへの移動をともに依頼。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2004",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。休憩前という理由の下で、保存と末尾ページ表示の両方を依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2005",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。読み返しと保存は完了報告、続きは将来の予定。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_取り消しと保存済み報告",
+      "ids": [
+        "nyamuru_voice_2006",
+        "nyamuru_voice_2007",
+        "nyamuru_voice_2008",
+        "nyamuru_voice_2009",
+        "nyamuru_voice_2010",
+        "nyamuru_voice_2011"
+      ],
+      "meaning_material": "直前の編集取り消しと保存",
+      "contrast_change": "保存を完了報告・後の作業から現在依頼へ変えると2件になる。",
+      "related_existing_families": [
+        "v03_history_and_save",
+        "v03_undo_specific_latest_edit"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_history_and_save",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1133",
+            "nyamuru_voice_1134",
+            "nyamuru_voice_1135",
+            "nyamuru_voice_1136",
+            "nyamuru_voice_1137",
+            "nyamuru_voice_1138",
+            "nyamuru_voice_1139",
+            "nyamuru_voice_1140"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_undo_specific_latest_edit",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1053",
+            "nyamuru_voice_1054",
+            "nyamuru_voice_1055",
+            "nyamuru_voice_1056",
+            "nyamuru_voice_1057",
+            "nyamuru_voice_1058",
+            "nyamuru_voice_1059",
+            "nyamuru_voice_1060"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_completed_edit_history",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1222",
+            "nyamuru_voice_1223",
+            "nyamuru_voice_1224",
+            "nyamuru_voice_1232",
+            "nyamuru_voice_1233",
+            "nyamuru_voice_1234",
+            "nyamuru_voice_1235",
+            "nyamuru_voice_1236",
+            "nyamuru_voice_1269",
+            "nyamuru_voice_1298"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2006",
+          "label": "undo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はUndo一回。保存は既に済んだとの報告で、再保存の指示ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2007",
+          "label": "undo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は履歴を一段戻すUndo。セーブする前という比較目的は保存依頼を含まない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2008",
+          "label": "undo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。後半は同じ直前編集の取り消しをUndo一回と言い直している。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2009",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。直前編集のUndoと、取り消した結果の保存。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2010",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。既存の保存報告とは別にUndoと通常の上書き保存を依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2011",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。取り消しと保存の完了を報告している。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_履歴復元の言い換え",
+      "ids": [
+        "nyamuru_voice_2012",
+        "nyamuru_voice_2013",
+        "nyamuru_voice_2014",
+        "nyamuru_voice_2015",
+        "nyamuru_voice_2016",
+        "nyamuru_voice_2017"
+      ],
+      "meaning_material": "Undo済みの変更を履歴から復元し表示を確認",
+      "contrast_change": "復元の説明や自己確認と、倍率変更の現在依頼を区別する。",
+      "related_existing_families": [
+        "v03_redo_restore_last_undo",
+        "v03_history_repeat_or_pair"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_redo_restore_last_undo",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1061",
+            "nyamuru_voice_1062",
+            "nyamuru_voice_1063",
+            "nyamuru_voice_1064",
+            "nyamuru_voice_1065",
+            "nyamuru_voice_1066",
+            "nyamuru_voice_1067",
+            "nyamuru_voice_1068"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_history_repeat_or_pair",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1109",
+            "nyamuru_voice_1110",
+            "nyamuru_voice_1111",
+            "nyamuru_voice_1112",
+            "nyamuru_voice_1113",
+            "nyamuru_voice_1114",
+            "nyamuru_voice_1115",
+            "nyamuru_voice_1116"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_completed_edit_history",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1222",
+            "nyamuru_voice_1223",
+            "nyamuru_voice_1224",
+            "nyamuru_voice_1232",
+            "nyamuru_voice_1233",
+            "nyamuru_voice_1234",
+            "nyamuru_voice_1235",
+            "nyamuru_voice_1236",
+            "nyamuru_voice_1269",
+            "nyamuru_voice_1298"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2012",
+          "label": "redo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。復活、Redo一回、取り消す前の状態へ返すことは同じ履歴再適用の言い換え。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2013",
+          "label": "redo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はRedo一回。実寸での確認は本人の後の予定で、表示変更は依頼していない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2014",
+          "label": "redo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はRedo。実寸表示での確認は取り消し前の経緯。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2015",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。Redo一回と表示倍率を実寸にする変更。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2016",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。履歴の再適用と実寸への表示変更を連続して依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2017",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。復元方法の説明を求めており、操作実行は指示していない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_ページ指定と後の保存",
+      "ids": [
+        "nyamuru_voice_2018",
+        "nyamuru_voice_2019",
+        "nyamuru_voice_2020",
+        "nyamuru_voice_2021",
+        "nyamuru_voice_2022",
+        "nyamuru_voice_2023"
+      ],
+      "meaning_material": "番号指定のページ表示と保存予定",
+      "contrast_change": "目的に含まれる保存を、現在の保存依頼へ変更する。",
+      "related_existing_families": [
+        "v03_navigation_then_save",
+        "v03_constraints_not_second_action"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_navigation_then_save",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1125",
+            "nyamuru_voice_1126",
+            "nyamuru_voice_1127",
+            "nyamuru_voice_1128",
+            "nyamuru_voice_1129",
+            "nyamuru_voice_1130",
+            "nyamuru_voice_1131",
+            "nyamuru_voice_1132"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_constraints_not_second_action",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1173",
+            "nyamuru_voice_1174",
+            "nyamuru_voice_1175",
+            "nyamuru_voice_1176",
+            "nyamuru_voice_1177",
+            "nyamuru_voice_1178",
+            "nyamuru_voice_1179",
+            "nyamuru_voice_1180"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_page_navigation",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1237",
+            "nyamuru_voice_1239",
+            "nyamuru_voice_1241",
+            "nyamuru_voice_1242",
+            "nyamuru_voice_1244"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2018",
+          "label": "page_navigate",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は11ページ表示。保存は未決定の話題で、依頼ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2019",
+          "label": "page_navigate",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は11ページ表示。後半は保存の判断を将来に留保する説明。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2020",
+          "label": "page_navigate",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は11ページへの移動。保存はそのページを説明する過去の行為。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2021",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。11ページ表示と作品保存の両方が依頼されている。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2022",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。表示ページ変更と現在作品の保存。本人が読む行為は操作数に加えない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2023",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。ページ移動に伴う保存の挙動について質問している。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_倍率の目的とガイド表示",
+      "ids": [
+        "nyamuru_voice_2024",
+        "nyamuru_voice_2025",
+        "nyamuru_voice_2026",
+        "nyamuru_voice_2027",
+        "nyamuru_voice_2028",
+        "nyamuru_voice_2029"
+      ],
+      "meaning_material": "線の観察のための拡大と編集ガイド",
+      "contrast_change": "理由や表示の経緯にあるガイドを、独立した表示設定依頼へ変える。",
+      "related_existing_families": [
+        "v02_core_view_change_zoom_step",
+        "v02_routes_compound_view_pair"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v02_core_view_change_zoom_step",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_449",
+            "nyamuru_voice_450",
+            "nyamuru_voice_451",
+            "nyamuru_voice_452"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_compound_view_pair",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_773",
+            "nyamuru_voice_774",
+            "nyamuru_voice_775",
+            "nyamuru_voice_776"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_viewport_and_guides",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1246",
+            "nyamuru_voice_1248",
+            "nyamuru_voice_1272"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2024",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はズームイン一段。編集ガイドは見る場所の説明で、表示設定変更を求めていない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2025",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。拡大の目的説明とズームイン一回は同じ倍率操作。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2026",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はズームイン。編集ガイドを出したのは既に行ったことの説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2027",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。同じview_change系でも倍率変更と編集ガイド表示は独立。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2028",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。編集ガイド表示とズームイン一段。見比べるという目的だけで単一化しない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2029",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。拡大したときの見え方についての疑問で、拡大やガイド表示は頼んでいない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_作画準備と生成の時制",
+      "ids": [
+        "nyamuru_voice_2030",
+        "nyamuru_voice_2031",
+        "nyamuru_voice_2032",
+        "nyamuru_voice_2033",
+        "nyamuru_voice_2034",
+        "nyamuru_voice_2035"
+      ],
+      "meaning_material": "下書き方式の設定と選択コマの生成",
+      "contrast_change": "生成の過去・将来と現在の着手依頼を区別する。",
+      "related_existing_families": [
+        "v03_tool_align_generate_pairs",
+        "v02_core_artwork_mode_set_setting_without_run"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_tool_align_generate_pairs",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1157",
+            "nyamuru_voice_1158",
+            "nyamuru_voice_1159",
+            "nyamuru_voice_1160",
+            "nyamuru_voice_1161",
+            "nyamuru_voice_1162",
+            "nyamuru_voice_1163",
+            "nyamuru_voice_1164"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_core_artwork_mode_set_setting_without_run",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_485",
+            "nyamuru_voice_486",
+            "nyamuru_voice_487",
+            "nyamuru_voice_488"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_artwork_mode_and_generation",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1255",
+            "nyamuru_voice_1256",
+            "nyamuru_voice_1259",
+            "nyamuru_voice_1260"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2030",
+          "label": "artwork_mode_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は下書き方式への設定。画像生成は昼休み後の本人の予定。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2031",
+          "label": "artwork_mode_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は下書き方式への設定。前回の生成と比較は過去の報告、次の画像生成は利用者が後で決める予定である。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2032",
+          "label": "artwork_mode_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。下書き方式とdraftは同じ設定値の言い換え。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2033",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。下書き方式への切替と選択コマ全体の画像生成を明示。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2034",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。理由に続いて作画方式変更とコマ画像生成をともに依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2035",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。方式変更や画像生成の実行ではなく作業手順を尋ねている。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_移動の二軸と別属性",
+      "ids": [
+        "nyamuru_voice_2036",
+        "nyamuru_voice_2037",
+        "nyamuru_voice_2038",
+        "nyamuru_voice_2039",
+        "nyamuru_voice_2040",
+        "nyamuru_voice_2041"
+      ],
+      "meaning_material": "同じ吹き出しの二軸移動としっぽ変更",
+      "contrast_change": "x/yは一つの移動。しっぽ設定を外側の依頼に加えると別操作。",
+      "related_existing_families": [
+        "v03_one_action_multiple_values",
+        "v03_bubble_distinct_fields"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_one_action_multiple_values",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1181",
+            "nyamuru_voice_1182",
+            "nyamuru_voice_1183",
+            "nyamuru_voice_1184",
+            "nyamuru_voice_1185",
+            "nyamuru_voice_1186",
+            "nyamuru_voice_1187",
+            "nyamuru_voice_1188"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_bubble_distinct_fields",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1149",
+            "nyamuru_voice_1150",
+            "nyamuru_voice_1151",
+            "nyamuru_voice_1152",
+            "nyamuru_voice_1153",
+            "nyamuru_voice_1154",
+            "nyamuru_voice_1155",
+            "nyamuru_voice_1156"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_bubble_explicit_values",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1288"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2036",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は同じ吹き出しの移動。右4mmと上3mmは一つの移動ベクトル。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2037",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。二軸の数値は同一対象の移動値で、二つの独立操作ではない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2038",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は移動。しっぽの除去は選択対象についての完了報告。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2039",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。同じBBoxの二軸移動で1件、しっぽ無効化で別の1件。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2040",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。しっぽ設定と移動が独立し、移動のx/y指定自体は分割しない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2041",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。しっぽは過去の説明、現在の移動は「少し」で量が不足。通常の選択参照自体は問題ではない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_寸法の二値と別属性",
+      "ids": [
+        "nyamuru_voice_2042",
+        "nyamuru_voice_2043",
+        "nyamuru_voice_2044",
+        "nyamuru_voice_2045",
+        "nyamuru_voice_2046",
+        "nyamuru_voice_2047"
+      ],
+      "meaning_material": "同じ吹き出しの幅高さと形状",
+      "contrast_change": "幅と高さの二値は一つのBBox変更。形の変更を現在依頼にすると2件。",
+      "related_existing_families": [
+        "v02_edit_bubble_dimensions",
+        "v03_bubble_distinct_fields"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v02_edit_bubble_dimensions",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_525",
+            "nyamuru_voice_526",
+            "nyamuru_voice_527",
+            "nyamuru_voice_528"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_bubble_distinct_fields",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1149",
+            "nyamuru_voice_1150",
+            "nyamuru_voice_1151",
+            "nyamuru_voice_1152",
+            "nyamuru_voice_1153",
+            "nyamuru_voice_1154",
+            "nyamuru_voice_1155",
+            "nyamuru_voice_1156"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_extra_dev_focused_dimension_value",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1671"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2042",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は同じBBoxのサイズ変更。幅31mmと高さ43mmはその二値。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2043",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はサイズ変更。四角への変更は既に済んだ対象説明。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2044",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。最後の幅と高さは寸法指定の言い換えで、新しい依頼ではない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2045",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。形状squareへの設定と、幅31mm・高さ43mmを一組とするサイズ変更。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2046",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。形状設定と同一BBoxのサイズ設定がそれぞれ依頼されている。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2047",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。寸法数値の指定ではなく、窮屈に見えない寸法の内容判断を求める。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_シンクロの条件分岐と保存",
+      "ids": [
+        "nyamuru_voice_2048",
+        "nyamuru_voice_2049",
+        "nyamuru_voice_2050",
+        "nyamuru_voice_2051",
+        "nyamuru_voice_2052",
+        "nyamuru_voice_2053"
+      ],
+      "meaning_material": "コマシンクロの一つの最終状態と保存",
+      "contrast_change": "現在状態による分岐が同じ最終状態なら設定一件。保存追加で二件。",
+      "related_existing_families": [
+        "panel_sync_set_desired_state",
+        "v03_two_editor_settings"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "panel_sync_set_desired_state",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_165",
+            "nyamuru_voice_166",
+            "nyamuru_voice_167",
+            "nyamuru_voice_168",
+            "nyamuru_voice_169",
+            "nyamuru_voice_171",
+            "nyamuru_voice_172",
+            "nyamuru_voice_173",
+            "nyamuru_voice_174",
+            "nyamuru_voice_175",
+            "nyamuru_voice_177",
+            "nyamuru_voice_178"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_two_editor_settings",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1141",
+            "nyamuru_voice_1142",
+            "nyamuru_voice_1143",
+            "nyamuru_voice_1144",
+            "nyamuru_voice_1145",
+            "nyamuru_voice_1146",
+            "nyamuru_voice_1147",
+            "nyamuru_voice_1148"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_panel_setting_states",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1302",
+            "nyamuru_voice_1305",
+            "nyamuru_voice_1306",
+            "nyamuru_voice_1308",
+            "nyamuru_voice_1313",
+            "nyamuru_voice_1314",
+            "nyamuru_voice_1316",
+            "nyamuru_voice_1318",
+            "nyamuru_voice_1319",
+            "nyamuru_voice_1320",
+            "nyamuru_voice_1321",
+            "nyamuru_voice_1323",
+            "nyamuru_voice_1324"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2048",
+          "label": "panel_sync_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマシンクロの希望状態オン。条件の両枝は一つの最終状態へ収束する。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2049",
+          "label": "panel_sync_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。同じコマシンクロの希望状態オンを二通りに表現している。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2050",
+          "label": "panel_sync_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマシンクロ有効化。昨日の無効化は履歴の説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2051",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。コマシンクロの希望状態オンへの設定と作品保存を合わせて依頼。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2052",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。条件付きのオンへの設定1件と保存1件。状態条件そのものは追加操作に数えない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2053",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。同じ希望状態を指定した場合の挙動を尋ねている。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_内枠吸着の最終状態",
+      "ids": [
+        "nyamuru_voice_2054",
+        "nyamuru_voice_2055",
+        "nyamuru_voice_2056",
+        "nyamuru_voice_2057",
+        "nyamuru_voice_2058",
+        "nyamuru_voice_2059"
+      ],
+      "meaning_material": "内枠スナップを無効にそろえる条件とペン選択",
+      "contrast_change": "状態分岐と理由を一件に保ち、独立したペン選択を加える。",
+      "related_existing_families": [
+        "inner_frame_snap_set_desired_state",
+        "v03_disabled_state_vs_prohibit"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "inner_frame_snap_set_desired_state",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_185",
+            "nyamuru_voice_186",
+            "nyamuru_voice_187",
+            "nyamuru_voice_188",
+            "nyamuru_voice_189",
+            "nyamuru_voice_191",
+            "nyamuru_voice_192",
+            "nyamuru_voice_193",
+            "nyamuru_voice_194",
+            "nyamuru_voice_195",
+            "nyamuru_voice_197",
+            "nyamuru_voice_198"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_disabled_state_vs_prohibit",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_965",
+            "nyamuru_voice_966",
+            "nyamuru_voice_967",
+            "nyamuru_voice_968",
+            "nyamuru_voice_969",
+            "nyamuru_voice_970",
+            "nyamuru_voice_971",
+            "nyamuru_voice_972"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_panel_setting_states",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1302",
+            "nyamuru_voice_1305",
+            "nyamuru_voice_1306",
+            "nyamuru_voice_1308",
+            "nyamuru_voice_1313",
+            "nyamuru_voice_1314",
+            "nyamuru_voice_1316",
+            "nyamuru_voice_1318",
+            "nyamuru_voice_1319",
+            "nyamuru_voice_1320",
+            "nyamuru_voice_1321",
+            "nyamuru_voice_1323",
+            "nyamuru_voice_1324"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2054",
+          "label": "inner_frame_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は内枠スナップの希望状態オフ。現在値に応じた説明でも最終状態は一つ。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2055",
+          "label": "inner_frame_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は内枠スナップ無効化。描く行為は利用者の目的で実行依頼ではない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2056",
+          "label": "inner_frame_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。無効とオフは同じ希望状態の言い換え。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2057",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。内枠スナップ無効化とラスターペン選択。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2058",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。目的は共通でも、内枠スナップ設定とペン選択は独立。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2059",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。同じ発話に昨日の値がなく、希望する最終状態を一意に決められない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_コマ吸着の理由とガイド",
+      "ids": [
+        "nyamuru_voice_2060",
+        "nyamuru_voice_2061",
+        "nyamuru_voice_2062",
+        "nyamuru_voice_2063",
+        "nyamuru_voice_2064",
+        "nyamuru_voice_2065"
+      ],
+      "meaning_material": "コマスナップ設定と編集ガイド表示",
+      "contrast_change": "ガイドを見た過去や本人の確認予定と、今のガイド表示を区別する。",
+      "related_existing_families": [
+        "panel_gap_snap_set_desired_state",
+        "v03_two_editor_settings"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "panel_gap_snap_set_desired_state",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_205",
+            "nyamuru_voice_206",
+            "nyamuru_voice_207",
+            "nyamuru_voice_208",
+            "nyamuru_voice_209",
+            "nyamuru_voice_211",
+            "nyamuru_voice_212",
+            "nyamuru_voice_213",
+            "nyamuru_voice_214",
+            "nyamuru_voice_215",
+            "nyamuru_voice_217",
+            "nyamuru_voice_218"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_two_editor_settings",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1141",
+            "nyamuru_voice_1142",
+            "nyamuru_voice_1143",
+            "nyamuru_voice_1144",
+            "nyamuru_voice_1145",
+            "nyamuru_voice_1146",
+            "nyamuru_voice_1147",
+            "nyamuru_voice_1148"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_panel_setting_states",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1302",
+            "nyamuru_voice_1305",
+            "nyamuru_voice_1306",
+            "nyamuru_voice_1308",
+            "nyamuru_voice_1313",
+            "nyamuru_voice_1314",
+            "nyamuru_voice_1316",
+            "nyamuru_voice_1318",
+            "nyamuru_voice_1319",
+            "nyamuru_voice_1320",
+            "nyamuru_voice_1321",
+            "nyamuru_voice_1323",
+            "nyamuru_voice_1324"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2060",
+          "label": "panel_gap_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマスナップ有効化。ガイドを見たのは確認済みの経緯。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2061",
+          "label": "panel_gap_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。条件分岐はコマスナップ有効という同じ希望状態を指定する。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2062",
+          "label": "panel_gap_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマスナップオン。ガイド確認は本人の将来の作業。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2063",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。編集ガイド表示とコマスナップ有効化。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2064",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。確認目的の下に独立した設定変更とガイド表示がある。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2065",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。以前見たガイドとコマスナップ状態の報告のみ。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_生成対象の複数属性",
+      "ids": [
+        "nyamuru_voice_2066",
+        "nyamuru_voice_2067",
+        "nyamuru_voice_2068",
+        "nyamuru_voice_2069",
+        "nyamuru_voice_2070",
+        "nyamuru_voice_2071"
+      ],
+      "meaning_material": "一人の人物をコマ番号と名前で特定する生成",
+      "contrast_change": "コマ番号と人物名を対象一人の属性にする場合と、コマ全体も別に生成する場合を対照。",
+      "related_existing_families": [
+        "generate_explicit_locator",
+        "generate_multiple_targets",
+        "v03_tool_align_generate_pairs"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "generate_explicit_locator",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_273",
+            "nyamuru_voice_274",
+            "nyamuru_voice_275",
+            "nyamuru_voice_276",
+            "nyamuru_voice_277",
+            "nyamuru_voice_278",
+            "nyamuru_voice_279",
+            "nyamuru_voice_280"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "generate_multiple_targets",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_314"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_tool_align_generate_pairs",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1157",
+            "nyamuru_voice_1158",
+            "nyamuru_voice_1159",
+            "nyamuru_voice_1160",
+            "nyamuru_voice_1161",
+            "nyamuru_voice_1162",
+            "nyamuru_voice_1163",
+            "nyamuru_voice_1164"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_extra_dev_person_locator_attribute_list",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1713"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2066",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は六コマ目の凛さんの生成。コマ番号は人物を絞る属性で、コマ全体の生成を頼んでいない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2067",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は指定人物の生成。背景まで作らないとの範囲制約は操作を増やさない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2068",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は選択人物の生成。六コマ目全体の生成は過去の説明で、現在の対象を広げない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2069",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。六コマ目全体と七コマ目の凛さんという別対象への画像生成。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2070",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。六コマ目の指定人物生成とその後の作品保存。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2071",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。現在発話に人物名がなく、通常の画面選択でもなく過去会話の人名だけに依存する参照。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_候補選定の内訳と作画設定",
+      "ids": [
+        "nyamuru_voice_2072",
+        "nyamuru_voice_2073",
+        "nyamuru_voice_2074",
+        "nyamuru_voice_2075",
+        "nyamuru_voice_2076",
+        "nyamuru_voice_2077"
+      ],
+      "meaning_material": "登録済み3D背景の選定提示と作画方式",
+      "contrast_change": "探す・絞る・提示するは候補提示一件の内訳。作画設定を現在依頼にすると別操作。",
+      "related_existing_families": [
+        "registered_background_candidates",
+        "v02_routes_bg_scene",
+        "v02_routes_compound_background"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "registered_background_candidates",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_249",
+            "nyamuru_voice_250",
+            "nyamuru_voice_251",
+            "nyamuru_voice_252",
+            "nyamuru_voice_253",
+            "nyamuru_voice_254",
+            "nyamuru_voice_255",
+            "nyamuru_voice_256",
+            "nyamuru_voice_257",
+            "nyamuru_voice_258",
+            "nyamuru_voice_259",
+            "nyamuru_voice_260",
+            "nyamuru_voice_266"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_bg_scene",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_897",
+            "nyamuru_voice_898",
+            "nyamuru_voice_899",
+            "nyamuru_voice_900"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_compound_background",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_789",
+            "nyamuru_voice_790",
+            "nyamuru_voice_791",
+            "nyamuru_voice_792"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_registered_3d_candidates",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1292",
+            "nyamuru_voice_1333",
+            "nyamuru_voice_1334",
+            "nyamuru_voice_1335",
+            "nyamuru_voice_1336",
+            "nyamuru_voice_1338",
+            "nyamuru_voice_1339"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2072",
+          "label": "background_3d_candidates",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は登録済み3D背景候補二つの提示。検索・絞り込み・提示はその処理の内訳。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2073",
+          "label": "background_3d_candidates",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は背景候補提示。下書き方式は既に行った設定の説明。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2074",
+          "label": "background_3d_candidates",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は登録済み3Dから港の待合室候補二つの提示。探す・選ぶ・見せるは同じ候補提示の内訳で、配置は依頼していない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2075",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。背景候補提示と作画方式draftへの変更。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2076",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。作画設定と候補提示が独立し、候補の選定と提示自体は一件。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2077",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。候補提示依頼の伝え方に関する方法質問。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_ペン選択と手作業の予定",
+      "ids": [
+        "nyamuru_voice_2078",
+        "nyamuru_voice_2079",
+        "nyamuru_voice_2080",
+        "nyamuru_voice_2081",
+        "nyamuru_voice_2082",
+        "nyamuru_voice_2083"
+      ],
+      "meaning_material": "ラスターペン選択と文字枠整列",
+      "contrast_change": "利用者自身の将来作業を、アプリに今頼む整列へ変える。",
+      "related_existing_families": [
+        "v02_edit_paint_next_stroke",
+        "v03_pen_alignment_negation",
+        "pen_and_align"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v02_edit_paint_next_stroke",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_641",
+            "nyamuru_voice_642",
+            "nyamuru_voice_643",
+            "nyamuru_voice_644"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_pen_alignment_negation",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1005",
+            "nyamuru_voice_1006",
+            "nyamuru_voice_1007",
+            "nyamuru_voice_1008",
+            "nyamuru_voice_1009",
+            "nyamuru_voice_1010",
+            "nyamuru_voice_1011",
+            "nyamuru_voice_1012"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "pen_and_align",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_315"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_paint_tool_choice",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1276",
+            "nyamuru_voice_1342",
+            "nyamuru_voice_1344",
+            "nyamuru_voice_1348"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2078",
+          "label": "paint_tool_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はラスターペン選択。文字枠整列と線描画は本人の予定。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2079",
+          "label": "paint_tool_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はラスターペン選択。整列は完了報告、手描きは予定。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2080",
+          "label": "paint_tool_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。同じペン選択を用途で補足しているだけで、描画実行を依頼していない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2081",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。ラスターペン選択と複数文字枠上端揃え。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2082",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。共通目的の説明に続くペン切替と文字枠整列。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2083",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。将来の計画を述べ、現在の変更は明示的に求めていない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_整列の対象数と保存",
+      "ids": [
+        "nyamuru_voice_2084",
+        "nyamuru_voice_2085",
+        "nyamuru_voice_2086",
+        "nyamuru_voice_2087",
+        "nyamuru_voice_2088",
+        "nyamuru_voice_2089"
+      ],
+      "meaning_material": "選択した複数文字枠の上端揃えと保存",
+      "contrast_change": "対象が複数でも一つの整列依頼。独立した保存を加えると2件。",
+      "related_existing_families": [
+        "text_frames_top",
+        "v03_one_action_multiple_values",
+        "v03_tool_align_generate_pairs"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "text_frames_top",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_297",
+            "nyamuru_voice_298",
+            "nyamuru_voice_299",
+            "nyamuru_voice_300",
+            "nyamuru_voice_301",
+            "nyamuru_voice_302",
+            "nyamuru_voice_303",
+            "nyamuru_voice_304",
+            "nyamuru_voice_307"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_one_action_multiple_values",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1181",
+            "nyamuru_voice_1182",
+            "nyamuru_voice_1183",
+            "nyamuru_voice_1184",
+            "nyamuru_voice_1185",
+            "nyamuru_voice_1186",
+            "nyamuru_voice_1187",
+            "nyamuru_voice_1188"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_tool_align_generate_pairs",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1157",
+            "nyamuru_voice_1158",
+            "nyamuru_voice_1159",
+            "nyamuru_voice_1160",
+            "nyamuru_voice_1161",
+            "nyamuru_voice_1162",
+            "nyamuru_voice_1163",
+            "nyamuru_voice_1164"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_text_frame_top_alignment",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1351",
+            "nyamuru_voice_1352",
+            "nyamuru_voice_1354",
+            "nyamuru_voice_1355"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2084",
+          "label": "text_frames_align",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は選択した四つの文字枠の上端揃え。対象数や吹き出しが別々であることは独立操作を増やさない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2085",
+          "label": "text_frames_align",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は複数文字枠上端揃え。保存は本人の後の予定。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2086",
+          "label": "text_frames_align",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は文字枠上端揃え。保存済みという状態報告を新しい保存依頼に数えない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2087",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。複数文字枠の一括上端揃えと作品保存。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2088",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。選択文字枠の上端揃えとその結果の保存。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2089",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。上端揃えの明示指定ではなく、視線に適した位置の判断を求める。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_取り消し撤回と保存の残存",
+      "ids": [
+        "nyamuru_voice_2090",
+        "nyamuru_voice_2091",
+        "nyamuru_voice_2092",
+        "nyamuru_voice_2093",
+        "nyamuru_voice_2094",
+        "nyamuru_voice_2095"
+      ],
+      "meaning_material": "Undoを撤回し保存だけ残すか両方行うか",
+      "contrast_change": "撤回対象を明示して最終的に残る操作を数える。",
+      "related_existing_families": [
+        "v03_self_correction_not_compound",
+        "v03_history_and_save",
+        "v03_save_final_correction"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_self_correction_not_compound",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1165",
+            "nyamuru_voice_1166",
+            "nyamuru_voice_1167",
+            "nyamuru_voice_1168",
+            "nyamuru_voice_1169",
+            "nyamuru_voice_1170",
+            "nyamuru_voice_1171",
+            "nyamuru_voice_1172"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_history_and_save",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1133",
+            "nyamuru_voice_1134",
+            "nyamuru_voice_1135",
+            "nyamuru_voice_1136",
+            "nyamuru_voice_1137",
+            "nyamuru_voice_1138",
+            "nyamuru_voice_1139",
+            "nyamuru_voice_1140"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_save_final_correction",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_933",
+            "nyamuru_voice_934",
+            "nyamuru_voice_935",
+            "nyamuru_voice_936",
+            "nyamuru_voice_937",
+            "nyamuru_voice_938",
+            "nyamuru_voice_939",
+            "nyamuru_voice_940"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_current_document_save",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1215",
+            "nyamuru_voice_1216",
+            "nyamuru_voice_1218",
+            "nyamuru_voice_1219",
+            "nyamuru_voice_1297"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2090",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は保存。Undoに当たる取り消し依頼は発話内で明示的に撤回されている。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2091",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。候補として挙げたUndoは選ばれておらず、保存だけを現在依頼。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2092",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は保存。取り消す案は不採用で、編集を残すことは状態維持の説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2093",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。撤回されたのは不実行の方針で、最終的にUndoと保存がともに肯定される。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2094",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。直前編集取り消しと保存を順番に実行する指示。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2095",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。取り消しと保存の両方が撤回され、現在実行は明示的に禁止される。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_取り消し回数と別種操作",
+      "ids": [
+        "nyamuru_voice_2096",
+        "nyamuru_voice_2097",
+        "nyamuru_voice_2098",
+        "nyamuru_voice_2099",
+        "nyamuru_voice_2100",
+        "nyamuru_voice_2101"
+      ],
+      "meaning_material": "Undoを同方向へ反復する回数と別種操作",
+      "contrast_change": "同一Undoの反復はcount、Redoや保存を別に依頼するとcompound。",
+      "related_existing_families": [
+        "v03_history_repeat_or_pair",
+        "v03_undo_history_count"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_history_repeat_or_pair",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1109",
+            "nyamuru_voice_1110",
+            "nyamuru_voice_1111",
+            "nyamuru_voice_1112",
+            "nyamuru_voice_1113",
+            "nyamuru_voice_1114",
+            "nyamuru_voice_1115",
+            "nyamuru_voice_1116"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_undo_history_count",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1037",
+            "nyamuru_voice_1038",
+            "nyamuru_voice_1039",
+            "nyamuru_voice_1040",
+            "nyamuru_voice_1041",
+            "nyamuru_voice_1042",
+            "nyamuru_voice_1043",
+            "nyamuru_voice_1044"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_extra_dev_sequential_history_references",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1710"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2096",
+          "label": "undo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はUndoの五回反復。独立した別操作を五つ頼んだとは扱わない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2097",
+          "label": "undo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。二回と残り三回は同方向のUndoの内訳で合計五回。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2098",
+          "label": "undo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はUndo五回。Redoは後で本人がする比較の予定。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2099",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。Undo五回という一操作と、逆方向のRedo一回が独立。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2100",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。Undo五回の反復と作品保存。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2101",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。取り消し方向は分かるが回数と目標状態の発話内参照が不足。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_再適用回数と別種操作",
+      "ids": [
+        "nyamuru_voice_2102",
+        "nyamuru_voice_2103",
+        "nyamuru_voice_2104",
+        "nyamuru_voice_2105",
+        "nyamuru_voice_2106",
+        "nyamuru_voice_2107"
+      ],
+      "meaning_material": "Redoの反復回数と追加の保存・ガイド",
+      "contrast_change": "反復の内訳と、別種の現在依頼を区別する。",
+      "related_existing_families": [
+        "v03_redo_history_count",
+        "v03_history_repeat_or_pair"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_redo_history_count",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1045",
+            "nyamuru_voice_1046",
+            "nyamuru_voice_1047",
+            "nyamuru_voice_1048",
+            "nyamuru_voice_1049",
+            "nyamuru_voice_1050",
+            "nyamuru_voice_1051",
+            "nyamuru_voice_1052"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_history_repeat_or_pair",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1109",
+            "nyamuru_voice_1110",
+            "nyamuru_voice_1111",
+            "nyamuru_voice_1112",
+            "nyamuru_voice_1113",
+            "nyamuru_voice_1114",
+            "nyamuru_voice_1115",
+            "nyamuru_voice_1116"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_completed_edit_history",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1222",
+            "nyamuru_voice_1223",
+            "nyamuru_voice_1224",
+            "nyamuru_voice_1232",
+            "nyamuru_voice_1233",
+            "nyamuru_voice_1234",
+            "nyamuru_voice_1235",
+            "nyamuru_voice_1236",
+            "nyamuru_voice_1269",
+            "nyamuru_voice_1298"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2102",
+          "label": "redo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はRedo五回。先に取り消したことは過去の経緯。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2103",
+          "label": "redo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。同じRedoの反復回数を二と三に分けて述べている。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2104",
+          "label": "redo",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はRedo五回。保存は本人が結果を見た後に行う予定。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2105",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。Redo五回と作品保存。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2106",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。Redo五回と配置ガイド表示。復元という目的語で反復を分割しない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2107",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。UndoとRedoを既に実行した結果の報告。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_ページ送りの回数とガイド",
+      "ids": [
+        "nyamuru_voice_2108",
+        "nyamuru_voice_2109",
+        "nyamuru_voice_2110",
+        "nyamuru_voice_2111",
+        "nyamuru_voice_2112",
+        "nyamuru_voice_2113"
+      ],
+      "meaning_material": "複数枚のページ送りと配置ガイド",
+      "contrast_change": "同方向ページ送りの回数と、独立したガイド設定を対照。",
+      "related_existing_families": [
+        "page_relative_count",
+        "v03_one_action_multiple_values",
+        "v03_constraints_not_second_action"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "page_relative_count",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_043",
+            "nyamuru_voice_044"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_one_action_multiple_values",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1181",
+            "nyamuru_voice_1182",
+            "nyamuru_voice_1183",
+            "nyamuru_voice_1184",
+            "nyamuru_voice_1185",
+            "nyamuru_voice_1186",
+            "nyamuru_voice_1187",
+            "nyamuru_voice_1188"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_constraints_not_second_action",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1173",
+            "nyamuru_voice_1174",
+            "nyamuru_voice_1175",
+            "nyamuru_voice_1176",
+            "nyamuru_voice_1177",
+            "nyamuru_voice_1178",
+            "nyamuru_voice_1179",
+            "nyamuru_voice_1180"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_page_navigation",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1237",
+            "nyamuru_voice_1239",
+            "nyamuru_voice_1241",
+            "nyamuru_voice_1242",
+            "nyamuru_voice_1244"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2108",
+          "label": "page_navigate",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は次方向へ四枚のページ移動。四枚は同じ移動の距離。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2109",
+          "label": "page_navigate",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。同方向への一枚と三枚は合計四枚という一つのページ移動。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2110",
+          "label": "page_navigate",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はページ移動。配置ガイドを消したことは過去の作業説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2111",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。配置ガイド非表示設定と次方向へ四枚のページ移動。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2112",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。表示ガイド変更とページ移動がそれぞれ現在依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2113",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。過去の操作を相手が見たかどうか尋ねている。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_タブ閲覧とガイド設定",
+      "ids": [
+        "nyamuru_voice_2114",
+        "nyamuru_voice_2115",
+        "nyamuru_voice_2116",
+        "nyamuru_voice_2117",
+        "nyamuru_voice_2118",
+        "nyamuru_voice_2119"
+      ],
+      "meaning_material": "人物タブを開く目的とガイド表示",
+      "contrast_change": "目的や既存状態にあるガイドを、現在の独立変更へ移す。",
+      "related_existing_families": [
+        "tab_characters",
+        "v02_core_view_change_existing_tab_purpose",
+        "v02_routes_compound_view_pair"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "tab_characters",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_065"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_core_view_change_existing_tab_purpose",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_473",
+            "nyamuru_voice_474",
+            "nyamuru_voice_475",
+            "nyamuru_voice_476"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_compound_view_pair",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_773",
+            "nyamuru_voice_774",
+            "nyamuru_voice_775",
+            "nyamuru_voice_776"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_existing_tabs",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1251",
+            "nyamuru_voice_1252"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2114",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は登場人物タブ表示。設定を読むことは本人の作業で内容変更依頼ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2115",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は登場人物タブ表示。ガイドについては現状維持の制約で、新しい表示設定ではない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2116",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は登場人物タブへ切替。人物名確認をアプリに実行させる依頼ではない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2117",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。同じview_changeラベル内でもタブ切替とガイド非表示は独立。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2118",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。目的説明に続く配置ガイド非表示と登場人物タブ表示。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2119",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。タブ切替がガイド設定に及ぼす挙動の質問。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_一体型の定義と別の表示",
+      "ids": [
+        "nyamuru_voice_2120",
+        "nyamuru_voice_2121",
+        "nyamuru_voice_2122",
+        "nyamuru_voice_2123",
+        "nyamuru_voice_2124",
+        "nyamuru_voice_2125"
+      ],
+      "meaning_material": "一体型作画方式の言い換えと編集ガイド",
+      "contrast_change": "設定値の説明を一件とし、ガイドの現在指定を追加して2件にする。",
+      "related_existing_families": [
+        "mode_integrated",
+        "v02_core_artwork_mode_set_named_setting_item",
+        "v03_two_editor_settings"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "mode_integrated",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_067",
+            "nyamuru_voice_069",
+            "nyamuru_voice_070"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_core_artwork_mode_set_named_setting_item",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_497",
+            "nyamuru_voice_498",
+            "nyamuru_voice_499",
+            "nyamuru_voice_500"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_two_editor_settings",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1141",
+            "nyamuru_voice_1142",
+            "nyamuru_voice_1143",
+            "nyamuru_voice_1144",
+            "nyamuru_voice_1145",
+            "nyamuru_voice_1146",
+            "nyamuru_voice_1147",
+            "nyamuru_voice_1148"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_artwork_mode_and_generation",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1255",
+            "nyamuru_voice_1256",
+            "nyamuru_voice_1259",
+            "nyamuru_voice_1260"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2120",
+          "label": "artwork_mode_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。同じ作画値integratedを一体型と言い換えている。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2121",
+          "label": "artwork_mode_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は一体型作画方式への変更。ガイドを消した状態での試行は本人の予定で現在の非表示依頼ではない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2122",
+          "label": "artwork_mode_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は一体型設定。以前の下書き方式は過去状態の説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2123",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。作画方式変更と編集ガイド非表示。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2124",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。一体型作画方式と編集ガイド非表示をともに依頼し、後文は目的説明。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2125",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。最終モードの明示指定ではなく、場面に適した作画方式の内容判断。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_引用内の手順と外側の実行",
+      "ids": [
+        "nyamuru_voice_2126",
+        "nyamuru_voice_2127",
+        "nyamuru_voice_2128",
+        "nyamuru_voice_2129",
+        "nyamuru_voice_2130",
+        "nyamuru_voice_2131"
+      ],
+      "meaning_material": "吹き出し本文に入る複数命令と外側の保存",
+      "contrast_change": "引用の中にある操作は本文値。引用外で独立操作を依頼したときだけcompound。",
+      "related_existing_families": [
+        "v03_quoted_two_actions_single_text",
+        "v03_quoted_negative_text",
+        "v03_bubble_distinct_fields"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_quoted_two_actions_single_text",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1189",
+            "nyamuru_voice_1190",
+            "nyamuru_voice_1191",
+            "nyamuru_voice_1192",
+            "nyamuru_voice_1193",
+            "nyamuru_voice_1194",
+            "nyamuru_voice_1195",
+            "nyamuru_voice_1196"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_quoted_negative_text",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_981",
+            "nyamuru_voice_982",
+            "nyamuru_voice_983",
+            "nyamuru_voice_984",
+            "nyamuru_voice_985",
+            "nyamuru_voice_986",
+            "nyamuru_voice_987",
+            "nyamuru_voice_988"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_bubble_distinct_fields",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1149",
+            "nyamuru_voice_1150",
+            "nyamuru_voice_1151",
+            "nyamuru_voice_1152",
+            "nyamuru_voice_1153",
+            "nyamuru_voice_1154",
+            "nyamuru_voice_1155",
+            "nyamuru_voice_1156"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_extra_dev_quoted_value_then_reference",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1669"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_dialogue_expression",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1281",
+            "nyamuru_voice_1284"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2126",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は吹き出し本文変更。引用内のページ移動と保存は入力文字列。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2127",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は本文差し替え。二つの命令はセリフの内容で実行対象ではない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2128",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。セリフ文字列全体を本文へ設定する依頼。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2129",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。本文設定と引用外で明示された実際の作品保存。引用内命令は数えない。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2130",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。本文変更としっぽ無効化。引用内の二命令は追加操作ではない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2131",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。セリフの説明くささという表現の適切さを判断する依頼。引用内の命令は実行対象ではない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_話者の根拠と別の本文変更",
+      "ids": [
+        "nyamuru_voice_2132",
+        "nyamuru_voice_2133",
+        "nyamuru_voice_2134",
+        "nyamuru_voice_2135",
+        "nyamuru_voice_2136",
+        "nyamuru_voice_2137"
+      ],
+      "meaning_material": "話者を一人に指定する説明と本文設定",
+      "contrast_change": "名前の根拠は一つの話者設定。本文書き換えを加えると別操作。",
+      "related_existing_families": [
+        "bubble_speaker",
+        "v02_edit_bubble_speaker_owner",
+        "v03_bubble_distinct_fields"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "bubble_speaker",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_095",
+            "nyamuru_voice_096"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_edit_bubble_speaker_owner",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_533",
+            "nyamuru_voice_534",
+            "nyamuru_voice_535",
+            "nyamuru_voice_536"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_bubble_distinct_fields",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1149",
+            "nyamuru_voice_1150",
+            "nyamuru_voice_1151",
+            "nyamuru_voice_1152",
+            "nyamuru_voice_1153",
+            "nyamuru_voice_1154",
+            "nyamuru_voice_1155",
+            "nyamuru_voice_1156"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_bubble_content_judgment",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1277",
+            "nyamuru_voice_1278",
+            "nyamuru_voice_1279",
+            "nyamuru_voice_1280",
+            "nyamuru_voice_1283"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2132",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は話者欄設定。セリフ内容の説明は本文書き換え指示ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2133",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。話者設定を発言者欄という説明で言い直している。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2134",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は話者設定。本文変更は利用者が済ませたという報告。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2135",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。同じ吹き出しでも話者設定と本文変更は独立したフィールド操作。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2136",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。理由説明に加えて、話者と本文の二つの値を別々に依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2137",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。明示話者の設定ではなく、前後の内容に基づく話者選択の判断。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_形の採用としっぽ変更",
+      "ids": [
+        "nyamuru_voice_2138",
+        "nyamuru_voice_2139",
+        "nyamuru_voice_2140",
+        "nyamuru_voice_2141",
+        "nyamuru_voice_2142",
+        "nyamuru_voice_2143"
+      ],
+      "meaning_material": "四角形の最終指定としっぽ有無",
+      "contrast_change": "形の別案を退けるだけなら形設定一件。しっぽを今変えると2件。",
+      "related_existing_families": [
+        "bubble_shape_negative",
+        "bubble_tail",
+        "v03_bubble_distinct_fields"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "bubble_shape_negative",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_159"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "bubble_tail",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_082",
+            "nyamuru_voice_083"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_bubble_distinct_fields",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1149",
+            "nyamuru_voice_1150",
+            "nyamuru_voice_1151",
+            "nyamuru_voice_1152",
+            "nyamuru_voice_1153",
+            "nyamuru_voice_1154",
+            "nyamuru_voice_1155",
+            "nyamuru_voice_1156"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_bubble_explicit_values",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1288"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2138",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は形状square。丸い案は不採用の比較対象で操作ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2139",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。四角という指定を四辺の輪郭と言い換えている。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2140",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は形変更。しっぽ除去は過去に済んだ対象の説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2141",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。形状squareとtail_enabled=falseの独立した設定。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2142",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。しっぽ無効化と形状squareへの設定。形の決定理由は追加操作ではない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2143",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。形状値の確定指定ではなく場面に合う形の選択を依頼。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_シンクロの過去状態と別設定",
+      "ids": [
+        "nyamuru_voice_2144",
+        "nyamuru_voice_2145",
+        "nyamuru_voice_2146",
+        "nyamuru_voice_2147",
+        "nyamuru_voice_2148",
+        "nyamuru_voice_2149"
+      ],
+      "meaning_material": "シンクロを無効にする依頼と作画設定の経緯",
+      "contrast_change": "過去状態に含まれる一体型を、現在の設定変更に変えて操作を増やす。",
+      "related_existing_families": [
+        "panel_sync_set_history",
+        "v03_two_editor_settings",
+        "v02_edit_setting_use_state"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "panel_sync_set_history",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_182"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_two_editor_settings",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1141",
+            "nyamuru_voice_1142",
+            "nyamuru_voice_1143",
+            "nyamuru_voice_1144",
+            "nyamuru_voice_1145",
+            "nyamuru_voice_1146",
+            "nyamuru_voice_1147",
+            "nyamuru_voice_1148"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_edit_setting_use_state",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_569",
+            "nyamuru_voice_570",
+            "nyamuru_voice_571",
+            "nyamuru_voice_572",
+            "nyamuru_voice_601",
+            "nyamuru_voice_602",
+            "nyamuru_voice_603",
+            "nyamuru_voice_604",
+            "nyamuru_voice_633",
+            "nyamuru_voice_634",
+            "nyamuru_voice_635",
+            "nyamuru_voice_636"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_panel_setting_states",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1302",
+            "nyamuru_voice_1305",
+            "nyamuru_voice_1306",
+            "nyamuru_voice_1308",
+            "nyamuru_voice_1313",
+            "nyamuru_voice_1314",
+            "nyamuru_voice_1316",
+            "nyamuru_voice_1318",
+            "nyamuru_voice_1319",
+            "nyamuru_voice_1320",
+            "nyamuru_voice_1321",
+            "nyamuru_voice_1323",
+            "nyamuru_voice_1324"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2144",
+          "label": "panel_sync_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマシンクロ無効化。一体型への切替と以前のシンクロ使用は過去の説明。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2145",
+          "label": "panel_sync_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。オンを外すことと無効状態は同じコマシンクロ設定の言い換え。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2146",
+          "label": "panel_sync_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマシンクロ無効化。作画方式を選び直すのは本人の後の予定。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2147",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。コマシンクロのオフと作画方式integratedを別々に設定する依頼。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2148",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。作画方式変更とコマシンクロ無効化。決定理由は操作数に加えない。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2149",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。過去の設定状態の確認で、どちらの設定変更も依頼していない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_内枠を使わない状態と禁止",
+      "ids": [
+        "nyamuru_voice_2150",
+        "nyamuru_voice_2151",
+        "nyamuru_voice_2152",
+        "nyamuru_voice_2153",
+        "nyamuru_voice_2154",
+        "nyamuru_voice_2155"
+      ],
+      "meaning_material": "内枠スナップの無効化と実寸表示",
+      "contrast_change": "「使わない状態へ」の肯定依頼と「変えない」の禁止を区別する。",
+      "related_existing_families": [
+        "v03_disabled_state_vs_prohibit",
+        "inner_frame_snap_set_status",
+        "v03_two_editor_settings"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_disabled_state_vs_prohibit",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_965",
+            "nyamuru_voice_966",
+            "nyamuru_voice_967",
+            "nyamuru_voice_968",
+            "nyamuru_voice_969",
+            "nyamuru_voice_970",
+            "nyamuru_voice_971",
+            "nyamuru_voice_972"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "inner_frame_snap_set_status",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_199"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_two_editor_settings",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1141",
+            "nyamuru_voice_1142",
+            "nyamuru_voice_1143",
+            "nyamuru_voice_1144",
+            "nyamuru_voice_1145",
+            "nyamuru_voice_1146",
+            "nyamuru_voice_1147",
+            "nyamuru_voice_1148"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_panel_setting_states",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1302",
+            "nyamuru_voice_1305",
+            "nyamuru_voice_1306",
+            "nyamuru_voice_1308",
+            "nyamuru_voice_1313",
+            "nyamuru_voice_1314",
+            "nyamuru_voice_1316",
+            "nyamuru_voice_1318",
+            "nyamuru_voice_1319",
+            "nyamuru_voice_1320",
+            "nyamuru_voice_1321",
+            "nyamuru_voice_1323",
+            "nyamuru_voice_1324"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2150",
+          "label": "inner_frame_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は内枠スナップのオフ指定。「吸いつかない」という希望を具体的な設定値にして依頼している。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2151",
+          "label": "inner_frame_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は内枠スナップ無効化。実寸表示の話は後の予定。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2152",
+          "label": "inner_frame_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。現在状態への否定から希望状態無効への変更を明示している。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2153",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。内枠スナップ無効化と実寸表示。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2154",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。内枠スナップ希望状態オフと倍率actual。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2155",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。チェックを外す操作も実寸表示への変更も禁止・延期されている。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_コマスナップの訂正射程",
+      "ids": [
+        "nyamuru_voice_2156",
+        "nyamuru_voice_2157",
+        "nyamuru_voice_2158",
+        "nyamuru_voice_2159",
+        "nyamuru_voice_2160",
+        "nyamuru_voice_2161"
+      ],
+      "meaning_material": "コマスナップと内枠スナップの名前の訂正",
+      "contrast_change": "言い間違えた設定名を撤回した単一依頼と、両設定を残す依頼を対照。",
+      "related_existing_families": [
+        "panel_gap_snap_set_correction",
+        "v02_edit_setting_correction",
+        "v03_two_editor_settings"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "panel_gap_snap_set_correction",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_210",
+            "nyamuru_voice_216"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_edit_setting_correction",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_549",
+            "nyamuru_voice_550",
+            "nyamuru_voice_551",
+            "nyamuru_voice_552",
+            "nyamuru_voice_581",
+            "nyamuru_voice_582",
+            "nyamuru_voice_583",
+            "nyamuru_voice_584",
+            "nyamuru_voice_613",
+            "nyamuru_voice_614",
+            "nyamuru_voice_615",
+            "nyamuru_voice_616"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_two_editor_settings",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1141",
+            "nyamuru_voice_1142",
+            "nyamuru_voice_1143",
+            "nyamuru_voice_1144",
+            "nyamuru_voice_1145",
+            "nyamuru_voice_1146",
+            "nyamuru_voice_1147",
+            "nyamuru_voice_1148"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_extra_dev_two_named_settings_unresolved",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1711"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2156",
+          "label": "panel_gap_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマスナップ無効化。内枠スナップという対象名は明示的に撤回。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2157",
+          "label": "panel_gap_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。設定名の訂正によりコマスナップだけが最終的な対象。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2158",
+          "label": "panel_gap_snap_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はコマスナップ無効化。内枠スナップへの言及は対象外の制約。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2159",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。別々の設定を両方オフにする現在依頼で、訂正撤回ではない。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2160",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。最初のコマスナップ無効化を残し、内枠スナップ有効化を追加。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2161",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。一つをオフにしたい意図はあるが設定名を二候補から一意に定められない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_一コマの構成要素と別対象",
+      "ids": [
+        "nyamuru_voice_2162",
+        "nyamuru_voice_2163",
+        "nyamuru_voice_2164",
+        "nyamuru_voice_2165",
+        "nyamuru_voice_2166",
+        "nyamuru_voice_2167"
+      ],
+      "meaning_material": "一つのコマ全体の生成に含まれる人物と背景",
+      "contrast_change": "一コマ内の構成要素を列挙しても一つの対象。別コマ生成や保存を足すと2件。",
+      "related_existing_families": [
+        "generate_selected_panel",
+        "generate_explicit_locator",
+        "generate_multiple_targets"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "generate_selected_panel",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_243",
+            "nyamuru_voice_244",
+            "nyamuru_voice_245",
+            "nyamuru_voice_246",
+            "nyamuru_voice_247",
+            "nyamuru_voice_248",
+            "nyamuru_voice_264"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "generate_explicit_locator",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_273",
+            "nyamuru_voice_274",
+            "nyamuru_voice_275",
+            "nyamuru_voice_276",
+            "nyamuru_voice_277",
+            "nyamuru_voice_278",
+            "nyamuru_voice_279",
+            "nyamuru_voice_280"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "generate_multiple_targets",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_314"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_selected_image_generation",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1328"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2162",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は七コマ目全体の画像生成。人物と背景は一つのコマの構成要素。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2163",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は指定コマ全体の生成。背景と人物を別々の生成依頼に分割しない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2164",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は七コマ目生成。六コマ目生成は完了報告。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2165",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。七コマ目と八コマ目という独立した二対象の全体生成。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2166",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。七コマ目全体の生成1件と、その完了後の作品保存1件。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2167",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。一コマ全体の生成をどう依頼するかという方法質問。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_候補の複数条件と別コマ",
+      "ids": [
+        "nyamuru_voice_2168",
+        "nyamuru_voice_2169",
+        "nyamuru_voice_2170",
+        "nyamuru_voice_2171",
+        "nyamuru_voice_2172",
+        "nyamuru_voice_2173"
+      ],
+      "meaning_material": "背景候補に与える場面条件と対象コマ",
+      "contrast_change": "場面条件や候補数は一件の候補提示の引数。別コマを追加依頼すると2件。",
+      "related_existing_families": [
+        "v02_routes_bg_scene",
+        "v02_routes_bg_count",
+        "v02_routes_bg_locator"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v02_routes_bg_scene",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_897",
+            "nyamuru_voice_898",
+            "nyamuru_voice_899",
+            "nyamuru_voice_900"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_bg_count",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_905",
+            "nyamuru_voice_906",
+            "nyamuru_voice_907",
+            "nyamuru_voice_908"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_bg_locator",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_909",
+            "nyamuru_voice_910",
+            "nyamuru_voice_911",
+            "nyamuru_voice_912"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_registered_3d_candidates",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1292",
+            "nyamuru_voice_1333",
+            "nyamuru_voice_1334",
+            "nyamuru_voice_1335",
+            "nyamuru_voice_1336",
+            "nyamuru_voice_1338",
+            "nyamuru_voice_1339"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2168",
+          "label": "background_3d_candidates",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は候補四つの提示。夜・無人・バス停は同じ背景候補の場面条件。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2169",
+          "label": "background_3d_candidates",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。コマ番号・場面・候補数は一つの登録済み3D候補提示への指定。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2170",
+          "label": "background_3d_candidates",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。調べることと四案へ絞ることは同じ背景候補提示の内訳。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2171",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。異なる二コマに対して、別の場面条件で背景候補提示をそれぞれ依頼。候補数は操作数ではない。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2172",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。登録済み3D候補提示とページ全体を収めるズームfit。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2173",
+          "label": "needs_reasoning",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。登録済みモデルの候補提示ではなく、台本に基づく場面設定の内容判断。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_ペン訂正と履歴取り消し",
+      "ids": [
+        "nyamuru_voice_2174",
+        "nyamuru_voice_2175",
+        "nyamuru_voice_2176",
+        "nyamuru_voice_2177",
+        "nyamuru_voice_2178",
+        "nyamuru_voice_2179"
+      ],
+      "meaning_material": "ラスターペンへの訂正と完了済み描画の取り消し",
+      "contrast_change": "取り消すのが発話内の依頼か完了した編集かで操作数を分ける。",
+      "related_existing_families": [
+        "v03_self_correction_not_compound",
+        "v02_edit_paint_return",
+        "v03_undo_specific_latest_edit"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_self_correction_not_compound",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1165",
+            "nyamuru_voice_1166",
+            "nyamuru_voice_1167",
+            "nyamuru_voice_1168",
+            "nyamuru_voice_1169",
+            "nyamuru_voice_1170",
+            "nyamuru_voice_1171",
+            "nyamuru_voice_1172"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_edit_paint_return",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_657",
+            "nyamuru_voice_658",
+            "nyamuru_voice_659",
+            "nyamuru_voice_660"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_undo_specific_latest_edit",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1053",
+            "nyamuru_voice_1054",
+            "nyamuru_voice_1055",
+            "nyamuru_voice_1056",
+            "nyamuru_voice_1057",
+            "nyamuru_voice_1058",
+            "nyamuru_voice_1059",
+            "nyamuru_voice_1060"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_paint_tool_choice",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1276",
+            "nyamuru_voice_1342",
+            "nyamuru_voice_1344",
+            "nyamuru_voice_1348"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2174",
+          "label": "paint_tool_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はラスターペン選択。取り消しているのは発話内の依頼で、編集履歴Undoではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2175",
+          "label": "paint_tool_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はラスターペン選択。直前の線のUndoは完了報告。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2176",
+          "label": "paint_tool_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。ベクターへの依頼は撤回され、ラスターペン選択だけが残る。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2177",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。撤回されたベクターペン依頼は数えず、描画のUndoとラスターペン選択を数える。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2178",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。完了した描画のUndo一回とラスターペン選択。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2179",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。依頼を取り消したという説明で、代わりのペン選択や履歴操作は頼んでいない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_上端揃えの言い換えとペン",
+      "ids": [
+        "nyamuru_voice_2180",
+        "nyamuru_voice_2181",
+        "nyamuru_voice_2182",
+        "nyamuru_voice_2183",
+        "nyamuru_voice_2184",
+        "nyamuru_voice_2185"
+      ],
+      "meaning_material": "複数文字枠の頭揃えとベクターペン",
+      "contrast_change": "同じ整列結果を説明する文と、別種の道具選択を区別する。",
+      "related_existing_families": [
+        "text_frames_top",
+        "v03_tool_align_generate_pairs",
+        "v02_edit_align_bubbles"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "text_frames_top",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_297",
+            "nyamuru_voice_298",
+            "nyamuru_voice_299",
+            "nyamuru_voice_300",
+            "nyamuru_voice_301",
+            "nyamuru_voice_302",
+            "nyamuru_voice_303",
+            "nyamuru_voice_304",
+            "nyamuru_voice_307"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_tool_align_generate_pairs",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1157",
+            "nyamuru_voice_1158",
+            "nyamuru_voice_1159",
+            "nyamuru_voice_1160",
+            "nyamuru_voice_1161",
+            "nyamuru_voice_1162",
+            "nyamuru_voice_1163",
+            "nyamuru_voice_1164"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_edit_align_bubbles",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_677",
+            "nyamuru_voice_678",
+            "nyamuru_voice_679",
+            "nyamuru_voice_680"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_text_frame_top_alignment",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1351",
+            "nyamuru_voice_1352",
+            "nyamuru_voice_1354",
+            "nyamuru_voice_1355"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2180",
+          "label": "text_frames_align",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は複数文字枠の上端揃え。後半は同じ整列結果の説明。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2181",
+          "label": "text_frames_align",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は上端揃え。ベクターペン切替は本人の後の予定を説明する目的節。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2182",
+          "label": "text_frames_align",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は上端揃え。ペン選択は既に済んだ報告。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2183",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。複数文字枠の上端揃えとベクターペン選択。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2184",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。先にペンを切り替え、その後に複数文字枠を上端で整列する依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2185",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。選択参照は通常のUI参照だが、そろえる端が未確定で上端揃えに固定できない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_程度語の位置と移動量",
+      "ids": [
+        "nyamuru_voice_2186",
+        "nyamuru_voice_2187",
+        "nyamuru_voice_2188",
+        "nyamuru_voice_2189",
+        "nyamuru_voice_2190",
+        "nyamuru_voice_2191"
+      ],
+      "meaning_material": "少しという感想と数値を伴う吹き出し移動",
+      "contrast_change": "少しが理由なら数値移動は確定。移動量そのものが少しだけなら確認不足。",
+      "related_existing_families": [
+        "ambiguous_bubble_value",
+        "v03_one_action_multiple_values",
+        "v02_routes_unspecified_bubble_value"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "ambiguous_bubble_value",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_108"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_one_action_multiple_values",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1181",
+            "nyamuru_voice_1182",
+            "nyamuru_voice_1183",
+            "nyamuru_voice_1184",
+            "nyamuru_voice_1185",
+            "nyamuru_voice_1186",
+            "nyamuru_voice_1187",
+            "nyamuru_voice_1188"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_unspecified_bubble_value",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_717",
+            "nyamuru_voice_718",
+            "nyamuru_voice_719",
+            "nyamuru_voice_720"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_extra_dev_focused_dimension_value",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1671"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2186",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は左2mmへの移動。「少し」は現状の感想で、移動量は2mmと確定。未指定のy値は補わない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2187",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は左2mm移動。通常の選択参照であり、程度語の後にも数値を明示している。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2188",
+          "label": "bubble_set",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は左2mm移動。「少し前」はしっぽ除去の時点であり、現在移動の量不足ではない。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2189",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。明示量の移動としっぽ無効化。「少し」は現状評価で操作量には影響しない。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2190",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。左2mm移動と作品保存。程度語は結果の説明。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2191",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。通常のUI選択は明確だが、移動量が「少し」だけで数値を定められない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_複数の理由と保存一件",
+      "ids": [
+        "nyamuru_voice_2192",
+        "nyamuru_voice_2193",
+        "nyamuru_voice_2194",
+        "nyamuru_voice_2195",
+        "nyamuru_voice_2196",
+        "nyamuru_voice_2197"
+      ],
+      "meaning_material": "確認事項を並べた保存と追加のガイド変更",
+      "contrast_change": "理由を複数列挙しても現在操作は保存一件。ガイド変更を依頼にすると二件。",
+      "related_existing_families": [
+        "v02_core_save_work_checkpoint",
+        "v03_noaction_reports_questions",
+        "v03_constraints_not_second_action"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v02_core_save_work_checkpoint",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_317",
+            "nyamuru_voice_318",
+            "nyamuru_voice_319",
+            "nyamuru_voice_320"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_noaction_reports_questions",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_997",
+            "nyamuru_voice_998",
+            "nyamuru_voice_999",
+            "nyamuru_voice_1000",
+            "nyamuru_voice_1001",
+            "nyamuru_voice_1002",
+            "nyamuru_voice_1003",
+            "nyamuru_voice_1004"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_constraints_not_second_action",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1173",
+            "nyamuru_voice_1174",
+            "nyamuru_voice_1175",
+            "nyamuru_voice_1176",
+            "nyamuru_voice_1177",
+            "nyamuru_voice_1178",
+            "nyamuru_voice_1179",
+            "nyamuru_voice_1180"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_current_document_save",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1215",
+            "nyamuru_voice_1216",
+            "nyamuru_voice_1218",
+            "nyamuru_voice_1219",
+            "nyamuru_voice_1297"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2192",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は保存。確認した二事項は完了した作業の報告で、新規の確認・配置操作ではない。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2193",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は保存。ガイド非表示は本人の後の予定。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2194",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。誤字修正とガイド非表示は完了報告で、現在は保存だけ。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2195",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。完了報告の誤字確認を除き、保存と配置ガイド非表示が現在依頼。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2196",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。短い発話でも作品保存と配置ガイド非表示は独立。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2197",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。確認、表示整理、保存の全てが完了報告。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_表示全体の説明と設定追加",
+      "ids": [
+        "nyamuru_voice_2198",
+        "nyamuru_voice_2199",
+        "nyamuru_voice_2200",
+        "nyamuru_voice_2201",
+        "nyamuru_voice_2202",
+        "nyamuru_voice_2203"
+      ],
+      "meaning_material": "ページ全体の表示と見開き設定",
+      "contrast_change": "全体表示の二つの説明はzoom fit一件。見開きへの設定は独立。",
+      "related_existing_families": [
+        "zoom_fit",
+        "whole_view_vs_mode",
+        "v02_routes_compound_view_pair"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "zoom_fit",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_048"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "whole_view_vs_mode",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_047",
+            "nyamuru_voice_068",
+            "nyamuru_voice_104",
+            "nyamuru_voice_137",
+            "nyamuru_voice_149"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v02_routes_compound_view_pair",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_773",
+            "nyamuru_voice_774",
+            "nyamuru_voice_775",
+            "nyamuru_voice_776"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_viewport_and_guides",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1246",
+            "nyamuru_voice_1248",
+            "nyamuru_voice_1272"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2198",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はzoom fit。後半の紙端まで見える倍率は同じ表示結果の説明。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2199",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はページ全体表示。見開き確認は将来の予定で、現在の切替を求めていない。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2200",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はzoom fit。見開きオフは直前に完了した状態の説明。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2201",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。見開き無効化とzoom fitは独立した表示変更。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2202",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。理由に続き見開きオフと全体表示倍率を依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2203",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。見開き変更時の倍率の挙動を尋ねる質問。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_現在選択の生成と過去参照",
+      "ids": [
+        "nyamuru_voice_2204",
+        "nyamuru_voice_2205",
+        "nyamuru_voice_2206",
+        "nyamuru_voice_2207",
+        "nyamuru_voice_2208",
+        "nyamuru_voice_2209"
+      ],
+      "meaning_material": "現在選択を示す生成と取り消しや過去参照",
+      "contrast_change": "通常のUI選択は直接生成、発話外だけの対象は確認不足。Undo追加は二件。",
+      "related_existing_families": [
+        "generate_selection",
+        "generate_selected_character",
+        "v03_only_one_positive_clause"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "generate_selection",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_225",
+            "nyamuru_voice_226",
+            "nyamuru_voice_227",
+            "nyamuru_voice_228",
+            "nyamuru_voice_229",
+            "nyamuru_voice_230",
+            "nyamuru_voice_261"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "generate_selected_character",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_231",
+            "nyamuru_voice_232",
+            "nyamuru_voice_233",
+            "nyamuru_voice_234",
+            "nyamuru_voice_235",
+            "nyamuru_voice_236"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_only_one_positive_clause",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1197",
+            "nyamuru_voice_1198",
+            "nyamuru_voice_1199",
+            "nyamuru_voice_1200",
+            "nyamuru_voice_1201",
+            "nyamuru_voice_1202",
+            "nyamuru_voice_1203",
+            "nyamuru_voice_1204"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_selected_image_generation",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1328"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2204",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件はselectionの生成。対象種類を本文で列挙しなくても通常のUI選択から解決する。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2205",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件。対象を現在の選択だと補足し、同じ生成依頼を言い直している。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2206",
+          "label": "generate_request",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は選択人物生成。Undoは過去の完了報告。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2207",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。完了済み描画のUndo一回と、四コマ目の湊さんの生成。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2208",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。通常の現在選択による人物生成と完了後の作品保存。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2209",
+          "label": "needs_clarification",
+          "resolved_direct_operation_count": 0,
+          "why": "確定した直接操作0件。現在選択を明示的に除外し、発話外の過去提示だけを参照しているので人物を確定できない。"
+        }
+      ]
+    },
+    {
+      "group": "v04_train_二依頼の部分撤回と維持",
+      "ids": [
+        "nyamuru_voice_2210",
+        "nyamuru_voice_2211",
+        "nyamuru_voice_2212",
+        "nyamuru_voice_2213",
+        "nyamuru_voice_2214",
+        "nyamuru_voice_2215"
+      ],
+      "meaning_material": "保存と見開き表示のどちらを現在依頼として残すか",
+      "contrast_change": "撤回の射程を変える。片方だけ残せば単一、両方を残せば複数、両方撤回なら0件。",
+      "related_existing_families": [
+        "v03_self_correction_not_compound",
+        "v03_both_denied_or_both_requested",
+        "v03_only_one_positive_clause"
+      ],
+      "semantic_review": "本文全件とgold、独立操作数、slotsを意味レビュー済み。親の全文レビュー指摘も適用済み。pending_user_reviewは維持。",
+      "split": "train_only",
+      "lineage": [
+        {
+          "group": "v03_self_correction_not_compound",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1165",
+            "nyamuru_voice_1166",
+            "nyamuru_voice_1167",
+            "nyamuru_voice_1168",
+            "nyamuru_voice_1169",
+            "nyamuru_voice_1170",
+            "nyamuru_voice_1171",
+            "nyamuru_voice_1172"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_both_denied_or_both_requested",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1205",
+            "nyamuru_voice_1206",
+            "nyamuru_voice_1207",
+            "nyamuru_voice_1208",
+            "nyamuru_voice_1209",
+            "nyamuru_voice_1210",
+            "nyamuru_voice_1211",
+            "nyamuru_voice_1212"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_only_one_positive_clause",
+          "source_files": [
+            "experiments/v0.3/data/train.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1197",
+            "nyamuru_voice_1198",
+            "nyamuru_voice_1199",
+            "nyamuru_voice_1200",
+            "nyamuru_voice_1201",
+            "nyamuru_voice_1202",
+            "nyamuru_voice_1203",
+            "nyamuru_voice_1204"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        },
+        {
+          "group": "v03_dev_compound_workflow",
+          "source_files": [
+            "experiments/v0.3/data/dev.jsonl"
+          ],
+          "source_ids": [
+            "nyamuru_voice_1289"
+          ],
+          "relation": "操作意味と既存文型を確認し、同文・近似定型を避けるために参照。新例原文は独立に合成。"
+        }
+      ],
+      "contrasts": [
+        {
+          "role": "single_1",
+          "id": "nyamuru_voice_2210",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は保存。見開き表示への変更は発話内で部分撤回。"
+        },
+        {
+          "role": "single_2",
+          "id": "nyamuru_voice_2211",
+          "label": "view_change",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は見開き有効化。保存の現在依頼は明示的に撤回。"
+        },
+        {
+          "role": "single_3",
+          "id": "nyamuru_voice_2212",
+          "label": "save",
+          "resolved_direct_operation_count": 1,
+          "why": "現在操作1件は保存。見開き変更だけを撤回し、保存の依頼を保持している。"
+        },
+        {
+          "role": "compound_1",
+          "id": "nyamuru_voice_2213",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。最終的に見開き有効化と保存の両方が現在依頼として復活。"
+        },
+        {
+          "role": "compound_2",
+          "id": "nyamuru_voice_2214",
+          "label": "compound_request",
+          "resolved_direct_operation_count": 2,
+          "why": "現在操作2件。作品保存と見開き有効化をともに依頼。"
+        },
+        {
+          "role": "boundary",
+          "id": "nyamuru_voice_2215",
+          "label": "not_command",
+          "resolved_direct_operation_count": 0,
+          "why": "現在操作0件。二依頼とも撤回され、残るのは現状維持のみ。"
+        }
+      ]
+    }
+  ],
+  "revision_log": [
+    {
+      "id": "nyamuru_voice_2002",
+      "before": {
+        "text": "読み返す準備ができたよ。作品の保存をお願い、セーブという意味で言っているよ。",
+        "label": "save"
+      },
+      "after": {
+        "text": "読み返す準備はできたし、さっき気になっていた誤字と吹き出しの重なりも自分で確認できたよ。これ以上は明日また見ることにするから、今の編集内容を作品に保存しておいてくれる？ いつものセーブを一回お願い。",
+        "label": "save",
+        "note": "現在操作1件は作品保存。確認済みの事項と明日の予定は操作でなく、最後のセーブは同じ依頼の言い直し。"
+      },
+      "reason": "自然な発話にし、複数の完了報告と将来予定を含む長い単一依頼に拡張。"
+    },
+    {
+      "id": "nyamuru_voice_2031",
+      "before": {
+        "text": "このコマはさっき画像生成を試した。次に備えて作画設定を下書きに変えてほしい。",
+        "label": "artwork_mode_set"
+      },
+      "after": {
+        "text": "このコマはさっき一度画像生成を試して、線の様子を自分で見比べていたところなんだ。次の生成はまだ自分で考えるので、いまは作画設定を下書き方式へ変更しておいて。画像を作るタイミングは、その設定を見てから私が決めるよ。",
+        "label": "artwork_mode_set",
+        "note": "現在操作1件は下書き方式への設定。前回の生成と比較は過去の報告、次の画像生成は利用者が後で決める予定である。"
+      },
+      "reason": "長い単一例として過去の試行・比較と未確定の次回生成を補足。現在操作は作画設定一件を保持。"
+    },
+    {
+      "id": "nyamuru_voice_2045",
+      "before": {
+        "text": "選択中の吹き出しを幅三十一ミリ、高さ四十三ミリへ変えて、輪郭は四角にして。",
+        "label": "compound_request"
+      },
+      "after": {
+        "text": "吹き出しの輪郭は四角を選んで。大きさについても指定するので、横三十一ミリ、縦四十三ミリを反映して。",
+        "label": "compound_request",
+        "note": "現在操作2件。形状squareへの設定と、幅31mm・高さ43mmを一組とするサイズ変更。"
+      },
+      "reason": "旧trainの寸法指定への字面近似0.700を避け、形を先に依頼し寸法を後置する構文へ変更。"
+    },
+    {
+      "id": "nyamuru_voice_2063",
+      "before": {
+        "text": "コマスナップを有効、編集ガイドを表示にして。",
+        "label": "compound_request"
+      },
+      "after": {
+        "text": "編集ガイドを出したうえで、コマスナップを有効の設定にそろえて。",
+        "label": "compound_request",
+        "note": "現在操作2件。編集ガイド表示とコマスナップ有効化。"
+      },
+      "reason": "旧trainの短い設定依頼への字面近似0.686を避け、ガイド先行の依頼へ変更。"
+    },
+    {
+      "id": "nyamuru_voice_2071",
+      "before": {
+        "text": "さっき名前を言った人を六コマ目で生成して。誰だったかは今ここでは言っていないけど。",
+        "label": "needs_clarification"
+      },
+      "after": {
+        "text": "六コマ目で、さっき私が名前を挙げた人の画像を生成してほしい。",
+        "label": "needs_clarification",
+        "note": "確定した直接操作0件。現在発話に人物名がなく、通常の画面選択でもなく過去会話の人名だけに依存する参照。"
+      },
+      "reason": "作問上の説明を削除。発話外の人名参照だけで、確認不足というgoldを保持。"
+    },
+    {
+      "id": "nyamuru_voice_2074",
+      "before": {
+        "text": "港の待合室の候補を二つ、登録済み3Dで探してほしい。見つかったものを候補一覧として見せてね。",
+        "label": "background_3d_candidates"
+      },
+      "after": {
+        "text": "港の待合室の背景を探しているんだ。まず登録済みの3Dモデルの中を見て、場面に使えそうなものを二つ選び、その候補を見せてほしい。あとで私が見比べるための候補なので、背景として置く作業はまだ頼んでいないよ。",
+        "label": "background_3d_candidates",
+        "note": "現在操作1件は登録済み3Dから港の待合室候補二つの提示。探す・選ぶ・見せるは同じ候補提示の内訳で、配置は依頼していない。"
+      },
+      "reason": "長い単一例として候補提示の手順と本人の後の確認予定を自然に展開。候補の配置は依頼しない。"
+    },
+    {
+      "id": "nyamuru_voice_2101",
+      "before": {
+        "text": "Undoを何回かかけて、さっき見せた状態まで戻してほしい。何手前かは言っていないけど。",
+        "label": "needs_clarification"
+      },
+      "after": {
+        "text": "さっき見比べたところまでUndoで戻してほしい。何回戻すんだったかな。",
+        "label": "needs_clarification",
+        "note": "確定した直接操作0件。取り消し方向は分かるが回数と目標状態の発話内参照が不足。"
+      },
+      "reason": "作問上の説明を、利用者自身が回数を思い出せない自然な疑問へ変更。"
+    },
+    {
+      "id": "nyamuru_voice_2111",
+      "before": {
+        "text": "四枚先を表示、配置ガイドは非表示にして。",
+        "label": "compound_request"
+      },
+      "after": {
+        "text": "配置ガイドは隠して、表示先を今から四ページ先へ送って。",
+        "label": "compound_request",
+        "note": "現在操作2件。配置ガイド非表示設定と次方向へ四枚のページ移動。"
+      },
+      "reason": "旧trainのガイド短文への字面近似0.643を避け、ガイド先行とページ距離の言い方へ変更。"
+    },
+    {
+      "id": "nyamuru_voice_2118",
+      "before": {
+        "text": "人物設定を確認したいので、配置ガイドを隠してから、登場人物のタブに切り替えて。",
+        "label": "compound_request"
+      },
+      "after": {
+        "text": "人物名を読む準備を頼むね。配置ガイドの非表示と登場人物タブへの切替を、両方やっておいて。",
+        "label": "compound_request",
+        "note": "現在操作2件。目的説明に続く配置ガイド非表示と登場人物タブ表示。"
+      },
+      "reason": "旧trainのタブ目的文への字面近似0.645を避け、目的を独立させ二つの変更を名詞で指定。"
+    },
+    {
+      "id": "nyamuru_voice_2141",
+      "before": {
+        "text": "この吹き出しは四角へ変更、しっぽも無効に変更して。",
+        "label": "compound_request"
+      },
+      "after": {
+        "text": "選んだ吹き出しの輪郭は四角で頼むよ。しっぽの設定もオフにしておいて。",
+        "label": "compound_request",
+        "note": "現在操作2件。形状squareとtail_enabled=falseの独立した設定。"
+      },
+      "reason": "旧trainのしっぽ短文への字面近似0.698を避け、輪郭としっぽを別の文で依頼。"
+    },
+    {
+      "id": "nyamuru_voice_2150",
+      "before": {
+        "text": "内枠スナップは不要になったから、チェックを外した状態に変えてね。",
+        "label": "inner_frame_snap_set"
+      },
+      "after": {
+        "text": "内枠へ吸いつかないようにしたいんだ。内枠スナップの設定を無効側へ合わせてほしい。",
+        "label": "inner_frame_snap_set",
+        "note": "現在操作1件は内枠スナップのオフ指定。「吸いつかない」という希望を具体的な設定値にして依頼している。"
+      },
+      "reason": "旧trainのチェック指定への字面近似0.679を避け、吸着しない希望を設定値へ結ぶ発話に変更。"
+    },
+    {
+      "id": "nyamuru_voice_2012",
+      "before": {
+        "text": "Undoで消えた変更を復活させてほしい。履歴のRedoを一回、同じことを言い換えただけだよ。",
+        "label": "redo",
+        "note": "現在操作1件。復活とRedo一回は同じ取り消し履歴の再適用を指す。"
+      },
+      "after": {
+        "text": "Undoで消えた変更を復活させてほしい。履歴のRedoを一回かけて、取り消す前の状態に返して。",
+        "label": "redo",
+        "note": "現在操作1件。復活、Redo一回、取り消す前の状態へ返すことは同じ履歴再適用の言い換え。"
+      },
+      "reason": "親レビューで指摘された作問説明を除き、同じ操作の自然な言い直しを保持。"
+    },
+    {
+      "id": "nyamuru_voice_2066",
+      "before": {
+        "text": "このページの六コマ目にいる凛さん、あの人の画像生成を頼むね。六コマ目は場所の指定だよ。",
+        "label": "generate_request",
+        "note": "現在操作1件は六コマ目の凛さんの生成。コマ番号は人物の所在で、コマ全体を別生成する指示ではない。"
+      },
+      "after": {
+        "text": "凛さんの画像を作ってほしいんだけど、このページの六コマ目にいるほうの凛さんを生成してもらえる？",
+        "label": "generate_request",
+        "note": "現在操作1件は六コマ目の凛さんの生成。コマ番号は人物を絞る属性で、コマ全体の生成を頼んでいない。"
+      },
+      "reason": "親レビューで指摘された場所指定のメタ説明を除き、人物の所在を自然な絞り込みとして表現。"
+    },
+    {
+      "id": "nyamuru_voice_2131",
+      "before": {
+        "text": "「末尾を開いて、そこでセーブして」ってセリフは、説明くさく聞こえるかな。",
+        "label": "not_command",
+        "note": "現在操作0件。セリフについての感想質問で、本文への設定も引用内操作も依頼していない。"
+      },
+      "after": {
+        "text": "「末尾を開いて、そこでセーブして」ってセリフは、説明くさく聞こえるかな。",
+        "label": "needs_reasoning",
+        "note": "確定した直接操作0件。セリフの説明くささという表現の適切さを判断する依頼。引用内の命令は実行対象ではない。"
+      },
+      "reason": "親レビューにより、質問形でもセリフ表現の適切さを求める内容判断としてneeds_reasoningに訂正。"
+    },
+    {
+      "id": "nyamuru_voice_2051",
+      "before": {
+        "text": "コマシンクロをオンへ合わせて、作品のセーブも頼むね。",
+        "label": "compound_request",
+        "note": "現在操作2件。コマシンクロの希望状態設定と作品保存。"
+      },
+      "after": {
+        "text": "コマシンクロの有効化と作品の保存を、ひと続きで頼みたいんだ。",
+        "label": "compound_request",
+        "note": "現在操作2件。コマシンクロの希望状態オンへの設定と作品保存を合わせて依頼。"
+      },
+      "reason": "旧trainの動詞連結に近い形を、二つの操作をまとめて依頼する名詞構文へ変更。"
+    },
+    {
+      "id": "nyamuru_voice_2084",
+      "before": {
+        "text": "別々の吹き出しから文字枠を四つ選んだよ。この四枠の書き出しの高さを上端でそろえて。",
+        "label": "text_frames_align",
+        "note": "現在操作1件は選択した複数文字枠の上端揃え。四つという対象数で四操作にはしない。"
+      },
+      "after": {
+        "text": "上端を合わせる対象は、いま文字枠として選んでいる四つだよ。吹き出しは別々だけど、その四枠に頭揃えをかけて。",
+        "label": "text_frames_align",
+        "note": "現在操作1件は選択した四つの文字枠の上端揃え。対象数や吹き出しが別々であることは独立操作を増やさない。"
+      },
+      "reason": "既存の選択報告から整列する定型を避け、整列対象を前置する構文へ変更。"
+    },
+    {
+      "id": "nyamuru_voice_2142",
+      "before": {
+        "text": "丸い案は採用しないので、選んだ吹き出しを四角にして、しっぽも消して仕上げて。",
+        "label": "compound_request",
+        "note": "現在操作2件。不採用案は数えず、現在肯定された形設定としっぽ設定を数える。"
+      },
+      "after": {
+        "text": "しっぽの設定は無効にしてほしい。輪郭もこのままではなく四角を使うことに決めたので、その形へ変更して。",
+        "label": "compound_request",
+        "note": "現在操作2件。しっぽ無効化と形状squareへの設定。形の決定理由は追加操作ではない。"
+      },
+      "reason": "旧短文に不採用理由を足しただけにならないよう、しっぽ先行・形の後置指定へ組み替え。"
+    }
+  ],
+  "parent_semantic_review_applied": {
+    "ids": [
+      "nyamuru_voice_2002",
+      "nyamuru_voice_2012",
+      "nyamuru_voice_2066",
+      "nyamuru_voice_2071",
+      "nyamuru_voice_2101",
+      "nyamuru_voice_2131"
+    ],
+    "note": "親の全文レビュー指摘に従い、メタ説明を除き、表現評価のgoldを修正。未許可資料は参照していない。"
+  },
+  "cross_family_template_links": [
+    {
+      "shared_template": "保存とページ移動の時制・依頼性",
+      "groups": [
+        "v04_train_保存と後の読み返し",
+        "v04_train_ページ指定と後の保存"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "履歴操作の言い直し・回数と別種操作",
+      "groups": [
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_履歴復元の言い換え",
+        "v04_train_取り消し回数と別種操作",
+        "v04_train_再適用回数と別種操作"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "同方向の反復回数と別種操作",
+      "groups": [
+        "v04_train_取り消し回数と別種操作",
+        "v04_train_再適用回数と別種操作",
+        "v04_train_ページ送りの回数とガイド"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "表示操作の理由・言い換えと独立した表示属性",
+      "groups": [
+        "v04_train_倍率の目的とガイド表示",
+        "v04_train_タブ閲覧とガイド設定",
+        "v04_train_表示全体の説明と設定追加"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "作画設定と別操作の現在・過去・予定",
+      "groups": [
+        "v04_train_作画準備と生成の時制",
+        "v04_train_一体型の定義と別の表示",
+        "v04_train_シンクロの過去状態と別設定"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "同一BBoxの複数値と独立フィールドおよび量不足",
+      "groups": [
+        "v04_train_移動の二軸と別属性",
+        "v04_train_寸法の二値と別属性",
+        "v04_train_程度語の位置と移動量"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "設定条件が一つの最終状態に収束",
+      "groups": [
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_コマ吸着の理由とガイド"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "内枠スナップの最終状態と禁止・延期",
+      "groups": [
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_内枠を使わない状態と禁止"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "生成対象を属性や構成要素で指定",
+      "groups": [
+        "v04_train_生成対象の複数属性",
+        "v04_train_一コマの構成要素と別対象",
+        "v04_train_現在選択の生成と過去参照"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "候補の検索・選定・提示と候補数を一件として扱う",
+      "groups": [
+        "v04_train_候補選定の内訳と作画設定",
+        "v04_train_候補の複数条件と別コマ"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "ペン選択と文字枠整列の過去・予定・現在",
+      "groups": [
+        "v04_train_ペン選択と手作業の予定",
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "訂正撤回が及ぶ範囲と最終依頼",
+      "groups": [
+        "v04_train_取り消し撤回と保存の残存",
+        "v04_train_コマスナップの訂正射程",
+        "v04_train_ペン訂正と履歴取り消し",
+        "v04_train_二依頼の部分撤回と維持"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "吹き出し本文・話者・形・しっぽの独立性",
+      "groups": [
+        "v04_train_引用内の手順と外側の実行",
+        "v04_train_話者の根拠と別の本文変更",
+        "v04_train_形の採用としっぽ変更"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    },
+    {
+      "shared_template": "複数の完了報告や理由から現在操作を一件残す",
+      "groups": [
+        "v04_train_保存と後の読み返し",
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_シンクロの過去状態と別設定",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "split": "train_only",
+      "note": "同じ意味文型を共有するため連結familyとして扱い、別splitへ分けない。"
+    }
+  ],
+  "count_semantics": "resolved_direct_operation_countは確定した直接操作の数。not_commandは現在操作0、needs_clarificationは直接操作が未確定、needs_reasoningは内容判断の依頼があるが確定済み直接操作は0。",
+  "checks": {
+    "row_count": 216,
+    "family_count": 36,
+    "label_counts": {
+      "artwork_mode_set": 6,
+      "background_3d_candidates": 6,
+      "bubble_set": 18,
+      "compound_request": 72,
+      "generate_request": 9,
+      "inner_frame_snap_set": 6,
+      "needs_clarification": 8,
+      "needs_reasoning": 7,
+      "not_command": 21,
+      "out_of_scope_request": 0,
+      "page_navigate": 6,
+      "paint_tool_set": 6,
+      "panel_gap_snap_set": 6,
+      "panel_sync_set": 6,
+      "redo": 6,
+      "save": 11,
+      "text_frames_align": 6,
+      "undo": 6,
+      "view_change": 10
+    },
+    "role_counts": {
+      "single": 108,
+      "compound": 72,
+      "boundary": 36
+    },
+    "direct_label_coverage": [
+      "artwork_mode_set",
+      "background_3d_candidates",
+      "bubble_set",
+      "generate_request",
+      "inner_frame_snap_set",
+      "page_navigate",
+      "paint_tool_set",
+      "panel_gap_snap_set",
+      "panel_sync_set",
+      "redo",
+      "save",
+      "text_frames_align",
+      "undo",
+      "view_change"
+    ],
+    "strict_nine_keys": true,
+    "id_range": "nyamuru_voice_2000..nyamuru_voice_2215",
+    "id_duplicates": 0,
+    "normalized_duplicates_within_candidates": 0,
+    "normalized_duplicates_against_existing_train_dev": 0,
+    "normalization": "Unicode NFKC + casefold + remove whitespace and Unicode punctuation/symbols",
+    "slot_contract_check": "passed; view_change uses zoom_mode; compound and boundary slots are {}; unspecified translation axis omitted",
+    "old_similarity_measure": "difflib.SequenceMatcher over normalized text, not embeddings or model inference",
+    "old_similarity_review_threshold": 0.6,
+    "old_nearest_pairs_for_review": [
+      {
+        "new_id": "nyamuru_voice_2022",
+        "existing_id": "nyamuru_voice_1126",
+        "existing_split": "train.jsonl",
+        "existing_group": "v03_navigation_then_save",
+        "ratio": 0.6207,
+        "new_text": "十一ページを表示して。そこを読んでいる間に、今の作品の保存も済ませておいて。",
+        "existing_text": "五ページを表示して、その状態で作品の保存もお願い。",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "表示ページと保存という同じ操作対を共有するが、表示後に利用者が読む間の保存依頼として構成。前後に単一・非命令の対照を置き、旧文の番号置換だけにはしていない。"
+      },
+      {
+        "new_id": "nyamuru_voice_2057",
+        "existing_id": "nyamuru_voice_1313",
+        "existing_split": "dev.jsonl",
+        "existing_group": "v03_dev_panel_setting_states",
+        "ratio": 0.6341,
+        "new_text": "内枠スナップは切って、ペンはラスターを選んで。",
+        "existing_text": "内枠スナップはオフじゃなくて、オンを選んで。",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "設定名の字面は重なるが、旧例は内枠オンへの単一訂正、新例は内枠オフとペン選択の二操作。意味と構文が異なる。"
+      },
+      {
+        "new_id": "nyamuru_voice_2072",
+        "existing_id": "nyamuru_voice_1333",
+        "existing_split": "dev.jsonl",
+        "existing_group": "v03_dev_registered_3d_candidates",
+        "ratio": 0.6389,
+        "new_text": "登録してある3Dから港の待合室に使えそうなものを探して、二候補に絞って見せてほしい。",
+        "existing_text": "登録してある3Dモデルから、この場面の背景に使えそうなものを見せて。",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "候補提示に必要な登録済み3D・場面・提示の語を共有。新例は探す、二候補へ絞る、提示するという一つのワークフローの内訳を持つ。"
+      },
+      {
+        "new_id": "nyamuru_voice_2130",
+        "existing_id": "nyamuru_voice_1150",
+        "existing_split": "train.jsonl",
+        "existing_group": "v03_bubble_distinct_fields",
+        "ratio": 0.6061,
+        "new_text": "この吹き出しの本文は「末尾を開いて、そこでセーブして」にして、しっぽは無しに変更して。",
+        "existing_text": "この吹き出しを普通のオーバルに戻して、しっぽは無しに変えて。",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "旧例は形としっぽの二属性、新例は複数命令を含む引用本文としっぽ。尾部の設定語が重なるが引用内外の区別が新しい対照の軸。"
+      },
+      {
+        "new_id": "nyamuru_voice_2147",
+        "existing_id": "nyamuru_voice_570",
+        "existing_split": "train.jsonl",
+        "existing_group": "v02_edit_setting_use_state",
+        "ratio": 0.6341,
+        "new_text": "コマシンクロは無効、作画設定は一体型でお願いします。",
+        "existing_text": "コマシンクロは使わない設定でお願い。",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "旧例はシンクロ無効一件、新例は作画方式一体型の独立依頼を持つ短い二設定文。理由の追加だけではない。"
+      },
+      {
+        "new_id": "nyamuru_voice_2160",
+        "existing_id": "nyamuru_voice_1144",
+        "existing_split": "train.jsonl",
+        "existing_group": "v03_two_editor_settings",
+        "ratio": 0.6,
+        "new_text": "コマスナップをオフにする依頼はそのままで、内枠スナップをオンにする操作も追加して。",
+        "existing_text": "コマスナップを無効にするのと、内枠スナップを有効にするのをお願い。",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "同じ二設定の値を共有するが、新例は最初の依頼を撤回せず別依頼を追加する射程を明示。訂正撤回との対照としてTRAINに限定。"
+      },
+      {
+        "new_id": "nyamuru_voice_2165",
+        "existing_id": "nyamuru_voice_877",
+        "existing_split": "train.jsonl",
+        "existing_group": "v02_routes_gen_numbered",
+        "ratio": 0.6047,
+        "new_text": "七コマ目と八コマ目を、それぞれ丸ごと画像生成して。",
+        "existing_text": "二コマ目を丸ごと一枚の画像として生成して",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "コマの全体生成という操作語を共有するが、旧例の単一コマに対し新例は二つの独立コマを同時に頼む。対象属性列挙との対照。"
+      },
+      {
+        "new_id": "nyamuru_voice_2196",
+        "existing_id": "nyamuru_massive_adapt_028",
+        "existing_split": "train.jsonl",
+        "existing_group": "massive_adapt_visual_toggle",
+        "ratio": 0.6154,
+        "new_text": "セーブして。配置ガイドも消して。",
+        "existing_text": "配置ガイドの表示を消して",
+        "semantic_review_decision": "retain_train_only",
+        "reason": "短い保存＋ガイド非表示の二文。旧例はガイド非表示のみ。共通語は既存機能名で、短文の複数操作を学習させる意図的な対照。"
+      }
+    ],
+    "cross_family_similarity_threshold": 0.7,
+    "cross_family_pairs_above_threshold": [],
+    "single_lengths": {
+      "min": 30,
+      "max": 106,
+      "long_90_plus_ids": [
+        "nyamuru_voice_2002",
+        "nyamuru_voice_2031",
+        "nyamuru_voice_2074"
+      ]
+    },
+    "compound_lengths": {
+      "min": 15,
+      "max": 53
+    },
+    "candidate_sha256": "7c6c576fc9e3c66862a6d720cfb66c14096e9f2cbc80f337e8be6387a8531184"
+  },
+  "review_boundaries": [
+    "入力に使うのはtextだけ。slots/group/tags/note/source/review_statusは学習入力にしない。",
+    "未学習の合成例であり実利用の観測データではない。",
+    "モデル実行・学習・推論・ネット参照を行っていない。",
+    "新しいdev/test、予測、報告、他担当の成果物を読んでいない。",
+    "意味文型リンクは機械的な字面一致より広い。共有する文型があっても全件TRAIN限定。",
+    "新ラベル・新機能・実行経路は追加していない。"
+  ],
+  "lineage_inventory": [
+    {
+      "group": "v03_save_then_navigation",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1117",
+        "nyamuru_voice_1118",
+        "nyamuru_voice_1119",
+        "nyamuru_voice_1120",
+        "nyamuru_voice_1121",
+        "nyamuru_voice_1122",
+        "nyamuru_voice_1123",
+        "nyamuru_voice_1124"
+      ],
+      "candidate_groups": [
+        "v04_train_保存と後の読み返し"
+      ]
+    },
+    {
+      "group": "v03_noaction_reports_questions",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_997",
+        "nyamuru_voice_998",
+        "nyamuru_voice_999",
+        "nyamuru_voice_1000",
+        "nyamuru_voice_1001",
+        "nyamuru_voice_1002",
+        "nyamuru_voice_1003",
+        "nyamuru_voice_1004"
+      ],
+      "candidate_groups": [
+        "v04_train_保存と後の読み返し",
+        "v04_train_複数の理由と保存一件"
+      ]
+    },
+    {
+      "group": "v03_dev_current_document_save",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1215",
+        "nyamuru_voice_1216",
+        "nyamuru_voice_1218",
+        "nyamuru_voice_1219",
+        "nyamuru_voice_1297"
+      ],
+      "candidate_groups": [
+        "v04_train_保存と後の読み返し",
+        "v04_train_取り消し撤回と保存の残存",
+        "v04_train_複数の理由と保存一件"
+      ]
+    },
+    {
+      "group": "v03_history_and_save",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1133",
+        "nyamuru_voice_1134",
+        "nyamuru_voice_1135",
+        "nyamuru_voice_1136",
+        "nyamuru_voice_1137",
+        "nyamuru_voice_1138",
+        "nyamuru_voice_1139",
+        "nyamuru_voice_1140"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_取り消し撤回と保存の残存"
+      ]
+    },
+    {
+      "group": "v03_undo_specific_latest_edit",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1053",
+        "nyamuru_voice_1054",
+        "nyamuru_voice_1055",
+        "nyamuru_voice_1056",
+        "nyamuru_voice_1057",
+        "nyamuru_voice_1058",
+        "nyamuru_voice_1059",
+        "nyamuru_voice_1060"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_ペン訂正と履歴取り消し"
+      ]
+    },
+    {
+      "group": "v03_dev_completed_edit_history",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1222",
+        "nyamuru_voice_1223",
+        "nyamuru_voice_1224",
+        "nyamuru_voice_1232",
+        "nyamuru_voice_1233",
+        "nyamuru_voice_1234",
+        "nyamuru_voice_1235",
+        "nyamuru_voice_1236",
+        "nyamuru_voice_1269",
+        "nyamuru_voice_1298"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_履歴復元の言い換え",
+        "v04_train_再適用回数と別種操作"
+      ]
+    },
+    {
+      "group": "v03_redo_restore_last_undo",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1061",
+        "nyamuru_voice_1062",
+        "nyamuru_voice_1063",
+        "nyamuru_voice_1064",
+        "nyamuru_voice_1065",
+        "nyamuru_voice_1066",
+        "nyamuru_voice_1067",
+        "nyamuru_voice_1068"
+      ],
+      "candidate_groups": [
+        "v04_train_履歴復元の言い換え"
+      ]
+    },
+    {
+      "group": "v03_history_repeat_or_pair",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1109",
+        "nyamuru_voice_1110",
+        "nyamuru_voice_1111",
+        "nyamuru_voice_1112",
+        "nyamuru_voice_1113",
+        "nyamuru_voice_1114",
+        "nyamuru_voice_1115",
+        "nyamuru_voice_1116"
+      ],
+      "candidate_groups": [
+        "v04_train_履歴復元の言い換え",
+        "v04_train_取り消し回数と別種操作",
+        "v04_train_再適用回数と別種操作"
+      ]
+    },
+    {
+      "group": "v03_navigation_then_save",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1125",
+        "nyamuru_voice_1126",
+        "nyamuru_voice_1127",
+        "nyamuru_voice_1128",
+        "nyamuru_voice_1129",
+        "nyamuru_voice_1130",
+        "nyamuru_voice_1131",
+        "nyamuru_voice_1132"
+      ],
+      "candidate_groups": [
+        "v04_train_ページ指定と後の保存"
+      ]
+    },
+    {
+      "group": "v03_constraints_not_second_action",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1173",
+        "nyamuru_voice_1174",
+        "nyamuru_voice_1175",
+        "nyamuru_voice_1176",
+        "nyamuru_voice_1177",
+        "nyamuru_voice_1178",
+        "nyamuru_voice_1179",
+        "nyamuru_voice_1180"
+      ],
+      "candidate_groups": [
+        "v04_train_ページ指定と後の保存",
+        "v04_train_ページ送りの回数とガイド",
+        "v04_train_複数の理由と保存一件"
+      ]
+    },
+    {
+      "group": "v03_dev_page_navigation",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1237",
+        "nyamuru_voice_1239",
+        "nyamuru_voice_1241",
+        "nyamuru_voice_1242",
+        "nyamuru_voice_1244"
+      ],
+      "candidate_groups": [
+        "v04_train_ページ指定と後の保存",
+        "v04_train_ページ送りの回数とガイド"
+      ]
+    },
+    {
+      "group": "v02_core_view_change_zoom_step",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_449",
+        "nyamuru_voice_450",
+        "nyamuru_voice_451",
+        "nyamuru_voice_452"
+      ],
+      "candidate_groups": [
+        "v04_train_倍率の目的とガイド表示"
+      ]
+    },
+    {
+      "group": "v02_routes_compound_view_pair",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_773",
+        "nyamuru_voice_774",
+        "nyamuru_voice_775",
+        "nyamuru_voice_776"
+      ],
+      "candidate_groups": [
+        "v04_train_倍率の目的とガイド表示",
+        "v04_train_タブ閲覧とガイド設定",
+        "v04_train_表示全体の説明と設定追加"
+      ]
+    },
+    {
+      "group": "v03_dev_viewport_and_guides",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1246",
+        "nyamuru_voice_1248",
+        "nyamuru_voice_1272"
+      ],
+      "candidate_groups": [
+        "v04_train_倍率の目的とガイド表示",
+        "v04_train_表示全体の説明と設定追加"
+      ]
+    },
+    {
+      "group": "v03_tool_align_generate_pairs",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1157",
+        "nyamuru_voice_1158",
+        "nyamuru_voice_1159",
+        "nyamuru_voice_1160",
+        "nyamuru_voice_1161",
+        "nyamuru_voice_1162",
+        "nyamuru_voice_1163",
+        "nyamuru_voice_1164"
+      ],
+      "candidate_groups": [
+        "v04_train_作画準備と生成の時制",
+        "v04_train_生成対象の複数属性",
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ]
+    },
+    {
+      "group": "v02_core_artwork_mode_set_setting_without_run",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_485",
+        "nyamuru_voice_486",
+        "nyamuru_voice_487",
+        "nyamuru_voice_488"
+      ],
+      "candidate_groups": [
+        "v04_train_作画準備と生成の時制"
+      ]
+    },
+    {
+      "group": "v03_dev_artwork_mode_and_generation",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1255",
+        "nyamuru_voice_1256",
+        "nyamuru_voice_1259",
+        "nyamuru_voice_1260"
+      ],
+      "candidate_groups": [
+        "v04_train_作画準備と生成の時制",
+        "v04_train_一体型の定義と別の表示"
+      ]
+    },
+    {
+      "group": "v03_one_action_multiple_values",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1181",
+        "nyamuru_voice_1182",
+        "nyamuru_voice_1183",
+        "nyamuru_voice_1184",
+        "nyamuru_voice_1185",
+        "nyamuru_voice_1186",
+        "nyamuru_voice_1187",
+        "nyamuru_voice_1188"
+      ],
+      "candidate_groups": [
+        "v04_train_移動の二軸と別属性",
+        "v04_train_整列の対象数と保存",
+        "v04_train_ページ送りの回数とガイド",
+        "v04_train_程度語の位置と移動量"
+      ]
+    },
+    {
+      "group": "v03_bubble_distinct_fields",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1149",
+        "nyamuru_voice_1150",
+        "nyamuru_voice_1151",
+        "nyamuru_voice_1152",
+        "nyamuru_voice_1153",
+        "nyamuru_voice_1154",
+        "nyamuru_voice_1155",
+        "nyamuru_voice_1156"
+      ],
+      "candidate_groups": [
+        "v04_train_移動の二軸と別属性",
+        "v04_train_寸法の二値と別属性",
+        "v04_train_引用内の手順と外側の実行",
+        "v04_train_話者の根拠と別の本文変更",
+        "v04_train_形の採用としっぽ変更"
+      ]
+    },
+    {
+      "group": "v03_dev_bubble_explicit_values",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1288"
+      ],
+      "candidate_groups": [
+        "v04_train_移動の二軸と別属性",
+        "v04_train_形の採用としっぽ変更"
+      ]
+    },
+    {
+      "group": "v02_edit_bubble_dimensions",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_525",
+        "nyamuru_voice_526",
+        "nyamuru_voice_527",
+        "nyamuru_voice_528"
+      ],
+      "candidate_groups": [
+        "v04_train_寸法の二値と別属性"
+      ]
+    },
+    {
+      "group": "v03_extra_dev_focused_dimension_value",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1671"
+      ],
+      "candidate_groups": [
+        "v04_train_寸法の二値と別属性",
+        "v04_train_程度語の位置と移動量"
+      ]
+    },
+    {
+      "group": "panel_sync_set_desired_state",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_165",
+        "nyamuru_voice_166",
+        "nyamuru_voice_167",
+        "nyamuru_voice_168",
+        "nyamuru_voice_169",
+        "nyamuru_voice_171",
+        "nyamuru_voice_172",
+        "nyamuru_voice_173",
+        "nyamuru_voice_174",
+        "nyamuru_voice_175",
+        "nyamuru_voice_177",
+        "nyamuru_voice_178"
+      ],
+      "candidate_groups": [
+        "v04_train_シンクロの条件分岐と保存"
+      ]
+    },
+    {
+      "group": "v03_two_editor_settings",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1141",
+        "nyamuru_voice_1142",
+        "nyamuru_voice_1143",
+        "nyamuru_voice_1144",
+        "nyamuru_voice_1145",
+        "nyamuru_voice_1146",
+        "nyamuru_voice_1147",
+        "nyamuru_voice_1148"
+      ],
+      "candidate_groups": [
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_コマ吸着の理由とガイド",
+        "v04_train_一体型の定義と別の表示",
+        "v04_train_シンクロの過去状態と別設定",
+        "v04_train_内枠を使わない状態と禁止",
+        "v04_train_コマスナップの訂正射程"
+      ]
+    },
+    {
+      "group": "v03_dev_panel_setting_states",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1302",
+        "nyamuru_voice_1305",
+        "nyamuru_voice_1306",
+        "nyamuru_voice_1308",
+        "nyamuru_voice_1313",
+        "nyamuru_voice_1314",
+        "nyamuru_voice_1316",
+        "nyamuru_voice_1318",
+        "nyamuru_voice_1319",
+        "nyamuru_voice_1320",
+        "nyamuru_voice_1321",
+        "nyamuru_voice_1323",
+        "nyamuru_voice_1324"
+      ],
+      "candidate_groups": [
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_コマ吸着の理由とガイド",
+        "v04_train_シンクロの過去状態と別設定",
+        "v04_train_内枠を使わない状態と禁止"
+      ]
+    },
+    {
+      "group": "inner_frame_snap_set_desired_state",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_185",
+        "nyamuru_voice_186",
+        "nyamuru_voice_187",
+        "nyamuru_voice_188",
+        "nyamuru_voice_189",
+        "nyamuru_voice_191",
+        "nyamuru_voice_192",
+        "nyamuru_voice_193",
+        "nyamuru_voice_194",
+        "nyamuru_voice_195",
+        "nyamuru_voice_197",
+        "nyamuru_voice_198"
+      ],
+      "candidate_groups": [
+        "v04_train_内枠吸着の最終状態"
+      ]
+    },
+    {
+      "group": "v03_disabled_state_vs_prohibit",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_965",
+        "nyamuru_voice_966",
+        "nyamuru_voice_967",
+        "nyamuru_voice_968",
+        "nyamuru_voice_969",
+        "nyamuru_voice_970",
+        "nyamuru_voice_971",
+        "nyamuru_voice_972"
+      ],
+      "candidate_groups": [
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_内枠を使わない状態と禁止"
+      ]
+    },
+    {
+      "group": "panel_gap_snap_set_desired_state",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_205",
+        "nyamuru_voice_206",
+        "nyamuru_voice_207",
+        "nyamuru_voice_208",
+        "nyamuru_voice_209",
+        "nyamuru_voice_211",
+        "nyamuru_voice_212",
+        "nyamuru_voice_213",
+        "nyamuru_voice_214",
+        "nyamuru_voice_215",
+        "nyamuru_voice_217",
+        "nyamuru_voice_218"
+      ],
+      "candidate_groups": [
+        "v04_train_コマ吸着の理由とガイド"
+      ]
+    },
+    {
+      "group": "generate_explicit_locator",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_273",
+        "nyamuru_voice_274",
+        "nyamuru_voice_275",
+        "nyamuru_voice_276",
+        "nyamuru_voice_277",
+        "nyamuru_voice_278",
+        "nyamuru_voice_279",
+        "nyamuru_voice_280"
+      ],
+      "candidate_groups": [
+        "v04_train_生成対象の複数属性",
+        "v04_train_一コマの構成要素と別対象"
+      ]
+    },
+    {
+      "group": "generate_multiple_targets",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_314"
+      ],
+      "candidate_groups": [
+        "v04_train_生成対象の複数属性",
+        "v04_train_一コマの構成要素と別対象"
+      ]
+    },
+    {
+      "group": "v03_extra_dev_person_locator_attribute_list",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1713"
+      ],
+      "candidate_groups": [
+        "v04_train_生成対象の複数属性"
+      ]
+    },
+    {
+      "group": "registered_background_candidates",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_249",
+        "nyamuru_voice_250",
+        "nyamuru_voice_251",
+        "nyamuru_voice_252",
+        "nyamuru_voice_253",
+        "nyamuru_voice_254",
+        "nyamuru_voice_255",
+        "nyamuru_voice_256",
+        "nyamuru_voice_257",
+        "nyamuru_voice_258",
+        "nyamuru_voice_259",
+        "nyamuru_voice_260",
+        "nyamuru_voice_266"
+      ],
+      "candidate_groups": [
+        "v04_train_候補選定の内訳と作画設定"
+      ]
+    },
+    {
+      "group": "v02_routes_bg_scene",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_897",
+        "nyamuru_voice_898",
+        "nyamuru_voice_899",
+        "nyamuru_voice_900"
+      ],
+      "candidate_groups": [
+        "v04_train_候補選定の内訳と作画設定",
+        "v04_train_候補の複数条件と別コマ"
+      ]
+    },
+    {
+      "group": "v02_routes_compound_background",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_789",
+        "nyamuru_voice_790",
+        "nyamuru_voice_791",
+        "nyamuru_voice_792"
+      ],
+      "candidate_groups": [
+        "v04_train_候補選定の内訳と作画設定"
+      ]
+    },
+    {
+      "group": "v03_dev_registered_3d_candidates",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1292",
+        "nyamuru_voice_1333",
+        "nyamuru_voice_1334",
+        "nyamuru_voice_1335",
+        "nyamuru_voice_1336",
+        "nyamuru_voice_1338",
+        "nyamuru_voice_1339"
+      ],
+      "candidate_groups": [
+        "v04_train_候補選定の内訳と作画設定",
+        "v04_train_候補の複数条件と別コマ"
+      ]
+    },
+    {
+      "group": "v02_edit_paint_next_stroke",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_641",
+        "nyamuru_voice_642",
+        "nyamuru_voice_643",
+        "nyamuru_voice_644"
+      ],
+      "candidate_groups": [
+        "v04_train_ペン選択と手作業の予定"
+      ]
+    },
+    {
+      "group": "v03_pen_alignment_negation",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1005",
+        "nyamuru_voice_1006",
+        "nyamuru_voice_1007",
+        "nyamuru_voice_1008",
+        "nyamuru_voice_1009",
+        "nyamuru_voice_1010",
+        "nyamuru_voice_1011",
+        "nyamuru_voice_1012"
+      ],
+      "candidate_groups": [
+        "v04_train_ペン選択と手作業の予定"
+      ]
+    },
+    {
+      "group": "pen_and_align",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_315"
+      ],
+      "candidate_groups": [
+        "v04_train_ペン選択と手作業の予定"
+      ]
+    },
+    {
+      "group": "v03_dev_paint_tool_choice",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1276",
+        "nyamuru_voice_1342",
+        "nyamuru_voice_1344",
+        "nyamuru_voice_1348"
+      ],
+      "candidate_groups": [
+        "v04_train_ペン選択と手作業の予定",
+        "v04_train_ペン訂正と履歴取り消し"
+      ]
+    },
+    {
+      "group": "text_frames_top",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_297",
+        "nyamuru_voice_298",
+        "nyamuru_voice_299",
+        "nyamuru_voice_300",
+        "nyamuru_voice_301",
+        "nyamuru_voice_302",
+        "nyamuru_voice_303",
+        "nyamuru_voice_304",
+        "nyamuru_voice_307"
+      ],
+      "candidate_groups": [
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ]
+    },
+    {
+      "group": "v03_dev_text_frame_top_alignment",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1351",
+        "nyamuru_voice_1352",
+        "nyamuru_voice_1354",
+        "nyamuru_voice_1355"
+      ],
+      "candidate_groups": [
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ]
+    },
+    {
+      "group": "v03_self_correction_not_compound",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1165",
+        "nyamuru_voice_1166",
+        "nyamuru_voice_1167",
+        "nyamuru_voice_1168",
+        "nyamuru_voice_1169",
+        "nyamuru_voice_1170",
+        "nyamuru_voice_1171",
+        "nyamuru_voice_1172"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消し撤回と保存の残存",
+        "v04_train_ペン訂正と履歴取り消し",
+        "v04_train_二依頼の部分撤回と維持"
+      ]
+    },
+    {
+      "group": "v03_save_final_correction",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_933",
+        "nyamuru_voice_934",
+        "nyamuru_voice_935",
+        "nyamuru_voice_936",
+        "nyamuru_voice_937",
+        "nyamuru_voice_938",
+        "nyamuru_voice_939",
+        "nyamuru_voice_940"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消し撤回と保存の残存"
+      ]
+    },
+    {
+      "group": "v03_undo_history_count",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1037",
+        "nyamuru_voice_1038",
+        "nyamuru_voice_1039",
+        "nyamuru_voice_1040",
+        "nyamuru_voice_1041",
+        "nyamuru_voice_1042",
+        "nyamuru_voice_1043",
+        "nyamuru_voice_1044"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消し回数と別種操作"
+      ]
+    },
+    {
+      "group": "v03_extra_dev_sequential_history_references",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1710"
+      ],
+      "candidate_groups": [
+        "v04_train_取り消し回数と別種操作"
+      ]
+    },
+    {
+      "group": "v03_redo_history_count",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1045",
+        "nyamuru_voice_1046",
+        "nyamuru_voice_1047",
+        "nyamuru_voice_1048",
+        "nyamuru_voice_1049",
+        "nyamuru_voice_1050",
+        "nyamuru_voice_1051",
+        "nyamuru_voice_1052"
+      ],
+      "candidate_groups": [
+        "v04_train_再適用回数と別種操作"
+      ]
+    },
+    {
+      "group": "page_relative_count",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_043",
+        "nyamuru_voice_044"
+      ],
+      "candidate_groups": [
+        "v04_train_ページ送りの回数とガイド"
+      ]
+    },
+    {
+      "group": "tab_characters",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_065"
+      ],
+      "candidate_groups": [
+        "v04_train_タブ閲覧とガイド設定"
+      ]
+    },
+    {
+      "group": "v02_core_view_change_existing_tab_purpose",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_473",
+        "nyamuru_voice_474",
+        "nyamuru_voice_475",
+        "nyamuru_voice_476"
+      ],
+      "candidate_groups": [
+        "v04_train_タブ閲覧とガイド設定"
+      ]
+    },
+    {
+      "group": "v03_dev_existing_tabs",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1251",
+        "nyamuru_voice_1252"
+      ],
+      "candidate_groups": [
+        "v04_train_タブ閲覧とガイド設定"
+      ]
+    },
+    {
+      "group": "mode_integrated",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_067",
+        "nyamuru_voice_069",
+        "nyamuru_voice_070"
+      ],
+      "candidate_groups": [
+        "v04_train_一体型の定義と別の表示"
+      ]
+    },
+    {
+      "group": "v02_core_artwork_mode_set_named_setting_item",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_497",
+        "nyamuru_voice_498",
+        "nyamuru_voice_499",
+        "nyamuru_voice_500"
+      ],
+      "candidate_groups": [
+        "v04_train_一体型の定義と別の表示"
+      ]
+    },
+    {
+      "group": "v03_quoted_two_actions_single_text",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1189",
+        "nyamuru_voice_1190",
+        "nyamuru_voice_1191",
+        "nyamuru_voice_1192",
+        "nyamuru_voice_1193",
+        "nyamuru_voice_1194",
+        "nyamuru_voice_1195",
+        "nyamuru_voice_1196"
+      ],
+      "candidate_groups": [
+        "v04_train_引用内の手順と外側の実行"
+      ]
+    },
+    {
+      "group": "v03_quoted_negative_text",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_981",
+        "nyamuru_voice_982",
+        "nyamuru_voice_983",
+        "nyamuru_voice_984",
+        "nyamuru_voice_985",
+        "nyamuru_voice_986",
+        "nyamuru_voice_987",
+        "nyamuru_voice_988"
+      ],
+      "candidate_groups": [
+        "v04_train_引用内の手順と外側の実行"
+      ]
+    },
+    {
+      "group": "v03_extra_dev_quoted_value_then_reference",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1669"
+      ],
+      "candidate_groups": [
+        "v04_train_引用内の手順と外側の実行"
+      ]
+    },
+    {
+      "group": "v03_dev_dialogue_expression",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1281",
+        "nyamuru_voice_1284"
+      ],
+      "candidate_groups": [
+        "v04_train_引用内の手順と外側の実行"
+      ]
+    },
+    {
+      "group": "bubble_speaker",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_095",
+        "nyamuru_voice_096"
+      ],
+      "candidate_groups": [
+        "v04_train_話者の根拠と別の本文変更"
+      ]
+    },
+    {
+      "group": "v02_edit_bubble_speaker_owner",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_533",
+        "nyamuru_voice_534",
+        "nyamuru_voice_535",
+        "nyamuru_voice_536"
+      ],
+      "candidate_groups": [
+        "v04_train_話者の根拠と別の本文変更"
+      ]
+    },
+    {
+      "group": "v03_dev_bubble_content_judgment",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1277",
+        "nyamuru_voice_1278",
+        "nyamuru_voice_1279",
+        "nyamuru_voice_1280",
+        "nyamuru_voice_1283"
+      ],
+      "candidate_groups": [
+        "v04_train_話者の根拠と別の本文変更"
+      ]
+    },
+    {
+      "group": "bubble_shape_negative",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_159"
+      ],
+      "candidate_groups": [
+        "v04_train_形の採用としっぽ変更"
+      ]
+    },
+    {
+      "group": "bubble_tail",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_082",
+        "nyamuru_voice_083"
+      ],
+      "candidate_groups": [
+        "v04_train_形の採用としっぽ変更"
+      ]
+    },
+    {
+      "group": "panel_sync_set_history",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_182"
+      ],
+      "candidate_groups": [
+        "v04_train_シンクロの過去状態と別設定"
+      ]
+    },
+    {
+      "group": "v02_edit_setting_use_state",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_569",
+        "nyamuru_voice_570",
+        "nyamuru_voice_571",
+        "nyamuru_voice_572",
+        "nyamuru_voice_601",
+        "nyamuru_voice_602",
+        "nyamuru_voice_603",
+        "nyamuru_voice_604",
+        "nyamuru_voice_633",
+        "nyamuru_voice_634",
+        "nyamuru_voice_635",
+        "nyamuru_voice_636"
+      ],
+      "candidate_groups": [
+        "v04_train_シンクロの過去状態と別設定"
+      ]
+    },
+    {
+      "group": "inner_frame_snap_set_status",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_199"
+      ],
+      "candidate_groups": [
+        "v04_train_内枠を使わない状態と禁止"
+      ]
+    },
+    {
+      "group": "panel_gap_snap_set_correction",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_210",
+        "nyamuru_voice_216"
+      ],
+      "candidate_groups": [
+        "v04_train_コマスナップの訂正射程"
+      ]
+    },
+    {
+      "group": "v02_edit_setting_correction",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_549",
+        "nyamuru_voice_550",
+        "nyamuru_voice_551",
+        "nyamuru_voice_552",
+        "nyamuru_voice_581",
+        "nyamuru_voice_582",
+        "nyamuru_voice_583",
+        "nyamuru_voice_584",
+        "nyamuru_voice_613",
+        "nyamuru_voice_614",
+        "nyamuru_voice_615",
+        "nyamuru_voice_616"
+      ],
+      "candidate_groups": [
+        "v04_train_コマスナップの訂正射程"
+      ]
+    },
+    {
+      "group": "v03_extra_dev_two_named_settings_unresolved",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1711"
+      ],
+      "candidate_groups": [
+        "v04_train_コマスナップの訂正射程"
+      ]
+    },
+    {
+      "group": "generate_selected_panel",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_243",
+        "nyamuru_voice_244",
+        "nyamuru_voice_245",
+        "nyamuru_voice_246",
+        "nyamuru_voice_247",
+        "nyamuru_voice_248",
+        "nyamuru_voice_264"
+      ],
+      "candidate_groups": [
+        "v04_train_一コマの構成要素と別対象"
+      ]
+    },
+    {
+      "group": "v03_dev_selected_image_generation",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1328"
+      ],
+      "candidate_groups": [
+        "v04_train_一コマの構成要素と別対象",
+        "v04_train_現在選択の生成と過去参照"
+      ]
+    },
+    {
+      "group": "v02_routes_bg_count",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_905",
+        "nyamuru_voice_906",
+        "nyamuru_voice_907",
+        "nyamuru_voice_908"
+      ],
+      "candidate_groups": [
+        "v04_train_候補の複数条件と別コマ"
+      ]
+    },
+    {
+      "group": "v02_routes_bg_locator",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_909",
+        "nyamuru_voice_910",
+        "nyamuru_voice_911",
+        "nyamuru_voice_912"
+      ],
+      "candidate_groups": [
+        "v04_train_候補の複数条件と別コマ"
+      ]
+    },
+    {
+      "group": "v02_edit_paint_return",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_657",
+        "nyamuru_voice_658",
+        "nyamuru_voice_659",
+        "nyamuru_voice_660"
+      ],
+      "candidate_groups": [
+        "v04_train_ペン訂正と履歴取り消し"
+      ]
+    },
+    {
+      "group": "v02_edit_align_bubbles",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_677",
+        "nyamuru_voice_678",
+        "nyamuru_voice_679",
+        "nyamuru_voice_680"
+      ],
+      "candidate_groups": [
+        "v04_train_上端揃えの言い換えとペン"
+      ]
+    },
+    {
+      "group": "ambiguous_bubble_value",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_108"
+      ],
+      "candidate_groups": [
+        "v04_train_程度語の位置と移動量"
+      ]
+    },
+    {
+      "group": "v02_routes_unspecified_bubble_value",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_717",
+        "nyamuru_voice_718",
+        "nyamuru_voice_719",
+        "nyamuru_voice_720"
+      ],
+      "candidate_groups": [
+        "v04_train_程度語の位置と移動量"
+      ]
+    },
+    {
+      "group": "v02_core_save_work_checkpoint",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_317",
+        "nyamuru_voice_318",
+        "nyamuru_voice_319",
+        "nyamuru_voice_320"
+      ],
+      "candidate_groups": [
+        "v04_train_複数の理由と保存一件"
+      ]
+    },
+    {
+      "group": "zoom_fit",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_048"
+      ],
+      "candidate_groups": [
+        "v04_train_表示全体の説明と設定追加"
+      ]
+    },
+    {
+      "group": "whole_view_vs_mode",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_047",
+        "nyamuru_voice_068",
+        "nyamuru_voice_104",
+        "nyamuru_voice_137",
+        "nyamuru_voice_149"
+      ],
+      "candidate_groups": [
+        "v04_train_表示全体の説明と設定追加"
+      ]
+    },
+    {
+      "group": "generate_selection",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_225",
+        "nyamuru_voice_226",
+        "nyamuru_voice_227",
+        "nyamuru_voice_228",
+        "nyamuru_voice_229",
+        "nyamuru_voice_230",
+        "nyamuru_voice_261"
+      ],
+      "candidate_groups": [
+        "v04_train_現在選択の生成と過去参照"
+      ]
+    },
+    {
+      "group": "generate_selected_character",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_231",
+        "nyamuru_voice_232",
+        "nyamuru_voice_233",
+        "nyamuru_voice_234",
+        "nyamuru_voice_235",
+        "nyamuru_voice_236"
+      ],
+      "candidate_groups": [
+        "v04_train_現在選択の生成と過去参照"
+      ]
+    },
+    {
+      "group": "v03_only_one_positive_clause",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1197",
+        "nyamuru_voice_1198",
+        "nyamuru_voice_1199",
+        "nyamuru_voice_1200",
+        "nyamuru_voice_1201",
+        "nyamuru_voice_1202",
+        "nyamuru_voice_1203",
+        "nyamuru_voice_1204"
+      ],
+      "candidate_groups": [
+        "v04_train_現在選択の生成と過去参照",
+        "v04_train_二依頼の部分撤回と維持"
+      ]
+    },
+    {
+      "group": "v03_both_denied_or_both_requested",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1205",
+        "nyamuru_voice_1206",
+        "nyamuru_voice_1207",
+        "nyamuru_voice_1208",
+        "nyamuru_voice_1209",
+        "nyamuru_voice_1210",
+        "nyamuru_voice_1211",
+        "nyamuru_voice_1212"
+      ],
+      "candidate_groups": [
+        "v04_train_二依頼の部分撤回と維持"
+      ]
+    },
+    {
+      "group": "v03_dev_compound_workflow",
+      "source_files": [
+        "experiments/v0.3/data/dev.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_1289"
+      ],
+      "candidate_groups": [
+        "v04_train_二依頼の部分撤回と維持"
+      ]
+    },
+    {
+      "group": "v02_routes_gen_numbered",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_voice_877"
+      ],
+      "candidate_groups": [
+        "v04_train_一コマの構成要素と別対象"
+      ]
+    },
+    {
+      "group": "massive_adapt_visual_toggle",
+      "source_files": [
+        "experiments/v0.3/data/train.jsonl"
+      ],
+      "source_ids": [
+        "nyamuru_massive_adapt_028"
+      ],
+      "candidate_groups": [
+        "v04_train_複数の理由と保存一件"
+      ]
+    }
+  ],
+  "source_fingerprints": {
+    "source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.3/data/train.jsonl": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+    "experiments/v0.3/data/dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717"
+  },
+  "phenomenon_audit": {
+    "理由と完了報告を複数含む長い単一例": [
+      "nyamuru_voice_2002",
+      "nyamuru_voice_2031"
+    ],
+    "予定の動作を現在操作に数えない": [
+      "nyamuru_voice_2000",
+      "nyamuru_voice_2013",
+      "nyamuru_voice_2078"
+    ],
+    "一操作の内訳や言い換え": [
+      "nyamuru_voice_2012",
+      "nyamuru_voice_2074",
+      "nyamuru_voice_2180"
+    ],
+    "同方向の反復回数": [
+      "nyamuru_voice_2097",
+      "nyamuru_voice_2103",
+      "nyamuru_voice_2109"
+    ],
+    "条件から一つの最終状態": [
+      "nyamuru_voice_2048",
+      "nyamuru_voice_2054",
+      "nyamuru_voice_2061"
+    ],
+    "引用内と外側の依頼": [
+      "nyamuru_voice_2126",
+      "nyamuru_voice_2129",
+      "nyamuru_voice_2130"
+    ],
+    "訂正撤回の射程": [
+      "nyamuru_voice_2090",
+      "nyamuru_voice_2156",
+      "nyamuru_voice_2174",
+      "nyamuru_voice_2212"
+    ],
+    "少しと移動量の充足不足": [
+      "nyamuru_voice_2186",
+      "nyamuru_voice_2187",
+      "nyamuru_voice_2191"
+    ],
+    "通常UI選択と発話外の参照": [
+      "nyamuru_voice_2204",
+      "nyamuru_voice_2205",
+      "nyamuru_voice_2209"
+    ],
+    "短い複数操作": [
+      "nyamuru_voice_2015",
+      "nyamuru_voice_2027",
+      "nyamuru_voice_2196"
+    ]
+  },
+  "lexical_check": {
+    "note": "語や長さだけでgoldが決まる作りを避けるための記述的な件数。統計的な無偏りを保証する検査ではない。",
+    "markers": {
+      "ので": {
+        "single": 19,
+        "compound": 6,
+        "boundary": 1
+      },
+      "から": {
+        "single": 25,
+        "compound": 12,
+        "boundary": 3
+      },
+      "も": {
+        "single": 37,
+        "compound": 34,
+        "boundary": 12
+      },
+      "だけ": {
+        "single": 15,
+        "compound": 2,
+        "boundary": 9
+      },
+      "そのまま": {
+        "single": 3,
+        "compound": 2,
+        "boundary": 1
+      },
+      "少し": {
+        "single": 3,
+        "compound": 2,
+        "boundary": 2
+      }
+    }
+  },
+  "final_review_status": "作者による全文・gold・slotsの意味レビュー、親の全文レビュー指摘反映、形式・重複・参照文型リンクの確認を完了。利用者レビューは未了のため全例pending_user_review。"
+}

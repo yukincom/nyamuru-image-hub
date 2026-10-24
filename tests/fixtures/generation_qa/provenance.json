@@ -1,0 +1,13 @@
+{
+  "external_assets": false,
+  "external_network": false,
+  "generator": "build_fixtures.py",
+  "generator_sha256": "efa8f1b4368fbd28115abfd022450249a881e15436e211e95fd7843f0ac7da31",
+  "generator_version": 1,
+  "kind": "project-generated-synthetic",
+  "license": "MIT (same as project source)",
+  "models_used": [],
+  "reproducibility_note": "PNG container bytes may vary with Pillow/zlib; tests compare checked-in hashes and regenerated decoded semantics separately.",
+  "schema_name": "nyamuru-generation-qa-fixture-provenance",
+  "schema_version": 1
+}

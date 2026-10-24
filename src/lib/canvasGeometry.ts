@@ -1,9 +1,18 @@
 import type { Anchor, BBox, CanvasElementType, Panel, PanelShape } from '../types';
 
+export interface CanvasSize { w: number; h: number }
+export const DEFAULT_CANVAS: Readonly<CanvasSize> = { w: 210, h: 297 };
+/** Editing inner frame, independent of print safety/bleed margins. */
+export function innerFrameBounds(canvas: CanvasSize = DEFAULT_CANVAS): BBox {
+  const margin = Math.min(10, canvas.w / 10, canvas.h / 10);
+  return { x: margin, y: margin, w: canvas.w - 2 * margin, h: canvas.h - 2 * margin };
+}
+
 export type ResizeHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 
 export interface InteractionGeometry {
   mode: ResizeHandle;
+  canvas?: CanvasSize;
   startClientX: number;
   startClientY: number;
   startBox: BBox;
@@ -228,17 +237,19 @@ function pointBoundaryLocks(
   panel: Panel,
   point: [number, number],
   tolerance = PANEL_EDGE_ALIGNMENT_TOLERANCE_MM,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): PointBoundaryLocks {
+  const inner = innerFrameBounds(canvas);
   const near = (value: number, target: number) => Math.abs(value - target) <= tolerance;
   const locks: PointBoundaryLocks = {};
-  if (near(point[0], INNER_FRAME_BOUNDS.x)) locks.x = INNER_FRAME_BOUNDS.x;
-  else if (near(point[0], INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w)) locks.x = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
+  if (near(point[0], inner.x)) locks.x = inner.x;
+  else if (near(point[0], inner.x + inner.w)) locks.x = inner.x + inner.w;
   else if (panel.bleed?.includes('left') && near(point[0], 0)) locks.x = 0;
-  else if (panel.bleed?.includes('right') && near(point[0], 210)) locks.x = 210;
-  if (near(point[1], INNER_FRAME_BOUNDS.y)) locks.y = INNER_FRAME_BOUNDS.y;
-  else if (near(point[1], INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h)) locks.y = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+  else if (panel.bleed?.includes('right') && near(point[0], canvas.w)) locks.x = canvas.w;
+  if (near(point[1], inner.y)) locks.y = inner.y;
+  else if (near(point[1], inner.y + inner.h)) locks.y = inner.y + inner.h;
   else if (panel.bleed?.includes('top') && near(point[1], 0)) locks.y = 0;
-  else if (panel.bleed?.includes('bottom') && near(point[1], 297)) locks.y = 297;
+  else if (panel.bleed?.includes('bottom') && near(point[1], canvas.h)) locks.y = canvas.h;
   return locks;
 }
 
@@ -250,11 +261,12 @@ interface PointLegalBounds {
 }
 
 /** 既に内枠外にある点は現位置まで許容するが、それ以上外側へは動かさない。 */
-function pointLegalBounds(panel: Panel, original: [number, number]): PointLegalBounds {
-  const minX = panel.bleed?.includes('left') ? 0 : INNER_FRAME_BOUNDS.x;
-  const maxX = panel.bleed?.includes('right') ? 210 : INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
-  const minY = panel.bleed?.includes('top') ? 0 : INNER_FRAME_BOUNDS.y;
-  const maxY = panel.bleed?.includes('bottom') ? 297 : INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+function pointLegalBounds(panel: Panel, original: [number, number], canvas: CanvasSize = DEFAULT_CANVAS): PointLegalBounds {
+  const inner = innerFrameBounds(canvas);
+  const minX = panel.bleed?.includes('left') ? 0 : inner.x;
+  const maxX = panel.bleed?.includes('right') ? canvas.w : inner.x + inner.w;
+  const minY = panel.bleed?.includes('top') ? 0 : inner.y;
+  const maxY = panel.bleed?.includes('bottom') ? canvas.h : inner.y + inner.h;
   return {
     minX: Math.min(original[0], minX),
     maxX: Math.max(original[0], maxX),
@@ -292,9 +304,10 @@ function constrainedJunctionPoint(
   original: [number, number],
   x: number,
   y: number,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): [number, number] {
-  const locks = pointBoundaryLocks(panel, original);
-  const bounds = pointLegalBounds(panel, original);
+  const locks = pointBoundaryLocks(panel, original, undefined, canvas);
+  const bounds = pointLegalBounds(panel, original, canvas);
   if (locks.x !== undefined && locks.y !== undefined) return [locks.x, locks.y];
   if (locks.x !== undefined) {
     return [locks.x, roundMm(clamp(y, bounds.minY, bounds.maxY))];
@@ -305,10 +318,10 @@ function constrainedJunctionPoint(
   return lastLegalPointOnSegment(original, [x, y], bounds);
 }
 
-function edgeIsLockedBoundary(panel: Panel, edgeIndex: number): boolean {
+function edgeIsLockedBoundary(panel: Panel, edgeIndex: number, canvas: CanvasSize = DEFAULT_CANVAS): boolean {
   const edge = edgePoints(panel, edgeIndex);
   if (!edge) return false;
-  const first = pointBoundaryLocks(panel, edge[0]), second = pointBoundaryLocks(panel, edge[1]);
+  const first = pointBoundaryLocks(panel, edge[0], undefined, canvas), second = pointBoundaryLocks(panel, edge[1], undefined, canvas);
   return (first.x !== undefined && first.x === second.x)
     || (first.y !== undefined && first.y === second.y);
 }
@@ -659,10 +672,23 @@ export function pointInPanel(panel: Panel, x: number, y: number): boolean {
   return inside;
 }
 
+/** Context menus must also hit figures inside passive panels, whose guides ignore pointer events. */
+export function panelFigureAt(panel: Panel, x: number, y: number, showGuides = true): number | undefined {
+  if (!pointInPanel(panel, x, y)) return undefined;
+  for (let index = (panel.figures?.length ?? 0) - 1; index >= 0; index--) {
+    const figure = panel.figures![index];
+    if (figure.artwork?.hidden || (!showGuides && !figure.artwork)) continue;
+    const box = figure.bbox ?? fallbackBox(panel, 'figure', index);
+    if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) return index;
+  }
+  return undefined;
+}
+
 export function panelHasElementAt(panel: Panel, x: number, y: number): boolean {
   const boxes: BBox[] = [
-    ...(panel.figures ?? []).map((figure, index) => figure.bbox ?? fallbackBox(panel, 'figure', index)),
-    ...panel.bubbles.map((bubble, index) => bubble.bbox ?? fallbackBox(panel, 'bubble', index)),
+    ...(panel.images ?? []).filter(image => !image.hidden).map(image => image.bbox),
+    ...(panel.figures ?? []).flatMap((figure, index) => figure.artwork?.hidden ? [] : [figure.bbox ?? fallbackBox(panel, 'figure', index)]),
+    ...panel.bubbles.flatMap((bubble, index) => bubble.hidden===true?[]:[bubble.bbox ?? fallbackBox(panel, 'bubble', index)]),
     ...(panel.screen_text ?? []).map((screenText, index) => screenText.bbox ?? fallbackBox(panel, 'screen_text', index)),
   ];
   return boxes.some((box) => x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h);
@@ -673,19 +699,22 @@ export function panelHasElementAt(panel: Panel, x: number, y: number): boolean {
 // なければクリックは空白部分を貫通する:
 // - 選択中のパネルが重なりに含まれるときは一段ずつ奥へ送る（最奥まで行ったら最前面へ戻る）
 // - 含まれないときはエレメントがある最前面のパネル、どこにもなければ最奥のパネルを選ぶ
-export function resolveOverlapClick(panels: Panel[], clickedIndex: number, activeIndex: number, x: number, y: number): number {
+export function resolveOverlapClick(panels: Panel[], clickedIndex: number, activeIndex: number, x: number, y: number, hasElement=(panel:Panel,_index:number)=>panelHasElementAt(panel,x,y)): number {
   const stack = panels.map((_, index) => index).filter((index) => pointInPanel(panels[index], x, y)).reverse();
   if (stack.length < 2 || !stack.includes(clickedIndex)) return clickedIndex;
-  if (panelHasElementAt(panels[stack[0]], x, y)) return stack[0];
+  if (hasElement(panels[stack[0]],stack[0])) return stack[0];
   const activePosition = stack.indexOf(activeIndex);
   if (activePosition !== -1) return stack[(activePosition + 1) % stack.length];
-  return stack.find((index) => panelHasElementAt(panels[index], x, y)) ?? stack[stack.length - 1];
+  return stack.find((index) => hasElement(panels[index],index)) ?? stack[stack.length - 1];
 }
 
 export function resizedBox(interaction: InteractionGeometry, clientX: number, clientY: number, minSize = MIN_SIZE_MM): BBox {
-  const { startBox, bounds, paperRect, mode } = interaction;
-  const dx = (clientX - interaction.startClientX) * (210 / paperRect.width);
-  const dy = (clientY - interaction.startClientY) * (297 / paperRect.height);
+  const { startBox, bounds, paperRect, mode, canvas = DEFAULT_CANVAS } = interaction;
+  const dx = (clientX - interaction.startClientX) * (canvas.w / paperRect.width);
+  const dy = (clientY - interaction.startClientY) * (canvas.h / paperRect.height);
+  if (dx === 0 && dy === 0) return { ...startBox };
+  minSize = Math.min(minSize, bounds.w, bounds.h, canvas.w / 4, canvas.h / 4);
+  const minWidth = Math.min(minSize, startBox.w), minHeight = Math.min(minSize, startBox.h);
   const right = startBox.x + startBox.w;
   const bottom = startBox.y + startBox.h;
   let x = startBox.x, y = startBox.y, w = startBox.w, h = startBox.h;
@@ -694,18 +723,18 @@ export function resizedBox(interaction: InteractionGeometry, clientX: number, cl
     x = clamp(startBox.x + dx, bounds.x, bounds.x + bounds.w - startBox.w);
     y = clamp(startBox.y + dy, bounds.y, bounds.y + bounds.h - startBox.h);
   } else {
-    if (mode.includes('w')) { x = clamp(startBox.x + dx, bounds.x, right - minSize); w = right - x; }
-    if (mode.includes('e')) { w = clamp(startBox.w + dx, minSize, bounds.x + bounds.w - startBox.x); }
-    if (mode.includes('n')) { y = clamp(startBox.y + dy, bounds.y, bottom - minSize); h = bottom - y; }
-    if (mode.includes('s')) { h = clamp(startBox.h + dy, minSize, bounds.y + bounds.h - startBox.y); }
+    if (mode.includes('w')) { x = clamp(startBox.x + dx, bounds.x, right - minWidth); w = right - x; }
+    if (mode.includes('e')) { w = clamp(startBox.w + dx, minWidth, bounds.x + bounds.w - startBox.x); }
+    if (mode.includes('n')) { y = clamp(startBox.y + dy, bounds.y, bottom - minHeight); h = bottom - y; }
+    if (mode.includes('s')) { h = clamp(startBox.h + dy, minHeight, bounds.y + bounds.h - startBox.y); }
   }
   return { x: roundMm(x), y: roundMm(y), w: roundMm(w), h: roundMm(h) };
 }
 
-export function clampedPanelDelta(bounds: BBox, deltaX: number, deltaY: number): { x: number; y: number } {
+export function clampedPanelDelta(bounds: BBox, deltaX: number, deltaY: number, canvas: CanvasSize = DEFAULT_CANVAS): { x: number; y: number } {
   return {
-    x: roundMm(clamp(deltaX, -bounds.x, 210 - (bounds.x + bounds.w))),
-    y: roundMm(clamp(deltaY, -bounds.y, 297 - (bounds.y + bounds.h))),
+    x: roundMm(clamp(deltaX, -bounds.x, canvas.w - (bounds.x + bounds.w))),
+    y: roundMm(clamp(deltaY, -bounds.y, canvas.h - (bounds.y + bounds.h))),
   };
 }
 
@@ -722,26 +751,28 @@ export function snapPanelDeltaToInnerFrame(
   deltaX: number,
   deltaY: number,
   threshold = PANEL_SNAP_THRESHOLD_MM,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): { x: number; y: number } {
-  const clamped = clampedPanelDelta(bounds, deltaX, deltaY);
+  const inner = innerFrameBounds(canvas);
+  const clamped = clampedPanelDelta(bounds, deltaX, deltaY, canvas);
   let nextX = bounds.x + clamped.x;
   let nextY = bounds.y + clamped.y;
-  const innerRight = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
-  const innerBottom = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+  const innerRight = inner.x + inner.w;
+  const innerBottom = inner.y + inner.h;
 
-  const leftSnap = INNER_FRAME_BOUNDS.x - nextX;
+  const leftSnap = inner.x - nextX;
   const rightSnap = innerRight - (nextX + bounds.w);
   if (Math.min(Math.abs(leftSnap), Math.abs(rightSnap)) <= threshold) {
     nextX += Math.abs(leftSnap) <= Math.abs(rightSnap) ? leftSnap : rightSnap;
   }
 
-  const topSnap = INNER_FRAME_BOUNDS.y - nextY;
+  const topSnap = inner.y - nextY;
   const bottomSnap = innerBottom - (nextY + bounds.h);
   if (Math.min(Math.abs(topSnap), Math.abs(bottomSnap)) <= threshold) {
     nextY += Math.abs(topSnap) <= Math.abs(bottomSnap) ? topSnap : bottomSnap;
   }
 
-  return clampedPanelDelta(bounds, nextX - bounds.x, nextY - bounds.y);
+  return clampedPanelDelta(bounds, nextX - bounds.x, nextY - bounds.y, canvas);
 }
 
 /** リサイズ中に動かしている辺だけを内枠へ吸着させる。 */
@@ -750,15 +781,17 @@ export function snapPanelResizeToInnerFrame(
   handle: Exclude<ResizeHandle, 'move'>,
   minSize = 20,
   threshold = PANEL_SNAP_THRESHOLD_MM,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): BBox {
+  const inner = innerFrameBounds(canvas);
   let { x, y, w, h } = bounds;
   const right = x + w;
   const bottom = y + h;
-  const innerRight = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
-  const innerBottom = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+  const innerRight = inner.x + inner.w;
+  const innerBottom = inner.y + inner.h;
 
   if (handle.includes('w')) {
-    const snappedX = snapCoordinate(x, [INNER_FRAME_BOUNDS.x], threshold);
+    const snappedX = snapCoordinate(x, [inner.x], threshold);
     if (right - snappedX >= minSize) { x = snappedX; w = right - snappedX; }
   }
   if (handle.includes('e')) {
@@ -766,7 +799,7 @@ export function snapPanelResizeToInnerFrame(
     if (snappedRight - x >= minSize) w = snappedRight - x;
   }
   if (handle.includes('n')) {
-    const snappedY = snapCoordinate(y, [INNER_FRAME_BOUNDS.y], threshold);
+    const snappedY = snapCoordinate(y, [inner.y], threshold);
     if (bottom - snappedY >= minSize) { y = snappedY; h = bottom - snappedY; }
   }
   if (handle.includes('s')) {
@@ -781,10 +814,12 @@ export function snapPointToInnerFrame(
   x: number,
   y: number,
   threshold = PANEL_SNAP_THRESHOLD_MM,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): { x: number; y: number } {
+  const inner = innerFrameBounds(canvas);
   return {
-    x: roundMm(snapCoordinate(x, [INNER_FRAME_BOUNDS.x, INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w], threshold)),
-    y: roundMm(snapCoordinate(y, [INNER_FRAME_BOUNDS.y, INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h], threshold)),
+    x: roundMm(snapCoordinate(x, [inner.x, inner.x + inner.w], threshold)),
+    y: roundMm(snapCoordinate(y, [inner.y, inner.y + inner.h], threshold)),
   };
 }
 
@@ -823,13 +858,15 @@ export function snapEdgeDeltaToInnerFrame(
   deltaX: number,
   deltaY: number,
   threshold = PANEL_SNAP_THRESHOLD_MM,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): { x: number; y: number } {
-  const innerRight = INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w;
-  const innerBottom = INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h;
+  const inner = innerFrameBounds(canvas);
+  const innerRight = inner.x + inner.w;
+  const innerBottom = inner.y + inner.h;
   const movedX = [start[0] + deltaX, end[0] + deltaX];
   const movedY = [start[1] + deltaY, end[1] + deltaY];
-  const xCorrections = movedX.flatMap((value) => [INNER_FRAME_BOUNDS.x - value, innerRight - value]);
-  const yCorrections = movedY.flatMap((value) => [INNER_FRAME_BOUNDS.y - value, innerBottom - value]);
+  const xCorrections = movedX.flatMap((value) => [inner.x - value, innerRight - value]);
+  const yCorrections = movedY.flatMap((value) => [inner.y - value, innerBottom - value]);
   const closestX = xCorrections.reduce((best, value) => Math.abs(value) < Math.abs(best) ? value : best);
   const closestY = yCorrections.reduce((best, value) => Math.abs(value) < Math.abs(best) ? value : best);
   return {
@@ -868,6 +905,7 @@ function clampedEdgeDelta(
   deltaX: number,
   deltaY: number,
   minSize = 20,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): { x: number; y: number } {
   let minX = -Infinity, maxX = Infinity, minY = -Infinity, maxY = Infinity;
   references.forEach(({ panelIndex, edgeIndex }) => {
@@ -876,19 +914,20 @@ function clampedEdgeDelta(
     if (!panel || !edge) return;
     const [start, end] = edge;
     minX = Math.max(minX, -Math.min(start[0], end[0]));
-    maxX = Math.min(maxX, 210 - Math.max(start[0], end[0]));
+    maxX = Math.min(maxX, canvas.w - Math.max(start[0], end[0]));
     minY = Math.max(minY, -Math.min(start[1], end[1]));
-    maxY = Math.min(maxY, 297 - Math.max(start[1], end[1]));
+    maxY = Math.min(maxY, canvas.h - Math.max(start[1], end[1]));
     if (panel.shape.type !== 'rect') return;
     const { x, y, w, h } = panel.shape;
-    if (edgeIndex === 0) maxY = Math.min(maxY, h - minSize);
-    if (edgeIndex === 1) minX = Math.max(minX, minSize - w);
-    if (edgeIndex === 2) minY = Math.max(minY, minSize - h);
-    if (edgeIndex === 3) maxX = Math.min(maxX, w - minSize);
+    const minWidth = Math.min(minSize, w), minHeight = Math.min(minSize, h);
+    if (edgeIndex === 0) maxY = Math.min(maxY, h - minHeight);
+    if (edgeIndex === 1) minX = Math.max(minX, minWidth - w);
+    if (edgeIndex === 2) minY = Math.max(minY, minHeight - h);
+    if (edgeIndex === 3) maxX = Math.min(maxX, w - minWidth);
     // 紙面側の制限は端点制限と同値だが、数値誤差を避けるため明示する。
     if (edgeIndex === 0) minY = Math.max(minY, -y);
-    if (edgeIndex === 1) maxX = Math.min(maxX, 210 - (x + w));
-    if (edgeIndex === 2) maxY = Math.min(maxY, 297 - (y + h));
+    if (edgeIndex === 1) maxX = Math.min(maxX, canvas.w - (x + w));
+    if (edgeIndex === 2) maxY = Math.min(maxY, canvas.h - (y + h));
     if (edgeIndex === 3) minX = Math.max(minX, -x);
   });
   return {
@@ -932,11 +971,13 @@ export function movePanelEdge(
   deltaY: number,
   linkPanels = false,
   excludedEdge?: PanelEdgeReference,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): { x: number; y: number; linkedEdges: number } {
   const selected = panels[panelIndex] && edgePoints(panels[panelIndex], edgeIndex);
   if (!selected) return { x: 0, y: 0, linkedEdges: 0 };
   const references = edgeReferences(panels, panelIndex, edgeIndex, linkPanels, excludedEdge);
-  const delta = clampedEdgeDelta(panels, references, deltaX, deltaY);
+  const delta = clampedEdgeDelta(panels, references, deltaX, deltaY, Math.min(20, canvas.w / 4, canvas.h / 4), canvas);
+  if (delta.x === 0 && delta.y === 0) return { ...delta, linkedEdges: Math.max(0, references.length - 1) };
   references.forEach((reference) => {
     const panel = panels[reference.panelIndex];
     if (panel) applyEdgeDelta(panel, reference.edgeIndex, delta.x, delta.y);
@@ -1045,6 +1086,7 @@ function vertexEdgeCandidates(
   selectedPanelIndex: number,
   selectedPoint: [number, number],
   fixedPoint: [number, number],
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): VertexEdgeCandidate[] {
   const vectorX = fixedPoint[0] - selectedPoint[0], vectorY = fixedPoint[1] - selectedPoint[1];
   const length = Math.hypot(vectorX, vectorY);
@@ -1057,7 +1099,7 @@ function vertexEdgeCandidates(
     if (panelIndex === selectedPanelIndex) return;
     const points = panelShapePoints(panel);
     points.forEach((candidateStart, edgeIndex) => {
-      if (edgeIsLockedBoundary(panel, edgeIndex)) return;
+      if (edgeIsLockedBoundary(panel, edgeIndex, canvas)) return;
       const endIndex = (edgeIndex + 1) % points.length;
       const candidateEnd = points[endIndex];
       const candidateVectorX = candidateEnd[0] - candidateStart[0];
@@ -1146,20 +1188,21 @@ function nearestOriginWallLayer(candidates: VertexEdgeCandidate[]): VertexEdgeCa
 }
 
 /** 選択点は自分自身の内枠・タチキリ線だけを守り、追従点の都合では止めない。 */
-function constrainedSelectedPoint(panel: Panel, original: [number, number], x: number, y: number): [number, number] {
-  const locks = pointBoundaryLocks(panel, original);
-  let nextX = roundMm(clamp(x, 0, 210));
-  let nextY = roundMm(clamp(y, 0, 297));
+function constrainedSelectedPoint(panel: Panel, original: [number, number], x: number, y: number, canvas: CanvasSize = DEFAULT_CANVAS): [number, number] {
+  const inner = innerFrameBounds(canvas);
+  const locks = pointBoundaryLocks(panel, original, undefined, canvas);
+  let nextX = roundMm(clamp(x, 0, canvas.w));
+  let nextY = roundMm(clamp(y, 0, canvas.h));
   if (locks.x !== undefined) {
     nextX = locks.x;
-    if (locks.x === INNER_FRAME_BOUNDS.x || locks.x === INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w) {
-      nextY = roundMm(clamp(nextY, INNER_FRAME_BOUNDS.y, INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h));
+    if (locks.x === inner.x || locks.x === inner.x + inner.w) {
+      nextY = roundMm(clamp(nextY, inner.y, inner.y + inner.h));
     }
   }
   if (locks.y !== undefined) {
     nextY = locks.y;
-    if (locks.y === INNER_FRAME_BOUNDS.y || locks.y === INNER_FRAME_BOUNDS.y + INNER_FRAME_BOUNDS.h) {
-      nextX = roundMm(clamp(nextX, INNER_FRAME_BOUNDS.x, INNER_FRAME_BOUNDS.x + INNER_FRAME_BOUNDS.w));
+    if (locks.y === inner.y || locks.y === inner.y + inner.h) {
+      nextX = roundMm(clamp(nextX, inner.x, inner.x + inner.w));
     }
   }
   return [nextX, nextY];
@@ -1176,13 +1219,14 @@ export function movePanelVertexWithSnap(
   x: number,
   y: number,
   linkPanels = false,
+  canvas: CanvasSize = DEFAULT_CANVAS,
 ): void {
   const selectedPanel = panels[panelIndex];
   if (!selectedPanel) return;
   const selectedPoints = panelShapePoints(selectedPanel);
   const selectedPoint = selectedPoints[vertexIndex];
   if (!selectedPoint) return;
-  const selectedTarget = constrainedSelectedPoint(selectedPanel, selectedPoint, x, y);
+  const selectedTarget = constrainedSelectedPoint(selectedPanel, selectedPoint, x, y, canvas);
   const deltaX = roundMm(selectedTarget[0] - selectedPoint[0]);
   const deltaY = roundMm(selectedTarget[1] - selectedPoint[1]);
   const junctions = new Map<string, VertexJunctionReference>();
@@ -1207,7 +1251,7 @@ export function movePanelVertexWithSnap(
       const selectedEdge = edgePoints(selectedPanel, selectedEdgeIndex);
       if (!selectedEdge) return;
       const fixedPoint = selectedEdgeIndex === vertexIndex ? selectedEdge[1] : selectedEdge[0];
-      const candidates = vertexEdgeCandidates(panels, panelIndex, selectedPoint, fixedPoint);
+      const candidates = vertexEdgeCandidates(panels, panelIndex, selectedPoint, fixedPoint, canvas);
       const originWallCandidates = candidates.filter((candidate) => (
         // 選択点をまたぐ辺は、投影の重なりが8mm未満でも局所接合の対向壁になり得る。
         candidate.projectionMin <= PANEL_EDGE_ALIGNMENT_TOLERANCE_MM
@@ -1273,6 +1317,7 @@ export function movePanelVertexWithSnap(
       original,
       original[0] + deltaX,
       original[1] + deltaY,
+      canvas,
     );
   });
 
@@ -1325,8 +1370,8 @@ export function movePanelVertexWithSnap(
     const original = originalPanelPoints[pi]?.[vi];
     const panel = panels[pi];
     if (!original || !panel || !lines.length) return;
-    const locks = pointBoundaryLocks(panel, original);
-    const bounds = pointLegalBounds(panel, original);
+    const locks = pointBoundaryLocks(panel, original, undefined, canvas);
+    const bounds = pointLegalBounds(panel, original, canvas);
     if (locks.x !== undefined && locks.y !== undefined) {
       nextPanelPoints[pi][vi] = [locks.x, locks.y];
       return;
@@ -1400,6 +1445,7 @@ export function movePanelVertexWithSnap(
 }
 
 export function translatePanel(panel: Panel, deltaX: number, deltaY: number): void {
+  [...(panel.images ?? []), ...(panel.background_images ?? [])].forEach(image => { image.bbox.x += deltaX; image.bbox.y += deltaY; });
   if (panel.shape.type === 'rect') {
     panel.shape.x = roundMm(panel.shape.x + deltaX);
     panel.shape.y = roundMm(panel.shape.y + deltaY);
@@ -1448,7 +1494,16 @@ export function resizePanelToBounds(panel: Panel, requestedBounds: BBox): void {
       roundMm(next.y + (y - original.y) * scaleY),
     ]);
   }
-  panel.figures?.forEach((figure) => { if (figure.bbox) transformBox(figure.bbox); });
+  // Map the centre into the resized panel, but preserve artwork proportions.
+  const transformArtwork = (box: BBox) => {
+    const cx = next.x + (box.x + box.w / 2 - original.x) * scaleX;
+    const cy = next.y + (box.y + box.h / 2 - original.y) * scaleY;
+    const scale = Math.min(scaleX, scaleY);
+    box.w *= scale; box.h *= scale;
+    box.x = cx - box.w / 2; box.y = cy - box.h / 2;
+  };
+  [...(panel.images ?? []), ...(panel.background_images ?? [])].forEach(image => transformArtwork(image.bbox));
+  panel.figures?.forEach((figure) => { if (figure.bbox) (figure.artwork ? transformArtwork : transformBox)(figure.bbox); });
   panel.bubbles.forEach((bubble) => { if (bubble.bbox) transformBox(bubble.bbox); });
   panel.screen_text?.forEach((screenText) => { if (screenText.bbox) transformBox(screenText.bbox); });
 }

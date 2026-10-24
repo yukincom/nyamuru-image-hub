@@ -1,0 +1,3375 @@
+{
+  "schema_version": 1,
+  "status": "curated_and_locally_validated_for_parent_review",
+  "scope": "172 candidates created; 3 exact legacy duplicates recommended for exclusion on integration; no training or model inference performed",
+  "counts": {
+    "candidate_rows": 172,
+    "raw_unchanged": 88,
+    "derived_synthetic": 84,
+    "unique_original_source_records": 156,
+    "allowed_split": {
+      "train": 148,
+      "dev": 8,
+      "test": 16
+    },
+    "raw_by_split_label": {
+      "train:not_command": 32,
+      "train:out_of_scope_request": 32,
+      "dev:not_command": 4,
+      "dev:out_of_scope_request": 4,
+      "test:not_command": 8,
+      "test:out_of_scope_request": 8
+    },
+    "adapted_by_label": {
+      "save": 6,
+      "undo": 6,
+      "redo": 6,
+      "page_navigate": 6,
+      "view_change": 6,
+      "artwork_mode_set": 6,
+      "bubble_set": 6,
+      "panel_sync_set": 6,
+      "inner_frame_snap_set": 6,
+      "panel_gap_snap_set": 6,
+      "generate_request": 6,
+      "background_3d_candidates": 6,
+      "paint_tool_set": 6,
+      "text_frames_align": 6
+    },
+    "recommended_accepted_after_exact_dedup": 169
+  },
+  "source": {
+    "corpus": "Amazon MASSIVE 1.1",
+    "locale": "ja-JP",
+    "official_archive_url": "https://amazon-massive-nlu-dataset.s3.amazonaws.com/amazon-massive-dataset-1.1.tar.gz",
+    "official_archive_member": "1.1/data/ja-JP.jsonl",
+    "local_path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/public-datasets-20261018/massive-1.1/ja-JP.jsonl",
+    "sha256": "c22df382db6aa4a23dd1e7f62a2ac8f01c6158865771ad25201696be7201ab79",
+    "source_rows": 16521,
+    "official_partition_counts": {
+      "test": 2974,
+      "train": 11514,
+      "dev": 2033
+    },
+    "selected_source_file": "selected-source.jsonl",
+    "selected_source_sha256": "b24e18ac3af19d333089b5433dc4d74c57308e39988895e93ac8eba5f34f8d64"
+  },
+  "license": {
+    "name": "Creative Commons Attribution 4.0 International",
+    "spdx": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "local_license_path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/artifacts/public-datasets-20261018/massive-1.1/LICENSE",
+    "local_license_sha256": "c2e6ea015269147de02117ebdd91f30ef09831251f5345fa8365273b1db1d435",
+    "copyright": "Copyright Amazon.com Inc. or its affiliates.",
+    "attribution": "Amazon MASSIVE 1.1 ja-JP, Amazon.com Inc. or its affiliates, CC BY 4.0. Source: https://amazon-massive-nlu-dataset.s3.amazonaws.com/amazon-massive-dataset-1.1.tar.gz . Raw selections preserve original Japanese utterance text and remap only the intent label. Adapted selections change domain, target, wording and sometimes request form; each change is identified in the adaptation field.",
+    "raw_vs_adapted": "raw is original human-localized corpus wording, not natural Nyamuru user logs. adapted is newly authored synthetic app wording inspired by source records; it is not human app speech and is not evidence of production quality. Retain source attribution and change notice for both sets; do not fold derived provenance silently into a project software license."
+  },
+  "partition_policy": {
+    "train_original_topics": [
+      "qa_factoid",
+      "qa_definition",
+      "weather_query",
+      "datetime_query",
+      "home controls",
+      "media controls",
+      "lists",
+      "alarms",
+      "calendar"
+    ],
+    "dev_original_topics": [
+      "qa_stock",
+      "social_post"
+    ],
+    "test_original_topics": [
+      "email_query",
+      "email_sendemail",
+      "transport_query",
+      "transport_taxi",
+      "transport_ticket"
+    ],
+    "official_split_preserved": true,
+    "adaptations_train_only": true,
+    "source_topic_families_single_pool": true,
+    "global_cross_split_normalized_source_keys_excluded": 298,
+    "all_selected_originals_have_one_official_partition": true,
+    "selected_source_cross_pool_pairs_checked": 3296,
+    "selected_source_cross_pool_max_ratio": 0.47619047619047616,
+    "selected_source_cross_pool_top10": [
+      {
+        "source_a": "3814",
+        "split_a": "train",
+        "text_a": "明日は寒いですか",
+        "source_b": "14920",
+        "split_b": "dev",
+        "text_b": "イオンの株価はいくらですか",
+        "ratio": 0.47619047619047616
+      },
+      {
+        "source_a": "14920",
+        "split_a": "dev",
+        "text_a": "イオンの株価はいくらですか",
+        "source_b": "12618",
+        "split_b": "test",
+        "text_b": "名古屋までの電車の往復乗車券はいくらですか",
+        "ratio": 0.47058823529411764
+      },
+      {
+        "source_a": "14920",
+        "split_a": "dev",
+        "text_a": "イオンの株価はいくらですか",
+        "source_b": "5213",
+        "split_b": "train",
+        "text_b": "インドの音楽が聴きたいです",
+        "ratio": 0.46153846153846156
+      },
+      {
+        "source_a": "976",
+        "split_a": "train",
+        "text_a": "ニューヨークは今何時ですか",
+        "source_b": "14088",
+        "split_b": "dev",
+        "text_b": "フェースブックの現在の株価は何ですか",
+        "ratio": 0.45161290322580644
+      },
+      {
+        "source_a": "14796",
+        "split_a": "dev",
+        "text_a": "google の株価はいくらですか",
+        "source_b": "12618",
+        "split_b": "test",
+        "text_b": "名古屋までの電車の往復乗車券はいくらですか",
+        "ratio": 0.43243243243243246
+      },
+      {
+        "source_a": "14387",
+        "split_a": "train",
+        "text_a": "横浜は川崎の近くですか",
+        "source_b": "14920",
+        "split_b": "dev",
+        "text_b": "イオンの株価はいくらですか",
+        "ratio": 0.4166666666666667
+      },
+      {
+        "source_a": "3814",
+        "split_a": "train",
+        "text_a": "明日は寒いですか",
+        "source_b": "14796",
+        "split_b": "dev",
+        "text_b": "google の株価はいくらですか",
+        "ratio": 0.4166666666666667
+      },
+      {
+        "source_a": "2300",
+        "split_a": "train",
+        "text_a": "今年の十三日の金曜日はいつですか",
+        "source_b": "14920",
+        "split_b": "dev",
+        "text_b": "イオンの株価はいくらですか",
+        "ratio": 0.41379310344827586
+      },
+      {
+        "source_a": "12802",
+        "split_a": "test",
+        "text_a": "東京行きの電車の切符を予約して",
+        "source_b": "5441",
+        "split_b": "train",
+        "text_b": "wemo の電源を消して",
+        "ratio": 0.38461538461538464
+      },
+      {
+        "source_a": "1772",
+        "split_a": "train",
+        "text_a": "午後五時にアラームをセットしてください",
+        "source_b": "16419",
+        "split_b": "test",
+        "text_b": "できるよと鈴木おじさんにメールを送ってください",
+        "ratio": 0.38095238095238093
+      }
+    ],
+    "similarity_limit": "SequenceMatcher is a screening measure, not proof of semantic independence. All 172 candidates were read semantically; parent must also compare new app dev/test before final freeze."
+  },
+  "local_validator": {
+    "script": "validate-and-review.py",
+    "expected_exact_row_keys": [
+      "adaptation",
+      "allowed_split",
+      "group",
+      "id",
+      "label",
+      "note",
+      "original_corpus",
+      "original_id",
+      "original_label",
+      "original_partition",
+      "original_text",
+      "review_status",
+      "slots",
+      "source",
+      "tags",
+      "text"
+    ],
+    "rows_checked": 172,
+    "ids_unique": true,
+    "normalized_text_unique_within_new": true,
+    "labels_valid": true,
+    "slots_match_contract": true,
+    "raw_text_unchanged": true,
+    "original_text_label_partition_match_official_file": true,
+    "complete_source_records_match_official_file": true,
+    "selected_source_quality": "Every retained original has intent_score=1, slots_score=1, grammar_score>=3 for all supplied judgments. These judgments do not assess remapped labels or adapted text.",
+    "group_and_original_id_do_not_cross_pool": true,
+    "model_inference_or_training_performed": false,
+    "old_predictions_read": false
+  },
+  "semantic_review": {
+    "all_rows_reviewed": true,
+    "input_boundary": "text is the only classifier input. Slots, source labels, original_text, annotation and group are metadata, not BERT inputs.",
+    "raw_mapping_policy": "fact, method and state questions map to not_command; explicit unsupported action requests map to out_of_scope_request. Question-form requests remain actions. Nominal/plan/unknown-reference ambiguities were rejected.",
+    "derived_policy": "14 existing dispatch-oriented labels, six examples each before dedup. No model-output claim. Known pending capabilities such as text frames and clip_to_panel remain pending.",
+    "critical_cases": [
+      {
+        "id": "nyamuru_massive_adapt_003",
+        "finding": "理由節の「消したくない」は不実行の独立命令でなく保存依頼の動機。saveのみ。"
+      },
+      {
+        "id": "nyamuru_massive_adapt_015",
+        "finding": "「戻して」単独でなく、さっきUndoした編集を履歴のやり直しで戻すと明示しているのでredo。"
+      },
+      {
+        "id": "nyamuru_massive_adapt_042",
+        "finding": "clip_to_panel=trueの分類例。UI検証待ちの前提をnoteに保持。"
+      },
+      {
+        "id": "nyamuru_massive_adapt_048",
+        "finding": "使わない設定にする希望はoffへの現在の変更依頼であり、設定変更禁止ではない。"
+      },
+      {
+        "id": "nyamuru_massive_adapt_065",
+        "finding": "元文のリスト作成から人名付き画像生成へ大きく変更。人間の原文ではなく出典付き合成であることを明示。"
+      },
+      {
+        "id": "nyamuru_massive_adapt_072",
+        "finding": "選ぶ+提示するは登録済み背景候補の一つの専用workflow。自動配置は依頼していない。"
+      },
+      {
+        "ids": [
+          "nyamuru_massive_adapt_079",
+          "nyamuru_massive_adapt_080",
+          "nyamuru_massive_adapt_081",
+          "nyamuru_massive_adapt_082",
+          "nyamuru_massive_adapt_083",
+          "nyamuru_massive_adapt_084"
+        ],
+        "finding": "独立した複数文字枠の上端揃え。実装待ちの前提を保持。"
+      }
+    ]
+  },
+  "row_mapping_rationales": [
+    {
+      "id": "nyamuru_massive_raw_13248",
+      "target_label": "not_command",
+      "original_id": "13248",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14491",
+      "target_label": "not_command",
+      "original_id": "14491",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13912",
+      "target_label": "not_command",
+      "original_id": "13912",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13633",
+      "target_label": "not_command",
+      "original_id": "13633",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13622",
+      "target_label": "not_command",
+      "original_id": "13622",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13449",
+      "target_label": "not_command",
+      "original_id": "13449",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14462",
+      "target_label": "not_command",
+      "original_id": "14462",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13116",
+      "target_label": "not_command",
+      "original_id": "13116",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14786",
+      "target_label": "not_command",
+      "original_id": "14786",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13845",
+      "target_label": "not_command",
+      "original_id": "13845",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14319",
+      "target_label": "not_command",
+      "original_id": "14319",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14387",
+      "target_label": "not_command",
+      "original_id": "14387",
+      "original_label": "qa_factoid",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。人物・地理に関する事実の質問で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13560",
+      "target_label": "not_command",
+      "original_id": "13560",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13562",
+      "target_label": "not_command",
+      "original_id": "13562",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13771",
+      "target_label": "not_command",
+      "original_id": "13771",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13092",
+      "target_label": "not_command",
+      "original_id": "13092",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13070",
+      "target_label": "not_command",
+      "original_id": "13070",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14436",
+      "target_label": "not_command",
+      "original_id": "14436",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14013",
+      "target_label": "not_command",
+      "original_id": "14013",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_13561",
+      "target_label": "not_command",
+      "original_id": "13561",
+      "original_label": "qa_definition",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。語句の意味・定義を尋ねる説明要求で、編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_3814",
+      "target_label": "not_command",
+      "original_id": "3814",
+      "original_label": "weather_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。天候・予報についての状態質問で、設定変更の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_6038",
+      "target_label": "not_command",
+      "original_id": "6038",
+      "original_label": "weather_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。天候・予報についての状態質問で、設定変更の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4414",
+      "target_label": "not_command",
+      "original_id": "4414",
+      "original_label": "weather_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。天候・予報についての状態質問で、設定変更の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_3505",
+      "target_label": "not_command",
+      "original_id": "3505",
+      "original_label": "weather_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。天候・予報についての状態質問で、設定変更の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_3355",
+      "target_label": "not_command",
+      "original_id": "3355",
+      "original_label": "weather_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。天候・予報についての状態質問で、設定変更の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4051",
+      "target_label": "not_command",
+      "original_id": "4051",
+      "original_label": "weather_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。天候・予報についての状態質問で、設定変更の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_976",
+      "target_label": "not_command",
+      "original_id": "976",
+      "original_label": "datetime_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。日時・時差・暦についての事実質問で、アラーム設定などの操作依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4193",
+      "target_label": "not_command",
+      "original_id": "4193",
+      "original_label": "datetime_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。日時・時差・暦についての事実質問で、アラーム設定などの操作依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_2300",
+      "target_label": "not_command",
+      "original_id": "2300",
+      "original_label": "datetime_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。日時・時差・暦についての事実質問で、アラーム設定などの操作依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_8071",
+      "target_label": "not_command",
+      "original_id": "8071",
+      "original_label": "datetime_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。日時・時差・暦についての事実質問で、アラーム設定などの操作依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_5897",
+      "target_label": "not_command",
+      "original_id": "5897",
+      "original_label": "datetime_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。日時・時差・暦についての事実質問で、アラーム設定などの操作依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4956",
+      "target_label": "not_command",
+      "original_id": "4956",
+      "original_label": "datetime_query",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。日時・時差・暦についての事実質問で、アラーム設定などの操作依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1889",
+      "target_label": "out_of_scope_request",
+      "original_id": "1889",
+      "original_label": "iot_hue_lighton",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4150",
+      "target_label": "out_of_scope_request",
+      "original_id": "4150",
+      "original_label": "iot_hue_lighton",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_3523",
+      "target_label": "out_of_scope_request",
+      "original_id": "3523",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_2121",
+      "target_label": "out_of_scope_request",
+      "original_id": "2121",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4825",
+      "target_label": "out_of_scope_request",
+      "original_id": "4825",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4027",
+      "target_label": "out_of_scope_request",
+      "original_id": "4027",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1074",
+      "target_label": "out_of_scope_request",
+      "original_id": "1074",
+      "original_label": "iot_hue_lightdim",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1418",
+      "target_label": "out_of_scope_request",
+      "original_id": "1418",
+      "original_label": "iot_hue_lightup",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1552",
+      "target_label": "out_of_scope_request",
+      "original_id": "1552",
+      "original_label": "iot_wemo_on",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_3395",
+      "target_label": "out_of_scope_request",
+      "original_id": "3395",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4586",
+      "target_label": "out_of_scope_request",
+      "original_id": "4586",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1598",
+      "target_label": "out_of_scope_request",
+      "original_id": "1598",
+      "original_label": "iot_cleaning",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_2260",
+      "target_label": "out_of_scope_request",
+      "original_id": "2260",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_9809",
+      "target_label": "out_of_scope_request",
+      "original_id": "9809",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_5680",
+      "target_label": "out_of_scope_request",
+      "original_id": "5680",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4056",
+      "target_label": "out_of_scope_request",
+      "original_id": "4056",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_9251",
+      "target_label": "out_of_scope_request",
+      "original_id": "9251",
+      "original_label": "play_radio",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_9265",
+      "target_label": "out_of_scope_request",
+      "original_id": "9265",
+      "original_label": "play_radio",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_11307",
+      "target_label": "out_of_scope_request",
+      "original_id": "11307",
+      "original_label": "play_podcasts",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_11448",
+      "target_label": "out_of_scope_request",
+      "original_id": "11448",
+      "original_label": "play_podcasts",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_11069",
+      "target_label": "out_of_scope_request",
+      "original_id": "11069",
+      "original_label": "lists_createoradd",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_10592",
+      "target_label": "out_of_scope_request",
+      "original_id": "10592",
+      "original_label": "lists_createoradd",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_10810",
+      "target_label": "out_of_scope_request",
+      "original_id": "10810",
+      "original_label": "lists_remove",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_11223",
+      "target_label": "out_of_scope_request",
+      "original_id": "11223",
+      "original_label": "lists_remove",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_4095",
+      "target_label": "out_of_scope_request",
+      "original_id": "4095",
+      "original_label": "alarm_set",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1772",
+      "target_label": "out_of_scope_request",
+      "original_id": "1772",
+      "original_label": "alarm_set",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1977",
+      "target_label": "out_of_scope_request",
+      "original_id": "1977",
+      "original_label": "alarm_remove",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_1004",
+      "target_label": "out_of_scope_request",
+      "original_id": "1004",
+      "original_label": "alarm_remove",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_8167",
+      "target_label": "out_of_scope_request",
+      "original_id": "8167",
+      "original_label": "calendar_set",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_7366",
+      "target_label": "out_of_scope_request",
+      "original_id": "7366",
+      "original_label": "calendar_set",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_8862",
+      "target_label": "out_of_scope_request",
+      "original_id": "8862",
+      "original_label": "calendar_remove",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_6736",
+      "target_label": "out_of_scope_request",
+      "original_id": "6736",
+      "original_label": "calendar_remove",
+      "original_partition": "train",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。対象と操作を明示した現在の実行依頼だが、家電・メディア・リスト・予定管理はNyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14920",
+      "target_label": "not_command",
+      "original_id": "14920",
+      "original_label": "qa_stock",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。株価についての情報質問で、売買や編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14796",
+      "target_label": "not_command",
+      "original_id": "14796",
+      "original_label": "qa_stock",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。株価についての情報質問で、売買や編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14088",
+      "target_label": "not_command",
+      "original_id": "14088",
+      "original_label": "qa_stock",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。株価についての情報質問で、売買や編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14301",
+      "target_label": "not_command",
+      "original_id": "14301",
+      "original_label": "qa_stock",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。株価についての情報質問で、売買や編集操作の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_15193",
+      "target_label": "out_of_scope_request",
+      "original_id": "15193",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。投稿先と投稿内容を伴うSNS公開の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_15541",
+      "target_label": "out_of_scope_request",
+      "original_id": "15541",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。投稿先と投稿内容を伴うSNS公開の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_15596",
+      "target_label": "out_of_scope_request",
+      "original_id": "15596",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。投稿先と投稿内容を伴うSNS公開の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_15533",
+      "target_label": "out_of_scope_request",
+      "original_id": "15533",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。投稿先と投稿内容を伴うSNS公開の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16888",
+      "target_label": "not_command",
+      "original_id": "16888",
+      "original_label": "email_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。メールの有無・内容についての状態質問で、送信の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16276",
+      "target_label": "not_command",
+      "original_id": "16276",
+      "original_label": "email_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。メールの有無・内容についての状態質問で、送信の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16010",
+      "target_label": "not_command",
+      "original_id": "16010",
+      "original_label": "email_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。メールの有無・内容についての状態質問で、送信の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16178",
+      "target_label": "not_command",
+      "original_id": "16178",
+      "original_label": "email_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。メールの有無・内容についての状態質問で、送信の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12582",
+      "target_label": "not_command",
+      "original_id": "12582",
+      "original_label": "transport_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。交通手段・時刻・料金・道順についての情報質問で、乗車券予約の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12618",
+      "target_label": "not_command",
+      "original_id": "12618",
+      "original_label": "transport_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。交通手段・時刻・料金・道順についての情報質問で、乗車券予約の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12189",
+      "target_label": "not_command",
+      "original_id": "12189",
+      "original_label": "transport_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。交通手段・時刻・料金・道順についての情報質問で、乗車券予約の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_14465",
+      "target_label": "not_command",
+      "original_id": "14465",
+      "original_label": "transport_query",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。交通手段・時刻・料金・道順についての情報質問で、乗車券予約の依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16717",
+      "target_label": "out_of_scope_request",
+      "original_id": "16717",
+      "original_label": "email_sendemail",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。宛先と内容を伴うメール作成・送信・返信の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16024",
+      "target_label": "out_of_scope_request",
+      "original_id": "16024",
+      "original_label": "email_sendemail",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。宛先と内容を伴うメール作成・送信・返信の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16419",
+      "target_label": "out_of_scope_request",
+      "original_id": "16419",
+      "original_label": "email_sendemail",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。宛先と内容を伴うメール作成・送信・返信の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_16166",
+      "target_label": "out_of_scope_request",
+      "original_id": "16166",
+      "original_label": "email_sendemail",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。宛先と内容を伴うメール作成・送信・返信の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12121",
+      "target_label": "out_of_scope_request",
+      "original_id": "12121",
+      "original_label": "transport_taxi",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。タクシー配車・予約の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12716",
+      "target_label": "out_of_scope_request",
+      "original_id": "12716",
+      "original_label": "transport_taxi",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。タクシー配車・予約の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12802",
+      "target_label": "out_of_scope_request",
+      "original_id": "12802",
+      "original_label": "transport_ticket",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。行き先を伴う乗車券予約の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_raw_12814",
+      "target_label": "out_of_scope_request",
+      "original_id": "12814",
+      "original_label": "transport_ticket",
+      "original_partition": "test",
+      "literal_original": true,
+      "adaptation": "none; original utterance unchanged, target label remapped",
+      "rationale": "公開原文を変更せずラベルだけ再注釈。行き先を伴う乗車券予約の明示依頼で、Nyamuruの直接操作範囲外。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_001",
+      "target_label": "save",
+      "original_id": "1772",
+      "original_label": "alarm_set",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "時刻付きアラーム設定を現在の作品の保存へ置換。依頼の「を…してください」を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。現在の作品を既存の保存操作で保存する一つの依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_002",
+      "target_label": "save",
+      "original_id": "10714",
+      "original_label": "lists_createoradd",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "新しいリストの作成を現在の作品の保存へ置換。「してくれる」という依頼形を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。現在の作品を既存の保存操作で保存する一つの依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_003",
+      "target_label": "save",
+      "original_id": "592",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音楽再生と理由の二文構成を保存と消失回避の理由へ置換。理由文は別操作ではない。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。現在の作品を既存の保存操作で保存する一つの依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_004",
+      "target_label": "save",
+      "original_id": "1168",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "飲み物の受領を作品保存へ置換。丁寧な疑問形の依頼を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。現在の作品を既存の保存操作で保存する一つの依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_005",
+      "target_label": "save",
+      "original_id": "3180",
+      "original_label": "alarm_set",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "日時指定のアラーム設定を現在の作品保存へ置換。「してほしい」を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。現在の作品を既存の保存操作で保存する一つの依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_006",
+      "target_label": "save",
+      "original_id": "10592",
+      "original_label": "lists_createoradd",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "修飾句付きのリスト作成を修飾句付きの作品保存へ置換。ページだけの書出しではない。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。現在の作品を既存の保存操作で保存する一つの依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_007",
+      "target_label": "undo",
+      "original_id": "1977",
+      "original_label": "alarm_remove",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "過去に設定したアラームの解除を、完了済み編集の取消へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。完了済み編集を履歴で取り消す。移動先の指定や実行中ジョブの中止ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_008",
+      "target_label": "undo",
+      "original_id": "10874",
+      "original_label": "lists_remove",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "リスト削除を直前の編集の履歴取消へ置換。丁寧な依頼形を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。完了済み編集を履歴で取り消す。移動先の指定や実行中ジョブの中止ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_009",
+      "target_label": "undo",
+      "original_id": "5356",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "右側の照明のオフ指定を右方向に完了した編集の取消へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。完了済み編集を履歴で取り消す。移動先の指定や実行中ジョブの中止ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_010",
+      "target_label": "undo",
+      "original_id": "919",
+      "original_label": "alarm_remove",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "アラーム削除を完了したコマ移動の履歴取消へ置換。ウェイクワードを除去。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。完了済み編集を履歴で取り消す。移動先の指定や実行中ジョブの中止ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_011",
+      "target_label": "undo",
+      "original_id": "6736",
+      "original_label": "calendar_remove",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "二日間のイベントのキャンセルを二回の完了済み編集の取消へ置換。範囲と単位を変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。完了済み編集を履歴で取り消す。移動先の指定や実行中ジョブの中止ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_012",
+      "target_label": "undo",
+      "original_id": "10810",
+      "original_label": "lists_remove",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "リスト要素の削除を一件の完了済み変更のUndoへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。完了済み編集を履歴で取り消す。移動先の指定や実行中ジョブの中止ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_013",
+      "target_label": "redo",
+      "original_id": "1970",
+      "original_label": "music_settings",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "曲の三回リピートをUndo済み編集の三段階Redoへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。Undoで取り消した変更の再適用を明示している。新規生成のやり直しではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_014",
+      "target_label": "redo",
+      "original_id": "9792",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "曲の再開をUndo済み編集の再適用へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。Undoで取り消した変更の再適用を明示している。新規生成のやり直しではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_015",
+      "target_label": "redo",
+      "original_id": "1220",
+      "original_label": "music_settings",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "曲が終了した後のリピートを、既にUndoした編集の現在のRedo依頼へ変更。未来条件を除去。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。Undoで取り消した変更の再適用を明示している。新規生成のやり直しではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_016",
+      "target_label": "redo",
+      "original_id": "11337",
+      "original_label": "play_podcasts",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "保存済みポッドキャストの開始をUndo済み吹き出し編集のRedoへ置換。依頼形を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。Undoで取り消した変更の再適用を明示している。新規生成のやり直しではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_017",
+      "target_label": "redo",
+      "original_id": "9809",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "アルバム再生をUndo済み編集の再適用へ置換。二回という回数を新たに明示。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。Undoで取り消した変更の再適用を明示している。新規生成のやり直しではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_018",
+      "target_label": "redo",
+      "original_id": "549",
+      "original_label": "music_settings",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "曲の再リピートを直前のUndoで消えた変更の再適用へ置換。曖昧な元参照を具体化。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。Undoで取り消した変更の再適用を明示している。新規生成のやり直しではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_019",
+      "target_label": "page_navigate",
+      "original_id": "5151",
+      "original_label": "music_settings",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "次の曲への移動を作品内の次ページへの移動へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。作品内の表示ページを方向・番号・先頭末尾で指定する依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_020",
+      "target_label": "page_navigate",
+      "original_id": "11276",
+      "original_label": "play_podcasts",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "次のポッドキャストの再生を作品内の前ページ表示へ置換。対象と方向を変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。作品内の表示ページを方向・番号・先頭末尾で指定する依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_021",
+      "target_label": "page_navigate",
+      "original_id": "4768",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ソケットのオフ指定を先頭ページの表示へ置換。依頼形「くれるかな」を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。作品内の表示ページを方向・番号・先頭末尾で指定する依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_022",
+      "target_label": "page_navigate",
+      "original_id": "907",
+      "original_label": "iot_cleaning",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "掃除機の起動を末尾ページの表示へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。作品内の表示ページを方向・番号・先頭末尾で指定する依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_023",
+      "target_label": "page_navigate",
+      "original_id": "3872",
+      "original_label": "iot_hue_lightup",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明レベル八への変更を表示ページ八への移動へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。作品内の表示ページを方向・番号・先頭末尾で指定する依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_024",
+      "target_label": "page_navigate",
+      "original_id": "2020",
+      "original_label": "audio_volume_up",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音量二段階の上昇を二ページ先への移動へ置換。辞書形を明示的依頼へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。作品内の表示ページを方向・番号・先頭末尾で指定する依頼。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_025",
+      "target_label": "view_change",
+      "original_id": "5482",
+      "original_label": "audio_volume_down",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音量の低下を表示倍率の縮小へ置換。一段という回数を明示。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。表示倍率・見開き・特定ガイド・既存タブの表示設定であり図形の形状変更ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_026",
+      "target_label": "view_change",
+      "original_id": "5192",
+      "original_label": "audio_volume_up",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "さらに音量を上げる依頼を表示倍率の一段拡大へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。表示倍率・見開き・特定ガイド・既存タブの表示設定であり図形の形状変更ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_027",
+      "target_label": "view_change",
+      "original_id": "1507",
+      "original_label": "iot_wemo_on",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ソケットのオンを見開き表示のオンへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。表示倍率・見開き・特定ガイド・既存タブの表示設定であり図形の形状変更ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_028",
+      "target_label": "view_change",
+      "original_id": "5419",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ソケットを消す依頼を配置ガイドの非表示へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。表示倍率・見開き・特定ガイド・既存タブの表示設定であり図形の形状変更ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_029",
+      "target_label": "view_change",
+      "original_id": "2121",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明のオフを編集ガイド表示のオフへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。表示倍率・見開き・特定ガイド・既存タブの表示設定であり図形の形状変更ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_030",
+      "target_label": "view_change",
+      "original_id": "1161",
+      "original_label": "music_settings",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "イコライザーのモード設定を既存の環境設定タブへの切替へ置換。辞書形を依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。表示倍率・見開き・特定ガイド・既存タブの表示設定であり図形の形状変更ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_031",
+      "target_label": "artwork_mode_set",
+      "original_id": "4825",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の色変更を作画方式の下書き指定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。draft/integratedの明示設定だけであり、画像生成を開始する依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_032",
+      "target_label": "artwork_mode_set",
+      "original_id": "1356",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の色変更を作画設定の一体型指定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。draft/integratedの明示設定だけであり、画像生成を開始する依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_033",
+      "target_label": "artwork_mode_set",
+      "original_id": "1961",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の色への希望を作画方式の下書き指定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。draft/integratedの明示設定だけであり、画像生成を開始する依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_034",
+      "target_label": "artwork_mode_set",
+      "original_id": "5714",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の色変更という省略形を作画方式の変更へ置換し、変更先を明示。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。draft/integratedの明示設定だけであり、画像生成を開始する依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_035",
+      "target_label": "artwork_mode_set",
+      "original_id": "3376",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の割合設定を作画方式の下書き指定へ置換し、丁寧な依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。draft/integratedの明示設定だけであり、画像生成を開始する依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_036",
+      "target_label": "artwork_mode_set",
+      "original_id": "4085",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "湯を沸かす依頼を作品の作画方式指定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。draft/integratedの明示設定だけであり、画像生成を開始する依頼ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_037",
+      "target_label": "bubble_set",
+      "original_id": "498",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の色変更を選択中の吹き出しの既定形状への変更へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。形状normalを指定。素材の良し悪しの判断ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_038",
+      "target_label": "bubble_set",
+      "original_id": "1074",
+      "original_label": "iot_hue_lightdim",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明を暗くする依頼を吹き出しのしっぽ非表示へ置換。「ちょうだい」を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。しっぽの有無をfalseにする指定。吹き出し自体を削除しない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_039",
+      "target_label": "bubble_set",
+      "original_id": "1899",
+      "original_label": "iot_hue_lightup",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明の七十パーセント指定を吹き出しの七十ミリ幅へ置換。単位変更と依頼形への変更を明示。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。一つのBBoxの幅70 mmを指定。拡大率や高さは指定しない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_040",
+      "target_label": "bubble_set",
+      "original_id": "3438",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "修飾句付きプレイリストの再生を吹き出し本文の設定へ置換。本文は新しく作成。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。引用部分を本文としてそのまま設定する一操作。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_041",
+      "target_label": "bubble_set",
+      "original_id": "4167",
+      "original_label": "audio_volume_down",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音量を半分にする依頼を吹き出しの五ミリ左移動へ置換。方向・量・単位を新たに指定。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。一つのBBoxの移動量を指定。左方向なのでdxは負。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_042",
+      "target_label": "bubble_set",
+      "original_id": "983",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "場所付き照明の色変更を選択中吹き出しのコマ枠切取り設定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。clip_to_panel=trueの指定。既存契約でUI検証待ちの機能であり、実行可能との意味ではない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_043",
+      "target_label": "panel_sync_set",
+      "original_id": "4150",
+      "original_label": "iot_hue_lighton",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_044",
+      "target_label": "panel_sync_set",
+      "original_id": "3395",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_045",
+      "target_label": "panel_sync_set",
+      "original_id": "3325",
+      "original_label": "iot_wemo_on",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_046",
+      "target_label": "panel_sync_set",
+      "original_id": "1897",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_047",
+      "target_label": "panel_sync_set",
+      "original_id": "1552",
+      "original_label": "iot_wemo_on",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_048",
+      "target_label": "panel_sync_set",
+      "original_id": "4748",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_049",
+      "target_label": "inner_frame_snap_set",
+      "original_id": "212",
+      "original_label": "iot_hue_lighton",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_050",
+      "target_label": "inner_frame_snap_set",
+      "original_id": "2728",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_051",
+      "target_label": "inner_frame_snap_set",
+      "original_id": "3641",
+      "original_label": "iot_hue_lighton",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_052",
+      "target_label": "inner_frame_snap_set",
+      "original_id": "4572",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_053",
+      "target_label": "inner_frame_snap_set",
+      "original_id": "84",
+      "original_label": "iot_cleaning",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_054",
+      "target_label": "inner_frame_snap_set",
+      "original_id": "2692",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_055",
+      "target_label": "panel_gap_snap_set",
+      "original_id": "1889",
+      "original_label": "iot_hue_lighton",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_056",
+      "target_label": "panel_gap_snap_set",
+      "original_id": "5309",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_057",
+      "target_label": "panel_gap_snap_set",
+      "original_id": "1292",
+      "original_label": "iot_wemo_on",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_058",
+      "target_label": "panel_gap_snap_set",
+      "original_id": "3523",
+      "original_label": "iot_hue_lightoff",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_059",
+      "target_label": "panel_gap_snap_set",
+      "original_id": "5049",
+      "original_label": "iot_wemo_on",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを有効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_060",
+      "target_label": "panel_gap_snap_set",
+      "original_id": "5441",
+      "original_label": "iot_wemo_off",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "家電のオン・オフ表現を明示されたアプリ編集設定へ置換。主語と希望する状態を明示し、必要な箇所を現在の依頼形へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。明示された設定名だけを無効にする依頼。使わない設定への変更は不実行指示とは異なる。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_061",
+      "target_label": "generate_request",
+      "original_id": "5072",
+      "original_label": "alarm_set",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "新しいアラームの作成を選択コマ全体の画像生成へ置換。「くださいませ」を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。対象を指定した画像生成依頼。現在の一ページ・一コマ・人物・選択対象を区別し、全ページや自動配置へ広げない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_062",
+      "target_label": "generate_request",
+      "original_id": "1570",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "カプチーノを作る依頼を現在の一ページ全体の画像生成へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。対象を指定した画像生成依頼。現在の一ページ・一コマ・人物・選択対象を区別し、全ページや自動配置へ広げない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_063",
+      "target_label": "generate_request",
+      "original_id": "5916",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "カプチーノを作る依頼を選択キャラクターの画像生成へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。対象を指定した画像生成依頼。現在の一ページ・一コマ・人物・選択対象を区別し、全ページや自動配置へ広げない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_064",
+      "target_label": "generate_request",
+      "original_id": "3424",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "時刻付きコーヒー設定を番号付きコマ画像生成へ置換。四は時刻からコマの表示番号へ意味を変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。対象を指定した画像生成依頼。現在の一ページ・一コマ・人物・選択対象を区別し、全ページや自動配置へ広げない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_065",
+      "target_label": "generate_request",
+      "original_id": "10535",
+      "original_label": "lists_createoradd",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "新しいリスト作成を名前付きキャラクター画像の生成へ置換。名前を新しく指定し、辞書形を依頼形に変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。対象を指定した画像生成依頼。現在の一ページ・一コマ・人物・選択対象を区別し、全ページや自動配置へ広げない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_066",
+      "target_label": "generate_request",
+      "original_id": "8523",
+      "original_label": "calendar_set",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "カレンダーイベントの作成を明示選択した対象の画像生成へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。対象を指定した画像生成依頼。現在の一ページ・一コマ・人物・選択対象を区別し、全ページや自動配置へ広げない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_067",
+      "target_label": "background_3d_candidates",
+      "original_id": "9452",
+      "original_label": "play_radio",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ラジオ検索を登録済み3D背景の候補検索へ置換。外部検索を含めない範囲を明示。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。登録済み3Dモデルから背景候補を提示する専用依頼。候補の選択判断を伴ってもneeds_reasoningへ移さず、配置や外部取得はしない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_068",
+      "target_label": "background_3d_candidates",
+      "original_id": "653",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ジャンル指定の音楽探索を登録済み3Dの公園背景候補探索へ置換。丁寧な依頼形を利用。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。登録済み3Dモデルから背景候補を提示する専用依頼。候補の選択判断を伴ってもneeds_reasoningへ移さず、配置や外部取得はしない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_069",
+      "target_label": "background_3d_candidates",
+      "original_id": "5213",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音楽を聴きたいという希望を登録済み3Dの駅背景候補の明示提示依頼へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。登録済み3Dモデルから背景候補を提示する専用依頼。候補の選択判断を伴ってもneeds_reasoningへ移さず、配置や外部取得はしない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_070",
+      "target_label": "background_3d_candidates",
+      "original_id": "11308",
+      "original_label": "play_podcasts",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "健康分野のポッドキャストを聴く希望を病院の3D背景候補三件の明示提示依頼へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。登録済み3Dモデルから背景候補を提示する専用依頼。候補の選択判断を伴ってもneeds_reasoningへ移さず、配置や外部取得はしない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_071",
+      "target_label": "background_3d_candidates",
+      "original_id": "9251",
+      "original_label": "play_radio",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ジャンル指定のラジオ再生を登録済み3Dの街背景候補提示へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。登録済み3Dモデルから背景候補を提示する専用依頼。候補の選択判断を伴ってもneeds_reasoningへ移さず、配置や外部取得はしない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_072",
+      "target_label": "background_3d_candidates",
+      "original_id": "164",
+      "original_label": "iot_coffee",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "コーヒーへの希望を登録済み3D背景候補二件の明示提示依頼へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。登録済み3Dモデルから背景候補を提示する専用依頼。候補の選択判断を伴ってもneeds_reasoningへ移さず、配置や外部取得はしない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_073",
+      "target_label": "paint_tool_set",
+      "original_id": "9415",
+      "original_label": "play_radio",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "ラジオの切替を描画用のベクターペン切替へ置換。切替先と依頼形を明示。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。今後描くペンの指定。既存の絵やレイヤーの変換、線を描く実行は含まない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_074",
+      "target_label": "paint_tool_set",
+      "original_id": "2252",
+      "original_label": "play_music",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "曲の変更を描画ペンのラスター指定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。今後描くペンの指定。既存の絵やレイヤーの変換、線を描く実行は含まない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_075",
+      "target_label": "paint_tool_set",
+      "original_id": "2572",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明色の変更を描画ペンのベクター指定へ置換し依頼形に変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。今後描くペンの指定。既存の絵やレイヤーの変換、線を描く実行は含まない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_076",
+      "target_label": "paint_tool_set",
+      "original_id": "2746",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明色の変更を描画ペンのラスター指定へ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。今後描くペンの指定。既存の絵やレイヤーの変換、線を描く実行は含まない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_077",
+      "target_label": "paint_tool_set",
+      "original_id": "1213",
+      "original_label": "iot_hue_lightchange",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "青い照明の依頼をベクターペンの選択依頼へ置換。ウェイクワードを除去。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。今後描くペンの指定。既存の絵やレイヤーの変換、線を描く実行は含まない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_078",
+      "target_label": "paint_tool_set",
+      "original_id": "2881",
+      "original_label": "music_settings",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "曲のリピート設定をラスターペン選択へ置換。省略形を明示的依頼へ変更。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。今後描くペンの指定。既存の絵やレイヤーの変換、線を描く実行は含まない。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_079",
+      "target_label": "text_frames_align",
+      "original_id": "4945",
+      "original_label": "iot_cleaning",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "場所指定の掃除依頼を複数選択文字枠の上端揃えへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。複数選択した独立文字枠の上端揃え。一文章の行揃えや吹き出し輪郭の整列ではない。既存契約の独立文字枠・複数選択実装待ちという前提を維持。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_080",
+      "target_label": "text_frames_align",
+      "original_id": "1418",
+      "original_label": "iot_hue_lightup",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "照明を明るくする依頼を複数選択文字枠の上端揃えへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。複数選択した独立文字枠の上端揃え。一文章の行揃えや吹き出し輪郭の整列ではない。既存契約の独立文字枠・複数選択実装待ちという前提を維持。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_081",
+      "target_label": "text_frames_align",
+      "original_id": "3738",
+      "original_label": "audio_volume_down",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音量を快適に調整する依頼を文字枠の明示的な上端揃えへ置換。判断を要する快適さ指定は除去。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。複数選択した独立文字枠の上端揃え。一文章の行揃えや吹き出し輪郭の整列ではない。既存契約の独立文字枠・複数選択実装待ちという前提を維持。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_082",
+      "target_label": "text_frames_align",
+      "original_id": "5277",
+      "original_label": "audio_volume_up",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "音量を上げる依頼を別々の吹き出しにある選択文字枠の上端揃えへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。複数選択した独立文字枠の上端揃え。一文章の行揃えや吹き出し輪郭の整列ではない。既存契約の独立文字枠・複数選択実装待ちという前提を維持。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_083",
+      "target_label": "text_frames_align",
+      "original_id": "3693",
+      "original_label": "alarm_set",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "時刻付きアラーム設定の希望を複数選択文字枠の上端揃えへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。複数選択した独立文字枠の上端揃え。一文章の行揃えや吹き出し輪郭の整列ではない。既存契約の独立文字枠・複数選択実装待ちという前提を維持。"
+    },
+    {
+      "id": "nyamuru_massive_adapt_084",
+      "target_label": "text_frames_align",
+      "original_id": "10547",
+      "original_label": "lists_remove",
+      "original_partition": "train",
+      "literal_original": false,
+      "adaptation": "リスト削除の依頼を複数選択文字枠の上端揃えへ置換。",
+      "rationale": "公開原文を語調の種にしたCodex作成のドメイン派生。人間のアプリ操作発話ではない。複数選択した独立文字枠の上端揃え。一文章の行揃えや吹き出し輪郭の整列ではない。既存契約の独立文字枠・複数選択実装待ちという前提を維持。"
+    }
+  ],
+  "ambiguous_rejected_examples": [
+    {
+      "original_id": "15342",
+      "original_text": "アメリカに誕生日おめでとうとお祝いを facebook に載せる",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "辞書形「載せる」で現在の実行依頼か本人の予定かを本文だけでは一意に決めにくく、raw devから除外して15596へ差替え。"
+    },
+    {
+      "original_id": "15559",
+      "original_text": "tumblr に今お楽しみ中と投稿",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "「と投稿」という名詞終止の省略で明示依頼性が弱いため、raw devから除外して15541へ差替え。"
+    },
+    {
+      "original_id": "15242",
+      "original_text": "facebook ステータスが忙しい日",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "「facebook ステータスが忙しい日」は状態・内容の断片で明示的な投稿依頼ではない。"
+    },
+    {
+      "original_id": "15269",
+      "original_text": "よし facebook にこれを投稿して",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "「これを投稿して」の投稿対象が発話だけでは不明なため不採用。"
+    },
+    {
+      "original_id": "15374",
+      "original_text": "facebook のステータスにこれを載せたい",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "「これを載せたい」は未特定参照と希望であり、実行依頼として採らない。"
+    },
+    {
+      "original_id": "15458",
+      "original_text": "サイゼリアで最悪のサービスを受けたから tweet しなくちゃ",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "「tweet しなくちゃ」は本人の予定・独り言にも読めるため不採用。"
+    },
+    {
+      "original_id": "15725",
+      "original_text": "ツイッターにステータスを投稿したい",
+      "original_label": "social_post",
+      "original_partition": "dev",
+      "reason": "「ステータスを投稿したい」は希望と明示的依頼の境界が曖昧で投稿内容も不足するため不採用。"
+    }
+  ],
+  "source_family_links": [
+    {
+      "family": "massive_source_alarm_controls",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_4095",
+        "nyamuru_massive_raw_1772",
+        "nyamuru_massive_raw_1977",
+        "nyamuru_massive_raw_1004",
+        "nyamuru_massive_adapt_001",
+        "nyamuru_massive_adapt_005",
+        "nyamuru_massive_adapt_007",
+        "nyamuru_massive_adapt_010",
+        "nyamuru_massive_adapt_061",
+        "nyamuru_massive_adapt_083"
+      ],
+      "original_ids": [
+        "919",
+        "1004",
+        "1772",
+        "1977",
+        "3180",
+        "3693",
+        "4095",
+        "5072"
+      ],
+      "groups": [
+        "massive_adapt_generation",
+        "massive_adapt_history",
+        "massive_adapt_save",
+        "massive_adapt_text_frames",
+        "massive_alarm_remove",
+        "massive_alarm_set"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_calendar_controls",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_8167",
+        "nyamuru_massive_raw_7366",
+        "nyamuru_massive_raw_8862",
+        "nyamuru_massive_raw_6736",
+        "nyamuru_massive_adapt_011",
+        "nyamuru_massive_adapt_066"
+      ],
+      "original_ids": [
+        "6736",
+        "7366",
+        "8167",
+        "8523",
+        "8862"
+      ],
+      "groups": [
+        "massive_adapt_generation",
+        "massive_adapt_history",
+        "massive_calendar_remove",
+        "massive_calendar_set"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_datetime_query",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_976",
+        "nyamuru_massive_raw_4193",
+        "nyamuru_massive_raw_2300",
+        "nyamuru_massive_raw_8071",
+        "nyamuru_massive_raw_5897",
+        "nyamuru_massive_raw_4956"
+      ],
+      "original_ids": [
+        "976",
+        "2300",
+        "4193",
+        "4956",
+        "5897",
+        "8071"
+      ],
+      "groups": [
+        "massive_datetime_query"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_email",
+      "allowed_split": "test",
+      "candidate_ids": [
+        "nyamuru_massive_raw_16888",
+        "nyamuru_massive_raw_16276",
+        "nyamuru_massive_raw_16010",
+        "nyamuru_massive_raw_16178",
+        "nyamuru_massive_raw_16717",
+        "nyamuru_massive_raw_16024",
+        "nyamuru_massive_raw_16419",
+        "nyamuru_massive_raw_16166"
+      ],
+      "original_ids": [
+        "16010",
+        "16024",
+        "16166",
+        "16178",
+        "16276",
+        "16419",
+        "16717",
+        "16888"
+      ],
+      "groups": [
+        "massive_email_query",
+        "massive_email_sendemail"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_home_control_states",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_1889",
+        "nyamuru_massive_raw_4150",
+        "nyamuru_massive_raw_3523",
+        "nyamuru_massive_raw_2121",
+        "nyamuru_massive_raw_4825",
+        "nyamuru_massive_raw_4027",
+        "nyamuru_massive_raw_1074",
+        "nyamuru_massive_raw_1418",
+        "nyamuru_massive_raw_1552",
+        "nyamuru_massive_raw_3395",
+        "nyamuru_massive_adapt_009",
+        "nyamuru_massive_adapt_021",
+        "nyamuru_massive_adapt_023",
+        "nyamuru_massive_adapt_027",
+        "nyamuru_massive_adapt_028",
+        "nyamuru_massive_adapt_029",
+        "nyamuru_massive_adapt_031",
+        "nyamuru_massive_adapt_032",
+        "nyamuru_massive_adapt_033",
+        "nyamuru_massive_adapt_034",
+        "nyamuru_massive_adapt_035",
+        "nyamuru_massive_adapt_037",
+        "nyamuru_massive_adapt_038",
+        "nyamuru_massive_adapt_039",
+        "nyamuru_massive_adapt_042",
+        "nyamuru_massive_adapt_043",
+        "nyamuru_massive_adapt_044",
+        "nyamuru_massive_adapt_045",
+        "nyamuru_massive_adapt_046",
+        "nyamuru_massive_adapt_047",
+        "nyamuru_massive_adapt_048",
+        "nyamuru_massive_adapt_049",
+        "nyamuru_massive_adapt_050",
+        "nyamuru_massive_adapt_051",
+        "nyamuru_massive_adapt_052",
+        "nyamuru_massive_adapt_054",
+        "nyamuru_massive_adapt_055",
+        "nyamuru_massive_adapt_056",
+        "nyamuru_massive_adapt_057",
+        "nyamuru_massive_adapt_058",
+        "nyamuru_massive_adapt_059",
+        "nyamuru_massive_adapt_060",
+        "nyamuru_massive_adapt_075",
+        "nyamuru_massive_adapt_076",
+        "nyamuru_massive_adapt_077",
+        "nyamuru_massive_adapt_080"
+      ],
+      "original_ids": [
+        "212",
+        "498",
+        "983",
+        "1074",
+        "1213",
+        "1292",
+        "1356",
+        "1418",
+        "1507",
+        "1552",
+        "1889",
+        "1897",
+        "1899",
+        "1961",
+        "2121",
+        "2572",
+        "2692",
+        "2728",
+        "2746",
+        "3325",
+        "3376",
+        "3395",
+        "3523",
+        "3641",
+        "3872",
+        "4027",
+        "4150",
+        "4572",
+        "4748",
+        "4768",
+        "4825",
+        "5049",
+        "5309",
+        "5356",
+        "5419",
+        "5441",
+        "5714"
+      ],
+      "groups": [
+        "massive_adapt_artwork_mode",
+        "massive_adapt_bubble_clip",
+        "massive_adapt_bubble_dimension",
+        "massive_adapt_bubble_shape",
+        "massive_adapt_bubble_tail",
+        "massive_adapt_history",
+        "massive_adapt_page_navigation",
+        "massive_adapt_paint",
+        "massive_adapt_setting_polarity",
+        "massive_adapt_text_frames",
+        "massive_adapt_visual_toggle",
+        "massive_iot_hue_lightchange",
+        "massive_iot_hue_lightdim",
+        "massive_iot_hue_lightoff",
+        "massive_iot_hue_lighton",
+        "massive_iot_hue_lightup",
+        "massive_iot_wemo_off",
+        "massive_iot_wemo_on"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_iot_cleaning",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_1598",
+        "nyamuru_massive_adapt_022",
+        "nyamuru_massive_adapt_053",
+        "nyamuru_massive_adapt_079"
+      ],
+      "original_ids": [
+        "84",
+        "907",
+        "1598",
+        "4945"
+      ],
+      "groups": [
+        "massive_adapt_page_navigation",
+        "massive_adapt_setting_polarity",
+        "massive_adapt_text_frames",
+        "massive_iot_cleaning"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_iot_coffee",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_4586",
+        "nyamuru_massive_adapt_004",
+        "nyamuru_massive_adapt_036",
+        "nyamuru_massive_adapt_062",
+        "nyamuru_massive_adapt_063",
+        "nyamuru_massive_adapt_064",
+        "nyamuru_massive_adapt_072"
+      ],
+      "original_ids": [
+        "164",
+        "1168",
+        "1570",
+        "3424",
+        "4085",
+        "4586",
+        "5916"
+      ],
+      "groups": [
+        "massive_adapt_artwork_mode",
+        "massive_adapt_background",
+        "massive_adapt_generation",
+        "massive_adapt_save",
+        "massive_iot_coffee"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_list_controls",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_11069",
+        "nyamuru_massive_raw_10592",
+        "nyamuru_massive_raw_10810",
+        "nyamuru_massive_raw_11223",
+        "nyamuru_massive_adapt_002",
+        "nyamuru_massive_adapt_006",
+        "nyamuru_massive_adapt_008",
+        "nyamuru_massive_adapt_012",
+        "nyamuru_massive_adapt_065",
+        "nyamuru_massive_adapt_084"
+      ],
+      "original_ids": [
+        "10535",
+        "10547",
+        "10592",
+        "10714",
+        "10810",
+        "10874",
+        "11069",
+        "11223"
+      ],
+      "groups": [
+        "massive_adapt_generation",
+        "massive_adapt_history",
+        "massive_adapt_save",
+        "massive_adapt_text_frames",
+        "massive_lists_createoradd",
+        "massive_lists_remove"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_media_controls",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_2260",
+        "nyamuru_massive_raw_9809",
+        "nyamuru_massive_raw_5680",
+        "nyamuru_massive_raw_4056",
+        "nyamuru_massive_raw_9251",
+        "nyamuru_massive_raw_9265",
+        "nyamuru_massive_raw_11307",
+        "nyamuru_massive_raw_11448",
+        "nyamuru_massive_adapt_003",
+        "nyamuru_massive_adapt_013",
+        "nyamuru_massive_adapt_014",
+        "nyamuru_massive_adapt_015",
+        "nyamuru_massive_adapt_016",
+        "nyamuru_massive_adapt_017",
+        "nyamuru_massive_adapt_018",
+        "nyamuru_massive_adapt_019",
+        "nyamuru_massive_adapt_020",
+        "nyamuru_massive_adapt_024",
+        "nyamuru_massive_adapt_025",
+        "nyamuru_massive_adapt_026",
+        "nyamuru_massive_adapt_030",
+        "nyamuru_massive_adapt_040",
+        "nyamuru_massive_adapt_041",
+        "nyamuru_massive_adapt_067",
+        "nyamuru_massive_adapt_068",
+        "nyamuru_massive_adapt_069",
+        "nyamuru_massive_adapt_070",
+        "nyamuru_massive_adapt_071",
+        "nyamuru_massive_adapt_073",
+        "nyamuru_massive_adapt_074",
+        "nyamuru_massive_adapt_078",
+        "nyamuru_massive_adapt_081",
+        "nyamuru_massive_adapt_082"
+      ],
+      "original_ids": [
+        "549",
+        "592",
+        "653",
+        "1161",
+        "1220",
+        "1970",
+        "2020",
+        "2252",
+        "2260",
+        "2881",
+        "3438",
+        "3738",
+        "4056",
+        "4167",
+        "5151",
+        "5192",
+        "5213",
+        "5277",
+        "5482",
+        "5680",
+        "9251",
+        "9265",
+        "9415",
+        "9452",
+        "9792",
+        "9809",
+        "11276",
+        "11307",
+        "11308",
+        "11337",
+        "11448"
+      ],
+      "groups": [
+        "massive_adapt_background",
+        "massive_adapt_bubble_dimension",
+        "massive_adapt_bubble_text",
+        "massive_adapt_history",
+        "massive_adapt_page_navigation",
+        "massive_adapt_paint",
+        "massive_adapt_save",
+        "massive_adapt_tab",
+        "massive_adapt_text_frames",
+        "massive_adapt_zoom",
+        "massive_play_music",
+        "massive_play_podcasts",
+        "massive_play_radio"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_qa_definition",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_13560",
+        "nyamuru_massive_raw_13562",
+        "nyamuru_massive_raw_13771",
+        "nyamuru_massive_raw_13092",
+        "nyamuru_massive_raw_13070",
+        "nyamuru_massive_raw_14436",
+        "nyamuru_massive_raw_14013",
+        "nyamuru_massive_raw_13561"
+      ],
+      "original_ids": [
+        "13070",
+        "13092",
+        "13560",
+        "13561",
+        "13562",
+        "13771",
+        "14013",
+        "14436"
+      ],
+      "groups": [
+        "massive_qa_definition"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_qa_factoid",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_13248",
+        "nyamuru_massive_raw_14491",
+        "nyamuru_massive_raw_13912",
+        "nyamuru_massive_raw_13633",
+        "nyamuru_massive_raw_13622",
+        "nyamuru_massive_raw_13449",
+        "nyamuru_massive_raw_14462",
+        "nyamuru_massive_raw_13116",
+        "nyamuru_massive_raw_14786",
+        "nyamuru_massive_raw_13845",
+        "nyamuru_massive_raw_14319",
+        "nyamuru_massive_raw_14387"
+      ],
+      "original_ids": [
+        "13116",
+        "13248",
+        "13449",
+        "13622",
+        "13633",
+        "13845",
+        "13912",
+        "14319",
+        "14387",
+        "14462",
+        "14491",
+        "14786"
+      ],
+      "groups": [
+        "massive_qa_factoid"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_qa_stock",
+      "allowed_split": "dev",
+      "candidate_ids": [
+        "nyamuru_massive_raw_14920",
+        "nyamuru_massive_raw_14796",
+        "nyamuru_massive_raw_14088",
+        "nyamuru_massive_raw_14301"
+      ],
+      "original_ids": [
+        "14088",
+        "14301",
+        "14796",
+        "14920"
+      ],
+      "groups": [
+        "massive_qa_stock"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_social_post",
+      "allowed_split": "dev",
+      "candidate_ids": [
+        "nyamuru_massive_raw_15193",
+        "nyamuru_massive_raw_15541",
+        "nyamuru_massive_raw_15596",
+        "nyamuru_massive_raw_15533"
+      ],
+      "original_ids": [
+        "15193",
+        "15533",
+        "15541",
+        "15596"
+      ],
+      "groups": [
+        "massive_social_post"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_transport",
+      "allowed_split": "test",
+      "candidate_ids": [
+        "nyamuru_massive_raw_12582",
+        "nyamuru_massive_raw_12618",
+        "nyamuru_massive_raw_12189",
+        "nyamuru_massive_raw_14465",
+        "nyamuru_massive_raw_12121",
+        "nyamuru_massive_raw_12716",
+        "nyamuru_massive_raw_12802",
+        "nyamuru_massive_raw_12814"
+      ],
+      "original_ids": [
+        "12121",
+        "12189",
+        "12582",
+        "12618",
+        "12716",
+        "12802",
+        "12814",
+        "14465"
+      ],
+      "groups": [
+        "massive_transport_query",
+        "massive_transport_taxi",
+        "massive_transport_ticket"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    },
+    {
+      "family": "massive_source_weather_query",
+      "allowed_split": "train",
+      "candidate_ids": [
+        "nyamuru_massive_raw_3814",
+        "nyamuru_massive_raw_6038",
+        "nyamuru_massive_raw_4414",
+        "nyamuru_massive_raw_3505",
+        "nyamuru_massive_raw_3355",
+        "nyamuru_massive_raw_4051"
+      ],
+      "original_ids": [
+        "3355",
+        "3505",
+        "3814",
+        "4051",
+        "4414",
+        "6038"
+      ],
+      "groups": [
+        "massive_weather_query"
+      ],
+      "rationale": "原文の対象・操作が近い表現群を公式同一partition内へ固定。オン/オフ、照会/実行などの近い対照も同じpoolに置く。派生で操作を変更しても元sourceのpoolから移さない。"
+    }
+  ],
+  "legacy_comparison": {
+    "references": [
+      {
+        "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/candidates.jsonl",
+        "rows": 316,
+        "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b"
+      },
+      {
+        "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/curation/2026-10-17-v02-variants/candidates.jsonl",
+        "rows": 608,
+        "sha256": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74"
+      },
+      {
+        "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/curation/2026-10-18-v03-boundaries/candidates.jsonl",
+        "rows": 288,
+        "sha256": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760"
+      }
+    ],
+    "rows_compared": 1212,
+    "exact_duplicates": [
+      {
+        "new_id": "nyamuru_massive_adapt_049",
+        "new_text": "内枠スナップをオンにして",
+        "new_group": "massive_adapt_setting_polarity",
+        "old": [
+          {
+            "id": "nyamuru_voice_185",
+            "text": "内枠スナップをオンにして",
+            "label": "inner_frame_snap_set",
+            "group": "inner_frame_snap_set_desired_state"
+          }
+        ],
+        "recommendation": "exclude_new_row_during_integration"
+      },
+      {
+        "new_id": "nyamuru_massive_adapt_055",
+        "new_text": "コマスナップをオンにして",
+        "new_group": "massive_adapt_setting_polarity",
+        "old": [
+          {
+            "id": "nyamuru_voice_205",
+            "text": "コマスナップをオンにして",
+            "label": "panel_gap_snap_set",
+            "group": "panel_gap_snap_set_desired_state"
+          }
+        ],
+        "recommendation": "exclude_new_row_during_integration"
+      },
+      {
+        "new_id": "nyamuru_massive_adapt_056",
+        "new_text": "コマスナップをオフにして",
+        "new_group": "massive_adapt_setting_polarity",
+        "old": [
+          {
+            "id": "nyamuru_voice_211",
+            "text": "コマスナップをオフにして",
+            "label": "panel_gap_snap_set",
+            "group": "panel_gap_snap_set_desired_state"
+          }
+        ],
+        "recommendation": "exclude_new_row_during_integration"
+      }
+    ],
+    "high_similarity_pair_count_0_70": 158,
+    "details_file": "old-near-candidates.json",
+    "details_sha256": "6c00dd50a47ae9cebef62c226114711a1b15354cd8e86ccf253833c433d032fe",
+    "raw_eval_max_legacy_ratio": 0.42857142857142855,
+    "recommendation": "Exclude new exact duplicates 049, 055, 056. Preserve remaining variants as train-only with declared lineage; do not count close target templates as independent new evaluation coverage."
+  },
+  "reviewed_legacy_family_proposals": [
+    {
+      "new_group": "massive_adapt_save",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_001",
+        "nyamuru_massive_adapt_002",
+        "nyamuru_massive_adapt_003",
+        "nyamuru_massive_adapt_004",
+        "nyamuru_massive_adapt_005",
+        "nyamuru_massive_adapt_006"
+      ],
+      "related_legacy_groups": [
+        "save_basic"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_001",
+          "candidate_text": "現在の作品を保存してください",
+          "legacy_id": "nyamuru_voice_002",
+          "legacy_text": "今の作品を保存してください",
+          "legacy_label": "save",
+          "legacy_group": "save_basic"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_002",
+          "candidate_text": "今の作品を保存してくれる",
+          "legacy_id": "nyamuru_voice_002",
+          "legacy_text": "今の作品を保存してください",
+          "legacy_label": "save",
+          "legacy_group": "save_basic"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_004",
+          "candidate_text": "作業中の作品を保存してくださいませんか",
+          "legacy_id": "nyamuru_voice_002",
+          "legacy_text": "今の作品を保存してください",
+          "legacy_label": "save",
+          "legacy_group": "save_basic"
+        }
+      ],
+      "rationale": "作品を保存する基本依頼の語調・時制差。保存しないという否定側も旧familyに従い同じpoolへ保持。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_history",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_007",
+        "nyamuru_massive_adapt_008",
+        "nyamuru_massive_adapt_009",
+        "nyamuru_massive_adapt_010",
+        "nyamuru_massive_adapt_011",
+        "nyamuru_massive_adapt_012",
+        "nyamuru_massive_adapt_013",
+        "nyamuru_massive_adapt_014",
+        "nyamuru_massive_adapt_015",
+        "nyamuru_massive_adapt_016",
+        "nyamuru_massive_adapt_017",
+        "nyamuru_massive_adapt_018"
+      ],
+      "related_legacy_groups": [
+        "undo_last_edit",
+        "v03_redo_history_count",
+        "v03_undo_history_count"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_009",
+          "candidate_text": "直前に右へ動かした吹き出しの編集を取り消して",
+          "legacy_id": "nyamuru_voice_013",
+          "legacy_text": "今動かした吹き出しの編集を一つ取り消して",
+          "legacy_label": "undo",
+          "legacy_group": "undo_last_edit"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_012",
+          "candidate_text": "直前の変更をUndoで一件取り消して",
+          "legacy_id": "nyamuru_voice_1039",
+          "legacy_text": "直前の二操作を、Undo二回で取り消してほしい。",
+          "legacy_label": "undo",
+          "legacy_group": "v03_undo_history_count"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_014",
+          "candidate_text": "Undoで取り消した直前の編集を一つ再適用して",
+          "legacy_id": "nyamuru_voice_1046",
+          "legacy_text": "最後のUndoで取り消した変更を、一件だけ再適用してください。",
+          "legacy_label": "redo",
+          "legacy_group": "v03_redo_history_count"
+        }
+      ],
+      "rationale": "完了済み編集の取り消しとUndo済み編集の再適用の対照。回数違い・対象の修飾差を新規holdoutにしない。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_page_navigation",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_019",
+        "nyamuru_massive_adapt_020",
+        "nyamuru_massive_adapt_021",
+        "nyamuru_massive_adapt_022",
+        "nyamuru_massive_adapt_023",
+        "nyamuru_massive_adapt_024"
+      ],
+      "related_legacy_groups": [
+        "page_first",
+        "page_last",
+        "page_previous"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_020",
+          "candidate_text": "一つ前の作品ページを表示してください",
+          "legacy_id": "nyamuru_voice_035",
+          "legacy_text": "ひとつ前のページを見せて",
+          "legacy_label": "page_navigate",
+          "legacy_group": "page_previous"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_021",
+          "candidate_text": "作品の最初のページを開いてくれるかな",
+          "legacy_id": "nyamuru_voice_041",
+          "legacy_text": "最初のページにして",
+          "legacy_label": "page_navigate",
+          "legacy_group": "page_first"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_022",
+          "candidate_text": "作品の最後のページを開いて",
+          "legacy_id": "nyamuru_voice_042",
+          "legacy_text": "最後のページを表示して",
+          "legacy_label": "page_navigate",
+          "legacy_group": "page_last"
+        }
+      ],
+      "rationale": "前後・先頭末尾の作品ページ移動における短い対象差・語調差。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_zoom",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_025",
+        "nyamuru_massive_adapt_026"
+      ],
+      "related_legacy_groups": [
+        "v02_core_view_change_zoom_step",
+        "zoom_in"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_025",
+          "candidate_text": "キャンバスの表示倍率を一段下げて",
+          "legacy_id": "nyamuru_voice_452",
+          "legacy_text": "表示が大き過ぎるので、画面の倍率を一段下げてくれる？",
+          "legacy_label": "view_change",
+          "legacy_group": "v02_core_view_change_zoom_step"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_026",
+          "candidate_text": "キャンバスの表示倍率をもう一段上げて",
+          "legacy_id": "nyamuru_voice_049",
+          "legacy_text": "表示を一段拡大して",
+          "legacy_label": "view_change",
+          "legacy_group": "zoom_in"
+        }
+      ],
+      "rationale": "キャンバスの倍率を一段下げる/上げるという近い対照。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_visual_toggle",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_027",
+        "nyamuru_massive_adapt_028",
+        "nyamuru_massive_adapt_029"
+      ],
+      "related_legacy_groups": [
+        "edit_guide",
+        "placement_guide",
+        "spread_off",
+        "spread_on"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_027",
+          "candidate_text": "見開き表示をオンにして",
+          "legacy_id": "nyamuru_voice_055",
+          "legacy_text": "見開き表示にして",
+          "legacy_label": "view_change",
+          "legacy_group": "spread_on"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_027",
+          "candidate_text": "見開き表示をオンにして",
+          "legacy_id": "nyamuru_voice_057",
+          "legacy_text": "見開き表示をオフにして",
+          "legacy_label": "view_change",
+          "legacy_group": "spread_off"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_028",
+          "candidate_text": "配置ガイドの表示を消して",
+          "legacy_id": "nyamuru_voice_058",
+          "legacy_text": "配置ガイドを表示して",
+          "legacy_label": "view_change",
+          "legacy_group": "placement_guide"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_029",
+          "candidate_text": "編集ガイドの表示をオフにして",
+          "legacy_id": "nyamuru_voice_061",
+          "legacy_text": "編集ガイドをオフにして",
+          "legacy_label": "view_change",
+          "legacy_group": "edit_guide"
+        }
+      ],
+      "rationale": "見開き、特定ガイド表示のオン/オフと短い対象差。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_artwork_mode",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_031",
+        "nyamuru_massive_adapt_032",
+        "nyamuru_massive_adapt_033",
+        "nyamuru_massive_adapt_034",
+        "nyamuru_massive_adapt_035",
+        "nyamuru_massive_adapt_036"
+      ],
+      "related_legacy_groups": [
+        "ambiguous_mode",
+        "mode_draft",
+        "mode_integrated"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_031",
+          "candidate_text": "作画方式を下書きに変えて",
+          "legacy_id": "nyamuru_voice_072",
+          "legacy_text": "作画方式を下書き生成にして",
+          "legacy_label": "artwork_mode_set",
+          "legacy_group": "mode_draft"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_032",
+          "candidate_text": "作品の作画設定を一体型に変更して",
+          "legacy_id": "nyamuru_voice_070",
+          "legacy_text": "作画設定の一体型を選択して",
+          "legacy_label": "artwork_mode_set",
+          "legacy_group": "mode_integrated"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_031",
+          "candidate_text": "作画方式を下書きに変えて",
+          "legacy_id": "nyamuru_voice_109",
+          "legacy_text": "作画方式を変えて",
+          "legacy_label": "needs_clarification",
+          "legacy_group": "ambiguous_mode"
+        }
+      ],
+      "rationale": "作画方式の値明示/不足、下書き/一体型の近い対照。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_bubble_shape",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_037"
+      ],
+      "related_legacy_groups": [
+        "bubble_shape_normal"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_037",
+          "candidate_text": "選択中の吹き出しの形をふつうに変えて",
+          "legacy_id": "nyamuru_voice_079",
+          "legacy_text": "吹き出しの形をふつうに戻して",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_shape_normal"
+        }
+      ],
+      "rationale": "選択中吹き出しのふつうの形を指定する語調差。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_bubble_tail",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_038"
+      ],
+      "related_legacy_groups": [
+        "bubble_tail"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_038",
+          "candidate_text": "選択中の吹き出しのしっぽを消してちょうだい",
+          "legacy_id": "nyamuru_voice_082",
+          "legacy_text": "この吹き出しのしっぽを消して",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_tail"
+        }
+      ],
+      "rationale": "選択中吹き出しのしっぽを消す依頼の語調差。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_bubble_dimension",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_039",
+        "nyamuru_massive_adapt_041"
+      ],
+      "related_legacy_groups": [
+        "bubble_move",
+        "bubble_resize"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_039",
+          "candidate_text": "選択中の吹き出しの横幅を七十ミリにしてください",
+          "legacy_id": "nyamuru_voice_090",
+          "legacy_text": "この吹き出しの幅を30ミリにして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_resize"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_041",
+          "candidate_text": "選択中の吹き出しを左へ五ミリ移動して",
+          "legacy_id": "nyamuru_voice_086",
+          "legacy_text": "選択中の吹き出しを右へ2ミリ動かして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_move"
+        }
+      ],
+      "rationale": "一つの吹き出しの寸法/移動の値だけを替えた近い依頼群。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_bubble_text",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_040"
+      ],
+      "related_legacy_groups": [
+        "bubble_text"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_040",
+          "candidate_text": "選択中の吹き出しに「ここから出発」を本文として入れて",
+          "legacy_id": "nyamuru_voice_093",
+          "legacy_text": "この吹き出しの本文を「おはよう。」にして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_text"
+        }
+      ],
+      "rationale": "既存吹き出しへ指定本文を入れる言い換え。引用本文の違いを独立holdoutにしない。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_bubble_clip",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_042"
+      ],
+      "related_legacy_groups": [
+        "bubble_clip"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_042",
+          "candidate_text": "選択中の吹き出しをコマの枠で切り取る設定に変えて",
+          "legacy_id": "nyamuru_voice_084",
+          "legacy_text": "この吹き出しをコマ枠で切り取る設定にして",
+          "legacy_label": "bubble_set",
+          "legacy_group": "bubble_clip"
+        }
+      ],
+      "rationale": "選択中吹き出しのコマ枠切取り設定という語調差。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_setting_polarity",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_043",
+        "nyamuru_massive_adapt_044",
+        "nyamuru_massive_adapt_045",
+        "nyamuru_massive_adapt_046",
+        "nyamuru_massive_adapt_047",
+        "nyamuru_massive_adapt_048",
+        "nyamuru_massive_adapt_049",
+        "nyamuru_massive_adapt_050",
+        "nyamuru_massive_adapt_051",
+        "nyamuru_massive_adapt_052",
+        "nyamuru_massive_adapt_053",
+        "nyamuru_massive_adapt_054",
+        "nyamuru_massive_adapt_055",
+        "nyamuru_massive_adapt_056",
+        "nyamuru_massive_adapt_057",
+        "nyamuru_massive_adapt_058",
+        "nyamuru_massive_adapt_059",
+        "nyamuru_massive_adapt_060"
+      ],
+      "related_legacy_groups": [
+        "inner_frame_snap_set_desired_state",
+        "panel_gap_snap_set_desired_state",
+        "panel_sync_set_desired_state",
+        "panel_sync_set_unspecified"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_043",
+          "candidate_text": "コマシンクロをオンにしてください",
+          "legacy_id": "nyamuru_voice_165",
+          "legacy_text": "コマシンクロをオンにして",
+          "legacy_label": "panel_sync_set",
+          "legacy_group": "panel_sync_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_044",
+          "candidate_text": "コマシンクロの設定をオフにして",
+          "legacy_id": "nyamuru_voice_171",
+          "legacy_text": "コマシンクロをオフにして",
+          "legacy_label": "panel_sync_set",
+          "legacy_group": "panel_sync_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_049",
+          "candidate_text": "内枠スナップをオンにして",
+          "legacy_id": "nyamuru_voice_185",
+          "legacy_text": "内枠スナップをオンにして",
+          "legacy_label": "inner_frame_snap_set",
+          "legacy_group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_050",
+          "candidate_text": "内枠スナップをオフに切り替えて",
+          "legacy_id": "nyamuru_voice_191",
+          "legacy_text": "内枠スナップをオフにして",
+          "legacy_label": "inner_frame_snap_set",
+          "legacy_group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_055",
+          "candidate_text": "コマスナップをオンにして",
+          "legacy_id": "nyamuru_voice_205",
+          "legacy_text": "コマスナップをオンにして",
+          "legacy_label": "panel_gap_snap_set",
+          "legacy_group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_056",
+          "candidate_text": "コマスナップをオフにして",
+          "legacy_id": "nyamuru_voice_211",
+          "legacy_text": "コマスナップをオフにして",
+          "legacy_label": "panel_gap_snap_set",
+          "legacy_group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_047",
+          "candidate_text": "コマシンクロの設定をオンへ切り替えて",
+          "legacy_id": "nyamuru_voice_181",
+          "legacy_text": "コマシンクロの設定を変えて",
+          "legacy_label": "needs_clarification",
+          "legacy_group": "panel_sync_set_unspecified"
+        }
+      ],
+      "rationale": "三設定の名前、オン/オフ、指定あり/不足の差替え対照。完全重複3件は新規行を除外する。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_generation",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_061",
+        "nyamuru_massive_adapt_062",
+        "nyamuru_massive_adapt_063",
+        "nyamuru_massive_adapt_064",
+        "nyamuru_massive_adapt_065",
+        "nyamuru_massive_adapt_066"
+      ],
+      "related_legacy_groups": [
+        "generate_current_page",
+        "generate_selected_character",
+        "generate_selected_panel",
+        "v02_routes_gen_selection"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_061",
+          "candidate_text": "選択中のコマの画像を生成してくださいませ",
+          "legacy_id": "nyamuru_voice_243",
+          "legacy_text": "このコマだけ生成",
+          "legacy_label": "generate_request",
+          "legacy_group": "generate_selected_panel"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_062",
+          "candidate_text": "今のページ全体の画像を作って",
+          "legacy_id": "nyamuru_voice_239",
+          "legacy_text": "いま表示しているページ全体の画像を生成して",
+          "legacy_label": "generate_request",
+          "legacy_group": "generate_current_page"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_063",
+          "candidate_text": "選択しているキャラクターの画像を作って",
+          "legacy_id": "nyamuru_voice_232",
+          "legacy_text": "この人物だけ画像生成して",
+          "legacy_label": "generate_request",
+          "legacy_group": "generate_selected_character"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_066",
+          "candidate_text": "選択した対象の画像を新しく生成して",
+          "legacy_id": "nyamuru_voice_864",
+          "legacy_text": "今選択した対象の画像を一度生成してみて",
+          "legacy_label": "generate_request",
+          "legacy_group": "v02_routes_gen_selection"
+        }
+      ],
+      "rationale": "選択対象の画像生成という共通文型の対象差。全体/人物/コマの違いを理由に評価へ分割しない。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_background",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_067",
+        "nyamuru_massive_adapt_068",
+        "nyamuru_massive_adapt_069",
+        "nyamuru_massive_adapt_070",
+        "nyamuru_massive_adapt_071",
+        "nyamuru_massive_adapt_072"
+      ],
+      "related_legacy_groups": [
+        "registered_background_candidates",
+        "v02_routes_bg_count"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_068",
+          "candidate_text": "登録済みの3Dモデルから公園の背景候補を見つけてくれませんか",
+          "legacy_id": "nyamuru_voice_256",
+          "legacy_text": "登録済みの3Dモデルから学校の背景候補を探して",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "registered_background_candidates"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_070",
+          "candidate_text": "登録済みの3Dモデルの中から病院の背景候補を三つ見せて",
+          "legacy_id": "nyamuru_voice_908",
+          "legacy_text": "登録済み3Dモデルの中から、屋上の背景候補を三つ挙げて",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "v02_routes_bg_count"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_071",
+          "candidate_text": "登録済みの3Dモデルで街の背景に使う候補を提示して",
+          "legacy_id": "nyamuru_voice_250",
+          "legacy_text": "登録済みの3Dモデルから背景候補を出して",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "registered_background_candidates"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_072",
+          "candidate_text": "登録済みの3Dモデルから背景候補が二つ欲しいので、選んで提示して",
+          "legacy_id": "nyamuru_voice_255",
+          "legacy_text": "3D背景の候補を三つ出して",
+          "legacy_label": "background_3d_candidates",
+          "legacy_group": "registered_background_candidates"
+        }
+      ],
+      "rationale": "登録済み3D背景候補のカテゴリ名と件数を差替えた近い依頼。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_paint",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_073",
+        "nyamuru_massive_adapt_074",
+        "nyamuru_massive_adapt_075",
+        "nyamuru_massive_adapt_076",
+        "nyamuru_massive_adapt_077",
+        "nyamuru_massive_adapt_078"
+      ],
+      "related_legacy_groups": [
+        "paint_pen_choice"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_073",
+          "candidate_text": "描くペンをベクターペンに切り替えて",
+          "legacy_id": "nyamuru_voice_292",
+          "legacy_text": "ベクターペンに切り替えて",
+          "legacy_label": "paint_tool_set",
+          "legacy_group": "paint_pen_choice"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_074",
+          "candidate_text": "描画ペンをラスターペンに変えて",
+          "legacy_id": "nyamuru_voice_285",
+          "legacy_text": "ラスターペンに変えて",
+          "legacy_label": "paint_tool_set",
+          "legacy_group": "paint_pen_choice"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_075",
+          "candidate_text": "描くときのペンをベクターペンに変えて",
+          "legacy_id": "nyamuru_voice_291",
+          "legacy_text": "ベクターペンに変えて",
+          "legacy_label": "paint_tool_set",
+          "legacy_group": "paint_pen_choice"
+        }
+      ],
+      "rationale": "描画ペンをラスター/ベクターへ変更する文型の対照。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    },
+    {
+      "new_group": "massive_adapt_text_frames",
+      "new_candidate_ids": [
+        "nyamuru_massive_adapt_079",
+        "nyamuru_massive_adapt_080",
+        "nyamuru_massive_adapt_081",
+        "nyamuru_massive_adapt_082",
+        "nyamuru_massive_adapt_083",
+        "nyamuru_massive_adapt_084"
+      ],
+      "related_legacy_groups": [
+        "text_frames_top",
+        "v02_edit_align_selected"
+      ],
+      "anchors": [
+        {
+          "candidate_id": "nyamuru_massive_adapt_079",
+          "candidate_text": "選択中の複数の文字枠を上端で揃えて",
+          "legacy_id": "nyamuru_voice_299",
+          "legacy_text": "この複数の文字枠を上揃えにして",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "text_frames_top"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_080",
+          "candidate_text": "選択した複数の文字枠の上端を一致させてください",
+          "legacy_id": "nyamuru_voice_673",
+          "legacy_text": "選択した三つの文字枠の上端を、同じ高さへ合わせてほしい。",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "v02_edit_align_selected"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_082",
+          "candidate_text": "選択した別々の吹き出しの文字枠の上端を揃えてください",
+          "legacy_id": "nyamuru_voice_301",
+          "legacy_text": "選択した吹き出し内の文字の上端をそろえて",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "text_frames_top"
+        },
+        {
+          "candidate_id": "nyamuru_massive_adapt_084",
+          "candidate_text": "選択した複数の文字枠の上端揃えを実行してください",
+          "legacy_id": "nyamuru_voice_298",
+          "legacy_text": "選択した文字枠の上端をそろえて",
+          "legacy_label": "text_frames_align",
+          "legacy_group": "text_frames_top"
+        }
+      ],
+      "rationale": "選択した複数文字枠の上端揃えという言い換え。枠の数や複数吹き出しの指定は同じpoolで扱う。",
+      "rule": "train-only; never promote this group or its close legacy templates into new holdout"
+    }
+  ],
+  "not_linked_by_label_alone": [
+    {
+      "new_group": "massive_adapt_tab",
+      "candidate_id": "nyamuru_massive_adapt_030",
+      "reason": "既存タブ切替と同じラベルだが、旧例に環境設定タブの近い文型を確認できないため、ラベルの一致だけでは結合しない。原文由来のtrain固定は維持。"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "raw-train.jsonl",
+      "rows": 64,
+      "sha256": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836"
+    },
+    {
+      "path": "raw-dev.jsonl",
+      "rows": 8,
+      "sha256": "859c1244e7f9045ff35891dd83f8b9e0747cad7ff6d71b3cf8d15491df1bf205"
+    },
+    {
+      "path": "raw-test.jsonl",
+      "rows": 16,
+      "sha256": "8ede47558059a56cf2f70735487c8ab92dabf2ff51a082901b1dc04868da1191"
+    },
+    {
+      "path": "adapted-train.jsonl",
+      "rows": 84,
+      "sha256": "2fed7ec79b590301b79e6083dac5b2c5228e701a22ce3d78cbdadc99bfd83375"
+    },
+    {
+      "path": "selected-source.jsonl",
+      "rows": 156,
+      "sha256": "b24e18ac3af19d333089b5433dc4d74c57308e39988895e93ac8eba5f34f8d64"
+    }
+  ],
+  "remaining_parent_checks": [
+    "Apply exact duplicate exclusions while integrating.",
+    "Compare with independently authored new app dev/test; quarantine any close training families before freezing evaluation.",
+    "Keep 88 raw rows distinct from 84 source-inspired synthetic rows in manifests and metrics.",
+    "Do not count public-domain OOD examples alone as validation of app command boundaries."
+  ]
+}

@@ -4,7 +4,7 @@
   "versionCode": 21,
   "private": true,
   "type": "module",
-  "description": "紙の漫画ネームを解析し、編集可能なOMNYへ取り込めるNyamuru派生版",
+  "description": "紙の漫画ネームを解析し、編集可能なOMNYへ取り込めるNyamuru Image Hub",
   "license": "MIT",
   "author": {
     "name": "sa-san10",
@@ -22,16 +22,23 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
+    "dev": "node scripts/start-dev.mjs",
+    "lan": "node scripts/start-lan.mjs",
     "setup:vision": "node scripts/setup-local-vision.mjs",
     "bridge": "node scripts/start-local-bridge.mjs",
     "bridge:check": "node scripts/start-local-bridge.mjs --check",
+    "bridge:check-vlm": "node scripts/start-local-bridge.mjs --check-vlm",
     "build": "astro build && npm run build:standalone && mkdir -p dist/standalone && cp dist-standalone/index.html dist/standalone/nyamuru-image-hub.html && cp dist-standalone/THIRD_PARTY_NOTICES.txt dist/standalone/",
     "build:standalone": "vite build --config vite.standalone.config.mjs",
     "preview": "astro preview",
     "check": "astro check",
-    "test": "node --no-warnings --experimental-strip-types --test tests/*.test.mjs && npm run test:bridge",
-    "test:bridge": "python3 -m unittest tests/test_scanner_bridge.py"
+    "test": "node --no-warnings --experimental-strip-types --test tests/*.test.mjs && npm run test:bridge && npm run test:doctor && npm run test:human-pose",
+    "test:bridge": "python3 -m unittest discover -s tests -p 'test_*_bridge.py'",
+    "test:doctor": "python3 -m unittest tests/test_workspace_doctor_core.py",
+    "test:human-pose": "python3 -m unittest tests/test_human_pose_catalog.py tests/test_human_pose_rig.py tests/test_human_pose_store.py tests/test_human_pose_curated.py",
+    "workspace:doctor": "python3 scripts/nyamuru_workspace_doctor.py",
+    "source:coverage": "node --no-warnings --experimental-strip-types scripts/nyamuru_source_coverage.ts",
+    "verify": "npm run check && npm test && npm run build"
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",
@@ -41,12 +48,15 @@
     "astro": "7.1.1",
     "lucide-preact": "1.25.0",
     "marked": "18.0.7",
+    "paper": "0.12.18",
     "preact": "10.29.7",
     "tailwindcss": "4.3.3",
+    "three": "0.186.1",
     "typescript": "6.0.3",
     "yaml": "2.9.0"
   },
   "devDependencies": {
+    "@types/three": "0.186.0",
     "vite": "^8.1.5",
     "vite-plugin-singlefile": "^2.3.3"
   }

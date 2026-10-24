@@ -1,0 +1,107 @@
+[
+  {
+    "slug": "standing-and-gripping-a-vertical-metal-pole-with-both-hands-one-above-the-other",
+    "label_ja": "両手を上下にして支柱を握る",
+    "pose_text_ja": "立ったまま片手をもう一方の手より上に置き、両手で垂直な金属の支柱を握る。",
+    "tags": [
+      "standing",
+      "two-hands",
+      "pole"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-an-overhead-horizontal-bar-with-both-hands",
+    "label_ja": "両手で頭上の横棒を持つ",
+    "pose_text_ja": "立ったまま両手で頭上の水平な棒を持つ。",
+    "tags": [
+      "standing",
+      "two-hands",
+      "bar",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-two-overhead-hanging-strap-loops-one-in-each-hand",
+    "label_ja": "左右の手につり革を持つ",
+    "pose_text_ja": "立ったまま、頭上につり下がる二つの輪状のつり革を左右の手に一つずつ持つ。",
+    "tags": [
+      "standing",
+      "two-hands",
+      "strap",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "leaning-forward-and-holding-a-waist-high-railing-with-both-hands",
+    "label_ja": "両手で手すりを持ち前傾",
+    "pose_text_ja": "前に体を傾け、腰の高さの手すりを両手で持つ。",
+    "tags": [
+      "leaning",
+      "two-hands",
+      "railing"
+    ],
+    "normalized_text": "she leans forward and holds a waist-high railing with both hands",
+    "normalization_note": "並列動詞の holding を holds に直す。前傾と両手の接触は保持する。"
+  },
+  {
+    "slug": "leaning-back-against-a-waist-high-railing-holding-it-behind-her-with-both-hands",
+    "label_ja": "背後の手すりを持つ",
+    "pose_text_ja": "腰の高さの手すりに背をもたせかけ、背後で両手でその手すりを持つ。",
+    "tags": [
+      "leaning",
+      "two-hands",
+      "railing"
+    ]
+  },
+  {
+    "slug": "hanging-from-an-overhead-bar-by-both-hands-with-her-feet-off-the-ground",
+    "label_ja": "両手で棒にぶら下がる",
+    "pose_text_ja": "両手で頭上の棒にぶら下がり、両足を地面から離す。",
+    "tags": [
+      "hanging",
+      "two-hands",
+      "bar",
+      "hands-overhead"
+    ]
+  },
+  {
+    "slug": "standing-and-holding-a-ladder-rung-with-both-hands",
+    "label_ja": "両手ではしごを持つ",
+    "pose_text_ja": "立ったまま両手ではしごの横木を持つ。",
+    "tags": [
+      "standing",
+      "two-hands",
+      "ladder"
+    ]
+  },
+  {
+    "slug": "pulling-a-heavy-door-handle-with-both-hands",
+    "label_ja": "両手で重いドアを引く",
+    "pose_text_ja": "重いドアハンドルを両手で引く。",
+    "tags": [
+      "two-hands",
+      "door",
+      "handle"
+    ]
+  },
+  {
+    "slug": "standing-between-two-vertical-metal-poles-holding-one-in-each-hand",
+    "label_ja": "二本の支柱の間に立つ",
+    "pose_text_ja": "二本の垂直な金属の支柱の間に立ち、左右の手で一本ずつ持つ。",
+    "tags": [
+      "standing",
+      "two-hands",
+      "pole"
+    ]
+  },
+  {
+    "slug": "leaning-back-away-from-a-vertical-metal-pole-with-both-hands-gripping-it-and-arms-straight",
+    "label_ja": "支柱を握って後ろに傾く",
+    "pose_text_ja": "垂直な金属の支柱を両手で握って両腕を伸ばし、支柱から離れるように後ろへ体を傾ける。",
+    "tags": [
+      "leaning",
+      "two-hands",
+      "pole"
+    ]
+  }
+]

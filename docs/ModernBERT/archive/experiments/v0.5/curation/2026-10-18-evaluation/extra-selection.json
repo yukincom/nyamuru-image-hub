@@ -1,0 +1,29 @@
+{
+  "dev": [
+    "nyamuru_voice_1669",
+    "nyamuru_voice_1670",
+    "nyamuru_voice_1671",
+    "nyamuru_voice_1672",
+    "nyamuru_voice_1683",
+    "nyamuru_voice_1685",
+    "nyamuru_voice_1687",
+    "nyamuru_voice_1710",
+    "nyamuru_voice_1711",
+    "nyamuru_voice_1712",
+    "nyamuru_voice_1713",
+    "nyamuru_voice_1716"
+  ],
+  "test": [
+    "nyamuru_voice_1673",
+    "nyamuru_voice_1674",
+    "nyamuru_voice_1675",
+    "nyamuru_voice_1679",
+    "nyamuru_voice_1680",
+    "nyamuru_voice_1702",
+    "nyamuru_voice_1703",
+    "nyamuru_voice_1701",
+    "nyamuru_voice_1704",
+    "nyamuru_voice_1714",
+    "nyamuru_voice_1715"
+  ]
+}

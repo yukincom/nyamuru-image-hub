@@ -1,0 +1,344 @@
+[
+  {
+    "id": "pose-mh-standing05",
+    "display_number": 20,
+    "category": "gestures",
+    "label_ja": "片手を上げて話す",
+    "label_en": "Raised conversational hand",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "20",
+      "説明・呼びかけ",
+      "standing05"
+    ],
+    "pose_text_ja": "立って片腕を上げ、前から外側へ伸ばし、開いた手で身振りをする。反対の腕は体の横に下ろす。",
+    "pose_template": "standing pose, one arm raised and extending forward-outward with an open gesturing hand, the other arm relaxed at the side",
+    "original_gemini_prompt": "standing pose, one arm raised and extending forward-outward with an open gesturing hand, the other arm relaxed at the side",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "standing05",
+      "name": "20 片手を上げて話す",
+      "category": "会話・身振り",
+      "use": "説明・呼びかけ",
+      "path": "makehuman_system_poses_cc0/poses/standing05/standing05.bvh",
+      "sha256": "cf3dacf0daf3ab793b3b912f26307bfc320685f88579362be54eb17cbae24f5a",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-punkduck-hand-on-shoulder-01",
+    "display_number": 21,
+    "category": "gestures",
+    "label_ja": "肩へ手を伸ばす",
+    "label_en": "Reaching to shoulder",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "21",
+      "相手に触れる。相手の位置を調整",
+      "punkduck_hand_on_shoulder_01"
+    ],
+    "pose_text_ja": "足を肩幅に開いて立ち、片腕を胸の高さで前へ上げ、指先を下へ向ける。反対の腕は体の横に下ろす。",
+    "pose_template": "standing with feet shoulder-width apart, one arm raised forward at chest level with fingers pointing downward, the other arm at the side",
+    "original_gemini_prompt": "standing with feet shoulder-width apart, one arm raised forward at chest level with fingers pointing downward, the other arm at the side",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "punkduck_hand_on_shoulder_01",
+      "name": "21 肩へ手を伸ばす",
+      "category": "会話・身振り",
+      "use": "相手に触れる。相手の位置を調整",
+      "path": "poses03_cc0/poses/punkduck_hand_on_shoulder_01/punkduck_hand_on_shoulder_01.bvh",
+      "sha256": "294f70e4d06d6129fc07e8e9ca8852cfc35fcbc4a9171fbc6af6a64c91a1f6d5",
+      "status": "accepted",
+      "author": "punkduck",
+      "url": "http://www.makehumancommunity.org/node/1997",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-punkduck-hand-on-shoulder-03",
+    "display_number": 22,
+    "category": "gestures",
+    "label_ja": "近くの相手へ手を添える",
+    "label_en": "Hand near another person",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "22",
+      "相手との会話・接触",
+      "punkduck_hand_on_shoulder_03"
+    ],
+    "pose_text_ja": "立って片肘を曲げ、胸の前に手を上げて何かに触れるか、その手前に添えるようにする。反対の腕は下ろす。",
+    "pose_template": "standing pose, one elbow bent with hand raised in front of the chest as if hovering or touching an object, the other arm down",
+    "original_gemini_prompt": "standing pose, one elbow bent with hand raised in front of the chest as if hovering or touching an object, the other arm down",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "punkduck_hand_on_shoulder_03",
+      "name": "22 近くの相手へ手を添える",
+      "category": "会話・身振り",
+      "use": "相手との会話・接触",
+      "path": "poses03_cc0/poses/punkduck_hand_on_shoulder_03/punkduck_hand_on_shoulder_03.bvh",
+      "sha256": "4df4ecaa40fbc3989ab57d64bbc484035bdbbd09bdcfd869d862907c8666c725",
+      "status": "accepted",
+      "author": "punkduck",
+      "url": "http://www.makehumancommunity.org/node/1999",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-punkduck-pd-fashion01",
+    "display_number": 23,
+    "category": "gestures",
+    "label_ja": "頭に手を当てる",
+    "label_en": "Hand on head",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "23",
+      "戸惑い・考える",
+      "punkduck_pd_fashion01"
+    ],
+    "pose_text_ja": "足を腰幅より広く開き、画面左の本人の右脚に主に体重をかけ、反対の脚を画面右へ斜めに伸ばす。腰を少し画面左へずらす。画面右の本人の左腕を上げ、肘を外上方へ曲げ、開いた左手のひらを頭の左上側に当て、指を頭頂へ伸ばす。手のひらは頭の側面と上部に見え、首の後ろへ置かない。右腕は右ももの横へ力を抜いて下ろす。首の付け根を中央に保ち、頭頂を少し画面左へ傾ける。鼻先を画面の左端へ約15度はっきり向け、顎を少し引いて左下を見る。顔は画面右の上げた肘から離れる方向へ向ける。頭の左向きを保ったまま、手は頭の側面から頭頂に添える。",
+    "pose_template": "Feet wider than hip width, weight mainly on the anatomical right leg at screen-left, the other leg extended diagonally toward screen-right. Hips shift slightly to screen-left. Raise the anatomical left arm on screen-right, bend its elbow outward and upward, and lay the open left palm against the upper left side of the head with fingers reaching over the crown. The palm is visible on the side and top of the scalp, not behind the neck. Right arm hangs loose beside the right thigh. The base of the neck stays centered, but the crown shifts slightly toward screen-left. Turn the nose distinctly 15 degrees toward the LEFT edge of the image, chin a little down, eyes looking down-left. The face points away from the raised elbow on screen-right. Keep the raised hand on the side/crown of the head while preserving this left-facing head direction.",
+    "original_gemini_prompt": "standing with wide stance and hip tilted, one hand placed behind the head with elbow raised high, the other arm relaxed down",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "顔方向の説明は再試行文を候補とする。"
+    },
+    "source": {
+      "key": "punkduck_pd_fashion01",
+      "name": "23 頭に手を当てる",
+      "category": "会話・身振り",
+      "use": "戸惑い・考える",
+      "path": "poses03_cc0/poses/punkduck_pd_fashion01/punkduck_pd_fashion01.bvh",
+      "sha256": "6178398dd019373a737a34766d756bee118f6418ace1459d0bc09e085886a0ff",
+      "status": "accepted",
+      "author": "punkduck",
+      "url": "http://www.makehumancommunity.org/node/916",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-punkduck-pd-fashion02",
+    "display_number": 24,
+    "category": "gestures",
+    "label_ja": "両手を広げて話す",
+    "label_en": "Open hands while talking",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "24",
+      "説明・問いかけ",
+      "punkduck_pd_fashion02"
+    ],
+    "pose_text_ja": "足を広く開いて立ち、膝をほぼ伸ばす。肘を腰の横の低い位置で曲げ、開いた両手を肩の前の胸上部まで上げる。手のひらを斜め前へ向け、指を自然に広げる。両手の間隔はほぼ肩幅。肩の力を抜き、上体を起こす。頭をほぼ起こしてごく少し画面左へ傾け、顔と目は前へ向ける。会話の身振りで、驚いた表情や頭より高く上げた手にはしない。",
+    "pose_template": "Stand with feet wide apart and knees nearly straight. Keep elbows low beside the waist and bent, lift both open hands only to upper-chest height in front of the shoulders, palms angled forward, fingers naturally spread. Hands remain about shoulder-width apart. Shoulders relaxed, torso upright. Head nearly upright with a very slight tilt toward screen-left, face toward the viewer, eyes forward. The gesture is conversational, with no startled expression and no hands above the head.",
+    "original_gemini_prompt": "standing in a wide stance, both hands raised in front of the chest with open palms facing outward in a stop or surrender gesture",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "手の高さ・手首の向きを厳密に揃える場合は補正が必要。"
+    },
+    "source": {
+      "key": "punkduck_pd_fashion02",
+      "name": "24 両手を広げて話す",
+      "category": "会話・身振り",
+      "use": "説明・問いかけ",
+      "path": "poses03_cc0/poses/punkduck_pd_fashion02/punkduck_pd_fashion02.bvh",
+      "sha256": "39f81c0ce6f23b35a2467b29cfb33a1c584cfe3abc6e0d9c40b3913781012330",
+      "status": "accepted",
+      "author": "punkduck",
+      "url": "http://www.makehumancommunity.org/node/919",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-punkduck-train-departure",
+    "display_number": 25,
+    "category": "gestures",
+    "label_ja": "指し示す",
+    "label_en": "Pointing gesture",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "25",
+      "案内・方向を示す",
+      "punkduck_train_departure"
+    ],
+    "pose_text_ja": "立って片腕を前から少し上へ伸ばし、手を開いて差し出す。反対の腕は体の横に下ろす。",
+    "pose_template": "standing pose, one arm extended forward and slightly upward with an open reaching hand, the other arm down at the side",
+    "original_gemini_prompt": "standing pose, one arm extended forward and slightly upward with an open reaching hand, the other arm down at the side",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "punkduck_train_departure",
+      "name": "25 指し示す",
+      "category": "会話・身振り",
+      "use": "案内・方向を示す",
+      "path": "poses03_cc0/poses/punkduck_train_departure/punkduck_train_departure.bvh",
+      "sha256": "cbd96b57731e2538c755cdf5c3aac4c9cf050dcdd7bd7405de81e1a48e6486e1",
+      "status": "accepted",
+      "author": "punkduck",
+      "url": "http://www.makehumancommunity.org/node/639",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-sohh-posing1",
+    "display_number": 26,
+    "category": "gestures",
+    "label_ja": "両手を胸元へ",
+    "label_en": "Hands near chest",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "26",
+      "驚き・気持ちを伝える",
+      "sohh_posing1"
+    ],
+    "pose_text_ja": "足を広く開いて立ち、両手を胸上部から鎖骨の近くへ引き寄せて当て、身を守るような姿勢を取る。",
+    "pose_template": "standing in a wide stance, both hands pulled close and held against the upper chest/collarbone in a guarded posture",
+    "original_gemini_prompt": "standing in a wide stance, both hands pulled close and held against the upper chest/collarbone in a guarded posture",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "sohh_posing1",
+      "name": "26 両手を胸元へ",
+      "category": "会話・身振り",
+      "use": "驚き・気持ちを伝える",
+      "path": "poses03_cc0/poses/sohh_posing1/sohh_posing1.bvh",
+      "sha256": "48a71d7eb4765c2592f1b6d4b6313918a714bbfd02912bd8e66f1aa73145d402",
+      "status": "accepted",
+      "author": "sohh",
+      "url": "http://www.makehumancommunity.org/node/2599",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  },
+  {
+    "id": "pose-mh-sohh-posing2",
+    "display_number": 27,
+    "category": "gestures",
+    "label_ja": "口元に手を当てる",
+    "label_en": "Hand near mouth",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "27",
+      "考える・困る",
+      "sohh_posing2"
+    ],
+    "pose_text_ja": "膝を少し曲げて立ち、考えるように片手を顎へ添える。反対の腕は前へ伸ばし、手のひらを上に向ける。",
+    "pose_template": "standing with knees slightly bent, one hand touching the chin in thought, the other arm extended forward with palm facing upward",
+    "original_gemini_prompt": "standing with knees slightly bent, one hand touching the chin in thought, the other arm extended forward with palm facing upward",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "sohh_posing2",
+      "name": "27 口元に手を当てる",
+      "category": "会話・身振り",
+      "use": "考える・困る",
+      "path": "poses03_cc0/poses/sohh_posing2/sohh_posing2.bvh",
+      "sha256": "5b254af19900377c4811efe30ddadd54ad212f61823149719969a2fae9d3fe61",
+      "status": "accepted",
+      "author": "sohh",
+      "url": "http://www.makehumancommunity.org/node/2600",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  },
+  {
+    "id": "pose-mh-gpedroso-peace-and-love",
+    "display_number": 28,
+    "category": "gestures",
+    "label_ja": "ピース",
+    "label_en": "Peace sign",
+    "tags": [
+      "gestures",
+      "standing"
+    ],
+    "search_aliases": [
+      "28",
+      "写真・明るい応答",
+      "gpedroso_peace_and_love"
+    ],
+    "pose_text_ja": "立って片手を胸の高さへ上げ、指でピースサインを作る。反対の腕は体の横へ自然に下ろす。",
+    "pose_template": "standing pose, one hand raised to chest height showing a peace sign (V-sign), the other arm resting naturally at the side",
+    "original_gemini_prompt": "standing pose, one hand raised to chest height showing a peace sign (V-sign), the other arm resting naturally at the side",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "gpedroso_peace_and_love",
+      "name": "28 ピース",
+      "category": "会話・身振り",
+      "use": "写真・明るい応答",
+      "path": "poses03_cc0/poses/gpedroso_peace_and_love/gpedroso_peace_and_love.bvh",
+      "sha256": "c3c2ab8f6abbd60d7c69227e1685160cebda1ce9c2e565a5a863b336001897e2",
+      "status": "accepted",
+      "author": "gpedroso",
+      "url": "http://www.makehumancommunity.org/node/1060",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses03.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  }
+]

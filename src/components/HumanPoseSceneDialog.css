@@ -1,0 +1,45 @@
+.human-pose-scene-dialog { width: min(1120px, 96vw); max-width: 96vw; max-height: 94vh; padding: 0; border: 1px solid #b7c7c5; border-radius: 14px; color: #233c38; background: #fafcfb; }
+.human-pose-scene-dialog::backdrop { background: #142d37a6; }
+.human-pose-scene-content { padding: 20px; }
+.human-pose-scene-content header, .human-pose-scene-content footer { display: flex; gap: 12px; align-items: center; }
+.human-pose-scene-content header h2 { flex: 1; margin: 0; font-size: 1.15rem; }
+.human-pose-scene-content footer { margin-top: 18px; flex-wrap: wrap; }
+.human-pose-scene-content footer p { flex: 1; min-width: 200px; }
+.human-pose-scene-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.human-pose-scene-view { position: relative; margin: auto; width: 100%; max-height: 60vh; overflow: hidden; background: #eef2f3; border: 1px solid #c5d1ce; border-radius: 10px; }
+.human-pose-scene-canvas { width: 100%; height: 100%; position: absolute; inset: 0; touch-action: none; }
+.human-pose-scene-canvas:focus-visible { outline: 2px solid #23675c; outline-offset: -3px; }
+.human-pose-scene-canvas.is-space-pan { cursor: grab; }
+.human-pose-scene-canvas.is-panning { cursor: grabbing; }
+.human-pose-scene-canvas canvas { display: block; width: 100%; height: 100%; }
+.human-pose-scene-dialog .background3d-gizmo { position: absolute; right: 6px; top: 6px; width: 116px; height: 116px; touch-action: none; cursor: grab; }
+.human-pose-scene-dialog .background3d-gizmo-disc { fill: #f9fcfbe6; stroke: #bfceca; }
+.human-pose-scene-dialog .background3d-gizmo text { text-anchor: middle; dominant-baseline: central; font: bold 12px sans-serif; pointer-events: none; }
+.human-pose-scene-dialog .background3d-gizmo [role="button"] { cursor: pointer; }
+.human-pose-scene-dialog .background3d-gizmo [role="button"]:focus { outline: 2px solid #23675c; }
+.human-pose-scene-layout aside { display: grid; gap: 12px; }
+.human-pose-scene-layout > div:first-child { position: sticky; top: 8px; }
+.human-pose-scene-buttons button[aria-pressed="true"] { border-color: #34685c; background: #d7e7dd; box-shadow: inset 0 0 0 1px #34685c; }
+.human-pose-scene-layout fieldset { border: 1px solid #c5d1ce; border-radius: 8px; padding: 12px; }
+.human-pose-scene-layout label { display: block; }
+.human-pose-scene-layout label:has(input[type="checkbox"]) { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.human-pose-scene-layout input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 0; }
+.human-pose-scene-layout input[type="range"] { width: 100%; }
+.human-pose-scene-coordinates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.human-pose-scene-coordinates input { width: 100%; box-sizing: border-box; }
+.human-pose-scene-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.human-pose-body-choice { margin-top: 12px; }
+.human-pose-body-choice button[aria-pressed="true"] { border-color: #34685c; background: #d7e7dd; box-shadow: inset 0 0 0 1px #34685c; }
+.human-pose-scene-description { padding: 12px; background: #eaf1ed; border-radius: 8px; }
+.human-pose-scene-preview { margin: 16px 0 0; }
+.human-pose-scene-preview img { display: block; width: auto; max-width: 100%; max-height: 50vh; margin: auto; background: repeating-conic-gradient(#e2e8e7 0% 25%, #fff 0% 50%) 0 / 20px 20px; border: 1px solid #c5d1ce; }
+.human-pose-scene-preview figcaption { font-size: .85rem; margin-top: 6px; }
+@media (max-width: 780px) { .human-pose-scene-layout { grid-template-columns: minmax(0, 1fr); } .human-pose-scene-layout > div:first-child { position: static; } .human-pose-scene-content { padding: 12px; } }
+
+.human-pose-motion { background: #edf5f0; }
+.human-pose-motion legend { font-weight: 700; }
+.human-pose-motion select { width: 100%; max-width: 100%; }
+.human-pose-motion output { font-variant-numeric: tabular-nums; align-self: center; }
+.human-pose-surface { background: #fff6e8; }
+.human-pose-surface select { width: 100%; }
+.human-pose-scene-canvas.is-surface-picking:not(.is-space-pan) { cursor: crosshair; }

@@ -1,0 +1,4255 @@
+{
+  "schema_version": 1,
+  "scope": "Post-v0.2-test-review training augmentation lineage",
+  "group_count": 36,
+  "family_count": 29,
+  "legacy_holdout_retired_for_acceptance": true,
+  "groups": [
+    {
+      "group": "v03_save_hold_now",
+      "family": "v03_save_hold_and_retraction",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_925",
+        "nyamuru_voice_926",
+        "nyamuru_voice_927",
+        "nyamuru_voice_928",
+        "nyamuru_voice_929",
+        "nyamuru_voice_930",
+        "nyamuru_voice_931",
+        "nyamuru_voice_932"
+      ],
+      "related_v02_groups": [
+        "save_negative",
+        "v02_routes_noaction_preserve",
+        "save_edits"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_004",
+          "text": "この編集を保存しておいて",
+          "label": "save",
+          "group": "save_edits",
+          "family": "save_edits",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_005",
+          "text": "いまの状態で保存",
+          "label": "save",
+          "group": "save_edits",
+          "family": "save_edits",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_008",
+          "text": "いったん作品を保存しといて",
+          "label": "save",
+          "group": "save_edits",
+          "family": "save_edits",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_849",
+          "text": "保存は確認が終わるまで待ってて",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_850",
+          "text": "ペンを変えて、いや、今のペンのままでいい",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_851",
+          "text": "文字枠の位置はまだ動かさないでおこう",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_852",
+          "text": "「コマスナップをオンにして」は例文だから、設定は変えないで",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_save_final_correction",
+      "family": "v03_save_hold_and_retraction",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_933",
+        "nyamuru_voice_934",
+        "nyamuru_voice_935",
+        "nyamuru_voice_936",
+        "nyamuru_voice_937",
+        "nyamuru_voice_938",
+        "nyamuru_voice_939",
+        "nyamuru_voice_940"
+      ],
+      "related_v02_groups": [
+        "save_self_correction",
+        "save_negative",
+        "save_basic"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "group": "save_basic",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_002",
+          "text": "今の作品を保存してください",
+          "label": "save",
+          "group": "save_basic",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_003",
+          "text": "セーブお願い",
+          "label": "save",
+          "group": "save_basic",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_010",
+          "text": "保存しないで、いや、やっぱり今保存して",
+          "label": "save",
+          "group": "save_self_correction",
+          "family": "save_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_144",
+          "text": "保存して、いや、まだ保存しないで",
+          "label": "not_command",
+          "group": "save_self_correction",
+          "family": "save_self_correction",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_defer_until_new_request",
+      "family": "v03_save_hold_and_retraction",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_941",
+        "nyamuru_voice_942",
+        "nyamuru_voice_943",
+        "nyamuru_voice_944",
+        "nyamuru_voice_945",
+        "nyamuru_voice_946",
+        "nyamuru_voice_947",
+        "nyamuru_voice_948"
+      ],
+      "related_v02_groups": [
+        "v02_routes_noaction_preserve",
+        "save_negative",
+        "page_negative",
+        "generate_current_page"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_153",
+          "text": "まだ次のページには進まないで",
+          "label": "not_command",
+          "group": "page_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_237",
+          "text": "ページ全体を生成",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_238",
+          "text": "このページを丸ごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_239",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_240",
+          "text": "この一ページを生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_241",
+          "text": "このページを一枚まるごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_242",
+          "text": "このページ全体の生成を始めて",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_263",
+          "text": "ページ全体の生成はまだ始めないで",
+          "label": "not_command",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_849",
+          "text": "保存は確認が終わるまで待ってて",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_850",
+          "text": "ペンを変えて、いや、今のペンのままでいい",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_851",
+          "text": "文字枠の位置はまだ動かさないでおこう",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_852",
+          "text": "「コマスナップをオンにして」は例文だから、設定は変えないで",
+          "label": "not_command",
+          "group": "v02_routes_noaction_preserve",
+          "family": "v02_routes_noaction_preserve",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_prohibition",
+      "family": "v03_history_negated_current_action",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_949",
+        "nyamuru_voice_950",
+        "nyamuru_voice_951",
+        "nyamuru_voice_952",
+        "nyamuru_voice_953",
+        "nyamuru_voice_954",
+        "nyamuru_voice_955",
+        "nyamuru_voice_956"
+      ],
+      "related_v02_groups": [
+        "undo_negative",
+        "redo_negative",
+        "undo_basic",
+        "redo_basic"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_011",
+          "text": "直前の編集を戻して",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_014",
+          "text": "ひとつ前の編集状態に戻して",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_016",
+          "text": "今の操作をUndoで取り消してください",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_021",
+          "text": "リドゥして",
+          "label": "redo",
+          "group": "redo_basic",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_028",
+          "text": "リドゥをお願いします",
+          "label": "redo",
+          "group": "redo_basic",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_151",
+          "text": "直前の編集を戻さないで",
+          "label": "not_command",
+          "group": "undo_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_152",
+          "text": "今回はリドゥしないで",
+          "label": "not_command",
+          "group": "redo_negative",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_page_preserve_or_move",
+      "family": "v03_page_negation_positive_contrast",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_957",
+        "nyamuru_voice_958",
+        "nyamuru_voice_959",
+        "nyamuru_voice_960",
+        "nyamuru_voice_961",
+        "nyamuru_voice_962",
+        "nyamuru_voice_963",
+        "nyamuru_voice_964"
+      ],
+      "related_v02_groups": [
+        "page_negative",
+        "page_next",
+        "page_previous"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_031",
+          "text": "次のページへ",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_032",
+          "text": "一ページ先を表示して",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_033",
+          "text": "ページを一枚進めてくれる？",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_034",
+          "text": "前のページに戻って",
+          "label": "page_navigate",
+          "group": "page_previous",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_035",
+          "text": "ひとつ前のページを見せて",
+          "label": "page_navigate",
+          "group": "page_previous",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_036",
+          "text": "ページを一枚戻して",
+          "label": "page_navigate",
+          "group": "page_previous",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_153",
+          "text": "まだ次のページには進まないで",
+          "label": "not_command",
+          "group": "page_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_disabled_state_vs_prohibit",
+      "family": "v03_desired_state_and_prohibition",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_965",
+        "nyamuru_voice_966",
+        "nyamuru_voice_967",
+        "nyamuru_voice_968",
+        "nyamuru_voice_969",
+        "nyamuru_voice_970",
+        "nyamuru_voice_971",
+        "nyamuru_voice_972"
+      ],
+      "related_v02_groups": [
+        "inner_frame_snap_set_desired_state",
+        "panel_gap_snap_set_desired_state",
+        "panel_sync_set_desired_state",
+        "bubble_tail"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_082",
+          "text": "この吹き出しのしっぽを消して",
+          "label": "bubble_set",
+          "group": "bubble_tail",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_083",
+          "text": "選択中の吹き出しにしっぽを付けて",
+          "label": "bubble_set",
+          "group": "bubble_tail",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_165",
+          "text": "コマシンクロをオンにして",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_166",
+          "text": "コマシンクロオン",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_167",
+          "text": "コマシンクロを有効にしてくれる？",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_168",
+          "text": "コマシンクロのチェックを入れて",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_169",
+          "text": "コマシンクロを使う設定にして",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_171",
+          "text": "コマシンクロをオフにして",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_172",
+          "text": "コマシンクロオフ",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_173",
+          "text": "コマシンクロを無効にしてください",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_174",
+          "text": "コマシンクロのチェックを外して",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_175",
+          "text": "コマシンクロを使わない設定にして",
+          "label": "panel_sync_set",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_177",
+          "text": "コマシンクロをオンにしないで",
+          "label": "not_command",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_178",
+          "text": "コマシンクロをオフにしないで",
+          "label": "not_command",
+          "group": "panel_sync_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_185",
+          "text": "内枠スナップをオンにして",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_186",
+          "text": "内枠スナップオン",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_187",
+          "text": "内枠スナップを有効にしてくれる？",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_188",
+          "text": "内枠スナップのチェックを入れて",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_189",
+          "text": "内枠スナップを使う設定にして",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_191",
+          "text": "内枠スナップをオフにして",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_192",
+          "text": "内枠スナップオフ",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_193",
+          "text": "内枠スナップを無効にしてください",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_194",
+          "text": "内枠スナップのチェックを外して",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_195",
+          "text": "内枠スナップを使わない設定にして",
+          "label": "inner_frame_snap_set",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_197",
+          "text": "内枠スナップをオンにしないで",
+          "label": "not_command",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_198",
+          "text": "内枠スナップをオフにしないで",
+          "label": "not_command",
+          "group": "inner_frame_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_205",
+          "text": "コマスナップをオンにして",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_206",
+          "text": "コマスナップオン",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_207",
+          "text": "コマスナップを有効にしてくれる？",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_208",
+          "text": "コマスナップのチェックを入れて",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_209",
+          "text": "コマスナップを使う設定にして",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_211",
+          "text": "コマスナップをオフにして",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_212",
+          "text": "コマスナップオフ",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_213",
+          "text": "コマスナップを無効にしてください",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_214",
+          "text": "コマスナップのチェックを外して",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_215",
+          "text": "コマスナップを使わない設定にして",
+          "label": "panel_gap_snap_set",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_217",
+          "text": "コマスナップをオンにしないで",
+          "label": "not_command",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_218",
+          "text": "コマスナップをオフにしないで",
+          "label": "not_command",
+          "group": "panel_gap_snap_set_desired_state",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_generation_wait_or_start",
+      "family": "v03_generation_negation_positive_contrast",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_973",
+        "nyamuru_voice_974",
+        "nyamuru_voice_975",
+        "nyamuru_voice_976",
+        "nyamuru_voice_977",
+        "nyamuru_voice_978",
+        "nyamuru_voice_979",
+        "nyamuru_voice_980"
+      ],
+      "related_v02_groups": [
+        "generate_selection",
+        "generate_current_page",
+        "generate_selected_panel",
+        "generate_character"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_136",
+          "text": "人物だけ画像生成を始めて",
+          "label": "generate_request",
+          "group": "generate_character",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_225",
+          "text": "これ生成",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_226",
+          "text": "これを生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_227",
+          "text": "選択中のものを生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_228",
+          "text": "今選んでいる対象を画像生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_229",
+          "text": "選択した対象を生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_230",
+          "text": "選択中の対象だけ生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_237",
+          "text": "ページ全体を生成",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_238",
+          "text": "このページを丸ごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_239",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_240",
+          "text": "この一ページを生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_241",
+          "text": "このページを一枚まるごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_242",
+          "text": "このページ全体の生成を始めて",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_243",
+          "text": "このコマだけ生成",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_244",
+          "text": "選択中のコマだけ生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_245",
+          "text": "いま選んでいるコマを生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_246",
+          "text": "このコマ全体を一枚の画像として生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_247",
+          "text": "他のコマには手を加えず、このコマだけ生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_248",
+          "text": "このコマだけ生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_261",
+          "text": "これ生成しないで",
+          "label": "not_command",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_263",
+          "text": "ページ全体の生成はまだ始めないで",
+          "label": "not_command",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_264",
+          "text": "このコマだけ生成したよ",
+          "label": "not_command",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_quoted_negative_text",
+      "family": "v03_quoted_commands_as_content",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_981",
+        "nyamuru_voice_982",
+        "nyamuru_voice_983",
+        "nyamuru_voice_984",
+        "nyamuru_voice_985",
+        "nyamuru_voice_986",
+        "nyamuru_voice_987",
+        "nyamuru_voice_988"
+      ],
+      "related_v02_groups": [
+        "save_how_question",
+        "save_negative",
+        "bubble_quoted_command"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_094",
+          "text": "この吹き出しに「保存して、次のページへ」と入れて",
+          "label": "bubble_set",
+          "group": "bubble_quoted_command",
+          "family": "bubble_quoted_command",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_141",
+          "text": "保存のやり方を教えて",
+          "label": "not_command",
+          "group": "save_how_question",
+          "family": "save_how_question",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_negated_wait_not_action",
+      "family": "v03_negated_wait_positive_request",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_989",
+        "nyamuru_voice_990",
+        "nyamuru_voice_991",
+        "nyamuru_voice_992",
+        "nyamuru_voice_993",
+        "nyamuru_voice_994",
+        "nyamuru_voice_995",
+        "nyamuru_voice_996"
+      ],
+      "related_v02_groups": [
+        "save_basic",
+        "undo_basic",
+        "redo_basic",
+        "save_negative"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "group": "save_basic",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_002",
+          "text": "今の作品を保存してください",
+          "label": "save",
+          "group": "save_basic",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_003",
+          "text": "セーブお願い",
+          "label": "save",
+          "group": "save_basic",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_011",
+          "text": "直前の編集を戻して",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_014",
+          "text": "ひとつ前の編集状態に戻して",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_016",
+          "text": "今の操作をUndoで取り消してください",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_021",
+          "text": "リドゥして",
+          "label": "redo",
+          "group": "redo_basic",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_028",
+          "text": "リドゥをお願いします",
+          "label": "redo",
+          "group": "redo_basic",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_noaction_reports_questions",
+      "family": "v03_history_and_save_mentions",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_997",
+        "nyamuru_voice_998",
+        "nyamuru_voice_999",
+        "nyamuru_voice_1000",
+        "nyamuru_voice_1001",
+        "nyamuru_voice_1002",
+        "nyamuru_voice_1003",
+        "nyamuru_voice_1004"
+      ],
+      "related_v02_groups": [
+        "save_status_question",
+        "save_report",
+        "undo_question",
+        "redo_report",
+        "v02_routes_noaction_thought"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_142",
+          "text": "この作品は保存済み？",
+          "label": "not_command",
+          "group": "save_status_question",
+          "family": "save_status_question",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_145",
+          "text": "さっき保存したよ",
+          "label": "not_command",
+          "group": "save_report",
+          "family": "save_report",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_146",
+          "text": "元に戻すと何が戻るの？",
+          "label": "not_command",
+          "group": "undo_question",
+          "family": "undo_question",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_147",
+          "text": "もう編集をやり直した",
+          "label": "not_command",
+          "group": "redo_report",
+          "family": "redo_report",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_845",
+          "text": "そろそろ保存する時間かなあ",
+          "label": "not_command",
+          "group": "v02_routes_noaction_thought",
+          "family": "v02_routes_noaction_thought",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_846",
+          "text": "このページは下書き方式のほうがよかったかも",
+          "label": "not_command",
+          "group": "v02_routes_noaction_thought",
+          "family": "v02_routes_noaction_thought",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_847",
+          "text": "文字の頭がそろうと見た目がすっきりするね",
+          "label": "not_command",
+          "group": "v02_routes_noaction_thought",
+          "family": "v02_routes_noaction_thought",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_848",
+          "text": "「次のページに進んで」というセリフ、ちょっと変だね",
+          "label": "not_command",
+          "group": "v02_routes_noaction_thought",
+          "family": "v02_routes_noaction_thought",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_pen_alignment_negation",
+      "family": "v03_tool_alignment_prohibition",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_1005",
+        "nyamuru_voice_1006",
+        "nyamuru_voice_1007",
+        "nyamuru_voice_1008",
+        "nyamuru_voice_1009",
+        "nyamuru_voice_1010",
+        "nyamuru_voice_1011",
+        "nyamuru_voice_1012"
+      ],
+      "related_v02_groups": [
+        "paint_pen_choice",
+        "text_frames_top"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_285",
+          "text": "ラスターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_286",
+          "text": "ラスターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_287",
+          "text": "ラスターで描くペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_288",
+          "text": "ラスターペンを使いたいので選択して",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_289",
+          "text": "ラスターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_290",
+          "text": "ベクターじゃなくてラスターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_291",
+          "text": "ベクターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_292",
+          "text": "ベクターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_293",
+          "text": "ベクターのペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_294",
+          "text": "ベジェペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_295",
+          "text": "ベクターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_296",
+          "text": "ラスターペンではなくベクターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_297",
+          "text": "選択中の文字の頭をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_298",
+          "text": "選択した文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_299",
+          "text": "この複数の文字枠を上揃えにして",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_300",
+          "text": "選択中のセリフの書き出しの高さをそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_301",
+          "text": "選択した吹き出し内の文字の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_302",
+          "text": "並んでいる吹き出しのうち、選択した文字だけ頭をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_303",
+          "text": "複数選んだ文字枠を上にそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_304",
+          "text": "コマ3で選択中の文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_305",
+          "text": "ラスターペンには変えないで",
+          "label": "not_command",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_307",
+          "text": "文字の頭はそろえないで",
+          "label": "not_command",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_not_start_vs_cancel_running",
+      "family": "v03_generation_hold_vs_running_cancel",
+      "focus": "negation_defer",
+      "candidate_ids": [
+        "nyamuru_voice_1013",
+        "nyamuru_voice_1014",
+        "nyamuru_voice_1015",
+        "nyamuru_voice_1016",
+        "nyamuru_voice_1017",
+        "nyamuru_voice_1018",
+        "nyamuru_voice_1019",
+        "nyamuru_voice_1020"
+      ],
+      "related_v02_groups": [
+        "generate_current_page",
+        "out_cancel_generation",
+        "generate_selection"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_138",
+          "text": "実行中の画像生成を止めて",
+          "label": "out_of_scope_request",
+          "group": "out_cancel_generation",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_225",
+          "text": "これ生成",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_226",
+          "text": "これを生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_227",
+          "text": "選択中のものを生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_228",
+          "text": "今選んでいる対象を画像生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_229",
+          "text": "選択した対象を生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_230",
+          "text": "選択中の対象だけ生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_237",
+          "text": "ページ全体を生成",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_238",
+          "text": "このページを丸ごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_239",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_240",
+          "text": "この一ページを生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_241",
+          "text": "このページを一枚まるごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_242",
+          "text": "このページ全体の生成を始めて",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_261",
+          "text": "これ生成しないで",
+          "label": "not_command",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_263",
+          "text": "ページ全体の生成はまだ始めないで",
+          "label": "not_command",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_undo_button_phrasing",
+      "family": "v03_undo_redo_controls",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1021",
+        "nyamuru_voice_1022",
+        "nyamuru_voice_1023",
+        "nyamuru_voice_1024",
+        "nyamuru_voice_1025",
+        "nyamuru_voice_1026",
+        "nyamuru_voice_1027",
+        "nyamuru_voice_1028"
+      ],
+      "related_v02_groups": [
+        "undo_button",
+        "v02_core_undo_history_control"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_015",
+          "text": "元に戻すボタンを一回実行して",
+          "label": "undo",
+          "group": "undo_button",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_377",
+          "text": "ツールバーの元に戻すと同じ操作で、編集を一段戻して。",
+          "label": "undo",
+          "group": "v02_core_undo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_378",
+          "text": "編集履歴の最新項目を取り消す操作を、一回お願いしたい。",
+          "label": "undo",
+          "group": "v02_core_undo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_379",
+          "text": "いま確定している最後の編集に対して、Undoを一度かけてください。",
+          "label": "undo",
+          "group": "v02_core_undo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_380",
+          "text": "ショートカットで戻すのと同じ意味で、直前の変更を一つアンドゥしてくれる？",
+          "label": "undo",
+          "group": "v02_core_undo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_redo_button_phrasing",
+      "family": "v03_undo_redo_controls",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1029",
+        "nyamuru_voice_1030",
+        "nyamuru_voice_1031",
+        "nyamuru_voice_1032",
+        "nyamuru_voice_1033",
+        "nyamuru_voice_1034",
+        "nyamuru_voice_1035",
+        "nyamuru_voice_1036"
+      ],
+      "related_v02_groups": [
+        "redo_button",
+        "v02_core_redo_history_control"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_024",
+          "text": "やり直すボタンを一回実行して",
+          "label": "redo",
+          "group": "redo_button",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_409",
+          "text": "ツールバーのやり直すと同じ操作を一度実行して。",
+          "label": "redo",
+          "group": "v02_core_redo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_410",
+          "text": "Undoの反対の操作で、取り消し履歴を一段進めてもらえる？",
+          "label": "redo",
+          "group": "v02_core_redo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_411",
+          "text": "編集履歴のRedoを一回使って、取り消した変更を再び有効にして。",
+          "label": "redo",
+          "group": "v02_core_redo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_412",
+          "text": "履歴からやり直すほうを一回お願い。新しく描き直す意味ではないよ。",
+          "label": "redo",
+          "group": "v02_core_redo_history_control",
+          "family": "redo_button",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_undo_history_count",
+      "family": "v03_undo_redo_counted_history",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1037",
+        "nyamuru_voice_1038",
+        "nyamuru_voice_1039",
+        "nyamuru_voice_1040",
+        "nyamuru_voice_1041",
+        "nyamuru_voice_1042",
+        "nyamuru_voice_1043",
+        "nyamuru_voice_1044"
+      ],
+      "related_v02_groups": [
+        "undo_count",
+        "v02_core_undo_bounded_count",
+        "undo_basic"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_011",
+          "text": "直前の編集を戻して",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_014",
+          "text": "ひとつ前の編集状態に戻して",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_016",
+          "text": "今の操作をUndoで取り消してください",
+          "label": "undo",
+          "group": "undo_basic",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_018",
+          "text": "編集を二回分アンドゥして",
+          "label": "undo",
+          "group": "undo_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_361",
+          "text": "最後の二つの編集を取り消したい。Undoを二回実行して。",
+          "label": "undo",
+          "group": "v02_core_undo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_362",
+          "text": "今は三操作前の状態へ戻りたいので、編集履歴を三段戻して。",
+          "label": "undo",
+          "group": "v02_core_undo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_363",
+          "text": "直近の変更二回分だけアンドゥしてくれる？",
+          "label": "undo",
+          "group": "v02_core_undo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_364",
+          "text": "ここで四つ前の編集状態まで戻すために、Undoを四回お願い。",
+          "label": "undo",
+          "group": "v02_core_undo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_redo_history_count",
+      "family": "v03_undo_redo_counted_history",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1045",
+        "nyamuru_voice_1046",
+        "nyamuru_voice_1047",
+        "nyamuru_voice_1048",
+        "nyamuru_voice_1049",
+        "nyamuru_voice_1050",
+        "nyamuru_voice_1051",
+        "nyamuru_voice_1052"
+      ],
+      "related_v02_groups": [
+        "redo_count",
+        "v02_core_redo_bounded_count",
+        "redo_after_undo"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_022",
+          "text": "今アンドゥした編集をやり直して",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_023",
+          "text": "取り消した直前の編集を復活させて",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_025",
+          "text": "Undoで戻す前の状態に一段進めて",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_026",
+          "text": "編集履歴を二回リドゥして",
+          "label": "redo",
+          "group": "redo_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_027",
+          "text": "直前の取り消しを戻してください",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_029",
+          "text": "いま取り消した変更をもう一度適用して",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_393",
+          "text": "続けて取り消した二件の編集を、Redoを二回使って戻して。",
+          "label": "redo",
+          "group": "v02_core_redo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_394",
+          "text": "いまUndoを三回かけた分を復活させたい。リドゥを三回お願い。",
+          "label": "redo",
+          "group": "v02_core_redo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_395",
+          "text": "取り消し履歴を二段進めて、二件の変更を再適用してください。",
+          "label": "redo",
+          "group": "v02_core_redo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_396",
+          "text": "四回のUndoをやり直すために、編集履歴でRedoを四回実行して。",
+          "label": "redo",
+          "group": "v02_core_redo_bounded_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_undo_specific_latest_edit",
+      "family": "v03_latest_edit_history",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1053",
+        "nyamuru_voice_1054",
+        "nyamuru_voice_1055",
+        "nyamuru_voice_1056",
+        "nyamuru_voice_1057",
+        "nyamuru_voice_1058",
+        "nyamuru_voice_1059",
+        "nyamuru_voice_1060"
+      ],
+      "related_v02_groups": [
+        "undo_last_edit",
+        "v02_core_undo_accidental_edit",
+        "v02_core_undo_reject_latest"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_013",
+          "text": "今動かした吹き出しの編集を一つ取り消して",
+          "label": "undo",
+          "group": "undo_last_edit",
+          "family": "undo_last_edit",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_017",
+          "text": "さっきの編集、アンドゥお願い",
+          "label": "undo",
+          "group": "undo_last_edit",
+          "family": "undo_last_edit",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_349",
+          "text": "いまの移動は手が滑った。直前の編集を一つ取り消して。",
+          "label": "undo",
+          "group": "v02_core_undo_accidental_edit",
+          "family": "v02_core_undo_accidental_edit",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_350",
+          "text": "最後に確定した吹き出しの拡大は間違いなので、その編集をUndoで一つ戻して。",
+          "label": "undo",
+          "group": "v02_core_undo_accidental_edit",
+          "family": "v02_core_undo_accidental_edit",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_351",
+          "text": "今入れた文字が不要だったから、最後の編集を一回アンドゥして。",
+          "label": "undo",
+          "group": "v02_core_undo_accidental_edit",
+          "family": "v02_core_undo_accidental_edit",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_352",
+          "text": "置く場所を間違えて今動かしたので、たった今の編集を元に戻して。",
+          "label": "undo",
+          "group": "v02_core_undo_accidental_edit",
+          "family": "v02_core_undo_accidental_edit",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_357",
+          "text": "最後の調整はやり過ぎたので、一回Undoして。",
+          "label": "undo",
+          "group": "v02_core_undo_reject_latest",
+          "family": "v02_core_undo_reject_latest",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_358",
+          "text": "今の文字直しは採用しない。直前の一操作だけ履歴から戻して。",
+          "label": "undo",
+          "group": "v02_core_undo_reject_latest",
+          "family": "v02_core_undo_reject_latest",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_359",
+          "text": "さっき最後に加えた変更は要らなかったね。アンドゥを一回お願いします。",
+          "label": "undo",
+          "group": "v02_core_undo_reject_latest",
+          "family": "v02_core_undo_reject_latest",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_360",
+          "text": "いま確定した編集を無かったことにしたいので、最後の履歴一件を取り消して。",
+          "label": "undo",
+          "group": "v02_core_undo_reject_latest",
+          "family": "v02_core_undo_reject_latest",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_redo_restore_last_undo",
+      "family": "v03_restoring_cancelled_edit",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1061",
+        "nyamuru_voice_1062",
+        "nyamuru_voice_1063",
+        "nyamuru_voice_1064",
+        "nyamuru_voice_1065",
+        "nyamuru_voice_1066",
+        "nyamuru_voice_1067",
+        "nyamuru_voice_1068"
+      ],
+      "related_v02_groups": [
+        "redo_after_undo",
+        "v02_core_redo_accidental_undo",
+        "v02_core_redo_regret_undo"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_022",
+          "text": "今アンドゥした編集をやり直して",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_023",
+          "text": "取り消した直前の編集を復活させて",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_025",
+          "text": "Undoで戻す前の状態に一段進めて",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_027",
+          "text": "直前の取り消しを戻してください",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_029",
+          "text": "いま取り消した変更をもう一度適用して",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_381",
+          "text": "取り消したのは早まったね。最後のUndoをリドゥで一つ戻して。",
+          "label": "redo",
+          "group": "v02_core_redo_regret_undo",
+          "family": "v02_core_redo_regret_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_382",
+          "text": "さっき消した変更のほうがよかった。取り消し履歴から一件だけ再適用して。",
+          "label": "redo",
+          "group": "v02_core_redo_regret_undo",
+          "family": "v02_core_redo_regret_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_383",
+          "text": "いまアンドゥした編集をやっぱり採用するので、Redoを一回お願い。",
+          "label": "redo",
+          "group": "v02_core_redo_regret_undo",
+          "family": "v02_core_redo_regret_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_384",
+          "text": "さっきの取り消しは撤回したい。リドゥを一回実行して。",
+          "label": "redo",
+          "group": "v02_core_redo_regret_undo",
+          "family": "v02_core_redo_regret_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_389",
+          "text": "間違えてアンドゥを押したから、その一回分をリドゥして。",
+          "label": "redo",
+          "group": "v02_core_redo_accidental_undo",
+          "family": "v02_core_redo_accidental_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_390",
+          "text": "取り消すつもりがなかったので、直前にUndoした変更を戻してください。",
+          "label": "redo",
+          "group": "v02_core_redo_accidental_undo",
+          "family": "v02_core_redo_accidental_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_391",
+          "text": "今のUndoは誤操作。取り消された編集を一件だけ再適用してくれる？",
+          "label": "redo",
+          "group": "v02_core_redo_accidental_undo",
+          "family": "v02_core_redo_accidental_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_392",
+          "text": "さっき一段戻し過ぎたので、リドゥで一段進めて。",
+          "label": "redo",
+          "group": "v02_core_redo_accidental_undo",
+          "family": "v02_core_redo_accidental_undo",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_final_correction",
+      "family": "v03_undo_redo_final_correction",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1069",
+        "nyamuru_voice_1070",
+        "nyamuru_voice_1071",
+        "nyamuru_voice_1072",
+        "nyamuru_voice_1073",
+        "nyamuru_voice_1074",
+        "nyamuru_voice_1075",
+        "nyamuru_voice_1076"
+      ],
+      "related_v02_groups": [
+        "v02_core_undo_self_correction",
+        "v02_core_redo_self_correction"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_373",
+          "text": "リドゥして、いや逆だった。アンドゥを一回お願い。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_374",
+          "text": "二回戻して、と言ったけど一回でいい。編集を一段だけUndoして。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_375",
+          "text": "今の修正は残すつもりだったけど撤回する。最後の編集を一つ取り消してください。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_376",
+          "text": "元に戻さないで、は言い間違い。今の編集を一回アンドゥして。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_405",
+          "text": "アンドゥして、違った。いまの取り消しをリドゥで一回戻して。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_406",
+          "text": "リドゥは二回、いや一回に訂正。取り消した編集一件だけ再適用して。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_407",
+          "text": "変更は消したままで、と言ったけど撤回する。今Undoした一件を復活させて。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_408",
+          "text": "やり直さなくていい、ではなく、今回は履歴のRedoを一回お願い。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_navigation_boundary",
+      "family": "v03_history_vs_navigation",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1077",
+        "nyamuru_voice_1078",
+        "nyamuru_voice_1079",
+        "nyamuru_voice_1080",
+        "nyamuru_voice_1081",
+        "nyamuru_voice_1082",
+        "nyamuru_voice_1083",
+        "nyamuru_voice_1084"
+      ],
+      "related_v02_groups": [
+        "undo_vs_page",
+        "page_previous",
+        "page_next",
+        "redo_after_undo"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_020",
+          "text": "ページを戻すんじゃなくて、直前の編集を取り消して",
+          "label": "undo",
+          "group": "undo_vs_page",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_022",
+          "text": "今アンドゥした編集をやり直して",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_023",
+          "text": "取り消した直前の編集を復活させて",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_025",
+          "text": "Undoで戻す前の状態に一段進めて",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_027",
+          "text": "直前の取り消しを戻してください",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_029",
+          "text": "いま取り消した変更をもう一度適用して",
+          "label": "redo",
+          "group": "redo_after_undo",
+          "family": "redo_after_undo",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_031",
+          "text": "次のページへ",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_032",
+          "text": "一ページ先を表示して",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_033",
+          "text": "ページを一枚進めてくれる？",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_034",
+          "text": "前のページに戻って",
+          "label": "page_navigate",
+          "group": "page_previous",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_035",
+          "text": "ひとつ前のページを見せて",
+          "label": "page_navigate",
+          "group": "page_previous",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_036",
+          "text": "ページを一枚戻して",
+          "label": "page_navigate",
+          "group": "page_previous",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_046",
+          "text": "編集を取り消すんじゃなくて前のページに戻って",
+          "label": "page_navigate",
+          "group": "undo_vs_page",
+          "family": "page_negative",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_redo_or_new_generation",
+      "family": "v03_history_vs_regeneration",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1085",
+        "nyamuru_voice_1086",
+        "nyamuru_voice_1087",
+        "nyamuru_voice_1088",
+        "nyamuru_voice_1089",
+        "nyamuru_voice_1090",
+        "nyamuru_voice_1091",
+        "nyamuru_voice_1092"
+      ],
+      "related_v02_groups": [
+        "redo_vs_generate",
+        "v02_core_redo_not_regeneration",
+        "generate_selected_panel",
+        "generate_current_page"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_030",
+          "text": "生成し直すのではなく、さっきのUndoをリドゥして",
+          "label": "redo",
+          "group": "redo_vs_generate",
+          "family": "redo_vs_generate",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_237",
+          "text": "ページ全体を生成",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_238",
+          "text": "このページを丸ごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_239",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_240",
+          "text": "この一ページを生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_241",
+          "text": "このページを一枚まるごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_242",
+          "text": "このページ全体の生成を始めて",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_243",
+          "text": "このコマだけ生成",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_244",
+          "text": "選択中のコマだけ生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_245",
+          "text": "いま選んでいるコマを生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_246",
+          "text": "このコマ全体を一枚の画像として生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_247",
+          "text": "他のコマには手を加えず、このコマだけ生成して",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_248",
+          "text": "このコマだけ生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_263",
+          "text": "ページ全体の生成はまだ始めないで",
+          "label": "not_command",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_264",
+          "text": "このコマだけ生成したよ",
+          "label": "not_command",
+          "group": "generate_selected_panel",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_401",
+          "text": "画像を新しく作り直す依頼ではなく、Undoした編集を一回リドゥして。",
+          "label": "redo",
+          "group": "v02_core_redo_not_regeneration",
+          "family": "redo_vs_generate",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_402",
+          "text": "生成の再実行はしなくていいので、編集履歴のやり直しを一回お願い。",
+          "label": "redo",
+          "group": "v02_core_redo_not_regeneration",
+          "family": "redo_vs_generate",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_403",
+          "text": "同じ絵をもう一枚作るのではなく、取り消した変更一件を復活させて。",
+          "label": "redo",
+          "group": "v02_core_redo_not_regeneration",
+          "family": "redo_vs_generate",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_404",
+          "text": "新規の編集は加えず、最後にアンドゥした操作をRedoで戻してくれる？",
+          "label": "redo",
+          "group": "v02_core_redo_not_regeneration",
+          "family": "redo_vs_generate",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_quoted_or_reported",
+      "family": "v03_quoted_commands_as_content",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1093",
+        "nyamuru_voice_1094",
+        "nyamuru_voice_1095",
+        "nyamuru_voice_1096",
+        "nyamuru_voice_1097",
+        "nyamuru_voice_1098",
+        "nyamuru_voice_1099",
+        "nyamuru_voice_1100"
+      ],
+      "related_v02_groups": [
+        "bubble_quoted_command",
+        "undo_question",
+        "redo_report",
+        "v02_routes_noaction_report"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_094",
+          "text": "この吹き出しに「保存して、次のページへ」と入れて",
+          "label": "bubble_set",
+          "group": "bubble_quoted_command",
+          "family": "bubble_quoted_command",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_146",
+          "text": "元に戻すと何が戻るの？",
+          "label": "not_command",
+          "group": "undo_question",
+          "family": "undo_question",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_147",
+          "text": "もう編集をやり直した",
+          "label": "not_command",
+          "group": "redo_report",
+          "family": "redo_report",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_841",
+          "text": "さっき二回アンドゥしておいたよ",
+          "label": "not_command",
+          "group": "v02_routes_noaction_report",
+          "family": "v02_routes_noaction_report",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_842",
+          "text": "保存は自分で済ませたところ",
+          "label": "not_command",
+          "group": "v02_routes_noaction_report",
+          "family": "v02_routes_noaction_report",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_843",
+          "text": "ベクターペンに切り替えたら描きやすくなった",
+          "label": "not_command",
+          "group": "v02_routes_noaction_report",
+          "family": "v02_routes_noaction_report",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_844",
+          "text": "このコマの背景候補は確認済みだよ",
+          "label": "not_command",
+          "group": "v02_routes_noaction_report",
+          "family": "v02_routes_noaction_report",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_missing_direction",
+      "family": "v03_ambiguous_history_reference",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1101",
+        "nyamuru_voice_1102",
+        "nyamuru_voice_1103",
+        "nyamuru_voice_1104",
+        "nyamuru_voice_1105",
+        "nyamuru_voice_1106",
+        "nyamuru_voice_1107",
+        "nyamuru_voice_1108"
+      ],
+      "related_v02_groups": [
+        "ambiguous_back",
+        "ambiguous_again",
+        "ambiguous_history",
+        "v02_routes_noaction_state"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_101",
+          "text": "戻して",
+          "label": "needs_clarification",
+          "group": "ambiguous_back",
+          "family": "ambiguous_back",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_102",
+          "text": "もう一度",
+          "label": "needs_clarification",
+          "group": "ambiguous_again",
+          "family": "ambiguous_again",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_110",
+          "text": "さっきと同じにして",
+          "label": "needs_clarification",
+          "group": "ambiguous_history",
+          "family": "ambiguous_history",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_833",
+          "text": "最後に保存されたのはいつ？",
+          "label": "not_command",
+          "group": "v02_routes_noaction_state",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_834",
+          "text": "内枠スナップの現在の設定を教えて",
+          "label": "not_command",
+          "group": "v02_routes_noaction_state",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_835",
+          "text": "今使っているのはベクターペン？",
+          "label": "not_command",
+          "group": "v02_routes_noaction_state",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_836",
+          "text": "選択中の吹き出しにはしっぽが付いている？",
+          "label": "not_command",
+          "group": "v02_routes_noaction_state",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_repeat_or_pair",
+      "family": "v03_count_vs_distinct_operations",
+      "focus": "undo_redo",
+      "candidate_ids": [
+        "nyamuru_voice_1109",
+        "nyamuru_voice_1110",
+        "nyamuru_voice_1111",
+        "nyamuru_voice_1112",
+        "nyamuru_voice_1113",
+        "nyamuru_voice_1114",
+        "nyamuru_voice_1115",
+        "nyamuru_voice_1116"
+      ],
+      "related_v02_groups": [
+        "undo_count",
+        "redo_count",
+        "compound_undo_save",
+        "compound_redo_save"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_018",
+          "text": "編集を二回分アンドゥして",
+          "label": "undo",
+          "group": "undo_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_026",
+          "text": "編集履歴を二回リドゥして",
+          "label": "redo",
+          "group": "redo_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_123",
+          "text": "直前の編集を戻して、その状態を保存して",
+          "label": "compound_request",
+          "group": "compound_undo_save",
+          "family": "compound_undo_save",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_124",
+          "text": "リドゥしてから保存して",
+          "label": "compound_request",
+          "group": "compound_redo_save",
+          "family": "compound_redo_save",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_save_then_navigation",
+      "family": "v03_save_and_page_order",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1117",
+        "nyamuru_voice_1118",
+        "nyamuru_voice_1119",
+        "nyamuru_voice_1120",
+        "nyamuru_voice_1121",
+        "nyamuru_voice_1122",
+        "nyamuru_voice_1123",
+        "nyamuru_voice_1124"
+      ],
+      "related_v02_groups": [
+        "compound_save_page",
+        "v02_routes_compound_save_page"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_121",
+          "text": "保存してから次のページに進んで",
+          "label": "compound_request",
+          "group": "compound_save_page",
+          "family": "compound_save_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_765",
+          "text": "この状態を保存したら、最後のページを表示して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_766",
+          "text": "まず先頭ページを開いて、それから作品を保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_767",
+          "text": "修正を保存して、二ページ先に進んでほしい",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_768",
+          "text": "今の作品を保存してから、五ページに移動してほしい",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_navigation_then_save",
+      "family": "v03_save_and_page_order",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1125",
+        "nyamuru_voice_1126",
+        "nyamuru_voice_1127",
+        "nyamuru_voice_1128",
+        "nyamuru_voice_1129",
+        "nyamuru_voice_1130",
+        "nyamuru_voice_1131",
+        "nyamuru_voice_1132"
+      ],
+      "related_v02_groups": [
+        "compound_save_page",
+        "v02_routes_compound_save_page"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_121",
+          "text": "保存してから次のページに進んで",
+          "label": "compound_request",
+          "group": "compound_save_page",
+          "family": "compound_save_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_765",
+          "text": "この状態を保存したら、最後のページを表示して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_766",
+          "text": "まず先頭ページを開いて、それから作品を保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_767",
+          "text": "修正を保存して、二ページ先に進んでほしい",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_768",
+          "text": "今の作品を保存してから、五ページに移動してほしい",
+          "label": "compound_request",
+          "group": "v02_routes_compound_save_page",
+          "family": "v02_routes_compound_save_page",
+          "legacy_split": "test"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_history_and_save",
+      "family": "v03_history_plus_save",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1133",
+        "nyamuru_voice_1134",
+        "nyamuru_voice_1135",
+        "nyamuru_voice_1136",
+        "nyamuru_voice_1137",
+        "nyamuru_voice_1138",
+        "nyamuru_voice_1139",
+        "nyamuru_voice_1140"
+      ],
+      "related_v02_groups": [
+        "compound_undo_save",
+        "compound_redo_save",
+        "v02_routes_compound_history_save"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_123",
+          "text": "直前の編集を戻して、その状態を保存して",
+          "label": "compound_request",
+          "group": "compound_undo_save",
+          "family": "compound_undo_save",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_124",
+          "text": "リドゥしてから保存して",
+          "label": "compound_request",
+          "group": "compound_redo_save",
+          "family": "compound_redo_save",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_769",
+          "text": "二回アンドゥして、戻った状態を保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_history_save",
+          "family": "v02_routes_compound_history_save",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_770",
+          "text": "取り消した編集を一回復活させてから、作品を保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_history_save",
+          "family": "v02_routes_compound_history_save",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_771",
+          "text": "最後の編集を取り消したあとで、画面を用紙に合わせて",
+          "label": "compound_request",
+          "group": "v02_routes_compound_history_save",
+          "family": "v02_routes_compound_history_save",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_772",
+          "text": "リドゥを二回して、そのあと次のページを開いて",
+          "label": "compound_request",
+          "group": "v02_routes_compound_history_save",
+          "family": "v02_routes_compound_history_save",
+          "legacy_split": "dev"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_two_editor_settings",
+      "family": "v03_independent_setting_changes",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1141",
+        "nyamuru_voice_1142",
+        "nyamuru_voice_1143",
+        "nyamuru_voice_1144",
+        "nyamuru_voice_1145",
+        "nyamuru_voice_1146",
+        "nyamuru_voice_1147",
+        "nyamuru_voice_1148"
+      ],
+      "related_v02_groups": [
+        "v02_routes_compound_settings",
+        "panel_sync_set_save",
+        "inner_frame_snap_set_save",
+        "panel_gap_snap_set_save"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_183",
+          "text": "コマシンクロをオンにして保存して",
+          "label": "compound_request",
+          "group": "panel_sync_set_save",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_203",
+          "text": "内枠スナップをオンにして保存して",
+          "label": "compound_request",
+          "group": "inner_frame_snap_set_save",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_223",
+          "text": "コマスナップをオンにして保存して",
+          "label": "compound_request",
+          "group": "panel_gap_snap_set_save",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_781",
+          "text": "内枠スナップをオンにして、コマスナップはオフにして",
+          "label": "compound_request",
+          "group": "v02_routes_compound_settings",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_782",
+          "text": "コマシンクロを無効にして、作画方式を下書きにして",
+          "label": "compound_request",
+          "group": "v02_routes_compound_settings",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_783",
+          "text": "一体型に切り替えてから、ベクターペンを選んで",
+          "label": "compound_request",
+          "group": "v02_routes_compound_settings",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_784",
+          "text": "コマスナップを有効にして、この作品も保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_settings",
+          "family": "inner_frame_snap_set_correction",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_bubble_distinct_fields",
+      "family": "v03_multiple_bubble_fields",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1149",
+        "nyamuru_voice_1150",
+        "nyamuru_voice_1151",
+        "nyamuru_voice_1152",
+        "nyamuru_voice_1153",
+        "nyamuru_voice_1154",
+        "nyamuru_voice_1155",
+        "nyamuru_voice_1156"
+      ],
+      "related_v02_groups": [
+        "compound_bubble_fields",
+        "v02_routes_compound_bubble_fields",
+        "compound_bubble_save"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_127",
+          "text": "この吹き出しを四角にして、しっぽを消して",
+          "label": "compound_request",
+          "group": "compound_bubble_fields",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_128",
+          "text": "この吹き出しを右へ2ミリ動かして保存して",
+          "label": "compound_request",
+          "group": "compound_bubble_save",
+          "family": "bubble_move",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_777",
+          "text": "選んだ吹き出しを四角に変えて、話者は小雪ちゃんにして",
+          "label": "compound_request",
+          "group": "v02_routes_compound_bubble_fields",
+          "family": "v02_routes_compound_bubble_fields",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_778",
+          "text": "この吹き出しの本文を「待って」にして、しっぽも付けて",
+          "label": "compound_request",
+          "group": "v02_routes_compound_bubble_fields",
+          "family": "v02_routes_compound_bubble_fields",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_779",
+          "text": "吹き出しを右へ三ミリ移して、コマでの切取りをオンにして",
+          "label": "compound_request",
+          "group": "v02_routes_compound_bubble_fields",
+          "family": "v02_routes_compound_bubble_fields",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_780",
+          "text": "この吹き出しのしっぽを外して、幅を二十五ミリにして",
+          "label": "compound_request",
+          "group": "v02_routes_compound_bubble_fields",
+          "family": "v02_routes_compound_bubble_fields",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_tool_align_generate_pairs",
+      "family": "v03_multiple_tool_and_generation_actions",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1157",
+        "nyamuru_voice_1158",
+        "nyamuru_voice_1159",
+        "nyamuru_voice_1160",
+        "nyamuru_voice_1161",
+        "nyamuru_voice_1162",
+        "nyamuru_voice_1163",
+        "nyamuru_voice_1164"
+      ],
+      "related_v02_groups": [
+        "pen_and_align",
+        "generate_multiple_targets",
+        "v02_routes_compound_generation",
+        "v02_routes_compound_alignment",
+        "generate_save"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_270",
+          "text": "これを生成して保存して",
+          "label": "compound_request",
+          "group": "generate_save",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_314",
+          "text": "コマ1の小雪ちゃんを生成してからコマ3を生成して",
+          "label": "compound_request",
+          "group": "generate_multiple_targets",
+          "family": "generate_multiple_targets",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_315",
+          "text": "ラスターペンに変えて、文字の頭をそろえて",
+          "label": "compound_request",
+          "group": "pen_and_align",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_785",
+          "text": "下書き方式に変えてから、選択中の人物を生成して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_generation",
+          "family": "generate_multiple_targets",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_786",
+          "text": "今のページを丸ごと生成して、その結果を作品に保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_generation",
+          "family": "generate_multiple_targets",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_787",
+          "text": "二コマ目を生成したあとで、四コマ目も生成して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_generation",
+          "family": "generate_multiple_targets",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_788",
+          "text": "コマ一の小雪ちゃんを生成して、次に同じコマのミナちゃんも生成して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_generation",
+          "family": "generate_multiple_targets",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_793",
+          "text": "ベクターペンにして、選んだ文字枠は上端をそろえて",
+          "label": "compound_request",
+          "group": "v02_routes_compound_alignment",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_794",
+          "text": "選択した文字枠の上端をそろえたら、作品を保存して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_alignment",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_795",
+          "text": "文字枠の頭をそろえてから、表示を原寸に戻して",
+          "label": "compound_request",
+          "group": "v02_routes_compound_alignment",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_796",
+          "text": "コマ三を開くのではなく、ラスターペンに切り替えて、選択中の文字枠の上端もそろえて",
+          "label": "compound_request",
+          "group": "v02_routes_compound_alignment",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_self_correction_not_compound",
+      "family": "v03_final_single_request_after_correction",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1165",
+        "nyamuru_voice_1166",
+        "nyamuru_voice_1167",
+        "nyamuru_voice_1168",
+        "nyamuru_voice_1169",
+        "nyamuru_voice_1170",
+        "nyamuru_voice_1171",
+        "nyamuru_voice_1172"
+      ],
+      "related_v02_groups": [
+        "save_self_correction",
+        "generate_selection",
+        "paint_pen_choice",
+        "v02_core_undo_self_correction",
+        "v02_core_redo_self_correction"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_010",
+          "text": "保存しないで、いや、やっぱり今保存して",
+          "label": "save",
+          "group": "save_self_correction",
+          "family": "save_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_144",
+          "text": "保存して、いや、まだ保存しないで",
+          "label": "not_command",
+          "group": "save_self_correction",
+          "family": "save_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_225",
+          "text": "これ生成",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_226",
+          "text": "これを生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_227",
+          "text": "選択中のものを生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_228",
+          "text": "今選んでいる対象を画像生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_229",
+          "text": "選択した対象を生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_230",
+          "text": "選択中の対象だけ生成して",
+          "label": "generate_request",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_261",
+          "text": "これ生成しないで",
+          "label": "not_command",
+          "group": "generate_selection",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_285",
+          "text": "ラスターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_286",
+          "text": "ラスターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_287",
+          "text": "ラスターで描くペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_288",
+          "text": "ラスターペンを使いたいので選択して",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_289",
+          "text": "ラスターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_290",
+          "text": "ベクターじゃなくてラスターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_291",
+          "text": "ベクターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_292",
+          "text": "ベクターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_293",
+          "text": "ベクターのペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_294",
+          "text": "ベジェペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_295",
+          "text": "ベクターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_296",
+          "text": "ラスターペンではなくベクターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_305",
+          "text": "ラスターペンには変えないで",
+          "label": "not_command",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_373",
+          "text": "リドゥして、いや逆だった。アンドゥを一回お願い。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_374",
+          "text": "二回戻して、と言ったけど一回でいい。編集を一段だけUndoして。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_375",
+          "text": "今の修正は残すつもりだったけど撤回する。最後の編集を一つ取り消してください。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_376",
+          "text": "元に戻さないで、は言い間違い。今の編集を一回アンドゥして。",
+          "label": "undo",
+          "group": "v02_core_undo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_405",
+          "text": "アンドゥして、違った。いまの取り消しをリドゥで一回戻して。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_406",
+          "text": "リドゥは二回、いや一回に訂正。取り消した編集一件だけ再適用して。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_407",
+          "text": "変更は消したままで、と言ったけど撤回する。今Undoした一件を復活させて。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_408",
+          "text": "やり直さなくていい、ではなく、今回は履歴のRedoを一回お願い。",
+          "label": "redo",
+          "group": "v02_core_redo_self_correction",
+          "family": "v02_core_redo_self_correction",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_constraints_not_second_action",
+      "family": "v03_preservation_constraints",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1173",
+        "nyamuru_voice_1174",
+        "nyamuru_voice_1175",
+        "nyamuru_voice_1176",
+        "nyamuru_voice_1177",
+        "nyamuru_voice_1178",
+        "nyamuru_voice_1179",
+        "nyamuru_voice_1180"
+      ],
+      "related_v02_groups": [
+        "v02_core_undo_not_navigation",
+        "page_next",
+        "paint_pen_choice",
+        "text_frames_top",
+        "bubble_tail",
+        "generate_character"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_031",
+          "text": "次のページへ",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_032",
+          "text": "一ページ先を表示して",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_033",
+          "text": "ページを一枚進めてくれる？",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_082",
+          "text": "この吹き出しのしっぽを消して",
+          "label": "bubble_set",
+          "group": "bubble_tail",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_083",
+          "text": "選択中の吹き出しにしっぽを付けて",
+          "label": "bubble_set",
+          "group": "bubble_tail",
+          "family": "bubble_keep",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_136",
+          "text": "人物だけ画像生成を始めて",
+          "label": "generate_request",
+          "group": "generate_character",
+          "family": "generate_character",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_285",
+          "text": "ラスターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_286",
+          "text": "ラスターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_287",
+          "text": "ラスターで描くペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_288",
+          "text": "ラスターペンを使いたいので選択して",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_289",
+          "text": "ラスターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_290",
+          "text": "ベクターじゃなくてラスターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_291",
+          "text": "ベクターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_292",
+          "text": "ベクターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_293",
+          "text": "ベクターのペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_294",
+          "text": "ベジェペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_295",
+          "text": "ベクターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_296",
+          "text": "ラスターペンではなくベクターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_297",
+          "text": "選択中の文字の頭をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_298",
+          "text": "選択した文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_299",
+          "text": "この複数の文字枠を上揃えにして",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_300",
+          "text": "選択中のセリフの書き出しの高さをそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_301",
+          "text": "選択した吹き出し内の文字の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_302",
+          "text": "並んでいる吹き出しのうち、選択した文字だけ頭をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_303",
+          "text": "複数選んだ文字枠を上にそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_304",
+          "text": "コマ3で選択中の文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_305",
+          "text": "ラスターペンには変えないで",
+          "label": "not_command",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_307",
+          "text": "文字の頭はそろえないで",
+          "label": "not_command",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_369",
+          "text": "表示するページは変えずに、いまの編集をUndoで一つ戻して。",
+          "label": "undo",
+          "group": "v02_core_undo_not_navigation",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_370",
+          "text": "前のページを見たいわけではないよ。最後の編集一件を取り消して。",
+          "label": "undo",
+          "group": "v02_core_undo_not_navigation",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_371",
+          "text": "ページ移動は要らないから、編集履歴の「元に戻す」を一回お願い。",
+          "label": "undo",
+          "group": "v02_core_undo_not_navigation",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_372",
+          "text": "戻すのは画面の表示倍率ではなく、さっき確定した編集。Undoを一回実行して。",
+          "label": "undo",
+          "group": "v02_core_undo_not_navigation",
+          "family": "page_negative",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_one_action_multiple_values",
+      "family": "v03_count_and_coordinates_single_action",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1181",
+        "nyamuru_voice_1182",
+        "nyamuru_voice_1183",
+        "nyamuru_voice_1184",
+        "nyamuru_voice_1185",
+        "nyamuru_voice_1186",
+        "nyamuru_voice_1187",
+        "nyamuru_voice_1188"
+      ],
+      "related_v02_groups": [
+        "undo_count",
+        "redo_count",
+        "bubble_move_xy",
+        "bubble_resize_wh",
+        "page_next",
+        "text_frames_top"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_018",
+          "text": "編集を二回分アンドゥして",
+          "label": "undo",
+          "group": "undo_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_026",
+          "text": "編集履歴を二回リドゥして",
+          "label": "redo",
+          "group": "redo_count",
+          "family": "redo_count",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_031",
+          "text": "次のページへ",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_032",
+          "text": "一ページ先を表示して",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_033",
+          "text": "ページを一枚進めてくれる？",
+          "label": "page_navigate",
+          "group": "page_next",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_089",
+          "text": "この吹き出しを右に2ミリ、上に1ミリずらして",
+          "label": "bubble_set",
+          "group": "bubble_move_xy",
+          "family": "bubble_move",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_092",
+          "text": "吹き出しの幅を25ミリ、高さを35ミリにして",
+          "label": "bubble_set",
+          "group": "bubble_resize_wh",
+          "family": "bubble_resize",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_297",
+          "text": "選択中の文字の頭をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_298",
+          "text": "選択した文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_299",
+          "text": "この複数の文字枠を上揃えにして",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_300",
+          "text": "選択中のセリフの書き出しの高さをそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_301",
+          "text": "選択した吹き出し内の文字の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_302",
+          "text": "並んでいる吹き出しのうち、選択した文字だけ頭をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_303",
+          "text": "複数選んだ文字枠を上にそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_304",
+          "text": "コマ3で選択中の文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_307",
+          "text": "文字の頭はそろえないで",
+          "label": "not_command",
+          "group": "text_frames_top",
+          "family": "alignment_unspecified",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_quoted_two_actions_single_text",
+      "family": "v03_quoted_commands_as_content",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1189",
+        "nyamuru_voice_1190",
+        "nyamuru_voice_1191",
+        "nyamuru_voice_1192",
+        "nyamuru_voice_1193",
+        "nyamuru_voice_1194",
+        "nyamuru_voice_1195",
+        "nyamuru_voice_1196"
+      ],
+      "related_v02_groups": [
+        "bubble_quoted_command"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_094",
+          "text": "この吹き出しに「保存して、次のページへ」と入れて",
+          "label": "bubble_set",
+          "group": "bubble_quoted_command",
+          "family": "bubble_quoted_command",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_only_one_positive_clause",
+      "family": "v03_negated_alternative_single_action",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1197",
+        "nyamuru_voice_1198",
+        "nyamuru_voice_1199",
+        "nyamuru_voice_1200",
+        "nyamuru_voice_1201",
+        "nyamuru_voice_1202",
+        "nyamuru_voice_1203",
+        "nyamuru_voice_1204"
+      ],
+      "related_v02_groups": [
+        "compound_save_page",
+        "save_negative",
+        "page_negative",
+        "undo_negative",
+        "redo_negative",
+        "generate_current_page",
+        "paint_pen_choice"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_121",
+          "text": "保存してから次のページに進んで",
+          "label": "compound_request",
+          "group": "compound_save_page",
+          "family": "compound_save_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_151",
+          "text": "直前の編集を戻さないで",
+          "label": "not_command",
+          "group": "undo_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_152",
+          "text": "今回はリドゥしないで",
+          "label": "not_command",
+          "group": "redo_negative",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_153",
+          "text": "まだ次のページには進まないで",
+          "label": "not_command",
+          "group": "page_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_237",
+          "text": "ページ全体を生成",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_238",
+          "text": "このページを丸ごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_239",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_240",
+          "text": "この一ページを生成してくれる？",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_241",
+          "text": "このページを一枚まるごと生成して",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_242",
+          "text": "このページ全体の生成を始めて",
+          "label": "generate_request",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_263",
+          "text": "ページ全体の生成はまだ始めないで",
+          "label": "not_command",
+          "group": "generate_current_page",
+          "family": "generate_current_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_285",
+          "text": "ラスターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_286",
+          "text": "ラスターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_287",
+          "text": "ラスターで描くペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_288",
+          "text": "ラスターペンを使いたいので選択して",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_289",
+          "text": "ラスターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_290",
+          "text": "ベクターじゃなくてラスターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_291",
+          "text": "ベクターペンに変えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_292",
+          "text": "ベクターペンに切り替えて",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_293",
+          "text": "ベクターのペンを選んで",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_294",
+          "text": "ベジェペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_295",
+          "text": "ベクターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_296",
+          "text": "ラスターペンではなくベクターペンにして",
+          "label": "paint_tool_set",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_305",
+          "text": "ラスターペンには変えないで",
+          "label": "not_command",
+          "group": "paint_pen_choice",
+          "family": "paint_pen_choice",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    },
+    {
+      "group": "v03_both_denied_or_both_requested",
+      "family": "v03_denied_pair_vs_requested_pair",
+      "focus": "compound_boundary",
+      "candidate_ids": [
+        "nyamuru_voice_1205",
+        "nyamuru_voice_1206",
+        "nyamuru_voice_1207",
+        "nyamuru_voice_1208",
+        "nyamuru_voice_1209",
+        "nyamuru_voice_1210",
+        "nyamuru_voice_1211",
+        "nyamuru_voice_1212"
+      ],
+      "related_v02_groups": [
+        "save_negative",
+        "page_negative",
+        "undo_negative",
+        "redo_negative",
+        "compound_save_page",
+        "compound_redo_save"
+      ],
+      "v02_anchors": [
+        {
+          "id": "nyamuru_voice_121",
+          "text": "保存してから次のページに進んで",
+          "label": "compound_request",
+          "group": "compound_save_page",
+          "family": "compound_save_page",
+          "legacy_split": "dev"
+        },
+        {
+          "id": "nyamuru_voice_124",
+          "text": "リドゥしてから保存して",
+          "label": "compound_request",
+          "group": "compound_redo_save",
+          "family": "compound_redo_save",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_143",
+          "text": "今は保存しないで",
+          "label": "not_command",
+          "group": "save_negative",
+          "family": "save_basic",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_151",
+          "text": "直前の編集を戻さないで",
+          "label": "not_command",
+          "group": "undo_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        },
+        {
+          "id": "nyamuru_voice_152",
+          "text": "今回はリドゥしないで",
+          "label": "not_command",
+          "group": "redo_negative",
+          "family": "redo_basic",
+          "legacy_split": "test"
+        },
+        {
+          "id": "nyamuru_voice_153",
+          "text": "まだ次のページには進まないで",
+          "label": "not_command",
+          "group": "page_negative",
+          "family": "page_negative",
+          "legacy_split": "train"
+        }
+      ],
+      "relation": "Manually related contrast/paraphrase family, not exact transcript derivation; all new rows are synthetic train-only.",
+      "evaluation_rule": "Do not use any row from this group as a new acceptance-test or development holdout."
+    }
+  ]
+}

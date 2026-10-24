@@ -1,0 +1,993 @@
+{
+  "test": {
+    "n": 73,
+    "correct": 57,
+    "accuracy": 0.7808219178082192,
+    "macro_f1": 0.7712349054454318,
+    "macro_f1_supported": 0.7712349054454318,
+    "supported_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "missing_labels": [],
+    "per_class": {
+      "save": {
+        "precision": 0.75,
+        "recall": 0.75,
+        "f1": 0.75,
+        "support": 4,
+        "predicted_count": 4
+      },
+      "undo": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4,
+        "predicted_count": 4
+      },
+      "redo": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3,
+        "predicted_count": 3
+      },
+      "page_navigate": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8,
+        "support": 4,
+        "predicted_count": 6
+      },
+      "view_change": {
+        "precision": 0.6666666666666666,
+        "recall": 0.4,
+        "f1": 0.5,
+        "support": 5,
+        "predicted_count": 3
+      },
+      "artwork_mode_set": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.8571428571428571,
+        "support": 3,
+        "predicted_count": 4
+      },
+      "bubble_set": {
+        "precision": 0.5,
+        "recall": 0.75,
+        "f1": 0.6,
+        "support": 4,
+        "predicted_count": 6
+      },
+      "needs_clarification": {
+        "precision": 0.3333333333333333,
+        "recall": 0.25,
+        "f1": 0.28571428571428575,
+        "support": 4,
+        "predicted_count": 3
+      },
+      "needs_reasoning": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6,
+        "predicted_count": 6
+      },
+      "compound_request": {
+        "precision": 0.4,
+        "recall": 0.5,
+        "f1": 0.4444444444444445,
+        "support": 4,
+        "predicted_count": 5
+      },
+      "out_of_scope_request": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 4,
+        "predicted_count": 0
+      },
+      "not_command": {
+        "precision": 0.8,
+        "recall": 0.6666666666666666,
+        "f1": 0.7272727272727272,
+        "support": 6,
+        "predicted_count": 5
+      },
+      "panel_sync_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3,
+        "predicted_count": 3
+      },
+      "inner_frame_snap_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4,
+        "predicted_count": 4
+      },
+      "panel_gap_snap_set": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8,
+        "support": 2,
+        "predicted_count": 3
+      },
+      "generate_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 2,
+        "predicted_count": 2
+      },
+      "background_3d_candidates": {
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.888888888888889,
+        "support": 4,
+        "predicted_count": 5
+      },
+      "paint_tool_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3,
+        "predicted_count": 3
+      },
+      "text_frames_align": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4,
+        "predicted_count": 4
+      }
+    },
+    "label_order": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        2,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "not_command_to_dispatch_label": {
+      "count": 1,
+      "denominator": 6,
+      "rate": 0.16666666666666666
+    },
+    "unresolved_to_dispatch_label": {
+      "count": 7,
+      "denominator": 12,
+      "rate": 0.5833333333333334
+    },
+    "incorrect_dispatch_predictions": {
+      "count": 10,
+      "denominator": 54,
+      "rate": 0.18518518518518517
+    },
+    "undo_to_redo": {
+      "count": 0,
+      "denominator": 4,
+      "rate": 0.0
+    },
+    "redo_to_undo": {
+      "count": 0,
+      "denominator": 3,
+      "rate": 0.0
+    },
+    "compound_to_single_dispatch": {
+      "count": 2,
+      "denominator": 4,
+      "rate": 0.5
+    },
+    "single_dispatch_to_compound": {
+      "count": 2,
+      "denominator": 49,
+      "rate": 0.04081632653061224
+    },
+    "compound_prediction_precision": {
+      "count": 2,
+      "denominator": 5,
+      "rate": 0.4
+    },
+    "dispatch_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "subsets": {
+      "absolute_dimension": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "absolute_page": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "capability_gate": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "confirmed_shorthand": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "content_judgement": {
+        "count": 6,
+        "denominator": 6,
+        "rate": 1.0
+      },
+      "count": {
+        "count": 5,
+        "denominator": 5,
+        "rate": 1.0
+      },
+      "count_breakdown": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "current_unsaved_state": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "dependent_clauses": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "desired_final_state": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "excluded_save_as": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "explanation_only": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "external_model_search": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "future_context": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "future_report": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "history_not_new_edit": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "idempotent_state": {
+        "count": 3,
+        "denominator": 3,
+        "rate": 1.0
+      },
+      "last_page": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "layout": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "literal_name": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "literal_query": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "missing_guide_kind": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "missing_person_reference": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "multiple_text_frames": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "negated_distractor": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "no_current_action": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "no_scope_widening": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "observation_only": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "page_add": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "page_reorder": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "panel_locator": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "partial_correction": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "past_report": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "postposed_count": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "preservation": {
+        "count": 3,
+        "denominator": 5,
+        "rate": 0.6
+      },
+      "quoted_query": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "quoted_rule": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "quoted_state_word": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "quoted_status": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "quoted_tool_name": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "quoted_ui_name": {
+        "count": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "registered_only": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "request_question": {
+        "count": 3,
+        "denominator": 4,
+        "rate": 0.75
+      },
+      "resolved_in_utterance": {
+        "count": 5,
+        "denominator": 6,
+        "rate": 0.8333333333333334
+      },
+      "same_action_repetition": {
+        "count": 12,
+        "denominator": 14,
+        "rate": 0.8571428571428571
+      },
+      "save_as": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "scope_preservation": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "self_intention": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "settings_only": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "single_operation_with_arguments": {
+        "count": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "state_only": {
+        "count": 2,
+        "denominator": 2,
+        "rate": 1.0
+      },
+      "state_question_plus_request": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "target_focus": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "top_alignment": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "top_not_center": {
+        "count": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "two_current_actions": {
+        "count": 2,
+        "denominator": 4,
+        "rate": 0.5
+      },
+      "ui_reference": {
+        "count": 5,
+        "denominator": 8,
+        "rate": 0.625
+      },
+      "unspecified_degree": {
+        "count": 0,
+        "denominator": 2,
+        "rate": 0.0
+      },
+      "withdrawal": {
+        "count": 1,
+        "denominator": 3,
+        "rate": 0.3333333333333333
+      }
+    },
+    "source_accuracy": {
+      "codex_synthetic": {
+        "count": 57,
+        "denominator": 73,
+        "rate": 0.7808219178082192
+      }
+    },
+    "user_examples": {
+      "count": 0,
+      "denominator": 0,
+      "rate": null
+    },
+    "families": {
+      "n": 53,
+      "mean_accuracy": 0.8023360287511231,
+      "all_correct": 40,
+      "mixed_label_families": {
+        "v04_test_context_then_request": {
+          "count": 1,
+          "denominator": 2,
+          "rate": 0.5
+        },
+        "v04_test_preserve_then_request": {
+          "count": 1,
+          "denominator": 3,
+          "rate": 0.3333333333333333
+        },
+        "v04_test_repeated_same_request": {
+          "count": 12,
+          "denominator": 14,
+          "rate": 0.8571428571428571
+        },
+        "v04_test_self_correction": {
+          "count": 1,
+          "denominator": 3,
+          "rate": 0.3333333333333333
+        },
+        "v04_test_supp_quoted_target_then_apply": {
+          "count": 1,
+          "denominator": 2,
+          "rate": 0.5
+        },
+        "v04_test_value_announcement": {
+          "count": 2,
+          "denominator": 2,
+          "rate": 1.0
+        }
+      }
+    },
+    "loss": 4.356265068054199,
+    "prediction_seconds": 0.0614,
+    "prediction_synchronized_wall_seconds": 0.06210812460631132
+  }
+}

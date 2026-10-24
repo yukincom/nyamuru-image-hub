@@ -1,0 +1,3648 @@
+{
+  "frozen_at_utc": "2026-10-18T15:53:52.804667+00:00",
+  "protocol": {
+    "schema_version": 1,
+    "name": "daily_commands_20261019",
+    "created_at_utc": "2026-10-18T15:52:57.174341+00:00",
+    "n": 112,
+    "per_label": 8,
+    "labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "primary_model": "v04_seed43",
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "selection_basis": "前回の固定73問比較で候補とした通常学習v0.4 seed43を、今回の推論前に主評価として指定。v0.5.1 baselineと同一重み。3seedを併記し今回の結果で選び直さない。",
+    "primary_metric": "accuracy",
+    "secondary_metric": "macro_f1_supported over the 14 gold-supported labels; retain all 19 output probabilities",
+    "input": "text only",
+    "model_outputs": 19,
+    "question_rules": {
+      "max_characters": 40,
+      "single_action": true,
+      "independent_compound_actions": false,
+      "correction_or_preservation_clauses": false,
+      "explicit_off_allowed": true,
+      "count_arguments_allowed": true
+    },
+    "authoring": "Codex subagent drafted using only the label contract, without seeing existing utterances or model outputs. Parent reviewed all 112 labels/texts before any predictions. Common phrases are retained regardless of train overlap.",
+    "anchors": [
+      "保存して",
+      "次のページ"
+    ],
+    "old_benchmark": "experiments/v0.5.1/data/test.jsonl",
+    "old_benchmark_sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "limitations": [
+      "全112問はCodexが作成した合成の短い日本語操作文。利用者の自然発話を採取したものではない。",
+      "14分類各8問の均等配分。実際の利用頻度を反映した正解率ではない。",
+      "19分類モデルをそのまま使用し、今回は14操作分類だけを正解に含める。確認・推論・複数操作・対象外・非コマンドの判別能力はこのテストでは測らない。",
+      "学習文と同じ自然な定型句も保持する。完全一致、正規化のみ一致、一致なしを分けて報告する。一致なしでも意味的な独立性は保証しない。",
+      "同じ112問を3seedで評価する。336件の独立した発話や実利用精度の信頼区間として扱わない。",
+      "テキストからの意図分類だけを評価する。音声認識、スロット抽出、UI状態解決、実行、機能の実装済み判定は含めない。",
+      "選択中の対象は音声操作モードで解決できる前提。機能の準備状況は既存source/labels.jsonの記載を保持する。",
+      "旧73問、各版の凍結入力、モデル重み、旧予測は保持する。今回の問題・結果は訓練やseed選び直しに使わない。"
+    ]
+  },
+  "models": [
+    {
+      "id": "v04_seed42",
+      "group": "v04",
+      "seed": 42,
+      "checkpoint": "artifacts/v04-colab-2026-10-18/weights/trial-2/best",
+      "files_sha256": {
+        "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+        "model.safetensors": "fe6add3e068ea57079cd66820dff78d328465191bd10c3fba6756a0002104426",
+        "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+        "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+      },
+      "original_selection": {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 567,
+        "macro_f1": 0.8047619047619048,
+        "accuracy": 0.8088235294117647,
+        "loss": 3.0977792739868164,
+        "trial": "trial-2",
+        "train_seconds": 38.48491747200001,
+        "dev_evaluation_and_save_seconds": [
+          0.285753107000005,
+          0.3833567149999908,
+          0.36293860800003586,
+          0.05830246499999703,
+          0.057111425000016425,
+          0.3606127729999571,
+          3.5046617560000186,
+          0.0631373490000442,
+          0.06205999000007978,
+          0.057956009000008635
+        ],
+        "train_other_seconds": 33.28902727499985,
+        "peak_cuda_allocated_bytes": 757566976
+      },
+      "historical_primary": false
+    },
+    {
+      "id": "v04_seed43",
+      "group": "v04",
+      "seed": 43,
+      "checkpoint": "artifacts/v04-colab-2026-10-18/weights/trial-4/best",
+      "files_sha256": {
+        "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+        "model.safetensors": "1cb98d06dffde79f234a29b1c78e679634aae6e1357272c85948da6d57c3c3e1",
+        "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+        "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+      },
+      "original_selection": {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 8.0,
+        "step": 648,
+        "macro_f1": 0.7999268275584065,
+        "accuracy": 0.7941176470588235,
+        "loss": 4.117234706878662,
+        "trial": "trial-4",
+        "train_seconds": 35.27590981499998,
+        "dev_evaluation_and_save_seconds": [
+          0.2857513520000339,
+          0.3898485750000873,
+          0.3499248289999741,
+          0.05631490300004316,
+          0.05643640400001004,
+          0.05927876400005516,
+          0.3459328720000485,
+          0.3583914860000732,
+          0.05626862099995833,
+          0.05794615900003919
+        ],
+        "train_other_seconds": 33.259815849999654,
+        "peak_cuda_allocated_bytes": 757026304
+      },
+      "historical_primary": false
+    },
+    {
+      "id": "v04_seed44",
+      "group": "v04",
+      "seed": 44,
+      "checkpoint": "artifacts/v04-colab-2026-10-18/weights/trial-6/best",
+      "files_sha256": {
+        "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+        "model.safetensors": "98e3225b17d639635ba48797558e5d2a77408a097ce631f39af7290b7560607f",
+        "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+        "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+      },
+      "original_selection": {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 567,
+        "macro_f1": 0.8660319212950792,
+        "accuracy": 0.8529411764705882,
+        "loss": 2.3962743282318115,
+        "trial": "trial-6",
+        "train_seconds": 34.914682926999944,
+        "dev_evaluation_and_save_seconds": [
+          0.29023966900001597,
+          0.40707041000007393,
+          0.05422085399993648,
+          0.05547518699995635,
+          0.05664996999996674,
+          0.3812168770000426,
+          0.35592760999998063,
+          0.07032682300007309,
+          0.05816104699999869,
+          0.060999560000027486
+        ],
+        "train_other_seconds": 33.12439491999987,
+        "peak_cuda_allocated_bytes": 758451712
+      },
+      "historical_primary": true
+    }
+  ],
+  "primary_model": "v04_seed43",
+  "selection": "Seed43 was the candidate from the previous fixed73 comparison. Evaluate all three without reselection, threshold fitting, or training.",
+  "inference": {
+    "device": "cpu",
+    "dtype": "float32",
+    "attention": "sdpa",
+    "batch_size": 16,
+    "max_length": 128,
+    "torch_threads": 4,
+    "torch_interop_threads": 1,
+    "dropout": "disabled by Trainer.predict eval mode",
+    "threshold": null,
+    "input": "text only",
+    "truncation": false,
+    "training": false
+  },
+  "environment": {
+    "python": "3.11.14",
+    "platform": "macOS-26.6.1-arm64-arm-64bit",
+    "packages": {
+      "torch": "2.14.1",
+      "transformers": "5.19.0",
+      "accelerate": "1.15.0",
+      "numpy": "2.4.6",
+      "tokenizers": "0.23.3",
+      "safetensors": "0.8.0"
+    }
+  },
+  "overlap": {
+    "normalization": "Existing dataset.normalized: NFKC, casefold, remove punctuation/separator/symbol categories P/Z/S. No numeral or synonym conversion.",
+    "limitation": "No exact/normalized match does not establish semantic novelty or independence. Nearest-text similarity is diagnostic only, never a deletion criterion.",
+    "rows": [
+      {
+        "id": "daily_001",
+        "train_exact_ids": [
+          "nyamuru_voice_001"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_001"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_001"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_002",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_002",
+          "text": "今の作品を保存してくれる",
+          "label": "save",
+          "sequence_matcher_ratio": 0.7368421052631579
+        }
+      },
+      {
+        "id": "daily_003",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_002",
+          "text": "今の作品を保存してくれる",
+          "label": "save",
+          "sequence_matcher_ratio": 0.8571428571428571
+        }
+      },
+      {
+        "id": "daily_004",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "sequence_matcher_ratio": 0.6153846153846154
+        }
+      },
+      {
+        "id": "daily_005",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_006",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_729",
+          "text": "候補を二つお願い",
+          "label": "needs_clarification",
+          "sequence_matcher_ratio": 0.5714285714285714
+        }
+      },
+      {
+        "id": "daily_007",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_008",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_001",
+          "text": "保存して",
+          "label": "save",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_009",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_011",
+          "text": "直前の編集を戻して",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_010",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_1039",
+          "text": "直前の二操作を、Undo二回で取り消してほしい。",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.5882352941176471
+        }
+      },
+      {
+        "id": "daily_011",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_011",
+          "text": "直前の編集を戻して",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_012",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_011",
+          "text": "直前に行った二回の編集を履歴で取り消して",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.5161290322580645
+        }
+      },
+      {
+        "id": "daily_013",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_019",
+          "text": "今の編集を元に戻してくれる？",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.5833333333333334
+        }
+      },
+      {
+        "id": "daily_014",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_012",
+          "text": "直前の変更をUndoで一件取り消して",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.6206896551724138
+        }
+      },
+      {
+        "id": "daily_015",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_014",
+          "text": "ひとつ前の編集状態に戻して",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.9166666666666666
+        }
+      },
+      {
+        "id": "daily_016",
+        "train_exact_ids": [
+          "nyamuru_voice_012"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_012"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_012"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_017",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [
+            "nyamuru_voice_021"
+          ],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_018",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_022",
+          "text": "今アンドゥした編集をやり直して",
+          "label": "redo",
+          "sequence_matcher_ratio": 0.7142857142857143
+        }
+      },
+      {
+        "id": "daily_019",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_027",
+          "text": "直前の取り消しを戻してください",
+          "label": "redo",
+          "sequence_matcher_ratio": 0.6153846153846154
+        }
+      },
+      {
+        "id": "daily_020",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_022",
+          "text": "今アンドゥした編集をやり直して",
+          "label": "redo",
+          "sequence_matcher_ratio": 0.7857142857142857
+        }
+      },
+      {
+        "id": "daily_021",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_029",
+          "text": "いま取り消した変更をもう一度適用して",
+          "label": "redo",
+          "sequence_matcher_ratio": 0.7741935483870968
+        }
+      },
+      {
+        "id": "daily_022",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.5714285714285714
+        }
+      },
+      {
+        "id": "daily_023",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_012",
+          "text": "アンドゥして",
+          "label": "undo",
+          "sequence_matcher_ratio": 0.5714285714285714
+        }
+      },
+      {
+        "id": "daily_024",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_022",
+          "text": "今アンドゥした編集をやり直して",
+          "label": "redo",
+          "sequence_matcher_ratio": 0.5714285714285714
+        }
+      },
+      {
+        "id": "daily_025",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_031",
+          "text": "次のページへ",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.9090909090909091
+        }
+      },
+      {
+        "id": "daily_026",
+        "train_exact_ids": [
+          "nyamuru_voice_034"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_034"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_034"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_034",
+          "text": "前のページに戻って",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_027",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_022",
+          "text": "作品の最後のページを開いて",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.782608695652174
+        }
+      },
+      {
+        "id": "daily_028",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_035",
+          "text": "ひとつ前のページを見せて",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_029",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_037",
+          "text": "3ページに移動して",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.8421052631578947
+        }
+      },
+      {
+        "id": "daily_030",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_038",
+          "text": "十二ページを開いて",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.7777777777777778
+        }
+      },
+      {
+        "id": "daily_031",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_043",
+          "text": "三ページ先へ進んで",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.7777777777777778
+        }
+      },
+      {
+        "id": "daily_032",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_044",
+          "text": "二ページ前に戻って",
+          "label": "page_navigate",
+          "sequence_matcher_ratio": 0.8888888888888888
+        }
+      },
+      {
+        "id": "daily_033",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_027",
+          "text": "見開き表示をオンにして",
+          "label": "view_change",
+          "sequence_matcher_ratio": 0.5555555555555556
+        }
+      },
+      {
+        "id": "daily_034",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_2201",
+          "text": "見開き表示をオフに設定して、ページ全体も画面に収めて。",
+          "label": "compound_request",
+          "sequence_matcher_ratio": 0.5945945945945946
+        }
+      },
+      {
+        "id": "daily_035",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [
+            "nyamuru_voice_055"
+          ],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_027",
+          "text": "見開き表示をオンにして",
+          "label": "view_change",
+          "sequence_matcher_ratio": 0.8421052631578947
+        }
+      },
+      {
+        "id": "daily_036",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [
+            "nyamuru_voice_057"
+          ],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_027",
+          "text": "見開き表示をオンにして",
+          "label": "view_change",
+          "sequence_matcher_ratio": 0.9090909090909091
+        }
+      },
+      {
+        "id": "daily_037",
+        "train_exact_ids": [
+          "nyamuru_voice_058"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_058"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_058"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_058",
+          "text": "配置ガイドを表示して",
+          "label": "view_change",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_038",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_058",
+          "text": "配置ガイドを表示して",
+          "label": "view_change",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_039",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_064",
+          "text": "シナリオのタブを開いて",
+          "label": "view_change",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_040",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_286",
+          "text": "ラスターペンに切り替えて",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_041",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_036",
+          "text": "この作品は一体型の作画方式にして",
+          "label": "artwork_mode_set",
+          "sequence_matcher_ratio": 0.5517241379310345
+        }
+      },
+      {
+        "id": "daily_042",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_032",
+          "text": "作品の作画設定を一体型に変更して",
+          "label": "artwork_mode_set",
+          "sequence_matcher_ratio": 0.8148148148148148
+        }
+      },
+      {
+        "id": "daily_043",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_104",
+          "text": "全体に切り替えて",
+          "label": "needs_clarification",
+          "sequence_matcher_ratio": 0.6086956521739131
+        }
+      },
+      {
+        "id": "daily_044",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_034",
+          "text": "作画方式を一体型へ変更",
+          "label": "artwork_mode_set",
+          "sequence_matcher_ratio": 0.6086956521739131
+        }
+      },
+      {
+        "id": "daily_045",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_162",
+          "text": "いま下書き方式で作業している",
+          "label": "not_command",
+          "sequence_matcher_ratio": 0.5185185185185185
+        }
+      },
+      {
+        "id": "daily_046",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_035",
+          "text": "作画方式の設定を下書きにしてください",
+          "label": "artwork_mode_set",
+          "sequence_matcher_ratio": 0.7586206896551724
+        }
+      },
+      {
+        "id": "daily_047",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_074",
+          "text": "手描きで仕上げる下書きの方式に切り替えて",
+          "label": "artwork_mode_set",
+          "sequence_matcher_ratio": 0.5714285714285714
+        }
+      },
+      {
+        "id": "daily_048",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_033",
+          "text": "作画方式は下書きにしてほしいな",
+          "label": "artwork_mode_set",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_049",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_096",
+          "text": "選択中の吹き出しを話者なしにして",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_050",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_081",
+          "text": "選択中の吹き出しを素材toge 02にして",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.7368421052631579
+        }
+      },
+      {
+        "id": "daily_051",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_082",
+          "text": "この吹き出しのしっぽを消して",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.8666666666666667
+        }
+      },
+      {
+        "id": "daily_052",
+        "train_exact_ids": [
+          "nyamuru_voice_083"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_083"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_083"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_083",
+          "text": "選択中の吹き出しにしっぽを付けて",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_053",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_096",
+          "text": "選択中の吹き出しを話者なしにして",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.7058823529411765
+        }
+      },
+      {
+        "id": "daily_054",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_090",
+          "text": "この吹き出しの幅を30ミリにして",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.8823529411764706
+        }
+      },
+      {
+        "id": "daily_055",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_096",
+          "text": "選択中の吹き出しを話者なしにして",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_056",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_096",
+          "text": "選択中の吹き出しを話者なしにして",
+          "label": "bubble_set",
+          "sequence_matcher_ratio": 0.7428571428571429
+        }
+      },
+      {
+        "id": "daily_057",
+        "train_exact_ids": [
+          "nyamuru_voice_165"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_165"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_165"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_165",
+          "text": "コマシンクロをオンにして",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_058",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_167",
+          "text": "コマシンクロを有効にしてくれる？",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 0.8888888888888888
+        }
+      },
+      {
+        "id": "daily_059",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_168",
+          "text": "コマシンクロのチェックを入れて",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_060",
+        "train_exact_ids": [
+          "nyamuru_voice_169"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_169"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_169"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_169",
+          "text": "コマシンクロを使う設定にして",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_061",
+        "train_exact_ids": [
+          "nyamuru_voice_171"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_171"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_171"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_171",
+          "text": "コマシンクロをオフにして",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_062",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_173",
+          "text": "コマシンクロを無効にしてください",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 0.8571428571428571
+        }
+      },
+      {
+        "id": "daily_063",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_165",
+          "text": "コマシンクロをオンにして",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_064",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_165",
+          "text": "コマシンクロをオンにして",
+          "label": "panel_sync_set",
+          "sequence_matcher_ratio": 0.782608695652174
+        }
+      },
+      {
+        "id": "daily_065",
+        "train_exact_ids": [
+          "nyamuru_voice_185"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_185"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_185"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_185",
+          "text": "内枠スナップをオンにして",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_066",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_187",
+          "text": "内枠スナップを有効にしてくれる？",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 0.8888888888888888
+        }
+      },
+      {
+        "id": "daily_067",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_188",
+          "text": "内枠スナップのチェックを入れて",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_068",
+        "train_exact_ids": [
+          "nyamuru_voice_189"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_189"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_189"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_189",
+          "text": "内枠スナップを使う設定にして",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_069",
+        "train_exact_ids": [
+          "nyamuru_voice_191"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_191"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_191"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_191",
+          "text": "内枠スナップをオフにして",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_070",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_193",
+          "text": "内枠スナップを無効にしてください",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 0.8571428571428571
+        }
+      },
+      {
+        "id": "daily_071",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_185",
+          "text": "内枠スナップをオンにして",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_072",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_185",
+          "text": "内枠スナップをオンにして",
+          "label": "inner_frame_snap_set",
+          "sequence_matcher_ratio": 0.782608695652174
+        }
+      },
+      {
+        "id": "daily_073",
+        "train_exact_ids": [
+          "nyamuru_voice_205"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_205"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_205"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_205",
+          "text": "コマスナップをオンにして",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_074",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_207",
+          "text": "コマスナップを有効にしてくれる？",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 0.8888888888888888
+        }
+      },
+      {
+        "id": "daily_075",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_208",
+          "text": "コマスナップのチェックを入れて",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_076",
+        "train_exact_ids": [
+          "nyamuru_voice_209"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_209"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_209"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_209",
+          "text": "コマスナップを使う設定にして",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_077",
+        "train_exact_ids": [
+          "nyamuru_voice_211"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_211"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_211"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_211",
+          "text": "コマスナップをオフにして",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_078",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_213",
+          "text": "コマスナップを無効にしてください",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 0.8571428571428571
+        }
+      },
+      {
+        "id": "daily_079",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_205",
+          "text": "コマスナップをオンにして",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_080",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_205",
+          "text": "コマスナップをオンにして",
+          "label": "panel_gap_snap_set",
+          "sequence_matcher_ratio": 0.782608695652174
+        }
+      },
+      {
+        "id": "daily_081",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_230",
+          "text": "選択中の対象だけ生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_082",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_227",
+          "text": "選択中のものを生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.8181818181818182
+        }
+      },
+      {
+        "id": "daily_083",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_137",
+          "text": "全ページを一体生成して",
+          "label": "out_of_scope_request",
+          "sequence_matcher_ratio": 0.6956521739130435
+        }
+      },
+      {
+        "id": "daily_084",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_244",
+          "text": "選択中のコマだけ生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_085",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_278",
+          "text": "小雪ちゃんだけ生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.7
+        }
+      },
+      {
+        "id": "daily_086",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_277",
+          "text": "3コマ目を生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_087",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_277",
+          "text": "3コマ目を生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.782608695652174
+        }
+      },
+      {
+        "id": "daily_088",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_227",
+          "text": "選択中のものを生成して",
+          "label": "generate_request",
+          "sequence_matcher_ratio": 0.6666666666666666
+        }
+      },
+      {
+        "id": "daily_089",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_069",
+          "text": "登録済みの3D背景で、駅に使える候補を見せてください",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.75
+        }
+      },
+      {
+        "id": "daily_090",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_283",
+          "text": "背景候補出して",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.8235294117647058
+        }
+      },
+      {
+        "id": "daily_091",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_282",
+          "text": "コマ1の背景候補を見せて",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.782608695652174
+        }
+      },
+      {
+        "id": "daily_092",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_249",
+          "text": "3D背景候補出して",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.8181818181818182
+        }
+      },
+      {
+        "id": "daily_093",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_282",
+          "text": "コマ1の背景候補を見せて",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.88
+        }
+      },
+      {
+        "id": "daily_094",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_256",
+          "text": "登録済みの3Dモデルから学校の背景候補を探して",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.7692307692307693
+        }
+      },
+      {
+        "id": "daily_095",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_282",
+          "text": "コマ1の背景候補を見せて",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.72
+        }
+      },
+      {
+        "id": "daily_096",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_249",
+          "text": "3D背景候補出して",
+          "label": "background_3d_candidates",
+          "sequence_matcher_ratio": 0.72
+        }
+      },
+      {
+        "id": "daily_097",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_289",
+          "text": "ラスターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.8571428571428571
+        }
+      },
+      {
+        "id": "daily_098",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_295",
+          "text": "ベクターペンにしてくれる？",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.8571428571428571
+        }
+      },
+      {
+        "id": "daily_099",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_074",
+          "text": "描画ペンをラスターペンに変えて",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.8
+        }
+      },
+      {
+        "id": "daily_100",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_073",
+          "text": "描くペンをベクターペンに切り替えて",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.875
+        }
+      },
+      {
+        "id": "daily_101",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_287",
+          "text": "ラスターで描くペンを選んで",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.8333333333333334
+        }
+      },
+      {
+        "id": "daily_102",
+        "train_exact_ids": [
+          "nyamuru_voice_293"
+        ],
+        "train_normalized_ids": [
+          "nyamuru_voice_293"
+        ],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": [
+            "nyamuru_voice_293"
+          ]
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_293",
+          "text": "ベクターのペンを選んで",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 1.0
+        }
+      },
+      {
+        "id": "daily_103",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_078",
+          "text": "描画ペンの選択をラスターペンにして",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.6896551724137931
+        }
+      },
+      {
+        "id": "daily_104",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_073",
+          "text": "描くペンをベクターペンに切り替えて",
+          "label": "paint_tool_set",
+          "sequence_matcher_ratio": 0.6206896551724138
+        }
+      },
+      {
+        "id": "daily_105",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_304",
+          "text": "コマ3で選択中の文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.8333333333333334
+        }
+      },
+      {
+        "id": "daily_106",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_298",
+          "text": "選択した文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.7878787878787878
+        }
+      },
+      {
+        "id": "daily_107",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_298",
+          "text": "選択した文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.875
+        }
+      },
+      {
+        "id": "daily_108",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_massive_adapt_079",
+          "text": "選択中の複数の文字枠を上端で揃えて",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.7647058823529411
+        }
+      },
+      {
+        "id": "daily_109",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_299",
+          "text": "この複数の文字枠を上揃えにして",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.8125
+        }
+      },
+      {
+        "id": "daily_110",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_298",
+          "text": "選択した文字枠の上端をそろえて",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.8125
+        }
+      },
+      {
+        "id": "daily_111",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_297",
+          "text": "選択中の文字の頭をそろえて",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.7272727272727273
+        }
+      },
+      {
+        "id": "daily_112",
+        "train_exact_ids": [],
+        "train_normalized_ids": [],
+        "prior_normalized_ids": {
+          "dev": [],
+          "legacy_v02_dev": [],
+          "legacy_v02_test": [],
+          "legacy_v03_dev": [],
+          "legacy_v03_test": [],
+          "test": [],
+          "train": []
+        },
+        "nearest_train": {
+          "id": "nyamuru_voice_1188",
+          "text": "選択してある三つの文字枠を、まとめて上端揃えにして。",
+          "label": "text_frames_align",
+          "sequence_matcher_ratio": 0.7317073170731707
+        }
+      }
+    ]
+  },
+  "subsets": {
+    "all": [
+      "daily_001",
+      "daily_002",
+      "daily_003",
+      "daily_004",
+      "daily_005",
+      "daily_006",
+      "daily_007",
+      "daily_008",
+      "daily_009",
+      "daily_010",
+      "daily_011",
+      "daily_012",
+      "daily_013",
+      "daily_014",
+      "daily_015",
+      "daily_016",
+      "daily_017",
+      "daily_018",
+      "daily_019",
+      "daily_020",
+      "daily_021",
+      "daily_022",
+      "daily_023",
+      "daily_024",
+      "daily_025",
+      "daily_026",
+      "daily_027",
+      "daily_028",
+      "daily_029",
+      "daily_030",
+      "daily_031",
+      "daily_032",
+      "daily_033",
+      "daily_034",
+      "daily_035",
+      "daily_036",
+      "daily_037",
+      "daily_038",
+      "daily_039",
+      "daily_040",
+      "daily_041",
+      "daily_042",
+      "daily_043",
+      "daily_044",
+      "daily_045",
+      "daily_046",
+      "daily_047",
+      "daily_048",
+      "daily_049",
+      "daily_050",
+      "daily_051",
+      "daily_052",
+      "daily_053",
+      "daily_054",
+      "daily_055",
+      "daily_056",
+      "daily_057",
+      "daily_058",
+      "daily_059",
+      "daily_060",
+      "daily_061",
+      "daily_062",
+      "daily_063",
+      "daily_064",
+      "daily_065",
+      "daily_066",
+      "daily_067",
+      "daily_068",
+      "daily_069",
+      "daily_070",
+      "daily_071",
+      "daily_072",
+      "daily_073",
+      "daily_074",
+      "daily_075",
+      "daily_076",
+      "daily_077",
+      "daily_078",
+      "daily_079",
+      "daily_080",
+      "daily_081",
+      "daily_082",
+      "daily_083",
+      "daily_084",
+      "daily_085",
+      "daily_086",
+      "daily_087",
+      "daily_088",
+      "daily_089",
+      "daily_090",
+      "daily_091",
+      "daily_092",
+      "daily_093",
+      "daily_094",
+      "daily_095",
+      "daily_096",
+      "daily_097",
+      "daily_098",
+      "daily_099",
+      "daily_100",
+      "daily_101",
+      "daily_102",
+      "daily_103",
+      "daily_104",
+      "daily_105",
+      "daily_106",
+      "daily_107",
+      "daily_108",
+      "daily_109",
+      "daily_110",
+      "daily_111",
+      "daily_112"
+    ],
+    "train_exact": [
+      "daily_001",
+      "daily_016",
+      "daily_026",
+      "daily_037",
+      "daily_052",
+      "daily_057",
+      "daily_060",
+      "daily_061",
+      "daily_065",
+      "daily_068",
+      "daily_069",
+      "daily_073",
+      "daily_076",
+      "daily_077",
+      "daily_102"
+    ],
+    "train_normalized_only": [],
+    "not_train_normalized": [
+      "daily_002",
+      "daily_003",
+      "daily_004",
+      "daily_005",
+      "daily_006",
+      "daily_007",
+      "daily_008",
+      "daily_009",
+      "daily_010",
+      "daily_011",
+      "daily_012",
+      "daily_013",
+      "daily_014",
+      "daily_015",
+      "daily_017",
+      "daily_018",
+      "daily_019",
+      "daily_020",
+      "daily_021",
+      "daily_022",
+      "daily_023",
+      "daily_024",
+      "daily_025",
+      "daily_027",
+      "daily_028",
+      "daily_029",
+      "daily_030",
+      "daily_031",
+      "daily_032",
+      "daily_033",
+      "daily_034",
+      "daily_035",
+      "daily_036",
+      "daily_038",
+      "daily_039",
+      "daily_040",
+      "daily_041",
+      "daily_042",
+      "daily_043",
+      "daily_044",
+      "daily_045",
+      "daily_046",
+      "daily_047",
+      "daily_048",
+      "daily_049",
+      "daily_050",
+      "daily_051",
+      "daily_053",
+      "daily_054",
+      "daily_055",
+      "daily_056",
+      "daily_058",
+      "daily_059",
+      "daily_062",
+      "daily_063",
+      "daily_064",
+      "daily_066",
+      "daily_067",
+      "daily_070",
+      "daily_071",
+      "daily_072",
+      "daily_074",
+      "daily_075",
+      "daily_078",
+      "daily_079",
+      "daily_080",
+      "daily_081",
+      "daily_082",
+      "daily_083",
+      "daily_084",
+      "daily_085",
+      "daily_086",
+      "daily_087",
+      "daily_088",
+      "daily_089",
+      "daily_090",
+      "daily_091",
+      "daily_092",
+      "daily_093",
+      "daily_094",
+      "daily_095",
+      "daily_096",
+      "daily_097",
+      "daily_098",
+      "daily_099",
+      "daily_100",
+      "daily_101",
+      "daily_103",
+      "daily_104",
+      "daily_105",
+      "daily_106",
+      "daily_107",
+      "daily_108",
+      "daily_109",
+      "daily_110",
+      "daily_111",
+      "daily_112"
+    ],
+    "not_any_prior_normalized": [
+      "daily_002",
+      "daily_003",
+      "daily_004",
+      "daily_005",
+      "daily_006",
+      "daily_007",
+      "daily_008",
+      "daily_009",
+      "daily_010",
+      "daily_011",
+      "daily_012",
+      "daily_013",
+      "daily_014",
+      "daily_015",
+      "daily_018",
+      "daily_019",
+      "daily_020",
+      "daily_021",
+      "daily_022",
+      "daily_023",
+      "daily_024",
+      "daily_025",
+      "daily_027",
+      "daily_028",
+      "daily_029",
+      "daily_030",
+      "daily_031",
+      "daily_032",
+      "daily_033",
+      "daily_034",
+      "daily_038",
+      "daily_039",
+      "daily_040",
+      "daily_041",
+      "daily_042",
+      "daily_043",
+      "daily_044",
+      "daily_045",
+      "daily_046",
+      "daily_047",
+      "daily_048",
+      "daily_049",
+      "daily_050",
+      "daily_051",
+      "daily_053",
+      "daily_054",
+      "daily_055",
+      "daily_056",
+      "daily_058",
+      "daily_059",
+      "daily_062",
+      "daily_063",
+      "daily_064",
+      "daily_066",
+      "daily_067",
+      "daily_070",
+      "daily_071",
+      "daily_072",
+      "daily_074",
+      "daily_075",
+      "daily_078",
+      "daily_079",
+      "daily_080",
+      "daily_081",
+      "daily_082",
+      "daily_083",
+      "daily_084",
+      "daily_085",
+      "daily_086",
+      "daily_087",
+      "daily_088",
+      "daily_089",
+      "daily_090",
+      "daily_091",
+      "daily_092",
+      "daily_093",
+      "daily_094",
+      "daily_095",
+      "daily_096",
+      "daily_097",
+      "daily_098",
+      "daily_099",
+      "daily_100",
+      "daily_101",
+      "daily_103",
+      "daily_104",
+      "daily_105",
+      "daily_106",
+      "daily_107",
+      "daily_108",
+      "daily_109",
+      "daily_110",
+      "daily_111",
+      "daily_112"
+    ]
+  },
+  "input_sha256": {
+    "experiments/v0.5.1/PUBLIC-DATA-ATTRIBUTION.md": "0299f6a90e212f940b841310caa74b4141851b44b4ea2480bbb4e192cfc37bfe",
+    "experiments/v0.5.1/README.md": "67a7ee1e0061b2fca1fff2d5709320987b4e414d37d1c74937aef59adf73e7c8",
+    "experiments/v0.5.1/build_colab.py": "aded732b2c13320d3c898c281d9489bfa9cd8f37b8ed7407ffb782ec844aa17a",
+    "experiments/v0.5.1/bundle-files.json": "249d2a1d448d7ad5210acb03cfd072d774accfb2c0cb4f98a54a5f955b7473ac",
+    "experiments/v0.5.1/comparison-plan.json": "f77cc3d0a32a87eba6fc1ac34c5941bc5257c3d4b3828e71335c0808149a7b87",
+    "experiments/v0.5.1/comparison.py": "8868b0d54b7b34212f99a3a6c0cff7f49a64df2ac2af0359509c2a3b602f41a0",
+    "experiments/v0.5.1/corpus.json": "6f514bc0cd8612073f6480ded7fbf618b4ecb287cd1c518a94c1cdaf39298e66",
+    "experiments/v0.5.1/curation/2026-10-17-v02-variants/candidates.jsonl": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74",
+    "experiments/v0.5.1/curation/2026-10-17-v02-variants/manifest.json": "0516818252acca43234087103279b5e9f8e524e5bf58e92affc35af8924377ac",
+    "experiments/v0.5.1/curation/2026-10-17-v02-variants/review.md": "77fc040036aa070d57f9e13b139836b9b10af09d207f53dcaf757f112e594bc0",
+    "experiments/v0.5.1/curation/2026-10-17-v02-variants/semantic-review.json": "277eda5e2f3dd80b023b412171465732b6a82bc1b551c27dfd1964c57bc2ca06",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/acceptance-review.json": "ef26c9502f5ea467d76a32df6b3e1b5a772b2a7295ff6ba74cd03a2d1336f686",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/accepted-dev.jsonl": "8745d6ac54ee491e6e5d47de185a72e2e60206ff39b64026bb387172eada122d",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/accepted-test.jsonl": "e9c61858296c58be402891465383ae1704021bd9e0eee424914642b1e7d7c41d",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/background-test-extra-review.json": "10e13f04ec82985bd842a57877b7bca57a134058d298aa361e9d6b13d2159039",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/background-test-extra.jsonl": "1caddc1580075fc78a11eaba8b0963d9160c957e4960c25f28bc93e3d433b1f2",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/bubble-replacements.jsonl": "e44de0f970f3336e73a66bf76ba57eee924fd78f46b4bb5de652c32b0f1ed9dd",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/bubble-test-extra.jsonl": "0fb4c2be8ae09780d27aa5f40b8949df34baed8cd8375a91901ca2d513fb4e71",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/core-test-replacements-review.json": "8c3d7846d775752fcac360a2ee533648ef4b88f28fac9e6981599ca6c304db72",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/core-test-replacements-revised.jsonl": "b6667aef230fd0ac7bc5a0374f67b4282ba7efba7b3e2bb04cd52af73bfaca97",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/core-test-replacements.jsonl": "2f3246aff8736ff34fb0c01ab05ddf2579898cf0248990c86cf42fad52599ae2",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/dev-author-review.json": "410ef885efc069f3d04428c06b4e1005185b11d4c81c45a1098ad2ea907f6dae",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/dev-draft.jsonl": "66a4a722347c85f6338ca4eba4b477d1e78cd0ee107d981090737aa4e375a2c6",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/dev-extra.jsonl": "ea5b129ce7852a74a69e9a463298f2f3b217f532d80068ab3900dacfe0bdf621",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/dev-revised-extra-review.json": "a69693429ea3bbe609cd2bcc254448fc860fb9dfa0532ad0c99393fd4cd11bbd",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/dev-revised-extra.jsonl": "ac07a6f4a1165d96ebbd6cf3f765a8f61094479a611b19694a97d64014987d5f",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/exhaustive-initial-screening.json": "97fb4e574f9e8be4ed6b2fe99bfd1946eb4b426ca078315ea7deeed5924e3fd5",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/extra-selection.json": "d7700f5a935fb74ed99054f97bfe1b64be7f923a26b219c596c80e9c8d0dc264",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/final-exhaustive-screening.json": "734e403b81faf7d4489dfc2a6d62afb19c43f022d0b4580735537d4f41d324a0",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/initial-screening.json": "4e3403c5e8caf7277f700e8782503ac3216c86866c5e535bc82247327c046464",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/structural-review.json": "412041705648996333521807b5a7bd647b2e79d0b1fb7e44e0f3b30db43e0ac1",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/test-author-review.json": "36273a5401aae49a1ec3d101067583dfdd89712650f3cc0956205911b3cd0d45",
+    "experiments/v0.5.1/curation/2026-10-18-evaluation/test-draft.jsonl": "2641eb98e0c1e1c3d0f2022796121b635869d265079d08395b5d35438158507f",
+    "experiments/v0.5.1/curation/2026-10-18-public/accepted-adapted-train.jsonl": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2",
+    "experiments/v0.5.1/curation/2026-10-18-public/adapted-train.jsonl": "2fed7ec79b590301b79e6083dac5b2c5228e701a22ce3d78cbdadc99bfd83375",
+    "experiments/v0.5.1/curation/2026-10-18-public/old-near-candidates.json": "6c00dd50a47ae9cebef62c226114711a1b15354cd8e86ccf253833c433d032fe",
+    "experiments/v0.5.1/curation/2026-10-18-public/raw-dev.jsonl": "859c1244e7f9045ff35891dd83f8b9e0747cad7ff6d71b3cf8d15491df1bf205",
+    "experiments/v0.5.1/curation/2026-10-18-public/raw-test.jsonl": "8ede47558059a56cf2f70735487c8ab92dabf2ff51a082901b1dc04868da1191",
+    "experiments/v0.5.1/curation/2026-10-18-public/raw-train.jsonl": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836",
+    "experiments/v0.5.1/curation/2026-10-18-public/review.json": "80c0bebe637f0d9a3712f8c958ba3ec72e86d5549c42a3d401b1ddb7a7823fae",
+    "experiments/v0.5.1/curation/2026-10-18-public/selected-source.jsonl": "b24e18ac3af19d333089b5433dc4d74c57308e39988895e93ac8eba5f34f8d64",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/README.md": "768e431e8d56eeb5b51e54b24cf1d24ea4f73160ec8b4ed4c70f95c4d3cf9a4f",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/candidates.jsonl": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/family-links.json": "5cce172c31113f1beeb9182660e4994e4b015d11f10d16d0bc40745a79fb9dc3",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/handoff-sha256.json": "f70908724ac18c32f32e5f52b2e9b129bd15f100afc0e2d4845135f97610b504",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/manifest.json": "a5003871f422b51cf93a98c0652313caa417c2a158a59f314fee7006032a5a10",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/regression-evidence.json": "f4d03507764321169763e57943434ed65e977037566bbf5b02bf7604dbf2641d",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/review.md": "030181673b9d4a86f43a3004e1d1d6feb7590085037df01175413e14454e8a38",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/validate.py": "1878c9e06e72ae7f275f67c9c8e37464470d83665a32e5d712dfac2908de9d7b",
+    "experiments/v0.5.1/curation/2026-10-18-v03-boundaries/validation.json": "50d62ad1be2f246992b22837a7fef6d5869e13101b4170aa12b983346ffee450",
+    "experiments/v0.5.1/curation/2026-10-18-v04-contrasts/candidates.jsonl": "7c6c576fc9e3c66862a6d720cfb66c14096e9f2cbc80f337e8be6387a8531184",
+    "experiments/v0.5.1/curation/2026-10-18-v04-contrasts/review.json": "18d475b4b224f8c85cf79a0331619947bb3ef1d683081d9c742c41a778708470",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/acceptance-review.json": "e2b2020d4c6c68409226b10d9d277b18f7f32e183f1503ac112e1aea1f37ab8b",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/accepted-dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/accepted-test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/all-candidate-near.json": "ca37e67d140723b179e5fcddf150f3fbde1f726f63d34cffe82940e1f0578fd0",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/dev-author-review.json": "7321de7c17b70649972a5675211eadd2a23eb4b7780e2972f90bc400af0400fd",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/dev-draft.jsonl": "82ec3258ae7aea4e30adf0a4dfb7f5f0beb8a4c3d28cd1dc3c483a9df3fceeaf",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/dev-final-extra-review.json": "9782bb2cadce1cda92969122ed65d476fb453660fc822325f7c6c3c1cfad2b69",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/dev-final-extra.jsonl": "ba17dad6bcca8bfa68cbbcd21fc8e4944d64842c8255ffb9ba130e03580b7293",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/dev-supplement-review.json": "c010364df14629b2435cb3bb1fda7d8358192e0ec303a6c0b70cf3aa5e95223c",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/dev-supplement.jsonl": "fffc934fa8bff4b4a2cfe3a2a1feaaad856fdddf34a849618842127dd0f55c7d",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/final-audit-resolution.json": "88853f2b446476382cdae1c3b977035c627be99a693eb8865da43a47ca50ed56",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/final-extra-parent-review.json": "19be5cf41ca5e19b5b81bbd4a8adc067d7696d80dae926938e308470cf0d090a",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/final-holdout-audit.json": "acd1646fbc2a24bdf12aeb60d37cc942e6b2a4f9268966009d5b35633b8686d2",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/final-selected-near.json": "b7a7b76620e966988a9c2ccf592499ab7c6f8721090fc559515949bd44e9e3d6",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/initial-semantic-review.json": "1c74c09a08cbe4cc4202b2a8f8c47531f1250b8d22d7e4844c07d585481b6c02",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/supplement-parent-review.json": "885fb7c39f1773d1e3a0a50fb990157d3ceacc0ec56c21f7d8cf02f8b0774423",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/test-author-review.json": "970c56e390131e1d3f8c0832bf3682ad00f778d9848c34f7ab4830c34fc6056c",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/test-draft.jsonl": "4d94ce4096fc9a49cea9b7b169527090046ca11399ff359e3a60da657642e6c1",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/test-final-extra-review.json": "d9a472e4d50357d5bc3dd40b7cdfb8d878a83c502b5339c6ed679c9d82d1677b",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/test-final-extra.jsonl": "19bf287571ad47d7887736f46ca7ccefb24ca5ba6ecf3283673cd1d5c01fc6ac",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/test-supplement-review.json": "8b2ec7e3edf3b504b2f3cb70e2758aae6995faf8b7962532c242d4db1bc7844d",
+    "experiments/v0.5.1/curation/2026-10-18-v04-evaluation/test-supplement.jsonl": "49573a117e384efe61e5384aa3962549747e226b07e019e8be81e629c42ca0bc",
+    "experiments/v0.5.1/data-report.json": "bd952fe5a05983d00ede64f1dd7cf95372bafe53cf67eeea839547f051cbad64",
+    "experiments/v0.5.1/data/dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "experiments/v0.5.1/data/legacy_v02_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.5.1/data/legacy_v02_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.5.1/data/legacy_v03_dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.5.1/data/legacy_v03_test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.5.1/data/test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "experiments/v0.5.1/data/train.jsonl": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+    "experiments/v0.5.1/dataset.py": "df2abf803f159eb043e6f58f987b2dc3d2d835f3702935a0f82ef9df70e3c6a6",
+    "experiments/v0.5.1/docs/2026-10-18-recent-intent-research.json": "2a0e57b11b511f476f3bda00aa753cc4d2aa2548cfa448e9a25c0b294ed78eb0",
+    "experiments/v0.5.1/docs/2026-10-18-training-route-audit.json": "31efbf78ca95af9954495b7134e4e129b7c4e0b26f9ebf3932188c387943ccde",
+    "experiments/v0.5.1/docs/2026-10-18-v04-protocol.md": "00c64df539020a1a41bc9460b2dd6fc58f1aa9c64346ddf3aff4a9ff5557f23c",
+    "experiments/v0.5.1/docs/2026-10-18-v04-split-review.md": "f5a78e83a47cbc64d22008c4b31088e1aceb24bd9ca8d414bddcc84b274d7fdd",
+    "experiments/v0.5.1/docs/2026-10-18-v05-research-and-protocol.md": "a92be50cc3f08b53f1335abc8beee1e1bf48b490616bf6642bf4e43b9d65cea1",
+    "experiments/v0.5.1/docs/2026-10-18-v051-nan-fix.md": "97f97bf8f411bab7ab3cd83ee1897b17136cc468633e1c206f51ecae7d8cd424",
+    "experiments/v0.5.1/evaluation.py": "579f33c1f5b3c8f29140bbcd164f1ccd03bf4e6efa4f323778c2a2af4ae29b27",
+    "experiments/v0.5.1/experiment.json": "7e356a222bac3a838541b50d18632b3a80035724ab711698406c8cc459f5bd3c",
+    "experiments/v0.5.1/family-review.json": "7a5732830c1f486ec712ff4558ff1bcc30639add4f47ddf7382fee26bdbcfa92",
+    "experiments/v0.5.1/handoff.json": "631ae8a69f39322916b1486992d46bff9ccd9713f0db73855b36e3f22014ea9c",
+    "experiments/v0.5.1/legacy/v02-results/artifact-sha256.json": "2a19033b5a6cb8f3274c05631ee2a71a425a3c606b3ca7bbbaba64e1b7111892",
+    "experiments/v0.5.1/legacy/v02-results/independent-audit.json": "46365bf9e458edcfef613b44014c945e5a51aa06ceab16823175579cc3201aa5",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-42/dev-predictions.jsonl": "e87b315f1f3009257ed84ea2a6e31d305133ed0ebc462d94a735e5c95a13a602",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-42/metrics.json": "1068665fd3018c2b7a14224fe2bc563347ea6b8e841c056c9ff3b32dfe2015a4",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-42/test-predictions.jsonl": "99f747666442070d8eeeb3f908d27504e9ebe78422d2855f899fb42e448a5891",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-43/dev-predictions.jsonl": "9fb814f34f39f2fcd3fbbf7da5bc5738b899f68bbb7eaf0a47d956af12f8ee19",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-43/metrics.json": "3c7e7145e599102f4c074a4da54e255f8306fc35c7970e6f4d7c03ae3f96ba98",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-43/test-predictions.jsonl": "65f81f90c881114fc547eb472649a668f93b0d06ab6af1a33bfd765eb54e75be",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-44/dev-predictions.jsonl": "5bae7e69a6522b96f68b3eec94407055e40a99587eced92cc849170a440b0087",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-44/metrics.json": "827f2515a2ea28ed0618ea15c946241eee29f467786c8b41e0f1a3458e1023a7",
+    "experiments/v0.5.1/legacy/v02-results/reports/seed-44/test-predictions.jsonl": "15b1d723e22cc809add4794e9f87f3cb571f20dde21d2fe5f8e9bc438d4c2df7",
+    "experiments/v0.5.1/legacy/v02-results/reports/selection.json": "44a330ab2509113e4e3f9adc550001d9781a23e436cf0881fed76ea0e3b6a5d9",
+    "experiments/v0.5.1/legacy/v02-results/reports/verification.json": "2b380b59a23999515701fc763fdef5722ec25b91add63344337ae7a6bc75c6fc",
+    "experiments/v0.5.1/legacy/v02/corpus.json": "368220eff471058f5646901cd64a57e5ed291af9710f989ddb4e37c50e8ee47e",
+    "experiments/v0.5.1/legacy/v02/data-report.json": "d031a89a6af8c06a2b32d2c53b2c856741c6d8dd1f9c951eb4e6c45e80916dd8",
+    "experiments/v0.5.1/legacy/v02/data/dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.5.1/legacy/v02/data/test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.5.1/legacy/v02/data/train.jsonl": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+    "experiments/v0.5.1/legacy/v02/experiment.json": "9d1d7469cacedb8f7580635ee223536b98213c614aad8ef92601c6d3ec82feee",
+    "experiments/v0.5.1/legacy/v02/family-review.json": "765dfbdb49cf9594b84e5b2e2e9668a1431748f8de6ede3880b670b2b20300f7",
+    "experiments/v0.5.1/legacy/v02/split-plan.json": "a04ca6c31ecfbec0ad4ec0aad1ee4c3a2d5f5b0a1f21c781611d67059bd9d5bd",
+    "experiments/v0.5.1/legacy/v02/tokenization-check.json": "af7ce261bcb0d38ef94faaf977b86d44a69d8cd4177af3f1ce0febb90319eee6",
+    "experiments/v0.5.1/legacy/v03-results/reports/manifest.json": "047e4ceed299c5b64324213be02cde5f6e34f2037bf26e92627586fe08831211",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-42/dev-predictions.jsonl": "6493eb38fc9e76d59404fc1b81c51a03262432f8fa47b898ee1bc747ee149e33",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-42/metrics.json": "4b5f7da708554090c22463d33296f1e28b854bc1f159f59fd77815dd4bbb8ed8",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-42/test-predictions.jsonl": "5f6f1612be79314ae3878003e0eac6ca26e0c8a5c221fe22d238849f9373c49a",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-43/dev-predictions.jsonl": "b24baadeb69e326c60932c5c4875585f8bc72884f9b8b00afedf2e431dbf6577",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-43/metrics.json": "c4376ad87f3d7e83f251c15c160b164ea1935b3b2b22fab745c9306219783eaa",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-43/test-predictions.jsonl": "39eb801834cc6696f6015e9ede4c5e90fd7ac6a6fcfb477830fd9c5fb48c1212",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-44/dev-predictions.jsonl": "bc2b4ffff6c76d0fae47ca68bb76fbee2b827c47fdc77d05c78b8a95fca2058b",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-44/metrics.json": "25eea07da52af62dc56669544e0cf764a4ae3aa5674f6b6124e95eecae1458b0",
+    "experiments/v0.5.1/legacy/v03-results/reports/seed-44/test-predictions.jsonl": "f6a22f559a324d2804a3f288c3fb8aa591334579e2b676049dd997ed2ed37df2",
+    "experiments/v0.5.1/legacy/v03-results/reports/selection.json": "f5f963bd34e21c4a44a2498acf186df42cf348f064bcda581f23cb733fe80341",
+    "experiments/v0.5.1/legacy/v03-results/reports/verification.json": "04bcb716d0b44b90c7bbd9245d10516e2d37ce82abe1be0046f503f4f9342c64",
+    "experiments/v0.5.1/legacy/v03/corpus.json": "d7c7c8e994baf0ac89d630d9267383562d253120fa38f98dd46d1318133aebc7",
+    "experiments/v0.5.1/legacy/v03/data-report.json": "9c15f8d0fb843db7862b912ad4dc67a1ea63cb2141133ceb37e06b61a4b88a3d",
+    "experiments/v0.5.1/legacy/v03/data/dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.5.1/legacy/v03/data/legacy_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.5.1/legacy/v03/data/legacy_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.5.1/legacy/v03/data/test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.5.1/legacy/v03/data/train.jsonl": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+    "experiments/v0.5.1/legacy/v03/experiment.json": "64aa200e4fc83a64c7fee4aeef942500275529ae0c822606e550e6668d3b9a0c",
+    "experiments/v0.5.1/legacy/v03/family-review.json": "ddef08f30f4410f8ec403d6776885ae8d433ac1af0af7d9ca9f03353763bdd1c",
+    "experiments/v0.5.1/legacy/v03/split-plan.json": "8a2a787aa52e1a97a6bdc524b14c5e726869483ecf24cb16bd2b63f2133f884e",
+    "experiments/v0.5.1/legacy/v03/tokenization-check.json": "c22b476339320235491afce1365dbacf20c44e0e746a19c53e2b4886fda68c1b",
+    "experiments/v0.5.1/lineage-plan.json": "c9312f4045f7c58600338bbc6b808d128665f515c7b0462a368a0059a16b6197",
+    "experiments/v0.5.1/notebook-introduction.md": "8f8665852b6cfa62859cdcf1687cf9169355e70db837b239b2da17decab892ac",
+    "experiments/v0.5.1/pool-sources.json": "0355e27bad67636bfd194bfbfc2fafebdadd42bf6dfc27982999adf1abd3b359",
+    "experiments/v0.5.1/preparation-code-review.json": "9e5e73fc4b0357bad98fb5f95bfe7973594c97a5430b745f7014abc6c81e2156",
+    "experiments/v0.5.1/preparation-source-snapshot.json": "c26366b7a9adbe770eef0af8226c472918d3337a38e886c352be57956309a944",
+    "experiments/v0.5.1/prepare_v03.py": "f4a4c98e0d50bfc40c7c7ea5ab749627f3c511f6459a4b17de09586ca4dcd687",
+    "experiments/v0.5.1/requirements-train.txt": "f45782d28fe9ac8e4123aaf8a8878fbf17d8b38782a8bda21958f0a6cf407ff1",
+    "experiments/v0.5.1/smoke_comparison.py": "d441cd7aa975dfb46e7a2c8f7b3dbd667f727bd794806df0c0fc799ab965f3b2",
+    "experiments/v0.5.1/source/candidates.jsonl": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+    "experiments/v0.5.1/source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.5.1/source/manifest.json": "fe4f2d8c84302f39eeb43b9a0832623da991f30c1e5b1447aaa8e905bba9c101",
+    "experiments/v0.5.1/source/public/massive-1.1/LICENSE": "c2e6ea015269147de02117ebdd91f30ef09831251f5345fa8365273b1db1d435",
+    "experiments/v0.5.1/source/public/massive-1.1/inspection.json": "d259c28c232bc6bef24d450d8d33800c60eacdcc1e3b950772cd47edda17a3cd",
+    "experiments/v0.5.1/source/public/massive-1.1/ja-JP.jsonl": "c22df382db6aa4a23dd1e7f62a2ac8f01c6158865771ad25201696be7201ab79",
+    "experiments/v0.5.1/source/review.md": "b74e8867658b3aa37aba0384804557930aedb8ccc5d879d1e1d7f800ee628a14",
+    "experiments/v0.5.1/split-plan.json": "f7f233bbcd81bbdf27587e7611723691e753854a3abd28594819fb87476b150c",
+    "experiments/v0.5.1/test_comparison.py": "5d25ee36a1b3bdb68d493a5430538ef9cd2a94bb4bf441ed0612784d48cffea4",
+    "experiments/v0.5.1/test_v03_pipeline.py": "65e8f055fe6d24d80ab791bff7fdb99bf2b4e145077490e7335a186c669b7234",
+    "experiments/v0.5.1/test_v04_pipeline.py": "c4c3d4d874fbca0c79bf12f11aebe824b3d0849013fd36eaee4bb43bcf950c2d",
+    "experiments/v0.5.1/tokenization-check.json": "032d0f6d986a20e42a83882ded3a8dbde50b4524b7fe2172f5d353ea9d23d379",
+    "experiments/v0.5.1/train.py": "e89a706df00691b363d68f594f8dcacff22ff75d0230ff706c9944a4cc1c546d",
+    "experiments/v0.5.1/v03_data.py": "f85be9df59964f1951b885ee3fd27c97b17fe041b77141be000bebc399d480c7",
+    "experiments/v0.5.1/verify_results.py": "067ae6cfc0e4cc1eea4ff6c1d7e405fa2697d46bfcd0e72fe10a52e76b651280",
+    "train.py": "e89a706df00691b363d68f594f8dcacff22ff75d0230ff706c9944a4cc1c546d",
+    "dataset.py": "df2abf803f159eb043e6f58f987b2dc3d2d835f3702935a0f82ef9df70e3c6a6",
+    "evaluation.py": "579f33c1f5b3c8f29140bbcd164f1ccd03bf4e6efa4f323778c2a2af4ae29b27",
+    "verify_results.py": "067ae6cfc0e4cc1eea4ff6c1d7e405fa2697d46bfcd0e72fe10a52e76b651280",
+    "compare_saved_models.py": "01234c3e60b39a57923b48736b95cfdbe16bae211886797c1edc4f75db1ddde5",
+    "artifacts/v02/artifact-sha256.json": "2a19033b5a6cb8f3274c05631ee2a71a425a3c606b3ca7bbbaba64e1b7111892",
+    "artifacts/v02/reports/selection.json": "44a330ab2509113e4e3f9adc550001d9781a23e436cf0881fed76ea0e3b6a5d9",
+    "artifacts/v02/reports/manifest.json": "ba064a128b2edc9ec849126b795e6a88e41f98fad775d951668acfc3bca195e8",
+    "artifacts/v02/experiment.json": "9d1d7469cacedb8f7580635ee223536b98213c614aad8ef92601c6d3ec82feee",
+    "artifacts/v02/weights/trial-2/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v02/weights/trial-2/best/model.safetensors": "4296c0954ddde278a45c14d3f16f805bca8121aede4b2efb0f9b73a3b5ee7351",
+    "artifacts/v02/weights/trial-2/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v02/weights/trial-2/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v02/reports/seed-42/test-predictions.jsonl": "99f747666442070d8eeeb3f908d27504e9ebe78422d2855f899fb42e448a5891",
+    "artifacts/v02/weights/trial-4/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v02/weights/trial-4/best/model.safetensors": "52bcdf426dd51a1f313f8ba56e29e88e73512dd752138ab94ff6ff8eb97d6251",
+    "artifacts/v02/weights/trial-4/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v02/weights/trial-4/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v02/reports/seed-43/test-predictions.jsonl": "65f81f90c881114fc547eb472649a668f93b0d06ab6af1a33bfd765eb54e75be",
+    "artifacts/v02/weights/trial-6/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v02/weights/trial-6/best/model.safetensors": "3bc6c0634fdc06165451bef4837ddab51aaf9e3c0e2e381f69f7eebac18b6eec",
+    "artifacts/v02/weights/trial-6/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v02/weights/trial-6/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v02/reports/seed-44/test-predictions.jsonl": "15b1d723e22cc809add4794e9f87f3cb571f20dde21d2fe5f8e9bc438d4c2df7",
+    "artifacts/v03-colab-2026-10-18/artifact-sha256.json": "7e13788250a8637a135b761e30df0afdee125eb8c40c86af7fbf452bbb39f85e",
+    "artifacts/v03-colab-2026-10-18/reports/selection.json": "f5f963bd34e21c4a44a2498acf186df42cf348f064bcda581f23cb733fe80341",
+    "artifacts/v03-colab-2026-10-18/reports/manifest.json": "047e4ceed299c5b64324213be02cde5f6e34f2037bf26e92627586fe08831211",
+    "artifacts/v03-colab-2026-10-18/experiment.json": "64aa200e4fc83a64c7fee4aeef942500275529ae0c822606e550e6668d3b9a0c",
+    "artifacts/v03-colab-2026-10-18/weights/trial-2/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v03-colab-2026-10-18/weights/trial-2/best/model.safetensors": "b694099be609efae636bf49f81631792a5e9707fd6ff41da1bc497af798be69f",
+    "artifacts/v03-colab-2026-10-18/weights/trial-2/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v03-colab-2026-10-18/weights/trial-2/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v03-colab-2026-10-18/reports/seed-42/test-predictions.jsonl": "5f6f1612be79314ae3878003e0eac6ca26e0c8a5c221fe22d238849f9373c49a",
+    "artifacts/v03-colab-2026-10-18/weights/trial-4/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v03-colab-2026-10-18/weights/trial-4/best/model.safetensors": "278157f77b15f2154a8d8a2dbb8bb1b112a02708760b1aeb438f81b230c8fe0a",
+    "artifacts/v03-colab-2026-10-18/weights/trial-4/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v03-colab-2026-10-18/weights/trial-4/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v03-colab-2026-10-18/reports/seed-43/test-predictions.jsonl": "39eb801834cc6696f6015e9ede4c5e90fd7ac6a6fcfb477830fd9c5fb48c1212",
+    "artifacts/v03-colab-2026-10-18/weights/trial-6/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v03-colab-2026-10-18/weights/trial-6/best/model.safetensors": "d68a460dd271f1f847881df67a31fb2ebe11b12dbebdf64fbe98ed0c8eed5112",
+    "artifacts/v03-colab-2026-10-18/weights/trial-6/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v03-colab-2026-10-18/weights/trial-6/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v03-colab-2026-10-18/reports/seed-44/test-predictions.jsonl": "f6a22f559a324d2804a3f288c3fb8aa591334579e2b676049dd997ed2ed37df2",
+    "artifacts/v04-colab-2026-10-18/artifact-sha256.json": "4b10c098e73ec43f1e86d13e86d526f2d2debb873194e1c1b43d278563483229",
+    "artifacts/v04-colab-2026-10-18/reports/selection.json": "235da82906600a99144ed8f8612e15d11f4a065e48b64365f59e84658002449c",
+    "artifacts/v04-colab-2026-10-18/reports/manifest.json": "c820b9843c3999825a38753819390ce7f1d197f499abd486f4700326ef2fd951",
+    "artifacts/v04-colab-2026-10-18/experiment.json": "08e3b364dab4e51a80bb1a4b7489cdba2f6b0079975f32194343b09e77953fca",
+    "artifacts/v04-colab-2026-10-18/weights/trial-2/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v04-colab-2026-10-18/weights/trial-2/best/model.safetensors": "fe6add3e068ea57079cd66820dff78d328465191bd10c3fba6756a0002104426",
+    "artifacts/v04-colab-2026-10-18/weights/trial-2/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v04-colab-2026-10-18/weights/trial-2/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v04-colab-2026-10-18/reports/seed-42/test-predictions.jsonl": "0664584eaff7f4b85b397c42779e48028a4b2524afd40a8c5413f10712c75152",
+    "artifacts/v04-colab-2026-10-18/weights/trial-4/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v04-colab-2026-10-18/weights/trial-4/best/model.safetensors": "1cb98d06dffde79f234a29b1c78e679634aae6e1357272c85948da6d57c3c3e1",
+    "artifacts/v04-colab-2026-10-18/weights/trial-4/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v04-colab-2026-10-18/weights/trial-4/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v04-colab-2026-10-18/reports/seed-43/test-predictions.jsonl": "0aad8c6851830dd797a72eabad0e84256b655b2bc0a3c9675b4c9d484a2ec2d5",
+    "artifacts/v04-colab-2026-10-18/weights/trial-6/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v04-colab-2026-10-18/weights/trial-6/best/model.safetensors": "98e3225b17d639635ba48797558e5d2a77408a097ce631f39af7290b7560607f",
+    "artifacts/v04-colab-2026-10-18/weights/trial-6/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v04-colab-2026-10-18/weights/trial-6/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v04-colab-2026-10-18/reports/seed-44/test-predictions.jsonl": "60cfddb8bef3b14a8f9c2dfae6bddb5b63b16cfbec77886bbe11ace450fe465c",
+    "artifacts/v051-colab-2026-10-18/artifact-sha256.json": "7367738de1f97f7dbe0a8a3dcbc944702674b1363207f6ae67f9d88a566d225a",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/reports/selection.json": "a4262e3846d69559e9555a898657f7e504fb9ce49c7191f3ea58be812220d2d0",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/reports/manifest.json": "dc3e2e4eaa732c5b23e87fc5f249e359214c71e29fe818d303205ca36c2ce505",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/experiment.json": "ea270179612a8c0f521510d687093cc35555b756958dde18f7eb643200f5fca9",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-2/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-2/best/model.safetensors": "fe6add3e068ea57079cd66820dff78d328465191bd10c3fba6756a0002104426",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-2/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-2/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/reports/seed-42/test-predictions.jsonl": "0664584eaff7f4b85b397c42779e48028a4b2524afd40a8c5413f10712c75152",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-4/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-4/best/model.safetensors": "1cb98d06dffde79f234a29b1c78e679634aae6e1357272c85948da6d57c3c3e1",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-4/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-4/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/reports/seed-43/test-predictions.jsonl": "0aad8c6851830dd797a72eabad0e84256b655b2bc0a3c9675b4c9d484a2ec2d5",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-6/best/config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-6/best/model.safetensors": "98e3225b17d639635ba48797558e5d2a77408a097ce631f39af7290b7560607f",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-6/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-6/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/reports/seed-44/test-predictions.jsonl": "60cfddb8bef3b14a8f9c2dfae6bddb5b63b16cfbec77886bbe11ace450fe465c",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/reports/selection.json": "ae76294ff476e1c8e00857e123fa8421cdadcfadd547609489479929bb3c1660",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/reports/manifest.json": "7c81ca705e6eac4c2343e710e828a6da8dfaf4019cb83ebcda0205793f13bb3d",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/experiment.json": "db2396f93c4686083891f606be9b59c96a212ceefd8a50ba7f9ac22b81b453d5",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-2/best/config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-2/best/model.safetensors": "fc0afb3dcce2f0708d284faadd178ae2cfc2bb647c97d23cc7e189de4297ca26",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-2/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-2/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/reports/seed-42/test-predictions.jsonl": "da86d6be790a54c681759b1f94ca803594d5624eff16eda8f4c2ba1e6bf3cdfd",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-4/best/config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-4/best/model.safetensors": "d199b42546bb51fd784568dee91f9168dbbf04c70893968b3ab5866e64cf9210",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-4/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-4/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/reports/seed-43/test-predictions.jsonl": "cd7392902359054192a3ca444116f851f1d6ab8f120c15630aa95ee26ce52403",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-6/best/config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-6/best/model.safetensors": "a43599d7726c8808099066d1992b9d6beb1aca5aadf8488f920e5a312e210f05",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-6/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-6/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/reports/seed-44/test-predictions.jsonl": "d745443224d66144995a46743fc3785f9d1933dd487054b81b2b423d792a9a84",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/reports/selection.json": "ff3d610d4d1c822b87baa82bec7d844ffc338e50331b1f47f1ea1420088dc6a8",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/reports/manifest.json": "83d1720dee44684ce147d05cbdc1c435576e35210635189066cd67f883360fb4",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/experiment.json": "6f7e45d1d47c4a6d8bf740ea864bf388ac6e8645825e0335116ad47dc3fccda7",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-2/best/config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-2/best/model.safetensors": "8595851977f98fdf7537b8f512f260da11e1c4843f17b1153ec411076d8600ed",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-2/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-2/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/reports/seed-42/test-predictions.jsonl": "90ea9077247da935dd217deede58b310115018102bdebf005eea1ac2aa1f23b8",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-4/best/config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-4/best/model.safetensors": "5dd4d478a4fe1566a8c569fc81433d2c09661ba9a9ab0ac76a7afbfceb15cee0",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-4/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-4/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/reports/seed-43/test-predictions.jsonl": "cd8e761fdd89385f4f1b3c56b03531996c9b4641fedbaef9527e38c930f21463",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-6/best/config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-6/best/model.safetensors": "4426139ca78253b0aa0373ea89e4171d14b4196aeb068cc7e3c620b8e0e7af61",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-6/best/tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-6/best/tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/reports/seed-44/test-predictions.jsonl": "7aabf5c44121212af2e01109a73af1e2a08678998d59763bb08874fcb7a04985",
+    "artifacts/fixed73-all-models-2026-10-18/comparison.md": "65b26c4a39438f8e984ab576919b21d901753532fe1e8250aff1073af8376a03",
+    "artifacts/fixed73-all-models-2026-10-18/plan.json": "0044adb8e9c4c5e3f10bfb5004dbcf3b62d0605ee71bc24a9b08f446cf3bf24a",
+    "artifacts/fixed73-all-models-2026-10-18/summary.json": "6660a47fb5777a4dee3111bdf645ea3124fe1fa41e19d5385b4f5506a1fb1818",
+    "artifacts/fixed73-all-models-2026-10-18/test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed42/metrics.json": "2ba5b7b109bb685d4431987ab045a562b4766eb44b9475143e9d5269998a9934",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed42/misclassifications.md": "d6d9e2db2b55bb0d534947ba986a776dd7f9297b2e920380db45da3e52ec38bb",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed42/test-predictions.jsonl": "c655ccaeed3c82aac800b0aa62030fa7e1c0e9687299eadf6fd0925bbb2d2bfb",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed43/metrics.json": "dd802e269eb4bc37d0653baf426a83e899a250f6576e9e8fef0be540ad3ea218",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed43/misclassifications.md": "52ec043b0417c873034f4528fb3b1b27e1cbc4dd762ad048225c9f541440d5aa",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed43/test-predictions.jsonl": "6086abe61025ecaff178aba0cb93cec082765a50646408b1faa1b8a24e6b85bc",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed44/metrics.json": "9fc55749a538299a7d276065fb4df4b1dfa63a0706e35872e4cf8400c01d9175",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed44/misclassifications.md": "cb1a04251107f6ee5facc0db3fffc6dd29fb10353cef88f876576261a887aad8",
+    "artifacts/fixed73-all-models-2026-10-18/v02_seed44/test-predictions.jsonl": "b165922dce8ad4182c6325a2b38bfa70b070abab3c522168cf78ac087a0d0aa9",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed42/metrics.json": "c85b609d746b4ca6d94b89b432ecb7eb5655f2485517965a2c9b72fd6f5e8ce8",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed42/misclassifications.md": "5f7921d3378222f93290a92ff5be8de9d8bdd7bc614d5276ddd1a9106a435e14",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed42/test-predictions.jsonl": "f972238f69c38eaf95964824481a7fb67abe12463fce61e3be9bf3ff4bc097fe",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed43/metrics.json": "bb562c4f3bf99e9da33ab34a903dcf0374ddbcc889c155b8952ff9e8fa8ed322",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed43/misclassifications.md": "75893af098c57d854fb4c36067204e769063ac9940f7aaeee4b885e5f6b04d32",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed43/test-predictions.jsonl": "a855a56b2f2d4bad92cdc694a4d44716ea92fad40dfa2488552712cf6d452324",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed44/metrics.json": "9d7e9efacda5d44249e42180dbc8b7b4b82fa3b2741e1e71569c6dd8961f0edc",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed44/misclassifications.md": "b0d2b85c1cc0f9791d3def316880bd1e6929e75a357c5999b9c450d565eae049",
+    "artifacts/fixed73-all-models-2026-10-18/v03_seed44/test-predictions.jsonl": "7a46f1ef37971f1ed5b4733690addbadbe306aff2828112db1a9badcb8fc8e1d",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed42/metrics.json": "cdb2f56dd4acda1eaeeb49f15ed964989e6efa4e1407e9eef7d5c28cb32a2d3d",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed42/misclassifications.md": "e00150da3cad7ccf1e478c224ab34f14cad5a4c01cce8987a208a40acec1309b",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed42/test-predictions.jsonl": "cdbfe158a3542b5d16259cf128a1db1d7aa8ddf5f6b0af9e6b6e21134b4c585b",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed43/metrics.json": "e0be1118b815ae49e9641c85999c1e0c5787a9dbed4d055b6851c4d0baf60c66",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed43/misclassifications.md": "104af23f51f9be334c37fd64ed107297f9669ea9d0baa4b4aaa5f032fda057e1",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed43/test-predictions.jsonl": "869ade6b18503bf7b63cc65bfd95432a298f7e86ed40dd46ebffa1d2edad095e",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed44/metrics.json": "2e12ba27f5b2290c31245dea780db06b523353ee078ebbb3e60bcab03e5e48f5",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed44/misclassifications.md": "3a20f1e966cf6a85e2218d0ffaa37e1f340d0c95247b44d156a0c87e380c9221",
+    "artifacts/fixed73-all-models-2026-10-18/v04_seed44/test-predictions.jsonl": "d2b32e2c94ac841a3c4fca601045fcb4c9ed5f92696dc89ba7b617e95b195b32",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed42/metrics.json": "a40f44db65a83e75f2c3d044b4c28d0e01583501f019a3a71d3352cf8ffc3d30",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed42/misclassifications.md": "e00150da3cad7ccf1e478c224ab34f14cad5a4c01cce8987a208a40acec1309b",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed42/test-predictions.jsonl": "cdbfe158a3542b5d16259cf128a1db1d7aa8ddf5f6b0af9e6b6e21134b4c585b",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed43/metrics.json": "7fe1e4dfbe247578df9469e51f5f21689cab36d27e2c1a6ff19a82e09e67b325",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed43/misclassifications.md": "104af23f51f9be334c37fd64ed107297f9669ea9d0baa4b4aaa5f032fda057e1",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed43/test-predictions.jsonl": "869ade6b18503bf7b63cc65bfd95432a298f7e86ed40dd46ebffa1d2edad095e",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed44/metrics.json": "f9864ac6a5c1164ac59c113900590fdbfaa48c5439ee817ead00cc5f078ca8ad",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed44/misclassifications.md": "3a20f1e966cf6a85e2218d0ffaa37e1f340d0c95247b44d156a0c87e380c9221",
+    "artifacts/fixed73-all-models-2026-10-18/v051_baseline_seed44/test-predictions.jsonl": "d2b32e2c94ac841a3c4fca601045fcb4c9ed5f92696dc89ba7b617e95b195b32",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed42/metrics.json": "c430c7e1f339560221a23f359cb68e815ba98d1e8d7bd82e8c4537c5ef87b8e0",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed42/misclassifications.md": "61cc2675b6f923de63cb8fd3fcb1d109e0207b5efdbcfb8614557dbcc5d6b9af",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed42/test-predictions.jsonl": "836d65468659b7c17615b03194b678129614751d184f4ff9829505ac7f310c02",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed43/metrics.json": "cb5cc2cb59be30f3f07739979a830a110eaca667cc6ee8a8c9f16af898f76d38",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed43/misclassifications.md": "bcfa6b117510e96abb08200e574d801f1af2ee91332c420078fb8247931e1e9e",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed43/test-predictions.jsonl": "8665f39a545b7eeff7eead7e1995341b267e9a18ef29ac4feb23b48c461eb140",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed44/metrics.json": "77c1131718f6ee874ba39e082c78eab68a7553d86ff2a6773184d50f6795a2a6",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed44/misclassifications.md": "39e89c8c852192d40e7c0e7f6cac5849694f53bd69b83157d9d5cf21457e9502",
+    "artifacts/fixed73-all-models-2026-10-18/v051_dropout_2view_seed44/test-predictions.jsonl": "43a4cd70004add0a49f2d9edbea07d6fe76df06cc4b5411df42a8bfa7107f0e9",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed42/metrics.json": "ecd75f084d07f3f586d88a99c847180729a9154ffa84199638ed6e34ff5d940b",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed42/misclassifications.md": "e6b47b146c3d932ebbaac78e667dc44199b2c54974da180fb06a45b170c0a0da",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed42/test-predictions.jsonl": "4b26a28315e8a95ecdc61f520d47841c390fa3d88ef5d85dea9f8b9a9aaaf878",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed43/metrics.json": "447efe246ac994d07fe2fa49e15f8caab4b2fd8cb5a49514ba860f15ae49ddf7",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed43/misclassifications.md": "226cfd711b823a24f8322a0bf24164f6d37fe22eff8607b7aaa26e973cb95d5a",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed43/test-predictions.jsonl": "f25a4f5af2313ac45269b8324c86b7cedcd6b01843f37eb349339574d96de307",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed44/metrics.json": "161d3dd698056c61c6be1d970f5d442b4138b233b966f856dcca390a853b85bd",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed44/misclassifications.md": "6b48bd4b8e1481f41195ce3098f784457df37ec58c201467ba982f6dbf8e3e0e",
+    "artifacts/fixed73-all-models-2026-10-18/v051_rdrop_seed44/test-predictions.jsonl": "380e75c09b0f3d00ce3390f51f880ac4d757d8da4ffab01900b1d1c251d9634f",
+    "experiments/v0.3/PUBLIC-DATA-ATTRIBUTION.md": "0299f6a90e212f940b841310caa74b4141851b44b4ea2480bbb4e192cfc37bfe",
+    "experiments/v0.3/README.md": "9d1bb3dcec006bde876ee0b38ab3719a1febcf8f9caebbcd5808cb905a7504a2",
+    "experiments/v0.3/build_colab.py": "d854a6d13c98a94453e428860199b76cc2f82d895d8cd48486f76398b4065233",
+    "experiments/v0.3/bundle-files.json": "70304b84e7d6a3de3118af542f5c1996e1dcca5e0bf4afddd501d7b044be1705",
+    "experiments/v0.3/corpus.json": "d7c7c8e994baf0ac89d630d9267383562d253120fa38f98dd46d1318133aebc7",
+    "experiments/v0.3/curation/2026-10-17-v02-variants/candidates.jsonl": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74",
+    "experiments/v0.3/curation/2026-10-17-v02-variants/manifest.json": "0516818252acca43234087103279b5e9f8e524e5bf58e92affc35af8924377ac",
+    "experiments/v0.3/curation/2026-10-17-v02-variants/review.md": "77fc040036aa070d57f9e13b139836b9b10af09d207f53dcaf757f112e594bc0",
+    "experiments/v0.3/curation/2026-10-17-v02-variants/semantic-review.json": "277eda5e2f3dd80b023b412171465732b6a82bc1b551c27dfd1964c57bc2ca06",
+    "experiments/v0.3/curation/2026-10-18-evaluation/acceptance-review.json": "ef26c9502f5ea467d76a32df6b3e1b5a772b2a7295ff6ba74cd03a2d1336f686",
+    "experiments/v0.3/curation/2026-10-18-evaluation/accepted-dev.jsonl": "8745d6ac54ee491e6e5d47de185a72e2e60206ff39b64026bb387172eada122d",
+    "experiments/v0.3/curation/2026-10-18-evaluation/accepted-test.jsonl": "e9c61858296c58be402891465383ae1704021bd9e0eee424914642b1e7d7c41d",
+    "experiments/v0.3/curation/2026-10-18-evaluation/background-test-extra-review.json": "10e13f04ec82985bd842a57877b7bca57a134058d298aa361e9d6b13d2159039",
+    "experiments/v0.3/curation/2026-10-18-evaluation/background-test-extra.jsonl": "1caddc1580075fc78a11eaba8b0963d9160c957e4960c25f28bc93e3d433b1f2",
+    "experiments/v0.3/curation/2026-10-18-evaluation/bubble-replacements.jsonl": "e44de0f970f3336e73a66bf76ba57eee924fd78f46b4bb5de652c32b0f1ed9dd",
+    "experiments/v0.3/curation/2026-10-18-evaluation/bubble-test-extra.jsonl": "0fb4c2be8ae09780d27aa5f40b8949df34baed8cd8375a91901ca2d513fb4e71",
+    "experiments/v0.3/curation/2026-10-18-evaluation/core-test-replacements-review.json": "8c3d7846d775752fcac360a2ee533648ef4b88f28fac9e6981599ca6c304db72",
+    "experiments/v0.3/curation/2026-10-18-evaluation/core-test-replacements-revised.jsonl": "b6667aef230fd0ac7bc5a0374f67b4282ba7efba7b3e2bb04cd52af73bfaca97",
+    "experiments/v0.3/curation/2026-10-18-evaluation/core-test-replacements.jsonl": "2f3246aff8736ff34fb0c01ab05ddf2579898cf0248990c86cf42fad52599ae2",
+    "experiments/v0.3/curation/2026-10-18-evaluation/dev-author-review.json": "410ef885efc069f3d04428c06b4e1005185b11d4c81c45a1098ad2ea907f6dae",
+    "experiments/v0.3/curation/2026-10-18-evaluation/dev-draft.jsonl": "66a4a722347c85f6338ca4eba4b477d1e78cd0ee107d981090737aa4e375a2c6",
+    "experiments/v0.3/curation/2026-10-18-evaluation/dev-extra.jsonl": "ea5b129ce7852a74a69e9a463298f2f3b217f532d80068ab3900dacfe0bdf621",
+    "experiments/v0.3/curation/2026-10-18-evaluation/dev-revised-extra-review.json": "a69693429ea3bbe609cd2bcc254448fc860fb9dfa0532ad0c99393fd4cd11bbd",
+    "experiments/v0.3/curation/2026-10-18-evaluation/dev-revised-extra.jsonl": "ac07a6f4a1165d96ebbd6cf3f765a8f61094479a611b19694a97d64014987d5f",
+    "experiments/v0.3/curation/2026-10-18-evaluation/exhaustive-initial-screening.json": "97fb4e574f9e8be4ed6b2fe99bfd1946eb4b426ca078315ea7deeed5924e3fd5",
+    "experiments/v0.3/curation/2026-10-18-evaluation/extra-selection.json": "d7700f5a935fb74ed99054f97bfe1b64be7f923a26b219c596c80e9c8d0dc264",
+    "experiments/v0.3/curation/2026-10-18-evaluation/final-exhaustive-screening.json": "734e403b81faf7d4489dfc2a6d62afb19c43f022d0b4580735537d4f41d324a0",
+    "experiments/v0.3/curation/2026-10-18-evaluation/initial-screening.json": "4e3403c5e8caf7277f700e8782503ac3216c86866c5e535bc82247327c046464",
+    "experiments/v0.3/curation/2026-10-18-evaluation/structural-review.json": "412041705648996333521807b5a7bd647b2e79d0b1fb7e44e0f3b30db43e0ac1",
+    "experiments/v0.3/curation/2026-10-18-evaluation/test-author-review.json": "36273a5401aae49a1ec3d101067583dfdd89712650f3cc0956205911b3cd0d45",
+    "experiments/v0.3/curation/2026-10-18-evaluation/test-draft.jsonl": "2641eb98e0c1e1c3d0f2022796121b635869d265079d08395b5d35438158507f",
+    "experiments/v0.3/curation/2026-10-18-public/accepted-adapted-train.jsonl": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2",
+    "experiments/v0.3/curation/2026-10-18-public/adapted-train.jsonl": "2fed7ec79b590301b79e6083dac5b2c5228e701a22ce3d78cbdadc99bfd83375",
+    "experiments/v0.3/curation/2026-10-18-public/old-near-candidates.json": "6c00dd50a47ae9cebef62c226114711a1b15354cd8e86ccf253833c433d032fe",
+    "experiments/v0.3/curation/2026-10-18-public/raw-dev.jsonl": "859c1244e7f9045ff35891dd83f8b9e0747cad7ff6d71b3cf8d15491df1bf205",
+    "experiments/v0.3/curation/2026-10-18-public/raw-test.jsonl": "8ede47558059a56cf2f70735487c8ab92dabf2ff51a082901b1dc04868da1191",
+    "experiments/v0.3/curation/2026-10-18-public/raw-train.jsonl": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836",
+    "experiments/v0.3/curation/2026-10-18-public/review.json": "80c0bebe637f0d9a3712f8c958ba3ec72e86d5549c42a3d401b1ddb7a7823fae",
+    "experiments/v0.3/curation/2026-10-18-public/selected-source.jsonl": "b24e18ac3af19d333089b5433dc4d74c57308e39988895e93ac8eba5f34f8d64",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/README.md": "768e431e8d56eeb5b51e54b24cf1d24ea4f73160ec8b4ed4c70f95c4d3cf9a4f",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/candidates.jsonl": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/family-links.json": "5cce172c31113f1beeb9182660e4994e4b015d11f10d16d0bc40745a79fb9dc3",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/handoff-sha256.json": "f70908724ac18c32f32e5f52b2e9b129bd15f100afc0e2d4845135f97610b504",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/manifest.json": "a5003871f422b51cf93a98c0652313caa417c2a158a59f314fee7006032a5a10",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/regression-evidence.json": "f4d03507764321169763e57943434ed65e977037566bbf5b02bf7604dbf2641d",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/review.md": "030181673b9d4a86f43a3004e1d1d6feb7590085037df01175413e14454e8a38",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/validate.py": "1878c9e06e72ae7f275f67c9c8e37464470d83665a32e5d712dfac2908de9d7b",
+    "experiments/v0.3/curation/2026-10-18-v03-boundaries/validation.json": "50d62ad1be2f246992b22837a7fef6d5869e13101b4170aa12b983346ffee450",
+    "experiments/v0.3/data-report.json": "9c15f8d0fb843db7862b912ad4dc67a1ea63cb2141133ceb37e06b61a4b88a3d",
+    "experiments/v0.3/data/dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.3/data/legacy_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.3/data/legacy_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.3/data/test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.3/data/train.jsonl": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+    "experiments/v0.3/dataset.py": "408987423dcf65b97be818ccc04bd8d28184e51f2ad2a7bcb59b96f26178b6f6",
+    "experiments/v0.3/docs/2026-10-18-v03-protocol.md": "44428ee588d8e53420a81cf167efd88c7ce22ba9a6f8c57e15583ca53e35e1ef",
+    "experiments/v0.3/docs/2026-10-18-v03-split-review.md": "9491417cc5c998a88a9e4570e90c3314de0c807effb0f3421318c99630ec8a79",
+    "experiments/v0.3/evaluation.py": "d08b06367cefda8669ca12f69bb683c6998f3ad61fa1fecc521a8c7348b0574b",
+    "experiments/v0.3/experiment.json": "64aa200e4fc83a64c7fee4aeef942500275529ae0c822606e550e6668d3b9a0c",
+    "experiments/v0.3/family-review.json": "ddef08f30f4410f8ec403d6776885ae8d433ac1af0af7d9ca9f03353763bdd1c",
+    "experiments/v0.3/handoff.json": "631ae8a69f39322916b1486992d46bff9ccd9713f0db73855b36e3f22014ea9c",
+    "experiments/v0.3/legacy/v02-results/artifact-sha256.json": "2a19033b5a6cb8f3274c05631ee2a71a425a3c606b3ca7bbbaba64e1b7111892",
+    "experiments/v0.3/legacy/v02-results/independent-audit.json": "46365bf9e458edcfef613b44014c945e5a51aa06ceab16823175579cc3201aa5",
+    "experiments/v0.3/legacy/v02-results/reports/seed-42/dev-predictions.jsonl": "e87b315f1f3009257ed84ea2a6e31d305133ed0ebc462d94a735e5c95a13a602",
+    "experiments/v0.3/legacy/v02-results/reports/seed-42/metrics.json": "1068665fd3018c2b7a14224fe2bc563347ea6b8e841c056c9ff3b32dfe2015a4",
+    "experiments/v0.3/legacy/v02-results/reports/seed-42/test-predictions.jsonl": "99f747666442070d8eeeb3f908d27504e9ebe78422d2855f899fb42e448a5891",
+    "experiments/v0.3/legacy/v02-results/reports/seed-43/dev-predictions.jsonl": "9fb814f34f39f2fcd3fbbf7da5bc5738b899f68bbb7eaf0a47d956af12f8ee19",
+    "experiments/v0.3/legacy/v02-results/reports/seed-43/metrics.json": "3c7e7145e599102f4c074a4da54e255f8306fc35c7970e6f4d7c03ae3f96ba98",
+    "experiments/v0.3/legacy/v02-results/reports/seed-43/test-predictions.jsonl": "65f81f90c881114fc547eb472649a668f93b0d06ab6af1a33bfd765eb54e75be",
+    "experiments/v0.3/legacy/v02-results/reports/seed-44/dev-predictions.jsonl": "5bae7e69a6522b96f68b3eec94407055e40a99587eced92cc849170a440b0087",
+    "experiments/v0.3/legacy/v02-results/reports/seed-44/metrics.json": "827f2515a2ea28ed0618ea15c946241eee29f467786c8b41e0f1a3458e1023a7",
+    "experiments/v0.3/legacy/v02-results/reports/seed-44/test-predictions.jsonl": "15b1d723e22cc809add4794e9f87f3cb571f20dde21d2fe5f8e9bc438d4c2df7",
+    "experiments/v0.3/legacy/v02-results/reports/selection.json": "44a330ab2509113e4e3f9adc550001d9781a23e436cf0881fed76ea0e3b6a5d9",
+    "experiments/v0.3/legacy/v02-results/reports/verification.json": "2b380b59a23999515701fc763fdef5722ec25b91add63344337ae7a6bc75c6fc",
+    "experiments/v0.3/legacy/v02/corpus.json": "368220eff471058f5646901cd64a57e5ed291af9710f989ddb4e37c50e8ee47e",
+    "experiments/v0.3/legacy/v02/data-report.json": "d031a89a6af8c06a2b32d2c53b2c856741c6d8dd1f9c951eb4e6c45e80916dd8",
+    "experiments/v0.3/legacy/v02/data/dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.3/legacy/v02/data/test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.3/legacy/v02/data/train.jsonl": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+    "experiments/v0.3/legacy/v02/experiment.json": "9d1d7469cacedb8f7580635ee223536b98213c614aad8ef92601c6d3ec82feee",
+    "experiments/v0.3/legacy/v02/family-review.json": "765dfbdb49cf9594b84e5b2e2e9668a1431748f8de6ede3880b670b2b20300f7",
+    "experiments/v0.3/legacy/v02/split-plan.json": "a04ca6c31ecfbec0ad4ec0aad1ee4c3a2d5f5b0a1f21c781611d67059bd9d5bd",
+    "experiments/v0.3/legacy/v02/tokenization-check.json": "af7ce261bcb0d38ef94faaf977b86d44a69d8cd4177af3f1ce0febb90319eee6",
+    "experiments/v0.3/notebook-introduction.md": "d9d687e1bb521aee30128f1e53fb8d8d1df94d87346cf5644a75954d5e04e5ef",
+    "experiments/v0.3/pool-sources.json": "6c4ff62ea8711cbde4e0f861e89044ce15ecd531d1e42e415b2d4afb0af82c02",
+    "experiments/v0.3/preparation-source-snapshot.json": "2204bc11ad44a5d48d157ce4d4fcc24c71bfa4f6d09e38f99669e0faab9f2624",
+    "experiments/v0.3/prepare_v03.py": "f58d082647e7d520332c400747ce6f094ac35d384c769574465a98fc19cd0364",
+    "experiments/v0.3/requirements-train.txt": "f45782d28fe9ac8e4123aaf8a8878fbf17d8b38782a8bda21958f0a6cf407ff1",
+    "experiments/v0.3/source/candidates.jsonl": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+    "experiments/v0.3/source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.3/source/manifest.json": "fe4f2d8c84302f39eeb43b9a0832623da991f30c1e5b1447aaa8e905bba9c101",
+    "experiments/v0.3/source/public/massive-1.1/LICENSE": "c2e6ea015269147de02117ebdd91f30ef09831251f5345fa8365273b1db1d435",
+    "experiments/v0.3/source/public/massive-1.1/inspection.json": "d259c28c232bc6bef24d450d8d33800c60eacdcc1e3b950772cd47edda17a3cd",
+    "experiments/v0.3/source/public/massive-1.1/ja-JP.jsonl": "c22df382db6aa4a23dd1e7f62a2ac8f01c6158865771ad25201696be7201ab79",
+    "experiments/v0.3/source/review.md": "b74e8867658b3aa37aba0384804557930aedb8ccc5d879d1e1d7f800ee628a14",
+    "experiments/v0.3/split-plan.json": "8a2a787aa52e1a97a6bdc524b14c5e726869483ecf24cb16bd2b63f2133f884e",
+    "experiments/v0.3/test_v03_pipeline.py": "45cbfb2770919da83512935cea08018a84ae98dbd774ab463c49ac155c1fb324",
+    "experiments/v0.3/tokenization-check.json": "c22b476339320235491afce1365dbacf20c44e0e746a19c53e2b4886fda68c1b",
+    "experiments/v0.3/train.py": "541989e50c3004ee7477bd9ccf700980ec30ca4e8eea1bd6a57d6e2ca0bf9e3f",
+    "experiments/v0.3/v03_data.py": "d588f813087e0a39b6ec5281a6cd9b4684d2db5fe8b5baeed409adc8f8972ee8",
+    "experiments/v0.3/verify_results.py": "c74841165d340e7baceb2550c6a2168d8aec877013dcd0e01e69f0767f612786",
+    "experiments/v0.4/PUBLIC-DATA-ATTRIBUTION.md": "0299f6a90e212f940b841310caa74b4141851b44b4ea2480bbb4e192cfc37bfe",
+    "experiments/v0.4/README.md": "f7893b850e5d33bf1e9e44352875226a8136e248cfa0e877f558b7ca8e9a6d5f",
+    "experiments/v0.4/build_colab.py": "f69547c27890f1b4f4fe2c387a9d89a1adf6abe00cca2566d6f6cb4c797a61c7",
+    "experiments/v0.4/bundle-files.json": "dcca66d67f4f1e647ff8c1f9de29ca61c737745a28635180f0d582244a1e78ec",
+    "experiments/v0.4/corpus.json": "6f514bc0cd8612073f6480ded7fbf618b4ecb287cd1c518a94c1cdaf39298e66",
+    "experiments/v0.4/curation/2026-10-17-v02-variants/candidates.jsonl": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74",
+    "experiments/v0.4/curation/2026-10-17-v02-variants/manifest.json": "0516818252acca43234087103279b5e9f8e524e5bf58e92affc35af8924377ac",
+    "experiments/v0.4/curation/2026-10-17-v02-variants/review.md": "77fc040036aa070d57f9e13b139836b9b10af09d207f53dcaf757f112e594bc0",
+    "experiments/v0.4/curation/2026-10-17-v02-variants/semantic-review.json": "277eda5e2f3dd80b023b412171465732b6a82bc1b551c27dfd1964c57bc2ca06",
+    "experiments/v0.4/curation/2026-10-18-evaluation/acceptance-review.json": "ef26c9502f5ea467d76a32df6b3e1b5a772b2a7295ff6ba74cd03a2d1336f686",
+    "experiments/v0.4/curation/2026-10-18-evaluation/accepted-dev.jsonl": "8745d6ac54ee491e6e5d47de185a72e2e60206ff39b64026bb387172eada122d",
+    "experiments/v0.4/curation/2026-10-18-evaluation/accepted-test.jsonl": "e9c61858296c58be402891465383ae1704021bd9e0eee424914642b1e7d7c41d",
+    "experiments/v0.4/curation/2026-10-18-evaluation/background-test-extra-review.json": "10e13f04ec82985bd842a57877b7bca57a134058d298aa361e9d6b13d2159039",
+    "experiments/v0.4/curation/2026-10-18-evaluation/background-test-extra.jsonl": "1caddc1580075fc78a11eaba8b0963d9160c957e4960c25f28bc93e3d433b1f2",
+    "experiments/v0.4/curation/2026-10-18-evaluation/bubble-replacements.jsonl": "e44de0f970f3336e73a66bf76ba57eee924fd78f46b4bb5de652c32b0f1ed9dd",
+    "experiments/v0.4/curation/2026-10-18-evaluation/bubble-test-extra.jsonl": "0fb4c2be8ae09780d27aa5f40b8949df34baed8cd8375a91901ca2d513fb4e71",
+    "experiments/v0.4/curation/2026-10-18-evaluation/core-test-replacements-review.json": "8c3d7846d775752fcac360a2ee533648ef4b88f28fac9e6981599ca6c304db72",
+    "experiments/v0.4/curation/2026-10-18-evaluation/core-test-replacements-revised.jsonl": "b6667aef230fd0ac7bc5a0374f67b4282ba7efba7b3e2bb04cd52af73bfaca97",
+    "experiments/v0.4/curation/2026-10-18-evaluation/core-test-replacements.jsonl": "2f3246aff8736ff34fb0c01ab05ddf2579898cf0248990c86cf42fad52599ae2",
+    "experiments/v0.4/curation/2026-10-18-evaluation/dev-author-review.json": "410ef885efc069f3d04428c06b4e1005185b11d4c81c45a1098ad2ea907f6dae",
+    "experiments/v0.4/curation/2026-10-18-evaluation/dev-draft.jsonl": "66a4a722347c85f6338ca4eba4b477d1e78cd0ee107d981090737aa4e375a2c6",
+    "experiments/v0.4/curation/2026-10-18-evaluation/dev-extra.jsonl": "ea5b129ce7852a74a69e9a463298f2f3b217f532d80068ab3900dacfe0bdf621",
+    "experiments/v0.4/curation/2026-10-18-evaluation/dev-revised-extra-review.json": "a69693429ea3bbe609cd2bcc254448fc860fb9dfa0532ad0c99393fd4cd11bbd",
+    "experiments/v0.4/curation/2026-10-18-evaluation/dev-revised-extra.jsonl": "ac07a6f4a1165d96ebbd6cf3f765a8f61094479a611b19694a97d64014987d5f",
+    "experiments/v0.4/curation/2026-10-18-evaluation/exhaustive-initial-screening.json": "97fb4e574f9e8be4ed6b2fe99bfd1946eb4b426ca078315ea7deeed5924e3fd5",
+    "experiments/v0.4/curation/2026-10-18-evaluation/extra-selection.json": "d7700f5a935fb74ed99054f97bfe1b64be7f923a26b219c596c80e9c8d0dc264",
+    "experiments/v0.4/curation/2026-10-18-evaluation/final-exhaustive-screening.json": "734e403b81faf7d4489dfc2a6d62afb19c43f022d0b4580735537d4f41d324a0",
+    "experiments/v0.4/curation/2026-10-18-evaluation/initial-screening.json": "4e3403c5e8caf7277f700e8782503ac3216c86866c5e535bc82247327c046464",
+    "experiments/v0.4/curation/2026-10-18-evaluation/structural-review.json": "412041705648996333521807b5a7bd647b2e79d0b1fb7e44e0f3b30db43e0ac1",
+    "experiments/v0.4/curation/2026-10-18-evaluation/test-author-review.json": "36273a5401aae49a1ec3d101067583dfdd89712650f3cc0956205911b3cd0d45",
+    "experiments/v0.4/curation/2026-10-18-evaluation/test-draft.jsonl": "2641eb98e0c1e1c3d0f2022796121b635869d265079d08395b5d35438158507f",
+    "experiments/v0.4/curation/2026-10-18-public/accepted-adapted-train.jsonl": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2",
+    "experiments/v0.4/curation/2026-10-18-public/adapted-train.jsonl": "2fed7ec79b590301b79e6083dac5b2c5228e701a22ce3d78cbdadc99bfd83375",
+    "experiments/v0.4/curation/2026-10-18-public/old-near-candidates.json": "6c00dd50a47ae9cebef62c226114711a1b15354cd8e86ccf253833c433d032fe",
+    "experiments/v0.4/curation/2026-10-18-public/raw-dev.jsonl": "859c1244e7f9045ff35891dd83f8b9e0747cad7ff6d71b3cf8d15491df1bf205",
+    "experiments/v0.4/curation/2026-10-18-public/raw-test.jsonl": "8ede47558059a56cf2f70735487c8ab92dabf2ff51a082901b1dc04868da1191",
+    "experiments/v0.4/curation/2026-10-18-public/raw-train.jsonl": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836",
+    "experiments/v0.4/curation/2026-10-18-public/review.json": "80c0bebe637f0d9a3712f8c958ba3ec72e86d5549c42a3d401b1ddb7a7823fae",
+    "experiments/v0.4/curation/2026-10-18-public/selected-source.jsonl": "b24e18ac3af19d333089b5433dc4d74c57308e39988895e93ac8eba5f34f8d64",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/README.md": "768e431e8d56eeb5b51e54b24cf1d24ea4f73160ec8b4ed4c70f95c4d3cf9a4f",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/candidates.jsonl": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/family-links.json": "5cce172c31113f1beeb9182660e4994e4b015d11f10d16d0bc40745a79fb9dc3",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/handoff-sha256.json": "f70908724ac18c32f32e5f52b2e9b129bd15f100afc0e2d4845135f97610b504",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/manifest.json": "a5003871f422b51cf93a98c0652313caa417c2a158a59f314fee7006032a5a10",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/regression-evidence.json": "f4d03507764321169763e57943434ed65e977037566bbf5b02bf7604dbf2641d",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/review.md": "030181673b9d4a86f43a3004e1d1d6feb7590085037df01175413e14454e8a38",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/validate.py": "1878c9e06e72ae7f275f67c9c8e37464470d83665a32e5d712dfac2908de9d7b",
+    "experiments/v0.4/curation/2026-10-18-v03-boundaries/validation.json": "50d62ad1be2f246992b22837a7fef6d5869e13101b4170aa12b983346ffee450",
+    "experiments/v0.4/curation/2026-10-18-v04-contrasts/candidates.jsonl": "7c6c576fc9e3c66862a6d720cfb66c14096e9f2cbc80f337e8be6387a8531184",
+    "experiments/v0.4/curation/2026-10-18-v04-contrasts/review.json": "18d475b4b224f8c85cf79a0331619947bb3ef1d683081d9c742c41a778708470",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/acceptance-review.json": "e2b2020d4c6c68409226b10d9d277b18f7f32e183f1503ac112e1aea1f37ab8b",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/accepted-dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/accepted-test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/all-candidate-near.json": "ca37e67d140723b179e5fcddf150f3fbde1f726f63d34cffe82940e1f0578fd0",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/dev-author-review.json": "7321de7c17b70649972a5675211eadd2a23eb4b7780e2972f90bc400af0400fd",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/dev-draft.jsonl": "82ec3258ae7aea4e30adf0a4dfb7f5f0beb8a4c3d28cd1dc3c483a9df3fceeaf",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/dev-final-extra-review.json": "9782bb2cadce1cda92969122ed65d476fb453660fc822325f7c6c3c1cfad2b69",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/dev-final-extra.jsonl": "ba17dad6bcca8bfa68cbbcd21fc8e4944d64842c8255ffb9ba130e03580b7293",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/dev-supplement-review.json": "c010364df14629b2435cb3bb1fda7d8358192e0ec303a6c0b70cf3aa5e95223c",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/dev-supplement.jsonl": "fffc934fa8bff4b4a2cfe3a2a1feaaad856fdddf34a849618842127dd0f55c7d",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/final-audit-resolution.json": "88853f2b446476382cdae1c3b977035c627be99a693eb8865da43a47ca50ed56",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/final-extra-parent-review.json": "19be5cf41ca5e19b5b81bbd4a8adc067d7696d80dae926938e308470cf0d090a",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/final-holdout-audit.json": "acd1646fbc2a24bdf12aeb60d37cc942e6b2a4f9268966009d5b35633b8686d2",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/final-selected-near.json": "b7a7b76620e966988a9c2ccf592499ab7c6f8721090fc559515949bd44e9e3d6",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/initial-semantic-review.json": "1c74c09a08cbe4cc4202b2a8f8c47531f1250b8d22d7e4844c07d585481b6c02",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/supplement-parent-review.json": "885fb7c39f1773d1e3a0a50fb990157d3ceacc0ec56c21f7d8cf02f8b0774423",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/test-author-review.json": "970c56e390131e1d3f8c0832bf3682ad00f778d9848c34f7ab4830c34fc6056c",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/test-draft.jsonl": "4d94ce4096fc9a49cea9b7b169527090046ca11399ff359e3a60da657642e6c1",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/test-final-extra-review.json": "d9a472e4d50357d5bc3dd40b7cdfb8d878a83c502b5339c6ed679c9d82d1677b",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/test-final-extra.jsonl": "19bf287571ad47d7887736f46ca7ccefb24ca5ba6ecf3283673cd1d5c01fc6ac",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/test-supplement-review.json": "8b2ec7e3edf3b504b2f3cb70e2758aae6995faf8b7962532c242d4db1bc7844d",
+    "experiments/v0.4/curation/2026-10-18-v04-evaluation/test-supplement.jsonl": "49573a117e384efe61e5384aa3962549747e226b07e019e8be81e629c42ca0bc",
+    "experiments/v0.4/data-report.json": "bd952fe5a05983d00ede64f1dd7cf95372bafe53cf67eeea839547f051cbad64",
+    "experiments/v0.4/data/dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "experiments/v0.4/data/legacy_v02_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.4/data/legacy_v02_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.4/data/legacy_v03_dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.4/data/legacy_v03_test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.4/data/test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "experiments/v0.4/data/train.jsonl": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+    "experiments/v0.4/dataset.py": "df2abf803f159eb043e6f58f987b2dc3d2d835f3702935a0f82ef9df70e3c6a6",
+    "experiments/v0.4/docs/2026-10-18-v04-protocol.md": "00c64df539020a1a41bc9460b2dd6fc58f1aa9c64346ddf3aff4a9ff5557f23c",
+    "experiments/v0.4/docs/2026-10-18-v04-split-review.md": "f5a78e83a47cbc64d22008c4b31088e1aceb24bd9ca8d414bddcc84b274d7fdd",
+    "experiments/v0.4/evaluation.py": "579f33c1f5b3c8f29140bbcd164f1ccd03bf4e6efa4f323778c2a2af4ae29b27",
+    "experiments/v0.4/experiment.json": "08e3b364dab4e51a80bb1a4b7489cdba2f6b0079975f32194343b09e77953fca",
+    "experiments/v0.4/family-review.json": "7a5732830c1f486ec712ff4558ff1bcc30639add4f47ddf7382fee26bdbcfa92",
+    "experiments/v0.4/handoff.json": "631ae8a69f39322916b1486992d46bff9ccd9713f0db73855b36e3f22014ea9c",
+    "experiments/v0.4/legacy/v02-results/artifact-sha256.json": "2a19033b5a6cb8f3274c05631ee2a71a425a3c606b3ca7bbbaba64e1b7111892",
+    "experiments/v0.4/legacy/v02-results/independent-audit.json": "46365bf9e458edcfef613b44014c945e5a51aa06ceab16823175579cc3201aa5",
+    "experiments/v0.4/legacy/v02-results/reports/seed-42/dev-predictions.jsonl": "e87b315f1f3009257ed84ea2a6e31d305133ed0ebc462d94a735e5c95a13a602",
+    "experiments/v0.4/legacy/v02-results/reports/seed-42/metrics.json": "1068665fd3018c2b7a14224fe2bc563347ea6b8e841c056c9ff3b32dfe2015a4",
+    "experiments/v0.4/legacy/v02-results/reports/seed-42/test-predictions.jsonl": "99f747666442070d8eeeb3f908d27504e9ebe78422d2855f899fb42e448a5891",
+    "experiments/v0.4/legacy/v02-results/reports/seed-43/dev-predictions.jsonl": "9fb814f34f39f2fcd3fbbf7da5bc5738b899f68bbb7eaf0a47d956af12f8ee19",
+    "experiments/v0.4/legacy/v02-results/reports/seed-43/metrics.json": "3c7e7145e599102f4c074a4da54e255f8306fc35c7970e6f4d7c03ae3f96ba98",
+    "experiments/v0.4/legacy/v02-results/reports/seed-43/test-predictions.jsonl": "65f81f90c881114fc547eb472649a668f93b0d06ab6af1a33bfd765eb54e75be",
+    "experiments/v0.4/legacy/v02-results/reports/seed-44/dev-predictions.jsonl": "5bae7e69a6522b96f68b3eec94407055e40a99587eced92cc849170a440b0087",
+    "experiments/v0.4/legacy/v02-results/reports/seed-44/metrics.json": "827f2515a2ea28ed0618ea15c946241eee29f467786c8b41e0f1a3458e1023a7",
+    "experiments/v0.4/legacy/v02-results/reports/seed-44/test-predictions.jsonl": "15b1d723e22cc809add4794e9f87f3cb571f20dde21d2fe5f8e9bc438d4c2df7",
+    "experiments/v0.4/legacy/v02-results/reports/selection.json": "44a330ab2509113e4e3f9adc550001d9781a23e436cf0881fed76ea0e3b6a5d9",
+    "experiments/v0.4/legacy/v02-results/reports/verification.json": "2b380b59a23999515701fc763fdef5722ec25b91add63344337ae7a6bc75c6fc",
+    "experiments/v0.4/legacy/v02/corpus.json": "368220eff471058f5646901cd64a57e5ed291af9710f989ddb4e37c50e8ee47e",
+    "experiments/v0.4/legacy/v02/data-report.json": "d031a89a6af8c06a2b32d2c53b2c856741c6d8dd1f9c951eb4e6c45e80916dd8",
+    "experiments/v0.4/legacy/v02/data/dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.4/legacy/v02/data/test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.4/legacy/v02/data/train.jsonl": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+    "experiments/v0.4/legacy/v02/experiment.json": "9d1d7469cacedb8f7580635ee223536b98213c614aad8ef92601c6d3ec82feee",
+    "experiments/v0.4/legacy/v02/family-review.json": "765dfbdb49cf9594b84e5b2e2e9668a1431748f8de6ede3880b670b2b20300f7",
+    "experiments/v0.4/legacy/v02/split-plan.json": "a04ca6c31ecfbec0ad4ec0aad1ee4c3a2d5f5b0a1f21c781611d67059bd9d5bd",
+    "experiments/v0.4/legacy/v02/tokenization-check.json": "af7ce261bcb0d38ef94faaf977b86d44a69d8cd4177af3f1ce0febb90319eee6",
+    "experiments/v0.4/legacy/v03-results/reports/manifest.json": "047e4ceed299c5b64324213be02cde5f6e34f2037bf26e92627586fe08831211",
+    "experiments/v0.4/legacy/v03-results/reports/seed-42/dev-predictions.jsonl": "6493eb38fc9e76d59404fc1b81c51a03262432f8fa47b898ee1bc747ee149e33",
+    "experiments/v0.4/legacy/v03-results/reports/seed-42/metrics.json": "4b5f7da708554090c22463d33296f1e28b854bc1f159f59fd77815dd4bbb8ed8",
+    "experiments/v0.4/legacy/v03-results/reports/seed-42/test-predictions.jsonl": "5f6f1612be79314ae3878003e0eac6ca26e0c8a5c221fe22d238849f9373c49a",
+    "experiments/v0.4/legacy/v03-results/reports/seed-43/dev-predictions.jsonl": "b24baadeb69e326c60932c5c4875585f8bc72884f9b8b00afedf2e431dbf6577",
+    "experiments/v0.4/legacy/v03-results/reports/seed-43/metrics.json": "c4376ad87f3d7e83f251c15c160b164ea1935b3b2b22fab745c9306219783eaa",
+    "experiments/v0.4/legacy/v03-results/reports/seed-43/test-predictions.jsonl": "39eb801834cc6696f6015e9ede4c5e90fd7ac6a6fcfb477830fd9c5fb48c1212",
+    "experiments/v0.4/legacy/v03-results/reports/seed-44/dev-predictions.jsonl": "bc2b4ffff6c76d0fae47ca68bb76fbee2b827c47fdc77d05c78b8a95fca2058b",
+    "experiments/v0.4/legacy/v03-results/reports/seed-44/metrics.json": "25eea07da52af62dc56669544e0cf764a4ae3aa5674f6b6124e95eecae1458b0",
+    "experiments/v0.4/legacy/v03-results/reports/seed-44/test-predictions.jsonl": "f6a22f559a324d2804a3f288c3fb8aa591334579e2b676049dd997ed2ed37df2",
+    "experiments/v0.4/legacy/v03-results/reports/selection.json": "f5f963bd34e21c4a44a2498acf186df42cf348f064bcda581f23cb733fe80341",
+    "experiments/v0.4/legacy/v03-results/reports/verification.json": "04bcb716d0b44b90c7bbd9245d10516e2d37ce82abe1be0046f503f4f9342c64",
+    "experiments/v0.4/legacy/v03/corpus.json": "d7c7c8e994baf0ac89d630d9267383562d253120fa38f98dd46d1318133aebc7",
+    "experiments/v0.4/legacy/v03/data-report.json": "9c15f8d0fb843db7862b912ad4dc67a1ea63cb2141133ceb37e06b61a4b88a3d",
+    "experiments/v0.4/legacy/v03/data/dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.4/legacy/v03/data/legacy_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.4/legacy/v03/data/legacy_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.4/legacy/v03/data/test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.4/legacy/v03/data/train.jsonl": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+    "experiments/v0.4/legacy/v03/experiment.json": "64aa200e4fc83a64c7fee4aeef942500275529ae0c822606e550e6668d3b9a0c",
+    "experiments/v0.4/legacy/v03/family-review.json": "ddef08f30f4410f8ec403d6776885ae8d433ac1af0af7d9ca9f03353763bdd1c",
+    "experiments/v0.4/legacy/v03/split-plan.json": "8a2a787aa52e1a97a6bdc524b14c5e726869483ecf24cb16bd2b63f2133f884e",
+    "experiments/v0.4/legacy/v03/tokenization-check.json": "c22b476339320235491afce1365dbacf20c44e0e746a19c53e2b4886fda68c1b",
+    "experiments/v0.4/lineage-plan.json": "c9312f4045f7c58600338bbc6b808d128665f515c7b0462a368a0059a16b6197",
+    "experiments/v0.4/notebook-introduction.md": "9a13a787c052e07e5fa5b4462b212d40ef2a61fba13b2f0e60d00a64597c1b3c",
+    "experiments/v0.4/pool-sources.json": "0355e27bad67636bfd194bfbfc2fafebdadd42bf6dfc27982999adf1abd3b359",
+    "experiments/v0.4/preparation-code-review.json": "9e5e73fc4b0357bad98fb5f95bfe7973594c97a5430b745f7014abc6c81e2156",
+    "experiments/v0.4/preparation-source-snapshot.json": "c26366b7a9adbe770eef0af8226c472918d3337a38e886c352be57956309a944",
+    "experiments/v0.4/prepare_v03.py": "f4a4c98e0d50bfc40c7c7ea5ab749627f3c511f6459a4b17de09586ca4dcd687",
+    "experiments/v0.4/requirements-train.txt": "f45782d28fe9ac8e4123aaf8a8878fbf17d8b38782a8bda21958f0a6cf407ff1",
+    "experiments/v0.4/source/candidates.jsonl": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+    "experiments/v0.4/source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.4/source/manifest.json": "fe4f2d8c84302f39eeb43b9a0832623da991f30c1e5b1447aaa8e905bba9c101",
+    "experiments/v0.4/source/public/massive-1.1/LICENSE": "c2e6ea015269147de02117ebdd91f30ef09831251f5345fa8365273b1db1d435",
+    "experiments/v0.4/source/public/massive-1.1/inspection.json": "d259c28c232bc6bef24d450d8d33800c60eacdcc1e3b950772cd47edda17a3cd",
+    "experiments/v0.4/source/public/massive-1.1/ja-JP.jsonl": "c22df382db6aa4a23dd1e7f62a2ac8f01c6158865771ad25201696be7201ab79",
+    "experiments/v0.4/source/review.md": "b74e8867658b3aa37aba0384804557930aedb8ccc5d879d1e1d7f800ee628a14",
+    "experiments/v0.4/split-plan.json": "f7f233bbcd81bbdf27587e7611723691e753854a3abd28594819fb87476b150c",
+    "experiments/v0.4/test_v03_pipeline.py": "65e8f055fe6d24d80ab791bff7fdb99bf2b4e145077490e7335a186c669b7234",
+    "experiments/v0.4/test_v04_pipeline.py": "c4c3d4d874fbca0c79bf12f11aebe824b3d0849013fd36eaee4bb43bcf950c2d",
+    "experiments/v0.4/tokenization-check.json": "032d0f6d986a20e42a83882ded3a8dbde50b4524b7fe2172f5d353ea9d23d379",
+    "experiments/v0.4/train.py": "541989e50c3004ee7477bd9ccf700980ec30ca4e8eea1bd6a57d6e2ca0bf9e3f",
+    "experiments/v0.4/v03_data.py": "f85be9df59964f1951b885ee3fd27c97b17fe041b77141be000bebc399d480c7",
+    "experiments/v0.4/verify_results.py": "2f0a306c62cd8c9ddef4baa55f9510a2dbb90121f489446f8edb8c868112acf1",
+    "experiments/v0.5/PUBLIC-DATA-ATTRIBUTION.md": "0299f6a90e212f940b841310caa74b4141851b44b4ea2480bbb4e192cfc37bfe",
+    "experiments/v0.5/README.md": "9273adb5d47c83d34d021e4d420d3c5dc8ec46cf2e361f541054b7b95e836381",
+    "experiments/v0.5/build_colab.py": "7a243b990be2da3d31eb10bf1f6d67b7bf979ad24210b46920196aa4ed53e9fa",
+    "experiments/v0.5/bundle-files.json": "7f7418b7a00c30acafd93b463173c32be5d04b25cf1d1626ed8271553fd43e4a",
+    "experiments/v0.5/comparison-plan.json": "f77cc3d0a32a87eba6fc1ac34c5941bc5257c3d4b3828e71335c0808149a7b87",
+    "experiments/v0.5/comparison.py": "0616c6e5e3a4ea9fee6aae7536da92bc870b70a33bd8fed34c275a76fec4e61e",
+    "experiments/v0.5/corpus.json": "6f514bc0cd8612073f6480ded7fbf618b4ecb287cd1c518a94c1cdaf39298e66",
+    "experiments/v0.5/curation/2026-10-17-v02-variants/candidates.jsonl": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74",
+    "experiments/v0.5/curation/2026-10-17-v02-variants/manifest.json": "0516818252acca43234087103279b5e9f8e524e5bf58e92affc35af8924377ac",
+    "experiments/v0.5/curation/2026-10-17-v02-variants/review.md": "77fc040036aa070d57f9e13b139836b9b10af09d207f53dcaf757f112e594bc0",
+    "experiments/v0.5/curation/2026-10-17-v02-variants/semantic-review.json": "277eda5e2f3dd80b023b412171465732b6a82bc1b551c27dfd1964c57bc2ca06",
+    "experiments/v0.5/curation/2026-10-18-evaluation/acceptance-review.json": "ef26c9502f5ea467d76a32df6b3e1b5a772b2a7295ff6ba74cd03a2d1336f686",
+    "experiments/v0.5/curation/2026-10-18-evaluation/accepted-dev.jsonl": "8745d6ac54ee491e6e5d47de185a72e2e60206ff39b64026bb387172eada122d",
+    "experiments/v0.5/curation/2026-10-18-evaluation/accepted-test.jsonl": "e9c61858296c58be402891465383ae1704021bd9e0eee424914642b1e7d7c41d",
+    "experiments/v0.5/curation/2026-10-18-evaluation/background-test-extra-review.json": "10e13f04ec82985bd842a57877b7bca57a134058d298aa361e9d6b13d2159039",
+    "experiments/v0.5/curation/2026-10-18-evaluation/background-test-extra.jsonl": "1caddc1580075fc78a11eaba8b0963d9160c957e4960c25f28bc93e3d433b1f2",
+    "experiments/v0.5/curation/2026-10-18-evaluation/bubble-replacements.jsonl": "e44de0f970f3336e73a66bf76ba57eee924fd78f46b4bb5de652c32b0f1ed9dd",
+    "experiments/v0.5/curation/2026-10-18-evaluation/bubble-test-extra.jsonl": "0fb4c2be8ae09780d27aa5f40b8949df34baed8cd8375a91901ca2d513fb4e71",
+    "experiments/v0.5/curation/2026-10-18-evaluation/core-test-replacements-review.json": "8c3d7846d775752fcac360a2ee533648ef4b88f28fac9e6981599ca6c304db72",
+    "experiments/v0.5/curation/2026-10-18-evaluation/core-test-replacements-revised.jsonl": "b6667aef230fd0ac7bc5a0374f67b4282ba7efba7b3e2bb04cd52af73bfaca97",
+    "experiments/v0.5/curation/2026-10-18-evaluation/core-test-replacements.jsonl": "2f3246aff8736ff34fb0c01ab05ddf2579898cf0248990c86cf42fad52599ae2",
+    "experiments/v0.5/curation/2026-10-18-evaluation/dev-author-review.json": "410ef885efc069f3d04428c06b4e1005185b11d4c81c45a1098ad2ea907f6dae",
+    "experiments/v0.5/curation/2026-10-18-evaluation/dev-draft.jsonl": "66a4a722347c85f6338ca4eba4b477d1e78cd0ee107d981090737aa4e375a2c6",
+    "experiments/v0.5/curation/2026-10-18-evaluation/dev-extra.jsonl": "ea5b129ce7852a74a69e9a463298f2f3b217f532d80068ab3900dacfe0bdf621",
+    "experiments/v0.5/curation/2026-10-18-evaluation/dev-revised-extra-review.json": "a69693429ea3bbe609cd2bcc254448fc860fb9dfa0532ad0c99393fd4cd11bbd",
+    "experiments/v0.5/curation/2026-10-18-evaluation/dev-revised-extra.jsonl": "ac07a6f4a1165d96ebbd6cf3f765a8f61094479a611b19694a97d64014987d5f",
+    "experiments/v0.5/curation/2026-10-18-evaluation/exhaustive-initial-screening.json": "97fb4e574f9e8be4ed6b2fe99bfd1946eb4b426ca078315ea7deeed5924e3fd5",
+    "experiments/v0.5/curation/2026-10-18-evaluation/extra-selection.json": "d7700f5a935fb74ed99054f97bfe1b64be7f923a26b219c596c80e9c8d0dc264",
+    "experiments/v0.5/curation/2026-10-18-evaluation/final-exhaustive-screening.json": "734e403b81faf7d4489dfc2a6d62afb19c43f022d0b4580735537d4f41d324a0",
+    "experiments/v0.5/curation/2026-10-18-evaluation/initial-screening.json": "4e3403c5e8caf7277f700e8782503ac3216c86866c5e535bc82247327c046464",
+    "experiments/v0.5/curation/2026-10-18-evaluation/structural-review.json": "412041705648996333521807b5a7bd647b2e79d0b1fb7e44e0f3b30db43e0ac1",
+    "experiments/v0.5/curation/2026-10-18-evaluation/test-author-review.json": "36273a5401aae49a1ec3d101067583dfdd89712650f3cc0956205911b3cd0d45",
+    "experiments/v0.5/curation/2026-10-18-evaluation/test-draft.jsonl": "2641eb98e0c1e1c3d0f2022796121b635869d265079d08395b5d35438158507f",
+    "experiments/v0.5/curation/2026-10-18-public/accepted-adapted-train.jsonl": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2",
+    "experiments/v0.5/curation/2026-10-18-public/adapted-train.jsonl": "2fed7ec79b590301b79e6083dac5b2c5228e701a22ce3d78cbdadc99bfd83375",
+    "experiments/v0.5/curation/2026-10-18-public/old-near-candidates.json": "6c00dd50a47ae9cebef62c226114711a1b15354cd8e86ccf253833c433d032fe",
+    "experiments/v0.5/curation/2026-10-18-public/raw-dev.jsonl": "859c1244e7f9045ff35891dd83f8b9e0747cad7ff6d71b3cf8d15491df1bf205",
+    "experiments/v0.5/curation/2026-10-18-public/raw-test.jsonl": "8ede47558059a56cf2f70735487c8ab92dabf2ff51a082901b1dc04868da1191",
+    "experiments/v0.5/curation/2026-10-18-public/raw-train.jsonl": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836",
+    "experiments/v0.5/curation/2026-10-18-public/review.json": "80c0bebe637f0d9a3712f8c958ba3ec72e86d5549c42a3d401b1ddb7a7823fae",
+    "experiments/v0.5/curation/2026-10-18-public/selected-source.jsonl": "b24e18ac3af19d333089b5433dc4d74c57308e39988895e93ac8eba5f34f8d64",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/README.md": "768e431e8d56eeb5b51e54b24cf1d24ea4f73160ec8b4ed4c70f95c4d3cf9a4f",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/candidates.jsonl": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/family-links.json": "5cce172c31113f1beeb9182660e4994e4b015d11f10d16d0bc40745a79fb9dc3",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/handoff-sha256.json": "f70908724ac18c32f32e5f52b2e9b129bd15f100afc0e2d4845135f97610b504",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/manifest.json": "a5003871f422b51cf93a98c0652313caa417c2a158a59f314fee7006032a5a10",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/regression-evidence.json": "f4d03507764321169763e57943434ed65e977037566bbf5b02bf7604dbf2641d",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/review.md": "030181673b9d4a86f43a3004e1d1d6feb7590085037df01175413e14454e8a38",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/validate.py": "1878c9e06e72ae7f275f67c9c8e37464470d83665a32e5d712dfac2908de9d7b",
+    "experiments/v0.5/curation/2026-10-18-v03-boundaries/validation.json": "50d62ad1be2f246992b22837a7fef6d5869e13101b4170aa12b983346ffee450",
+    "experiments/v0.5/curation/2026-10-18-v04-contrasts/candidates.jsonl": "7c6c576fc9e3c66862a6d720cfb66c14096e9f2cbc80f337e8be6387a8531184",
+    "experiments/v0.5/curation/2026-10-18-v04-contrasts/review.json": "18d475b4b224f8c85cf79a0331619947bb3ef1d683081d9c742c41a778708470",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/acceptance-review.json": "e2b2020d4c6c68409226b10d9d277b18f7f32e183f1503ac112e1aea1f37ab8b",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/accepted-dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/accepted-test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/all-candidate-near.json": "ca37e67d140723b179e5fcddf150f3fbde1f726f63d34cffe82940e1f0578fd0",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/dev-author-review.json": "7321de7c17b70649972a5675211eadd2a23eb4b7780e2972f90bc400af0400fd",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/dev-draft.jsonl": "82ec3258ae7aea4e30adf0a4dfb7f5f0beb8a4c3d28cd1dc3c483a9df3fceeaf",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/dev-final-extra-review.json": "9782bb2cadce1cda92969122ed65d476fb453660fc822325f7c6c3c1cfad2b69",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/dev-final-extra.jsonl": "ba17dad6bcca8bfa68cbbcd21fc8e4944d64842c8255ffb9ba130e03580b7293",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/dev-supplement-review.json": "c010364df14629b2435cb3bb1fda7d8358192e0ec303a6c0b70cf3aa5e95223c",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/dev-supplement.jsonl": "fffc934fa8bff4b4a2cfe3a2a1feaaad856fdddf34a849618842127dd0f55c7d",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/final-audit-resolution.json": "88853f2b446476382cdae1c3b977035c627be99a693eb8865da43a47ca50ed56",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/final-extra-parent-review.json": "19be5cf41ca5e19b5b81bbd4a8adc067d7696d80dae926938e308470cf0d090a",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/final-holdout-audit.json": "acd1646fbc2a24bdf12aeb60d37cc942e6b2a4f9268966009d5b35633b8686d2",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/final-selected-near.json": "b7a7b76620e966988a9c2ccf592499ab7c6f8721090fc559515949bd44e9e3d6",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/initial-semantic-review.json": "1c74c09a08cbe4cc4202b2a8f8c47531f1250b8d22d7e4844c07d585481b6c02",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/supplement-parent-review.json": "885fb7c39f1773d1e3a0a50fb990157d3ceacc0ec56c21f7d8cf02f8b0774423",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/test-author-review.json": "970c56e390131e1d3f8c0832bf3682ad00f778d9848c34f7ab4830c34fc6056c",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/test-draft.jsonl": "4d94ce4096fc9a49cea9b7b169527090046ca11399ff359e3a60da657642e6c1",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/test-final-extra-review.json": "d9a472e4d50357d5bc3dd40b7cdfb8d878a83c502b5339c6ed679c9d82d1677b",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/test-final-extra.jsonl": "19bf287571ad47d7887736f46ca7ccefb24ca5ba6ecf3283673cd1d5c01fc6ac",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/test-supplement-review.json": "8b2ec7e3edf3b504b2f3cb70e2758aae6995faf8b7962532c242d4db1bc7844d",
+    "experiments/v0.5/curation/2026-10-18-v04-evaluation/test-supplement.jsonl": "49573a117e384efe61e5384aa3962549747e226b07e019e8be81e629c42ca0bc",
+    "experiments/v0.5/data-report.json": "bd952fe5a05983d00ede64f1dd7cf95372bafe53cf67eeea839547f051cbad64",
+    "experiments/v0.5/data/dev.jsonl": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "experiments/v0.5/data/legacy_v02_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.5/data/legacy_v02_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.5/data/legacy_v03_dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.5/data/legacy_v03_test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.5/data/test.jsonl": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "experiments/v0.5/data/train.jsonl": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+    "experiments/v0.5/dataset.py": "df2abf803f159eb043e6f58f987b2dc3d2d835f3702935a0f82ef9df70e3c6a6",
+    "experiments/v0.5/docs/2026-10-18-recent-intent-research.json": "2a0e57b11b511f476f3bda00aa753cc4d2aa2548cfa448e9a25c0b294ed78eb0",
+    "experiments/v0.5/docs/2026-10-18-training-route-audit.json": "31efbf78ca95af9954495b7134e4e129b7c4e0b26f9ebf3932188c387943ccde",
+    "experiments/v0.5/docs/2026-10-18-v04-protocol.md": "00c64df539020a1a41bc9460b2dd6fc58f1aa9c64346ddf3aff4a9ff5557f23c",
+    "experiments/v0.5/docs/2026-10-18-v04-split-review.md": "f5a78e83a47cbc64d22008c4b31088e1aceb24bd9ca8d414bddcc84b274d7fdd",
+    "experiments/v0.5/docs/2026-10-18-v05-research-and-protocol.md": "a92be50cc3f08b53f1335abc8beee1e1bf48b490616bf6642bf4e43b9d65cea1",
+    "experiments/v0.5/evaluation.py": "579f33c1f5b3c8f29140bbcd164f1ccd03bf4e6efa4f323778c2a2af4ae29b27",
+    "experiments/v0.5/experiment.json": "bbf9fe6b07bb94ad06f6603d1fc197e9a96f04e050b4b640103be8f9d9f27cc2",
+    "experiments/v0.5/family-review.json": "7a5732830c1f486ec712ff4558ff1bcc30639add4f47ddf7382fee26bdbcfa92",
+    "experiments/v0.5/handoff.json": "631ae8a69f39322916b1486992d46bff9ccd9713f0db73855b36e3f22014ea9c",
+    "experiments/v0.5/legacy/v02-results/artifact-sha256.json": "2a19033b5a6cb8f3274c05631ee2a71a425a3c606b3ca7bbbaba64e1b7111892",
+    "experiments/v0.5/legacy/v02-results/independent-audit.json": "46365bf9e458edcfef613b44014c945e5a51aa06ceab16823175579cc3201aa5",
+    "experiments/v0.5/legacy/v02-results/reports/seed-42/dev-predictions.jsonl": "e87b315f1f3009257ed84ea2a6e31d305133ed0ebc462d94a735e5c95a13a602",
+    "experiments/v0.5/legacy/v02-results/reports/seed-42/metrics.json": "1068665fd3018c2b7a14224fe2bc563347ea6b8e841c056c9ff3b32dfe2015a4",
+    "experiments/v0.5/legacy/v02-results/reports/seed-42/test-predictions.jsonl": "99f747666442070d8eeeb3f908d27504e9ebe78422d2855f899fb42e448a5891",
+    "experiments/v0.5/legacy/v02-results/reports/seed-43/dev-predictions.jsonl": "9fb814f34f39f2fcd3fbbf7da5bc5738b899f68bbb7eaf0a47d956af12f8ee19",
+    "experiments/v0.5/legacy/v02-results/reports/seed-43/metrics.json": "3c7e7145e599102f4c074a4da54e255f8306fc35c7970e6f4d7c03ae3f96ba98",
+    "experiments/v0.5/legacy/v02-results/reports/seed-43/test-predictions.jsonl": "65f81f90c881114fc547eb472649a668f93b0d06ab6af1a33bfd765eb54e75be",
+    "experiments/v0.5/legacy/v02-results/reports/seed-44/dev-predictions.jsonl": "5bae7e69a6522b96f68b3eec94407055e40a99587eced92cc849170a440b0087",
+    "experiments/v0.5/legacy/v02-results/reports/seed-44/metrics.json": "827f2515a2ea28ed0618ea15c946241eee29f467786c8b41e0f1a3458e1023a7",
+    "experiments/v0.5/legacy/v02-results/reports/seed-44/test-predictions.jsonl": "15b1d723e22cc809add4794e9f87f3cb571f20dde21d2fe5f8e9bc438d4c2df7",
+    "experiments/v0.5/legacy/v02-results/reports/selection.json": "44a330ab2509113e4e3f9adc550001d9781a23e436cf0881fed76ea0e3b6a5d9",
+    "experiments/v0.5/legacy/v02-results/reports/verification.json": "2b380b59a23999515701fc763fdef5722ec25b91add63344337ae7a6bc75c6fc",
+    "experiments/v0.5/legacy/v02/corpus.json": "368220eff471058f5646901cd64a57e5ed291af9710f989ddb4e37c50e8ee47e",
+    "experiments/v0.5/legacy/v02/data-report.json": "d031a89a6af8c06a2b32d2c53b2c856741c6d8dd1f9c951eb4e6c45e80916dd8",
+    "experiments/v0.5/legacy/v02/data/dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.5/legacy/v02/data/test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.5/legacy/v02/data/train.jsonl": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+    "experiments/v0.5/legacy/v02/experiment.json": "9d1d7469cacedb8f7580635ee223536b98213c614aad8ef92601c6d3ec82feee",
+    "experiments/v0.5/legacy/v02/family-review.json": "765dfbdb49cf9594b84e5b2e2e9668a1431748f8de6ede3880b670b2b20300f7",
+    "experiments/v0.5/legacy/v02/split-plan.json": "a04ca6c31ecfbec0ad4ec0aad1ee4c3a2d5f5b0a1f21c781611d67059bd9d5bd",
+    "experiments/v0.5/legacy/v02/tokenization-check.json": "af7ce261bcb0d38ef94faaf977b86d44a69d8cd4177af3f1ce0febb90319eee6",
+    "experiments/v0.5/legacy/v03-results/reports/manifest.json": "047e4ceed299c5b64324213be02cde5f6e34f2037bf26e92627586fe08831211",
+    "experiments/v0.5/legacy/v03-results/reports/seed-42/dev-predictions.jsonl": "6493eb38fc9e76d59404fc1b81c51a03262432f8fa47b898ee1bc747ee149e33",
+    "experiments/v0.5/legacy/v03-results/reports/seed-42/metrics.json": "4b5f7da708554090c22463d33296f1e28b854bc1f159f59fd77815dd4bbb8ed8",
+    "experiments/v0.5/legacy/v03-results/reports/seed-42/test-predictions.jsonl": "5f6f1612be79314ae3878003e0eac6ca26e0c8a5c221fe22d238849f9373c49a",
+    "experiments/v0.5/legacy/v03-results/reports/seed-43/dev-predictions.jsonl": "b24baadeb69e326c60932c5c4875585f8bc72884f9b8b00afedf2e431dbf6577",
+    "experiments/v0.5/legacy/v03-results/reports/seed-43/metrics.json": "c4376ad87f3d7e83f251c15c160b164ea1935b3b2b22fab745c9306219783eaa",
+    "experiments/v0.5/legacy/v03-results/reports/seed-43/test-predictions.jsonl": "39eb801834cc6696f6015e9ede4c5e90fd7ac6a6fcfb477830fd9c5fb48c1212",
+    "experiments/v0.5/legacy/v03-results/reports/seed-44/dev-predictions.jsonl": "bc2b4ffff6c76d0fae47ca68bb76fbee2b827c47fdc77d05c78b8a95fca2058b",
+    "experiments/v0.5/legacy/v03-results/reports/seed-44/metrics.json": "25eea07da52af62dc56669544e0cf764a4ae3aa5674f6b6124e95eecae1458b0",
+    "experiments/v0.5/legacy/v03-results/reports/seed-44/test-predictions.jsonl": "f6a22f559a324d2804a3f288c3fb8aa591334579e2b676049dd997ed2ed37df2",
+    "experiments/v0.5/legacy/v03-results/reports/selection.json": "f5f963bd34e21c4a44a2498acf186df42cf348f064bcda581f23cb733fe80341",
+    "experiments/v0.5/legacy/v03-results/reports/verification.json": "04bcb716d0b44b90c7bbd9245d10516e2d37ce82abe1be0046f503f4f9342c64",
+    "experiments/v0.5/legacy/v03/corpus.json": "d7c7c8e994baf0ac89d630d9267383562d253120fa38f98dd46d1318133aebc7",
+    "experiments/v0.5/legacy/v03/data-report.json": "9c15f8d0fb843db7862b912ad4dc67a1ea63cb2141133ceb37e06b61a4b88a3d",
+    "experiments/v0.5/legacy/v03/data/dev.jsonl": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "experiments/v0.5/legacy/v03/data/legacy_dev.jsonl": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "experiments/v0.5/legacy/v03/data/legacy_test.jsonl": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "experiments/v0.5/legacy/v03/data/test.jsonl": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "experiments/v0.5/legacy/v03/data/train.jsonl": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+    "experiments/v0.5/legacy/v03/experiment.json": "64aa200e4fc83a64c7fee4aeef942500275529ae0c822606e550e6668d3b9a0c",
+    "experiments/v0.5/legacy/v03/family-review.json": "ddef08f30f4410f8ec403d6776885ae8d433ac1af0af7d9ca9f03353763bdd1c",
+    "experiments/v0.5/legacy/v03/split-plan.json": "8a2a787aa52e1a97a6bdc524b14c5e726869483ecf24cb16bd2b63f2133f884e",
+    "experiments/v0.5/legacy/v03/tokenization-check.json": "c22b476339320235491afce1365dbacf20c44e0e746a19c53e2b4886fda68c1b",
+    "experiments/v0.5/lineage-plan.json": "c9312f4045f7c58600338bbc6b808d128665f515c7b0462a368a0059a16b6197",
+    "experiments/v0.5/notebook-introduction.md": "4516d9c9a68ac134506ba2669a089e43c5f17e9c99c7f2edcc6048ca2466e0dd",
+    "experiments/v0.5/pool-sources.json": "0355e27bad67636bfd194bfbfc2fafebdadd42bf6dfc27982999adf1abd3b359",
+    "experiments/v0.5/preparation-code-review.json": "9e5e73fc4b0357bad98fb5f95bfe7973594c97a5430b745f7014abc6c81e2156",
+    "experiments/v0.5/preparation-source-snapshot.json": "c26366b7a9adbe770eef0af8226c472918d3337a38e886c352be57956309a944",
+    "experiments/v0.5/prepare_v03.py": "f4a4c98e0d50bfc40c7c7ea5ab749627f3c511f6459a4b17de09586ca4dcd687",
+    "experiments/v0.5/requirements-train.txt": "f45782d28fe9ac8e4123aaf8a8878fbf17d8b38782a8bda21958f0a6cf407ff1",
+    "experiments/v0.5/smoke_comparison.py": "d441cd7aa975dfb46e7a2c8f7b3dbd667f727bd794806df0c0fc799ab965f3b2",
+    "experiments/v0.5/source/candidates.jsonl": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+    "experiments/v0.5/source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "experiments/v0.5/source/manifest.json": "fe4f2d8c84302f39eeb43b9a0832623da991f30c1e5b1447aaa8e905bba9c101",
+    "experiments/v0.5/source/public/massive-1.1/LICENSE": "c2e6ea015269147de02117ebdd91f30ef09831251f5345fa8365273b1db1d435",
+    "experiments/v0.5/source/public/massive-1.1/inspection.json": "d259c28c232bc6bef24d450d8d33800c60eacdcc1e3b950772cd47edda17a3cd",
+    "experiments/v0.5/source/public/massive-1.1/ja-JP.jsonl": "c22df382db6aa4a23dd1e7f62a2ac8f01c6158865771ad25201696be7201ab79",
+    "experiments/v0.5/source/review.md": "b74e8867658b3aa37aba0384804557930aedb8ccc5d879d1e1d7f800ee628a14",
+    "experiments/v0.5/split-plan.json": "f7f233bbcd81bbdf27587e7611723691e753854a3abd28594819fb87476b150c",
+    "experiments/v0.5/test_comparison.py": "1fcf434b42e3d249697d0207ece2f41961670a245855cdc0a43a66f259780b75",
+    "experiments/v0.5/test_v03_pipeline.py": "65e8f055fe6d24d80ab791bff7fdb99bf2b4e145077490e7335a186c669b7234",
+    "experiments/v0.5/test_v04_pipeline.py": "c4c3d4d874fbca0c79bf12f11aebe824b3d0849013fd36eaee4bb43bcf950c2d",
+    "experiments/v0.5/tokenization-check.json": "032d0f6d986a20e42a83882ded3a8dbde50b4524b7fe2172f5d353ea9d23d379",
+    "experiments/v0.5/train.py": "6f8232fb35f98a29651e6868ffff8310dcfd038f160bd7d5049fb068ac426a0b",
+    "experiments/v0.5/v03_data.py": "f85be9df59964f1951b885ee3fd27c97b17fe041b77141be000bebc399d480c7",
+    "experiments/v0.5/verify_results.py": "067ae6cfc0e4cc1eea4ff6c1d7e405fa2697d46bfcd0e72fe10a52e76b651280",
+    "evaluations/daily-commands-2026-10-19/preparation-review.json": "9224d762a2c08885424879e04ef2e304c5ae8d713018f01365aacb2b8b33cae4",
+    "evaluations/daily-commands-2026-10-19/protocol.json": "4dff0ab530f47830c523e8cc1608002144d2b3e7dcdcf7e165d731512f52ca0b",
+    "evaluations/daily-commands-2026-10-19/questions.md": "335a5e102564d8ebd79f9005a3f7b646549346fcafe545347b2497b655ac59ae",
+    "evaluations/daily-commands-2026-10-19/source/labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+    "evaluations/daily-commands-2026-10-19/split-plan.json": "fb5fba57f214480e76cf16f8aebd880965f9389b79a08db0113047057c5a87ed",
+    "evaluations/daily-commands-2026-10-19/test.jsonl": "6f8d50074a4918292e7be77f7ab43e6f301b6803cf9a40de255d2dd7375c243d",
+    "evaluate_daily_commands.py": "5b3f5ec878b4212f1534d4a28ec0a34316312e1c1846d07b1748e3f5e3e4eb0b",
+    "evaluations/daily-commands-2026-10-19/input-sha256.json": "6cf4cd7937d60a06c120c702307aee37dec33cf7c60f77c7bd9f86d4b7e90644",
+    "artifacts/fixed73-all-models-2026-10-18/output-sha256.json": "47e61c60abd1e45e8fee93028d747b81db27ad311c097c6c8bef0d9c622bcae4"
+  }
+}

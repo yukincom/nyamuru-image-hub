@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "generation-qa-fixture-provenance-v1.schema.json",
+  "title": "Nyamuru synthetic generation QA fixture provenance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "kind",
+    "generator",
+    "generator_sha256",
+    "generator_version",
+    "external_assets",
+    "external_network",
+    "models_used",
+    "license",
+    "reproducibility_note"
+  ],
+  "properties": {
+    "schema_name": { "const": "nyamuru-generation-qa-fixture-provenance" },
+    "schema_version": { "const": 1 },
+    "kind": { "const": "project-generated-synthetic" },
+    "generator": { "const": "build_fixtures.py" },
+    "generator_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "generator_version": { "const": 1 },
+    "external_assets": { "const": false },
+    "external_network": { "const": false },
+    "models_used": { "type": "array", "maxItems": 0 },
+    "license": { "const": "MIT (same as project source)" },
+    "reproducibility_note": { "type": "string", "minLength": 1, "maxLength": 500 }
+  }
+}

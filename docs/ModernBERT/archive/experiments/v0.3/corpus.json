@@ -1,0 +1,114 @@
+{
+  "schema_version": 3,
+  "n": 1577,
+  "sources": [
+    {
+      "path": "source/candidates.jsonl",
+      "n": 316,
+      "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+      "extra_fields": []
+    },
+    {
+      "path": "curation/2026-10-17-v02-variants/candidates.jsonl",
+      "n": 608,
+      "sha256": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74",
+      "extra_fields": []
+    },
+    {
+      "path": "curation/2026-10-18-v03-boundaries/candidates.jsonl",
+      "allowed_split": "train",
+      "n": 288,
+      "sha256": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760",
+      "extra_fields": [
+        "allowed_split",
+        "family",
+        "focus"
+      ]
+    },
+    {
+      "path": "curation/2026-10-18-public/raw-train.jsonl",
+      "allowed_split": "train",
+      "n": 64,
+      "sha256": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836",
+      "extra_fields": [
+        "adaptation",
+        "allowed_split",
+        "original_corpus",
+        "original_id",
+        "original_label",
+        "original_partition",
+        "original_text"
+      ]
+    },
+    {
+      "path": "curation/2026-10-18-public/accepted-adapted-train.jsonl",
+      "allowed_split": "train",
+      "n": 81,
+      "sha256": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2",
+      "extra_fields": [
+        "adaptation",
+        "allowed_split",
+        "original_corpus",
+        "original_id",
+        "original_label",
+        "original_partition",
+        "original_text"
+      ]
+    },
+    {
+      "path": "curation/2026-10-18-public/raw-dev.jsonl",
+      "allowed_split": "dev",
+      "n": 8,
+      "sha256": "859c1244e7f9045ff35891dd83f8b9e0747cad7ff6d71b3cf8d15491df1bf205",
+      "extra_fields": [
+        "adaptation",
+        "allowed_split",
+        "original_corpus",
+        "original_id",
+        "original_label",
+        "original_partition",
+        "original_text"
+      ]
+    },
+    {
+      "path": "curation/2026-10-18-public/raw-test.jsonl",
+      "allowed_split": "test",
+      "n": 16,
+      "sha256": "8ede47558059a56cf2f70735487c8ab92dabf2ff51a082901b1dc04868da1191",
+      "extra_fields": [
+        "adaptation",
+        "allowed_split",
+        "original_corpus",
+        "original_id",
+        "original_label",
+        "original_partition",
+        "original_text"
+      ]
+    },
+    {
+      "path": "curation/2026-10-18-evaluation/accepted-dev.jsonl",
+      "allowed_split": "dev",
+      "n": 80,
+      "sha256": "8745d6ac54ee491e6e5d47de185a72e2e60206ff39b64026bb387172eada122d",
+      "extra_fields": []
+    },
+    {
+      "path": "curation/2026-10-18-evaluation/accepted-test.jsonl",
+      "allowed_split": "test",
+      "n": 116,
+      "sha256": "e9c61858296c58be402891465383ae1704021bd9e0eee424914642b1e7d7c41d",
+      "extra_fields": []
+    }
+  ],
+  "minimum_per_label": {
+    "train": 12,
+    "dev": 4,
+    "test": 4,
+    "legacy_dev": 4,
+    "legacy_test": 4
+  },
+  "model_fields": [
+    "text"
+  ],
+  "legacy_eligible_for_acceptance": false
+}

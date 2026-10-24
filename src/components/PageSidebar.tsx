@@ -1,11 +1,11 @@
 import { useState } from 'preact/hooks';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, FilePlus2, PanelTop, Trash2 } from 'lucide-preact';
-import type { MangaDocument, ValidationIssue, WorkspaceTab } from '../types';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, FilePlus2, Trash2 } from 'lucide-preact';
+import { pagePreviewGridPosition } from '../lib/pageSpread';
+import type { MangaDocument, ValidationIssue } from '../types';
 
 interface Props {
   document: MangaDocument;
   activePage: number;
-  tab: WorkspaceTab;
   issues: ValidationIssue[];
   collapsed: boolean;
   onCollapse: () => void;
@@ -24,10 +24,9 @@ export default function PageSidebar(props: Props) {
   const resetDrag = () => { setDragIndex(null); setOverIndex(null); };
   return (
     <aside id="mobile-pages-pane" class={`page-sidebar ${collapsed ? 'is-collapsed' : ''}`}>
-      <div class="sidebar-heading">
-        {!collapsed && <><div><span class="eyebrow">PAGES</span><h2>ページ</h2></div><span class="count-badge">{manga.pages.length}</span></>}
-        <button class="collapse-button" onClick={props.onCollapse} aria-label={collapsed ? 'ページ一覧を開く' : 'ページ一覧を閉じる'}>
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+      <div class="sidebar-boundary-rail">
+        <button class="collapse-button sidebar-edge-toggle" onClick={props.onCollapse} aria-label={collapsed ? 'ページ一覧を開く' : 'ページ一覧を閉じる'} title={collapsed ? 'ページ一覧を開く' : 'ページ一覧を閉じる'}>
+          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
       </div>
 
@@ -35,6 +34,7 @@ export default function PageSidebar(props: Props) {
         <div class="page-list">
           {manga.pages.map((page, index) => {
             const pageIssues = issues.filter((issue) => issue.path.startsWith(`manga.pages[${index}]`));
+            const gridPosition = pagePreviewGridPosition(index);
             return (
               <div
                 class={`page-card ${activePage === index ? 'is-active' : ''} ${dragIndex === index ? 'is-dragging' : ''} ${dragIndex !== null && dragIndex !== index && overIndex === index ? (dragIndex < index ? 'is-drop-after' : 'is-drop-before') : ''}`}
@@ -49,20 +49,19 @@ export default function PageSidebar(props: Props) {
                 onDrop={(event) => { event.preventDefault(); if (dragIndex !== null && dragIndex !== index) props.onReorderPage(dragIndex, index); resetDrag(); }}
                 onDragEnd={resetDrag}
                 title="ドラッグでページ順を入れ替え"
+                style={{ gridRow: gridPosition.row, gridColumn: gridPosition.column }}
                 key={`${page.page}-${index}`}
               >
-                <div class="page-thumb">
+                <div class="page-thumb" style={{ width: Math.min(66, 93 * page.canvas.w / page.canvas.h), height: Math.min(93, 66 * page.canvas.h / page.canvas.w) }}>
+                  <svg class="page-thumb-svg" viewBox={`0 0 ${page.canvas.w} ${page.canvas.h}`} aria-hidden="true">
+                    {page.panels.map((panel) => panel.shape.type === 'rect'
+                      ? <rect class={`thumb-panel bg-${panel.bg}`} x={panel.shape.x} y={panel.shape.y} width={panel.shape.w} height={panel.shape.h} key={panel.id} />
+                      : <polygon class={`thumb-panel bg-${panel.bg}`} points={panel.shape.points.map((point) => point.join(',')).join(' ')} key={panel.id} />)}
+                  </svg>
                   <span class="paper-corner" />
-                  <span class="thumb-number">{String(index + 1).padStart(2, '0')}</span>
-                  <div class="thumb-panels">
-                    {page.panels.slice(0, 6).map((panel) => <span class={`thumb-panel bg-${panel.bg}`} key={panel.id} />)}
-                  </div>
                 </div>
-                <div class="page-card-copy">
-                  <strong>PAGE {index + 1}</strong>
-                  <span>{page.panels.length}コマ · bg2 {page.panels.filter((panel) => panel.bg === 2).length}</span>
-                </div>
-                {pageIssues.length > 0 && <span class={`issue-dot ${pageIssues.some((issue) => issue.level === 'error') ? 'error' : ''}`}>{pageIssues.length}</span>}
+                <strong class="page-card-number">{String(index + 1).padStart(2, '0')}</strong>
+                {pageIssues.length > 0 && <span class={`issue-dot ${pageIssues.some((issue) => issue.level === 'error') ? 'error' : ''}`} aria-label={`入力の確認項目 ${pageIssues.length}件`} title={`入力の確認項目（OCRの不一致数ではありません）\n${pageIssues.map(issue => issue.message).join('\n')}`}>確認 {pageIssues.length}</span>}
                 <span class="page-move">
                   <button type="button" disabled={index === 0} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index - 1); }} aria-label={`ページ ${index + 1} を上へ移動`} title="上へ移動"><ChevronUp size={13} /></button>
                   <button type="button" disabled={index === manga.pages.length - 1} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index + 1); }} aria-label={`ページ ${index + 1} を下へ移動`} title="下へ移動"><ChevronDown size={13} /></button>
@@ -75,10 +74,6 @@ export default function PageSidebar(props: Props) {
         <div class="sidebar-tools">
           <button onClick={props.onDuplicatePage} disabled={!manga.pages.length}><Copy size={15} />複製</button>
           <button onClick={props.onDeletePage} disabled={manga.pages.length <= 1}><Trash2 size={15} />削除</button>
-        </div>
-        <div class="sidebar-summary">
-          <PanelTop size={16} />
-          <div><strong>{manga.pages.reduce((sum, page) => sum + page.panels.length, 0)} コマ</strong><span>全{manga.pages.length}ページ</span></div>
         </div>
       </>}
     </aside>

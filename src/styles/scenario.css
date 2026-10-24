@@ -1,0 +1,33 @@
+.scenario-workspace { height: 100%; min-height: 0; overflow: auto; background: var(--surface); }
+.scenario-review { padding: 1.25rem; max-width: 1100px; margin: 0 auto; color: var(--ink); background: var(--surface); }
+.scenario-review h2 { font-size: 24px; font-weight: 700; }
+.scenario-review h3 { font-size: 18px; font-weight: 700; }
+.scenario-review > p { color: var(--muted); margin: .8rem 0; }
+.scenario-review h3 { margin: 1.5rem 0 .8rem; }
+.scenario-review h4 { margin: .7rem 0; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; font-weight: 700; }
+.scenario-review button, .scenario-notice button { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--accent-border); border-radius: 5px; padding: .35rem .6rem; background: var(--accent-fill); color: var(--ink); cursor: pointer; }
+.scenario-review select { border: 1px solid var(--control-border); border-radius: 5px; padding: .45rem; background: var(--paper); color: var(--ink); max-width: 100%; }
+.scenario-review label { display: flex; gap: .65rem; align-items: center; flex-wrap: wrap; margin: .7rem 0; }
+.scenario-review button:focus-visible, .scenario-review select:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+.scenario-panel { border-top: 1px solid var(--line); padding: .8rem 0; }
+.scenario-prose { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; margin: .5rem 0; }
+.scenario-dialogue { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; padding: .8rem 0; border-top: 1px solid var(--soft-line); }
+.scenario-dialogue small { display: block; color: var(--muted); margin-top: .4rem; }
+.scenario-notice { background: var(--warning-soft); color: var(--warning); border-left: 3px solid var(--warning-border); padding: .7rem; margin: .65rem 0; }
+.scenario-notice button { margin: .5rem 0 0; }
+.scenario-choice { background: var(--accent-soft); padding: .8rem; margin: .6rem 0; }
+.scenario-choice > div:first-child { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+.scenario-legacy { margin: 1rem; }
+.scenario-inline { margin: .5rem 0 .8rem; color: var(--ink); font-size: 14px; }
+.scenario-inline p { margin: .5rem 0; color: var(--muted); line-height: 1.6; }
+.scenario-inline summary { cursor: pointer; color: var(--muted); padding: .35rem 0; }
+.scenario-inline button { border: 1px solid var(--accent-border); border-radius: 5px; padding: .45rem .6rem; background: var(--accent-soft); color: var(--ink); cursor: pointer; }
+.scenario-inline button:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
+.scenario-candidates { display: grid; gap: .45rem; max-height: 320px; overflow: auto; padding: 3px; }
+.scenario-candidate { text-align: left; width: 100%; }
+.scenario-candidate > span:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.scenario-candidate small { color: var(--muted); margin-left: auto; }
+.scenario-candidate .scenario-prose { display: block; margin: .3rem 0 0; }
+.scenario-inline-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; }
+.scenario-inline-actions button { display: inline-flex; align-items: center; gap: .3rem; }
+@media (max-width: 640px) { .scenario-dialogue { grid-template-columns: minmax(0, 1fr); gap: .4rem; } }

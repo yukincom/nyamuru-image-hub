@@ -1,0 +1,171 @@
+{
+  "license": "CC0-1.0",
+  "author": "Quaternius",
+  "source_url": "https://quaternius.itch.io/universal-animation-library",
+  "source_file": "Universal Animation Library[Standard].zip / Unreal-Godot/UAL1_Standard.glb",
+  "source_glb_sha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
+  "target_rig_sha256": "271475b7e8e98780647e04de851b64b345dcbbfe9b4437b60b51ff433ab093c3",
+  "rig_signature": "7012b2a35983378266d455bb747a88d8b21cb241ed48aea17807783db5e8a68a",
+  "library_sha256": "ad5b37b1440194b4967a3ec757c7a2d767b5eb16da8f2b584a5107bbe96e3ab9",
+  "converter": "scripts/human_pose/build_motion_library.mjs",
+  "encoding": "30 fps; little-endian Int16 quaternion / 32767, Float32 root xyz, Int16 footBall degrees / 100; slerp between frames",
+  "root_motion": "disabled source variant; pelvis motion retained; constant clip floor offset from packed runtime interpolation sampled at 240 fps with 0.5 mm margin (swim: centre Y=0.7 m)",
+  "excluded": [
+    "Sitting_Talking_Loop"
+  ],
+  "clips": [
+    {
+      "id": "ual1-jog-fwd-loop",
+      "label_ja": "ジョギング",
+      "group": "走る",
+      "source_name": "Jog_Fwd_Loop",
+      "duration": 0.9333333373069763,
+      "loop": true,
+      "frames": 30
+    },
+    {
+      "id": "ual1-sprint-loop",
+      "label_ja": "スプリント",
+      "group": "走る",
+      "source_name": "Sprint_Loop",
+      "duration": 0.6666666865348816,
+      "loop": true,
+      "frames": 22
+    },
+    {
+      "id": "ual1-walk-loop",
+      "label_ja": "歩く",
+      "group": "歩く",
+      "source_name": "Walk_Loop",
+      "duration": 1.3333333730697632,
+      "loop": true,
+      "frames": 42
+    },
+    {
+      "id": "ual1-walk-formal-loop",
+      "label_ja": "きちんと歩く",
+      "group": "歩く",
+      "source_name": "Walk_Formal_Loop",
+      "duration": 1.3333333730697632,
+      "loop": true,
+      "frames": 42
+    },
+    {
+      "id": "ual1-crouch-fwd-loop",
+      "label_ja": "しゃがんで進む",
+      "group": "しゃがむ",
+      "source_name": "Crouch_Fwd_Loop",
+      "duration": 2,
+      "loop": true,
+      "frames": 61
+    },
+    {
+      "id": "ual1-crouch-idle-loop",
+      "label_ja": "しゃがんで待つ",
+      "group": "しゃがむ",
+      "source_name": "Crouch_Idle_Loop",
+      "duration": 2.933333396911621,
+      "loop": true,
+      "frames": 90
+    },
+    {
+      "id": "ual1-sitting-enter",
+      "label_ja": "座る",
+      "group": "座る",
+      "source_name": "Sitting_Enter",
+      "duration": 1.2999999523162842,
+      "loop": false,
+      "frames": 40
+    },
+    {
+      "id": "ual1-sitting-idle-loop",
+      "label_ja": "座って待つ",
+      "group": "座る",
+      "source_name": "Sitting_Idle_Loop",
+      "duration": 1.6666666269302368,
+      "loop": true,
+      "frames": 51
+    },
+    {
+      "id": "ual1-sitting-exit",
+      "label_ja": "立ち上がる",
+      "group": "座る",
+      "source_name": "Sitting_Exit",
+      "duration": 1.0333333015441895,
+      "loop": false,
+      "frames": 32
+    },
+    {
+      "id": "ual1-punch-jab",
+      "label_ja": "ジャブ",
+      "group": "パンチ",
+      "source_name": "Punch_Jab",
+      "duration": 0.8666666746139526,
+      "loop": false,
+      "frames": 28
+    },
+    {
+      "id": "ual1-punch-cross",
+      "label_ja": "クロスパンチ",
+      "group": "パンチ",
+      "source_name": "Punch_Cross",
+      "duration": 1,
+      "loop": false,
+      "frames": 31
+    },
+    {
+      "id": "ual1-roll",
+      "label_ja": "前転",
+      "group": "転がる",
+      "source_name": "Roll",
+      "duration": 1.4666666984558105,
+      "loop": false,
+      "frames": 46
+    },
+    {
+      "id": "ual1-swim-fwd-loop",
+      "label_ja": "泳いで進む",
+      "group": "泳ぐ",
+      "source_name": "Swim_Fwd_Loop",
+      "duration": 1.3333333730697632,
+      "loop": true,
+      "frames": 42
+    },
+    {
+      "id": "ual1-swim-idle-loop",
+      "label_ja": "泳いで待つ",
+      "group": "泳ぐ",
+      "source_name": "Swim_Idle_Loop",
+      "duration": 3.3333332538604736,
+      "loop": true,
+      "frames": 101
+    },
+    {
+      "id": "ual1-sword-attack",
+      "label_ja": "剣で攻撃",
+      "group": "剣",
+      "source_name": "Sword_Attack",
+      "duration": 1.5333333015441895,
+      "loop": false,
+      "frames": 47
+    },
+    {
+      "id": "ual1-sword-idle",
+      "label_ja": "剣を構える",
+      "group": "剣",
+      "source_name": "Sword_Idle",
+      "duration": 1.6666666269302368,
+      "loop": true,
+      "frames": 51
+    },
+    {
+      "id": "ual1-death01",
+      "label_ja": "倒れる",
+      "group": "倒れる",
+      "source_name": "Death01",
+      "duration": 2.4000000953674316,
+      "loop": false,
+      "frames": 74
+    }
+  ]
+}

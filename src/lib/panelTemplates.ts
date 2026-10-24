@@ -1,5 +1,7 @@
-import type { BleedEdge, MangaPage, Panel, PanelShape } from '../types';
-import { fallbackBox, panelBounds, resizePanelToBounds } from './canvasGeometry.ts';
+import { panelArtKeys } from './panelLayers.ts';
+import type { PlacedImage, BBox, BleedEdge, Bubble, Figure, MangaDocument, MangaPage, Panel, PanelShape } from '../types';
+import { appendBubbles, removeBubbleAt } from './bubbleConnections.ts';
+import { innerFrameBounds, fallbackBox, nearestAnchor, panelBounds, resizePanelToBounds, roundMm } from './canvasGeometry.ts';
 
 export interface PanelTemplate {
   id: string;
@@ -8,6 +10,16 @@ export interface PanelTemplate {
   shapes: PanelShape[];
   /** タチキリ（断ち切り）辺の宣言。shapes と同じ添字のコマに bleed を付与する */
   bleeds?: Partial<Record<number, BleedEdge[]>>;
+}
+
+export type PanelSplitDirection = 'vertical' | 'horizontal';
+export type BubbleOwner = number | 'page_overlay';
+
+let splitOverlapSequence = 0;
+
+function nextSplitOverlapBase(page: MangaPage, panel: Panel): string {
+  splitOverlapSequence += 1;
+  return `split-${page.page}-${panel.id}-${Date.now().toString(36)}-${splitOverlapSequence}`;
 }
 
 const rect = (x: number, y: number, w: number, h: number): PanelShape => ({ type: 'rect', x, y, w, h });
@@ -213,9 +225,117 @@ function mergeAction(left: string | null, right: string | null): string | null {
   return `${left}\n${right}`;
 }
 
+function mergeOptionalText(left: string | undefined, right: string | undefined): string | undefined {
+  const normalizedLeft = left?.trim();
+  const normalizedRight = right?.trim();
+  if (!normalizedLeft) return normalizedRight || undefined;
+  if (!normalizedRight || normalizedLeft === normalizedRight) return normalizedLeft;
+  return `${normalizedLeft}\n${normalizedRight}`;
+}
+
+function figureOverlap(left: Figure, right: Figure): { smallerCoverage: number; iou: number } {
+  if (!left.bbox || !right.bbox) return { smallerCoverage: 0, iou: 0 };
+  const width = Math.max(0, Math.min(left.bbox.x + left.bbox.w, right.bbox.x + right.bbox.w) - Math.max(left.bbox.x, right.bbox.x));
+  const height = Math.max(0, Math.min(left.bbox.y + left.bbox.h, right.bbox.y + right.bbox.h) - Math.max(left.bbox.y, right.bbox.y));
+  const intersection = width * height;
+  const leftArea = left.bbox.w * left.bbox.h;
+  const rightArea = right.bbox.w * right.bbox.h;
+  const smaller = Math.min(leftArea, rightArea);
+  const union = leftArea + rightArea - intersection;
+  return {
+    smallerCoverage: smaller > 0 ? intersection / smaller : 0,
+    iou: union > 0 ? intersection / union : 0,
+  };
+}
+
+function sameFigureSource(left: Figure, right: Figure): boolean {
+  if (JSON.stringify(left.human_pose) !== JSON.stringify(right.human_pose)) return false;
+  if (left.artwork || right.artwork) {
+    return Boolean(left.splitOverlapId && left.splitOverlapId === right.splitOverlapId
+      && JSON.stringify(left.artwork) === JSON.stringify(right.artwork)
+      && JSON.stringify(left.bbox) === JSON.stringify(right.bbox)
+      && left.name === right.name && left.refId === right.refId && left.action === right.action);
+  }
+  const leftId = left.analogImport?.sourceRegionId;
+  const rightId = right.analogImport?.sourceRegionId;
+  if (leftId || rightId) return Boolean(leftId && rightId && leftId === rightId);
+  if (left.name !== right.name) return false;
+  const overlap = figureOverlap(left, right);
+  return overlap.smallerCoverage >= 0.94 && overlap.iou >= 0.8;
+}
+
+function preferFigure(candidate: Figure, current: Figure): boolean {
+  const candidateImport = candidate.analogImport;
+  const currentImport = current.analogImport;
+  if (Boolean(candidateImport?.userEdited) !== Boolean(currentImport?.userEdited)) return Boolean(candidateImport?.userEdited);
+  if (candidateImport?.detectionSource !== currentImport?.detectionSource) return candidateImport?.detectionSource === 'body';
+  const candidateConfidence = candidateImport?.confidence ?? -1;
+  const currentConfidence = currentImport?.confidence ?? -1;
+  if (candidateConfidence !== currentConfidence) return candidateConfidence > currentConfidence;
+  const candidateId = candidateImport?.sourceRegionId ?? '';
+  const currentId = currentImport?.sourceRegionId ?? '';
+  return candidateId.localeCompare(currentId, undefined, { numeric: true }) < 0;
+}
+
+export function deduplicateFigures(figures: readonly Figure[]): Figure[] {
+  const kept: Figure[] = [];
+  for (const figure of figures) {
+    const duplicateIndex = kept.findIndex((candidate) => sameFigureSource(candidate, figure));
+    if (duplicateIndex < 0) kept.push(figure);
+    else if (preferFigure(figure, kept[duplicateIndex])) kept[duplicateIndex] = figure;
+  }
+  return kept;
+}
+
+function mergeImages(left: PlacedImage[] | undefined, right: PlacedImage[] | undefined): PlacedImage[] | undefined {
+  const images = [...(left ?? [])];
+  for (const image of right ?? []) {
+    if (images.some(other => other.splitOverlapId && other.splitOverlapId === image.splitOverlapId && JSON.stringify(other) === JSON.stringify(image))) continue;
+    const copy = structuredClone(image);
+    if (images.some(other => other.id === copy.id)) copy.id = crypto.randomUUID();
+    images.push(copy);
+  }
+  return images.length ? images : undefined;
+}
+
+function convexHull(points: readonly [number, number][]): [number, number][] {
+  const unique = [...new Map(points.map(([x, y]) => [`${x}:${y}`, [x, y] as [number, number]])).values()]
+    .sort((left, right) => left[0] - right[0] || left[1] - right[1]);
+  if (unique.length <= 2) return unique;
+  const cross = (origin: [number, number], left: [number, number], right: [number, number]) => (
+    (left[0] - origin[0]) * (right[1] - origin[1]) - (left[1] - origin[1]) * (right[0] - origin[0])
+  );
+  const lower: [number, number][] = [];
+  for (const point of unique) {
+    while (lower.length >= 2 && cross(lower.at(-2)!, lower.at(-1)!, point) <= 0) lower.pop();
+    lower.push(point);
+  }
+  const upper: [number, number][] = [];
+  for (const point of [...unique].reverse()) {
+    while (upper.length >= 2 && cross(upper.at(-2)!, upper.at(-1)!, point) <= 0) upper.pop();
+    upper.push(point);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+}
+
+function mergedPanelShape(sources: readonly Panel[]): PanelShape {
+  const polygonSources = sources.filter((panel) => panel.shape.type === 'polygon');
+  if (polygonSources.length === 1) return structuredClone(polygonSources[0].shape);
+  if (polygonSources.length > 1) {
+    const hull = convexHull(polygonSources.flatMap((panel) => panel.shape.type === 'polygon' ? panel.shape.points : []));
+    if (hull.length >= 3) return { type: 'polygon', points: hull };
+  }
+  const bounds = sources.map(panelBounds);
+  const left = Math.min(...bounds.map((box) => box.x));
+  const top = Math.min(...bounds.map((box) => box.y));
+  const right = Math.max(...bounds.map((box) => box.x + box.w));
+  const bottom = Math.max(...bounds.map((box) => box.y + box.h));
+  return { type: 'rect', x: left, y: top, w: right - left, h: bottom - top };
+}
+
 /**
- * 選択したコマを外接矩形ひとつへ合体する。人物・フキダシ等のbboxは用紙上の
- * 絶対座標なので移動せず、そのまま読み順で新しいコマへまとめる。
+ * 選択したコマをひとつへ合体する。多角形が含まれる場合は矩形より優先し、
+ * 人物・フキダシ等のbboxは用紙上の絶対座標のまま読み順でまとめる。
  * 戻り値は合体後のコマ添字。2コマ未満なら null。
  */
 export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly number[]): number | null {
@@ -227,23 +347,32 @@ export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly n
   const selectedSet = new Set(indices);
   const sources = indices.map((index) => structuredClone(page.panels[index]));
   sources.forEach(materializeElementBoxes);
-  const bounds = sources.map(panelBounds);
-  const left = Math.min(...bounds.map((box) => box.x));
-  const top = Math.min(...bounds.map((box) => box.y));
-  const right = Math.max(...bounds.map((box) => box.x + box.w));
-  const bottom = Math.max(...bounds.map((box) => box.y + box.h));
+  // Keep object references before concatenation and deduplication. Array order is reading order.
+  const artSequence = sources.some(p=>p.layer?.artOrder?.length)
+    ? sources.flatMap((source,i)=>panelArtKeys(source).flatMap<Figure|'background'>(key=>
+      key==='background'?(i===0?['background']:[]):[source.figures![Number(key.slice(7))]]))
+    : null;
   const merged = sources[0];
-  merged.shape = { type: 'rect', x: left, y: top, w: right - left, h: bottom - top };
+  merged.shape = mergedPanelShape(sources);
   merged.bg = Math.max(...sources.map((panel) => panel.bg)) as Panel['bg'];
   delete merged.bleed;
 
   for (const source of sources.slice(1)) {
     merged.figures = [...(merged.figures ?? []), ...(source.figures ?? [])];
-    merged.bubbles = [...merged.bubbles, ...source.bubbles];
+    merged.images = mergeImages(merged.images, source.images);
+    merged.background_images = mergeImages(merged.background_images, source.background_images);
+    appendBubbles(merged.bubbles, source.bubbles);
     const screenText = [...(merged.screen_text ?? []), ...(source.screen_text ?? [])];
     screenText.length ? merged.screen_text = screenText : delete merged.screen_text;
     merged.assets = mergeUnique(merged.assets, source.assets);
     merged.action = mergeAction(merged.action, source.action);
+    merged.background_description = mergeOptionalText(merged.background_description, source.background_description);
+  }
+  if (merged.figures?.length) merged.figures = deduplicateFigures(merged.figures);
+  if(artSequence){
+    const figures=merged.figures??[],ids=new Set<string>();
+    for(const figure of figures){if(!figure.layerId||ids.has(figure.layerId))figure.layerId=crypto.randomUUID();ids.add(figure.layerId);}
+    merged.layer={...merged.layer,artOrder:artSequence.flatMap(item=>item==='background'?['background']:figures.includes(item)?[`figure:${item.layerId}`]:[])};
   }
   if (merged.figures?.length) delete merged.no_figures;
   else if (sources.every((panel) => panel.no_figures)) merged.no_figures = true;
@@ -256,6 +385,277 @@ export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly n
   });
   page.panels.forEach((panel, index) => { panel.id = index + 1; });
   return insertAt;
+}
+
+function clippedPolygon(
+  points: readonly [number, number][],
+  axis: 0 | 1,
+  limit: number,
+  keepLower: boolean,
+): [number, number][] {
+  if (!points.length) return [];
+  const inside = (point: [number, number]) => keepLower ? point[axis] <= limit + 1e-7 : point[axis] >= limit - 1e-7;
+  const intersection = (start: [number, number], end: [number, number]): [number, number] => {
+    const distance = end[axis] - start[axis];
+    const ratio = Math.abs(distance) < 1e-9 ? 0 : (limit - start[axis]) / distance;
+    const point: [number, number] = [
+      start[0] + (end[0] - start[0]) * ratio,
+      start[1] + (end[1] - start[1]) * ratio,
+    ];
+    point[axis] = limit;
+    return [roundMm(point[0]), roundMm(point[1])];
+  };
+  const output: [number, number][] = [];
+  let previous = points.at(-1)!;
+  for (const current of points) {
+    const previousInside = inside(previous);
+    const currentInside = inside(current);
+    if (currentInside !== previousInside) output.push(intersection(previous, current));
+    if (currentInside) output.push([roundMm(current[0]), roundMm(current[1])]);
+    previous = current;
+  }
+  return output.filter((point, index) => {
+    const previousPoint = output[(index + output.length - 1) % output.length];
+    return !previousPoint || Math.hypot(point[0] - previousPoint[0], point[1] - previousPoint[1]) > 1e-7;
+  });
+}
+
+function splitPanelShapes(
+  shape: PanelShape,
+  direction: PanelSplitDirection,
+  gapMm: number,
+): [PanelShape, PanelShape] | null {
+  const bounds = panelBounds({ id: 0, shape, bg: 0, bubbles: [], action: null });
+  const gap = Math.max(0, gapMm);
+  const vertical = direction === 'vertical';
+  const extent = vertical ? bounds.w : bounds.h;
+  if (extent - gap < 16) return null;
+  const divider = vertical ? bounds.x + bounds.w / 2 : bounds.y + bounds.h / 2;
+  const nearLimit = roundMm(divider - gap / 2);
+  const farLimit = roundMm(divider + gap / 2);
+
+  if (shape.type === 'rect') {
+    if (vertical) return [
+      { type: 'rect', x: farLimit, y: shape.y, w: roundMm(shape.x + shape.w - farLimit), h: shape.h },
+      { type: 'rect', x: shape.x, y: shape.y, w: roundMm(nearLimit - shape.x), h: shape.h },
+    ];
+    return [
+      { type: 'rect', x: shape.x, y: shape.y, w: shape.w, h: roundMm(nearLimit - shape.y) },
+      { type: 'rect', x: shape.x, y: farLimit, w: shape.w, h: roundMm(shape.y + shape.h - farLimit) },
+    ];
+  }
+
+  const firstPoints = vertical
+    ? clippedPolygon(shape.points, 0, farLimit, false)
+    : clippedPolygon(shape.points, 1, nearLimit, true);
+  const secondPoints = vertical
+    ? clippedPolygon(shape.points, 0, nearLimit, true)
+    : clippedPolygon(shape.points, 1, farLimit, false);
+  if (firstPoints.length < 3 || secondPoints.length < 3) return null;
+  return [
+    { type: 'polygon', points: firstPoints },
+    { type: 'polygon', points: secondPoints },
+  ];
+}
+
+function splitBleed(edges: readonly BleedEdge[] | undefined, direction: PanelSplitDirection, first: boolean): BleedEdge[] | undefined {
+  const kept = (edges ?? []).filter((edge) => {
+    if (direction === 'vertical') return first ? edge !== 'left' : edge !== 'right';
+    return first ? edge !== 'bottom' : edge !== 'top';
+  });
+  return kept.length ? kept : undefined;
+}
+
+function elementBelongsToFirst(box: BBox | undefined, direction: PanelSplitDirection, divider: number): boolean {
+  if (!box) return true;
+  return direction === 'vertical'
+    ? box.x + box.w / 2 >= divider
+    : box.y + box.h / 2 <= divider;
+}
+
+function elementCrossesDivider(box: BBox | undefined, direction: PanelSplitDirection, divider: number): boolean {
+  if (!box) return false;
+  return direction === 'vertical'
+    ? box.x < divider && box.x + box.w > divider
+    : box.y < divider && box.y + box.h > divider;
+}
+
+function distributePanelElements(source: Panel, first: Panel, second: Panel, direction: PanelSplitDirection, divider: number, overlapBase: string): void {
+  const assign = <T extends { bbox?: BBox; splitOverlap?: true; splitOverlapId?: string }>(items: readonly T[] | undefined, kind: string): [T[], T[]] => {
+    const firstItems: T[] = [], secondItems: T[] = [];
+    for (const [index, item] of (items ?? []).entries()) {
+      if (elementCrossesDivider(item.bbox, direction, divider)) {
+        const splitOverlapId = `${overlapBase}-${kind}-${index}`;
+        firstItems.push({ ...structuredClone(item), splitOverlap: true, splitOverlapId });
+        secondItems.push({ ...structuredClone(item), splitOverlap: true, splitOverlapId });
+      } else {
+        const copy = structuredClone(item);
+        delete copy.splitOverlap;
+        delete copy.splitOverlapId;
+        (elementBelongsToFirst(item.bbox, direction, divider) ? firstItems : secondItems).push(copy);
+      }
+    }
+    return [firstItems, secondItems];
+  };
+  const assignBubbles = (): [Bubble[], Bubble[]] => {
+    const sides: Bubble[][] = [[], []];
+    const sourceNumberMaps = [new Map<number, number>(), new Map<number, number>()];
+    const pending: Array<Array<{ bubble: Bubble; sourceJoinTo?: number }>> = [[], []];
+    source.bubbles.forEach((item, sourceIndex) => {
+      const targetSides = elementCrossesDivider(item.bbox, direction, divider)
+        ? [0, 1]
+        : [elementBelongsToFirst(item.bbox, direction, divider) ? 0 : 1];
+      targetSides.forEach((side) => {
+        const copy = structuredClone(item);
+        if (targetSides.length === 2) {
+          copy.splitOverlap = true;
+          copy.splitOverlapId = `${overlapBase}-bubble-${sourceIndex}`;
+        } else {
+          delete copy.splitOverlap;
+          delete copy.splitOverlapId;
+        }
+        const sourceJoinTo = copy.join_to;
+        delete copy.join_to;
+        sides[side].push(copy);
+        sourceNumberMaps[side].set(sourceIndex + 1, sides[side].length);
+        pending[side].push({ bubble: copy, sourceJoinTo });
+      });
+    });
+    pending.forEach((entries, side) => entries.forEach(({ bubble, sourceJoinTo }) => {
+      const remapped = sourceJoinTo === undefined ? undefined : sourceNumberMaps[side].get(sourceJoinTo);
+      if (remapped !== undefined) bubble.join_to = remapped;
+    }));
+    return sides as [Bubble[], Bubble[]];
+  };
+  [first.bubbles, second.bubbles] = assignBubbles();
+  const [firstBackground, secondBackground] = assign(source.background_images, 'background');
+  firstBackground.length ? first.background_images = firstBackground : delete first.background_images;
+  secondBackground.length ? second.background_images = secondBackground : delete second.background_images;
+  const [firstImages, secondImages] = assign(source.images, 'image');
+  firstImages.length ? first.images = firstImages : delete first.images;
+  secondImages.length ? second.images = secondImages : delete second.images;
+  const [firstFigures, secondFigures] = assign(source.figures, 'figure');
+  firstFigures.length ? first.figures = firstFigures : delete first.figures;
+  secondFigures.length ? second.figures = secondFigures : delete second.figures;
+  const [firstScreenText, secondScreenText] = assign(source.screen_text, 'screen-text');
+  firstScreenText.length ? first.screen_text = firstScreenText : delete first.screen_text;
+  secondScreenText.length ? second.screen_text = secondScreenText : delete second.screen_text;
+
+  for (const child of [first, second]) {
+    const bounds = panelBounds(child);
+    child.figures?.forEach((figure) => { if (figure.bbox) figure.anchor = nearestAnchor(bounds, figure.bbox); });
+    child.bubbles.forEach((bubble) => { if (bubble.bbox && bubble.anchor) bubble.anchor = nearestAnchor(bounds, bubble.bbox); });
+    if (child.figures?.length) delete child.no_figures;
+  }
+}
+
+/**
+ * 選択コマを中央で二分する。タテ分割は右→左、ヨコ分割は上→下の読み順で挿入し、
+ * 人物・フキダシ・画面内文字はbbox中心がある側へ移す。
+ */
+export function splitPanel(
+  page: MangaPage,
+  panelIndex: number,
+  direction: PanelSplitDirection,
+  gaps: { rowGapMm: number; columnGapMm: number },
+): [number, number] | null {
+  if (!Number.isInteger(panelIndex) || panelIndex < 0 || panelIndex >= page.panels.length) return null;
+  const source = structuredClone(page.panels[panelIndex]);
+  materializeElementBoxes(source);
+  const gap = direction === 'vertical' ? gaps.columnGapMm : gaps.rowGapMm;
+  const shapes = splitPanelShapes(source.shape, direction, gap);
+  if (!shapes) return null;
+  const bounds = panelBounds(source);
+  const divider = direction === 'vertical' ? bounds.x + bounds.w / 2 : bounds.y + bounds.h / 2;
+  const overlapBase = nextSplitOverlapBase(page, source);
+  const first = structuredClone(source), second = structuredClone(source);
+  first.shape = shapes[0];
+  second.shape = shapes[1];
+  first.bleed = splitBleed(source.bleed, direction, true);
+  second.bleed = splitBleed(source.bleed, direction, false);
+  if (!first.bleed) delete first.bleed;
+  if (!second.bleed) delete second.bleed;
+  // 同じ演出文を二重出力しない。読み順先頭のコマへ元の記述を残す。
+  second.action = null;
+  distributePanelElements(source, first, second, direction, divider, overlapBase);
+  page.panels.splice(panelIndex, 1, first, second);
+  page.panels.forEach((panel, index) => { panel.id = index + 1; });
+  return [panelIndex, panelIndex + 1];
+}
+
+type SplitOverlapElement = { splitOverlap?: true; splitOverlapId?: string };
+
+function reconcileElementOverlapGroups(elements: SplitOverlapElement[], contentSignature?: (element: SplitOverlapElement) => string): void {
+  const groups = new Map<string, SplitOverlapElement[]>();
+  elements.forEach((element) => {
+    if (!element.splitOverlapId) {
+      delete element.splitOverlap;
+      return;
+    }
+    const group = groups.get(element.splitOverlapId) ?? [];
+    group.push(element);
+    groups.set(element.splitOverlapId, group);
+  });
+  groups.forEach((group) => {
+    const sameContent = !contentSignature || new Set(group.map(contentSignature)).size === 1;
+    if (group.length >= 2 && sameContent) {
+      group.forEach((element) => { element.splitOverlap = true; });
+      return;
+    }
+    group.forEach((element) => {
+      delete element.splitOverlap;
+      delete element.splitOverlapId;
+    });
+  });
+}
+
+/**
+ * 分割時の確認フラグを実データの状態に同期する。
+ * 片方が削除された要素は重複ではないため通常表示へ戻す。
+ */
+export function reconcileSplitOverlapFlags(document: MangaDocument): void {
+  document.manga.pages.forEach((page) => {
+    const elements: SplitOverlapElement[] = [];
+    const bubbles: Bubble[] = [];
+    page.panels.forEach((panel) => {
+      elements.push(...(panel.figures ?? []), ...(panel.screen_text ?? []), ...(panel.images ?? []), ...(panel.background_images ?? []));
+      bubbles.push(...panel.bubbles);
+    });
+    elements.push(...(page.page_overlay?.figures ?? []));
+    bubbles.push(...(page.page_overlay?.bubbles ?? []));
+    reconcileElementOverlapGroups(elements);
+    // 分割後に片方の本文を編集したフキダシは、同じ複製ではなく別の内容として確定する。
+    reconcileElementOverlapGroups(bubbles, (element) => (element as Bubble).text);
+
+  });
+}
+
+/** フキダシをコマ間、またはコマ枠より上のページ前景へ移す。 */
+export function moveBubbleToOwner(
+  page: MangaPage,
+  sourceOwner: BubbleOwner,
+  bubbleIndex: number,
+  targetOwner: BubbleOwner,
+): { owner: BubbleOwner; index: number } | null {
+  if (sourceOwner === targetOwner) return { owner: targetOwner, index: bubbleIndex };
+  const sourceBubbles: Bubble[] | undefined = sourceOwner === 'page_overlay'
+    ? page.page_overlay?.bubbles
+    : page.panels[sourceOwner]?.bubbles;
+  if (!sourceBubbles || bubbleIndex < 0 || bubbleIndex >= sourceBubbles.length) return null;
+  if (targetOwner !== 'page_overlay' && (!Number.isInteger(targetOwner) || targetOwner < 0 || targetOwner >= page.panels.length)) return null;
+  const bubble = removeBubbleAt(sourceBubbles, bubbleIndex);
+  if (!bubble) return null;
+  // 結合先は所属配列内の番号なので、別のコマへ移動した時点で解除する。
+  delete bubble.join_to;
+  if (targetOwner === 'page_overlay') delete bubble.clip_to_panel;
+  const targetBubbles = targetOwner === 'page_overlay'
+    ? (page.page_overlay ??= { frame: false, layer: 'above_panel_frames' }).bubbles ??= []
+    : page.panels[targetOwner].bubbles;
+  targetBubbles.push(bubble);
+  if (sourceOwner === 'page_overlay' && page.page_overlay && !(page.page_overlay.bubbles?.length) && !(page.page_overlay.figures?.length)) {
+    delete page.page_overlay;
+  }
+  return { owner: targetOwner, index: targetBubbles.length - 1 };
 }
 
 /**
@@ -275,8 +675,19 @@ export function applyPanelTemplate(page: MangaPage, template: PanelTemplate): vo
     groups[targetIndex].push(panel);
   });
 
-  page.canvas = { w: 210, h: 297, unit: 'mm' };
-  page.panels = template.shapes.map((shape, targetIndex) => {
+  const inner = innerFrameBounds(page.canvas);
+  // Keep the inner margins and full-bleed edges when adapting an A4 template.
+  const coordinate = (value: number, source: number, target: number, margin: number) => {
+    if (value <= 10) return value / 10 * margin;
+    if (value >= source - 10) return target - (source - value) / 10 * margin;
+    return margin + (value - 10) / (source - 20) * (target - margin * 2);
+  };
+  const x = (value: number) => coordinate(value, 210, page.canvas.w, inner.x);
+  const y = (value: number) => coordinate(value, 297, page.canvas.h, inner.y);
+  page.panels = template.shapes.map((sourceShape, targetIndex) => {
+    const shape: PanelShape = sourceShape.type === 'rect'
+      ? { type: 'rect', x: x(sourceShape.x), y: y(sourceShape.y), w: x(sourceShape.x + sourceShape.w) - x(sourceShape.x), h: y(sourceShape.y + sourceShape.h) - y(sourceShape.y) }
+      : { type: 'polygon', points: sourceShape.points.map(([px, py]) => [x(px), y(py)]) };
     const group = groups[targetIndex];
     const bleed = template.bleeds?.[targetIndex];
     if (!group.length) {
@@ -286,15 +697,21 @@ export function applyPanelTemplate(page: MangaPage, template: PanelTemplate): vo
     }
 
     const merged = movePanelContent(group[0], shape);
+    merged.bg = Math.max(...group.map((panel) => panel.bg)) as Panel['bg'];
     for (const source of group.slice(1)) {
       const moved = movePanelContent(source, shape);
       merged.figures = [...(merged.figures ?? []), ...(moved.figures ?? [])];
-      merged.bubbles = [...merged.bubbles, ...moved.bubbles];
+      merged.images = mergeImages(merged.images, moved.images);
+      merged.background_images = mergeImages(merged.background_images, moved.background_images);
+      appendBubbles(merged.bubbles, moved.bubbles);
       const mergedScreenText = [...(merged.screen_text ?? []), ...(moved.screen_text ?? [])];
       mergedScreenText.length ? merged.screen_text = mergedScreenText : delete merged.screen_text;
       merged.assets = mergeUnique(merged.assets, moved.assets);
       merged.action = mergeAction(merged.action, moved.action);
+      merged.background_description = mergeOptionalText(merged.background_description, moved.background_description);
     }
+    if (merged.bg === -1) delete merged.background_description;
+    if (merged.figures?.length) merged.figures = deduplicateFigures(merged.figures);
     if (merged.figures?.length) delete merged.no_figures;
     merged.id = targetIndex + 1;
     merged.shape = structuredClone(shape);

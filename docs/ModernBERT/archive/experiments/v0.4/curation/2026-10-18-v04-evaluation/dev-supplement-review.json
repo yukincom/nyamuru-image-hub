@@ -1,0 +1,774 @@
+{
+  "review_version": 1,
+  "artifact": "nyamuru-v04-dev-supplement.jsonl",
+  "candidate_sha256": "fffc934fa8bff4b4a2cfe3a2a1feaaad856fdddf34a849618842127dd0f55c7d",
+  "read_sources": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "role": "sole external file input; label contract"
+    }
+  ],
+  "annotation_schema_clarification": "Same annotation-key conventions supplied earlier by parent; no examples, predictions, old datasets, or other splits were shared or consulted.",
+  "blind_author_statement": {
+    "old_training_data_seen": false,
+    "old_evaluation_seen": false,
+    "new_test_seen": false,
+    "predictions_or_scores_seen": false,
+    "other_authors_files_seen": false,
+    "contact_with_test_or_training_authors": false,
+    "network_used": false,
+    "model_inference_or_training_run": false,
+    "repo_or_other_files_modified": false,
+    "note": "The author retains its own earlier draft in conversation context. No old dataset or other split was opened. Only labels.json was read as an external source; the only writes were the two requested supplement outputs."
+  },
+  "counts": {
+    "total": 76,
+    "label_count": 19,
+    "per_label": {
+      "save": 4,
+      "undo": 4,
+      "redo": 4,
+      "page_navigate": 4,
+      "view_change": 4,
+      "artwork_mode_set": 4,
+      "bubble_set": 4,
+      "needs_clarification": 4,
+      "needs_reasoning": 4,
+      "compound_request": 4,
+      "out_of_scope_request": 4,
+      "not_command": 4,
+      "panel_sync_set": 4,
+      "inner_frame_snap_set": 4,
+      "panel_gap_snap_set": 4,
+      "generate_request": 4,
+      "background_3d_candidates": 4,
+      "paint_tool_set": 4,
+      "text_frames_align": 4
+    },
+    "family_count": 53,
+    "families_per_label": {
+      "save": 4,
+      "undo": 4,
+      "redo": 4,
+      "page_navigate": 4,
+      "view_change": 4,
+      "artwork_mode_set": 4,
+      "bubble_set": 4,
+      "needs_clarification": 4,
+      "needs_reasoning": 4,
+      "compound_request": 4,
+      "out_of_scope_request": 4,
+      "not_command": 4,
+      "panel_sync_set": 4,
+      "inner_frame_snap_set": 4,
+      "panel_gap_snap_set": 4,
+      "generate_request": 4,
+      "background_3d_candidates": 4,
+      "paint_tool_set": 4,
+      "text_frames_align": 4
+    },
+    "per_family": {
+      "v04_dev_supp_acknowledge_no_change": 1,
+      "v04_dev_supp_actor_division": 1,
+      "v04_dev_supp_appraisal_then_history_request": 2,
+      "v04_dev_supp_catalog_limit_then_external_search": 1,
+      "v04_dev_supp_comparative_ellipsis": 1,
+      "v04_dev_supp_completion_then_next_step": 1,
+      "v04_dev_supp_conditional_desired_state": 5,
+      "v04_dev_supp_count_with_stop_boundary": 2,
+      "v04_dev_supp_decision_then_apply_setting": 1,
+      "v04_dev_supp_defer_related_action_select_setting": 1,
+      "v04_dev_supp_disclaim_action_seek_explanation": 1,
+      "v04_dev_supp_endpoint_reference_then_action": 1,
+      "v04_dev_supp_enumerated_requests_aggregate": 1,
+      "v04_dev_supp_enumerated_selection_request": 1,
+      "v04_dev_supp_future_decision_deferral": 1,
+      "v04_dev_supp_include_recent_change": 1,
+      "v04_dev_supp_incongruity_then_content_revision": 1,
+      "v04_dev_supp_literal_name_vs_role": 1,
+      "v04_dev_supp_metalinguistic_question": 1,
+      "v04_dev_supp_method_exclusion_then_operation": 1,
+      "v04_dev_supp_nominal_request_postscript": 1,
+      "v04_dev_supp_open_alternatives_then_judgment": 1,
+      "v04_dev_supp_ordered_nominal_operations": 1,
+      "v04_dev_supp_parts_of_single_target": 1,
+      "v04_dev_supp_property_target_postposed": 2,
+      "v04_dev_supp_quote_as_literal_payload": 1,
+      "v04_dev_supp_quoted_assumption_exclusion": 1,
+      "v04_dev_supp_quoted_deixis_resolution": 1,
+      "v04_dev_supp_quoted_payload_then_second_operation": 1,
+      "v04_dev_supp_quoted_referent_correction": 1,
+      "v04_dev_supp_quoted_request_force_repair": 1,
+      "v04_dev_supp_quoted_retraction_then_request": 2,
+      "v04_dev_supp_quoted_risk_prevention": 1,
+      "v04_dev_supp_quoted_value_postposed_target": 1,
+      "v04_dev_supp_reject_status_quo_without_value": 1,
+      "v04_dev_supp_request_then_retraction": 3,
+      "v04_dev_supp_request_with_negative_followup": 4,
+      "v04_dev_supp_request_with_postposed_locator": 1,
+      "v04_dev_supp_request_with_postposed_scope": 2,
+      "v04_dev_supp_request_with_postposed_source": 1,
+      "v04_dev_supp_request_with_quoted_scope_repair": 2,
+      "v04_dev_supp_requested_expression_definition": 2,
+      "v04_dev_supp_restrictive_focus_then_operation": 1,
+      "v04_dev_supp_scene_then_candidate_request": 1,
+      "v04_dev_supp_scope_addition": 1,
+      "v04_dev_supp_scope_repair_then_elliptic_request": 6,
+      "v04_dev_supp_scope_widening": 1,
+      "v04_dev_supp_target_contrast_then_operation": 3,
+      "v04_dev_supp_unavailable_prior_context": 1,
+      "v04_dev_supp_unresolved_alternative_reference": 1,
+      "v04_dev_supp_value_enumeration_then_apply": 1,
+      "v04_dev_supp_withdraw_other_then_restrict_request": 1,
+      "v04_dev_supp_workflow_endpoint_limit": 1
+    }
+  },
+  "family_definitions": {
+    "v04_dev_supp_nominal_request_postscript": {
+      "description": "操作を省略された名詞句で頼み、後ろに別の将来行動についての補足を置く。",
+      "count": 1,
+      "labels": [
+        "save"
+      ]
+    },
+    "v04_dev_supp_quoted_risk_prevention": {
+      "description": "将来避けたい報告を引用し、その状態を防ぐ現在操作を頼む。",
+      "count": 1,
+      "labels": [
+        "save"
+      ]
+    },
+    "v04_dev_supp_include_recent_change": {
+      "description": "以前の操作以後の変更を挙げ、今回の操作の内容に含めるよう頼む。",
+      "count": 1,
+      "labels": [
+        "save"
+      ]
+    },
+    "v04_dev_supp_request_then_retraction": {
+      "description": "現在の依頼を先に示し、反対の過去指定を後続文で撤回する。",
+      "count": 3,
+      "labels": [
+        "inner_frame_snap_set",
+        "paint_tool_set",
+        "save"
+      ]
+    },
+    "v04_dev_supp_appraisal_then_history_request": {
+      "description": "失われた、または変更前の結果への評価を述べ、履歴操作の依頼を続ける。",
+      "count": 2,
+      "labels": [
+        "redo",
+        "undo"
+      ]
+    },
+    "v04_dev_supp_restrictive_focus_then_operation": {
+      "description": "対象を「するのは…だけ」で限定した後、実行する操作を指定する。",
+      "count": 1,
+      "labels": [
+        "undo"
+      ]
+    },
+    "v04_dev_supp_count_with_stop_boundary": {
+      "description": "同一操作の回数を指定し、別の表現で同じ上限・停止位置を再確認する。",
+      "count": 2,
+      "labels": [
+        "redo",
+        "undo"
+      ]
+    },
+    "v04_dev_supp_quoted_retraction_then_request": {
+      "description": "以前の発話を引用して撤回した後、現在の依頼を肯定する。",
+      "count": 2,
+      "labels": [
+        "panel_gap_snap_set",
+        "undo"
+      ]
+    },
+    "v04_dev_supp_method_exclusion_then_operation": {
+      "description": "望む結果を述べ、使わない方法を除外して、採用する操作を指定する。",
+      "count": 1,
+      "labels": [
+        "redo"
+      ]
+    },
+    "v04_dev_supp_requested_expression_definition": {
+      "description": "依頼で用いる表現の意味を同一発話内で定義し、類似した別操作から区別する。",
+      "count": 2,
+      "labels": [
+        "redo",
+        "text_frames_align"
+      ]
+    },
+    "v04_dev_supp_completion_then_next_step": {
+      "description": "読むなどの先行行為が完了したことを述べ、次の限定された一手を頼む。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ]
+    },
+    "v04_dev_supp_endpoint_reference_then_action": {
+      "description": "端を指す語を先に述べ、その意味を具体的な行き先に言い換えて移動を頼む。",
+      "count": 1,
+      "labels": [
+        "page_navigate"
+      ]
+    },
+    "v04_dev_supp_request_with_quoted_scope_repair": {
+      "description": "引用した操作句・名称を使い、その依頼が意味する範囲を後続の対比で確定する。",
+      "count": 2,
+      "labels": [
+        "background_3d_candidates",
+        "page_navigate"
+      ]
+    },
+    "v04_dev_supp_scope_repair_then_elliptic_request": {
+      "description": "似た解釈を先に除外して実際の対象範囲を示し、省略形または短い述語で依頼する。",
+      "count": 6,
+      "labels": [
+        "generate_request",
+        "inner_frame_snap_set",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_sync_set"
+      ]
+    },
+    "v04_dev_supp_target_contrast_then_operation": {
+      "description": "対象でない変更を除外・維持し、実際に変更したい対象と操作を対比して指定する。",
+      "count": 3,
+      "labels": [
+        "out_of_scope_request",
+        "text_frames_align",
+        "view_change"
+      ]
+    },
+    "v04_dev_supp_conditional_desired_state": {
+      "description": "現状態によって変更の要否を条件分岐させ、一つの希望最終状態へ収束させる。",
+      "count": 5,
+      "labels": [
+        "artwork_mode_set",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "view_change"
+      ]
+    },
+    "v04_dev_supp_quoted_referent_correction": {
+      "description": "以前の対象指定を引用し、言い間違いだったと訂正して実対象を示す。",
+      "count": 1,
+      "labels": [
+        "view_change"
+      ]
+    },
+    "v04_dev_supp_request_with_negative_followup": {
+      "description": "現在依頼を先に確定し、後続文で別操作や別対象を依頼していないと補足する。",
+      "count": 4,
+      "labels": [
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "view_change"
+      ]
+    },
+    "v04_dev_supp_defer_related_action_select_setting": {
+      "description": "関連する次段階の操作を延期し、現在依頼を設定の選択に限定する。",
+      "count": 1,
+      "labels": [
+        "artwork_mode_set"
+      ]
+    },
+    "v04_dev_supp_quoted_value_postposed_target": {
+      "description": "値を引用して選択を頼み、どの設定への依頼かを後ろから補う。",
+      "count": 1,
+      "labels": [
+        "artwork_mode_set"
+      ]
+    },
+    "v04_dev_supp_decision_then_apply_setting": {
+      "description": "値について決定済みと述べ、その決定を設定へ反映する現在依頼を行う。",
+      "count": 1,
+      "labels": [
+        "artwork_mode_set"
+      ]
+    },
+    "v04_dev_supp_quote_as_literal_payload": {
+      "description": "引用文が操作指示でなく入力本文であると説明し、その文を値として設定する。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ]
+    },
+    "v04_dev_supp_value_enumeration_then_apply": {
+      "description": "一つの対象について複数の値を列挙し、その組を一括で確定するよう頼む。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ]
+    },
+    "v04_dev_supp_property_target_postposed": {
+      "description": "属性や設定への依頼を先に述べ、その属性が属する対象を後置して確定する。",
+      "count": 2,
+      "labels": [
+        "bubble_set",
+        "paint_tool_set"
+      ]
+    },
+    "v04_dev_supp_literal_name_vs_role": {
+      "description": "一般的な役割名を引用して除外し、敬称を含む具体的な名前を値として指定する。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ]
+    },
+    "v04_dev_supp_comparative_ellipsis": {
+      "description": "比較的な程度を省略形の依頼で指定するが、具体値は示さない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ]
+    },
+    "v04_dev_supp_unresolved_alternative_reference": {
+      "description": "以前選んだ側ともう片方を対比するが、片方を特定する情報が発話内にない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ]
+    },
+    "v04_dev_supp_reject_status_quo_without_value": {
+      "description": "現状態の維持を否定して変更を頼むが、変更後の希望値を示さない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ]
+    },
+    "v04_dev_supp_unavailable_prior_context": {
+      "description": "現在依頼の対象を過去の会話で特定しようとし、発話内にその特定情報を持たない。",
+      "count": 1,
+      "labels": [
+        "needs_clarification"
+      ]
+    },
+    "v04_dev_supp_incongruity_then_content_revision": {
+      "description": "内容と人物設定の違和感を述べ、その基準に沿う内容の再考を依頼する。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ]
+    },
+    "v04_dev_supp_open_alternatives_then_judgment": {
+      "description": "値を未確定と明示し、複数の選択肢を許容したうえで適切さの判断を頼む。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ]
+    },
+    "v04_dev_supp_request_with_postposed_scope": {
+      "description": "依頼内容を先に述べ、適用する対象範囲を後置して限定する。",
+      "count": 2,
+      "labels": [
+        "needs_reasoning",
+        "text_frames_align"
+      ]
+    },
+    "v04_dev_supp_quoted_assumption_exclusion": {
+      "description": "固定的な解釈を引用して除外し、資料・場面を考慮する内容判断を依頼する。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ]
+    },
+    "v04_dev_supp_enumerated_requests_aggregate": {
+      "description": "独立した依頼を一つ・もう一つと列挙し、それら全体の現在実行を求める。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_supp_ordered_nominal_operations": {
+      "description": "独立した操作を名詞句で順番に並べ、前後関係を明示して頼む。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_supp_scope_addition": {
+      "description": "最初の依頼に加え、それだけでは終わらないよう別の現在依頼を明示的に追加する。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_supp_quoted_payload_then_second_operation": {
+      "description": "引用本文を設定する操作と、その後の独立操作を順に現在依頼する。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_supp_catalog_limit_then_external_search": {
+      "description": "既存の範囲で見つからなかったという報告を受け、外部へ探索範囲を広げる依頼。",
+      "count": 1,
+      "labels": [
+        "out_of_scope_request"
+      ]
+    },
+    "v04_dev_supp_scope_widening": {
+      "description": "狭い単位での依頼を取りやめ、より広い対象範囲の一括操作へ明示的に切り替える。",
+      "count": 1,
+      "labels": [
+        "out_of_scope_request"
+      ]
+    },
+    "v04_dev_supp_metalinguistic_question": {
+      "description": "命令形を引用してその発話機能を質問し、引用内容の操作実行は求めない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_supp_disclaim_action_seek_explanation": {
+      "description": "現在操作を依頼しているとの読みを明示的に否定し、説明を求める。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_supp_future_decision_deferral": {
+      "description": "実行を判断する時点を将来に置き、今は依頼しないと確認する。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_supp_acknowledge_no_change": {
+      "description": "現状態を確認・了承し、変更は不要と明示する。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_supp_quoted_request_force_repair": {
+      "description": "肯定依頼と禁止の発話を引用で対比し、肯定依頼のほうを再確認する。",
+      "count": 1,
+      "labels": [
+        "panel_sync_set"
+      ]
+    },
+    "v04_dev_supp_withdraw_other_then_restrict_request": {
+      "description": "別の項目への依頼を撤回した後、現在依頼を一つの対象だけに限定する。",
+      "count": 1,
+      "labels": [
+        "panel_gap_snap_set"
+      ]
+    },
+    "v04_dev_supp_parts_of_single_target": {
+      "description": "以前の部分指定を撤回し、一つの全体対象の構成部分を列挙して全体操作を頼む。",
+      "count": 1,
+      "labels": [
+        "generate_request"
+      ]
+    },
+    "v04_dev_supp_quoted_deixis_resolution": {
+      "description": "引用した指示語の意味を通常のUI選択参照で定義した後、その対象への実行を頼む。",
+      "count": 1,
+      "labels": [
+        "generate_request"
+      ]
+    },
+    "v04_dev_supp_request_with_postposed_locator": {
+      "description": "対象名と依頼を先に示し、位置を表すlocatorとその範囲制限を後置する。",
+      "count": 1,
+      "labels": [
+        "generate_request"
+      ]
+    },
+    "v04_dev_supp_workflow_endpoint_limit": {
+      "description": "求めない後段処理を除外し、依頼する段階の終点を「ところまで」で指定する。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ]
+    },
+    "v04_dev_supp_request_with_postposed_source": {
+      "description": "条件と件数を含む依頼を先に述べ、候補元の範囲を後置して限定する。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ]
+    },
+    "v04_dev_supp_scene_then_candidate_request": {
+      "description": "場所と場面を最初に明示し、その場面に適合する候補の提示を頼む。",
+      "count": 1,
+      "labels": [
+        "background_3d_candidates"
+      ]
+    },
+    "v04_dev_supp_actor_division": {
+      "description": "利用者が担当する行為を先に分け、システムにはその準備となる一操作だけを頼む。",
+      "count": 1,
+      "labels": [
+        "paint_tool_set"
+      ]
+    },
+    "v04_dev_supp_enumerated_selection_request": {
+      "description": "複数対象を指示語で列挙し、通常のUI複数選択として解決する範囲を明示して頼む。",
+      "count": 1,
+      "labels": [
+        "text_frames_align"
+      ]
+    }
+  },
+  "label_family_membership": {
+    "save": [
+      "v04_dev_supp_include_recent_change",
+      "v04_dev_supp_nominal_request_postscript",
+      "v04_dev_supp_quoted_risk_prevention",
+      "v04_dev_supp_request_then_retraction"
+    ],
+    "undo": [
+      "v04_dev_supp_appraisal_then_history_request",
+      "v04_dev_supp_count_with_stop_boundary",
+      "v04_dev_supp_quoted_retraction_then_request",
+      "v04_dev_supp_restrictive_focus_then_operation"
+    ],
+    "redo": [
+      "v04_dev_supp_appraisal_then_history_request",
+      "v04_dev_supp_count_with_stop_boundary",
+      "v04_dev_supp_method_exclusion_then_operation",
+      "v04_dev_supp_requested_expression_definition"
+    ],
+    "page_navigate": [
+      "v04_dev_supp_completion_then_next_step",
+      "v04_dev_supp_endpoint_reference_then_action",
+      "v04_dev_supp_request_with_quoted_scope_repair",
+      "v04_dev_supp_scope_repair_then_elliptic_request"
+    ],
+    "view_change": [
+      "v04_dev_supp_conditional_desired_state",
+      "v04_dev_supp_quoted_referent_correction",
+      "v04_dev_supp_request_with_negative_followup",
+      "v04_dev_supp_target_contrast_then_operation"
+    ],
+    "artwork_mode_set": [
+      "v04_dev_supp_conditional_desired_state",
+      "v04_dev_supp_decision_then_apply_setting",
+      "v04_dev_supp_defer_related_action_select_setting",
+      "v04_dev_supp_quoted_value_postposed_target"
+    ],
+    "bubble_set": [
+      "v04_dev_supp_literal_name_vs_role",
+      "v04_dev_supp_property_target_postposed",
+      "v04_dev_supp_quote_as_literal_payload",
+      "v04_dev_supp_value_enumeration_then_apply"
+    ],
+    "needs_clarification": [
+      "v04_dev_supp_comparative_ellipsis",
+      "v04_dev_supp_reject_status_quo_without_value",
+      "v04_dev_supp_unavailable_prior_context",
+      "v04_dev_supp_unresolved_alternative_reference"
+    ],
+    "needs_reasoning": [
+      "v04_dev_supp_incongruity_then_content_revision",
+      "v04_dev_supp_open_alternatives_then_judgment",
+      "v04_dev_supp_quoted_assumption_exclusion",
+      "v04_dev_supp_request_with_postposed_scope"
+    ],
+    "compound_request": [
+      "v04_dev_supp_enumerated_requests_aggregate",
+      "v04_dev_supp_ordered_nominal_operations",
+      "v04_dev_supp_quoted_payload_then_second_operation",
+      "v04_dev_supp_scope_addition"
+    ],
+    "out_of_scope_request": [
+      "v04_dev_supp_catalog_limit_then_external_search",
+      "v04_dev_supp_scope_repair_then_elliptic_request",
+      "v04_dev_supp_scope_widening",
+      "v04_dev_supp_target_contrast_then_operation"
+    ],
+    "not_command": [
+      "v04_dev_supp_acknowledge_no_change",
+      "v04_dev_supp_disclaim_action_seek_explanation",
+      "v04_dev_supp_future_decision_deferral",
+      "v04_dev_supp_metalinguistic_question"
+    ],
+    "panel_sync_set": [
+      "v04_dev_supp_conditional_desired_state",
+      "v04_dev_supp_quoted_request_force_repair",
+      "v04_dev_supp_request_with_negative_followup",
+      "v04_dev_supp_scope_repair_then_elliptic_request"
+    ],
+    "inner_frame_snap_set": [
+      "v04_dev_supp_conditional_desired_state",
+      "v04_dev_supp_request_then_retraction",
+      "v04_dev_supp_request_with_negative_followup",
+      "v04_dev_supp_scope_repair_then_elliptic_request"
+    ],
+    "panel_gap_snap_set": [
+      "v04_dev_supp_conditional_desired_state",
+      "v04_dev_supp_quoted_retraction_then_request",
+      "v04_dev_supp_request_with_negative_followup",
+      "v04_dev_supp_withdraw_other_then_restrict_request"
+    ],
+    "generate_request": [
+      "v04_dev_supp_parts_of_single_target",
+      "v04_dev_supp_quoted_deixis_resolution",
+      "v04_dev_supp_request_with_postposed_locator",
+      "v04_dev_supp_scope_repair_then_elliptic_request"
+    ],
+    "background_3d_candidates": [
+      "v04_dev_supp_request_with_postposed_source",
+      "v04_dev_supp_request_with_quoted_scope_repair",
+      "v04_dev_supp_scene_then_candidate_request",
+      "v04_dev_supp_workflow_endpoint_limit"
+    ],
+    "paint_tool_set": [
+      "v04_dev_supp_actor_division",
+      "v04_dev_supp_property_target_postposed",
+      "v04_dev_supp_request_then_retraction",
+      "v04_dev_supp_scope_repair_then_elliptic_request"
+    ],
+    "text_frames_align": [
+      "v04_dev_supp_enumerated_selection_request",
+      "v04_dev_supp_request_with_postposed_scope",
+      "v04_dev_supp_requested_expression_definition",
+      "v04_dev_supp_target_contrast_then_operation"
+    ]
+  },
+  "self_review": {
+    "all_76_meanings_and_golds_reviewed": true,
+    "naturalness_review": "Each example was checked as something a user can say to an explicit voice-command system. No fabricated feature, preset ID, or hidden UI value is required for the gold label. Conditional cases have one final desired state. Ellipsis is retained only when the operation and target can be reconstructed from the same utterance. needs_clarification deliberately lacks a required value or resolvable reference.",
+    "id_range": "nyamuru_voice_3000 through nyamuru_voice_3075",
+    "id_duplicate_count": 0,
+    "raw_text_duplicate_count": 0,
+    "normalized_duplicate_count": 0,
+    "normalization": "Unicode NFKC, casefold, remove Unicode whitespace and Unicode punctuation",
+    "nine_keys_exact": true,
+    "slot_shape_enum_checks": "passed against contract plus annotation-key conventions",
+    "each_label_has_4_distinct_families": true,
+    "cross_dataset_overlap_check": "not performed; parent-only audit",
+    "independence_limit": "Blind authorship does not by itself prove absence of old wording or construction overlap. Group labels are structural annotations and must be reconciled during the parent leakage audit.",
+    "saved_file_full_text_gold_and_slots_readback": "completed for all 76 rows",
+    "post_readback_revisions": [
+      {
+        "id": "nyamuru_voice_3004",
+        "change": "Replace awkward 戻すのでお願い with a natural explicit one-step history request."
+      },
+      {
+        "id": "nyamuru_voice_3025",
+        "change": "Simplify the concluding dimensions request."
+      },
+      {
+        "id": "nyamuru_voice_3026",
+        "change": "Make the postposed bubble reference shorter and natural."
+      },
+      {
+        "id": "nyamuru_voice_3034",
+        "change": "Remove a potentially additive 数値をそろえるだけじゃなく phrase; retain one layout judgment with postposed scope."
+      },
+      {
+        "id": "nyamuru_voice_3055",
+        "change": "Replace artificial 有効に、だよ with a natural setting request and negative scope follow-up."
+      }
+    ],
+    "final_check_result": "76 rows; 19 labels with 4 rows each; 4 families per label; 53 families total; all required keys; contiguous unique IDs; zero normalized duplicate texts; no gold/slot changes from naturalness edits."
+  },
+  "semantic_review_points": [
+    {
+      "id": "nyamuru_voice_3002",
+      "status": "retain",
+      "point": "Current save explicitly includes the changes made since the last save. This is not an incremental-save feature or a request to save only selected edits."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3006",
+        "nyamuru_voice_3011"
+      ],
+      "status": "retain",
+      "point": "The stop boundary restates the count of the same history operation; it does not add a running-job cancellation."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3017",
+        "nyamuru_voice_3023",
+        "nyamuru_voice_3048",
+        "nyamuru_voice_3052",
+        "nyamuru_voice_3059"
+      ],
+      "status": "retain",
+      "point": "Current-state conditions all resolve to a single desired setting. State checking is a precondition for that setting action, not a separately requested conversational status answer."
+    },
+    {
+      "id": "nyamuru_voice_3024",
+      "status": "retain",
+      "point": "Quote is explicitly identified as dialogue payload. It is written verbatim into the selected bubble; its imperative is not executed."
+    },
+    {
+      "id": "nyamuru_voice_3025",
+      "status": "retain",
+      "point": "Width and height form one BBox resize despite two values."
+    },
+    {
+      "id": "nyamuru_voice_3028",
+      "status": "retain_intentional_missing_value",
+      "point": "A normal UI selection does not create ambiguity, but ひと回り supplies no definite dimension."
+    },
+    {
+      "id": "nyamuru_voice_3030",
+      "status": "retain_intentional_missing_value",
+      "point": "A request to change the current setting is not silently converted to a toggle; final enabled value is missing."
+    },
+    {
+      "id": "nyamuru_voice_3033",
+      "status": "retain",
+      "point": "Round and angular are acceptable alternatives for a judgment, not invented concrete shape slot values. No fixed shape is gold."
+    },
+    {
+      "id": "nyamuru_voice_3039",
+      "status": "retain",
+      "point": "The quoted wait command is bubble text. Only body replacement plus save are the two current actions."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3044",
+        "nyamuru_voice_3045",
+        "nyamuru_voice_3046",
+        "nyamuru_voice_3047"
+      ],
+      "status": "retain",
+      "point": "Respectively metalinguistic question, explanation with action denied, deferral, and explicit no-change acknowledgment; none issues a current edit."
+    },
+    {
+      "id": "nyamuru_voice_3060",
+      "status": "retain",
+      "point": "人物 and 背景 enumerate the contents of the same requested full current page, not separate generated targets."
+    },
+    {
+      "id": "nyamuru_voice_3062",
+      "status": "retain_execution_resolution",
+      "point": "Panel 4 and the literal name 真央ちゃん constrain one placement; resolution failure belongs to the execution layer."
+    },
+    {
+      "id": "nyamuru_voice_3064",
+      "status": "retain",
+      "point": "The workflow endpoint requests candidate presentation while explicitly excluding automatic application."
+    },
+    {
+      "id": "nyamuru_voice_3065",
+      "status": "retain",
+      "point": "ほしい requests a deliverable with count, context, and registered-source restriction; it is not an isolated soliloquy."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_3072",
+        "nyamuru_voice_3073",
+        "nyamuru_voice_3074",
+        "nyamuru_voice_3075"
+      ],
+      "status": "retain",
+      "point": "All four constrain the target to selected multiple text frames and the operation to top alignment. The contract default reference selection_bounds is used."
+    }
+  ],
+  "review_status": "pending_user_review"
+}

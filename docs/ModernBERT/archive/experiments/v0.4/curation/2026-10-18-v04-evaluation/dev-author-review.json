@@ -1,0 +1,730 @@
+{
+  "review_version": 1,
+  "artifact": "nyamuru-v04-dev-candidates.jsonl",
+  "candidate_sha256": "82ec3258ae7aea4e30adf0a4dfb7f5f0beb8a4c3d28cd1dc3c483a9df3fceeaf",
+  "read_sources": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "role": "sole file input; label and slot contract"
+    }
+  ],
+  "annotation_schema_clarification": {
+    "source": "parent agent message containing slot-key conventions only",
+    "content": "view spread/guide use enabled; bubble value/name/preset_id/owner/panel_number/bubble_number; bbox operation translate with dx_mm/dy_mm or resize with width_mm/height_mm. No utterances, model results, or existing datasets were shared.",
+    "contract_gap": "labels.json lists field names but not every concrete value-key shape. The supplied annotation-only convention was used without reading another file."
+  },
+  "blind_author_statement": {
+    "training_data_seen": false,
+    "old_evaluation_seen": false,
+    "new_test_seen": false,
+    "predictions_or_scores_seen": false,
+    "other_authors_files_seen": false,
+    "communication_with_test_or_training_authors": false,
+    "network_used": false,
+    "model_inference_or_training_run": false,
+    "repo_files_modified": false,
+    "statement": "Authored independently from labels.json only, with an annotation-key clarification from the parent. No external data, old examples, performance results, or other author outputs were consulted."
+  },
+  "counts": {
+    "total": 152,
+    "labels": 19,
+    "per_label": {
+      "save": 8,
+      "undo": 8,
+      "redo": 8,
+      "page_navigate": 8,
+      "view_change": 8,
+      "artwork_mode_set": 8,
+      "bubble_set": 8,
+      "needs_clarification": 8,
+      "needs_reasoning": 8,
+      "compound_request": 8,
+      "out_of_scope_request": 8,
+      "not_command": 8,
+      "panel_sync_set": 8,
+      "inner_frame_snap_set": 8,
+      "panel_gap_snap_set": 8,
+      "generate_request": 8,
+      "background_3d_candidates": 8,
+      "paint_tool_set": 8,
+      "text_frames_align": 8
+    },
+    "family_count": 29,
+    "families_per_label": {
+      "save": 8,
+      "undo": 8,
+      "redo": 8,
+      "page_navigate": 8,
+      "view_change": 8,
+      "artwork_mode_set": 8,
+      "bubble_set": 8,
+      "needs_clarification": 6,
+      "needs_reasoning": 8,
+      "compound_request": 7,
+      "out_of_scope_request": 7,
+      "not_command": 8,
+      "panel_sync_set": 8,
+      "inner_frame_snap_set": 8,
+      "panel_gap_snap_set": 8,
+      "generate_request": 8,
+      "background_3d_candidates": 8,
+      "paint_tool_set": 8,
+      "text_frames_align": 8
+    },
+    "per_family": {
+      "v04_dev_capability_question": 1,
+      "v04_dev_causal_coordination": 1,
+      "v04_dev_causal_request": 17,
+      "v04_dev_comparison_judgment": 1,
+      "v04_dev_contrast_target_request": 3,
+      "v04_dev_correction_request": 14,
+      "v04_dev_deferral": 1,
+      "v04_dev_desiderative_request": 1,
+      "v04_dev_direct_request": 20,
+      "v04_dev_explanation_question": 1,
+      "v04_dev_future_intention": 1,
+      "v04_dev_imperative_sequence": 2,
+      "v04_dev_interrogative_request": 17,
+      "v04_dev_interrogative_sequence": 1,
+      "v04_dev_nominal_coordination": 1,
+      "v04_dev_nominal_request": 17,
+      "v04_dev_parallel_request_sentences": 4,
+      "v04_dev_parallel_topics_request": 1,
+      "v04_dev_past_context_request": 15,
+      "v04_dev_past_report": 1,
+      "v04_dev_postposed_target_request": 2,
+      "v04_dev_preservation_request": 14,
+      "v04_dev_preservation_sequence": 1,
+      "v04_dev_prohibition": 1,
+      "v04_dev_quoted_text_assignment": 1,
+      "v04_dev_repeat_count_request": 2,
+      "v04_dev_scope_declaration_request": 9,
+      "v04_dev_state_observation": 1,
+      "v04_dev_state_question": 1
+    }
+  },
+  "family_definitions": {
+    "v04_dev_direct_request": {
+      "description": "対象または設定項目を示し、単一の主節で直接実行を頼む。値不足や対象外でも同じ主節構造ならここへ統合。",
+      "count": 20,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_interrogative_request": {
+      "description": "実行動詞を疑問形の授受・許可表現で頼む。能力・状態の質問は別構造。",
+      "count": 17,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_causal_request": {
+      "description": "理由・目的・将来の意図を従属節で述べ、その理由に対応する単一の現在依頼を続ける。",
+      "count": 17,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_correction_request": {
+      "description": "途中の依頼や値を「いや」「じゃなくて」「やめた」等で撤回し、最後の依頼・値を確定する。",
+      "count": 14,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_preservation_request": {
+      "description": "他の状態の維持または別操作の不実行を条件に、現在の一操作を頼む。",
+      "count": 14,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_nominal_request": {
+      "description": "操作名・設定値を名詞句として「お願い」「お願いします」で頼む。",
+      "count": 17,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_clarification",
+        "needs_reasoning",
+        "out_of_scope_request",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_past_context_request": {
+      "description": "完了済みの行動や過去の状態を述べ、それに続く現在の依頼を表す。",
+      "count": 15,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "inner_frame_snap_set",
+        "needs_reasoning",
+        "page_navigate",
+        "paint_tool_set",
+        "panel_gap_snap_set",
+        "panel_sync_set",
+        "redo",
+        "save",
+        "text_frames_align",
+        "undo",
+        "view_change"
+      ]
+    },
+    "v04_dev_postposed_target_request": {
+      "description": "実行依頼を先に発し、対象・行き先を後置して補う。",
+      "count": 2,
+      "labels": [
+        "page_navigate",
+        "save"
+      ]
+    },
+    "v04_dev_scope_declaration_request": {
+      "description": "対象・項目を宣言する文に続き、その対象への依頼を行う。同一発話内の参照は解決可能。",
+      "count": 9,
+      "labels": [
+        "artwork_mode_set",
+        "background_3d_candidates",
+        "bubble_set",
+        "generate_request",
+        "needs_clarification",
+        "needs_reasoning",
+        "page_navigate",
+        "paint_tool_set",
+        "text_frames_align"
+      ]
+    },
+    "v04_dev_repeat_count_request": {
+      "description": "一種類の履歴操作について繰り返す回数を動詞句内で指定する。",
+      "count": 2,
+      "labels": [
+        "redo",
+        "undo"
+      ]
+    },
+    "v04_dev_contrast_target_request": {
+      "description": "類似する別の対象・操作を否定的に対比し、実際の対象を肯定して依頼する。",
+      "count": 3,
+      "labels": [
+        "out_of_scope_request",
+        "text_frames_align",
+        "view_change"
+      ]
+    },
+    "v04_dev_quoted_text_assignment": {
+      "description": "引用した文字列を本文の設定値とする。引用内の命令動詞は主節の依頼ではない。",
+      "count": 1,
+      "labels": [
+        "bubble_set"
+      ]
+    },
+    "v04_dev_comparison_judgment": {
+      "description": "複数の内容候補を比べ、内容上の基準に照らして選択判断を依頼する。",
+      "count": 1,
+      "labels": [
+        "needs_reasoning"
+      ]
+    },
+    "v04_dev_imperative_sequence": {
+      "description": "接続詞・接続助詞で二つの現在依頼の述語を順につなぐ。",
+      "count": 2,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_nominal_coordination": {
+      "description": "二つの操作を名詞化して並列にし、一つの依頼表現で両方を頼む。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_interrogative_sequence": {
+      "description": "異なる操作の依頼述語を接続し、疑問形の依頼表現で結ぶ。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_causal_coordination": {
+      "description": "理由を示す節に続き、並列に置いた二操作を両方現在実行するよう頼む。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_parallel_request_sentences": {
+      "description": "複数の文・発話断片で現在の依頼を並べる。同一操作の再確認と異なる操作の依頼を同じgroupに保持。",
+      "count": 4,
+      "labels": [
+        "compound_request",
+        "inner_frame_snap_set",
+        "panel_gap_snap_set",
+        "panel_sync_set"
+      ]
+    },
+    "v04_dev_parallel_topics_request": {
+      "description": "項目ごとの値を並列の主題句で示し、どちらも現在変更するという依頼で結ぶ。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_preservation_sequence": {
+      "description": "別状態の維持を指定した後、二つの現在実行依頼を接続する。",
+      "count": 1,
+      "labels": [
+        "compound_request"
+      ]
+    },
+    "v04_dev_desiderative_request": {
+      "description": "対象と実行動詞を「してほしい」という希望形で依頼する。",
+      "count": 1,
+      "labels": [
+        "out_of_scope_request"
+      ]
+    },
+    "v04_dev_state_question": {
+      "description": "対象の現在の状態を質問し、変更は依頼しない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_explanation_question": {
+      "description": "操作手順を教えるよう求め、編集操作の実行は依頼しない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_capability_question": {
+      "description": "操作の対応可否・能力を質問し、現在実行は頼まない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_past_report": {
+      "description": "完了した行動だけを報告し、現在の依頼節を含まない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_deferral": {
+      "description": "操作を後回しにする意思を述べ、現在の実行を延期する。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_prohibition": {
+      "description": "ある変更をしないよう指示する。反対状態への変更とは扱わない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_future_intention": {
+      "description": "次回など未来の利用予定だけを述べ、現在の実行を依頼しない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    },
+    "v04_dev_state_observation": {
+      "description": "観察した現状だけを述べ、操作の依頼を含まない。",
+      "count": 1,
+      "labels": [
+        "not_command"
+      ]
+    }
+  },
+  "label_family_membership": {
+    "save": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_postposed_target_request",
+      "v04_dev_preservation_request"
+    ],
+    "undo": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_repeat_count_request"
+    ],
+    "redo": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_repeat_count_request"
+    ],
+    "page_navigate": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_postposed_target_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "view_change": [
+      "v04_dev_causal_request",
+      "v04_dev_contrast_target_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request"
+    ],
+    "artwork_mode_set": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "bubble_set": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_quoted_text_assignment",
+      "v04_dev_scope_declaration_request"
+    ],
+    "needs_clarification": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "needs_reasoning": [
+      "v04_dev_causal_request",
+      "v04_dev_comparison_judgment",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "compound_request": [
+      "v04_dev_causal_coordination",
+      "v04_dev_imperative_sequence",
+      "v04_dev_interrogative_sequence",
+      "v04_dev_nominal_coordination",
+      "v04_dev_parallel_request_sentences",
+      "v04_dev_parallel_topics_request",
+      "v04_dev_preservation_sequence"
+    ],
+    "out_of_scope_request": [
+      "v04_dev_causal_request",
+      "v04_dev_contrast_target_request",
+      "v04_dev_desiderative_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_preservation_request"
+    ],
+    "not_command": [
+      "v04_dev_capability_question",
+      "v04_dev_deferral",
+      "v04_dev_explanation_question",
+      "v04_dev_future_intention",
+      "v04_dev_past_report",
+      "v04_dev_prohibition",
+      "v04_dev_state_observation",
+      "v04_dev_state_question"
+    ],
+    "panel_sync_set": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_parallel_request_sentences",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request"
+    ],
+    "inner_frame_snap_set": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_parallel_request_sentences",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request"
+    ],
+    "panel_gap_snap_set": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_parallel_request_sentences",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request"
+    ],
+    "generate_request": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "background_3d_candidates": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "paint_tool_set": [
+      "v04_dev_causal_request",
+      "v04_dev_correction_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_scope_declaration_request"
+    ],
+    "text_frames_align": [
+      "v04_dev_causal_request",
+      "v04_dev_contrast_target_request",
+      "v04_dev_direct_request",
+      "v04_dev_interrogative_request",
+      "v04_dev_nominal_request",
+      "v04_dev_past_context_request",
+      "v04_dev_preservation_request",
+      "v04_dev_scope_declaration_request"
+    ]
+  },
+  "self_review": {
+    "all_152_texts_and_golds_reviewed": true,
+    "review_basis": "For each utterance, identify the final affirmative present request, disregard withdrawn/past/future/quoted actions, then check the include/exclude and annotation rules.",
+    "nine_keys_exact": true,
+    "ids_contiguous": "nyamuru_voice_2400 through nyamuru_voice_2551",
+    "id_duplicate_count": 0,
+    "raw_text_duplicate_count": 0,
+    "normalization": "Unicode NFKC, casefold, remove Unicode whitespace and all Unicode punctuation categories",
+    "normalized_duplicate_groups": [],
+    "all_19_labels_have_8_examples": true,
+    "minimum_distinct_family_count_per_label": 6,
+    "slot_shape_enum_and_positive_count_checks": "passed against labels.json plus annotation-only clarification",
+    "cross_dataset_overlap_check": "not performed by blind author; reserved for parent",
+    "structural_family_policy": "Families are shared across labels. They are intentionally broad grammatical groupings; repeated settings share parallel_request_sentences with a true compound request.",
+    "equal_label_treatment": "8 candidates per label. No accuracy or class-priority information was used. Small setting labels use multiple grammatical forms rather than repeated number/name/politeness substitutions.",
+    "saved_file_full_text_gold_slot_readback": "completed for all 152 rows",
+    "readback_revision": "nyamuru_voice_2415 explicitly added 編集 to prevent interpreting 戻す as an unspecified operation; label, count, and family unchanged."
+  },
+  "semantic_review_points": [
+    {
+      "id": "nyamuru_voice_2415",
+      "status": "clarity_revised",
+      "point": "Added explicit 編集 to the repeated undo request during full readback. This prevents relying on an unexpressed target for 戻す."
+    },
+    {
+      "id": "nyamuru_voice_2434",
+      "status": "retained_contract_supported",
+      "point": "表示を拡大 has no numeric amount but zoom_mode=in is explicitly supported. This differs from unspecified bubble movement or dimensions."
+    },
+    {
+      "id": "nyamuru_voice_2449",
+      "status": "retained_classification_only",
+      "point": "clip_to_panel is included by the label contract although execution readiness is provisional. The row is a classification example and does not assert executable integration."
+    },
+    {
+      "id": "nyamuru_voice_2450",
+      "status": "retained_contract_supported",
+      "point": "程度語「少し」は理由節だけ。現在依頼の移動値は6mm and -2mm; both belong to one BBox operation."
+    },
+    {
+      "id": "nyamuru_voice_2451",
+      "status": "retained_contract_supported",
+      "point": "The retracted width is ignored. Final width and height are one BBox operation despite separate clauses."
+    },
+    {
+      "id": "nyamuru_voice_2452",
+      "status": "retained_contract_supported",
+      "point": "Quoted save/navigation wording is literal text for bubble body replacement."
+    },
+    {
+      "id": "nyamuru_voice_2463",
+      "status": "retained_intentionally_underspecified",
+      "point": "After withdrawing save, 元に戻して has no completed edit or other operation target. Gold is needs_clarification by the explicit target-unknown 戻して exclusion."
+    },
+    {
+      "id": "nyamuru_voice_2467",
+      "status": "retained_contract_supported",
+      "point": "Comparing two text proposals is a cognitive prerequisite for choosing one, not two independent editing operations."
+    },
+    {
+      "id": "nyamuru_voice_2470",
+      "status": "retained_contract_supported",
+      "point": "Reading updated character material is part of the requested content judgment; the earlier setting update is a past report."
+    },
+    {
+      "id": "nyamuru_voice_2479",
+      "status": "retained_contract_supported",
+      "point": "Zoom and tab changes are independently executable view operations, so their shared base label does not make the utterance a single operation."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2503",
+        "nyamuru_voice_2511",
+        "nyamuru_voice_2519"
+      ],
+      "status": "retained_contract_supported",
+      "point": "Repeated desired-state requests remain one setting operation and do not toggle twice. They share a syntactic family with a compound row."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2526",
+        "nyamuru_voice_2527"
+      ],
+      "status": "retained_with_execution_resolution",
+      "point": "Explicit displayed panel numbers constrain named/selected characters. Failure to find a unique actual placement is an execution check rather than a new label."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2532",
+        "nyamuru_voice_2533"
+      ],
+      "status": "retained_contract_supported",
+      "point": "背景候補 is explicitly defined as registered 3D model candidates. No external search, invented models, or automatic application is implied."
+    },
+    {
+      "ids": [
+        "nyamuru_voice_2544",
+        "nyamuru_voice_2549"
+      ],
+      "status": "retained_contract_supported",
+      "point": "まとめて and 一括 convey multiple selected text frames. All align examples use the contract default selection_bounds; no arbitrary absolute y reference is invented."
+    }
+  ],
+  "coverage_limits": [
+    "Exactly 8 examples per label can test only a subset of slot values and linguistic forms; this is a development candidate set, not an exhaustive capability inventory.",
+    "bubble_set does not use invented preset IDs or unenumerated shape values. It covers tail, clipping, translation, dimensions, literal text, speaker, ownership, and joining.",
+    "No page preservation constraints were used because their concrete slot representation is not fixed in labels.json.",
+    "No class required lowering the count for principled ambiguity. Natural wording was kept ahead of artificial difficulty.",
+    "Gold labels, naturalness, and broad family groupings still require parent/user review; no inference or model evaluation was performed."
+  ],
+  "review_status": "pending_user_review"
+}

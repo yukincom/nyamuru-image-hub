@@ -1,0 +1,33 @@
+{
+  "name": "nyamuru-voice-v0.4-single-compound-contrasts-new-holdout",
+  "model": "sbintuitions/modernbert-ja-30m",
+  "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "learning_rates": [
+    2e-05,
+    5e-05
+  ],
+  "epochs": 10,
+  "batch_size": 16,
+  "max_length": 128,
+  "dtype": "float32",
+  "attention": "sdpa",
+  "tf32": false,
+  "model_fields": [
+    "text"
+  ],
+  "target_field": "label",
+  "selection_metric": "dev macro_f1 over all 19 labels with zero division=0; all 19 labels have support",
+  "selection": "Best dev epoch per trial, then shared learning rate by mean best-dev macro_f1 over the three seeds. Ties: lower dev loss, earlier epoch, earlier learning-rate order. Save and evaluate every selected seed. Choose exactly one primary model from selected seeds using new dev only before any test prediction.",
+  "test_used_for_selection": false,
+  "split_limitation": "Fresh independently authored synthetic dev/test; prior v0.2/v0.3 holdouts are diagnostic regression only. No real-user/ASR accuracy claim.",
+  "adoption": "No automatic production adoption or application dispatch.",
+  "source_review": "Source row provenance and parent semantic review recorded separately; individual user review pending.",
+  "primary_selection": "Highest new-dev macro F1 among selected seeds; lower dev loss, earlier epoch, earlier trial. Freeze one seed before test.",
+  "accuracy_target": 0.95,
+  "dataset_version": 4
+}

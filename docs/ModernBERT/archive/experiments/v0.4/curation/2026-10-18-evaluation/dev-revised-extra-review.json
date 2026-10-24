@@ -1,0 +1,286 @@
+{
+  "schema_version": 1,
+  "candidate_rows": 5,
+  "old_and_public_train_rows": 1357,
+  "new_test_reference_rows": 327,
+  "test_reference_files": [
+    "nyamuru-v03-test-draft.jsonl",
+    "nyamuru-v03-core-test-replacements.jsonl",
+    "nyamuru-v03-bubble-test-extra.jsonl",
+    "nyamuru-v03-bubble-replacements.jsonl",
+    "nyamuru-v03-public-curation/raw-test.jsonl"
+  ],
+  "comparison": "NFKC + lowercase + whitespace/punctuation removal; SequenceMatcher screens nearest candidates, followed by semantic review. Includes already-excluded 1676/1677 conservatively.",
+  "rows": [
+    {
+      "id": "nyamuru_voice_1710",
+      "label": "undo",
+      "nearest_train": [
+        {
+          "ratio": 0.4482758620689655,
+          "id": "nyamuru_voice_1133",
+          "text": "最新の編集を一件取り消して、その結果を保存して。",
+          "label": "compound_request",
+          "group": "v03_history_and_save"
+        },
+        {
+          "ratio": 0.4074074074074074,
+          "id": "nyamuru_voice_123",
+          "text": "直前の編集を戻して、その状態を保存して",
+          "label": "compound_request",
+          "group": "compound_undo_save"
+        },
+        {
+          "ratio": 0.40625,
+          "id": "nyamuru_voice_1121",
+          "text": "現時点の作品を記録して、それが終わったら最終ページを開いて。",
+          "label": "compound_request",
+          "group": "v03_save_then_navigation"
+        }
+      ],
+      "nearest_new_test": [
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_1386",
+          "text": "直近の編集、二回分まとめて取り消してほしい。",
+          "label": "undo",
+          "group": "v03_test_history_multi"
+        },
+        {
+          "ratio": 0.36666666666666664,
+          "id": "nyamuru_voice_1515",
+          "text": "今の編集を一回取り消したうえで、三ページへ移動して。",
+          "label": "compound_request",
+          "group": "v03_test_compound_undo_page"
+        },
+        {
+          "ratio": 0.3466666666666667,
+          "id": "nyamuru_voice_1693",
+          "text": "Undoは一回だけでお願い。いま完了した編集は取り消して、それ以前の変更は残してね。",
+          "label": "undo",
+          "group": "v03_extra_test_history_preserve_remainder"
+        }
+      ],
+      "independence_judgment": "回数の数字を先置する既存test1694と異なり、最初の取り消しの完了を接続点として、その前の編集への二回目の取り消しを指定。理由の前置や回数の差替えだけではない。",
+      "semantic_judgment": "二つの完了済み編集を新しい順に順次取り消す。同一のUndoを二回行う依頼なのでcompound_requestではない。"
+    },
+    {
+      "id": "nyamuru_voice_1711",
+      "label": "needs_clarification",
+      "nearest_train": [
+        {
+          "ratio": 0.41025641025641024,
+          "id": "nyamuru_voice_781",
+          "text": "内枠スナップをオンにして、コマスナップはオフにして",
+          "label": "compound_request",
+          "group": "v02_routes_compound_settings"
+        },
+        {
+          "ratio": 0.39473684210526316,
+          "id": "nyamuru_voice_1143",
+          "text": "内枠スナップを切ってから、コマスナップを入れて。",
+          "label": "compound_request",
+          "group": "v03_two_editor_settings"
+        },
+        {
+          "ratio": 0.3902439024390244,
+          "id": "nyamuru_voice_587",
+          "text": "内枠スナップをオンにしてほしい。ほかの設定は変えなくていい。",
+          "label": "inner_frame_snap_set",
+          "group": "v02_edit_setting_other_preserve"
+        }
+      ],
+      "nearest_new_test": [
+        {
+          "ratio": 0.3902439024390244,
+          "id": "nyamuru_voice_1523",
+          "text": "内枠スナップを無効にして、コマスナップもオフにしてもらえる？",
+          "label": "compound_request",
+          "group": "v03_test_compound_two_snaps"
+        },
+        {
+          "ratio": 0.3902439024390244,
+          "id": "nyamuru_voice_1582",
+          "text": "コマスナップをオンにするのはやめて、代わりにオフを設定して。",
+          "label": "panel_gap_snap_set",
+          "group": "v03_test_setting_correction"
+        },
+        {
+          "ratio": 0.3783783783783784,
+          "id": "nyamuru_voice_1579",
+          "text": "コマスナップはオンでいこう。その設定にして。",
+          "label": "panel_gap_snap_set",
+          "group": "v03_test_setting_decision"
+        }
+      ],
+      "independence_judgment": "未知の過去数値を参照する旧706/707と異なり、この発話内に二つの具体的候補名と同じ変更値が示され、両者の区別だけが未解決。一般的な「もう片方」に名詞を一つ足す構成ではない。",
+      "semantic_judgment": "オンという値は明確だが、内枠スナップとコマスナップのどちらを変えるかが未確定。一つだけという意図なので複数操作ではなく、選定判断を依頼してもいない。"
+    },
+    {
+      "id": "nyamuru_voice_1712",
+      "label": "inner_frame_snap_set",
+      "nearest_train": [
+        {
+          "ratio": 0.45714285714285713,
+          "id": "nyamuru_voice_601",
+          "text": "内枠スナップありで編集する状態に、設定を変えてほしい。",
+          "label": "inner_frame_snap_set",
+          "group": "v02_edit_setting_use_state"
+        },
+        {
+          "ratio": 0.44155844155844154,
+          "id": "nyamuru_voice_1145",
+          "text": "内枠スナップを使わない状態にして、その設定変更の後で作品を保存して。",
+          "label": "compound_request",
+          "group": "v03_two_editor_settings"
+        },
+        {
+          "ratio": 0.43333333333333335,
+          "id": "nyamuru_massive_adapt_053",
+          "text": "内枠スナップを有効な設定にして",
+          "label": "inner_frame_snap_set",
+          "group": "massive_adapt_setting_polarity"
+        }
+      ],
+      "nearest_new_test": [
+        {
+          "ratio": 0.5070422535211268,
+          "id": "nyamuru_voice_1567",
+          "text": "内枠スナップをオフにするんじゃなくて、オンにしてほしい。",
+          "label": "inner_frame_snap_set",
+          "group": "v03_test_setting_correction"
+        },
+        {
+          "ratio": 0.47761194029850745,
+          "id": "nyamuru_voice_1560",
+          "text": "内枠スナップ、いま無効にできる？　その変更をお願い。",
+          "label": "inner_frame_snap_set",
+          "group": "v03_test_setting_execute"
+        },
+        {
+          "ratio": 0.47619047619047616,
+          "id": "nyamuru_voice_1557",
+          "text": "内枠スナップの設定を有効にしてほしい。",
+          "label": "inner_frame_snap_set",
+          "group": "v03_test_setting_direct_state"
+        }
+      ],
+      "independence_judgment": "引用内で操作名と値を示し、外側の文でその引用を実行対象として束縛する構成。従来の理由→有効化命令でも、単なる引用本文入力でもない。",
+      "semantic_judgment": "引用部分を文字として入力する依頼ではなく、その引用で指定した設定変更を現在実行する依頼だと外側で明示。希望状態は内枠スナップ無効。"
+    },
+    {
+      "id": "nyamuru_voice_1713",
+      "label": "generate_request",
+      "nearest_train": [
+        {
+          "ratio": 0.36363636363636365,
+          "id": "nyamuru_voice_242",
+          "text": "このページ全体の生成を始めて",
+          "label": "generate_request",
+          "group": "generate_current_page"
+        },
+        {
+          "ratio": 0.35294117647058826,
+          "id": "nyamuru_voice_694",
+          "text": "今のページの二コマ目にある選択中の複数文字枠を、上揃えにしてください。",
+          "label": "text_frames_align",
+          "group": "v02_edit_align_panel"
+        },
+        {
+          "ratio": 0.3466666666666667,
+          "id": "nyamuru_voice_1160",
+          "text": "コマ二を生成したら、次にコマ四も生成してください。",
+          "label": "compound_request",
+          "group": "v03_tool_align_generate_pairs"
+        }
+      ],
+      "nearest_new_test": [
+        {
+          "ratio": 0.3076923076923077,
+          "id": "nyamuru_voice_1415",
+          "text": "十一ページを開いてください。",
+          "label": "page_navigate",
+          "group": "v03_test_page_explicit_number"
+        },
+        {
+          "ratio": 0.3076923076923077,
+          "id": "nyamuru_voice_1513",
+          "text": "作画方式を下書きに切り替えて、このページ全体を生成して。",
+          "label": "compound_request",
+          "group": "v03_test_compound_mode_generate"
+        },
+        {
+          "ratio": 0.273972602739726,
+          "id": "nyamuru_voice_1491",
+          "text": "表示するページは、さっき話したところでお願い。",
+          "label": "needs_clarification",
+          "group": "v03_test_ambiguous_page"
+        }
+      ],
+      "independence_judgment": "旧870/871やtest1597/1603の「コマNの人物名を生成」という一文構造に対し、人物種別→所在と名前の属性列挙→合成された指定の実行を分けている。数値・名前の置換だけではない。",
+      "semantic_judgment": "生成対象の種類を人物一人と示し、現在ページ内のコマ番号と敬称付き人物名を属性として列挙。最後の指示がその二属性を参照する一回の画像生成。"
+    },
+    {
+      "id": "nyamuru_voice_1716",
+      "label": "generate_request",
+      "nearest_train": [
+        {
+          "ratio": 0.43243243243243246,
+          "id": "nyamuru_voice_882",
+          "text": "コマごとの指定じゃなく、現在のページを丸ごと画像生成してほしい",
+          "label": "generate_request",
+          "group": "v02_routes_generation_scope"
+        },
+        {
+          "ratio": 0.417910447761194,
+          "id": "nyamuru_voice_978",
+          "text": "ページ全体ではなく、このコマだけを生成してほしい。",
+          "label": "generate_request",
+          "group": "v03_generation_wait_or_start"
+        },
+        {
+          "ratio": 0.410958904109589,
+          "id": "nyamuru_voice_1091",
+          "text": "やり直すボタンは使わず、現在のページ一枚を生成し直してほしい。",
+          "label": "generate_request",
+          "group": "v03_redo_or_new_generation"
+        }
+      ],
+      "nearest_new_test": [
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_1591",
+          "text": "このページを丸ごと生成してほしい。",
+          "label": "generate_request",
+          "group": "v03_test_generate_whole_page"
+        },
+        {
+          "ratio": 0.3466666666666667,
+          "id": "nyamuru_voice_1535",
+          "text": "ページ全体を生成する機能は使えるのかな。操作はまだしなくていいよ。",
+          "label": "not_command",
+          "group": "v03_test_not_generation_capability"
+        },
+        {
+          "ratio": 0.3466666666666667,
+          "id": "nyamuru_voice_1596",
+          "text": "下書き方式への変更はしなくていいから、現在のページ全体を生成して。",
+          "label": "generate_request",
+          "group": "v03_test_generate_no_mode"
+        }
+      ],
+      "independence_judgment": "引用された操作全体に、後続文が現在の依頼という発話行為を付与する。test1675の命令後に本文値を後置する構成や、test1701の曖昧な移動先を後から補う構成とは異なり、最初から対象・動作が完全に明示されている。",
+      "semantic_judgment": "引用の役割を例文・本文内容ではなく現在の実行依頼として明示。対象は現在表示中の一ページ全体であり、全ページや過去の選択への参照を含まない。"
+    }
+  ],
+  "within_new_dev_family_note": {
+    "groups": [
+      "v03_extra_dev_quoted_setting_as_execution",
+      "v03_extra_dev_quoted_generation_is_current_request"
+    ],
+    "rule": "Related quoted-current-request contrasts; keep both in dev, never split one into train/test."
+  },
+  "source_files_unchanged": true,
+  "model_calls": false,
+  "candidate_sha256": "ac07a6f4a1165d96ebbd6cf3f765a8f61094479a611b19694a97d64014987d5f"
+}

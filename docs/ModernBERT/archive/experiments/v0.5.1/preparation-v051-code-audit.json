@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "reviewed_at_utc": "2026-10-18T05:44:24.485093+00:00",
+  "root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17",
+  "head": "fb2ab535b7728948f7106108e6a6faaba1974a4e",
+  "review_scope": "Only pending train.py, test_comparison.py, build_colab.py and comparison.py changes for the v0.5.1 numerical fix and log surfacing; no wider refactor audit.",
+  "source_sha256": {
+    "train.py": "e89a706df00691b363d68f594f8dcacff22ff75d0230ff706c9944a4cc1c546d",
+    "test_comparison.py": "5d25ee36a1b3bdb68d493a5430538ef9cd2a94bb4bf441ed0612784d48cffea4",
+    "build_colab.py": "aded732b2c13320d3c898c281d9489bfa9cd8f37b8ed7407ffb782ec844aa17a",
+    "comparison.py": "8868b0d54b7b34212f99a3a6c0cff7f49a64df2ac2af0359509c2a3b602f41a0"
+  },
+  "scoped_git_diff_sha256": "2137eadfe50c5381b5b7c6127fa7b7657c1dded5fa06aae9de8df7e15829a19f",
+  "verdict": "No actionable substantive issue found in the exact reviewed fix.",
+  "findings": [],
+  "checks": [
+    {
+      "area": "Objective equivalence",
+      "file": "train.py",
+      "lines": "183-194",
+      "result": "pass_by_static_analysis",
+      "detail": "Both directions remain KL(second||first) and KL(first||second), averaged by one half, with class sums and batchmean reduction. CE remains average of the two example-mean CEs. Replacing probability targets with log targets changes numerical evaluation, not the intended objective."
+    },
+    {
+      "area": "Gradient correctness and underflow",
+      "file": "train.py",
+      "lines": "186-193",
+      "result": "pass_by_static_analysis",
+      "detail": "log_softmax supplies finite negative log probabilities for the reported finite extreme logits. log_target=True evaluates exp(target_log)*(target_log-input_log), so it avoids the logarithm of an underflowed zero probability in target-side differentiation. Neither direction is detached or clamped, preserving both gradient paths. This directly addresses the reported probability-target derivative failure; it is not a claim of finiteness for already-NaN/Inf input logits."
+    },
+    {
+      "area": "Zero KL coefficient",
+      "file": "train.py",
+      "lines": "128-135",
+      "result": "pass_by_static_analysis",
+      "detail": "The alpha=0 branch returns CE itself, rather than CE+0*KL. The independently computed KL diagnostic is detached before accumulation and is not reachable from loss.backward(). Computing KL for diagnostics does not introduce a backward path into that loss."
+    },
+    {
+      "area": "Nonfinite dev handling",
+      "file": "train.py",
+      "lines": "89-99,209-239",
+      "result": "pass_by_static_analysis",
+      "detail": "Nonfinite dev logits are rejected before argmax/metrics. Nonfinite macroF1, accuracy or dev loss are rejected before appending history, changing callback.best or saving a checkpoint. Valid finite dev values retain the same selection_key rule. No test-selection input or fallback candidate is introduced."
+    },
+    {
+      "area": "Regression tests",
+      "file": "test_comparison.py",
+      "lines": "43-131",
+      "result": "test_code_reviewed_not_executed",
+      "detail": "Extreme float32 logits explicitly induce softmax zeros; alpha0 and alpha1 loss/gradients are checked against a float64 reference with non-underflowing probabilities at these chosen magnitudes. Separate injected-NaN diagnostic test verifies exact CE return and absent KL backward dependency. Nonfinite dev tests verify rejection before history/candidate publication. Existing symmetry/batch-scale and train/eval/reload tests remain present."
+    },
+    {
+      "area": "Traceback propagation",
+      "file": "comparison.py",
+      "lines": "110-118",
+      "result": "pass_by_static_analysis",
+      "detail": "Stdout is drained before pipe close/wait, child nonzero exit prints the saved diagnostic tail and still raises RuntimeError. Full child output remains in its log; no failed condition can continue into method selection."
+    },
+    {
+      "area": "Colab launcher and release routing",
+      "file": "build_colab.py",
+      "lines": "60-68,169-184",
+      "result": "pass_by_static_analysis",
+      "detail": "v0.5 default names remain unchanged; v0.5.1 generates distinct v051 archive/runtime/result names. Coordinator output is drained to comparison.log, errors surface the captured tail, and nonzero coordinator exit raises instead of printing success. open(x) preserves the fresh-run requirement."
+    },
+    {
+      "area": "Diagnostic packaging",
+      "file": "comparison.py",
+      "lines": "440-445",
+      "result": "pass_by_static_analysis",
+      "detail": "comparison.log is optional for direct/script fixtures and included in the normal existing hash/archive collection when present. It does not alter model selection or acceptance eligibility."
+    },
+    {
+      "area": "Syntax",
+      "files": [
+        "train.py",
+        "test_comparison.py",
+        "build_colab.py",
+        "comparison.py"
+      ],
+      "result": "ast_parse_passed",
+      "detail": "Parsed current Python source with ast.parse only; did not import or execute project modules."
+    }
+  ],
+  "preserved_boundaries": [
+    "Existing one-pass ordinary CE evaluation branch is unchanged.",
+    "Dev-only epoch/LR/primary/method selection, deferred evaluation ordering and regression-only test acceptance policy are untouched by the scoped diff.",
+    "No seed/LR/dropout/data/label/prompt hyperparameters changed in the reviewed diff.",
+    "This review did not edit experiments/v0.5, experiments/v0.5.1, shared source, data or weights."
+  ],
+  "execution_limits": {
+    "repository_edits": false,
+    "tests_run": false,
+    "model_runs": false,
+    "training": false,
+    "installs": false,
+    "network_or_remote_ui": false,
+    "only_written_file": "/private/tmp/nyamuru-v051-fix-code-audit.json",
+    "statement": "The exact fix is supported by static reasoning and reviewed regression assertions. Parent owns their execution and subsequent T4 validation; a successful new Colab training run was not observed here."
+  }
+}

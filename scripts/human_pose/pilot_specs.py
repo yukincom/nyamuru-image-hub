@@ -1,0 +1,33 @@
+"""出典を確認した代表6件の解釈と、省略した条件を記録する。"""
+
+# 左右や接触を補った箇所は、元の英文の条件と区別する。
+PILOTS = [
+    {'key': 'standing', 'id': 'pose-standing-relaxed-with-weight-on-one-leg', 'view': 'front',
+     'interpretation': ['Kreaを基準に左脚支持、右膝を緩める。骨盤の傾きと両足の位置を調整し、遊脚の足裏も床へ合わせる。',
+                        '両腕は下ろす。元画像の共通視線・髪・服装は姿勢に含めない。'],
+     'source_comparison': ['利用者指定でKreaを採用。元画像の足先は画面外。三面図の背面は支持脚が逆に見えるため正面を優先する。'],
+     'approximation': ['掌を体側へ向けて指を揃えた近似。体重の物理計算は行わず、胴と支持足の配置で表す。']},
+    {'key': 'wall', 'id': 'pose-leaning-one-shoulder-against-a-wall', 'view': 'front',
+     'interpretation': ['原文は左右を指定しない。今回は左肩を壁へ預ける。',
+                        '利用者の指示に合わせ、本人の右肩の下へ右かかとを置き、左足も近くへ寄せる。'],
+     'source_comparison': ['利用者指定でKreaを採用。revision 15の脚を遠くへ置いた肢位を修正。三面図の側面の壁は背後にも見えるので正面の接触を優先。'],
+     'approximation': ['脚の交差は原文の必須条件ではないので加えない。壁は接触が分かる薄い面だけを表示する。']},
+    {'key': 'pole', 'id': 'pose-standing-and-gripping-a-vertical-metal-pole-at-shoulder-height-with-one-hand', 'view': 'front',
+     'interpretation': ['原文は左右を指定しない。今回は右手を肩付近まで上げ、縦の支柱を握る位置へ置く。'],
+     'source_comparison': ['利用者の「手の向きが逆、最初の方が近い」という指摘に合わせ、右腕・掌・指をrevision 9の値へ戻した。'],
+     'approximation': ['指と支柱の厳密な接触は近似。握りの正確な画像指示には使わない。']},
+    {'key': 'seated', 'id': 'pose-sitting-upright-on-a-stool', 'view': 'oblique',
+     'interpretation': ['背すじを立て、スツールの座面へお尻を合わせる。',
+                        '元Kreaの肘の左右差を優先。掌を太ももへ向け、指を揃えて両手を中央へ寄せる。膝と足を近づけ、座高は素体の脚長へ合わせる。'],
+     'source_comparison': ['利用者指定でKreaを採用。三面図の下腿・足は生成による補完。'],
+     'approximation': ['手は腿の上で重ねる近似。元画像の前内側へ下がる指の形・接触と椅子の細部は一致していない。']},
+    {'key': 'squat', 'id': 'pose-in-a-deep-squat-with-heels-flat-on-the-floor', 'view': 'oblique',
+     'interpretation': ['原文のheels flatを優先し、両足裏とかかとを床へ近づけて深くしゃがむ。',
+                        '膝の屈曲面を合わせ、足先を外へ18度向ける。肘の左右差を付け、前腕と揃えた指を膝中央へ寄せる。'],
+     'source_comparison': ['利用者指定でKreaを採用。生成図v2でかかとを修正し、v3のRIGHT SIDEは左側面の鏡映として補った。独立した奥行き・非対称形状の根拠にはしない。'],
+     'approximation': ['深い曲げで膝表面のえぐれが残り、素材としての形状確認は未完了。全身の物理的な釣合いや筋肉変形は保証しない。']},
+    {'key': 'lying', 'id': 'pose-lying-on-back-with-knees-bent', 'view': 'oblique',
+     'interpretation': ['仰向けで両膝を曲げる。腕を体側へ伸ばし、掌を床・腿側へ向ける。左右の足に前後差を付ける。'],
+     'source_comparison': ['利用者指定で元Qwenを優先。足を近づけ前後差を90mmへ修正。肘の曲がる面・掌面を合わせる。元画像との比較用に真上からも撮影する。頭方向は独立扱い。'],
+     'approximation': ['膝表面のえぐれと、元画像より体側から離れた手の位置に差が残る。後頭部・背面・足の床位置を確認し、肩と腰の自然な隙間は残す。']},
+]

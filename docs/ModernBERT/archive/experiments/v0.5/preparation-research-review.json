@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-10-18",
+  "scope": "指定2ファイルの研究記述と比較計画の読取り専用監査。実装レビュー、学習、repository変更はしていない。",
+  "files": [
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.5/docs/2026-10-18-v05-research-and-protocol.md",
+    "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.5/comparison-plan.json"
+  ],
+  "verdict": "指摘1件は親の修正を再読して解決確認。指定範囲に未解決の重大な不整合なし。",
+  "open_findings_count": 0,
+  "findings": [
+    {
+      "priority": 2,
+      "status": "resolved",
+      "resolution": "親がprotocol12行目をTable4にR-Drop有無比較が存在する説明へ修正。修正後の行を再読し、一次資料に一致することを確認した。",
+      "file": "experiments/v0.5/docs/2026-10-18-v05-research-and-protocol.md",
+      "line": 12,
+      "title": "SemEval 2025のR-Drop有無ablationを認める",
+      "current_claim": "掲載比較は主にハイパーパラメータ最適化の有無で、R-Drop単独の効果を切り出すablationではない。",
+      "reason": "一次PDFのp1909 (PDF5ページ目)、Ablation Study節およびTable4は明示的にBERTのwith/without R-dropを比較している。ハイパーパラメータ最適化有無は別のTable3。現在の記述は両表を取り違えてR-Drop比較の存在を否定している。",
+      "evidence": {
+        "primary_url": "https://aclanthology.org/2025.semeval-1.248.pdf",
+        "location": "p1909, Ablation Study, Table4",
+        "pairs_w_rdrop_vs_wo_rdrop": {
+          "promise_status": [
+            0.7875,
+            0.75
+          ],
+          "evidence_status": [
+            0.6753,
+            0.6125
+          ],
+          "verification_timeline": [
+            0.4252,
+            0.3756
+          ],
+          "evidence_quality": [
+            0.3,
+            0.2752
+          ]
+        }
+      },
+      "recommended_replacement": "英語のpromise verificationへ二視点とKL正則化を応用。Table4にR-Drop有無の比較がある。ただし今回のような同一二視点の対照でKLだけを分離した比較とは確認できず、今回の改善幅へは換算しない。",
+      "caution": "本文は双方にOptunaで調整したパラメータを使うと記すが、全条件の一致やseed間分散はこの表から確認できない。表の存在と比較の厳密さを分ける。"
+    }
+  ],
+  "verified_consistent": [
+    {
+      "topic": "EliDecide",
+      "result": "OOS KCR50%の同じ境界方式でSoftmax表現87.25→SupCon88.57はTable2に一致。AAAI2026とarXiv2025の区別、教師付き既知例外を未知拒否へ置換しない留保も妥当。",
+      "primary_url": "https://arxiv.org/html/2511.16685v2"
+    },
+    {
+      "topic": "CUC",
+      "result": "BANKING77 5-shot Vanilla77.91→完成84.41はTable4に一致。データ生成/検証/feedbackによる改善でloss変更単独ではないという説明も一致。",
+      "primary_url": "https://aclanthology.org/2025.coling-main.151.pdf"
+    },
+    {
+      "topic": "DDAIR",
+      "result": "本文4.3とTable1の2/5-shot+10synthetic、5 sampling sets×3 seeds=15のmacroF1平均に一致。BANKING77/CLINC150とMPGTで除去/再生成の相対効果が違うという要約は論文の主張に沿う。一律効果でないという留保あり。",
+      "primary_url": "https://aclanthology.org/2026.eacl-short.20.pdf"
+    },
+    {
+      "topic": "R-Drop original",
+      "result": "初出2021-06-28、改訂2021-10-29、NeurIPS2021採択。2025応用と新旧年を区別する記述は正確。著者READMEの二視点CE平均と対称KLに沿い、今回のKL例数正規化を明示しており係数尺度の留保もある。",
+      "primary_urls": [
+        "https://arxiv.org/abs/2106.14448",
+        "https://github.com/dropreg/R-Drop"
+      ]
+    },
+    {
+      "topic": "same-data three-condition protocol",
+      "result": "文書のbaseline/dropout_2view/rdropのviews、dropout、KL係数がcomparison-plan.jsonと一致。dropout対R-Dropが同じ2forwardでKLだけ変わる設計、baseline対dropoutは複合変更という留保も整合。実際の学習コード実装は今回未監査。"
+    },
+    {
+      "topic": "retired test and reused dev",
+      "result": "文書は既読test73を回帰診断として扱い、dev再利用の楽観性を明示。planのselection_split=dev、independent_acceptance_eligible=falseと一致。学習/選択後にtest評価する順序と、未使用発話での95%達成判断を保留する方針は整合。"
+    }
+  ],
+  "limits": [
+    "実データのバイト列・SHA一致、checkpoint構造、実行時にtestを選択へ使わない実装は親担当。本監査は文書とJSONの宣言整合まで。",
+    "対象ファイルは修正していない。監査結果のみ指定された/private/tmpへ保存。",
+    "新たな大規模調査は行わず、指定出典の該当箇所だけ再確認。"
+  ]
+}

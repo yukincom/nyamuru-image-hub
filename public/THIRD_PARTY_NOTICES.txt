@@ -158,19 +158,43 @@ POSSIBILITY OF SUCH DAMAGE.
 Optional local image-analysis components (not bundled)
 ------------------------------------------------------
 
-NDLOCR-Lite — Creative Commons Attribution 4.0 International (CC BY 4.0)
-Copyright / provider: National Diet Library, Japan
-https://github.com/ndl-lab/ndlocr-lite
+Baberu OCR — Apache License 2.0
+Provider: genshiai-daichi
+https://huggingface.co/genshiai-daichi/baberu-ocr
 
-NDLOCR-Lite, its Python environment, and its ONNX model files are installed in
-an independent local repository and are not copied into this project's source
-or web bundle. If they are shared or redistributed, the attribution and change
-indication requirements in the upstream LICENCE file apply. Its dependencies
-remain subject to their respective licenses.
+Baberu OCR model, inference files, tokenizer, and Python environment are
+downloaded only by the explicit local setup command and are not copied into
+this project's Git history or web bundle. Redistribution remains subject to
+the upstream model card and LICENSE. Its dependencies remain subject to their
+respective licenses.
 
 The optional manga structure detector likewise uses code and model files from
 an independent local installation. They are not bundled with this project. See
 docs/LOCAL_VISION_COMPONENTS.md for the local boundary and source links.
+
+WD ViT Tagger v3 — Apache License 2.0 (model-card metadata)
+Provider: SmilingWolf
+https://huggingface.co/SmilingWolf/wd-vit-tagger-v3
+
+The optional WD model, selected tag list, and pinned model card are downloaded
+only by the explicit local setup command into a Git-ignored directory. They are
+not copied into this project's Git history or web bundle. The pinned upstream
+tree has no separate LICENSE file; setup preserves the SHA-256-verified model
+card containing the license metadata and training-data description. See
+docs/LOCAL_VISION_COMPONENTS.md for the exact revision and artifact hashes.
+
+Optional local packaging component (not bundled)
+-------------------------------------------------
+
+bagit-python 1.9.0 — Public Domain
+Provider: Library of Congress
+https://github.com/LibraryOfCongress/bagit-python/tree/v1.9.0
+
+bagit-python is installed only by an explicit local command and is used as an
+independent BagIt validator. Its source is not vendored into this repository
+and it is not copied into the web bundle. The upstream project dedicates the
+package to the public domain; its distributed files remain governed by the
+notices included by the upstream project.
 
 Build and development dependencies
 ----------------------------------
@@ -192,3 +216,174 @@ own license.
 The complete license text supplied by each package is available in that
 package's installed distribution. Transitive dependencies are recorded in
 package-lock.json and remain under their respective licenses.
+
+
+Efude stroke stabilisation adaptation — MIT
+-----------------------------------------
+Upstream: https://github.com/852wa/Efude
+Revision: ca3e3a414d603663723bed8c6ef8db6f89deab1f
+Source: crates/efude-stroke/src/builder.rs
+Local: src/lib/paintStroke.ts
+
+The timestamp sanitisation and time-weighted stabilisation algorithm are
+adapted to TypeScript from Efude's engine. The upstream source offers
+MIT OR Apache-2.0; this adaptation uses the MIT option. The browser renderer,
+layer model and editor integration are Nyamuru Image Hub implementations.
+Efude's MPL-2.0 application UI and assets are not included.
+
+MIT License
+
+Copyright (c) 2026 Hakoniwa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+
+Paper.js 0.12.18
+https://github.com/paperjs/paper.js/tree/v0.12.18
+
+Copyright (c) 2011 - 2020, Jürg Lehni & Jonathan Puckey
+http://juerglehni.com/ & https://puckey.studio/
+All rights reserved.
+
+The MIT License (MIT)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Three.js 0.186.1 — MIT
+https://threejs.org/
+
+The MIT License
+
+Copyright © 2010-2026 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+fflate 0.8.2 (bundled by Three.js FBXLoader) — MIT
+https://github.com/101arrowz/fflate/tree/v0.8.2
+
+MIT License
+
+Copyright (c) 2023 Arjun Barrett
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Bundled human-pose motion library — CC0-1.0
+
+Author: Quaternius
+Source: https://quaternius.itch.io/universal-animation-library
+Local: src/assets/human-pose-motions/quaternius-standard.json
+
+The 17 selected animations are converted from the Universal Animation Library
+Standard pack. Conversion details, original hashes, and selected clip names are
+recorded in src/assets/human-pose-motions/provenance.json.
+The source license is retained in src/assets/human-pose-motions/LICENSE.txt.
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/
+
+-------------------------------------------------------------------------------
+
+Human-pose study annotations — MIT
+
+Source: https://github.com/Pyrolistical/krea-2-qwen-image-2-1-study
+Revision: 5fcb3705e02a2fa7777708e432ac00aa73e43dd1
+Local annotations: scripts/human_pose/data/
+The original study images are not distributed in this repository.
+
+MIT License
+
+Copyright (c) 2026 Ronald Chen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Bundled voice-intent classifier — MIT
+
+Base model: sbintuitions/modernbert-ja-30m
+Source: https://huggingface.co/sbintuitions/modernbert-ja-30m
+The adopted fine-tuned classifier is distributed separately from the web bundle
+at models/nyamuru-voice-v04-seed43/, including LICENSE, README.md, and provenance.json.
+
+Sample artwork and video in sample/ remain copyright yukin_co and are excluded
+from the application MIT license; see sample/README.md.

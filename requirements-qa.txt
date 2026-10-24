@@ -1,0 +1,5 @@
+numpy>=1.26,<3
+opencv-python-headless>=4.8,<5
+Pillow>=10,<13
+jsonschema>=4.26,<5
+certifi>=2026.10.19

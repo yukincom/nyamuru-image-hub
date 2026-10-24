@@ -1,0 +1,15 @@
+{
+  "plan.json": "ca0a736a81d59c9035465da28169f8aa8e76c7c367e24754f82ef4b5db9b02c9",
+  "report.md": "217ddc11f9a2ff5515cc673053259de2b2ff9b769f6aa1aa77e3f10b5a06c309",
+  "summary.json": "b5f0352cb61bf0eee2f49da8470f21f265705162331c796327afe1855b98c4e2",
+  "test.jsonl": "6f8d50074a4918292e7be77f7ab43e6f301b6803cf9a40de255d2dd7375c243d",
+  "v04_seed42/daily-predictions.jsonl": "0ef0aac667bbd858aaa3661180290f559f4bfaf1f5806ff4139710d8ed810774",
+  "v04_seed42/metrics.json": "1f1dd062ee074a355bc6d1048c512be5da62d791419f021f9886792fc443caec",
+  "v04_seed42/misclassifications.md": "218cbe008fc53ecc8306a64e698db0c239ad011e5e0fb8ca332ba5f3576d4c5e",
+  "v04_seed43/daily-predictions.jsonl": "bd6b76cdc75bbdb9cc3b14b34e2e16146a8fba98b3fefe7e710434990e12bcec",
+  "v04_seed43/metrics.json": "0f07dadf3eaee72bf4d0a5f313ea10f583db1ae00cd057659c2060cd82ec900d",
+  "v04_seed43/misclassifications.md": "1a857f44c319462e0287576131c14f4ddf259457b8f930af1dcd8d2745beb15d",
+  "v04_seed44/daily-predictions.jsonl": "061b45590b61fd1920fd9a8f9b55dede02e7f1ebc2ee0e406e0c1e160f1c6f50",
+  "v04_seed44/metrics.json": "93f2bcc141b9d2fe1ee0e78b48fd9a6c1384a869c3d34de3225c8ff0d1b545e2",
+  "v04_seed44/misclassifications.md": "9546fdf7bbf2311dfdc608fdc1a934774cf0f2e688037017d0beaaf6fcd5067b"
+}

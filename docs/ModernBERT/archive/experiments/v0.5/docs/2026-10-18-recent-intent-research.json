@@ -1,0 +1,192 @@
+{
+  "as_of": "2026-10-18",
+  "scope": "日本語19クラス小型encoderのintent/OOS/意味的境界。一次資料の調査のみ。学習・モデル変更・repository変更なし。",
+  "context_received": {
+    "model": "ModernBERT-ja-30m (実36.8M), 全層fine-tune",
+    "data": "train1296 synthetic中心 / newdev68 / newtest73",
+    "training": "3 seeds × LR 2e-5・5e-5, 10 epochs, batch16, float32",
+    "symptom": "train99-100%, test約81%, high-confidence errors",
+    "hard_boundaries": [
+      "needs_clarification対具体的支持intent",
+      "not_command対命令",
+      "out_of_scope対近接する支持intent",
+      "単一対複数操作"
+    ]
+  },
+  "bottom_line": "固定train1296/既存devでの小変更を優先する最新方針に対して、dropout/R-Drop等の統制比較を押しのけるほど直接的な2025/26のintent専用手法は確認できなかった。新しい実装候補EliDecideのSupCon ablationは参考になるが、既知の例外3クラスを含む19-way CEルートへの直接証拠ではない。CUC/HN-OOSのデータ改善は別実験候補として分離する。どの報告改善幅も今回の期待改善値には使わない。",
+  "fixed_data_conclusion": "追加LLM・文章データなしの候補はSupCon/局所positiveだが、EliDecideは別stageと境界head、KNNCLはqueue/momentum/LOFが必要。CE+小さなSupCon項を現行encoderへ足す案は独自adaptationであり、読了した2025/26論文がそのまま検証した手法として扱わない。",
+  "papers": [
+    {
+      "id": "CUC",
+      "title": "Clear Up Confusion: Iterative Differential Generation for Fine-grained Intent Detection with Contrastive Feedback",
+      "priority": "high",
+      "primary_url": "https://aclanthology.org/2025.coling-main.151/",
+      "fulltext_url": "https://aclanthology.org/2025.coling-main.151.pdf",
+      "dates": {
+        "first_verified_publication": "2025-01 (COLING, 開催2025-01-19〜24)",
+        "preprint_first": null,
+        "revision": "別の改訂履歴を確認できず"
+      },
+      "method": "混同するintent対を先に選び、差分説明を条件に合成。正当性と重複を検査し、studentの誤分類・高entropy例を次の生成へfeedback。最終classifierは通常のcross-entropy。",
+      "task_model_data": "英語BANKING77/HWU64/CLINC150。Llama-3-8B-Instructで各class100例生成し、RoBERTa-base+linearを学習。0/5/10-shotおよびfull-shot。",
+      "observed_result": {
+        "best_matched_example": "BANKING77 5-shotの同一生成系ablation: Vanilla77.91 → differential80.20 → rubric81.46 → feedback82.79 → 完成84.41。Vanilla→完成+6.50pp。",
+        "more_comparable_full_shot": "RoBERTa-base92.81 → CUC94.84 (+2.03pp) on BANKING77; CLINC150は96.35 →96.70 (+0.35pp)。",
+        "caveat": "新しいsynthetic教師情報を投入した改善。単純なloss変更の効果ではない。主比較は一部既報値と再実装が混在。"
+      },
+      "small_encoder_applicability": "高い。データ生成・検証手法はModernBERTを変えずに移せる。単独クラスの同義言い換え増産より、混同対の差分を定義する部分が今回に対応。",
+      "extra_llm_or_growth": "論文そのものはLLM生成・検証とMiniLMによる近接検索を使用。配備時encoder増大なし。LLMなしで人手の差分対を作る応用は可能だが論文と同じ実験ではない。",
+      "official_code": {
+        "url": null,
+        "status": "論文PDF中にrepositoryリンクなし。限定検索でも著者公式実装を特定できず。"
+      },
+      "leakage_and_transfer": "feedback用pseudo-testはtrain由来の真の少数ラベル例と近い生成例。今回のnewtest誤りをそのまま生成seedにすると独立評価ではなくなる。train内OOF誤り/独立開発poolから混同対を選び、元文と派生文は同一splitに束ねる。日本語・例外ラベル・19クラスでの効果は未測定。",
+      "evidence_location": "Tables2-4, Sections3.2-3.5, 4.3"
+    },
+    {
+      "id": "EliDecide",
+      "title": "Ellipsoid-Based Decision Boundaries for Open Intent Classification",
+      "priority": "medium; new method with official code",
+      "primary_url": "https://ojs.aaai.org/index.php/AAAI/article/view/40837",
+      "fulltext_url": "https://arxiv.org/html/2511.16685v2",
+      "dates": {
+        "preprint_first": "2025-11-13",
+        "revision": "2025-11-24 (v2)",
+        "proceedings_publication": "2026-03-14 (AAAI26)"
+      },
+      "method": "BERTでsupervised contrastive表現を作り、各classの学習可能な行列で楕円体境界を学習。既知sampleで拡大、異ラベル表現を混合したpseudo-openで収縮。",
+      "task_model_data": "BERT-base-uncased、Banking77/OOS(CLINC)/StackOverflow。known class ratio25/50/75%、未知classはtrain/validationから除外、5 seeds平均。",
+      "observed_result": {
+        "matched_backbone": "OOSのKCR平均macro F1: DA-ADB85.22 → EliDecide87.75 (+2.53pp)。Bankingの平均macro F1: CLAB80.91 →82.76 (+1.85pp)。すべてBERT/TEXTOIR。",
+        "loss_ablation": "OOS KCR50%で同じ楕円体方式のSoftmax表現87.25 → SCL表現88.57 (+1.32pp F1)。",
+        "caveat": "KCR低下はclass数を減らす設定であり、そのまま1class当たりfew-shotとは呼べない。"
+      },
+      "small_encoder_applicability": "encoder自体は置換可能と推定。ただし未知拒否の別head/境界になる。今回まず移すならSupCon表現のablationが小さい。フル楕円体はclass数×特徴次元²の行列を持ち、1296例での安定性は未検証。",
+      "extra_llm_or_growth": "LLM追加データ不要。pseudo-openは既存表現のmixing。encoder増大は不要だが、論文通りのフル境界は追加行列パラメータと距離計算が必要。",
+      "official_code": {
+        "url": "https://github.com/thuiar/TEXTOIR",
+        "verified_entrypoint": "https://github.com/thuiar/TEXTOIR/blob/main/open_intent_detection/examples/run_EliDecide.sh",
+        "status": "論文が公式repoを明示し、実行scriptのEliDecide/bert_con/config指定を確認。実行・再現は未実施。"
+      },
+      "leakage_and_transfer": "論文では未知train/validationを使わない。今回out_of_scope/not_command/needs_clarificationは既に教師ラベルなので、全部unknownとして一括拒否するのは意味を変える。境界・閾値・loss係数の選択にnewtestを使わない。multi-commandの表現混合をunknownにする仮定も、複数操作が支持ラベルの場合は衝突しうる。",
+      "evidence_location": "arXiv Table1, Table2, Experimental Settings, AppendixA"
+    },
+    {
+      "id": "HN_OOS",
+      "title": "Generating Hard-Negative Out-of-Scope Data with ChatGPT for Intent Classification",
+      "priority": "high despite 2024",
+      "primary_url": "https://aclanthology.org/2024.lrec-main.674/",
+      "fulltext_url": "https://aclanthology.org/2024.lrec-main.674.pdf",
+      "dates": {
+        "preprint_first": "2024-03-08",
+        "revision": "arXiv v1のみ",
+        "proceedings_publication": "2024-05 (LREC-COLING)"
+      },
+      "method": "支持intentの重要語を含むが、そのintentを要求しないOOS文を生成。対象intentと全intentの二段階検証後、人手でlabelを確認。",
+      "task_model_data": "英語CLINC150/Banking77/ATIS/SNIPS/HWU64。BERT/RoBERTa/DistilBERTでhard OOSの難しさを評価。OOSを学習に加える実験はBERT-base-uncased。",
+      "observed_result": {
+        "matched_example": "Banking77でINS+general OOS学習 → INS+general+hard OOS学習により、hard OOSのAUROC0.874 →0.992。general OOSのAUROC0.997 →0.996。",
+        "caveat": "AUROCの改善であり、19分類accuracyの改善率ではない。各学習データ80/20分割による生成分布内評価。"
+      },
+      "small_encoder_applicability": "高い。『ページを追加』『並べ替え』『別名保存』など語彙の近い不支持操作、予定/説明文、必須情報が欠けた文を対象classごとに対比する発想が直接適用できる。not_command/needs_clarificationへ拡張する部分は今回用の推論。",
+      "extra_llm_or_growth": "論文はChatGPTで生成。追加encoder/推論LLM不要。人手で同等の境界例を足す場合はLLM必須でない。",
+      "official_code": {
+        "url": "https://github.com/frank7li/Generating-Hard-Negative-Out-of-Scope-Data-with-ChatGPT-for-Intent-Classification",
+        "status": "著者公式。生成・検証・評価codeと5データセット公開を確認。"
+      },
+      "leakage_and_transfer": "論文のランダム80/20は生成器/テンプレート単位の独立性を保証しない。今回はpair族・原文・生成batchごとのgroup splitと未使用の実発話評価が必要。同じ動詞があるだけで負例にせず、要求/予定/説明/不足条件の判定を人手確認する。",
+      "evidence_location": "Sections3.2-3.3,5.3; Table4"
+    },
+    {
+      "id": "MultiCluster_MiniLM_2026",
+      "title": "A Multi-cluster Boundary Learning Method for Out-of-Scope Intent Detection via MiniLM Embedding",
+      "priority": "low/watch; do not adopt from headline",
+      "primary_url": "https://arxiv.org/abs/2607.07974",
+      "fulltext_url": "https://arxiv.org/html/2607.07974v1",
+      "dates": {
+        "preprint_first": "2026-07-08",
+        "revision": "v1のみ",
+        "publication_status": "preprint; comments=To submit"
+      },
+      "method": "MiniLMの各intentを複数局所clusterに分け、正規化距離で境界外をOOS拒否。別router/expertで既知intentを分類。",
+      "task_model_data": "CLINC150/StackOverflow/Banking77、6:1:3分割、KIR25/50/75%。gateは22M all-MiniLM-L6-v2、router/expertは135M SmolLM-135M、論文の全体規模記述は約160M。",
+      "observed_result": {
+        "tradeoff": "Banking77 KIR75%: DA-ADB→提案でOOS F1 69.37→86.49だが、Known F1 85.93→70.28、overall accuracy81.12→77.84。",
+        "caveat": "OOS単一指標だけを見ると既知拒否の増加を見落とす。今回の目的で全面的に優位とはいえない。"
+      },
+      "small_encoder_applicability": "既存encoder上の複数prototype/距離gateという発想は軽く試せるが、論文の全systemは36.8M単一encoderより大きい。英語MiniLMの日本語転用も未確認。",
+      "extra_llm_or_growth": "追加生成データは本文で確認できず。フル方式はrouter/expertを追加。gateのみの移植は別実験。",
+      "official_code": {
+        "url": null,
+        "status": "abstractにsupplementary materialsにcodeありと記載。公開repository/linkは確認できず。"
+      },
+      "leakage_and_transfer": "validationのunknown例で境界λを選択するため、unknown例不要な比較手法と情報条件に差がある。本文4.5のunknown validationとtestのoverlap説明は曖昧だが、図の分布重なりを述べた可能性があり、同一行リークを断定できない。split/seed/重複排除をcodeで再確認するまで優先度低。",
+      "evidence_location": "Sections4.1,4.2,4.5; Table2"
+    }
+  ],
+  "classical_supplement": {
+    "id": "KNNCL",
+    "title": "KNN-Contrastive Learning for Out-of-Domain Intent Classification",
+    "primary_url": "https://aclanthology.org/2022.acl-long.352/",
+    "fulltext_url": "https://aclanthology.org/2022.acl-long.352.pdf",
+    "dates": {
+      "first_verified_publication": "2022-05 (ACL2022)",
+      "earlier_preprint": null,
+      "revision": "確認できず"
+    },
+    "method": "クラス全体を一つの塊に強制せず、同ラベルの近傍positiveを使うcontrastive学習とmomentum queueを組み合わせ、LOFで未知拒否。",
+    "task_model_data": "12-layer BERT、Banking/StackOverflow/CLINC-FULL/CLINC-SMALL。OOD例を学習に使わず、LOF閾値をIND validationで選択。",
+    "observed_result": "CLINC-FULL: 再実装SCL+LOF→KNNCLでOOD F1 70.05→76.36 (+6.31pp)、IND F1 88.63→92.61 (+3.98pp)。他baselineには既報値も混在。",
+    "small_encoder_applicability": "not_commandなど意味が多峰性のclassを単一prototypeへ押し潰さない動機が参考になる。ただし例外class同士の関係は論文未検証。小さいbatch16ならpositiveが少なくなるため、class-aware sampling/2-viewかqueueが必要。",
+    "extra_llm_or_growth": "追加LLM/外部データ不要。訓練用momentum encoderとmemory queue、推論用LOF/保存embeddingが必要。配備encoder本体は増やさなくてよい。",
+    "official_code": "https://github.com/zyh190507/KnnContrastiveForOOD",
+    "leakage_and_transfer": "近傍indexはtrainのみで構築。newtestをnegative miningや閾値選択に混ぜない。1296例に対して論文queue6500〜8000をそのまま踏襲する合理性は未確認。",
+    "evidence_location": "Sections4.2-4.4; Table2"
+  },
+  "screened_but_not_prioritized": [
+    {
+      "title": "Guiding Prototype Networks with label semantics for few-shot text classification",
+      "primary_url": "https://www.sciencedirect.com/science/article/pii/S0031320325001578",
+      "official_code": "https://github.com/YvoGao/Label-guided-Text-Classification",
+      "date": "2025-08 issue; initial online/revision dates unverified",
+      "finding": "BERTのprompt表現+labelへの距離損失+support sampleの距離補正。5-way、10-way/15-way episodic分類を含む。公式code存在。",
+      "reason": "出版社previewにはintent表の正確な改善値なし。大きな平均改善の記述はnews/reviewに対する5-way設定で、今回の19-way固定分類へ引用しない。"
+    },
+    {
+      "title": "Robust open intent classification in many-shot and few-shot scenarios",
+      "primary_url": "https://www.sciencedirect.com/science/article/abs/pii/S0893608025008457",
+      "official_code": "https://github.com/swufe-sys/ROIC",
+      "date": "2025; exact primary online date unverified",
+      "finding": "distance matrix、hard-negative mining、sample数に応じた特徴空間変換を提案。",
+      "reason": "出版社previewで数値表を確認できず、著者repoはREADMEのみでcode coming soon。実装候補としてEliDecide/KNNCLより証拠が弱い。"
+    },
+    {
+      "title": "On Collaborating Small and Large Models For Few-shot Intent Detection",
+      "primary_url": "https://aclanthology.org/2025.findings-emnlp.749/",
+      "official_code": "https://github.com/hustchenpeng/FCSLM",
+      "date": "2025-11",
+      "reason": "訓練augmentationに加え推論時もLLMを呼ぶ方式。今回small encoder単体を改善する目的と異なる。"
+    },
+    {
+      "title": "LCAN: A Label-Aware Contrastive Attention Network for Multi-Intent Recognition and Slot Filling in Task-Oriented Dialogue Systems",
+      "primary_url": "https://aclanthology.org/2025.findings-emnlp.1395/",
+      "date": "2025-11",
+      "reason": "MixATIS/MixSNIPSのintent+slot joint task。slotラベルがない19-way分類には前提が一致しない。直接の改善値として採用しない。"
+    }
+  ],
+  "application_inferences_not_paper_claims": [
+    "今回trainほぼ100%/test81%は表現力不足だけでなく、syntheticと実発話の分布差、境界例不足、label不一致でも起こる。訓練lossを複雑にする前に誤りがどの境界を跨ぐかをtrain内OOFで確認する。",
+    "『具体量あり/なし』『guide種別あり/なし』『実行要求/予定・観察・説明』『支持操作/似た不支持操作』『単一/複数』を各label対の判定表にし、positiveとhard negativeの最小意味差を人手確認する。これはCUC/HN-OOSからの応用で、論文の日本語評価結果ではない。",
+    "採用順の提案: (1)既存trainを使うCE対CE+局所的SupConの小規模比較、(2)混同対を狙う検証済み追加データ、(3)必要ならunknown専用の距離境界。loss変更とデータ追加を一緒に行わず、どちらが効いたか比較できるようにする。",
+    "ただしnot_commandやneeds_clarificationは様々な支持intentの語彙を含むため、多様な例外を全部同一prototypeへ強く集約するSupConは不適合の可能性がある。局所positiveか境界対を優先する仮説を検証する。",
+    "newdev68/newtest73では1件の正誤で約1.47/1.37pp動く。論文の1〜2pp差をそのまま有意な改善とみなさず、同一例に対するpairedな差、seedごとの誤り、例外classの誤受理数を併記する。",
+    "needs_clarificationは必須情報の欠如という意味labelであり、low-confidence拒否とは別。高確信なら曖昧性がない、という評価に置き換えない。",
+    "newtestから誤りパターンを読み込んで改善した後は、そのnewtestはregression setとして扱う。最終一般化判断には未使用holdoutが必要。"
+  ],
+  "verification_limits": [
+    "一次資料（論文本文/著者repo/出版社ページ）に限定。secondary検索結果は採用根拠にしていない。",
+    "公式実装の存在/entrypoint確認まで。依存インストール、学習、再現実験は未実施。",
+    "今回の日本語ModernBERT36.8Mで同じ改善が出る直接証拠は、調査した論文にない。",
+    "modelの分類ontologyは親からの要約のみ。実データやrepositoryは調査していない。"
+  ]
+}

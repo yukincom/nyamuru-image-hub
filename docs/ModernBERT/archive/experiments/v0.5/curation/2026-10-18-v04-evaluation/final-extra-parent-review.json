@@ -1,0 +1,2280 @@
+{
+  "rows": [
+    {
+      "id": "nyamuru_voice_3100",
+      "text": "今の作品を保存するところまでお願い。これで今日の作業は終わり。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "group": "v04_dev_final_extra_operation_then_closure",
+      "tags": [
+        "current_document",
+        "session_closure"
+      ],
+      "note": "現在作品の保存を依頼。作業終了は予定の補足であり、閉じる操作などを追加で依頼していない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "作業終了の報告と通常保存を組み合わせる旧335等の骨格。",
+      "nearest_top5": [
+        {
+          "ratio": 0.4897959183673469,
+          "id": "nyamuru_voice_1458",
+          "label": "artwork_mode_set",
+          "text": "作画モードを下書きにするところまでお願い。",
+          "pool": "v03_test",
+          "group": "v03_test_mode_preparation"
+        },
+        {
+          "ratio": 0.42857142857142855,
+          "id": "nyamuru_voice_335",
+          "label": "save",
+          "text": "変更は終わったよ。今すぐ作品を保存する操作をお願いできる？",
+          "pool": "v03_train",
+          "group": "v02_core_save_explicit_courtesy"
+        },
+        {
+          "ratio": 0.425531914893617,
+          "id": "nyamuru_voice_1569",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップを入れるところまでお願い。",
+          "pool": "v03_test",
+          "group": "v03_test_setting_execute"
+        },
+        {
+          "ratio": 0.4166666666666667,
+          "id": "nyamuru_voice_1368",
+          "label": "save",
+          "text": "忘れないうちに作品を保存しとこう。お願い。",
+          "pool": "v03_test",
+          "group": "v03_test_save_reminder"
+        },
+        {
+          "ratio": 0.3902439024390244,
+          "id": "nyamuru_massive_adapt_002",
+          "label": "save",
+          "text": "今の作品を保存してくれる",
+          "pool": "v03_train",
+          "group": "massive_adapt_save"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3101",
+      "text": "この作品の保存、引き受けてもらえる？　ここまで直した内容で。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "group": "v04_dev_final_extra_delegated_request_postposed_contents",
+      "tags": [
+        "request_question",
+        "current_document"
+      ],
+      "note": "保存という具体的な作業を引き受けるよう頼む依頼。後置句は現在作品の保存内容を指定。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "保存を引き受けるという依頼の後で保存内容を指定する。単純な敬語置換だけでなく、内容条件が後置される。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5641025641025641,
+          "id": "nyamuru_voice_1216",
+          "label": "save",
+          "text": "この作品、今保存してもらえる？",
+          "pool": "v03_dev",
+          "group": "v03_dev_current_document_save"
+        },
+        {
+          "ratio": 0.4166666666666667,
+          "id": "nyamuru_voice_324",
+          "label": "save",
+          "text": "少し席を外すよ。先に今の作品を保存してもらえる？",
+          "pool": "v03_train",
+          "group": "v02_core_save_pause_wrapup"
+        },
+        {
+          "ratio": 0.38095238095238093,
+          "id": "nyamuru_voice_1370",
+          "label": "save",
+          "text": "保存だけ先に済ませてもらえるかな。",
+          "pool": "v03_test",
+          "group": "v03_test_save_only"
+        },
+        {
+          "ratio": 0.3684210526315789,
+          "id": "nyamuru_voice_134",
+          "label": "out_of_scope_request",
+          "text": "この作品を別名で保存して",
+          "pool": "v03_legacy_dev",
+          "group": "out_save_as"
+        },
+        {
+          "ratio": 0.34285714285714286,
+          "id": "nyamuru_voice_142",
+          "label": "not_command",
+          "text": "この作品は保存済み？",
+          "pool": "v03_train",
+          "group": "save_status_question"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3102",
+      "text": "直前と、その一つ前の編集、合わせて二回のUndoをお願い。",
+      "label": "undo",
+      "slots": {
+        "count": 2
+      },
+      "group": "v04_dev_final_extra_enumerated_history_count",
+      "tags": [
+        "undo_count_two",
+        "edit_enumeration"
+      ],
+      "note": "直前の編集とその前の編集を列挙し、同一Undo二回として依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "直前と一つ前を合算するUndo範囲は旧1710の逐次取り消しと近い。",
+      "nearest_top5": [
+        {
+          "ratio": 0.509090909090909,
+          "id": "nyamuru_voice_354",
+          "label": "undo",
+          "text": "直前の調整をする前の状態と比べたいので、Undoを一回お願い。",
+          "pool": "v03_train",
+          "group": "v02_core_undo_compare_previous"
+        },
+        {
+          "ratio": 0.48148148148148145,
+          "id": "nyamuru_voice_364",
+          "label": "undo",
+          "text": "ここで四つ前の編集状態まで戻すために、Undoを四回お願い。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_core_undo_bounded_count"
+        },
+        {
+          "ratio": 0.47058823529411764,
+          "id": "nyamuru_voice_1223",
+          "label": "undo",
+          "text": "今の修正は不要だった。編集履歴のUndoを一回お願い。",
+          "pool": "v03_dev",
+          "group": "v03_dev_completed_edit_history"
+        },
+        {
+          "ratio": 0.4230769230769231,
+          "id": "nyamuru_voice_1025",
+          "label": "undo",
+          "text": "編集を取り消すほうのボタン、つまりUndoを一回お願い。",
+          "pool": "v03_train",
+          "group": "v03_undo_button_phrasing"
+        },
+        {
+          "ratio": 0.41509433962264153,
+          "id": "nyamuru_voice_1057",
+          "label": "undo",
+          "text": "この直前の編集は失敗だから、保存せずにUndoを一回して。",
+          "pool": "v03_train",
+          "group": "v03_undo_specific_latest_edit"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3103",
+      "text": "最後に入れた変更を、編集履歴で取り消してほしいんだ。一回分です。",
+      "label": "undo",
+      "slots": {
+        "count": 1
+      },
+      "group": "v04_dev_final_extra_history_request_postposed_count",
+      "tags": [
+        "undo_count_one",
+        "completed_edit"
+      ],
+      "note": "最後に完了した編集の取り消しを依頼し、一回という回数を後置。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "編集履歴で最後の変更を取り消す依頼を完結した後、一回分と回数を独立補足する。",
+      "nearest_top5": [
+        {
+          "ratio": 0.4897959183673469,
+          "id": "nyamuru_massive_adapt_011",
+          "label": "undo",
+          "text": "直前に行った二回の編集を履歴で取り消して",
+          "pool": "v03_train",
+          "group": "massive_adapt_history"
+        },
+        {
+          "ratio": 0.42857142857142855,
+          "id": "nyamuru_voice_1041",
+          "label": "undo",
+          "text": "最後に加えた四つの変更を取り消すので、Undoを四回して。",
+          "pool": "v03_train",
+          "group": "v03_undo_history_count"
+        },
+        {
+          "ratio": 0.4230769230769231,
+          "id": "nyamuru_massive_adapt_008",
+          "label": "undo",
+          "text": "直前の編集を履歴で一つ取り消してもらえませんか",
+          "pool": "v03_train",
+          "group": "massive_adapt_history"
+        },
+        {
+          "ratio": 0.4090909090909091,
+          "id": "nyamuru_voice_1222",
+          "label": "undo",
+          "text": "最後の編集を取り消してもらえる？",
+          "pool": "v03_dev",
+          "group": "v03_dev_completed_edit_history"
+        },
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_712",
+          "label": "needs_clarification",
+          "text": "作画方式を変更してほしいんだけど",
+          "pool": "v03_legacy_test",
+          "group": "v02_routes_unspecified_setting"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3104",
+      "text": "さっきUndoを三回かけた分、履歴から三件とも再適用をお願いします。",
+      "label": "redo",
+      "slots": {
+        "count": 3
+      },
+      "group": "v04_dev_final_extra_past_undo_count_to_redo",
+      "tags": [
+        "redo_count_three",
+        "past_undo"
+      ],
+      "note": "三回のUndoは過去の報告。現在はその三件を同じRedo操作で再適用する依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧394のUndo三回分を三件とも復元する例と具体的に一致。",
+      "nearest_top5": [
+        {
+          "ratio": 0.4918032786885246,
+          "id": "nyamuru_voice_394",
+          "label": "redo",
+          "text": "いまUndoを三回かけた分を復活させたい。リドゥを三回お願い。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_core_redo_bounded_count"
+        },
+        {
+          "ratio": 0.40816326530612246,
+          "id": "nyamuru_voice_1199",
+          "label": "save",
+          "text": "Undoはかけずに、通常保存をお願い。",
+          "pool": "v03_train",
+          "group": "v03_only_one_positive_clause"
+        },
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_2099",
+          "label": "compound_request",
+          "text": "Undo五回分をかけてから、Redoを一回返して。",
+          "pool": "v04_train_candidate",
+          "group": "v04_train_取り消し回数と別種操作"
+        },
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_382",
+          "label": "redo",
+          "text": "さっき消した変更のほうがよかった。取り消し履歴から一件だけ再適用して。",
+          "pool": "v03_train",
+          "group": "v02_core_redo_regret_undo"
+        },
+        {
+          "ratio": 0.39344262295081966,
+          "id": "nyamuru_voice_1063",
+          "label": "redo",
+          "text": "さっきのUndoは不要だった。取り消した変更を一つ再適用して。",
+          "pool": "v03_train",
+          "group": "v03_redo_restore_last_undo"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3105",
+      "text": "履歴の「やり直し」を一回お願い。対象は、直前にUndoした編集。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "group": "v04_dev_final_extra_quoted_action_postposed_target",
+      "tags": [
+        "redo_count_one",
+        "quoted_action_name"
+      ],
+      "note": "引用は履歴操作名であり、直前にUndoした編集を一回再適用する依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "履歴のやり直しという引用名で依頼を完結し、直前Undoした編集を対象として後置する。",
+      "nearest_top5": [
+        {
+          "ratio": 0.46153846153846156,
+          "id": "nyamuru_voice_378",
+          "label": "undo",
+          "text": "編集履歴の最新項目を取り消す操作を、一回お願いしたい。",
+          "pool": "v03_legacy_test",
+          "group": "v02_core_undo_history_control"
+        },
+        {
+          "ratio": 0.45614035087719296,
+          "id": "nyamuru_voice_402",
+          "label": "redo",
+          "text": "生成の再実行はしなくていいので、編集履歴のやり直しを一回お願い。",
+          "pool": "v03_train",
+          "group": "v02_core_redo_not_regeneration"
+        },
+        {
+          "ratio": 0.42105263157894735,
+          "id": "nyamuru_voice_412",
+          "label": "redo",
+          "text": "履歴からやり直すほうを一回お願い。新しく描き直す意味ではないよ。",
+          "pool": "v03_legacy_test",
+          "group": "v02_core_redo_history_control"
+        },
+        {
+          "ratio": 0.4166666666666667,
+          "id": "nyamuru_voice_357",
+          "label": "undo",
+          "text": "最後の調整はやり過ぎたので、一回Undoして。",
+          "pool": "v03_train",
+          "group": "v02_core_undo_reject_latest"
+        },
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_1093",
+          "label": "bubble_set",
+          "text": "この吹き出しの本文を「アンドゥを一回お願い」にして。",
+          "pool": "v03_train",
+          "group": "v03_history_quoted_or_reported"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3106",
+      "text": "ページをめくる操作で、先へ二回お願いします。",
+      "label": "page_navigate",
+      "slots": {
+        "direction": "next",
+        "count": 2
+      },
+      "group": "v04_dev_final_extra_repeated_navigation_nominal",
+      "tags": [
+        "next_page",
+        "repeat_count"
+      ],
+      "note": "作品内のページ送りを前方へ二回という同一操作の回数指定。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "ページをめくる操作だと同定したうえで先方向の反復数を指定する。二種の操作ではない。",
+      "nearest_top5": [
+        {
+          "ratio": 0.4666666666666667,
+          "id": "nyamuru_voice_028",
+          "label": "redo",
+          "text": "リドゥをお願いします",
+          "pool": "v03_legacy_test",
+          "group": "redo_basic"
+        },
+        {
+          "ratio": 0.4444444444444444,
+          "id": "nyamuru_voice_1259",
+          "label": "artwork_mode_set",
+          "text": "このページを描く前に、作画モードを一体型へ変更お願い。",
+          "pool": "v03_dev",
+          "group": "v03_dev_artwork_mode_and_generation"
+        },
+        {
+          "ratio": 0.4444444444444444,
+          "id": "nyamuru_voice_668",
+          "label": "paint_tool_set",
+          "text": "ベジェペンを使うので、そのペンへの切替をお願いします。",
+          "pool": "v03_train",
+          "group": "v02_edit_paint_request"
+        },
+        {
+          "ratio": 0.4375,
+          "id": "nyamuru_voice_033",
+          "label": "page_navigate",
+          "text": "ページを一枚進めてくれる？",
+          "pool": "v03_train",
+          "group": "page_next"
+        },
+        {
+          "ratio": 0.43478260869565216,
+          "id": "nyamuru_voice_1080",
+          "label": "page_navigate",
+          "text": "ページ送りを一枚先へお願い。編集の取り消しはしないでね。",
+          "pool": "v03_train",
+          "group": "v03_history_navigation_boundary"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3107",
+      "text": "表示するページを指定するよ。十二ページ目にお願い。",
+      "label": "page_navigate",
+      "slots": {
+        "page_number": 12
+      },
+      "group": "v04_dev_final_extra_target_announcement_then_ellipsis",
+      "tags": [
+        "page_number",
+        "twelve"
+      ],
+      "note": "表示先を指定する発話と省略形の依頼で、作品内の12ページ目を明示。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧423のページ番号を指定すると宣言して番号を示す骨格。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5333333333333333,
+          "id": "nyamuru_voice_423",
+          "label": "page_navigate",
+          "text": "ページ番号で指定するね。十ページを画面に出して。",
+          "pool": "v03_train",
+          "group": "v02_core_page_navigate_numbered_destination"
+        },
+        {
+          "ratio": 0.5238095238095238,
+          "id": "nyamuru_voice_1428",
+          "label": "page_navigate",
+          "text": "十ページへ、いや十二ページへ移動をお願い。",
+          "pool": "v03_test",
+          "group": "v03_test_page_number_correction"
+        },
+        {
+          "ratio": 0.5128205128205128,
+          "id": "nyamuru_massive_adapt_023",
+          "label": "page_navigate",
+          "text": "表示ページを八ページ目まで進めて",
+          "pool": "v03_train",
+          "group": "massive_adapt_page_navigation"
+        },
+        {
+          "ratio": 0.45454545454545453,
+          "id": "nyamuru_voice_1491",
+          "label": "needs_clarification",
+          "text": "表示するページは、さっき話したところでお願い。",
+          "pool": "v03_test",
+          "group": "v03_test_ambiguous_page"
+        },
+        {
+          "ratio": 0.43902439024390244,
+          "id": "nyamuru_massive_adapt_019",
+          "label": "page_navigate",
+          "text": "表示中のページから次のページに進んで",
+          "pool": "v03_train",
+          "group": "massive_adapt_page_navigation"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3108",
+      "text": "作画設定で選びたいのは「一体型」。その方式へ切り替えをお願い。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "integrated"
+      },
+      "group": "v04_dev_final_extra_choice_then_apply",
+      "tags": [
+        "integrated",
+        "selected_value"
+      ],
+      "note": "一体型という値を選び、その選択を作画方式に反映する現在依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "作画設定の希望値を先に示しその方式を設定する旧500等の骨格。",
+      "nearest_top5": [
+        {
+          "ratio": 0.46808510638297873,
+          "id": "nyamuru_voice_071",
+          "label": "artwork_mode_set",
+          "text": "今は生成せず、一体型の方式にだけ切り替えて",
+          "pool": "v03_train",
+          "group": "mode_without_run"
+        },
+        {
+          "ratio": 0.45454545454545453,
+          "id": "nyamuru_voice_156",
+          "label": "not_command",
+          "text": "作画方式を一体型には切り替えないで",
+          "pool": "v03_train",
+          "group": "mode_negative"
+        },
+        {
+          "ratio": 0.45,
+          "id": "nyamuru_voice_070",
+          "label": "artwork_mode_set",
+          "text": "作画設定の一体型を選択して",
+          "pool": "v03_train",
+          "group": "mode_integrated"
+        },
+        {
+          "ratio": 0.43137254901960786,
+          "id": "nyamuru_voice_2147",
+          "label": "compound_request",
+          "text": "コマシンクロは無効、作画設定は一体型でお願いします。",
+          "pool": "v04_train_candidate",
+          "group": "v04_train_シンクロの過去状態と別設定"
+        },
+        {
+          "ratio": 0.4166666666666667,
+          "id": "nyamuru_voice_1451",
+          "label": "artwork_mode_set",
+          "text": "作画設定にある一体型、今回はそれにしておいて。",
+          "pool": "v03_test",
+          "group": "v03_test_mode_explicit_selection"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3109",
+      "text": "次の作画に入る前に、方式を下書きへ合わせておいて。",
+      "label": "artwork_mode_set",
+      "slots": {
+        "mode": "draft"
+      },
+      "group": "v04_dev_final_extra_prepare_before_next_activity",
+      "tags": [
+        "draft",
+        "preparatory_setting"
+      ],
+      "note": "次の作画開始を現在依頼せず、その前の作画方式を下書きに設定する依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "作画開始前の準備として方式を変える既存骨格。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5142857142857142,
+          "id": "nyamuru_massive_adapt_031",
+          "label": "artwork_mode_set",
+          "text": "作画方式を下書きに変えて",
+          "pool": "v03_train",
+          "group": "massive_adapt_artwork_mode"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_072",
+          "label": "artwork_mode_set",
+          "text": "作画方式を下書き生成にして",
+          "pool": "v03_train",
+          "group": "mode_draft"
+        },
+        {
+          "ratio": 0.4878048780487805,
+          "id": "nyamuru_massive_adapt_035",
+          "label": "artwork_mode_set",
+          "text": "作画方式の設定を下書きにしてください",
+          "pool": "v03_train",
+          "group": "massive_adapt_artwork_mode"
+        },
+        {
+          "ratio": 0.47619047619047616,
+          "id": "nyamuru_voice_1256",
+          "label": "artwork_mode_set",
+          "text": "作画設定をいったん下書きに戻しておいて。",
+          "pool": "v03_dev",
+          "group": "v03_dev_artwork_mode_and_generation"
+        },
+        {
+          "ratio": 0.47368421052631576,
+          "id": "nyamuru_massive_adapt_033",
+          "label": "artwork_mode_set",
+          "text": "作画方式は下書きにしてほしいな",
+          "pool": "v03_train",
+          "group": "massive_adapt_artwork_mode"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3110",
+      "text": "コマシンクロを使わない状態への切り替え、お願いします。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": false
+      },
+      "group": "v04_dev_final_extra_nominal_state_transition",
+      "tags": [
+        "desired_off",
+        "setting_only"
+      ],
+      "note": "使わない状態への変更は明示的なオフ指定であり、変更禁止ではない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧570/175の使わない設定へ切替という言い換え。",
+      "nearest_top5": [
+        {
+          "ratio": 0.6190476190476191,
+          "id": "nyamuru_voice_570",
+          "label": "panel_sync_set",
+          "text": "コマシンクロは使わない設定でお願い。",
+          "pool": "v03_train",
+          "group": "v02_edit_setting_use_state"
+        },
+        {
+          "ratio": 0.5853658536585366,
+          "id": "nyamuru_voice_175",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使わない設定にして",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.5833333333333334,
+          "id": "nyamuru_voice_1306",
+          "label": "panel_sync_set",
+          "text": "コマシンクロのスイッチ、オンの状態でお願いします。",
+          "pool": "v03_dev",
+          "group": "v03_dev_panel_setting_states"
+        },
+        {
+          "ratio": 0.5531914893617021,
+          "id": "nyamuru_voice_569",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使う状態に設定してもらえますか。",
+          "pool": "v03_train",
+          "group": "v02_edit_setting_use_state"
+        },
+        {
+          "ratio": 0.5454545454545454,
+          "id": "nyamuru_massive_adapt_048",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使わない設定にしてほしい",
+          "pool": "v03_train",
+          "group": "massive_adapt_setting_polarity"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3111",
+      "text": "コマシンクロは有効を選ぶよ。設定に反映してもらえる？",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": true
+      },
+      "group": "v04_dev_final_extra_choice_then_apply",
+      "tags": [
+        "desired_on",
+        "selected_value"
+      ],
+      "note": "有効という値を選んだうえで、それを現在の設定へ反映する依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "有効を選ぶ本人の決定から、その値を実際に設定へ反映する依頼へ進む。",
+      "nearest_top5": [
+        {
+          "ratio": 0.631578947368421,
+          "id": "nyamuru_voice_169",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使う設定にして",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.6153846153846154,
+          "id": "nyamuru_voice_167",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを有効にしてくれる？",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.6086956521739131,
+          "id": "nyamuru_voice_569",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使う状態に設定してもらえますか。",
+          "pool": "v03_train",
+          "group": "v02_edit_setting_use_state"
+        },
+        {
+          "ratio": 0.6,
+          "id": "nyamuru_voice_175",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使わない設定にして",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.6,
+          "id": "nyamuru_voice_182",
+          "label": "needs_clarification",
+          "text": "コマシンクロを以前の設定に戻して",
+          "pool": "v03_train",
+          "group": "panel_sync_set_history"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3112",
+      "text": "内枠スナップは、オンの設定で始められるようにしておいて。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "group": "v04_dev_final_extra_prepare_before_next_activity",
+      "tags": [
+        "desired_on",
+        "preparatory_setting"
+      ],
+      "note": "開始前の準備として、内枠スナップの希望最終値をオンに指定。別の開始操作は依頼していない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "オンの設定で作業を始められる状態を用意しておく希望。状態質問や現在禁止ではない。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5789473684210527,
+          "id": "nyamuru_voice_185",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップをオンにして",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5714285714285714,
+          "id": "nyamuru_voice_202",
+          "label": "needs_clarification",
+          "text": "内枠スナップを以前の設定に戻して",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_history"
+        },
+        {
+          "ratio": 0.5714285714285714,
+          "id": "nyamuru_voice_203",
+          "label": "compound_request",
+          "text": "内枠スナップをオンにして保存して",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_save"
+        },
+        {
+          "ratio": 0.5652173913043478,
+          "id": "nyamuru_voice_1579",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップはオンでいこう。その設定にして。",
+          "pool": "v03_test",
+          "group": "v03_test_setting_decision"
+        },
+        {
+          "ratio": 0.55,
+          "id": "nyamuru_voice_189",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップを使う設定にして",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_desired_state"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3113",
+      "text": "内枠スナップ、オフへの切り替えを頼めるかな。",
+      "label": "inner_frame_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "group": "v04_dev_final_extra_nominal_transition_question",
+      "tags": [
+        "desired_off",
+        "request_question"
+      ],
+      "note": "能力一般の質問ではなく、明示したオフへの切替を頼む疑問形依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "MASSIVE派生050の内枠off切替の丁寧語変更。",
+      "nearest_top5": [
+        {
+          "ratio": 0.6857142857142857,
+          "id": "nyamuru_massive_adapt_050",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップをオフに切り替えて",
+          "pool": "v03_train",
+          "group": "massive_adapt_setting_polarity"
+        },
+        {
+          "ratio": 0.5714285714285714,
+          "id": "nyamuru_voice_192",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップオフ",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5714285714285714,
+          "id": "nyamuru_voice_710",
+          "label": "needs_clarification",
+          "text": "内枠スナップを切り替えておいて",
+          "pool": "v03_legacy_test",
+          "group": "v02_routes_unspecified_setting"
+        },
+        {
+          "ratio": 0.5294117647058824,
+          "id": "nyamuru_voice_198",
+          "label": "not_command",
+          "text": "内枠スナップをオフにしないで",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_186",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップオン",
+          "pool": "v03_train",
+          "group": "inner_frame_snap_set_desired_state"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3114",
+      "text": "オンでお願いします。設定するのはコマスナップ。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "group": "v04_dev_final_extra_value_before_setting",
+      "tags": [
+        "desired_on",
+        "postposed_setting"
+      ],
+      "note": "希望値を先に依頼し、後続文が設定名をコマスナップと確定。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "値を先に依頼し、コマスナップという設定名を後から補う倒置。",
+      "nearest_top5": [
+        {
+          "ratio": 0.46153846153846156,
+          "id": "nyamuru_voice_1319",
+          "label": "panel_gap_snap_set",
+          "text": "設定のコマスナップ、オンでお願いします。",
+          "pool": "v03_dev",
+          "group": "v03_dev_panel_setting_states"
+        },
+        {
+          "ratio": 0.41379310344827586,
+          "id": "nyamuru_voice_206",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップオン",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.41379310344827586,
+          "id": "nyamuru_voice_212",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップオフ",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.4090909090909091,
+          "id": "nyamuru_voice_1306",
+          "label": "panel_sync_set",
+          "text": "コマシンクロのスイッチ、オンの状態でお願いします。",
+          "pool": "v03_dev",
+          "group": "v03_dev_panel_setting_states"
+        },
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_220",
+          "label": "not_command",
+          "text": "コマスナップって何？",
+          "pool": "v03_legacy_dev",
+          "group": "panel_gap_snap_set_explanation"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3115",
+      "text": "コマスナップの無効化を済ませておいてくれる？",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "group": "v04_dev_final_extra_completion_request_question",
+      "tags": [
+        "desired_off",
+        "request_question"
+      ],
+      "note": "コマスナップを無効にする現在の操作依頼であり、状態の確認質問ではない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "設定名と無効化の名詞を使う旧1316等の基本構文。",
+      "nearest_top5": [
+        {
+          "ratio": 0.6285714285714286,
+          "id": "nyamuru_voice_1316",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップの無効化をお願い。",
+          "pool": "v03_dev",
+          "group": "v03_dev_panel_setting_states"
+        },
+        {
+          "ratio": 0.6111111111111112,
+          "id": "nyamuru_voice_207",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップを有効にしてくれる？",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5945945945945946,
+          "id": "nyamuru_voice_1321",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップは有効に戻しておいて。",
+          "pool": "v03_dev",
+          "group": "v03_dev_panel_setting_states"
+        },
+        {
+          "ratio": 0.5909090909090909,
+          "id": "nyamuru_voice_1576",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップの機能はいま外そう。無効にしてくれる？",
+          "pool": "v03_test",
+          "group": "v03_test_setting_disable_now"
+        },
+        {
+          "ratio": 0.5555555555555556,
+          "id": "nyamuru_voice_633",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップありに変えてくれる？",
+          "pool": "v03_train",
+          "group": "v02_edit_setting_use_state"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3116",
+      "text": "部屋の中、という指定で背景候補をお願い。登録してある3Dモデルから三つ見せて。",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "query": "部屋の中",
+        "count": 3
+      },
+      "group": "v04_dev_final_extra_candidate_specification_continuation",
+      "tags": [
+        "registered_only",
+        "literal_query",
+        "count_three"
+      ],
+      "note": "候補提示一件に対し、後続文で登録済みという参照元と件数3を補う。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧904の場面指定の候補要求と登録3Dから提案という二文構造。",
+      "nearest_top5": [
+        {
+          "ratio": 0.6197183098591549,
+          "id": "nyamuru_voice_1338",
+          "label": "background_3d_candidates",
+          "text": "五番のコマの背景候補を、登録されている3Dモデルの中から三つ選んで見せて。",
+          "pool": "v03_dev",
+          "group": "v03_dev_registered_3d_candidates"
+        },
+        {
+          "ratio": 0.6153846153846154,
+          "id": "nyamuru_voice_904",
+          "label": "background_3d_candidates",
+          "text": "カフェの背景候補がほしい。登録してある3Dモデルから提案して",
+          "pool": "v03_train",
+          "group": "v02_routes_bg_category"
+        },
+        {
+          "ratio": 0.47619047619047616,
+          "id": "nyamuru_voice_921",
+          "label": "background_3d_candidates",
+          "text": "背景候補を五つ、いや二つでお願い。登録済みモデルから選んで",
+          "pool": "v03_legacy_dev",
+          "group": "v02_routes_bg_correction"
+        },
+        {
+          "ratio": 0.47058823529411764,
+          "id": "nyamuru_voice_1333",
+          "label": "background_3d_candidates",
+          "text": "登録してある3Dモデルから、この場面の背景に使えそうなものを見せて。",
+          "pool": "v03_dev",
+          "group": "v03_dev_registered_3d_candidates"
+        },
+        {
+          "ratio": 0.4666666666666667,
+          "id": "nyamuru_voice_909",
+          "label": "background_3d_candidates",
+          "text": "二コマ目で使う背景候補を登録済みモデルから出して",
+          "pool": "v03_train",
+          "group": "v02_routes_bg_locator"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3117",
+      "text": "五番のコマの舞台に使えそうな登録済み3Dモデル、候補として挙げてもらえる？",
+      "label": "background_3d_candidates",
+      "slots": {
+        "source": "registered_3d_models",
+        "locator": {
+          "panel_number": 5
+        }
+      },
+      "group": "v04_dev_final_extra_relative_target_candidate_question",
+      "tags": [
+        "registered_only",
+        "panel_locator",
+        "request_question"
+      ],
+      "note": "現在ページの表示コマ番号5に合う登録済みモデルの候補提示を依頼。配置は依頼していない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧1338/1608の番号コマ向け候補提示の値差替え。",
+      "nearest_top5": [
+        {
+          "ratio": 0.631578947368421,
+          "id": "nyamuru_voice_254",
+          "label": "background_3d_candidates",
+          "text": "舞台に使う登録済みの3Dモデルを候補に出して",
+          "pool": "v03_train",
+          "group": "registered_background_candidates"
+        },
+        {
+          "ratio": 0.6060606060606061,
+          "id": "nyamuru_voice_1608",
+          "label": "background_3d_candidates",
+          "text": "このコマに合う3D背景、登録済みモデルの中で候補を探してもらえる？",
+          "pool": "v03_test",
+          "group": "v03_test_candidates_scene_selection"
+        },
+        {
+          "ratio": 0.5901639344262295,
+          "id": "nyamuru_voice_903",
+          "label": "background_3d_candidates",
+          "text": "学校の廊下に使えそうな登録済み3D背景を候補に挙げて",
+          "pool": "v03_train",
+          "group": "v02_routes_bg_category"
+        },
+        {
+          "ratio": 0.5862068965517241,
+          "id": "nyamuru_voice_251",
+          "label": "background_3d_candidates",
+          "text": "このコマに使える登録済み3D背景を候補に挙げて",
+          "pool": "v03_train",
+          "group": "registered_background_candidates"
+        },
+        {
+          "ratio": 0.5757575757575758,
+          "id": "nyamuru_voice_913",
+          "label": "background_3d_candidates",
+          "text": "このコマの台本を読んで、合いそうな登録済み3D背景を候補に挙げて",
+          "pool": "v03_legacy_test",
+          "group": "v02_routes_bg_context"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3118",
+      "text": "選ぶツールはベクターペン、で確定。実際の切り替えまでお願いします。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "vector-pen"
+      },
+      "group": "v04_dev_final_extra_choice_then_apply",
+      "tags": [
+        "vector",
+        "selected_value"
+      ],
+      "note": "ベクターペンの選択を確定し、実際の描画ツール切替を現在依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "ツール名を確定した報告に続き、実際の切り替えまで現在依頼する。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5283018867924528,
+          "id": "nyamuru_voice_1344",
+          "label": "paint_tool_set",
+          "text": "選んでいる描画ツールは、ベクターペンに変更お願い。",
+          "pool": "v03_dev",
+          "group": "v03_dev_paint_tool_choice"
+        },
+        {
+          "ratio": 0.5084745762711864,
+          "id": "nyamuru_voice_1203",
+          "label": "paint_tool_set",
+          "text": "文字をそろえるのはやめて、ベクターペンへの切り替えだけお願い。",
+          "pool": "v03_train",
+          "group": "v03_only_one_positive_clause"
+        },
+        {
+          "ratio": 0.47619047619047616,
+          "id": "nyamuru_voice_292",
+          "label": "paint_tool_set",
+          "text": "ベクターペンに切り替えて",
+          "pool": "v03_train",
+          "group": "paint_pen_choice"
+        },
+        {
+          "ratio": 0.4727272727272727,
+          "id": "nyamuru_voice_668",
+          "label": "paint_tool_set",
+          "text": "ベジェペンを使うので、そのペンへの切替をお願いします。",
+          "pool": "v03_train",
+          "group": "v02_edit_paint_request"
+        },
+        {
+          "ratio": 0.4666666666666667,
+          "id": "nyamuru_voice_1211",
+          "label": "compound_request",
+          "text": "ベクターペンへの切り替えも、文字枠の上端揃えも、今どちらもお願い。",
+          "pool": "v03_train",
+          "group": "v03_both_denied_or_both_requested"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3119",
+      "text": "使用中のペンをラスターペンへ切り替える操作、お願いできる？",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "pen"
+      },
+      "group": "v04_dev_final_extra_nominal_transition_question",
+      "tags": [
+        "raster",
+        "request_question"
+      ],
+      "note": "切替操作を名詞句として頼む疑問形。既存画像のラスター化ではない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧667の選択ツールをラスターペンへ変更する操作依頼と近似。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5818181818181818,
+          "id": "nyamuru_voice_667",
+          "label": "paint_tool_set",
+          "text": "選択ツールをラスターペンへ変更する操作をお願いできますか。",
+          "pool": "v03_train",
+          "group": "v02_edit_paint_request"
+        },
+        {
+          "ratio": 0.5652173913043478,
+          "id": "nyamuru_voice_1005",
+          "label": "not_command",
+          "text": "ラスターペンへの切り替えは今はしないで。",
+          "pool": "v03_train",
+          "group": "v03_pen_alignment_negation"
+        },
+        {
+          "ratio": 0.5128205128205128,
+          "id": "nyamuru_voice_286",
+          "label": "paint_tool_set",
+          "text": "ラスターペンに切り替えて",
+          "pool": "v03_train",
+          "group": "paint_pen_choice"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_massive_adapt_073",
+          "label": "paint_tool_set",
+          "text": "描くペンをベクターペンに切り替えて",
+          "pool": "v03_train",
+          "group": "massive_adapt_paint"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_645",
+          "label": "paint_tool_set",
+          "text": "ベジェペンが選ばれているけど、ラスターペンへ切り替えてほしい。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_edit_paint_current"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3120",
+      "text": "複数選んだ文字枠のうち、一番上の枠に合わせて、全部の上端をそろえて。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "group": "v04_dev_final_extra_topmost_frame_reference_command",
+      "tags": [
+        "multiple_selection",
+        "topmost_reference"
+      ],
+      "note": "選択した複数文字枠の最も高い上端を基準に、各枠の上端をそろえる。selection_boundsの上端と一致する。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "keep",
+      "reason": "複数選択の中で最上の枠を基準として明示し、全枠の上端を揃える。selection_boundsの上端と一致。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5652173913043478,
+          "id": "nyamuru_voice_303",
+          "label": "text_frames_align",
+          "text": "複数選んだ文字枠を上にそろえて",
+          "pool": "v03_train",
+          "group": "text_frames_top"
+        },
+        {
+          "ratio": 0.5531914893617021,
+          "id": "nyamuru_voice_824",
+          "label": "out_of_scope_request",
+          "text": "複数選んだ文字枠を下端でそろえて",
+          "pool": "v03_train",
+          "group": "v02_routes_out_alignment"
+        },
+        {
+          "ratio": 0.5217391304347826,
+          "id": "nyamuru_voice_298",
+          "label": "text_frames_align",
+          "text": "選択した文字枠の上端をそろえて",
+          "pool": "v03_train",
+          "group": "text_frames_top"
+        },
+        {
+          "ratio": 0.49056603773584906,
+          "id": "nyamuru_voice_1352",
+          "label": "text_frames_align",
+          "text": "選んだ文字枠どうしの頭の高さを合わせておいて。",
+          "pool": "v03_dev",
+          "group": "v03_dev_text_frame_top_alignment"
+        },
+        {
+          "ratio": 0.4888888888888889,
+          "id": "nyamuru_voice_727",
+          "label": "needs_clarification",
+          "text": "選んだ文字枠をそろえておいて",
+          "pool": "v03_train",
+          "group": "v02_routes_unspecified_tool_alignment"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3121",
+      "text": "いま複数選択した文字枠を、選択範囲の上端で頭揃えにしてもらえる？",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "group": "v04_dev_final_extra_selection_bounds_alignment_question",
+      "tags": [
+        "multiple_selection",
+        "explicit_selection_bounds",
+        "request_question"
+      ],
+      "note": "複数選択した文字枠を、選択範囲の上端を基準に頭揃えする依頼。行揃えや輪郭整列ではない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "dev",
+      "decision": "exclude",
+      "reason": "旧298等の選択文字枠の上端揃えに選択範囲の説明を付加。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5357142857142857,
+          "id": "nyamuru_voice_1012",
+          "label": "text_frames_align",
+          "text": "整列を待たなくていいので、選択した文字枠を上揃えにして。",
+          "pool": "v03_train",
+          "group": "v03_pen_alignment_negation"
+        },
+        {
+          "ratio": 0.5333333333333333,
+          "id": "nyamuru_voice_298",
+          "label": "text_frames_align",
+          "text": "選択した文字枠の上端をそろえて",
+          "pool": "v03_train",
+          "group": "text_frames_top"
+        },
+        {
+          "ratio": 0.5333333333333333,
+          "id": "nyamuru_voice_299",
+          "label": "text_frames_align",
+          "text": "この複数の文字枠を上揃えにして",
+          "pool": "v03_train",
+          "group": "text_frames_top"
+        },
+        {
+          "ratio": 0.5185185185185185,
+          "id": "nyamuru_massive_adapt_084",
+          "label": "text_frames_align",
+          "text": "選択した複数の文字枠の上端揃えを実行してください",
+          "pool": "v03_train",
+          "group": "massive_adapt_text_frames"
+        },
+        {
+          "ratio": 0.5185185185185185,
+          "id": "nyamuru_voice_1188",
+          "label": "text_frames_align",
+          "text": "選択してある三つの文字枠を、まとめて上端揃えにして。",
+          "pool": "v03_train",
+          "group": "v03_one_action_multiple_values"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3300",
+      "text": "ここまでの編集内容、保存してある状態にしてくれる？",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "group": "v04_test_final_result_state_request",
+      "tags": [
+        "request_question",
+        "current_unsaved_state"
+      ],
+      "note": "保存済みかを質問しているのではなく、現在の編集内容を保存された状態にするよう依頼している。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "保存された状態を目標とする依頼。保存済みかを尋ねる状態質問と区別。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5142857142857142,
+          "id": "nyamuru_voice_004",
+          "label": "save",
+          "text": "この編集を保存しておいて",
+          "pool": "v03_legacy_test",
+          "group": "save_edits"
+        },
+        {
+          "ratio": 0.5142857142857142,
+          "id": "nyamuru_voice_2400",
+          "label": "save",
+          "text": "ここまでの作品を保存して。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_direct_request"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_019",
+          "label": "undo",
+          "text": "今の編集を元に戻してくれる？",
+          "pool": "v03_train",
+          "group": "undo_request_question"
+        },
+        {
+          "ratio": 0.45714285714285713,
+          "id": "nyamuru_massive_adapt_002",
+          "label": "save",
+          "text": "今の作品を保存してくれる",
+          "pool": "v03_train",
+          "group": "massive_adapt_save"
+        },
+        {
+          "ratio": 0.4444444444444444,
+          "id": "nyamuru_voice_014",
+          "label": "undo",
+          "text": "ひとつ前の編集状態に戻して",
+          "pool": "v03_train",
+          "group": "undo_basic"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3301",
+      "text": "セーブをお願いします。対象は、この画面で編集中の作品ね。",
+      "label": "save",
+      "slots": {
+        "target": "current_document"
+      },
+      "group": "v04_test_final_postposed_target",
+      "tags": [
+        "save_synonym",
+        "current_document"
+      ],
+      "note": "保存操作を先に依頼し、同一発話の後半で現在作品を対象として補足している。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "新dev2407の保存依頼の後に現在作品を置くfamilyと共有。",
+      "nearest_top5": [
+        {
+          "ratio": 0.4,
+          "id": "nyamuru_voice_028",
+          "label": "redo",
+          "text": "リドゥをお願いします",
+          "pool": "v03_legacy_test",
+          "group": "redo_basic"
+        },
+        {
+          "ratio": 0.3870967741935484,
+          "id": "nyamuru_voice_003",
+          "label": "save",
+          "text": "セーブお願い",
+          "pool": "v03_train",
+          "group": "save_basic"
+        },
+        {
+          "ratio": 0.38095238095238093,
+          "id": "nyamuru_voice_2407",
+          "label": "save",
+          "text": "保存しておいてね、いま編集中の作品を。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_postposed_target_request"
+        },
+        {
+          "ratio": 0.37735849056603776,
+          "id": "nyamuru_voice_326",
+          "label": "save",
+          "text": "保存し忘れていたので、現在の編集内容でセーブをお願いします。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_core_save_unsaved_discovery"
+        },
+        {
+          "ratio": 0.36363636363636365,
+          "id": "nyamuru_voice_2541",
+          "label": "paint_tool_set",
+          "text": "ラスターペンへの切り替えをお願いします。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_nominal_request"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3302",
+      "text": "直前に取り消した編集一つ、履歴に残っているそれを再適用して。",
+      "label": "redo",
+      "slots": {
+        "count": 1
+      },
+      "group": "v04_test_final_relative_clause_then_reapply",
+      "tags": [
+        "history_reapply",
+        "count"
+      ],
+      "note": "直前に取り消した一編集を発話内で特定して履歴から再適用する依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "MASSIVE派生014の直前取消編集一つの再適用の言い換え。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5490196078431373,
+          "id": "nyamuru_massive_adapt_014",
+          "label": "redo",
+          "text": "Undoで取り消した直前の編集を一つ再適用して",
+          "pool": "v03_train",
+          "group": "massive_adapt_history"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_2418",
+          "label": "redo",
+          "text": "取り消す前の配置がよかったので、取り消した編集を再適用して。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_causal_request"
+        },
+        {
+          "ratio": 0.49122807017543857,
+          "id": "nyamuru_voice_406",
+          "label": "redo",
+          "text": "リドゥは二回、いや一回に訂正。取り消した編集一件だけ再適用して。",
+          "pool": "v03_train",
+          "group": "v02_core_redo_self_correction"
+        },
+        {
+          "ratio": 0.4727272727272727,
+          "id": "nyamuru_voice_395",
+          "label": "redo",
+          "text": "取り消し履歴を二段進めて、二件の変更を再適用してください。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_core_redo_bounded_count"
+        },
+        {
+          "ratio": 0.45454545454545453,
+          "id": "nyamuru_voice_2416",
+          "label": "redo",
+          "text": "取り消した編集を一段階やり直して。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_direct_request"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3303",
+      "text": "取り消し済みの編集を二つ復活させたい。Redo二回をお願いします。",
+      "label": "redo",
+      "slots": {
+        "count": 2
+      },
+      "group": "v04_test_final_desired_result_then_named_operation",
+      "tags": [
+        "history_reapply",
+        "count"
+      ],
+      "note": "希望する復元結果に続けて、Redo二回という現在操作を明示している。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "旧393の二件をRedo二回で復元する同じ骨格。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5245901639344263,
+          "id": "nyamuru_voice_3011",
+          "label": "redo",
+          "text": "やり直すのは取り消し済みの編集三つ分。Redoを三回、そこまでで。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_supp_count_with_stop_boundary"
+        },
+        {
+          "ratio": 0.5172413793103449,
+          "id": "nyamuru_voice_393",
+          "label": "redo",
+          "text": "続けて取り消した二件の編集を、Redoを二回使って戻して。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_core_redo_bounded_count"
+        },
+        {
+          "ratio": 0.5106382978723404,
+          "id": "nyamuru_voice_023",
+          "label": "redo",
+          "text": "取り消した直前の編集を復活させて",
+          "pool": "v03_train",
+          "group": "redo_after_undo"
+        },
+        {
+          "ratio": 0.4918032786885246,
+          "id": "nyamuru_massive_adapt_016",
+          "label": "redo",
+          "text": "取り消した吹き出しの編集をRedoで一回戻してもらえませんか",
+          "pool": "v03_train",
+          "group": "massive_adapt_history"
+        },
+        {
+          "ratio": 0.49122807017543857,
+          "id": "nyamuru_voice_1033",
+          "label": "redo",
+          "text": "取り消しを戻すほうのボタン、つまりRedoを一回お願い。",
+          "pool": "v03_train",
+          "group": "v03_redo_button_phrasing"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3304",
+      "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+      "label": "needs_clarification",
+      "slots": {},
+      "group": "v04_test_final_dimensions_unspecified_degree",
+      "tags": [
+        "ui_reference",
+        "unspecified_degree"
+      ],
+      "note": "選択対象と縮小の意図は分かるが、幅・高さの最終値や変化量が不足している。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "縦横の両方を控えめにする要求だが、寸法や量がない。内容の適切値判断を依頼していない。",
+      "nearest_top5": [
+        {
+          "ratio": 0.52,
+          "id": "nyamuru_voice_2448",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しのしっぽをなしにして。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_direct_request"
+        },
+        {
+          "ratio": 0.509090909090909,
+          "id": "nyamuru_massive_adapt_039",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの横幅を七十ミリにしてください",
+          "pool": "v03_train",
+          "group": "massive_adapt_bubble_dimension"
+        },
+        {
+          "ratio": 0.4782608695652174,
+          "id": "nyamuru_voice_2462",
+          "label": "needs_clarification",
+          "text": "選択中の吹き出しの形を変えて。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_direct_request"
+        },
+        {
+          "ratio": 0.4745762711864407,
+          "id": "nyamuru_voice_520",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの「コマ枠で切り取る」を無効にしてください。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_edit_bubble_presence_clip"
+        },
+        {
+          "ratio": 0.47058823529411764,
+          "id": "nyamuru_voice_836",
+          "label": "not_command",
+          "text": "選択中の吹き出しにはしっぽが付いている？",
+          "pool": "v03_train",
+          "group": "v02_routes_noaction_state"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3305",
+      "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+      "label": "needs_clarification",
+      "slots": {},
+      "group": "v04_test_final_request_with_missing_kind_admission",
+      "tags": [
+        "missing_guide_kind"
+      ],
+      "note": "ガイド非表示の依頼だが、配置・編集・作画のどれかが未指定のまま。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "ガイドをoffとする依頼の後に、種類の名前が未確定と明示する。",
+      "nearest_top5": [
+        {
+          "ratio": 0.6,
+          "id": "nyamuru_massive_adapt_029",
+          "label": "view_change",
+          "text": "編集ガイドの表示をオフにして",
+          "pool": "v03_train",
+          "group": "massive_adapt_visual_toggle"
+        },
+        {
+          "ratio": 0.4864864864864865,
+          "id": "nyamuru_voice_061",
+          "label": "view_change",
+          "text": "編集ガイドをオフにして",
+          "pool": "v03_train",
+          "group": "edit_guide"
+        },
+        {
+          "ratio": 0.47368421052631576,
+          "id": "nyamuru_massive_adapt_028",
+          "label": "view_change",
+          "text": "配置ガイドの表示を消して",
+          "pool": "v03_train",
+          "group": "massive_adapt_visual_toggle"
+        },
+        {
+          "ratio": 0.4528301886792453,
+          "id": "nyamuru_voice_463",
+          "label": "view_change",
+          "text": "枠に邪魔されず原稿を見たい。配置ガイドの表示をオフにして。",
+          "pool": "v03_train",
+          "group": "v02_core_view_change_placement_guide_purpose"
+        },
+        {
+          "ratio": 0.43243243243243246,
+          "id": "nyamuru_voice_057",
+          "label": "view_change",
+          "text": "見開き表示をオフにして",
+          "pool": "v03_legacy_dev",
+          "group": "spread_off"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3306",
+      "text": "有効にしたい項目は、コマシンクロ。いまオンに設定をお願い。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": true
+      },
+      "group": "v04_test_final_focused_setting_then_apply",
+      "tags": [
+        "desired_final_state"
+      ],
+      "note": "対象項目をコマシンクロと特定し、希望する最終値オンへの設定を依頼している。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "有効にしたい項目を先に同定して、その項目のオン設定を依頼する。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5581395348837209,
+          "id": "nyamuru_voice_2499",
+          "label": "panel_sync_set",
+          "text": "コマシンクロはオフ……いや、オンでお願い。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_correction_request"
+        },
+        {
+          "ratio": 0.5581395348837209,
+          "id": "nyamuru_voice_570",
+          "label": "panel_sync_set",
+          "text": "コマシンクロは使わない設定でお願い。",
+          "pool": "v03_train",
+          "group": "v02_edit_setting_use_state"
+        },
+        {
+          "ratio": 0.5333333333333333,
+          "id": "nyamuru_voice_2501",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使う設定への変更をお願い。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_nominal_request"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_177",
+          "label": "not_command",
+          "text": "コマシンクロをオンにしないで",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.4888888888888889,
+          "id": "nyamuru_voice_2461",
+          "label": "needs_clarification",
+          "text": "変えたいのはコマシンクロの設定。変更して。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_scope_declaration_request"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3307",
+      "text": "コマシンクロの無効化をお願いできるかな。",
+      "label": "panel_sync_set",
+      "slots": {
+        "enabled": false
+      },
+      "group": "v04_test_final_nominal_deactivation_question",
+      "tags": [
+        "request_question",
+        "desired_final_state"
+      ],
+      "note": "無効化という名詞でコマシンクロのオフ設定を依頼している。能力の有無だけの質問ではない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "コマシンクロを無効化する基本依頼の丁寧語変更。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5789473684210527,
+          "id": "nyamuru_voice_2501",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを使う設定への変更をお願い。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_nominal_request"
+        },
+        {
+          "ratio": 0.5454545454545454,
+          "id": "nyamuru_voice_177",
+          "label": "not_command",
+          "text": "コマシンクロをオンにしないで",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.5454545454545454,
+          "id": "nyamuru_voice_178",
+          "label": "not_command",
+          "text": "コマシンクロをオフにしないで",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        },
+        {
+          "ratio": 0.5142857142857142,
+          "id": "nyamuru_massive_adapt_046",
+          "label": "panel_sync_set",
+          "text": "コマシンクロは無効にしてください",
+          "pool": "v03_train",
+          "group": "massive_adapt_setting_polarity"
+        },
+        {
+          "ratio": 0.5142857142857142,
+          "id": "nyamuru_voice_173",
+          "label": "panel_sync_set",
+          "text": "コマシンクロを無効にしてください",
+          "pool": "v03_train",
+          "group": "panel_sync_set_desired_state"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3308",
+      "text": "「コマスナップ」と書かれた設定があるね。そこを有効にして。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": true
+      },
+      "group": "v04_test_final_named_control_reference",
+      "tags": [
+        "quoted_ui_name",
+        "resolved_in_utterance"
+      ],
+      "note": "引用した既存の設定名を発話内の参照先として、コマスナップのオンを依頼している。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "文字として示された設定名を参照して、その項目を有効にする。",
+      "nearest_top5": [
+        {
+          "ratio": 0.6363636363636364,
+          "id": "nyamuru_massive_adapt_057",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップの設定を有効にしてください",
+          "pool": "v03_train",
+          "group": "massive_adapt_setting_polarity"
+        },
+        {
+          "ratio": 0.6,
+          "id": "nyamuru_voice_207",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップを有効にしてくれる？",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5641025641025641,
+          "id": "nyamuru_voice_209",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップを使う設定にして",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5555555555555556,
+          "id": "nyamuru_voice_621",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップという編集設定を、アプリ全体で有効にしてください。",
+          "pool": "v03_train",
+          "group": "v02_edit_setting_global"
+        },
+        {
+          "ratio": 0.5454545454545454,
+          "id": "nyamuru_voice_711",
+          "label": "needs_clarification",
+          "text": "コマスナップは今までとは違う設定にして",
+          "pool": "v03_legacy_test",
+          "group": "v02_routes_unspecified_setting"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3309",
+      "text": "コマスナップのほうは、今回オフを選んでほしいな。",
+      "label": "panel_gap_snap_set",
+      "slots": {
+        "enabled": false
+      },
+      "group": "v04_test_final_topic_value_desire",
+      "tags": [
+        "desired_final_state"
+      ],
+      "note": "設定名と希望値を明示した、コマスナップのオフへの希望形の依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "コマスナップoffの基本指定に今回・ほうという修飾を付加。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5945945945945946,
+          "id": "nyamuru_voice_2517",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップのオフ設定をお願い。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_nominal_request"
+        },
+        {
+          "ratio": 0.5625,
+          "id": "nyamuru_voice_219",
+          "label": "not_command",
+          "text": "コマスナップは今オン？",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_status"
+        },
+        {
+          "ratio": 0.5555555555555556,
+          "id": "nyamuru_voice_218",
+          "label": "not_command",
+          "text": "コマスナップをオフにしないで",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5333333333333333,
+          "id": "nyamuru_voice_212",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップオフ",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        },
+        {
+          "ratio": 0.5294117647058824,
+          "id": "nyamuru_voice_211",
+          "label": "panel_gap_snap_set",
+          "text": "コマスナップをオフにして",
+          "pool": "v03_train",
+          "group": "panel_gap_snap_set_desired_state"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3310",
+      "text": "これから使う道具を指定するよ。「ベクターペン」を選んで。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "vector-pen"
+      },
+      "group": "v04_test_final_announce_tool_then_choose",
+      "tags": [
+        "quoted_tool_name"
+      ],
+      "note": "道具の指定を宣言し、引用した既存ツール名を現在の選択先にしている。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "使用道具の指定を予告し、引用した具体的ツールを選択させる。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5714285714285714,
+          "id": "nyamuru_voice_293",
+          "label": "paint_tool_set",
+          "text": "ベクターのペンを選んで",
+          "pool": "v03_train",
+          "group": "paint_pen_choice"
+        },
+        {
+          "ratio": 0.5333333333333333,
+          "id": "nyamuru_voice_783",
+          "label": "compound_request",
+          "text": "一体型に切り替えてから、ベクターペンを選んで",
+          "pool": "v03_train",
+          "group": "v02_routes_compound_settings"
+        },
+        {
+          "ratio": 0.4878048780487805,
+          "id": "nyamuru_voice_2537",
+          "label": "paint_tool_set",
+          "text": "ベクターペンを選んでもらってもいい？",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_interrogative_request"
+        },
+        {
+          "ratio": 0.46511627906976744,
+          "id": "nyamuru_massive_adapt_077",
+          "label": "paint_tool_set",
+          "text": "描画にはベクターペンを選んでちょうだい",
+          "pool": "v03_train",
+          "group": "massive_adapt_paint"
+        },
+        {
+          "ratio": 0.4528301886792453,
+          "id": "nyamuru_voice_656",
+          "label": "paint_tool_set",
+          "text": "既存の絵をベクター化せず、これから使う道具をベジェペンにして。",
+          "pool": "v03_train",
+          "group": "v02_edit_paint_preserve"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3311",
+      "text": "使いたいのはラスターペンなんだ。描画ツールの選択を、それに合わせて。",
+      "label": "paint_tool_set",
+      "slots": {
+        "tool": "pen"
+      },
+      "group": "v04_test_final_desired_tool_then_reference",
+      "tags": [
+        "resolved_in_utterance"
+      ],
+      "note": "ラスターペンという希望値を先に示し、その同一発話内の値へのツール切替を依頼する。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "希望するペンを宣言し選択をそこに合わせる既存の選択値先行骨格。",
+      "nearest_top5": [
+        {
+          "ratio": 0.4827586206896552,
+          "id": "nyamuru_voice_659",
+          "label": "paint_tool_set",
+          "text": "前に使っていたラスターペンへ、選択ツールを戻してください。",
+          "pool": "v03_train",
+          "group": "v02_edit_paint_return"
+        },
+        {
+          "ratio": 0.47058823529411764,
+          "id": "nyamuru_voice_1626",
+          "label": "paint_tool_set",
+          "text": "ベクターペンに戻そう。ツールの選択を変えて。",
+          "pool": "v03_test",
+          "group": "v03_test_paint_vector_restore"
+        },
+        {
+          "ratio": 0.4444444444444444,
+          "id": "nyamuru_voice_2543",
+          "label": "paint_tool_set",
+          "text": "いま選びたいのはベクターペン。そちらに切り替えて。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_scope_declaration_request"
+        },
+        {
+          "ratio": 0.4406779661016949,
+          "id": "nyamuru_voice_1635",
+          "label": "paint_tool_set",
+          "text": "ラスターペンのほうで作業を続けるので、描画ツールを変更して。",
+          "pool": "v03_test",
+          "group": "v03_test_paint_work_context"
+        },
+        {
+          "ratio": 0.4406779661016949,
+          "id": "nyamuru_voice_646",
+          "label": "paint_tool_set",
+          "text": "いまラスターペンなので、使うツールをベクターペンへ変更して。",
+          "pool": "v03_legacy_dev",
+          "group": "v02_edit_paint_current"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3312",
+      "text": "吹き出しをまたいで選んだ文字枠が三つあるよね。どれも上端が同じ高さになるように整列をお願い。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "group": "v04_test_final_selected_frames_then_alignment_result",
+      "tags": [
+        "multiple_text_frames",
+        "top_alignment"
+      ],
+      "note": "別々の吹き出し内で選択した三文字枠を、上端基準で整列する依頼。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "exclude",
+      "reason": "旧669/679の複数文字枠の上端を同じ高さへ揃える近似。",
+      "nearest_top5": [
+        {
+          "ratio": 0.5555555555555556,
+          "id": "nyamuru_voice_669",
+          "label": "text_frames_align",
+          "text": "いま二つ選んだ文字枠を、上端が同じ高さになるようにそろえて。",
+          "pool": "v03_train",
+          "group": "v02_edit_align_selected"
+        },
+        {
+          "ratio": 0.5,
+          "id": "nyamuru_voice_679",
+          "label": "text_frames_align",
+          "text": "この三つの吹き出し内で選択した文字枠を、頭が同じ高さになるよう上揃えにして。",
+          "pool": "v03_train",
+          "group": "v02_edit_align_bubbles"
+        },
+        {
+          "ratio": 0.4473684210526316,
+          "id": "nyamuru_voice_1355",
+          "label": "text_frames_align",
+          "text": "選んだ文字枠がいくつかあるから、全部の上辺を同じ高さにしてもらえる？",
+          "pool": "v03_dev",
+          "group": "v03_dev_text_frame_top_alignment"
+        },
+        {
+          "ratio": 0.4155844155844156,
+          "id": "nyamuru_voice_1641",
+          "label": "text_frames_align",
+          "text": "別々の吹き出しの書き出し位置を合わせたい。選んだ文字枠の上端を揃えて。",
+          "pool": "v03_test",
+          "group": "v03_test_align_across_bubbles"
+        },
+        {
+          "ratio": 0.4057971014492754,
+          "id": "nyamuru_voice_677",
+          "label": "text_frames_align",
+          "text": "別々の吹き出しから選んだ文字枠の、上端同士を合わせて。",
+          "pool": "v03_train",
+          "group": "v02_edit_align_bubbles"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    },
+    {
+      "id": "nyamuru_voice_3313",
+      "text": "上端揃えをお願い。対象は選択中の二つの文字枠、別々の吹き出しに入っているほうです。",
+      "label": "text_frames_align",
+      "slots": {
+        "target": "selected_text_frames",
+        "alignment": "top",
+        "reference": "selection_bounds"
+      },
+      "group": "v04_test_final_postposed_target",
+      "tags": [
+        "multiple_text_frames",
+        "top_alignment"
+      ],
+      "note": "上端揃えの対象を後半で選択済みの二文字枠と補足。輪郭や本文の各行ではない。",
+      "source": "codex_synthetic",
+      "review_status": "pending_user_review",
+      "split": "test",
+      "decision": "keep",
+      "reason": "上端揃えの依頼を先に発し、対象数と別吹き出しの選択文字枠を後置する。",
+      "nearest_top5": [
+        {
+          "ratio": 0.45614035087719296,
+          "id": "nyamuru_voice_836",
+          "label": "not_command",
+          "text": "選択中の吹き出しにはしっぽが付いている？",
+          "pool": "v03_train",
+          "group": "v02_routes_noaction_state"
+        },
+        {
+          "ratio": 0.4507042253521127,
+          "id": "nyamuru_voice_2551",
+          "label": "text_frames_align",
+          "text": "対象は別々の吹き出しに入っている選択済みの文字枠。文字の頭をそろえて。",
+          "pool": "v04_dev_candidate",
+          "group": "v04_dev_scope_declaration_request"
+        },
+        {
+          "ratio": 0.4126984126984127,
+          "id": "nyamuru_voice_670",
+          "label": "text_frames_align",
+          "text": "この選択中の二つの文字枠、上側の端を合わせてください。",
+          "pool": "v03_train",
+          "group": "v02_edit_align_selected"
+        },
+        {
+          "ratio": 0.4074074074074074,
+          "id": "nyamuru_voice_083",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しにしっぽを付けて",
+          "pool": "v03_train",
+          "group": "bubble_tail"
+        },
+        {
+          "ratio": 0.40625,
+          "id": "nyamuru_voice_099",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しを同じコマの1番の吹き出しにつないで",
+          "pool": "v03_train",
+          "group": "bubble_join"
+        }
+      ],
+      "parent_full_text_and_slots_reviewed": true,
+      "model_predictions_consulted": false
+    }
+  ]
+}

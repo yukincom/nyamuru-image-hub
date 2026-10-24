@@ -1,0 +1,544 @@
+{
+  "status": "passed_no_blocking_findings",
+  "audited_at_utc": "2026-10-18T00:42:46.971681+00:00",
+  "root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17",
+  "version": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3",
+  "scope": "Read-only final audit of existing frozen data and shared pipeline code. No broad semantic re-review of accepted utterances, no model training/inference, no network, no ZIP build or extraction.",
+  "checks": [
+    {
+      "check": "shared_dataset_validation",
+      "status": "pass",
+      "evidence": "dataset.validate(read_splits()) passed without model imports or network calls."
+    },
+    {
+      "check": "five_split_counts",
+      "status": "pass",
+      "evidence": {
+        "train": 1080,
+        "dev": 88,
+        "test": 132,
+        "legacy_dev": 138,
+        "legacy_test": 139
+      }
+    },
+    {
+      "check": "unique_ids_and_normalized_text",
+      "status": "pass",
+      "evidence": {
+        "total_rows": 1577,
+        "unique_ids": 1577,
+        "unique_normalized_texts": 1577
+      }
+    },
+    {
+      "check": "frozen_report_equals_recomputed_report",
+      "status": "pass",
+      "evidence": {
+        "path": "experiments/v0.3/data-report.json"
+      }
+    },
+    {
+      "check": "split_rows_preserve_source_bytes",
+      "status": "pass",
+      "evidence": {
+        "train": true,
+        "dev": true,
+        "test": true,
+        "legacy_dev": true,
+        "legacy_test": true
+      }
+    },
+    {
+      "check": "all_19_labels_at_least_four",
+      "status": "pass",
+      "evidence": {
+        "labels_per_split": {
+          "train": 19,
+          "dev": 19,
+          "test": 19,
+          "legacy_dev": 19,
+          "legacy_test": 19
+        },
+        "minimum_per_split": {
+          "train": 29,
+          "dev": 4,
+          "test": 4,
+          "legacy_dev": 4,
+          "legacy_test": 4
+        },
+        "label_counts": {
+          "train": {
+            "save": 51,
+            "undo": 76,
+            "redo": 80,
+            "page_navigate": 51,
+            "view_change": 43,
+            "artwork_mode_set": 36,
+            "bubble_set": 72,
+            "needs_clarification": 40,
+            "needs_reasoning": 29,
+            "compound_request": 90,
+            "out_of_scope_request": 67,
+            "generate_request": 64,
+            "not_command": 150,
+            "panel_sync_set": 35,
+            "inner_frame_snap_set": 34,
+            "panel_gap_snap_set": 33,
+            "background_3d_candidates": 46,
+            "paint_tool_set": 44,
+            "text_frames_align": 39
+          },
+          "dev": {
+            "not_command": 6,
+            "out_of_scope_request": 4,
+            "save": 4,
+            "undo": 4,
+            "redo": 5,
+            "page_navigate": 5,
+            "view_change": 4,
+            "artwork_mode_set": 4,
+            "needs_clarification": 4,
+            "needs_reasoning": 8,
+            "compound_request": 4,
+            "panel_sync_set": 4,
+            "inner_frame_snap_set": 4,
+            "panel_gap_snap_set": 6,
+            "generate_request": 4,
+            "background_3d_candidates": 6,
+            "paint_tool_set": 4,
+            "text_frames_align": 4,
+            "bubble_set": 4
+          },
+          "test": {
+            "not_command": 16,
+            "out_of_scope_request": 9,
+            "save": 6,
+            "undo": 5,
+            "redo": 6,
+            "page_navigate": 4,
+            "view_change": 4,
+            "artwork_mode_set": 10,
+            "bubble_set": 12,
+            "needs_clarification": 6,
+            "needs_reasoning": 13,
+            "compound_request": 9,
+            "panel_sync_set": 5,
+            "inner_frame_snap_set": 5,
+            "panel_gap_snap_set": 4,
+            "generate_request": 5,
+            "background_3d_candidates": 4,
+            "paint_tool_set": 5,
+            "text_frames_align": 4
+          },
+          "legacy_dev": {
+            "save": 6,
+            "undo": 5,
+            "redo": 5,
+            "page_navigate": 7,
+            "view_change": 7,
+            "bubble_set": 9,
+            "needs_clarification": 8,
+            "needs_reasoning": 6,
+            "compound_request": 8,
+            "out_of_scope_request": 7,
+            "not_command": 12,
+            "generate_request": 10,
+            "artwork_mode_set": 4,
+            "panel_sync_set": 8,
+            "inner_frame_snap_set": 8,
+            "panel_gap_snap_set": 8,
+            "paint_tool_set": 8,
+            "text_frames_align": 8,
+            "background_3d_candidates": 4
+          },
+          "legacy_test": {
+            "save": 7,
+            "undo": 7,
+            "redo": 7,
+            "view_change": 8,
+            "bubble_set": 9,
+            "needs_clarification": 8,
+            "needs_reasoning": 7,
+            "compound_request": 7,
+            "out_of_scope_request": 7,
+            "not_command": 12,
+            "page_navigate": 8,
+            "artwork_mode_set": 8,
+            "panel_sync_set": 8,
+            "inner_frame_snap_set": 8,
+            "panel_gap_snap_set": 8,
+            "paint_tool_set": 4,
+            "text_frames_align": 4,
+            "generate_request": 8,
+            "background_3d_candidates": 4
+          }
+        }
+      }
+    },
+    {
+      "check": "acceptance_record_and_accepted_files_match",
+      "status": "pass",
+      "evidence": {
+        "accepted_synthetic_counts": {
+          "dev": 80,
+          "test": 116
+        },
+        "record_count": 196
+      }
+    },
+    {
+      "check": "accepted_ids_do_not_contradict_exclusions",
+      "status": "pass",
+      "evidence": {
+        "all_excluded": 277,
+        "structural_excluded": 222,
+        "initial_high_ratio_excluded": 38,
+        "overlap_with_exclusion_record": [],
+        "overlap_with_structural_review": [],
+        "overlap_with_high_ratio": [],
+        "ambiguous_1424_accepted": false
+      }
+    },
+    {
+      "check": "initial_candidate_decisions_complete",
+      "status": "pass",
+      "evidence": {
+        "decided_candidates": 473,
+        "declared_all_candidate_ids": 473,
+        "undecided_structural": [],
+        "undecided_initial_high": []
+      }
+    },
+    {
+      "check": "new_splits_are_only_accepted_and_raw_public",
+      "status": "pass",
+      "evidence": {
+        "raw_public_dev": 8,
+        "raw_public_test": 16
+      }
+    },
+    {
+      "check": "acceptance_input_hashes_current",
+      "status": "pass",
+      "evidence": {
+        "dev-draft.jsonl": true,
+        "test-draft.jsonl": true,
+        "bubble-replacements.jsonl": true,
+        "dev-extra.jsonl": true,
+        "bubble-test-extra.jsonl": true,
+        "core-test-replacements.jsonl": true,
+        "dev-revised-extra.jsonl": true,
+        "background-test-extra.jsonl": true,
+        "core-test-replacements-revised.jsonl": true
+      }
+    },
+    {
+      "check": "accepted_rows_match_recorded_origin_or_explicit_revision",
+      "status": "pass",
+      "evidence": {
+        "checked": 196,
+        "documented_slot_corrections": 5,
+        "documented_text_revisions": 1,
+        "unrecorded_changes": []
+      }
+    },
+    {
+      "check": "final_screening_covers_all_frozen_holdouts",
+      "status": "pass",
+      "evidence": {
+        "checked": {
+          "dev": 88,
+          "test": 132
+        },
+        "includes_raw_public_rows": true,
+        "problems": []
+      }
+    },
+    {
+      "check": "old_924_and_boundary_288_bytes_preserved",
+      "status": "pass",
+      "evidence": {
+        "source/candidates.jsonl": {
+          "count": 316,
+          "identical_to_root": true
+        },
+        "curation/2026-10-17-v02-variants/candidates.jsonl": {
+          "count": 608,
+          "identical_to_root": true
+        },
+        "curation/2026-10-18-v03-boundaries/candidates.jsonl": {
+          "count": 288,
+          "identical_to_root": true
+        }
+      }
+    },
+    {
+      "check": "old_ownership_retired_and_boundaries_train_only",
+      "status": "pass",
+      "evidence": {
+        "old_rows": 924,
+        "old_owner_changes": [],
+        "legacy_holdout_bytes_equal": {
+          "dev": true,
+          "test": true
+        },
+        "boundary_train_count": 288
+      }
+    },
+    {
+      "check": "massive_169_provenance_and_partition",
+      "status": "pass",
+      "evidence": {
+        "total": 169,
+        "counts": {
+          "massive_human_localized": 88,
+          "massive_derived_synthetic": 81
+        },
+        "by_split": {
+          "train": {
+            "massive_human_localized": 64,
+            "massive_derived_synthetic": 81
+          },
+          "dev": {
+            "massive_human_localized": 8
+          },
+          "test": {
+            "massive_human_localized": 16
+          },
+          "legacy_dev": {},
+          "legacy_test": {}
+        },
+        "provenance_errors": [],
+        "cross_split_source_texts": 0
+      }
+    },
+    {
+      "check": "new_holdout_families_do_not_cross_any_other_split",
+      "status": "pass",
+      "evidence": {
+        "violating_families": {},
+        "violating_groups": {},
+        "family_counts": {
+          "train": 67,
+          "dev": 28,
+          "test": 103,
+          "legacy_dev": 25,
+          "legacy_test": 26
+        },
+        "retired_train_legacy_family_overlap_is_permitted": true
+      }
+    },
+    {
+      "check": "model_input_is_text_only",
+      "status": "pass",
+      "evidence": {
+        "projection": [
+          "text",
+          "labels"
+        ],
+        "metadata_canary_ignored": true,
+        "code": "dataset.py:83-85; train.py:64-76"
+      }
+    },
+    {
+      "check": "all_six_legacy_prediction_baselines_usable",
+      "status": "pass",
+      "evidence": [
+        {
+          "seed": 42,
+          "legacy_split": "legacy_dev",
+          "n": 138,
+          "id_text_gold_order_aligned": true,
+          "probabilities_argmax_valid": true,
+          "saved_metrics_match_recomputed": true,
+          "float_tolerance": 1e-12,
+          "metric_differences": {
+            "accuracy": 0.0,
+            "macro_f1": 2.220446049250313e-16
+          },
+          "correct": 116,
+          "sha256": "e87b315f1f3009257ed84ea2a6e31d305133ed0ebc462d94a735e5c95a13a602"
+        },
+        {
+          "seed": 42,
+          "legacy_split": "legacy_test",
+          "n": 139,
+          "id_text_gold_order_aligned": true,
+          "probabilities_argmax_valid": true,
+          "saved_metrics_match_recomputed": true,
+          "float_tolerance": 1e-12,
+          "metric_differences": {
+            "accuracy": 0.0,
+            "macro_f1": 2.220446049250313e-16
+          },
+          "correct": 118,
+          "sha256": "99f747666442070d8eeeb3f908d27504e9ebe78422d2855f899fb42e448a5891"
+        },
+        {
+          "seed": 43,
+          "legacy_split": "legacy_dev",
+          "n": 138,
+          "id_text_gold_order_aligned": true,
+          "probabilities_argmax_valid": true,
+          "saved_metrics_match_recomputed": true,
+          "float_tolerance": 1e-12,
+          "metric_differences": {
+            "accuracy": 0.0,
+            "macro_f1": 0.0
+          },
+          "correct": 126,
+          "sha256": "9fb814f34f39f2fcd3fbbf7da5bc5738b899f68bbb7eaf0a47d956af12f8ee19"
+        },
+        {
+          "seed": 43,
+          "legacy_split": "legacy_test",
+          "n": 139,
+          "id_text_gold_order_aligned": true,
+          "probabilities_argmax_valid": true,
+          "saved_metrics_match_recomputed": true,
+          "float_tolerance": 1e-12,
+          "metric_differences": {
+            "accuracy": 0.0,
+            "macro_f1": 1.1102230246251565e-16
+          },
+          "correct": 113,
+          "sha256": "65f81f90c881114fc547eb472649a668f93b0d06ab6af1a33bfd765eb54e75be"
+        },
+        {
+          "seed": 44,
+          "legacy_split": "legacy_dev",
+          "n": 138,
+          "id_text_gold_order_aligned": true,
+          "probabilities_argmax_valid": true,
+          "saved_metrics_match_recomputed": true,
+          "float_tolerance": 1e-12,
+          "metric_differences": {
+            "accuracy": 0.0,
+            "macro_f1": 0.0
+          },
+          "correct": 114,
+          "sha256": "5bae7e69a6522b96f68b3eec94407055e40a99587eced92cc849170a440b0087"
+        },
+        {
+          "seed": 44,
+          "legacy_split": "legacy_test",
+          "n": 139,
+          "id_text_gold_order_aligned": true,
+          "probabilities_argmax_valid": true,
+          "saved_metrics_match_recomputed": true,
+          "float_tolerance": 1e-12,
+          "metric_differences": {
+            "accuracy": 0.0,
+            "macro_f1": 0.0
+          },
+          "correct": 121,
+          "sha256": "15b1d723e22cc809add4794e9f87f3cb571f20dde21d2fe5f8e9bc438d4c2df7"
+        }
+      ]
+    },
+    {
+      "check": "builder_manifest_includes_all_pipeline_dependencies",
+      "status": "pass",
+      "evidence": {
+        "listed_files": 102,
+        "missing_required_names": [],
+        "missing_files": [],
+        "duplicate_names": 0
+      }
+    },
+    {
+      "check": "all_shared_pipeline_code_parses",
+      "status": "pass",
+      "evidence": {
+        "prepare_v03.py": "parsed",
+        "v03_data.py": "parsed",
+        "dataset.py": "parsed",
+        "train.py": "parsed",
+        "evaluation.py": "parsed",
+        "verify_results.py": "parsed",
+        "build_colab.py": "parsed",
+        "test_v03_pipeline.py": "parsed"
+      }
+    },
+    {
+      "check": "pure_dev_selection_rejects_test_selection",
+      "status": "pass",
+      "evidence": {
+        "primary_seed_from_fixture": 43,
+        "test_selection_rejected": true,
+        "fixture_only_no_model_execution": true
+      }
+    },
+    {
+      "check": "prepare_five_split_publish_and_no_overwrite",
+      "status": "pass_source_review",
+      "evidence": {
+        "location": "prepare_v03.py:11-16,24-30,83-128,130-142",
+        "finding": "Five outputs are staged, validated and published with exclusive create. Existing frozen outputs/results are refused; partial publication rollback removes only newly created outputs."
+      }
+    },
+    {
+      "check": "training_receives_train_and_dev_only",
+      "status": "pass_source_review",
+      "evidence": {
+        "location": "train.py:119-154,450-458",
+        "finding": "Training uses encoded train, callback evaluation uses encoded dev. Test text is tokenized for length validation before fitting, but is not passed to Trainer training/eval datasets."
+      }
+    },
+    {
+      "check": "primary_selection_frozen_before_test_predictions",
+      "status": "pass_source_review",
+      "evidence": {
+        "location": "train.py:508-530; evaluation.py:63-114,214-237",
+        "finding": "Shared learning rate and one primary seed use best-dev F1/loss/epoch/trial order only; selection.json plus freeze timestamp is written before evaluate_checkpoint calls. All five splits are predicted after this point."
+      }
+    },
+    {
+      "check": "five_split_prediction_and_verification",
+      "status": "pass_source_review",
+      "evidence": {
+        "location": "train.py:228-232,262-294; verify_results.py:159-173,193-200,294-320",
+        "finding": "All five configured splits are encoded and evaluated; saved prediction rows preserve exact text/gold/metadata. Verifier checks each split hash and recomputes every split metric."
+      }
+    },
+    {
+      "check": "legacy_comparison_is_diagnostic_only",
+      "status": "pass_source_review",
+      "evidence": {
+        "location": "verify_results.py:331-370; evaluation.py:226-237",
+        "finding": "Old baseline IDs/order/text/gold are matched to unchanged legacy holdouts. Old saved predictions are summarized without weight loading. Legacy accuracy deltas are labeled independent_acceptance=false; the 95% decision uses the preselected primary model on new test only."
+      }
+    },
+    {
+      "check": "colab_build_and_runtime_paths",
+      "status": "pass_source_review",
+      "evidence": {
+        "location": "build_colab.py:47-52,59-106,112-145; dataset.py:11-20,43-67",
+        "finding": "v0.3 uses a separate remote directory/ZIP/notebook. Input files are explicitly listed and hashed; shared code falls back to root locally and resides at the extracted experiment root in Colab. Setup runs non-model unit checks before six trials; result pack retains all inputs, reports and three selected checkpoints. ZIP generation/extraction validation is delegated to parent."
+      }
+    }
+  ],
+  "issues": [],
+  "frozen_data_hashes": {
+    "train": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+    "dev": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "test": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1",
+    "legacy_dev": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "legacy_test": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240"
+  },
+  "audited_code_sha256": {
+    "prepare_v03.py": "f58d082647e7d520332c400747ce6f094ac35d384c769574465a98fc19cd0364",
+    "v03_data.py": "d588f813087e0a39b6ec5281a6cd9b4684d2db5fe8b5baeed409adc8f8972ee8",
+    "dataset.py": "408987423dcf65b97be818ccc04bd8d28184e51f2ad2a7bcb59b96f26178b6f6",
+    "train.py": "541989e50c3004ee7477bd9ccf700980ec30ca4e8eea1bd6a57d6e2ca0bf9e3f",
+    "evaluation.py": "d08b06367cefda8669ca12f69bb683c6998f3ad61fa1fecc521a8c7348b0574b",
+    "verify_results.py": "c74841165d340e7baceb2550c6a2168d8aec877013dcd0e01e69f0767f612786",
+    "build_colab.py": "d854a6d13c98a94453e428860199b76cc2f82d895d8cd48486f76398b4065233",
+    "test_v03_pipeline.py": "45cbfb2770919da83512935cea08018a84ae98dbd774ab463c49ac155c1fb324"
+  },
+  "limitations": [
+    "Source review confirms intended control flow; actual Colab execution and produced ZIP remain untested here and are parent-owned validation.",
+    "Family consistency checks enforce the reviewed assignments and exclusion records; they are not proof of linguistic independence or real-user/ASR accuracy.",
+    "Old saved probabilities/metrics were recomputed from existing JSONL; no old or new model was loaded."
+  ]
+}

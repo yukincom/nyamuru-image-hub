@@ -1,0 +1,866 @@
+{
+  "schema_version": 4,
+  "status": "review_complete",
+  "merge_groups": [
+    {
+      "groups": [
+        "v03_save_then_navigation",
+        "v04_train_保存と後の読み返し"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_noaction_reports_questions",
+        "v04_train_保存と後の読み返し",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_current_document_save",
+        "v04_train_保存と後の読み返し",
+        "v04_train_取り消し撤回と保存の残存",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_history_and_save",
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_取り消し撤回と保存の残存"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_undo_specific_latest_edit",
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_ペン訂正と履歴取り消し"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_completed_edit_history",
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_履歴復元の言い換え",
+        "v04_train_再適用回数と別種操作"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_redo_restore_last_undo",
+        "v04_train_履歴復元の言い換え"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_history_repeat_or_pair",
+        "v04_train_履歴復元の言い換え",
+        "v04_train_取り消し回数と別種操作",
+        "v04_train_再適用回数と別種操作"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_navigation_then_save",
+        "v04_train_ページ指定と後の保存"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_constraints_not_second_action",
+        "v04_train_ページ指定と後の保存",
+        "v04_train_ページ送りの回数とガイド",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_page_navigation",
+        "v04_train_ページ指定と後の保存",
+        "v04_train_ページ送りの回数とガイド"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_core_view_change_zoom_step",
+        "v04_train_倍率の目的とガイド表示"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_compound_view_pair",
+        "v04_train_倍率の目的とガイド表示",
+        "v04_train_タブ閲覧とガイド設定",
+        "v04_train_表示全体の説明と設定追加"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_viewport_and_guides",
+        "v04_train_倍率の目的とガイド表示",
+        "v04_train_表示全体の説明と設定追加"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_tool_align_generate_pairs",
+        "v04_train_作画準備と生成の時制",
+        "v04_train_生成対象の複数属性",
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_core_artwork_mode_set_setting_without_run",
+        "v04_train_作画準備と生成の時制"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_artwork_mode_and_generation",
+        "v04_train_作画準備と生成の時制",
+        "v04_train_一体型の定義と別の表示"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_one_action_multiple_values",
+        "v04_train_移動の二軸と別属性",
+        "v04_train_整列の対象数と保存",
+        "v04_train_ページ送りの回数とガイド",
+        "v04_train_程度語の位置と移動量"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_bubble_distinct_fields",
+        "v04_train_移動の二軸と別属性",
+        "v04_train_寸法の二値と別属性",
+        "v04_train_引用内の手順と外側の実行",
+        "v04_train_話者の根拠と別の本文変更",
+        "v04_train_形の採用としっぽ変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_bubble_explicit_values",
+        "v04_train_移動の二軸と別属性",
+        "v04_train_形の採用としっぽ変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_bubble_dimensions",
+        "v04_train_寸法の二値と別属性"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_extra_dev_focused_dimension_value",
+        "v04_train_寸法の二値と別属性",
+        "v04_train_程度語の位置と移動量"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "panel_sync_set_desired_state",
+        "v04_train_シンクロの条件分岐と保存"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_two_editor_settings",
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_コマ吸着の理由とガイド",
+        "v04_train_一体型の定義と別の表示",
+        "v04_train_シンクロの過去状態と別設定",
+        "v04_train_内枠を使わない状態と禁止",
+        "v04_train_コマスナップの訂正射程"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_panel_setting_states",
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_コマ吸着の理由とガイド",
+        "v04_train_シンクロの過去状態と別設定",
+        "v04_train_内枠を使わない状態と禁止"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "inner_frame_snap_set_desired_state",
+        "v04_train_内枠吸着の最終状態"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_disabled_state_vs_prohibit",
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_内枠を使わない状態と禁止"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "panel_gap_snap_set_desired_state",
+        "v04_train_コマ吸着の理由とガイド"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "generate_explicit_locator",
+        "v04_train_生成対象の複数属性",
+        "v04_train_一コマの構成要素と別対象"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "generate_multiple_targets",
+        "v04_train_生成対象の複数属性",
+        "v04_train_一コマの構成要素と別対象"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_extra_dev_person_locator_attribute_list",
+        "v04_train_生成対象の複数属性"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "registered_background_candidates",
+        "v04_train_候補選定の内訳と作画設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_bg_scene",
+        "v04_train_候補選定の内訳と作画設定",
+        "v04_train_候補の複数条件と別コマ"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_compound_background",
+        "v04_train_候補選定の内訳と作画設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_registered_3d_candidates",
+        "v04_train_候補選定の内訳と作画設定",
+        "v04_train_候補の複数条件と別コマ"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_paint_next_stroke",
+        "v04_train_ペン選択と手作業の予定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_pen_alignment_negation",
+        "v04_train_ペン選択と手作業の予定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "pen_and_align",
+        "v04_train_ペン選択と手作業の予定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_paint_tool_choice",
+        "v04_train_ペン選択と手作業の予定",
+        "v04_train_ペン訂正と履歴取り消し"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "text_frames_top",
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_text_frame_top_alignment",
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_self_correction_not_compound",
+        "v04_train_取り消し撤回と保存の残存",
+        "v04_train_ペン訂正と履歴取り消し",
+        "v04_train_二依頼の部分撤回と維持"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_save_final_correction",
+        "v04_train_取り消し撤回と保存の残存"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_undo_history_count",
+        "v04_train_取り消し回数と別種操作"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_extra_dev_sequential_history_references",
+        "v04_train_取り消し回数と別種操作"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_redo_history_count",
+        "v04_train_再適用回数と別種操作"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "page_relative_count",
+        "v04_train_ページ送りの回数とガイド"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "tab_characters",
+        "v04_train_タブ閲覧とガイド設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_core_view_change_existing_tab_purpose",
+        "v04_train_タブ閲覧とガイド設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_existing_tabs",
+        "v04_train_タブ閲覧とガイド設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "mode_integrated",
+        "v04_train_一体型の定義と別の表示"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_core_artwork_mode_set_named_setting_item",
+        "v04_train_一体型の定義と別の表示"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_quoted_two_actions_single_text",
+        "v04_train_引用内の手順と外側の実行"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_quoted_negative_text",
+        "v04_train_引用内の手順と外側の実行"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_extra_dev_quoted_value_then_reference",
+        "v04_train_引用内の手順と外側の実行"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_dialogue_expression",
+        "v04_train_引用内の手順と外側の実行"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "bubble_speaker",
+        "v04_train_話者の根拠と別の本文変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_bubble_speaker_owner",
+        "v04_train_話者の根拠と別の本文変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_bubble_content_judgment",
+        "v04_train_話者の根拠と別の本文変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "bubble_shape_negative",
+        "v04_train_形の採用としっぽ変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "bubble_tail",
+        "v04_train_形の採用としっぽ変更"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "panel_sync_set_history",
+        "v04_train_シンクロの過去状態と別設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_setting_use_state",
+        "v04_train_シンクロの過去状態と別設定"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "inner_frame_snap_set_status",
+        "v04_train_内枠を使わない状態と禁止"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "panel_gap_snap_set_correction",
+        "v04_train_コマスナップの訂正射程"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_setting_correction",
+        "v04_train_コマスナップの訂正射程"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_extra_dev_two_named_settings_unresolved",
+        "v04_train_コマスナップの訂正射程"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "generate_selected_panel",
+        "v04_train_一コマの構成要素と別対象"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_selected_image_generation",
+        "v04_train_一コマの構成要素と別対象",
+        "v04_train_現在選択の生成と過去参照"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_bg_count",
+        "v04_train_候補の複数条件と別コマ"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_bg_locator",
+        "v04_train_候補の複数条件と別コマ"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_paint_return",
+        "v04_train_ペン訂正と履歴取り消し"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_edit_align_bubbles",
+        "v04_train_上端揃えの言い換えとペン"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "ambiguous_bubble_value",
+        "v04_train_程度語の位置と移動量"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_unspecified_bubble_value",
+        "v04_train_程度語の位置と移動量"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_core_save_work_checkpoint",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "zoom_fit",
+        "v04_train_表示全体の説明と設定追加"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "whole_view_vs_mode",
+        "v04_train_表示全体の説明と設定追加"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "generate_selection",
+        "v04_train_現在選択の生成と過去参照"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "generate_selected_character",
+        "v04_train_現在選択の生成と過去参照"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_only_one_positive_clause",
+        "v04_train_現在選択の生成と過去参照",
+        "v04_train_二依頼の部分撤回と維持"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_both_denied_or_both_requested",
+        "v04_train_二依頼の部分撤回と維持"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v03_dev_compound_workflow",
+        "v04_train_二依頼の部分撤回と維持"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v02_routes_gen_numbered",
+        "v04_train_一コマの構成要素と別対象"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "massive_adapt_visual_toggle",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "reason": "作成担当が記録した既存train/devとの意味文型の関連。旧評価は診断専用。",
+      "source": "curation/2026-10-18-v04-contrasts/review.json"
+    },
+    {
+      "groups": [
+        "v04_train_保存と後の読み返し",
+        "v04_train_ページ指定と後の保存"
+      ],
+      "reason": "保存とページ移動の時制・依頼性"
+    },
+    {
+      "groups": [
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_履歴復元の言い換え",
+        "v04_train_取り消し回数と別種操作",
+        "v04_train_再適用回数と別種操作"
+      ],
+      "reason": "履歴操作の言い直し・回数と別種操作"
+    },
+    {
+      "groups": [
+        "v04_train_取り消し回数と別種操作",
+        "v04_train_再適用回数と別種操作",
+        "v04_train_ページ送りの回数とガイド"
+      ],
+      "reason": "同方向の反復回数と別種操作"
+    },
+    {
+      "groups": [
+        "v04_train_倍率の目的とガイド表示",
+        "v04_train_タブ閲覧とガイド設定",
+        "v04_train_表示全体の説明と設定追加"
+      ],
+      "reason": "表示操作の理由・言い換えと独立した表示属性"
+    },
+    {
+      "groups": [
+        "v04_train_作画準備と生成の時制",
+        "v04_train_一体型の定義と別の表示",
+        "v04_train_シンクロの過去状態と別設定"
+      ],
+      "reason": "作画設定と別操作の現在・過去・予定"
+    },
+    {
+      "groups": [
+        "v04_train_移動の二軸と別属性",
+        "v04_train_寸法の二値と別属性",
+        "v04_train_程度語の位置と移動量"
+      ],
+      "reason": "同一BBoxの複数値と独立フィールドおよび量不足"
+    },
+    {
+      "groups": [
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_コマ吸着の理由とガイド"
+      ],
+      "reason": "設定条件が一つの最終状態に収束"
+    },
+    {
+      "groups": [
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_内枠を使わない状態と禁止"
+      ],
+      "reason": "内枠スナップの最終状態と禁止・延期"
+    },
+    {
+      "groups": [
+        "v04_train_生成対象の複数属性",
+        "v04_train_一コマの構成要素と別対象",
+        "v04_train_現在選択の生成と過去参照"
+      ],
+      "reason": "生成対象を属性や構成要素で指定"
+    },
+    {
+      "groups": [
+        "v04_train_候補選定の内訳と作画設定",
+        "v04_train_候補の複数条件と別コマ"
+      ],
+      "reason": "候補の検索・選定・提示と候補数を一件として扱う"
+    },
+    {
+      "groups": [
+        "v04_train_ペン選択と手作業の予定",
+        "v04_train_整列の対象数と保存",
+        "v04_train_上端揃えの言い換えとペン"
+      ],
+      "reason": "ペン選択と文字枠整列の過去・予定・現在"
+    },
+    {
+      "groups": [
+        "v04_train_取り消し撤回と保存の残存",
+        "v04_train_コマスナップの訂正射程",
+        "v04_train_ペン訂正と履歴取り消し",
+        "v04_train_二依頼の部分撤回と維持"
+      ],
+      "reason": "訂正撤回が及ぶ範囲と最終依頼"
+    },
+    {
+      "groups": [
+        "v04_train_引用内の手順と外側の実行",
+        "v04_train_話者の根拠と別の本文変更",
+        "v04_train_形の採用としっぽ変更"
+      ],
+      "reason": "吹き出し本文・話者・形・しっぽの独立性"
+    },
+    {
+      "groups": [
+        "v04_train_保存と後の読み返し",
+        "v04_train_取り消しと保存済み報告",
+        "v04_train_シンクロの過去状態と別設定",
+        "v04_train_複数の理由と保存一件"
+      ],
+      "reason": "複数の完了報告や理由から現在操作を一件残す"
+    },
+    {
+      "groups": [
+        "v03_test_setting_idempotent",
+        "v04_train_シンクロの条件分岐と保存",
+        "v04_train_内枠吸着の最終状態",
+        "v04_train_コマ吸着の理由とガイド"
+      ],
+      "reason": "親が旧testを診断した後の改善類型。現状態で分岐しても同じ目標状態へ収束する。新train作成担当は旧test本文未参照、旧test行は移動せず診断用に保持。"
+    },
+    {
+      "groups": [
+        "v04_dev_contrast_target_request",
+        "v04_dev_supp_target_contrast_then_operation"
+      ],
+      "reason": "新dev 2439/3016 は絵の寸法を変えず表示を縮める同じ対照依頼。両方をdev内の同familyとして保持。",
+      "source": "curation/2026-10-18-v04-evaluation/acceptance-review.json"
+    }
+  ],
+  "holdout_review": "curation/2026-10-18-v04-evaluation/acceptance-review.json",
+  "holdout_excluded_candidates_are_not_training": true
+}

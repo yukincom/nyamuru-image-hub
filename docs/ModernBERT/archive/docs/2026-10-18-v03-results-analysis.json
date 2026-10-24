@@ -1,0 +1,2975 @@
+{
+  "schema_version": 1,
+  "analysis_date": "2026-10-18",
+  "input_zip": "nyamuru-voice-v03-colab-results.zip",
+  "input_zip_sha256": "858cc42bb3120e1f924d6d92ef2302fd5230c75665d7ca9c3244f439ab5ebbb2",
+  "frozen_preparation_commit": "2a20db8",
+  "artifact_directory": "artifacts/v03-colab-2026-10-18",
+  "verification": {
+    "status": "verified",
+    "checked_predictions": 4731,
+    "input_hash_count": 102
+  },
+  "runtime": {
+    "started_at_utc": "2026-10-18T00:59:43.551281+00:00",
+    "finished_at_utc": "2026-10-18T01:03:10.209535+00:00",
+    "device_actual": "cuda:0",
+    "cuda": {
+      "gpu_name": "Tesla T4",
+      "total_memory_bytes": 15637086208,
+      "torch_cuda_version": "13.0",
+      "compute_capability": [
+        7,
+        5
+      ],
+      "matmul_allow_tf32": false,
+      "cudnn_allow_tf32": false,
+      "nvidia_smi": "Sun Oct 18 00:59:43 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 580.82.07              Driver Version: 580.82.07      CUDA Version: 13.0     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  Tesla T4                       Off |   00000000:00:04.0 Off |                    0 |\n| N/A   41C    P8             15W /   70W |       3MiB /  15360MiB |      0%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+\n"
+    },
+    "parameters": 36776211,
+    "elapsed_seconds": 207.321586523
+  },
+  "selection": {
+    "primary_model": {
+      "name": "seed-42",
+      "seed": 42,
+      "trial": "trial-2",
+      "selection_split": "dev",
+      "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+    },
+    "selected_learning_rate": 5e-05,
+    "learning_rate_means": [
+      {
+        "selection_split": "dev",
+        "learning_rate": 2e-05,
+        "trial_index": 0,
+        "macro_f1": 0.8918381813118655,
+        "loss": 0.8938634395599365,
+        "epoch": 8.0,
+        "accuracy": 0.9053030303030303
+      },
+      {
+        "selection_split": "dev",
+        "learning_rate": 5e-05,
+        "trial_index": 1,
+        "macro_f1": 0.8983638194164509,
+        "loss": 1.2474621931711833,
+        "epoch": 7.0,
+        "accuracy": 0.9015151515151515
+      }
+    ],
+    "frozen_at_utc": "2026-10-18T01:03:00.949959+00:00"
+  },
+  "models": {
+    "seed-42": {
+      "selected_trial": "trial-2",
+      "selected_epoch": 8.0,
+      "metrics": {
+        "dev": {
+          "n": 88,
+          "correct": 81,
+          "accuracy": 0.9204545454545454,
+          "macro_f1": 0.9145743145743146,
+          "loss": 1.0946348905563354,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 6,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 1,
+            "denominator": 4,
+            "rate": 0.25
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 4,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 74,
+              "denominator": 80,
+              "rate": 0.925
+            },
+            "massive_human_localized": {
+              "count": 7,
+              "denominator": 8,
+              "rate": 0.875
+            }
+          }
+        },
+        "test": {
+          "n": 132,
+          "correct": 117,
+          "accuracy": 0.8863636363636364,
+          "macro_f1": 0.8819201512553314,
+          "loss": 1.1895686388015747,
+          "not_command_to_dispatch_label": {
+            "count": 1,
+            "denominator": 16,
+            "rate": 0.0625
+          },
+          "undo_to_redo": {
+            "count": 1,
+            "denominator": 5,
+            "rate": 0.2
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 6,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 9,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 102,
+              "denominator": 116,
+              "rate": 0.8793103448275862
+            },
+            "massive_human_localized": {
+              "count": 15,
+              "denominator": 16,
+              "rate": 0.9375
+            }
+          }
+        },
+        "train": {
+          "n": 1080,
+          "correct": 1078,
+          "accuracy": 0.9981481481481481,
+          "macro_f1": 0.9982799847979006,
+          "loss": 0.014068951830267906,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 150,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 76,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 80,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 90,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 926,
+              "denominator": 928,
+              "rate": 0.9978448275862069
+            },
+            "massive_derived_synthetic": {
+              "count": 81,
+              "denominator": 81,
+              "rate": 1.0
+            },
+            "massive_human_localized": {
+              "count": 64,
+              "denominator": 64,
+              "rate": 1.0
+            },
+            "user_supplied_example": {
+              "count": 7,
+              "denominator": 7,
+              "rate": 1.0
+            }
+          }
+        },
+        "legacy_dev": {
+          "n": 138,
+          "correct": 117,
+          "accuracy": 0.8478260869565217,
+          "macro_f1": 0.8566248357041905,
+          "loss": 2.254060983657837,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 12,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 8,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 116,
+              "denominator": 137,
+              "rate": 0.8467153284671532
+            },
+            "user_supplied_example": {
+              "count": 1,
+              "denominator": 1,
+              "rate": 1.0
+            }
+          }
+        },
+        "legacy_test": {
+          "n": 139,
+          "correct": 128,
+          "accuracy": 0.920863309352518,
+          "macro_f1": 0.9225384788477506,
+          "loss": 0.8846386075019836,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 12,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 7,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 1,
+            "denominator": 7,
+            "rate": 0.14285714285714285
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 7,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 128,
+              "denominator": 139,
+              "rate": 0.920863309352518
+            }
+          }
+        }
+      },
+      "test_error_count": 15,
+      "test_errors_confidence_ge_0_90": 13,
+      "test_errors_confidence_ge_0_99": 8,
+      "compound": {
+        "true_positive": 9,
+        "predicted_count": 16,
+        "gold_count": 9,
+        "precision": 0.5625,
+        "false_positive_ids": [
+          "nyamuru_voice_1371",
+          "nyamuru_voice_1407",
+          "nyamuru_voice_1448",
+          "nyamuru_voice_1469",
+          "nyamuru_voice_1549",
+          "nyamuru_voice_1570",
+          "nyamuru_voice_1585"
+        ]
+      },
+      "test_confusions": [
+        {
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "n": 2
+        },
+        {
+          "gold": "not_command",
+          "predicted": "out_of_scope_request",
+          "n": 1
+        },
+        {
+          "gold": "save",
+          "predicted": "needs_clarification",
+          "n": 1
+        },
+        {
+          "gold": "save",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "undo",
+          "predicted": "redo",
+          "n": 1
+        },
+        {
+          "gold": "redo",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "artwork_mode_set",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "bubble_set",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "view_change",
+          "n": 1
+        },
+        {
+          "gold": "not_command",
+          "predicted": "text_frames_align",
+          "n": 1
+        },
+        {
+          "gold": "panel_sync_set",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "inner_frame_snap_set",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "panel_gap_snap_set",
+          "predicted": "compound_request",
+          "n": 1
+        }
+      ],
+      "test_errors": [
+        {
+          "id": "nyamuru_massive_raw_16010",
+          "text": "受信ボックスに新着メッセージがあるかどうか",
+          "gold": "not_command",
+          "predicted": "out_of_scope_request",
+          "confidence": 0.9988270401954651,
+          "source": "massive_human_localized",
+          "group": "massive_email_query",
+          "family": "massive_email_query",
+          "gold_probability": 0.0010957593331113458
+        },
+        {
+          "id": "nyamuru_voice_1370",
+          "text": "保存だけ先に済ませてもらえるかな。",
+          "gold": "save",
+          "predicted": "needs_clarification",
+          "confidence": 0.915336012840271,
+          "source": "codex_synthetic",
+          "group": "v03_test_save_only",
+          "family": "v03_test_save_only",
+          "gold_probability": 3.7506833905354142e-06
+        },
+        {
+          "id": "nyamuru_voice_1371",
+          "text": "この原稿、閉じる前にまず保存をお願い。",
+          "gold": "save",
+          "predicted": "compound_request",
+          "confidence": 0.9999059438705444,
+          "source": "codex_synthetic",
+          "group": "v03_test_save_before_close",
+          "family": "v03_test_save_before_close",
+          "gold_probability": 9.40674653975293e-05
+        },
+        {
+          "id": "nyamuru_voice_1390",
+          "text": "今の変更を残すのはやめよう。取り消しを一回お願い。",
+          "gold": "undo",
+          "predicted": "redo",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_history_reject_edit",
+          "family": "v03_test_history_reject_edit",
+          "gold_probability": 1.277831707113819e-08
+        },
+        {
+          "id": "nyamuru_voice_1407",
+          "text": "Undoで三段戻した分を全部やり直して、編集履歴を三段進めて。",
+          "gold": "redo",
+          "predicted": "compound_request",
+          "confidence": 0.999841570854187,
+          "source": "codex_synthetic",
+          "group": "v03_test_history_multi",
+          "family": "v03_test_history_multi",
+          "gold_probability": 0.00015552743570879102
+        },
+        {
+          "id": "nyamuru_voice_1432",
+          "text": "拡大表示はここまででいいよ。等倍に戻して。",
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "confidence": 0.5564539432525635,
+          "source": "codex_synthetic",
+          "group": "v03_test_view_actual",
+          "family": "v03_test_view_actual",
+          "gold_probability": 0.44303321838378906
+        },
+        {
+          "id": "nyamuru_voice_1442",
+          "text": "小道具のタブ、そこへ行って。",
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "confidence": 0.9847619533538818,
+          "source": "codex_synthetic",
+          "group": "v03_test_view_props_tab",
+          "family": "v03_test_view_props_tab",
+          "gold_probability": 0.011926925741136074
+        },
+        {
+          "id": "nyamuru_voice_1448",
+          "text": "まず下書きモードに切り替えておこう。",
+          "gold": "artwork_mode_set",
+          "predicted": "compound_request",
+          "confidence": 0.9999958276748657,
+          "source": "codex_synthetic",
+          "group": "v03_test_mode_preparation",
+          "family": "v03_test_mode_preparation",
+          "gold_probability": 4.222672487230739e-06
+        },
+        {
+          "id": "nyamuru_voice_1469",
+          "text": "コマからはみ出す分も見せたいので、この吹き出しのコマ枠での切り取りはオフにして。",
+          "gold": "bubble_set",
+          "predicted": "compound_request",
+          "confidence": 0.923482358455658,
+          "source": "codex_synthetic",
+          "group": "v03_test_bubble_clip_state",
+          "family": "v03_test_bubble_clip_state",
+          "gold_probability": 0.07620226591825485
+        },
+        {
+          "id": "nyamuru_voice_1484",
+          "text": "この吹き出しを少し右のほうへ寄せて。",
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "confidence": 0.9998212456703186,
+          "source": "codex_synthetic",
+          "group": "v03_test_bubble_move_distance",
+          "family": "v03_test_bubble_move_distance",
+          "gold_probability": 0.00017878487415146083
+        },
+        {
+          "id": "nyamuru_voice_1500",
+          "text": "文字が絵の邪魔にならないようにしたい。ページを見て置き場所を提案して。",
+          "gold": "needs_reasoning",
+          "predicted": "view_change",
+          "confidence": 0.5230896472930908,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_text_placement",
+          "family": "v03_test_reason_text_placement",
+          "gold_probability": 0.4768744111061096
+        },
+        {
+          "id": "nyamuru_voice_1539",
+          "text": "選択した複数の文字枠の上端揃えは、あとでやろう。今はそのままで。",
+          "gold": "not_command",
+          "predicted": "text_frames_align",
+          "confidence": 0.9603601694107056,
+          "source": "codex_synthetic",
+          "group": "v03_test_align_defer",
+          "family": "v03_test_align_defer",
+          "gold_probability": 0.00012721223174594343
+        },
+        {
+          "id": "nyamuru_voice_1549",
+          "text": "コマシンクロが切れていたらオンに、すでにオンならそのままにして。",
+          "gold": "panel_sync_set",
+          "predicted": "compound_request",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_idempotent",
+          "family": "v03_test_setting_idempotent",
+          "gold_probability": 1.7905938953788336e-09
+        },
+        {
+          "id": "nyamuru_voice_1570",
+          "text": "内枠スナップがオンなら切って、オフなら維持してね。",
+          "gold": "inner_frame_snap_set",
+          "predicted": "compound_request",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_idempotent",
+          "family": "v03_test_setting_idempotent",
+          "gold_probability": 4.749707774981925e-14
+        },
+        {
+          "id": "nyamuru_voice_1585",
+          "text": "コマスナップがもう有効ならそのまま、無効なら有効にして。",
+          "gold": "panel_gap_snap_set",
+          "predicted": "compound_request",
+          "confidence": 0.9879112243652344,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_idempotent",
+          "family": "v03_test_setting_idempotent",
+          "gold_probability": 3.5268720239400864e-05
+        }
+      ]
+    },
+    "seed-43": {
+      "selected_trial": "trial-4",
+      "selected_epoch": 8.0,
+      "metrics": {
+        "dev": {
+          "n": 88,
+          "correct": 78,
+          "accuracy": 0.8863636363636364,
+          "macro_f1": 0.8840720682825945,
+          "loss": 1.2133526802062988,
+          "not_command_to_dispatch_label": {
+            "count": 1,
+            "denominator": 6,
+            "rate": 0.16666666666666666
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 4,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 1,
+            "denominator": 4,
+            "rate": 0.25
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 71,
+              "denominator": 80,
+              "rate": 0.8875
+            },
+            "massive_human_localized": {
+              "count": 7,
+              "denominator": 8,
+              "rate": 0.875
+            }
+          }
+        },
+        "test": {
+          "n": 132,
+          "correct": 104,
+          "accuracy": 0.7878787878787878,
+          "macro_f1": 0.7877908520567802,
+          "loss": 1.8751569986343384,
+          "not_command_to_dispatch_label": {
+            "count": 2,
+            "denominator": 16,
+            "rate": 0.125
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 2,
+            "denominator": 6,
+            "rate": 0.3333333333333333
+          },
+          "compound_to_single_dispatch": {
+            "count": 5,
+            "denominator": 9,
+            "rate": 0.5555555555555556
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 92,
+              "denominator": 116,
+              "rate": 0.7931034482758621
+            },
+            "massive_human_localized": {
+              "count": 12,
+              "denominator": 16,
+              "rate": 0.75
+            }
+          }
+        },
+        "train": {
+          "n": 1080,
+          "correct": 1080,
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "loss": 6.928568836883642e-06,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 150,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 76,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 80,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 90,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 928,
+              "denominator": 928,
+              "rate": 1.0
+            },
+            "massive_derived_synthetic": {
+              "count": 81,
+              "denominator": 81,
+              "rate": 1.0
+            },
+            "massive_human_localized": {
+              "count": 64,
+              "denominator": 64,
+              "rate": 1.0
+            },
+            "user_supplied_example": {
+              "count": 7,
+              "denominator": 7,
+              "rate": 1.0
+            }
+          }
+        },
+        "legacy_dev": {
+          "n": 138,
+          "correct": 115,
+          "accuracy": 0.8333333333333334,
+          "macro_f1": 0.833587520748646,
+          "loss": 2.2168703079223633,
+          "not_command_to_dispatch_label": {
+            "count": 1,
+            "denominator": 12,
+            "rate": 0.08333333333333333
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 1,
+            "denominator": 8,
+            "rate": 0.125
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 114,
+              "denominator": 137,
+              "rate": 0.8321167883211679
+            },
+            "user_supplied_example": {
+              "count": 1,
+              "denominator": 1,
+              "rate": 1.0
+            }
+          }
+        },
+        "legacy_test": {
+          "n": 139,
+          "correct": 127,
+          "accuracy": 0.9136690647482014,
+          "macro_f1": 0.9097424677146041,
+          "loss": 0.6093122959136963,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 12,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 7,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 1,
+            "denominator": 7,
+            "rate": 0.14285714285714285
+          },
+          "compound_to_single_dispatch": {
+            "count": 2,
+            "denominator": 7,
+            "rate": 0.2857142857142857
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 127,
+              "denominator": 139,
+              "rate": 0.9136690647482014
+            }
+          }
+        }
+      },
+      "test_error_count": 28,
+      "test_errors_confidence_ge_0_90": 23,
+      "test_errors_confidence_ge_0_99": 12,
+      "compound": {
+        "true_positive": 4,
+        "predicted_count": 4,
+        "gold_count": 9,
+        "precision": 1.0,
+        "false_positive_ids": []
+      },
+      "test_confusions": [
+        {
+          "gold": "out_of_scope_request",
+          "predicted": "not_command",
+          "n": 3
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "not_command",
+          "n": 3
+        },
+        {
+          "gold": "redo",
+          "predicted": "undo",
+          "n": 2
+        },
+        {
+          "gold": "out_of_scope_request",
+          "predicted": "bubble_set",
+          "n": 1
+        },
+        {
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "n": 1
+        },
+        {
+          "gold": "view_change",
+          "predicted": "page_navigate",
+          "n": 1
+        },
+        {
+          "gold": "artwork_mode_set",
+          "predicted": "redo",
+          "n": 1
+        },
+        {
+          "gold": "artwork_mode_set",
+          "predicted": "needs_clarification",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "inner_frame_snap_set",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "not_command",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "page_navigate",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "background_3d_candidates",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "bubble_set",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "artwork_mode_set",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "undo",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "text_frames_align",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "paint_tool_set",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "view_change",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "save",
+          "n": 1
+        },
+        {
+          "gold": "not_command",
+          "predicted": "inner_frame_snap_set",
+          "n": 1
+        },
+        {
+          "gold": "not_command",
+          "predicted": "background_3d_candidates",
+          "n": 1
+        },
+        {
+          "gold": "panel_sync_set",
+          "predicted": "redo",
+          "n": 1
+        }
+      ],
+      "test_errors": [
+        {
+          "id": "nyamuru_massive_raw_16717",
+          "text": "圭吾宛てに休暇中だというメールを書いて",
+          "gold": "out_of_scope_request",
+          "predicted": "not_command",
+          "confidence": 0.9996916055679321,
+          "source": "massive_human_localized",
+          "group": "massive_email_sendemail",
+          "family": "massive_email_query",
+          "gold_probability": 0.0003031757951248437
+        },
+        {
+          "id": "nyamuru_massive_raw_16024",
+          "text": "俊太に明日は忙しいというメールを送って",
+          "gold": "out_of_scope_request",
+          "predicted": "not_command",
+          "confidence": 0.934804379940033,
+          "source": "massive_human_localized",
+          "group": "massive_email_sendemail",
+          "family": "massive_email_query",
+          "gold_probability": 0.06517263501882553
+        },
+        {
+          "id": "nyamuru_massive_raw_16419",
+          "text": "できるよと鈴木おじさんにメールを送ってください",
+          "gold": "out_of_scope_request",
+          "predicted": "bubble_set",
+          "confidence": 0.48908621072769165,
+          "source": "massive_human_localized",
+          "group": "massive_email_sendemail",
+          "family": "massive_email_query",
+          "gold_probability": 0.21037502586841583
+        },
+        {
+          "id": "nyamuru_massive_raw_16166",
+          "text": "今後三週間はプロジェクトで忙しくなると文香さんに返信してくれますか",
+          "gold": "out_of_scope_request",
+          "predicted": "not_command",
+          "confidence": 0.9998045563697815,
+          "source": "massive_human_localized",
+          "group": "massive_email_sendemail",
+          "family": "massive_email_query",
+          "gold_probability": 4.64211443613749e-05
+        },
+        {
+          "id": "nyamuru_voice_1404",
+          "text": "文字の修正をUndoしたところだけど、その修正をもう一度反映して。",
+          "gold": "redo",
+          "predicted": "undo",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_history_text_change",
+          "family": "v03_test_history_text_change",
+          "gold_probability": 3.849480734174904e-08
+        },
+        {
+          "id": "nyamuru_voice_1406",
+          "text": "取り消してみたけど、変更後を採用したい。直前のUndoをやり直して。",
+          "gold": "redo",
+          "predicted": "undo",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_redo_accept_change",
+          "family": "v03_test_redo_accept_change",
+          "gold_probability": 2.501121254550043e-10
+        },
+        {
+          "id": "nyamuru_voice_1432",
+          "text": "拡大表示はここまででいいよ。等倍に戻して。",
+          "gold": "view_change",
+          "predicted": "needs_clarification",
+          "confidence": 0.9429320096969604,
+          "source": "codex_synthetic",
+          "group": "v03_test_view_actual",
+          "family": "v03_test_view_actual",
+          "gold_probability": 0.04963935911655426
+        },
+        {
+          "id": "nyamuru_voice_1442",
+          "text": "小道具のタブ、そこへ行って。",
+          "gold": "view_change",
+          "predicted": "page_navigate",
+          "confidence": 0.9557458162307739,
+          "source": "codex_synthetic",
+          "group": "v03_test_view_props_tab",
+          "family": "v03_test_view_props_tab",
+          "gold_probability": 0.039179783314466476
+        },
+        {
+          "id": "nyamuru_voice_1449",
+          "text": "一体型のほうに作画方式を戻してほしい。",
+          "gold": "artwork_mode_set",
+          "predicted": "redo",
+          "confidence": 0.624031126499176,
+          "source": "codex_synthetic",
+          "group": "v03_test_mode_restore",
+          "family": "v03_test_mode_restore",
+          "gold_probability": 0.011514146812260151
+        },
+        {
+          "id": "nyamuru_voice_1451",
+          "text": "作画設定にある一体型、今回はそれにしておいて。",
+          "gold": "artwork_mode_set",
+          "predicted": "needs_clarification",
+          "confidence": 0.9861853718757629,
+          "source": "codex_synthetic",
+          "group": "v03_test_mode_explicit_selection",
+          "family": "v03_test_mode_explicit_selection",
+          "gold_probability": 0.005814782343804836
+        },
+        {
+          "id": "nyamuru_voice_1482",
+          "text": "内枠スナップ、さっき言ったほうにして。",
+          "gold": "needs_clarification",
+          "predicted": "inner_frame_snap_set",
+          "confidence": 0.9804027080535889,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_inner_snap",
+          "family": "v03_test_ambiguous_inner_snap",
+          "gold_probability": 0.019597088918089867
+        },
+        {
+          "id": "nyamuru_voice_1484",
+          "text": "この吹き出しを少し右のほうへ寄せて。",
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "confidence": 0.9999996423721313,
+          "source": "codex_synthetic",
+          "group": "v03_test_bubble_move_distance",
+          "family": "v03_test_bubble_move_distance",
+          "gold_probability": 7.334017282367711e-10
+        },
+        {
+          "id": "nyamuru_voice_1489",
+          "text": "これ、あっちに移しておいて。",
+          "gold": "needs_clarification",
+          "predicted": "not_command",
+          "confidence": 0.9974185228347778,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_deictic_move",
+          "family": "v03_test_ambiguous_deictic_move",
+          "gold_probability": 0.001975859748199582
+        },
+        {
+          "id": "nyamuru_voice_1491",
+          "text": "表示するページは、さっき話したところでお願い。",
+          "gold": "needs_clarification",
+          "predicted": "page_navigate",
+          "confidence": 0.9795265793800354,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_page",
+          "family": "v03_test_ambiguous_page",
+          "gold_probability": 0.02041027881205082
+        },
+        {
+          "id": "nyamuru_voice_1495",
+          "text": "この二人の表情から、いまのセリフが誰の言葉に見えるか考えてほしい。",
+          "gold": "needs_reasoning",
+          "predicted": "not_command",
+          "confidence": 0.9716587662696838,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_speaker",
+          "family": "v03_test_reason_speaker",
+          "gold_probability": 0.02832615375518799
+        },
+        {
+          "id": "nyamuru_voice_1496",
+          "text": "このページ、視線が迷うところを見つけて配置の直し方を考えて。",
+          "gold": "needs_reasoning",
+          "predicted": "background_3d_candidates",
+          "confidence": 0.6342440247535706,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_page_flow",
+          "family": "v03_test_reason_page_flow",
+          "gold_probability": 0.002744081197306514
+        },
+        {
+          "id": "nyamuru_voice_1501",
+          "text": "このコマの内容を伝えるには、どのセリフを短くするのがよさそうか検討して。",
+          "gold": "needs_reasoning",
+          "predicted": "not_command",
+          "confidence": 0.9840743541717529,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_shorten",
+          "family": "v03_test_reason_shorten",
+          "gold_probability": 0.01592547819018364
+        },
+        {
+          "id": "nyamuru_voice_1506",
+          "text": "吹き出しの形を決めかねてる。この独白の雰囲気に合う案を考えて。",
+          "gold": "needs_reasoning",
+          "predicted": "bubble_set",
+          "confidence": 0.9008302688598633,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_monologue",
+          "family": "v03_test_reason_monologue",
+          "gold_probability": 0.011735625565052032
+        },
+        {
+          "id": "nyamuru_voice_1507",
+          "text": "このページの最後が印象に残るように、今の構成から改善案を出して。",
+          "gold": "needs_reasoning",
+          "predicted": "artwork_mode_set",
+          "confidence": 0.9745723605155945,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_page_ending",
+          "family": "v03_test_reason_page_ending",
+          "gold_probability": 0.004547643009573221
+        },
+        {
+          "id": "nyamuru_voice_1508",
+          "text": "並んだセリフの強弱を読み取って、どこに余白を持たせるか考えておいて。",
+          "gold": "needs_reasoning",
+          "predicted": "not_command",
+          "confidence": 0.9945653676986694,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_spacing",
+          "family": "v03_test_reason_spacing",
+          "gold_probability": 0.0054322658106684685
+        },
+        {
+          "id": "nyamuru_voice_1515",
+          "text": "今の編集を一回取り消したうえで、三ページへ移動して。",
+          "gold": "compound_request",
+          "predicted": "undo",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_undo_page",
+          "family": "v03_test_compound_undo_page",
+          "gold_probability": 4.696013001202759e-13
+        },
+        {
+          "id": "nyamuru_voice_1517",
+          "text": "選択した複数の文字枠は上端を揃えてね。編集ガイドも非表示にしてほしい。",
+          "gold": "compound_request",
+          "predicted": "text_frames_align",
+          "confidence": 0.9995985627174377,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_align_guide",
+          "family": "v03_test_compound_align_guide",
+          "gold_probability": 8.578361979094673e-12
+        },
+        {
+          "id": "nyamuru_voice_1518",
+          "text": "コマスナップを有効にするのと、ベクターペンへの切り替えをお願い。",
+          "gold": "compound_request",
+          "predicted": "paint_tool_set",
+          "confidence": 0.6867714524269104,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_snap_pen",
+          "family": "v03_test_compound_snap_pen",
+          "gold_probability": 0.3132285177707672
+        },
+        {
+          "id": "nyamuru_voice_1520",
+          "text": "この人物を生成してほしい。あと、配置ガイドを表示しておいて。",
+          "gold": "compound_request",
+          "predicted": "view_change",
+          "confidence": 0.9999979734420776,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_generate_guide",
+          "family": "v03_test_compound_generate_guide",
+          "gold_probability": 6.602229180030506e-11
+        },
+        {
+          "id": "nyamuru_voice_1524",
+          "text": "作品情報タブを出して。保存も今のうちにお願い。",
+          "gold": "compound_request",
+          "predicted": "save",
+          "confidence": 0.999645471572876,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_tab_save",
+          "family": "v03_test_compound_tab_save",
+          "gold_probability": 2.9168091941755847e-07
+        },
+        {
+          "id": "nyamuru_voice_1537",
+          "text": "内枠スナップはさっき自分でオフにしたよ。",
+          "gold": "not_command",
+          "predicted": "inner_frame_snap_set",
+          "confidence": 0.979931652545929,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_inner_report",
+          "family": "v03_test_setting_inner_report",
+          "gold_probability": 0.020068366080522537
+        },
+        {
+          "id": "nyamuru_voice_1540",
+          "text": "登録済みの3Dモデルから背景候補を出すには、どう操作するの？",
+          "gold": "not_command",
+          "predicted": "background_3d_candidates",
+          "confidence": 0.9923080205917358,
+          "source": "codex_synthetic",
+          "group": "v03_test_candidates_how",
+          "family": "v03_test_candidates_how",
+          "gold_probability": 0.007691977545619011
+        },
+        {
+          "id": "nyamuru_voice_1551",
+          "text": "さっきオフにしたコマシンクロ、有効な状態へ戻して。",
+          "gold": "panel_sync_set",
+          "predicted": "redo",
+          "confidence": 0.852347731590271,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_restore",
+          "family": "v03_test_setting_restore",
+          "gold_probability": 0.034014955163002014
+        }
+      ]
+    },
+    "seed-44": {
+      "selected_trial": "trial-6",
+      "selected_epoch": 5.0,
+      "metrics": {
+        "dev": {
+          "n": 88,
+          "correct": 79,
+          "accuracy": 0.8977272727272727,
+          "macro_f1": 0.8964450753924438,
+          "loss": 1.4343990087509155,
+          "not_command_to_dispatch_label": {
+            "count": 2,
+            "denominator": 6,
+            "rate": 0.3333333333333333
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 4,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 1,
+            "denominator": 4,
+            "rate": 0.25
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 71,
+              "denominator": 80,
+              "rate": 0.8875
+            },
+            "massive_human_localized": {
+              "count": 8,
+              "denominator": 8,
+              "rate": 1.0
+            }
+          }
+        },
+        "test": {
+          "n": 132,
+          "correct": 104,
+          "accuracy": 0.7878787878787878,
+          "macro_f1": 0.7820355647225453,
+          "loss": 1.8534247875213623,
+          "not_command_to_dispatch_label": {
+            "count": 2,
+            "denominator": 16,
+            "rate": 0.125
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 6,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 5,
+            "denominator": 9,
+            "rate": 0.5555555555555556
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 91,
+              "denominator": 116,
+              "rate": 0.7844827586206896
+            },
+            "massive_human_localized": {
+              "count": 13,
+              "denominator": 16,
+              "rate": 0.8125
+            }
+          }
+        },
+        "train": {
+          "n": 1080,
+          "correct": 1075,
+          "accuracy": 0.9953703703703703,
+          "macro_f1": 0.996959341640403,
+          "loss": 0.017152098938822746,
+          "not_command_to_dispatch_label": {
+            "count": 3,
+            "denominator": 150,
+            "rate": 0.02
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 76,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 80,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 0,
+            "denominator": 90,
+            "rate": 0.0
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 923,
+              "denominator": 928,
+              "rate": 0.9946120689655172
+            },
+            "massive_derived_synthetic": {
+              "count": 81,
+              "denominator": 81,
+              "rate": 1.0
+            },
+            "massive_human_localized": {
+              "count": 64,
+              "denominator": 64,
+              "rate": 1.0
+            },
+            "user_supplied_example": {
+              "count": 7,
+              "denominator": 7,
+              "rate": 1.0
+            }
+          }
+        },
+        "legacy_dev": {
+          "n": 138,
+          "correct": 111,
+          "accuracy": 0.8043478260869565,
+          "macro_f1": 0.8031546454921068,
+          "loss": 1.8630731105804443,
+          "not_command_to_dispatch_label": {
+            "count": 1,
+            "denominator": 12,
+            "rate": 0.08333333333333333
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 0,
+            "denominator": 5,
+            "rate": 0.0
+          },
+          "compound_to_single_dispatch": {
+            "count": 1,
+            "denominator": 8,
+            "rate": 0.125
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 110,
+              "denominator": 137,
+              "rate": 0.8029197080291971
+            },
+            "user_supplied_example": {
+              "count": 1,
+              "denominator": 1,
+              "rate": 1.0
+            }
+          }
+        },
+        "legacy_test": {
+          "n": 139,
+          "correct": 127,
+          "accuracy": 0.9136690647482014,
+          "macro_f1": 0.9155602300583563,
+          "loss": 0.5307716131210327,
+          "not_command_to_dispatch_label": {
+            "count": 0,
+            "denominator": 12,
+            "rate": 0.0
+          },
+          "undo_to_redo": {
+            "count": 0,
+            "denominator": 7,
+            "rate": 0.0
+          },
+          "redo_to_undo": {
+            "count": 1,
+            "denominator": 7,
+            "rate": 0.14285714285714285
+          },
+          "compound_to_single_dispatch": {
+            "count": 2,
+            "denominator": 7,
+            "rate": 0.2857142857142857
+          },
+          "source_accuracy": {
+            "codex_synthetic": {
+              "count": 127,
+              "denominator": 139,
+              "rate": 0.9136690647482014
+            }
+          }
+        }
+      },
+      "test_error_count": 28,
+      "test_errors_confidence_ge_0_90": 19,
+      "test_errors_confidence_ge_0_99": 11,
+      "compound": {
+        "true_positive": 4,
+        "predicted_count": 5,
+        "gold_count": 9,
+        "precision": 0.8,
+        "false_positive_ids": [
+          "nyamuru_voice_1570"
+        ]
+      },
+      "test_confusions": [
+        {
+          "gold": "compound_request",
+          "predicted": "view_change",
+          "n": 3
+        },
+        {
+          "gold": "not_command",
+          "predicted": "out_of_scope_request",
+          "n": 2
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "undo",
+          "n": 2
+        },
+        {
+          "gold": "bubble_set",
+          "predicted": "needs_reasoning",
+          "n": 2
+        },
+        {
+          "gold": "out_of_scope_request",
+          "predicted": "needs_reasoning",
+          "n": 1
+        },
+        {
+          "gold": "save",
+          "predicted": "not_command",
+          "n": 1
+        },
+        {
+          "gold": "view_change",
+          "predicted": "redo",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "inner_frame_snap_set",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "n": 1
+        },
+        {
+          "gold": "needs_clarification",
+          "predicted": "not_command",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "redo",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "page_navigate",
+          "n": 1
+        },
+        {
+          "gold": "needs_reasoning",
+          "predicted": "background_3d_candidates",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "page_navigate",
+          "n": 1
+        },
+        {
+          "gold": "compound_request",
+          "predicted": "text_frames_align",
+          "n": 1
+        },
+        {
+          "gold": "not_command",
+          "predicted": "save",
+          "n": 1
+        },
+        {
+          "gold": "not_command",
+          "predicted": "inner_frame_snap_set",
+          "n": 1
+        },
+        {
+          "gold": "not_command",
+          "predicted": "needs_reasoning",
+          "n": 1
+        },
+        {
+          "gold": "panel_sync_set",
+          "predicted": "not_command",
+          "n": 1
+        },
+        {
+          "gold": "panel_sync_set",
+          "predicted": "redo",
+          "n": 1
+        },
+        {
+          "gold": "inner_frame_snap_set",
+          "predicted": "compound_request",
+          "n": 1
+        },
+        {
+          "gold": "paint_tool_set",
+          "predicted": "view_change",
+          "n": 1
+        },
+        {
+          "gold": "bubble_set",
+          "predicted": "text_frames_align",
+          "n": 1
+        }
+      ],
+      "test_errors": [
+        {
+          "id": "nyamuru_massive_raw_16010",
+          "text": "受信ボックスに新着メッセージがあるかどうか",
+          "gold": "not_command",
+          "predicted": "out_of_scope_request",
+          "confidence": 0.9693955183029175,
+          "source": "massive_human_localized",
+          "group": "massive_email_query",
+          "family": "massive_email_query",
+          "gold_probability": 6.119195816722822e-09
+        },
+        {
+          "id": "nyamuru_massive_raw_14465",
+          "text": "ディズニーランドへの行き方",
+          "gold": "not_command",
+          "predicted": "out_of_scope_request",
+          "confidence": 0.9998748302459717,
+          "source": "massive_human_localized",
+          "group": "massive_transport_query",
+          "family": "massive_transport_query",
+          "gold_probability": 0.00012484961189329624
+        },
+        {
+          "id": "nyamuru_massive_raw_16166",
+          "text": "今後三週間はプロジェクトで忙しくなると文香さんに返信してくれますか",
+          "gold": "out_of_scope_request",
+          "predicted": "needs_reasoning",
+          "confidence": 0.6003066897392273,
+          "source": "massive_human_localized",
+          "group": "massive_email_sendemail",
+          "family": "massive_email_query",
+          "gold_probability": 0.036115191876888275
+        },
+        {
+          "id": "nyamuru_voice_1370",
+          "text": "保存だけ先に済ませてもらえるかな。",
+          "gold": "save",
+          "predicted": "not_command",
+          "confidence": 0.6629274487495422,
+          "source": "codex_synthetic",
+          "group": "v03_test_save_only",
+          "family": "v03_test_save_only",
+          "gold_probability": 0.32236698269844055
+        },
+        {
+          "id": "nyamuru_voice_1432",
+          "text": "拡大表示はここまででいいよ。等倍に戻して。",
+          "gold": "view_change",
+          "predicted": "redo",
+          "confidence": 0.530514657497406,
+          "source": "codex_synthetic",
+          "group": "v03_test_view_actual",
+          "family": "v03_test_view_actual",
+          "gold_probability": 8.892636105883867e-05
+        },
+        {
+          "id": "nyamuru_voice_1482",
+          "text": "内枠スナップ、さっき言ったほうにして。",
+          "gold": "needs_clarification",
+          "predicted": "inner_frame_snap_set",
+          "confidence": 0.9999297857284546,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_inner_snap",
+          "family": "v03_test_ambiguous_inner_snap",
+          "gold_probability": 6.905764894327149e-05
+        },
+        {
+          "id": "nyamuru_voice_1484",
+          "text": "この吹き出しを少し右のほうへ寄せて。",
+          "gold": "needs_clarification",
+          "predicted": "bubble_set",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_bubble_move_distance",
+          "family": "v03_test_bubble_move_distance",
+          "gold_probability": 6.308567890300765e-09
+        },
+        {
+          "id": "nyamuru_voice_1487",
+          "text": "表示を前と同じに戻してもらおう。",
+          "gold": "needs_clarification",
+          "predicted": "undo",
+          "confidence": 0.9991419315338135,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_view_restore",
+          "family": "v03_test_ambiguous_view_restore",
+          "gold_probability": 0.0008450532332062721
+        },
+        {
+          "id": "nyamuru_voice_1491",
+          "text": "表示するページは、さっき話したところでお願い。",
+          "gold": "needs_clarification",
+          "predicted": "not_command",
+          "confidence": 0.9574002623558044,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_page",
+          "family": "v03_test_ambiguous_page",
+          "gold_probability": 0.032640572637319565
+        },
+        {
+          "id": "nyamuru_voice_1492",
+          "text": "今の操作、そっちじゃなくてもう片方にして。",
+          "gold": "needs_clarification",
+          "predicted": "undo",
+          "confidence": 0.9851565361022949,
+          "source": "codex_synthetic",
+          "group": "v03_test_ambiguous_alternative",
+          "family": "v03_test_ambiguous_alternative",
+          "gold_probability": 0.010791097767651081
+        },
+        {
+          "id": "nyamuru_voice_1496",
+          "text": "このページ、視線が迷うところを見つけて配置の直し方を考えて。",
+          "gold": "needs_reasoning",
+          "predicted": "redo",
+          "confidence": 0.9901378154754639,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_page_flow",
+          "family": "v03_test_reason_page_flow",
+          "gold_probability": 0.009850733913481236
+        },
+        {
+          "id": "nyamuru_voice_1500",
+          "text": "文字が絵の邪魔にならないようにしたい。ページを見て置き場所を提案して。",
+          "gold": "needs_reasoning",
+          "predicted": "page_navigate",
+          "confidence": 0.9999867677688599,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_text_placement",
+          "family": "v03_test_reason_text_placement",
+          "gold_probability": 3.4517390758992406e-06
+        },
+        {
+          "id": "nyamuru_voice_1506",
+          "text": "吹き出しの形を決めかねてる。この独白の雰囲気に合う案を考えて。",
+          "gold": "needs_reasoning",
+          "predicted": "background_3d_candidates",
+          "confidence": 0.9614915251731873,
+          "source": "codex_synthetic",
+          "group": "v03_test_reason_monologue",
+          "family": "v03_test_reason_monologue",
+          "gold_probability": 0.038503918796777725
+        },
+        {
+          "id": "nyamuru_voice_1512",
+          "text": "見開き表示をやめて、ページ全体が入る倍率に合わせて。",
+          "gold": "compound_request",
+          "predicted": "view_change",
+          "confidence": 0.9999945163726807,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_view",
+          "family": "v03_test_compound_view",
+          "gold_probability": 3.7667567198695906e-07
+        },
+        {
+          "id": "nyamuru_voice_1515",
+          "text": "今の編集を一回取り消したうえで、三ページへ移動して。",
+          "gold": "compound_request",
+          "predicted": "page_navigate",
+          "confidence": 0.9474788308143616,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_undo_page",
+          "family": "v03_test_compound_undo_page",
+          "gold_probability": 0.001749565009959042
+        },
+        {
+          "id": "nyamuru_voice_1517",
+          "text": "選択した複数の文字枠は上端を揃えてね。編集ガイドも非表示にしてほしい。",
+          "gold": "compound_request",
+          "predicted": "text_frames_align",
+          "confidence": 0.9994563460350037,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_align_guide",
+          "family": "v03_test_compound_align_guide",
+          "gold_probability": 1.296734950528844e-07
+        },
+        {
+          "id": "nyamuru_voice_1520",
+          "text": "この人物を生成してほしい。あと、配置ガイドを表示しておいて。",
+          "gold": "compound_request",
+          "predicted": "view_change",
+          "confidence": 1.0,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_generate_guide",
+          "family": "v03_test_compound_generate_guide",
+          "gold_probability": 3.537956564914318e-16
+        },
+        {
+          "id": "nyamuru_voice_1524",
+          "text": "作品情報タブを出して。保存も今のうちにお願い。",
+          "gold": "compound_request",
+          "predicted": "view_change",
+          "confidence": 0.850074291229248,
+          "source": "codex_synthetic",
+          "group": "v03_test_compound_tab_save",
+          "family": "v03_test_compound_tab_save",
+          "gold_probability": 0.1382673680782318
+        },
+        {
+          "id": "nyamuru_voice_1533",
+          "text": "いったん休憩するけど、今の原稿はもう保存できてる？",
+          "gold": "not_command",
+          "predicted": "save",
+          "confidence": 0.8636503219604492,
+          "source": "codex_synthetic",
+          "group": "v03_test_save_break",
+          "family": "v03_test_save_break",
+          "gold_probability": 0.1363496631383896
+        },
+        {
+          "id": "nyamuru_voice_1537",
+          "text": "内枠スナップはさっき自分でオフにしたよ。",
+          "gold": "not_command",
+          "predicted": "inner_frame_snap_set",
+          "confidence": 0.9963537454605103,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_inner_report",
+          "family": "v03_test_setting_inner_report",
+          "gold_probability": 6.627288257732289e-06
+        },
+        {
+          "id": "nyamuru_voice_1538",
+          "text": "この吹き出しの形、今のままでも悪くないね。",
+          "gold": "not_command",
+          "predicted": "needs_reasoning",
+          "confidence": 0.930916428565979,
+          "source": "codex_synthetic",
+          "group": "v03_test_not_bubble_comment",
+          "family": "v03_test_not_bubble_comment",
+          "gold_probability": 0.06902822852134705
+        },
+        {
+          "id": "nyamuru_voice_1549",
+          "text": "コマシンクロが切れていたらオンに、すでにオンならそのままにして。",
+          "gold": "panel_sync_set",
+          "predicted": "not_command",
+          "confidence": 0.6417490839958191,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_idempotent",
+          "family": "v03_test_setting_idempotent",
+          "gold_probability": 5.186015158975543e-11
+        },
+        {
+          "id": "nyamuru_voice_1551",
+          "text": "さっきオフにしたコマシンクロ、有効な状態へ戻して。",
+          "gold": "panel_sync_set",
+          "predicted": "redo",
+          "confidence": 0.43820855021476746,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_restore",
+          "family": "v03_test_setting_restore",
+          "gold_probability": 0.12778770923614502
+        },
+        {
+          "id": "nyamuru_voice_1570",
+          "text": "内枠スナップがオンなら切って、オフなら維持してね。",
+          "gold": "inner_frame_snap_set",
+          "predicted": "compound_request",
+          "confidence": 0.8757335543632507,
+          "source": "codex_synthetic",
+          "group": "v03_test_setting_idempotent",
+          "family": "v03_test_setting_idempotent",
+          "gold_probability": 0.09875641763210297
+        },
+        {
+          "id": "nyamuru_voice_1628",
+          "text": "描画用のペンはベクターにすることにしたよ。その設定にして。",
+          "gold": "paint_tool_set",
+          "predicted": "view_change",
+          "confidence": 0.983688235282898,
+          "source": "codex_synthetic",
+          "group": "v03_test_paint_decide",
+          "family": "v03_test_paint_decide",
+          "gold_probability": 0.008698702789843082
+        },
+        {
+          "id": "nyamuru_voice_1674",
+          "text": "セリフを直すんじゃなくて、誰の発言にするかの修正ね。選択中の吹き出しは、美咲さんの発言として設定して。",
+          "gold": "bubble_set",
+          "predicted": "needs_reasoning",
+          "confidence": 0.9816221594810486,
+          "source": "codex_synthetic",
+          "group": "v03_extra_test_speaker_field_scope",
+          "family": "v03_extra_test_speaker_field_scope",
+          "gold_probability": 0.018377019092440605
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "gold": "bubble_set",
+          "predicted": "needs_reasoning",
+          "confidence": 0.9994179010391235,
+          "source": "codex_synthetic",
+          "group": "v03_extra_test_speaker_antecedent_then_assignment",
+          "family": "v03_extra_test_speaker_antecedent_then_assignment",
+          "gold_probability": 0.0005816105403937399
+        },
+        {
+          "id": "nyamuru_voice_1703",
+          "text": "選択中の吹き出しの形を変えてもらえる？　希望する変更先は四角です。",
+          "gold": "bubble_set",
+          "predicted": "text_frames_align",
+          "confidence": 0.6887369155883789,
+          "source": "codex_synthetic",
+          "group": "v03_extra_test_shape_value_after_request",
+          "family": "v03_extra_test_shape_value_after_request",
+          "gold_probability": 0.1703389585018158
+        }
+      ]
+    }
+  },
+  "legacy_comparison": [
+    {
+      "model": "seed-42",
+      "split": "legacy_dev",
+      "n": 138,
+      "old_correct": 116,
+      "new_correct": 117,
+      "fixed_count": 11,
+      "regressed_count": 10,
+      "fixed_ids": [
+        "nyamuru_voice_045",
+        "nyamuru_voice_055",
+        "nyamuru_voice_121",
+        "nyamuru_voice_125",
+        "nyamuru_voice_240",
+        "nyamuru_voice_457",
+        "nyamuru_voice_460",
+        "nyamuru_voice_618",
+        "nyamuru_voice_811",
+        "nyamuru_voice_812",
+        "nyamuru_voice_881"
+      ],
+      "regressed_ids": [
+        "nyamuru_voice_116",
+        "nyamuru_voice_134",
+        "nyamuru_voice_311",
+        "nyamuru_voice_327",
+        "nyamuru_voice_436",
+        "nyamuru_voice_491",
+        "nyamuru_voice_555",
+        "nyamuru_voice_588",
+        "nyamuru_voice_704",
+        "nyamuru_voice_759"
+      ]
+    },
+    {
+      "model": "seed-42",
+      "split": "legacy_test",
+      "n": 139,
+      "old_correct": 118,
+      "new_correct": 128,
+      "fixed_count": 16,
+      "regressed_count": 6,
+      "fixed_ids": [
+        "nyamuru_voice_024",
+        "nyamuru_voice_049",
+        "nyamuru_voice_051",
+        "nyamuru_voice_126",
+        "nyamuru_voice_128",
+        "nyamuru_voice_132",
+        "nyamuru_voice_309",
+        "nyamuru_voice_412",
+        "nyamuru_voice_709",
+        "nyamuru_voice_733",
+        "nyamuru_voice_765",
+        "nyamuru_voice_767",
+        "nyamuru_voice_849",
+        "nyamuru_voice_885",
+        "nyamuru_voice_886",
+        "nyamuru_voice_888"
+      ],
+      "regressed_ids": [
+        "nyamuru_voice_111",
+        "nyamuru_voice_332",
+        "nyamuru_voice_448",
+        "nyamuru_voice_632",
+        "nyamuru_voice_712",
+        "nyamuru_voice_735"
+      ]
+    },
+    {
+      "model": "seed-43",
+      "split": "legacy_dev",
+      "n": 138,
+      "old_correct": 126,
+      "new_correct": 115,
+      "fixed_count": 8,
+      "regressed_count": 19,
+      "fixed_ids": [
+        "nyamuru_voice_045",
+        "nyamuru_voice_056",
+        "nyamuru_voice_107",
+        "nyamuru_voice_131",
+        "nyamuru_voice_240",
+        "nyamuru_voice_811",
+        "nyamuru_voice_812",
+        "nyamuru_voice_923"
+      ],
+      "regressed_ids": [
+        "nyamuru_voice_041",
+        "nyamuru_voice_106",
+        "nyamuru_voice_121",
+        "nyamuru_voice_134",
+        "nyamuru_voice_311",
+        "nyamuru_voice_436",
+        "nyamuru_voice_458",
+        "nyamuru_voice_459",
+        "nyamuru_voice_460",
+        "nyamuru_voice_491",
+        "nyamuru_voice_553",
+        "nyamuru_voice_585",
+        "nyamuru_voice_586",
+        "nyamuru_voice_588",
+        "nyamuru_voice_617",
+        "nyamuru_voice_618",
+        "nyamuru_voice_702",
+        "nyamuru_voice_771",
+        "nyamuru_voice_809"
+      ]
+    },
+    {
+      "model": "seed-43",
+      "split": "legacy_test",
+      "n": 139,
+      "old_correct": 113,
+      "new_correct": 127,
+      "fixed_count": 21,
+      "regressed_count": 7,
+      "fixed_ids": [
+        "nyamuru_voice_013",
+        "nyamuru_voice_021",
+        "nyamuru_voice_024",
+        "nyamuru_voice_049",
+        "nyamuru_voice_051",
+        "nyamuru_voice_079",
+        "nyamuru_voice_086",
+        "nyamuru_voice_087",
+        "nyamuru_voice_088",
+        "nyamuru_voice_109",
+        "nyamuru_voice_111",
+        "nyamuru_voice_309",
+        "nyamuru_voice_409",
+        "nyamuru_voice_412",
+        "nyamuru_voice_710",
+        "nyamuru_voice_765",
+        "nyamuru_voice_767",
+        "nyamuru_voice_849",
+        "nyamuru_voice_885",
+        "nyamuru_voice_887",
+        "nyamuru_voice_915"
+      ],
+      "regressed_ids": [
+        "nyamuru_voice_118",
+        "nyamuru_voice_126",
+        "nyamuru_voice_132",
+        "nyamuru_voice_378",
+        "nyamuru_voice_410",
+        "nyamuru_voice_711",
+        "nyamuru_voice_888"
+      ]
+    },
+    {
+      "model": "seed-44",
+      "split": "legacy_dev",
+      "n": 138,
+      "old_correct": 114,
+      "new_correct": 111,
+      "fixed_count": 11,
+      "regressed_count": 14,
+      "fixed_ids": [
+        "nyamuru_voice_055",
+        "nyamuru_voice_057",
+        "nyamuru_voice_125",
+        "nyamuru_voice_131",
+        "nyamuru_voice_457",
+        "nyamuru_voice_459",
+        "nyamuru_voice_460",
+        "nyamuru_voice_618",
+        "nyamuru_voice_812",
+        "nyamuru_voice_853",
+        "nyamuru_voice_881"
+      ],
+      "regressed_ids": [
+        "nyamuru_voice_009",
+        "nyamuru_voice_056",
+        "nyamuru_voice_115",
+        "nyamuru_voice_134",
+        "nyamuru_voice_311",
+        "nyamuru_voice_327",
+        "nyamuru_voice_512",
+        "nyamuru_voice_518",
+        "nyamuru_voice_519",
+        "nyamuru_voice_585",
+        "nyamuru_voice_588",
+        "nyamuru_voice_620",
+        "nyamuru_voice_702",
+        "nyamuru_voice_704"
+      ]
+    },
+    {
+      "model": "seed-44",
+      "split": "legacy_test",
+      "n": 139,
+      "old_correct": 121,
+      "new_correct": 127,
+      "fixed_count": 14,
+      "regressed_count": 8,
+      "fixed_ids": [
+        "nyamuru_voice_013",
+        "nyamuru_voice_015",
+        "nyamuru_voice_024",
+        "nyamuru_voice_079",
+        "nyamuru_voice_111",
+        "nyamuru_voice_380",
+        "nyamuru_voice_409",
+        "nyamuru_voice_412",
+        "nyamuru_voice_445",
+        "nyamuru_voice_711",
+        "nyamuru_voice_735",
+        "nyamuru_voice_768",
+        "nyamuru_voice_845",
+        "nyamuru_voice_849"
+      ],
+      "regressed_ids": [
+        "nyamuru_voice_118",
+        "nyamuru_voice_410",
+        "nyamuru_voice_568",
+        "nyamuru_voice_632",
+        "nyamuru_voice_733",
+        "nyamuru_voice_825",
+        "nyamuru_voice_887",
+        "nyamuru_voice_888"
+      ]
+    }
+  ],
+  "limitations": [
+    "New test is mostly synthetic; ASR, slot resolution and app execution were not evaluated.",
+    "Legacy splits were used to guide the v0.3 training additions; regression checks are not independent evaluation.",
+    "Test examples and labels were not changed during this analysis.",
+    "No new inference or training was performed for this analysis.",
+    "This test becomes a diagnostic regression set for changes informed by these errors; a new independent holdout is needed for an unbiased future headline."
+  ],
+  "test_seed_stability": {
+    "n": 132,
+    "mean_accuracy": 0.8207070707070707,
+    "sample_sd_accuracy": 0.056860253783826795,
+    "all_three_predictions_agree_count": 83,
+    "disagreement_count": 49,
+    "correct_seed_count_distribution": {
+      "0": 2,
+      "1": 17,
+      "2": 31,
+      "3": 82
+    },
+    "all_three_incorrect": [
+      {
+        "id": "nyamuru_voice_1432",
+        "text": "拡大表示はここまででいいよ。等倍に戻して。",
+        "gold": "view_change",
+        "predictions": {
+          "seed-42": "needs_clarification",
+          "seed-43": "needs_clarification",
+          "seed-44": "redo"
+        }
+      },
+      {
+        "id": "nyamuru_voice_1484",
+        "text": "この吹き出しを少し右のほうへ寄せて。",
+        "gold": "needs_clarification",
+        "predictions": {
+          "seed-42": "bubble_set",
+          "seed-43": "bubble_set",
+          "seed-44": "bubble_set"
+        }
+      }
+    ]
+  },
+  "accuracy_target": {
+    "target": 0.95,
+    "required_correct": 126,
+    "primary_correct": 117,
+    "additional_net_correct_required": 9
+  },
+  "dev_history": {
+    "trial-1-dev-history": [
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 1.0,
+        "step": 68,
+        "macro_f1": 0.47396521607047926,
+        "accuracy": 0.48863636363636365,
+        "loss": 1.4903510808944702
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 2.0,
+        "step": 136,
+        "macro_f1": 0.683911702332755,
+        "accuracy": 0.7272727272727273,
+        "loss": 1.053699016571045
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 3.0,
+        "step": 204,
+        "macro_f1": 0.8044461386566649,
+        "accuracy": 0.8181818181818182,
+        "loss": 1.107466220855713
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 4.0,
+        "step": 272,
+        "macro_f1": 0.7267752715121136,
+        "accuracy": 0.75,
+        "loss": 1.5258511304855347
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 5.0,
+        "step": 340,
+        "macro_f1": 0.8672692804271752,
+        "accuracy": 0.8863636363636364,
+        "loss": 1.1506842374801636
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 6.0,
+        "step": 408,
+        "macro_f1": 0.8928533454849245,
+        "accuracy": 0.9090909090909091,
+        "loss": 0.880928099155426
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 7.0,
+        "step": 476,
+        "macro_f1": 0.8743975322922694,
+        "accuracy": 0.8977272727272727,
+        "loss": 1.0933455228805542
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 8.0,
+        "step": 544,
+        "macro_f1": 0.844438860073535,
+        "accuracy": 0.8522727272727273,
+        "loss": 1.3061496019363403
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 9.0,
+        "step": 612,
+        "macro_f1": 0.844438860073535,
+        "accuracy": 0.8522727272727273,
+        "loss": 1.2892464399337769
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 0,
+        "seed": 42,
+        "learning_rate": 2e-05,
+        "epoch": 10.0,
+        "step": 680,
+        "macro_f1": 0.8377554849691072,
+        "accuracy": 0.8522727272727273,
+        "loss": 1.2286906242370605
+      }
+    ],
+    "trial-2-dev-history": [
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 1.0,
+        "step": 68,
+        "macro_f1": 0.6556607651034896,
+        "accuracy": 0.7045454545454546,
+        "loss": 0.8798285126686096
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 2.0,
+        "step": 136,
+        "macro_f1": 0.8079278908226276,
+        "accuracy": 0.8295454545454546,
+        "loss": 0.9012070298194885
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 3.0,
+        "step": 204,
+        "macro_f1": 0.8315608368239947,
+        "accuracy": 0.8295454545454546,
+        "loss": 0.49989116191864014
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 4.0,
+        "step": 272,
+        "macro_f1": 0.8143647365254013,
+        "accuracy": 0.8295454545454546,
+        "loss": 1.3820686340332031
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 5.0,
+        "step": 340,
+        "macro_f1": 0.8429561838230568,
+        "accuracy": 0.8636363636363636,
+        "loss": 2.0000383853912354
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 6.0,
+        "step": 408,
+        "macro_f1": 0.8827260458839408,
+        "accuracy": 0.8863636363636364,
+        "loss": 0.8724063634872437
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 476,
+        "macro_f1": 0.9092410513463145,
+        "accuracy": 0.9090909090909091,
+        "loss": 1.2808330059051514
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 8.0,
+        "step": 544,
+        "macro_f1": 0.9145743145743146,
+        "accuracy": 0.9204545454545454,
+        "loss": 1.0946348905563354
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 9.0,
+        "step": 612,
+        "macro_f1": 0.8925933715407399,
+        "accuracy": 0.8977272727272727,
+        "loss": 0.698519766330719
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 1,
+        "seed": 42,
+        "learning_rate": 5e-05,
+        "epoch": 10.0,
+        "step": 680,
+        "macro_f1": 0.868574992259203,
+        "accuracy": 0.875,
+        "loss": 0.5824111700057983
+      }
+    ],
+    "trial-3-dev-history": [
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 1.0,
+        "step": 68,
+        "macro_f1": 0.45205160336739286,
+        "accuracy": 0.5568181818181818,
+        "loss": 1.913695216178894
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 2.0,
+        "step": 136,
+        "macro_f1": 0.508015757443675,
+        "accuracy": 0.5227272727272727,
+        "loss": 1.518436312675476
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 3.0,
+        "step": 204,
+        "macro_f1": 0.7870712620712621,
+        "accuracy": 0.8181818181818182,
+        "loss": 0.8649186491966248
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 4.0,
+        "step": 272,
+        "macro_f1": 0.832368216578743,
+        "accuracy": 0.8409090909090909,
+        "loss": 1.0397424697875977
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 5.0,
+        "step": 340,
+        "macro_f1": 0.8382623224728489,
+        "accuracy": 0.8636363636363636,
+        "loss": 0.9563152194023132
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 6.0,
+        "step": 408,
+        "macro_f1": 0.813218652692337,
+        "accuracy": 0.8522727272727273,
+        "loss": 1.579644799232483
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 7.0,
+        "step": 476,
+        "macro_f1": 0.8280602438497177,
+        "accuracy": 0.8409090909090909,
+        "loss": 1.0223701000213623
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 8.0,
+        "step": 544,
+        "macro_f1": 0.8671033644717856,
+        "accuracy": 0.8863636363636364,
+        "loss": 1.1241767406463623
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 9.0,
+        "step": 612,
+        "macro_f1": 0.8407875749981014,
+        "accuracy": 0.8636363636363636,
+        "loss": 1.095280408859253
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 2,
+        "seed": 43,
+        "learning_rate": 2e-05,
+        "epoch": 10.0,
+        "step": 680,
+        "macro_f1": 0.8407875749981014,
+        "accuracy": 0.8636363636363636,
+        "loss": 1.0915226936340332
+      }
+    ],
+    "trial-4-dev-history": [
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 1.0,
+        "step": 68,
+        "macro_f1": 0.5677784204099994,
+        "accuracy": 0.6363636363636364,
+        "loss": 1.3216217756271362
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 2.0,
+        "step": 136,
+        "macro_f1": 0.6996791220475431,
+        "accuracy": 0.7159090909090909,
+        "loss": 0.9635831713676453
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 3.0,
+        "step": 204,
+        "macro_f1": 0.7251929357192516,
+        "accuracy": 0.75,
+        "loss": 1.1677292585372925
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 4.0,
+        "step": 272,
+        "macro_f1": 0.645515750159713,
+        "accuracy": 0.6363636363636364,
+        "loss": 2.743109941482544
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 5.0,
+        "step": 340,
+        "macro_f1": 0.7682088465370199,
+        "accuracy": 0.7954545454545454,
+        "loss": 1.9985401630401611
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 6.0,
+        "step": 408,
+        "macro_f1": 0.85058524207131,
+        "accuracy": 0.8636363636363636,
+        "loss": 2.038374185562134
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 476,
+        "macro_f1": 0.8358567988598948,
+        "accuracy": 0.8409090909090909,
+        "loss": 1.9048224687576294
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 8.0,
+        "step": 544,
+        "macro_f1": 0.8840720682825945,
+        "accuracy": 0.8863636363636364,
+        "loss": 1.2133526802062988
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 9.0,
+        "step": 612,
+        "macro_f1": 0.8832896635528215,
+        "accuracy": 0.8863636363636364,
+        "loss": 1.2740435600280762
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 3,
+        "seed": 43,
+        "learning_rate": 5e-05,
+        "epoch": 10.0,
+        "step": 680,
+        "macro_f1": 0.8832896635528215,
+        "accuracy": 0.8863636363636364,
+        "loss": 1.2913817167282104
+      }
+    ],
+    "trial-5-dev-history": [
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 1.0,
+        "step": 68,
+        "macro_f1": 0.6917483101693628,
+        "accuracy": 0.6931818181818182,
+        "loss": 1.0542975664138794
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 2.0,
+        "step": 136,
+        "macro_f1": 0.5841657173236121,
+        "accuracy": 0.625,
+        "loss": 1.3385791778564453
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 3.0,
+        "step": 204,
+        "macro_f1": 0.6894964684438369,
+        "accuracy": 0.7272727272727273,
+        "loss": 2.673968553543091
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 4.0,
+        "step": 272,
+        "macro_f1": 0.8381193368035474,
+        "accuracy": 0.8522727272727273,
+        "loss": 1.6843265295028687
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 5.0,
+        "step": 340,
+        "macro_f1": 0.9103396603396604,
+        "accuracy": 0.9204545454545454,
+        "loss": 0.7970840930938721
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 6.0,
+        "step": 408,
+        "macro_f1": 0.8826422115895802,
+        "accuracy": 0.8977272727272727,
+        "loss": 0.8634948134422302
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 7.0,
+        "step": 476,
+        "macro_f1": 0.8958836485152276,
+        "accuracy": 0.9090909090909091,
+        "loss": 0.7200269103050232
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 8.0,
+        "step": 544,
+        "macro_f1": 0.9155578339788867,
+        "accuracy": 0.9204545454545454,
+        "loss": 0.6824762225151062
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 9.0,
+        "step": 612,
+        "macro_f1": 0.9155578339788867,
+        "accuracy": 0.9204545454545454,
+        "loss": 0.6767932772636414
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 4,
+        "seed": 44,
+        "learning_rate": 2e-05,
+        "epoch": 10.0,
+        "step": 680,
+        "macro_f1": 0.9155578339788867,
+        "accuracy": 0.9204545454545454,
+        "loss": 0.6764854788780212
+      }
+    ],
+    "trial-6-dev-history": [
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 1.0,
+        "step": 68,
+        "macro_f1": 0.6427392009435353,
+        "accuracy": 0.625,
+        "loss": 1.1321920156478882
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 2.0,
+        "step": 136,
+        "macro_f1": 0.7324368613842298,
+        "accuracy": 0.7272727272727273,
+        "loss": 1.0850166082382202
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 3.0,
+        "step": 204,
+        "macro_f1": 0.8150597940071624,
+        "accuracy": 0.8181818181818182,
+        "loss": 0.8581634163856506
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 4.0,
+        "step": 272,
+        "macro_f1": 0.787417553207027,
+        "accuracy": 0.7840909090909091,
+        "loss": 1.4136195182800293
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 5.0,
+        "step": 340,
+        "macro_f1": 0.8964450753924438,
+        "accuracy": 0.8977272727272727,
+        "loss": 1.4343990087509155
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 6.0,
+        "step": 408,
+        "macro_f1": 0.8320568320568321,
+        "accuracy": 0.8409090909090909,
+        "loss": 1.6606700420379639
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 7.0,
+        "step": 476,
+        "macro_f1": 0.8293551477762007,
+        "accuracy": 0.8636363636363636,
+        "loss": 1.3420015573501587
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 8.0,
+        "step": 544,
+        "macro_f1": 0.8489818660871293,
+        "accuracy": 0.875,
+        "loss": 1.1588963270187378
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 9.0,
+        "step": 612,
+        "macro_f1": 0.83075447943869,
+        "accuracy": 0.8636363636363636,
+        "loss": 1.3359289169311523
+      },
+      {
+        "selection_split": "dev",
+        "trial_index": 5,
+        "seed": 44,
+        "learning_rate": 5e-05,
+        "epoch": 10.0,
+        "step": 680,
+        "macro_f1": 0.83075447943869,
+        "accuracy": 0.8636363636363636,
+        "loss": 1.3367037773132324
+      }
+    ]
+  },
+  "evidence_sha256": {
+    "reports/selection.json": "f5f963bd34e21c4a44a2498acf186df42cf348f064bcda581f23cb733fe80341",
+    "reports/manifest.json": "047e4ceed299c5b64324213be02cde5f6e34f2037bf26e92627586fe08831211",
+    "reports/verification.json": "04bcb716d0b44b90c7bbd9245d10516e2d37ce82abe1be0046f503f4f9342c64",
+    "reports/seed-42/train-predictions.jsonl": "4c9de89da7113645254d70e90019337c5a93186a7c03a10d28b4b4be05ead76a",
+    "reports/seed-42/dev-predictions.jsonl": "6493eb38fc9e76d59404fc1b81c51a03262432f8fa47b898ee1bc747ee149e33",
+    "reports/seed-42/test-predictions.jsonl": "5f6f1612be79314ae3878003e0eac6ca26e0c8a5c221fe22d238849f9373c49a",
+    "reports/seed-42/legacy_dev-predictions.jsonl": "4bf7bc24a8e5ccd55ff969b5892656d177be410d6cb52d98b9643c74e3c51a42",
+    "reports/seed-42/legacy_test-predictions.jsonl": "c350f8472c4cb3fc20730742e3ad4bba364cd0d611b36f1ba95b84fe3592f245",
+    "reports/seed-43/train-predictions.jsonl": "97871548cc25962b4216606417cb406a12c71f6d1ec1b88ad2c9876c72bdaf4f",
+    "reports/seed-43/dev-predictions.jsonl": "b24baadeb69e326c60932c5c4875585f8bc72884f9b8b00afedf2e431dbf6577",
+    "reports/seed-43/test-predictions.jsonl": "39eb801834cc6696f6015e9ede4c5e90fd7ac6a6fcfb477830fd9c5fb48c1212",
+    "reports/seed-43/legacy_dev-predictions.jsonl": "3b8710cd81bcf38f25385c2a9c2ca780620b5d37ee771c04d91bdad8a851ef47",
+    "reports/seed-43/legacy_test-predictions.jsonl": "43f56d0492bce1396a810a7fff67de05839f366e43a43fc7d4f8f5b9894f59da",
+    "reports/seed-44/train-predictions.jsonl": "cf6f4362c954c828665997dbff743668b9690b21a7cd4f98356d309d0365af81",
+    "reports/seed-44/dev-predictions.jsonl": "bc2b4ffff6c76d0fae47ca68bb76fbee2b827c47fdc77d05c78b8a95fca2058b",
+    "reports/seed-44/test-predictions.jsonl": "f6a22f559a324d2804a3f288c3fb8aa591334579e2b676049dd997ed2ed37df2",
+    "reports/seed-44/legacy_dev-predictions.jsonl": "866bacaadd2a6b6d79208061dfeaf30264364519740e13db44d0630cbac3e64c",
+    "reports/seed-44/legacy_test-predictions.jsonl": "302983ddb5c3f7f141304cdf36646ad5310349c6422104fdaf5c3dd8393db6d2"
+  },
+  "training_data_review": {
+    "class_counts": {
+      "save": 51,
+      "undo": 76,
+      "redo": 80,
+      "page_navigate": 51,
+      "view_change": 43,
+      "artwork_mode_set": 36,
+      "bubble_set": 72,
+      "needs_clarification": 40,
+      "needs_reasoning": 29,
+      "compound_request": 90,
+      "out_of_scope_request": 67,
+      "generate_request": 64,
+      "not_command": 150,
+      "panel_sync_set": 35,
+      "inner_frame_snap_set": 34,
+      "panel_gap_snap_set": 33,
+      "background_3d_candidates": 46,
+      "paint_tool_set": 44,
+      "text_frames_align": 39
+    },
+    "three_setting_rows_reviewed": 102,
+    "conditional_final_state_examples_found_in_these_rows": 0,
+    "scope": "Parent read all 102 training examples of the three setting labels; none says to change only if necessary and otherwise preserve the desired final state. This observation does not establish a causal explanation of test errors."
+  },
+  "analysis_actions": {
+    "new_training": false,
+    "new_model_inference": false,
+    "changed_gold": false,
+    "changed_dataset": false,
+    "test_based_model_reselection": false
+  },
+  "semantic_review": {
+    "original_review_sha256": "a400ae849ec56fa23968a7b9c2c47410444731876f105af99875243cb045df8b",
+    "status": "semantic_review_complete_no_data_changes",
+    "reviewer_context": "レビュー担当は、このtest中の合成例の一部の初稿作者でもある。契約に照らした見解として提示するが、作者から独立した第三者アノテーション監査とは称しない。",
+    "gold_assessment_summary": {
+      "clear_gold_annotation_errors_found": false,
+      "synthetic_primary_errors": {
+        "count": 14,
+        "assessment": "現在の明示音声コマンド契約の下でgoldと整合。判定結果に合わせたgold変更の根拠はない。",
+        "pragmatic_boundary_to_confirm": [
+          "nyamuru_voice_1448"
+        ],
+        "boundary_reason": "「切り替えておこう」は一般会話では独り言にもなるが、明示コマンド文脈では設定依頼として支持される。どちらでもcompoundの第二操作はない。"
+      },
+      "public_raw_primary_error": {
+        "id": "nyamuru_massive_raw_16010",
+        "assessment": "状態照会としてnot_commandを支持するが、主述を省略した断片であるため、他14件とは分けて注釈境界を記録する。out_of_scope_requestへ変更すべき明確な根拠はない。"
+      },
+      "gold_changes_or_rescoring_recommended_now": false
+    },
+    "parent_review": "Parent independently read the frozen label contract, all primary error texts, and this review. The 15-case table in the report is the integrated assessment.",
+    "items": [
+      {
+        "id": "nyamuru_massive_raw_16010",
+        "gold_verdict": "supported_default_reading_but_fragmentary",
+        "ambiguity_level": "fragmentary_utterance_missing_main_predicate",
+        "affirmed_request": "受信ボックスに新着メッセージが存在するかという状態照会。",
+        "semantic_binding": "「あるかどうか」は間接疑問を作り、通常は「知りたい／教えて」の省略として状態照会に読む。この読みではnot_commandが契約に合う。ただし文末の主述が欠ける断片であり、発話本文だけでは話者の発話行為を完全文ほど強く確定できない。メールという話題が範囲外であることだけで、out_of_scope_requestになるわけではない。",
+        "alternative_gold_assessment": "not_commandは妥当な既定解釈で、明確な誤注釈の根拠はない。一方、元の使用文脈で受信箱の検索・確認操作の依頼が省略されていた可能性は本文から排除しきれず、人間の判定でも境界が出る余地がある。明示的なメール取得・表示依頼は本文にないため、out_of_scope_requestを唯一の正解とすることもできない。明示的な編集依頼を含む他の合成14件とは同じ確度で扱わない。",
+        "recommended_gold_under_current_contract": "not_command"
+      },
+      {
+        "id": "nyamuru_voice_1370",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "現在作品の保存を、今、先に済ませてほしいという一つの依頼。",
+        "semantic_binding": "「済ませてもらえるかな」は通常の間接依頼で、「保存に対応しているか」という能力だけの質問ではない。現在作品という既定の保存対象があり、対象省略を確認ラベルへ変える必要はない。",
+        "alternative_gold_assessment": "会話履歴なしでも保存操作と通常対象が決まる。明確な誤注釈の根拠なし。",
+        "recommended_gold_under_current_contract": "save"
+      },
+      {
+        "id": "nyamuru_voice_1371",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "この原稿をまず保存する。",
+        "semantic_binding": "依頼の主節は「保存をお願い」。時間節に含まれる動詞を独立した現在実行へ昇格させない。",
+        "alternative_gold_assessment": "一般の作業文脈では後で閉じる予定が推測できても、契約は最終的に肯定された現在の依頼を採る。closeの自動実行を含めるgoldの根拠はない。",
+        "recommended_gold_under_current_contract": "save"
+      },
+      {
+        "id": "nyamuru_voice_1390",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "現在完了している変更を残さず、取り消しを一回行う。",
+        "semantic_binding": "「変更を残すのはやめる」→「取り消しをお願い」は同じ方向を向く。Redoの前提である「Undo済みの編集」が示されていない。",
+        "alternative_gold_assessment": "「今の変更」と一回の取り消しで直前編集のUndoが十分指定されている。gold修正の根拠なし。",
+        "recommended_gold_under_current_contract": "undo"
+      },
+      {
+        "id": "nyamuru_voice_1407",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low_at_label_level",
+        "affirmed_request": "Undoで取り消した三段分の編集を再適用する。",
+        "semantic_binding": "独立した種類の操作ではなく、同じ三段の履歴再適用を二つの表現で指定している。たとえ回数の読み方を追加確認するとしても、同種操作の反復自体はcompound_requestから除外される。",
+        "alternative_gold_assessment": "自然な読みはRedo三回の再説明。label goldは妥当。実装側が六回と解釈しないよう回数注釈の照合は別問題として残るが、誤注釈疑いではない。",
+        "recommended_gold_under_current_contract": "redo"
+      },
+      {
+        "id": "nyamuru_voice_1432",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "表示倍率を等倍にする。",
+        "semantic_binding": "先行する「拡大表示」が対象を表示倍率へ限定し、「等倍」が変更先をactualへ指定する。「戻して」は編集履歴に対するUndo/Redoではない。",
+        "alternative_gold_assessment": "倍率値が数値でなくても「等倍」は契約のactualに対応する。対象不明という解釈は支持しにくい。",
+        "recommended_gold_under_current_contract": "view_change"
+      },
+      {
+        "id": "nyamuru_voice_1442",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "小道具タブを表示する。",
+        "semantic_binding": "「そこ」の先行詞は同じ発話の「小道具のタブ」。文脈外の参照ではなく、契約上propsという既存タブが対象になる。",
+        "alternative_gold_assessment": "通常のUI項目参照として一意。ページ移動でも意味不足でもない。",
+        "recommended_gold_under_current_contract": "view_change"
+      },
+      {
+        "id": "nyamuru_voice_1448",
+        "gold_verdict": "supported_in_explicit_voice_command_context",
+        "ambiguity_level": "pragmatic_boundary",
+        "affirmed_request": "下書きモードへの切替を提案・依頼する一操作。",
+        "semantic_binding": "明示音声コマンドの入力文脈では「切り替えておこう」は現在の設定依頼として読める。通常会話だけを想定すると、話者が自分の予定を独り言として述べる読みもあり得る。",
+        "alternative_gold_assessment": "not_commandを許す独り言の語用読みが唯一の要確認点。現契約の明示コマンド文脈ならgoldを維持でき、予測に合わせたラベル変更は勧めない。明確な誤注釈とまではいえない。",
+        "recommended_gold_under_current_contract": "artwork_mode_set"
+      },
+      {
+        "id": "nyamuru_voice_1469",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "選択中の吹き出しのclip_to_panelをfalseにする。",
+        "semantic_binding": "理由節と具体的設定は同じ対象の同じ結果を指す。「切り取りはオフ」が一つの明示値。実装準備が未完でも、分類上のbubble_setの範囲には含まれる。",
+        "alternative_gold_assessment": "一つの吹き出し設定に明示値があり、compoundの根拠なし。実行可否の制約をgoldへ混ぜない。",
+        "recommended_gold_under_current_contract": "bubble_set"
+      },
+      {
+        "id": "nyamuru_voice_1484",
+        "gold_verdict": "supported",
+        "ambiguity_level": "intent_clear_parameter_missing_by_design",
+        "affirmed_request": "吹き出しを右へ移動したいという意図はあるが、「少し」の移動量が未指定。",
+        "semantic_binding": "不足しているのは対象ではなく値。契約は程度不明の移動をbubble_setから明示的に除外しているため、移動方向が分かるだけでは実行ラベルにしない。",
+        "alternative_gold_assessment": "自然言語UIによっては「少し」に既定量を設け得るが、この契約はそう定義していない。既定量を勝手に補う前提でgoldを変更しない。",
+        "recommended_gold_under_current_contract": "needs_clarification"
+      },
+      {
+        "id": "nyamuru_voice_1500",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "ページ内容を確認し、絵を邪魔しない文字の置き場所を提案してほしい。",
+        "semantic_binding": "「ページを見て」は内容判断のための情報参照。「置き場所を提案して」が主たる依頼で、明示座標に直接移動する操作ではない。",
+        "alternative_gold_assessment": "適切さの判断と配置案が必要なためneeds_reasoningが契約に直接対応する。確認不足ではなく、内容判断依頼である。",
+        "recommended_gold_under_current_contract": "needs_reasoning"
+      },
+      {
+        "id": "nyamuru_voice_1539",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "上端揃えは後へ延期し、今は現状を保持する。現在の整列実行依頼はない。",
+        "semantic_binding": "時間と極性の作用域が上端揃え全体にかかる。明示された操作語があることだけでその操作を発行しない。",
+        "alternative_gold_assessment": "現在実行を否定する二つの明示表現があり、曖昧性は小さい。",
+        "recommended_gold_under_current_contract": "not_command"
+      },
+      {
+        "id": "nyamuru_voice_1549",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "コマシンクロの最終状態をオンにする。",
+        "semantic_binding": "offならtrue、onならtrueを維持。どちらの初期状態でも希望状態はenabled=true。一つの設定指示に畳み込める。",
+        "alternative_gold_assessment": "条件文があっても希望値が一意なので確認は不要。現状態の読取りは実行側の仕事。",
+        "recommended_gold_under_current_contract": "panel_sync_set"
+      },
+      {
+        "id": "nyamuru_voice_1570",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "内枠スナップの最終状態をオフにする。",
+        "semantic_binding": "onならfalseへ変更、offならfalseを維持。「切って」が指定設定の無効化を表し、希望値はenabled=false。",
+        "alternative_gold_assessment": "名前付き設定、条件、希望最終状態がそろっている。現在値が未入力であることは分類ラベルを変える理由ではない。",
+        "recommended_gold_under_current_contract": "inner_frame_snap_set"
+      },
+      {
+        "id": "nyamuru_voice_1585",
+        "gold_verdict": "supported",
+        "ambiguity_level": "low",
+        "affirmed_request": "コマスナップの最終状態を有効にする。",
+        "semantic_binding": "trueなら維持、falseならtrueへ変更。1549とは分岐提示の順番が逆でも、enabled=trueという一つの設定依頼。",
+        "alternative_gold_assessment": "コマシンクロとは別設定のコマスナップであり、ラベル名も明示対象に対応する。",
+        "recommended_gold_under_current_contract": "panel_gap_snap_set"
+      }
+    ]
+  }
+}

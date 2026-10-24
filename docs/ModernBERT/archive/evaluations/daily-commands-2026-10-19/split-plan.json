@@ -1,0 +1,454 @@
+{
+  "schema_version": 1,
+  "purpose": "evaluation metadata only, no train/dev split",
+  "assignments": {
+    "daily_001": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_002": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_003": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_004": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_005": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_006": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_007": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_008": {
+      "family": "save_current_document",
+      "split": "daily"
+    },
+    "daily_009": {
+      "family": "undo_once",
+      "split": "daily"
+    },
+    "daily_010": {
+      "family": "undo_once",
+      "split": "daily"
+    },
+    "daily_011": {
+      "family": "undo_multiple",
+      "split": "daily"
+    },
+    "daily_012": {
+      "family": "undo_multiple",
+      "split": "daily"
+    },
+    "daily_013": {
+      "family": "undo_once",
+      "split": "daily"
+    },
+    "daily_014": {
+      "family": "undo_once",
+      "split": "daily"
+    },
+    "daily_015": {
+      "family": "undo_once",
+      "split": "daily"
+    },
+    "daily_016": {
+      "family": "undo_once",
+      "split": "daily"
+    },
+    "daily_017": {
+      "family": "redo_once",
+      "split": "daily"
+    },
+    "daily_018": {
+      "family": "redo_once",
+      "split": "daily"
+    },
+    "daily_019": {
+      "family": "redo_once",
+      "split": "daily"
+    },
+    "daily_020": {
+      "family": "redo_once",
+      "split": "daily"
+    },
+    "daily_021": {
+      "family": "redo_once",
+      "split": "daily"
+    },
+    "daily_022": {
+      "family": "redo_multiple",
+      "split": "daily"
+    },
+    "daily_023": {
+      "family": "redo_multiple",
+      "split": "daily"
+    },
+    "daily_024": {
+      "family": "redo_once",
+      "split": "daily"
+    },
+    "daily_025": {
+      "family": "page_next",
+      "split": "daily"
+    },
+    "daily_026": {
+      "family": "page_previous",
+      "split": "daily"
+    },
+    "daily_027": {
+      "family": "page_first",
+      "split": "daily"
+    },
+    "daily_028": {
+      "family": "page_last",
+      "split": "daily"
+    },
+    "daily_029": {
+      "family": "page_number",
+      "split": "daily"
+    },
+    "daily_030": {
+      "family": "page_number",
+      "split": "daily"
+    },
+    "daily_031": {
+      "family": "page_relative_count",
+      "split": "daily"
+    },
+    "daily_032": {
+      "family": "page_relative_count",
+      "split": "daily"
+    },
+    "daily_033": {
+      "family": "view_zoom_in",
+      "split": "daily"
+    },
+    "daily_034": {
+      "family": "view_zoom_fit",
+      "split": "daily"
+    },
+    "daily_035": {
+      "family": "view_spread_on",
+      "split": "daily"
+    },
+    "daily_036": {
+      "family": "view_spread_off",
+      "split": "daily"
+    },
+    "daily_037": {
+      "family": "view_guide_show",
+      "split": "daily"
+    },
+    "daily_038": {
+      "family": "view_guide_hide",
+      "split": "daily"
+    },
+    "daily_039": {
+      "family": "view_tab_storyboard",
+      "split": "daily"
+    },
+    "daily_040": {
+      "family": "view_tab_characters",
+      "split": "daily"
+    },
+    "daily_041": {
+      "family": "artwork_integrated",
+      "split": "daily"
+    },
+    "daily_042": {
+      "family": "artwork_integrated",
+      "split": "daily"
+    },
+    "daily_043": {
+      "family": "artwork_integrated",
+      "split": "daily"
+    },
+    "daily_044": {
+      "family": "artwork_integrated",
+      "split": "daily"
+    },
+    "daily_045": {
+      "family": "artwork_draft",
+      "split": "daily"
+    },
+    "daily_046": {
+      "family": "artwork_draft",
+      "split": "daily"
+    },
+    "daily_047": {
+      "family": "artwork_draft",
+      "split": "daily"
+    },
+    "daily_048": {
+      "family": "artwork_draft",
+      "split": "daily"
+    },
+    "daily_049": {
+      "family": "bubble_shape",
+      "split": "daily"
+    },
+    "daily_050": {
+      "family": "bubble_preset",
+      "split": "daily"
+    },
+    "daily_051": {
+      "family": "bubble_tail_off",
+      "split": "daily"
+    },
+    "daily_052": {
+      "family": "bubble_tail_on",
+      "split": "daily"
+    },
+    "daily_053": {
+      "family": "bubble_clip_on",
+      "split": "daily"
+    },
+    "daily_054": {
+      "family": "bubble_bbox_width",
+      "split": "daily"
+    },
+    "daily_055": {
+      "family": "bubble_text",
+      "split": "daily"
+    },
+    "daily_056": {
+      "family": "bubble_speaker",
+      "split": "daily"
+    },
+    "daily_057": {
+      "family": "panel_sync_set_on",
+      "split": "daily"
+    },
+    "daily_058": {
+      "family": "panel_sync_set_on",
+      "split": "daily"
+    },
+    "daily_059": {
+      "family": "panel_sync_set_on",
+      "split": "daily"
+    },
+    "daily_060": {
+      "family": "panel_sync_set_on",
+      "split": "daily"
+    },
+    "daily_061": {
+      "family": "panel_sync_set_off",
+      "split": "daily"
+    },
+    "daily_062": {
+      "family": "panel_sync_set_off",
+      "split": "daily"
+    },
+    "daily_063": {
+      "family": "panel_sync_set_off",
+      "split": "daily"
+    },
+    "daily_064": {
+      "family": "panel_sync_set_off",
+      "split": "daily"
+    },
+    "daily_065": {
+      "family": "inner_frame_snap_set_on",
+      "split": "daily"
+    },
+    "daily_066": {
+      "family": "inner_frame_snap_set_on",
+      "split": "daily"
+    },
+    "daily_067": {
+      "family": "inner_frame_snap_set_on",
+      "split": "daily"
+    },
+    "daily_068": {
+      "family": "inner_frame_snap_set_on",
+      "split": "daily"
+    },
+    "daily_069": {
+      "family": "inner_frame_snap_set_off",
+      "split": "daily"
+    },
+    "daily_070": {
+      "family": "inner_frame_snap_set_off",
+      "split": "daily"
+    },
+    "daily_071": {
+      "family": "inner_frame_snap_set_off",
+      "split": "daily"
+    },
+    "daily_072": {
+      "family": "inner_frame_snap_set_off",
+      "split": "daily"
+    },
+    "daily_073": {
+      "family": "panel_gap_snap_set_on",
+      "split": "daily"
+    },
+    "daily_074": {
+      "family": "panel_gap_snap_set_on",
+      "split": "daily"
+    },
+    "daily_075": {
+      "family": "panel_gap_snap_set_on",
+      "split": "daily"
+    },
+    "daily_076": {
+      "family": "panel_gap_snap_set_on",
+      "split": "daily"
+    },
+    "daily_077": {
+      "family": "panel_gap_snap_set_off",
+      "split": "daily"
+    },
+    "daily_078": {
+      "family": "panel_gap_snap_set_off",
+      "split": "daily"
+    },
+    "daily_079": {
+      "family": "panel_gap_snap_set_off",
+      "split": "daily"
+    },
+    "daily_080": {
+      "family": "panel_gap_snap_set_off",
+      "split": "daily"
+    },
+    "daily_081": {
+      "family": "generate_selection",
+      "split": "daily"
+    },
+    "daily_082": {
+      "family": "generate_selected_character",
+      "split": "daily"
+    },
+    "daily_083": {
+      "family": "generate_current_page",
+      "split": "daily"
+    },
+    "daily_084": {
+      "family": "generate_selected_panel",
+      "split": "daily"
+    },
+    "daily_085": {
+      "family": "generate_named_character",
+      "split": "daily"
+    },
+    "daily_086": {
+      "family": "generate_specified_panel",
+      "split": "daily"
+    },
+    "daily_087": {
+      "family": "generate_named_character_in_panel",
+      "split": "daily"
+    },
+    "daily_088": {
+      "family": "generate_selected_character_in_panel",
+      "split": "daily"
+    },
+    "daily_089": {
+      "family": "background_candidates_default",
+      "split": "daily"
+    },
+    "daily_090": {
+      "family": "background_candidates_count",
+      "split": "daily"
+    },
+    "daily_091": {
+      "family": "background_candidates_scene",
+      "split": "daily"
+    },
+    "daily_092": {
+      "family": "background_candidates_scene",
+      "split": "daily"
+    },
+    "daily_093": {
+      "family": "background_candidates_panel",
+      "split": "daily"
+    },
+    "daily_094": {
+      "family": "background_candidates_scene",
+      "split": "daily"
+    },
+    "daily_095": {
+      "family": "background_candidates_scene_count",
+      "split": "daily"
+    },
+    "daily_096": {
+      "family": "background_candidates_current_page",
+      "split": "daily"
+    },
+    "daily_097": {
+      "family": "paint_raster",
+      "split": "daily"
+    },
+    "daily_098": {
+      "family": "paint_vector",
+      "split": "daily"
+    },
+    "daily_099": {
+      "family": "paint_raster",
+      "split": "daily"
+    },
+    "daily_100": {
+      "family": "paint_vector",
+      "split": "daily"
+    },
+    "daily_101": {
+      "family": "paint_raster",
+      "split": "daily"
+    },
+    "daily_102": {
+      "family": "paint_vector",
+      "split": "daily"
+    },
+    "daily_103": {
+      "family": "paint_raster",
+      "split": "daily"
+    },
+    "daily_104": {
+      "family": "paint_vector",
+      "split": "daily"
+    },
+    "daily_105": {
+      "family": "align_explicit_top",
+      "split": "daily"
+    },
+    "daily_106": {
+      "family": "align_two_frames",
+      "split": "daily"
+    },
+    "daily_107": {
+      "family": "align_three_frames",
+      "split": "daily"
+    },
+    "daily_108": {
+      "family": "align_all_selected",
+      "split": "daily"
+    },
+    "daily_109": {
+      "family": "align_top_term",
+      "split": "daily"
+    },
+    "daily_110": {
+      "family": "align_head_term",
+      "split": "daily"
+    },
+    "daily_111": {
+      "family": "align_writing_start_term",
+      "split": "daily"
+    },
+    "daily_112": {
+      "family": "align_three_frames",
+      "split": "daily"
+    }
+  }
+}

@@ -1,0 +1,328 @@
+[
+  {
+    "id": "standing",
+    "label_ja": "立つ",
+    "aliases": [
+      "立位",
+      "立ち",
+      "立っている",
+      "standing"
+    ]
+  },
+  {
+    "id": "walking",
+    "label_ja": "歩く",
+    "aliases": [
+      "歩行",
+      "歩いている",
+      "walking"
+    ]
+  },
+  {
+    "id": "leaning",
+    "label_ja": "もたれる",
+    "aliases": [
+      "寄りかかる",
+      "leaning"
+    ]
+  },
+  {
+    "id": "seated",
+    "label_ja": "座る",
+    "aliases": [
+      "座り",
+      "座っている",
+      "座位",
+      "sitting",
+      "seated"
+    ]
+  },
+  {
+    "id": "chair",
+    "label_ja": "椅子",
+    "aliases": [
+      "いす",
+      "イス",
+      "腰掛ける",
+      "腰かける",
+      "chair"
+    ]
+  },
+  {
+    "id": "stool",
+    "label_ja": "スツール",
+    "aliases": [
+      "丸椅子",
+      "stool"
+    ]
+  },
+  {
+    "id": "floor",
+    "label_ja": "床",
+    "aliases": [
+      "地面",
+      "floor",
+      "ground"
+    ]
+  },
+  {
+    "id": "wall",
+    "label_ja": "壁",
+    "aliases": [
+      "wall"
+    ]
+  },
+  {
+    "id": "doorframe",
+    "label_ja": "戸枠",
+    "aliases": [
+      "ドア枠",
+      "doorframe"
+    ]
+  },
+  {
+    "id": "ledge",
+    "label_ja": "台",
+    "aliases": [
+      "腰高の台",
+      "ledge"
+    ]
+  },
+  {
+    "id": "squatting",
+    "label_ja": "しゃがむ",
+    "aliases": [
+      "しゃがみ",
+      "スクワット",
+      "squatting",
+      "squat",
+      "crouch"
+    ]
+  },
+  {
+    "id": "kneeling",
+    "label_ja": "膝をつく",
+    "aliases": [
+      "ひざをつく",
+      "膝立ち",
+      "kneeling"
+    ]
+  },
+  {
+    "id": "lying",
+    "label_ja": "横たわる",
+    "aliases": [
+      "寝る",
+      "寝転ぶ",
+      "lying"
+    ]
+  },
+  {
+    "id": "supine",
+    "label_ja": "仰向け",
+    "aliases": [
+      "あおむけ",
+      "supine"
+    ]
+  },
+  {
+    "id": "prone",
+    "label_ja": "うつ伏せ",
+    "aliases": [
+      "うつぶせ",
+      "prone"
+    ]
+  },
+  {
+    "id": "side-lying",
+    "label_ja": "横向きに寝る",
+    "aliases": [
+      "横寝",
+      "side lying"
+    ]
+  },
+  {
+    "id": "crossed-legs",
+    "label_ja": "足を組む",
+    "aliases": [
+      "脚を組む",
+      "足組み",
+      "脚組み",
+      "crossed legs"
+    ]
+  },
+  {
+    "id": "chair-crossed-legs",
+    "label_ja": "椅子で脚を組む",
+    "aliases": [
+      "椅子で足を組む",
+      "chair crossed legs"
+    ]
+  },
+  {
+    "id": "cross-legged",
+    "label_ja": "あぐら",
+    "aliases": [
+      "胡坐",
+      "cross-legged"
+    ]
+  },
+  {
+    "id": "ankles-crossed",
+    "label_ja": "足首を交差",
+    "aliases": [
+      "足首を組む",
+      "crossed ankles"
+    ]
+  },
+  {
+    "id": "arms-crossed",
+    "label_ja": "腕を組む",
+    "aliases": [
+      "腕組み",
+      "arms crossed"
+    ]
+  },
+  {
+    "id": "hands-overhead",
+    "label_ja": "頭上に手",
+    "aliases": [
+      "腕を上げる",
+      "手を上げる",
+      "overhead"
+    ]
+  },
+  {
+    "id": "one-hand",
+    "label_ja": "片手",
+    "aliases": [
+      "片腕",
+      "one hand",
+      "one arm"
+    ]
+  },
+  {
+    "id": "two-hands",
+    "label_ja": "両手",
+    "aliases": [
+      "両腕",
+      "both hands",
+      "both arms"
+    ]
+  },
+  {
+    "id": "pole",
+    "label_ja": "支柱",
+    "aliases": [
+      "ポール",
+      "つかまり棒",
+      "vertical pole",
+      "grab bar"
+    ]
+  },
+  {
+    "id": "railing",
+    "label_ja": "手すり",
+    "aliases": [
+      "欄干",
+      "railing"
+    ]
+  },
+  {
+    "id": "strap",
+    "label_ja": "つり革",
+    "aliases": [
+      "吊り革",
+      "strap"
+    ]
+  },
+  {
+    "id": "bar",
+    "label_ja": "横棒",
+    "aliases": [
+      "水平な棒",
+      "horizontal bar"
+    ]
+  },
+  {
+    "id": "handle",
+    "label_ja": "取っ手",
+    "aliases": [
+      "ハンドル",
+      "handle"
+    ]
+  },
+  {
+    "id": "door",
+    "label_ja": "ドア",
+    "aliases": [
+      "扉",
+      "door"
+    ]
+  },
+  {
+    "id": "ladder",
+    "label_ja": "はしご",
+    "aliases": [
+      "梯子",
+      "ladder"
+    ]
+  },
+  {
+    "id": "hanging",
+    "label_ja": "ぶら下がる",
+    "aliases": [
+      "ぶらさがる",
+      "hanging"
+    ]
+  },
+  {
+    "id": "head-turn",
+    "label_ja": "振り返る",
+    "aliases": [
+      "見返り",
+      "肩越し",
+      "look back"
+    ]
+  },
+  {
+    "id": "head-back",
+    "label_ja": "頭を反らす",
+    "aliases": [
+      "頭を後ろに傾ける",
+      "head tipped back"
+    ]
+  },
+  {
+    "id": "pockets",
+    "label_ja": "ポケットに手",
+    "aliases": [
+      "hands in pockets"
+    ]
+  },
+  {
+    "id": "hair-contact",
+    "label_ja": "髪に手",
+    "aliases": [
+      "髪に触る",
+      "hands through hair"
+    ]
+  },
+  {
+    "id": "backward-chair",
+    "label_ja": "椅子に逆向き",
+    "aliases": [
+      "椅子に後ろ向き",
+      "backwards on a chair"
+    ]
+  },
+  {
+    "id": "half-squat",
+    "label_ja": "中腰",
+    "aliases": [
+      "半しゃがみ",
+      "half squat",
+      "half-squat"
+    ]
+  }
+]

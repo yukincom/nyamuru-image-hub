@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "source_sha256": "5b3f5ec878b4212f1534d4a28ec0a34316312e1c1846d07b1748e3f5e3e4eb0b",
+  "checks": [
+    {
+      "case": "wrong_primary",
+      "rejected": true,
+      "error": "frozen plan differs: primary_model"
+    },
+    {
+      "case": "wrong_gold_with_updated_checksum",
+      "rejected": true,
+      "error": "gold changed"
+    },
+    {
+      "case": "omitted_output_manifest_entry",
+      "rejected": true,
+      "error": "output file inventory differs"
+    }
+  ],
+  "original_outputs_modified": false,
+  "inference_run": false
+}

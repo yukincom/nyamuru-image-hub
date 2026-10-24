@@ -1,0 +1,1747 @@
+{
+  "core": {
+    "review_type": "author_self_review_core_against_original_316",
+    "source_candidates_sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+    "core_path": "/private/tmp/nyamuru-variants-core.jsonl",
+    "core_sha256": "b2389ea2f79ebb2a6b5aa05af1ff27a321b4ea84e1c5b7d32018411a8a8e1bd9",
+    "reviewed_original_rows": 316,
+    "reviewed_core_rows": 192,
+    "core_ids": [
+      "nyamuru_voice_317",
+      "nyamuru_voice_508"
+    ],
+    "core_group_count": 48,
+    "core_label_counts": {
+      "save": 32,
+      "undo": 32,
+      "redo": 32,
+      "page_navigate": 32,
+      "view_change": 32,
+      "artwork_mode_set": 32
+    },
+    "proposed_unions": [
+      {
+        "key": "save_unsaved_then_current_request",
+        "groups": [
+          "v02_core_save_unsaved_discovery",
+          "save_report_then_request"
+        ],
+        "reason": "未保存の報告を前置きして現在の保存を肯定する同じ複節構造。単語の保存一致だけでなく「まだ実施していない→今実施」という境界が共通。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_328",
+              "nyamuru_voice_009"
+            ],
+            "texts": [
+              "まだ保存操作をしていなかった。ここで一度保存してくれますか？",
+              "まだ保存してないから保存して"
+            ],
+            "labels": [
+              "save",
+              "save"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "save_correction_keeps_final_request",
+        "groups": [
+          "v02_core_save_self_correction",
+          "save_self_correction"
+        ],
+        "reason": "保存しない/延期する内容を撤回し、保存を最終依頼として残す訂正文型。旧groupは逆向きの撤回144も含むため肯否対照を同splitへ維持する。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_343",
+              "nyamuru_voice_010"
+            ],
+            "texts": [
+              "まだ保存しなくていいと言ったけど、やっぱり今の内容で保存してください。",
+              "保存しないで、いや、やっぱり今保存して"
+            ],
+            "labels": [
+              "save",
+              "save"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_341",
+              "nyamuru_voice_144"
+            ],
+            "texts": [
+              "保存は後で、いや訂正。今この作品を保存して。",
+              "保存して、いや、まだ保存しないで"
+            ],
+            "labels": [
+              "save",
+              "not_command"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "undo_count_phrase",
+        "groups": [
+          "v02_core_undo_bounded_count",
+          "undo_count"
+        ],
+        "reason": "二回分アンドゥの既存短文に依頼疑問形や回数の別表現を加えた例。四回への数の変更だけを独立した一般化根拠にしない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_363",
+              "nyamuru_voice_018"
+            ],
+            "texts": [
+              "直近の変更二回分だけアンドゥしてくれる？",
+              "編集を二回分アンドゥして"
+            ],
+            "labels": [
+              "undo",
+              "undo"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_364",
+              "nyamuru_voice_018"
+            ],
+            "texts": [
+              "ここで四つ前の編集状態まで戻すために、Undoを四回お願い。",
+              "編集を二回分アンドゥして"
+            ],
+            "labels": [
+              "undo",
+              "undo"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "undo_button_paraphrase",
+        "groups": [
+          "v02_core_undo_history_control",
+          "undo_button"
+        ],
+        "reason": "元に戻すボタン/ツールバーと同じ操作を一回、というUI操作名の近い言い換え。最新編集を戻すというラベル一般の一致ではなくボタン同等表現を対象とする。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_377",
+              "nyamuru_voice_015"
+            ],
+            "texts": [
+              "ツールバーの元に戻すと同じ操作で、編集を一段戻して。",
+              "元に戻すボタンを一回実行して"
+            ],
+            "labels": [
+              "undo",
+              "undo"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "undo_vs_page_opposition",
+        "groups": [
+          "v02_core_undo_not_navigation",
+          "v02_core_page_navigate_not_edit_history",
+          "undo_vs_page"
+        ],
+        "reason": "ページ移動を否定してUndo、またはUndoを否定してページ移動、という同じ二操作の対照枠。旧groupの020/046に対応するので2新groupを同じ境界familyへ束ねる。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_370",
+              "nyamuru_voice_020"
+            ],
+            "texts": [
+              "前のページを見たいわけではないよ。最後の編集一件を取り消して。",
+              "ページを戻すんじゃなくて、直前の編集を取り消して"
+            ],
+            "labels": [
+              "undo",
+              "undo"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_437",
+              "nyamuru_voice_046"
+            ],
+            "texts": [
+              "戻したいのは編集ではなくページ。表示を一ページ前へ移して。",
+              "編集を取り消すんじゃなくて前のページに戻って"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_438",
+              "nyamuru_voice_046"
+            ],
+            "texts": [
+              "Undoはしなくていいので、この作品の前のページを開いて。",
+              "編集を取り消すんじゃなくて前のページに戻って"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "redo_count_phrase",
+        "groups": [
+          "v02_core_redo_bounded_count",
+          "redo_count"
+        ],
+        "reason": "履歴のRedoを二回/三回とする同じ回数指定構造。取り消した件数を前置きしただけの近接例として扱い、回数変更だけを未知状況に数えない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_393",
+              "nyamuru_voice_026"
+            ],
+            "texts": [
+              "続けて取り消した二件の編集を、Redoを二回使って戻して。",
+              "編集履歴を二回リドゥして"
+            ],
+            "labels": [
+              "redo",
+              "redo"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_394",
+              "nyamuru_voice_026"
+            ],
+            "texts": [
+              "いまUndoを三回かけた分を復活させたい。リドゥを三回お願い。",
+              "編集履歴を二回リドゥして"
+            ],
+            "labels": [
+              "redo",
+              "redo"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "redo_not_new_generation",
+        "groups": [
+          "v02_core_redo_not_regeneration",
+          "redo_vs_generate"
+        ],
+        "reason": "再生成を否定して履歴のRedoを肯定する対照構造と語彙が共通。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_401",
+              "nyamuru_voice_030"
+            ],
+            "texts": [
+              "画像を新しく作り直す依頼ではなく、Undoした編集を一回リドゥして。",
+              "生成し直すのではなく、さっきのUndoをリドゥして"
+            ],
+            "labels": [
+              "redo",
+              "redo"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_402",
+              "nyamuru_voice_030"
+            ],
+            "texts": [
+              "生成の再実行はしなくていいので、編集履歴のやり直しを一回お願い。",
+              "生成し直すのではなく、さっきのUndoをリドゥして"
+            ],
+            "labels": [
+              "redo",
+              "redo"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "redo_button_paraphrase",
+        "groups": [
+          "v02_core_redo_history_control",
+          "redo_button"
+        ],
+        "reason": "やり直すボタン/ツールバーと同じ操作を一度実行するほぼ同じ短文の言い換え。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_409",
+              "nyamuru_voice_024"
+            ],
+            "texts": [
+              "ツールバーのやり直すと同じ操作を一度実行して。",
+              "やり直すボタンを一回実行して"
+            ],
+            "labels": [
+              "redo",
+              "redo"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "new_undo_redo_correction_pair",
+        "groups": [
+          "v02_core_undo_self_correction",
+          "v02_core_redo_self_correction"
+        ],
+        "reason": "新規同士の追加候補。Undo/Redoを言い間違えて他方に訂正する反対向きの対照、および二回から一回への訂正が対応する。一般的な自己訂正という理由でsave/page/artworkまで連結はしない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_373",
+              "nyamuru_voice_405"
+            ],
+            "texts": [
+              "リドゥして、いや逆だった。アンドゥを一回お願い。",
+              "アンドゥして、違った。いまの取り消しをリドゥで一回戻して。"
+            ],
+            "labels": [
+              "undo",
+              "redo"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_374",
+              "nyamuru_voice_406"
+            ],
+            "texts": [
+              "二回戻して、と言ったけど一回でいい。編集を一段だけUndoして。",
+              "リドゥは二回、いや一回に訂正。取り消した編集一件だけ再適用して。"
+            ],
+            "labels": [
+              "undo",
+              "redo"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "numbered_page_request",
+        "groups": [
+          "v02_core_page_navigate_numbered_destination",
+          "page_number"
+        ],
+        "reason": "ページ番号を明示し、そのページを見たい理由から表示を依頼する構造が共通。二ページ目から別番号への置換や「移動/開く/切り替え」の近い動詞差を独立family扱いにしない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_422",
+              "nyamuru_voice_040"
+            ],
+            "texts": [
+              "いま確認したいのは二ページ目。そこへ表示を切り替えてくれる？",
+              "2ページ目を見たいからそこを表示して"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_421",
+              "nyamuru_voice_037"
+            ],
+            "texts": [
+              "修正箇所は7ページにあるので、7ページ目を開いて。",
+              "3ページに移動して"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "relative_page_distance",
+        "groups": [
+          "v02_core_page_navigate_relative_distance",
+          "page_relative_count"
+        ],
+        "reason": "二ページ前/三ページ先などの相対数値指定と「今の位置/ここから」を付けた言い換え。同じ絶対ページ番号とは区別する。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_432",
+              "nyamuru_voice_044"
+            ],
+            "texts": [
+              "今の表示位置より二ページ前を開いて。",
+              "二ページ前に戻って"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_431",
+              "nyamuru_voice_043"
+            ],
+            "texts": [
+              "ここから四ページ先まで移動してくれる？",
+              "三ページ先へ進んで"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "page_without_save_contrast",
+        "groups": [
+          "v02_core_page_navigate_without_save",
+          "page_next_without_save"
+        ],
+        "reason": "保存をしない制約のもとでページ表示だけを変える同じ二節対照。先頭や前ページへ変更した行も新group不可分で一緒に扱う。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_433",
+              "nyamuru_voice_045"
+            ],
+            "texts": [
+              "保存は今しないで、表示だけ一ページ先へ進めて。",
+              "保存はしないで次のページを表示して"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_434",
+              "nyamuru_voice_045"
+            ],
+            "texts": [
+              "ファイルを保存する操作は挟まずに、次のページを見せて。",
+              "保存はしないで次のページを表示して"
+            ],
+            "labels": [
+              "page_navigate",
+              "page_navigate"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "actual_zoom_phrase",
+        "groups": [
+          "v02_core_view_change_actual_zoom",
+          "zoom_100"
+        ],
+        "reason": "百/100/%表記と丁寧化、理由句を伴う100パーセント表示の近接表現。数値表記の違いを独立扱いにしない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_454",
+              "nyamuru_voice_053"
+            ],
+            "texts": [
+              "表示倍率を確認したいから、原稿を百パーセントに戻してください。",
+              "100パーセント表示に戻して"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_453",
+              "nyamuru_voice_054"
+            ],
+            "texts": [
+              "いまの拡大率ではなく、100パーセントの表示で見せて。",
+              "原稿を百パーセントで見せて"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "spread_display_state",
+        "groups": [
+          "v02_core_view_change_spread_purpose",
+          "spread_on",
+          "spread_off"
+        ],
+        "reason": "左右のページを見開きにする表現、見開きをオフ/使わない設定にする表現の近い言い換え。新groupはオンとオフ両方を含むため旧2groupが結合する。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_457",
+              "nyamuru_voice_056"
+            ],
+            "texts": [
+              "左右のページのつながりを見るので、見開き表示を有効にして。",
+              "左右のページを見開きで表示して"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_460",
+              "nyamuru_voice_057"
+            ],
+            "texts": [
+              "見開きの表示は使わない設定にして。",
+              "見開き表示をオフにして"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "placement_guide_state",
+        "groups": [
+          "v02_core_view_change_placement_guide_purpose",
+          "placement_guide"
+        ],
+        "reason": "配置ガイド表示と人物・吹き出しの配置枠という同じ対象名称の言い換え。保持理由を前置きしたコピーに近い操作節を含む。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_461",
+              "nyamuru_voice_058"
+            ],
+            "texts": [
+              "人物と吹き出しの配置枠を確認するため、配置ガイドを出して。",
+              "配置ガイドを表示して"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_464",
+              "nyamuru_voice_059"
+            ],
+            "texts": [
+              "人物や吹き出し自体は消さずに、配置ガイドの枠だけ非表示にして。",
+              "人物や吹き出しの配置枠を隠して"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "edit_guide_state",
+        "groups": [
+          "v02_core_view_change_edit_guide_context",
+          "edit_guide"
+        ],
+        "reason": "編集ガイドだけオフにして/編集ガイドをオフにして、というほぼ同一操作節に目的を足した例。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_467",
+              "nyamuru_voice_061"
+            ],
+            "texts": [
+              "仕上がりを確認したいから、編集ガイドだけオフにして。",
+              "編集ガイドをオフにして"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_465",
+              "nyamuru_voice_060"
+            ],
+            "texts": [
+              "編集ガイドを見ながら作業するので、その表示を有効にして。",
+              "編集ガイドをオンにして"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "artwork_guide_state",
+        "groups": [
+          "v02_core_view_change_artwork_guide_context",
+          "artwork_guide"
+        ],
+        "reason": "選択中の人物のあたり画像を隠して/だけ隠して、という同じ長い操作節に人物本体保持の前置きを追加した例。単に人物が登場する生成依頼へは連結しない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_472",
+              "nyamuru_voice_062"
+            ],
+            "texts": [
+              "人物の絵は残したまま、選択中の人物のあたり画像だけ隠して。",
+              "選択中の人物のあたり画像を隠して"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_469",
+              "nyamuru_voice_063"
+            ],
+            "texts": [
+              "この人物の下描きの当たりを見たいので、選択中の人物のあたり画像を表示して。",
+              "この人物のあたり画像を表示して"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "existing_tab_request",
+        "groups": [
+          "v02_core_view_change_existing_tab_purpose",
+          "tab_scenario",
+          "tab_characters",
+          "tab_storyboard"
+        ],
+        "reason": "シナリオ/登場人物/ネーム編集タブを開く既存短文に利用目的を前置きした例。新groupが3タブを同居させるため、この3旧groupだけを結合する。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_473",
+              "nyamuru_voice_064"
+            ],
+            "texts": [
+              "セリフの流れを読むので、シナリオのタブへ切り替えて。",
+              "シナリオのタブを開いて"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_474",
+              "nyamuru_voice_065"
+            ],
+            "texts": [
+              "人物設定を確認したいから、登場人物のタブを開いてくれる？",
+              "登場人物の設定画面を見せて"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_475",
+              "nyamuru_voice_066"
+            ],
+            "texts": [
+              "ネームの編集に戻るため、ネーム編集タブを表示して。",
+              "ネーム編集のタブに戻って"
+            ],
+            "labels": [
+              "view_change",
+              "view_change"
+            ]
+          }
+        ]
+      },
+      {
+        "key": "mode_setting_without_generation",
+        "groups": [
+          "v02_core_artwork_mode_set_setting_without_run",
+          "mode_without_run"
+        ],
+        "reason": "生成はせずに方式だけ切り替える、という同じ不実行/実行の対照文型。作画方式全ラベルを連結するのではなく、生成不実行を明示した新groupだけを対象とする。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_485",
+              "nyamuru_voice_071"
+            ],
+            "texts": [
+              "画像の生成はまだ頼んでいないよ。作画方式だけ一体型にして。",
+              "今は生成せず、一体型の方式にだけ切り替えて"
+            ],
+            "labels": [
+              "artwork_mode_set",
+              "artwork_mode_set"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_487",
+              "nyamuru_voice_076"
+            ],
+            "texts": [
+              "今ここでは何も生成せずに、作画方式だけ下書きに変更してくれる？",
+              "生成は始めず、下書き方式にだけ変えて"
+            ],
+            "labels": [
+              "artwork_mode_set",
+              "artwork_mode_set"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_488",
+              "nyamuru_voice_076"
+            ],
+            "texts": [
+              "作画設定の下書きへの切替だけお願い。画像生成の開始はしないで。",
+              "生成は始めず、下書き方式にだけ変えて"
+            ],
+            "labels": [
+              "artwork_mode_set",
+              "artwork_mode_set"
+            ]
+          }
+        ]
+      }
+    ],
+    "interpretation": [
+      "提案は前処理だけで作るfamily境界。模型の予測や成績は一切見ていない。親が決定的割当の前に採否を確定する。",
+      "元316件と新coreの原groupは不可分。共有語の全てをunionせず、数値/敬語/表記差、同じ二操作の肯否対照、ほぼ同じ長い操作節を優先した。",
+      "全件の文字列一致やNFKC正規化重複はゼロだが、それだけで近接した言い換えの漏洩がないことにはならない。",
+      "行noteの「近接する既存group」はレビュー手掛かりであり、全てを機械的にunionする指示ではない。"
+    ],
+    "effects_on_original_plus_core_only": {
+      "initial_original_groups": 161,
+      "new_core_groups": 48,
+      "union_proposal_count": 19,
+      "result_components": 186,
+      "largest_component_rows": 13,
+      "warning": "これは元316+新core192にこのJSONだけを適用した値。元316用の既存unionや他workerの例を適用した全体件数ではない。"
+    },
+    "do_not_auto_union": [
+      {
+        "groups": [
+          "v02_core_save_pause_wrapup",
+          "v02_core_save_work_checkpoint",
+          "v02_core_save_prevent_loss",
+          "save_basic"
+        ],
+        "reason": "保存してという短い必須命令句は共通するが、休憩・完了区切り・損失防止の本文全体が違う。これだけでsave全例を一成分にしない。"
+      },
+      {
+        "groups": [
+          "v02_core_undo_compare_previous",
+          "v02_core_undo_reject_latest",
+          "v02_core_undo_preserve_older_edits",
+          "undo_basic"
+        ],
+        "reason": "Undo一回という意味だけで比較目的、最新変更不採用、以前の変更保持の全状況を一括連結しない。"
+      },
+      {
+        "groups": [
+          "v02_core_redo_compare_reapplied",
+          "v02_core_redo_accidental_undo",
+          "v02_core_redo_preserve_remaining_undo",
+          "redo_after_undo"
+        ],
+        "reason": "取り消した編集の再適用はラベル定義そのもの。目的や限定条件が異なる文を全同義として連結しない。"
+      },
+      {
+        "groups": [
+          "v02_core_page_navigate_relative_distance",
+          "page_number"
+        ],
+        "ids": [
+          "nyamuru_voice_432",
+          "nyamuru_voice_038"
+        ],
+        "reason": "文字類似度では二ページ前と十二ページが近く見えるが、相対移動と絶対番号は違う。数文字共有を根拠に結合しない。"
+      },
+      {
+        "groups": [
+          "v02_core_view_change_artwork_guide_context",
+          "generate_selected_character"
+        ],
+        "ids": [
+          "nyamuru_voice_470",
+          "nyamuru_voice_234"
+        ],
+        "reason": "今選んでいる人物/してくれるの共有だけで、あたり画像の表示と人物生成を連結しない。"
+      },
+      {
+        "groups": [
+          "v02_core_artwork_mode_set_integrated_purpose",
+          "v02_core_artwork_mode_set_draft_purpose",
+          "v02_core_artwork_mode_set_self_correction",
+          "v02_core_artwork_mode_set_preserve_other_state",
+          "v02_core_artwork_mode_set_named_setting_item",
+          "v02_core_artwork_mode_set_explicit_choice_request",
+          "v02_core_artwork_mode_set_workflow_decision",
+          "mode_integrated",
+          "mode_draft"
+        ],
+        "reason": "一体型/下書きという二つの値名と作画方式という共通語だけで全新例を一本化しない。特に値名そのものを隠した未知ラベル評価とは区別し、同じ合成資料内の文型・状況一般化として扱う。"
+      }
+    ],
+    "semantic_review": {
+      "all_core_rows_read": true,
+      "blocking_label_or_slot_errors": [],
+      "resolved_before_freeze": [
+        {
+          "id": "nyamuru_voice_350",
+          "resolution": "拡大対象を吹き出しへ明示し、表示倍率変更のUndoとの曖昧さを減らした。"
+        },
+        {
+          "id": "nyamuru_voice_419",
+          "resolution": "一枚だけ先に進み過ぎたため一つ前へ戻る文にし、過去に見た任意ページとの混同を除いた。"
+        },
+        {
+          "id": "nyamuru_voice_465",
+          "resolution": "編集用ガイドという広い語を編集ガイドという対象名へ明示。"
+        },
+        {
+          "id": "nyamuru_voice_479",
+          "resolution": "方式を作画方式へ明示。"
+        },
+        {
+          "id": "nyamuru_voice_497",
+          "resolution": "integratedが実際のUIに表示されているとの未確認の断定を除いた。"
+        },
+        {
+          "id": "nyamuru_voice_500",
+          "resolution": "下書き生成という文言のUI表示断定を除き、利用者が方式値を指定する文へ整理。"
+        }
+      ],
+      "boundary_notes": [
+        {
+          "ids": [
+            "nyamuru_voice_333",
+            "nyamuru_voice_334",
+            "nyamuru_voice_335",
+            "nyamuru_voice_336"
+          ],
+          "note": "保存の現在の実行を明示して頼む疑問形。単なる保存能力の質問ではない。"
+        },
+        {
+          "ids": [
+            "nyamuru_voice_342",
+            "nyamuru_voice_344",
+            "nyamuru_voice_373",
+            "nyamuru_voice_405",
+            "nyamuru_voice_489",
+            "nyamuru_voice_492"
+          ],
+          "note": "現在発話内で撤回された別名保存/保存先変更/Undo/Redo/方式切替は操作に数えず、最後に肯定された一操作だけ採る。"
+        },
+        {
+          "ids": [
+            "nyamuru_voice_436"
+          ],
+          "note": "保存の保留はdo_not_save制約。後で保存する操作予約を作っていない。"
+        },
+        {
+          "ids": [
+            "nyamuru_voice_478",
+            "nyamuru_voice_481",
+            "nyamuru_voice_486",
+            "nyamuru_voice_502",
+            "nyamuru_voice_506"
+          ],
+          "note": "今後の制作方針や生成前という理由句を含むが、現在の作画方式設定を明示している。後日実行や生成開始の依頼ではない。"
+        },
+        {
+          "ids": [
+            "nyamuru_voice_460",
+            "nyamuru_voice_466"
+          ],
+          "note": "使わない設定=spread enabled=false、隠すのをやめ表示=edit guide enabled=true。禁止語だけでnot_commandにはしない。"
+        },
+        {
+          "ids": [
+            "nyamuru_voice_398",
+            "nyamuru_voice_400"
+          ],
+          "note": "次にRedo可能な履歴一件を指定。任意の古い項目を検索して戻す操作ではない。"
+        }
+      ]
+    },
+    "checks": {
+      "exact_nine_fields": true,
+      "unique_ids": true,
+      "six_labels_32_each": true,
+      "groups_48_four_rows_each": true,
+      "normalized_new_duplicates": 0,
+      "normalized_overlap_with_original_316": 0,
+      "normalization": "Unicode NFKC,casefold,remove whitespace and Unicode punctuation",
+      "full_text_sequence_matcher_ratio_0_72": "No pair against original316 or across new core groups reached this threshold before the four target-clarifying edits; not a semantic independence claim.",
+      "slot_contracts_manually_and_structurally_checked": true,
+      "model_inference_or_training": false,
+      "shared_repository_edited": false
+    }
+  },
+  "edit": {
+    "reviewed_file": "/private/tmp/nyamuru-variants-edit.jsonl",
+    "reviewed_sha256": "fd26731b5c59bcd8433301c29efb235e4d4089463aac0603e9141f5ffe643931",
+    "reviewed_ids": {
+      "first": "nyamuru_voice_509",
+      "last": "nyamuru_voice_700",
+      "count": 192
+    },
+    "reference_files": [
+      "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/labels.json",
+      "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/candidates.jsonl"
+    ],
+    "verdict": "pass_with_minor_wording_suggestions",
+    "summary": "全192件を本文・label・slotsと元定義に照合。明確な誤分類やslots不整合はない。明示の不実行・撤回・設定理由を独立した操作に数えていない点は正しい。以下4件は分類を維持した文章改善候補。",
+    "checks": {
+      "schema_fields": 9,
+      "per_label_counts": {
+        "bubble_set": 32,
+        "panel_sync_set": 32,
+        "inner_frame_snap_set": 32,
+        "panel_gap_snap_set": 32,
+        "paint_tool_set": 32,
+        "text_frames_align": 32
+      },
+      "normalized_duplicates_with_source_and_self": 0,
+      "classification_errors": 0,
+      "slot_errors": 0,
+      "training_or_inference_run": false,
+      "reviewed_file_edited": false
+    },
+    "issues": [
+      {
+        "id": "nyamuru_voice_538",
+        "severity": "low",
+        "kind": "referent_wording",
+        "reason": "「同じコマの三番」では三番が何を数えるのか名詞が省略されている。文脈上は結合先の吹き出しと読めるが、発話本文だけのデータとしては明示すると安全。",
+        "proposed_text": "この吹き出しは、同じコマにある三番の吹き出しにつないで。",
+        "keep_label": "bubble_set",
+        "slots_change": null
+      },
+      {
+        "id": "nyamuru_voice_570",
+        "severity": "low",
+        "kind": "unnatural_meta_wording",
+        "reason": "「使わない状態にして、という設定変更をお願いします」は依頼自体を説明する文型で硬い。意味は明確だが、短い口語の追加例として改善できる。",
+        "proposed_text": "コマシンクロは使わない設定でお願い。",
+        "keep_label": "panel_sync_set",
+        "slots_change": null
+      },
+      {
+        "id": "nyamuru_voice_633",
+        "severity": "low",
+        "kind": "redundant_meta_wording",
+        "reason": "「状態を指定します。設定を変更して」と同じ依頼を二文で言い直している。短い依頼でもenabled=trueを保てる。",
+        "proposed_text": "コマスナップありに変えてくれる？",
+        "keep_label": "panel_gap_snap_set",
+        "slots_change": null
+      },
+      {
+        "id": "nyamuru_voice_664",
+        "severity": "low",
+        "kind": "unnatural_meta_wording",
+        "reason": "「その項目を有効なツールにして」は項目とツールの関係が不自然。道具の選択依頼だとそのまま表現するほうがよい。",
+        "proposed_text": "描画ツール欄ではベジェペンを選択状態にして。",
+        "keep_label": "paint_tool_set",
+        "slots_change": null
+      }
+    ],
+    "group_unions": [
+      {
+        "groups": [
+          "v02_edit_bubble_speaker_owner",
+          "bubble_owner"
+        ],
+        "reason": "535と097は「この吹き出しの所属を同じ／今のページのNコマ目に変える」という全文が近く、主な差は番号と助詞・語尾。新groupが話者と所属をまとめているため、その範囲だけ元groupと同一splitにする。",
+        "evidence": [
+          {
+            "new_id": "nyamuru_voice_535",
+            "source_id": "nyamuru_voice_097"
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_edit_setting_use_state",
+          "panel_sync_set_desired_state",
+          "inner_frame_snap_set_desired_state",
+          "panel_gap_snap_set_desired_state"
+        ],
+        "reason": "569〜572・601〜604・633〜636は設定名を除く「使う／使わない状態・設定にして」の直接依頼で、元169/175・189/195・209/215と同じ短いコピー文型。追加側が3設定共通groupなので元の3groupも同一splitへ結合する。motive/current/correction等の別文型groupは結合しない。",
+        "evidence": [
+          {
+            "new_id": "nyamuru_voice_569",
+            "source_id": "nyamuru_voice_169"
+          },
+          {
+            "new_id": "nyamuru_voice_602",
+            "source_id": "nyamuru_voice_195"
+          },
+          {
+            "new_id": "nyamuru_voice_634",
+            "source_id": "nyamuru_voice_215"
+          }
+        ]
+      }
+    ],
+    "group_union_policy": "noteの「既存groupに近い」だけでは全結合しない。設定や整列の操作語が同じという理由だけで全ラベルを一つにしない。新規設定名置換が同一groupになっていることを確認した。",
+    "not_merged": [
+      {
+        "groups": [
+          "v02_edit_setting_correction",
+          "v02_edit_setting_use_state"
+        ],
+        "reason": "550と602は共通のオフ設定節があるが、前者の予定撤回という発話構造が追加されている。全文コピーとは扱わず、意味一致のみで結合しない。"
+      },
+      {
+        "groups": [
+          "v02_edit_align_selected",
+          "v02_edit_align_bubbles",
+          "v02_edit_align_scan",
+          "v02_edit_align_uneven",
+          "v02_edit_align_preserve",
+          "v02_edit_align_panel",
+          "v02_edit_align_correction",
+          "text_frames_top"
+        ],
+        "reason": "上端揃えという共通の操作語だけでは全groupを結合しない。数のみの言い換えは追加側でalign_selected内にまとめ済み。説明状況や対象範囲が異なる各familyを丸ごと元の単一groupへ寄せる提案は避ける。"
+      }
+    ],
+    "length_observation": {
+      "min_characters": 20,
+      "max_characters": 39,
+      "note": "極端に長い例はない。やや丁寧・説明的な文体に寄るため、上の3件を短い口語にすると構成が改善する。"
+    }
+  },
+  "routes": {
+    "schema_version": 1,
+    "review_type": "read_only_independent_semantic_review",
+    "input_path": "/private/tmp/nyamuru-variants-routes.jsonl",
+    "input_sha256": "a678520662442bfd7da1a1628f3f429278bb2378f5bbc30f4b94b37ed395df16",
+    "source_sha256": {
+      "labels.json": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "candidates.jsonl": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b"
+    },
+    "reviewed_rows": 224,
+    "counts_by_label": {
+      "needs_clarification": 32,
+      "needs_reasoning": 32,
+      "compound_request": 32,
+      "out_of_scope_request": 32,
+      "not_command": 32,
+      "generate_request": 32,
+      "background_3d_candidates": 32
+    },
+    "summary": "全224件を定義と元316件に照合。確定的なslots不整合やラベル誤りは見つからず、現在依頼の範囲が曖昧な768を要修正、877を任意の言い回し修正として記録。",
+    "issues": [
+      {
+        "id": "nyamuru_voice_768",
+        "priority": "P2",
+        "kind": "ambiguous_current_action_scope",
+        "label": "compound_request",
+        "text": "五ページに移動する前に、今の作品を保存しておいて",
+        "reason": "「五ページに移動する前に」は利用者の予定とも読め、命令形は保存だけ。現在依頼された二つの独立操作という基準が不明確。",
+        "suggested_text": "今の作品を保存してから、五ページに移動してほしい",
+        "suggested_label": "compound_request",
+        "suggested_slots": {},
+        "status": "parent_reported_fix_accepted"
+      },
+      {
+        "id": "nyamuru_voice_877",
+        "priority": "P3",
+        "kind": "unnatural_phrase",
+        "label": "generate_request",
+        "text": "二コマ目を丸ごと一枚の画像に生成して",
+        "reason": "「一枚の画像に生成して」は助詞のつながりが不自然。ラベルとslotsの誤りではない。",
+        "suggested_text": "二コマ目を丸ごと一枚の画像として生成して",
+        "suggested_label": "generate_request",
+        "suggested_slots": {
+          "target": "specified_panel",
+          "locator": {
+            "panel_number": 2
+          }
+        },
+        "status": "optional_wording_fix"
+      }
+    ],
+    "group_unions": [
+      {
+        "groups": [
+          "v02_routes_out_alignment",
+          "text_frames_top",
+          "bubble_outline_alignment"
+        ],
+        "reason": "824/303は同じ複数選択の文における上端/下端だけの近い対照。823/313は吹き出し輪郭の上揃えの近い全文言い換え。異なる正解ラベルを維持したまま分割をまとめる。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_824",
+              "nyamuru_voice_303"
+            ],
+            "texts": [
+              "複数選んだ文字枠を下端でそろえて",
+              "複数選んだ文字枠を上にそろえて"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_823",
+              "nyamuru_voice_313"
+            ],
+            "texts": [
+              "選んだ吹き出しの外側の輪郭を上端で整列して",
+              "選択した吹き出しの輪郭を上揃えにして"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_unspecified_tool_alignment",
+          "v02_routes_out_alignment"
+        ],
+        "reason": "選んだ文字枠をそろえる文型に、方向の指定を加えた近い対照。group内にペンの曖昧指定2件もあるため、その2件も不可分に付随するが、他のペンgroupへは広げない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_727",
+              "nyamuru_voice_824"
+            ],
+            "texts": [
+              "選んだ文字枠をそろえておいて",
+              "複数選んだ文字枠を下端でそろえて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_compound_alignment",
+          "text_frames_top",
+          "pen_and_align"
+        ],
+        "reason": "794は298の発話をほぼそのまま先頭に使い、保存を追加した対照。793/315はペン切替と文字頭揃えという同じ二操作文型で、ペン名と文字枠の言い方を差し替えている。一般に部分操作が共通というだけの結合はしない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_794",
+              "nyamuru_voice_298"
+            ],
+            "texts": [
+              "選択した文字枠の上端をそろえたら、作品を保存して",
+              "選択した文字枠の上端をそろえて"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_793",
+              "nyamuru_voice_315"
+            ],
+            "texts": [
+              "ベクターペンにして、選んだ文字枠は上端をそろえて",
+              "ラスターペンに変えて、文字の頭をそろえて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_noaction_state",
+          "inner_frame_snap_set_unspecified",
+          "bubble_tail"
+        ],
+        "reason": "834/201は同じ設定項目について「現在の設定を教えて」と「設定を変えて」の少数語差の対照。836/83もしっぽ有無の同じ全文骨格で状態質問と設定依頼を分けた対照。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_834",
+              "nyamuru_voice_201"
+            ],
+            "texts": [
+              "内枠スナップの現在の設定を教えて",
+              "内枠スナップの設定を変えて"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_836",
+              "nyamuru_voice_083"
+            ],
+            "texts": [
+              "選択中の吹き出しにはしっぽが付いている？",
+              "選択中の吹き出しにしっぽを付けて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_compound_settings",
+          "panel_gap_snap_set_save",
+          "inner_frame_snap_set_save",
+          "panel_sync_set_save"
+        ],
+        "reason": "784/223はコマスナップ有効化のあと保存を頼む同じ二操作文型。旧183/203/223は設定名だけを置換した完全な文型なので、同じ成分に保持する。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_784",
+              "nyamuru_voice_223"
+            ],
+            "texts": [
+              "コマスナップを有効にして、この作品も保存して",
+              "コマスナップをオンにして保存して"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_183",
+              "nyamuru_voice_203"
+            ],
+            "texts": [
+              "コマシンクロをオンにして保存して",
+              "内枠スナップをオンにして保存して"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_203",
+              "nyamuru_voice_223"
+            ],
+            "texts": [
+              "内枠スナップをオンにして保存して",
+              "コマスナップをオンにして保存して"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_unspecified_bubble_value",
+          "ambiguous_bubble_value",
+          "bubble_speaker"
+        ],
+        "reason": "719/108は吹き出しを項目不明の数値へ設定するコピー文型。717/96は選択吹き出しの話者に関する同じ短文骨格で、値の欠落と話者なし指定を区別する近い対照。形や素材など他の吹き出しgroupへは広げない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_719",
+              "nyamuru_voice_108"
+            ],
+            "texts": [
+              "吹き出しの数値を十二にしておいて",
+              "吹き出しを2にして"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_717",
+              "nyamuru_voice_096"
+            ],
+            "texts": [
+              "選択中の吹き出しは、話者を変更して",
+              "選択中の吹き出しを話者なしにして"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_unspecified_setting",
+          "ambiguous_mode"
+        ],
+        "reason": "作画方式を変えてという元の短文に依頼表現を足した近い全文言い換え。設定に関する同ラベル全部はまとめない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_712",
+              "nyamuru_voice_109"
+            ],
+            "texts": [
+              "作画方式を変更してほしいんだけど",
+              "作画方式を変えて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_reason_material",
+          "reason_bubble_material"
+        ],
+        "reason": "このセリフ/独白に合う吹き出し素材を選んで、という同じ文型に本文を読むことを明示した近い言い換え。表現や文字組みなど別の判断familyへは広げない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_733",
+              "nyamuru_voice_111"
+            ],
+            "texts": [
+              "この独白に合う吹き出し素材を、本文を読んで選んで",
+              "このセリフに合う吹き出しの素材を選んで"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_bg_category",
+          "registered_background_candidates"
+        ],
+        "reason": "901/256は登録3Dモデルから学校/病院の背景候補を探す語句差替え文型。903/251も対象句だけを差し替えて候補に挙げる同じ全文骨格。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_901",
+              "nyamuru_voice_256"
+            ],
+            "texts": [
+              "登録した3Dモデルから、病院の背景候補を探してほしい",
+              "登録済みの3Dモデルから学校の背景候補を探して"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_903",
+              "nyamuru_voice_251"
+            ],
+            "texts": [
+              "学校の廊下に使えそうな登録済み3D背景を候補に挙げて",
+              "このコマに使える登録済み3D背景を候補に挙げて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_bg_scene",
+          "registered_background_candidates"
+        ],
+        "reason": "同じ教室向け登録済み3D背景候補の文に放課後という修飾を足した近い全文言い換え。場面条件があるというだけで他のfamilyへは広げない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_897",
+              "nyamuru_voice_257"
+            ],
+            "texts": [
+              "放課後の教室に合う、登録済み3D背景の候補を出して",
+              "教室に合う登録済み3D背景を候補として見せて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_bg_boundaries",
+          "registered_background_candidates"
+        ],
+        "reason": "3D背景候補はまだ出さないで、という元発話の近い丁寧な言い換え。新groupには境界対照の範囲外操作も含まれるため、ラベルを変更せず全groupを一体に扱う。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_857",
+              "nyamuru_voice_266"
+            ],
+            "texts": [
+              "登録済みの3D背景候補は、まだ出さなくていいよ",
+              "3D背景候補はまだ出さないで"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_bg_generic",
+          "registered_background_locator"
+        ],
+        "reason": "背景候補出して、に「いま」「もらえる？」を付けた短文の近接例。背景候補という単語が共通なだけの他familyは結合しない。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_896",
+              "nyamuru_voice_283"
+            ],
+            "texts": [
+              "背景候補、いま出してもらえる？",
+              "背景候補出して"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_out_bubble_structure",
+          "out_deferred_asset"
+        ],
+        "reason": "吹き出しへウニフラッシュ素材を明示設定するほぼ同じ依頼の言い換え。素材値が一致するだけでなく全文の操作と構造も同じ。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_808",
+              "nyamuru_voice_140"
+            ],
+            "texts": [
+              "選んだ吹き出しにはウニフラッシュ素材を設定して",
+              "この吹き出しをウニフラッシュ素材に変えて"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_compound_generation",
+          "generate_multiple_targets"
+        ],
+        "reason": "コマ一の小雪ちゃんを生成してから別対象も生成、という同じ二生成文型。第二対象をコマから人物へ差し替えた近接例。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_788",
+              "nyamuru_voice_314"
+            ],
+            "texts": [
+              "コマ一の小雪ちゃんを生成して、次に同じコマのミナちゃんも生成して",
+              "コマ1の小雪ちゃんを生成してからコマ3を生成して"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_compound_background",
+          "background_candidates_apply"
+        ],
+        "reason": "背景候補提示後に一番目を現在コマへ適用する同じ二操作文型。最初/一番目、適用/配置を言い換えた近接例。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_789",
+              "nyamuru_voice_271"
+            ],
+            "texts": [
+              "登録済み3D背景の候補を出して、最初の候補を今のコマに適用して",
+              "3D背景候補を出して、一番目をこのコマに配置して"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_gen_panel",
+          "generate_selected_panel"
+        ],
+        "reason": "ほかのコマを維持し、この選択コマだけ生成するという同じ制約付き全文の近接例。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_875",
+              "nyamuru_voice_247"
+            ],
+            "texts": [
+              "ページのほかのコマはそのままで、選んであるこのコマを生成して",
+              "他のコマには手を加えず、このコマだけ生成して"
+            ]
+          }
+        ]
+      },
+      {
+        "groups": [
+          "v02_routes_generation_scope",
+          "generate_current_page",
+          "out_cancel_generation"
+        ],
+        "reason": "853/263は現在ページ全体の生成をまだ開始しない指示の近接例。811/138は実行中の画像生成を止める短文の言い換え。新groupがすでに3ラベルのスコープ対照をまとめているため、それを維持する。",
+        "evidence": [
+          {
+            "ids": [
+              "nyamuru_voice_853",
+              "nyamuru_voice_263"
+            ],
+            "texts": [
+              "今のページを丸ごと生成するのは、まだ待って",
+              "ページ全体の生成はまだ始めないで"
+            ]
+          },
+          {
+            "ids": [
+              "nyamuru_voice_811",
+              "nyamuru_voice_138"
+            ],
+            "texts": [
+              "いま走っている人物の画像生成を中止して",
+              "実行中の画像生成を止めて"
+            ]
+          }
+        ]
+      }
+    ],
+    "union_policy": "同じラベル・操作語・話題であることだけでは結合しない。全文の近い言い換え、語句置換、最小対照を根拠にする。groupは不可分として上記に列挙したgroup全体をunionする。",
+    "not_merged_by_label_alone": [
+      "v02_routes_reason_reading_layout",
+      "v02_routes_reason_tail",
+      "v02_routes_reason_speaker",
+      "v02_routes_reason_size",
+      "v02_routes_reason_expression",
+      "v02_routes_reason_occlusion",
+      "v02_routes_reason_typesetting",
+      "v02_routes_bg_count",
+      "v02_routes_bg_locator",
+      "v02_routes_bg_context",
+      "v02_routes_bg_correction",
+      "v02_routes_gen_selection",
+      "v02_routes_gen_person",
+      "v02_routes_gen_named",
+      "v02_routes_gen_numbered",
+      "v02_routes_gen_correction",
+      "v02_routes_gen_work_context"
+    ],
+    "near_pair_rejections": [
+      {
+        "ids": [
+          "nyamuru_voice_718",
+          "nyamuru_voice_077"
+        ],
+        "reason": "この吹き出しを〜にしてという一般骨格は共通だが、素材の変更先不足と形square指定で項目も意味も違う。語句一致だけでshape groupへ広げない。"
+      },
+      {
+        "ids": [
+          "nyamuru_voice_897",
+          "nyamuru_voice_284"
+        ],
+        "reason": "このペア自体は場面条件とコマlocator/候補数が異なり、共通なのは登録3D候補提示の定型部。897は同じ教室を指定した257との近接で結合するが、ここを橋にlocator group全体へ広げない。"
+      },
+      {
+        "ids": [
+          "nyamuru_voice_905",
+          "nyamuru_voice_250"
+        ],
+        "reason": "候補数を指定した数量familyと汎用提示。一般的な登録3D背景の候補という語彙重なりのみで、数量family全体を結合する根拠にはしない。"
+      }
+    ],
+    "proposed_components": [
+      {
+        "groups": [
+          "registered_background_candidates",
+          "v02_routes_bg_boundaries",
+          "v02_routes_bg_category",
+          "v02_routes_bg_scene"
+        ],
+        "n": 33,
+        "new_rows": 20,
+        "labels": {
+          "background_3d_candidates": 24,
+          "not_command": 5,
+          "out_of_scope_request": 4
+        }
+      },
+      {
+        "groups": [
+          "bubble_outline_alignment",
+          "pen_and_align",
+          "text_frames_top",
+          "v02_routes_compound_alignment",
+          "v02_routes_out_alignment",
+          "v02_routes_unspecified_tool_alignment"
+        ],
+        "n": 23,
+        "new_rows": 12,
+        "labels": {
+          "text_frames_align": 8,
+          "not_command": 1,
+          "out_of_scope_request": 5,
+          "compound_request": 5,
+          "needs_clarification": 4
+        }
+      },
+      {
+        "groups": [
+          "generate_current_page",
+          "out_cancel_generation",
+          "v02_routes_generation_scope"
+        ],
+        "n": 20,
+        "new_rows": 12,
+        "labels": {
+          "out_of_scope_request": 5,
+          "generate_request": 10,
+          "not_command": 5
+        }
+      },
+      {
+        "groups": [
+          "generate_selected_panel",
+          "v02_routes_gen_panel"
+        ],
+        "n": 11,
+        "new_rows": 4,
+        "labels": {
+          "generate_request": 10,
+          "not_command": 1
+        }
+      },
+      {
+        "groups": [
+          "registered_background_locator",
+          "v02_routes_bg_generic"
+        ],
+        "n": 8,
+        "new_rows": 4,
+        "labels": {
+          "background_3d_candidates": 8
+        }
+      },
+      {
+        "groups": [
+          "ambiguous_bubble_value",
+          "bubble_speaker",
+          "v02_routes_unspecified_bubble_value"
+        ],
+        "n": 7,
+        "new_rows": 4,
+        "labels": {
+          "bubble_set": 2,
+          "needs_clarification": 5
+        }
+      },
+      {
+        "groups": [
+          "reason_bubble_material",
+          "v02_routes_reason_material"
+        ],
+        "n": 7,
+        "new_rows": 4,
+        "labels": {
+          "needs_reasoning": 7
+        }
+      },
+      {
+        "groups": [
+          "bubble_tail",
+          "inner_frame_snap_set_unspecified",
+          "v02_routes_noaction_state"
+        ],
+        "n": 7,
+        "new_rows": 4,
+        "labels": {
+          "bubble_set": 2,
+          "needs_clarification": 1,
+          "not_command": 4
+        }
+      },
+      {
+        "groups": [
+          "inner_frame_snap_set_save",
+          "panel_gap_snap_set_save",
+          "panel_sync_set_save",
+          "v02_routes_compound_settings"
+        ],
+        "n": 7,
+        "new_rows": 4,
+        "labels": {
+          "compound_request": 7
+        }
+      },
+      {
+        "groups": [
+          "background_candidates_apply",
+          "v02_routes_compound_background"
+        ],
+        "n": 5,
+        "new_rows": 4,
+        "labels": {
+          "compound_request": 5
+        }
+      },
+      {
+        "groups": [
+          "generate_multiple_targets",
+          "v02_routes_compound_generation"
+        ],
+        "n": 5,
+        "new_rows": 4,
+        "labels": {
+          "compound_request": 5
+        }
+      },
+      {
+        "groups": [
+          "ambiguous_mode",
+          "v02_routes_unspecified_setting"
+        ],
+        "n": 5,
+        "new_rows": 4,
+        "labels": {
+          "needs_clarification": 5
+        }
+      },
+      {
+        "groups": [
+          "out_deferred_asset",
+          "v02_routes_out_bubble_structure"
+        ],
+        "n": 5,
+        "new_rows": 4,
+        "labels": {
+          "out_of_scope_request": 5
+        }
+      }
+    ],
+    "checks": {
+      "nine_field_schema": true,
+      "labels_each_32": true,
+      "all_slots_checked_against_contract": true,
+      "normalized_duplicates_within_new": 0,
+      "normalized_duplicates_against_old": 0,
+      "source_and_review_status_valid": true,
+      "jsonl_modified_by_reviewer": false,
+      "model_calls": 0,
+      "training_runs": 0
+    },
+    "scope": "編集担当192件や他担当データとの近接は本レビュー対象外。親の全924件近接一覧はroutesを含む候補だけ参照した。"
+  }
+}

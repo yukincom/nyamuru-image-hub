@@ -1,0 +1,21 @@
+{
+  "name": "nyamuru-voice-v0.1-grouped-pilot",
+  "model": "sbintuitions/modernbert-ja-30m",
+  "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+  "seeds": [42, 43, 44],
+  "learning_rates": [0.00002, 0.00005],
+  "epochs": 10,
+  "batch_size": 16,
+  "max_length": 128,
+  "dtype": "float32",
+  "attention": "sdpa",
+  "tf32": false,
+  "model_fields": ["text"],
+  "target_field": "label",
+  "selection_metric": "dev macro_f1 over all 19 labels with zero division=0; ranking is identical to supported-class macro_f1 because the dev label set is fixed",
+  "selection": "Best dev epoch per trial, then shared learning rate by mean best-dev macro_f1 over the three seeds. Ties: lower dev loss, earlier epoch, earlier learning-rate order. Save and evaluate every selected seed.",
+  "test_used_for_selection": false,
+  "split_limitation": "Original groups and reviewed close-contrast families are indivisible. Some labels have no independent dev/test group. Missing support is explicitly reported; this is not a complete 19-class generalization estimate.",
+  "adoption": "No automatic production adoption or application dispatch.",
+  "source_review": "Author-reviewed draft, individual user review pending; transfer and Colab training requested. No source text or label edits."
+}

@@ -12,8 +12,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -25,13 +23,18 @@ jobs:
     if: github.repository == 'sa-san10/nyamuru-manga-name-studio'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 22.12.0
           cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
       - run: npm ci
-      - run: npm run build:standalone
+      # Fork CIとは別workflowなので、公開側でも同じ検証を通してからartifactを作る。
+      - run: npm run verify
       - name: Collect pages artifact
         run: |
           mkdir -p pages
@@ -50,7 +53,7 @@ jobs:
           # PWA用（サブパス配信前提の相対パス版manifest・SW）
           cp standalone/pages-manifest.webmanifest pages/manifest.webmanifest
           cp standalone/pages-sw.js pages/sw.js
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: pages
 
@@ -58,9 +61,12 @@ jobs:
     if: github.repository == 'sa-san10/nyamuru-manga-name-studio'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

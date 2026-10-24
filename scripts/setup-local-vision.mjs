@@ -13,11 +13,31 @@ import { createInterface } from 'node:readline/promises';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(scriptDirectory, '..');
-export const NDLOCR_VERSION = '1.2.3';
-export const NDLOCR_REPOSITORY = 'https://github.com/ndl-lab/ndlocr-lite.git';
+export const PIP_MINIMUM = '26.2.2';
+export const CERTIFI_MINIMUM = '2026.10.19';
+// Python's official incident advisory pins the first download independently of old CA bundles.
+export const PIP_BOOTSTRAP_REQUIREMENT = 'pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70';
 export const MODEL_REVISION = '864c3bfb837a03ecc62557d5152a5ade5566489b';
 export const MODEL_URL = `https://huggingface.co/tori29umai/rtdetrv4-x-manga109s_v2/resolve/${MODEL_REVISION}/model.onnx`;
 export const MODEL_SHA256 = '5a5c27646a2ae2e9c85671a1db30504debc9b0b816dc585235435c5e86c2c2b9';
+export const BABERU_REVISION = 'd9cc13153e9a1cd8fdfa3b7b1cc329da2020aeae';
+export const BABERU_REPOSITORY = 'https://huggingface.co/genshiai-daichi/baberu-ocr';
+export const BABERU_FILES = [
+  { path: 'onnx/vision_int4.onnx', sha256: '9526bcf99eb8de805df7ea2f66b385cfcbcb5dff0e99a5dcfb02bdb2d4182bde' },
+  { path: 'onnx/decoder_prefill_int8.onnx', sha256: '4f8d28d4e5e8b6c7f3a4510663aa0a9199a7eec06bcb1dc0afb3ca571494e97f' },
+  { path: 'onnx/decoder_step_int8.onnx', sha256: '2eaf792ca70b67e55140ef0bcfbfc3c3b1e07d72ca277dcc46aae27c81f27ac8' },
+  { path: 'onnx_infer.py', sha256: '1a7737e6583715be2359807bda92f53ea16091ed186569c7a85f8b82d294373f' },
+  { path: 'tokenizer/tokenizer_config.json', sha256: 'c6c8004b1d310bd7c56455387c25cdf4da28594bbd5713aaa3fddfd5eac8f483' },
+  { path: 'tokenizer/vocab.json', sha256: '681de4eb83154a397af49e2ddae4705041b12a22e16fe00860b829e889e5f47c' },
+  { path: 'LICENSE', sha256: '186332043e82fcfdbeb0b8e0e8d77b63d97ffa3dd9d91ccf7cef1377d8ab345b' },
+];
+export const WD_EXPRESSION_REVISION = '7f6b584d0bd3f55c4531f14ba3d4761b2bccdc0f';
+export const WD_EXPRESSION_REPOSITORY = 'https://huggingface.co/SmilingWolf/wd-vit-tagger-v3';
+export const WD_EXPRESSION_FILES = [
+  { path: 'model.onnx', sha256: '35f23693620b668f4d53fd3c62bf65e40af739bc52c7eb0fbc49258b58d065b6' },
+  { path: 'selected_tags.csv', sha256: '298633d94d0031d2081c0893f29c82eab7f0df00b08483ba8f29d1e979441217' },
+  { path: 'README.md', sha256: 'edad0e80dcbebef5ae595387ff33d410c86589ae99e115670f6abea8888bc613' },
+];
 
 
 export function visionLayout(visionRoot) {
@@ -26,8 +46,9 @@ export function visionLayout(visionRoot) {
     root: visionRoot,
     venv: resolve(visionRoot, '.venv'),
     python: resolve(visionRoot, '.venv', pythonRelativePath),
-    ndlocr: resolve(visionRoot, 'ndlocr-lite'),
     model: resolve(visionRoot, 'models', 'rtdetrv4-x-manga109s_v2', 'model.onnx'),
+    baberu: resolve(visionRoot, 'models', 'baberu-ocr'),
+    wdExpression: resolve(visionRoot, 'models', 'wd-vit-tagger-v3'),
   };
 }
 
@@ -36,6 +57,7 @@ export function parseSetupArgs(argv) {
   const options = {
     yes: false,
     help: false,
+    updateCertificates: false,
     root: resolve(process.env.NYAMURU_VISION_ROOT || resolve(REPO_ROOT, '.local-vision')),
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -44,6 +66,8 @@ export function parseSetupArgs(argv) {
       options.yes = true;
     } else if (argument === '--help' || argument === '-h') {
       options.help = true;
+    } else if (argument === '--update-certificates') {
+      options.updateCertificates = true;
     } else if (argument === '--root') {
       const value = argv[index + 1];
       if (!value) throw new Error('--rootには保存先が必要です。');
@@ -64,11 +88,13 @@ Usage:
   npm run setup:vision
   npm run setup:vision -- --yes
   npm run setup:vision -- --root /path/to/vision-data
+  npm run setup:vision -- --update-certificates
 
 Options:
   -y, --yes     確認に同意して非対話で進める
   -h, --help    この説明を表示する
-  --root PATH   Git対象外の保存先を変更する`);
+  --root PATH   Git対象外の保存先を変更する
+  --update-certificates  既存のROOT/.venvのpip・certifiだけを更新する`);
 }
 
 
@@ -98,6 +124,46 @@ function supportedPython(command) {
   if (result.status !== 0) return false;
   const [major, minor] = result.stdout.trim().split('.').map(Number);
   return major === 3 && minor >= 10 && minor <= 13;
+}
+
+
+function certificatePackageStatus(python) {
+  const result = spawnSync(python, ['-I', '-c', `
+import json
+from importlib.metadata import version, PackageNotFoundError
+from pip._vendor.packaging.version import Version
+def installed(name):
+    try: return version(name)
+    except PackageNotFoundError: return None
+pip = installed('pip')
+certifi = installed('certifi')
+print(json.dumps({'pip': pip, 'certifi': certifi,
+    'pipCurrent': bool(pip and Version(pip) >= Version('${PIP_MINIMUM}')),
+    'certifiCurrent': bool(certifi and Version(certifi) >= Version('${CERTIFI_MINIMUM}'))}))
+`], { encoding: 'utf8' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`pip・certifiの状態を取得できません: ${python}\n${result.stderr}`);
+  return JSON.parse(result.stdout);
+}
+
+
+export async function updatePythonCertificates(python, { inspect = certificatePackageStatus, execute = run } = {}) {
+  let status = inspect(python);
+  const pipArgs = ['-I', '-m', 'pip', '--isolated', '--disable-pip-version-check'];
+  if (!status.pipCurrent) {
+    await execute(python, [...pipArgs, 'install', '--no-index', '--no-deps', '--no-cache-dir', PIP_BOOTSTRAP_REQUIREMENT]);
+    status = inspect(python);
+    if (!status.pipCurrent) throw new Error(`pip ${PIP_MINIMUM}以上への更新を確認できませんでした。`);
+  }
+  if (!status.certifiCurrent) {
+    await execute(python, [...pipArgs, 'install', '--no-deps', '--only-binary=:all:', `certifi>=${CERTIFI_MINIMUM}`]);
+  }
+  status = inspect(python);
+  if (!status.pipCurrent || !status.certifiCurrent) {
+    throw new Error('pip・certifiの更新後のバージョンを確認できませんでした。');
+  }
+  console.log(`Python証明書パッケージ: pip ${status.pip}, certifi ${status.certifi}`);
+  return status;
 }
 
 
@@ -160,35 +226,77 @@ async function downloadModel(destination) {
 }
 
 
-async function ensureNdlocr(directory) {
-  if (existsSync(directory)) {
-    if (!existsSync(resolve(directory, 'requirements.txt')) || !existsSync(resolve(directory, 'src', 'model'))) {
-      throw new Error(`NDLOCR-Liteの保存先が不完全です: ${directory}`);
-    }
-    console.log('NDLOCR-Lite: 既存のローカルコピーを使用します。');
+async function downloadVerifiedFile(url, destination, expectedHash, label) {
+  try {
+    await access(destination);
+    const existingHash = await sha256(destination);
+    if (existingHash !== expectedHash) throw new Error(`既存ファイルのSHA-256が一致しません: ${destination}`);
     return;
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
   }
-  await mkdir(dirname(directory), { recursive: true });
-  console.log(`NDLOCR-Lite v${NDLOCR_VERSION}を公式GitHubから取得します...`);
-  await run('git', [
-    'clone',
-    '--depth', '1',
-    '--branch', NDLOCR_VERSION,
-    NDLOCR_REPOSITORY,
-    directory,
-  ]);
+  await mkdir(dirname(destination), { recursive: true });
+  const partial = `${destination}.part`;
+  await rm(partial, { force: true });
+  const response = await fetch(url, { redirect: 'follow' });
+  if (!response.ok || !response.body) throw new Error(`${label}を取得できませんでした: HTTP ${response.status}`);
+  try {
+    await pipeline(Readable.fromWeb(response.body), createWriteStream(partial, { flags: 'wx' }));
+    const downloadedHash = await sha256(partial);
+    if (downloadedHash !== expectedHash) throw new Error(`${label}のSHA-256が一致しません: ${downloadedHash}`);
+    await rename(partial, destination);
+  } catch (error) {
+    await rm(partial, { force: true });
+    throw error;
+  }
 }
 
 
-async function confirmSetup(layout, assumeYes) {
-  console.log(`
+async function downloadBaberuModel(directory) {
+  console.log('Baberu OCRの小型ONNXモデルを検査・取得します（約116MB）...');
+  for (const file of BABERU_FILES) {
+    await downloadVerifiedFile(
+      `${BABERU_REPOSITORY}/resolve/${BABERU_REVISION}/${file.path}`,
+      resolve(directory, file.path),
+      file.sha256,
+      `Baberu OCR ${file.path}`,
+    );
+  }
+}
+
+
+async function downloadWdExpressionModel(directory) {
+  console.log('WD Taggerの表情補助モデルを検査・取得します（約379MB）...');
+  for (const file of WD_EXPRESSION_FILES) {
+    await downloadVerifiedFile(
+      `${WD_EXPRESSION_REPOSITORY}/resolve/${WD_EXPRESSION_REVISION}/${file.path}`,
+      resolve(directory, file.path),
+      file.sha256,
+      `WD Tagger ${file.path}`,
+    );
+  }
+}
+
+
+async function confirmSetup(layout, assumeYes, updateCertificates) {
+  console.log(updateCertificates ? `
+既存Python環境のpip・certifiを更新します。
+
+対象: ${layout.python}
+最低版: pip ${PIP_MINIMUM}, certifi ${CERTIFI_MINIMUM}
+取得量は最大約2MB、追加ディスク使用は数MBです。
+モデル・他のPython依存・仮想環境の構成は変更しません。` : `
 次の外部コンポーネントを取得します。
 
 - RT-DETRv4-X Manga109-s v2（Apache-2.0、モデル約239MB）
   https://huggingface.co/tori29umai/rtdetrv4-x-manga109s_v2
-- NDLOCR-Lite v${NDLOCR_VERSION}（CC BY 4.0、モデル約150MBを含む）
-  https://github.com/ndl-lab/ndlocr-lite
-- Python依存パッケージ
+- Baberu OCR（Apache-2.0、小型ONNXモデル約116MB）
+  ${BABERU_REPOSITORY}
+- WD ViT Tagger v3（Apache-2.0、ONNXモデルと表情語彙 約379MB）
+  ${WD_EXPRESSION_REPOSITORY}
+- Python依存パッケージ（操作分類器のPyTorch・Transformersを含む）
+- 採用操作分類モデルを検証し、不足時だけこのリポジトリのReleaseから重み約147MBを取得
+  保存先: ${resolve(REPO_ROOT, 'models', 'nyamuru-voice-v04-seed43')}
 
 保存先: ${layout.root}
 この保存先はNyamuruのGit対象外です。
@@ -204,39 +312,48 @@ async function confirmSetup(layout, assumeYes) {
 }
 
 
-async function setup(options) {
+export async function setup(options, { updateCertificates = updatePythonCertificates } = {}) {
   const layout = visionLayout(options.root);
-  if (!(await confirmSetup(layout, options.yes))) {
+  if (options.updateCertificates && !existsSync(layout.python)) {
+    throw new Error(`更新対象の既存Python環境が見つかりません: ${layout.python}`);
+  }
+  if (!(await confirmSetup(layout, options.yes, options.updateCertificates))) {
     console.log('セットアップを中止しました。');
     return;
   }
 
-  const systemPython = findPython();
+  if (options.updateCertificates) {
+    await updateCertificates(layout.python);
+    return;
+  }
+
   await mkdir(layout.root, { recursive: true });
   if (!existsSync(layout.python)) {
+    const systemPython = findPython();
     console.log('画像解析専用のPython仮想環境を作成します...');
     await run(systemPython, ['-m', 'venv', layout.venv]);
   } else if (!supportedPython(layout.python)) {
     throw new Error(`既存の画像解析環境がPython 3.10〜3.13ではありません: ${layout.python}`);
   }
 
-  await ensureNdlocr(layout.ndlocr);
-  console.log('画像解析用Python依存を導入します...');
+  await updateCertificates(layout.python);
+  await run(layout.python, [resolve(REPO_ROOT, 'scripts', 'install_voice_intent.py'), '--download']);
+  console.log('画像解析・操作分類用Python依存を導入します...');
   await run(layout.python, ['-m', 'pip', 'install', '-r', resolve(REPO_ROOT, 'requirements-vision.txt')]);
-  await run(layout.python, ['-m', 'pip', 'install', '-r', resolve(layout.ndlocr, 'requirements.txt')]);
   await downloadModel(layout.model);
+  await downloadBaberuModel(layout.baberu);
+  await downloadWdExpressionModel(layout.wdExpression);
 
   console.log('導入状態を検査します...');
   await run(layout.python, [
     '-c',
-    'import cv2, lxml, numpy, onnxruntime; from PIL import Image; print("Python画像解析依存: OK")',
+    'import cv2, numpy, onnxruntime, torch, transformers; from PIL import Image; print("Python画像解析・操作分類依存: OK")',
   ]);
   await run(layout.python, [resolve(REPO_ROOT, 'scripts', 'nyamuru_local_bridge.py'), '--check'], {
     env: {
       ...process.env,
       NYAMURU_VISION_ROOT: layout.root,
       NYAMURU_VISION_PYTHON: layout.python,
-      NYAMURU_NDLOCR_PYTHON: layout.python,
     },
   });
   console.log('\nセットアップが完了しました。`npm run bridge` でローカル解析を起動できます。');

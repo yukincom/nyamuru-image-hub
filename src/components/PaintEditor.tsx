@@ -1,0 +1,704 @@
+import { useContext, useEffect, useRef, useState, useLayoutEffect, useMemo } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
+import { appendBackgroundCapture } from '../lib/background3d';
+import {paintLayerEditable,paintLayerPatchAllowed,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {paintLayerCoverage,pickPaintLayer,paintOwnerPoint,translatePaintLayer} from '../lib/paintLayerPicking';
+import { moveBackgroundLayoutOwner } from '../lib/background3dLayout';
+import type { BackgroundStage } from '../types';
+import type { Background3dObjectState, Background3dResult, Background3dController } from './Background3dEditor';
+import { Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, Move, ZoomIn, ArrowLeftRight, PaintBucket, X } from 'lucide-preact';
+import PaintLayerPalette, { PaintLayerControls } from './PaintLayerPalette';
+import PaintLayerEffects from './PaintLayerEffects';
+import { prepareGuideLayer } from '../lib/paintGuide';
+import { newToneLayer } from '../lib/paintTone';
+import { paintColorInk } from '../lib/paintColor';
+import VectorControls, { type VectorDetailTab } from './VectorControls';
+import PaintPenTools from './PaintPenTools';
+import PaintSelectionTools from './PaintSelectionTools';
+import { nextMonoInk, swapPaintInk, paintInks } from '../lib/paintInk';
+import { alphaSelection, combineSelection, floodSelection, lassoSelection, type SelectionMode } from '../lib/rasterSelection';
+import PaintShapeTools from './PaintShapeTools';
+import { isShapeTool, nextPaintLineKind, vectorInput, type PaintLineKind } from '../lib/paintToolMode';
+import { paintToolShortcut, paintInkShortcut, paintSizeShortcut, stepPaintSize } from '../lib/paintToolShortcuts';
+import { loadPaintCursor, savePaintCursor, type PaintCursorMode } from '../lib/paintPreferences';
+import { PaintToolButton } from './PaintToolHelp';
+import { defaultVectorStyle, alignVectors, distributeVectors, type VectorReference, type VectorEraseMode } from '../lib/vectorGeometry';
+import { beginVectorDrag, updateVectorDrag, vectorAnchorAt, selectedVectorNodes, deleteSelectedVectorNodes, vectorPenEndpoint, type VectorDrag, type VectorState, type VectorTool } from '../lib/vectorGesture';
+import { copyArtworkSize } from '../lib/artworkClipboard';
+import type { ComponentChildren, ComponentProps, RefObject } from 'preact';
+import { paintCheckpoint, type PaintController, type PaintLayerAction, type PaintSessionSnapshot, type SharedPaintHistory } from '../lib/paintSession';
+import { PaintGeometryContext, PaintInputActivityContext, PaintToolsContext, PaintDetailsContext, PaintLayerControlsContext, PaintWorkspaceContext, usePaintWorkspace, type PaintWorkspaceState } from '../lib/paintWorkspace';
+import type { BBox, ImageAsset, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
+import { newPaintLayer, validatePaintDocument, paintInputPoint, type PaintOwner, type PaintScene, paintAssetIds } from '../lib/paintDocument';
+import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, readGenerationMaskPixels, type PaintImages } from '../lib/paintRenderer';
+import { prepareImageAsset, fitImageBox, imageCrop } from '../lib/imagePlacement';
+import { PaintSmoother } from '../lib/paintStroke';
+import { appendPaintSamples, commitPaintStroke, type PendingPaintStroke, type PaintSampleEvent } from '../lib/paintGesture';
+
+
+export interface PaintResult { scene?:PaintScene; rebase?:boolean; owners:Array<{owner:PaintOwner;blob:Blob}>; imports:Array<{asset:ImageAsset;blob:Blob}>; stageImports?:Array<{stage:BackgroundStage;blob:Blob}> }
+interface Props { resume?:PaintSessionSnapshot; sharedHistory?:SharedPaintHistory; historySteps?:number; stages?:BackgroundStage[]; zoomTool?:boolean; onSelectZoom?:()=>void; toolPaletteEnabled?:boolean; textTool?:boolean; textTools?:ComponentChildren; onStartPaint?:()=>boolean; onSelectLayout?:()=>void; onSelectBubble?:(index:number)=>void; onSelectFigure?:(index:number)=>void; onToggleBubble?:(index:number)=>void; controller?:RefObject<PaintController|null>; guideVisible?:(key:string)=>boolean; onToggleGuide?:(key:string)=>void; smoothing?:number; suspended?:boolean; onGenerate?:(owner:PaintOwner,images:PaintImages,pendingAssets:ImageAsset[])=>Promise<void>; initial?:PaintScene; initialOwner?:string; onReady?:()=>void; onEditText?:(index:number)=>void; embeddedLayers?:boolean; onReorderOwners?:(key:string,target:string,after:boolean)=>void; assets:ImageAsset[]; title:string; page:number; panelIndex:number; overlay:boolean; children:ComponentChildren; onApply:(result:PaintResult)=>Promise<void>; onClose:()=>void }
+type Live=PendingPaintStroke;
+type PaintTool=Exclude<PaintStroke['tool'],'clear'>|VectorTool|'lasso'|'wand';
+const tools=[['vector-select','パス選択',MousePointer],['vector-node','ダイレクト選択',MousePointer2],['vector-pen','ベジェペン',PenTool],['pen','ペン',Pencil],['eraser','消しゴム',Eraser],['line','直線',Minus],['rectangle','四角',Square],['ellipse','楕円',Circle]] as const;
+
+const emptyScene:PaintScene={frame:{x:0,y:0,w:1,h:1},owners:[{key:'idle',kind:'background',index:0,label:'',frame:{x:0,y:0,w:1,h:1},paint:{version:1,width:1,height:1,dpi:100,layers:[newPaintLayer()]}}]};
+export function PaintTools(){return <>{useContext(PaintToolsContext)}</>;}
+export function PaintDetails(){return <>{useContext(PaintDetailsContext)}</>;}
+export function PaintLayers(){return <>{usePaintWorkspace()?.layers}</>;}
+export function PaintStatus(){return <>{usePaintWorkspace()?.status}</>;}
+
+export default function PaintEditor({resume,sharedHistory,historySteps=50,stages=[],zoomTool=false,onSelectZoom,toolPaletteEnabled=true,textTool=false,textTools,onStartPaint,onSelectLayout,onSelectBubble,onSelectFigure,onToggleBubble,controller,guideVisible=()=>true,onToggleGuide=()=>{},smoothing=0,suspended:externalSuspended=false,onGenerate,initial:requested,initialOwner,onReady,onEditText,embeddedLayers=false,onReorderOwners,assets,title,onApply,onClose,page,panelIndex,overlay,children}:Props) {
+  const [backgroundCaptureReady,setBackgroundCaptureReady]=useState(false);
+  const [backgroundObjects,setBackgroundObjects]=useState<Background3dObjectState>([]);
+  const [backgroundOwner,setBackgroundOwner]=useState<string|null>(null);
+  const [backgroundSelection,setBackgroundSelection]=useState<string|null>(null);
+  const backgroundMove=useRef<{key:string;before:PaintScene;current:PaintScene}|null>(null);
+  const backgroundController=useRef<Background3dController|null>(null);
+  const [backgroundHost,setBackgroundHost]=useState<HTMLDivElement|null>(null);
+  const [BackgroundEditor,setBackgroundEditor]=useState<typeof import('./Background3dEditor').default|null>(null);
+  const [backgroundLoadError,setBackgroundLoadError]=useState(''),[backgroundLoadAttempt,retryBackgroundLoad]=useState(0);
+  useEffect(()=>{
+    if(!backgroundOwner||BackgroundEditor)return;
+    let cancelled=false;setBackgroundLoadError('');
+    void import('./Background3dEditor').then(module=>{if(!cancelled)setBackgroundEditor(()=>module.default);}).catch(error=>{if(!cancelled)setBackgroundLoadError(error instanceof Error?error.message:'3D機能を読み込めませんでした');});
+    return()=>{cancelled=true;};
+  },[backgroundOwner,BackgroundEditor,backgroundLoadAttempt]);
+  const [stageImports,setStageImportsState]=useState<NonNullable<PaintResult['stageImports']>>(resume?.stageImports??[]);
+  const stageImportsRef=useRef(stageImports);
+  function setStageImports(value:typeof stageImports|((items:typeof stageImports)=>typeof stageImports)){const next=typeof value==='function'?value(stageImportsRef.current):value;stageImportsRef.current=next;setStageImportsState(next);}
+  const suspended=externalSuspended||backgroundOwner!==null;
+  const initial=requested??emptyScene;
+  const [history,setHistoryState]=useState({initial,past:[] as PaintScene[],present:initial,future:[] as PaintScene[]});
+  const historyRef=useRef(history);
+  function setHistory(update:(value:typeof history)=>typeof history){
+    const next=update(historyRef.current);historyRef.current=next;setHistoryState(next);
+  }
+  const checkpoint=useMemo(()=>paintCheckpoint(initial,resume?.saved),[initial]);
+  const baseScene=history.initial===initial?history.present:initial;
+  const [vectorPreview,setVectorPreview]=useState<PaintScene|null>(null);
+  const scene=vectorPreview??baseScene;
+  const [ownerKey,setOwnerKey]=useState(initialOwner??initial.owners[0].key);
+  const owner=scene.owners.find(o=>o.key===ownerKey)??scene.owners[0];
+  const [layerId,setLayerId]=useState(owner.paint.layers.findLast(layer=>!layer.locked)?.id??owner.paint.layers[0].id);
+  const layer=owner.paint.layers.find(l=>l.id===layerId)??owner.paint.layers[owner.paint.layers.length-1];
+  const [decodedImages,setImages]=useState<PaintImages|null>(null);
+  const images=history.initial===initial?decodedImages:null;
+  const [imports,setImportsState]=useState<PaintResult['imports']>(resume?.imports??[]);
+  const importsRef=useRef(imports);
+  function setImports(value:typeof imports|((items:typeof imports)=>typeof imports)){const next=typeof value==='function'?value(importsRef.current):value;importsRef.current=next;setImportsState(next);}
+  const [tool,setTool]=useState<PaintTool>('pen');
+  const interactionRevision=useRef(0);
+  const [maskTarget,setMaskTarget]=useState<{key:string;id:string;kind:'mask'|'generationMask'}|null>(null);
+  const selectedMask=maskTarget?.key===owner.key&&maskTarget.id===layer.id&&layer[maskTarget.kind]?maskTarget.kind:null;
+  const paintTarget=selectedMask??(layer.tone?.fill&&layer.mask&&!tool.startsWith('vector-')?'mask':null);
+  const editingMask=paintTarget!==null;
+  const maskPreview=selectedMask==='mask';
+  const [penMenu,setPenMenu]=useState(false);
+  const [inkColor,setInkColor]=useState('#000000');
+  const [colorTarget,setColorTarget]=useState<'stroke'|'fill'>('stroke');
+  const [lineKind,setLineKind]=useState<PaintLineKind>('raster');
+  const [rasterSize,setRasterSize]=useState(8),[eraserSize,setEraserSize]=useState(8);
+  const [cursorMode,setCursorMode]=useState<PaintCursorMode>(()=>{try{return loadPaintCursor(window.localStorage);}catch{return 'circle';}});
+  function changeCursorMode(mode:PaintCursorMode){setCursorMode(mode);try{savePaintCursor(window.localStorage,mode);}catch{/* Keep the choice for this session. */}}
+  const overscan=5;
+  const [busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [live,setLive]=useState<Live|undefined>();
+  const input=useRef<HTMLInputElement>(null);
+  const imageTarget=useRef<{key:string;replace:boolean}|null>(null);
+  const [menu,setMenu]=useState<{x:number;y:number;key:string}|null>(null);
+  const gesture=useRef<{pointerId:number;live:Live;smoother:PaintSmoother;point:(event:PaintSampleEvent)=>PaintPoint;target:HTMLDivElement;cleanup:()=>void}|null>(null);
+  const [vectorStyle,setVectorStyle]=useState(defaultVectorStyle);
+  const [vectorTab,setVectorTab]=useState<VectorDetailTab>('line');
+  const lastToolbarLayer=useRef(layer);if(requested)lastToolbarLayer.current=layer;
+  const toolbarLayer=requested?layer:lastToolbarLayer.current;
+  const vectorMode=!editingMask&&(tool==='eraser'?toolbarLayer.kind==='vector':tool.startsWith('vector-')||lineKind==='vector');
+  const brushInk=['pen','eraser','fill','lasso','wand'].includes(tool);
+  const inkTarget=brushInk?'brush':colorTarget;
+  const inkMode=paintTarget==='generationMask'?'color':toolbarLayer.colorMode;
+  const displayInk=(ink:string|null)=>paintColorInk(ink,inkMode);
+  const paletteInks=inkMode==='monochrome'?paintInks.slice(0,2):inkMode==='grayscale'?[...paintInks.slice(0,2),{color:'#404040',name:'濃い灰'},{color:'#808080',name:'灰'},{color:'#bfbfbf',name:'薄い灰'}]:paintInks;
+  const selectedInk=displayInk(inkTarget==='fill'?vectorStyle.fill:brushInk?inkColor:vectorStyle.stroke);
+  const color=brushInk?inkColor:vectorStyle.stroke;
+  const [selection,setSelection]=useState<{key:string;boxes:BBox[]}|null>(null);
+  const selectionBoxes=selection?.key===owner.key?selection.boxes:null;
+  const [lassoPreview,setLassoPreview]=useState<Array<{x:number;y:number}>>([]);
+  const selectionPointer=useRef<{pointerId:number;points:Array<{x:number;y:number}>;cleanup:()=>void}|null>(null);
+  const [selectTolerance,setSelectTolerance]=useState(24);
+  const pendingContents=useRef<{key:string;id:string}|null>(null);
+  const loadedInitial=useRef<PaintScene|null>(null);
+  useEffect(()=>{if(images&&pendingContents.current){const p=pendingContents.current;pendingContents.current=null;selectOwner(p.key,p.id,true);}},[images]);
+  const size=tool==='eraser'?eraserSize:vectorMode?vectorStyle.width:rasterSize;
+  const [vectorSelected,setVectorSelected]=useState<string[]>([]);
+  const vectorState=useRef<VectorState>({paths:[],selected:[]});
+  const [penCursor,setPenCursor]=useState<PaintWorkspaceState['penCursor']>('pen');
+  const penHover=useRef<{x:number;y:number;tolerance:number}|null>(null);
+  const vectorPointer=useRef<{pointerId:number;drag:VectorDrag;ownerKey:string;layerId:string;target:HTMLDivElement;point:(e:PointerEvent)=>{x:number;y:number;shift:boolean;alt:boolean;meta:boolean};cleanup:()=>void}|null>(null);
+  const [vectorReference,setVectorReference]=useState<VectorReference>('selection'),[vectorGap,setVectorGap]=useState(20),[eraseMode,setEraseMode]=useState<VectorEraseMode>('intersection');
+  const inputActive=useRef(false);
+  const operation=useRef(false);
+  const raf=useRef(0),alive=useRef(true),imagesRef=useRef<PaintImages|null>(null);
+  const dirty=scene!==checkpoint.saved;
+  const locked=paintOwnerLocked(owner);
+  const selectionTool=tool==='vector-select'||tool==='vector-node';
+  const coverage=useMemo(()=>images?paintLayerCoverage(images):null,[images]);
+  const layerMove=useRef<{pointerId:number;before:PaintScene;current:PaintScene;cleanup:()=>void;target:HTMLDivElement}|null>(null);
+  useEffect(()=>{if(layer.locked||locked||!layer.visible||layer.opacity<=0){clearVectorSelection();setSelection(null);}},[layer.locked,locked,layer.visible,layer.opacity]);
+  const canDraw=Boolean(images&&!busy&&!suspended&&!locked&&owner.bubble?.hidden!==true&&layer.visible&&!layer.locked&&(!paintTarget||layer[paintTarget]?.enabled));
+  useEffect(()=>{penHover.current=null;setPenCursor('pen');},[tool,ownerKey,layerId,canDraw]);
+  useEffect(()=>{
+    if(tool!=='vector-pen')return;
+    const modifiers=(event:KeyboardEvent)=>{const point=penHover.current;if(!point)return;setPenCursor(vectorPenEndpoint({...vectorState.current,paths:layer.paths??[]},{...point,alt:event.altKey,meta:event.metaKey||event.ctrlKey},point.tolerance)?.action??'pen');};
+    window.addEventListener('keydown',modifiers);window.addEventListener('keyup',modifiers);
+    return()=>{window.removeEventListener('keydown',modifiers);window.removeEventListener('keyup',modifiers);};
+  },[tool,layer.paths]);
+  useLayoutEffect(()=>{
+    setHistory(()=>({initial,past:[],present:initial,future:[]}));
+    const selected=initial.owners.find(o=>o.key===(resume?.ownerKey??initialOwner))??initial.owners[0];
+    setOwnerKey(selected.key);setLayerId(resume?.layerId??selected.paint.layers.findLast(l=>!l.locked)?.id??selected.paint.layers[0].id);
+    selectionPointer.current?.cleanup();selectionPointer.current=null;pendingContents.current=null;setSelection(null);setLassoPreview([]);loadedInitial.current=null;imageTarget.current=null;setMenu(null);setPenMenu(false);setVectorPreview(null);setVectorSelected([]);vectorState.current={paths:[],selected:[]};vectorPointer.current?.cleanup();vectorPointer.current=null;layerMove.current?.cleanup();layerMove.current=null;
+    setBackgroundOwner(null);setBackgroundSelection(null);backgroundMove.current=null;backgroundController.current=null;setStageImports(resume?.stageImports??[]);setMaskTarget(null);setImports(resume?.imports??[]);imagesRef.current=null;setImages(null);setLive(undefined);setError('');setBusy(false);
+    gesture.current?.cleanup();gesture.current=null;inputActive.current=false;operation.current=false;
+  },[initial]);
+  const readyInitial=useRef<PaintScene|null>(null);
+  useEffect(()=>{if(requested&&images&&loadedInitial.current===initial&&readyInitial.current!==initial){readyInitial.current=initial;onReady?.();}},[initial,images]);
+  useEffect(()=>{
+    if(!requested)return;
+    let cancelled=false;alive.current=true;
+    void (async()=>{
+      const map=await loadPaintImages(initial.owners.map(o=>o.paint),assets,new Map(resume?.imports.map(item=>[item.asset.id,item.blob]))),preparedImports:PaintResult['imports']=[];
+      try{
+        const owners:PaintOwner[]=[];
+        for(const owner of initial.owners){
+          const layers:PaintLayer[]=[];
+          for(const layer of owner.paint.layers){
+            if(cancelled)return;
+            if(layer.guide&&!layer.image){const prepared=await prepareGuideLayer(owner,layer);layers.push(prepared.layer);preparedImports.push({asset:prepared.asset,blob:prepared.blob});map.set(prepared.asset.id,await decodePaintImage(prepared.blob));}
+            else layers.push(layer);
+          }
+          owners.push(layers.some((l,i)=>l!==owner.paint.layers[i])?{...owner,paint:{...owner.paint,layers}}:owner);
+        }
+        if(cancelled)return;
+        if(preparedImports.length){setImports(items=>[...items,...preparedImports]);setHistory(h=>({...h,present:{...initial,owners}}));}
+        loadedInitial.current=initial;imagesRef.current=map;setImages(map);
+      }catch(error){map.forEach(image=>{image.src='';});throw error;}
+      finally{if(cancelled)map.forEach(image=>{image.src='';});}
+    })().catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:'原本を読み込めません');});
+    return()=>{cancelled=true;alive.current=false;selectionPointer.current?.cleanup();selectionPointer.current=null;gesture.current?.cleanup();gesture.current=null;vectorPointer.current?.cleanup();vectorPointer.current=null;layerMove.current?.cleanup();layerMove.current=null;inputActive.current=false;cancelAnimationFrame(raf.current);imagesRef.current?.forEach(image=>{image.src='';});};
+  },[initial]);
+  useEffect(()=>{
+    if(!dirty)return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();};
+    window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
+  },[dirty]);
+  function snapshot(scene=historyRef.current.present):PaintSessionSnapshot {
+    const ids=new Set(scene.owners.flatMap(o=>paintAssetIds(o.paint))),stages=new Set(scene.owners.map(o=>o.paint.background3d?.sourceId));
+    return {scene,saved:checkpoint.saved,imports:importsRef.current.filter(item=>ids.has(item.asset.id)),stageImports:stageImportsRef.current.filter(item=>stages.has(item.stage.id)),ownerKey,layerId};
+  }
+  function commit(next:PaintScene){
+    const h=historyRef.current;if(h.present===next)return;
+    sharedHistory?.checkpoint(snapshot(h.present));
+    setHistory(()=>({initial,past:sharedHistory?[]:[...h.past,h.present].slice(-historySteps),present:next,future:[]}));
+    if(sharedHistory){const state=snapshot(next);setImports(state.imports);setStageImports(state.stageImports);
+      const ids=new Set(next.owners.flatMap(o=>paintAssetIds(o.paint))),map=new Map(imagesRef.current??[]);
+      for(const [id,image] of map)if(!ids.has(id)){image.src='';map.delete(id);}
+      if(map.size!==imagesRef.current?.size){imagesRef.current=map;setImages(map);}
+    }
+  }
+  function changeLayers(layers:PaintLayer[]){if(locked||busy||suspended||operation.current||inputActive.current)return;commit({...scene,owners:scene.owners.map(o=>o.key===owner.key?{...o,paint:{...o.paint,layers}}:o)});}
+  function undo(){if(busy||suspended||operation.current||inputActive.current)return;clearVectorSelection();if(sharedHistory){sharedHistory.undo();return;}setHistory(h=>h.past.length?{initial,past:h.past.slice(0,-1),present:h.past[h.past.length-1],future:[h.present,...h.future]}:h);}
+  function redo(){if(busy||suspended||operation.current||inputActive.current)return;clearVectorSelection();if(sharedHistory){sharedHistory.redo();return;}setHistory(h=>h.future.length?{initial,past:[...h.past,h.present].slice(-historySteps),present:h.future[0],future:h.future.slice(1)}:h);}
+  async function requestClose(){
+    if(operation.current)throw new Error('画像を処理しています');
+    await flush();setBackgroundOwner(null);onClose();
+  }
+  function finishGesture(keep=true){
+    endBackgroundMove(keep);
+    finishLayerMove(keep);
+    selectionPointer.current?.cleanup();selectionPointer.current=null;inputActive.current=false;setLassoPreview([]);
+    finishVector(keep);
+    const g=gesture.current;if(!g)return;
+    // Detach first: releasing capture can synchronously produce another end event.
+    gesture.current=null;inputActive.current=false;g.cleanup();cancelAnimationFrame(raf.current);raf.current=0;
+    if(keep){const pending={...g.live,stroke:structuredClone(g.live.stroke)};
+      if(historyRef.current.initial===initial)commit(commitPaintStroke(historyRef.current.present,pending));}
+    setLive(undefined);
+    try{if(g.target.hasPointerCapture(g.pointerId))g.target.releasePointerCapture(g.pointerId);}catch{/* Window listeners already detached. */}
+  }
+  function showVectorDrag(){
+    const g=vectorPointer.current;if(!g)return;
+    vectorState.current=g.drag.state;setVectorSelected(g.drag.state.selected);
+    const base=historyRef.current.present;
+    setVectorPreview({...base,owners:base.owners.map(o=>o.key===g.ownerKey?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===g.layerId?{...l,paths:g.drag.state.paths}:l)}}:o)});
+  }
+  function finishVector(keep=true){
+    const g=vectorPointer.current;if(!g)return;vectorPointer.current=null;g.cleanup();inputActive.current=false;
+    if(keep){const paths=g.drag.state.paths;
+      if(JSON.stringify(paths)!==JSON.stringify(g.drag.before.paths)){const current=historyRef.current.present;commit({...current,owners:current.owners.map(o=>o.key===g.ownerKey?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===g.layerId?{...l,paths}:l)}}:o)});}
+      vectorState.current=g.drag.state;setVectorSelected(g.drag.state.selected);
+      const selected=g.drag.state.paths.find(p=>p.id===g.drag.state.selected[0]);if(selected){setVectorStyle(selected.style);if(selected.style.stroke)setInkColor(selected.style.stroke);}
+    }else{vectorState.current=g.drag.before;setVectorSelected(g.drag.before.selected);}
+    setVectorPreview(null);try{if(g.target.hasPointerCapture(g.pointerId))g.target.releasePointerCapture(g.pointerId);}catch{}
+  }
+  function inputPoint(event:PointerEvent,target:HTMLDivElement,rect:DOMRect,targetOwner=owner){
+    if(target.dataset.selectionSurface)return paintOwnerPoint(targetOwner,{x:(event.clientX-rect.left)*Number(target.dataset.paperWidth)/rect.width,y:(event.clientY-rect.top)*Number(target.dataset.paperHeight)/rect.height});
+    return paintInputPoint(targetOwner,overscan,(event.clientX-rect.left)/rect.width,(event.clientY-rect.top)/rect.height);
+  }
+  function inputTolerance(target:HTMLDivElement,rect:DOMRect,targetOwner=owner){
+    return target.dataset.selectionSurface?7*Number(target.dataset.paperWidth)/rect.width*targetOwner.paint.width/targetOwner.frame.w:7*targetOwner.paint.width/(rect.width*targetOwner.frame.w/(targetOwner.frame.w+overscan*2));
+  }
+  function beginLayerSelection(event:PointerEvent&{currentTarget:HTMLDivElement}){
+    const target=event.currentTarget,rect=target.getBoundingClientRect();if(!rect.width||!rect.height||!coverage)return;
+    const local=inputPoint(event,target,rect),tolerance=inputTolerance(target,rect);
+    // Handles can be outside the visible stroke. Only the active editable layer owns them.
+    if(tool==='vector-node'&&layer.visible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&vectorAnchorAt(layer.paths??[],vectorState.current.selected,local,tolerance)){
+      beginVector(event);return;
+    }
+    const point={x:(event.clientX-rect.left)*Number(target.dataset.paperWidth)/rect.width,y:(event.clientY-rect.top)*Number(target.dataset.paperHeight)/rect.height};
+    const hit=pickPaintLayer(historyRef.current.present,point,7*Number(target.dataset.paperWidth)/rect.width,coverage);
+    if(hit){
+      if(hit.pathId){beginVector(event,hit.owner,hit.layer);return;}
+      clearVectorSelection();setOwnerKey(hit.owner.key);setLayerId(hit.layer.id);setMaskTarget(null);setSelection(null);
+      if(tool==='vector-select')beginLayerMove(event,hit.owner,hit.layer);
+    }else if(layer.visible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&layer.kind==='vector')beginVector(event);
+    else clearVectorSelection();
+  }
+  function finishLayerMove(keep=true){
+    const move=layerMove.current;if(!move)return;
+    layerMove.current=null;move.cleanup();inputActive.current=false;setVectorPreview(null);
+    if(keep&&move.current!==move.before)commit(move.current);
+    try{if(move.target.hasPointerCapture(move.pointerId))move.target.releasePointerCapture(move.pointerId);}catch{}
+  }
+  function beginLayerMove(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner:PaintOwner,targetLayer:PaintLayer){
+    const target=event.currentTarget,rect=target.getBoundingClientRect(),start=inputPoint(event,target,rect,targetOwner),before=historyRef.current.present;
+    const update=(e:PointerEvent)=>{
+      const move=layerMove.current;if(!move||move.pointerId!==e.pointerId)return;
+      const point=inputPoint(e,target,rect,targetOwner),dx=point.x-start.x,dy=point.y-start.y;
+      if(Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY)<2&&move.current===before)return;
+      move.current={...before,owners:before.owners.map(o=>o.key===targetOwner.key?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===targetLayer.id?translatePaintLayer(l,dx,dy):l)}}:o)};
+      setVectorPreview(move.current);
+    };
+    const move=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(!e.buttons){finishLayerMove();return;}update(e);};
+    const end=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup')update(e);finishLayerMove(e.type!=='pointercancel');};
+    const blur=()=>finishLayerMove();
+    const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
+    layerMove.current={pointerId:event.pointerId,before,current:before,cleanup,target};inputActive.current=true;
+    window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',blur);target.addEventListener('lostpointercapture',end);
+    try{target.setPointerCapture(event.pointerId);}catch{}
+  }
+  function beginVector(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner=owner,pickedLayer=layer){
+    penHover.current=null;setPenCursor('pen');
+    let targetLayer=pickedLayer;
+    if(!paintLayerEditable(targetOwner,targetLayer))return;
+    if(targetLayer.kind!=='vector'){
+      if(['vector-select','vector-node','vector-add','vector-delete','vector-anchor'].includes(tool)){clearVectorSelection();return;}
+      if(owner.paint.layers.length>=64){setError('レイヤーは64枚までです');return;}
+      targetLayer=newPaintLayer(`ベクター ${owner.paint.layers.length+1}`,'vector',scene.colorMode);changeLayers([...owner.paint.layers,targetLayer]);setLayerId(targetLayer.id);vectorState.current={paths:[],selected:[]};
+    }
+    const target=event.currentTarget,rect=target.getBoundingClientRect();if(!rect.width||!rect.height)return;
+    const point=(e:PointerEvent)=>({...inputPoint(e,target,rect,targetOwner),shift:e.shiftKey,alt:e.altKey,meta:e.metaKey||e.ctrlKey});
+    const tolerance=inputTolerance(target,rect,targetOwner);
+    const same=targetOwner.key===owner.key&&targetLayer.id===layer.id;
+    const before={...(same?vectorState.current:{selected:[]}),paths:targetLayer.paths??[]};
+    if(!same){setOwnerKey(targetOwner.key);setLayerId(targetLayer.id);setMaskTarget(null);setSelection(null);}
+    const inputSize=event.button===5?eraserSize:size;
+    const drag=beginVectorDrag(before,(event.button===5?'eraser':tool) as VectorTool,point(event),{...vectorStyle,width:inputSize},tolerance,eraseMode,inputSize/2);
+    const move=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.buttons===0){finishVector();return;}updateVectorDrag(g.drag,g.point(e));showVectorDrag();};
+    const end=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup'&&(g.drag.kind!=='new-anchor'||Math.hypot(g.point(e).x-g.drag.start.x,g.point(e).y-g.drag.start.y)>.1))updateVectorDrag(g.drag,g.point(e));finishVector();};
+    const blur=()=>finishVector();const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
+    vectorPointer.current={pointerId:event.pointerId,drag,ownerKey:targetOwner.key,layerId:targetLayer.id,target,point,cleanup};inputActive.current=true;
+    window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',blur);target.addEventListener('lostpointercapture',end);
+    try{target.setPointerCapture(event.pointerId);}catch{}showVectorDrag();
+  }
+  function changePaths(update:(paths:VectorPath[])=>VectorPath[]){
+    if(layer.kind!=='vector'||layer.locked||locked||busy||suspended||operation.current||gesture.current||layerMove.current)return;
+    finishVector();const current=historyRef.current.present;
+    commit({...current,owners:current.owners.map(o=>o.key===owner.key?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===layer.id?{...l,paths:update(l.paths??[])}:l)}}:o)});
+  }
+  function changeVectorStyle(patch:Partial<VectorStyle>){setVectorStyle(s=>({...s,...patch}));if(!vectorMode||brushInk)return;changePaths(paths=>paths.map(p=>vectorSelected.includes(p.id)?{...p,style:{...p.style,...patch}}:p));}
+  function chooseInk(value:string|null){
+    if(busy||suspended||operation.current||inputActive.current)return;
+    if(inkTarget==='fill')changeVectorStyle({fill:value});
+    else {if(value)setInkColor(value);changeVectorStyle({stroke:value});}
+  }
+  function toggleInk(){chooseInk(nextMonoInk(selectedInk,!brushInk));}
+  function swapInk(){if(brushInk||busy||suspended||operation.current||gesture.current||vectorPointer.current)return;const next=swapPaintInk(vectorStyle);changeVectorStyle(next);if(next.stroke)setInkColor(next.stroke);}
+  function deleteVectorSelection(){
+    const nodes=tool==='vector-node'?selectedVectorNodes({...vectorState.current,paths:layer.paths??[]}):tool==='vector-anchor'&&vectorState.current.selectedNode?[vectorState.current.selectedNode]:[];
+    changePaths(paths=>nodes.length?deleteSelectedVectorNodes(paths,nodes):paths.filter(p=>!vectorSelected.includes(p.id)));clearVectorSelection();
+  }
+  function clearVectorSelection(){vectorState.current={paths:[],selected:[]};setVectorSelected([]);}
+  function addPoints(event:PointerEvent){
+    const g=gesture.current;if(!g)return;
+    appendPaintSamples(g.live.stroke,g.smoother,event,g.point);
+  }
+  function movePointer(event:PointerEvent){
+    const g=gesture.current;if(!g||g.pointerId!==event.pointerId)return;
+    event.preventDefault();event.stopPropagation();
+    // Recover a missed release when the device resumes with a hover event.
+    if(event.buttons===0){finishGesture();return;}
+    addPoints(event);
+    if(!raf.current)raf.current=requestAnimationFrame(()=>{raf.current=0;const g=gesture.current;if(g)setLive({...g.live,stroke:{...g.live.stroke,points:[...g.live.stroke.points]}});});
+  }
+  function endPointer(event:PointerEvent){
+    if(gesture.current?.pointerId!==event.pointerId)return;
+    event.preventDefault();event.stopPropagation();
+    if(event.type==='pointerup')addPoints(event);
+    finishGesture();
+  }
+  async function flush(capture=false){
+    if(operation.current)throw new Error('画像の処理が終わってから保存してください');
+    if(backgroundOwner&&!capture)backgroundController.current?.snapshot();
+    finishGesture();
+    const snapshot=historyRef.current.present;
+    if(snapshot===checkpoint.saved)return;
+    const currentImages=imagesRef.current;
+    if(!currentImages){setError('原本の読み込みが終わってから保存してください');throw new Error('原本を読み込み中です');}
+    operation.current=true;setBusy(true);setError('');
+    try{
+      await checkpoint.flush(snapshot,async changed=>{
+        const result:PaintResult={scene:snapshot,rebase:capture,owners:[],imports:importsRef.current,stageImports:stageImportsRef.current};
+        for(const owner of changed){validatePaintDocument(owner.paint,[...assets,...importsRef.current.map(i=>i.asset)]);result.owners.push({owner,blob:await renderPaintPng(owner.paint,currentImages)});}
+        await onApply(result);
+      });
+    }catch(e){if(alive.current)setError(e instanceof Error?e.message:'保存できませんでした');throw e;}
+    finally{operation.current=false;if(alive.current)setBusy(false);}
+  }
+  if(controller)controller.current=requested?{snapshot,selectTool,interactionRevision:()=>interactionRevision.current,canRestore:()=>!operation.current&&!busy&&!externalSuspended&&!inputActive.current&&!backgroundOwner,layerAction,flush,close:requestClose,generate,chooseImage:key=>chooseImage(true,key),insertImage:(file,key)=>importImage(file,{key,replace:true},true)}:null;
+  async function generate(key=owner.key){
+    if(!onGenerate||operation.current||!images)return;
+    finishGesture();
+    const current=historyRef.current.present.owners.find(o=>o.key===key);
+    if(!current){setError('生成対象のフォルダが見つかりません');return;}
+    operation.current=true;setBusy(true);setError('');
+    try{await onGenerate(current,images,importsRef.current.map(item=>item.asset));}
+    catch(e){if(alive.current)setError(e instanceof Error?e.message:'生成の準備ができませんでした');}
+    finally{operation.current=false;if(alive.current)setBusy(false);}
+  }
+  function chooseImage(replace=false,key=owner.key){
+    const target=historyRef.current.present.owners.find(o=>o.key===key);
+    if(!images||operation.current||suspended||!target||paintOwnerLocked(target)||replace&&target.paint.layers.some(l=>l.locked))return;
+    finishGesture();
+    imageTarget.current={key,replace};
+    input.current?.click();
+  }
+  async function importImage(file?:File,explicitTarget?:{key:string;replace:boolean},fromDialog=false){
+    if(input.current)input.current.value='';
+    const target=explicitTarget??imageTarget.current;imageTarget.current=null;
+    const snapshot=historyRef.current.present;
+    const targetOwner=snapshot.owners.find(o=>o.key===target?.key);
+    if(!file||!target||!targetOwner||!images||operation.current||inputActive.current||backgroundOwner||suspended&&!fromDialog||paintOwnerLocked(targetOwner)||target.replace&&targetOwner.paint.layers.some(l=>l.locked)){
+      if(fromDialog)throw new Error('差し込み先が読み込み中か、固定されています。状態を確認してください');
+      return;
+    }
+    if(!target.replace&&targetOwner.paint.layers.length>=64){setError('1つのグループには64レイヤーまで追加できます');return;}
+    operation.current=true;setBusy(true);setError('');
+    try{
+      const prepared=await prepareImageAsset(file),asset=[...assets,...imports.map(i=>i.asset)].find(a=>a.id===prepared.id)??prepared;
+      const image=await decodePaintImage(file),map=new Map(images);map.set(asset.id,image);imagesRef.current=map;setImages(map);
+      setImports(items=>[...items.filter(i=>i.asset.id!==asset.id),{asset,blob:file.slice(0,file.size,asset.mediaType)}]);
+      const added={...newPaintLayer(file.name),image:{assetId:asset.id,crop:imageCrop(asset),bbox:fitImageBox({w:asset.widthPx,h:asset.heightPx},{x:0,y:0,w:targetOwner.paint.width,h:targetOwner.paint.height})}};
+      commit({...snapshot,owners:snapshot.owners.map(o=>o.key===target.key?{...o,paint:{...o.paint,layers:target.replace?[added]:[...o.paint.layers,added]}}:o)});setOwnerKey(target.key);setLayerId(added.id);
+    }catch(e){setError(e instanceof Error?e.message:'取り込めませんでした');if(fromDialog)throw e;}finally{operation.current=false;setBusy(false);}
+  }
+  function addLayer(){if(owner.paint.layers.length>=64)return;const added=newPaintLayer(`レイヤー ${owner.paint.layers.length+1}`,'raster',scene.colorMode);changeLayers([...owner.paint.layers,added]);setLayerId(added.id);}
+  function selectOwner(key:string,id?:string,contents=false){
+    if(!id&&key.startsWith('bubble-')&&onSelectBubble){onSelectBubble(Number(key.slice(7)));return;}
+    if(operation.current||suspended||inputActive.current)return;
+    pendingContents.current=null;
+    const target=scene.owners.find(o=>o.key===key);if(!target)return;
+    clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=target.paint.layers.find(l=>l.id===id)??target.paint.layers.findLast(l=>!l.locked)??target.paint.layers[0];setLayerId(selectedLayer.id);
+    if(target.kind==='figure')onSelectFigure?.(target.index);
+    if(key!==owner.key)setSelection(null);
+    if(contents&&selectedLayer.visible&&!selectedLayer.locked&&!target.figure?.artwork?.locked&&!target.bubble?.paint_overlay?.locked){
+      if(selectedLayer.kind==='vector'){const paths=selectedLayer.paths??[];vectorState.current={paths,selected:paths.map(p=>p.id)};setVectorSelected(paths.map(p=>p.id));setTool('vector-select');}
+      else if(images&&loadedInitial.current===initial){setSelection({key,boxes:alphaSelection(readPaintPixels(target.paint,selectedLayer,images))});setTool('lasso');}
+      else pendingContents.current={key,id:selectedLayer.id};
+    }
+  }
+  function updateOwnerLayer(key:string,id:string,patch:Partial<PaintLayer>){
+    if(operation.current||busy||suspended||inputActive.current)return;
+    const target=scene.owners.find(o=>o.key===key),targetLayer=target?.paint.layers.find(l=>l.id===id);
+    if(!target||!targetLayer||!paintLayerPatchAllowed(target,targetLayer,patch))return;
+    if(patch.locked&&key===owner.key&&id===layer.id){clearVectorSelection();setSelection(null);}
+    commit({...scene,owners:scene.owners.map(o=>o.key===key?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===id?{...l,...patch}:l)}}:o)});
+  }
+  function openMenu(event:MouseEvent,key:string){event.preventDefault();event.stopPropagation();finishGesture();setMenu({x:event.clientX,y:event.clientY,key});}
+  function selectionPixels(){return paintTarget==='generationMask'?readGenerationMaskPixels(owner.paint,layer):paintTarget==='mask'?readPaintMaskPixels(owner.paint,layer):readPaintPixels(owner.paint,layer,images!);}
+  function beginSelection(event:PointerEvent&{currentTarget:HTMLDivElement}){
+    const target=event.currentTarget,rect=target.getBoundingClientRect();
+    const point=(e:PointerEvent)=>paintInputPoint(owner,overscan,(e.clientX-rect.left)/rect.width,(e.clientY-rect.top)/rect.height);
+    const mode:SelectionMode=event.altKey?'subtract':event.shiftKey?'add':'replace';
+    if(tool==='wand'){const p=point(event);setSelection({key:owner.key,boxes:combineSelection(selectionBoxes,floodSelection(selectionPixels(),p.x,p.y,selectTolerance),mode,owner.paint.width,owner.paint.height)});return;}
+    const points=[point(event)];setLassoPreview(points);
+    const move=(e:PointerEvent)=>{const g=selectionPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.buttons===0){cancel();return;}const p=point(e),last=points.at(-1)!;if(Math.hypot(p.x-last.x,p.y-last.y)>.5){points.push(p);setLassoPreview([...points]);}};
+    const end=(e:PointerEvent)=>{const g=selectionPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();selectionPointer.current=null;g.cleanup();inputActive.current=false;
+      if(e.type==='pointerup'){points.push(point(e));setSelection({key:owner.key,boxes:combineSelection(selectionBoxes,lassoSelection(points,owner.paint.width,owner.paint.height),mode,owner.paint.width,owner.paint.height)});}setLassoPreview([]);
+      try{target.releasePointerCapture(event.pointerId);}catch{}};
+    const cancel=()=>{selectionPointer.current=null;cleanup();inputActive.current=false;setLassoPreview([]);};
+    const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',cancel);target.removeEventListener('lostpointercapture',cancel);};
+    selectionPointer.current={pointerId:event.pointerId,points,cleanup};inputActive.current=true;
+    window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',cancel);target.addEventListener('lostpointercapture',cancel);try{target.setPointerCapture(event.pointerId);}catch{}
+  }
+  function paintRegion(boxes:BBox[],clear=false){
+    if(!canDraw||operation.current||gesture.current||vectorPointer.current||selectionPointer.current||!boxes.length)return;
+    let active=layer;
+    if(!editingMask&&(active.kind==='vector'||active.clip&&!clear)){if(clear)return;if(owner.paint.layers.length>=64){setError('レイヤーは64枚までです');return;}active=newPaintLayer('レイヤー','raster',scene.colorMode);setLayerId(active.id);}
+    const next=commitPaintStroke(historyRef.current.present,{ownerKey:owner.key,layerId:active.id,...(paintTarget?{target:paintTarget}:{}),...(active!==layer?{addedLayer:active}:{}),stroke:{tool:clear?'clear':'fill',color:inkColor,size:1,points:[{x:0,y:0,pressure:1,time:0}],selection:boxes}});commit(next);
+  }
+  function hoverPen(event:PointerEvent&{currentTarget:HTMLDivElement}){
+    if(tool!=='vector-pen'||!canDraw||event.buttons||event.pointerType==='touch'||vectorPointer.current)return;
+    const rect=event.currentTarget.getBoundingClientRect();if(!rect.width||!rect.height)return;
+    const point=paintInputPoint(owner,overscan,(event.clientX-rect.left)/rect.width,(event.clientY-rect.top)/rect.height);
+    const tolerance=7*owner.paint.width/(rect.width*owner.frame.w/(owner.frame.w+overscan*2));
+    penHover.current={...point,tolerance};
+    setPenCursor(vectorPenEndpoint({...vectorState.current,paths:layer.paths??[]},{...point,alt:event.altKey,meta:event.metaKey||event.ctrlKey},tolerance)?.action??'pen');
+  }
+  const events:PaintWorkspaceState['events']={
+    onPointerDown:event=>{
+      if(event.pointerType==='touch'){if(gesture.current||vectorPointer.current||selectionPointer.current){event.preventDefault();event.stopPropagation();}return;}
+      if((!canDraw&&!(selectionTool&&event.button===0))||busy||suspended||operation.current||inputActive.current||!event.isPrimary||(event.button!==0&&event.button!==5)||gesture.current||vectorPointer.current||selectionPointer.current)return;
+      event.preventDefault();event.stopPropagation();
+      if(event.button===0&&selectionTool){beginLayerSelection(event);return;}
+      if(event.button!==5&&(tool==='lasso'||tool==='wand')){beginSelection(event);return;}
+      if(event.button!==5&&tool==='fill'){const b=event.currentTarget.getBoundingClientRect(),p=paintInputPoint(owner,overscan,(event.clientX-b.left)/b.width,(event.clientY-b.top)/b.height);paintRegion(floodSelection(selectionPixels(),p.x,p.y,selectTolerance,selectionBoxes));return;}
+      if(!editingMask&&vectorInput(tool,lineKind,layer.kind,event.button===5)){beginVector(event);return;}
+      let active=layer;
+      // Preview the added layer now, but commit it atomically with its first mark.
+      if(!editingMask&&(active.clip||active.kind==='vector')&&tool!=='eraser'&&event.button!==5){if(owner.paint.layers.length>=64){setError('範囲外へ描くには、空きレイヤーを作ってください（上限64枚）');return;}
+        active=newPaintLayer('レイヤー','raster',scene.colorMode);setLayerId(active.id);}
+      const target=event.currentTarget,rect=target.getBoundingClientRect();
+      if(rect.width<=0||rect.height<=0)return;
+      const point=(sample:PaintSampleEvent):PaintPoint=>({...paintInputPoint(owner,overscan,(sample.clientX-rect.left)/rect.width,(sample.clientY-rect.top)/rect.height),pressure:sample.pointerType==='pen'?Math.max(0,Math.min(1,sample.pressure)):1,time:sample.timeStamp});
+      const smoother=new PaintSmoother(isShapeTool(tool)?0:smoothing);
+      const next:Live={ownerKey:owner.key,layerId:active.id,...(paintTarget?{target:paintTarget}:{}),...(active!==layer?{addedLayer:active}:{}),stroke:{tool:event.button===5?'eraser':tool as PaintStroke['tool'],color,...(selectionBoxes?{selection:selectionBoxes}:{}),...(event.button!==5&&(tool==='rectangle'||tool==='ellipse')?{fill:vectorStyle.fill}:{}),size:event.button===5?eraserSize:size,points:[smoother.push(point(event))]}};
+      const blur=()=>finishGesture();
+      const cleanup=()=>{window.removeEventListener('pointermove',movePointer,true);window.removeEventListener('pointerup',endPointer,true);window.removeEventListener('pointercancel',endPointer,true);window.removeEventListener('blur',blur);};
+      gesture.current={pointerId:event.pointerId,live:next,smoother,point,target,cleanup};inputActive.current=true;
+      // Capture can fail on a quick tablet tap. Window listeners still retain its up/move.
+      window.addEventListener('pointermove',movePointer,{capture:true,passive:false});window.addEventListener('pointerup',endPointer,true);window.addEventListener('pointercancel',endPointer,true);window.addEventListener('blur',blur);
+      try{target.setPointerCapture(event.pointerId);}catch{/* Continue using the window listeners. */}
+      setLive({...next,stroke:{...next.stroke,points:[...next.stroke.points]}});
+    },
+    onPointerMove:event=>{hoverPen(event);movePointer(event);},
+    onPointerLeave:()=>{penHover.current=null;setPenCursor('pen');},
+    onPointerUp:endPointer,
+    onPointerCancel:endPointer,
+    onLostPointerCapture:endPointer,
+  };
+  function selectTool(next:PaintTool){
+    if(busy||suspended||operation.current)return;
+    if(!requested&&!onStartPaint?.())return;
+    interactionRevision.current++;
+    finishGesture();if(next.startsWith('vector-'))setMaskTarget(null);setTool(next);setLineKind(previous=>nextPaintLineKind(previous,next));setPenMenu(false);
+    // An explicit tool change ends drawing. Option temporarily converts points
+    // within the pen gesture, without selecting a different tool.
+    if(tool!==next)vectorState.current={...vectorState.current,activePath:undefined};
+  }
+  useEffect(()=>{
+    if(!toolPaletteEnabled||suspended)return;
+    const keydown=(event:KeyboardEvent)=>{
+      if(event.isComposing||event.defaultPrevented)return;
+      // 前面のdialogで候補を操作している間は、背後の描画を開始しない。
+      if(event.target instanceof Element&&event.target.closest('dialog[open]'))return;
+      if(event.target instanceof HTMLElement&&(event.target.closest('input,textarea,select')||event.target.isContentEditable))return;
+      const key=event.key.toLowerCase();
+      const sizeDirection=paintSizeShortcut(event);
+      if(sizeDirection){
+        event.preventDefault();event.stopPropagation();
+        if(!busy&&!operation.current&&!inputActive.current){
+          if(tool==='eraser')setEraserSize(value=>stepPaintSize(value,sizeDirection));
+          else if(vectorMode)changeVectorStyle({width:stepPaintSize(vectorStyle.width,sizeDirection,true)});
+          else setRasterSize(value=>stepPaintSize(value,sizeDirection));
+        }
+        return;
+      }
+      if(requested&&(event.metaKey||event.ctrlKey)&&key==='d'){event.preventDefault();event.stopPropagation();setSelection(null);clearVectorSelection();return;}
+      if(requested&&selectionBoxes&&(key==='delete'||key==='backspace')&&!tool.startsWith('vector-')){event.preventDefault();event.stopPropagation();paintRegion(selectionBoxes,true);return;}
+      if(paintInkShortcut(event)){event.preventDefault();event.stopPropagation();toggleInk();return;}
+      // Let the description consume Escape before leaving the paint workspace.
+      if(key==='escape'&&document.getElementById('paint-tool-description'))return;
+      if(key==='escape'&&penMenu){event.preventDefault();event.stopPropagation();setPenMenu(false);return;}
+      if(key==='escape'&&menu){event.preventDefault();event.stopPropagation();setMenu(null);return;}
+      if(key==='escape'&&requested&&selectionBoxes){event.preventDefault();event.stopPropagation();setSelection(null);return;}
+      if(key==='escape'&&requested){event.preventDefault();event.stopPropagation();if(inputActive.current)finishGesture(false);else if(vectorState.current.activePath)clearVectorSelection();else void requestClose().catch(()=>{});return;}
+      const nextTool=paintToolShortcut(event);
+      if(nextTool){if(!gesture.current&&!vectorPointer.current&&!busy&&!operation.current){event.preventDefault();event.stopPropagation();selectTool(nextTool);}return;}
+      if(!requested)return;
+      if(key==='enter'&&vectorState.current.activePath){event.preventDefault();vectorState.current={...vectorState.current,activePath:undefined};return;}
+      if((key==='delete'||key==='backspace')&&vectorSelected.length){event.preventDefault();deleteVectorSelection();return;}
+      if((event.metaKey||event.ctrlKey)&&key==='a'&&!editingMask&&!layer.locked&&!locked&&layer.kind==='vector'){event.preventDefault();const selected=event.shiftKey?[]:(layer.paths??[]).map(p=>p.id);vectorState.current={paths:layer.paths??[],selected};setVectorSelected(selected);return;}
+      if((event.metaKey||event.ctrlKey)&&key==='z'){event.preventDefault();event.stopPropagation();event.shiftKey?redo():undo();}
+      if((event.metaKey||event.ctrlKey)&&key==='y'){event.preventDefault();event.stopPropagation();redo();}
+    };
+    window.addEventListener('keydown',keydown,true);return()=>window.removeEventListener('keydown',keydown,true);
+  });
+  const toolHelp:Partial<Record<PaintTool,string>>={
+    'vector-select':'Vで選択。固定されていない線や画像を、レイヤーをまたいで選択して移動します。Shiftクリックや範囲ドラッグで複数選択し、整列・分布できます。',
+    'vector-node':'Aでダイレクト選択。Shiftクリックでパスやアンカーの選択を追加・解除します。ドラッグで移動、Option/Altで片側のハンドルだけを調整し、Deleteで選んだ点を削除します。',
+    'vector-pen':'クリックで角、ドラッグで曲線。Option/Altで一時的に点やハンドルを変換し、Escまたは⌘/Ctrlを押して空白をクリックすると描画を終了します。',
+    'vector-add':'＋でアンカーポイントを追加します。',
+    'vector-delete':'−でアンカーポイントを削除します。',
+    'vector-anchor':'Shift+Cでアンカーポイントを角・曲線に変換します。',
+    pen:'フリーハンドでラスターの線を描きます。筆圧を太さに反映します。トーンと生成マーカーもこのペンサイズ・手ぶれ補正・カーソル設定を使います。[ / ] で太さを変更できます。',
+    eraser:'選択中のレイヤーを消します。ベクターでは「触れた部分・交点まで・線全体」を選べます。',
+    line:'ドラッグでベクターの直線を描きます。Shiftを押すと水平・垂直に揃います。',
+    rectangle:'Mで選択。ドラッグでベクターの四角を描きます。Shiftを押すと正方形になります。中の塗りはベクター設定で選びます。',
+    ellipse:'Lで選択。ドラッグでベクターの楕円を描きます。Shiftを押すと正円になります。',
+  };
+  const detailControls=<div class="paint-details"><VectorControls tab={vectorTab} setTab={setVectorTab} style={vectorStyle} change={changeVectorStyle} disabled={busy||suspended||layer.locked||locked} selectedCount={vectorSelected.length} reference={vectorReference} setReference={setVectorReference} gap={vectorGap} setGap={setVectorGap}
+      align={mode=>changePaths(paths=>alignVectors(paths,vectorSelected,mode,vectorReference,{x:0,y:0,w:owner.paint.width,h:owner.paint.height},vectorSelected[0]))}
+      distribute={(axis,mode,fixed)=>changePaths(paths=>distributeVectors(paths,vectorSelected,axis,mode,vectorReference,{x:0,y:0,w:owner.paint.width,h:owner.paint.height},vectorSelected[0],fixed?vectorGap:undefined))}
+      eraseMode={eraseMode} setEraseMode={setEraseMode} erasing={tool==='eraser'}/></div>;
+  const toolControls=<div class="paint-tools"><h3 class="paint-panel-title">描画ツール</h3>
+    <div class="paint-tool-icons">
+      {tools.slice(0,2).map(([value,label,Icon])=><PaintToolButton class={`paint-tool-icon tool-${value}`} label={label} help={toolHelp[value]??label} disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool===value} onClick={()=>selectTool(value)}><Icon size={23}/></PaintToolButton>)}
+      <PaintPenTools tool={requested?tool:''} select={selectTool} disabled={busy||suspended} open={penMenu} setOpen={setPenMenu}/>
+      <PaintToolButton class="paint-tool-icon" label="ペン" help={toolHelp.pen!} disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool==='pen'} onClick={()=>selectTool('pen')}><Pencil size={23}/></PaintToolButton>
+      <PaintShapeTools tool={requested?tool:''} select={selectTool} disabled={busy||suspended}/>{textTools}
+      <PaintToolButton class="paint-tool-icon" label="消しゴム" help={toolHelp.eraser!} disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool==='eraser'} onClick={()=>selectTool('eraser')}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={requested?tool:''} select={selectTool} disabled={busy||suspended}/>
+      <PaintToolButton class="paint-tool-icon" label="選択・移動" help="描いた内容を保持し、あたりや文字の配置を選択・移動します。" disabled={busy||suspended} aria-pressed={!requested&&!textTool&&!zoomTool} onClick={()=>{if(requested)void requestClose().catch(()=>{});else onSelectLayout?.();}}><Move size={23}/></PaintToolButton>
+      <PaintToolButton class="paint-tool-icon" label="拡大ツール" help="Zで選択。紙面をクリックして拡大、Option/Altを押しながらクリックして縮小します。" aria-keyshortcuts="Z" disabled={busy||suspended} aria-pressed={zoomTool} onClick={onSelectZoom}><ZoomIn size={23}/></PaintToolButton>
+      <PaintToolButton class="paint-tool-icon" label="バケツ" help="選択レイヤーの、クリックした場所とつながる同じ色の範囲を塗ります。選択範囲があればその内側だけを塗ります。" disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool==='fill'} onClick={()=>selectTool('fill')}><PaintBucket size={23}/></PaintToolButton>
+      <PaintToolButton class="paint-tool-icon" label="選択解除" help="選択範囲を解除します。⌘/Ctrl＋Dでも解除できます。" disabled={!selectionBoxes&&!vectorSelected.length} onClick={()=>{setSelection(null);clearVectorSelection();}}><X size={23}/></PaintToolButton>
+    </div>
+    <div class={`paint-ink-controls ${brushInk?'is-brush-ink':''}`}>
+      <div class="paint-ink-targets" role="group" aria-label={brushInk?'ブラシの描画色':'塗りと線'}>
+        <PaintToolButton class="paint-ink-target paint-ink-fill" label={brushInk?'描画色':'塗りの色'} help={brushInk?'ブラシで塗る色です。Xキーで白黒を切り替えます。':'図形の内側の色です。ラスターとベクターで共通です。'} aria-pressed={brushInk||colorTarget==='fill'} onClick={()=>{if(!brushInk)setColorTarget('fill');}}><span style={{background:displayInk(brushInk?inkColor:vectorStyle.fill)??'var(--paper)'}}>{!brushInk&&vectorStyle.fill===null&&<span class="ink-none-mark"/>}</span></PaintToolButton>
+        <PaintToolButton class="paint-ink-target paint-ink-stroke" label="線（枠）の色" help={brushInk?'ブラシでは描画色だけを使います。線と塗りの指定は図形・ベジェペンで使います。':'ペンと図形の輪郭の色です。ラスターとベクターで共通です。'} disabled={brushInk} aria-pressed={!brushInk&&colorTarget==='stroke'} onClick={()=>setColorTarget('stroke')}><span style={{borderColor:brushInk?'#b8bcb8':displayInk(vectorStyle.stroke)??'transparent'}}>{!brushInk&&vectorStyle.stroke===null&&<span class="ink-none-mark"/>}</span></PaintToolButton>
+        <PaintToolButton class="paint-ink-swap" label="塗りと線の色を交換" help="塗りと線の色を入れ替えます。透明もそのまま交換します。" disabled={brushInk||busy||suspended} onClick={swapInk}><ArrowLeftRight size={14}/></PaintToolButton>
+      </div>
+      <div class="paint-colors" role="group" aria-label={brushInk?'描画色':colorTarget==='fill'?'塗りの色':'線（枠）の色'}>{paletteInks.map(({color:value,name})=><PaintToolButton class="paint-color" label={`${brushInk?'描画色':colorTarget==='fill'?'塗り':'線（枠）'}：${name}`} help={brushInk?"描画色を選びます。Xキーで白黒を切り替えます。":"選択した塗り・線の色です。Xキーで黒・白・透明を順番に切り替えます。"} aria-pressed={selectedInk===value} style={{'--paint-color':value}} onClick={()=>chooseInk(value)}><span class="ink-swatch"/></PaintToolButton>)}
+      {!brushInk&&<PaintToolButton class="paint-color" label="透明" help="選択中の塗り・線を描かない設定にします。" aria-pressed={selectedInk===null} onClick={()=>chooseInk(null)}><span class="ink-swatch ink-no-fill"><span class="ink-none-mark"/></span></PaintToolButton>}</div>
+    </div>
+    {(tool==='wand'||tool==='fill')&&<label>許容差<input aria-label="色の許容差" type="number" min="0" max="255" value={selectTolerance} onChange={e=>setSelectTolerance(Math.max(0,Math.min(255,e.currentTarget.valueAsNumber||0)))}/></label>}
+    <label class="paint-size" data-line-kind={vectorMode?'vector':'raster'}><span>太さ</span><input aria-label={tool==='eraser'?'消しゴムの太さ':vectorMode?'ベクターの太さ':'ラスターの太さ'} data-tool-help="線種ごとの太さを保持します。[ / ] で変更。トーンと生成マーカーはラスターの太さを使います。" type="number" min={vectorMode&&tool!=='eraser'?.1:.5} max={vectorMode&&tool!=='eraser'?1000:500} step=".5" value={size} onChange={e=>{const width=Math.max(vectorMode&&tool!=='eraser'?.1:.5,Math.min(vectorMode&&tool!=='eraser'?1000:500,e.currentTarget.valueAsNumber||1));if(tool==='eraser')setEraserSize(width);else if(vectorMode)changeVectorStyle({width});else setRasterSize(width);}}/><span>px</span></label>
+    <div class="paint-cursor-choice"><span>カーソル</span>{vectorMode?<span>十字</span>:<div role="group" aria-label="ラスターのカーソル"><button type="button" aria-pressed={cursorMode==='circle'} title="ペンサイズを円で表示（トーン・生成マーカー共通）" onClick={()=>changeCursorMode('circle')}>円</button><button type="button" aria-pressed={cursorMode==='crosshair'} title="影のない十字で表示" onClick={()=>changeCursorMode('crosshair')}>十字</button></div>}</div>
+    <div class="paint-aa"><span>{toolbarLayer.colorMode==='monochrome'?'アンチエイリアス：なし固定':'アンチエイリアス'}</span><div class="vector-choice-icons" role="group" aria-label="アンチエイリアス">{(['なし','弱','中','強'] as const).map((label,value)=><PaintToolButton label={`アンチエイリアス：${label}`} help={`選択レイヤーの線の境界を「${label}」にします。ぼかしは使わず、輪郭の濃度を調整します。読み込んだ画像は変えません。`} disabled={!requested||busy||suspended||locked||layer.locked||toolbarLayer.colorMode==='monochrome'} aria-pressed={(toolbarLayer.colorMode==='monochrome'?0:toolbarLayer.antialias??3)===value} onClick={()=>updateOwnerLayer(owner.key,layer.id,{antialias:value as 0|1|2|3})}><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="currentColor"/>{value>0&&<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="3" opacity={value/5}/>}</svg></PaintToolButton>)}</div></div>
+  </div>;
+  function layerAction(action:PaintLayerAction){
+    if(action.type==='background3d'){openBackground3d(action.key);return;}
+    if(action.type==='guide'){toggleGuide(action.key);return;}
+    if(action.type==='menu'){setMenu({key:action.key,x:action.x,y:action.y});return;}
+    if(action.type==='select'){if(action.mask&&action.id)selectMask(action.key,action.id,action.mask);else selectOwner(action.key,action.id,action.contents);return;}
+    if(action.type==='update'){updateOwnerLayer(action.key,action.id,action.patch);return;}
+    if(busy||suspended||operation.current||inputActive.current)return;
+    const current=historyRef.current.present,target=current.owners.find(o=>o.key===action.key);
+    if(!target||(action.type!=='toggle'&&paintOwnerLocked(target)))return;
+    let layers=target.paint.layers;
+    if(action.type==='toggle'){
+      const visible=!layers.some(l=>l.visible);layers=layers.map(l=>({...l,visible}));
+    }else{
+      layers=[...layers];const from=layers.findIndex(l=>l.id===action.id);if(from<0||action.id===action.target)return;
+      if(!paintLayerEditable(target,layers[from]))return;
+      const moved=layers.splice(from,1)[0],to=layers.findIndex(l=>l.id===action.target);if(to<0)return;
+      layers.splice(to+(action.after?0:1),0,moved);
+    }
+    commit({...current,owners:current.owners.map(o=>o.key===action.key?{...o,paint:{...o.paint,layers}}:o)});
+  }
+  function openBackground3d(key=owner.key){
+    if(!requested||busy||suspended||operation.current||!images)return;
+    const target=scene.owners.find(o=>o.key===key);if(!target||target.kind!=='background'||overlay)return;
+    finishGesture();clearVectorSelection();setMaskTarget(null);setSelection(null);setOwnerKey(key);setMenu(null);setBackgroundSelection(null);setBackgroundOwner(key);
+  }
+  function beginBackgroundMove(key:string){
+    if(!backgroundOwner||busy||externalSuspended||operation.current||!images)return false;
+    endBackgroundMove();const before=historyRef.current.present;
+    if(moveBackgroundLayoutOwner(before,key,1,0)===before)return false;
+    setBackgroundSelection(key);backgroundMove.current={key,before,current:before};inputActive.current=true;return true;
+  }
+  function moveBackgroundOwner(dx:number,dy:number){
+    const move=backgroundMove.current;if(!move)return;
+    move.current=moveBackgroundLayoutOwner(move.before,move.key,dx,dy);setVectorPreview(move.current);
+  }
+  function endBackgroundMove(keep=true){
+    const move=backgroundMove.current;if(!move)return;
+    backgroundMove.current=null;inputActive.current=false;setVectorPreview(null);
+    if(keep&&move.current!==move.before)commit(move.current);
+  }
+  function closeBackground3d(){endBackgroundMove();setBackgroundOwner(null);backgroundController.current=null;}
+  async function captureBackground3d(result:Background3dResult){
+    if(!backgroundOwner||!images||operation.current)return;
+    endBackgroundMove();operation.current=true;setBusy(true);
+    try{
+    const snapshot=historyRef.current.present,target=snapshot.owners.find(o=>o.key===backgroundOwner);
+    if(!target)throw new Error('背景の描画先が見つかりません');
+    const layers=result.layers.map(layer=>layer.kind==='vector'?{...layer,colorMode:snapshot.colorMode??'color'}:layer);
+    const paint=appendBackgroundCapture(target.paint,result.config,layers);
+    validatePaintDocument(paint,[...assets,...imports.map(i=>i.asset),...result.imports.map(i=>i.asset)]);
+    const decoded=await Promise.all(result.imports.map(async item=>({id:item.asset.id,image:await decodePaintImage(item.blob)})));
+    const map=new Map(images);for(const item of decoded)map.set(item.id,item.image);imagesRef.current=map;setImages(map);
+    setImports(items=>[...items.filter(item=>!result.imports.some(next=>next.asset.id===item.asset.id)),...result.imports]);
+    setStageImports(items=>[...items.filter(item=>!result.stageImports.some(next=>next.stage.id===item.stage.id)),...result.stageImports]);
+    commit({...snapshot,owners:snapshot.owners.map(o=>o.key===backgroundOwner?{...o,paint}:o)});
+    setLayerId(result.layers.find(layer=>layer.kind==='vector')!.id);setLineKind('vector');setTool('vector-select');setBackgroundOwner(null);
+    }finally{operation.current=false;if(alive.current)setBusy(false);}
+    await flush(true);
+  }
+  const backgroundTarget=scene.owners.find(o=>o.key===backgroundOwner);
+  const backgroundFrame=backgroundTarget?.paint.background3d?.frame??backgroundTarget?.paint.referenceFrame??(backgroundTarget?{x:0,y:0,w:backgroundTarget.paint.width,h:backgroundTarget.paint.height}:undefined);
+  function selectMask(key:string,id:string,kind:'mask'|'generationMask'){
+    if(busy||suspended||operation.current||inputActive.current)return;
+    if(kind==='mask'&&selectedMask==='mask'&&owner.key===key&&layer.id===id){finishGesture();setMaskTarget(null);setSelection(null);return;}
+    selectOwner(key,id);setMaskTarget({key,id,kind});setTool('pen');setLineKind('raster');
+    const target=scene.owners.find(o=>o.key===key)?.paint.layers.find(l=>l.id===id);
+    if(kind==='mask'&&target?.mask&&!target.mask.enabled&&!target.locked)updateOwnerLayer(key,id,{mask:{...target.mask,enabled:true}});
+    if(kind==='generationMask'&&!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
+  }
+  function addToneMask(){
+    if(!images||locked||busy||suspended||operation.current||owner.paint.layers.length>=64)return;
+    finishGesture();const added=newToneLayer(selectionBoxes,scene.colorMode);
+    changeLayers([...owner.paint.layers,added]);clearVectorSelection();setLayerId(added.id);
+    setMaskTarget({key:owner.key,id:added.id,kind:'mask'});setSelection(null);setTool('pen');setLineKind('raster');
+  }
+  function addGenerationMask(){
+    if(!images||locked||layer.locked||busy||suspended)return;
+    updateOwnerLayer(owner.key,layer.id,{generationMask:layer.generationMask?{...layer.generationMask,enabled:true}:{enabled:true,strokes:[]}});
+    selectMask(owner.key,layer.id,'generationMask');setSelection(null);
+  }
+  async function exportImage(){
+    if(!images||busy||suspended||operation.current)return;
+    finishGesture();operation.current=true;setBusy(true);setError('');
+    try{const current=historyRef.current.present.owners.find(o=>o.key===owner.key)!;const blob=await renderPaintPng(current.paint,images),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`${title}-${owner.label}.png`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+    catch(error){setError(error instanceof Error?error.message:'書き出せませんでした');}finally{operation.current=false;setBusy(false);}
+  }
+  function toggleGuide(key:string){
+    if(busy||suspended||operation.current||!images)return;
+    const target=scene.owners.find(o=>o.key===key);if(!target)return;
+    if(!target.paint.guideInitialized){onToggleGuide(key);return;}
+    const guides=target.paint.layers.filter(l=>l.guide);if(!guides.length)return;
+    const visible=!guides.some(l=>l.visible);
+    commit({...scene,owners:scene.owners.map(o=>o===target?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.guide?{...l,visible}:l)}}:o)});
+  }
+  const effects=<PaintLayerEffects layer={requested?layer:undefined} generationMask={selectedMask==='generationMask'} disabled={!requested||locked||layer.locked||busy||suspended||!images} update={patch=>updateOwnerLayer(owner.key,layer.id,patch)}/>;
+  const layerProps:ComponentProps<typeof PaintLayerPalette>={
+    selectedMask,selectMask,addToneMask,addGenerationMask,exportImage,
+    disabledReason:backgroundOwner?'3D背景を撮影するか閉じると、レイヤーを編集できます。':requested&&!images?'あたり画像を読み込み中…':!requested?'描画するレイヤーを選択してください。':undefined,
+    backgroundObjects:backgroundOwner?{ownerKey:backgroundOwner,items:backgroundObjects.filter(object=>!object.visible&&object.mode==='hide'),disabled:!backgroundCaptureReady||busy||externalSuspended,show:mesh=>backgroundController.current?.setObjectVisibility(mesh,'show')}:undefined,
+    backgroundCapture:backgroundOwner?{ready:backgroundCaptureReady&&!busy&&!externalSuspended,capture:()=>void backgroundController.current?.capture()}:undefined,
+    onToggleBubble,openBackground3d:!overlay?()=>openBackground3d('background'):undefined,
+    reorderGroup:(key,target,after)=>{const moved=scene.owners.find(o=>o.key===key);if(moved&&!paintOwnerPlacementLocked(moved))onReorderOwners?.(key,target,after);},embedded:embeddedLayers,onEditText,title,scene,owner,layer,images,disabled:busy||suspended||!images,
+    select:selectOwner,update:updateOwnerLayer,guideVisible,toggleGuide,menu:openMenu,
+    toggleGroup:key=>layerAction({type:'toggle',key}),add:addLayer,
+    addVector:()=>{if(locked||busy||suspended||owner.paint.layers.length>=64)return;const added=newPaintLayer(`ベクター ${owner.paint.layers.length+1}`,'vector',scene.colorMode);changeLayers([...owner.paint.layers,added]);clearVectorSelection();setMaskTarget(null);setLayerId(added.id);setTool('vector-pen');setLineKind('vector');},
+    importImage:()=>chooseImage(),reorder:(key,id,target,after)=>layerAction({type:'reorder',key,id,target,after}),
+    duplicate:()=>{const added={...layer,id:crypto.randomUUID(),name:`${layer.name} 複製`};changeLayers([...owner.paint.layers,added]);setLayerId(added.id);setMaskTarget(selectedMask==='mask'?{key:owner.key,id:added.id,kind:'mask'}:null);},
+    remove:()=>{if(!paintLayerEditable(owner,layer))return;if(selectedMask==='generationMask')updateOwnerLayer(owner.key,layer.id,{generationMask:undefined});else changeLayers(owner.paint.layers.length===1?[newPaintLayer('レイヤー','raster',scene.colorMode)]:owner.paint.layers.filter(l=>l.id!==layer.id));setMaskTarget(null);},
+  };
+  const layerControls=<PaintLayerPalette {...layerProps}/>;
+  const layerHeader=<PaintLayerControls {...layerProps} disabled={!requested||busy||suspended||!images}/>;
+  const status=<div class="paint-status">{editingMask&&<span>{paintTarget==='mask'?(maskPreview?'トーンの範囲を編集中 — 赤い部分にトーンが付きます。ペンで追加・消しゴムで削除':'トーンを表示中 — レイヤー内のマスクで赤表示を切り替えます'):'生成マスク編集中 — 赤青緑黄で領域を指定（PNG書き出しには含めません）'}</span>}{!images&&!error&&<span>原本を読み込み中…</span>}{error&&<p class="paint-error" role="alert">{error}</p>}</div>;
+  const value:PaintWorkspaceState|null=requested?{...(backgroundTarget&&backgroundFrame?{background3d:{ownerKey:backgroundTarget.key,frame:backgroundFrame,setHost:setBackgroundHost,selectedKey:backgroundSelection,select:key=>{setBackgroundSelection(key);const selected=scene.owners.find(o=>o.key===key);if(selected?.kind==='figure')onSelectFigure?.(selected.index);},beginMove:beginBackgroundMove,move:moveBackgroundOwner,endMove:endBackgroundMove}}:{}),page,panelIndex,overlay,scene,owner,images,maskPreview:maskPreview?{ownerKey:owner.key,layerId:layer.id}:undefined,guideVisible,onContextMenu:openMenu,overscan,selectionTool,live,selection:selectionBoxes?{boxes:selectionBoxes,width:owner.paint.width,height:owner.paint.height}:undefined,lasso:lassoPreview,vector:{paths:layer.paths??[],selected:vectorSelected,selectedNodes:tool==='vector-node'?selectedVectorNodes({...vectorState.current,paths:layer.paths??[]}):vectorState.current.selectedNode?[vectorState.current.selectedNode]:undefined,width:owner.paint.width,height:owner.paint.height,handles:['vector-pen','vector-node','vector-add','vector-delete','vector-anchor'].includes(tool)},penCursor:tool==='vector-pen'&&canDraw?penCursor:undefined,cursor:canDraw&&!selectionTool&&!zoomTool&&!textTool?{mode:!vectorMode&&!['lasso','wand','fill'].includes(tool)?cursorMode:'crosshair',size,eraserSize}:undefined,events,tools:toolControls,layers:layerControls,status,undo,redo,canUndo:!busy&&!suspended&&(sharedHistory?.canUndo??!!history.past.length),canRedo:!busy&&!suspended&&(sharedHistory?.canRedo??!!history.future.length)}:null;
+  const menuOwner=scene.owners.find(o=>o.key===menu?.key);
+  const contextMenu=menu&&menuOwner&&createPortal(<><button class="canvas-generation-menu-dismiss" aria-label="操作メニューを閉じる" onClick={()=>setMenu(null)}/><div class="canvas-generation-menu" role="menu" aria-label="あたり・画像の操作" style={{left:Math.max(8,Math.min(menu.x,window.innerWidth-280)),top:Math.max(8,Math.min(menu.y,window.innerHeight-240))}} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setMenu(null);}}}>
+    <strong>{menuOwner.label}</strong>
+    {menuOwner.kind==='background'&&!overlay&&<button role="menuitem" onClick={()=>openBackground3d(menuOwner.key)}>3D背景を配置・調整</button>}
+    <button role="menuitem" onClick={()=>{void copyArtworkSize(menuOwner.frame,menuOwner.paint.dpi).catch(e=>setError(String(e)));setMenu(null);}}>サイズコピー</button>
+    <button role="menuitemcheckbox" aria-checked={menuOwner.paint.guideInitialized?menuOwner.paint.layers.some(l=>l.guide&&l.visible):guideVisible(menu.key)} onClick={()=>{toggleGuide(menu.key);setMenu(null);}}>あたり画像表示</button>
+    <button role="menuitem" disabled={paintOwnerLocked(menuOwner)||menuOwner.paint.layers.some(l=>l.locked)} onClick={()=>{chooseImage(true,menu.key);setMenu(null);}}>画像を読み込む</button>
+    <button role="menuitem" onClick={()=>{void generate(menu.key);setMenu(null);}}>生成</button>
+  </div></>,window.document.body);
+  const geometryKey=scene.owners.map(o=>JSON.stringify([o.frame,o.paint.width,o.paint.height,o.paint.referenceFrame])).join('|');
+  const geometry=useMemo(()=>requested?scene:null,[requested,geometryKey]);
+  return <PaintLayerControlsContext.Provider value={layerHeader}><PaintDetailsContext.Provider value={<>{detailControls}{effects}</>}><PaintToolsContext.Provider value={toolControls}><PaintInputActivityContext.Provider value={inputActive}><PaintWorkspaceContext.Provider value={value}><PaintGeometryContext.Provider value={geometry}>{children}{contextMenu}{backgroundTarget&&(BackgroundEditor?<BackgroundEditor onObjectsChange={setBackgroundObjects} onCaptureReady={setBackgroundCaptureReady} controller={backgroundController} disabled={busy||externalSuspended} pendingStages={stageImports} host={backgroundHost} paint={backgroundTarget.paint} stages={[...stages,...stageImports.map(i=>i.stage).filter(s=>!stages.some(saved=>saved.id===s.id))]} onCapture={captureBackground3d} onCancel={closeBackground3d}/>:<section class="background3d-controls" role="dialog" aria-label="3D背景の読み込み"><header><strong>3D背景</strong><button onClick={()=>setBackgroundOwner(null)}>保存せずに閉じる</button></header>{backgroundLoadError?<><p role="alert">3D機能を読み込めませんでした。{backgroundLoadError}</p><button onClick={()=>retryBackgroundLoad(value=>value+1)}>再試行</button></>:<p role="status">3D機能を読み込み中…</p>}</section>)}<input hidden ref={input} type="file" accept="image/png,image/jpeg" onChange={e=>void importImage(e.currentTarget.files?.[0])}/></PaintGeometryContext.Provider></PaintWorkspaceContext.Provider></PaintInputActivityContext.Provider></PaintToolsContext.Provider></PaintDetailsContext.Provider></PaintLayerControlsContext.Provider>;
+}

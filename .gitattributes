@@ -1,0 +1,2 @@
+# Preserve byte-identical historical evaluation reports, including their final blank line.
+docs/ModernBERT/archive/artifacts/**/misclassifications.md whitespace=-blank-at-eof

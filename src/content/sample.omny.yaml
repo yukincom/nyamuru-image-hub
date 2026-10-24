@@ -1,26 +1,35 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 sa-san10
-# Nyamuru Data Model (NDM) v10.31 serialized as Open Manga Name YAML (OMNY)
+# Nyamuru Data Model (NDM) v10.33 serialized as Open Manga Name YAML (OMNY)
 # Nickname: Nyamuru🐱
 # Sample story characters: にゃむるたん © sa-san10 / CC BY 4.0
 
 manga:
   schema_name: "Nyamuru Data Model"
-  schema_version: 10.31
+  schema_version: 10.33
   meta:
+    document_type: "story"
     title: "押しかけ妖精にゃむるたん"
+    series: ""
+    series_id: ""
+    episode_number: "第1話"
+    episode_id: ""
     author: "にゃむるたん © sa-san10 / CC BY 4.0"
     format: "カラー漫画"
     page_count: 2
     reading_direction: "right-to-left"
     text_orientation: "vertical"
     font: "アンチック体"
+    bubble_line_width_mm: 0.5
+    panel_frame_width_mm: 1
+    panel_gutter_row_mm: 5
+    panel_gutter_column_mm: 3
     style_notes:
       # ### セリフの文字
-      - "[const] セリフはOMNY記載どおりの日本語を使用し、全て縦書き（文字は上から下、列は右から左へ送る）で描画する"
+      - "[const] セリフはOMNY記載どおりの日本語を使用する。文字の組み方向はOMNYの meta.text_orientation、ページとコマの読み方向は meta.reading_direction に従う"
 
       # ### 読み順
-      - "[const] ページは右綴じ、コマは右上→左下の順（id 番号の昇順）に読む。同一行に3コマ以上が横に並ぶときも右端のコマ＝その行で最小の id。コマの左右の並びを id の順序と逆にしない"
+      - "[const] コマはOMNYの meta.reading_direction と id 番号の昇順に従って読む。right-to-left の場合、同一行では右端のコマを最小の id とし、右上→左下の順を崩さない"
 
       # ### ページヘッダー・フッター
       - "[const] 各ページの左上に作品タイトル、右上に『現在/総ページ数』のページ番号（例 3/12）を配置する。ヘッダー要素は上端の高さ10mmの帯（y=0〜10mm）に置く。bleed に top のあるコマを除き、コマ本体（y=10 以降）に被らない。top タチキリのコマと重なる場合はコマ絵の最前面に重ねる。フキダシは付けない（地の紙面に直接描く）"
@@ -30,17 +39,17 @@ manga:
       - "[style] フッターの文字: 座標目安 用紙幅の中央・下端から3mm・中央揃え・フォントサイズ約4mm。文字色は黒"
 
       # ### 全体トーン
-      - "[style] カラー漫画。線画＋ベタ塗り、必要に応じてグラデーション"
+      - "[style] 作品の出力形式はOMNYの meta.format に従う。カラー漫画は線画＋ベタ塗り（必要に応じてグラデーション）、モノクロ漫画は白黒線画＋ベタ・スクリーントーン、グレースケール漫画は灰色階調で描く"
 
       # ### 背景色
-      - "[style] bg ごとの背景色——bg:-1 は既定の中間グレー1色のベタ塗り（グラデーション禁止）。ベタ塗り色は action に色指定があればそれで上書きする。bg:0 はシーン・感情に合った背景カラー（ベタ塗り or グラデーション。怒り=赤系/喜び=暖色/驚き=黄系/緊張=紫〜紺/感動=金〜桃/静寂=青系など）を敷く。bg:1 はシーンに合った背景色グラデーションを敷く。bg:0/1 で白一色の背景は禁止——必ずシーンに合った色を敷く"
+      - "[style] bg ごとの背景色——bg:-1 は既定の中間グレー1色のベタ塗り（グラデーション禁止）。背景の色・効果・具体物は panels[].background_description を優先し、未指定の場合だけ action の明示指定を参考にする。bg:0 はシーン・感情に合った背景カラー（ベタ塗り or グラデーション。怒り=赤系/喜び=暖色/驚き=黄系/緊張=紫〜紺/感動=金〜桃/静寂=青系など）を敷く。bg:1 はシーンに合った背景色グラデーションを敷く。bg:0/1 で白一色の背景は禁止——必ずシーンに合った色を敷く"
 
       # ### 画像サイズ
       - "[style] 画像サイズ: 既定は A4縦（幅210mm × 高297mm）。作品の指定があればそれに従う（コマ・bbox の座標はその用紙サイズを前提に OMNY 側で書かれる）"
 
       # ### 文字の描き方
-      - "[style] 本文フォントはアンチック体（漢字=明朝体、かな=ゴシック体の混植）。心の声・キャプションの枠内も同じくアンチック体"
-      - "[style] bubbleのemphasisは、そのフキダシ内で大きな文字にする語。同じフキダシ内で1.3〜1.5倍のサイズで描く"
+      - "[style] 本文、心の声、キャプションのフォントはOMNYの meta.font に従う。meta.font が『アンチック体』の場合は、漢字＝ゴシック体、ひらがな・カタカナ＝明朝体の混植として描く"
+      - "[style] bubbleのemphasisは、そのフキダシ内で大きな文字にするフレーズ。複数指定は半角カンマ区切りとし、それぞれを1.3〜1.5倍のサイズで描く"
 
       # ### 背景カラーの彩度
       - "[style] bg:0/1 の背景カラーは低〜中彩度（くすみ・パステル寄り）に抑える。背景グラデは雰囲気を伝えるための色であり、キャラとセリフより主張してはいけない。高彩度の鮮やかな背景色は、感情の爆発や最大の強調など明確な演出意図があるコマだけに限定する"
@@ -108,6 +117,10 @@ manga:
       セリフを間引く・2つのフキダシを1つにまとめる・要約することはしない
       （長すぎる場合は「長いセリフはフキダシに収まる長さに分割して複数フキダシにする」
       に従って分けるだけで、内容は落とさない）
+    - [const] OMNY に page_overlay がある場合、それをコマとして数えず、囲う枠線も描かない。
+      全コマとコマ枠を描いた後、page_overlay.figures を紙面上へ一度だけ描く。
+      その後、通常のコマ内フキダシと page_overlay.bubbles を全人物より前面へ描く。
+      個々のコマへ複製したり、1コマ内へクリップしたりしない
     禁止事項:
     - [const] コマ・フキダシ・figures の員数を、構図や紙面の都合で調整してはならない。
       入り切らないと判断した場合も員数は守り、その旨を報告する
@@ -192,7 +205,7 @@ manga:
 
     ### コマ間の間隙とライン（タチキリ）
     - [const] コマの各辺は、bleed の宣言の有無で2通りに描き分ける
-    - [style] 通常の辺(bleed なし): 外周に約2〜3mmの白マージンを取り、太さ約1mmの黒い枠線を描く。隣接コマの枠線は共有せず独立して描く
+    - [style] 通常の辺(bleed なし): コマ枠線の太さはOMNYの meta.panel_frame_width_mm、隣接コマの上下・左右間隔は meta.panel_gutter_row_mm / meta.panel_gutter_column_mm に従う。隣接コマの枠線は共有せず独立して描く
     - [const] タチキリの辺(panel の bleed に left / right / top / bottom の配列で
       宣言される。座標も紙端に一致する: left=x:0、right=x+w:用紙幅、
       top=y:0、bottom=y+h:用紙高)は次の手順で描く:
@@ -217,8 +230,10 @@ manga:
     - [const] bg:0 のコマに風景・室内・小物などの具体的背景を描き込んではいけない(感情色ベタ/グラデ＋効果表現のみ)
 
     ### ト書き(action)
-    - [const] ト書き（表情・動作）はセリフと分離。actionはキャラクターの表情・動作の
-      ト書きで、セリフとは独立して描画に反映する
+    - [const] panels[].action はセリフと分離した、コマ全体の場面・カメラ・構図のト書き。
+      figures[].action は対象人物だけの表情・姿勢・視線・身体の向き・手足の動き・接触。
+      panels[].background_description は人物を含めない背景レイヤー専用の場所・構図・パース・光・感情効果。
+      人物について両方に指示がある場合は figures[].action を優先して描画に反映する
 
     ### 演出
     - [panel] キメ台詞・決意表明・啖呵・重要リアクションでは、話者の顔をアップに描く
@@ -229,7 +244,7 @@ manga:
 
     ### フキダシ(bubbles)の形と種類
     - [const] 各フキダシの形は shape の指定に従って描く：normal=丸い通常フキダシ／
-      thought=もくもく雲形（心の声・想像）／square=角形の枠（内心の独白・回想の語り）／
+      thought=モノローグ用のもくもく雲形（心の声・想像）／square=角形の枠（内心の独白・回想の語り）／
       caption=枠外キャプション箱（ナレーション・時間経過、コマの隅に角箱）／
       flash=ギザギザ（叫び・強い驚き・電話や機械の音声）／uniflash=ウニフラッシュ＝
       無数の細い針状の線が放射状に伸びるトゲトゲのフキダシ（最大級の絶叫・衝撃の極致。
@@ -259,8 +274,8 @@ manga:
 
       | 優先 | 指定 | 役割 |
       |---|---|---|
-      | 1 | action | 演出の最上位指示（「顔のアップ」「背後から」等の明示的な構図指定） |
-      | 2 | anchor | 配置命令（厳守）。フキダシのしっぽ向き推定の基準を兼ねる |
+      | 1 | panels[].action | 演出の最上位指示（「顔のアップ」「背後から」等の明示的な構図指定） |
+      | 2 | figures[].anchor | 人物・小道具の配置命令（厳守） |
       | 3 | 発言順＝立ち位置 | anchor が無いキャラにのみ適用する立ち位置規則（最初の話者が右。anchor があるキャラは anchor が勝つ） |
       | 4 | size | 体格サイズの命令（bbox の寸法に優先） |
       | 5 | bbox | ゾーンと大きさのヒント（拘束なし）。面積確保とかぶり（交差）防止のための領域指定。数mmの誤差は許容 |
@@ -275,6 +290,8 @@ manga:
     #### figures（人物・物の配置）
     - [const] name: そのコマに描く対象の名前（人物ならキャラ名、物なら materials の key）。
       figures に列挙された人物・物は必ず全て描く。
+    - [const] action: その人物だけの画像生成指示。表情・姿勢・視線・身体の向き・
+      手足の動き・接触を描く。背景・カメラ・画風には使わず、object: true の物には付けない。
     - [const] figures は人物専用ではない——object: true の figure は物（小道具等）の
       配置指定で、その物（name は materials の key）を bbox / anchor の位置に描く。
       配置（bbox / anchor）だけを持ち——顔ゾーンを持たず、発言順＝立ち位置・
@@ -300,30 +317,29 @@ manga:
     - [const] 同一コマに複数キャラがいる場合、anchor の相対関係（誰が右で誰が左か）を
       入れ替えてはならない
 
-    #### bubbles の bbox / anchor
+    #### bubbles の bbox
     - [const] bbox: フキダシの位置と大きさの目安(mm)。ゾーンと大きさのヒント（拘束なし）で、
       面積確保とかぶり（交差）防止のための領域指定。縦書きテキストが無理なく入る
       サイズに調整してよいが、大きさの序列（大きい bbox のフキダシほど大きく
       描く）は維持する。
-    - [const] anchor: コマ内の相対位置。配置命令として厳守する。anchor は配置のみを
-      指し、読み順の意味は持たない。
     - [const] bubbles は配列。上から順に読む。一つのコマに複数のフキダシを含めてよい。
-      読み順の正は bubbles の配列順のみ（配列順＝右上→左下）。anchor と bbox は
-      配置のみを指し、bbox の座標と配列順が食い違って見える場合は配列順を優先し、
+      読み順の正は bubbles の配列順のみ（配列順＝右上→左下）。bbox は配置のみを指し、
+      bbox の座標と配列順が食い違って見える場合は配列順を優先し、
       右上→左下が成立する位置に補正する。各フキダシはその話者のすぐ近く
       （頭の上・顔の横など）に配置し、コマ内のフキダシの並びは話者の並び順に合わせる
       （話者は発言順に右から左へ並ぶため、フキダシも自然に右上→左下の読み順になる）。
       話者の近くと右上→左下の読み順が両立しないコマでは配列順＝読み順を優先し、
       話者との対応は尻尾で示す。話者のいないフキダシ（caption・handwritten・
       機械音声など）はコマの隅や空きスペースに置く。
-    - [const] 各フキダシの話者は speaker で示す。speaker が省略されたフキダシは、
-      同じコマ内の直前のフキダシと同じ話者（ナレーション・効果音は話者なし）。
-      尻尾（しっぽ）の有無と向きはフキダシの種類で決まる——①通常発話系
-      （normal/thought/flash など・offscreen なし）：尻尾を付け、先端を speaker の
-      キャラの口元付近へ向ける ②caption・handwritten・機械音声など話者のいない
-      フキダシ：尻尾なし ③offscreen: true のフキダシ＝コマ外の声：尻尾なし
-      （話者はコマの外にいて姿も描かない）。bbox はしっぽを含まない本体領域
-      なので、しっぽは bbox の外にはみ出してよい。
+    - [const] 各フキダシの話者は speaker で示す。同じ話者が続く場合も毎回明記し、
+      speaker が省略されたフキダシは話者なし（ナレーション・効果音など）として扱う。
+      尻尾（しっぽ）の有無と向きはフキダシの種類と tail で決まる——①通常発話系
+      （normal/thought など・offscreen なし）：尻尾を付ける。tail: {x, y} は
+      speaker の人物bbox基準の相対位置（枠外の0未満・1超も可）で、口元の方向へ適切に短く置く。省略時は人物中央へ向ける
+      ②tail: false、square・caption・flash・uniflash・handwrittenなど既定で尻尾を使わないフキダシ：尻尾なし
+      ③offscreen: true のフキダシ＝コマ外の声：尻尾なし（話者はコマの外にいて姿も
+      描かない）。shape: thought の尻尾は、本体から遠のくほど小さい2〜3個の縦長楕円で描く。
+      bbox はしっぽを含まない本体領域なので、しっぽは bbox の外にはみ出してよい。
     禁止事項:
     - [must] フキダシを、いかなるキャラの顔（頭部）にも重ねてはならない。
       figures の bbox 上部1/3 は顔ゾーンとして予約されている。
@@ -352,37 +368,57 @@ manga:
     ## 作画・演出ルール（参照）
     - 画像サイズ、全体トーン、読み順、セリフの文字、文字の描き方、背景色、背景カラーの彩度、カラースクリプト、ページヘッダー・フッター(座標を含む)のルールは style_notes を参照する
 
+  series_setting:
+    genre: ""
+    target_audience: ""
+    adult_content: false
+    situation: ""
+
   setting:
     location: "ツクルの自室（作業机まわり）"
     time: "休日の昼下がり"
     weather: "晴れ"
-    background: ["窓から昼の光が差す自室", "ステッカーだらけのノートPC", "散らかったラフ用紙", "飲みかけのカフェオレ"]
-    props: ["ノートPC（画面にAI生成中の漫画）"]
     situation: "AIに漫画を作らせようとして思い通りにならず悩むツクルのもとへ、データモデルの妖精にゃむるたんが押しかけてきて勝手に全部解決する"
 
   characters:
     - name: "にゃむるたん"
       role: "NDMデータモデルの妖精。押しかけ系ヒロイン。口調は「〜だにゃ」"
+      scope: "episode"
     - name: "ツクル"
       role: "AIで漫画づくりに挑戦中の少年。フキダシ配置と演出に悩んでいる"
+      scope: "episode"
 
   materials:
     - key: "にゃむるたんの立ち絵"
       type: "character"
+      scope: "episode"
       keywords: ["にゃむるたん", "リファレンス", "立ち絵", "マスコット"]
       note: "黄オレンジのショートヘアに猫耳・[ ]形ヘアクリップ・エメラルドグリーンの瞳・ピンクのミニメイド服に🐱チャームとNのエプロン・首に大きな鈴・黄色ボーダーのニーハイ・肉球手袋と肉球シューズ・尻尾の先に白リボン。リファレンス画像を厳密に参照"
     - key: "ツクルの立ち絵"
       type: "character"
+      scope: "episode"
       keywords: ["ツクル", "立ち絵"]
       note: "寝癖の黒髪・グレーのパーカー。素材が無ければこのnoteを指針に自由デザイン"
     - key: "昼の作業部屋の背景"
       type: "background"
+      scope: "episode"
       keywords: ["作業部屋", "自室", "昼", "背景"]
       note: "窓から昼の光が差す、机にノートPCとラフ用紙が散らかる狭い自室。素材が無ければ自由デザイン"
     - key: "ノートPC"
       type: "prop"
+      scope: "episode"
       keywords: ["ノートPC", "パソコン", "PC"]
       note: "ステッカーだらけのノートPC。画面にAI生成中の漫画（前半は崩れたコマ、後半は整った完成コマ）。素材が無ければ自由デザイン"
+    - key: "散らかったラフ用紙"
+      type: "prop"
+      scope: "episode"
+      keywords: ["ラフ用紙", "漫画のネーム", "机の上"]
+      note: "描きかけの漫画ネームが机の上に散らばっている"
+    - key: "飲みかけのカフェオレ"
+      type: "prop"
+      scope: "episode"
+      keywords: ["カフェオレ", "飲み物", "マグカップ"]
+      note: "作業机に置かれた飲みかけのカフェオレ"
 
   pages:
     # ─── PAGE 1: パターンP（タチキリ・ヒキ3段）。AI漫画に悩む日常→最下段タチキリの声でヒキ ───
@@ -404,12 +440,10 @@ manga:
             - text: "休日の昼下がり。"
               shape: "caption"
               bbox: {x: 170, y: 14, w: 26, h: 38}
-              anchor: "top-right"
             - text: "AIに漫画を作らせるの、難しいな〜…"
               speaker: "ツクル"
               shape: "wobbly"
               bbox: {x: 18, y: 22, w: 34, h: 52}
-              anchor: "top-left"
           action: "明るい休日の自室。ノートPCに向かって腕組みでうなるツクル。窓から昼の光"
 
         # 右中（bg1）: 悩みその1・フキダシ配置
@@ -426,11 +460,10 @@ manga:
             - text: "思ったようにフキダシを配置できないし…"
               speaker: "ツクル"
               bbox: {x: 107, y: 100, w: 32, h: 50}
-              anchor: "top-left"
             - text: "むむむ…"
+              speaker: "ツクル"
               shape: "handwritten"
               bbox: {x: 170, y: 160, w: 24, h: 20}
-              anchor: "bottom-right"
           action: "画面にはフキダシがキャラの顔に重なった生成失敗の漫画。眉間にしわを寄せて睨む。背景はくすんだ黄のグラデに机の縁のライン"
 
         # 左中（bg1）: 悩みその2・演出
@@ -447,11 +480,10 @@ manga:
             - text: "演出も思ったように伝わらない…"
               speaker: "ツクル"
               bbox: {x: 13, y: 100, w: 30, h: 50}
-              anchor: "top-left"
             - text: "はぁ…"
+              speaker: "ツクル"
               shape: "handwritten"
               bbox: {x: 15, y: 156, w: 22, h: 22}
-              anchor: "bottom-left"
           action: "がっくりと肩を落として天井を仰ぐ。背景はくすんだ青のグラデに窓枠のライン"
 
         # 最下段（bg0・左右下端タチキリ）＝ヒキ: 画面が光り、姿なき声
@@ -469,18 +501,15 @@ manga:
             - text: "カッ‼"
               shape: "handwritten"
               bbox: {x: 170, y: 196, w: 24, h: 26}
-              anchor: "top-right"
             - text: "もう見てられないにゃ‼"
               speaker: "にゃむるたん"
               shape: "flash"
               emphasis: "見てられない"
               bbox: {x: 120, y: 202, w: 36, h: 55}
-              anchor: "right"
             - text: "え！？　画面から声！？"
               speaker: "ツクル"
               shape: "flash"
               bbox: {x: 78, y: 212, w: 28, h: 45}
-              anchor: "center"
           action: "ノートPCの画面がピンクの閃光を放つ。にゃむるたんはまだ姿を見せない（画面の中からの声）。のけぞるツクル。背景は驚きの黄からピンクへ切り替わるグラデに放射の効果線"
 
     # ─── PAGE 2: パターンN（タチキリ見得切り）。右の縦長ドンで前ページのヒキを受け、左3段で解決→オチ ───
@@ -505,16 +534,14 @@ manga:
               shape: "flash"
               emphasis: "にゃむるたん"
               bbox: {x: 166, y: 14, w: 36, h: 52}
-              anchor: "top-right"
             - text: "あなたの悩み、ぜんぶ解決しに来たんだにゃ！"
+              speaker: "にゃむるたん"
               shape: "flash"
               emphasis: "ぜんぶ"
               bbox: {x: 94, y: 152, w: 32, h: 56}
-              anchor: "left"
             - text: "シュタッ☆"
               shape: "handwritten"
               bbox: {x: 168, y: 246, w: 28, h: 26}
-              anchor: "bottom-right"
           action: "画面から飛び出して着地、全身の見得切りポーズ。尻尾の白リボンをなびかせ胸を張る。背景は歓喜の金〜桃グラデにキラキラと星の放射"
 
         # 左上（bg2）: 勝手に作業開始の見せゴマ
@@ -532,11 +559,9 @@ manga:
               speaker: "にゃむるたん"
               emphasis: "絶対座標"
               bbox: {x: 12, y: 14, w: 26, h: 52}
-              anchor: "top-left"
             - text: "カタカタカタ"
               shape: "handwritten"
               bbox: {x: 14, y: 72, w: 26, h: 16}
-              anchor: "bottom-left"
           action: "机に陣取ってドヤ顔で猛タイピング。画面の中で崩れていたフキダシがピタピタと整っていく"
 
         # 左中（bg1）: 驚くツクルと、宣言するにゃむるたん
@@ -559,12 +584,10 @@ manga:
               shape: "flash"
               emphasis: "全部"
               bbox: {x: 47, y: 106, w: 28, h: 36}
-              anchor: "top-right"
             - text: "これからにゃむると一緒に漫画たくさん作るのにゃ！"
               speaker: "にゃむるたん"
               emphasis: "たくさん"
               bbox: {x: 13, y: 106, w: 28, h: 38}
-              anchor: "top-left"
           action: "完成した漫画が映る画面に目を輝かせるツクルと、胸を張るにゃむるたん。背景は期待の暖色グラデに画面の光のボケ玉"
 
         # 左下（bg0）: おねだり→ツッコミのオチ
@@ -586,11 +609,9 @@ manga:
               speaker: "にゃむるたん"
               emphasis: "にゃむるも"
               bbox: {x: 47, y: 200, w: 28, h: 36}
-              anchor: "top-right"
             - text: "それが狙いかよ！"
               speaker: "ツクル"
               shape: "uniflash"
               emphasis: "狙い"
               bbox: {x: 13, y: 200, w: 28, h: 36}
-              anchor: "top-left"
           action: "キラキラの上目遣いでおねだりするにゃむるたんと、白目で叫ぶツクル。背景は暖色のベタに集中線"

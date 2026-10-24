@@ -21,15 +21,15 @@ export default function AgentWorkflowGuide({ lang, onChangeLang, onNotify, onOpe
     eyebrow="AGENT WORKFLOW"
     title={en ? 'Agent Manga Generation Workflow' : 'エージェント漫画生成ワークフロー'}
     description={en
-      ? 'Steps for an AI agent to generate and inspect a manga from OMNY and character assets.'
+      ? 'Steps for an agent to generate and inspect a manga from OMNY and character assets.'
       : 'OMNYとキャラクター素材から漫画を生成・検品するエージェント向け手順です。'}
     fileName={en ? 'agent-manga-generation-workflow.en.md' : 'agent-manga-generation-workflow.md'}
     resourceName={en ? 'generation workflow' : '生成ワークフロー'}
     attachments={[{
-      label: en ? 'Artwork instructions (OMAY) standard template' : '画像生成指示（OMAY）標準テンプレート',
+      label: en ? 'Default Style OMNY (OMAY format)' : '初期スタイルOMNY（内部形式: OMAY）',
       description: en
         ? 'Drawing & staging rules (style_notes) and the layout spec (layout_spec) for turning OMNY into finished manga. Set it once in the image-generation side project instructions; per work, pass only the OMNY file.'
-        : 'OMNYを漫画として描くための作画・演出ルール（style_notes）とレイアウト仕様（layout_spec）。画像生成側のプロジェクト指示に一度設定すれば、作品ごとに渡すのはOMNYファイルのみで済みます。',
+        : 'ストーリーOMNYを漫画として描くための作画・演出ルール（style_notes）とレイアウト仕様（layout_spec）。画像生成側のプロジェクト指示に一度設定すれば、作品ごとに渡すのはストーリーOMNYだけで済みます。',
       fileName: 'standard.omay.yaml',
       content: standardOmaySource,
       link: { label: en ? 'Edit and download on the 作品情報 (work info) page' : '編集とダウンロードは作品情報ページで', onClick: onOpenMeta },

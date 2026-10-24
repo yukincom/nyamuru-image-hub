@@ -1,0 +1,2158 @@
+{
+  "status": "review_complete_pending_parent_integration",
+  "scope": "追加32件を全読。旧1212件とpublic145件の全textを近似検索対象とし、対応する近接例・同操作例・意味説明の構文を手動確認。モデル推論や分類結果は参照していない。",
+  "input_files": [
+    {
+      "path": "/private/tmp/nyamuru-v03-core-test-replacements.jsonl",
+      "sha256": "2f3246aff8736ff34fb0c01ab05ddf2579898cf0248990c86cf42fad52599ae2",
+      "rows": 13
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-dev-extra.jsonl",
+      "sha256": "ea5b129ce7852a74a69e9a463298f2f3b217f532d80068ab3900dacfe0bdf621",
+      "rows": 7
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-bubble-replacements.jsonl",
+      "sha256": "e44de0f970f3336e73a66bf76ba57eee924fd78f46b4bb5de652c32b0f1ed9dd",
+      "rows": 12
+    },
+    {
+      "path": "/private/tmp/nyamuru-v03-bubble-test-extra.jsonl",
+      "sha256": "0fb4c2be8ae09780d27aa5f40b8949df34baed8cd8375a91901ca2d513fb4e71",
+      "rows": 2
+    }
+  ],
+  "excluded_input_ids": [
+    "nyamuru_voice_1676",
+    "nyamuru_voice_1677"
+  ],
+  "reviewed_candidate_count": 32,
+  "reviewed_candidates_by_split": {
+    "test": 21,
+    "dev": 11
+  },
+  "comparison_files": [
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/source/candidates.jsonl",
+      "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+      "rows": 316
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/curation/2026-10-17-v02-variants/candidates.jsonl",
+      "sha256": "b2c4b8bf81560f1680c8fd27bb35faca7673287aa97d1423aef9452468b53c74",
+      "rows": 608
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/curation/2026-10-18-v03-boundaries/candidates.jsonl",
+      "sha256": "e09215378b24d243ec8f4ec1353804d3daa0fedca68d9410cc41925211eaa760",
+      "rows": 288
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/curation/2026-10-18-public/raw-train.jsonl",
+      "sha256": "f8c2603d7a3ce34d577ab8ebb009d5037d5363487fac10e7ee0e510a4f58e836",
+      "rows": 64
+    },
+    {
+      "path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.3/curation/2026-10-18-public/accepted-adapted-train.jsonl",
+      "sha256": "965d4f53a5ff19239aa3cf0827463cb460002550c9652352dfb43a7de34e92c2",
+      "rows": 81
+    }
+  ],
+  "comparison_counts": {
+    "old": 1212,
+    "public": 145,
+    "total": 1357
+  },
+  "method": {
+    "lexical_screen": "全比較textに対し数字表現・Undo/Redo表記を正規化した文字列近似。上位候補を内容レビューするための検索であり、スコア閾値を合否には使わない。",
+    "family_rule": "数字、対象名、語尾、丁寧さの差を独立性と数えない。一般的な前置や否定だけで全例を統合せず、命題の順序、照応、否定の作用域、反復・保持・参照基準の役割まで比較する。",
+    "limitation": "言語的独立性は手動のキュレーション判断であり、同じラベル語彙や一般的な依頼構文の完全分離を保証するものではない。合成heldoutで実音声精度は示せない。"
+  },
+  "cross_split_findings": [
+    {
+      "ids": [
+        "nyamuru_voice_1681",
+        "nyamuru_voice_1693"
+      ],
+      "decision": "same_family_cross_split",
+      "reason": "同一の履歴集合を「直近の一件は取り消す／それ以前は残す」に分ける対比。文の順番を反転しても同一family。1693を採用非推奨。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1681",
+        "nyamuru_voice_1696"
+      ],
+      "decision": "related_retention_family_cross_split",
+      "reason": "1696はUndo済み集合に対するRedoなので命題そのものは異なるが、「最後の一件だけ対象／残りは現状維持」という同じ分割骨格に依存する。小規模heldoutでは保守的に除外推奨。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1685",
+        "nyamuru_voice_1687",
+        "nyamuru_voice_1704"
+      ],
+      "decision": "same_family_original_1704_revised",
+      "reason": "元1704と1685は「対象種を言うね→具体値→同じ対象を照応して実行」の骨格が共通。単なる前置一般ではなく、この宣言＋値＋照応の連鎖を根拠とした。改稿1704は明示したページを相対移動の基準にする構文で分離。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1669",
+        "nyamuru_voice_1675"
+      ],
+      "decision": "different_family_despite_quoted_text",
+      "reason": "1669は引用の終端を指定し先行引用を本文値へ照応。1675は対象と全文置換を先に依頼し、本文を最後に提示する。引用内容だけの置換では相互に変換できない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1669",
+        "nyamuru_voice_1679"
+      ],
+      "decision": "different_family_despite_quoted_text",
+      "reason": "1679は旧本文案と新本文案を対比し、Undo語の引用作用域を否定で限定する。1669の引用終端→照応設定とは異なる。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1671",
+        "nyamuru_voice_1678"
+      ],
+      "decision": "not_same_on_fronting_alone_but_old_overlap",
+      "reason": "数値前置だけで同一としない。1671は一プロパティに焦点を当てた分裂文、1678は幅高の組を裸で先出しする。ただし1678は旧527の寸法前置familyに近く、旧との独立性は不十分。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1670",
+        "nyamuru_voice_1699"
+      ],
+      "decision": "borderline_decision_then_reference",
+      "reason": "対象の決定を述べて照応実行する構成が共通する。操作対象の違いだけで強い独立性を主張せず、1699は採用非推奨。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1684",
+        "nyamuru_voice_1702"
+      ],
+      "decision": "different_state_logic",
+      "reason": "1684は無効状態への不満から有効化を依頼。1702は現在値ごとに分岐して同一の最終状態へ収束させる条件文で、名詞と真偽値の置換だけでは互換でない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1685",
+        "nyamuru_voice_1678"
+      ],
+      "decision": "not_same_on_fronting_alone",
+      "reason": "1685は範囲を予告するメタ発話→値→実行。1678には予告がなく寸法値の直接指定。単に値が前にあるだけで統合しないが、1678の旧527近接は別途問題。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1687",
+        "nyamuru_voice_1697"
+      ],
+      "decision": "not_same_on_negation_alone",
+      "reason": "1687のツール予告＋値＋変換否定と、1697の閲覧希望＋追加否定＋表示照応は否定文という一般形だけでは同一としない。ただし1697は旧040の数値閲覧希望→表示照応が土台で独立性を保守的に不採用。"
+    }
+  ],
+  "page_decisions": {
+    "nyamuru_voice_1697": {
+      "recommendation": "exclude_for_conservative_family_holdout",
+      "reason": "旧040「番号のページを見たい→そこを表示」の骨格へ、ページ追加ではないという否定を挟んだ構成。単純な数値差ではないが、最小4件の独立heldoutに必須でなく保守的に除外。",
+      "related_old": [
+        "nyamuru_voice_040",
+        "nyamuru_voice_424"
+      ]
+    },
+    "nyamuru_voice_1699": {
+      "recommendation": "exclude_for_conservative_family_holdout",
+      "reason": "行き先決定→照応による表示移動は旧422と近く、dev1670/1685の決定・対象説明→照応にも接近する。",
+      "related_old": [
+        "nyamuru_voice_422",
+        "nyamuru_massive_adapt_022"
+      ]
+    },
+    "nyamuru_voice_1700": {
+      "recommendation": "exclude_for_conservative_family_holdout",
+      "reason": "同一操作を指定回数繰り返す＋停止境界の指定は、旧1044/1052のUndo/Redo反復familyと近い。操作名がページ送りになっただけで独立としない。",
+      "related_old": [
+        "nyamuru_voice_1044",
+        "nyamuru_voice_1052",
+        "nyamuru_voice_1181"
+      ]
+    },
+    "nyamuru_voice_1701": {
+      "recommendation": "accept_recommended_pending_parent_review",
+      "reason": "最初の「最初に戻って」は操作対象が未確定だが、後置された肯定的な意味説明が作品の先頭ページ表示へ確定する。旧の単純先頭移動、否定で別操作を除外する文、devの対象予告→値→実行と異なる後置の操作解釈補完。数値・対象・語尾だけの置換では相互変換できない。",
+      "related_old": [
+        "nyamuru_voice_041",
+        "nyamuru_voice_468",
+        "nyamuru_voice_412"
+      ]
+    },
+    "nyamuru_voice_1704": {
+      "recommendation": "accept_revised_recommended_pending_parent_review",
+      "reason": "明示された十一ページを基準に次のページを指定し、現在表示を基準にする解釈を排除する。解決先は十二ページ。一般的な「現在ページから次」や「十二ページへ」という単純語句の言い換えではなく参照基準を解決する構成。devの対象予告familyから外れた。",
+      "related_old": [
+        "nyamuru_voice_416",
+        "nyamuru_voice_422",
+        "nyamuru_voice_964"
+      ]
+    }
+  },
+  "other_core_decisions": [
+    {
+      "ids": [
+        "nyamuru_voice_1690"
+      ],
+      "decision": "not_needed_for_minimum_reviewed_old_neighbor",
+      "reason": "旧330の「この状態を残したい→保存依頼」に近い。変更せず保存。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1691"
+      ],
+      "decision": "unchanged_no_acceptance_required",
+      "reason": "別名・改名を除外して通常保存を指す。最小件数の補充が不要になったため、本レビューでは採用推薦数に含めない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1692"
+      ],
+      "decision": "exclude_old_family",
+      "reason": "旧020/370/1082と同じ、戻すのはページでなく編集という対比。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1693"
+      ],
+      "decision": "exclude_old_and_dev_family",
+      "reason": "旧365–368の履歴保持対比ともdev1681とも近い。改稿による水増しをしない。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1694"
+      ],
+      "decision": "exclude_old_family",
+      "reason": "旧1044/1109/1181などの回数指定＋取り消し反復＋停止境界のfamilyに依存。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1695"
+      ],
+      "decision": "exclude_old_family",
+      "reason": "旧030/401/1088と同じ、再生成を否定してUndo済み編集のRedoを依頼する骨格。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1696"
+      ],
+      "decision": "exclude_old_and_dev_family",
+      "reason": "旧397–400と同じ、次の一件だけ再適用して他の取り消しを維持する履歴保持対比。dev1681にも近い。"
+    },
+    {
+      "ids": [
+        "nyamuru_voice_1698"
+      ],
+      "decision": "exclude_old_family",
+      "reason": "旧046/437/1077などと同じ、編集取り消しでなく前ページ表示という対比。"
+    }
+  ],
+  "accepted_recommended_test_ids": [
+    "nyamuru_voice_1701",
+    "nyamuru_voice_1704"
+  ],
+  "accepted_recommended_page_count": 2,
+  "revised_file": "/private/tmp/nyamuru-v03-core-test-replacements.revised.jsonl",
+  "changed_ids": [
+    "nyamuru_voice_1704"
+  ],
+  "changes": [
+    {
+      "id": "nyamuru_voice_1704",
+      "before": {
+        "id": "nyamuru_voice_1704",
+        "text": "移動先を先に言うね、十二ページ目。いま開いている作品の表示をそこへ切り替えて。",
+        "label": "page_navigate",
+        "slots": {
+          "page_number": 12
+        },
+        "group": "v03_extra_test_announced_numeric_destination",
+        "tags": [
+          "synthetic_evaluation",
+          "new_test",
+          "contract_only_authoring",
+          "replacement_candidate"
+        ],
+        "note": "移動先の値を予告して前置し、現在作品の表示ページ変更を後から明示する。",
+        "source": "codex_synthetic",
+        "review_status": "pending_user_review"
+      },
+      "after": {
+        "id": "nyamuru_voice_1704",
+        "text": "十一ページの次のページを開いて。今の表示位置ではなく、十一ページを基準にしてね。",
+        "label": "page_navigate",
+        "slots": {
+          "page_number": 12
+        },
+        "group": "v03_extra_test_explicit_page_anchor_relative_destination",
+        "tags": [
+          "synthetic_evaluation",
+          "new_test",
+          "replacement_candidate",
+          "post_authoring_family_revision"
+        ],
+        "note": "十一ページという明示基準の次、すなわち十二ページへの単一表示移動。現在表示からの相対移動を否定しており、十一ページを開く追加操作は求めない。旧・public・devの構文を比較した後の改稿であり、blind authoringではない。",
+        "source": "codex_synthetic",
+        "review_status": "pending_user_review"
+      }
+    }
+  ],
+  "unchanged_core_ids": [
+    "nyamuru_voice_1690",
+    "nyamuru_voice_1691",
+    "nyamuru_voice_1692",
+    "nyamuru_voice_1693",
+    "nyamuru_voice_1694",
+    "nyamuru_voice_1695",
+    "nyamuru_voice_1696",
+    "nyamuru_voice_1697",
+    "nyamuru_voice_1698",
+    "nyamuru_voice_1699",
+    "nyamuru_voice_1700",
+    "nyamuru_voice_1701"
+  ],
+  "candidate_neighbor_evidence": [
+    {
+      "id": "nyamuru_voice_1690",
+      "split": "test",
+      "label": "save",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_347",
+          "label": "save",
+          "text": "セリフを直したあとのこの版を、開いている作品に保存しておいて。",
+          "number_normalized_character_similarity": 0.4444
+        },
+        {
+          "id": "nyamuru_voice_330",
+          "label": "save",
+          "text": "この状態を確実に残しておきたい。作品の保存を今お願い。",
+          "number_normalized_character_similarity": 0.4407
+        },
+        {
+          "id": "nyamuru_voice_932",
+          "label": "save",
+          "text": "待たなくていいよ。今開いている作品を保存してください。",
+          "number_normalized_character_similarity": 0.4407
+        },
+        {
+          "id": "nyamuru_massive_adapt_005",
+          "label": "save",
+          "text": "いま開いている作品を保存してほしい",
+          "number_normalized_character_similarity": 0.4314
+        },
+        {
+          "id": "nyamuru_voice_317",
+          "label": "save",
+          "text": "セリフの打ち直しが済んだので、今開いている作品を保存して。",
+          "number_normalized_character_similarity": 0.4262
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1685",
+          "label": "generate_request",
+          "text": "描き起こしてほしい範囲を言うね。いま表示しているページ一枚ぶん全部だよ。その範囲で画像生成を実行して。",
+          "number_normalized_character_similarity": 0.2439
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.2424
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2388
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1691",
+      "split": "test",
+      "label": "save",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_435",
+          "label": "page_navigate",
+          "text": "セーブは頼んでいないよ。今は先頭ページへの移動だけお願い。",
+          "number_normalized_character_similarity": 0.3846
+        },
+        {
+          "id": "nyamuru_voice_958",
+          "label": "not_command",
+          "text": "前のページを開く必要はないよ。表示は変えないで。",
+          "number_normalized_character_similarity": 0.383
+        },
+        {
+          "id": "nyamuru_voice_397",
+          "label": "redo",
+          "text": "取り消した変更を全部戻す必要はないので、リドゥは一回だけにして。",
+          "number_normalized_character_similarity": 0.3571
+        },
+        {
+          "id": "nyamuru_voice_1165",
+          "label": "save",
+          "text": "次のページへ行って、いや移動はなし。作品の保存だけお願い。",
+          "number_normalized_character_similarity": 0.3529
+        },
+        {
+          "id": "nyamuru_voice_1197",
+          "label": "page_navigate",
+          "text": "保存はしないで、次のページだけ開いてください。",
+          "number_normalized_character_similarity": 0.3478
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1686",
+          "label": "generate_request",
+          "text": "前の生成結果を使い回すつもりはないよ。いま選択しているコマについて、新規の画像生成をお願い。",
+          "number_normalized_character_similarity": 0.3529
+        },
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.1739
+        },
+        {
+          "id": "nyamuru_voice_1670",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしで確定。しっぽを付ける案は採らず、その状態に設定して。",
+          "number_normalized_character_similarity": 0.1639
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1692",
+      "split": "test",
+      "label": "undo",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_1082",
+          "label": "undo",
+          "text": "戻してほしいのはページじゃなくて最新の変更。アンドゥを一回して。",
+          "number_normalized_character_similarity": 0.4923
+        },
+        {
+          "id": "nyamuru_voice_020",
+          "label": "undo",
+          "text": "ページを戻すんじゃなくて、直前の編集を取り消して",
+          "number_normalized_character_similarity": 0.4828
+        },
+        {
+          "id": "nyamuru_voice_402",
+          "label": "redo",
+          "text": "生成の再実行はしなくていいので、編集履歴のやり直しを一回お願い。",
+          "number_normalized_character_similarity": 0.4615
+        },
+        {
+          "id": "nyamuru_voice_371",
+          "label": "undo",
+          "text": "ページ移動は要らないから、編集履歴の「元に戻す」を一回お願い。",
+          "number_normalized_character_similarity": 0.4194
+        },
+        {
+          "id": "nyamuru_voice_342",
+          "label": "save",
+          "text": "新しい名前で保存して……じゃなくて、普通の保存を一回お願い。",
+          "number_normalized_character_similarity": 0.4127
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2785
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.209
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2059
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1693",
+      "split": "test",
+      "label": "undo",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_1044",
+          "label": "undo",
+          "text": "Undoを三回続けて、そこまでの取り消しで止めてね。",
+          "number_normalized_character_similarity": 0.4444
+        },
+        {
+          "id": "nyamuru_voice_1063",
+          "label": "redo",
+          "text": "さっきのUndoは不要だった。取り消した変更を一つ再適用して。",
+          "number_normalized_character_similarity": 0.4412
+        },
+        {
+          "id": "nyamuru_voice_1039",
+          "label": "undo",
+          "text": "直前の二操作を、Undo二回で取り消してほしい。",
+          "number_normalized_character_similarity": 0.4262
+        },
+        {
+          "id": "nyamuru_massive_adapt_014",
+          "label": "redo",
+          "text": "Undoで取り消した直前の編集を一つ再適用して",
+          "number_normalized_character_similarity": 0.4194
+        },
+        {
+          "id": "nyamuru_voice_022",
+          "label": "redo",
+          "text": "今アンドゥした編集をやり直して",
+          "number_normalized_character_similarity": 0.4074
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2892
+        },
+        {
+          "id": "nyamuru_voice_1685",
+          "label": "generate_request",
+          "text": "描き起こしてほしい範囲を言うね。いま表示しているページ一枚ぶん全部だよ。その範囲で画像生成を実行して。",
+          "number_normalized_character_similarity": 0.2069
+        },
+        {
+          "id": "nyamuru_voice_1683",
+          "label": "compound_request",
+          "text": "してほしい変更は二点あるよ。描画ツールの選択をラスターへ、表示中の作画ガイドは非表示へ。両方反映して。",
+          "number_normalized_character_similarity": 0.1628
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1694",
+      "split": "test",
+      "label": "undo",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_1042",
+          "label": "undo",
+          "text": "二回アンドゥをかけて、二つ前の編集状態に戻って。",
+          "number_normalized_character_similarity": 0.4286
+        },
+        {
+          "id": "nyamuru_voice_1044",
+          "label": "undo",
+          "text": "Undoを三回続けて、そこまでの取り消しで止めてね。",
+          "number_normalized_character_similarity": 0.4138
+        },
+        {
+          "id": "nyamuru_voice_1050",
+          "label": "redo",
+          "text": "Redoを二回かけて、Undoで消えた二つの編集を復活させて。",
+          "number_normalized_character_similarity": 0.4127
+        },
+        {
+          "id": "nyamuru_voice_349",
+          "label": "undo",
+          "text": "いまの移動は手が滑った。直前の編集を一つ取り消して。",
+          "number_normalized_character_similarity": 0.3793
+        },
+        {
+          "id": "nyamuru_massive_adapt_011",
+          "label": "undo",
+          "text": "直前に行った二回の編集を履歴で取り消して",
+          "number_normalized_character_similarity": 0.3704
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.209
+        },
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2051
+        },
+        {
+          "id": "nyamuru_voice_1684",
+          "label": "inner_frame_snap_set",
+          "text": "吸着の対象を内枠にする機能について、無効のままだと困るんだ。内枠スナップが働く状態へ設定をそろえてもらえる？",
+          "number_normalized_character_similarity": 0.1412
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1695",
+      "split": "test",
+      "label": "redo",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_massive_adapt_013",
+          "label": "redo",
+          "text": "Undoで取り消した編集をRedoで三段階やり直して",
+          "number_normalized_character_similarity": 0.5625
+        },
+        {
+          "id": "nyamuru_voice_030",
+          "label": "redo",
+          "text": "生成し直すのではなく、さっきのUndoをリドゥして",
+          "number_normalized_character_similarity": 0.5397
+        },
+        {
+          "id": "nyamuru_voice_383",
+          "label": "redo",
+          "text": "いまアンドゥした編集をやっぱり採用するので、Redoを一回お願い。",
+          "number_normalized_character_similarity": 0.5217
+        },
+        {
+          "id": "nyamuru_voice_1061",
+          "label": "redo",
+          "text": "いまUndoで消した吹き出しの移動を、Redo一回で復活させて。",
+          "number_normalized_character_similarity": 0.5
+        },
+        {
+          "id": "nyamuru_voice_1139",
+          "label": "compound_request",
+          "text": "Undoで消した二つの変更をRedo二回で戻し、続けてセーブして。",
+          "number_normalized_character_similarity": 0.4638
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1686",
+          "label": "generate_request",
+          "text": "前の生成結果を使い回すつもりはないよ。いま選択しているコマについて、新規の画像生成をお願い。",
+          "number_normalized_character_similarity": 0.1975
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.1714
+        },
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.1538
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1696",
+      "split": "test",
+      "label": "redo",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_1046",
+          "label": "redo",
+          "text": "最後のUndoで取り消した変更を、一件だけ再適用してください。",
+          "number_normalized_character_similarity": 0.4533
+        },
+        {
+          "id": "nyamuru_voice_388",
+          "label": "redo",
+          "text": "Undo後の状態は確認できたから、取り消した一件を履歴から復活させて。",
+          "number_normalized_character_similarity": 0.4051
+        },
+        {
+          "id": "nyamuru_voice_1047",
+          "label": "redo",
+          "text": "二回リドゥして、取り消した二操作を復元してほしい。",
+          "number_normalized_character_similarity": 0.4
+        },
+        {
+          "id": "nyamuru_massive_adapt_014",
+          "label": "redo",
+          "text": "Undoで取り消した直前の編集を一つ再適用して",
+          "number_normalized_character_similarity": 0.3768
+        },
+        {
+          "id": "nyamuru_massive_adapt_012",
+          "label": "undo",
+          "text": "直前の変更をUndoで一件取り消して",
+          "number_normalized_character_similarity": 0.375
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2222
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.1772
+        },
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.1628
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1697",
+      "split": "test",
+      "label": "page_navigate",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_040",
+          "label": "page_navigate",
+          "text": "2ページ目を見たいからそこを表示して",
+          "number_normalized_character_similarity": 0.4364
+        },
+        {
+          "id": "nyamuru_voice_370",
+          "label": "undo",
+          "text": "前のページを見たいわけではないよ。最後の編集一件を取り消して。",
+          "number_normalized_character_similarity": 0.3939
+        },
+        {
+          "id": "nyamuru_voice_424",
+          "label": "page_navigate",
+          "text": "四ページのセリフを見たいから、作品の4ページ目へ移動して。",
+          "number_normalized_character_similarity": 0.375
+        },
+        {
+          "id": "nyamuru_voice_958",
+          "label": "not_command",
+          "text": "前のページを開く必要はないよ。表示は変えないで。",
+          "number_normalized_character_similarity": 0.3729
+        },
+        {
+          "id": "nyamuru_voice_459",
+          "label": "view_change",
+          "text": "今は一ページずつ見たいから、見開き表示を解除して。",
+          "number_normalized_character_similarity": 0.3667
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2857
+        },
+        {
+          "id": "nyamuru_voice_1684",
+          "label": "inner_frame_snap_set",
+          "text": "吸着の対象を内枠にする機能について、無効のままだと困るんだ。内枠スナップが働く状態へ設定をそろえてもらえる？",
+          "number_normalized_character_similarity": 0.1818
+        },
+        {
+          "id": "nyamuru_voice_1686",
+          "label": "generate_request",
+          "text": "前の生成結果を使い回すつもりはないよ。いま選択しているコマについて、新規の画像生成をお願い。",
+          "number_normalized_character_similarity": 0.175
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1698",
+      "split": "test",
+      "label": "page_navigate",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_046",
+          "label": "page_navigate",
+          "text": "編集を取り消すんじゃなくて前のページに戻って",
+          "number_normalized_character_similarity": 0.5
+        },
+        {
+          "id": "nyamuru_voice_437",
+          "label": "page_navigate",
+          "text": "戻したいのは編集ではなくページ。表示を一ページ前へ移して。",
+          "number_normalized_character_similarity": 0.4211
+        },
+        {
+          "id": "nyamuru_voice_378",
+          "label": "undo",
+          "text": "編集履歴の最新項目を取り消す操作を、一回お願いしたい。",
+          "number_normalized_character_similarity": 0.4
+        },
+        {
+          "id": "nyamuru_voice_439",
+          "label": "page_navigate",
+          "text": "編集内容を取り消さず、三ページ目を表示してくれる？",
+          "number_normalized_character_similarity": 0.3774
+        },
+        {
+          "id": "nyamuru_voice_402",
+          "label": "redo",
+          "text": "生成の再実行はしなくていいので、編集履歴のやり直しを一回お願い。",
+          "number_normalized_character_similarity": 0.3667
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2432
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.1935
+        },
+        {
+          "id": "nyamuru_voice_1686",
+          "label": "generate_request",
+          "text": "前の生成結果を使い回すつもりはないよ。いま選択しているコマについて、新規の画像生成をお願い。",
+          "number_normalized_character_similarity": 0.1644
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1699",
+      "split": "test",
+      "label": "page_navigate",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_424",
+          "label": "page_navigate",
+          "text": "四ページのセリフを見たいから、作品の4ページ目へ移動して。",
+          "number_normalized_character_similarity": 0.4839
+        },
+        {
+          "id": "nyamuru_massive_adapt_022",
+          "label": "page_navigate",
+          "text": "作品の最後のページを開いて",
+          "number_normalized_character_similarity": 0.4583
+        },
+        {
+          "id": "nyamuru_voice_1130",
+          "label": "compound_request",
+          "text": "まず最後のページを開く。その次に作品の保存をして。",
+          "number_normalized_character_similarity": 0.4483
+        },
+        {
+          "id": "nyamuru_voice_427",
+          "label": "page_navigate",
+          "text": "結末を確認するから、この作品の最後のページへ移って。",
+          "number_normalized_character_similarity": 0.4407
+        },
+        {
+          "id": "nyamuru_voice_441",
+          "label": "page_navigate",
+          "text": "次のページ、いや前のページだ。いまの一枚前を表示して。",
+          "number_normalized_character_similarity": 0.4407
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1682",
+          "label": "needs_clarification",
+          "text": "吹き出しの移動量は、前に決めた数字のとおりで実行して。",
+          "number_normalized_character_similarity": 0.3
+        },
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2278
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2059
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1700",
+      "split": "test",
+      "label": "page_navigate",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_massive_adapt_023",
+          "label": "page_navigate",
+          "text": "表示ページを八ページ目まで進めて",
+          "number_normalized_character_similarity": 0.4255
+        },
+        {
+          "id": "nyamuru_voice_441",
+          "label": "page_navigate",
+          "text": "次のページ、いや前のページだ。いまの一枚前を表示して。",
+          "number_normalized_character_similarity": 0.4
+        },
+        {
+          "id": "nyamuru_voice_883",
+          "label": "generate_request",
+          "text": "次のページには進まず、表示中の一ページの生成を始めて",
+          "number_normalized_character_similarity": 0.3929
+        },
+        {
+          "id": "nyamuru_voice_974",
+          "label": "not_command",
+          "text": "ページ一枚を生成するのは後で考える。今は始めなくていい。",
+          "number_normalized_character_similarity": 0.386
+        },
+        {
+          "id": "nyamuru_voice_809",
+          "label": "out_of_scope_request",
+          "text": "今の一ページだけでなく、作品の全ページをまとめて画像生成して",
+          "number_normalized_character_similarity": 0.3667
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1686",
+          "label": "generate_request",
+          "text": "前の生成結果を使い回すつもりはないよ。いま選択しているコマについて、新規の画像生成をお願い。",
+          "number_normalized_character_similarity": 0.1892
+        },
+        {
+          "id": "nyamuru_voice_1687",
+          "label": "paint_tool_set",
+          "text": "描く準備として選んでほしいツールを言うね、ベクターペン。既存の絵を変換する依頼ではなく、これから手で描くペンの指定だよ。",
+          "number_normalized_character_similarity": 0.1379
+        },
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.1333
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1701",
+      "split": "test",
+      "label": "page_navigate",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_042",
+          "label": "page_navigate",
+          "text": "最後のページを表示して",
+          "number_normalized_character_similarity": 0.5556
+        },
+        {
+          "id": "nyamuru_voice_032",
+          "label": "page_navigate",
+          "text": "一ページ先を表示して",
+          "number_normalized_character_similarity": 0.5143
+        },
+        {
+          "id": "nyamuru_massive_adapt_020",
+          "label": "page_navigate",
+          "text": "一つ前の作品ページを表示してください",
+          "number_normalized_character_similarity": 0.5116
+        },
+        {
+          "id": "nyamuru_voice_444",
+          "label": "page_navigate",
+          "text": "二枚戻って、やっぱり一枚でいい。前のページを表示して。",
+          "number_normalized_character_similarity": 0.4898
+        },
+        {
+          "id": "nyamuru_voice_041",
+          "label": "page_navigate",
+          "text": "最初のページにして",
+          "number_normalized_character_similarity": 0.4706
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2029
+        },
+        {
+          "id": "nyamuru_voice_1683",
+          "label": "compound_request",
+          "text": "してほしい変更は二点あるよ。描画ツールの選択をラスターへ、表示中の作画ガイドは非表示へ。両方反映して。",
+          "number_normalized_character_similarity": 0.1944
+        },
+        {
+          "id": "nyamuru_voice_1685",
+          "label": "generate_request",
+          "text": "描き起こしてほしい範囲を言うね。いま表示しているページ一枚ぶん全部だよ。その範囲で画像生成を実行して。",
+          "number_normalized_character_similarity": 0.1918
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1704",
+      "split": "test",
+      "label": "page_navigate",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_964",
+          "label": "page_navigate",
+          "text": "今のページではなく、三ページを開いてほしい。",
+          "number_normalized_character_similarity": 0.5091
+        },
+        {
+          "id": "nyamuru_voice_122",
+          "label": "compound_request",
+          "text": "前のページを開いて、見開き表示にして",
+          "number_normalized_character_similarity": 0.5
+        },
+        {
+          "id": "nyamuru_voice_432",
+          "label": "page_navigate",
+          "text": "今の表示位置より二ページ前を開いて。",
+          "number_normalized_character_similarity": 0.4615
+        },
+        {
+          "id": "nyamuru_voice_413",
+          "label": "page_navigate",
+          "text": "このページは読み終わったので、次のページを開いて。",
+          "number_normalized_character_similarity": 0.4483
+        },
+        {
+          "id": "nyamuru_voice_441",
+          "label": "page_navigate",
+          "text": "次のページ、いや前のページだ。いまの一枚前を表示して。",
+          "number_normalized_character_similarity": 0.4407
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1681",
+          "label": "undo",
+          "text": "最後の一件より前に済ませた編集は残す。その最後の変更だけを履歴の取り消し対象にしてください。",
+          "number_normalized_character_similarity": 0.2025
+        },
+        {
+          "id": "nyamuru_voice_1683",
+          "label": "compound_request",
+          "text": "してほしい変更は二点あるよ。描画ツールの選択をラスターへ、表示中の作画ガイドは非表示へ。両方反映して。",
+          "number_normalized_character_similarity": 0.1951
+        },
+        {
+          "id": "nyamuru_voice_1684",
+          "label": "inner_frame_snap_set",
+          "text": "吸着の対象を内枠にする機能について、無効のままだと困るんだ。内枠スナップが働く状態へ設定をそろえてもらえる？",
+          "number_normalized_character_similarity": 0.186
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1681",
+      "split": "dev",
+      "label": "undo",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_1038",
+          "label": "undo",
+          "text": "いちばん新しい編集だけを履歴から取り消してください。",
+          "number_normalized_character_similarity": 0.4638
+        },
+        {
+          "id": "nyamuru_voice_027",
+          "label": "redo",
+          "text": "直前の取り消しを戻してください",
+          "number_normalized_character_similarity": 0.4068
+        },
+        {
+          "id": "nyamuru_massive_adapt_011",
+          "label": "undo",
+          "text": "直前に行った二回の編集を履歴で取り消して",
+          "number_normalized_character_similarity": 0.4062
+        },
+        {
+          "id": "nyamuru_massive_adapt_007",
+          "label": "undo",
+          "text": "いま終えた吹き出しの編集を一回取り消してください",
+          "number_normalized_character_similarity": 0.3824
+        },
+        {
+          "id": "nyamuru_voice_375",
+          "label": "undo",
+          "text": "今の修正は残すつもりだったけど撤回する。最後の編集を一つ取り消してください。",
+          "number_normalized_character_similarity": 0.375
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1693",
+          "label": "undo",
+          "text": "Undoは一回だけでお願い。いま完了した編集は取り消して、それ以前の変更は残してね。",
+          "number_normalized_character_similarity": 0.2892
+        },
+        {
+          "id": "nyamuru_voice_1692",
+          "label": "undo",
+          "text": "戻したいのはページじゃなくて、いま完了した編集のほう。取り消しを一段お願い。",
+          "number_normalized_character_similarity": 0.2785
+        },
+        {
+          "id": "nyamuru_voice_1698",
+          "label": "page_navigate",
+          "text": "「戻る」は編集の取り消しじゃなく、ページを一つ前に送る意味でお願い。",
+          "number_normalized_character_similarity": 0.2432
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1682",
+      "split": "dev",
+      "label": "needs_clarification",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_706",
+          "label": "needs_clarification",
+          "text": "前に決めたやり方で処理して",
+          "number_normalized_character_similarity": 0.4737
+        },
+        {
+          "id": "nyamuru_voice_093",
+          "label": "bubble_set",
+          "text": "この吹き出しの本文を「おはよう。」にして",
+          "number_normalized_character_similarity": 0.4286
+        },
+        {
+          "id": "nyamuru_voice_108",
+          "label": "needs_clarification",
+          "text": "吹き出しを2にして",
+          "number_normalized_character_similarity": 0.4118
+        },
+        {
+          "id": "nyamuru_voice_079",
+          "label": "bubble_set",
+          "text": "吹き出しの形をふつうに戻して",
+          "number_normalized_character_similarity": 0.4103
+        },
+        {
+          "id": "nyamuru_voice_088",
+          "label": "bubble_set",
+          "text": "吹き出しを上へ1ミリ移動して",
+          "number_normalized_character_similarity": 0.4103
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1699",
+          "label": "page_navigate",
+          "text": "どのページを開くかは、作品の最後のページに決めたよ。今の表示をそこへ移して。",
+          "number_normalized_character_similarity": 0.3
+        },
+        {
+          "id": "nyamuru_voice_1673",
+          "label": "bubble_set",
+          "text": "上へずらすんじゃなくて、下へ三ミリね。今選んでいる吹き出しを、そのぶん移して。",
+          "number_normalized_character_similarity": 0.2667
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "label": "bubble_set",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "number_normalized_character_similarity": 0.2571
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1683",
+      "split": "dev",
+      "label": "compound_request",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_661",
+          "label": "paint_tool_set",
+          "text": "描画ツール欄のラスターペンを、選択中の道具にしてください。",
+          "number_normalized_character_similarity": 0.3784
+        },
+        {
+          "id": "nyamuru_massive_adapt_078",
+          "label": "paint_tool_set",
+          "text": "描画ペンの選択をラスターペンにして",
+          "number_normalized_character_similarity": 0.375
+        },
+        {
+          "id": "nyamuru_voice_818",
+          "label": "out_of_scope_request",
+          "text": "今あるベクターの絵をラスター化して",
+          "number_normalized_character_similarity": 0.3438
+        },
+        {
+          "id": "nyamuru_voice_637",
+          "label": "paint_tool_set",
+          "text": "手描きの線画に使いたいので、描画ツールをラスターペンへ変えて。",
+          "number_normalized_character_similarity": 0.3421
+        },
+        {
+          "id": "nyamuru_voice_663",
+          "label": "paint_tool_set",
+          "text": "ツールの選択先にはラスターペンを指定しておきます。切り替えて。",
+          "number_normalized_character_similarity": 0.3158
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1690",
+          "label": "save",
+          "text": "残しておきたいのは、今開いている作品のこの状態。保存まで済ませてもらおう。",
+          "number_normalized_character_similarity": 0.1975
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "label": "bubble_set",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "number_normalized_character_similarity": 0.1739
+        },
+        {
+          "id": "nyamuru_voice_1693",
+          "label": "undo",
+          "text": "Undoは一回だけでお願い。いま完了した編集は取り消して、それ以前の変更は残してね。",
+          "number_normalized_character_similarity": 0.1628
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1684",
+      "split": "dev",
+      "label": "inner_frame_snap_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_578",
+          "label": "inner_frame_snap_set",
+          "text": "いま内枠スナップが効く設定だから、オフの状態へ変えて。",
+          "number_normalized_character_similarity": 0.3947
+        },
+        {
+          "id": "nyamuru_voice_573",
+          "label": "inner_frame_snap_set",
+          "text": "内枠を目安に編集したいから、内枠スナップを使う設定に変えて。",
+          "number_normalized_character_similarity": 0.3544
+        },
+        {
+          "id": "nyamuru_voice_969",
+          "label": "inner_frame_snap_set",
+          "text": "内枠に吸着しない設定にしたいので、内枠スナップを無効化して。",
+          "number_normalized_character_similarity": 0.3544
+        },
+        {
+          "id": "nyamuru_voice_201",
+          "label": "needs_clarification",
+          "text": "内枠スナップの設定を変えて",
+          "number_normalized_character_similarity": 0.3438
+        },
+        {
+          "id": "nyamuru_voice_604",
+          "label": "inner_frame_snap_set",
+          "text": "内枠スナップなしに設定してもらえますか。",
+          "number_normalized_character_similarity": 0.3429
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1690",
+          "label": "save",
+          "text": "残しておきたいのは、今開いている作品のこの状態。保存まで済ませてもらおう。",
+          "number_normalized_character_similarity": 0.2118
+        },
+        {
+          "id": "nyamuru_voice_1703",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの形を変えてもらえる？　希望する変更先は四角です。",
+          "number_normalized_character_similarity": 0.1975
+        },
+        {
+          "id": "nyamuru_voice_1704",
+          "label": "page_navigate",
+          "text": "十一ページの次のページを開いて。今の表示位置ではなく、十一ページを基準にしてね。",
+          "number_normalized_character_similarity": 0.186
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1685",
+      "split": "dev",
+      "label": "generate_request",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_239",
+          "label": "generate_request",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "number_normalized_character_similarity": 0.5507
+        },
+        {
+          "id": "nyamuru_voice_884",
+          "label": "generate_request",
+          "text": "このページ全体の画像が欲しいので、いま生成を実行して",
+          "number_normalized_character_similarity": 0.411
+        },
+        {
+          "id": "nyamuru_voice_811",
+          "label": "out_of_scope_request",
+          "text": "いま走っている人物の画像生成を中止して",
+          "number_normalized_character_similarity": 0.3881
+        },
+        {
+          "id": "nyamuru_voice_825",
+          "label": "out_of_scope_request",
+          "text": "今表示しているページを印刷して",
+          "number_normalized_character_similarity": 0.381
+        },
+        {
+          "id": "nyamuru_voice_881",
+          "label": "generate_request",
+          "text": "作品全部ではなく、いま開いている一ページ全体を生成して",
+          "number_normalized_character_similarity": 0.3514
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1690",
+          "label": "save",
+          "text": "残しておきたいのは、今開いている作品のこの状態。保存まで済ませてもらおう。",
+          "number_normalized_character_similarity": 0.2439
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "label": "bubble_set",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "number_normalized_character_similarity": 0.2151
+        },
+        {
+          "id": "nyamuru_voice_1704",
+          "label": "page_navigate",
+          "text": "十一ページの次のページを開いて。今の表示位置ではなく、十一ページを基準にしてね。",
+          "number_normalized_character_similarity": 0.1928
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1686",
+      "split": "dev",
+      "label": "generate_request",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_889",
+          "label": "generate_request",
+          "text": "台本の修正は済んだよ。ここで選択しているコマ全体を生成して",
+          "number_normalized_character_similarity": 0.3662
+        },
+        {
+          "id": "nyamuru_voice_876",
+          "label": "generate_request",
+          "text": "このコマの画像が必要だから、コマ全体の生成をお願い",
+          "number_normalized_character_similarity": 0.3582
+        },
+        {
+          "id": "nyamuru_voice_811",
+          "label": "out_of_scope_request",
+          "text": "いま走っている人物の画像生成を中止して",
+          "number_normalized_character_similarity": 0.3548
+        },
+        {
+          "id": "nyamuru_voice_676",
+          "label": "text_frames_align",
+          "text": "この五つの選択中の文字枠について、頭の高さをそろえる操作をお願い。",
+          "number_normalized_character_similarity": 0.3514
+        },
+        {
+          "id": "nyamuru_voice_239",
+          "label": "generate_request",
+          "text": "いま表示しているページ全体の画像を生成して",
+          "number_normalized_character_similarity": 0.3438
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1691",
+          "label": "save",
+          "text": "名前を付け直す必要はないよ。「保存」の操作だけ、いまお願い。",
+          "number_normalized_character_similarity": 0.3529
+        },
+        {
+          "id": "nyamuru_voice_1692",
+          "label": "undo",
+          "text": "戻したいのはページじゃなくて、いま完了した編集のほう。取り消しを一段お願い。",
+          "number_normalized_character_similarity": 0.2821
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "label": "bubble_set",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "number_normalized_character_similarity": 0.2727
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1687",
+      "split": "dev",
+      "label": "paint_tool_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_667",
+          "label": "paint_tool_set",
+          "text": "選択ツールをラスターペンへ変更する操作をお願いできますか。",
+          "number_normalized_character_similarity": 0.3333
+        },
+        {
+          "id": "nyamuru_massive_adapt_075",
+          "label": "paint_tool_set",
+          "text": "描くときのペンをベクターペンに変えて",
+          "number_normalized_character_similarity": 0.2973
+        },
+        {
+          "id": "nyamuru_voice_646",
+          "label": "paint_tool_set",
+          "text": "いまラスターペンなので、使うツールをベクターペンへ変更して。",
+          "number_normalized_character_similarity": 0.2857
+        },
+        {
+          "id": "nyamuru_voice_638",
+          "label": "paint_tool_set",
+          "text": "ベジェで線を扱いたいから、いまのツールをベクターペンにしてほしい。",
+          "number_normalized_character_similarity": 0.2759
+        },
+        {
+          "id": "nyamuru_voice_1010",
+          "label": "paint_tool_set",
+          "text": "ラスターにはしないで、ベクターペンを選択してください。",
+          "number_normalized_character_similarity": 0.2716
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1673",
+          "label": "bubble_set",
+          "text": "上へずらすんじゃなくて、下へ三ミリね。今選んでいる吹き出しを、そのぶん移して。",
+          "number_normalized_character_similarity": 0.1758
+        },
+        {
+          "id": "nyamuru_voice_1679",
+          "label": "bubble_set",
+          "text": "この吹き出しには「戻して」じゃなく「待って」を入れて。取り消しの操作を頼んでいるわけじゃないよ。",
+          "number_normalized_character_similarity": 0.1633
+        },
+        {
+          "id": "nyamuru_voice_1703",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの形を変えてもらえる？　希望する変更先は四角です。",
+          "number_normalized_character_similarity": 0.1628
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1669",
+      "split": "dev",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_836",
+          "label": "not_command",
+          "text": "選択中の吹き出しにはしっぽが付いている？",
+          "number_normalized_character_similarity": 0.4068
+        },
+        {
+          "id": "nyamuru_massive_adapt_040",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しに「ここから出発」を本文として入れて",
+          "number_normalized_character_similarity": 0.4062
+        },
+        {
+          "id": "nyamuru_massive_adapt_038",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しのしっぽを消してちょうだい",
+          "number_normalized_character_similarity": 0.3934
+        },
+        {
+          "id": "nyamuru_voice_083",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しにしっぽを付けて",
+          "number_normalized_character_similarity": 0.3929
+        },
+        {
+          "id": "nyamuru_voice_717",
+          "label": "needs_clarification",
+          "text": "選択中の吹き出しは、話者を変更して",
+          "number_normalized_character_similarity": 0.3929
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1702",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しにしっぽがある場合だけ、しっぽを外して。もともと無ければ、そのままでいい。",
+          "number_normalized_character_similarity": 0.3704
+        },
+        {
+          "id": "nyamuru_voice_1674",
+          "label": "bubble_set",
+          "text": "セリフを直すんじゃなくて、誰の発言にするかの修正ね。選択中の吹き出しは、美咲さんの発言として設定して。",
+          "number_normalized_character_similarity": 0.3678
+        },
+        {
+          "id": "nyamuru_voice_1675",
+          "label": "bubble_set",
+          "text": "いま選択している吹き出しのセリフ、最初から言うね。この一文に丸ごと入れ替えてほしい。「それでも、ここに残る。」",
+          "number_normalized_character_similarity": 0.3409
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1670",
+      "split": "dev",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_972",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしの状態に変更して。",
+          "number_normalized_character_similarity": 0.6429
+        },
+        {
+          "id": "nyamuru_voice_968",
+          "label": "not_command",
+          "text": "この吹き出しのしっぽは消さず、そのまま残して。",
+          "number_normalized_character_similarity": 0.5263
+        },
+        {
+          "id": "nyamuru_voice_539",
+          "label": "bubble_set",
+          "text": "今つながっているこの吹き出しは、結合なしの状態に戻して。",
+          "number_normalized_character_similarity": 0.4839
+        },
+        {
+          "id": "nyamuru_voice_082",
+          "label": "bubble_set",
+          "text": "この吹き出しのしっぽを消して",
+          "number_normalized_character_similarity": 0.48
+        },
+        {
+          "id": "nyamuru_voice_517",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出しは、しっぽのない状態に変更して。",
+          "number_normalized_character_similarity": 0.4746
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1702",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しにしっぽがある場合だけ、しっぽを外して。もともと無ければ、そのままでいい。",
+          "number_normalized_character_similarity": 0.3896
+        },
+        {
+          "id": "nyamuru_voice_1680",
+          "label": "bubble_set",
+          "text": "話しているのは由紀ちゃんだったね。いま選択している吹き出しを、その子に話者として割り当て直して。",
+          "number_normalized_character_similarity": 0.2716
+        },
+        {
+          "id": "nyamuru_voice_1674",
+          "label": "bubble_set",
+          "text": "セリフを直すんじゃなくて、誰の発言にするかの修正ね。選択中の吹き出しは、美咲さんの発言として設定して。",
+          "number_normalized_character_similarity": 0.2651
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1671",
+      "split": "dev",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_091",
+          "label": "bubble_set",
+          "text": "選択した吹き出しの高さを40ミリに変更して",
+          "number_normalized_character_similarity": 0.4151
+        },
+        {
+          "id": "nyamuru_voice_300",
+          "label": "text_frames_align",
+          "text": "選択中のセリフの書き出しの高さをそろえて",
+          "number_normalized_character_similarity": 0.4151
+        },
+        {
+          "id": "nyamuru_voice_531",
+          "label": "bubble_set",
+          "text": "セリフの修正です。この吹き出しの本文を「ベクターペンを選んで」に変えて。",
+          "number_normalized_character_similarity": 0.4
+        },
+        {
+          "id": "nyamuru_voice_422",
+          "label": "page_navigate",
+          "text": "いま確認したいのは二ページ目。そこへ表示を切り替えてくれる？",
+          "number_normalized_character_similarity": 0.3934
+        },
+        {
+          "id": "nyamuru_voice_1178",
+          "label": "bubble_set",
+          "text": "台詞は書き換えずに、この吹き出しのしっぽだけ消して。",
+          "number_normalized_character_similarity": 0.386
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1673",
+          "label": "bubble_set",
+          "text": "上へずらすんじゃなくて、下へ三ミリね。今選んでいる吹き出しを、そのぶん移して。",
+          "number_normalized_character_similarity": 0.3235
+        },
+        {
+          "id": "nyamuru_voice_1703",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの形を変えてもらえる？　希望する変更先は四角です。",
+          "number_normalized_character_similarity": 0.3175
+        },
+        {
+          "id": "nyamuru_voice_1697",
+          "label": "page_navigate",
+          "text": "九ページを見たいんだけど、ページを作り足す意味じゃないよ。表示先をそこに変えて。",
+          "number_normalized_character_similarity": 0.3143
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1672",
+      "split": "dev",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_537",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出しを、同じコマにある二番の吹き出しと結合して。",
+          "number_normalized_character_similarity": 0.459
+        },
+        {
+          "id": "nyamuru_voice_806",
+          "label": "out_of_scope_request",
+          "text": "今選んでいる吹き出しを削除してほしい",
+          "number_normalized_character_similarity": 0.44
+        },
+        {
+          "id": "nyamuru_voice_722",
+          "label": "needs_clarification",
+          "text": "今選んでる吹き出しの",
+          "number_normalized_character_similarity": 0.4286
+        },
+        {
+          "id": "nyamuru_massive_adapt_042",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しをコマの枠で切り取る設定に変えて",
+          "number_normalized_character_similarity": 0.4286
+        },
+        {
+          "id": "nyamuru_voice_085",
+          "label": "bubble_set",
+          "text": "吹き出しのコマ枠で切り取る設定をオフにして",
+          "number_normalized_character_similarity": 0.4151
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1678",
+          "label": "bubble_set",
+          "text": "縦十五ミリ、横二十七ミリの大きさでお願い。いま選んでいる吹き出しを、この寸法に合わせて。",
+          "number_normalized_character_similarity": 0.3478
+        },
+        {
+          "id": "nyamuru_voice_1675",
+          "label": "bubble_set",
+          "text": "いま選択している吹き出しのセリフ、最初から言うね。この一文に丸ごと入れ替えてほしい。「それでも、ここに残る。」",
+          "number_normalized_character_similarity": 0.3
+        },
+        {
+          "id": "nyamuru_voice_1673",
+          "label": "bubble_set",
+          "text": "上へずらすんじゃなくて、下へ三ミリね。今選んでいる吹き出しを、そのぶん移して。",
+          "number_normalized_character_similarity": 0.2985
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1673",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_806",
+          "label": "out_of_scope_request",
+          "text": "今選んでいる吹き出しを削除してほしい",
+          "number_normalized_character_similarity": 0.4906
+        },
+        {
+          "id": "nyamuru_voice_722",
+          "label": "needs_clarification",
+          "text": "今選んでる吹き出しの",
+          "number_normalized_character_similarity": 0.4444
+        },
+        {
+          "id": "nyamuru_voice_517",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出しは、しっぽのない状態に変更して。",
+          "number_normalized_character_similarity": 0.4138
+        },
+        {
+          "id": "nyamuru_voice_537",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出しを、同じコマにある二番の吹き出しと結合して。",
+          "number_normalized_character_similarity": 0.4062
+        },
+        {
+          "id": "nyamuru_voice_302",
+          "label": "text_frames_align",
+          "text": "並んでいる吹き出しのうち、選択した文字だけ頭をそろえて",
+          "number_normalized_character_similarity": 0.3607
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.2985
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2941
+        },
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.2933
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1674",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_527",
+          "label": "bubble_set",
+          "text": "幅二十四ミリ、高さ三十八ミリを、いま選択中の吹き出しに設定して。",
+          "number_normalized_character_similarity": 0.3889
+        },
+        {
+          "id": "nyamuru_massive_adapt_040",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しに「ここから出発」を本文として入れて",
+          "number_normalized_character_similarity": 0.3662
+        },
+        {
+          "id": "nyamuru_voice_536",
+          "label": "bubble_set",
+          "text": "コマへの所属をやめて、選択中の吹き出しはページ前景の所属にして。",
+          "number_normalized_character_similarity": 0.3636
+        },
+        {
+          "id": "nyamuru_voice_1189",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの文章を「保存してから移動して」に変えて。",
+          "number_normalized_character_similarity": 0.3562
+        },
+        {
+          "id": "nyamuru_voice_807",
+          "label": "out_of_scope_request",
+          "text": "選択中の吹き出しを複製して隣に一つ増やして",
+          "number_normalized_character_similarity": 0.3529
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.3448
+        },
+        {
+          "id": "nyamuru_voice_1670",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしで確定。しっぽを付ける案は採らず、その状態に設定して。",
+          "number_normalized_character_similarity": 0.2651
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.2532
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1675",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_529",
+          "label": "bubble_set",
+          "text": "選択している吹き出しのセリフを「ここで待ってる。」に置き換えて。",
+          "number_normalized_character_similarity": 0.4737
+        },
+        {
+          "id": "nyamuru_voice_534",
+          "label": "bubble_set",
+          "text": "選択している吹き出しから、話者の指定だけ外してください。",
+          "number_normalized_character_similarity": 0.4054
+        },
+        {
+          "id": "nyamuru_voice_985",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの本文を「保存しないで」に入れ替えて。",
+          "number_normalized_character_similarity": 0.3889
+        },
+        {
+          "id": "nyamuru_voice_528",
+          "label": "bubble_set",
+          "text": "選択している吹き出しのサイズは横三十六ミリ、縦二十ミリにしてください。",
+          "number_normalized_character_similarity": 0.3846
+        },
+        {
+          "id": "nyamuru_massive_adapt_083",
+          "label": "text_frames_align",
+          "text": "選択している複数の文字枠は上端を揃えてほしい",
+          "number_normalized_character_similarity": 0.3714
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.3864
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2716
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.25
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1678",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_527",
+          "label": "bubble_set",
+          "text": "幅二十四ミリ、高さ三十八ミリを、いま選択中の吹き出しに設定して。",
+          "number_normalized_character_similarity": 0.4839
+        },
+        {
+          "id": "nyamuru_voice_517",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出しは、しっぽのない状態に変更して。",
+          "number_normalized_character_similarity": 0.4
+        },
+        {
+          "id": "nyamuru_voice_806",
+          "label": "out_of_scope_request",
+          "text": "今選んでいる吹き出しを削除してほしい",
+          "number_normalized_character_similarity": 0.4
+        },
+        {
+          "id": "nyamuru_voice_537",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出しを、同じコマにある二番の吹き出しと結合して。",
+          "number_normalized_character_similarity": 0.3939
+        },
+        {
+          "id": "nyamuru_voice_691",
+          "label": "text_frames_align",
+          "text": "横位置と大きさを保って、選んである二つの文字枠の上端を合わせて。",
+          "number_normalized_character_similarity": 0.3881
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.2899
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2857
+        },
+        {
+          "id": "nyamuru_voice_1670",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしで確定。しっぽを付ける案は採らず、その状態に設定して。",
+          "number_normalized_character_similarity": 0.2466
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1679",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_127",
+          "label": "compound_request",
+          "text": "この吹き出しを四角にして、しっぽを消して",
+          "number_normalized_character_similarity": 0.4262
+        },
+        {
+          "id": "nyamuru_voice_158",
+          "label": "not_command",
+          "text": "この吹き出しのしっぽを消さないで",
+          "number_normalized_character_similarity": 0.4138
+        },
+        {
+          "id": "nyamuru_voice_1192",
+          "label": "bubble_set",
+          "text": "今の吹き出しに「元に戻して、やり直して」と書いてほしい。",
+          "number_normalized_character_similarity": 0.3939
+        },
+        {
+          "id": "nyamuru_voice_150",
+          "label": "not_command",
+          "text": "この吹き出しは四角のままでいい",
+          "number_normalized_character_similarity": 0.386
+        },
+        {
+          "id": "nyamuru_voice_094",
+          "label": "bubble_set",
+          "text": "この吹き出しに「保存して、次のページへ」と入れて",
+          "number_normalized_character_similarity": 0.381
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.3171
+        },
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.2667
+        },
+        {
+          "id": "nyamuru_voice_1670",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしで確定。しっぽを付ける案は採らず、その状態に設定して。",
+          "number_normalized_character_similarity": 0.2308
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1680",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_534",
+          "label": "bubble_set",
+          "text": "選択している吹き出しから、話者の指定だけ外してください。",
+          "number_normalized_character_similarity": 0.3944
+        },
+        {
+          "id": "nyamuru_voice_528",
+          "label": "bubble_set",
+          "text": "選択している吹き出しのサイズは横三十六ミリ、縦二十ミリにしてください。",
+          "number_normalized_character_similarity": 0.3733
+        },
+        {
+          "id": "nyamuru_voice_117",
+          "label": "needs_reasoning",
+          "text": "台本と人物設定から、この吹き出しの話者を確認して直して",
+          "number_normalized_character_similarity": 0.3662
+        },
+        {
+          "id": "nyamuru_voice_096",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しを話者なしにして",
+          "number_normalized_character_similarity": 0.3607
+        },
+        {
+          "id": "nyamuru_voice_529",
+          "label": "bubble_set",
+          "text": "選択している吹き出しのセリフを「ここで待ってる。」に置き換えて。",
+          "number_normalized_character_similarity": 0.3562
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.3059
+        },
+        {
+          "id": "nyamuru_voice_1670",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしで確定。しっぽを付ける案は採らず、その状態に設定して。",
+          "number_normalized_character_similarity": 0.2716
+        },
+        {
+          "id": "nyamuru_voice_1682",
+          "label": "needs_clarification",
+          "text": "吹き出しの移動量は、前に決めた数字のとおりで実行して。",
+          "number_normalized_character_similarity": 0.2571
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1702",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_voice_083",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しにしっぽを付けて",
+          "number_normalized_character_similarity": 0.4912
+        },
+        {
+          "id": "nyamuru_massive_adapt_038",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しのしっぽを消してちょうだい",
+          "number_normalized_character_similarity": 0.4839
+        },
+        {
+          "id": "nyamuru_voice_836",
+          "label": "not_command",
+          "text": "選択中の吹き出しにはしっぽが付いている？",
+          "number_normalized_character_similarity": 0.4667
+        },
+        {
+          "id": "nyamuru_voice_127",
+          "label": "compound_request",
+          "text": "この吹き出しを四角にして、しっぽを消して",
+          "number_normalized_character_similarity": 0.4333
+        },
+        {
+          "id": "nyamuru_voice_082",
+          "label": "bubble_set",
+          "text": "この吹き出しのしっぽを消して",
+          "number_normalized_character_similarity": 0.4
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.3704
+        },
+        {
+          "id": "nyamuru_voice_1670",
+          "label": "bubble_set",
+          "text": "この吹き出しはしっぽなしで確定。しっぽを付ける案は採らず、その状態に設定して。",
+          "number_normalized_character_similarity": 0.3636
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.274
+        }
+      ]
+    },
+    {
+      "id": "nyamuru_voice_1703",
+      "split": "test",
+      "label": "bubble_set",
+      "nearest_old_or_public": [
+        {
+          "id": "nyamuru_massive_adapt_037",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの形をふつうに変えて",
+          "number_normalized_character_similarity": 0.5833
+        },
+        {
+          "id": "nyamuru_voice_717",
+          "label": "needs_clarification",
+          "text": "選択中の吹き出しは、話者を変更して",
+          "number_normalized_character_similarity": 0.4783
+        },
+        {
+          "id": "nyamuru_voice_1189",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの文章を「保存してから移動して」に変えて。",
+          "number_normalized_character_similarity": 0.4643
+        },
+        {
+          "id": "nyamuru_voice_985",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しの本文を「保存しないで」に入れ替えて。",
+          "number_normalized_character_similarity": 0.4444
+        },
+        {
+          "id": "nyamuru_massive_adapt_042",
+          "label": "bubble_set",
+          "text": "選択中の吹き出しをコマの枠で切り取る設定に変えて",
+          "number_normalized_character_similarity": 0.4444
+        }
+      ],
+      "nearest_other_split": [
+        {
+          "id": "nyamuru_voice_1671",
+          "label": "bubble_set",
+          "text": "二十ミリにしたいのは、この吹き出しの高さだけなんだ。そこだけ変えてくれる？",
+          "number_normalized_character_similarity": 0.3175
+        },
+        {
+          "id": "nyamuru_voice_1669",
+          "label": "bubble_set",
+          "text": "「待って、保存しないで」までがセリフ。選択中の吹き出しには、その言葉をそのまま入れてほしい。",
+          "number_normalized_character_similarity": 0.3143
+        },
+        {
+          "id": "nyamuru_voice_1672",
+          "label": "bubble_set",
+          "text": "選んでいる吹き出し、コマの外にはみ出たところまで見せる設定をお願い。",
+          "number_normalized_character_similarity": 0.2258
+        }
+      ]
+    }
+  ],
+  "validations": {
+    "only_allowed_1704_changed": true,
+    "1693_1696_not_rewritten": true,
+    "original_inputs_untouched": true,
+    "all_output_edits_under_tmp": true,
+    "no_model_inference_or_training": true,
+    "no_repository_edits": true,
+    "base_9_fields_preserved": true,
+    "same_id_order_as_original": true
+  }
+}

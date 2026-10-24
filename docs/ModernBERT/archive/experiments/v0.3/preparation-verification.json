@@ -1,0 +1,43 @@
+{
+  "status": "prepared_and_locally_verified",
+  "counts": {
+    "train": 1080,
+    "dev": 88,
+    "test": 132,
+    "legacy_dev": 138,
+    "legacy_test": 139
+  },
+  "checks": {
+    "notebook_5_code_cells_and_embedded_python_parse": true,
+    "zip_hash_embedded_in_upload_cell": true,
+    "notebook_unexecuted": true,
+    "isolated_zip_13_tests_passed_without_root_env": true,
+    "zip_files_sha256_verified": 102,
+    "isolated_rebuild_identical_zip_and_notebook": true,
+    "v02_tracked_inputs_unchanged": 13,
+    "all_102_bundle_inputs_present_in_git_index": true
+  },
+  "existing_unit_tests_passed": 20,
+  "v03_unit_tests_passed": 13,
+  "ruff": "passed",
+  "tokenization": "1577 rows; max30 tokens; truncation0; exact pinned original tokenizer hashes verified",
+  "model_inference_run": false,
+  "training_run": false,
+  "colab_gpu_execution_verified": false,
+  "archive": {
+    "name": "nyamuru-voice-v03-inputs.zip",
+    "sha256": "ce4381751c421d391da882e04566b8996eacfc9018fa6f9e3945992d417573b7",
+    "bytes": 2325968
+  },
+  "notebook": {
+    "name": "Nyamuru_Voice_ModernBERT_v0.3_19分類_2026-10-18.ipynb",
+    "sha256": "704deb8be60bc48517240eb98cae931eb20373214f7dbece2a5e664696135b5e"
+  },
+  "limits": "Local data/unit/package checks only. Colab dependency installation, GPU training and accuracy remain unexecuted.",
+  "independent_audit": {
+    "path": "preparation-independent-audit.json",
+    "sha256": "1dd622ed35abd010be98f3e149ea8a60705188e14ea201fbb502cec5b79ecfa0",
+    "checks": 28,
+    "issues": []
+  }
+}

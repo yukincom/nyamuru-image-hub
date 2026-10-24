@@ -1,0 +1,72 @@
+[
+  {
+    "slug": "in-a-deep-squat-with-her-heels-flat-on-the-floor",
+    "label_ja": "かかとをつけて深くしゃがむ",
+    "pose_text_ja": "両かかとを床につけて深くしゃがむ。",
+    "tags": [
+      "squatting",
+      "floor"
+    ]
+  },
+  {
+    "slug": "squatting-on-the-balls-of-her-feet-with-her-heels-raised",
+    "label_ja": "かかとを上げてしゃがむ",
+    "pose_text_ja": "両かかとを上げ、足指の付け根で体を支えてしゃがむ。",
+    "tags": [
+      "squatting"
+    ]
+  },
+  {
+    "slug": "squatting-with-her-forearms-resting-on-her-knees",
+    "label_ja": "前腕を膝に置いてしゃがむ",
+    "pose_text_ja": "しゃがんで両前腕を両膝に置く。",
+    "tags": [
+      "squatting"
+    ]
+  },
+  {
+    "slug": "squatting-with-her-hands-clasped-between-her-knees",
+    "label_ja": "膝の間で手を組む",
+    "pose_text_ja": "しゃがんで両膝の間で両手を組む。",
+    "tags": [
+      "squatting",
+      "two-hands"
+    ]
+  },
+  {
+    "slug": "in-a-wide-sumo-squat",
+    "label_ja": "脚を広げてしゃがむ",
+    "pose_text_ja": "相撲の構えのように脚を大きく開いてしゃがむ。",
+    "tags": [
+      "squatting"
+    ]
+  },
+  {
+    "slug": "in-a-half-squat-with-her-hands-on-her-thighs",
+    "label_ja": "太ももに手を置いて中腰",
+    "pose_text_ja": "半ばしゃがんだ姿勢になり、両手を両太ももに置く。",
+    "tags": [
+      "squatting",
+      "two-hands",
+      "half-squat"
+    ]
+  },
+  {
+    "slug": "in-a-low-crouch-with-one-hand-touching-the-floor",
+    "label_ja": "低くかがんで床に手をつく",
+    "pose_text_ja": "低くかがみ、片手を床につける。",
+    "tags": [
+      "squatting",
+      "floor",
+      "one-hand"
+    ]
+  },
+  {
+    "slug": "kneeling-on-one-knee",
+    "label_ja": "片膝をつく",
+    "pose_text_ja": "片方の膝をつく。",
+    "tags": [
+      "kneeling"
+    ]
+  }
+]

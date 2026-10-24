@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "generation-qa-comparison-v1.schema.json",
+  "title": "Nyamuru generation QA semantic comparison v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "before_analysis_key",
+    "after_analysis_key",
+    "compatible",
+    "incompatibilities",
+    "equivalent",
+    "artifact_changed",
+    "rubric_changed",
+    "status_changed",
+    "metric_changes",
+    "finding_changes",
+    "comparison_sha256"
+  ],
+  "properties": {
+    "schema_name": { "const": "nyamuru-generation-qa-comparison" },
+    "schema_version": { "const": 1 },
+    "before_analysis_key": { "$ref": "#/$defs/analysisKey" },
+    "after_analysis_key": { "$ref": "#/$defs/analysisKey" },
+    "compatible": { "type": "boolean" },
+    "incompatibilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 200 }
+    },
+    "equivalent": { "type": "boolean" },
+    "artifact_changed": { "type": "boolean" },
+    "rubric_changed": { "type": "boolean" },
+    "status_changed": { "type": "boolean" },
+    "metric_changes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/metricChange" }
+    },
+    "finding_changes": { "$ref": "#/$defs/findingChanges" },
+    "comparison_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "analysisKey": { "type": "string", "pattern": "^qa-[a-f0-9]{64}$" },
+    "semanticFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "metric", "actual", "expected"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "metric": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "actual": {},
+        "expected": {}
+      }
+    },
+    "metricChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "before", "after"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^/metrics/" },
+        "before": {},
+        "after": {}
+      }
+    },
+    "changedFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "before", "after"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "before": { "$ref": "#/$defs/semanticFinding" },
+        "after": { "$ref": "#/$defs/semanticFinding" }
+      }
+    },
+    "findingChanges": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["added", "removed", "changed"],
+      "properties": {
+        "added": { "type": "array", "items": { "$ref": "#/$defs/semanticFinding" } },
+        "removed": { "type": "array", "items": { "$ref": "#/$defs/semanticFinding" } },
+        "changed": { "type": "array", "items": { "$ref": "#/$defs/changedFinding" } }
+      }
+    }
+  }
+}

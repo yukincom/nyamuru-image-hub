@@ -1,0 +1,231 @@
+{
+  "status": "parent_reviewed_before_inference",
+  "dataset_path": "/private/tmp/nyamuru-daily-commands-candidates.jsonl",
+  "contract_path": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.5.1/source/labels.json",
+  "contract_name": "nyamuru_voice_intent_draft_20261017",
+  "contract_schema_version": 1,
+  "contract_sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+  "dataset_sha256": "6f8d50074a4918292e7be77f7ab43e6f301b6803cf9a40de255d2dd7375c243d",
+  "total_rows": 112,
+  "per_label_counts": {
+    "save": 8,
+    "undo": 8,
+    "redo": 8,
+    "page_navigate": 8,
+    "view_change": 8,
+    "artwork_mode_set": 8,
+    "bubble_set": 8,
+    "panel_sync_set": 8,
+    "inner_frame_snap_set": 8,
+    "panel_gap_snap_set": 8,
+    "generate_request": 8,
+    "background_3d_candidates": 8,
+    "paint_tool_set": 8,
+    "text_frames_align": 8
+  },
+  "group_counts": {
+    "save_current_document": 8,
+    "undo_once": 6,
+    "undo_multiple": 2,
+    "redo_once": 6,
+    "redo_multiple": 2,
+    "page_next": 1,
+    "page_previous": 1,
+    "page_first": 1,
+    "page_last": 1,
+    "page_number": 2,
+    "page_relative_count": 2,
+    "view_zoom_in": 1,
+    "view_zoom_fit": 1,
+    "view_spread_on": 1,
+    "view_spread_off": 1,
+    "view_guide_show": 1,
+    "view_guide_hide": 1,
+    "view_tab_storyboard": 1,
+    "view_tab_characters": 1,
+    "artwork_integrated": 4,
+    "artwork_draft": 4,
+    "bubble_shape": 1,
+    "bubble_preset": 1,
+    "bubble_tail_off": 1,
+    "bubble_tail_on": 1,
+    "bubble_clip_on": 1,
+    "bubble_bbox_width": 1,
+    "bubble_text": 1,
+    "bubble_speaker": 1,
+    "panel_sync_set_on": 4,
+    "panel_sync_set_off": 4,
+    "inner_frame_snap_set_on": 4,
+    "inner_frame_snap_set_off": 4,
+    "panel_gap_snap_set_on": 4,
+    "panel_gap_snap_set_off": 4,
+    "generate_selection": 1,
+    "generate_selected_character": 1,
+    "generate_current_page": 1,
+    "generate_selected_panel": 1,
+    "generate_named_character": 1,
+    "generate_specified_panel": 1,
+    "generate_named_character_in_panel": 1,
+    "generate_selected_character_in_panel": 1,
+    "background_candidates_default": 1,
+    "background_candidates_count": 1,
+    "background_candidates_scene": 3,
+    "background_candidates_panel": 1,
+    "background_candidates_scene_count": 1,
+    "background_candidates_current_page": 1,
+    "paint_raster": 4,
+    "paint_vector": 4,
+    "align_explicit_top": 1,
+    "align_two_frames": 1,
+    "align_three_frames": 2,
+    "align_all_selected": 1,
+    "align_top_term": 1,
+    "align_head_term": 1,
+    "align_writing_start_term": 1
+  },
+  "text_length": {
+    "minimum": 4,
+    "maximum": 22,
+    "outside_5_to_25": [
+      {
+        "id": "daily_001",
+        "text": "保存して",
+        "characters": 4
+      }
+    ]
+  },
+  "uniqueness": {
+    "exact_unique": 112,
+    "normalized_unique": 112,
+    "normalization": "Unicode NFKC + casefold + removal of whitespace and Unicode P/S punctuation/symbol categories; semantic paraphrases remain distinct."
+  },
+  "anchors": [
+    "保存して",
+    "次のページ"
+  ],
+  "provenance": {
+    "only_external_content_read": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17/experiments/v0.5.1/source/labels.json",
+    "existing_utterances_read": false,
+    "model_outputs_or_results_read": false,
+    "inference_run": false,
+    "training_run": false,
+    "repository_edited": false,
+    "original_73_question_benchmark_modified": false,
+    "training_overlap_checked": false,
+    "independence_or_unseen_claim": false,
+    "generation_basis": "Codex synthetic Japanese commands created from label and slot contract; no model-output-informed selection."
+  },
+  "assumptions": [
+    "explicit_voice_command context is assumed, as specified by the contract. Short requests without a verb remain commands in that mode.",
+    "The requested exact anchor 保存して has 4 characters and is the intentional exception to the preferred 5-character minimum.",
+    "All examples request one action. Repetition counts, target locators, scene queries and candidate counts are arguments of that action.",
+    "Negation corrections, preservation clauses, narrative prefixes and independent compound actions are omitted. Explicit off/disable settings remain valid commands.",
+    "Natural conventional phrases are retained without any assertion that they are absent from training. Parent owns train/evaluation overlap analysis.",
+    "Slots are gold annotations only, not classifier outputs, execution permission or guaranteed available operations.",
+    "The contract lists supported bubble fields but does not prescribe value nesting. This draft uses slots.value for literal or boolean values, and {width:30,unit:mm} for BBox width.",
+    "The contract does not specify the spread/guide boolean slot name. This draft uses slots.enabled as the desired final display state, consistent with the explicit boolean settings convention.",
+    "The spoken shape 楕円 is retained as a literal rather than inventing an implementation enum ID. The implementation must resolve it later.",
+    "ノーマル素材 is interpreted as the spelling nomal explicitly mentioned by the contract; the spoken alias and material ID require parent confirmation.",
+    "ネーム is interpreted as storyboard; キャラクター is interpreted as characters. Actual UI tab captions were not inspected.",
+    "Unqualified history commands default to one operation. Explicit 2回/3回 undo and redo counts are one action with a count.",
+    "直前の描画を取り消して and 取り消した描画をやり直して assume the applicable history item is a drawing edit; they do not authorize searching past unrelated entries.",
+    "The sample name 葵ちゃん is synthetic. Honorifics are retained and runtime existence/uniqueness must be resolved.",
+    "User-facing page and panel numbers are positive and 1-based; actual range and panel IDs must be checked by the execution layer.",
+    "The bare term 背景候補 uses the contract-confirmed abbreviation for registered 3D model candidates. Scene query values do not assert registered model availability.",
+    "今のページの3D背景候補 refers to current-page context; the contract has no page context slot, so this detail is retained in text/note instead of inventing a locator.",
+    "Text-frame alignment always names an explicit selection of multiple text frames. Counts of 2 or 3 remain in text/note because the contract has no selection-count slot.",
+    "Save, binary toggles, artwork mode and paint mode have inherently narrow subaction sets; their 8 examples use common wording in addition to state/mode coverage.",
+    "View-change allocation is 2 zoom, 2 spread, 2 guide, 2 tab examples. It does not exhaust every listed zoom, guide or tab value.",
+    "Bubble-set allocation covers shape, preset, tail_enabled both states, clip_to_panel, bbox width, text and speaker; owner/join_to are omitted to avoid unsupported interpretations of underspecified values."
+  ],
+  "ambiguous_items_requiring_review": [
+    {
+      "ids": [
+        "daily_011",
+        "daily_015"
+      ],
+      "issue": "Short undo phrasings refer to edit history; confirm ordinary one-step or counted interpretation."
+    },
+    {
+      "ids": [
+        "daily_019"
+      ],
+      "issue": "取り消した操作を戻して is annotated redo because the operation was explicitly undone."
+    },
+    {
+      "ids": [
+        "daily_039",
+        "daily_040"
+      ],
+      "issue": "Japanese names of storyboard/characters tabs are semantic aliases; UI labels not verified."
+    },
+    {
+      "ids": [
+        "daily_049"
+      ],
+      "issue": "楕円 is a literal requested shape; implementation shape identifier is not specified in the contract."
+    },
+    {
+      "ids": [
+        "daily_050"
+      ],
+      "issue": "ノーマル素材 to nomal is an explicit draft alias assumption."
+    },
+    {
+      "ids": [
+        "daily_053"
+      ],
+      "issue": "切取り設定をclip_to_panelに対応づける。契約上UI検証待ちのため実行可能とはみなさない。"
+    },
+    {
+      "ids": [
+        "daily_096"
+      ],
+      "issue": "Current-page scene context is represented in text/note, with no invented page locator."
+    },
+    {
+      "ids": [
+        "daily_106",
+        "daily_107",
+        "daily_110",
+        "daily_112"
+      ],
+      "issue": "Explicit selected frame counts are recorded only in text/note; no count slot exists for this label."
+    }
+  ],
+  "capability_caveats": [
+    "The label contract is itself pending_user_review. This draft does not establish voice wiring, runtime readiness or executable capability.",
+    "clip_to_panel remains under work and must not be executed before UI verification completes.",
+    "Owner generation has an existing UI workflow but is not voice wired. Opening the generation dialog is not job completion or result insertion.",
+    "Whole-page generation is pending normal UI integration; whole-panel generation is inactive legacy UI. Neither is replaced by background-only generation or a saved-file CLI.",
+    "Registered 3D catalog availability does not imply candidate selection/display is implemented. Suggestions must use real registered models and must not be auto-applied.",
+    "text_frames_align requires independent editable text frames and multi-selection improvements. This dataset does not claim those requirements are implemented.",
+    "Actual selection, target identity, model names, registered materials, valid ranges, current unsaved UI state and availability remain execution-layer responsibilities."
+  ],
+  "validation_performed": [
+    "Exactly 112 rows; precisely 8 for each of 14 included action/workflow labels.",
+    "Sequential IDs daily_001 through daily_112; required keys and fixed tags/source present.",
+    "Exact and normalized text uniqueness within this candidate file.",
+    "All text lengths <=40 Unicode code points; preferred 5-25 range checked and exceptions enumerated.",
+    "Both exact requested anchors are present.",
+    "Manual composition against the label contract; no model inference and no training/test overlap inspection.",
+    "Checked all provided labels, enum values, positive numeric arguments, booleans and shared locators. Bubble value/view enabled keys use the explicitly documented draft annotation convention because the source contract does not prescribe those keys."
+  ],
+  "frozen_dataset_path": "test.jsonl",
+  "parent_review": {
+    "reviewed_rows": 112,
+    "text_or_label_changes": 0,
+    "model_predictions_seen": false,
+    "training_or_inference_run": false,
+    "decisions": [
+      "全112文の入力・ラベル・引数注釈を読んで確認。各文は既存定義上の単一操作。回数や複数対象は一つの操作の引数でありcompoundにしない。",
+      "Undo/Redoの履歴参照は明示され、daily_019は取り消された操作の復元なのでredo。",
+      "ネーム→storyboard、キャラクター→charactersは注釈上の意味対応として保持。表示切替という分類を評価し、実UI配線は検証しない。",
+      "楕円は原文のリテラル。ノーマル→nomalは契約に記載の素材綴りを保持する注釈であり、素材選択の実行精度を主張しない。",
+      "切取りは契約のbubble_set定義に含まれる。clip_to_panel等の実装準備状況を変更せず、分類だけを評価。",
+      "人物名・ページやコマ番号・現在ページ・選択中の対象は実行側が解決する前提。新しい対象を生成したり指定範囲を広げたりしない。",
+      "bubbleのvalueとviewのenabledは正解注釈のローカル表記。スロットの予測や契約の実行用スキーマ追加は行わない。",
+      "112文すべてを固定し、推論後の言い換え・削除・ラベル訂正で点数を上げない。"
+    ]
+  }
+}

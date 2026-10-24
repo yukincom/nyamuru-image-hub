@@ -1,0 +1,310 @@
+[
+  {
+    "id": "pose-mh-sit01",
+    "display_number": 30,
+    "category": "seated",
+    "label_ja": "床に座る",
+    "label_en": "Sitting on floor",
+    "tags": [
+      "seated",
+      "floor"
+    ],
+    "search_aliases": [
+      "30",
+      "休憩",
+      "sit01"
+    ],
+    "pose_text_ja": "床に座って少し後ろへもたれ、片脚を前へまっすぐ伸ばし、反対の膝を立てる。片手をももの上に置く。",
+    "pose_template": "sitting on the ground leaning back slightly, one leg extended straight forward and the other knee bent upright, one hand resting on the thigh",
+    "original_gemini_prompt": "sitting on the ground leaning back slightly, one leg extended straight forward and the other knee bent upright, one hand resting on the thigh",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "sit01",
+      "name": "30 床に座る",
+      "category": "座る・休む",
+      "use": "休憩",
+      "path": "makehuman_system_poses_cc0/poses/sit01/sit01.bvh",
+      "sha256": "aacc0b532b0bf96a7b50d457ddfcf575a91cd42777082970329076a7e3937dee",
+      "status": "accepted",
+      "author": "makehuman_system",
+      "url": "http://www.makehumancommunity.org",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_poses.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-anrico-sitting02",
+    "display_number": 31,
+    "category": "seated",
+    "label_ja": "椅子で振り向く",
+    "label_en": "Turning while seated",
+    "tags": [
+      "seated",
+      "chair"
+    ],
+    "search_aliases": [
+      "31",
+      "座り会話",
+      "anrico_sitting02"
+    ],
+    "pose_text_ja": "腰を膝ほどの高さに浮かせた座位で、両ももを前へ開き、膝を約90度曲げてすねを下へ向ける。床座りやしゃがみにはしない。画面左の本人の右手を開いて右ももに置く。左肘を曲げ、左手を胸上部の近くへ添え、指を軽く開く。上体はほぼ前向きで少し画面左へひねる。顔がほぼ横顔になるまで頭を画面左へ大きく向け、顎は水平、目は画面左の遠くを水平に見る。",
+    "pose_template": "Maintain an elevated seated posture with hips about knee height, both thighs directed forward and apart, knees bent roughly 90 degrees and lower legs descending. Do not sit on the floor or squat. The anatomical right hand (screen-left) rests open on the right thigh. Left elbow is bent and left hand is open near the upper chest, fingers loosely spread. Torso mostly faces forward with a slight turn toward screen-left. Turn the head strongly toward screen-left until the face is almost in profile, chin level and eyes looking horizontally off to screen-left.",
+    "original_gemini_prompt": "sitting on the ground with legs spread apart, one hand resting on the thigh, the other hand held near the chest with fingers open",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "膝・足首の非対称さは追加調整の余地あり。"
+    },
+    "source": {
+      "key": "anrico_sitting02",
+      "name": "31 椅子で振り向く",
+      "category": "座る・休む",
+      "use": "座り会話",
+      "path": "poses01_cc0/poses/anrico_sitting02/anrico_sitting02.bvh",
+      "sha256": "43a500ab8a953df9ba27fd492f564470b91af14e61788131d4b9493182ad0ae8",
+      "status": "accepted",
+      "author": "Anrico",
+      "url": "http://www.makehumancommunity.org/node/2201",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-anrico-sitting04",
+    "display_number": 32,
+    "category": "seated",
+    "label_ja": "椅子に腰かける",
+    "label_en": "Seated thinking pose",
+    "tags": [
+      "seated",
+      "chair"
+    ],
+    "search_aliases": [
+      "32",
+      "会話・休憩",
+      "anrico_sitting04"
+    ],
+    "pose_text_ja": "腰を膝ほどの高さに置いて上体を起こし、ももを前へ開き、膝をほぼ直角に曲げ、すねを下へ向ける。本人の右前腕を上腹部の前で横に渡す。その前腕に左肘を載せ、左前腕をほぼ垂直に上げ、左手の指先と側面を顎に軽く添える。頭を起こして少し画面右へ向け、目も少し画面右を見る。膝の間を開け、座位の支えは描かない。",
+    "pose_template": "Upright seated posture with the pelvis elevated about knee height, thighs angled forward and apart, knees bent at roughly right angles, lower legs pointing down. Cross the anatomical right forearm horizontally in front of the upper abdomen. Rest the left elbow on that right forearm and raise the left forearm almost vertically, with the fingertips and side of the left hand lightly supporting the chin. Head upright with a small turn toward screen-right, eyes looking slightly toward screen-right. Keep the knees separated and the seated support invisible.",
+    "original_gemini_prompt": "sitting on the ground with legs spread and knees bent, resting one elbow on the opposite arm with hand supporting the chin in a thinking pose",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "指を伸ばして顎に添える形、膝と足首の角度は要調整。"
+    },
+    "source": {
+      "key": "anrico_sitting04",
+      "name": "32 椅子に腰かける",
+      "category": "座る・休む",
+      "use": "会話・休憩",
+      "path": "poses01_cc0/poses/anrico_sitting04/anrico_sitting04.bvh",
+      "sha256": "2f4ed4d8a91cb1b77e040e7ba435e70f6e926bbbc902f56317a5d066dababfae",
+      "status": "accepted",
+      "author": "Anrico",
+      "url": "http://www.makehumancommunity.org/node/2218",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-anrico-sitting10",
+    "display_number": 33,
+    "category": "seated",
+    "label_ja": "座って身振り",
+    "label_en": "Seated gesture",
+    "tags": [
+      "seated",
+      "chair"
+    ],
+    "search_aliases": [
+      "33",
+      "休憩",
+      "anrico_sitting10"
+    ],
+    "pose_text_ja": "腰を膝ほどの高さに置いて座り、ももを前へ開き、両膝を約90度曲げ、すねを下へ向ける。上体を起こして少し画面左へひねる。両肘を曲げ、開いた両手を胸下部から上腹部の画面左側、体より少し前で近づける。手のひらを緩く上と互いの方向へ向け、片手を少し高くする。本人の左前腕はお腹の前を横切る。指を自然に開く。顎を少し引き、顔をわずかに画面右へ向け、前方のやや下を見る。床座りにはしない。",
+    "pose_template": "Sit with the pelvis elevated about knee height, thighs forward and spread, both knees bent about 90 degrees, lower legs directed down. Torso upright with a slight twist toward screen-left. Bend both elbows and bring both open hands together on the screen-left side of the lower chest/upper abdomen, slightly in front of the body; palms loosely face upward and toward each other, one slightly above the other. The anatomical left forearm crosses in front of the abdomen. Fingers open naturally. Chin slightly lowered, face angled just a little toward screen-right, gaze forward and slightly down. Do not sit on the floor.",
+    "original_gemini_prompt": "sitting on the ground with legs spread apart, both arms extended forward-side with open palms held together as if cupping or presenting an item",
+    "prompt_validation": {
+      "status": "概ね再現",
+      "note": "視線と足首の細部は未一致。"
+    },
+    "source": {
+      "key": "anrico_sitting10",
+      "name": "33 座って身振り",
+      "category": "座る・休む",
+      "use": "休憩",
+      "path": "poses01_cc0/poses/anrico_sitting10/anrico_sitting10.bvh",
+      "sha256": "7323349fe5a9eb54f2183b1d93f37689e0b327b5f68d23fdb5afa09f4fc25dc3",
+      "status": "accepted",
+      "author": "Anrico",
+      "url": "http://www.makehumancommunity.org/node/2463",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-milkman-sit-01a",
+    "display_number": 34,
+    "category": "seated",
+    "label_ja": "足先を寄せて腰かける",
+    "label_en": "Seated with knees apart and feet together",
+    "tags": [
+      "seated",
+      "chair"
+    ],
+    "search_aliases": [
+      "34",
+      "落ち着いた会話",
+      "milkman_sit_01a",
+      "膝を開く",
+      "足先を寄せる",
+      "腰かける",
+      "脚をそろえて座る"
+    ],
+    "pose_text_ja": "縁に浅く腰かけ、膝を開いて足先を寄せる。腰と肩を少し傾け、片手を膝付近に添え、もう片方の手をももの外側へ下ろす。",
+    "pose_template": "sitting shallowly on an edge, knees apart and feet close together, pelvis and shoulders slightly tilted, one hand near a knee and the other lowered outside the opposite thigh",
+    "original_gemini_prompt": "seated pose as if on an edge, legs together and angled slightly, hands resting flat beside the thighs",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元3DのPNGと文面・猫の見本を照合。画像生成への適用は未検証。"
+    },
+    "source": {
+      "key": "milkman_sit_01a",
+      "name": "34 脚をそろえて座る",
+      "category": "座る・休む",
+      "use": "落ち着いた会話",
+      "path": "poses01_cc0/poses/milkman_sit_01a/milkman_sit_01a.bvh",
+      "sha256": "5b484c3747bb323f941466dd0d5d659aad73ffa26147913819e0ba2754a7b367",
+      "status": "accepted",
+      "author": "milkman",
+      "url": "http://www.makehumancommunity.org/node/778",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC-0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-wolgade-sit-on-ground-01",
+    "display_number": 35,
+    "category": "seated",
+    "label_ja": "横に脚を伸ばして座る",
+    "label_en": "Sideways reclining seat",
+    "tags": [
+      "seated",
+      "floor"
+    ],
+    "search_aliases": [
+      "35",
+      "床・地面で休む",
+      "wolgade_sit_on_ground_01"
+    ],
+    "pose_text_ja": "床で片手をついて後ろへもたれ、片脚を横へまっすぐ伸ばし、反対の脚を床に沿って曲げる。",
+    "pose_template": "reclining seated pose on the floor, leaning back supported by one hand on the ground, one leg stretched straight out to the side, the other leg bent flat",
+    "original_gemini_prompt": "reclining seated pose on the floor, leaning back supported by one hand on the ground, one leg stretched straight out to the side, the other leg bent flat",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "wolgade_sit_on_ground_01",
+      "name": "35 横に脚を伸ばして座る",
+      "category": "座る・休む",
+      "use": "床・地面で休む",
+      "path": "poses01_cc0/poses/wolgade_sit_on_ground_01/wolgade_sit_on_ground_01.bvh",
+      "sha256": "73a1ba153724d0cd1617b8191b2f1c9b50aaeb6692920812366b51bb1688a19e",
+      "status": "accepted",
+      "author": "wolgade",
+      "url": "http://www.makehumancommunity.org/node/286",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-sweetan008-sitting-pose",
+    "display_number": 36,
+    "category": "seated",
+    "label_ja": "座り姿",
+    "label_en": "Upright seated pose",
+    "tags": [
+      "seated",
+      "chair"
+    ],
+    "search_aliases": [
+      "36",
+      "座る場面の候補",
+      "sweetan008_sitting-pose"
+    ],
+    "pose_text_ja": "上体を起こして座り、脚を開き、膝を直角に曲げ、両手をももに置く。",
+    "pose_template": "seated upright with legs spread apart, knees bent at right angles, both hands resting on the thighs",
+    "original_gemini_prompt": "seated upright with legs spread apart, knees bent at right angles, both hands resting on the thighs",
+    "prompt_validation": {
+      "status": "目視照合のみ",
+      "note": "元PNGと文面を照合。画像生成による検証は未実施。"
+    },
+    "source": {
+      "key": "sweetan008_sitting-pose",
+      "name": "36 座り姿",
+      "category": "座る・休む",
+      "use": "座る場面の候補",
+      "path": "poses01_cc0/poses/sweetan008_sitting-pose/sweetan008_sitting-pose.bvh",
+      "sha256": "9033768cfcdcbae33eb3a083a0bdaf015a8dff916cb0886f2a3674db43289748",
+      "status": "accepted",
+      "author": "sweetan008",
+      "url": "http://www.makehumancommunity.org/node/317",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": "CC0",
+      "license_evidence": "Distribution page and pack catalog state CC0; bundled metadata agrees"
+    }
+  },
+  {
+    "id": "pose-mh-elvs-what-have-i-done",
+    "display_number": 37,
+    "category": "seated",
+    "label_ja": "床で顔に手を添える",
+    "label_en": "Hands near face on floor",
+    "tags": [
+      "seated",
+      "floor"
+    ],
+    "search_aliases": [
+      "37",
+      "驚き・考え込む",
+      "elvs_what_have_i_done"
+    ],
+    "pose_text_ja": "腰を床の高さに置いて上体を起こし、ほぼ前を向いて座る。両膝を曲げて腰より前へ置く。画面左の膝は緩めに曲げ、すねを画面左へ広く伸ばし、足をその膝より大きく左へ置く。画面右の膝は直角近くまで強く曲げ、すねを画面右へ伸ばし、足をその膝より大きく右へ置く。両足とつま先は体の横から前に見え、足裏を少し見る側へ向ける。どちらの足もお尻の後ろへしまわない。低い非対称の膝を曲げた床座りで、開脚や片膝立ちではない。両肘を体の近くで曲げ、開いた両手を口と頬へ上げ、指先を口の高さ、手のひらを顔側と緩く上へ向ける。頭を起こして顔を前へ向け、顎を少し上げ、目は前を見る。",
+    "pose_template": "Sit with the pelvis at floor level and the torso upright, facing nearly forward. Both knees are bent and positioned in front of the hips. The knee on screen-left is moderately bent, and its lower leg extends broadly outward to screen-left; the foot is far left of that knee. The knee on screen-right is more sharply bent near a right angle, and its shin extends outward to screen-right; the rightmost foot is far right of that knee. Both feet and toes are visible beside and in front of the body, with soles angled partly toward the viewer. Neither foot is tucked behind the buttocks. This is a low asymmetrical bent-knee floor sit, not a split and not a kneeling lunge. Bend both elbows close to the torso and lift the two open hands to the mouth and cheeks, fingertips around mouth height, palms angled inward and gently upward toward the face. Head upright, face forward, chin slightly lifted, eyes forward.",
+    "original_gemini_prompt": "sitting on the ground with legs spread wide open, both hands held in front of the chest with open palms facing upward",
+    "prompt_validation": {
+      "status": "修正文・画像生成未確認",
+      "note": "初回の片脚を伸ばす説明を訂正。37-r2は生成側で拒否され、画像での一致は未検証。"
+    },
+    "source": {
+      "key": "elvs_what_have_i_done",
+      "name": "37 床で顔に手を添える",
+      "category": "座る・休む",
+      "use": "驚き・考え込む",
+      "path": "poses01_cc0/poses/elvs_what_have_i_done/elvs_what_have_i_done.bvh",
+      "sha256": "1a37036ec15931134f0e59443c3817e3cd8741ac47b51fa01421c065088492f3",
+      "status": "accepted",
+      "author": "Elvaerwyn",
+      "url": "http://www.makehumancommunity.org/node/1400",
+      "distribution_url": "https://static.makehumancommunity.org/assets/assetpacks/poses01.html",
+      "license": "CC0-1.0",
+      "metadata_license": null,
+      "license_evidence": "Distribution page and pack catalog state CC0; no bundled metadata"
+    }
+  }
+]

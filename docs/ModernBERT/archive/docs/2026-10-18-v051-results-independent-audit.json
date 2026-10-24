@@ -1,0 +1,1746 @@
+{
+  "schema_version": 1,
+  "audit_kind": "independent_stdlib_numerical_recomputation",
+  "archive": "/Users/yukin_co/Downloads/nyamuru-voice-v051-colab-results.zip",
+  "created_utc": "2026-10-18T12:21:59.951239+00:00",
+  "execution_boundary": "Read JSON and JSONL directly from ZIP; executed no received code, no model loading, no training, no inference; only audit output written.",
+  "labels": [
+    "save",
+    "undo",
+    "redo",
+    "page_navigate",
+    "view_change",
+    "artwork_mode_set",
+    "bubble_set",
+    "needs_clarification",
+    "needs_reasoning",
+    "compound_request",
+    "out_of_scope_request",
+    "not_command",
+    "panel_sync_set",
+    "inner_frame_snap_set",
+    "panel_gap_snap_set",
+    "generate_request",
+    "background_3d_candidates",
+    "paint_tool_set",
+    "text_frames_align"
+  ],
+  "single_direct_label_definition": [
+    "artwork_mode_set",
+    "background_3d_candidates",
+    "bubble_set",
+    "generate_request",
+    "inner_frame_snap_set",
+    "page_navigate",
+    "paint_tool_set",
+    "panel_gap_snap_set",
+    "panel_sync_set",
+    "redo",
+    "save",
+    "text_frames_align",
+    "undo",
+    "view_change"
+  ],
+  "formula": {
+    "accuracy": "correct / n",
+    "macro_f1": "mean over all 19 declared labels of 2*TP/(gold support + predicted count), zero division = 0",
+    "seed_sd": "both population and sample SD reported; three seeds share the same fixed examples and are not independent test datasets"
+  },
+  "data": {
+    "dev": {
+      "n": 68,
+      "sha256": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+      "label_support": {
+        "save": 4,
+        "page_navigate": 3,
+        "view_change": 5,
+        "artwork_mode_set": 2,
+        "bubble_set": 4,
+        "needs_clarification": 5,
+        "needs_reasoning": 8,
+        "compound_request": 7,
+        "out_of_scope_request": 3,
+        "not_command": 5,
+        "generate_request": 4,
+        "background_3d_candidates": 2,
+        "undo": 2,
+        "redo": 3,
+        "panel_sync_set": 3,
+        "inner_frame_snap_set": 2,
+        "panel_gap_snap_set": 2,
+        "paint_tool_set": 2,
+        "text_frames_align": 2
+      }
+    },
+    "test": {
+      "n": 73,
+      "sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+      "label_support": {
+        "save": 4,
+        "undo": 4,
+        "redo": 3,
+        "page_navigate": 4,
+        "view_change": 5,
+        "artwork_mode_set": 3,
+        "bubble_set": 4,
+        "needs_reasoning": 6,
+        "compound_request": 4,
+        "out_of_scope_request": 4,
+        "not_command": 6,
+        "panel_sync_set": 3,
+        "inner_frame_snap_set": 4,
+        "panel_gap_snap_set": 2,
+        "generate_request": 2,
+        "background_3d_candidates": 4,
+        "paint_tool_set": 3,
+        "text_frames_align": 4,
+        "needs_clarification": 4
+      }
+    }
+  },
+  "selection": {
+    "selected_method": "dropout_2view",
+    "selected_seed": 43,
+    "conditions": {
+      "baseline": {
+        "learning_rate_means_recomputed_from_epoch_histories": [
+          {
+            "learning_rate": 2e-05,
+            "macro_f1": 0.8206218159778531,
+            "accuracy": 0.8137254901960784,
+            "loss": 2.760075092315674,
+            "epoch": 7.333333333333333
+          },
+          {
+            "learning_rate": 5e-05,
+            "macro_f1": 0.8235735512051302,
+            "accuracy": 0.8186274509803921,
+            "loss": 3.2037627696990967,
+            "epoch": 7.333333333333333
+          }
+        ],
+        "selected_learning_rate": 5e-05,
+        "primary_seed": 44,
+        "primary_trial": "trial-6",
+        "selected_best_epochs": {
+          "42": 7.0,
+          "43": 8.0,
+          "44": 7.0
+        },
+        "selected_mean_dev_macro_f1": 0.8235735512051302
+      },
+      "dropout_2view": {
+        "learning_rate_means_recomputed_from_epoch_histories": [
+          {
+            "learning_rate": 2e-05,
+            "macro_f1": 0.7464574411942833,
+            "accuracy": 0.7549019607843137,
+            "loss": 3.3378215630849204,
+            "epoch": 9.0
+          },
+          {
+            "learning_rate": 5e-05,
+            "macro_f1": 0.8497710407927126,
+            "accuracy": 0.8431372549019608,
+            "loss": 4.162084897359212,
+            "epoch": 8.333333333333334
+          }
+        ],
+        "selected_learning_rate": 5e-05,
+        "primary_seed": 43,
+        "primary_trial": "trial-4",
+        "selected_best_epochs": {
+          "42": 10.0,
+          "43": 8.0,
+          "44": 7.0
+        },
+        "selected_mean_dev_macro_f1": 0.8497710407927126
+      },
+      "rdrop": {
+        "learning_rate_means_recomputed_from_epoch_histories": [
+          {
+            "learning_rate": 2e-05,
+            "macro_f1": 0.6645724645724647,
+            "accuracy": 0.6813725490196079,
+            "loss": 3.477074464162191,
+            "epoch": 9.666666666666666
+          },
+          {
+            "learning_rate": 5e-05,
+            "macro_f1": 0.782566427380669,
+            "accuracy": 0.7745098039215687,
+            "loss": 2.9207595189412436,
+            "epoch": 9.333333333333334
+          }
+        ],
+        "selected_learning_rate": 5e-05,
+        "primary_seed": 44,
+        "primary_trial": "trial-6",
+        "selected_best_epochs": {
+          "42": 9.0,
+          "43": 9.0,
+          "44": 10.0
+        },
+        "selected_mean_dev_macro_f1": 0.782566427380669
+      }
+    },
+    "consistency_scope": "Recomputed best epoch and LR selection from logged dev histories, then method and primary seed; independently recomputed selected dev prediction metrics. This establishes internal consistency, not independent proof of execution chronology."
+  },
+  "metrics": {
+    "baseline": {
+      "42": {
+        "dev": {
+          "n": 68,
+          "correct": 55,
+          "accuracy": 0.8088235294117647,
+          "macro_f1": 0.8047619047619048
+        },
+        "test": {
+          "n": 73,
+          "correct": 59,
+          "accuracy": 0.8082191780821918,
+          "macro_f1": 0.8143692564745196,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 4,
+              "predicted_count": 6,
+              "recall": 1.0,
+              "precision": 0.6666666666666666,
+              "f1": 0.8
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 2,
+              "predicted_count": 2,
+              "recall": 0.3333333333333333,
+              "precision": 1.0,
+              "f1": 0.5
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 3,
+              "recall": 0.25,
+              "precision": 0.3333333333333333,
+              "f1": 0.2857142857142857
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 3,
+              "predicted_count": 5,
+              "recall": 0.75,
+              "precision": 0.6,
+              "f1": 0.6666666666666666
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 8,
+              "recall": 1.0,
+              "precision": 0.75,
+              "f1": 0.8571428571428571
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 43,
+            "error_destinations": {
+              "compound_request": 1,
+              "needs_clarification": 1,
+              "out_of_scope_request": 2,
+              "single_direct_label": 2
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 4,
+            "error_destinations": {}
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 2,
+            "error_destinations": {
+              "single_direct_label": 2,
+              "needs_reasoning": 1,
+              "needs_clarification": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "needs_reasoning": 1,
+              "compound_request": 1,
+              "single_direct_label": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1
+            }
+          }
+        }
+      },
+      "43": {
+        "dev": {
+          "n": 68,
+          "correct": 54,
+          "accuracy": 0.7941176470588235,
+          "macro_f1": 0.7999268275584065
+        },
+        "test": {
+          "n": 73,
+          "correct": 60,
+          "accuracy": 0.821917808219178,
+          "macro_f1": 0.8254873781189571,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 3,
+              "predicted_count": 7,
+              "recall": 0.75,
+              "precision": 0.42857142857142855,
+              "f1": 0.5454545454545454
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 5,
+              "predicted_count": 5,
+              "recall": 0.8333333333333334,
+              "precision": 1.0,
+              "f1": 0.9090909090909091
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 2,
+              "recall": 0.25,
+              "precision": 0.5,
+              "f1": 0.3333333333333333
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 1,
+              "recall": 0.25,
+              "precision": 1.0,
+              "f1": 0.4
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 7,
+              "recall": 1.0,
+              "precision": 0.8571428571428571,
+              "f1": 0.9230769230769231
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 44,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "compound_request": 3,
+              "needs_clarification": 1
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1
+            }
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 5,
+            "error_destinations": {
+              "single_direct_label": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "single_direct_label": 2,
+              "needs_reasoning": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "single_direct_label": 2,
+              "compound_request": 1
+            }
+          }
+        }
+      },
+      "44": {
+        "dev": {
+          "n": 68,
+          "correct": 58,
+          "accuracy": 0.8529411764705882,
+          "macro_f1": 0.8660319212950792
+        },
+        "test": {
+          "n": 73,
+          "correct": 59,
+          "accuracy": 0.8082191780821918,
+          "macro_f1": 0.8188805346700083,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 3,
+              "predicted_count": 6,
+              "recall": 0.75,
+              "precision": 0.5,
+              "f1": 0.6
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 3,
+              "predicted_count": 4,
+              "recall": 0.5,
+              "precision": 0.75,
+              "f1": 0.6
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 4,
+              "recall": 0.25,
+              "precision": 0.25,
+              "f1": 0.25
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 1,
+              "recall": 0.25,
+              "precision": 1.0,
+              "f1": 0.4
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 8,
+              "recall": 1.0,
+              "precision": 0.75,
+              "f1": 0.8571428571428571
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 45,
+            "error_destinations": {
+              "compound_request": 1,
+              "single_direct_label": 1,
+              "needs_clarification": 2
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1
+            }
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "needs_reasoning": 1,
+              "needs_clarification": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "needs_reasoning": 1,
+              "not_command": 1,
+              "single_direct_label": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "compound_request": 2
+            }
+          }
+        }
+      }
+    },
+    "dropout_2view": {
+      "42": {
+        "dev": {
+          "n": 68,
+          "correct": 57,
+          "accuracy": 0.8382352941176471,
+          "macro_f1": 0.8481625185959552
+        },
+        "test": {
+          "n": 73,
+          "correct": 59,
+          "accuracy": 0.8082191780821918,
+          "macro_f1": 0.8013366750208856,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 4,
+              "predicted_count": 8,
+              "recall": 1.0,
+              "precision": 0.5,
+              "f1": 0.6666666666666666
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 3,
+              "predicted_count": 4,
+              "recall": 0.5,
+              "precision": 0.75,
+              "f1": 0.6
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 4,
+              "recall": 0.25,
+              "precision": 0.25,
+              "f1": 0.25
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 0,
+              "predicted_count": 0,
+              "recall": 0.0,
+              "precision": 0,
+              "f1": 0.0
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 8,
+              "recall": 1.0,
+              "precision": 0.75,
+              "f1": 0.8571428571428571
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 45,
+            "error_destinations": {
+              "compound_request": 2,
+              "needs_clarification": 2
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 4,
+            "error_destinations": {}
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "needs_reasoning": 1,
+              "needs_clarification": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "needs_reasoning": 1,
+              "compound_request": 1,
+              "not_command": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 0,
+            "error_destinations": {
+              "single_direct_label": 3,
+              "compound_request": 1
+            }
+          }
+        }
+      },
+      "43": {
+        "dev": {
+          "n": 68,
+          "correct": 57,
+          "accuracy": 0.8382352941176471,
+          "macro_f1": 0.8519746335535809
+        },
+        "test": {
+          "n": 73,
+          "correct": 57,
+          "accuracy": 0.7808219178082192,
+          "macro_f1": 0.7712349054454317,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 2,
+              "predicted_count": 5,
+              "recall": 0.5,
+              "precision": 0.4,
+              "f1": 0.4444444444444444
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 4,
+              "predicted_count": 5,
+              "recall": 0.6666666666666666,
+              "precision": 0.8,
+              "f1": 0.7272727272727273
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 3,
+              "recall": 0.25,
+              "precision": 0.3333333333333333,
+              "f1": 0.2857142857142857
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 0,
+              "predicted_count": 0,
+              "recall": 0.0,
+              "precision": 0,
+              "f1": 0.0
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 6,
+              "recall": 1.0,
+              "precision": 1.0,
+              "f1": 1.0
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 44,
+            "error_destinations": {
+              "compound_request": 2,
+              "single_direct_label": 2,
+              "needs_clarification": 1
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 2,
+            "error_destinations": {
+              "single_direct_label": 2
+            }
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 4,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "needs_clarification": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "single_direct_label": 2,
+              "not_command": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 0,
+            "error_destinations": {
+              "single_direct_label": 3,
+              "compound_request": 1
+            }
+          }
+        }
+      },
+      "44": {
+        "dev": {
+          "n": 68,
+          "correct": 58,
+          "accuracy": 0.8529411764705882,
+          "macro_f1": 0.8491759702286018
+        },
+        "test": {
+          "n": 73,
+          "correct": 59,
+          "accuracy": 0.8082191780821918,
+          "macro_f1": 0.7913300150142255,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 4,
+              "predicted_count": 4,
+              "recall": 1.0,
+              "precision": 1.0,
+              "f1": 1.0
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 4,
+              "predicted_count": 5,
+              "recall": 0.6666666666666666,
+              "precision": 0.8,
+              "f1": 0.7272727272727273
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 1,
+              "recall": 0.25,
+              "precision": 1.0,
+              "f1": 0.4
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 0,
+              "predicted_count": 0,
+              "recall": 0.0,
+              "precision": 0,
+              "f1": 0.0
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 7,
+              "recall": 1.0,
+              "precision": 0.8571428571428571,
+              "f1": 0.9230769230769231
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 44,
+            "error_destinations": {
+              "single_direct_label": 5
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 4,
+            "error_destinations": {}
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 4,
+            "error_destinations": {
+              "single_direct_label": 2
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "needs_reasoning": 1,
+              "single_direct_label": 1,
+              "not_command": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 0,
+            "error_destinations": {
+              "single_direct_label": 4
+            }
+          }
+        }
+      }
+    },
+    "rdrop": {
+      "42": {
+        "dev": {
+          "n": 68,
+          "correct": 51,
+          "accuracy": 0.75,
+          "macro_f1": 0.7431704260651629
+        },
+        "test": {
+          "n": 73,
+          "correct": 60,
+          "accuracy": 0.821917808219178,
+          "macro_f1": 0.8073283441704494,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 2,
+              "predicted_count": 5,
+              "recall": 0.5,
+              "precision": 0.4,
+              "f1": 0.4444444444444444
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 4,
+              "predicted_count": 4,
+              "recall": 0.6666666666666666,
+              "precision": 1.0,
+              "f1": 0.8
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 1,
+              "recall": 0.25,
+              "precision": 1.0,
+              "f1": 0.4
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 0,
+              "predicted_count": 0,
+              "recall": 0.0,
+              "precision": 0,
+              "f1": 0.0
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 7,
+              "recall": 1.0,
+              "precision": 0.8571428571428571,
+              "f1": 0.9230769230769231
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 47,
+            "error_destinations": {
+              "compound_request": 1,
+              "single_direct_label": 1
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 2,
+            "error_destinations": {
+              "single_direct_label": 2
+            }
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 4,
+            "error_destinations": {
+              "single_direct_label": 2
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "needs_reasoning": 1,
+              "compound_request": 1,
+              "single_direct_label": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 0,
+            "error_destinations": {
+              "single_direct_label": 3,
+              "compound_request": 1
+            }
+          }
+        }
+      },
+      "43": {
+        "dev": {
+          "n": 68,
+          "correct": 53,
+          "accuracy": 0.7794117647058824,
+          "macro_f1": 0.7912698412698412
+        },
+        "test": {
+          "n": 73,
+          "correct": 60,
+          "accuracy": 0.821917808219178,
+          "macro_f1": 0.8085548953970007,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 3,
+              "predicted_count": 7,
+              "recall": 0.75,
+              "precision": 0.42857142857142855,
+              "f1": 0.5454545454545454
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 3,
+              "predicted_count": 3,
+              "recall": 0.5,
+              "precision": 1.0,
+              "f1": 0.6666666666666666
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 2,
+              "recall": 0.25,
+              "precision": 0.5,
+              "f1": 0.3333333333333333
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 0,
+              "predicted_count": 0,
+              "recall": 0.0,
+              "precision": 0,
+              "f1": 0.0
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 7,
+              "recall": 1.0,
+              "precision": 0.8571428571428571,
+              "f1": 0.9230769230769231
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 47,
+            "error_destinations": {
+              "compound_request": 2
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1
+            }
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 3,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "needs_reasoning": 1,
+              "needs_clarification": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "single_direct_label": 2,
+              "compound_request": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 0,
+            "error_destinations": {
+              "single_direct_label": 3,
+              "compound_request": 1
+            }
+          }
+        }
+      },
+      "44": {
+        "dev": {
+          "n": 68,
+          "correct": 54,
+          "accuracy": 0.7941176470588235,
+          "macro_f1": 0.8132590148070025
+        },
+        "test": {
+          "n": 73,
+          "correct": 58,
+          "accuracy": 0.7945205479452054,
+          "macro_f1": 0.7830441488336225,
+          "key_boundary_per_class": {
+            "compound_request": {
+              "support": 4,
+              "correct": 2,
+              "predicted_count": 3,
+              "recall": 0.5,
+              "precision": 0.6666666666666666,
+              "f1": 0.5714285714285714
+            },
+            "not_command": {
+              "support": 6,
+              "correct": 4,
+              "predicted_count": 6,
+              "recall": 0.6666666666666666,
+              "precision": 0.6666666666666666,
+              "f1": 0.6666666666666666
+            },
+            "needs_clarification": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 2,
+              "recall": 0.25,
+              "precision": 0.5,
+              "f1": 0.3333333333333333
+            },
+            "out_of_scope_request": {
+              "support": 4,
+              "correct": 1,
+              "predicted_count": 1,
+              "recall": 0.25,
+              "precision": 1.0,
+              "f1": 0.4
+            },
+            "needs_reasoning": {
+              "support": 6,
+              "correct": 6,
+              "predicted_count": 7,
+              "recall": 1.0,
+              "precision": 0.8571428571428571,
+              "f1": 0.9230769230769231
+            }
+          }
+        },
+        "test_boundary_counts": {
+          "single_direct_label": {
+            "support": 49,
+            "exact_correct": 44,
+            "error_destinations": {
+              "not_command": 1,
+              "single_direct_label": 4
+            }
+          },
+          "needs_reasoning": {
+            "support": 6,
+            "exact_correct": 6,
+            "error_destinations": {}
+          },
+          "compound_request": {
+            "support": 4,
+            "exact_correct": 2,
+            "error_destinations": {
+              "single_direct_label": 2
+            }
+          },
+          "not_command": {
+            "support": 6,
+            "exact_correct": 4,
+            "error_destinations": {
+              "single_direct_label": 1,
+              "needs_clarification": 1
+            }
+          },
+          "needs_clarification": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "needs_reasoning": 1,
+              "single_direct_label": 1,
+              "not_command": 1
+            }
+          },
+          "out_of_scope_request": {
+            "support": 4,
+            "exact_correct": 1,
+            "error_destinations": {
+              "single_direct_label": 2,
+              "compound_request": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "baseline": {
+      "dev": {
+        "accuracy": {
+          "mean": 0.8186274509803921,
+          "population_sd": 0.024995193694082277,
+          "sample_sd": 0.030612735286266655
+        },
+        "macro_f1": {
+          "mean": 0.8235735512051302,
+          "population_sd": 0.03008742135746274,
+          "sample_sd": 0.03684941500095025
+        },
+        "correct_per_seed": [
+          55,
+          54,
+          58
+        ]
+      },
+      "test": {
+        "accuracy": {
+          "mean": 0.8127853881278538,
+          "population_sd": 0.006457596175219586,
+          "sample_sd": 0.007908907797118128
+        },
+        "macro_f1": {
+          "mean": 0.8195790564211617,
+          "population_sd": 0.0045657497889359565,
+          "sample_sd": 0.005591878638056542
+        },
+        "correct_per_seed": [
+          59,
+          60,
+          59
+        ]
+      }
+    },
+    "dropout_2view": {
+      "dev": {
+        "accuracy": {
+          "mean": 0.8431372549019608,
+          "population_sd": 0.0069324194233975,
+          "sample_sd": 0.008490445135141526
+        },
+        "macro_f1": {
+          "mean": 0.8497710407927126,
+          "population_sd": 0.0016121697273637065,
+          "sample_sd": 0.001974496605401476
+        },
+        "correct_per_seed": [
+          57,
+          57,
+          58
+        ]
+      },
+      "test": {
+        "accuracy": {
+          "mean": 0.7990867579908676,
+          "population_sd": 0.012915192350439223,
+          "sample_sd": 0.015817815594236322
+        },
+        "macro_f1": {
+          "mean": 0.7879671984935143,
+          "population_sd": 0.012516936102934193,
+          "sample_sd": 0.015330053297604876
+        },
+        "correct_per_seed": [
+          59,
+          57,
+          59
+        ]
+      }
+    },
+    "rdrop": {
+      "dev": {
+        "accuracy": {
+          "mean": 0.7745098039215687,
+          "population_sd": 0.018341457778303618,
+          "sample_sd": 0.022463606347822726
+        },
+        "macro_f1": {
+          "mean": 0.7825664273806688,
+          "population_sd": 0.02926789626821349,
+          "sample_sd": 0.0358457058509155
+        },
+        "correct_per_seed": [
+          51,
+          53,
+          54
+        ]
+      },
+      "test": {
+        "accuracy": {
+          "mean": 0.8127853881278538,
+          "population_sd": 0.012915192350439223,
+          "sample_sd": 0.015817815594236322
+        },
+        "macro_f1": {
+          "mean": 0.7996424628003576,
+          "population_sd": 0.011747457225050072,
+          "sample_sd": 0.014387637988272145
+        },
+        "correct_per_seed": [
+          60,
+          60,
+          58
+        ]
+      }
+    }
+  },
+  "matched_seed_test_comparisons_vs_baseline": {
+    "dropout_2view": {
+      "42": {
+        "baseline_correct": 59,
+        "candidate_correct": 59,
+        "delta_correct": 0,
+        "delta_accuracy_percentage_points": 0.0,
+        "delta_macro_f1": -0.013032581453634062,
+        "fixed_count": 7,
+        "regressed_count": 7,
+        "fixed_ids": [
+          "nyamuru_voice_2779",
+          "nyamuru_voice_2899",
+          "nyamuru_voice_3204",
+          "nyamuru_voice_3245",
+          "nyamuru_voice_3255",
+          "nyamuru_voice_3273",
+          "nyamuru_voice_3274"
+        ],
+        "regressed_ids": [
+          "nyamuru_voice_2753",
+          "nyamuru_voice_2778",
+          "nyamuru_voice_2826",
+          "nyamuru_voice_3219",
+          "nyamuru_voice_3241",
+          "nyamuru_voice_3242",
+          "nyamuru_voice_3261"
+        ]
+      },
+      "43": {
+        "baseline_correct": 60,
+        "candidate_correct": 57,
+        "delta_correct": -3,
+        "delta_accuracy_percentage_points": -4.109589041095885,
+        "delta_macro_f1": -0.0542524726735254,
+        "fixed_count": 2,
+        "regressed_count": 5,
+        "fixed_ids": [
+          "nyamuru_voice_2770",
+          "nyamuru_voice_3204"
+        ],
+        "regressed_ids": [
+          "nyamuru_voice_2707",
+          "nyamuru_voice_2778",
+          "nyamuru_voice_2826",
+          "nyamuru_voice_3239",
+          "nyamuru_voice_3247"
+        ]
+      },
+      "44": {
+        "baseline_correct": 59,
+        "candidate_correct": 59,
+        "delta_correct": 0,
+        "delta_accuracy_percentage_points": 0.0,
+        "delta_macro_f1": -0.027550519655782812,
+        "fixed_count": 5,
+        "regressed_count": 5,
+        "fixed_ids": [
+          "nyamuru_voice_2755",
+          "nyamuru_voice_2815",
+          "nyamuru_voice_2840",
+          "nyamuru_voice_3201",
+          "nyamuru_voice_3205"
+        ],
+        "regressed_ids": [
+          "nyamuru_voice_2753",
+          "nyamuru_voice_2826",
+          "nyamuru_voice_3204",
+          "nyamuru_voice_3253",
+          "nyamuru_voice_3255"
+        ]
+      }
+    },
+    "rdrop": {
+      "42": {
+        "baseline_correct": 59,
+        "candidate_correct": 60,
+        "delta_correct": 1,
+        "delta_accuracy_percentage_points": 1.3698630136986245,
+        "delta_macro_f1": -0.007040912304070224,
+        "fixed_count": 8,
+        "regressed_count": 7,
+        "fixed_ids": [
+          "nyamuru_voice_2779",
+          "nyamuru_voice_2840",
+          "nyamuru_voice_2899",
+          "nyamuru_voice_3204",
+          "nyamuru_voice_3245",
+          "nyamuru_voice_3255",
+          "nyamuru_voice_3273",
+          "nyamuru_voice_3274"
+        ],
+        "regressed_ids": [
+          "nyamuru_voice_2753",
+          "nyamuru_voice_2815",
+          "nyamuru_voice_2826",
+          "nyamuru_voice_3219",
+          "nyamuru_voice_3239",
+          "nyamuru_voice_3241",
+          "nyamuru_voice_3242"
+        ]
+      },
+      "43": {
+        "baseline_correct": 60,
+        "candidate_correct": 60,
+        "delta_correct": 0,
+        "delta_accuracy_percentage_points": 0.0,
+        "delta_macro_f1": -0.016932482721956466,
+        "fixed_count": 5,
+        "regressed_count": 5,
+        "fixed_ids": [
+          "nyamuru_voice_2753",
+          "nyamuru_voice_2755",
+          "nyamuru_voice_2770",
+          "nyamuru_voice_2815",
+          "nyamuru_voice_3219"
+        ],
+        "regressed_ids": [
+          "nyamuru_voice_2778",
+          "nyamuru_voice_2826",
+          "nyamuru_voice_2840",
+          "nyamuru_voice_3239",
+          "nyamuru_voice_3247"
+        ]
+      },
+      "44": {
+        "baseline_correct": 59,
+        "candidate_correct": 58,
+        "delta_correct": -1,
+        "delta_accuracy_percentage_points": -1.3698630136986356,
+        "delta_macro_f1": -0.03583638583638582,
+        "fixed_count": 5,
+        "regressed_count": 6,
+        "fixed_ids": [
+          "nyamuru_voice_2755",
+          "nyamuru_voice_2815",
+          "nyamuru_voice_2840",
+          "nyamuru_voice_3201",
+          "nyamuru_voice_3205"
+        ],
+        "regressed_ids": [
+          "nyamuru_voice_3203",
+          "nyamuru_voice_3204",
+          "nyamuru_voice_3211",
+          "nyamuru_voice_3237",
+          "nyamuru_voice_3239",
+          "nyamuru_voice_3308"
+        ]
+      }
+    }
+  },
+  "primary_test_comparison_dropout43_vs_baseline44": {
+    "baseline_correct": 59,
+    "candidate_correct": 57,
+    "delta_correct": -2,
+    "delta_accuracy_percentage_points": -2.73972602739726,
+    "delta_macro_f1": -0.0476456292245766,
+    "fixed_count": 3,
+    "regressed_count": 5,
+    "fixed_ids": [
+      "nyamuru_voice_2840",
+      "nyamuru_voice_3201",
+      "nyamuru_voice_3205"
+    ],
+    "regressed_ids": [
+      "nyamuru_voice_2707",
+      "nyamuru_voice_2753",
+      "nyamuru_voice_2778",
+      "nyamuru_voice_2826",
+      "nyamuru_voice_3239"
+    ]
+  },
+  "primary_test_errors": {
+    "baseline/seed-44": [
+      {
+        "id": "nyamuru_voice_2755",
+        "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+        "gold": "view_change",
+        "predicted": "compound_request",
+        "confidence": 0.8228664398193359
+      },
+      {
+        "id": "nyamuru_voice_2815",
+        "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+        "gold": "compound_request",
+        "predicted": "bubble_set",
+        "confidence": 0.9999946355819702
+      },
+      {
+        "id": "nyamuru_voice_2823",
+        "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+        "gold": "out_of_scope_request",
+        "predicted": "page_navigate",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_2836",
+        "text": "次の休憩前に作品を保存するつもり。",
+        "gold": "not_command",
+        "predicted": "save",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_2840",
+        "text": "この吹き出しの文字、今日は妙に大きく見えるな。",
+        "gold": "not_command",
+        "predicted": "needs_reasoning",
+        "confidence": 0.9985987544059753
+      },
+      {
+        "id": "nyamuru_voice_3201",
+        "text": "保存って言ったのはコピーを作る話じゃなくて、今の作品に変更を残すほう。それを実行して。",
+        "gold": "save",
+        "predicted": "generate_request",
+        "confidence": 0.9852214455604553
+      },
+      {
+        "id": "nyamuru_voice_3205",
+        "text": "たった今動かした吹き出し、動かす前の状態に戻せる？　新しく動かすんじゃなくて、履歴を一つ戻してほしい。",
+        "gold": "undo",
+        "predicted": "needs_clarification",
+        "confidence": 0.9102420806884766
+      },
+      {
+        "id": "nyamuru_voice_3219",
+        "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+        "gold": "view_change",
+        "predicted": "needs_clarification",
+        "confidence": 0.999457061290741
+      },
+      {
+        "id": "nyamuru_voice_3228",
+        "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+        "gold": "needs_clarification",
+        "predicted": "needs_reasoning",
+        "confidence": 0.9868775010108948
+      },
+      {
+        "id": "nyamuru_voice_3241",
+        "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+        "gold": "out_of_scope_request",
+        "predicted": "compound_request",
+        "confidence": 0.6992501616477966
+      },
+      {
+        "id": "nyamuru_voice_3242",
+        "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+        "gold": "out_of_scope_request",
+        "predicted": "compound_request",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3247",
+        "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+        "gold": "not_command",
+        "predicted": "needs_clarification",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3304",
+        "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+        "gold": "needs_clarification",
+        "predicted": "not_command",
+        "confidence": 0.8879255056381226
+      },
+      {
+        "id": "nyamuru_voice_3305",
+        "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+        "gold": "needs_clarification",
+        "predicted": "view_change",
+        "confidence": 1.0
+      }
+    ],
+    "dropout_2view/seed-43": [
+      {
+        "id": "nyamuru_voice_2707",
+        "text": "保存して。念押しだけど、今の作品を保存してね。",
+        "gold": "save",
+        "predicted": "compound_request",
+        "confidence": 0.8633888959884644
+      },
+      {
+        "id": "nyamuru_voice_2753",
+        "text": "絵の寸法は変えず、表示を原寸にして。",
+        "gold": "view_change",
+        "predicted": "bubble_set",
+        "confidence": 0.9996022582054138
+      },
+      {
+        "id": "nyamuru_voice_2755",
+        "text": "作画ガイドを消して。もう一度言うね、作画ガイドは非表示で。",
+        "gold": "view_change",
+        "predicted": "artwork_mode_set",
+        "confidence": 0.9999237060546875
+      },
+      {
+        "id": "nyamuru_voice_2778",
+        "text": "しっぽを消して、いや、選択中の吹き出しはしっぽありにして。",
+        "gold": "bubble_set",
+        "predicted": "compound_request",
+        "confidence": 0.9778629541397095
+      },
+      {
+        "id": "nyamuru_voice_2815",
+        "text": "選択中の吹き出しの本文は変えず、しっぽを消して所属を二番のコマにして。",
+        "gold": "compound_request",
+        "predicted": "bubble_set",
+        "confidence": 0.9999798536300659
+      },
+      {
+        "id": "nyamuru_voice_2823",
+        "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+        "gold": "out_of_scope_request",
+        "predicted": "page_navigate",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_2826",
+        "text": "背景の候補提示はやめて、外部サイトで教室の3Dモデルを検索して。",
+        "gold": "out_of_scope_request",
+        "predicted": "background_3d_candidates",
+        "confidence": 0.9999843835830688
+      },
+      {
+        "id": "nyamuru_voice_2836",
+        "text": "次の休憩前に作品を保存するつもり。",
+        "gold": "not_command",
+        "predicted": "save",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3219",
+        "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+        "gold": "view_change",
+        "predicted": "needs_clarification",
+        "confidence": 0.9352801442146301
+      },
+      {
+        "id": "nyamuru_voice_3228",
+        "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+        "gold": "needs_clarification",
+        "predicted": "bubble_set",
+        "confidence": 0.8259264826774597
+      },
+      {
+        "id": "nyamuru_voice_3239",
+        "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+        "gold": "compound_request",
+        "predicted": "panel_gap_snap_set",
+        "confidence": 0.9999679327011108
+      },
+      {
+        "id": "nyamuru_voice_3241",
+        "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+        "gold": "out_of_scope_request",
+        "predicted": "page_navigate",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3242",
+        "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+        "gold": "out_of_scope_request",
+        "predicted": "compound_request",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3247",
+        "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+        "gold": "not_command",
+        "predicted": "needs_clarification",
+        "confidence": 0.9999988079071045
+      },
+      {
+        "id": "nyamuru_voice_3304",
+        "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+        "gold": "needs_clarification",
+        "predicted": "not_command",
+        "confidence": 0.9999935626983643
+      },
+      {
+        "id": "nyamuru_voice_3305",
+        "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+        "gold": "needs_clarification",
+        "predicted": "view_change",
+        "confidence": 1.0
+      }
+    ],
+    "rdrop/seed-44": [
+      {
+        "id": "nyamuru_voice_2823",
+        "text": "ページの順番を間違えた。三ページ目を一ページ目の前へ移して。",
+        "gold": "out_of_scope_request",
+        "predicted": "page_navigate",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_2836",
+        "text": "次の休憩前に作品を保存するつもり。",
+        "gold": "not_command",
+        "predicted": "save",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3203",
+        "text": "いま保存を押してほしい。保存先や作品名は、この作品のままでいい。",
+        "gold": "save",
+        "predicted": "not_command",
+        "confidence": 0.9957647323608398
+      },
+      {
+        "id": "nyamuru_voice_3204",
+        "text": "最後にやったのは文字の移動で、その前が線を一本描く編集。この二つをまとめてUndoして。",
+        "gold": "undo",
+        "predicted": "text_frames_align",
+        "confidence": 0.9251019358634949
+      },
+      {
+        "id": "nyamuru_voice_3211",
+        "text": "Redoをお願いします。回数の指定を先に言い忘れたけど、一回です。",
+        "gold": "redo",
+        "predicted": "undo",
+        "confidence": 0.503074049949646
+      },
+      {
+        "id": "nyamuru_voice_3219",
+        "text": "どのタブか、名前を言うね。「小道具」。そこを開いて。",
+        "gold": "view_change",
+        "predicted": "bubble_set",
+        "confidence": 0.9999663829803467
+      },
+      {
+        "id": "nyamuru_voice_3228",
+        "text": "これ、広すぎるな。選択中の吹き出しの幅を少し詰めてもらえる？",
+        "gold": "needs_clarification",
+        "predicted": "needs_reasoning",
+        "confidence": 1.0
+      },
+      {
+        "id": "nyamuru_voice_3237",
+        "text": "このページ全体を生成してほしい。あ、それとは別に、作業中の作品の保存も今お願い。",
+        "gold": "compound_request",
+        "predicted": "save",
+        "confidence": 0.6387975811958313
+      },
+      {
+        "id": "nyamuru_voice_3239",
+        "text": "内枠スナップとコマスナップ、両方オンでお願い。あ、今の訂正はコマスナップだけ、そっちはオフにして。",
+        "gold": "compound_request",
+        "predicted": "panel_gap_snap_set",
+        "confidence": 0.6562771201133728
+      },
+      {
+        "id": "nyamuru_voice_3241",
+        "text": "最終ページの次に、白紙を一枚足したい。そのページを追加してもらえる？",
+        "gold": "out_of_scope_request",
+        "predicted": "page_navigate",
+        "confidence": 0.7824904918670654
+      },
+      {
+        "id": "nyamuru_voice_3242",
+        "text": "この作品を複製したファイルが欲しい。名前は「寄り道メモ」にして、別名保存で作って。",
+        "gold": "out_of_scope_request",
+        "predicted": "compound_request",
+        "confidence": 0.9999921321868896
+      },
+      {
+        "id": "nyamuru_voice_3247",
+        "text": "次のページへ行くつもりだったけど、もう少しここを見てる。",
+        "gold": "not_command",
+        "predicted": "needs_clarification",
+        "confidence": 0.987128496170044
+      },
+      {
+        "id": "nyamuru_voice_3304",
+        "text": "選択中の吹き出しの大きさ、縦も横も今よりちょっと控えめにしてくれる？",
+        "gold": "needs_clarification",
+        "predicted": "bubble_set",
+        "confidence": 0.9566113352775574
+      },
+      {
+        "id": "nyamuru_voice_3305",
+        "text": "ガイドの表示をオフにして。種類の名前が思い出せないけど。",
+        "gold": "needs_clarification",
+        "predicted": "not_command",
+        "confidence": 0.9999994039535522
+      },
+      {
+        "id": "nyamuru_voice_3308",
+        "text": "「コマスナップ」と書かれた設定があるね。そこを有効にして。",
+        "gold": "panel_gap_snap_set",
+        "predicted": "inner_frame_snap_set",
+        "confidence": 0.9884819984436035
+      }
+    ]
+  },
+  "all_checks_passed": true,
+  "conclusion": {
+    "dev_selection_improves": "dropout_2view has the highest reused-dev mean macro-F1; its primary seed43 follows the declared macro-F1-first rule despite seed44 having higher dev accuracy.",
+    "test_regression_evidence": "No support for improvement on test73: dropout_2view has lower macro-F1 than baseline at every matched seed; its primary seed43 has fewer correct predictions and lower macro-F1 than baseline seed44. R-drop also has lower macro-F1 than baseline at every matched seed, with mixed accuracy changes.",
+    "kl_specific_evidence": "R-drop is not selected by reused-dev scores. Its test mean macro-F1 is slightly above dropout_2view but below baseline; the narrow fixed sample does not establish a general KL benefit.",
+    "acceptance": "Test73 and all legacy splits were previously inspected and are regression-only. This ZIP contains no new independent holdout or real-user/ASR evaluation; independent acceptance remains false.",
+    "uncertainty": "Three seeds on the same 73 examples, sparse per-label support (2-6 test rows), reused dev selection, synthetic text, and no inference replay limit conclusions. No production adoption is justified by this audit."
+  },
+  "verification_summary": {
+    "check_count": 121,
+    "passed_count": 121,
+    "failed_checks": [],
+    "checked_categories": [
+      "best epoch selection across 18 trials from dev histories",
+      "shared learning rate means and choices for all methods",
+      "method and primary seed selection",
+      "18 prediction files: row IDs/text/gold, correctness flags, argmax, finite probabilities, probability sums",
+      "selected dev metrics vs selected trial metrics",
+      "accuracy and macro-F1 vs reported metrics",
+      "all 19 labels supported on both dev and test",
+      "method dev/test bytes vs root data",
+      "paired test IDs and gold labels"
+    ]
+  }
+}

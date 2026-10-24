@@ -1,0 +1,49 @@
+{
+  "status": "verified",
+  "version": "v0.5",
+  "frozen_inputs": 161,
+  "zip_entries": 162,
+  "zip_sha256": "047640c766ae92fb36a6c1f1e553c9642e977c87b91a1b36ce4260919e45c209",
+  "zip_bytes": 3706358,
+  "notebook_sha256": "1b4335e944b3737f3c6397a8c6fc5963a9633a3b83c5773006922441f5d08142",
+  "notebook_code_cells_ast_verified": 5,
+  "embedded_download_python_ast_verified": true,
+  "isolated_bundle_tests": {
+    "run": 35,
+    "passed": 24,
+    "skipped_other_dataset_version": 11
+  },
+  "root_tests": {
+    "run": 55,
+    "passed": 29,
+    "skipped_other_dataset_version": 26
+  },
+  "rebuild_byte_identical": {
+    "zip": true,
+    "notebook": true
+  },
+  "old_frozen_inputs": {
+    "v0.3": {
+      "files": 102,
+      "all_match": true
+    },
+    "v0.4": {
+      "files": 154,
+      "all_match": true
+    }
+  },
+  "all_seven_splits_identical_to_v04": true,
+  "tiny_cpu_smoke": {
+    "status": "passed",
+    "conditions": 3,
+    "trials": 18,
+    "checkpoints": 9,
+    "checked_predictions": 17406,
+    "downloaded_artifact_unchanged": true,
+    "real_inputs_unchanged": true
+  },
+  "real_30m_training_performed": false,
+  "cuda_training_performed": false,
+  "accuracy_improvement_measured": false,
+  "scope": "Implementation and deterministic package validation only. Real model comparison requires Colab run."
+}

@@ -1,0 +1,3037 @@
+{
+  "method": "Original groups indivisible; reviewed close paraphrases and contrast groups unioned. No model predictions consulted.",
+  "target_ratio": {
+    "train": 0.7,
+    "dev": 0.15,
+    "test": 0.15
+  },
+  "constraint": "At least 4 train examples per class; prioritize dev/test labels with >=2 examples. Missing classes are explicit.",
+  "solver": {
+    "solver": "scipy.optimize.milp / HiGHS",
+    "status": 0,
+    "objective": -2213.799673380456,
+    "message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)"
+  },
+  "assignments": {
+    "nyamuru_voice_001": {
+      "family": "save_basic",
+      "split": "train",
+      "original_group": "save_basic"
+    },
+    "nyamuru_voice_002": {
+      "family": "save_basic",
+      "split": "train",
+      "original_group": "save_basic"
+    },
+    "nyamuru_voice_003": {
+      "family": "save_basic",
+      "split": "train",
+      "original_group": "save_basic"
+    },
+    "nyamuru_voice_004": {
+      "family": "save_edits",
+      "split": "test",
+      "original_group": "save_edits"
+    },
+    "nyamuru_voice_005": {
+      "family": "save_edits",
+      "split": "test",
+      "original_group": "save_edits"
+    },
+    "nyamuru_voice_006": {
+      "family": "save_basic",
+      "split": "train",
+      "original_group": "save_request_question"
+    },
+    "nyamuru_voice_007": {
+      "family": "save_button",
+      "split": "dev",
+      "original_group": "save_button"
+    },
+    "nyamuru_voice_008": {
+      "family": "save_edits",
+      "split": "test",
+      "original_group": "save_edits"
+    },
+    "nyamuru_voice_009": {
+      "family": "save_report_then_request",
+      "split": "dev",
+      "original_group": "save_report_then_request"
+    },
+    "nyamuru_voice_010": {
+      "family": "save_self_correction",
+      "split": "train",
+      "original_group": "save_self_correction"
+    },
+    "nyamuru_voice_011": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_basic"
+    },
+    "nyamuru_voice_012": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_basic"
+    },
+    "nyamuru_voice_013": {
+      "family": "undo_last_edit",
+      "split": "test",
+      "original_group": "undo_last_edit"
+    },
+    "nyamuru_voice_014": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_basic"
+    },
+    "nyamuru_voice_015": {
+      "family": "redo_button",
+      "split": "dev",
+      "original_group": "undo_button"
+    },
+    "nyamuru_voice_016": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_basic"
+    },
+    "nyamuru_voice_017": {
+      "family": "undo_last_edit",
+      "split": "test",
+      "original_group": "undo_last_edit"
+    },
+    "nyamuru_voice_018": {
+      "family": "redo_count",
+      "split": "dev",
+      "original_group": "undo_count"
+    },
+    "nyamuru_voice_019": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_request_question"
+    },
+    "nyamuru_voice_020": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_vs_page"
+    },
+    "nyamuru_voice_021": {
+      "family": "redo_basic",
+      "split": "test",
+      "original_group": "redo_basic"
+    },
+    "nyamuru_voice_022": {
+      "family": "redo_after_undo",
+      "split": "train",
+      "original_group": "redo_after_undo"
+    },
+    "nyamuru_voice_023": {
+      "family": "redo_after_undo",
+      "split": "train",
+      "original_group": "redo_after_undo"
+    },
+    "nyamuru_voice_024": {
+      "family": "redo_button",
+      "split": "dev",
+      "original_group": "redo_button"
+    },
+    "nyamuru_voice_025": {
+      "family": "redo_after_undo",
+      "split": "train",
+      "original_group": "redo_after_undo"
+    },
+    "nyamuru_voice_026": {
+      "family": "redo_count",
+      "split": "dev",
+      "original_group": "redo_count"
+    },
+    "nyamuru_voice_027": {
+      "family": "redo_after_undo",
+      "split": "train",
+      "original_group": "redo_after_undo"
+    },
+    "nyamuru_voice_028": {
+      "family": "redo_basic",
+      "split": "test",
+      "original_group": "redo_basic"
+    },
+    "nyamuru_voice_029": {
+      "family": "redo_after_undo",
+      "split": "train",
+      "original_group": "redo_after_undo"
+    },
+    "nyamuru_voice_030": {
+      "family": "redo_vs_generate",
+      "split": "train",
+      "original_group": "redo_vs_generate"
+    },
+    "nyamuru_voice_031": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_next"
+    },
+    "nyamuru_voice_032": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_next"
+    },
+    "nyamuru_voice_033": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_next"
+    },
+    "nyamuru_voice_034": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_previous"
+    },
+    "nyamuru_voice_035": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_previous"
+    },
+    "nyamuru_voice_036": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_previous"
+    },
+    "nyamuru_voice_037": {
+      "family": "compound_page_tab",
+      "split": "dev",
+      "original_group": "page_number"
+    },
+    "nyamuru_voice_038": {
+      "family": "compound_page_tab",
+      "split": "dev",
+      "original_group": "page_number"
+    },
+    "nyamuru_voice_039": {
+      "family": "compound_page_tab",
+      "split": "dev",
+      "original_group": "page_number"
+    },
+    "nyamuru_voice_040": {
+      "family": "compound_page_tab",
+      "split": "dev",
+      "original_group": "page_number"
+    },
+    "nyamuru_voice_041": {
+      "family": "page_first",
+      "split": "test",
+      "original_group": "page_first"
+    },
+    "nyamuru_voice_042": {
+      "family": "page_last",
+      "split": "train",
+      "original_group": "page_last"
+    },
+    "nyamuru_voice_043": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_relative_count"
+    },
+    "nyamuru_voice_044": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_relative_count"
+    },
+    "nyamuru_voice_045": {
+      "family": "compound_save_page",
+      "split": "test",
+      "original_group": "page_next_without_save"
+    },
+    "nyamuru_voice_046": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_vs_page"
+    },
+    "nyamuru_voice_047": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "whole_view_vs_mode"
+    },
+    "nyamuru_voice_048": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "zoom_fit"
+    },
+    "nyamuru_voice_049": {
+      "family": "zoom_in",
+      "split": "train",
+      "original_group": "zoom_in"
+    },
+    "nyamuru_voice_050": {
+      "family": "zoom_in",
+      "split": "train",
+      "original_group": "zoom_in"
+    },
+    "nyamuru_voice_051": {
+      "family": "zoom_in",
+      "split": "train",
+      "original_group": "zoom_out"
+    },
+    "nyamuru_voice_052": {
+      "family": "zoom_in",
+      "split": "train",
+      "original_group": "zoom_out"
+    },
+    "nyamuru_voice_053": {
+      "family": "zoom_100",
+      "split": "test",
+      "original_group": "zoom_100"
+    },
+    "nyamuru_voice_054": {
+      "family": "zoom_100",
+      "split": "test",
+      "original_group": "zoom_100"
+    },
+    "nyamuru_voice_055": {
+      "family": "spread_negative",
+      "split": "train",
+      "original_group": "spread_on"
+    },
+    "nyamuru_voice_056": {
+      "family": "spread_negative",
+      "split": "train",
+      "original_group": "spread_on"
+    },
+    "nyamuru_voice_057": {
+      "family": "spread_negative",
+      "split": "train",
+      "original_group": "spread_off"
+    },
+    "nyamuru_voice_058": {
+      "family": "placement_guide",
+      "split": "dev",
+      "original_group": "placement_guide"
+    },
+    "nyamuru_voice_059": {
+      "family": "placement_guide",
+      "split": "dev",
+      "original_group": "placement_guide"
+    },
+    "nyamuru_voice_060": {
+      "family": "edit_guide",
+      "split": "train",
+      "original_group": "edit_guide"
+    },
+    "nyamuru_voice_061": {
+      "family": "edit_guide",
+      "split": "train",
+      "original_group": "edit_guide"
+    },
+    "nyamuru_voice_062": {
+      "family": "artwork_guide",
+      "split": "train",
+      "original_group": "artwork_guide"
+    },
+    "nyamuru_voice_063": {
+      "family": "artwork_guide",
+      "split": "train",
+      "original_group": "artwork_guide"
+    },
+    "nyamuru_voice_064": {
+      "family": "compound_page_tab",
+      "split": "dev",
+      "original_group": "tab_scenario"
+    },
+    "nyamuru_voice_065": {
+      "family": "tab_characters",
+      "split": "test",
+      "original_group": "tab_characters"
+    },
+    "nyamuru_voice_066": {
+      "family": "tab_storyboard",
+      "split": "train",
+      "original_group": "tab_storyboard"
+    },
+    "nyamuru_voice_067": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_integrated"
+    },
+    "nyamuru_voice_068": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "whole_view_vs_mode"
+    },
+    "nyamuru_voice_069": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_integrated"
+    },
+    "nyamuru_voice_070": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_integrated"
+    },
+    "nyamuru_voice_071": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_without_run"
+    },
+    "nyamuru_voice_072": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_draft"
+    },
+    "nyamuru_voice_073": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_draft"
+    },
+    "nyamuru_voice_074": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_draft"
+    },
+    "nyamuru_voice_075": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_draft"
+    },
+    "nyamuru_voice_076": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_without_run"
+    },
+    "nyamuru_voice_077": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "bubble_shape_square"
+    },
+    "nyamuru_voice_078": {
+      "family": "bubble_shape_caption",
+      "split": "train",
+      "original_group": "bubble_shape_caption"
+    },
+    "nyamuru_voice_079": {
+      "family": "bubble_shape_normal",
+      "split": "test",
+      "original_group": "bubble_shape_normal"
+    },
+    "nyamuru_voice_080": {
+      "family": "bubble_preset",
+      "split": "train",
+      "original_group": "bubble_preset"
+    },
+    "nyamuru_voice_081": {
+      "family": "bubble_preset",
+      "split": "train",
+      "original_group": "bubble_preset"
+    },
+    "nyamuru_voice_082": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "bubble_tail"
+    },
+    "nyamuru_voice_083": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "bubble_tail"
+    },
+    "nyamuru_voice_084": {
+      "family": "bubble_clip",
+      "split": "train",
+      "original_group": "bubble_clip"
+    },
+    "nyamuru_voice_085": {
+      "family": "bubble_clip",
+      "split": "train",
+      "original_group": "bubble_clip"
+    },
+    "nyamuru_voice_086": {
+      "family": "bubble_move",
+      "split": "train",
+      "original_group": "bubble_move"
+    },
+    "nyamuru_voice_087": {
+      "family": "bubble_move",
+      "split": "train",
+      "original_group": "bubble_move"
+    },
+    "nyamuru_voice_088": {
+      "family": "bubble_move",
+      "split": "train",
+      "original_group": "bubble_move"
+    },
+    "nyamuru_voice_089": {
+      "family": "bubble_move",
+      "split": "train",
+      "original_group": "bubble_move_xy"
+    },
+    "nyamuru_voice_090": {
+      "family": "bubble_resize",
+      "split": "test",
+      "original_group": "bubble_resize"
+    },
+    "nyamuru_voice_091": {
+      "family": "bubble_resize",
+      "split": "test",
+      "original_group": "bubble_resize"
+    },
+    "nyamuru_voice_092": {
+      "family": "bubble_resize",
+      "split": "test",
+      "original_group": "bubble_resize_wh"
+    },
+    "nyamuru_voice_093": {
+      "family": "bubble_text",
+      "split": "dev",
+      "original_group": "bubble_text"
+    },
+    "nyamuru_voice_094": {
+      "family": "bubble_quoted_command",
+      "split": "train",
+      "original_group": "bubble_quoted_command"
+    },
+    "nyamuru_voice_095": {
+      "family": "bubble_speaker",
+      "split": "dev",
+      "original_group": "bubble_speaker"
+    },
+    "nyamuru_voice_096": {
+      "family": "bubble_speaker",
+      "split": "dev",
+      "original_group": "bubble_speaker"
+    },
+    "nyamuru_voice_097": {
+      "family": "bubble_owner",
+      "split": "dev",
+      "original_group": "bubble_owner"
+    },
+    "nyamuru_voice_098": {
+      "family": "bubble_owner",
+      "split": "dev",
+      "original_group": "bubble_owner"
+    },
+    "nyamuru_voice_099": {
+      "family": "bubble_join",
+      "split": "train",
+      "original_group": "bubble_join"
+    },
+    "nyamuru_voice_100": {
+      "family": "bubble_join",
+      "split": "train",
+      "original_group": "bubble_join"
+    },
+    "nyamuru_voice_101": {
+      "family": "ambiguous_back",
+      "split": "train",
+      "original_group": "ambiguous_back"
+    },
+    "nyamuru_voice_102": {
+      "family": "ambiguous_again",
+      "split": "dev",
+      "original_group": "ambiguous_again"
+    },
+    "nyamuru_voice_103": {
+      "family": "ambiguous_reference",
+      "split": "train",
+      "original_group": "ambiguous_reference"
+    },
+    "nyamuru_voice_104": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "whole_view_vs_mode"
+    },
+    "nyamuru_voice_105": {
+      "family": "ambiguous_partial",
+      "split": "train",
+      "original_group": "ambiguous_partial"
+    },
+    "nyamuru_voice_106": {
+      "family": "ambiguous_guide",
+      "split": "dev",
+      "original_group": "ambiguous_guide"
+    },
+    "nyamuru_voice_107": {
+      "family": "ambiguous_view",
+      "split": "train",
+      "original_group": "ambiguous_view"
+    },
+    "nyamuru_voice_108": {
+      "family": "ambiguous_bubble_value",
+      "split": "test",
+      "original_group": "ambiguous_bubble_value"
+    },
+    "nyamuru_voice_109": {
+      "family": "ambiguous_mode",
+      "split": "train",
+      "original_group": "ambiguous_mode"
+    },
+    "nyamuru_voice_110": {
+      "family": "ambiguous_history",
+      "split": "test",
+      "original_group": "ambiguous_history"
+    },
+    "nyamuru_voice_111": {
+      "family": "reason_bubble_material",
+      "split": "train",
+      "original_group": "reason_bubble_material"
+    },
+    "nyamuru_voice_112": {
+      "family": "reason_bubble_material",
+      "split": "train",
+      "original_group": "reason_bubble_material"
+    },
+    "nyamuru_voice_113": {
+      "family": "reason_layout",
+      "split": "train",
+      "original_group": "reason_layout"
+    },
+    "nyamuru_voice_114": {
+      "family": "reason_layout",
+      "split": "train",
+      "original_group": "reason_layout"
+    },
+    "nyamuru_voice_115": {
+      "family": "reason_tail",
+      "split": "dev",
+      "original_group": "reason_tail"
+    },
+    "nyamuru_voice_116": {
+      "family": "reason_tail",
+      "split": "dev",
+      "original_group": "reason_tail"
+    },
+    "nyamuru_voice_117": {
+      "family": "reason_speaker",
+      "split": "test",
+      "original_group": "reason_speaker"
+    },
+    "nyamuru_voice_118": {
+      "family": "reason_bubble_material",
+      "split": "train",
+      "original_group": "reason_bubble_material"
+    },
+    "nyamuru_voice_119": {
+      "family": "reason_resize",
+      "split": "test",
+      "original_group": "reason_resize"
+    },
+    "nyamuru_voice_120": {
+      "family": "reason_layout",
+      "split": "train",
+      "original_group": "reason_layout"
+    },
+    "nyamuru_voice_121": {
+      "family": "compound_save_page",
+      "split": "test",
+      "original_group": "compound_save_page"
+    },
+    "nyamuru_voice_122": {
+      "family": "compound_page_view",
+      "split": "dev",
+      "original_group": "compound_page_view"
+    },
+    "nyamuru_voice_123": {
+      "family": "compound_undo_save",
+      "split": "train",
+      "original_group": "compound_undo_save"
+    },
+    "nyamuru_voice_124": {
+      "family": "compound_redo_save",
+      "split": "test",
+      "original_group": "compound_redo_save"
+    },
+    "nyamuru_voice_125": {
+      "family": "compound_view_view",
+      "split": "train",
+      "original_group": "compound_view_view"
+    },
+    "nyamuru_voice_126": {
+      "family": "compound_mode_save",
+      "split": "train",
+      "original_group": "compound_mode_save"
+    },
+    "nyamuru_voice_127": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "compound_bubble_fields"
+    },
+    "nyamuru_voice_128": {
+      "family": "bubble_move",
+      "split": "train",
+      "original_group": "compound_bubble_save"
+    },
+    "nyamuru_voice_129": {
+      "family": "compound_page_tab",
+      "split": "dev",
+      "original_group": "compound_page_tab"
+    },
+    "nyamuru_voice_130": {
+      "family": "compound_mode_generate",
+      "split": "train",
+      "original_group": "compound_mode_generate"
+    },
+    "nyamuru_voice_131": {
+      "family": "out_print_queue",
+      "split": "dev",
+      "original_group": "out_print_queue"
+    },
+    "nyamuru_voice_132": {
+      "family": "out_new_project",
+      "split": "test",
+      "original_group": "out_new_project"
+    },
+    "nyamuru_voice_133": {
+      "family": "out_open_project",
+      "split": "train",
+      "original_group": "out_open_project"
+    },
+    "nyamuru_voice_134": {
+      "family": "out_save_as",
+      "split": "train",
+      "original_group": "out_save_as"
+    },
+    "nyamuru_voice_135": {
+      "family": "out_delete_page",
+      "split": "test",
+      "original_group": "out_delete_page"
+    },
+    "nyamuru_voice_136": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_character"
+    },
+    "nyamuru_voice_137": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "whole_view_vs_mode"
+    },
+    "nyamuru_voice_138": {
+      "family": "out_cancel_generation",
+      "split": "train",
+      "original_group": "out_cancel_generation"
+    },
+    "nyamuru_voice_139": {
+      "family": "out_add_bubble",
+      "split": "train",
+      "original_group": "out_add_bubble"
+    },
+    "nyamuru_voice_140": {
+      "family": "out_deferred_asset",
+      "split": "train",
+      "original_group": "out_deferred_asset"
+    },
+    "nyamuru_voice_141": {
+      "family": "save_how_question",
+      "split": "dev",
+      "original_group": "save_how_question"
+    },
+    "nyamuru_voice_142": {
+      "family": "save_status_question",
+      "split": "dev",
+      "original_group": "save_status_question"
+    },
+    "nyamuru_voice_143": {
+      "family": "save_basic",
+      "split": "train",
+      "original_group": "save_negative"
+    },
+    "nyamuru_voice_144": {
+      "family": "save_self_correction",
+      "split": "train",
+      "original_group": "save_self_correction"
+    },
+    "nyamuru_voice_145": {
+      "family": "save_report",
+      "split": "test",
+      "original_group": "save_report"
+    },
+    "nyamuru_voice_146": {
+      "family": "undo_question",
+      "split": "dev",
+      "original_group": "undo_question"
+    },
+    "nyamuru_voice_147": {
+      "family": "redo_report",
+      "split": "train",
+      "original_group": "redo_report"
+    },
+    "nyamuru_voice_148": {
+      "family": "page_question",
+      "split": "train",
+      "original_group": "page_question"
+    },
+    "nyamuru_voice_149": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "whole_view_vs_mode"
+    },
+    "nyamuru_voice_150": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "bubble_keep"
+    },
+    "nyamuru_voice_151": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "undo_negative"
+    },
+    "nyamuru_voice_152": {
+      "family": "redo_basic",
+      "split": "test",
+      "original_group": "redo_negative"
+    },
+    "nyamuru_voice_153": {
+      "family": "page_negative",
+      "split": "train",
+      "original_group": "page_negative"
+    },
+    "nyamuru_voice_154": {
+      "family": "placement_guide",
+      "split": "dev",
+      "original_group": "placement_guide_negative"
+    },
+    "nyamuru_voice_155": {
+      "family": "spread_negative",
+      "split": "train",
+      "original_group": "spread_negative"
+    },
+    "nyamuru_voice_156": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_negative"
+    },
+    "nyamuru_voice_157": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_keep"
+    },
+    "nyamuru_voice_158": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "bubble_tail_negative"
+    },
+    "nyamuru_voice_159": {
+      "family": "bubble_keep",
+      "split": "train",
+      "original_group": "bubble_shape_negative"
+    },
+    "nyamuru_voice_160": {
+      "family": "save_capability_question",
+      "split": "dev",
+      "original_group": "save_capability_question"
+    },
+    "nyamuru_voice_161": {
+      "family": "spread_negative",
+      "split": "train",
+      "original_group": "spread_report"
+    },
+    "nyamuru_voice_162": {
+      "family": "mode_draft",
+      "split": "train",
+      "original_group": "mode_report"
+    },
+    "nyamuru_voice_163": {
+      "family": "bubble_speaker",
+      "split": "dev",
+      "original_group": "bubble_speaker_question"
+    },
+    "nyamuru_voice_164": {
+      "family": "print_capability_question",
+      "split": "test",
+      "original_group": "print_capability_question"
+    },
+    "nyamuru_voice_165": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_166": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_167": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_168": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_169": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_170": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_correction"
+    },
+    "nyamuru_voice_171": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_172": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_173": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_174": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_175": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_176": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_correction"
+    },
+    "nyamuru_voice_177": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_178": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_desired_state"
+    },
+    "nyamuru_voice_179": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_status"
+    },
+    "nyamuru_voice_180": {
+      "family": "inner_frame_snap_set_explanation",
+      "split": "test",
+      "original_group": "panel_sync_set_explanation"
+    },
+    "nyamuru_voice_181": {
+      "family": "inner_frame_snap_set_unspecified",
+      "split": "train",
+      "original_group": "panel_sync_set_unspecified"
+    },
+    "nyamuru_voice_182": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_history"
+    },
+    "nyamuru_voice_183": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_sync_set_save"
+    },
+    "nyamuru_voice_184": {
+      "family": "bubble_quoted_command",
+      "split": "train",
+      "original_group": "panel_sync_set_quoted"
+    },
+    "nyamuru_voice_185": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_186": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_187": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_188": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_189": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_190": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_correction"
+    },
+    "nyamuru_voice_191": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_192": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_193": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_194": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_195": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_196": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_correction"
+    },
+    "nyamuru_voice_197": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_198": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_desired_state"
+    },
+    "nyamuru_voice_199": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_status"
+    },
+    "nyamuru_voice_200": {
+      "family": "inner_frame_snap_set_explanation",
+      "split": "test",
+      "original_group": "inner_frame_snap_set_explanation"
+    },
+    "nyamuru_voice_201": {
+      "family": "inner_frame_snap_set_unspecified",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_unspecified"
+    },
+    "nyamuru_voice_202": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_history"
+    },
+    "nyamuru_voice_203": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_save"
+    },
+    "nyamuru_voice_204": {
+      "family": "bubble_quoted_command",
+      "split": "train",
+      "original_group": "inner_frame_snap_set_quoted"
+    },
+    "nyamuru_voice_205": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_206": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_207": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_208": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_209": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_210": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_correction"
+    },
+    "nyamuru_voice_211": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_212": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_213": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_214": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_215": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_216": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_correction"
+    },
+    "nyamuru_voice_217": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_218": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_desired_state"
+    },
+    "nyamuru_voice_219": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_status"
+    },
+    "nyamuru_voice_220": {
+      "family": "inner_frame_snap_set_explanation",
+      "split": "test",
+      "original_group": "panel_gap_snap_set_explanation"
+    },
+    "nyamuru_voice_221": {
+      "family": "inner_frame_snap_set_unspecified",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_unspecified"
+    },
+    "nyamuru_voice_222": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_history"
+    },
+    "nyamuru_voice_223": {
+      "family": "inner_frame_snap_set_correction",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_save"
+    },
+    "nyamuru_voice_224": {
+      "family": "bubble_quoted_command",
+      "split": "train",
+      "original_group": "panel_gap_snap_set_quoted"
+    },
+    "nyamuru_voice_225": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_226": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_227": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_228": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_229": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_230": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_231": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_character"
+    },
+    "nyamuru_voice_232": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_character"
+    },
+    "nyamuru_voice_233": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_character"
+    },
+    "nyamuru_voice_234": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_character"
+    },
+    "nyamuru_voice_235": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_character"
+    },
+    "nyamuru_voice_236": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_character"
+    },
+    "nyamuru_voice_237": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_238": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_239": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_240": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_241": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_242": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_243": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_244": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_245": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_246": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_247": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_248": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_249": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_250": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_251": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_252": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_253": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_254": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_255": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_256": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_257": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_258": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_259": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_260": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_261": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selection"
+    },
+    "nyamuru_voice_262": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_character_status"
+    },
+    "nyamuru_voice_263": {
+      "family": "generate_current_page",
+      "split": "dev",
+      "original_group": "generate_current_page"
+    },
+    "nyamuru_voice_264": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_selected_panel"
+    },
+    "nyamuru_voice_265": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_capability"
+    },
+    "nyamuru_voice_266": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_candidates"
+    },
+    "nyamuru_voice_267": {
+      "family": "ambiguous_candidates",
+      "split": "train",
+      "original_group": "ambiguous_candidates"
+    },
+    "nyamuru_voice_268": {
+      "family": "external_background_models",
+      "split": "train",
+      "original_group": "external_background_models"
+    },
+    "nyamuru_voice_269": {
+      "family": "background_camera_candidates",
+      "split": "dev",
+      "original_group": "background_camera_candidates"
+    },
+    "nyamuru_voice_270": {
+      "family": "generate_save",
+      "split": "train",
+      "original_group": "generate_save"
+    },
+    "nyamuru_voice_271": {
+      "family": "background_candidates_apply",
+      "split": "train",
+      "original_group": "background_candidates_apply"
+    },
+    "nyamuru_voice_272": {
+      "family": "bubble_quoted_command",
+      "split": "train",
+      "original_group": "generation_quoted"
+    },
+    "nyamuru_voice_273": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_274": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_275": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_276": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_277": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_278": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_279": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_280": {
+      "family": "generate_character",
+      "split": "train",
+      "original_group": "generate_explicit_locator"
+    },
+    "nyamuru_voice_281": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_locator"
+    },
+    "nyamuru_voice_282": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_locator"
+    },
+    "nyamuru_voice_283": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_locator"
+    },
+    "nyamuru_voice_284": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_locator"
+    },
+    "nyamuru_voice_285": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_286": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_287": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_288": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_289": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_290": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_291": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_292": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_293": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_294": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_295": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_296": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_297": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_298": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_299": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_300": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_301": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_302": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_303": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_304": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_305": {
+      "family": "paint_pen_choice",
+      "split": "train",
+      "original_group": "paint_pen_choice"
+    },
+    "nyamuru_voice_306": {
+      "family": "paint_pen_question",
+      "split": "test",
+      "original_group": "paint_pen_question"
+    },
+    "nyamuru_voice_307": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "text_frames_top"
+    },
+    "nyamuru_voice_308": {
+      "family": "registered_background_candidates",
+      "split": "train",
+      "original_group": "registered_background_report"
+    },
+    "nyamuru_voice_309": {
+      "family": "incomplete",
+      "split": "test",
+      "original_group": "incomplete"
+    },
+    "nyamuru_voice_310": {
+      "family": "alignment_unspecified",
+      "split": "train",
+      "original_group": "alignment_unspecified"
+    },
+    "nyamuru_voice_311": {
+      "family": "pen_unspecified",
+      "split": "dev",
+      "original_group": "pen_unspecified"
+    },
+    "nyamuru_voice_312": {
+      "family": "paragraph_alignment",
+      "split": "train",
+      "original_group": "paragraph_alignment"
+    },
+    "nyamuru_voice_313": {
+      "family": "bubble_outline_alignment",
+      "split": "train",
+      "original_group": "bubble_outline_alignment"
+    },
+    "nyamuru_voice_314": {
+      "family": "generate_multiple_targets",
+      "split": "train",
+      "original_group": "generate_multiple_targets"
+    },
+    "nyamuru_voice_315": {
+      "family": "pen_and_align",
+      "split": "test",
+      "original_group": "pen_and_align"
+    },
+    "nyamuru_voice_316": {
+      "family": "bubble_quoted_command",
+      "split": "train",
+      "original_group": "named_generation_quoted"
+    }
+  },
+  "families": {
+    "alignment_unspecified": {
+      "split": "train",
+      "groups": [
+        "alignment_unspecified",
+        "text_frames_top"
+      ],
+      "ids": [
+        "nyamuru_voice_297",
+        "nyamuru_voice_298",
+        "nyamuru_voice_299",
+        "nyamuru_voice_300",
+        "nyamuru_voice_301",
+        "nyamuru_voice_302",
+        "nyamuru_voice_303",
+        "nyamuru_voice_304",
+        "nyamuru_voice_307",
+        "nyamuru_voice_310"
+      ],
+      "labels": {
+        "text_frames_align": 8,
+        "not_command": 1,
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_again": {
+      "split": "dev",
+      "groups": [
+        "ambiguous_again"
+      ],
+      "ids": [
+        "nyamuru_voice_102"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_back": {
+      "split": "train",
+      "groups": [
+        "ambiguous_back"
+      ],
+      "ids": [
+        "nyamuru_voice_101"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_bubble_value": {
+      "split": "test",
+      "groups": [
+        "ambiguous_bubble_value"
+      ],
+      "ids": [
+        "nyamuru_voice_108"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_candidates": {
+      "split": "train",
+      "groups": [
+        "ambiguous_candidates"
+      ],
+      "ids": [
+        "nyamuru_voice_267"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_guide": {
+      "split": "dev",
+      "groups": [
+        "ambiguous_guide"
+      ],
+      "ids": [
+        "nyamuru_voice_106"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_history": {
+      "split": "test",
+      "groups": [
+        "ambiguous_history"
+      ],
+      "ids": [
+        "nyamuru_voice_110"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_mode": {
+      "split": "train",
+      "groups": [
+        "ambiguous_mode"
+      ],
+      "ids": [
+        "nyamuru_voice_109"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_partial": {
+      "split": "train",
+      "groups": [
+        "ambiguous_partial"
+      ],
+      "ids": [
+        "nyamuru_voice_105"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_reference": {
+      "split": "train",
+      "groups": [
+        "ambiguous_reference"
+      ],
+      "ids": [
+        "nyamuru_voice_103"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "ambiguous_view": {
+      "split": "train",
+      "groups": [
+        "ambiguous_view"
+      ],
+      "ids": [
+        "nyamuru_voice_107"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "artwork_guide": {
+      "split": "train",
+      "groups": [
+        "artwork_guide"
+      ],
+      "ids": [
+        "nyamuru_voice_062",
+        "nyamuru_voice_063"
+      ],
+      "labels": {
+        "view_change": 2
+      }
+    },
+    "background_camera_candidates": {
+      "split": "dev",
+      "groups": [
+        "background_camera_candidates"
+      ],
+      "ids": [
+        "nyamuru_voice_269"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "background_candidates_apply": {
+      "split": "train",
+      "groups": [
+        "background_candidates_apply"
+      ],
+      "ids": [
+        "nyamuru_voice_271"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "bubble_clip": {
+      "split": "train",
+      "groups": [
+        "bubble_clip"
+      ],
+      "ids": [
+        "nyamuru_voice_084",
+        "nyamuru_voice_085"
+      ],
+      "labels": {
+        "bubble_set": 2
+      }
+    },
+    "bubble_join": {
+      "split": "train",
+      "groups": [
+        "bubble_join"
+      ],
+      "ids": [
+        "nyamuru_voice_099",
+        "nyamuru_voice_100"
+      ],
+      "labels": {
+        "bubble_set": 2
+      }
+    },
+    "bubble_keep": {
+      "split": "train",
+      "groups": [
+        "bubble_keep",
+        "bubble_shape_negative",
+        "bubble_shape_square",
+        "bubble_tail",
+        "bubble_tail_negative",
+        "compound_bubble_fields"
+      ],
+      "ids": [
+        "nyamuru_voice_077",
+        "nyamuru_voice_082",
+        "nyamuru_voice_083",
+        "nyamuru_voice_127",
+        "nyamuru_voice_150",
+        "nyamuru_voice_158",
+        "nyamuru_voice_159"
+      ],
+      "labels": {
+        "bubble_set": 3,
+        "compound_request": 1,
+        "not_command": 3
+      }
+    },
+    "bubble_move": {
+      "split": "train",
+      "groups": [
+        "bubble_move",
+        "bubble_move_xy",
+        "compound_bubble_save"
+      ],
+      "ids": [
+        "nyamuru_voice_086",
+        "nyamuru_voice_087",
+        "nyamuru_voice_088",
+        "nyamuru_voice_089",
+        "nyamuru_voice_128"
+      ],
+      "labels": {
+        "bubble_set": 4,
+        "compound_request": 1
+      }
+    },
+    "bubble_outline_alignment": {
+      "split": "train",
+      "groups": [
+        "bubble_outline_alignment"
+      ],
+      "ids": [
+        "nyamuru_voice_313"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "bubble_owner": {
+      "split": "dev",
+      "groups": [
+        "bubble_owner"
+      ],
+      "ids": [
+        "nyamuru_voice_097",
+        "nyamuru_voice_098"
+      ],
+      "labels": {
+        "bubble_set": 2
+      }
+    },
+    "bubble_preset": {
+      "split": "train",
+      "groups": [
+        "bubble_preset"
+      ],
+      "ids": [
+        "nyamuru_voice_080",
+        "nyamuru_voice_081"
+      ],
+      "labels": {
+        "bubble_set": 2
+      }
+    },
+    "bubble_quoted_command": {
+      "split": "train",
+      "groups": [
+        "bubble_quoted_command",
+        "generation_quoted",
+        "inner_frame_snap_set_quoted",
+        "named_generation_quoted",
+        "panel_gap_snap_set_quoted",
+        "panel_sync_set_quoted"
+      ],
+      "ids": [
+        "nyamuru_voice_094",
+        "nyamuru_voice_184",
+        "nyamuru_voice_204",
+        "nyamuru_voice_224",
+        "nyamuru_voice_272",
+        "nyamuru_voice_316"
+      ],
+      "labels": {
+        "bubble_set": 6
+      }
+    },
+    "bubble_resize": {
+      "split": "test",
+      "groups": [
+        "bubble_resize",
+        "bubble_resize_wh"
+      ],
+      "ids": [
+        "nyamuru_voice_090",
+        "nyamuru_voice_091",
+        "nyamuru_voice_092"
+      ],
+      "labels": {
+        "bubble_set": 3
+      }
+    },
+    "bubble_shape_caption": {
+      "split": "train",
+      "groups": [
+        "bubble_shape_caption"
+      ],
+      "ids": [
+        "nyamuru_voice_078"
+      ],
+      "labels": {
+        "bubble_set": 1
+      }
+    },
+    "bubble_shape_normal": {
+      "split": "test",
+      "groups": [
+        "bubble_shape_normal"
+      ],
+      "ids": [
+        "nyamuru_voice_079"
+      ],
+      "labels": {
+        "bubble_set": 1
+      }
+    },
+    "bubble_speaker": {
+      "split": "dev",
+      "groups": [
+        "bubble_speaker",
+        "bubble_speaker_question"
+      ],
+      "ids": [
+        "nyamuru_voice_095",
+        "nyamuru_voice_096",
+        "nyamuru_voice_163"
+      ],
+      "labels": {
+        "bubble_set": 2,
+        "not_command": 1
+      }
+    },
+    "bubble_text": {
+      "split": "dev",
+      "groups": [
+        "bubble_text"
+      ],
+      "ids": [
+        "nyamuru_voice_093"
+      ],
+      "labels": {
+        "bubble_set": 1
+      }
+    },
+    "compound_mode_generate": {
+      "split": "train",
+      "groups": [
+        "compound_mode_generate"
+      ],
+      "ids": [
+        "nyamuru_voice_130"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "compound_mode_save": {
+      "split": "train",
+      "groups": [
+        "compound_mode_save"
+      ],
+      "ids": [
+        "nyamuru_voice_126"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "compound_page_tab": {
+      "split": "dev",
+      "groups": [
+        "compound_page_tab",
+        "page_number",
+        "tab_scenario"
+      ],
+      "ids": [
+        "nyamuru_voice_037",
+        "nyamuru_voice_038",
+        "nyamuru_voice_039",
+        "nyamuru_voice_040",
+        "nyamuru_voice_064",
+        "nyamuru_voice_129"
+      ],
+      "labels": {
+        "page_navigate": 4,
+        "view_change": 1,
+        "compound_request": 1
+      }
+    },
+    "compound_page_view": {
+      "split": "dev",
+      "groups": [
+        "compound_page_view"
+      ],
+      "ids": [
+        "nyamuru_voice_122"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "compound_redo_save": {
+      "split": "test",
+      "groups": [
+        "compound_redo_save"
+      ],
+      "ids": [
+        "nyamuru_voice_124"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "compound_save_page": {
+      "split": "test",
+      "groups": [
+        "compound_save_page",
+        "page_next_without_save"
+      ],
+      "ids": [
+        "nyamuru_voice_045",
+        "nyamuru_voice_121"
+      ],
+      "labels": {
+        "page_navigate": 1,
+        "compound_request": 1
+      }
+    },
+    "compound_undo_save": {
+      "split": "train",
+      "groups": [
+        "compound_undo_save"
+      ],
+      "ids": [
+        "nyamuru_voice_123"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "compound_view_view": {
+      "split": "train",
+      "groups": [
+        "compound_view_view"
+      ],
+      "ids": [
+        "nyamuru_voice_125"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "edit_guide": {
+      "split": "train",
+      "groups": [
+        "edit_guide"
+      ],
+      "ids": [
+        "nyamuru_voice_060",
+        "nyamuru_voice_061"
+      ],
+      "labels": {
+        "view_change": 2
+      }
+    },
+    "external_background_models": {
+      "split": "train",
+      "groups": [
+        "external_background_models"
+      ],
+      "ids": [
+        "nyamuru_voice_268"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "generate_character": {
+      "split": "train",
+      "groups": [
+        "generate_character",
+        "generate_character_status",
+        "generate_explicit_locator",
+        "generate_selected_character",
+        "generate_selected_panel",
+        "generate_selection"
+      ],
+      "ids": [
+        "nyamuru_voice_136",
+        "nyamuru_voice_225",
+        "nyamuru_voice_226",
+        "nyamuru_voice_227",
+        "nyamuru_voice_228",
+        "nyamuru_voice_229",
+        "nyamuru_voice_230",
+        "nyamuru_voice_231",
+        "nyamuru_voice_232",
+        "nyamuru_voice_233",
+        "nyamuru_voice_234",
+        "nyamuru_voice_235",
+        "nyamuru_voice_236",
+        "nyamuru_voice_243",
+        "nyamuru_voice_244",
+        "nyamuru_voice_245",
+        "nyamuru_voice_246",
+        "nyamuru_voice_247",
+        "nyamuru_voice_248",
+        "nyamuru_voice_261",
+        "nyamuru_voice_262",
+        "nyamuru_voice_264",
+        "nyamuru_voice_273",
+        "nyamuru_voice_274",
+        "nyamuru_voice_275",
+        "nyamuru_voice_276",
+        "nyamuru_voice_277",
+        "nyamuru_voice_278",
+        "nyamuru_voice_279",
+        "nyamuru_voice_280"
+      ],
+      "labels": {
+        "generate_request": 27,
+        "not_command": 3
+      }
+    },
+    "generate_current_page": {
+      "split": "dev",
+      "groups": [
+        "generate_current_page"
+      ],
+      "ids": [
+        "nyamuru_voice_237",
+        "nyamuru_voice_238",
+        "nyamuru_voice_239",
+        "nyamuru_voice_240",
+        "nyamuru_voice_241",
+        "nyamuru_voice_242",
+        "nyamuru_voice_263"
+      ],
+      "labels": {
+        "generate_request": 6,
+        "not_command": 1
+      }
+    },
+    "generate_multiple_targets": {
+      "split": "train",
+      "groups": [
+        "generate_multiple_targets"
+      ],
+      "ids": [
+        "nyamuru_voice_314"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "generate_save": {
+      "split": "train",
+      "groups": [
+        "generate_save"
+      ],
+      "ids": [
+        "nyamuru_voice_270"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "incomplete": {
+      "split": "test",
+      "groups": [
+        "incomplete"
+      ],
+      "ids": [
+        "nyamuru_voice_309"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "inner_frame_snap_set_correction": {
+      "split": "train",
+      "groups": [
+        "inner_frame_snap_set_correction",
+        "inner_frame_snap_set_desired_state",
+        "inner_frame_snap_set_history",
+        "inner_frame_snap_set_save",
+        "inner_frame_snap_set_status",
+        "panel_gap_snap_set_correction",
+        "panel_gap_snap_set_desired_state",
+        "panel_gap_snap_set_history",
+        "panel_gap_snap_set_save",
+        "panel_gap_snap_set_status",
+        "panel_sync_set_correction",
+        "panel_sync_set_desired_state",
+        "panel_sync_set_history",
+        "panel_sync_set_save",
+        "panel_sync_set_status"
+      ],
+      "ids": [
+        "nyamuru_voice_165",
+        "nyamuru_voice_166",
+        "nyamuru_voice_167",
+        "nyamuru_voice_168",
+        "nyamuru_voice_169",
+        "nyamuru_voice_170",
+        "nyamuru_voice_171",
+        "nyamuru_voice_172",
+        "nyamuru_voice_173",
+        "nyamuru_voice_174",
+        "nyamuru_voice_175",
+        "nyamuru_voice_176",
+        "nyamuru_voice_177",
+        "nyamuru_voice_178",
+        "nyamuru_voice_179",
+        "nyamuru_voice_182",
+        "nyamuru_voice_183",
+        "nyamuru_voice_185",
+        "nyamuru_voice_186",
+        "nyamuru_voice_187",
+        "nyamuru_voice_188",
+        "nyamuru_voice_189",
+        "nyamuru_voice_190",
+        "nyamuru_voice_191",
+        "nyamuru_voice_192",
+        "nyamuru_voice_193",
+        "nyamuru_voice_194",
+        "nyamuru_voice_195",
+        "nyamuru_voice_196",
+        "nyamuru_voice_197",
+        "nyamuru_voice_198",
+        "nyamuru_voice_199",
+        "nyamuru_voice_202",
+        "nyamuru_voice_203",
+        "nyamuru_voice_205",
+        "nyamuru_voice_206",
+        "nyamuru_voice_207",
+        "nyamuru_voice_208",
+        "nyamuru_voice_209",
+        "nyamuru_voice_210",
+        "nyamuru_voice_211",
+        "nyamuru_voice_212",
+        "nyamuru_voice_213",
+        "nyamuru_voice_214",
+        "nyamuru_voice_215",
+        "nyamuru_voice_216",
+        "nyamuru_voice_217",
+        "nyamuru_voice_218",
+        "nyamuru_voice_219",
+        "nyamuru_voice_222",
+        "nyamuru_voice_223"
+      ],
+      "labels": {
+        "panel_sync_set": 12,
+        "not_command": 9,
+        "needs_clarification": 3,
+        "compound_request": 3,
+        "inner_frame_snap_set": 12,
+        "panel_gap_snap_set": 12
+      }
+    },
+    "inner_frame_snap_set_explanation": {
+      "split": "test",
+      "groups": [
+        "inner_frame_snap_set_explanation",
+        "panel_gap_snap_set_explanation",
+        "panel_sync_set_explanation"
+      ],
+      "ids": [
+        "nyamuru_voice_180",
+        "nyamuru_voice_200",
+        "nyamuru_voice_220"
+      ],
+      "labels": {
+        "not_command": 3
+      }
+    },
+    "inner_frame_snap_set_unspecified": {
+      "split": "train",
+      "groups": [
+        "inner_frame_snap_set_unspecified",
+        "panel_gap_snap_set_unspecified",
+        "panel_sync_set_unspecified"
+      ],
+      "ids": [
+        "nyamuru_voice_181",
+        "nyamuru_voice_201",
+        "nyamuru_voice_221"
+      ],
+      "labels": {
+        "needs_clarification": 3
+      }
+    },
+    "mode_draft": {
+      "split": "train",
+      "groups": [
+        "mode_draft",
+        "mode_integrated",
+        "mode_keep",
+        "mode_negative",
+        "mode_report",
+        "mode_without_run",
+        "whole_view_vs_mode",
+        "zoom_fit"
+      ],
+      "ids": [
+        "nyamuru_voice_047",
+        "nyamuru_voice_048",
+        "nyamuru_voice_067",
+        "nyamuru_voice_068",
+        "nyamuru_voice_069",
+        "nyamuru_voice_070",
+        "nyamuru_voice_071",
+        "nyamuru_voice_072",
+        "nyamuru_voice_073",
+        "nyamuru_voice_074",
+        "nyamuru_voice_075",
+        "nyamuru_voice_076",
+        "nyamuru_voice_104",
+        "nyamuru_voice_137",
+        "nyamuru_voice_149",
+        "nyamuru_voice_156",
+        "nyamuru_voice_157",
+        "nyamuru_voice_162"
+      ],
+      "labels": {
+        "view_change": 2,
+        "artwork_mode_set": 10,
+        "needs_clarification": 1,
+        "out_of_scope_request": 1,
+        "not_command": 4
+      }
+    },
+    "out_add_bubble": {
+      "split": "train",
+      "groups": [
+        "out_add_bubble"
+      ],
+      "ids": [
+        "nyamuru_voice_139"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_cancel_generation": {
+      "split": "train",
+      "groups": [
+        "out_cancel_generation"
+      ],
+      "ids": [
+        "nyamuru_voice_138"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_deferred_asset": {
+      "split": "train",
+      "groups": [
+        "out_deferred_asset"
+      ],
+      "ids": [
+        "nyamuru_voice_140"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_delete_page": {
+      "split": "test",
+      "groups": [
+        "out_delete_page"
+      ],
+      "ids": [
+        "nyamuru_voice_135"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_new_project": {
+      "split": "test",
+      "groups": [
+        "out_new_project"
+      ],
+      "ids": [
+        "nyamuru_voice_132"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_open_project": {
+      "split": "train",
+      "groups": [
+        "out_open_project"
+      ],
+      "ids": [
+        "nyamuru_voice_133"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_print_queue": {
+      "split": "dev",
+      "groups": [
+        "out_print_queue"
+      ],
+      "ids": [
+        "nyamuru_voice_131"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "out_save_as": {
+      "split": "train",
+      "groups": [
+        "out_save_as"
+      ],
+      "ids": [
+        "nyamuru_voice_134"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "page_first": {
+      "split": "test",
+      "groups": [
+        "page_first"
+      ],
+      "ids": [
+        "nyamuru_voice_041"
+      ],
+      "labels": {
+        "page_navigate": 1
+      }
+    },
+    "page_last": {
+      "split": "train",
+      "groups": [
+        "page_last"
+      ],
+      "ids": [
+        "nyamuru_voice_042"
+      ],
+      "labels": {
+        "page_navigate": 1
+      }
+    },
+    "page_negative": {
+      "split": "train",
+      "groups": [
+        "page_negative",
+        "page_next",
+        "page_previous",
+        "page_relative_count",
+        "undo_basic",
+        "undo_negative",
+        "undo_request_question",
+        "undo_vs_page"
+      ],
+      "ids": [
+        "nyamuru_voice_011",
+        "nyamuru_voice_012",
+        "nyamuru_voice_014",
+        "nyamuru_voice_016",
+        "nyamuru_voice_019",
+        "nyamuru_voice_020",
+        "nyamuru_voice_031",
+        "nyamuru_voice_032",
+        "nyamuru_voice_033",
+        "nyamuru_voice_034",
+        "nyamuru_voice_035",
+        "nyamuru_voice_036",
+        "nyamuru_voice_043",
+        "nyamuru_voice_044",
+        "nyamuru_voice_046",
+        "nyamuru_voice_151",
+        "nyamuru_voice_153"
+      ],
+      "labels": {
+        "undo": 6,
+        "page_navigate": 9,
+        "not_command": 2
+      }
+    },
+    "page_question": {
+      "split": "train",
+      "groups": [
+        "page_question"
+      ],
+      "ids": [
+        "nyamuru_voice_148"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "paint_pen_choice": {
+      "split": "train",
+      "groups": [
+        "paint_pen_choice"
+      ],
+      "ids": [
+        "nyamuru_voice_285",
+        "nyamuru_voice_286",
+        "nyamuru_voice_287",
+        "nyamuru_voice_288",
+        "nyamuru_voice_289",
+        "nyamuru_voice_290",
+        "nyamuru_voice_291",
+        "nyamuru_voice_292",
+        "nyamuru_voice_293",
+        "nyamuru_voice_294",
+        "nyamuru_voice_295",
+        "nyamuru_voice_296",
+        "nyamuru_voice_305"
+      ],
+      "labels": {
+        "paint_tool_set": 12,
+        "not_command": 1
+      }
+    },
+    "paint_pen_question": {
+      "split": "test",
+      "groups": [
+        "paint_pen_question"
+      ],
+      "ids": [
+        "nyamuru_voice_306"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "paragraph_alignment": {
+      "split": "train",
+      "groups": [
+        "paragraph_alignment"
+      ],
+      "ids": [
+        "nyamuru_voice_312"
+      ],
+      "labels": {
+        "out_of_scope_request": 1
+      }
+    },
+    "pen_and_align": {
+      "split": "test",
+      "groups": [
+        "pen_and_align"
+      ],
+      "ids": [
+        "nyamuru_voice_315"
+      ],
+      "labels": {
+        "compound_request": 1
+      }
+    },
+    "pen_unspecified": {
+      "split": "dev",
+      "groups": [
+        "pen_unspecified"
+      ],
+      "ids": [
+        "nyamuru_voice_311"
+      ],
+      "labels": {
+        "needs_clarification": 1
+      }
+    },
+    "placement_guide": {
+      "split": "dev",
+      "groups": [
+        "placement_guide",
+        "placement_guide_negative"
+      ],
+      "ids": [
+        "nyamuru_voice_058",
+        "nyamuru_voice_059",
+        "nyamuru_voice_154"
+      ],
+      "labels": {
+        "view_change": 2,
+        "not_command": 1
+      }
+    },
+    "print_capability_question": {
+      "split": "test",
+      "groups": [
+        "print_capability_question"
+      ],
+      "ids": [
+        "nyamuru_voice_164"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "reason_bubble_material": {
+      "split": "train",
+      "groups": [
+        "reason_bubble_material"
+      ],
+      "ids": [
+        "nyamuru_voice_111",
+        "nyamuru_voice_112",
+        "nyamuru_voice_118"
+      ],
+      "labels": {
+        "needs_reasoning": 3
+      }
+    },
+    "reason_layout": {
+      "split": "train",
+      "groups": [
+        "reason_layout"
+      ],
+      "ids": [
+        "nyamuru_voice_113",
+        "nyamuru_voice_114",
+        "nyamuru_voice_120"
+      ],
+      "labels": {
+        "needs_reasoning": 3
+      }
+    },
+    "reason_resize": {
+      "split": "test",
+      "groups": [
+        "reason_resize"
+      ],
+      "ids": [
+        "nyamuru_voice_119"
+      ],
+      "labels": {
+        "needs_reasoning": 1
+      }
+    },
+    "reason_speaker": {
+      "split": "test",
+      "groups": [
+        "reason_speaker"
+      ],
+      "ids": [
+        "nyamuru_voice_117"
+      ],
+      "labels": {
+        "needs_reasoning": 1
+      }
+    },
+    "reason_tail": {
+      "split": "dev",
+      "groups": [
+        "reason_tail"
+      ],
+      "ids": [
+        "nyamuru_voice_115",
+        "nyamuru_voice_116"
+      ],
+      "labels": {
+        "needs_reasoning": 2
+      }
+    },
+    "redo_after_undo": {
+      "split": "train",
+      "groups": [
+        "redo_after_undo"
+      ],
+      "ids": [
+        "nyamuru_voice_022",
+        "nyamuru_voice_023",
+        "nyamuru_voice_025",
+        "nyamuru_voice_027",
+        "nyamuru_voice_029"
+      ],
+      "labels": {
+        "redo": 5
+      }
+    },
+    "redo_basic": {
+      "split": "test",
+      "groups": [
+        "redo_basic",
+        "redo_negative"
+      ],
+      "ids": [
+        "nyamuru_voice_021",
+        "nyamuru_voice_028",
+        "nyamuru_voice_152"
+      ],
+      "labels": {
+        "redo": 2,
+        "not_command": 1
+      }
+    },
+    "redo_button": {
+      "split": "dev",
+      "groups": [
+        "redo_button",
+        "undo_button"
+      ],
+      "ids": [
+        "nyamuru_voice_015",
+        "nyamuru_voice_024"
+      ],
+      "labels": {
+        "undo": 1,
+        "redo": 1
+      }
+    },
+    "redo_count": {
+      "split": "dev",
+      "groups": [
+        "redo_count",
+        "undo_count"
+      ],
+      "ids": [
+        "nyamuru_voice_018",
+        "nyamuru_voice_026"
+      ],
+      "labels": {
+        "undo": 1,
+        "redo": 1
+      }
+    },
+    "redo_report": {
+      "split": "train",
+      "groups": [
+        "redo_report"
+      ],
+      "ids": [
+        "nyamuru_voice_147"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "redo_vs_generate": {
+      "split": "train",
+      "groups": [
+        "redo_vs_generate"
+      ],
+      "ids": [
+        "nyamuru_voice_030"
+      ],
+      "labels": {
+        "redo": 1
+      }
+    },
+    "registered_background_candidates": {
+      "split": "train",
+      "groups": [
+        "registered_background_candidates",
+        "registered_background_capability",
+        "registered_background_locator",
+        "registered_background_report"
+      ],
+      "ids": [
+        "nyamuru_voice_249",
+        "nyamuru_voice_250",
+        "nyamuru_voice_251",
+        "nyamuru_voice_252",
+        "nyamuru_voice_253",
+        "nyamuru_voice_254",
+        "nyamuru_voice_255",
+        "nyamuru_voice_256",
+        "nyamuru_voice_257",
+        "nyamuru_voice_258",
+        "nyamuru_voice_259",
+        "nyamuru_voice_260",
+        "nyamuru_voice_265",
+        "nyamuru_voice_266",
+        "nyamuru_voice_281",
+        "nyamuru_voice_282",
+        "nyamuru_voice_283",
+        "nyamuru_voice_284",
+        "nyamuru_voice_308"
+      ],
+      "labels": {
+        "background_3d_candidates": 16,
+        "not_command": 3
+      }
+    },
+    "save_basic": {
+      "split": "train",
+      "groups": [
+        "save_basic",
+        "save_negative",
+        "save_request_question"
+      ],
+      "ids": [
+        "nyamuru_voice_001",
+        "nyamuru_voice_002",
+        "nyamuru_voice_003",
+        "nyamuru_voice_006",
+        "nyamuru_voice_143"
+      ],
+      "labels": {
+        "save": 4,
+        "not_command": 1
+      }
+    },
+    "save_button": {
+      "split": "dev",
+      "groups": [
+        "save_button"
+      ],
+      "ids": [
+        "nyamuru_voice_007"
+      ],
+      "labels": {
+        "save": 1
+      }
+    },
+    "save_capability_question": {
+      "split": "dev",
+      "groups": [
+        "save_capability_question"
+      ],
+      "ids": [
+        "nyamuru_voice_160"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "save_edits": {
+      "split": "test",
+      "groups": [
+        "save_edits"
+      ],
+      "ids": [
+        "nyamuru_voice_004",
+        "nyamuru_voice_005",
+        "nyamuru_voice_008"
+      ],
+      "labels": {
+        "save": 3
+      }
+    },
+    "save_how_question": {
+      "split": "dev",
+      "groups": [
+        "save_how_question"
+      ],
+      "ids": [
+        "nyamuru_voice_141"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "save_report": {
+      "split": "test",
+      "groups": [
+        "save_report"
+      ],
+      "ids": [
+        "nyamuru_voice_145"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "save_report_then_request": {
+      "split": "dev",
+      "groups": [
+        "save_report_then_request"
+      ],
+      "ids": [
+        "nyamuru_voice_009"
+      ],
+      "labels": {
+        "save": 1
+      }
+    },
+    "save_self_correction": {
+      "split": "train",
+      "groups": [
+        "save_self_correction"
+      ],
+      "ids": [
+        "nyamuru_voice_010",
+        "nyamuru_voice_144"
+      ],
+      "labels": {
+        "save": 1,
+        "not_command": 1
+      }
+    },
+    "save_status_question": {
+      "split": "dev",
+      "groups": [
+        "save_status_question"
+      ],
+      "ids": [
+        "nyamuru_voice_142"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "spread_negative": {
+      "split": "train",
+      "groups": [
+        "spread_negative",
+        "spread_off",
+        "spread_on",
+        "spread_report"
+      ],
+      "ids": [
+        "nyamuru_voice_055",
+        "nyamuru_voice_056",
+        "nyamuru_voice_057",
+        "nyamuru_voice_155",
+        "nyamuru_voice_161"
+      ],
+      "labels": {
+        "view_change": 3,
+        "not_command": 2
+      }
+    },
+    "tab_characters": {
+      "split": "test",
+      "groups": [
+        "tab_characters"
+      ],
+      "ids": [
+        "nyamuru_voice_065"
+      ],
+      "labels": {
+        "view_change": 1
+      }
+    },
+    "tab_storyboard": {
+      "split": "train",
+      "groups": [
+        "tab_storyboard"
+      ],
+      "ids": [
+        "nyamuru_voice_066"
+      ],
+      "labels": {
+        "view_change": 1
+      }
+    },
+    "undo_last_edit": {
+      "split": "test",
+      "groups": [
+        "undo_last_edit"
+      ],
+      "ids": [
+        "nyamuru_voice_013",
+        "nyamuru_voice_017"
+      ],
+      "labels": {
+        "undo": 2
+      }
+    },
+    "undo_question": {
+      "split": "dev",
+      "groups": [
+        "undo_question"
+      ],
+      "ids": [
+        "nyamuru_voice_146"
+      ],
+      "labels": {
+        "not_command": 1
+      }
+    },
+    "zoom_100": {
+      "split": "test",
+      "groups": [
+        "zoom_100"
+      ],
+      "ids": [
+        "nyamuru_voice_053",
+        "nyamuru_voice_054"
+      ],
+      "labels": {
+        "view_change": 2
+      }
+    },
+    "zoom_in": {
+      "split": "train",
+      "groups": [
+        "zoom_in",
+        "zoom_out"
+      ],
+      "ids": [
+        "nyamuru_voice_049",
+        "nyamuru_voice_050",
+        "nyamuru_voice_051",
+        "nyamuru_voice_052"
+      ],
+      "labels": {
+        "view_change": 4
+      }
+    }
+  }
+}

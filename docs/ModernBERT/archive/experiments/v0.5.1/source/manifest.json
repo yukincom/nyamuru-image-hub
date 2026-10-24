@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-17T09:44:33.305781+00:00",
+  "scope": "review-only voice intent data draft",
+  "baseline_head": "954e61a968ed57e7c309535de923eae8edea79c4",
+  "source_state": "working tree including earlier in-progress bubble changes; not a released capability claim",
+  "data_source": "Codex-authored synthetic examples and user-supplied example utterances; all label/slot annotations pending user review",
+  "source_counts": {
+    "codex_synthetic": 308,
+    "user_supplied_example": 8
+  },
+  "user_review": "pending",
+  "training_run": false,
+  "model_inference_run": false,
+  "speech_recognition_run": false,
+  "runtime_wired": false,
+  "split": "unassigned",
+  "row_count": 316,
+  "label_count": 19,
+  "counts": {
+    "save": 10,
+    "undo": 10,
+    "redo": 10,
+    "page_navigate": 16,
+    "view_change": 20,
+    "artwork_mode_set": 10,
+    "bubble_set": 29,
+    "needs_clarification": 20,
+    "needs_reasoning": 10,
+    "compound_request": 17,
+    "out_of_scope_request": 13,
+    "generate_request": 33,
+    "not_command": 46,
+    "panel_sync_set": 12,
+    "inner_frame_snap_set": 12,
+    "panel_gap_snap_set": 12,
+    "background_3d_candidates": 16,
+    "paint_tool_set": 12,
+    "text_frames_align": 8
+  },
+  "validation": {
+    "json_and_jsonl_parse": "passed",
+    "unique_ids": "passed",
+    "normalized_text_duplicates": 0,
+    "known_labels": "passed",
+    "source_and_unreviewed_provenance": "passed",
+    "positive_labels_have_separate_slot_annotations": "passed",
+    "presets_exist_in_current_catalog": "passed",
+    "artwork_modes_match_existing_values": "passed",
+    "basic_slot_types_and_ranges": "passed",
+    "semantic_review": "author reviewed; user review pending; no independent-agent or model evaluation"
+  },
+  "files": {
+    "labels.json": {
+      "sha256": "a2d7a6ccaabefbccb511ba20c10114542c4eade0cad57ace5093bca3b9c7fcc9",
+      "bytes": 25679
+    },
+    "candidates.jsonl": {
+      "sha256": "21b7254515dd45e5319a71da633e54532873af07db81e72077626ab1a4f6733b",
+      "bytes": 97372
+    },
+    "review.md": {
+      "sha256": "b74e8867658b3aa37aba0384804557930aedb8ccc5d879d1e1d7f800ee628a14",
+      "bytes": 67018
+    }
+  },
+  "source_files_sha256": {
+    "src/components/App.tsx": "464401e17aad35bc2f68e8544eeb05cf1bec151239b6390e6d53de3c07d7992c",
+    "src/components/Header.tsx": "81a13652cbb983576e0fd3ab8af82028c6d8a80b394403d75ffaef0daeea6111",
+    "src/components/PageSidebar.tsx": "c80942b5fa156aff2f705ba0911b9cd03d3b6cbc4defca80aa06fc49f9f62733",
+    "src/components/MangaCanvas.tsx": "f414d736395de3d7864deea963aae413f028726536511b11e1461d80d78a89e6",
+    "src/components/EnvironmentSettings.tsx": "87279425b5588813ab459e1144118c8104601f0f3f86e293eef088eee27accce",
+    "src/components/ArtworkSettings.tsx": "5843f6a85ddfdadd9a22a4dc7176a3bade1719a326d567076d18c053e6b13157",
+    "src/components/PanelInspector.tsx": "4827a9cffbcc6363aa666ec8d18829385d279f11df136e3f7490748c2ebdf004",
+    "src/components/PageOverlayInspector.tsx": "d5912b86528d3d8be5dd8aa21f48b232b612cd370dca1fede88cfba7e05b503e",
+    "src/lib/bubblePresetData.ts": "3b125c2a6296d92d800d9fbfc1b153bbeba297640104a128ccaf2adab6fcce1d",
+    "src/lib/bubblePresentation.ts": "1941c6be9c5c91140a123424aaf0e9b911e64e74c5469f7808c2b21eb4ab9f90",
+    "src/assets/materials/bubbles/paths.json": "67774f0136d7505d7df620588600b5509ec549b8c4ccaaf907a751641d6e162a",
+    "src/components/PanelControls.tsx": "a8ce2b7018b16faaaf6830ed0dafd59f7a80e02d23598b77e4e8c4b052377ea1",
+    "src/components/QwenGenerationDialog.tsx": "c89660c91c87d36000f646e3f1c582c0b88b673bc2317ef9722b33beb51daafd",
+    "src/lib/qwenGeneration.ts": "09509ded08d801565da1a0c03cb8f2cf3ebcd7ce4765de8039668a697384c209",
+    "src/components/BackgroundModelPicker.tsx": "220e40e6300e3fc8cbf94b10017ac9c7791bfa15879d482e4c39c16e0954e31f",
+    "src/components/DocumentEditors.tsx": "b4ded49bc789efe773b2022acc1c54805d4c3d64023c071d9171764c8902154b",
+    "src/components/Background3dEditor.tsx": "8ea1e9a9a7ecfb6d9e2ff76f552d2af6907c5bf20b2eaa4fbc0410afa561e68b",
+    "scripts/hermes_manga.py": "ca06d61c597535aef907ce89a96b3358b3a465a51ba42c9241369f53baefc8b9",
+    "src/components/PaintEditor.tsx": "eec9c2fcea9df9bbb197afab795a4f6300456a590501fa5e61fb81f6cab6abc1",
+    "src/components/PaintPenTools.tsx": "0cce82c77fd0a88bcb05be7aa4b932e6e4bea3b8e660e8f216782fdb7e8e980f",
+    "src/lib/paintToolMode.ts": "a3b81443f6dd97d61605e164a045c90fb1d8035f3fadb4d27283bcf8a20b2123",
+    "src/types.ts": "8f45254a338352a16239547ea5e1c812fb389717cb5c6caca0c49e766af52be8",
+    "src/lib/localBridge.ts": "b4c82b6c59356391a1d05246da6545361e2550c67b836b0935a49a5e34868803",
+    "src/lib/analogTextCrops.ts": "b7101dfac05c173380c51d90fbe998202a17b0d16af13a081af7701aff9a2ed0",
+    "src/lib/vectorGeometry.ts": "f7a1fa20995b93131461928bac2745b5cd5b86ade1d383eb639c1bc645fc7f14"
+  }
+}

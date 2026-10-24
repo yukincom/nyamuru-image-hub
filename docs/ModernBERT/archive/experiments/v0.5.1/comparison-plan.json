@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "conditions": [
+    {
+      "id": "baseline",
+      "training_objective": {
+        "name": "baseline",
+        "views": 1,
+        "kl_weight": 0.0,
+        "dropout": {
+          "attention_dropout": 0.0,
+          "embedding_dropout": 0.0,
+          "mlp_dropout": 0.0,
+          "classifier_dropout": 0.0
+        }
+      }
+    },
+    {
+      "id": "dropout_2view",
+      "training_objective": {
+        "name": "dropout_2view",
+        "views": 2,
+        "kl_weight": 0.0,
+        "dropout": {
+          "attention_dropout": 0.1,
+          "embedding_dropout": 0.1,
+          "mlp_dropout": 0.1,
+          "classifier_dropout": 0.1
+        }
+      }
+    },
+    {
+      "id": "rdrop",
+      "training_objective": {
+        "name": "rdrop",
+        "views": 2,
+        "kl_weight": 1.0,
+        "dropout": {
+          "attention_dropout": 0.1,
+          "embedding_dropout": 0.1,
+          "mlp_dropout": 0.1,
+          "classifier_dropout": 0.1
+        }
+      }
+    }
+  ],
+  "selection_split": "dev",
+  "independent_acceptance_eligible": false,
+  "trials_per_condition": 6,
+  "selected_models_per_condition": 3,
+  "method_selection": "Mean best reused-dev macro F1 at condition-specific selected shared LR; tie lower ordinary dev CE, earlier mean epoch, earlier condition order.",
+  "loss_normalization": "Two-view CE is average of both sample-mean CEs. Symmetric KL averages the two directions; sums classes and averages original examples. Both sides receive gradients.",
+  "paired_control": "dropout_2view and rdrop share both dropout and two forwards; only KL coefficient differs. Effective distinct training examples and optimizer steps are identical.",
+  "fixed_data_sha256": {
+    "legacy_v02_test": "be512d0209cf89d3cce434fad744e6ecd9afaf1a211df8af482efef0562f9240",
+    "train": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+    "test": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "legacy_v02_dev": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+    "legacy_v03_dev": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+    "dev": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+    "legacy_v03_test": "36bc54df27d6080439e42d2faa1c10530cf31c0cca29f1b45b4a32a957580fd1"
+  },
+  "no_new_text_or_prompt": true,
+  "sources": [
+    "https://github.com/dropreg/R-Drop",
+    "https://arxiv.org/abs/2106.14448",
+    "https://aclanthology.org/2025.semeval-1.248/"
+  ]
+}

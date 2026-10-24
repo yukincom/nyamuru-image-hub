@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { parse } from 'yaml';
+import { parse, stringify } from 'yaml';
 import { OMAY_SPEC_NAME, omayFileName, omnyFileName, panelFrameLineWidthFromStyleNotes, panelGuttersFromStyleNotes, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml, withPanelFrameLineWidthStyleNote, withPanelGutterStyleNote } from '../src/lib/manga.ts';
 
 const omaySource = readFileSync(new URL('../src/content/standard.omay.yaml', import.meta.url), 'utf8');
@@ -15,6 +15,13 @@ test('標準OMAYテンプレートがspec情報と両ルールを持つ', () => 
   assert.ok(omay.layout_spec.includes('出力枚数(最重要)'));
   assert.ok(omay.layout_spec.includes('ページヘッダー・フッター'));
   assert.ok(omay.layout_spec.includes('配置の優先順位'));
+  assert.ok(omay.style_notes.some((note) => note.includes('meta.format')));
+  assert.ok(!omay.style_notes.some((note) => note.startsWith('[style] カラー漫画。')));
+  assert.ok(omay.style_notes.some((note) => note.includes('漢字＝ゴシック体、ひらがな・カタカナ＝明朝体')));
+  assert.ok(!omay.style_notes.some((note) => note.includes('漢字=明朝体、かな=ゴシック体')));
+  assert.ok(omay.layout_spec.includes('meta.panel_frame_width_mm'));
+  assert.ok(omay.layout_spec.includes('meta.panel_gutter_row_mm'));
+  assert.ok(!omay.layout_spec.includes('外周に約2〜3mmの白マージン'));
 });
 
 test('生成プロンプト本体には定型ブロックが残っていない', () => {
@@ -24,26 +31,28 @@ test('生成プロンプト本体には定型ブロックが残っていない',
   assert.ok(prompt.includes('OMAY'));
 });
 
-test('分離版OMNYは画像生成ルールを含まず、ネームデータは全部入り版と同一', () => {
+test('ストーリーOMNYはスタイルOMNYのルールを含まず、作品データを保持する', () => {
   const document = parseMangaYaml(sampleSource);
   const separated = parse(toSeparatedMangaYaml(document));
   assert.equal(separated.manga.meta.style_notes, undefined);
   assert.equal(separated.manga.layout_spec, undefined);
-  // 全部入り版＝分離版＋ルールの合成。ルールを除けば両者は一致する
-  const full = parse(toMangaYaml(document));
-  delete full.manga.meta.style_notes;
-  delete full.manga.layout_spec;
-  assert.deepEqual(separated, full);
+  const editorDocument = parse(toMangaYaml(document));
+  delete editorDocument.manga.meta.style_notes;
+  delete editorDocument.manga.layout_spec;
+  assert.deepEqual(separated, editorDocument);
+  assert.equal(separated.manga.meta.panel_frame_width_mm, 1);
+  assert.equal(separated.manga.meta.panel_gutter_row_mm, 5);
+  assert.equal(separated.manga.meta.panel_gutter_column_mm, 3);
 });
 
-test('分離版OMNYを読み戻すと空のルール欄が補完される', () => {
+test('ストーリーOMNYを読み戻すと空のスタイル欄が補完される', () => {
   const document = parseMangaYaml(sampleSource);
   const reloaded = parseMangaYaml(toSeparatedMangaYaml(document));
   assert.deepEqual(reloaded.manga.meta.style_notes, []);
   assert.equal(reloaded.manga.layout_spec, '');
 });
 
-test('作品情報のルールをOMAYとして書き出すと読み戻せる', () => {
+test('作品情報のルールをスタイルOMNYとして書き出すと読み戻せる', () => {
   const document = parseMangaYaml(sampleSource);
   const omay = parseOmayYaml(toOmayYaml(document));
   assert.deepEqual(omay.style_notes, document.manga.meta.style_notes);
@@ -52,7 +61,7 @@ test('作品情報のルールをOMAYとして書き出すと読み戻せる', (
   assert.equal(omay.spec_version, undefined);
 });
 
-test('新規取り込みの枠線幅を重複なく作画指定へ保存して読み戻す', () => {
+test('旧OMNYの枠線幅を移行用ヘルパーで読み戻せる', () => {
   const original = [
     '[style] カラー漫画',
     '[style] 通常の辺(bleed なし): 太さ約1mmの黒い枠線を描く',
@@ -61,17 +70,60 @@ test('新規取り込みの枠線幅を重複なく作画指定へ保存して�
   assert.equal(updated.length, 2);
   assert.equal(panelFrameLineWidthFromStyleNotes(updated), 2.2);
   assert.match(updated[1], /太さ約2.2mm/);
-  assert.equal(panelFrameLineWidthFromStyleNotes(original), 1.6);
+  assert.equal(panelFrameLineWidthFromStyleNotes(original), 1);
 });
 
-test('新規取り込みまたはテンプレートのコマ間隔を作品設定へ保存して読み戻す', () => {
+test('旧OMNYのコマ間隔を移行用ヘルパーで読み戻せる', () => {
   const updated = withPanelGutterStyleNote(['[style] モノクロ漫画'], { rowGapMm: 6, columnGapMm: 3 });
   assert.equal(updated.length, 2);
   assert.deepEqual(panelGuttersFromStyleNotes(updated), { rowGapMm: 6, columnGapMm: 3 });
   assert.deepEqual(panelGuttersFromStyleNotes([], { rowGapMm: 5, columnGapMm: 5 }), { rowGapMm: 5, columnGapMm: 5 });
 });
 
-test('保存2種類とOMAYのファイル名に対応する拡張子が付く', () => {
+test('旧OMNYの枠線幅とコマ間隔をmetaへ移し、重複指定を除く', () => {
+  const legacy = parse(sampleSource);
+  delete legacy.manga.meta.panel_frame_width_mm;
+  delete legacy.manga.meta.panel_gutter_row_mm;
+  delete legacy.manga.meta.panel_gutter_column_mm;
+  legacy.manga.meta.style_notes.push(
+    '[style] コマ枠線幅: 2.2mm。通常の辺(bleed なし): 外周に約2〜3mmの白マージンを取り、太さ約2.2mmの黒い枠線を描く。隣接コマの枠線は共有せず独立して描く',
+    '[layout] コマ間隔: 上下6mm・左右3mm',
+  );
+  legacy.manga.layout_spec = legacy.manga.layout_spec.replace(
+    /- \[style\] 通常の辺\(bleed なし\):.*独立して描く/,
+    '- [style] 通常の辺(bleed なし): 外周に約2〜3mmの白マージンを取り、太さ約1mmの黒い枠線を描く。隣接コマの枠線は共有せず独立して描く',
+  );
+
+  const migrated = parseMangaYaml(stringify(legacy));
+  assert.equal(migrated.manga.meta.panel_frame_width_mm, 2.2);
+  assert.equal(migrated.manga.meta.panel_gutter_row_mm, 6);
+  assert.equal(migrated.manga.meta.panel_gutter_column_mm, 3);
+  assert.ok(!migrated.manga.meta.style_notes.some((note) => note.startsWith('[style] コマ枠線幅:')));
+  assert.ok(!migrated.manga.meta.style_notes.some((note) => note.startsWith('[layout] コマ間隔:')));
+  assert.ok(migrated.manga.layout_spec.includes('meta.panel_frame_width_mm'));
+  assert.ok(!migrated.manga.layout_spec.includes('外周に約2〜3mmの白マージン'));
+});
+
+test('旧OMNYの逆向きアンチック指定を正しい混植とmeta参照へ移す', () => {
+  const legacy = parse(sampleSource);
+  legacy.manga.meta.style_notes = legacy.manga.meta.style_notes.filter((note) => !note.includes('meta.font'));
+  legacy.manga.meta.style_notes.push('[style] 本文フォントはアンチック体（漢字＝明朝体、ひらがな・カタカナ＝ゴシック体の混植）');
+  const migrated = parseMangaYaml(stringify(legacy));
+  assert.ok(migrated.manga.meta.style_notes.some((note) => note.includes('漢字＝ゴシック体、ひらがな・カタカナ＝明朝体')));
+  assert.ok(!migrated.manga.meta.style_notes.some((note) => note.includes('漢字＝明朝体')));
+});
+
+test('旧OMNYの固定カラー指定を出力形式のmeta参照へ移す', () => {
+  const legacy = parse(sampleSource);
+  legacy.manga.meta.style_notes = legacy.manga.meta.style_notes.filter((note) => !note.includes('meta.format'));
+  legacy.manga.meta.style_notes.push('[style] カラー漫画。線画＋ベタ塗り、必要に応じてグラデーション');
+  const migrated = parseMangaYaml(stringify(legacy));
+  assert.equal(migrated.manga.meta.format, 'カラー漫画');
+  assert.ok(migrated.manga.meta.style_notes.some((note) => note.includes('meta.format')));
+  assert.ok(!migrated.manga.meta.style_notes.some((note) => note.startsWith('[style] カラー漫画。')));
+});
+
+test('ストーリーOMNYとスタイルOMNYのファイル名に対応する拡張子が付く', () => {
   assert.equal(safeFileName('にゃむる'), 'にゃむる.yaml');
   assert.equal(omnyFileName('にゃむる'), 'にゃむる.omny.yaml');
   assert.equal(omayFileName(''), 'manga-name.omay.yaml');

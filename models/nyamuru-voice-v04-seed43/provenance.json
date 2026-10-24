@@ -1,0 +1,16 @@
+{
+  "model_id": "nyamuru-voice-v04-seed43",
+  "version": "v0.4",
+  "equivalent": "v0.5.1 baseline",
+  "seed": 43,
+  "trial": "trial-4",
+  "epoch": 8,
+  "learning_rate": 5e-05,
+  "selection": "User-approved 2026-10-20 after fixed73 and daily112 evaluation; not the historical dev-selected primary.",
+  "files": {
+    "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+    "model.safetensors": "1cb98d06dffde79f234a29b1c78e679634aae6e1357272c85948da6d57c3c3e1",
+    "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+    "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+  }
+}

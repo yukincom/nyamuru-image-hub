@@ -11,6 +11,8 @@
 - [ ] このコントリビューションをMIT Licenseで提供することに同意します（[CONTRIBUTING.md](../CONTRIBUTING.md) 参照）
 - [ ] 第三者のコード・文章・画像等を含む場合、出典とライセンスを本文に記載しました
 - [ ] モデル重み、仮想環境、実際の原稿、OCR出力、個人用パスを含めていません
-- [ ] `npm run check`、`npm test`、`npm run build`、`git diff --check`が通ることを確認しました
+- [ ] `npm run verify`と`git diff --check`が通りました
+- [ ] マージ前にGitHub Actions workflow `Fork CI`の必須check `verify`が成功しました
+- [ ] リリースへの影響を確認し、必要なversion、変更履歴、README、第三者ライセンス表示を更新しました
 - [ ] 実モデルでの確認を省略した場合、その範囲を本文へ記載しました
 - [ ] 本家由来機能を変更した場合、本家への反映要否を確認しました

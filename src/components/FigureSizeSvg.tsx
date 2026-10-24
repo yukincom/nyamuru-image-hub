@@ -9,10 +9,14 @@ interface Props {
 // hand / foot は体の一部そのもの、part は viewBox の両端クロップで「体の断片」を表現する。
 // viewBox は図形の外接範囲ぴったりに取り、bbox いっぱいに meet フィットさせる
 const VIEW_BOXES: Record<FigureSize, string> = {
+  long: '-4 -15 72 129',
   full: '11.5 0.5 41 99',
+  'knee-up': '11.5 0.5 41 78',
   'waist-up': '11.5 0.5 41 49.5',
   'bust-up': '15 0.5 34 33.5',
+  'shoulder-up': '15 0.5 34 27.5',
   face: '1.5 1.5 33 33',
+  'face-detail': '5 10 26 16',
   hand: '2 3 35.5 41',
   foot: '2 0 30 35',
   part: '4 6 36 34',
@@ -20,18 +24,18 @@ const VIEW_BOXES: Record<FigureSize, string> = {
 
 export default function FigureSizeSvg({ size }: Props) {
   return <svg class={`figure-size-svg figure-size-${size}`} viewBox={VIEW_BOXES[size]} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-    {size === 'face' && <circle cx="18" cy="18" r="16.5" />}
-    {size === 'bust-up' && <>
+    {(size === 'face' || size === 'face-detail') && <circle cx="18" cy="18" r="16.5" />}
+    {(size === 'bust-up' || size === 'shoulder-up') && <>
       <circle cx="32" cy="11" r="10.5" />
       <rect x="15" y="25" width="34" height="30" rx="15" />
     </>}
-    {(size === 'full' || size === 'waist-up') && <>
+    {(size === 'long' || size === 'full' || size === 'knee-up' || size === 'waist-up') && <>
       <circle cx="32" cy="10" r="9.5" />
       <rect x="20" y="22" width="24" height="34" rx="12" />
       <rect x="11.5" y="23.5" width="7" height="28" rx="3.5" />
       <rect x="45.5" y="23.5" width="7" height="28" rx="3.5" />
     </>}
-    {size === 'full' && <>
+    {(size === 'long' || size === 'full' || size === 'knee-up') && <>
       <rect x="21.5" y="53" width="9" height="46.5" rx="4.5" />
       <rect x="33.5" y="53" width="9" height="46.5" rx="4.5" />
     </>}

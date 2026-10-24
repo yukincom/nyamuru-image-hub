@@ -1,4 +1,8 @@
-numpy>=1.26,<3
-opencv-python-headless>=4.8,<5
+-r requirements-qa.txt
 onnxruntime>=1.17,<2
-Pillow>=10,<13
+certifi>=2026.10.19
+# Adopted offline voice classifier; same versions used for the 185-case parity check.
+torch==2.11.0
+transformers==5.14.1
+tokenizers==0.22.2
+safetensors==0.8.0

@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "generation-qa-batch-v1.schema.json",
+  "title": "Nyamuru deterministic generation QA batch report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "generated_at",
+    "manifest",
+    "cases",
+    "summary",
+    "duplicate_groups",
+    "baseline",
+    "batch_sha256"
+  ],
+  "properties": {
+    "schema_name": { "const": "nyamuru-generation-qa-batch" },
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/caseResult" }
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "duplicate_groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/duplicateGroup" }
+    },
+    "baseline": { "$ref": "#/$defs/baseline" },
+    "batch_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_name", "sha256"],
+      "properties": {
+        "file_name": { "type": "string", "minLength": 1, "maxLength": 255 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "caseResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "expected_status",
+        "expected_finding_codes",
+        "expectation_match",
+        "report"
+      ],
+      "properties": {
+        "case_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,99}$" },
+        "expected_status": { "enum": ["pass", "warn", "fail"] },
+        "expected_finding_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "expectation_match": { "type": "boolean" },
+        "report": { "$ref": "generation-qa-report-v1.schema.json" }
+      }
+    },
+    "statusCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "warn", "fail"],
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "warn": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "matching", "mismatching", "status_counts"],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "matching": { "type": "integer", "minimum": 0 },
+        "mismatching": { "type": "integer", "minimum": 0 },
+        "status_counts": { "$ref": "#/$defs/statusCounts" }
+      }
+    },
+    "duplicateGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_sha256", "case_ids"],
+      "properties": {
+        "artifact_sha256": { "$ref": "#/$defs/sha256" },
+        "case_ids": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        }
+      }
+    },
+    "baselineCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "comparison"],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "comparison": { "$ref": "generation-qa-comparison-v1.schema.json" }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provided", "added_case_ids", "removed_case_ids", "comparisons"],
+      "properties": {
+        "provided": { "type": "boolean" },
+        "added_case_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "removed_case_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "comparisons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/baselineCase" }
+        }
+      }
+    }
+  }
+}

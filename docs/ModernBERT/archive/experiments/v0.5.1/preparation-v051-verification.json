@@ -1,0 +1,42 @@
+{
+  "status": "verified",
+  "release": "v0.5.1",
+  "frozen_inputs": 162,
+  "zip_entries": 163,
+  "zip_bytes": 3710622,
+  "zip_sha256": "ba1991e526891faf95fa874af2c00c4c6490a99b9b9c41c862e08d865a26f37a",
+  "notebook_sha256": "d708f5fe2fa7d93f9841ac2e6740ae2850316d622c6c955a50a1e2f1f33e35e9",
+  "root_tests": {
+    "run": 59,
+    "passed": 33,
+    "skipped_other_dataset_version": 26
+  },
+  "isolated_bundle_tests": {
+    "run": 39,
+    "passed": 28,
+    "skipped_other_dataset_version": 11
+  },
+  "notebook_code_cells_ast_verified": 5,
+  "generated_notebook_failure_fixture": "passed; nested traceback saved and visible; false success absent",
+  "rebuild_byte_identical": {
+    "zip": true,
+    "notebook": true
+  },
+  "old_frozen_inputs": {
+    "v0.3": 102,
+    "v0.4": 154,
+    "v0.5": 161
+  },
+  "old_frozen_inputs_all_unchanged": true,
+  "all_seven_splits_identical_to_v05": true,
+  "tiny_cpu_smoke": {
+    "conditions": 3,
+    "trials": 18,
+    "checkpoints": 9,
+    "checked_predictions": 17406,
+    "status": "passed"
+  },
+  "t4_numerical_diagnostics": "two repaired conditions, seed42/lr2e-5, 10 epochs each; all logged gradients and dev losses finite; numerical function AST matches this release",
+  "full_18_trial_real_model_comparison_performed": false,
+  "accuracy_improvement_measured": false
+}

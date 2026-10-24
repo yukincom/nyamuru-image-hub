@@ -1,0 +1,1252 @@
+{
+  "dataset": "nyamuru_v03_fresh_dev_synthetic_component",
+  "authoring_basis": "Only source/labels.json label and slot contract. No training data, predictions, public dataset rows, or other writer outputs were read.",
+  "status": "pending_user_review",
+  "rows": 144,
+  "id_range": [
+    "nyamuru_voice_1213",
+    "nyamuru_voice_1356"
+  ],
+  "label_counts": {
+    "save": 8,
+    "undo": 8,
+    "redo": 8,
+    "page_navigate": 8,
+    "view_change": 8,
+    "artwork_mode_set": 8,
+    "bubble_set": 8,
+    "needs_clarification": 8,
+    "needs_reasoning": 8,
+    "compound_request": 8,
+    "out_of_scope_request": 4,
+    "not_command": 4,
+    "panel_sync_set": 8,
+    "inner_frame_snap_set": 8,
+    "panel_gap_snap_set": 8,
+    "generate_request": 8,
+    "background_3d_candidates": 8,
+    "paint_tool_set": 8,
+    "text_frames_align": 8
+  },
+  "sentence_family_counts": {
+    "save": 8,
+    "undo": 8,
+    "redo": 8,
+    "page_navigate": 8,
+    "view_change": 8,
+    "artwork_mode_set": 8,
+    "bubble_set": 8,
+    "needs_clarification": 8,
+    "needs_reasoning": 8,
+    "compound_request": 8,
+    "out_of_scope_request": 4,
+    "not_command": 4,
+    "panel_sync_set": 8,
+    "inner_frame_snap_set": 8,
+    "panel_gap_snap_set": 8,
+    "generate_request": 8,
+    "background_3d_candidates": 8,
+    "paint_tool_set": 8,
+    "text_frames_align": 8
+  },
+  "structural_checks": {
+    "exact_nine_keys": true,
+    "unique_ids": true,
+    "unique_texts": true,
+    "contiguous_ids": true,
+    "all_19_labels": true,
+    "strict_requested_counts": true,
+    "minimum_four_sentence_families_per_label": true,
+    "lf_terminated": true
+  },
+  "semantic_checks": {
+    "every_row_individually_reviewed": true,
+    "standalone_raw_text": true,
+    "no_asr_noise_invention": true,
+    "ordinary_ui_selection_is_valid": true,
+    "undo_only_completed_edit": true,
+    "redo_only_undone_edit": true,
+    "compound_requires_two_current_independent_actions": true,
+    "generation_mode_separate_from_generation": true,
+    "registered_3d_candidates_use_dedicated_label": true,
+    "text_alignment_targets_multiple_frames_top_edges": true
+  },
+  "grouping": "Near paraphrases and relevant negative contrasts share groups across labels. Repeated panel-setting constructions share one group across all three settings. Groups are intentionally broader than tags describing sentence construction.",
+  "slot_annotation_notes": [
+    "Non-action, clarification, reasoning, compound, and out-of-scope rows use empty slots because the contract supplies no per-label slot schema for these labels.",
+    "Bubble fields use value for literal text/boolean, mm-suffixed relative or dimension fields for bbox, locator for speaker/owner, and 1-based bubble_number for join target; those payload key spellings are annotations, not runtime schema claims.",
+    "Text-frame alignment uses the contract default reference selection_bounds; no absolute placement is invented.",
+    "Named characters preserve literal honorifics; existence and uniqueness remain execution-side checks."
+  ],
+  "known_unresolved_gold_ambiguities": [],
+  "intentional_clarification_examples": [
+    "nyamuru_voice_1269",
+    "nyamuru_voice_1270",
+    "nyamuru_voice_1271",
+    "nyamuru_voice_1272",
+    "nyamuru_voice_1273",
+    "nyamuru_voice_1274",
+    "nyamuru_voice_1275",
+    "nyamuru_voice_1276"
+  ],
+  "limitations": [
+    "Synthetic evaluation only; not evidence of real voice or real-user accuracy.",
+    "The eight planned public rows are not included here; this component intentionally has four not_command and four out_of_scope_request rows.",
+    "Cross-dataset family overlap has not been checked because this authoring task forbids reading training data or other authors outputs.",
+    "No classifier training, inference, service invocation, or UI execution occurred."
+  ],
+  "row_reviews": [
+    {
+      "id": "nyamuru_voice_1213",
+      "label": "save",
+      "family": "direct_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "現在の作品に対する通常の保存依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1214",
+      "label": "save",
+      "family": "session_boundary",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "作業終了の説明に続く現在の保存依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1215",
+      "label": "save",
+      "family": "purpose_then_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "保存する目的を述べた一操作の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1216",
+      "label": "save",
+      "family": "interrogative_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "能力質問ではなく今の保存を求める疑問形。"
+    },
+    {
+      "id": "nyamuru_voice_1217",
+      "label": "save",
+      "family": "withdrawn_alternative",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "別名保存は撤回され、通常保存だけが肯定されている。"
+    },
+    {
+      "id": "nyamuru_voice_1218",
+      "label": "save",
+      "family": "midwork_checkpoint",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "作業継続の説明は別操作ではなく、現在作品の保存依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1219",
+      "label": "save",
+      "family": "benefactive_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "保存済みの報告ではなく現在の保存を頼んでいる。"
+    },
+    {
+      "id": "nyamuru_voice_1220",
+      "label": "save",
+      "family": "desired_outcome",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "変更を残すための既存の保存操作を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1221",
+      "label": "undo",
+      "family": "completed_move",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "完了した移動編集を履歴で一回取り消す。"
+    },
+    {
+      "id": "nyamuru_voice_1222",
+      "label": "undo",
+      "family": "interrogative_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "最後の編集を対象にした現在の取り消し依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1223",
+      "label": "undo",
+      "family": "evaluation_then_request",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "完了した修正への評価の後にUndoを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1224",
+      "label": "undo",
+      "family": "desired_prior_state",
+      "result": "accepted",
+      "closest_other_label": "page_navigate",
+      "reason": "作品内のページ移動ではなく編集取り消し。"
+    },
+    {
+      "id": "nyamuru_voice_1225",
+      "label": "undo",
+      "family": "counted_history",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "同一履歴操作の二回指定であり独立した二操作ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1226",
+      "label": "undo",
+      "family": "postposed_mechanism",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "描き終えた線の履歴取り消しを末尾で明示。"
+    },
+    {
+      "id": "nyamuru_voice_1227",
+      "label": "undo",
+      "family": "excluded_topic",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "保存は否定され、完了した編集の取り消しだけを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1228",
+      "label": "undo",
+      "family": "history_destination",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "履歴を戻す数が明示された単一Undo操作。"
+    },
+    {
+      "id": "nyamuru_voice_1229",
+      "label": "redo",
+      "family": "undone_line",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "Undo済みの線を履歴から再適用する依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1230",
+      "label": "redo",
+      "family": "interrogative_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "取り消し済み編集を一つ再適用する疑問形の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1231",
+      "label": "redo",
+      "family": "preference_then_request",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "Undo前の編集を選び直し、Redoを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1232",
+      "label": "redo",
+      "family": "counted_history",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "取り消した履歴二回分の再適用であり複合依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1233",
+      "label": "redo",
+      "family": "history_direction",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "取り消し済み変更へ履歴を進めるためRedo。"
+    },
+    {
+      "id": "nyamuru_voice_1234",
+      "label": "redo",
+      "family": "desired_undo_reversal",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "実行中処理の中止ではなく実行済みUndoの反転。"
+    },
+    {
+      "id": "nyamuru_voice_1235",
+      "label": "redo",
+      "family": "excluded_recreation",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "新規描画は否定され、取り消し済み編集の復元を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1236",
+      "label": "redo",
+      "family": "retrospective_count",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "三回分のUndoを履歴からやり直す一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1237",
+      "label": "page_navigate",
+      "family": "continuation",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "作品内の次ページを表示する依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1238",
+      "label": "page_navigate",
+      "family": "interrogative_request",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "戻す対象がページなのでUndoではない。"
+    },
+    {
+      "id": "nyamuru_voice_1239",
+      "label": "page_navigate",
+      "family": "purpose_then_request",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "表示する作品内ページ番号を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1240",
+      "label": "page_navigate",
+      "family": "same_utterance_reference",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "そこは同じ発話内の先頭ページを指し、一意に解釈できる。"
+    },
+    {
+      "id": "nyamuru_voice_1241",
+      "label": "page_navigate",
+      "family": "endpoint_request",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "作品内の末尾ページへの表示移動。"
+    },
+    {
+      "id": "nyamuru_voice_1242",
+      "label": "page_navigate",
+      "family": "counted_forward",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "表示ページを二ページ進める一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1243",
+      "label": "page_navigate",
+      "family": "counted_backward",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "編集履歴ではなく表示ページを三つ戻す。"
+    },
+    {
+      "id": "nyamuru_voice_1244",
+      "label": "page_navigate",
+      "family": "benefactive_number",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "ページの追加ではなく既存の一ページ目への移動。"
+    },
+    {
+      "id": "nyamuru_voice_1245",
+      "label": "view_change",
+      "family": "fit_outcome",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "紙面全体を収める表示変更であり画像生成ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1246",
+      "label": "view_change",
+      "family": "purpose_then_request",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "拡大対象が表示と明示され、図形の寸法は変えない。"
+    },
+    {
+      "id": "nyamuru_voice_1247",
+      "label": "view_change",
+      "family": "evaluation_then_request",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "表示のズームアウトを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1248",
+      "label": "view_change",
+      "family": "explicit_display_state",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "戻す先が実寸表示なのでUndoではない。"
+    },
+    {
+      "id": "nyamuru_voice_1249",
+      "label": "view_change",
+      "family": "tab_direct",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "既存のstoryboardタブへの切替。"
+    },
+    {
+      "id": "nyamuru_voice_1250",
+      "label": "view_change",
+      "family": "purpose_and_question",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "人物生成ではなくcharactersタブの表示を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1251",
+      "label": "view_change",
+      "family": "destination_only",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "既存のenvironmentタブを指定。"
+    },
+    {
+      "id": "nyamuru_voice_1252",
+      "label": "view_change",
+      "family": "same_utterance_reference",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "そちらは同じ発話中のpropsタブを指す。"
+    },
+    {
+      "id": "nyamuru_voice_1253",
+      "label": "artwork_mode_set",
+      "family": "direct_mode",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "作画設定をintegratedにする依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1254",
+      "label": "artwork_mode_set",
+      "family": "purpose_then_request",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "作画方式draftへの設定変更だけを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1255",
+      "label": "artwork_mode_set",
+      "family": "interrogative_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "選ぶ対象は作画方式であり生成開始ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1256",
+      "label": "artwork_mode_set",
+      "family": "return_to_mode",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "戻す値がdraftと明示された設定依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1257",
+      "label": "artwork_mode_set",
+      "family": "deferred_other_action",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "生成は延期され、一体型への変更だけが現在の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1258",
+      "label": "artwork_mode_set",
+      "family": "corrected_value",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "最終的に肯定された作画方式はdraft。"
+    },
+    {
+      "id": "nyamuru_voice_1259",
+      "label": "artwork_mode_set",
+      "family": "preparatory_setting",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "描画の実行は依頼せず、作画方式の変更を求める。"
+    },
+    {
+      "id": "nyamuru_voice_1260",
+      "label": "artwork_mode_set",
+      "family": "intent_then_question",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "動機の説明に続いてdraftへの変更を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1261",
+      "label": "bubble_set",
+      "family": "tail_remove",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "既存吹き出しのしっぽを無効にする依頼。吹き出し自体の削除ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1262",
+      "label": "bubble_set",
+      "family": "tail_enable",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "通常の選択参照を使い、しっぽ有無の値を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1263",
+      "label": "bubble_set",
+      "family": "relative_xy",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "一つの移動のx/y指定。右と下が正のmm注釈。"
+    },
+    {
+      "id": "nyamuru_voice_1264",
+      "label": "bubble_set",
+      "family": "explicit_dimensions",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "同じBBoxの幅と高さを指定する一操作。"
+    },
+    {
+      "id": "nyamuru_voice_1265",
+      "label": "bubble_set",
+      "family": "quoted_text",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "引用内の命令は吹き出し本文であり実行依頼には数えない。"
+    },
+    {
+      "id": "nyamuru_voice_1266",
+      "label": "bubble_set",
+      "family": "named_speaker",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "話者名の敬称を保持した明示設定。人物対応を考える依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1267",
+      "label": "bubble_set",
+      "family": "explicit_owner",
+      "result": "accepted",
+      "closest_other_label": "page_navigate",
+      "reason": "吹き出しの所属先を現在ページの表示番号で指定。"
+    },
+    {
+      "id": "nyamuru_voice_1268",
+      "label": "bubble_set",
+      "family": "explicit_join",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "結合先が現在コマ内の1-based番号で明示されている。"
+    },
+    {
+      "id": "nyamuru_voice_1269",
+      "label": "needs_clarification",
+      "family": "unspecified_return",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "編集履歴、ページ、設定など戻す操作が発話だけでは確定しない。"
+    },
+    {
+      "id": "nyamuru_voice_1270",
+      "label": "needs_clarification",
+      "family": "missing_destination",
+      "result": "accepted",
+      "closest_other_label": "view_change",
+      "reason": "対象と切替先の種類が発話にない。通常の選択対象参照とも特定できない。"
+    },
+    {
+      "id": "nyamuru_voice_1271",
+      "label": "needs_clarification",
+      "family": "missing_magnitude",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "吹き出しの拡大値が不明。程度不明の拡大は保留とする契約。"
+    },
+    {
+      "id": "nyamuru_voice_1272",
+      "label": "needs_clarification",
+      "family": "missing_guide_kind",
+      "result": "accepted",
+      "closest_other_label": "view_change",
+      "reason": "placement/edit/artworkのどのガイドか指定がない。"
+    },
+    {
+      "id": "nyamuru_voice_1273",
+      "label": "needs_clarification",
+      "family": "ambiguous_generation_term",
+      "result": "accepted",
+      "closest_other_label": "artwork_mode_set",
+      "reason": "部分生成は作画方式か部分修正か一意に決まらない。"
+    },
+    {
+      "id": "nyamuru_voice_1274",
+      "label": "needs_clarification",
+      "family": "missing_boolean",
+      "result": "accepted",
+      "closest_other_label": "panel_sync_set",
+      "reason": "コマシンクロをオンとオフのどちらにするか不明。"
+    },
+    {
+      "id": "nyamuru_voice_1275",
+      "label": "needs_clarification",
+      "family": "missing_repeated_action",
+      "result": "accepted",
+      "closest_other_label": "redo",
+      "reason": "繰り返す操作が発話内にない。Redoの根拠もない。"
+    },
+    {
+      "id": "nyamuru_voice_1276",
+      "label": "needs_clarification",
+      "family": "missing_pen_kind",
+      "result": "accepted",
+      "closest_other_label": "paint_tool_set",
+      "reason": "ラスターペンかベクターペンか希望する切替先が不明。"
+    },
+    {
+      "id": "nyamuru_voice_1277",
+      "label": "needs_reasoning",
+      "family": "speaker_inference",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "発言内容から話者対応を判断する依頼。値の明示設定ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1278",
+      "label": "needs_reasoning",
+      "family": "shape_suitability",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "場面への適合判断を求め、形の値は与えていない。"
+    },
+    {
+      "id": "nyamuru_voice_1279",
+      "label": "needs_reasoning",
+      "family": "reading_flow",
+      "result": "accepted",
+      "closest_other_label": "text_frames_align",
+      "reason": "読み順に適した自由な配置判断を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1280",
+      "label": "needs_reasoning",
+      "family": "material_suitability",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "場面に合う素材の判断であり素材の固定指定ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1281",
+      "label": "needs_reasoning",
+      "family": "expression_proposal",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "表現の適切さを考える案出し。本文を指定値に置換する操作ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1282",
+      "label": "needs_reasoning",
+      "family": "evidence_based_layout",
+      "result": "accepted",
+      "closest_other_label": "background_3d_candidates",
+      "reason": "資料と人物関係から配置を考える依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1283",
+      "label": "needs_reasoning",
+      "family": "joint_layout_planning",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "大きさと置き場所を含む一つのレイアウト検討。独立した設定実行二件ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1284",
+      "label": "needs_reasoning",
+      "family": "character_voice",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "人物ごとの話し方を踏まえた表現判断を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1285",
+      "label": "compound_request",
+      "family": "save_then_navigate",
+      "result": "accepted",
+      "closest_other_label": "save",
+      "reason": "通常保存と次ページ表示の二つを現在の実行依頼として肯定。"
+    },
+    {
+      "id": "nyamuru_voice_1286",
+      "label": "compound_request",
+      "family": "two_distinct_settings",
+      "result": "accepted",
+      "closest_other_label": "panel_sync_set",
+      "reason": "別々の設定二つにそれぞれ希望状態を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1287",
+      "label": "compound_request",
+      "family": "mode_then_generation",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "作画方式の設定と現在一ページの生成を両方依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1288",
+      "label": "compound_request",
+      "family": "two_bubble_fields",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "しっぽ無効化と本文変更が独立した二操作。引用中の命令は数えない。"
+    },
+    {
+      "id": "nyamuru_voice_1289",
+      "label": "compound_request",
+      "family": "tool_and_view",
+      "result": "accepted",
+      "closest_other_label": "paint_tool_set",
+      "reason": "描画ペンの変更と表示ズームインを現在依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1290",
+      "label": "compound_request",
+      "family": "align_then_save",
+      "result": "accepted",
+      "closest_other_label": "text_frames_align",
+      "reason": "複数文字枠の上端揃えと作品保存の二操作。"
+    },
+    {
+      "id": "nyamuru_voice_1291",
+      "label": "compound_request",
+      "family": "undo_then_save",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "完了した編集のUndoとその後の保存を両方依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1292",
+      "label": "compound_request",
+      "family": "candidates_and_navigation",
+      "result": "accepted",
+      "closest_other_label": "background_3d_candidates",
+      "reason": "現在ページ向け候補提示と末尾ページへの表示移動が独立して肯定されている。"
+    },
+    {
+      "id": "nyamuru_voice_1293",
+      "label": "out_of_scope_request",
+      "family": "active_job_cancellation",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "明確な実行中生成の中止は初期対応範囲外。完了編集のUndoではない。"
+    },
+    {
+      "id": "nyamuru_voice_1294",
+      "label": "out_of_scope_request",
+      "family": "all_pages_batch",
+      "result": "accepted",
+      "closest_other_label": "generate_request",
+      "reason": "現在一ページではなく作品全ページの一括生成を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1295",
+      "label": "out_of_scope_request",
+      "family": "page_deletion",
+      "result": "accepted",
+      "closest_other_label": "page_navigate",
+      "reason": "削除対象が明示された現在の依頼。ページ表示移動とは異なる。"
+    },
+    {
+      "id": "nyamuru_voice_1296",
+      "label": "out_of_scope_request",
+      "family": "external_model_search",
+      "result": "accepted",
+      "closest_other_label": "background_3d_candidates",
+      "reason": "登録済み候補ではなく外部3Dモデルの検索を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1297",
+      "label": "not_command",
+      "family": "state_question",
+      "result": "accepted",
+      "closest_other_label": "save",
+      "reason": "現在の保存状態を尋ねるだけで保存実行を依頼していない。"
+    },
+    {
+      "id": "nyamuru_voice_1298",
+      "label": "not_command",
+      "family": "capability_question",
+      "result": "accepted",
+      "closest_other_label": "redo",
+      "reason": "Redoの能力を質問しており、現在の再適用依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1299",
+      "label": "not_command",
+      "family": "explicit_nonexecution",
+      "result": "accepted",
+      "closest_other_label": "panel_sync_set",
+      "reason": "オンへの変更禁止であり、オフへの設定依頼とは解釈しない。"
+    },
+    {
+      "id": "nyamuru_voice_1300",
+      "label": "not_command",
+      "family": "explicit_deferral",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "生成開始を延期する発話。実行中ジョブの中止を求めていない。"
+    },
+    {
+      "id": "nyamuru_voice_1301",
+      "label": "panel_sync_set",
+      "family": "direct_state",
+      "result": "accepted",
+      "closest_other_label": "inner_frame_snap_set",
+      "reason": "コマシンクロの希望する最終状態をオンと明示。"
+    },
+    {
+      "id": "nyamuru_voice_1302",
+      "label": "panel_sync_set",
+      "family": "purpose_then_request",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "動機に続くコマシンクロのオフ指定。調整の実行は依頼していない。"
+    },
+    {
+      "id": "nyamuru_voice_1303",
+      "label": "panel_sync_set",
+      "family": "interrogative_enable",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "機能の能力質問ではなく、コマシンクロを働かせる設定を依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1304",
+      "label": "panel_sync_set",
+      "family": "corrected_state",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "オフ指定は撤回され、最終依頼はオンのみ。"
+    },
+    {
+      "id": "nyamuru_voice_1305",
+      "label": "panel_sync_set",
+      "family": "plan_then_current_setting",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "将来の方針に加えて、今の無効化を明示的に依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1306",
+      "label": "panel_sync_set",
+      "family": "nominal_state_request",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "希望するスイッチ状態がオンと明示された依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1307",
+      "label": "panel_sync_set",
+      "family": "benefactive_preparation",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "コマシンクロを切るというオフへの設定依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1308",
+      "label": "panel_sync_set",
+      "family": "explicit_execution",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "コマシンクロ無効化の現在の実行依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1309",
+      "label": "inner_frame_snap_set",
+      "family": "direct_state",
+      "result": "accepted",
+      "closest_other_label": "panel_gap_snap_set",
+      "reason": "内枠スナップのオン指定。コマスナップとは別の設定。"
+    },
+    {
+      "id": "nyamuru_voice_1310",
+      "label": "inner_frame_snap_set",
+      "family": "purpose_then_request",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "内枠スナップの無効状態を明示。形状を変える依頼ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1311",
+      "label": "inner_frame_snap_set",
+      "family": "interrogative_enable",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "内枠スナップが利用される設定を頼む疑問形。"
+    },
+    {
+      "id": "nyamuru_voice_1312",
+      "label": "inner_frame_snap_set",
+      "family": "preparatory_disable",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "作業開始前の設定依頼で、最終状態オフが明示されている。"
+    },
+    {
+      "id": "nyamuru_voice_1313",
+      "label": "inner_frame_snap_set",
+      "family": "excluded_alternative",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "否定されたオフを数えず、オンへの設定一件。"
+    },
+    {
+      "id": "nyamuru_voice_1314",
+      "label": "inner_frame_snap_set",
+      "family": "same_utterance_state",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "変更先は前文の有効状態で確定できる。"
+    },
+    {
+      "id": "nyamuru_voice_1315",
+      "label": "inner_frame_snap_set",
+      "family": "no_use_configuration",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "使わない設定はオフ指定であり、単なる変更禁止ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1316",
+      "label": "inner_frame_snap_set",
+      "family": "nominal_disable",
+      "result": "accepted",
+      "closest_other_label": "panel_sync_set",
+      "reason": "設定名と無効化を明示した現在の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1317",
+      "label": "panel_gap_snap_set",
+      "family": "enabled_configuration",
+      "result": "accepted",
+      "closest_other_label": "inner_frame_snap_set",
+      "reason": "コマスナップを有効にする設定依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1318",
+      "label": "panel_gap_snap_set",
+      "family": "reason_then_question",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "不要という説明だけでなくオフへの変更を明示。"
+    },
+    {
+      "id": "nyamuru_voice_1319",
+      "label": "panel_gap_snap_set",
+      "family": "nominal_state_request",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "設定名と希望状態オンを示した依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1320",
+      "label": "panel_gap_snap_set",
+      "family": "plan_then_current_setting",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "描くという希望は実行指示に数えず、今の無効化だけを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1321",
+      "label": "panel_gap_snap_set",
+      "family": "return_to_state",
+      "result": "accepted",
+      "closest_other_label": "undo",
+      "reason": "戻す先が有効状態と明示され、Undoではない。"
+    },
+    {
+      "id": "nyamuru_voice_1322",
+      "label": "panel_gap_snap_set",
+      "family": "withdrawn_alternative",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "オンへの依頼を撤回し、現在のオフ設定を肯定。"
+    },
+    {
+      "id": "nyamuru_voice_1323",
+      "label": "panel_gap_snap_set",
+      "family": "benefactive_enable",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "使う予定を根拠にオンへの変更を明示的に依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1324",
+      "label": "panel_gap_snap_set",
+      "family": "nominal_disable",
+      "result": "accepted",
+      "closest_other_label": "panel_sync_set",
+      "reason": "コマスナップを切るという無効化の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1325",
+      "label": "generate_request",
+      "family": "selection_direct",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "UIの選択対象への画像生成。対象の実在確認は実行側。"
+    },
+    {
+      "id": "nyamuru_voice_1326",
+      "label": "generate_request",
+      "family": "selected_character_context",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "選択中人物を明示した画像生成の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1327",
+      "label": "generate_request",
+      "family": "whole_current_page",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "現在の一ページ全体を指定し、全ページ一括ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1328",
+      "label": "generate_request",
+      "family": "panel_desire_then_start",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "選択コマ全体についての一つの生成依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1329",
+      "label": "generate_request",
+      "family": "named_character",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "現在コマ内の人名を敬称付きで保持。全登場箇所へは広げない。"
+    },
+    {
+      "id": "nyamuru_voice_1330",
+      "label": "generate_request",
+      "family": "specified_panel",
+      "result": "accepted",
+      "closest_other_label": "page_navigate",
+      "reason": "現在ページの表示コマ番号で全体生成の対象を指定。"
+    },
+    {
+      "id": "nyamuru_voice_1331",
+      "label": "generate_request",
+      "family": "panel_and_name_question",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "番号と敬称付き人名で一人の生成対象を指定する疑問形。"
+    },
+    {
+      "id": "nyamuru_voice_1332",
+      "label": "generate_request",
+      "family": "fresh_regeneration",
+      "result": "accepted",
+      "closest_other_label": "redo",
+      "reason": "新しく生成することが明示され、Undo済み編集の再適用ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1333",
+      "label": "background_3d_candidates",
+      "family": "scene_based_suggestions",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "登録済みモデルから背景候補を提示する専用依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1334",
+      "label": "background_3d_candidates",
+      "family": "purpose_count_question",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "場面語と候補数を与えた登録済みモデルの提案依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1335",
+      "label": "background_3d_candidates",
+      "family": "panel_candidate_request",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "現在コマ向けの登録済み3D候補選定。自動適用は求めていない。"
+    },
+    {
+      "id": "nyamuru_voice_1336",
+      "label": "background_3d_candidates",
+      "family": "search_and_present",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "登録済み候補を探して示すことは一つの候補提示処理。外部検索ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1337",
+      "label": "background_3d_candidates",
+      "family": "decision_support",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "選定のための候補提示だけを求めている。"
+    },
+    {
+      "id": "nyamuru_voice_1338",
+      "label": "background_3d_candidates",
+      "family": "specified_panel_count",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "明示コマの背景候補三つ。候補数は別操作に数えない。"
+    },
+    {
+      "id": "nyamuru_voice_1339",
+      "label": "background_3d_candidates",
+      "family": "literal_category",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "場面への適合判断を含んでも、登録済み3D候補の専用ラベル。"
+    },
+    {
+      "id": "nyamuru_voice_1340",
+      "label": "background_3d_candidates",
+      "family": "withdrawn_external_search",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "外部検索は撤回され、登録済みモデルの候補提示だけが依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1341",
+      "label": "paint_tool_set",
+      "family": "direct_tool",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "切り替える対象は描画ペン。既存絵のラスター化ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1342",
+      "label": "paint_tool_set",
+      "family": "purpose_then_selection",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "ベクターペンを選ぶ依頼であり、線を描く実行指示ではない。"
+    },
+    {
+      "id": "nyamuru_voice_1343",
+      "label": "paint_tool_set",
+      "family": "interrogative_request",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "使用する描画ペンをラスターと明示した依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1344",
+      "label": "paint_tool_set",
+      "family": "selected_tool_reference",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "通常のUI選択参照を含む明示的なペン切替。"
+    },
+    {
+      "id": "nyamuru_voice_1345",
+      "label": "paint_tool_set",
+      "family": "corrected_tool",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "ベクター指定は撤回され、ラスターペンだけを選ぶ。"
+    },
+    {
+      "id": "nyamuru_voice_1346",
+      "label": "paint_tool_set",
+      "family": "same_utterance_destination",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "そちらの参照先は同じ発話にあるベクターペン。"
+    },
+    {
+      "id": "nyamuru_voice_1347",
+      "label": "paint_tool_set",
+      "family": "benefactive_preparation",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "描画開始の前提としてペン選択だけを依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1348",
+      "label": "paint_tool_set",
+      "family": "nominal_switch",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "切替先が明示された一操作の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1349",
+      "label": "text_frames_align",
+      "family": "direct_top_alignment",
+      "result": "accepted",
+      "closest_other_label": "bubble_set",
+      "reason": "複数文字枠の上端揃えを明示。"
+    },
+    {
+      "id": "nyamuru_voice_1350",
+      "label": "text_frames_align",
+      "family": "selected_frames_context",
+      "result": "accepted",
+      "closest_other_label": "out_of_scope_request",
+      "reason": "複数の吹き出し内の文字枠が対象。段落の行揃えではない。"
+    },
+    {
+      "id": "nyamuru_voice_1351",
+      "label": "text_frames_align",
+      "family": "geometric_outcome",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "三つの選択文字枠の上端を同じ高さにそろえる依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1352",
+      "label": "text_frames_align",
+      "family": "head_alias",
+      "result": "accepted",
+      "closest_other_label": "needs_clarification",
+      "reason": "複数文字枠の頭揃えは契約上の上端揃えを指す。"
+    },
+    {
+      "id": "nyamuru_voice_1353",
+      "label": "text_frames_align",
+      "family": "outline_preservation",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "輪郭維持は制約であり別操作ではない。文字枠二つを上端でそろえる。"
+    },
+    {
+      "id": "nyamuru_voice_1354",
+      "label": "text_frames_align",
+      "family": "purpose_then_alignment",
+      "result": "accepted",
+      "closest_other_label": "needs_reasoning",
+      "reason": "開始位置という目的を複数文字枠の上端操作に具体化。"
+    },
+    {
+      "id": "nyamuru_voice_1355",
+      "label": "text_frames_align",
+      "family": "selection_question",
+      "result": "accepted",
+      "closest_other_label": "not_command",
+      "reason": "選択した複数枠の上辺をそろえる疑問形の依頼。"
+    },
+    {
+      "id": "nyamuru_voice_1356",
+      "label": "text_frames_align",
+      "family": "continue_after_alignment",
+      "result": "accepted",
+      "closest_other_label": "compound_request",
+      "reason": "続けたいという意向は別の実行操作ではなく、現在の依頼は上端揃えだけ。"
+    }
+  ]
+}

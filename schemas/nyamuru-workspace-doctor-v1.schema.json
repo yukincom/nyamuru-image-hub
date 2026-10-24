@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nyamuru.local/schemas/nyamuru-workspace-doctor-v1.schema.json",
+  "title": "Nyamuru Workspace Doctor Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "mode",
+    "created_at",
+    "scan_complete",
+    "verdict",
+    "roots",
+    "summary",
+    "snapshot",
+    "observations",
+    "inferences",
+    "comparison"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "kind": { "const": "nyamuru-workspace-doctor-report" },
+    "mode": { "const": "dry_run" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "scan_complete": { "type": "boolean" },
+    "verdict": { "enum": ["healthy", "attention", "incomplete"] },
+    "roots": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/root" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_count", "total_bytes", "observation_counts", "inference_counts"],
+      "properties": {
+        "file_count": { "type": "integer", "minimum": 0 },
+        "total_bytes": { "type": "integer", "minimum": 0 },
+        "observation_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ok", "info", "warning", "error", "not_inspected"],
+          "properties": {
+            "ok": { "type": "integer", "minimum": 0 },
+            "info": { "type": "integer", "minimum": 0 },
+            "warning": { "type": "integer", "minimum": 0 },
+            "error": { "type": "integer", "minimum": 0 },
+            "not_inspected": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "inference_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["info", "warning", "error"],
+          "properties": {
+            "info": { "type": "integer", "minimum": 0 },
+            "warning": { "type": "integer", "minimum": 0 },
+            "error": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "snapshot": { "$ref": "#/$defs/snapshot" },
+    "observations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/observation" }
+    },
+    "inferences": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/inference" }
+    },
+    "comparison": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/comparison" }
+      ]
+    }
+  },
+  "$defs": {
+    "rootName": { "enum": ["episode", "series"] },
+    "reportRootName": { "enum": ["episode", "series", "report"] },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "(^/|(^|/)\\.\\.?(/|$)|\\u0000)" }
+    },
+    "reportPath": {
+      "oneOf": [
+        { "const": "." },
+        { "$ref": "#/$defs/relativePath" }
+      ]
+    },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "display_name", "state"],
+      "properties": {
+        "name": { "$ref": "#/$defs/rootName" },
+        "display_name": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["present", "absent", "unavailable", "unsafe", "changed", "skipped"] }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "path", "byte_size", "sha256", "mode"],
+      "properties": {
+        "root": { "$ref": "#/$defs/rootName" },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "byte_size": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "mode": { "type": "string", "pattern": "^[0-7]{4}$" }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "revision", "files"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "revision": { "$ref": "#/$defs/sha256" },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/file" }
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "code", "status", "root", "path", "evidence", "message"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^obs-[a-f0-9]{20}$" },
+        "code": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "status": { "enum": ["ok", "info", "warning", "error", "not_inspected"] },
+        "root": { "$ref": "#/$defs/reportRootName" },
+        "path": { "$ref": "#/$defs/reportPath" },
+        "evidence": { "type": "object" },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "code",
+        "severity",
+        "root",
+        "path",
+        "based_on",
+        "message",
+        "requires_human_review"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^inf-[a-f0-9]{20}$" },
+        "code": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "severity": { "enum": ["info", "warning", "error"] },
+        "root": { "$ref": "#/$defs/reportRootName" },
+        "path": { "$ref": "#/$defs/reportPath" },
+        "based_on": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^obs-[a-f0-9]{20}$" }
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "requires_human_review": { "const": true }
+      }
+    },
+    "pathChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "path"],
+      "properties": {
+        "root": { "$ref": "#/$defs/rootName" },
+        "path": { "$ref": "#/$defs/relativePath" }
+      }
+    },
+    "changedPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "path", "fields"],
+      "properties": {
+        "root": { "$ref": "#/$defs/rootName" },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["byte_size", "sha256", "mode"] }
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matches",
+        "baseline_revision",
+        "current_revision",
+        "added",
+        "removed",
+        "changed"
+      ],
+      "properties": {
+        "matches": { "type": "boolean" },
+        "baseline_revision": { "$ref": "#/$defs/sha256" },
+        "current_revision": { "$ref": "#/$defs/sha256" },
+        "added": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/pathChange" }
+        },
+        "removed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/pathChange" }
+        },
+        "changed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/changedPath" }
+        }
+      }
+    }
+  }
+}

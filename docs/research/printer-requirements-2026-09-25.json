@@ -1,0 +1,1926 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-09-25",
+  "purpose": "research_only_not_runtime_presets",
+  "companyCount": 24,
+  "companyGuidanceNotFound": [],
+  "unverifiedFieldsPolicy": "Unknown does not mean prohibited or unrestricted. Do not auto-validate unspecified products.",
+  "unitPolicy": {
+    "illustrationDisplayUnits": [
+      "cm",
+      "mm",
+      "in",
+      "px",
+      "pt"
+    ],
+    "comicBasicDisplayUnit": "mm",
+    "unitChangeResamples": false,
+    "physicalSizeAndPixelSizeAreSeparate": true
+  },
+  "toneDefault": {
+    "lpi": 60,
+    "editable": true,
+    "source": "https://www.clip-studio.com/clip_site/support/help/detail/svc/53/tid/74832",
+    "sourceDate": "2014-09-14",
+    "currentFactoryResetTested": false
+  },
+  "cspReference": "https://help.clip-studio.com/ja-jp/manual_jp/210_files/新規キャンバスを作成する.htm",
+  "printers": [
+    {
+      "name": "緑陽社",
+      "scope": "同人誌の通常原稿。カラー表紙・本文／モノクロ本文。特別加工は別条件。",
+      "findings": {
+        "bleed": "現行HTMLガイドは天地左右3mm。過去の表紙データ仕様書は3mmまたは5mmとも記載。新規プリセットは3mmとし、5mmを一律不許可とはしない。",
+        "monoDpi": "600または1200ppi（推奨）",
+        "grayDpi": "600ppi（推奨）。300ppiも受付可だが粗くなる旨を明記。",
+        "colorDpi": "350ppi（推奨）",
+        "pageRules": "総ページ＝表紙4P＋本文。無線綴じは2P単位、中綴じは4の倍数。",
+        "formats": "Photoshop原稿は統合PSD推奨、TIFF/PNG/JPG/EPSも掲載。Affinityは統合PSD推奨またはPDF/X-4。InDesignはPDF、漫画のPDFは画像劣化・モアレ等から非推奨。",
+        "cropMarks": "Photoshop/通常画像は不要。IllustratorのAI原稿では必要。InDesign PDFではトンボとページ情報を外し塗り足しを含める。"
+      },
+      "sources": [
+        {
+          "url": "https://www.ryokuyou.co.jp/doujin/manual/photoshop.html",
+          "supports": "モード別dpi、画像形式、塗り足し3mm、画像トンボ不要"
+        },
+        {
+          "url": "https://www.ryokuyou.co.jp/doujin/manual/printwords.html",
+          "supports": "表紙4P、無線2P単位、中綴じ4倍数"
+        },
+        {
+          "url": "https://www.ryokuyou.co.jp/doujin/manual/affinity.html?am_force_theme_layout=mobile",
+          "supports": "PSD推奨、PDF/X-4対応、ダウンサンプルOFF/JPEG圧縮OFF/全フォント埋込/塗り足し含む"
+        },
+        {
+          "url": "https://www.ryokuyou.co.jp/doujin/manual/indesign.html",
+          "supports": "PDFトンボ不要、漫画PDF非推奨"
+        },
+        {
+          "url": "https://www.ryokuyou.co.jp/doujin/downloads/item/order_m03.pdf",
+          "supports": "古い仕様書では塗り足し3mmまたは5mmと記載"
+        }
+      ],
+      "unknowns": [
+        "全商品共通の最少・最大ページ数は未確認",
+        "5mm受付の現在の商品ごとの適用範囲は未確認（現行HTMLは3mm、旧PDFに3/5mm）"
+      ],
+      "searched": [
+        "公式Photoshop/InDesign/Affinityガイド・FAQ・用語集・原稿作成基本PDF。PDFの直読み一度失敗、検索抽出で補助。"
+      ],
+      "id": "printer-01",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "日光企画",
+      "scope": "同人誌FAQの通常本文・表紙。カラーの印刷方式別条件あり。",
+      "findings": {
+        "bleed": "本文は天地左右3mm。表紙はさらに背幅を追加。",
+        "monoDpi": "600dpiを適正値として掲載。1200dpiの受付可否を独立明記した根拠は未発見。",
+        "grayDpi": "600dpi",
+        "colorDpi": "350dpi",
+        "pageRules": "背幅FAQは表紙込みページ数を使用。4P加算の詳細・ページ刻みの現行自社明文は未確認。",
+        "formats": "PSD/TIFF/PDF/AI対応、CS6以下保存指定をFAQに掲載。PNG/JPG/BMPは受付可だが非推奨。Word PDFはフォント埋込。",
+        "cropMarks": "トンボ利用を推奨。なくても正しい塗り足し込みキャンバスの中央から判定可能。"
+      },
+      "sources": [
+        {
+          "url": "https://www.nikko-pc.com/site/home-hd-2/home-qa/",
+          "supports": "塗り足し、各dpi、形式、トンボ、Word PDF埋込、オンデマンド/オフセット色、製本方法"
+        }
+      ],
+      "unknowns": [
+        "PDF/Xの特定規格指定",
+        "通常商品のページ刻みと表紙4P計数の現行自社明文",
+        "二値1200dpiの明示的な受付条件"
+      ],
+      "searched": [
+        "公式FAQ全文、原稿データガイド・商品検索。検索語: site:nikko-pc.com ページ 倍数／ページ 4P／ページ数 2ページ 4ページ。"
+      ],
+      "id": "printer-02",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "サンライズ",
+      "scope": "同人誌通常原稿。解像度はPhotoshopガイドの公式画像表を直接目視。",
+      "findings": {
+        "bleed": "基本FAQは各辺3〜5mm。Photoshop新規作成例とサイズ表は5mm。",
+        "monoDpi": "1200dpi（推奨）。推奨外も作業可だが粗さ・モアレの注意。オンデマンド本文モアレ軽減モードは600dpiのみ。",
+        "grayDpi": "600dpi（推奨）",
+        "colorDpi": "350dpi（推奨）",
+        "pageRules": "総ページ＝表紙4P＋本文。本文は偶数。ペラ本商品は4/8/12/16Pなど商品固有。通常無線綴じの最少受付は表紙込20P・背幅1mm以上という解説あり。",
+        "formats": "画像ページはPSD/TIFF推奨、文章はPDF可。PDF/X-1a:2001（日本）またはプレス品質。フォント埋込、塗り足し込み、表紙・本文は別ファイル。",
+        "cropMarks": "PDF InDesign案内はカラーバー・ページ情報を外しドキュメント裁ち落としを使用。トンボ全部の一律要否は本文から確定できず未確認。"
+      },
+      "sources": [
+        {
+          "url": "https://www.sunrisep.co.jp/guide/faq/",
+          "supports": "本文原寸＋各辺3〜5mm"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/genkou/create-photoshop/",
+          "supports": "5mm例、8bit指定、解像度公式画像表"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/wp/wp-content/uploads/2023/10/04_ALL_kaizodo_2chi.png",
+          "supports": "直接目視: モノクロ二階調1200dpi"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/wp/wp-content/uploads/2023/10/04_ALL_kaizodo_gray.png",
+          "supports": "直接目視: グレー600dpi"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/wp/wp-content/uploads/2023/10/04_ALL_kaizodo_cmyk_rgb.jpg",
+          "supports": "直接目視: カラー350dpi"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/genkou/create-pdf/",
+          "supports": "PDF/X-1aまたはプレス品質、画像ページPSD/TIFF推奨、フォント埋込等"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/genkou/glossary/",
+          "supports": "総ページ表紙4P＋本文、本文偶数"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/book/pera/",
+          "supports": "商品別4/8/12/16P"
+        },
+        {
+          "url": "https://www.sunrisep.co.jp/column/recommended-booklets-of-saddle-stitch-printer.html",
+          "supports": "無線綴じ表紙込20P以上・背幅1mm以上"
+        }
+      ],
+      "unknowns": [
+        "通常画像・PDFそれぞれのトンボ必須/不要の統一明文",
+        "全商品共通の受付ページ刻み（商品ごとに確認が必要）"
+      ],
+      "searched": [
+        "公式FAQ/Photoshop/PDF/原稿基礎/用語集/商品ページ。画像表はwebツール取得不可のため公式URLへ読取接続して直接確認。"
+      ],
+      "id": "printer-03",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "くりえい社",
+      "scope": "同人誌FAQ。ページ例はオールフルカラーオンデマンド商品。",
+      "findings": {
+        "bleed": "天地左右5mmを案内、3mmでも可と明記。",
+        "monoDpi": "モノクロ表紙・本文600〜1200ppi。FAQは二値とグレーを個別の解像度欄に分けていない。",
+        "grayDpi": "グレー専用の推奨dpi未確認。モノクロ600〜1200ppiの包括案内あり。",
+        "colorDpi": "350ppi以上",
+        "pageRules": "総ページ＝本文＋表紙4P、本文開始3Pが基本。オールフルカラーオンデマンドの料金表に12/14/16P等があり4倍数限定ではない。",
+        "formats": "統合PSD推奨、AI/EPS。Word/InDesignはPDFのみ。カラーはCMYK推奨・RGB入稿も可（色変化あり）。インク総量300%以下。",
+        "cropMarks": "FAQはトンボ/仕上がり線の説明あり。データ入稿での必須・不要は未確認。"
+      },
+      "sources": [
+        {
+          "url": "https://www.kurieisha.co.jp/faq/",
+          "supports": "3/5mm、解像度、形式、表紙4P、カラー条件"
+        },
+        {
+          "url": "https://www.kurieisha.co.jp/menu/allfullcolorondemand/",
+          "supports": "2026年4月改定表、表紙4P込12/14/16P等"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格",
+        "グレー専用推奨dpi",
+        "データのトンボ要否",
+        "オフセットその他商品への2P刻みの適用範囲"
+      ],
+      "searched": [
+        "公式FAQ、オールフルカラーオンデマンド料金表。検索語: site:kurieisha.co.jp PDF/X／ページ 倍数／ページ 2ページ。"
+      ],
+      "id": "printer-04",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "コーシン出版",
+      "scope": "恒信印刷の同人誌窓口。現行FAQを主とし旧公式PDFは古い補足として扱う。",
+      "findings": {
+        "bleed": "天地左右3mm。切れて困る文字は仕上がりから3mm内側。",
+        "monoDpi": "600または1200dpi（推奨）",
+        "grayDpi": "350〜600dpi（推奨）。網点あり350dpiはモアレ注意。",
+        "colorDpi": "350dpi以上（推奨）",
+        "pageRules": "現行FAQ: 本文は偶数、総ページ＝本文＋表紙4P。旧公式ガイドのB5 4倍数/A5 8倍数等は製版効率の補足で、現行商品の必須ページ刻みには転用しない。",
+        "formats": "現行FAQ推奨PDF/AI/PSD/EPS、フォント埋込・アウトライン・統合済み。Pセットの商品ページにはTIFFも列挙。",
+        "cropMarks": "公式用語集はカラー/モノクロ問わず原稿にトンボ必須と明記。ただしデジタル規定サイズでの例外可否は未確認（個別FAQの取得失敗）。"
+      },
+      "sources": [
+        {
+          "url": "https://www.ko-sin.co.jp/syindex/qa",
+          "supports": "各dpi、3mm、形式、画像原寸・モアレ注意"
+        },
+        {
+          "url": "https://www.ko-sin.co.jp/syindex/set-p",
+          "supports": "PセットTIFF対応、単色表紙本文600dpi推奨"
+        },
+        {
+          "url": "https://www.ko-sin.co.jp/syindex/wp-content/uploads/HOW-TO_ANALOG_D_kosin_140529.pdf",
+          "supports": "旧資料: 本文偶数、B5 4倍数/A5 8倍数が望ましい"
+        },
+        {
+          "url": "https://www.ko-sin.co.jp/syindex/wp-content/uploads/HOW-TO_DATA_D_kosin_190305.pdf",
+          "supports": "旧資料: 製版方法による効率ページ単位"
+        },
+        {
+          "url": "https://www.ko-sin.co.jp/syindex/qa/2071",
+          "supports": "本文偶数＋表紙4P"
+        },
+        {
+          "url": "https://www.ko-sin.co.jp/syindex/yougo_gen2",
+          "supports": "公式用語集でトンボ必須"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格",
+        "デジタル規定サイズでトンボ省略可能かの例外",
+        "商品別ページ数刻み",
+        "TIFFの全商品共通受付（FAQの一覧にないがPセット掲載）"
+      ],
+      "searched": [
+        "公式FAQ/Pセット/データ・アナログPDFマニュアル/ご利用ガイド。古いPDFの製版条件を現行強制仕様へ自動変換しない。"
+      ],
+      "id": "printer-05",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "ねこのしっぽ",
+      "scope": "同人誌データ原稿。グッズは対象外。",
+      "findings": {
+        "bleed": "公式サイズ表に3mm・5mm両方あり。",
+        "monoDpi": "600または1200dpi。オンデマンドは600dpi推奨。",
+        "grayDpi": "350または600dpi。網点ありは600dpi。",
+        "colorDpi": "350dpi",
+        "pageRules": "総ページは表紙4P＋本文。本文は偶数。遊び紙・口絵は含めない。商品ごとのページ刻みは未確認。",
+        "formats": "統合PSD推奨。PDF（文章向け）、PNG/BMP/TIFFも受付。Photoshop EPS可、Illustrator EPS不可。JPEG非推奨。 PDFは全フォント埋込、複数ページをまとめ可。InDesignは「雑誌広告送稿用」プリセットを指定（PDF/Xの型名は明文未発見のため推測しない）。",
+        "cropMarks": "表紙・本文とも正しいサイズならトンボなし可。"
+      },
+      "sources": [
+        {
+          "url": "https://www.shippo.co.jp/neko/making/digital.shtml",
+          "supports": "3/5mm、各dpi、形式、トンボ不要、RGB/CMYKプロファイル"
+        },
+        {
+          "url": "https://www.shippo.co.jp/neko/faq_2.shtml",
+          "supports": "表紙4P＋本文、遊び紙/口絵は総ページに含めない"
+        },
+        {
+          "url": "https://www.shippo.co.jp/neko/making/word2pdf.shtml",
+          "supports": "本文偶数、表紙4P、PDF全フォント埋込・複数ページ可・InDesign指定プリセット"
+        }
+      ],
+      "unknowns": [
+        "PDF/Xの指定規格",
+        "商品ごとのページ数の倍数・刻み"
+      ],
+      "searched": [
+        "公式データ原稿マニュアル、原稿FAQ、Word/PDFガイド。検索語: site:shippo.co.jp ページ 倍数。"
+      ],
+      "id": "printer-06",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "金沢印刷",
+      "scope": "通常同人誌のデータ原稿。本文・表紙、PDFはソフト別案内。",
+      "findings": {
+        "bleed": "天地左右3mm。表紙見開きは背幅を追加。",
+        "monoDpi": "600dpi以上（推奨）、600/1200dpiの見本あり。",
+        "grayDpi": "600dpi推奨（解像度ページ）。チェックシートは350〜600dpiも記載。1200dpi以上は容量・作業支障から避け600dpiで入稿するよう依頼。",
+        "colorDpi": "350dpi（推奨）",
+        "pageRules": "総ページ偶数、本文＋表紙4P。カラー口絵も総ページに含む。遊び紙は未印刷なら含まず、印刷すると紙替え扱いで含む。",
+        "formats": "PSD推奨/TIFF/EPS等。PDF/X-1a〜X-4、PDF1.3〜1.6受付。画像だけならPDF化せずPSD/EPSを依頼。PDFはダウンサンプルしない・ZIP圧縮・フォント埋込。",
+        "cropMarks": "推奨サイズの画像原稿はトンボなし可。仕上がり位置が不明なサイズなら必須。PDFは不要。Illustratorはトリムマークを付ける。"
+      },
+      "sources": [
+        {
+          "url": "https://www.kanazawa-p.co.jp/howtodata/kaizoudo.html",
+          "supports": "各モードの推奨dpi、グレー1200以上非推奨"
+        },
+        {
+          "url": "https://www.kanazawa-p.co.jp/genkousakusei/hyoushi.html",
+          "supports": "3mm、表紙背幅"
+        },
+        {
+          "url": "https://www.kanazawa-p.co.jp/making/sakusei.html",
+          "supports": "総ページ偶数・表紙4P・口絵/遊び紙の扱い"
+        },
+        {
+          "url": "https://www.kanazawa-p.co.jp/howtodata/pdf_kakidasi.html",
+          "supports": "PDF規格/圧縮/フォントと画像PDF化非推奨、PDFトンボ不要"
+        },
+        {
+          "url": "https://www.kanazawa-p.co.jp/howtodata/howtodata_media.html",
+          "supports": "PSD/TIFFその他形式"
+        },
+        {
+          "url": "https://www.kanazawa-p.co.jp/qanda/question.html",
+          "supports": "推奨画像サイズならトンボ不要、非規定サイズは必要"
+        },
+        {
+          "url": "https://www.kanazawa-p.co.jp/howtodata/checksheet.html",
+          "supports": "グレー350〜600、二値600〜1200、Illustratorトンボ"
+        }
+      ],
+      "unknowns": [
+        "商品ごとのページ刻み（総ページ偶数は確認済み）"
+      ],
+      "searched": [
+        "公式データ手引き/解像度/形式/PDF書出し/表紙/原稿作成。検索語: site:kanazawa-p.co.jp ページ 倍数。"
+      ],
+      "id": "printer-07",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "栄光",
+      "scope": "通常原稿共通設定とセルフチェック入稿を区別。商品別ページ数条件を混同しない。",
+      "findings": {
+        "bleed": "通常共通設定は天地左右3mm。セルフチェック入稿は塗り足し3mmの規定サイズのみ。",
+        "monoDpi": "600〜1200dpi（推奨）",
+        "grayDpi": "350〜600dpi（推奨）。セルフチェック本文600dpi推奨。",
+        "colorDpi": "300〜350dpi（推奨）。セルフチェックカラー本文350dpi推奨。",
+        "pageRules": "総ページ＝表紙4P＋本文。遊び紙は含めない。和とじオフセット商品は38Pなど料金表の間のページも注文可。全商品4倍数限定としない。",
+        "formats": "PNG/JPEG/TIFF/PSD/AI/EPS、PDF受付。TIFF/PSDは統合。PDFと画像混在可能。 InDesign通常ガイドはPDF/X-4:2008、日本、ダウンサンプルなし/ZIP。一方セルフチェック対応表のIllustrator/InDesignはPDF/X-1aと記載。入稿経路で分ける。",
+        "cropMarks": "セルフチェックはトンボ不要（規定3mmサイズのみ）。通常InDesign PDFガイドもトンボ・ページ情報をすべて外す。通常画像用テンプレートPDFにはトンボを残す手順があり、経路/形式を区別。",
+        "tone": "網トーン60線以下推奨、80線受付可。ただし高濃度はつぶれ注意。CSP既定値とは別の案内。"
+      },
+      "sources": [
+        {
+          "url": "https://www.eikou.com/making/other/",
+          "supports": "各dpi、形式、3mm、トーン60線推奨"
+        },
+        {
+          "url": "https://www.eikou.com/selfcheck/fileup-btn/",
+          "supports": "セルフチェック限定3mm・トンボ不要、推奨dpi"
+        },
+        {
+          "url": "https://www.eikou.com/making/printglossary/totalpage/",
+          "supports": "表紙4P＋本文、遊び紙除外"
+        },
+        {
+          "url": "https://eikou.com/commodity/watoji-off/",
+          "supports": "38P等間のページ注文可（和とじオフセット限定）"
+        },
+        {
+          "url": "https://www.eikou.com/making/indesign/",
+          "supports": "通常InDesign PDF/X-4:2008、トンボなし、ZIP、ダウンサンプルなし"
+        },
+        {
+          "url": "https://www.eikou.com/selfcheck/file/",
+          "supports": "セルフチェックのIllustrator/InDesignはPDF/X-1a"
+        },
+        {
+          "url": "https://www.eikou.com/dl/guide/honbun_guide.pdf",
+          "supports": "通常本文テンプレートはトンボレイヤーを残して統合する手順"
+        }
+      ],
+      "unknowns": [
+        "通常各商品のページ刻み（和とじ例は確認済み）",
+        "通常画像のトンボなし対応の一律条件（テンプレート資料とセルフチェックを分ける）"
+      ],
+      "searched": [
+        "公式共通設定/セルフチェック/用語集/和とじ商品。検索語: site:eikou.com PDF/X トンボ／ページ数 2ページ 4ページ。"
+      ],
+      "id": "printer-08",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "シメケン",
+      "scope": "シメケンプリント・同人誌",
+      "findings": {
+        "bleed": "標準3mm、3mm以上受付。フチが完全な白なら省略可。",
+        "monoDpi": "表現色別の区分なし。総合推奨300/350/600dpi。高解像度受付可だが印刷最大600dpi。",
+        "grayDpi": "表現色別指定未確認。総合推奨300/350/600dpi。",
+        "colorDpi": "表現色別指定未確認。総合推奨300/350/600dpi。",
+        "pageRules": "本文: 中綴じ4の倍数、くるみ2の倍数。注文メニュー4刻みでもくるみは2p少なく入稿可。本文+表紙4p表記。",
+        "formats": "PDF/統合PSD/JPG/PNG。透過PNG不可。PDFフォント埋込、注釈印刷不可。",
+        "cropMarks": "トンボなし受付可、ある方が望ましい。"
+      },
+      "sources": [
+        {
+          "url": "https://shimeken.com/print/make-manuscript/size",
+          "supports": "塗り足し、総合dpi、印刷600上限、トンボ"
+        },
+        {
+          "url": "https://shimeken.com/print/make-manuscript/file",
+          "supports": "受付形式、PDF条件"
+        },
+        {
+          "url": "https://shimeken.com/print/make-manuscript/page",
+          "supports": "ページ構成と注文数"
+        }
+      ],
+      "unknowns": [
+        "表現色別推奨dpi",
+        "PDF/X規格の指定",
+        "TIFF受付"
+      ],
+      "searched": [
+        "シメケン 入稿 原稿 解像度 塗り足し",
+        "site:shimeken.com ページ 倍数",
+        "原稿作成メニューから形式/ページへ"
+      ],
+      "id": "printer-09",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "しまや出版",
+      "scope": "通常の漫画本文・表紙、ソフト別公式案内",
+      "findings": {
+        "bleed": "3〜5mm。CLIP STUDIO書き出し例は3mm。",
+        "monoDpi": "600〜1200dpi（Photoshop案内）、MediBang本文推奨600dpi。網点は600/1200推奨。",
+        "grayDpi": "350〜600dpi（Photoshop/チェックリスト）。",
+        "colorDpi": "350dpi（カラー表紙/本文）。",
+        "pageRules": "表紙4pを含む。MediBang案内は必ず偶数。文豪セット例は18pを20p料金で受付。中綴じの固有単位未確認。",
+        "formats": "統合PSD、EPS、TIFF。PDF1.3〜1.7、PDF/X-1a:2001 JPNを優先し不具合時1.4〜1.7。PDF/A使用不可。全フォント埋込、ダウンサンプルオフ。",
+        "cropMarks": "塗り足しまで書き出す場合トンボ不要。ページ全体ならトンボも出力。"
+      },
+      "sources": [
+        {
+          "url": "https://www.shimaya.net/howto/ps.html",
+          "supports": "表紙/本文のdpi、PSD/EPS"
+        },
+        {
+          "url": "https://www.shimaya.net/howto/medibang.html",
+          "supports": "塗り足し3〜5、dpi推奨、ページ偶数/表紙4"
+        },
+        {
+          "url": "https://www.shimaya.net/howto/clipstudio.html",
+          "supports": "PSD/TIFF等とトンボ出力"
+        },
+        {
+          "url": "https://www.shimaya.net/howto/pdf.html",
+          "supports": "PDF規格、PDF/A不可、埋込"
+        },
+        {
+          "url": "https://www.shimaya.net/fair/bungou/bungou.html",
+          "supports": "文豪セット18→20p料金の例"
+        }
+      ],
+      "unknowns": [
+        "中綴じ等商品別ページ単位の全網羅",
+        "PDF/X-4の明示受付"
+      ],
+      "searched": [
+        "site:shimaya.net 原稿 解像度 塗り足し",
+        "site:shimaya.net/howto PDF",
+        "site:shimaya.net ページ 倍数/4ページ"
+      ],
+      "id": "printer-10",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "大陽出版",
+      "scope": "一般データ、CLIP STUDIO、PDF本文、中綴じ",
+      "findings": {
+        "bleed": "一般原稿3mm。CLIP STUDIOの許容仕様は3または5mm。PDF本文の案内は3mm。",
+        "monoDpi": "推奨600/1200dpi。",
+        "grayDpi": "推奨600dpi。350dpiも受付可、カラー表紙流用時は変更せず可。",
+        "colorDpi": "推奨350/400dpi、RGB/CMYK。RGBはICC埋込。",
+        "pageRules": "表紙4p+本文。巻頭カラー/フルカラー扉はセット料金ページに含めず別料金。奇数の本不可。中綴じ単位の該当本文は要追加確認。",
+        "formats": "統合PSD/TIFF/EPS、AI。PDFは本文のみ/カラーオブジェクトなし/フォント埋込。InDesign PDF/X-1a:2001 JPN推奨、Word PDF/A推奨。",
+        "cropMarks": "CLIP STUDIO案内はトンボあり/なし両方可（3/5mm塗り足し）。旧カラー本文ページに必須との記載もあり、新しいソフト別手順を優先して要注文確認。"
+      },
+      "sources": [
+        {
+          "url": "https://www.taiyoushuppan.co.jp/doujin/howto/data.php",
+          "supports": "一般dpi推奨、350グレー受付、PDF対象と規格、3mm"
+        },
+        {
+          "url": "https://www.taiyoushuppan.co.jp/doujin/howto/clipstudiopro.php",
+          "supports": "3/5mm、統合PSD/TIFF、トンボ出力範囲"
+        },
+        {
+          "url": "https://www.taiyoushuppan.co.jp/doujin/howto/vocabulary02.php",
+          "supports": "表紙込み、口絵別料金、奇数不可"
+        },
+        {
+          "url": "https://www.taiyoushuppan.co.jp/doujin/product/set/option/503-stapler.php",
+          "supports": "中綴じ商品参照"
+        },
+        {
+          "url": "https://www.taiyoushuppan.co.jp/doujin/howto/body-data-color.php",
+          "supports": "旧カラー本文のトンボ必須記述"
+        }
+      ],
+      "unknowns": [
+        "中綴じ固有ページ単位",
+        "新旧トンボ記述差の全商品適用",
+        "独自PDF生成の事前チェック合格"
+      ],
+      "searched": [
+        "大陽出版 原稿 データ 解像度 塗り足し",
+        "site:taiyoushuppan.co.jp 解像度 グレースケール",
+        "site:taiyoushuppan.co.jp ページ 倍数"
+      ],
+      "id": "printer-11",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "ポプルス",
+      "scope": "一般原稿/スタンダードセット",
+      "findings": {
+        "bleed": "上下左右3mm。",
+        "monoDpi": "600dpi基本、網点使用は600/1200dpi。",
+        "grayDpi": "600dpi基本。網点なしの純グレーなら300〜350dpiでもよいとの記載。",
+        "colorDpi": "300〜350dpi（最終チェック）、基本案内は350dpi。",
+        "pageRules": "スタンダード: 平とじ10p以上かつ2の倍数、中とじ8〜40pで4の倍数。いずれも表紙4p込み。",
+        "formats": "統合PSD/PNG/PDF。PDF1.3以降、フォントアウトライン化または埋込、画像圧縮OFF。PDF/Xの固有指定未確認。",
+        "cropMarks": "トンボ不要。正しい原寸+塗り足しを用紙中央に配置すれば余白/トンボありも可。"
+      },
+      "sources": [
+        {
+          "url": "https://www2.popls.co.jp/pop/genkou/kihon.html",
+          "supports": "3mm、dpiと網点例外、形式、PDF条件、トンボ"
+        },
+        {
+          "url": "https://www2.popls.co.jp/pop/genkou/saigo.html",
+          "supports": "カラー300〜350、モノクロ600/1200"
+        },
+        {
+          "url": "https://www2.popls.co.jp/pop/book/standard.html",
+          "supports": "製本別単位/総ページ数"
+        }
+      ],
+      "unknowns": [
+        "TIFF受付",
+        "PDF/X固有指定",
+        "スタンダード以外全商品の制約網羅"
+      ],
+      "searched": [
+        "site:popls.co.jp 原稿 解像度 塗り足し",
+        "site:popls.co.jp ページ数 倍数"
+      ],
+      "id": "printer-12",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "関西美術印刷",
+      "scope": "カンビ一般原稿。PDFのみKANBI LIVRE小説本文を限定",
+      "findings": {
+        "bleed": "表紙/カバー/本文は基本3mm。グッズには5mm以上もあるが冊子へ一般化しない。",
+        "monoDpi": "単色用600/1200dpi。LIVRE小説PDF挿絵の推奨は600dpi。",
+        "grayDpi": "単色用350dpi。",
+        "colorDpi": "フルカラーオフセット最適350dpi。",
+        "pageRules": "表紙4p+本文で総ページ数。一般的ページ単位の明文未発見。",
+        "formats": "PSD/TIFF/EPS/AI。RGB画像8bit・ICC埋込。LIVRE PDFはモノクロ本文の小説のみ、Word保存手順はPDF/A準拠・フォント埋込確認・見本画像添付。漫画全面PDF受付へ拡張しない。",
+        "cropMarks": "冊子は3mm塗り足しあればトンボなし受付可。Illustrator個別手順はトンボ必須。"
+      },
+      "sources": [
+        {
+          "url": "https://comic.kanbi-comic.com/guide/making/data/",
+          "supports": "解像度、画像形式、RGB"
+        },
+        {
+          "url": "https://kanbi-comic.com/guide/order/base/",
+          "supports": "基本3mm/グッズ差、冊子トンボなし可"
+        },
+        {
+          "url": "https://comic.kanbi-comic.com/data-guide/making/basic/",
+          "supports": "表紙4p+本文"
+        },
+        {
+          "url": "https://kanbi-comic.com/guide/order/pdf/",
+          "supports": "LIVRE小説PDF限定、画像dpi、PDF/A保存"
+        },
+        {
+          "url": "https://comic.kanbi-comic.com/data-guide/making/",
+          "supports": "Illustratorトンボ必須への案内"
+        }
+      ],
+      "unknowns": [
+        "冊子商品別ページ単位",
+        "漫画PDF受付",
+        "PDF/X規格の指定",
+        "グレー600dpiを明示する冊子案内"
+      ],
+      "searched": [
+        "site:kanbi-comic.com 解像度 塗り足し 原稿",
+        "site:kanbi-comic.com ページ 倍数/単位/表紙4",
+        "公式原稿作成→データ/PDF"
+      ],
+      "id": "printer-13",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "PICO",
+      "scope": "通常の表紙/本文、オフセットとオンデマンドを分離",
+      "findings": {
+        "bleed": "3mm以上。表紙/本文原稿ガイド標準3mm、PDF説明は3〜5mm。断ち切りなし小説PDFは仕上がりぴったり可。",
+        "monoDpi": "600〜1200dpi。ただしオンデマンド600dpi指定。仕様書は600または1200と表記。",
+        "grayDpi": "一般ガイド350〜600dpi、入稿仕様リスト推奨600dpi。",
+        "colorDpi": "一般表紙/口絵350dpi。仕様リスト推奨欄350〜400dpiとの幅もある。",
+        "pageRules": "中綴じ4p単位。料金表は表紙4p込み。無線綴じのページ刻みは未確認。",
+        "formats": "PSD/TIFF/EPS/PDF/JPEGなど。PSD統合。PDF全フォント埋込、PDF/X-1a推奨。",
+        "cropMarks": "データは正しいサイズ/均等3mm以上ならなし可。アナログは必須。"
+      },
+      "sources": [
+        {
+          "url": "https://www.pico-net.com/doujinshi/doujinshi_manual/flow/manual.html",
+          "supports": "dpiとオンデマンド例外"
+        },
+        {
+          "url": "https://www.pico-net.com/doujinshi/download/pdata/pico_dataseat_hyoushi.pdf",
+          "supports": "推奨値/統合PSD等"
+        },
+        {
+          "url": "https://www.pico-net.com/doujinshi/doujinshi_manual/letterbody/006.html",
+          "supports": "3mm以上/トンボなし可/形式"
+        },
+        {
+          "url": "https://www.pico-net.com/doujinshi/doujinshi_manual/letterbody/013.html",
+          "supports": "PDF埋込、PDF/X-1a推奨"
+        },
+        {
+          "url": "https://www.pico-net.com/doujinshi/doujinshi_manual/word/010.html",
+          "supports": "中綴じ4p単位"
+        },
+        {
+          "url": "https://www.pico-net.com/doujinshi/service/doujin_print/offset/003.html",
+          "supports": "料金表表紙4p込み"
+        }
+      ],
+      "unknowns": [
+        "無線綴じのページ刻み",
+        "350〜400カラー推奨の全商品適用",
+        "PDF/X-4明示受付"
+      ],
+      "searched": [
+        "site:pico-net.com 原稿 解像度 塗り足し",
+        "site:pico-net.com ページ 倍数/偶数/表紙4",
+        "本文マニュアルPDF/FAQ/用語"
+      ],
+      "id": "printer-14",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "pixivFACTORY",
+      "scope": "BOOKS同人誌。PDFは対応プラン本文限定",
+      "findings": {
+        "bleed": "3mm規格。5mmデータはサイズエラーの例。断ち切りがない本文は仕上がりぴったり可（許容誤差-0.4mmまでとFAQ）。",
+        "monoDpi": "モノクロ本文600dpi（PSDは2階調可）。1200受付は未確認。",
+        "grayDpi": "モノクロ本文600dpi（PSDはグレー可）。350受付は未確認。",
+        "colorDpi": "表紙/カラー本文350dpi。カラーRGBのみ。",
+        "pageRules": "注文ページ数は表紙4p込み、本文は注文数-4。表2/3印刷不可。全プランの選択刻み未確認。",
+        "formats": "PNG/統合PSD。本文PDFは特定プランのみ、全本文を1PDF・グレースケール・全フォント埋込・注釈/フォームなし。表紙PDF不可。",
+        "cropMarks": "テンプレートのトンボ等ガイド線は除去。"
+      },
+      "sources": [
+        {
+          "url": "https://factory-books.pixiv.help/hc/ja/articles/115002154453-どのようなデータを受け付けていますか",
+          "supports": "形式、dpi/サイズ表、PDF特定プラン"
+        },
+        {
+          "url": "https://factory-books.pixiv.help/hc/ja/articles/115002149394-本文のつくり方-サイズについて教えてください",
+          "supports": "本文dpi、PDFまとめ、表紙PDF不可"
+        },
+        {
+          "url": "https://factory-books.pixiv.help/hc/ja/articles/360014206613-エラーが出て原稿を入稿できません",
+          "supports": "5mmエラー/対応プラン/ページ一致"
+        },
+        {
+          "url": "https://factory-books.pixiv.help/hc/ja/articles/360000289421-ページ数は表紙の分を含みますか",
+          "supports": "表紙4p込み、表2/3不可"
+        },
+        {
+          "url": "https://factory-books.pixiv.help/hc/ja/articles/115002018074-注文から発送までの流れを教えてください",
+          "supports": "トンボ等ガイド除去"
+        }
+      ],
+      "unknowns": [
+        "全プランページ刻み",
+        "1200dpi/グレー350dpi受付",
+        "PDF/X規格の指定",
+        "TIFF受付"
+      ],
+      "searched": [
+        "pixivFACTORY BOOKS 入稿 塗り足し 解像度600 350",
+        "site:factory-books.pixiv.help ページ数/倍数/4ページ単位",
+        "原稿形式/本文/エラーFAQ"
+      ],
+      "id": "printer-15",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "プリントオン",
+      "scope": "一般漫画原稿+個別セット例",
+      "findings": {
+        "bleed": "各辺3mm目安、3mm以上受付。商品テンプレート優先。",
+        "monoDpi": "600dpi推奨。1200明示受付は未発見。",
+        "grayDpi": "600dpi推奨。",
+        "colorDpi": "350dpi（本文テンプレート/依頼書）。RGB/CMYKは商品別。",
+        "pageRules": "本文+表紙4p（口絵/遊び紙除外）。例:わくわくドキドキデザイン/型抜き/フランス製本等は2p単位。全商品を4p固定にしない。",
+        "formats": "PSD/TIFF/PDF/ラスタEPS。InDesign案内はPDF/X-4a:2008(日本)と記載（規格名の妥当性要照合、アプリへ無検証実装しない）。旧Word2003案内はPDF/X-1a:2001。フォント埋込、ダウンサンプルなし。",
+        "cropMarks": "漫画は見えるトンボ必須との総合案内。小説・PDFはトンボなし可。"
+      },
+      "sources": [
+        {
+          "url": "https://www.print-on.jp/doujin/company/kisochishiki/tonbo_nuritashi.html",
+          "supports": "3mm以上とトンボ/PDF例外"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/company/kisochishiki/grayscale_monochrome.html",
+          "supports": "グレー/2値600推奨"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/comic/price/honbun_template_matome/honbun_template_mokuji_mokomoko.htm",
+          "supports": "カラー350テンプレート"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/company/order/deta.htm",
+          "supports": "PSD/TIFF/PDF/ラスタEPS"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/company/order/deta_indesing.htm",
+          "supports": "公式表記PDF/X-4aと圧縮/色変換"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/company/order/manual/word.htm",
+          "supports": "旧Word PDF/X-1a"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/company/kisochishiki/pages.html",
+          "supports": "総p算出"
+        },
+        {
+          "url": "https://www.print-on.jp/doujin/comic/price/wakuwaku_design_price.htm",
+          "supports": "2p単位の商品例"
+        }
+      ],
+      "unknowns": [
+        "1200dpi明示受付",
+        "全セット製本別ページ単位",
+        "公式InDesign案内のPDF/X-4a表記の正確な意図"
+      ],
+      "searched": [
+        "site:print-on.jp 原稿 解像度 塗り足し600",
+        "site:print-on.jp 解像度1200",
+        "site:print-on.jp ページ数 倍数/偶数/2ページ/表紙4",
+        "site:print-on.jp PDF/X"
+      ],
+      "id": "printer-16",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "アクシス",
+      "scope": "アクシス出版株式会社。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "表紙mm: 3。本文mm: 3。位置付け: 指定。補足: テンプレート別仕様はテンプレートを優先",
+        "monoDpi": "値: 600。位置付け: 基本仕様",
+        "grayDpi": "値: 350 / 600。位置付け: 基本仕様。補足: A6未満は600推奨",
+        "colorDpi": "値: 350。位置付け: 基本仕様",
+        "pageRules": "数え方: 表紙4P＋本文。遊び紙・口絵を除く。ページ単位: 未確認。確認例: フルカラー本セットA5料金表は16/20/24/28等の4P刻み。全商品一律必須の根拠にはしない",
+        "formats": "受付形式: PSD / Photoshop EPS / TIFF / PDF（本文のみ）。PDF規格: 未確認。トンボ: CLIP STUDIO書き出し案内で表紙・本文ともトンボ出力を指示。色: 基本CMYK。RGB入稿は変換。RGB対応商品・オプションは別"
+      },
+      "sources": [
+        {
+          "url": "https://axis-publication.com/gochumon/sakusei/",
+          "supports": "原稿作成基本仕様"
+        },
+        {
+          "url": "https://axis-publication.com/gochumon/sakusei/clip.html",
+          "supports": "CLIP STUDIO書き出し"
+        },
+        {
+          "url": "https://www.axis-publication.com/set/fullcolor/ryoukin_A5.html?no=0",
+          "supports": "フルカラーA5料金表"
+        },
+        {
+          "url": "https://axis-publication.com/gochumon/chumonsyo/img/order_dojinshi.pdf",
+          "supports": "同人誌注文書"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格・TrimBox等の指定",
+        "全セットのページ数倍数/最小最大",
+        "1200dpi二値の受付可否（600以外を不可とは断定しない）"
+      ],
+      "searched": [
+        "アクシス 同人誌 印刷 原稿 解像度 塗り足し",
+        "site:axis-publication.com ページ 倍数",
+        "site:axis-publication.com PDF トンボ",
+        "公式データ作成・CLIP STUDIO案内・注文書・料金表"
+      ],
+      "structuredDetails": {
+        "name": "アクシス",
+        "officialName": "アクシス出版株式会社",
+        "sourceURL": [
+          "https://axis-publication.com/gochumon/sakusei/",
+          "https://axis-publication.com/gochumon/sakusei/clip.html",
+          "https://www.axis-publication.com/set/fullcolor/ryoukin_A5.html?no=0",
+          "https://axis-publication.com/gochumon/chumonsyo/img/order_dojinshi.pdf"
+        ],
+        "bleed": {
+          "coverMm": 3,
+          "bodyMm": 3,
+          "status": "指定",
+          "note": "テンプレート別仕様はテンプレートを優先"
+        },
+        "monoDpi": {
+          "values": [
+            600
+          ],
+          "status": "基本仕様"
+        },
+        "grayDpi": {
+          "values": [
+            350,
+            600
+          ],
+          "status": "基本仕様",
+          "note": "A6未満は600推奨"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "基本仕様"
+        },
+        "pageRules": {
+          "count": "表紙4P＋本文。遊び紙・口絵を除く",
+          "multiple": null,
+          "observed": "フルカラー本セットA5料金表は16/20/24/28等の4P刻み。全商品一律必須の根拠にはしない"
+        },
+        "formats": {
+          "accepted": [
+            "PSD",
+            "Photoshop EPS",
+            "TIFF",
+            "PDF（本文のみ）"
+          ],
+          "pdfProfile": null,
+          "cropMarks": "CLIP STUDIO書き出し案内で表紙・本文ともトンボ出力を指示",
+          "color": "基本CMYK。RGB入稿は変換。RGB対応商品・オプションは別"
+        },
+        "unknowns": [
+          "PDF/X規格・TrimBox等の指定",
+          "全セットのページ数倍数/最小最大",
+          "1200dpi二値の受付可否（600以外を不可とは断定しない）"
+        ],
+        "searched": [
+          "アクシス 同人誌 印刷 原稿 解像度 塗り足し",
+          "site:axis-publication.com ページ 倍数",
+          "site:axis-publication.com PDF トンボ",
+          "公式データ作成・CLIP STUDIO案内・注文書・料金表"
+        ]
+      },
+      "id": "printer-17",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "サングループ",
+      "scope": "株式会社サングループ。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "表紙mm: 4。本文mm: 4。位置付け: 標準テンプレート4mm。受付最低mm: 3。補足: FAQは3mm以上も問題なし。塗り足し不要の文字のみは規格寸法可。中央合わせ必須",
+        "monoDpi": "オフセット: 最小: 600。最大: 1200。位置付け: 推奨。オンデマンド: 値: 600。位置付け: 推奨",
+        "grayDpi": "値: 350。位置付け: 推奨（オフセット/オンデマンド）",
+        "colorDpi": "値: 350。位置付け: 推奨（オフセット/オンデマンド）",
+        "pageRules": "数え方: 表紙＋本文、遊び紙・口絵を除く。オフセット単色・無線: ページ単位: 2。最小: 20。最大: 148。オフセットカラー・無線: ページ単位: 2。最小: 20。最大: 64。オフセット中綴じ: ページ単位: 4。最小: 8。最大: 40。オンデマンド無線: ページ単位: 2。最小: 20。最大: 76。補足: 特急・折本等は別設定",
+        "formats": "受付形式: PSD / PDF。PDF規格: 未確認。トンボ: 不要（中央合わせ方式）。ガイド・トンボ残置に注意。フォント: 文字PDFはフォント埋込。色: RGB/CMYK受付。sRGB推奨、ICC埋込をしない案内"
+      },
+      "sources": [
+        {
+          "url": "https://sungroup.co.jp/faq/",
+          "supports": "FAQ：塗り足し・解像度・形式"
+        },
+        {
+          "url": "https://sungroup.co.jp/print-menu/",
+          "supports": "印刷方式/製本別のページ条件"
+        },
+        {
+          "url": "https://sungroup.co.jp/template/",
+          "supports": "原稿テンプレート"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格・TrimBox等の指定",
+        "特殊商品を含む全プランの範囲"
+      ],
+      "searched": [
+        "サングループ 原稿 表紙 4mm",
+        "site:sungroup.co.jp ページ数 4 2",
+        "公式FAQ・印刷メニュー・テンプレート"
+      ],
+      "structuredDetails": {
+        "name": "サングループ",
+        "officialName": "株式会社サングループ",
+        "sourceURL": [
+          "https://sungroup.co.jp/faq/",
+          "https://sungroup.co.jp/print-menu/",
+          "https://sungroup.co.jp/template/"
+        ],
+        "bleed": {
+          "coverMm": 4,
+          "bodyMm": 4,
+          "status": "標準テンプレート4mm",
+          "acceptedMinimumMm": 3,
+          "note": "FAQは3mm以上も問題なし。塗り足し不要の文字のみは規格寸法可。中央合わせ必須"
+        },
+        "monoDpi": {
+          "offset": {
+            "min": 600,
+            "max": 1200,
+            "status": "推奨"
+          },
+          "onDemand": {
+            "values": [
+              600
+            ],
+            "status": "推奨"
+          }
+        },
+        "grayDpi": {
+          "values": [
+            350
+          ],
+          "status": "推奨（オフセット/オンデマンド）"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "推奨（オフセット/オンデマンド）"
+        },
+        "pageRules": {
+          "count": "表紙＋本文、遊び紙・口絵を除く",
+          "offsetMonoPerfect": {
+            "multiple": 2,
+            "min": 20,
+            "max": 148
+          },
+          "offsetColorPerfect": {
+            "multiple": 2,
+            "min": 20,
+            "max": 64
+          },
+          "offsetSaddle": {
+            "multiple": 4,
+            "min": 8,
+            "max": 40
+          },
+          "onDemandPerfect": {
+            "multiple": 2,
+            "min": 20,
+            "max": 76
+          },
+          "note": "特急・折本等は別設定"
+        },
+        "formats": {
+          "accepted": [
+            "PSD",
+            "PDF"
+          ],
+          "pdfProfile": null,
+          "cropMarks": "不要（中央合わせ方式）。ガイド・トンボ残置に注意",
+          "fonts": "文字PDFはフォント埋込",
+          "color": "RGB/CMYK受付。sRGB推奨、ICC埋込をしない案内"
+        },
+        "unknowns": [
+          "PDF/X規格・TrimBox等の指定",
+          "特殊商品を含む全プランの範囲"
+        ],
+        "searched": [
+          "サングループ 原稿 表紙 4mm",
+          "site:sungroup.co.jp ページ数 4 2",
+          "公式FAQ・印刷メニュー・テンプレート"
+        ]
+      },
+      "id": "printer-18",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "ブックネクスト",
+      "scope": "booknext（ブックネクスト）。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "選択値mm: 0 / 3 / 5。標準mm: 3。位置付け: 受付対応・標準3mm。補足: 0mmは裁ち切り絵柄のないデザイン。2021-11-26変更告知と総合ガイドが一致。記述の相違: Photoshop個別ガイドの3mm厳守が残存。改定を反映していない可能性が高いが推定。現総合ガイドを本表に採用",
+        "monoDpi": "値: 600。位置付け: 推奨。本文受付範囲: 300〜600。範囲の条件: FAQは本文300〜600受付。表現色別の例外は明記なし",
+        "grayDpi": "値: 600。位置付け: 推奨。本文受付範囲: 300〜600",
+        "colorDpi": "値: 350。位置付け: 推奨（表紙/本文）",
+        "pageRules": "数え方: 表紙4P＋本文。ページ単位: 未確認。補足: 料金表にないページ数は受付不可、白紙調整。オフセット/オンデマンドで受付ページが異なる",
+        "formats": "受付形式: PNG / JPG / PSD / TIFF / PDF。PDF規格: 未確認。トンボ: 不要。仕上がり＋選択塗り足しの寸法のみ。色: RGB/CMYK、単色はグレー/二値。補足: 本文全頁の解像度統一。画像とPDF混在、表紙単頁・見開きに対応"
+      },
+      "sources": [
+        {
+          "url": "https://booknext.ink/guide/application/",
+          "supports": "入稿データ総合案内"
+        },
+        {
+          "url": "https://booknext.ink/news/20211126versionup/",
+          "supports": "0/3/5mm対応の改定告知"
+        },
+        {
+          "url": "https://booknext.ink/download/photoshop/",
+          "supports": "Photoshop個別案内（総合案内と相違）"
+        },
+        {
+          "url": "https://booknext.ink/qa/本文の解像度が「300dpi」でも入稿できますか？/",
+          "supports": "本文300〜600dpiの受付FAQ"
+        },
+        {
+          "url": "https://booknext.ink/qa/料金表にないページ数の注文は可能ですか？/",
+          "supports": "料金表にないページ数のFAQ"
+        },
+        {
+          "url": "https://booknext.ink/guide/paper/",
+          "supports": "用紙と背幅"
+        }
+      ],
+      "unknowns": [
+        "全商品の許容ページ数一覧と倍数",
+        "PDF/X規格・TrimBox等の指定",
+        "個別Photoshop案内の更新状態（3mm固定との相違）"
+      ],
+      "searched": [
+        "site:booknext.ink 原稿 350dpi 塗り足し",
+        "site:booknext.ink ページ数 倍数",
+        "site:booknext.ink 2ページ単位",
+        "総合案内・2021改定告知・Photoshopガイド・FAQ・背幅計算"
+      ],
+      "structuredDetails": {
+        "name": "ブックネクスト",
+        "officialName": "booknext（ブックネクスト）",
+        "sourceURL": [
+          "https://booknext.ink/guide/application/",
+          "https://booknext.ink/news/20211126versionup/",
+          "https://booknext.ink/download/photoshop/",
+          "https://booknext.ink/qa/本文の解像度が「300dpi」でも入稿できますか？/",
+          "https://booknext.ink/qa/料金表にないページ数の注文は可能ですか？/",
+          "https://booknext.ink/guide/paper/"
+        ],
+        "bleed": {
+          "valuesMm": [
+            0,
+            3,
+            5
+          ],
+          "defaultMm": 3,
+          "status": "受付対応・標準3mm",
+          "note": "0mmは裁ち切り絵柄のないデザイン。2021-11-26変更告知と総合ガイドが一致",
+          "conflict": "Photoshop個別ガイドの3mm厳守が残存。改定を反映していない可能性が高いが推定。現総合ガイドを本表に採用"
+        },
+        "monoDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨",
+          "acceptedBodyRange": [
+            300,
+            600
+          ],
+          "rangeNote": "FAQは本文300〜600受付。表現色別の例外は明記なし"
+        },
+        "grayDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨",
+          "acceptedBodyRange": [
+            300,
+            600
+          ]
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "推奨（表紙/本文）"
+        },
+        "pageRules": {
+          "count": "表紙4P＋本文",
+          "multiple": null,
+          "note": "料金表にないページ数は受付不可、白紙調整。オフセット/オンデマンドで受付ページが異なる"
+        },
+        "formats": {
+          "accepted": [
+            "PNG",
+            "JPG",
+            "PSD",
+            "TIFF",
+            "PDF"
+          ],
+          "pdfProfile": null,
+          "cropMarks": "不要。仕上がり＋選択塗り足しの寸法のみ",
+          "color": "RGB/CMYK、単色はグレー/二値",
+          "note": "本文全頁の解像度統一。画像とPDF混在、表紙単頁・見開きに対応"
+        },
+        "unknowns": [
+          "全商品の許容ページ数一覧と倍数",
+          "PDF/X規格・TrimBox等の指定",
+          "個別Photoshop案内の更新状態（3mm固定との相違）"
+        ],
+        "searched": [
+          "site:booknext.ink 原稿 350dpi 塗り足し",
+          "site:booknext.ink ページ数 倍数",
+          "site:booknext.ink 2ページ単位",
+          "総合案内・2021改定告知・Photoshopガイド・FAQ・背幅計算"
+        ]
+      },
+      "id": "printer-19",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "テイズプリント",
+      "scope": "同人誌印刷所テイズプリント（Tei’s Print）。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "表紙mm: 3。本文mm: 3。位置付け: 裁ち切りありの指定。補足: 裁ち切り柄なしの小説等は原寸可",
+        "monoDpi": "値: 600。位置付け: モノクロ原稿の指定。補足: グレースケール推奨。二値だけの別指定は未確認",
+        "grayDpi": "値: 600。位置付け: 指定・グレースケール推奨",
+        "colorDpi": "値: 350。位置付け: 指定",
+        "pageRules": "数え方: 表紙4P込み、口絵は別。ページ単位: 未確認。確認例: 激安無線綴じ50P商品を確認（4の倍数のみではない）。通常激安/カラー12〜206P。全偶数受付の明文は未確認",
+        "formats": "受付形式: PSD / PNG / TIF / TIFF / EPS / JPG / JPEG / PDF。PDF規格: 未確認。トンボ: なくても可。正寸・中央合わせ必須。補足: 本文は単頁、形式を統一。PDFは全本文1ファイル。表紙は表1＋背＋表4の1枚必須。Adobe/CSP以外で作成したPDFの印刷不具合は保証外との注意あり。色: RGB/CMYK可、RGBはCMYK変換"
+      },
+      "sources": [
+        {
+          "url": "https://www.teis-p.com/html/manual.html",
+          "supports": "入稿マニュアル"
+        },
+        {
+          "url": "https://www.teis-p.com/category/548.html",
+          "supports": "無線綴じ50P商品"
+        },
+        {
+          "url": "https://www.teis-p.com/category/38890.html",
+          "supports": "オールカラー商品"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格・TrimBox等の指定",
+        "無線綴じの全許容ページ数を2刻みと明記する資料",
+        "二値1200dpiの受付可否"
+      ],
+      "searched": [
+        "テイズプリント 原稿",
+        "site:teis-p.com ページ数 倍数",
+        "公式入稿マニュアル・激安50P商品・オールカラー12P商品"
+      ],
+      "structuredDetails": {
+        "name": "テイズプリント",
+        "officialName": "同人誌印刷所テイズプリント（Tei’s Print）",
+        "sourceURL": [
+          "https://www.teis-p.com/html/manual.html",
+          "https://www.teis-p.com/category/548.html",
+          "https://www.teis-p.com/category/38890.html"
+        ],
+        "bleed": {
+          "coverMm": 3,
+          "bodyMm": 3,
+          "status": "裁ち切りありの指定",
+          "note": "裁ち切り柄なしの小説等は原寸可"
+        },
+        "monoDpi": {
+          "values": [
+            600
+          ],
+          "status": "モノクロ原稿の指定",
+          "note": "グレースケール推奨。二値だけの別指定は未確認"
+        },
+        "grayDpi": {
+          "values": [
+            600
+          ],
+          "status": "指定・グレースケール推奨"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "指定"
+        },
+        "pageRules": {
+          "count": "表紙4P込み、口絵は別",
+          "multiple": null,
+          "observed": "激安無線綴じ50P商品を確認（4の倍数のみではない）。通常激安/カラー12〜206P。全偶数受付の明文は未確認"
+        },
+        "formats": {
+          "accepted": [
+            "PSD",
+            "PNG",
+            "TIF",
+            "TIFF",
+            "EPS",
+            "JPG",
+            "JPEG",
+            "PDF"
+          ],
+          "pdfProfile": null,
+          "cropMarks": "なくても可。正寸・中央合わせ必須",
+          "note": "本文は単頁、形式を統一。PDFは全本文1ファイル。表紙は表1＋背＋表4の1枚必須。Adobe/CSP以外で作成したPDFの印刷不具合は保証外との注意あり",
+          "color": "RGB/CMYK可、RGBはCMYK変換"
+        },
+        "unknowns": [
+          "PDF/X規格・TrimBox等の指定",
+          "無線綴じの全許容ページ数を2刻みと明記する資料",
+          "二値1200dpiの受付可否"
+        ],
+        "searched": [
+          "テイズプリント 原稿",
+          "site:teis-p.com ページ数 倍数",
+          "公式入稿マニュアル・激安50P商品・オールカラー12P商品"
+        ]
+      },
+      "id": "printer-20",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "オレンジ工房.com",
+      "scope": "オレンジ工房.com。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "推奨mm: 5。受付範囲mm: 3〜5。位置付け: CLIP STUDIO案内は5mm推奨、ComicStudio案内は3〜5mm。補足: 小説は原寸可の商品あり。商品別テンプレート優先",
+        "monoDpi": "値: 600。位置付け: 推奨。トーン使用時は600を指定。補足: 同社は600以外でトーンにモアレが発生すると注意。1200を汎用最良にしない",
+        "grayDpi": "値: 600。位置付け: 推奨",
+        "colorDpi": "値: 350。位置付け: 推奨",
+        "pageRules": "数え方: 表紙の表裏（表1〜4）を含む。一般条件: 奇数不可（FAQ）。中綴じ: ページ単位: 4。最大: 40。対象: 中綴じオンデマンドオールカラーセット",
+        "formats": "受付形式: PSD / PNG / BMP / TIF。PDF規格: 未確認。PDF条件: 小説本文は全頁1PDF。通常漫画セットは本文PDF非推奨の受付欄あり（トーンのモアレ注意）、商品別表では本文小説のみ可ともあるため漫画PDFは条件確認が必要。表紙PDF対応商品あり。トンボ: CSPはトンボ出力。裁ち落としまで出力する場合は省略可。既存テンプレートでは二重追加しない。色: 通常カラーCMYK推奨、RGB可で変換。RGBビビッド等は別商品",
+        "tone": "60線以下推奨。トーン入りは600dpi指定。"
+      },
+      "sources": [
+        {
+          "url": "https://www.orangekoubou.com/making/making.php",
+          "supports": "原稿の総合案内"
+        },
+        {
+          "url": "https://www.orangekoubou.com/making/making_clipstudiopaint.php",
+          "supports": "CLIP STUDIO手順・線数"
+        },
+        {
+          "url": "https://www.orangekoubou.com/making/making_comicstudio.php",
+          "supports": "ComicStudio手順"
+        },
+        {
+          "url": "https://www.orangekoubou.com/order/question.php",
+          "supports": "注文FAQ"
+        },
+        {
+          "url": "https://www.orangekoubou.com/order/check_order.php",
+          "supports": "入稿チェック"
+        },
+        {
+          "url": "https://www.orangekoubou.com/booklet/set_silver_ss.php",
+          "supports": "中綴じカラーセット"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格・TrimBox等の指定",
+        "漫画PDF受付条件の表内記述と非推奨受付欄の整合",
+        "全商品ごとのページ上下限"
+      ],
+      "searched": [
+        "オレンジ工房 塗り足し 解像度",
+        "site:orangekoubou.com 4の倍数",
+        "site:orangekoubou.com 2ページ単位",
+        "原稿共通・CSP・旧ComicStudioガイド・FAQ・中綴じ商品"
+      ],
+      "structuredDetails": {
+        "name": "オレンジ工房.com",
+        "officialName": "オレンジ工房.com",
+        "sourceURL": [
+          "https://www.orangekoubou.com/making/making.php",
+          "https://www.orangekoubou.com/making/making_clipstudiopaint.php",
+          "https://www.orangekoubou.com/making/making_comicstudio.php",
+          "https://www.orangekoubou.com/order/question.php",
+          "https://www.orangekoubou.com/order/check_order.php",
+          "https://www.orangekoubou.com/booklet/set_silver_ss.php"
+        ],
+        "bleed": {
+          "recommendedMm": 5,
+          "acceptedRangeMm": [
+            3,
+            5
+          ],
+          "status": "CLIP STUDIO案内は5mm推奨、ComicStudio案内は3〜5mm",
+          "note": "小説は原寸可の商品あり。商品別テンプレート優先"
+        },
+        "monoDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨。トーン使用時は600を指定",
+          "note": "同社は600以外でトーンにモアレが発生すると注意。1200を汎用最良にしない"
+        },
+        "grayDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "推奨"
+        },
+        "toneLpi": {
+          "maxRecommended": 60
+        },
+        "pageRules": {
+          "count": "表紙の表裏（表1〜4）を含む",
+          "general": "奇数不可（FAQ）",
+          "saddle": {
+            "multiple": 4,
+            "max": 40,
+            "scope": "中綴じオンデマンドオールカラーセット"
+          }
+        },
+        "formats": {
+          "accepted": [
+            "PSD",
+            "PNG",
+            "BMP",
+            "TIF"
+          ],
+          "pdfProfile": null,
+          "pdf": "小説本文は全頁1PDF。通常漫画セットは本文PDF非推奨の受付欄あり（トーンのモアレ注意）、商品別表では本文小説のみ可ともあるため漫画PDFは条件確認が必要。表紙PDF対応商品あり",
+          "cropMarks": "CSPはトンボ出力。裁ち落としまで出力する場合は省略可。既存テンプレートでは二重追加しない",
+          "color": "通常カラーCMYK推奨、RGB可で変換。RGBビビッド等は別商品"
+        },
+        "unknowns": [
+          "PDF/X規格・TrimBox等の指定",
+          "漫画PDF受付条件の表内記述と非推奨受付欄の整合",
+          "全商品ごとのページ上下限"
+        ],
+        "searched": [
+          "オレンジ工房 塗り足し 解像度",
+          "site:orangekoubou.com 4の倍数",
+          "site:orangekoubou.com 2ページ単位",
+          "原稿共通・CSP・旧ComicStudioガイド・FAQ・中綴じ商品"
+        ]
+      },
+      "id": "printer-21",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "株式会社 BRO'S",
+      "scope": "株式会社ブロス / BRO'S。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "選択値mm: 3 / 5。位置付け: 表紙・本文とも指定。補足: 全辺裁ち切り無しなら原寸可、テンプレート優先",
+        "monoDpi": "値: 600。位置付け: 推奨（単色表紙/本文）",
+        "grayDpi": "値: 600。位置付け: 推奨（単色表紙/本文）",
+        "colorDpi": "値: 350。位置付け: 推奨（フルカラー表紙）",
+        "pageRules": "数え方: 通常セット表紙4P込み。本文印刷のみ商品は本文のみ。一般条件: 総頁偶数。中綴じ4の倍数。確認例: オンデマンド料金表は34Pを36P料金で受付する例を記載",
+        "formats": "受付形式: EPS / PSD / TIFF / AI / PNG / JPEG / PDF。PDF規格: PDF/X-1a:2001（日本）推奨/Adobe設定指定。他変換ソフトはPDF/Aも可の案内あり。PDF詳細: 全画像ダウンサンプル無し・ZIP。フォント埋込。仕上がり中心とPDF中心を一致。トンボ: トンボ付きサイズ可。PDFで付ける場合は内外/センタートンボのみ、カラーバー・ページ情報なし。補足: 本文は単頁。ノンブル必須。表紙は単頁も見開きも可"
+      },
+      "sources": [
+        {
+          "url": "https://bros-comic.co.jp/nyukou/manual/make_method.html",
+          "supports": "原稿の作成方法"
+        },
+        {
+          "url": "https://www.bros-comic.co.jp/nyukou/manual/pdf_make.html",
+          "supports": "PDF書き出し設定"
+        },
+        {
+          "url": "https://www.bros-comic.co.jp/nyukou/download/bros_manual_web.pdf",
+          "supports": "公式総合マニュアル"
+        },
+        {
+          "url": "https://www.bros-comic.co.jp/ryokin/price/?st=ondema_set4c",
+          "supports": "オンデマンド料金表・34P例"
+        },
+        {
+          "url": "https://bros-comic.co.jp/ryokin/ondemand/ondema_honbun.html",
+          "supports": "本文印刷のみ商品"
+        }
+      ],
+      "unknowns": [
+        "カラー本文独立の解像度指定（350表紙から自動一般化しない）",
+        "全プランのページ上下限・用紙別中綴じ上限",
+        "1200dpi二値の受付可否"
+      ],
+      "searched": [
+        "BRO'S 原稿 600 350",
+        "site:bros-comic.co.jp ページ 倍数",
+        "公式原稿・PDFガイド・現マニュアル・料金表"
+      ],
+      "structuredDetails": {
+        "name": "株式会社BRO'S",
+        "officialName": "株式会社ブロス / BRO'S",
+        "sourceURL": [
+          "https://bros-comic.co.jp/nyukou/manual/make_method.html",
+          "https://www.bros-comic.co.jp/nyukou/manual/pdf_make.html",
+          "https://www.bros-comic.co.jp/nyukou/download/bros_manual_web.pdf",
+          "https://www.bros-comic.co.jp/ryokin/price/?st=ondema_set4c",
+          "https://bros-comic.co.jp/ryokin/ondemand/ondema_honbun.html"
+        ],
+        "bleed": {
+          "valuesMm": [
+            3,
+            5
+          ],
+          "status": "表紙・本文とも指定",
+          "note": "全辺裁ち切り無しなら原寸可、テンプレート優先"
+        },
+        "monoDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨（単色表紙/本文）"
+        },
+        "grayDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨（単色表紙/本文）"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "推奨（フルカラー表紙）"
+        },
+        "pageRules": {
+          "count": "通常セット表紙4P込み。本文印刷のみ商品は本文のみ",
+          "general": "総頁偶数。中綴じ4の倍数",
+          "proof": "オンデマンド料金表は34Pを36P料金で受付する例を記載"
+        },
+        "formats": {
+          "accepted": [
+            "EPS",
+            "PSD",
+            "TIFF",
+            "AI",
+            "PNG",
+            "JPEG",
+            "PDF"
+          ],
+          "pdfProfile": "PDF/X-1a:2001（日本）推奨/Adobe設定指定。他変換ソフトはPDF/Aも可の案内あり",
+          "pdfDetails": "全画像ダウンサンプル無し・ZIP。フォント埋込。仕上がり中心とPDF中心を一致",
+          "cropMarks": "トンボ付きサイズ可。PDFで付ける場合は内外/センタートンボのみ、カラーバー・ページ情報なし",
+          "note": "本文は単頁。ノンブル必須。表紙は単頁も見開きも可"
+        },
+        "unknowns": [
+          "カラー本文独立の解像度指定（350表紙から自動一般化しない）",
+          "全プランのページ上下限・用紙別中綴じ上限",
+          "1200dpi二値の受付可否"
+        ],
+        "searched": [
+          "BRO'S 原稿 600 350",
+          "site:bros-comic.co.jp ページ 倍数",
+          "公式原稿・PDFガイド・現マニュアル・料金表"
+        ]
+      },
+      "id": "printer-22",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "株式会社ホープツーワン",
+      "scope": "株式会社ホープツーワン。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "選択値mm: 3 / 5。位置付け: CSP/Photoshop案内指定。補足: セルフチェックは塗り足し0/3/5と余白有無を選択。0は裁ち切り無し等の条件を商品で確認",
+        "monoDpi": "値: 600。位置付け: 推奨/単色本文指定。補足: 公式文中には『600dpi以上…遠慮』と600推奨が併記。600自体禁止と解釈せず高解像度回避の注意として保留",
+        "grayDpi": "値: 600。位置付け: 推奨/単色本文指定",
+        "colorDpi": "値: 350。位置付け: 推奨/カラー本文指定",
+        "pageRules": "数え方: 表紙4P＋本文。中綴じ: ページ単位: 4。最小: 12。最大: 28。無線綴じ: ページ単位: 2。最小: 20。折本: ページ数: 8",
+        "formats": "受付形式: PSD / TIFF / PDF / PNG / JPEG。対象: PSD/TIFFはPhotoshopガイド、PNG/JPEG/PDFはセット用セルフチェック対応一覧。PDF規格: 未確認。PDF詳細: フォント埋込、画像劣化/寸法を確認。Quartz書き出しPDF不具合注意。トンボ: 塗り足し外の余白ありデータにも対応するがPDFセルフプレビューは制約あり。プレビュー適正は原寸＋0/3/5mm。補足: CSP手順ではTIFFはモノクロ2階調のみと注記。総合受付形式だけで全色モードに適用しない。",
+        "tone": "60〜70線推奨。"
+      },
+      "sources": [
+        {
+          "url": "https://hope21.jp/creative-guide/clipstudio/",
+          "supports": "CLIP STUDIO原稿条件"
+        },
+        {
+          "url": "https://hope21.jp/creative-guide/photoshop/",
+          "supports": "Photoshop手順"
+        },
+        {
+          "url": "https://hope21.jp/creative-guide/pdf/",
+          "supports": "PDF手順"
+        },
+        {
+          "url": "https://hope21.jp/guide/manuscript-preview/",
+          "supports": "セルフチェックの対応条件"
+        }
+      ],
+      "unknowns": [
+        "PDF/X規格・TrimBox等の指定",
+        "全商品を横断した無線綴じ最大頁数",
+        "600dpi以上という文言の境界（表自体は600推奨）"
+      ],
+      "searched": [
+        "ホープツーワン 原稿 解像度 塗り足し",
+        "site:hope21.jp ページ数 倍数",
+        "公式CSP・Photoshop・PDF・セルフチェック案内"
+      ],
+      "structuredDetails": {
+        "name": "株式会社ホープツーワン",
+        "officialName": "株式会社ホープツーワン",
+        "sourceURL": [
+          "https://hope21.jp/creative-guide/clipstudio/",
+          "https://hope21.jp/creative-guide/photoshop/",
+          "https://hope21.jp/creative-guide/pdf/",
+          "https://hope21.jp/guide/manuscript-preview/"
+        ],
+        "bleed": {
+          "valuesMm": [
+            3,
+            5
+          ],
+          "status": "CSP/Photoshop案内指定",
+          "note": "セルフチェックは塗り足し0/3/5と余白有無を選択。0は裁ち切り無し等の条件を商品で確認"
+        },
+        "monoDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨/単色本文指定",
+          "note": "公式文中には『600dpi以上…遠慮』と600推奨が併記。600自体禁止と解釈せず高解像度回避の注意として保留"
+        },
+        "grayDpi": {
+          "values": [
+            600
+          ],
+          "status": "推奨/単色本文指定"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "推奨/カラー本文指定"
+        },
+        "toneLpi": {
+          "recommendedRange": [
+            60,
+            70
+          ]
+        },
+        "pageRules": {
+          "count": "表紙4P＋本文",
+          "saddle": {
+            "multiple": 4,
+            "min": 12,
+            "max": 28
+          },
+          "perfect": {
+            "multiple": 2,
+            "min": 20
+          },
+          "folded": {
+            "pages": 8
+          }
+        },
+        "formats": {
+          "accepted": [
+            "PSD",
+            "TIFF",
+            "PDF",
+            "PNG",
+            "JPEG"
+          ],
+          "scope": "PSD/TIFFはPhotoshopガイド、PNG/JPEG/PDFはセット用セルフチェック対応一覧",
+          "pdfProfile": null,
+          "pdfDetails": "フォント埋込、画像劣化/寸法を確認。Quartz書き出しPDF不具合注意",
+          "cropMarks": "塗り足し外の余白ありデータにも対応するがPDFセルフプレビューは制約あり。プレビュー適正は原寸＋0/3/5mm",
+          "note": "CSP手順ではTIFFはモノクロ2階調のみと注記。総合受付形式だけで全色モードに適用しない。"
+        },
+        "unknowns": [
+          "PDF/X規格・TrimBox等の指定",
+          "全商品を横断した無線綴じ最大頁数",
+          "600dpi以上という文言の境界（表自体は600推奨）"
+        ],
+        "searched": [
+          "ホープツーワン 原稿 解像度 塗り足し",
+          "site:hope21.jp ページ数 倍数",
+          "公式CSP・Photoshop・PDF・セルフチェック案内"
+        ]
+      },
+      "id": "printer-23",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    },
+    {
+      "name": "EditNetプリンテック",
+      "scope": "EditNet Printeq / EditNetプリンテック。個別条件は各項目を参照",
+      "findings": {
+        "bleed": "最低mm: 3。位置付け: 通常データ原稿は各辺3mm以上均等。表紙も3mm案内。補足: DIYコピーは別（本文原寸・縁5〜7mm印刷不可、表紙3mm）。標準A5幅148.5/B6幅128.5と記載あり、他社の148/128に一律統合しない",
+        "monoDpi": "推奨範囲: 600〜1800。孔版dpi: 600。位置付け: 適切な解像度の案内",
+        "grayDpi": "推奨範囲: 350〜600。位置付け: 適切な解像度の案内",
+        "colorDpi": "値: 350。位置付け: 現HTMLの適切な解像度案内。補足: 古い料金PDFには350〜600記載あり。現HTML350を採用",
+        "pageRules": "数え方: 表紙込み（公式トップ見積と旧冊子）。ページ単位: 未確認。旧資料: 2018掲載版マニュアルの無線綴じ台割は4の倍数。現行全商品に一律適用できる根拠は未確認",
+        "formats": "受付形式: EPS（通常推奨） / PDF（用途別確認）。PDF規格: 未確認。対象: 通常総合形式ページ取得不能。旧公式マニュアルはEPS/PS/PDF、現オンデマンド2色はEPS/PDF、白版はEPS/PSD又は特色PDF。DIYはPDF。トンボ: Photoshopデータは不要。Illustratorでは周囲トンボで中心を明示"
+      },
+      "sources": [
+        {
+          "url": "https://www.editnet-p.jp/howtodraw/data/d2.phtml",
+          "supports": "本文寸法・トンボ"
+        },
+        {
+          "url": "https://www.editnet-p.jp/howtodraw/data/d3.phtml",
+          "supports": "表紙寸法・背幅"
+        },
+        {
+          "url": "https://www.editnet-p.jp/howtodraw/data/d4.phtml",
+          "supports": "色別解像度"
+        },
+        {
+          "url": "https://www.editnet-p.jp/services/downloads/180816-printeq-962e-b.pdf",
+          "supports": "2018年版公式資料（旧条件）"
+        },
+        {
+          "url": "https://www.editnet-p.jp/howtodraw/data/d10.phtml",
+          "supports": "特殊印刷のデータ条件"
+        },
+        {
+          "url": "https://www.editnet-p.jp/howtodraw/data/d11.phtml",
+          "supports": "特殊印刷のデータ条件"
+        },
+        {
+          "url": "https://www.editnet-p.jp/diy/diydata.phtml",
+          "supports": "DIYコピー専用条件"
+        }
+      ],
+      "unknowns": [
+        "通常全商品共通の最新形式一覧（d1.phtml取得不能）",
+        "通常PSD/TIFFの受付可否（白版以外へ一般化不可）",
+        "PDF/X規格・TrimBox等の指定",
+        "現行商品別ページ倍数/上下限。旧無線台割は4倍数だが時点/商品範囲を確認できず"
+      ],
+      "searched": [
+        "EditNet プリンテック 原稿 解像度 塗り足し",
+        "site:editnet-p.jp/howtodraw/data/ ファイル形式",
+        "site:editnet-p.jp ページ数 倍数",
+        "現HTML d2/d3/d4/d10/d11、公式旧マニュアル、DIYを別枠調査。d1.phtmlと目次本文の取得失敗"
+      ],
+      "structuredDetails": {
+        "name": "EditNetプリンテック",
+        "officialName": "EditNet Printeq / EditNetプリンテック",
+        "sourceURL": [
+          "https://www.editnet-p.jp/howtodraw/data/d2.phtml",
+          "https://www.editnet-p.jp/howtodraw/data/d3.phtml",
+          "https://www.editnet-p.jp/howtodraw/data/d4.phtml",
+          "https://www.editnet-p.jp/services/downloads/180816-printeq-962e-b.pdf",
+          "https://www.editnet-p.jp/howtodraw/data/d10.phtml",
+          "https://www.editnet-p.jp/howtodraw/data/d11.phtml",
+          "https://www.editnet-p.jp/diy/diydata.phtml"
+        ],
+        "bleed": {
+          "minimumMm": 3,
+          "status": "通常データ原稿は各辺3mm以上均等。表紙も3mm案内",
+          "note": "DIYコピーは別（本文原寸・縁5〜7mm印刷不可、表紙3mm）。標準A5幅148.5/B6幅128.5と記載あり、他社の148/128に一律統合しない"
+        },
+        "monoDpi": {
+          "recommendedRange": [
+            600,
+            1800
+          ],
+          "stencilDpi": 600,
+          "status": "適切な解像度の案内"
+        },
+        "grayDpi": {
+          "recommendedRange": [
+            350,
+            600
+          ],
+          "status": "適切な解像度の案内"
+        },
+        "colorDpi": {
+          "values": [
+            350
+          ],
+          "status": "現HTMLの適切な解像度案内",
+          "note": "古い料金PDFには350〜600記載あり。現HTML350を採用"
+        },
+        "pageRules": {
+          "count": "表紙込み（公式トップ見積と旧冊子）",
+          "multiple": null,
+          "legacy": "2018掲載版マニュアルの無線綴じ台割は4の倍数。現行全商品に一律適用できる根拠は未確認"
+        },
+        "formats": {
+          "accepted": [
+            "EPS（通常推奨）",
+            "PDF（用途別確認）"
+          ],
+          "pdfProfile": null,
+          "scope": "通常総合形式ページ取得不能。旧公式マニュアルはEPS/PS/PDF、現オンデマンド2色はEPS/PDF、白版はEPS/PSD又は特色PDF。DIYはPDF",
+          "cropMarks": "Photoshopデータは不要。Illustratorでは周囲トンボで中心を明示"
+        },
+        "unknowns": [
+          "通常全商品共通の最新形式一覧（d1.phtml取得不能）",
+          "通常PSD/TIFFの受付可否（白版以外へ一般化不可）",
+          "PDF/X規格・TrimBox等の指定",
+          "現行商品別ページ倍数/上下限。旧無線台割は4倍数だが時点/商品範囲を確認できず"
+        ],
+        "searched": [
+          "EditNet プリンテック 原稿 解像度 塗り足し",
+          "site:editnet-p.jp/howtodraw/data/ ファイル形式",
+          "site:editnet-p.jp ページ数 倍数",
+          "現HTML d2/d3/d4/d10/d11、公式旧マニュアル、DIYを別枠調査。d1.phtmlと目次本文の取得失敗"
+        ]
+      },
+      "id": "printer-24",
+      "checkedAt": "2026-09-25",
+      "status": "official_guidance_found_with_partial_unknowns"
+    }
+  ],
+  "unknownsByPrinter": [
+    {
+      "name": "緑陽社",
+      "items": [
+        "全商品共通の最少・最大ページ数は未確認",
+        "5mm受付の現在の商品ごとの適用範囲は未確認（現行HTMLは3mm、旧PDFに3/5mm）"
+      ]
+    },
+    {
+      "name": "日光企画",
+      "items": [
+        "PDF/Xの特定規格指定",
+        "通常商品のページ刻みと表紙4P計数の現行自社明文",
+        "二値1200dpiの明示的な受付条件"
+      ]
+    },
+    {
+      "name": "サンライズ",
+      "items": [
+        "通常画像・PDFそれぞれのトンボ必須/不要の統一明文",
+        "全商品共通の受付ページ刻み（商品ごとに確認が必要）"
+      ]
+    },
+    {
+      "name": "くりえい社",
+      "items": [
+        "PDF/X規格",
+        "グレー専用推奨dpi",
+        "データのトンボ要否",
+        "オフセットその他商品への2P刻みの適用範囲"
+      ]
+    },
+    {
+      "name": "コーシン出版",
+      "items": [
+        "PDF/X規格",
+        "デジタル規定サイズでトンボ省略可能かの例外",
+        "商品別ページ数刻み",
+        "TIFFの全商品共通受付（FAQの一覧にないがPセット掲載）"
+      ]
+    },
+    {
+      "name": "ねこのしっぽ",
+      "items": [
+        "PDF/Xの指定規格",
+        "商品ごとのページ数の倍数・刻み"
+      ]
+    },
+    {
+      "name": "金沢印刷",
+      "items": [
+        "商品ごとのページ刻み（総ページ偶数は確認済み）"
+      ]
+    },
+    {
+      "name": "栄光",
+      "items": [
+        "通常各商品のページ刻み（和とじ例は確認済み）",
+        "通常画像のトンボなし対応の一律条件（テンプレート資料とセルフチェックを分ける）"
+      ]
+    },
+    {
+      "name": "シメケン",
+      "items": [
+        "表現色別推奨dpi",
+        "PDF/X規格の指定",
+        "TIFF受付"
+      ]
+    },
+    {
+      "name": "しまや出版",
+      "items": [
+        "中綴じ等商品別ページ単位の全網羅",
+        "PDF/X-4の明示受付"
+      ]
+    },
+    {
+      "name": "大陽出版",
+      "items": [
+        "中綴じ固有ページ単位",
+        "新旧トンボ記述差の全商品適用",
+        "独自PDF生成の事前チェック合格"
+      ]
+    },
+    {
+      "name": "ポプルス",
+      "items": [
+        "TIFF受付",
+        "PDF/X固有指定",
+        "スタンダード以外全商品の制約網羅"
+      ]
+    },
+    {
+      "name": "関西美術印刷",
+      "items": [
+        "冊子商品別ページ単位",
+        "漫画PDF受付",
+        "PDF/X規格の指定",
+        "グレー600dpiを明示する冊子案内"
+      ]
+    },
+    {
+      "name": "PICO",
+      "items": [
+        "無線綴じのページ刻み",
+        "350〜400カラー推奨の全商品適用",
+        "PDF/X-4明示受付"
+      ]
+    },
+    {
+      "name": "pixivFACTORY",
+      "items": [
+        "全プランページ刻み",
+        "1200dpi/グレー350dpi受付",
+        "PDF/X規格の指定",
+        "TIFF受付"
+      ]
+    },
+    {
+      "name": "プリントオン",
+      "items": [
+        "1200dpi明示受付",
+        "全セット製本別ページ単位",
+        "公式InDesign案内のPDF/X-4a表記の正確な意図"
+      ]
+    },
+    {
+      "name": "アクシス",
+      "items": [
+        "PDF/X規格・TrimBox等の指定",
+        "全セットのページ数倍数/最小最大",
+        "1200dpi二値の受付可否（600以外を不可とは断定しない）"
+      ]
+    },
+    {
+      "name": "サングループ",
+      "items": [
+        "PDF/X規格・TrimBox等の指定",
+        "特殊商品を含む全プランの範囲"
+      ]
+    },
+    {
+      "name": "ブックネクスト",
+      "items": [
+        "全商品の許容ページ数一覧と倍数",
+        "PDF/X規格・TrimBox等の指定",
+        "個別Photoshop案内の更新状態（3mm固定との相違）"
+      ]
+    },
+    {
+      "name": "テイズプリント",
+      "items": [
+        "PDF/X規格・TrimBox等の指定",
+        "無線綴じの全許容ページ数を2刻みと明記する資料",
+        "二値1200dpiの受付可否"
+      ]
+    },
+    {
+      "name": "オレンジ工房.com",
+      "items": [
+        "PDF/X規格・TrimBox等の指定",
+        "漫画PDF受付条件の表内記述と非推奨受付欄の整合",
+        "全商品ごとのページ上下限"
+      ]
+    },
+    {
+      "name": "株式会社 BRO'S",
+      "items": [
+        "カラー本文独立の解像度指定（350表紙から自動一般化しない）",
+        "全プランのページ上下限・用紙別中綴じ上限",
+        "1200dpi二値の受付可否"
+      ]
+    },
+    {
+      "name": "株式会社ホープツーワン",
+      "items": [
+        "PDF/X規格・TrimBox等の指定",
+        "全商品を横断した無線綴じ最大頁数",
+        "600dpi以上という文言の境界（表自体は600推奨）"
+      ]
+    },
+    {
+      "name": "EditNetプリンテック",
+      "items": [
+        "通常全商品共通の最新形式一覧（d1.phtml取得不能）",
+        "通常PSD/TIFFの受付可否（白版以外へ一般化不可）",
+        "PDF/X規格・TrimBox等の指定",
+        "現行商品別ページ倍数/上下限。旧無線台割は4倍数だが時点/商品範囲を確認できず"
+      ]
+    }
+  ]
+}

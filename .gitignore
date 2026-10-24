@@ -1,6 +1,9 @@
 node_modules/
 .venv/
 .local-vision/
+.local-generation/
+# 人物素体・出典画像・確認用のローカル素材
+.human_pose/
 __pycache__/
 *.pyc
 dist/
@@ -11,11 +14,16 @@ dist-standalone/
 *.log
 scratch-brand/
 
+# ローカル実機テスト原稿（ユーザー提供・公開対象外）
+/sample/scan03.jpeg
+/sample/scan04.jpeg
+
 # 公開準備メモ・診断結果などの内部文書
 /doc/
 
-# ローカル画像解析モデルと生成物は各専用環境に置き、このリポジトリへ含めない
-models/
+# 採用済み操作分類器だけを配布する。他のローカルモデルはGit対象外。
+/models/*
+!/models/nyamuru-voice-v04-seed43/
 ocr-output/
 *.bin
 *.ckpt
@@ -24,6 +32,7 @@ ocr-output/
 *.pt
 *.pth
 *.safetensors
+/models/nyamuru-voice-v04-seed43/.download-*
 
 # AIエージェントの作業ファイル（誤コミット防止）
 .claude/

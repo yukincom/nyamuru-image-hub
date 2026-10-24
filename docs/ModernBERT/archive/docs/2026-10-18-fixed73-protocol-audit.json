@@ -1,0 +1,773 @@
+{
+  "created_at_utc": "2026-10-18T12:34:54.124629+00:00",
+  "scope": "Read-only audit of current fixed73 protocol; no inference or training performed. Only this audit output written.",
+  "root": "/Users/yukin_co/Documents/ChatGPT/Hermes改造/colab-nyamuru-voice-2026-10-17",
+  "test": {
+    "path": "experiments/v0.5.1/data/test.jsonl",
+    "sha256": "47e2aec86f296da4970caa66043ce17ce5cb17e767dfd8b78b6859330d050840",
+    "n": 73,
+    "unique_exact_texts": 73,
+    "unique_normalized_texts": 73,
+    "label_support": {
+      "save": 4,
+      "undo": 4,
+      "redo": 3,
+      "page_navigate": 4,
+      "view_change": 5,
+      "artwork_mode_set": 3,
+      "bubble_set": 4,
+      "needs_reasoning": 6,
+      "compound_request": 4,
+      "out_of_scope_request": 4,
+      "not_command": 6,
+      "panel_sync_set": 3,
+      "inner_frame_snap_set": 4,
+      "panel_gap_snap_set": 2,
+      "generate_request": 2,
+      "background_3d_candidates": 4,
+      "paint_tool_set": 3,
+      "text_frames_align": 4,
+      "needs_clarification": 4
+    },
+    "source_support": {
+      "codex_synthetic": 73
+    },
+    "groups": 53
+  },
+  "groups": [
+    {
+      "name": "v0.2",
+      "artifact_root": "artifacts/v02",
+      "input_root": ".",
+      "frozen_primary_model": null,
+      "selected_learning_rate": 5e-05,
+      "selection_frozen_at_utc": "2026-10-17T15:32:15.374381+00:00",
+      "experiment": {
+        "model": "sbintuitions/modernbert-ja-30m",
+        "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+        "batch_size": 16,
+        "max_length": 128,
+        "dtype": "float32",
+        "attention": "sdpa",
+        "tf32": false,
+        "model_fields": [
+          "text"
+        ]
+      },
+      "source_label2id_matches_current": true,
+      "split_overlap": {
+        "train": {
+          "n": 647,
+          "sha256": "fa43834826e455404400f4e0f05f24e380e6508b5d72ec477d4d00baa3678c3a",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        },
+        "dev": {
+          "n": 138,
+          "sha256": "bd0ee416c40e5f255100800da3527a3bb432d9874873c8235665cc04367a21d9",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        }
+      },
+      "checkpoints": [
+        {
+          "seed": 42,
+          "trial": "trial-2",
+          "epoch": 8.0,
+          "path": "artifacts/v02/weights/trial-2/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "4296c0954ddde278a45c14d3f16f805bca8121aede4b2efb0f9b73a3b5ee7351",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 43,
+          "trial": "trial-4",
+          "epoch": 9.0,
+          "path": "artifacts/v02/weights/trial-4/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "52bcdf426dd51a1f313f8ba56e29e88e73512dd752138ab94ff6ff8eb97d6251",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 44,
+          "trial": "trial-6",
+          "epoch": 8.0,
+          "path": "artifacts/v02/weights/trial-6/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "3bc6c0634fdc06165451bef4837ddab51aaf9e3c0e2e381f69f7eebac18b6eec",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        }
+      ],
+      "weights_without_selected_status": []
+    },
+    {
+      "name": "v0.3",
+      "artifact_root": "artifacts/v03-colab-2026-10-18",
+      "input_root": "experiments/v0.3",
+      "frozen_primary_model": {
+        "name": "seed-42",
+        "seed": 42,
+        "trial": "trial-2",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "selected_learning_rate": 5e-05,
+      "selection_frozen_at_utc": "2026-10-18T01:03:00.949959+00:00",
+      "experiment": {
+        "model": "sbintuitions/modernbert-ja-30m",
+        "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+        "batch_size": 16,
+        "max_length": 128,
+        "dtype": "float32",
+        "attention": "sdpa",
+        "tf32": false,
+        "model_fields": [
+          "text"
+        ]
+      },
+      "source_label2id_matches_current": true,
+      "split_overlap": {
+        "train": {
+          "n": 1080,
+          "sha256": "ea98ab7d2b7578945e0a293b3636d4de9cdc838d6151b1142add94f0037c1aa8",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        },
+        "dev": {
+          "n": 88,
+          "sha256": "0a590ecd993d12c4b36891eae8af60dcc03a3565c90e9a53207b493ae588a717",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        }
+      },
+      "checkpoints": [
+        {
+          "seed": 42,
+          "trial": "trial-2",
+          "epoch": 8.0,
+          "path": "artifacts/v03-colab-2026-10-18/weights/trial-2/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "b694099be609efae636bf49f81631792a5e9707fd6ff41da1bc497af798be69f",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 43,
+          "trial": "trial-4",
+          "epoch": 8.0,
+          "path": "artifacts/v03-colab-2026-10-18/weights/trial-4/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "278157f77b15f2154a8d8a2dbb8bb1b112a02708760b1aeb438f81b230c8fe0a",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 44,
+          "trial": "trial-6",
+          "epoch": 5.0,
+          "path": "artifacts/v03-colab-2026-10-18/weights/trial-6/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "d68a460dd271f1f847881df67a31fb2ebe11b12dbebdf64fbe98ed0c8eed5112",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        }
+      ],
+      "weights_without_selected_status": []
+    },
+    {
+      "name": "v0.4",
+      "artifact_root": "artifacts/v04-colab-2026-10-18",
+      "input_root": "experiments/v0.4",
+      "frozen_primary_model": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "selected_learning_rate": 5e-05,
+      "selection_frozen_at_utc": "2026-10-18T04:01:09.304600+00:00",
+      "experiment": {
+        "model": "sbintuitions/modernbert-ja-30m",
+        "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+        "batch_size": 16,
+        "max_length": 128,
+        "dtype": "float32",
+        "attention": "sdpa",
+        "tf32": false,
+        "model_fields": [
+          "text"
+        ]
+      },
+      "source_label2id_matches_current": true,
+      "split_overlap": {
+        "train": {
+          "n": 1296,
+          "sha256": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        },
+        "dev": {
+          "n": 68,
+          "sha256": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        }
+      },
+      "checkpoints": [
+        {
+          "seed": 42,
+          "trial": "trial-2",
+          "epoch": 7.0,
+          "path": "artifacts/v04-colab-2026-10-18/weights/trial-2/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "fe6add3e068ea57079cd66820dff78d328465191bd10c3fba6756a0002104426",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 43,
+          "trial": "trial-4",
+          "epoch": 8.0,
+          "path": "artifacts/v04-colab-2026-10-18/weights/trial-4/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "1cb98d06dffde79f234a29b1c78e679634aae6e1357272c85948da6d57c3c3e1",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 44,
+          "trial": "trial-6",
+          "epoch": 7.0,
+          "path": "artifacts/v04-colab-2026-10-18/weights/trial-6/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "98e3225b17d639635ba48797558e5d2a77408a097ce631f39af7290b7560607f",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        }
+      ],
+      "weights_without_selected_status": []
+    },
+    {
+      "name": "v0.5.1/baseline",
+      "artifact_root": "artifacts/v051-colab-2026-10-18/runs/baseline",
+      "input_root": "experiments/v0.5.1",
+      "frozen_primary_model": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "selected_learning_rate": 5e-05,
+      "selection_frozen_at_utc": "2026-10-18T06:01:52.990243+00:00",
+      "experiment": {
+        "model": "sbintuitions/modernbert-ja-30m",
+        "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+        "batch_size": 16,
+        "max_length": 128,
+        "dtype": "float32",
+        "attention": "sdpa",
+        "tf32": false,
+        "model_fields": [
+          "text"
+        ]
+      },
+      "source_label2id_matches_current": true,
+      "split_overlap": {
+        "train": {
+          "n": 1296,
+          "sha256": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        },
+        "dev": {
+          "n": 68,
+          "sha256": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        }
+      },
+      "checkpoints": [
+        {
+          "seed": 42,
+          "trial": "trial-2",
+          "epoch": 7.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-2/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "fe6add3e068ea57079cd66820dff78d328465191bd10c3fba6756a0002104426",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 43,
+          "trial": "trial-4",
+          "epoch": 8.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-4/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "1cb98d06dffde79f234a29b1c78e679634aae6e1357272c85948da6d57c3c3e1",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 44,
+          "trial": "trial-6",
+          "epoch": 7.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-6/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {},
+          "sha256": {
+            "model.safetensors": "98e3225b17d639635ba48797558e5d2a77408a097ce631f39af7290b7560607f",
+            "config.json": "df473280ceddf7a2e0a1c16a972d9e7e56412bc19f398f271dd2c3b8c290f8fc",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        }
+      ],
+      "weights_without_selected_status": []
+    },
+    {
+      "name": "v0.5.1/dropout_2view",
+      "artifact_root": "artifacts/v051-colab-2026-10-18/runs/dropout_2view",
+      "input_root": "experiments/v0.5.1",
+      "frozen_primary_model": {
+        "name": "seed-43",
+        "seed": 43,
+        "trial": "trial-4",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "selected_learning_rate": 5e-05,
+      "selection_frozen_at_utc": "2026-10-18T06:07:52.991767+00:00",
+      "experiment": {
+        "model": "sbintuitions/modernbert-ja-30m",
+        "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+        "batch_size": 16,
+        "max_length": 128,
+        "dtype": "float32",
+        "attention": "sdpa",
+        "tf32": false,
+        "model_fields": [
+          "text"
+        ]
+      },
+      "source_label2id_matches_current": true,
+      "split_overlap": {
+        "train": {
+          "n": 1296,
+          "sha256": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        },
+        "dev": {
+          "n": 68,
+          "sha256": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        }
+      },
+      "checkpoints": [
+        {
+          "seed": 42,
+          "trial": "trial-2",
+          "epoch": 10.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-2/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {
+            "embedding_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "mlp_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "classifier_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "attention_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            }
+          },
+          "sha256": {
+            "model.safetensors": "fc0afb3dcce2f0708d284faadd178ae2cfc2bb647c97d23cc7e189de4297ca26",
+            "config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 43,
+          "trial": "trial-4",
+          "epoch": 8.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-4/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {
+            "embedding_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "mlp_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "classifier_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "attention_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            }
+          },
+          "sha256": {
+            "model.safetensors": "d199b42546bb51fd784568dee91f9168dbbf04c70893968b3ab5866e64cf9210",
+            "config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 44,
+          "trial": "trial-6",
+          "epoch": 7.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-6/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {
+            "embedding_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "mlp_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "classifier_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "attention_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            }
+          },
+          "sha256": {
+            "model.safetensors": "a43599d7726c8808099066d1992b9d6beb1aca5aadf8488f920e5a312e210f05",
+            "config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        }
+      ],
+      "weights_without_selected_status": []
+    },
+    {
+      "name": "v0.5.1/rdrop",
+      "artifact_root": "artifacts/v051-colab-2026-10-18/runs/rdrop",
+      "input_root": "experiments/v0.5.1",
+      "frozen_primary_model": {
+        "name": "seed-44",
+        "seed": 44,
+        "trial": "trial-6",
+        "selection_split": "dev",
+        "rule": "max dev macro_f1; min dev loss; earlier epoch; earlier trial"
+      },
+      "selected_learning_rate": 5e-05,
+      "selection_frozen_at_utc": "2026-10-18T06:14:02.325954+00:00",
+      "experiment": {
+        "model": "sbintuitions/modernbert-ja-30m",
+        "revision": "8cb03f54cb9e30e72459e5f1cedc6d89c7d8dcb5",
+        "batch_size": 16,
+        "max_length": 128,
+        "dtype": "float32",
+        "attention": "sdpa",
+        "tf32": false,
+        "model_fields": [
+          "text"
+        ]
+      },
+      "source_label2id_matches_current": true,
+      "split_overlap": {
+        "train": {
+          "n": 1296,
+          "sha256": "0b477384cc7ac8532df4a70dcefe68ccfcc0ea07026cb881e9893c010fe298ec",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        },
+        "dev": {
+          "n": 68,
+          "sha256": "22a55d5ef3685c62bfbe0264d89a7f74614e619c1c64d9a7cc53c18656ed807f",
+          "exact_text_pairs": [],
+          "normalized_text_pairs": []
+        }
+      },
+      "checkpoints": [
+        {
+          "seed": 42,
+          "trial": "trial-2",
+          "epoch": 9.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-2/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {
+            "embedding_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "mlp_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "classifier_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "attention_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            }
+          },
+          "sha256": {
+            "model.safetensors": "8595851977f98fdf7537b8f512f260da11e1c4843f17b1153ec411076d8600ed",
+            "config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 43,
+          "trial": "trial-4",
+          "epoch": 9.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-4/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {
+            "embedding_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "mlp_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "classifier_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "attention_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            }
+          },
+          "sha256": {
+            "model.safetensors": "5dd4d478a4fe1566a8c569fc81433d2c09661ba9a9ab0ac76a7afbfceb15cee0",
+            "config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        },
+        {
+          "seed": 44,
+          "trial": "trial-6",
+          "epoch": 10.0,
+          "path": "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-6/best",
+          "weight_present": true,
+          "config_label2id_matches_current": true,
+          "config_id2label_inverse_valid": true,
+          "config_delta_from_v02_seed42": {
+            "embedding_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "mlp_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "classifier_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            },
+            "attention_dropout": {
+              "baseline": 0.0,
+              "this": 0.1
+            }
+          },
+          "sha256": {
+            "model.safetensors": "4426139ca78253b0aa0373ea89e4171d14b4196aeb068cc7e3c620b8e0e7af61",
+            "config.json": "1f04ce3ce61332a4c382380037cb7899bffc19f0606c903a4d04d81287f070b7",
+            "tokenizer.json": "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d",
+            "tokenizer_config.json": "930dd278b2f45e3fdb6814699eaa23297a8ba534e0756ce0d194ec7dd4deccec"
+          }
+        }
+      ],
+      "weights_without_selected_status": []
+    }
+  ],
+  "checkpoint_count": 18,
+  "unique_weight_hash_count": 15,
+  "tokenizer_json_unique_hashes": [
+    "6a0734cf21c802169defaffe719bc2ef12bb9d0be37e54b61ed27aa89394723d"
+  ],
+  "v04_baseline_pairs": [
+    {
+      "seed": 42,
+      "identical_weights": true,
+      "identical_configs": true
+    },
+    {
+      "seed": 43,
+      "identical_weights": true,
+      "identical_configs": true
+    },
+    {
+      "seed": 44,
+      "identical_weights": true,
+      "identical_configs": true
+    }
+  ],
+  "v01": {
+    "retained_release_files": [
+      "releases/v0.1/preparation-verification.json",
+      "releases/v0.1/data-report.json",
+      "releases/v0.1/input-sha256.json",
+      "releases/v0.1/snapshot.json",
+      "releases/v0.1/family-review.json",
+      "releases/v0.1/split-plan.json",
+      "releases/v0.1/tokenization-check.json",
+      "releases/v0.1/experiment.json",
+      "releases/v0.1/data/train.jsonl",
+      "releases/v0.1/data/test.jsonl",
+      "releases/v0.1/data/dev.jsonl"
+    ],
+    "checkpoint_files_in_project": [],
+    "interpretation": "No saved trained v0.1 checkpoint located in this project. Retained release is input preparation; do not fabricate a result or claim it was evaluated. This search does not prove no model ever existed elsewhere."
+  },
+  "all_saved_formal_weight_paths": [
+    "artifacts/v02/weights/trial-2/best/model.safetensors",
+    "artifacts/v02/weights/trial-4/best/model.safetensors",
+    "artifacts/v02/weights/trial-6/best/model.safetensors",
+    "artifacts/v03-colab-2026-10-18/weights/trial-2/best/model.safetensors",
+    "artifacts/v03-colab-2026-10-18/weights/trial-4/best/model.safetensors",
+    "artifacts/v03-colab-2026-10-18/weights/trial-6/best/model.safetensors",
+    "artifacts/v04-colab-2026-10-18/weights/trial-2/best/model.safetensors",
+    "artifacts/v04-colab-2026-10-18/weights/trial-4/best/model.safetensors",
+    "artifacts/v04-colab-2026-10-18/weights/trial-6/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-2/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-4/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/baseline/weights/trial-6/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-2/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-4/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/dropout_2view/weights/trial-6/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-2/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-4/best/model.safetensors",
+    "artifacts/v051-colab-2026-10-18/runs/rdrop/weights/trial-6/best/model.safetensors"
+  ],
+  "all_saved_formal_weight_count": 18,
+  "recommended_comparison_protocol": {
+    "fixed_dataset": "Use the exact 73 rows in recorded order and original label IDs, text only. No rewording, relabeling, or filtering after results.",
+    "shared_inference": "Call existing trusted train.evaluate_checkpoint with batch_size=16, max_length=128, float32, SDPA, one common device and dependency set for every retained checkpoint. Use local checkpoints, eval mode, argmax, no threshold or retraining.",
+    "checkpoint_scope": "All 18 retained formal selected checkpoint paths (6 displayed groups x 3 seeds) are evaluable, representing 15 unique weight files; v0.4 and v0.5.1 baseline must be identified as aliases, not independent evidence.",
+    "selection_scope": "Use originally frozen per-trial best-dev epoch and shared LR 5e-5; no current73-based epoch/LR changes. Non-selected LR trials retain config/history only and cannot be re-evaluated without missing weights.",
+    "primary_display": "v0.2 has no frozen historical primary. v0.3 primary42, v0.4/baseline44, dropout43, rdrop44. If v0.2 dev-best43 is shown, mark it as retrospectively reconstructed dev-best, not an original preselected primary.",
+    "rank_group": "For version/method reliability, show 3-seed mean accuracy plus macro F1, individual seed correct/73 and standard deviation or range. Do not silently switch ranking criterion after seeing results. Label any accuracy tie explicitly and show F1 as a separate criterion or declared tiebreaker.",
+    "rank_single": "For which saved file scores best on this task, rank all 15 distinct checkpoints on fixed73 and call winner best observed on these 73 rows. Single-test winner is retrospective and not proof of highest future-user accuracy. Show frozen primary results separately; do not substitute a test-selected seed while claiming dev-only selection.",
+    "paired_comparison": "Where useful compare paired row outcomes on the same73 (fixed vs regressed). Repeated seeds do not create 219 independent questions. Comparison of trained artifacts is valid; differences do not isolate training-data effects because dev splits and selected epochs differ.",
+    "uncertainty": "Only 73 synthetic questions, 53 original groups, 19 classes with 2–6 examples each. One row changes accuracy by 1/73=1.36986 percentage points. Same template/group rows are dependent; seed SD is variability across seeds, not a confidence interval. Avoid statistical-superiority claims from small point differences.",
+    "heldout_status": "This dataset has already been viewed and used to diagnose prior experiments. Zero exact/normalized train-dev overlap is reassuring but does not establish semantic independence or a fresh holdout. Report as a fixed common regression benchmark.",
+    "adoption_boundary": "User requested evaluation/comparison; no production replacement or retraining is implied."
+  },
+  "evidence_paths": [
+    "docs/2026-10-17-v02-protocol.md",
+    "docs/2026-10-18-v03-results.md",
+    "docs/2026-10-18-v04-results.md",
+    "docs/2026-10-18-v051-results.md",
+    "train.py:301",
+    "dataset.py:89"
+  ],
+  "audit_limits": [
+    "No new semantic-near-duplicate adjudication was performed; exact and project-normalized comparisons only.",
+    "No inference was run by this reviewer. Inference correctness and final metric values require parent verification.",
+    "v0.1 absence is bounded to retained files in the project, not every possible external machine/archive."
+  ]
+}

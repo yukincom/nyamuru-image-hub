@@ -1,0 +1,2289 @@
+{
+  "dev": {
+    "n": 138,
+    "correct": 126,
+    "accuracy": 0.9130434782608695,
+    "macro_f1": 0.9131709011210396,
+    "macro_f1_supported": 0.9131709011210396,
+    "supported_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "missing_labels": [],
+    "per_class": {
+      "save": {
+        "precision": 0.8571428571428571,
+        "recall": 1.0,
+        "f1": 0.923076923076923,
+        "support": 6,
+        "predicted_count": 7
+      },
+      "undo": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5,
+        "predicted_count": 5
+      },
+      "redo": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 5,
+        "predicted_count": 5
+      },
+      "page_navigate": {
+        "precision": 0.8571428571428571,
+        "recall": 0.8571428571428571,
+        "f1": 0.8571428571428571,
+        "support": 7,
+        "predicted_count": 7
+      },
+      "view_change": {
+        "precision": 0.75,
+        "recall": 0.8571428571428571,
+        "f1": 0.7999999999999999,
+        "support": 7,
+        "predicted_count": 8
+      },
+      "artwork_mode_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4,
+        "predicted_count": 4
+      },
+      "bubble_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 9,
+        "predicted_count": 9
+      },
+      "needs_clarification": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571428571428571,
+        "support": 8,
+        "predicted_count": 6
+      },
+      "needs_reasoning": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 6,
+        "predicted_count": 6
+      },
+      "compound_request": {
+        "precision": 0.7272727272727273,
+        "recall": 1.0,
+        "f1": 0.8421052631578948,
+        "support": 8,
+        "predicted_count": 11
+      },
+      "out_of_scope_request": {
+        "precision": 0.75,
+        "recall": 0.42857142857142855,
+        "f1": 0.5454545454545454,
+        "support": 7,
+        "predicted_count": 4
+      },
+      "not_command": {
+        "precision": 0.9166666666666666,
+        "recall": 0.9166666666666666,
+        "f1": 0.9166666666666666,
+        "support": 12,
+        "predicted_count": 12
+      },
+      "panel_sync_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 8,
+        "predicted_count": 8
+      },
+      "inner_frame_snap_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 8,
+        "predicted_count": 8
+      },
+      "panel_gap_snap_set": {
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333333333333333,
+        "support": 8,
+        "predicted_count": 7
+      },
+      "generate_request": {
+        "precision": 0.75,
+        "recall": 0.9,
+        "f1": 0.8181818181818182,
+        "support": 10,
+        "predicted_count": 12
+      },
+      "background_3d_candidates": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571428571428571,
+        "support": 4,
+        "predicted_count": 3
+      },
+      "paint_tool_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 8,
+        "predicted_count": 8
+      },
+      "text_frames_align": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 8,
+        "predicted_count": 8
+      }
+    },
+    "label_order": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "confusion_matrix": [
+      [
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        9,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8
+      ]
+    ],
+    "not_command_to_dispatch_label": {
+      "count": 0,
+      "denominator": 12,
+      "rate": 0.0
+    },
+    "unresolved_to_dispatch_label": {
+      "count": 6,
+      "denominator": 23,
+      "rate": 0.2608695652173913
+    },
+    "incorrect_dispatch_predictions": {
+      "count": 7,
+      "denominator": 99,
+      "rate": 0.0707070707070707
+    },
+    "dispatch_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "subsets": {
+      "boundary": {
+        "count": 41,
+        "denominator": 49,
+        "rate": 0.8367346938775511
+      },
+      "correction": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "desired_state": {
+        "count": 27,
+        "denominator": 28,
+        "rate": 0.9642857142857143
+      },
+      "explicit_count": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "multiple_text_frames": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "negative_other_action": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "preservation_constraint": {
+        "count": 15,
+        "denominator": 16,
+        "rate": 0.9375
+      },
+      "report_then_request": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "self_correction": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "synthetic_v02": {
+        "count": 23,
+        "denominator": 28,
+        "rate": 0.8214285714285714
+      },
+      "tool_selection_only": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "top_alignment": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "v02_variation": {
+        "count": 24,
+        "denominator": 24,
+        "rate": 1.0
+      }
+    },
+    "user_examples": {
+      "count": 1,
+      "denominator": 1,
+      "rate": 1.0
+    },
+    "families": {
+      "n": 35,
+      "mean_accuracy": 0.9111111111111111,
+      "all_correct": 27,
+      "mixed_label_families": {
+        "compound_save_page": {
+          "count": 5,
+          "denominator": 6,
+          "rate": 0.8333333333333334
+        },
+        "generate_current_page": {
+          "count": 15,
+          "denominator": 20,
+          "rate": 0.75
+        },
+        "redo_count": {
+          "count": 10,
+          "denominator": 10,
+          "rate": 1.0
+        },
+        "spread_negative": {
+          "count": 8,
+          "denominator": 9,
+          "rate": 0.8888888888888888
+        },
+        "v02_edit_setting_current": {
+          "count": 12,
+          "denominator": 12,
+          "rate": 1.0
+        },
+        "v02_edit_setting_other_preserve": {
+          "count": 11,
+          "denominator": 12,
+          "rate": 0.9166666666666666
+        }
+      }
+    },
+    "loss": 1.3892005681991577,
+    "prediction_seconds": 0.099,
+    "prediction_synchronized_wall_seconds": 0.10093935399999054
+  },
+  "test": {
+    "n": 139,
+    "correct": 113,
+    "accuracy": 0.8129496402877698,
+    "macro_f1": 0.8179678079058883,
+    "macro_f1_supported": 0.8179678079058883,
+    "supported_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "missing_labels": [],
+    "per_class": {
+      "save": {
+        "precision": 0.875,
+        "recall": 1.0,
+        "f1": 0.9333333333333333,
+        "support": 7,
+        "predicted_count": 8
+      },
+      "undo": {
+        "precision": 0.6666666666666666,
+        "recall": 0.8571428571428571,
+        "f1": 0.75,
+        "support": 7,
+        "predicted_count": 9
+      },
+      "redo": {
+        "precision": 1.0,
+        "recall": 0.42857142857142855,
+        "f1": 0.6,
+        "support": 7,
+        "predicted_count": 3
+      },
+      "page_navigate": {
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.888888888888889,
+        "support": 8,
+        "predicted_count": 10
+      },
+      "view_change": {
+        "precision": 0.75,
+        "recall": 0.75,
+        "f1": 0.75,
+        "support": 8,
+        "predicted_count": 8
+      },
+      "artwork_mode_set": {
+        "precision": 0.8888888888888888,
+        "recall": 1.0,
+        "f1": 0.9411764705882353,
+        "support": 8,
+        "predicted_count": 9
+      },
+      "bubble_set": {
+        "precision": 0.8333333333333334,
+        "recall": 0.5555555555555556,
+        "f1": 0.6666666666666667,
+        "support": 9,
+        "predicted_count": 6
+      },
+      "needs_clarification": {
+        "precision": 0.8,
+        "recall": 0.5,
+        "f1": 0.6153846153846154,
+        "support": 8,
+        "predicted_count": 5
+      },
+      "needs_reasoning": {
+        "precision": 1.0,
+        "recall": 0.7142857142857143,
+        "f1": 0.8333333333333333,
+        "support": 7,
+        "predicted_count": 5
+      },
+      "compound_request": {
+        "precision": 0.5714285714285714,
+        "recall": 0.5714285714285714,
+        "f1": 0.5714285714285714,
+        "support": 7,
+        "predicted_count": 7
+      },
+      "out_of_scope_request": {
+        "precision": 0.35714285714285715,
+        "recall": 0.7142857142857143,
+        "f1": 0.4761904761904762,
+        "support": 7,
+        "predicted_count": 14
+      },
+      "not_command": {
+        "precision": 0.9166666666666666,
+        "recall": 0.9166666666666666,
+        "f1": 0.9166666666666666,
+        "support": 12,
+        "predicted_count": 12
+      },
+      "panel_sync_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 8,
+        "predicted_count": 8
+      },
+      "inner_frame_snap_set": {
+        "precision": 0.8888888888888888,
+        "recall": 1.0,
+        "f1": 0.9411764705882353,
+        "support": 8,
+        "predicted_count": 9
+      },
+      "panel_gap_snap_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 8,
+        "predicted_count": 8
+      },
+      "generate_request": {
+        "precision": 0.8571428571428571,
+        "recall": 0.75,
+        "f1": 0.7999999999999999,
+        "support": 8,
+        "predicted_count": 7
+      },
+      "background_3d_candidates": {
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571428571428571,
+        "support": 4,
+        "predicted_count": 3
+      },
+      "paint_tool_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4,
+        "predicted_count": 4
+      },
+      "text_frames_align": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4,
+        "predicted_count": 4
+      }
+    },
+    "label_order": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "confusion_matrix": [
+      [
+        7,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        3,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        1,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        4,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        11,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4
+      ]
+    ],
+    "not_command_to_dispatch_label": {
+      "count": 0,
+      "denominator": 12,
+      "rate": 0.0
+    },
+    "unresolved_to_dispatch_label": {
+      "count": 7,
+      "denominator": 22,
+      "rate": 0.3181818181818182
+    },
+    "incorrect_dispatch_predictions": {
+      "count": 12,
+      "denominator": 96,
+      "rate": 0.125
+    },
+    "dispatch_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "subsets": {
+      "boundary": {
+        "count": 38,
+        "denominator": 53,
+        "rate": 0.7169811320754716
+      },
+      "desired_state": {
+        "count": 24,
+        "denominator": 24,
+        "rate": 1.0
+      },
+      "existing_history_action": {
+        "count": 6,
+        "denominator": 8,
+        "rate": 0.75
+      },
+      "explicit_request": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "multiple_text_frames": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "preservation_constraint": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "request_reason": {
+        "count": 16,
+        "denominator": 16,
+        "rate": 1.0
+      },
+      "self_correction": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "synthetic_v02": {
+        "count": 25,
+        "denominator": 36,
+        "rate": 0.6944444444444444
+      },
+      "tool_selection_only": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "top_alignment": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "v02_variation": {
+        "count": 30,
+        "denominator": 32,
+        "rate": 0.9375
+      },
+      "work_status": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      }
+    },
+    "user_examples": {
+      "count": 0,
+      "denominator": 0,
+      "rate": null
+    },
+    "families": {
+      "n": 38,
+      "mean_accuracy": 0.8073934837092731,
+      "all_correct": 24,
+      "mixed_label_families": {
+        "bubble_move": {
+          "count": 1,
+          "denominator": 5,
+          "rate": 0.2
+        },
+        "redo_basic": {
+          "count": 2,
+          "denominator": 3,
+          "rate": 0.6666666666666666
+        },
+        "redo_button": {
+          "count": 7,
+          "denominator": 10,
+          "rate": 0.7
+        },
+        "v02_edit_setting_before_work": {
+          "count": 12,
+          "denominator": 12,
+          "rate": 1.0
+        },
+        "v02_edit_setting_motive": {
+          "count": 12,
+          "denominator": 12,
+          "rate": 1.0
+        }
+      }
+    },
+    "loss": 1.130674123764038,
+    "prediction_seconds": 0.1037,
+    "prediction_synchronized_wall_seconds": 0.10572331899999199
+  },
+  "train": {
+    "n": 647,
+    "correct": 647,
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "macro_f1_supported": 1.0,
+    "supported_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "missing_labels": [],
+    "per_class": {
+      "save": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 29,
+        "predicted_count": 29
+      },
+      "undo": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 30,
+        "predicted_count": 30
+      },
+      "redo": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 30,
+        "predicted_count": 30
+      },
+      "page_navigate": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 33,
+        "predicted_count": 33
+      },
+      "view_change": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 37,
+        "predicted_count": 37
+      },
+      "artwork_mode_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 30,
+        "predicted_count": 30
+      },
+      "bubble_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 43,
+        "predicted_count": 43
+      },
+      "needs_clarification": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 36,
+        "predicted_count": 36
+      },
+      "needs_reasoning": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 29,
+        "predicted_count": 29
+      },
+      "compound_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 34,
+        "predicted_count": 34
+      },
+      "out_of_scope_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 31,
+        "predicted_count": 31
+      },
+      "not_command": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 54,
+        "predicted_count": 54
+      },
+      "panel_sync_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28,
+        "predicted_count": 28
+      },
+      "inner_frame_snap_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28,
+        "predicted_count": 28
+      },
+      "panel_gap_snap_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28,
+        "predicted_count": 28
+      },
+      "generate_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 47,
+        "predicted_count": 47
+      },
+      "background_3d_candidates": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 40,
+        "predicted_count": 40
+      },
+      "paint_tool_set": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 32,
+        "predicted_count": 32
+      },
+      "text_frames_align": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 28,
+        "predicted_count": 28
+      }
+    },
+    "label_order": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "needs_clarification",
+      "needs_reasoning",
+      "compound_request",
+      "out_of_scope_request",
+      "not_command",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "confusion_matrix": [
+      [
+        29,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        33,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        37,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        43,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        36,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        29,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        34,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        31,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        54,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        28,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        28,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        28,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        47,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        40,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        32,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        28
+      ]
+    ],
+    "not_command_to_dispatch_label": {
+      "count": 0,
+      "denominator": 54,
+      "rate": 0.0
+    },
+    "unresolved_to_dispatch_label": {
+      "count": 0,
+      "denominator": 101,
+      "rate": 0.0
+    },
+    "incorrect_dispatch_predictions": {
+      "count": 0,
+      "denominator": 463,
+      "rate": 0.0
+    },
+    "dispatch_labels": [
+      "save",
+      "undo",
+      "redo",
+      "page_navigate",
+      "view_change",
+      "artwork_mode_set",
+      "bubble_set",
+      "panel_sync_set",
+      "inner_frame_snap_set",
+      "panel_gap_snap_set",
+      "generate_request",
+      "background_3d_candidates",
+      "paint_tool_set",
+      "text_frames_align"
+    ],
+    "subsets": {
+      "accidental_operation": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "boundary": {
+        "count": 234,
+        "denominator": 234,
+        "rate": 1.0
+      },
+      "correction": {
+        "count": 12,
+        "denominator": 12,
+        "rate": 1.0
+      },
+      "current_result": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "desired_state": {
+        "count": 60,
+        "denominator": 60,
+        "rate": 1.0
+      },
+      "explicit_count": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "explicit_destination": {
+        "count": 12,
+        "denominator": 12,
+        "rate": 1.0
+      },
+      "explicit_request_question": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "explicit_setting_value": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "explicit_step": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "explicit_value": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "multiple_text_frames": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "negative_other_action": {
+        "count": 16,
+        "denominator": 16,
+        "rate": 1.0
+      },
+      "preservation_constraint": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "quoted_text": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "reject_completed_edit": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "request_reason": {
+        "count": 28,
+        "denominator": 28,
+        "rate": 1.0
+      },
+      "reverse_previous_undo": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "selected_target": {
+        "count": 4,
+        "denominator": 4,
+        "rate": 1.0
+      },
+      "self_correction": {
+        "count": 12,
+        "denominator": 12,
+        "rate": 1.0
+      },
+      "synthetic_v02": {
+        "count": 160,
+        "denominator": 160,
+        "rate": 1.0
+      },
+      "tool_selection_only": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "top_alignment": {
+        "count": 20,
+        "denominator": 20,
+        "rate": 1.0
+      },
+      "v02_variation": {
+        "count": 136,
+        "denominator": 136,
+        "rate": 1.0
+      },
+      "work_status": {
+        "count": 8,
+        "denominator": 8,
+        "rate": 1.0
+      }
+    },
+    "user_examples": {
+      "count": 7,
+      "denominator": 7,
+      "rate": 1.0
+    },
+    "families": {
+      "n": 92,
+      "mean_accuracy": 1.0,
+      "all_correct": 92,
+      "mixed_label_families": {
+        "alignment_unspecified": {
+          "count": 40,
+          "denominator": 40,
+          "rate": 1.0
+        },
+        "ambiguous_bubble_value": {
+          "count": 8,
+          "denominator": 8,
+          "rate": 1.0
+        },
+        "bubble_keep": {
+          "count": 14,
+          "denominator": 14,
+          "rate": 1.0
+        },
+        "compound_page_tab": {
+          "count": 16,
+          "denominator": 16,
+          "rate": 1.0
+        },
+        "generate_character": {
+          "count": 39,
+          "denominator": 39,
+          "rate": 1.0
+        },
+        "inner_frame_snap_set_correction": {
+          "count": 91,
+          "denominator": 91,
+          "rate": 1.0
+        },
+        "mode_draft": {
+          "count": 26,
+          "denominator": 26,
+          "rate": 1.0
+        },
+        "page_negative": {
+          "count": 29,
+          "denominator": 29,
+          "rate": 1.0
+        },
+        "paint_pen_choice": {
+          "count": 21,
+          "denominator": 21,
+          "rate": 1.0
+        },
+        "placement_guide": {
+          "count": 7,
+          "denominator": 7,
+          "rate": 1.0
+        },
+        "registered_background_candidates": {
+          "count": 51,
+          "denominator": 51,
+          "rate": 1.0
+        },
+        "save_basic": {
+          "count": 5,
+          "denominator": 5,
+          "rate": 1.0
+        },
+        "save_self_correction": {
+          "count": 6,
+          "denominator": 6,
+          "rate": 1.0
+        },
+        "v02_core_redo_self_correction": {
+          "count": 8,
+          "denominator": 8,
+          "rate": 1.0
+        },
+        "v02_edit_setting_global": {
+          "count": 12,
+          "denominator": 12,
+          "rate": 1.0
+        }
+      }
+    },
+    "loss": 1.6599577747911098e-06,
+    "prediction_seconds": 0.4548,
+    "prediction_synchronized_wall_seconds": 0.4567602349999902
+  }
+}

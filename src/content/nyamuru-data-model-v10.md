@@ -1,10 +1,10 @@
-# Nyamuru Data Model（NDM）v10.31 / Open Manga Name YAML（OMNY）簡易ガイド
+# Nyamuru Data Model（NDM）v10.33 / Open Manga Name YAML（OMNY）簡易ガイド
 
 **Nyamuru Data Model（NDM）** は、漫画ネームの構造、コマ割り、人物、フキダシ、素材参照を定義するデータモデルです。愛称は **Nyamuru🐱** です。
 
 **Open Manga Name YAML（OMNY）** は、NDMをYAMLとして保存・交換するためのシリアライズ形式です。
 
-**Open Manga Artwork YAML（OMAY）** は、NDMファミリーの画像生成指示ファイルとしてOMNYと並ぶ形式です。OMNYを漫画として描くための全コマ共通の作画・演出ルール（`style_notes`）とレイアウト仕様（`layout_spec`）を単体のYAMLとして持ち、`spec_name` / `spec_version` がOMNYの `schema_name` / `schema_version` と対応します。画像生成側のプロジェクト指示にOMAYを一度設定し、作品ごとにはOMNYのみを渡します。
+**Open Manga Artwork YAML（OMAY）** は、UIで「スタイルOMNY」として扱う画像生成指示ファイルです。ストーリーOMNYを漫画として描くための全コマ共通の作画・演出ルール（`style_notes`）とレイアウト仕様（`layout_spec`）を持ち、`spec_name` / `spec_version` がOMNYの `schema_name` / `schema_version` と対応します。画像生成側のプロジェクト指示にスタイルOMNYを設定し、作品ごとにストーリーOMNYを渡します。
 
 ## 1. 全体構造
 
@@ -13,10 +13,11 @@
 ```yaml
 manga:
   schema_name: "Nyamuru Data Model"
-  schema_version: 10.31
+  schema_version: 10.33
   meta: { ... }
   layout_spec: |
     # A4座標系の説明
+  series_setting: { ... }
   setting: { ... }
   characters: [ ... ]
   materials: [ ... ]
@@ -24,31 +25,71 @@ manga:
     - page: 1
       canvas: { w: 210, h: 297, unit: mm }
       panels: [ ... ]
+      page_overlay: { ... } # 任意。複数コマをまたぐ前景
 ```
 
 | フィールド | 決まり |
 |---|---|
 | `schema_name` | NDMの正式な識別名 `"Nyamuru Data Model"` 固定。絵文字は含めない |
-| `schema_version` | 現在のNDMスキーマバージョンは `10.31` |
+| `schema_version` | 現在のNDMスキーマバージョンは `10.33` |
+| `meta.document_type` | `"story"`（通常の漫画ネーム）/ `"series-catalog"`（シリーズ人物・資料台帳） |
+| `meta.series` | 作品タイトル（シリーズ名、任意）。シリーズ共通素材を読み込む単位 |
+| `meta.series_id` | 名称変更後も同じシリーズ台帳を追跡する安定ID（任意） |
+| `meta.title` | サブタイトル（各エピソードの題名、任意） |
+| `meta.episode_id` | タイトル・話数変更後も同じエピソードを追跡する安定ID（任意） |
 | `meta.author` | 作者名（任意）。指定があれば各ページ下端中央のフッターに小さく描く。空なら描かない |
 | `meta.page_count` | `pages` 配列の実数と一致させる |
+| `meta.format` | 完成画像の出力形式。例: `"カラー漫画"` / `"モノクロ漫画"` / `"グレースケール漫画"` |
 | `meta.reading_direction` | `"right-to-left"` 固定 |
 | `meta.text_orientation` | `"vertical"` 固定 |
-| `meta.font` | `"アンチック体"` 固定 |
-| `meta.style_notes` | 作品固有の作画指示（任意。画風の行など）。全コマ共通の作画・演出ルールはOMAYの `style_notes` が受け持ち、全部入り運用ではここへ合成して保持できる |
-| `layout_spec` | レイアウト仕様。標準の運用ではOMAYの `layout_spec` が受け持ち、OMNY側は省略できる（全部入り運用では保持する） |
+| `meta.font` | 作品全体の既定書体。例: `"アンチック体"` |
+| `meta.bubble_line_width_mm` | フキダシ本体としっぽの線幅。単位はmm |
+| `meta.panel_frame_width_mm` | コマ枠線幅。単位はmm |
+| `meta.panel_gutter_row_mm` | 上下に隣接するコマの間隔。単位はmm |
+| `meta.panel_gutter_column_mm` | 左右に隣接するコマの間隔。単位はmm |
+| `meta.style_notes` | エディター内部で保持する作画・演出ルール。ストーリーOMNYへの保存時は省略し、スタイルOMNYへ保存する |
+| `layout_spec` | エディター内部で保持するレイアウト仕様。ストーリーOMNYへの保存時は省略し、スタイルOMNYへ保存する |
+| `series_setting` | シリーズのジャンル・対象読者・成人指定・世界観。シリーズ台帳から各話へ読み込む |
+| `setting` | 今回のエピソード固有の場所・時間帯・天候・あらすじ。`series_setting.situation` と混ぜない |
 
 ## 2. ページとコマ
 
 - `canvas` は原則A4縦の **210 × 297mm**。
-- `panels` は1ページ最大6コマ。
+- `panels` は1ページ最大10コマ。
 - 配列順と `id` は右上から左下への読み順にそろえる。
 - `shape.type` は `rect` または `polygon`。
 - `bg` は `-1` / `0` / `1` / `2` の必須値。`2` は1ページ2コマまで（`-1` はこのカウントに関係しない）。
 - `bg: -1` は背景無描画（中間グレー1色のベタ塗りのみ・接地影なし）。依頼で指示されたコマにのみ使い、演出判断で自動選択しない。
+- `background_description` は任意。人物を含めず、背景レイヤーだけに適用する場所・構図・パース・光・感情効果を記述する。`bg: -1` では使用しない。
 - `bleed` はタチキリ（断ち切り）の辺の宣言（任意。`left` / `right` / `top` / `bottom` の配列）。宣言した辺は座標も紙端に一致させる（left=`x: 0`、right=`x + w = 210`、top=`y: 0`、bottom=`y + h = 297`）。rect コマ専用。top を宣言したコマはヘッダー帯より奥に描かれ、ヘッダーの文字はコマ絵の最前面に重なる。
 - `no_figures: true` は意図的な無人コマの宣言（任意）。人物を一人も描かないコマに付け、`figures` と併用しない。
 - `screen_text` はフキダシにしない画面・看板・紙面の文字の配列（任意）。各要素は `text`（必須）・`bbox`（任意）・`orientation`（`horizontal` 既定 / `vertical`）。
+
+### 複数コマをまたぐページ前景
+
+特定のコマへ所属させられない人物・物・フキダシは、ページ直下の任意フィールド `page_overlay` に置きます。
+
+```yaml
+page_overlay:
+  frame: false
+  layer: above_panel_frames
+  figures:
+    - name: "キャラクター名"
+      action: "両手を広げ、画面右を見る"
+      bbox: { x: 45, y: 35, w: 120, h: 220 }
+      size: full
+  bubbles:
+    - text: "複数コマにまたがるセリフ"
+      speaker: "キャラクター名"
+      shape: normal
+      bbox: { x: 160, y: 20, w: 35, h: 60 }
+```
+
+- `frame` は `false`、`layer` は `above_panel_frames` 固定。
+- `page_overlay` 自体をコマとして数えず、囲う枠線も描かない。
+- 全コマとコマ枠を描いた後、`page_overlay.figures` を紙面上へ一度だけ描く。その後、通常のコマ内フキダシと `page_overlay.bubbles` を人物より前面へ描く。各コマへ複製しない。
+- bbox はA4紙面の絶対座標。コマ内相対位置ではないため `anchor` は使わない。
+- 通常のコマ内要素は `panels[].figures` / `panels[].bubbles` に置く。
 
 ### コマ形状
 
@@ -67,15 +108,51 @@ shape:
 - 原点は用紙左上の `(0, 0)`。
 - xは右方向、yは下方向、単位はmm。
 - `figures[].bbox` と `bubbles[].bbox` も、コマ内座標ではなく**用紙全体の絶対座標**。
+- `page_overlay` 内のbboxも同じ用紙全体の絶対座標。コマに所属しないため `anchor` は付けない。
 - `anchor` はコマ内の相対位置を表し、bboxより優先する。
 - フキダシは、人物bbox上部1/3の顔ゾーンと交差させない。
-- 構図の優先順は `action` ＞ `anchor` ＞ 発言順＝立ち位置 ＞ `size` ＞ `bbox`（OMAYの `layout_spec` にある優先順位表と同一内容の転記）。
+- 構図の優先順は `panels[].action` ＞ `anchor` ＞ 発言順＝立ち位置 ＞ `size` ＞ `bbox`（OMAYの `layout_spec` にある優先順位表と同一内容の転記）。`figures[].action` は対象人物の表情・姿勢・視線・動作にだけ適用し、`background_description` は人物を含めない背景レイヤーだけに適用する。
 
-## 4. 人物配置
+## 4. 人物と人物配置
+
+`characters` はコマで使う人物名だけでなく、シリーズ内の照合と生成に使う人物単位の設定も保持できます。
+
+```yaml
+characters:
+  - name: "キャラクター名"
+    role: "人物像や物語上の役割"
+    gender: neutral
+    visual_prompt: "画像生成で使う外見・描き方の指定"
+    scope: series
+    catalog_id: "character-..."
+    aliases: ["ネーム上の略称"]
+    default_proportion: { head_count: 4 }
+    primary_material_catalog_id: "material-..."
+    recognition:
+      hair: { observed: ["短いボブ"], inferred: [] }
+      face: { observed: [], inferred: [] }
+      silhouette: { observed: ["裾が広がるワンピース"], inferred: [] }
+      outfit: { observed: ["ハイネックの長袖とノースリーブワンピース"], inferred: [] }
+      accessories: { observed: ["太いヘアバンド"], inferred: [] }
+      ambiguous_design: { observed: [], inferred: ["側面では襟元の形が不明瞭"] }
+```
+
+- `scope` は `episode`（この話だけ）/ `series`（シリーズ共通）。省略時は `episode` として扱う。
+- `catalog_id` はシリーズ人物の安定ID。表示名を変更しても維持する。
+- `aliases` はネーム上の略称・呼び名など、同一人物を照合する候補。
+- `role` は性格や物語上の人物像。人物の画像生成プロンプトには含めない。
+- `gender` は人間が指定する任意の性別属性で、`female`（女性）/ `male`（男性）/ `neutral`（中性）。未指定は未設定のまま保持し、名前・外見から推測しない。英文の代名詞と動詞はこの値に従い、未設定では生成時だけ単数の they を使う。人物設定や外見指定を書き換えず、`figures` に性別を重複保存しない。
+- `visual_prompt` は人間が指定した外見・描き方の原文。人物の画像生成では、作品の画風や対象の演技指示とともに英訳して使う。
+- `default_proportion.head_count` は人物ごとの基準頭身（1〜12）。画像解析では決めず、人間が設定する。
+- `recognition` は `observed`（画像で確認できた形）と `inferred`（推定・要確認）を分ける。表情・一時的なポーズ・画風は人物の固定特徴に入れない。
+- `primary_material_catalog_id` は代表にする人物資料の `catalog_id`。
+
+コマ内の描写範囲と演技は `figures` に置きます。
 
 ```yaml
 figures:
   - name: "キャラクター名"
+    action: "肩をすくめ、相手から視線を外す"
     bbox: { x: 30, y: 22, w: 55, h: 62 }
     anchor: left
     size: waist-up
@@ -83,8 +160,9 @@ figures:
 
 - `name` は `characters[].name`（人物）または `materials[].key`（物）と一致させる。
 - **`figures` は人物専用ではない**——小道具など物の配置も figures で座標管理できる。物は `object: true` を付け、`size` / `role` は付けずに `bbox` / `anchor` で置き場所を示す。顔ゾーンやセンター既定は人物（object の無い figure）にのみ適用される。
-- `size` は `full` / `waist-up` / `bust-up` / `face` / `hand` / `foot` / `part`。hand/foot/part は体の一部だけを描く指定（顔ゾーンを持たない）。
+- `size` は `long` / `full` / `knee-up` / `waist-up` / `bust-up` / `shoulder-up` / `face` / `face-detail` / `hand` / `foot` / `part`。long=周囲を含むロング、full=全身、knee-up=膝上、waist-up=腰上、bust-up=胸上、shoulder-up=肩上、face=顔、face-detail=顔の一部の大アップ。hand/foot/part は体の一部だけを描く指定（顔ゾーンを持たない）。
 - `role` は `main`（既定）/ `sub`。**役割の宣言であり、配置は規定しない**——`sub` は主対象でない脇役で、センター配置の既定の対象から外れる（配置は `bbox` / `anchor` の指定に従う）。人物の配置は**配置意図の優先順位**で決める：1. 演出意図の宣言（`anchor` / `bbox`）＞ 2. 役割・描写範囲の宣言（`role` / `size` / `no_figures`）＞ 3. 既定＝センター配置（`main` を中央に大きく）。
+- `action` はその人物だけに適用する画像生成用の指示。表情・姿勢・視線・身体の向き・手足の動き・接触を記述し、背景・カメラ・画風は入れない。物（`object: true`）には付けない。
 - コマ外の声だけなら `figures` へ入れず、そのフキダシに `offscreen: true` を付ける。
 
 ## 5. フキダシ
@@ -97,27 +175,41 @@ bubbles:
     speaker: "キャラクター名"
     shape: normal
     bbox: { x: 145, y: 20, w: 35, h: 35 }
-    anchor: top-right
+    tail: { x: 0.5, y: 0.35 }
 ```
 
-使用できる `shape` は次の9種類です。
+使用できる `shape` は次の14種類です。
 
 | shape | 用途 |
 |---|---|
-| `normal` | 通常の会話。省略時の既定値 |
-| `thought` | 心の声・想像・夢見 |
-| `square` | 独白・回想・クールな内語 |
+| `normal` | 会話・独白の初期配置に使う標準オーバル。省略時の既定値 |
+| `thought` | 雲形の演出。独白・想像・夢見などで明示選択 |
+| `square` | ナレーションの初期配置に使う四角い枠。独白などの演出にも選択可 |
 | `caption` | ナレーション・時間・場所説明 |
 | `flash` | 叫び・強い驚き |
 | `uniflash` | 最大級の絶叫・衝撃 |
 | `wobbly` | 弱り声・恐怖・脱力 |
 | `whisper` | ひそひそ声 |
 | `handwritten` | 効果音・手描き文字 |
+| `critical` / `tense` / `toge` / `announce` / `toge_natural` | 登録素材の作者分類。場面・発話・表情と見本を照合して選ぶ |
 
-- 心の声は `monologue: true` を付け、`text` から括弧「（）」を外す。
+素材分類 `nomal` は `shape: normal` に対応する。素材ウィンドウからフキダシへ重ねると、選んだ輪郭の `bezier` を保存する。`shape`・本文・文字設定・`bbox`・話者・しっぽは保持する。上記5分類で `bezier` が省略される場合は、その分類の先頭素材を使う。
+
+テキストプロットから新規配置するときは、セリフ・独白を `shape: normal` と標準楕円の `bezier`、ナレーションを `shape: square` と四角形の `bezier`・`tail: false` で保存する。独白は `monologue: true` も保持する。原稿の再対応付けでは編集済みの輪郭や尻尾を初期化しない。
+
+- モノローグは `monologue: true` を付け、`text` から括弧「（）」を外す。
 - コマ外の声は `offscreen: true` を付ける（話者はコマ外＝姿を描かず、尻尾も描かない。`speaker` は明記する）。
-- `speaker` 省略時は、同じコマ内の直前の話者を継承する。
-- `caption` や `handwritten` など話者がいないものは `speaker` を省略できる。
+- `tail: { x, y }` は話者の人物 `bbox` を基準にした、しっぽ先端の相対位置（左上0・右下1、枠外は0未満・1超も可）。口元の方向を示す適切な短さにし、口まで届かせる必要はない。通常形状で省略した場合は人物中央、`tail: false` はしっぽなし。`square` / `caption` / `flash` / `uniflash` / `handwritten` は省略時にしっぽを描かない。
+- 通常のしっぽは、本体としっぽの面の和集合から外周を描く。本体の `bezier` と `tail` は別々に保存し、先端の移動や `tail: false` による削除で本体の輪郭を壊さない。
+- `shape: thought` でしっぽを描く場合は、フキダシから離れるほど小さくなる2〜3個の縦長楕円で表す。
+- 会話の話者は各フキダシの `speaker` に明記する。省略時は話者なしとして扱う。
+- `join_to` は同じ `bubbles` 配列内で結合する、先行フキダシの1始まり番号。話者とは別の設定で、三つ以上を一つへ結合するときは同じ番号を指定する。
+- `text_style` は任意の文字設定。`font` は書体名、`fontSize` は4〜144のポイント数、`fontWeight` は100〜900の整数、`orientation` は `vertical` / `horizontal`。`fontSize` の明示指定は文字量や素材の輪郭によって自動縮小しない。フキダシと `screen_text` に保存できる。
+- `text_weights` は部分的な太さの配列。各要素は `{ start, end, fontWeight }`。`start` は本文の先頭からのUTF-16位置、`end` は終端を含まない位置で、改行は1として数える。サロゲートペアを分割せず、範囲の重複は認めない。範囲外は `text_style.fontWeight` または表示既定値を使う。本文・文字設定は原稿上で直接編集し、OMNYへ保存する。
+- `emphasis` に複数の強調フレーズを指定するときは、半角カンマで区切る。
+- `bezier: { nodes: [...] }` は編集可能な閉じた3次ベジェ輪郭。各点は `{ x, y, handleIn?: { x, y }, handleOut?: { x, y } }` とし、3〜64点を輪郭順に並べる。点はフキダシの `bbox` を0〜100で表した座標、ハンドルはその点からの相対ベクトルで、点とハンドル先端を0〜100内に収める。最後の点から最初の点へも曲線で閉じる。有効な `bezier` がある場合はその輪郭を描き、`shape` は文字余白・線種・しっぽの既定値に使う。本文・話者・位置は通常のフィールドで保持する。
+- `clip_to_panel: true` はコマ所属フキダシの輪郭・描き足し・しっぽをコマ形状で切り取る。省略または `false` ではコマ外も表示する。矩形コマでは本文を可視矩形内へ組み、斜辺のあるコマでは本文の見切れを配置で確認する。結合するフキダシ同士はこの設定をそろえる。ページ前景では使用しない。
+- `caption` や `handwritten` など話者がいないものは `speaker` を省略する。
 
 ## 6. 素材参照
 
@@ -127,6 +219,11 @@ bubbles:
 materials:
   - key: "キャラクター素材"
     type: character
+    scope: series
+    catalog_id: "material-..."
+    character_catalog_id: "character-..."
+    view: turnaround
+    origin: { episode_id: "e2f4...", episode_title: "第1話タイトル", episode_number: "第1話" }
     keywords: ["キャラクター名", "立ち絵"]
     note: "見た目の要点"
 
@@ -136,7 +233,24 @@ pages:
         assets: ["キャラクター素材"]
 ```
 
-`type` は `character` / `background` / `prop` のいずれかです。`keywords` は素材ファイルを検索するための文字列配列です。
+`type` は `character` / `background` / `prop`、`scope` は `episode`（エピソード限定）/ `series`（シリーズ共通）のいずれかです。`keywords` は素材ファイルを検索するための文字列配列です。シリーズ共通素材の `catalog_id` は名称を変更しても同じ素材を追跡する内部IDです。人物資料の `character_catalog_id` は対応するシリーズ人物を示し、`view` は `turnaround` / `front` / `three-quarter` / `side` / `back` / `expression` / `costume` / `other` のいずれかです。`origin` は最初に登録したエピソードの内部ID・作品タイトル・話数を保持します。
+
+シリーズ台帳OMNYは `meta.document_type: "series-catalog"`、`meta.page_count: 0`、`pages: []` とし、シリーズの作品分類・世界観・人物・素材を保存します。`series_setting` はジャンル・対象読者・成人指定・世界観、`setting` はそのエピソードの舞台・状況です。シリーズ資料に旧来の場所・時間帯・天候が明記されていれば、新規作成時に空のエピソード欄へ初期値として読み込みますが、固定値にはせず各話で編集できます。`meta.format` は完成画像の出力形式として独立しています。人物資料画像のローカル参照はシリーズ台帳にだけ次の形で保持し、通常のストーリーOMNYには出力しません。
+
+```yaml
+source_image:
+  schema_version: 1
+  asset_id: "image-<sha256>"
+  file_name: "characters/character-.../image-<sha256>.png"
+  original_name: "キャラクター設定.jpeg"
+  media_type: "image/png"
+  byte_size: 123456
+  width_px: 1946
+  height_px: 1807
+  sha256: "64桁の16進SHA-256"
+```
+
+`file_name` はシリーズ保存先からの相対パス、`original_name` は画面に表示する選択元のファイル名です。絶対パス、`..`、バックスラッシュは使用しません。画像の選択だけでは解析を行わず、明示したローカル解析操作で同じ人物の登録画像群を比較し、複数画像で一致する特徴と一方向でだけ確認できる恒常特徴を候補にします。画像ごとの `view` も画像群の比較から判定し、後から手動で修正できます。
 
 ## 7. コマ全体の例
 
@@ -161,12 +275,12 @@ pages:
 
 ## 8. コメント付き・2ページ分の空テンプレート
 
-下記は、2ページ分の空のOMNYテンプレートです。そのまま「OMNY編集」へ貼り付け、作品情報やコマを追加して使えます。`#` で始まる行は説明コメントなので、残したままでもOMNYとして読み込めます。
+下記は、2ページ分の空のOMNYテンプレートです。作品情報やコマを追加して利用できます。`#` で始まる行は説明コメントなので、残したままでもOMNYとして読み込めます。
 
 ```yaml
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 sa-san10
-# Nyamuru Data Model (NDM) v10.31 serialized as Open Manga Name YAML (OMNY)
+# Nyamuru Data Model (NDM) v10.33 serialized as Open Manga Name YAML (OMNY)
 # Nickname: Nyamuru🐱
 
 # OMNY文書のルート。作品全体の情報をこの中にまとめる
@@ -175,12 +289,20 @@ manga:
   schema_name: "Nyamuru Data Model"
 
   # 使用するNDMスキーマのバージョン
-  schema_version: 10.31
+  schema_version: 10.33
 
   # 作品全体の基本情報
   meta:
-    # 作品タイトルに置き換える
-    title: "作品タイトル"
+    # 文書種別。通常の漫画ネームはstory
+    document_type: "story"
+    # サブタイトル（各エピソードの題名、任意）
+    title: "サブタイトル"
+    # 作品タイトル（シリーズ名）と、名称変更後も同じシリーズを追跡する内部ID（任意）
+    series: "作品タイトル"
+    series_id: ""
+    # 話数表記と、タイトル・話数変更後も同じエピソードを追跡する内部ID（任意）
+    episode_number: ""
+    episode_id: ""
     # 作者名（任意）。各ページ下端中央のフッターに描かれる。空なら非表示
     author: ""
     # 出力する漫画の形式
@@ -191,18 +313,28 @@ manga:
     reading_direction: "right-to-left"
     # セリフの組み方向。固定値
     text_orientation: "vertical"
-    # 漫画本文の基本フォント。固定値
+    # 漫画本文の作品共通書体
     font: "アンチック体"
-    # この作品に固有の作画指示を配列で追加する（画風の行など）
-    # 全コマ共通の作画・演出ルールはOMAY側で管理する
+    # フキダシ線幅、コマ枠線、上下・左右に隣接するコマの間隔（mm）
+    bubble_line_width_mm: 0.5
+    panel_frame_width_mm: 1
+    panel_gutter_row_mm: 5
+    panel_gutter_column_mm: 3
+    # エディター内部で保持するスタイルOMNYの作画・演出ルール
     style_notes: []
 
-  # A4座標、コマ枠、bboxなど、全ページ共通のレイアウト規則を書く
-  # 標準の運用ではOMAY側で管理するため空でよい
+  # エディター内部で保持するスタイルOMNYのレイアウト規則
   # 複数行にする場合は空文字を | に替え、次の行から字下げして記述する
   layout_spec: ""
 
-  # 物語の舞台設定
+  # シリーズの作品分類と世界観
+  series_setting:
+    genre: ""             # 例: SF・ファンタジー
+    target_audience: ""   # 例: 少年・少女
+    adult_content: false  # 成人指定なら true
+    situation: ""
+
+  # このエピソードの舞台・状況
   setting:
     # 主な場所
     location: ""
@@ -210,18 +342,17 @@ manga:
     time: ""
     # 天候
     weather: ""
-    # 背景に登場する場所・景観・設備など
-    background: []
-    # 物語で使う小道具
-    props: []
-    # このネームが始まる時点の状況
+    # この作品で起きることの概要
     situation: ""
 
-  # 登場人物。例: { name: "人物名", role: "役割や人物像" }
+  # 登場人物。scopeはepisode/series。シリーズ人物はcatalog_id、aliases、基準頭身、照合特徴を保持できる
   characters: []
 
-  # 参照素材。各要素はkey、type、keywords、任意のnoteを持つ
+  # 参照素材。各要素はkey、type、scope、keywords、任意のnoteを持つ
   # typeはcharacter / background / propのいずれか
+  # scopeはepisode（エピソード限定）/ series（シリーズ共通）のいずれか
+  # series素材は任意のcatalog_idとoriginで、同一素材と登録元エピソードを追跡できる
+  # 人物資料はcharacter_catalog_idでシリーズ人物へ結び、画像参照はシリーズ台帳だけに保存する
   materials: []
 
   # 漫画ページの配列。並び順とpage番号を一致させる
@@ -230,7 +361,7 @@ manga:
     - page: 1
       # 用紙サイズ。A4縦の幅・高さ・単位
       canvas: { w: 210, h: 297, unit: mm }
-      # コマを右上から左下への読み順で追加する。1ページ最大6コマ
+      # コマを右上から左下への読み順で追加する。1ページ最大10コマ
       # 各コマにはid、shape、bg、bubbles、actionなどを設定する
       panels: []
 
