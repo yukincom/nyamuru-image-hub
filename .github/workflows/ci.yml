@@ -31,6 +31,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Update Python certificates
+        run: node --input-type=module -e "import { updatePythonCertificates } from './scripts/setup-local-vision.mjs'; await updatePythonCertificates('python');"
+
       - name: Download and verify adopted classifier
         run: python scripts/install_voice_intent.py --download
 
@@ -38,9 +41,7 @@ jobs:
         run: npm ci
 
       - name: Install deterministic generation QA dependencies
-        run: |
-          node --input-type=module -e "import { updatePythonCertificates } from './scripts/setup-local-vision.mjs'; await updatePythonCertificates('python');"
-          python -m pip install --requirement requirements-qa.txt
+        run: python -m pip install --requirement requirements-qa.txt
 
       - name: Verify deterministic generation QA imports
         run: python -c "import cv2, jsonschema, numpy, PIL, referencing"

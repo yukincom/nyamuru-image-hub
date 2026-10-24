@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import ssl
 import tempfile
 import urllib.request
 from zipfile import ZipFile
@@ -46,6 +47,15 @@ def verify_bundle(source: Path = None):
         raise ValueError('分類モデルの出典と採用済みファイルが一致しません')
     return source
 
+def download_ssl_context():
+    """Use setup's maintained CA bundle while retaining TLS verification."""
+    try:
+        import certifi
+    except ImportError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def download_bundle():
     """Fetch only the missing weight; never replace an existing model."""
     destination = ROOT / 'models' / DEFAULT_MODEL_NAME
@@ -65,7 +75,7 @@ def download_bundle():
         with tempfile.NamedTemporaryFile(dir=destination, prefix='.download-', delete=False) as output:
             temporary = Path(output.name)
             digest, size = hashlib.sha256(), 0
-            with urllib.request.urlopen(WEIGHT_URL, timeout=120) as response:
+            with urllib.request.urlopen(WEIGHT_URL, timeout=120, context=download_ssl_context()) as response:
                 for chunk in iter(lambda: response.read(1024 * 1024), b''):
                     size += len(chunk)
                     if size > WEIGHT_BYTES:

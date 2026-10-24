@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import ANY, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from nyamuru_voice_intent import LABELS, VoiceIntentService, validate_text
@@ -171,9 +171,23 @@ class VoiceIntentTests(unittest.TestCase):
         with patch.object(installer, 'ROOT', root), patch.object(installer, 'SELECTED_FILES', hashes), patch.object(installer, 'WEIGHT_BYTES', len(weight)), patch.object(installer.urllib.request, 'urlopen', return_value=io.BytesIO(weight)) as fetch:
             self.assertEqual(installer.download_bundle(), destination)
             self.assertEqual(installer.download_bundle(), destination)
-            fetch.assert_called_once_with(installer.WEIGHT_URL, timeout=120)
+            fetch.assert_called_once_with(installer.WEIGHT_URL, timeout=120, context=ANY)
+            context = fetch.call_args.kwargs['context']
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, installer.ssl.CERT_REQUIRED)
         self.assertEqual((destination/'model.safetensors').read_bytes(), weight)
         self.assertEqual(list(destination.glob('.download-*')), [])
+
+    def test_download_uses_setup_certificates_and_keeps_verified_system_fallback(self):
+        certificates = Mock()
+        certificates.where.return_value = '/fixture/maintained-ca-bundle.pem'
+        with patch.dict(sys.modules, {'certifi': certificates}), patch.object(installer.ssl, 'create_default_context') as create:
+            self.assertIs(installer.download_ssl_context(), create.return_value)
+            create.assert_called_once_with(cafile='/fixture/maintained-ca-bundle.pem')
+        with patch.dict(sys.modules, {'certifi': None}):
+            context = installer.download_ssl_context()
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode, installer.ssl.CERT_REQUIRED)
 
     def test_failed_download_never_leaves_a_partial_model(self):
         root, destination, hashes, weight = self.downloadable_fixture()

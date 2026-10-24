@@ -39,3 +39,5 @@ Git LFSによる配布は、公開forkに新しいLFS objectを追加できな�
 ブラウザー操作・実マイク、公開先からの新規cloneは上記のローカル検証に含めていない。その後、利用者の指示でアプリ全体の開発・公開先を統一する作業へ移った。[公開統合の記録](2026-10-24-public-repository-consolidation.md)と[精度改善の手順・原記録](ModernBERT/README.md)を参照。
 
 Release方式への変更後、Python分類・音声bridge 42件とsetup 13件が成功。正常取得と再実行、サイズ不足・超過・誤hash、既存重みとsymlinkの保護を確認した。
+
+新規cloneのmacOS/Python 3.13で、標準のCA参照先が無いためRelease取得のTLS検証に失敗することを確認した。取得時にはsetupで更新済みのcertifiを使い、certifiが無い単独実行ではPython標準の証明書検証を使う。証明書とホスト名の検証は無効化しない。CIでも証明書更新をモデル取得より先に実行する。
