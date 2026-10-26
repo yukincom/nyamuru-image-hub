@@ -35,6 +35,7 @@ export interface PaintController {
   interactionRevision?: () => number;
   snapshot: () => PaintSessionSnapshot;
   canRestore: () => boolean;
+  pause: () => Promise<void>;
   layerAction: (action:PaintLayerAction) => void;
   flush: () => Promise<void>;
   close: () => Promise<void>;

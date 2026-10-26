@@ -803,7 +803,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
 
   const bubbleTextDragged=useRef(false);
   const startBubbleTextDrag = (event:PointerEvent,selection:CanvasElementSelection,bubbleBox:BBox,startPosition:BubbleTextPosition) => {
-    if(!paperRef.current||elementLocked(selection))return;
+    if(paintWorkspace||!paperRef.current||elementLocked(selection))return;
     event.preventDefault();event.stopPropagation();onSelectElement(selection);
     const paperRect=paperRef.current.getBoundingClientRect(),origin={x:event.clientX,y:event.clientY};setInteractionMode('bubble-text');document.body.classList.add('is-bubble-text-dragging');
     const move=(pointerEvent:PointerEvent)=>{
@@ -824,6 +824,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       const amount=event.shiftKey?5:1;
       backgroundEdit.move(event.key==='ArrowLeft'?-amount:event.key==='ArrowRight'?amount:0,event.key==='ArrowUp'?-amount:event.key==='ArrowDown'?amount:0);backgroundEdit.endMove();return;
     }
+    if(paintWorkspace)return;
     onSelectElement(selection);
     const amount = event.shiftKey ? 5 : 1;
     const visible=elementContentBox(event.currentTarget as Element,box);
@@ -1815,7 +1816,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
         {renderAnchorIndicator()}
       </svg>}
       </div>
-      {paintTarget&&<PaintInputSurface canvas={canvas}/>}
+      {painting&&paintTarget&&<PaintInputSurface canvas={canvas}/>}
       {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
         <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} weights={(textBubble??screenText)?.text_weights} label={textTarget.kind==='bubble'?'吹き出しの文字':'通常文字'} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
           onText={(value,edit)=>onText?.(textTarget,value,edit)} onHistory={onTextHistory} onSelection={value=>setTextSelection(previous=>previous?.start===value.start&&previous?.end===value.end?previous:value)} onEnd={()=>onEndTextEdit?.()}/>

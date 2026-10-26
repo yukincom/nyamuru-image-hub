@@ -66,7 +66,7 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false}:{ownerKey:s
   }
   return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey}>
     {!inkOnly&&showGuide&&<div class={fullGuide?'paint-reference':'paint-reference is-underlay'} style={relativeStyle(reference,owner.frame)}><PaintOriginal owner={owner}/></div>}
-    {state.images&&<PaintPreviewCanvas paint={owner.paint} images={state.images} live={live} maskPreviewId={state.maskPreview?.ownerKey===owner.key?state.maskPreview.layerId:undefined}/>}
+    {state.images&&<PaintPreviewCanvas paint={owner.paint} images={state.images} live={live} includeGeneration={!state.displayOnly} maskPreviewId={!state.displayOnly&&state.maskPreview?.ownerKey===owner.key?state.maskPreview.layerId:undefined}/>}
   </div>;
 }
 

@@ -59,6 +59,15 @@ test('actual style and normalized panel controls leave history, redo and save st
  }
  panel('panel_frame_width_mm',.6);assert.equal(clones,1);assert.equal(updates,2);
 });
+test('bubble width from T waits for paint and applies to the newly materialized document',async()=>{
+ const documentRef={current:fixture()},paintSessionRef={current:{document:documentRef.current}},tasks=[];let closes=0,updates=0;
+ const context={documentRef,paintSessionRef,clamp:(v,min,max)=>Math.max(min,Math.min(max,v)),cloneDocument:structuredClone,
+  layerTransition:fn=>{const task=fn();tasks.push(task);return task;},paintController:{current:{close:async()=>{closes++;documentRef.current=structuredClone(documentRef.current);documentRef.current.manga.meta.title='retained ink';paintSessionRef.current=null;}}},setDocument:next=>{updates++;documentRef.current=next;}};
+ const change=appHandler('changePanelStyleNumber',context);
+ const before=documentRef.current.manga.meta.bubble_line_width_mm;change('bubble_line_width_mm',before);assert.equal(closes,0);
+ change('bubble_line_width_mm',before===.7?.8:.7);assert.equal(updates,0);await Promise.all(tasks);
+ assert.equal(closes,1);assert.equal(updates,1);assert.equal(documentRef.current.manga.meta.title,'retained ink');
+});
 test('size notifications share the existing gesture history until commit, but not after undo or another edit',()=>{
  const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
  canvasTextAt(documentRef.current,target).text_style={fontSize:18};
@@ -122,7 +131,7 @@ test('click-created text uses the canonical selection transition when moving to 
  const documentRef={current:fixture()};documentRef.current.manga.pages[0].panels.push({id:2,shape:{type:'rect',x:10,y:150,w:90,h:100},bg:0,bubbles:[]});
  const createdText={current:null},pendingCanvasElementSelection={current:null};let selection,editing;
  const select=appHandler('selectCanvasElement',{activePage:0,activePanel:0,pendingCanvasElementSelection,setCanvasSelectionScrollRequest:()=>{},setActivePage:()=>{},setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:value=>selection=value});
- appHandler('createScreenTextAt',{paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,endTextEdit:()=>{},documentRef,cloneDocument:structuredClone,addCanvasTextAt,textToolStyle:{fontSize:31,orientation:'horizontal'},imageGestureBoundary:()=>{},lastHistoryPush:{current:0},setDocument:next=>documentRef.current=next,createdText,setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{},setSelectedPanels:()=>{},selectCanvasElement:select,setEditingText:value=>editing=value})(0,1,{x:40,y:180});
+ appHandler('createScreenTextAt',{layerTransition:action=>action(),paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,endTextEdit:()=>{},documentRef,cloneDocument:structuredClone,addCanvasTextAt,textToolStyle:{fontSize:31,orientation:'horizontal'},imageGestureBoundary:()=>{},lastHistoryPush:{current:0},setDocument:next=>documentRef.current=next,createdText,setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{},setSelectedPanels:()=>{},selectCanvasElement:select,setEditingText:value=>editing=value})(0,1,{x:40,y:180});
  assert.equal(editing.panelIndex,1);assert.equal(selection.type,'screen_text');assert.deepEqual(pendingCanvasElementSelection.current,selection);assert.equal(canvasTextAt(documentRef.current,editing).text_style.fontSize,31);
 });
 test('panel splitting settles new empty text before cloning and reassigning its owner',()=>{

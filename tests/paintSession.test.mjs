@@ -7,6 +7,7 @@ import { paintCheckpoint } from '../src/lib/paintSession.ts';
 import { paintScene } from '../src/lib/paintDocument.ts';
 import { commitPaintStroke } from '../src/lib/paintGesture.ts';
 import { paintOwnerLocked } from '../src/lib/paintLock.ts';
+import { paintToolShortcut } from '../src/lib/paintToolShortcuts.ts';
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[],figures:[{name:'確認用',bbox:{x:2,y:3,w:10,h:20}}]},100,[]);
 const add=(scene,index=0)=>{const o=scene.owners[index];return commitPaintStroke(scene,{ownerKey:o.key,layerId:o.paint.layers[0].id,stroke:{tool:'pen',color:'#000000',size:3,points:[{x:4,y:5,pressure:.7,time:1}]}});};
@@ -46,6 +47,69 @@ let expression;
 function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='saveProject')expression=node.initializer.getText(ast);ts.forEachChild(node,visit);}
 visit(ast);
 const compiled=ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+function handler(file,name,context){
+ const source=ts.createSourceFile(file,readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ let found;
+ const visit=node=>{if(ts.isFunctionDeclaration(node)&&node.name?.text===name)found=node.getText(source);if(ts.isVariableDeclaration(node)&&node.name.getText(source)===name)found=node.initializer.getText(source);ts.forEachChild(node,visit);};visit(source);
+ assert.ok(found);return runInNewContext(ts.transpileModule(`(${found})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+}
+test('paint pause settles the existing gesture with no PNG; only active 3D needs close',async()=>{
+ for(const backgroundOwner of [null,'background']){
+  const calls=[],context={Error,operation:{current:false},backgroundOwner,requestClose:async()=>calls.push('close'),finishGesture:()=>calls.push('gesture')};
+  const pause=handler('PaintEditor.tsx','pause',context);await pause();
+  assert.deepEqual(calls,backgroundOwner?['close']:['gesture']);
+  context.operation.current=true;await assert.rejects(pause(),/画像を処理/);assert.equal(calls.length,1);
+ }
+});
+test('T and zoom retain paint until a selected text is actually exposed for editing',async()=>{
+ for(const name of ['chooseTextTool','chooseZoomTool'])for(const selected of [null,{type:'bubble'},{type:'screen_text'}]){
+  const session={},calls=[],transitions=[];
+  const context={selectedElement:selected,paintSessionRef:{current:session},paintController:{current:{pause:async()=>calls.push('pause'),close:async()=>calls.push('close')}},
+   requestPcFonts:()=>{},layerTransition:fn=>{const task=fn();transitions.push(task);return task;},setTextPaletteRequest:()=>{},autoPaintResume:{current:null},endTextEdit:()=>{},setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{}};
+  handler('App.tsx',name,context)();await Promise.all(transitions);
+  assert.deepEqual(calls,[name==='chooseTextTool'&&selected?'close':'pause']);assert.equal(context.paintSessionRef.current,session);
+ }
+});
+test('resuming a paint tool clears the other UI mode through the existing start callback',()=>{
+ const calls=[],context={busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:true,zoomTool:false,onStartPaint:()=>{calls.push('resume');return true;},interactionRevision:{current:0},finishGesture:()=>calls.push('gesture'),setMaskTarget:()=>{},setTool:tool=>calls.push(tool),setLineKind:()=>{},setPenMenu:()=>{},setEraserMenu:()=>{},tool:'pen',vectorState:{current:{}}};
+ handler('PaintEditor.tsx','selectTool',context)('pen');assert.deepEqual(calls,['resume','gesture','pen']);
+});
+test('T/zoom shortcuts preserve layout dispatch without a session and suppress hidden paint edits',()=>{
+ for(const requested of [undefined,{}]){
+  const calls=[],context={Element:class{},HTMLElement:class{},paintToolShortcut,requested,textTool:true,zoomTool:false,gesture:{current:null},vectorPointer:{current:null},busy:false,operation:{current:false},onSelectLayout:()=>calls.push('layout'),onSelectBubblePath:()=>calls.push('bubble-node'),selectTool:value=>calls.push(value),undo:()=>calls.push('undo'),redo:()=>calls.push('redo')};
+  const keydown=handler('PaintEditor.tsx','keydown',context);
+  for(const key of ['v','a','p','Delete','f','x',']'])keydown({key,preventDefault(){},stopPropagation(){}});
+  assert.deepEqual(calls,requested?['vector-select','vector-node','vector-pen']:['layout','bubble-node','vector-pen']);
+ }
+});
+test('page switches wait for paint and do not discard the current page on close failure',async()=>{
+ for(const fail of [false,true]){
+  const calls=[],context={Error,activePage:0,paintSessionRef:{current:{}},paintController:{current:{close:async()=>{calls.push('close');if(fail)throw Error('save failed');}}},layerTransition:fn=>fn(),endTextEdit:()=>calls.push('end-text'),autoPaintResume:{current:{}},setActivePage:value=>calls.push(['page',value]),setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:()=>{},setTab:()=>{},setMobileStoryboardPane:()=>{}};
+  const select=handler('App.tsx','selectPage',context);
+  await select(0);assert.deepEqual(calls,[]);
+  if(fail){await assert.rejects(select(1),/save failed/);assert.deepEqual(calls,['close']);}
+  else{await select(1);assert.deepEqual(calls,['close','end-text',['page',1]]);}
+ }
+});
+test('paused live paint does not allow native keyboard nudges to bypass its document boundary',()=>{
+ let edits=0;
+ const context={paintWorkspace:{},backgroundEdit:undefined,elementLocked:()=>false,onSelectElement:()=>edits++};
+ handler('MangaCanvas.tsx','nudgeElement',context)({key:'ArrowRight',preventDefault(){},stopPropagation(){}},{},{type:'bubble',index:0},{x:10,y:10,w:20,h:20});
+ handler('MangaCanvas.tsx','startBubbleTextDrag',context)({}, {type:'bubble',index:0},{x:10,y:10,w:20,h:20},{x:.5,y:.5});
+ assert.equal(edits,0);
+});
+test('material drop and text wrapping materialize paint before their existing document edits',async()=>{
+ for(const name of ['applyBubbleMaterial','wrapScreenText'])for(const fail of [false,true]){
+  const tasks=[],calls=[],target={pageIndex:0,panelIndex:0,index:0,kind:'screen_text'},documentRef={current:{paint:0}};
+  const edit=doc=>{assert.equal(doc.paint,1);calls.push('edit');return target;};
+  const context={Error,documentRef,paintSessionRef:{current:{}},layerTransition:fn=>{const task=fn();tasks.push(task);return task;},
+   paintController:{current:{close:async()=>{calls.push('close');if(fail)throw Error('save failed');documentRef.current={paint:1};}}},cloneDocument:structuredClone,editCanvasBubbleMaterial:edit,convertScreenTextToBubble:edit,
+   createdText:{current:null},setEditingText:()=>{},imageGestureBoundary:()=>{},endTextEdit:()=>{},lastHistoryPush:{current:0},setDocument:doc=>{calls.push('document');documentRef.current=doc;},setActivePage:()=>{},setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:()=>{},setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setToast:()=>{}};
+  handler('App.tsx',name,context)(target,'material');
+  if(fail){await assert.rejects(Promise.all(tasks),/save failed/);assert.deepEqual(calls,['close']);}
+  else{await Promise.all(tasks);assert.deepEqual(calls,['close','edit','document']);assert.equal(documentRef.current.paint,1);}
+ }
+});
 function appSave({cancel=false,fail=false}={}){
  const documentRef={current:{manga:{meta:{episode_id:'episode',series:''},paint:0}}};
  const paintSessionRef={current:{document:documentRef.current}},calls=[],notices=[];

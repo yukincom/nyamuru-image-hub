@@ -36,7 +36,7 @@ function loadComponent(file, globals = {}) {
         if (!(index in state)) state[index] = typeof initial === 'function' ? initial() : initial;
         return [state[index], next => { state[index] = typeof next === 'function' ? next(state[index]) : next; }];
       },
-      useRef: initial => ({ current: initial }),
+      useRef: initial => {const index=cursor++;return state[index]??=( {current:initial} );},
     },
     '../lib/manga': manga,
     '../lib/paintWorkspace': { usePaintWorkspace: () => null },
@@ -61,7 +61,7 @@ function loadComponent(file, globals = {}) {
   } }).outputText;
   runInNewContext(compiled, {
     exports, require: name => imports[name] ?? imports[name.replace(/\.ts$/u, '')] ?? stub,
-    structuredClone, window, Blob, URL, confirm: () => true, ...globals,
+    structuredClone, window, Blob, URL, Error, confirm: () => true, ...globals,
   });
   return {
     render: (props, name = 'default') => { cursor = 0; return exports[name](props); },
@@ -627,7 +627,7 @@ test('形式情報の更新はデータ管理に残り、サンプル操作は�
 
 test('環境設定は現在作品のstateへ接続され、非表示タブはCSSでも確実に隠れる', () => {
   const app = read('src/components/App.tsx');
-  assert.match(app, /<EnvironmentSettings\s+document=\{document\}\s+onChangeDocument=\{setDocument\}\s+onNotify=\{setToast\}/);
+  assert.match(app, /document=\{document\}\s+onChangeDocument=\{setDocument\}\s+onNotify=\{setToast\}/);
   assert.match(read('src/styles/global.css'), /\.environment-tab-panel\[hidden\] \{ display: none; \}/);
   assert.match(read('src/styles/global.css'), /\.environment-tabs \{[^}]*flex-wrap: wrap/);
   assert.match(app, /id: 'coverage', label: 'シナリオ'/);
@@ -736,14 +736,38 @@ test('header switches the settings gear to a close icon and blocks background ac
 });
 
 
-test('opening settings flushes the existing paint session before document settings can mutate it',async()=>{
+test('opening settings pauses ink without materializing it and preserves errors',async()=>{
   for(const fail of [false,true]){
     const calls=[];
     const context={Error,environmentOpen:false,openingEnvironment:{current:false},projectOperation:{current:false},qwenGeneration:null,
-      paintSessionRef:{current:{document:{}}},paintController:{current:{close:async()=>{calls.push('flush-and-close');if(fail)throw Error('描画確定失敗');context.paintSessionRef.current=null;}}},
-      endTextEdit:()=>calls.push('end-text'),setEnvironmentOpen:()=>{assert.equal(context.paintSessionRef.current,null);calls.push('open');},setToast:value=>calls.push(value)};
+      paintSessionRef:{current:{document:{}}},paintController:{current:{pause:async()=>{calls.push('pause');if(fail)throw Error('描画確定失敗');}}},
+      endTextEdit:()=>calls.push('end-text'),setEnvironmentOpen:()=>{assert.ok(context.paintSessionRef.current);calls.push('open');},setToast:value=>calls.push(value)};
     await appHandler('toggleEnvironmentSettings',context)();
-    assert.deepEqual(calls,fail?['flush-and-close','描画確定失敗']:['flush-and-close','end-text','open']);
+    assert.deepEqual(calls,fail?['pause','描画確定失敗']:['pause','end-text','open']);
     assert.equal(context.openingEnvironment.current,false);
   }
+});
+
+test('document settings await paint once, ignore repeated tab requests and retain the tab on failure',async()=>{
+  const component=loadComponent('src/components/EnvironmentSettings.tsx');
+  let release,fail=false,calls=0;
+  const notices=[];
+  const props={...settingsProps(),initialTab:'drawing',onNotify:value=>notices.push(value),prepareDocumentSettings:async()=>{calls++;await new Promise(resolve=>{release=resolve;});if(fail)throw Error('ink failure');}};
+  let tree=component.render(props);
+  assert.equal(panel(tree,'drawing').props.hidden,false);
+  await button(tree,'表示').props.onClick();assert.equal(calls,0);
+  tree=component.render(props);
+  const pending=button(tree,'レイアウト').props.onClick();
+  tree=component.render(props);
+  assert.equal(panel(tree,'display').props.hidden,false);
+  assert.equal(button(tree,'レイアウト').props['aria-disabled'],true);
+  await button(tree,'生成ルール').props.onClick();assert.equal(calls,1);
+  release();await pending;
+  tree=component.render(props);assert.equal(panel(tree,'page').props.hidden,false);
+  fail=true;
+  const failed=button(tree,'生成ルール').props.onClick();release();await failed;
+  tree=component.render(props);assert.equal(panel(tree,'page').props.hidden,false);assert.deepEqual(notices,['ink failure']);
+  fail=false;
+  const retried=button(tree,'生成ルール').props.onClick();release();await retried;
+  assert.equal(panel(component.render(props),'generation').props.hidden,false);
 });

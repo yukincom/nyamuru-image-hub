@@ -9,6 +9,7 @@ import type { PaintCursorMode } from './paintPreferences';
 
 export type PaintPointerEvent = PointerEvent & {currentTarget: HTMLDivElement};
 export interface PaintWorkspaceState {
+  displayOnly?: boolean;
   background3d?: {ownerKey:string;frame:BBox;setHost:(host:HTMLDivElement|null)=>void;selectedKey:string|null;select:(key:string)=>void;beginMove:(key:string)=>boolean;move:(dx:number,dy:number)=>void;endMove:(keep?:boolean)=>void};
   page: number;
   panelIndex: number;

@@ -23,8 +23,10 @@ if(!new URLSearchParams(location.search).has('resume')){
 const saves=document.createElement('output');
 saves.setAttribute('aria-label','検証用の本文保存回数');
 saves.style.cssText='position:fixed;bottom:4px;left:4px;z-index:99999;background:white;color:black;font:12px monospace;pointer-events:none';
-let saveCount=0;
-const updateSaveCount=()=>{saves.textContent=`本文保存: ${saveCount}回`;};
+let saveCount=0,pngCount=0;
+const updateSaveCount=()=>{saves.textContent=`本文保存: ${saveCount}回 / PNG化: ${pngCount}回`;};
+const toBlob=HTMLCanvasElement.prototype.toBlob;
+HTMLCanvasElement.prototype.toBlob=function(callback,type,quality){if(type==='image/png'){pngCount++;updateSaveCount();}toBlob.call(this,callback,type,quality);};
 const setItem=Storage.prototype.setItem;
 Storage.prototype.setItem=function(key,value){setItem.call(this,key,value);if(this===localStorage&&key===STORAGE_KEY){saveCount++;updateSaveCount();}};
 updateSaveCount();document.body.append(saves);

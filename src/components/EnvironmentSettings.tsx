@@ -2,7 +2,7 @@ import AgentSettings from './AgentSettings';
 import LocalImageModelSettings from './LocalImageModelSettings';
 import type { AgentPreferences } from '../lib/agentPreferences';
 import { Bot, CircleHelp, BookOpen, Database, Eye, EyeOff, FilePenLine, FolderArchive, FolderOpen, Paintbrush, RefreshCw, ShieldCheck, Trash2 } from 'lucide-preact';
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { CURRENT_NDM_SCHEMA_VERSION } from '../lib/manga';
 import { DEFAULT_LOCAL_MODEL_PREFERENCES, loadLocalModelPreferences, saveLocalModelPreferences, type LocalModelPreferences } from '../lib/localModelPreferences';
 import { loadGenerationPreferences, saveGenerationPreferences, type GenerationPreferences } from '../lib/generationPreferences';
@@ -41,6 +41,8 @@ function formatCacheDate(value: string) {
 }
 
 interface Props {
+  initialTab?: SettingsTab;
+  prepareDocumentSettings?: () => Promise<void>;
   onOpenAgent?:()=>void;
   hasDocument?: boolean;
   onExportOmny?: () => void;
@@ -72,8 +74,10 @@ interface Props {
   onChangeSaveDirectory?: () => void;
 }
 
-export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, onExportOmny, agentProfile,onChangeAgentProfile,historySteps=50,onChangeHistorySteps,editGuide=true,onChangeEditGuide,paintSmoothing=0,onChangePaintSmoothing,paintCursorMode='circle',onChangePaintCursorMode,paintBleedPx=200, onChangePaintBleed, document, onChangeDocument, onNotify, showGuides, spreadView, pageCount, frameLineWidthMm, rowGapMm, columnGapMm, onChangeShowGuides, onChangeSpreadView, onChangeFrameLineWidth, onChangeRowGap, onChangeColumnGap, fontFamilies=[], onRequestFonts, saveDirectory, projectBusy, onChangeSaveDirectory }: Props) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>(hasDocument ? 'page' : 'display');
+export default function EnvironmentSettings({ initialTab, prepareDocumentSettings, onOpenAgent, hasDocument = true, onExportOmny, agentProfile,onChangeAgentProfile,historySteps=50,onChangeHistorySteps,editGuide=true,onChangeEditGuide,paintSmoothing=0,onChangePaintSmoothing,paintCursorMode='circle',onChangePaintCursorMode,paintBleedPx=200, onChangePaintBleed, document, onChangeDocument, onNotify, showGuides, spreadView, pageCount, frameLineWidthMm, rowGapMm, columnGapMm, onChangeShowGuides, onChangeSpreadView, onChangeFrameLineWidth, onChangeRowGap, onChangeColumnGap, fontFamilies=[], onRequestFonts, saveDirectory, projectBusy, onChangeSaveDirectory }: Props) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab ?? (hasDocument ? 'page' : 'display'));
+  const tabChanging=useRef(false);
+  const [preparingTab,setPreparingTab]=useState(false);
   const [generationCaches, setGenerationCaches] = useState<GenerationCacheSummary | null>(null);
   const [generationCacheStatus, setGenerationCacheStatus] = useState('');
   const [generationCacheEmptyMessage, setGenerationCacheEmptyMessage] = useState(false);
@@ -120,9 +124,16 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
       setGenerationCacheBusy(false);
     }
   };
-  const selectTab = (tab: SettingsTab) => {
-    setActiveTab(tab);
-    if (tab === 'data' && !generationCaches && !generationCacheBusy) void refreshGenerationCaches();
+  const selectTab = async (tab: SettingsTab, focus?: HTMLElement) => {
+    if(tabChanging.current)return;
+    tabChanging.current=true;setPreparingTab(true);
+    try {
+      if(prepareDocumentSettings&&['page','generation','omay','data'].includes(tab))await prepareDocumentSettings();
+      setActiveTab(tab);
+      focus?.querySelector<HTMLButtonElement>(`#environment-tab-${tab}`)?.focus();
+      if (tab === 'data' && !generationCaches && !generationCacheBusy) void refreshGenerationCaches();
+    } catch(error) {onNotify(error instanceof Error?error.message:'描画を確定できませんでした');}
+    finally {tabChanging.current=false;setPreparingTab(false);}
   };
   const confirmCacheDeletion = async (target: CacheDeleteTarget) => {
     setGenerationCacheBusy(true);
@@ -166,8 +177,7 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
         event.preventDefault();
         event.stopPropagation();
         const next = availableTabs[nextIndex].id;
-        selectTab(next);
-        event.currentTarget.querySelector<HTMLButtonElement>(`#environment-tab-${next}`)?.focus();
+        void selectTab(next,event.currentTarget);
       }}>
         {availableTabs.map(({ id, label, icon: Icon }) => <button
           key={id}
@@ -177,6 +187,7 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
           aria-controls={`environment-panel-${id}`}
           aria-selected={activeTab === id}
           tabIndex={activeTab === id ? 0 : -1}
+          aria-disabled={preparingTab}
           onClick={() => selectTab(id)}
         ><Icon size={16} aria-hidden="true" />{label}</button>)}
       </div>
@@ -201,9 +212,14 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
       <section class="environment-tab-panel" id="environment-panel-drawing" role="tabpanel" aria-labelledby="environment-tab-drawing" tabIndex={0} hidden={activeTab !== 'drawing'}>
         <SectionTitle title="手描き・編集" />
         <p class="environment-settings-note">ペン入力と編集履歴に関する、この端末の設定です。生成ルールやOMAYの受け渡しには影響しません。</p>
-        <Field label="ぬりたし"><div class="paint-bleed-setting"><input aria-label="ぬりたし" type="number" min="0" max="4000" step="1" value={paintBleedPx} onChange={event=>{
+        <Field label="ぬりたし"><div class="paint-bleed-setting"><input aria-label="ぬりたし" type="number" min="0" max="4000" step="1" value={paintBleedPx} onChange={async event=>{
           const value=event.currentTarget.valueAsNumber;
-          if(Number.isSafeInteger(value)&&value>=0&&value<=4000)onChangePaintBleed?.(value);
+          const input=event.currentTarget;
+          if(Number.isSafeInteger(value)&&value>=0&&value<=4000){
+            if(value===paintBleedPx)return;
+            try {await prepareDocumentSettings?.();onChangePaintBleed?.(value);}
+            catch(error){input.value=String(paintBleedPx);onNotify(error instanceof Error?error.message:'描画を確定できませんでした');}
+          }
           else {event.currentTarget.value=String(paintBleedPx);onNotify('ぬりたしは0〜4000pxの整数で指定してください');}
         }}/><span>px</span></div></Field>
         <Field label="手ぶれ補正"><input aria-label="手ぶれ補正" type="number" min="0" max="15" step="1" value={paintSmoothing} onChange={e=>{const value=e.currentTarget.valueAsNumber;if(Number.isInteger(value)&&value>=0&&value<=15)onChangePaintSmoothing?.(value);else e.currentTarget.value=String(paintSmoothing);}}/></Field>

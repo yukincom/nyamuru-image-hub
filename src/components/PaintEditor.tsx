@@ -77,7 +77,8 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   const [stageImports,setStageImportsState]=useState<NonNullable<PaintResult['stageImports']>>(resume?.stageImports??[]);
   const stageImportsRef=useRef(stageImports);
   function setStageImports(value:typeof stageImports|((items:typeof stageImports)=>typeof stageImports)){const next=typeof value==='function'?value(stageImportsRef.current):value;stageImportsRef.current=next;setStageImportsState(next);}
-  const suspended=externalSuspended||backgroundOwner!==null;
+  const toolSuspended=externalSuspended||backgroundOwner!==null;
+  const suspended=toolSuspended||textTool||zoomTool;
   const initial=requested??emptyScene;
   const [history,setHistoryState]=useState({initial,past:[] as PaintScene[],present:initial,future:[] as PaintScene[]});
   const historyRef=useRef(history);
@@ -169,7 +170,8 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   },[eraserMenu]);
   const canEditLayer=Boolean(hasLayer&&layer.visible&&!layer.locked&&(!paintTarget||layer[paintTarget]?.enabled));
   const createsMark=['pen','fill','line','rectangle','ellipse','vector-pen'].includes(tool);
-  const canDraw=Boolean(images&&!busy&&!suspended&&!locked&&owner.bubble?.hidden!==true&&(canEditLayer||!editingMask&&createsMark&&canStartPaintMark(owner,hasLayer?layer:undefined,vectorMode?'vector':'raster')));
+  const paintActive=Boolean(requested)&&!textTool&&!zoomTool;
+  const canDraw=Boolean(paintActive&&images&&!busy&&!suspended&&!locked&&owner.bubble?.hidden!==true&&(canEditLayer||!editingMask&&createsMark&&canStartPaintMark(owner,hasLayer?layer:undefined,vectorMode?'vector':'raster')));
   useEffect(()=>{penHover.current=null;setPenCursor('pen');},[tool,ownerKey,layerId,canDraw]);
   useEffect(()=>{
     const root=document.documentElement;
@@ -268,11 +270,17 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     }
   }
   function changeLayers(layers:PaintLayer[]){if(locked||busy||suspended||operation.current||inputActive.current)return;commit({...scene,owners:scene.owners.map(o=>o.key===owner.key?{...o,paint:{...o.paint,layers}}:o)});}
-  function undo(){if(busy||suspended||operation.current||inputActive.current)return;clearVectorSelection();setSelection(null);if(sharedHistory){sharedHistory.undo();return;}setHistory(h=>h.past.length?{initial,past:h.past.slice(0,-1),present:h.past[h.past.length-1],future:[h.present,...h.future]}:h);}
-  function redo(){if(busy||suspended||operation.current||inputActive.current)return;clearVectorSelection();setSelection(null);if(sharedHistory){sharedHistory.redo();return;}setHistory(h=>h.future.length?{initial,past:[...h.past,h.present].slice(-historySteps),present:h.future[0],future:h.future.slice(1)}:h);}
+  function undo(){if(busy||toolSuspended||operation.current||inputActive.current)return;clearVectorSelection();setSelection(null);if(sharedHistory){sharedHistory.undo();return;}setHistory(h=>h.past.length?{initial,past:h.past.slice(0,-1),present:h.past[h.past.length-1],future:[h.present,...h.future]}:h);}
+  function redo(){if(busy||toolSuspended||operation.current||inputActive.current)return;clearVectorSelection();setSelection(null);if(sharedHistory){sharedHistory.redo();return;}setHistory(h=>h.future.length?{initial,past:[...h.past,h.present].slice(-historySteps),present:h.future[0],future:h.future.slice(1)}:h);}
   async function requestClose(){
     if(operation.current)throw new Error('画像を処理しています');
     await flush();setBackgroundOwner(null);onClose();
+  }
+  async function pause(){
+    if(operation.current)throw new Error('画像を処理しています');
+    // 3D still needs its existing camera snapshot/materialization boundary.
+    if(backgroundOwner){await requestClose();return;}
+    finishGesture();
   }
   function finishGesture(keep=true){
     endBackgroundMove(keep);
@@ -446,7 +454,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     }catch(e){if(alive.current)setError(e instanceof Error?e.message:'保存できませんでした');throw e;}
     finally{operation.current=false;if(alive.current)setBusy(false);}
   }
-  if(controller)controller.current=requested?{snapshot,selectTool,interactionRevision:()=>interactionRevision.current,canRestore:()=>!operation.current&&!busy&&!externalSuspended&&!inputActive.current&&!backgroundOwner,layerAction,flush,close:requestClose,generate,chooseImage:key=>chooseImage(true,key),insertImage:(file,key,placement)=>importImage(file,{key,replace:true,placement},true)}:null;
+  if(controller)controller.current=requested?{snapshot,pause,selectTool,interactionRevision:()=>interactionRevision.current,canRestore:()=>!operation.current&&!busy&&!externalSuspended&&!inputActive.current&&!backgroundOwner,layerAction,flush,close:requestClose,generate,chooseImage:key=>chooseImage(true,key),insertImage:(file,key,placement)=>importImage(file,{key,replace:true,placement},true)}:null;
   async function generate(key=owner.key){
     if(!onGenerate||operation.current||!images)return;
     finishGesture();
@@ -579,8 +587,8 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     onLostPointerCapture:endPointer,
   };
   function selectTool(next:PaintTool){
-    if(busy||suspended||operation.current)return;
-    if(!requested&&!onStartPaint?.())return;
+    if(busy||toolSuspended||operation.current)return;
+    if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
     interactionRevision.current++;
     finishGesture();if(next.startsWith('vector-'))setMaskTarget(null);setTool(next);setLineKind(previous=>nextPaintLineKind(previous,next));setPenMenu(false);setEraserMenu(null);
     // An explicit tool change ends drawing. Option temporarily converts points
@@ -588,13 +596,19 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     if(tool!==next)vectorState.current={...vectorState.current,activePath:undefined};
   }
   useEffect(()=>{
-    if(!toolPaletteEnabled||suspended)return;
+    if(!toolPaletteEnabled||toolSuspended)return;
     const keydown=(event:KeyboardEvent)=>{
       if(event.isComposing||event.defaultPrevented)return;
       // 前面のdialogで候補を操作している間は、背後の描画を開始しない。
       if(event.target instanceof Element&&event.target.closest('dialog[open]'))return;
       if(event.target instanceof HTMLElement&&(event.target.closest('input,textarea,select')||event.target.isContentEditable))return;
       const key=event.key.toLowerCase();
+      const nextTool=paintToolShortcut(event);
+      if(nextTool){if(!gesture.current&&!vectorPointer.current&&!busy&&!operation.current){event.preventDefault();event.stopPropagation();if(!requested&&nextTool==='vector-select')onSelectLayout?.();else if(!requested&&nextTool==='vector-node'&&onSelectBubblePath)onSelectBubblePath('node');else selectTool(nextTool);}return;}
+      if(textTool||zoomTool){
+        if(requested&&(event.metaKey||event.ctrlKey)&&(key==='z'||key==='y')){event.preventDefault();event.stopPropagation();key==='y'||event.shiftKey?redo():undo();}
+        return;
+      }
       const sizeDirection=paintSizeShortcut(event);
       if(sizeDirection){
         event.preventDefault();event.stopPropagation();
@@ -616,8 +630,6 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
       if(key==='escape'&&menu){event.preventDefault();event.stopPropagation();setMenu(null);return;}
       if(key==='escape'&&requested&&selectionBoxes){event.preventDefault();event.stopPropagation();setSelection(null);return;}
       if(key==='escape'&&requested){event.preventDefault();event.stopPropagation();if(inputActive.current)finishGesture(false);else if(vectorState.current.activePath)clearVectorSelection();else void requestClose().catch(()=>{});return;}
-      const nextTool=paintToolShortcut(event);
-      if(nextTool){if(!gesture.current&&!vectorPointer.current&&!busy&&!operation.current){event.preventDefault();event.stopPropagation();if(!requested&&nextTool==='vector-select')onSelectLayout?.();else if(!requested&&nextTool==='vector-node'&&onSelectBubblePath)onSelectBubblePath('node');else selectTool(nextTool);}return;}
       if(!requested)return;
       if(key==='enter'&&vectorState.current.activePath){event.preventDefault();vectorState.current={...vectorState.current,activePath:undefined};return;}
       if((key==='delete'||key==='backspace')&&vectorSelected.length){event.preventDefault();deleteVectorSelection();return;}
@@ -648,14 +660,14 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     <div class="paint-tool-icons">
       {tools.slice(0,2).map(([value,label,Icon])=>{
         const layoutSelect=value==='vector-select';
-        return <PaintToolButton class={`paint-tool-icon tool-${value}`} label={label} help={toolHelp[value]??label} disabled={busy||suspended} aria-pressed={requested?tool===value:layoutSelect?!textTool&&!zoomTool&&!bubblePathTool:bubblePathTool==='node'} onClick={()=>{if(!requested&&layoutSelect)onSelectLayout?.();else if(!requested&&onSelectBubblePath)onSelectBubblePath('node');else selectTool(value);}}><Icon size={23}/></PaintToolButton>;
+        return <PaintToolButton class={`paint-tool-icon tool-${value}`} label={label} help={toolHelp[value]??label} disabled={busy||toolSuspended} aria-pressed={paintActive?tool===value:layoutSelect?!textTool&&!zoomTool&&!bubblePathTool:bubblePathTool==='node'} onClick={()=>{if(!requested&&layoutSelect)onSelectLayout?.();else if(!requested&&onSelectBubblePath)onSelectBubblePath('node');else selectTool(value);}}><Icon size={23}/></PaintToolButton>;
       })}
-      <PaintPenTools tool={requested?tool:''} select={selectTool} disabled={busy||suspended} open={penMenu} setOpen={setPenMenu}/>
-      <PaintToolButton class="paint-tool-icon" label="ペン" help={toolHelp.pen!} disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool==='pen'} onClick={()=>selectTool('pen')}><Pencil size={23}/></PaintToolButton>
-      <PaintShapeTools tool={requested?tool:''} select={selectTool} disabled={busy||suspended}/>{textTools}
-      <PaintToolButton class="paint-tool-icon" label="消しゴム" help={toolHelp.eraser!} disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||suspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={requested?tool:''} select={selectTool} disabled={busy||suspended}/>
-      {requested&&<PaintToolButton class="paint-tool-icon" label="配置へ戻る" help="描いた内容を保持し、あたりや文字の配置へ戻ります。" disabled={busy||suspended} onClick={()=>void requestClose().catch(()=>{})}><Move size={23}/></PaintToolButton>}
-      <PaintToolButton class="paint-tool-icon" label="バケツ" help="選択レイヤーの、クリックした場所とつながる同じ色の範囲を塗ります。選択範囲があればその内側だけを塗ります。" disabled={busy||suspended} aria-pressed={Boolean(requested)&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
+      <PaintPenTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended} open={penMenu} setOpen={setPenMenu}/>
+      <PaintToolButton class="paint-tool-icon" label="ペン" help={toolHelp.pen!} disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='pen'} onClick={()=>selectTool('pen')}><Pencil size={23}/></PaintToolButton>
+      <PaintShapeTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>{textTools}
+      <PaintToolButton class="paint-tool-icon" label="消しゴム" help={toolHelp.eraser!} disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||toolSuspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>
+      {requested&&<PaintToolButton class="paint-tool-icon" label="配置へ戻る" help="描いた内容を保持し、あたりや文字の配置へ戻ります。" disabled={busy||toolSuspended} onClick={()=>void requestClose().catch(()=>{})}><Move size={23}/></PaintToolButton>}
+      <PaintToolButton class="paint-tool-icon" label="バケツ" help="選択レイヤーの、クリックした場所とつながる同じ色の範囲を塗ります。選択範囲があればその内側だけを塗ります。" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
     </div>
     <div class={`paint-ink-controls ${brushInk?'is-brush-ink':''}`}>
       <div class="paint-ink-targets" role="group" aria-label={brushInk?'ブラシの描画色':'塗りと線'}>
@@ -663,11 +675,11 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
         <PaintToolButton class="paint-ink-target paint-ink-stroke" label="線（枠）の色" help={brushInk?'ブラシでは描画色だけを使います。線と塗りの指定は図形・ベジェペンで使います。':'ペンと図形の輪郭の色です。ラスターとベクターで共通です。'} disabled={brushInk} aria-pressed={!brushInk&&colorTarget==='stroke'} onClick={()=>setColorTarget('stroke')}><span style={{borderColor:brushInk?'#b8bcb8':displayInk(vectorStyle.stroke)??'transparent'}}>{!brushInk&&vectorStyle.stroke===null&&<span class="ink-none-mark"/>}</span></PaintToolButton>
         <PaintToolButton class="paint-ink-swap" label="塗りと線の色を交換" help="塗りと線の色を入れ替えます。透明もそのまま交換します。" disabled={brushInk||busy||suspended} onClick={swapInk}><ArrowLeftRight size={14}/></PaintToolButton>
       </div>
-      <div class="paint-colors" role="group" aria-label={brushInk?'描画色':colorTarget==='fill'?'塗りの色':'線（枠）の色'}>{paletteInks.map(({color:value,name})=><PaintToolButton class="paint-color" label={`${brushInk?'描画色':colorTarget==='fill'?'塗り':'線（枠）'}：${name}`} help={brushInk?"描画色を選びます。Xキーで白黒を切り替えます。":"選択した塗り・線の色です。Xキーで黒・白・透明を順番に切り替えます。"} aria-pressed={selectedInk===value} style={{'--paint-color':value}} onClick={()=>chooseInk(value)}><span class="ink-swatch"/></PaintToolButton>)}
-      {!brushInk&&<PaintToolButton class="paint-color" label="透明" help="選択中の塗り・線を描かない設定にします。" aria-pressed={selectedInk===null} onClick={()=>chooseInk(null)}><span class="ink-swatch ink-no-fill"><span class="ink-none-mark"/></span></PaintToolButton>}</div>
+      <div class="paint-colors" role="group" aria-label={brushInk?'描画色':colorTarget==='fill'?'塗りの色':'線（枠）の色'}>{paletteInks.map(({color:value,name})=><PaintToolButton disabled={busy||suspended} class="paint-color" label={`${brushInk?'描画色':colorTarget==='fill'?'塗り':'線（枠）'}：${name}`} help={brushInk?"描画色を選びます。Xキーで白黒を切り替えます。":"選択した塗り・線の色です。Xキーで黒・白・透明を順番に切り替えます。"} aria-pressed={selectedInk===value} style={{'--paint-color':value}} onClick={()=>chooseInk(value)}><span class="ink-swatch"/></PaintToolButton>)}
+      {!brushInk&&<PaintToolButton disabled={busy||suspended} class="paint-color" label="透明" help="選択中の塗り・線を描かない設定にします。" aria-pressed={selectedInk===null} onClick={()=>chooseInk(null)}><span class="ink-swatch ink-no-fill"><span class="ink-none-mark"/></span></PaintToolButton>}</div>
     </div>
     {(tool==='wand'||tool==='fill')&&<label>許容差<input aria-label="色の許容差" type="number" min="0" max="255" value={selectTolerance} onChange={e=>setSelectTolerance(Math.max(0,Math.min(255,e.currentTarget.valueAsNumber||0)))}/></label>}
-    <div class="paint-size" data-line-kind={vectorMode?'vector':'raster'} data-tool-help="線種ごとの太さを保持します。[ / ] でも変更できます。トーンと生成マーカーはラスターの太さを使います。"><span>太さ</span><output>{size} px</output><div class="paint-size-palette" role="radiogroup" aria-label={tool==='eraser'?'消しゴムの太さ':vectorMode?'ベクターの太さ':'ペンの太さ'}>{PAINT_SIZE_PRESETS.map(value=>{const diameter=Math.min(18,Math.max(2,2+Math.log10(value*10+1)*6));return <button key={value} type="button" role="radio" data-paint-size={value} aria-label={`太さ ${value} px`} aria-checked={size===value} aria-pressed={size===value} onClick={()=>setCurrentSize(value)}><span class="paint-size-dot" style={{width:`${diameter}px`,height:`${diameter}px`}}/><small>{value}</small></button>;})}</div></div>
+    <div class="paint-size" data-line-kind={vectorMode?'vector':'raster'} data-tool-help="線種ごとの太さを保持します。[ / ] でも変更できます。トーンと生成マーカーはラスターの太さを使います。"><span>太さ</span><output>{size} px</output><div class="paint-size-palette" role="radiogroup" aria-label={tool==='eraser'?'消しゴムの太さ':vectorMode?'ベクターの太さ':'ペンの太さ'}>{PAINT_SIZE_PRESETS.map(value=>{const diameter=Math.min(18,Math.max(2,2+Math.log10(value*10+1)*6));return <button key={value} type="button" role="radio" disabled={busy||suspended} data-paint-size={value} aria-label={`太さ ${value} px`} aria-checked={size===value} aria-pressed={size===value} onClick={()=>setCurrentSize(value)}><span class="paint-size-dot" style={{width:`${diameter}px`,height:`${diameter}px`}}/><small>{value}</small></button>;})}</div></div>
     <div class="paint-aa"><span>{toolbarLayer.colorMode==='monochrome'?'アンチエイリアス：なし固定':'アンチエイリアス'}</span><div class="vector-choice-icons" role="group" aria-label="アンチエイリアス">{(['なし','弱','中','強'] as const).map((label,value)=><PaintToolButton label={`アンチエイリアス：${label}`} help={`選択レイヤーの線の境界を「${label}」にします。ぼかしは使わず、輪郭の濃度を調整します。読み込んだ画像は変えません。`} disabled={!requested||busy||suspended||locked||layer.locked||toolbarLayer.colorMode==='monochrome'} aria-pressed={(toolbarLayer.colorMode==='monochrome'?0:toolbarLayer.antialias??3)===value} onClick={()=>updateOwnerLayer(owner.key,layer.id,{antialias:value as 0|1|2|3})}><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="currentColor"/>{value>0&&<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="3" opacity={value/5}/>}</svg></PaintToolButton>)}</div></div>
   </div>;
   const eraseModeMenu=eraserMenu&&typeof document!=='undefined'?createPortal(<div class="paint-dock vector-eraser-menu" role="menu" aria-label="ベクター消しゴムの消し方" style={{left:eraserMenu.x,top:eraserMenu.y}} onKeyDown={event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const choices=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=menuitemradio]')),at=choices.indexOf(document.activeElement as HTMLButtonElement),next=event.key==='Home'?0:event.key==='End'?choices.length-1:event.key==='ArrowDown'?(at+1)%choices.length:(at+choices.length-1)%choices.length;choices[next]?.focus();}}>{vectorEraseChoices.map(([mode,label,description])=><button type="button" role="menuitemradio" aria-checked={eraseMode===mode} data-erase-mode={mode} autoFocus={eraseMode===mode} onClick={()=>{setEraseMode(mode);selectTool('eraser');setEraserMenu(null);}}><span aria-hidden="true">{eraseMode===mode?'●':'○'}</span><span><strong>{label}</strong><small>{description}</small></span></button>)}</div>,document.body):null;
@@ -810,7 +822,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   const layerControls=<PaintLayerPalette {...layerProps}/>;
   const layerHeader=<PaintLayerControls {...layerProps} disabled={!requested||busy||suspended}/>;
   const status=<div class="paint-status">{editingMask&&<span>{paintTarget==='mask'?(maskPreview?'トーンの範囲を編集中 — 赤い部分にトーンが付きます。ペンで追加・消しゴムで削除':'トーンを表示中 — レイヤー内のマスクで赤表示を切り替えます'):'生成マスク編集中 — 赤青緑黄で領域を指定（PNG書き出しには含めません）'}</span>}{!images&&!error&&<span>原本を読み込み中…</span>}{error&&<p class="paint-error" role="alert">{error}</p>}</div>;
-  const value:PaintWorkspaceState|null=requested?{...(backgroundTarget&&backgroundFrame?{background3d:{ownerKey:backgroundTarget.key,frame:backgroundFrame,setHost:setBackgroundHost,selectedKey:backgroundSelection,select:key=>{setBackgroundSelection(key);const selected=scene.owners.find(o=>o.key===key);if(selected?.kind==='figure')onSelectFigure?.(selected.index);},beginMove:beginBackgroundMove,move:moveBackgroundOwner,endMove:endBackgroundMove}}:{}),page,panelIndex,overlay,scene,owner,images,live:vectorPreview?undefined:rasterPreview?.live,maskPreview:maskPreview?{ownerKey:owner.key,layerId:layer.id}:undefined,guideVisible,onContextMenu:openMenu,selectionTool,selection:selectionBoxes?{boxes:selectionBoxes,width:owner.paint.width,height:owner.paint.height}:undefined,lasso:lassoPreview,vector:{paths:layer.paths??[],selected:vectorSelected,selectedNodes:tool==='vector-node'?selectedVectorNodes({...vectorState.current,paths:layer.paths??[]}):vectorState.current.selectedNode?[vectorState.current.selectedNode]:undefined,width:owner.paint.width,height:owner.paint.height,handles:['vector-pen','vector-node','vector-add','vector-delete','vector-anchor'].includes(tool),selectionBox:tool==='vector-select'},penCursor:tool==='vector-pen'&&canDraw?penCursor:undefined,cursor:canDraw&&!selectionTool&&!zoomTool&&!textTool?{mode:!vectorMode&&!['lasso','wand','fill'].includes(tool)?cursorMode:'crosshair',size,eraserSize}:undefined,events,tools:toolControls,layers:layerControls,status,undo,redo,canUndo:!busy&&!suspended&&(sharedHistory?.canUndo??!!history.past.length),canRedo:!busy&&!suspended&&(sharedHistory?.canRedo??!!history.future.length)}:null;
+  const value:PaintWorkspaceState|null=requested?{displayOnly:!paintActive,...(backgroundTarget&&backgroundFrame?{background3d:{ownerKey:backgroundTarget.key,frame:backgroundFrame,setHost:setBackgroundHost,selectedKey:backgroundSelection,select:key=>{setBackgroundSelection(key);const selected=scene.owners.find(o=>o.key===key);if(selected?.kind==='figure')onSelectFigure?.(selected.index);},beginMove:beginBackgroundMove,move:moveBackgroundOwner,endMove:endBackgroundMove}}:{}),page,panelIndex,overlay,scene,owner,images,live:vectorPreview?undefined:rasterPreview?.live,maskPreview:maskPreview?{ownerKey:owner.key,layerId:layer.id}:undefined,guideVisible,onContextMenu:openMenu,selectionTool,selection:selectionBoxes?{boxes:selectionBoxes,width:owner.paint.width,height:owner.paint.height}:undefined,lasso:lassoPreview,vector:{paths:layer.paths??[],selected:vectorSelected,selectedNodes:tool==='vector-node'?selectedVectorNodes({...vectorState.current,paths:layer.paths??[]}):vectorState.current.selectedNode?[vectorState.current.selectedNode]:undefined,width:owner.paint.width,height:owner.paint.height,handles:['vector-pen','vector-node','vector-add','vector-delete','vector-anchor'].includes(tool),selectionBox:tool==='vector-select'},penCursor:tool==='vector-pen'&&canDraw?penCursor:undefined,cursor:canDraw&&!selectionTool&&!zoomTool&&!textTool?{mode:!vectorMode&&!['lasso','wand','fill'].includes(tool)?cursorMode:'crosshair',size,eraserSize}:undefined,events,tools:toolControls,layers:layerControls,status,undo,redo,canUndo:!busy&&!suspended&&(sharedHistory?.canUndo??!!history.past.length),canRedo:!busy&&!suspended&&(sharedHistory?.canRedo??!!history.future.length)}:null;
   const menuOwner=scene.owners.find(o=>o.key===menu?.key);
   const contextMenu=menu&&menuOwner&&createPortal(<><button class="canvas-generation-menu-dismiss" aria-label="操作メニューを閉じる" onClick={()=>setMenu(null)}/><div class="canvas-generation-menu" role="menu" aria-label="あたり・画像の操作" style={{left:Math.max(8,Math.min(menu.x,window.innerWidth-280)),top:Math.max(8,Math.min(menu.y,window.innerHeight-240))}} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setMenu(null);}}}>
     <strong>{menuOwner.label}</strong>

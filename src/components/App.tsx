@@ -469,7 +469,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(openingEnvironment.current||projectOperation.current||qwenGeneration)return;
     openingEnvironment.current=true;
     try {
-      if(paintSessionRef.current)await paintController.current?.close();
+      if(paintSessionRef.current)await paintController.current?.pause();
       endTextEdit();setEnvironmentOpen(true);
     } catch(error) { setToast(error instanceof Error?error.message:'描画を確定できませんでした'); }
     finally { openingEnvironment.current=false; }
@@ -3255,7 +3255,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }
   }
   function applyBubbleMaterial(target:CanvasTextTarget,id:string){
-    if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
+    void layerTransition(async()=>{
+    if(paintSessionRef.current)await paintController.current?.close();
     try{
       const next=cloneDocument(documentRef.current);
       if(!editCanvasBubbleMaterial(next,target,id))return;
@@ -3264,12 +3265,16 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       setTextTool(false);setZoomTool(false);setBubblePathTool(false);
       setToast('文字・大きさ・位置を保って、吹き出しの輪郭を入れ替えました');
     }catch(error){setToast(error instanceof Error?error.message:'素材を適用できません');}
+    });
   }
   function openBubbleMaterials(){endTextEdit();setBubbleMaterialsOpen(true);setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);setTextPaletteRequest(value=>({id:value.id+1,tab:'bubble'}));}
   function chooseTextTool(){void requestPcFonts();void layerTransition(async()=>{
     setTextPaletteRequest(value=>({id:value.id+1,tab:'text'}));
     autoPaintResume.current=null;
-    if(paintSessionRef.current)await paintController.current?.close();
+    if(paintSessionRef.current){
+      if(selectedElement?.type==='bubble'||selectedElement?.type==='screen_text')await paintController.current?.close();
+      else await paintController.current?.pause();
+    }
     setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
   });}
   function chooseBubblePathTool(mode:Exclude<BubblePathToolMode,false>){void layerTransition(async()=>{
@@ -3279,7 +3284,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   });}
   function chooseZoomTool(){void layerTransition(async()=>{
     autoPaintResume.current=null;
-    if(paintSessionRef.current)await paintController.current?.close();
+    if(paintSessionRef.current)await paintController.current?.pause();
     endTextEdit();setTextTool(false);setZoomTool(true);setBubblePathTool(false);setPaintToolsCollapsed(false);
   });}
   function addText(kind:CanvasTextKind){void layerTransition(async()=>{
@@ -3291,7 +3296,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     imageGestureBoundary('start');setEditingText(target);
   });}
   function createScreenTextAt(pageIndex:number,panelIndex:number|null,point:{x:number;y:number}){
-    if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
+    void layerTransition(async()=>{
+    if(paintSessionRef.current)await paintController.current?.close();
     endTextEdit();
     const next=cloneDocument(documentRef.current),target=addCanvasTextAt(next,pageIndex,panelIndex,point,textToolStyle);
     if(!target)return;
@@ -3301,9 +3307,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setSelectedPanels([target.panelIndex]);
     selectCanvasElement({type:'screen_text',index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})},target.panelIndex,pageIndex,false);
     setEditingText(target);
+    });
   }
   function wrapScreenText(target:CanvasTextTarget,materialId:string){
-    if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
+    void layerTransition(async()=>{
+    if(paintSessionRef.current)await paintController.current?.close();
     createdText.current=null;setEditingText(null);imageGestureBoundary('end');
     const next=cloneDocument(documentRef.current);
     const converted=convertScreenTextToBubble(next,{screenText:target,materialId});
@@ -3313,6 +3321,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setSelectedElement({type:'bubble',index:converted.index,...(converted.overlay?{scope:'page_overlay' as const}:{})});
     setTextTool(false);setZoomTool(false);setBubblePathTool(false);
     setToast('通常文字を吹き出しの中央へ入れ、文字量に合わせて一度だけサイズを調整しました');
+    });
   }
   function finishElementMove(pageIndex:number,selection:CanvasElementSelection,panelIndex:number|null){
     if(selection.type!=='bubble')return;
@@ -3748,9 +3757,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     const minimum = key === 'bubble_line_width_mm' || key === 'panel_frame_width_mm' ? 0.1 : 0;
     const normalized = Math.round(clamp(value, minimum, maximum) * 10) / 10;
     if (documentRef.current.manga.meta[key] === normalized) return;
-    const next = cloneDocument(documentRef.current);
-    next.manga.meta[key] = normalized;
-    setDocument(next);
+    const apply=()=>{
+      const next = cloneDocument(documentRef.current);
+      next.manga.meta[key] = normalized;
+      setDocument(next);
+    };
+    if(paintSessionRef.current){void layerTransition(async()=>{await paintController.current?.close();apply();});}
+    else apply();
   };
   const changeBubbleTail = (selection: CanvasElementSelection, tail?: BubbleTailTarget, patch?:{bezier?:NonNullable<import('../types').Bubble['bezier']>;tailRoot?:import('../types').BubbleTailRoot;textPosition?:import('../types').BubbleTextPosition}) => {
     if (selection.type !== 'bubble') return;
@@ -3810,7 +3823,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       }
     });
   };
-  const selectPage=(index:number)=>{endTextEdit();autoPaintResume.current=null;setActivePage(index);setActivePanel(0);setSelectedPanels([0]);setSelectedElement(null);setTab('storyboard');setMobileStoryboardPane('editor');};
+  const selectPage=(index:number,panelIndex=0)=>layerTransition(async()=>{
+    if(index===activePage){setTab('storyboard');setMobileStoryboardPane('editor');return;}
+    if(paintSessionRef.current)await paintController.current?.close();
+    endTextEdit();autoPaintResume.current=null;setActivePage(index);setActivePanel(panelIndex);setSelectedPanels([panelIndex]);setSelectedElement(null);setTab('storyboard');setMobileStoryboardPane('editor');
+  });
   const voiceRevision=(withHistory=true)=>JSON.stringify({document:documentRef.current,activePage,activePanel,selectedElement,selectedPanels,tab,
     innerFrameSnap,panelGapSnap,panelSync,showGuides,spreadView,showNewDialog,projectBusy,qwenGeneration:Boolean(qwenGeneration),textTool,zoomTool,editingText,canvasZoomPercent,
     paint:paintController.current?.snapshot(),paintInteraction:paintController.current?.interactionRevision?.(),dragging:imageGesture.current.active,
@@ -3932,12 +3949,15 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const guardDuringPaint=(event:Event)=>{
     if(!paintSession||!(event.target instanceof Element)||!event.target.closest('.workspace-tabs,.app-header,.page-list,.add-page-button,.sidebar-tools,.canvas-toolbar-actions,.page-switcher,.inspector-content,.mobile-storyboard-tabs'))return;
     if(event instanceof KeyboardEvent&&(event.key==='Tab'||((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='s')))return;
+    if(!projectOperation.current&&!layerSwitch.current&&(event.target.closest('.page-switcher')||event.target.closest('.page-card')&&!event.target.closest('.page-move')))return;
     if(!projectOperation.current&&event.target.closest('[data-project-save],[data-project-history],[data-environment-settings],[data-voice-command],.guide-display-control,.panel-controls summary,.panel-snap-setting,.workspace-tabs'))return;
     event.preventDefault();event.stopPropagation();
     if(event.type==='click')setToast(autoPaintTransition.current?'描画を確定しています。完了後に操作してください':'描画を確定してから操作してください');
   };
 
   const environmentSettings = <EnvironmentSettings
+    initialTab={paintSession?'drawing':undefined}
+    prepareDocumentSettings={async()=>{if(paintSessionRef.current)await paintController.current?.close();}}
     document={document}
     onChangeDocument={setDocument}
     onNotify={setToast}
@@ -3971,7 +3991,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     onChangeSaveDirectory={() => saveProject(true)}
   />;
 
-  return <PaintEditor resume={paintSession?.resume} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools selectionVisible={!paintSession&&selectedElement?.type==='bubble'} active={textTool&&!paintSession} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} add={addText} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{setBubblePathTool(false);return openPaint();}} onSelectLayout={()=>{autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);setSelectedElement(null);}} onToggleBubble={index=>{const s=paintSessionRef.current;if(s)toggleBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectBubble={index=>{const s=paintSessionRef.current;if(s)selectBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session&&!session.overlay)reorderOwnerLayers(session.panelIndex,key,target,after);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
+  return <PaintEditor resume={paintSession?.resume} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools selectionVisible={!paintSession&&selectedElement?.type==='bubble'} active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} add={addText} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={()=>{autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);setSelectedElement(null);}} onToggleBubble={index=>{const s=paintSessionRef.current;if(s)toggleBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectBubble={index=>{const s=paintSessionRef.current;if(s)selectBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session&&!session.overlay)reorderOwnerLayers(session.panelIndex,key,target,after);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
     <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onPointerOverCapture={autoPaintBoundary} onFocusCapture={autoPaintBoundary} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
     <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog || Boolean(imageExportDialog)} hasDocument={hasDocument} busy={projectBusy||imageImportBusy||imageExportBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo}
       onImportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();choosePlacedImage('page');});}}
@@ -4022,10 +4042,10 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
               <div class="page-switcher"><button aria-label="前のページ" onClick={() => selectPage(Math.max(0, activePage - 1))} disabled={activePage === 0}><ChevronLeft size={17} /></button><span><span class="page-switcher-label">PAGE </span><strong>{String(activePage + 1).padStart(2, '0')}</strong><span class="page-switcher-total"> / {String(document.manga.pages.length).padStart(2, '0')}</span></span><button aria-label="次のページ" onClick={() => selectPage(Math.min(document.manga.pages.length - 1, activePage + 1))} disabled={activePage === document.manga.pages.length - 1}><ChevronRight size={17} /></button></div>
             </div>
             {(() => {
-              const activeCanvas = <MangaCanvas textToolStyle={textToolStyle} onTextToolStyle={changeTextToolStyle} pageIndex={activePage} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===activePage?editingText:null} onEditScreenText={(panelIndex,index,overlay=false)=>startTextEdit({pageIndex:activePage,panelIndex,index,kind:'screen_text',overlay})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:activePage})} onCreateScreenTextAt={(panelIndex,point)=>createScreenTextAt(activePage,panelIndex,point)} onWrapScreenText={wrapScreenText} onFinishElementMove={(selection,panelIndex)=>finishElementMove(activePage,selection,panelIndex)} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)} paintTarget={paintSession?.pageIndex===activePage?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,activePage,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,activePage,overlay)} onGenerateComposition={(scope,index)=>void requestCompositionGeneration(scope,index,activePage)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,activePage)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,activePage,overlay)} imageAssets={document.manga.image_assets} onImageGesture={imageGestureBoundary} title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} fontFamilies={localFontFamilies} onRequestFonts={()=>void requestPcFonts()} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={selectCanvasPanel} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, activePage, revealDetails)} onChangeElementBBox={changeElementBBox} onChangeBubbleTail={changeBubbleTail} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
+              const activeCanvas = <MangaCanvas textToolStyle={textToolStyle} onTextToolStyle={changeTextToolStyle} pageIndex={activePage} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===activePage?editingText:null} onEditScreenText={(panelIndex,index,overlay=false)=>startTextEdit({pageIndex:activePage,panelIndex,index,kind:'screen_text',overlay})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:activePage})} onCreateScreenTextAt={(panelIndex,point)=>createScreenTextAt(activePage,panelIndex,point)} onWrapScreenText={wrapScreenText} onFinishElementMove={(selection,panelIndex)=>finishElementMove(activePage,selection,panelIndex)} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)&&!textTool&&!zoomTool} paintTarget={paintSession?.pageIndex===activePage?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,activePage,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,activePage,overlay)} onGenerateComposition={(scope,index)=>void requestCompositionGeneration(scope,index,activePage)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,activePage)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,activePage,overlay)} imageAssets={document.manga.image_assets} onImageGesture={imageGestureBoundary} title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} fontFamilies={localFontFamilies} onRequestFonts={()=>void requestPcFonts()} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={selectCanvasPanel} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, activePage, revealDetails)} onChangeElementBBox={changeElementBBox} onChangeBubbleTail={changeBubbleTail} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
               if (spreadPartnerIndex === null) return activeCanvas;
-              const switchToPartner = (panelIndex = 0) => { endTextEdit();setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]); };
-              const partnerCanvas = <MangaCanvas textSettingsOwner={false} textToolStyle={textToolStyle} pageIndex={spreadPartnerIndex} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===spreadPartnerIndex?editingText:null} onEditScreenText={(panelIndex,index,overlay=false)=>startTextEdit({pageIndex:spreadPartnerIndex,panelIndex,index,kind:'screen_text',overlay})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:spreadPartnerIndex})} onCreateScreenTextAt={(panelIndex,point)=>createScreenTextAt(spreadPartnerIndex,panelIndex,point)} onWrapScreenText={wrapScreenText} onFinishElementMove={(selection,panelIndex)=>finishElementMove(spreadPartnerIndex,selection,panelIndex)} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)} paintTarget={paintSession?.pageIndex===spreadPartnerIndex?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,spreadPartnerIndex,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,spreadPartnerIndex,overlay)} onGenerateComposition={(scope,index)=>void requestCompositionGeneration(scope,index,spreadPartnerIndex)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,spreadPartnerIndex)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,spreadPartnerIndex,overlay)} imageAssets={document.manga.image_assets} title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} fontFamilies={localFontFamilies} onRequestFonts={()=>void requestPcFonts()} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={switchToPartner} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, spreadPartnerIndex, revealDetails)} onChangeElementBBox={() => {}} onChangeBubbleTail={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
+              const switchToPartner = (panelIndex = 0) => { void selectPage(spreadPartnerIndex,panelIndex); };
+              const partnerCanvas = <MangaCanvas textSettingsOwner={false} textToolStyle={textToolStyle} pageIndex={spreadPartnerIndex} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===spreadPartnerIndex?editingText:null} onEditScreenText={(panelIndex,index,overlay=false)=>startTextEdit({pageIndex:spreadPartnerIndex,panelIndex,index,kind:'screen_text',overlay})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:spreadPartnerIndex})} onCreateScreenTextAt={(panelIndex,point)=>createScreenTextAt(spreadPartnerIndex,panelIndex,point)} onWrapScreenText={wrapScreenText} onFinishElementMove={(selection,panelIndex)=>finishElementMove(spreadPartnerIndex,selection,panelIndex)} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)&&!textTool&&!zoomTool} paintTarget={paintSession?.pageIndex===spreadPartnerIndex?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,spreadPartnerIndex,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,spreadPartnerIndex,overlay)} onGenerateComposition={(scope,index)=>void requestCompositionGeneration(scope,index,spreadPartnerIndex)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,spreadPartnerIndex)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,spreadPartnerIndex,overlay)} imageAssets={document.manga.image_assets} title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} fontFamilies={localFontFamilies} onRequestFonts={()=>void requestPcFonts()} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={switchToPartner} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, spreadPartnerIndex, revealDetails)} onChangeElementBBox={() => {}} onChangeBubbleTail={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
               // 右綴じ: 若いページが右（flexの後ろ）に来る
               const leftIndex = Math.max(activePage, spreadPartnerIndex);
               return <div class="canvas-spread">
