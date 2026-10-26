@@ -206,7 +206,7 @@
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
 | P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc、P7c 29dd0c7。登録再利用・失敗取消し、Python40件／Node9件成功 |
 | P8 標準名・文書 | 完了 | シリーズa9ee62f・YAML書出93396b6・LAN0fb7814。package／ledgerの新旧互換・現行docsを整合 |
-| P9a–d 描画残件 | 一部実装・未完了 | P9aの既存7ファイルを利用者指示による先行checkpointに分離。実UI検証・横方向の過大選択の扱いは未完了。P9b–d未着手。設定・保存とは別commit群 |
+| P9a–d 描画残件 | 一部実装・未完了 | P9a既存7ファイル＋記録を `1393d26` へ分離。実UI検証・横方向の過大選択は未完了。先に第9節の実原稿不具合を修正し、P9b–dの性能改善は別途再開する |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
 
 ### 計画・skill段階の結果
@@ -331,8 +331,129 @@
 
 ### 2026-10-27 02:39: 次の計画に先立つP9a checkpoint
 
-- 利用者の「先にコミットしてから次を始めようね！」に従い、既存のP9a差分を先にローカルcommitする。新たな不具合の修正はまだ加えない。
+- 利用者の「先にコミットしてから次を始めようね！」に従い、既存のP9a差分を先にローカルcommitした。回復点は `1393d26673aa6dc5d98b51351c3883905784770c`（`Checkpoint raster selection work before editor repairs`）。新たな不具合の修正はまだ加えていない。
 - 対象は `PaintEditor.tsx`、`rasterSelection.ts`、`global.css`、関連test 3ファイル、`USAGE.md` の既存7ファイルと本記録。投げ縄を画像サイズに切り詰めない処理、トーン作成時の既存領域拡張、不要な作業枠表示の撤去を含む。
 - 再検証: rasterSelection／paintGesture／paintDocument／paintTone／paintStrokeの69tests成功。`npm run check` は428files・0 errors・0 warnings・9 hints。全unstaged差分とstage対象をレビューし、他作業のLAN／3Dの7ファイル、未追跡資料・生成物を混ぜない。
 - これは回復点であり、P9a完了判定ではない。実UI検証、横方向の過大選択と説明書の範囲の整合は未完了。後から判明したコマ枠の重なり、選択同期、文字移動、無描画での画像化も未修正。
 - この区切りでは実作品の操作・server起動・追加の本体編集を行っていない。pushしない。
+
+## 9. 2026-10-27: 実原稿で判明した不具合の修正計画
+
+状態: **原因調査・計画のみ。R1以降はすべて未実装、利用者確認待ち。** 先行commitの後に読み取り専用調査を行い、この既存計画書へ集約した。以下は修正済みの仕様ではない。
+
+### 9.1 原因と責任の境界
+
+実操作の観測と、HEAD `1393d26` の呼出経路を照合した。パンのSpaceドラッグは今回の自動操作では確証を得ていないが、fit時の縦スクロール可能量0と、それ以上動かせない実装を確認した。
+
+| 症状 | 確認した原因 | 修正を集約する既存経路 |
+|---|---|---|
+| レイヤーを選んで配置へ戻るだけで人物・背景が画像化され、Undoできない | `PaintEditor` の初期guide準備が全ownerを対象に走り、準備したownerを置換するが、保存点だけ準備前に残る。close時の参照差分でPNG化され、`applyPaint` の `setDocument(next,false)` へ進む。準備は実描画の履歴を通っていない | `PaintEditor` の準備処理 → `paintCheckpoint` → 既存 `onApply`。表示準備と作品編集の境界をここで直す |
+| 文字サイズ変更で無関係な原本画像までちらつく | 実変更の `editCanvasTextStyle` が作品全体をcloneし、無関係なpaint/assets参照も変わる。`PlacedImageView` のeffectが画像を解放・再decodeし、原本canvasを外す。実原稿では21件の表示要素置換を確認 | `PlacedImageView` の画像resource寿命と `loadPaintImages`。描画内容更新と原本再読込を分離する |
+| コマ枠に接した吹き出しが枠線の内側半分を消す | パレットではコマ枠が吹き出しより上。一方、画面ではframe z4／内枠一致部分z11よりbubble z15が上で、panel clip内の白地だけが枠を覆う。`qwenComposition` もframe後に全bubbleを描く | パレット・`MangaCanvas`/CSS・共通PNG/PSD/生成入力の描画順を同じ仕様へ揃える。線幅を増やす問題ではない |
+| キャンバス選択がレイヤーへ伝わらない／フォルダーが開かない | Appの `selectedElement` は人物・画像も持つが、`PageLayerPalette` へ渡すのは文字・吹き出しだけ。自動展開は通常文字のpanelのみ。元画像ownerは行の選択表現も不足 | `selectedElement` → 既存owner keyへの変換 → パレット表示。Inspectorへ渡す正本と共通にする |
+| 人物フォルダーの選択でペンが起動する | owner選択と描画layer操作が同じ `actOnLayer` に入る。吹き出しだけ早期returnし、人物・原本は `openPaint` へ進む | owner見出しの選択は既存canvas選択へ、実paint layerの選択は既存描画入口へ分ける |
+| 一部だけ人物あたり枠が消える／名前確定後も色付きあたり枠が残る | `figure.artwork` があると `renderArtwork`、ないと `figure-guide` という表示分岐。名前の確定とは無関係。実原稿では1コマ目だけでなく3コマ目にもartworkがある。`refId` がある2コマ目もguide側なら青枠 | 既存 `refId`／要確認情報と通常選択表示を使う。artwork生成を枠切替の手段にしない |
+| 読込直後に文字あたり原本が本文へ重なる | 新規OCR cropのmetadataに `referenceHidden` がなく、`separateBubbleOriginals` が `visible: !source.referenceHidden` で表示にする。分離済みlayerは保存した目の状態を保持する | 新規OCR metadataの既定値 → 既存の原本分離。再読込のたびに非表示を強制しない |
+| 拡張した吹き出しの中でも文字が途中で止まる／Aで不要な破線が出る | ベジェ輪郭は0–100基準枠の外へ拡張済みだが、Tのdrag、`bubbleTextPosition`、validatorは本文中心を旧bbox内0–1へ制限。Aの破線はその0–100参照枠で、実輪郭ではない | 既存の本文位置座標と保存・描画helperを一貫して直し、指定された参照枠の破線を撤去する |
+| 紙面を灰色部分まで引き下ろせない | Space操作はDOMの `scrollLeft/scrollTop` を動かすだけ。fit時は紙面がviewportに収まり、余白に移動するためのscroll領域がない | 既存scroll surface／stageへ移動用余白を持たせる。別のpan座標・transformは作らない |
+
+主な確認箇所: `PaintEditor.tsx` 初期準備・`flush`、`paintSession.ts` の `paintCheckpoint`、`App.tsx` の `applyPaint`／`selectedPaintOwner`／`actOnLayer`、`PlacedImageView.tsx`、`PageLayerPalette.tsx`／`PaintLayerPalette.tsx`、`MangaCanvas.tsx` の人物表示・本文drag・frame・pan、`bubbleClip.ts`、`BubbleBezierEditor.tsx`、`analogTextCrops.ts`／`bubbleOriginals.ts`、`qwenComposition.ts`。単にCSS・ラベルだけを変えて原因が残る修正を避ける。
+
+### 9.2 実装・commit順と合格条件
+
+順序は **R1 → R2 → R3 → R4a → R4b → R5 → R6 → R7 → R8 → R9**。R1で無操作による原稿変更を止め、R2で表示の再読込を止めてからUIを検証する。R3の重なり順を確定してから選択を合わせる。座標系全体へ影響するR8は個別操作の後にする。各段の合格後、次段に入る前にローカルcommitする。
+
+#### R1: 無操作のguide準備を作品編集から外す
+
+- 対象候補: `PaintEditor.tsx`、`paintSession.ts`、必要な場合のみAppの既存snapshot復元境界。
+- 残す正本は `PaintSessionSnapshot.scene/saved/imports` と共有履歴。準備前ownerが保存点の同key ownerと同じだった場合に限り、未画像化guideの準備を同値表現として扱う。未保存resumeのowner、既存guide画像の欠損修復、実編集のownerは一括でcleanにしない。
+- 比較を既存checkpointへ集約し、Undo復元でscene外側だけが複製された場合も、実変更なしなら `onApply` を呼ばない。writer成功後だけ保存点を進める契約と、表示準備の同値扱いを混同しない。具体的な実装は以下の回帰条件で判定する。
+- 別のdirty Set、履歴、保存queueを追加しない。「筆跡が0だから保存不要」とはしない。表示・錠前・削除・画像差替え・vector・tone・3Dも正当な編集として残す。準備Blobは初回描画・Redo・resumeに必要な間保持する。
+- 合格: 2人物＋背景で選択→close／cancelだけならdocument・asset登録・Undo/Redo不変、配置へ反映するowner PNG／`onApply`は0回（表示用guideの準備と区別）。初回一筆は対象ownerだけを変更し1Undo。描画→Undo→close、Redo、未保存resume、欠損修復、保存失敗→再試行で内容を落とさない。
+- 検証先: `paintSession.test.mjs`、`paintGesture.test.mjs`、`projectPersistence.test.mjs`、既存 `paintPerformance.browser.tsx`。既に画像化されている実原稿を自動で逆変換しない。
+
+#### R2: 文字変更による無関係な画像再decodeを止める
+
+- 対象候補: `PlacedImageView.tsx` と既存paint画像ロードhelper。原本の実参照ID／storage情報に変更がない間はdecode済み画像を維持し、paint内容だけの変更は既存 `PaintPreviewCanvas` に渡す。
+- 全document cloneの一括置換や共有参照化を先に行わない。Appの `setDocument` はcatalog・コマ重なり情報を正規化しており、浅いcopyだけへの変更は履歴snapshotを汚す危険がある。
+- 新しい全体cacheや毎入力の全文hashを作らない。参照原本の検査・解放・読込失敗表示は既存loaderの契約を維持する。
+- 合格: 文字サイズ変更で非対象原本のcanvas・decodeをやり直さない。原本差替えは必要な読込を行い、A→B→Aの高速変更で古い完了結果が上書きしない。paint変更・Undo/Redo・unmount・欠損時にも古い画像を正解として残さない。
+- 検証先: `canvasTextStyle.test.mjs`／`bubbleOriginals.test.mjs` と既存文字操作・描画browser fixture。実原稿の21件を再観測する。
+
+#### R3: コマ枠・吹き出しの順序を画面と出力で一致させる
+
+- 対象候補: `MangaCanvas.tsx`、`global.css`、`qwenComposition.ts`、必要に応じ既存 `panelLayers.ts`、現行NDM日英仕様・生成prompt。
+- 対象間の順序を奥から **コマ内描画 → コマ内吹き出し → コマ枠 → ページ直描き／ページ前景 → 生成絵 → 切出し原本** とする。ページ前景内の吹き出しは前景人物より上に保持。その他の既存画像層の順序は変更しない。
+- 通常コマのbubbleだけをframe下へ置き、`above_panel_frames` の前景をframe下へ落とさない。全frameを最上段へ上げる修正はしない。枠をもう一枚足さず、既存frame passを使う。内枠ガイドと一致する辺の限定再描画も一般frameの二重描画へ広げない。
+- 出力は既存bubble描画本体を一つのhelperへまとめ、通常コマ分をframe前、前景分を前景人物後に各1回呼ぶ。geometryを触る場合は既存 `panelFrameSegments` を利用し、bleed／多角形判定を別実装にしない。
+- 現仕様書・既存testは「frameより全bubbleが上」を要求しているため、これは仕様整合を含むcommit。画面CSSだけを先行して完成扱いにしない。
+- 合格: 接触部でも枠線の全幅が残る。前景はframeを覆える。パレット順・画面・PNG/PSD・生成入力用合成が一致。bleed・多角形・frame非表示・showGuidesの有無を保持し、線が二重に濃くならない。重なった対象のhitも表示順と一致する。
+- 検証先: `canvasLayering.test.mjs`、`pageLayerPalette.test.mjs`、`qwenComposition.test.mjs`、`panelLayers.test.mjs`、既存 `humanPoseGeneration.browser.tsx` の実canvas出力、実原稿の接触部。
+
+#### R4a: キャンバス選択をレイヤーへ表示する
+
+- 対象候補: `App.tsx`、`PageLayerPalette.tsx`、`PaintLayerPalette.tsx`、既存選択helper／CSS。
+- `selectedElement` を唯一の作品要素選択とし、page／panel／scopeと合わせてowner keyへ変換する処理を一本化する。既存 `selectedPaintOwner` のbackground既定値は描画開始時だけ使い、通常画像・通常文字・未選択を背景owner選択へ誤変換しない。
+- パレットの表示上のowner選択と、paint sessionの実layer選択を区別する。対象のpanel／ownerだけを展開し、既存 `canvasSelectionScrollRequest` でdock内へ表示する。選択stateをもう一つ同期保存しない。
+- 自動DOM focusは付けず、選択表示・aria・必要なscrollに留める。文字入力やSpace/V/T操作のfocusを奪わない。高速切替やページ移動では古いscroll予約を破棄する。
+- 合格: 人物・吹き出し・切出し原本・通常文字で正しい1行が選択され、折畳み中でも表示される。コマ情報と一致し、描画は起動しない。同じ対象の再選択、A→B高速切替、別ページ／前景でも誤選択しない。
+- 検証先: `pageLayerPalette.test.mjs` と既存文字操作／レイヤーbrowser fixtureに実Appの選択往復を追加。
+
+#### R4b: owner選択と描画layer操作を分離する
+
+- R4aの変換を逆方向にも利用。人物・吹き出し・原本のowner選択は既存canvas選択へ戻し、実paint layer選択だけを既存 `actOnLayer`／`openPaint` へ渡す。新しい選択storeや第二の描画開始経路を作らない。
+- 原本は現状のdirect rootに外部選択を表せる行を設け、ownerの選択と実layerの描画選択を区別する。背景は対応するcanvas要素がないため、今回の既定案では既存の背景編集入口を維持する。3D編集・子layer・目・錠前・並替えを失わない。
+- 合格: ownerの往復選択でペンが勝手に起動せず、子layerからは従来どおり描画できる。R1の無操作不変条件も再実行する。R4aとは別commitにし、表示同期だけへ安全に戻せるようにする。
+
+#### R5: 名前確定後の人物枠を通常表示へ揃える
+
+- 対象候補: `MangaCanvas.tsx`、既存人物状態helper、`global.css`。
+- 人物の確定／要確認は既存 `refId`・`analysisReview` 等から導出する。`analogImport.draft` は確定後も残るので単独の判定に使わず、新たな「確定済み」保存flagも増やさない。
+- 確定済み人物には通常の選択枠・handleを使い、あたり用の青／黄枠を常設しない。未割当・要確認の注意表示と原画参照は残す。panelとpage_overlayで同じ判定を再利用する。
+- 合格: 同じ人物はartworkの有無・ペイント開閉で枠の意味が変わらない。名前確定／Undo／再読込で一貫し、propは人物未割当として扱わない。表示を直すためのPNG生成や原稿一括書換えは0回。
+- 検証先: 既存人物表示・ラベルtestと実App。実原稿の1・2・3コマ目を比較する。
+
+#### R6: 新規OCRの文字あたり原本を初期非表示にする
+
+- 対象候補: `analogTextCrops.ts`、必要な場合のみ `bubbleOriginals.ts`、既存説明書。
+- 新規crop生成時に既存 `referenceHidden` の初期値を設定し、既存の分離処理でpaint layerの目へ引き継ぐ。分離後はそのlayerの目を正本にし、別のhidden stateと二重管理しない。
+- 保存済み作品の目、加工、lock、削除済み原本の非復活は維持。既存作品を開くたびに強制非表示にせず、実原稿の72assetsを一括変更しない。非表示でも原本を保持し、目で再表示できる。
+- 合格: 新規取込は本文が見え、原本の再表示・再非表示・保存復元が成功。分離済み作品の表示選択、明示的に表示した互換データ、削除済み原本を保持する。
+- 検証先: `analogTextCrops.test.mjs`、`bubbleOriginals.test.mjs`、`projectPersistence.test.mjs` と通常の取込UI。
+
+#### R7: 拡張輪郭内の本文移動と不要な破線を修正する
+
+- 対象候補: `MangaCanvas.tsx`、`bubbleClip.ts`、`BubbleBezierEditor.tsx`／`bubbleBezier.css`、`types.ts`、`manga.ts`、現行NDM日英仕様・生成prompt。
+- `text_position` の基準は現在のbboxのままにし、有限の0–1外の値も許容する。dragと表示helperのclampを外し、validator・保存往復・出力も一致させる。欠落時の中央配置と非有限値の拒否は保持する。
+- 輪郭編集だけで本文の位置や保存の正当性が変わらないよう、動的な輪郭boundsへ保存座標を再定義／再clampしない。既存0–1の作品の見た目は変えない。
+- 利用者指定のAダイレクト選択の破線rectを撤去する。Tの本文移動用hit領域、Aの輪郭・アンカー・handle、Vの通常選択は残す。破線を別の枠へ置き換えて残さない。共有の小型ベジェ編集UIへの影響を確認し、紙面上だけを撤去する必要があれば既存overlay条件に限定する。
+- `bubbleTextPosition` は画面・PNG/PSD・生成入力合成・paint guideで共用する。guide側のoverflowで正式な本文位置が切られる場合はその既存表示を直し、別の本文描画を追加しない。
+- 合格: 実原稿の拡張された吹き出し内で、元bboxを越えて文字を移動できる。1操作のUndo/Redo、保存再読込、YAML往復、PNG/生成入力用合成で同位置。Aで輪郭だけ再編集しても本文位置不変。破線なしでもアンカー選択・取消し・T本文編集は使える。
+- 検証先: `bubbleClip.test.mjs`、`bubbleTextLayout.test.mjs`、`ndmMetadata.test.mjs`、`projectPersistence.test.mjs`、`textToolInteraction.browser.tsx`、既存実canvas出力fixture。
+
+#### R8: 灰色の余白へ紙面をパンできるようにする
+
+- 対象候補: `App.tsx` のsingle/spread shell、`MangaCanvas.tsx` のfit／zoom境界、`global.css`。
+- 既存scroll surface／stageを単ページと見開きで共通利用し、四方向にviewport規模の移動余白を持たせる。位置の正本はDOM scroll offsetだけ。pan offset state・祖先scale・別transformを追加しない。
+- 見開き判定を単なる `.spread-pane` の存在に依存させたまま共通化しない。単ページの印刷guideが2ページ幅にならないことを先に固定する。
+- fit用のinsetと移動用余白を分離する。大きな余白paddingをそのまま `fitPaper` の差引対象へ入れない。zoomのanchorも固定余白を含むstage比率ではなく、紙面／見開きpair上の同じ点を保持する計算へ合わせる。初回／明示fitと、通常resize／zoom時の位置保持を分け、既存anchor補正と余白調整を一つの更新経路で扱う。両方からscrollを補正しない。
+- 合格: fitでも紙面上部を画面下側まで運べ、左右上下へ動く。移動・zoom後もペン／文字／ベジェ／投げ縄の位置が一致。単ページの初期中央、見開きのノド・共通倍率、cursor中心zoom、input中Space、ドラッグ途中のcancelを保持。作品の座標・Undo・保存データは不変。
+- 検証先: `canvasPan.browser.tsx` のsingle／spreadと既存zoom・gesture試験、`canvasLayering.test.mjs`。実原稿でSpace操作を改めて確認する。
+
+#### R9: 既存P9aの残件と統合確認
+
+- P9aを完了済みにしない。投げ縄が描画画像外へ出る場合、横／縦の過大選択、実際にtone等を作る際のメモリー上限を分けて検証する。上限を超えた際に利用者の選択範囲を黙って切り詰めず、既存の描画容量制限へ集約し、失敗時も選択と原稿を保つ。必要な修正は独立commitにする。
+- `USAGE.md` の説明を実測した挙動に合わせ、P9aの既存69testsに実UI・境界条件を追加する。R8後の座標ずれもここで再検査する。
+- 全体 `npm run verify`、通常／単一HTML build、合成fixtureのUI、実原稿の選択→編集→Undo/Redo→保存→再読込を分けて記録する。生成合成の検証はモデル実行の成功とは呼ばない。
+- P9b/cache・P9c/renderer性能・P9d/guide重複decodeはこの不具合群の完了条件へ混ぜない。R1/R2で解消した範囲を差し引いてから、残存負荷だけ再計画する。
+
+### 9.3 競合・二重処理・Gitの運用
+
+- 現在の回復点は `1393d26`。別作業の7 trackedファイル（README、LAN文書／起動script、3D文書、`BackgroundModelPicker.tsx`、`DocumentEditors.tsx`、`humanPoseSkeleton.ts`）と未追跡資料は保持する。修正がこれらへ広がる場合は先に所有範囲を再確認する。
+- この計画段階の書込対象は本書だけ。実装開始前に掲示板を再読し、各段の正確なpathを予約する。`App.tsx`、`MangaCanvas.tsx`、`PaintEditor.tsx`、CSSは複数段が重なるため親が逐次編集する。agentへ並行依頼する場合も読取専用レビューに限定し、同じtreeへ同時編集させない。
+- 各段で「再現する既存testの追加 → 既存経路の修正 → 関連test・必要な実UI → 全diff／stage確認 → exact pathだけcommit」の順に進む。未使用helperだけ、壊れたtestだけの中間commitを安定点としない。
+- R3/R7の現行NDM文書には更新履歴を書かず、変更経緯は本書へ残す。生成prompt本文の変更は差分レビューを挟み、利用者確認前に実モデルの試行をしない。
+- 失敗した段は次へ進めず、その段だけを修正する。戻す必要があれば依存を確認し、自分のcommitのみを対象としたrevert等で回復する。他作業を含むreset／restore／自動stash／amendはしない。Gitの回復点はコード用であり、実原稿の復元を代用しない。
+- 実原稿は、まず合成fixtureでR1の無操作不変・失敗復帰を通してから扱う。最初のclose／通常保存より前に、現在のdocument・未保存paintのsnapshot/imports・原本・既存保存状態を非破壊で保全する。未保存状態を既存経路で損失なく保持できない場合は操作を止める。通常保存もflushを呼ぶため、「先に保存すれば安全」と扱って変化後を基準にしない。保全後に利用者の最新状態との整合を確認して基準を確定する。
+- 確認用の変更だけを戻し、document・asset参照と原本byteを照合する。原本を削除せず、テスト作品をアプリへ同梱しない。検証serverは自起動分だけ最後に停止し、PIDとport解放を確認する。
+- この計画作成中は本体コード・実原稿を変更せず、server／モデルも起動していない。修正の効果・安全性はまだ未検証であり、先行69tests成功をR1以降の合格と扱わない。
