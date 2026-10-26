@@ -3224,13 +3224,12 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   function changeTextToolStyle(patch:TextStylePatch){
     setTextToolStyle(current=>{
       const item={text:'',orientation:current.orientation??'vertical',text_style:{...current}};
-      updateTextStyle(item,'screen_text',patch);
-      return textStyleOf(item,'screen_text');
+      return updateTextStyle(item,'screen_text',patch)?textStyleOf(item,'screen_text'):current;
     });
   }
   function changeCanvasTextStyle(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
     if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
-    try{const next=cloneDocument(documentRef.current);if(editCanvasTextStyle(next,target,patch,selection)){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}}
+    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection);if(next!==documentRef.current){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}}
     catch(error){setToast(error instanceof Error?error.message:'文字設定を変更できません');}
   }
   function canvasTextHistory(direction:'undo'|'redo'){
@@ -3730,10 +3729,12 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     value: number,
   ) => {
     if (!Number.isFinite(value)) return;
-    const next = cloneDocument(document);
     const maximum = key === 'bubble_line_width_mm' ? 2 : key === 'panel_frame_width_mm' ? 5 : 20;
     const minimum = key === 'bubble_line_width_mm' || key === 'panel_frame_width_mm' ? 0.1 : 0;
-    next.manga.meta[key] = Math.round(clamp(value, minimum, maximum) * 10) / 10;
+    const normalized = Math.round(clamp(value, minimum, maximum) * 10) / 10;
+    if (documentRef.current.manga.meta[key] === normalized) return;
+    const next = cloneDocument(documentRef.current);
+    next.manga.meta[key] = normalized;
     setDocument(next);
   };
   const changeBubbleTail = (selection: CanvasElementSelection, tail?: BubbleTailTarget, patch?:{bezier?:NonNullable<import('../types').Bubble['bezier']>;tailRoot?:import('../types').BubbleTailRoot;textPosition?:import('../types').BubbleTextPosition}) => {

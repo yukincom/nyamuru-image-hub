@@ -43,12 +43,14 @@ export function updateTextStyle(item:Bubble|ScreenText,kind:'bubble'|'screen_tex
   const next={...item.text_style,...patch};
   if(next.fontSize===null)delete next.fontSize;
   if(!validTextStyle(next))throw Error('文字設定を確認してください（4〜144 pt、太さ100〜900）');
+  let changed=false;
   if(selection&&selection.end>selection.start&&patch.fontWeight!==undefined){
-    applyTextWeight(item,selection,patch.fontWeight);
+    changed=applyTextWeight(item,selection,patch.fontWeight);
     if(item.text_style?.fontWeight===undefined)delete next.fontWeight;else next.fontWeight=item.text_style.fontWeight;
-  }else if(patch.fontWeight!==undefined)delete item.text_weights;
-  if(kind==='screen_text'&&patch.orientation)(item as ScreenText).orientation=patch.orientation;
-  item.text_style=next as TextStyle;
+  }else if(patch.fontWeight!==undefined&&item.text_weights!==undefined){delete item.text_weights;changed=true;}
+  if(kind==='screen_text'&&patch.orientation&&(item as ScreenText).orientation!==patch.orientation){(item as ScreenText).orientation=patch.orientation;changed=true;}
+  if((['orientation','font','fontSize','fontWeight'] as const).some(key=>item.text_style?.[key]!==next[key])){item.text_style=next as TextStyle;changed=true;}
+  return changed;
 }
 export function applyTextWeight(item:TextItem,selection:TextSelection,fontWeight:number){
   const {start,end}=selection;
@@ -61,7 +63,8 @@ export function applyTextWeight(item:TextItem,selection:TextSelection,fontWeight
   ranges.push({start,end,fontWeight});ranges.sort((a,b)=>a.start-b.start);
   const merged:TextWeightRange[]=[];
   for(const r of ranges){const last=merged.at(-1);if(last&&last.end===r.start&&last.fontWeight===r.fontWeight)last.end=r.end;else merged.push(r);}
-  item.text_weights=merged;
+  if(item.text_weights?.length===merged.length&&merged.every((range,i)=>{const old=item.text_weights![i];return old.start===range.start&&old.end===range.end&&old.fontWeight===range.fontWeight;}))return false;
+  item.text_weights=merged;return true;
 }
 /** Preserve styles outside an actual edit, without moving emphasis onto replacement text. */
 export function rebaseTextWeights(item:TextItem,nextText:string,edit?:TextSelection){

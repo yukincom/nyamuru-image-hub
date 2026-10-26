@@ -76,6 +76,7 @@ export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;laye
   const layers=[...owner.paint.layers];let index=layers.findIndex(layer=>layer.id===pending.layerId);
   if(index<0){if(!pending.addedLayer||!pending.paths.length||layers.length>=64)return scene;index=layers.length;layers.push(pending.addedLayer);}
   const layer=layers[index];if(layer.locked||!layer.visible||layer.kind!=='vector')return scene;
+  if(index<owner.paint.layers.length&&pending.paths.length===(layer.paths?.length??0)&&pending.paths.every((path,i)=>path===layer.paths![i]))return scene;
   // A source composition crop is not an editing frame. Keep authored crops;
   // new marks on cropped content already use an unrestricted sibling layer.
   const previous=new Map((layer.paths??[]).map(path=>[path.id,path]));

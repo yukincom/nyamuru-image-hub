@@ -391,14 +391,14 @@ test('one source line per pending bubble is suggested between anchors, skipping 
 });
 
 test('detached confirmation is free text and exports the edited master without external linkage', async () => {
-  const document=documentWith(['???']);
+  let document=documentWith(['???']);
   document.manga.pages[0].panels[0].figures=[];
   applyScenarioToNewDocument(document,source(script('外部の話者「候補の原文」')));
   const location={pageIndex:0,panelIndex:0,bubbleIndex:0};
   confirmScenarioCorrespondence(document,location,['p1-c1-d1']);
   const target={pageIndex:0,panelIndex:0,index:0,overlay:false,kind:'bubble'};
   editCanvasText(document,target,'完全に書き直した\n清書の本文');
-  editCanvasTextStyle(document,target,{fontSize:21,font:'游明朝',fontWeight:700});
+  document=editCanvasTextStyle(document,target,{fontSize:21,font:'游明朝',fontWeight:700});
   const bubble=bubbles(document)[0];bubble.text_position={x:.2,y:.7};
   const before=structuredClone(bubble);
   linkScenarioSpeaker(document,'外部の話者','haru');

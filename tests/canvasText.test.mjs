@@ -21,6 +21,23 @@ function appHandler(name,context){
  let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(appAst)===name)body=node.initializer?.getText(appAst);if(ts.isFunctionDeclaration(node)&&node.name?.text===name)body=node.getText(appAst);ts.forEachChild(node,visit);}visit(appAst);assert.ok(body,name);
  return runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText,context);
 }
+test('actual style and normalized panel controls leave history, redo and save state untouched on no-ops',()=>{
+ const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
+ canvasTextAt(documentRef.current,target).text_style={fontSize:18};
+ const imageGesture={current:{active:true,pushed:true}},lastHistoryPush={current:123};let updates=0,preferences=0,clones=0;
+ const context={documentRef,paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,editCanvasTextStyle,canvasTextAt,textStyleOf:item=>item.text_style,
+  changeTextToolStyle:()=>preferences++,imageGesture,lastHistoryPush,setDocument:next=>{updates++;documentRef.current=next;},setToast:message=>assert.fail(message),
+  cloneDocument:doc=>{clones++;return structuredClone(doc);},clamp:(v,min,max)=>Math.max(min,Math.min(max,v))};
+ const change=appHandler('changeCanvasTextStyle',context);
+ change(target,{fontSize:18});assert.equal(updates,0);assert.equal(preferences,0);assert.deepEqual(imageGesture.current,{active:true,pushed:true});assert.equal(lastHistoryPush.current,123);
+ change(target,{fontSize:19});assert.equal(updates,1);assert.equal(preferences,1);
+ change(target,{fontSize:19});assert.equal(updates,1);
+ const panel=appHandler('changePanelStyleNumber',context);
+ for(const key of ['bubble_line_width_mm','panel_frame_width_mm','panel_gutter_row_mm','panel_gutter_column_mm']){
+  documentRef.current.manga.meta[key]=.5;panel(key,.51);assert.equal(clones,0);assert.equal(updates,1);
+ }
+ panel('panel_frame_width_mm',.6);assert.equal(clones,1);assert.equal(updates,2);
+});
 test('the actual canvas route edits on a normal double click or T single click, never creates on a blank double click',()=>{
  const source=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
  const ast=ts.createSourceFile('MangaCanvas.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
@@ -124,20 +141,20 @@ test('removing one native bubble repairs joins and cleans an empty page overlay'
 });
 
 test('T click makes the point the start of ordinary text and keeps page text through save',()=>{
- const d=fixture();
+ let d=fixture();
  const panel=addCanvasTextAt(d,0,0,{x:40,y:70}),overlay=addCanvasTextAt(d,0,null,{x:205,y:292});
  assert.ok(panel&&overlay);
  assert.equal(panel.overlay,false);assert.equal(overlay.overlay,true);
- const panelItem=canvasTextAt(d,panel),initial=structuredClone(panelItem.bbox);
+ let panelItem=canvasTextAt(d,panel);const initial=structuredClone(panelItem.bbox);
  assert.ok(Math.abs(panelItem.bbox.x+panelItem.bbox.w-40)<1e-9);assert.equal(panelItem.bbox.y,70);
  editCanvasText(d,panel,'右\n左');
  assert.ok(Math.abs(panelItem.bbox.x+panelItem.bbox.w-40)<1e-9);assert.equal(panelItem.bbox.y,70);assert.ok(panelItem.bbox.w>initial.w);
  const verticalStart={x:panelItem.bbox.x+panelItem.bbox.w,y:panelItem.bbox.y};
- editCanvasTextStyle(d,panel,{orientation:'horizontal'});
+ d=editCanvasTextStyle(d,panel,{orientation:'horizontal'});panelItem=canvasTextAt(d,panel);
  assert.equal(panelItem.bbox.x,verticalStart.x);assert.equal(panelItem.bbox.y,verticalStart.y);
  editCanvasText(d,panel,'上');const oneLineHeight=panelItem.bbox.h;editCanvasText(d,panel,'上\n下');
  assert.equal(panelItem.bbox.x,verticalStart.x);assert.equal(panelItem.bbox.y,verticalStart.y);assert.ok(panelItem.bbox.h>oneLineHeight);
- const beforeSize=structuredClone(panelItem.bbox);editCanvasTextStyle(d,panel,{fontSize:24});
+ const beforeSize=structuredClone(panelItem.bbox);d=editCanvasTextStyle(d,panel,{fontSize:24});panelItem=canvasTextAt(d,panel);
  assert.ok(panelItem.bbox.w>beforeSize.w);assert.ok(panelItem.bbox.h>beforeSize.h);
  const overlayItem=canvasTextAt(d,overlay);assert.equal(overlayItem.text_style.fontSize,12);assert.equal(overlayItem.orientation,'vertical');
  assert.ok(Math.abs(overlayItem.bbox.x+overlayItem.bbox.w-205)<1e-9);assert.equal(overlayItem.bbox.y,292);
@@ -185,12 +202,12 @@ test('native text fitting does not depend on the OCR image visibility metadata',
 });
 
 test('font, size and weight changes never move or resize a bubble through any selection path',()=>{
- const d=fixture(),target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false},bubble=canvasTextAt(d,target);
+ let d=fixture();const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false},bubble=canvasTextAt(d,target);
  bubble.bbox={x:31,y:42,w:27,h:38};bubble.text_position={x:.72,y:.28};bubble.text_weights=[{start:0,end:2,fontWeight:700}];
  const geometry=structuredClone({bbox:bubble.bbox,text_position:bubble.text_position});
- assert.equal(editCanvasTextStyle(d,target,{font:'BIZ UDP明朝'}),true);assert.deepEqual({bbox:bubble.bbox,text_position:bubble.text_position},geometry);
- assert.equal(editCanvasTextStyle(d,target,{fontWeight:900},{start:1,end:3}),true);assert.deepEqual({bbox:bubble.bbox,text_position:bubble.text_position},geometry);
- assert.equal(editCanvasTextStyle(d,target,{fontSize:38}),true);assert.deepEqual({bbox:bubble.bbox,text_position:bubble.text_position},geometry);
+ for(const [patch,selection] of [[{font:'BIZ UDP明朝'}],[{fontWeight:900},{start:1,end:3}],[{fontSize:38}]]){
+  const next=editCanvasTextStyle(d,target,patch,selection);assert.notEqual(next,d);d=next;const item=canvasTextAt(d,target);assert.deepEqual({bbox:item.bbox,text_position:item.text_position},geometry);
+ }
 });
 
 test('moving an empty native bubble over ordinary text detects one eligible source and rejects painted bubbles',()=>{

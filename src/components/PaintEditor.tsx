@@ -383,7 +383,12 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     try{commit(commitVectorPaths(current,{ownerKey:owner.key,layerId:layer.id,paths:update(currentLayer.paths??[])}));}
     catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');}
   }
-  function changeVectorStyle(patch:Partial<VectorStyle>){setVectorStyle(s=>({...s,...patch}));if(!vectorMode||brushInk)return;changePaths(paths=>paths.map(p=>vectorSelected.includes(p.id)?{...p,style:{...p.style,...patch}}:p));}
+  function changeVectorStyle(patch:Partial<VectorStyle>){
+    const keys=Object.keys(patch) as (keyof VectorStyle)[];
+    setVectorStyle(s=>keys.some(key=>s[key]!==patch[key])?{...s,...patch}:s);
+    if(!vectorMode||brushInk)return;
+    changePaths(paths=>paths.map(p=>vectorSelected.includes(p.id)&&keys.some(key=>p.style[key]!==patch[key])?{...p,style:{...p.style,...patch}}:p));
+  }
   function chooseInk(value:string|null){
     if(busy||suspended||operation.current||inputActive.current)return;
     if(inkTarget==='fill')changeVectorStyle({fill:value});

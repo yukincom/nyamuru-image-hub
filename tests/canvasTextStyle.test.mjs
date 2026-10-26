@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {parseMangaYaml,toMangaYaml,toSeparatedMangaYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
-import {changeCanvasDefaultFont,editCanvasBubbleMaterial,editCanvasText,editCanvasTextStyle} from '../src/lib/canvasText.ts';
+import {canvasTextAt,changeCanvasDefaultFont,editCanvasBubbleMaterial,editCanvasText,editCanvasTextStyle} from '../src/lib/canvasText.ts';
 import {BUBBLE_MATERIALS} from '../src/lib/bubblePresetData.ts';
 import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextWeights,textWeightSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
 import {pixelZoomWidth} from '../src/lib/canvasZoom.ts';
@@ -14,14 +14,33 @@ function cssLengthAtWidth(css,width){
 }
 const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
 
+test('same text styles keep the original work without cloning or fitting',()=>{
+  const d=fixture(),b=canvasTextAt(d,target),style=b.text_style,weights=b.text_weights;
+  Object.defineProperty(d.manga,'unrelated',{enumerable:true,get(){throw Error('no whole-work clone on a no-op');}});
+  for(const patch of [{},{fontSize:13},{font:'游明朝'},{fontSize:13,font:'游明朝'}])assert.equal(editCanvasTextStyle(d,target,patch),d);
+  assert.equal(editCanvasTextStyle(d,target,{fontWeight:800},{start:4,end:6}),d);
+  assert.equal(b.text_style,style);assert.equal(b.text_weights,weights);
+});
+test('explicit defaults, partial weight removal and orientation synchronization remain real edits',()=>{
+  const original=fixture();delete canvasTextAt(original,target).text_style.fontSize;
+  const explicit=editCanvasTextStyle(original,target,{fontSize:15});assert.notEqual(explicit,original);assert.equal(canvasTextAt(original,target).text_style.fontSize,undefined);
+  const inherited=editCanvasTextStyle(explicit,target,{fontSize:null});assert.notEqual(inherited,explicit);assert.equal(canvasTextAt(inherited,target).text_style.fontSize,undefined);
+  assert.equal(editCanvasTextStyle(inherited,target,{fontSize:null}),inherited);
+  const cleared=editCanvasTextStyle(original,target,{fontWeight:500});assert.notEqual(cleared,original);assert.equal(canvasTextAt(cleared,target).text_weights,undefined);assert.ok(canvasTextAt(original,target).text_weights);
+  assert.equal(editCanvasTextStyle(cleared,target,{fontWeight:500}),cleared);
+  original.manga.pages[0].panels[0].screen_text=[{text:'方向',orientation:'vertical',text_style:{orientation:'horizontal'}}];
+  const screen={...target,kind:'screen_text'},synced=editCanvasTextStyle(original,screen,{orientation:'horizontal'});
+  assert.notEqual(synced,original);assert.equal(canvasTextAt(synced,screen).orientation,'horizontal');assert.equal(editCanvasTextStyle(synced,screen,{orientation:'horizontal'}),synced);
+});
+
 test('OCR text styles and body change independently of original raster eyes, locks and source metadata',()=>{
   for(const visible of [false,true])for(const overlay of [false,true]){
-    const d=fixture(),bubble=d.manga.pages[0].panels[0].bubbles[0];
+    let d=fixture(),bubble=d.manga.pages[0].panels[0].bubbles[0];
     bubble.analogTextImport={assetId:'source',sourceRegionId:'region',needsReview:true,referenceHidden:false};
     bubble.paint_overlay={hidden:false,locked:false,paint:{guideInitialized:true,layers:[{id:'original',kind:'raster',visible,locked:true,opacity:.65,image:{assetId:'scan'},strokes:[]}]}};
     const raster=structuredClone(bubble.paint_overlay);
     if(overlay){d.manga.pages[0].page_overlay={bubbles:[bubble]};d.manga.pages[0].panels[0].bubbles=[];}
-    assert.equal(editCanvasTextStyle(d,{...target,overlay},{fontSize:40}),true);
+    const next=editCanvasTextStyle(d,{...target,overlay},{fontSize:40});assert.notEqual(next,d);d=next;bubble=canvasTextAt(d,{...target,overlay});
     assert.equal(bubble.text_style.fontSize,40);
     assert.equal(editCanvasText(d,{...target,overlay},'修正後の本文'),true);
     assert.equal(bubble.text,'修正後の本文');
@@ -45,9 +64,9 @@ test('all 45 dropped materials, including the seven author clouds, replace only 
   }
 });
 test('native text styling and material geometry survive stored and exported OMNY round trips',()=>{
-  const d=fixture();editCanvasBubbleMaterial(d,target,'nomal_03');
-  editCanvasTextStyle(d,target,{fontSize:16,fontWeight:700});
-  editCanvasTextStyle(d,target,{fontWeight:900},{start:4,end:6});
+  let d=fixture();editCanvasBubbleMaterial(d,target,'nomal_03');
+  d=editCanvasTextStyle(d,target,{fontSize:16,fontWeight:700});
+  d=editCanvasTextStyle(d,target,{fontWeight:900},{start:4,end:6});
   const b=d.manga.pages[0].panels[0].bubbles[0];
   assert.equal(b.text_style.fontSize,16);assert.equal(b.text_style.fontWeight,700);assert.equal(b.text_weights[0].fontWeight,900);
   assert.equal(b.emphasis,'元気');
@@ -64,8 +83,8 @@ test('text edits rebase unchanged styles while replacement characters do not inh
   assert.equal(textWeightSegments(b).map(s=>s.text).join(''),b.text);
 });
 test('size is never chosen by material replacement or weight-only edits',()=>{
-  const d=fixture(),b=d.manga.pages[0].panels[0].bubbles[0],box=structuredClone(b.bbox);
-  delete b.text_style.fontSize;editCanvasTextStyle(d,target,{fontWeight:800});editCanvasBubbleMaterial(d,target,'tense_02');
+  let d=fixture(),b=canvasTextAt(d,target);const box=structuredClone(b.bbox);
+  delete b.text_style.fontSize;d=editCanvasTextStyle(d,target,{fontWeight:800});editCanvasBubbleMaterial(d,target,'tense_02');b=canvasTextAt(d,target);
   assert.equal(b.text_style.fontSize,undefined);assert.deepEqual(b.bbox,box);
   const css=textStyleCss({fontSize:12},210);assert.ok(Math.abs(cssLengthAtWidth(css.fontSize,210)-12*25.4/72)<1e-9);
 });
@@ -106,25 +125,25 @@ test('padded paint previews use their visible reference width for the same physi
 test('hidden/locked targets, unknown materials, invalid sizes and split surrogate ranges are rejected',()=>{
   const d=fixture(),b=d.manga.pages[0].panels[0].bubbles[0];
   assert.throws(()=>editCanvasBubbleMaterial(d,target,'missing'));assert.throws(()=>editCanvasTextStyle(d,target,{fontSize:0}));
-  b.hidden=true;assert.equal(editCanvasBubbleMaterial(d,target,'nomal_01'),false);assert.equal(editCanvasTextStyle(d,target,{fontSize:20}),false);
+  b.hidden=true;assert.equal(editCanvasBubbleMaterial(d,target,'nomal_01'),false);assert.equal(editCanvasTextStyle(d,target,{fontSize:20}),d);
   delete b.hidden;b.paint_overlay={locked:true};assert.equal(editCanvasText(d,target,'bad'),false);
   assert.equal(validTextWeights([{start:1,end:2,fontWeight:700}],'🐱'),false);
   assert.equal(validTextWeights([{start:0,end:2,fontWeight:700}],'🐱'),true);
 });
 
 test('editing offsets preserve emphasis when repeated characters make full-text diff ambiguous',()=>{
-  const d=fixture(),b=d.manga.pages[0].panels[0].bubbles[0];b.text='同同';b.text_weights=[{start:0,end:1,fontWeight:800}];
+  let d=fixture(),b=canvasTextAt(d,target);b.text='同同';b.text_weights=[{start:0,end:1,fontWeight:800}];
   editCanvasText(d,target,'同同同',{start:0,end:0});assert.deepEqual(b.text_weights,[{start:1,end:2,fontWeight:800}]);
-  editCanvasTextStyle(d,target,{fontSize:18,orientation:'horizontal'});assert.deepEqual(b.text_weights,[{start:1,end:2,fontWeight:800}]);
+  d=editCanvasTextStyle(d,target,{fontSize:18,orientation:'horizontal'});b=canvasTextAt(d,target);assert.deepEqual(b.text_weights,[{start:1,end:2,fontWeight:800}]);
   editCanvasText(d,target,'同同',{start:0,end:1});assert.deepEqual(b.text_weights,[{start:0,end:1,fontWeight:800}]);
 });
 
 test('page-foreground and screen text preserve line breaks and partial weights in both OMNY forms',()=>{
-  const d=fixture(),sample=structuredClone(d.manga.pages[0].panels[0].bubbles[0]);
+  let d=fixture();const sample=structuredClone(d.manga.pages[0].panels[0].bubbles[0]);
   d.manga.pages[0].page_overlay={bubbles:[sample]};
   d.manga.pages[0].panels[0].screen_text=[{text:sample.text,text_style:sample.text_style,text_weights:sample.text_weights,orientation:'horizontal'}];
   for(const t of [{...target,overlay:true},{...target,kind:'screen_text'}]){
-    editCanvasTextStyle(d,t,{fontSize:18});editCanvasText(d,t,'今日は\n元気だよ！');
+    d=editCanvasTextStyle(d,t,{fontSize:18});editCanvasText(d,t,'今日は\n元気だよ！');
   }
   for(const serialize of [toMangaYaml,toStoredMangaYaml]){
     const r=parseMangaYaml(serialize(d)).manga.pages[0];

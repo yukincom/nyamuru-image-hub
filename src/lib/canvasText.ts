@@ -5,6 +5,7 @@ import { BUBBLE_MATERIALS, replaceBubbleMaterial } from './bubblePresetData.ts';
 import { removeBubbleAt } from './bubbleConnections.ts';
 import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
 import { rebaseTextWeights, syncBubbleEmphasisFromWeights, textStyleOf, updateTextStyle, type TextSelection, type TextStylePatch } from './textStyle.ts';
+import { cloneDocument } from './manga.ts';
 export type CanvasTextKind='bubble'|'screen_text';
 export interface CanvasTextTarget {pageIndex:number;panelIndex:number;index:number;overlay:boolean;kind:CanvasTextKind}
 const pointMm=(pt:number)=>pt*25.4/72;
@@ -54,17 +55,22 @@ export function canvasTextEditable(document:MangaDocument,t:CanvasTextTarget){
   if(!item||(!t.overlay&&(!panel||!panelVisible(panel)||panelLocked(panel))))return false;
   return t.kind!=='bubble'||!('hidden' in item&&item.hidden===true)&&!('locked' in item&&item.locked===true)&&!('paint_overlay' in item&&item.paint_overlay?.locked===true);
 }
-export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
-  if(!canvasTextEditable(document,t))return false;
-  const item=canvasTextAt(document,t)!;
+/** Return the same document on a no-op; clone the work only after a real edit. */
+export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection):MangaDocument{
+  if(!canvasTextEditable(document,t))return document;
+  const updated={...canvasTextAt(document,t)!};
+  if(!updateTextStyle(updated,t.kind,patch,selection))return document;
+  const next=cloneDocument(document),item=canvasTextAt(next,t)!;
   const origin=t.kind==='screen_text'?screenTextStart(item as ScreenText):undefined;
-  updateTextStyle(item,t.kind,patch,selection);
+  item.text_style=updated.text_style;
+  if(updated.text_weights)item.text_weights=updated.text_weights;else delete item.text_weights;
+  if(t.kind==='screen_text')(item as ScreenText).orientation=(updated as ScreenText).orientation;
   if(t.kind==='bubble'&&patch.fontWeight!==undefined)syncBubbleEmphasisFromWeights(item as Bubble);
   // A font, weight, size or orientation change is a text-only operation.
   // In particular, never recenter/expand the surrounding bubble as a side
   // effect: its authored bbox and text_position must remain byte-for-byte.
-  if(t.kind==='screen_text')fitCanvasScreenTextToText(document,t,origin);
-  return true;
+  if(t.kind==='screen_text')fitCanvasScreenTextToText(next,t,origin);
+  return next;
 }
 export function editCanvasBubbleMaterial(document:MangaDocument,t:CanvasTextTarget,id:string){
   if(t.kind!=='bubble'||!canvasTextEditable(document,t))return false;

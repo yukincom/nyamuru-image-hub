@@ -28,6 +28,21 @@ test('vector draft allocation is committed only by the same path preview/finish 
 });
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:-1,action:null,bubbles:[],figures:[{name:'人物',bbox:{x:10,y:20,w:30,h:50}}]},100,[]);
+
+test('vector styles preserve same and unselected paths so commit cannot clear redo or save',()=>{
+ const scene=initial(),owner=scene.owners[0],layer=newPaintLayer('vectors','vector');owner.paint.layers=[layer];
+ const path={id:'one',closed:false,nodes:[{x:20,y:20},{x:30,y:30}],style:defaultVectorStyle()};layer.paths=[path];
+ let preference={...path.style},result;
+ const context={vectorMode:true,brushInk:false,vectorSelected:[],setVectorStyle:update=>preference=update(preference),changePaths:update=>{result=commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:update(layer.paths)});}};
+ const change=editorHandler('changeVectorStyle',context);
+ change({width:9});assert.equal(result,scene);assert.equal(preference.width,9);
+ context.vectorSelected=['one'];
+ change({width:path.style.width,stroke:path.style.stroke,fill:path.style.fill});assert.equal(result,scene);
+ const same=preference;change({width:preference.width});assert.equal(preference,same);assert.equal(result,scene);
+ change({width:10});assert.notEqual(result,scene);assert.equal(result.owners[0].paint.layers[0].paths[0].style.width,10);assert.equal(layer.paths[0],path);
+ assert.equal(commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:[...layer.paths]}),scene);
+ const removed=commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:[]});assert.notEqual(removed,scene);assert.equal(removed.owners[0].paint.layers[0].paths.length,0);
+});
 const stroke=(x=20)=>({tool:'pen',color:'#000000',size:8,points:[{x,y:20,pressure:.8,time:0},{x:x+10,y:30,pressure:.7,time:4}]});
 test('zero-layer and guide-only owners get one work layer atomically with their first mark',()=>{
   for(const kind of ['raster','vector'])for(const guideOnly of [false,true]){
