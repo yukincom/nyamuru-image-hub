@@ -39,6 +39,11 @@ test('vector styles preserve same and unselected paths so commit cannot clear re
  context.vectorSelected=['one'];
  change({width:path.style.width,stroke:path.style.stroke,fill:path.style.fill});assert.equal(result,scene);
  const same=preference;change({width:preference.width});assert.equal(preference,same);assert.equal(result,scene);
+ for(const dash of [[],[10,10]]){
+  path.style={...path.style,dash};preference={...preference,dash};const before=preference;
+  change({dash:[...dash]});assert.equal(result,scene);assert.equal(preference,before);
+ }
+ change({dash:[5,5]});assert.notEqual(result,scene);assert.deepEqual(result.owners[0].paint.layers[0].paths[0].style.dash,[5,5]);
  change({width:10});assert.notEqual(result,scene);assert.equal(result.owners[0].paint.layers[0].paths[0].style.width,10);assert.equal(layer.paths[0],path);
  assert.equal(commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:[...layer.paths]}),scene);
  const removed=commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:[]});assert.notEqual(removed,scene);assert.equal(removed.owners[0].paint.layers[0].paths.length,0);

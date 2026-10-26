@@ -385,9 +385,11 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   }
   function changeVectorStyle(patch:Partial<VectorStyle>){
     const keys=Object.keys(patch) as (keyof VectorStyle)[];
-    setVectorStyle(s=>keys.some(key=>s[key]!==patch[key])?{...s,...patch}:s);
+    const differs=(style:VectorStyle)=>keys.some(key=>key==='dash'&&style.dash&&patch.dash
+      ?style.dash.length!==patch.dash.length||style.dash.some((value,i)=>value!==patch.dash![i]):style[key]!==patch[key]);
+    setVectorStyle(s=>differs(s)?{...s,...patch}:s);
     if(!vectorMode||brushInk)return;
-    changePaths(paths=>paths.map(p=>vectorSelected.includes(p.id)&&keys.some(key=>p.style[key]!==patch[key])?{...p,style:{...p.style,...patch}}:p));
+    changePaths(paths=>paths.map(p=>vectorSelected.includes(p.id)&&differs(p.style)?{...p,style:{...p.style,...patch}}:p));
   }
   function chooseInk(value:string|null){
     if(busy||suspended||operation.current||inputActive.current)return;
