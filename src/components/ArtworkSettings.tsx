@@ -3,24 +3,20 @@ import { useRef } from 'preact/hooks';
 import standardOmaySource from '../content/standard.omay.yaml?raw';
 import { omayFileName, parseOmayYaml, toArtworkSettingsYaml, toOmayYaml } from '../lib/manga';
 import { appendArtworkSettings, applyArtworkSettings, artworkNumberControls, artworkSettingsFromSource, getArtworkSettings, isInternalArtworkGroup, setArtworkNumber } from '../lib/artworkRules';
-import { toEditableMangaFormat } from '../lib/artworkEnglish';
-import { getOutputSettings, OUTPUT_DPI_OPTIONS, OUTPUT_FORMAT_OPTIONS, withOutputSettings } from '../lib/finishLayout';
 import type { ArtworkSettingsData, MangaDocument } from '../types';
-import { Field, SectionTitle } from './Fields';
+import { Field } from './Fields';
 
 interface Props {
   document: MangaDocument;
   onChange: (document: MangaDocument) => void;
   onNotify: (message: string) => void;
-  section?: 'output' | 'rules' | 'omay' | 'all';
+  section?: 'rules' | 'omay' | 'all';
 }
 
 export default function ArtworkSettings({ document, onChange, onNotify, section = 'all' }: Props) {
   const savedSettings = getArtworkSettings(document.manga);
   const settings: ArtworkSettingsData = { ...savedSettings, mode: 'integrated' };
   const omayInput = useRef<HTMLInputElement>(null);
-  const output = getOutputSettings(document.manga);
-  const format = toEditableMangaFormat(document.manga.meta.format);
   const update = (nextSettings: ArtworkSettingsData) => {
     const next = structuredClone(document);
     applyArtworkSettings(next.manga, nextSettings);
@@ -63,40 +59,9 @@ export default function ArtworkSettings({ document, onChange, onNotify, section 
     onNotify(archive ? 'OFFの項目も含めて設定の控えを書き出しました' : '生成指示を書き出しました');
   };
 
-  const show=(target:'output'|'rules'|'omay')=>section==='all'||section===target;
+  const show=(target:'rules'|'omay')=>section==='all'||section===target;
   return <div class="artwork-settings">
     {show('rules')&&<p class="environment-settings-note">ページ全体・コマ・人物の生成は、キャンバスの右クリックから選びます。実行するモデルは「モデル設定」で変更できます。</p>}
-    {show('output')&&<>
-    <SectionTitle title="完成画像の出力" />
-    <div class="field-grid">
-      <Field label="カラー指定">
-        <select aria-label="完成画像のカラー指定" value={format} onChange={event => {
-          try { onChange(withOutputSettings(document, { format: event.currentTarget.value })); }
-          catch (error) {
-            event.currentTarget.value = format;
-            onNotify(error instanceof Error ? error.message : 'カラー指定を確認してください');
-          }
-        }}>
-          {!OUTPUT_FORMAT_OPTIONS.some(option => option.value === format) && <option value={format}>{format || '未指定'}（現在の設定）</option>}
-          {OUTPUT_FORMAT_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-      </Field>
-      <Field label="出力解像度" hint="完成原稿のdpi">
-        <select aria-label="完成画像の出力解像度" value={output.dpi} onChange={event => {
-          try { onChange(withOutputSettings(document, { dpi: Number(event.currentTarget.value) })); }
-          catch (error) {
-            event.currentTarget.value = String(output.dpi);
-            onNotify(error instanceof Error ? error.message : '解像度を確認してください');
-          }
-        }}>
-          {!OUTPUT_DPI_OPTIONS.some(dpi => dpi === output.dpi) && <option value={output.dpi}>{output.dpi} dpi（現在の設定）</option>}
-          {OUTPUT_DPI_OPTIONS.map(dpi => <option key={dpi} value={dpi}>{dpi} dpi</option>)}
-        </select>
-      </Field>
-    </div>
-    <p class="environment-settings-note">仕上がり {output.width_mm} × {output.height_mm} mm ／ {output.trim_pixels.width} × {output.trim_pixels.height} px。目安はカラー・グレースケールが300〜350 dpi、モノクロが600 dpiです。カラーを変えても解像度は自動変更しません。</p>
-    <p class="environment-settings-note">OMNYと生成指示へ反映します。実際に生成できる画像のサイズは、利用するモデルによって異なります。</p>
-    </>}
     {show('rules')&&<>{settings.groups.filter(group => group.id !== 'page' && !isInternalArtworkGroup(settings, group.id)).map(group => <div class="artwork-rule-group" key={group.id}>
       <label class="artwork-rule-toggle">
         <input type="checkbox" checked={group.enabled} onChange={event => {

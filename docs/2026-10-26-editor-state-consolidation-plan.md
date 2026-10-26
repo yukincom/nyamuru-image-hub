@@ -197,7 +197,7 @@
 |---|---|---|
 | P0 計画・先行差分整理 | 完了 | 計画commit `aff26b8`。必要な先行実装196ファイルを分離し、ステージ内容だけの一時コピーで全体verify成功。除外した既存変更・資料は保持 |
 | 再発防止skill | 完了 | 個人skillへ配置。公式creatorの形式検証、UI metadata、配置内容一致を確認。独立agentの読み取り専用課題で既存経路・同値更新・履歴境界・Git依存を判断できることを確認し、継承／解除と同値の違いを追記 |
-| P1 印刷設定 | 未着手 | P0の分離後 |
+| P1 印刷設定 | 完了 | 印刷・原稿設定へ一本化。重複UI／writerを削除、関連53件・型検査・既存ブラウザーfixtureで検証 |
 | P2 生成先設定 | 未着手 | P1後 |
 | P3 同値更新 | 未着手 | P2後 |
 | P4 履歴境界 | 未着手 | P3後 |
@@ -227,3 +227,12 @@
 - ステージ対象だけのtreeを同じ親フォルダーの一時作業コピーへ展開し、別作業の未commit変更なしで全体検証する。通常起動の正本と依存環境は元のcheckoutを維持し、確認後は一時コピーを片付ける。
 - 一時コピーの `npm run verify` 成功: 型検査429ファイル、error/warningなし。Node 1282件中1279成功・3skip、Python451件（57skip）／18件（1skip）／45件（21skip）、通常版・単一HTML build成功。既存の同梱モデルをコピーへ補って検証し、新規モデルの取得はしていない。実モデル生成・実作品の保存は未検証。
 - P1〜P9に記録した既知の問題はこのcheckpointで解消済みとはしない。先行実装と今回の整理をGit上で区別するための回復点である。
+
+### P1: 印刷・出力設定の一本化
+
+- 先行checkpoint: `4ef428b`。
+- 残す入口: `FinishLayoutSettings` → `PrintSettingsEditor` → `withPrintSetup`。カラーは `meta.format`、サイズ・dpiは `finish_settings`。出力寸法は `getOutputSettings` から導出する。
+- 撤去: `ArtworkSettings` の即時カラー／dpi編集と `output` section、使用先がなくなった `withOutputSettings` と専用dpi候補。新しい設定storeや同期effectは追加しない。
+- 印刷所preset・カラー変更時の推奨dpi・詳細欄の手動dpiは、既存PrintSettingsEditorの仕様を維持。編集途中のdraftは「設定を適用」だけで確定し、取消しでは本文も前回設定も更新しない。
+- 旧output UI専用の `artworkOutputSettings.test.mjs` は撤去し、必要な取消し・独自値・正本への反映を既存の環境設定／印刷／出力試験へ統合した。
+- Node関連53件成功。型検査428ファイル、0 error／0 warning（既存hint 8件）。合成作品を使う既存環境設定ブラウザーfixtureで、カラー／dpi変更の取消しは更新0回、金沢印刷presetとモノクロ600dpi、0dpi拒否、手動450dpi適用後は更新1回、再表示でも450dpiと出力寸法の一致を確認。実作品の保存や印刷所への入稿はしていない。

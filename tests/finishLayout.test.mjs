@@ -4,7 +4,8 @@ import test from 'node:test';
 import { parse } from 'yaml';
 import { toEditableArtworkText } from '../src/lib/artworkEnglish.ts';
 import { applyArtworkSettings, compileArtworkForMode, getArtworkSettings, getArtworkMode, parseArtworkSettings, setArtworkNumber } from '../src/lib/artworkRules.ts';
-import { finishLayoutInstruction, getFinishLayout, getFinishSettings, getOutputSettings, validateFinishSettings, withOutputSettings, OUTPUT_DPI_OPTIONS, OUTPUT_FORMAT_OPTIONS } from '../src/lib/finishLayout.ts';
+import { finishLayoutInstruction, getFinishLayout, getFinishSettings, getOutputSettings, validateFinishSettings, OUTPUT_FORMAT_OPTIONS } from '../src/lib/finishLayout.ts';
+import { getPrintSetup, withPrintSetup } from '../src/lib/printSettings.ts';
 import { parseMangaYaml, toMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml, toOmayYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 
@@ -123,8 +124,8 @@ test('カラー3択と全解像度は保存・再読込・全生成指示で同�
   const original = sample();
   const before = structuredClone(original);
   for (const { value: format } of OUTPUT_FORMAT_OPTIONS) {
-    for (const dpi of OUTPUT_DPI_OPTIONS) {
-      const doc = withOutputSettings(original, { format, dpi });
+    for (const dpi of [150, 300, 350, 600, 1200]) {
+      const doc = withPrintSetup(original, { ...getPrintSetup(original.manga), format, dpi });
       const reopened = parseMangaYaml(toStoredMangaYaml(doc));
       assert.equal(reopened.manga.meta.format, format);
       assert.equal(reopened.manga.finish_settings.dpi, dpi);
@@ -154,10 +155,10 @@ test('既存の独自カラー・解像度や未設定原稿を表示しても�
   assert.equal(getOutputSettings(doc.manga).dpi, 450);
   assert.equal(getOutputSettings(doc.manga).format, '特色2色');
   assert.deepEqual(doc, before);
-  assert.equal(withOutputSettings(doc, { format: 'カラー漫画' }).manga.finish_settings.dpi, 450);
-  assert.equal(withOutputSettings(doc, { dpi: 600 }).manga.meta.format, '特色2色');
-  assert.throws(() => withOutputSettings(doc, { format: 'other' }));
-  assert.throws(() => withOutputSettings(doc, { dpi: 0 }));
+  assert.equal(withPrintSetup(doc, { ...getPrintSetup(doc.manga), format: 'カラー漫画' }).manga.finish_settings.dpi, 450);
+  assert.equal(withPrintSetup(doc, { ...getPrintSetup(doc.manga), dpi: 600 }).manga.meta.format, '特色2色');
+  assert.throws(() => withPrintSetup(doc, { ...getPrintSetup(doc.manga), format: '' }));
+  assert.throws(() => withPrintSetup(doc, { ...getPrintSetup(doc.manga), dpi: 0 }));
   const unset = sample();
   delete unset.manga.finish_settings;
   delete unset.manga.artwork_settings;

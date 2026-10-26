@@ -84,7 +84,7 @@ test('旧原稿を開くだけでは初期化も本体更新も行わず、既�
   assert.equal(setup.dpi, 450);
   assert.deepEqual(doc, before);
   const edited = print.withPrintSetup(doc, setup);
-  const changed = finish.withOutputSettings(edited, { dpi: 600, format: 'モノクロ漫画' });
+  const changed = print.withPrintSetup(edited, { ...print.getPrintSetup(edited.manga), dpi: 600, format: 'モノクロ漫画' });
   assert.equal(print.getPrintSetup(changed.manga).dpi, 600);
   assert.equal(print.getPrintSetup(changed.manga).format, 'モノクロ漫画');
   assert.equal('dpi' in changed.manga.print_settings, false);
@@ -142,6 +142,18 @@ test('上部操作用フォームも不正値を拒否し、修正後の最新�
   assert.equal(ui.committed.length, 1);
   assert.equal(ui.committed[0].dpi, 1200);
   assert.equal(nodes(ui.render()).find(n => n.props?.role === 'alert'), undefined);
+});
+test('独自カラーと任意dpiは初期表示で保持し、取消しは確定しない', () => {
+  const initial = { ...print.defaultPrintSetup(), format: '特色2色', dpi: 450 };
+  const before = structuredClone(initial), ui = editor(initial);
+  assert.equal(control(ui.render(), '基本表現色').props.value, '特色2色');
+  assert.equal(control(ui.render(), '解像度').props.value, 450);
+  assert.equal(control(ui.render(), '解像度を数値で指定（dpi）').props.value, 450);
+  assert.ok(nodes(control(ui.render(), '基本表現色')).some(node => node.type === 'option' && node.props.value === '特色2色'));
+  control(ui.render(), '解像度を数値で指定（dpi）').props.onInput({ currentTarget: { valueAsNumber: 300 } });
+  button(ui.render(), 'キャンセル').props.onClick();
+  assert.equal(ui.committed.length, 0);
+  assert.deepEqual(initial, before);
 });
 test('用途・表紙・色の出し分けと、表紙切替でも本文数を維持する', () => {
   const ui = editor({ ...print.defaultPrintSetup(), body_pages: 1 });

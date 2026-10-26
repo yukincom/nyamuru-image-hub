@@ -1,6 +1,6 @@
-import type { FinishSettings, Manga, MangaDocument } from '../types.ts';
+import type { FinishSettings, Manga } from '../types.ts';
 import { artworkNumberControls, getArtworkSettings } from './artworkRules.ts';
-import { toEditableMangaFormat, toEnglishMangaFormat } from './artworkEnglish.ts';
+import { toEnglishMangaFormat } from './artworkEnglish.ts';
 
 export const DEFAULT_FINISH_SETTINGS: FinishSettings = { width_mm: 210, height_mm: 297, dpi: 350, bleed_mm: 0 };
 
@@ -9,19 +9,6 @@ export const OUTPUT_FORMAT_OPTIONS = [
   { value: 'グレースケール漫画', label: 'グレースケール' },
   { value: 'モノクロ漫画', label: 'モノクロ' },
 ] as const;
-export const OUTPUT_DPI_OPTIONS = [150, 300, 350, 600, 1200] as const;
-
-/** UI変更時だけ正本を更新する。表示・モード切替では既存値や編集座標を変更しない。 */
-export function withOutputSettings(document: MangaDocument, change: { format?: string; dpi?: number }): MangaDocument {
-  const next = structuredClone(document);
-  if (change.format !== undefined) {
-    const format = toEditableMangaFormat(change.format);
-    if (!OUTPUT_FORMAT_OPTIONS.some(option => option.value === format)) throw new Error('カラー・グレースケール・モノクロから選択してください');
-    next.manga.meta.format = format;
-  }
-  next.manga.finish_settings = validateFinishSettings({ ...getFinishSettings(next.manga), ...(change.dpi !== undefined ? { dpi: change.dpi } : {}) });
-  return next;
-}
 
 export function validateFinishSettings(settings: FinishSettings): FinishSettings {
   if (!settings || !Number.isFinite(settings.width_mm) || settings.width_mm <= 0 || !Number.isFinite(settings.height_mm) || settings.height_mm <= 0

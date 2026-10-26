@@ -53,6 +53,8 @@ function loadComponent(file, globals = {}) {
     '../lib/localBridge': globals.localBridge ?? stub,
     '../lib/bubbleFonts': { BUBBLE_FONT_PRESETS: ['アンチック体'] },
     './FontFamilyPicker': { __esModule: true, default: 'FontFamilyPicker' },
+    './FinishLayoutSettings': { __esModule: true, default: 'FinishLayoutSettings', FinishTextSettings: 'FinishTextSettings' },
+    './ArtworkSettings': { __esModule: true, default: 'ArtworkSettings' },
     '../content/standard.omay.yaml?raw': { __esModule: true, default: read('src/content/standard.omay.yaml') },
   };
   const compiled = ts.transpileModule(read(file), { compilerOptions: {
@@ -217,7 +219,9 @@ test('環境設定はテキスト専用タブを廃止して7分類で1枚だけ
   assert.equal(nodes(panel(tree, 'display')).filter(node => node.props?.type === 'checkbox').length, 3);
   assert.equal(nodes(panel(tree, 'data')).filter(node => node.props?.type === 'checkbox').length, 0);
   assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 0);
-  for(const [id,section] of [['page','output'],['generation','rules'],['omay','omay']]){
+  assert.equal(nodes(panel(tree, 'page')).filter(node => node.type === 'FinishLayoutSettings').length, 1);
+  assert.equal(nodes(panel(tree, 'page')).some(node => node.type === 'ArtworkSettings'), false);
+  for(const [id,section] of [['generation','rules'],['omay','omay']]){
     const artwork = find(panel(tree, id), node => node.props?.section === section);
     assert.equal(artwork.props.document, props.document);
     assert.equal(artwork.props.onNotify, props.onNotify);
@@ -276,6 +280,35 @@ test('基本書体・出力・コマはレイアウト、生成用テキスト�
   }
   assert.deepEqual(calls, [['cursor', 'crosshair'], ['frame', 1.2], ['row', 6], ['column', 4]]);
   assert.deepEqual(document, before);
+});
+
+test('印刷設定は確定だけで更新し、取消し・再表示は本文と保存を変更しない', () => {
+  const component = loadComponent('src/components/FinishLayoutSettings.tsx');
+  let document = sample(), changes = 0;
+  const before = structuredClone(document);
+  const props = () => ({ document, onChange: next => { document = next; changes++; }, onNotify() {} });
+  const edit = () => {
+    button(component.render(props()), '変更').props.onClick();
+    return find(component.render(props()), node => node.type === 'default').props;
+  };
+  edit().onCancel();
+  assert.deepEqual(document, before);
+  assert.equal(component.writes.length, 0);
+  const first = edit();
+  first.onConfirm({ ...first.initial, format: 'グレースケール漫画', dpi: 450 });
+  assert.equal(changes, 1);
+  assert.equal(component.writes.length, 1);
+  const output = finish.getOutputSettings(document.manga);
+  assert.match(text(component.render(props())), new RegExp(`${output.trim_pixels.width} × ${output.trim_pixels.height} px`));
+  const reopened = edit();
+  assert.equal(reopened.initial.dpi, 450);
+  assert.equal(reopened.initial.format, 'グレースケール漫画');
+  reopened.onCancel();
+  component.render(props());
+  assert.equal(changes, 1);
+  assert.equal(component.writes.length, 1);
+  const rules = loadComponent('src/components/ArtworkSettings.tsx').render(props());
+  assert.equal(nodes(rules).some(node => /完成画像の|出力解像度/.test(node.props?.['aria-label'] ?? '')), false);
 });
 
 test('左右キー・Home・Endは設定タブの選択とフォーカスを移し、作品ショートカットへ伝播しない', () => {
@@ -449,9 +482,7 @@ test('用紙設定を編集画面へ反映し、下書き中も文字サイズ�
   const finishProps = () => ({ ...props(), onNotify: () => {} });
   button(component.render(finishProps()), '変更').props.onClick();
   const editor = find(component.render(finishProps()), node => node.type === 'default');
-  editor.props.onConfirm({ ...print.getPrintSetup(document.manga), width_mm: 148, height_mm: 210, bleed_mm: 3 });
-  const artworkComponent = loadComponent('src/components/ArtworkSettings.tsx');
-  find(field(artworkComponent.render(props()), '出力解像度'), node => node.type === 'select').props.onChange({ currentTarget: { value: '600' } });
+  editor.props.onConfirm({ ...print.getPrintSetup(document.manga), width_mm: 148, height_mm: 210, dpi: 600, bleed_mm: 3 });
   assert.deepEqual(clone(document.manga.finish_settings), { width_mm: 148, height_mm: 210, dpi: 600, bleed_mm: 3 });
   assert.ok(document.manga.pages.every(page => page.canvas.w === 148 && page.canvas.h === 210));
   assert.equal(document.manga.pages.length, before.manga.pages.length);
@@ -460,10 +491,6 @@ test('用紙設定を編集画面へ反映し、下書き中も文字サイズ�
   assert.equal(document.manga.artwork_settings.mode, 'draft');
   assert.equal(finish.getFinishLayout(document.manga).text.typography_groups[0].values.header, 6.2);
   assert.doesNotMatch(document.manga.meta.style_notes.join('\n'), /ヘッダーの文字:/);
-  const invalid = artworkComponent.render({ document, onChange: () => assert.fail('invalid input'), onNotify: () => {} });
-  const event = { currentTarget: { value: '0' } };
-  find(field(invalid, '出力解像度'), node => node.type === 'select').props.onChange(event);
-  assert.equal(event.currentTarget.value, '600');
 });
 
 test('旧draft作品でもすべての作画候補と数値を編集でき、保存済みmodeを保持する', () => {

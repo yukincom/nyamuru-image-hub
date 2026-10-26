@@ -1,5 +1,5 @@
 import { applyArtworkSettings, artworkNumberControls, getArtworkSettings, setArtworkNumber } from '../lib/artworkRules';
-import { FINISH_NUMBER_IDS } from '../lib/finishLayout';
+import { FINISH_NUMBER_IDS, getOutputSettings } from '../lib/finishLayout';
 import { useState } from 'preact/hooks';
 import PrintSettingsEditor from './PrintSettingsEditor';
 import { getPrintSetup, printSummary, savePrintPreferences, withPrintSetup, type PrintSetup } from '../lib/printSettings';
@@ -11,6 +11,7 @@ interface Props { document: MangaDocument; onChange: (document: MangaDocument) =
 export default function FinishLayoutSettings({ document, onChange, onNotify }: Props) {
   const [editing, setEditing] = useState(false);
   const setup = getPrintSetup(document.manga);
+  const output = getOutputSettings(document.manga);
   const apply = (next: PrintSetup) => {
     onChange(withPrintSetup(document, next));
     setEditing(false);
@@ -24,6 +25,10 @@ export default function FinishLayoutSettings({ document, onChange, onNotify }: P
     {editing
       ? <PrintSettingsEditor initial={setup} lockedPageCount={document.manga.pages.length || 1} onConfirm={apply} onCancel={() => setEditing(false)} confirmLabel="設定を適用" />
       : <div class="print-summary"><p>{printSummary(setup)}{setup.printer && <small>{setup.printer}{setup.product ? ` ／ ${setup.product}` : ''}</small>}</p><button type="button" class="secondary-button" onClick={() => setEditing(true)}>変更</button></div>}
+    {!editing && <>
+      <p class="environment-settings-note">完成画像: {output.trim_pixels.width} × {output.trim_pixels.height} px（塗り足し込み {output.bleed_pixels.width} × {output.bleed_pixels.height} px）。</p>
+      <p class="environment-settings-note">印刷・原稿設定は画像の書き出しと生成指示へ反映します。実際に生成できる画像のサイズは、利用するモデルによって異なります。</p>
+    </>}
   </div>;
 }
 

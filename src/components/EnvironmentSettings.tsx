@@ -199,7 +199,6 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
       </div>
       {hasDocument && <section class="environment-tab-panel" id="environment-panel-page" role="tabpanel" aria-labelledby="environment-tab-page" tabIndex={0} hidden={activeTab !== 'page'}>
         <FinishLayoutSettings document={document} onChange={onChangeDocument} onNotify={onNotify} />
-        <ArtworkSettings section="output" document={document} onChange={onChangeDocument} onNotify={onNotify} />
         <SectionTitle title="文字" />
         <p class="environment-settings-note">新しく追加する文字の基本書体です。配置済みの文字は変更しません。</p>
         <Field label="作品の基本書体" wide>
