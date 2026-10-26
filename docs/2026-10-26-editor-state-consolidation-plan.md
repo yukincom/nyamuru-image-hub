@@ -203,7 +203,7 @@
 | P4 履歴境界 | 完了 | 既存imageGestureへサイズ操作を接続。関連51件・型検査・実UI成功、独立レビューでP4指摘なし |
 | P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
-| P7a–c ディスク保存 | 未着手 | 個別commit |
+| P7a–c ディスク保存 | 実装中 | P7a: 既存saveで検査後に同値skip。P7b/cは未着手 |
 | P8 標準名・文書 | 未着手 | 保存経路の整理後。旧読み込み互換を同時に検証 |
 | P9a–d 描画残件 | 未着手 | 設定・保存とは別commit群 |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
@@ -277,3 +277,8 @@
 - 進行中gestureは既存finishGestureで終了。3D背景はcamera snapshotを要するため、その場合だけ従来closeを使う。持ち替え中は入力面とmask／生成用overlayを隠し、同じsceneの通常表示を使う。
 - 関連Node105件、型検査428ファイル0 error／0 warning。独立レビューで見つかった持ち替え中の裏側の描画ショートカット、文字drag／矢印移動、ページ切替の境界を既存guard／transitionへ集約して補修し、再レビューで追加指摘なし。
 - 既存textToolInteractionの合成作品でペン→T→ズーム→手描き／表示設定→ペンのPNG生成数は開始時の2回から増えず、Undo／Redoで線を復元。実際の文字編集またはページ切替で4回となり、再読込後も確定した線と2ページを保持した。明示保存・失敗再試行は既存handler試験であり、実OSのフォルダー選択・実作品保存は未検証。
+
+### P7: ディスクwriterの整理
+
+- P6 commit: `3b40631`。P7aは `SeriesCatalogStore.save` だけを変更し、名前衝突・revision・資料参照の検査後、YAMLと保存metadataが同値なら書き込みを省く。参照先が同じならlinked_atも保持し、意味上の更新だけupdated_atを進める。revisionの対象は引き続きYAMLであり、metadataの多process競合保証は追加していない。
+- P7a検証: scanner bridge 85件（1skip）成功。一時fixtureの同値保存でファイル数・byte・mtime・参照ID・再リンク情報を保持し、一時ファイル作成0回。古いrevision／存在しない参照は拒否し、名称のみ／参照のみの更新は反映した。実作品への書き込みなし。

@@ -573,7 +573,6 @@ class SeriesCatalogStore:
                 **(previous_metadata or {}),
                 "series_id": series_id,
                 "series_name": series_name,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
                 "revision": next_revision,
             }
             series_directory = (
@@ -605,14 +604,22 @@ class SeriesCatalogStore:
                     raise ValueError("シリーズ資料テキストの場所が正しくありません")
                 if not reference_path.is_file() or reference_path.suffix.lower() not in WORKSPACE_TEXT_EXTENSIONS:
                     raise ValueError("シリーズ資料テキストが見つかりません")
-                metadata["character_text_reference"] = {
+                previous_reference = self.character_text_reference(metadata)
+                reference = {
                     "schema_version": 1,
                     "series_directory": str(series_directory),
                     "relative_path": reference_path.relative_to(series_directory).as_posix(),
                     "file_name": reference_path.name,
-                    "reference_id": str(self.character_text_reference(metadata).get("reference_id") or secrets.token_hex(16)),
+                    "reference_id": str(previous_reference.get("reference_id") or secrets.token_hex(16)),
+                }
+                same_reference = all(previous_reference.get(key) == value for key, value in reference.items())
+                metadata["character_text_reference"] = previous_reference if same_reference else {
+                    **reference,
                     "linked_at": datetime.now(timezone.utc).isoformat(),
                 }
+            if current_source == omny_yaml_value and metadata == previous_metadata:
+                return {"ok": True, "series_id": series_id, "series_name": series_name, "directory": str(directory), "revision": next_revision}
+            metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
             directory.mkdir(parents=True, exist_ok=True)
             with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
                 handle.write(omny_yaml_value)

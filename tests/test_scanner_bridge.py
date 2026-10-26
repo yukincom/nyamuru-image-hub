@@ -188,6 +188,41 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             self.assertFalse(store.load("仮題", "")["found"])
             self.assertTrue(store.load("正式タイトル", "")["found"])
 
+    def test_unchanged_save_keeps_bytes_timestamps_and_reference_after_validation(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            refs = root / "references"
+            refs.mkdir()
+            text = refs / "characters.md"
+            text.write_text("登場人物", encoding="utf-8")
+            store = bridge.SeriesCatalogStore(root / "catalogs")
+            source = "manga:\n  materials: []\n"
+            saved = store.save("猫の旅", "series-one", source, "", str(refs), text.name)
+            metadata = store.metadata_for("series-one")
+            metadata["character_text_reference"]["relinked_at"] = "existing relink history"
+            store.write_metadata("series-one", metadata)
+            folder = Path(saved["directory"])
+            before = {path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in folder.iterdir()}
+            with patch.object(series_catalog_store.tempfile, "NamedTemporaryFile", side_effect=AssertionError("no write")):
+                repeated = store.save("猫の旅", "series-one", source, saved["revision"], str(refs), text.name)
+                self.assertEqual(repeated, saved)
+                with self.assertRaises(bridge.SeriesCatalogConflict):
+                    store.save("猫の旅", "series-one", source, "")
+                with self.assertRaisesRegex(ValueError, "見つかりません"):
+                    store.save("猫の旅", "series-one", source, saved["revision"], str(refs), "missing.md")
+            self.assertEqual(before, {path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in folder.iterdir()})
+            reference = store.metadata_for("series-one")["character_text_reference"]
+            changed = refs / "new.md"
+            changed.write_text("追加資料", encoding="utf-8")
+            updated = store.save("猫の旅", "series-one", source, saved["revision"], str(refs), changed.name)
+            next_reference = store.metadata_for("series-one")["character_text_reference"]
+            self.assertEqual(updated["revision"], saved["revision"])
+            self.assertEqual(next_reference["reference_id"], reference["reference_id"])
+            self.assertEqual(next_reference["relative_path"], changed.name)
+            self.assertNotEqual(next_reference["linked_at"], reference["linked_at"])
+            store.save("猫の冒険", "series-one", source, saved["revision"])
+            self.assertTrue(store.load("猫の冒険", "")["found"])
+
     def test_unknown_id_reuses_same_named_series(self):
         with tempfile.TemporaryDirectory() as directory_name:
             store = bridge.SeriesCatalogStore(Path(directory_name))
