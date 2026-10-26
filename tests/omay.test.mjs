@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parse, stringify } from 'yaml';
 import { OMAY_SPEC_NAME, omayFileName, omnyFileName, panelFrameLineWidthFromStyleNotes, panelGuttersFromStyleNotes, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml, withPanelFrameLineWidthStyleNote, withPanelGutterStyleNote } from '../src/lib/manga.ts';
+import { standardRulesTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const omaySource = readFileSync(new URL('../src/content/standard-settings.yaml', import.meta.url), 'utf8');
-const sampleSource = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
+const fixtureDocument = () => standardRulesTestDocument(omaySource);
 
 test('標準OMAYテンプレートがspec情報と両ルールを持つ', () => {
   const omay = parseOmayYaml(omaySource);
@@ -31,9 +32,9 @@ test('生成プロンプト本体には定型ブロックが残っていない',
   assert.ok(prompt.includes('OMAY'));
 });
 
-test('標準とサンプルの背景ルールは一致し、bg:-1の既定値とbg:0/1/2の制約を区別する', () => {
+test('標準と中立fixtureの背景ルールは一致し、bg:-1の既定値とbg:0/1/2の制約を区別する', () => {
   const standard = parseOmayYaml(omaySource);
-  const { manga } = parseMangaYaml(sampleSource);
+  const { manga } = fixtureDocument();
   const background = source => source.layout_spec.split('### 背景詳細度(bg)\n')[1].split('\n### ')[0];
   assert.equal(background(standard), background(manga));
   const colors = notes => notes.filter(note => /bg ごとの背景色|bg:-1 の背景色/.test(note));
@@ -53,7 +54,7 @@ test('標準とサンプルの背景ルールは一致し、bg:-1の既定値と
 });
 
 test('ストーリーOMNYはスタイルOMNYのルールを含まず、作品データを保持する', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = fixtureDocument();
   const separated = parse(toSeparatedMangaYaml(document));
   assert.equal(separated.manga.meta.style_notes, undefined);
   assert.equal(separated.manga.layout_spec, undefined);
@@ -67,14 +68,14 @@ test('ストーリーOMNYはスタイルOMNYのルールを含まず、作品デ
 });
 
 test('ストーリーOMNYを読み戻すと空のスタイル欄が補完される', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = fixtureDocument();
   const reloaded = parseMangaYaml(toSeparatedMangaYaml(document));
   assert.deepEqual(reloaded.manga.meta.style_notes, []);
   assert.equal(reloaded.manga.layout_spec, '');
 });
 
 test('作品情報のルールをスタイルOMNYとして書き出すと読み戻せる', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = fixtureDocument();
   const omay = parseOmayYaml(toOmayYaml(document));
   assert.deepEqual(omay.style_notes, document.manga.meta.style_notes);
   assert.equal(omay.layout_spec, document.manga.layout_spec);
@@ -102,7 +103,7 @@ test('旧OMNYのコマ間隔を移行用ヘルパーで読み戻せる', () => {
 });
 
 test('旧OMNYの枠線幅とコマ間隔をmetaへ移し、重複指定を除く', () => {
-  const legacy = parse(sampleSource);
+  const legacy = parse(toMangaYaml(fixtureDocument()));
   delete legacy.manga.meta.panel_frame_width_mm;
   delete legacy.manga.meta.panel_gutter_row_mm;
   delete legacy.manga.meta.panel_gutter_column_mm;
@@ -126,7 +127,7 @@ test('旧OMNYの枠線幅とコマ間隔をmetaへ移し、重複指定を除く
 });
 
 test('旧OMNYの逆向きアンチック指定を正しい混植とmeta参照へ移す', () => {
-  const legacy = parse(sampleSource);
+  const legacy = parse(toMangaYaml(fixtureDocument()));
   legacy.manga.meta.style_notes = legacy.manga.meta.style_notes.filter((note) => !note.includes('meta.font'));
   legacy.manga.meta.style_notes.push('[style] 本文フォントはアンチック体（漢字＝明朝体、ひらがな・カタカナ＝ゴシック体の混植）');
   const migrated = parseMangaYaml(stringify(legacy));
@@ -135,7 +136,7 @@ test('旧OMNYの逆向きアンチック指定を正しい混植とmeta参照へ
 });
 
 test('旧OMNYの固定カラー指定を出力形式のmeta参照へ移す', () => {
-  const legacy = parse(sampleSource);
+  const legacy = parse(toMangaYaml(fixtureDocument()));
   legacy.manga.meta.style_notes = legacy.manga.meta.style_notes.filter((note) => !note.includes('meta.format'));
   legacy.manga.meta.style_notes.push('[style] カラー漫画。線画＋ベタ塗り、必要に応じてグラデーション');
   const migrated = parseMangaYaml(stringify(legacy));

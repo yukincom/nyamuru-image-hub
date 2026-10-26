@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manga-name-studio-v7';
+const CACHE_NAME = 'manga-name-studio-v8';
 const APP_SHELL = ['/', '/licenses/', '/changelog/', '/THIRD_PARTY_NOTICES.txt', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {

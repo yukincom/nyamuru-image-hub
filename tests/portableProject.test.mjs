@@ -1,15 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { parseMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { createPortableProject, restorePortableProject, portableProjectBlob, readPortableProject } from '../src/lib/portableProject.ts';
 import { blobRevision } from '../src/lib/browserFiles.ts';
 import { characterImageCacheId } from '../src/lib/browserCatalog.ts';
+import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const png = new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+y2ioAAAAASUVORK5CYII=', 'base64')], { type: 'image/png' });
 async function fixture() {
-  const document = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
+  const document = linkedTestDocument();
   document.manga.meta.series_id = 'portable-series';
   document.manga.meta.episode_id = 'portable-episode';
   const character = document.manga.characters[0];

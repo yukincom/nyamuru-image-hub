@@ -9,7 +9,6 @@
 - [HowToGuide.tsx.txt](HowToGuide.tsx.txt)：そのタブの表示実装。元のソースを変更せず、実行・型検査の対象にならない拡張子で保管。
 - [startup-intro.tsx.txt](startup-intro.tsx.txt)：初回起動の案内と漫画ビューアのJSX抜粋。
 - [styles.css](styles.css)：案内・ビューア専用CSS。レスポンシブ指定も保管。
-- [漫画1ページ目](nyamurutan-manga-p1.webp)、[漫画2ページ目](nyamurutan-manga-p2.webp)：案内に表示していた画像の同一バイトのコピー。
 
 元の配置は `src/content/how-to-guide.md`、`src/components/HowToGuide.tsx`、
 `src/components/App.tsx`、`src/styles/global.css`、`src/assets/nyamurutan-manga-p*.webp` です。
@@ -17,8 +16,7 @@
 ソース内の相対importや画面リンクは当時の参照であり、このフォルダ単体は実行可能なアプリではありません。
 再利用時は現行機能との照合と、参照先・状態管理・CSSの復元が必要です。
 
-画像の共有元と `src/lib/sampleMangaImages.ts` は、マスコット紹介ページでも利用しているため現行側に残しています。
-サンプルOMNY、現在の制作データ、NDM仕様書、生成用プロンプトはこの整理の対象ではありません。
+2026-10-27の利用者指示により、サンプル漫画の画像は現行側・この保管先の両方から削除しました。シナリオ本体と共有画像モジュールも削除済みです。以下に保管したコード中の漫画表示参照は、当時の実装記録であり復旧用の画像データではありません。利用者の制作データ、NDM仕様書、生成用プロンプトは変更していません。
 
 ## 権利表示
 

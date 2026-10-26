@@ -10,6 +10,17 @@ const archive = 'archive/legacy-howto-2026-09-05/';
 const read = path => readFileSync(new URL(path, root), 'utf8');
 const app = read('src/components/App.tsx');
 
+test('service-worker activation expires the cache that could contain removed story images', async () => {
+  const events={},deleted=[];let completion,claimed=false;
+  runInNewContext(read('public/sw.js'),{
+    self:{addEventListener:(name,handler)=>events[name]=handler,clients:{claim:()=>{claimed=true;}}},
+    caches:{keys:async()=>['manga-name-studio-v7','manga-name-studio-v8'],delete:async key=>{deleted.push(key);return true;}},
+  });
+  events.activate({waitUntil:promise=>completion=promise});
+  await completion;
+  assert.deepEqual(deleted,['manga-name-studio-v7']);assert.equal(claimed,true);
+});
+
 test('初回案内と旧使い方タブを現行UIから外し、新規作成・フォルダ読込・環境設定を表示する', () => {
   assert.doesNotMatch(app, /showHowtoIntro|HOWTO_INTRO_KEY|HowToGuide|mangaViewerPage|SAMPLE_MANGA_PAGES|id: 'howto'/);
   assert.doesNotMatch(read('src/types.ts'), /'howto'/);
@@ -38,20 +49,21 @@ test('旧使い方へのURLは空画面にせず通常のネームタブへ戻�
   }
 });
 
-test('旧本文・表示コード・画像は移動前と同一のバイト列を保管している', () => {
+test('旧本文・表示コードは保持し、撤去した漫画画像は保管先にも残さない', () => {
   const expected = {
     'how-to-guide.md': '09a4fbf76605594b5a9cbccd17de24588ce6b6da66a59b4d5a409666d576515a',
     'HowToGuide.tsx.txt': '4dcb6e4d49525ada500830707c944cb0112ec6eff4cdefc1c2c7c32fb2ed3b6f',
-    'nyamurutan-manga-p1.webp': '63d70eb5d1aff34ea2a82a7428a3127164201fb4b0a55f70c00c0ed234d10eed',
-    'nyamurutan-manga-p2.webp': '6bd9fa71a2c793a6b4d6122b36210ca7ecb17f8d92e130f32d5fd7191d268cbb',
   };
   for (const [file, digest] of Object.entries(expected)) {
     assert.equal(createHash('sha256').update(readFileSync(new URL(archive + file, root))).digest('hex'), digest, file);
   }
   for (const page of [1, 2]) {
-    assert.ok(existsSync(new URL(`src/assets/nyamurutan-manga-p${page}.webp`, root)));
+    assert.equal(existsSync(new URL(`src/assets/nyamurutan-manga-p${page}.webp`, root)), false);
+    assert.equal(existsSync(new URL(`${archive}nyamurutan-manga-p${page}.webp`, root)), false);
   }
-  assert.match(read('src/components/NyamurutanGuide.tsx'), /sampleMangaPages/);
+  assert.doesNotMatch(read('src/components/NyamurutanGuide.tsx'), /sampleMangaPages/);
+  assert.equal(existsSync(new URL('src/content/sample.yaml', root)), false);
+  assert.doesNotMatch(app, /preserveLegacySample|legacySampleRecovery|deferredSample/);
 });
 
 test('旧版表示のJSXとCSSを保管し、現行から分離した説明と参照先を用意する', () => {

@@ -13,8 +13,9 @@ import { applyPanelTemplate, mergeSelectedPanels, splitPanel } from '../src/lib/
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
 import { newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
 import { imageCrop } from '../src/lib/imagePlacement.ts';
+import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
-const sample = () => parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
+const sample = linkedTestDocument;
 const original = new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64')], { type: 'image/png' });
 async function documentWithImage() {
   const doc = sample();

@@ -143,7 +143,7 @@ test('selecting a page original then drawing opens the page scene with the origi
 });
 test('every UI opening boundary runs separation before exposing the editor',()=>{
   const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
-  assert.match(source,/separateBubbleOriginals\(await restorePortableProject\(value\)\)/);
+  assert.match(source,/separateBubbleOriginals\(await restorePortableProject\(selected.value\)\)/);
   assert.match(source,/separateBubbleOriginals\(await restoreProjectSnapshot\(loaded.snapshot\)\)/);
   assert.match(source,/separateBubbleOriginals\(startupWorkspace.document\)[\s\S]*?if\(!ready\)return/);
   assert.match(source,/setReady\(\{document:createEmptyWorkspaceDocument\(\),hasDocument:false\}\)/);

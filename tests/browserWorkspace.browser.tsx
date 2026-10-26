@@ -1,13 +1,13 @@
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import App from '../src/components/App';
-import sampleYaml from '../src/content/sample.yaml?raw';
 import { parseMangaYaml, STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga';
 import { prepareImageAsset, createImagePlacement, imageSha256 } from '../src/lib/imagePlacement';
 import { saveFigureCropAssets, deleteFigureCropAssets, loadFigureCropAsset } from '../src/lib/figureCropStore';
 import { saveCharacterReferenceImage, loadCharacterReferenceImage } from '../src/lib/localBridge';
 import { characterImageCacheId } from '../src/lib/browserCatalog';
 import { isLanClient } from '../src/lib/clientRuntime';
+import { linkedTestDocument } from './fixtures/emptyTestDocument';
 import '../src/styles/global.css';
 
 if (location.origin !== 'http://127.0.0.1:4339' || !isLanClient) throw Error('Dedicated folder test origin required');
@@ -96,7 +96,7 @@ const png=await new Promise<Blob>(resolve=>{
   canvas.toBlob(value=>resolve(value!),'image/png');
 });
 async function prepareImages() {
-  const source = parseMangaYaml(sampleYaml);
+  const source = linkedTestDocument();
   source.manga.meta.title = 'このPCのフォルダー保存';
   const current = localStorage.getItem(STORAGE_KEY);
   source.manga.meta.episode_id = current ? parseMangaYaml(current).manga.meta.episode_id : 'browser-folder-ui-fixture';

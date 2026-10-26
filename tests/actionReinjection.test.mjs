@@ -4,8 +4,9 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { applyReconciledPanelActions, buildPanelActionSuggestionRequest } from '../src/lib/panelActions.ts';
-import { newPage, parseMangaYaml } from '../src/lib/manga.ts';
+import { newPage } from '../src/lib/manga.ts';
 import { withPanelActionServices } from '../src/lib/localBridgeLifecycle.ts';
+import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const source = readFileSync(new URL('../src/components/PanelInspector.tsx', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('PanelInspector.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -18,7 +19,7 @@ visit(ast);
 
 test('再注入の実handlerは連打・処理中編集を防ぎ、完成文を反映して背景・吹き出しを保持する', async () => {
   for (const stale of [false, true, 'navigate', 'startup-edit', 'startup-navigate']) {
-    const manga = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8')).manga;
+    const manga = emptyTestDocument().manga;
     manga.pages = [newPage(1)];
     const untouched = manga.pages[0].panels[0];
     untouched.action = '隣のコマは変更しない。';

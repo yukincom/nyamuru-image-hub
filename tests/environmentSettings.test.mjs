@@ -12,9 +12,10 @@ import * as finish from '../src/lib/finishLayout.ts';
 import * as print from '../src/lib/printSettings.ts';
 import * as artworkEnglish from '../src/lib/artworkEnglish.ts';
 import * as canvasText from '../src/lib/canvasText.ts';
+import { standardRulesTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => manga.parseMangaYaml(read('src/content/sample.yaml'));
+const sample = () => standardRulesTestDocument(read('src/content/standard-settings.yaml'));
 
 // 実際のTSXを固定したhook状態で検証し、利用者の保存データは使わない。
 function loadComponent(file, globals = {}) {

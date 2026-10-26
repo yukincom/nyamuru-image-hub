@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const cli = resolve('scripts/nyamuru_source_coverage.ts');
-const omny = resolve('src/content/sample.yaml');
+const omny = resolve('tests/fixtures/source-coverage.yaml');
 
 function run(args, execArgs = []) {
   return spawnSync(process.execPath, [...execArgs, '--no-warnings', '--experimental-strip-types', cli, ...args], {
@@ -18,7 +18,7 @@ test('CLIはstdoutへstrict reportを出しnetworkやLLMを要求しない', asy
   const directory = await mkdtemp(join(tmpdir(), 'nyamuru-coverage-cli-'));
   try {
     const source = join(directory, 'episode.md');
-    await writeFile(source, 'にゃむるたん「はーーっはっはっは！ この世はにゃむるのものなのにゃーー！」\n', 'utf8');
+    await writeFile(source, 'SOURCE_TEXT_A\n', 'utf8');
     const result = run(['--source', source, '--omny', omny, '--source-relative-path', 'origin_data/episode.md']);
     assert.equal(result.status, 0, result.stderr);
     const report = JSON.parse(result.stdout);

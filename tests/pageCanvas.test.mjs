@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
-import { newPage, newPanel, parseMangaYaml, validateManga } from '../src/lib/manga.ts';
+import { newPage, newPanel, validateManga } from '../src/lib/manga.ts';
 import { defaultPrintSetup, withPrintSetup } from '../src/lib/printSettings.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
 import { getFinishLayout } from '../src/lib/finishLayout.ts';
 import { applyPanelTemplate, PANEL_TEMPLATES } from '../src/lib/panelTemplates.ts';
 import { clampedPanelDelta, movePanelEdge, movePanelVertexWithSnap, resizedBox, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame } from '../src/lib/canvasGeometry.ts';
+import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} != ${expected}`);
-const sample = () => parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
+const sample = linkedTestDocument;
 
 test('紙面変更は図形・絵・文字・前景を同じ比率で変換し、元画像と相対しっぽを保持する', () => {
   const document = sample();

@@ -7,9 +7,10 @@ import { toEnglishArtworkText, toEditableArtworkText, toEnglishMangaFormat, toEd
 import { getArtworkSettings, setArtworkNumber, compileArtworkForMode, applyArtworkSettings, artworkNumberControls, artworkSettingsFromSource } from '../src/lib/artworkRules.ts';
 import { parseMangaYaml, parseOmayYaml, toMangaYaml, toOmayYaml, toStoredMangaYaml, toSeparatedMangaYaml, toArtworkSettingsYaml } from '../src/lib/manga.ts';
 import { finishLayoutInstruction } from '../src/lib/finishLayout.ts';
+import { standardRulesTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
+const sample = () => standardRulesTestDocument(read('src/content/standard-settings.yaml'));
 const assertEnglish = text => assert.doesNotMatch(text.replaceAll('アンチック体', ''), /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u);
 const tokens = text => [...text.matchAll(/\{\{([A-Za-z][A-Za-z0-9]*)\}\}/g)].map(match => match[1]).sort();
 
@@ -98,7 +99,7 @@ test('翻訳表は重複・欠落のない双方向対応で、タグ・数値�
   }
 });
 
-test('標準・サンプル・下書き・仕上がりの固定文を英語にし、原本へ正確に戻せる', () => {
+test('標準・中立fixture・下書き・仕上がりの固定文を英語にし、原本へ正確に戻せる', () => {
   const standard = parse(read('src/content/standard-settings.yaml'));
   const doc = sample();
   for (const source of [standard, { style_notes: doc.manga.meta.style_notes, layout_spec: doc.manga.layout_spec }, compileArtworkForMode(getArtworkSettings(doc.manga), 'draft')]) {

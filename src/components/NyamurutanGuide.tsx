@@ -3,7 +3,6 @@ import settingMarkdownJa from '../content/nyamurutan-character-setting.md?raw';
 import settingMarkdownEn from '../content/nyamurutan-character-setting.en.md?raw';
 import originalImageUrl from '../assets/nyamurutan-original.webp?url';
 import referenceImageUrl from '../assets/nyamurutan-reference.webp?url';
-import { sampleMangaPages } from '../lib/sampleMangaImages';
 import DocsLangToggle from './DocsLangToggle';
 import MarkdownArticle from './MarkdownArticle';
 import type { DocsLanguage } from '../types';
@@ -82,8 +81,8 @@ export default function NyamurutanGuide({ lang, onChangeLang, onNotify }: Props)
   return <div class="document-editor">
     <div class="document-editor-head">
       <div><span class="eyebrow">Nyamuru🐱 · {en ? 'Official mascot' : '公式マスコット'} · CC BY 4.0</span><h2>{en ? 'Nyamuru-tan' : 'にゃむるたん'}</h2><p>{en
-        ? 'Fairy of the NDM data model, official mascot, and star of the sample manga. Both design and setting are CC BY 4.0 — anyone may use her freely with the credit "にゃむるたん © sa-san10 / CC BY 4.0".'
-        : 'NDMデータモデルの妖精にして公式マスコット兼サンプル漫画の主人公。デザイン・設定ともCC BY 4.0で、「にゃむるたん © sa-san10 / CC BY 4.0」のクレジットを書けば誰でも自由に使えます。'}</p></div>
+        ? 'Fairy of the NDM data model and official mascot. Both design and setting are CC BY 4.0 — anyone may use her freely with the credit "にゃむるたん © sa-san10 / CC BY 4.0".'
+        : 'NDMデータモデルの妖精にして公式マスコット。デザイン・設定ともCC BY 4.0で、「にゃむるたん © sa-san10 / CC BY 4.0」のクレジットを書けば誰でも自由に使えます。'}</p></div>
       <div class="document-head-actions markdown-resource-actions">
         <DocsLangToggle lang={lang} onChange={onChangeLang} />
         <button type="button" class="secondary-button" title={copyLabel} aria-label={copyLabel} onClick={copyMarkdown}><ClipboardCopy size={16} /><span>{en ? 'Copy setting' : '設定をコピー'}</span></button>
@@ -99,15 +98,6 @@ export default function NyamurutanGuide({ lang, onChangeLang, onNotify }: Props)
           </div>
           <figcaption><strong>{en ? image.title.en : image.title.ja}</strong><span>{en ? image.caption.en : image.caption.ja}</span></figcaption>
         </figure>)}
-        <figure class="nyamurutan-figure nyamurutan-manga-spread">
-          <div class="nyamurutan-spread-frame">
-            <img src={sampleMangaPages.page2} alt={en ? 'Page 2 of the sample manga "The Fairy Who Shows Up Uninvited, Nyamuru-tan"' : 'サンプル漫画『押しかけ妖精にゃむるたん』2ページ目'} loading="lazy" />
-            <img src={sampleMangaPages.page1} alt={en ? 'Page 1 of the sample manga "The Fairy Who Shows Up Uninvited, Nyamuru-tan"' : 'サンプル漫画『押しかけ妖精にゃむるたん』1ページ目'} loading="lazy" />
-          </div>
-          <figcaption><strong>{en ? 'Sample manga: "The Fairy Who Shows Up Uninvited, Nyamuru-tan"' : 'サンプル漫画『押しかけ妖精にゃむるたん』'}</strong><span>{en
-            ? 'Two finished pages made by running the sample OMNY through the generation workflow. The manga is right-bound, so page 1 is on the right of the spread.'
-            : 'サンプルOMNYを生成ワークフローで画像化した完成2ページ。右綴じなので、見開きの右が1ページ目です。'}</span></figcaption>
-        </figure>
       </div>
       <MarkdownArticle markdown={settingMarkdown} className="markdown-resource-document" onNotify={onNotify} />
     </div>

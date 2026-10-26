@@ -3,13 +3,12 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { parseMangaYaml, STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga.ts';
+import { STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga.ts';
 import {
   createEmptyWorkspaceDocument,
   isUnstartedDocument,
   workspaceFromStored,
-  LEGACY_SAMPLE_ARCHIVE_KEY,
-  preserveLegacySample,
+  removeBundledStoryStorage,
   storeWorkspaceDocument,
 } from '../src/lib/workspaceStartup.ts';
 
@@ -50,83 +49,71 @@ test('システム人物だけでは開始扱いにせず、ユーザー人物�
   assert.equal(workspaceFromStored(toStoredMangaYaml(document)).hasDocument, true);
 });
 
-const bundledSample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
+const archiveKey = `${STORAGE_KEY}.legacy-sample-archive`;
 const memoryStorage = (saved) => {
   const values = new Map([[STORAGE_KEY, saved]]);
-  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+  return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+};
+// Only migration identifiers: no bundled story, dialogue, layout or artwork.
+const removedStoryMarker = () => {
+  const doc = createEmptyWorkspaceDocument();
+  doc.manga.meta.title = '押しかけ妖精にゃむるたん';
+  doc.manga.characters = [{name:'にゃむるたん',role:''},{name:'ツクル',role:''}];
+  return doc;
 };
 
-test('以前のサンプルを自動表示せず、元の保存文字列を復旧用に残す', () => {
-  const startup = workspaceFromStored(bundledSample);
-  assert.equal(startup.hasDocument, false);
-  assert.equal(startup.document.manga.meta.title, '');
-  assert.equal(startup.deferredSample, bundledSample);
-  const edited = parseMangaYaml(bundledSample);
-  edited.manga.pages[0].panels[0].bubbles[0].text = '利用者が編集した台詞';
-  const editedRaw = toStoredMangaYaml(edited);
-  assert.equal(workspaceFromStored(editedRaw).deferredSample, editedRaw);
-});
-
-test('同名のオリジナル作品や別タイトルに発展させた作品は通常復元する', () => {
-  const original = createEmptyWorkspaceDocument();
-  original.manga.meta.title = '押しかけ妖精にゃむるたん';
-  assert.equal(workspaceFromStored(toStoredMangaYaml(original)).hasDocument, true);
-  const changed = parseMangaYaml(bundledSample);
-  changed.manga.meta.title = '私の新作';
-  assert.equal(workspaceFromStored(toStoredMangaYaml(changed)).hasDocument, true);
-});
-
-test('新規作品を保存する前に編集済みサンプルを原文のまま保管し、重複しない', () => {
-  const storage = memoryStorage(bundledSample);
-  assert.deepEqual(preserveLegacySample(storage), [bundledSample]);
-  assert.deepEqual(preserveLegacySample(storage), [bundledSample]);
-  assert.equal(storage.getItem(STORAGE_KEY), bundledSample);
-  const editedRaw = bundledSample.replace('休日の昼下がり。', '夕方に変更した台詞。');
-  storage.setItem(STORAGE_KEY, editedRaw);
-  const next = createEmptyWorkspaceDocument();
-  storeWorkspaceDocument(storage, next);
-  assert.equal(storage.getItem(STORAGE_KEY), toStoredMangaYaml(next));
-  assert.deepEqual(JSON.parse(storage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)), [bundledSample, editedRaw]);
-});
-
-test('容量不足や保管データ破損時は元の作品を上書きしない', () => {
-  const storage = memoryStorage(bundledSample);
-  const next = createEmptyWorkspaceDocument();
-  const failArchive = { getItem: storage.getItem, setItem: (key, value) => {
-    if (key === LEGACY_SAMPLE_ARCHIVE_KEY) throw new Error('quota');
-    storage.setItem(key, value);
-  } };
-  assert.throws(() => storeWorkspaceDocument(failArchive, next), /quota/);
-  assert.equal(storage.getItem(STORAGE_KEY), bundledSample);
-  storage.setItem(LEGACY_SAMPLE_ARCHIVE_KEY, '{broken');
-  assert.throws(() => storeWorkspaceDocument(storage, next));
-  assert.equal(storage.getItem(STORAGE_KEY), bundledSample);
-});
-
-test('復旧サンプルの継続編集では全文の保管履歴を増やさない', () => {
-  const storage = memoryStorage(bundledSample);
-  preserveLegacySample(storage);
-  for (let index = 0; index < 5; index++) {
-    const changed = bundledSample.replace('休日の昼下がり。', `利用者の編集${index}。`);
-    storeWorkspaceDocument(storage, parseMangaYaml(changed));
-    assert.equal(parseMangaYaml(storage.getItem(STORAGE_KEY)).manga.pages[0].panels[0].bubbles[0].text, parseMangaYaml(changed).manga.pages[0].panels[0].bubbles[0].text);
+test('removed story identifiers clear only its startup save and dedicated archive', () => {
+  for (const qa of [false,true]) {
+    const doc=removedStoryMarker();
+    if(qa){doc.manga.meta.title='画像配置の動作確認';doc.manga.meta.episode_id='placement-qa-20260926';}
+    doc.manga.meta.author='EDITED_MARKER';
+    const raw=toStoredMangaYaml(doc),storage=memoryStorage(raw);
+    storage.setItem(archiveKey,JSON.stringify([raw]));
+    storage.setItem('preference','keep');
+    assert.equal(workspaceFromStored(raw).hasDocument,false);
+    assert.equal('deferredSample' in workspaceFromStored(raw),false);
+    removeBundledStoryStorage(storage);
+    assert.equal(storage.getItem(STORAGE_KEY),null);
+    assert.equal(storage.getItem(archiveKey),null);
+    assert.equal(storage.getItem('preference'),'keep');
+    removeBundledStoryStorage(storage);
   }
-  assert.deepEqual(JSON.parse(storage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)), [bundledSample]);
 });
 
+test('same title alone and a separately titled work are preserved byte for byte', () => {
+  const sameTitle=createEmptyWorkspaceDocument();sameTitle.manga.meta.title='押しかけ妖精にゃむるたん';
+  const own=removedStoryMarker();own.manga.meta.title='MY_WORK';
+  for(const doc of [sameTitle,own]){
+    const raw=toStoredMangaYaml(doc),storage=memoryStorage(raw);
+    storage.setItem(archiveKey,'{broken');
+    removeBundledStoryStorage(storage);
+    assert.equal(storage.getItem(STORAGE_KEY),raw);
+    assert.equal(storage.getItem(archiveKey),null);
+    assert.equal(workspaceFromStored(raw).hasDocument,true);
+  }
+});
 
-test('assistant placement QA is archived with edits and never auto-opens the foreign cast', () => {
-  const doc = parseMangaYaml(bundledSample);
-  doc.manga.meta.title = '画像配置の動作確認';
-  doc.manga.meta.episode_id = 'placement-qa-20260926';
-  doc.manga.pages[0].panels[0].figures[0].bbox.x = 90.79;
-  const raw = toStoredMangaYaml(doc), storage = memoryStorage(raw);
-  assert.equal(workspaceFromStored(raw).hasDocument, false);
-  assert.equal(workspaceFromStored(raw).deferredSample, raw);
-  assert.deepEqual(preserveLegacySample(storage), [raw]);
-  assert.equal(storage.getItem(STORAGE_KEY), raw);
-  doc.manga.meta.episode_id = 'my-own-work';
-  assert.equal(workspaceFromStored(toStoredMangaYaml(doc)).hasDocument, true);
+test('cleanup does not erase unknown malformed works or silently report a denied removal', () => {
+  const storage=memoryStorage('{unknown'),removed=[];
+  storage.setItem(archiveKey,'{broken');
+  removeBundledStoryStorage(storage);
+  assert.equal(storage.getItem(STORAGE_KEY),'{unknown');
+  assert.equal(storage.getItem(archiveKey),null);
+  assert.throws(()=>removeBundledStoryStorage({getItem:storage.getItem,removeItem:key=>{removed.push(key);throw Error('denied');}}),/denied/);
+  assert.deepEqual(removed,[archiveKey]);
+});
+
+test('the actual App startup boundary removes the retired save before opening a document', () => {
+  const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+  const ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='initialWorkspace');
+  const code=ts.transpileModule(declaration.getText(ast)+'\ninitialWorkspace();',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  const raw=toStoredMangaYaml(removedStoryMarker()),storage=memoryStorage(raw);
+  storage.setItem(archiveKey,JSON.stringify([raw]));
+  const startup=runInNewContext(code,{localStorage:storage,removeBundledStoryStorage,STORAGE_KEY,workspaceFromStored,reconcileSplitOverlapFlags:()=>{}});
+  assert.equal(startup.hasDocument,false);
+  assert.equal(storage.getItem(STORAGE_KEY),null);
+  assert.equal(storage.getItem(archiveKey),null);
 });
 
 test('an untitled page containing only artwork is a started document', () => {
@@ -136,29 +123,24 @@ test('an untitled page containing only artwork is a started document', () => {
   assert.equal(workspaceFromStored(toStoredMangaYaml(doc)).hasDocument, true);
 });
 
-test('ordinary saves reuse known document metadata; external samples and failed writes retain protection', () => {
-  const storage=memoryStorage(null), reads=[], writes=[];
+test('ordinary saves avoid unchanged writes, retain failed-save protection and never archive', () => {
+  const storage=memoryStorage(null),writes=[];
   let fail=false;
-  const tracked={getItem:key=>{reads.push(key);return storage.getItem(key);},setItem:(key,value)=>{if(fail)throw new Error('quota');writes.push(key);storage.setItem(key,value);}};
+  const tracked={getItem:storage.getItem,setItem:(key,value)=>{if(fail)throw new Error('quota');writes.push(key);storage.setItem(key,value);}};
   const doc=createEmptyWorkspaceDocument();doc.manga.meta.title='原稿';
   let saved=storeWorkspaceDocument(tracked,doc);
-  reads.length=0;writes.length=0;
+  writes.length=0;
   assert.equal(storeWorkspaceDocument(tracked,doc,saved),saved);
   assert.equal(writes.length,0);
   const changed=structuredClone(doc);changed.manga.meta.title='編集後';
   saved=storeWorkspaceDocument(tracked,changed,saved);
-  assert.equal(saved.document,changed);assert.equal(reads.includes(LEGACY_SAMPLE_ARCHIVE_KEY),false);
+  assert.equal(saved.document,changed);
   assert.deepEqual(writes,[STORAGE_KEY]);
   fail=true;assert.throws(()=>{saved=storeWorkspaceDocument(tracked,doc,saved);},/quota/);
   assert.equal(saved.document,changed);assert.equal(storage.getItem(STORAGE_KEY),saved.serialized);
-  fail=false;storage.setItem(STORAGE_KEY,bundledSample);
-  saved=storeWorkspaceDocument(tracked,doc,saved);
-  assert.deepEqual(JSON.parse(storage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)),[bundledSample]);
-  const sample=parseMangaYaml(bundledSample);sample.manga.pages[0].panels[0].bubbles[0].text='復旧後の追加編集';
-  saved=storeWorkspaceDocument(tracked,sample,saved);
-  const sampleRaw=saved.serialized;
+  fail=false;storage.setItem(STORAGE_KEY,toStoredMangaYaml(removedStoryMarker()));
   storeWorkspaceDocument(tracked,doc,saved);
-  assert.deepEqual(JSON.parse(storage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)),[bundledSample,sampleRaw]);
+  assert.equal(storage.getItem(archiveKey),null);
 });
 
 test('actual autosave effect ignores history-only changes and protects the last saved originals after failure', () => {
@@ -176,7 +158,7 @@ test('actual autosave effect ignores history-only changes and protects the last 
   const doc=createEmptyWorkspaceDocument();doc.manga.meta.title='saved-original';
   const context={document:doc,hasDocument:true,past:[],future:[],saveTimer:{current:undefined},browserSave:{current:undefined},pendingPaintAssets:{current:new Set(['pending-original'])},timeline:{current:{past:[],future:[]}},
     localStorage:{getItem:storage.getItem,setItem:(key,value)=>{if(fail)throw new Error('quota');writes++;storage.setItem(key,value);}},
-    storeWorkspaceDocument,STORAGE_KEY,LEGACY_SAMPLE_ARCHIVE_KEY,setToast:message=>toasts.push(message),
+    storeWorkspaceDocument,STORAGE_KEY,setToast:message=>toasts.push(message),
     collectFigureCropAssetIds:document=>[document.manga.meta.title],workspaceSnapshot:()=>({document:context.document,paint:{state:{imports:[{asset:{storageId:'live-paint'}}]}}}),
     paintAssets:{prune:read=>{delayedReferences=read;references.push(read());return Promise.resolve();}},window:{clearTimeout:id=>timers.delete(id),setTimeout:fn=>{timers.set(++sequence,fn);return sequence;}}};
   const render=()=>{let index=0;runInNewContext(code,{...context,useEffect:(run,deps)=>{const slot=index++,previous=effects[slot];if(previous&&deps.every((dep,i)=>dep===previous.deps[i]))return;previous?.cleanup?.();effects[slot]={deps,cleanup:run()};}});};
@@ -192,9 +174,8 @@ test('actual autosave effect ignores history-only changes and protects the last 
   fail=false;context.document=structuredClone(context.document);render();flush();assert.equal(writes,2);
   assert.equal(workspaceFromStored(storage.getItem(STORAGE_KEY)).document.manga.meta.title,'unsaved-original');
   assert.equal(references.at(-1).includes('saved-original'),false);
-  storage.setItem(STORAGE_KEY,bundledSample);assert.equal(delayedReferences(),null,'external save after the async prune began must be protected');
+  storage.setItem(STORAGE_KEY,'externally-replaced');assert.equal(delayedReferences(),null,'external save after the async prune began must be protected');
   context.future=[];render();assert.equal(references.at(-1),null,'history-only change must not collect a closed tab\'s saved originals');
-  storage.setItem(STORAGE_KEY,context.browserSave.current.serialized);storage.setItem(LEGACY_SAMPLE_ARCHIVE_KEY,'[]');
-  context.future=[];render();assert.equal(references.at(-1),null);
+  storage.setItem(STORAGE_KEY,context.browserSave.current.serialized);
   context.localStorage.getItem=()=>{throw new Error('denied');};assert.equal(delayedReferences(),null);
 });

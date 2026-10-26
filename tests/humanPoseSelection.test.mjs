@@ -12,6 +12,7 @@ import { cubeGlb } from './background3dFixture.mjs';
 import { prepareBackgroundStage } from '../src/lib/background3d.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { confirmHumanPoseCameraPrompt, humanPoseCameraPromptCurrent } from '../src/lib/humanPoseScene.ts';
+import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const digest = 'a'.repeat(64);
 const row = JSON.parse(readFileSync(new URL('../scripts/human_pose/data/curated-standing.json', import.meta.url)))[0];
@@ -19,7 +20,6 @@ const entry = { ...row, template_revision: 1, pose_normalized_text: row.pose_tem
   production_status: 'ready', review: { status: 'confirmed', user_confirmed: true },
   prompt_segments: [{ id: 'pose', text_ja: row.pose_text_ja, template_en: row.pose_template }],
   asset_files: { preview: { path: `poses/${row.id}/preview.png`, sha256: digest, byte_size: 64 } } };
-const sample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 test('コマ内・前景の撮影説明と手修正はOMNY保存・作品snapshot・モード往復でも残る', async () => {
   const doc = document();
@@ -88,7 +88,7 @@ test('人物だけが使う舞台も作品に原本を1つ保存し、復元時�
 });
 
 function document() {
-  const doc = parseMangaYaml(sample);
+  const doc = linkedTestDocument();
   const figure = { name: '確認用', refId: 'person-one', size: 'full', bbox: { x: 10, y: 10, w: 40, h: 80 },
     action: '元のアクション', human_pose: selectHumanPose(entry, digest) };
   figure.human_pose.edited_text_ja += ' 顔を上げる。';

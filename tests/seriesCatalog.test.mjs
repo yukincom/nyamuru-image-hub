@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parse } from 'yaml';
 import { applySuggestedReferenceView, prepareCharacterReferenceDestination } from '../src/lib/characterReferences.ts';
@@ -7,11 +6,12 @@ import { parseMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml, validat
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../src/lib/seriesCatalog.ts';
 import { SYSTEM_MOB_CATALOG_ID } from '../src/lib/systemCharacters.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
+import { linkedTestDocument, PROP_A } from './fixtures/emptyTestDocument.ts';
 
-const sampleSource = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
+const sample = linkedTestDocument;
 
 test('人物のビジュアル指定は台帳と作品保存で人物像から独立し、空欄への変更も保持する', async () => {
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.characters = [{ localId: 'local-one', catalog_id: 'character-one', name: '人物', role: '慎重な性格', scope: 'series' }];
   const catalog = structuredClone(episode);
   catalog.manga.characters[0].role = '台帳側の人物像';
@@ -36,7 +36,7 @@ test('一括解析の画像分類は未分類だけを補完し、既存分類�
 });
 
 test('人物資料画像はシリーズ台帳を先に保存してから保存先IDを使う', async () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   const character = document.manga.characters[0];
   character.scope = 'series';
   character.catalog_id = 'character-before-save';
@@ -58,7 +58,7 @@ test('人物資料画像はシリーズ台帳を先に保存してから保存�
 });
 
 test('シリーズ人物を明示削除すると、その人物専用資料も台帳から外れる', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.characters = [
     { localId: 'person-one', name: '一人目', role: '', scope: 'series', catalog_id: 'character-one' },
     { localId: 'person-two', name: '二人目', role: '', scope: 'series', catalog_id: 'character-two' },
@@ -74,7 +74,7 @@ test('シリーズ人物を明示削除すると、その人物専用資料も�
 });
 
 test('シリーズ素材に変更されないIDと登録元エピソードを付ける', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.title = 'はじまり';
   document.manga.meta.series = '猫の旅';
   document.manga.meta.episode_number = '第1話';
@@ -91,7 +91,7 @@ test('シリーズ素材に変更されないIDと登録元エピソードを付
 });
 
 test('同じエピソードの題名変更は由来表示だけ更新し、素材IDを保つ', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.series = '猫の旅';
   document.manga.meta.series_id = 'series-one';
   document.manga.meta.episode_id = 'episode-one';
@@ -109,10 +109,10 @@ test('同じエピソードの題名変更は由来表示だけ更新し、素�
 });
 
 test('シリーズ共通の統合は作業中の同名素材を優先し、重複を作らない', () => {
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.setting = { location: '今回の駅前', time: '夜', weather: '雨', situation: '今回の事件。' };
   episode.manga.materials = [{ key: '赤い傘', type: 'prop', scope: 'episode', keywords: [], note: '' }];
-  const catalog = parseMangaYaml(sampleSource);
+  const catalog = sample();
   catalog.manga.meta.series_id = 'series-one';
   catalog.manga.series_setting = {
     genre: 'ファンタジー', target_audience: '少年・少女', adult_content: false, situation: 'シリーズの世界観。',
@@ -132,8 +132,8 @@ test('シリーズ共通の統合は作業中の同名素材を優先し、重�
 });
 
 test('シリーズ台帳に保存したモブの等身とデザイン詳細を新しい話へ読み込む', () => {
-  const episode = parseMangaYaml(sampleSource);
-  const catalog = parseMangaYaml(sampleSource);
+  const episode = sample();
+  const catalog = sample();
   const catalogMob = catalog.manga.characters.find((character) => character.catalog_id === SYSTEM_MOB_CATALOG_ID);
   catalogMob.default_proportion = { head_count: 8 };
   catalogMob.recognition.silhouette.observed = ['四角い輪郭の群衆'];
@@ -146,7 +146,7 @@ test('シリーズ台帳に保存したモブの等身とデザイン詳細を�
 });
 
 test('ストーリーOMNYは全素材を保持し、内部シリーズ台帳はシリーズ素材だけを出す', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.series = '猫の旅';
   document.manga.materials = [
     { key: '今回だけ', type: 'prop', scope: 'episode', keywords: [], note: '' },
@@ -165,7 +165,7 @@ test('ストーリーOMNYは全素材を保持し、内部シリーズ台帳は�
 });
 
 test('シリーズ台帳は作品分類と世界観を各話の舞台設定と分けて保存する', () => {
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.meta.series = '猫の旅';
   episode.manga.setting = {
     location: '今回だけの駅前', time: '夕方', weather: '雨', situation: '二人が再会する。',
@@ -187,7 +187,7 @@ test('シリーズ台帳は作品分類と世界観を各話の舞台設定と�
 });
 
 test('既存シリーズ更新は作品分類と世界観を保持し、今回のあらすじで上書きしない', () => {
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.meta.series = '猫の旅';
   episode.manga.setting = {
     location: '今回だけの駅前', time: '夕方', weather: '雨', situation: '二人が再会する。',
@@ -223,7 +223,7 @@ test('シリーズ資料の場所・時間帯・天候は空の各話設定へ�
 });
 
 test('作品タイトル・サブタイトル・話数は空欄でも検査エラーにしない', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.title = '';
   document.manga.meta.series = '';
   document.manga.meta.episode_number = '';
@@ -231,15 +231,15 @@ test('作品タイトル・サブタイトル・話数は空欄でも検査エ�
 });
 
 test('配置済みの物が小道具以外なら警告する', () => {
-  const document = parseMangaYaml(sampleSource);
-  const prop = document.manga.materials.find((material) => material.key === 'ノートPC');
+  const document = sample();
+  const prop = document.manga.materials.find((material) => material.key === PROP_A);
   prop.type = 'background';
-  document.manga.pages[0].panels[0].figures.push({ name: 'ノートPC', object: true, bbox: { x: 120, y: 60, w: 30, h: 20 } });
+  document.manga.pages[0].panels[0].figures.push({ name: PROP_A, object: true, bbox: { x: 120, y: 60, w: 30, h: 20 } });
   assert.ok(validateManga(document).some((issue) => issue.message.includes('小道具にしてください')));
 });
 
 test('人物資料はシリーズ台帳を経由しても同じ登場人物へ戻る', () => {
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   const character = episode.manga.characters[0];
   const visual = episode.manga.materials.find((material) => material.characterId === character.localId);
   episode.manga.meta.series = '猫の旅';
@@ -256,7 +256,7 @@ test('人物資料はシリーズ台帳を経由しても同じ登場人物へ�
 });
 
 test('シリーズ人物と人物資料へ安定IDを付け、公開リンクを保存する', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.series = '猫の旅';
   document.manga.meta.series_id = 'series-one';
   document.manga.meta.episode_id = 'episode-one';
@@ -272,7 +272,7 @@ test('シリーズ人物と人物資料へ安定IDを付け、公開リンクを
 });
 
 test('シリーズOMNYはシリーズ人物と画像参照を保持し、ストーリーOMNYはローカル画像参照を除く', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.series = '猫の旅';
   document.manga.meta.series_id = 'series-one';
   const character = document.manga.characters[0];
@@ -308,7 +308,7 @@ test('シリーズOMNYはシリーズ人物と画像参照を保持し、スト�
 });
 
 test('ストーリーOMNYへ省いた人物画像参照を台帳から復元し、再保存でも失わない', () => {
-  const document = parseMangaYaml(sampleSource);
+  const document = sample();
   document.manga.meta.series = '猫の旅';
   document.manga.meta.series_id = 'series-one';
   const character = document.manga.characters[0];
@@ -336,10 +336,10 @@ test('ストーリーOMNYへ省いた人物画像参照を台帳から復元し�
 });
 
 test('シリーズ人物は安定IDで再接続し、名前変更後も重複しない', () => {
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.characters = [{ localId: 'local-one', name: '仮名', role: '作業中', scope: 'series', catalog_id: 'character-one' }];
   episode.manga.materials = [];
-  const catalog = parseMangaYaml(sampleSource);
+  const catalog = sample();
   catalog.manga.characters = [{ name: '正式名', role: '台帳', scope: 'series', catalog_id: 'character-one' }];
   catalog.manga.materials = [{
     key: '正式名の三面図', type: 'character', scope: 'series', keywords: ['正式名'], catalog_id: 'material-one', character_catalog_id: 'character-one',
@@ -353,7 +353,7 @@ test('シリーズ人物は安定IDで再接続し、名前変更後も重複し
 });
 
 test('シリーズ保存upsertは別話だけにある既存項目を削除しない', () => {
-  const existing = parseMangaYaml(sampleSource);
+  const existing = sample();
   existing.manga.meta.series = '猫の旅';
   existing.manga.meta.series_id = 'series-one';
   existing.manga.characters = [{ name: '既存人物', role: '', scope: 'series', catalog_id: 'character-old' }];
@@ -361,7 +361,7 @@ test('シリーズ保存upsertは別話だけにある既存項目を削除し�
   existing.manga.pages = [];
   existing.manga.meta.page_count = 0;
 
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.meta.series = '猫の旅';
   episode.manga.meta.series_id = 'series-one';
   episode.manga.characters[0].scope = 'series';
@@ -378,10 +378,10 @@ test('シリーズ保存upsertは別話だけにある既存項目を削除し�
 });
 
 test('同名で異なる安定IDのシリーズ人物は自動統合せず競合にする', () => {
-  const existing = parseMangaYaml(sampleSource);
+  const existing = sample();
   existing.manga.characters = [{ name: 'グレー', role: '', scope: 'series', catalog_id: 'character-one' }];
   existing.manga.materials = [];
-  const episode = parseMangaYaml(sampleSource);
+  const episode = sample();
   episode.manga.meta.series = '作品';
   episode.manga.characters = [{ name: 'グレー', role: '', scope: 'series', catalog_id: 'character-two' }];
   episode.manga.materials = [];
@@ -392,7 +392,7 @@ test('同名で異なる安定IDのシリーズ人物は自動統合せず競合
 });
 
 test('明示削除は指定したシリーズ素材だけを外し、代表画像リンクも解除する', () => {
-  const catalog = parseMangaYaml(sampleSource);
+  const catalog = sample();
   catalog.manga.characters = [{
     name: 'グレー', role: '', scope: 'series', catalog_id: 'character-one', primary_material_catalog_id: 'material-one',
   }];

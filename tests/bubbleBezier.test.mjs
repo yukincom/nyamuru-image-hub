@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { BUBBLE_BEZIER_PRESETS, MAX_BUBBLE_NODES, addBubbleBezierNode, bubbleBezierBoundaryDistance, bubbleBezierData, bubbleBezierPath, createBubbleBezier, isBubbleBezier, moveBubbleBezierNode } from '../src/lib/bubbleBezier.ts';
 import { moveVectorNode, paperPath } from '../src/lib/vectorGeometry.ts';
 import { bubbleJoinGeometry, bubbleTailGeometry, monologueTailEllipses } from '../src/lib/bubbleTail.ts';
 import { parseMangaYaml, toStoredMangaYaml, toMangaYaml, validateManga } from '../src/lib/manga.ts';
+import { panelTestDocument } from './fixtures/emptyTestDocument.ts';
 
 test('presets produce finite closed cubic contours with area, inside their box', () => {
   for (const [preset] of BUBBLE_BEZIER_PRESETS) {
@@ -42,7 +42,7 @@ test('anchors and handles remain outside the reference frame through save/read w
   outline=moveBubbleBezierNode(outline,0,{x:-200,y:350},'handleOut',true);
   assert.equal(outline.nodes[0].x,-80);assert.equal(outline.nodes[0].y,160);
   assert.deepEqual(outline.nodes[0].handleOut,{x:-120,y:190});assert.equal(isBubbleBezier(outline),true);
-  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
+  const doc=panelTestDocument();
   const bubble={text:'元の本文',shape:'normal',bbox:{x:30,y:40,w:20,h:30},bezier:outline,tail:false};doc.manga.pages[0].panels[0].bubbles=[bubble];
   assert.deepEqual(parseMangaYaml(toStoredMangaYaml(doc)).manga.pages[0].panels[0].bubbles[0],bubble);
   assert.ok(!validateManga(doc).some(issue=>issue.path.endsWith('.bezier')));
@@ -65,7 +65,7 @@ test('tail roots, joins and thought beads use edited boundaries after non-square
 });
 
 test('OMNY save/export/read roundtrip keeps both panel and page outlines and original dialogue', () => {
-  const doc = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
+  const doc = panelTestDocument();
   const bubble = {text: '待って…\nそのままで！', shape:'normal', bezier:createBubbleBezier('ellipse'), tail:false, emphasis:'そのままで'};
   doc.manga.pages[0].panels[0].bubbles = [structuredClone(bubble)];
   doc.manga.pages[0].page_overlay = {bubbles:[structuredClone(bubble)]};

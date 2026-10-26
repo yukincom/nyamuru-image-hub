@@ -1,0 +1,41 @@
+manga:
+  schema_name: "Nyamuru Data Model"
+  schema_version: 10.33
+  meta:
+    document_type: "story"
+    title: ""
+    series: ""
+    series_id: ""
+    episode_number: ""
+    episode_id: "source-coverage-fixture"
+    author: ""
+    format: "カラー漫画"
+    page_count: 1
+    reading_direction: "right-to-left"
+    text_orientation: "vertical"
+    font: "アンチック体"
+    bubble_line_width_mm: 0.5
+    panel_frame_width_mm: 1
+    panel_gutter_row_mm: 5
+    panel_gutter_column_mm: 3
+    style_notes: []
+  layout_spec: ""
+  series_setting:
+    genre: ""
+    target_audience: ""
+    adult_content: false
+    situation: ""
+    location: ""
+    time: ""
+    weather: ""
+  setting:
+    location: ""
+    time: ""
+    weather: ""
+    situation: ""
+  characters: []
+  materials: []
+  pages:
+    - page: 1
+      canvas: {w: 210, h: 297, unit: mm}
+      panels: []

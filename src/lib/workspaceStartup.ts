@@ -5,14 +5,12 @@ import { createSystemMobCharacter, isDetectedFigureCharacter, isSystemMobCharact
 export interface WorkspaceStartupState {
   document: MangaDocument;
   hasDocument: boolean;
-  deferredSample?: string;
 }
 
-export const LEGACY_SAMPLE_ARCHIVE_KEY = `${STORAGE_KEY}.legacy-sample-archive`;
 type WorkspaceStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
 /** Names alone are not enough: require the bundled story title and its cast. */
-export function isLegacySampleDocument(document: MangaDocument): boolean {
+function isRemovedBundledStory(document: MangaDocument): boolean {
   const { meta, characters } = document.manga;
   return (meta.title === '押しかけ妖精にゃむるたん'
     || (meta.title === '画像配置の動作確認' && meta.episode_id === 'placement-qa-20260926'))
@@ -20,27 +18,16 @@ export function isLegacySampleDocument(document: MangaDocument): boolean {
     && characters.some((character) => character.name === 'ツクル');
 }
 
-export function readLegacySampleArchive(storage: WorkspaceStorage): string[] {
-  const raw = storage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY);
-  if (!raw) return [];
-  const entries: unknown = JSON.parse(raw);
-  if (!Array.isArray(entries) || !entries.every((entry) => typeof entry === 'string')) {
-    throw new Error('以前のサンプルの保管データを読み込めません');
-  }
-  return entries;
-}
-
-/** Archive the exact saved text before replacing it, including edits and asset IDs. */
-export function preserveLegacySample(storage: WorkspaceStorage): string[] {
-  const entries = readLegacySampleArchive(storage);
+/** Remove only the retired bundled story and its dedicated recovery archive.
+ * The identifiers above are migration markers, not story content. Other works,
+ * preferences and source files are never cleared by this migration. */
+export function removeBundledStoryStorage(storage: Pick<Storage, 'getItem' | 'removeItem'>): void {
+  storage.removeItem(`${STORAGE_KEY}.legacy-sample-archive`);
   const saved = storage.getItem(STORAGE_KEY);
-  if (!saved) return entries;
+  if (!saved) return;
   let document: MangaDocument;
-  try { document = parseMangaYaml(saved); } catch { return entries; }
-  if (!isLegacySampleDocument(document) || entries.includes(saved)) return entries;
-  const next = [...entries, saved];
-  storage.setItem(LEGACY_SAMPLE_ARCHIVE_KEY, JSON.stringify(next));
-  return next;
+  try { document = parseMangaYaml(saved); } catch { return; }
+  if (isRemovedBundledStory(document)) storage.removeItem(STORAGE_KEY);
 }
 
 export interface StoredWorkspaceDocument { document: MangaDocument; serialized: string }
@@ -48,11 +35,6 @@ export interface StoredWorkspaceDocument { document: MangaDocument; serialized: 
 export function storeWorkspaceDocument(storage: WorkspaceStorage, document: MangaDocument, previous?: StoredWorkspaceDocument): StoredWorkspaceDocument {
   const knownSave = previous && storage.getItem(STORAGE_KEY) === previous.serialized;
   if (knownSave && previous.document === document) return previous;
-  // Continuing an explicitly opened sample is ordinary editing, not a new archive
-  // version on every keystroke. Replacing it with another work requires a backup.
-  // Inspect persisted YAML only at first save, external replacement, or leaving a
-  // sample. Ordinary saves already have the in-memory document that was written.
-  if (!isLegacySampleDocument(document) && (!knownSave || isLegacySampleDocument(previous.document))) preserveLegacySample(storage);
   const serialized = toStoredMangaYaml(document);
   storage.setItem(STORAGE_KEY, serialized);
   return { document, serialized };
@@ -128,8 +110,8 @@ export function workspaceFromStored(stored: string | null | undefined): Workspac
   if (stored) {
     try {
       const document = parseMangaYaml(stored);
-      if (isLegacySampleDocument(document)) {
-        return { document: createEmptyWorkspaceDocument(), hasDocument: false, deferredSample: stored };
+      if (isRemovedBundledStory(document)) {
+        return { document: createEmptyWorkspaceDocument(), hasDocument: false };
       }
       if (!isUnstartedDocument(document)) return { document, hasDocument: true };
     } catch { /* 壊れた自動保存は起動画面で安全に止める */ }

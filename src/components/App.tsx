@@ -87,7 +87,7 @@ import {
   stopNewCreationBridgeSessionOnPageExit,
   withNewCreationBridgeSession,
 } from '../lib/localBridgeLifecycle.ts';
-import { createEmptyWorkspaceDocument, LEGACY_SAMPLE_ARCHIVE_KEY, preserveLegacySample, storeWorkspaceDocument, workspaceFromStored, type WorkspaceStartupState, type StoredWorkspaceDocument } from '../lib/workspaceStartup.ts';
+import { createEmptyWorkspaceDocument, removeBundledStoryStorage, storeWorkspaceDocument, workspaceFromStored, type WorkspaceStartupState, type StoredWorkspaceDocument } from '../lib/workspaceStartup.ts';
 import type { AnalogFigureImport, AnalogTextImport, BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, MangaSeriesSetting, PanelShape, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -381,6 +381,7 @@ function initialTab(): WorkspaceTab {
 
 function initialWorkspace(): WorkspaceStartupState {
   try {
+    removeBundledStoryStorage(localStorage);
     const saved = localStorage.getItem(STORAGE_KEY);
     const startup = workspaceFromStored(saved);
     reconcileSplitOverlapFlags(startup.document);
@@ -416,10 +417,6 @@ export default function App() {
 function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) {
   const [document, setDocumentState] = useState<MangaDocument>(startupWorkspace.document);
   const [hasDocument, setHasDocument] = useState(startupWorkspace.hasDocument);
-  const [legacySamples] = useState<string[]>(() => {
-    try { return preserveLegacySample(localStorage); }
-    catch { return startupWorkspace.deferredSample ? [startupWorkspace.deferredSample] : []; }
-  });
   const documentRef = useRef(document);
   documentRef.current = document;
   const [activePage, setActivePage] = useState(0);
@@ -1040,15 +1037,15 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   };
 
   const prunePaintAssets = () => {
-    // Until a successful save, the persisted document may still be an unopened
-    // sample or the previous work. Failed saves must not collect its originals.
+    // Until a successful save, the persisted document may still be the previous
+    // work. Failed saves must not collect its originals.
     if (!browserSave.current) return;
     void paintAssets.prune(() => {
       try {
         // Recheck after the lease/database wait too: another tab can save and close
         // while this tab only changes its history. Its saved originals are unknown here.
         const saved=browserSave.current;
-        if (!saved || localStorage.getItem(STORAGE_KEY)!==saved.serialized || localStorage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)) return null;
+        if (!saved || localStorage.getItem(STORAGE_KEY)!==saved.serialized) return null;
         const snapshots=[workspaceSnapshot(),...timeline.current.past,...timeline.current.future];
         return [...pendingPaintAssets.current,...collectFigureCropAssetIds(saved.document),...snapshots.flatMap(snapshot=>[...collectFigureCropAssetIds(snapshot.document),...(snapshot.paint?.state.imports.map(item=>item.asset.storageId)??[])])];
       } catch { return null; }
@@ -3910,14 +3907,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     ? [{ sourceItemId: item.id, analysis: item.analysis }]
     : []);
   const canCreateAnalyzedPages = newLayoutItems.length > 0 && detectedPageLayouts.length === newLayoutItems.length;
-  const legacySampleRecovery = legacySamples.length > 0 && <details class="content-card">
-    <summary>以前のサンプルの保存データ</summary>
-    <p>サンプル作品に加えた編集は、ここからYAMLファイルとして保存できます。</p>
-    {legacySamples.map((saved, index) => <p key={index}><a
-      href={`data:application/yaml;charset=utf-8,${encodeURIComponent(saved)}`}
-      download={`以前のサンプル-${index + 1}.yaml`}
-    >編集内容をYAMLで保存（{index + 1}）</a></p>)}
-  </details>;
 
   const autoPaintBoundary=(event:Event)=>{
     if(!(event.target instanceof Element))return;
@@ -4118,7 +4107,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
           <button type="button" class="primary-button" onClick={openNewDialog}><FilePlus2 size={19} />新規作成</button>
           <button type="button" class="secondary-button" disabled={projectBusy} onClick={openProject}><FolderOpen size={19} />作品フォルダを開く</button>
         </div>
-        {legacySampleRecovery}
       </section>
     </main>}
 
@@ -4166,7 +4154,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
         </div>
         <div class="new-dialog-body" key={newCreationStep}>
           <div class="new-creation-content">
-          {newCreationStep === 'series' && legacySampleRecovery}
           {newCreationStep === 'series' && <form id="new-series-form" class="new-series-step" aria-labelledby="new-creation-step-title" onSubmit={(event) => { event.preventDefault(); void continueFromSeriesSelection(); }} onKeyDown={(event) => {
             const target = event.target as HTMLElement;
             if (event.key !== 'Enter' || event.isComposing || (target.tagName !== 'INPUT' && target.tagName !== 'SELECT')) return;

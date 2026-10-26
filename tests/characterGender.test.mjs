@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parse } from 'yaml';
 import { isCharacterGender, resolveCharacterGender } from '../src/lib/characterGender.ts';
@@ -9,14 +8,14 @@ import { normalizeDocument, parseMangaYaml, toMangaYaml, toSeparatedMangaYaml, t
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { mergeSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../src/lib/seriesCatalog.ts';
 import { createSystemMobCharacter, SYSTEM_MOB_CATALOG_ID } from '../src/lib/systemCharacters.ts';
+import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
-const sample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 const genders = ['female', 'male', 'neutral'];
 const labels = ['女性', '男性', '中性'];
 
 // 保存先によらず、明示値と未設定を区別する。
 function story(gender) {
-  const document = parseMangaYaml(sample);
+  const document = emptyTestDocument();
   document.manga.characters = [{
     localId: 'person-one', catalog_id: 'character-one', name: '人物一', role: '慎重', scope: 'series',
     visual_prompt: '短い髪、ゆったりした上着', ...(gender === undefined ? {} : { gender }),

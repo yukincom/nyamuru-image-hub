@@ -1,8 +1,7 @@
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import App from '../src/components/App';
-import sampleYaml from '../src/content/sample.yaml?raw';
-import { parseMangaYaml, STORAGE_KEY } from '../src/lib/manga';
+import { STORAGE_KEY } from '../src/lib/manga';
 import { createPortableProject, restorePortableProject, portableProjectBlob } from '../src/lib/portableProject';
 import { prepareImageAsset, createImagePlacement } from '../src/lib/imagePlacement';
 import { saveFigureCropAssets, deleteFigureCropAssets, loadFigureCropAsset } from '../src/lib/figureCropStore';
@@ -12,6 +11,7 @@ import { toSeriesCatalogMangaYaml } from '../src/lib/manga';
 import { prepareDocumentForSeriesSave } from '../src/lib/seriesCatalog';
 import { blobRevision, writeProjectFile } from '../src/lib/browserFiles';
 import { isLanClient } from '../src/lib/clientRuntime';
+import { linkedTestDocument } from './fixtures/emptyTestDocument';
 import '../src/styles/global.css';
 
 if (location.origin !== 'http://127.0.0.1:4346' || !isLanClient) throw Error('Dedicated LAN test origin required');
@@ -29,7 +29,7 @@ Object.assign(window, {
   showOpenFilePicker: async () => [await testHandle()],
 });
 async function coldRoundtrip() {
-  const source = prepareDocumentForSeriesSave(parseMangaYaml(sampleYaml));
+  const source = prepareDocumentForSeriesSave(linkedTestDocument());
   source.manga.meta.title = 'LAN保存・資料画像の検証'; source.manga.meta.episode_id = 'lan-ui-fixture';
   source.manga.meta.series_id = 'lan-ui-series';
   const image = await prepareImageAsset(new File([png], 'test.png', { type: 'image/png' }));

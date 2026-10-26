@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { parseMangaYaml, toMangaYaml, toSeparatedMangaYaml, toStoredMangaYaml, newPage } from '../src/lib/manga.ts';
 import { parseStoryReferenceText } from '../src/lib/settingTextImport.ts';
@@ -9,12 +8,12 @@ import { detachResolvedScenarioLinks, rejectScenarioCorrespondence, scenarioBubb
 import { editCanvasText, editCanvasTextStyle } from '../src/lib/canvasText.ts';
 import { buildQwenCompositionPlan } from '../src/lib/qwenComposition.ts';
 import { SCENARIO_MATCH_THRESHOLD, parseScenario, scenarioSimilarity, applyScenarioToNewDocument, availableScenarioCandidates, confirmScenarioCorrespondence, releaseScenarioCorrespondence, linkScenarioSpeaker, scenarioCharacter, restoreProvisionalScenarioText, useScenarioBubbleText } from '../src/lib/scenario.ts';
+import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
-const sample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 const source = text => ({ version: 1, fileName: 'origin_name.md', text });
 const script = (body, page = 1, panel = 1) => `# シナリオ\n## page${page}\n### コマ${panel}\n${body}`;
 function documentWith(texts = []) {
-  const document = parseMangaYaml(sample);
+  const document = emptyTestDocument();
   document.manga.characters = [{ name: 'ハル', aliases: ['春'], role: '', scope: 'episode', localId: 'haru' }, { name: 'アキ', role: '', scope: 'episode', localId: 'aki' }];
   document.manga.pages = [newPage(1)];
   document.manga.meta.page_count = 1;

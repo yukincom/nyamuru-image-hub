@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readFileSync} from 'node:fs';
 import {cubeGlb} from './background3dFixture.mjs';
 import {prepareBackgroundStage,backgroundMaterialStages,namedBackgroundStages} from '../src/lib/background3d.ts';
 import {loadBackgroundStage,persistSeriesBackgroundModels} from '../src/lib/backgroundStageStore.ts';
 import {parseMangaYaml,toSeriesCatalogMangaYaml,toSeparatedMangaYaml} from '../src/lib/manga.ts';
 import {mergeSeriesCatalog,upsertEpisodeIntoSeriesCatalog} from '../src/lib/seriesCatalog.ts';
 import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence.ts';
-const sample=()=>parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
+import {panelTestDocument} from './fixtures/emptyTestDocument.ts';
+const sample=panelTestDocument;
 async function fixture(){
  const document=sample(),item=await prepareBackgroundStage(cubeGlb());
  document.manga.meta.series='背景シリーズ';document.manga.meta.series_id='background-series';

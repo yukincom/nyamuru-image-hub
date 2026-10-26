@@ -7,7 +7,7 @@ import { parseSeriesTitleText, parseStoryReferenceText } from '../src/lib/settin
 import { parseCharacterText } from '../src/lib/characterTextCatalog.ts';
 import { seriesReferenceConfirmationState } from '../src/lib/seriesReferenceCandidates.ts';
 import { parseScenario, applyScenarioToNewDocument } from '../src/lib/scenario.ts';
-import { parseMangaYaml, newPage, toSeparatedMangaYaml } from '../src/lib/manga.ts';
+import { newPage, toSeparatedMangaYaml } from '../src/lib/manga.ts';
 import { attachRecognizedTextToPage } from '../src/lib/localBridge.ts';
 import { initializePanelBackgrounds } from '../src/lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../src/lib/initialBubbleLineBreaks.ts';
@@ -17,6 +17,7 @@ import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
 import { innerFrameBounds } from '../src/lib/canvasGeometry.ts';
 import { createSystemMobCharacter } from '../src/lib/systemCharacters.ts';
 import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
+import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -168,8 +169,7 @@ test('新規作成の人物ドラフトはサンプル作品の作画指定を�
 });
 
 test('作成の実handlerはOCR配置と人物統合の後に正本を反映し、旧文字列監査は実行しない', async () => {
-  const sampleYaml = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
-  const characterDraft = parseMangaYaml(sampleYaml);
+  const characterDraft = linkedTestDocument();
   characterDraft.manga.characters = [{ name: 'ハル', aliases: ['春'], scope: 'episode', role: '', localId: 'haru' }];
   const reference = { source: { fileName: 'origin_name.md', text: '# シナリオ\n## page1\n### コマ1\n春「明日は**学校**へ行こう」\n春は窓を指す。', relativePath: 'text/origin_name.md' }, workspaceDirectory: '/fixture/episode' };
   const analysis = { detectedPanels: [{ type: 'rect', x: 10, y: 10, w: 80, h: 100 }], detectedPanelIds: ['p1'], detectedFigures: [], sourceFrame: null,

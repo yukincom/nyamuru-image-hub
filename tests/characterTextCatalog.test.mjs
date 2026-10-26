@@ -1,17 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { parseMangaYaml } from '../src/lib/manga.ts';
 import {
   mergeCharacterTextCatalog,
   parseCharacterText,
   toCharacterTextMarkdown,
 } from '../src/lib/characterTextCatalog.ts';
-
-const sampleYaml = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
+import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
 function emptyStory() {
-  const document = parseMangaYaml(sampleYaml);
+  const document = emptyTestDocument();
   document.manga.meta.series = '呼応変異';
   document.manga.meta.series_id = 'series-kouou';
   document.manga.characters = [];

@@ -5,10 +5,11 @@ import { parse } from 'yaml';
 import { artworkSettingsFromSource, compileArtworkRules, compileArtworkForMode, getArtworkSettings, applyArtworkSettings, appendArtworkSettings, artworkNumberControls, setArtworkNumber, parseArtworkSettings, getWorkStylePrompt, setWorkStylePrompt } from '../src/lib/artworkRules.ts';
 import { parseMangaYaml, parseOmayYaml, toStoredMangaYaml, toMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml, toOmayYaml, toArtworkSettingsYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
+import { standardRulesTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
 const standard = () => parseOmayYaml(read('src/content/standard-settings.yaml'));
+const sample = () => standardRulesTestDocument(read('src/content/standard-settings.yaml'));
 
 test('作品の画風は既存ルールを保って全生成対象へ届き、作品保存から原文を復元できる', async () => {
   const document = sample();

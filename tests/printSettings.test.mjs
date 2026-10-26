@@ -11,8 +11,9 @@ import { PRINTER_PRESETS } from '../src/lib/printerPresets.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml, toSeriesCatalogMangaYaml, toSeparatedMangaYaml } from '../src/lib/manga.ts';
 import { mergeSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../src/lib/seriesCatalog.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
+import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
+const sample = linkedTestDocument;
 function storage() { const data = new Map(); return { getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) }; }
 function configured() {
   const setup = print.defaultPrintSetup();

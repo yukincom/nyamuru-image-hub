@@ -6,9 +6,10 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { parseMangaYaml, cloneDocument, toSeparatedMangaYaml, omnyFileName } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot, readProjectBinding, rememberProjectBinding } from '../src/lib/projectPersistence.ts';
+import { linkedTestDocument, PERSON_A } from './fixtures/emptyTestDocument.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
+const sample = linkedTestDocument;
 const binding = { token: 'test-token', directory: '/test/episode', folderName: 'episode', seriesDirectory: '/test', episodeId: 'episode-one' };
 
 test('full project roundtrip retains story and style, unlike the distribution export', async () => {
@@ -25,9 +26,9 @@ test('figure, text and overlay images are deduplicated, portable and restored wi
   const original = sample();
   const panel = original.manga.pages[0].panels[0];
   const meta = { schemaVersion: 1, assetId: 'crop', sourceRegionId: 'region', sourceBBox: { x: 0, y: 0, w: 1, h: 1 }, detectionSource: 'body', draft: true };
-  panel.figures = [{ name: 'にゃむるたん', analogImport: meta }];
+  panel.figures = [{ name: PERSON_A, analogImport: meta }];
   panel.bubbles[0].analogTextImport = { ...meta, recognitionEngine: 'Baberu OCR', needsReview: true, levelAdjusted: true };
-  original.manga.pages[0].page_overlay = { figures: [{ name: 'にゃむるたん', analogImport: structuredClone(meta) }], bubbles: [] };
+  original.manga.pages[0].page_overlay = { figures: [{ name: PERSON_A, analogImport: structuredClone(meta) }], bubbles: [] };
   let loads = 0, restoredAssets;
   const snapshot = await createProjectSnapshot(original, async () => { loads++; return new Blob(['image bytes'], { type: 'image/png' }); });
   assert.equal(loads, 1);
