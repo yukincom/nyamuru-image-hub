@@ -62,7 +62,7 @@ import { initializeImportedBubbleLineBreaks } from '../lib/initialBubbleLineBrea
 import CharacterReadProgress, { type CharacterReadProgressState } from './CharacterReadProgress';
 import NewLayoutAnalysisFeed from './NewLayoutAnalysisFeed';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
-import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, STORAGE_KEY, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml, toStoredMangaYaml } from '../lib/manga';
+import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, STORAGE_KEY, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml } from '../lib/manga';
 import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { applyPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
 import { analyzeFigureCharacterMatchWithLocalVlm, attachDetectedFiguresToPage, attachRecognizedTextToPage, beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, persistAnalogAsset, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type DetectedFigureRegion, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type LayoutRecognitionResult, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
@@ -87,7 +87,7 @@ import {
   stopNewCreationBridgeSessionOnPageExit,
   withNewCreationBridgeSession,
 } from '../lib/localBridgeLifecycle.ts';
-import { createEmptyWorkspaceDocument, LEGACY_SAMPLE_ARCHIVE_KEY, preserveLegacySample, storeWorkspaceDocument, workspaceFromStored, type WorkspaceStartupState } from '../lib/workspaceStartup.ts';
+import { createEmptyWorkspaceDocument, LEGACY_SAMPLE_ARCHIVE_KEY, preserveLegacySample, storeWorkspaceDocument, workspaceFromStored, type WorkspaceStartupState, type StoredWorkspaceDocument } from '../lib/workspaceStartup.ts';
 import type { AnalogFigureImport, AnalogTextImport, BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, MangaSeriesSetting, PanelShape, WorkspaceTab } from '../types';
 
 const TABS: {
@@ -610,6 +610,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const scannerSessionRef = useRef<ScannerSession | null>(null);
   const scannerStopRequested = useRef(false);
   const saveTimer = useRef<number | undefined>(undefined);
+  const browserSave = useRef<StoredWorkspaceDocument | undefined>(undefined);
   const lastHistoryPush = useRef(0);
   const seriesCatalogSaveQueue = useRef<Promise<void>>(Promise.resolve());
   const seriesCatalogPendingCount = useRef(0);
@@ -1038,6 +1039,22 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setToast(panelSplitDirection === 'vertical' ? 'コマをタテに分割しました' : 'コマをヨコに分割しました');
   };
 
+  const prunePaintAssets = () => {
+    // Until a successful save, the persisted document may still be an unopened
+    // sample or the previous work. Failed saves must not collect its originals.
+    if (!browserSave.current) return;
+    void paintAssets.prune(() => {
+      try {
+        // Recheck after the lease/database wait too: another tab can save and close
+        // while this tab only changes its history. Its saved originals are unknown here.
+        const saved=browserSave.current;
+        if (!saved || localStorage.getItem(STORAGE_KEY)!==saved.serialized || localStorage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)) return null;
+        const snapshots=[workspaceSnapshot(),...timeline.current.past,...timeline.current.future];
+        return [...pendingPaintAssets.current,...collectFigureCropAssetIds(saved.document),...snapshots.flatMap(snapshot=>[...collectFigureCropAssetIds(snapshot.document),...(snapshot.paint?.state.imports.map(item=>item.asset.storageId)??[])])];
+      } catch { return null; }
+    }).catch(() => undefined);
+  };
+
   useEffect(() => {
     window.clearTimeout(saveTimer.current);
     if (!hasDocument) {
@@ -1045,19 +1062,16 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }
     saveTimer.current = window.setTimeout(() => {
       try {
-        storeWorkspaceDocument(localStorage, toStoredMangaYaml(document));
-        const currentAssetReferences=()=>{
-          const snapshots=[workspaceSnapshot(),...timeline.current.past,...timeline.current.future];
-          return [...pendingPaintAssets.current,...snapshots.flatMap(snapshot=>[...collectFigureCropAssetIds(snapshot.document),...(snapshot.paint?.state.imports.map(item=>item.asset.storageId)??[])])];
-        };
-        // Archived sample edits can still reference crop assets; retain them for recovery.
-        if (!localStorage.getItem(LEGACY_SAMPLE_ARCHIVE_KEY)) {
-          void paintAssets.prune(currentAssetReferences).catch(() => undefined);
-        }
+        browserSave.current = storeWorkspaceDocument(localStorage, document, browserSave.current);
+        prunePaintAssets();
       } catch { setToast('ブラウザへの保存に失敗しました'); }
     }, 350);
     return () => window.clearTimeout(saveTimer.current);
-  }, [document, past, future, hasDocument]);
+  }, [document, hasDocument]);
+
+  useEffect(() => {
+    try { prunePaintAssets(); } catch { /* Unavailable storage: retain originals. */ }
+  }, [past, future]);
 
 
   useEffect(() => {
@@ -2246,7 +2260,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const saveCatalogFromEditor = async (label:string) => {
     endTextEdit();
     const source=documentRef.current;
-    const saveStory = (source: MangaDocument) => storeWorkspaceDocument(localStorage, toStoredMangaYaml(source));
+    const saveStory = (source: MangaDocument) => { browserSave.current = storeWorkspaceDocument(localStorage, source, browserSave.current); };
     try {
       saveStory(source);
     } catch {

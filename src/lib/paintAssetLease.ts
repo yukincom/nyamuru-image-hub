@@ -18,7 +18,7 @@ export function paintAssetLease(locks:LockManager|undefined=globalThis.navigator
     ready,
     storageId:()=>`${active?'paint-'+owner:'original-paint'}-${crypto.randomUUID()}`,
     async save(assets:readonly FigureCropAsset[]){await ready;await exclusive(()=>saveFigureCropAssets(assets));},
-    async prune(references:()=>readonly string[]){
+    async prune(references:()=>readonly string[]|null){
       await ready;
       return exclusive(async()=>{
         // A second tab can also read our originals after duplicating a tab. Defer

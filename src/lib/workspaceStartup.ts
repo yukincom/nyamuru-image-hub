@@ -1,5 +1,5 @@
 import type { MangaDocument } from '../types.ts';
-import { CURRENT_NDM_SCHEMA_VERSION, NDM_SCHEMA_NAME, STORAGE_KEY, normalizeDocument, parseMangaYaml } from './manga.ts';
+import { CURRENT_NDM_SCHEMA_VERSION, NDM_SCHEMA_NAME, STORAGE_KEY, normalizeDocument, parseMangaYaml, toStoredMangaYaml } from './manga.ts';
 import { createSystemMobCharacter, isDetectedFigureCharacter, isSystemMobCharacter } from './systemCharacters.ts';
 
 export interface WorkspaceStartupState {
@@ -43,12 +43,19 @@ export function preserveLegacySample(storage: WorkspaceStorage): string[] {
   return next;
 }
 
-export function storeWorkspaceDocument(storage: WorkspaceStorage, serialized: string): void {
+export interface StoredWorkspaceDocument { document: MangaDocument; serialized: string }
+
+export function storeWorkspaceDocument(storage: WorkspaceStorage, document: MangaDocument, previous?: StoredWorkspaceDocument): StoredWorkspaceDocument {
+  const knownSave = previous && storage.getItem(STORAGE_KEY) === previous.serialized;
+  if (knownSave && previous.document === document) return previous;
   // Continuing an explicitly opened sample is ordinary editing, not a new archive
   // version on every keystroke. Replacing it with another work requires a backup.
-  const continuingSample = isLegacySampleDocument(parseMangaYaml(serialized));
-  if (!continuingSample) preserveLegacySample(storage);
+  // Inspect persisted YAML only at first save, external replacement, or leaving a
+  // sample. Ordinary saves already have the in-memory document that was written.
+  if (!isLegacySampleDocument(document) && (!knownSave || isLegacySampleDocument(previous.document))) preserveLegacySample(storage);
+  const serialized = toStoredMangaYaml(document);
   storage.setItem(STORAGE_KEY, serialized);
+  return { document, serialized };
 }
 
 export function createEmptyWorkspaceDocument(): MangaDocument {

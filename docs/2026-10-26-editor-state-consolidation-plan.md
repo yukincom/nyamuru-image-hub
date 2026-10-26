@@ -201,7 +201,7 @@
 | P2 生成先設定 | 完了 | 既存generationPreferencesへ原子的な1回保存。旧keyは互換readerのみ。関連73件・型検査・実UI、独立レビュー成功 |
 | P3 同値更新 | 完了 | 同値は元document/scene、正規化済みコマ設定はclone前にreturn。関連87件・型検査成功 |
 | P4 履歴境界 | 完了 | 既存imageGestureへサイズ操作を接続。関連51件・型検査・実UI成功、独立レビューでP4指摘なし |
-| P5 自動保存 | 未着手 | P3/P4後 |
+| P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 未着手 | P5後、既存の画像消費を確認してから |
 | P7a–c ディスク保存 | 未着手 | 個別commit |
 | P8 標準名・文書 | 未着手 | 保存経路の整理後。旧読み込み互換を同時に検証 |
@@ -260,3 +260,11 @@
 - sliderはrelease／pointercancel／window blur、keyboardはkeyup、数値はEnter／blur／Escapeで区切る。中断時も最後の有効な表示値を保持する。IME変換中はサイズを適用せず、確定後に検証して反映。対象ごとのtoolbarを再利用し、切替・unmountで前の操作を終える。Undo後に同じ欄へ再入力しても新しい操作になる。
 - 関連Node51件成功。実toolbar handlerで各終了境界とIME、実App handlerと既存履歴で同値・連続更新・Undo後の入力を検証。型検査428ファイル0 error／0 warning。
 - 既存 `textToolInteraction.browser` の合成作品で、18→4→48の連続数値入力を一回のUndoで18へ、Redoで48へ復帰。sliderの48→129 dragも一回で48へ戻り、矢印キーと数値blurの別境界も確認。再読込後は最終32ptを保持。pointercancel・IMEは隔離handler試験であり実OS入力の検証ではない。既存ResizeObserver通知は再現したが編集結果・履歴を妨げていない。
+
+### P5: 本文自動保存と原本保持の分離
+
+- P4 commit: `f32e7b5`。既存autosave effectはdocument／開始状態だけに依存し、履歴更新は既存原本回収へ参照を渡すだけに分離。描画snapshotを保存済みdocumentにはしない。
+- `storeWorkspaceDocument` は元のdocumentと直前の成功した保存を受け取る。同じ参照は書き込みなし。通常編集は一度serializeし、入力YAMLをparseし直さない。初回・別タブによる保存の置換・サンプルからの離脱時だけ従来の保管確認を通す。失敗した保存を成功履歴へ進めない。
+- 原本参照は現在の作品、描画中のimport、Undo／Redo、書き込み中の画像に加え、直前に保存できた作品を含む。初回保存未成功・サンプル保管あり・保存領域へアクセス不可は回収しない。
+- 独立レビューで、別タブが作品Bを保存して閉じた後、作品Aの履歴更新からBの画像を回収し得る問題を検出。既存IndexedDB transaction時の参照callbackで、成功保存と現在の保存文字列が違う場合はnullを返し、削除を見送る。待機中の外部保存も同じ境界で保護し、新しいGC方式は作らない。
+- 関連Node42件成功、型検査428ファイル0 error／0 warning。実Appの合成fixtureで、起動時保存1回→履歴保持数50から40へ変更しても1回→ト書き編集で2回、再読込後の本文保持を確認。実ブラウザーの既存asset lease試験4項目で稼働中session、保存対象不明、終了sessionの回収条件を確認。実作品・別PC・OS障害の検証ではない。

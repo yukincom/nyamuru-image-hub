@@ -19,4 +19,13 @@ if(!new URLSearchParams(location.search).has('resume')){
   ],page_overlay:{frame:false,layer:'above_panel_frames',bubbles:[{text:'ページの文字',shape:'square',tail:false,bbox:{x:25,y:240,w:130,h:13},text_style:{fontSize:12,orientation:'horizontal'}}]}}];
   localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));
 }
+// Visible test-only counter: observe the real App autosave path on this isolated origin.
+const saves=document.createElement('output');
+saves.setAttribute('aria-label','検証用の本文保存回数');
+saves.style.cssText='position:fixed;bottom:4px;left:4px;z-index:99999;background:white;color:black;font:12px monospace;pointer-events:none';
+let saveCount=0;
+const updateSaveCount=()=>{saves.textContent=`本文保存: ${saveCount}回`;};
+const setItem=Storage.prototype.setItem;
+Storage.prototype.setItem=function(key,value){setItem.call(this,key,value);if(this===localStorage&&key===STORAGE_KEY){saveCount++;updateSaveCount();}};
+updateSaveCount();document.body.append(saves);
 render(<App/>,document.getElementById('app')!);

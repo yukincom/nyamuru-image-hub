@@ -44,7 +44,7 @@ async function stroke(offset=0){await click('ペン');await wait(paintReady,'pai
 }
 async function undo(){await click('元に戻す');await wait(()=>!document.querySelector('.paint-input')||paintReady(),'undo images');}
 async function redo(){await click('やり直す');await wait(()=>!document.querySelector('.paint-input')||paintReady(),'redo images');}
-async function run(){
+async function run(assetsOnly=false){
  const checks:string[]=[],check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);summary.textContent=`撮影と履歴 検証中（${checks.length}）${label}`;};
  render(null,document.getElementById('app')!);await tick();
  const leaseA=paintAssetLease(),leaseB=paintAssetLease();await Promise.all([leaseA.ready,leaseB.ready]);
@@ -53,8 +53,11 @@ async function run(){
   await leaseA.save([{id:assetA,blob:new Blob(['A'])}]);await leaseB.save([{id:assetB,blob:new Blob(['B'])}]);
   await leaseA.prune(()=>[]);await leaseB.prune(()=>[assetB]);check(!!await loadFigureCropAsset(assetA),'別タブに相当する稼働中sessionの作画原本は回収しない');
   await pruneFigureCropAssets([]);check(!!await loadFigureCropAsset(assetA),'一般的な画像整理でも稼働中の撮影を消さない');
-  leaseA.dispose();await tick();await leaseB.prune(()=>[assetB]);check(!await loadFigureCropAsset(assetA)&&!!await loadFigureCropAsset(assetB),'終了したsessionの未参照撮影だけ回収できる');
+  leaseA.dispose();await tick();
+  check(await leaseB.prune(()=>null)===0&&!!await loadFigureCropAsset(assetA),'保存中の作品が不明な場合は終了sessionの原本も回収しない');
+  await leaseB.prune(()=>[assetB]);check(!await loadFigureCropAsset(assetA)&&!!await loadFigureCropAsset(assetB),'終了したsessionの未参照撮影だけ回収できる');
  }finally{leaseA.dispose();leaseB.dispose();}
+ if(assetsOnly)return checks;
  render(<App/>,document.getElementById('app')!);
  await wait(()=>!!button('ネーム'),'app ready');await click('ネーム');
  await open3d();check(button('3D背景を撮影')?.textContent?.includes('撮影')===true&&!button('背景あたりの3Dモデルを配置・調整'),'背景フォルダの3D編集が撮影ボタンへ切り替わる');
@@ -113,4 +116,6 @@ async function run(){
 }
 const report=document.createElement('details');report.open=true;report.style.cssText='position:fixed;bottom:8px;left:150px;z-index:10001;max-width:650px;max-height:55vh;overflow:auto;padding:10px;background:white;border:1px solid #abc;font-size:12px;color:#123';
 const summary=document.createElement('summary');summary.textContent='撮影と共通履歴の検証';report.append(summary);const runButton=document.createElement('button');runButton.textContent='撮影と共通履歴の検証を実行';report.append(runButton);document.body.append(report);
-runButton.onclick=()=>{report.open=false;runButton.disabled=true;void run().then(checks=>{summary.textContent=`撮影と履歴 PASS（${checks.length}項目）`;for(const label of checks){const item=document.createElement('p');item.textContent=label;report.append(item);}}).catch(error=>{summary.textContent=`撮影と履歴 FAIL: ${String(error)}`;report.open=true;}).finally(()=>{runButton.disabled=false;});};
+const assetsButton=document.createElement('button');assetsButton.textContent='原本保持だけを検証';report.append(assetsButton);
+const start=(assetsOnly=false)=>{report.open=false;runButton.disabled=assetsButton.disabled=true;void run(assetsOnly).then(checks=>{summary.textContent=`${assetsOnly?'原本保持':'撮影と履歴'} PASS（${checks.length}項目）`;report.open=true;for(const label of checks){const item=document.createElement('p');item.textContent=label;report.append(item);}}).catch(error=>{summary.textContent=`撮影と履歴 FAIL: ${String(error)}`;report.open=true;}).finally(()=>{runButton.disabled=assetsButton.disabled=false;});};
+runButton.onclick=()=>start();assetsButton.onclick=()=>start(true);

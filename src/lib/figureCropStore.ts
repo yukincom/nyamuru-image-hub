@@ -127,7 +127,7 @@ export async function deleteFigureCropAssets(assetIds: readonly string[]): Promi
  * 現在の作品・Undo履歴から参照されない切り抜き画像を削除する。
  * 作成途中の強制終了で孤児が残っても、次回の自動保存後に回収できる。
  */
-export async function pruneFigureCropAssets(referencedAssetIds: readonly string[], currentReferences?:()=>readonly string[], canDeletePaintAsset?:(id:string)=>boolean): Promise<number> {
+export async function pruneFigureCropAssets(referencedAssetIds: readonly string[], currentReferences?:()=>readonly string[]|null, canDeletePaintAsset?:(id:string)=>boolean): Promise<number> {
   if (typeof indexedDB === 'undefined') return 0;
   const keep = new Set(referencedAssetIds.filter(Boolean));
   const database = await openFigureCropDatabase();
@@ -139,7 +139,10 @@ export async function pruneFigureCropAssets(referencedAssetIds: readonly string[
       let removed = 0;
       keys.onsuccess = () => {
         // Recheck at transaction time: a paint save may have started or finished while opening the database.
-        currentReferences?.().forEach(id=>keep.add(id));
+        const current=currentReferences?.();
+        // null means the caller no longer knows which persisted work to protect.
+        if(current===null)return;
+        current?.forEach(id=>keep.add(id));
         keys.result.forEach((key) => {
           // Originals are persistent library assets, not disposable analysis crops.
           // Keep them across imports, document switches and stale prune transactions.
