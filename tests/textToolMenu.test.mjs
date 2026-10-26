@@ -21,7 +21,7 @@ test('T primary click and shortcut open a compact tabbed persistent settings win
   assert.match(tools,/label="ふきだし" help="素材を吹き出しへ重ねると輪郭だけを入れ替えます。/);
   assert.doesNotMatch(toolbar,/>吹き出し素材<|onMaterials/);
   assert.doesNotMatch(tools,/FontFamilyPicker|作品の基本書体|PC内フォントを再読込/);
-  assert.match(toolbar,/<FontFamilyPicker[^>]+label="文字の書体"[^>]+onChange=\{font=>onChange\(\{font\}\)\}/);
+  assert.match(toolbar,/<FontFamilyPicker[^>]+label="文字の書体"[^>]+onChange=\{font=>changeStyle\(\{font\}\)\}/);
   assert.doesNotMatch(app,/changeDefaultFont|requestPcFonts\(true\)/);
   assert.match(app,/useEffect\(\(\)=>\{void requestPcFonts\(\);\},\[\]\)/);
   assert.match(app,/names\.length!==localFontNames\.current\.length\|\|names\.some\(\(name,index\)=>name!==localFontNames\.current\[index\]\)/);

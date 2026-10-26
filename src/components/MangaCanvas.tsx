@@ -69,7 +69,7 @@ interface Props {
   onGenerateComposition?:(scope:'page'|'panel',panelIndex:number)=>void;
   onReplaceArtwork?: (panelIndex: number, figureIndex?: number, overlay?: boolean, bubbleIndex?:number) => void;
   imageAssets?: ImageAsset[];
-  onImageGesture?: (phase: 'start' | 'end') => void;
+  onImageGesture?: (phase: 'start' | 'end', source?:'text-size') => void;
   title: string;
   author: string;
   page: MangaPage;
@@ -1637,7 +1637,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   return (
     <div data-paint-canvas onClickCapture={event=>{createTextAt(event,null);}} onDblClickCapture={event=>{if(!textTool)createTextAt(event,null,true);}} class={`canvas-viewport ${textTool&&!painting?'is-text-tool':''} ${painting?'is-painting':''} ${backgroundEdit?'is-background3d-editing':''} ${zoomTool?'is-zoom-tool':''} ${!painting&&!textTool&&!zoomTool&&!bubblePathTool?'is-selection-tool':bubblePathTool==='node'?'is-direct-selection-tool':''}`} onPointerDownCapture={event=>{bubbleTextDragged.current=false;const target=event.target as Element;if(textTool&&!painting&&!backgroundEdit&&event.button===0&&!spacePressedRef.current&&paperRef.current?.contains(target)&&!target.closest('.bubble-inline-editor,.background3d-window,.bubble-text-move-frame.is-active')){event.preventDefault();event.stopPropagation();return;}if(editingText&&!target.closest('.bubble-inline-editor,.text-settings-window,.canvas-text-toolbar,.font-family-popover'))onEndTextEdit?.();}}>
       {textSettingsOwner&&textTool&&!painting&&textToolbarHost&&createPortal(
-        <CanvasTextToolbar creating={!toolbarItem} style={toolbarTarget&&toolbarItem?{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}:textToolStyle} defaultFont={defaultBubbleFont} fontFamilies={fontFamilies} selection={textTarget?textSelection:undefined} selectionWeight={textTarget&&textSelection&&toolbarItem&&toolbarTarget?selectedTextWeight(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined} disabled={Boolean(toolbarTarget&&elementLocked({type:toolbarTarget.kind,index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex))} onChange={changeStyle} onRequestFonts={onRequestFonts}/>,
+        <CanvasTextToolbar key={toolbarTarget?`${toolbarTarget.pageIndex}:${toolbarTarget.panelIndex}:${toolbarTarget.overlay}:${toolbarTarget.kind}:${toolbarTarget.index}`:'new'} creating={!toolbarItem} style={toolbarTarget&&toolbarItem?{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}:textToolStyle} defaultFont={defaultBubbleFont} fontFamilies={fontFamilies} selection={textTarget?textSelection:undefined} selectionWeight={textTarget&&textSelection&&toolbarItem&&toolbarTarget?selectedTextWeight(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined} disabled={Boolean(toolbarTarget&&elementLocked({type:toolbarTarget.kind,index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex))} onChange={changeStyle} onSizeGesture={toolbarItem?phase=>onImageGesture?.(phase,'text-size'):undefined} onHistory={onTextHistory} onRequestFonts={onRequestFonts}/>,
         textToolbarHost,
       )}
       <div ref={scrollRef} class="canvas-scroll">

@@ -200,7 +200,7 @@
 | P1 印刷設定 | 完了 | 印刷・原稿設定へ一本化。重複UI／writerを削除、関連53件・型検査・既存ブラウザーfixtureで検証 |
 | P2 生成先設定 | 完了 | 既存generationPreferencesへ原子的な1回保存。旧keyは互換readerのみ。関連73件・型検査・実UI、独立レビュー成功 |
 | P3 同値更新 | 完了 | 同値は元document/scene、正規化済みコマ設定はclone前にreturn。関連87件・型検査成功 |
-| P4 履歴境界 | 未着手 | P3後 |
+| P4 履歴境界 | 完了 | 既存imageGestureへサイズ操作を接続。関連51件・型検査・実UI成功、独立レビューでP4指摘なし |
 | P5 自動保存 | 未着手 | P3/P4後 |
 | P6 持ち替え | 未着手 | P5後、既存の画像消費を確認してから |
 | P7a–c ディスク保存 | 未着手 | 個別commit |
@@ -252,3 +252,11 @@
 - 文字更新は対象の小さな書式だけを先に計算し、変更なしなら元documentを返す。作品clone・fit・履歴へ進むのは実変更だけ。既定値の明示化、部分書式の解除、通常文字のorientation同期を変更として保持する。
 - ベクターは同じ書式ならpath参照を維持し、既存commitで同じpath列を元sceneへ戻す。汎用deep比較・監視・新しい履歴経路は設けない。
 - P2 commit: `fe05253`。関連Node87件、型検査428ファイル0 error／0 warning。実handlerの同値通知でsetDocument・履歴境界リセットが0回、未選択／同色／同幅ベクターでscene参照不変、実変更と削除は反映。文字の同値操作では無関係な領域へ触れず、全作品cloneがないことも検証。既定値の明示・継承復帰・部分書式解除・通常文字の方向同期、YAML往復を維持。連続サイズ操作と実UIはP4で検証する。
+- 独立レビューで破線配列の参照比較による同値漏れを検出。既存の書式比較内でdash要素を比較し、実線・同じ破線を再クリックしても参照を保つよう補修。追補commit `e77fb77`、関連44件成功。値の変わる破線は通常どおり反映する。
+
+### P4: サイズ操作と既存履歴の接続
+
+- P3 commit: `08e3299`。残す正本は既存 `imageGestureBoundary` → `setDocument` → `workspaceHistory`。サイズ操作のsourceだけを区別し、毎通知での履歴境界リセットをなくす。本文編集や画像移動の既存境界は維持。
+- sliderはrelease／pointercancel／window blur、keyboardはkeyup、数値はEnter／blur／Escapeで区切る。中断時も最後の有効な表示値を保持する。IME変換中はサイズを適用せず、確定後に検証して反映。対象ごとのtoolbarを再利用し、切替・unmountで前の操作を終える。Undo後に同じ欄へ再入力しても新しい操作になる。
+- 関連Node51件成功。実toolbar handlerで各終了境界とIME、実App handlerと既存履歴で同値・連続更新・Undo後の入力を検証。型検査428ファイル0 error／0 warning。
+- 既存 `textToolInteraction.browser` の合成作品で、18→4→48の連続数値入力を一回のUndoで18へ、Redoで48へ復帰。sliderの48→129 dragも一回で48へ戻り、矢印キーと数値blurの別境界も確認。再読込後は最終32ptを保持。pointercancel・IMEは隔離handler試験であり実OS入力の検証ではない。既存ResizeObserver通知は再現したが編集結果・履歴を妨げていない。

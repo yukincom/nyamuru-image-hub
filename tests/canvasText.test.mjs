@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { toStoredMangaYaml, parseMangaYaml } from '../src/lib/manga.ts';
+import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
 import { addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
 test('new panel and page text inherit the chosen style instead of returning to 12pt',()=>{
@@ -21,6 +22,26 @@ function appHandler(name,context){
  let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(appAst)===name)body=node.initializer?.getText(appAst);if(ts.isFunctionDeclaration(node)&&node.name?.text===name)body=node.getText(appAst);ts.forEachChild(node,visit);}visit(appAst);assert.ok(body,name);
  return runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText,context);
 }
+test('actual size controls end gestures on release, cancel, blur, Enter, key-up and unmount without committing IME drafts',()=>{
+ const source=readFileSync(new URL('../src/components/CanvasTextToolbar.tsx',import.meta.url),'utf8');
+ const body=source.slice(source.indexOf('export default function')).replace('export default ','');
+ const changes=[],phases=[],history=[],listeners=new Map(),cleanups=[];
+ const component=runInNewContext(ts.transpileModule(`(${body})`,{fileName:'toolbar.tsx',compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText,{
+  h:(type,props,...children)=>({type,props,children}),FontFamilyPicker:()=>{},useRef:value=>({current:value}),useState:value=>[value,()=>{}],useEffect:run=>{const cleanup=run();if(cleanup)cleanups.push(cleanup);},
+  window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:(type)=>listeners.delete(type)}});
+ const root=component({style:{fontSize:18},defaultFont:'游明朝',disabled:false,onChange:patch=>changes.push({...patch}),onSizeGesture:phase=>phases.push(phase),onHistory:direction=>history.push(direction)});
+ const nodes=[];function walk(node){if(!node||typeof node!=='object')return;nodes.push(node);node.children?.flat(Infinity).forEach(walk);}walk(root);
+ const input=nodes.find(n=>n.props?.['aria-label']==='文字サイズ pt').props,slider=nodes.find(n=>n.props?.['aria-label']==='文字サイズ スライダー').props;
+ const event=(value,key='',isComposing=false)=>({currentTarget:{value},key,isComposing,preventDefault(){},stopPropagation(){}});
+ input.onCompositionStart();input.onInput(event('24'));input.onKeyDown(event('24','Enter',true));assert.equal(changes.length,0);
+ input.onCompositionEnd(event('24'));assert.deepEqual(changes,[{fontSize:24}]);input.onKeyDown(event('24','Enter'));assert.equal(phases.at(-1),'end');
+ for(const terminal of [()=>listeners.get('pointerup')(),()=>listeners.get('pointercancel')(),()=>listeners.get('blur')(),()=>slider.onKeyUp(event('28','ArrowRight')),()=>slider.onBlur()]){
+  slider.onInput(event('26'));slider.onInput(event('28'));const before=phases.filter(p=>p==='end').length;terminal();assert.equal(phases.filter(p=>p==='end').length,before+1);
+ }
+ input.onInput(event('0'));input.onInput(event('10.'));assert.equal(changes.at(-1).fontSize,28);
+ input.onInput(event('32'));root.props.onKeyDown({...event('32','z'),ctrlKey:true});assert.deepEqual(history,['undo']);assert.equal(phases.at(-1),'end');
+ input.onInput(event('34'));cleanups.forEach(cleanup=>cleanup());assert.equal(phases.at(-1),'end');assert.equal(listeners.size,0);
+});
 test('actual style and normalized panel controls leave history, redo and save state untouched on no-ops',()=>{
  const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
  canvasTextAt(documentRef.current,target).text_style={fontSize:18};
@@ -37,6 +58,26 @@ test('actual style and normalized panel controls leave history, redo and save st
   documentRef.current.manga.meta[key]=.5;panel(key,.51);assert.equal(clones,0);assert.equal(updates,1);
  }
  panel('panel_frame_width_mm',.6);assert.equal(clones,1);assert.equal(updates,2);
+});
+test('size notifications share the existing gesture history until commit, but not after undo or another edit',()=>{
+ const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
+ canvasTextAt(documentRef.current,target).text_style={fontSize:18};
+ const initial=documentRef.current,timeline={current:workspaceHistory()},imageGesture={current:{active:false,pushed:false}},lastHistoryPush={current:0};
+ const context={documentRef,timeline,imageGesture,lastHistoryPush,editCanvasTextStyle,canvasTextAt,textStyleOf:item=>item.text_style,changeTextToolStyle:()=>{},setToast:message=>assert.fail(message),paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,
+  synchronizeCatalogReferences:()=>{},reconcileSplitOverlapFlags:()=>{},workspaceSnapshot:()=>documentRef.current,changedHistory:()=>{},setDocument:()=>{},setDocumentState:()=>{},setHasDocument:()=>{}};
+ context.setDocument=appHandler('setDocument',context);
+ const boundary=appHandler('imageGestureBoundary',context),change=appHandler('changeCanvasTextStyle',context);
+ for(const size of [19,20,24,24]){boundary('start','text-size');change(target,{fontSize:size});}
+ assert.equal(timeline.current.past.length,1);assert.equal(timeline.current.past[0],initial);assert.equal(canvasTextAt(documentRef.current,target).text_style.fontSize,24);
+ boundary('end','text-size');boundary('start','text-size');change(target,{fontSize:28});boundary('end','text-size');assert.equal(timeline.current.past.length,2);
+ const last=documentRef.current;documentRef.current=timeline.current.undo(last);boundary('end');assert.equal(canvasTextAt(documentRef.current,target).text_style.fontSize,24);
+ change(target,{fontSize:24});assert.equal(timeline.current.future.length,1);
+ documentRef.current=timeline.current.redo(documentRef.current);boundary('end');assert.equal(documentRef.current,last);
+ boundary('start','text-size');change(target,{fontSize:30});documentRef.current=timeline.current.undo(documentRef.current);boundary('end');
+ // The numeric input may still have focus after Undo. Its next input starts a fresh group.
+ boundary('start','text-size');change(target,{fontSize:32});boundary('start','text-size');change(target,{fontSize:34});boundary('end','text-size');
+ assert.equal(canvasTextAt(timeline.current.undo(documentRef.current),target).text_style.fontSize,28);
+ boundary('start');boundary('end','text-size');assert.equal(imageGesture.current.active,true,'stale palette cleanup must not terminate a new non-size gesture');
 });
 test('the actual canvas route edits on a normal double click or T single click, never creates on a blank double click',()=>{
  const source=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');

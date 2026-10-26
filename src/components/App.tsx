@@ -450,7 +450,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const [editGuide,setEditGuide]=useState(()=>{try{return loadEditGuide(localStorage);}catch{return true;}});
   const [paintSmoothing,setPaintSmoothing]=useState(()=>{try{return loadPaintSmoothing(localStorage);}catch{return 0;}});
   const [paintCursorMode,setPaintCursorMode]=useState<PaintCursorMode>(()=>{try{return loadPaintCursor(localStorage);}catch{return 'circle';}});
-  const imageGesture = useRef({ active: false, pushed: false });
+  const imageGesture = useRef<{active:boolean;pushed:boolean;source?:'text-size'}>({ active: false, pushed: false });
   const [canvasSelectionScrollRequest, setCanvasSelectionScrollRequest] = useState(0);
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
   const [environmentOpen, setEnvironmentOpen] = useState(false);
@@ -3229,7 +3229,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   }
   function changeCanvasTextStyle(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
     if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
-    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection);if(next!==documentRef.current){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}}
+    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection);if(next!==documentRef.current){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));if(imageGesture.current.source!=='text-size'){imageGesture.current.pushed=false;lastHistoryPush.current=0;}setDocument(next);}}
     catch(error){setToast(error instanceof Error?error.message:'文字設定を変更できません');}
   }
   function canvasTextHistory(direction:'undo'|'redo'){
@@ -3636,8 +3636,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }
     setQwenGeneration(null);setToast(`${file.name} を${owner.label}のあたりに差し込みました`);
   };
-  const imageGestureBoundary = (phase: 'start' | 'end') => {
-    imageGesture.current = { active: phase === 'start', pushed: false };
+  const imageGestureBoundary = (phase: 'start' | 'end', source?:'text-size') => {
+    if(source&&(phase==='start'?imageGesture.current.source===source:imageGesture.current.source!==source))return;
+    imageGesture.current = { active: phase === 'start', pushed: false, ...(phase==='start'&&source?{source}:{}) };
     lastHistoryPush.current = 0;
   };
   const movePageImageToPanel = (index: number) => {
