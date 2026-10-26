@@ -284,9 +284,9 @@ test('opening a browser folder replaces the episode binding with that selected f
     isLanClient: true,
     browserWorkspaces: {
       chooseEpisode: async () => workspace,
-      open: async value => { assert.equal(value, workspace); return { file: { name: '作品.nyamuru' }, binding: { revision: 'loaded' } }; },
+      open: async value => { assert.equal(value, workspace); return { file: { name: 'project.json' }, value: { parsed: true }, binding: { revision: 'loaded' } }; },
     },
-    readPortableProject: async () => ({}), restorePortableProject: async () => h.original,
+    restorePortableProject: async value => { assert.deepEqual(value, { parsed: true }); return h.original; },
     rememberProjectBinding: value => { remembered = value; }, rememberBrowserCatalog: async () => {},
   });
   await h.run();

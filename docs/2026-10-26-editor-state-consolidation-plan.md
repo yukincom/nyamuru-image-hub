@@ -204,7 +204,7 @@
 | P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
 | P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc、P7c 29dd0c7。登録再利用・失敗取消し、Python40件／Node9件成功 |
-| P8 標準名・文書 | 実施中 | シリーズ台帳から既存reader/writerへ統合。LAN・書き出し・packageと文書整理は残件 |
+| P8 標準名・文書 | 実施中 | シリーズa9ee62f・YAML書出93396b6・LAN保存検証完了。packageは残件 |
 | P9a–d 描画残件 | 未着手 | 設定・保存とは別commit群 |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
 
@@ -298,3 +298,7 @@
 - シリーズ台帳commit: `a9ee62f`。YAMLの受け渡しは既存 `omnyFileName`／`omayFileName` と各ダウンロードhandlerを変更し、構成は `作品名.yaml`、設定控えは `作品名-settings.yaml`、生成指示は `作品名-generation.yaml`。serializerやデータschemaは変更していない。画面名を役割で表示し、構成YAMLの読み込みUIは追加しない。
 - 同梱の現行sampleを `sample.yaml`、標準設定を `standard-settings.yaml` へ改名。内容はGit blob一致で不変。依存testと公開案内の参照を更新し、履歴文書は当時の名称を保持して現行手順への案内・切れた参照だけ補修する。生成promptの変更はファイル名／参照先のみで、モデルによる試行は利用者の確認前に行わない。
 - YAML名・UI検証: 全Node1301件（1298成功／3skip）、原文確認Python16件、型検査428ファイル0 error／0 warning、通常／単一HTML build成功。全Node実行でP6のundo/redo隔離testにtoolSuspendedのcontext渡し漏れを検出し、既存testへ補完した。既存環境設定ブラウザーfixtureで新ラベルと控え／生成出力通知を確認し、出力後も作品更新0回。出力名・OFF項目保持・生成対象の選別・作品／保存先の不変はactual-handler試験で確認。実作品・実モデルの検証ではない。
+- LANは既存 `BrowserWorkspaces` → `writeProjectFile` を維持。保存先の解決を既存Web Locks／同画面queue内へ移し、書き込み前・writer取得後・公開直前に新旧ファイルのrevisionを照合する。新規writerは `project.json` のみ。AppのJSON化を既存folder writerへ寄せ、readerで一度parseした値をAppの復元へ渡す。別のqueue、sidecar、作品document内の移行stateは作らない。
+- LANの `legacy_source` は既存JSON envelopeへ記録して保存のたびに保持し、シリーズと同じ新旧競合条件を適用する。開くだけでは旧byteを変更しない。初回writer失敗で残る空ファイルは再試行できる。新JSONが削除・空になってから再選択された場合は、移行履歴も失われるため旧ファイルへのfallbackを過去の移行と区別できない。外部アプリとの完全な多ファイルtransactionを保証せず、これらの境界をLAN手順書に明記する。
+- LAN検証: 関連Node46件成功、型検査428ファイル0 error／0 warning。旧名read-only、新旧の一致／不一致、不正な移行記録、準備中・writer取得中・書き込み中の外部更新、同時保存、失敗後の再試行を確認。独立レビューで空の新規ファイルが別名の単独作品チェックを迂回するケースを見つけ、既存guardへ統合して回帰試験を追加した。
+- 既存 `browserWorkspace.browser` のOPFS合成作品で、実FileSystem writerによる `project.json` 44,796byteの保存、旧ファイルと記録hashの一致、空キャッシュから原本1枚・人物資料1枚の復元を確認。pickerだけはfixtureへ置換しており、OSの実folder picker・別PC・実作品の試験ではない。モデル送信0回。確認tabを閉じ、専用LAN検証serverのPID50819終了と4339解放を確認した。

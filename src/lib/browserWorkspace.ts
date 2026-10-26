@@ -1,4 +1,5 @@
 import { blobRevision, writeProjectFile, MAX_PROJECT_FILE_BYTES, type ProjectFileBinding, type ProjectFileHandle } from './browserFiles.ts';
+import { readPortableProject, portableProjectBlob, type PortableProject, type LegacyProjectSource } from './portableProject.ts';
 import type { EpisodeWorkspace, EpisodeWorkspaceTextSelection, ReferenceTextSuggestionResult, SeriesDirectorySelection, SeriesReferenceTextCandidate } from './localBridge.ts';
 
 export interface BrowserFileHandle extends ProjectFileHandle { kind: 'file' }
@@ -18,12 +19,17 @@ export interface BrowserFolderStorage {
   put(record: FolderRecord): Promise<void>;
 }
 export interface BrowserProjectWorkspace extends EpisodeWorkspace { projectRevision?: string | null }
-export interface FolderSaveTarget { workspace: BrowserProjectWorkspace; directory: BrowserDirectoryHandle; fileName: string; binding: ProjectFileBinding | null }
+export interface FolderSaveTarget {
+  workspace: BrowserProjectWorkspace; directory: BrowserDirectoryHandle;
+  currentRevision: string | null; legacyRevision: string | null; legacySource?: LegacyProjectSource;
+}
 type PickerWindow = Window & {
   showDirectoryPicker?: (options: object) => Promise<BrowserDirectoryHandle>;
   showOpenFilePicker?: (options: object) => Promise<BrowserFileHandle[]>;
 };
-const PROJECT_NAME = '作品.nyamuru';
+const PROJECT_NAME = 'project.json';
+const LEGACY_PROJECT_NAME = '作品.nyamuru';
+const projectConflict = () => new Error('保存先の作品ファイルが他の画面やアプリで更新されています。新旧両方を保管して確認し、別のフォルダーに保存してください');
 const MANAGED_DIRECTORIES = ['name_data', 'draft_data', 'manuscript_data', 'export_data'];
 const TEXT_LIMIT = 5 * 1024 * 1024;
 const TEXT_EXT = /\.(?:md|markdown|txt|text)$/i;
@@ -66,6 +72,12 @@ async function readText(file: File): Promise<string> {
 async function optionalFile(directory: BrowserDirectoryHandle, name: string) {
   try { const handle = await directory.getFileHandle(name); return { handle, file: await handle.getFile() }; }
   catch (error) { if (missing(error)) return null; throw error; }
+}
+async function projectEntry(directory: BrowserDirectoryHandle, name: string) {
+  const entry = await optionalFile(directory, name);
+  if (!entry) return null;
+  if (entry.file.size > MAX_PROJECT_FILE_BYTES) throw new Error('作品ファイルが大きすぎます（上限192MiB）');
+  return { ...entry, revision: await blobRevision(entry.file) };
 }
 /** Discovery reads only bounded text inside the explicitly selected folder. */
 export async function browserReferenceCandidates(directory: BrowserDirectoryHandle): Promise<SeriesReferenceTextCandidate[]> {
@@ -152,7 +164,7 @@ export class BrowserWorkspaces {
       catch (error) { if (!missing(error)) throw error; }
       if (nativeProject) throw new Error('このフォルダーにはMac Studio形式の作品があります。元のMac Studioの画面で開くか、新しいフォルダーを選んでください');
       const existing = await this.projectFile(record);
-      if (existing && existing.file.size) throw new Error('このフォルダーには作品が保存されています。「作品フォルダーを開く」で再開するか、新しいフォルダーを選んでください');
+      if (existing.saved?.file.size) throw new Error('このフォルダーには作品が保存されています。「作品フォルダーを開く」で再開するか、新しいフォルダーを選んでください');
     }
     return { token: record.id, directory: displayDirectory(record), folderName: record.handle.name, seriesDirectory: parent };
   }
@@ -183,43 +195,62 @@ export class BrowserWorkspaces {
     return [...MANAGED_DIRECTORIES];
   }
   private async projectFile(record: FolderRecord) {
-    const saved = await optionalFile(record.handle, PROJECT_NAME);
-    if (saved) return saved;
-    for await (const entry of record.handle.values()) {
-      if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.nyamuru')) {
-        throw new Error('作品フォルダーには「作品.nyamuru」が必要です。単独で書き出した作品ファイルは開けません');
+    const current = await projectEntry(record.handle, PROJECT_NAME);
+    const legacy = await projectEntry(record.handle, LEGACY_PROJECT_NAME);
+    // An aborted first write can leave an empty destination. It contains no project.
+    const saved = current?.file.size ? current : legacy?.file.size ? legacy : current;
+    const value = saved?.file.size ? await readPortableProject(saved.file) : null;
+    let legacySource = current?.file.size ? value?.legacy_source : undefined;
+    if (current?.file.size && legacy) {
+      if (legacySource ? legacySource.sha256 !== legacy.revision : current.revision !== legacy.revision) throw projectConflict();
+    }
+    if (legacy?.file.size && !legacySource) legacySource = { file_name: LEGACY_PROJECT_NAME, sha256: legacy.revision };
+    if (!saved?.file.size) for await (const entry of record.handle.values()) {
+      if (entry.kind === 'file' && entry.name !== LEGACY_PROJECT_NAME && entry.name.toLowerCase().endsWith('.nyamuru')) {
+        throw new Error('作品フォルダーには「project.json」が必要です。単独で書き出した作品ファイルは開けません');
       }
     }
-    return null;
+    return { saved, value, legacySource, currentRevision: current?.revision ?? null, legacyRevision: legacy?.revision ?? null };
   }
-  async open(workspace: EpisodeWorkspace): Promise<{ file: File; binding: ProjectFileBinding }> {
+  async open(workspace: EpisodeWorkspace): Promise<{ file: File; value: PortableProject; binding: ProjectFileBinding }> {
     const record = await this.authorize(workspace.token);
-    const saved = await this.projectFile(record);
-    if (!saved) throw new Error('このフォルダーに作品ファイル（.nyamuru）がありません');
-    if (saved.file.size > MAX_PROJECT_FILE_BYTES) throw new Error('作品ファイルが大きすぎます（上限192MiB）');
-    return { file: saved.file, binding: { handle: saved.handle, revision: await blobRevision(saved.file) } };
+    const { saved, value } = await this.projectFile(record);
+    if (!saved || !value) throw new Error('このフォルダーに作品ファイル（project.json）がありません');
+    return { file: saved.file, value, binding: { handle: saved.handle, revision: saved.revision } };
   }
   /** Acquire permission while the Save click is still active, before encoding the images. */
   async saveTarget(workspace: BrowserProjectWorkspace): Promise<FolderSaveTarget> {
     const record = await this.authorize(workspace.token, 'readwrite');
-    const saved = await this.projectFile(record);
+    const { saved, legacySource, currentRevision, legacyRevision } = await this.projectFile(record);
     const expected = workspace.projectRevision ?? null;
     if (saved?.file.size && expected === null) throw new Error('保存先に別の作品があります。別のフォルダーを選ぶか、保存済みの作品を開いてください');
     if (!saved && expected !== null) throw new Error('保存先の作品ファイルが見つかりません。別のフォルダーに保存してください');
-    const revision = saved ? await blobRevision(saved.file) : null;
+    const revision = saved?.revision ?? null;
     if (expected !== null && revision !== expected) throw new Error('作品ファイルが他の画面やアプリで更新されています。別のフォルダーに保存してください');
-    return { workspace, directory: record.handle, fileName: PROJECT_NAME, binding: saved ? { handle: saved.handle, revision: revision! } : null };
+    return { workspace, directory: record.handle, legacySource, currentRevision, legacyRevision };
   }
-  async write(blob: Blob, target: FolderSaveTarget) {
-    if (blob.size > MAX_PROJECT_FILE_BYTES) throw new Error('作品ファイルが大きすぎます（上限192MiB）');
-    let binding = target.binding;
-    if (!binding) {
-      const handle = await target.directory.getFileHandle(target.fileName, { create: true });
-      const file = await handle.getFile();
-      if (file.size) throw new Error('保存先に別の作品が作られています。別のフォルダーに保存してください');
-      binding = { handle, revision: await blobRevision(file) };
-    }
-    return writeProjectFile(blob, binding);
+  async write(file: PortableProject, target: FolderSaveTarget) {
+    const { legacy_source: _source, ...content } = file;
+    const blob = portableProjectBlob({ ...content, ...(target.legacySource ? { legacy_source: target.legacySource } : {}) });
+    let currentRevision = target.currentRevision;
+    const check = async () => {
+      const current = await projectEntry(target.directory, PROJECT_NAME);
+      const legacy = await projectEntry(target.directory, LEGACY_PROJECT_NAME);
+      if ((current?.revision ?? null) !== currentRevision || (legacy?.revision ?? null) !== target.legacyRevision) throw projectConflict();
+    };
+    return writeProjectFile(blob, {
+      name: PROJECT_NAME, check,
+      resolve: async () => {
+        await check();
+        const handle = await target.directory.getFileHandle(PROJECT_NAME, { create: true });
+        const initial = await handle.getFile();
+        if (currentRevision === null) {
+          if (initial.size) throw projectConflict();
+          currentRevision = await blobRevision(initial);
+        }
+        return { handle, revision: currentRevision };
+      },
+    });
   }
 }
 export const browserWorkspaces = new BrowserWorkspaces();

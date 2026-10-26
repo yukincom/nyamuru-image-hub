@@ -4,6 +4,12 @@ export interface ProjectFileHandle {
   createWritable(options?: { mode?: 'exclusive'; keepExistingData?: boolean }): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void>; abort(): Promise<void> }>;
 }
 export interface ProjectFileBinding { handle: ProjectFileHandle; revision: string }
+/** Resolve a folder destination only after acquiring the existing file lock. */
+export interface ProjectFolderTarget {
+  name: string;
+  resolve(): Promise<ProjectFileBinding>;
+  check(): Promise<void>;
+}
 export const MAX_PROJECT_FILE_BYTES = 192 * 1024 * 1024;
 
 export async function blobRevision(blob: Blob): Promise<string> {
@@ -39,17 +45,20 @@ async function withFileLock<T>(name: string, operation: () => Promise<T>): Promi
   try { return await pending; }
   finally { if (pendingWrites.get(key) === pending) pendingWrites.delete(key); }
 }
-export async function writeProjectFile(blob: Blob, binding: ProjectFileBinding): Promise<{ binding: ProjectFileBinding }> {
+export async function writeProjectFile(blob: Blob, target: ProjectFileBinding | ProjectFolderTarget): Promise<{ binding: ProjectFileBinding }> {
   if (blob.size > MAX_PROJECT_FILE_BYTES) throw new Error('作品ファイルが大きすぎます（上限192MiB）');
-  if (!binding) throw new Error('作品フォルダーを選んでください');
-  return withFileLock(binding.handle.name, async () => {
+  if (!target) throw new Error('作品フォルダーを選んでください');
+  const folder = 'resolve' in target ? target : null;
+  return withFileLock(folder ? folder.name : (target as ProjectFileBinding).handle.name, async () => {
+    const binding = folder ? await folder.resolve() : target as ProjectFileBinding;
     const checkRevision = async () => {
+      await folder?.check();
       if (await blobRevision(await binding.handle.getFile()) !== binding.revision) throw new Error('保存先のファイルが他の画面やアプリで更新されています。環境設定から別のフォルダーを選んでください');
     };
     await checkRevision();
     const revision = await blobRevision(blob);
     const writable = await binding.handle.createWritable({ mode: 'exclusive' });
-    try { await checkRevision(); await writable.write(blob); await writable.close(); }
+    try { await checkRevision(); await writable.write(blob); await checkRevision(); await writable.close(); }
     catch (error) { await writable.abort().catch(() => undefined); throw error; }
     return { binding: { handle: binding.handle, revision } };
   });

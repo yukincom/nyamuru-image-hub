@@ -114,12 +114,18 @@ async function prepareImages() {
   location.reload();
 }
 async function inspectFile() {
-  const file = await (await episode.getFileHandle('作品.nyamuru')).getFile();
+  const file = await (await episode.getFileHandle('project.json')).getFile();
   const value = JSON.parse(await file.text());
-  return `保存実体: 第1話/作品.nyamuru / ${file.size} bytes / ${value.snapshot.document.manga.meta.title} / 原本画像 ${value.snapshot.assets.length} / 人物資料画像 ${value.characterImages.length}`;
+  let legacy = '旧ファイルなし';
+  try {
+    const oldFile = await (await episode.getFileHandle('作品.nyamuru')).getFile();
+    if (value.legacy_source?.sha256 !== await imageSha256(oldFile)) throw Error('旧ファイルと移行記録が一致しません');
+    legacy = '旧ファイル保持・移行元hash一致';
+  } catch (error) { if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error; }
+  return `保存実体: 第1話/project.json / ${file.size} bytes / ${value.snapshot.document.manga.meta.title} / 原本画像 ${value.snapshot.assets.length} / 人物資料画像 ${value.characterImages.length} / ${legacy}`;
 }
 async function clearCache() {
-  const value = JSON.parse(await (await (await episode.getFileHandle('作品.nyamuru')).getFile()).text());
+  const value = JSON.parse(await (await (await episode.getFileHandle('project.json')).getFile()).text());
   const ids = value.snapshot.assets.map((asset: { id: string }) => asset.id);
   for (const item of value.characterImages) ids.push(characterImageCacheId(item.seriesId, item.characterId, item.assetId));
   await deleteFigureCropAssets(ids);

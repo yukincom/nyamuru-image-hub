@@ -26,7 +26,9 @@ async function fixture() {
 test('portable file restores story, crop and character originals into empty client storage', async () => {
   const source = await fixture(), crops = [], characters = [];
   const file = await createPortableProject(source, { snapshot: doc => createProjectSnapshot(doc, async () => png), loadCharacter: async () => png });
-  const serialized = await readPortableProject(new File([portableProjectBlob(file)], '持ち出し.nyamuru'));
+  file.legacy_source = { file_name: '作品.nyamuru', sha256: 'a'.repeat(64) };
+  const serialized = await readPortableProject(new File([portableProjectBlob(file)], 'project.json'));
+  assert.deepEqual(serialized.legacy_source, file.legacy_source);
   const restored = await restorePortableProject(serialized, {
     restore: snapshot => restoreProjectSnapshot(snapshot, async assets => crops.push(...assets)), saveCharacters: async assets => characters.push(...assets),
   });
@@ -37,6 +39,17 @@ test('portable file restores story, crop and character originals into empty clie
   assert.equal(characters[0].id, characterImageCacheId(restored.manga.meta.series_id, material.character_catalog_id, material.source_image.asset_id));
   assert.notEqual(restored.manga.pages[0].panels[0].figures[0].analogImport.assetId, 'old-crop');
   assert.equal(await blobRevision(characters[0].blob), material.source_image.sha256);
+  assert.equal('legacy_source' in restored, false);
+});
+
+test('malformed provenance is rejected by reader and restore before asset writes', async () => {
+  const source = await fixture();
+  const file = await createPortableProject(source, { snapshot: doc => createProjectSnapshot(doc, async () => png), loadCharacter: async () => png });
+  for (const origin of [null, {}, { file_name: 'other.json', sha256: 'a'.repeat(64) }, { file_name: '作品.nyamuru', sha256: 1 }]) {
+    const value = { ...file, legacy_source: origin };
+    await assert.rejects(readPortableProject(new Blob([JSON.stringify(value)])), /移行記録が不正/);
+    await assert.rejects(restorePortableProject(value, { restore: () => assert.fail(), saveCharacters: () => assert.fail() }), /移行記録が不正/);
+  }
 });
 test('missing or corrupt character bytes fail before writing any imported assets', async () => {
   const source = await fixture();

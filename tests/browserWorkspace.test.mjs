@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BrowserWorkspaces, browserReferenceCandidates } from '../src/lib/browserWorkspace.ts';
+import { blobRevision } from '../src/lib/browserFiles.ts';
+
+const project = title => ({ format: 'nyamuru-project', version: 1, snapshot: { document: { manga: { meta: { title } } } }, characterImages: [] });
+const json = title => JSON.stringify(project(title));
+const title = opened => opened.value.snapshot.document.manga.meta.title;
 
 class Folder {
   kind = 'directory'; entries = new Map(); permission = 'granted';
@@ -88,17 +93,19 @@ test('save writes a real project file in the selected folder; a fresh client rec
   const f = fixture(), workspace = await f.client.chooseEpisode('', '', true);
   const dirs = await f.client.prepare(workspace.token);
   assert.deepEqual(dirs, ['name_data', 'draft_data', 'manuscript_data', 'export_data']);
-  const first = await f.client.write(new Blob(['project A']), await f.client.saveTarget(workspace));
+  const first = await f.client.write(project('project A'), await f.client.saveTarget(workspace));
   const fresh = new BrowserWorkspaces(f.storage);
   const opened = await fresh.open(workspace);
-  assert.equal(await opened.file.text(), 'project A');
+  assert.equal(title(opened), 'project A');
+  assert.equal(opened.file.name, 'project.json');
+  assert.equal(f.episode.entries.has('作品.nyamuru'), false);
   const binding = { ...workspace, projectRevision: opened.binding.revision };
-  const second = await fresh.write(new Blob(['project B']), await fresh.saveTarget(binding));
+  const second = await fresh.write(project('project B'), await fresh.saveTarget(binding));
   assert.notEqual(first.binding.revision, second.binding.revision);
-  assert.equal(await (await fresh.open(workspace)).file.text(), 'project B');
+  assert.equal(title(await fresh.open(workspace)), 'project B');
 });
 test('existing portable or native work cannot be chosen as a new project destination', async () => {
-  const f = fixture(); await f.episode.add('作品.nyamuru', 'existing');
+  const f = fixture(); await f.episode.add('作品.nyamuru', json('existing'));
   await assert.rejects(f.client.chooseEpisode('', '', true), /保存されています/);
   const native = new Folder('native'); f.pick(native);
   await (await native.getDirectoryHandle('.nyamuru', { create: true })).add('project.json', 'existing');
@@ -106,25 +113,25 @@ test('existing portable or native work cannot be chosen as a new project destina
 });
 test('external updates, removed files, and files created after destination choice cannot be overwritten', async () => {
   const f = fixture(), workspace = await f.client.chooseEpisode();
-  const first = await f.client.write(new Blob(['original']), await f.client.saveTarget(workspace));
+  const first = await f.client.write(project('original'), await f.client.saveTarget(workspace));
   const bound = { ...workspace, projectRevision: first.binding.revision };
-  await f.episode.add('作品.nyamuru', 'external');
+  await f.episode.add('project.json', json('external'));
   await assert.rejects(f.client.saveTarget(bound), /更新されています/);
-  assert.equal(await (await f.client.open(workspace)).file.text(), 'external');
-  f.episode.entries.delete('作品.nyamuru');
+  assert.equal(title(await f.client.open(workspace)), 'external');
+  f.episode.entries.delete('project.json');
   await assert.rejects(f.client.saveTarget(bound), /見つかりません/);
   const target = await f.client.saveTarget(workspace);
-  await f.episode.add('作品.nyamuru', 'race winner');
-  await assert.rejects(f.client.write(new Blob(['loser']), target), /別の作品/);
-  assert.equal(await (await f.client.open(workspace)).file.text(), 'race winner');
+  await f.episode.add('project.json', json('race winner'));
+  await assert.rejects(f.client.write(project('loser'), target), /更新されています/);
+  assert.equal(title(await f.client.open(workspace)), 'race winner');
 });
 test('failed writes abort and preserve the last saved project', async () => {
   const f = fixture(), workspace = await f.client.chooseEpisode();
-  const first = await f.client.write(new Blob(['original']), await f.client.saveTarget(workspace));
-  const handle = await f.episode.getFileHandle('作品.nyamuru'); handle.fail = true;
+  const first = await f.client.write(project('original'), await f.client.saveTarget(workspace));
+  const handle = await f.episode.getFileHandle('project.json'); handle.fail = true;
   const target = await f.client.saveTarget({ ...workspace, projectRevision: first.binding.revision });
-  await assert.rejects(f.client.write(new Blob(['new']), target), /disk full/);
-  assert.equal(handle.aborted, true); assert.equal(await handle.file.text(), 'original');
+  await assert.rejects(f.client.write(project('new'), target), /disk full/);
+  assert.equal(handle.aborted, true); assert.equal(await handle.file.text(), json('original'));
 });
 test('cancel and denied permission do not create files or report a saved project', async () => {
   const f = fixture(), workspace = await f.client.chooseEpisode();
@@ -140,8 +147,12 @@ test('renamed standalone files and remembered legacy names cannot bypass folder 
   await assert.rejects(f.client.open(workspace), /単独で書き出した/);
   await assert.rejects(f.client.saveTarget(workspace), /単独で書き出した/);
   assert.equal(f.episode.entries.has('作品.nyamuru'), false);
-  await f.episode.add('作品.nyamuru', 'folder project');
-  assert.equal(await (await f.client.open(workspace)).file.text(), 'folder project');
+  await f.episode.getFileHandle('project.json', { create: true });
+  await assert.rejects(f.client.chooseEpisode('', '', true), /単独で書き出した/);
+  await assert.rejects(f.client.saveTarget(workspace), /単独で書き出した/);
+  await assert.rejects(f.client.open(workspace), /単独で書き出した/);
+  await f.episode.add('作品.nyamuru', json('folder project'));
+  assert.equal(title(await f.client.open(workspace)), 'folder project');
 });
 
 test('unsupported browsers fail explicitly without offering standalone files', async () => {
@@ -153,4 +164,112 @@ test('unsupported browsers fail explicitly without offering standalone files', a
     return true;
   });
   assert.equal(f.episode.entries.size, 0);
+});
+
+test('legacy-only open is read-only; explicit saves migrate once and retain the original provenance', async () => {
+  const f = fixture(), legacy = await f.episode.add('作品.nyamuru', json('old'));
+  const original = legacy.file, workspace = await f.client.chooseEpisode();
+  const opened = await f.client.open(workspace);
+  assert.equal(opened.file, original);
+  assert.equal(f.episode.entries.size, 1);
+  const bound = { ...workspace, projectRevision: opened.binding.revision };
+  const migrated = await f.client.write(project('new'), await f.client.saveTarget(bound));
+  assert.equal(legacy.file, original);
+  assert.equal(migrated.binding.handle.name, 'project.json');
+  const origin = { file_name: '作品.nyamuru', sha256: await blobRevision(original) };
+  assert.deepEqual((await f.client.open(workspace)).value.legacy_source, origin);
+  f.episode.entries.delete('作品.nyamuru');
+  const second = await f.client.write(project('newer'), await f.client.saveTarget({ ...bound, projectRevision: migrated.binding.revision }));
+  assert.deepEqual((await f.client.open(workspace)).value.legacy_source, origin);
+  await f.episode.add('作品.nyamuru', json('old app edit'));
+  await assert.rejects(f.client.open(workspace), /更新されています/);
+  await assert.rejects(f.client.saveTarget({ ...bound, projectRevision: second.binding.revision }), /更新されています/);
+  assert.equal(JSON.parse(await second.binding.handle.file.text()).snapshot.document.manga.meta.title, 'newer');
+});
+
+test('both names require identical bytes or valid provenance; invalid records are not adopted', async () => {
+  for (const variant of ['identical', 'different', 'valid', 'invalid']) {
+    const f = fixture(), workspace = await f.client.chooseEpisode();
+    const legacy = await f.episode.add('作品.nyamuru', json('old'));
+    const value = project(variant === 'identical' ? 'old' : 'new');
+    if (variant === 'valid') value.legacy_source = { file_name: '作品.nyamuru', sha256: await blobRevision(legacy.file) };
+    if (variant === 'invalid') value.legacy_source = { file_name: 'unknown.nyamuru', sha256: 'bad' };
+    const current = await f.episode.add('project.json', JSON.stringify(value)), before = current.file;
+    if (variant === 'different' || variant === 'invalid') await assert.rejects(f.client.open(workspace), /更新されています|移行記録が不正/);
+    else {
+      const opened = await f.client.open(workspace);
+      assert.equal(opened.file.name, 'project.json');
+      const target = await f.client.saveTarget({ ...workspace, projectRevision: opened.binding.revision });
+      await f.client.write(project('next'), target);
+      assert.equal((await f.client.open(workspace)).value.legacy_source.sha256, await blobRevision(legacy.file));
+    }
+    assert.equal(await legacy.file.text(), json('old'));
+    if (variant === 'different' || variant === 'invalid') assert.equal(current.file, before);
+  }
+});
+
+test('prepared migrations reject appearance, removal or changes of either name', async () => {
+  for (const change of ['create-current', 'change-legacy', 'remove-legacy', 'create-legacy', 'remove-current', 'change-current']) {
+    const f = fixture(), workspace = await f.client.chooseEpisode();
+    const legacyStart = ['create-current', 'change-legacy', 'remove-legacy'].includes(change);
+    await f.episode.add(legacyStart ? '作品.nyamuru' : 'project.json', json('start'));
+    const opened = await f.client.open(workspace);
+    const target = await f.client.saveTarget({ ...workspace, projectRevision: opened.binding.revision });
+    if (change.startsWith('remove')) f.episode.entries.delete(legacyStart ? '作品.nyamuru' : 'project.json');
+    else await f.episode.add(change.endsWith('legacy') ? '作品.nyamuru' : 'project.json', json('external'));
+    const before = [...f.episode.entries].map(([name, handle]) => [name, handle.file]);
+    await assert.rejects(f.client.write(project('loser'), target), /更新されています/);
+    assert.deepEqual([...f.episode.entries].map(([name, handle]) => [name, handle.file]), before);
+  }
+});
+
+test('migration checks legacy changes after writer acquisition and before publication', async () => {
+  for (const phase of ['open', 'write']) {
+    const f = fixture(), workspace = await f.client.chooseEpisode();
+    const legacy = await f.episode.add('作品.nyamuru', json('old'));
+    const empty = await f.episode.getFileHandle('project.json', { create: true });
+    const opened = await f.client.open(workspace), before = empty.file;
+    const target = await f.client.saveTarget({ ...workspace, projectRevision: opened.binding.revision });
+    const create = empty.createWritable.bind(empty);
+    empty.createWritable = async () => {
+      const writer = await create();
+      if (phase === 'open') legacy.file = new File([json('external')], legacy.name);
+      else { const write = writer.write; writer.write = async blob => { await write(blob); legacy.file = new File([json('external')], legacy.name); }; }
+      return writer;
+    };
+    await assert.rejects(f.client.write(project('new'), target), /更新されています/);
+    assert.equal(empty.file, before); assert.equal(empty.aborted, true);
+  }
+});
+
+test('failed first migration retains old bytes and can retry through the existing empty destination', async () => {
+  const f = fixture(), workspace = await f.client.chooseEpisode();
+  const legacy = await f.episode.add('作品.nyamuru', json('old')), original = legacy.file;
+  const opened = await f.client.open(workspace), bound = { ...workspace, projectRevision: opened.binding.revision };
+  const target = await f.client.saveTarget(bound);
+  const get = f.episode.getFileHandle.bind(f.episode);
+  f.episode.getFileHandle = async (name, options) => { const handle = await get(name, options); if (options?.create) handle.fail = true; return handle; };
+  await assert.rejects(f.client.write(project('new'), target), /disk full/);
+  assert.equal(legacy.file, original);
+  assert.equal(title(await f.client.open(workspace)), 'old');
+  f.episode.getFileHandle = get;
+  (await get('project.json')).fail = false;
+  await f.client.write(project('new'), await f.client.saveTarget(bound));
+  assert.equal(title(await f.client.open(workspace)), 'new');
+  assert.equal(legacy.file, original);
+});
+
+test('same-folder concurrent new saves and migrations have exactly one winner', async () => {
+  for (const migrating of [false, true]) {
+    const f = fixture(), workspace = await f.client.chooseEpisode();
+    if (migrating) {
+      await f.episode.add('作品.nyamuru', json('old'));
+      workspace.projectRevision = (await f.client.open(workspace)).binding.revision;
+    }
+    const targets = await Promise.all([f.client.saveTarget(workspace), f.client.saveTarget(workspace)]);
+    const outcomes = await Promise.allSettled(targets.map((target, i) => f.client.write(project(`edit-${i}`), target)));
+    assert.equal(outcomes.filter(result => result.status === 'fulfilled').length, 1);
+    assert.match(outcomes.find(result => result.status === 'rejected').reason.message, /更新されています/);
+    assert.equal(title(await f.client.open(workspace)), 'edit-0');
+  }
 });

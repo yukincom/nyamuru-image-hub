@@ -6,7 +6,15 @@ import { characterImageCacheId } from './browserCatalog.ts';
 import { blobRevision, MAX_PROJECT_FILE_BYTES } from './browserFiles.ts';
 
 interface CharacterImage { seriesId: string; characterId: string; assetId: string; data: string }
-export interface PortableProject { format: 'nyamuru-project'; version: 1; snapshot: ProjectSnapshot; characterImages: CharacterImage[] }
+export interface LegacyProjectSource { file_name: '作品.nyamuru'; sha256: string }
+export interface PortableProject { format: 'nyamuru-project'; version: 1; snapshot: ProjectSnapshot; characterImages: CharacterImage[]; legacy_source?: LegacyProjectSource }
+function projectHeader(value: unknown): PortableProject {
+  const file = value as PortableProject | null;
+  if (file?.format !== 'nyamuru-project' || file.version !== 1 || !file.snapshot?.document?.manga || !Array.isArray(file.characterImages)) throw new Error('Nyamuru作品ファイルではありません');
+  if ('legacy_source' in file && (file.legacy_source?.file_name !== '作品.nyamuru'
+    || typeof file.legacy_source.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.legacy_source.sha256))) throw new Error('作品ファイルの移行記録が不正です');
+  return file;
+}
 const characterReferences = (document: MangaDocument) => document.manga.materials.flatMap(material => {
   if (!material.source_image) return [];
   const characterId = material.character_catalog_id || document.manga.characters.find(item => item.localId === material.characterId)?.catalog_id;
@@ -32,8 +40,7 @@ export async function createPortableProject(document: MangaDocument, services = 
   return { format: 'nyamuru-project', version: 1, snapshot, characterImages };
 }
 export async function restorePortableProject(value: unknown, services = { restore: restoreProjectSnapshot, saveCharacters: saveFigureCropAssets }): Promise<MangaDocument> {
-  const file = value as PortableProject | null;
-  if (file?.format !== 'nyamuru-project' || file.version !== 1 || !file.snapshot?.document?.manga || !Array.isArray(file.characterImages)) throw new Error('Nyamuru作品ファイルではありません');
+  const file = projectHeader(value);
   const images = new Map<string, Blob>();
   for (const image of file.characterImages) {
     if (!image || typeof image.seriesId !== 'string' || typeof image.characterId !== 'string' || !/^image-[a-f0-9]{64}$/.test(image.assetId) || typeof image.data !== 'string') throw new Error('人物資料画像の保存データが不正です');
@@ -55,11 +62,11 @@ export async function restorePortableProject(value: unknown, services = { restor
   return restored;
 }
 export function portableProjectBlob(file: PortableProject): Blob {
-  const blob = new Blob([JSON.stringify(file)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(projectHeader(file))], { type: 'application/json' });
   if (blob.size > MAX_PROJECT_FILE_BYTES) throw new Error('作品ファイルが大きすぎます（上限192MiB）');
   return blob;
 }
-export async function readPortableProject(file: File): Promise<unknown> {
+export async function readPortableProject(file: Blob): Promise<PortableProject> {
   if (file.size > MAX_PROJECT_FILE_BYTES) throw new Error('作品ファイルが大きすぎます（上限192MiB）');
-  return JSON.parse(await file.text());
+  return projectHeader(JSON.parse(await file.text()));
 }

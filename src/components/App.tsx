@@ -4,7 +4,7 @@ import VoiceCommands from './VoiceCommands';
 import { isLanClient } from '../lib/clientRuntime';
 import { browserWorkspaces, isBrowserWorkspace } from '../lib/browserWorkspace';
 import { chooseBrowserFiles, downloadBrowserBlob, blobRevision } from '../lib/browserFiles';
-import { createPortableProject, restorePortableProject, portableProjectBlob, readPortableProject } from '../lib/portableProject';
+import { createPortableProject, restorePortableProject } from '../lib/portableProject';
 import { rememberBrowserCatalog } from '../lib/browserCatalog';
 import {textStyleOf,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
 import type {TextStyle} from '../types';
@@ -2346,8 +2346,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       const prepared = source.manga.meta.series.trim() ? await persistSeriesCatalog(source) : source;
       const file = await createPortableProject(prepared);
       if (documentRef.current.manga.meta.episode_id !== episodeId) throw new Error('作品が切り替わったため保存を中止しました');
-      const blob = portableProjectBlob(file);
-      const result = await browserWorkspaces.write(blob, folderTarget);
+      const result = await browserWorkspaces.write(file, folderTarget);
       const newer = documentRef.current !== source;
       if (documentRef.current.manga.meta.episode_id === episodeId) {
         const previous = documentRef.current;
@@ -2374,9 +2373,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       const workspace = await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory);
       if (!workspace) return;
       const selected = await browserWorkspaces.open(workspace);
-      const value = await readPortableProject(selected.file);
       if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-      const restored = await separateBubbleOriginals(await restorePortableProject(value));
+      const restored = await separateBubbleOriginals(await restorePortableProject(selected.value));
       if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
       replaceDocument(restored);
       const binding = { ...workspace, episodeId: restored.manga.meta.episode_id, projectRevision: selected.binding.revision };

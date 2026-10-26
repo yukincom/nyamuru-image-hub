@@ -52,3 +52,16 @@ test('a change while acquiring the native writer is rejected before writing', as
   assert.equal(await fixture.state.file.text(), 'changed before lock');
   assert.equal(fixture.state.aborted, true);
 });
+
+test('an external edit while staging bytes aborts before publication', async () => {
+  const fixture = handleFixture(), revision = await blobRevision(fixture.state.file);
+  const create = fixture.handle.createWritable;
+  fixture.handle.createWritable = async () => {
+    const writer = await create(), write = writer.write;
+    writer.write = async blob => { await write(blob); fixture.replace('external during staging'); };
+    return writer;
+  };
+  await assert.rejects(writeProjectFile(new Blob(['edit']), { handle: fixture.handle, revision }), /他の画面/);
+  assert.equal(await fixture.state.file.text(), 'external during staging');
+  assert.equal(fixture.state.closed, false); assert.equal(fixture.state.aborted, true);
+});
