@@ -8,7 +8,7 @@ import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } f
 import { prepareGuideLayer } from '../lib/paintGuide.ts';
 import type { ImageAsset } from '../types.ts';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
-import { cloudModelAccess, loadCloudModelPreferences } from '../lib/modelPrivacy.ts';
+import { cloudModelAccess } from '../lib/modelPrivacy.ts';
 import { generationHandoff } from '../lib/generationHandoff.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../lib/browserFiles.ts';
 import {runQwenAgentRequest,type QwenAgentRequest} from '../lib/qwenGeneration.ts';
@@ -148,7 +148,7 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
     const payload=qwenGenerationPayload({...plan,prompt},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,capturedPose);
     if(cloud){
       if(execution.cloud.method!=='agent')throw new Error('API実行は未接続です。環境設定でエージェントを選んでください');
-      const access=cloudModelAccess(loadCloudModelPreferences(window.localStorage),adultContent);
+      const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
       if(!access.allowed)throw new Error(access.reason==='adult-terms-required'?'環境設定でクラウドの成人向け利用条件を確認してください':'環境設定でクラウドを選んでください');
       const agent=execution.cloud.agent==='codex'?'Codex':execution.cloud.agentName||'指定のエージェント';
       downloadBrowserBlob(generationHandoff(plan,payload,agent),`generation-${plan.pageNumber}-${plan.ownerKey}.zip`);

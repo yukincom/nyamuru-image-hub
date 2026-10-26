@@ -5,7 +5,6 @@ import { Bot, CircleHelp, BookOpen, Database, Eye, EyeOff, FilePenLine, FolderAr
 import { useState } from 'preact/hooks';
 import { CURRENT_NDM_SCHEMA_VERSION } from '../lib/manga';
 import { DEFAULT_LOCAL_MODEL_PREFERENCES, loadLocalModelPreferences, saveLocalModelPreferences, type LocalModelPreferences } from '../lib/localModelPreferences';
-import { DEFAULT_CLOUD_MODEL_PREFERENCES, loadCloudModelPreferences, saveCloudModelPreferences, type CloudModelPreferences } from '../lib/modelPrivacy';
 import { loadGenerationPreferences, saveGenerationPreferences, type GenerationPreferences } from '../lib/generationPreferences';
 import { deleteGenerationCache, listGenerationCaches, type GenerationCacheSummary } from '../lib/localBridge';
 import type { MangaDocument } from '../types';
@@ -80,9 +79,6 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
   const [generationCacheEmptyMessage, setGenerationCacheEmptyMessage] = useState(false);
   const [generationCacheBusy, setGenerationCacheBusy] = useState(false);
   const [cacheDeleteTarget, setCacheDeleteTarget] = useState<CacheDeleteTarget | null>(null);
-  const [cloudPreferences, setCloudPreferences] = useState<CloudModelPreferences>(() => {
-    try { return loadCloudModelPreferences(window.localStorage); } catch { return { ...DEFAULT_CLOUD_MODEL_PREFERENCES }; }
-  });
   const [localModelPreferences, setLocalModelPreferences] = useState<LocalModelPreferences>(() => {
     try { return loadLocalModelPreferences(window.localStorage); } catch { return { ...DEFAULT_LOCAL_MODEL_PREFERENCES }; }
   });
@@ -90,27 +86,14 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
     try { return loadGenerationPreferences(window.localStorage); } catch { return loadGenerationPreferences(); }
   });
   const [modelSettingsError, setModelSettingsError] = useState('');
-  const [cloudPreferencesError, setCloudPreferencesError] = useState('');
   const [localModelError, setLocalModelError] = useState('');
-  const updateCloudPreferences = (patch: Partial<CloudModelPreferences>) => {
-    const next = { ...cloudPreferences, ...patch };
-    try {
-      saveCloudModelPreferences(window.localStorage, next);
-      setCloudPreferences(next);
-      setCloudPreferencesError('');
-    } catch { setCloudPreferencesError('クラウドの利用設定を保存できませんでした'); }
-  };
   const updateGenerationPreferences = (next: GenerationPreferences) => {
-    setGenerationPreferences(next);
     try {
-      saveGenerationPreferences(window.localStorage, next);
-      if (cloudPreferences.enabled !== (next.execution === 'cloud')) {
-        const cloud = { ...cloudPreferences, enabled: next.execution === 'cloud' };
-        saveCloudModelPreferences(window.localStorage, cloud);
-        setCloudPreferences(cloud);
-      }
+      setGenerationPreferences(saveGenerationPreferences(window.localStorage, next));
       setModelSettingsError('');
     } catch (error) {
+      // Reapply the last saved values even when a repeated failure has the same error text.
+      setGenerationPreferences(current => ({ ...current }));
       setModelSettingsError(error instanceof Error ? error.message : 'モデル設定を保存できませんでした');
     }
   };
@@ -318,9 +301,8 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
           <label class="environment-setting-row">
             <span class="environment-setting-icon"><ShieldCheck size={20} /></span>
             <span><strong>成人指定作品での利用規約を確認済み</strong><small>成人指定作品でもクラウドモデルを使う場合に必要です。この端末では一度だけ確認します。</small></span>
-            <input type="checkbox" checked={cloudPreferences.adultTermsConfirmed} onChange={(event) => updateCloudPreferences({ adultTermsConfirmed: event.currentTarget.checked })} />
+            <input type="checkbox" checked={generationPreferences.cloud.adultTermsConfirmed} onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, adultTermsConfirmed: event.currentTarget.checked } })} />
           </label>
-          {cloudPreferencesError && <p role="alert">{cloudPreferencesError}</p>}
         </section>}
         {modelSettingsError && <p role="alert">設定を保存できませんでした。{modelSettingsError}</p>}
       </section>

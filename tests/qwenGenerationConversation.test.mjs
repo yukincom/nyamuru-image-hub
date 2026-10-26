@@ -4,6 +4,8 @@ import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runQwenAgentRequest,qwenConversationIntent,executeQwenGeneration,qwenGenerationPayload,requireQwenInsertionTarget} from '../src/lib/qwenGeneration.ts';
+import {loadGenerationPreferences,saveGenerationPreferences} from '../src/lib/generationPreferences.ts';
+import {cloudModelAccess} from '../src/lib/modelPrivacy.ts';
 
 const plan={profile:'qwen-image-2.1-owner-v1',documentKey:'work',pageNumber:2,panelId:3,overlay:false,ownerKey:'figure-1',label:'小雪',width:320,height:480,prompt:'人物を描く',characterKeys:['koyuki'],candidates:[]};
 function fixture({status='succeeded',change={},cancelAt='',failRestore=false}={}){
@@ -77,13 +79,32 @@ test('missing registered references or cancelled handoff never submits an image 
 });
 
 
-function appFunction(name,context){
- const ast=ts.createSourceFile('App.tsx',readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+function appFunction(name,context,file='App.tsx'){
+ const ast=ts.createSourceFile(file,readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  let expression;
  const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)===name)expression=node.initializer.getText(ast);
    if(ts.isFunctionDeclaration(node)&&node.name?.getText(ast)===name)expression=node.getText(ast);ts.forEachChild(node,visit);};visit(ast);
  assert.ok(expression);return runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{Error,...context});
 }
+test('cloud handoff rechecks current execution and adult consent after pending capture, before ZIP creation',async()=>{
+ for(const revoked of ['none','execution','consent']){
+  const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
+  const execution=loadGenerationPreferences(storage);execution.execution='cloud';execution.cloud.adultTermsConfirmed=true;
+  saveGenerationPreferences(storage,execution);
+  let finishCapture;const calls=[];
+  const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
+   alive:{current:true},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,
+   cloud:true,execution,adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,
+   generationHandoff:()=>{calls.push('zip');return 'archive';},downloadBrowserBlob:()=>calls.push('download'),setNotice:()=>{}};
+  const pending=appFunction('generate',context,'QwenGenerationDialog.tsx')();
+  const current=loadGenerationPreferences(storage);
+  if(revoked==='execution')current.execution='local';
+  if(revoked==='consent')current.cloud.adultTermsConfirmed=false;
+  saveGenerationPreferences(storage,current);finishCapture(undefined);
+  if(revoked==='none'){assert.equal((await pending).inserted,false);assert.deepEqual(calls,['zip','download']);}
+  else {await assert.rejects(pending,/環境設定でクラウド/);assert.deepEqual(calls,[]);}
+ }
+});
 test('App awaits actual generation and aborts if selection or another generation changes during preflight',async()=>{
  for(const change of ['none','selection','document','other-generation']){
    let finishProbe,revision='initial',opened=0;

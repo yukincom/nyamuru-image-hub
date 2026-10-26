@@ -5,7 +5,6 @@ import { runInNewContext } from 'node:vm';
 import * as jsxRuntime from 'preact/jsx-runtime';
 import ts from 'typescript';
 import * as manga from '../src/lib/manga.ts';
-import * as privacy from '../src/lib/modelPrivacy.ts';
 import * as localModels from '../src/lib/localModelPreferences.ts';
 import * as generation from '../src/lib/generationPreferences.ts';
 import * as artwork from '../src/lib/artworkRules.ts';
@@ -47,7 +46,6 @@ function loadComponent(file, globals = {}) {
     '../lib/printSettings': print,
     '../lib/artworkEnglish': artworkEnglish,
     '../lib/canvasText': canvasText,
-    '../lib/modelPrivacy': privacy,
     '../lib/localModelPreferences': localModels,
     '../lib/generationPreferences': generation,
     '../lib/localBridge': globals.localBridge ?? stub,
@@ -351,8 +349,9 @@ test('表示・モデルの端末設定は作品自体を書き換えない', ()
   find(panel(tree, 'ai'), node => node.props?.name === 'generation-execution' && node.props.value === 'cloud').props.onChange({ currentTarget: { checked: true } });
   tree = component.render(props);
   assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 1);
-  assert.equal(component.writes.length, 2);
-  assert.equal(JSON.parse(component.writes.find(([key]) => key === privacy.CLOUD_MODEL_PREFERENCES_KEY)[1]).enabled, true);
+  assert.equal(component.writes.length, 1);
+  assert.equal(component.writes[0][0], generation.GENERATION_PREFERENCES_STORAGE_KEY);
+  assert.equal(JSON.parse(component.writes[0][1]).execution, 'cloud');
 });
 
 test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存し、不完全な入力で既存設定を失わない', () => {
@@ -431,6 +430,7 @@ test('クラウドとローカルは選択した設定だけを表示し、各�
   assert.equal(find(restored, node => node.props?.name === 'cloud-generation-method' && node.props.checked).props.value, 'agent');
   assert.equal(input(field(restored, 'エージェント名')).props.value, 'Example agent');
   assert.equal(reloaded.writes.length, 0, 'restoring settings must not write or run a model');
+  assert.ok(component.writes.every(([key]) => key === generation.GENERATION_PREFERENCES_STORAGE_KEY), 'execution and cloud details have one writer');
 });
 
 test('保存失敗は設定画面へ表示し、保存成功として通知しない', () => {
@@ -439,6 +439,33 @@ test('保存失敗は設定画面へ表示し、保存成功として通知し�
   const ai = panel(component.render(props), 'ai');
   find(ai, node => node.props?.name === 'generation-execution' && node.props.value === 'cloud').props.onChange({ currentTarget: { checked: true } });
   assert.match(text(panel(component.render(props), 'ai')), /設定を保存できませんでした/);
+  assert.equal(find(panel(component.render(props), 'ai'), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'local');
+});
+
+test('成人同意は一回の保存で確定し、切替で保持、保存失敗ではUIも保持する', () => {
+  const storage = new Map(); let failing = false;
+  const component = loadComponent('src/components/EnvironmentSettings.tsx', { window: { localStorage: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => { if (failing) throw new Error('quota'); storage.set(key, value); },
+  } } });
+  const props = { ...settingsProps(), onChangeDocument: () => assert.fail('device preferences are not document edits') };
+  const ai = () => panel(component.render(props), 'ai');
+  const execution = value => find(ai(), node => node.props?.name === 'generation-execution' && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
+  execution('cloud');
+  find(ai(), node => node.props?.type === 'checkbox').props.onChange({ currentTarget: { checked: true } });
+  execution('local'); execution('cloud');
+  assert.equal(find(ai(), node => node.props?.type === 'checkbox').props.checked, true);
+  assert.equal(storage.size, 1);
+  failing = true;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    execution('local');
+    assert.equal(find(ai(), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'cloud');
+    find(ai(), node => node.props?.type === 'checkbox').props.onChange({ currentTarget: { checked: false } });
+    assert.equal(find(ai(), node => node.props?.type === 'checkbox').props.checked, true);
+  }
+  const saved = generation.loadGenerationPreferences({ getItem: key => storage.get(key) ?? null });
+  assert.equal(saved.execution, 'cloud');
+  assert.equal(saved.cloud.adultTermsConfirmed, true);
 });
 
 test('作画方法の旧radioは表示せず、既存モードと原本や仕上がりを保持する', () => {
