@@ -339,7 +339,7 @@
 
 ## 9. 2026-10-27: 実原稿で判明した不具合の修正計画
 
-状態: **2026-10-27に利用者が実装開始を承認。R1は実装・合成検証済み、R2以降は未実装。** 原因調査は先行commit後にこの既存計画書へ集約した。以下の各段の計画と、末尾の実施記録を区別する。
+状態: **2026-10-27に利用者が実装開始を承認。R1・R2は実装・合成検証済み、R3以降は未実装。** 原因調査は先行commit後にこの既存計画書へ集約した。以下の各段の計画と、末尾の実施記録を区別する。
 
 ### 9.1 原因と責任の境界
 
@@ -469,3 +469,12 @@
 - 保存往復は既存validator・serializer・restoreを実PNGで通し、描いた人物のguide＋合成PNGの2assetだけを保持し、未描画人物・背景のartworkを作らない。これは合成fixtureの検証であり、実AppのOSフォルダーwriterや利用者の実原稿の保存確認ではない。
 - 利用者の開いている原稿へVite再接続が起こらないよう、専用テストoriginを `127.0.0.1:4335` に分離。元の `4325` は起動していない。作品／モデル／既存serverの操作なし。別作業7ファイルの差分は開始時とbyte単位で同一、pushなし。実原稿検証は9.3の保全後に行う。
 - 本体・試験・記録を `07f2eb2` にcommit。続く全Node検証で、欠損修復の旧構文を固定していた `pageLayerPalette` の1検査を新しい修復flagとclean除外条件へ追従させた。待受を使う5ケースのsandbox拒否は通常権限で再試験し、全Node 1,316件中1,313成功・3skip・失敗0を確認。追補は別commitとし、本体の履歴を書き換えない。
+
+#### 2026-10-27 07:59 JST: R2 原本画像の寿命と文字編集
+
+- `PlacedImageView` のdecode済み画像はpaint object参照でなく、既存 `paintAssetIds` が返す参照IDと、その保存先・検証metadataをキーに保持する。全文hash・全体cacheは作らず、実paintの再合成は現在のpaintを既存 `PaintPreviewCanvas` へ渡す。`loadPaintImages` の原本読込・byte検査・破棄の契約は変更しない。
+- 通常合成画像のURLと原本の読込結果をそれぞれのsource keyに対応づけ、差替え直後や失敗時に前の画像を現在の原本として表示しない。古い非同期完了とunmountの解放を維持。Appのdocument clone・正規化・履歴・保存経路は変更なし。
+- 修正前に、document相当のclone直後に原本canvasが失われるNode試験の失敗を確認。修正後は関連32件が成功し、storage／byteLength変更、A→B→Aの遅延完了、読込失敗後の復旧も実componentをhook mockした試験で確認。
+- 実browserの既存fixtureは50項目PASS。文字mutatorで40ptに変更して全documentをcloneしても、合成原稿21枚のcanvas置換・decodeは0回。先頭1枚の全画素一致、paint変更とsnapshot復元で再decodeなし、原本差替え時は1枚だけdecode、欠損時の診断、unmountの解放を確認。検証用の一時原本2件は同じテストの終了処理で回収した。
+- 全Node 1,319件中1,316成功・3skip（sandboxで待受拒否された5ケースは通常権限で再試験して成功）。型検査428ファイルはerror/warning 0・既存hint 9、通常／単一HTML build成功。read-onlyレビューにP1/P2指摘なし。
+- 利用者の実原稿21件の再観測と実Appのフォルダー保存は未実施。合成原稿の結果を実作品の検証済みと同一視しない。次はR3の描画順へ進む。

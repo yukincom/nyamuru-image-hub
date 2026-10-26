@@ -2,6 +2,7 @@ import {render,type ComponentProps} from 'preact';
 import {useContext} from 'preact/hooks';
 import PaintEditor,{type PaintResult} from '../src/components/PaintEditor';
 import PaintInputSurface,{PaintOwnerPreview} from '../src/components/PaintSceneView';
+import PlacedImageView from '../src/components/PlacedImageView';
 import {PaintLayerControlsContext,usePaintWorkspace,type PaintWorkspaceState} from '../src/lib/paintWorkspace';
 import {applyOwnerPaint,newPaintLayer,paintAssetIds,paintScene,type PaintScene} from '../src/lib/paintDocument';
 import {commitPaintStroke,paintStrokeBounds,previewPaintStroke,type PaintStrokePreview} from '../src/lib/paintGesture';
@@ -11,6 +12,8 @@ import type {PaintController,PaintSessionSnapshot,SharedPaintHistory} from '../s
 import {workspaceHistory} from '../src/lib/workspaceHistory';
 import {createFrameArtwork,prepareImageAsset} from '../src/lib/imagePlacement';
 import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence';
+import {saveFigureCropAssets,deleteFigureCropAssets} from '../src/lib/figureCropStore';
+import {editCanvasTextStyle} from '../src/lib/canvasText';
 import {panelTestDocument} from './fixtures/emptyTestDocument';
 import type {PaintStroke,Panel} from '../src/types';
 import '../src/styles/global.css';
@@ -191,6 +194,53 @@ async function guideSessionInteraction(){
   controller.current!.layerAction({type:'update',key:owner.key,id:guide.id,patch:{visible:false}});await raf();await raf();await controller.current!.flush();
   check(applied.length===4&&applied[3].owners.map(({owner})=>owner.key).join()==='figure-0','筆跡0でもguideの目の変更は正当な編集として保存');
 }
+async function placedImageInteraction(){
+  const host=document.getElementById('app')!,seed=document.createElement('canvas');seed.width=seed.height=32;
+  const assets:PaintResult['imports']=[];
+  for(const color of ['#e02030','#2050e0']){
+    seed.getContext('2d')!.fillStyle=color;seed.getContext('2d')!.fillRect(0,0,32,32);
+    const blob=await new Promise<Blob>(resolve=>seed.toBlob(blob=>resolve(blob!),'image/png'));
+    assets.push({asset:await prepareImageAsset(new File([blob],'source-lifetime-test.png',{type:'image/png'})),blob});
+  }
+  await saveFigureCropAssets(assets.map(({asset,blob})=>({id:asset.storageId,blob})));
+  let project=panelTestDocument();project.manga.image_assets=assets.map(item=>item.asset);
+  project.manga.pages[0].images=Array.from({length:21},(_,i)=>({...createFrameArtwork(assets[0].asset,{x:0,y:0,w:32,h:32}),bubbleOriginal:{sourceRegionId:`fixture-${i}`,name:`検証原画${i+1}`},
+    paint:{version:1,width:32,height:32,dpi:100,layers:[{...newPaintLayer(),image:{assetId:assets[0].asset.id,crop:{x:0,y:0,w:32,h:32},bbox:{x:0,y:0,w:32,h:32}}}]}}));
+  const descriptor=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src')!,decoded=new Set<HTMLImageElement>();let decodes=0;
+  Object.defineProperty(HTMLImageElement.prototype,'src',{...descriptor,set(this:HTMLImageElement,value:string){if(value.startsWith('blob:')){decodes++;decoded.add(this);}descriptor.set!.call(this,value);}});
+  const draw=()=>render(<div><button id="change-font" onClick={()=>{project=editCanvasTextStyle(project,{pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false},{fontSize:40});draw();}}>文字を40ptに変更</button><div id="source-views" style={{display:'flex',flexWrap:'wrap',width:'500px'}}>{project.manga.pages[0].images!.map(image=><div key={image.id} style={{position:'relative',width:'64px',height:'64px'}}><PlacedImageView image={image} asset={project.manga.image_assets!.find(item=>item.id===image.assetId)} assets={project.manga.image_assets}/></div>)}</div></div>,host);
+  const canvases=()=>[...host.querySelectorAll<HTMLCanvasElement>('#source-views canvas')];
+  const waitFor=async(ok:()=>boolean,label:string)=>{for(let i=0;i<120&&!ok();i++)await raf();if(!ok())throw Error(label);for(let i=0;i<4;i++)await raf();};
+  const pixels=()=>canvases()[0].getContext('2d')!.getImageData(0,0,canvases()[0].width,canvases()[0].height).data;
+  const samePixels=(expected:Uint8ClampedArray)=>{const actual=pixels();return expected.length===actual.length&&expected.every((value,i)=>value===actual[i]);};
+  try{
+    draw();await waitFor(()=>canvases().length===21,'原画21枚の初期表示');
+    const original=canvases(),before=pixels(),beforeDecodes=decodes,originalProject=project;let removed=0;
+    const observer=new MutationObserver(records=>{for(const record of records)for(const node of record.removedNodes)if(node instanceof Element)removed+=Number(node.matches('canvas'))+node.querySelectorAll('canvas').length;});
+    observer.observe(host,{childList:true,subtree:true});
+    document.getElementById('change-font')!.click();await raf();await raf();await raf();await raf();observer.disconnect();
+    check(project!==originalProject&&project.manga.pages[0].panels[0].bubbles[0].text_style?.fontSize===40,'実文字mutatorで40ptへ変更し作品cloneを発生');
+    check(removed===0&&canvases().every((canvas,i)=>canvas===original[i])&&decodes===beforeDecodes,'文字変更で原画21枚のcanvas置換・画像decodeが0回');
+    check(samePixels(before),'文字変更で非対象原画の全画素が一致');
+    project=structuredClone(project);const first=project.manga.pages[0].images![0];
+    first.paint!.layers[0].strokes.push({tool:'line',color:'#000000',size:4,points:[point(8,16),point(24,16)]});draw();await raf();await raf();
+    const c=canvases()[0],center=c.getContext('2d')!.getImageData(c.width/2,c.height/2,1,1).data;
+    check(canvases()[0]===original[0]&&decodes===beforeDecodes&&center[0]<10&&center[1]<10&&center[2]<10,'paint内容の実更新は同じ原本とcanvasへ再合成');
+    project=originalProject;draw();await raf();await raf();
+    check(samePixels(before)&&decodes===beforeDecodes,'元のsnapshotへ戻しても再decodeなしで画素を復元');
+    project=structuredClone(project);const changed=project.manga.pages[0].images![0];changed.assetId=assets[1].asset.id;changed.paint!.layers[0].image!.assetId=assets[1].asset.id;draw();
+    await waitFor(()=>canvases().length===21&&pixels()[2]>200,'差替え原画の表示');
+    check(decodes===beforeDecodes+1&&pixels()[0]<50&&pixels()[2]>200,'原本差替えは該当する1枚だけ再decode');
+    project=structuredClone(project);project.manga.image_assets![1].storageId=`fixture-missing-${crypto.randomUUID()}`;draw();
+    await waitFor(()=>Boolean(host.querySelector('.placed-image-missing')),'原本欠損の表示');
+    check(canvases().length===20&&host.querySelectorAll('img').length===0,'欠損原画を古い合成画像へ差し戻さず診断を表示');
+    render(null,host);await raf();await raf();
+    check([...decoded].every(image=>image.getAttribute('src')===''),'unmountで自分のdecode済み原本を解放');
+  }finally{
+    render(null,host);Object.defineProperty(HTMLImageElement.prototype,'src',descriptor);
+    await deleteFigureCropAssets(assets.map(item=>item.asset.storageId));
+  }
+}
 run.onclick=()=>{
   run.disabled=true;checks.length=0;
   void(async()=>{
@@ -201,6 +251,7 @@ run.onclick=()=>{
     report.textContent='同じレイヤーへのマスク描画・確定・消去・取消を検証中…';await maskInteraction();
     report.textContent='元画像サイズに切られない投げ縄とトーン・Undo/Redoを検証中…';await selectionInteraction();
     report.textContent='guide準備・共有Undo/Redo・保存失敗と実PNG保存往復を検証中…';await guideSessionInteraction();
+    report.textContent='文字変更時の原画21枚の保持・差替え・欠損を検証中…';await placedImageInteraction();
     report.textContent=`PASS ${checks.length}項目\n500本・600×600px・120回、同じcanvas rendererで比較\n旧組み立て方式の再現: ${JSON.stringify(baked)}\n修正後: ${JSON.stringify(cached)}\n実PaintEditor: ${JSON.stringify(ui)}\n${checks.join('\n')}\n注: この合成原稿・端末での測定。マスク/トーン・実原稿全体の速度保証ではありません。`;
   })().catch(error=>{report.textContent=`FAIL ${String(error)}\n${checks.join('\n')}`;}).finally(()=>{run.disabled=false;});
 };

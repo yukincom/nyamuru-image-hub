@@ -3,11 +3,12 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import * as jsxRuntime from 'preact/jsx-runtime';
 import { separateBubbleOriginals, needsBubbleOriginalSeparation } from '../src/lib/bubbleOriginals.ts';
 import { attachRecognizedTextToPage, recognizedTextOwnerKey } from '../src/lib/localBridge.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
-import { paintScene, applyOwnerPaint, clearOwnerPaint, paintReferenceBox } from '../src/lib/paintDocument.ts';
-import { imageAssetIds, imageSha256, validateImagePlacements } from '../src/lib/imagePlacement.ts';
+import { paintScene, applyOwnerPaint, clearOwnerPaint, paintReferenceBox, paintAssetIds } from '../src/lib/paintDocument.ts';
+import { imageAssetIds, imageSha256, validateImagePlacements, fitImageBox } from '../src/lib/imagePlacement.ts';
 import { paintOwnerLocked, paintOwnerPlacementLocked } from '../src/lib/paintLock.ts';
 import { pickPaintLayer } from '../src/lib/paintLayerPicking.ts';
 import { parseMangaYaml, toStoredMangaYaml, toSeparatedMangaYaml } from '../src/lib/manga.ts';
@@ -19,6 +20,51 @@ const blob=new Blob([Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68
 const sha=await imageSha256(blob);
 const asset={id:`image-${sha}`,storageId:'unused',sha256:sha,mediaType:'image/png',originalName:'source.png',widthPx:30,heightPx:40,byteLength:blob.size};
 const deps={load:async()=>blob,prepare:async()=>structuredClone(asset)};
+
+function placedImageFixture(){
+  let cursor=0;const slots=[],effects=[],requests=[],exports={};
+  const hooks={useState:initial=>{const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>slots[i]=value]},
+    useEffect:(run,deps)=>{const i=cursor++;if(!slots[i]||deps.some((value,j)=>value!==slots[i].deps[j])){const before=slots[i];slots[i]={deps};effects.push(()=>{before?.cleanup?.();slots[i].cleanup=run()})}}};
+  const modules={'preact/hooks':hooks,'preact/jsx-runtime':jsxRuntime,'../lib/imagePlacement':{fitImageBox},'../lib/paintDocument':{paintAssetIds},
+    '../lib/figureCropStore':{loadFigureCropAsset:async()=>blob},'../lib/paintRenderer':{loadPaintImages:(paints,assets)=>new Promise((resolve,reject)=>requests.push({paints,assets,resolve,reject}))},'./PaintPreviewCanvas':{__esModule:true,default:'PaintPreview'}};
+  const source=readFileSync(new URL('../src/components/PlacedImageView.tsx',import.meta.url),'utf8');
+  runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}}).outputText,
+    {exports,URL:{createObjectURL:()=>`blob:composite`,revokeObjectURL(){}},require:name=>{assert.ok(name in modules,name);return modules[name]}});
+  const nodes=tree=>!tree||typeof tree!=='object'?[]:[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)];
+  return {requests,render(image,assets=[asset]){cursor=0;const tree=exports.default({asset:assets[0],image,assets}),all=nodes(tree);return {canvas:all.find(node=>node.type==='PaintPreview'),img:all.find(node=>node.type==='img'),missing:all.find(node=>node.props?.class==='placed-image-missing')}} ,
+    flush(){while(effects.length)effects.shift()()},dispose(){for(const slot of slots)slot?.cleanup?.()}};
+}
+const placedOriginal=()=>({id:'original-raster',assetId:asset.id,bbox:{x:0,y:0,w:30,h:40},crop:{x:0,y:0,w:30,h:40},opacity:1,bubbleOriginal:{name:'原画'},
+  paint:{version:1,width:30,height:40,dpi:100,layers:[{id:'source',visible:true,strokes:[],image:{assetId:asset.id}}]}});
+const decoded=(id='source')=>new Map([[id,{src:`blob:${id}`}]]);
+
+test('placed original retains decoded resources across a whole-document clone and unrelated asset edits',async()=>{
+  const f=placedImageFixture(),image=placedOriginal();f.render(image);f.flush();assert.equal(f.requests.length,1);
+  const images=decoded();f.requests.shift().resolve(images);await Promise.resolve();assert.equal(f.render(image).canvas.props.images,images);
+  const next=structuredClone(image),assets=[{...asset},{...asset,id:'unrelated',storageId:'elsewhere'}];
+  assert.equal(f.render(next,assets).canvas?.props.images,images,'cloning a text edit must not remove the original canvas');
+  f.flush();assert.equal(f.requests.length,0);assert.equal(images.get('source').src,'blob:source');
+  next.paint.layers[0].strokes=[{tool:'pen'}];
+  assert.equal(f.render(next,assets).canvas.props.paint,next.paint);f.flush();assert.equal(f.requests.length,0,'paint composition changes reuse source pixels');
+  f.dispose();assert.equal(images.get('source').src,'');
+});
+test('placed original invalidates changed storage metadata and discards abandoned A-B-A loads',async()=>{
+  const f=placedImageFixture(),image=placedOriginal();f.render(image);f.flush();
+  const first=decoded('first');f.requests.shift().resolve(first);await Promise.resolve();f.render(image);
+  const assetsB=[{...asset,storageId:'replacement'}];
+  assert.equal(f.render(image,assetsB).canvas,undefined,'old pixels disappear before effects');f.flush();assert.equal(first.get('first').src,'');
+  f.render(image);f.flush();assert.equal(f.requests.length,2);
+  const stale=decoded('stale');f.requests.shift().resolve(stale);await Promise.resolve();assert.equal(stale.get('stale').src,'');assert.equal(f.render(image).canvas,undefined);
+  const current=decoded('current');f.requests.shift().resolve(current);await Promise.resolve();assert.equal(f.render(image).canvas.props.images,current);
+  assert.equal(f.render(image,[{...asset,byteLength:asset.byteLength+1}]).canvas,undefined,'changed validation metadata also invalidates pixels');
+  f.flush();const late=decoded('late');f.dispose();f.requests.shift().resolve(late);await Promise.resolve();assert.equal(late.get('late').src,'');
+});
+test('a failed original load never falls back to its stale saved composite and can recover on replacement',async()=>{
+  const f=placedImageFixture(),image=placedOriginal();f.render(image);f.flush();f.requests.shift().reject(Error('missing'));
+  await Promise.resolve();await Promise.resolve();const failed=f.render(image);assert.equal(failed.canvas,undefined);assert.equal(failed.img,undefined);assert.ok(failed.missing);
+  const assets=[{...asset,storageId:'restored'}];f.render(image,assets);f.flush();const images=decoded();f.requests.shift().resolve(images);await Promise.resolve();
+  const recovered=f.render(image,assets);assert.equal(recovered.canvas.props.images,images);assert.equal(recovered.missing,undefined);f.dispose();
+});
 function imported(){
   const doc=createEmptyWorkspaceDocument(),page=doc.manga.pages[0];
   page.panels=[{id:1,shape:{type:'rect',x:0,y:0,w:210,h:297},bg:0,action:null,bubbles:[]}];
