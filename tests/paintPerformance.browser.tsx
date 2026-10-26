@@ -1,7 +1,8 @@
 import {render} from 'preact';
+import {useContext} from 'preact/hooks';
 import PaintEditor from '../src/components/PaintEditor';
 import PaintInputSurface,{PaintOwnerPreview} from '../src/components/PaintSceneView';
-import {usePaintWorkspace,type PaintWorkspaceState} from '../src/lib/paintWorkspace';
+import {PaintLayerControlsContext,usePaintWorkspace,type PaintWorkspaceState} from '../src/lib/paintWorkspace';
 import {newPaintLayer,type PaintScene} from '../src/lib/paintDocument';
 import {commitPaintStroke,paintStrokeBounds,previewPaintStroke,type PaintStrokePreview} from '../src/lib/paintGesture';
 import {paintPreviewRenderer} from '../src/lib/paintRenderer';
@@ -26,7 +27,8 @@ function makeScene(count:number):PaintScene{
 }
 function Probe(){
   workspace=usePaintWorkspace();
-  return <div style={{marginTop:'8px'}}><button id="undo" onClick={()=>workspace?.undo()}>取り消し</button><button id="redo" onClick={()=>workspace?.redo()}>やり直し</button><output id="ink-state">{workspace?.owner.paint.layers[0].strokes.length}本{workspace?.live?'・描画中':''}</output></div>;
+  const controls=useContext(PaintLayerControlsContext);
+  return <div style={{marginTop:'8px'}}><button id="undo" onClick={()=>workspace?.undo()}>取り消し</button><button id="redo" onClick={()=>workspace?.redo()}>やり直し</button><output id="ink-state">{workspace?.owner.paint.layers[0].strokes.length}本{workspace?.live?'・描画中':''}</output><div id="fixture-tools">{workspace?.tools}</div>{controls}</div>;
 }
 async function mount(scene:PaintScene){
   ready=false;workspace=null;
@@ -106,6 +108,25 @@ async function maskInteraction(){
   pointer('pointerdown',3,3);await raf();await raf();pointer('pointercancel',3,3);await raf();await raf();
   check(workspace!.owner.frame===original.frame&&workspace!.owner.paint.layers[0].mask!.strokes.length===1&&!workspace!.live,'マスク取消で仮の拡張・筆跡を残さない');
 }
+async function selectionInteraction(){
+  const scene=makeScene(0);await mount(scene);const before=workspace!.scene;
+  for(const selector of ['.paint-input','.paint-frame'])check(parseFloat(getComputedStyle(document.querySelector(selector)!).borderTopWidth)===0,`${selector}に作業枠を表示しない`);
+  document.querySelector<HTMLButtonElement>('[aria-label="投げ縄"]')!.click();await raf();await raf();
+  pointer('pointerdown',5,5);pointer('pointermove',95,5);pointer('pointermove',95,95);pointer('pointerup',5,95);await raf();await raf();
+  const selection=workspace!.selection!.boxes;
+  check(selection.some(b=>b.x<0&&b.y<0&&b.x+b.w>600&&b.y+b.h>600),'投げ縄確定後も四方向の元画像外を保持');
+  check(workspace!.scene===before&&!workspace!.canUndo,'選択のみで作品参照・Undoは不変');
+  check(Boolean(document.querySelector('.raster-selection-overlay path')),'利用者が指定した選択輪郭は表示');
+  document.querySelector<HTMLButtonElement>('[aria-label="トーンレイヤー作成"]')!.click();await raf();await raf();
+  const grown=workspace!.owner,after=samples();
+  const pixel=frame.w/600;
+  check(grown.paint.layers.length===2&&grown.frame.x<=5+pixel&&grown.frame.y<=5+pixel&&grown.frame.x+grown.frame.w>=95-pixel,'pixel中心で選択したトーンと描画領域の確保を一度に反映');
+  const c=document.querySelector<HTMLCanvasElement>('.paint-preview-canvas')!,ctx=c.getContext('2d')!;
+  check(ctx.getImageData(1,1,Math.max(1,Math.floor(c.width*.04)),Math.max(1,Math.floor(c.height*.04))).data.some((v,i)=>i%4===3&&v>0),'元画像より左上の選択内にもトーンを実画素で保持');
+  document.getElementById('undo')!.click();await raf();await raf();check(workspace!.owner.paint.layers.length===1&&workspace!.owner.frame===before.owners[0].frame,'一度のUndoでトーンと領域拡張を同時に戻す');
+  document.getElementById('redo')!.click();await raf();await raf();const restored=samples();
+  check(after.length===restored.length&&after.every((v,i)=>v===restored[i]),'トーンと領域拡張のRedoで全画素を復元');
+}
 run.onclick=()=>{
   run.disabled=true;checks.length=0;
   void(async()=>{
@@ -114,6 +135,7 @@ run.onclick=()=>{
     check(baked.historical_point_reads>=500*120&&cached.historical_point_reads===0,'旧組み立て方式の過去線再描画を除去');
     report.textContent='実PaintEditorのポインター入力・確定・取り消し・枠外描画を検証中…';const ui=await interaction();
     report.textContent='同じレイヤーへのマスク描画・確定・消去・取消を検証中…';await maskInteraction();
+    report.textContent='元画像サイズに切られない投げ縄とトーン・Undo/Redoを検証中…';await selectionInteraction();
     report.textContent=`PASS ${checks.length}項目\n500本・600×600px・120回、同じcanvas rendererで比較\n旧組み立て方式の再現: ${JSON.stringify(baked)}\n修正後: ${JSON.stringify(cached)}\n実PaintEditor: ${JSON.stringify(ui)}\n${checks.join('\n')}\n注: この合成原稿・端末での測定。マスク/トーン・実原稿全体の速度保証ではありません。`;
   })().catch(error=>{report.textContent=`FAIL ${String(error)}\n${checks.join('\n')}`;}).finally(()=>{run.disabled=false;});
 };

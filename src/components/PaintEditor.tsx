@@ -30,7 +30,7 @@ import { paintCheckpoint, type PaintController, type PaintImagePlacement, type P
 import { humanPoseReferencePixels } from '../lib/humanPoseFraming';
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, PaintToolsContext, PaintDetailsContext, PaintLayerControlsContext, PaintWorkspaceContext, usePaintWorkspace, type BubblePathToolMode, type PaintWorkspaceState } from '../lib/paintWorkspace';
 import type { BBox, ImageAsset, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
-import { addPaintFolder, expandPaintOwnerToContent, movePaintLayer, newPaintLayer, removePaintFolder, validatePaintDocument, type PaintOwner, type PaintScene, paintAssetIds } from '../lib/paintDocument';
+import { addPaintFolder, expandPaintOwnerToBounds, expandPaintOwnerToContent, movePaintLayer, newPaintLayer, removePaintFolder, validatePaintDocument, type PaintOwner, type PaintScene, paintAssetIds } from '../lib/paintDocument';
 import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, readGenerationMaskPixels, type PaintImages } from '../lib/paintRenderer';
 import { prepareImageAsset, fitImageBox, imageCrop } from '../lib/imagePlacement';
 import { PaintSmoother } from '../lib/paintStroke';
@@ -524,12 +524,13 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     const target=event.currentTarget,rect=target.getBoundingClientRect();
     const point=(e:PointerEvent)=>inputPoint(e,target,rect);
     const mode:SelectionMode=event.altKey?'subtract':event.shiftKey?'add':'replace';
-    if(tool==='wand'){const p=point(event);setSelection({key:owner.key,boxes:combineSelection(selectionBoxes,floodSelection(selectionPixels(),p.x,p.y,selectTolerance),mode,owner.paint.width,owner.paint.height)});return;}
+    if(tool==='wand'){const p=point(event);setSelection({key:owner.key,boxes:combineSelection(selectionBoxes,floodSelection(selectionPixels(),p.x,p.y,selectTolerance),mode)});return;}
     const points=[point(event)];setLassoPreview(points);
     const move=(e:PointerEvent)=>{const g=selectionPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.buttons===0){cancel();return;}const p=point(e),last=points.at(-1)!;if(Math.hypot(p.x-last.x,p.y-last.y)>.5){points.push(p);setLassoPreview([...points]);}};
     const end=(e:PointerEvent)=>{const g=selectionPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();selectionPointer.current=null;g.cleanup();inputActive.current=false;
-      if(e.type==='pointerup'){points.push(point(e));setSelection({key:owner.key,boxes:combineSelection(selectionBoxes,lassoSelection(points,owner.paint.width,owner.paint.height),mode,owner.paint.width,owner.paint.height)});}setLassoPreview([]);
-      try{target.releasePointerCapture(event.pointerId);}catch{}};
+      try{if(e.type==='pointerup'){points.push(point(e));setSelection({key:owner.key,boxes:combineSelection(selectionBoxes,lassoSelection(points),mode)});}}
+      catch(error){setError(error instanceof Error?error.message:'選択範囲を作れませんでした');}
+      finally{setLassoPreview([]);try{target.releasePointerCapture(event.pointerId);}catch{}}};
     const cancel=()=>{selectionPointer.current=null;cleanup();inputActive.current=false;setLassoPreview([]);};
     const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',cancel);target.removeEventListener('lostpointercapture',cancel);};
     selectionPointer.current={pointerId:event.pointerId,points,cleanup};inputActive.current=true;
@@ -788,7 +789,10 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   function addToneMask(){
     if(!images||locked||busy||suspended||operation.current||owner.paint.layers.length>=64)return;
     finishGesture();const added=newToneLayer(selectionBoxes,scene.colorMode);
-    changeLayers([...owner.paint.layers,added]);clearVectorSelection();setLayerId(added.id);
+    try{const next=expandPaintOwnerToBounds({...owner,paint:{...owner.paint,layers:[...owner.paint.layers,added]}},added.mask?.strokes[0]?paintStrokeBounds(added.mask.strokes[0]):undefined);
+      commit({...scene,owners:scene.owners.map(o=>o.key===owner.key?next:o)});}
+    catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
+    clearVectorSelection();setLayerId(added.id);
     setMaskTarget({key:owner.key,id:added.id,kind:'mask'});setSelection(null);setTool('pen');setLineKind('raster');
   }
   function addGenerationMask(){

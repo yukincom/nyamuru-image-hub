@@ -1360,11 +1360,11 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .paint-bubble-original .bubble-svg-outline-surface { fill:none; stroke:var(--ink); stroke-width:1; }
 .paint-bubble-text { position:absolute; width:max-content; height:max-content; max-width:70%; max-height:70%; transform:translate(-50%,-50%); writing-mode:vertical-rl; overflow:hidden; text-align:start; white-space:pre-wrap; font-size:clamp(10px,1.4vw,22px); }
 .figure-native-reference,.bubble-native-reference { position:absolute; display:block; pointer-events:none; }
-.paint-input { position:absolute; z-index:100; border:1px dashed var(--accent-border); cursor:crosshair; touch-action:none; user-select:none; }
+.paint-input { position:absolute; z-index:100; cursor:crosshair; touch-action:none; user-select:none; }
 .paint-input.is-original { cursor:default; }
 .paint-cursor { position:fixed; z-index:10000; pointer-events:none; transform:translate(-50%,-50%); overflow:visible; filter:none; box-shadow:none; }
 .is-canvas-space-pan-ready .paint-cursor,.is-canvas-space-panning .paint-cursor { visibility:hidden; }
-.paint-frame { position:absolute; border:1px solid var(--accent); pointer-events:none; }
+.paint-frame { position:absolute; pointer-events:none; }
 .paint-frame>span,.paint-overscan-label { position:absolute; left:0; top:0; transform:translateY(-100%); background:var(--accent-soft); color:var(--accent-dark); font-size:13px; line-height:1.4; padding:1px 4px; white-space:nowrap; pointer-events:none; }
 .paint-overscan-label { left:auto; right:0; }
 .paint-error,.paint-close-confirm { margin:0; padding:8px; background:var(--warning-soft); color:var(--warning); font-size:14px; width:100%; }

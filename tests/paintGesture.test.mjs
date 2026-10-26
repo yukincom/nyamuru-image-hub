@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { commitPaintStroke, commitVectorPaths, canStartPaintMark, preparePaintMarkLayer, appendPaintSamples, constrainPaintPoint, paintStrokeBounds, previewPaintStroke } from '../src/lib/paintGesture.ts';
-import { paintScene, newPaintLayer } from '../src/lib/paintDocument.ts';
+import { paintScene, newPaintLayer, expandPaintOwnerToBounds } from '../src/lib/paintDocument.ts';
+import {newToneLayer} from '../src/lib/paintTone.ts';
+import {lassoSelection,combineSelection} from '../src/lib/rasterSelection.ts';
 import { PaintSmoother } from '../src/lib/paintStroke.ts';
 import {defaultVectorStyle} from '../src/lib/vectorGeometry.ts';
 import {readFileSync} from 'node:fs';
@@ -28,6 +30,35 @@ test('vector draft allocation is committed only by the same path preview/finish 
 });
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:-1,action:null,bubbles:[],figures:[{name:'人物',bbox:{x:10,y:20,w:30,h:50}}]},100,[]);
+
+test('actual lasso handler keeps outside selection without editing and cleans up failures/cancel',()=>{
+ for(const ending of ['pointerup','pointercancel','oversize']){
+  const scene=initial(),before=structuredClone(scene),owner=scene.owners[0],listeners=new Map();
+  let selected={key:owner.key,boxes:[{x:1,y:1,w:2,h:2}]},preview,error,released=0;
+  const previous=selected,target={getBoundingClientRect:()=>({}),setPointerCapture(){},releasePointerCapture(){released++;},addEventListener(){},removeEventListener(){}};
+  const inputActive={current:false},selectionPointer={current:null};
+  const begin=editorHandler('beginSelection',{owner,tool:'lasso',selectionBoxes:selected.boxes,lassoSelection,combineSelection,inputActive,selectionPointer,
+   inputPoint:e=>({x:e.clientX,y:e.clientY}),setSelection:v=>selected=v,setLassoPreview:v=>preview=v,setError:v=>error=v,
+   window:{addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)}});
+  const event=(type,x,y)=>({type,currentTarget:target,pointerId:7,clientX:x,clientY:y,buttons:1,preventDefault(){},stopPropagation(){}});
+  begin(event('pointerdown',-20,-30));listeners.get('pointermove')(event('pointermove',500,-30));listeners.get('pointermove')(event('pointermove',500,ending==='oversize'?20000:600));
+  listeners.get(ending==='pointercancel'?'pointercancel':'pointerup')(event(ending==='pointercancel'?'pointercancel':'pointerup',-20,600));
+  if(ending==='pointerup')assert.deepEqual(JSON.parse(JSON.stringify(selected.boxes)),[{x:-20,y:-30,w:520,h:630}]);else assert.equal(selected,previous);
+  assert.equal(Boolean(error),ending==='oversize');assert.equal(preview.length,0);assert.equal(released,1);assert.equal(listeners.size,0);assert.equal(selectionPointer.current,null);assert.equal(inputActive.current,false);assert.deepEqual(scene,before);
+ }
+});
+test('tone from outside selection expands atomically; a failed expansion keeps selection and scene',()=>{
+ for(const width of [500,20000]){
+  const scene=initial(),before=structuredClone(scene),owner=scene.owners[0],selectionBoxes=[{x:-20,y:-30,w:width,h:600}];
+  let saved,error,cleared=false,commits=0;
+  editorHandler('addToneMask',{scene,owner,selectionBoxes,images:new Map(),locked:false,busy:false,suspended:false,operation:{current:false},finishGesture(){},newToneLayer,paintStrokeBounds,expandPaintOwnerToBounds,
+   commit:next=>{saved=next;commits++;},setError:v=>error=v,clearVectorSelection(){},setLayerId(){},setMaskTarget(){},setSelection:v=>cleared=v===null,setTool(){},setLineKind(){}})();
+  assert.equal(commits,width===500?1:0);assert.equal(cleared,width===500);assert.equal(Boolean(error),width!==500);assert.deepEqual(scene,before);
+  if(saved){const grown=saved.owners[0],mask=grown.paint.layers.at(-1).mask.strokes[0].selection[0];
+   assert.equal(grown.paint.width,Math.max(owner.paint.width,480)+20);assert.equal(grown.paint.height,Math.max(owner.paint.height,570)+30);assert.deepEqual(mask,{x:0,y:0,w:500,h:600});
+   assert.equal(saved.owners[1],scene.owners[1]);assert.deepEqual(JSON.parse(JSON.stringify(saved)),structuredClone(saved));}
+ }
+});
 
 test('vector styles preserve same and unselected paths so commit cannot clear redo or save',()=>{
  const scene=initial(),owner=scene.owners[0],layer=newPaintLayer('vectors','vector');owner.paint.layers=[layer];

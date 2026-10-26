@@ -17,21 +17,49 @@ export function boxesMask(boxes:BBox[],width:number,height:number):Uint8Array{
     for(let y=Math.max(0,Math.ceil(b.y-.5));y<Math.min(height,Math.ceil(b.y+b.h-.5));y++)bits.fill(1,y*width+x,y*width+right);}
   return bits;
 }
-export function combineSelection(old:BBox[]|null,next:BBox[],mode:SelectionMode,width:number,height:number):BBox[]{
-  if(mode==='replace')return next;
-  const a=boxesMask(old??[],width,height),b=boxesMask(next,width,height);
-  for(let i=0;i<a.length;i++)a[i]=mode==='add'?(a[i]|b[i]):a[i]&&!b[i]?1:0;
-  return maskBoxes(a,width,height);
+function appendRuns(out:BBox[],previous:Map<string,BBox>,runs:Array<[number,number]>,y:number,h:number):Map<string,BBox>{
+  const next=new Map<string,BBox>();
+  for(const [x,right] of runs){const key=`${x}:${right}`,old=previous.get(key);
+    if(old&&old.y+old.h===y){old.h+=h;next.set(key,old);}else{const box={x,y,w:right-x,h};out.push(box);next.set(key,box);}}
+  return next;
 }
-export function lassoSelection(points:VectorPoint[],width:number,height:number):BBox[]{
+/** Boolean operations on pixel runs, independent of the backing canvas extent. */
+export function combineSelection(old:BBox[]|null,next:BBox[],mode:SelectionMode):BBox[]{
+  if(mode==='replace')return next;
+  type Run={x:number;right:number;source:number};
+  const events=new Map<number,Array<{run:Run;add:boolean}>>();
+  for(const [source,boxes] of [old??[],next].entries())for(const box of boxes){
+    const x=Math.ceil(box.x-.5),right=Math.ceil(box.x+box.w-.5),y=Math.ceil(box.y-.5),bottom=Math.ceil(box.y+box.h-.5);
+    if(![x,right,y,bottom].every(Number.isSafeInteger))throw Error('選択座標は有限のpixel位置で指定してください');
+    if(right<=x||bottom<=y)continue;const run={x,right,source};
+    for(const [line,add] of [[y,true],[bottom,false]] as const){const list=events.get(line)??[];list.push({run,add});events.set(line,list);}
+  }
+  const lines=[...events.keys()].sort((a,b)=>a-b),active=new Set<Run>(),out:BBox[]=[];let previous=new Map<string,BBox>();
+  for(let i=0;i<lines.length-1;i++){
+    const y=lines[i];for(const {run,add} of events.get(y)!){if(add)active.add(run);else active.delete(run);}
+    const edges=new Map<number,[number,number]>();
+    for(const run of active)for(const [x,sign] of [[run.x,1],[run.right,-1]]){const counts=edges.get(x)??[0,0];counts[run.source]+=sign;edges.set(x,counts);}
+    const xs=[...edges.keys()].sort((a,b)=>a-b),counts=[0,0],runs:Array<[number,number]>=[];
+    for(let j=0;j<xs.length-1;j++){const x=xs[j],delta=edges.get(x)!;counts[0]+=delta[0];counts[1]+=delta[1];
+      if(mode==='add'?counts[0]||counts[1]:counts[0]&&!counts[1]){const last=runs.at(-1);if(last?.[1]===x)last[1]=xs[j+1];else runs.push([x,xs[j+1]]);}}
+    previous=appendRuns(out,previous,runs,y,lines[i+1]-y);
+  }
+  return out;
+}
+export function lassoSelection(points:VectorPoint[]):BBox[]{
   if(points.length<3)return [];
-  const rows:BBox[]=[];
-  let minY=height,maxY=0;for(const p of points){minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-  const top=Math.max(0,Math.floor(minY)),bottom=Math.min(height,Math.ceil(maxY));
+  const rows:BBox[]=[];let previous=new Map<string,BBox>();
+  let minY=Infinity,maxY=-Infinity;for(const p of points){
+    if(![p.x,p.y].every(n=>Number.isFinite(n)&&Math.abs(n)<Number.MAX_SAFE_INTEGER))throw Error('選択座標は有限のpixel位置で指定してください');
+    minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+  const top=Math.floor(minY),bottom=Math.ceil(maxY);
+  if(bottom-top>16384||(bottom-top)*points.length>16*1024*1024)throw Error('選択範囲が大きすぎます。範囲や輪郭を小さくしてください');
   for(let y=top;y<bottom;y++){const line=y+.5,xs:number[]=[];
     for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[j],b=points[i];if((a.y>line)!==(b.y>line))xs.push(a.x+(line-a.y)*(b.x-a.x)/(b.y-a.y));}
-    xs.sort((a,b)=>a-b);for(let i=0;i+1<xs.length;i+=2){const x=Math.max(0,Math.ceil(xs[i]-.5)),right=Math.min(width,Math.ceil(xs[i+1]-.5));if(right>x)rows.push({x,y,w:right-x,h:1});}
-  }return maskBoxes(boxesMask(rows,width,height),width,height);
+    const runs:Array<[number,number]>=[];xs.sort((a,b)=>a-b);
+    for(let i=0;i+1<xs.length;i+=2){const x=Math.ceil(xs[i]-.5),right=Math.ceil(xs[i+1]-.5);if(right>x){const last=runs.at(-1);if(last?.[1]===x)last[1]=right;else runs.push([x,right]);}}
+    previous=appendRuns(rows,previous,runs,y,1);
+  }return rows;
 }
 /** Four-connected scanline flood fill. Transparent RGB is ignored. */
 export function floodSelection(source:PixelSource,x:number,y:number,tolerance=24,limit?:BBox[]|null):BBox[]{
