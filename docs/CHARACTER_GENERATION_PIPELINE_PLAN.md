@@ -136,7 +136,7 @@ Diffusers例とComfyUI templateには既定steps・解像度の違いもある�
 ### 作品と端末の保存先
 
 - シリーズ共通bindingはシリーズroot内の新規sidecar `generation-bindings.json` に保存する案とする。
-  既存 `series.omny.yaml` の人物ID・資料IDを参照する。版番号による競合検出とatomic replaceを使う。
+  既存 `series.yaml` の人物ID・資料IDを参照する。版番号による競合検出とatomic replaceを使う。
 - 各話だけのbindingと今回の上書きはアプリ作品データの `manga.character_generation` に保存する案とする。
   既存の保存JSON/YAML、再読込、シリーズ昇格、作品複製、バックアップまで対応させる。
 - 公開OMNYの出力ではこの追加フィールドを除き、生成設定の持ち運びはアプリの作品保存・シリーズ保存で行う。

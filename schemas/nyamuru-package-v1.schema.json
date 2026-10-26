@@ -48,6 +48,30 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "document": { "properties": { "omny_path": { "const": "data/name/document.yaml" } } } } },
+      "then": { "properties": { "payloads": {
+        "contains": { "properties": { "path": { "const": "data/name/document.yaml" } } },
+        "not": { "contains": { "properties": { "path": { "const": "data/name/document.omny.yaml" } } } }
+      } } },
+      "else": { "properties": { "payloads": {
+        "contains": { "properties": { "path": { "const": "data/name/document.omny.yaml" } } },
+        "not": { "contains": { "properties": { "path": { "const": "data/name/document.yaml" } } } }
+      } } }
+    },
+    {
+      "if": { "properties": { "document": { "properties": { "omay_path": { "const": "data/style/settings.yaml" } } } } },
+      "then": { "properties": { "payloads": {
+        "contains": { "properties": { "path": { "const": "data/style/settings.yaml" } } },
+        "not": { "contains": { "properties": { "path": { "const": "data/style/document.omay.yaml" } } } }
+      } } },
+      "else": { "properties": { "payloads": {
+        "contains": { "properties": { "path": { "const": "data/style/document.omay.yaml" } } },
+        "not": { "contains": { "properties": { "path": { "const": "data/style/settings.yaml" } } } }
+      } } }
+    }
+  ],
   "$defs": {
     "bagPath": {
       "type": "string",
@@ -95,10 +119,10 @@
           "minimum": 0
         },
         "omny_path": {
-          "const": "data/name/document.omny.yaml"
+          "enum": ["data/name/document.yaml", "data/name/document.omny.yaml"]
         },
         "omay_path": {
-          "const": "data/style/document.omay.yaml"
+          "enum": ["data/style/settings.yaml", "data/style/document.omay.yaml"]
         }
       }
     },
@@ -171,7 +195,7 @@
                   "role": { "const": "story_omny" },
                   "path": {
                     "type": "string",
-                    "const": "data/name/document.omny.yaml"
+                    "enum": ["data/name/document.yaml", "data/name/document.omny.yaml"]
                   }
                 }
               },
@@ -180,7 +204,7 @@
                   "role": { "const": "style_omay" },
                   "path": {
                     "type": "string",
-                    "const": "data/style/document.omay.yaml"
+                    "enum": ["data/style/settings.yaml", "data/style/document.omay.yaml"]
                   }
                 }
               }

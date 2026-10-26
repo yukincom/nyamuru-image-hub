@@ -361,6 +361,8 @@ def _normalize_bag_payload_path(value: object) -> str:
 
 
 def _media_type(path: Path) -> str:
+    if path.suffix.lower() in (".yaml", ".yml"):
+        return "application/yaml"
     if path.suffix.lower() in (".psd", ".psb"):
         return "image/vnd.adobe.photoshop"
     guessed, _ = mimetypes.guess_type(path.name)
@@ -373,6 +375,12 @@ def _payload_role(relative_path: str) -> str:
         return "story_omny"
     if lowered.endswith((".omay.yaml", ".omay.yml")):
         return "style_omay"
+    if lowered.endswith((".yaml", ".yml")):
+        stem = PurePosixPath(lowered).stem
+        if stem in ("settings", "generation") or stem.endswith(("-settings", "-generation")):
+            return "style_omay"
+        if lowered.startswith("name_data/"):
+            return "story_omny"
     if lowered.endswith((".psd", ".psb")):
         return "editable_psd"
     if lowered.endswith((".png", ".jpg", ".jpeg", ".webp", ".gif", ".tif", ".tiff", ".avif")):
@@ -1003,7 +1011,7 @@ class ProductionPackageCore:
 
             created_at = _format_utc(self._now())
             timestamp = created_at.replace("-", "").replace(":", "")
-            package_name = f"{_safe_package_slug(normalized_document['title'])}-{timestamp}.nyamuru-bag"
+            package_name = f"{_safe_package_slug(normalized_document['title'])}-{timestamp}-package"
             _validate_component(package_name)
 
             for _attempt in range(_MAX_STAGING_NAME_ATTEMPTS):
@@ -1041,17 +1049,17 @@ class ProductionPackageCore:
             data_fd = _ensure_owned_directory(staging_fd, ("data",), owned)
             os.close(data_fd)
             payloads: list[dict[str, Any]] = []
-            omny_path = "data/name/document.omny.yaml"
-            omay_path = "data/style/document.omay.yaml"
+            omny_path = "data/name/document.yaml"
+            omay_path = "data/style/settings.yaml"
             omny_details = _write_owned_file(
                 staging_fd,
-                ("data", "name", "document.omny.yaml"),
+                ("data", "name", "document.yaml"),
                 omny_bytes,
                 owned,
             )
             omay_details = _write_owned_file(
                 staging_fd,
-                ("data", "style", "document.omay.yaml"),
+                ("data", "style", "settings.yaml"),
                 omay_bytes,
                 owned,
             )
@@ -1358,8 +1366,8 @@ class ProductionPackageCore:
                         f"workspace payload pathとsource_relative_pathが一致しません: {payload_path}"
                     )
             elif payload_path not in (
-                "data/name/document.omny.yaml",
-                "data/style/document.omay.yaml",
+                manifest["document"]["omny_path"],
+                manifest["document"]["omay_path"],
             ):
                 raise BagItValidationError(f"sourceのないpayloadが固定document path外にあります: {payload_path}")
             actual = actual_by_path.get(payload_path)
@@ -1427,9 +1435,9 @@ class ProductionPackageCore:
             or document["episode_number"] < 0
         ):
             raise BagItValidationError("manifest.document.episode_numberが不正です")
-        if document["omny_path"] != "data/name/document.omny.yaml":
+        if document["omny_path"] not in ("data/name/document.yaml", "data/name/document.omny.yaml"):
             raise BagItValidationError("manifest.document.omny_pathが固定pathと一致しません")
-        if document["omay_path"] != "data/style/document.omay.yaml":
+        if document["omay_path"] not in ("data/style/settings.yaml", "data/style/document.omay.yaml"):
             raise BagItValidationError("manifest.document.omay_pathが固定pathと一致しません")
         payloads = manifest.get("payloads")
         if not isinstance(payloads, list) or len(payloads) < 2:

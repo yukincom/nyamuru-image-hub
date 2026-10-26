@@ -156,13 +156,13 @@ npm run dev
 ~/Library/Application Support/Nyamuru Manga Name Studio/series-common/
 └── <series-id>/
     ├── catalog.json
-    ├── series.omny.yaml
+    ├── series.yaml
     └── characters/
         └── <character-id>/
             └── image-<sha256>.png
 ```
 
-ブラウザ側で人物資料をPNGへ正規化し、SHA-256で同一画像を重複保存しません。台帳の保存は読み込み時のリビジョンを照合し、別の画面や話から先に更新された場合はHTTP 409で停止します。画像選択だけではVLM解析を行わず、「特徴を抽出」を押した1枚だけを`/api/character-reference/analyze`へ渡します。台帳とOMNYの関係は [SERIES_CHARACTER_CATALOG.md](./SERIES_CHARACTER_CATALOG.md) を参照してください。
+ブラウザ側で人物資料をPNGへ正規化し、SHA-256で同一画像を重複保存しません。台帳の保存は読み込み時のリビジョンを照合し、別の画面や話から先に更新された場合はHTTP 409で停止します。旧名の互換読み込みと新旧競合は [作品保存](./PROJECT_SAVE.md) を参照してください。画像選択だけではVLM解析を行わず、「特徴を抽出」を押した1枚だけを`/api/character-reference/analyze`へ渡します。台帳とOMNYの関係は [SERIES_CHARACTER_CATALOG.md](./SERIES_CHARACTER_CATALOG.md) を参照してください。
 
 ## スキャナー
 

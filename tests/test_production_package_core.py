@@ -33,6 +33,24 @@ def refresh_fake_payload_manifests(package):
             for path in payload_files
         ]
         (package / f"manifest-{algorithm}.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Both payload manifests are tag files; update them before either tag hash.
+    for algorithm in ("sha256", "sha512"):
+        tag_manifest = package / f"tagmanifest-{algorithm}.txt"
+        tag_paths = [line.split("  ", 1)[1] for line in tag_manifest.read_text(encoding="utf-8").splitlines()]
+        tag_manifest.write_text("".join(f"{file_hash(package / path, algorithm)}  {path}\n" for path in tag_paths), encoding="utf-8")
+
+
+def legacy_snapshot_paths(package):
+    manifest_path = package / "data" / "nyamuru-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for key, old_path in (("omny_path", "data/name/document.omny.yaml"), ("omay_path", "data/style/document.omay.yaml")):
+        current = manifest["document"][key]
+        (package / current).rename(package / old_path)
+        manifest["document"][key] = old_path
+        next(payload for payload in manifest["payloads"] if payload["path"] == current)["path"] = old_path
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+    refresh_fake_payload_manifests(package)
+    return manifest
 
 
 class FakeBagIt:
@@ -264,7 +282,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
             self.export_once(core, plan)
         self.assertTrue(fired)
         self.assertEqual(list(outside.iterdir()), [])
-        self.assertFalse(any(path.name.endswith(".nyamuru-bag") for path in moved.iterdir()))
+        self.assertFalse(any(path.name.endswith("-package") for path in moved.iterdir()))
         self.assertFalse(any(path.name.startswith(".nyamuru-package-") for path in moved.iterdir()))
 
     def test_cleanup_never_follows_replaced_staging_name(self):
@@ -317,7 +335,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
             if event == "before_publish" and not fired:
                 fired = True
                 descriptor = os.open(
-                    "data/name/document.omny.yaml",
+                    "data/name/document.yaml",
                     os.O_WRONLY | os.O_TRUNC,
                     dir_fd=details["staging_fd"],
                 )
@@ -350,7 +368,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
             if event == "published_before_final_validation" and not fired:
                 fired = True
                 descriptor = os.open(
-                    "data/style/document.omay.yaml",
+                    "data/style/settings.yaml",
                     os.O_WRONLY | os.O_TRUNC,
                     dir_fd=details["staging_fd"],
                 )
@@ -405,15 +423,19 @@ class ProductionPackageCoreTest(unittest.TestCase):
         self.assertTrue((package / "manifest-sha256.txt").is_file())
         self.assertTrue((package / "manifest-sha512.txt").is_file())
         self.assertEqual(
+            (package / "data" / "workspace" / "name_data" / "episode.omny.yaml").read_bytes(),
+            (self.workspace / "name_data" / "episode.omny.yaml").read_bytes(),
+        )
+        self.assertEqual(
             (package / "data" / "workspace" / "draft_data" / "page-001.psd").read_bytes(),
             self.psd_bytes,
         )
         self.assertEqual(
-            (package / "data" / "name" / "document.omny.yaml").read_bytes(),
+            (package / "data" / "name" / "document.yaml").read_bytes(),
             b"manga:\n  meta:\n    title: package snapshot\n",
         )
         self.assertEqual(
-            (package / "data" / "style" / "document.omay.yaml").read_bytes(),
+            (package / "data" / "style" / "settings.yaml").read_bytes(),
             b"style:\n  line: ink\n",
         )
         self.assertFalse((package / "data" / "export_data").exists())
@@ -426,6 +448,55 @@ class ProductionPackageCoreTest(unittest.TestCase):
         self.assertEqual(psd["sha256"], hashlib.sha256(self.psd_bytes).hexdigest())
         self.assertEqual(psd["sha512"], hashlib.sha512(self.psd_bytes).hexdigest())
         self.assertTrue(core.validate(package)["valid"])
+
+    def test_legacy_package_is_validated_read_only_and_unknown_document_paths_are_rejected(self):
+        core = self.make_core(FakeBagIt())
+        _, package = self.export_once(core)
+        schema = json.loads((MODULE_PATH.parents[1] / "schemas" / "nyamuru-package-v1.schema.json").read_text(encoding="utf-8"))
+        for key, paths in (("omny_path", ["data/name/document.yaml", "data/name/document.omny.yaml"]),
+                           ("omay_path", ["data/style/settings.yaml", "data/style/document.omay.yaml"])):
+            self.assertEqual(schema["$defs"]["document"]["properties"][key]["enum"], paths)
+        manifest = legacy_snapshot_paths(package)
+        for algorithm in ("sha256", "sha512"):
+            for line in (package / f"tagmanifest-{algorithm}.txt").read_text(encoding="utf-8").splitlines():
+                expected, relative = line.split("  ", 1)
+                self.assertEqual(file_hash(package / relative, algorithm), expected)
+        before = {path.relative_to(package): (path.read_bytes(), path.stat().st_mtime_ns) for path in package.rglob("*") if path.is_file()}
+        self.assertTrue(core.validate(package)["valid"])
+        self.assertEqual(before, {path.relative_to(package): (path.read_bytes(), path.stat().st_mtime_ns) for path in package.rglob("*") if path.is_file()})
+        for key in ("omny_path", "omay_path"):
+            invalid = json.loads(json.dumps(manifest))
+            invalid["document"][key] = "data/arbitrary.yaml"
+            with self.assertRaisesRegex(package_core.BagItValidationError, "固定path"):
+                core._validate_manifest_shape(invalid)
+
+    def test_standard_yaml_roles_use_known_names_and_story_directory_only(self):
+        for path, role in (
+            ("name_data/story.yaml", "story_omny"),
+            ("name_data/story-settings.yaml", "style_omay"),
+            ("draft_data/story-generation.yml", "style_omay"),
+            ("name_data/legacy.omny.yaml", "story_omny"),
+            ("draft_data/legacy.omay.yaml", "style_omay"),
+            ("draft_data/arbitrary.yaml", "workspace_payload"),
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(package_core._payload_role(path), role)
+                self.assertEqual(package_core._media_type(Path(path)), "application/yaml")
+
+    @unittest.skipUnless(importlib.util.find_spec("jsonschema"), "jsonschema is not installed")
+    def test_manifest_schema_accepts_new_and_legacy_fixed_paths(self):
+        import jsonschema
+        schema = json.loads((MODULE_PATH.parents[1] / "schemas" / "nyamuru-package-v1.schema.json").read_text(encoding="utf-8"))
+        core = self.make_core(FakeBagIt())
+        _, package = self.export_once(core)
+        for manifest in (core.validate(package)["manifest"], legacy_snapshot_paths(package)):
+            jsonschema.validate(manifest, schema)
+            for key, alternatives in (("omny_path", ("data/name/document.yaml", "data/name/document.omny.yaml")),
+                                      ("omay_path", ("data/style/settings.yaml", "data/style/document.omay.yaml"))):
+                mismatched = json.loads(json.dumps(manifest))
+                mismatched["document"][key] = next(path for path in alternatives if path != manifest["document"][key])
+                with self.assertRaises(jsonschema.ValidationError):
+                    jsonschema.validate(mismatched, schema)
 
     def test_export_rechecks_plan_revision_and_selection_hashes(self):
         core = self.make_core(FakeBagIt())
@@ -460,7 +531,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
             (package / "data" / "workspace" / "draft_data" / "page-001.psd").read_bytes(),
             sentinel,
         )
-        self.assertEqual(result["package_relative_path"], "export_data/合成fixture-20260901T020304Z.nyamuru-bag")
+        self.assertEqual(result["package_relative_path"], "export_data/合成fixture-20260901T020304Z-package")
 
     def test_validate_rejects_payload_tampering(self):
         core = self.make_core(FakeBagIt())
@@ -526,6 +597,8 @@ class RealBagItIntegrationTest(unittest.TestCase):
             )
             manifest = json.loads((package / "data" / "nyamuru-manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["bagit"]["version"], "1.0")
+            self.assertTrue(core.validate(package)["valid"])
+            legacy_snapshot_paths(package)
             self.assertTrue(core.validate(package)["valid"])
 
 

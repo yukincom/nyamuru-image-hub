@@ -40,7 +40,7 @@ name_data/coverage/source-coverage-<canonical-report-sha256>.json
 ```sh
 npm run source:coverage -- \
   --source /path/to/episode.md \
-  --omny /path/to/story.omny.yaml
+  --omny /path/to/story.yaml
 ```
 
 明示したファイルを一度だけ作成する場合:
@@ -48,7 +48,7 @@ npm run source:coverage -- \
 ```sh
 npm run source:coverage -- \
   --source /path/to/episode.md \
-  --omny /path/to/story.omny.yaml \
+  --omny /path/to/story.yaml \
   --source-relative-path origin_data/episode.md \
   --output /path/to/report.json
 ```

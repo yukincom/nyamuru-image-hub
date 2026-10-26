@@ -156,7 +156,7 @@ DRAFT_TOKEN_PATTERN = re.compile(r"^[a-f0-9]{32}$")
 CHARACTER_ID_PATTERN = SERIES_ID_PATTERN
 CHARACTER_IMAGE_PATTERN = re.compile(r"^image-([a-f0-9]{64})\.png$")
 ARTIFACT_PATH_PATTERN = re.compile(
-    r"^artifacts/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.json|\.omny\.yaml|\.png)$"
+    r"^artifacts/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.json|\.yaml|\.omny\.yaml|\.png)$"
 )
 SHA256_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 MAX_LEDGER_BYTES = 512 * 1024 * 1024
@@ -1027,6 +1027,7 @@ class WorkspaceDoctor:
             if metadata_valid and match is not None:
                 expected_media_type = {
                     ".json": "application/json",
+                    ".yaml": "application/yaml",
                     ".omny.yaml": "application/yaml",
                     ".png": "image/png",
                 }[match.group(3)]

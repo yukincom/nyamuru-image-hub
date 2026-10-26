@@ -1,6 +1,6 @@
 # Nyamuru制作package core
 
-Nyamuru制作packageは、OMNY・OMAY・選択した制作素材を、BagIt 1.0準拠の検証可能なdirectoryへまとめるローカル機能です。制作素材は再解釈せずbyte-for-byteでcopyし、`nyamuru-manifest.json` v1へSHA-256とSHA-512を記録します。
+Nyamuru制作packageは、構成YAML・作画設定YAML・選択した制作素材を、BagIt 1.0準拠の検証可能なdirectoryへまとめるローカル機能です。制作素材は再解釈せずbyte-for-byteでcopyし、`nyamuru-manifest.json` v1へSHA-256とSHA-512を記録します。
 
 この範囲はPythonのplan/export/validate coreと、TypeScriptのplan正規化・選択helperです。local bridgeや画面からは呼び出しません。
 
@@ -25,6 +25,8 @@ python3 -m pip install -r requirements-package.txt
 `export_data/`やworkspace直下の任意fileは候補に含めません。管理directory内にsymlink、device、socket、FIFO、またはworkspace外を指すpathが1つでもある場合、曖昧な候補一覧を返さずplan全体を拒否します。
 
 候補は相対path順で、role、media type、byte size、SHA-256、SHA-512を持ちます。候補全体から`plan_revision`を作るため、内容・path・roleのいずれかが変化するとrevisionも変わります。PSD/PSBは解析せず`editable_psd`として扱います。
+
+YAML候補は `*-settings.yaml` / `*-generation.yaml`（または `.yml`）を設定用、`name_data/` のその他のYAMLを構成用として分類します。用途名のない別directoryのYAMLは汎用素材です。既存の `.omny.yaml` / `.omay.yaml` 分類も受け入れます。これは用途の分類であり、本文の意味を検証・変換するものではありません。選択した既存ファイルのcopy名は元のまま保持します。
 
 ```python
 from scripts.nyamuru_production_package import ProductionPackageCore
@@ -71,12 +73,12 @@ result = core.export(
 
 `bagit-python` 1.9.0の`make_bag()`は`BagIt-Version: 0.97`を生成するため、Nyamuruはそのpath-only生成APIを使用しません。header、payload manifest、tagmanifestをfd相対でBagIt 1.0として生成し、保持済みpackage fdを隔離したvalidator processへ渡して同じ`bagit-python`の完全検証を行います。実dependency testは`bagit.txt`と`nyamuru-manifest.json`のversionがともに1.0であることを直接確認します。
 
-最終名は`<title>-<UTC timestamp>.nyamuru-bag`です。同名pathがある場合は上書きも自動suffix付加も行いません。再度planを確認して別の時刻で実行します。処理失敗時は、作成時に記録したdevice/inode/typeが一致する、この呼出し所有のentryだけを保持済みfdから削除します。staging名が別entryやsymlinkへ交換されていた場合、その置換物には触れません。元staging自体が未知の名前へ移動済みなら、内容を安全に空にしても名前を推測して削除せず、空directoryを残すfail-closed動作になります。
+最終名は`<title>-<UTC timestamp>-package`という通常のフォルダー名です。同名pathがある場合は上書きも自動suffix付加も行いません。再度planを確認して別の時刻で実行します。処理失敗時は、作成時に記録したdevice/inode/typeが一致する、この呼出し所有のentryだけを保持済みfdから削除します。staging名が別entryやsymlinkへ交換されていた場合、その置換物には触れません。元staging自体が未知の名前へ移動済みなら、内容を安全に空にしても名前を推測して削除せず、空directoryを残すfail-closed動作になります。
 
 ## Package layout
 
 ```text
-<title>-<UTC timestamp>.nyamuru-bag/
+<title>-<UTC timestamp>-package/
 ├── bagit.txt
 ├── bag-info.txt
 ├── manifest-sha256.txt
@@ -85,8 +87,8 @@ result = core.export(
 ├── tagmanifest-sha512.txt
 └── data/
     ├── nyamuru-manifest.json
-    ├── name/document.omny.yaml
-    ├── style/document.omay.yaml
+    ├── name/document.yaml
+    ├── style/settings.yaml
     └── workspace/
         ├── name_data/...
         ├── draft_data/...
@@ -111,8 +113,10 @@ machine-readable schemaは`schemas/nyamuru-package-v1.schema.json`です。
 `ProductionPackageCore.validate(package_directory)`は`bagit-python`の検証に加えて、Nyamuru manifestのv1 field、payload path、role、size、両hash、OMNY/OMAY参照、data内の未掲載fileを検査します。package directory、data directory、payloadのsymlinkや特殊fileも拒否します。
 
 ```python
-validation = core.validate("/absolute/path/to/package.nyamuru-bag")
+validation = core.validate("/absolute/path/to/title-timestamp-package")
 ```
+
+既存packageの `data/name/document.omny.yaml` / `data/style/document.omay.yaml` も、manifestに記録された固定path・role・hashで検証できます。開くだけで改名・再保存しません。内部APIの `omny_path` / `omay_path` とrole名は維持し、新規出力は上記の標準名のみです。
 
 ## Tests
 

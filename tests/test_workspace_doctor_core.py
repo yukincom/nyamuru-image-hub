@@ -125,6 +125,7 @@ def add_artifact(
     *,
     listed: bool = True,
     relative_override: str | None = None,
+    media_type: str = "application/json",
 ) -> tuple[str, Path]:
     sha256 = hashlib.sha256(data).hexdigest()
     ledger_root = episode / "draft_data" / "nyamuru"
@@ -137,7 +138,7 @@ def add_artifact(
         connection = sqlite3.connect(ledger_root / "ledger.sqlite3")
         connection.execute(
             "INSERT INTO artifacts(sha256,relative_path,byte_size,media_type,created_at) VALUES(?,?,?,?,?)",
-            (sha256, relative, len(data), "application/json", "2026-09-01T00:00:00+00:00"),
+            (sha256, relative, len(data), media_type, "2026-09-01T00:00:00+00:00"),
         )
         connection.commit()
         connection.close()
@@ -391,6 +392,18 @@ class WorkspaceDoctorCoreTest(unittest.TestCase):
             self.assertEqual(orphan_path.read_bytes(), b'{"orphan":true}')
             self.assertTrue(any(item["evidence"].get("expected_sha256") == mismatch_sha for item in observations))
             self.assertTrue(any(item["evidence"].get("sha256") == orphan_sha for item in observations))
+
+    def test_standard_and_legacy_yaml_artifacts_are_read_only_and_valid(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            episode = managed_workspace(Path(directory_name))
+            create_ledger(episode)
+            paths = [add_artifact(episode, f"manga: {{title: '{suffix}'}}\n".encode(), suffix,
+                                  media_type="application/yaml")[1] for suffix in (".yaml", ".omny.yaml")]
+            before = [(path.read_bytes(), path.stat().st_mtime_ns) for path in paths]
+            report = doctor.WorkspaceDoctor().scan(episode)
+            self.assertEqual(report["verdict"], "healthy")
+            self.assertNotIn("ledger_artifact_metadata_invalid", codes(report))
+            self.assertEqual(before, [(path.read_bytes(), path.stat().st_mtime_ns) for path in paths])
 
     def test_malicious_ledger_path_does_not_escape_episode(self):
         with tempfile.TemporaryDirectory() as directory_name:

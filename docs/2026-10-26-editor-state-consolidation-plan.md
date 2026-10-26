@@ -204,7 +204,7 @@
 | P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
 | P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc、P7c 29dd0c7。登録再利用・失敗取消し、Python40件／Node9件成功 |
-| P8 標準名・文書 | 実施中 | シリーズa9ee62f・YAML書出93396b6・LAN保存検証完了。packageは残件 |
+| P8 標準名・文書 | 完了 | シリーズa9ee62f・YAML書出93396b6・LAN0fb7814。package／ledgerの新旧互換・現行docsを整合 |
 | P9a–d 描画残件 | 未着手 | 設定・保存とは別commit群 |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
 
@@ -302,3 +302,7 @@
 - LANの `legacy_source` は既存JSON envelopeへ記録して保存のたびに保持し、シリーズと同じ新旧競合条件を適用する。開くだけでは旧byteを変更しない。初回writer失敗で残る空ファイルは再試行できる。新JSONが削除・空になってから再選択された場合は、移行履歴も失われるため旧ファイルへのfallbackを過去の移行と区別できない。外部アプリとの完全な多ファイルtransactionを保証せず、これらの境界をLAN手順書に明記する。
 - LAN検証: 関連Node46件成功、型検査428ファイル0 error／0 warning。旧名read-only、新旧の一致／不一致、不正な移行記録、準備中・writer取得中・書き込み中の外部更新、同時保存、失敗後の再試行を確認。独立レビューで空の新規ファイルが別名の単独作品チェックを迂回するケースを見つけ、既存guardへ統合して回帰試験を追加した。
 - 既存 `browserWorkspace.browser` のOPFS合成作品で、実FileSystem writerによる `project.json` 44,796byteの保存、旧ファイルと記録hashの一致、空キャッシュから原本1枚・人物資料1枚の復元を確認。pickerだけはfixtureへ置換しており、OSの実folder picker・別PC・実作品の試験ではない。モデル送信0回。確認tabを閉じ、専用LAN検証serverのPID50819終了と4339解放を確認した。
+- LAN commit: `0fb7814`。制作packageは既存exportの新規snapshotを `data/name/document.yaml` / `data/style/settings.yaml`、フォルダー名を `<title>-<UTC timestamp>-package` に統一する。選択してコピーする既存資料のpath・byteは変更しない。既存validateとv1 schemaは旧snapshot固定pathも受け入れ、任意pathを許可しない。内部field／role名は互換性のため保持。
+- 制作台帳は既存 `begin_attempt` → `write_artifact` の新規YAMLを `<sha256>.yaml` にする。hashが主キーなので、旧名の同一内容が登録済みなら既存rowと原本を検証して再利用し、二重ファイル・旧原本書き換え・台帳移行を行わない。doctorのread-only検査も両名を認識する。旧名writerを別経路として残さない。
+- package／ledger検証: 既存画像解析環境でPython63件（60成功／3skip）、Node package／CLI11件成功。新規名出力、旧package読取不変、copy原本byte保持、旧artifactの同hash再試行／別attempt再利用／破損拒否、doctor両名対応を一時fixtureで確認。BagIt実dependencyと汎用JSON Schema validatorは未導入でskipし、依存の追加はしていない。package core／manifest固定pathの照合は成功。OSの実作品・実モデル生成は未検証。
+- 独立レビューでschemaの新旧pathを別々に許可するだけではdocument参照とpayloadの不一致を受け入れる点を補修。既存schema内で両者を対応づけ、旧資料copyのpath／byte不変を明示検証した。互換fixtureのpayload・tag manifestも両hashを照合する。既存Node依存のAjvで新旧4組合せ・不一致8ケース、計12件のschema検証も成功（Python側jsonschemaのskipとは区別）。

@@ -32,7 +32,7 @@ class PanelDraftLedger:
     """Episode-local durable ledger; ComfyUI queue/history is external execution evidence only."""
 
     SCHEMA_VERSION = PANEL_DRAFT_LEDGER_SCHEMA_VERSION
-    ARTIFACT_SUFFIXES = {".json", ".omny.yaml", ".png"}
+    ARTIFACT_SUFFIXES = {".json", ".yaml", ".png"}
 
     def __init__(self, episode_root: Path, root: Path):
         self.episode_root = episode_root.resolve()
@@ -336,6 +336,22 @@ class PanelDraftLedger:
         if not data or len(data) > maximum:
             raise ValueError("制作artifactが空か保存上限を超えています")
         sha256 = hashlib.sha256(data).hexdigest()
+        if suffix == ".yaml":
+            # The ledger identifies artifacts by content hash, not by filename.
+            # Reuse a verified legacy row without rewriting its immutable bytes.
+            with self._connect() as connection:
+                legacy = connection.execute(
+                    "SELECT relative_path, byte_size, media_type FROM artifacts WHERE sha256 = ?",
+                    (sha256,),
+                ).fetchone()
+            if legacy is not None and legacy["relative_path"] == f"artifacts/sha256/{sha256[:2]}/{sha256}.omny.yaml":
+                target = self._checked_artifact_path(legacy["relative_path"])
+                with target.open("rb") as handle:
+                    existing = handle.read(maximum + 1)
+                if (legacy["byte_size"] != len(data) or legacy["media_type"] != media_type
+                        or existing != data):
+                    raise ValueError("保存済み制作artifactの整合性が壊れています")
+                return self.artifact_metadata(sha256)
         target = self._artifact_target(sha256, suffix)
         if target.is_symlink():
             raise ValueError("制作artifactのsymlinkは使用できません")
@@ -563,7 +579,7 @@ class PanelDraftLedger:
         plan_snapshot: dict[str, Any],
         workflow_snapshot: dict[str, Any],
     ) -> tuple[dict[str, Any], bool]:
-        omny = self.write_artifact(omny_snapshot.encode("utf-8"), ".omny.yaml", "application/yaml", MAX_PANEL_DRAFT_OMNY_BYTES)
+        omny = self.write_artifact(omny_snapshot.encode("utf-8"), ".yaml", "application/yaml", MAX_PANEL_DRAFT_OMNY_BYTES)
         plan_bytes = self.canonical_json(plan_snapshot)
         workflow_bytes = self.canonical_json(workflow_snapshot)
         plan = self.write_artifact(plan_bytes, ".json", "application/json", MAX_PANEL_DRAFT_SNAPSHOT_BYTES)

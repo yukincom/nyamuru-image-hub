@@ -24,7 +24,7 @@ function usage(): string {
     'Nyamuru source coverage v1',
     '',
     'Usage:',
-    '  npm run source:coverage -- --source episode.md --omny story.omny.yaml [--output report.json]',
+    '  npm run source:coverage -- --source episode.md --omny story.yaml [--output report.json]',
     '',
     'Options:',
     '  --source PATH               UTF-8 Markdown/text source (max 5 MiB)',

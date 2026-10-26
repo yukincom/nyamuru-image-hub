@@ -107,6 +107,8 @@ class PanelDraftLedgerTest(unittest.TestCase):
             record, created = self.begin(ledger)
             self.assertTrue(created)
             self.assertEqual(set(record["artifacts"]), {"omny_snapshot", "plan_snapshot", "workflow_snapshot"})
+            self.assertTrue(record["artifacts"]["omny_snapshot"]["workspace_relative_path"].endswith(".yaml"))
+            self.assertFalse(record["artifacts"]["omny_snapshot"]["workspace_relative_path"].endswith(".omny.yaml"))
             ledger.set_status(ATTEMPT_ID, "queued")
             original_png = valid_png((120, 130, 140))
             composite_png = valid_png((230, 0, 18))
@@ -180,6 +182,31 @@ class PanelDraftLedgerTest(unittest.TestCase):
                     expected_plan_sha256=completed["artifacts"]["plan_snapshot"]["sha256"],
                     expected_workflow_sha256=completed["artifacts"]["workflow_snapshot"]["sha256"],
                 )
+
+    def test_legacy_yaml_artifact_is_reused_without_rewrite_or_duplicate(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            ledger = self.make_ledger(Path(directory_name))
+            record, _ = self.begin(ledger)
+            artifact = record["artifacts"]["omny_snapshot"]
+            current = ledger.episode_root / artifact["workspace_relative_path"]
+            legacy = current.with_suffix(".omny.yaml")
+            current.rename(legacy)
+            with ledger._connect() as connection:
+                connection.execute("UPDATE artifacts SET relative_path=? WHERE sha256=?",
+                                   (legacy.relative_to(ledger.root).as_posix(), artifact["sha256"]))
+            before = legacy.read_bytes(), legacy.stat().st_mtime_ns
+            reopened = bridge.PanelDraftLedger(ledger.episode_root, ledger.root)
+            repeated, created = self.begin(reopened)
+            self.assertFalse(created)
+            self.assertTrue(repeated["artifacts"]["omny_snapshot"]["workspace_relative_path"].endswith(".omny.yaml"))
+            self.begin(reopened, RETRY_ID, ATTEMPT_ID)
+            self.assertEqual(reopened.read_attempt_artifact(RETRY_ID, "omny_snapshot", 1024), before[0])
+            self.assertEqual((legacy.read_bytes(), legacy.stat().st_mtime_ns), before)
+            self.assertFalse(current.exists())
+            legacy.write_bytes(b"corrupt")
+            with self.assertRaisesRegex(ValueError, "整合性"):
+                self.begin(reopened)
+            self.assertFalse(current.exists())
 
     def test_resolver_rejects_artifact_symlink_even_when_it_stays_inside_ledger(self):
         with tempfile.TemporaryDirectory() as directory_name:

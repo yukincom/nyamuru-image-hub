@@ -46,13 +46,16 @@ filesystemにだけ存在するartifactは「孤立」と断定しません。`a
 `series-common`側では、series directoryごとに次を検査します。
 
 - `catalog.json`のJSON object、directory名と`series_id`
-- `series.omny.yaml`のUTF-8、5MiB上限、catalog `revision`とのSHA-256一致
+- `series.yaml`（旧名 `series.omny.yaml` も互換読み込み）のUTF-8、5MiB上限、catalog `revision`とのSHA-256一致
+- 新旧が共存する場合のbyte一致、またはcatalog内 `legacy_source` と旧ファイルのhash一致。記録不正・新規名の欠落・旧ファイルの変更を通知
 - `characters/<character-id>/image-<sha256>.png`のfile名hash、PNG header、寸法上限
 - `.drafts`、`deleted-characters`、`character-text-history`の復旧資産
 
 catalogに保存された`series_directory`などの外部pathは、fieldがあるという事実だけを観測します。path値をreportへ含めず、外部fileを`stat`・open・探索しません。復旧資産は期限切れでも削除しません。
 
 browserのlocalStorage / IndexedDB、選択された外部series folder、ComfyUIのqueue/history、汎用filesystem全体はv1の対象外です。これらを含む「完全復旧」をdoctor v1だけで保証しません。
+
+制作台帳のYAML snapshotは新規に `<sha256>.yaml` を保存します。台帳に既に同一hashの `.omny.yaml` がある場合は整合性を確認してその記録とbyteを再利用し、改名・重複保存しません。doctorは両名を読み取り専用で検査します。
 
 ## observedとinferred
 
