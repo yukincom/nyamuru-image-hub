@@ -12,7 +12,7 @@ import {
   SYSTEM_MOB_ROLE,
 } from '../src/lib/systemCharacters.ts';
 
-const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sampleSource = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 test('サンプルがNDMの正式なスキーマ名とバージョンを持つ', () => {
   const document = parseMangaYaml(sampleSource);

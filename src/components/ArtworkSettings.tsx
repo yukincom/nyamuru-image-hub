@@ -1,6 +1,6 @@
 import { Download, FileUp, Plus } from 'lucide-preact';
 import { useRef } from 'preact/hooks';
-import standardOmaySource from '../content/standard.omay.yaml?raw';
+import standardOmaySource from '../content/standard-settings.yaml?raw';
 import { omayFileName, parseOmayYaml, toArtworkSettingsYaml, toOmayYaml } from '../lib/manga';
 import { appendArtworkSettings, applyArtworkSettings, artworkNumberControls, artworkSettingsFromSource, getArtworkSettings, isInternalArtworkGroup, setArtworkNumber } from '../lib/artworkRules';
 import type { ArtworkSettingsData, MangaDocument } from '../types';
@@ -53,7 +53,7 @@ export default function ArtworkSettings({ document, onChange, onNotify, section 
     const url = URL.createObjectURL(blob);
     const anchor = window.document.createElement('a');
     anchor.href = url;
-    anchor.download = omayFileName(document.manga.meta.title).replace('.omay.yaml', archive ? '.settings.omay.yaml' : '.integrated.omay.yaml');
+    anchor.download = omayFileName(document.manga.meta.title, archive ? 'settings' : 'generation');
     anchor.click();
     URL.revokeObjectURL(url);
     onNotify(archive ? 'OFFの項目も含めて設定の控えを書き出しました' : '生成指示を書き出しました');

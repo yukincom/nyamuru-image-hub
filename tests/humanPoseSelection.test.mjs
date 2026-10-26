@@ -19,7 +19,7 @@ const entry = { ...row, template_revision: 1, pose_normalized_text: row.pose_tem
   production_status: 'ready', review: { status: 'confirmed', user_confirmed: true },
   prompt_segments: [{ id: 'pose', text_ja: row.pose_text_ja, template_en: row.pose_template }],
   asset_files: { preview: { path: `poses/${row.id}/preview.png`, sha256: digest, byte_size: 64 } } };
-const sample = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 test('コマ内・前景の撮影説明と手修正はOMNY保存・作品snapshot・モード往復でも残る', async () => {
   const doc = document();

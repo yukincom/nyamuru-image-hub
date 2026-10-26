@@ -13,7 +13,7 @@ import { collectFigureCropAssetIds } from '../src/lib/figureCropStore.ts';
 import { parseMangaYaml } from '../src/lib/manga.ts';
 const frame={x:0,y:0,w:600,h:400},capture=()=>defaultBackgroundCapture(frame);
 const paint=()=>({version:1,width:600,height:400,dpi:600,layers:[newPaintLayer('手直し')]});
-const sample=()=>parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+const sample=()=>parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
 const sha=async blob=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
 function edges(shape,shot){const c=new PerspectiveCamera(shot.camera.fov,shot.frame.w/shot.frame.h);c.position.fromArray(shot.camera.position);c.lookAt(...shot.camera.target);c.updateMatrixWorld(true);Object.assign(c,stageClipPlanes(shape,c));c.updateProjectionMatrix();return visibleBackgroundEdges(shape.meshes,new Matrix4().multiplyMatrices(c.projectionMatrix,c.matrixWorldInverse).toArray(),c.position.toArray(),{width:600,height:400,creaseAngle:35,detail:1,outlineWidth:4,detailWidth:2}).segments;}
 

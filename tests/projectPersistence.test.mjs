@@ -8,7 +8,7 @@ import { parseMangaYaml, cloneDocument, toSeparatedMangaYaml, omnyFileName } fro
 import { createProjectSnapshot, restoreProjectSnapshot, readProjectBinding, rememberProjectBinding } from '../src/lib/projectPersistence.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.omny.yaml'));
+const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
 const binding = { token: 'test-token', directory: '/test/episode', folderName: 'episode', seriesDirectory: '/test', episodeId: 'episode-one' };
 
 test('full project roundtrip retains story and style, unlike the distribution export', async () => {

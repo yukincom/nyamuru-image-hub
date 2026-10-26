@@ -2323,8 +2323,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     try {
       const current = documentRef.current;
       downloadBrowserBlob(new Blob([toSeparatedMangaYaml(current)], { type: 'application/yaml;charset=utf-8' }), omnyFileName(current.manga.meta.title));
-      setToast('OMNYを書き出しました');
-    } catch (error) { setToast(`OMNYを書き出せませんでした: ${error instanceof Error ? error.message : String(error)}`); }
+      setToast('構成データ（YAML）を書き出しました');
+    } catch (error) { setToast(`構成データを書き出せませんでした: ${error instanceof Error ? error.message : String(error)}`); }
   };
 
   const saveBrowserProject = async (chooseDestination = false) => {
@@ -3914,11 +3914,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const canCreateAnalyzedPages = newLayoutItems.length > 0 && detectedPageLayouts.length === newLayoutItems.length;
   const legacySampleRecovery = legacySamples.length > 0 && <details class="content-card">
     <summary>以前のサンプルの保存データ</summary>
-    <p>サンプル作品は自動で開かなくなりました。加えた編集はここからOMNYファイルとして保存できます。</p>
+    <p>サンプル作品に加えた編集は、ここからYAMLファイルとして保存できます。</p>
     {legacySamples.map((saved, index) => <p key={index}><a
       href={`data:application/yaml;charset=utf-8,${encodeURIComponent(saved)}`}
-      download={`以前のサンプル-${index + 1}.omny.yaml`}
-    >編集内容をOMNYで保存（{index + 1}）</a></p>)}
+      download={`以前のサンプル-${index + 1}.yaml`}
+    >編集内容をYAMLで保存（{index + 1}）</a></p>)}
   </details>;
 
   const autoPaintBoundary=(event:Event)=>{

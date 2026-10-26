@@ -1,5 +1,7 @@
 # v1.3.x からの移行ガイド（v1.4.0〜v1.6.0）
 
+このページは当時の移行記録です。現在のファイル名と画面操作は[使い方](./USAGE.md)・[作品の保存](./PROJECT_SAVE.md)を参照してください。
+
 v1.3.x 以前の Nyamuru🐱Manga Name Studio でネームを作り、生成プロンプト・生成ワークフローを AI 側に設定して運用していた方向けの案内です。v1.4.0〜v1.6.0 の変更内容と、手元の環境・ファイルに必要な対応作業をまとめています。
 
 各リリースの詳細は [バージョン履歴](https://sa-san10.github.io/nyamuru-manga-name-studio/changelog) を参照してください。
@@ -50,7 +52,7 @@ standard.omay.yaml    ← 共通の作画・演出ルールとレイアウト仕
 AI エージェントのプロジェクト内へ、次の 2 ファイルを配置し直します。
 
 1. **生成ワークフロー本体**（新版）：[agent-manga-generation-workflow.md](../src/content/agent-manga-generation-workflow.md) — 旧版と差し替え
-2. **標準OMAY**：[standard.omay.yaml](../src/content/standard.omay.yaml) — 新規に追加。アプリの作品情報タブの「標準テンプレートを保存」ボタンからも入手できます
+2. **標準OMAY**：[標準設定の現行ファイル](../src/content/standard-settings.yaml) — 新規に追加。アプリの作品情報タブの「標準テンプレートを保存」ボタンからも入手できます
 
 新しいワークフローは OMAY＋OMNY の 2 ファイル入力構成です。OMNY は作画指示を含まないため、**OMAY を配置しないと作画・演出ルールとレイアウト仕様が不足し、ワークフローは推測で補わず不足報告で止まります。**
 
@@ -110,5 +112,5 @@ NDM v10.2 で、コマの背景詳細度 `bg` に `-1`（背景無描画）が�
 
 - [バージョン履歴](https://sa-san10.github.io/nyamuru-manga-name-studio/changelog)
 - [エージェント漫画生成ワークフロー](../src/content/agent-manga-generation-workflow.md)
-- [標準OMAY（standard.omay.yaml）](../src/content/standard.omay.yaml)
+- [標準設定の現行ファイル](../src/content/standard-settings.yaml)
 - [NDM 仕様](../src/content/nyamuru-data-model-v10.md)

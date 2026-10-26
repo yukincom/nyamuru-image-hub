@@ -14,7 +14,7 @@ import * as artworkEnglish from '../src/lib/artworkEnglish.ts';
 import * as canvasText from '../src/lib/canvasText.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => manga.parseMangaYaml(read('src/content/sample.omny.yaml'));
+const sample = () => manga.parseMangaYaml(read('src/content/sample.yaml'));
 
 // 実際のTSXを固定したhook状態で検証し、利用者の保存データは使わない。
 function loadComponent(file, globals = {}) {
@@ -53,7 +53,7 @@ function loadComponent(file, globals = {}) {
     './FontFamilyPicker': { __esModule: true, default: 'FontFamilyPicker' },
     './FinishLayoutSettings': { __esModule: true, default: 'FinishLayoutSettings', FinishTextSettings: 'FinishTextSettings' },
     './ArtworkSettings': { __esModule: true, default: 'ArtworkSettings' },
-    '../content/standard.omay.yaml?raw': { __esModule: true, default: read('src/content/standard.omay.yaml') },
+    '../content/standard-settings.yaml?raw': { __esModule: true, default: read('src/content/standard-settings.yaml') },
   };
   const compiled = ts.transpileModule(read(file), { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
@@ -101,7 +101,7 @@ function settingsProps(document = sample()) {
   };
 }
 
-test('データ管理は作品フォルダとOMNY書き出しを扱う', () => {
+test('データ管理は作品フォルダと構成データの書き出しを扱う', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
   const calls = [];
   const props = { ...settingsProps(), saveDirectory: '/test/episode', onChangeSaveDirectory: () => calls.push('folder') };
@@ -195,7 +195,7 @@ test('環境設定はテキスト専用タブを廃止して7分類で1枚だけ
   props.onChangeDocument = () => { changes++; };
   let tree = component.render(props);
   const tabs = nodes(tree).filter(node => node.props?.role === 'tab');
-  assert.deepEqual(tabs.map(text), ['レイアウト', '手描き・編集', '生成ルール', 'OMAY', '表示', 'モデル設定', 'データ管理']);
+  assert.deepEqual(tabs.map(text), ['レイアウト', '手描き・編集', '生成ルール', '作画設定（YAML）', '表示', 'モデル設定', 'データ管理']);
   for (const [index, id] of ['page', 'drawing', 'generation', 'omay', 'display', 'ai', 'data'].entries()) {
     button(tree, text(tabs[index])).props.onClick();
     tree = component.render(props);
@@ -573,8 +573,8 @@ test('旧draft作品の生成用はintegratedで書き出し、控えと編集�
   assert.match(generated, /generation_mode: integrated/);
   assert.match(generated, /UNIQUE_INTEGRATED_EXPORT_RULE/);
   assert.doesNotMatch(generated, /UNIQUE_ARCHIVE_ONLY_RULE|hand-drawn|draft images|手描き仕上げ用の下書き/);
-  assert.match(downloads[0], /\.integrated\.omay\.yaml$/);
-  assert.match(downloads[1], /\.settings\.omay\.yaml$/);
+  assert.match(downloads[0], /-generation\.yaml$/);
+  assert.match(downloads[1], /-settings\.yaml$/);
   const restored = manga.parseOmayYaml(archived).artwork_settings;
   assert.equal(restored.mode, 'draft');
   assert.equal(restored.groups.find(group => group.id === 'disabled-regression').enabled, false);
@@ -633,7 +633,7 @@ test('環境設定は現在作品のstateへ接続され、非表示タブはCSS
   assert.match(app, /id: 'coverage', label: 'シナリオ'/);
   assert.match(app, /切り出した原画参照をすぐファイル保存/);
   assert.match(app, /登場人物・背景・小道具の資料保存とは別/);
-  assert.doesNotMatch(app, /sample\.omny\.yaml\?raw|サンプル漫画に戻す/);
+  assert.doesNotMatch(app, /sample\.yaml\?raw|サンプル漫画に戻す/);
 });
 
 
@@ -646,7 +646,7 @@ test('startup settings expose general preferences without an editable placeholde
   assert.equal(nodes(tree).some(node => ['ArtworkSettings', 'FinishLayoutSettings', 'FinishTextSettings'].includes(node.type)), false);
   const data = panel(tree, 'data');
   assert.equal(button(data, '保存先フォルダを変更').props.disabled, true);
-  assert.equal(button(data, 'OMNY書き出し').props.disabled, true);
+  assert.equal(button(data, '構成データを書き出す').props.disabled, true);
   let focused;
   find(tree, node => node.props?.role === 'tablist').props.onKeyDown({
     key: 'Home', preventDefault() {}, stopPropagation() {},
@@ -662,9 +662,9 @@ test('OMNY export is available for an opened project and disabled while busy', (
   let exported = 0;
   const props = { ...settingsProps(), onExportOmny: () => exported++ };
   const data = panel(component.render(props), 'data');
-  button(data, 'OMNY書き出し').props.onClick(); assert.equal(exported, 1);
-  assert.equal(Boolean(button(data, 'OMNY書き出し').props.disabled), false);
-  assert.equal(button(panel(component.render({ ...props, projectBusy: true }), 'data'), 'OMNY書き出し').props.disabled, true);
+  button(data, '構成データを書き出す').props.onClick(); assert.equal(exported, 1);
+  assert.equal(Boolean(button(data, '構成データを書き出す').props.disabled), false);
+  assert.equal(button(panel(component.render({ ...props, projectBusy: true }), 'data'), '構成データを書き出す').props.disabled, true);
 });
 
 function appHandler(name, context) {

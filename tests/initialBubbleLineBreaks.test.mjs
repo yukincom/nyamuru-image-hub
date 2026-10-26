@@ -8,7 +8,7 @@ import { applyScenarioToNewDocument } from '../src/lib/scenario.ts';
 const box = { w: 30, h: 40 };
 const phrase = '今日は図書館で新しい本を探します。';
 function draft() {
-  const doc = parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8'));
+  const doc = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
   doc.manga.pages = [newPage(1)];
   doc.manga.pages[0].panels[0].bubbles = [{ text: phrase, bbox: { x: 0, y: 0, ...box } }];
   return doc;

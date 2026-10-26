@@ -4,8 +4,8 @@ import test from 'node:test';
 import { parse, stringify } from 'yaml';
 import { OMAY_SPEC_NAME, omayFileName, omnyFileName, panelFrameLineWidthFromStyleNotes, panelGuttersFromStyleNotes, parseMangaYaml, parseOmayYaml, safeFileName, toMangaYaml, toOmayYaml, toSeparatedMangaYaml, withPanelFrameLineWidthStyleNote, withPanelGutterStyleNote } from '../src/lib/manga.ts';
 
-const omaySource = readFileSync(new URL('../src/content/standard.omay.yaml', import.meta.url), 'utf8');
-const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const omaySource = readFileSync(new URL('../src/content/standard-settings.yaml', import.meta.url), 'utf8');
+const sampleSource = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 test('標準OMAYテンプレートがspec情報と両ルールを持つ', () => {
   const omay = parseOmayYaml(omaySource);
@@ -144,10 +144,13 @@ test('旧OMNYの固定カラー指定を出力形式のmeta参照へ移す', () 
   assert.ok(!migrated.manga.meta.style_notes.some((note) => note.startsWith('[style] カラー漫画。')));
 });
 
-test('ストーリーOMNYとスタイルOMNYのファイル名に対応する拡張子が付く', () => {
+test('構成・設定の控え・生成指示は標準YAML名で書き出す', () => {
   assert.equal(safeFileName('にゃむる'), 'にゃむる.yaml');
-  assert.equal(omnyFileName('にゃむる'), 'にゃむる.omny.yaml');
-  assert.equal(omayFileName(''), 'manga-name.omay.yaml');
+  assert.equal(omnyFileName('にゃむる'), 'にゃむる.yaml');
+  assert.equal(omayFileName(''), 'manga-name-generation.yaml');
+  assert.equal(omayFileName('にゃむる', 'settings'), 'にゃむる-settings.yaml');
+  assert.equal(omayFileName('にゃむる', 'generation'), 'にゃむる-generation.yaml');
+  assert.equal(omnyFileName('  A/B:C  '), 'A_B_C.yaml');
 });
 
 test('壊れたOMAYを拒否する', () => {

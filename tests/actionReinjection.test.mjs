@@ -18,7 +18,7 @@ visit(ast);
 
 test('再注入の実handlerは連打・処理中編集を防ぎ、完成文を反映して背景・吹き出しを保持する', async () => {
   for (const stale of [false, true, 'navigate', 'startup-edit', 'startup-navigate']) {
-    const manga = parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8')).manga;
+    const manga = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8')).manga;
     manga.pages = [newPage(1)];
     const untouched = manga.pages[0].panels[0];
     untouched.action = '隣のコマは変更しない。';

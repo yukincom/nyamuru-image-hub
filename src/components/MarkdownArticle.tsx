@@ -1,5 +1,5 @@
 import { useMemo } from 'preact/hooks';
-import standardOmaySource from '../content/standard.omay.yaml?raw';
+import standardOmaySource from '../content/standard-settings.yaml?raw';
 import { renderMarkdownWithCodeCopyButtons } from '../lib/markdown';
 
 interface Props {
@@ -15,16 +15,16 @@ export default function MarkdownArticle({ markdown, className = '', onNotify }: 
     const target = event.target as Element;
     const article = event.currentTarget as HTMLElement;
 
-    // md内の standard.omay.yaml へのリンクは、アプリ内にファイル実体が無いため同梱テンプレートのダウンロードに置き換える
-    const omayLink = target.closest<HTMLAnchorElement>('a[href$="standard.omay.yaml"]');
+    // md内の standard-settings.yaml へのリンクは、アプリ内にファイル実体が無いため同梱テンプレートのダウンロードに置き換える
+    const omayLink = target.closest<HTMLAnchorElement>('a[href$="standard-settings.yaml"], a[href$="standard.omay.yaml"]');
     if (omayLink && article.contains(omayLink)) {
       event.preventDefault();
       const blob = new Blob([standardOmaySource], { type: 'application/yaml;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      anchor.href = url; anchor.download = 'standard.omay.yaml'; anchor.click();
+      anchor.href = url; anchor.download = 'standard-settings.yaml'; anchor.click();
       URL.revokeObjectURL(url);
-      onNotify('standard.omay.yaml を保存しました');
+      onNotify('standard-settings.yaml を保存しました');
       return;
     }
 

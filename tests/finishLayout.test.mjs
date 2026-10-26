@@ -9,7 +9,7 @@ import { getPrintSetup, withPrintSetup } from '../src/lib/printSettings.ts';
 import { parseMangaYaml, toMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml, toOmayYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 
-const sample = () => parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8'));
+const sample = () => parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
 const finish = { width_mm: 148, height_mm: 210, dpi: 600, bleed_mm: 3 };
 
 test('仕上がり仕様は編集座標を変えず、裁ち落とし前後のpxと配置時の換算を共有する', () => {

@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import App from '../src/components/App';
-import sampleYaml from '../src/content/sample.omny.yaml?raw';
+import sampleYaml from '../src/content/sample.yaml?raw';
 import { parseMangaYaml, STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga';
 import { prepareImageAsset, createImagePlacement, imageSha256 } from '../src/lib/imagePlacement';
 import { saveFigureCropAssets, deleteFigureCropAssets, loadFigureCropAsset } from '../src/lib/figureCropStore';

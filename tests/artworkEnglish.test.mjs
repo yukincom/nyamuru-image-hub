@@ -9,12 +9,12 @@ import { parseMangaYaml, parseOmayYaml, toMangaYaml, toOmayYaml, toStoredMangaYa
 import { finishLayoutInstruction } from '../src/lib/finishLayout.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.omny.yaml'));
+const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
 const assertEnglish = text => assert.doesNotMatch(text.replaceAll('アンチック体', ''), /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u);
 const tokens = text => [...text.matchAll(/\{\{([A-Za-z][A-Za-z0-9]*)\}\}/g)].map(match => match[1]).sort();
 
 test('標準テンプレートと両モードの生成用OMNY/OMAYは固定文・形式を英語で出す', () => {
-  const standard = parse(read('src/content/standard.omay.yaml'));
+  const standard = parse(read('src/content/standard-settings.yaml'));
   assertEnglish([...standard.style_notes, standard.layout_spec].join('\n'));
   for (const mode of ['integrated', 'draft']) {
     const doc = sample();
@@ -99,7 +99,7 @@ test('翻訳表は重複・欠落のない双方向対応で、タグ・数値�
 });
 
 test('標準・サンプル・下書き・仕上がりの固定文を英語にし、原本へ正確に戻せる', () => {
-  const standard = parse(read('src/content/standard.omay.yaml'));
+  const standard = parse(read('src/content/standard-settings.yaml'));
   const doc = sample();
   for (const source of [standard, { style_notes: doc.manga.meta.style_notes, layout_spec: doc.manga.layout_spec }, compileArtworkForMode(getArtworkSettings(doc.manga), 'draft')]) {
     for (const text of [...source.style_notes, source.layout_spec]) {

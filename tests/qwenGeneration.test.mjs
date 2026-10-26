@@ -91,7 +91,7 @@ test('Qwen plans retain exact owner, stable character binding and whole-sheet re
  assert.deepEqual(background.characterKeys,[]);assert.equal(background.candidates.length,0);assert.match(background.prompt,/室内/);
 });
 test('whole-page background rules leave individual figure and background generation plans unchanged for every bg value',()=>{
- const standard=parseOmayYaml(readFileSync(new URL('../src/content/standard.omay.yaml',import.meta.url),'utf8'));
+ const standard=parseOmayYaml(readFileSync(new URL('../src/content/standard-settings.yaml',import.meta.url),'utf8'));
  for(const bg of [-1,0,1,2]){
   const manga=fixture(),panel=manga.pages[0].panels[0];panel.bg=bg;
   panel.background_description='薄い青の壁、背後に窓枠';panel.action='コマ全体の別の演出';

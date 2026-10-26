@@ -8,7 +8,7 @@ import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentFor
 import { SYSTEM_MOB_CATALOG_ID } from '../src/lib/systemCharacters.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 
-const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sampleSource = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 test('人物のビジュアル指定は台帳と作品保存で人物像から独立し、空欄への変更も保持する', async () => {
   const episode = parseMangaYaml(sampleSource);

@@ -8,7 +8,7 @@ import {
   toCharacterTextMarkdown,
 } from '../src/lib/characterTextCatalog.ts';
 
-const sampleYaml = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sampleYaml = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 function emptyStory() {
   const document = parseMangaYaml(sampleYaml);

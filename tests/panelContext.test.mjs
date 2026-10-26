@@ -6,7 +6,7 @@ import { newPage, parseMangaYaml, toStoredMangaYaml, toSeparatedMangaYaml } from
 import { buildPanelDraftPlan } from '../src/lib/panelDraft.ts';
 
 test('背景未指定だけが場所を継承し、明示空欄・独自背景・効果・描写なしを上書きしない', () => {
-  const document = parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8'));
+  const document = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
   document.manga.pages = [newPage(1)];
   document.manga.setting.location = '図書室';
   const panel = document.manga.pages[0].panels[0];

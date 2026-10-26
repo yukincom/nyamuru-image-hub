@@ -7,7 +7,7 @@ import {loadBackgroundStage,persistSeriesBackgroundModels} from '../src/lib/back
 import {parseMangaYaml,toSeriesCatalogMangaYaml,toSeparatedMangaYaml} from '../src/lib/manga.ts';
 import {mergeSeriesCatalog,upsertEpisodeIntoSeriesCatalog} from '../src/lib/seriesCatalog.ts';
 import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence.ts';
-const sample=()=>parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+const sample=()=>parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
 async function fixture(){
  const document=sample(),item=await prepareBackgroundStage(cubeGlb());
  document.manga.meta.series='背景シリーズ';document.manga.meta.series_id='background-series';

@@ -11,7 +11,7 @@ import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projec
 import { parseMangaYaml } from '../src/lib/manga';
 import { prepareImageAsset } from '../src/lib/imagePlacement';
 import { eraseVectors } from '../src/lib/vectorGeometry';
-import source from '../src/content/sample.omny.yaml?raw';
+import source from '../src/content/sample.yaml?raw';
 import '../src/styles/global.css';
 
 const frame={x:5,y:5,w:90,h:60};

@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const cli = resolve('scripts/nyamuru_source_coverage.ts');
-const omny = resolve('src/content/sample.omny.yaml');
+const omny = resolve('src/content/sample.yaml');
 
 function run(args, execArgs = []) {
   return spawnSync(process.execPath, [...execArgs, '--no-warnings', '--experimental-strip-types', cli, ...args], {

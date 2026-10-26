@@ -10,7 +10,7 @@ import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projec
 import { mergeSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../src/lib/seriesCatalog.ts';
 import { createSystemMobCharacter, SYSTEM_MOB_CATALOG_ID } from '../src/lib/systemCharacters.ts';
 
-const sample = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 const genders = ['female', 'male', 'neutral'];
 const labels = ['女性', '男性', '中性'];
 

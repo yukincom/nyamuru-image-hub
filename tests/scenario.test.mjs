@@ -10,7 +10,7 @@ import { editCanvasText, editCanvasTextStyle } from '../src/lib/canvasText.ts';
 import { buildQwenCompositionPlan } from '../src/lib/qwenComposition.ts';
 import { SCENARIO_MATCH_THRESHOLD, parseScenario, scenarioSimilarity, applyScenarioToNewDocument, availableScenarioCandidates, confirmScenarioCorrespondence, releaseScenarioCorrespondence, linkScenarioSpeaker, scenarioCharacter, restoreProvisionalScenarioText, useScenarioBubbleText } from '../src/lib/scenario.ts';
 
-const sample = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 const source = text => ({ version: 1, fileName: 'origin_name.md', text });
 const script = (body, page = 1, panel = 1) => `# シナリオ\n## page${page}\n### コマ${panel}\n${body}`;
 function documentWith(texts = []) {

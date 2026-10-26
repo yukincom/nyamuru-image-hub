@@ -20,7 +20,7 @@ const SETTINGS_TABS = [
   { id: 'page', label: 'レイアウト', icon: BookOpen },
   { id: 'drawing', label: '手描き・編集', icon: Paintbrush },
   { id: 'generation', label: '生成ルール', icon: RefreshCw },
-  { id: 'omay', label: 'OMAY', icon: FilePenLine },
+  { id: 'omay', label: '作画設定（YAML）', icon: FilePenLine },
   { id: 'display', label: '表示', icon: Eye },
   { id: 'ai', label: 'モデル設定', icon: Bot },
   { id: 'data', label: 'データ管理', icon: FolderArchive },
@@ -211,7 +211,7 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
       </section>}
       <section class="environment-tab-panel" id="environment-panel-drawing" role="tabpanel" aria-labelledby="environment-tab-drawing" tabIndex={0} hidden={activeTab !== 'drawing'}>
         <SectionTitle title="手描き・編集" />
-        <p class="environment-settings-note">ペン入力と編集履歴に関する、この端末の設定です。生成ルールやOMAYの受け渡しには影響しません。</p>
+        <p class="environment-settings-note">ペン入力と編集履歴に関する、この端末の設定です。生成ルールや作画設定の受け渡しには影響しません。</p>
         <Field label="ぬりたし"><div class="paint-bleed-setting"><input aria-label="ぬりたし" type="number" min="0" max="4000" step="1" value={paintBleedPx} onChange={async event=>{
           const value=event.currentTarget.valueAsNumber;
           const input=event.currentTarget;
@@ -233,8 +233,8 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
         <FinishTextSettings document={document} onChange={onChangeDocument} onNotify={onNotify}/>
       </section>}
       {hasDocument&&<section class="environment-tab-panel" id="environment-panel-omay" role="tabpanel" aria-labelledby="environment-tab-omay" tabIndex={0} hidden={activeTab!=='omay'}>
-        <SectionTitle title="OMAY設定の受け渡し" />
-        <p class="environment-settings-note">OMAYは生成ルールの候補・控えを受け渡す形式です。作品そのものを書き出すOMNYとは別です。</p>
+        <SectionTitle title="作画設定の受け渡し（YAML）" />
+        <p class="environment-settings-note">生成ルールの候補・控えをYAMLで受け渡します。データ管理にある作品の構成・セリフの書き出しとは別です。</p>
         <ArtworkSettings section="omay" document={document} onChange={onChangeDocument} onNotify={onNotify}/>
       </section>}
       <section class="environment-tab-panel" id="environment-panel-display" role="tabpanel" aria-labelledby="environment-tab-display" tabIndex={0} hidden={activeTab !== 'display'}>
@@ -333,9 +333,9 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
           </div>
         </section>
         <section class="origin-data-manager" aria-labelledby="omny-export-title">
-          <div class="data-management-heading"><h3 id="omny-export-title">OMNY書き出し</h3></div>
-          <p class="environment-settings-note">作品の構成・セリフをOMNYファイルに書き出します。画像原本や作画設定は含みません。</p>
-          <button type="button" class="secondary-button" disabled={!hasDocument || projectBusy} onClick={onExportOmny}>OMNY書き出し</button>
+          <div class="data-management-heading"><h3 id="omny-export-title">構成データ（YAML）</h3></div>
+          <p class="environment-settings-note">作品の構成・セリフをYAMLファイルに書き出します。画像原本や作画設定は含みません。</p>
+          <button type="button" class="secondary-button" disabled={!hasDocument || projectBusy} onClick={onExportOmny}>構成データを書き出す</button>
         </section>
         <section class="generation-cache-manager" aria-labelledby="generation-cache-title">
           <div class="data-management-heading">

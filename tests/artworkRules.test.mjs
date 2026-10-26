@@ -7,8 +7,8 @@ import { parseMangaYaml, parseOmayYaml, toStoredMangaYaml, toMangaYaml, toSepara
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.omny.yaml'));
-const standard = () => parseOmayYaml(read('src/content/standard.omay.yaml'));
+const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
+const standard = () => parseOmayYaml(read('src/content/standard-settings.yaml'));
 
 test('作品の画風は既存ルールを保って全生成対象へ届き、作品保存から原文を復元できる', async () => {
   const document = sample();

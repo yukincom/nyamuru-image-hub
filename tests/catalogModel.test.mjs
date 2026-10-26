@@ -11,7 +11,7 @@ import {
 } from '../src/lib/catalogModel.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml, validateManga } from '../src/lib/manga.ts';
 
-const sampleSource = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const sampleSource = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 
 test('OMNYの人物・素材・配置・話者・assetsへ決定的なローカル参照を付ける', () => {
   const first = parseMangaYaml(sampleSource);

@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import App from '../src/components/App';
-import sampleYaml from '../src/content/sample.omny.yaml?raw';
+import sampleYaml from '../src/content/sample.yaml?raw';
 import { parseMangaYaml, STORAGE_KEY } from '../src/lib/manga';
 import { createPortableProject, restorePortableProject, portableProjectBlob } from '../src/lib/portableProject';
 import { prepareImageAsset, createImagePlacement } from '../src/lib/imagePlacement';

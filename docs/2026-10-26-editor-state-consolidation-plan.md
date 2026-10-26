@@ -295,3 +295,6 @@
 - 保存準備の前後で新旧のbyte／存在を確認し、準備中の変更を拒否する。既存lockは同process内の排他であり、外部アプリの書き込みを完全に防ぐOSレベルの多ファイルtransactionではない。失敗時はP7bの復元・一時ファイル片付けを再利用する。
 - シリーズ台帳検証: scanner／doctor／series background／project／episodeのPython170件（2skip）成功。一時fixtureで新名往復、旧名read-only、CRLFのrevision互換、旧byte／mtime保持、新旧同一・競合・旧名再出現、準備中の出現／変更／削除、metadata置換失敗と再試行を確認。doctorも同じ新旧条件をread-onlyで照合し、実作品は未変更。
 - 独立レビューで保存準備中の `catalog.json` 外部変更が上書きされる窓を再現し、同じwriterの保存前snapshotと直前照合へmetadataのbyte／存在も含めた。一覧は名前・ID・日時の軽量inventoryとして保持し、本文の採用はloadで検査する。一覧のたびに全YAMLを読む処理や、1件の競合で他の台帳一覧も失敗する処理は追加しない。競合台帳を選択すると既存HTTP境界が409で拒否し、doctorは全体を検査する。
+- シリーズ台帳commit: `a9ee62f`。YAMLの受け渡しは既存 `omnyFileName`／`omayFileName` と各ダウンロードhandlerを変更し、構成は `作品名.yaml`、設定控えは `作品名-settings.yaml`、生成指示は `作品名-generation.yaml`。serializerやデータschemaは変更していない。画面名を役割で表示し、構成YAMLの読み込みUIは追加しない。
+- 同梱の現行sampleを `sample.yaml`、標準設定を `standard-settings.yaml` へ改名。内容はGit blob一致で不変。依存testと公開案内の参照を更新し、履歴文書は当時の名称を保持して現行手順への案内・切れた参照だけ補修する。生成promptの変更はファイル名／参照先のみで、モデルによる試行は利用者の確認前に行わない。
+- YAML名・UI検証: 全Node1301件（1298成功／3skip）、原文確認Python16件、型検査428ファイル0 error／0 warning、通常／単一HTML build成功。全Node実行でP6のundo/redo隔離testにtoolSuspendedのcontext渡し漏れを検出し、既存testへ補完した。既存環境設定ブラウザーfixtureで新ラベルと控え／生成出力通知を確認し、出力後も作品更新0回。出力名・OFF項目保持・生成対象の選別・作品／保存先の不変はactual-handler試験で確認。実作品・実モデルの検証ではない。

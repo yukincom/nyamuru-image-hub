@@ -9,7 +9,7 @@ import { characterImageCacheId } from '../src/lib/browserCatalog.ts';
 
 const png = new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+y2ioAAAAASUVORK5CYII=', 'base64')], { type: 'image/png' });
 async function fixture() {
-  const document = parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8'));
+  const document = parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8'));
   document.manga.meta.series_id = 'portable-series';
   document.manga.meta.episode_id = 'portable-episode';
   const character = document.manga.characters[0];

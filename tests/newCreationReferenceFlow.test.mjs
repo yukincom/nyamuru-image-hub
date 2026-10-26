@@ -168,7 +168,7 @@ test('新規作成の人物ドラフトはサンプル作品の作画指定を�
 });
 
 test('作成の実handlerはOCR配置と人物統合の後に正本を反映し、旧文字列監査は実行しない', async () => {
-  const sampleYaml = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+  const sampleYaml = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
   const characterDraft = parseMangaYaml(sampleYaml);
   characterDraft.manga.characters = [{ name: 'ハル', aliases: ['春'], scope: 'episode', role: '', localId: 'haru' }];
   const reference = { source: { fileName: 'origin_name.md', text: '# シナリオ\n## page1\n### コマ1\n春「明日は**学校**へ行こう」\n春は窓を指す。', relativePath: 'text/origin_name.md' }, workspaceDirectory: '/fixture/episode' };

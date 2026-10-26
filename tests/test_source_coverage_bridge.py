@@ -496,7 +496,7 @@ class SourceCoverageBridgeTest(unittest.TestCase):
             episode, manager, token = self.make_manager(root)
             source = root / "episode.md"
             source.write_text("# 押しかけ妖精にゃむるたん\n知らない場面\n", encoding="utf-8")
-            sample = (Path(__file__).resolve().parents[1] / "src" / "content" / "sample.omny.yaml").read_text(encoding="utf-8")
+            sample = (Path(__file__).resolve().parents[1] / "src" / "content" / "sample.yaml").read_text(encoding="utf-8")
             omny = root / "story.omny.yaml"
             omny.write_text(sample.replace('episode_id: ""', 'episode_id: "episode-one"', 1), encoding="utf-8")
             cli = Path(__file__).resolve().parents[1] / "scripts" / "nyamuru_source_coverage.ts"

@@ -350,7 +350,7 @@ export interface OmayDocument {
 
 export function parseOmayYaml(source: string): OmayDocument {
   const value = parse(source) as Partial<OmayDocument> | null;
-  if (!value || typeof value !== 'object') throw new Error('OMAYとして解釈できません');
+  if (!value || typeof value !== 'object') throw new Error('作画設定のYAMLとして解釈できません');
   if (!Array.isArray(value.style_notes) || typeof value.layout_spec !== 'string') {
     throw new Error('style_notes（配列）と layout_spec（複数行テキスト）が必要です');
   }
@@ -787,9 +787,9 @@ export function safeFileName(title: string): string {
 
 // ストーリーOMNY（作品情報・素材・ネーム）
 export function omnyFileName(title: string): string {
-  return `${safeBaseName(title)}.omny.yaml`;
+  return safeFileName(title);
 }
 
-export function omayFileName(title: string): string {
-  return `${safeBaseName(title)}.omay.yaml`;
+export function omayFileName(title: string, purpose: 'settings' | 'generation' = 'generation'): string {
+  return `${safeBaseName(title)}-${purpose}.yaml`;
 }

@@ -55,7 +55,7 @@ git status --short --ignored
 
 NDMの規則の一部は、読者（ネーム担当と画像生成AI）が異なるため意図的に複数箇所へ掲載しています。次のいずれかを改定するときは、対応する掲載箇所を必ず全て揃えて直してください。
 
-OMAY（`src/content/standard.omay.yaml`）の `style_notes` / `layout_spec` は、全部入りサンプル `src/content/sample.omny.yaml` にも同文が埋め込まれています。**OMAYを改定するときは sample 側も必ず揃えて直してください。**
+OMAY（`src/content/standard-settings.yaml`）の `style_notes` / `layout_spec` は、全部入りサンプル `src/content/sample.yaml` にも同文が埋め込まれています。**OMAYを改定するときは sample 側も必ず揃えて直してください。**
 
 - **配置の優先順位**（`action` ＞ `anchor` ＞ 発言順＝立ち位置 ＞ `size` ＞ `bbox`）
   - 正文: 生成プロンプト §C「基本原則: 配置の優先順位」の表（`src/content/nyamuru-manga-generation-prompt-v10.md`）

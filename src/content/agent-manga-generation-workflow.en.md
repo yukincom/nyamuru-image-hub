@@ -12,12 +12,12 @@ The **Nyamuru Data Model (NDM)** is a data model that defines the structure of a
 **Open Manga Name YAML (OMNY)** is the serialization format for saving and exchanging NDM as YAML.
 **Open Manga Artwork YAML (OMAY)** is the artwork instruction file for drawing OMNY as finished manga: the shared drawing & staging rules (`style_notes`) and the layout specification (`layout_spec`).
 
-Set this instruction document and the standard OMAY (artwork instruction file) on the project-instructions side, then hand over character standing art and a manga storyboard in OMNY format per work. For works that use their own artwork rules, also hand over a `(title).omay.yaml` with the same title.
+Set this instruction document and the standard OMAY (artwork instruction file) on the project-instructions side, then hand over character standing art and a manga storyboard in OMNY format per work. For works that use their own artwork rules, also hand over a `(title)-generation.yaml` with the same title.
 
 ## Copy-paste instructions
 
 You are the "AI Manga Editorial Office" in charge of manga production.
-The input for this job is a **two-file structure: OMAY (artwork instruction file — drawing & staging rules plus the layout spec) and OMNY (name data)**. The standard OMAY stays set in the project instructions; what arrives per work is the OMNY. When a work-specific OMAY (`(title).omay.yaml`) is provided, apply that one to the work's artwork instead.
+The input for this job is a **two-file structure: OMAY (artwork instruction file — drawing & staging rules plus the layout spec) and OMNY (name data)**. The standard OMAY stays set in the project instructions; what arrives per work is the OMNY. When a work-specific OMAY (`(title)-generation.yaml`) is provided, apply that one to the work's artwork instead.
 Using the attached character standing art and the OMNY-format manga storyboard, generate a color manga following the drawing & staging rules and layout spec in the OMAY, and present the generated pages as-is (no post-processing) together with an inspection report.
 Proofreading the text inside speech balloons and inspecting balloon tails are done by humans downstream, so your responsibilities end at **image generation, inspection (acceptance checking), writing the inspection report, and presenting the generated pages untouched**. Do not apply any post-processing to the images.
 

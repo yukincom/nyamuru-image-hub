@@ -10,7 +10,7 @@
 
 **Nyamuru Data Model（NDM）** は、漫画ネームの構造、コマ割り、人物、フキダシ、素材参照を定義するデータモデルです。愛称は **Nyamuru🐱** です。
 **Open Manga Name YAML（OMNY）** は、NDMをYAMLとして保存・交換するためのシリアライズ形式です。
-**Open Manga Artwork YAML（OMAY）** は、OMNYを漫画として描くための作画・演出ルール（style_notes）とレイアウト仕様（layout_spec）をまとめた画像生成指示ファイルです（[standard.omay.yaml](./standard.omay.yaml)）。
+**Open Manga Artwork YAML（OMAY）** は、OMNYを漫画として描くための作画・演出ルール（style_notes）とレイアウト仕様（layout_spec）をまとめた画像生成指示ファイルです（[standard-settings.yaml](./standard-settings.yaml)）。
 
 新しい原稿が渡されたら、下記の手順とテンプレートに従ってOMNY形式を出力してください。
 出力するOMNYには、各ページのコマ割り座標（A4基準）を含めます。画像生成AI向けの作画・演出ルールとレイアウト仕様はOMAYが受け持つため、**OMNYへは含めません**（OMAYは画像生成側のプロジェクト指示に一度設定し、作品ごとに渡すのはOMNYのみ、という運用）。
@@ -818,7 +818,7 @@ manga:
 
 1. OMNY本体（ダウンロードできる `.yaml` ファイルとして提供。ファイル名は作品タイトルをもとにした安全な名前＋拡張子 `.yaml`。チャットへのコードブロック全文貼り付けはしない）
    - **ChatGPT**: 実ファイルとして保存し、ダウンロードリンクだけを表示する（例: `[nyamuru_manga_name.yaml をダウンロード](sandbox:/mnt/data/nyamuru_manga_name.yaml)`）。コードブロック・Canvas表示・本文の再掲・長い説明は不要。
-   - **Claude**: アーティファクトとして提供し、タイトルを `作品タイトル.omny.yaml` にしてダウンロードでそのまま `.yaml` として保存できるようにする（ファイル作成機能が使える場合はファイル添付でもよい）。
+   - **Claude**: アーティファクトとして提供し、タイトルを `作品タイトル.yaml` にしてダウンロードでそのまま `.yaml` として保存できるようにする（ファイル作成機能が使える場合はファイル添付でもよい）。
    - **Gemini**: ```yaml コードブロックでの全文出力でよい。
    - **その他のLLM**: ファイル提供機能があればそれを使い、無い環境のみコードブロックでの全文出力にフォールバックする。
 2. 使用した画像アセットのリスト（materials の key／type／keywords と、各コマとの対応を簡潔に一覧化）

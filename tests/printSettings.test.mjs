@@ -12,7 +12,7 @@ import { parseMangaYaml, toMangaYaml, toStoredMangaYaml, toSeriesCatalogMangaYam
 import { mergeSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../src/lib/seriesCatalog.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 const read = file => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-const sample = () => parseMangaYaml(read('src/content/sample.omny.yaml'));
+const sample = () => parseMangaYaml(read('src/content/sample.yaml'));
 function storage() { const data = new Map(); return { getItem: k => data.get(k) ?? null, setItem: (k, v) => data.set(k, v) }; }
 function configured() {
   const setup = print.defaultPrintSetup();

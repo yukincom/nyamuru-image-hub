@@ -119,7 +119,7 @@ test('preview has one mark route, history does not expand twice, and undo drops 
   assert.doesNotMatch(commit,/expandPaintOwnerToContent/);
   for(const name of ['undo','redo']){
     let cleared=false;
-    editorHandler(name,{busy:false,suspended:false,operation:{current:false},inputActive:{current:false},clearVectorSelection(){},setSelection:value=>cleared=value===null,sharedHistory:{undo(){},redo(){}}})();
+    editorHandler(name,{busy:false,toolSuspended:false,suspended:false,operation:{current:false},inputActive:{current:false},clearVectorSelection(){},setSelection:value=>cleared=value===null,sharedHistory:{undo(){},redo(){}}})();
     assert.equal(cleared,true,name);
   }
 });

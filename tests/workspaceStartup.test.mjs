@@ -50,7 +50,7 @@ test('システム人物だけでは開始扱いにせず、ユーザー人物�
   assert.equal(workspaceFromStored(toStoredMangaYaml(document)).hasDocument, true);
 });
 
-const bundledSample = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
+const bundledSample = readFileSync(new URL('../src/content/sample.yaml', import.meta.url), 'utf8');
 const memoryStorage = (saved) => {
   const values = new Map([[STORAGE_KEY, saved]]);
   return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };

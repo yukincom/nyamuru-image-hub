@@ -155,7 +155,7 @@ test('OCR original is one independent raster; saved eyes and locks survive and d
   clearOwnerPaint(p,reopened);
   assert.equal(p.bubbles[0].paint_overlay,undefined);
   assert.equal(paintScene(p,100,[flat]).owners.find(owner=>owner.key==='bubble-0').paint.layers.length,0);
-  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
   doc.manga.pages[0].panels=[p];
   const restored=parseMangaYaml(toStoredMangaYaml(doc)).manga.pages[0].panels[0];
   assert.equal(restored.bubbles[0].text,'こんにちは');
@@ -245,7 +245,7 @@ test('paint validation rejects missing layer originals and malformed stroke data
 });
 
 test('project save/reopen retains layer-only originals, native source metadata and bubble drawings; OMNY excludes paint',async()=>{
-  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
   const blob=new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==','base64')],{type:'image/png'});
   const base={...asset('flat',1,1),byteLength:blob.size,sha256:await imageSha256(blob)};
   const original={...base,id:'layer-only',storageId:'original-layer-only'};
@@ -345,7 +345,7 @@ test('original reference mapping matches contain fit and crop before and after r
 });
 
 test('reference bounds survive stored project normalization and invalid padding leaves source untouched',()=>{
-  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
   const p=panel(),owner=expandPaintOwner(paintScene(p,100,[]).owners[1],{left:20,right:0,top:10,bottom:0});
   const flat=asset('expanded',owner.paint.width,owner.paint.height);applyOwnerPaint(p,owner,{...createFrameArtwork(flat,owner.frame),paint:owner.paint});
   doc.manga.pages[0].panels=[p];doc.manga.image_assets=[flat];
@@ -358,7 +358,7 @@ test('reference bounds survive stored project normalization and invalid padding 
 
 
 test('restoring a guide and exporting OMNY recover its reference bounds without changing local painted placement',()=>{
-  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.yaml',import.meta.url),'utf8'));
   const p=panel(),scene=paintScene(p,100,[]),figure=expandPaintOwner(scene.owners[1],{left:30,right:50,top:20,bottom:40}),bubble=expandPaintOwner(scene.owners[3],{left:10,right:20,top:5,bottom:10});
   const assets=[asset('figure',figure.paint.width,figure.paint.height),asset('bubble',bubble.paint.width,bubble.paint.height)];
   applyOwnerPaint(p,figure,{...createFrameArtwork(assets[0],figure.frame),paint:figure.paint});
