@@ -336,6 +336,32 @@ class SeriesCatalogStore:
             return None
         return value if isinstance(value, dict) else None
 
+    def _read_catalog(self, series_id: str, metadata: dict[str, Any] | None) -> tuple[str, bytes | None, bytes | None, dict[str, str] | None]:
+        """Resolve the two supported names without moving or rewriting either file."""
+        directory = self.root / series_id
+        data = []
+        for name in ("series.yaml", "series.omny.yaml"):
+            try:
+                data.append((directory / name).read_bytes())
+            except FileNotFoundError:
+                data.append(None)
+        current, legacy = data
+        origin = (metadata or {}).get("legacy_source")
+        if origin is not None:
+            if (not isinstance(origin, dict) or origin.get("file_name") != "series.omny.yaml"
+                    or not isinstance(origin.get("sha256"), str) or not re.fullmatch(r"[a-f0-9]{64}", origin["sha256"])):
+                raise SeriesCatalogConflict("シリーズ台帳の旧ファイル情報を確認できません")
+            if current is None or (legacy is not None and hashlib.sha256(legacy).hexdigest() != origin["sha256"]):
+                raise SeriesCatalogConflict("新旧のシリーズ台帳が食い違っています。両方のファイルを保管して確認してください")
+        elif legacy is not None:
+            if current is not None and current != legacy:
+                raise SeriesCatalogConflict("新旧のシリーズ台帳が食い違っています。両方のファイルを保管して確認してください")
+            origin = {"file_name": "series.omny.yaml", "sha256": hashlib.sha256(legacy).hexdigest()}
+        source = current if current is not None else legacy
+        # Preserve the existing read_text/universal-newline revision contract.
+        text = source.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n") if source is not None else ""
+        return text, current, legacy, origin
+
     def find_by_name(self, series_name: str) -> tuple[str, dict[str, Any]] | None:
         target = normalized_series_name(series_name)
         if not target or not self.root.exists():
@@ -487,7 +513,7 @@ class SeriesCatalogStore:
                 if not directory.is_dir() or not SERIES_ID_PATTERN.fullmatch(directory.name):
                     continue
                 metadata = self.metadata_for(directory.name)
-                if not metadata or not (directory / "series.omny.yaml").is_file():
+                if not metadata or not any((directory / name).is_file() for name in ("series.yaml", "series.omny.yaml")):
                     continue
                 series_name = metadata.get("series_name")
                 if not isinstance(series_name, str) or not series_name.strip():
@@ -514,10 +540,8 @@ class SeriesCatalogStore:
                     series_id, metadata = match
             if not series_id or metadata is None:
                 return {"found": False, "series_id": series_id, "series_name": series_name, "omny_yaml": ""}
-            catalog_path = self.root / series_id / "series.omny.yaml"
-            try:
-                source = catalog_path.read_text(encoding="utf-8")
-            except OSError:
+            source, current, legacy, _origin = self._read_catalog(series_id, metadata)
+            if current is None and legacy is None:
                 return {"found": False, "series_id": series_id, "series_name": series_name, "omny_yaml": ""}
             revision = hashlib.sha256(source.encode("utf-8")).hexdigest()
             return {
@@ -557,24 +581,31 @@ class SeriesCatalogStore:
                     series_id = matched[0]
             series_id = series_id or secrets.token_hex(16)
             directory = self.root / series_id
-            catalog_path = directory / "series.omny.yaml"
+            catalog_path = directory / "series.yaml"
+            previous_metadata = requested_metadata
+            if previous_metadata is None and matched and matched[0] == series_id:
+                previous_metadata = matched[1]
+            metadata_path = directory / "catalog.json"
             try:
-                current_source = catalog_path.read_text(encoding="utf-8")
-            except OSError:
-                current_source = ""
+                previous_metadata_bytes = metadata_path.read_bytes()
+            except FileNotFoundError:
+                previous_metadata_bytes = None
+            if (json.loads(previous_metadata_bytes) if previous_metadata_bytes is not None else None) != previous_metadata:
+                raise SeriesCatalogConflict("保存の準備中にシリーズ情報が変わりました。再読み込みしてください")
+            catalog_state = self._read_catalog(series_id, previous_metadata)
+            current_source, previous_bytes, _legacy, origin = catalog_state
             current_revision = hashlib.sha256(current_source.encode("utf-8")).hexdigest() if current_source else ""
             if current_revision != expected_revision:
                 raise SeriesCatalogConflict("シリーズ台帳が別の画面または話から更新されました。再読み込みして内容を確認してください")
             next_revision = hashlib.sha256(omny_yaml_value.encode("utf-8")).hexdigest()
-            previous_metadata = requested_metadata
-            if previous_metadata is None and matched and matched[0] == series_id:
-                previous_metadata = matched[1]
             metadata = {
                 **(previous_metadata or {}),
                 "series_id": series_id,
                 "series_name": series_name,
                 "revision": next_revision,
             }
+            if origin is not None:
+                metadata["legacy_source"] = origin
             series_directory = (
                 Path(series_directory_value).expanduser().resolve()
                 if isinstance(series_directory_value, str) and series_directory_value.strip()
@@ -617,11 +648,10 @@ class SeriesCatalogStore:
                     **reference,
                     "linked_at": datetime.now(timezone.utc).isoformat(),
                 }
-            if current_source == omny_yaml_value and metadata == previous_metadata:
+            if previous_bytes is not None and current_source == omny_yaml_value and metadata == previous_metadata:
                 return {"ok": True, "series_id": series_id, "series_name": series_name, "directory": str(directory), "revision": next_revision}
             metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
             directory.mkdir(parents=True, exist_ok=True)
-            previous_bytes = catalog_path.read_bytes() if catalog_path.exists() else None
             temporaries: list[Path] = []
             try:
                 with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
@@ -639,6 +669,12 @@ class SeriesCatalogStore:
                         restore_temporary = Path(handle.name)
                         temporaries.append(restore_temporary)
                         handle.write(previous_bytes)
+                try:
+                    latest_metadata_bytes = metadata_path.read_bytes()
+                except FileNotFoundError:
+                    latest_metadata_bytes = None
+                if latest_metadata_bytes != previous_metadata_bytes or self._read_catalog(series_id, previous_metadata) != catalog_state:
+                    raise SeriesCatalogConflict("保存の準備中にシリーズ台帳が変わりました。再読み込みしてください")
                 os.replace(yaml_temporary, catalog_path)
                 try:
                     os.replace(metadata_temporary, directory / "catalog.json")
@@ -739,7 +775,9 @@ class SeriesCatalogStore:
             if normalized_series_name(stored_name) != normalized_series_name(series_name):
                 raise SeriesCatalogConflict("破棄対象のシリーズ名が一致しません")
             try:
-                source = (directory / "series.omny.yaml").read_text(encoding="utf-8")
+                source, current, legacy, _origin = self._read_catalog(series_id, metadata)
+                if current is None and legacy is None:
+                    raise FileNotFoundError("series.yaml")
             except OSError as exc:
                 raise ValueError("破棄対象のシリーズ台帳を確認できません") from exc
             episode_pattern = re.compile(

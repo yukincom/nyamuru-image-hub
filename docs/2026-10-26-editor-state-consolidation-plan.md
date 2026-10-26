@@ -203,8 +203,8 @@
 | P4 履歴境界 | 完了 | 既存imageGestureへサイズ操作を接続。関連51件・型検査・実UI成功、独立レビューでP4指摘なし |
 | P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
-| P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc。P7c登録再利用・失敗取消し、Python40件／Node9件成功 |
-| P8 標準名・文書 | 未着手 | 保存経路の整理後。旧読み込み互換を同時に検証 |
+| P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc、P7c 29dd0c7。登録再利用・失敗取消し、Python40件／Node9件成功 |
+| P8 標準名・文書 | 実施中 | シリーズ台帳から既存reader/writerへ統合。LAN・書き出し・packageと文書整理は残件 |
 | P9a–d 描画残件 | 未着手 | 設定・保存とは別commit群 |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
 
@@ -287,3 +287,11 @@
 - P7b検証: scanner／episode／project／series background bridge 145件（1skip）成功。実一時fixtureに対する書き込み途中、temp作成、fsync／chmod／replace失敗で既存byte・無関係ファイル保持と再試行を確認。2回目のI/O障害では旧byteの残存を確認。実作品は未変更。レビューで挙がった登録失敗後のメモリtoken残留はP7cで扱う。
 - P7cは `EpisodeWorkspaceManager.select` の既存lock内でresolve済みの保存先を照合し、同じ場所なら既存tokenを再利用する。重複した旧tokenは参照中の可能性があるため消さない。新規登録の永続化に失敗したら、その登録だけメモリから取り消す。ブラウザー側は既存isSameEntryで再利用しているため変更しない。
 - P7c検証: episode／project bridge 40件、browserWorkspace 9件成功。再選択・symlink経由・再起動・重複旧tokenで登録数とregistryのbyte/mtimeを保持。取消し、登録失敗後のメモリ／ディスク保持、一回だけの再登録を一時fixtureで確認。OSの実folder pickerは模擬応答。
+
+### P8: 標準名への整理
+
+- シリーズ台帳は既存 `SeriesCatalogStore` のlist／load／save／discardとread-only doctorを修正する。新規writerは `series.yaml` のみ。旧ファイルは開いても移動・削除・書き換えず、同内容でも明示保存で新規名へ進む。
+- 新旧両方がある場合、既存 `catalog.json` 内の `legacy_source`（旧名と元byteのSHA-256）と旧ファイルが一致するときだけ新名を採用する。記録なしでも両方のbyteが一致すれば受け入れる。食い違い、移行記録の不正、移行済み新ファイルの欠落は競合とする。旧ファイルが後から変更されてもハッシュを更新して隠さない。新しいsidecar・queue・管理storeは作らない。
+- 保存準備の前後で新旧のbyte／存在を確認し、準備中の変更を拒否する。既存lockは同process内の排他であり、外部アプリの書き込みを完全に防ぐOSレベルの多ファイルtransactionではない。失敗時はP7bの復元・一時ファイル片付けを再利用する。
+- シリーズ台帳検証: scanner／doctor／series background／project／episodeのPython170件（2skip）成功。一時fixtureで新名往復、旧名read-only、CRLFのrevision互換、旧byte／mtime保持、新旧同一・競合・旧名再出現、準備中の出現／変更／削除、metadata置換失敗と再試行を確認。doctorも同じ新旧条件をread-onlyで照合し、実作品は未変更。
+- 独立レビューで保存準備中の `catalog.json` 外部変更が上書きされる窓を再現し、同じwriterの保存前snapshotと直前照合へmetadataのbyte／存在も含めた。一覧は名前・ID・日時の軽量inventoryとして保持し、本文の採用はloadで検査する。一覧のたびに全YAMLを読む処理や、1件の競合で他の台帳一覧も失敗する処理は追加しない。競合台帳を選択すると既存HTTP境界が409で拒否し、doctorは全体を検査する。

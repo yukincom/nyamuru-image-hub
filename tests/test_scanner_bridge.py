@@ -1,5 +1,6 @@
 import importlib.util
 import base64
+import hashlib
 import io
 import json
 import sys
@@ -172,7 +173,8 @@ class SeriesCatalogStoreTest(unittest.TestCase):
 
             self.assertRegex(saved["series_id"], bridge.SERIES_ID_PATTERN)
             catalog_dir = Path(saved["directory"])
-            self.assertTrue((catalog_dir / "series.omny.yaml").exists())
+            self.assertTrue((catalog_dir / "series.yaml").exists())
+            self.assertFalse((catalog_dir / "series.omny.yaml").exists())
             loaded = store.load("ねこ漫画", "")
             self.assertTrue(loaded["found"])
             self.assertEqual(loaded["series_id"], saved["series_id"])
@@ -187,6 +189,131 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             self.assertEqual(second["series_id"], "series-123")
             self.assertFalse(store.load("仮題", "")["found"])
             self.assertTrue(store.load("正式タイトル", "")["found"])
+
+    def test_legacy_catalog_is_read_only_until_explicit_save_and_keeps_original(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            store = bridge.SeriesCatalogStore(Path(directory_name))
+            source = "manga:\n  title: before\n"
+            saved = store.save("猫", "series-one", source, "")
+            folder = Path(saved["directory"])
+            current, legacy = folder / "series.yaml", folder / "series.omny.yaml"
+            current.rename(legacy)
+            legacy.write_bytes(source.replace("\n", "\r\n").encode())
+            before = {path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in folder.iterdir()}
+            self.assertEqual(store.list_catalogs()["series"][0]["series_id"], "series-one")
+            self.assertEqual(store.load("猫", "series-one")["revision"], saved["revision"])
+            self.assertEqual(before, {path.name: (path.read_bytes(), path.stat().st_mtime_ns) for path in folder.iterdir()})
+            store.save("猫", "series-one", source, saved["revision"])
+            origin = store.metadata_for("series-one")["legacy_source"]
+            self.assertEqual(origin, {"file_name": legacy.name, "sha256": hashlib.sha256(legacy.read_bytes()).hexdigest()})
+            self.assertEqual((legacy.read_bytes(), legacy.stat().st_mtime_ns), before[legacy.name])
+            self.assertEqual(current.read_text(), source)
+            changed = source.replace("before", "after")
+            next_save = store.save("猫", "series-one", changed, saved["revision"])
+            self.assertEqual(store.load("猫", "series-one")["omny_yaml"], changed)
+            legacy.unlink()
+            store.save("猫", "series-one", source, next_save["revision"])
+            self.assertEqual(store.metadata_for("series-one")["legacy_source"], origin)
+            legacy.write_bytes(b"external legacy update")
+            for operation in (lambda: store.load("猫", "series-one"), lambda: store.save("猫", "series-one", source, saved["revision"])):
+                with self.assertRaisesRegex(bridge.SeriesCatalogConflict, "新旧"):
+                    operation()
+            self.assertEqual(current.read_text(), source)
+            self.assertEqual(legacy.read_bytes(), b"external legacy update")
+
+    def test_catalog_name_collisions_and_invalid_migration_metadata_are_rejected(self):
+        for case in ("different", "identical", "bad-origin", "missing-current"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory_name:
+                store = bridge.SeriesCatalogStore(Path(directory_name))
+                source = "manga: {}\n"
+                saved = store.save("猫", "series-one", source, "")
+                folder = Path(saved["directory"])
+                current, legacy = folder / "series.yaml", folder / "series.omny.yaml"
+                legacy.write_text(source if case != "different" else "external change")
+                if case in ("bad-origin", "missing-current"):
+                    metadata = store.metadata_for("series-one")
+                    metadata["legacy_source"] = {"file_name": legacy.name, "sha256": hashlib.sha256(legacy.read_bytes()).hexdigest()}
+                    if case == "bad-origin":
+                        metadata["legacy_source"]["file_name"] = "../other.yaml"
+                    else:
+                        current.unlink()
+                    store.write_metadata("series-one", metadata)
+                before = {path.name: path.read_bytes() for path in folder.iterdir()}
+                # The lightweight inventory lists names; selecting/using one validates its content.
+                self.assertEqual(store.list_catalogs()["series"][0]["series_id"], "series-one")
+                if case == "identical":
+                    self.assertTrue(store.load("猫", "series-one")["found"])
+                    store.save("猫", "series-one", source, saved["revision"])
+                    self.assertIn("legacy_source", store.metadata_for("series-one"))
+                    self.assertEqual(legacy.read_bytes(), before[legacy.name])
+                else:
+                    with self.assertRaises(bridge.SeriesCatalogConflict):
+                        store.load("猫", "series-one")
+                    with self.assertRaises(bridge.SeriesCatalogConflict):
+                        store.save("猫", "series-one", source, saved["revision"])
+                    self.assertEqual(before, {path.name: path.read_bytes() for path in folder.iterdir()})
+
+    def test_failed_legacy_migration_keeps_pair_and_can_retry(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            store = bridge.SeriesCatalogStore(Path(directory_name))
+            source = "manga: {}\n"
+            saved = store.save("猫", "series-one", source, "")
+            folder = Path(saved["directory"])
+            (folder / "series.yaml").rename(folder / "series.omny.yaml")
+            before = {path.name: path.read_bytes() for path in folder.iterdir()}
+            replace = series_catalog_store.os.replace
+            def publish(source, target):
+                if Path(target).name == "catalog.json":
+                    raise OSError("injected migration failure")
+                return replace(source, target)
+            with patch.object(series_catalog_store.os, "replace", side_effect=publish):
+                with self.assertRaisesRegex(OSError, "injected"):
+                    store.save("猫", "series-one", source, saved["revision"])
+            self.assertEqual(before, {path.name: path.read_bytes() for path in folder.iterdir()})
+            store.save("猫", "series-one", source, saved["revision"])
+            self.assertTrue((folder / "series.yaml").is_file())
+
+    def test_catalog_change_during_preparation_is_not_overwritten(self):
+        for case in ("current-created", "legacy-changed", "legacy-removed", "metadata-changed", "metadata-removed"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory_name:
+                store = bridge.SeriesCatalogStore(Path(directory_name))
+                source = "manga: {}\n"
+                saved = store.save("猫", "series-one", source, "")
+                folder = Path(saved["directory"])
+                current, legacy = folder / "series.yaml", folder / "series.omny.yaml"
+                current.rename(legacy)
+                metadata_before = (folder / "catalog.json").read_bytes()
+                create = series_catalog_store.tempfile.NamedTemporaryFile
+                calls = 0
+                def temporary(*args, **kwargs):
+                    nonlocal calls
+                    calls += 1
+                    if calls == 1:
+                        if case == "current-created":
+                            current.write_bytes(legacy.read_bytes())
+                        elif case == "legacy-changed":
+                            legacy.write_bytes(b"external change")
+                        elif case == "legacy-removed":
+                            legacy.unlink()
+                        elif case == "metadata-changed":
+                            metadata = store.metadata_for("series-one")
+                            metadata["external_marker"] = "preserve me"
+                            (folder / "catalog.json").write_text(json.dumps(metadata))
+                        else:
+                            (folder / "catalog.json").unlink()
+                    return create(*args, **kwargs)
+                with patch.object(series_catalog_store.tempfile, "NamedTemporaryFile", side_effect=temporary):
+                    with self.assertRaises(bridge.SeriesCatalogConflict):
+                        store.save("猫", "series-one", source, saved["revision"])
+                if case == "metadata-changed":
+                    self.assertEqual(store.metadata_for("series-one")["external_marker"], "preserve me")
+                elif case == "metadata-removed":
+                    self.assertFalse((folder / "catalog.json").exists())
+                else:
+                    self.assertEqual((folder / "catalog.json").read_bytes(), metadata_before)
+                self.assertFalse(list(folder.glob("tmp*")))
+                self.assertEqual(current.exists(), case == "current-created")
+                self.assertEqual(legacy.exists(), case != "legacy-removed")
 
     def test_unchanged_save_keeps_bytes_timestamps_and_reference_after_validation(self):
         with tempfile.TemporaryDirectory() as directory_name:
@@ -262,7 +389,7 @@ class SeriesCatalogStoreTest(unittest.TestCase):
                             handle.write = fail_write
                         return handle
                     def publish(source, target):
-                        if failure == "yaml-replace" and Path(target).name == "series.omny.yaml" or failure == "metadata-replace" and Path(target).name == "catalog.json":
+                        if failure == "yaml-replace" and Path(target).name == "series.yaml" or failure == "metadata-replace" and Path(target).name == "catalog.json":
                             raise OSError("injected replace failure")
                         return replace(source, target)
                     with patch.object(series_catalog_store.tempfile, "NamedTemporaryFile", side_effect=temporary), patch.object(series_catalog_store.os, "replace", side_effect=publish):
@@ -277,7 +404,7 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             store = bridge.SeriesCatalogStore(Path(directory_name))
             first = store.save("猫", "series-one", "manga:\n  title: before\n", "")
             folder = Path(first["directory"])
-            before = (folder / "series.omny.yaml").read_bytes()
+            before = (folder / "series.yaml").read_bytes()
             replace = series_catalog_store.os.replace
             calls = []
             def publish(source, target):
@@ -288,7 +415,7 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             with patch.object(series_catalog_store.os, "replace", side_effect=publish):
                 with self.assertRaisesRegex(OSError, "元データを保持") as raised:
                     store.save("猫", "series-one", "manga:\n  title: after\n", first["revision"])
-            self.assertEqual(calls, ["series.omny.yaml", "catalog.json", "series.omny.yaml"])
+            self.assertEqual(calls, ["series.yaml", "catalog.json", "series.yaml"])
             recovery = list(folder.glob("tmp*"))
             self.assertEqual(len(recovery), 1)
             self.assertEqual(recovery[0].read_bytes(), before)
@@ -463,7 +590,7 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             with self.assertRaises(bridge.SeriesCatalogConflict):
                 store.discard_unsaved("残すシリーズ", "series-one", "episode-two")
 
-            self.assertTrue((root / "series-one" / "series.omny.yaml").is_file())
+            self.assertTrue((root / "series-one" / "series.yaml").is_file())
 
     def test_character_images_live_under_the_series_and_deduplicate_by_sha256(self):
         with tempfile.TemporaryDirectory() as directory_name:

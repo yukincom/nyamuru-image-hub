@@ -31,7 +31,7 @@ npm run dev
 
 シリーズ人物のデザイン画像は「人物」画面で複数登録できます。画像を登録しただけでは解析されず、「特徴を抽出」を押した1枚だけをローカルVLMへ渡します。操作とデータ形式は [シリーズ人物資料と照合特徴](./SERIES_CHARACTER_CATALOG.md) を参照してください。
 
-macOSでのシリーズ共通OMNYの保存先は `~/Library/Application Support/Nyamuru Manga Name Studio/series-common/<シリーズID>/series.omny.yaml` です。
+macOSでのシリーズ台帳の保存先は `~/Library/Application Support/Nyamuru Manga Name Studio/series-common/<シリーズID>/series.yaml` です。既存の `series.omny.yaml` は互換読み込みでき、明示保存時だけ新しい名前へ保存します。旧ファイルの保持と新旧競合の扱いは[保存の説明](./PROJECT_SAVE.md)を参照してください。
 
 作品の用紙・基本表現色・解像度は、環境設定の「レイアウト」→「印刷・原稿設定」→「変更」で編集し、「設定を適用」で確定します。「キャンセル」では元の値を保ちます。完成画像の寸法表示、画像書き出し、生成指示はこの設定を参照します。印刷所や基本表現色を選ぶと対応する推奨dpiが反映され、詳細設定で任意のdpiも指定できます。
 

@@ -160,7 +160,7 @@ def create_series(root: Path, *, external_path: str | None = None) -> Path:
     directory = series_root / "series-one"
     directory.mkdir(parents=True)
     omny = b"manga:\n  title: test\n"
-    (directory / "series.omny.yaml").write_bytes(omny)
+    (directory / "series.yaml").write_bytes(omny)
     metadata = {
         "series_id": "series-one",
         "series_name": "Test Series",
@@ -242,6 +242,43 @@ class WorkspaceDoctorCoreTest(unittest.TestCase):
             self.assertIn("character_image_integrity", codes(report))
             self.assertTrue(all(not Path(item["path"]).is_absolute() for item in report["snapshot"]["files"]))
             self.assertTrue(all(item["requires_human_review"] for item in report["inferences"]))
+
+    def test_series_catalog_standard_legacy_and_migrated_names_are_read_only(self):
+        for case in ("legacy-only", "both-identical", "both-conflict", "migrated", "legacy-modified", "legacy-removed", "current-missing", "bad-origin"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory_name:
+                root = Path(directory_name)
+                episode = managed_workspace(root)
+                create_ledger(episode)
+                series_root = create_series(root)
+                directory = series_root / "series-one"
+                current, legacy = directory / "series.yaml", directory / "series.omny.yaml"
+                legacy.write_bytes(current.read_bytes())
+                metadata_path = directory / "catalog.json"
+                metadata = json.loads(metadata_path.read_text())
+                if case == "legacy-only":
+                    current.unlink()
+                elif case == "both-conflict":
+                    legacy.write_bytes(b"different")
+                elif case not in ("both-identical",):
+                    metadata["legacy_source"] = {"file_name": legacy.name, "sha256": hashlib.sha256(legacy.read_bytes()).hexdigest()}
+                    current.write_bytes(b"manga:\r\n  title: new\r\n")
+                    metadata["revision"] = hashlib.sha256(current.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+                    if case == "legacy-modified":
+                        legacy.write_bytes(b"external update")
+                    elif case == "legacy-removed":
+                        legacy.unlink()
+                    elif case == "current-missing":
+                        current.unlink()
+                    elif case == "bad-origin":
+                        metadata["legacy_source"] = "invalid"
+                    metadata_path.write_text(json.dumps(metadata))
+                before = tree_snapshot(series_root)
+                report = doctor.WorkspaceDoctor().scan(episode, series_root=series_root)
+                self.assertEqual(tree_snapshot(series_root), before)
+                observation = next(item for item in report["observations"] if item["code"] == "series_catalog_names")
+                compatible = case in ("legacy-only", "both-identical", "migrated", "legacy-removed")
+                self.assertEqual(observation["evidence"]["compatible"], compatible)
+                self.assertEqual(report["verdict"] == "healthy", compatible)
 
     def test_scan_does_not_change_tree_or_sqlite_bytes(self):
         with tempfile.TemporaryDirectory() as directory_name:

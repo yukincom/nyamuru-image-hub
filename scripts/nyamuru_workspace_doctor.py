@@ -1277,7 +1277,10 @@ class WorkspaceDoctor:
 
     def _inspect_series_catalog(self, series_fd: int, expected_device: int, series_id: str) -> None:
         catalog_path = f"{series_id}/catalog.json"
-        omny_path = f"{series_id}/series.omny.yaml"
+        current_path = f"{series_id}/series.yaml"
+        legacy_path = f"{series_id}/series.omny.yaml"
+        has_current = ("series", current_path) in self.files
+        omny_path = current_path if has_current else legacy_path
         catalog_data = self._read_snapshot_file(
             series_fd,
             "series",
@@ -1308,7 +1311,7 @@ class WorkspaceDoctor:
                 "error",
                 "series",
                 omny_path,
-                "series.omny.yamlがありません、または安全に読めません",
+                "series.yaml（または互換用series.omny.yaml）がありません、または安全に読めません",
             )
         metadata: dict[str, Any] | None = None
         if catalog_data is not None:
@@ -1340,9 +1343,30 @@ class WorkspaceDoctor:
                 {"utf8": utf8},
             )
         if metadata is not None:
+            legacy_data = (
+                self._read_snapshot_file(series_fd, "series", legacy_path, expected_device, MAX_SERIES_OMNY_BYTES, "series_omny")
+                if has_current and ("series", legacy_path) in self.files else (omny_data if not has_current else None)
+            )
+            origin = metadata.get("legacy_source")
+            if origin is not None:
+                names_ok = (
+                    isinstance(origin, dict) and origin.get("file_name") == "series.omny.yaml"
+                    and isinstance(origin.get("sha256"), str) and re.fullmatch(r"[a-f0-9]{64}", origin["sha256"]) is not None
+                    and has_current and (legacy_data is None or hashlib.sha256(legacy_data).hexdigest() == origin["sha256"])
+                )
+            else:
+                names_ok = not has_current or legacy_data is None or legacy_data == omny_data
+            self._observe(
+                "series_catalog_names", "ok" if names_ok else "error", "series", omny_path,
+                "新旧の台帳名と移行時の原本照合情報を確認しました",
+                {"compatible": names_ok, "current_present": has_current, "legacy_present": legacy_data is not None},
+            )
             observed_id = metadata.get("series_id")
             revision = metadata.get("revision")
-            expected_revision = hashlib.sha256(omny_data).hexdigest() if omny_data is not None else None
+            expected_revision = (
+                hashlib.sha256(omny_data.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")).hexdigest()
+                if omny_data is not None and utf8 else None
+            )
             fields_ok = (
                 observed_id == series_id
                 and isinstance(metadata.get("series_name"), str)
