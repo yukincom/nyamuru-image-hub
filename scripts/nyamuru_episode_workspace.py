@@ -104,10 +104,18 @@ class EpisodeWorkspaceManager:
         selected = selected.expanduser().resolve()
         if not selected.is_dir():
             raise ValueError("選択したエピソードフォルダが見つかりません")
-        token = secrets.token_urlsafe(24)
         with self.lock:
-            self.directories[token] = selected
-            self._persist()
+            token = next((key for key, directory in sorted(self.directories.items()) if directory == selected), None)
+            if token is None:
+                token = secrets.token_urlsafe(24)
+                while token in self.directories:
+                    token = secrets.token_urlsafe(24)
+                self.directories[token] = selected
+                try:
+                    self._persist()
+                except Exception:
+                    self.directories.pop(token)
+                    raise
         return {
             "ok": True,
             "cancelled": False,

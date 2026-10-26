@@ -77,6 +77,50 @@ class EpisodeWorkspaceManagerTest(unittest.TestCase):
             for name in bridge.EPISODE_WORKSPACE_DIRECTORIES:
                 self.assertTrue((episode / name).is_dir())
 
+    def test_reselect_and_symlink_reuse_tokens_across_restart_without_rewriting_registry(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            episode = root / "episode"
+            episode.mkdir()
+            alias = root / "alias"
+            alias.symlink_to(episode, target_is_directory=True)
+            state = root / "workspace-state.json"
+            manager = bridge.EpisodeWorkspaceManager(state)
+            with patch.object(episode_workspace, "choose_episode_directory", return_value=episode):
+                first = manager.select("")
+            # Preserve duplicate legacy tokens; callers may still hold either one.
+            manager.directories["a" * 32] = episode.resolve()
+            manager._persist()
+            before = (state.read_bytes(), state.stat().st_mtime_ns)
+            for current in (manager, bridge.EpisodeWorkspaceManager(state)):
+                with patch.object(episode_workspace, "choose_episode_directory", return_value=alias), patch.object(current, "_persist", side_effect=AssertionError("no write")):
+                    selected = current.select("")
+                    repeated = current.select("")
+                self.assertEqual(selected, repeated)
+                self.assertIn(selected["workspace_token"], current.directories)
+                self.assertEqual(len(current.directories), 2)
+                self.assertEqual(current.directory(first["workspace_token"]), episode.resolve())
+                self.assertEqual(current.directory("a" * 32), episode.resolve())
+            self.assertEqual(before, (state.read_bytes(), state.stat().st_mtime_ns))
+
+    def test_failed_selection_does_not_leave_unreturned_token_and_retry_registers_once(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            state = root / "workspace-state.json"
+            manager = bridge.EpisodeWorkspaceManager(state)
+            manager._persist()
+            before = state.read_bytes()
+            with patch.object(episode_workspace, "choose_episode_directory", return_value=root):
+                with patch.object(episode_workspace.os, "replace", side_effect=OSError("registry failure")):
+                    with self.assertRaisesRegex(OSError, "registry failure"):
+                        manager.select("")
+                self.assertEqual(manager.directories, {})
+                self.assertEqual(state.read_bytes(), before)
+                saved = manager.select("")
+                self.assertEqual(list(manager.directories), [saved["workspace_token"]])
+            restored = bridge.EpisodeWorkspaceManager(state)
+            self.assertEqual(restored.directories, manager.directories)
+
     def test_file_pickers_start_from_episode_and_return_selected_text_and_images(self):
         with tempfile.TemporaryDirectory() as directory_name:
             episode = Path(directory_name) / "episode"

@@ -203,7 +203,7 @@
 | P4 履歴境界 | 完了 | 既存imageGestureへサイズ操作を接続。関連51件・型検査・実UI成功、独立レビューでP4指摘なし |
 | P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
-| P7a–c ディスク保存 | 実装中 | P7a完了1566ee3、P7b例外時cleanup／復元を検証済み、P7c未着手 |
+| P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc。P7c登録再利用・失敗取消し、Python40件／Node9件成功 |
 | P8 標準名・文書 | 未着手 | 保存経路の整理後。旧読み込み互換を同時に検証 |
 | P9a–d 描画残件 | 未着手 | 設定・保存とは別commit群 |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
@@ -285,3 +285,5 @@
 - P7bは既存save／metadata／人物画像／人物テキスト・復元記録writerとエピソード登録writerの一時pathを作成直後から所有し、finallyで片付ける。一般的なatomic writerや新しいbackup管理は追加しない。人物テキストの既存30日履歴は一時ゴミとして消さない。
 - 独立レビューで、metadata失敗後に復元用tempを作ると容量不足で復元できない窓を再現。復元用tempも最初の置換前に準備するよう修正した。復元の置換自体にも失敗した場合だけ、その旧byteを保持してpathをエラーに示す。OSクラッシュ／複数processをまたぐ2ファイルの原子性は保証しない。
 - P7b検証: scanner／episode／project／series background bridge 145件（1skip）成功。実一時fixtureに対する書き込み途中、temp作成、fsync／chmod／replace失敗で既存byte・無関係ファイル保持と再試行を確認。2回目のI/O障害では旧byteの残存を確認。実作品は未変更。レビューで挙がった登録失敗後のメモリtoken残留はP7cで扱う。
+- P7cは `EpisodeWorkspaceManager.select` の既存lock内でresolve済みの保存先を照合し、同じ場所なら既存tokenを再利用する。重複した旧tokenは参照中の可能性があるため消さない。新規登録の永続化に失敗したら、その登録だけメモリから取り消す。ブラウザー側は既存isSameEntryで再利用しているため変更しない。
+- P7c検証: episode／project bridge 40件、browserWorkspace 9件成功。再選択・symlink経由・再起動・重複旧tokenで登録数とregistryのbyte/mtimeを保持。取消し、登録失敗後のメモリ／ディスク保持、一回だけの再登録を一時fixtureで確認。OSの実folder pickerは模擬応答。
