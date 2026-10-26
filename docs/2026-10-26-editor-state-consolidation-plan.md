@@ -203,7 +203,7 @@
 | P4 履歴境界 | 完了 | 既存imageGestureへサイズ操作を接続。関連51件・型検査・実UI成功、独立レビューでP4指摘なし |
 | P5 自動保存 | 完了 | 既存writerとeffectへ集約。関連42件・型検査、実UIの保存／復元と原本保持4項目成功。レビューの別タブ原本保護を補修 |
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
-| P7a–c ディスク保存 | 実装中 | P7a: 既存saveで検査後に同値skip。P7b/cは未着手 |
+| P7a–c ディスク保存 | 実装中 | P7a完了1566ee3、P7b例外時cleanup／復元を検証済み、P7c未着手 |
 | P8 標準名・文書 | 未着手 | 保存経路の整理後。旧読み込み互換を同時に検証 |
 | P9a–d 描画残件 | 未着手 | 設定・保存とは別commit群 |
 | 統合検証 | 未着手 | 全体試験、build、合成原稿のUI／保存復元、server終了 |
@@ -282,3 +282,6 @@
 
 - P6 commit: `3b40631`。P7aは `SeriesCatalogStore.save` だけを変更し、名前衝突・revision・資料参照の検査後、YAMLと保存metadataが同値なら書き込みを省く。参照先が同じならlinked_atも保持し、意味上の更新だけupdated_atを進める。revisionの対象は引き続きYAMLであり、metadataの多process競合保証は追加していない。
 - P7a検証: scanner bridge 85件（1skip）成功。一時fixtureの同値保存でファイル数・byte・mtime・参照ID・再リンク情報を保持し、一時ファイル作成0回。古いrevision／存在しない参照は拒否し、名称のみ／参照のみの更新は反映した。実作品への書き込みなし。
+- P7bは既存save／metadata／人物画像／人物テキスト・復元記録writerとエピソード登録writerの一時pathを作成直後から所有し、finallyで片付ける。一般的なatomic writerや新しいbackup管理は追加しない。人物テキストの既存30日履歴は一時ゴミとして消さない。
+- 独立レビューで、metadata失敗後に復元用tempを作ると容量不足で復元できない窓を再現。復元用tempも最初の置換前に準備するよう修正した。復元の置換自体にも失敗した場合だけ、その旧byteを保持してpathをエラーに示す。OSクラッシュ／複数processをまたぐ2ファイルの原子性は保証しない。
+- P7b検証: scanner／episode／project／series background bridge 145件（1skip）成功。実一時fixtureに対する書き込み途中、temp作成、fsync／chmod／replace失敗で既存byte・無関係ファイル保持と再試行を確認。2回目のI/O障害では旧byteの残存を確認。実作品は未変更。レビューで挙がった登録失敗後のメモリtoken残留はP7cで扱う。

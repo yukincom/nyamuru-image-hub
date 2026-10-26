@@ -84,13 +84,18 @@ class EpisodeWorkspaceManager:
             },
         }
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=self.state_path.parent, delete=False) as handle:
-            json.dump(payload, handle, ensure_ascii=False, indent=2)
-            handle.flush()
-            os.fsync(handle.fileno())
-            temporary = Path(handle.name)
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, self.state_path)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=self.state_path.parent, delete=False) as handle:
+                temporary = Path(handle.name)
+                json.dump(payload, handle, ensure_ascii=False, indent=2)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, self.state_path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     def select(self, default_directory_value: object) -> dict[str, Any]:
         selected = choose_episode_directory(default_picker_directory(default_directory_value))

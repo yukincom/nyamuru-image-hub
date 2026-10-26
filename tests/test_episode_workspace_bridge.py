@@ -19,6 +19,27 @@ import nyamuru_episode_workspace as episode_workspace
 
 
 class EpisodeWorkspaceManagerTest(unittest.TestCase):
+    def test_registry_failures_preserve_saved_state_and_clean_temporary_files(self):
+        for failure in ("serialize", "fsync", "chmod", "replace"):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory_name:
+                root = Path(directory_name)
+                state = root / "workspace-state.json"
+                manager = bridge.EpisodeWorkspaceManager(state)
+                manager._persist()
+                before = state.read_bytes()
+                keep = root / "tmp-user-owned"
+                keep.write_bytes(b"keep")
+                manager.directories["a" * 32] = root.resolve()
+                target = episode_workspace.json if failure == "serialize" else episode_workspace.os
+                name = "dump" if failure == "serialize" else failure
+                with patch.object(target, name, side_effect=OSError("injected failure")):
+                    with self.assertRaisesRegex(OSError, "injected"):
+                        manager._persist()
+                self.assertEqual(state.read_bytes(), before)
+                self.assertEqual(set(root.iterdir()), {state, keep})
+                manager._persist()
+                self.assertEqual(bridge.EpisodeWorkspaceManager(state).directories, manager.directories)
+
     def test_selects_one_shot_or_series_episode_without_requiring_an_origin_folder_name(self):
         with tempfile.TemporaryDirectory() as directory_name:
             episode = Path(directory_name) / "no.1.5"

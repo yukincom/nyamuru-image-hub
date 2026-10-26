@@ -621,14 +621,41 @@ class SeriesCatalogStore:
                 return {"ok": True, "series_id": series_id, "series_name": series_name, "directory": str(directory), "revision": next_revision}
             metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
             directory.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
-                handle.write(omny_yaml_value)
-                yaml_temporary = Path(handle.name)
-            with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
-                json.dump(metadata, handle, ensure_ascii=False, indent=2)
-                metadata_temporary = Path(handle.name)
-            os.replace(yaml_temporary, directory / "series.omny.yaml")
-            os.replace(metadata_temporary, directory / "catalog.json")
+            previous_bytes = catalog_path.read_bytes() if catalog_path.exists() else None
+            temporaries: list[Path] = []
+            try:
+                with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
+                    yaml_temporary = Path(handle.name)
+                    temporaries.append(yaml_temporary)
+                    handle.write(omny_yaml_value)
+                with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
+                    metadata_temporary = Path(handle.name)
+                    temporaries.append(metadata_temporary)
+                    json.dump(metadata, handle, ensure_ascii=False, indent=2)
+                restore_temporary = None
+                if previous_bytes is not None:
+                    # Prepare recovery before publication: a full disk must not split the pair.
+                    with tempfile.NamedTemporaryFile("wb", dir=directory, delete=False) as handle:
+                        restore_temporary = Path(handle.name)
+                        temporaries.append(restore_temporary)
+                        handle.write(previous_bytes)
+                os.replace(yaml_temporary, catalog_path)
+                try:
+                    os.replace(metadata_temporary, directory / "catalog.json")
+                except Exception:
+                    if restore_temporary is None:
+                        catalog_path.unlink()
+                    else:
+                        try:
+                            os.replace(restore_temporary, catalog_path)
+                        except OSError as error:
+                            # Do not erase the only recoverable old bytes after a second I/O failure.
+                            temporaries.remove(restore_temporary)
+                            raise OSError(f"台帳の復元にも失敗しました。元データを保持しています: {restore_temporary}") from error
+                    raise
+            finally:
+                for temporary in temporaries:
+                    temporary.unlink(missing_ok=True)
         return {"ok": True, "series_id": series_id, "series_name": series_name, "directory": str(directory), "revision": next_revision}
 
     def choose_reference_text(
@@ -735,10 +762,15 @@ class SeriesCatalogStore:
     def write_metadata(self, series_id: str, metadata: dict[str, Any]) -> None:
         directory = self.root / series_id
         directory.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
-            json.dump(metadata, handle, ensure_ascii=False, indent=2)
-            temporary = Path(handle.name)
-        os.replace(temporary, directory / "catalog.json")
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as handle:
+                temporary = Path(handle.name)
+                json.dump(metadata, handle, ensure_ascii=False, indent=2)
+            os.replace(temporary, directory / "catalog.json")
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     @staticmethod
     def path_within(root: Path, candidate: Path) -> bool:
@@ -1038,10 +1070,15 @@ class SeriesCatalogStore:
                 }
                 trash = self.deleted_character_directory(series_id)
                 trash.mkdir(parents=True, exist_ok=True)
-                with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=trash, delete=False) as handle:
-                    json.dump(payload, handle, ensure_ascii=False, indent=2)
-                    temporary = Path(handle.name)
-                os.replace(temporary, trash / f"{deletion_id}.json")
+                temporary = None
+                try:
+                    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=trash, delete=False) as handle:
+                        temporary = Path(handle.name)
+                        json.dump(payload, handle, ensure_ascii=False, indent=2)
+                    os.replace(temporary, trash / f"{deletion_id}.json")
+                finally:
+                    if temporary is not None:
+                        temporary.unlink(missing_ok=True)
                 archived = True
 
             series_directory, path, reference = self.resolve_character_text(series_id, metadata)
@@ -1059,10 +1096,15 @@ class SeriesCatalogStore:
                     digest = hashlib.sha256(previous.encode("utf-8")).hexdigest()[:12]
                     if previous:
                         (history / f"{stamp}-{digest}.md").write_text(previous, encoding="utf-8")
-                    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
-                        handle.write(next_markdown)
-                        temporary = Path(handle.name)
-                    os.replace(temporary, path)
+                    temporary = None
+                    try:
+                        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+                            temporary = Path(handle.name)
+                            handle.write(next_markdown)
+                        os.replace(temporary, path)
+                    finally:
+                        if temporary is not None:
+                            temporary.unlink(missing_ok=True)
             else:
                 next_markdown = ""
 
@@ -1163,11 +1205,16 @@ class SeriesCatalogStore:
             except OSError:
                 existing_bytes = b""
             if created or existing_bytes != png_bytes:
-                with tempfile.NamedTemporaryFile("wb", dir=directory, delete=False) as handle:
-                    handle.write(png_bytes)
-                    temporary = Path(handle.name)
-                os.chmod(temporary, 0o600)
-                os.replace(temporary, target)
+                temporary = None
+                try:
+                    with tempfile.NamedTemporaryFile("wb", dir=directory, delete=False) as handle:
+                        temporary = Path(handle.name)
+                        handle.write(png_bytes)
+                    os.chmod(temporary, 0o600)
+                    os.replace(temporary, target)
+                finally:
+                    if temporary is not None:
+                        temporary.unlink(missing_ok=True)
         return {
             "ok": True,
             "created": created,

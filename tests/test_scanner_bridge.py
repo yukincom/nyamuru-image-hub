@@ -233,6 +233,114 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             self.assertFalse((Path(directory_name) / "offline-created-id").exists())
             self.assertIn("second", store.load("猫の旅", "")["omny_yaml"])
 
+    def test_catalog_failures_clean_temporary_files_and_restore_previous_pair(self):
+        for existing in (False, True):
+            for failure in ("yaml-write", "metadata-write", "restore-create", "restore-write", "yaml-replace", "metadata-replace"):
+                if not existing and failure.startswith("restore-"):
+                    continue
+                with self.subTest(existing=existing, failure=failure), tempfile.TemporaryDirectory() as directory_name:
+                    root = Path(directory_name)
+                    store = bridge.SeriesCatalogStore(root)
+                    revision = ""
+                    if existing:
+                        revision = store.save("猫", "series-one", "manga:\n  title: before\n", "")["revision"]
+                    folder = root / "series-one"
+                    before = {path.name: path.read_bytes() for path in folder.iterdir()} if folder.exists() else {}
+                    create, replace = series_catalog_store.tempfile.NamedTemporaryFile, series_catalog_store.os.replace
+                    calls = 0
+                    def temporary(*args, **kwargs):
+                        nonlocal calls
+                        calls += 1
+                        if failure == "restore-create" and calls == 3:
+                            raise OSError("injected create failure")
+                        handle = create(*args, **kwargs)
+                        if (failure, calls) in (("yaml-write", 1), ("metadata-write", 2), ("restore-write", 3)):
+                            write = handle.write
+                            def fail_write(data):
+                                write(data[:1])
+                                raise OSError("injected write failure")
+                            handle.write = fail_write
+                        return handle
+                    def publish(source, target):
+                        if failure == "yaml-replace" and Path(target).name == "series.omny.yaml" or failure == "metadata-replace" and Path(target).name == "catalog.json":
+                            raise OSError("injected replace failure")
+                        return replace(source, target)
+                    with patch.object(series_catalog_store.tempfile, "NamedTemporaryFile", side_effect=temporary), patch.object(series_catalog_store.os, "replace", side_effect=publish):
+                        with self.assertRaisesRegex(OSError, "injected"):
+                            store.save("猫", "series-one", "manga:\n  title: after\n", revision)
+                    self.assertEqual(before, {path.name: path.read_bytes() for path in folder.iterdir()})
+                    saved = store.save("猫", "series-one", "manga:\n  title: after\n", revision)
+                    self.assertEqual(store.load("猫", "series-one")["revision"], saved["revision"])
+
+    def test_second_io_failure_keeps_old_catalog_bytes_for_recovery(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            store = bridge.SeriesCatalogStore(Path(directory_name))
+            first = store.save("猫", "series-one", "manga:\n  title: before\n", "")
+            folder = Path(first["directory"])
+            before = (folder / "series.omny.yaml").read_bytes()
+            replace = series_catalog_store.os.replace
+            calls = []
+            def publish(source, target):
+                calls.append(Path(target).name)
+                if len(calls) > 1:
+                    raise OSError("injected second I/O failure")
+                return replace(source, target)
+            with patch.object(series_catalog_store.os, "replace", side_effect=publish):
+                with self.assertRaisesRegex(OSError, "元データを保持") as raised:
+                    store.save("猫", "series-one", "manga:\n  title: after\n", first["revision"])
+            self.assertEqual(calls, ["series.omny.yaml", "catalog.json", "series.omny.yaml"])
+            recovery = list(folder.glob("tmp*"))
+            self.assertEqual(len(recovery), 1)
+            self.assertEqual(recovery[0].read_bytes(), before)
+            self.assertIn(str(recovery[0]), str(raised.exception))
+
+    def test_metadata_image_and_character_text_failures_remove_only_owned_temporaries(self):
+        for writer in ("metadata", "image", "archive", "text"):
+            for failure in ("write", "replace"):
+                with self.subTest(writer=writer, failure=failure), tempfile.TemporaryDirectory() as directory_name:
+                    root = Path(directory_name)
+                    refs = root / "references"
+                    refs.mkdir()
+                    text = refs / "characters.md"
+                    text.write_text("# 登場人物設定\n\n**ユキ**\n", encoding="utf-8")
+                    store = bridge.SeriesCatalogStore(root / "catalogs")
+                    store.save("猫", "series-one", "manga:\n  materials: []\n", "", str(refs), text.name)
+                    folder = store.root / "series-one"
+                    keep = folder / "tmp-user-owned"
+                    keep.write_bytes(b"keep me")
+                    before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+                    create = series_catalog_store.tempfile.NamedTemporaryFile
+                    def temporary(*args, **kwargs):
+                        handle = create(*args, **kwargs)
+                        if failure == "write":
+                            write = handle.write
+                            def fail_write(data):
+                                write(data[:1])
+                                raise OSError("injected write failure")
+                            handle.write = fail_write
+                        return handle
+                    def operation():
+                        if writer == "metadata":
+                            store.write_metadata("series-one", {"series_name": "new"})
+                        elif writer == "image":
+                            store.save_character_image("series-one", "character-one", "new.png", self.PNG)
+                        else:
+                            archive = {"character_catalog_id": "character-one", "omny_yaml": "manga: {}"} if writer == "archive" else None
+                            store.sync_character_text("series-one", "# 登場人物設定\n\n新しい人物\n", [], archive)
+                    with patch.object(series_catalog_store.tempfile, "NamedTemporaryFile", side_effect=temporary):
+                        if failure == "replace":
+                            with patch.object(series_catalog_store.os, "replace", side_effect=OSError("injected replace failure")):
+                                with self.assertRaisesRegex(OSError, "injected"):
+                                    operation()
+                        else:
+                            with self.assertRaisesRegex(OSError, "injected"):
+                                operation()
+                    for path, data in before.items():
+                        self.assertEqual(path.read_bytes(), data)
+                    self.assertEqual(list(root.rglob("tmp*")), [keep])
+                    # The existing 30-day text history is retained, not temporary garbage.
+                    operation()
+
     def test_existing_series_cannot_be_renamed_to_another_catalog_name(self):
         with tempfile.TemporaryDirectory() as directory_name:
             store = bridge.SeriesCatalogStore(Path(directory_name))
