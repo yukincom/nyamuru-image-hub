@@ -1,16 +1,21 @@
-import {render} from 'preact';
+import {render,type ComponentProps} from 'preact';
 import {useContext} from 'preact/hooks';
-import PaintEditor from '../src/components/PaintEditor';
+import PaintEditor,{type PaintResult} from '../src/components/PaintEditor';
 import PaintInputSurface,{PaintOwnerPreview} from '../src/components/PaintSceneView';
 import {PaintLayerControlsContext,usePaintWorkspace,type PaintWorkspaceState} from '../src/lib/paintWorkspace';
-import {newPaintLayer,type PaintScene} from '../src/lib/paintDocument';
+import {applyOwnerPaint,newPaintLayer,paintAssetIds,paintScene,type PaintScene} from '../src/lib/paintDocument';
 import {commitPaintStroke,paintStrokeBounds,previewPaintStroke,type PaintStrokePreview} from '../src/lib/paintGesture';
 import {paintPreviewRenderer} from '../src/lib/paintRenderer';
 import {newToneLayer} from '../src/lib/paintTone';
-import type {PaintStroke} from '../src/types';
+import type {PaintController,PaintSessionSnapshot,SharedPaintHistory} from '../src/lib/paintSession';
+import {workspaceHistory} from '../src/lib/workspaceHistory';
+import {createFrameArtwork,prepareImageAsset} from '../src/lib/imagePlacement';
+import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence';
+import {panelTestDocument} from './fixtures/emptyTestDocument';
+import type {PaintStroke,Panel} from '../src/types';
 import '../src/styles/global.css';
 
-if(location.hostname!=='127.0.0.1'||location.port!=='4325')throw Error('Dedicated test origin required');
+if(location.hostname!=='127.0.0.1'||!['4325','4335'].includes(location.port))throw Error('Dedicated test origin required');
 const report=document.getElementById('report')!,run=document.getElementById('run') as HTMLButtonElement;
 const raf=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const checks:string[]=[],check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
@@ -30,11 +35,12 @@ function Probe(){
   const controls=useContext(PaintLayerControlsContext);
   return <div style={{marginTop:'8px'}}><button id="undo" onClick={()=>workspace?.undo()}>取り消し</button><button id="redo" onClick={()=>workspace?.redo()}>やり直し</button><output id="ink-state">{workspace?.owner.paint.layers[0].strokes.length}本{workspace?.live?'・描画中':''}</output><div id="fixture-tools">{workspace?.tools}</div>{controls}</div>;
 }
-async function mount(scene:PaintScene){
+type MountOptions=Partial<Pick<ComponentProps<typeof PaintEditor>,'controller'|'resume'|'sharedHistory'|'initialOwner'|'assets'|'onApply'|'onClose'>>;
+async function mount(scene:PaintScene,options:MountOptions={}){
   ready=false;workspace=null;
-  render(<PaintEditor key={crypto.randomUUID()} initial={scene} assets={[]} page={1} panelIndex={0} overlay title="速度検証" onApply={async()=>{}} onClose={()=>{}} onReady={()=>{ready=true;}}>
+  render(<PaintEditor key={crypto.randomUUID()} initial={scene} assets={[]} page={1} panelIndex={0} overlay title="速度検証" onApply={async()=>{}} onClose={()=>{}} {...options} onReady={()=>{ready=true;}}>
     <div style={{position:'relative',width:'500px',height:'500px',marginTop:'12px',background:'white',border:'1px solid #889'}}>
-      <PaintOwnerPreview ownerKey="page-direct" container={scene.frame}/><PaintInputSurface canvas={{w:100,h:100}}/>
+      {scene.owners.map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={scene.frame}/>)}<PaintInputSurface canvas={{w:100,h:100}}/>
     </div><Probe/>
   </PaintEditor>,document.getElementById('app')!);
   for(let i=0;i<120&&!ready;i++)await raf();if(!ready)throw Error('PaintEditor did not become ready');
@@ -127,6 +133,64 @@ async function selectionInteraction(){
   document.getElementById('redo')!.click();await raf();await raf();const restored=samples();
   check(after.length===restored.length&&after.every((v,i)=>v===restored[i]),'トーンと領域拡張のRedoで全画素を復元');
 }
+async function guideSessionInteraction(){
+  const panel:Panel={id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:'',bubbles:[],figures:[
+    {name:'確認用A',kind:'person',size:'full',bbox:{x:10,y:20,w:30,h:50}},
+    {name:'確認用B',kind:'person',size:'full',bbox:{x:55,y:20,w:30,h:50}},
+  ]};
+  const scene=paintScene(panel,100,[]),source=JSON.stringify(scene),controller:{current:PaintController|null}={current:null};
+  const timeline=workspaceHistory<PaintSessionSnapshot>(),applied:PaintResult[]=[];
+  let attempts=0,closes=0,fail=false,restoring=Promise.resolve();
+  const restore=(state:PaintSessionSnapshot|undefined)=>{if(state)restoring=mount({...state.scene},{...options,resume:state});};
+  const sharedHistory:SharedPaintHistory={checkpoint:before=>timeline.record(before),undo:()=>restore(timeline.undo(controller.current!.snapshot())),redo:()=>restore(timeline.redo(controller.current!.snapshot())),get canUndo(){return timeline.past.length>0;},get canRedo(){return timeline.future.length>0;}};
+  const options:MountOptions={controller,initialOwner:'figure-0',sharedHistory,onApply:async result=>{attempts++;if(fail)throw Error('fixture save failure');applied.push(result);},onClose:()=>{closes++;}};
+  const ink=()=>controller.current!.snapshot().scene.owners.find(owner=>owner.key==='figure-0')!.paint.layers.reduce((n,layer)=>n+layer.strokes.length,0);
+  await mount(scene,options);
+  const prepared=controller.current!.snapshot();
+  check(prepared.imports.length===3&&prepared.scene.owners.every(owner=>owner.paint.layers.some(layer=>layer.guide&&layer.image)),'2人物と背景のguideを実PNGとして準備');
+  check(JSON.stringify(scene)===source&&!workspace!.canUndo,'表示準備で元sceneと共有Undoを変更しない');
+  await controller.current!.close();
+  check(attempts===0&&closes===1,'無描画closeはowner PNGの反映・asset登録0回');
+  pointer('pointerdown',20,30);await raf();pointer('pointercancel',20,30);await raf();await raf();
+  await controller.current!.close();
+  check(attempts===0&&ink()===0&&!workspace!.canUndo,'描画cancel後のcloseも反映・Undo追加なし');
+  pointer('pointerdown',20,30);pointer('pointermove',25,35);pointer('pointerup',25,35);await raf();await raf();
+  const drawn=controller.current!.snapshot();
+  check(ink()===1&&timeline.past.length===1,'初回一筆は実線1本・共有Undo1件だけ');
+  document.getElementById('undo')!.click();await restoring;
+  await controller.current!.close();
+  check(ink()===0&&attempts===0&&timeline.future.length===1,'共有Undoのscene外側複製後もcloseは無保存');
+  document.getElementById('redo')!.click();await restoring;
+  check(ink()===1&&controller.current!.snapshot().imports.length===3,'共有Redoは一筆と未保存guide Blobを保持');
+  fail=true;let rejected=false;
+  try{await controller.current!.flush();}catch{rejected=true;}
+  check(rejected&&applied.length===0&&ink()===1&&controller.current!.snapshot().saved===drawn.saved,'保存失敗は内容と未保存状態を保持');
+  fail=false;await controller.current!.flush();
+  check(attempts===2&&applied.length===1&&applied[0].owners.length===1&&applied[0].owners[0].owner.key==='figure-0'&&applied[0].owners[0].blob.size>0,'再試行は描いた人物1個だけを実PNGで反映');
+  await controller.current!.close();check(attempts===2,'保存済みcloseは二重反映しない');
+
+  // Exercise the existing image validator and project serializer without writing browser storage.
+  const project=panelTestDocument(),target=structuredClone(panel),blobs=new Map<string,Blob>();
+  project.manga.pages[0].panels=[target];project.manga.image_assets=[];
+  const result=applied[0],needed=new Set(result.owners.flatMap(({owner})=>paintAssetIds(owner.paint)));
+  for(const {asset,blob} of result.imports)if(needed.has(asset.id)&&!project.manga.image_assets.some(item=>item.id===asset.id)){project.manga.image_assets.push(asset);blobs.set(asset.storageId,blob);}
+  for(const {owner,blob} of result.owners){const asset=await prepareImageAsset(new File([blob],'guide-session.png',{type:'image/png'}));project.manga.image_assets.push(asset);blobs.set(asset.storageId,blob);applyOwnerPaint(target,owner,{...createFrameArtwork(asset,owner.frame),paint:owner.paint});}
+  const saved=await createProjectSnapshot(project,async id=>blobs.get(id)??null);
+  let stored=0;const restored=await restoreProjectSnapshot(saved,async items=>{stored=items.length;});
+  const restoredPanel=restored.manga.pages[0].panels[0];
+  check(restoredPanel.figures![0].artwork!.paint!.layers.reduce((n,layer)=>n+layer.strokes.length,0)===1&&!restoredPanel.figures![1].artwork&&!restoredPanel.background_images?.length,'実PNGを検証した保存往復でも未描画人物・背景を画像化しない');
+  check(saved.assets.length===2&&stored===2,'保存往復は描いた人物のguideと合成PNGだけを保持');
+
+  await mount({...drawn.scene},{...options,resume:drawn});await controller.current!.flush();
+  check(ink()===1&&applied.length===2&&applied[1].owners.map(({owner})=>owner.key).join()==='figure-0','未保存resumeの一筆を準備済み扱いで落とさない');
+  const broken=paintScene(panel,100,[]),background=broken.owners.find(owner=>owner.key==='background')!;
+  background.paint.layers[0].image={assetId:'missing-guide',crop:{x:0,y:0,w:1,h:1},bbox:{x:0,y:0,w:1,h:1}};
+  await mount(broken,options);await controller.current!.flush();
+  check(applied.length===3&&applied[2].owners.map(({owner})=>owner.key).join()==='background','既存guide画像の欠損修復は無操作と混同せず背景だけ反映');
+  const owner=controller.current!.snapshot().scene.owners.find(item=>item.key==='figure-0')!,guide=owner.paint.layers[0];
+  controller.current!.layerAction({type:'update',key:owner.key,id:guide.id,patch:{visible:false}});await raf();await raf();await controller.current!.flush();
+  check(applied.length===4&&applied[3].owners.map(({owner})=>owner.key).join()==='figure-0','筆跡0でもguideの目の変更は正当な編集として保存');
+}
 run.onclick=()=>{
   run.disabled=true;checks.length=0;
   void(async()=>{
@@ -136,6 +200,7 @@ run.onclick=()=>{
     report.textContent='実PaintEditorのポインター入力・確定・取り消し・枠外描画を検証中…';const ui=await interaction();
     report.textContent='同じレイヤーへのマスク描画・確定・消去・取消を検証中…';await maskInteraction();
     report.textContent='元画像サイズに切られない投げ縄とトーン・Undo/Redoを検証中…';await selectionInteraction();
+    report.textContent='guide準備・共有Undo/Redo・保存失敗と実PNG保存往復を検証中…';await guideSessionInteraction();
     report.textContent=`PASS ${checks.length}項目\n500本・600×600px・120回、同じcanvas rendererで比較\n旧組み立て方式の再現: ${JSON.stringify(baked)}\n修正後: ${JSON.stringify(cached)}\n実PaintEditor: ${JSON.stringify(ui)}\n${checks.join('\n')}\n注: この合成原稿・端末での測定。マスク/トーン・実原稿全体の速度保証ではありません。`;
   })().catch(error=>{report.textContent=`FAIL ${String(error)}\n${checks.join('\n')}`;}).finally(()=>{run.disabled=false;});
 };

@@ -44,16 +44,25 @@ export interface PaintController {
   insertImage: (file:File,key:string,placement?:PaintImagePlacement) => Promise<void>;
 }
 
-/** Advance only after all PNGs and their source assets have reached the document. */
+/** Compare immutable owners; actual edits advance only after their writer succeeds. */
 export function paintCheckpoint(initial: PaintScene, savedScene=initial) {
   let saved = savedScene;
   let pending = Promise.resolve();
+  const changedOwner = (owner:PaintOwner) => owner !== saved.owners.find(item => item.key === owner.key);
   return {
     get saved() { return saved; },
+    /** A fresh guide image is an equivalent display representation, not a saved edit.
+     * Never use this for repairing a persisted image or acknowledging a dirty owner. */
+    prepareGuide(before:PaintOwner, prepared:PaintOwner) {
+      if(before===prepared||!saved.owners.includes(before))return;
+      saved={...saved,owners:saved.owners.map(owner=>owner===before?prepared:owner)};
+    },
+    hasChanges(scene:PaintScene) { return scene!==saved&&scene.owners.some(changedOwner); },
     flush(scene: PaintScene, write: (owners: PaintOwner[]) => Promise<void>): Promise<void> {
       const task = pending.then(async () => {
         if (scene === saved) return;
-        const owners = scene.owners.filter(owner => owner !== saved.owners.find(item => item.key === owner.key));
+        const owners = scene.owners.filter(changedOwner);
+        if (!owners.length) return;
         await write(owners);
         saved = scene;
       });

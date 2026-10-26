@@ -157,7 +157,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   const inputActive=useRef(false);
   const operation=useRef(false);
   const raf=useRef(0),alive=useRef(true),imagesRef=useRef<PaintImages|null>(null);
-  const dirty=scene!==checkpoint.saved;
+  const dirty=checkpoint.hasChanges(scene);
   const locked=paintOwnerLocked(owner);
   const selectionTool=tool==='vector-select'||tool==='vector-node';
   const coverage=useMemo(()=>images?paintLayerCoverage(images):null,[images]);
@@ -203,8 +203,10 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
       let map:PaintImages=new Map();
       try{
         const owners:PaintOwner[]=[];
+        const preparedGuides:Array<{before:PaintOwner;prepared:PaintOwner}>=[];
         for(const owner of initial.owners){
           const layers:PaintLayer[]=[];
+          let repairedImage=false;
           for(const layer of owner.paint.layers){
             if(cancelled)return;
             let repair=layer.guide&&!layer.image;
@@ -212,7 +214,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
               try{
                 const probe=await loadPaintImages([{...owner.paint,layers:[layer]}],assets,pending);
                 probe.forEach(image=>{image.src='';});
-              }catch{repair=true;}
+              }catch{repair=true;repairedImage=true;}
             }
             if(repair){
               const prepared=await prepareGuideLayer(owner,{...layer,image:undefined});
@@ -220,11 +222,15 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
               preparedImports.push({asset:prepared.asset,blob:prepared.blob});pending.set(prepared.asset.id,prepared.blob);
             }else layers.push(layer);
           }
-          owners.push(layers.some((l,i)=>l!==owner.paint.layers[i])?{...owner,paint:{...owner.paint,layers}}:owner);
+          const prepared=layers.some((l,i)=>l!==owner.paint.layers[i])?{...owner,paint:{...owner.paint,layers}}:owner;
+          owners.push(prepared);
+          if(prepared!==owner&&!repairedImage)preparedGuides.push({before:owner,prepared});
         }
         if(cancelled)return;
         const allAssets=[...assets,...preparedImports.map(item=>item.asset)];
         map=await loadPaintImages(owners.map(owner=>owner.paint),allAssets,pending);
+        if(cancelled)return;
+        for(const {before,prepared} of preparedGuides)checkpoint.prepareGuide(before,prepared);
         if(preparedImports.length){setImports(items=>[...items,...preparedImports]);setHistory(h=>({...h,present:{...initial,owners}}));}
         loadedInitial.current=initial;failedImageSignature.current='';imagesRef.current=map;setImages(map);
       }catch(error){map.forEach(image=>{image.src='';});throw error;}
@@ -436,7 +442,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     if(backgroundOwner&&!capture)backgroundController.current?.snapshot();
     finishGesture();
     const snapshot=historyRef.current.present;
-    if(snapshot===checkpoint.saved)return;
+    if(!checkpoint.hasChanges(snapshot))return;
     const currentImages=imagesRef.current;
     if(!currentImages){setError('原本の読み込みが終わってから保存してください');throw new Error('原本を読み込み中です');}
     operation.current=true;setBusy(true);setError('');

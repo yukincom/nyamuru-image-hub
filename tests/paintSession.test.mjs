@@ -12,6 +12,47 @@ import { paintToolShortcut } from '../src/lib/paintToolShortcuts.ts';
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[],figures:[{name:'確認用',bbox:{x:2,y:3,w:10,h:20}}]},100,[]);
 const add=(scene,index=0)=>{const o=scene.owners[index];return commitPaintStroke(scene,{ownerKey:o.key,layerId:o.paint.layers[0].id,stroke:{tool:'pen',color:'#000000',size:3,points:[{x:4,y:5,pressure:.7,time:1}]}});};
 
+test('restoring only the scene wrapper does not apply an empty document update',async()=>{
+ const start=initial(),checkpoint=paintCheckpoint(start),restored={...start,owners:[...start.owners]};
+ let writes=0;await checkpoint.flush(restored,async()=>{writes++;});
+ assert.equal(writes,0);assert.equal(checkpoint.saved,start);
+});
+
+const preparedGuide=owner=>({...owner,paint:{...owner.paint,layers:owner.paint.layers.map(layer=>layer.guide&&!layer.image?{...layer,image:{assetId:`guide-${owner.key}`,crop:{x:0,y:0,w:10,h:10},bbox:{x:0,y:0,w:10,h:10}}}:layer)}});
+test('guide preparation stays clean and only a subsequent edited owner is written',async()=>{
+ const start=initial(),before=structuredClone(start),checkpoint=paintCheckpoint(start);
+ const prepared={...start,owners:start.owners.map(owner=>{const next=preparedGuide(owner);checkpoint.prepareGuide(owner,next);return next;})};
+ assert.equal(checkpoint.hasChanges(prepared),false);
+ let writes=0;await checkpoint.flush(prepared,async()=>{writes++;});assert.equal(writes,0);
+ const drawn=add(prepared,1);assert.equal(checkpoint.hasChanges(drawn),true);
+ await checkpoint.flush(drawn,async owners=>{assert.deepEqual(owners.map(owner=>owner.key),['figure-0']);writes++;});
+ assert.equal(writes,1);assert.equal(checkpoint.saved,drawn);assert.equal(checkpoint.hasChanges(drawn),false);
+ assert.deepEqual(start,before,'display preparation must not mutate a history predecessor');
+});
+
+test('preparing dirty resumed owners cannot acknowledge unsaved changes or failed writes',async()=>{
+ const saved=initial(),dirty=add(saved,1),checkpoint=paintCheckpoint({...dirty},saved);
+ const owners=dirty.owners.map(owner=>{const next=preparedGuide(owner);checkpoint.prepareGuide(owner,next);return next;});
+ const resumed={...dirty,owners},baseline=checkpoint.saved;
+ assert.equal(baseline.owners[1],saved.owners[1]);assert.equal(checkpoint.hasChanges(resumed),true);
+ await assert.rejects(checkpoint.flush(resumed,async()=>{throw Error('asset write failed');}),/asset write failed/);
+ assert.equal(checkpoint.saved,baseline);assert.equal(checkpoint.hasChanges(resumed),true);
+ await checkpoint.flush(resumed,async changed=>assert.deepEqual(changed.map(owner=>owner.key),['figure-0']));
+ assert.equal(checkpoint.saved,resumed);
+});
+
+test('prepared snapshot imports survive undo, redo and a shallow scene restore',async()=>{
+ const start=initial(),checkpoint=paintCheckpoint(start);
+ const prepared={...start,owners:start.owners.map(owner=>{const next=preparedGuide(owner);checkpoint.prepareGuide(owner,next);return next;})};
+ const before={scene:prepared,saved:checkpoint.saved,imports:[{asset:{id:'guide-figure-0'},blob:new Blob(['guide'])}]};
+ const drawn=add(prepared,1),restored=paintCheckpoint({...before.scene},before.saved);
+ assert.equal(restored.hasChanges({...before.scene}),false);
+ await restored.flush({...before.scene},async()=>assert.fail('undo before the first write must not materialize guides'));
+ const redo=paintCheckpoint({...drawn},before.saved);
+ await redo.flush(drawn,async changed=>assert.deepEqual(changed.map(owner=>owner.key),['figure-0']));
+ assert.equal(await before.imports[0].blob.text(),'guide');
+});
+
 test('successive saves preserve both owners and undo after saving reaches the document',async()=>{
  const start=initial(),checkpoint=paintCheckpoint(start),calls=[];
  const a=add(start),b=add(a,1),c=add(b);
