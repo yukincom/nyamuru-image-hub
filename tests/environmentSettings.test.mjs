@@ -7,10 +7,12 @@ import ts from 'typescript';
 import * as manga from '../src/lib/manga.ts';
 import * as privacy from '../src/lib/modelPrivacy.ts';
 import * as localModels from '../src/lib/localModelPreferences.ts';
+import * as generation from '../src/lib/generationPreferences.ts';
 import * as artwork from '../src/lib/artworkRules.ts';
 import * as finish from '../src/lib/finishLayout.ts';
 import * as print from '../src/lib/printSettings.ts';
 import * as artworkEnglish from '../src/lib/artworkEnglish.ts';
+import * as canvasText from '../src/lib/canvasText.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const sample = () => manga.parseMangaYaml(read('src/content/sample.omny.yaml'));
@@ -20,7 +22,7 @@ function loadComponent(file, globals = {}) {
   let cursor = 0;
   const state = [];
   const stub = new Proxy({}, { get: (_, key) => key === '__esModule' ? true : String(key) });
-  const storage = new Map();
+  const storage = new Map(globals.initialStorage ?? []);
   const writes = [];
   const window = { localStorage: {
     getItem: key => storage.get(key) ?? null,
@@ -44,10 +46,13 @@ function loadComponent(file, globals = {}) {
     '../lib/finishLayout': finish,
     '../lib/printSettings': print,
     '../lib/artworkEnglish': artworkEnglish,
+    '../lib/canvasText': canvasText,
     '../lib/modelPrivacy': privacy,
     '../lib/localModelPreferences': localModels,
+    '../lib/generationPreferences': generation,
     '../lib/localBridge': globals.localBridge ?? stub,
     '../lib/bubbleFonts': { BUBBLE_FONT_PRESETS: ['アンチック体'] },
+    './FontFamilyPicker': { __esModule: true, default: 'FontFamilyPicker' },
     '../content/standard.omay.yaml?raw': { __esModule: true, default: read('src/content/standard.omay.yaml') },
   };
   const compiled = ts.transpileModule(read(file), { compilerOptions: {
@@ -89,9 +94,9 @@ function settingsProps(document = sample()) {
   return {
     document, onChangeDocument: () => {}, onNotify: () => {},
     showGuides: true, spreadView: false, pageCount: document.manga.pages.length,
-    defaultFont: document.manga.meta.font, bubbleLineWidthMm: 0.3, frameLineWidthMm: 0.6, rowGapMm: 5, columnGapMm: 3,
+    fontFamilies: [{ family: 'I-OTFアンチックStd B', support: 'japanese' }], frameLineWidthMm: 0.6, rowGapMm: 5, columnGapMm: 3, paintCursorMode: 'circle',
     onChangeShowGuides: () => {}, onChangeSpreadView: () => {},
-    onChangeDefaultFont: () => {}, onChangeBubbleLineWidth: () => {}, onChangeFrameLineWidth: () => {},
+    onChangeFrameLineWidth: () => {},
     onChangeRowGap: () => {}, onChangeColumnGap: () => {},
   };
 }
@@ -183,15 +188,15 @@ test('作品情報は基本情報と画風を表示し、編集後も内部形�
   assert.deepEqual(document, before);
 });
 
-test('環境設定は6分類で1枚だけ表示し、各設定の対象と既存操作を保持する', () => {
+test('環境設定はテキスト専用タブを廃止して7分類で1枚だけ表示する', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
   const props = settingsProps();
   let changes = 0;
   props.onChangeDocument = () => { changes++; };
   let tree = component.render(props);
   const tabs = nodes(tree).filter(node => node.props?.role === 'tab');
-  assert.deepEqual(tabs.map(text), ['レイアウト', 'テキスト', '作画方法', '表示', 'モデル設定', 'データ管理']);
-  for (const [index, id] of ['page', 'text', 'artwork', 'display', 'ai', 'data'].entries()) {
+  assert.deepEqual(tabs.map(text), ['レイアウト', '手描き・編集', '生成ルール', 'OMAY', '表示', 'モデル設定', 'データ管理']);
+  for (const [index, id] of ['page', 'drawing', 'generation', 'omay', 'display', 'ai', 'data'].entries()) {
     button(tree, text(tabs[index])).props.onClick();
     tree = component.render(props);
     const selected = nodes(tree).filter(node => node.props?.role === 'tab' && node.props['aria-selected']);
@@ -202,7 +207,7 @@ test('環境設定は6分類で1枚だけ表示し、各設定の対象と既存
     assert.equal(shown[0].props['aria-labelledby'], selected[0].props.id);
     assert.equal(selected[0].props['aria-controls'], shown[0].props.id);
     assert.equal(selected[0].props.tabIndex, 0);
-    assert.equal(nodes(tree).filter(node => node.props?.role === 'tab' && node.props.tabIndex === -1).length, 5);
+    assert.equal(nodes(tree).filter(node => node.props?.role === 'tab' && node.props.tabIndex === -1).length, 6);
   }
   assert.equal(nodes(tree).some(node => node.type === 'Field' && /読み方向|文字方向|テキスト方向/.test(node.props.label)), false);
   assert.equal(nodes(tree).some(node => node.type === 'SectionTitle' && /方向/.test(node.props.title)), false);
@@ -211,33 +216,49 @@ test('環境設定は6分類で1枚だけ表示し、各設定の対象と既存
   assert.equal(props.document.manga.meta.text_orientation, 'vertical');
   assert.equal(nodes(panel(tree, 'display')).filter(node => node.props?.type === 'checkbox').length, 3);
   assert.equal(nodes(panel(tree, 'data')).filter(node => node.props?.type === 'checkbox').length, 0);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 1);
-  const artwork = find(panel(tree, 'artwork'), node => node.props?.onChange === props.onChangeDocument);
-  assert.equal(artwork.props.document, props.document);
-  assert.equal(artwork.props.onNotify, props.onNotify);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 0);
+  for(const [id,section] of [['page','output'],['generation','rules'],['omay','omay']]){
+    const artwork = find(panel(tree, id), node => node.props?.section === section);
+    assert.equal(artwork.props.document, props.document);
+    assert.equal(artwork.props.onNotify, props.onNotify);
+  }
   assert.equal(changes, 0);
   assert.equal(component.writes.length, 0);
 });
 
-test('用紙とコマはレイアウト、書体と全テキスト数値はテキストへ分離し既存の反映先を保つ', () => {
+test('基本書体・出力・コマはレイアウト、生成用テキスト数値は生成ルールへ分離する', () => {
   const document = sample();
   const before = structuredClone(document);
   const calls = [];
+  let changed, fontRequests=0;
   const props = {
     ...settingsProps(document),
-    onChangeDefaultFont: value => calls.push(['font', value]),
-    onChangeBubbleLineWidth: value => calls.push(['bubble', value]),
+    onChangeDocument: value => { changed=value; },
+    onRequestFonts: () => { fontRequests++; },
     onChangeFrameLineWidth: value => calls.push(['frame', value]),
     onChangeRowGap: value => calls.push(['row', value]),
     onChangeColumnGap: value => calls.push(['column', value]),
+    onChangePaintCursorMode: value => calls.push(['cursor', value]),
   };
   const tree = loadComponent('src/components/EnvironmentSettings.tsx').render(props);
   const page = panel(tree, 'page');
-  const textPanel = panel(tree, 'text');
+  const generationPanel = panel(tree, 'generation');
+  const drawingPanel = panel(tree, 'drawing');
   const labels = tree => nodes(tree).filter(node => node.type === 'Field').map(node => node.props.label);
-  assert.deepEqual(labels(page), ['コマ枠線幅', '上下のコマ間隔', '左右のコマ間隔']);
-  assert.deepEqual(labels(textPanel), ['フキダシ線幅', '作品の基本書体']);
-  const textSettings = find(textPanel, node => node.type === 'FinishTextSettings');
+  assert.deepEqual(labels(page), ['作品の基本書体', 'コマ枠線幅', '上下のコマ間隔', '左右のコマ間隔']);
+  assert.deepEqual(labels(drawingPanel), ['ぬりたし', '手ぶれ補正', 'ペンカーソル', '履歴の保持ステップ数']);
+  assert.equal(find(drawingPanel, node => node.props?.role === 'group' && node.props?.['aria-label'] === 'ペンカーソル').type, 'div');
+  button(drawingPanel, '十字').props.onClick();
+  assert.equal(nodes(tree).some(node => node.props?.id === 'environment-panel-text'), false);
+  assert.doesNotMatch(text(tree), /フキダシ線幅|フォントを読み込み/);
+  const fontPicker=find(page,node=>node.type==='FontFamilyPicker');
+  assert.equal(fontPicker.props.value,document.manga.meta.font);
+  assert.deepEqual(fontPicker.props.families,props.fontFamilies);
+  fontPicker.props.onOpen();
+  fontPicker.props.onChange('I-OTFアンチックStd B');
+  assert.equal(fontRequests,1);
+  assert.equal(changed.manga.meta.font,'I-OTFアンチックStd B');
+  const textSettings = find(generationPanel, node => node.type === 'FinishTextSettings');
   assert.equal(textSettings.props.document, document);
   assert.equal(textSettings.props.onChange, props.onChangeDocument);
   assert.equal(textSettings.props.onNotify, props.onNotify);
@@ -250,17 +271,17 @@ test('用紙とコマはレイアウト、書体と全テキスト数値はテ�
   button(finishTree, '変更').props.onClick();
   assert.equal(find(finishComponent.render(finishProps), node => node.type === 'default').props.lockedPageCount, document.manga.pages.length);
   assert.deepEqual(labels(finishComponent.render(finishProps, 'FinishTextSettings')), ['見出しのテキストサイズ（mm）', '作者名のテキストサイズ（mm）', '作者名の下端からの距離（mm）', '強調テキストの倍率・最小', '強調テキストの倍率・最大']);
-  for (const [pane, label, value] of [[textPanel, '作品の基本書体', '明朝体'], [textPanel, 'フキダシ線幅', '0.7'], [page, 'コマ枠線幅', '1.2'], [page, '上下のコマ間隔', '6'], [page, '左右のコマ間隔', '4']]) {
+  for (const [pane, label, value] of [[page, 'コマ枠線幅', '1.2'], [page, '上下のコマ間隔', '6'], [page, '左右のコマ間隔', '4']]) {
     input(field(pane, label)).props.onInput({ currentTarget: { value } });
   }
-  assert.deepEqual(calls, [['font', '明朝体'], ['bubble', 0.7], ['frame', 1.2], ['row', 6], ['column', 4]]);
+  assert.deepEqual(calls, [['cursor', 'crosshair'], ['frame', 1.2], ['row', 6], ['column', 4]]);
   assert.deepEqual(document, before);
 });
 
 test('左右キー・Home・Endは設定タブの選択とフォーカスを移し、作品ショートカットへ伝播しない', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
   const props = settingsProps();
-  for (const [key, expected] of [['ArrowRight', 'text'], ['ArrowRight', 'artwork'], ['End', 'data'], ['ArrowRight', 'page'], ['ArrowLeft', 'data'], ['Home', 'page']]) {
+  for (const [key, expected] of [['ArrowRight', 'drawing'], ['ArrowRight', 'generation'], ['End', 'data'], ['ArrowRight', 'page'], ['ArrowLeft', 'data'], ['Home', 'page']]) {
     const tree = component.render(props);
     let focused, prevented = false, stopped = false;
     find(tree, node => node.props?.role === 'tablist').props.onKeyDown({
@@ -294,14 +315,14 @@ test('表示・モデルの端末設定は作品自体を書き換えない', ()
   display[1].props.onChange({ currentTarget: { checked: false } });
   display[2].props.onChange({ currentTarget: { checked: true } });
   assert.deepEqual(calls, [['editGuide', false], ['guides', false], ['spread', true]]);
-  find(panel(tree, 'ai'), node => node.props?.type === 'checkbox').props.onChange({ currentTarget: { checked: true } });
+  find(panel(tree, 'ai'), node => node.props?.name === 'generation-execution' && node.props.value === 'cloud').props.onChange({ currentTarget: { checked: true } });
   tree = component.render(props);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 2);
-  assert.equal(component.writes.length, 1);
-  assert.equal(JSON.parse(component.writes[0][1]).enabled, true);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 1);
+  assert.equal(component.writes.length, 2);
+  assert.equal(JSON.parse(component.writes.find(([key]) => key === privacy.CLOUD_MODEL_PREFERENCES_KEY)[1]).enabled, true);
 });
 
-test('モデル欄は文章LLMと画像VLMを別々の端末設定として保存する', () => {
+test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存し、不完全な入力で既存設定を失わない', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
   const document = sample();
   const before = structuredClone(document);
@@ -312,52 +333,97 @@ test('モデル欄は文章LLMと画像VLMを別々の端末設定として保�
   assert.equal(input(field(ai, '画像VLM')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.vlmModelId);
   input(field(ai, '文章LLM')).props.onInput({ currentTarget: { value: 'Qwen3.6-35B-A3B-4bit-DWQ' } });
   ai = panel(component.render(props), 'ai');
-  input(field(ai, '文章LLM')).props.onBlur();
-  ai = panel(component.render(props), 'ai');
+  assert.equal(component.writes.length, 1, 'no blur or save button is required');
   input(field(ai, '画像VLM')).props.onInput({ currentTarget: { value: 'local-owner/vision-model-4bit' } });
   ai = panel(component.render(props), 'ai');
-  input(field(ai, '画像VLM')).props.onBlur();
   const saved = JSON.parse(component.writes.at(-1)[1]);
   assert.deepEqual(saved, { llmAlias: 'Qwen3.6-35B-A3B-4bit-DWQ', vlmModelId: 'local-owner/vision-model-4bit', comfyuiUrl: '' });
-  assert.equal(notices.filter(message => /保存しました/.test(message)).length, 2);
+  assert.equal(notices.length, 0, 'typing should not produce save notifications');
+  input(field(ai, '画像VLM')).props.onInput({ currentTarget: { value: 'new-owner/' } });
+  ai = panel(component.render(props), 'ai');
+  assert.equal(input(field(ai, '画像VLM')).props.value, 'new-owner/');
+  assert.equal(component.writes.length, 2);
+  assert.match(text(ai), /直前の有効な設定を保持/);
+  input(field(ai, '画像VLM')).props.onInput({ currentTarget: { value: 'new-owner/new-model' } });
+  ai = panel(component.render(props), 'ai');
+  assert.equal(JSON.parse(component.writes.at(-1)[1]).vlmModelId, 'new-owner/new-model');
+  assert.doesNotMatch(text(ai), /直前の有効な設定を保持/);
   assert.deepEqual(document, before);
 });
 
-test('作画方法は二択のradioで、内部ルールは非表示、モード変更で原本や仕上がりを失わない', () => {
+test('クラウドとローカルは選択した設定だけを表示し、各利用方法を自動保存する', () => {
+  const component = loadComponent('src/components/EnvironmentSettings.tsx');
+  const props = settingsProps();
+  props.onChangeDocument = () => assert.fail('generation preferences are device-local');
+  const choose = (name, value) => {
+    find(panel(component.render(props), 'ai'), node => node.props?.name === name && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
+  };
+  let ai = panel(component.render(props), 'ai');
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'クラウドモデル設定'), false);
+  assert.equal(nodes(ai).filter(node => node.props?.name === 'generation-execution' && node.props.checked).length, 1);
+  choose('generation-execution', 'cloud');
+  ai = panel(component.render(props), 'ai');
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'ローカルモデル設定'), false);
+  assert.equal(nodes(ai).some(node => node.type === 'Field' && node.props.label === '文章LLM'), false);
+  assert.equal(find(ai, node => node.props?.['aria-label'] === 'クラウドエージェント').props.value, 'codex');
+  choose('cloud-generation-method', 'api');
+  ai = panel(component.render(props), 'ai');
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'クラウドエージェント'), false);
+  input(field(ai, 'API接続先')).props.onInput({ currentTarget: { value: 'https://images.example.test/v1' } });
+  ai = panel(component.render(props), 'ai');
+  input(field(ai, 'APIモデル')).props.onInput({ currentTarget: { value: 'image-v1' } });
+  choose('generation-execution', 'local');
+  ai = panel(component.render(props), 'ai');
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'クラウドモデル設定'), false);
+  choose('generation-execution', 'cloud');
+  ai = panel(component.render(props), 'ai');
+  assert.equal(input(field(ai, 'API接続先')).props.value, 'https://images.example.test/v1');
+  assert.equal(input(field(ai, 'APIモデル')).props.value, 'image-v1');
+  const saved = JSON.parse(component.writes.filter(([key]) => key === generation.GENERATION_PREFERENCES_STORAGE_KEY).at(-1)[1]);
+  assert.equal(saved.cloud.method, 'api');
+  assert.equal(saved.cloud.apiModel, 'image-v1');
+  assert.equal(saved.execution, 'cloud');
+  assert.equal(nodes(ai).some(node => node.type === 'button' && /保存/.test(text(node))), false);
+  choose('cloud-generation-method', 'agent');
+  ai = panel(component.render(props), 'ai');
+  find(ai, node => node.props?.['aria-label'] === 'クラウドエージェント').props.onChange({ currentTarget: { value: 'other' } });
+  ai = panel(component.render(props), 'ai');
+  input(field(ai, 'エージェント名')).props.onInput({ currentTarget: { value: 'Example agent' } });
+  const agent = JSON.parse(component.writes.at(-1)[1]);
+  assert.equal(agent.cloud.agent, 'other');
+  assert.equal(agent.cloud.agentName, 'Example agent');
+  const reloaded = loadComponent('src/components/EnvironmentSettings.tsx', { initialStorage: component.writes });
+  const restored = panel(reloaded.render(props), 'ai');
+  assert.equal(find(restored, node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'cloud');
+  assert.equal(find(restored, node => node.props?.name === 'cloud-generation-method' && node.props.checked).props.value, 'agent');
+  assert.equal(input(field(restored, 'エージェント名')).props.value, 'Example agent');
+  assert.equal(reloaded.writes.length, 0, 'restoring settings must not write or run a model');
+});
+
+test('保存失敗は設定画面へ表示し、保存成功として通知しない', () => {
+  const component = loadComponent('src/components/EnvironmentSettings.tsx', { window: { localStorage: { getItem: () => null, setItem: () => { throw new Error('Storage unavailable'); } } } });
+  const props = { ...settingsProps(), onNotify: () => assert.fail('no success notification') };
+  const ai = panel(component.render(props), 'ai');
+  find(ai, node => node.props?.name === 'generation-execution' && node.props.value === 'cloud').props.onChange({ currentTarget: { checked: true } });
+  assert.match(text(panel(component.render(props), 'ai')), /設定を保存できませんでした/);
+});
+
+test('作画方法の旧radioは表示せず、既存モードと原本や仕上がりを保持する', () => {
   const component = loadComponent('src/components/ArtworkSettings.tsx');
   const document = sample();
   const before = structuredClone(document);
   let changed;
   const props = { document, onChange: value => { changed = value; }, onNotify: () => {} };
-  let tree = component.render(props);
+  const tree = component.render(props);
   assert.equal(changed, undefined);
   assert.equal(nodes(tree).some(node => node.type === 'TextListEditor' || node.type === 'textarea'), false);
   assert.equal(nodes(tree).some(node => node.props?.['aria-label'] === '削除'), false);
   assert.doesNotMatch(text(tree), /\[const\]|layout_spec|置き換え|初期設定に戻す/);
   assert.doesNotMatch(text(tree), /出力形式に合わせた仕上げ|人物の演技と背景の指示を分ける|一体型専用/);
-  const radios = nodes(tree).filter(node => node.props?.type === 'radio');
-  assert.deepEqual(radios.map(node => [node.props.name, node.props.value, node.props.checked]), [['artwork-generation-mode', 'integrated', true], ['artwork-generation-mode', 'draft', false]]);
-  const originalSettings = artwork.getArtworkSettings(document.manga);
-  radios[1].props.onChange({ currentTarget: { checked: true } });
-  tree = component.render({ ...props, document: changed });
-  assert.equal(changed.manga.artwork_settings.mode, 'draft');
-  assert.deepEqual(changed.manga.artwork_settings.fragments, originalSettings.fragments);
-  assert.deepEqual(changed.manga.artwork_settings.groups, originalSettings.groups);
-  assert.equal(nodes(tree).some(node => node.type === 'Field' && node.props.label === '詳細背景の上限（コマ／ページ）'), false);
-  const textTree = loadComponent('src/components/FinishLayoutSettings.tsx').render({ ...props, document: changed }, 'FinishTextSettings');
-  assert.equal(input(field(textTree, '見出しのテキストサイズ（mm）')).props.value, 5);
-  assert.notEqual(input(field(textTree, '見出しのテキストサイズ（mm）')).props.disabled, true);
-  nodes(tree).find(node => node.props?.type === 'radio' && node.props.value === 'integrated').props.onChange({ currentTarget: { checked: true } });
-  assert.deepEqual(changed.manga.meta.style_notes, before.manga.meta.style_notes);
-  assert.equal(changed.manga.layout_spec, before.manga.layout_spec);
-  const strip = doc => {
-    const copy = structuredClone(doc);
-    delete copy.manga.artwork_settings;
-    delete copy.manga.meta.style_notes;
-    delete copy.manga.layout_spec;
-    return copy;
-  };
-  assert.deepEqual(strip(changed), strip(before));
+  assert.equal(nodes(tree).filter(node => node.props?.type === 'radio').length, 0);
+  assert.doesNotMatch(text(tree), /下書きを生成する|一体型で生成する/);
+  assert.match(text(tree), /ページ全体・コマ・人物.*キャンバスの右クリック/);
+  assert.equal(changed, undefined);
   assert.deepEqual(document, before);
 });
 
@@ -400,7 +466,7 @@ test('用紙設定を編集画面へ反映し、下書き中も文字サイズ�
   assert.equal(event.currentTarget.value, '600');
 });
 
-test('完成原稿専用の追加候補は下書き中の反映を装わず、チェック状態を保持する', () => {
+test('旧draft作品でもすべての作画候補と数値を編集でき、保存済みmodeを保持する', () => {
   const component = loadComponent('src/components/ArtworkSettings.tsx');
   const document = sample();
   const settings = artwork.appendArtworkSettings(artwork.getArtworkSettings(document.manga), artwork.artworkSettingsFromSource({ style_notes: ['独自のルール'], layout_spec: '' }), '独自');
@@ -408,14 +474,58 @@ test('完成原稿専用の追加候補は下書き中の反映を装わず、�
   settings.mode = 'draft';
   artwork.applyArtworkSettings(document.manga, settings);
   let changed;
-  const tree = component.render({ document, onChange: next => { changed = next; }, onNotify: () => {} });
+  const props = { document, onChange: next => { changed = next; }, onNotify: () => {} };
+  const tree = component.render(props);
   const row = find(tree, node => node.type === 'label' && text(node).includes('独自：'));
-  assert.match(text(row), /完成原稿でのみ反映/);
+  assert.match(text(row), /反映する/);
+  assert.doesNotMatch(text(row), /完成原稿でのみ反映/);
   assert.equal(input(row).props.checked, true);
-  assert.equal(input(row).props.disabled, true);
-  nodes(tree).find(node => node.props?.type === 'radio' && node.props.value === 'integrated').props.onChange({ currentTarget: { checked: true } });
+  assert.notEqual(input(row).props.disabled, true);
+  assert.equal(changed, undefined);
+  input(row).props.onChange({ currentTarget: { checked: false } });
+  assert.equal(changed.manga.artwork_settings.groups.at(-1).enabled, false);
+  assert.equal(changed.manga.artwork_settings.mode, 'draft');
+  const nextTree = component.render({ ...props, document: changed });
+  input(find(nextTree, node => node.type === 'label' && text(node).includes('独自：'))).props.onChange({ currentTarget: { checked: true } });
+  assert.equal(changed.manga.artwork_settings.mode, 'draft');
   assert.ok(changed.manga.meta.style_notes.includes('独自のルール'));
-  assert.equal(changed.manga.artwork_settings.groups.at(-1).enabled, true);
+  assert.doesNotMatch(changed.manga.layout_spec, /手描き仕上げ用の下書き/);
+  const backgrounds = input(field(nextTree, '詳細背景の上限（コマ／ページ）'));
+  backgrounds.props.onChange({ currentTarget: { value: '3' } });
+  assert.equal(changed.manga.artwork_settings.mode, 'draft');
+  assert.equal(input(field(component.render({ ...props, document: changed }), '詳細背景の上限（コマ／ページ）')).props.value, 3);
+  assert.equal(document.manga.artwork_settings.groups.at(-1).enabled, true);
+  assert.equal(document.manga.artwork_settings.mode, 'draft');
+});
+
+test('旧draft作品の生成用はintegratedで書き出し、控えと編集原本のmodeやOFF項目を保持する', async () => {
+  const document = sample();
+  const settings = artwork.getArtworkSettings(document.manga);
+  settings.mode = 'draft';
+  settings.groups.push({ id: 'export-regression', label: 'export regression', scope: 'integrated', enabled: true });
+  settings.fragments.push({ groupId: 'export-regression', kind: 'style', text: 'UNIQUE_INTEGRATED_EXPORT_RULE' });
+  settings.groups.push({ id: 'disabled-regression', label: 'disabled regression', scope: 'integrated', enabled: false });
+  settings.fragments.push({ groupId: 'disabled-regression', kind: 'style', text: 'UNIQUE_ARCHIVE_ONLY_RULE' });
+  artwork.applyArtworkSettings(document.manga, settings);
+  const before = structuredClone(document), blobs = [], downloads = [];
+  const component = loadComponent('src/components/ArtworkSettings.tsx', {
+    URL: { createObjectURL: blob => { blobs.push(blob); return 'blob:fixture'; }, revokeObjectURL: () => {} },
+    window: { document: { createElement: () => ({ href: '', download: '', click() { downloads.push(this.download); } }) } },
+  });
+  const tree = component.render({ document, onChange: () => assert.fail('export must not mutate the document'), onNotify: () => {} });
+  button(tree, '生成用を書き出す').props.onClick();
+  button(tree, '作画設定の控えを書き出す').props.onClick();
+  const generated = await blobs[0].text(), archived = await blobs[1].text();
+  assert.match(generated, /generation_mode: integrated/);
+  assert.match(generated, /UNIQUE_INTEGRATED_EXPORT_RULE/);
+  assert.doesNotMatch(generated, /UNIQUE_ARCHIVE_ONLY_RULE|hand-drawn|draft images|手描き仕上げ用の下書き/);
+  assert.match(downloads[0], /\.integrated\.omay\.yaml$/);
+  assert.match(downloads[1], /\.settings\.omay\.yaml$/);
+  const restored = manga.parseOmayYaml(archived).artwork_settings;
+  assert.equal(restored.mode, 'draft');
+  assert.equal(restored.groups.find(group => group.id === 'disabled-regression').enabled, false);
+  assert.ok(restored.fragments.some(fragment => fragment.text === 'UNIQUE_ARCHIVE_ONLY_RULE'));
+  assert.deepEqual(document, before);
 });
 
 test('ファイルと標準設定はOFFの候補を追加し、現在のルール・NDM・本文を上書きしない', async () => {
@@ -477,7 +587,7 @@ test('startup settings expose general preferences without an editable placeholde
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
   const props = { ...settingsProps(), hasDocument: false };
   let tree = component.render(props);
-  assert.deepEqual(nodes(tree).filter(node => node.props?.role === 'tab').map(text), ['作画方法', '表示', 'モデル設定', 'データ管理']);
+  assert.deepEqual(nodes(tree).filter(node => node.props?.role === 'tab').map(text), ['手描き・編集', '表示', 'モデル設定', 'データ管理']);
   assert.equal(panel(tree, 'display').props.hidden, false);
   assert.equal(nodes(tree).some(node => ['ArtworkSettings', 'FinishLayoutSettings', 'FinishTextSettings'].includes(node.type)), false);
   const data = panel(tree, 'data');
@@ -489,8 +599,8 @@ test('startup settings expose general preferences without an editable placeholde
     currentTarget: { querySelector: selector => ({ focus: () => { focused = selector; } }) },
   });
   tree = component.render(props);
-  assert.equal(focused, '#environment-tab-artwork');
-  assert.equal(panel(tree, 'artwork').props.hidden, false);
+  assert.equal(focused, '#environment-tab-drawing');
+  assert.equal(panel(tree, 'drawing').props.hidden, false);
 });
 
 test('OMNY export is available for an opened project and disabled while busy', () => {

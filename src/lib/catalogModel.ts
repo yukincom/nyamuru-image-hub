@@ -335,7 +335,7 @@ export function toOmnyCatalogDocument(
   const next = structuredClone(source);
   delete next.manga.image_assets;
   if(!options.includeSeriesImages)delete next.manga.background_stages;
-  next.manga.pages.forEach(page => { delete page.images; });
+  next.manga.pages.forEach(page => { delete page.images;delete page.layer; });
   synchronizeCatalogReferences(next);
   const charactersById = new Map(next.manga.characters.map((character) => [character.localId, character]));
   next.manga.materials.forEach((material) => {
@@ -360,10 +360,11 @@ export function toOmnyCatalogDocument(
         if (!options.includeSeriesImages && figure.human_pose?.scene) delete figure.human_pose.scene.background;
         if(figure.bbox&&figure.artwork?.paint)figure.bbox=paintReferenceBox(figure.artwork.paint,figure.bbox,figure.artwork.crop);
         delete figure.artwork;
+        delete figure.locked;
       });
       owner.bubbles?.forEach((bubble) => {
         if(bubble.bbox&&bubble.paint_overlay?.paint)bubble.bbox=paintReferenceBox(bubble.paint_overlay.paint,bubble.bbox,bubble.paint_overlay.crop);
-        delete bubble.speakerId; delete bubble.paint_overlay;
+        delete bubble.speakerId; delete bubble.paint_overlay;delete bubble.locked;
       });
     };
     page.panels.forEach((panel) => {
@@ -371,6 +372,7 @@ export function toOmnyCatalogDocument(
       delete panel.assetIds;
       delete panel.images;
       delete panel.background_images;
+      delete panel.layer;
     });
     if (page.page_overlay) exportOwner(page.page_overlay);
   });

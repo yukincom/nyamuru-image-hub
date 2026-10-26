@@ -1,5 +1,6 @@
-import type { PaintLayer, PaintPoint, PaintStroke } from '../types.ts';
-import type { PaintScene } from './paintDocument.ts';
+import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
+import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newPaintLayer,type PaintOwner,type PaintScene} from './paintDocument.ts';
+import {paintOwnerLocked} from './paintLock.ts';
 import type { PaintSmoother } from './paintStroke.ts';
 
 export interface PendingPaintStroke {
@@ -9,28 +10,103 @@ export interface PendingPaintStroke {
   target?: 'mask'|'generationMask';
   /** Insert with the first stroke, so a quick mark on cropped art is one undo step. */
   addedLayer?: PaintLayer;
+  /** Pointerdown coordinates; another completed mark may have grown the owner. */
+  space?: {frame:BBox;width:number;height:number};
+  /** Gesture-only ink extent, updated from new samples; never persisted. */
+  bounds?: BBox;
+}
+
+/** Pen samples append; two-point shapes replace their endpoint and recompute. */
+export function paintStrokeBounds(stroke:PaintStroke,previous?:BBox,from=0):BBox|undefined {
+  if(stroke.tool==='eraser'||stroke.tool==='clear')return;
+  let left=previous?.x??Infinity,top=previous?.y??Infinity,right=previous?previous.x+previous.w:-Infinity,bottom=previous?previous.y+previous.h:-Infinity;
+  const include=(x:number,y:number,w=0,h=0,margin=0)=>{left=Math.min(left,x-margin);top=Math.min(top,y-margin);right=Math.max(right,x+w+margin);bottom=Math.max(bottom,y+h+margin);};
+  if(stroke.selection){for(const box of stroke.selection)include(box.x,box.y,box.w,box.h);}
+  else for(let i=from;i<stroke.points.length;i++){const p=stroke.points[i];include(p.x,p.y,0,0,stroke.size/2+2);}
+  return left===Infinity?undefined:{x:left,y:top,w:right-left,h:bottom-top};
+}
+
+function strokeTransform(pending:PendingPaintStroke,owner:PaintOwner){
+  if(!pending.space)return;
+  const {frame,width,height}=pending.space;
+  const rawX=frame.w/width*owner.paint.width/owner.frame.w,rawY=frame.h/height*owner.paint.height/owner.frame.h;
+  const sx=Math.abs(rawX-1)<1e-10?1:rawX,sy=Math.abs(rawY-1)<1e-10?1:rawY;
+  const dx=(frame.x-owner.frame.x)*owner.paint.width/owner.frame.w,dy=(frame.y-owner.frame.y)*owner.paint.height/owner.frame.h;
+  return Math.abs(sx-1)>1e-10||Math.abs(sy-1)>1e-10||Math.abs(dx)>1e-10||Math.abs(dy)>1e-10?{sx,sy,dx,dy}:undefined;
+}
+function strokeInOwner(pending:PendingPaintStroke,owner:PaintOwner):PaintStroke {
+  const t=strokeTransform(pending,owner);if(!t)return pending.stroke;
+  const {sx,sy,dx,dy}=t,stroke=pending.stroke;
+  return {...stroke,size:stroke.size*Math.sqrt(sx*sy),points:stroke.points.map(p=>({...p,x:p.x*sx+dx,y:p.y*sy+dy})),
+    ...(stroke.selection?{selection:stroke.selection.map(b=>({x:b.x*sx+dx,y:b.y*sy+dy,w:b.w*sx,h:b.h*sy}))}:{})};
+}
+function strokeBoundsInOwner(pending:PendingPaintStroke,owner:PaintOwner):BBox|undefined {
+  const b=pending.bounds??paintStrokeBounds(pending.stroke);if(!b)return;
+  const t=strokeTransform(pending,owner);return t?{x:b.x*t.sx+t.dx,y:b.y*t.sy+t.dy,w:b.w*t.sx,h:b.h*t.sy}:b;
+}
+
+export interface PaintStrokePreview {source:PaintScene;owner:PaintOwner;scene:PaintScene;live:PendingPaintStroke;}
+/** Keep retained ink separate from the live mark so the renderer cache stays valid. */
+export function previewPaintStroke(source:PaintScene,pending:PendingPaintStroke,previous?:PaintStrokePreview):PaintStrokePreview|undefined {
+  const original=source.owners.find(owner=>owner.key===pending.ownerKey);if(!original)return;
+  const owner=previous?.source===source&&previous.owner.key===original.key?previous.owner:original;
+  const expanded=expandPaintOwnerToBounds(owner,strokeBoundsInOwner(pending,owner));
+  const scene=expanded===original?source:previous?.owner===expanded?previous.scene:{...source,owners:source.owners.map(item=>item===original?expanded:item)};
+  return {source,owner:expanded,scene,live:{...pending,stroke:strokeInOwner(pending,expanded)}};
+}
+
+/** Guides/source locks are preserved; actual marks may go in a new sibling layer. */
+export function paintMarkNeedsLayer(layer:PaintLayer|undefined,kind:PaintLayer['kind']):boolean {
+  return !layer||Boolean(layer.guide)||Boolean(layer.locked&&layer.image)||layer.kind!==kind||Boolean(layer.clip);
+}
+export function canStartPaintMark(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind']):boolean {
+  return !paintOwnerLocked(owner)&&owner.bubble?.hidden!==true
+    &&(!layer||Boolean(layer.guide)||layer.visible&&(!layer.locked||Boolean(layer.image)))
+    &&(!paintMarkNeedsLayer(layer,kind)||owner.paint.layers.length<64);
+}
+export function preparePaintMarkLayer(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind'],colorMode:PaintColorMode='color'):PaintLayer|undefined {
+  if(!canStartPaintMark(owner,layer,kind))return;
+  return paintMarkNeedsLayer(layer,kind)?newPaintLayer(kind==='vector'?`ベクター ${owner.paint.layers.length+1}`:'レイヤー',kind,colorMode):layer;
+}
+
+/** Preview and commit use the same paths; a draft layer is not saved until it has a path. */
+export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;layerId:string;paths:VectorPath[];addedLayer?:PaintLayer}):PaintScene {
+  const owner=scene.owners.find(o=>o.key===pending.ownerKey);
+  if(!owner||paintOwnerLocked(owner))return scene;
+  const layers=[...owner.paint.layers];let index=layers.findIndex(layer=>layer.id===pending.layerId);
+  if(index<0){if(!pending.addedLayer||!pending.paths.length||layers.length>=64)return scene;index=layers.length;layers.push(pending.addedLayer);}
+  const layer=layers[index];if(layer.locked||!layer.visible||layer.kind!=='vector')return scene;
+  // A source composition crop is not an editing frame. Keep authored crops;
+  // new marks on cropped content already use an unrestricted sibling layer.
+  const previous=new Map((layer.paths??[]).map(path=>[path.id,path]));
+  const changed:VectorPath[]=[];
+  const paths=pending.paths.map(path=>{if(previous.get(path.id)===path)return path;const next=structuredClone(path);changed.push(next);return next;});
+  layers[index]={...layer,paths};
+  return {...scene,owners:scene.owners.map(o=>o===owner?expandPaintOwnerToContent({...o,paint:{...o.paint,layers}},[{...layer,image:undefined,strokes:[],paths:changed}]):o)};
 }
 
 /** Append to the latest scene, never to the scene captured by pointerdown/render. */
 export function commitPaintStroke(scene: PaintScene, pending: PendingPaintStroke): PaintScene {
   const owner=scene.owners.find(o=>o.key===pending.ownerKey);
-  if(!owner)return scene;
+  if(!owner||paintOwnerLocked(owner))return scene;
   const layers=[...owner.paint.layers];
   let index=layers.findIndex(layer=>layer.id===pending.layerId);
   if(index<0){
-    if(!pending.addedLayer||layers.length>=64)return scene;
+    if(!pending.addedLayer||pending.target||['eraser','clear'].includes(pending.stroke.tool)||layers.length>=64)return scene;
     index=layers.length;layers.push(pending.addedLayer);
   }
   const layer=layers[index];
   if(layer.locked||!layer.visible)return scene;
+  const transformed=strokeInOwner(pending,owner),stroke=transformed===pending.stroke?structuredClone(transformed):transformed;
   if(pending.target==='generationMask'){
     if(!layer.generationMask?.enabled)return scene;
-    layers[index]={...layer,generationMask:{...layer.generationMask,strokes:[...layer.generationMask.strokes,structuredClone(pending.stroke)]}};
+    layers[index]={...layer,generationMask:{...layer.generationMask,strokes:[...layer.generationMask.strokes,stroke]}};
   }else if(pending.target==='mask'){
     if(!layer.mask?.enabled)return scene;
-    layers[index]={...layer,mask:{...layer.mask,strokes:[...layer.mask.strokes,structuredClone(pending.stroke)]}};
-  }else layers[index]={...layer,strokes:[...layer.strokes,structuredClone(pending.stroke)]};
-  return {...scene,owners:scene.owners.map(o=>o===owner?{...owner,paint:{...owner.paint,layers}}:o)};
+    layers[index]={...layer,mask:{...layer.mask,strokes:[...layer.mask.strokes,stroke]}};
+  }else layers[index]={...layer,strokes:[...layer.strokes,stroke]};
+  // Existing content is already inside the backing canvas; inspect only this mark.
+  return {...scene,owners:scene.owners.map(o=>o===owner?expandPaintOwnerToBounds({...owner,paint:{...owner.paint,layers}},strokeBoundsInOwner(pending,owner)):o)};
 }
 
 export interface PaintSampleEvent {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing, loadPaintCursor, savePaintCursor } from '../src/lib/paintPreferences.ts';
+import { loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing, loadPaintCursor, savePaintCursor, loadVectorEraseMode, saveVectorEraseMode } from '../src/lib/paintPreferences.ts';
 
 test('paint margin survives preference reload and zero is distinct from absence',()=>{
  const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
@@ -25,4 +25,15 @@ test('cursor choice survives reload independently of smoothing and tolerates una
  savePaintCursor(storage,'circle');assert.equal(loadPaintCursor(storage),'circle');assert.equal(loadPaintSmoothing(storage),7);
  assert.equal(loadPaintCursor({getItem:()=>{throw Error('Unavailable');}}),'circle');
  assert.equal(loadPaintCursor({getItem:()=>'{broken'}),'circle');
+});
+
+test('vector eraser defaults to intersections and keeps an explicit choice',()=>{
+ const data=new Map(),storage={getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};
+ assert.equal(loadVectorEraseMode(storage),'intersection');
+ for(const mode of ['touch','whole','intersection']){
+  assert.equal(saveVectorEraseMode(storage,mode),mode);assert.equal(loadVectorEraseMode(storage),mode);
+ }
+ assert.equal(loadVectorEraseMode({getItem:()=> 'unknown'}),'intersection');
+ assert.equal(loadVectorEraseMode({getItem:()=>{throw Error('Unavailable');}}),'intersection');
+ assert.throws(()=>saveVectorEraseMode(storage,'segment'));
 });

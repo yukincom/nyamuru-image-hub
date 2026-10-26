@@ -10,10 +10,20 @@ import { applyPaintColor, paintColorInk } from './paintColor.ts';
 
 export type PaintImages = Map<string, HTMLImageElement>;
 export async function decodePaintImage(blob: Blob): Promise<HTMLImageElement> {
-  const url = URL.createObjectURL(blob);
+  const head=new Uint8Array(await blob.slice(0,12).arrayBuffer());
+  const png=[137,80,78,71,13,10,26,10].every((value,index)=>head[index]===value);
+  const jpeg=head[0]===255&&head[1]===216&&head[2]===255;
+  const mediaType=png?'image/png':jpeg?'image/jpeg':blob.type;
+  const source=mediaType&&blob.type!==mediaType?blob.slice(0,blob.size,mediaType):blob;
+  const url = URL.createObjectURL(source);
   try {
-    const image = new Image(); image.src = url;
-    await image.decode();
+    const image = new Image();
+    await new Promise<void>((resolve,reject)=>{
+      image.onload=()=>resolve();
+      image.onerror=()=>reject(new Error('画像を読み込めませんでした'));
+      image.src=url;
+    });
+    if(!image.naturalWidth||!image.naturalHeight)throw new Error('画像の大きさを読み込めませんでした');
     return image;
   } finally { URL.revokeObjectURL(url); }
 }
@@ -22,11 +32,25 @@ export async function loadPaintImages(documents: PaintDocument[], assets: ImageA
   try {
     for (const id of new Set(documents.flatMap(paintAssetIds))) {
       const asset = assets.find(asset=>asset.id===id), blob = pending.get(id) ?? (asset && await loadFigureCropAsset(asset.storageId));
-      if (!blob) throw new Error('元画像を読み込めません。作品フォルダから開き直してください');
-      images.set(id,await decodePaintImage(blob));
+      const label=asset?.originalName||id;
+      if (!blob) throw new Error(`元画像「${label}」が保存先にありません。作品フォルダから開き直してください`);
+      if(asset&&blob.size!==asset.byteLength)throw new Error(`元画像「${label}」の保存データが壊れています（記録 ${asset.byteLength} bytes／実体 ${blob.size} bytes）。原画像を差し替えてください`);
+      try{images.set(id,await decodePaintImage(blob));}
+      catch{throw new Error(`元画像「${label}」を画像としてデコードできません。原画像を差し替えてください`);}
     }
     return images;
   } catch (error) { images.forEach(image=>{image.src='';}); throw error; }
+}
+
+/** Layer-tree thumbnails are diagnostic previews: one stale asset must not hide unrelated rows. */
+export async function loadPaintImagesBestEffort(documents: PaintDocument[], assets: ImageAsset[], pending:ReadonlyMap<string,Blob>=new Map()): Promise<PaintImages> {
+  const images:PaintImages=new Map();
+  for(const id of new Set(documents.flatMap(paintAssetIds))){
+    const asset=assets.find(item=>item.id===id),blob=pending.get(id)??(asset&&await loadFigureCropAsset(asset.storageId));
+    if(!blob||asset&&blob.size!==asset.byteLength)continue;
+    try{images.set(id,await decodePaintImage(blob));}catch{/* The affected thumbnail stays blank. */}
+  }
+  return images;
 }
 export function drawPaintStroke(ctx: CanvasRenderingContext2D, stroke: PaintStroke): void {
   const points = stroke.points;

@@ -1,10 +1,10 @@
-.figure-size-picker { min-width: 0; }
+.figure-size-picker { min-width: 0; container-type: inline-size; }
 .figure-size-trigger {
-  display: flex; align-items: center; gap: 7px; width: 100%; min-height: 36px; padding: 5px 9px;
+  display: flex; align-items: center; gap: 7px; width: 100%; height: 36px; min-height: 36px; max-height: 36px; padding: 5px 9px;
   border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: #566039; text-align: left;
 }
 .figure-size-trigger:hover { border-color: var(--accent); background: var(--control-hover); }
-.figure-size-trigger > span { flex: 1; font-size: 13px; }
+.figure-size-trigger > span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 13px; }
 .figure-size-trigger > .figure-cut-illustration { width: 25px; height: 25px; flex: none; mix-blend-mode: multiply; }
 .figure-size-popover {
   --cut-green: #566039; --cut-light: #939b7a;
@@ -50,6 +50,10 @@
 .figure-size-confirm { border: 1px solid var(--cut-green); background: var(--cut-green); color: #fff; }
 .figure-size-confirm:hover { background: #414a29; }
 .figure-size-footer button:focus-visible { outline: 2px solid #78834f; outline-offset: 2px; }
+@container (max-width: 132px) {
+  .figure-size-trigger { justify-content: center; gap: 0; padding-inline: 5px; }
+  .figure-size-trigger > span, .figure-size-trigger > svg:last-child { display: none; }
+}
 @media (max-width: 420px) {
   .figure-size-popover { padding: 12px; }
   .figure-size-diagrams, .figure-size-options { column-gap: 7px; }

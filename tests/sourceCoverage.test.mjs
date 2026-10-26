@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import {
   buildSourceCoverageReport,
   canonicalizeSourceText,
@@ -9,6 +11,20 @@ import {
   extractSourceUnits,
   MAX_CANDIDATES_PER_UNIT,
 } from '../src/lib/sourceCoverage.ts';
+
+test('coverage derives its YAML only when creating a report and retains the YAML revision contract',async()=>{
+  const sourceText=await readFile(new URL('../src/components/SourceCoverageReview.tsx',import.meta.url),'utf8');
+  const ast=ts.createSourceFile('SourceCoverageReview.tsx',sourceText,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let effect;
+  function visit(node){if(ts.isCallExpression(node)&&node.expression.getText(ast)==='useEffect'&&node.arguments[0].getText(ast).includes('buildSourceCoverageReport'))effect=node.arguments[0].getText(ast);ts.forEachChild(node,visit);}
+  visit(ast);assert.ok(effect);
+  let reads=0,currentYaml='最新の清書OMNY';const requests=[];
+  const context={source:{text:'原文'},document:{manga:{}},decisions:[],setReport:()=>{},setError:()=>{},
+    getOmnySnapshot:()=>{reads++;return currentYaml;},buildSourceCoverageReport:async(source,document,options)=>{requests.push({source,document,options});return {};}};
+  const run=runInNewContext(ts.transpileModule(`(${effect})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  assert.equal(reads,0);const cleanup=run();await Promise.resolve();assert.equal(reads,1);assert.equal(requests[0].options.omnyYaml,currentYaml);cleanup();
+  currentYaml='さらに編集した清書OMNY';run();await Promise.resolve();assert.equal(reads,2);assert.equal(requests[1].options.omnyYaml,currentYaml);
+});
 
 function makeDocument() {
   return {

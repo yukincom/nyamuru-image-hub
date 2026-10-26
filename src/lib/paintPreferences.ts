@@ -46,3 +46,16 @@ export function loadPaintCursor(storage?:Pick<Storage,'getItem'>):PaintCursorMod
 export function savePaintCursor(storage:Pick<Storage,'setItem'>,mode:PaintCursorMode):void {
   storage.setItem(CURSOR_KEY,mode);
 }
+
+export type VectorErasePreference='touch'|'intersection'|'whole';
+const VECTOR_ERASE_KEY='nyamuru.vector-erase-mode.v1';
+export function loadVectorEraseMode(storage?:Pick<Storage,'getItem'>):VectorErasePreference {
+  try {
+    const mode=storage?.getItem(VECTOR_ERASE_KEY);
+    return mode==='touch'||mode==='whole'||mode==='intersection'?mode:'intersection';
+  } catch { return 'intersection'; }
+}
+export function saveVectorEraseMode(storage:Pick<Storage,'setItem'>,mode:VectorErasePreference):VectorErasePreference {
+  if(mode!=='touch'&&mode!=='intersection'&&mode!=='whole')throw new Error('ベクター消去方法が不正です');
+  storage.setItem(VECTOR_ERASE_KEY,mode);return mode;
+}

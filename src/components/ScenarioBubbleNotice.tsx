@@ -1,41 +1,35 @@
-import { Check, ClipboardCheck } from 'lucide-preact';
 import { useState } from 'preact/hooks';
 import type { Bubble, Manga } from '../types.ts';
-import { availableScenarioCandidates, type ScenarioBubbleLocation } from '../lib/scenario.ts';
+import { availableScenarioCandidates, scenarioBubbleNeedsReview, type ScenarioBubbleLocation } from '../lib/scenario.ts';
 import '../styles/scenario.css';
 
 export interface ScenarioBubbleChoiceProps {
   onScenarioChoice: (location: ScenarioBubbleLocation, sourceIds: readonly string[] | null) => void;
 }
 
-export default function ScenarioBubbleNotice({ manga, bubble, location, onScenarioChoice, onOpen }: ScenarioBubbleChoiceProps & {
+export default function ScenarioBubbleNotice({ manga, bubble, location, onScenarioChoice }: ScenarioBubbleChoiceProps & {
   manga: Manga;
   bubble: Bubble;
   location: ScenarioBubbleLocation;
-  onOpen?: () => void;
 }) {
   const [error, setError] = useState('');
+  if (!scenarioBubbleNeedsReview(bubble)) return null;
   const candidates = availableScenarioCandidates({ manga }, location);
-  const pending = !bubble.scenarioMatch || bubble.scenarioMatch.status === 'review';
   const choose = (ids: readonly string[] | null) => {
     try { onScenarioChoice(location, ids); setError(''); }
     catch (caught) { setError(caught instanceof Error ? caught.message : '候補を選び直してください。'); }
   };
-  const choices = <>
+  return <div class="scenario-inline" onClick={event => event.stopPropagation()}>
+    <strong>テキストネームの候補</strong>
     {candidates.length > 0 && <div class="scenario-candidates" aria-label={`吹き出し${location.bubbleIndex + 1}のシナリオ候補`}>
-      {candidates.map(candidate => <button type="button" class="scenario-candidate" key={candidate.dialogues.map(d => d.id).join('|')} onClick={() => choose(candidate.dialogues.map(d => d.id))}>
-        <span><Check size={14} /><strong>{candidate.dialogues[0].speaker}</strong><small>一致 {Math.round(candidate.score * 100)}％{candidate.dialogues.length > 1 ? ` · ${candidate.dialogues.length}つをまとめる` : ''}</small></span>
-        <span class="scenario-prose">{candidate.dialogues.map(d => d.text).join('\n')}</span>
-      </button>)}
+      {candidates.map(candidate => <div class="scenario-candidate" key={candidate.dialogues.map(d => d.id).join('|')}>
+        <div class="scenario-candidate-body"><span><strong>{candidate.dialogues[0].speaker}</strong><small>{candidate.neighborScore ? '前後の吹き出しから推定 · ' : candidate.contextScore ? '前後コマから推定 · ' : ''}文字一致 {Math.round(candidate.score * 100)}％{candidate.dialogues.length > 1 ? ` · ${candidate.dialogues.length}行をまとめる` : ''}</small></span>
+          <span class="scenario-prose">{candidate.dialogues.map(d => d.text).join('\n')}</span></div>
+        <label class="scenario-confirm"><input type="checkbox" checked={false} aria-label={`「${candidate.dialogues.map(d => d.text).join('／')}」を確定`} onChange={event => { if(event.currentTarget.checked)choose(candidate.dialogues.map(d => d.id)); }}/><span>確定</span></label>
+      </div>)}
     </div>}
-    <div class="scenario-inline-actions">
-      <button type="button" onClick={() => choose(null)}><Check size={14} />確認済み</button>
-      {onOpen && <button type="button" onClick={onOpen}><ClipboardCheck size={14} />シナリオを見る</button>}
-    </div>
-  </>;
-  return <div class="scenario-inline">
-    {pending ? choices
-      : <details><summary>候補を確認</summary>{choices}</details>}
+    {!candidates.length && <p>選べる未使用の候補がありません。本文はそのまま編集できます。</p>}
+    <label class="scenario-no-match"><input type="checkbox" checked={false} aria-label={`吹き出し${location.bubbleIndex + 1}は該当なし`} onChange={event => { if(event.currentTarget.checked)choose(null); }}/><span>該当なし</span></label>
     {error && <p role="alert">{error}</p>}
   </div>;
 }

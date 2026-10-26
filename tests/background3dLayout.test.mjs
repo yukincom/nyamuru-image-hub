@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {moveBackgroundLayoutOwner} from '../src/lib/background3dLayout.ts';
 import {defaultBackgroundCapture} from '../src/lib/background3d.ts';
-import {applyOwnerPaint,paintScene,paintReferenceBox,withPaintBleed} from '../src/lib/paintDocument.ts';
+import {applyOwnerPaint,newPaintLayer,paintScene,paintReferenceBox,withPaintBleed} from '../src/lib/paintDocument.ts';
 import {createFrameArtwork} from '../src/lib/imagePlacement.ts';
 
 const panel=()=>({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:1,figures:[{name:'人物',size:'full',bbox:{x:10,y:20,w:25.4,h:50.8},analogImport:{schemaVersion:1,sourceRegionId:'scan-region',assetId:'scan',sourceBBox:{x:3,y:4,w:20,h:40},detectionSource:'body',draft:true}}],bubbles:[{text:'そのまま',shape:'normal',bbox:{x:65,y:20,w:20,h:30},tail:{x:.25,y:.6}}]});
@@ -20,6 +20,7 @@ test('moving foreground preserves expanded paint coordinates and the background 
 
 test('moved figures and bubbles save and reopen with source metadata and paint grids intact',()=>{
  const p=panel(),scene=paintScene(p,100,[]),assets=[];
+ scene.owners.find(owner=>owner.kind==='bubble').paint.layers.push({...newPaintLayer('描画済み'),strokes:[{tool:'pen',color:'#000000',size:2,points:[{x:1,y:1,pressure:1,time:0}]}]});
  scene.owners=scene.owners.map(owner=>owner.kind==='background'?owner:withPaintBleed(owner,24));
  const moved=moveBackgroundLayoutOwner(moveBackgroundLayoutOwner(scene,'figure-0',7,9),'bubble-0',-6,4);
  for(const owner of moved.owners.slice(1)){
@@ -35,9 +36,9 @@ test('moved figures and bubbles save and reopen with source metadata and paint g
 test('locked, hidden and invalid targets cannot be translated through the 3D workspace',()=>{
  const scene=paintScene(panel(),100,[]);
  for(const [key,dx,dy] of [['missing',1,2],['background',1,2],['figure-0',NaN,2],['bubble-0',1,Infinity],['figure-0',0,0]])assert.equal(moveBackgroundLayoutOwner(scene,key,dx,dy),scene);
- scene.owners[1].figure.artwork={locked:true};assert.equal(moveBackgroundLayoutOwner(scene,'figure-0',1,2),scene);
- scene.owners[2].bubble.paint_overlay={locked:true};assert.equal(moveBackgroundLayoutOwner(scene,'bubble-0',1,2),scene);
- scene.owners[2].bubble.paint_overlay=undefined;scene.owners[2].bubble.hidden=true;assert.equal(moveBackgroundLayoutOwner(scene,'bubble-0',1,2),scene);
+ scene.owners[1].locked=true;assert.equal(moveBackgroundLayoutOwner(scene,'figure-0',1,2),scene);
+ scene.owners[2].locked=true;assert.equal(moveBackgroundLayoutOwner(scene,'bubble-0',1,2),scene);
+ scene.owners[2].locked=false;scene.owners[2].bubble.hidden=true;assert.equal(moveBackgroundLayoutOwner(scene,'bubble-0',1,2),scene);
 });
 
 test('foreground with only locked visible layers is skipped, while a mixed owner remains independently editable',()=>{

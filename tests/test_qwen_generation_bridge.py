@@ -13,7 +13,7 @@ from unittest.mock import patch, Mock
 from types import SimpleNamespace
 from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from qwen_generation import QwenGenerationService, PROFILE, normalize, dimensions, SETTINGS, LEGACY_SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS, validate_transparency, apply_generated_alpha
+from qwen_generation import QwenGenerationService, PROFILE, normalize, dimensions, SETTINGS, LEGACY_SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS, validate_english, validate_transparency, apply_generated_alpha
 from generation_store import canonical, sha256
 from image_generation_lock import create_generation_lease, hold_generation_lease, validate_generation_fd
 try:
@@ -247,6 +247,121 @@ class QwenJobsTest(unittest.TestCase):
             self.assertEqual(images[ref['file']], base64.b64decode(source['image'].split(',')[1]))
             self.assertEqual(ref['label'], source['label'])
         self.assertEqual(value['output_size'], dimensions(540, 1000))
+
+    def test_panel_and_page_jobs_preserve_each_character_reference_and_composition(self):
+        for owner, panel_id in [('panel', 1), ('page', 0)]:
+            for mode in ('new', 'paint'):
+                with self.subTest(owner=owner, mode=mode):
+                    self.request = body()
+                    self.request.update(owner_key=owner, panel_id=panel_id, mode=mode,
+                                        character_keys=['character-1', 'character-2'])
+                    self.request['references'].append(dict(label='二人の衣装',
+                        character_keys=['character-2', 'character-1'], image=encoded((120, 80))))
+                    if mode == 'paint':
+                        self.request['paint_image'] = encoded()
+                    prepared = self.prepare()
+                    value = self.service.load(prepared['job_id'])
+                    refs = value['references']
+                    offset = 1 if mode == 'paint' else 0
+                    self.assertEqual((prepared['owner_key'], prepared['panel_id'], prepared['overlay']), (owner, panel_id, False))
+                    self.assertEqual(value['character_keys'], ['character-1', 'character-2'])
+                    self.assertEqual([ref['character_keys'] for ref in refs[offset:]],
+                                     [['character-1'], ['character-2', 'character-1']])
+                    self.assertEqual([ref['role'] for ref in refs], ['paint'] * offset + ['identity', 'identity'])
+                    sources = ([self.request['paint_image']] if offset else []) + [ref['image'] for ref in self.request['references']]
+                    for source, ref in zip(sources, refs):
+                        raw = base64.b64decode(source.split(',')[1])
+                        self.assertEqual(self.service.store.read(prepared['job_id'], ref['file']), raw)
+                        self.assertEqual(ref['sha256'], sha256(raw))
+                    self.assertEqual(value['output_size'], dimensions(540, 1000))
+                    self.assertFalse(value['settings'].get('require_transparency', False))
+                    self.assertNotIn('transparency_mode', value['settings'])
+                    self.assertEqual(self.service.list(self.request)['jobs'][0]['job_id'], prepared['job_id'])
+                    self.assertEqual(self.submit(prepared)['status'], 'queued')
+
+    def test_panel_and_page_require_their_own_scope_coordinates(self):
+        for owner, panel_id, overlay in [('panel', 0, False), ('panel', 1, True), ('panel', 0, True),
+                                         ('page', 1, False), ('page', 0, True), ('page', -1, False)]:
+            with self.subTest(owner=owner, panel_id=panel_id, overlay=overlay), self.assertRaisesRegex(ValueError, 'ページとコマ'):
+                normalize({**self.request, 'owner_key': owner, 'panel_id': panel_id, 'overlay': overlay})
+        # The existing page-overlay figure route still uses panel_id=0.
+        value, _ = normalize({**self.request, 'panel_id': 0, 'overlay': True})
+        self.assertEqual((value['owner_key'], value['panel_id'], value['overlay']), ('figure-0', 0, True))
+
+    def test_group_character_bindings_are_unique_bounded_and_complete(self):
+        characters = [f'character-{i}' for i in range(10)]
+        request = {**self.request, 'owner_key': 'panel', 'character_keys': characters,
+                   'references': [dict(label='集合設定画', character_keys=characters, image=encoded())]}
+        value, _ = normalize(request)
+        self.assertEqual(value['character_keys'], characters)
+        self.assertEqual(value['references'][0]['character_keys'], characters)
+        for update in ({'character_keys': characters + ['eleventh']},
+                       {'character_keys': ['character-1', 'character-1']},
+                       {'character_keys': ['character-1', {}]},
+                       {'references': []},
+                       {'references': [dict(label='一人のみ', character_keys=characters[:-1], image=encoded())]},
+                       {'references': [dict(label='別人', character_keys=['unknown'], image=encoded())]},
+                       {'references': [dict(label='重複', character_keys=['character-1', 'character-1'], image=encoded())]}):
+            with self.subTest(update=update.keys()), self.assertRaises(ValueError):
+                normalize({**request, **update})
+
+    def test_group_extension_keeps_individual_character_limits_and_sketch_scope(self):
+        for owner, characters in [('figure-0', ['character-1', 'character-2']),
+                                  ('background', ['character-1']), ('bubble-0', ['character-1'])]:
+            with self.subTest(owner=owner), self.assertRaises(ValueError):
+                normalize({**self.request, 'owner_key': owner, 'character_keys': characters})
+        for owner, panel_id in [('panel', 1), ('page', 0)]:
+            request = {**self.request, 'owner_key': owner, 'panel_id': panel_id}
+            value, images = normalize({**request, 'character_keys': [], 'references': []})
+            self.assertEqual(value['references'], [])
+            self.assertEqual(images, {})
+            with self.subTest(owner=owner), self.assertRaisesRegex(ValueError, '登場人物の指定'):
+                normalize({**request, 'mode': 'sketch', 'sketch_image': encoded()})
+
+    def test_group_composition_keeps_total_image_budget_and_aspect_validation(self):
+        self.request.update(owner_key='panel', mode='paint', paint_image=encoded())
+        self.request['references'] *= 9
+        value, images = normalize(self.request)
+        self.assertEqual(len(images), 10)
+        self.assertEqual(value['references'][0]['role'], 'paint')
+        with self.assertRaisesRegex(ValueError, '合計10枚'):
+            normalize({**self.request, 'correction_image': encoded()})
+        with self.assertRaisesRegex(ValueError, '縦横比'):
+            normalize({**self.request, 'paint_image': encoded((200, 200))})
+
+    def test_group_literal_text_is_preserved_with_multiple_characters(self):
+        for owner, panel_id in [('panel', 1), ('page', 0)]:
+            with self.subTest(owner=owner):
+                self.request.update(owner_key=owner, panel_id=panel_id, literal_text=['こんにちは'],
+                                    character_keys=['character-1', 'character-2'])
+                self.request['references'][0]['character_keys'] = self.request['character_keys']
+                value, _ = normalize(self.request)
+                self.assertEqual(value['literal_text'], ['こんにちは'])
+                english = {**translate(value), 'prompt': 'Draw two people saying "こんにちは".'}
+                validate_english(value, english)
+                with self.assertRaisesRegex(ValueError, '欠落'):
+                    validate_english(value, translate(value))
+                with self.assertRaisesRegex(ValueError, '日本語'):
+                    validate_english(value, {**english, 'prompt': english['prompt'] + ' 赤い服'})
+                english['references'][0]['label'] = '人物設定画'
+                with self.assertRaisesRegex(ValueError, '日本語'):
+                    validate_english(value, english)
+        with self.assertRaisesRegex(ValueError, '描く文字'):
+            normalize({**body(), 'literal_text': ['こんにちは']})
+
+    def test_saved_page_job_with_old_panel_id_remains_readable_without_rewriting(self):
+        value, _ = normalize(self.request)
+        value.update(owner_key='page', character_keys=[], references=[], literal_text=[])
+        job_id, store = self.request['job_id'], self.service.store
+        raw = canonical(value)
+        store.create(job_id)
+        store.write_once(job_id, 'request.json', raw)
+        store.write_once(job_id, 'request.sha256', sha256(raw).encode())
+        store.event(job_id, 'prepared')
+        self.assertEqual(self.service.load(job_id), value)
+        self.assertEqual(self.service.payload(job_id)['panel_id'], 1)
+        self.assertEqual(self.service.list({**self.request, 'owner_key': 'page'})['jobs'][0]['job_id'], job_id)
+        self.assertEqual(store.read(job_id, 'request.json'), raw)
 
     def test_correction_is_separate_and_keeps_source_mask_identity_order(self):
         self.request.update(mode='paint', paint_image=encoded(), correction_image=encoded())

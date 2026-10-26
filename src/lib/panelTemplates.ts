@@ -622,6 +622,7 @@ export function reconcileSplitOverlapFlags(document: MangaDocument): void {
       bubbles.push(...panel.bubbles);
     });
     elements.push(...(page.page_overlay?.figures ?? []));
+    elements.push(...(page.page_overlay?.screen_text ?? []));
     bubbles.push(...(page.page_overlay?.bubbles ?? []));
     reconcileElementOverlapGroups(elements);
     // 分割後に片方の本文を編集したフキダシは、同じ複製ではなく別の内容として確定する。
@@ -652,7 +653,7 @@ export function moveBubbleToOwner(
     ? (page.page_overlay ??= { frame: false, layer: 'above_panel_frames' }).bubbles ??= []
     : page.panels[targetOwner].bubbles;
   targetBubbles.push(bubble);
-  if (sourceOwner === 'page_overlay' && page.page_overlay && !(page.page_overlay.bubbles?.length) && !(page.page_overlay.figures?.length)) {
+  if (sourceOwner === 'page_overlay' && page.page_overlay && !(page.page_overlay.bubbles?.length) && !(page.page_overlay.figures?.length) && !(page.page_overlay.screen_text?.length)) {
     delete page.page_overlay;
   }
   return { owner: targetOwner, index: targetBubbles.length - 1 };

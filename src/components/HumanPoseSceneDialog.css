@@ -12,6 +12,10 @@
 .human-pose-scene-canvas.is-space-pan { cursor: grab; }
 .human-pose-scene-canvas.is-panning { cursor: grabbing; }
 .human-pose-scene-canvas canvas { display: block; width: 100%; height: 100%; }
+.human-pose-cut-frame { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.human-pose-companions { position: absolute; left: 8%; top: 8%; width: 84%; height: 84%; pointer-events: none; }
+.human-pose-cut-shade { fill: #000; opacity: .3; mix-blend-mode: multiply; }
+.human-pose-cut-border { fill: none; stroke: #1f2926; stroke-width: 1.5px; }
 .human-pose-scene-dialog .background3d-gizmo { position: absolute; right: 6px; top: 6px; width: 116px; height: 116px; touch-action: none; cursor: grab; }
 .human-pose-scene-dialog .background3d-gizmo-disc { fill: #f9fcfbe6; stroke: #bfceca; }
 .human-pose-scene-dialog .background3d-gizmo text { text-anchor: middle; dominant-baseline: central; font: bold 12px sans-serif; pointer-events: none; }

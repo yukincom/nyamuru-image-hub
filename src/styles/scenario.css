@@ -24,10 +24,15 @@
 .scenario-inline button { border: 1px solid var(--accent-border); border-radius: 5px; padding: .45rem .6rem; background: var(--accent-soft); color: var(--ink); cursor: pointer; }
 .scenario-inline button:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 2px; }
 .scenario-candidates { display: grid; gap: .45rem; max-height: 320px; overflow: auto; padding: 3px; }
-.scenario-candidate { text-align: left; width: 100%; }
-.scenario-candidate > span:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.scenario-candidate { display:flex; align-items:center; gap:.6rem; text-align:left; width:100%; border:1px solid var(--accent-border); border-radius:5px; padding:.45rem .6rem; background:var(--accent-soft); }
+.scenario-candidate-body { min-width:0; flex:1; }
+.scenario-candidate-body > span:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
 .scenario-candidate small { color: var(--muted); margin-left: auto; }
 .scenario-candidate .scenario-prose { display: block; margin: .3rem 0 0; }
+.scenario-inline .scenario-confirm,.scenario-inline .scenario-no-match { display:inline-flex; align-items:center; gap:.35rem; margin:0; cursor:pointer; }
+.scenario-inline .scenario-confirm { flex:none; white-space:nowrap; }
+.scenario-inline .scenario-no-match { margin-top:.65rem; }
+.scenario-inline input[type=checkbox] { width:16px; height:16px; accent-color:var(--accent-dark); }
 .scenario-inline-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; }
 .scenario-inline-actions button { display: inline-flex; align-items: center; gap: .3rem; }
 @media (max-width: 640px) { .scenario-dialogue { grid-template-columns: minmax(0, 1fr); gap: .4rem; } }

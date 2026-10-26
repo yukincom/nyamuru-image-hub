@@ -1,17 +1,58 @@
-import type { Anchor, BBox, CanvasElementType, Panel, PanelShape } from '../types';
+import type { Anchor, BBox, BleedEdge, CanvasElementType, Panel, PanelShape } from '../types';
 
 export interface CanvasSize { w: number; h: number }
 export const DEFAULT_CANVAS: Readonly<CanvasSize> = { w: 210, h: 297 };
+
+interface InnerFrameStandard {
+  finish: readonly [width: number, height: number];
+  frame: readonly [width: number, height: number];
+}
+
+/**
+ * Standard basic-frame dimensions keyed by the finished page size. ComicStudio
+ * names templates by their larger manuscript sheet, so this deliberately maps
+ * each template's `finish size` to its `basic frame`, not sheet size to frame.
+ * B5 follows Futaba Kikaku's A4 manuscript guide (182 x 257 mm finish,
+ * 150 x 220 mm basic frame). A nearby printer-specific half-millimetre override
+ * still uses the same frame.
+ */
+const INNER_FRAME_STANDARDS: readonly InnerFrameStandard[] = [
+  { finish: [257, 364], frame: [212, 300] }, // B4
+  { finish: [210, 297], frame: [180, 268] }, // A4
+  { finish: [182, 257], frame: [150, 220] }, // B5
+  { finish: [148, 210], frame: [125, 180] }, // A5
+  { finish: [128, 182], frame: [105, 150] }, // B6
+  { finish: [105, 148], frame: [90, 125] },  // A6
+  { finish: [226, 312], frame: [180, 270] }, // standard B4 manuscript trim
+];
+
+const B5_INNER_FRAME_RATIO = { x: 150 / 182, y: 220 / 257 } as const;
+
 /** Editing inner frame, independent of print safety/bleed margins. */
 export function innerFrameBounds(canvas: CanvasSize = DEFAULT_CANVAS): BBox {
-  const margin = Math.min(10, canvas.w / 10, canvas.h / 10);
-  return { x: margin, y: margin, w: canvas.w - 2 * margin, h: canvas.h - 2 * margin };
+  const landscape = canvas.w > canvas.h;
+  const portraitWidth = landscape ? canvas.h : canvas.w;
+  const portraitHeight = landscape ? canvas.w : canvas.h;
+  const standard = INNER_FRAME_STANDARDS.find(({ finish }) => (
+    Math.abs(finish[0] - portraitWidth) <= 0.75 && Math.abs(finish[1] - portraitHeight) <= 0.75
+  ));
+  const portraitFrameWidth = standard?.frame[0] ?? portraitWidth * B5_INNER_FRAME_RATIO.x;
+  const portraitFrameHeight = standard?.frame[1] ?? portraitHeight * B5_INNER_FRAME_RATIO.y;
+  const width = landscape ? portraitFrameHeight : portraitFrameWidth;
+  const height = landscape ? portraitFrameWidth : portraitFrameHeight;
+  return {
+    x: roundMm((canvas.w - width) / 2),
+    y: roundMm((canvas.h - height) / 2),
+    w: roundMm(width),
+    h: roundMm(height),
+  };
 }
 
 export type ResizeHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 
 export interface InteractionGeometry {
   mode: ResizeHandle;
+  unbounded?: boolean;
   canvas?: CanvasSize;
   startClientX: number;
   startClientY: number;
@@ -21,7 +62,7 @@ export interface InteractionGeometry {
 }
 
 export const MIN_SIZE_MM = 6;
-export const INNER_FRAME_BOUNDS: Readonly<BBox> = { x: 10, y: 10, w: 190, h: 277 };
+export const INNER_FRAME_BOUNDS: Readonly<BBox> = innerFrameBounds(DEFAULT_CANVAS);
 export const PANEL_SNAP_THRESHOLD_MM = 4;
 export const PANEL_EDGE_LINK_DISTANCE_MM = 8;
 export const PANEL_EDGE_ALIGNMENT_TOLERANCE_MM = 0.15;
@@ -719,6 +760,17 @@ export function resizedBox(interaction: InteractionGeometry, clientX: number, cl
   const bottom = startBox.y + startBox.h;
   let x = startBox.x, y = startBox.y, w = startBox.w, h = startBox.h;
 
+  if(interaction.unbounded){
+    if(mode==='move'){x+=dx;y+=dy;}
+    else{
+      if(mode.includes('w')){x=Math.min(x+dx,right-minWidth);w=right-x;}
+      if(mode.includes('e'))w=Math.max(minWidth,w+dx);
+      if(mode.includes('n')){y=Math.min(y+dy,bottom-minHeight);h=bottom-y;}
+      if(mode.includes('s'))h=Math.max(minHeight,h+dy);
+    }
+    return {x:roundMm(x),y:roundMm(y),w:roundMm(w),h:roundMm(h)};
+  }
+
   if (mode === 'move') {
     x = clamp(startBox.x + dx, bounds.x, bounds.x + bounds.w - startBox.w);
     y = clamp(startBox.y + dy, bounds.y, bounds.y + bounds.h - startBox.h);
@@ -731,10 +783,11 @@ export function resizedBox(interaction: InteractionGeometry, clientX: number, cl
   return { x: roundMm(x), y: roundMm(y), w: roundMm(w), h: roundMm(h) };
 }
 
-export function clampedPanelDelta(bounds: BBox, deltaX: number, deltaY: number, canvas: CanvasSize = DEFAULT_CANVAS): { x: number; y: number } {
+export function clampedPanelDelta(bounds: BBox, deltaX: number, deltaY: number, canvas: CanvasSize = DEFAULT_CANVAS, outerMargin = 0): { x: number; y: number } {
+  const margin = Math.max(0, outerMargin);
   return {
-    x: roundMm(clamp(deltaX, -bounds.x, canvas.w - (bounds.x + bounds.w))),
-    y: roundMm(clamp(deltaY, -bounds.y, canvas.h - (bounds.y + bounds.h))),
+    x: roundMm(clamp(deltaX, -margin - bounds.x, canvas.w + margin - (bounds.x + bounds.w))),
+    y: roundMm(clamp(deltaY, -margin - bounds.y, canvas.h + margin - (bounds.y + bounds.h))),
   };
 }
 
@@ -752,9 +805,10 @@ export function snapPanelDeltaToInnerFrame(
   deltaY: number,
   threshold = PANEL_SNAP_THRESHOLD_MM,
   canvas: CanvasSize = DEFAULT_CANVAS,
+  outerMargin = 0,
 ): { x: number; y: number } {
   const inner = innerFrameBounds(canvas);
-  const clamped = clampedPanelDelta(bounds, deltaX, deltaY, canvas);
+  const clamped = clampedPanelDelta(bounds, deltaX, deltaY, canvas, outerMargin);
   let nextX = bounds.x + clamped.x;
   let nextY = bounds.y + clamped.y;
   const innerRight = inner.x + inner.w;
@@ -772,7 +826,7 @@ export function snapPanelDeltaToInnerFrame(
     nextY += Math.abs(topSnap) <= Math.abs(bottomSnap) ? topSnap : bottomSnap;
   }
 
-  return clampedPanelDelta(bounds, nextX - bounds.x, nextY - bounds.y, canvas);
+  return clampedPanelDelta(bounds, nextX - bounds.x, nextY - bounds.y, canvas, outerMargin);
 }
 
 /** リサイズ中に動かしている辺だけを内枠へ吸着させる。 */
@@ -906,17 +960,19 @@ function clampedEdgeDelta(
   deltaY: number,
   minSize = 20,
   canvas: CanvasSize = DEFAULT_CANVAS,
+  outerMargin = 0,
 ): { x: number; y: number } {
+  const margin = Math.max(0, outerMargin);
   let minX = -Infinity, maxX = Infinity, minY = -Infinity, maxY = Infinity;
   references.forEach(({ panelIndex, edgeIndex }) => {
     const panel = panels[panelIndex];
     const edge = panel && edgePoints(panel, edgeIndex);
     if (!panel || !edge) return;
     const [start, end] = edge;
-    minX = Math.max(minX, -Math.min(start[0], end[0]));
-    maxX = Math.min(maxX, canvas.w - Math.max(start[0], end[0]));
-    minY = Math.max(minY, -Math.min(start[1], end[1]));
-    maxY = Math.min(maxY, canvas.h - Math.max(start[1], end[1]));
+    minX = Math.max(minX, -margin - Math.min(start[0], end[0]));
+    maxX = Math.min(maxX, canvas.w + margin - Math.max(start[0], end[0]));
+    minY = Math.max(minY, -margin - Math.min(start[1], end[1]));
+    maxY = Math.min(maxY, canvas.h + margin - Math.max(start[1], end[1]));
     if (panel.shape.type !== 'rect') return;
     const { x, y, w, h } = panel.shape;
     const minWidth = Math.min(minSize, w), minHeight = Math.min(minSize, h);
@@ -925,10 +981,10 @@ function clampedEdgeDelta(
     if (edgeIndex === 2) minY = Math.max(minY, minHeight - h);
     if (edgeIndex === 3) maxX = Math.min(maxX, w - minWidth);
     // 紙面側の制限は端点制限と同値だが、数値誤差を避けるため明示する。
-    if (edgeIndex === 0) minY = Math.max(minY, -y);
-    if (edgeIndex === 1) maxX = Math.min(maxX, canvas.w - (x + w));
-    if (edgeIndex === 2) maxY = Math.min(maxY, canvas.h - (y + h));
-    if (edgeIndex === 3) minX = Math.max(minX, -x);
+    if (edgeIndex === 0) minY = Math.max(minY, -margin - y);
+    if (edgeIndex === 1) maxX = Math.min(maxX, canvas.w + margin - (x + w));
+    if (edgeIndex === 2) maxY = Math.min(maxY, canvas.h + margin - (y + h));
+    if (edgeIndex === 3) minX = Math.max(minX, -margin - x);
   });
   return {
     x: roundMm(clamp(deltaX, minX, maxX)),
@@ -972,11 +1028,12 @@ export function movePanelEdge(
   linkPanels = false,
   excludedEdge?: PanelEdgeReference,
   canvas: CanvasSize = DEFAULT_CANVAS,
+  outerMargin = 0,
 ): { x: number; y: number; linkedEdges: number } {
   const selected = panels[panelIndex] && edgePoints(panels[panelIndex], edgeIndex);
   if (!selected) return { x: 0, y: 0, linkedEdges: 0 };
   const references = edgeReferences(panels, panelIndex, edgeIndex, linkPanels, excludedEdge);
-  const delta = clampedEdgeDelta(panels, references, deltaX, deltaY, Math.min(20, canvas.w / 4, canvas.h / 4), canvas);
+  const delta = clampedEdgeDelta(panels, references, deltaX, deltaY, Math.min(20, canvas.w / 4, canvas.h / 4), canvas, outerMargin);
   if (delta.x === 0 && delta.y === 0) return { ...delta, linkedEdges: Math.max(0, references.length - 1) };
   references.forEach((reference) => {
     const panel = panels[reference.panelIndex];
@@ -1506,6 +1563,42 @@ export function resizePanelToBounds(panel: Panel, requestedBounds: BBox): void {
   panel.figures?.forEach((figure) => { if (figure.bbox) (figure.artwork ? transformArtwork : transformBox)(figure.bbox); });
   panel.bubbles.forEach((bubble) => { if (bubble.bbox) transformBox(bubble.bbox); });
   panel.screen_text?.forEach((screenText) => { if (screenText.bbox) transformBox(screenText.bbox); });
+}
+
+/**
+ * The editable page coordinates end at the trim line. A rectangular panel dragged
+ * beyond that line is stored on the page edge and records the crossed sides in
+ * OMNY `bleed`; dragging the edge back inside clears that side again.
+ */
+export function syncPanelBleedAtTrim(panel: Panel, canvas: CanvasSize, bleedMm: number): boolean {
+  if (panel.shape.type !== 'rect' || !Number.isFinite(bleedMm) || bleedMm <= 0) return false;
+  const original = panelBounds(panel);
+  const existing = new Set(panel.bleed ?? []);
+  const epsilon = 0.02;
+  const right = original.x + original.w;
+  const bottom = original.y + original.h;
+  const crossed: Record<BleedEdge, boolean> = {
+    left: original.x < -epsilon || (existing.has('left') && original.x <= epsilon),
+    right: right > canvas.w + epsilon || (existing.has('right') && right >= canvas.w - epsilon),
+    top: original.y < -epsilon || (existing.has('top') && original.y <= epsilon),
+    bottom: bottom > canvas.h + epsilon || (existing.has('bottom') && bottom >= canvas.h - epsilon),
+  };
+  const left = crossed.left ? 0 : clamp(original.x, 0, canvas.w - 1);
+  const top = crossed.top ? 0 : clamp(original.y, 0, canvas.h - 1);
+  const normalizedRight = crossed.right ? canvas.w : clamp(right, left + 1, canvas.w);
+  const normalizedBottom = crossed.bottom ? canvas.h : clamp(bottom, top + 1, canvas.h);
+  const normalized = { x: left, y: top, w: normalizedRight - left, h: normalizedBottom - top };
+  const edges = (['left', 'right', 'top', 'bottom'] as const).filter((edge) => crossed[edge]);
+  const geometryChanged = Math.abs(normalized.x - original.x) > epsilon
+    || Math.abs(normalized.y - original.y) > epsilon
+    || Math.abs(normalized.w - original.w) > epsilon
+    || Math.abs(normalized.h - original.h) > epsilon;
+  if (geometryChanged) resizePanelToBounds(panel, normalized);
+  const previous = panel.bleed ?? [];
+  const bleedChanged = previous.length !== edges.length || previous.some((edge, index) => edge !== edges[index]);
+  if (edges.length) panel.bleed = [...edges];
+  else delete panel.bleed;
+  return geometryChanged || bleedChanged;
 }
 
 export function convertPanelShape(panel: Panel, type: 'rect' | 'polygon'): void {

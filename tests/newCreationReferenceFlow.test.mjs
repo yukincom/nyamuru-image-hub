@@ -13,7 +13,10 @@ import { initializePanelBackgrounds } from '../src/lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../src/lib/initialBubbleLineBreaks.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { defaultPrintSetup, withPrintSetup } from '../src/lib/printSettings.ts';
+import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
+import { innerFrameBounds } from '../src/lib/canvasGeometry.ts';
 import { createSystemMobCharacter } from '../src/lib/systemCharacters.ts';
+import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
 
 const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -171,18 +174,21 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
   const reference = { source: { fileName: 'origin_name.md', text: '# シナリオ\n## page1\n### コマ1\n春「明日は**学校**へ行こう」\n春は窓を指す。', relativePath: 'text/origin_name.md' }, workspaceDirectory: '/fixture/episode' };
   const analysis = { detectedPanels: [{ type: 'rect', x: 10, y: 10, w: 80, h: 100 }], detectedPanelIds: ['p1'], detectedFigures: [], sourceFrame: null,
     ocrLines: [{ id: 'l1', text: '明日は学枚へ\n行こう', bbox: { x: .2, y: .2, w: .1, h: .2 }, sourcePanelId: 'p1', vertical: true, source: 'Baberu OCR', confidence: .5, needsReview: true }] };
-  for (const mode of ['scan', 'template', 'blank']) {
+  for (const paper of [{ w: 297, h: 210, dpi: 600 }, { w: 182, h: 257, dpi: 600 }, { w: 148, h: 210, dpi: 300 }]) for (const mode of ['scan', 'image', 'template', 'blank']) {
+    const importedAnalysis = mode === 'scan' || mode === 'image'
+      ? { ...analysis, detectedPanels: [{ type: 'rect', x: 15, y: 14.5, w: 180, h: 268 }] }
+      : analysis;
     const state = {};
     const events = [];
     const progress = [];
     const create = handler('createNewDocument', {
       isLanClient: false, portableBinding: { current: null }, setPortableName: () => {},
       ...stateSetters(state, ['NewLayoutMessage', 'NewCharacterTextLink', 'BoundEpisodeWorkspace', 'BoundSourceSnapshot', 'SourceCoverageDecisions', 'CharacterTextLink', 'ActivePage', 'ActivePanel', 'SelectedPanels', 'SelectedElement', 'Tab', 'MobileStoryboardPane', 'ShowNewDialog', 'NewCharacterDocument', 'Toast']),
-      newPrintConfirmed: true, editingNewPrintSetup: false, newPrintSetup: { ...defaultPrintSetup(), width_mm: 297, height_mm: 210 }, withPrintSetup,
+      newPrintConfirmed: true, editingNewPrintSetup: false, newPrintSetup: { ...defaultPrintSetup(), width_mm: paper.w, height_mm: paper.h, dpi: paper.dpi }, withPrintSetup, resizePageCanvas,
       newLayoutTask: 'idle', newLayoutOperationGeneration: { current: 0 }, updateNewLayoutTask: () => {},
       setNewCharacterReadProgress: value => { progress.push(value); }, initializePanelBackgrounds,
       newEpisodeWorkspace: { token: 'fixture', directory: '/fixture/episode' },
-      prepareEpisodeWorkspace: async () => {}, newLayoutItemsRef: { current: mode === 'blank' ? [] : [{ id: 'img', file: { name: 'test.png' }, analysis, rotationOverride: 0 }] },
+      prepareEpisodeWorkspace: async () => {}, newLayoutItemsRef: { current: mode === 'blank' ? [] : [{ id: 'img', file: { name: 'test.png' }, analysis: importedAnalysis, rotationOverride: 0 }] },
       newCharacterDocumentRef: { current: characterDraft }, newSourceSnapshot: reference,
       deleteFigureCropAssets: async () => {}, saveFigureCropAssets: async () => {}, prepareDetectedTextCrops: async () => [],
       persistAnalogAssets: false, discardScannerSources: async () => {}, commitActiveScannerSession: async () => {},
@@ -191,9 +197,9 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
       newWorkTitle: 'テスト', newSeriesName: '', newSeriesId: '', newEpisodeNumber: '',
       newWorkSetting: { location: '', time: '', weather: '', situation: '' },
       inferPanelGutters: () => ({ rowGapMm: 5, columnGapMm: 5 }), DEFAULT_PANEL_GUTTERS: {},
-      applyPanelTemplate: page => { page.panels = [{ id: 1, bg: 1, action: null, shape: analysis.detectedPanels[0], bubbles: [] }]; },
+      applyPanelTemplate: page => { page.panels = [{ id: 1, bg: 1, action: null, shape: { type: 'rect', ...innerFrameBounds(page.canvas) }, bubbles: [] }]; },
       mergeSavedSeriesCatalog: async document => { events.push('merge'); return { document, added: 0 }; },
-      collectUnmatchedCharacterTargets: () => mode === 'scan' ? [{ sourceRegionId: 'f1', assetId: 'a1' }, { sourceRegionId: 'f2', assetId: 'a2' }] : [], buildCharacterMatchCandidates: () => [],
+      collectUnmatchedCharacterTargets: () => mode === 'scan' || mode === 'image' ? [{ sourceRegionId: 'f1', assetId: 'a1' }, { sourceRegionId: 'f2', assetId: 'a2' }] : [], buildCharacterMatchCandidates: () => [],
       loadFigureCropAsset: async () => ({}), analyzeFigureCharacterMatchWithLocalVlm: async () => {
         assert.equal(progress.at(-1).completed, progress.length - 1);
         assert.equal(progress.at(-1).total, 2);
@@ -202,6 +208,7 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
       applyCharacterReadOutcomes: () => { events.push('people'); return { needsReview: 0 }; },
       applyScenarioToNewDocument: (document, source) => { events.push('scenario'); return applyScenarioToNewDocument(document, source); },
       initializeImportedBubbleLineBreaks: document => { events.push('linebreaks'); initializeImportedBubbleLineBreaks(document); },
+      separateBubbleOriginals: async document => { events.push('separate-originals');return separateBubbleOriginals(document); },
       newCharacterTextLink: null, commitNewCharacterDraft: async () => {},
       buildSourceCoverageReport: () => assert.fail('scenario must not run legacy string audit'),
       saveSourceCoverageReport: () => assert.fail('scenario must not save legacy audit'),
@@ -209,19 +216,30 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
       replaceDocument: document => { state.document = document; events.push('replace'); },
       discardNewLayoutItems: () => {}, structuredClone, crypto, toSeparatedMangaYaml,
     });
-    await create(mode === 'scan' ? [{ sourceItemId: 'img', analysis }] : mode === 'template' ? { id: 'test' } : undefined);
-    assert.deepEqual(events, ['merge', 'people', 'scenario', 'linebreaks', 'replace']);
-    assert.equal(state.document.manga.pages.length, mode === 'scan' ? 1 : 4);
-    assert.ok(state.document.manga.pages.every(page => page.canvas.w === 297 && page.canvas.h === 210));
-    assert.equal(state.document.manga.finish_settings.width_mm, 297);
-    if (mode === 'scan') assert.equal(progress.at(-1).completed, progress.at(-1).total);
+    await create(mode === 'scan' || mode === 'image' ? [{ sourceItemId: 'img', analysis: importedAnalysis }] : mode === 'template' ? { id: 'test' } : undefined, mode === 'scan');
+    assert.deepEqual(events, ['merge', 'people', 'scenario', 'linebreaks', 'separate-originals', 'replace']);
+    assert.equal(state.document.manga.pages.length, mode === 'scan' || mode === 'image' ? 1 : 4);
+    assert.ok(state.document.manga.pages.every(page => page.canvas.w === paper.w && page.canvas.h === paper.h));
+    assert.equal(state.document.manga.finish_settings.width_mm, paper.w);
+    assert.equal(state.document.manga.finish_settings.dpi, paper.dpi);
+    assert.equal(state.document.manga.meta.bubble_line_width_mm, 0.5);
+    assert.equal(state.document.manga.meta.panel_frame_width_mm, 1);
+    if (mode === 'scan' || mode === 'image') {
+      assert.equal(progress.at(-1).completed, progress.at(-1).total);
+    }
     else assert.equal(progress.at(-1), null);
     assert.equal(state.document.manga.scenario.text, reference.source.text);
     assert.equal(state.document.manga.pages[0].panels[0].action, '春は窓を指す。');
     assert.equal(state.document.manga.meta.style_notes.length, 0);
     assert.equal(state.document.manga.layout_spec, '');
     if (mode !== 'blank') {
+      // Detected layouts and templates with OCR must use the same inner-frame mapping,
+      // including template pages without imported content. Output DPI does not affect mm.
+      for (const page of state.document.manga.pages) {
+        assert.deepEqual(page.panels[0].shape, { type: 'rect', ...innerFrameBounds(paper) }, `${mode}: ${paper.w}x${paper.h}`);
+      }
       const bubble = state.document.manga.pages[0].panels[0].bubbles[0];
+      assert.equal(bubble.text_style?.fontSize ?? 15, 15);
       assert.equal(bubble.text.replaceAll('\n', ''), '明日は学校へ行こう');
       assert.match(bubble.text, /\n/);
       assert.equal(bubble.emphasis, '学校');

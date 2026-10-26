@@ -3,7 +3,6 @@ import type { BackgroundStage } from '../types.ts';
 import { clamp, DEFAULT_PANEL_GUTTERS, INNER_FRAME_BOUNDS, nearestAnchor, panelBounds, pointInPanel, roundMm, type PanelGutterSettings } from './canvasGeometry.ts';
 import type { AnalogAssetKind, AnalogFigureImport, AnalogTextImport, BBox, Bubble, CharacterRecognitionProfile, CharacterReferenceSourceImage, CharacterReferenceView, FigureSize, LocalVlmAnalyzer, MangaPage, Panel, PanelShape, PersistentAnalogAssetRef, VisualEvidence } from '../types';
 import { DETECTED_FIGURE_NAME } from './bubbleRelations.ts';
-import { suggestBubbleShape } from './bubblePresentation.ts';
 import type { PanelActionSuggestionRequest, PanelActionSuggestionResponse } from './panelActions.ts';
 import { MANGA_BASE_PALETTE, PANEL_DRAFT_PROFILE, type PanelDraftPlan } from './panelDraft.ts';
 import type { SourceCoverageReport } from './sourceCoverage.ts';
@@ -1271,10 +1270,10 @@ export function attachRecognizedTextToPage(
     const targetBubbles = line.pageOverlay ? (ensurePageOverlay(page).bubbles ??= []) : panel!.bubbles;
     const bubble: Bubble = {
       text: line.text.trim(),
+      shape: 'normal',
       bbox,
       ...(analogImport ? { analogTextImport: structuredClone(analogImport) } : {}),
     };
-    bubble.shape = suggestBubbleShape(panel ?? { action: null, figures: page.page_overlay?.figures }, bubble);
     targetBubbles.push(bubble);
     added += 1;
     if (line.needsReview) needsReview += 1;
@@ -2828,8 +2827,8 @@ export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:str
     requestSha256:value.request_sha256,label:value.label,width:value.width as number,height:value.height as number,error:typeof value.error==='string'?value.error:undefined};
   if(value.document_key!==undefined){
     if(typeof value.document_key!=='string'||typeof value.page_number!=='number'||!Number.isInteger(value.page_number)||value.page_number<1
-      ||typeof value.panel_id!=='number'||!Number.isInteger(value.panel_id)||typeof value.overlay!=='boolean'||(value.overlay?value.panel_id!==0:value.panel_id<1)
-      ||typeof value.owner_key!=='string'||!/^(background|figure-\d+|bubble-\d+)$/.test(value.owner_key)
+      ||typeof value.panel_id!=='number'||!Number.isInteger(value.panel_id)||typeof value.overlay!=='boolean'||(value.owner_key==='page'?value.panel_id<0||value.overlay:value.overlay?value.panel_id!==0:value.panel_id<1)
+      ||typeof value.owner_key!=='string'||!/^(background|figure-\d+|bubble-\d+|panel|page)$/.test(value.owner_key)||value.owner_key==='panel'&&value.overlay
       ||typeof value.created_at!=='number'||!Number.isFinite(value.created_at)||value.created_at<0)throw new Error('生成履歴の所属を確認できません');
     Object.assign(job,{documentKey:value.document_key,pageNumber:value.page_number,panelId:value.panel_id,overlay:value.overlay,ownerKey:value.owner_key,createdAt:value.created_at});
   }

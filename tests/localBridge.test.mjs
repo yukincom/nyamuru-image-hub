@@ -242,7 +242,7 @@ test('検出した正規化座標をA4紙面上の編集可能な矩形へ変換
   });
   assert.deepEqual(result.detectedPanels, [
     { type: 'rect', x: 105, y: 29.7, w: 84, h: 59.4 },
-    { type: 'rect', x: 10, y: 59.4, w: 11, h: 89.1 },
+    { type: 'rect', x: 15, y: 59.4, w: 8, h: 89.1 },
   ]);
   assert.equal(result.detectedPanelCount, 2);
   assert.deepEqual(result.detectedPanelIds, ['panel-001', 'panel-002']);
@@ -526,14 +526,14 @@ test('検出コマを内枠内に収め、4mm以内の隣接辺を整列して�
   const [left, right] = result.detectedPanels;
   assert.equal(left.type, 'rect');
   assert.equal(right.type, 'rect');
-  assert.equal(left.x, 10);
-  assert.equal(right.x + right.w, 200);
-  assert.equal(left.y, 10);
-  assert.equal(right.y, 10);
+  assert.equal(left.x, 15);
+  assert.equal(right.x + right.w, 195);
+  assert.equal(left.y, 14.5);
+  assert.equal(right.y, 14.5);
   assert.ok(Math.abs(right.x - (left.x + left.w) - 3) < 0.11);
   for (const panel of result.detectedPanels) {
-    assert.ok(panel.x >= 10 && panel.y >= 10);
-    assert.ok(panel.x + panel.w <= 200 && panel.y + panel.h <= 287);
+    assert.ok(panel.x >= 15 && panel.y >= 14.5);
+    assert.ok(panel.x + panel.w <= 195 && panel.y + panel.h <= 282.5);
   }
 });
 

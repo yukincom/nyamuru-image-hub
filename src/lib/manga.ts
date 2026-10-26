@@ -5,7 +5,7 @@ import { parse, stringify } from 'yaml';
 import { validatePrintData } from './printSettings.ts';
 import type { Bubble, CharacterRecognitionProfile, CharacterReferenceSourceImage, Manga, MangaDocument, MangaPage, Panel, ValidationIssue, VisualEvidence } from '../types';
 import { DEFAULT_BUBBLE_LINE_WIDTH_MM, normalizedBubbleLineWidth } from './bubblePresentation.ts';
-import { restoreProvisionalScenarioText, validateScenarioSource } from './scenario.ts';
+import { detachResolvedScenarioLinks, restoreProvisionalScenarioText, validateScenarioSource } from './scenario.ts';
 import { initializePanelBackgrounds } from './panelContext.ts';
 import { isBubbleBezier } from './bubbleBezier.ts';
 import {validTextStyle,validTextWeights} from './textStyle.ts';
@@ -267,6 +267,7 @@ function withoutLocalAnalogImports(document: MangaDocument): MangaDocument {
     });
     page.page_overlay?.figures?.forEach((figure) => { delete figure.analogImport; delete figure.splitOverlap; delete figure.splitOverlapId; });
     page.page_overlay?.bubbles?.forEach((bubble) => { delete bubble.scenarioMatch; delete bubble.analogTextImport; delete bubble.splitOverlap; delete bubble.splitOverlapId; delete bubble.anchor; });
+    page.page_overlay?.screen_text?.forEach((screenText) => { delete screenText.splitOverlap; delete screenText.splitOverlapId; });
   });
   return next;
 }
@@ -299,6 +300,7 @@ function mangaExportDocument(document: MangaDocument, includeArtwork: boolean): 
 /** ブラウザの自動保存専用。IndexedDBの切り抜き画像へ再接続するメタデータも保持する。 */
 export function toStoredMangaYaml(document: MangaDocument): string {
   const next = cloneDocument(document);
+  detachResolvedScenarioLinks(next);
   restoreProvisionalScenarioText(next);
   initializePanelBackgrounds(next);
   if (next.manga.artwork_settings) applyArtworkSettings(next.manga, next.manga.artwork_settings);
@@ -505,6 +507,8 @@ export function normalizeDocument(document: MangaDocument): MangaDocument {
     page.page ??= pageIndex + 1;
     page.canvas ??= { w: 210, h: 297, unit: 'mm' };
     page.panels ??= [];
+    if(page.layer?.directLocked===true)page.layer={directLocked:true};
+    else delete page.layer;
     page.panels.forEach((panel, panelIndex) => {
       if(panel.layer !== undefined)panel.layer=normalizePanelLayer(panel.layer);
       // IDは読み順そのもの。重複や飛び番を受け入れず配列順で必ず自動採番する。
@@ -551,10 +555,12 @@ export function normalizeDocument(document: MangaDocument): MangaDocument {
       });
       page.page_overlay.bubbles.forEach((bubble) => { delete (bubble as Bubble & { delivery?: unknown }).delivery; if(bubble.hidden!==true)delete bubble.hidden; const material=materialBubbleBezier(bubble.shape); if(bubble.bezier===undefined&&material)bubble.bezier=structuredClone(material); });
       normalizeBubbleConnections(page.page_overlay.bubbles);
+      page.page_overlay.screen_text?.forEach((screenText) => { if(screenText.orientation===undefined)screenText.orientation='horizontal'; });
     }
   });
   validateImagePlacements(next);
   synchronizeCatalogReferences(next);
+  detachResolvedScenarioLinks(next);
   restoreProvisionalScenarioText(next);
   initializePanelBackgrounds(next);
   return next;
@@ -590,8 +596,17 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
     if (bubble.clip_to_panel !== undefined && typeof bubble.clip_to_panel !== 'boolean') {
       issues.push({ level: 'error', path: `${path}.clip_to_panel`, message: 'コマ枠での切り取りは true / false で指定してください' });
     }
+    if (bubble.text_position !== undefined && (!Number.isFinite(bubble.text_position.x) || !Number.isFinite(bubble.text_position.y) || bubble.text_position.x < 0 || bubble.text_position.x > 1 || bubble.text_position.y < 0 || bubble.text_position.y > 1)) {
+      issues.push({ level: 'error', path: `${path}.text_position`, message: '本文位置はフキダシ枠を基準とした0〜1の相対座標 x / y で指定してください' });
+    }
     if (bubble.bezier !== undefined && !isBubbleBezier(bubble.bezier)) {
-      issues.push({ level: 'error', path: `${path}.bezier`, message: 'ベジェ輪郭は3〜64点で、点とハンドル先端を0〜100の枠内に収めてください' });
+      issues.push({ level: 'error', path: `${path}.bezier`, message: 'ベジェ輪郭は3〜128点で、点とハンドルを有限の座標で指定してください' });
+    }
+    if (bubble.tail_root !== undefined && (!Number.isFinite(bubble.tail_root.x) || !Number.isFinite(bubble.tail_root.y))) {
+      issues.push({ level: 'error', path: `${path}.tail_root`, message: 'しっぽ根元はフキダシ枠を基準とした有限の相対座標 x / y で指定してください。枠外の値も使えます' });
+    }
+    if (bubble.tail_style !== undefined && !['normal','thinking'].includes(bubble.tail_style)) {
+      issues.push({level:'error',path:`${path}.tail_style`,message:'しっぽの種類は normal または thinking を指定してください'});
     }
     if (bubble.tail === undefined || bubble.tail === false) return;
     if (!bubble.tail || typeof bubble.tail !== 'object' || !Number.isFinite(bubble.tail.x) || !Number.isFinite(bubble.tail.y)) {
@@ -686,6 +701,12 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
         validateBubbleConnection(bubble, index, bubblePath);
         validateBubbleTail(bubble, bubblePath);
       });
+      (page.page_overlay.screen_text ?? []).forEach((screenText,index)=>{
+        const screenTextPath=`${overlayPath}.screen_text[${index}]`;
+        validateTextStyle(screenText,screenTextPath);
+        if(!screenText.text?.trim())issues.push({level:'error',path:`${screenTextPath}.text`,message:'通常文字の本文は必須です'});
+        if(screenText.orientation&&!SCREEN_TEXT_ORIENTATIONS.includes(screenText.orientation))issues.push({level:'error',path:`${screenTextPath}.orientation`,message:'orientation は horizontal / vertical から選んでください'});
+      });
     }
     const bg2 = (page.panels ?? []).filter((panel) => panel.bg === 2).length;
     if (bg2 > 2) issues.push({ level: 'error', path: `${base}.panels`, message: `bg: 2 は1ページ2コマまでです（現在 ${bg2}）` });
@@ -742,10 +763,6 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
         if (bubble.offscreen && !bubble.speaker) issues.push({ level: 'warning', path: `${bubblePath}.offscreen`, message: 'コマ外の声（offscreen）には話者（speaker）を明記してください' });
         if (bubble.offscreen && bubble.speaker && figureNames.has(bubble.speaker)) issues.push({ level: 'warning', path: `${bubblePath}.offscreen`, message: `話者「${bubble.speaker}」が figures にいます。コマ内にいる話者に offscreen は付けません` });
         validateBubbleConnection(bubble, bubbleIndex, bubblePath);
-        const joinTarget = panel.bubbles[Number(bubble.join_to)-1];
-        if (joinTarget && Boolean(bubble.clip_to_panel)!==Boolean(joinTarget.clip_to_panel)) {
-          issues.push({ level: 'warning', path: `${bubblePath}.clip_to_panel`, message: '結合するフキダシはコマ枠での切り取り設定をそろえてください。設定が異なる間は結合を描画しません' });
-        }
         validateBubbleTail(bubble, bubblePath);
       });
       (panel.screen_text ?? []).forEach((screenText, screenTextIndex) => {

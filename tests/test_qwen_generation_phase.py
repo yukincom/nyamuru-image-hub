@@ -1,4 +1,4 @@
-"""Opt-in CPU tests of the installed ComfyUI nodes, without any model weights.
+"""Prompt tests and opt-in CPU tests of the ComfyUI nodes, without model weights.
 
 Set QWEN_TEST_COMFY_ROOT and run with the existing Qwen lab Python.
 """
@@ -30,6 +30,62 @@ if comfy_root:
     finally:
         sys.argv = prior_args
     torch.set_num_threads(1)
+
+
+class QwenGenerationPromptTest(unittest.TestCase):
+    def test_panel_and_page_paint_keep_composition_and_separate_character_labels(self):
+        references = [dict(role='paint', character_keys=[]),
+                      dict(role='identity', character_keys=['alice']),
+                      dict(role='identity', character_keys=['bob'])]
+        english = dict(prompt='Alice stands left of Bob.', references=[dict(label=label) for label in
+                       ('Composition', 'Alice character sheet', 'Bob character sheet')])
+        for owner in ('panel', 'page'):
+            with self.subTest(owner=owner):
+                config = dict(owner_key=owner, mode='paint', references=references, settings=SETTINGS,
+                              character_keys=['alice', 'bob'])
+                prompt = generation_prompt(config, english)
+                self.assertTrue(prompt.startswith('Edit <image1>. Preserve its pose and composition'))
+                self.assertIn('<image2>: Alice character sheet. Assigned characters: Character 1.', prompt)
+                self.assertIn('<image3>: Bob character sheet. Assigned characters: Character 2.', prompt)
+                self.assertIn('Alice stands left of Bob.', prompt)
+                self.assertNotIn('RGBA image with transparency', prompt)
+                self.assertNotIn('background is transparent', prompt)
+                self.assertNotIn('Extract the single person', prompt)
+
+    def test_shared_character_sheet_does_not_turn_distinct_characters_into_one_person(self):
+        config = dict(owner_key='panel', mode='new', settings=SETTINGS, character_keys=['alice', 'bob'],
+                      references=[dict(role='identity', character_keys=['bob', 'alice'])])
+        english = dict(prompt='Draw Alice and Bob.', references=[dict(label='Alice and Bob character designs')])
+        prompt = generation_prompt(config, english)
+        self.assertIn('Alice and Bob character designs.', prompt)
+        self.assertIn('Assigned characters: Character 2, Character 1.', prompt)
+        self.assertIn('Character identities and drawing styles.', prompt)
+        self.assertNotIn('one person', prompt)
+        self.assertNotIn('transparent', prompt)
+
+    def test_new_groups_without_references_do_not_request_person_extraction(self):
+        for owner in ('panel', 'page'):
+            with self.subTest(owner=owner):
+                config = dict(owner_key=owner, mode='new', references=[], settings=SETTINGS)
+                prompt = generation_prompt(config, dict(prompt='An empty room.', references=[]))
+                self.assertEqual(prompt, 'Create a new drawing with the requested composition. An empty room.')
+
+    def test_individual_figure_keeps_single_person_reference_and_transparent_format(self):
+        config = dict(owner_key='figure-0', mode='new', settings=SETTINGS,
+                      references=[dict(role='identity', character_keys=['alice'])])
+        prompt = generation_prompt(config, dict(prompt='Draw Alice.', references=[dict(label='Alice character sheet')]))
+        self.assertIn('alternate views are one person, not extra people.', prompt)
+        self.assertTrue(prompt.startswith('This is an RGBA image with transparency.'))
+        self.assertTrue(prompt.endswith('The image has alpha channel and the background is transparent.'))
+        self.assertNotIn('Assigned characters', prompt)
+
+    def test_authored_group_text_keeps_newlines_and_repeated_spaces_in_final_prompt(self):
+        for owner in ('page', 'panel'):
+            with self.subTest(owner=owner):
+                literal = 'ゆき  は\n笑う'
+                config = dict(owner_key=owner, mode='new', references=[], settings=SETTINGS, literal_text=[literal])
+                prompt = generation_prompt(config, dict(prompt=f'Draw the words "{literal}".', references=[]))
+                self.assertIn(f'"{literal}"', prompt)
 
 
 class RecordingClip:

@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { newPage, newPanel, parseMangaYaml, validateManga } from '../src/lib/manga.ts';
 import { defaultPrintSetup, withPrintSetup } from '../src/lib/printSettings.ts';
+import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
 import { getFinishLayout } from '../src/lib/finishLayout.ts';
 import { applyPanelTemplate, PANEL_TEMPLATES } from '../src/lib/panelTemplates.ts';
 import { clampedPanelDelta, movePanelEdge, movePanelVertexWithSnap, resizedBox, snapPanelDeltaToInnerFrame, snapPanelResizeToInnerFrame, snapPointToInnerFrame } from '../src/lib/canvasGeometry.ts';
@@ -17,7 +18,7 @@ test('紙面変更は図形・絵・文字・前景を同じ比率で変換し�
   panel.figures = [{ name: 'fixture', bbox: { x: 30, y: 25, w: 40, h: 70 }, analogImport: { assetId: 'source', sourceBBox: { x: .2, y: .1, w: .4, h: .7 } } }];
   panel.bubbles = [{ text: 'fixture', bbox: { x: 80, y: 40, w: 30, h: 35 }, tail: { x: .3, y: .8 } }];
   panel.screen_text = [{ text: 'sound', bbox: { x: 35, y: 20, w: 60, h: 20 } }];
-  document.manga.pages[0].page_overlay = { frame: false, layer: 'above_panel_frames', figures: [{ name: 'overlay', bbox: { x: 25, y: 30, w: 80, h: 120 } }], bubbles: [{ text: 'overlay text', bbox: { x: 30, y: 30, w: 35, h: 45 } }] };
+  document.manga.pages[0].page_overlay = { frame: false, layer: 'above_panel_frames', figures: [{ name: 'overlay', bbox: { x: 25, y: 30, w: 80, h: 120 } }], bubbles: [{ text: 'overlay text', bbox: { x: 30, y: 30, w: 35, h: 45 } }], screen_text: [{ text: 'page text', bbox: { x: 100, y: 120, w: 30, h: 15 }, text_style: { fontSize: 15 } }] };
   const original = structuredClone(document);
   const setup = { ...defaultPrintSetup(), width_mm: 257, height_mm: 182 };
   const next = withPrintSetup(document, setup);
@@ -25,7 +26,7 @@ test('紙面変更は図形・絵・文字・前景を同じ比率で変換し�
   const page = next.manga.pages[0], scaled = page.panels[0];
   const scale = 182 / 297, offset = (257 - 210 * scale) / 2;
   assert.deepEqual(page.canvas, { w: 257, h: 182, unit: 'mm' });
-  for (const [a, b] of [[scaled.figures[0], panel.figures[0]], [scaled.bubbles[0], panel.bubbles[0]], [scaled.screen_text[0], panel.screen_text[0]], [page.page_overlay.figures[0], original.manga.pages[0].page_overlay.figures[0]], [page.page_overlay.bubbles[0], original.manga.pages[0].page_overlay.bubbles[0]]]) {
+  for (const [a, b] of [[scaled.figures[0], panel.figures[0]], [scaled.bubbles[0], panel.bubbles[0]], [scaled.screen_text[0], panel.screen_text[0]], [page.page_overlay.figures[0], original.manga.pages[0].page_overlay.figures[0]], [page.page_overlay.bubbles[0], original.manga.pages[0].page_overlay.bubbles[0]], [page.page_overlay.screen_text[0], original.manga.pages[0].page_overlay.screen_text[0]]]) {
     close(a.bbox.x, offset + b.bbox.x * scale); close(a.bbox.y, b.bbox.y * scale);
     close(a.bbox.w / a.bbox.h, b.bbox.w / b.bbox.h);
   }
@@ -35,6 +36,23 @@ test('紙面変更は図形・絵・文字・前景を同じ比率で変換し�
   assert.ok(getFinishLayout(next.manga).page_transforms.every(p => p.scale_x === 1 && p.scale_y === 1));
   assert.deepEqual(withPrintSetup(next, setup), next);
   assert.deepEqual(withPrintSetup(next, { ...setup, dpi: 1200 }).manga.pages, next.manga.pages);
+});
+
+test('スキャン初期配置の用紙変更は紙端と内枠を保ったまま対象判型へ写す', () => {
+  const page = newPage(1);
+  page.panels = [{
+    id: 1,
+    shape: { type: 'rect', x: 15, y: 14.5, w: 180, h: 268 },
+    bg: 0,
+    action: null,
+    figures: [{ name: '人物', bbox: { x: 25, y: 29.5, w: 40, h: 80 } }],
+    bubbles: [{ text: '台詞', bbox: { x: 155, y: 24.5, w: 30, h: 40 } }],
+  }];
+  resizePageCanvas(page, { w: 182, h: 257 }, 'inner-frame');
+  assert.deepEqual(page.canvas, { w: 182, h: 257, unit: 'mm' });
+  assert.deepEqual(page.panels[0].shape, { type: 'rect', x: 16, y: 18.5, w: 150, h: 220 });
+  close(page.panels[0].figures[0].bbox.x, 16 + 10 * 150 / 180);
+  close(page.panels[0].bubbles[0].bbox.x + page.panels[0].bubbles[0].bbox.w, 16 + 170 * 150 / 180);
 });
 
 test('B5横・A5・正方形・小さなpx用紙でテンプレートと追加コマが紙面を保つ', () => {
@@ -61,9 +79,9 @@ test('横向き用紙のドラッグ換算・端の制限・内枠吸着が同�
   assert.deepEqual(resizedBox(interaction, 40, 20), { x: 40, y: 30, w: 40, h: 50 });
   assert.deepEqual(resizedBox({ ...interaction, mode: 'se' }, 1000, 1000), { x: 20, y: 20, w: 237, h: 162 });
   assert.deepEqual(clampedPanelDelta(interaction.startBox, 1000, 1000, canvas), { x: 197, y: 112 });
-  assert.deepEqual(snapPointToInnerFrame(246, 171, undefined, canvas), { x: 247, y: 172 });
-  assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 200, y: 120, w: 40, h: 40 }, 6, 11, undefined, canvas), { x: 7, y: 12 });
-  assert.deepEqual(snapPanelResizeToInnerFrame({ x: 10, y: 10, w: 235, h: 160 }, 'se', 20, undefined, canvas), { x: 10, y: 10, w: 237, h: 162 });
+  assert.deepEqual(snapPointToInnerFrame(237, 165, undefined, canvas), { x: 238.5, y: 166 });
+  assert.deepEqual(snapPanelDeltaToInnerFrame({ x: 190, y: 115, w: 40, h: 40 }, 7, 10, undefined, canvas), { x: 8.5, y: 11 });
+  assert.deepEqual(snapPanelResizeToInnerFrame({ x: 10, y: 10, w: 227, h: 155 }, 'se', 20, undefined, canvas), { x: 10, y: 10, w: 228.5, h: 156 });
 });
 
 test('横向き用紙の右下タチキリと連動頂点がA4の端に吸われない', () => {
@@ -78,13 +96,13 @@ test('横向き用紙の右下タチキリと連動頂点がA4の端に吸われ
   const document = sample(); document.manga.pages = [{ page: 1, canvas: { ...canvas, unit: 'mm' }, panels }];
   assert.equal(validateManga(document).filter(x => x.path.endsWith('.canvas') || x.path.endsWith('.bleed')).length, 0);
   const linked = [
-    { ...newPanel(1), shape: { type: 'polygon', points: [[10, 10], [247, 10], [247, 70], [10, 70]] } },
-    { ...newPanel(2), shape: { type: 'polygon', points: [[10, 75], [247, 75], [247, 172], [10, 172]] } },
+    { ...newPanel(1), shape: { type: 'polygon', points: [[18.5, 16], [238.5, 16], [238.5, 70], [18.5, 70]] } },
+    { ...newPanel(2), shape: { type: 'polygon', points: [[18.5, 75], [238.5, 75], [238.5, 166], [18.5, 166]] } },
   ];
   movePanelVertexWithSnap(linked, 0, 2, 255, 90, true, canvas);
-  assert.deepEqual(linked[0].shape.points[2], [247, 90]);
-  assert.deepEqual(linked[1].shape.points[1], [247, 95]);
-  assert.deepEqual(linked[1].shape.points[2], [247, 172]);
+  assert.deepEqual(linked[0].shape.points[2], [238.5, 90]);
+  assert.deepEqual(linked[1].shape.points[1], [238.5, 95]);
+  assert.deepEqual(linked[1].shape.points[2], [238.5, 166]);
 });
 
 test('A6の細いテンプレートコマを動かし始めても最小寸法へ跳ばない', () => {

@@ -1,4 +1,4 @@
-import type { VectorPath, VectorPoint, VectorStyle } from '../types.ts';
+import type { BBox, VectorPath, VectorPoint, VectorStyle } from '../types.ts';
 import { cornerVectorNode, eraseVectors, hitVector, insertVectorAnchor, moveVectorNode, nearestVector, reverseVector, transformVector, vectorBounds, vectorNode, vectorShape, type VectorEraseMode } from './vectorGeometry.ts';
 
 export type VectorPenTool='vector-pen'|'vector-add'|'vector-delete'|'vector-anchor';
@@ -8,9 +8,25 @@ export interface VectorNodeSelection {pathId:string;node:number}
 export interface VectorState {paths:VectorPath[];selected:string[];activePath?:string;selectedNode?:VectorNodeSelection;selectedNodes?:VectorNodeSelection[]}
 export interface VectorDrag {
   before:VectorState;state:VectorState;start:VectorInput;tool:VectorTool;
-  kind:'shape'|'move'|'node'|'handle'|'new-anchor'|'erase'|'marquee'|'none';
+  kind:'shape'|'move'|'resize'|'node'|'handle'|'new-anchor'|'erase'|'marquee'|'none';
   pathId?:string;node?:number;handle?:'handleIn'|'handleOut';samples:VectorPoint[];
+  resizeHandle?:VectorResizeHandle;resizeBounds?:BBox;
   style:VectorStyle;tolerance:number;eraseMode:VectorEraseMode;radius:number;
+}
+export type VectorResizeHandle='nw'|'n'|'ne'|'e'|'se'|'s'|'sw'|'w';
+export function vectorSelectionBounds(paths:VectorPath[],ids:string[]):BBox|undefined{
+  const boxes=paths.filter(path=>ids.includes(path.id)).map(vectorBounds);
+  if(!boxes.length)return;
+  const x=Math.min(...boxes.map(box=>box.x)),y=Math.min(...boxes.map(box=>box.y));
+  return {x,y,w:Math.max(...boxes.map(box=>box.x+box.w))-x,h:Math.max(...boxes.map(box=>box.y+box.h))-y};
+}
+export function vectorResizeHandleAt(paths:VectorPath[],ids:string[],point:VectorPoint,tolerance:number):VectorResizeHandle|undefined{
+  const box=vectorSelectionBounds(paths,ids);if(!box)return;
+  const handles:Array<[VectorResizeHandle,number,number]>=[
+    ['nw',box.x,box.y],['n',box.x+box.w/2,box.y],['ne',box.x+box.w,box.y],['e',box.x+box.w,box.y+box.h/2],
+    ['se',box.x+box.w,box.y+box.h],['s',box.x+box.w/2,box.y+box.h],['sw',box.x,box.y+box.h],['w',box.x,box.y+box.h/2],
+  ];
+  return handles.find(([,x,y])=>Math.hypot(x-point.x,y-point.y)<=tolerance)?.[0];
 }
 export function vectorAnchorAt(paths:VectorPath[],ids:string[],point:VectorPoint,tolerance:number,handles=true){
   for(const path of [...paths].reverse())if(ids.includes(path.id)){
@@ -67,6 +83,8 @@ export function beginVectorDrag(before:VectorState,tool:VectorTool,point:VectorI
   }
   const hit=hitVector(before.paths,point,tolerance);
   if(tool==='vector-select'){
+    const resizeHandle=vectorResizeHandleAt(before.paths,before.selected,point,tolerance);
+    if(resizeHandle){d.kind='resize';d.resizeHandle=resizeHandle;d.resizeBounds=vectorSelectionBounds(before.paths,before.selected);d.state={...before,activePath:undefined,selectedNode:undefined,selectedNodes:undefined};return d;}
     if(hit){const selected=point.shift?before.selected.includes(hit)?before.selected.filter(id=>id!==hit):[...before.selected,hit]:before.selected.includes(hit)?before.selected:[hit];d.state={...before,selected,activePath:undefined,selectedNode:undefined,selectedNodes:undefined};d.kind=selected.includes(hit)?'move':'none';}
     else {d.kind='marquee';d.state={...before,selected:point.shift?before.selected:[],activePath:undefined,selectedNode:undefined};}
     return d;
@@ -138,6 +156,17 @@ export function updateVectorDrag(d:VectorDrag,point:VectorInput):VectorDrag {
   }else if(d.kind==='move'){
     let dx=point.x-d.start.x,dy=point.y-d.start.y;if(point.shift){if(Math.abs(dx)>Math.abs(dy))dy=0;else dx=0;}
     d.state={...d.state,paths:d.before.paths.map(p=>d.state.selected.includes(p.id)?transformVector(p,dx,dy):p)};
+  }else if(d.kind==='resize'&&d.resizeBounds&&d.resizeHandle){
+    const box=d.resizeBounds,handle=d.resizeHandle,min=.01;
+    const left=handle.includes('w'),right=handle.includes('e'),top=handle.includes('n'),bottom=handle.includes('s');
+    const anchorX=left?box.x+box.w:right?box.x:box.x+box.w/2,anchorY=top?box.y+box.h:bottom?box.y:box.y+box.h/2;
+    let sx=left?Math.max(min,anchorX-point.x)/Math.max(min,box.w):right?Math.max(min,point.x-anchorX)/Math.max(min,box.w):1;
+    let sy=top?Math.max(min,anchorY-point.y)/Math.max(min,box.h):bottom?Math.max(min,point.y-anchorY)/Math.max(min,box.h):1;
+    if(point.shift&&(left||right||top||bottom)){
+      const uniform=(left||right)&&(top||bottom)?(Math.abs(sx-1)>=Math.abs(sy-1)?sx:sy):(left||right? sx:sy);sx=uniform;sy=uniform;
+    }
+    const dx=anchorX-anchorX*sx,dy=anchorY-anchorY*sy;
+    d.state={...d.state,paths:d.before.paths.map(path=>d.state.selected.includes(path.id)?transformVector(path,dx,dy,sx,sy):path)};
   }else if(d.kind==='node'||d.kind==='handle'){
     if(d.kind==='node'&&d.tool==='vector-node'){
       const dx=point.x-d.start.x,dy=point.y-d.start.y,nodes=d.state.selectedNodes??[];

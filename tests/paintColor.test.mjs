@@ -3,6 +3,7 @@ import test from 'node:test';
 import {applyPaintColor,paintColorInk,paintColorMode} from '../src/lib/paintColor.ts';
 import {newPaintLayer,paintScene,paintForFrame,validatePaintDocument} from '../src/lib/paintDocument.ts';
 import {newToneLayer} from '../src/lib/paintTone.ts';
+import {preparePaintMarkLayer} from '../src/lib/paintGesture.ts';
 
 test('print expressions choose the corresponding new-layer default in Japanese and stored English',()=>{
   for(const [format,mode] of [['モノクロ漫画','monochrome'],['black-and-white manga','monochrome'],['グレースケール漫画','grayscale'],['grayscale manga','grayscale'],['カラー漫画','color'],['custom','color']])assert.equal(paintColorMode(format),mode);
@@ -10,7 +11,7 @@ test('print expressions choose the corresponding new-layer default in Japanese a
   for(const mode of ['color','grayscale','monochrome']){
     const scene=paintScene(panel,100,[],mode);assert.equal(scene.colorMode,mode);
     assert.ok(scene.owners.every(o=>o.paint.layers.every(l=>l.colorMode===(l.guide?'color':mode))));
-    assert.ok(scene.owners.every(o=>!o.paint.layers.at(-1).guide&&o.paint.layers.at(-1).colorMode===mode));
+    assert.ok(scene.owners.every(o=>preparePaintMarkLayer(o,o.paint.layers.at(-1),'raster',mode).colorMode===mode));
     assert.equal(newPaintLayer('vector','vector',mode).colorMode,mode);
     assert.equal(newToneLayer(null,mode).colorMode,mode);
   }

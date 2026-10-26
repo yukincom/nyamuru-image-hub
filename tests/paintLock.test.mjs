@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {newPaintLayer} from '../src/lib/paintDocument.ts';
-import {paintLayerPatchAllowed,paintLayerEditable,paintContentsLocked,artworkLocked,paintOwnerPlacementLocked} from '../src/lib/paintLock.ts';
+import {paintLayerPatchAllowed,paintLayerEditable,paintContentsLocked,artworkLocked,paintOwnerLocked,paintOwnerPlacementLocked} from '../src/lib/paintLock.ts';
 const layer=(locked=false)=>({...newPaintLayer(),locked,strokes:[{tool:'pen',points:[{x:1,y:1}],size:2,color:'#000'}]});
 const owner=(layers)=>({key:'figure-0',kind:'figure',paint:{layers},figure:{}});
 test('locked layers reject content and property changes, while allowing visibility and unlocking',()=>{
@@ -11,9 +11,17 @@ test('locked layers reject content and property changes, while allowing visibili
  assert.equal(paintLayerEditable(o,l),false);assert.equal(paintLayerPatchAllowed(o,l,{}),false);
 });
 test('an explicit owner lock stays independent and cannot be bypassed by unlocking a child',()=>{
- const l=layer(),o=owner([l]);o.figure.artwork={locked:true};
+ const l=layer(),o={...owner([l]),locked:true};
  assert.equal(paintLayerEditable(o,l),false);assert.equal(paintLayerPatchAllowed(o,l,{locked:false}),false);
  assert.equal(paintLayerPatchAllowed(o,l,{visible:false}),true);assert.equal(paintOwnerPlacementLocked(o),true);
+});
+test('folder and inherited panel locks block children while keeping their sources independent',()=>{
+ const l=layer(),self={...owner([l]),locked:true},inherited={...owner([l]),inheritedLocked:true};
+ assert.equal(paintOwnerLocked(self),true);assert.equal(paintOwnerLocked(inherited),true);
+ assert.equal(paintLayerEditable(self,l),false);assert.equal(paintLayerEditable(inherited,l),false);
+ assert.equal(paintLayerPatchAllowed(self,l,{locked:true}),false);
+ assert.equal(paintLayerPatchAllowed(inherited,l,{visible:false}),true);
+ self.locked=false;assert.equal(paintOwnerLocked(self),false);assert.equal(paintLayerEditable(self,l),true);
 });
 test('locked source content does not lock an owner with editable foreground content',()=>{
  const source=layer(true),foreground=layer(),o=owner([source,foreground]);

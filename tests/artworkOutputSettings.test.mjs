@@ -20,6 +20,7 @@ function render(document) {
   const changes = [], notifications = [];
   const renderComponent = runInNewContext(code, {
     h: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+    React: { Fragment: 'Fragment' },
     useRef: () => ({ current: null }), structuredClone,
     SectionTitle: 'SectionTitle', Field: 'Field', FileUp: 'FileUp', Plus: 'Plus', Download: 'Download',
     getArtworkSettings, getArtworkMode, applyArtworkSettings, isInternalArtworkGroup, artworkNumberControls,
@@ -61,7 +62,7 @@ test('作品情報からカラー、レイアウトからdpiを外し、作画�
   assert.deepEqual(notifications, []);
 });
 
-test('独自値は現在値として表示し、無操作・作画方法切替で色とdpiを変えない', () => {
+test('独自値は現在値として表示し、旧作画モードの廃止で色とdpiを変えない', () => {
   const doc = sample();
   doc.manga.meta.format = '特色2色';
   doc.manga.finish_settings = { width_mm: 148, height_mm: 210, dpi: 450, bleed_mm: 3 };
@@ -72,15 +73,16 @@ test('独自値は現在値として表示し、無操作・作画方法切替�
     assert.equal(select.props.value, value);
     assert.ok(nodes(select.children).some(node => node.type === 'option' && node.props.value === value));
   }
-  const draft = nodes(tree).find(node => node.type === 'input' && node.props.value === 'draft');
-  draft.props.onChange({ currentTarget: { checked: true } });
-  assert.equal(changes.at(-1).manga.meta.format, doc.manga.meta.format);
-  assert.deepEqual(changes.at(-1).manga.finish_settings, doc.manga.finish_settings);
+  assert.equal(nodes(tree).some(node => node.type === 'input' && node.props.name === 'artwork-generation-mode'), false);
+  assert.equal(changes.length, 0);
+  assert.equal(doc.manga.meta.format, '特色2色');
+  assert.deepEqual(doc.manga.finish_settings, { width_mm: 148, height_mm: 210, dpi: 450, bleed_mm: 3 });
 });
 
-test('一体型のクラウド限定とラフの未対応範囲を明記し、無効入力は保存しない', () => {
-  assert.match(source, /ページ全体を一体型で生成する（クラウドのみ）/);
-  assert.match(source, /現在のローカル4値ラフは512 × 512 pxの下書き専用/);
+test('生成対象は右クリックへ案内し、モデル別のサイズ制限を説明して無効入力は保存しない', () => {
+  assert.match(source, /ページ全体・コマ・人物の生成は、キャンバスの右クリックから選びます/);
+  assert.match(source, /実際に生成できる画像のサイズは、利用するモデルによって異なります/);
+  assert.doesNotMatch(source, /下書きを生成する|クラウドのみ|ローカル4値ラフは512 × 512 pxの下書き専用/);
   const { tree, changes, notifications } = render(sample());
   const event = { currentTarget: { value: '0' } };
   control(tree, '完成画像の出力解像度').props.onChange(event);

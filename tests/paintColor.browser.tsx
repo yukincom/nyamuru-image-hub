@@ -81,7 +81,7 @@ async function ui(){
  await click('ラスターレイヤー追加');await click('生成マスク化');
  check(document.querySelectorAll('.paint-colors .paint-color').length===6,'生成マーカーには識別用カラーが使える');
  check(mode()?.value==='color','生成マーカーのカラーモード表示はカラー');
- await click('選択・移動');await tick();
+ await click('配置へ戻る');await tick();
  for(let i=0;i<100&&document.querySelector('.paint-input');i++)await tick();
  check(mode()?.value===''&&Boolean(mode()?.matches(':disabled')),'描画を終了すると未選択表示に戻る');
  const rows=Array.from(document.querySelectorAll<HTMLButtonElement>('.layer-select')),last=rows.find(b=>b.textContent?.includes('レイヤー'));last?.click();

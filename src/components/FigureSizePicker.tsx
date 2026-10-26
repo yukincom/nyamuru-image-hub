@@ -186,6 +186,6 @@ export default function FigureSizePicker({ value, onChange }: { value: FigureSiz
         <button type="button" class="figure-size-cancel" onClick={() => dismiss(true)}>キャンセル</button>
         <button type="button" class="figure-size-confirm" onClick={confirm}>確定</button>
       </div>
-    </div>, document.body)}
+    </div>, trigger.current?.closest('dialog') ?? document.body)}
   </div>;
 }

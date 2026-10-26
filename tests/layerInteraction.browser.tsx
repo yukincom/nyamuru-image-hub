@@ -3,6 +3,7 @@ import { render } from 'preact';
 import {renderPaintPng,decodePaintImage,paintPreviewRenderer} from '../src/lib/paintRenderer';
 import {newPaintLayer} from '../src/lib/paintDocument';
 import {newToneLayer} from '../src/lib/paintTone';
+import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry';
 import type {PaintDocument} from '../src/types';
 import App from '../src/components/App';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
@@ -49,6 +50,9 @@ async function rendererChecks(){
  check(pixel(exported,51)==='0,0,0,255'&&JSON.stringify(source)===unchanged,'トーン書き出し後も元の線画とレイヤーを保持');
  const blank=await read(await renderPaintPng({...toneDocument,layers:[newToneLayer()]},new Map()));
  check(blank.every((v,i)=>i%4!==3||v===0),'未塗りの新規トーンは全面透明');
+ const vector={...newPaintLayer('黒枠・塗りなし','vector'),paths:[vectorShape('rectangle',{x:20,y:20},{x:80,y:80},{...defaultVectorStyle(),stroke:'#000000',fill:null,width:8})]};
+ const vectorPixels=await read(await renderPaintPng({version:1,width:100,height:100,dpi:100,layers:[vector]},new Map()));
+ check(pixel(vectorPixels,20)==='0,0,0,255'&&pixel(vectorPixels,50)==='0,0,0,0','確定後の黒枠・塗りなしベクターを白線に変えない');
  screen.dispose();
  return checks;
 }

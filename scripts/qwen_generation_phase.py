@@ -39,8 +39,13 @@ def generation_prompt(config, english):
                 'the annotated input image and canvas. Its marks and written instructions identify the requested local edits.'))
             continue
         name = f'<image{i}>' if multiple else 'The reference image'
-        roles.append(f"{name}: {english['references'][i-1]['label']}. " +
-                     ('Character identity and drawing style; alternate views are one person, not extra people.'
+        assignment = ''
+        if config['owner_key'] in ('page', 'panel') and ref['character_keys']:
+            characters = ', '.join(f'Character {config["character_keys"].index(key) + 1}' for key in ref['character_keys'])
+            assignment = f'Assigned characters: {characters}. '
+        roles.append(f"{name}: {english['references'][i-1]['label']}. {assignment}" +
+                     ('Character identities and drawing styles.' if len(ref['character_keys']) > 1 else
+                      'Character identity and drawing style; alternate views are one person, not extra people.'
                       if ref['character_keys'] else 'Drawing reference.'))
     if correction:
         instruction = (f'Edit {image_name(source or correction)} only as requested in the indicated regions. '
@@ -56,10 +61,12 @@ def generation_prompt(config, english):
     else:
         instruction = ('Create a new drawing with the requested composition. Use the supplied images as references for the requested subject and style.'
                        if config['references'] else 'Create a new drawing with the requested composition.')
-    prompt = ' '.join(' '.join([instruction, *roles, english['prompt']]).split())
+    prompt = ' '.join([instruction, *roles, english['prompt']])
+    if not (config['owner_key'] in ('page', 'panel') and config.get('literal_text')):
+        prompt = ' '.join(prompt.split())
     if config['mode'] == 'sketch' and config['settings'].get('transparency_mode') == 'alpha-pass-v1':
         prompt += ' Use a plain white background for this finished illustration.'
-    elif config['owner_key'] != 'background':
+    elif config['owner_key'] not in ('page', 'panel', 'background'):
         # Qwen's documented transparent-output format, independent of image inputs.
         prompt = 'This is an RGBA image with transparency. ' + prompt + ' The image has alpha channel and the background is transparent.'
     return prompt

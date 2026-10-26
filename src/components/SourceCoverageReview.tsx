@@ -18,7 +18,7 @@ type CoverageFilter = 'review' | 'all' | SourceCoverageStatus;
 
 export interface SourceCoverageReviewProps {
   document: MangaDocument;
-  omnyYaml: string;
+  getOmnySnapshot: () => string;
   source: SourceCoverageSource | null;
   decisions: readonly SourceCoverageDecision[];
   workspaceFolder: string;
@@ -73,7 +73,7 @@ function targetTab(locator: string): 'meta' | 'setting' | 'storyboard' | 'charac
 
 export default function SourceCoverageReview({
   document,
-  omnyYaml,
+  getOmnySnapshot,
   source,
   decisions,
   workspaceFolder,
@@ -98,12 +98,12 @@ export default function SourceCoverageReview({
     setReport(null);
     setError('');
     if (!source) return () => { active = false; };
-    void buildSourceCoverageReport(source, document, { omnyYaml, decisions }).then(
+    void buildSourceCoverageReport(source, document, { omnyYaml: getOmnySnapshot(), decisions }).then(
       (next) => { if (active) setReport(next); },
       (reason) => { if (active) setError(reason instanceof Error ? reason.message : '原文を照合できませんでした'); },
     );
     return () => { active = false; };
-  }, [source, document, omnyYaml, decisions]);
+  }, [source, document, getOmnySnapshot, decisions]);
 
   const targetById = useMemo(() => new Map(report?.targets.map((target) => [target.target_id, target]) ?? []), [report]);
   const displayedUnits = useMemo(() => (report?.source_units ?? []).filter((unit) => {

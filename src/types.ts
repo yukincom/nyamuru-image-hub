@@ -14,6 +14,11 @@ export type ScreenTextOrientation = 'horizontal' | 'vertical';
 export interface BBox { x: number; y: number; w: number; h: number }
 /** 話者の人物bboxを基準とする相対位置。枠外の値も使い、先端を短く止められる。 */
 export interface BubbleTailTarget { x: number; y: number }
+/** フキダシbboxを基準とする、しっぽ根元の相対位置。 */
+export interface BubbleTailRoot { x: number; y: number }
+/** フキダシbboxを基準とする本文中心の相対位置。未指定時は中央。 */
+export interface BubbleTextPosition { x: number; y: number }
+export type BubbleTailStyle = 'normal' | 'thinking';
 export interface RectShape extends BBox { type: 'rect' }
 export interface PolygonShape { type: 'polygon'; points: [number, number][] }
 export type PanelShape = RectShape | PolygonShape;
@@ -59,12 +64,19 @@ export interface AnalogTextImport {
   needsReview: boolean;
   unreadable?: boolean;
   referenceHidden?: boolean;
+  /** Source pixels were copied to an ordinary raster layer; never recreate it after deletion. */
+  rasterLayerInitialized?: boolean;
+  /** The source raster is an independent image placement. Never recreate it after deletion. */
+  rasterLayerSeparated?: boolean;
   levelAdjusted: true;
   persistentAsset?: PersistentAnalogAssetRef;
 }
 
 export interface Figure {
+  /** Stable identity of the figure folder that owns both its raster layers and panel settings. */
   layerId?: string;
+  /** Locks this figure folder and every paint layer it owns. */
+  locked?: boolean;
   name: string;
   /** 人物レイヤーへ渡す、この配置固有の表情・姿勢・視線・動作。 */
   action?: string;
@@ -97,10 +109,13 @@ export interface ScenarioSource {
 }
 
 export interface ScenarioMatch {
+  /** Pending/legacy links only. Resolved text has no live source link. */
   sourceIds: string[];
+  /** Import history for duplicate prevention and ordering, never for text/role synchronization. */
+  resolvedSourceIds?: string[];
   ocrText: string;
   score: number;
-  status: 'automatic' | 'confirmed' | 'review' | 'manual';
+  status: 'automatic' | 'confirmed' | 'review' | 'manual' | 'unmatched';
   /** Provisional OCR is already in the editable text (including an intentional empty value). */
   provisionalText?: true;
 }
@@ -118,6 +133,8 @@ export interface TextWeightRange { start: number; end: number; fontWeight: numbe
 export interface Bubble {
   /** The native shape, text, tails and painted additions share one layer visibility. */
   hidden?: boolean;
+  /** Locks the native bubble and every paint layer it owns. */
+  locked?: boolean;
   /** Drawing above the editable native bubble; source text/shape/OCR remain intact. */
   paint_overlay?: ImageContent;
   text: string;
@@ -129,7 +146,7 @@ export interface Bubble {
   shape?: BubbleShape;
   /** Closed cubic outline in a fixed 0..100 box; handles are relative to each anchor. */
   bezier?: { nodes: VectorNode[] };
-  /** コマ所属フキダシの輪郭・しっぽをコマ形状で切り取る。ページ前景では使わない。 */
+  /** 旧保存データとの読込互換。コマ所属は現在常時クリップし、ページ前景では使わない。 */
   clip_to_panel?: boolean;
   emphasis?: string;
   monologue?: boolean;
@@ -138,6 +155,12 @@ export interface Bubble {
   join_to?: number;
   /** falseはしっぽなし。座標は話者の人物bbox基準の相対位置（枠外可）。未指定時は人物中央。 */
   tail?: false | BubbleTailTarget;
+  /** 通常の三角しっぽ、または2〜4個の丸が連なるthinkingしっぽ。旧データは形状から補完する。 */
+  tail_style?: BubbleTailStyle;
+  /** しっぽの根元。フキダシbbox基準の0..1で、未指定時は先端方向へ自動配置。 */
+  tail_root?: BubbleTailRoot;
+  /** 本文の中心。フキダシbbox基準の0..1で、未指定時は中央。 */
+  text_position?: BubbleTextPosition;
   bbox?: BBox;
   anchor?: Anchor;
   analogTextImport?: AnalogTextImport;
@@ -161,8 +184,8 @@ export interface ScreenText {
 }
 
 export interface Panel {
-  /** Layer visibility never removes the panel geometry or its source objects. */
-  layer?: { hidden?: boolean; frameHidden?: boolean; artOrder?:string[] };
+  /** Editor-only visibility, independent folder locks and stable artwork order. */
+  layer?: { hidden?: boolean; frameHidden?: boolean; locked?: boolean; frameLocked?:boolean; backgroundLocked?:boolean; directLocked?:boolean; artOrder?:string[] };
   /** 背景あたりの表示内容。操作枠はコマ形状を共用する。 */
   background_images?: PlacedImage[];
   images?: PlacedImage[];
@@ -191,6 +214,8 @@ export interface PageOverlay {
   layer: 'above_panel_frames';
   figures?: Figure[];
   bubbles?: Bubble[];
+  /** コマに属さず、紙面の余白やコマ間にも置ける通常文字。 */
+  screen_text?: ScreenText[];
 }
 
 /** Original file metadata. No display transform rewrites the underlying bytes. */
@@ -244,6 +269,12 @@ export interface PaintTone {
   origin?: {x:number;y:number};
 }
 export type PaintColorMode = 'color'|'grayscale'|'monochrome';
+export interface PaintFolder {
+  id: string;
+  name: string;
+  /** Bottom-to-top insertion point used only while the folder is empty. */
+  position: number;
+}
 export interface PaintLayer {
   id: string;
   name: string;
@@ -265,6 +296,8 @@ export interface PaintLayer {
   generationMask?: { enabled:boolean; strokes:PaintStroke[] };
   guide?: boolean;
   tone?: PaintTone;
+  /** Optional user-created palette folder. This never changes rendering by itself. */
+  folderId?: string;
 }
 export interface PaintDocument {
   version: 1;
@@ -279,6 +312,8 @@ export interface PaintDocument {
   background3d?: BackgroundCapture;
   /** Bottom to top. Pixel coordinates belong to this document, not the page. */
   layers: PaintLayer[];
+  /** Optional user-created groups for organizing layers without flattening artwork. */
+  folders?: PaintFolder[];
 }
 export interface BackgroundStage {
   id: string; storageId: string; name: string; sha256: string; byteLength: number;
@@ -317,6 +352,12 @@ export interface ImageContent {
   locked: boolean;
 }
 export interface PlacedImage extends ImageContent {
+  /** Local source crop, independent of native bubble text/shape, drawn above the other artwork. */
+  bubbleOriginal?: { sourceRegionId: string; name: string };
+  /** Generated page/panel composite; editable source objects stay underneath. */
+  generationScope?: 'page'|'panel';
+  /** Editable freehand/vector artwork owned directly by a panel folder or the page root. */
+  paintScope?: 'panel'|'page';
   id: string;
   bbox: BBox;
   splitOverlap?: true;
@@ -325,6 +366,8 @@ export interface PlacedImage extends ImageContent {
 export interface MangaPage {
   /** Local artwork placements; original pixels live in manga.image_assets. */
   images?: PlacedImage[];
+  /** Editor-only state for artwork owned directly by the page. */
+  layer?: { directLocked?:boolean };
   page: number;
   canvas: { w: number; h: number; unit: string };
   panels: Panel[];

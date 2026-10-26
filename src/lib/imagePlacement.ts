@@ -97,18 +97,20 @@ export function validateImagePlacements(document: MangaDocument): void {
       if (item.paint.width !== asset.widthPx || item.paint.height !== asset.heightPx) throw new Error('ペイントと合成画像のサイズが一致しません');
     }
   };
-  const validateCollection = (items?: PlacedImage[]) => {
+  const validateCollection = (items: PlacedImage[]|undefined, scope:'page'|'panel'|'background') => {
     if (items !== undefined && !Array.isArray(items)) throw new Error('画像の配置情報が不正です');
     const ids = new Set<string>();
     for (const item of items ?? []) {
       if (!item || typeof item.id !== 'string' || !item.id || ids.has(item.id)) throw new Error('画像の配置情報が不正です');
+      if(item.paintScope!==undefined&&(!['panel','page'].includes(item.paintScope)||item.paintScope!==scope||!item.paint||item.generationScope!==undefined))throw new Error('描画レイヤーの所属が不正です');
+      if(item.bubbleOriginal&&(scope==='background'||typeof item.bubbleOriginal.sourceRegionId!=='string'||!item.bubbleOriginal.sourceRegionId||typeof item.bubbleOriginal.name!=='string'||!item.bubbleOriginal.name||item.paintScope||item.generationScope))throw new Error('原本レイヤーの所属が不正です');
       ids.add(item.id);
       validate(item, item.bbox);
     }
   };
   for (const page of document.manga.pages) {
-    validateCollection(page.images);
-    for (const panel of page.panels) { validateCollection(panel.images); validateCollection(panel.background_images); }
+    validateCollection(page.images,'page');
+    for (const panel of page.panels) { validateCollection(panel.images,'panel'); validateCollection(panel.background_images,'background'); }
     for (const owner of [...page.panels, page.page_overlay]) {
       for (const figure of owner?.figures ?? []) {
         if (figure.artwork !== undefined) validate(figure.artwork, figure.bbox);
@@ -151,30 +153,19 @@ export async function verifyOriginal(asset: ImageAsset, blob: Blob): Promise<voi
   }
 }
 
-/** Panel clipping does not constrain artwork to the panel's interior. */
-export function artworkInteractionBounds(box: BBox, canvas: { w: number; h: number }): BBox {
-  const x = Math.min(0, box.x), y = Math.min(0, box.y);
-  return { x, y, w: Math.max(canvas.w, box.x + box.w) - x, h: Math.max(canvas.h, box.y + box.h) - y };
-}
-
 /** Corner resizing keeps the opposite corner fixed and preserves aspect ratio. */
 export function resizeImageBox(interaction: InteractionGeometry, clientX: number, clientY: number): BBox {
-  const { startBox: box, bounds, mode, paperRect, canvas } = interaction;
+  const { startBox: box, mode, paperRect, canvas } = interaction;
   if (!canvas) return { ...box };
   const dx = (clientX - interaction.startClientX) * canvas.w / paperRect.width;
   const dy = (clientY - interaction.startClientY) * canvas.h / paperRect.height;
   if (dx === 0 && dy === 0) return { ...box };
-  if (mode === 'move') return { ...box,
-    x: Math.max(bounds.x, Math.min(bounds.x + bounds.w - box.w, box.x + dx)),
-    y: Math.max(bounds.y, Math.min(bounds.y + bounds.h - box.h, box.y + dy)) };
+  if (mode === 'move') return { ...box, x:box.x+dx, y:box.y+dy };
   const west = mode.includes('w'), north = mode.includes('n');
   const anchorX = west ? box.x + box.w : box.x, anchorY = north ? box.y + box.h : box.y;
   const sx = (west ? -dx : dx) / box.w, sy = (north ? -dy : dy) / box.h;
   const desired = 1 + (Math.abs(sx) > Math.abs(sy) ? sx : sy);
-  const availableW = west ? anchorX - bounds.x : bounds.x + bounds.w - anchorX;
-  const availableH = north ? anchorY - bounds.y : bounds.y + bounds.h - anchorY;
-  const maxScale = Math.min(availableW / box.w, availableH / box.h);
-  const scale = Math.max(Math.min(1 / Math.max(box.w, box.h), maxScale), Math.min(maxScale, desired));
+  const scale = Math.max(1/Math.max(box.w,box.h),desired);
   const w = box.w * scale, h = box.h * scale;
   return { x: west ? anchorX - w : anchorX, y: north ? anchorY - h : anchorY, w, h };
 }

@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {
   bubbleJoinGeometry,
   bubbleTailDisabled,
+  bubbleTailComposite,
   bubbleTailGeometry,
   bubbleTailPath,
+  bubbleTailRootPoint,
   bubbleTailTargetPoint,
   monologueTailEllipses,
+  normalizedBubbleTailRoot,
   normalizedBubbleTailTarget,
 } from '../src/lib/bubbleTail.ts';
 
@@ -22,6 +26,22 @@ test('しっぽ先端は人物枠外へ短く止められ、既存の枠内座�
   assert.deepEqual(normalizedBubbleTailTarget(speakerBox, { x: NaN, y: Infinity }), { x: .5, y: .5 });
   const bubble = { x: 10, y: 180, w: 20, h: 16 };
   assert.match(bubbleTailGeometry(bubble, shortTip).outlinePath, /L 20 200 L/);
+});
+
+test('しっぽ根元はフキダシ枠基準で保存し、先端とは独立して輪郭上を移動する',()=>{
+  const box={x:100,y:50,w:80,h:40},point={x:100,y:70};
+  const normalized=normalizedBubbleTailRoot(box,point);
+  assert.deepEqual(normalized,{x:0,y:.5});
+  assert.deepEqual(bubbleTailRootPoint(box,normalized),point);
+  assert.deepEqual(normalizedBubbleTailRoot(box,{x:0,y:200}),{x:-1.25,y:3.75});
+  const target={x:140,y:140};
+  const automatic=bubbleTailGeometry(box,target,'normal');
+  const moved=bubbleTailGeometry(box,target,'normal',undefined,{x:0,y:.5});
+  assert.ok(automatic&&moved);
+  assert.deepEqual(moved.rootPoint,{x:100,y:70});
+  assert.notDeepEqual(moved.rootPoint,automatic.rootPoint);
+  assert.match(moved.fillPath,/L 140 140 L/);
+  assert.equal(moved.seamMask.points.length,4);
 });
 
 test('しっぽはフキダシ外周から先端へ閉じたベクターパスを作る', () => {
@@ -40,6 +60,19 @@ test('しっぽの輪郭は根元を閉じず、本体輪郭を消すマスク�
   assert.doesNotMatch(geometry.outlinePath, / Z$/);
   assert.equal(geometry.seamMask.points.length, 4);
   assert.ok(geometry.seamMask.points.flat().every(Number.isFinite));
+});
+
+test('通常のしっぽは本体と同じ外周へunionし、紙面と生成画像で隙間のない同じ形を使う',()=>{
+  const composite=bubbleTailComposite({x:20,y:30,w:40,h:50},{x:4,y:110},'normal');
+  assert.ok(composite);
+  assert.equal((composite.path.match(/m/gi)??[]).length,1);
+  assert.ok(composite.bounds.x<0||composite.bounds.y<0||composite.bounds.x+composite.bounds.w>100||composite.bounds.y+composite.bounds.h>100);
+  const canvas=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
+  const composition=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+  assert.match(canvas,/bubbleTailComposite\(bubbleBox, target,[^\n]+bubble\.tail_root\)/);
+  assert.match(canvas,/composite=\{presentation\?\.composites\[bubbleIndex\]/);
+  assert.match(composition,/tail\.bubbleTailComposite\(bubbleBox\(index\),target,[^\n]+bubble\.tail_root\)/);
+  assert.match(composition,/composite: composites\[index\]\?\?undefined/);
 });
 
 test('フキダシ結合は双方の輪郭マスクと、離れた本体間の開いた輪郭を返す', () => {
@@ -76,15 +109,15 @@ test('しっぽなし・コマ外の声・枠なし文字はしっぽを描か�
   assert.equal(bubbleTailDisabled({ shape: 'normal' }), false);
 });
 
-test('モノローグのしっぽは縦長で、人物側ほど小さく間隔が広い', () => {
+test('thinkingのしっぽは距離に応じた2〜4個の丸となり、人物側ほど小さく間隔が広い', () => {
   const ellipses = monologueTailEllipses({ x: 140, y: 20, w: 40, h: 50 }, { x: 40, y: 200 });
-  assert.equal(ellipses.length, 3);
-  assert.ok(ellipses.every((ellipse) => ellipse.ry > ellipse.rx));
-  assert.ok(ellipses[0].rx > ellipses[1].rx && ellipses[1].rx > ellipses[2].rx);
+  assert.equal(ellipses.length, 4);
+  assert.ok(ellipses.every((ellipse) => ellipse.ry === ellipse.rx));
+  assert.ok(ellipses.every((ellipse,index)=>!index||ellipses[index-1].rx>ellipse.rx));
   const firstGap = Math.hypot(ellipses[1].cx - ellipses[0].cx, ellipses[1].cy - ellipses[0].cy);
-  const lastGap = Math.hypot(ellipses[2].cx - ellipses[1].cx, ellipses[2].cy - ellipses[1].cy);
+  const lastGap = Math.hypot(ellipses.at(-1).cx - ellipses.at(-2).cx, ellipses.at(-1).cy - ellipses.at(-2).cy);
   assert.ok(lastGap > firstGap);
-  assert.ok(lastGap > ellipses[1].ry + ellipses[2].ry);
+  assert.ok(lastGap > ellipses.at(-2).ry + ellipses.at(-1).ry);
 });
 
 test('短いモノローグしっぽでも人物側の粒は前の粒と重ならない', () => {

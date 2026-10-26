@@ -22,9 +22,8 @@ export function paintSizeShortcut(event:ShortcutInput,editing=false):1|-1|undefi
   if(event.key==='[')return -1;
   if(event.key===']')return 1;
 }
-const brushSizes=[.5,1,1.5,2,2.5,3,4,5,6,7,8,9,10,12,15,17,20,25,30,35,40,45,50,60,70,80,90,100,120,150,170,200,250,300,350,400,450,500,600,700,800,900,1000];
-export function stepPaintSize(size:number,direction:1|-1,vector=false):number {
-  const min=vector?.1:.5,max=vector?1000:500;
-  const next=direction===1?brushSizes.find(value=>value>size):brushSizes.findLast(value=>value<size);
-  return Math.max(min,Math.min(max,next??(direction===1?max:min)));
+export const PAINT_SIZE_PRESETS=[.07,.1,.15,.2,.25,.3,.4,.5,.6,.7,.8,1,1.2,1.5,1.7,2,2.5,3,4,5,6,7,8,10,12,15,17,20,25,30,40,50,60,70,80,100] as const;
+export function stepPaintSize(size:number,direction:1|-1,_vector=false):number {
+  const next=direction===1?PAINT_SIZE_PRESETS.find(value=>value>size):PAINT_SIZE_PRESETS.findLast(value=>value<size);
+  return next??(direction===1?PAINT_SIZE_PRESETS.at(-1)!:PAINT_SIZE_PRESETS[0]);
 }

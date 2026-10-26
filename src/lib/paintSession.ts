@@ -1,11 +1,18 @@
-import type { PaintOwner, PaintScene } from './paintDocument.ts';
-import type { BackgroundStage, ImageAsset, PaintLayer } from '../types.ts';
+import type { PaintLayerDropTarget, PaintOwner, PaintScene } from './paintDocument.ts';
+import type { BackgroundStage, BBox, ImageAsset, PaintLayer } from '../types.ts';
+export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox }
 
 export type PaintLayerAction =
   | {type:'background3d';key:'background'}
+  | {type:'add';key:string;kind:'raster'|'vector'}
+  | {type:'add-folder';key:string}
+  | {type:'rename-folder';key:string;id:string;name:string}
+  | {type:'remove-folder';key:string;id:string}
+  | {type:'move-layer';key:string;id:string;target:PaintLayerDropTarget}
   | {type:'select';key:string;id?:string;contents?:boolean;mask?:'mask'|'generationMask'}
   | {type:'menu';key:string;x:number;y:number}
   | {type:'update';key:string;id:string;patch:Partial<PaintLayer>}
+  | {type:'owner-lock';key:string;locked:boolean}
   | {type:'toggle';key:string}
   | {type:'guide';key:string}
   | {type:'reorder';key:string;id:string;target:string;after:boolean};
@@ -33,7 +40,7 @@ export interface PaintController {
   close: () => Promise<void>;
   generate: (key?:string) => Promise<void>;
   chooseImage: (key?:string) => void;
-  insertImage: (file:File,key:string) => Promise<void>;
+  insertImage: (file:File,key:string,placement?:PaintImagePlacement) => Promise<void>;
 }
 
 /** Advance only after all PNGs and their source assets have reached the document. */

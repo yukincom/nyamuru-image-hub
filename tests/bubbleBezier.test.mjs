@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { BUBBLE_BEZIER_PRESETS, addBubbleBezierNode, bubbleBezierBoundaryDistance, bubbleBezierData, bubbleBezierPath, createBubbleBezier, fitBubbleBezier, isBubbleBezier, moveBubbleBezierNode } from '../src/lib/bubbleBezier.ts';
+import { BUBBLE_BEZIER_PRESETS, MAX_BUBBLE_NODES, addBubbleBezierNode, bubbleBezierBoundaryDistance, bubbleBezierData, bubbleBezierPath, createBubbleBezier, isBubbleBezier, moveBubbleBezierNode } from '../src/lib/bubbleBezier.ts';
 import { moveVectorNode, paperPath } from '../src/lib/vectorGeometry.ts';
 import { bubbleJoinGeometry, bubbleTailGeometry, monologueTailEllipses } from '../src/lib/bubbleTail.ts';
 import { parseMangaYaml, toStoredMangaYaml, toMangaYaml, validateManga } from '../src/lib/manga.ts';
@@ -34,6 +34,18 @@ test('anchor insertion preserves exact geometry, edits reuse relative vector han
   const handled = moveVectorNode(moved, 0, { x: 30, y: 70 }, 'handleOut', true);
   assert.deepEqual(handled.nodes[0].handleOut, { x: 10, y: 20 });
   assert.deepEqual(handled.nodes[0].handleIn, moved.nodes[0].handleIn);
+});
+
+test('anchors and handles remain outside the reference frame through save/read without fitting back',()=>{
+  let outline=createBubbleBezier('ellipse');
+  outline=moveBubbleBezierNode(outline,0,{x:-80,y:160});
+  outline=moveBubbleBezierNode(outline,0,{x:-200,y:350},'handleOut',true);
+  assert.equal(outline.nodes[0].x,-80);assert.equal(outline.nodes[0].y,160);
+  assert.deepEqual(outline.nodes[0].handleOut,{x:-120,y:190});assert.equal(isBubbleBezier(outline),true);
+  const doc=parseMangaYaml(readFileSync(new URL('../src/content/sample.omny.yaml',import.meta.url),'utf8'));
+  const bubble={text:'元の本文',shape:'normal',bbox:{x:30,y:40,w:20,h:30},bezier:outline,tail:false};doc.manga.pages[0].panels[0].bubbles=[bubble];
+  assert.deepEqual(parseMangaYaml(toStoredMangaYaml(doc)).manga.pages[0].panels[0].bubbles[0],bubble);
+  assert.ok(!validateManga(doc).some(issue=>issue.path.endsWith('.bezier')));
 });
 
 test('tail roots, joins and thought beads use edited boundaries after non-square resize', () => {
@@ -70,7 +82,9 @@ test('OMNY save/export/read roundtrip keeps both panel and page outlines and ori
 });
 
 test('untrusted malformed outlines cannot reach SVG or geometry', () => {
-  for (const value of [null, {}, {nodes:null}, {nodes:[]}, {nodes:[null,null,null]}, {nodes:Array(65).fill({x:10,y:10})}, {nodes:Array(3).fill({x:10,y:Infinity})}, {nodes:Array(3).fill({x:10,y:10,handleIn:{x:101,y:0}})}]) {
+  assert.equal(MAX_BUBBLE_NODES,128);
+  assert.equal(isBubbleBezier({nodes:Array(MAX_BUBBLE_NODES).fill({x:10,y:10})}),true);
+  for (const value of [null, {}, {nodes:null}, {nodes:[]}, {nodes:[null,null,null]}, {nodes:Array(MAX_BUBBLE_NODES+1).fill({x:10,y:10})}, {nodes:Array(3).fill({x:10,y:Infinity})}, {nodes:Array(3).fill({x:10,y:10,handleIn:{x:NaN,y:0}})}]) {
     assert.equal(isBubbleBezier(value), false);
     assert.equal(bubbleBezierData(value), undefined);
     assert.equal(bubbleBezierBoundaryDistance({x:0,y:0,w:100,h:100},{x:200,y:50},value), undefined);
@@ -85,28 +99,30 @@ test('a shifted outline connects at its own boundary instead of the box ellipse'
   assert.ok(geometry.seamMask.points.every(([x])=>x<.45));
 });
 
-test('extreme handle editing stays in the render/mask box and can still add anchors', () => {
+test('anchors and handles extend outside the reference box without clipping or moving other points', () => {
   const outline = createBubbleBezier('ellipse');
   outline.nodes[0].handleOut = {x:-100,y:-27};
   outline.nodes[1].handleIn = {x:-100,y:0};
-  assert.equal(isBubbleBezier(outline), false);
-  const fitted = fitBubbleBezier(outline), expanded = addBubbleBezierNode(fitted, 0);
+  assert.equal(isBubbleBezier(outline), true);
+  const expanded = addBubbleBezierNode(outline, 0);
   assert.ok(isBubbleBezier(expanded));
   assert.equal(expanded.nodes.length, 5);
   const curve = paperPath(bubbleBezierPath(expanded));
-  try { assert.ok(curve.bounds.left>=0 && curve.bounds.top>=0 && curve.bounds.right<=100 && curve.bounds.bottom<=100); }
+  try { assert.ok(curve.bounds.left<0); }
   finally { curve.remove(); }
 });
 
-test('linked handles stay opposite at edges and fitting preserves tangent direction', () => {
+test('linked handles keep their complete tangent beyond the reference box', () => {
   const ellipse = createBubbleBezier('ellipse'), top = ellipse.nodes.findIndex(n=>n.y===0);
   const linked = moveBubbleBezierNode(ellipse, top, {x:80,y:20}, 'handleOut');
-  assert.deepEqual(linked.nodes[top].handleOut, {x:30,y:0});
-  assert.deepEqual(linked.nodes[top].handleIn, {x:-30,y:0});
+  assert.deepEqual(linked.nodes[top].handleOut, {x:30,y:20});
+  assert.deepEqual(linked.nodes[top].handleIn, {x:-30,y:-20});
   const separate = moveBubbleBezierNode(ellipse, top, {x:80,y:20}, 'handleOut', true);
   assert.deepEqual(separate.nodes[top].handleOut, {x:30,y:20});
   assert.deepEqual(separate.nodes[top].handleIn, ellipse.nodes[top].handleIn);
-  const fitted = fitBubbleBezier({nodes:[{x:10,y:20,handleIn:{x:-40,y:-30},handleOut:{x:40,y:30}},{x:90,y:20},{x:50,y:90}]});
-  const {handleIn:a,handleOut:b} = fitted.nodes[0];
+  const moved=moveBubbleBezierNode(ellipse,top,{x:-150,y:260});
+  assert.deepEqual(moved.nodes[top],{...ellipse.nodes[top],x:-150,y:260});
+  assert.deepEqual(moved.nodes.filter((_,i)=>i!==top),ellipse.nodes.filter((_,i)=>i!==top));
+  const {handleIn:a,handleOut:b} = linked.nodes[top];
   assert.ok(Math.abs(a.x*b.y-a.y*b.x)<1e-8);
 });

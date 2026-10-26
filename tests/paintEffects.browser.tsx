@@ -56,7 +56,7 @@ function Fixture(){
   const controller=useRef<PaintController|null>(null),[saved,setSaved]=useState('未出力');
   return <><style>{`body{padding:14px;background:#f6f5f3}h1{font-size:20px}.test-workspace{display:flex;gap:20px;align-items:flex-start}.test-tools{width:86px;flex:none}.test-layers{width:270px;flex:none}.test-paper{position:relative;width:800px;height:600px;background:white;border:1px solid #ccc;flex:none}.test-history{margin:8px 0}.test-history output{display:block;max-width:1100px;overflow-wrap:anywhere;font-size:10px}.test-tools .paint-tools{display:block}.test-tools .paint-tool-icons{display:grid;grid-template-columns:1fr 1fr}.test-tools .paint-size{display:flex}.test-tools .paint-aa{display:none}`}</style><h1>マスク・トーン検証（合成したテスト画像）</h1>
     <p role="status">{checks.some(s=>s.startsWith('FAIL'))?'FAIL':'PASS'}: {checks.join(' / ')}</p>
-    <PaintEditor initial={initial} assets={[]} title="検証" page={0} panelIndex={0} overlay={false} controller={controller} onApply={async result=>setSaved(`PNG出力済み: ${result.owners.length}件、${result.owners[0]?.blob.size} bytes`)} onClose={()=>{}}>
+    <PaintEditor initial={initial} assets={[]} title="検証" page={0} panelIndex={0} overlay={false} controller={controller} onApply={async result=>setSaved(result.owners[0]?.remove?'作画削除を保存（PNGなし）':`PNG出力済み: ${result.owners.length}件、${result.owners[0]?.blob.size} bytes`)} onClose={()=>{}}>
       <Controls/><button onClick={()=>{
         const surface=document.querySelector<HTMLDivElement>('.paint-input')!;
         const rect=surface.getBoundingClientRect();

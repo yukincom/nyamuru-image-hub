@@ -322,7 +322,9 @@ test('紙見本は内枠だけ破線とし、塗り足しを細い実線と塗�
   assert.ok(Number(bleed['stroke-width']) < Number(trim['stroke-width']));
   const scale = trim.width / 182;
   assert.ok(Math.abs((trim.x - bleed.x) / scale - 3) < 1e-9);
-  assert.ok(Math.abs((inner.x - trim.x) / scale - 10) < 1e-9);
+  assert.ok(Math.abs((inner.x - trim.x) / scale - 16) < 1e-9);
+  assert.ok(Math.abs(inner.width / scale - 150) < 1e-9);
+  assert.ok(Math.abs(inner.height / scale - 220) < 1e-9);
   control(ui.render(), '安全余白（mm）').props.onInput({ currentTarget: { valueAsNumber: 20 } });
   assert.deepEqual(previewRegion(ui.render(), 'inner'), inner);
   control(ui.render(), '塗り足し（mm）').props.onInput({ currentTarget: { valueAsNumber: 5 } });

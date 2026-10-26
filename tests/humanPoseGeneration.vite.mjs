@@ -15,7 +15,7 @@ async function fixture() {
   for (const entry of catalog.poses.filter(p => p.production_status === 'ready' && p.review.user_confirmed)) previews[entry.id] = (await readFile(new URL(`poses/${entry.id}/preview.png`, root))).toString('base64');
   return { catalog: { catalog, catalog_sha256: digest, previews }, scene: { pose_id: id, catalog_sha256: digest, representation: 'skeleton', base_sha256: JSON.parse(rig).base_glb_sha256, rig: record('rig', null, rig), pose: record('pose', id, pose) } };
 }
-export default defineConfig({ ...base, define: { 'import.meta.env.PUBLIC_NYAMURU_LAN': JSON.stringify('0') },
+export default defineConfig({ ...base, cacheDir: 'node_modules/.vite-pose-fixture', define: { 'import.meta.env.PUBLIC_NYAMURU_LAN': JSON.stringify('0') },
   plugins: [...base.plugins, { name: 'pose-readonly-fixture', configureServer(server) {
     server.middlewares.use('/pose-fixture', async (_req, res) => {
       try { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(await fixture())); }

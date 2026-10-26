@@ -17,7 +17,7 @@ export default function PaintLayerEffects({layer,disabled,update,generationMask=
   const [tab,setTab]=useState<'tone'|'color'>('tone'),id=useId();
   const tone=layer?.tone??defaultPaintTone();
   const setTone=(patch:Partial<PaintTone>)=>{if(layer)update({tone:{...tone,...patch}});};
-  return <section class="paint-layer-effects paint-tone-panel" aria-label="トーン設定"><h3 class="paint-panel-title">トーン設定</h3>
+  return <section class="paint-layer-effects paint-tone-panel" aria-label="トーン設定">
     <div class="vector-detail-tabs paint-effects-tabs" role="tablist" aria-label="トーンとカラーモード" onKeyDown={e=>{
       if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();
       const next=e.key==='Home'?'tone':e.key==='End'?'color':tab==='tone'?'color':'tone';setTab(next);

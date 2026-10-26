@@ -1,20 +1,52 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
-import { Type, ChevronDown, MessageCircleMore, MonitorSpeaker } from 'lucide-preact';
+import { Type, ChevronDown, MessageCircleMore, X } from 'lucide-preact';
 import { PaintToolButton } from './PaintToolHelp';
 import type { CanvasTextKind } from '../lib/canvasText';
-export default function PaintTextTools({active,disabled,select,add,onMaterials}:{active:boolean;disabled:boolean;select:()=>void;add:(kind:CanvasTextKind)=>void;onMaterials?:()=>void}){
-  const [open,setOpen]=useState(false),[position,setPosition]=useState({left:0,top:0});
+export type TextPaletteTab='text'|'bubble';
+export interface TextPaletteRequest {id:number;tab:TextPaletteTab}
+export default function PaintTextTools({active,selectionVisible=false,openRequest,disabled,select,add,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;selectionVisible?:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;add:(kind:CanvasTextKind)=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
+  const [open,setOpen]=useState(false),[tab,setTab]=useState<TextPaletteTab>('text'),[position,setPosition]=useState({left:0,top:0});
+  const [lineDraft,setLineDraft]=useState(String(bubbleLineWidthMm));
+  useEffect(()=>setLineDraft(String(bubbleLineWidthMm)),[bubbleLineWidthMm]);
   const root=useRef<HTMLDivElement>(null),popup=useRef<HTMLDivElement>(null);
-  useLayoutEffect(()=>{if(!open||!root.current||!popup.current)return;const a=root.current.getBoundingClientRect(),b=popup.current.getBoundingClientRect();setPosition({left:Math.max(8,Math.min(a.right+8,innerWidth-b.width-8)),top:Math.max(8,Math.min(a.top,innerHeight-b.height-8))});},[open]);
-  useEffect(()=>{if(!open)return;const dismiss=(e:PointerEvent)=>{if(e.target instanceof Node&&!root.current?.contains(e.target)&&!popup.current?.contains(e.target))setOpen(false);};const reposition=()=>setOpen(false);const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setOpen(false);e.preventDefault();e.stopPropagation();}};document.addEventListener('pointerdown',dismiss,true);window.addEventListener('keydown',key,true);window.addEventListener('resize',reposition);return()=>{document.removeEventListener('pointerdown',dismiss,true);window.removeEventListener('keydown',key,true);window.removeEventListener('resize',reposition);};},[open]);
-  return <div class="paint-pen-family" ref={root} onContextMenu={event=>{event.preventDefault();if(!disabled)setOpen(!open);}}>
-    <PaintToolButton class="paint-tool-icon" label="文字" help="Tで選択。紙面の吹き出しや画面内文字をクリックして編集します。右下の三角から追加できます。" aria-keyshortcuts="T" aria-pressed={active} disabled={disabled} onClick={()=>{setOpen(false);select();}}><Type size={23}/></PaintToolButton>
-    <PaintToolButton class="pen-family-toggle" label="文字のツール一覧" help="吹き出し・画面内文字を追加します。" aria-expanded={open} disabled={disabled} onClick={()=>setOpen(!open)}><ChevronDown size={12}/></PaintToolButton>
-    {open&&createPortal(<div class="paint-dock pen-family-menu" ref={popup} style={position} role="menu" aria-label="文字のツール">
-      {onMaterials&&<button role="menuitem" class="paint-help-button" onClick={()=>{setOpen(false);onMaterials();}}><MessageCircleMore size={23}/>吹き出し素材</button>}
-      <button role="menuitem" class="paint-help-button" onClick={()=>{setOpen(false);add('bubble');}}><MessageCircleMore size={23}/>吹き出しを追加</button>
-      <button role="menuitem" class="paint-help-button" onClick={()=>{setOpen(false);add('screen_text');}}><MonitorSpeaker size={23}/>画面内文字を追加</button>
-    </div>,document.body)}
+  const manuallyPositioned=useRef(false);
+  const clampPosition=(left:number,top:number)=>{const rect=popup.current?.getBoundingClientRect(),width=rect?.width??236,height=rect?.height??360;return {left:Math.max(8,Math.min(left,innerWidth-width-8)),top:Math.max(8,Math.min(top,innerHeight-height-8))};};
+  useEffect(()=>{if(active||selectionVisible){setOpen(true);setTab(active?openRequest.tab:'bubble');}else setOpen(false);},[active,selectionVisible,openRequest]);
+  useLayoutEffect(()=>{if(!open||!root.current||!popup.current||manuallyPositioned.current)return;const a=root.current.getBoundingClientRect(),b=popup.current.getBoundingClientRect();setPosition({left:Math.max(8,Math.min(a.right+8,innerWidth-b.width-8)),top:Math.max(8,Math.min(a.top,innerHeight-b.height-8))});},[open]);
+  useEffect(()=>{if(!open)return;const reposition=()=>setPosition(current=>clampPosition(current.left,current.top));window.addEventListener('resize',reposition);return()=>window.removeEventListener('resize',reposition);},[open]);
+  const beginDrag=(event:PointerEvent)=>{
+    if(event.button!==0||event.target instanceof Element&&event.target.closest('button,input,select,label'))return;
+    event.preventDefault();event.stopPropagation();manuallyPositioned.current=true;
+    const start={x:event.clientX,y:event.clientY,...position};
+    const move=(next:PointerEvent)=>{next.preventDefault();setPosition(clampPosition(start.left+next.clientX-start.x,start.top+next.clientY-start.y));};
+    const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);};
+    window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);
+  };
+  return <div class="paint-pen-family" ref={root} onContextMenu={event=>{event.preventDefault();if(!disabled)setOpen(value=>!value);}}>
+    <PaintToolButton class="paint-tool-icon" label="通常文字" help="Tで文字入力。吹き出しや既存文字を1回クリックすると編集し、コマ内の空き場所ではそのコマに新規文字を作ります。未選択時の文字設定も次の入力へ引き継ぎます。" aria-keyshortcuts="T" aria-pressed={active} disabled={disabled} onClick={()=>{setOpen(true);select();}}><Type size={23}/></PaintToolButton>
+    <PaintToolButton class="pen-family-toggle" label="文字のツール一覧" help="通常文字と吹き出し素材、線幅を設定します。文字設定は選択中の文字と、次に作る文字へ適用します。" aria-expanded={open} disabled={disabled} onClick={()=>setOpen(value=>!value)}><ChevronDown size={12}/></PaintToolButton>
+    {typeof document!=='undefined'&&createPortal(<section class="paint-dock text-settings-window" ref={popup} style={position} role="dialog" aria-label="文字ツールの設定" hidden={!open} onPointerDown={event=>event.stopPropagation()}>
+      <header class="text-settings-window-header" onPointerDown={beginDrag}><strong>文字ツール</strong><button type="button" aria-label="文字ツールの設定を閉じる" onPointerDown={event=>event.stopPropagation()} onClick={()=>setOpen(false)}><X size={16}/></button></header>
+      <div class="text-settings-window-grab" aria-hidden="true" onPointerDown={beginDrag}/>
+      <div class="text-settings-window-body">
+        <div class="text-settings-tabs" role="tablist" aria-label="文字ツールの種類">
+          <PaintToolButton class="text-settings-tab" role="tab" label="文字" help="通常文字の追加と、選択した文字の書体・サイズ・方向を設定します。" aria-selected={tab==='text'} aria-controls="text-settings-text-panel" onClick={()=>{setTab('text');if(!active)select();}}><Type size={19}/></PaintToolButton>
+          <PaintToolButton class="text-settings-tab" role="tab" label="ふきだし" help="素材を吹き出しへ重ねると輪郭だけを入れ替えます。通常文字へ重ねると、文字を中央に入れた新しい吹き出しになり、その時だけ文字量に合わせて大きさを調整します。" aria-selected={tab==='bubble'} aria-controls="text-settings-bubble-panel" onClick={()=>{setTab('bubble');onMaterials?.();}}><MessageCircleMore size={19}/></PaintToolButton>
+        </div>
+        <div id="text-settings-text-panel" class="text-settings-panel" role="tabpanel" aria-label="文字" hidden={tab!=='text'}>
+          <PaintToolButton class="text-settings-icon-action" label="通常文字を追加" help="空いている場所に通常文字を追加します。吹き出しは作りません。" onClick={()=>add('screen_text')}><Type size={20}/></PaintToolButton>
+          <div id="paint-text-settings-slot" class="paint-text-settings-slot"/>
+        </div>
+        <div id="text-settings-bubble-panel" class="text-settings-panel" role="tabpanel" aria-label="ふきだし" hidden={tab!=='bubble'}>
+          <div class="paint-text-work-settings" role="group" aria-label="吹き出し設定">
+            <label><span>線幅</span><input aria-label="吹き出し線幅 mm" type="text" inputMode="decimal" value={lineDraft} disabled={disabled} onInput={event=>{const value=event.currentTarget.value;setLineDraft(value);if(/^\d+(?:\.\d+)?$/.test(value)&&Number(value)>=.1&&Number(value)<=2)onChangeBubbleLineWidth(Number(value));}} onBlur={()=>setLineDraft(String(bubbleLineWidthMm))}/><span>mm</span></label>
+            <input aria-label="吹き出し線幅 スライダー" type="range" min="0.1" max="2" step="0.1" value={bubbleLineWidthMm} disabled={disabled} onInput={event=>onChangeBubbleLineWidth(Number(event.currentTarget.value))}/>
+            <span class="bubble-line-width-scope">作品内の全吹き出しに適用</span>
+          </div>
+          <div id="paint-bubble-materials-slot" class="paint-bubble-materials-slot"/>
+        </div>
+      </div>
+    </section>,document.body)}
   </div>;
 }

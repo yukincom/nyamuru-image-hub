@@ -64,6 +64,7 @@ manga:
 - `bleed` declares full-bleed (edge-to-edge) panel edges (optional; an array of `left` / `right` / `top` / `bottom`). Declared edges must also reach the paper edge in coordinates (left = `x: 0`, right = `x + w = 210`, top = `y: 0`, bottom = `y + h = 297`). Rect panels only. A panel declaring `top` is drawn behind the header band, and the header text is layered on top of the panel art.
 - `no_figures: true` declares an intentionally figure-less panel (optional). Attach it to panels that draw no characters at all; do not combine it with `figures`.
 - `screen_text` is an array of non-balloon text on screens, signs, and paper surfaces (optional). Each entry has `text` (required), `bbox` (optional), and `orientation` (`horizontal` by default / `vertical`).
+- `layer` is optional editor layer state. `hidden` controls panel content visibility, `frameHidden` controls the frame stroke, `locked` prevents moving or reshaping the panel frame on the canvas, and `artOrder` stores the artwork stack. Locking never deletes content or coordinates.
 
 ### Page foreground spanning multiple panels
 
@@ -200,13 +201,16 @@ Initial placement from a text plot stores dialogue and monologue as `shape: norm
 - Inner voices get `monologue: true`, and parentheses "（）" are removed from `text`.
 - Voices from outside the panel get `offscreen: true` (the speaker is off-panel: their figure is not drawn and the balloon gets no tail; still spell out `speaker`).
 - `tail: { x, y }` locates the tail tip relative to the speaker figure's `bbox` (top-left 0, bottom-right 1; values outside 0–1 are allowed). Use an appropriate short length pointing toward the mouth; the tip need not reach the mouth. Omission targets the figure center for ordinary shapes; `tail: false` draws no tail. `square`, `caption`, `flash`, `uniflash`, and `handwritten` omit tails by default.
-- Pointed tails render the outer boundary of the union of the body and tail areas. Body `bezier` nodes and the `tail` target remain separate, so moving or disabling the tail does not alter the original body.
+- `tail_root: { x, y }` locates the root direction relative to the bubble `bbox` (top-left 0, bottom-right 1; finite values outside this range are allowed). When omitted, the root follows the tip direction. Root and tip can be moved independently on the canvas.
+- An ordinary tail remains a separate white surface with two open side outlines; only its opening masks the body outline. The body `bezier`, root `tail_root`, and tip `tail` are stored independently and are never permanently united into one body path.
 - A tailed `shape: thought` balloon uses two or three vertically elongated beads that shrink away from the balloon body.
 - Write `speaker` on every spoken balloon. Omission means that the balloon has no speaker.
 - `join_to` is the 1-based number of an earlier balloon in the same `bubbles` array to join. It is independent from the speaker; point multiple balloons to the same number for a chain of three or more.
+- `text_position: { x, y }` locates the center of the balloon text relative to its `bbox`, from 0 at the top-left to 1 at the bottom-right. It defaults to `{ x: 0.5, y: 0.5 }`. Clicking the text edits it; dragging its blue selection frame moves only the text, independently of the outline.
 - Separate multiple emphasized phrases in `emphasis` with ASCII commas.
-- `bezier: { nodes: [...] }` defines an editable closed cubic outline. List 3–64 nodes in contour order, each as `{ x, y, handleIn?: { x, y }, handleOut?: { x, y } }`. Anchor coordinates map the balloon `bbox` to 0–100; handles are vectors relative to their anchor. Keep anchors and absolute handle endpoints inside that box. The final node connects back to the first. A valid `bezier` supplies the contour, while `shape` supplies text padding, line style, and tail defaults. Text, speaker, and placement remain in their usual fields.
-- `clip_to_panel: true` clips a panel-owned balloon outline, paint overlay, and tail to the panel shape. Omission or `false` allows overflow. Rectangular panels lay text out inside the visible rectangle; check text placement visually for slanted panels. Joined balloons must use the same setting. This field does not apply to page overlays.
+- `bezier: { nodes: [...] }` defines an editable closed cubic outline. List 3–128 nodes in contour order, each as `{ x, y, handleIn?: { x, y }, handleOut?: { x, y } }`. Anchor coordinates use the balloon `bbox` as a 0–100 reference; handles are vectors relative to their anchor. Anchors and absolute handle endpoints may use finite coordinates outside this range. Outline edits do not automatically move or resize the reference frame, source artwork, or text. The final node connects back to the first. A valid `bezier` supplies the contour, while `shape` supplies text padding, line style, and tail defaults. Text, speaker, and placement remain in their usual fields.
+- A panel-owned balloon always clips its outline, painted additions, tail, and text to the owning panel shape. The balloon itself may be moved beyond the panel, but only the part inside the panel is visible; the text is not automatically recentered inside the visible fragment. Use `text_position` to move only the text when needed. Page-overlay balloons are not panel-clipped.
+- `clip_to_panel` remains accepted as a boolean only for loading older saved data and no longer controls presentation. Omit it in new data.
 - Omit `speaker` for speaker-less shapes such as `caption` and `handwritten`.
 
 ## 6. Asset references

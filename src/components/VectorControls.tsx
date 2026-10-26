@@ -10,7 +10,7 @@ interface Props {
   gap:number; setGap:(n:number)=>void; align:(mode:VectorAlign)=>void; distribute:(axis:'x'|'y',mode:'start'|'center'|'end'|'gap',fixed?:boolean)=>void;
   eraseMode:VectorEraseMode; setEraseMode:(m:VectorEraseMode)=>void; erasing:boolean; disabled?:boolean;
 }
-type Choice=[value:string,label:string,help:string];
+type Choice=[value:string,label:string,help:string|string[]];
 export type VectorDetailTab='line'|'dash'|'arrows'|'align'|'distribute'|'erase';
 export default function VectorControls(p:Props){
   const {tab,setTab}=p;
@@ -25,22 +25,22 @@ export default function VectorControls(p:Props){
     (event.currentTarget as HTMLElement).querySelectorAll<HTMLButtonElement>('[role=tab]')[next]?.focus();
   };
   const choices=(label:string,value:string,prefix:string,options:Choice[],change:(value:string)=>void,flip=false)=><div class={`vector-choice-row vector-choice-${prefix}`}><span>{label}</span><div class="vector-choice-icons" role="group" aria-label={label}>{options.map(([v,title,help])=><PaintToolButton label={`${label}：${title}`} help={help} disabled={p.disabled} aria-pressed={value===v} onClick={()=>change(v)}><VectorOptionIcon kind={`${prefix}-${v}`} flip={flip}/></PaintToolButton>)}</div></div>;
-  const selectHelp='「パス選択」で同じベクターレイヤーのパスを選択します。Shiftクリックで追加選択できます。';
-  const distributionHelp='同じベクターレイヤーで2つ以上のパスを選択します。自動分布は両端を固定するため、3つ以上で位置の変化を確認できます。';
-  const arrows:Choice[]=[['none','なし','端に矢印や丸を付けません。'],['triangle','矢印','端に塗りつぶした三角の矢印を付けます。大きさは線幅に連動します。'],['open','開いた矢印','端に線で描いた矢印を付けます。'],['circle','丸','端に丸印を付けます。']];
+  const selectHelp=['Vのパス選択を使用','Shiftクリックで追加選択'];
+  const distributionHelp=['同じベクターレイヤーで2本以上を選択','自動分布は両端を固定','3本以上で位置が変化'];
+  const arrows:Choice[]=[['none','なし','端に印を付けない'],['triangle','矢印',['塗りつぶし三角','大きさは線幅に連動']],['open','開いた矢印','線だけの矢印'],['circle','丸','端に丸印']];
   return <div class="vector-controls">
     <div class="vector-detail-tabs" role="tablist" aria-label="線と配置の設定" onKeyDown={tabKey}>{tabs.map(([key,label])=><button type="button" role="tab" id={`${id}-${key}`} aria-controls={`${id}-panel`} aria-selected={active===key} tabIndex={active===key?0:-1} onClick={()=>setTab(key)}>{label}</button>)}</div>
     <div class={`vector-tab-panel ${active==='align'||active==='distribute'?'is-alignment':''} ${active==='distribute'?'is-distribution':''}`} id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${active}`} tabIndex={0}>
     {active==='line'&&<div class="vector-properties">
       {choices('線端',p.style.cap,'cap',[
-        ['butt','平型','四角い点がパスの終点です。この位置で線を平らに切ります。'],['round','丸型','四角い点がパスの終点です。そこから線幅の半分だけ張り出す半円にします。'],['square','突出','四角い点がパスの終点です。そこから線幅の半分だけ伸ばして四角く切ります。'],
+        ['butt','平型',['四角い点がパスの終点','終点で平らに切る']],['round','丸型',['終点から半円を張り出す','張り出しは線幅の半分']],['square','突出',['終点から四角く伸ばす','張り出しは線幅の半分']],
       ],v=>p.change({cap:v as VectorStyle['cap']}))}
       {choices('角の形状',p.style.join,'join',[
-        ['miter','角','折れ曲がる角を尖らせます。「角の比率」を超える長い尖りは切り落とします。'],['round','丸','折れ曲がる角を丸くします。'],['bevel','面取り','折れ曲がる角を平らに切り落とします。'],
+        ['miter','角',['折れ曲がりを尖らせる','角の比率を超えた先端は切り落とす']],['round','丸','折れ曲がりを丸くする'],['bevel','面取り','折れ曲がりを平らに切る'],
       ],v=>p.change({join:v as VectorStyle['join']}))}
       {p.style.join==='miter'&&<label>角の比率<input type="number" aria-label="角の比率" data-tool-help="尖った角の伸びを、線幅に対する比率で制限します。小さくすると長い尖りを切り落とします。" min="1" max="1000" value={p.style.miterLimit} onChange={e=>p.change({miterLimit:Math.max(1,Math.min(1000,e.currentTarget.valueAsNumber||10))})}/></label>}
       {choices('線の位置',p.style.alignment,'position',[
-        ['center','中央','細い実線がパス、四角がアンカーポイントです。パスの両側に半分ずつ線を描きます。'],['inside','内側','細い実線がパス、四角がアンカーポイントです。閉じた図形の内側に線を描きます。開いた線は中央のままです。'],['outside','外側','細い実線がパス、四角がアンカーポイントです。閉じた図形の外側に線を描きます。開いた線は中央のままです。'],
+        ['center','中央',['細い実線がパス','パスの両側へ半分ずつ描画']],['inside','内側',['閉じた図形の内側へ描画','開いた線は中央']],['outside','外側',['閉じた図形の外側へ描画','開いた線は中央']],
       ],v=>p.change({alignment:v as VectorStyle['alignment']}))}
     </div>}
     {active==='dash'&&<div class="vector-properties">
@@ -54,18 +54,18 @@ export default function VectorControls(p:Props){
       {choices('終点',p.style.arrowEnd,'arrow',arrows,v=>p.change({arrowEnd:v as VectorStyle['arrowEnd']}))}
     </div>}
     {active==='erase'&&<div class="vector-properties">{choices('ベクター消去',p.eraseMode,'erase',[
-        ['touch','触れた部分','消しゴムが触れた部分だけを切り取ります。残りの曲線は編集できます。'],['intersection','交点まで','触れた線を、前後の交点まで消します。交点は選択レイヤー内で判定します。'],['whole','線全体','触れたパスを一本まるごと消します。'],
+        ['touch','触れた部分',['触れた範囲だけを切り取る','残った曲線は編集可能']],['intersection','交点まで',['前後の交点まで消去','交点は選択レイヤー内で判定']],['whole','線全体','触れたパスを一本まるごと消去'],
       ],v=>p.setEraseMode(v as VectorEraseMode))}
     </div>}
     {(active==='align'||active==='distribute')&&<div class="vector-properties">
       {active==='align'&&<div class="vector-action-grid">{([
         ['left','左揃え','左端',AlignStartVertical],['hcenter','水平中央揃え','左右の中心',AlignCenterVertical],['right','右揃え','右端',AlignEndVertical],
         ['top','上揃え','上端',AlignStartHorizontal],['vcenter','垂直中央揃え','上下の中心',AlignCenterHorizontal],['bottom','下揃え','下端',AlignEndHorizontal],
-      ] as const).map(([mode,label,edge,Icon])=><PaintToolButton label={label} help={`選択したパスの${edge}を揃えます。${selectHelp}`} disabled={p.disabled||!p.selectedCount} onClick={()=>p.align(mode)}><Icon size={17}/></PaintToolButton>)}</div>}
+      ] as const).map(([mode,label,edge,Icon])=><PaintToolButton label={label} help={[`選択したパスの${edge}を揃える`,...selectHelp]} disabled={p.disabled||!p.selectedCount} onClick={()=>p.align(mode)}><Icon size={17}/></PaintToolButton>)}</div>}
       {active==='distribute'&&<>
       {(['y','x'] as const).map(axis=><div class="vector-action-grid">{(['start','center','end'] as const).map((mode,i)=>{
         const direction=axis==='y'?'垂直':'水平',edge=(axis==='y'?['上端','中心','下端']:['左端','中心','右端'])[i];
-        return <PaintToolButton label={`${direction}方向・${edge}を分布`} help={`各パスの${edge}が${axis==='y'?'縦':'横'}方向に等間隔になるよう移動します。${distributionHelp}`} disabled={p.disabled||p.selectedCount<2} onClick={()=>p.distribute(axis,mode)}><VectorOptionIcon kind={`distribute-${axis}-${mode}`}/></PaintToolButton>;
+        return <PaintToolButton label={`${direction}方向・${edge}を分布`} help={[`各パスの${edge}を${axis==='y'?'縦':'横'}方向へ等間隔に移動`,...distributionHelp]} disabled={p.disabled||p.selectedCount<2} onClick={()=>p.distribute(axis,mode)}><VectorOptionIcon kind={`distribute-${axis}-${mode}`}/></PaintToolButton>;
       })}</div>)}
       </>}
     </div>}

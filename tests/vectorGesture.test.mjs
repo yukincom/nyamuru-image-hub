@@ -116,12 +116,30 @@ test('clicking the active endpoint retracts only the outgoing handle and keeps t
 });
 test('shape Shift constraint creates editable equal dimensions and dragging selection preserves handles',()=>{
  let d=beginVectorDrag({paths:[],selected:[]},'ellipse',point(10,20),style,2);updateVectorDrag(d,point(80,50,{shift:true}));assert.deepEqual(vectorBounds(d.state.paths[0]),{x:10,y:20,w:70,h:70});
- const before=d.state;d=beginVectorDrag(before,'vector-select',point(45,20),style,2);updateVectorDrag(d,point(60,30));assert.deepEqual(vectorBounds(d.state.paths[0]),{x:25,y:30,w:70,h:70});assert.deepEqual(d.state.paths[0].nodes[0].handleIn,before.paths[0].nodes[0].handleIn);
+ const before=d.state;d=beginVectorDrag(before,'vector-select',point(70,30),style,2);updateVectorDrag(d,point(85,40));assert.deepEqual(vectorBounds(d.state.paths[0]),{x:25,y:30,w:70,h:70});assert.deepEqual(d.state.paths[0].nodes[0].handleIn,before.paths[0].nodes[0].handleIn);
 });
 test('Shift selection and marquee let distribution target multiple objects',()=>{
  const a=vectorShape('rectangle',point(0,0),point(10,10),style),b=vectorShape('rectangle',point(30,0),point(40,10),style);
  let d=beginVectorDrag({paths:[a,b],selected:[a.id]},'vector-select',point(30,5,{shift:true}),style,1);assert.deepEqual(d.state.selected,[a.id,b.id]);
  d=beginVectorDrag({paths:[a,b],selected:[]},'vector-select',point(-10,-10),style,1);updateVectorDrag(d,point(50,20));assert.deepEqual(d.state.selected,[a.id,b.id]);
+});
+test('V selection resizes the whole selection from its blue bounding-box handles',()=>{
+ const a=vectorShape('rectangle',point(10,20),point(30,40),style),b=vectorShape('rectangle',point(40,30),point(70,60),style);
+ const before={paths:[a,b],selected:[a.id,b.id]},saved=structuredClone(before);
+ const drag=beginVectorDrag(before,'vector-select',point(70,60),style,3);
+ assert.equal(drag.kind,'resize');assert.equal(drag.resizeHandle,'se');
+ updateVectorDrag(drag,point(130,100));
+ assert.deepEqual(vectorBounds(drag.state.paths[0]),{x:10,y:20,w:40,h:40});
+ assert.deepEqual(vectorBounds(drag.state.paths[1]),{x:70,y:40,w:60,h:60});
+ assert.equal(drag.state.paths[0].style.width,style.width*2);
+ assert.deepEqual(before,saved);
+});
+test('Shift keeps a corner resize proportional and edge handles resize one axis',()=>{
+ const path=vectorShape('rectangle',point(10,20),point(50,40),style),before={paths:[path],selected:[path.id]};
+ let drag=beginVectorDrag(before,'vector-select',point(50,40),style,3);updateVectorDrag(drag,point(90,50,{shift:true}));
+ assert.deepEqual(vectorBounds(drag.state.paths[0]),{x:10,y:20,w:80,h:40});
+ drag=beginVectorDrag(before,'vector-select',point(30,20),style,3);updateVectorDrag(drag,point(30,10));
+ assert.deepEqual(vectorBounds(drag.state.paths[0]),{x:10,y:10,w:40,h:30});
 });
 test('dedicated add and delete tools edit only existing geometry, and keep the input state immutable',()=>{
  const path=vectorShape('line',point(0,0),point(100,0),style),before={paths:[path],selected:[]},saved=structuredClone(before);

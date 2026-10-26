@@ -1,12 +1,11 @@
 import { useState } from 'preact/hooks';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Copy, FilePlus2, Trash2 } from 'lucide-preact';
 import { pagePreviewGridPosition } from '../lib/pageSpread';
-import type { MangaDocument, ValidationIssue } from '../types';
+import type { MangaDocument } from '../types';
 
 interface Props {
   document: MangaDocument;
   activePage: number;
-  issues: ValidationIssue[];
   collapsed: boolean;
   onCollapse: () => void;
   onSelectPage: (index: number) => void;
@@ -17,7 +16,7 @@ interface Props {
 }
 
 export default function PageSidebar(props: Props) {
-  const { document, activePage, issues, collapsed } = props;
+  const { document, activePage, collapsed } = props;
   const manga = document.manga;
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -33,7 +32,6 @@ export default function PageSidebar(props: Props) {
       {!collapsed && <>
         <div class="page-list">
           {manga.pages.map((page, index) => {
-            const pageIssues = issues.filter((issue) => issue.path.startsWith(`manga.pages[${index}]`));
             const gridPosition = pagePreviewGridPosition(index);
             return (
               <div
@@ -61,7 +59,6 @@ export default function PageSidebar(props: Props) {
                   <span class="paper-corner" />
                 </div>
                 <strong class="page-card-number">{String(index + 1).padStart(2, '0')}</strong>
-                {pageIssues.length > 0 && <span class={`issue-dot ${pageIssues.some((issue) => issue.level === 'error') ? 'error' : ''}`} aria-label={`入力の確認項目 ${pageIssues.length}件`} title={`入力の確認項目（OCRの不一致数ではありません）\n${pageIssues.map(issue => issue.message).join('\n')}`}>確認 {pageIssues.length}</span>}
                 <span class="page-move">
                   <button type="button" disabled={index === 0} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index - 1); }} aria-label={`ページ ${index + 1} を上へ移動`} title="上へ移動"><ChevronUp size={13} /></button>
                   <button type="button" disabled={index === manga.pages.length - 1} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index + 1); }} aria-label={`ページ ${index + 1} を下へ移動`} title="下へ移動"><ChevronDown size={13} /></button>

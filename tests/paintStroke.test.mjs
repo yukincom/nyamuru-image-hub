@@ -4,6 +4,7 @@ import test from 'node:test';
 import { validatePaintDocument } from '../src/lib/paintDocument.ts';
 import { PaintSmoother, pressureRadius } from '../src/lib/paintStroke.ts';
 import { drawPaintStroke, paintPreviewRenderer, renderPaintPng } from '../src/lib/paintRenderer.ts';
+import {paintStrokeBounds,previewPaintStroke} from '../src/lib/paintGesture.ts';
 
 const point=(x,time,pressure=.5)=>({x,y:x,pressure,time});
 test('stabilisation off preserves irregular position and pressure; invalid timestamp deltas cannot reverse the clock',()=>{
@@ -36,6 +37,25 @@ function fakeCanvasWorld() {
 const pen={tool:'pen',size:4,color:'#000000',points:[point(1,0),point(6,4)]};
 const erase={...pen,tool:'eraser'};
 const layer=(id,strokes)=>({id,name:id,visible:true,locked:false,opacity:1,blend:'normal',strokes});
+
+test('500 retained strokes are not replayed over 120 production preview updates',t=>{
+  const world=fakeCanvasWorld(),previous=globalThis.document;
+  globalThis.document={createElement:world.create};t.after(()=>{if(previous)globalThis.document=previous;else delete globalThis.document;});
+  let oldReads=0;
+  const old=Array.from({length:500},()=>({...pen,get points(){oldReads++;return pen.points;}}));
+  const ink=layer('ink',old),paint={version:1,width:600,height:600,dpi:100,layers:[ink]},frame={x:0,y:0,w:100,h:100};
+  const scene={frame,owners:[{key:'ink',kind:'background',index:0,label:'ink',frame,paint}]};
+  const canvas=world.create();canvas.width=canvas.height=600;const renderer=paintPreviewRenderer(),images=new Map();
+  renderer.draw(canvas,paint,images);assert.ok(oldReads>=500);oldReads=0;
+  let previousPreview;
+  for(let i=0;i<120;i++){
+    const mark={...pen,points:[point(20,0),point(20+i,1)]};
+    const preview=previewPaintStroke(scene,{ownerKey:'ink',layerId:'ink',stroke:mark,bounds:paintStrokeBounds(mark)},previousPreview);
+    renderer.draw(canvas,preview.owner.paint,images,preview.live);previousPreview=preview;
+  }
+  assert.equal(oldReads,0,'retained strokes must stay cached across live frames');
+  assert.equal(ink.strokes.length,500);renderer.dispose();
+});
 
 test('eraser is isolated inside each layer and preview cache is bounded across undo states',t=>{
   const world=fakeCanvasWorld(),previous=globalThis.document;

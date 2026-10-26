@@ -151,16 +151,17 @@ async function originalImage(blob: Blob): Promise<{ blob: Blob; type: 'image/png
 
 /** Materialize an editable guide image; the caller owns persistence and history. */
 export async function prepareGuideLayer(owner: PaintOwner, layer: PaintLayer): Promise<{ layer: PaintLayer; asset: ImageAsset; blob: Blob }> {
-  if (owner.kind !== 'background' && owner.kind !== 'figure') throw new Error('背景・人物のあたりだけを画像レイヤーへ変換できます');
-  const frame = guideFrame(owner), analog = owner.figure?.analogImport;
+  if (owner.kind !== 'background' && owner.kind !== 'figure' && owner.kind !== 'bubble') throw new Error('背景・人物・吹き出しの原画だけを画像レイヤーへ変換できます');
+  const frame = guideFrame(owner), analog = owner.figure?.analogImport??owner.bubble?.analogTextImport;
   let source: Blob;
-  if (owner.kind === 'figure' && analog) {
+  if ((owner.kind === 'figure'||owner.kind==='bubble') && analog) {
     const original = await loadFigureCropAsset(analog.assetId, analog.persistentAsset);
-    if (!original) throw new Error('あたりの原本画像を読み込めません。作品フォルダから開き直してください');
+    if (!original) throw new Error('原画を読み込めません。作品フォルダから開き直してください');
     source = original;
-  } else source = await nativeGuidePng(owner, frame);
+  } else if(owner.kind==='bubble')throw new Error('吹き出しの原画が見つかりません');
+  else source = await nativeGuidePng(owner, frame);
   const { blob, type } = await originalImage(source);
   const file = new File([blob], `${layer.name || 'あたり'}.${type === 'image/jpeg' ? 'jpg' : 'png'}`, { type });
   const asset = await prepareImageAsset(file), crop = imageCrop(asset);
-  return { layer: { ...layer, locked: false, image: { assetId: asset.id, crop, bbox: fitImageBox(crop, frame) } }, asset, blob: file };
+  return { layer: { ...layer, ...(owner.kind==='bubble'?{guide:undefined}:{}), locked: false, image: { assetId: asset.id, crop, bbox: fitImageBox(crop, frame) } }, asset, blob: file };
 }

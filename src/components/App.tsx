@@ -6,30 +6,32 @@ import { browserWorkspaces, isBrowserWorkspace } from '../lib/browserWorkspace';
 import { chooseBrowserFiles, downloadBrowserBlob, blobRevision } from '../lib/browserFiles';
 import { createPortableProject, restorePortableProject, portableProjectBlob, readPortableProject } from '../lib/portableProject';
 import { rememberBrowserCatalog } from '../lib/browserCatalog';
-import BubbleMaterialPicker from './BubbleMaterialPicker';
-import type {TextStylePatch,TextSelection} from '../lib/textStyle';
+import {textStyleOf,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
+import type {TextStyle} from '../types';
 import { loadAgentPreferences, saveAgentPreferences, type AgentPreferences } from '../lib/agentPreferences';
 import {agentEditorSnapshot,createAgentRevision,prepareAgentBubbleEdit,selectedAgentBubble} from '../lib/agentTools';
 import {resolveVoiceGenerationTarget,type VoiceCommand} from '../lib/voiceCommands';
 import { applyArtworkSettings, getArtworkSettings } from '../lib/artworkRules';
 import {artworkLocked,paintOwnerLocked} from '../lib/paintLock';
-import PaintTextTools from './PaintTextTools';
+import PaintTextTools, {type TextPaletteTab} from './PaintTextTools';
+import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
-import { addCanvasText, canvasTextAt, canvasTextEditable, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, type CanvasTextKind, type CanvasTextTarget } from '../lib/canvasText';
+import { addCanvasText, addCanvasTextAt, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, removeCanvasText, screenTextCoveredByBubble, type CanvasTextKind, type CanvasTextTarget } from '../lib/canvasText';
+import {classifyPcFontFamilies,queryPcFontFamilies,type PcFontFamily} from '../lib/bubbleFonts';
 import PageLayerPalette from './PageLayerPalette';
-import { bubbleAt, bubbleVisible, panelVisible, reorderPanelArt, toggleBubbleVisibility, type BubbleTextTarget } from '../lib/panelLayers';
+import { bubbleAt, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, reorderPanelArt, toggleBubbleVisibility, unlockPanelDescendants, type BubbleTextTarget } from '../lib/panelLayers';
 import PanelControls from './PanelControls';
 import { namedBackgroundStages, prepareBackgroundStage, verifyBackgroundStage } from '../lib/background3d';
 import { persistSeriesBackgroundModels } from '../lib/backgroundStageStore';
 import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
-import { applyOwnerPaint, paintAssetIds, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
+import { applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, figurePaintVisible, newPaintLayer, paintAssetIds, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
 import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
 import { fallbackBox, panelBounds } from '../lib/canvasGeometry';
-import { overlayFallbackBox } from '../lib/pageCanvas';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, FilePlus2, Files, FileText, FolderOpen, Images, LayoutPanelTop, ScanLine, Settings2, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from 'lucide-preact';
+import { overlayFallbackBox, resizePageCanvas } from '../lib/pageCanvas';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, Download, FilePlus2, Files, FileText, FolderOpen, Images, LayoutPanelTop, ScanLine, Settings2, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from 'lucide-preact';
 import Header from './Header';
 import PrintSettingsEditor from './PrintSettingsEditor';
 import { getPrintSetup, defaultPrintSetup, loadPrintPreferences, printSummary, savePrintPreferences, withPrintSetup, type PrintSetup } from '../lib/printSettings';
@@ -40,29 +42,34 @@ import MangaCanvas from './MangaCanvas';
 import PanelInspector from './PanelInspector';
 import QwenGenerationDialog, { qwenInputImage, qwenLayerImage } from './QwenGenerationDialog';
 import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation } from '../lib/qwenGeneration';
+import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
+import { downloadImageBlob, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
+import { humanPoseReferencePixels } from '../lib/humanPoseFraming';
 import type { PaintImages } from '../lib/paintRenderer';
 import PageOverlayInspector from './PageOverlayInspector';
 import EnvironmentSettings from './EnvironmentSettings';
-import { loadEditGuide, saveEditGuide, loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing } from '../lib/paintPreferences';
+import { loadEditGuide, saveEditGuide, loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing, loadPaintCursor, savePaintCursor, type PaintCursorMode } from '../lib/paintPreferences';
 import { paintAssetLease } from '../lib/paintAssetLease';
 import { workspaceHistory } from '../lib/workspaceHistory';
 import { loadHistorySteps, saveHistorySteps } from '../lib/historyPreferences';
 import type { PaintController, PaintLayerAction, PaintSessionSnapshot } from '../lib/paintSession';
+import type { BubblePathToolMode } from '../lib/paintWorkspace';
 import SourceCoverageReview from './SourceCoverageReview';
 import ScenarioReview from './ScenarioReview';
-import { applyScenarioToNewDocument, confirmScenarioCorrespondence, parseScenario, restoreProvisionalScenarioText, useScenarioBubbleText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
+import { applyScenarioToNewDocument, confirmScenarioCorrespondence, detachResolvedScenarioLinks, parseScenario, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
 import { initializePanelBackgrounds } from '../lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../lib/initialBubbleLineBreaks.ts';
 import CharacterReadProgress, { type CharacterReadProgressState } from './CharacterReadProgress';
 import NewLayoutAnalysisFeed from './NewLayoutAnalysisFeed';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
-import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, STORAGE_KEY, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml, toStoredMangaYaml, validateManga } from '../lib/manga';
-import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
-import { applyPanelTemplate, mergeSelectedPanels, moveBubbleToOwner, PANEL_TEMPLATES, reconcileSplitOverlapFlags, splitPanel, type BubbleOwner, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
+import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, STORAGE_KEY, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml, toStoredMangaYaml } from '../lib/manga';
+import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
+import { applyPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
 import { analyzeFigureCharacterMatchWithLocalVlm, attachDetectedFiguresToPage, attachRecognizedTextToPage, beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, persistAnalogAsset, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type DetectedFigureRegion, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type LayoutRecognitionResult, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../lib/seriesCatalog';
 import { prepareDetectedFigureCrops } from '../lib/analogFigureCrops';
 import { prepareDetectedTextCrops } from '../lib/analogTextCrops';
+import { needsBubbleOriginalSeparation, separateBubbleOriginals } from '../lib/bubbleOriginals';
 import { collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
 import { spreadPartnerIndex as findSpreadPartnerIndex } from '../lib/pageSpread';
 import { setPanelMaterialLink, type PanelMaterialLinkTarget } from '../lib/panelMaterialLinks';
@@ -255,6 +262,24 @@ const SPREAD_VIEW_KEY = 'manga-name-studio.spread-view.v2';
 const LEGACY_SPREAD_VIEW_KEY = 'manga-name-studio.spread-view.v1';
 const PERSIST_ANALOG_ASSETS_KEY = 'manga-name-studio.persist-analog-assets.v1';
 const EPISODE_WORKSPACE_ROOTS_KEY = 'manga-name-studio.episode-workspace-roots.v1';
+const PC_FONT_CATALOG_KEY = 'manga-name-studio.pc-font-catalog.v1';
+
+function storedPcFontCatalog(): PcFontFamily[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(PC_FONT_CATALOG_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is PcFontFamily => Boolean(
+      value && typeof value === 'object'
+      && typeof (value as PcFontFamily).family === 'string'
+      && ['japanese', 'other', 'unreadable'].includes((value as PcFontFamily).support),
+    ));
+  } catch { /* private mode or an old malformed value */ }
+  return [];
+}
+
+function rememberPcFontCatalog(families: readonly PcFontFamily[]): void {
+  try { localStorage.setItem(PC_FONT_CATALOG_KEY, JSON.stringify(families)); } catch { /* private mode */ }
+}
 
 function savedWorkspaceRoot(key: string): string {
   try {
@@ -371,6 +396,24 @@ interface WorkspaceSnapshot {document:MangaDocument;paint?:Omit<WorkspacePaintSe
 
 export default function App() {
   const [startupWorkspace] = useState<WorkspaceStartupState>(initialWorkspace);
+  const [ready,setReady]=useState<WorkspaceStartupState|null>(()=>needsBubbleOriginalSeparation(startupWorkspace.document)?null:startupWorkspace);
+  const [error,setError]=useState(''),[attempt,setAttempt]=useState(0);
+  useEffect(()=>{
+    if(ready)return;
+    let cancelled=false;setError('');
+    void separateBubbleOriginals(startupWorkspace.document).then(document=>{if(!cancelled)setReady({...startupWorkspace,document});})
+      .catch(error=>{if(!cancelled)setError(error instanceof Error?error.message:'原本レイヤーを読み込めませんでした');});
+    return()=>{cancelled=true;};
+  },[attempt]);
+  if(!ready)return <main class="workspace-loading" role="status"><p>{error||'原本画像とベクターの吹き出しを準備しています…'}</p>{error&&<>
+    <button onClick={()=>setAttempt(attempt+1)}>再読み込み</button>
+    <button onClick={()=>setReady({document:createEmptyWorkspaceDocument(),hasDocument:false})}>作品を開く画面へ戻る</button>
+    <p>作品を開くか新規作成するまで、現在の自動保存データは変更しません。</p>
+  </>}</main>;
+  return <EditorApp startupWorkspace={ready}/>;
+}
+
+function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) {
   const [document, setDocumentState] = useState<MangaDocument>(startupWorkspace.document);
   const [hasDocument, setHasDocument] = useState(startupWorkspace.hasDocument);
   const [legacySamples] = useState<string[]>(() => {
@@ -388,21 +431,25 @@ export default function App() {
   const qwenPreparing=useRef(false);
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
-  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner:PaintOwner;agentRequest?:QwenAgentRequest}|null>(null);
+  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
   const [selectedElement, setSelectedElement] = useState<CanvasElementSelection | null>(null);
   const placedImageInput = useRef<HTMLInputElement>(null);
-  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox } | null>(null);
+  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox; referenceFrame?:BBox; generationScope?:'page'|'panel' } | null>(null);
   const [imageImportBusy, setImageImportBusy] = useState(false);
+  const [imageExportDialog,setImageExportDialog]=useState<{mode:'current'|'range'|'all';from:number;to:number;format:ImageExportFormat}|null>(null);
+  const [imageExportBusy,setImageExportBusy]=useState(false);
   const [paintSession,setPaintSession]=useState<WorkspacePaintSession|null>(null);
   const paintController=useRef<PaintController|null>(null);
   const paintSessionRef=useRef(paintSession);
   paintSessionRef.current=paintSession;
+  const autoPaintResume=useRef<{pageIndex:number;panelIndex:number;overlay:boolean;ownerKey:string}|null>(null);
+  const autoPaintTransition=useRef(false);
   const [paintBleedPx,setPaintBleedPx]=useState(()=>{try{return loadPaintBleed(localStorage);}catch{return loadPaintBleed();}});
-  const [guideVisibility,setGuideVisibility]=useState<Record<string,boolean>>({});
   const [editGuide,setEditGuide]=useState(()=>{try{return loadEditGuide(localStorage);}catch{return true;}});
   const [paintSmoothing,setPaintSmoothing]=useState(()=>{try{return loadPaintSmoothing(localStorage);}catch{return 0;}});
+  const [paintCursorMode,setPaintCursorMode]=useState<PaintCursorMode>(()=>{try{return loadPaintCursor(localStorage);}catch{return 'circle';}});
   const imageGesture = useRef({ active: false, pushed: false });
   const [canvasSelectionScrollRequest, setCanvasSelectionScrollRequest] = useState(0);
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
@@ -450,6 +497,13 @@ export default function App() {
   const [inspectorCollapsed,setInspectorCollapsed]=useState(false);
   const [paintToolsCollapsed,setPaintToolsCollapsed]=useState(true);
   const [textTool,setTextTool]=useState(false);
+  const [textToolStyle,setTextToolStyle]=useState<TextStyle>({fontSize:12,orientation:'vertical'});
+  const [textPaletteRequest,setTextPaletteRequest]=useState<{id:number;tab:TextPaletteTab}>({id:0,tab:'text'});
+  const [bubblePathTool,setBubblePathTool]=useState<BubblePathToolMode>(false);
+  const [localFontFamilies,setLocalFontFamilies]=useState<PcFontFamily[]>(storedPcFontCatalog);
+  const localFontNames=useRef(localFontFamilies.map(font=>font.family));
+  const localFontQuery=useRef<Promise<void>|null>(null),localFontSynced=useRef(false);
+  const createdText=useRef<CanvasTextTarget|null>(null);
   const [bubbleMaterialsOpen,setBubbleMaterialsOpen]=useState(false);
   const [zoomTool,setZoomTool]=useState(false);
   const [voiceOpen,setVoiceOpen]=useState(false);
@@ -603,8 +657,7 @@ export default function App() {
     setNewCharacterDocumentState(next);
   };
 
-  const issues = useMemo(() => validateManga(document), [document]);
-  const panelDraftOmnySnapshot = useMemo(() => toSeparatedMangaYaml(document), [document]);
+  const getOmnySnapshot = useCallback(() => toSeparatedMangaYaml(documentRef.current), []);
   const coverageWorkspace = boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id
     && boundSourceSnapshot?.episodeId === document.manga.meta.episode_id
     && boundSourceSnapshot.workspaceDirectory === boundEpisodeWorkspace.directory
@@ -656,6 +709,8 @@ export default function App() {
   };
 
   const replaceDocument = (next: MangaDocument) => {
+    // The old indices must never clean up or edit objects in the incoming document.
+    createdText.current=null;pendingCanvasElementSelection.current=null;setEditingText(null);imageGestureBoundary('end');
     next.manga.meta.page_count = next.manga.pages.length;
     synchronizeCatalogReferences(next);
     reconcileSplitOverlapFlags(next);
@@ -843,6 +898,7 @@ export default function App() {
   };
 
   const openNewDialog = () => {
+    endTextEdit();
     const generation = ++newLayoutOperationGeneration.current;
     scannerStopRequested.current = false;
     updateNewLayoutTask('idle');
@@ -913,6 +969,7 @@ export default function App() {
   };
 
   const selectCanvasPanel = (index: number, additive = false) => {
+    endTextEdit();
     if (!additive) {
       setActivePanel(index);
       setSelectedPanels([index]);
@@ -949,7 +1006,12 @@ export default function App() {
       setToast('Shift+クリックで合体するコマを2つ以上選択してください');
       return;
     }
-    const next = cloneDocument(document);
+    if(selectedPanels.some(index=>page?.panels[index]&&panelGeometryLocked(page.panels[index]))){
+      setToast('固定中のコマは合体できません');
+      return;
+    }
+    endTextEdit();
+    const next = cloneDocument(documentRef.current);
     const mergedIndex = mergeSelectedPanels(next.manga.pages[activePage], selectedPanels);
     if (mergedIndex === null) return;
     setDocument(next);
@@ -961,7 +1023,9 @@ export default function App() {
 
   const splitActivePanel = () => {
     if (!page || !panel) return;
-    const next = cloneDocument(document);
+    if(panelGeometryLocked(panel)){setToast('固定中のコマは分割できません');return;}
+    endTextEdit();
+    const next = cloneDocument(documentRef.current);
     const splitIndices = splitPanel(next.manga.pages[activePage], activePanel, panelSplitDirection, panelGutters);
     if (!splitIndices) {
       setToast('このコマは現在の間隔幅では小さすぎるため分割できません');
@@ -972,22 +1036,6 @@ export default function App() {
     setSelectedPanels(splitIndices);
     setSelectedElement(null);
     setToast(panelSplitDirection === 'vertical' ? 'コマをタテに分割しました' : 'コマをヨコに分割しました');
-  };
-
-  const moveSelectedBubble = (sourceOwner: BubbleOwner, bubbleIndex: number, targetOwner: BubbleOwner) => {
-    const next = cloneDocument(document);
-    const result = moveBubbleToOwner(next.manga.pages[activePage], sourceOwner, bubbleIndex, targetOwner);
-    if (!result || result.owner === sourceOwner) return;
-    setDocument(next);
-    if (result.owner === 'page_overlay') {
-      setSelectedElement({ scope: 'page_overlay', type: 'bubble', index: result.index });
-      setToast('フキダシをページ前景へ移動しました');
-      return;
-    }
-    setActivePanel(result.owner);
-    setSelectedPanels([result.owner]);
-    setSelectedElement({ type: 'bubble', index: result.index });
-    setToast(`フキダシをコマ ${result.owner + 1} へ移動しました`);
   };
 
   useEffect(() => {
@@ -1067,6 +1115,19 @@ export default function App() {
       if (key === 'escape' && showNewDialog) { closeNewDialog(); return; }
       const target = event.target as HTMLElement | null;
       if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable)) return;
+      if(tab==='storyboard'&&!showNewDialog&&!event.metaKey&&!event.ctrlKey&&!event.altKey&&(key==='delete'||key==='backspace')){
+        if(selectedElement?.type==='bubble'){
+          event.preventDefault();
+          deleteBubbleAt(activePanel,selectedElement.index,selectedElement.scope==='page_overlay');
+        }else if(!selectedElement&&document.manga.pages[activePage]?.panels[activePanel]){
+          event.preventDefault();
+          deletePanelAt(activePanel);
+        }
+        return;
+      }
+      if(tab==='storyboard'&&!showNewDialog&&!event.metaKey&&!event.ctrlKey&&!event.altKey&&!event.shiftKey&&key==='f'){
+        event.preventDefault();addDirectFolder(activePanel,selectedElement?.scope==='page_overlay');return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'm' && tab === 'storyboard' && !showNewDialog) {
         event.preventDefault();
         mergeSelectedPanelGroup();
@@ -1083,7 +1144,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [document, past, future, paintSession, qwenGeneration, showNewDialog, pendingScannerSession, newLayoutItems.length, newLayoutActiveIndex, newLayoutTask, selectedPanels, tab, environmentOpen]);
+  }, [document, past, future, paintSession, qwenGeneration, showNewDialog, pendingScannerSession, newLayoutItems.length, newLayoutActiveIndex, newLayoutTask, selectedPanels, selectedElement, activePage, activePanel, tab, environmentOpen]);
 
   const changeTab = (next: WorkspaceTab) => {
     const change=()=>{
@@ -1102,20 +1163,27 @@ export default function App() {
   // Also repair a project already open while the development UI is hot-reloaded.
   useEffect(() => {
     const next = cloneDocument(document);
-    if (restoreProvisionalScenarioText(next)) setDocument(next);
+    const restored = restoreProvisionalScenarioText(next);
+    const detached = detachResolvedScenarioLinks(next);
+    if (restored || detached) setDocument(next);
   }, []);
 
-  const chooseScenarioBubble = (location: ScenarioBubbleLocation, sourceIds: readonly string[] | null) => mutate((draft) => {
-    if (sourceIds) confirmScenarioCorrespondence(draft, location, sourceIds);
-    else {
-      const page = draft.manga.pages[location.pageIndex];
-      const bubble = location.overlay ? page?.page_overlay?.bubbles?.[location.bubbleIndex] : page?.panels[location.panelIndex]?.bubbles[location.bubbleIndex];
-      if (bubble) useScenarioBubbleText(bubble);
-    }
-  });
+  const chooseScenarioBubble = (location: ScenarioBubbleLocation, sourceIds: readonly string[] | null) => {
+    const currentPage=documentRef.current.manga.pages[location.pageIndex],currentPanel=location.overlay?undefined:currentPage?.panels[location.panelIndex];
+    const currentBubble=location.overlay?currentPage?.page_overlay?.bubbles?.[location.bubbleIndex]:currentPanel?.bubbles[location.bubbleIndex];
+    if(!currentBubble||currentBubble.locked===true||currentBubble.paint_overlay?.locked||(currentPanel&&panelLocked(currentPanel)))return;
+    mutate((draft) => {
+      if (sourceIds) confirmScenarioCorrespondence(draft, location, sourceIds);
+      else {
+        const page = draft.manga.pages[location.pageIndex];
+        const bubble = location.overlay ? page?.page_overlay?.bubbles?.[location.bubbleIndex] : page?.panels[location.panelIndex]?.bubbles[location.bubbleIndex];
+        if (bubble) rejectScenarioCorrespondence(bubble);
+      }
+    });
+  };
 
   const openMaterialsForPanel = (materialType: PanelMaterialLinkTarget['materialType']) => {
-    if (!page || !panel) return;
+    if (!page || !panel || panelLocked(panel)) return;
     setMaterialLinkTarget({ pageIndex: activePage, panelIndex: activePanel, materialType });
     setSelectedElement(null);
     setTab(materialType === 'background' ? 'setting' : 'props');
@@ -1124,7 +1192,11 @@ export default function App() {
 
   const toggleMaterialForPanel = (materialKey: string, linked: boolean) => {
     if (!materialLinkTarget) return;
-    mutate((draft) => { setPanelMaterialLink(draft, materialLinkTarget, materialKey, linked); });
+    mutate((draft) => {
+      const target=draft.manga.pages[materialLinkTarget.pageIndex]?.panels[materialLinkTarget.panelIndex];
+      if(!target||panelLocked(target))return;
+      setPanelMaterialLink(draft, materialLinkTarget, materialKey, linked);
+    });
   };
 
   const returnFromMaterials = () => {
@@ -2172,6 +2244,7 @@ export default function App() {
   };
 
   const saveCatalogFromEditor = async (label:string) => {
+    endTextEdit();
     const source=documentRef.current;
     const saveStory = (source: MangaDocument) => storeWorkspaceDocument(localStorage, toStoredMangaYaml(source));
     try {
@@ -2232,6 +2305,7 @@ export default function App() {
 
   const exportOmny = () => {
     if (!hasDocument || showNewDialog || projectOperation.current) return;
+    endTextEdit();
     try {
       const current = documentRef.current;
       downloadBrowserBlob(new Blob([toSeparatedMangaYaml(current)], { type: 'application/yaml;charset=utf-8' }), omnyFileName(current.manga.meta.title));
@@ -2241,6 +2315,7 @@ export default function App() {
 
   const saveBrowserProject = async (chooseDestination = false) => {
     if (!hasDocument || showNewDialog || projectOperation.current) return;
+    endTextEdit();
     const episodeId = documentRef.current.manga.meta.episode_id;
     projectOperation.current = true; setProjectBusy(true);
     try {
@@ -2278,6 +2353,7 @@ export default function App() {
   const openBrowserProject = async () => {
     if (showNewDialog || projectOperation.current) return;
     if (hasDocument && !confirm('別の作品フォルダを開きます。現在の編集は保存済みですか？')) return;
+    endTextEdit();
     projectOperation.current = true; setProjectBusy(true);
     const current = documentRef.current;
     try {
@@ -2286,7 +2362,7 @@ export default function App() {
       const selected = await browserWorkspaces.open(workspace);
       const value = await readPortableProject(selected.file);
       if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-      const restored = await restorePortableProject(value);
+      const restored = await separateBubbleOriginals(await restorePortableProject(value));
       if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
       replaceDocument(restored);
       const binding = { ...workspace, episodeId: restored.manga.meta.episode_id, projectRevision: selected.binding.revision };
@@ -2303,6 +2379,7 @@ export default function App() {
   const saveProject = async (chooseDestination = false) => {
     if (isLanClient) return saveBrowserProject(chooseDestination);
     if (!hasDocument || showNewDialog || projectOperation.current) return;
+    endTextEdit();
     projectOperation.current = true;
     setProjectBusy(true);
     let outcome='保存をキャンセルしました';
@@ -2371,6 +2448,7 @@ export default function App() {
     if (isLanClient) return openBrowserProject();
     if (showNewDialog || projectOperation.current) return;
     if (hasDocument && !confirm('別の作品フォルダを開きます。現在の編集は保存済みですか？')) return;
+    endTextEdit();
     projectOperation.current = true;
     setProjectBusy(true);
     const current = documentRef.current;
@@ -2381,7 +2459,7 @@ export default function App() {
         const loaded = await loadEpisodeProject(workspace.token);
         // Do not replace changes made while the picker or disk read was pending.
         if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-        const restored = await restoreProjectSnapshot(loaded.snapshot);
+        const restored = await separateBubbleOriginals(await restoreProjectSnapshot(loaded.snapshot));
         if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
         replaceDocument(restored);
         setBoundEpisodeWorkspace({ ...workspace, episodeId: restored.manga.meta.episode_id, projectRevision: loaded.revision });
@@ -2785,6 +2863,9 @@ export default function App() {
         for (const page of pages) page.panels[0].bubbles = [];
       }
     }
+    // Imported positions are in the analysis canvas, including OCR retained with a template.
+    // Map them together before print setup; pages already created at the target size are unchanged.
+    for (const page of pages) resizePageCanvas(page, { w: newPrintSetup.width_mm, h: newPrintSetup.height_mm }, 'inner-frame');
     const creationGutters = detectedLayouts.length
       ? { rowGapMm: newLayoutRowGapMm, columnGapMm: newLayoutColumnGapMm }
       : inferPanelGutters(
@@ -2865,6 +2946,15 @@ export default function App() {
       }) : null;
     if (seriesMerge.document.manga.scenario) reviewTextCount = scenarioResult?.review ?? 0;
     initializeImportedBubbleLineBreaks(seriesMerge.document);
+    setNewLayoutMessage('原本ラスターとベクターの吹き出しを分離しています…');
+    try {
+      seriesMerge.document=await separateBubbleOriginals(seriesMerge.document);
+      if(!isCurrentOperation()){await discardStaleAssets();return;}
+    }catch(error){
+      updateNewLayoutTask('idle');
+      setNewLayoutMessage(error instanceof Error?error.message:'原本レイヤーを作成できませんでした');
+      return;
+    }
     setNewLayoutMessage('人物データの保存を確定しています…');
     try {
       if (newCharacterTextLink?.linked && characterDraft) {
@@ -2937,17 +3027,20 @@ export default function App() {
     setToast(completionWarnings ? `${completedMessage}。${completionWarnings}` : completedMessage);
   };
 
-  const addPage = () => mutate((draft) => { const index = draft.manga.pages.length; const setup = getPrintSetup(draft.manga); draft.manga.pages.push(newPage(index + 1, { w: setup.width_mm, h: setup.height_mm })); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });
+  const addPage = () => {endTextEdit();mutate((draft) => { const index = draft.manga.pages.length; const setup = getPrintSetup(draft.manga); draft.manga.pages.push(newPage(index + 1, { w: setup.width_mm, h: setup.height_mm })); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });};
   const duplicatePage = () => {
     if (!page) return;
+    endTextEdit();
     mutate((draft) => { const copy = structuredClone(draft.manga.pages[activePage]); draft.manga.pages.splice(activePage + 1, 0, copy); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(activePage + 1); setSelectedPanels([activePanel]); });
   };
   const deletePage = () => {
     if (document.manga.pages.length <= 1 || !confirm(`ページ ${activePage + 1} を削除しますか？`)) return;
+    endTextEdit();
     mutate((draft) => { draft.manga.pages.splice(activePage, 1); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); setSelectedPanels([0]); });
   };
   const reorderPage = (from: number, to: number) => {
     if (from === to) return;
+    endTextEdit();
     mutate((draft) => {
       const pages = draft.manga.pages;
       const [moved] = pages.splice(from, 1);
@@ -2966,36 +3059,74 @@ export default function App() {
   };
   const addPanel = () => {
     if (!page || page.panels.length >= MAX_PANELS_PER_PAGE) { setToast(`1ページに追加できるのは${MAX_PANELS_PER_PAGE}コマまでです`); return; }
+    endTextEdit();
     mutate((draft) => { const page = draft.manga.pages[activePage]; const panels = page.panels; panels.push(newPanel(panels.length + 1, panels.length * 45, page.canvas)); setActivePanel(panels.length - 1); setSelectedPanels([panels.length - 1]); });
   };
-  const deletePanel = () => {
-    if (!panel || !confirm(`${panelDisplayLabel(panel.id)} を削除しますか？`)) return;
-    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(activePanel, 1); panels.forEach((item, index) => { item.id = index + 1; }); const nextIndex = Math.max(0, activePanel - 1); setActivePanel(nextIndex); setSelectedPanels([nextIndex]); });
+  const deletePanelAt = (index:number) => {
+    const target=document.manga.pages[activePage]?.panels[index];
+    if (!target || panelLocked(target) || !confirm(`${panelDisplayLabel(target.id)} を削除しますか？`)) return;
+    endTextEdit();
+    autoPaintResume.current=null;
+    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(index, 1); panels.forEach((item, panelIndex) => { item.id = panelIndex + 1; }); const nextIndex = Math.max(0, Math.min(index - 1, panels.length - 1)); setActivePanel(nextIndex); setSelectedPanels(panels.length?[nextIndex]:[]);setSelectedElement(null); });
+  };
+  const deletePanel = () => deletePanelAt(activePanel);
+  const deleteScreenTextAt=(panelIndex:number,index:number,overlay:boolean)=>{
+    const target:CanvasTextTarget={pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'};
+    if(!canvasTextEditable(documentRef.current,target))return;
+    void layerTransition(async()=>{
+      autoPaintResume.current=null;
+      if(paintSessionRef.current)await paintController.current?.close();
+      createdText.current=null;endTextEdit();
+      const next=cloneDocument(documentRef.current);
+      if(!removeCanvasText(next,target))return;
+      lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;setSelectedElement(null);
+    });
+  };
+  const deleteBubbleAt=(panelIndex:number,bubbleIndex:number,overlay=false)=>{
+    const target:CanvasTextTarget={pageIndex:activePage,panelIndex,index:bubbleIndex,overlay,kind:'bubble'};
+    const bubble=canvasTextAt(documentRef.current,target);
+    const targetPanel=!overlay?documentRef.current.manga.pages[activePage]?.panels[panelIndex]:undefined;
+    if(!bubble||('locked' in bubble&&bubble.locked===true)||('paint_overlay' in bubble&&artworkLocked(bubble.paint_overlay))||targetPanel&&panelLocked(targetPanel)||!confirm(`${overlay?'ページ前景':'コマ'}のフキダシ ${bubbleIndex+1} を削除しますか？`))return;
+    void layerTransition(async()=>{
+      autoPaintResume.current=null;
+      if(paintSessionRef.current)await paintController.current?.close();
+      endTextEdit();
+      const next=cloneDocument(documentRef.current);
+      if(!removeCanvasText(next,target))return;
+      lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
+      setSelectedElement(null);
+    });
   };
   const makePaintScene = (current:MangaDocument,panelIndex:number,pageIndex:number,overlay:boolean) => {
     const targetPage=current.manga.pages[pageIndex],targetPanel=targetPage?.panels[panelIndex];
     if(!targetPage||(!overlay&&!targetPanel))throw new Error('対象のあたりが見つかりません');
     validateImagePlacements(current);
     const source=overlay?{id:0,shape:{type:'rect' as const,x:0,y:0,...targetPage.canvas},bg:0 as const,action:null,
+      layer:targetPage.layer?.directLocked?{directLocked:true}:undefined,
+      images:targetPage.images?.filter(image=>image.paintScope==='page'||image.bubbleOriginal),
       figures:targetPage.page_overlay?.figures?.map((figure,index)=>({...figure,bbox:figure.bbox??overlayFallbackBox(targetPage.canvas,'figure',index)})),
       bubbles:(targetPage.page_overlay?.bubbles??[]).map((bubble,index)=>({...bubble,bbox:bubble.bbox??overlayFallbackBox(targetPage.canvas,'bubble',index)}))}:targetPanel;
     const setup=getPrintSetup(current.manga);
-    const scene=paintScene(source,setup.dpi,current.manga.image_assets??[],paintColorMode(setup.format));
+    const scene=paintScene(source,setup.dpi,current.manga.image_assets??[],paintColorMode(setup.format),overlay?'page':'panel');
     if(overlay)scene.owners=scene.owners.filter(owner=>owner.kind!=='background');
-    if(!scene.owners.length)throw new Error('人物・背景・吹き出しのあたりを選んでください');
+    if(!scene.owners.length)throw new Error('描画先を選んでください');
     return scene;
   };
-  const guideKey=(key:string,panelIndex:number,pageIndex:number,overlay:boolean)=>`${document.manga.meta.episode_id??'current'}:${pageIndex}:${overlay?'overlay':panelIndex}:${key}`;
-  const artworkGuideVisible=(key:string,panelIndex=activePanel,pageIndex=activePage,overlay=false):boolean=>{
-    const page=document.manga.pages[pageIndex],target=overlay?page?.page_overlay:page?.panels[panelIndex];
+  const artworkGuideVisible=(key:string,panelIndex=activePanel,pageIndex=activePage,overlay=false,source=document):boolean=>{
+    if(key.startsWith('bubble-'))return false;
+    const page=source.manga.pages[pageIndex],target=overlay?page?.page_overlay:page?.panels[panelIndex];
     const index=Number(key.split('-')[1]);
-    const paint=key==='background'?page?.panels[panelIndex]?.background_images?.[0]?.paint:key.startsWith('figure-')?target?.figures?.[index]?.artwork?.paint:undefined;
-    if(paint?.guideInitialized)return paint.layers.some(layer=>layer.guide&&layer.visible);
-    const value=guideVisibility[guideKey(key,panelIndex,pageIndex,overlay)];if(value!==undefined)return value;
+    const figure=key.startsWith('figure-')?target?.figures?.[index]:undefined,bubble=key.startsWith('bubble-')?target?.bubbles?.[index]:undefined;
+    const paint=key==='background'?page?.panels[panelIndex]?.background_images?.[0]?.paint:figure?.artwork?.paint??bubble?.paint_overlay?.paint;
+    if(paint?.guideInitialized){
+      if(figure)return figurePaintVisible(figure);
+      return paint.layers.some(layer=>layer.guide&&layer.visible&&layer.opacity>0);
+    }
     if(key==='background')return !page?.panels[panelIndex]?.background_images?.length;
     return key.startsWith('figure-')?!target?.figures?.[index]?.artwork:!target?.bubbles?.[index]?.paint_overlay;
   };
   const toggleArtworkGuide=(key:string,panelIndex=activePanel,pageIndex=activePage,overlay=false)=>{
+    if(key.startsWith('bubble-'))return;
     const session=paintSessionRef.current;
     if(!key.startsWith('bubble-')&&session?.pageIndex===pageIndex&&session.panelIndex===panelIndex&&session.overlay===overlay){paintController.current?.layerAction({type:'guide',key});return;}
     if(!key.startsWith('bubble-')){void layerTransition(async()=>{
@@ -3005,23 +3136,29 @@ export default function App() {
       pendingLayerAction.current={type:'guide',key};
       if(!openPaint(key,panelIndex,pageIndex,overlay,source))pendingLayerAction.current=null;
     });return;}
-    const value=!artworkGuideVisible(key,panelIndex,pageIndex,overlay);
-    setGuideVisibility(current=>({...current,[guideKey(key,panelIndex,pageIndex,overlay)]:value}));
   };
-  const selectedPaintOwner = () => selectedElement?.type==='figure'?`figure-${selectedElement.index}`:selectedElement?.type==='bubble'?`bubble-${selectedElement.index}`:'background';
-  const openPaint = (initialOwner?:string,panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay', preview?:PaintScene) => {
+  const selectedPaintOwner = () => {
+    if(selectedElement?.type==='image'){
+      const page=documentRef.current.manga.pages[activePage];
+      const image=(selectedElement.scope==='page'?page?.images:page?.panels[activePanel]?.images)?.[selectedElement.index];
+      if(image?.bubbleOriginal)return `original-${image.id}`;
+    }
+    return selectedElement?.type==='figure'?`figure-${selectedElement.index}`:selectedElement?.type==='bubble'?`bubble-${selectedElement.index}`:'background';
+  };
+  const openPaint = (initialOwner?:string,panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay'||selectedElement?.scope==='page', preview?:PaintScene) => {
     if(imageImportBusy||paintSessionRef.current||qwenPreparing.current)return false;
+    endTextEdit();
     const current=documentRef.current;
     try {
       if(!overlay&&!panelVisible(current.manga.pages[pageIndex].panels[panelIndex]))throw new Error('レイヤーの目を押してコマを表示してください');
-      endTextEdit();setTextTool(false);setZoomTool(false);
+      setTextTool(false);setZoomTool(false);setBubblePathTool(false);
       const scene=preview?{...preview}:makePaintScene(current,panelIndex,pageIndex,overlay);
       scene.owners=scene.owners.map(owner=>withPaintBleed(owner,paintBleedPx));
       setMobileStoryboardPane('editor');setPaintToolsCollapsed(false);setPaintLayersCollapsed(false);
       const ownerKey=initialOwner??selectedPaintOwner(),owner=scene.owners.find(o=>o.key===ownerKey);
       if(owner?.bubble&&!bubbleVisible(owner.bubble))throw new Error('レイヤーの目を押して吹き出しを表示してください');
       const session={document:current,pageIndex,panelIndex,overlay,scene,initialOwner:ownerKey,title:overlay?'ページ前景':panelDisplayLabel(current.manga.pages[pageIndex].panels[panelIndex].id)};
-      paintSessionRef.current=session;setPaintSession(session);return true;
+      autoPaintResume.current=null;paintSessionRef.current=session;setPaintSession(session);return true;
     }catch(error){setToast(error instanceof Error?error.message:'ペイントを開けませんでした');return false;}
   };
   async function layerTransition(action:()=>void|Promise<void>){
@@ -3030,15 +3167,53 @@ export default function App() {
     try{await action();}catch(error){setToast(error instanceof Error?error.message:'レイヤーを切り替えられません');}
     finally{layerSwitch.current=false;setLayerSwitchBusy(false);}
   }
-  function endTextEdit(){setEditingText(null);imageGestureBoundary('end');}
+  function requestPcFonts(){
+    if(localFontQuery.current)return localFontQuery.current;
+    if(localFontSynced.current)return Promise.resolve();
+    const request=queryPcFontFamilies()
+      .then(names=>{
+        if(names.length!==localFontNames.current.length||names.some((name,index)=>name!==localFontNames.current[index])){
+          const families=classifyPcFontFamilies(names);
+          localFontNames.current=families.map(font=>font.family);
+          setLocalFontFamilies(families);
+          rememberPcFontCatalog(families);
+        }
+        localFontSynced.current=true;
+      })
+      .catch(()=>{/* Startup may lack permission; opening the selected-text picker retries inside a user gesture. */})
+      .finally(()=>{localFontQuery.current=null;});
+    localFontQuery.current=request;
+    return request;
+  }
+  useEffect(()=>{void requestPcFonts();},[]);
+  function endTextEdit(){
+    const created=createdText.current;
+    createdText.current=null;
+    if(created){
+      const item=canvasTextAt(documentRef.current,created);
+      if(item&&!item.text.trim()){
+        const next=cloneDocument(documentRef.current);
+        if(removeCanvasText(next,created)){
+          setDocument(next);
+          const selected=selectedElement;
+          if(selected?.type===created.kind&&selected.index===created.index&&(selected.scope==='page_overlay')===created.overlay)setSelectedElement(null);
+        }
+      }
+    }
+    setEditingText(null);imageGestureBoundary('end');
+  }
   function startBubbleEdit(target:BubbleTextTarget){startTextEdit({...target,index:target.bubbleIndex,kind:'bubble'});}
   function startTextEdit(target:CanvasTextTarget){
+    autoPaintResume.current=null;
+    setTextPaletteRequest(value=>({id:value.id+1,tab:'text'}));
+    if(editingText&&editingText.pageIndex===target.pageIndex&&editingText.panelIndex===target.panelIndex&&editingText.index===target.index&&editingText.kind===target.kind&&editingText.overlay===target.overlay)return;
+    void requestPcFonts();
     void layerTransition(async()=>{
       if(paintSessionRef.current)await paintController.current?.close();
       const current=documentRef.current;
-      if((target.kind==='bubble'&&(bubbleAt(current,{...target,bubbleIndex:target.index})?.hidden===true||artworkLocked(bubbleAt(current,{...target,bubbleIndex:target.index})?.paint_overlay)))||!canvasTextAt(current,target)||(!target.overlay&&!panelVisible(current.manga.pages[target.pageIndex].panels[target.panelIndex])))return;
-      endTextEdit();setZoomTool(false);setActivePage(target.pageIndex);setActivePanel(target.panelIndex);setSelectedPanels([target.panelIndex]);
-      setSelectedElement({type:target.kind,index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})});
+      if(!canvasTextEditable(current,target))return;
+      endTextEdit();setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);setSelectedPanels([target.panelIndex]);
+      selectCanvasElement({type:target.kind,index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})},target.panelIndex,target.pageIndex,false);
       imageGestureBoundary('start');setEditingText(target);
     });
   }
@@ -3046,9 +3221,16 @@ export default function App() {
     const next=cloneDocument(documentRef.current);
     if(editCanvasText(next,target,text,edit)){imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}
   }
+  function changeTextToolStyle(patch:TextStylePatch){
+    setTextToolStyle(current=>{
+      const item={text:'',orientation:current.orientation??'vertical',text_style:{...current}};
+      updateTextStyle(item,'screen_text',patch);
+      return textStyleOf(item,'screen_text');
+    });
+  }
   function changeCanvasTextStyle(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
     if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
-    try{const next=cloneDocument(documentRef.current);if(editCanvasTextStyle(next,target,patch,selection)){imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}}
+    try{const next=cloneDocument(documentRef.current);if(editCanvasTextStyle(next,target,patch,selection)){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}}
     catch(error){setToast(error instanceof Error?error.message:'文字設定を変更できません');}
   }
   function canvasTextHistory(direction:'undo'|'redo'){
@@ -3066,25 +3248,72 @@ export default function App() {
       if(!editCanvasBubbleMaterial(next,target,id))return;
       endTextEdit();lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
       setActivePage(target.pageIndex);setActivePanel(target.panelIndex);setSelectedElement({type:'bubble',index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})});
+      setTextTool(false);setZoomTool(false);setBubblePathTool(false);
       setToast('文字・大きさ・位置を保って、吹き出しの輪郭を入れ替えました');
     }catch(error){setToast(error instanceof Error?error.message:'素材を適用できません');}
   }
-  function openBubbleMaterials(){endTextEdit();setBubbleMaterialsOpen(true);}
-  function chooseTextTool(){void layerTransition(async()=>{
+  function openBubbleMaterials(){endTextEdit();setBubbleMaterialsOpen(true);setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);setTextPaletteRequest(value=>({id:value.id+1,tab:'bubble'}));}
+  function chooseTextTool(){void requestPcFonts();void layerTransition(async()=>{
+    setTextPaletteRequest(value=>({id:value.id+1,tab:'text'}));
+    autoPaintResume.current=null;
     if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();setTextTool(true);setZoomTool(false);setPaintToolsCollapsed(false);
+    setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
+  });}
+  function chooseBubblePathTool(mode:Exclude<BubblePathToolMode,false>){void layerTransition(async()=>{
+    autoPaintResume.current=null;
+    if(paintSessionRef.current)await paintController.current?.close();
+    endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(mode);setPaintToolsCollapsed(false);
   });}
   function chooseZoomTool(){void layerTransition(async()=>{
+    autoPaintResume.current=null;
     if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();setTextTool(false);setZoomTool(true);setPaintToolsCollapsed(false);
+    endTextEdit();setTextTool(false);setZoomTool(true);setBubblePathTool(false);setPaintToolsCollapsed(false);
   });}
   function addText(kind:CanvasTextKind){void layerTransition(async()=>{
     if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();const next=cloneDocument(documentRef.current),target=addCanvasText(next,activePage,activePanel,kind);if(!target)return;
+    endTextEdit();const next=cloneDocument(documentRef.current),target=addCanvasText(next,activePage,activePanel,kind,textToolStyle);if(!target)return;
     lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-    setSelectedElement({type:kind,index:target.index});setTextTool(true);setZoomTool(false);setPaintToolsCollapsed(false);
+    if(kind==='screen_text')createdText.current=target;
+    setSelectedElement({type:kind,index:target.index});setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
     imageGestureBoundary('start');setEditingText(target);
   });}
+  function createScreenTextAt(pageIndex:number,panelIndex:number|null,point:{x:number;y:number}){
+    if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
+    endTextEdit();
+    const next=cloneDocument(documentRef.current),target=addCanvasTextAt(next,pageIndex,panelIndex,point,textToolStyle);
+    if(!target)return;
+    imageGestureBoundary('start');lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
+    createdText.current=target;
+    setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
+    setSelectedPanels([target.panelIndex]);
+    selectCanvasElement({type:'screen_text',index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})},target.panelIndex,pageIndex,false);
+    setEditingText(target);
+  }
+  function wrapScreenText(target:CanvasTextTarget,materialId:string){
+    if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
+    createdText.current=null;setEditingText(null);imageGestureBoundary('end');
+    const next=cloneDocument(documentRef.current);
+    const converted=convertScreenTextToBubble(next,{screenText:target,materialId});
+    if(!converted)return;
+    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
+    setActivePage(converted.pageIndex);setActivePanel(converted.panelIndex);setSelectedPanels([converted.panelIndex]);
+    setSelectedElement({type:'bubble',index:converted.index,...(converted.overlay?{scope:'page_overlay' as const}:{})});
+    setTextTool(false);setZoomTool(false);setBubblePathTool(false);
+    setToast('通常文字を吹き出しの中央へ入れ、文字量に合わせて一度だけサイズを調整しました');
+  }
+  function finishElementMove(pageIndex:number,selection:CanvasElementSelection,panelIndex:number|null){
+    if(selection.type!=='bubble')return;
+    const bubbleTarget:CanvasTextTarget={pageIndex,panelIndex:panelIndex??0,index:selection.index,overlay:selection.scope==='page_overlay',kind:'bubble'};
+    const covered=screenTextCoveredByBubble(documentRef.current,bubbleTarget);
+    if(!covered)return;
+    createdText.current=null;setEditingText(null);imageGestureBoundary('end');
+    const next=cloneDocument(documentRef.current),converted=convertScreenTextToBubble(next,{screenText:covered,bubble:bubbleTarget});
+    if(!converted)return;
+    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
+    setSelectedElement({type:'bubble',index:converted.index,...(converted.overlay?{scope:'page_overlay' as const}:{})});
+    setTextTool(false);setZoomTool(false);setBubblePathTool(false);
+    setToast('文字を吹き出しの中央へ入れ、文字量に合わせて一度だけサイズを調整しました');
+  }
   function selectBubbleLayer(target:BubbleTextTarget){void layerTransition(async()=>{
     const bubble=bubbleAt(documentRef.current,target);if(!bubble||!bubbleVisible(bubble))return;
     if(paintSessionRef.current)await paintController.current?.close();
@@ -3106,6 +3335,12 @@ export default function App() {
     panel.layer??={};if(frame)panel.layer.frameHidden=!panel.layer.frameHidden;else panel.layer.hidden=!panel.layer.hidden;
     lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
   });}
+  function togglePanelLock(index:number,frame=false){void layerTransition(async()=>{
+    if(paintSessionRef.current)await paintController.current?.close();
+    endTextEdit();const next=cloneDocument(documentRef.current),panel=next.manga.pages[activePage]?.panels[index];if(!panel)return;
+    panel.layer??={};if(frame)panel.layer.frameLocked=!panel.layer.frameLocked;else if(panelLocked(panel))unlockPanelDescendants(panel);else panel.layer.locked=true;
+    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
+  });}
   function reorderOwnerLayers(index:number,key:string,target:string,after:boolean){void layerTransition(async()=>{
     if(paintSessionRef.current)await paintController.current?.close();
     endTextEdit();const next=cloneDocument(documentRef.current),panel=next.manga.pages[activePage]?.panels[index];
@@ -3125,6 +3360,16 @@ export default function App() {
     // Use the preview's layer IDs; untouched empty layers do not exist in the document yet.
     if(!openPaint(action.key,index,activePage,overlay,preview))pendingLayerAction.current=null;
   });}
+  function addDirectFolder(index:number,overlay=false){
+    try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add-folder',key:overlay?'page':'panel'},scene,overlay);}
+    catch(error){setToast(error instanceof Error?error.message:'フォルダーを追加できませんでした');}
+  }
+  function openPanelBackground3d(index:number){
+    const target=documentRef.current.manga.pages[activePage]?.panels[index];
+    if(!target||panelLocked(target)){setToast('コマフォルダが固定されています');return;}
+    try{actOnLayer(index,{type:'background3d',key:'background'},makePaintScene(documentRef.current,index,activePage,false));}
+    catch(error){setToast(error instanceof Error?error.message:'背景の3D編集を開けません');}
+  }
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest) => {
     const plan=buildQwenGenerationPlan(current.manga,pageIndex,panelIndex,overlay,owner);
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
@@ -3151,9 +3396,75 @@ export default function App() {
     try {
       const scene=makePaintScene(current,panelIndex,pageIndex,overlay),owner=scene.owners.find(o=>o.key===(key??selectedPaintOwner()));
       if(!owner)throw new Error('生成対象のフォルダが見つかりません');
+      if(paintOwnerLocked(owner)||owner.paint.layers.some(layer=>layer.locked))throw new Error('生成対象が固定されています');
       await prepareQwen(current,pageIndex,panelIndex,overlay,owner,undefined,[],agentRequest);
       return true;
     }catch(error){setToast(error instanceof Error?error.message:'生成の準備ができませんでした');return false;}finally{qwenPreparing.current=false;}
+  };
+  const requestCompositionGeneration = async(scope:QwenCompositionScope,panelIndex:number,pageIndex:number) => {
+    if(qwenGenerationRef.current||qwenPreparing.current||imageImportBusy||projectOperation.current)return;
+    if(scope==='panel'&&panelLocked(documentRef.current.manga.pages[pageIndex]?.panels[panelIndex])){setToast('コマフォルダが固定されています');return;}
+    qwenPreparing.current=true;
+    try {
+      if(paintSessionRef.current)await paintController.current?.close();
+      const current=documentRef.current;
+      const guides:Record<string,boolean>={};
+      current.manga.pages[pageIndex].panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=artworkGuideVisible(key,index,pageIndex,false,current);}));
+      const overlay=current.manga.pages[pageIndex].page_overlay;
+      [...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=artworkGuideVisible(key,0,pageIndex,true,current);});
+      const plan=buildQwenCompositionPlan(current.manga,pageIndex,panelIndex,scope,guides);
+      setToast('生成用の紙面を準備しています…');
+      plan.compositionImage=await captureQwenComposition(current.manga,pageIndex,panelIndex,scope,guides);
+      if(documentRef.current!==current)throw new Error('作品が変更されました。生成する範囲を選び直してください');
+      const next={id:crypto.randomUUID(),plan,layers:[],loadLayer:async()=>{throw new Error('全体生成では紙面を参照します');},document:current,pageIndex,panelIndex,overlay:false};
+      qwenGenerationRef.current=next;setQwenGeneration(next);setVoiceOpen(true);setToast('');
+    }catch(error){setToast(error instanceof Error?error.message:'全体生成を準備できませんでした');}
+    finally{qwenPreparing.current=false;}
+  };
+  const pageExportBlob = async(current:MangaDocument,pageIndex:number,format:ImageExportFormat) => {
+    const page=current.manga.pages[pageIndex];
+    if(!page)throw new Error('書き出すページが見つかりません');
+    const setup=getPrintSetup(current.manga),size=pageExportPixels(setup.width_mm,setup.height_mm,setup.dpi),guides:Record<string,boolean>={};
+    page.panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=false;}));
+    const overlay=page.page_overlay;[...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=false;});
+    const canvas=await captureQwenCompositionCanvas(current.manga,pageIndex,Math.min(activePanelRef.current,Math.max(0,page.panels.length-1)),'page',guides,{...size,includeGenerated:true});
+    try{
+      let blob:Blob;
+      if(format==='psd'){
+        const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw new Error('ページ画像を読み出せませんでした');
+        blob=flattenedPsd(context.getImageData(0,0,canvas.width,canvas.height),setup.dpi,paintColorMode(setup.format));
+      }else blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('PNGを書き出せませんでした')),'image/png'));
+      const name=safeExportName(`${current.manga.meta.title||'manga'}-page-${String(page.page).padStart(3,'0')}-${setup.width_mm}x${setup.height_mm}mm-${setup.dpi}dpi`);
+      return {blob,name:`${name}.${format}`,page:page.page};
+    }finally{canvas.width=canvas.height=1;}
+  };
+  const openImageExportDialog=()=>{
+    endTextEdit();
+    const page=activePageRef.current+1;
+    setImageExportDialog({mode:'current',from:page,to:page,format:'png'});
+  };
+  const exportPageRange=async()=>{
+    const choice=imageExportDialog;if(!choice||imageExportBusy)return;
+    endTextEdit();
+    const current=documentRef.current;
+    try{
+      setImageExportBusy(true);
+      const indices=pageExportIndices(current.manga.pages.length,{...choice,current:activePageRef.current+1}),files:Array<{name:string;bytes:Uint8Array;blob:Blob;page:number}>=[];
+      for(let position=0;position<indices.length;position++){
+        if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
+        setToast(`画像を書き出しています… ${position+1}/${indices.length}`);
+        const result=await pageExportBlob(current,indices[position],choice.format);
+        files.push({...result,bytes:new Uint8Array(await result.blob.arrayBuffer())});
+      }
+      if(files.length===1)downloadImageBlob(files[0].blob,files[0].name);
+      else{
+        const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
+        downloadImageBlob(uncompressedZip(files.map(({name,bytes})=>({name,bytes}))),`${safeExportName(current.manga.meta.title||'manga')}-pages-${first}-${last}-${choice.format}.zip`);
+      }
+      setImageExportDialog(null);
+      setToast(files.length===1?`ページ ${files[0].page} を${choice.format.toUpperCase()}で書き出しました`:`ページ ${files[0].page}〜${files.at(-1)!.page} を${choice.format.toUpperCase()}のZIPで書き出しました`);
+    }catch(error){setToast(error instanceof Error?error.message:'画像を書き出せませんでした');}
+    finally{setImageExportBusy(false);}
   };
   const applyPaint = async (result:PaintResult) => {
     const session=paintSessionRef.current;
@@ -3187,9 +3498,14 @@ export default function App() {
       const needed=new Set(result.owners.flatMap(({owner})=>paintAssetIds(owner.paint)));
       for(const item of result.imports)if(needed.has(item.asset.id))await register(item.asset,item.blob);
       const targetPage=next.manga.pages[session.pageIndex];
-      const target=session.overlay?targetPage.page_overlay:targetPage.panels[session.panelIndex];
-      if(!target)throw new Error('描画先が見つかりません');
-      for(const {owner,blob} of result.owners){
+      if(!targetPage)throw new Error('描画先が見つかりません');
+      for(const {owner,blob,remove,metadataOnly} of result.owners){
+        const target=owner.kind==='page'||(owner.kind==='original'&&session.overlay)?targetPage:session.overlay?targetPage.page_overlay:targetPage.panels[session.panelIndex];
+        if(!target)throw new Error('描画先が見つかりません');
+        applyPaintOwnerLock(target,owner);
+        if(metadataOnly)continue;
+        if(remove){clearOwnerPaint(target,owner);continue;}
+        if(!blob)throw new Error('描画画像が見つかりません');
         const prepared=await prepareImageAsset(new File([blob],`${session.title}-${owner.label}.png`,{type:'image/png'}));
         const asset=await register(prepared,blob);
         const image={...createFrameArtwork(asset,owner.frame),paint:owner.paint};
@@ -3208,15 +3524,15 @@ export default function App() {
   const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
     const page = documentRef.current.manga.pages[pageIndex];
     const panel = page?.panels[panelIndex];
-    if (!page || imageImportBusy || (scope === 'panel' && !panel)) return;
+    if (!page || imageImportBusy || (scope === 'panel' && (!panel||panelLocked(panel)))) return;
     let box: BBox = scope === 'panel' ? panelBounds(panel!) : { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h };
     if (figureIndex !== undefined) {
       const figure = scope === 'page_overlay' ? page.page_overlay?.figures?.[figureIndex] : panel?.figures?.[figureIndex];
-      if (!figure || figure.artwork?.locked) return;
+      if (!figure || figure.locked||artworkLocked(figure.artwork)) return;
       box = figure.bbox ?? (scope === 'page_overlay' ? overlayFallbackBox(page.canvas, 'figure', figureIndex) : fallbackBox(panel!, 'figure', figureIndex));
     } else if (bubbleIndex !== undefined) {
       const bubble = scope === 'page_overlay' ? page.page_overlay?.bubbles?.[bubbleIndex] : panel?.bubbles[bubbleIndex];
-      if (!bubble || bubble.paint_overlay?.locked) return;
+      if (!bubble || bubble.locked||bubble.paint_overlay?.locked) return;
       box = bubble.bbox ?? (scope === 'page_overlay' ? overlayFallbackBox(page.canvas, 'bubble', bubbleIndex) : fallbackBox(panel!, 'bubble', bubbleIndex));
     } else if (scope === 'page_overlay') return;
     imageImportTarget.current = { document: documentRef.current, pageIndex, panelIndex, scope, figureIndex, bubbleIndex, box: { ...box } };
@@ -3225,7 +3541,7 @@ export default function App() {
     setSelectedPanels([panelIndex]);
     placedImageInput.current?.click();
   };
-  const chooseOwnerImage = (key=selectedPaintOwner(),panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay') => {
+  const chooseOwnerImage = (key=selectedPaintOwner(),panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay'||selectedElement?.scope==='page') => {
     if(imageImportBusy||projectOperation.current||qwenGeneration)return;
     const session=paintSessionRef.current;
     if(session){
@@ -3257,9 +3573,16 @@ export default function App() {
       if (!existing) (next.manga.image_assets ??= []).push(asset);
       else next.manga.image_assets = next.manga.image_assets?.map(item => item.id === asset.id ? asset : item);
       const targetPage = next.manga.pages[target.pageIndex];
-      const placement = target.scope === 'page' ? createImagePlacement(asset, target.box) : createFrameArtwork(asset, target.box);
+      const placement = target.scope === 'page' && !target.generationScope ? createImagePlacement(asset, target.box) : createFrameArtwork(asset, target.box);
+      if(target.referenceFrame)placement.paint={version:1,width:asset.widthPx,height:asset.heightPx,dpi:getPrintSetup(next.manga).dpi,
+        referenceFrame:humanPoseReferencePixels(target.referenceFrame,target.box,asset.widthPx,asset.heightPx),
+        layers:[{...newPaintLayer(file.name),image:{assetId:asset.id,crop:{...placement.crop},bbox:{x:0,y:0,w:asset.widthPx,h:asset.heightPx}}}]};
+      if(target.generationScope)placement.generationScope=target.generationScope;
       let selection: CanvasElementSelection | null;
-      if (target.figureIndex !== undefined) {
+      if(target.generationScope){
+        const images=target.generationScope==='page'?(targetPage.images??=[]):(targetPage.panels[target.panelIndex].images??=[]);
+        images.push(placement);selection={type:'image',index:images.length-1,scope:target.generationScope};
+      } else if (target.figureIndex !== undefined) {
         const owner = target.scope === 'page_overlay' ? targetPage.page_overlay : targetPage.panels[target.panelIndex];
         const figure = owner?.figures?.[target.figureIndex];
         if (!figure) throw new Error('差し替えるあたりが見つかりません');
@@ -3296,14 +3619,21 @@ export default function App() {
   const insertQwenImage = async(file:File) => {
     const target=qwenGeneration;
     if(!target||documentRef.current!==target.document||projectOperation.current||imageImportBusy)throw new Error('作品が変更されました。差し込み先を選び直してください');
-    const {pageIndex,panelIndex,overlay,owner}=target,session=paintSessionRef.current;
+    const {pageIndex,panelIndex,overlay,owner,plan}=target,session=paintSessionRef.current;
+    if(plan.scope){
+      if(plan.scope==='panel'&&panelLocked(documentRef.current.manga.pages[pageIndex]?.panels[panelIndex]))throw new Error('差し込み先のコマフォルダが固定されています');
+      await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:plan.scope,generationScope:plan.scope,box:plan.outputFrame!});
+      setQwenGeneration(null);setToast(`${plan.label}の生成画像を配置しました`);return;
+    }
+    if(!owner)throw new Error('生成対象がありません');
+    const placement=plan.outputFrame&&plan.referenceFrame?{frame:plan.outputFrame,referenceFrame:plan.referenceFrame}:undefined;
     if(session){
       if(session.pageIndex!==pageIndex||session.panelIndex!==panelIndex||session.overlay!==overlay||!paintController.current)throw new Error('描画先が変更されています。差し込み先を選び直してください');
-      await paintController.current.insertImage(file,owner.key);
+      await paintController.current.insertImage(file,owner.key,placement);
     }else{
       if(paintOwnerLocked(owner)||owner.paint.layers.some(layer=>layer.locked))throw new Error('差し込み先が固定されています');
       await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
-        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...owner.frame}});
+        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},referenceFrame:placement?.referenceFrame});
     }
     setQwenGeneration(null);setToast(`${file.name} を${owner.label}のあたりに差し込みました`);
   };
@@ -3312,7 +3642,7 @@ export default function App() {
     lastHistoryPush.current = 0;
   };
   const movePageImageToPanel = (index: number) => {
-    if (!panel || page?.images?.[index]?.locked) return;
+    if (!panel || panelLocked(panel) || page?.images?.[index]?.locked) return;
     lastHistoryPush.current = 0;
     mutate(draft => {
       const targetPage = draft.manga.pages[activePage];
@@ -3338,21 +3668,24 @@ export default function App() {
         if (!overlay) return;
         if (selection.type === 'figure') {
           const figure = overlay.figures?.[selection.index];
-          if (figure && !artworkLocked(figure.artwork)) {
+          if (figure && !figure.locked&&!artworkLocked(figure.artwork)) {
             figure.bbox = bbox;
             if (figure.analogImport) figure.analogImport.userEdited = true;
           }
         } else if (selection.type === 'bubble') {
           const bubble = overlay.bubbles?.[selection.index];
-          if (bubble&&!artworkLocked(bubble.paint_overlay)) bubble.bbox = bbox;
+          if (bubble&&!bubble.locked&&!artworkLocked(bubble.paint_overlay)) bubble.bbox = bbox;
+        } else if (selection.type === 'screen_text') {
+          const screenText=overlay.screen_text?.[selection.index];
+          if(screenText)screenText.bbox=bbox;
         }
         return;
       }
       const targetPanel = targetPage?.panels[activePanel];
-      if (!targetPanel) return;
+      if (!targetPanel||panelLocked(targetPanel)) return;
       if (selection.type === 'figure') {
         const figure = targetPanel.figures?.[selection.index];
-        if (figure && !artworkLocked(figure.artwork)) {
+        if (figure && !figure.locked&&!artworkLocked(figure.artwork)) {
           figure.bbox = bbox;
           if (figure.analogImport) figure.analogImport.userEdited = true;
         }
@@ -3361,7 +3694,7 @@ export default function App() {
         if (screenText) screenText.bbox = bbox;
       } else {
         const bubble = targetPanel.bubbles[selection.index];
-        if (bubble&&!artworkLocked(bubble.paint_overlay)) bubble.bbox = bbox;
+        if (bubble&&!bubble.locked&&!artworkLocked(bubble.paint_overlay)) bubble.bbox = bbox;
       }
     });
   };
@@ -3392,11 +3725,6 @@ export default function App() {
     setPersistAnalogAssets(next);
     try { localStorage.setItem(PERSIST_ANALOG_ASSETS_KEY, next ? '1' : '0'); } catch { /* private mode */ }
   };
-  const changeDefaultFont = (font: string) => {
-    const next = cloneDocument(document);
-    next.manga.meta.font = font;
-    setDocument(next);
-  };
   const changePanelStyleNumber = (
     key: 'bubble_line_width_mm' | 'panel_frame_width_mm' | 'panel_gutter_row_mm' | 'panel_gutter_column_mm',
     value: number,
@@ -3408,49 +3736,72 @@ export default function App() {
     next.manga.meta[key] = Math.round(clamp(value, minimum, maximum) * 10) / 10;
     setDocument(next);
   };
-  const changeBubbleTail = (selection: CanvasElementSelection, tail: BubbleTailTarget) => {
+  const changeBubbleTail = (selection: CanvasElementSelection, tail?: BubbleTailTarget, patch?:{bezier?:NonNullable<import('../types').Bubble['bezier']>;tailRoot?:import('../types').BubbleTailRoot;textPosition?:import('../types').BubbleTextPosition}) => {
     if (selection.type !== 'bubble') return;
+    const textOnly=!!patch?.textPosition&&!tail&&!patch.bezier&&!patch.tailRoot;
     mutate((draft) => {
       const draftPage = draft.manga.pages[activePage];
       const bubble = selection.scope === 'page_overlay'
         ? draftPage?.page_overlay?.bubbles?.[selection.index]
         : draftPage?.panels[activePanel]?.bubbles[selection.index];
-      if (bubble&&!artworkLocked(bubble.paint_overlay)) bubble.tail = tail;
+      const enclosingPanel=selection.scope==='page_overlay'?undefined:draftPage?.panels[activePanel];
+      const contentLocked=textOnly?bubble?.paint_overlay?.locked===true:artworkLocked(bubble?.paint_overlay);
+      if (bubble&&!bubble.locked&&!(enclosingPanel&&panelLocked(enclosingPanel))&&!contentLocked) {
+        if(tail)bubble.tail=tail;
+        if(patch?.bezier)bubble.bezier=structuredClone(patch.bezier);
+        if(patch?.tailRoot)bubble.tail_root={...patch.tailRoot};
+        if(patch?.textPosition)bubble.text_position={...patch.textPosition};
+      }
     });
   };
   const movePanel = (panelIndex: number, deltaX: number, deltaY: number) => {
     mutate((draft) => {
-      const targetPanel = draft.manga.pages[activePage]?.panels[panelIndex];
-      if (!targetPanel) return;
+      const targetPage = draft.manga.pages[activePage];
+      const targetPanel = targetPage?.panels[panelIndex];
+      if (!targetPanel || panelGeometryLocked(targetPanel)) return;
       translatePanel(targetPanel, deltaX, deltaY);
+      syncPanelBleedAtTrim(targetPanel, targetPage.canvas, getPrintSetup(draft.manga).bleed_mm);
     });
   };
   const resizePanel = (panelIndex: number, bounds: BBox) => {
     mutate((draft) => {
-      const targetPanel = draft.manga.pages[activePage]?.panels[panelIndex];
-      if (targetPanel) resizePanelToBounds(targetPanel, bounds);
+      const targetPage = draft.manga.pages[activePage];
+      const targetPanel = targetPage?.panels[panelIndex];
+      if (targetPanel && !panelGeometryLocked(targetPanel)) {
+        resizePanelToBounds(targetPanel, bounds);
+        syncPanelBleedAtTrim(targetPanel, targetPage.canvas, getPrintSetup(draft.manga).bleed_mm);
+      }
     });
   };
   const movePanelVertex = (panelIndex: number, vertexIndex: number, x: number, y: number, linkPanels = false) => {
     mutate((draft) => {
       const panels = draft.manga.pages[activePage]?.panels;
-      if (panels) movePanelVertexWithSnap(panels, panelIndex, vertexIndex, x, y, linkPanels, draft.manga.pages[activePage].canvas);
+      const targetPage = draft.manga.pages[activePage];
+      if (panels && !panelGeometryLocked(panels[panelIndex])) {
+        movePanelVertexWithSnap(panels, panelIndex, vertexIndex, x, y, linkPanels, targetPage.canvas);
+        panels.forEach(panel=>syncPanelBleedAtTrim(panel,targetPage.canvas,getPrintSetup(draft.manga).bleed_mm));
+      }
     });
   };
   const movePanelEdge = (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels = false, excludedEdge?: PanelEdgeReference) => {
     mutate((draft) => {
-      const panels = draft.manga.pages[activePage]?.panels;
-      if (panels) movePanelEdgeGeometry(panels, panelIndex, edgeIndex, deltaX, deltaY, linkPanels, excludedEdge, draft.manga.pages[activePage].canvas);
+      const targetPage = draft.manga.pages[activePage];
+      const panels = targetPage?.panels;
+      if (panels && !panelGeometryLocked(panels[panelIndex])) {
+        const bleedMm=getPrintSetup(draft.manga).bleed_mm;
+        movePanelEdgeGeometry(panels, panelIndex, edgeIndex, deltaX, deltaY, linkPanels, excludedEdge, targetPage.canvas, bleedMm);
+        panels.forEach(panel=>syncPanelBleedAtTrim(panel,targetPage.canvas,bleedMm));
+      }
     });
   };
-  const selectPage=(index:number)=>{setActivePage(index);setActivePanel(0);setSelectedPanels([0]);setSelectedElement(null);setTab('storyboard');setMobileStoryboardPane('editor');};
+  const selectPage=(index:number)=>{endTextEdit();autoPaintResume.current=null;setActivePage(index);setActivePanel(0);setSelectedPanels([0]);setSelectedElement(null);setTab('storyboard');setMobileStoryboardPane('editor');};
   const voiceRevision=(withHistory=true)=>JSON.stringify({document:documentRef.current,activePage,activePanel,selectedElement,selectedPanels,tab,
     innerFrameSnap,panelGapSnap,panelSync,showGuides,spreadView,showNewDialog,projectBusy,qwenGeneration:Boolean(qwenGeneration),textTool,zoomTool,editingText,canvasZoomPercent,
     paint:paintController.current?.snapshot(),paintInteraction:paintController.current?.interactionRevision?.(),dragging:imageGesture.current.active,
     past:withHistory?past.length:undefined,future:withHistory?future.length:undefined});
   const latestVoiceRevision=useRef(voiceRevision);latestVoiceRevision.current=voiceRevision;
   const agentBlocked=()=>!hasDocument?'原稿を開いてください':showNewDialog||!historyAvailable()?'現在の処理を終えてください':
-    paintSessionRef.current?'選択・移動ツールに戻してください':editingText||imageGesture.current.active?'現在の文字入力やドラッグを終えてください':null;
+    paintSessionRef.current?'配置へ戻ってから操作してください':editingText||imageGesture.current.active?'現在の文字入力やドラッグを終えてください':null;
   const inspectAgent=()=>agentEditorSnapshot(hasDocument?documentRef.current:null,
     agentRevision.current(JSON.stringify({editor:voiceRevision(false),blocked:agentBlocked()})),
     activePage,selectedAgentBubble(activePage,activePanel,selectedElement),agentBlocked(),{panelIndex:activePanel,selection:selectedElement});
@@ -3484,7 +3835,7 @@ export default function App() {
       paintController.current.selectTool(command.tool);return command.tool==='pen'?'ラスターペンに切り替えました':'ベクターペンに切り替えました';
     }
     if(command.op==='generate_selected'){
-      if(paintSessionRef.current)throw new Error('選択・移動ツールに切り替えてから操作してください');
+      if(paintSessionRef.current)throw new Error('配置へ戻ってから操作してください');
       const target=resolveVoiceGenerationTarget(documentRef.current,activePage,activePanel,selectedElement,command);
       const captured=documentRef.current,revision=latestVoiceRevision.current();
       await connectAgentImageGeneration(isCurrent);
@@ -3496,7 +3847,7 @@ export default function App() {
           .then(opened=>{if(!opened)reject(new Error('生成の準備を開けませんでした。通知を確認してください'));},reject);
       });
     }
-    if(paintSessionRef.current)throw new Error('選択・移動ツールに切り替えてから操作してください');
+    if(paintSessionRef.current)throw new Error('配置へ戻ってから操作してください');
     if(command.op==='page'){
       const target=command.target;
       const index=typeof target==='number'?document.manga.pages.findIndex(p=>p.page===target):target==='next'?activePage+1:target==='previous'?activePage-1:target==='first'?0:document.manga.pages.length-1;
@@ -3537,12 +3888,37 @@ export default function App() {
     >編集内容をOMNYで保存（{index + 1}）</a></p>)}
   </details>;
 
+  const autoPaintBoundary=(event:Event)=>{
+    if(!(event.target instanceof Element))return;
+    if(event.target.closest('[data-paint-canvas]')){
+      const pending=autoPaintResume.current;
+      if(!pending||paintSessionRef.current||autoPaintTransition.current||layerSwitch.current||projectOperation.current||imageImportBusy||qwenGeneration||tab!=='storyboard')return;
+      if(pending.pageIndex!==activePage||pending.panelIndex!==activePanel){autoPaintResume.current=null;return;}
+      autoPaintResume.current=null;
+      openPaint(pending.ownerKey,pending.panelIndex,pending.pageIndex,pending.overlay);
+      return;
+    }
+    if(!event.target.closest('.inspector-content'))return;
+    const session=paintSessionRef.current,controller=paintController.current;
+    if(!session||!controller||autoPaintTransition.current||layerSwitch.current||projectOperation.current||imageImportBusy||qwenGeneration)return;
+    const ownerKey=controller.snapshot().ownerKey||session.initialOwner||'background';
+    autoPaintResume.current={pageIndex:session.pageIndex,panelIndex:session.panelIndex,overlay:session.overlay,ownerKey};
+    autoPaintTransition.current=true;layerSwitch.current=true;setLayerSwitchBusy(true);
+    void controller.close().catch(error=>{autoPaintResume.current=null;setToast(error instanceof Error?error.message:'描画を確定できませんでした');}).finally(()=>{
+      autoPaintTransition.current=false;layerSwitch.current=false;setLayerSwitchBusy(false);
+    });
+  };
+  useEffect(()=>{
+    const pending=autoPaintResume.current;
+    if(pending&&(tab!=='storyboard'||pending.pageIndex!==activePage||pending.panelIndex!==activePanel))autoPaintResume.current=null;
+  },[tab,activePage,activePanel]);
+
   const guardDuringPaint=(event:Event)=>{
     if(!paintSession||!(event.target instanceof Element)||!event.target.closest('.workspace-tabs,.app-header,.page-list,.add-page-button,.sidebar-tools,.canvas-toolbar-actions,.page-switcher,.inspector-content,.mobile-storyboard-tabs'))return;
     if(event instanceof KeyboardEvent&&(event.key==='Tab'||((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='s')))return;
     if(!projectOperation.current&&event.target.closest('[data-project-save],[data-project-history],[data-environment-settings],[data-voice-command],.guide-display-control,.panel-controls summary,.panel-snap-setting,.workspace-tabs'))return;
     event.preventDefault();event.stopPropagation();
-    if(event.type==='click')setToast('選択・移動ツールに切り替えてから操作してください');
+    if(event.type==='click')setToast(autoPaintTransition.current?'描画を確定しています。完了後に操作してください':'描画を確定してから操作してください');
   };
 
   const environmentSettings = <EnvironmentSettings
@@ -3557,31 +3933,50 @@ export default function App() {
     showGuides={showGuides}
     spreadView={spreadView}
     pageCount={document.manga.pages.length}
-    defaultFont={document.manga.meta.font}
-    bubbleLineWidthMm={document.manga.meta.bubble_line_width_mm}
     frameLineWidthMm={document.manga.meta.panel_frame_width_mm}
     rowGapMm={document.manga.meta.panel_gutter_row_mm}
     columnGapMm={document.manga.meta.panel_gutter_column_mm}
     onChangeShowGuides={changeShowGuides}
     onChangeSpreadView={changeSpreadView}
-    onChangeDefaultFont={changeDefaultFont}
-    onChangeBubbleLineWidth={(value) => changePanelStyleNumber('bubble_line_width_mm', value)}
     onChangeFrameLineWidth={(value) => changePanelStyleNumber('panel_frame_width_mm', value)}
     onChangeRowGap={(value) => changePanelStyleNumber('panel_gutter_row_mm', value)}
     onChangeColumnGap={(value) => changePanelStyleNumber('panel_gutter_column_mm', value)}
+    fontFamilies={localFontFamilies}
+    onRequestFonts={()=>void requestPcFonts()}
     saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory}
     projectBusy={projectBusy}
     historySteps={historySteps} onChangeHistorySteps={changeHistorySteps}
     paintSmoothing={paintSmoothing}
     onChangePaintSmoothing={value=>{try{setPaintSmoothing(savePaintSmoothing(localStorage,value));}catch(error){setToast(String(error));}}}
+    paintCursorMode={paintCursorMode}
+    onChangePaintCursorMode={value=>{try{savePaintCursor(localStorage,value);setPaintCursorMode(value);}catch{setToast('ペンカーソルの設定を保存できません');}}}
     paintBleedPx={paintBleedPx}
     onChangePaintBleed={value=>{try{setPaintBleedPx(savePaintBleed(localStorage,value));}catch(error){setToast(error instanceof Error?error.message:'ぬりたしを保存できません');}}}
     onChangeSaveDirectory={() => saveProject(true)}
   />;
 
-  return <PaintEditor resume={paintSession?.resume} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} onSelectZoom={chooseZoomTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool&&!paintSession} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} add={addText} onMaterials={openBubbleMaterials}/>} onStartPaint={()=>openPaint()} onSelectLayout={()=>{endTextEdit();setTextTool(false);setZoomTool(false);}} onToggleBubble={index=>{const s=paintSessionRef.current;if(s)toggleBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectBubble={index=>{const s=paintSessionRef.current;if(s)selectBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session&&!session.overlay)reorderOwnerLayers(session.panelIndex,key,target,after);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
-    <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
-    <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog} hasDocument={hasDocument} busy={projectBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo} onNew={openNewDialog} onOpen={openProject} onSave={() => saveProject()} />
+  return <PaintEditor resume={paintSession?.resume} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools selectionVisible={!paintSession&&selectedElement?.type==='bubble'} active={textTool&&!paintSession} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} add={addText} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{setBubblePathTool(false);return openPaint();}} onSelectLayout={()=>{autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);setSelectedElement(null);}} onToggleBubble={index=>{const s=paintSessionRef.current;if(s)toggleBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectBubble={index=>{const s=paintSessionRef.current;if(s)selectBubbleLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session&&!session.overlay)reorderOwnerLayers(session.panelIndex,key,target,after);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
+    <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onPointerOverCapture={autoPaintBoundary} onFocusCapture={autoPaintBoundary} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
+    <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog || Boolean(imageExportDialog)} hasDocument={hasDocument} busy={projectBusy||imageImportBusy||imageExportBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo}
+      onImportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();choosePlacedImage('page');});}}
+      onExportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();openImageExportDialog();});}}
+      onNew={openNewDialog} onOpen={openProject} onSave={() => saveProject()} />
+    <input ref={placedImageInput} type="file" accept="image/png,image/jpeg" hidden onChange={event => void importPlacedImage(event.currentTarget.files?.[0])} />
+    {imageExportDialog&&<div class="image-export-backdrop" onPointerDown={event=>{if(event.target===event.currentTarget&&!imageExportBusy)setImageExportDialog(null);}}>
+      <section class="image-export-dialog" role="dialog" aria-modal="true" aria-labelledby="image-export-title" onKeyDown={event=>{if(event.key==='Escape'&&!imageExportBusy){event.preventDefault();setImageExportDialog(null);}}}>
+        <header><div><h2 id="image-export-title">画像を書き出す</h2><p>ページ範囲と画像形式を選びます。</p></div><button type="button" class="icon-button" aria-label="閉じる" disabled={imageExportBusy} onClick={()=>setImageExportDialog(null)}><X size={18}/></button></header>
+        <fieldset><legend>書き出すページ</legend>
+          <label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='current'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'current'})}/>現在のページ（PAGE {String(activePage+1).padStart(2,'0')}）</label>
+          <label class="image-export-range-choice"><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='range'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'range'})}/><span>範囲</span><span class="image-export-page-input">PAGE <input aria-label="開始ページ" type="number" min="1" max={document.manga.pages.length} value={imageExportDialog.from} disabled={imageExportDialog.mode!=='range'||imageExportBusy} onInput={event=>setImageExportDialog({...imageExportDialog,from:event.currentTarget.valueAsNumber})}/></span><span>〜</span><span class="image-export-page-input">PAGE <input aria-label="終了ページ" type="number" min="1" max={document.manga.pages.length} value={imageExportDialog.to} disabled={imageExportDialog.mode!=='range'||imageExportBusy} onInput={event=>setImageExportDialog({...imageExportDialog,to:event.currentTarget.valueAsNumber})}/></span></label>
+          <label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='all'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'all'})}/>全ページ（{document.manga.pages.length}ページ）</label>
+        </fieldset>
+        <fieldset><legend>画像形式</legend><div class="image-export-format" role="radiogroup">
+          {(['png','psd'] as const).map(format=><label><input type="radio" name="image-export-format" checked={imageExportDialog.format===format} disabled={imageExportBusy} onChange={()=>setImageExportDialog({...imageExportDialog,format})}/><strong>{format.toUpperCase()}</strong><span>{format==='png'?'一般的な統合画像':'Photoshop／CLIP STUDIO向け統合画像'}</span></label>)}
+        </div></fieldset>
+        <p class="image-export-note">複数ページは1つのZIPにまとめます。用紙サイズと解像度は作品の印刷設定を使います。</p>
+        <footer><button type="button" class="secondary-button" disabled={imageExportBusy} onClick={()=>setImageExportDialog(null)}>キャンセル</button><button type="button" class="primary-button" disabled={imageExportBusy} onClick={()=>void exportPageRange()}><Download size={17}/>{imageExportBusy?'書き出し中…':'書き出す'}</button></footer>
+      </section>
+    </div>}
     <VoiceCommands generation={qwenGeneration?generationConversation:null} portalTarget={generationConversationHost??(environmentOpen?environmentAgentHost:null)} open={voiceOpen} onToggle={()=>setVoiceOpen(!voiceOpen)} profile={agentProfile} onChangeProfile={changeAgentProfile} revision={voiceRevision} apply={applyVoiceCommand} inspect={inspectAgent} edit={applyAgentBubbleEdit}/>
     {bubbleMaterialsOpen&&<BubbleMaterialPicker onClose={()=>setBubbleMaterialsOpen(false)} canApply={Boolean(selectedElement?.type==='bubble'&&!paintSession&&!projectBusy&&canvasTextEditable(document,{pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,kind:'bubble',overlay:selectedElement.scope==='page_overlay'}))} onApply={id=>{if(selectedElement?.type==='bubble')applyBubbleMaterial({pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,kind:'bubble',overlay:selectedElement.scope==='page_overlay'},id);}}/>}
 
@@ -3591,7 +3986,7 @@ export default function App() {
     </nav>
 
     <main inert={environmentOpen} class={`workspace-shell ${tab === 'storyboard' ? 'is-storyboard' : ''} mobile-pane-${mobileStoryboardPane}`}>
-      <PageSidebar document={document} activePage={activePage} issues={issues} collapsed={sidebarCollapsed} onCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} onSelectPage={selectPage} onAddPage={addPage} onDuplicatePage={duplicatePage} onDeletePage={deletePage} onReorderPage={reorderPage} />
+      <PageSidebar document={document} activePage={activePage} collapsed={sidebarCollapsed} onCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} onSelectPage={selectPage} onAddPage={addPage} onDuplicatePage={duplicatePage} onDeletePage={deletePage} onReorderPage={reorderPage} />
       {tab==='storyboard'&&page&&<aside class={`paint-dock paint-tools-dock ${paintToolsCollapsed?'is-collapsed':''}`}>
         <div class="dock-content"><h3>ペンツール</h3><PaintTools/></div>
         <button class="dock-rail" aria-expanded={!paintToolsCollapsed} aria-label={paintToolsCollapsed?'ペンツールを開く':'ペンツールを閉じる'} onClick={()=>setPaintToolsCollapsed(!paintToolsCollapsed)}><span>ペン</span>{paintToolsCollapsed?'›':'‹'}</button>
@@ -3608,21 +4003,22 @@ export default function App() {
           <div id="mobile-editor-pane" class="canvas-stage">
             <div class="canvas-toolbar">
               {paintSession&&<PaintStatus/>}
-              <div class="page-switcher"><button onClick={() => { setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); setSelectedPanels([0]); }} disabled={activePage === 0}><ChevronLeft size={17} /></button><span>PAGE <strong>{String(activePage + 1).padStart(2, '0')}</strong> / {String(document.manga.pages.length).padStart(2, '0')}</span><button onClick={() => { setActivePage(Math.min(document.manga.pages.length - 1, activePage + 1)); setActivePanel(0); setSelectedPanels([0]); }} disabled={activePage === document.manga.pages.length - 1}><ChevronRight size={17} /></button></div>
-              <input ref={placedImageInput} type="file" accept="image/png,image/jpeg" hidden onChange={event => void importPlacedImage(event.currentTarget.files?.[0])} />
+              <div class="page-switcher"><button aria-label="前のページ" onClick={() => selectPage(Math.max(0, activePage - 1))} disabled={activePage === 0}><ChevronLeft size={17} /></button><span><span class="page-switcher-label">PAGE </span><strong>{String(activePage + 1).padStart(2, '0')}</strong><span class="page-switcher-total"> / {String(document.manga.pages.length).padStart(2, '0')}</span></span><button aria-label="次のページ" onClick={() => selectPage(Math.min(document.manga.pages.length - 1, activePage + 1))} disabled={activePage === document.manga.pages.length - 1}><ChevronRight size={17} /></button></div>
             </div>
             {(() => {
-              const activeCanvas = <MangaCanvas pageIndex={activePage} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===activePage?editingText:null} onEditScreenText={(panelIndex,index)=>startTextEdit({pageIndex:activePage,panelIndex,index,kind:'screen_text',overlay:false})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:activePage})} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)} paintTarget={paintSession?.pageIndex===activePage?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,activePage,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,activePage,overlay)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,activePage)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,activePage,overlay)} imageAssets={document.manga.image_assets} onImageGesture={imageGestureBoundary} title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={selectCanvasPanel} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, activePage, revealDetails)} onChangeElementBBox={changeElementBBox} onChangeBubbleTail={changeBubbleTail} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
+              const activeCanvas = <MangaCanvas textToolStyle={textToolStyle} onTextToolStyle={changeTextToolStyle} pageIndex={activePage} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===activePage?editingText:null} onEditScreenText={(panelIndex,index,overlay=false)=>startTextEdit({pageIndex:activePage,panelIndex,index,kind:'screen_text',overlay})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:activePage})} onCreateScreenTextAt={(panelIndex,point)=>createScreenTextAt(activePage,panelIndex,point)} onWrapScreenText={wrapScreenText} onFinishElementMove={(selection,panelIndex)=>finishElementMove(activePage,selection,panelIndex)} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)} paintTarget={paintSession?.pageIndex===activePage?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,activePage,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,activePage,overlay)} onGenerateComposition={(scope,index)=>void requestCompositionGeneration(scope,index,activePage)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,activePage)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,activePage,overlay)} imageAssets={document.manga.image_assets} onImageGesture={imageGestureBoundary} title={document.manga.meta.title} author={document.manga.meta.author} page={page} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} fontFamilies={localFontFamilies} onRequestFonts={()=>void requestPcFonts()} activePanel={activePanel} selectedPanels={selectedPanels} selectedElement={selectedElement} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={selectCanvasPanel} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, activePage, revealDetails)} onChangeElementBBox={changeElementBBox} onChangeBubbleTail={changeBubbleTail} onMovePanel={movePanel} onResizePanel={resizePanel} onMoveVertex={movePanelVertex} onMovePanelEdge={movePanelEdge} />;
               if (spreadPartnerIndex === null) return activeCanvas;
-              const switchToPartner = (panelIndex = 0) => { setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]); };
-              const partnerCanvas = <MangaCanvas pageIndex={spreadPartnerIndex} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===spreadPartnerIndex?editingText:null} onEditScreenText={(panelIndex,index)=>startTextEdit({pageIndex:spreadPartnerIndex,panelIndex,index,kind:'screen_text',overlay:false})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:spreadPartnerIndex})} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)} paintTarget={paintSession?.pageIndex===spreadPartnerIndex?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,spreadPartnerIndex,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,spreadPartnerIndex,overlay)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,spreadPartnerIndex)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,spreadPartnerIndex,overlay)} imageAssets={document.manga.image_assets} title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={switchToPartner} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, spreadPartnerIndex, revealDetails)} onChangeElementBBox={() => {}} onChangeBubbleTail={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
+              const switchToPartner = (panelIndex = 0) => { endTextEdit();setActivePage(spreadPartnerIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]); };
+              const partnerCanvas = <MangaCanvas textSettingsOwner={false} textToolStyle={textToolStyle} pageIndex={spreadPartnerIndex} onTextStyle={changeCanvasTextStyle} onBubbleMaterial={applyBubbleMaterial} onOpenBubbleMaterials={openBubbleMaterials} zoomTool={zoomTool} textTool={textTool} editingText={editingText?.pageIndex===spreadPartnerIndex?editingText:null} onEditScreenText={(panelIndex,index,overlay=false)=>startTextEdit({pageIndex:spreadPartnerIndex,panelIndex,index,kind:'screen_text',overlay})} onEditBubble={target=>startBubbleEdit({...target,pageIndex:spreadPartnerIndex})} onCreateScreenTextAt={(panelIndex,point)=>createScreenTextAt(spreadPartnerIndex,panelIndex,point)} onWrapScreenText={wrapScreenText} onFinishElementMove={(selection,panelIndex)=>finishElementMove(spreadPartnerIndex,selection,panelIndex)} onText={changeCanvasText} onTextHistory={canvasTextHistory} onEndTextEdit={endTextEdit} painting={Boolean(paintSession)} paintTarget={paintSession?.pageIndex===spreadPartnerIndex?{panelIndex:paintSession.panelIndex,overlay:paintSession.overlay}:undefined} guideVisible={(key,index,overlay)=>artworkGuideVisible(key,index,spreadPartnerIndex,overlay)} onToggleGuide={(key,index,overlay)=>toggleArtworkGuide(key,index,spreadPartnerIndex,overlay)} onGenerateComposition={(scope,index)=>void requestCompositionGeneration(scope,index,spreadPartnerIndex)} onGenerateArtwork={(key,index,overlay)=>void requestOwnerGeneration(key,overlay,index,spreadPartnerIndex)} dpi={getPrintSetup(document.manga).dpi} outputSize={getPrintSetup(document.manga)} onNotify={setToast} onReplaceArtwork={(index,figure,overlay,bubble)=>chooseOwnerImage(figure!==undefined?`figure-${figure}`:bubble!==undefined?`bubble-${bubble}`:'background',index,spreadPartnerIndex,overlay)} imageAssets={document.manga.image_assets} title={document.manga.meta.title} author={document.manga.meta.author} page={document.manga.pages[spreadPartnerIndex]} pageCount={document.manga.pages.length} zoomPercent={canvasZoomPercent} onZoomPercentChange={setCanvasZoomPercent} frameLineWidthMm={panelFrameLineWidthMm} bubbleLineWidthMm={bubbleLineWidthMm} defaultBubbleFont={document.manga.meta.font} fontFamilies={localFontFamilies} onRequestFonts={()=>void requestPcFonts()} activePanel={-1} selectedPanels={[]} selectedElement={null} showGuides={showGuides} innerFrameSnap={innerFrameSnap} panelGutters={panelGutters} panelGapSnap={panelGapSnap} panelSync={panelSync} onSelectPanel={switchToPartner} onSelectElement={(selection, panelIndex, revealDetails) => selectCanvasElement(selection, panelIndex, spreadPartnerIndex, revealDetails)} onChangeElementBBox={() => {}} onChangeBubbleTail={() => {}} onMovePanel={() => {}} onResizePanel={() => {}} onMoveVertex={() => {}} onMovePanelEdge={() => {}} />;
               // 右綴じ: 若いページが右（flexの後ろ）に来る
               const leftIndex = Math.max(activePage, spreadPartnerIndex);
               return <div class="canvas-spread">
                 <div class="canvas-spread-scroll">
                   <div class="canvas-spread-stage">
-                    <div class={`spread-pane ${leftIndex !== activePage ? 'is-spread-partner' : ''}`} title={leftIndex !== activePage ? `ページ ${spreadPartnerIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? activeCanvas : partnerCanvas}</div>
-                    <div class={`spread-pane ${leftIndex === activePage ? 'is-spread-partner' : ''}`} title={leftIndex === activePage ? `ページ ${spreadPartnerIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? partnerCanvas : activeCanvas}</div>
+                    <div class="canvas-spread-pair">
+                      <div class={`spread-pane ${leftIndex !== activePage ? 'is-spread-partner' : ''}`} title={leftIndex !== activePage ? `ページ ${spreadPartnerIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? activeCanvas : partnerCanvas}</div>
+                      <div class={`spread-pane ${leftIndex === activePage ? 'is-spread-partner' : ''}`} title={leftIndex === activePage ? `ページ ${spreadPartnerIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? partnerCanvas : activeCanvas}</div>
+                    </div>
                   </div>
                 </div>
               </div>;
@@ -3630,22 +4026,22 @@ export default function App() {
           </div>
           {<aside class={`paint-dock paint-layers-dock ${paintLayersCollapsed?'is-collapsed':''}`}>
             <button class="dock-rail" aria-expanded={!paintLayersCollapsed} aria-label={paintLayersCollapsed?'レイヤーを開く':'レイヤーを閉じる'} onClick={()=>setPaintLayersCollapsed(!paintLayersCollapsed)}><span>レイヤー</span>{paintLayersCollapsed?'‹':'›'}</button>
-            <div class="dock-content"><PaintDetails/><PageLayerPalette selectedBubble={selectedElement?.type==='bubble'&&!selectedElement.scope?selectedElement.index:undefined} selectedOverlayBubble={selectedElement?.type==='bubble'&&selectedElement.scope==='page_overlay'?selectedElement.index:undefined} onToggleBubble={(panelIndex,bubbleIndex,overlay=false)=>toggleBubbleLayer({pageIndex:activePage,panelIndex,bubbleIndex,overlay})} onReorderOwners={reorderOwnerLayers} page={page} activePanel={activePanel} assets={document.manga.image_assets??[]} dpi={getPrintSetup(document.manga).dpi} colorMode={paintColorMode(getPrintSetup(document.manga).format)} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} onSelect={selectLayerPanel} onVisibility={togglePanelLayer} onAction={actOnLayer} onEditText={(panelIndex,bubbleIndex,overlay=false)=>startBubbleEdit({pageIndex:activePage,panelIndex,bubbleIndex,overlay})} guideVisible={(key,index,overlay=false)=>artworkGuideVisible(key,index,activePage,overlay)} toggleGuide={(key,index,overlay=false)=>toggleArtworkGuide(key,index,activePage,overlay)}/></div>
+            <div class="dock-content"><PaintDetails/><PageLayerPalette selectedText={selectedElement?.type==='screen_text'?{panel:selectedElement.scope==='page_overlay'?0:activePanel,index:selectedElement.index,overlay:selectedElement.scope==='page_overlay'}:undefined} onSelectText={(panelIndex,index,overlay)=>startTextEdit({pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'})} onDeleteText={deleteScreenTextAt} selectedBubble={selectedElement?.type==='bubble'&&!selectedElement.scope?selectedElement.index:undefined} selectedOverlayBubble={selectedElement?.type==='bubble'&&selectedElement.scope==='page_overlay'?selectedElement.index:undefined} onToggleBubble={(panelIndex,bubbleIndex,overlay=false)=>toggleBubbleLayer({pageIndex:activePage,panelIndex,bubbleIndex,overlay})} onDeleteBubble={deleteBubbleAt} onReorderOwners={reorderOwnerLayers} page={page} activePanel={activePanel} assets={document.manga.image_assets??[]} dpi={getPrintSetup(document.manga).dpi} colorMode={paintColorMode(getPrintSetup(document.manga).format)} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} onSelect={selectLayerPanel} onVisibility={togglePanelLayer} onLock={togglePanelLock} onDelete={deletePanelAt} onAddFolder={addDirectFolder} onAdd={(index,kind,overlay=false)=>{try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add',key:overlay?'page':'panel',kind},scene,overlay);}catch(error){setToast(error instanceof Error?error.message:'レイヤーを追加できませんでした');}}} onAction={actOnLayer} onEditText={(panelIndex,bubbleIndex,overlay=false)=>startBubbleEdit({pageIndex:activePage,panelIndex,bubbleIndex,overlay})} guideVisible={(key,index,overlay=false)=>artworkGuideVisible(key,index,activePage,overlay)} toggleGuide={(key,index,overlay=false)=>toggleArtworkGuide(key,index,activePage,overlay)}/></div>
           </aside>}
           <aside id="mobile-panel-pane" class={`inspector-pane ${inspectorCollapsed?'is-collapsed':''}`}>
             <button class="dock-rail" aria-expanded={!inspectorCollapsed} aria-label={inspectorCollapsed?'コマ情報を開く':'コマ情報を閉じる'} onClick={()=>setInspectorCollapsed(!inspectorCollapsed)}><span>コマ情報</span>{inspectorCollapsed?'‹':'›'}</button>
             <div class="inspector-content">
-            {Boolean(page.images?.length) && <PlacedImageList title="ページ画像（コマ外）" images={page.images} assets={document.manga.image_assets} busy={imageImportBusy}
+            {Boolean(page.images?.some(image=>!image.paintScope&&!image.bubbleOriginal)) && <PlacedImageList title="ページ画像（コマ外）" images={page.images} assets={document.manga.image_assets} busy={imageImportBusy}
               selectedIndex={selectedElement?.type === 'image' && selectedElement.scope === 'page' ? selectedElement.index : undefined}
               onSelect={index => setSelectedElement(index === null ? null : { type: 'image', scope: 'page', index })}
               onChange={images => { lastHistoryPush.current = 0; mutate(draft => { draft.manga.pages[activePage].images = images; }); lastHistoryPush.current = 0; }}
               onMoveToPanel={panel ? movePageImageToPanel : undefined} />}
             {selectedElement?.scope === 'page_overlay' && page.page_overlay
-            ? <PageOverlayInspector onOpenBubbleMaterials={openBubbleMaterials} onEditText={bubbleIndex=>startBubbleEdit({pageIndex:activePage,panelIndex:activePanel,bubbleIndex,overlay:true})} painting={Boolean(paintSession)} guideVisible={key=>artworkGuideVisible(key,activePanel,activePage,true)} onToggleGuide={key=>toggleArtworkGuide(key,activePanel,activePage,true)} pageIndex={activePage} onScenarioChoice={chooseScenarioBubble} onOpenScenario={() => changeTab('coverage')} manga={document.manga} panels={page.panels} overlay={page.page_overlay} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} onSelectElement={setSelectedElement} onChange={(nextOverlay) => mutate((draft) => {
+            ? <PageOverlayInspector painting={Boolean(paintSession)} pageIndex={activePage} onScenarioChoice={chooseScenarioBubble} manga={document.manga} panels={page.panels} overlay={page.page_overlay} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} onSelectElement={setSelectedElement} onChange={(nextOverlay) => mutate((draft) => {
               if (nextOverlay) draft.manga.pages[activePage].page_overlay = nextOverlay;
               else delete draft.manga.pages[activePage].page_overlay;
-            })} onMoveBubble={(bubbleIndex, targetOwner) => moveSelectedBubble('page_overlay', bubbleIndex, targetOwner)} />
-            : <PanelInspector onOpenBubbleMaterials={openBubbleMaterials} onEditText={bubbleIndex=>startBubbleEdit({pageIndex:activePage,panelIndex:activePanel,bubbleIndex,overlay:false})} panelControls={<PanelControls painting={Boolean(paintSession)} innerFrameSnap={innerFrameSnap} panelGapSnap={panelGapSnap} panelSync={panelSync} onToggleInnerFrameSnap={toggleInnerFrameSnap} onTogglePanelGapSnap={togglePanelGapSnap} onTogglePanelSync={togglePanelSync} selectedCount={selectedPanels.length} onMerge={mergeSelectedPanelGroup} splitDirection={panelSplitDirection} onSplitDirection={setPanelSplitDirection} onSplit={splitActivePanel}/>} imageImportBusy={imageImportBusy} panelDraftToolbarTarget={null} painting={Boolean(paintSession)} guideVisible={key=>artworkGuideVisible(key,activePanel,activePage,false)} onToggleGuide={key=>toggleArtworkGuide(key,activePanel,activePage,false)} onScenarioChoice={chooseScenarioBubble} onOpenScenario={() => changeTab('coverage')} manga={document.manga} panels={page.panels} panel={panel} pageIndex={activePage} panelIndex={activePanel} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} episodeWorkspaceToken={!isLanClient && boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.token : ''} episodeWorkspaceFolder={boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.folderName : ''} seriesId={document.manga.meta.series_id} episodeId={document.manga.meta.episode_id} omnySnapshot={panelDraftOmnySnapshot} onChooseEpisodeWorkspace={choosePanelDraftWorkspace} onSelectElement={setSelectedElement} onChange={(nextPanel) => mutate((draft) => { draft.manga.pages[activePage].panels[activePanel] = nextPanel; })} onMoveBubble={(bubbleIndex, targetOwner) => moveSelectedBubble(activePanel, bubbleIndex, targetOwner)} onOpenBackgrounds={() => openMaterialsForPanel('background')} onOpenProps={() => openMaterialsForPanel('prop')} onAdd={addPanel} onDelete={deletePanel} />}</div></aside>
+            })} />
+            : <PanelInspector onOpenBackground3d={()=>openPanelBackground3d(activePanel)} panelControls={<PanelControls painting={Boolean(paintSession)} innerFrameSnap={innerFrameSnap} panelGapSnap={panelGapSnap} panelSync={panelSync} onToggleInnerFrameSnap={toggleInnerFrameSnap} onTogglePanelGapSnap={togglePanelGapSnap} onTogglePanelSync={togglePanelSync} selectedCount={selectedPanels.length} onMerge={mergeSelectedPanelGroup} splitDirection={panelSplitDirection} onSplitDirection={setPanelSplitDirection} onSplit={splitActivePanel}/>} imageImportBusy={imageImportBusy} panelDraftToolbarTarget={null} painting={Boolean(paintSession)} guideVisible={key=>artworkGuideVisible(key,activePanel,activePage,false)} onToggleGuide={key=>toggleArtworkGuide(key,activePanel,activePage,false)} onScenarioChoice={chooseScenarioBubble} manga={document.manga} panel={panel} pageIndex={activePage} panelIndex={activePanel} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} episodeWorkspaceToken={!isLanClient && boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.token : ''} episodeWorkspaceFolder={boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.folderName : ''} seriesId={document.manga.meta.series_id} episodeId={document.manga.meta.episode_id} getOmnySnapshot={getOmnySnapshot} onChooseEpisodeWorkspace={choosePanelDraftWorkspace} onSelectElement={setSelectedElement} onChange={(nextPanel) => mutate((draft) => { const current=draft.manga.pages[activePage]?.panels[activePanel];if(current&&!panelLocked(current))draft.manga.pages[activePage].panels[activePanel] = nextPanel; })} onOpenBackgrounds={() => openMaterialsForPanel('background')} onOpenProps={() => openMaterialsForPanel('prop')} onAdd={addPanel} onDelete={deletePanel} />}</div></aside>
         </div>}
         {tab === 'meta' && <MetaEditor document={document} onChange={setDocument} />}
         {tab === 'setting' && <SettingEditor document={document} onChange={setDocument} onImportBackgroundModel={importBackgroundModel} onSaveBackgrounds={saveBackgroundsFromEditor} backgroundsSaving={seriesCatalogSaving||projectBusy} panelLinkMode={materialLinkTarget?.materialType === 'background' && materialLinkPanel ? {
@@ -3662,11 +4058,11 @@ export default function App() {
         {tab === 'coverage' && <div class="scenario-workspace"><ScenarioReview document={document} onChange={setDocument} onNavigate={(pageIndex, panelIndex, bubbleIndex, overlay) => {
           setActivePage(pageIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]);
           setSelectedElement(bubbleIndex === undefined ? null : { type: 'bubble', index: bubbleIndex, ...(overlay ? { scope: 'page_overlay' as const } : {}) });
-          setTab('storyboard'); setMobileStoryboardPane('panel');
+          setTab('storyboard'); setInspectorCollapsed(false); setMobileStoryboardPane('panel');
         }} />
         {!document.manga.scenario && <details class="scenario-legacy"><summary>資料との文字列照合（補助機能）</summary><SourceCoverageReview
           document={document}
-          omnyYaml={panelDraftOmnySnapshot}
+          getOmnySnapshot={getOmnySnapshot}
           source={boundSourceSnapshot?.episodeId === document.manga.meta.episode_id ? boundSourceSnapshot.source : null}
           decisions={sourceCoverageDecisions}
           workspaceFolder={boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.folderName : ''}
@@ -3857,6 +4253,7 @@ export default function App() {
                 <label class="is-wide"><span>あらすじ <em>必須</em></span><textarea rows={8} required value={newWorkSetting.situation} placeholder="この話で何が起きるかを入力してください" onInput={(event) => updateNewWorkSetting('situation', event.currentTarget.value)} /></label>
               </div>
             </section>
+            <p class="new-setting-message">背景ごとの3Dモデルは、作品作成後に「舞台設定」→「背景作画資料」の各カードから登録できます。シリーズ共通にすると別エピソードでも再利用できます。</p>
             {newSettingMessage && <p class="new-setting-message" role="status">{newSettingMessage}</p>}
           </form>}
           {newCreationStep === 'layout' && <section class="new-layout-step" aria-labelledby="new-creation-step-title">
@@ -3956,7 +4353,7 @@ export default function App() {
         </div>
       </section>
     </>}
-    {qwenGeneration&&<QwenGenerationDialog agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
+    {qwenGeneration&&<QwenGenerationDialog adultContent={Boolean(document.manga.series_setting?.adult_content)} agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
     {toast && <div class="toast"><span>{toast}</span><button onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div></PaintEditor>;
 }

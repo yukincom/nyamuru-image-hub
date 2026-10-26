@@ -30,7 +30,7 @@ export default function FinishLayoutSettings({ document, onChange, onNotify }: P
 export function FinishTextSettings({ document, onChange, onNotify }: Props) {
   const settings = getArtworkSettings(document.manga);
   return <div class="finish-layout-settings finish-text-settings">
-    <SectionTitle title="見出し・作者名・強調テキスト" />
+    <SectionTitle title="生成時の見出し・作者名・強調" />
     {settings.groups.filter(group => group.id === 'page' || group.enabled).map(group => {
       const controls = artworkNumberControls(settings, group.id).filter(control => FINISH_NUMBER_IDS.some(id => id === control.id));
       if (!controls.length) return null;
@@ -53,6 +53,6 @@ export function FinishTextSettings({ document, onChange, onNotify }: Props) {
         </div>
       </div>;
     })}
-    <p class="environment-settings-note">テキストの寸法は完成原稿上のmmです。作画方法を切り替えても、この設定は保持します。</p>
+    <p class="environment-settings-note">生成画像へ渡す寸法で、完成原稿上のmmです。ネーム上の文字サイズはTツールで調整します。</p>
   </div>;
 }

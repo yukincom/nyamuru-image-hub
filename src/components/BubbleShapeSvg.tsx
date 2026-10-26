@@ -1,5 +1,6 @@
 import type { Bubble, BubbleShape } from '../types';
-import { bubbleBezierData } from '../lib/bubbleBezier.ts';
+import { bubbleBezierData, bubbleBezierPath, isBubbleBezier } from '../lib/bubbleBezier.ts';
+import { vectorBounds } from '../lib/vectorGeometry.ts';
 import { EXTRACTED_BUBBLE_ASSETS } from '../data/extractedBubbleAssets';
 import type { BubbleSeamMask, BubbleTailComposite } from '../lib/bubbleTail.ts';
 import { materialBubbleBezier } from '../lib/bubblePresetData.ts';
@@ -30,7 +31,8 @@ export default function BubbleShapeSvg({ shape = 'normal', bezier, seamMasks = [
   const viewBox = extracted?.viewBox ?? '0 0 100 100';
   const [viewX, viewY, viewW, viewH] = parseViewBox(viewBox);
   const activeMaskId = maskId && seamMasks.length ? maskId : undefined;
-  const maskBounds = composite?.bounds ?? { x: viewX, y: viewY, w: viewW, h: viewH };
+  const outline=bezier??materialOutline;
+  const maskBounds = composite?.bounds ?? (isBubbleBezier(outline)?vectorBounds(bubbleBezierPath(outline)):{ x: viewX, y: viewY, w: viewW, h: viewH });
   const renderSurface = (className: string) => {
     if (customPath) return <path class={className} d={customPath} />;
     if (shape === 'normal') return <circle class={className} cx="50" cy="50" r="50" />;

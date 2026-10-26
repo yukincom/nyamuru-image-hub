@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { paintToolShortcut, paintInkShortcut, paintSizeShortcut, stepPaintSize } from '../src/lib/paintToolShortcuts.ts';
+import { paintToolShortcut, paintInkShortcut, paintSizeShortcut, stepPaintSize, PAINT_SIZE_PRESETS } from '../src/lib/paintToolShortcuts.ts';
 test('Illustrator tool keys accept Japanese and US plus key representations',()=>{
   for(const [key,tool] of [['v','vector-select'],['a','vector-node'],['p','vector-pen'],['m','rectangle'],['l','ellipse'],['-','vector-delete'],['+','vector-add']])assert.equal(paintToolShortcut({key}),tool);
   assert.equal(paintToolShortcut({key:'=',shiftKey:true}),'vector-add');
@@ -29,9 +29,9 @@ test('tablet brush keys follow JIS and US characters and leave IME and text alon
   assert.equal(paintSizeShortcut({key:'@',code:'BracketLeft'}),undefined);
   assert.equal(paintSizeShortcut({key:']'},true),undefined);
   for(const modifier of ['shiftKey','altKey','metaKey','ctrlKey','isComposing'])assert.equal(paintSizeShortcut({key:'[',[modifier]:true}),undefined);
-  assert.equal(stepPaintSize(8,1),9);assert.equal(stepPaintSize(9,-1),8);
-  assert.equal(stepPaintSize(8.3,1),9);assert.equal(stepPaintSize(8.3,-1),8);
-  assert.equal(stepPaintSize(.5,-1),.5);assert.equal(stepPaintSize(500,1),500);
-  assert.equal(stepPaintSize(.1,-1,true),.1);assert.equal(stepPaintSize(500,1,true),600);
-  assert.equal(stepPaintSize(1000,1,true),1000);
+  assert.deepEqual([...PAINT_SIZE_PRESETS],[.07,.1,.15,.2,.25,.3,.4,.5,.6,.7,.8,1,1.2,1.5,1.7,2,2.5,3,4,5,6,7,8,10,12,15,17,20,25,30,40,50,60,70,80,100]);
+  assert.equal(stepPaintSize(8,1),10);assert.equal(stepPaintSize(10,-1),8);
+  assert.equal(stepPaintSize(8.3,1),10);assert.equal(stepPaintSize(8.3,-1),8);
+  assert.equal(stepPaintSize(.07,-1),.07);assert.equal(stepPaintSize(100,1),100);
+  assert.equal(stepPaintSize(.1,-1,true),.07);assert.equal(stepPaintSize(80,1,true),100);
 });

@@ -215,13 +215,16 @@ test('人物切り抜きへのローカル参照は自動保存だけに保持�
   assert.equal(restoredImport.analysisReviewMessage, '人物を確定できませんでした');
 });
 
-test('原字参照はローカル保存だけに保持し、作品基本書体・線幅・しっぽ先端はOMNYへ出す', () => {
+test('原字参照はローカル保存だけに保持し、作品基本書体・線幅・しっぽ・本文位置はOMNYへ出す', () => {
   const document = parseMangaYaml(sampleSource);
   const panel = document.manga.pages[0].panels[0];
   document.manga.meta.font = 'BIZ UDP明朝';
   document.manga.meta.bubble_line_width_mm = 0.4;
   panel.bubbles[0].monologue = true;
   panel.bubbles[0].tail = { x: 0.25, y: 0.6 };
+  panel.bubbles[0].tail_root = { x: 0.1, y: 0.5 };
+  panel.bubbles[0].tail_style = 'thinking';
+  panel.bubbles[0].text_position = { x: 0.75, y: 0.4 };
   panel.bubbles[1].offscreen = true;
   panel.bubbles[0].analogTextImport = {
     schemaVersion: 1,
@@ -242,7 +245,33 @@ test('原字参照はローカル保存だけに保持し、作品基本書体�
   assert.match(exported, /bubble_line_width_mm: 0.4/);
   assert.match(exported, /monologue: true/);
   assert.match(exported, /tail:\n\s+x: 0.25\n\s+y: 0.6/);
+  assert.match(exported, /tail_root:\n\s+x: 0.1\n\s+y: 0.5/);
+  assert.match(exported, /tail_style: "thinking"/);
+  assert.match(exported, /text_position:\n\s+x: 0.75\n\s+y: 0.4/);
   assert.match(exported, /offscreen: true/);
+});
+
+test('しっぽ種別はnormalまたはthinkingだけを許可する',()=>{
+  const document=parseMangaYaml(sampleSource),bubble=document.manga.pages[0].panels[0].bubbles[0];
+  for(const style of ['normal','thinking']){bubble.tail_style=style;assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.tail_style')));}
+  bubble.tail_style='beads';assert.ok(validateManga(document).some(issue=>issue.level==='error'&&issue.path.endsWith('.tail_style')));
+});
+
+test('しっぽ根元は参照枠外も許可し非有限座標だけを拒否する',()=>{
+  const document=parseMangaYaml(sampleSource),bubble=document.manga.pages[0].panels[0].bubbles[0];
+  bubble.tail_root={x:0,y:1};assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.tail_root')));
+  for(const root of [{x:-.1,y:.5},{x:1.1,y:.5}]){bubble.tail_root=root;assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.tail_root')));}
+  for(const root of [{x:NaN,y:.5},{x:.5,y:Infinity}]){
+    bubble.tail_root=root;assert.ok(validateManga(document).some(issue=>issue.level==='error'&&issue.path.endsWith('.tail_root')));
+  }
+});
+
+test('フキダシ本文位置は枠内の有限相対座標だけを許可する',()=>{
+  const document=parseMangaYaml(sampleSource),bubble=document.manga.pages[0].panels[0].bubbles[0];
+  bubble.text_position={x:0,y:1};assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.text_position')));
+  for(const position of [{x:-.1,y:.5},{x:1.1,y:.5},{x:NaN,y:.5},{x:.5,y:Infinity}]){
+    bubble.text_position=position;assert.ok(validateManga(document).some(issue=>issue.level==='error'&&issue.path.endsWith('.text_position')));
+  }
 });
 
 test('コマ分割の重複確認情報は自動保存だけに保持し、OMNYへ出さない', () => {

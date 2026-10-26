@@ -17,7 +17,7 @@ const wait=async(f:()=>boolean,label:string)=>{for(let i=0;i<160;i++){if(f())ret
 const button=(name:string)=>Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(el=>el.getAttribute('aria-label')===name||el.textContent?.trim()===name);
 const click=async(name:string)=>{const el=button(name);if(!el||el.disabled)throw Error(`Button unavailable: ${name}`);el.click();await tick();};
 const layerRow=(id:string)=>document.querySelector<HTMLElement>(`.layer-row[data-layer="${id}"]`);
-const selectLayer=async(id:string)=>{const row=layerRow(id);if(!row)throw Error(`No layer row: ${id}`);row.querySelector<HTMLButtonElement>('.layer-select')!.click();await wait(()=>!!document.querySelector('.paint-input')&&!document.querySelector<HTMLButtonElement>('.layer-lock-control')?.disabled,'paint ready');await tick();};
+const selectLayer=async(id:string)=>{const row=layerRow(id);if(!row)throw Error(`No layer row: ${id}`);const select=row.querySelector<HTMLButtonElement>('.layer-select')!;await wait(()=>!select.disabled,`${id} row ready`);select.click();await wait(()=>!!document.querySelector('.paint-input')&&selected(id),`${id} paint ready`);await wait(()=>!layerRow(id)?.querySelector<HTMLButtonElement>('.layer-row-lock')?.disabled,`${id} controls ready`);};
 const selected=(id:string)=>layerRow(id)?.getAttribute('aria-selected')==='true';
 const vector=(id:string,color:string,y=200):PaintLayer=>({...newPaintLayer(id,'vector'),id,paths:[{...vectorShape('line',{x:100,y},{x:700,y},{...defaultVectorStyle(),width:14,stroke:color}),id:`path-${id}`}]});
 const paint=(layers:PaintLayer[],width=1000,height=1000):PaintDocument=>({version:1,width,height,dpi:254,guideInitialized:true,layers});
@@ -31,13 +31,14 @@ async function artwork(id:string,p:PaintDocument){
 }
 const bgArt=await artwork('bg',bg),frontArt=await artwork('front',front);
 const plain={...bgArt,paint:undefined,crop:{x:0,y:0,w:1000,h:1000}};
-doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:10,w:100,h:100},bg:1,action:null,bubbles:[],background_images:[{...bgArt,id:'background',bbox:{x:10,y:10,w:100,h:100}}],figures:[{name:'前面グループ',bbox:{x:20,y:20,w:60,h:40},artwork:frontArt}]}];
+doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:10,w:100,h:100},bg:1,action:null,
+ bubbles:[{text:'直接選択の確認',shape:'normal',speaker:'前面グループ',bbox:{x:65,y:28,w:32,h:24}}],
+ screen_text:[{text:'固定確認',orientation:'horizontal',bbox:{x:45,y:84,w:24,h:8}}],
+ background_images:[{...bgArt,id:'background',bbox:{x:10,y:10,w:100,h:100}}],figures:[{name:'前面グループ',kind:'person',bbox:{x:20,y:20,w:60,h:40},artwork:frontArt}]}];
 doc.manga.pages[0].images=[{...plain,id:'native-back',bbox:{x:80,y:125,w:25,h:25}},{...plain,id:'native-locked',locked:true,bbox:{x:80,y:125,w:25,h:25}}];
 doc.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[],figures:[{name:'前景の奥',bbox:{x:15,y:125,w:25,h:25},artwork:plain},{name:'前景の固定',bbox:{x:15,y:125,w:25,h:25},artwork:{...plain,locked:true}}]};
 savePaintBleed(localStorage,0);localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));render(<App/>,document.getElementById('app')!);
 const stored=()=>parseMangaYaml(localStorage.getItem(STORAGE_KEY)!);
-const savedBackground=()=>stored().manga.pages[0].panels[0].background_images![0].paint!;
-const flush=async()=>{await click('環境設定');await wait(()=>!document.querySelector('.paint-input'),'paint closed');await new Promise(resolve=>setTimeout(resolve,450));await click('ネーム');};
 const pointer=(target:EventTarget,type:string,x:number,y:number)=>target.dispatchEvent(new PointerEvent(type,{clientX:x,clientY:y,pointerId:91,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'?0:1,bubbles:true,cancelable:true}));
 async function gesture(x:number,y:number,dx=0,dy=0){
  const surface=document.querySelector<HTMLDivElement>('.paint-input')!;if(!surface)throw Error('No paint input');
@@ -53,23 +54,57 @@ async function nativeDrag(target:HTMLElement,dx=10){const r=target.getBoundingCl
 async function run(){
  const checks:string[]=[],check=(value:unknown,label:string)=>{if(!value)throw Error(label);checks.push(label);summary.textContent=`レイヤーロック 検証中（${checks.length}）${label}`;};
  render(null,document.getElementById('app')!);await tick();savePaintBleed(localStorage,0);localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));render(<App/>,document.getElementById('app')!);
- await wait(()=>!!button('ネーム'),'App ready');await click('ネーム');await selectLayer('手前の線');
- const actions=document.querySelector('.layer-icon-actions')!,labels=Array.from(actions.querySelectorAll('button')).map(el=>el.getAttribute('aria-label'));
- check(labels.indexOf('レイヤーを固定')===labels.indexOf('生成マスク化')+1&&labels.indexOf('複製')===labels.indexOf('レイヤーを固定')+1,'固定ボタンは生成マスクと複製の間');
- check(document.querySelector('.layer-lock-control svg')?.getAttribute('fill')==='#000'&&!layerRow('手前の線')?.querySelector('[data-layer-lock-icon]'),'固定前もtoolbarは黒い閉じ錠、未固定の行は錠なし');
- await click('パス選択');await gesture(50,30);check(selected('手前の線')&&document.querySelector('.vector-selection-path'),'別ownerの固定線と上層の透明部を飛ばして手前の線を選択');
- await click('レイヤーを固定');check(layerRow('手前の線')?.querySelector('[data-layer-lock-icon]')&&!document.querySelector('.vector-selection-path'),'固定すると行に錠を表示し選択中のパスを解除');
+ await wait(()=>!!button('ネーム'),'App ready');await click('ネーム');
+ const fixedLabels=['フォルダー追加','ラスターレイヤー追加','ベクターレイヤー追加','トーンレイヤー作成','生成マスク化','複製'];
+ const headerActions=()=>Array.from(document.querySelectorAll<HTMLButtonElement>('.page-layer-palette>.layer-controls>.layer-icon-actions>button'));
+ const panelActions=headerActions(),panelSlots=panelActions.map(el=>el.getBoundingClientRect().left);
+ check(panelActions.length===7&&fixedLabels.every((label,index)=>panelActions[index].getAttribute('aria-label')===label),'コマ選択でも上部7操作を固定順で表示');
+ check(panelActions.slice(0,3).every(el=>el.getAttribute('aria-disabled')!=='true')&&panelActions.slice(3,6).every(el=>el.getAttribute('aria-disabled')==='true'&&Number(getComputedStyle(el).opacity)<=.35),'コマでは使える追加操作だけを有効にし、他は同じ位置で灰色表示');
+ check(!Array.from(document.querySelectorAll('.layer-group-select .layer-caption')).some(el=>el.textContent?.trim()==='コマ内')&&!document.querySelector('.page-direct-layer-group')&&!!document.querySelector('[aria-label="コマ外レイヤーを追加"]'),'空のコマ内・コマ外フォルダーは出さず、追加操作だけを表示');
+ await selectLayer('手前の線');
+ const actions=document.querySelector('.page-layer-palette>.layer-controls>.layer-icon-actions')!,actionButtons=Array.from(actions.querySelectorAll<HTMLButtonElement>('button')),labels=actionButtons.map(el=>el.getAttribute('aria-label'));
+ check(actionButtons.length===7&&fixedLabels.every((label,index)=>labels[index]===label)&&!labels.some(label=>label?.includes('固定'))&&labels.indexOf('複製')===labels.indexOf('生成マスク化')+1,'描画レイヤーでも同じ7操作を固定順で表示');
+ check(actionButtons.every((el,index)=>Math.abs(el.getBoundingClientRect().left-panelSlots[index])<1),'選択対象を変えても上部操作の横位置を変えない');
+ const unlockedRow=layerRow('手前の線')!,rowLock=unlockedRow.querySelector<HTMLButtonElement>('.layer-row-lock')!;
+ const openIcon=rowLock.querySelector<SVGElement>('[data-layer-lock-icon="open"]')!,openBody=openIcon.querySelector<SVGRectElement>('rect')!;
+ check(rowLock===unlockedRow.lastElementChild&&rowLock.getAttribute('aria-label')==='手前の線を固定'&&rowLock.getAttribute('aria-pressed')==='false'&&rowLock.classList.contains('is-unlocked')&&getComputedStyle(rowLock).opacity==='0'&&openIcon.getAttribute('stroke')==='#000'&&openIcon.getAttribute('stroke-width')==='1.25'&&openBody.getAttribute('fill')==='#fff','未固定の錠は通常時に隠れ、ホバー時用の黒い細線・白塗りの開錠表示を右端に持つ');
+ await click('配置へ戻る');await gesture(50,30);check(selected('手前の線')&&document.querySelector('.vector-selection-path'),'別ownerの固定線と上層の透明部を飛ばして手前の線を選択');
+ await click('手前の線を固定');check(layerRow('手前の線')?.querySelector('.layer-row-lock.is-locked')&&!document.querySelector('.vector-selection-path'),'右端の錠で固定し選択中のパスを解除');
  const density=document.querySelector<HTMLInputElement>('[aria-label="レイヤーの濃度"]')!,blend=document.querySelector<HTMLSelectElement>('[aria-label="レイヤーの合成"]')!;
- check(density.disabled&&blend.disabled&&button('削除')?.disabled&&document.querySelector<HTMLFieldSetElement>('.paint-layer-effects fieldset')?.disabled,'固定中は濃度・合成・効果・削除を無効化');
+ await wait(()=>{const remove=document.querySelector<HTMLButtonElement>('.layer-icon-actions [aria-label="削除"]'),effects=document.querySelector<HTMLFieldSetElement>('.paint-layer-effects fieldset');return density.disabled&&blend.disabled&&Boolean(remove&&(remove.disabled||remove.getAttribute('aria-disabled')==='true'))&&Boolean(effects?.disabled);},'locked controls disabled');
+ check(true,'固定中は濃度・合成・効果・削除を無効化');
  density.value='0.2';density.dispatchEvent(new Event('input',{bubbles:true}));window.dispatchEvent(new KeyboardEvent('keydown',{key:'Delete',bubbles:true}));await tick();
- await click('ペン');await gesture(50,30,0,2);await click('パス選択');
+ await click('ペン');await gesture(50,30,0,2);await click('配置へ戻る');
  await gesture(50,30,0,5);check(selected('奥の線'),'固定した選択層を飛ばし奥の線を同じドラッグで選択・移動');
- await flush();const saved=savedBackground(),back=saved.layers.find(l=>l.id==='奥の線')!,locked=saved.layers.find(l=>l.id==='手前の線')!;
- check(back.paths![0].nodes[0].y>200&&locked.paths![0].nodes[0].y===200&&locked.opacity===1&&locked.locked&&locked.strokes.length===0,'保存後も固定線は不変、奥の線だけ移動');
- await selectLayer('手前の線');check(button('レイヤーの固定を解除')&&!button('レイヤーの固定を解除')!.disabled,'固定行を選択してtoolbarから解除可能');await click('レイヤーの固定を解除');check(!layerRow('手前の線')?.querySelector('[data-layer-lock-icon]')&&!document.querySelector<HTMLInputElement>('[aria-label="レイヤーの濃度"]')!.disabled,'同じボタンで解除し編集を再開');
- await click('パス選択');await gesture(50,30,0,3);check(selected('手前の線'),'解除した線を再び掴める');
- await selectLayer('透明な上層');await click('パス選択');await gesture(25,65,5,0);check(selected('透明な上層'),'描かれた画素ではラスター層を選択・単独移動');await click('ペン');await gesture(50,75,0,2);await flush();
- check(savedBackground().layers.find(l=>l.id==='透明な上層')!.strokes[0].selection![0].x>100,'ラスターの移動を原稿へ保存');check(savedBackground().layers.find(l=>l.id==='透明な上層')!.strokes.length===2,'通常のペンは選択した現在レイヤーへ描画');
+ await selectLayer('手前の線');await wait(()=>Boolean(button('手前の線の固定を解除')&&!button('手前の線の固定を解除')!.disabled),'locked row controls ready');check(true,'固定行自身の右端錠は解除可能');await click('手前の線の固定を解除');check(layerRow('手前の線')?.querySelector('.layer-row-lock.is-unlocked')&&!document.querySelector<HTMLInputElement>('[aria-label="レイヤーの濃度"]')!.disabled,'同じ右端錠で解除し編集を再開');
+ await click('配置へ戻る');await gesture(50,30);check(selected('手前の線'),'解除した線を再び掴める');
+ await click('手前の線を固定');await click('背景を固定');const inherited=layerRow('手前の線')?.querySelector<HTMLButtonElement>('.layer-row-lock');
+ check(button('背景の固定を解除')&&!button('背景の固定を解除')!.disabled&&inherited?.disabled&&inherited.classList.contains('is-inherited')&&inherited.getAttribute('aria-label')==='手前の線は親フォルダーで固定中','背景フォルダー固定は子レイヤーへ灰色の解除不能な継承錠として伝わる');
+ await click('背景の固定を解除');const childAfterParentUnlock=layerRow('手前の線')?.querySelector<HTMLButtonElement>('.layer-row-lock');check(!childAfterParentUnlock?.disabled&&childAfterParentUnlock?.getAttribute('aria-pressed')==='false','親フォルダー解除時は子レイヤーもまとめて解除');
+ await selectLayer('透明な上層');await click('配置へ戻る');await gesture(25,65,5,0);check(selected('透明な上層'),'描かれた画素ではラスター層を選択・単独移動');await click('ペン');await gesture(50,75,0,2);
+ // Native bubble direct selection uses visually small anchors with fixed-screen, forgiving hit areas.
+ const bubbleRow=document.querySelector<HTMLElement>('[data-owner-group="bubble-0"] .layer-group-select')!;bubbleRow.click();await tick();await click('ダイレクト選択');
+ await wait(()=>!!document.querySelector('.bubble-bezier-canvas.is-paper-overlay'),'bubble direct handles');
+ const nodeDot=document.querySelectorAll<SVGGraphicsElement>('.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-node')[1]!,nodeHit=document.querySelectorAll<SVGGraphicsElement>('.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-node-hit')[1]!;
+ const nr=nodeDot.getBoundingClientRect(),nodeProbe=document.elementFromPoint(nr.x+nr.width/2+4,nr.y+nr.height/2) as Element|null;
+ check(getComputedStyle(nodeHit).strokeWidth==='12px'&&nodeProbe?.closest('.bubble-bezier-node-hit')===nodeHit,'輪郭点は小さく表示しつつ周囲12pxのヒット領域で直接選択できる');
+ const editSvg=document.querySelector<SVGSVGElement>('.bubble-bezier-canvas.is-paper-overlay')!,svgRect=editSvg.getBoundingClientRect();
+ const visibleMarks=Array.from(editSvg.querySelectorAll<SVGGraphicsElement>('.bubble-bezier-node,.bubble-bezier-handle'));
+ check(visibleMarks.every(mark=>{const r=mark.getBoundingClientRect();return r.left>=svgRect.left-1&&r.top>=svgRect.top-1&&r.right<=svgRect.right+1&&r.bottom<=svgRect.bottom+1;})&&getComputedStyle(nodeDot).stroke==='rgb(35, 107, 196)'&&Number(nodeDot.getAttribute('width'))===1.5,'青い小型の輪郭点とハンドルを編集枠外でも欠けずに表示');
+ const tailDot=document.querySelector<SVGCircleElement>('.bubble-tail-target-dot')!,tailHit=document.querySelector<SVGCircleElement>('.bubble-tail-target-hit')!;
+ check(Number(tailDot.getAttribute('r'))<Number(tailHit.getAttribute('r'))&&Number(tailHit.getAttribute('r'))===7,'しっぽ先端は小さな表示点と広いドラッグ領域を分離');
+ await click('吹き出し 1を固定');
+ const deleteBubbleButton=button('吹き出し 1を削除');
+ check(!document.querySelector('.bubble-bezier-canvas.is-paper-overlay')&&!document.querySelector('.bubble-tail-editor-overlay')&&(!deleteBubbleButton||deleteBubbleButton.disabled),'吹き出しフォルダ固定で輪郭・しっぽ・削除を一括停止');
+ await click('吹き出し 1の固定を解除');
+ // Frame-only lock affects panel geometry; whole-panel lock is inherited by every descendant and inspector field.
+ await click('コマ 01の枠だけを固定');
+ check(button('コマ 01全体を固定')?.getAttribute('aria-pressed')==='false'&&button('背景を固定')?.disabled===false&&!document.querySelector('.panel-resize-hit')&&!document.querySelector('[data-content-kind="screen_text"][data-artwork-locked]'),'コマ枠固定は枠形状だけを停め、中の背景・文字は編集可能');
+ await click('コマ 01の枠だけの固定を解除');await click('奥の線を固定');await click('背景を固定');await click('コマ 01全体を固定');
+ const frameInherited=button('コマ 01の枠は親フォルダーで固定中'),backgroundInherited=button('背景は親フォルダーで固定中');
+ check(frameInherited?.disabled&&backgroundInherited?.disabled&&document.querySelector('.panel-inspector.is-locked .inspector-fields[inert]')&&document.querySelector('[data-content-kind="screen_text"][data-artwork-locked]')&&!document.querySelector('.panel-resize-hit'),'コマフォルダ固定は枠・背景・文字・インスペクターへ灰色の継承固定として伝わる');
+ await click('コマ 01全体の固定を解除');
+ check(button('コマ 01の枠だけを固定')?.getAttribute('aria-pressed')==='false'&&button('背景を固定')?.getAttribute('aria-pressed')==='false'&&button('奥の線を固定')?.getAttribute('aria-pressed')==='false','コマフォルダー解除時は枠・子フォルダー・子レイヤーもまとめて解除');
  // Locked native elements must be absent from browser hit testing, including selected proxies.
  const lockedNative=document.querySelector<HTMLElement>('.placed-image-layer [data-artwork-locked]')!,r=lockedNative.getBoundingClientRect();
  const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2) as HTMLElement;

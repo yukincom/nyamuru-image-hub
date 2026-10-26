@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { humanPoseFraming, applyHumanPoseFraming, MANUAL_HUMAN_POSE_FRAMING } from '../src/lib/humanPoseFraming.ts';
+import { humanPoseFraming, applyHumanPoseFraming, humanPosePanelCutFrame, humanPoseCutOutline, humanPosePreviewWindow, humanPoseReferencePixels, MANUAL_HUMAN_POSE_FRAMING } from '../src/lib/humanPoseFraming.ts';
+import { paintReferenceBox } from '../src/lib/paintDocument.ts';
 import { applyBackgroundCameraShift } from '../src/lib/background3dCamera.ts';
 import { validateHumanPoseScene } from '../src/lib/humanPoseScene.ts';
 
@@ -19,6 +20,26 @@ function setup(aspect=1,shift=[0,0]) {
   applyBackgroundCameraShift(lens,scene.camera);return {lens,scene};
 }
 const screen=(point,lens)=>{const p=point.clone().project(lens);return{x:(p.x+1)/2,y:(1-p.y)/2};};
+
+test('a panel capture preserves paper coordinates at every depth without changing the saved crop',()=>{
+  const panel={shape:{type:'polygon',points:[[10,20],[130,30],[110,190],[10,180]]}},frame={x:50,y:60,w:30,h:70};
+  const cut=humanPosePanelCutFrame(panel,frame),{lens,scene}=setup(frame.w/frame.h);
+  scene.framing={size:'bust-up',crop:{x:.15,y:.1,w:.45,h:.45}};
+  const before=structuredClone(scene),samples=[new Vector3(-.2,1.2,-2),new Vector3(.3,.8,0),new Vector3(0,1.5,1)];
+  applyHumanPoseFraming(lens,scene);const original=samples.map(p=>screen(p,lens));
+  applyHumanPoseFraming(lens,scene,cut.bounds);
+  samples.forEach((p,i)=>{const actual=screen(p,lens);assert.ok(Math.abs(10+actual.x*120-(frame.x+original[i].x*frame.w))<1e-10);assert.ok(Math.abs(20+actual.y*170-(frame.y+original[i].y*frame.h))<1e-10);});
+  assert.deepEqual(scene,before);
+  const window=humanPosePreviewWindow(cut);assert.ok(window.w>cut.bounds.w&&window.h>cut.bounds.h);
+  const outline=humanPoseCutOutline(cut);assert.equal((outline.match(/L/g)||[]).length,3);assert.ok(outline.endsWith('Z'));
+});
+test('adopting a panel-sized image retains the original guide including contain padding',()=>{
+  for(const [reference,frame,width,height] of [[{x:50,y:60,w:30,h:70},{x:10,y:20,w:120,h:170},736,1024],[{x:-10,y:40,w:60,h:90},{x:0,y:0,w:200,h:100},1024,600]]){
+    const paint={width,height,referenceFrame:humanPoseReferencePixels(reference,frame,width,height)};
+    const actual=paintReferenceBox(paint,frame);
+    for(const key of ['x','y','w','h'])assert.ok(Math.abs(actual[key]-reference[key])<1e-10);
+  }
+});
 
 test('projection crop matches image cropping at every depth and retains camera orientation and shift',()=>{
   for(const aspect of [.5,1,2])for(const shift of [[0,0],[.12,-.08]]){
@@ -43,12 +64,35 @@ test('bust crop excludes waist and feet even for a narrow frame while full-body 
     assert.ok(screen(body.get('heel.L'),lens).y<1);assert.ok(screen(body.get('headTop'),lens).y>0);
   }
 });
-test('face framing uses head volume without neck; unknown body parts keep manual framing',()=>{
-  for(const aspect of [.25,.5,1,2]){
-    const {lens,scene}=setup(aspect),body=points();scene.framing=humanPoseFraming(body,lens,'face');applyHumanPoseFraming(lens,scene);
-    assert.ok(screen(body.get('neck01'),lens).y>1);
-    for(const size of MANUAL_HUMAN_POSE_FRAMING)assert.deepEqual(humanPoseFraming(body,lens,size),{size,crop:{x:0,y:0,w:1,h:1}});
+test('face preset contains the entire head in portrait and landscape frames at different camera angles',()=>{
+  for(const aspect of [.125,.25,.5,1,2])for(const position of [[0,1,5],[4,2,3],[1,5,2]])for(const shift of [[0,0],[.12,-.08]]){
+    const {lens,scene}=setup(aspect,shift),body=points();
+    lens.position.fromArray(position);lens.lookAt(0,1.5,0);lens.updateMatrixWorld(true);
+    const before={position:lens.position.clone(),quaternion:lens.quaternion.clone(),fov:lens.fov};
+    scene.framing=humanPoseFraming(body,lens,'face');applyHumanPoseFraming(lens,scene);
+    const centre=body.get('headCentre'),radius=centre.distanceTo(body.get('headTop'));
+    for(const x of [-1,1])for(const y of [-1,1])for(const z of [-1,1]){
+      const p=screen(centre.clone().add(new Vector3(x,y,z).multiplyScalar(radius)),lens);
+      assert.ok(p.x>0&&p.x<1&&p.y>0&&p.y<1,`head clipped at aspect ${aspect}: ${JSON.stringify(p)}`);
+    }
+    assert.deepEqual(lens.position.toArray(),before.position.toArray());assert.deepEqual(lens.quaternion.toArray(),before.quaternion.toArray());assert.equal(lens.fov,before.fov);
   }
+});
+test('face preset fits inside the offset polygon panel used by the 3D preview',()=>{
+  const frame={x:10,y:25,w:40,h:80};
+  const cut=humanPosePanelCutFrame({shape:{type:'polygon',points:[[8,12],[95,22],[90,155],[8,148]]}},frame);
+  const {lens,scene}=setup(frame.w/frame.h),body=points();
+  scene.framing=humanPoseFraming(body,lens,'face');applyHumanPoseFraming(lens,scene,cut.bounds);
+  const centre=body.get('headCentre'),radius=centre.distanceTo(body.get('headTop'));
+  for(let angle=0;angle<Math.PI*2;angle+=Math.PI/32){
+    const p=screen(centre.clone().add(new Vector3(Math.cos(angle)*radius,Math.sin(angle)*radius,0)),lens);
+    const paper={x:8+p.x*87,y:12+p.y*143};
+    assert.ok(paper.x>8&&paper.x<90&&paper.y>22&&paper.y<148,`head clipped by panel: ${JSON.stringify(paper)}`);
+  }
+});
+test('unknown body parts keep manual framing',()=>{
+  const {lens}=setup();
+  for(const size of MANUAL_HUMAN_POSE_FRAMING)assert.deepEqual(humanPoseFraming(points(),lens,size),{size,crop:{x:0,y:0,w:1,h:1}});
 });
 test('posed landmarks, not global height, determine a rotated or bent body crop',()=>{
   const {lens}=setup();const body=points(),before=humanPoseFraming(body,lens,'waist-up');

@@ -54,6 +54,7 @@ test('binding is recalled by episode only, including revision, never a last-used
   assert.equal(readProjectBinding('episode-one', { getItem: () => 'bad json' }), null);
 });
 
+import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
 const app = read('src/components/App.tsx');
 const ast = ts.createSourceFile('App.tsx', app, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 function handler(name, overrides = {}) {
@@ -61,10 +62,11 @@ function handler(name, overrides = {}) {
   original.manga.meta.episode_id = 'episode-one';
   const calls = [], notices = [];
   const context = {
+    endTextEdit: () => {},
     isLanClient: false, hasDocument: true, showNewDialog: false, projectOperation: { current: false },
     paintController: { current: null }, paintSessionRef: { current: null }, setPaintSession: () => {},
     documentRef: { current: original }, boundEpisodeWorkspace: { ...binding },
-    isBrowserWorkspace, structuredClone, crypto, Error, cloneDocument, createProjectSnapshot, restoreProjectSnapshot,
+    isBrowserWorkspace, structuredClone, crypto, Error, cloneDocument, createProjectSnapshot, restoreProjectSnapshot, separateBubbleOriginals,
     localStorage: {}, rememberProjectBinding: () => {},
     setProjectBusy: value => calls.push(['busy', value]),
     setToast: value => notices.push(value),
@@ -107,6 +109,24 @@ test('actual Save handler uses New Creation binding directly; repeat save uses r
   assert.doesNotMatch(h.notices.at(-1), /追加編集/);
   await h.run();
   assert.equal(h.calls.filter(x => x[0] === 'save').at(-1)[3], 'saved-revision');
+});
+
+test('the demand-time OMNY getter and Save use current native text after the paint flush',async()=>{
+  let serialized=0;
+  const getter=handler('getOmnySnapshot',{useCallback:callback=>callback,toSeparatedMangaYaml:document=>{serialized++;return toSeparatedMangaYaml(document);}});
+  assert.equal(serialized,0);
+  const bubble=getter.context.documentRef.current.manga.pages[0].panels[0].bubbles[0];
+  bubble.text='生成時の最新本文';bubble.text_style={font:'游明朝',fontSize:40,fontWeight:700};bubble.text_position={x:.3,y:.7};
+  let loaded=parseMangaYaml(getter.run()).manga.pages[0].panels[0].bubbles[0];
+  assert.equal(serialized,1);assert.equal(loaded.text,bubble.text);assert.deepEqual(loaded.text_style,bubble.text_style);assert.deepEqual(loaded.text_position,bubble.text_position);
+  bubble.text='確定後に大幅に書き直した本文';loaded=parseMangaYaml(getter.run()).manga.pages[0].panels[0].bubbles[0];
+  assert.equal(serialized,2);assert.equal(loaded.text,bubble.text);
+  const save=handler('saveProject');
+  save.context.paintController.current={flush:async()=>{const current=cloneDocument(save.context.documentRef.current);current.manga.pages[0].panels[0].bubbles[0]={...current.manga.pages[0].panels[0].bubbles[0],text:'描画確定後の清書',text_style:{font:'游明朝',fontSize:21}};save.context.documentRef.current=current;}};
+  await save.run();
+  const snapshot=save.calls.find(call=>call[0]==='save')[2];
+  assert.equal(snapshot.document.manga.pages[0].panels[0].bubbles[0].text,'描画確定後の清書');
+  assert.equal(snapshot.document.manga.pages[0].panels[0].bubbles[0].text_style.fontSize,21);
 });
 
 test('legacy work without episode ID is assigned one and saved once; picker cancellation writes nothing', async () => {

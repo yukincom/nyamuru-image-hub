@@ -8,6 +8,11 @@ test('none vector stroke never draws dots, outlines or arrowheads; its fill rema
   for(const shape of ['line','rectangle']){const c=context(),p=vectorShape(shape,{x:0,y:0},{x:20,y:20},{...defaultVectorStyle(),stroke:null,fill:'#000000',arrowEnd:'triangle'});drawVectorPath(c,p);assert.deepEqual(c.ops,[['fill']]);
     c.ops.length=0;drawVectorPath(c,{...p,style:{...p.style,fill:null}});assert.deepEqual(c.ops,[]);}
 });
+test('a black vector outline with no fill renders only one black stroke',()=>{
+  const c=context(),p=vectorShape('rectangle',{x:2,y:3},{x:18,y:19},{...defaultVectorStyle(),stroke:'#000000',fill:null});
+  drawVectorPath(c,p);
+  assert.equal(p.style.fill,null);assert.equal(c.strokeStyle,'#000000');assert.deepEqual(c.ops,[['stroke']]);
+});
 test('a brush clips to its captured selection and clear/fill replay their region',()=>{
   const c=context(),selection=[{x:3,y:5,w:10,h:8}],stroke={tool:'pen',color:'#000000',size:3,points:[{x:0,y:0,pressure:1,time:0}],selection};
   drawPaintStroke(c,stroke);assert.deepEqual(c.ops.slice(0,2),[['rect',3,5,10,8],['clip']]);

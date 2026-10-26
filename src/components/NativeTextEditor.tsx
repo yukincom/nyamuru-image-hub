@@ -60,7 +60,7 @@ export default function NativeTextEditor({text,weights,label,style,onText,onSele
   },[text,weights]);
   useEffect(()=>{
     const element=root.current;if(!element)return;
-    element.focus();restoreSelection(element,{start:0,end:text.length});remember();
+    element.focus();restoreSelection(element,{start:text.length,end:text.length});remember();
     const changed=()=>remember();document.addEventListener('selectionchange',changed);
     return()=>document.removeEventListener('selectionchange',changed);
   },[]);
@@ -87,5 +87,7 @@ export default function NativeTextEditor({text,weights,label,style,onText,onSele
       else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();current.current.onEnd();}
       else if(e.key==='Enter'){e.preventDefault();insert('\n');}
     }}
-    onBlur={e=>{if(!(e.relatedTarget instanceof Element)||!e.relatedTarget.closest('.canvas-text-toolbar')){if(composing.current)commit();composing.current=false;current.current.onEnd();}}}/>
+    // Focus may move into a portalled palette (including a non-focusable slider in Safari).
+    // Canvas clicks and explicit tool transitions own ending the edit, not browser blur.
+    onBlur={()=>{if(composing.current)commit();composing.current=false;}}/>
 }

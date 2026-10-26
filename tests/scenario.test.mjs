@@ -5,6 +5,9 @@ import { parseMangaYaml, toMangaYaml, toSeparatedMangaYaml, toStoredMangaYaml, n
 import { parseStoryReferenceText } from '../src/lib/settingTextImport.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { attachRecognizedTextToPage } from '../src/lib/localBridge.ts';
+import { detachResolvedScenarioLinks, rejectScenarioCorrespondence, scenarioBubbleNeedsReview, scenarioOriginIds } from '../src/lib/scenario.ts';
+import { editCanvasText, editCanvasTextStyle } from '../src/lib/canvasText.ts';
+import { buildQwenCompositionPlan } from '../src/lib/qwenComposition.ts';
 import { SCENARIO_MATCH_THRESHOLD, parseScenario, scenarioSimilarity, applyScenarioToNewDocument, availableScenarioCandidates, confirmScenarioCorrespondence, releaseScenarioCorrespondence, linkScenarioSpeaker, scenarioCharacter, restoreProvisionalScenarioText, useScenarioBubbleText } from '../src/lib/scenario.ts';
 
 const sample = readFileSync(new URL('../src/content/sample.omny.yaml', import.meta.url), 'utf8');
@@ -19,6 +22,33 @@ function documentWith(texts = []) {
   return document;
 }
 const bubbles = document => document.manga.pages[0].panels[0].bubbles;
+
+test('OCR-only pending text and low matches share review state while settled matches stay hidden after reload', () => {
+  for (const overlay of [false,true]) {
+    const document=documentWith(['読取不明']);
+    document.manga.scenario=source(script('春「明日は学校へ行こう」'));
+    const bubble=bubbles(document)[0];
+    bubble.analogTextImport={schemaVersion:1,sourceRegionId:'review',assetId:'source',sourceBBox:{x:0,y:0,w:10,h:10},detectionSource:'ocr',recognitionEngine:'Baberu OCR',needsReview:true,referenceHidden:false,levelAdjusted:true};
+    if(overlay){document.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[bubble]};document.manga.pages[0].panels[0].bubbles=[];}
+    const location={pageIndex:0,panelIndex:0,bubbleIndex:0,overlay};
+    assert.equal(scenarioBubbleNeedsReview(bubble),true);
+    assert.equal(availableScenarioCandidates(document,location)[0].dialogues[0].text,'明日は学校へ行こう');
+    bubble.scenarioMatch={sourceIds:[],ocrText:bubble.text,score:.2,status:'review'};
+    assert.equal(scenarioBubbleNeedsReview(bubble),true);
+    const restored=parseMangaYaml(toStoredMangaYaml(document));
+    const loaded=overlay?restored.manga.pages[0].page_overlay.bubbles[0]:bubbles(restored)[0];
+    assert.equal(scenarioBubbleNeedsReview(loaded),true);
+    for(const status of ['automatic','confirmed','manual','unmatched']){
+      loaded.scenarioMatch={...loaded.scenarioMatch,status,score:1};
+      assert.equal(scenarioBubbleNeedsReview(loaded),false,`${status} overrides stale OCR review`);
+    }
+    delete loaded.scenarioMatch;
+    useScenarioBubbleText(loaded,'本文を編集');
+    assert.equal(scenarioBubbleNeedsReview(loaded),false);
+    assert.equal(loaded.analogTextImport.needsReview,false);
+    assert.equal(loaded.analogTextImport.referenceHidden,false,'text edit must not toggle source pixels');
+  }
+});
 
 test('scenario parser separates full-width numbered panels, adjacent dialogue, multiline text, emphasis and stage directions', () => {
   const parsed = parseScenario(`# 星の店\n- 話数：第1話\n＃ シナリオ\n## page１\n###　コマ１\n春「**明日**の\n予定は？」「**楽しみ**だね」\n春は窓を見る。\nアキは「本当かな」と考える。\n## page2\n### コマ２\nアキ「またね」\n# 資料\n別資料の本文`);
@@ -75,7 +105,7 @@ test('matching ignores wrapping/fullwidth/punctuation, threshold is exactly the 
   assert.equal(scenarioSimilarity('', '言葉'), 0);
   assert.equal(scenarioSimilarity('・・・', '・・・'), 1);
   assert.notEqual(scenarioSimilarity('？', '・・・'), 1);
-  for (const [ocr, status] of [['abcdefgXYZ', 'automatic'], ['abcdefWXYZ', 'review']]) {
+  for (const [ocr, status] of [['abcdefghXY', 'automatic'], ['abcdefgXYZ', 'review'], ['abcdefWXYZ', 'review']]) {
     const document = documentWith([ocr]);
     applyScenarioToNewDocument(document, source(script('春「abcdefghij」')));
     assert.equal(bubbles(document)[0].scenarioMatch.status, status);
@@ -94,7 +124,7 @@ test('authoritative dialogue, canonical speaker, emphasis and action replace OCR
   assert.equal(bubble.speakerId, 'haru');
   assert.equal(bubble.emphasis, '学校');
   assert.equal(bubble.scenarioMatch.ocrText, '明日は学枚へ\n行こう');
-  assert.equal(bubble.analogTextImport.referenceHidden, true);
+  assert.equal(bubble.analogTextImport.referenceHidden, undefined);
   assert.equal(bubble.analogTextImport.needsReview, false);
   assert.equal(bubble.analogTextImport.assetId, 'a');
   assert.deepEqual(bubble.bbox, box);
@@ -124,7 +154,8 @@ test('grouped OCR can take adjacent source phrases from the same speaker but nev
   applyScenarioToNewDocument(document, source(script('春「明日は**学校**へ行こう」「また**会おう**」')));
   assert.equal(bubbles(document)[0].text, '明日は学校へ行こう\nまた会おう');
   assert.equal(bubbles(document)[0].emphasis, '学校, 会おう');
-  assert.equal(bubbles(document)[0].scenarioMatch.sourceIds.length, 2);
+  assert.equal(scenarioOriginIds(bubbles(document)[0]).length, 2);
+  assert.deepEqual(bubbles(document)[0].scenarioMatch.sourceIds, []);
   const different = documentWith(['abcdefghij']);
   applyScenarioToNewDocument(different, source(script('春「abcde」\nアキ「fghij」')));
   assert.equal(bubbles(different)[0].scenarioMatch.status, 'review');
@@ -146,14 +177,30 @@ test('low match preserves OCR pending a real manual choice, which cannot reuse a
   assert.equal(bubbles(document)[0].scenarioMatch.ocrText, '読み取り不能');
 });
 
-test('unknown speaker is not guessed; explicit alias choice updates linked bubbles; duplicate aliases are ambiguous', () => {
+test('要確認候補は前後コマの確定文字を文脈にして隣接コマから絞り込む', () => {
+  const document = documentWith([]);
+  const template = document.manga.pages[0].panels[0];
+  document.manga.pages[0].panels = [1, 2, 3].map((id) => ({ ...structuredClone(template), id, bubbles: [{ text: id === 1 ? '朝だよ' : id === 3 ? '夜だよ' : '読み取り不能' }] }));
+  const scenario = '# シナリオ\n## page1\n### コマ1\n春「朝だよ」\n### コマ2\n春「昼だよ」\n### コマ3\n春「夜だよ」';
+  applyScenarioToNewDocument(document, source(scenario));
+  const target = document.manga.pages[0].panels[1].bubbles[0];
+  assert.equal(target.scenarioMatch.status, 'review');
+  const candidates = availableScenarioCandidates(document, { pageIndex: 0, panelIndex: 1, bubbleIndex: 0 });
+  assert.deepEqual(candidates.map(candidate => candidate.dialogues.map(dialogue => dialogue.id)), [['p1-c2-d1']]);
+  assert.equal(candidates[0].contextScore, 1);
+  confirmScenarioCorrespondence(document, { pageIndex: 0, panelIndex: 1, bubbleIndex: 0 }, ['p1-c2-d1']);
+  assert.equal(target.text, '昼だよ');
+  assert.equal(target.scenarioMatch.status, 'confirmed');
+});
+
+test('unknown speaker is not guessed and aliases never rewrite detached dialogue', () => {
   const document = documentWith(['こんにちは']);
   applyScenarioToNewDocument(document, source(script('春子「こんにちは」')));
   assert.equal(bubbles(document)[0].speaker, '春子');
   assert.equal(bubbles(document)[0].speakerId, undefined);
   linkScenarioSpeaker(document, '春子', 'haru');
-  assert.equal(bubbles(document)[0].speakerId, 'haru');
-  assert.equal(bubbles(document)[0].speaker, 'ハル');
+  assert.equal(bubbles(document)[0].speakerId, undefined);
+  assert.equal(bubbles(document)[0].speaker, '春子');
   assert.ok(document.manga.characters[0].aliases.includes('春子'));
   assert.throws(() => linkScenarioSpeaker(document, '春子', 'aki'), /別の登場人物/);
   assert.equal(scenarioCharacter([{ name: 'A', aliases: ['同名'] }, { name: 'B', aliases: ['同名'] }], '同名'), undefined);
@@ -242,7 +289,8 @@ test('manual extra dialogue and linebreak edits survive roundtrip without requir
   assert.equal(bubbles(restored)[0].scenarioMatch.status, 'manual');
   assert.equal(bubbles(restored)[0].scenarioMatch.ocrText, 'ええっ');
   assert.equal(bubbles(restored)[1].text, 'また\n明日');
-  assert.deepEqual(bubbles(restored)[1].scenarioMatch.sourceIds, ['p1-c1-d1']);
+  assert.deepEqual(bubbles(restored)[1].scenarioMatch.sourceIds, []);
+  assert.deepEqual(scenarioOriginIds(bubbles(restored)[1]), ['p1-c1-d1']);
 });
 
 test('first-importer blanks are restored once, never overwriting manual text or later clears', () => {
@@ -305,4 +353,78 @@ test('explicit monologue labels do not absorb spoken text or infer a role from p
   applyScenarioToNewDocument(document, source(script('春「abc」\n春（独白）「def」')));
   assert.equal(bubbles(document)[0].scenarioMatch.status, 'review');
   assert.equal(bubbles(document)[0].bezier, undefined);
+});
+
+test('weak OCR is ranked by the preceding and following bubbles within the same panel', () => {
+  const document=documentWith(['前の確定','???','後の確定']);
+  applyScenarioToNewDocument(document,source(script('春「別の行」\n春「別の候補」\n春「前の確定」\n春「ここが正しい行」\n春「後の確定」\n春「末尾の候補」')));
+  const location={pageIndex:0,panelIndex:0,bubbleIndex:1};
+  const before=structuredClone(bubbles(document));
+  const candidates=availableScenarioCandidates(document,location);
+  assert.deepEqual(candidates[0].dialogues.map(d=>d.id),['p1-c1-d4']);
+  assert.equal(candidates[0].score,0);assert.equal(candidates[0].neighborScore,1);
+  assert.equal(bubbles(document)[1].text,'???','a suggestion alone must not alter OCR');
+  assert.deepEqual(bubbles(document),before);
+  confirmScenarioCorrespondence(document,location,['p1-c1-d4']);
+  assert.equal(bubbles(document)[1].text,'ここが正しい行');
+  assert.deepEqual(bubbles(document)[1].scenarioMatch.sourceIds,[]);
+  assert.equal(scenarioBubbleNeedsReview(bubbles(document)[1]),false);
+});
+
+test('one source line per pending bubble is suggested between anchors, skipping explicit no-match dialogue', () => {
+  const document=documentWith(['最初の確定','外部にない追加セリフ','???','!!!','最後の確定']);
+  applyScenarioToNewDocument(document,source(script('春「最初の確定」\n春「二つめの行」\n春「三つめの行」\n春「最後の確定」')));
+  rejectScenarioCorrespondence(bubbles(document)[1]);
+  const unmatched=structuredClone(bubbles(document)[1]);
+  assert.equal(unmatched.text,'外部にない追加セリフ');assert.equal(unmatched.scenarioMatch.status,'unmatched');
+  assert.deepEqual(scenarioOriginIds(unmatched),[]);assert.equal(scenarioBubbleNeedsReview(unmatched),false);
+  const at=index=>({pageIndex:0,panelIndex:0,bubbleIndex:index});
+  assert.deepEqual(availableScenarioCandidates(document,at(2))[0].dialogues.map(d=>d.id),['p1-c1-d2']);
+  assert.deepEqual(availableScenarioCandidates(document,at(3))[0].dialogues.map(d=>d.id),['p1-c1-d3']);
+  confirmScenarioCorrespondence(document,at(2),['p1-c1-d2']);
+  useScenarioBubbleText(bubbles(document)[2],'原本とはまったく異なる台詞');
+  assert.deepEqual(availableScenarioCandidates(document,at(3))[0].dialogues.map(d=>d.id),['p1-c1-d3']);
+  const loaded=parseMangaYaml(toStoredMangaYaml(document));
+  assert.deepEqual(bubbles(loaded)[1].scenarioMatch,unmatched.scenarioMatch);
+  assert.equal(scenarioBubbleNeedsReview(bubbles(loaded)[1]),false);
+  assert.equal(bubbles(loaded)[2].text,'原本とはまったく異なる台詞');
+});
+
+test('detached confirmation is free text and exports the edited master without external linkage', async () => {
+  const document=documentWith(['???']);
+  document.manga.pages[0].panels[0].figures=[];
+  applyScenarioToNewDocument(document,source(script('外部の話者「候補の原文」')));
+  const location={pageIndex:0,panelIndex:0,bubbleIndex:0};
+  confirmScenarioCorrespondence(document,location,['p1-c1-d1']);
+  const target={pageIndex:0,panelIndex:0,index:0,overlay:false,kind:'bubble'};
+  editCanvasText(document,target,'完全に書き直した\n清書の本文');
+  editCanvasTextStyle(document,target,{fontSize:21,font:'游明朝',fontWeight:700});
+  const bubble=bubbles(document)[0];bubble.text_position={x:.2,y:.7};
+  const before=structuredClone(bubble);
+  linkScenarioSpeaker(document,'外部の話者','haru');
+  document.manga.scenario.text=script('外部の話者「元資料だけを後で変更」');
+  assert.deepEqual(bubble,before,'neither aliases nor external source updates may rewrite settled dialogue');
+  for(const serialize of [toMangaYaml,toSeparatedMangaYaml,toStoredMangaYaml]){
+    const yaml=serialize(document),loaded=bubbles(parseMangaYaml(yaml))[0];
+    for(const key of ['text','text_style','text_position','bbox','shape','speaker'])assert.deepEqual(loaded[key],before[key]);
+    if(serialize!==toStoredMangaYaml)assert.doesNotMatch(yaml,/scenarioMatch|resolvedSourceIds|sourceIds|候補の原文|元資料だけを後で変更/);
+  }
+  const restored=await restoreProjectSnapshot(await createProjectSnapshot(document));
+  assert.equal(bubbles(restored)[0].text,before.text);
+  assert.deepEqual(buildQwenCompositionPlan(document.manga,0,0,'panel').literalText,[before.text]);
+  editCanvasText(document,target,'');
+  assert.equal(bubbles(parseMangaYaml(toSeparatedMangaYaml(document)))[0].text,'');
+  assert.equal(bubbles(parseMangaYaml(toStoredMangaYaml(document)))[0].text,'');
+});
+
+test('old resolved links are detached on load without changing authored text and no-match releases provenance',()=>{
+  const document=documentWith(['編集した本文']);const bubble=bubbles(document)[0];
+  bubble.scenarioMatch={sourceIds:['p1-c1-d1'],ocrText:'OCR',score:1,status:'confirmed'};
+  assert.equal(detachResolvedScenarioLinks(document),true);
+  assert.equal(detachResolvedScenarioLinks(document),false);
+  assert.equal(bubble.text,'編集した本文');assert.deepEqual(bubble.scenarioMatch.sourceIds,[]);
+  assert.deepEqual(scenarioOriginIds(bubble),['p1-c1-d1']);
+  rejectScenarioCorrespondence(bubble);
+  assert.equal(bubble.text,'編集した本文');assert.deepEqual(scenarioOriginIds(bubble),[]);
+  assert.equal(scenarioBubbleNeedsReview(bubble),false);
 });

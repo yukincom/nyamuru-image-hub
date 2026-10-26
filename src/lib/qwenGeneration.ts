@@ -1,4 +1,4 @@
-import type { Manga, CharacterReferenceSourceImage, FigureSize } from '../types.ts';
+import type { Manga, CharacterReferenceSourceImage, FigureSize, BBox } from '../types.ts';
 import type { PaintOwner } from './paintDocument.ts';
 import { compileArtworkRules, getArtworkSettings } from './artworkRules.ts';
 import { isPropPlacement } from './catalogModel.ts';
@@ -6,8 +6,13 @@ import { FIGURE_SIZE_LABELS } from './manga.ts';
 import { requireHumanPoseGenerationReady } from './humanPoseSelection.ts';
 import { humanPoseCameraPromptText } from './humanPoseScene.ts';
 import type { HumanPoseTextSelection } from './humanPoseTypes.ts';
+import { paintReferenceBox } from './paintDocument.ts';
+import { panelBounds } from './canvasGeometry.ts';
+import { humanPoseFigureFrame, humanPosePanelCutFrame, type HumanPoseCutFrame } from './humanPoseFraming.ts';
+import { humanPoseSceneFrame } from './humanPoseScene.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
+  characterKeys?: string[];
 }
 
 export const QWEN_GENERATION_PROFILE = 'qwen-image-2.1-owner-v1' as const;
@@ -17,7 +22,12 @@ export interface QwenGenerationPlan {
   ownerKey: string; label: string; width: number; height: number;
   prompt: string; characterKeys: string[]; candidates: QwenReferenceCandidate[];
   sketchPrompt?: string;
-  humanPose?: { selection: HumanPoseTextSelection; framing: FigureSize };
+  humanPose?: { selection: HumanPoseTextSelection; framing: FigureSize; aspect?: number; cutFrame?: HumanPoseCutFrame };
+  scope?: 'page'|'panel';
+  literalText?: string[];
+  compositionImage?: string;
+  outputFrame?: BBox;
+  referenceFrame?: BBox;
   poseContext?: string;
 }
 export interface QwenReference { label: string; characterKeys: string[]; image: string }
@@ -57,7 +67,7 @@ export interface QwenJob {
 }
 export type QwenHistoryScope = 'owner'|'work';
 export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','failed'].includes(job.status);}
-export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
+export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
 
 /** The owner is resolved by the editor, never inferred from a name or a filename. */
 export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner):QwenGenerationPlan {
@@ -72,9 +82,9 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const characterKeys=character?.localId?[character.localId]:[];
   const candidates:QwenReferenceCandidate[]=character?.catalog_id&&manga.meta.series_id
     ? manga.materials.filter(m=>m.type==='character'&&m.source_image&&(
-      m.characterId===character.localId||m.character_catalog_id===character.catalog_id))
+      m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))
       .sort((a,b)=>Number(b.catalog_id===character.primary_material_catalog_id)-Number(a.catalog_id===character.primary_material_catalog_id))
-      .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!})) : [];
+      .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!,characterKeys})) : [];
   const style=compileArtworkRules(getArtworkSettings(manga),'character').style_notes;
   const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [
@@ -86,7 +96,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   ].filter(Boolean).join('\n\n') : '';
   const poseContext = pose ? [
     `人物：${owner.figure?.name || owner.label}。`,
-    `描写範囲は${FIGURE_SIZE_LABELS[framing]}。`,
+    pose.input_mode==='prompt' ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。` : '',
     owner.figure?.action ? `動作・表情・視線：${owner.figure.action}` : '',
     poseInstructions,
     character?.visual_prompt?.trim() ? `人物のビジュアル指定：${character.visual_prompt}` : '',
@@ -99,7 +109,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     owner.kind==='background'?`背景のみ。人物や吹き出しは描かない。背景指示：${owner.description||panel?.background_description||manga.setting.location||'無地'}`
       :owner.kind==='bubble'?'吹き出しの外形だけを描く。文字は加えない。'
       :`${person?'人物':'小道具'}：${owner.figure?.name||owner.label}。\n背景・文字・吹き出しは加えず、外側は透明にする。`,
-    owner.figure?.size || pose ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。${framing==='bust-up'?'頭頂から胸までを画面に収めた構図で描く。':'指定した範囲を画面に収めた構図で描く。'}`:'',
+    pose?.input_mode!=='image'&&(owner.figure?.size || pose) ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。${framing==='bust-up'?'頭頂から胸までを画面に収めた構図で描く。':'指定した範囲を画面に収めた構図で描く。'}`:'',
     owner.figure?.action?`動作・表情・視線：${owner.figure.action}`:'',
     poseInstructions,
     character?.visual_prompt?.trim()?`人物のビジュアル指定：${character.visual_prompt}`:'',
@@ -126,13 +136,23 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     ...style,
     '人物は1人だけ。画面外の手足を描き足さず、別の人物・資料集の別アングル・コマ枠・文字を加えない。',
   ].filter(Boolean).join('\n\n'):undefined;
+  const referenceFrame=owner.paint.referenceFrame?paintReferenceBox(owner.paint,owner.frame):owner.figure?humanPoseFigureFrame({...owner.figure,bbox:owner.frame},owner.frame):owner.frame;
+  const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
+  const outputFrame=cutFrame?panelBounds(panel):undefined;
+  const dimensions=outputFrame?humanPoseSceneFrame(outputFrame.w/outputFrame.h):{width:owner.paint.width,height:owner.paint.height};
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
-    width:owner.paint.width,height:owner.paint.height,prompt,characterKeys,candidates,
-    ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing},poseContext} : {})};
+    ...dimensions,prompt,characterKeys,candidates,
+    ...(outputFrame?{outputFrame,referenceFrame}:{}),
+    ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
 }
 
 export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string){
+  if(plan.scope){
+    if(!plan.compositionImage)throw new Error('紙面の参照画像を用意してから生成してください');
+    if(paintImage||sketchImage||correctionImage||poseImage)throw new Error('全体生成の紙面参照に単品レイヤーは追加できません');
+    paintImage=plan.compositionImage;
+  }
   const usesPoseImage = plan.humanPose?.selection.input_mode === 'image';
   if(usesPoseImage&&!poseImage)throw new Error('3Dポーズの撮影画像を用意してから生成してください');
   if(poseImage&&!usesPoseImage)throw new Error('ポーズ文で送る場合は3D画像を送信できません');
@@ -141,7 +161,7 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   const drawingReference = plan.humanPose && paintImage && !correctionImage ? paintImage : undefined;
   const sourcePaint = drawingReference ? undefined : paintImage;
   const allReferences = [...(drawingReference ? [{label:'描画レイヤー参照：描き方の参考。ポーズ・アングル・描写範囲は今回の指定を優先する。',characterKeys:[],image:drawingReference}] : []),...references,
-    ...(poseImage ? [{label:`3Dポーズ参照（${FIGURE_SIZE_LABELS[plan.humanPose!.framing]}）：身体の姿勢・アングル・切り取りのみ。人物の外見と画風はキャラクター設定画を使う。`,characterKeys:[],image:poseImage}] : [])];
+    ...(poseImage ? [{label:'3Dポーズ参照：身体の姿勢・アングル・切り取りのみ。人物の外見と画風はキャラクター設定画を使う。',characterKeys:[],image:poseImage}] : [])];
   if(sketchImage&&(!plan.ownerKey.startsWith('figure-')||!plan.characterKeys.length))throw new Error('ネームのラフ生成には登場人物の指定が必要です');
   if(allReferences.length>9)throw new Error(usesPoseImage?'3Dポーズ画像と参照資料は合計9枚までです':'参照資料は9枚までです');
   if(allReferences.length+Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage))>10)throw new Error('設定画・3Dポーズ画像・選択レイヤーは合計10枚までです');
@@ -152,6 +172,7 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
   return {profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
     overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
+    ...(plan.scope?{literal_text:plan.literalText??[]}:{}),
     prompt:roles?`${plan.prompt}\n\n添付画像の役割：\n${roles}`:plan.prompt,character_keys:plan.characterKeys,
     mode:sketchImage?'sketch':sourcePaint?'paint':'new',...(sourcePaint?{paint_image:sourcePaint}:{}),...(sketchImage?{sketch_image:sketchImage}:{}),
     ...(correctionImage?{correction_image:correctionImage}:{}),

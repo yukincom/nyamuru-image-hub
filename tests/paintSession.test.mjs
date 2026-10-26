@@ -49,7 +49,7 @@ const compiled=ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.
 function appSave({cancel=false,fail=false}={}){
  const documentRef={current:{manga:{meta:{episode_id:'episode',series:''},paint:0}}};
  const paintSessionRef={current:{document:documentRef.current}},calls=[],notices=[];
- const context={Error,crypto,isLanClient:false,hasDocument:true,showNewDialog:false,projectOperation:{current:false},setProjectBusy:value=>calls.push(['busy',value]),documentRef,paintSessionRef,
+ const context={Error,crypto,endTextEdit:()=>{},isLanClient:false,hasDocument:true,showNewDialog:false,projectOperation:{current:false},setProjectBusy:value=>calls.push(['busy',value]),documentRef,paintSessionRef,
   paintController:{current:{flush:async()=>{calls.push(['flush']);if(fail)throw Error('ink failure');documentRef.current={...documentRef.current,manga:{...documentRef.current.manga,paint:7}};paintSessionRef.current={document:documentRef.current};}}},
   boundEpisodeWorkspace:null,cloneDocument:structuredClone,setDocument:next=>{documentRef.current=next;},
   withNewCreationBridgeSession:async callback=>{calls.push(['bridge']);await callback();},
@@ -87,10 +87,10 @@ function appQwenInsert({paint=false,locked=false,changed=false,wrongSession=fals
  function find(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='insertQwenImage')expression=node.initializer.getText(ast);ts.forEachChild(node,find);}
  find(ast);
  const compiled=ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- const document={manga:{}},owner=initial().owners[1],calls=[];
+ const document={manga:{pages:[{}, {panels:Array.from({length:4},()=>({}))}]}},owner=initial().owners[1],calls=[];
  if(locked)owner.paint.layers[0].locked=true;
- const context={Error,qwenGeneration:{document,pageIndex:1,panelIndex:3,overlay:false,owner},documentRef:{current:changed?{}:document},projectOperation:{current:false},imageImportBusy:false,
-  paintSessionRef:{current:paint?{pageIndex:1,panelIndex:wrongSession?2:3,overlay:false}:null},paintOwnerLocked,
+ const context={Error,qwenGeneration:{document,pageIndex:1,panelIndex:3,overlay:false,owner,plan:{}},documentRef:{current:changed?{}:document},projectOperation:{current:false},imageImportBusy:false,
+  paintSessionRef:{current:paint?{pageIndex:1,panelIndex:wrongSession?2:3,overlay:false}:null},paintOwnerLocked,panelLocked:()=>false,
   paintController:{current:{insertImage:async(file,key)=>{if(fail)throw Error('import failed');calls.push(['paint',file,key]);}}},
   importPlacedImage:async(file,target)=>{if(fail)throw Error('import failed');calls.push(['placed',file,target]);},
   setQwenGeneration:value=>calls.push(['dialog',value]),setToast:text=>calls.push(['toast',text])};
@@ -110,5 +110,29 @@ test('generated artwork uses the captured destination and existing import path, 
 test('generated-image insertion keeps the dialog and document when the destination changed, is locked or import fails',async()=>{
  for(const options of [{changed:true},{locked:true},{paint:true,wrongSession:true},{fail:true},{paint:true,fail:true}]){
   const h=appQwenInsert(options);await assert.rejects(h.insert({name:'output.png'}));assert.deepEqual(h.calls,[]);
+ }
+});
+
+test('composition insertion retains the captured page and panel rather than the active selection',async()=>{
+ for(const scope of ['page','panel']){
+  const h=appQwenInsert(),frame={x:4,y:7,w:100,h:150};
+  h.context.qwenGeneration.plan={scope,outputFrame:frame,label:'対象全体'};
+  delete h.context.qwenGeneration.owner;
+  const file={name:'composition.png'};await h.insert(file);
+  const target=h.calls[0][2];
+  assert.equal(target.pageIndex,1);assert.equal(target.panelIndex,3);
+  assert.equal(target.scope,scope);assert.equal(target.generationScope,scope);assert.equal(target.box,frame);
+  assert.equal(target.figureIndex,undefined);assert.deepEqual(h.calls[1],['dialog',null]);
+ }
+});
+
+test('single pose output keeps the original guide frame after adopting its panel-sized image',async()=>{
+ for(const paint of [false,true]){
+  const h=appQwenInsert({paint}),frame={x:0,y:0,w:90,h:120},referenceFrame={x:12,y:18,w:30,h:60};
+  h.context.qwenGeneration.plan={outputFrame:frame,referenceFrame};
+  if(paint)h.context.paintController.current.insertImage=async(file,key,placement)=>h.calls.push(['paint',file,key,placement]);
+  await h.insert({name:'pose.png'});
+  const placement=h.calls[0][paint?3:2];
+  assert.deepEqual({...placement[paint?'frame':'box']},frame);assert.equal(placement.referenceFrame,referenceFrame);
  }
 });

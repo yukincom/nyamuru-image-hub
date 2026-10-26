@@ -1,7 +1,7 @@
 import source from '../assets/materials/bubbles/paths.json' with { type: 'json' };
 import type { Bubble, BubbleShape } from '../types.ts';
 
-export const BUBBLE_PRESET_LAYERS = ['critical', 'nomal', 'tense', 'toge', 'announce', 'toge_natural'] as const;
+export const BUBBLE_PRESET_LAYERS = ['thought', 'critical', 'nomal', 'tense', 'toge', 'announce', 'toge_natural'] as const;
 export interface BubblePreset {
   id: string;
   layer: string;

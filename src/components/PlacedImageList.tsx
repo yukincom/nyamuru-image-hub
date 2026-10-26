@@ -18,6 +18,7 @@ export default function PlacedImageList({ title, images = [], assets = [], selec
     <SectionTitle title={title} action={onAdd && <button class="inline-add" disabled={busy} onClick={onAdd}>画像を追加…</button>} />
     <div class="nested-list">
       {images.map((image, index) => {
+        if(image.paintScope||image.bubbleOriginal)return null;
         const asset = assets.find(item => item.id === image.assetId);
         const selected = index === selectedIndex;
         return <div class={`nested-card selectable-card ${selected ? 'is-selected' : ''}`} key={image.id}>

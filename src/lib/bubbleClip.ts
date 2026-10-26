@@ -1,15 +1,17 @@
-import type { BBox, Bubble, Panel } from '../types.ts';
+import type { BBox, Bubble, BubbleTextPosition, Panel } from '../types.ts';
 
-/** Keep text in the visible rectangular portion without changing the outline. */
-export function bubbleTextFrame(box: BBox, panel: Panel, bubble: Bubble): BBox {
-  if (!bubble.clip_to_panel || panel.shape.type !== 'rect') return box;
-  const shape = panel.shape;
-  const x = Math.max(box.x, shape.x), y = Math.max(box.y, shape.y);
-  return { x, y, w: Math.max(0, Math.min(box.x + box.w, shape.x + shape.w) - x),
-    h: Math.max(0, Math.min(box.y + box.h, shape.y + shape.h) - y) };
+/** Text layout stays relative to the complete bubble; the owning panel clips presentation. */
+export function bubbleTextFrame(box: BBox, _panel: Panel, _bubble: Bubble): BBox {
+  return box;
 }
 
-/** A shared connector must have the same clipping behavior at both ends. */
-export function compatibleBubbleClips(first: Bubble, second: Bubble): boolean {
-  return Boolean(first.clip_to_panel) === Boolean(second.clip_to_panel);
+/** The text starts centered and can be moved independently inside its bubble. */
+export function bubbleTextPosition(bubble: Pick<Bubble,'text_position'>): BubbleTextPosition {
+  const source=bubble.text_position;
+  return {x:Math.max(0,Math.min(1,Number.isFinite(source?.x)?source!.x:.5)),y:Math.max(0,Math.min(1,Number.isFinite(source?.y)?source!.y:.5))};
+}
+
+/** Connectors in the same owner always share that owner's clipping boundary. */
+export function compatibleBubbleClips(_first: Bubble, _second: Bubble): boolean {
+  return true;
 }

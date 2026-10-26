@@ -11,7 +11,7 @@ export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS }: {
   const [source, setSource] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const paint=image.paint;
-  const hasTone=paint?.layers.some(layer=>layer.visible&&layer.tone?.enabled);
+  const hasTone=paint&&(Boolean(image.bubbleOriginal)||paint.layers.some(layer=>layer.visible&&layer.tone?.enabled));
   const [toneImages,setToneImages]=useState<{paint:typeof paint;images:PaintImages}|null>(null);
   useEffect(()=>{
     let ignored=false,owned:PaintImages|undefined;
@@ -19,7 +19,7 @@ export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS }: {
     if(hasTone&&paint)void loadPaintImages([paint],assets).then(images=>{
       if(ignored){images.forEach(image=>{image.src='';});return;}
       owned=images;setToneImages({paint,images});
-    }).catch(()=>{/* Keep the saved composite visible if a source asset is unavailable. */});
+    }).catch(()=>{if(!ignored&&image.bubbleOriginal)setFailed(true);/* Ordinary artwork can use its saved composite. */});
     return()=>{ignored=true;owned?.forEach(image=>{image.src='';});};
   },[paint,hasTone,assets]);
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS }: {
   return <span class="placed-image-viewport" style={{ opacity: image.opacity }}>
     {toneReady?<span class="placed-image-content" style={contentStyle}><PaintPreviewCanvas paint={paint} images={toneImages.images} includeGeneration={false} style={{
       width:`${paint.width/crop.w*100}%`,height:`${paint.height/crop.h*100}%`,left:`${-crop.x/crop.w*100}%`,top:`${-crop.y/crop.h*100}%`,
-    }}/></span>:source && asset && <span class="placed-image-content" style={contentStyle}><img src={source} alt="" draggable={false} onError={() => setFailed(true)} style={{
+    }}/></span>:!(image.bubbleOriginal&&paint) && source && asset && <span class="placed-image-content" style={contentStyle}><img src={source} alt="" draggable={false} onError={() => setFailed(true)} style={{
       width: `${asset.widthPx / crop.w * 100}%`, height: `${asset.heightPx / crop.h * 100}%`,
       left: `${-crop.x / crop.w * 100}%`, top: `${-crop.y / crop.h * 100}%`,
     }} /></span>}

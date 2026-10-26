@@ -36,7 +36,7 @@ export default function NewLayoutAnalysisFeed({ items, message, characterProgres
             <span>誤検出除外: {analysis.excludedNonPanelCount}領域 · 補助検出 文字{analysis.detectedTextRegionCount} / 顔{analysis.detectedFaceRegionCount} / 身体{analysis.detectedBodyRegionCount}</span>
             <span>人物あたり: {analysis.detectedFigures.length}件</span>
             <span>文字: {analysis.ocrEngine || '検出なし'} · {analysis.ocrLines.length}件</span>
-            {analysis.ocrLines.length > 0 && <ul>{analysis.ocrLines.map((line) => <li key={line.id}><strong>{line.text}</strong><small>{line.source}{line.needsReview ? ' · 要確認' : ''}</small></li>)}</ul>}
+            {analysis.ocrLines.length > 0 && <ul>{analysis.ocrLines.map((line) => <li key={line.id}><strong class={line.needsReview?'is-text-review':''}>{line.text}</strong><small>{line.source}</small></li>)}</ul>}
           </div>}
         </details>;
       })}

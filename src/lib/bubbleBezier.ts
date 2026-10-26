@@ -6,51 +6,25 @@ export const BUBBLE_BEZIER_PRESETS = [
   ['ellipse', '楕円'], ['rounded', '角丸'], ['cloud', '雲'], ['burst', 'トゲ'],
 ] as const;
 export type BubbleBezierPreset = typeof BUBBLE_BEZIER_PRESETS[number][0];
-export const MAX_BUBBLE_NODES = 64;
+export const MAX_BUBBLE_NODES = 128;
 
 export function isBubbleBezier(value: unknown): value is BubbleBezier {
   if (!value || typeof value !== 'object' || !('nodes' in value) || !Array.isArray(value.nodes)) return false;
-  const point = (p: unknown, limit: number): p is VectorPoint => !!p && typeof p === 'object'
+  const point = (p: unknown): p is VectorPoint => !!p && typeof p === 'object'
     && 'x' in p && 'y' in p && typeof p.x === 'number' && typeof p.y === 'number'
-    && Number.isFinite(p.x) && Number.isFinite(p.y) && Math.abs(p.x) <= limit && Math.abs(p.y) <= limit;
+    && Number.isFinite(p.x) && Number.isFinite(p.y);
   return value.nodes.length >= 3 && value.nodes.length <= MAX_BUBBLE_NODES && value.nodes.every(n =>
-    point(n, 100) && n.x >= 0 && n.y >= 0
+    point(n)
     && (['handleIn', 'handleOut'] as const).every(key => {
       if (!(key in n)) return true;
       const handle = (n as VectorNode)[key];
-      return handle === undefined || point(handle, 100)
-        && n.x+handle.x >= -1e-6 && n.x+handle.x <= 100+1e-6
-        && n.y+handle.y >= -1e-6 && n.y+handle.y <= 100+1e-6;
+      return handle === undefined || point(handle)&&Number.isFinite(n.x+handle.x)&&Number.isFinite(n.y+handle.y);
     }));
 }
 
-/** Keep the whole cubic in its box using the convex hull of anchors and controls. */
-export function fitBubbleBezier(outline: BubbleBezier): BubbleBezier {
-  const bound = (value: number) => Math.max(0, Math.min(100, value));
-  return { nodes: outline.nodes.map(n => {
-    const node: VectorNode = { x: bound(n.x), y: bound(n.y) };
-    for (const key of ['handleIn', 'handleOut'] as const) {
-      const h = n[key];
-      if (h) {
-        // Shorten along the original tangent instead of bending it at an axis boundary.
-        const scale = Math.max(0, Math.min(1,
-          h.x > 0 ? (100-node.x)/h.x : h.x < 0 ? -node.x/h.x : 1,
-          h.y > 0 ? (100-node.y)/h.y : h.y < 0 ? -node.y/h.y : 1));
-        node[key] = { x: h.x*scale || 0, y: h.y*scale || 0 };
-      }
-    }
-    return node;
-  }) };
-}
-
 export function moveBubbleBezierNode(outline: BubbleBezier, index: number, point: VectorPoint, handle?: 'handleIn' | 'handleOut', independent = false): BubbleBezier {
-  const node = outline.nodes[index];
-  if (handle && !independent && node) {
-    const limitX = Math.min(node.x, 100-node.x), limitY = Math.min(node.y, 100-node.y);
-    // Both ends share this symmetric feasible box, so an edge anchor retains its tangent.
-    point = { x: node.x + Math.max(-limitX, Math.min(limitX, point.x-node.x)), y: node.y + Math.max(-limitY, Math.min(limitY, point.y-node.y)) };
-  }
-  return fitBubbleBezier({ nodes: moveVectorNode(bubbleBezierPath(outline), index, point, handle, independent).nodes });
+  if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return outline;
+  return { nodes: moveVectorNode(bubbleBezierPath(outline), index, point, handle, independent).nodes };
 }
 
 /** Share the existing vector path format and editing operations; only nodes are persisted. */
@@ -85,7 +59,7 @@ export function createBubbleBezier(preset: BubbleBezierPreset): BubbleBezier {
     node.handleOut = { x: dx / 3 + dy * .43, y: dy / 3 - dx * .43 };
     next.handleIn = { x: -dx / 3 + dy * .43, y: -dy / 3 - dx * .43 };
   });
-  return fitBubbleBezier({ nodes });
+  return { nodes };
 }
 
 export function addBubbleBezierNode(outline: BubbleBezier, index: number): BubbleBezier {
@@ -103,8 +77,8 @@ export function bubbleBezierBoundaryDistance(box: BBox, target: VectorPoint, out
   const center = bubbleBezierCenter(box, outline)!;
   const dx = target.x - center.x, dy = target.y - center.y, distance = Math.hypot(dx, dy);
   if (!distance) return undefined;
-  const length = Math.hypot(box.w, box.h) * 4;
   const curve = paperPath(transformVector(bubbleBezierPath(outline), box.x, box.y, box.w / 100, box.h / 100));
+  const length = Math.max(1,Math.hypot(curve.bounds.width,curve.bounds.height)*2,distance*2);
   const ray = paperPath({ ...bubbleBezierPath(outline), closed: false, nodes: [center, { x: center.x + dx / distance * length, y: center.y + dy / distance * length }] });
   try {
     const hits = curve.getIntersections(ray).map(hit => Math.hypot(hit.point.x-center.x, hit.point.y-center.y));

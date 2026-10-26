@@ -27,8 +27,8 @@ function Fixture() {
     <button class="secondary-button" disabled={!saved} onClick={() => setDoc(parseMangaYaml(saved))}>検証用OMNYを再読込</button>
     <textarea aria-label="保存したOMNY" readOnly rows={3} value={saved} style="width:100%" />
     {page.page_overlay && <PageOverlayInspector manga={doc.manga} panels={page.panels} overlay={page.page_overlay}
-      pageIndex={0} selectedElement={selection} canvasSelectionScrollRequest={0} guideVisible={() => true}
-      onToggleGuide={() => {}} onSelectElement={value => value && setSelection(value)} onMoveBubble={() => {}} onScenarioChoice={() => {}}
+      pageIndex={0} selectedElement={selection} canvasSelectionScrollRequest={0}
+      onSelectElement={value => value && setSelection(value)} onScenarioChoice={() => {}}
       onChange={value => {
         const next = structuredClone(doc); next.manga.pages[0].page_overlay = value; setDoc(next);
       }} />}

@@ -1,11 +1,63 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { commitPaintStroke, appendPaintSamples, constrainPaintPoint } from '../src/lib/paintGesture.ts';
+import { commitPaintStroke, commitVectorPaths, canStartPaintMark, preparePaintMarkLayer, appendPaintSamples, constrainPaintPoint, paintStrokeBounds, previewPaintStroke } from '../src/lib/paintGesture.ts';
 import { paintScene, newPaintLayer } from '../src/lib/paintDocument.ts';
 import { PaintSmoother } from '../src/lib/paintStroke.ts';
+import {defaultVectorStyle} from '../src/lib/vectorGeometry.ts';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import ts from 'typescript';
+
+const editorSource=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+const editorAst=ts.createSourceFile('PaintEditor.tsx',editorSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+function editorHandler(name,context){let source;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text===name)source=node.getText(editorAst);ts.forEachChild(node,visit);}visit(editorAst);assert.ok(source,name);return runInNewContext(ts.transpileModule(`(${source})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);}
+test('the actual raster pointercancel handler discards its first pending mark',()=>{
+  for(const type of ['pointerup','pointercancel','lostpointercapture']){
+    let kept,points=0;
+    editorHandler('endPointer',{gesture:{current:{pointerId:7}},addPoints:()=>points++,finishGesture:value=>kept=value})({type,pointerId:7,preventDefault(){},stopPropagation(){}});
+    assert.equal(kept,type!=='pointercancel');assert.equal(points,type==='pointerup'?1:0);
+  }
+});
+test('vector draft allocation is committed only by the same path preview/finish route',()=>{
+  const begin=editorSource.slice(editorSource.indexOf('  function beginVector('),editorSource.indexOf('  function changePaths('));
+  assert.doesNotMatch(begin,/changeLayers\(/,'pointerdown must not checkpoint a blank vector layer');
+  assert.match(begin,/addedLayer,target,point,cleanup/);
+  assert.match(begin,/finishVector\(e.type!=='pointercancel'\)/);
+  const finish=editorSource.slice(editorSource.indexOf('  function showVectorDrag('),editorSource.indexOf('  function inputPoint('));
+  assert.equal((finish.match(/commitVectorPaths\(/g)??[]).length,2,'preview and commit share atomic insertion');
+});
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:-1,action:null,bubbles:[],figures:[{name:'人物',bbox:{x:10,y:20,w:30,h:50}}]},100,[]);
-const stroke=(x=1)=>({tool:'pen',color:'#000000',size:8,points:[{x,y:5,pressure:.8,time:0},{x:x+10,y:15,pressure:.7,time:4}]});
+const stroke=(x=20)=>({tool:'pen',color:'#000000',size:8,points:[{x,y:20,pressure:.8,time:0},{x:x+10,y:30,pressure:.7,time:4}]});
+test('zero-layer and guide-only owners get one work layer atomically with their first mark',()=>{
+  for(const kind of ['raster','vector'])for(const guideOnly of [false,true]){
+    const scene=initial(),owner=scene.owners[0];if(!guideOnly)owner.paint.layers=[];
+    const before=structuredClone(scene),selected=owner.paint.layers[0];
+    assert.equal(canStartPaintMark(owner,selected,kind),true);
+    const draft=preparePaintMarkLayer(owner,selected,kind,'monochrome');
+    assert.equal(draft.kind,kind);assert.equal(draft.colorMode,'monochrome');assert.deepEqual(scene,before,'preparing/cancelling must not append');
+    const path={id:'first-path',closed:false,nodes:[{x:1,y:2},{x:3,y:4}],style:defaultVectorStyle()};
+    const pending={ownerKey:owner.key,layerId:draft.id,addedLayer:draft};
+    const next=kind==='raster'?commitPaintStroke(scene,{...pending,stroke:stroke()}):commitVectorPaths(scene,{...pending,paths:[path]});
+    assert.equal(next.owners[0].paint.layers.length,before.owners[0].paint.layers.length+1);
+    assert.equal(kind==='raster'?next.owners[0].paint.layers.at(-1).strokes.length:next.owners[0].paint.layers.at(-1).paths.length,1);
+    assert.deepEqual(next.owners[0].paint.layers.slice(0,-1),before.owners[0].paint.layers);
+    assert.deepEqual(scene,before,'the single undo predecessor contains no automatic work layer');
+    assert.equal(commitVectorPaths(scene,{...pending,paths:[]}),scene,'an empty vector gesture creates nothing');
+    for(const tool of ['eraser','clear'])assert.equal(commitPaintStroke(scene,{...pending,stroke:{...stroke(),tool}}),scene);
+  }
+});
+test('first-mark allocation respects owner/child locks, source images, visibility and the layer limit',()=>{
+  const owner=initial().owners[0];owner.paint.layers=[];
+  for(const patch of [{locked:true},{inheritedLocked:true},{bubble:{hidden:true}}])assert.equal(canStartPaintMark({...owner,...patch},undefined,'raster'),false);
+  const locked={...newPaintLayer(),locked:true};
+  assert.equal(preparePaintMarkLayer(owner,locked,'raster'),undefined);
+  const source={...locked,image:{assetId:'source',crop:{x:0,y:0,w:1,h:1},bbox:{x:0,y:0,w:1,h:1}}};
+  owner.paint.layers=[source];const draft=preparePaintMarkLayer(owner,source,'raster');assert.ok(draft&&draft!==source);assert.equal(source.locked,true);
+  assert.equal(preparePaintMarkLayer(owner,{...source,visible:false},'raster'),undefined);
+  owner.paint.layers=Array.from({length:64},()=>newPaintLayer());assert.equal(canStartPaintMark(owner,undefined,'vector'),false);
+  assert.equal(preparePaintMarkLayer(owner,owner.paint.layers[0],'raster'),owner.paint.layers[0]);
+});
 test('rapid completions append to current owner layers without replacing earlier strokes or another owner',()=>{
   let scene=initial();const source=structuredClone(scene);
   const commands=Array.from({length:10},(_,i)=>{const owner=scene.owners[i%2];return{ownerKey:owner.key,layerId:owner.paint.layers[0].id,stroke:stroke(i*10)};});
@@ -14,6 +66,103 @@ test('rapid completions append to current owner layers without replacing earlier
   assert.deepEqual(scene.owners[1].paint.layers[0].strokes.map(s=>s.points[0].x),[10,30,50,70,90]);
   assert.deepEqual(source.owners.map(o=>o.paint.layers[0].strokes),[[],[]]);
   commands[1].stroke.points[0].x=999;assert.equal(scene.owners[1].paint.layers[0].strokes[0].points[0].x,10);
+});
+
+test('marks grow only their own canvas in all directions and retain pointerdown world coordinates',()=>{
+  for(const x of [-90,300])for(const y of [-70,400]){
+    const scene=initial(),owner=scene.owners[0],before=structuredClone(scene),layer=newPaintLayer();owner.paint.layers.push(layer);
+    const space={frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height};
+    const pending={ownerKey:owner.key,layerId:layer.id,space,stroke:{...stroke(),points:[{x,y,pressure:1,time:0}]}};
+    const first=commitPaintStroke(scene,pending),second=commitPaintStroke(first,{...pending,stroke:{...pending.stroke,points:[{x:x+10,y:y+20,pressure:1,time:1}]}});
+    const updated=second.owners[0],marks=updated.paint.layers.find(l=>l.id===layer.id).strokes;
+    for(const [i,mark] of marks.entries()){
+      const point=mark.points[0];
+      assert.ok(Math.abs(updated.frame.x+point.x*updated.frame.w/updated.paint.width-(space.frame.x+(x+i*10)*space.frame.w/space.width))<1e-8);
+      assert.ok(Math.abs(updated.frame.y+point.y*updated.frame.h/updated.paint.height-(space.frame.y+(y+i*20)*space.frame.h/space.height))<1e-8);
+    }
+    assert.equal(second.owners[1],scene.owners[1],'siblings are not scanned, transformed or replaced');
+    assert.deepEqual(scene.owners[1],before.owners[1]);assert.equal(layer.strokes.length,0,'undo source and input are immutable');
+    assert.deepEqual(JSON.parse(JSON.stringify(second)),second,'expanded coordinates survive persistence');
+  }
+});
+
+test('preview has one mark route, history does not expand twice, and undo drops stale selection',()=>{
+  const workspace=editorSource.slice(editorSource.indexOf('  const value:PaintWorkspaceState'),editorSource.indexOf('  const geometry='));
+  assert.match(workspace,/live:vectorPreview\?undefined:rasterPreview\?\.live/);
+  const preview=editorSource.slice(editorSource.indexOf('  const rasterPreview=useMemo'),editorSource.indexOf('  const scene='));
+  assert.match(preview,/previewPaintStroke/);assert.doesNotMatch(preview,/commitPaintStroke/,'preview must not invalidate retained-layer caches');
+  assert.match(readFileSync(new URL('../src/components/PaintSceneView.tsx',import.meta.url),'utf8'),/paint=\{owner.paint\} images=\{state.images\} live=\{live\}/);
+  assert.doesNotMatch(editorSource,/setLive\([^\n]*points:/,'live samples belong to the gesture, not undo history');
+  assert.doesNotMatch(editorSource,/if\(editingMask&&\(start\./,'a mask gesture may start outside and enter the artwork');
+  assert.match(editorSource,/const selectionForMark=selectionBoxes;/,'only an explicit selection may clip a mask gesture');
+  const commit=editorSource.slice(editorSource.indexOf('  function commit('),editorSource.indexOf('  function changeLayers('));
+  assert.doesNotMatch(commit,/expandPaintOwnerToContent/);
+  for(const name of ['undo','redo']){
+    let cleared=false;
+    editorHandler(name,{busy:false,suspended:false,operation:{current:false},inputActive:{current:false},clearVectorSelection(){},setSelection:value=>cleared=value===null,sharedHistory:{undo(){},redo(){}}})();
+    assert.equal(cleared,true,name);
+  }
+});
+
+test('live preview retains ink references and never appends or clones the current mark',()=>{
+  const scene=initial(),owner=scene.owners[0],layer=newPaintLayer();owner.paint.layers=[layer];
+  layer.strokes=[stroke()];
+  const mark=stroke(),pending={ownerKey:owner.key,layerId:layer.id,stroke:mark,bounds:paintStrokeBounds(mark),space:{frame:owner.frame,width:owner.paint.width,height:owner.paint.height}};
+  let previous;
+  for(let i=0;i<120;i++){
+    const preview=previewPaintStroke(scene,pending,previous);
+    assert.equal(preview.scene,scene);assert.equal(preview.owner.paint,owner.paint);
+    assert.equal(preview.live.stroke,mark);assert.equal(layer.strokes.length,1);
+    previous=preview;
+  }
+  const committed=commitPaintStroke(scene,pending);assert.equal(committed.owners[0].paint.layers[0].strokes.length,2);
+  assert.notEqual(committed.owners[0].paint.layers[0].strokes[1],mark,'only commit takes ownership of a copy');
+});
+
+test('incremental pen bounds only read appended samples and shape bounds can contract',()=>{
+  const mark=stroke();const before=paintStrokeBounds(mark),from=mark.points.length;
+  mark.points=mark.points.map(()=>({get x(){throw Error('old sample read');},get y(){throw Error('old sample read');}}));
+  mark.points.push({x:90,y:-20,pressure:1,time:1});
+  const bounds=paintStrokeBounds(mark,before,from);
+  assert.deepEqual(bounds,{x:14,y:-26,w:82,h:62});
+  const shape={...stroke(),tool:'rectangle',points:[{x:20,y:20},{x:90,y:90}]};
+  const wide=paintStrokeBounds(shape);shape.points[1]={x:30,y:30};assert.ok(paintStrokeBounds(shape).w<wide.w);
+  assert.equal(paintStrokeBounds({...mark,tool:'eraser'}),undefined);
+});
+
+test('expanded preview bases are reused and live/committed coordinates agree in every direction',()=>{
+  for(const [x,y] of [[-90,20],[20,-80],[500,20],[20,500],[-90,-80]]){
+    const scene=initial(),owner=scene.owners[0],layer=newPaintLayer();owner.paint.layers=[layer];layer.strokes=[stroke()];
+    const mark={...stroke(),points:[{x,y,pressure:1,time:0}]},pending={ownerKey:owner.key,layerId:layer.id,stroke:mark,bounds:paintStrokeBounds(mark),space:{frame:owner.frame,width:owner.paint.width,height:owner.paint.height}};
+    const first=previewPaintStroke(scene,pending),second=previewPaintStroke(scene,pending,first),committed=commitPaintStroke(scene,pending).owners[0];
+    assert.equal(second.owner,first.owner);assert.equal(second.scene,first.scene);
+    assert.deepEqual(second.owner.frame,committed.frame);
+    const saved=committed.paint.layers[0].strokes.at(-1);assert.equal(second.live.stroke.size,saved.size);
+    second.live.stroke.points.forEach((point,i)=>{assert.ok(Math.abs(point.x-saved.points[i].x)<1e-8);assert.ok(Math.abs(point.y-saved.points[i].y)<1e-8);});
+    assert.equal(second.owner.paint.layers[0].strokes.length,1,'live is not baked into retained ink');
+    if(x>=0&&y>=0)assert.equal(second.owner.paint.layers,owner.paint.layers,'right/bottom growth cannot rewrite ink');
+    assert.equal(owner.paint.layers[0].strokes.length,1);
+  }
+});
+
+test('existing source crops survive vector edits; new vector marks use an unclipped sibling',()=>{
+  const scene=initial(),owner=scene.owners[0],layer={...newPaintLayer('cropped','vector'),clip:{x:0,y:0,w:20,h:20}};owner.paint.layers=[layer];
+  const path={id:'outside',closed:false,nodes:[{x:-30,y:0},{x:50,y:40}],style:defaultVectorStyle()};
+  const edited=commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:[path]});
+  assert.deepEqual(edited.owners[0].paint.layers[0].clip,layer.clip);
+  const draft=preparePaintMarkLayer(owner,layer,'vector');assert.notEqual(draft.id,layer.id);assert.equal(draft.clip,undefined);
+  const added=commitVectorPaths(scene,{ownerKey:owner.key,layerId:draft.id,addedLayer:draft,paths:[path]});
+  assert.ok(added.owners[0].frame.x<owner.frame.x);assert.equal(added.owners[0].paint.layers.length,2);
+});
+
+test('a vector preview neither clones nor scans unchanged path nodes',()=>{
+  const scene=initial(),owner=scene.owners[0],layer=newPaintLayer('vectors','vector');
+  const unchanged={id:'old',closed:false,style:defaultVectorStyle(),get nodes(){throw Error('unchanged nodes must not be traversed');}};
+  layer.paths=[unchanged];owner.paint.layers=[layer];
+  const fresh={id:'new',closed:false,style:defaultVectorStyle(),nodes:[{x:20,y:20},{x:30,y:30}]};
+  const result=commitVectorPaths(scene,{ownerKey:owner.key,layerId:layer.id,paths:[unchanged,fresh]});
+  assert.equal(result.owners[0].paint.layers[0].paths[0],unchanged);
+  assert.notEqual(result.owners[0].paint.layers[0].paths[1],fresh);
 });
 test('first rapid stroke on clipped art creates its unrestricted layer atomically',()=>{
   const scene=initial(),owner=scene.owners[1];owner.paint.layers[0].clip={x:0,y:0,w:10,h:10};
@@ -77,7 +226,7 @@ test('mask gestures retain source strokes and vector paths and stay on their ori
   const before=structuredClone(scene),pending={ownerKey:owner.key,layerId:layer.id,target:'mask',stroke:{...stroke(),tool:'eraser'}};
   const result=commitPaintStroke(scene,pending),updated=result.owners[0].paint.layers[0];
   assert.deepEqual(updated.strokes,layer.strokes);assert.deepEqual(updated.paths,layer.paths);assert.equal(updated.mask.strokes.length,1);assert.deepEqual(scene,before);
-  pending.stroke.points[0].x=999;assert.equal(updated.mask.strokes[0].points[0].x,1);
+  pending.stroke.points[0].x=999;assert.equal(updated.mask.strokes[0].points[0].x,20);
   for(const patch of [{mask:undefined},{mask:{...layer.mask,enabled:false}},{locked:true},{visible:false}]){
     const blocked=structuredClone(scene);Object.assign(blocked.owners[0].paint.layers[0],patch);assert.equal(commitPaintStroke(blocked,pending),blocked);
   }
@@ -88,4 +237,34 @@ test('generation mask strokes attach to their image without modifying source ink
   const next=commitPaintStroke(scene,{ownerKey:owner.key,layerId:layer.id,target:'generationMask',stroke:{...stroke(),color:'#ff0000'}});
   assert.equal(next.owners[0].paint.layers[0].generationMask.strokes[0].color,'#ff0000');assert.deepEqual(layer.generationMask.strokes,[]);assert.deepEqual(next.owners[0].paint.layers[0].strokes,[]);
   layer.generationMask.enabled=false;assert.equal(commitPaintStroke(scene,{ownerKey:owner.key,layerId:layer.id,target:'generationMask',stroke:stroke()}),scene);
+});
+
+test('masks have no implicit rectangle and use the same growing layer coordinates as ink',()=>{
+  for(const target of ['mask','generationMask'])for(const x of [-90,500])for(const y of [-70,500]){
+    const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];
+    layer[target]={enabled:true,...(target==='mask'?{reveal:false}:{}),strokes:[]};
+    const space={frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height};
+    const mark={...stroke(),points:[{x,y,pressure:1,time:0}]};
+    const pending={ownerKey:owner.key,layerId:layer.id,target,space,stroke:mark,bounds:paintStrokeBounds(mark)};
+    const preview=previewPaintStroke(scene,pending),saved=commitPaintStroke(scene,pending).owners[0];
+    assert.deepEqual(preview.owner.frame,saved.frame);
+    const savedMark=saved.paint.layers[0][target].strokes[0];assert.equal(preview.live.stroke.size,savedMark.size);
+    for(const axis of ['x','y'])assert.ok(Math.abs(preview.live.stroke.points[0][axis]-savedMark.points[0][axis])<1e-8);
+    assert.equal(preview.live.stroke.selection,undefined);assert.equal(layer[target].strokes.length,0);
+    const p=saved.paint.layers[0][target].strokes[0].points[0];
+    assert.ok(Math.abs(saved.frame.x+p.x*saved.frame.w/saved.paint.width-(space.frame.x+x*space.frame.w/space.width))<1e-8);
+    assert.ok(Math.abs(saved.frame.y+p.y*saved.frame.h/saved.paint.height-(space.frame.y+y*space.frame.h/space.height))<1e-8);
+    assert.deepEqual(JSON.parse(JSON.stringify(saved)),saved);
+  }
+});
+
+test('a mask eraser beyond current ink is retained when later ink grows the layer',()=>{
+  const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];layer.mask={enabled:true,reveal:true,strokes:[]};
+  const space={frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height};
+  const pending={ownerKey:owner.key,layerId:layer.id,space,stroke:{...stroke(-80),tool:'eraser'}};
+  const erased=commitPaintStroke(scene,{...pending,target:'mask'});
+  const saved=commitPaintStroke(erased,{...pending,stroke:{...pending.stroke,tool:'pen'}}).owners[0];
+  const mask=saved.paint.layers[0].mask.strokes[0],ink=saved.paint.layers[0].strokes[0];
+  assert.deepEqual(mask.points,ink.points);assert.equal(mask.selection,undefined);
+  assert.deepEqual(layer.mask.strokes,[]);
 });

@@ -1,22 +1,27 @@
 import AgentSettings from './AgentSettings';
 import LocalImageModelSettings from './LocalImageModelSettings';
 import type { AgentPreferences } from '../lib/agentPreferences';
-import { Bot, CircleHelp, BookOpen, Cloud, Database, Eye, EyeOff, FilePenLine, FolderArchive, FolderOpen, Paintbrush, RefreshCw, ShieldCheck, Trash2, Type } from 'lucide-preact';
+import { Bot, CircleHelp, BookOpen, Database, Eye, EyeOff, FilePenLine, FolderArchive, FolderOpen, Paintbrush, RefreshCw, ShieldCheck, Trash2 } from 'lucide-preact';
 import { useState } from 'preact/hooks';
-import { BUBBLE_FONT_PRESETS } from '../lib/bubbleFonts';
 import { CURRENT_NDM_SCHEMA_VERSION } from '../lib/manga';
 import { DEFAULT_LOCAL_MODEL_PREFERENCES, loadLocalModelPreferences, saveLocalModelPreferences, type LocalModelPreferences } from '../lib/localModelPreferences';
 import { DEFAULT_CLOUD_MODEL_PREFERENCES, loadCloudModelPreferences, saveCloudModelPreferences, type CloudModelPreferences } from '../lib/modelPrivacy';
+import { loadGenerationPreferences, saveGenerationPreferences, type GenerationPreferences } from '../lib/generationPreferences';
 import { deleteGenerationCache, listGenerationCaches, type GenerationCacheSummary } from '../lib/localBridge';
 import type { MangaDocument } from '../types';
 import ArtworkSettings from './ArtworkSettings';
 import FinishLayoutSettings, { FinishTextSettings } from './FinishLayoutSettings';
 import { Field, SectionTitle } from './Fields';
+import type { PaintCursorMode } from '../lib/paintPreferences';
+import FontFamilyPicker from './FontFamilyPicker';
+import type { PcFontFamily } from '../lib/bubbleFonts';
+import { changeCanvasDefaultFont } from '../lib/canvasText';
 
 const SETTINGS_TABS = [
   { id: 'page', label: 'レイアウト', icon: BookOpen },
-  { id: 'text', label: 'テキスト', icon: Type },
-  { id: 'artwork', label: '作画方法', icon: Paintbrush },
+  { id: 'drawing', label: '手描き・編集', icon: Paintbrush },
+  { id: 'generation', label: '生成ルール', icon: RefreshCw },
+  { id: 'omay', label: 'OMAY', icon: FilePenLine },
   { id: 'display', label: '表示', icon: Eye },
   { id: 'ai', label: 'モデル設定', icon: Bot },
   { id: 'data', label: 'データ管理', icon: FolderArchive },
@@ -44,6 +49,7 @@ interface Props {
   historySteps?:number;onChangeHistorySteps?:(value:number)=>void;
   editGuide?:boolean; onChangeEditGuide?:(enabled:boolean)=>void;
   paintSmoothing?:number; onChangePaintSmoothing?:(value:number)=>void;
+  paintCursorMode?:PaintCursorMode; onChangePaintCursorMode?:(value:PaintCursorMode)=>void;
   paintBleedPx?: number;
   onChangePaintBleed?: (value:number)=>void;
   document: MangaDocument;
@@ -52,27 +58,23 @@ interface Props {
   showGuides: boolean;
   spreadView: boolean;
   pageCount: number;
-  defaultFont: string;
-  bubbleLineWidthMm: number;
   frameLineWidthMm: number;
   rowGapMm: number;
   columnGapMm: number;
   onChangeShowGuides: (enabled: boolean) => void;
   onChangeSpreadView: (enabled: boolean) => void;
-  onChangeDefaultFont: (font: string) => void;
-  onChangeBubbleLineWidth: (value: number) => void;
   onChangeFrameLineWidth: (value: number) => void;
   onChangeRowGap: (value: number) => void;
   onChangeColumnGap: (value: number) => void;
+  fontFamilies?: readonly PcFontFamily[];
+  onRequestFonts?: () => void;
   saveDirectory?: string;
   projectBusy?: boolean;
   onChangeSaveDirectory?: () => void;
 }
 
-export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, onExportOmny, agentProfile,onChangeAgentProfile,historySteps=50,onChangeHistorySteps,editGuide=true,onChangeEditGuide,paintSmoothing=0,onChangePaintSmoothing,paintBleedPx=200, onChangePaintBleed, document, onChangeDocument, onNotify, showGuides, spreadView, pageCount, defaultFont, bubbleLineWidthMm, frameLineWidthMm, rowGapMm, columnGapMm, onChangeShowGuides, onChangeSpreadView, onChangeDefaultFont, onChangeBubbleLineWidth, onChangeFrameLineWidth, onChangeRowGap, onChangeColumnGap, saveDirectory, projectBusy, onChangeSaveDirectory }: Props) {
+export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, onExportOmny, agentProfile,onChangeAgentProfile,historySteps=50,onChangeHistorySteps,editGuide=true,onChangeEditGuide,paintSmoothing=0,onChangePaintSmoothing,paintCursorMode='circle',onChangePaintCursorMode,paintBleedPx=200, onChangePaintBleed, document, onChangeDocument, onNotify, showGuides, spreadView, pageCount, frameLineWidthMm, rowGapMm, columnGapMm, onChangeShowGuides, onChangeSpreadView, onChangeFrameLineWidth, onChangeRowGap, onChangeColumnGap, fontFamilies=[], onRequestFonts, saveDirectory, projectBusy, onChangeSaveDirectory }: Props) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(hasDocument ? 'page' : 'display');
-  const [localFonts, setLocalFonts] = useState<string[]>([]);
-  const [fontStatus, setFontStatus] = useState('');
   const [generationCaches, setGenerationCaches] = useState<GenerationCacheSummary | null>(null);
   const [generationCacheStatus, setGenerationCacheStatus] = useState('');
   const [generationCacheEmptyMessage, setGenerationCacheEmptyMessage] = useState(false);
@@ -84,42 +86,42 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
   const [localModelPreferences, setLocalModelPreferences] = useState<LocalModelPreferences>(() => {
     try { return loadLocalModelPreferences(window.localStorage); } catch { return { ...DEFAULT_LOCAL_MODEL_PREFERENCES }; }
   });
+  const [generationPreferences, setGenerationPreferences] = useState(() => {
+    try { return loadGenerationPreferences(window.localStorage); } catch { return loadGenerationPreferences(); }
+  });
+  const [modelSettingsError, setModelSettingsError] = useState('');
+  const [cloudPreferencesError, setCloudPreferencesError] = useState('');
+  const [localModelError, setLocalModelError] = useState('');
   const updateCloudPreferences = (patch: Partial<CloudModelPreferences>) => {
     const next = { ...cloudPreferences, ...patch };
-    setCloudPreferences(next);
-    try { saveCloudModelPreferences(window.localStorage, next); } catch { /* private mode */ }
-  };
-  const commitLocalModelPreferences = () => {
     try {
-      const next = saveLocalModelPreferences(window.localStorage, localModelPreferences);
-      setLocalModelPreferences(next);
-      onNotify('この端末のローカルモデル設定を保存しました');
+      saveCloudModelPreferences(window.localStorage, next);
+      setCloudPreferences(next);
+      setCloudPreferencesError('');
+    } catch { setCloudPreferencesError('クラウドの利用設定を保存できませんでした'); }
+  };
+  const updateGenerationPreferences = (next: GenerationPreferences) => {
+    setGenerationPreferences(next);
+    try {
+      saveGenerationPreferences(window.localStorage, next);
+      if (cloudPreferences.enabled !== (next.execution === 'cloud')) {
+        const cloud = { ...cloudPreferences, enabled: next.execution === 'cloud' };
+        saveCloudModelPreferences(window.localStorage, cloud);
+        setCloudPreferences(cloud);
+      }
+      setModelSettingsError('');
     } catch (error) {
-      try { setLocalModelPreferences(loadLocalModelPreferences(window.localStorage)); }
-      catch { setLocalModelPreferences({ ...DEFAULT_LOCAL_MODEL_PREFERENCES }); }
-      onNotify(error instanceof Error ? error.message : 'ローカルモデル設定を保存できませんでした');
+      setModelSettingsError(error instanceof Error ? error.message : 'モデル設定を保存できませんでした');
     }
   };
-  const loadLocalFonts = async () => {
-    const queryLocalFonts = (window as typeof window & {
-      queryLocalFonts?: () => Promise<Array<{ family: string }>>;
-    }).queryLocalFonts;
-    if (!queryLocalFonts) {
-      setFontStatus('このブラウザでは一覧取得に対応していません。書体名を直接入力できます。');
-      return;
-    }
+  const updateLocalModelPreferences = (patch: Partial<LocalModelPreferences>) => {
+    const next = { ...localModelPreferences, ...patch };
+    setLocalModelPreferences(next);
     try {
-      const fonts = await queryLocalFonts();
-      const families = [...new Set(fonts.map((font) => font.family.trim()).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, 'ja'));
-      setLocalFonts(families);
-      setFontStatus(families.length
-        ? `${families.length}書体を読み込みました。フォントファイルは送信しません。`
-        : 'フォント一覧を取得できませんでした。書体名を直接入力できます。');
+      saveLocalModelPreferences(window.localStorage, next);
+      setLocalModelError('');
     } catch (error) {
-      setFontStatus(error instanceof Error && error.name === 'NotAllowedError'
-        ? 'PC内フォントの参照が許可されませんでした。'
-        : 'PC内フォントを読み込めませんでした。');
+      setLocalModelError(error instanceof Error ? error.message : 'ローカルモデル設定を保存できませんでした');
     }
   };
   const refreshGenerationCaches = async () => {
@@ -156,8 +158,7 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
       setGenerationCacheBusy(false);
     }
   };
-  const availableTabs = SETTINGS_TABS.filter(item => hasDocument || (item.id !== 'page' && item.id !== 'text'));
-  const fontOptions = [...new Set([...BUBBLE_FONT_PRESETS, ...localFonts])];
+  const availableTabs = SETTINGS_TABS.filter(item => hasDocument || !['page','generation','omay'].includes(item.id));
   const currentOwnerKind = document.manga.meta.series_id ? 'series' as const : 'one-shot' as const;
   const currentOwnerId = document.manga.meta.series_id || document.manga.meta.episode_id;
   const currentCacheOwners = generationCaches?.profiles.flatMap(profile => profile.owners)
@@ -167,7 +168,7 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
   const currentOwnerLabel = currentOwnerKind === 'series' ? 'このシリーズ' : 'この読み切り';
   return <div class="document-editor">
     <div class="document-editor-head">
-      <div><span class="eyebrow">PREFERENCES</span><h2>環境設定</h2><p>{hasDocument ? '作品のレイアウト・テキスト・作画と、この端末での表示・利用設定を切り替えて調整します。' : 'この端末での表示・利用設定を調整します。'}</p></div>
+      <div><span class="eyebrow">PREFERENCES</span><h2>環境設定</h2><p>{hasDocument ? '作品のレイアウト・手描き・生成ルールと、この端末での表示・利用設定を切り替えて調整します。' : 'この端末での表示・利用設定を調整します。'}</p></div>
     </div>
     <div class="document-editor-body">
       <div class="environment-tabs" role="tablist" aria-label="環境設定の分類" onKeyDown={(event) => {
@@ -198,6 +199,15 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
       </div>
       {hasDocument && <section class="environment-tab-panel" id="environment-panel-page" role="tabpanel" aria-labelledby="environment-tab-page" tabIndex={0} hidden={activeTab !== 'page'}>
         <FinishLayoutSettings document={document} onChange={onChangeDocument} onNotify={onNotify} />
+        <ArtworkSettings section="output" document={document} onChange={onChangeDocument} onNotify={onNotify} />
+        <SectionTitle title="文字" />
+        <p class="environment-settings-note">新しく追加する文字の基本書体です。配置済みの文字は変更しません。</p>
+        <Field label="作品の基本書体" wide>
+          <FontFamilyPicker value={document.manga.meta.font} families={fontFamilies} label="作品の基本書体" onOpen={onRequestFonts} onChange={font=>{
+            const next=structuredClone(document);
+            if(changeCanvasDefaultFont(next,font))onChangeDocument(next);
+          }}/>
+        </Field>
         <SectionTitle title="コマ" />
         <p class="environment-settings-note">この作品全体に適用されます。他の作品の設定は変更しません。</p>
         <div class="field-grid">
@@ -206,33 +216,29 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
           <Field label="左右のコマ間隔" hint="mm"><input type="number" min="0" max="20" step="0.5" value={columnGapMm} onInput={(event) => onChangeColumnGap(Number(event.currentTarget.value))} /></Field>
         </div>
       </section>}
-      {hasDocument && <section class="environment-tab-panel" id="environment-panel-text" role="tabpanel" aria-labelledby="environment-tab-text" tabIndex={0} hidden={activeTab !== 'text'}>
-        <SectionTitle title="テキスト" />
-        <p class="environment-settings-note">この作品全体に適用されます。他の作品の設定は変更しません。</p>
-        <div class="field-grid">
-          <Field label="フキダシ線幅" hint="mm"><input type="number" min="0.1" max="2" step="0.1" value={bubbleLineWidthMm} onInput={(event) => onChangeBubbleLineWidth(Number(event.currentTarget.value))} /></Field>
-          <Field label="作品の基本書体" hint="すべてのコマのフキダシに適用" wide>
-            <div class="font-picker-row">
-              <input list="environment-font-options" value={defaultFont} placeholder="アンチック体" onInput={(event) => onChangeDefaultFont(event.currentTarget.value)} />
-              <button type="button" class="secondary-button" onClick={loadLocalFonts}><Type size={15} />PC内フォント</button>
-            </div>
-            {fontStatus && <small class="font-picker-status">{fontStatus}</small>}
-          </Field>
-        </div>
-        <datalist id="environment-font-options">{fontOptions.map((font) => <option value={font} />)}</datalist>
-        <FinishTextSettings document={document} onChange={onChangeDocument} onNotify={onNotify} />
-      </section>}
-      <section class="environment-tab-panel" id="environment-panel-artwork" role="tabpanel" aria-labelledby="environment-tab-artwork" tabIndex={0} hidden={activeTab !== 'artwork'}>
+      <section class="environment-tab-panel" id="environment-panel-drawing" role="tabpanel" aria-labelledby="environment-tab-drawing" tabIndex={0} hidden={activeTab !== 'drawing'}>
+        <SectionTitle title="手描き・編集" />
+        <p class="environment-settings-note">ペン入力と編集履歴に関する、この端末の設定です。生成ルールやOMAYの受け渡しには影響しません。</p>
         <Field label="ぬりたし"><div class="paint-bleed-setting"><input aria-label="ぬりたし" type="number" min="0" max="4000" step="1" value={paintBleedPx} onChange={event=>{
           const value=event.currentTarget.valueAsNumber;
           if(Number.isSafeInteger(value)&&value>=0&&value<=4000)onChangePaintBleed?.(value);
           else {event.currentTarget.value=String(paintBleedPx);onNotify('ぬりたしは0〜4000pxの整数で指定してください');}
         }}/><span>px</span></div></Field>
         <Field label="手ぶれ補正"><input aria-label="手ぶれ補正" type="number" min="0" max="15" step="1" value={paintSmoothing} onChange={e=>{const value=e.currentTarget.valueAsNumber;if(Number.isInteger(value)&&value>=0&&value<=15)onChangePaintSmoothing?.(value);else e.currentTarget.value=String(paintSmoothing);}}/></Field>
+        <Field label="ペンカーソル"><div class="environment-paint-cursor" role="group" aria-label="ペンカーソル"><button type="button" aria-pressed={paintCursorMode==='circle'} onClick={()=>onChangePaintCursorMode?.('circle')}>円</button><button type="button" aria-pressed={paintCursorMode==='crosshair'} onClick={()=>onChangePaintCursorMode?.('crosshair')}>十字</button></div></Field>
         <Field label="履歴の保持ステップ数"><input aria-label="履歴の保持ステップ数" type="number" min="1" max="1000" step="1" value={historySteps} onChange={event=>{const value=event.currentTarget.valueAsNumber;if(Number.isSafeInteger(value)&&value>=1&&value<=1000)onChangeHistorySteps?.(value);else{event.currentTarget.value=String(historySteps);onNotify('履歴の保持数は1〜1000の整数で指定してください');}}}/></Field>
         <p class="environment-settings-note">撮影・ペン・配置の操作で共通の履歴です。既定は50段階。古い履歴から消え、作品を閉じるとリセットされます。</p>
-        {hasDocument && <ArtworkSettings document={document} onChange={onChangeDocument} onNotify={onNotify} />}
       </section>
+      {hasDocument&&<section class="environment-tab-panel" id="environment-panel-generation" role="tabpanel" aria-labelledby="environment-tab-generation" tabIndex={0} hidden={activeTab!=='generation'}>
+        <SectionTitle title="生成ルール" />
+        <ArtworkSettings section="rules" document={document} onChange={onChangeDocument} onNotify={onNotify}/>
+        <FinishTextSettings document={document} onChange={onChangeDocument} onNotify={onNotify}/>
+      </section>}
+      {hasDocument&&<section class="environment-tab-panel" id="environment-panel-omay" role="tabpanel" aria-labelledby="environment-tab-omay" tabIndex={0} hidden={activeTab!=='omay'}>
+        <SectionTitle title="OMAY設定の受け渡し" />
+        <p class="environment-settings-note">OMAYは生成ルールの候補・控えを受け渡す形式です。作品そのものを書き出すOMNYとは別です。</p>
+        <ArtworkSettings section="omay" document={document} onChange={onChangeDocument} onNotify={onNotify}/>
+      </section>}
       <section class="environment-tab-panel" id="environment-panel-display" role="tabpanel" aria-labelledby="environment-tab-display" tabIndex={0} hidden={activeTab !== 'display'}>
         <SectionTitle title="ネーム表示" />
         <p class="environment-settings-note">この端末の表示だけを変えます。作品データは変更しません。</p>
@@ -255,35 +261,69 @@ export default function EnvironmentSettings({ onOpenAgent, hasDocument = true, o
         </div>
       </section>
       <section class="environment-tab-panel" id="environment-panel-ai" role="tabpanel" aria-labelledby="environment-tab-ai" tabIndex={0} hidden={activeTab !== 'ai'}>
-        {agentProfile&&onChangeAgentProfile&&<AgentSettings profile={agentProfile} onChange={onChangeAgentProfile}/>}
-        <SectionTitle title="モデル" />
-        <p class="environment-settings-note">この端末に保存される利用設定です。切り替えだけでモデルを実行することはありません。</p>
-        <div class="field-grid">
-          <Field label="文章LLM" hint="未起動時に使う models.conf のエイリアス" wide>
-            <input value={localModelPreferences.llmAlias} spellcheck={false} onInput={(event) => setLocalModelPreferences(current => ({ ...current, llmAlias: event.currentTarget.value }))} onBlur={commitLocalModelPreferences} />
-            <small>8080で起動済みのLLMを自動で共用します。未起動ならこのモデルを必要な間だけ起動します。画像生成ではLLMを一時停止し、元から起動していた場合は生成後に同じ設定で復帰します。</small>
-          </Field>
-          <Field label="画像VLM" hint="ローカルキャッシュの Hugging Face モデルID" wide>
-            <input value={localModelPreferences.vlmModelId} spellcheck={false} onInput={(event) => setLocalModelPreferences(current => ({ ...current, vlmModelId: event.currentTarget.value }))} onBlur={commitLocalModelPreferences} />
-            <small>人物資料・人物演技の明示的な画像解析で使います。未保存モデルを自動ダウンロードしません。</small>
-          </Field>
-        </div>
-        <LocalImageModelSettings onOpenAgent={onOpenAgent} endpoint={localModelPreferences.comfyuiUrl}
-          onChange={comfyuiUrl => setLocalModelPreferences(current => ({ ...current, comfyuiUrl }))} onCommit={commitLocalModelPreferences} />
-        <div class="environment-setting-list">
+        <SectionTitle title="生成に使うモデル" />
+        <p class="environment-settings-note">設定は変更するとこの端末に自動保存されます。生成する場所はキャンバスの右クリックから選びます。</p>
+        <fieldset class="artwork-mode-options">
+          <legend>実行する場所</legend>
+          {([{ value: 'cloud', label: 'クラウド', description: 'APIまたはCodexなどのエージェントを利用します。' },
+            { value: 'local', label: 'ローカル', description: 'この環境に用意したモデルを利用します。' }] as const).map(option => <label class="artwork-mode-option" key={option.value}>
+            <input type="radio" name="generation-execution" value={option.value} checked={generationPreferences.execution === option.value}
+              onChange={event => { if (event.currentTarget.checked) updateGenerationPreferences({ ...generationPreferences, execution: option.value }); }} />
+            <span><strong>{option.label}</strong><small>{option.description}</small></span>
+          </label>)}
+        </fieldset>
+        {generationPreferences.execution === 'local' ? <section aria-label="ローカルモデル設定">
+          <LocalImageModelSettings onOpenAgent={onOpenAgent} endpoint={localModelPreferences.comfyuiUrl}
+            imageModel={generationPreferences.local.imageModel}
+            onModelChange={imageModel => updateGenerationPreferences({ ...generationPreferences, local: { imageModel } })}
+            onChange={comfyuiUrl => updateLocalModelPreferences({ comfyuiUrl })} />
+          <details class="environment-settings-details">
+            <summary>文章・画像解析のモデル</summary>
+            <div class="field-grid">
+              <Field label="文章LLM" hint="登録済みのモデル名" wide>
+                <input aria-label="文章LLM" value={localModelPreferences.llmAlias} spellcheck={false} onInput={event => updateLocalModelPreferences({ llmAlias: event.currentTarget.value })} />
+                <small>起動済みのLLMを共用します。起動していないときは、このモデルを必要な間だけ起動します。</small>
+              </Field>
+              <Field label="画像VLM" hint="保存済みのHugging FaceモデルID" wide>
+                <input aria-label="画像VLM" value={localModelPreferences.vlmModelId} spellcheck={false} onInput={event => updateLocalModelPreferences({ vlmModelId: event.currentTarget.value })} />
+                <small>人物資料や演技の画像解析に使います。</small>
+              </Field>
+            </div>
+          </details>
+          {localModelError && <p role="alert">入力を確認してください。直前の有効な設定を保持しています。{localModelError}</p>}
+          {agentProfile&&onChangeAgentProfile&&<AgentSettings profile={agentProfile} onChange={onChangeAgentProfile}/>}
+        </section> : <section aria-label="クラウドモデル設定">
+          <fieldset class="artwork-mode-options">
+            <legend>利用方法</legend>
+            {([{ value: 'api', label: 'API' }, { value: 'agent', label: 'エージェント' }] as const).map(option => <label class="artwork-mode-option" key={option.value}>
+              <input type="radio" name="cloud-generation-method" value={option.value} checked={generationPreferences.cloud.method === option.value}
+                onChange={event => { if (event.currentTarget.checked) updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, method: option.value } }); }} />
+              <span><strong>{option.label}</strong></span>
+            </label>)}
+          </fieldset>
+          {generationPreferences.cloud.method === 'api' ? <div class="field-grid">
+            <Field label="API接続先" wide><input aria-label="API接続先" type="url" maxLength={500} value={generationPreferences.cloud.apiEndpoint} placeholder="https://…" spellcheck={false}
+              onInput={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, apiEndpoint: event.currentTarget.value } })} /></Field>
+            <Field label="APIモデル" wide><input aria-label="APIモデル" maxLength={200} value={generationPreferences.cloud.apiModel} spellcheck={false}
+              onInput={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, apiModel: event.currentTarget.value } })} /></Field>
+            <p class="environment-settings-note">APIは現在未接続です。接続先とモデル名を保存できます。認証情報は利用先で管理します。</p>
+          </div> : <div class="field-grid">
+            <Field label="エージェント" wide><select aria-label="クラウドエージェント" value={generationPreferences.cloud.agent}
+              onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, agent: event.currentTarget.value === 'other' ? 'other' : 'codex' } })}>
+              <option value="codex">Codex</option><option value="other">その他</option>
+            </select></Field>
+            {generationPreferences.cloud.agent === 'other' && <Field label="エージェント名" wide><input aria-label="エージェント名" maxLength={120} value={generationPreferences.cloud.agentName}
+              onInput={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, agentName: event.currentTarget.value } })} /></Field>}
+            <p class="environment-settings-note">生成指示と参照画像を書き出し、選んだエージェントへ渡します。利用するアカウントはエージェント側で設定します。</p>
+          </div>}
           <label class="environment-setting-row">
-            <span class="environment-setting-icon"><Cloud size={20} /></span>
-            <span><strong>クラウドモデルを使用する</strong><small>{cloudPreferences.enabled
-              ? '許可済み。実行時には作品の成人指定と規約確認も検査します。'
-              : 'オフ。人物素材はローカルモデルだけで処理します。'}</small></span>
-            <input type="checkbox" checked={cloudPreferences.enabled} onChange={(event) => updateCloudPreferences({ enabled: event.currentTarget.checked })} />
-          </label>
-          {cloudPreferences.enabled && <label class="environment-setting-row">
             <span class="environment-setting-icon"><ShieldCheck size={20} /></span>
             <span><strong>成人指定作品での利用規約を確認済み</strong><small>成人指定作品でもクラウドモデルを使う場合に必要です。この端末では一度だけ確認します。</small></span>
             <input type="checkbox" checked={cloudPreferences.adultTermsConfirmed} onChange={(event) => updateCloudPreferences({ adultTermsConfirmed: event.currentTarget.checked })} />
-          </label>}
-        </div>
+          </label>
+          {cloudPreferencesError && <p role="alert">{cloudPreferencesError}</p>}
+        </section>}
+        {modelSettingsError && <p role="alert">設定を保存できませんでした。{modelSettingsError}</p>}
       </section>
       <section class="environment-tab-panel" id="environment-panel-data" role="tabpanel" aria-labelledby="environment-tab-data" tabIndex={0} hidden={activeTab !== 'data'}>
         <section class="origin-data-manager" aria-labelledby="origin-data-title">

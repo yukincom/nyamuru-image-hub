@@ -54,7 +54,9 @@ EditNetのA5は148.5×210mm、B6は128.5×182mm。他社を選ぶと同じ判型
 
 ## 紙の見本
 
-破線は編集用の内枠を表す。編集画面と同じ innerFrameBounds を使い、通常は仕上がり端から10mm内側、小さな用紙では縮小する。印刷用の安全余白を内枠に流用しない。
+破線は編集用の内枠を表す。編集画面と同じ `innerFrameBounds` を使い、固定10mm余白ではなく漫画原稿の判型別基本枠に合わせる。アプリの用紙寸法は仕上がり線なので、ComicStudio資料の「用紙サイズ」ではなく「仕上がりサイズ」と「基本枠サイズ」の組を対応させる。縦原稿は B4 212×300mm、A4 180×268mm、B5 150×220mm、A5 125×180mm、B6 105×150mm、A6 90×125mm。B5は二葉企画のA4原稿ガイド（仕上がり182×257mm、内枠150×220mm）を優先し、横向きは寸法を回転する。カスタム寸法だけB5基本枠の縦横比から算出する。印刷用の安全余白を内枠に流用しない。
+
+参照: [サンライズ「原稿用紙の基礎」](https://www.sunrisep.co.jp/genkou/create-genko-kiso/)、[二葉企画「原稿サイズ」](https://futaba-dd.jp/dcguideline/size.html)、[ComicStudio Material Catalogue](https://www.clip-studio.com/clip_site/rental/rental_download/csrental/dl?f=lib%2Fcomicstudio%2Fcsrental%2Fmanual%2Fdata%2FJ_CS40_sozai_04_c05_s07_s13.pdf)
 
 塗り足しは仕上がり外側の塗りと細い実線、仕上がりは実線で描く。見本の説明文字は表示しない。漫画は紙を2枚並べ、各紙の中央に大きく❶❷を表示する。右綴じは左から❷❶、左綴じは❶❷とする。
 

@@ -4,7 +4,7 @@ import ts from 'typescript';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { artworkInteractionBounds, figureArtwork, setFigureArtwork, imageContents, changeImageCrop, createFrameArtwork, createImagePlacement, fitImageBox, imageSha256, resizeImageBox, validateImagePlacements } from '../src/lib/imagePlacement.ts';
+import { figureArtwork, setFigureArtwork, imageAssetIds, imageContents, changeImageCrop, createFrameArtwork, createImagePlacement, fitImageBox, imageSha256, resizeImageBox, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { collectFigureCropAssetIds } from '../src/lib/figureCropStore.ts';
@@ -28,16 +28,16 @@ test('fit uses the entire canvas without inferring subject bounds', () => {
   assert.deepEqual(fitImageBox({ w: 1000, h: 500 }, { x: 10, y: 20, w: 40, h: 60 }), { x: 10, y: 40, w: 40, h: 20 });
 });
 
-test('corner resize preserves ratio, opposite corner and dynamic paper bounds', () => {
+test('artwork corner resize preserves ratio and opposite corner without a paper-boundary cap', () => {
   const base = { startBox: { x: 10, y: 20, w: 40, h: 20 }, bounds: { x: 0, y: 0, w: 100, h: 80 }, paperRect: { width: 100, height: 80 }, canvas: { w: 100, h: 80 }, startClientX: 0, startClientY: 0 };
   for (const mode of ['nw', 'ne', 'sw', 'se']) {
     const box = resizeImageBox({ ...base, mode }, mode.includes('w') ? -500 : 500, mode.includes('n') ? -500 : 500);
     assert.equal(box.w / box.h, 2);
-    assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.w <= 100 && box.y + box.h <= 80);
+    assert.ok(box.w>100&&box.h>80,'original frame and page bounds do not cap expansion');
     assert.equal(mode.includes('w') ? box.x + box.w : box.x, mode.includes('w') ? 50 : 10);
     assert.equal(mode.includes('n') ? box.y + box.h : box.y, mode.includes('n') ? 40 : 20);
   }
-  assert.deepEqual(resizeImageBox({ ...base, mode: 'move' }, 1000, -1000), { x: 60, y: 0, w: 40, h: 20 });
+  assert.deepEqual(resizeImageBox({ ...base, mode: 'move' }, 1000, -1000), { x: 1010, y: -980, w: 40, h: 20 });
 });
 
 test('binary originals deduplicate across placements and restore unchanged with independent crop and placement', async () => {
@@ -69,6 +69,25 @@ test('missing, altered or malformed originals fail before writing restored asset
   await assert.rejects(restoreProjectSnapshot(snapshot, async () => assert.fail('must not write')), /原本/);
   doc.manga.pages[0].images[0].crop.x = 2;
   assert.throws(() => validateImagePlacements(doc), /配置情報/);
+});
+
+test('direct drawing markers keep their exact owner through validation, save and reopen', async()=>{
+  const doc=await documentWithImage(),page=doc.manga.pages[0],asset=doc.manga.image_assets[0];
+  const paint={version:1,width:1,height:1,dpi:100,guideInitialized:true,layers:[{...newPaintLayer('ページ直下'),strokes:[{tool:'pen',color:'#000000',size:1,points:[{x:0,y:0,pressure:1,time:0}]}]}]};
+  const marker={...createFrameArtwork(asset,{x:4,y:5,w:1,h:1}),paint,paintScope:'page'};
+  page.images.push(marker);
+  validateImagePlacements(doc);
+  assert.ok(imageContents(doc).includes(marker));assert.ok(imageAssetIds(doc).has(asset.id));
+  const snapshot=await createProjectSnapshot(doc,async()=>original),restored=await restoreProjectSnapshot(snapshot,async()=>{});
+  assert.deepEqual(restored.manga.pages[0].images,doc.manga.pages[0].images);
+  assert.equal(restored.manga.pages[0].images.at(-1).paintScope,'page');
+
+  for(const mutate of [
+    d=>{const item=d.manga.pages[0].images.pop();item.paintScope='panel';d.manga.pages[0].panels[0].images=[item];item.paintScope='page';},
+    d=>{d.manga.pages[0].images.at(-1).paintScope='panel';},
+    d=>{delete d.manga.pages[0].images.at(-1).paint;},
+    d=>{d.manga.pages[0].images.at(-1).generationScope='page';},
+  ]){const invalid=structuredClone(doc);mutate(invalid);assert.throws(()=>validateImagePlacements(invalid),/描画レイヤーの所属/);}
 });
 
 test('paper resize changes millimeters only and source pixels remain unchanged', async () => {
@@ -240,7 +259,7 @@ test('collapsing a template retains each panel image and each distinct figure ar
 test('dragging split art keeps the source position and crop overflow does not jump', () => {
   for (const box of [{ x: 30, y: 20, w: 40, h: 60 }, { x: -20, y: -10, w: 250, h: 330 }]) {
     const canvas = { w: 210, h: 297 };
-    const interaction = { mode: 'move', startBox: box, bounds: artworkInteractionBounds(box, canvas), canvas, paperRect: { width: 210, height: 297 }, startClientX: 0, startClientY: 0 };
+    const interaction = { mode: 'move', startBox: box, bounds: {x:0,y:0,...canvas}, canvas, paperRect: { width: 210, height: 297 }, startClientX: 0, startClientY: 0 };
     assert.deepEqual(resizeImageBox(interaction, 0, 0), box);
     if (box.x > 0) assert.equal(resizeImageBox(interaction, 1, 0).x, 31);
   }
@@ -380,10 +399,12 @@ test('painting import replaces the latched owner, retaining guides, other ink, a
   assert.equal(history[0],scene);assert.deepEqual(scene,before);
 });
 
-test('guide display belongs to one object, independently of its neighbors',()=>{
- const context={guideVisibility:{},guideKey:(key,panel,page,overlay)=>`${page}:${overlay?'overlay':panel}:${key}`,activePanel:0,activePage:0,document:{manga:{pages:[{panels:[{background_images:[{}],figures:[{artwork:{}},{artwork:{}}],bubbles:[]}]}]}}};
+test('guide display belongs to one object and OCR rasters never gate bubble text',()=>{
+ const panel={background_images:[{}],figures:[{artwork:{paint:{guideInitialized:true,layers:[{guide:true,visible:false}]}}},{artwork:{}}],bubbles:[{analogTextImport:{assetId:'original',referenceHidden:false}}]};
+ const context={activePanel:0,activePage:0,figurePaintVisible:figure=>figure.artwork.paint.layers.some(layer=>layer.guide&&layer.visible),document:{manga:{pages:[{panels:[panel]}]}}};
  const visible=componentHandler('App','artworkGuideVisible',context);
  assert.equal(visible('background'),false);assert.equal(visible('figure-0'),false);
- context.guideVisibility['0:0:figure-0']=true;
+ context.document.manga.pages[0].panels[0].figures[0].artwork.paint.layers[0].visible=true;
  assert.equal(visible('figure-0'),true);assert.equal(visible('figure-1'),false);assert.equal(visible('background'),false);
+ assert.equal(visible('bubble-0'),false);
 });

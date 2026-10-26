@@ -1153,6 +1153,20 @@ class PanelActionSuggesterTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "英訳"):
                     suggester.translate_image_generation_prompt(source)
 
+    def test_image_translation_restores_group_dialogue_before_validating_source_hash(self):
+        from generation_store import canonical, sha256
+        source = {"owner_key": "panel", "prompt": "台詞：「こんにちは」", "literal_text": ["こんにちは"],
+                  "references": [{"file": "image-1.png", "label": "人物資料"}]}
+        english = {"prompt": "A person saying __NYAMURU_LITERAL_0__.",
+                   "references": [{"file": "image-1.png", "label": "Character reference"}]}
+        suggester = bridge.PanelActionSuggester("http://127.0.0.1:8080/v1/chat/completions")
+        with patch.object(suggester, "request_json_completion", return_value=(english, {})) as request:
+            result = suggester.translate_image_generation_prompt(source)
+        self.assertEqual(result["prompt"], "A person saying こんにちは.")
+        self.assertEqual(result["request_sha256"], sha256(canonical(source)))
+        self.assertEqual(request.call_args.args[1]["prompt"], "台詞：「__NYAMURU_LITERAL_0__」")
+        self.assertEqual(english["prompt"], "A person saying __NYAMURU_LITERAL_0__.")
+
     def test_rejects_duplicate_placement_ids(self):
         body = self.request_body()
         body["figures"][1]["id"] = "figure-0"

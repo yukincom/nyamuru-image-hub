@@ -33,7 +33,7 @@ export function parseAgentBubbleEdit(value:unknown):AgentBubbleEdit{
   if('shape' in c&&!AGENT_BUBBLE_SHAPES.includes(c.shape as BubbleShape))throw Error('未対応の吹き出し種類です');
   if('bezier' in c){
     const b=object(c.bezier);keys(b,['nodes']);
-    if(!isBubbleBezier(b))throw Error('ベジェは3〜64点、点と制御点は0〜100の範囲で指定してください');
+    if(!isBubbleBezier(b))throw Error('ベジェは3〜128点、点と制御点は有限の座標で指定してください');
     for(const node of b.nodes){keys(object(node),['x','y','handleIn','handleOut']);for(const h of ['handleIn','handleOut'] as const)if(node[h])point(node[h]);}
   }
   if('node_updates' in c){
@@ -43,7 +43,7 @@ export function parseAgentBubbleEdit(value:unknown):AgentBubbleEdit{
       const n=object(raw);keys(n,['index','x','y','handleIn','handleOut']);
       if(!Number.isSafeInteger(n.index)||(n.index as number)<0||(n.index as number)>63||indices.has(n.index as number)||Object.keys(n).length<2)throw Error('変更する点のindexを重複なく指定してください');
       indices.add(n.index as number);
-      for(const k of ['x','y'])if(k in n&&(typeof n[k]!=='number'||!Number.isFinite(n[k])||(n[k] as number)<0||(n[k] as number)>100))throw Error('点の座標は0〜100の有限の数値で指定してください');
+      for(const k of ['x','y'])if(k in n&&(typeof n[k]!=='number'||!Number.isFinite(n[k])))throw Error('点の座標は有限の数値で指定してください');
       for(const h of ['handleIn','handleOut'])if(h in n)point(n[h]);
     }
   }
@@ -103,7 +103,7 @@ export function agentEditorSnapshot(document:MangaDocument|null,revision:string,
     selected_figure:selectedFigure,selected_bubble:selected,
     page_panels:page?.panels.map((panel,index)=>({number:index+1,id:panel.id,figures:figureNames(panel.figures)}))??[],
     overlay_figures:figureNames(page?.page_overlay?.figures),blocked,
-    coordinate_units:{bbox:'paper_mm',tail:'paper_mm',bezier:'0..100; handles relative to each anchor'},
+    coordinate_units:{bbox:'paper_mm',tail:'paper_mm',bezier:'0..100 reference frame, coordinates may extend outside; handles relative to each anchor'},
     materials:BUBBLE_MATERIALS.map(({id,layer,label})=>({id,layer,label}))};
 }
 export type AgentEditorSnapshot=ReturnType<typeof agentEditorSnapshot>;
@@ -126,7 +126,7 @@ export function prepareAgentBubbleEdit(document:MangaDocument,selected:AgentBubb
       if(!outline.nodes[index])throw Error('変更するベジェ点のindexがありません');
       Object.assign(outline.nodes[index],patch);
     }
-    if(!isBubbleBezier(outline))throw Error('変更後の点と制御点は0〜100の範囲に収めてください');
+    if(!isBubbleBezier(outline))throw Error('変更後の点と制御点は有限の座標で指定してください');
     bubble.bezier=outline;
   }
   if(changes.bbox!==undefined){

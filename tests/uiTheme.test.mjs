@@ -27,7 +27,8 @@ test('通常の大きい操作面は淡色と墨黒、エラーや削除は独�
     assert.match(rule(selector), /color: var\(--ink\)/, selector);
   }
   assert.match(rule('.secondary-button'), /background: var\(--control\)/);
-  assert.match(rule('.issue-dot.error'), /background: var\(--danger\)/);
+  assert.match(rule('.bubble-guide .bubble-text.is-text-review'), /color: var\(--danger\)/);
+  assert.match(rule('.new-layout-analysis-detail li strong.is-text-review'), /color: var\(--danger\)/);
   assert.match(rule('.panel-draft-message.is-error'), /var\(--danger-border\)/);
   assert.match(rule('.new-layout-thumb-card.is-error .new-layout-analysis-placeholder'), /color: var\(--danger\)/);
   assert.match(rule('.panel-draft-workspace.is-missing'), /var\(--warning-soft\)/);
@@ -55,4 +56,20 @@ test('誌面と生成用の色はUIテーマから切り離され、PWAの外枠
   assert.equal(manifest.theme_color, '#DCE9DF');
   assert.equal(manifest.background_color, '#f6f5f3');
   assert.ok(read('src/layouts/Layout.astro').includes('name="theme-color" content="#DCE9DF"'));
+});
+
+test('コマ情報はフキダシ、人物の順で始まり、背景をカテゴリの最後に置く', () => {
+  assert.match(rule('.inspector-fields'), /display:flex;\s*flex-direction:column/);
+  const ordered = [
+    ['.inspector-fields>.panel-bubble-section', 1],
+    ['.inspector-fields>.panel-figure-section', 2],
+    ['.inspector-fields>.panel-prop-section', 3],
+    ['.inspector-fields>.panel-text-section', 4],
+    ['.inspector-fields>.panel-action-section', 5],
+    ['.inspector-fields>.panel-images-section', 6],
+    ['.inspector-fields>.panel-background-section', 7],
+  ];
+  for (const [selector, order] of ordered) assert.match(rule(selector), new RegExp(`order:${order}`));
+  const inspector = read('src/components/PanelInspector.tsx');
+  for (const name of ['panel-bubble-section', 'panel-figure-section', 'panel-background-section']) assert.match(inspector, new RegExp(`class="[^"]*${name}`));
 });

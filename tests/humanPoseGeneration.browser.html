@@ -1,2 +1,2 @@
 <!doctype html>
-<html lang="ja"><meta charset="utf-8"><title>3Dポーズ生成の検証</title><body style="overflow:auto"><div id="test-root"></div><script type="module" src="/tests/humanPoseGeneration.browser.tsx"></script></body></html>
+<html lang="ja"><meta charset="utf-8"><title>3Dポーズ生成の検証</title><body style="overflow:auto"><p id="loading">確認画面を読み込み中…</p><div id="test-root"></div><script type="module">import("/tests/humanPoseGeneration.browser.tsx").then(()=>document.getElementById("loading").remove()).catch(error=>document.getElementById("loading").textContent=String(error));</script></body></html>

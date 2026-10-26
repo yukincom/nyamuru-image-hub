@@ -47,11 +47,15 @@ async function start(){
   native.style.width=native.style.height='100%';document.getElementById('sample')!.append(native);renderer.dispose();return;
  }
  const doc=createEmptyWorkspaceDocument();doc.manga.meta.title=`A4 ${dpi}dpi・60線20%の表示検証`;doc.manga.meta.episode_id='tone-zoom-qa';
- doc.manga.finish_settings={width_mm:210,height_mm:297,dpi,bleed_mm:0};
+ doc.manga.finish_settings={width_mm:210,height_mm:297,dpi,bleed_mm:params.has('spread')?3:0};
  const sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer())),n=>n.toString(16).padStart(2,'0')).join('');
  const id=`image-${sha256}`;await saveFigureCropAssets([{id,blob}]);
  doc.manga.image_assets=[{id,storageId:id,sha256,originalName:'tone.png',mediaType:'image/png',widthPx:size,heightPx:size,byteLength:blob.size}];
- doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:20,y:35,w:170,h:180},bg:1,action:null,figures:[{name:'60線・20%',size:'bust-up',bbox:{x:65,y:65,w:60,h:60},artwork:{assetId:id,crop:{x:0,y:0,w:size,h:size},opacity:1,hidden:false,locked:false,paint}}],bubbles:[]}];
+ doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:20,y:35,w:170,h:180},bg:1,action:null,
+  figures:[{name:'60線・20%',size:'bust-up',bbox:{x:65,y:65,w:60,h:60},artwork:{assetId:id,crop:{x:0,y:0,w:size,h:size},opacity:1,hidden:false,locked:false,paint}}],
+  bubbles:[{text:'ズームで比率を保つ',shape:'normal',bbox:{x:125,y:48,w:48,h:42}}],
+  screen_text:[{text:'12pt固定',orientation:'horizontal',bbox:{x:34,y:52,w:36,h:20}}]}];
+ if(params.has('spread')){doc.manga.pages.push(structuredClone({...doc.manga.pages[0],page:2}));localStorage.setItem('manga-name-studio.spread-view.v2','1');}
  localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));
  render(<App/>,document.getElementById('app')!);
 }

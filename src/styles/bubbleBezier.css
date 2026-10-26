@@ -1,23 +1,22 @@
-.bubble-bezier-editor { margin: 10px 0; border: 1px solid var(--line, #d5d5d5); border-radius: 7px; padding: 9px; }
-.bubble-bezier-editor summary { cursor: pointer; font-size: 12px; font-weight: 700; }
-.bubble-bezier-presets,.bubble-bezier-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-.bubble-bezier-editor button { font-size: 11px; padding: 5px 8px; border: 1px solid #aaa; border-radius: 4px; background: var(--paper, #fff); color: var(--ink, #222); cursor: pointer; }
-.bubble-bezier-editor button:disabled { opacity: .45; cursor: default; }
-.bubble-bezier-help { font-size: 11px; line-height: 1.6; color: var(--muted, #666); margin: 8px 0 0; }
-.bubble-bezier-canvas { display: block; width: 100%; height: 230px; background: #f4f6fa; border: 1px solid #ddd; margin-top: 8px; touch-action: none; user-select: none; }
+.bubble-bezier-canvas { display: block; width: 100%; height: 230px; background: #f4f6fa; border: 1px solid #ddd; margin-top: 8px; touch-action: none; user-select: none; cursor:default; }
 .bubble-bezier-box { fill: none; stroke: #bbc0cc; stroke-dasharray: 2 2; stroke-width: .5; }
 .bubble-bezier-outline { fill: white; stroke: #222; stroke-width: 1; }
-.bubble-bezier-node { fill: white; stroke: #236bc4; stroke-width: .8; cursor: move; }
-.bubble-bezier-node.is-selected { fill: #236bc4; }
-.bubble-bezier-handle { fill: #f9af45; stroke: #68450a; stroke-width: .6; cursor: move; }
-.bubble-bezier-handle-line { stroke: #b47f29; stroke-width: .6; pointer-events: none; }
-.bubble-preset-gallery { margin-top: 9px; border-top: 1px solid var(--line, #d5d5d5); padding-top: 8px; }
-.bubble-preset-gallery > summary { cursor: pointer; font-size: 12px; font-weight: 700; }
-.bubble-preset-group h4 { margin: 8px 0 4px; font-size: 11px; }
-.bubble-preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 5px; }
-.bubble-bezier-editor .bubble-preset-item { display: flex; min-width: 0; min-height: 58px; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; }
-.bubble-preset-item img { display: block; width: 42px; height: 42px; object-fit: contain; }
-.bubble-preset-item span { font-size: 9px; line-height: 1; }
-.bubble-bezier-coordinates { display: flex; gap: 8px; margin-top: 8px; }
-.bubble-bezier-coordinates label { display: flex; align-items: center; gap: 4px; font-size: 11px; min-width: 0; }
-.bubble-bezier-coordinates input,.bubble-bezier-coordinates select { width: 58px; min-width: 0; }
+.bubble-bezier-outline-hit { fill:none; stroke:transparent; stroke-width:10; pointer-events:stroke; cursor:default; }
+.bubble-bezier-node { fill: white; stroke: var(--direct-selection,#236bc4); stroke-width: 1.2; pointer-events:none; }
+.bubble-bezier-node.is-selected { fill: var(--direct-selection,#236bc4); }
+.bubble-bezier-node-hit,.bubble-bezier-handle-hit { fill:transparent; stroke:none; pointer-events:all; cursor:default; touch-action:none; }
+.bubble-bezier-handle { fill: white; stroke: var(--direct-selection,#236bc4); stroke-width: 1.2; pointer-events:none; }
+.bubble-bezier-handle-line { stroke: var(--direct-selection,#236bc4); stroke-width: 1; pointer-events: none; }
+.bubble-bezier-canvas.is-paper-overlay { position: absolute; z-index: 60; margin: 0; overflow: visible; border: 0; background: transparent; pointer-events: none; }
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-box { stroke: var(--direct-selection,#236bc4); stroke-dasharray: 3 2; stroke-width:1; }
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-outline { fill: none; stroke: var(--direct-selection,#236bc4); stroke-width: 1; pointer-events:none; }
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-node,
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-handle { vector-effect: non-scaling-stroke; }
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-node { pointer-events:none; }
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-handle-line,
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-box,
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-outline,
+.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-outline-hit { vector-effect: non-scaling-stroke; }
+.bubble-bezier-canvas.is-paper-overlay.is-selection-overlay .bubble-bezier-box { stroke-dasharray:3 2; }
+.bubble-path-edit-layer { position:absolute; z-index:62; display:block; overflow:visible; pointer-events:none; }
+.bubble-path-edit-layer>.resize-handle { pointer-events:auto; }

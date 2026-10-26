@@ -104,9 +104,9 @@ FIXED_OPTION_LINE = re.compile(
     r'(?P<label>[^。\r\n]+?)[ \t]*(?:。|(?=\r?$))', re.MULTILINE)
 
 
-def split_fixed_generation_prompt(prompt):
+def split_fixed_generation_prompt(prompt, *, extract_framing=True):
     """Use the editor's shared dictionaries; leave arbitrary author prose to translation."""
-    remaining, framing = split_framing_prompt(prompt)
+    remaining, framing = split_framing_prompt(prompt) if extract_framing else (prompt, '')
     fixed = [framing] if framing else []
     selected = {}
 
@@ -197,8 +197,9 @@ def apply_generated_alpha(color_raw, alpha_raw):
         return output.getvalue()
 
 
-def keys(value):
-    if not isinstance(value, list) or len(value) > 1 or any(not isinstance(k, str) or not k or len(k) > 200 for k in value):
+def keys(value, maximum=1):
+    if not isinstance(value, list) or len(value) > maximum or any(not isinstance(k, str) or not k or len(k) > 200 for k in value) \
+            or len(set(value)) != len(value):
         raise ValueError('人物の対応が不正です')
     return value
 
@@ -207,20 +208,27 @@ def normalize(body):
     if body.get('profile') != PROFILE or body.get('mode') not in ('new', 'paint', 'sketch'):
         raise ValueError('Qwen生成の指定が不正です')
     owner = text(body.get('owner_key'), '描画対象', 100)
-    if not re.fullmatch(r'background|figure-\d+|bubble-\d+', owner):
+    if not re.fullmatch(r'page|panel|background|figure-\d+|bubble-\d+', owner):
         raise ValueError('描画対象が不正です')
     overlay = body.get('overlay')
     page, panel = body.get('page_number'), body.get('panel_id')
     if not isinstance(overlay, bool) or any(isinstance(v, bool) or not isinstance(v, int) for v in (page, panel)) \
-            or page < 1 or (panel != 0 if overlay else panel < 1) or (overlay and owner == 'background'):
+            or page < 1 or (panel != 0 if overlay or owner == 'page' else panel < 1) \
+            or (overlay and owner in ('page', 'panel', 'background')):
         raise ValueError('ページとコマの指定が不正です')
     width, height = body.get('width'), body.get('height')
     output_size = dimensions(width, height)
-    character_keys = keys(body.get('character_keys'))
-    if character_keys and not owner.startswith('figure-'):
+    character_limit = 10 if owner in ('page', 'panel') else 1
+    character_keys = keys(body.get('character_keys'), character_limit)
+    if character_keys and not (owner.startswith('figure-') or owner in ('page', 'panel')):
         raise ValueError('人物以外のあたりに人物資料は割り当てられません')
     if body['mode'] == 'sketch' and (not owner.startswith('figure-') or not character_keys):
         raise ValueError('ネームのラフ生成には登場人物の指定が必要です')
+    literal_text = body.get('literal_text', [])
+    if not isinstance(literal_text, list) or len(literal_text) > 100 or (literal_text and owner not in ('page', 'panel')):
+        raise ValueError('ページに描く文字の指定が不正です')
+    for item in literal_text:
+        text(item, 'ページに描く文字', 500)
     settings = SKETCH_SETTINGS if body['mode'] == 'sketch' else SETTINGS
     references = body.get('references')
     if not isinstance(references, list) or len(references) > 9:
@@ -260,7 +268,7 @@ def normalize(body):
     for index, reference in enumerate(references, len(refs) + 1):
         if not isinstance(reference, dict):
             raise ValueError('参照資料が不正です')
-        assigned = keys(reference.get('character_keys'))
+        assigned = keys(reference.get('character_keys'), character_limit)
         if any(k not in character_keys for k in assigned):
             raise ValueError('参照資料と人物が一致しません')
         raw = png(reference.get('image'))
@@ -276,6 +284,8 @@ def normalize(body):
              'width': width, 'height': height, 'input_size': input_size, 'output_size': output_size,
              'prompt': text(body.get('prompt'), '生成指示'), 'character_keys': character_keys,
              'references': refs, 'settings': json.loads(json.dumps(settings))}
+    if owner in ('page', 'panel'):
+        value['literal_text'] = literal_text
     return value, images
 
 
@@ -287,7 +297,17 @@ def validate_english(value, english):
     if not isinstance(refs, list) or len(refs) != len(value['references']) \
             or any(not isinstance(ref, dict) or ref.get('file') != source['file'] for ref, source in zip(refs, value['references'])):
         raise ValueError('英訳の参照資料が元の入力と一致しません')
-    for content in [english.get('prompt')] + [ref.get('label') for ref in refs]:
+    prompt = english.get('prompt')
+    text(prompt, '英訳', 40_000)
+    if value.get('owner_key') in ('page', 'panel'):
+        # Only explicitly authored on-page text may stay Japanese. Instructions
+        # and reference labels still obey the existing English-only contract.
+        for literal in value.get('literal_text', []):
+            if literal not in prompt:
+                raise ValueError('ページに描く文字が生成指示から欠落しています')
+        for literal in sorted(set(value.get('literal_text', [])), key=len, reverse=True):
+            prompt = prompt.replace(literal, '')
+    for content in [prompt] + [ref.get('label') for ref in refs]:
         text(content, '英訳', 40_000)
         if re.search(r'[\u3040-\u30ff\u3400-\u9fff]', content):
             raise ValueError('英訳に日本語が残っています')

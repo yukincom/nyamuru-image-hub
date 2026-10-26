@@ -1,6 +1,42 @@
 import { PerspectiveCamera, Vector3 } from 'three';
-import type { FigureSize } from '../types.ts';
+import type { BBox, Figure, FigureSize, Panel } from '../types.ts';
 import type { HumanPoseFraming, HumanPoseSceneSettings } from './humanPoseTypes.ts';
+import { panelBounds, panelShapePoints } from './canvasGeometry.ts';
+import { paintReferenceBox } from './paintDocument.ts';
+
+export function humanPoseFigureFrame(figure: Figure, fallback: BBox): BBox {
+  return paintReferenceBox(figure.artwork?.paint, figure.bbox ?? fallback, figure.artwork?.crop);
+}
+
+/** Inverse of paintReferenceBox: adopting a panel-sized image keeps the original guide in place. */
+export function humanPoseReferencePixels(reference: BBox, frame: BBox, width: number, height: number): BBox {
+  const scale = Math.min(frame.w / width, frame.h / height);
+  const x = frame.x + (frame.w - width * scale) / 2, y = frame.y + (frame.h - height * scale) / 2;
+  return { x: (reference.x - x) / scale, y: (reference.y - y) / scale, w: reference.w / scale, h: reference.h / scale };
+}
+
+/** The source frame is the figure's reference frame, not the panel's bounding box. */
+export interface HumanPoseCutFrame { aspect: number; points: [number, number][]; bounds: BBox }
+export const HUMAN_POSE_PREVIEW_MARGIN = .08;
+
+/** Reuse the manuscript outline; its placement is supplied by the editing owner. */
+export function humanPosePanelCutFrame(panel: Panel, frame: BBox = panelBounds(panel)): HumanPoseCutFrame {
+  const bounds = panelBounds(panel);
+  return { aspect: frame.w / frame.h,
+    bounds: { x: (bounds.x - frame.x) / frame.w, y: (bounds.y - frame.y) / frame.h, w: bounds.w / frame.w, h: bounds.h / frame.h },
+    points: panelShapePoints(panel).map(([x, y]) => [(x - frame.x) / frame.w, (y - frame.y) / frame.h]) };
+}
+
+export function humanPosePreviewWindow(cut?: HumanPoseCutFrame, margin = HUMAN_POSE_PREVIEW_MARGIN): BBox {
+  const box = cut?.bounds ?? { x: 0, y: 0, w: 1, h: 1 }, scale = 1 / (1 - 2 * margin);
+  return { x: box.x - box.w * scale * margin, y: box.y - box.h * scale * margin, w: box.w * scale, h: box.h * scale };
+}
+
+export function humanPoseCutOutline(cut?: HumanPoseCutFrame, margin = HUMAN_POSE_PREVIEW_MARGIN): string {
+  const points = cut?.points ?? [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const view = humanPosePreviewWindow(cut, margin);
+  return `M${points.map(([x, y]) => `${(x - view.x) / view.w} ${(y - view.y) / view.h}`).join('L')}Z`;
+}
 
 export const MANUAL_HUMAN_POSE_FRAMING: FigureSize[] = ['face-detail', 'hand', 'foot', 'part'];
 
@@ -28,16 +64,19 @@ export function humanPoseFraming(points: Map<string, Vector3>, camera: Perspecti
   const minX = Math.min(...projected.map(p => p.x)), maxX = Math.max(...projected.map(p => p.x));
   const minY = Math.min(...projected.map(p => p.y)), maxY = Math.max(...projected.map(p => p.y));
   // A square in normalized coordinates preserves the current frame's aspect ratio.
-  // Torso shots keep their anatomical cutoff even in a narrow frame; the sides may be cropped.
-  const extent = (['long', 'full'].includes(size) ? Math.max(maxX - minX, maxY - minY) : maxY - minY) * (size === 'long' ? 1.7 : 1.08);
+  // Face and full-body presets contain their complete bounds, including in a narrow frame.
+  // Torso shots keep their anatomical cutoff; only those presets may crop the sides.
+  const extent = (['long', 'full', 'face'].includes(size) ? Math.max(maxX - minX, maxY - minY) : maxY - minY) * (size === 'long' ? 1.7 : 1.08);
   if (!Number.isFinite(extent) || extent < .0001 || extent > 100) throw new Error('撮影範囲が極端です。3D画面でカメラを調整してください');
   return { size, crop: { x: (minX + maxX - extent) / 2, y: (minY + maxY - extent) / 2, w: extent, h: extent } };
 }
 
 /** This is an image crop in projection space: camera position, direction and FOV stay intact. */
-export function applyHumanPoseFraming(camera: PerspectiveCamera, scene: HumanPoseSceneSettings): void {
-  if (!scene.framing) return;
-  const { x, y, w, h } = scene.framing.crop, { width, height } = scene.frame;
+export function applyHumanPoseFraming(camera: PerspectiveCamera, scene: HumanPoseSceneSettings, view?: BBox): void {
+  if (!scene.framing && !view) return;
+  const crop = scene.framing?.crop ?? { x: 0, y: 0, w: 1, h: 1 }, { width, height } = scene.frame;
+  const window = view ?? { x: 0, y: 0, w: 1, h: 1 };
+  const w = crop.w * window.w, h = crop.h * window.h, x = crop.x + crop.w * window.x, y = crop.y + crop.h * window.y;
   const [sx, sy] = scene.camera.shift ?? [0, 0];
   camera.setViewOffset(width, height, (x - sx) * width, (y - sy) * height, w * width, h * height);
 }

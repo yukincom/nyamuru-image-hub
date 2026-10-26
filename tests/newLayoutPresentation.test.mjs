@@ -98,7 +98,8 @@ test('完了分は新しいページが上、ページ名と読み取った文�
   assert.doesNotMatch(html, /pending.png/);
   assert.match(html, /<details[^>]* open/);
   assert.match(html, /&lt;新しい結果(?:>|&gt;)/);
-  assert.match(html, /要確認/);
+  assert.doesNotMatch(html, /要確認/);
+  assert.match(html, /class="is-text-review"/);
   assert.deepEqual(items.map(entry => entry.id), ['first', 'second', 'pending']);
   assert.match(css, /\.new-layout-analysis-feed \{[^}]*max-height: 320px;[^}]*overflow-y: auto;[^}]*overflow-anchor: none/);
 });

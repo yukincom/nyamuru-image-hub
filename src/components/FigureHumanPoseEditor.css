@@ -1,5 +1,5 @@
 .figure-human-pose { margin: 12px 0; padding-top: 12px; border-top: 1px solid #64748b40; }
-.figure-human-pose-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.figure-human-pose-edit { width: 100%; justify-content: center; }
 .figure-human-pose textarea { width: 100%; box-sizing: border-box; resize: vertical; }
 .human-pose-camera-text { display: grid; gap: 12px; min-width: 0; padding: 12px; border: 1px solid #64748b40; border-radius: 8px; }
 .human-pose-camera-text label { display: block; margin-bottom: 6px; }

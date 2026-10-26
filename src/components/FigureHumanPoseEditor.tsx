@@ -7,6 +7,8 @@ import { confirmHumanPoseCameraPrompt, humanPoseCameraPromptCurrent, humanPoseCa
 import type { HumanPoseTextSelection } from '../lib/humanPoseTypes.ts';
 import type { BackgroundCapture, BackgroundStage, FigureSize } from '../types.ts';
 import HumanPoseSceneDialog from './HumanPoseSceneDialog.tsx';
+import type { HumanPoseCutFrame } from '../lib/humanPoseFraming.ts';
+import type { HumanPosePanelContext } from '../lib/humanPoseComposition.ts';
 import './FigureHumanPoseEditor.css';
 
 interface Props {
@@ -14,12 +16,15 @@ interface Props {
   aspect?: number;
   framingLabel?: string;
   framingSize?: FigureSize;
+  cutFrame?: HumanPoseCutFrame;
+  panelContext?: HumanPosePanelContext;
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
-  onChange: (value: HumanPoseTextSelection | undefined) => void;
+  onChange: (value: HumanPoseTextSelection | undefined, confirmedFramingSize?: FigureSize) => void;
 }
 
-export default function FigureHumanPoseEditor({ value, aspect, framingLabel, framingSize, stages, backgroundCaptures, onChange }: Props) {
+export default function FigureHumanPoseEditor({ value, aspect: figureAspect, framingLabel, framingSize, cutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
+  const aspect = cutFrame?.aspect ?? figureAspect;
   const id = useId();
   const sceneTrigger = useRef<HTMLButtonElement>(null);
   const request = useRef(0);
@@ -54,10 +59,7 @@ export default function FigureHumanPoseEditor({ value, aspect, framingLabel, fra
   };
 
   return <section class="figure-human-pose" aria-label="人体ポーズ">
-    <div class="figure-human-pose-heading">
-      <strong>ポーズ・アングル</strong>
-      <button type="button" class="primary-button" ref={sceneTrigger} disabled={loading} onClick={() => void openScene()}>3Dでポーズ・アングルを調整</button>
-    </div>
+    <button type="button" class="primary-button figure-human-pose-edit" ref={sceneTrigger} disabled={loading} onClick={() => void openScene()}>3D編集</button>
     {loading && <p role="status">3Dの初期姿勢を読み込んでいます…</p>}
     {error && <p role="alert">{error}</p>}
     {value && <>
@@ -81,7 +83,7 @@ export default function FigureHumanPoseEditor({ value, aspect, framingLabel, fra
       </details>
       <p>{value.scene && <span class="field-note"> {value.scene.motion ? 'モーション・微調整・撮影設定を保存済み' : value.scene.joint_edits ? '関節・配置・撮影設定を保存済み' : '配置・撮影設定を保存済み'}{value.scene.body_mirror === 'mirrored' ? '（体勢を左右反転）' : ''}</span>}</p>
       {cameraPrompt && cameraText ? <fieldset class="human-pose-camera-text"><legend>撮影設定の説明</legend>
-        {!cameraCurrent && <p role="status">撮影設定が変わっています。「3Dでポーズ・アングルを調整」で確定し直してください。以下は前回確定した文面です。</p>}
+        {!cameraCurrent && <p role="status">撮影設定が変わっています。「3D編集」で確定し直してください。以下は前回確定した文面です。</p>}
         <p class="field-note">ポーズ文で身体の向きを変えた場合は、アングルも見比べて修正してください。</p>
         {([['angle_ja', 'アングル', cameraText.automatic.angle], ['lens_ja', 'レンズ', cameraText.automatic.lens]] as const).map(([key, label, auto]) =>
           <div key={key}><label for={`${id}-${key}`}>{label}の説明（日本語）</label>
@@ -92,17 +94,16 @@ export default function FigureHumanPoseEditor({ value, aspect, framingLabel, fra
         {cameraText.automatic.azimuth === null && <p class="field-note">この姿勢・カメラ位置では前後左右を確定できないため、自動文には含めていません。</p>}
         {cameraPrompt.review_required && <p role="status">撮影設定を変更したため、残してある手修正文を見直してください。
           <button type="button" class="secondary-button" disabled={!cameraCurrent} onClick={() => onChange({ ...value, camera_prompt: { ...cameraPrompt, review_required: false } })}>手修正文を確認した</button></p>}
-        <p class="field-note">描写範囲：{framingLabel || '未指定'}。映り方は撮影プレビューで確認してください。</p>
-        {aspectMismatch && <p role="status">保存した撮影と現在の人物枠で縦横比が異なります。3D画面で人物枠に合わせて確認してください。</p>}
+        {aspectMismatch && <p role="status">保存した撮影と現在の{cutFrame ? 'コマ枠' : '人物枠'}で縦横比が異なります。3D画面で枠に合わせて確認してください。</p>}
         {cameraText.en === null ? <p class="field-note">手修正文は日本語で保存し、生成時に英訳して送ります。</p>
           : <details><summary>確定時の英語文面</summary><p lang="en">{cameraText.en}</p></details>}
         {value.input_mode === 'image' && cameraText.edited && <p role="status">文面の修正では撮影画像は変わりません。画像を使う場合は3D設定も合わせるか、プロンプトで送る方法に切り替えてください。</p>}
-      </fieldset> : value.scene && <p class="field-note">撮影設定の説明を保存するには「3Dでポーズ・アングルを調整」で確定してください。</p>}
+      </fieldset> : value.scene && <p class="field-note">撮影設定の説明を保存するには「3D編集」で確定してください。</p>}
       {value.input_mode === 'image' && <p class="field-note">描写範囲に合わせた3D画像を生成画面で確認して送ります。人物の外見と画風には登場人物の資料を使います。</p>}
       <button type="button" class="secondary-button" onClick={() => onChange(undefined)}>ポーズと編集文を解除</button>
     </>}
-    {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} stages={stages} backgroundCaptures={backgroundCaptures}
-      onConfirm={(scene, subject) => onChange({ ...sceneValue, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, sceneValue.camera_prompt) })}
+    {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} cutFrame={cutFrame} panelContext={panelContext} stages={stages} backgroundCaptures={backgroundCaptures}
+      onConfirm={(scene, subject) => onChange({ ...sceneValue, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, sceneValue.camera_prompt) }, scene.framing?.size)}
       onClose={() => { setSceneValue(null); sceneTrigger.current?.focus(); }} />}
   </section>;
 }

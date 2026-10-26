@@ -1,16 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import type { ButtonHTMLAttributes } from 'preact';
+import { paintHelpItems } from '../lib/paintHelp';
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'title'> {
   label:string;
-  help:string;
+  help:string|string[];
   disabled?:boolean;
 }
 /** Keep unavailable tools focusable so their explanation remains accessible. */
 export function PaintToolButton({label,help,disabled=false,children,onClick,...props}:ButtonProps){
+  const helpText=Array.isArray(help)?help.join('\n'):help;
   return <button {...props} type="button" class={`paint-help-button ${props.class??''}`}
-    aria-label={label} aria-disabled={disabled||undefined} data-tool-label={label} data-tool-help={help}
+    aria-label={label} aria-disabled={disabled||undefined} data-tool-label={label} data-tool-help={helpText}
     onClick={event=>{if(disabled){event.preventDefault();event.stopPropagation();return;}
       // Do not leave Space bound to a tool that was just clicked with a mouse or pen.
       if(event.detail>0)event.currentTarget.blur();
@@ -46,5 +48,7 @@ export default function PaintToolHelp({enabled=true}:{enabled?:boolean}){
     const left=a.right+10+b.width<=window.innerWidth-8?a.right+10:a.left-10-b.width;
     setPosition({left:Math.max(8,Math.min(left,window.innerWidth-b.width-8)),top:Math.max(8,Math.min(a.top,window.innerHeight-b.height-8))});
   },[hint]);
-  return enabled&&hint&&typeof document!=='undefined'?createPortal(<div ref={popup} id="paint-tool-description" role="tooltip" class="paint-tool-help" style={position}><strong>{hint.label}</strong><span>{hint.text}</span></div>,document.body):null;
+  if(!enabled||!hint||typeof document==='undefined')return null;
+  const items=paintHelpItems(hint.text);
+  return createPortal(<div ref={popup} id="paint-tool-description" role="tooltip" class="paint-tool-help" style={position}><strong>{hint.label}</strong>{items.length>1?<ul>{items.map(item=><li>{item}</li>)}</ul>:<p>{items[0]??hint.text}</p>}</div>,document.body);
 }

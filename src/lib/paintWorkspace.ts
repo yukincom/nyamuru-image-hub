@@ -16,12 +16,12 @@ export interface PaintWorkspaceState {
   scene: PaintScene;
   owner: PaintOwner;
   images: PaintImages | null;
+  /** Not appended to scene layers; consumed once by the renderer's cached live route. */
+  live?:PendingPaintStroke;
   guideVisible: (key:string)=>boolean;
   onContextMenu: (event:MouseEvent,key:string)=>void;
   undo:()=>void; redo:()=>void; canUndo:boolean; canRedo:boolean;
-  overscan: number;
   selectionTool?:boolean;
-  live?: PendingPaintStroke;
   maskPreview?: {ownerKey:string;layerId:string};
   selection?:{boxes:BBox[];width:number;height:number};
   lasso?:VectorPoint[];
@@ -41,6 +41,9 @@ export interface PaintWorkspaceState {
   status: ComponentChildren;
 }
 export const PaintGeometryContext = createContext<PaintScene|null>(null);
+/** Layout-side direct selection remains available while no paint scene is open. */
+export type BubblePathToolMode = false|'node';
+export const BubblePathToolContext = createContext<BubblePathToolMode>(false);
 /** Synchronous, shared with native capture-phase pan/pinch handlers. */
 export const PaintInputActivityContext = createContext<{current:boolean}|null>(null);
 export const PaintLayerControlsContext = createContext<ComponentChildren>(null);

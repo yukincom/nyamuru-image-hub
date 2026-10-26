@@ -65,10 +65,10 @@ test('既存の人物とフキダシを新しいコマの絶対mm座標へ変換
 
   applyPanelTemplate(page, template);
 
-  assert.deepEqual(page.panels[0].shape, rect(20, 30, 180, 50));
-  assert.deepEqual(page.panels[0].figures[0].bbox, { x: 38, y: 40, w: 36, h: 20 });
+  assert.deepEqual(page.panels[0].shape, rect(24.473684210526315, 33.85018050541517, 170.5263157894737, 48.3754512635379));
+  assert.deepEqual(page.panels[0].figures[0].bbox, { x: 41.6, y: 43.6, w: 34.1, h: 19.4 });
   // bbox未指定でも、適用前に画面へ表示されていたフォールバック位置（縦長40×50目安）から移動して保存する。
-  assert.deepEqual(page.panels[0].bubbles[0].bbox, { x: 129.8, y: 32, w: 63, h: 22.5 });
+  assert.deepEqual(page.panels[0].bubbles[0].bbox, { x: 128.5, y: 35.8, w: 59.7, h: 21.8 });
 });
 
 test('テンプレートの方が多いときは既存内容を保ち、残りを空コマで追加する', () => {
@@ -81,7 +81,7 @@ test('テンプレートの方が多いときは既存内容を保ち、残り�
 
   assert.equal(page.panels.length, 2);
   assert.equal(page.panels[0].bubbles[0].text, '残す');
-  assert.deepEqual(page.panels[1], panel(2, rect(10, 95, 190, 90)));
+  assert.deepEqual(page.panels[1], panel(2, rect(15, 96.73826714801443, 180, 87.07581227436823)));
 });
 
 test('テンプレートの方が少なくても全コマの内容を統合して保持する', () => {

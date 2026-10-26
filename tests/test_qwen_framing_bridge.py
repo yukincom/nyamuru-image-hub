@@ -1,5 +1,6 @@
 import copy
 from pathlib import Path
+import re
 import sys
 import unittest
 from unittest.mock import Mock
@@ -137,6 +138,107 @@ class QwenFramingTest(unittest.TestCase):
         remaining, fixed = split_fixed_generation_prompt(f'人物：ユキ。{TRANSPARENT_SUBJECT}\n動作：走る。')
         self.assertEqual(remaining, '人物：ユキ。\n動作：走る。')
         self.assertEqual(fixed, FIXED_ARTWORK[TRANSPARENT_SUBJECT])
+
+    def test_group_literals_are_restored_exactly_without_protecting_reference_labels(self):
+        for owner in ('page', 'panel'):
+            with self.subTest(owner=owner):
+                value = {'owner_key': owner, 'prompt': '出力形式：モノクロ漫画。\n台詞：「ゆき  は\n笑う」\n効果音：「ドン」「ドン」',
+                         'literal_text': ['ゆき  は\n笑う', 'ドン'],
+                         'references': [{'file': 'image-1.png', 'label': 'ゆき  は\n笑う'}]}
+                original = copy.deepcopy(value)
+                client = self.translator(None)
+                def translated(instruction, source, **kwargs):
+                    tokens = re.findall(r'__NYAMURU_LITERAL_\d+__', source['prompt'])
+                    self.assertEqual(len(tokens), 3)
+                    self.assertNotIn('ゆき', source['prompt'])
+                    self.assertNotIn('ドン', source['prompt'])
+                    self.assertEqual(source['references'], original['references'])
+                    self.assertIn('Copy every token exactly once', instruction)
+                    return {'prompt': f'Say "{tokens[0]}" with sound effects "{tokens[1]}" and "{tokens[2]}".',
+                            'references': [{'file': 'image-1.png', 'label': 'Yuki laughing'}]}, {}
+                client.request_json_completion.side_effect = translated
+                result = client.translate_image_generation_prompt(value)
+                self.assertEqual(result['prompt'], 'output format: black-and-white manga. Say "ゆき  は\n笑う" with sound effects "ドン" and "ドン".')
+                self.assertEqual(result['references'][0]['label'], 'Yuki laughing')
+                self.assertEqual(result['request_sha256'], sha256(canonical(original)))
+                self.assertEqual(value, original)
+
+    def test_group_character_framing_stays_attached_to_each_person(self):
+        for owner in ('page', 'panel'):
+            with self.subTest(owner=owner):
+                prompt = 'Character 1：\n描写範囲は全身。\nCharacter 2：\n描写範囲は顔。'
+                client = self.translator({'prompt': 'Character 1: full body. Character 2: face.', 'references': []})
+                result = client.translate_image_generation_prompt({'owner_key': owner, 'prompt': prompt, 'references': []})
+                self.assertEqual(client.request_json_completion.call_args.args[1]['prompt'], prompt)
+                self.assertEqual(result['prompt'], 'Character 1: full body. Character 2: face.')
+
+    def test_literal_boilerplate_is_protected_before_fixed_prompt_extraction(self):
+        value = {'owner_key': 'page', 'prompt': '背景：白。\n出力形式：カラー漫画。',
+                 'literal_text': ['出力形式：カラー漫画。'], 'references': []}
+        client = self.translator(None)
+        client.request_json_completion.side_effect = lambda instruction, source, **kwargs: (
+            {'prompt': f'Say "{source["prompt"]}".', 'references': []}, {})
+        result = client.translate_image_generation_prompt(value)
+        self.assertEqual(result['prompt'], 'white background. Say "出力形式：カラー漫画。".')
+        self.assertNotIn('output format: color manga.', result['prompt'])
+
+    def test_overlapping_and_repeated_literal_values_keep_each_authored_occurrence(self):
+        value = {'owner_key': 'panel', 'prompt': 'あいう あ あいう',
+                 'literal_text': ['あ', 'あいう', 'あいう'], 'references': []}
+        client = self.translator(None)
+        def translated(instruction, source, **kwargs):
+            self.assertEqual(source['prompt'], '__NYAMURU_LITERAL_0__ __NYAMURU_LITERAL_1__ __NYAMURU_LITERAL_2__')
+            return {'prompt': 'Say ' + source['prompt'], 'references': []}, {}
+        client.request_json_completion.side_effect = translated
+        self.assertEqual(client.translate_image_generation_prompt(value)['prompt'], 'Say あいう あ あいう')
+
+    def test_missing_duplicate_reordered_or_modified_literal_tokens_are_rejected(self):
+        value = {'owner_key': 'page', 'prompt': '台詞：「あ」「い」', 'literal_text': ['あ', 'い'], 'references': []}
+        for prompt in ('Say __NYAMURU_LITERAL_0__.',
+                       'Say __NYAMURU_LITERAL_0__ __NYAMURU_LITERAL_1__ __NYAMURU_LITERAL_1__.',
+                       'Say __NYAMURU_LITERAL_1__ __NYAMURU_LITERAL_0__.',
+                       'Say __NYAMURU_LITERAL_0__ __NYAMURU_LITERAL_2__.',
+                       'Say __NYAMURU_LITERAL_0__ __NYAMURU_LITERAL_1__ __NYAMURU_LITERAL_BROKEN.'):
+            with self.subTest(prompt=prompt), self.assertRaisesRegex(ValueError, '保護記号'):
+                self.translator({'prompt': prompt, 'references': []}).translate_image_generation_prompt(value)
+
+    def test_existing_placeholder_text_cannot_collide_with_protected_dialogue(self):
+        value = {'owner_key': 'panel', 'prompt': 'Write "__NYAMURU_LITERAL_0__", then "こんにちは".',
+                 'literal_text': ['こんにちは'],
+                 'references': [{'file': 'image-1.png', 'label': '__NYAMURU_LITERAL_999__ 人物'}]}
+        original = copy.deepcopy(value)
+        client = self.translator(None)
+        def translated(instruction, source, **kwargs):
+            self.assertIn('___NYAMURU_LITERAL_0__', source['prompt'])
+            self.assertIn('"__NYAMURU_LITERAL_0__"', source['prompt'])
+            return {'prompt': source['prompt'], 'references': [
+                {'file': 'image-1.png', 'label': '__NYAMURU_LITERAL_999__ Character'}]}, {}
+        client.request_json_completion.side_effect = translated
+        result = client.translate_image_generation_prompt(value)
+        self.assertEqual(result['prompt'], value['prompt'])
+        self.assertEqual(result['references'][0]['label'], '__NYAMURU_LITERAL_999__ Character')
+        self.assertEqual(value, original)
+
+    def test_literal_tokens_and_original_japanese_cannot_leak_into_reference_labels(self):
+        value = {'owner_key': 'panel', 'prompt': '台詞：「ゆき」', 'literal_text': ['ゆき'],
+                 'references': [{'file': 'image-1.png', 'label': 'ゆき'}]}
+        for label in ('__NYAMURU_LITERAL_0__', 'ゆき'):
+            client = self.translator({'prompt': 'Say __NYAMURU_LITERAL_0__.',
+                                      'references': [{'file': 'image-1.png', 'label': label}]})
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                client.translate_image_generation_prompt(value)
+        for extra in ('赤い服', 'ゆき'):
+            client = self.translator({'prompt': f'Say __NYAMURU_LITERAL_0__. {extra}',
+                                      'references': [{'file': 'image-1.png', 'label': 'Yuki'}]})
+            with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, '日本語'):
+                client.translate_image_generation_prompt(value)
+
+    def test_missing_authored_literal_fails_before_translation(self):
+        client = self.translator(None)
+        with self.assertRaisesRegex(ValueError, '欠落'):
+            client.translate_image_generation_prompt({'owner_key': 'page', 'prompt': '台詞なし。',
+                                                      'literal_text': ['こんにちは'], 'references': []})
+        client.request_json_completion.assert_not_called()
 
     def test_shared_builtin_style_is_fixed_but_custom_prose_is_untouched(self):
         tone = next(ja for ja in FIXED_ARTWORK if ja.startswith('[style] 作品の出力形式'))

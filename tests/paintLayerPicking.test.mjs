@@ -8,7 +8,7 @@ const owner=(key,layers)=>({key,kind:key==='background'?'background':'figure',fr
 const coverage=()=>true;
 test('front-to-back picking skips a locked selected layer and owner while retaining behind vectors',()=>{
  const back=vector('back'),front={...vector('front'),locked:true},o=owner('background',[back,front]);
- const foreign=owner('figure-0',[vector('foreign')]);foreign.figure={artwork:{locked:true}};
+ const foreign=owner('figure-0',[vector('foreign')]);foreign.locked=true;
  const hit=pickPaintLayer({owners:[o,foreign]},{x:60,y:70},0,coverage);
  assert.equal(hit.owner,o);assert.equal(hit.layer,back);assert.equal(hit.pathId,back.paths[0].id);
  front.locked=false;assert.equal(pickPaintLayer({owners:[o]},{x:60,y:70},0,coverage).layer,front);

@@ -1,8 +1,8 @@
-import type { BBox, Bubble, BubbleShape, BubbleTailTarget } from '../types.ts';
+import type { BBox, Bubble, BubbleShape, BubbleTailRoot, BubbleTailTarget } from '../types.ts';
 import { clamp } from './canvasGeometry.ts';
 import { bubbleTailIsEnabled } from './bubblePresentation.ts';
 import { bubbleBezierBoundaryDistance, bubbleBezierCenter, bubbleBezierPath, createBubbleBezier, isBubbleBezier } from './bubbleBezier.ts';
-import { defaultVectorStyle, paperPath, vectorShape } from './vectorGeometry.ts';
+import { defaultVectorStyle, paperPath } from './vectorGeometry.ts';
 import { materialBubbleBezier } from './bubblePresetData.ts';
 import { EXTRACTED_BUBBLE_ASSETS } from '../data/extractedBubbleAssets.ts';
 
@@ -33,47 +33,26 @@ export interface BubbleTailComposite { path: string; bounds: BBox }
  * Body nodes and the speaker-relative tail target remain separate in OMNY.
  */
 export function bubbleTailComposite(
-  box: BBox, target: { x: number; y: number }, shape: BubbleShape = 'normal', bezier?: Bubble['bezier'],
+  box: BBox, target: { x: number; y: number }, shape: BubbleShape = 'normal', bezier?: Bubble['bezier'], tailRoot?:BubbleTailRoot,
 ): BubbleTailComposite | null {
   if (![box.x, box.y, box.w, box.h, target.x, target.y].every(Number.isFinite) || box.w <= 0 || box.h <= 0) return null;
   const body = bodyCurve(shape, bezier);
   if (!body) return null;
-  const ray = paperPath(vectorShape('line', { x: 0, y: 0 }, { x: 1, y: 1 }, defaultVectorStyle()));
   let triangle: ReturnType<typeof paperPath> | undefined;
   let union: ReturnType<typeof body.unite> | undefined;
   try {
     body.scale(box.w / 100, box.h / 100, [0, 0]);
     body.translate([box.x, box.y]);
-    if (body.contains([target.x, target.y])) return null;
-    const center = body.bounds.center;
-    const dx = target.x - center.x, dy = target.y - center.y, distance = Math.hypot(dx, dy);
-    if (distance < 1e-6) return null;
-    const ux = dx / distance, uy = dy / distance;
-    const length = Math.max(distance, Math.hypot(box.w, box.h)) * 2;
-    ray.pathData = `M ${center.x} ${center.y} L ${center.x + ux * length} ${center.y + uy * length}`;
-    const hits = body.getIntersections(ray).map(hit => (hit.point.x - center.x) * ux + (hit.point.y - center.y) * uy);
-    const edge = Math.max(...hits);
-    if (!Number.isFinite(edge) || edge >= distance - 1e-6) return null;
-    const size = Math.min(box.w, box.h);
-    let width = clamp(size * .075, 1.1, 3.2);
-    let depth = Math.min(edge * .5, clamp(size * .08, 1.8, 3.6));
-    let roots: Array<{ x: number; y: number }> = [];
-    for (let attempt = 0; attempt < 16; attempt++) {
-      const x = center.x + ux * (edge - depth), y = center.y + uy * (edge - depth);
-      roots = [{ x: x - uy * width, y: y + ux * width }, { x: x + uy * width, y: y - ux * width }];
-      if (roots.every(p => body.contains([p.x, p.y])) && body.contains([x, y])) break;
-      width *= .5;
-      depth *= .8;
-      roots = [];
-    }
-    if (!roots.length) return null;
-    triangle = paperPath({ ...bubbleBezierPath({ nodes: [roots[0], target, roots[1]] }), id: 'bubble-tail' });
+    const geometry=bubbleTailGeometry(box,target,shape,bezier,tailRoot);
+    if(!geometry)return null;
+    triangle=paperPath({id:'bubble-tail',closed:true,nodes:[],style:defaultVectorStyle()});
+    triangle.pathData=geometry.fillPath;
     union = body.unite(triangle, { insert: false });
     union.translate([-box.x, -box.y]);
     union.scale(100 / box.w, 100 / box.h, [0, 0]);
     const b = union.bounds;
     return { path: union.pathData, bounds: { x: b.x, y: b.y, w: b.width, h: b.height } };
-  } finally { body.remove(); ray.remove(); triangle?.remove(); union?.remove(); }
+  } finally { body.remove(); triangle?.remove(); union?.remove(); }
 }
 
 export function bubbleTailDisabled(bubble: Pick<Bubble, 'tail' | 'offscreen' | 'shape'>): boolean {
@@ -103,6 +82,22 @@ export function normalizedBubbleTailTarget(
   };
 }
 
+export function bubbleTailRootPoint(bubbleBox:BBox, root:BubbleTailRoot):{x:number;y:number} {
+  return {
+    x:bubbleBox.x+bubbleBox.w*(Number.isFinite(root.x)?root.x:.5),
+    y:bubbleBox.y+bubbleBox.h*(Number.isFinite(root.y)?root.y:.5),
+  };
+}
+
+export function normalizedBubbleTailRoot(bubbleBox:BBox, point:{x:number;y:number}):BubbleTailRoot {
+  const x=bubbleBox.w?(point.x-bubbleBox.x)/bubbleBox.w:.5;
+  const y=bubbleBox.h?(point.y-bubbleBox.y)/bubbleBox.h:.5;
+  return {
+    x:Math.round((Number.isFinite(x)?x:.5)*1000)/1000,
+    y:Math.round((Number.isFinite(y)?y:.5)*1000)/1000,
+  };
+}
+
 function coordinate(value: number): string {
   return String(Math.round(value * 100) / 100);
 }
@@ -119,6 +114,8 @@ export interface BubbleTailGeometry {
   outlinePath: string;
   /** 本体側の輪郭線だけを消すSVGマスク。 */
   seamMask: BubbleSeamMask;
+  /** 根元編集ハンドルを置く、実輪郭上の点。 */
+  rootPoint: {x:number;y:number};
 }
 
 export interface BubbleJoinGeometry {
@@ -135,6 +132,7 @@ interface ConnectionRoot {
   innerLeft: { x: number; y: number };
   innerRight: { x: number; y: number };
   seamMask: BubbleSeamMask;
+  rootPoint: {x:number;y:number};
 }
 
 function normalizedPoint(box: BBox, point: { x: number; y: number }): [number, number] {
@@ -214,6 +212,7 @@ function connectionRoot(
     boundaryDistance,
     innerLeft,
     innerRight,
+    rootPoint:{x:baseX,y:baseY},
     seamMask: { points: seamPoints.map((point) => normalizedPoint(box, point)) },
   };
 }
@@ -226,20 +225,24 @@ export function bubbleTailGeometry(
   target: { x: number; y: number },
   shape: BubbleShape = 'normal',
   bezier?: Bubble['bezier'],
+  tailRoot?: BubbleTailRoot,
 ): BubbleTailGeometry | null {
   const center = bubbleBezierCenter(bubbleBox, bezier);
   const centerX = center?.x ?? bubbleBox.x + bubbleBox.w / 2;
   const centerY = center?.y ?? bubbleBox.y + bubbleBox.h / 2;
   const distance = Math.hypot(target.x - centerX, target.y - centerY);
-  const root = connectionRoot(bubbleBox, target, shape, 0, bezier);
+  const targetRoot = connectionRoot(bubbleBox, target, shape, 0, bezier);
   // しっぽ先端が本体内にある間は描かない。結合処理とは異なり、外へ出て初めて有効。
-  if (!root || root.boundaryDistance >= distance) return null;
+  if (!targetRoot || targetRoot.boundaryDistance >= distance) return null;
+  const root = tailRoot ? connectionRoot(bubbleBox,bubbleTailRootPoint(bubbleBox,tailRoot),shape,0,bezier) : targetRoot;
+  if(!root)return null;
   const left = root.innerLeft;
   const right = root.innerRight;
   return {
     fillPath: `M ${coordinate(left.x)} ${coordinate(left.y)} L ${coordinate(target.x)} ${coordinate(target.y)} L ${coordinate(right.x)} ${coordinate(right.y)} Z`,
     outlinePath: `M ${coordinate(left.x)} ${coordinate(left.y)} L ${coordinate(target.x)} ${coordinate(target.y)} L ${coordinate(right.x)} ${coordinate(right.y)}`,
     seamMask: root.seamMask,
+    rootPoint:root.rootPoint,
   };
 }
 
@@ -305,11 +308,12 @@ export interface MonologueTailEllipse {
   ry: number;
 }
 
-/** モノローグ用。人物側ほど小さく、粒の間隔が広がる2〜3個の縦長楕円を返す。 */
+/** thinking用。人物側ほど小さく、粒の間隔が広がる2〜4個の丸を返す。 */
 export function monologueTailEllipses(
   bubbleBox: BBox,
   target: { x: number; y: number },
   bezier?: Bubble['bezier'],
+  tailRoot?: BubbleTailRoot,
 ): MonologueTailEllipse[] {
   const center = bubbleBezierCenter(bubbleBox, bezier);
   const centerX = center?.x ?? bubbleBox.x + bubbleBox.w / 2;
@@ -324,15 +328,16 @@ export function monologueTailEllipses(
   if (isBubbleBezier(bezier) && customDistance === undefined) return [];
   const boundaryScale = customDistance === undefined ? 1 / Math.sqrt((dx * dx) / (radiusX * radiusX) + (dy * dy) / (radiusY * radiusY)) : customDistance / distance;
   if (!Number.isFinite(boundaryScale) || boundaryScale >= 1) return [];
-  const start = {
-    x: centerX + dx * boundaryScale,
-    y: centerY + dy * boundaryScale,
-  };
+  const automaticStart = {x:centerX+dx*boundaryScale,y:centerY+dy*boundaryScale};
+  const root = tailRoot ? connectionRoot(bubbleBox,bubbleTailRootPoint(bubbleBox,tailRoot),'thought',0,bezier) : null;
+  const start = root?.rootPoint ?? automaticStart;
   const remaining = Math.hypot(target.x - start.x, target.y - start.y);
-  const fractions = remaining >= 18 ? [0.12, 0.48, 1] : [0.2, 1];
-  const baseSizes = fractions.length === 3
-    ? [{ rx: 2.8, ry: 3.5 }, { rx: 2, ry: 2.6 }, { rx: 1.15, ry: 1.6 }]
-    : [{ rx: 2.35, ry: 3 }, { rx: 1.15, ry: 1.6 }];
+  const fractions = remaining >= 34 ? [0.09,0.31,0.62,1] : remaining >= 18 ? [0.12, 0.48, 1] : [0.2, 1];
+  const baseSizes = fractions.length === 4
+    ? [{rx:3.4,ry:3.4},{rx:2.7,ry:2.7},{rx:2,ry:2},{rx:1.3,ry:1.3}]
+    : fractions.length === 3
+      ? [{rx:3.15,ry:3.15},{rx:2.3,ry:2.3},{rx:1.4,ry:1.4}]
+      : [{rx:2.7,ry:2.7},{rx:1.4,ry:1.4}];
   // 短いしっぽでも、人物側の最後の粒が前の粒へ食い込まない大きさへ縮める。
   const sizeScale = fractions.slice(1).reduce((scale, fraction, index) => {
     const gap = (fraction - fractions[index]) * remaining;

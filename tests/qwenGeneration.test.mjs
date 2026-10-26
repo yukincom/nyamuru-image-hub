@@ -3,7 +3,7 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
-import {buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint} from '../src/lib/qwenGeneration.ts';
+import {buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint,QWEN_GENERATION_PROFILE} from '../src/lib/qwenGeneration.ts';
 import {setWorkStylePrompt,artworkSettingsFromSource,applyArtworkSettings} from '../src/lib/artworkRules.ts';
 import {FIGURE_SIZE_LABELS,parseMangaYaml,parseOmayYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 import {confirmHumanPoseCameraPrompt} from '../src/lib/humanPoseScene.ts';
@@ -32,12 +32,34 @@ test('pose, action, angle, framing and identity survive normal, sketch and corre
  for(const mode of ['prompt','image']){
   const {manga,plan}=posePlan(mode),before=structuredClone(manga);
   for(const prompt of [plan.prompt,plan.sketchPrompt,qwenGenerationPrompt(plan,{kind:'paint'}, {kind:'paint'})]){
-   for(const text of ['確認用','胸から上','驚いた表情で左を見る','左斜め前から少し見下ろす','細い眉と短い黒髪'])assert.ok(prompt.includes(text),text);
+   for(const text of ['確認用','驚いた表情で左を見る','左斜め前から少し見下ろす','細い眉と短い黒髪'])assert.ok(prompt.includes(text),text);
+   assert.equal(prompt.includes('胸から上'),mode==='prompt');
    assert.ok(prompt.includes(mode==='image'?'3Dポーズ参照':'右腕を上げ、左膝を曲げる。'));
    if(mode==='image')assert.ok(!prompt.includes('右腕を上げ、左膝を曲げる。'));
   }
   assert.deepEqual(manga,before);
  }
+});
+test('image pose captures the panel outline while retaining the original figure reference frame',()=>{
+ const {manga,plan}=posePlan();
+ assert.deepEqual(plan.outputFrame,{type:'rect',x:0,y:0,w:90,h:150});
+ assert.deepEqual(plan.referenceFrame,{x:0,y:0,w:25,h:50});
+ assert.deepEqual(plan.humanPose.cutFrame.bounds,{x:0,y:0,w:3.6,h:3});
+ assert.equal(plan.humanPose.aspect,.5);
+ assert.ok(Math.abs(plan.width/plan.height-.6)<.002);
+ const refs=[{label:'人物資料',characterKeys:['person-id'],image:'data:character'}];
+ const payload=qwenGenerationPayload(plan,refs,undefined,undefined,undefined,'data:pose');
+ assert.doesNotMatch(payload.references.at(-1).label,/胸から上/);
+ assert.deepEqual(manga.pages[0].panels[0].figures[0].bbox,{x:0,y:0,w:25,h:50});
+});
+test('composition payload keeps individual character assignments and the authored dialogue',()=>{
+ const plan={profile:'qwen-image-2.1-owner-v1',documentKey:'work',pageNumber:1,panelId:0,overlay:false,ownerKey:'page',label:'ページ全体',scope:'page',width:1024,height:1400,prompt:'Character 1とCharacter 2。台詞：こんにちは\n世界',literalText:['こんにちは\n世界'],characterKeys:['a','b'],candidates:[],compositionImage:'data:layout'};
+ const refs=[{label:'人物A',characterKeys:['a'],image:'data:a'},{label:'人物B',characterKeys:['b'],image:'data:b'}];
+ const payload=qwenGenerationPayload(plan,refs);
+ assert.equal(payload.mode,'paint');assert.equal(payload.paint_image,'data:layout');assert.deepEqual(payload.references.map(r=>r.character_keys),[['a'],['b']]);assert.deepEqual(payload.literal_text,['こんにちは\n世界']);
+ assert.throws(()=>qwenGenerationPayload({...plan,compositionImage:undefined},refs),/紙面/);
+ assert.throws(()=>qwenGenerationPayload(plan,[refs[0]]),/参照資料/);
+ assert.throws(()=>qwenGenerationPayload(plan,refs,'data:extra'),/単品レイヤー/);
 });
 test('3D image remains separate from identity sheets and cannot be omitted or sent in text mode',()=>{
  const {plan}=posePlan(),refs=[{label:'人物資料',characterKeys:['person-id'],image:'data:character'}];
@@ -246,6 +268,12 @@ test('storyboard generation separates one rough pose from character sheets and k
 
 import {createHash} from 'node:crypto';
 import {decodeQwenJob} from '../src/lib/localBridge.ts';
+test('saved page jobs accept their original nonzero panel id without rewriting history',async()=>{
+ const response={profile:QWEN_GENERATION_PROFILE,job_id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',status:'prepared',request_sha256:'a'.repeat(64),label:'ページ',width:768,height:1024,
+  document_key:'work',page_number:1,panel_id:1,overlay:false,owner_key:'page',created_at:42};
+ for(const panelId of [0,1,3])assert.equal((await decodeQwenJob({...response,panel_id:panelId})).panelId,panelId);
+ for(const patch of [{panel_id:-1},{panel_id:1.5},{overlay:true},{owner_key:'panel',panel_id:0}])await assert.rejects(decodeQwenJob({...response,...patch}));
+});
 test('Qwen PNG decoding accepts nonsquare output only with matching job, size and digest',async t=>{
  const prior=globalThis.window;globalThis.window={atob};t.after(()=>{globalThis.window=prior;});
  const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',raw=Buffer.alloc(33);

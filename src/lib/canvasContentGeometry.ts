@@ -3,7 +3,7 @@ import type { BBox } from '../types.ts';
 export interface ContentGeometry { width:number; height:number; bounds:BBox|null; path:string }
 
 /** Merge equal alpha runs vertically. White paint is as selectable as black paint. */
-export function alphaContentGeometry(pixels:{width:number;height:number;data:ArrayLike<number>}):ContentGeometry {
+export function alphaContentGeometry(pixels:{width:number;height:number;data:ArrayLike<number>},reference?:{x:number;y:number;width:number;height:number}):ContentGeometry {
   const {width,height,data}=pixels,rects:BBox[]=[];
   let active=new Map<string,BBox>(),left=width,top=height,right=0,bottom=0;
   for(let y=0;y<height;y++){
@@ -18,8 +18,9 @@ export function alphaContentGeometry(pixels:{width:number;height:number;data:Arr
     }
     active=next;
   }
-  return {width,height,bounds:right>left?{x:left,y:top,w:right-left,h:bottom-top}:null,
-    path:rects.map(b=>`M${b.x} ${b.y}h${b.w}v${b.h}h${-b.w}z`).join('')};
+  const dx=reference?.x??0,dy=reference?.y??0;
+  return {width:reference?.width??width,height:reference?.height??height,bounds:right>left?{x:left+dx,y:top+dy,w:right-left,h:bottom-top}:null,
+    path:rects.map(b=>`M${b.x+dx} ${b.y+dy}h${b.w}v${b.h}h${-b.w}z`).join('')};
 }
 
 export function contentBox(frame:BBox,geometry:ContentGeometry):BBox|null {

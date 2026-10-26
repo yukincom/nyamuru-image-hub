@@ -9,8 +9,9 @@ import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
 import { humanPoseCameraFacing, humanPoseSceneFrame, sameHumanPoseSource, validateHumanPoseScene } from './humanPoseScene.ts';
 import { disposeThreeObject } from './threeSceneResources.ts';
 import type { HumanPoseCameraSubject, HumanPoseRig, HumanPoseData, HumanPoseSceneAssets, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, PoseVector } from './humanPoseTypes.ts';
-import type { BackgroundStage, FigureSize } from '../types.ts';
-import { applyHumanPoseFraming, humanPoseFraming } from './humanPoseFraming.ts';
+import type { BBox, BackgroundStage, FigureSize } from '../types.ts';
+import { applyHumanPoseFraming, humanPoseFraming, humanPosePreviewWindow, type HumanPoseCutFrame } from './humanPoseFraming.ts';
+import { backgroundFocusContains } from './background3dFocusGeometry.ts';
 import { CUBE_STAGE_ID } from './background3d.ts';
 import { loadBackgroundStage } from './backgroundStageStore.ts';
 import { loadStageShape, stageClipPlanes, type StageShape } from './background3dRenderer.ts';
@@ -49,6 +50,8 @@ export class HumanPoseSceneRenderer {
   private cutaway?: BackgroundCutawayModel;
   private observer?: ResizeObserver;
   private disposed = false;
+  private previewMargin = 0;
+  private previewCut?: HumanPoseCutFrame;
 
   static async create(host: HTMLElement, assets: HumanPoseSceneAssets, saved?: HumanPoseSceneSettings, aspect = 1, background?: HumanPoseBackground): Promise<HumanPoseSceneRenderer> {
     if (saved) {
@@ -110,11 +113,15 @@ export class HumanPoseSceneRenderer {
     return changeHumanPoseMotion(this.motions, this.rig, this.basePose, settings, clipId, phase);
   }
   snapshot(): HumanPoseSceneSettings { return structuredClone(this.settings); }
+  setPreviewMargin(margin: number, cut?: HumanPoseCutFrame): void {
+    if (!Number.isFinite(margin) || margin < 0 || margin >= .4) throw new Error('撮影枠の余白が不正です');
+    this.previewMargin = margin; this.previewCut = cut; this.render();
+  }
   frameFor(size: FigureSize, aspect = this.settings.frame.width / this.settings.frame.height): HumanPoseSceneSettings {
     const before = this.snapshot();
     try {
       this.settings = { ...before, frame: humanPoseSceneFrame(aspect), framing: undefined };
-      this.render();
+      this.render(false);
       const points = new Map([...this.runtime.points].map(([id, point]) => [id, this.placement.localToWorld(point.clone())]));
       return { ...this.snapshot(), framing: humanPoseFraming(points, this.camera, size) };
     } finally { this.settings = before; this.render(); }
@@ -273,7 +280,7 @@ export class HumanPoseSceneRenderer {
     const centre = this.background.shape.bounds.getCenter(new Vector3());
     return { ...this.snapshot(), placement: { ...this.settings.placement, position: [centre.x, this.settings.placement.position[1], centre.z] } };
   }
-  private render(): void {
+  private render(view: BBox | false = humanPosePreviewWindow(this.previewCut, this.previewMargin)): void {
     if (this.disposed) return;
     this.camera.position.fromArray(this.settings.camera.position);
     this.camera.up.fromArray(this.settings.up); this.camera.lookAt(new Vector3(...this.settings.camera.target));
@@ -288,12 +295,12 @@ export class HumanPoseSceneRenderer {
       const indices = visible && new Set(visible);
       this.backgroundGroup.children.forEach((mesh, index) => { mesh.visible = !indices || indices.has(index); });
     }
-    applyBackgroundCameraShift(this.camera, this.settings.camera); applyHumanPoseFraming(this.camera, this.settings); this.camera.updateProjectionMatrix();
+    applyBackgroundCameraShift(this.camera, this.settings.camera); applyHumanPoseFraming(this.camera, this.settings, view || undefined); this.camera.updateProjectionMatrix();
     this.renderer.render(this.scene, this.camera);
   }
-  capture(includeBackground = false): string {
+  capture(includeBackground = false, cut?: HumanPoseCutFrame): string {
     if (this.disposed) throw new Error('3D表示は閉じられています');
-    const { width, height } = this.settings.frame;
+    const { width, height } = cut ? humanPoseSceneFrame(cut.aspect * cut.bounds.w / cut.bounds.h) : this.settings.frame;
     const target = new WebGLRenderTarget(width, height, { samples: 4 });
     target.texture.colorSpace = SRGBColorSpace;
     const handlesVisible = this.runtime.handles.visible;
@@ -301,14 +308,15 @@ export class HumanPoseSceneRenderer {
     const previous = this.renderer.getRenderTarget(), gridVisible = this.grid.visible, backgroundVisible = this.backgroundGroup.visible, surfaceVisible = this.surfaceMarker.visible;
     try {
       if (!includeBackground) this.supports.forEach(mesh => { mesh.visible = false; });
-      this.runtime.handles.visible = false; this.surfaceMarker.visible = false; this.grid.visible = false; this.backgroundGroup.visible = false; this.renderer.setRenderTarget(target); this.render();
+      this.runtime.handles.visible = false; this.surfaceMarker.visible = false; this.grid.visible = false; this.backgroundGroup.visible = false; this.renderer.setRenderTarget(target); this.render(cut?.bounds ?? false);
       const pixels = new Uint8Array(width * height * 4); this.renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
       let visible = false;
-      for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) { visible = true; break; }
+      const polygon = cut?.points.map(([x, y]) => ({ x: (x - cut.bounds.x) / cut.bounds.w, y: (y - cut.bounds.y) / cut.bounds.h }));
+      for (let i = 3; i < pixels.length; i += 4) if (pixels[i] && (!polygon || backgroundFocusContains(polygon, { x: ((i >> 2) % width + .5) / width, y: 1 - (Math.floor((i >> 2) / width) + .5) / height }))) { visible = true; break; }
       if (!visible) throw new Error('撮影範囲に素体がありません。「全体を収める」でカメラを調整してください');
       if (includeBackground) {
         // readRenderTargetPixelsは読取用framebufferを残す。2回目の描画前にMSAAの書込先を戻す。
-        this.backgroundGroup.visible = true; this.renderer.setRenderTarget(target); this.render();
+        this.backgroundGroup.visible = true; this.renderer.setRenderTarget(target); this.render(cut?.bounds ?? false);
         this.renderer.readRenderTargetPixels(target, 0, 0, width, height, pixels);
       }
       const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
@@ -320,7 +328,13 @@ export class HumanPoseSceneRenderer {
         const alpha = data.data[i + 3];
         if (alpha > 0 && alpha < 255) for (let c = 0; c < 3; c++) data.data[i + c] = Math.round(data.data[i + c] * 255 / alpha);
       }
-      context.putImageData(data, 0, 0); return canvas.toDataURL('image/png');
+      context.putImageData(data, 0, 0);
+      if (polygon) {
+        context.globalCompositeOperation = 'destination-in'; context.fillStyle = '#ffffff'; context.beginPath();
+        polygon.forEach(({x, y}, index) => index ? context.lineTo(x * width, y * height) : context.moveTo(x * width, y * height));
+        context.closePath(); context.fill();
+      }
+      return canvas.toDataURL('image/png');
     } finally { this.supports.forEach((mesh, index) => { mesh.visible = supportsVisible[index]; }); this.runtime.handles.visible = handlesVisible; this.surfaceMarker.visible = surfaceVisible; this.renderer.setRenderTarget(previous); this.grid.visible = gridVisible; this.backgroundGroup.visible = backgroundVisible; target.dispose(); this.render(); }
   }
   dispose(): void {

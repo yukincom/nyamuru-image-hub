@@ -105,3 +105,14 @@ test('generation entry reads the live session ref instead of an old render closu
    qwenGenerationRef:{current:{id:'other-session'}}});
  assert.equal(await request('figure-0'),undefined);
 });
+
+test('composition planning reads guide visibility from the document saved when paint closes',async()=>{
+ const before={manga:{pages:[{panels:[{figures:[{}],bubbles:[]}]}]}},after=structuredClone(before),calls=[];
+ const context={documentRef:{current:before},qwenGenerationRef:{current:null},qwenPreparing:{current:false},imageImportBusy:false,projectOperation:{current:false},
+   paintSessionRef:{current:{}},paintController:{current:{close:async()=>{context.documentRef.current=after;}}},
+   artworkGuideVisible:(key,panel,page,overlay,current)=>{assert.equal(current,after);calls.push(key);return false;},
+   buildQwenCompositionPlan:(manga,page,panel,scope,guides)=>{assert.equal(manga,after.manga);assert.equal(guides['0:figure-0'],false);return {scope};},
+   captureQwenComposition:async()=> 'data:composite',crypto:{randomUUID:()=> 'job'},setToast:()=>{},setVoiceOpen:()=>{},setQwenGeneration:value=>calls.push(value)};
+ await appFunction('requestCompositionGeneration',context)('page',-1,0);
+ assert.equal(calls.at(-1).document,after);assert.equal(calls.at(-1).plan.compositionImage,'data:composite');assert.equal(context.qwenPreparing.current,false);
+});

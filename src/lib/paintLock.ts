@@ -3,7 +3,7 @@ import type { PaintOwner } from './paintDocument.ts';
 
 /** A source image's layer lock is independent of its placement/owner lock. */
 export function paintOwnerLocked(owner:PaintOwner):boolean {
-  return Boolean(owner.figure?.artwork?.locked||owner.bubble?.paint_overlay?.locked);
+  return Boolean(owner.inheritedLocked||owner.locked||(owner.kind!=='figure'&&owner.bubble?.paint_overlay?.locked));
 }
 export function paintLayerEditable(owner:PaintOwner,layer:PaintLayer):boolean {
   return !paintOwnerLocked(owner)&&!layer.locked;

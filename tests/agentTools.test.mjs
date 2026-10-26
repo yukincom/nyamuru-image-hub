@@ -24,7 +24,7 @@ test('selected native geometry and material catalog are exposed without artwork 
   const before=fixture();before.manga.pages[0].panels[0].bubbles[0].paint_overlay={kind:'x',data:'PRIVATE_PIXEL_DATA'};
   const snap=agentEditorSnapshot(before,'r1',0,target);
   assert.equal(snap.selected_bubble.text,'原文を残す。');assert.deepEqual(snap.selected_bubble.bbox,{x:120,y:40,w:40,h:50});
-  assert.equal(snap.materials.length,38);assert.ok(!JSON.stringify(snap).includes('PRIVATE_PIXEL_DATA'));
+  assert.equal(snap.materials.length,45);assert.ok(snap.materials.some(material=>material.id==='kumo_01'));assert.ok(!snap.materials.some(material=>material.id==='thought_01'));assert.ok(!JSON.stringify(snap).includes('PRIVATE_PIXEL_DATA'));
   assert.deepEqual(selectedAgentBubble(2,5,{type:'bubble',index:3,scope:'page_overlay'}),{pageIndex:2,panelIndex:0,index:3,kind:'bubble',overlay:true});
   assert.equal(selectedAgentBubble(0,0,{type:'figure',index:0}),null);
 });
@@ -62,7 +62,7 @@ test('invalid, stale, hidden, locked and different targets cannot partially muta
   before.manga.pages[0].panels[0].bubbles[0].paint_overlay={locked:true};assert.throws(()=>edit(before,{preset:'cloud'}),/ロック/);
   for(const changes of [{text:'勝手な書き換え'},{preset:'cloud',material:'nomal_01'},{bbox:{x:0,y:0,w:NaN,h:10}},
     {tail_mode:'bad'},{tail_mode:'auto',tail_point:{x:80,y:60}},{tail_point:{x:Infinity,y:0}},
-    {bezier:{nodes:[{x:0,y:0},{x:100,y:0},{x:50,y:100,handleIn:{x:80,y:0}}]}}])assert.throws(()=>parseAgentBubbleEdit(request(changes)));
+    {bezier:{nodes:[{x:0,y:0},{x:100,y:0},{x:50,y:100,handleIn:{x:Infinity,y:0}}]}}])assert.throws(()=>parseAgentBubbleEdit(request(changes)));
 });
 test('custom node changes affect only requested outline data; revisions detect state changes',()=>{
   const before=fixture(),outline=createBubbleBezier('ellipse');before.manga.pages[0].panels[0].bubbles[0].bezier=outline;
@@ -78,7 +78,9 @@ test('node patches preserve unmentioned coordinates exactly and reject invalid o
   const expected=structuredClone(outline);expected.nodes[0].handleOut={x:0,y:-40};
   assert.deepEqual(after.manga.pages[0].panels[0].bubbles[0].bezier,expected);
   assert.deepEqual(before.manga.pages[0].panels[0].bubbles[0].bezier,outline);
-  for(const changes of [{node_updates:[{index:4,x:50}]},{node_updates:[{index:0,handleOut:{x:-1,y:0}}]},
+  const outside=edit(before,{node_updates:[{index:0,x:-80,handleOut:{x:-120,y:190}}]});
+  assert.equal(outside.manga.pages[0].panels[0].bubbles[0].bezier.nodes[0].x,-80);
+  for(const changes of [{node_updates:[{index:4,x:50}]},{node_updates:[{index:0,handleOut:{x:Infinity,y:0}}]},
     {node_updates:[{index:0,x:20},{index:0,y:20}]},{node_updates:[{index:0,x:20}],preset:'cloud'},
     {node_updates:[{index:0,x:NaN}]},{node_updates:[{index:0}]}])assert.throws(()=>edit(before,changes));
   assert.deepEqual(before.manga.pages[0].panels[0].bubbles[0].bezier,outline);

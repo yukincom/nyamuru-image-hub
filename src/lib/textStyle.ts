@@ -24,7 +24,10 @@ export function validTextWeights(value:unknown,text:string):value is TextWeightR
   });
 }
 export function textStyleOf(item:Bubble|ScreenText,kind:'bubble'|'screen_text'):TextStyle {
-  return {orientation:kind==='screen_text'?(item as ScreenText).orientation??'horizontal':'vertical',...item.text_style};
+  const authored=item.text_style;
+  return {...authored,
+    orientation:kind==='screen_text'?(item as ScreenText).orientation??authored?.orientation??'horizontal':authored?.orientation??'vertical',
+    fontSize:authored?.fontSize??(kind==='screen_text'?12:15)};
 }
 export function selectedTextWeight(item:TextItem,selection:TextSelection,baseWeight=600):number|null {
   const base=item.text_style?.fontWeight??baseWeight,values=new Set<number>();let at=selection.start;
@@ -89,10 +92,25 @@ export function textWeightSegments(item:TextItem):Array<{text:string;fontWeight?
   if(at<item.text.length||!result.length)result.push({text:item.text.slice(at)});
   return result;
 }
-/** cqw is relative to the page container; px is for the fixed-scale measurement host. */
+/** The canvas formatting is authoritative; OMNY emphasis mirrors visibly heavier ranges. */
+export function syncBubbleEmphasisFromWeights(bubble:Bubble):void{
+  const base=bubble.text_style?.fontWeight??600;
+  const phrases=[...new Set((bubble.text_weights??[])
+    .filter(range=>range.fontWeight>base)
+    .map(range=>bubble.text.slice(range.start,range.end).trim())
+    .filter(Boolean))];
+  if(phrases.length)bubble.emphasis=phrases.join(', ');else delete bubble.emphasis;
+}
+/** The unzoomed layout host supplies its px width; works without container-query units. */
+export function canvasLengthCss(lengthMm:number,paperWidthMm:number):string {
+  return `calc(var(--canvas-layout-width, ${paperWidthMm*96/25.4}px) * ${lengthMm/paperWidthMm})`;
+}
+export function textToolCursor(style:TextStyle):'text'|'vertical-text' {
+  return style.orientation==='horizontal'?'text':'vertical-text';
+}
 export function textStyleCss(style:TextStyle,paperWidthMm:number,defaultFont?:string):Record<string,string>{
   const font=style.font??defaultFont;
-  return {...(font?{fontFamily:bubbleCssFontFamily(font)}:{}),writingMode:style.orientation==='horizontal'?'horizontal-tb':'vertical-rl',
-    ...(style.fontSize?{fontSize:`${style.fontSize*25.4/72/paperWidthMm*100}cqw`}:{}),
+  return {...(font?{fontFamily:bubbleCssFontFamily(font)}:{}),writingMode:style.orientation==='horizontal'?'horizontal-tb':'vertical-rl','--text-tool-cursor':textToolCursor(style),
+    ...(style.fontSize?{fontSize:canvasLengthCss(style.fontSize*25.4/72,paperWidthMm)}:{}),
     ...(style.fontWeight?{fontWeight:String(style.fontWeight)}:{})};
 }
