@@ -71,7 +71,8 @@ test('stored-image decode failures identify the source in Japanese without freez
  assert.doesNotMatch(paintRendererSource,/image\.decode\(\)/);
  assert.match(pageLayerSource,/loadPaintImagesBestEffort\(result\.scene\.owners\.map\(o=>o\.paint\),p\.assets\)/);
  assert.match(paintRendererSource,/export async function loadPaintImagesBestEffort/);
- assert.match(paintEditorSource,/if\(layer\.guide&&layer\.image\)[\s\S]*?loadPaintImages\(\[\{\.\.\.owner\.paint,layers:\[layer\]\}\],assets,pending\)[\s\S]*?catch\{repair=true;\}/);
+ assert.match(paintEditorSource,/if\(layer\.guide&&layer\.image\)[\s\S]*?loadPaintImages\(\[\{\.\.\.owner\.paint,layers:\[layer\]\}\],assets,pending\)[\s\S]*?catch\{repair=true;repairedImage=true;\}/);
+ assert.match(paintEditorSource,/if\(prepared!==owner&&!repairedImage\)preparedGuides\.push/);
  assert.match(paintEditorSource,/prepareGuideLayer\(owner,\{\.\.\.layer,image:undefined\}\)/);
 });
 

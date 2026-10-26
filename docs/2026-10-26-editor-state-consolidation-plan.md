@@ -468,3 +468,4 @@
 - 既存 `paintPerformance.browser` を拡張し、合成原稿で42項目PASS。2人物＋背景の実guide PNG準備、無描画close／cancel時の反映0回、一筆の共有Undo1件、Undo後closeの反映0回、Redoと未保存Blob保持、保存失敗→再試行、対象人物だけのPNG反映、未保存resume、欠損背景だけの修復、筆跡0でも目の変更を保存することを確認した。
 - 保存往復は既存validator・serializer・restoreを実PNGで通し、描いた人物のguide＋合成PNGの2assetだけを保持し、未描画人物・背景のartworkを作らない。これは合成fixtureの検証であり、実AppのOSフォルダーwriterや利用者の実原稿の保存確認ではない。
 - 利用者の開いている原稿へVite再接続が起こらないよう、専用テストoriginを `127.0.0.1:4335` に分離。元の `4325` は起動していない。作品／モデル／既存serverの操作なし。別作業7ファイルの差分は開始時とbyte単位で同一、pushなし。実原稿検証は9.3の保全後に行う。
+- 本体・試験・記録を `07f2eb2` にcommit。続く全Node検証で、欠損修復の旧構文を固定していた `pageLayerPalette` の1検査を新しい修復flagとclean除外条件へ追従させた。待受を使う5ケースのsandbox拒否は通常権限で再試験し、全Node 1,316件中1,313成功・3skip・失敗0を確認。追補は別commitとし、本体の履歴を書き換えない。
