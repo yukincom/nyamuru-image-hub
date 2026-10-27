@@ -26,7 +26,6 @@ test('T primary click and shortcut open a compact tabbed persistent settings win
   assert.match(toolbar,/<FontFamilyPicker[^>]+label="文字の書体"[^>]+onChange=\{font=>changeStyle\(\{font\}\)\}/);
   assert.doesNotMatch(app,/changeDefaultFont|requestPcFonts\(true\)/);
   assert.match(app,/useEffect\(\(\)=>\{void requestPcFonts\(\);\},\[\]\)/);
-  assert.match(app,/names\.length!==localFontNames\.current\.length\|\|names\.some\(\(name,index\)=>name!==localFontNames\.current\[index\]\)/);
   assert.match(app,/rememberPcFontCatalog\(families\)/);
   assert.doesNotMatch(tools,/<datalist/);
   assert.doesNotMatch(editor,/<h3 class="paint-panel-title">描画ツール<\/h3>/);
@@ -65,10 +64,25 @@ test('font picker has categories, full names and four-column live previews',()=>
   assert.match(picker,/class="font-sample-icon">ABC<\/span>/);
   assert.match(picker,/FONT_MENU_SAMPLE/);
   assert.match(picker,/fontFamily:bubbleCssFontFamily\(font\.family\)/);
+  assert.match(picker,/onChange\(font\.family\)/);
+  assert.match(picker,/font\.displayName\?\?font\.family/);
+  assert.match(picker,/<span>\{selectedName\}<\/span>/);
   assert.match(css,/\.font-family-grid \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\);[^}]*overflow-y:scroll;[^}]*scrollbar-gutter:stable;/);
   assert.match(css,/\.font-family-grid>button \{[^}]*min-height:30px;[^}]*padding:2px 5px;/);
   assert.match(css,/\.font-family-grid>button>span \{[^}]*overflow-wrap:anywhere;[^}]*white-space:normal;/);
   assert.doesNotMatch(picker,/フォントを読み込み|fonts loaded/i);
+});
+
+test('PCフォントの構成が同じでも日本語名をキャッシュへ反映し、作品履歴には触れない',async()=>{
+  const source=read('src/components/App.tsx'),ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let handler;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text==='requestPcFonts')handler=node.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(handler);
+  const old=[{family:'Example',support:'japanese'}],names=[{family:'Example',displayName:'例文'}];let updates=0,writes=0,queries=0;
+  const context={localFontCatalog:{current:old},localFontQuery:{current:null},localFontSynced:{current:false},queryPcFontFamilies:async()=>{queries++;return names;},classifyPcFontFamilies:rows=>rows.map(font=>({...font,support:'japanese'})),setLocalFontFamilies:rows=>{updates++;assert.equal(rows[0].family,'Example');assert.equal(rows[0].displayName,'例文');},rememberPcFontCatalog:()=>writes++};
+  const request=runInNewContext(ts.transpileModule(`(${handler})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  const first=request();assert.equal(request(),first);await first;
+  assert.equal(updates,1);assert.equal(writes,1);assert.equal(context.localFontCatalog.current[0].displayName,'例文');
+  await request();assert.equal(queries,1);
+  context.localFontSynced.current=false;await request();assert.equal(updates,1);assert.equal(writes,1);
 });
 
 test('吹き出し線幅は数値とmmを隣接させる',()=>{

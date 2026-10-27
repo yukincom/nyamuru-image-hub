@@ -1,3 +1,5 @@
+import {readJapaneseFontFamily} from './fontNames.ts';
+
 export const BUBBLE_FONT_PRESETS = [
   'アンチック体',
   '明朝体',
@@ -10,7 +12,8 @@ export const BUBBLE_FONT_PRESETS = [
 
 export const FONT_MENU_SAMPLE='012abcABCあいう';
 export type PcFontSupport='japanese'|'other'|'unreadable';
-export interface PcFontFamily {family:string;support:PcFontSupport}
+export interface PcFontName {family:string;displayName?:string}
+export interface PcFontFamily extends PcFontName {support:PcFontSupport}
 export type FontGlyphProbe=(family:string,sample:string)=>boolean;
 
 export function mergeBubbleFontFamilies(...groups:ReadonlyArray<readonly string[]>):string[] {
@@ -18,10 +21,21 @@ export function mergeBubbleFontFamilies(...groups:ReadonlyArray<readonly string[
 }
 
 /** Local Font Access requires this call to begin inside a user gesture. */
-export async function queryPcFontFamilies(target:Window=window):Promise<string[]> {
-  const query=(target as Window&{queryLocalFonts?:()=>Promise<Array<{family:string}>>}).queryLocalFonts;
+export async function queryPcFontFamilies(target:Window=window):Promise<PcFontName[]> {
+  const query=(target as Window&{queryLocalFonts?:()=>Promise<Array<{family:string;postscriptName?:string;blob?:()=>Promise<Blob>}>>}).queryLocalFonts;
   if(!query)throw new Error('このブラウザではPC内フォントの自動読み込みに対応していません');
-  return mergeBubbleFontFamilies((await query.call(target)).map(font=>font.family));
+  const faces=await query.call(target),unique=new Map<string,typeof faces[number]>();
+  for(const face of faces){const family=face.family.trim();if(family&&!unique.has(family))unique.set(family,face);}
+  const entries=[...unique.entries()],catalog:PcFontName[]=new Array(entries.length);
+  let next=0;
+  await Promise.all(Array.from({length:Math.min(4,entries.length)},async()=>{
+    while(next<entries.length){
+      const index=next++,[family,face]=entries[index];let displayName=family;
+      try{if(face.blob)displayName=await readJapaneseFontFamily(await face.blob(),family,face.postscriptName)??family;}catch{/* Keep the usable family if its metadata cannot be read. */}
+      catalog[index]={family,displayName};
+    }
+  }));
+  return catalog.sort((a,b)=>a.family.localeCompare(b.family,'ja'));
 }
 
 /**
@@ -47,20 +61,21 @@ export function browserFontGlyphProbe(target:Document=document):FontGlyphProbe {
   };
 }
 
-export function classifyPcFontFamilies(families:readonly string[],probe:FontGlyphProbe=browserFontGlyphProbe()):PcFontFamily[] {
-  return mergeBubbleFontFamilies(families).map(family=>{
+export function classifyPcFontFamilies(families:readonly PcFontName[],probe:FontGlyphProbe=browserFontGlyphProbe()):PcFontFamily[] {
+  return families.map(font=>{
+    const {family}=font;
     const japanese=['あ','い','う','日本語'].every(sample=>probe(family,sample));
     const support:PcFontSupport=japanese?'japanese':probe(family,'012abcABC')?'other':'unreadable';
-    return {family,support};
+    return {...font,support};
   });
 }
 
 /** Merge local results with built-ins/current values without hiding a chosen font. */
 export function mergeFontFamilyCatalog(local:readonly PcFontFamily[],extras:readonly string[]=[]):PcFontFamily[] {
   const families=new Map(local.map(font=>[font.family,{...font}]));
-  for(const family of BUBBLE_FONT_PRESETS)families.set(family,{family,support:'japanese'});
+  for(const family of BUBBLE_FONT_PRESETS)families.set(family,{...families.get(family),family,support:'japanese'});
   for(const family of extras.map(value=>value.trim()).filter(Boolean))if(!families.has(family))families.set(family,{family,support:'other'});
-  return [...families.values()].sort((a,b)=>a.family.localeCompare(b.family,'ja'));
+  return [...families.values()].sort((a,b)=>(a.displayName??a.family).localeCompare(b.displayName??b.family,'ja')||a.family.localeCompare(b.family,'ja'));
 }
 
 const SEMANTIC_FAMILIES: Record<string, string> = {

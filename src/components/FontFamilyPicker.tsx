@@ -15,6 +15,7 @@ export default function FontFamilyPicker({value,families=[],disabled=false,label
   const options=useMemo(()=>mergeFontFamilyCatalog(families,[value]),[families,value]);
   const counts=useMemo(()=>({all:options.length,japanese:options.filter(font=>font.support==='japanese').length,unreadable:options.filter(font=>font.support==='unreadable').length}),[options]);
   const visible=category==='all'?options:options.filter(font=>font.support===category);
+  const selectedName=options.find(font=>font.family===value)?.displayName??value;
   useLayoutEffect(()=>{
     if(!open||!anchor.current||!popup.current)return;
     const a=anchor.current.getBoundingClientRect(),p=popup.current.getBoundingClientRect();
@@ -32,7 +33,7 @@ export default function FontFamilyPicker({value,families=[],disabled=false,label
   },[open]);
   const toggle=()=>{if(!open)onOpen?.();setOpen(!open);};
   return <div class="font-family-picker">
-    <button ref={anchor} type="button" class="font-family-trigger" aria-label={label} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={toggle} title={value} style={{fontFamily:bubbleCssFontFamily(value)}}><span>{value}</span><ChevronDown size={13}/></button>
+    <button ref={anchor} type="button" class="font-family-trigger" aria-label={label} aria-haspopup="dialog" aria-expanded={open} disabled={disabled} onClick={toggle} title={selectedName} style={{fontFamily:bubbleCssFontFamily(value)}}><span>{selectedName}</span><ChevronDown size={13}/></button>
     {open&&createPortal(<section ref={popup} class="font-family-popover" role="dialog" aria-label={`${label}を選択`} style={position} onPointerDown={event=>event.stopPropagation()}>
       <header><strong>{label}</strong><button type="button" aria-label="フォント一覧を閉じる" onClick={()=>setOpen(false)}><X size={16}/></button></header>
       <div class="font-family-controls">
@@ -45,8 +46,8 @@ export default function FontFamilyPicker({value,families=[],disabled=false,label
         </div>
       </div>
       <div class="font-family-grid" role="listbox" aria-label={`${category==='japanese'?'日本語対応':category==='unreadable'?'読めない':'すべての'}フォント`} onWheel={event=>event.stopPropagation()}>
-        {visible.map(font=><button type="button" role="option" aria-selected={font.family===value} class={font.family===value?'is-selected':''} title={font.family} style={{fontFamily:bubbleCssFontFamily(font.family)}} onClick={()=>{onChange(font.family);setOpen(false);}}>
-          <span>{display==='sample'?FONT_MENU_SAMPLE:font.family}</span>{display==='sample'&&<small>{font.family}</small>}
+        {visible.map(font=><button type="button" role="option" aria-selected={font.family===value} class={font.family===value?'is-selected':''} title={font.displayName??font.family} style={{fontFamily:bubbleCssFontFamily(font.family)}} onClick={()=>{onChange(font.family);setOpen(false);}}>
+          <span>{display==='sample'?FONT_MENU_SAMPLE:(font.displayName??font.family)}</span>{display==='sample'&&<small>{font.displayName??font.family}</small>}
         </button>)}
         {!visible.length&&<p class="font-family-empty">この分類に表示できるフォントはありません。</p>}
       </div>

@@ -272,6 +272,7 @@ function storedPcFontCatalog(): PcFontFamily[] {
     return parsed.filter((value): value is PcFontFamily => Boolean(
       value && typeof value === 'object'
       && typeof (value as PcFontFamily).family === 'string'
+      && ((value as PcFontFamily).displayName === undefined || typeof (value as PcFontFamily).displayName === 'string')
       && ['japanese', 'other', 'unreadable'].includes((value as PcFontFamily).support),
     ));
   } catch { /* private mode or an old malformed value */ }
@@ -479,7 +480,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const [textPaletteRequest,setTextPaletteRequest]=useState<{id:number;tab:TextPaletteTab}>({id:0,tab:'text'});
   const [bubblePathTool,setBubblePathTool]=useState<BubblePathToolMode>(false);
   const [localFontFamilies,setLocalFontFamilies]=useState<PcFontFamily[]>(storedPcFontCatalog);
-  const localFontNames=useRef(localFontFamilies.map(font=>font.family));
+  const localFontCatalog=useRef(localFontFamilies);
   const localFontQuery=useRef<Promise<void>|null>(null),localFontSynced=useRef(false);
   const createdText=useRef<CanvasTextTarget|null>(null);
   const [bubbleMaterialsOpen,setBubbleMaterialsOpen]=useState(false);
@@ -3120,9 +3121,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(localFontSynced.current)return Promise.resolve();
     const request=queryPcFontFamilies()
       .then(names=>{
-        if(names.length!==localFontNames.current.length||names.some((name,index)=>name!==localFontNames.current[index])){
+        if(names.length!==localFontCatalog.current.length||names.some((name,index)=>name.family!==localFontCatalog.current[index].family||(name.displayName??name.family)!==(localFontCatalog.current[index].displayName??localFontCatalog.current[index].family))){
           const families=classifyPcFontFamilies(names);
-          localFontNames.current=families.map(font=>font.family);
+          localFontCatalog.current=families;
           setLocalFontFamilies(families);
           rememberPcFontCatalog(families);
         }
