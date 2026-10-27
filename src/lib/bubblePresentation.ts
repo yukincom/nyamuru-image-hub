@@ -15,6 +15,12 @@ export function normalizedBubbleLineWidth(value: number): number {
   return Math.round(Math.min(2, Math.max(0.1, value)) * 10) / 10;
 }
 
+/** Individual widths keep the pen palette's precision and range. */
+export function bubbleStrokeWidthMm(bubble: Pick<Bubble, 'line_width_mm'>, defaultWidth = DEFAULT_BUBBLE_LINE_WIDTH_MM): number {
+  const width = bubble.line_width_mm;
+  return typeof width === 'number' && Number.isFinite(width) && width > 0 ? width : normalizedBubbleLineWidth(defaultWidth);
+}
+
 export function bubbleShapeHasTailByDefault(shape: BubbleShape | undefined): boolean {
   return !NO_TAIL_BY_DEFAULT.has(shape ?? 'normal');
 }

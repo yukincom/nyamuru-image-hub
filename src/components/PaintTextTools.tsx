@@ -41,7 +41,7 @@ export default function PaintTextTools({active,openRequest,disabled,select,onMat
           <div class="paint-text-work-settings" role="group" aria-label="吹き出し設定">
             <label><span>線幅</span><input aria-label="吹き出し線幅 mm" type="text" inputMode="decimal" value={lineDraft} disabled={disabled} onInput={event=>{const value=event.currentTarget.value;setLineDraft(value);if(/^\d+(?:\.\d+)?$/.test(value)&&Number(value)>=.1&&Number(value)<=2)onChangeBubbleLineWidth(Number(value));}} onBlur={()=>setLineDraft(String(bubbleLineWidthMm))}/><span>mm</span></label>
             <input aria-label="吹き出し線幅 スライダー" type="range" min="0.1" max="2" step="0.1" value={bubbleLineWidthMm} disabled={disabled} onInput={event=>onChangeBubbleLineWidth(Number(event.currentTarget.value))}/>
-            <span class="bubble-line-width-scope">作品内の全吹き出しに適用</span>
+            <span class="bubble-line-width-scope">新しく作る吹き出しのデフォルト</span>
           </div>
           <div id="paint-bubble-materials-slot" class="paint-bubble-materials-slot"/>
         </div>

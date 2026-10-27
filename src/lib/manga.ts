@@ -593,6 +593,9 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   };
   const validateBubbleTail = (bubble: Bubble, path: string) => {
     validateTextStyle(bubble,path);
+    if(bubble.line_width_mm!==undefined&&(!Number.isFinite(bubble.line_width_mm)||bubble.line_width_mm<=0)){
+      issues.push({level:'error',path:`${path}.line_width_mm`,message:'フキダシ個別の線幅は0より大きい有限のmm値を指定してください'});
+    }
     if (bubble.clip_to_panel !== undefined && typeof bubble.clip_to_panel !== 'boolean') {
       issues.push({ level: 'error', path: `${path}.clip_to_panel`, message: 'コマ枠での切り取りは true / false で指定してください' });
     }

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import {runInNewContext} from 'node:vm';
+import ts from 'typescript';
+import {bubbleStrokeWidthMm,bubbleUsesMonologueTail} from '../src/lib/bubblePresentation.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { buildQwenCompositionPlan, qwenCompositionLayout, qwenCompositionTextRuns, qwenPanelImageLayers } from '../src/lib/qwenComposition.ts';
 import { selectHumanPose } from '../src/lib/humanPoseSelection.ts';
@@ -206,4 +209,46 @@ test('hidden panel and overlay text are omitted from generation literal text',()
  manga.pages[0].page_overlay.screen_text=[{text:'隠した前景文字',hidden:true},{text:'見える前景文字'}];
  const plan=buildQwenCompositionPlan(manga,0,0,'page');
  assert.ok(!plan.literalText.includes('ドン！'));assert.ok(!plan.literalText.includes('隠した前景文字'));assert.ok(plan.literalText.includes('見える前景文字'));
+});
+
+// Inspect the SVG sent to the rasterizer by the real per-owner export routine.
+test('composition export uses each bubble width for its body, thought tail and join',async()=>{
+ const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+ const ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+ let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='drawBubbles')body=node.initializer.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(body);
+ class Element {
+  constructor(name,attrs={}){this.name=name;this.attrs={...attrs};this.childNodes=[];}
+  setAttribute(key,value){this.attrs[key]=String(value);}
+  append(...children){for(const child of children){child.parent=this;this.childNodes.push(child);}}
+  remove(){if(this.parent)this.parent.childNodes=this.parent.childNodes.filter(node=>node!==this);}
+  cloneNode(){const copy=new Element(this.name,this.attrs);copy.append(...this.childNodes.map(child=>child.cloneNode()));return copy;}
+  querySelector(){return this.childNodes.find(node=>node.name==='svg');}
+  querySelectorAll(selector){const classes=selector.split(',').map(value=>value.trim().slice(1));return this.childNodes.filter(node=>classes.includes(node.attrs.class));}
+  toJSON(){return {name:this.name,attrs:this.attrs,children:this.childNodes};}
+ }
+ for(const overlay of [false,true]){
+  const captured=[],manga={meta:{bubble_line_width_mm:.7}};
+  const panel={shape:{type:'rect',x:0,y:0,w:100,h:100},figures:[{bbox:{x:5,y:5,w:10,h:10}}],bubbles:[
+   {text:'思考',shape:'thought',line_width_mm:.2,bbox:{x:10,y:10,w:20,h:20}},
+   {text:'結合',shape:'normal',join_to:1,line_width_mm:1.4,bbox:{x:40,y:10,w:20,h:20}},
+   {text:'既定',shape:'normal',bbox:{x:70,y:10,w:20,h:20}},
+  ]};
+  const context={manga,canvas:{width:1000,height:1000},frame:{x:0,y:0,w:100,h:100},bubbleStrokeWidthMm,bubbleUsesMonologueTail,SVG_NS:'http://www.w3.org/2000/svg',
+   document:{createElement:name=>new Element(name)},svgElement:(name,attrs)=>new Element(name,attrs),panelShapePoints,paintReferenceBox:(_paint,box)=>box,
+   bubbleVisible:()=>true,resolveBubbleSpeakerFigureIndex:()=>0,compatibleBubbleClips:()=>true,
+   tail:{bubbleTailDisabled:()=>false,bubbleTailTargetPoint:()=>({x:5,y:5}),monologueTailEllipses:()=>[{cx:12,cy:12,rx:2,ry:3}],bubbleTailComposite:()=>null,bubbleJoinGeometry:()=>({firstSeamMask:{},secondSeamMask:{},fillPath:'fill',outlinePaths:['join']})},
+   context:{save(){},restore(){},clip(){},drawImage(){}},outline(){},drawImages:async()=>{},drawText(){},bubbleTextFrame:box=>box,
+   BubbleShapeSvg:'BubbleShapeSvg',h:(type,props)=>({type,props}),render:(node,host)=>{if(!node){host.childNodes=[];return;}const svg=new Element('svg');svg.append(new Element('path',{class:'bubble-svg-surface'}),new Element('path',{class:'bubble-svg-outline-surface'}),new Element('path',{class:'bubble-svg-detail'}));host.append(svg);},
+   Blob,XMLSerializer:class {serializeToString(svg){return JSON.stringify(svg);}},decodePaintImage:async blob=>{captured.push(JSON.parse(await blob.text()));return {src:''};},
+  };
+  const draw=runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  await draw({panel,panelIndex:0,overlay});assert.equal(captured.length,3);
+  const descendants=node=>[node,...node.children.flatMap(descendants)];
+  for(const [index,width] of [.2,1.4,.7].entries()){
+   const outlines=descendants(captured[index]).filter(node=>['bubble-svg-outline-surface','bubble-svg-detail'].includes(node.attrs.class));
+   assert.equal(outlines.length,2);assert.ok(outlines.every(node=>Number(node.attrs['stroke-width'])===width*10));
+  }
+  const bead=descendants(captured[0]).find(node=>node.name==='ellipse');assert.equal(bead.attrs['stroke-width'],.2);
+  const join=descendants(captured[1]).find(node=>node.attrs.d==='join');assert.equal(join.attrs['stroke-width'],1.4);
+ }
 });

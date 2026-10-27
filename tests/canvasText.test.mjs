@@ -4,9 +4,10 @@ import { readFileSync } from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
-import { toStoredMangaYaml, parseMangaYaml } from '../src/lib/manga.ts';
+import { toStoredMangaYaml, toSeparatedMangaYaml, parseMangaYaml, validateManga } from '../src/lib/manga.ts';
+import {bubbleStrokeWidthMm} from '../src/lib/bubblePresentation.ts';
 import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
-import { toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
+import { changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
 test('new panel and page text inherit the chosen style instead of returning to 12pt',()=>{
  const d=fixture(),style={fontSize:29,orientation:'horizontal',font:'BIZ UDP明朝',fontWeight:700};
@@ -46,7 +47,7 @@ test('actual style and normalized panel controls leave history, redo and save st
  const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
  canvasTextAt(documentRef.current,target).text_style={fontSize:18};
  const imageGesture={current:{active:true,pushed:true}},lastHistoryPush={current:123};let updates=0,preferences=0,clones=0;
- const context={documentRef,paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,editCanvasTextStyle,canvasTextAt,textStyleOf:item=>item.text_style,
+ const context={changeCanvasDefaultBubbleLineWidth,documentRef,paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,editCanvasTextStyle,canvasTextAt,textStyleOf:item=>item.text_style,
   changeTextToolStyle:()=>preferences++,imageGesture,lastHistoryPush,setDocument:next=>{updates++;documentRef.current=next;},setToast:message=>assert.fail(message),
   cloneDocument:doc=>{clones++;return structuredClone(doc);},clamp:(v,min,max)=>Math.max(min,Math.min(max,v))};
  const change=appHandler('changeCanvasTextStyle',context);
@@ -61,13 +62,87 @@ test('actual style and normalized panel controls leave history, redo and save st
 });
 test('bubble width from T waits for paint and applies to the newly materialized document',async()=>{
  const documentRef={current:fixture()},paintSessionRef={current:{document:documentRef.current}},tasks=[];let closes=0,updates=0;
- const context={documentRef,paintSessionRef,clamp:(v,min,max)=>Math.max(min,Math.min(max,v)),cloneDocument:structuredClone,
+ const context={changeCanvasDefaultBubbleLineWidth,documentRef,paintSessionRef,clamp:(v,min,max)=>Math.max(min,Math.min(max,v)),cloneDocument:structuredClone,
   layerTransition:fn=>{const task=fn();tasks.push(task);return task;},paintController:{current:{close:async()=>{closes++;documentRef.current=structuredClone(documentRef.current);documentRef.current.manga.meta.title='retained ink';paintSessionRef.current=null;}}},setDocument:next=>{updates++;documentRef.current=next;}};
  const change=appHandler('changePanelStyleNumber',context);
  const before=documentRef.current.manga.meta.bubble_line_width_mm;change('bubble_line_width_mm',before);assert.equal(closes,0);
  change('bubble_line_width_mm',before===.7?.8:.7);assert.equal(updates,0);await Promise.all(tasks);
  assert.equal(closes,1);assert.equal(updates,1);assert.equal(documentRef.current.manga.meta.title,'retained ink');
 });
+test('bubble default changes retain every existing body and tail, while new bubbles inherit the new value',()=>{
+ const d=fixture(),page=d.manga.pages[0],panel=page.panels[0];
+ panel.bubbles.push({text:'個別',line_width_mm:1.4},{text:'非表示',hidden:true},{text:'固定',locked:true});
+ page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景'}],figures:[]};
+ const previous=d.manga.meta.bubble_line_width_mm,before=structuredClone(d);
+ assert.equal(changeCanvasDefaultBubbleLineWidth(d,previous),false);assert.deepEqual(d,before);
+ assert.equal(changeCanvasDefaultBubbleLineWidth(d,.9),true);
+ assert.deepEqual(panel.bubbles.map(b=>b.line_width_mm),[previous,1.4,previous,previous]);
+ assert.equal(page.page_overlay.bubbles[0].line_width_mm,previous);
+ const added=addCanvasText(d,0,0,'bubble');assert.ok(added);
+ assert.equal(bubbleStrokeWidthMm(canvasTextAt(d,added),d.manga.meta.bubble_line_width_mm),.9);
+ assert.equal(changeCanvasDefaultBubbleLineWidth(d,1.2),true);assert.equal(canvasTextAt(d,added).line_width_mm,.9);
+ const saved=structuredClone(d);assert.equal(changeCanvasDefaultBubbleLineWidth(d,1.2),false);assert.deepEqual(d,saved);
+ for(const write of [toStoredMangaYaml,toSeparatedMangaYaml]){
+  const restored=parseMangaYaml(write(d));
+  assert.deepEqual(restored.manga.pages[0].panels[0].bubbles.map(b=>b.line_width_mm),[previous,1.4,previous,previous,.9]);
+  assert.equal(restored.manga.pages[0].page_overlay.bubbles[0].line_width_mm,previous);
+ }
+});
+
+test('individual bubble widths retain pen precision, geometry, siblings and defaults across saves',()=>{
+ for(const overlay of [false,true]){
+  const d=fixture(),page=d.manga.pages[0];
+  page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景',bbox:{x:10,y:10,w:30,h:40}}],figures:[]};
+  page.panels[0].bubbles.push({text:'別の吹き出し',line_width_mm:1});
+  const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay},original=structuredClone(d),bubble=canvasTextAt(d,target);
+  assert.equal(editCanvasBubbleLineWidth(d,target,d.manga.meta.bubble_line_width_mm),d);
+  for(const width of [.07*25.4/600,100*25.4/300]){
+   const next=editCanvasBubbleLineWidth(d,target,width);assert.notEqual(next,d);
+   const expected=structuredClone(original);canvasTextAt(expected,target).line_width_mm=width;
+   assert.deepEqual(next,expected);assert.deepEqual(d,original);
+   const restored=parseMangaYaml(toStoredMangaYaml(next));assert.equal(canvasTextAt(restored,target).line_width_mm,width);
+   assert.equal(validateManga(restored).filter(issue=>issue.path.endsWith('.line_width_mm')).length,0);
+  }
+  for(const value of [0,-1,Infinity,NaN])assert.equal(editCanvasBubbleLineWidth(d,target,value),d);
+  for(const patch of [{hidden:true},{locked:true},{nativeLocked:true},{paint_overlay:{locked:true}}]){
+   Object.assign(bubble,patch);assert.equal(canvasBubbleLineWidthEditable(d,target),false);assert.equal(editCanvasBubbleLineWidth(d,target,1.2),d);
+   Object.keys(patch).forEach(key=>delete bubble[key]);
+  }
+  if(!overlay){page.panels[0].layer={locked:true};assert.equal(editCanvasBubbleLineWidth(d,target,1.2),d);delete page.panels[0].layer;}
+  assert.equal(editCanvasBubbleLineWidth(d,{...target,index:99},1.2),d);
+  assert.equal(editCanvasBubbleLineWidth(d,{...target,kind:'screen_text'},1.2),d);
+  for(const width of [0,-1,Infinity,NaN]){
+   bubble.line_width_mm=width;assert.ok(validateManga(d).some(issue=>issue.path.endsWith('.line_width_mm')));
+  }
+ }
+});
+
+test('the actual pen-palette handler edits one selected bubble with independent undo and redo',()=>{
+ for(const overlay of [false,true])for(const bubblePathTool of [false,'node']){
+  const documentRef={current:fixture()},d=documentRef.current;
+  d.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',figures:[],bubbles:[{text:'前景'}]};
+  const selectionContext={paintSession:null,textTool:false,zoomTool:false,selectedElement:{type:'bubble',index:0,scope:overlay?'page_overlay':undefined},activePage:0,activePanel:0,bubblePathTool};
+  const selectedBubbleTarget=appHandler('selectedBubbleTarget',selectionContext),timeline={current:workspaceHistory()},imageGesture={current:{active:false,pushed:false}},lastHistoryPush={current:0};
+  assert.equal(selectedBubbleTarget.overlay,overlay);
+  for(const block of ['paintSession','textTool','zoomTool'])assert.equal(appHandler('selectedBubbleTarget',{...selectionContext,[block]:true}),undefined);
+  let updates=0;
+  const context={selectedBubbleTarget,bubblePathTool,documentRef,editCanvasBubbleLineWidth,paintSessionRef:{current:null},projectOperation:{current:false},layerSwitch:{current:false},qwenGeneration:null,textTool:false,zoomTool:false,
+   getPrintSetup:()=>({dpi:600}),imageGestureBoundary:()=>{imageGesture.current={active:false,pushed:false};},imageGesture,lastHistoryPush,timeline,changedHistory:()=>{},workspaceSnapshot:()=>documentRef.current,
+   synchronizeCatalogReferences:()=>{},reconcileSplitOverlapFlags:()=>{},setDocumentState:()=>updates++,setHasDocument:()=>{},setDocument:()=>{}};
+  context.setDocument=appHandler('setDocument',context);
+  const change=appHandler('changeSelectedBubbleLineWidth',context);
+  const initial=documentRef.current;change(12);const first=documentRef.current;assert.equal(updates,1);
+  assert.equal(canvasTextAt(first,selectedBubbleTarget).line_width_mm,12*25.4/600);assert.equal(first.manga.meta.bubble_line_width_mm,initial.manga.meta.bubble_line_width_mm);
+  change(12);assert.equal(updates,1);assert.equal(timeline.current.past.length,1);
+  change(20);assert.equal(timeline.current.past.length,2);
+  const second=documentRef.current;documentRef.current=timeline.current.undo(second);assert.equal(documentRef.current,first);
+  change(12);assert.equal(timeline.current.future.length,1);
+  documentRef.current=timeline.current.redo(documentRef.current);assert.equal(documentRef.current,second);
+  for(const block of ['textTool','zoomTool','qwenGeneration']){context[block]=true;change(30);assert.equal(documentRef.current,second);context[block]=false;}
+  context.paintSessionRef.current={};change(30);assert.equal(documentRef.current,second);
+ }
+});
+
 test('size notifications share the existing gesture history until commit, but not after undo or another edit',()=>{
  const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
  canvasTextAt(documentRef.current,target).text_style={fontSize:18};

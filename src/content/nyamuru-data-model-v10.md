@@ -43,7 +43,7 @@ manga:
 | `meta.reading_direction` | `"right-to-left"` 固定 |
 | `meta.text_orientation` | `"vertical"` 固定 |
 | `meta.font` | 作品全体の既定書体。例: `"アンチック体"` |
-| `meta.bubble_line_width_mm` | フキダシ本体としっぽの線幅。単位はmm |
+| `meta.bubble_line_width_mm` | 新しく作るフキダシ本体としっぽのデフォルト線幅。単位はmm |
 | `meta.panel_frame_width_mm` | コマ枠線幅。単位はmm |
 | `meta.panel_gutter_row_mm` | 上下に隣接するコマの間隔。単位はmm |
 | `meta.panel_gutter_column_mm` | 左右に隣接するコマの間隔。単位はmm |
@@ -169,6 +169,8 @@ figures:
 ## 5. フキダシ
 
 セリフは必ず `bubbles` 配列へ入れます。`text` は必須です。
+
+`bubbles[].line_width_mm` は、そのフキダシ本体としっぽの個別線幅です（mm、0より大きい有限値）。省略時は `meta.bubble_line_width_mm` を使います。エディターでデフォルトを変えるときは、配置済みのフキダシに参照中の線幅を明記して見た目を保ちます。ペンの太さパレットでは選択中のフキダシだけを変更し、px指定を作品の解像度でmmへ換算します。
 
 ```yaml
 bubbles:

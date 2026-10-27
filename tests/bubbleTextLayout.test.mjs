@@ -58,7 +58,7 @@ test('both panel and page overlay text share the centering component; CSS center
 });
 
 test('panel-owned bubbles clip as a whole while overlays stay unclipped and the text frame moves independently',()=>{
-  assert.match(source,/class="panel-bubble-clip" style=\{layerClipStyle\(panel,canvas\)\}/);
+  assert.match(source,/class="panel-bubble-clip" style=\{\{\.\.\.layerClipStyle\(panel,canvas\),'--bubble-line-width':canvasLengthCss\(bubbleStrokeWidthMm\(bubble,bubbleLineWidthMm\),canvas\.w\)\}\}/);
   assert.match(shapeSource,/const activeMaskId = maskId && seamMasks\.length \? maskId : undefined/);
   assert.match(shapeSource,/<g mask=\{activeMaskId \? `url\(#\$\{activeMaskId\}\)` : undefined\}>/);
   assert.match(component.getText(ast),/class=\{`bubble-text-move-frame \$\{moveFrameActive\?'is-active':''\}`\}/);

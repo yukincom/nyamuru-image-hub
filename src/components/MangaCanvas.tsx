@@ -32,7 +32,7 @@ import { resolveBubbleSpeakerFigureIndex } from '../lib/bubbleRelations';
 import { isPropPlacement } from '../lib/catalogModel.ts';
 import { DETECTED_FIGURE_NAME } from '../lib/systemCharacters.ts';
 import { bubbleJoinGeometry, bubbleTailComposite, bubbleTailDisabled, bubbleTailGeometry, bubbleTailTargetPoint, monologueTailEllipses, normalizedBubbleTailRoot, normalizedBubbleTailTarget, type BubbleSeamMask, type BubbleTailComposite } from '../lib/bubbleTail.ts';
-import { bubbleUsesMonologueTail } from '../lib/bubblePresentation.ts';
+import { bubbleUsesMonologueTail, bubbleStrokeWidthMm } from '../lib/bubblePresentation.ts';
 import { bubbleTextFrame, bubbleTextPosition, compatibleBubbleClips } from '../lib/bubbleClip.ts';
 import { overlayFallbackBox as pageOverlayFallbackBox,overlayTextFallbackBox } from '../lib/pageCanvas.ts';
 import { figureDisplayLabel, panelDisplayLabel } from '../lib/displayLabels.ts';
@@ -1416,7 +1416,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const isSelected = activePanel === panelIndex && isSelectedElement(selection)&&!agentWorking(selection,panelIndex);
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
     const presentation=panelBubblePresentations[panelIndex];
-    return <div class="panel-bubble-clip" style={layerClipStyle(panel,canvas)} key={`panel-${panelIndex}-bubble-${bubbleIndex}`}>
+    return <div class="panel-bubble-clip" style={{...layerClipStyle(panel,canvas),'--bubble-line-width':canvasLengthCss(bubbleStrokeWidthMm(bubble,bubbleLineWidthMm),canvas.w)}} key={`panel-${panelIndex}-bubble-${bubbleIndex}`}>
       {bubbleVisible(bubble)&&<>{presentation?.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{presentation.elementsByBubble[bubbleIndex]}</svg>:null}
       <button
       onDragEnter={event=>{if(!painting&&!elementLocked(selection,panelIndex)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
@@ -1514,7 +1514,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const referenceStyle={left:`${(referenceBox.x-box.x)/box.w*100}%`,top:`${(referenceBox.y-box.y)/box.h*100}%`,width:`${referenceBox.w/box.w*100}%`,height:`${referenceBox.h/box.h*100}%`};
     const isSelected = isSelectedElement(selection)&&!agentWorking(selection);
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
-    return <div class="page-overlay-bubble-stack-item" key={`page-overlay-bubble-${bubbleIndex}`}>
+    return <div class="page-overlay-bubble-stack-item" style={{'--bubble-line-width':canvasLengthCss(bubbleStrokeWidthMm(bubble,bubbleLineWidthMm),canvas.w)}} key={`page-overlay-bubble-${bubbleIndex}`}>
       {bubbleVisible(bubble)&&<>{overlayBubblePresentation.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{overlayBubblePresentation.elementsByBubble[bubbleIndex]}</svg>:null}
       <button
       onDragEnter={event=>{if(!painting&&!elementLocked(selection)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}

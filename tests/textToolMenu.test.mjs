@@ -74,6 +74,8 @@ test('font picker has categories, full names and narrow five-column live preview
 test('吹き出し線幅は数値とmmを隣接させる',()=>{
   const tools=read('src/components/PaintTextTools.tsx'),css=read('src/styles/global.css');
   assert.doesNotMatch(tools,/<strong>吹き出し設定<\/strong>/);
+  assert.match(tools,/新しく作る吹き出しのデフォルト/);
+  assert.doesNotMatch(tools,/作品内の全吹き出しに適用/);
   assert.match(tools,/<span>線幅<\/span><input aria-label="吹き出し線幅 mm"[\s\S]*?<span>mm<\/span>/);
   assert.match(css,/\.paint-text-work-settings>label \{[^}]*grid-template-columns:max-content 54px max-content;/);
 });

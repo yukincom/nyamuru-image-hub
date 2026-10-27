@@ -6,6 +6,8 @@ import { removeBubbleAt } from './bubbleConnections.ts';
 import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
 import { rebaseTextWeights, syncBubbleEmphasisFromWeights, textStyleOf, updateTextStyle, type TextSelection, type TextStylePatch } from './textStyle.ts';
 import { cloneDocument } from './manga.ts';
+import { artworkLocked } from './paintLock.ts';
+import { bubbleStrokeWidthMm, normalizedBubbleLineWidth } from './bubblePresentation.ts';
 export type CanvasTextKind='bubble'|'screen_text';
 export interface CanvasTextTarget {pageIndex:number;panelIndex:number;index:number;overlay:boolean;kind:CanvasTextKind}
 const pointMm=(pt:number)=>pt*25.4/72;
@@ -32,6 +34,22 @@ export function changeCanvasDefaultFont(document:MangaDocument,font:string):bool
   document.manga.meta.font=next;
   return true;
 }
+
+/** Pin inherited widths before changing the default, just as with the default font. */
+export function changeCanvasDefaultBubbleLineWidth(document:MangaDocument,width:number):boolean {
+  if(!Number.isFinite(width))return false;
+  const next=normalizedBubbleLineWidth(width),previous=document.manga.meta.bubble_line_width_mm;
+  if(next===previous)return false;
+  for(const page of document.manga.pages){
+    for(const owner of [...page.panels,...(page.page_overlay?[page.page_overlay]:[])]){
+      for(const bubble of owner.bubbles??[]){
+        if(bubble.line_width_mm===undefined)bubble.line_width_mm=bubbleStrokeWidthMm(bubble,previous);
+      }
+    }
+  }
+  document.manga.meta.bubble_line_width_mm=next;
+  return true;
+}
 export function canvasTextAt(document:MangaDocument,t:CanvasTextTarget){
   const page=document.manga.pages[t.pageIndex];
   if(t.kind==='screen_text')return (t.overlay?page?.page_overlay:page?.panels[t.panelIndex])?.screen_text?.[t.index];
@@ -54,6 +72,18 @@ export function canvasTextEditable(document:MangaDocument,t:CanvasTextTarget,ori
   const panel=!t.overlay?document.manga.pages[t.pageIndex]?.panels[t.panelIndex]:undefined;
   if(!item||item.hidden===true||(!t.overlay&&(!panel||!panelVisible(panel)||origin==='manual'&&panelLocked(panel))))return false;
   return t.kind!=='bubble'||origin==='agent'||!ownerItemLocked(item as Bubble);
+}
+export function canvasBubbleLineWidthEditable(document:MangaDocument,t:CanvasTextTarget):boolean {
+  return t.kind==='bubble'&&canvasTextEditable(document,t)&&!artworkLocked((canvasTextAt(document,t) as Bubble).paint_overlay);
+}
+/** A native outline edit uses the existing document history, without resizing its box or text. */
+export function editCanvasBubbleLineWidth(document:MangaDocument,t:CanvasTextTarget,width:number):MangaDocument {
+  if(!Number.isFinite(width)||width<=0||!canvasBubbleLineWidthEditable(document,t))return document;
+  const bubble=canvasTextAt(document,t) as Bubble;
+  if(Math.abs(bubbleStrokeWidthMm(bubble,document.manga.meta.bubble_line_width_mm)-width)<1e-9)return document;
+  const next=cloneDocument(document);
+  (canvasTextAt(next,t) as Bubble).line_width_mm=width;
+  return next;
 }
 /** Visibility is a saved document edit; it never changes folder expansion or text geometry. */
 export function toggleCanvasTextVisibility(document:MangaDocument,t:CanvasTextTarget):boolean {

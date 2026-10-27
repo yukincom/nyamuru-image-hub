@@ -43,7 +43,7 @@ manga:
 | `meta.reading_direction` | Fixed to `"right-to-left"` |
 | `meta.text_orientation` | Fixed to `"vertical"` |
 | `meta.font` | Default typeface for the work, for example `"アンチック体"` |
-| `meta.bubble_line_width_mm` | Balloon-body and tail line width in millimeters |
+| `meta.bubble_line_width_mm` | Default body and tail line width for newly created balloons, in millimeters |
 | `meta.panel_frame_width_mm` | Panel-frame width in millimeters |
 | `meta.panel_gutter_row_mm` | Gap between vertically adjacent panels in millimeters |
 | `meta.panel_gutter_column_mm` | Gap between horizontally adjacent panels in millimeters |
@@ -169,6 +169,8 @@ figures:
 ## 5. Speech balloons
 
 Dialogue always goes into the `bubbles` array. `text` is required.
+
+`bubbles[].line_width_mm` sets an individual balloon body and tail width in millimeters (a finite number greater than zero). When omitted, `meta.bubble_line_width_mm` supplies the default. Changing the default in the editor preserves the appearance of existing balloons by assigning their inherited width explicitly. The pen width palette edits only the selected balloon and converts pixels using the document DPI.
 
 ```yaml
 bubbles:

@@ -12,6 +12,7 @@ import { bubbleCssFontFamily } from './bubbleFonts.ts';
 import { textStyleOf, textWeightSegments } from './textStyle.ts';
 import { figurePaintVisible } from './paintDocument.ts';
 import { bubbleTextPosition } from './bubbleClip.ts';
+import { bubbleStrokeWidthMm } from './bubblePresentation.ts';
 
 export type QwenCompositionScope = 'page' | 'panel';
 interface CompositionPanel { panel: Panel; panelIndex: number; overlay: boolean }
@@ -205,7 +206,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
     const element = document.createElementNS(SVG_NS, name); Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, String(value))); return element;
   };
   const drawBubbles = async (entry: CompositionPanel) => {
-    const { panel } = entry, bubbles = panel.bubbles, stroke = manga.meta.bubble_line_width_mm || .5;
+    const { panel } = entry, bubbles = panel.bubbles;
     const bubbleBox = (index: number) => { const bubble = bubbles[index]; return paintReferenceBox(bubble.paint_overlay?.paint, bubble.bbox ?? fallbackBox(panel, 'bubble', index), bubble.paint_overlay?.crop); };
     const figureBox = (index: number) => { const figure = panel.figures![index]; return paintReferenceBox(figure.artwork?.paint, figure.bbox ?? fallbackBox(panel, 'figure', index), figure.artwork?.crop); };
     const svg = svgElement('svg', { xmlns: SVG_NS, width: canvas.width, height: canvas.height, viewBox: `${frame.x} ${frame.y} ${frame.w} ${frame.h}`, preserveAspectRatio: 'none' });
@@ -217,6 +218,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
     const group = (_bubble: Bubble) => { const group = svgElement('g', !entry.overlay ? { 'clip-path': `url(#${clipId})` } : {}); svg.append(group); return group; };
     for (const [index, bubble] of bubbles.entries()) {
       if (!bubbleVisible(bubble)) continue;
+      const stroke = bubbleStrokeWidthMm(bubble, manga.meta.bubble_line_width_mm);
       const speaker = resolveBubbleSpeakerFigureIndex(panel, bubble);
       if (!tail.bubbleTailDisabled(bubble) && speaker !== null) {
         const target = tail.bubbleTailTargetPoint(figureBox(speaker), bubble.tail);
@@ -239,6 +241,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       context.save(); if (!entry.overlay) { outline(panel); context.clip(); }
       try {
         if (bubbleVisible(bubble)) {
+          const stroke = bubbleStrokeWidthMm(bubble, manga.meta.bubble_line_width_mm);
           const box = bubbleBox(index), host = document.createElement('div'), layer=group(bubble);
           connections[index].forEach(connection=>layer.append(connection));
           try {

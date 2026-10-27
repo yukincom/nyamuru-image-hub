@@ -99,6 +99,17 @@ test('tone from outside selection expands atomically; side/area failure preserve
  }
 });
 
+test('the existing size palette routes native bubble edits without touching raster, eraser or vector defaults',()=>{
+ const calls=[];
+ const context={selectedBubbleStroke:{width:12,disabled:false,onChange:width=>calls.push(['bubble',width])},tool:'eraser',vectorMode:false,
+  setEraserSize:width=>calls.push(['eraser',width]),setRasterSize:width=>calls.push(['raster',width]),changeVectorStyle:patch=>calls.push(['vector',patch.width])};
+ const change=editorHandler('setCurrentSize',context);
+ change(20);assert.deepEqual(calls,[['bubble',20]]);
+ context.selectedBubbleStroke.disabled=true;change(30);assert.equal(calls.length,1);
+ context.selectedBubbleStroke=undefined;change(20);context.tool='pen';change(8);context.vectorMode=true;change(12);
+ assert.deepEqual(calls,[['bubble',20],['eraser',20],['raster',8],['vector',12]]);
+});
+
 test('vector styles preserve same and unselected paths so commit cannot clear redo or save',()=>{
  const scene=initial(),owner=scene.owners[0],layer=newPaintLayer('vectors','vector');owner.paint.layers=[layer];
  const path={id:'one',closed:false,nodes:[{x:20,y:20},{x:30,y:30}],style:defaultVectorStyle()};layer.paths=[path];

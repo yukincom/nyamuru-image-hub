@@ -53,7 +53,7 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
    - **フキダシが3個以上入るコマは、帯（横190mm級）以上の面積を確保する。** セリフの多いコマは大きく、セリフのないコマは小さくてよい——文字量とコマ面積を連動させる（文字は作画同時生成のため、面積不足は文字潰れに直結する）。
    - 🚫 **「田の字」禁止。** 2×2配置で上下の段の縦の溝（列の区切り線）が同じ位置に揃うと、読み順が「右→左」なのか「右列を縦に」なのか曖昧になる。2×2に割るときは段ごとに縦線の位置をずらす。
    - ✂️ **タチキリ（断ち切り）を見せ場に限り許可する。** 左右は `x=0` / `x=210`、上端は `y=0`、下端は `y=297` まで紙端いっぱいにコマを拡張してよい。断ち切る辺は必ずパネルの **`bleed`（`left` / `right` / `top` / `bottom` の配列）で宣言し**、座標も紙端に一致させる（left=`x: 0`、right=`x + w = 210`、top=`y: 0`、bottom=`y + h = 297`）。top のコマはヘッダーの文字（作品タイトル・ページ番号）がコマ絵の最前面に重なるため、上端の帯（y=0〜10）に顔やフキダシを置かない。キャラ登場・見得切り・スプラッシュ等で画面の抜けを最大化したいコマに使う。多用すると効かなくなるため**1ページ1〜2コマまで**。タチキリ入りの定型は §B のパターンM〜Qを参照。
-   - フキダシ本体としっぽの線幅は `meta.bubble_line_width_mm` に従う。コマ枠線幅は `meta.panel_frame_width_mm`、上下・左右のコマ間隔は `meta.panel_gutter_row_mm` / `meta.panel_gutter_column_mm` に従って座標を組む。値がない場合はフキダシ線0.5mm・コマ枠線1mm・上下5mm・左右3mmを使う（**タチキリコマの断ち切り辺は間隔なしで紙端まで**。枠線は断ち切り辺には引かない）。
+   - フキダシ本体としっぽの線幅は、個別の `bubbles[].line_width_mm` があればその値に従い、省略時はデフォルトの `meta.bubble_line_width_mm` を使う。コマ枠線幅は `meta.panel_frame_width_mm`、上下・左右のコマ間隔は `meta.panel_gutter_row_mm` / `meta.panel_gutter_column_mm` に従って座標を組む。値がない場合はフキダシ線0.5mm・コマ枠線1mm・上下5mm・左右3mmを使う（**タチキリコマの断ち切り辺は間隔なしで紙端まで**。枠線は断ち切り辺には引かない）。
    - 🫧 **コマ同士の重なりを演出に使ってよい**（§B の不規則コマ割り V〜Y 参照。詩的な余白の回向き）。重なるレイアウトでは **id の昇順で奥→手前**に重ねる（1コマ目が一番奥、後のコマほど手前）。奥のコマは、手前のコマに覆われる領域へフキダシ・顔を置かない。
    - 参考パターンは **§B コマ割りパターン集** を参照（シーン別の使い分け目安つき）。
 
@@ -173,7 +173,7 @@ manga:
     reading_direction:    # "right-to-left"（右綴じ・固定）
     text_orientation:     # "vertical"（縦書き・固定）
     font:                 # 作品全体の既定書体（例: "アンチック体"）
-    bubble_line_width_mm: # フキダシ本体としっぽの線幅（mm）
+    bubble_line_width_mm: # 新しく作るフキダシ本体としっぽのデフォルト線幅（mm）
     panel_frame_width_mm: # コマ枠線幅（mm）
     panel_gutter_row_mm:  # 上下に隣接するコマの間隔（mm）
     panel_gutter_column_mm: # 左右に隣接するコマの間隔（mm）
@@ -253,6 +253,7 @@ manga:
               speaker:    # 話者名（会話では毎回明記。ナレーション・効果音など話者なしの場合だけ省略）
               join_to:    # 結合相手となる、同じbubbles配列内の先行フキダシ番号（1始まり・任意）
               shape:      # フキダシの形（任意。normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/critical/tense/toge/announce/toge_natural。省略=normal）
+              line_width_mm: # 本体としっぽの個別線幅（mm、0より大きい有限値・任意。省略=meta.bubble_line_width_mm）
               emphasis:   # そのフキダシ内で大きくする語（任意）
               monologue:  # このフキダシが心の声なら true（任意。見た目は shape で指定）
               offscreen:  # コマ外の声なら true（任意。話者はコマ外＝姿を描かず、フキダシに尻尾も描かない）

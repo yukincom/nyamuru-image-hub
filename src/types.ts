@@ -148,6 +148,8 @@ export interface Bubble {
   /** 登場人物カタログへのローカル参照。 */
   speakerId?: string;
   shape?: BubbleShape;
+  /** Body and tail stroke width in millimeters; absent uses the creation default. */
+  line_width_mm?: number;
   /** Closed cubic outline in a fixed 0..100 box; handles are relative to each anchor. */
   bezier?: { nodes: VectorNode[] };
   /** 旧保存データとの読込互換。コマ所属は現在常時クリップし、ページ前景では使わない。 */
