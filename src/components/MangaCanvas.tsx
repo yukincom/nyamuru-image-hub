@@ -190,8 +190,12 @@ export function BubbleText({ text, font, shape, lengthClass, boxW, boxH, fitEpoc
       el.style.setProperty('--bubble-center-y', '0px');
       // Wrapped columns may leave unused inline space. Center their actual text
       // rectangle, not that available-height box; keep every column top-aligned.
+      const content = el.querySelector('.bubble-text-content');
+      if (!content) return;
       const range = document.createRange();
-      range.selectNodeContents(el);
+      // Include the same content block as the noninteractive view, but never
+      // include the absolute-positioned text-move frame in the measurement.
+      range.selectNode(content);
       const textBox = range.getBoundingClientRect();
       const bubbleBox = el.parentElement?.getBoundingClientRect();
       const elementBox = el.getBoundingClientRect();
@@ -806,16 +810,18 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   const bubbleTextDragged=useRef(false);
   const startBubbleTextDrag = (event:PointerEvent,selection:CanvasElementSelection,bubbleBox:BBox,startPosition:BubbleTextPosition) => {
     if(paintWorkspace||!paperRef.current||elementLocked(selection))return;
+    cleanupRef.current?.();
     event.preventDefault();event.stopPropagation();onSelectElement(selection);
+    onImageGesture?.('start');
     const paperRect=paperRef.current.getBoundingClientRect(),origin={x:event.clientX,y:event.clientY};setInteractionMode('bubble-text');document.body.classList.add('is-bubble-text-dragging');
     const move=(pointerEvent:PointerEvent)=>{
       pointerEvent.preventDefault();
       const dx=(pointerEvent.clientX-origin.x)*canvas.w/paperRect.width,dy=(pointerEvent.clientY-origin.y)*canvas.h/paperRect.height;
       if(Math.hypot(pointerEvent.clientX-origin.x,pointerEvent.clientY-origin.y)>2)bubbleTextDragged.current=true;
-      onChangeBubbleTail(selection,undefined,{textPosition:{x:clamp(startPosition.x+dx/bubbleBox.w,0,1),y:clamp(startPosition.y+dy/bubbleBox.h,0,1)}});
+      onChangeBubbleTail(selection,undefined,{textPosition:{x:startPosition.x+dx/bubbleBox.w,y:startPosition.y+dy/bubbleBox.h}});
     };
-    const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);document.body.classList.remove('is-bubble-text-dragging');setInteractionMode(null);cleanupRef.current=null;};
-    cleanupRef.current?.();cleanupRef.current=finish;window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);
+    const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);document.body.classList.remove('is-bubble-text-dragging');setInteractionMode(null);cleanupRef.current=null;onImageGesture?.('end');};
+    cleanupRef.current=finish;window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);
   };
 
   const nudgeElement = (event: KeyboardEvent, _bounds: BBox, selection: CanvasElementSelection, box: BBox) => {

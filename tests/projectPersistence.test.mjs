@@ -117,7 +117,7 @@ test('the demand-time OMNY getter and Save use current native text after the pai
   const getter=handler('getOmnySnapshot',{useCallback:callback=>callback,toSeparatedMangaYaml:document=>{serialized++;return toSeparatedMangaYaml(document);}});
   assert.equal(serialized,0);
   const bubble=getter.context.documentRef.current.manga.pages[0].panels[0].bubbles[0];
-  bubble.text='生成時の最新本文';bubble.text_style={font:'游明朝',fontSize:40,fontWeight:700};bubble.text_position={x:.3,y:.7};
+  bubble.text='生成時の最新本文';bubble.text_style={font:'游明朝',fontSize:40,fontWeight:700};bubble.text_position={x:1.3,y:-.7};
   let loaded=parseMangaYaml(getter.run()).manga.pages[0].panels[0].bubbles[0];
   assert.equal(serialized,1);assert.equal(loaded.text,bubble.text);assert.deepEqual(loaded.text_style,bubble.text_style);assert.deepEqual(loaded.text_position,bubble.text_position);
   bubble.text='確定後に大幅に書き直した本文';loaded=parseMangaYaml(getter.run()).manga.pages[0].panels[0].bubbles[0];

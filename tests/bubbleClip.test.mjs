@@ -16,13 +16,14 @@ test('panel clipping never recenters text inside only the visible fragment', () 
   assert.equal(clip.text, '原文を保持');
 });
 
-test('same-owner connectors share owner clipping and text starts centered with a bounded override', () => {
+test('same-owner connectors share owner clipping and text position remains relative to the original frame without bounds', () => {
   assert.equal(compatibleBubbleClips({ text: '', clip_to_panel: true }, { text: '' }), true);
   assert.equal(compatibleBubbleClips({ text: '', clip_to_panel: true }, { text: '', clip_to_panel: true }), true);
   assert.equal(compatibleBubbleClips({ text: '', clip_to_panel: false }, { text: '' }), true);
   assert.deepEqual(bubbleTextPosition({}),{x:.5,y:.5});
   assert.deepEqual(bubbleTextPosition({text_position:{x:.2,y:.8}}),{x:.2,y:.8});
-  assert.deepEqual(bubbleTextPosition({text_position:{x:-1,y:4}}),{x:0,y:1});
+  assert.deepEqual(bubbleTextPosition({text_position:{x:-1,y:4}}),{x:-1,y:4});
+  assert.deepEqual(bubbleTextPosition({text_position:{x:NaN,y:Infinity}}),{x:.5,y:.5});
 });
 
 test('moving a clipped bubble to page foreground clears the panel-specific setting', () => {

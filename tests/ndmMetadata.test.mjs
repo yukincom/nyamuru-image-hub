@@ -268,10 +268,14 @@ test('しっぽ根元は参照枠外も許可し非有限座標だけを拒否�
   }
 });
 
-test('フキダシ本文位置は枠内の有限相対座標だけを許可する',()=>{
+test('フキダシ本文位置は元bbox基準の枠外の有限相対座標も許可し、保存往復する',()=>{
   const document=parseMangaYaml(sampleSource),bubble=document.manga.pages[0].panels[0].bubbles[0];
   bubble.text_position={x:0,y:1};assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.text_position')));
-  for(const position of [{x:-.1,y:.5},{x:1.1,y:.5},{x:NaN,y:.5},{x:.5,y:Infinity}]){
+  for(const position of [{x:-.1,y:1.5},{x:1.1,y:-.5}]){
+    bubble.text_position=position;assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.text_position')));
+    for(const serialize of [toStoredMangaYaml,toMangaYaml])assert.deepEqual(parseMangaYaml(serialize(document)).manga.pages[0].panels[0].bubbles[0].text_position,position);
+  }
+  for(const position of [{x:NaN,y:.5},{x:.5,y:Infinity},{x:-Infinity,y:0},null]){
     bubble.text_position=position;assert.ok(validateManga(document).some(issue=>issue.level==='error'&&issue.path.endsWith('.text_position')));
   }
 });

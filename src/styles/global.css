@@ -1352,6 +1352,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .paint-owner canvas,.paint-reference,.paint-original { position:absolute; inset:0; width:100%; height:100%; }
 .paint-reference.is-underlay { opacity:.2; }
 .paint-original { overflow:hidden; }
+.paint-reference .paint-bubble-original { overflow:visible; }
 .paint-original img,.paint-original .figure-size-svg { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 .paint-figure-original .figure-size-svg { fill:var(--accent-fill); stroke:var(--accent); stroke-width:.7; }
 .paint-prop-original { position:absolute; width:70%; height:70%; inset:15%; color:var(--muted); stroke-width:1; }
@@ -1361,6 +1362,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .paint-bubble-original .bubble-svg-surface { fill:white; stroke:none; }
 .paint-bubble-original .bubble-svg-outline-surface { fill:none; stroke:var(--ink); stroke-width:1; }
 .paint-bubble-text { position:absolute; width:max-content; height:max-content; max-width:70%; max-height:70%; transform:translate(-50%,-50%); writing-mode:vertical-rl; overflow:hidden; text-align:start; white-space:pre-wrap; font-size:clamp(10px,1.4vw,22px); }
+.paint-reference .paint-bubble-text { max-width:none; max-height:none; overflow:visible; white-space:pre; }
 .figure-native-reference,.bubble-native-reference { position:absolute; display:block; pointer-events:none; }
 .paint-input { position:absolute; z-index:100; cursor:crosshair; touch-action:none; user-select:none; }
 .paint-input.is-original { cursor:default; }

@@ -596,8 +596,8 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
     if (bubble.clip_to_panel !== undefined && typeof bubble.clip_to_panel !== 'boolean') {
       issues.push({ level: 'error', path: `${path}.clip_to_panel`, message: 'コマ枠での切り取りは true / false で指定してください' });
     }
-    if (bubble.text_position !== undefined && (!Number.isFinite(bubble.text_position.x) || !Number.isFinite(bubble.text_position.y) || bubble.text_position.x < 0 || bubble.text_position.x > 1 || bubble.text_position.y < 0 || bubble.text_position.y > 1)) {
-      issues.push({ level: 'error', path: `${path}.text_position`, message: '本文位置はフキダシ枠を基準とした0〜1の相対座標 x / y で指定してください' });
+    if (bubble.text_position !== undefined && (!Number.isFinite(bubble.text_position?.x) || !Number.isFinite(bubble.text_position?.y))) {
+      issues.push({ level: 'error', path: `${path}.text_position`, message: '本文位置はフキダシbboxを基準とした有限の相対座標 x / y で指定してください。枠外の値も使えます' });
     }
     if (bubble.bezier !== undefined && !isBubbleBezier(bubble.bezier)) {
       issues.push({ level: 'error', path: `${path}.bezier`, message: 'ベジェ輪郭は3〜128点で、点とハンドルを有限の座標で指定してください' });

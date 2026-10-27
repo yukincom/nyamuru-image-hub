@@ -257,7 +257,7 @@ manga:
               monologue:  # このフキダシが心の声なら true（任意。見た目は shape で指定）
               offscreen:  # コマ外の声なら true（任意。話者はコマ外＝姿を描かず、フキダシに尻尾も描かない）
               tail:       # {x, y}=話者の人物bbox基準の相対座標にしっぽ先端を置く（枠外の0未満・1超も可。口元の方向へ短く）／false=しっぽなし（任意。通常形状の省略=人物中央）
-              text_position: # {x, y}=本文中心のフキダシbbox内相対位置（0〜1・任意。省略={x:0.5,y:0.5}）
+              text_position: # {x, y}=本文中心のフキダシbbox基準の有限相対位置（左上0・右下1、枠外可。任意。省略={x:0.5,y:0.5}）
               bbox:       # {x, y, w, h} フキダシ本体の目安(mm)。しっぽは含まない
           screen_text:    # 画面・看板・紙面の文字（配列・任意。フキダシにしない文字）
             - text:       # 描く文字（必須・一字一句正確に）
@@ -299,7 +299,7 @@ manga:
 - `bubbles[].shape` は任意。14種の語彙（normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/critical/tense/toge/announce/toge_natural）から選ぶ。省略時は `normal`（丸い通常フキダシ）。`uniflash` は1ページ1個までが目安。
 - `critical` / `tense` / `toge` / `announce` / `toge_natural` は素材作者の分類。見本と場面・発話・表情を照合して選び、固定の感情対応を仮定しない。素材分類 `nomal` は `normal` に対応する。素材選択時は輪郭の `bezier` も保持する。
 - コマ所属の `bubbles[]` は輪郭・しっぽ・描き足し・本文を所有コマの形状で常に切り取る。ページ前景は切り取らない。旧互換フィールド `clip_to_panel` は新規出力へ書かない。
-- `bubbles[].text_position` は本文中心のフキダシ `bbox` 内相対座標（0〜1）。省略時は中央。フキダシが見切れる場合も本文を可視部分へ自動再配置せず、読みやすい位置が中央でないときだけ明示する。
+- `bubbles[].text_position` は本文中心のフキダシ `bbox` を基準とした有限の相対座標（左上0・右下1）。0未満・1超も使え、ベジェ輪郭を広げても同じ `bbox` を基準にする。省略時は中央。フキダシが見切れる場合も本文を可視部分へ自動再配置せず、読みやすい位置が中央でないときだけ明示する。
 - `bubbles[].emphasis` は任意。フキダシ内で強調したいフレーズを指定し、複数ある場合は半角カンマで区切る。
 - `square` / `caption` / `flash` / `uniflash` / `handwritten` は、`tail` を省略するとしっぽなし。明示的な `{x, y}` がある場合だけ描く。
 - `shape: thought` でしっぽを描く場合は、本体から離れるほど小さくなる2〜3個の縦長楕円で表す。

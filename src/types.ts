@@ -16,7 +16,7 @@ export interface BBox { x: number; y: number; w: number; h: number }
 export interface BubbleTailTarget { x: number; y: number }
 /** フキダシbboxを基準とする、しっぽ根元の相対位置。 */
 export interface BubbleTailRoot { x: number; y: number }
-/** フキダシbboxを基準とする本文中心の相対位置。未指定時は中央。 */
+/** フキダシbboxを基準とする本文中心の有限相対位置。枠外可、未指定時は中央。 */
 export interface BubbleTextPosition { x: number; y: number }
 export type BubbleTailStyle = 'normal' | 'thinking';
 export interface RectShape extends BBox { type: 'rect' }
@@ -159,7 +159,7 @@ export interface Bubble {
   tail_style?: BubbleTailStyle;
   /** しっぽの根元。フキダシbbox基準の0..1で、未指定時は先端方向へ自動配置。 */
   tail_root?: BubbleTailRoot;
-  /** 本文の中心。フキダシbbox基準の0..1で、未指定時は中央。 */
+  /** 本文の中心。フキダシbboxの左上0・右下1を基準にした有限座標（枠外可）。未指定時は中央。 */
   text_position?: BubbleTextPosition;
   bbox?: BBox;
   anchor?: Anchor;

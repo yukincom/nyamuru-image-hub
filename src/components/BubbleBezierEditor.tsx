@@ -82,7 +82,7 @@ export function BubbleBezierHandles({ outline, onChange, selected, onSelect, ove
     preserveAspectRatio={overlay?'none':'xMidYMid meet'} aria-label={label}
     onPointerMove={move} onPointerUp={event => finish(event)} onPointerCancel={event => finish(event, true)} onLostPointerCapture={event => finish(event, true)}
     onKeyDown={event => { if (event.key === 'Escape' && drag.current) { drag.current = null; setDraft(null); event.stopPropagation(); } }}>
-    <rect class="bubble-bezier-box" x="0" y="0" width="100" height="100" />
+    {!overlay&&<rect class="bubble-bezier-box" x="0" y="0" width="100" height="100" />}
     <path class="bubble-bezier-outline-hit" d={bubbleBezierData(activeOutline)} onPointerDown={startOutline} />
     <path class="bubble-bezier-outline" d={bubbleBezierData(activeOutline)} />
     {(['handleIn', 'handleOut'] as const).map(handle => {

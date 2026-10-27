@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import * as bubbleBezier from '../src/lib/bubbleBezier.ts';
 
 const source = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
 const shapeSource = readFileSync(new URL('../src/components/BubbleShapeSvg.tsx', import.meta.url), 'utf8');
@@ -12,17 +13,19 @@ const javascript = ts.transpileModule(component.getText(ast).replace(/^export /,
   compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, jsxFactory: 'h' },
 }).outputText;
 
-test('actual text rectangle is centered in local coordinates at each zoom; top alignment and text are untouched', () => {
+test('text content alone is centered at each zoom; move chrome, top alignment and text are untouched', () => {
   for (const scale of [0.5, 1, 3.05]) {
     const properties = new Map();
     let effect, deps, cleanup, fontListener;
+    const content={};
     const el = { style: { setProperty: (k,v) => properties.set(k,v), getPropertyValue: k => properties.get(k) },
+      querySelector:selector=>{assert.equal(selector,'.bubble-text-content');return content;},
       scrollWidth: 40, clientWidth: 40, scrollHeight: 50, clientHeight: 50,
       getBoundingClientRect: () => ({ width: 40 * scale }),
       parentElement: { getBoundingClientRect: () => ({ x: 0, y: 0, width: 100 * scale, height: 100 * scale }) } };
     const context = { useRef: () => ({ current: el }), useLayoutEffect: (fn, values) => { effect = fn; deps = values; },
       getComputedStyle: () => ({ width: '40px' }), bubbleCssFontFamily: font => font, textStyleCss:()=>({fontSize:'1cqw'}),
-      document: { createRange: () => ({ selectNodeContents: node => assert.equal(node, el), getBoundingClientRect: () => ({ x: 35 * scale, y: 20 * scale, width: 40 * scale, height: 50 * scale }) }),
+      document: { createRange: () => ({ selectNode: node => assert.equal(node, content), getBoundingClientRect: () => ({ x: 35 * scale, y: 20 * scale, width: 40 * scale, height: 50 * scale }) }),
         fonts: { addEventListener: (event, fn) => { assert.equal(event, 'loadingdone'); fontListener = fn; }, removeEventListener: (event, fn) => { assert.equal(event, 'loadingdone'); assert.equal(fn, fontListener); } } },
       h: (type, props, ...children) => ({ type, props, children }) };
     const vnode = runInNewContext(`${javascript}\nBubbleText({text:'長い列\\n短い',font:'test',shape:'thought',lengthClass:'',boxW:100,boxH:100,fitEpoch:1})`, context);
@@ -62,8 +65,68 @@ test('panel-owned bubbles clip as a whole while overlays stay unclipped and the 
   assert.equal(source.match(/onMoveFrame=\{textTool&&/g)?.length,2);
   assert.doesNotMatch(source,/onMoveFrame=\{textTool&&isSelected/);
   assert.equal(source.match(/moveFrameActive=\{isSelected\}/g)?.length,2);
-  assert.match(source,/textPosition:\{x:clamp\(startPosition\.x\+dx\/bubbleBox\.w,0,1\),y:clamp\(startPosition\.y\+dy\/bubbleBox\.h,0,1\)\}/);
   assert.match(source,/textBubble&&!textTarget\.overlay\?elementPanelClipStyle\(textPanel!,textBox\):\{\}/);
+});
+
+test('the actual text drag preserves finite positions beyond the original bbox in both directions',()=>{
+  for(const end of ['pointerup','pointercancel','unmount','next-drag']){
+  let declaration;const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='startBubbleTextDrag')declaration=node;ts.forEachChild(node,visit);};visit(ast);
+  const listeners=new Map(),changes=[],phases=[],selection={type:'bubble',index:0};
+  const context={paintWorkspace:null,paperRef:{current:{getBoundingClientRect:()=>({width:182,height:257})}},elementLocked:()=>false,
+    onSelectElement:value=>assert.equal(value,selection),canvas:{w:182,h:257},setInteractionMode(){},document:{body:{classList:{add(){},remove(){}}}},
+    window:{addEventListener:(key,fn)=>listeners.set(key,fn),removeEventListener:key=>listeners.delete(key)},cleanupRef:{current:null},bubbleTextDragged:{current:false},
+    clamp:(value,min,max)=>Math.max(min,Math.min(max,value)),onChangeBubbleTail:(_selection,_tail,patch)=>changes.push(patch.textPosition),onImageGesture:phase=>phases.push(phase)};
+  const drag=runInNewContext(ts.transpile(`(${declaration.initializer.getText(ast)})`,{target:ts.ScriptTarget.ES2022}),context);
+  drag({clientX:100,clientY:100,preventDefault(){},stopPropagation(){}},selection,{x:20,y:30,w:30,h:20},{x:.5,y:.5});
+  listeners.get('pointermove')({clientX:136,clientY:82,preventDefault(){}});
+  assert.deepEqual(JSON.parse(JSON.stringify(changes.at(-1))),{x:1.7,y:-.4});
+  if(end==='unmount')context.cleanupRef.current();
+  else if(end==='next-drag'){
+    drag({clientX:136,clientY:82,preventDefault(){},stopPropagation(){}},selection,{x:20,y:30,w:30,h:20},{x:1.7,y:-.4});
+    assert.deepEqual(phases,['start','end','start']);listeners.get('pointerup')();
+  }else listeners.get(end)();
+  assert.equal(listeners.size,0);assert.deepEqual(phases,end==='next-drag'?['start','end','start','end']:['start','end']);
+  }
+});
+
+test('paper direct selection omits the reference rectangle but retains anchors and the small editor',()=>{
+  const editor=readFileSync(new URL('../src/components/BubbleBezierEditor.tsx',import.meta.url),'utf8'),exports={};
+  const createTestNode=(type,props,...children)=>({type,props,children});
+  runInNewContext(ts.transpileModule(editor,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'createTestNode'}}).outputText,
+    {exports,createTestNode,require:name=>name==='preact/hooks'?{useRef:()=>({current:null}),useState:value=>[value,()=>{}],useLayoutEffect(){}}:name.includes('bubbleBezier.ts')?bubbleBezier:{}});
+  const nodes=tree=>!tree||typeof tree!=='object'?[]:[tree,...(tree.children??[]).flat(Infinity).flatMap(nodes)];
+  const outline=bubbleBezier.createBubbleBezier('ellipse');
+  const paper=nodes(exports.BubbleBezierHandles({outline,onChange(){},overlay:true}));
+  assert.equal(paper.filter(node=>node.props?.class==='bubble-bezier-box').length,0);
+  assert.equal(paper.filter(node=>node.props?.class==='bubble-bezier-node-hit').length,outline.nodes.length);
+  assert.equal(nodes(exports.BubbleBezierHandles({outline,onChange(){}})).filter(node=>node.props?.class==='bubble-bezier-box').length,1);
+  assert.equal(nodes(exports.BubbleBezierSelection({outline})).filter(node=>node.props?.class==='bubble-bezier-box').length,1);
+  const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+  assert.match(css,/\.paint-reference \.paint-bubble-original \{ overflow:visible; \}/);
+});
+
+test('paper anchor editing commits once, while cancellation only discards its draft',()=>{
+  const editor=readFileSync(new URL('../src/components/BubbleBezierEditor.tsx',import.meta.url),'utf8');
+  for(const end of ['up','cancel','lost-capture','escape']){
+    const exports={},changes=[],selection=[],captured=new Set();
+    const createTestNode=(type,props,...children)=>({type,props,children});
+    const context={exports,createTestNode,DOMPoint:class{constructor(x,y){this.x=x;this.y=y;}matrixTransform(){return {x:this.x,y:this.y};}},
+      require:name=>name==='preact/hooks'?{useRef:()=>({current:null}),useState:value=>[value,()=>{}],useLayoutEffect(){}}:name.includes('bubbleBezier.ts')?bubbleBezier:{}};
+    runInNewContext(ts.transpileModule(editor,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'createTestNode'}}).outputText,context);
+    const outline=bubbleBezier.createBubbleBezier('ellipse'),before=JSON.stringify(outline);
+    const paper=exports.BubbleBezierHandles({outline,overlay:true,onChange:value=>changes.push(value),onSelect:value=>selection.push(value)});
+    paper.props.ref.current={getScreenCTM:()=>({inverse:()=>({})}),setPointerCapture:id=>captured.add(id),hasPointerCapture:id=>captured.has(id),releasePointerCapture:id=>captured.delete(id)};
+    const nodes=tree=>!tree||typeof tree!=='object'?[]:[tree,...(tree.children??[]).flat(Infinity).flatMap(nodes)];
+    const anchor=nodes(paper).find(node=>node.props?.class==='bubble-bezier-node-hit');
+    const event={pointerId:7,button:0,clientX:-40,clientY:140,preventDefault(){},stopPropagation(){}};
+    anchor.props.onPointerDown(event);paper.props.onPointerMove(event);assert.deepEqual(selection,[0]);
+    if(end==='up')paper.props.onPointerUp(event);
+    else if(end==='cancel')paper.props.onPointerCancel(event);
+    else if(end==='lost-capture')paper.props.onLostPointerCapture(event);
+    else{paper.props.onKeyDown({...event,key:'Escape'});paper.props.onPointerUp(event);}
+    assert.equal(changes.length,end==='up'?1:0);assert.equal(JSON.stringify(outline),before);
+    if(changes.length)assert.deepEqual([changes[0].nodes[0].x,changes[0].nodes[0].y],[-40,140]);
+  }
 });
 
 test('only text requiring review is red and the ambiguous page badge is absent',()=>{
@@ -176,10 +239,10 @@ test('an explicit point size is not shrunk even when the text overflows',()=>{
   const properties=new Map();let effect;
   const el={style:{setProperty:(k,v)=>properties.set(k,v),getPropertyValue:k=>properties.get(k)},
     scrollWidth:200,clientWidth:20,scrollHeight:200,clientHeight:20,getBoundingClientRect:()=>({width:20}),
-    parentElement:{getBoundingClientRect:()=>({x:0,y:0,width:20,height:20})}};
+    querySelector:()=>({}),parentElement:{getBoundingClientRect:()=>({x:0,y:0,width:20,height:20})}};
   const context={useRef:()=>({current:el}),useLayoutEffect:fn=>{effect=fn},getComputedStyle:()=>({width:'20px'}),
     bubbleCssFontFamily:font=>font,textStyleCss:()=>({fontSize:'2cqw'}),h:(type,props,...children)=>({type,props,children}),
-    document:{createRange:()=>({selectNodeContents:()=>{},getBoundingClientRect:()=>({x:0,y:0,width:200,height:200})}),fonts:{addEventListener:()=>{},removeEventListener:()=>{}}}};
+    document:{createRange:()=>({selectNode:()=>{},getBoundingClientRect:()=>({x:0,y:0,width:200,height:200})}),fonts:{addEventListener:()=>{},removeEventListener:()=>{}}}};
   runInNewContext(`${javascript}\nBubbleText({text:'長い文字列'.repeat(20),font:'test',lengthClass:'is-very-long',boxW:20,boxH:20,fitEpoch:1,style:{fontSize:12}})`,context);
   effect();assert.equal(properties.get('--bubble-fit'),'1');
 });

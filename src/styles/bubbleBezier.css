@@ -8,7 +8,7 @@
 .bubble-bezier-handle { fill: white; stroke: var(--direct-selection,#236bc4); stroke-width: 1.2; pointer-events:none; }
 .bubble-bezier-handle-line { stroke: var(--direct-selection,#236bc4); stroke-width: 1; pointer-events: none; }
 .bubble-bezier-canvas.is-paper-overlay { position: absolute; z-index: 60; margin: 0; overflow: visible; border: 0; background: transparent; pointer-events: none; }
-.bubble-bezier-canvas.is-paper-overlay .bubble-bezier-box { stroke: var(--direct-selection,#236bc4); stroke-dasharray: 3 2; stroke-width:1; }
+.bubble-bezier-canvas.is-paper-overlay.is-selection-overlay .bubble-bezier-box { stroke: var(--direct-selection,#236bc4); stroke-dasharray: 3 2; stroke-width:1; }
 .bubble-bezier-canvas.is-paper-overlay .bubble-bezier-outline { fill: none; stroke: var(--direct-selection,#236bc4); stroke-width: 1; pointer-events:none; }
 .bubble-bezier-canvas.is-paper-overlay .bubble-bezier-node,
 .bubble-bezier-canvas.is-paper-overlay .bubble-bezier-handle { vector-effect: non-scaling-stroke; }
@@ -17,6 +17,5 @@
 .bubble-bezier-canvas.is-paper-overlay .bubble-bezier-box,
 .bubble-bezier-canvas.is-paper-overlay .bubble-bezier-outline,
 .bubble-bezier-canvas.is-paper-overlay .bubble-bezier-outline-hit { vector-effect: non-scaling-stroke; }
-.bubble-bezier-canvas.is-paper-overlay.is-selection-overlay .bubble-bezier-box { stroke-dasharray:3 2; }
 .bubble-path-edit-layer { position:absolute; z-index:62; display:block; overflow:visible; pointer-events:none; }
 .bubble-path-edit-layer>.resize-handle { pointer-events:auto; }
