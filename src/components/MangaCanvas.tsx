@@ -298,12 +298,14 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   const paperRef = useRef<HTMLDivElement>(null);
   const paperZoomFrameRef = useRef<HTMLDivElement>(null);
   const [domSpreadSide,setDomSpreadSide]=useState<'left'|'right'|undefined>();
-  useLayoutEffect(()=>{
+  const refreshSpreadSide=()=>{
     const pane=paperRef.current?.closest('.spread-pane');
-    const next=pane?(pane.matches(':first-child')?'left':'right'):undefined;
+    const visiblePanes=Array.from(pane?.closest('.canvas-spread')?.querySelectorAll('.spread-pane')??[]).filter(item=>getComputedStyle(item).display!=='none');
+    const next=pane&&visiblePanes.length===2?(pane===visiblePanes[0]?'left':'right'):undefined;
     setDomSpreadSide(current=>current===next?current:next);
-  });
-  const effectiveSpreadSide=spreadSide??domSpreadSide;
+  };
+  useLayoutEffect(refreshSpreadSide);
+  const effectiveSpreadSide=paperRef.current?.closest('.spread-pane')?domSpreadSide:spreadSide;
   const scrollRef = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const [interactionMode, setInteractionMode] = useState<ResizeHandle | 'panel' | 'panel-resize' | 'panel-edge' | 'bubble-tail' | 'bubble-text' | null>(null);
@@ -404,53 +406,51 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     }
   };
 
-  const applyPaperWidth = (targetWidth: number, centerX?: number, centerY?: number) => {
+  const applyPaperWidth = (targetWidth: number, centerX?: number, centerY?: number, center=false) => {
     const scroll = scrollRef.current, paper = paperRef.current;
     if (!scroll || !paper || targetWidth <= 0) return;
     const rect = paper.getBoundingClientRect();
     const spreadScroll = spreadScrollFor();
     const spreadStage = spreadScroll?.querySelector<HTMLElement>('.canvas-spread-stage');
-    if (spreadScroll && spreadStage) {
-      const sourceBase = basePaperWidth.current || rect.width / Math.max(.01, (zoomPercentRef.current??fitPercent) / 100);
-      const targetRatio = targetWidth / Math.max(1, sourceBase);
-      const papers = Array.from(spreadStage.querySelectorAll<HTMLElement>('.manga-paper'));
-      const targets = papers.map((targetPaper) => {
-        const base = Number(targetPaper.dataset.basePaperWidth) || sourceBase;
-        return { targetPaper, width: base * targetRatio };
-      });
-      if (targets.every(({ targetPaper, width }) => Math.abs(targetPaper.getBoundingClientRect().width - width) < .1)) return;
-      const scrollRect = spreadScroll.getBoundingClientRect();
-      const stageBefore = spreadStage.getBoundingClientRect();
-      const midX = centerX ?? scrollRect.left + scrollRect.width / 2;
-      const midY = centerY ?? scrollRect.top + scrollRect.height / 2;
-      const ratioX = clamp((midX - stageBefore.left) / Math.max(1, stageBefore.width), 0, 1);
-      const ratioY = clamp((midY - stageBefore.top) / Math.max(1, stageBefore.height), 0, 1);
-      targets.forEach(({ targetPaper, width }) => {
-        const base=Number(targetPaper.dataset.basePaperWidth)||sourceBase;
-        setPaperVisualWidth(targetPaper,width,base);
-      });
-      const stageAfter = spreadStage.getBoundingClientRect();
-      spreadScroll.scrollLeft += stageAfter.left + stageAfter.width * ratioX - midX;
-      spreadScroll.scrollTop += stageAfter.top + stageAfter.height * ratioY - midY;
+    const surface=spreadScroll??scroll;
+    const content=spreadStage?.querySelector<HTMLElement>('.canvas-spread-pair')??paper.closest<HTMLElement>('.manga-paper-zoom-frame')!;
+    const before=content.getBoundingClientRect(),viewport=surface.getBoundingClientRect();
+    const previousWidth=parseFloat(spreadStage?.style.getPropertyValue('--canvas-pan-x')??'')||surface.clientWidth;
+    const previousHeight=parseFloat(spreadStage?.style.getPropertyValue('--canvas-pan-y')??'')||surface.clientHeight;
+    const initial=Boolean(spreadStage&&!spreadStage.style.getPropertyValue('--canvas-pan-x'));
+    const midX=centerX??viewport.left+surface.clientWidth/2,midY=centerY??viewport.top+surface.clientHeight/2;
+    // Anchors belong to the paper/pair, never to its fixed panning gutter.
+    // Keep the previous viewport center on resize, including points in the gray area.
+    const ratioX=center||initial ? .5:((centerX??viewport.left+previousWidth/2)-before.left)/Math.max(1,before.width);
+    const ratioY=center||initial ? .5:((centerY??viewport.top+previousHeight/2)-before.top)/Math.max(1,before.height);
+    const sourceBase=basePaperWidth.current||Number(paper.dataset.basePaperWidth)||rect.width;
+    const targetRatio=targetWidth/Math.max(1,sourceBase);
+    const papers=spreadStage?Array.from(spreadStage.querySelectorAll<HTMLElement>('.manga-paper')).filter(item=>item.getClientRects().length>0):[paper];
+    const targets=papers.map(targetPaper=>({targetPaper,base:Number(targetPaper.dataset.basePaperWidth)||sourceBase}));
+    const changed=targets.some(({targetPaper,base})=>Math.abs(targetPaper.getBoundingClientRect().width-base*targetRatio)>=.1)
+      ||previousWidth!==surface.clientWidth||previousHeight!==surface.clientHeight||initial;
+    if(!changed&&!center){
+      // The other page may already have resized this DOM node; refresh only
+      // this component's derived text/handle layout, without scrolling twice.
+      if(papers.includes(paper)&&Math.abs(layoutPaperWidth.current-targetWidth)>=.1)setPaperVisualWidth(paper,targetWidth,sourceBase);
       return;
     }
-    if (Math.abs(rect.width - targetWidth) < 0.1) return;
-    const scrollRect = scroll.getBoundingClientRect();
-    const midX = centerX ?? scrollRect.left + scrollRect.width / 2;
-    const midY = centerY ?? scrollRect.top + scrollRect.height / 2;
-    const ratioX=clamp((midX-rect.left)/Math.max(1,rect.width),0,1);
-    const ratioY=clamp((midY-rect.top)/Math.max(1,rect.height),0,1);
-    const base=basePaperWidth.current||Number(paper.dataset.basePaperWidth)||paper.clientWidth||rect.width;
-    setPaperVisualWidth(paper,targetWidth,base);
-    const next=paper.getBoundingClientRect();
-    scroll.scrollLeft+=next.left+next.width*ratioX-midX;
-    scroll.scrollTop+=next.top+next.height*ratioY-midY;
+    if(spreadStage){
+      spreadStage.style.setProperty('--canvas-pan-x',`${surface.clientWidth}px`);
+      spreadStage.style.setProperty('--canvas-pan-y',`${surface.clientHeight}px`);
+    }
+    targets.forEach(({targetPaper,base})=>setPaperVisualWidth(targetPaper,base*targetRatio,base));
+    const after=content.getBoundingClientRect();
+    surface.scrollLeft+=after.left+after.width*ratioX-midX;
+    surface.scrollTop+=after.top+after.height*ratioY-midY;
   };
 
   // Fit is a separate mode; 100% always uses the output pixels and display DPR.
-  const fitPaper = () => {
+  const fitPaper = (center=false) => {
     const scroll = scrollRef.current, paper = paperRef.current;
     if (!scroll || !paper) return;
+    // Responsive page visibility can change without changing the fitted width.
+    refreshSpreadSide();
     const spreadScroll = spreadScrollFor();
     const spreadStage = spreadScroll?.querySelector<HTMLElement>('.canvas-spread-stage');
     const sizingSurface = spreadScroll ?? scroll;
@@ -458,27 +458,30 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     const visiblePageCount = spreadStage
       ? Math.max(1, Array.from(spreadStage.querySelectorAll<HTMLElement>('.spread-pane')).filter((pane) => getComputedStyle(pane).display !== 'none').length)
       : 1;
-    const availW = (sizingSurface.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight)) / visiblePageCount;
-    const availH = sizingSurface.clientHeight - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom);
+    const insetX=spreadStage?parseFloat(styles.getPropertyValue('--canvas-fit-inset-x')):parseFloat(styles.paddingLeft);
+    const insetY=spreadStage?parseFloat(styles.getPropertyValue('--canvas-fit-inset-y')):parseFloat(styles.paddingTop);
+    const availW = (sizingSurface.clientWidth - 2*insetX) / visiblePageCount;
+    const availH = sizingSurface.clientHeight - 2*insetY;
     if (availW <= 0 || availH <= 0) return;
     const width = Math.min(availW, availH * outputWidth / outputHeight, 760 * outputWidth / outputHeight);
     const base=pixelZoomWidth(outputWidth,window.devicePixelRatio);
     basePaperWidth.current = base;
     paper.dataset.basePaperWidth = String(base);
     setFitPercent(canvasZoomPercent(width,base));
-    setPaperVisualWidth(paper,zoomPercentRef.current===null?width:base*zoomPercentRef.current/100,base);
+    applyPaperWidth(zoomPercentRef.current===null?width:base*zoomPercentRef.current/100,undefined,undefined,center);
   };
 
   useEffect(() => {
-    fitPaper();
+    fitPaper(zoomPercentRef.current===null);
     const scroll = scrollRef.current;
     if (!scroll) return;
     const sizingSurface = spreadScrollFor() ?? scroll;
-    const observer = new ResizeObserver(() => fitPaper());
+    const resize=()=>fitPaper();
+    const observer = new ResizeObserver(resize);
     observer.observe(sizingSurface);
-    window.addEventListener('resize',fitPaper);
-    return () => { observer.disconnect();window.removeEventListener('resize',fitPaper); };
-  }, [canvas.w, canvas.h, outputWidth, outputHeight]);
+    window.addEventListener('resize',resize);
+    return () => { observer.disconnect();window.removeEventListener('resize',resize); };
+  }, [canvas.w, canvas.h, outputWidth, outputHeight, spreadSide]);
 
   // 片方のページで変更された共有倍率を、もう片方にも同じタイミングで適用する。
   useLayoutEffect(() => {
@@ -487,8 +490,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       fitPaper();
       return;
     }
-    const paper = paperRef.current;
-    if (paper) setPaperVisualWidth(paper,basePaperWidth.current * zoomPercent / 100,basePaperWidth.current);
+    applyPaperWidth(basePaperWidth.current * zoomPercent / 100);
   }, [zoomPercent]);
 
   const zoomAt = (factor: number, centerX?: number, centerY?: number) => {
@@ -598,8 +600,8 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     const scroll = scrollRef.current;
     if (!scroll) return;
     const spreadScroll=spreadScrollFor();
-    const spreadPartner=Boolean(scroll.closest('.is-spread-partner'));
-    const panSurface=spreadScroll&&!spreadPartner?spreadScroll:scroll;
+    const isSpreadPartner=()=>Boolean(scroll.closest('.is-spread-partner'));
+    const panSurface=spreadScroll??scroll;
     let finishPan: (() => void) | null = null;
 
     const isTextEditing = (target: EventTarget | null) => target instanceof Element
@@ -609,13 +611,15 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       finishPan = null;
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (spreadPartner||event.code !== 'Space' || isTextEditing(event.target)) return;
+      if (isSpreadPartner()||event.code !== 'Space' || isTextEditing(event.target)) return;
       event.preventDefault();
       spacePressedRef.current = true;
       document.body.classList.add('is-canvas-space-pan-ready');
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      if (spreadPartner||event.code !== 'Space' || (!spacePressedRef.current && isTextEditing(event.target))) return;
+      // A page can become the partner while Space is held. Its own pressed
+      // state must still be released, even when focus moved to a page button.
+      if (event.code !== 'Space' || (!spacePressedRef.current && (isSpreadPartner()||isTextEditing(event.target)))) return;
       event.preventDefault();
       spacePressedRef.current = false;
       stopPan();
@@ -627,6 +631,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       document.body.classList.remove('is-canvas-space-pan-ready');
     };
     const onPanPointerDown = (event: PointerEvent) => {
+      if(isSpreadPartner())return;
       if(event.target instanceof Element&&event.target.closest('.background3d-window'))return;
       if (paintInputActive?.current) return;
       if (!spacePressedRef.current || event.button !== 0 || event.pointerType === 'touch') return;
@@ -1839,7 +1844,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
         // Pointer clicks return shortcuts to the canvas; keyboard activation keeps focus.
         if(event.detail>0&&event.target instanceof Element)event.target.closest<HTMLButtonElement>('button')?.blur();
       }}>
-        <button type="button" class="zoom-fit" aria-pressed={zoomPercent===null} onClick={()=>{zoomPercentRef.current=null;onZoomPercentChange(null);fitPaper();}} title="紙面全体を表示">全体</button>
+        <button type="button" class="zoom-fit" aria-pressed={zoomPercent===null} onClick={()=>{zoomPercentRef.current=null;onZoomPercentChange(null);fitPaper(true);}} title="紙面全体を表示">全体</button>
         <button type="button" onClick={() => zoomAt(1 / 1.25)} aria-label="縮小" title="縮小（⌘/Ctrl − / ホイール / 二本指ピンチ）"><ZoomOut size={14} /></button>
         <button type="button" class="zoom-reset" onClick={resetZoom} aria-label="100%表示" title="100%表示（出力画像の1pxを画面の1pxで表示）">{zoomPercent??fitPercent}%</button>
         <button type="button" onClick={() => zoomAt(1.25)} aria-label="拡大" title="拡大（⌘/Ctrl ＋ / ホイール / 二本指ピンチ）"><ZoomIn size={14} /></button>

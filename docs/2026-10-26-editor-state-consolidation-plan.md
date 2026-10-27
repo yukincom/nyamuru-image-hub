@@ -339,7 +339,7 @@
 
 ## 9. 2026-10-27: 実原稿で判明した不具合の修正計画
 
-状態: **2026-10-27に利用者が実装開始を承認。R1〜R7は実装・合成検証済み、R8以降は未実装。** 原因調査は先行commit後にこの既存計画書へ集約した。以下の各段の計画と、末尾の実施記録を区別する。
+状態: **2026-10-27に利用者が実装開始を承認。R1〜R8は実装・合成検証済み、R9の境界・統合・実原稿確認は未完了。** 原因調査は先行commit後にこの既存計画書へ集約した。以下の各段の計画と、末尾の実施記録を区別する。
 
 ### 9.1 原因と責任の境界
 
@@ -526,3 +526,13 @@
 - 関連Node 116件成功、型検査428ファイルはerror/warning 0・既存hint 9。欠落時中央・枠外保存往復・非有限値拒否・長drag終了・cancel/unmount・次gestureを確認。Aの確定／pointercancel／lost capture／Escapeは実component handlerの隔離試験で、実OSのドラッグ取消しではない。read-onlyレビューにP1/P2指摘なし。
 - 既存実App fixtureで19項目PASS。コマ横書き／前景縦書きの枠外移動、通常表示とTの位置一致、1Undo/Redo、Aの参照破線なし・node保持、本文再編集、保存済みdocumentからの再読込を確認。合成PNGの文字移動量をDOMと照合し、生成入力PNGの全RGBA画素とPSDの全RGB画素も一致した。
 - 隔離4335の合成作品だけで実行し、試験後は元documentへ復帰。利用者の実原稿・4325・原本は未操作。実原稿での輪郭再編集と本文位置保持はR9に残る。
+
+#### 2026-10-27 11:05 JST: R8 灰色余白へのパン
+
+- 単ページも既存の見開きscroll/stageを使い、viewport相当の四方向余白を追加した。fitのinsetと移動用paddingは別に扱い、位置はDOM scroll offsetだけで保持する。新しいpan state・transform・作品座標は追加していない。
+- 既存 `applyPaperWidth` で、紙面／pair上のanchor維持、余白寸法の更新、scroll補正を一度に実行する。初期表示・明示fitは中央へ戻し、通常resize・zoomは現在点を保持。見開きの相方へ同じ幅が既に反映済みの場合は、派生layoutだけを更新して二度scrollしない。
+- 単／複ページの判定は実際に表示中のpane数を使う。論理モード変更時のfit再計算、幅が変わらない片側非表示時のguide更新、Space保持中の編集ページ交代後のkeyup取りこぼしも修正。後二者は実App fixtureで修正前FAIL→修正後PASSを確認した。
+- 関連Node 56件成功。型検査428ファイルはerror/warning 0・既存hint 9。read-only再レビューのP1/P2残存なし。
+- 既存実App fixtureは単ページ62項目／見開き75項目PASS。四方向移動、同倍率fit、cursor中心zoom、共通倍率、実寸resize往復、単／複切替、focus中Space、cancel、document／Undo／保存不変を確認。pan＋zoom後のT本文・Aベジェ点は保存座標、投げ縄は実SVG座標、ペンは実描画画素と照合し、取消しで元に戻ることも確認した。
+- 入力はfixtureの合成pointer／keyイベント。SVG captureのみOS pointer不在のためfixture内で置換し、実SVG CTMと本体handlerを使用した。片側非表示はmedia query相当のdisplay変更を高さ制限下で再現したもので、端末の実画面幅切替や実ペンタブ検証ではない。
+- 隔離4335の試験後に元documentと表示設定を復元し、作成した検証assetだけを回収。別作業7ファイルの差分は開始時とbyte一致。利用者の実原稿・4325は未操作、pushなし。実原稿のSpace操作と保存往復はR9に残る。

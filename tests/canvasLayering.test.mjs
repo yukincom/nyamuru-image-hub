@@ -100,10 +100,12 @@ test('見開きは左右を一枚の原稿ガイドにし、ノド線と三本�
   assert.match(canvas,/class="page-spread-seam"/);
   assert.match(canvas,/canvas\.w-b[\s\S]*canvas\.w[\s\S]*canvas\.w\+b/);
   assert.doesNotMatch(css,/spread-pane:first-child \.manga-paper \{[^}]*border-right/);
+  assert.match(canvas,/visiblePanes\.length===2/,'a single pane does not become a two-page print guide');
 });
 
 test('Spaceの手のひら移動は見開き外側のキャンバス面も受け取る', () => {
-  assert.match(canvas,/const panSurface=spreadScroll&&!spreadPartner\?spreadScroll:scroll/);
+  assert.match(canvas,/const panSurface=spreadScroll\?\?scroll/);
+  assert.match(canvas,/if\(isSpreadPartner\(\)\)return/);
   assert.match(canvas,/panSurface\.addEventListener\('pointerdown', onPanPointerDown/);
 });
 

@@ -61,3 +61,32 @@ test('screen zoom lays out at its visible width without shrinking caret or editi
   }
  }
 });
+
+test('single and spread zoom anchor to the paper pair while viewport gutters resize once',()=>{
+ const ast=ts.createSourceFile('MangaCanvas.tsx',canvasSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ let body;const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='applyPaperWidth')body=node.initializer.getText(ast);ts.forEachChild(node,visit);};visit(ast);assert.ok(body);
+ for(const count of [1,2]){
+  const properties=new Map(),surface={clientWidth:800,clientHeight:600,scrollLeft:0,scrollTop:0,getBoundingClientRect:()=>({left:40,top:80,width:surface.clientWidth,height:surface.clientHeight})};
+  const papers=Array.from({length:count},()=>({width:240,visible:true,dataset:{basePaperWidth:'1000'},getClientRects(){return this.visible?[{}]:[];},getBoundingClientRect(){return {width:this.visible?this.width:0};}}));
+  const content={getBoundingClientRect:()=>({left:40+(parseFloat(properties.get('--canvas-pan-x'))||30)-surface.scrollLeft,top:80+(parseFloat(properties.get('--canvas-pan-y'))||26)-surface.scrollTop,
+   width:papers.filter(p=>p.visible).reduce((sum,p)=>sum+p.width,0),height:Math.max(...papers.filter(p=>p.visible).map(p=>p.width*1.4))})};
+  const stage={style:{getPropertyValue:key=>properties.get(key)??'',setProperty:(key,value)=>properties.set(key,value)},querySelector:()=>content,querySelectorAll:()=>papers};
+  surface.querySelector=()=>stage;
+  const layoutPaperWidth={current:240},apply=runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,
+   {scrollRef:{current:{}},paperRef:{current:papers[0]},spreadScrollFor:()=>surface,basePaperWidth:{current:1000},layoutPaperWidth,
+    setPaperVisualWidth:(paper,width)=>{paper.width=width;if(paper===papers[0])layoutPaperWidth.current=width;}});
+  const point=(x,y)=>{const b=content.getBoundingClientRect();return [(x-b.left)/b.width,(y-b.top)/b.height];};
+  const same=(actual,expected)=>actual.forEach((value,index)=>assert.ok(Math.abs(value-expected[index])<1e-9,`${actual} != ${expected}`));
+  apply(300,undefined,undefined,true);same(point(440,380),[.5,.5]);
+  assert.equal(properties.get('--canvas-pan-x'),'800px');assert.equal(properties.get('--canvas-pan-y'),'600px');
+  surface.scrollLeft+=110;surface.scrollTop-=80;
+  const cursor={x:297,y:341},before=point(cursor.x,cursor.y);apply(480,cursor.x,cursor.y);same(point(cursor.x,cursor.y),before);
+  const offset=[surface.scrollLeft,surface.scrollTop];layoutPaperWidth.current=300;apply(480);same([surface.scrollLeft,surface.scrollTop],offset);assert.equal(layoutPaperWidth.current,480,'peer width update refreshes this component without another scroll correction');
+  const resizeAnchor=point(440,380);surface.clientWidth=650;surface.clientHeight=450;apply(220);same(point(365,305),resizeAnchor);
+  const outside=point(50,90);apply(330,50,90);same(point(50,90),outside);
+  apply(330,undefined,undefined,true);same(point(365,305),[.5,.5]);
+  if(count===2){papers[1].visible=false;const hiddenWidth=papers[1].width;apply(440);assert.equal(papers[1].width,hiddenWidth,'hidden facing page is not given a zero-height frame');}
+ }
+ assert.match(canvasSource,/--canvas-fit-inset-x/);assert.match(canvasSource,/--canvas-fit-inset-y/);
+ assert.doesNotMatch(body,/stageBefore|stageAfter|clamp\(/);
+});

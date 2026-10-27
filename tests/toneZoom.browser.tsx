@@ -1,15 +1,23 @@
 import {render} from 'preact';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
-import {STORAGE_KEY,toStoredMangaYaml} from '../src/lib/manga';
+import {parseMangaYaml,STORAGE_KEY,toStoredMangaYaml} from '../src/lib/manga';
 import {newToneLayer} from '../src/lib/paintTone';
 import {paintPreviewRenderer,renderPaintPng,decodePaintImage} from '../src/lib/paintRenderer';
-import {saveFigureCropAssets} from '../src/lib/figureCropStore';
+import {deleteFigureCropAssets,loadFigureCropAsset,saveFigureCropAssets} from '../src/lib/figureCropStore';
 import type {PaintDocument} from '../src/types';
 import '../src/styles/global.css';
-if(location.port!=='4325')throw new Error('Dedicated local test origin required.');
-async function start(){
+const panChecks=new URLSearchParams(location.search).has('pan-check');
+if(location.hostname!=='127.0.0.1'||location.port!==(panChecks?'4335':'4325'))throw new Error('Dedicated local test origin required.');
+if(panChecks){
+ const originalFetch=window.fetch.bind(window);
+ window.fetch=(input,init)=>{const url=new URL(input instanceof Request?input.url:String(input),location.href);return url.origin!==location.origin&&/^https?:$/.test(url.protocol)||url.pathname.startsWith('/__nyamuru/')?Promise.resolve(Response.json({error:'Pan fixture: service calls disabled'},{status:503})):originalFetch(input,init);};
+}
+export async function startToneZoomFixture(){
  const params=new URLSearchParams(location.search);
+ const original=localStorage.getItem(STORAGE_KEY),spreadKey='manga-name-studio.spread-view.v2',originalSpread=localStorage.getItem(spreadKey);
+ if(panChecks&&original&&parseMangaYaml(original).manga.meta.episode_id!=='layer-selection-qa')throw Error('Do not overwrite another artwork');
+ if(panChecks&&document.querySelector('.app-shell.is-painting'))throw Error('Close the test paint session first');
  if(params.has('dot-check')){
   const size=126,samples=[];
   for(const density of [10,20,80]){
@@ -47,16 +55,22 @@ async function start(){
   native.style.width=native.style.height='100%';document.getElementById('sample')!.append(native);renderer.dispose();return;
  }
  const doc=createEmptyWorkspaceDocument();doc.manga.meta.title=`A4 ${dpi}dpi・60線20%の表示検証`;doc.manga.meta.episode_id='tone-zoom-qa';
- doc.manga.finish_settings={width_mm:210,height_mm:297,dpi,bleed_mm:params.has('spread')?3:0};
+ doc.manga.finish_settings={width_mm:210,height_mm:297,dpi,bleed_mm:params.has('spread')||panChecks?3:0};
  const sha256=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer())),n=>n.toString(16).padStart(2,'0')).join('');
- const id=`image-${sha256}`;await saveFigureCropAssets([{id,blob}]);
+ const id=`image-${sha256}`,existed=panChecks?await loadFigureCropAsset(id):null;
+ const restore=async()=>{render(null,document.getElementById('app')!);if(original)localStorage.setItem(STORAGE_KEY,original);else localStorage.removeItem(STORAGE_KEY);if(originalSpread===null)localStorage.removeItem(spreadKey);else localStorage.setItem(spreadKey,originalSpread);if(!existed)await deleteFigureCropAssets([id]);render(<App/>,document.getElementById('app')!);};
+ try{
+ await saveFigureCropAssets([{id,blob}]);
  doc.manga.image_assets=[{id,storageId:id,sha256,originalName:'tone.png',mediaType:'image/png',widthPx:size,heightPx:size,byteLength:blob.size}];
  doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:20,y:35,w:170,h:180},bg:1,action:null,
   figures:[{name:'60線・20%',size:'bust-up',bbox:{x:65,y:65,w:60,h:60},artwork:{assetId:id,crop:{x:0,y:0,w:size,h:size},opacity:1,hidden:false,locked:false,paint}}],
   bubbles:[{text:'ズームで比率を保つ',shape:'normal',bbox:{x:125,y:48,w:48,h:42}}],
   screen_text:[{text:'12pt固定',orientation:'horizontal',bbox:{x:34,y:52,w:36,h:20}}]}];
- if(params.has('spread')){doc.manga.pages.push(structuredClone({...doc.manga.pages[0],page:2}));localStorage.setItem('manga-name-studio.spread-view.v2','1');}
+ if(params.has('spread')){doc.manga.pages.push(structuredClone({...doc.manga.pages[0],page:2}));localStorage.setItem(spreadKey,'1');}
+ else if(panChecks)localStorage.setItem(spreadKey,'0');
  localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));
  render(<App/>,document.getElementById('app')!);
+ return panChecks?restore:undefined;
+ }catch(error){if(panChecks)await restore();throw error;}
 }
-start().catch(error=>render(<main><h1>描画検証 FAIL</h1><pre>{String(error)}</pre></main>,document.getElementById('app')!));
+if(!panChecks)startToneZoomFixture().catch(error=>render(<main><h1>描画検証 FAIL</h1><pre>{String(error)}</pre></main>,document.getElementById('app')!));

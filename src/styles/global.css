@@ -221,8 +221,8 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .guide-toggle.is-active { color: var(--accent-dark); border-color: var(--accent-border); background: var(--accent-soft); }
 .canvas-viewport { position: relative; min-width: 0; min-height: 0; }
 .canvas-spread { min-width: 0; min-height: 0; overflow: hidden; }
-.canvas-spread-scroll { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; }
-.canvas-spread-stage { display: flex; box-sizing: border-box; width: max-content; min-width: 100%; min-height: 100%; padding: 26px 30px; align-items: center; justify-content: center; }
+.canvas-spread-scroll { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: auto; overflow-anchor:none; overscroll-behavior: contain; touch-action: pan-x pan-y; }
+.canvas-spread-stage { --canvas-fit-inset-x:30px; --canvas-fit-inset-y:26px; display: flex; box-sizing: border-box; width: max-content; min-width: 100%; min-height: 100%; padding: var(--canvas-pan-y,26px) var(--canvas-pan-x,30px); align-items: center; justify-content: center; }
 .canvas-spread-pair { display: flex; flex: none; box-shadow: 0 18px 44px rgba(24,22,28,.14), 0 3px 10px rgba(24,22,28,.08), 0 0 0 1px rgba(50,45,55,.1); }
 .canvas-spread .spread-pane { position: relative; flex: none; min-width: 0; min-height: 0; display: flex; }
 .canvas-spread .spread-pane > .canvas-viewport { flex: none; min-width: 0; }
@@ -239,7 +239,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 /* 見開きでは浮きUIの配置基準をページからキャンバス全体へ移し、編集ページが替わっても左右の定位置に固定する */
 .canvas-spread { position: relative; }
 .canvas-spread .spread-pane, .canvas-spread .spread-pane > .canvas-viewport { position: static; }
-@media (max-width: 800px) { .canvas-spread .spread-pane.is-spread-partner { display: none; } .canvas-spread-stage { min-width: 100%; padding: 20px 16px; } .canvas-spread .spread-pane:first-child .manga-paper-zoom-frame, .canvas-spread .spread-pane:last-child .manga-paper-zoom-frame { margin: auto; } }
+@media (max-width: 800px) { .canvas-spread .spread-pane.is-spread-partner { display: none; } .canvas-spread-stage { --canvas-fit-inset-x:16px; --canvas-fit-inset-y:20px; min-width: 100%; } .canvas-spread .spread-pane:first-child .manga-paper-zoom-frame, .canvas-spread .spread-pane:last-child .manga-paper-zoom-frame { margin: auto; } }
 .canvas-scroll { position: relative; width: 100%; height: 100%; min-height: 0; overflow: auto; display: flex; padding: 26px 30px; touch-action: pan-x pan-y; overscroll-behavior: contain; }
 .is-canvas-space-pan-ready .canvas-scroll, .is-canvas-space-pan-ready .canvas-scroll *, .is-canvas-space-pan-ready .canvas-spread-scroll, .is-canvas-space-pan-ready .canvas-spread-scroll * { cursor: grab !important; }
 .is-canvas-space-panning .canvas-scroll, .is-canvas-space-panning .canvas-scroll *, .is-canvas-space-panning .canvas-spread-scroll, .is-canvas-space-panning .canvas-spread-scroll * { cursor: grabbing !important; user-select: none !important; }
