@@ -159,6 +159,33 @@ async function verifySelection(){
   check(!document.querySelector('.app-shell.is-painting'),'キャンバス選択だけではペンを起動しない');
   check(undo===true&&document.querySelector<HTMLButtonElement>('.app-header [aria-label^="元に戻す"]')?.disabled===true,'選択往復でUndoを追加しない');
   check(localStorage.getItem(STORAGE_KEY)===before,'選択・展開・scroll・ページ移動で保存原稿不変');
+  const panelGroup='.page-layer-palette .panel-layer-group[aria-label="コマ 01"]',pageGroup='.page-layer-palette .page-direct-layer-group';
+  const heading=(key:string,overlay=false)=>`${overlay?pageGroup:panelGroup} [data-owner-group="${key}"] .layer-group-select`;
+  const painting=()=>!!document.querySelector('.app-shell.is-painting');
+  const until=async(test:()=>boolean)=>{for(let i=0;i<240&&!test();i++)await tick();if(!test())throw Error('描画状態の切替が完了しません');};
+  for(const [key,overlay] of [['figure-0',false],['bubble-0',false],['original-panel-crop',false],['figure-0',true],['bubble-0',true],['original-page-crop',true]] as const){
+   click(heading(key,overlay));await settle();
+   check(!painting()&&owner(key)&&Boolean(selected()[0].closest('.page-direct-layer-group'))===overlay,`${overlay?'前景':'コマ'}の${key}見出しは描画せず対象を選択`);
+  }
+  for(const key of ['figure-0','original-panel-crop']){
+   click(heading(key));await settle();
+   click(`${panelGroup} [data-owner-root="${key}"] .layer-row .layer-select`);
+   await until(()=>painting()&&!!document.querySelector(`${panelGroup} [data-owner-group="${key}"] .layer-group-select:not(:disabled)`));await settle();
+   check(painting()&&!!document.querySelector(`${panelGroup} [data-owner="${key}"][aria-selected="true"]`),`${key}の子layerは従来の描画入口で選択`);
+   click(heading(key));await until(()=>!painting());await settle();
+   check(owner(key)&&!painting(),`${key}描画中の見出しは配置選択へ戻る`);
+  }
+  click(heading('background'));await until(()=>painting()&&!!document.querySelector(`${panelGroup} [data-owner-group="figure-0"] .layer-group-select:not(:disabled)`));
+  check(!!document.querySelector(`${panelGroup} [data-owner-group="background"].is-selected`),'背景見出しの既存描画入口を維持');
+  await until(()=>!!document.querySelector(`${panelGroup} [aria-label="背景あたりの3Dモデルを配置・調整"]:not(:disabled)`));
+  check(!!document.querySelector(`${panelGroup} [aria-label="背景あたりの3Dモデルを配置・調整"]:not(:disabled)`),'背景3D編集入口も利用可能');
+  click(heading('figure-0'));await until(()=>!painting());await settle();
+  const paintSurface=document.querySelector<HTMLElement>('[data-paint-canvas]');
+  if(!paintSurface)throw Error('描画surfaceがありません');
+  paintSurface.dispatchEvent(new PointerEvent('pointerover',{bubbles:true}));await settle();
+  check(!painting()&&owner('figure-0'),'明示owner選択後のcanvas復帰で前の描画を自動再開しない');
+  check(document.querySelector<HTMLButtonElement>('.app-header [aria-label^="元に戻す"]')?.disabled===true,'ownerと未描画子layerの往復でもUndoを追加しない');
+  check(localStorage.getItem(STORAGE_KEY)===before,'owner選択・子layer開閉で保存原稿とartwork不変');
   report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
  }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
  finally{button.disabled=false;}

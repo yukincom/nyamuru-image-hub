@@ -5,6 +5,7 @@ import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import * as jsxRuntime from 'preact/jsx-runtime';
 import { canvasPaintOwnerKey } from '../src/lib/paintDocument.ts';
+import * as paintDocument from '../src/lib/paintDocument.ts';
 
 test('canvas selections resolve only their existing paint owner and never default to background',()=>{
  const panel={figures:[{}],bubbles:[{}],images:[{id:'normal'},{id:'crop-a-b',bubbleOriginal:{}},{id:'direct',paintScope:'panel'}]};
@@ -32,6 +33,70 @@ const mangaCanvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx'
 const selectionSource=readFileSync(new URL('../src/components/CanvasContentSelection.tsx',import.meta.url),'utf8');
 const lockIconSource=readFileSync(new URL('../src/components/LayerLockIcon.tsx',import.meta.url),'utf8');
 const headerSource=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
+
+test('owner headings route to layout selection while child layers retain the existing paint entrance',async()=>{
+ const selected=[],painted=[],page={panels:[{figures:[{}],bubbles:[{}],images:[{id:'crop-a-b',bubbleOriginal:{}}]}],images:[{id:'page-crop',bubbleOriginal:{}}],page_overlay:{figures:[{}],bubbles:[{}]}};
+ let pending=Promise.resolve();
+ const source=appSource.slice(appSource.indexOf('  function actOnLayer('),appSource.indexOf('  function addDirectFolder('));
+ const act=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';actOnLayer',{
+  activePage:0,documentRef:{current:{manga:{pages:[page]}}},paintSessionRef:{current:null},pendingLayerAction:{current:null},
+  paintOwnerCanvasSelection:paintDocument.paintOwnerCanvasSelection,
+  selectLayerOwner:(key,index,pageIndex,overlay)=>selected.push({key,index,pageIndex,overlay}),
+  layerTransition:action=>(pending=action()),setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:()=>{},
+  openPaint:key=>{painted.push(key);return true;},
+ });
+ for(const [key,overlay] of [['figure-0',false],['bubble-0',false],['original-crop-a-b',false],['figure-0',true],['bubble-0',true],['original-page-crop',true]]){
+  act(0,{type:'select',key},{},overlay);await pending;
+  assert.equal(painted.length,0,`${key}: heading must not start painting`);
+ }
+ assert.equal(selected.length,6);
+ act(0,{type:'select',key:'figure-0',id:'child'},{});await pending;
+ act(0,{type:'select',key:'background'},{});await pending;
+ assert.deepEqual(painted,['figure-0','background']);
+});
+
+test('owner keys invert the shared canvas mapping without manufacturing missing selections',()=>{
+ const page={panels:[{figures:[{}],bubbles:[{}],images:[{id:'ordinary'},{id:'crop-a-b',bubbleOriginal:{}}]}],images:[{id:'page-crop',bubbleOriginal:{}},{id:'ordinary'}],page_overlay:{figures:[{}],bubbles:[{}]}};
+ const selection=(key,overlay=false)=>paintDocument.paintOwnerCanvasSelection(page,0,key,overlay);
+ for(const [key,expected] of [['figure-0',{type:'figure',index:0}],['bubble-0',{type:'bubble',index:0}],['original-crop-a-b',{type:'image',index:1}]]){
+  assert.deepEqual(selection(key),expected);assert.equal(canvasPaintOwnerKey(page,0,selection(key)),key);
+ }
+ assert.deepEqual(selection('figure-0',true),{type:'figure',index:0,scope:'page_overlay'});
+ assert.deepEqual(selection('bubble-0',true),{type:'bubble',index:0,scope:'page_overlay'});
+ assert.deepEqual(selection('original-page-crop',true),{type:'image',index:0,scope:'page'});
+ for(const key of ['background','page','panel','figure-1','figure-0-extra','bubble--1','original-ordinary','original-page-crop'])assert.equal(selection(key),undefined,key);
+ assert.equal(paintDocument.paintOwnerCanvasSelection(undefined,0,'figure-0'),undefined);
+});
+
+test('active paint headings leave through the same layout callback without changing the paint layer',()=>{
+ const calls=[],scene={owners:[{key:'figure-0',kind:'figure',index:0,paint:{layers:[{id:'child',visible:true,locked:false}]}}]};
+ const source=paintEditorSource.slice(paintEditorSource.indexOf('  function selectOwner('),paintEditorSource.indexOf('  function updateOwnerLayer('));
+ const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectOwner',{
+  operation:{current:false},suspended:false,inputActive:{current:false},pendingContents:{current:null},scene,owner:scene.owners[0],
+  onSelectOwner:key=>calls.push(['layout',key]),onSelectFigure:index=>calls.push(['figure',index]),
+  clearVectorSelection:()=>{},setMaskTarget:()=>{},setOwnerKey:key=>calls.push(['paint',key]),setLayerId:id=>calls.push(['layer',id]),setSelection:()=>{},
+ });
+ select('figure-0');assert.deepEqual(calls,[['layout','figure-0']]);calls.length=0;
+ select('figure-0','child');assert.deepEqual(calls,[['paint','figure-0'],['layer','child']]);
+});
+
+test('owner selection waits for paint close and retains the current mode on save failure',async()=>{
+ const source=appSource.slice(appSource.indexOf('  function selectLayerOwner('),appSource.indexOf('  function toggleBubbleLayer('));
+ for(const fail of [false,true]){
+  const calls=[],resume={current:{ownerKey:'background'}},page={panels:[{figures:[{}]}]};let pending=Promise.resolve();
+  const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectLayerOwner',{
+   activePage:0,documentRef:{current:{manga:{pages:[page]}}},paintSessionRef:{current:{}},autoPaintResume:resume,
+   paintController:{current:{close:async()=>{calls.push('close');if(fail)throw Error('save failure');}}},
+   paintOwnerCanvasSelection:paintDocument.paintOwnerCanvasSelection,
+   layerTransition:action=>(pending=action().catch(error=>calls.push(error.message))),
+   endTextEdit:()=>calls.push('end'),setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},
+   selectCanvasElement:(selection,panel,page)=>calls.push([selection.type,selection.index,panel,page]),
+  });
+  select('figure-0',0);await pending;
+  assert.deepEqual(calls,fail?['close','save failure']:['close','end',['figure',0,0,0]]);
+  assert.equal(resume.current===null,!fail);
+ }
+});
 
 test('palette displays original crops above the frame, then bubbles and lower art in reverse scene order',()=>{
  assert.match(paintLayerSource,/\[\.\.\.p\.scene\.owners\][\s\S]*?\.reverse\(\)\.map/);

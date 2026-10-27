@@ -22,6 +22,18 @@ export function canvasPaintOwnerKey(page:MangaPage|undefined,panelIndex:number,s
   if(selection.type==='bubble'&&target?.bubbles?.[selection.index])return `bubble-${selection.index}`;
 }
 
+/** Owner headings select layout elements; child layers and backgrounds stay in paint. */
+export function paintOwnerCanvasSelection(page:MangaPage|undefined,panelIndex:number,key:string,overlay=false):CanvasElementSelection|undefined {
+  if(!page)return;
+  const match=/^(figure|bubble)-(\d+)$/.exec(key);
+  const selection:CanvasElementSelection|undefined=match
+    ?{type:match[1] as 'figure'|'bubble',index:Number(match[2]),...(overlay?{scope:'page_overlay' as const}:{})}
+    :key.startsWith('original-')
+      ?{type:'image',index:(overlay?page.images:page.panels[panelIndex]?.images)?.findIndex(image=>image.id===key.slice(9))??-1,...(overlay?{scope:'page' as const}:{})}
+      :undefined;
+  return canvasPaintOwnerKey(page,panelIndex,selection)===key?selection:undefined;
+}
+
 export function newPaintLayer(name = 'レイヤー',kind:PaintLayer['kind']='raster',colorMode:PaintColorMode='color'): PaintLayer {
   return { id: crypto.randomUUID(), name, visible: true, locked: false, opacity: 1, blend: 'normal', strokes: [],kind,colorMode,antialias:3,...(kind==='vector'?{paths:[]}: {}) };
 }

@@ -38,7 +38,7 @@ import { appendPaintSamples, canStartPaintMark, preparePaintMarkLayer, commitPai
 
 
 export interface PaintResult { scene?:PaintScene; rebase?:boolean; owners:Array<{owner:PaintOwner;blob:Blob;remove?:true;metadataOnly?:true}>; imports:Array<{asset:ImageAsset;blob:Blob}>; stageImports?:Array<{stage:BackgroundStage;blob:Blob}> }
-interface Props { resume?:PaintSessionSnapshot; sharedHistory?:SharedPaintHistory; historySteps?:number; stages?:BackgroundStage[]; zoomTool?:boolean; bubblePathTool?:BubblePathToolMode; onSelectBubblePath?:(mode:Exclude<BubblePathToolMode,false>)=>void; toolPaletteEnabled?:boolean; textTool?:boolean; textTools?:ComponentChildren; onStartPaint?:()=>boolean; onSelectLayout?:()=>void; onSelectBubble?:(index:number)=>void; onSelectFigure?:(index:number)=>void; onToggleBubble?:(index:number)=>void; controller?:RefObject<PaintController|null>; guideVisible?:(key:string)=>boolean; onToggleGuide?:(key:string)=>void; smoothing?:number; cursorMode?:PaintCursorMode; suspended?:boolean; onGenerate?:(owner:PaintOwner,images:PaintImages,pendingAssets:ImageAsset[])=>Promise<void>; initial?:PaintScene; initialOwner?:string; onReady?:()=>void; onEditText?:(index:number)=>void; embeddedLayers?:boolean; onReorderOwners?:(key:string,target:string,after:boolean)=>void; assets:ImageAsset[]; title:string; page:number; panelIndex:number; overlay:boolean; children:ComponentChildren; onApply:(result:PaintResult)=>Promise<void>; onClose:()=>void }
+interface Props { resume?:PaintSessionSnapshot; sharedHistory?:SharedPaintHistory; historySteps?:number; stages?:BackgroundStage[]; zoomTool?:boolean; bubblePathTool?:BubblePathToolMode; onSelectBubblePath?:(mode:Exclude<BubblePathToolMode,false>)=>void; toolPaletteEnabled?:boolean; textTool?:boolean; textTools?:ComponentChildren; onStartPaint?:()=>boolean; onSelectLayout?:()=>void; onSelectOwner?:(key:string)=>void; onSelectFigure?:(index:number)=>void; onToggleBubble?:(index:number)=>void; controller?:RefObject<PaintController|null>; guideVisible?:(key:string)=>boolean; onToggleGuide?:(key:string)=>void; smoothing?:number; cursorMode?:PaintCursorMode; suspended?:boolean; onGenerate?:(owner:PaintOwner,images:PaintImages,pendingAssets:ImageAsset[])=>Promise<void>; initial?:PaintScene; initialOwner?:string; onReady?:()=>void; onEditText?:(index:number)=>void; embeddedLayers?:boolean; onReorderOwners?:(key:string,target:string,after:boolean)=>void; assets:ImageAsset[]; title:string; page:number; panelIndex:number; overlay:boolean; children:ComponentChildren; onApply:(result:PaintResult)=>Promise<void>; onClose:()=>void }
 type Live=PendingPaintStroke;
 type PaintTool=Exclude<PaintStroke['tool'],'clear'>|VectorTool|'lasso'|'wand';
 const tools=[['vector-select','選択',MousePointer],['vector-node','ダイレクト選択',MousePointer2],['vector-pen','ベジェペン',PenTool],['pen','ペン',Pencil],['eraser','消しゴム',Eraser],['line','直線',Minus],['rectangle','四角',Square],['ellipse','楕円',Circle]] as const;
@@ -58,7 +58,7 @@ export function PaintStatus(){return <>{usePaintWorkspace()?.status}</>;}
 
 function UprightPaintBucketIcon({size=23}:{size?:number}){return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8V6a6 6 0 0 1 12 0v2"/><path d="M5 8h14l-1.4 12H6.4L5 8Z"/><path d="M6.1 13h11.8"/><path d="M6.8 14h10.4l-.6 5H7.4l-.6-5Z" fill="currentColor" opacity=".24" stroke="none"/></svg>}
 
-export default function PaintEditor({resume,sharedHistory,historySteps=50,stages=[],zoomTool=false,bubblePathTool=false,onSelectBubblePath,toolPaletteEnabled=true,textTool=false,textTools,onStartPaint,onSelectLayout,onSelectBubble,onSelectFigure,onToggleBubble,controller,guideVisible=()=>true,onToggleGuide=()=>{},smoothing=0,cursorMode='circle',suspended:externalSuspended=false,onGenerate,initial:requested,initialOwner,onReady,onEditText,embeddedLayers=false,onReorderOwners,assets,title,onApply,onClose,page,panelIndex,overlay,children}:Props) {
+export default function PaintEditor({resume,sharedHistory,historySteps=50,stages=[],zoomTool=false,bubblePathTool=false,onSelectBubblePath,toolPaletteEnabled=true,textTool=false,textTools,onStartPaint,onSelectLayout,onSelectOwner,onSelectFigure,onToggleBubble,controller,guideVisible=()=>true,onToggleGuide=()=>{},smoothing=0,cursorMode='circle',suspended:externalSuspended=false,onGenerate,initial:requested,initialOwner,onReady,onEditText,embeddedLayers=false,onReorderOwners,assets,title,onApply,onClose,page,panelIndex,overlay,children}:Props) {
   const [backgroundCaptureReady,setBackgroundCaptureReady]=useState(false);
   const [backgroundObjects,setBackgroundObjects]=useState<Background3dObjectState>([]);
   const [backgroundOwner,setBackgroundOwner]=useState<string|null>(null);
@@ -503,12 +503,11 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   }
   function addLayer(){if(owner.paint.layers.length>=64)return;const added=newPaintLayer(`レイヤー ${owner.paint.layers.length+1}`,'raster',scene.colorMode);changeLayers([...owner.paint.layers,added]);setLayerId(added.id);}
   function selectOwner(key:string,id?:string,contents=false){
-    if(!id&&key.startsWith('bubble-')&&onSelectBubble){onSelectBubble(Number(key.slice(7)));return;}
     if(operation.current||suspended||inputActive.current)return;
     pendingContents.current=null;
     const target=scene.owners.find(o=>o.key===key);if(!target)return;
+    if(!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){onSelectOwner(key);return;}
     clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=target.paint.layers.find(l=>l.id===id)??target.paint.layers.findLast(l=>!l.locked)??target.paint.layers[0];setLayerId(selectedLayer?.id??'');
-    if(target.kind==='figure'&&!id)onSelectFigure?.(target.index);
     if(target.kind==='background')onSelectLayout?.();
     if(key!==owner.key)setSelection(null);
     if(contents&&selectedLayer?.visible&&!selectedLayer.locked&&!paintOwnerLocked(target)){
