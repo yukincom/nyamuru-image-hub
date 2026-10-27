@@ -14,23 +14,45 @@ import ts from 'typescript';
 const editorSource=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
 const editorAst=ts.createSourceFile('PaintEditor.tsx',editorSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 function editorHandler(name,context){let source;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text===name)source=node.getText(editorAst);ts.forEachChild(node,visit);}visit(editorAst);assert.ok(source,name);return runInNewContext(ts.transpileModule(`(${source})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);}
-test('the actual raster pointercancel handler discards its first pending mark',()=>{
+test('only an explicit pointerup commits the pending raster mark',()=>{
   for(const type of ['pointerup','pointercancel','lostpointercapture']){
     let kept,points=0;
     editorHandler('endPointer',{gesture:{current:{pointerId:7}},addPoints:()=>points++,finishGesture:value=>kept=value})({type,pointerId:7,preventDefault(){},stopPropagation(){}});
-    assert.equal(kept,type!=='pointercancel');assert.equal(points,type==='pointerup'?1:0);
+    assert.equal(kept,type==='pointerup');assert.equal(points,type==='pointerup'?1:0);
   }
 });
 test('vector draft allocation is committed only by the same path preview/finish route',()=>{
   const begin=editorSource.slice(editorSource.indexOf('  function beginVector('),editorSource.indexOf('  function changePaths('));
   assert.doesNotMatch(begin,/changeLayers\(/,'pointerdown must not checkpoint a blank vector layer');
   assert.match(begin,/addedLayer,target,point,cleanup/);
-  assert.match(begin,/finishVector\(e.type!=='pointercancel'\)/);
+  assert.match(begin,/finishVector\(e.type==='pointerup'\)/);
   const finish=editorSource.slice(editorSource.indexOf('  function showVectorDrag('),editorSource.indexOf('  function inputPoint('));
   assert.equal((finish.match(/commitVectorPaths\(/g)??[]).length,2,'preview and commit share atomic insertion');
 });
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:-1,action:null,bubbles:[],figures:[{name:'人物',bbox:{x:10,y:20,w:30,h:50}}]},100,[]);
+
+test('actual layer move keeps redo for round trips and interrupted gestures',()=>{
+ for(const ending of ['round-trip','pointerup','pointercancel','lostpointercapture','blur','hover']){
+  const before=initial(),owner=before.owners[0],layer=owner.paint.layers[0],listeners=new Map();
+  let committed,preview,commits=0;
+  const layerMove={current:null},inputActive={current:false};
+  const target={getBoundingClientRect:()=>({}),setPointerCapture(){},hasPointerCapture:()=>false,addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:type=>listeners.delete(type)};
+  const context={layerMove,inputActive,historyRef:{current:{present:before}},translatePaintLayer,expandPaintOwnerToContent,
+   inputPoint:e=>({x:e.clientX,y:e.clientY}),setVectorPreview:value=>preview=value,setError:error=>assert.fail(error),commit:value=>{committed=value;commits++;},
+   window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:type=>listeners.delete(type)}};
+  context.finishLayerMove=editorHandler('finishLayerMove',context);
+  const event=(type,x,y,buttons=1)=>({type,currentTarget:target,pointerId:7,clientX:x,clientY:y,buttons,preventDefault(){},stopPropagation(){}});
+  editorHandler('beginLayerMove',context)(event('pointerdown',10,10),owner,layer);
+  listeners.get('pointermove')(event('pointermove',15,17));assert.notEqual(preview,before);
+  if(ending==='round-trip')listeners.get('pointerup')(event('pointerup',10,10,0));
+  else if(ending==='blur')listeners.get('blur')();
+  else if(ending==='hover')listeners.get('pointermove')(event('pointermove',15,17,0));
+  else listeners.get(ending)(event(ending,15,17,0));
+  assert.equal(commits,ending==='pointerup'?1:0);assert.equal(layerMove.current,null);assert.equal(inputActive.current,false);assert.equal(preview,null);assert.equal(listeners.size,0);
+  if(committed){assert.notEqual(committed,before);assert.equal(committed.owners[1],before.owners[1]);}
+ }
+});
 
 test('actual raster finish selects a draft layer only after success, retaining selection on error or cancel',()=>{
   for(const ending of ['success','capacity','cancel']){

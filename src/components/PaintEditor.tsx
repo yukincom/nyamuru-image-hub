@@ -357,15 +357,15 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
       const move=layerMove.current;if(!move||move.pointerId!==e.pointerId)return;
       const point=inputPoint(e,target,rect,targetOwner),dx=point.x-start.x,dy=point.y-start.y;
       if(Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY)<2&&move.current===before)return;
-      try{move.current={...before,owners:before.owners.map(o=>{if(o.key!==targetOwner.key)return o;
-        const moved=translatePaintLayer(targetLayer,dx,dy);
+      const moved=translatePaintLayer(targetLayer,dx,dy);
+      try{move.current=moved===targetLayer?before:{...before,owners:before.owners.map(o=>{if(o.key!==targetOwner.key)return o;
         return expandPaintOwnerToContent({...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===targetLayer.id?moved:l)}},[moved]);})};}
       catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
       setVectorPreview(move.current);
     };
-    const move=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(!e.buttons){finishLayerMove();return;}update(e);};
-    const end=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup')update(e);finishLayerMove(e.type!=='pointercancel');};
-    const blur=()=>finishLayerMove();
+    const move=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(!e.buttons){finishLayerMove(false);return;}update(e);};
+    const end=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup')update(e);finishLayerMove(e.type==='pointerup');};
+    const blur=()=>finishLayerMove(false);
     const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
     layerMove.current={pointerId:event.pointerId,before,current:before,cleanup,target};inputActive.current=true;
     window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',blur);target.addEventListener('lostpointercapture',end);
@@ -386,9 +386,9 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     if(!same){setOwnerKey(targetOwner.key);setLayerId(targetLayer.id);setMaskTarget(null);setSelection(null);}
     const inputSize=event.button===5?eraserSize:size;
     const drag=beginVectorDrag(before,(event.button===5?'eraser':tool) as VectorTool,point(event),{...vectorStyle,width:inputSize},tolerance,eraseMode,inputSize/2);
-    const move=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.buttons===0){finishVector();return;}updateVectorDrag(g.drag,g.point(e));showVectorDrag();};
-    const end=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup'&&(g.drag.kind!=='new-anchor'||Math.hypot(g.point(e).x-g.drag.start.x,g.point(e).y-g.drag.start.y)>.1))updateVectorDrag(g.drag,g.point(e));finishVector(e.type!=='pointercancel');};
-    const blur=()=>finishVector();const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
+    const move=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.buttons===0){finishVector(false);return;}updateVectorDrag(g.drag,g.point(e));showVectorDrag();};
+    const end=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup'&&(g.drag.kind!=='new-anchor'||Math.hypot(g.point(e).x-g.drag.start.x,g.point(e).y-g.drag.start.y)>.1))updateVectorDrag(g.drag,g.point(e));finishVector(e.type==='pointerup');};
+    const blur=()=>finishVector(false);const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
     vectorPointer.current={pointerId:event.pointerId,drag,ownerKey:targetOwner.key,layerId:targetLayer.id,addedLayer,target,point,cleanup};inputActive.current=true;
     window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',blur);target.addEventListener('lostpointercapture',end);
     try{target.setPointerCapture(event.pointerId);}catch{}showVectorDrag();
@@ -429,8 +429,8 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
   function movePointer(event:PointerEvent){
     const g=gesture.current;if(!g||g.pointerId!==event.pointerId)return;
     event.preventDefault();event.stopPropagation();
-    // Recover a missed release when the device resumes with a hover event.
-    if(event.buttons===0){finishGesture();return;}
+    // A hover without a matching release is an interrupted gesture, not a commit.
+    if(event.buttons===0){finishGesture(false);return;}
     addPoints(event);
     if(!raf.current)raf.current=requestAnimationFrame(()=>{raf.current=0;const g=gesture.current;if(g)setLive({...g.live});});
   }
@@ -438,7 +438,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     if(gesture.current?.pointerId!==event.pointerId)return;
     event.preventDefault();event.stopPropagation();
     if(event.type==='pointerup')addPoints(event);
-    finishGesture(event.type!=='pointercancel');
+    finishGesture(event.type==='pointerup');
   }
   async function flush(capture=false){
     if(operation.current)throw new Error('画像の処理が終わってから保存してください');
@@ -581,7 +581,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
       const selectionForMark=selectionBoxes;
       const next:Live={ownerKey:owner.key,layerId:active.id,space:{frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height},...(paintTarget?{target:paintTarget}:{}),...(active!==layer?{addedLayer:active}:{}),stroke:{tool:event.button===5?'eraser':tool as PaintStroke['tool'],color,...(selectionForMark?{selection:selectionForMark}:{}),...(event.button!==5&&(tool==='rectangle'||tool==='ellipse')?{fill:vectorStyle.fill}:{}),size:event.button===5?eraserSize:size,points:[smoother.push(point(event))]}};
       next.bounds=paintStrokeBounds(next.stroke);
-      const blur=()=>finishGesture();
+      const blur=()=>finishGesture(false);
       const cleanup=()=>{window.removeEventListener('pointermove',movePointer,true);window.removeEventListener('pointerup',endPointer,true);window.removeEventListener('pointercancel',endPointer,true);window.removeEventListener('blur',blur);};
       gesture.current={pointerId:event.pointerId,live:next,smoother,point,target,cleanup};inputActive.current=true;
       // Capture can fail on a quick tablet tap. Window listeners still retain its up/move.
@@ -637,8 +637,9 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
       if(key==='escape'&&eraserMenu){event.preventDefault();event.stopPropagation();setEraserMenu(null);return;}
       if(key==='escape'&&penMenu){event.preventDefault();event.stopPropagation();setPenMenu(false);return;}
       if(key==='escape'&&menu){event.preventDefault();event.stopPropagation();setMenu(null);return;}
+      if(key==='escape'&&requested&&inputActive.current){event.preventDefault();event.stopPropagation();finishGesture(false);return;}
       if(key==='escape'&&requested&&selectionBoxes){event.preventDefault();event.stopPropagation();setSelection(null);return;}
-      if(key==='escape'&&requested){event.preventDefault();event.stopPropagation();if(inputActive.current)finishGesture(false);else if(vectorState.current.activePath)clearVectorSelection();else void requestClose().catch(()=>{});return;}
+      if(key==='escape'&&requested){event.preventDefault();event.stopPropagation();if(vectorState.current.activePath)clearVectorSelection();else void requestClose().catch(()=>{});return;}
       if(!requested)return;
       if(key==='enter'&&vectorState.current.activePath){event.preventDefault();vectorState.current={...vectorState.current,activePath:undefined};return;}
       if((key==='delete'||key==='backspace')&&vectorSelected.length){event.preventDefault();deleteVectorSelection();return;}

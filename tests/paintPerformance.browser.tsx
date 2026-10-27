@@ -7,6 +7,7 @@ import {PaintLayerControlsContext,usePaintWorkspace,type PaintWorkspaceState} fr
 import {applyOwnerPaint,newPaintLayer,paintAssetIds,paintScene,type PaintScene} from '../src/lib/paintDocument';
 import {commitPaintStroke,paintStrokeBounds,previewPaintStroke,type PaintStrokePreview} from '../src/lib/paintGesture';
 import {paintPreviewRenderer} from '../src/lib/paintRenderer';
+import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry';
 import {newToneLayer} from '../src/lib/paintTone';
 import type {PaintController,PaintSessionSnapshot,SharedPaintHistory} from '../src/lib/paintSession';
 import {workspaceHistory} from '../src/lib/workspaceHistory';
@@ -116,6 +117,41 @@ async function maskInteraction(){
   check(workspace!.owner.paint.layers[0].mask!.strokes.length===1,'マスク消しゴムだけUndo可能');
   pointer('pointerdown',3,3);await raf();await raf();pointer('pointercancel',3,3);await raf();await raf();
   check(workspace!.owner.frame===original.frame&&workspace!.owner.paint.layers[0].mask!.strokes.length===1&&!workspace!.live,'マスク取消で仮の拡張・筆跡を残さない');
+}
+async function historyInteraction(){
+  const settle=async()=>{await raf();await raf();};
+  const select=async(name:string)=>{document.querySelector<HTMLButtonElement>(`[aria-label="${name}"]`)!.click();await settle();};
+  for(const kind of ['raster','vector'] as const){
+    const scene=makeScene(0),layer=scene.owners[0].paint.layers[0];
+    layer.kind=kind;
+    if(kind==='vector')layer.paths=[vectorShape('rectangle',point(150,150),point(450,450),{...defaultVectorStyle(),fill:'#000000'})];
+    else layer.strokes=[{tool:'rectangle',color:'#000000',fill:'#000000',size:4,points:[point(150,150),point(450,450)]}];
+    await mount(scene);await select('選択');
+    const baseline=workspace!.scene;
+    pointer('pointerdown',40,40);pointer('pointermove',45,45);pointer('pointerup',45,45);await settle();
+    const moved=workspace!.scene;
+    check(moved!==baseline&&workspace!.canUndo,`${kind}: 実移動を一度確定`);
+    workspace!.undo();await settle();check(workspace!.scene===baseline&&!workspace!.canUndo&&workspace!.canRedo,`${kind}: 1Undoで移動前へ戻る`);
+    pointer('pointerdown',40,40);pointer('pointermove',45,45);pointer('pointermove',40,40);pointer('pointerup',40,40);await settle();
+    check(workspace!.scene===baseline&&!workspace!.canUndo&&workspace!.canRedo,`${kind}: 往復移動は履歴を増やさずRedoを保持`);
+    for(const tool of ['選択',kind==='vector'?'ベジェペン':'ペン']){
+      await select(tool);
+      for(const ending of ['pointercancel','lostpointercapture','blur','hover','Escape']){
+        const drawing=tool!=='選択',x=drawing?65:40,y=drawing?20:40;
+        pointer('pointerdown',x,y);pointer('pointermove',x+4,y+4);await settle();
+        if(ending==='blur')window.dispatchEvent(new Event('blur'));
+        else if(ending==='Escape')window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+        else if(ending==='hover'){
+          const input=document.querySelector<HTMLElement>('.paint-input')!;
+          input.dispatchEvent(new PointerEvent('pointermove',{pointerId:7,buttons:0,bubbles:true,cancelable:true}));
+        }else pointer(ending,x+4,y+4);
+        await settle();
+        check(workspace!.scene===baseline&&!workspace!.canUndo&&workspace!.canRedo&&!workspace!.live,`${kind}/${tool}: ${ending}は未確定操作だけ取消しRedoを保持`);
+      }
+    }
+    workspace!.redo();await settle();check(workspace!.scene===moved&&workspace!.canUndo&&!workspace!.canRedo,`${kind}: 取消を挟んでもRedoで確定移動を復元`);
+  }
+  await select('選択');
 }
 async function selectionInteraction(){
   const scene=makeScene(0);await mount(scene);const before=workspace!.scene;
@@ -299,10 +335,14 @@ async function placedImageInteraction(){
 run.onclick=()=>{
   run.disabled=true;checks.length=0;
   void(async()=>{
+    if(new URLSearchParams(location.search).has('history-check')){
+      await historyInteraction();report.textContent=`PASS ${checks.length}項目\n${checks.join('\n')}`;return;
+    }
     report.textContent='旧組み立て方式を同条件で測定中…';const baked=await rendererBenchmark(true);
     report.textContent='キャッシュを使う方式を測定中…';const cached=await rendererBenchmark(false);
     check(baked.historical_point_reads>=500*120&&cached.historical_point_reads===0,'旧組み立て方式の過去線再描画を除去');
     report.textContent='実PaintEditorのポインター入力・確定・取り消し・枠外描画を検証中…';const ui=await interaction();
+    report.textContent='取消・往復移動・Redo保持を検証中…';await historyInteraction();
     report.textContent='同じレイヤーへのマスク描画・確定・消去・取消を検証中…';await maskInteraction();
     report.textContent='元画像サイズに切られない投げ縄とトーン・Undo/Redoを検証中…';await selectionInteraction();
     report.textContent='投げ縄の処理量・画像容量の境界と失敗後の再試行を検証中…';await selectionCapacityInteraction();await draftSelectionCapacityInteraction();
