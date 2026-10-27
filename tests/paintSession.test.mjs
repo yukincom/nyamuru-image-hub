@@ -209,11 +209,12 @@ test('generated artwork uses the captured destination and existing import path, 
  assert.equal(target.pageIndex,1);assert.equal(target.panelIndex,3);assert.equal(target.figureIndex,0);assert.equal(target.scope,'panel');
  assert.deepEqual({...target.box},placed.context.qwenGeneration.owner.frame);
  assert.deepEqual(placed.calls[1],['dialog',null]);
+ const locked=appQwenInsert({locked:true});await locked.insert(file);assert.equal(locked.calls[0][0],'placed');assert.equal(locked.context.qwenGeneration.owner.paint.layers[0].locked,true);
  const painting=appQwenInsert({paint:true});await painting.insert(file);
  assert.deepEqual(painting.calls[0],['paint',file,'figure-0']);assert.deepEqual(painting.calls[1],['dialog',null]);
 });
-test('generated-image insertion keeps the dialog and document when the destination changed, is locked or import fails',async()=>{
- for(const options of [{changed:true},{locked:true},{paint:true,wrongSession:true},{fail:true},{paint:true,fail:true}]){
+test('generated-image insertion keeps the dialog and document when the destination changed or import fails',async()=>{
+ for(const options of [{changed:true},{paint:true,wrongSession:true},{fail:true},{paint:true,fail:true}]){
   const h=appQwenInsert(options);await assert.rejects(h.insert({name:'output.png'}));assert.deepEqual(h.calls,[]);
  }
 });
@@ -238,6 +239,6 @@ test('single pose output keeps the original guide frame after adopting its panel
   if(paint)h.context.paintController.current.insertImage=async(file,key,placement)=>h.calls.push(['paint',file,key,placement]);
   await h.insert({name:'pose.png'});
   const placement=h.calls[0][paint?3:2];
-  assert.deepEqual({...placement[paint?'frame':'box']},frame);assert.equal(placement.referenceFrame,referenceFrame);
+  assert.deepEqual({...placement[paint?'frame':'box']},frame);if(paint)assert.equal(placement.referenceFrame,referenceFrame);else assert.equal(placement.generatedOwner,h.context.qwenGeneration.owner);
  }
 });

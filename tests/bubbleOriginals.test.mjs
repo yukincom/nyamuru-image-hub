@@ -7,14 +7,16 @@ import * as jsxRuntime from 'preact/jsx-runtime';
 import { separateBubbleOriginals, needsBubbleOriginalSeparation } from '../src/lib/bubbleOriginals.ts';
 import { attachRecognizedTextToPage, recognizedTextOwnerKey } from '../src/lib/localBridge.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
-import { paintScene, applyOwnerPaint, clearOwnerPaint, paintReferenceBox, paintAssetIds } from '../src/lib/paintDocument.ts';
+import { paintScene, applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, paintReferenceBox, paintAssetIds } from '../src/lib/paintDocument.ts';
 import { imageAssetIds, imageSha256, validateImagePlacements, fitImageBox } from '../src/lib/imagePlacement.ts';
-import { paintOwnerLocked, paintOwnerPlacementLocked } from '../src/lib/paintLock.ts';
+import { artworkLocked, paintOwnerLocked, paintOwnerPlacementLocked, paintLayerPatchAllowed } from '../src/lib/paintLock.ts';
 import { pickPaintLayer } from '../src/lib/paintLayerPicking.ts';
 import { parseMangaYaml, toStoredMangaYaml, toSeparatedMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
 import { qwenPanelImageLayers } from '../src/lib/qwenComposition.ts';
+import { moveBubbleToOwner, splitPanel, mergeSelectedPanels } from '../src/lib/panelTemplates.ts';
+import { toggleBubbleVisibility } from '../src/lib/panelLayers.ts';
 
 const blob=new Blob([Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,30,0,0,0,40,8,6,0,0,0])],{type:'image/png'});
 const sha=await imageSha256(blob);
@@ -99,7 +101,7 @@ test('duplicated legacy bubbles sharing one source region each retain their own 
 });
 test('native visibility, lock, movement and deletion do not change the independent original',async()=>{
   const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0],original=structuredClone(panel.images[0]);
-  panel.bubbles[0].hidden=true;panel.bubbles[0].locked=true;panel.bubbles[0].bbox.x+=10;
+  panel.bubbles[0].hidden=true;panel.bubbles[0].nativeLocked=true;panel.bubbles[0].bbox.x+=10;
   let scene=paintScene(panel,100,doc.manga.image_assets,'color','panel'),owner=scene.owners.at(-1);
   assert.equal(paintOwnerLocked(owner),false);assert.equal(owner.paint.layers.length,1);
   assert.equal(pickPaintLayer(scene,{x:owner.frame.x+owner.frame.w/2,y:owner.frame.y+owner.frame.h/2},0,()=>true)?.owner.kind,'original');
@@ -193,10 +195,86 @@ test('new hidden originals keep their assets, and the saved layer eye owns visib
     assert.equal(restored.manga.pages[0].panels[0].bubbles[0].analogTextImport.referenceHidden,true,'initial metadata is not a second live eye');
   }
 });
-test('legacy missing initial visibility is not silently forced hidden',async()=>{
+test('missing initial visibility is not silently forced hidden',async()=>{
   const input=imported();delete input.manga.pages[0].panels[0].bubbles[0].analogTextImport.referenceHidden;
   const result=await separateBubbleOriginals(input,deps);
   assert.equal(result.manga.pages[0].panels[0].images[0].paint.layers[0].visible,true);
+});
+test('already separated data is not scanned to guess missing associations',async()=>{
+  const doc=await separateBubbleOriginals(imported(),deps);
+  delete doc.manga.pages[0].panels[0].bubbles[0].analogTextImport.originalImageId;
+  assert.equal(needsBubbleOriginalSeparation(doc),false);
+  assert.equal(await separateBubbleOriginals(doc,{load:async()=>assert.fail('must not decode')}),doc);
+  assert.equal(doc.manga.pages[0].panels[0].bubbles[0].analogTextImport.originalImageId,undefined);
+});
+
+test('split, merge and owner transfer keep each linked original distinct, including colliding placement IDs',async()=>{
+  const doc=await separateBubbleOriginals(imported(),deps),page=doc.manga.pages[0],panel=page.panels[0];
+  panel.shape={type:'rect',x:0,y:0,w:100,h:100};
+  panel.bubbles[0].bbox={x:40,y:20,w:20,h:30};panel.images[0].bbox={x:2,y:3,w:20,h:30};
+  const sourceId=panel.images[0].id;
+  assert.deepEqual(splitPanel(page,0,'vertical',{rowGapMm:2,columnGapMm:2}),[0,1]);
+  assert.ok(page.panels.every(p=>p.bubbles[0].analogTextImport.originalImageId===p.images[0].id));
+  validateImagePlacements(doc);
+  mergeSelectedPanels(page,[0,1]);
+  assert.equal(page.panels[0].bubbles.length,2);assert.equal(page.panels[0].images.length,2);
+  const ids=page.panels[0].bubbles.map(b=>b.analogTextImport.originalImageId);assert.equal(new Set(ids).size,2);assert.ok(ids.includes(sourceId));
+  validateImagePlacements(doc);
+  // A pre-existing page original has the same ID but belongs to another bubble.
+  page.images[0].id=ids[0];page.page_overlay.bubbles[0].analogTextImport.originalImageId=ids[0];
+  const moved=moveBubbleToOwner(page,0,0,'page_overlay');assert.ok(moved);
+  assert.notEqual(page.page_overlay.bubbles[moved.index].analogTextImport.originalImageId,ids[0]);
+  assert.equal(page.panels[0].images.length,1);assert.equal(page.images.length,2);validateImagePlacements(doc);
+  const restored=await restoreProjectSnapshot(await createProjectSnapshot(doc,async()=>blob),async()=>{});
+  assert.deepEqual(restored.manga.pages[0].page_overlay.bubbles.map(b=>b.analogTextImport.originalImageId),page.page_overlay.bubbles.map(b=>b.analogTextImport.originalImageId));
+  assert.deepEqual(restored.manga.pages[0].images.map(i=>i.id),page.images.map(i=>i.id));validateImagePlacements(restored);
+});
+
+test('native and original eyes remain independent, with group toggle applying all children atomically',async()=>{
+  const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0],target={pageIndex:0,panelIndex:0,bubbleIndex:0,overlay:false};
+  toggleBubbleVisibility(doc,target);assert.equal(panel.bubbles[0].hidden,true);assert.equal(panel.images[0].paint.layers[0].visible,true);
+  toggleBubbleVisibility(doc,target,true);assert.equal(panel.bubbles[0].hidden,true);assert.equal(panel.images[0].paint.layers[0].visible,false);
+  toggleBubbleVisibility(doc,target,true);assert.equal(panel.bubbles[0].hidden,false);assert.equal(panel.images[0].paint.layers[0].visible,true);
+  const owners=paintScene(panel,100,doc.manga.image_assets).owners;
+  assert.deepEqual(owners.slice(-2).map(o=>o.key),['bubble-0',`original-${panel.images[0].id}`]);
+  assert.equal(owners.at(-1).parentKey,'bubble-0');assert.equal(owners.at(-1).bubble,undefined);
+  clearOwnerPaint(panel,owners.at(-1));assert.equal(panel.bubbles[0].analogTextImport.originalImageId,null);validateImagePlacements(doc);
+});
+
+test('validator rejects cross-owner, ordinary-image and multiply claimed original IDs',async()=>{
+  const original=await separateBubbleOriginals(imported(),deps);
+  for(const kind of ['missing','ordinary','duplicate']){
+    const doc=structuredClone(original),panel=doc.manga.pages[0].panels[0];
+    if(kind==='missing')panel.bubbles[0].analogTextImport.originalImageId=doc.manga.pages[0].images[0].id;
+    if(kind==='ordinary')delete panel.images[0].bubbleOriginal;
+    if(kind==='duplicate')panel.bubbles.push(structuredClone(panel.bubbles[0]));
+    assert.throws(()=>validateImagePlacements(doc),/対応が不正/);
+  }
+});
+
+test('folder lock is inherited, rejects child unlocks, and native child lock stays independent',async()=>{
+  const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0];
+  const source=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+  const ast=ts.createSourceFile('PaintEditor.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let declaration;const visit=node=>{if(ts.isFunctionDeclaration(node)&&node.name?.text==='layerAction')declaration=node;ts.forEachChild(node,visit);};visit(ast);
+  const historyRef={current:{present:paintScene(panel,100,doc.manga.image_assets)}},commits=[];
+  const act=runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,
+    {busy:false,suspended:false,operation:{current:false},inputActive:{current:false},historyRef,commit:scene=>{commits.push(scene);historyRef.current.present=scene;}});
+  const child=()=>historyRef.current.present.owners.find(o=>o.kind==='original'),native=()=>historyRef.current.present.owners.find(o=>o.kind==='bubble');
+  act({type:'owner-lock',key:'bubble-0',locked:true,group:true});assert.equal(commits.length,1);
+  assert.equal(child().locked,false);assert.equal(child().inheritedLocked,true);assert.equal(native().locked,true);
+  assert.equal(paintLayerPatchAllowed(child(),child().paint.layers[0],{locked:false}),false);
+  act({type:'owner-lock',key:child().key,locked:false});act({type:'owner-lock',key:'bubble-0',locked:false});assert.equal(commits.length,1,'no child can unlock its folder');
+  for(const owner of historyRef.current.present.owners.filter(o=>o.kind==='bubble'||o.kind==='original'))applyPaintOwnerLock(panel,owner);
+  assert.equal(artworkLocked(panel.images[0],panel.bubbles),true,'native canvas follows the parent lock without copying it onto the original');
+  assert.equal(paintScene(panel,100,doc.manga.image_assets).owners.at(-1).inheritedLocked,true);
+  act({type:'owner-lock',key:'bubble-0',locked:false,group:true});assert.equal(child().inheritedLocked,false);
+  act({type:'owner-lock',key:'bubble-0',locked:true});assert.equal(native().locked,false);assert.equal(native().bubble.nativeLocked,true);assert.equal(paintOwnerLocked(child()),false);
+  applyPaintOwnerLock(panel,native());assert.equal(panel.bubbles[0].nativeLocked,true);
+  const restored=await restoreProjectSnapshot(await createProjectSnapshot(doc,async()=>blob),async()=>{});
+  assert.equal(restored.manga.pages[0].panels[0].bubbles[0].nativeLocked,true);
+  assert.doesNotMatch(toSeparatedMangaYaml(restored),/nativeLocked|originalImageId/);
+  assert.equal(artworkLocked(restored.manga.pages[0].panels[0].images[0],restored.manga.pages[0].panels[0].bubbles),false);
 });
 test('selecting a page original then drawing opens the page scene with the original owner',()=>{
   const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
@@ -215,9 +293,6 @@ test('every UI opening boundary runs separation before exposing the editor',()=>
   const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
   assert.match(source,/separateBubbleOriginals\(await restorePortableProject\(selected.value\)\)/);
   assert.match(source,/separateBubbleOriginals\(await restoreProjectSnapshot\(loaded.snapshot\)\)/);
-  assert.match(source,/separateBubbleOriginals\(startupWorkspace.document\)[\s\S]*?if\(!ready\)return/);
-  assert.match(source,/setReady\(\{document:createEmptyWorkspaceDocument\(\),hasDocument:false\}\)/);
-  assert.match(source,/if \(!hasDocument\) \{\s*return;\s*\}[\s\S]*?storeWorkspaceDocument\(localStorage/);
   assert.ok(source.indexOf('seriesMerge.document=await separateBubbleOriginals')<source.indexOf('replaceDocument(seriesMerge.document)'));
   const view=readFileSync(new URL('../src/components/PaintSceneView.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(view.slice(view.indexOf('if(owner.bubble)'),view.indexOf('const level=')),/SourceImage/);

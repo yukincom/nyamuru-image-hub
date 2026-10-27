@@ -144,7 +144,7 @@ characters:
 - `role` describes personality and story role. It is excluded from the character image-generation prompt.
 - `gender` is an optional human-specified attribute: `female`, `male`, or `neutral`. Preserve an omitted value as unset; do not infer it from a name or appearance. English pronouns and verbs follow this value, with singular they used only during generation when it is unset. Do not rewrite character settings or visual instructions, or duplicate the attribute in `figures`.
 - `visual_prompt` preserves human-authored appearance and drawing instructions. Character image generation translates it into English together with the work's art style and the selected figure's performance instructions.
-- `default_proportion.head_count` is a human-set per-character proportion from 1 to 12; image analysis does not decide it.
+- `default_proportion.head_count` is a human-set per-character proportion of at least 1, with no upper limit; image analysis does not decide it.
 - `recognition` separates `observed` image facts from `inferred` items that need confirmation. Do not store expressions, temporary poses, or drawing style as fixed character traits.
 - `primary_material_catalog_id` identifies the representative character material.
 

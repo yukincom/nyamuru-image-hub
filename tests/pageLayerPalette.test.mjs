@@ -6,6 +6,7 @@ import ts from 'typescript';
 import * as jsxRuntime from 'preact/jsx-runtime';
 import { canvasPaintOwnerKey } from '../src/lib/paintDocument.ts';
 import * as paintDocument from '../src/lib/paintDocument.ts';
+import {canvasTextEditable,canvasTextAt,editCanvasText} from '../src/lib/canvasText.ts';
 
 test('canvas selections resolve only their existing paint owner and never default to background',()=>{
  const panel={figures:[{}],bubbles:[{}],images:[{id:'normal'},{id:'crop-a-b',bubbleOriginal:{}},{id:'direct',paintScope:'panel'}]};
@@ -33,6 +34,30 @@ const mangaCanvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx'
 const selectionSource=readFileSync(new URL('../src/components/CanvasContentSelection.tsx',import.meta.url),'utf8');
 const lockIconSource=readFileSync(new URL('../src/components/LayerLockIcon.tsx',import.meta.url),'utf8');
 const headerSource=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
+
+test('voice edits keep manual locks while accepting shape and text commands',async()=>{
+ const source=appSource.slice(appSource.indexOf('  async function applyVoiceCommand('),appSource.indexOf('  const activeLayoutItem'));
+ for(const overlay of [false,true])for(const lock of ['folder','native','panel']){
+  if(overlay&&lock==='panel')continue;
+  const bubble={text:'原文',shape:'normal',bbox:{x:5,y:5,w:30,h:30}},panel={shape:{type:'rect',x:0,y:0,w:100,h:100},bubbles:[bubble]},page={canvas:{w:100,h:100},panels:[panel],...(overlay?{page_overlay:{bubbles:[bubble]}}:{})};
+  if(lock==='folder')bubble.locked=true;
+  if(lock==='native')bubble.nativeLocked=true;
+  if(lock==='panel')panel.layer={locked:true};
+  const document={manga:{pages:[page]}},before=structuredClone(document);let mutations=0;
+  const apply=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';applyVoiceCommand',{
+   hasDocument:true,showNewDialog:false,projectOperation:{current:false},layerSwitch:{current:false},imageImportBusy:false,qwenGeneration:null,
+   paintController:{current:null},paintSessionRef:{current:null},selectedElement:{type:'bubble',index:0,scope:overlay?'page_overlay':'panel'},
+   activePage:0,activePanel:0,documentRef:{current:document},canvasTextEditable,canvasTextAt,editCanvasText,
+   mutate:action=>{mutations++;action(document);},
+  });
+  assert.equal(canvasTextEditable(document,{pageIndex:0,panelIndex:0,index:0,overlay,kind:'bubble'}),false);
+  for(const command of [{op:'bubble_shape',shape:'caption'},{op:'bubble_text',text:'書き換え'}])assert.match(await apply(command),/変更しました/);
+  assert.equal(mutations,2);assert.equal(bubble.text,'書き換え');assert.equal(bubble.shape,'caption');
+  const previous=(overlay?before.manga.pages[0].page_overlay:before.manga.pages[0].panels[0]).bubbles[0];
+  assert.equal(bubble.locked,previous.locked);assert.equal(bubble.nativeLocked,previous.nativeLocked);assert.deepEqual(panel.layer,before.manga.pages[0].panels[0].layer);
+  assert.equal(editCanvasText(document,{pageIndex:0,panelIndex:0,index:0,overlay,kind:'bubble'},'手動の誤操作'),false);assert.equal(bubble.text,'書き換え');
+ }
+});
 
 test('owner headings route to layout selection while child layers retain the existing paint entrance',async()=>{
  const selected=[],painted=[],page={panels:[{figures:[{}],bubbles:[{}],images:[{id:'crop-a-b',bubbleOriginal:{}}]}],images:[{id:'page-crop',bubbleOriginal:{}}],page_overlay:{figures:[{}],bubbles:[{}]}};
@@ -81,7 +106,7 @@ test('active paint headings leave through the same layout callback without chang
 });
 
 test('owner selection waits for paint close and retains the current mode on save failure',async()=>{
- const source=appSource.slice(appSource.indexOf('  function selectLayerOwner('),appSource.indexOf('  function toggleBubbleLayer('));
+ const source=appSource.slice(appSource.indexOf('  function selectLayerOwner('),appSource.indexOf('  function toggleTextLayer('));
  for(const fail of [false,true]){
   const calls=[],resume={current:{ownerKey:'background'}},page={panels:[{figures:[{}]}]};let pending=Promise.resolve();
   const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectLayerOwner',{
@@ -102,8 +127,8 @@ test('palette displays original crops above the frame, then bubbles and lower ar
  assert.match(paintLayerSource,/\[\.\.\.p\.scene\.owners\][\s\S]*?\.reverse\(\)\.map/);
  assert.match(paintLayerSource,/const frame=o\.kind!=='original'&&\(ownerIndex===0\|\|owners\[ownerIndex-1\]\.kind==='original'\)\?p\.frameLayer:null/);
  assert.match(paintLayerSource,/return <>\{frame\}<div class="layer-group"/);
- assert.match(pageLayerSource,/cloneElement\(paint\.layers[\s\S]*?\{frameLayer\}/);
- assert.match(pageLayerSource,/<InactiveLayers panel=\{panel\}[^>]*frameLayer=\{frameLayer\}/);
+ assert.match(pageLayerSource,/cloneElement\(activeLayers,\{frameLayer,images:/);
+ assert.match(pageLayerSource,/<PanelPaintLayers panel=\{panel\}[^>]*frameLayer=\{frameLayer\}/);
 });
 
 test('page image import and export stay in the header immediately before New',()=>{
@@ -192,7 +217,6 @@ test('the final paint layer can be removed completely and recreated only on dema
  assert.match(paintEditorSource,/const remaining=owner\.paint\.layers\.filter\(l=>l\.id!==layer\.id\);changeLayers\(remaining\)/);
  assert.doesNotMatch(paintEditorSource,/owner\.paint\.layers\.length===1\?\[newPaintLayer/);
  assert.match(paintEditorSource,/if\(!owner\.paint\.layers\.length&&!owner\.paint\.folders\?\.length\)\{result\.owners\.push\(\{owner,blob:new Blob\(\),remove:true\}\);continue;\}/);
- assert.match(paintLayerSource,/レイヤーはありません。必要なときだけラスターレイヤーかベクターレイヤーを追加してください。/);
  assert.match(appSource,/if\(remove\)\{clearOwnerPaint\(target,owner\);continue;\}/);
 });
 
@@ -201,17 +225,17 @@ function fixture(){
  const hooks={useMemo:(make,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j]))slots[i]={deps,value:make()};return slots[i].value},
   useState:initial=>{const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>slots[i]=value]},
   useEffect:(run,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j])){const before=slots[i];slots[i]={deps};effects.push(()=>{before?.cleanup?.();slots[i].cleanup=run()})}}};
- const modules={'preact':{cloneElement:(element,props)=>({...element,props:{...element.props,...props}})},'preact/hooks':hooks,'preact/jsx-runtime':jsxRuntime,'lucide-preact':{},'../lib/canvasGeometry':{},'../lib/paintDocument':{paintScene:(panel,_dpi,_assets,_color,scope)=>({owners:[{key:scope??'figure-0',kind:scope??'figure',paint:{layers:[{id:panel.id}]}}]})},
+ const modules={'preact':{cloneElement:(element,props)=>({...element,props:{...element.props,...props}})},'preact/hooks':hooks,'preact/jsx-runtime':jsxRuntime,'lucide-preact':{},'../lib/canvasGeometry':{},'../lib/paintDocument':{paintAssetIds:paintDocument.paintAssetIds,paintScene:(panel,_dpi,_assets,_color,scope)=>({owners:[{key:scope??'figure-0',kind:scope??'figure',paint:{layers:[{id:panel.id,image:{assetId:String(panel.id)}}]}}]})},
   '../lib/paintRenderer':{loadPaintImagesBestEffort:()=>new Promise(resolve=>requests.push(resolve))},'../lib/panelLayers':{panelVisible:()=>true,panelLocked:()=>false,panelFrameLocked:()=>false,panelFrameVisible:()=>true},'../lib/paintWorkspace':{},'../lib/pageCanvas':{},'../lib/displayLabels':{},
   '../lib/paintLock':{artworkLocked:()=>false},
   './PaintLayerPalette':{__esModule:true,default:'Palette'},'./LayerVisibilityButton':{__esModule:true,default:'Visibility'},'./LayerLockIcon':{__esModule:true,default:'Lock'},'./PaintToolHelp':{PaintToolButton:'Tool'}};
- const source=readFileSync(new URL('../src/components/PageLayerPalette.tsx',import.meta.url),'utf8').replace('function InactiveLayers(','export function InactiveLayers(');
+ const source=readFileSync(new URL('../src/components/PageLayerPalette.tsx',import.meta.url),'utf8').replace('function PanelPaintLayers(','export function PanelPaintLayers(');
  runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}}).outputText,{exports,require:name=>{assert.ok(name in modules,name);return modules[name]}});
- return {requests,render(panel,assets){cursor=0;const tree=exports.InactiveLayers({panel,index:0,p:{dpi:100,assets}});return tree.props.images},
+ return {requests,render(panel,assets){cursor=0;const tree=exports.PanelPaintLayers({panel,index:0,p:{dpi:100,assets}});return tree.props.images},
   flush(){while(effects.length)effects.shift()()},dispose(){for(const slot of slots)slot?.cleanup?.()}};
 }
 test('empty direct groups stay out of the tree until the user adds artwork',()=>{
- const direct=pageLayerSource.indexOf('page-direct-layer-group'),panels=pageLayerSource.indexOf('p.page.panels.map');
+ const direct=pageLayerSource.indexOf('page-direct-layer-group'),panels=pageLayerSource.indexOf('{p.page.panels.map');
  assert.ok(direct>0&&direct<panels);
  assert.match(pageLayerSource,/images:p\.page\.images\?\.filter\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)/);
  assert.match(pageLayerSource,/const hasPageDirect=Boolean\(p\.page\.page_overlay\?\.figures\?\.length\|\|p\.page\.page_overlay\?\.bubbles\?\.length\|\|p\.page\.page_overlay\?\.screen_text\?\.length\|\|p\.page\.images\?\.some\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)\|\|activePageOwner\?\.paint\.layers\.length\|\|activePageOwner\?\.paint\.folders\?\.length\)/);
@@ -224,9 +248,10 @@ test('empty direct groups stay out of the tree until the user adds artwork',()=>
 test('layer folders are explicit and drag targets distinguish inside from outside placement',()=>{
  assert.match(paintLayerSource,/icon\('フォルダー追加',p\.addFolder,FolderPlus/);
  assert.match(paintLayerSource,/data-layer-drop="folder"/);
- assert.match(paintLayerSource,/placement=ratio<\.25\?'above':ratio>\.75\?'below':'inside'/);
+ assert.match(paintLayerSource,/ratio<\.25\?'above':ratio>\.75\?'below':'inside'/);
  assert.match(paintLayerSource,/p\.moveLayer\(d\.key,d\.id,d\.drop\)/);
- assert.match(paintLayerSource,/if\(o\.kind==='panel'\|\|o\.kind==='page'\|\|o\.kind==='original'\)return/);
+ assert.match(paintLayerSource,/if\(o\.kind==='panel'\|\|o\.kind==='page'\)return/);
+ assert.match(paintLayerSource,/if\(o\.kind==='original'\)return/);
  assert.match(paintLayerSource,/data-original-raster=/);
  assert.match(paintEditorSource,/requested&&key==='f'/);
  assert.match(appSource,/key==='f'[\s\S]{0,180}?addDirectFolder/);
@@ -237,7 +262,7 @@ test('representative locks live at row right and inherited locks disable descend
  assert.match(paintLayerSource,/class=\{`palette-icon layer-row-lock/);
  assert.match(paintLayerSource,/inherited=\{o\.inheritedLocked===true\}/);
  assert.match(paintLayerSource,/inherited=\{paintOwnerLocked\(o\)\}/);
- assert.match(paintLayerSource,/lockOwner:\(key:string,locked:boolean\)=>void/);
+ assert.match(paintLayerSource,/lockOwner:\(key:string,locked:boolean,group\?:boolean\)=>void/);
  assert.match(pageLayerSource,/disabled=\{p\.disabled\|\|panelLocked\(panel\)\}/);
  assert.match(globalCss,/\.paint-dock \.layer-row-lock\.is-inherited \{[^}]*opacity:\.28;[^}]*filter:grayscale\(1\);/);
  assert.match(globalCss,/\.paint-dock \.layer-row-lock\.is-unlocked \{ opacity:0; \}/);
@@ -262,4 +287,47 @@ test('late image loading for an abandoned scene is disposed and cannot replace t
  const f=fixture(),assets=[],old={id:1},current={id:2};f.render(old,assets);f.flush();f.render(current,assets);f.flush();
  const stale=new Map([['stale',{src:'blob:stale'}]]);f.requests.shift()(stale);await Promise.resolve();assert.equal(stale.get('stale').src,'');assert.equal(f.render(current,assets),null);
  const fresh=new Map();f.requests.shift()(fresh);await Promise.resolve();assert.equal(f.render(current,assets),fresh);f.dispose();
+});
+
+test('visibility changes and fresh document wrappers reuse decoded image sources',async()=>{
+ const f=fixture(),assets=[{id:'1',storageId:'first'}],panel={id:1};f.render(panel,assets);f.flush();
+ const decoded=new Map([['1',{src:'blob:first'}]]);f.requests.shift()(decoded);await Promise.resolve();
+ assert.equal(f.render({...panel,layer:{hidden:true}},structuredClone(assets)),decoded);f.flush();assert.equal(f.requests.length,0);assert.equal(decoded.get('1').src,'blob:first');
+ assert.equal(f.render(panel,[{...assets[0],storageId:'repaired'}]),null);f.flush();assert.equal(f.requests.length,1);f.dispose();
+});
+
+
+test('native artwork remains visible until the matching painting session has decoded images',()=>{
+ const source=mangaCanvasSource.slice(mangaCanvasSource.indexOf('  const paintReady='),mangaCanvasSource.indexOf('  const inner =',mangaCanvasSource.indexOf('  const paintReady=')));
+ const evaluate=(images,overlay=false,pageNumber=1)=>runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';[editingPanel(0),editingOverlay]',{paintWorkspace:{images,page:pageNumber,panelIndex:0,overlay},page:{page:1},paintTarget:{panelIndex:0,overlay}});
+ assert.deepEqual([...evaluate(null)],[false,false]);assert.deepEqual([...evaluate(new Map())],[true,false]);
+ assert.deepEqual([...evaluate(null,true)],[false,false]);assert.deepEqual([...evaluate(new Map(),true)],[false,true]);assert.deepEqual([...evaluate(new Map(),false,2)],[false,false]);
+});
+
+
+test('successful image recovery keeps its published map alive when the effect reruns',async()=>{
+ const start=paintEditorSource.indexOf('  const recoveryImageSignature='),end=paintEditorSource.indexOf('  useEffect(()=>{\n    if(!dirty)',start),source=paintEditorSource.slice(start,end);
+ for(const cancelled of [false,true]){
+  const initial={},image={src:'blob:recovered'},map=new Map([['asset',image]]),imagesRef={current:null};let cleanup,resolve,published;
+  runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022}),{scene:{owners:[]},initial,requested:true,images:null,assets:[],imports:[],loadedInitial:{current:initial},failedImageSignature:{current:'failed'},paintImageSignature:()=> 'recovered',useEffect:effect=>cleanup=effect(),loadPaintImages:()=>new Promise(done=>resolve=done),imagesRef,setImages:value=>published=value,setError:()=>{}});
+  if(cancelled)cleanup();resolve(map);await Promise.resolve();
+  if(cancelled){assert.equal(published,undefined);assert.equal(image.src,'');}
+  else{assert.equal(published,map);cleanup();assert.equal(imagesRef.current,map);assert.equal(image.src,'blob:recovered');}
+ }
+});
+
+
+test('frame row selection uses the existing selection state after paint successfully closes',async()=>{
+ const source=appSource.slice(appSource.indexOf('  function selectLayerPanel('),appSource.indexOf('  function togglePanelLayer('));
+ for(const frame of [false,true])for(const fail of [false,true]){
+  const calls=[];let pending;
+  const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectLayerPanel',{
+   paintSessionRef:{current:{}},paintController:{current:{close:async()=>{calls.push('close');if(fail)throw Error('save failure');}}},
+   autoPaintResume:{current:{}},endTextEdit:()=>calls.push('end'),setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},
+   setSelectedPanels:value=>calls.push(['panels',...value]),selectCanvasElement:(value,index)=>calls.push([value?.type??null,index]),
+   layerTransition:action=>(pending=action().catch(error=>calls.push(error.message))),
+  });
+  select(1,frame);await pending;
+  assert.deepEqual(calls,fail?['close','save failure']:['close','end',['panels',1],[frame?'panel_frame':null,1]]);
+ }
 });

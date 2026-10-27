@@ -139,13 +139,14 @@ test('panel direct drawing stays above ordinary images and below screen text reg
   assert.ok(ordinary>0&&ordinary<direct&&direct<screenText);
 });
 
-test('completed compositions cover editable text and frames but remain below original crops',()=>{
+test('completed compositions cover native bubble folders and remain below unlinked original crops',()=>{
   const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
   const overlayText=source.indexOf("overlayTextFallbackBox(layout.frame, index)");
   const bubbles=source.indexOf('await drawBubbles(entry)',overlayText);
   const generated=source.indexOf('await drawImages(qwenPanelImageLayers(entry.panel.images).generated)');
-  const original=source.indexOf('Original crops are independent topmost');
+  const original=source.indexOf('await drawImages((entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some');
   assert.ok(overlayText>0&&overlayText<bubbles&&bubbles<generated&&generated<original);
+  assert.match(source,/await drawImages\(\(panel.images\?\?\[\]\).filter\(image=>image.id===bubble.analogTextImport\?\.originalImageId\)\)/);
   assert.match(source,/dpi = canvas\.width \/ frame\.w \* 25\.4/);
 });
 
@@ -197,4 +198,12 @@ test('3D image pose preserves the image crop without adding conflicting drawing-
   assert.match(plan.prompt, /3Dポーズの姿勢・視点・切り取り/); assert.doesNotMatch(plan.prompt, /胸から上|古いポーズ文/);
   figure.human_pose.input_mode = 'prompt'; plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
   assert.match(plan.prompt, /描写範囲は胸から上/); assert.match(plan.prompt, /古いポーズ文/);
+});
+
+
+test('hidden panel and overlay text are omitted from generation literal text',()=>{
+ const manga=fixture();manga.pages[0].panels[0].screen_text[0].hidden=true;
+ manga.pages[0].page_overlay.screen_text=[{text:'隠した前景文字',hidden:true},{text:'見える前景文字'}];
+ const plan=buildQwenCompositionPlan(manga,0,0,'page');
+ assert.ok(!plan.literalText.includes('ドン！'));assert.ok(!plan.literalText.includes('隠した前景文字'));assert.ok(plan.literalText.includes('見える前景文字'));
 });

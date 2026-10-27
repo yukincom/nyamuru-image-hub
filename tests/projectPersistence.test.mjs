@@ -5,7 +5,7 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { parseMangaYaml, cloneDocument, toSeparatedMangaYaml, omnyFileName } from '../src/lib/manga.ts';
-import { createProjectSnapshot, restoreProjectSnapshot, readProjectBinding, rememberProjectBinding } from '../src/lib/projectPersistence.ts';
+import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { linkedTestDocument, PERSON_A } from './fixtures/emptyTestDocument.ts';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
@@ -44,15 +44,6 @@ test('figure, text and overlay images are deduplicated, portable and restored wi
   snapshot.assets = [];
   await assert.rejects(restoreProjectSnapshot(snapshot, async () => assert.fail('must not write incomplete data')), /不足/);
   await assert.rejects(createProjectSnapshot(original, async () => null), /保存を中止/);
-});
-
-test('binding is recalled by episode only, including revision, never a last-used directory guess', () => {
-  const values = new Map();
-  const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
-  rememberProjectBinding({ ...binding, projectRevision: 'saved-revision' }, storage);
-  assert.equal(readProjectBinding('episode-one', storage).projectRevision, 'saved-revision');
-  assert.equal(readProjectBinding('different-episode', storage), null);
-  assert.equal(readProjectBinding('episode-one', { getItem: () => 'bad json' }), null);
 });
 
 import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
@@ -260,7 +251,7 @@ test('LAN creation does not query or discard the Mac scanner recovery session', 
 });
 
 test('LAN Save uses the bound client folder and remembers its returned revision', async () => {
-  let folderWrites = 0, persisted;
+  let folderWrites = 0;
   const workspace = { ...binding, token: 'browser-folder:fixture', projectRevision: 'before' };
   const h = handler('saveBrowserProject', {
     isLanClient: true, boundEpisodeWorkspace: workspace,
@@ -270,17 +261,17 @@ test('LAN Save uses the bound client folder and remembers its returned revision'
       write: async () => { folderWrites++; return { binding: { revision: 'after' } }; },
     },
     createPortableProject: async source => source, portableProjectBlob: value => value,
-    rememberProjectBinding: value => { persisted = value; },
+    rememberProjectBinding: () => assert.fail('must not persist a browser binding'),
   });
   await h.run();
   assert.equal(folderWrites, 1);
-  assert.equal(persisted.projectRevision, 'after');
+  assert.equal(folderWrites, 1);
   assert.equal(h.context.boundEpisodeWorkspace.projectRevision, 'after');
 });
 
 test('opening a browser folder replaces the episode binding with that selected folder', async () => {
   const workspace = { ...binding, token: 'browser-folder:selected' };
-  let remembered;
+
   const h = handler('openBrowserProject', {
     isLanClient: true,
     browserWorkspaces: {
@@ -288,12 +279,12 @@ test('opening a browser folder replaces the episode binding with that selected f
       open: async value => { assert.equal(value, workspace); return { file: { name: 'project.json' }, value: { parsed: true }, binding: { revision: 'loaded' } }; },
     },
     restorePortableProject: async value => { assert.deepEqual(value, { parsed: true }); return h.original; },
-    rememberProjectBinding: value => { remembered = value; }, rememberBrowserCatalog: async () => {},
+    rememberProjectBinding: () => assert.fail('must not persist a browser binding'), rememberBrowserCatalog: async () => {},
   });
   await h.run();
   assert.equal(h.calls.filter(call => call[0] === 'replace').length, 1);
   assert.equal(h.context.boundEpisodeWorkspace.token, workspace.token);
-  assert.equal(remembered.projectRevision, 'loaded');
+  assert.equal(h.context.boundEpisodeWorkspace.projectRevision, 'loaded');
   assert.match(h.notices.at(-1), /読み込みました/);
 });
 
@@ -361,4 +352,16 @@ test('standalone project entry points are removed, including picker and download
   assert.doesNotMatch(app, /savePortable|openPortable|chooseProjectFile|chooseProjectSaveTarget|portableBinding|fileInput|const importFile/);
   assert.doesNotMatch(files, /chooseProjectFile|chooseProjectSaveTarget|projectFileName|showSaveFilePicker|showOpenFilePicker/);
   assert.doesNotMatch(read('src/components/Header.tsx'), /<details|onOpenFile|onExportFile|fileMode|folderMode/);
+});
+
+for(const isLanClient of [false,true]) test(`explicit ${isLanClient?'LAN series':'one-shot'} catalog Save uses the existing project-folder save`,async()=>{
+  let saved=0;
+  const original=sample();original.manga.meta.series=isLanClient?'series':'';
+  const h=handler('saveCatalogFromEditor',{
+    isLanClient,documentRef:{current:original},
+    localStorage:{getItem:()=>assert.fail('no work storage'),setItem:()=>assert.fail('no browser save')},
+    saveProjectAction:{current:async()=>{saved++;return 'saved';}},
+    persistSeriesCatalog:()=>assert.fail('must use the project save route'),
+  });
+  await h.run('人物設定');assert.equal(saved,1);
 });

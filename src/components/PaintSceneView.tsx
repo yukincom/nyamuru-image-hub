@@ -1,3 +1,4 @@
+import {paintLayerVisible} from '../lib/paintLock';
 import RasterSelectionOverlay from './RasterSelectionOverlay';
 import VectorOverlay from './VectorOverlay';
 import { Box } from 'lucide-preact';
@@ -21,7 +22,7 @@ function SourceImage({id, persistent}: {id:string; persistent?:PersistentAnalogA
     void loadFigureCropAsset(id,persistent).then(blob=>{if(disposed)return;if(blob){source=URL.createObjectURL(blob);setUrl(source);}else setFailed(true);}).catch(()=>{if(!disposed)setFailed(true);});
     return()=>{disposed=true;if(source)URL.revokeObjectURL(source);};
   },[id,persistent]);
-  return url?<img src={url} alt="元のあたり" draggable={false}/>:<span>{failed?'元画像を読み込めません。作品フォルダから開き直してください。':'元のあたり画像を読み込み中'}</span>;
+  return url?<img src={url} alt="元のあたり" draggable={false}/>:failed?<span>元画像を読み込めません。作品フォルダから開き直してください。</span>:null;
 }
 export function PaintOriginal({owner}: {owner:PaintOwner}) {
   const textHost=useRef<HTMLDivElement>(null);
@@ -56,7 +57,7 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false}:{ownerKey:s
   if(!owner||owner.bubble?.hidden===true)return null;
   const reference=paintReferenceBox(owner.paint,owner.frame);
   const live=state.live?.ownerKey===owner.key?state.live:undefined;
-  const hasInk=Boolean(live)||owner.paint.layers.some(layer=>layer.visible&&(layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.fill));
+  const hasInk=Boolean(live)||owner.paint.layers.some(layer=>paintLayerVisible(owner.paint,layer)&&(layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.fill));
   const showGuide=!owner.paint.guideInitialized&&state.guideVisible(owner.key);
   const fullGuide=showGuide&&!hasInk;
   if(state.background3d?.ownerKey===ownerKey){const shot=state.background3d.frame;

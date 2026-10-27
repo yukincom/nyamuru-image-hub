@@ -364,7 +364,7 @@ export function toOmnyCatalogDocument(
       });
       owner.bubbles?.forEach((bubble) => {
         if(bubble.bbox&&bubble.paint_overlay?.paint)bubble.bbox=paintReferenceBox(bubble.paint_overlay.paint,bubble.bbox,bubble.paint_overlay.crop);
-        delete bubble.speakerId; delete bubble.paint_overlay;delete bubble.locked;
+        delete bubble.speakerId; delete bubble.paint_overlay;delete bubble.locked;delete bubble.nativeLocked;
       });
     };
     page.panels.forEach((panel) => {

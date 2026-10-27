@@ -1,3 +1,4 @@
+import {paintLayerVisible} from './paintLock.ts';
 import type { Manga, CharacterReferenceSourceImage, FigureSize, BBox } from '../types.ts';
 import type { PaintOwner } from './paintDocument.ts';
 import { compileArtworkRules, getArtworkSettings } from './artworkRules.ts';
@@ -35,7 +36,7 @@ export interface QwenLayerCandidate { id:string; label:string; kind:'paint'|'ske
 export interface QwenLayerReference extends QwenLayerCandidate { image:string }
 export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
   return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
-    kind:layer.guide&&owner.figure?.analogImport?'sketch':'paint',hidden:!layer.visible,
+    kind:layer.guide&&owner.figure?.analogImport?'sketch':'paint',hidden:!paintLayerVisible(owner.paint,layer),
     empty:layer.opacity<=0||!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill||layer.generationMask?.enabled&&layer.generationMask.strokes.length)}));
 }
 /** Select only inside the captured owner; visibility changes affect this export copy only. */
@@ -46,7 +47,7 @@ export function qwenLayerPaint(owner:PaintOwner,id:string,includeGeneration=fals
   const layer=owner.paint.layers.find(layer=>layer.id===id)!;
   if(!includeGeneration&&!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill))
     throw new Error('生成マーカーだけのレイヤーは、ピンポイント修正用に選んでください');
-  return {...owner.paint,layers:[{...layer,visible:true}]};
+  return {...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true}]};
 }
 export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLayerReference,correction?:QwenLayerReference) {
   if(correction)return [

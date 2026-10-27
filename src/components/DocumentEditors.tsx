@@ -185,7 +185,7 @@ export function SettingEditor({ document, onChange, panelLinkMode, onTogglePanel
           </div>
           <Field label="検索キーワード" hint="カンマ区切り"><input value={material.keywords.join(', ')} onInput={(event) => update((draft) => { draft.manga.materials[index].keywords = event.currentTarget.value.split(',').map((item) => item.trim()).filter(Boolean); })} /></Field>
           <Field label="デザインコンセプト"><textarea rows={3} value={material.note ?? ''} onInput={(event) => update((draft) => { draft.manga.materials[index].note = event.currentTarget.value; })} /></Field>
-          {onImportBackgroundModel&&<BackgroundModelPicker stageId={material.source_stage_id} stages={document.manga.background_stages??[]} disabled={backgroundsSaving} onSelect={id=>update(draft=>{const target=draft.manga.materials.find(entry=>entry.localId===material.localId);if(target){if(id)target.source_stage_id=id;else target.source_stage_id=null;}})} onImport={file=>onImportBackgroundModel(material.localId!,file)}/>}
+          {onImportBackgroundModel&&<BackgroundModelPicker stageId={material.source_stage_id} stages={document.manga.background_stages??[]} disabled={backgroundsSaving} seriesShared={material.scope==='series'} onSelect={id=>update(draft=>{const target=draft.manga.materials.find(entry=>entry.localId===material.localId);if(target){if(id)target.source_stage_id=id;else target.source_stage_id=null;}})} onImport={file=>onImportBackgroundModel(material.localId!,file)}/>}
 
         </div>
         <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="背景を複製" title="複製"><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="背景を削除" title="削除"><Trash2 size={16} /></button></div>
@@ -221,6 +221,7 @@ export function SettingEditor({ document, onChange, panelLinkMode, onTogglePanel
     </section>
     <section class="content-card">
       <SectionTitle title="背景作画資料" />
+      <p class="environment-settings-note">各背景カードへ3Dモデルを登録できます。シリーズ共通の背景は「舞台設定を保存」すると、同じシリーズの各エピソードから同じ管理コピーを選べます。</p>
       <div class="material-catalogs">
         {renderBackgroundCatalog('episode', 'エピソード限定')}
         {renderBackgroundCatalog('series', 'シリーズ共通')}
@@ -374,9 +375,9 @@ export function CharactersEditor({ document, onChange, onNotify, embedded = fals
                 if (isCharacterGender(value)) update((draft) => { draft.manga.characters[index].gender = value; });
               }}><option value="" disabled hidden>未設定</option>{CHARACTER_GENDER_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
               <Field label="利用範囲"><select disabled={isSystemMob} value={character.scope} onChange={(event) => { if (!isSystemMob) setCharacterScope(character, event.currentTarget.value as MaterialScope); }}><option value="episode">この話だけ</option><option value="series">シリーズ共通</option></select></Field>
-              <Field label="等身"><input type="number" min="1" max="12" step="0.1" value={character.default_proportion?.head_count ?? ''} placeholder="例：4" onInput={(event) => update((draft) => {
+              <Field label="等身"><input type="number" min="1" step="0.1" value={character.default_proportion?.head_count ?? ''} placeholder="例：4" onBlur={(event) => update((draft) => {
                 const value = event.currentTarget.valueAsNumber;
-                if (Number.isFinite(value)) draft.manga.characters[index].default_proportion = { head_count: Math.min(12, Math.max(1, value)) };
+                if (Number.isFinite(value)) draft.manga.characters[index].default_proportion = { head_count: value };
                 else delete draft.manga.characters[index].default_proportion;
               })} /></Field>
             </div>

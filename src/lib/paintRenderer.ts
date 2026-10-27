@@ -1,5 +1,6 @@
+import {paintLayerVisible} from './paintLock.ts';
 import { drawVectorPath, applyInkAntialias } from './vectorRenderer.ts';
-import type { ImageAsset, PaintDocument, PaintLayer, PaintStroke } from '../types.ts';
+import type { BBox, ImageAsset, PaintDocument, PaintLayer, PaintStroke } from '../types.ts';
 import { loadFigureCropAsset } from './figureCropStore.ts';
 import { paintAssetIds } from './paintDocument.ts';
 import { applyPaintTone } from './paintTone.ts';
@@ -115,48 +116,48 @@ function applyMaskAntialias(canvas:HTMLCanvasElement,paint:PaintDocument,layer:P
   applyInkAntialias(context(canvas),canvas.width,canvas.height,
     canvas.width>=paint.width&&canvas.height>=paint.height?(layer.colorMode==='monochrome'?0:layer.antialias):3);
 }
-export function drawPaintMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,live?:LiveStroke){
+export function drawPaintMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,live?:LiveStroke,view: BBox={x:0,y:0,w:paint.width,h:paint.height}){
   // Reading coverage must not switch rasterizers between the live stroke and
   // the committed mask, which can move thresholded boundary pixels.
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
   if(layer.mask?.reveal){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);}
-  ctx.scale(canvas.width/paint.width,canvas.height/paint.height);
+  ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
   for(const stroke of layer.mask?.strokes??[])drawPaintStroke(ctx,maskStroke(stroke));
   if(live?.target==='mask')drawPaintStroke(ctx,maskStroke(live.stroke));
-  applyMaskAntialias(canvas,paint,layer);
+  applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},layer);
 }
-function drawGenerationMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,live?:LiveStroke){
+function drawGenerationMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,live?:LiveStroke,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.save();ctx.scale(canvas.width/paint.width,canvas.height/paint.height);
+  ctx.save();ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
   if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
   for(const stroke of layer.generationMask?.strokes??[])drawPaintStroke(ctx,stroke);
   if(live?.target==='generationMask')drawPaintStroke(ctx,live.stroke);
-  ctx.restore();applyMaskAntialias(canvas,paint,layer);
+  ctx.restore();applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},layer);
 }
-function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,images:PaintImages,mask:HTMLCanvasElement,live?:LiveStroke,includeGeneration=false,preview=false){
+function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,images:PaintImages,mask:HTMLCanvasElement,live?:LiveStroke,includeGeneration=false,preview=false,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
   const convert=layer.colorMode!==undefined&&layer.colorMode!=='color';
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
   // Threshold imported pixels before resampling; thresholding a reduced image
   // would erase thin black lines blended with opaque white surroundings.
-  if(layer.colorMode==='monochrome'&&layer.image&&!layer.tone?.enabled&&(canvas.width<paint.width||canvas.height<paint.height)){
+  if(layer.colorMode==='monochrome'&&layer.image&&!layer.tone?.enabled&&(canvas.width<view.w||canvas.height<view.h)){
     const native=document.createElement('canvas'),nativeMask=document.createElement('canvas');native.width=paint.width;native.height=paint.height;
     try{renderLayer(native,paint,layer,images,nativeMask,live,includeGeneration,false);
-      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(native,0,0,canvas.width,canvas.height);
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(native,view.x,view.y,view.w,view.h,0,0,canvas.width,canvas.height);
     }finally{native.width=native.height=nativeMask.width=nativeMask.height=1;}
     return;
   }
-  ctx.save();ctx.scale(canvas.width/paint.width,canvas.height/paint.height);
+  ctx.save();ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
   drawLayer(ctx,live&&!live.target?{...layer,strokes:[...layer.strokes,live.stroke]}:layer,images,paint);ctx.restore();
   if(!layer.image&&layer.colorMode!=='monochrome')applyInkAntialias(ctx,canvas.width,canvas.height,layer.antialias);
-  if(layer.tone?.enabled){const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);applyPaintTone(pixels,layer.tone,paint.dpi,paint.width,paint.height,preview);ctx.putImageData(pixels,0,0);}
+  if(layer.tone?.enabled){const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);applyPaintTone(pixels,layer.tone,paint.dpi,view.w,view.h,preview,view);ctx.putImageData(pixels,0,0);}
   if(layer.mask?.enabled){
-    mask.width=canvas.width;mask.height=canvas.height;drawPaintMask(mask,paint,layer,live);
+    mask.width=canvas.width;mask.height=canvas.height;drawPaintMask(mask,paint,layer,live,view);
     ctx.globalCompositeOperation='destination-in';ctx.drawImage(mask,0,0);ctx.globalCompositeOperation='source-over';
   }
   if(convert){const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
-    applyPaintColor(pixels.data,layer.colorMode,canvas.width>=paint.width&&canvas.height>=paint.height);ctx.putImageData(pixels,0,0);}
+    applyPaintColor(pixels.data,layer.colorMode,canvas.width>=view.w&&canvas.height>=view.h);ctx.putImageData(pixels,0,0);}
   if(includeGeneration&&layer.generationMask?.enabled){
-    mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint,layer,live);
+    mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint,layer,live,view);
     ctx.drawImage(mask,0,0);
   }
 }
@@ -175,20 +176,20 @@ export function paintPreviewRenderer() {
   // A live stroke can move between color modes; keep its rasterizer stable.
   context(scratch,true);
   return {
-    draw(canvas:HTMLCanvasElement, paint:PaintDocument, images:PaintImages, live?:LiveStroke, maskPreviewId?:string,includeGeneration=true) {
-      const nextDimensions=[canvas.width,canvas.height,paint.width,paint.height,paint.dpi,includeGeneration].join(':');
+    draw(canvas:HTMLCanvasElement, paint:PaintDocument, images:PaintImages, live?:LiveStroke, maskPreviewId?:string,includeGeneration=true,view:BBox={x:0,y:0,w:paint.width,h:paint.height}) {
+      const nextDimensions=[canvas.width,canvas.height,paint.width,paint.height,paint.dpi,includeGeneration,view.x,view.y,view.w,view.h].join(':');
       if(dimensions!==nextDimensions){clear();dimensions=nextDimensions;}
-      for(const id of cache.keys())if(!paint.layers.some(layer=>layer.id===id&&layer.visible))release(id);
+      for(const id of cache.keys())if(!paint.layers.some(layer=>layer.id===id&&paintLayerVisible(paint,layer)))release(id);
       const out=context(canvas);out.clearRect(0,0,canvas.width,canvas.height);
       for(const layer of paint.layers){
-        if(!layer.visible)continue;
+        if(!paintLayerVisible(paint,layer))continue;
         // Show coverage instead of dots while editing an independent tone.
         if(layer.id===maskPreviewId&&layer.tone?.fill&&layer.mask?.enabled)continue;
         if(cache.get(layer.id)?.layer.colorMode!==layer.colorMode)release(layer.id);
         const cached=cache.get(layer.id);
         let source=cached?.canvas ?? document.createElement('canvas');
         if(cached?.layer!==layer){source.width=canvas.width;source.height=canvas.height;
-          renderLayer(source,paint,layer,images,mask,undefined,includeGeneration,true);
+          renderLayer(source,paint,layer,images,mask,undefined,includeGeneration,true,view);
           const pixels=canvas.width*canvas.height;
           if(pixels<=maxCachePixels){
             if(!cached){while(cachePixels+pixels>maxCachePixels)release(cache.keys().next().value!);cachePixels+=pixels;}
@@ -197,9 +198,9 @@ export function paintPreviewRenderer() {
         }
         const rendered=source;
         if(live?.layerId===layer.id){scratch.width=canvas.width;scratch.height=canvas.height;
-          const reducedMono=layer.colorMode==='monochrome'&&(canvas.width<paint.width||canvas.height<paint.height);
-          if(layer.mask?.enabled||layer.tone?.enabled||layer.generationMask?.enabled||layer.colorMode&&layer.colorMode!=='color'&&!reducedMono)renderLayer(scratch,paint,layer,images,mask,live,includeGeneration,true);
-          else {const ctx=context(scratch);ctx.drawImage(source,0,0);ctx.scale(canvas.width/paint.width,canvas.height/paint.height);
+          const reducedMono=layer.colorMode==='monochrome'&&(canvas.width<view.w||canvas.height<view.h);
+          if(layer.mask?.enabled||layer.tone?.enabled||layer.generationMask?.enabled||layer.colorMode&&layer.colorMode!=='color'&&!reducedMono)renderLayer(scratch,paint,layer,images,mask,live,includeGeneration,true,view);
+          else {const ctx=context(scratch);ctx.drawImage(source,0,0);ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
             if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
             // Keep the converted image cached while the pointer moves. Native
             // pixels are rebuilt on commit; reduced live ink keeps coverage.
@@ -209,10 +210,10 @@ export function paintPreviewRenderer() {
         if(!cache.has(layer.id))rendered.width=rendered.height=1;
       }
       out.globalAlpha=1;out.globalCompositeOperation='source-over';
-      const coverage=paint.layers.find(layer=>layer.id===maskPreviewId&&layer.visible&&layer.mask?.enabled);
+      const coverage=paint.layers.find(layer=>layer.id===maskPreviewId&&paintLayerVisible(paint,layer)&&layer.mask?.enabled);
       if(coverage){
         mask.width=canvas.width;mask.height=canvas.height;
-        drawPaintMask(mask,paint,coverage,live?.layerId===coverage.id?live:undefined);
+        drawPaintMask(mask,paint,coverage,live?.layerId===coverage.id?live:undefined,view);
         const ctx=context(mask);ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-in';ctx.fillStyle='#ff0000';ctx.fillRect(0,0,mask.width,mask.height);ctx.globalCompositeOperation='source-over';
         out.save();out.globalAlpha=.58;
         if(coverage.clip){const b=coverage.clip,sx=canvas.width/paint.width,sy=canvas.height/paint.height;out.beginPath();out.rect(b.x*sx,b.y*sy,b.w*sx,b.h*sy);out.clip();}
@@ -230,7 +231,7 @@ export async function renderPaintPng(paint:PaintDocument,images:PaintImages,incl
   canvas.width=scratch.width=paint.width;canvas.height=scratch.height=paint.height;
   try{
     const out=context(canvas);
-    for(const layer of paint.layers){if(!layer.visible)continue;renderLayer(scratch,paint,layer,images,mask,undefined,includeGeneration);
+    for(const layer of paint.layers){if(!paintLayerVisible(paint,layer))continue;renderLayer(scratch,paint,layer,images,mask,undefined,includeGeneration);
       out.globalAlpha=layer.opacity;out.globalCompositeOperation=layer.blend==='multiply'?'multiply':'source-over';out.drawImage(scratch,0,0);}
     return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像の書き出しに失敗しました')),'image/png'));
   }finally{canvas.width=scratch.width=mask.width=1;canvas.height=scratch.height=mask.height=1;}

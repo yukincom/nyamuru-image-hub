@@ -1,6 +1,6 @@
 import { paintAssetIds, validatePaintDocument } from './paintDocument.ts';
 import { CUBE_STAGE_ID, validateBackgroundStages } from './background3d.ts';
-import type { BBox, Figure, ImageAsset, ImageContent, MangaDocument, PlacedImage } from '../types.ts';
+import type { BBox, Figure, ImageAsset, ImageContent, MangaDocument, Panel, PlacedImage } from '../types.ts';
 import type { InteractionGeometry } from './canvasGeometry.ts';
 
 export function fitImageBox(source: { w: number; h: number }, target: BBox): BBox {
@@ -116,7 +116,14 @@ export function validateImagePlacements(document: MangaDocument): void {
         if (figure.artwork !== undefined) validate(figure.artwork, figure.bbox);
         if (figure.human_pose?.scene?.background && !stageIds.has(figure.human_pose.scene.background.sourceId)) throw new Error('人体ポーズの元の3D舞台が見つかりません');
       }
-      for (const bubble of owner?.bubbles ?? []) if (bubble.paint_overlay !== undefined) validate(bubble.paint_overlay, bubble.bbox);
+      const originals=new Set<string>(),images=owner===page.page_overlay?page.images:(owner as Panel)?.images;
+      for (const bubble of owner?.bubbles ?? []) {
+        if (bubble.paint_overlay !== undefined) validate(bubble.paint_overlay, bubble.bbox);
+        const id=bubble.analogTextImport?.originalImageId;
+        if(id===undefined||id===null)continue;
+        if(typeof id!=='string'||!id||originals.has(id)||!images?.some(image=>image.id===id&&image.bubbleOriginal))throw new Error('吹き出しと原本レイヤーの対応が不正です');
+        originals.add(id);
+      }
     }
   }
 }

@@ -9,10 +9,10 @@ for (const file of ['PanelInspector.tsx', 'PageOverlayInspector.tsx']) {
   });
 }
 
-test('人物と吹き出しのコマ情報は画像レイヤーと同じフォルダー直下に置く', () => {
+test('レイヤーパレットにはコマ情報などの非レイヤー行を置かない', () => {
   const source = readFileSync(new URL('../src/components/PaintLayerPalette.tsx', import.meta.url), 'utf8');
-  assert.match(source, /const renderOwnerInfo=[\s\S]{0,500}コマ情報/);
-  assert.match(source, /renderEntries\(o,paintActive\)\}\{\(o\.kind==='figure'\|\|o\.kind==='bubble'\)&&renderOwnerInfo\(o\)/);
+  assert.doesNotMatch(source, /renderOwnerInfo|layer-owner-info|background3d-hidden-object/);
+  assert.match(source, /renderEntries\(o,paintActive\)/);
   assert.match(source, /LayerVisibilityButton label=\{`\$\{label\(o\)\}・\$\{l\.name\}を/);
 });
 

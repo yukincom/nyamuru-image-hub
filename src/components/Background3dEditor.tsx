@@ -16,8 +16,9 @@ import {defaultPaintTone} from '../lib/paintTone';
 export type Background3dResult=Awaited<ReturnType<Background3dRenderer['capture']>>&{stageImports:Array<{stage:BackgroundStage;blob:Blob}>};
 export type Background3dObjectState=ReturnType<Background3dRenderer['objectVisibilityState']>;
 export interface Background3dController {setObjectVisibility:(mesh:number,mode:'auto'|'show'|'hide')=>void;capture:()=>Promise<void>;snapshot:()=>{config:BackgroundCapture;stageImports:Background3dResult['stageImports']}}
-interface Props {onObjectsChange?:(objects:Background3dObjectState)=>void;onCaptureReady?:(ready:boolean)=>void;host:HTMLDivElement|null;paint:PaintDocument;stages:BackgroundStage[];pendingStages:Background3dResult['stageImports'];controller?:RefObject<Background3dController|null>;disabled?:boolean;onCapture:(result:Background3dResult)=>Promise<void>;onCancel:()=>void}
-export default function Background3dEditor({host,paint,stages,pendingStages,controller,onObjectsChange,onCaptureReady,disabled=false,onCapture,onCancel}:Props){
+interface Props {onCaptureReady?:(ready:boolean)=>void;host:HTMLDivElement|null;paint:PaintDocument;stages:BackgroundStage[];pendingStages:Background3dResult['stageImports'];controller?:RefObject<Background3dController|null>;disabled?:boolean;onCapture:(result:Background3dResult)=>Promise<void>;onCancel:()=>void}
+export default function Background3dEditor({host,paint,stages,pendingStages,controller,onCaptureReady,disabled=false,onCapture,onCancel}:Props){
+  const [objects,setObjects]=useState<Background3dObjectState>([]);
   const [defaults,setDefaults]=useState(()=>{try{return loadBackground3dDefaults(window.localStorage);}catch{return undefined;}});
   const [preferencesOpen,setPreferencesOpen]=useState<Partial<Record<Background3dDefaultGroup,boolean>>>({});
   const [preferenceStatus,setPreferenceStatus]=useState<Partial<Record<Background3dDefaultGroup,string>>>({}),preferencesId=useId();
@@ -45,7 +46,7 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
   const availableLayers=paint.layers.filter(layer=>!paint.background3d?.layerIds.includes(layer.id)).length;
   const canCapture=ready&&!busy&&availableLayers<=61;
   useEffect(()=>{onCaptureReady?.(canCapture);return()=>onCaptureReady?.(false);},[canCapture]);
-  useEffect(()=>()=>{if(controller)controller.current=null;onObjectsChange?.([]);},[controller,onObjectsChange]);
+  useEffect(()=>()=>{if(controller)controller.current=null;},[controller]);
   useEffect(()=>{renderer.current?.setEnabled(!busy);},[busy,ready]);
   useEffect(()=>{renderer.current?.setPicking(picking&&ready&&!busy,pickingMode.current==='point'?config.focusMesh:undefined);},[picking,ready,busy]);
   const allStages=[...stages,...stageImports.map(item=>item.stage).filter(stage=>!stages.some(saved=>saved.id===stage.id))];
@@ -78,8 +79,8 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
   },[host,config.sourceId]);
   useEffect(()=>{
     renderer.current?.configure(config);
-    if(onObjectsChange){const objects=ready?renderer.current?.objectVisibilityState()??[]:[],key=JSON.stringify(objects);if(key!==reportedObjects.current){reportedObjects.current=key;onObjectsChange(objects);}}
-  },[config,ready,onObjectsChange]);
+    const objects=ready?renderer.current?.objectVisibilityState()??[]:[],key=JSON.stringify(objects);if(key!==reportedObjects.current){reportedObjects.current=key;setObjects(objects);}
+  },[config,ready]);
   useEffect(()=>{const key=(event:KeyboardEvent)=>{if(event.key==='Escape'){if(document.getElementById('paint-tool-description'))return;event.preventDefault();event.stopPropagation();if(!busy){if(objectMenu){setObjectMenu(null);}else if(picking){setPicking(false);setFocusHint('');}else onCancel();}}};window.addEventListener('keydown',key,true);return()=>window.removeEventListener('keydown',key,true);},[busy,picking,objectMenu,onCancel]);
   const change=(patch:Partial<BackgroundCapture>)=>{
     setObjectMenu(null);setPreferenceStatus({});
@@ -172,6 +173,9 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
   </Background3dFocus><section class="background3d-controls" role="dialog" aria-label="3D背景の調整" onPointerDown={e=>e.stopPropagation()}>
     <header><strong tabIndex={0} {...help('3D背景編集モード','背景をドラッグすると、絵を平行移動してカット位置を変えられます。回転は右上の矢印、ホイールは近づく・離れる操作です。人物と吹き出しは、そのままドラッグして配置を調整できます。Escで編集を閉じます。')}>3D背景編集モード</strong><button type="button" disabled={busy} aria-label="3D背景を閉じる" onClick={onCancel}>保存せずに閉じる</button></header>
     <fieldset disabled={busy}><legend>{caption('舞台','舞台設定で登録した3Dモデルを選びます。')}</legend><select aria-label="3Dの舞台" disabled={busy} value={config.sourceId} onChange={e=>{fitNext.current=true;change({sourceId:e.currentTarget.value});}}><option value={CUBE_STAGE_ID}>テスト用の立方体</option>{allStages.map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select>{preferences('stage','舞台')}</fieldset>
+    {objects.some(object=>!object.visible&&object.mode==='hide')&&<fieldset disabled={!ready||busy}><legend>非表示の3Dオブジェクト</legend>
+      {objects.filter(object=>!object.visible&&object.mode==='hide').map(object=><div class="background3d-actions" key={object.mesh} data-background-object={object.mesh}><span>{object.name}</span><button type="button" aria-label={`${object.name}を再表示`} onClick={()=>setVisibility(object.mesh,'show')}>再表示</button></div>)}
+    </fieldset>}
     <fieldset disabled={busy}><legend>線</legend>{range('輪郭の太さ','outlineWidth',1,20,.1,'px')}{range('細部の太さ','detailWidth',1,20,.1,'px')}{range('角の抽出','creaseAngle',0,180,1,'°')}
       <label>{caption('細部の省略','密集した形の線と陰影をまとめます。100%では塊の輪郭や大きな奥行きの境目を中心に残します。')}<span><input aria-label="細部の省略" type="range" min="0" max="100" step="5" value={Math.round((1-config.detail)*100)} onInput={e=>change({detail:1-Number(e.currentTarget.value)/100})}/><output>{Math.round((1-config.detail)*100)}%</output></span></label>
       {range('線の抜き','lineGap',0,.8,.05,'','明るい面ほど線を抜きます。値を上げると、光の強い部分から抜ける範囲が広がります。')}

@@ -15,22 +15,6 @@ export interface ProjectSnapshot {
   document: MangaDocument;
   assets: Array<{ id: string; type: string; data: string }>;
 }
-const BINDINGS_KEY = 'nyamuru.project-folders.v1';
-
-export function readProjectBinding(episodeId: string, storage: Pick<Storage, 'getItem'>): ProjectBinding | null {
-  try {
-    const value = JSON.parse(storage.getItem(BINDINGS_KEY) ?? '{}')[episodeId];
-    if (value?.episodeId !== episodeId || !value.token || !value.directory || !value.folderName || !value.seriesDirectory) return null;
-    return value;
-  } catch { return null; }
-}
-
-export function rememberProjectBinding(binding: ProjectBinding, storage: Pick<Storage, 'getItem' | 'setItem'>): void {
-  let bindings: Record<string, ProjectBinding>;
-  try { bindings = JSON.parse(storage.getItem(BINDINGS_KEY) ?? '{}') ?? {}; } catch { bindings = {}; }
-  storage.setItem(BINDINGS_KEY, JSON.stringify({ ...bindings, [binding.episodeId]: binding }));
-}
-
 function imageReferences(document: MangaDocument) {
   const refs: Array<{ assetId: string; persistentAsset?: PersistentAnalogAssetRef }> = [];
   for (const page of document.manga.pages) {

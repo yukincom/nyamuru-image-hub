@@ -1,9 +1,8 @@
 import type { PersistentAnalogAssetRef } from '../types.ts';
 import { loadPersistedAnalogAsset } from './localBridge.ts';
 
-const DATABASE_NAME = 'nyamuru-image-hub-local-assets';
-const DATABASE_VERSION = 1;
-const FIGURE_CROP_STORE = 'figure-crops';
+// Work images live only in this page's memory. Explicit project saves embed them.
+const assets = new Map<string, Blob>();
 
 export interface FigureCropAsset {
   id: string;
@@ -49,115 +48,39 @@ export function collectFigureCropAssetIds(document: LocalAssetReferenceDocument)
   return [...assetIds];
 }
 
-function openFigureCropDatabase(): Promise<IDBDatabase> {
-  if (typeof indexedDB === 'undefined') {
-    return Promise.reject(new Error('このブラウザではローカル参照画像の保存を利用できません'));
-  }
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    request.onupgradeneeded = () => {
-      const database = request.result;
-      if (!database.objectStoreNames.contains(FIGURE_CROP_STORE)) database.createObjectStore(FIGURE_CROP_STORE);
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('ローカル参照画像の保存領域を開けませんでした'));
-  });
-}
-
-export async function saveFigureCropAssets(assets: readonly FigureCropAsset[]): Promise<void> {
-  if (!assets.length) return;
-  const database = await openFigureCropDatabase();
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(FIGURE_CROP_STORE, 'readwrite');
-      const store = transaction.objectStore(FIGURE_CROP_STORE);
-      assets.forEach((asset) => store.put(asset.blob, asset.id));
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error('ローカル参照画像を保存できませんでした'));
-      transaction.onabort = () => reject(transaction.error ?? new Error('ローカル参照画像の保存が中断されました'));
-    });
-  } finally {
-    database.close();
-  }
+export async function saveFigureCropAssets(items: readonly FigureCropAsset[]): Promise<void> {
+  items.forEach(asset => assets.set(asset.id, asset.blob));
 }
 
 export async function loadFigureCropAsset(assetId: string, persistentAsset?: PersistentAnalogAssetRef): Promise<Blob | null> {
-  if (typeof indexedDB !== 'undefined') {
-    try {
-      const database = await openFigureCropDatabase();
-      try {
-        const stored = await new Promise<Blob | null>((resolve, reject) => {
-          const request = database.transaction(FIGURE_CROP_STORE, 'readonly').objectStore(FIGURE_CROP_STORE).get(assetId);
-          request.onsuccess = () => resolve(request.result instanceof Blob ? request.result : null);
-          request.onerror = () => reject(request.error ?? new Error('ローカル参照画像を読み込めませんでした'));
-        });
-        if (stored) return stored;
-      } finally {
-        database.close();
-      }
-    } catch {
-      // ブラウザ保存が利用できない場合も、明示保存済みならDocumentsから復元する。
-    }
-  }
+  const stored = assets.get(assetId);
+  if (stored) return stored;
   if (!persistentAsset) return null;
   const restored = await loadPersistedAnalogAsset(persistentAsset);
-  if (restored) await saveFigureCropAssets([{ id: assetId, blob: restored }]).catch(() => undefined);
+  if (restored) assets.set(assetId, restored);
   return restored;
 }
 
 export async function deleteFigureCropAssets(assetIds: readonly string[]): Promise<void> {
-  const uniqueIds = [...new Set(assetIds.filter(Boolean))];
-  if (!uniqueIds.length || typeof indexedDB === 'undefined') return;
-  const database = await openFigureCropDatabase();
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(FIGURE_CROP_STORE, 'readwrite');
-      const store = transaction.objectStore(FIGURE_CROP_STORE);
-      uniqueIds.forEach((assetId) => store.delete(assetId));
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error('ローカル参照画像を削除できませんでした'));
-      transaction.onabort = () => reject(transaction.error ?? new Error('ローカル参照画像の削除が中断されました'));
-    });
-  } finally {
-    database.close();
-  }
+  assetIds.forEach(id => assets.delete(id));
 }
 
 /**
  * 現在の作品・Undo履歴から参照されない切り抜き画像を削除する。
- * 作成途中の強制終了で孤児が残っても、次回の自動保存後に回収できる。
+ * 作品の保存とは独立した、編集中メモリーの回収。
  */
 export async function pruneFigureCropAssets(referencedAssetIds: readonly string[], currentReferences?:()=>readonly string[]|null, canDeletePaintAsset?:(id:string)=>boolean): Promise<number> {
-  if (typeof indexedDB === 'undefined') return 0;
   const keep = new Set(referencedAssetIds.filter(Boolean));
-  const database = await openFigureCropDatabase();
-  try {
-    return await new Promise<number>((resolve, reject) => {
-      const transaction = database.transaction(FIGURE_CROP_STORE, 'readwrite');
-      const store = transaction.objectStore(FIGURE_CROP_STORE);
-      const keys = store.getAllKeys();
-      let removed = 0;
-      keys.onsuccess = () => {
-        // Recheck at transaction time: a paint save may have started or finished while opening the database.
-        const current=currentReferences?.();
-        // null means the caller no longer knows which persisted work to protect.
-        if(current===null)return;
-        current?.forEach(id=>keep.add(id));
-        keys.result.forEach((key) => {
-          // Originals are persistent library assets, not disposable analysis crops.
-          // Keep them across imports, document switches and stale prune transactions.
-          if (typeof key === 'string' && !key.startsWith('original-') && !keep.has(key) && (!key.startsWith('paint-')||canDeletePaintAsset?.(key))) {
-            store.delete(key);
-            removed += 1;
-          }
-        });
-      };
-      keys.onerror = () => reject(keys.error ?? new Error('ローカル参照画像の一覧を取得できませんでした'));
-      transaction.oncomplete = () => resolve(removed);
-      transaction.onerror = () => reject(transaction.error ?? new Error('不要なローカル参照画像を削除できませんでした'));
-      transaction.onabort = () => reject(transaction.error ?? new Error('不要なローカル参照画像の削除が中断されました'));
-    });
-  } finally {
-    database.close();
+  const current = currentReferences?.();
+  if (current === null) return 0;
+  current?.forEach(id => keep.add(id));
+  let removed = 0;
+  for (const key of assets.keys()) {
+    // Keep imported originals until this page closes; they can still be in an import dialog.
+    if (!key.startsWith('original-') && !keep.has(key) && (!key.startsWith('paint-') || canDeletePaintAsset?.(key))) {
+      assets.delete(key);
+      removed += 1;
+    }
   }
+  return removed;
 }

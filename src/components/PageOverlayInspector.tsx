@@ -18,7 +18,7 @@ interface Props extends ScenarioBubbleChoiceProps {
   manga: Manga;
   panels: readonly Panel[];
   overlay: PageOverlay;
-  selectedElement: CanvasElementSelection;
+  selectedElement: CanvasElementSelection | null;
   canvasSelectionScrollRequest: number;
   onSelectElement: (selection: CanvasElementSelection | null) => void;
   onChange: (overlay: PageOverlay | undefined) => void;
@@ -51,7 +51,7 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
       <div class="nested-list">
         {(overlay.figures ?? []).map((figure, index) => ({ figure, index })).filter(({ figure }) => !isPropPlacement(figure)).map(({ figure, index }) => {
           const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'figure', index };
-          const selected = selectedElement.type === 'figure' && selectedElement.index === index;
+          const selected = selectedElement?.type === 'figure' && selectedElement.index === index;
           return <div class={`nested-card selectable-card ${ownerItemLocked(figure)?'is-locked':''} ${figure.splitOverlap ? 'is-split-overlap' : ''} ${figure.analogImport?.analysisReview ? 'is-analysis-review' : ''} ${selected ? 'is-selected' : ''}`} inert={ownerItemLocked(figure)} aria-disabled={ownerItemLocked(figure)} key={figure.analogImport?.sourceRegionId ?? index} onClick={(event) => selectCard(event, selection)}>
             <div class="nested-card-head">{selected || figure.splitOverlap
               ? <strong>{selected ? '選択中' : ''}{figure.splitOverlap && <em class="split-overlap-badge">分割重複</em>}</strong>
@@ -103,7 +103,7 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
       <div class="nested-list">
         {(overlay.figures ?? []).map((figure, index) => ({ figure, index })).filter(({ figure }) => isPropPlacement(figure)).map(({ figure, index }) => {
           const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'figure', index };
-          const selected = selectedElement.type === 'figure' && selectedElement.index === index;
+          const selected = selectedElement?.type === 'figure' && selectedElement.index === index;
           return <div class={`nested-card selectable-card ${ownerItemLocked(figure)?'is-locked':''} ${figure.splitOverlap ? 'is-split-overlap' : ''} ${selected ? 'is-selected' : ''}`} inert={ownerItemLocked(figure)} aria-disabled={ownerItemLocked(figure)} key={`${figure.refId ?? figure.name}-${index}`} onClick={(event) => selectCard(event, selection)}>
             <div class="nested-card-head">{selected || figure.splitOverlap
               ? <strong>{selected ? '選択中' : ''}{figure.splitOverlap && <em class="split-overlap-badge">分割重複</em>}</strong>
@@ -130,7 +130,7 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
       <div class="nested-list">
         {(overlay.bubbles ?? []).map((bubble, index) => {
           const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'bubble', index };
-          const selected = selectedElement.type === 'bubble' && selectedElement.index === index;
+          const selected = selectedElement?.type === 'bubble' && selectedElement.index === index;
           return <div class={`nested-card selectable-card ${ownerItemLocked(bubble)?'is-locked':''} ${bubble.splitOverlap ? 'is-split-overlap' : ''} ${selected ? 'is-selected' : ''}`} inert={ownerItemLocked(bubble)} aria-disabled={ownerItemLocked(bubble)} key={bubble.analogTextImport?.sourceRegionId ?? index} onClick={(event) => selectCard(event, selection)}>
             <div class="nested-card-head"><BubbleCardTitle number={index + 1} selected={selected} splitOverlap={bubble.splitOverlap} /><button onClick={(event) => { event.stopPropagation(); update((draft) => { if (draft.bubbles) removeBubbleAt(draft.bubbles, index); }); onSelectElement(null); }}>×</button></div>
             {manga.scenario && <ScenarioBubbleNotice manga={manga} bubble={bubble} location={{ pageIndex, panelIndex: 0, bubbleIndex: index, overlay: true }} onScenarioChoice={onScenarioChoice} />}

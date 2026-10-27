@@ -5,14 +5,15 @@ import { PaintToolButton } from './PaintToolHelp';
 import type { CanvasTextKind } from '../lib/canvasText';
 export type TextPaletteTab='text'|'bubble';
 export interface TextPaletteRequest {id:number;tab:TextPaletteTab}
-export default function PaintTextTools({active,selectionVisible=false,openRequest,disabled,select,add,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;selectionVisible?:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;add:(kind:CanvasTextKind)=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
+export default function PaintTextTools({active,openRequest,disabled,select,add,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;add:(kind:CanvasTextKind)=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
   const [open,setOpen]=useState(false),[tab,setTab]=useState<TextPaletteTab>('text'),[position,setPosition]=useState({left:0,top:0});
   const [lineDraft,setLineDraft]=useState(String(bubbleLineWidthMm));
   useEffect(()=>setLineDraft(String(bubbleLineWidthMm)),[bubbleLineWidthMm]);
   const root=useRef<HTMLDivElement>(null),popup=useRef<HTMLDivElement>(null);
   const manuallyPositioned=useRef(false);
   const clampPosition=(left:number,top:number)=>{const rect=popup.current?.getBoundingClientRect(),width=rect?.width??236,height=rect?.height??360;return {left:Math.max(8,Math.min(left,innerWidth-width-8)),top:Math.max(8,Math.min(top,innerHeight-height-8))};};
-  useEffect(()=>{if(active||selectionVisible){setOpen(true);setTab(active?openRequest.tab:'bubble');}else setOpen(false);},[active,selectionVisible,openRequest]);
+  // Only an explicit open request opens the window; selection never closes it.
+  useEffect(()=>{if(!openRequest.id)return;if(!open)setTab(openRequest.tab);setOpen(true);},[openRequest.id]);
   useLayoutEffect(()=>{if(!open||!root.current||!popup.current||manuallyPositioned.current)return;const a=root.current.getBoundingClientRect(),b=popup.current.getBoundingClientRect();setPosition({left:Math.max(8,Math.min(a.right+8,innerWidth-b.width-8)),top:Math.max(8,Math.min(a.top,innerHeight-b.height-8))});},[open]);
   useEffect(()=>{if(!open)return;const reposition=()=>setPosition(current=>clampPosition(current.left,current.top));window.addEventListener('resize',reposition);return()=>window.removeEventListener('resize',reposition);},[open]);
   const beginDrag=(event:PointerEvent)=>{
@@ -23,9 +24,9 @@ export default function PaintTextTools({active,selectionVisible=false,openReques
     const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);window.removeEventListener('pointercancel',finish);};
     window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',finish);window.addEventListener('pointercancel',finish);
   };
-  return <div class="paint-pen-family" ref={root} onContextMenu={event=>{event.preventDefault();if(!disabled)setOpen(value=>!value);}}>
-    <PaintToolButton class="paint-tool-icon" label="通常文字" help="Tで文字入力。吹き出しや既存文字を1回クリックすると編集し、コマ内の空き場所ではそのコマに新規文字を作ります。未選択時の文字設定も次の入力へ引き継ぎます。" aria-keyshortcuts="T" aria-pressed={active} disabled={disabled} onClick={()=>{setOpen(true);select();}}><Type size={23}/></PaintToolButton>
-    <PaintToolButton class="pen-family-toggle" label="文字のツール一覧" help="通常文字と吹き出し素材、線幅を設定します。文字設定は選択中の文字と、次に作る文字へ適用します。" aria-expanded={open} disabled={disabled} onClick={()=>setOpen(value=>!value)}><ChevronDown size={12}/></PaintToolButton>
+  return <div class="paint-pen-family" ref={root} onContextMenu={event=>{event.preventDefault();if(!disabled)setOpen(true);}}>
+    <PaintToolButton class="paint-tool-icon" label="通常文字" help="Tで文字入力。吹き出しや既存文字を1回クリックすると編集し、コマ内の空き場所ではそのコマに新規文字を作ります。未選択時の文字設定も次の入力へ引き継ぎます。" aria-keyshortcuts="T" aria-pressed={active} disabled={disabled} onClick={()=>{if(!open)setTab('text');setOpen(true);select();}}><Type size={23}/></PaintToolButton>
+    <PaintToolButton class="pen-family-toggle" label="文字のツール一覧" help="通常文字と吹き出し素材、線幅を設定します。文字設定は選択中の文字と、次に作る文字へ適用します。" aria-expanded={open} disabled={disabled} onClick={()=>setOpen(true)}><ChevronDown size={12}/></PaintToolButton>
     {typeof document!=='undefined'&&createPortal(<section class="paint-dock text-settings-window" ref={popup} style={position} role="dialog" aria-label="文字ツールの設定" hidden={!open} onPointerDown={event=>event.stopPropagation()}>
       <header class="text-settings-window-header" onPointerDown={beginDrag}><strong>文字ツール</strong><button type="button" aria-label="文字ツールの設定を閉じる" onPointerDown={event=>event.stopPropagation()} onClick={()=>setOpen(false)}><X size={16}/></button></header>
       <div class="text-settings-window-grab" aria-hidden="true" onPointerDown={beginDrag}/>

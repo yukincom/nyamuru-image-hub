@@ -1,5 +1,5 @@
 import type { PaintLayerDropTarget, PaintOwner, PaintScene } from './paintDocument.ts';
-import type { BackgroundStage, BBox, ImageAsset, PaintLayer } from '../types.ts';
+import type { BackgroundStage, BBox, ImageAsset, PaintFolder, PaintLayer } from '../types.ts';
 export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox }
 
 export type PaintLayerAction =
@@ -8,11 +8,13 @@ export type PaintLayerAction =
   | {type:'add-folder';key:string}
   | {type:'rename-folder';key:string;id:string;name:string}
   | {type:'remove-folder';key:string;id:string}
+  | {type:'update-folder';key:string;id:string;patch:Partial<Pick<PaintFolder,'visible'|'locked'>>}
+  | {type:'move-folder';key:string;id:string;target:PaintLayerDropTarget}
   | {type:'move-layer';key:string;id:string;target:PaintLayerDropTarget}
   | {type:'select';key:string;id?:string;contents?:boolean;mask?:'mask'|'generationMask'}
   | {type:'menu';key:string;x:number;y:number}
   | {type:'update';key:string;id:string;patch:Partial<PaintLayer>}
-  | {type:'owner-lock';key:string;locked:boolean}
+  | {type:'owner-lock';key:string;locked:boolean;group?:boolean}
   | {type:'toggle';key:string}
   | {type:'guide';key:string}
   | {type:'reorder';key:string;id:string;target:string;after:boolean};

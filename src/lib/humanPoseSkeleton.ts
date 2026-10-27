@@ -1,4 +1,4 @@
-import { Box3, BufferGeometry, Color, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
+import { Box3, BufferGeometry, CatmullRomCurve3, Color, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, SphereGeometry, TubeGeometry, Vector3 } from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
@@ -6,6 +6,26 @@ import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
 import { HUMAN_POSE_HANDLES, HUMAN_POSE_JOINTS, humanPoseFingerTip, humanPoseFootPoints, posePoint, worldRotation } from './humanPoseJoints.ts';
 import { disposeThreeObject } from './threeSceneResources.ts';
 import type { HumanPoseData, HumanPoseRig } from './humanPoseTypes.ts';
+
+/** Neutral landmarks on the head surface; the rig's local +Z is the face direction. */
+function headFaceGuides(): Group {
+  const face = new Group(), material = new MeshBasicMaterial({ color: '#405d69' });
+  const surface = (x: number, y: number) => new Vector3(x, y, Math.sqrt(1 - x * x - y * y)).multiplyScalar(1.006);
+  const stroke = (name: string, points: Vector3[], closed = false) => {
+    const mesh = new Mesh(new TubeGeometry(new CatmullRomCurve3(points, closed), closed ? 32 : 16, .017, 6, closed), material);
+    mesh.name = name; face.add(mesh);
+  };
+  face.name = 'head-face-guides';
+  for (const side of [-1, 1]) {
+    const points = Array.from({ length: 32 }, (_, index) => {
+      const angle = index / 32 * Math.PI * 2;
+      return surface(side * .33 + Math.cos(angle) * .16, .14 + Math.sin(angle) * .085);
+    });
+    stroke(side > 0 ? 'left-eye-guide' : 'right-eye-guide', points, true);
+  }
+  stroke('mouth-guide', Array.from({ length: 17 }, (_, index) => surface(-.22 + index / 16 * .44, -.32)));
+  return face;
+}
 
 export function humanPoseSkeletonPoints(rig: HumanPoseRig, pose?: HumanPoseData): Map<string, Vector3> {
   const worlds = humanPoseWorldMatrices(rig, pose), rest = humanPoseWorldMatrices(rig);
@@ -33,7 +53,7 @@ export class HumanPoseSkeleton {
   readonly scene = new Group();
   readonly handles = new Group();
   readonly nativeHeight: number;
-  private head = new Mesh(new SphereGeometry(1, 16, 12), new MeshStandardMaterial({ color: '#dfe6e5', roughness: .85 }));
+  private head = new Mesh(new SphereGeometry(1, 24, 16), new MeshStandardMaterial({ color: '#dfe6e5', roughness: .85 }));
   private plates = new Mesh(new BufferGeometry(), new MeshBasicMaterial({ color: '#aabfbb', side: DoubleSide, transparent: true, opacity: .35 }));
   private lines = new LineSegments2(new LineSegmentsGeometry(), new LineMaterial({ linewidth: 2.4, vertexColors: true }));
   private markers = new Map<string, Mesh>();
@@ -45,9 +65,10 @@ export class HumanPoseSkeleton {
     this.rig = rig;
     const rest = humanPoseSkeletonPoints(rig);
     this.nativeHeight = rest.get('headTop')!.y - Math.min(rest.get('heel.L')!.y, rest.get('heel.R')!.y);
+    this.head.add(headFaceGuides());
     this.scene.add(this.lines, this.plates, this.head, this.handles);
     for (const def of HUMAN_POSE_HANDLES) {
-      // 頭の球そのものを掴める。球の上に点を置くと目に見えるため重ねない。
+      // 頭の球そのものを掴める。顔のあたりと混同する操作点は重ねない。
       if (def.id === 'head') continue;
       const marker = new Mesh(new SphereGeometry(1, 8, 6), new MeshBasicMaterial({ color: '#ffffff', depthTest: false, transparent: true, opacity: .9 }));
       marker.renderOrder = 10; this.markers.set(def.id, marker); this.handles.add(marker);

@@ -51,7 +51,7 @@ export function qwenCompositionLayout(manga: Manga, pageIndex: number, panelInde
     overlay.bubbles?.forEach((bubble, index) => { bubble.bbox ??= overlayFallbackBox(page.canvas, 'bubble', index); });
     overlay.screen_text?.forEach((text,index)=>{text.bbox??=overlayTextFallbackBox(page.canvas,index);});
     panels.push({ panelIndex: -1, overlay: true, panel: { id: 0, shape: { type: 'rect', ...frame }, bg: 0, action: null,
-      figures: overlay.figures, bubbles: overlay.bubbles ?? [],screen_text:overlay.screen_text } });
+      figures: overlay.figures, bubbles: overlay.bubbles ?? [],screen_text:overlay.screen_text,images:structuredClone(editableImages(page.images,includeGenerated).filter(image=>image.bubbleOriginal)) } });
   }
   return { frame, ...humanPoseSceneFrame(frame.w / frame.h), panels, images: scope === 'page' ? structuredClone(editableImages(page.images,includeGenerated)) : [] };
 }
@@ -109,7 +109,7 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
     for (const [index, bubble] of panel.bubbles.entries()) if (bubbleVisible(bubble) && bubble.text) {
       literalText.push(bubble.text); instructions.push(`${label}のフキダシ ${index + 1}（話者：${bubble.speaker || '指定なし'}）：「${bubble.text}」`);
     }
-    for (const [index, text] of (panel.screen_text ?? []).entries()) if (text.text) {
+    for (const [index, text] of (panel.screen_text ?? []).entries()) if (text.text&&text.hidden!==true) {
       literalText.push(text.text); instructions.push(`${label}の画面内文字 ${index + 1}：「${text.text}」`);
     }
   }
@@ -135,7 +135,7 @@ export function qwenCompositionTextRuns(item: Bubble | ScreenText) {
 }
 
 function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, box: BBox, viewport: BBox, kind: 'bubble' | 'screen_text', defaultFont: string) {
-  if (!item.text || box.w <= 0 || box.h <= 0) return;
+  if (item.hidden===true || !item.text || box.w <= 0 || box.h <= 0) return;
   const style = textStyleOf(item, kind), vertical = style.orientation !== 'horizontal';
   const scale = context.canvas.width / viewport.w, padding = kind === 'bubble' ? .16 : 0;
   const x = (box.x - viewport.x + box.w * padding) * scale, y = (box.y - viewport.y + box.h * padding) * context.canvas.height / viewport.h;
@@ -236,35 +236,34 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       connections[index].push(layer);
     }
     for (const [index, bubble] of bubbles.entries()) {
-      if (!bubbleVisible(bubble)) continue;
-      const box = bubbleBox(index), host = document.createElement('div'), layer=group(bubble);
-      connections[index].forEach(connection=>layer.append(connection));
-      try {
-        render(h(BubbleShapeSvg, { shape: bubble.shape, bezier: bubble.bezier, composite: composites[index]??undefined, seamMasks: masks[index], maskId: `composition-bubble-${entry.panelIndex}-${index}` }), host);
-        const body = host.querySelector('svg')?.cloneNode(true) as SVGSVGElement | undefined;
-        if (!body) continue;
-        Object.entries({ x: box.x, y: box.y, width: box.w, height: box.h, overflow: 'visible' }).forEach(([key, value]) => body.setAttribute(key, String(value)));
-        body.querySelectorAll('.bubble-svg-surface').forEach(element => { element.setAttribute('fill', '#fff'); element.setAttribute('stroke', 'none'); });
-        body.querySelectorAll('.bubble-svg-outline-surface, .bubble-svg-detail').forEach(element => {
-          element.setAttribute('fill', 'none'); element.setAttribute('stroke', '#111'); element.setAttribute('stroke-width', String(stroke * canvas.width / frame.w)); element.setAttribute('vector-effect', 'non-scaling-stroke');
-        });
-        layer.append(body);
-      } finally { render(null, host); }
-    }
-    if (bubbles.some(bubbleVisible)) {
-      const image = await decodePaintImage(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
-      try { context.drawImage(image, 0, 0, canvas.width, canvas.height); } finally { image.src = ''; }
-    }
-    for (const [index, bubble] of bubbles.entries()) {
-      if (!bubbleVisible(bubble)) continue;
       context.save(); if (!entry.overlay) { outline(panel); context.clip(); }
-      if (bubble.paint_overlay && !bubble.paint_overlay.hidden) {
-        const owner = paintScene(panel, dpi, assets).owners.find(owner => owner.key === `bubble-${index}`)!;
-        await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, false), owner.frame, frame);
-      }
-      // Raster eyes affect only pixels; native text is always drawn with its own pt style.
-      drawText(context, bubble, bubbleTextFrame(bubbleBox(index), panel, bubble), frame, 'bubble', manga.meta.font);
-      context.restore();
+      try {
+        if (bubbleVisible(bubble)) {
+          const box = bubbleBox(index), host = document.createElement('div'), layer=group(bubble);
+          connections[index].forEach(connection=>layer.append(connection));
+          try {
+            render(h(BubbleShapeSvg, { shape: bubble.shape, bezier: bubble.bezier, composite: composites[index]??undefined, seamMasks: masks[index], maskId: `composition-bubble-${entry.panelIndex}-${index}` }), host);
+            const body = host.querySelector('svg')?.cloneNode(true) as SVGSVGElement | undefined;
+            if(body){
+              Object.entries({ x: box.x, y: box.y, width: box.w, height: box.h, overflow: 'visible' }).forEach(([key, value]) => body.setAttribute(key, String(value)));
+              body.querySelectorAll('.bubble-svg-surface').forEach(element => { element.setAttribute('fill', '#fff'); element.setAttribute('stroke', 'none'); });
+              body.querySelectorAll('.bubble-svg-outline-surface, .bubble-svg-detail').forEach(element => {
+                element.setAttribute('fill', 'none'); element.setAttribute('stroke', '#111'); element.setAttribute('stroke-width', String(stroke * canvas.width / frame.w)); element.setAttribute('vector-effect', 'non-scaling-stroke');
+              });
+              layer.append(body);
+            }
+            const image = await decodePaintImage(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
+            try { context.drawImage(image, 0, 0, canvas.width, canvas.height); } finally { image.src = ''; }
+          } finally { render(null, host); layer.remove(); }
+          if (bubble.paint_overlay && !bubble.paint_overlay.hidden) {
+            const owner = paintScene(panel, dpi, assets).owners.find(owner => owner.key === `bubble-${index}`)!;
+            await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, false), owner.frame, frame);
+          }
+          drawText(context, bubble, bubbleTextFrame(box, panel, bubble), frame, 'bubble', manga.meta.font);
+        }
+        // Each independent original follows its own native child, even if native text is hidden.
+        await drawImages((panel.images??[]).filter(image=>image.id===bubble.analogTextImport?.originalImageId));
+      } finally { context.restore(); }
     }
   };
   for (const entry of layout.panels.filter(entry => !entry.overlay)) {
@@ -314,13 +313,13 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
     context.restore();
   }
   await drawImages(layout.images.filter(image=>image.generationScope&&!image.paintScope&&!image.bubbleOriginal));
-  // Original crops are independent topmost raster placements, including when native bubbles are hidden.
+  // Unlinked originals remain separate topmost placements until explicitly associated.
   for(const entry of layout.panels.filter(entry=>!entry.overlay)){
     context.save();outline(entry.panel);context.clip();
-    await drawImages((entry.panel.images??[]).filter(image=>image.bubbleOriginal));
+    await drawImages((entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)));
     context.restore();
   }
-  await drawImages(layout.images.filter(image=>image.bubbleOriginal));
+  await drawImages(layout.images.filter(image=>image.bubbleOriginal&&!layout.panels.some(entry=>entry.overlay&&entry.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id))));
   return canvas;
 }
 

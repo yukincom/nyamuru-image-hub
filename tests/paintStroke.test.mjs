@@ -28,7 +28,7 @@ function fakeCanvasWorld() {
     const ops=[],stack=[];
     const ctx={globalAlpha:1,globalCompositeOperation:'source-over',ops,
       save(){stack.push([this.globalAlpha,this.globalCompositeOperation]);},restore(){[this.globalAlpha,this.globalCompositeOperation]=stack.pop();},
-      clearRect(){ops.push(['clear']);},setTransform(){},scale(){},beginPath(){},moveTo(){},lineTo(){},rect(){},ellipse(){},arc(){},clip(){ops.push(['clip']);},
+      clearRect(){ops.push(['clear']);},setTransform(){},scale(){},translate(){},beginPath(){},moveTo(){},lineTo(){},rect(){},ellipse(){},arc(){},clip(){ops.push(['clip']);},
       fill(){ops.push(['fill',this.globalCompositeOperation,this.globalAlpha]);},stroke(){ops.push(['stroke',this.globalCompositeOperation,this.globalAlpha]);},drawImage(source){ops.push(['image',source,this.globalCompositeOperation,this.globalAlpha]);}};
     const canvas={width:0,height:0,getContext:()=>ctx,toBlob:callback=>callback(new Blob(['png'],{type:'image/png'}))};canvases.push(canvas);return canvas;
   };

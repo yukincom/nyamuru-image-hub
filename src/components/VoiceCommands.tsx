@@ -17,6 +17,7 @@ interface Props {
   request?:typeof requestVoiceCommand; connection?:typeof getAgentConnection;
   generation?:QwenGenerationConversation|null; portalTarget?:HTMLElement|null;
   inspect?:()=>AgentEditorSnapshot;edit?:(value:unknown)=>AgentEditorSnapshot;
+  onActivity?:(active:boolean)=>void;
 }
 
 function VoiceInputIcon({mode}:{mode:VoiceInputMode}){
@@ -44,6 +45,7 @@ function AgentConversation(props:Props){
   const [text,setText]=useState(''),[status,setStatus]=useState('');
   const [referenceRole,setReferenceRole]=useState<QwenReferenceRole>('character');
   const [recording,setRecording]=useState(false),[processing,setProcessing]=useState(false),[busy,setBusy]=useState(false);
+  useEffect(()=>{if(!busy)return;latest.current.onActivity?.(true);return()=>latest.current.onActivity?.(false);},[busy]);
   const [model,setModel]=useState('接続を確認中…');
   const recordingMode=useRef<VoiceInputMode>('manual');
   const pending=useRef(false),dictation=useRef<ReturnType<typeof createEditorDictation>|null>(null),log=useRef<HTMLDivElement>(null);

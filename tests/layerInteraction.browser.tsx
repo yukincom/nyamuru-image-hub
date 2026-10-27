@@ -1,25 +1,30 @@
 // Use a dedicated localhost origin: this fixture seeds only its own browser storage.
 import { render } from 'preact';
 import {renderPaintPng,decodePaintImage,paintPreviewRenderer} from '../src/lib/paintRenderer';
-import {newPaintLayer} from '../src/lib/paintDocument';
+import {newPaintLayer,withPaintBleed,type PaintOwner} from '../src/lib/paintDocument';
 import {newToneLayer} from '../src/lib/paintTone';
 import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry';
 import type {PaintDocument} from '../src/types';
-import {createFrameArtwork,prepareImageAsset} from '../src/lib/imagePlacement';
+import {createFrameArtwork,prepareImageAsset,imageSha256,validateImagePlacements} from '../src/lib/imagePlacement';
 import {deleteFigureCropAssets,loadFigureCropAsset,saveFigureCropAssets} from '../src/lib/figureCropStore';
 import {prepareDetectedTextCrops} from '../src/lib/analogTextCrops';
 import {attachRecognizedTextToPage,type RecognizedTextLine} from '../src/lib/localBridge';
 import {separateBubbleOriginals} from '../src/lib/bubbleOriginals';
+import {captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
+import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence';
 import App from '../src/components/App';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import { parseMangaYaml, STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga';
 import '../src/styles/global.css';
-if(location.hostname!=='127.0.0.1'||!['4325','4335'].includes(location.port))throw new Error('Dedicated local test origin required.');
+if(!['127.0.0.1','selection.localhost'].includes(location.hostname)||!['4325','4335'].includes(location.port))throw new Error('Dedicated local test origin required.');
 const selectionChecks=new URLSearchParams(location.search).has('selection-check');
 if(selectionChecks){
  if(location.port!=='4335')throw Error('Selection tests require isolated port 4335');
  const stored=localStorage.getItem(STORAGE_KEY);
- if(stored&&parseMangaYaml(stored).manga.meta.episode_id!=='layer-selection-qa')throw Error('Do not overwrite another artwork');
+ if(stored&&parseMangaYaml(stored).manga.meta.episode_id!=='layer-selection-qa'){
+  document.getElementById('app')!.textContent='別の検証原稿が保存されているため、選択検証の初期化を中止しました。';
+  throw Error('Do not overwrite another artwork');
+ }
  if(!stored){
   const doc=createEmptyWorkspaceDocument(),canvas=document.createElement('canvas');canvas.width=canvas.height=32;
   const context=canvas.getContext('2d')!;context.fillStyle='#1996b8';context.fillRect(0,0,32,32);
@@ -28,18 +33,19 @@ if(selectionChecks){
   await saveFigureCropAssets([{id:asset.storageId,blob}]);doc.manga.image_assets=[asset];
   doc.manga.meta.title='キャンバス・レイヤー選択検証';doc.manga.meta.episode_id='layer-selection-qa';
   doc.manga.finish_settings={width_mm:182,height_mm:257,dpi:100,bleed_mm:0};
+  const association=(id:string)=>({schemaVersion:1 as const,sourceRegionId:id,assetId:asset.storageId,sourceBBox:{x:0,y:0,w:1,h:1},detectionSource:'baberu',recognitionEngine:'Baberu OCR' as const,needsReview:false,levelAdjusted:true as const,rasterLayerInitialized:true,rasterLayerSeparated:true,originalImageId:id});
   const original=(id:string,x:number,y:number)=>({...createFrameArtwork(asset,{x,y,w:30,h:12}),id,bubbleOriginal:{sourceRegionId:id,name:`原本 ${id}`}});
   doc.manga.pages=[{page:1,canvas:{w:182,h:257,unit:'mm'},panels:[
    {id:1,shape:{type:'rect',x:16,y:18.5,w:150,h:105},bg:0,action:null,
     figures:[{name:'一人目',bbox:{x:25,y:70,w:35,h:35}}],
-    bubbles:[{text:'一つ目',shape:'square',tail:false,bbox:{x:105,y:30,w:45,h:40}}],
+    bubbles:[{text:'一つ目',shape:'square',tail:false,bbox:{x:105,y:30,w:45,h:40},analogTextImport:association('panel-crop')}],
     screen_text:[{text:'通常文字',bbox:{x:25,y:35,w:55,h:15}}],
     images:[createFrameArtwork(asset,{x:25,y:110,w:20,h:10}),original('panel-crop',105,90)]},
    {id:2,shape:{type:'rect',x:16,y:135,w:150,h:100},bg:0,action:null,
     figures:[{name:'二人目',bbox:{x:25,y:178,w:35,h:35}}],bubbles:[{text:'二つ目',shape:'square',tail:false,bbox:{x:105,y:150,w:45,h:40}}]},
   ],images:[original('page-crop',125,240)],page_overlay:{frame:false,layer:'above_panel_frames',
    figures:[{name:'前景人物',bbox:{x:30,y:123,w:20,h:12}}],
-   bubbles:[{text:'前景',shape:'square',tail:false,bbox:{x:85,y:123,w:25,h:12}}],
+   bubbles:[{text:'前景',shape:'square',tail:false,bbox:{x:85,y:123,w:25,h:12},analogTextImport:association('page-crop')}],
    screen_text:[{text:'前景文字',bbox:{x:25,y:240,w:65,h:12}}]}},
   {page:2,canvas:{w:182,h:257,unit:'mm'},panels:[{id:1,shape:{type:'rect',x:16,y:18.5,w:150,h:217},bg:0,action:null,bubbles:[]}],
    page_overlay:{frame:false,layer:'above_panel_frames',figures:[{name:'人物だけの前景',bbox:{x:40,y:50,w:50,h:100}}]}}];
@@ -95,6 +101,19 @@ async function rendererChecks(){
  const vector={...newPaintLayer('黒枠・塗りなし','vector'),paths:[vectorShape('rectangle',{x:20,y:20},{x:80,y:80},{...defaultVectorStyle(),stroke:'#000000',fill:null,width:8})]};
  const vectorPixels=await read(await renderPaintPng({version:1,width:100,height:100,dpi:100,layers:[vector]},new Map()));
  check(pixel(vectorPixels,20)==='0,0,0,255'&&pixel(vectorPixels,50)==='0,0,0,0','確定後の黒枠・塗りなしベクターを白線に変えない');
+ const imported=await decodePaintImage(await renderPaintPng({...paint,layers:[source]},new Map())),images=new Map([['thumbnail-original',imported]]);
+ const cases:[string,PaintDocument][]=[['生成マスク',paint],['トーンと範囲',toneDocument],['ベクター',{...paint,layers:[vector]}],...(['color','grayscale','monochrome'] as const).map(mode=>[`${mode}原本画像`,{...paint,layers:[{...newPaintLayer(),colorMode:mode,image:{assetId:'thumbnail-original',crop:{x:0,y:0,w:100,h:100},bbox:{x:0,y:0,w:100,h:100}}}]}] as [string,PaintDocument])];
+ for(const [name,document] of cases){
+  testCanvas.width=testCanvas.height=40;screen.draw(testCanvas,document,images);
+  const before=testCanvas.getContext('2d')!.getImageData(0,0,40,40).data;
+  const owner={key:'panel',kind:'panel',index:0,frame:{x:0,y:0,w:100,h:100},paint:document} as PaintOwner;
+  const expanded=withPaintBleed(owner,256).paint;
+  screen.draw(testCanvas,expanded,images,undefined,undefined,true,expanded.referenceFrame);
+  const after=testCanvas.getContext('2d')!.getImageData(0,0,40,40).data;
+  const differences=Array.from(before).flatMap((v,i)=>v===after[i]?[]:[`${i}:${v}/${after[i]}`]);
+  check(!differences.length,`${name}のサムネイルは作業用余白を追加しても画素一致${differences.length?` (${differences.length}: ${differences.slice(0,12).join(' ')})`:''}`);
+ }
+ imported.src='';
  screen.dispose();
  return checks;
 }
@@ -107,6 +126,9 @@ if(new URLSearchParams(location.search).has('render-check')){
   render(<details><summary>選択同期の検証</summary><input id="selection-focus" aria-label="フォーカス保持の検証"/>
     <button id="check-selection" onClick={()=>void verifySelection()}>キャンバス選択を検証</button>
     <button id="check-figures" onClick={()=>void verifyFigurePresentation()}>人物の確定表示を検証</button>
+    <button id="check-rows" onClick={()=>void verifySelectionRows()}>選択行と所属を検証</button>
+    <button id="check-stability" onClick={()=>void verifyPaletteStability()}>表示切替と追加を検証</button>
+    <button id="check-geometry" onClick={()=>void verifyPaletteGeometry()}>選択中の位置と縮尺を検証</button>
     <button id="check-originals" onClick={()=>void verifyOriginalVisibility()}>OCR原本の初期表示を検証</button>
     <pre id="selection-report" aria-live="polite" style={{maxHeight:'200px',overflow:'auto',whiteSpace:'pre-wrap'}}>未実行</pre></details>,controls);
  }
@@ -121,26 +143,28 @@ async function verifySelection(){
  const canvas=(kind:string,panel=0,index=0)=>`.manga-paper [data-content-kind="${kind}"][data-content-panel="${panel}"][data-content-index="${index}"]`;
  const palette=()=>document.querySelector<HTMLElement>('.page-layer-palette')!;
  const selected=()=>Array.from(palette().querySelectorAll<HTMLElement>('[data-canvas-selected="true"]'));
- const owner=(key:string)=>selected().length===1&&selected()[0].dataset.ownerGroup===key&&selected()[0].getAttribute('aria-selected')==='true';
+ const owner=(key:string)=>selected().length===1&&(selected()[0].dataset.ownerGroup??selected()[0].dataset.owner)===key&&selected()[0].getAttribute('aria-selected')==='true';
  const visible=()=>{const row=selected()[0]?.getBoundingClientRect(),viewport=palette().closest('.dock-content')!.getBoundingClientRect();return !!row&&row.top>=viewport.top-1&&row.bottom<=viewport.bottom+1;};
  const selectedPanel=()=>selected()[0]?.closest('.panel-layer-group')?.getAttribute('aria-label');
  button.disabled=true;report.textContent='検証中';
  try{
   await settle();click('.page-switcher [aria-label="前のページ"]');await settle();
   const before=localStorage.getItem(STORAGE_KEY),undo=document.querySelector<HTMLButtonElement>('.app-header [aria-label^="元に戻す"]')?.disabled;
+  for(const button of document.querySelectorAll<HTMLButtonElement>('.page-layer-palette button[aria-expanded="false"]'))button.click();await settle();
   // Native click handlers run without taking focus from an existing text field.
   const focus=document.getElementById('selection-focus') as HTMLInputElement;focus.focus();
   click(canvas('figure'));await settle();
   check(owner('figure-0')&&selectedPanel()==='コマ 01','キャンバス人物を同じコマの1行だけに表示');
   check(visible(),'選択した人物行をdock内へスクロール');
-  check(document.activeElement===focus,'自動展開とスクロールが入力focusを奪わない');
+  check(document.activeElement===focus,'パレットのスクロールが入力focusを奪わない');
   click('.page-layer-palette [data-canvas-selected="true"] [aria-expanded="true"]');await settle();
   click('.page-layer-palette [aria-label="コマ 01を折りたたむ"]');await settle();
   click(canvas('figure'));await settle();
-  check(owner('figure-0')&&!!selected()[0].querySelector('[aria-expanded="true"]')&&visible(),'同じ人物の再選択でコマと人物フォルダーを再展開');
-  click(canvas('bubble'));await settle();check(owner('bubble-0')&&selectedPanel()==='コマ 01'&&visible(),'吹き出しの選択・展開・表示位置が一致');
+  check(owner('figure-0')&&!!selected()[0].querySelector('[aria-expanded="false"]')&&!!document.querySelector('.page-layer-palette [aria-label="コマ 01を展開"]'),'同じ人物の再選択でもコマと人物フォルダーを開かない');
+  click('.page-layer-palette [aria-label="コマ 01を展開"]');click('.page-layer-palette [data-owner-group="figure-0"] [aria-expanded="false"]');await settle();
+  click(canvas('bubble'));await settle();check(owner('bubble-0')&&selectedPanel()==='コマ 01'&&visible(),'展開済み吹き出しの選択と表示位置が一致');
   check(palette().querySelectorAll('[aria-selected="true"]').length===1,'owner選択を描画子layer選択にしない');
-  click(canvas('image',0,1));await settle();check(owner('original-panel-crop')&&visible(),'切出し原本は独立したowner行を選択');
+  click(canvas('image',0,1));await settle();check(owner('original-panel-crop')&&visible(),'切出し原本は実際の画像レイヤー行を選択');
   click(canvas('screen_text'));await settle();check(selected().length===1&&selected()[0].classList.contains('native-text-layer')&&visible(),'通常文字は背景ownerへ変換せず文字行を選択');
   click(canvas('image'));await settle();check(selected().length===0&&!palette().querySelector('[data-owner-group="background"].is-selected'),'通常画像を背景ownerと誤認しない');
   click(canvas('figure',0));click(canvas('figure',1));await settle();
@@ -154,8 +178,8 @@ async function verifySelection(){
   check(owner('bubble-0')&&!!selected()[0].closest('.page-direct-layer-group'),'前景吹き出しを通常コマと混同しない');
   click('.manga-paper [data-content-overlay][data-content-kind="screen_text"]');await settle();
   check(selected().length===1&&selected()[0].classList.contains('native-text-layer')&&!!selected()[0].closest('.page-direct-layer-group'),'前景の通常文字も同じ選択経路へ表示');
-  click('.manga-paper .original-raster-layer [data-content-kind="image"]:not([data-content-panel])');await settle();
-  check(owner('original-page-crop')&&!!selected()[0].closest('.page-direct-layer-group'),'ページ原本はコマ外の元画像ownerを選択');
+  click('.manga-paper .bubble-original-child [data-content-kind="image"]:not([data-content-panel])');await settle();
+  check(owner('original-page-crop')&&!!selected()[0].closest('.page-direct-layer-group'),'ページ原本はコマ外の画像レイヤー行を選択');
   click(canvas('figure',0));click('.page-switcher [aria-label="次のページ"]');await settle();
   check(selected().length===0,'ページ移動で前ページの選択・scroll予約を破棄');
   click('.manga-paper .page-overlay-figure-layer .figure-guide');await settle();
@@ -168,17 +192,18 @@ async function verifySelection(){
   const heading=(key:string,overlay=false)=>`${overlay?pageGroup:panelGroup} [data-owner-group="${key}"] .layer-group-select`;
   const painting=()=>!!document.querySelector('.app-shell.is-painting');
   const until=async(test:()=>boolean)=>{for(let i=0;i<240&&!test();i++)await tick();if(!test())throw Error('描画状態の切替が完了しません');};
-  for(const [key,overlay] of [['figure-0',false],['bubble-0',false],['original-panel-crop',false],['figure-0',true],['bubble-0',true],['original-page-crop',true]] as const){
+  for(const [key,overlay] of [['figure-0',false],['bubble-0',false],['figure-0',true],['bubble-0',true]] as const){
    click(heading(key,overlay));await settle();
    check(!painting()&&owner(key)&&Boolean(selected()[0].closest('.page-direct-layer-group'))===overlay,`${overlay?'前景':'コマ'}の${key}見出しは描画せず対象を選択`);
   }
   for(const key of ['figure-0','original-panel-crop']){
-   click(heading(key));await settle();
+   click(key==='original-panel-crop'?canvas('image',0,1):heading(key));await settle();
    click(`${panelGroup} [data-owner-root="${key}"] .layer-row .layer-select`);
-   await until(()=>painting()&&!!document.querySelector(`${panelGroup} [data-owner-group="${key}"] .layer-group-select:not(:disabled)`));await settle();
+   await until(()=>painting()&&!!document.querySelector(`${panelGroup} [data-owner="${key}"] .layer-select:not(:disabled)`));await settle();
    check(painting()&&!!document.querySelector(`${panelGroup} [data-owner="${key}"][aria-selected="true"]`),`${key}の子layerは従来の描画入口で選択`);
-   click(heading(key));await until(()=>!painting());await settle();
-   check(owner(key)&&!painting(),`${key}描画中の見出しは配置選択へ戻る`);
+   const exitKey=key==='original-panel-crop'?'bubble-0':key;
+   click(heading(exitKey));await until(()=>!painting());await settle();
+   check(owner(exitKey)&&!painting(),`${key}描画中からフォルダー選択で配置へ戻る`);
   }
   click(heading('background'));await until(()=>painting()&&!!document.querySelector(`${panelGroup} [data-owner-group="figure-0"] .layer-group-select:not(:disabled)`));
   check(!!document.querySelector(`${panelGroup} [data-owner-group="background"].is-selected`),'背景見出しの既存描画入口を維持');
@@ -275,7 +300,7 @@ async function verifyOriginalVisibility(){
  const stored=()=>parseMangaYaml(localStorage.getItem(STORAGE_KEY)!);
  const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<240&&!test();i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));if(!test())throw Error(label);};
  const first=<T extends Element>(selector:string)=>Array.from(document.querySelectorAll<T>(selector)).find(item=>!item.closest('.is-spread-partner'))!;
- const sourceCanvases=()=>Array.from(document.querySelectorAll<HTMLCanvasElement>('.original-raster-layer .placed-image-viewport canvas'));
+ const sourceCanvases=()=>Array.from(document.querySelectorAll<HTMLCanvasElement>('.bubble-original-child .placed-image-viewport canvas'));
  const opaque=(canvas:HTMLCanvasElement)=>canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data.some((value,index)=>index%4===3&&value>0);
  let mounted=false,baselineIds=new Set<string>();
  buttons.forEach(button=>button.disabled=true);report.textContent='OCR原本の検証中';
@@ -293,12 +318,50 @@ async function verifyOriginalVisibility(){
   page.panels=[{id:1,shape:{type:'rect',x:16,y:18.5,w:150,h:217},bg:0,action:null,bubbles:[]}];
   attachRecognizedTextToPage(page,lines,new Map(prepared.map(crop=>[crop.lineId,crop.metadata])));
   const ready=await separateBubbleOriginals(doc),image=ready.manga.pages[0].panels[0].images![0],key=`original-${image.id}`;
-  const root=`.page-layer-palette [data-owner-root="${key}"]`,heading=`.page-layer-palette [data-owner-group="${key}"] .layer-group-select`;
+  const drawOrder=structuredClone(ready.manga),orderPanel=drawOrder.pages[0].panels[0];
+  orderPanel.bubbles[0].text='';orderPanel.bubbles[0].shape='square';orderPanel.bubbles[0].tail=false;
+  orderPanel.bubbles[0].bbox={x:40,y:50,w:40,h:40};orderPanel.images![0].bbox={x:40,y:50,w:40,h:40};orderPanel.images![0].paint!.layers[0].visible=true;
+  orderPanel.bubbles.push({text:'',shape:'square',tail:false,bbox:{x:60,y:60,w:40,h:40}});
+  const output=await captureQwenCompositionCanvas(drawOrder,0,0,'page'),read=(x:number,y:number)=>{
+   const context=output.getContext('2d')!,w=drawOrder.pages[0].canvas.w,h=drawOrder.pages[0].canvas.h;
+   return Array.from(context.getImageData(Math.floor(x/w*output.width),Math.floor(y/h*output.height),1,1).data).join(',');
+  };
+  check(read(70,70)==='255,255,255,255'&&read(50,60)!=='255,255,255,255','PNG出力でも前の原本より後ろの吹き出しを上に描く');
+  output.width=output.height=1;
+  const root=`.page-layer-palette [data-owner-root="${key}"]`,heading='.panel-layer-group:not(.page-direct-layer-group) [data-owner-group="bubble-0"] .layer-group-select';
   const eye=()=>first<HTMLButtonElement>(`${root} .layer-visibility`);
   render(null,host);localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(ready));mounted=true;render(<App/>,host);
-  await wait(()=>sourceCanvases().length===2&&!!eye(),'原本レイヤーが表示されません');
+  const expand=async()=>{
+   for(const button of document.querySelectorAll<HTMLButtonElement>('.page-layer-palette .panel-layer-heading button[aria-expanded="false"]'))button.click();
+   await wait(()=>!!first<HTMLElement>('.page-layer-palette [data-owner-group="bubble-0"]'),'吹き出しgroupがありません');
+   for(const button of document.querySelectorAll<HTMLButtonElement>('.page-layer-palette [data-owner-group="bubble-0"] [aria-expanded="false"]'))button.click();
+   await wait(()=>!!eye(),'原本レイヤーがありません');
+  };
+  await expand();await wait(()=>sourceCanvases().length===2,'原本canvasが表示されません');
+  check(!!first<HTMLElement>(root).closest('.layer-group')?.querySelector('.bubble-native-row'),'原本と文字・輪郭を同じ吹き出しフォルダーの別の子として表示');
+  check(!document.querySelector('.original-owner-row,.layer-owner-info-row')&&first<HTMLElement>(root).querySelectorAll('[role="treeitem"]').length===1,'原本は画像レイヤー1行だけで、見出し・コマ情報行を表示しない');
+  const unchanged=localStorage.getItem(STORAGE_KEY);
+  const fold=first<HTMLButtonElement>('.panel-layer-group [data-owner-group="bubble-0"] [aria-expanded]');fold.click();await expand();
+  check(localStorage.getItem(STORAGE_KEY)===unchanged,'フォルダー開閉は目・原文・履歴を変更しない');
   check(eye().getAttribute('aria-pressed')==='false'&&sourceCanvases().every(canvas=>!opaque(canvas)),'通常コマとページ前景の原本は透明で本文を覆わない');
+  check(!document.querySelector('.bubble-original-child .canvas-content-hit'),'非表示の原本は遅延計測中も選択用の透明パスを持たない');
   check(first<HTMLElement>('[data-content-kind="bubble"][data-content-panel="0"]').textContent!.includes('認識した本文'),'認識したネイティブ本文は初期状態から表示');
+  const group='.panel-layer-group:not(.page-direct-layer-group) [data-owner-group="bubble-0"]';
+  const folderLock=()=>first<HTMLButtonElement>(`${group}>.layer-row-lock`);
+  const childLocks=()=>Array.from(first<HTMLElement>(group).parentElement!.querySelectorAll<HTMLButtonElement>(':scope > [role="group"] .layer-row-lock'));
+  folderLock().click();
+  await wait(()=>folderLock().getAttribute('aria-pressed')==='true'&&childLocks().every(button=>button.disabled),'親の固定が子へ継承されません');
+  check(childLocks().length===2&&childLocks().every(button=>button.getAttribute('aria-pressed')==='true'),'フォルダー固定中は文字・輪郭と原本レイヤーが固定され、子の解除ボタンは無効');
+  first<HTMLButtonElement>(`${group} .layer-group-select`).click();
+  await wait(()=>!document.querySelector('.app-shell.is-painting')&&stored().manga.pages[0].panels[0].bubbles[0].locked===true,'親固定を保存できません');
+  render(null,host);render(<App/>,host);await expand();
+  check(childLocks().every(button=>button.disabled),'再読込後も親固定中の子解除を禁止');
+  const lockedOriginal=first<HTMLElement>('.bubble-original-child [data-content-kind="image"]');
+  check(lockedOriginal.hasAttribute('data-artwork-locked')&&!lockedOriginal.querySelector('.canvas-content-hit'),'親固定中の原本は配置移動のhit対象にならない');
+  folderLock().click();await wait(()=>folderLock().getAttribute('aria-pressed')==='false'&&!childLocks().some(button=>button.disabled),'親の固定を解除できません');
+  first<HTMLButtonElement>(`${group} .layer-group-select`).click();
+  await wait(()=>!document.querySelector('.app-shell.is-painting')&&stored().manga.pages[0].panels[0].bubbles[0].locked!==true,'固定解除を保存できません');
+  check(childLocks().every(button=>button.getAttribute('aria-pressed')==='false'),'親の解除は既存の規則どおり子も解除');
   for(const visible of [true,false]){
    eye().click();await wait(()=>!!document.querySelector('.app-shell.is-painting')&&eye()?.getAttribute('aria-pressed')===String(visible)&&!first<HTMLButtonElement>(heading)?.disabled,'原本の目が切り替わりません');
    first<HTMLButtonElement>(heading).click();
@@ -306,10 +369,31 @@ async function verifyOriginalVisibility(){
    for(const item of stored().manga.image_assets??[])if(!baselineIds.has(item.storageId))temporaryIds.add(item.storageId);
    await wait(()=>sourceCanvases().length===2&&sourceCanvases().some(opaque)===visible,'原本の描画状態が目に追従しません');
    check(true,visible?'既存の目で原本を再表示できる':'既存の目で原本を再非表示にできる');
-   render(null,host);render(<App/>,host);await wait(()=>!!eye()&&sourceCanvases().length===2,'保存済み原本の再読込に失敗');
+   render(null,host);render(<App/>,host);await expand();await wait(()=>sourceCanvases().length===2,'保存済み原本の再読込に失敗');
    check(eye().getAttribute('aria-pressed')===String(visible)&&sourceCanvases().some(opaque)===visible,`再読込は保存済みlayerの目=${visible}を保持`);
    check(stored().manga.pages[0].panels[0].bubbles[0].text==='認識した本文','目の変更と再読込は本文を変更しない');
   }
+  const before=stored(),parent=before.manga.pages[0].panels[0],sourceHash=await imageSha256((await loadFigureCropAsset(parent.bubbles[0].analogTextImport!.assetId))!);
+  // Duplicate the page using the normal sidebar, then remove only the copied original.
+  Array.from(document.querySelectorAll<HTMLButtonElement>('.page-sidebar button')).find(button=>button.textContent?.trim()==='複製')!.click();
+  await wait(()=>stored().manga.pages.length===2,'ページを複製できません');await expand();
+  first<HTMLButtonElement>(`${root} .layer-select`).click();
+  await wait(()=>!!document.querySelector('.app-shell.is-painting')&&!first<HTMLButtonElement>('.layer-controls [aria-label="削除"]')?.disabled,'複製原本を選択できません');
+  first<HTMLButtonElement>('.layer-controls [aria-label="削除"]').click();
+  await wait(()=>!document.querySelector(`${root} .layer-row`),'原本を削除できません');
+  first<HTMLButtonElement>('.panel-layer-group [data-owner-group="bubble-0"] .layer-group-select').click();
+  await wait(()=>!document.querySelector('.app-shell.is-painting')&&stored().manga.pages[1].panels[0].images?.length===0,'削除を保存できません');
+  check(stored().manga.pages[0].panels[0].images?.length===1&&stored().manga.pages[1].panels[0].bubbles[0].analogTextImport?.originalImageId===null,'ページ複製後の原本削除は複製側だけへ作用');
+  const history=(name:string)=>first<HTMLButtonElement>(`.app-header [aria-label^="${name}"]`);
+  history('元に戻す').click();await wait(()=>stored().manga.pages[1].panels[0].images?.length===1,'原本削除のUndoに失敗');
+  check(stored().manga.pages[1].panels[0].bubbles[0].analogTextImport?.originalImageId===image.id,'1Undoで原本と関連IDを同時復元');
+  history('やり直す').click();await wait(()=>stored().manga.pages[1].panels[0].images?.length===0,'原本削除のRedoに失敗');
+  check(stored().manga.pages[1].panels[0].bubbles[0].text==='認識した本文','Redo後も文字・輪郭を保持');
+  const snapshot=await createProjectSnapshot(stored());
+  const restored=await restoreProjectSnapshot(snapshot,async items=>{items.forEach(item=>temporaryIds.add(item.id));await saveFigureCropAssets(items);});
+  validateImagePlacements(restored);const loaded=await separateBubbleOriginals(restored);
+  check(loaded===restored&&loaded.manga.pages[1].panels[0].images?.length===0,'既存snapshot保存往復で原本削除を復活させない');
+  check(await imageSha256((await loadFigureCropAsset(parent.bubbles[0].analogTextImport!.assetId))!)===sourceHash,'複製・削除・保存往復で元の原本byteを保持');
   check((await Promise.all(prepared.map(crop=>loadFigureCropAsset(crop.asset.id)))).every(blob=>!!blob),'非表示後も切出し原本のbyteを保持');
   report.textContent=`OCR原本 PASS ${checks.length}\n${checks.join('\n')}`;
  }catch(error){report.textContent=`OCR原本 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
@@ -317,4 +401,138 @@ async function verifyOriginalVisibility(){
   if(mounted){for(const item of stored().manga.image_assets??[])if(!baselineIds.has(item.storageId))temporaryIds.add(item.storageId);render(null,host);localStorage.setItem(STORAGE_KEY,original!);render(<App/>,host);}
   await deleteFigureCropAssets([...temporaryIds]);buttons.forEach(button=>button.disabled=false);
  }
+}
+
+
+async function verifyPaletteStability(){
+ const report=document.getElementById('selection-report')!,button=document.getElementById('check-stability') as HTMLButtonElement,checks:string[]=[];
+ const first=<T extends HTMLElement>(selector:string)=>document.querySelector<T>(selector)!;
+ const tick=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+ const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<300&&!test();i++)await tick();if(!test())throw Error(label);};
+ const settle=async()=>{for(let i=0;i<8;i++)await tick();};
+ const click=(selector:string)=>{const item=first<HTMLElement>(selector);if(!item)throw Error(`対象なし: ${selector}`);item.click();};
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const panel='.page-layer-palette .panel-layer-group[aria-label="コマ 01"]';
+ const host=document.getElementById('app')!,before=localStorage.getItem(STORAGE_KEY);button.disabled=true;
+ try{
+  click('.page-switcher [aria-label="前のページ"]');await settle();
+  const stored=()=>parseMangaYaml(localStorage.getItem(STORAGE_KEY)!);
+  if(stored().manga.meta.episode_id!=='layer-selection-qa')throw Error('Dedicated manuscript required');
+  first<HTMLButtonElement>(`${panel} .panel-layer-heading button[aria-expanded="false"]`)?.click();await settle();
+  const tree=first<HTMLElement>(`${panel} .paint-layer-palette`),paper=first<HTMLElement>('.manga-paper');
+  const figureFold=()=>first<HTMLButtonElement>(`${panel} [data-owner-group="figure-0"] [aria-expanded]`);
+  if(figureFold().getAttribute('aria-expanded')==='true')figureFold().click();await settle();
+  click('.manga-paper [data-content-kind="figure"][data-content-panel="0"][data-content-index="0"]');await settle();
+  check(figureFold().getAttribute('aria-expanded')==='false','編集画面で人物を選択しても閉じたフォルダーを開かない');
+  const text='.manga-paper [data-content-kind="screen_text"][data-content-panel="0"]';
+  click(`${panel} [aria-label="文字 1を隠す"]`);await wait(()=>!document.querySelector(text),'文字を隠せません');
+  await wait(()=>stored().manga.pages[0].panels[0].screen_text![0].hidden===true,'文字の非表示を保存できません');
+  check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&first<HTMLElement>('.manga-paper')===paper,'文字の目を切り替えてもパレットと紙面のDOMを保持');
+  click(`${panel} [aria-label="文字 1を表示"]`);await wait(()=>!!document.querySelector(text),'文字を再表示できません');
+  check(true,'文字の目で非表示・再表示し、保存にも反映');
+  click(`${panel} .panel-layer-select`);await settle();
+  click('.selection-layer-controls [aria-label="ベクターレイヤー追加"]');
+  await wait(()=>!!document.querySelector('.app-shell.is-painting')&&!!document.querySelector(`${panel} .layer-name-line svg`),'ベクターレイヤーを追加できません');await settle();
+  check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&first<HTMLElement>('.manga-paper')===paper,'ベクターレイヤー追加と描画モード移行でもパレットと紙面のDOMを保持');
+  check(figureFold().getAttribute('aria-expanded')==='false','レイヤー追加でも閉じた人物フォルダーを保持');
+  const vector=first<HTMLElement>(`${panel} .layer-row.is-selected`),eye=vector.querySelector<HTMLButtonElement>('.layer-visibility')!;
+  eye.click();await settle();eye.click();await settle();
+  check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&figureFold().getAttribute('aria-expanded')==='false','描画レイヤーの目を往復してもパレットと開閉状態を保持');
+  click(`${panel} [data-owner-group="figure-0"] .layer-group-select`);await wait(()=>!document.querySelector('.app-shell.is-painting'),'描画を確定できません');await settle();
+  check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&figureFold().getAttribute('aria-expanded')==='false','描画モード終了後も同じパレットと開閉状態を保持');
+  report.textContent=`表示切替 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`表示切替 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
+ finally{render(null,host);if(before)localStorage.setItem(STORAGE_KEY,before);render(<App/>,host);button.disabled=false;}
+}
+
+
+async function verifySelectionRows(){
+ const report=document.getElementById('selection-report')!,button=document.getElementById('check-rows') as HTMLButtonElement,checks:string[]=[];
+ const root=()=>document.querySelector<HTMLElement>('.page-layer-palette')!;
+ const tick=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+ const settle=async()=>{for(let i=0;i<8;i++)await tick();};
+ const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<300&&!test();i++)await tick();if(!test())throw Error(label);await settle();};
+ const click=(selector:string)=>{const item=document.querySelector<HTMLElement>(selector);if(!item)throw Error(`対象なし: ${selector}`);item.click();};
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const selected=(...selectors:string[])=>{const rows=[...root().querySelectorAll('.is-selected')];return rows.length===selectors.length&&selectors.every(selector=>rows.some(row=>row.matches(selector)));};
+ const panel='.panel-layer-group[aria-label="コマ 01"]',other='.panel-layer-group[aria-label="コマ 02"]',page='.page-direct-layer-group';
+ const host=document.getElementById('app')!,before=localStorage.getItem(STORAGE_KEY);button.disabled=true;
+ try{
+  if(parseMangaYaml(before!).manga.meta.episode_id!=='layer-selection-qa')throw Error('Dedicated manuscript required');
+  click('.page-switcher [aria-label="前のページ"]');await settle();
+  document.querySelector<HTMLButtonElement>(`${panel} .panel-layer-heading button[aria-expanded="false"]`)?.click();
+  click(`${page} [data-owner-group="figure-0"] .layer-group-select`);await settle();
+  check(selected(`${page} [data-owner-group="figure-0"]`,`${page}>.panel-layer-heading`),'前景人物と所属するコマ外を強調');
+  check(!document.querySelector('.manga-panel.is-selected,.manga-panel.is-group-selected,.panel-selection-overlay'),'コマ外の選択で無関係なコマを強調しない');
+  const guide=`${page} [data-owner-root="figure-0"] .layer-row`;
+  document.querySelector<HTMLButtonElement>(`${page} [data-owner-group="figure-0"] [aria-expanded="false"]`)?.click();
+  click(`${guide} .layer-select`);await wait(()=>!!document.querySelector('.app-shell.is-painting'),'描画layerを選べません');
+  check(selected(guide,`${page} [data-owner-group="figure-0"]`,`${page}>.panel-layer-heading`),'前景あたりは人物フォルダーとコマ外だけを強調');
+  check(!!document.querySelector('.page-overlay-inspector'),'前景の描画中も詳細欄の所属をページ前景に保つ');
+  check(getComputedStyle(document.querySelector(`${guide} .layer-select`)!).backgroundColor==='rgba(0, 0, 0, 0)','選択ボタンは行全体の背景色を使用');
+  click(`${page} .native-text-layer .layer-select`);await wait(()=>!document.querySelector('.app-shell.is-painting'),'文字選択で描画を終了できません');
+  check(selected(`${page} .native-text-layer`,`${page}>.panel-layer-heading`),'前景文字はコマ外だけを強調し人物フォルダーを強調しない');
+  const textX=document.querySelector(`${page} .native-text-layer .layer-thumbnail`)!.getBoundingClientRect().left;
+  const guideX=document.querySelector(`${guide} .layer-thumbnail`)!.getBoundingClientRect().left;
+  check(guideX>textX+10,'人物内のあたりをコマ外直下の文字より一段深く字下げ');
+  click(`${panel} [aria-label="コマ 01の枠を選択"]`);await settle();
+  check(selected(`${panel} .panel-frame-layer`,`${panel}>.panel-layer-heading`),'コマ枠の行と所属コマを選択');
+  check(!!document.querySelector('.panel-selection-overlay')&&!document.querySelector('.native-text-input'),'コマ枠を選ぶと文字編集を終了し枠の操作点を表示');
+  document.querySelector<HTMLButtonElement>(`${other} .panel-layer-heading button[aria-expanded="false"]`)?.click();
+  click(`${other} [aria-label="コマ 02の枠を選択"]`);await settle();
+  check(selected(`${other} .panel-frame-layer`,`${other}>.panel-layer-heading`),'別コマへ移っても枠と所属コマの選択を保持');
+  click(`${panel} .panel-layer-select`);await settle();
+  check(selected(`${panel} .panel-layer-heading`),'コマ全体の選択とコマ枠の選択を分離');
+  click(`${panel} .native-text-layer .layer-select`);await settle();
+  check(selected(`${panel} .native-text-layer`,`${panel}>.panel-layer-heading`),'コマ内の文字と所属コマを強調');
+  click(`${panel} .panel-layer-select`);await settle();
+  check(localStorage.getItem(STORAGE_KEY)===before,'選択の往復で保存原稿を変更しない');
+  click('.selection-layer-controls [aria-label="フォルダー追加"]');await wait(()=>!!document.querySelector(`${panel} .layer-user-folder-row`),'通常folderを追加できません');
+  check(selected(`${panel} .layer-user-folder-row`,`${panel}>.panel-layer-heading`),'通常フォルダーの選択でも所属コマを強調');
+  click('.layer-controls [aria-label="ラスターレイヤー追加"]');await wait(()=>!!document.querySelector(`${panel} .layer-direct-root [data-owner="panel"].is-selected`),'通常layerを追加できません');
+  check(selected(`${panel} .layer-direct-root [data-owner="panel"]`,`${panel}>.panel-layer-heading`),'通常レイヤーにも選択行と所属コマの共通ルールを適用');
+  const folderColor=getComputedStyle(document.querySelector(`${panel} .layer-row.is-selected`)!).backgroundColor;
+  click(`${panel} .layer-folder-select`);await settle();
+  check(getComputedStyle(document.querySelector(`${panel} .layer-user-folder-row.is-selected`)!).backgroundColor===folderColor,'通常folderとlayerで選択色を共通化');
+  report.textContent=`選択行 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`選択行 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
+ finally{render(null,host);if(before)localStorage.setItem(STORAGE_KEY,before);render(<App/>,host);button.disabled=false;}
+}
+
+async function verifyPaletteGeometry(){
+ const report=document.getElementById('selection-report')!,button=document.getElementById('check-geometry') as HTMLButtonElement,checks:string[]=[];
+ const host=document.getElementById('app')!,before=localStorage.getItem(STORAGE_KEY);
+ const tick=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+ const settle=async()=>{for(let i=0;i<12;i++)await tick();};
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const first=<T extends Element>(selector:string)=>document.querySelector<T>(selector)!;
+ const click=(selector:string)=>first<HTMLElement>(selector).click();
+ const page='.page-direct-layer-group',group=`${page} [data-owner-group="bubble-0"]`,imageRow=`${page} [data-original-raster="page-crop"] .layer-row`;
+ const pixels=()=>{const canvas=first<HTMLCanvasElement>(`${imageRow} canvas`);return {width:canvas.width,height:canvas.height,data:Array.from(canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data)};};
+ button.disabled=true;
+ try{
+  if(parseMangaYaml(before!).manga.meta.episode_id!=='layer-selection-qa')throw Error('Dedicated manuscript required');
+  render(null,host);render(<App/>,host);await settle();
+  document.querySelector<HTMLButtonElement>(`${group} [aria-expanded="false"]`)?.click();await settle();
+  first<HTMLElement>(group).scrollIntoView({block:'center'});await settle();
+  const original=pixels();check(original.data.some((v,i)=>i%4===3&&v>0),'選択前に原本画像の画素を確認');
+  for(let cycle=0;cycle<2;cycle++){
+   for(const [name,selector,painting] of [['画像',`${imageRow} .layer-select`,true],['文字・輪郭',`${page} .bubble-native-row .layer-select`,false]] as const){
+    const scroller=first<HTMLElement>('.paint-layers-dock .dock-content');
+    const measure=()=>({y:first<HTMLElement>(imageRow).getBoundingClientRect().top,scroll:scroller.scrollTop,header:first<HTMLElement>('.page-layer-palette>.layer-controls').getBoundingClientRect().height});
+    const initial=measure(),samples=[initial];click(selector);
+    for(let i=0;i<70;i++){await tick();samples.push(measure());}
+    check(Boolean(document.querySelector('.app-shell.is-painting'))===painting,`${cycle+1}回目・${name}の選択が完了`);
+    check(samples.every(v=>Math.abs(v.y-initial.y)<.5&&Math.abs(v.scroll-initial.scroll)<.5&&Math.abs(v.header-initial.header)<.5),`${cycle+1}回目・${name}選択中の全71フレームで行位置とスクロールを保持`);
+    const current=pixels();check(current.width===original.width&&current.height===original.height&&current.data.every((v,i)=>v===original.data[i]),`${cycle+1}回目・${name}選択後の原本サムネイルが画素一致`);
+   }
+  }
+  const rows=Array.from(document.querySelectorAll<HTMLElement>('.page-layer-tree .layer-row,.page-layer-tree .layer-group-row,.page-layer-tree .layer-user-folder-row,.page-layer-tree .panel-layer-heading')).filter(row=>row.getClientRects().length);
+  check(rows.every((row,i)=>i===0||Math.abs(row.getBoundingClientRect().top-rows[i-1].getBoundingClientRect().bottom)<.5),'一覧の各行の間に余分な空白を作らない');
+  const separators=rows.map(row=>getComputedStyle(row));
+  check(separators.every(style=>style.borderBottomWidth==='1px'&&style.borderBottomColor===separators[0].borderBottomColor),'行の区切り線は全種類で同じ1pxと色');
+  check(localStorage.getItem(STORAGE_KEY)===before,'選択の往復で保存原稿を変更しない');
+  report.textContent=`位置・縮尺 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`位置・縮尺 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
+ finally{render(null,host);if(before)localStorage.setItem(STORAGE_KEY,before);render(<App/>,host);button.disabled=false;}
 }

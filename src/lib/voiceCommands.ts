@@ -1,7 +1,6 @@
 import type {CanvasElementSelection,MangaDocument} from '../types.ts';
 import {isPropPlacement} from './catalogModel.ts';
 import {bubbleVisible,panelVisible} from './panelLayers.ts';
-import {artworkLocked} from './paintLock.ts';
 
 /** BERT selects the intent; bounded argument resolution never guesses missing values. */
 export const VOICE_LABELS = ['save','undo','redo','page_navigate','view_change','artwork_mode_set','bubble_set',
@@ -143,8 +142,7 @@ export function resolveVoiceGenerationTarget(document:MangaDocument,pageIndex:nu
   const figure=kind==='figure'?owner?.figures?.[index]:undefined,bubble=kind==='bubble'?owner?.bubbles?.[index]:undefined;
   if(!owner||(!figure&&!bubble))throw Error('選択中の生成対象が見つかりません');
   if(figure&&isPropPlacement(figure)&&command.kind==='figure')throw Error('選択中の対象は小道具です。生成する人物を選択してください');
-  if((!overlay&&!panelVisible(page.panels[panelIndex]))||figure?.artwork?.hidden||bubble&&!bubbleVisible(bubble)
-    ||artworkLocked(figure?.artwork??bubble?.paint_overlay))throw Error('生成対象が非表示またはロック中です');
+  if((!overlay&&!panelVisible(page.panels[panelIndex]))||figure?.artwork?.hidden||bubble&&!bubbleVisible(bubble))throw Error('生成対象が非表示です');
   return {pageIndex,panelIndex:overlay?0:panelIndex,index,kind,overlay};
 }
 

@@ -1,11 +1,13 @@
 # LAN編集 — 2026-10-20
 
+操作手順は [別のPCからにゃむるを使う](./LAN_EDITING.md) を参照してください。このページは実装の詳細と検証記録です。
+
 別のPCではブラウザーで編集し、作品はそのPCの `.nyamuru` ファイルへ保存します。文章LLM・画像解析・画像生成はMac Studioの既存環境を使います。編集PCへのモデルやNode.jsの導入は不要です。
 
 ## 起動と接続
 
 1. Mac Studioで、普段使っている文章LLMを起動しておきます。
-2. このリポジトリで `npm run lan` を実行します。画面の準備後に、HTTPSの接続URL、CA証明書の場所・SHA-256指紋が表示されます。
+2. このリポジトリで `npm run lan` を実行します。画面の準備後に、接続の手順、編集PCへ渡す証明書ファイルの場所、接続URLが表示されます。
 3. 初回だけ、下記のCA証明書を編集PCへ登録します。
 4. 同じLANにある編集PCで、表示されたURLを開くと、そのまま編集画面に進みます。
 5. 作業終了後はMac側の起動画面で `Ctrl+C`。LANサーバーと、この起動が所有する処理サービスを終了します。
@@ -26,7 +28,7 @@ Wi-Fiのインターネット接続は併用できます。ただし接続先に
 
 ブラウザーのファイル保存・音声入力などを利用するため、LAN接続はHTTPSです。HTTPでの起動や証明書検証の無効化は行いません。
 
-Mac側で生成する公開CA証明書は `.local-vision/lan-tls/nyamuru-lan-ca.crt` です。このファイルだけを、AirDrop・USBなどで編集PCへ渡します。同じフォルダの `.key` ファイルは渡さないでください。証明書のSHA-256指紋を起動画面の値と照合し、自分のMacで作成した証明書であることを確認します。
+Mac側で生成する公開CA証明書は `.local-vision/lan-tls/nyamuru-lan-ca.crt` です。自分のMacで作成したこのファイルだけを、AirDrop・USBなどで編集PCへ渡します。同じフォルダの `.key` ファイルは渡さないでください。証明書のSHA-256指紋は通常の起動画面には表示しません。必要な調査時は、元とコピー先の証明書を開いて確認します。
 
 - **編集PCがMacの場合**：キーチェーンアクセスへ証明書を読み込み、対象の「Nyamuru LAN private CA」を開いて「信頼」のSSL設定を変更します。操作の説明は [Appleの証明書の信頼設定](https://support.apple.com/ja-jp/guide/keychain-access/kyca11871/mac) を参照してください。
 - **編集PCがWindowsの場合**：`certmgr.msc` で現在のユーザーの証明書管理を開き、「信頼されたルート証明機関」の「証明書」へ公開CA証明書をインポートします。保存先の範囲と指紋を確認する手順は [Microsoftの証明書管理](https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/inspect-certificates-manage-certificate-stores) を参照してください。

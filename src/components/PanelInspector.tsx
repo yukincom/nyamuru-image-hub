@@ -53,7 +53,7 @@ interface Props extends ScenarioBubbleChoiceProps {
   getOmnySnapshot: () => string;
   onChooseEpisodeWorkspace: () => Promise<void>;
   onSelectElement: (selection: CanvasElementSelection | null) => void;
-  onChange: (panel: Panel) => void;
+  onChange: (panel: Panel,origin?:'manual'|'agent') => void;
   onOpenBackgrounds: () => void;
   onOpenProps: () => void;
   onAdd: () => void;
@@ -164,7 +164,7 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
       if (!result) return;
       const next = structuredClone(currentPanel);
       const applied = applyReconciledPanelActions(next, result.actions);
-      if (applied) latestOnChange.current(next);
+      if (applied) latestOnChange.current(next,'agent');
       setGenerationStatus({ kind: 'success', message: applied ? `人物${applied}人のアクションをト書きとすり合わせて整えました。` : '変更する内容はありませんでした。現在のアクションを保持しています。' });
     } catch (error) {
       if (requestId !== generationRequest.current) return;

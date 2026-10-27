@@ -1,6 +1,6 @@
 import CanvasContentSelection, { elementContentBox, elementContentHit } from './CanvasContentSelection';
 import { frameFromContentEdit } from '../lib/canvasContentGeometry';
-import {artworkLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {artworkLocked,paintOwnerPlacementLocked,paintLayerHasContent} from '../lib/paintLock';
 import { pixelZoomWidth, canvasZoomPercent, clampCanvasZoom, canvasZoomShortcut } from '../lib/canvasZoom';
 import type { CanvasTextTarget } from '../lib/canvasText';
 import {textStyleOf,selectedTextWeight,textStyleCss,textWeightSegments,canvasLengthCss,textToolCursor,type TextStylePatch,type TextSelection} from '../lib/textStyle';
@@ -9,7 +9,7 @@ import {BUBBLE_MATERIAL_DRAG_TYPE,materialBubbleBezier} from '../lib/bubblePrese
 import CanvasTextToolbar from './CanvasTextToolbar';
 import { scenarioBubbleNeedsReview } from '../lib/scenario';
 import NativeTextEditor from './NativeTextEditor';
-import { bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, panelFrameVisible, panelFrameSegmentsOnInnerFrame, panelArtKeys, type BubbleTextTarget } from '../lib/panelLayers';
+import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, panelFrameVisible, panelFrameSegmentsOnInnerFrame, panelArtKeys, type BubbleTextTarget } from '../lib/panelLayers';
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, usePaintWorkspace } from '../lib/paintWorkspace';
 import PaintInputSurface, { PaintOwnerPreview } from './PaintSceneView';
 import { paintReferenceBox } from '../lib/paintDocument';
@@ -22,7 +22,7 @@ import { createPortal } from 'preact/compat';
 import type { VNode } from 'preact';
 import { Box, UserRound, ZoomIn, ZoomOut } from 'lucide-preact';
 import BubbleShapeSvg from './BubbleShapeSvg';
-import { BubbleBezierHandles } from './BubbleBezierEditor';
+import { BubbleBezierHandles, BubbleBezierSelection } from './BubbleBezierEditor';
 import FigureSizeSvg from './FigureSizeSvg';
 import type { BBox, Bubble, BubbleTailRoot, BubbleTailTarget, BubbleTextPosition, CanvasElementSelection, Figure, MangaPage, Panel, PersistentAnalogAssetRef } from '../types';
 import { innerFrameBounds, type CanvasSize, anchorPoint, clamp, clampedPanelDelta, createShiftAxisSession, fallbackBox, panelBounds, pointInPanel, panelShapePoints, resizedBox, resolveOverlapClick, resolveShiftAxisSession, resolveVertexDragStartZone, roundMm, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, type DragAxis, type InteractionGeometry, type PanelEdgeReference, type PanelGutterSettings, type ResizeHandle } from '../lib/canvasGeometry';
@@ -39,6 +39,7 @@ import { figureDisplayLabel, panelDisplayLabel } from '../lib/displayLabels.ts';
 import { createBubbleBezier, isBubbleBezier, type BubbleBezier } from '../lib/bubbleBezier.ts';
 
 interface Props {
+  agentWorkTarget?:{panelIndex:number;selection:CanvasElementSelection};
   zoomTool?:boolean;
   textTool?:boolean;
   textToolStyle?:TextStyle;
@@ -257,7 +258,7 @@ function elementPanelClipStyle(panel:Panel,box:BBox):Record<string,string>{
   return {clipPath:`polygon(${panelShapePoints(panel).map(([x,y])=>`${(x-box.x)/box.w*100}% ${(y-box.y)/box.h*100}%`).join(',')})`};
 }
 
-export default function MangaCanvas({ zoomTool=false, textTool=false,textToolStyle={fontSize:12,orientation:'vertical'},onTextToolStyle,textSettingsOwner=true,pageIndex,onTextStyle,onBubbleMaterial,editingText,onEditScreenText,onEditBubble,onCreateScreenTextAt,onWrapScreenText,onFinishElementMove,onText,onTextHistory,onEndTextEdit,painting=false, paintTarget, guideVisible, onToggleGuide, onGenerateArtwork, onGenerateComposition, dpi = 600, outputSize, spreadSide, onNotify, onReplaceArtwork, imageAssets = [], onImageGesture, author, page, zoomPercent, onZoomPercentChange, frameLineWidthMm, bubbleLineWidthMm, defaultBubbleFont,fontFamilies=[],onRequestFonts, activePanel, selectedPanels, selectedElement, showGuides, innerFrameSnap, panelGutters, panelGapSnap, panelSync, onSelectPanel, onSelectElement:onSelectNativeElement, onChangeElementBBox, onChangeBubbleTail, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
+export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=false,textToolStyle={fontSize:12,orientation:'vertical'},onTextToolStyle,textSettingsOwner=true,pageIndex,onTextStyle,onBubbleMaterial,editingText,onEditScreenText,onEditBubble,onCreateScreenTextAt,onWrapScreenText,onFinishElementMove,onText,onTextHistory,onEndTextEdit,painting=false, paintTarget, guideVisible, onToggleGuide, onGenerateArtwork, onGenerateComposition, dpi = 600, outputSize, spreadSide, onNotify, onReplaceArtwork, imageAssets = [], onImageGesture, author, page, zoomPercent, onZoomPercentChange, frameLineWidthMm, bubbleLineWidthMm, defaultBubbleFont,fontFamilies=[],onRequestFonts, activePanel, selectedPanels, selectedElement, showGuides, innerFrameSnap, panelGutters, panelGapSnap, panelSync, onSelectPanel, onSelectElement:onSelectNativeElement, onChangeElementBBox, onChangeBubbleTail, onMovePanel, onResizePanel, onMoveVertex, onMovePanelEdge }: Props) {
   const bubblePathTool=useContext(BubblePathToolContext);
   const paintGeometry=useContext(PaintGeometryContext);
   const paintInputActive=useContext(PaintInputActivityContext);
@@ -266,13 +267,14 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   const elementLocked=(selection:CanvasElementSelection,panelIndex=activePanel)=>{
     const enclosingPanel=selection.scope==='page_overlay'||selection.scope==='page'?undefined:page.panels[panelIndex];
     if(enclosingPanel&&panelLocked(enclosingPanel))return true;
-    if(selection.type==='image')return artworkLocked((selection.scope==='page'?page.images:page.panels[panelIndex]?.images)?.[selection.index]);
+    if(selection.type==='panel_frame')return !enclosingPanel||panelGeometryLocked(enclosingPanel);
+    if(selection.type==='image')return artworkLocked((selection.scope==='page'?page.images:page.panels[panelIndex]?.images)?.[selection.index],(selection.scope==='page'?page.page_overlay:page.panels[panelIndex])?.bubbles);
     const target=selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex];
     if(selection.type==='screen_text')return false;
     const preview=paintTarget&&paintTarget.overlay===(selection.scope==='page_overlay')&&(paintTarget.overlay||paintTarget.panelIndex===panelIndex)?paintWorkspace?.scene.owners.find(o=>o.key===`${selection.type}-${selection.index}`):undefined;
     if(preview)return paintOwnerPlacementLocked(preview);
     if(selection.type==='figure'){const figure=target?.figures?.[selection.index];return Boolean(figure?.locked)||artworkLocked(figure?.artwork);}
-    const bubble=target?.bubbles?.[selection.index];return Boolean(bubble?.locked||bubble?.paint_overlay?.locked)||(!textTool&&artworkLocked(bubble?.paint_overlay));
+    const bubble=target?.bubbles?.[selection.index];return Boolean(bubble&&ownerItemLocked(bubble))||(!textTool&&artworkLocked(bubble?.paint_overlay));
   };
   const onSelectElement=(selection:CanvasElementSelection|null,panelIndex?:number,revealDetails=true)=>{
     if(selection&&elementLocked(selection,panelIndex))return;
@@ -290,8 +292,10 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   };
   const nativeStyle=(box:BBox,reference:BBox)=>({left:`${(reference.x-box.x)/box.w*100}%`,top:`${(reference.y-box.y)/box.h*100}%`,width:`${reference.w/box.w*100}%`,height:`${reference.h/box.h*100}%`});
   const canvas = page.canvas;
-  const editingPanel=(index:number)=>Boolean(paintTarget&&!paintTarget.overlay&&paintTarget.panelIndex===index);
-  const editingOverlay=Boolean(paintTarget?.overlay);
+  // Keep the existing artwork visible until this paint session can draw it.
+  const paintReady=Boolean(paintWorkspace?.images&&paintWorkspace.page===page.page&&paintWorkspace.panelIndex===paintTarget?.panelIndex&&paintWorkspace.overlay===paintTarget?.overlay);
+  const editingPanel=(index:number)=>Boolean(paintReady&&paintTarget&&!paintTarget.overlay&&paintTarget.panelIndex===index);
+  const editingOverlay=Boolean(paintReady&&paintTarget?.overlay);
   const inner = innerFrameBounds(canvas);
   const panelMinSize = Math.min(20, canvas.w / 4, canvas.h / 4);
   const paperBoxStyle = (box: BBox) => pageBoxStyle(box, canvas);
@@ -1221,30 +1225,32 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
 
   // 非選択パネルはパネル内（パネル基準%・クリップあり）、選択中パネルは最前面のエレメント
   // レイヤー（紙面基準%）に描くため、配置スタイルを引数で差し替える
+  const agentWorking=(selection:CanvasElementSelection,panelIndex=activePanel)=>Boolean(agentWorkTarget&&agentWorkTarget.selection.type===selection.type&&agentWorkTarget.selection.index===selection.index&&(agentWorkTarget.selection.scope??'panel')===(selection.scope??'panel')&&(selection.scope==='page_overlay'||selection.scope==='page'||agentWorkTarget.panelIndex===panelIndex));
   const isSelectedElement = (selection: CanvasElementSelection) => backgroundEdit?backgroundEdit.selectedKey===`${selection.type}-${selection.index}`:selectedElement?.type === selection.type
     && selectedElement.index === selection.index
     && (selectedElement.scope ?? 'panel') === (selection.scope ?? 'panel');
   const contentSource=(selection:CanvasElementSelection,panelIndex:number|null)=>`${page.page}-${panelIndex??'page'}-${selection.scope??'panel'}-${selection.type}-${selection.index}`;
   const renderArtwork = (image: PlacedImage, selection: CanvasElementSelection, panelIndex: number | null, boxStyle: (box: BBox) => Record<string, string>, label?: string) => {
     if (image.hidden) return null;
-    const isLocked=artworkLocked(image);
+    const hiddenOriginal=image.bubbleOriginal&&image.paint&&!image.paint.layers.some(layer=>layer.visible&&layer.opacity>0&&paintLayerHasContent(layer));
+    const isLocked=elementLocked(selection,panelIndex??activePanel);
     const asset = imageAssets.find(item => item.id === image.assetId);
-    const selected = (panelIndex === null || activePanel === panelIndex) && isSelectedElement(selection);
+    const selected = (panelIndex === null || activePanel === panelIndex) && isSelectedElement(selection)&&!agentWorking(selection,panelIndex??activePanel);
     const figure=selection.type==='figure'?(selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex??-1])?.figures?.[selection.index]:undefined;
     const figureClass=figure?figureCanvasClass(figure):'';
     const bounds = {x:0,y:0,w:canvas.w,h:canvas.h};
-    return <button type="button" data-content-target data-content-panel={panelIndex??undefined} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
-      style={{...boxStyle(image.bbox),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined} aria-label={`${label ?? '配置画像'} ${asset?.originalName ?? ''}`}
-      tabIndex={!isLocked&&(panelIndex === null || activePanel === panelIndex) ? 0 : -1}
+    return <button type="button" data-content-target data-agent-working={agentWorking(selection,panelIndex??activePanel)||undefined} data-content-panel={panelIndex??undefined} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
+      style={{...boxStyle(image.bbox),pointerEvents:isLocked||hiddenOriginal?'none':'auto'}} data-artwork-locked={isLocked||undefined} aria-label={`${label ?? '配置画像'} ${asset?.originalName ?? ''}`}
+      tabIndex={!isLocked&&!hiddenOriginal&&(panelIndex === null || activePanel === panelIndex) ? 0 : -1}
       onClick={event => { event.stopPropagation(); onSelectElement(selection, panelIndex ?? undefined); }}
-      onPointerDown={event => { if (!artworkLocked(image)) startInteraction(event, panelIndex, selection, image.bbox, 'move'); }}
+      onPointerDown={event => { if (!isLocked) startInteraction(event, panelIndex, selection, image.bbox, 'move'); }}
       onContextMenu={event => { if(image.generationScope)openGenerationMenu(event,image.generationScope==='page'?-1:panelIndex??0);else if (selection.type === 'figure') openGenerationMenu(event, panelIndex ?? 0, selection.index, selection.scope === 'page_overlay'); }}
       onKeyDown={event => {
         if (selection.type === 'figure' && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) openGenerationMenu(event, panelIndex ?? 0, selection.index, selection.scope === 'page_overlay');
-        else if (!artworkLocked(image)) nudgeElement(event, bounds, selection, image.bbox);
+        else if (!isLocked) nudgeElement(event, bounds, selection, image.bbox);
       }}>
       <PlacedImageView assets={imageAssets} asset={asset} image={image} />
-      <CanvasContentSelection frame={image.bbox} revision={image} selected={selected&&panelIndex===null&&selection.scope!=='page'&&!isLocked} handles={visible=>renderHandles(panelIndex,selection,image.bbox,visible)}/>
+      <CanvasContentSelection frame={image.bbox} revision={image} interactive={!isLocked&&!hiddenOriginal} selected={selected&&panelIndex===null&&selection.scope!=='page'&&!isLocked&&!hiddenOriginal} handles={visible=>renderHandles(panelIndex,selection,image.bbox,visible)}/>
     </button>;
   };
   const originalGuideVisible=(key:string,panelIndex:number,overlay=false)=>{
@@ -1259,12 +1265,12 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       const box = figure.bbox ?? fallbackBox(panel, 'figure', figureIndex);
       const referenceBox=paintReferenceBox(figure.artwork?.paint,box,figure.artwork?.crop);
       if(editingPanel(panelIndex))return null;
-      const isSelected = activePanel === panelIndex && isSelectedElement(selection);
+      const isSelected = activePanel === panelIndex && isSelectedElement(selection)&&!agentWorking(selection,panelIndex);
       const isLocked=elementLocked(selection,panelIndex);
       const cropAssetId = figure.analogImport?.assetId;
       const figureClass = figureCanvasClass(figure);
       return <button
-        data-content-target data-content-panel={panelIndex} data-content-kind="figure" data-content-index={figureIndex} class={`canvas-element figure-guide ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+        data-content-target data-agent-working={agentWorking(selection,panelIndex)||undefined} data-content-panel={panelIndex} data-content-kind="figure" data-content-index={figureIndex} class={`canvas-element figure-guide ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
         style={{...boxStyle(box),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined}
         onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
         onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex); }}
@@ -1284,6 +1290,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       </button>;
     })}
     {(typeof only==='number'?[]:panel.screen_text ?? []).map((screenText, screenTextIndex) => {
+      if(screenText.hidden===true)return null;
       const selection: CanvasElementSelection = { type: 'screen_text', index: screenTextIndex };
       const box = screenText.bbox ?? fallbackBox(panel, 'screen_text', screenTextIndex);
       const isLocked=elementLocked(selection,panelIndex);
@@ -1388,26 +1395,35 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     true,
   )),[page.panels,page.page,canvas.w,canvas.h,paintGeometry,paintTarget?.panelIndex,paintTarget?.overlay]);
 
+  const renderBubbleOriginal=(bubble:Bubble,panelIndex:number|null)=>{
+    const images=panelIndex===null?page.images:page.panels[panelIndex].images;
+    const index=images?.findIndex(image=>image.id===bubble.analogTextImport?.originalImageId)??-1;
+    if(index<0)return null;
+    const image=images![index],key=`original-${image.id}`;
+    return <div class="bubble-original-child" data-bubble-original={image.id}>
+      {(panelIndex===null?editingOverlay:editingPanel(panelIndex))?<PaintOwnerPreview ownerKey={key} container={paperBounds}/>
+        :renderArtwork(image,{type:'image',scope:panelIndex===null?'page':'panel',index},panelIndex,paperBoxStyle,image.bubbleOriginal?.name)}
+    </div>;
+  };
   // 紙面座標で描き、コマ所属のフキダシは所有コマで常に切り取る。
   const renderPanelBubbles = (panel: Panel, panelIndex: number) => !panelVisible(panel)?[]:panel.bubbles.map((bubble, bubbleIndex) => {
-    if(!bubbleVisible(bubble))return null;
     const selection: CanvasElementSelection = { type: 'bubble', index: bubbleIndex };
     const box = previewOwner(`bubble-${bubbleIndex}`,panelIndex)?.frame??bubble.bbox ?? fallbackBox(panel, 'bubble', bubbleIndex);
     const referenceBox=nativeBox(bubble,box,`bubble-${bubbleIndex}`,panelIndex);
     const referenceStyle={left:`${(referenceBox.x-box.x)/box.w*100}%`,top:`${(referenceBox.y-box.y)/box.h*100}%`,width:`${referenceBox.w/box.w*100}%`,height:`${referenceBox.h/box.h*100}%`};
     const textFrame=bubbleTextFrame(referenceBox,panel,bubble);
     const textFrameStyle={left:`${(textFrame.x-referenceBox.x)/referenceBox.w*100}%`,top:`${(textFrame.y-referenceBox.y)/referenceBox.h*100}%`,width:`${textFrame.w/referenceBox.w*100}%`,height:`${textFrame.h/referenceBox.h*100}%`};
-    const isSelected = activePanel === panelIndex && isSelectedElement(selection);
+    const isSelected = activePanel === panelIndex && isSelectedElement(selection)&&!agentWorking(selection,panelIndex);
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
     const presentation=panelBubblePresentations[panelIndex];
     return <div class="panel-bubble-clip" style={layerClipStyle(panel,canvas)} key={`panel-${panelIndex}-bubble-${bubbleIndex}`}>
-      {presentation?.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{presentation.elementsByBubble[bubbleIndex]}</svg>:null}
+      {bubbleVisible(bubble)&&<>{presentation?.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{presentation.elementsByBubble[bubbleIndex]}</svg>:null}
       <button
       onDragEnter={event=>{if(!painting&&!elementLocked(selection,panelIndex)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
       onDragOver={event=>{if(!painting&&!elementLocked(selection,panelIndex)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
       onDragLeave={event=>{if(!(event.relatedTarget instanceof Node)||!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('is-material-drop-target');}}
       onDrop={event=>{event.currentTarget.classList.remove('is-material-drop-target');if(painting||elementLocked(selection,panelIndex))return;const id=event.dataTransfer?.getData(BUBBLE_MATERIAL_DRAG_TYPE);if(id){event.preventDefault();event.stopPropagation();onBubbleMaterial?.({pageIndex:pageIndex??page.page-1,panelIndex,index:bubbleIndex,overlay:false,kind:'bubble'},id);}}}
-      data-content-target data-content-panel={panelIndex} data-content-kind="bubble" data-content-index={bubbleIndex} class={`canvas-element bubble-guide bubble-${bubble.shape ?? 'normal'} ${isSelected ? 'is-element-selected' : ''} ${backgroundEdit&&editingPanel(panelIndex)?`background3d-layout-item ${isSelected?'background3d-layout-selected':''}`:''}`}
+      data-content-target data-content-panel={panelIndex} data-content-kind="bubble" data-content-index={bubbleIndex} data-agent-working={agentWorking(selection,panelIndex)||undefined} class={`canvas-element bubble-guide bubble-${bubble.shape ?? 'normal'} ${isSelected ? 'is-element-selected' : ''} ${backgroundEdit&&editingPanel(panelIndex)?`background3d-layout-item ${isSelected?'background3d-layout-selected':''}`:''}`}
       data-background3d-owner={backgroundEdit&&editingPanel(panelIndex)?`bubble-${bubbleIndex}`:undefined}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection,panelIndex)?'none':'auto','--text-tool-cursor':textToolCursor(textStyleOf(bubble,'bubble'))}} data-artwork-locked={elementLocked(selection,panelIndex)||undefined}
       onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
@@ -1432,7 +1448,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
           onMoveFrame={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/></span>}
       </span>
       <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection,panelIndex)} handles={visible=>!backgroundEdit&&!bubblePathTool&&renderHandles(panelIndex,selection,box,visible,false)}/>
-    </button></div>;
+    </button></>}{renderBubbleOriginal(bubble,panelIndex)}</div>;
   });
 
   const paperBounds: BBox = { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h };
@@ -1451,13 +1467,13 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     const box = figure.bbox ?? overlayFallbackBox('figure', figureIndex);
     if(editingOverlay)return <PaintOwnerPreview key={`paint-figure-${figureIndex}`} ownerKey={`figure-${figureIndex}`} container={paperBounds}/>;
     const referenceBox=paintReferenceBox(figure.artwork?.paint,box,figure.artwork?.crop);
-    const isSelected = isSelectedElement(selection);
+    const isSelected = isSelectedElement(selection)&&!agentWorking(selection);
     const artwork = figureArtwork(figure);
     if (artwork) return renderArtwork(artwork, selection, null, paperBoxStyle, `${figureDisplayLabel(figure,figureIndex)}の画像`);
     const cropAssetId = figure.analogImport?.assetId;
     const figureClass = figureCanvasClass(figure);
     return <button
-      data-content-target class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+      data-content-target data-agent-working={agentWorking(selection)||undefined} class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
       onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
@@ -1474,6 +1490,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     </button>;
   });
   const renderPageOverlayText=()=>(overlay?.screen_text??[]).map((screenText,index)=>{
+    if(screenText.hidden===true)return null;
     const selection:CanvasElementSelection={scope:'page_overlay',type:'screen_text',index};
     const box=screenText.bbox??overlayTextFallbackBox(canvas,index),isSelected=isSelectedElement(selection);
     return <button
@@ -1491,22 +1508,21 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     </button>;
   });
   const renderPageOverlayBubbles = () => (overlay?.bubbles ?? []).map((bubble, bubbleIndex) => {
-    if(!bubbleVisible(bubble))return null;
     const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'bubble', index: bubbleIndex };
     const box = previewOwner(`bubble-${bubbleIndex}`,0,true)?.frame??bubble.bbox ?? overlayFallbackBox('bubble', bubbleIndex);
     const referenceBox=nativeBox(bubble,box,`bubble-${bubbleIndex}`,0,true);
     const referenceStyle={left:`${(referenceBox.x-box.x)/box.w*100}%`,top:`${(referenceBox.y-box.y)/box.h*100}%`,width:`${referenceBox.w/box.w*100}%`,height:`${referenceBox.h/box.h*100}%`};
-    const isSelected = isSelectedElement(selection);
+    const isSelected = isSelectedElement(selection)&&!agentWorking(selection);
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
-    return <div class="page-overlay-bubble-stack-item" key={bubble.analogTextImport?.sourceRegionId ?? `page-overlay-bubble-${bubbleIndex}`}>
-      {overlayBubblePresentation.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{overlayBubblePresentation.elementsByBubble[bubbleIndex]}</svg>:null}
+    return <div class="page-overlay-bubble-stack-item" key={`page-overlay-bubble-${bubbleIndex}`}>
+      {bubbleVisible(bubble)&&<>{overlayBubblePresentation.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{overlayBubblePresentation.elementsByBubble[bubbleIndex]}</svg>:null}
       <button
       onDragEnter={event=>{if(!painting&&!elementLocked(selection)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
       onDragOver={event=>{if(!painting&&!elementLocked(selection)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
       onDragLeave={event=>{if(!(event.relatedTarget instanceof Node)||!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('is-material-drop-target');}}
       onDrop={event=>{event.currentTarget.classList.remove('is-material-drop-target');if(painting||elementLocked(selection))return;const id=event.dataTransfer?.getData(BUBBLE_MATERIAL_DRAG_TYPE);if(id){event.preventDefault();event.stopPropagation();onBubbleMaterial?.({pageIndex:pageIndex??page.page-1,panelIndex:0,index:bubbleIndex,overlay:true,kind:'bubble'},id);}}}
       data-content-overlay data-content-kind="bubble" data-content-index={bubbleIndex}
-      data-content-target class={`canvas-element bubble-guide page-overlay-element bubble-${bubble.shape ?? 'normal'} ${isSelected ? 'is-element-selected' : ''}`}
+      data-content-target data-agent-working={agentWorking(selection)||undefined} class={`canvas-element bubble-guide page-overlay-element bubble-${bubble.shape ?? 'normal'} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto','--text-tool-cursor':textToolCursor(textStyleOf(bubble,'bubble'))}} data-artwork-locked={elementLocked(selection)||undefined}
       onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection);if(textTool)onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}); }}
@@ -1529,12 +1545,13 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
           onEdit={textTool&&!elementLocked(selection)?()=>onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}):undefined}
           onMoveFrame={textTool&&!elementLocked(selection)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/>}</span>
       <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection)} handles={visible=>!bubblePathTool&&renderHandles(null,selection,box,visible,false)}/>
-    </button></div>;
+    </button></>}{renderBubbleOriginal(bubble,null)}</div>;
   });
 
+  const panelSelectionVisible=!painting&&(!selectedElement||selectedElement.type==='panel_frame');
   const selectedPanel = page.panels[activePanel]&&panelVisible(page.panels[activePanel])?page.panels[activePanel]:undefined;
   const selectedBounds = selectedPanel ? panelBounds(selectedPanel) : null;
-  const selectedItem = selectedPanel && selectedElement && selectedElement.type !== 'image' && selectedElement.scope !== 'page_overlay'
+  const selectedItem = selectedPanel && selectedElement && selectedElement.type !== 'image' && selectedElement.type !== 'panel_frame' && selectedElement.scope !== 'page_overlay'
     ? (selectedElement.type === 'figure' ? selectedPanel.figures?.[selectedElement.index]
       : selectedElement.type === 'bubble' ? selectedPanel.bubbles[selectedElement.index]
       : selectedPanel.screen_text?.[selectedElement.index])
@@ -1548,13 +1565,14 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     if(!owner||!bubble||!bubbleVisible(bubble)||elementLocked(selectedElement,panelIndex))return null;
     const box=previewOwner(`bubble-${selectedElement.index}`,panelIndex,pageOverlay)?.frame??bubble.bbox??(pageOverlay?overlayFallbackBox('bubble',selectedElement.index):fallbackBox(owner as Panel,'bubble',selectedElement.index));
     const referenceBox=nativeBox(bubble,box,`bubble-${selectedElement.index}`,panelIndex,pageOverlay);
-    return <span class="bubble-path-edit-layer" style={paperBoxStyle(referenceBox)}>
-      <BubbleBezierHandles outline={bubbleOutlineForDirectEdit(bubble)} overlay label={`${pageOverlay?'ページ前景':''}フキダシ ${selectedElement.index+1} の輪郭を編集`} onChange={bezier=>onChangeBubbleTail(selectedElement,undefined,{bezier})}/>
+    return <span class="bubble-path-edit-layer" data-agent-working={agentWorking(selectedElement,panelIndex)||undefined} style={paperBoxStyle(referenceBox)}>
+      {agentWorking(selectedElement,panelIndex)?<BubbleBezierSelection outline={bubbleOutlineForDirectEdit(bubble)} label="エージェントの作業対象"/>:
+      <BubbleBezierHandles outline={bubbleOutlineForDirectEdit(bubble)} overlay label={`${pageOverlay?'ページ前景':''}フキダシ ${selectedElement.index+1} の輪郭を編集`} onChange={bezier=>onChangeBubbleTail(selectedElement,undefined,{bezier})}/>}
     </span>;
   };
 
   const renderBubbleTailEditor = () => {
-    if (!selectedElement || selectedElement.type !== 'bubble') return null;
+    if (!selectedElement || selectedElement.type !== 'bubble'||agentWorking(selectedElement)) return null;
     const pageOverlay = selectedElement.scope === 'page_overlay';
     const owner = pageOverlay ? overlay : selectedPanel;
     const bubble = pageOverlay ? overlay?.bubbles?.[selectedElement.index] : selectedPanel?.bubbles[selectedElement.index];
@@ -1591,7 +1609,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   };
 
   const renderAnchorIndicator = () => {
-    if (!selectedPanel || !selectedBounds || !selectedElement || !selectedItem || ('artwork' in selectedItem && selectedItem.artwork)) return null;
+    if (!selectedPanel || !selectedBounds || !selectedElement || selectedElement.type==='panel_frame' || !selectedItem || ('artwork' in selectedItem && selectedItem.artwork)) return null;
     const box = selectedItem.bbox ?? fallbackBox(selectedPanel, selectedElement.type, selectedElement.index);
     let point: { x: number; y: number };
     let label: string;
@@ -1631,7 +1649,8 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   useEffect(()=>{setTextToolbarHost(document.getElementById('paint-text-settings-slot'));},[]);
   const textTarget=editingText;
   const toolbarTarget:CanvasTextTarget|null=textTool?(textTarget??(selectedElement&&['bubble','screen_text'].includes(selectedElement.type)?{pageIndex:currentPageIndex,panelIndex:Math.max(0,activePanel),index:selectedElement.index,overlay:selectedElement.scope==='page_overlay',kind:selectedElement.type as 'bubble'|'screen_text'}:null)):null;
-  const toolbarItem=toolbarTarget?(toolbarTarget.kind==='bubble'?(toolbarTarget.overlay?page.page_overlay?.bubbles:page.panels[toolbarTarget.panelIndex]?.bubbles)?.[toolbarTarget.index]:(toolbarTarget.overlay?page.page_overlay?.screen_text:page.panels[toolbarTarget.panelIndex]?.screen_text)?.[toolbarTarget.index]):undefined;
+  const toolbarCandidate=toolbarTarget?(toolbarTarget.kind==='bubble'?(toolbarTarget.overlay?page.page_overlay?.bubbles:page.panels[toolbarTarget.panelIndex]?.bubbles)?.[toolbarTarget.index]:(toolbarTarget.overlay?page.page_overlay?.screen_text:page.panels[toolbarTarget.panelIndex]?.screen_text)?.[toolbarTarget.index]):undefined;
+  const toolbarItem=toolbarCandidate;
   const renderedTextStyle=(target:CanvasTextTarget):TextStyle=>{
     const selector=target.overlay?`[data-content-overlay][data-content-kind="${target.kind}"][data-content-index="${target.index}"]`:`[data-content-panel="${target.panelIndex}"][data-content-kind="${target.kind}"][data-content-index="${target.index}"]`;
     const el=paperRef.current?.querySelector<HTMLElement>(`${selector} .bubble-text,${selector} .screen-text-body`),width=paperRef.current?.clientWidth;
@@ -1652,8 +1671,8 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
   },[textTarget]);
   return (
     <div data-paint-canvas onClickCapture={event=>{createTextAt(event,null);}} onDblClickCapture={event=>{if(!textTool)createTextAt(event,null,true);}} class={`canvas-viewport ${textTool&&!painting?'is-text-tool':''} ${painting?'is-painting':''} ${backgroundEdit?'is-background3d-editing':''} ${zoomTool?'is-zoom-tool':''} ${!painting&&!textTool&&!zoomTool&&!bubblePathTool?'is-selection-tool':bubblePathTool==='node'?'is-direct-selection-tool':''}`} onPointerDownCapture={event=>{bubbleTextDragged.current=false;const target=event.target as Element;if(textTool&&!painting&&!backgroundEdit&&event.button===0&&!spacePressedRef.current&&paperRef.current?.contains(target)&&!target.closest('.bubble-inline-editor,.background3d-window,.bubble-text-move-frame.is-active')){event.preventDefault();event.stopPropagation();return;}if(editingText&&!target.closest('.bubble-inline-editor,.text-settings-window,.canvas-text-toolbar,.font-family-popover'))onEndTextEdit?.();}}>
-      {textSettingsOwner&&textTool&&!painting&&textToolbarHost&&createPortal(
-        <CanvasTextToolbar key={toolbarTarget?`${toolbarTarget.pageIndex}:${toolbarTarget.panelIndex}:${toolbarTarget.overlay}:${toolbarTarget.kind}:${toolbarTarget.index}`:'new'} creating={!toolbarItem} style={toolbarTarget&&toolbarItem?{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}:textToolStyle} defaultFont={defaultBubbleFont} fontFamilies={fontFamilies} selection={textTarget?textSelection:undefined} selectionWeight={textTarget&&textSelection&&toolbarItem&&toolbarTarget?selectedTextWeight(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined} disabled={Boolean(toolbarTarget&&elementLocked({type:toolbarTarget.kind,index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex))} onChange={changeStyle} onSizeGesture={toolbarItem?phase=>onImageGesture?.(phase,'text-size'):undefined} onHistory={onTextHistory} onRequestFonts={onRequestFonts}/>,
+      {textSettingsOwner&&textToolbarHost&&createPortal(
+        <CanvasTextToolbar creating={!toolbarItem} style={toolbarTarget&&toolbarItem?{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}:textToolStyle} defaultFont={defaultBubbleFont} fontFamilies={fontFamilies} selection={textTarget?textSelection:undefined} selectionWeight={textTarget&&textSelection&&toolbarItem&&toolbarTarget?selectedTextWeight(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined} disabled={Boolean(toolbarItem?.hidden||toolbarTarget&&elementLocked({type:toolbarTarget.kind,index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex))} onChange={changeStyle} onSizeGesture={toolbarItem?phase=>onImageGesture?.(phase,'text-size'):undefined} onHistory={onTextHistory} onRequestFonts={onRequestFonts}/>,
         textToolbarHost,
       )}
       <div ref={scrollRef} class="canvas-scroll">
@@ -1674,7 +1693,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       <div class="safe-area" style={paperBoxStyle(inner)} aria-hidden="true" />
       {page.panels.map((panel, panelIndex) => panelVisible(panel)&&(
         <div
-          class={`manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex) ? 'has-background-artwork' : ''} panel-bg-${panel.bg} ${activePanel === panelIndex ? 'is-selected' : ''} ${selectedPanels.includes(panelIndex) ? 'is-group-selected' : ''}`}
+          class={`manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex) ? 'has-background-artwork' : ''} panel-bg-${panel.bg} ${panelSelectionVisible&&activePanel === panelIndex ? 'is-selected' : ''} ${panelSelectionVisible&&selectedPanels.includes(panelIndex) ? 'is-group-selected' : ''}`}
           style={panelStyle(panel, canvas)}
           onClick={(event) => {if(!createTextAt(event,panelIndex))selectPanelAt(event, panelIndex);}}
           onContextMenu={(event) => openPanelArtworkMenu(event, panelIndex)}
@@ -1684,7 +1703,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
           }}
           key={`${panel.id}-${panelIndex}`}
           role="button"
-          aria-pressed={selectedPanels.includes(panelIndex)}
+          aria-pressed={panelSelectionVisible&&selectedPanels.includes(panelIndex)}
           tabIndex={0}
           aria-label={`${panelDisplayLabel(panel.id)} を編集`}
           title={panel.action ? `${panelDisplayLabel(panel.id)}: ${panel.action}` : panelDisplayLabel(panel.id)}
@@ -1716,12 +1735,12 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
           ? (pageImage ? page.images : selectedPanel?.images)?.[selectedElement.index]
           : selectedElement.type === 'figure' && selectedPanel?.figures?.[selectedElement.index]
             ? figureArtwork(selectedPanel.figures[selectedElement.index]) : undefined;
-        if (!image || image.hidden||artworkLocked(image)) return null;
+        if (!image || image.hidden||elementLocked(selectedElement)||agentWorking(selectedElement)) return null;
         const panelIndex = pageImage ? null : activePanel;
         return <div class="artwork-selection-layer" style={{pointerEvents:'none'}}>
           <div data-content-target class="placed-image-selection" style={{...paperBoxStyle(image.bbox),pointerEvents:'none'}}
             onContextMenu={event => { if(image.generationScope)openGenerationMenu(event,image.generationScope==='page'?-1:activePanel);else if (selectedElement.type === 'figure') openGenerationMenu(event, activePanel, selectedElement.index); }}
-            onPointerDown={event => { if (!artworkLocked(image)) startInteraction(event, panelIndex, selectedElement, image.bbox, 'move'); }}>
+            onPointerDown={event => { if (!elementLocked(selectedElement)) startInteraction(event, panelIndex, selectedElement, image.bbox, 'move'); }}>
             <CanvasContentSelection frame={image.bbox} source={contentSource(selectedElement,panelIndex)} revision={image} selected interactive={false} handles={visible=>renderHandles(panelIndex,selectedElement,image.bbox,visible)}/>
           </div>
         </div>;
@@ -1771,14 +1790,14 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       </div>
       <div class="original-raster-layer">
         {page.panels.map((panel,panelIndex)=>panelVisible(panel)&&<div key={panel.id} style={{position:'absolute',inset:0,...layerClipStyle(panel,canvas),pointerEvents:'none'}}>
-          {editingPanel(panelIndex)?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original').map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={paperBounds}/>)
-            :panel.images?.map((image,index)=>image.bubbleOriginal&&renderArtwork(image,{type:'image',scope:'panel',index},panelIndex,paperBoxStyle,image.bubbleOriginal.name))}
+          {editingPanel(panelIndex)?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original'&&!owner.parentKey).map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={paperBounds}/>)
+            :panel.images?.map((image,index)=>image.bubbleOriginal&&!panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)&&renderArtwork(image,{type:'image',scope:'panel',index},panelIndex,paperBoxStyle,image.bubbleOriginal.name))}
         </div>)}
-        {editingOverlay?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original').map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={paperBounds}/>)
-          :page.images?.map((image,index)=>image.bubbleOriginal&&renderArtwork(image,{type:'image',scope:'page',index},null,paperBoxStyle,image.bubbleOriginal.name))}
+        {editingOverlay?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original'&&!owner.parentKey).map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={paperBounds}/>)
+          :page.images?.map((image,index)=>image.bubbleOriginal&&!overlay?.bubbles?.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)&&renderArtwork(image,{type:'image',scope:'page',index},null,paperBoxStyle,image.bubbleOriginal.name))}
       </div>
       {!painting&&renderBubbleTailEditor()}
-      {!painting&&selectedPanels.length > 1 && <svg class="panel-group-selection-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">
+      {panelSelectionVisible&&selectedPanels.length > 1 && <svg class="panel-group-selection-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">
         {selectedPanels.filter((panelIndex) => panelIndex !== activePanel).map((panelIndex) => {
           const panel = page.panels[panelIndex];
           if (!panel||!panelVisible(panel)) return null;
@@ -1787,7 +1806,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
             : <polygon points={panel.shape.points.map(([x, y]) => `${x},${y}`).join(' ')} key={`group-${panelIndex}`} />;
         })}
       </svg>}
-      {!painting&&selectedPanel && selectedBounds && <svg class={`panel-selection-overlay ${panelGeometryLocked(selectedPanel)?'is-locked':''}`} viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true" onContextMenu={(event) => openGenerationMenu(event, activePanel)}>
+      {panelSelectionVisible&&selectedPanel && selectedBounds && <svg class={`panel-selection-overlay ${panelGeometryLocked(selectedPanel)?'is-locked':''}`} viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true" onContextMenu={(event) => openGenerationMenu(event, activePanel)}>
         {selectedPanel.shape.type === 'rect' ? <>
           <rect class="panel-selection-shape" x={selectedPanel.shape.x} y={selectedPanel.shape.y} width={selectedPanel.shape.w} height={selectedPanel.shape.h} />
           <rect class="panel-selection-hit-area" x={selectedPanel.shape.x} y={selectedPanel.shape.y} width={selectedPanel.shape.w} height={selectedPanel.shape.h} onPointerDown={startPanelMove} />
@@ -1832,7 +1851,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       </svg>}
       </div>
       {painting&&paintTarget&&<PaintInputSurface canvas={canvas}/>}
-      {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
+      {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&screenText?.hidden!==true&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
         <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} weights={(textBubble??screenText)?.text_weights} label={textTarget.kind==='bubble'?'吹き出しの文字':'通常文字'} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
           onText={(value,edit)=>onText?.(textTarget,value,edit)} onHistory={onTextHistory} onSelection={value=>setTextSelection(previous=>previous?.start===value.start&&previous?.end===value.end?previous:value)} onEnd={()=>onEndTextEdit?.()}/>
 

@@ -27,6 +27,18 @@ test('中立fixtureはNDM検査でエラーを出さない', () => {
   assert.deepEqual(issues.filter((issue) => issue.level === 'error'), []);
 });
 
+test('基準頭身は小数と12を超える指定値を検証・保存・読込で維持する', () => {
+  for (const headCount of [6.5, 16, 120.5, 12345.5]) {
+    const document = parseMangaYaml(sampleSource);
+    document.manga.characters[0].default_proportion = { head_count: headCount };
+    assert.equal(validateManga(document).some(issue => issue.path.endsWith('.head_count')), false);
+    for (const serialize of [toStoredMangaYaml, toMangaYaml]) {
+      const restored = parseMangaYaml(serialize(document));
+      assert.equal(restored.manga.characters[0].default_proportion.head_count, headCount);
+    }
+  }
+});
+
 test('シリーズ設定のない既存OMNYは空欄を補って読み込む', () => {
   const legacy = parseMangaYaml(sampleSource);
   delete legacy.manga.series_setting;

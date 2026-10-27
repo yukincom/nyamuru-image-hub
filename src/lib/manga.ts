@@ -427,7 +427,7 @@ export function normalizeDocument(document: MangaDocument): MangaDocument {
     const rawHeadCount = Number(character.default_proportion?.head_count);
     if (Number.isFinite(rawHeadCount)) {
       character.default_proportion = {
-        head_count: Math.round(Math.min(12, Math.max(1, rawHeadCount)) * 10) / 10,
+        head_count: rawHeadCount,
       };
     } else {
       delete character.default_proportion;
@@ -642,8 +642,8 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
     }
     if (character.scope === 'series' && !character.catalog_id) issues.push({ level: 'warning', path: `manga.characters[${index}].catalog_id`, message: 'シリーズ共通人物は保存時に安定IDが必要です' });
     const headCount = character.default_proportion?.head_count;
-    if (headCount !== undefined && (!Number.isFinite(headCount) || headCount < 1 || headCount > 12)) {
-      issues.push({ level: 'error', path: `manga.characters[${index}].default_proportion.head_count`, message: '基準頭身は1〜12の数値で指定してください' });
+    if (headCount !== undefined && (!Number.isFinite(headCount) || headCount < 1)) {
+      issues.push({ level: 'error', path: `manga.characters[${index}].default_proportion.head_count`, message: '基準頭身は1以上の数値で指定してください' });
     }
   });
   const seenMaterialKeys = new Set<string>();
@@ -704,6 +704,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
       (page.page_overlay.screen_text ?? []).forEach((screenText,index)=>{
         const screenTextPath=`${overlayPath}.screen_text[${index}]`;
         validateTextStyle(screenText,screenTextPath);
+        if(screenText.hidden!==undefined&&typeof screenText.hidden!=='boolean')issues.push({level:'error',path:`${screenTextPath}.hidden`,message:'hidden は真偽値で指定してください'});
         if(!screenText.text?.trim())issues.push({level:'error',path:`${screenTextPath}.text`,message:'通常文字の本文は必須です'});
         if(screenText.orientation&&!SCREEN_TEXT_ORIENTATIONS.includes(screenText.orientation))issues.push({level:'error',path:`${screenTextPath}.orientation`,message:'orientation は horizontal / vertical から選んでください'});
       });
@@ -768,6 +769,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
       (panel.screen_text ?? []).forEach((screenText, screenTextIndex) => {
         const screenTextPath = `${panelPath}.screen_text[${screenTextIndex}]`;
         validateTextStyle(screenText,screenTextPath);
+        if(screenText.hidden!==undefined&&typeof screenText.hidden!=='boolean')issues.push({level:'error',path:`${screenTextPath}.hidden`,message:'hidden は真偽値で指定してください'});
         if (!screenText.text?.trim()) issues.push({ level: 'error', path: `${screenTextPath}.text`, message: '画面内文字の本文は必須です' });
         if (screenText.orientation && !SCREEN_TEXT_ORIENTATIONS.includes(screenText.orientation)) issues.push({ level: 'error', path: `${screenTextPath}.orientation`, message: 'orientation は horizontal / vertical から選んでください' });
       });

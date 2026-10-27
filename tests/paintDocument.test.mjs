@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { addPaintFolder, applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
+import { insertGeneratedPaintImage, addPaintFolder, applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
 import { createFrameArtwork, imageAssetIds, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
@@ -425,4 +425,38 @@ test('character guides start as one raster layer and deletion survives reopen wi
   applyOwnerPaint(p,owner,{...createFrameArtwork(flat,owner.frame),paint:owner.paint});
   const reopened=paintScene(p,100,[flat]).owners[1];assert.equal(reopened.paint.layers.some(l=>l.guide),false);
   assert.deepEqual(p.figures[0].analogImport,source.analogImport);
+});
+
+
+test('generated image is inserted directly above its guide without replacing source ink or locks',()=>{
+ const guide={...newPaintLayer('あたり'),guide:true,locked:true,visible:false,folderId:'f',image:{assetId:'source',crop:{x:0,y:0,w:30,h:60},bbox:{x:2,y:3,w:30,h:60}}};
+ const ink={...newPaintLayer('線'),strokes:[{tool:'pen',color:'#123456',size:4,points:[{x:12,y:18,pressure:1,time:0}]}]};
+ const owner={key:'figure-0',kind:'figure',index:0,label:'人物',locked:true,frame:{x:10,y:20,w:50,h:100},paint:{version:1,width:100,height:200,dpi:100,guideInitialized:true,layers:[guide,ink],folders:[{id:'f',name:'あたり',position:0,locked:true,visible:true}]}};
+ const before=structuredClone(owner),asset={id:'generated',widthPx:100,heightPx:200};
+ const result=insertGeneratedPaintImage(owner,asset,'生成画像');
+ assert.deepEqual(owner,before);assert.deepEqual(result.owner.paint.layers.filter(layer=>layer.id!==result.layer.id),before.paint.layers);
+ assert.deepEqual(result.owner.paint.layers.map(layer=>layer.id),[guide.id,result.layer.id,ink.id]);
+ assert.equal(result.layer.folderId,'f');assert.equal(result.layer.locked,false);assert.equal(result.owner.locked,true);
+ assert.deepEqual(result.owner.paint.folders,before.paint.folders);
+ const world=(o,point)=>[o.frame.x+point.x/o.paint.width*o.frame.w,o.frame.y+point.y/o.paint.height*o.frame.h];
+ const expanded=insertGeneratedPaintImage(owner,asset,'広い生成画像',{x:0,y:0,w:100,h:150}).owner;
+ assert.deepEqual(world(expanded,expanded.paint.layers.find(layer=>layer.id===ink.id).strokes[0].points[0]),world(owner,ink.strokes[0].points[0]));
+ assert.deepEqual(paintReferenceBox(expanded.paint,expanded.frame),owner.frame);
+ assert.equal(expanded.paint.layers[0].image.assetId,'source');assert.deepEqual(expanded.paint.layers[0].image.crop,guide.image.crop);
+ assert.throws(()=>insertGeneratedPaintImage({...owner,paint:{...owner.paint,layers:Array.from({length:64},()=>newPaintLayer('保持'))}},asset,'上限'),/64レイヤー/);
+});
+
+
+test('moving layers preserves empty sibling folder order and same-folder drops go to its top',()=>{
+ const layer=id=>({...newPaintLayer(id),id}),source={version:1,width:100,height:100,dpi:100,layers:[layer('a'),layer('b')],folders:[{id:'f1',name:'F1',position:2},{id:'f2',name:'F2',position:2}]};
+ const order=paint=>paintLayerTree(paint).filter(e=>e.kind==='folder').map(e=>e.folder.id);
+ const first=movePaintLayer(source,'a',{kind:'folder',id:'f2',placement:'inside'});assert.deepEqual(order(first),['f1','f2']);
+ const second=movePaintLayer(first,'b',{kind:'folder',id:'f2',placement:'inside'});assert.deepEqual(order(second),['f1','f2']);assert.deepEqual(second.layers.map(l=>l.id),['a','b']);
+ const inside=movePaintLayer(second,'a',{kind:'folder',id:'f2',placement:'inside'});assert.deepEqual(order(inside),['f1','f2']);assert.deepEqual(inside.layers.map(l=>l.id),['b','a']);
+ assert.equal(movePaintLayer(inside,'a',{kind:'folder',id:'f2',placement:'inside'}),inside,'a repeated top drop is a no-op');
+ const across=movePaintLayer(inside,'a',{kind:'folder',id:'f1',placement:'inside'});assert.deepEqual(order(across),['f1','f2']);assert.deepEqual(across.layers.map(l=>[l.id,l.folderId]),[['a','f1'],['b','f2']]);
+ const moved=movePaintFolder(across,'f2',{kind:'folder',id:'f1',placement:'below'});assert.deepEqual(order(moved),['f2','f1']);assert.deepEqual(moved.layers.map(l=>l.id),['b','a']);
+ assert.equal(movePaintFolder(moved,'f1',{kind:'folder',id:'f1',placement:'above'}),moved);
+ assert.equal(movePaintFolder(moved,'f1',{kind:'folder',id:'f2',placement:'inside'}),moved,'folders do not nest');
+ validatePaintDocument(moved,[]);
 });

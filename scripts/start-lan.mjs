@@ -15,7 +15,7 @@ for (let i = 0; i < process.argv.slice(2).length; i++) {
   const args = process.argv.slice(2), arg = args[i];
   if (arg === '--host') host = args[++i];
   else if (arg === '--port') port = Number(args[++i]);
-  else if (arg === '--help') { console.log('npm run lan -- [--host MacのLANアドレス] [--port 4322]\n作品は編集PCへ保存。接続用CA証明書は起動時に表示します。\n接続コードは不要です。自宅のLAN内から直接開けます。'); process.exit(0); }
+  else if (arg === '--help') { console.log('別のPCからにゃむるを使う\n\n起動: npm run lan\n手順: README.md の「別のPCから使う」\n接続コードは不要です。自宅のLAN内から直接開けます。\n\n必要なときだけ指定してください。\n  --host <アドレス>  接続に使うMacのアドレスを指定する\n  --port <番号>      接続に使うポート番号を指定する（通常は4322）'); process.exit(0); }
   else throw new Error(`未対応の引数です: ${arg}`);
 }
 if (!host || !['127.0.0.1', '0.0.0.0', ...addresses].includes(host)) throw new Error('MacのLANアドレスを --host で指定してください');
@@ -34,6 +34,7 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGQUIT']) process.on(sign
 process.once('exit', release);
 stopWatching = watchInitialParent(() => { void stop(); });
 try {
+  console.log('にゃむるを準備しています…');
   const names = [...new Set(['127.0.0.1', ...addresses, ...lanNames()])];
   let tls;
   if (process.env.NYAMURU_LAN_CERT || process.env.NYAMURU_LAN_KEY) {
@@ -46,10 +47,11 @@ try {
   process.env.NYAMURU_BRIDGE_RUN_STATE = resolve(root, '.astro/nyamuru-lan-bridge-process.json');
   const bridge = await selectLocalBridgeTarget({ preferredPort: Number(process.env.NYAMURU_LAN_BRIDGE_PORT || 8877), maxFallbacks: 20 });
   const output = resolve(root, '.astro/lan-dist');
-  await build({ root, outDir: output, cacheDir: resolve(root, '.astro/lan-cache') });
+  await build({ root, outDir: output, cacheDir: resolve(root, '.astro/lan-cache'), logLevel: 'error' });
   supervisor = await startLocalBridgeSupervisor({ repoRoot: root, port: Number(process.env.NYAMURU_LAN_SUPERVISOR_PORT || 8876), bridgePort: bridge.port, bridgeUrl: bridge.url });
   gateway = await startLanServer({ host, port, ...tls, root: output, bridgeUrl: bridge.url, supervisorUrl: supervisor.url,
     allowedHosts: names.map(name => `${name}:${port}`) });
-  console.log(`\nNyamuru LAN 起動完了 (PID ${process.pid})\n編集PCで開く: https://${host === '0.0.0.0' ? addresses[0] : host}:${port}/\n接続コードは不要です。自宅のLAN内から直接開けます。\n作品の保存先: 編集しているPC\nLLM: Mac内の既存サーバー\n終了: Ctrl+C`);
-  if (tls.caPath) console.log(`\n初回の編集PCには次のCA証明書を登録してください:\n${tls.caPath}\nSHA-256: ${tls.fingerprint}\n手順: docs/2026-10-20-lan-editing.md\n`);
+  console.log('\nにゃむるを起動しました。この画面は開いたままにしてください。\n手順: README.md の「別のPCから使う」');
+  if (tls.caPath) console.log(`\n初めて使うPCは、先に手順に沿って証明書を登録してください。\n編集PCへ渡すファイル: ${tls.caPath}`);
+  console.log(`\n編集PCのブラウザーで開いてください。\n   https://${host === '0.0.0.0' ? addresses[0] : host}:${port}/\n\n接続コードは不要です。自宅のLAN内から直接開けます。\n作品は編集PCに保存します。\n終了するときは作品を保存し、この画面で Ctrl+C を押してください。\n`);
 } catch (error) { console.error(`LAN起動に失敗しました: ${error.message}`); await stop(1); }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {newPaintLayer} from '../src/lib/paintDocument.ts';
-import {paintLayerPatchAllowed,paintLayerEditable,paintContentsLocked,artworkLocked,paintOwnerLocked,paintOwnerPlacementLocked} from '../src/lib/paintLock.ts';
+import {paintLayerVisible,paintLayerPatchAllowed,paintLayerEditable,paintContentsLocked,artworkLocked,paintOwnerLocked,paintOwnerPlacementLocked} from '../src/lib/paintLock.ts';
 const layer=(locked=false)=>({...newPaintLayer(),locked,strokes:[{tool:'pen',points:[{x:1,y:1}],size:2,color:'#000'}]});
 const owner=(layers)=>({key:'figure-0',kind:'figure',paint:{layers},figure:{}});
 test('locked layers reject content and property changes, while allowing visibility and unlocking',()=>{
@@ -33,4 +33,13 @@ test('blank, hidden and zero-opacity children do not make wholly locked artwork 
  assert.equal(paintContentsLocked({layers:[source,blank,hidden,zero]}),true);
  assert.equal(artworkLocked({paint:{layers:[source,blank]}}),true);
  assert.equal(paintContentsLocked({layers:[blank]}),false);assert.equal(artworkLocked(undefined),false);
+});
+
+
+test('user folder eyes and locks apply without overwriting child flags',()=>{
+ const child=layer(),o=owner([child]);child.folderId='folder';o.paint.folders=[{id:'folder',name:'フォルダー',position:0,visible:false,locked:true}];
+ assert.equal(paintLayerVisible(o.paint,child),false);assert.equal(child.visible,true);assert.equal(paintLayerEditable(o,child),false);
+ assert.equal(paintLayerPatchAllowed(o,child,{locked:false}),false);assert.equal(paintLayerPatchAllowed(o,child,{visible:false}),true);
+ o.paint.folders[0].visible=true;assert.equal(paintLayerVisible(o.paint,child),true);assert.equal(paintContentsLocked(o.paint),true);
+ o.paint.folders[0].locked=false;assert.equal(paintLayerEditable(o,child),true);assert.equal(child.locked,false);
 });

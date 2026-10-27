@@ -1,3 +1,4 @@
+import {paintLayerVisible} from './paintLock';
 import type { BBox, ImageAsset, Panel } from '../types.ts';
 import { panelBounds } from './canvasGeometry.ts';
 import { paintScene, paintReferenceBox, paintGuideView, figurePaintVisible, type PaintOwner } from './paintDocument.ts';
@@ -19,7 +20,7 @@ export interface HumanPosePanelContext {
 export async function humanPoseOwnerImage(owner: PaintOwner, assets: ImageAsset[], guide?: boolean, integratedGuide?: boolean): Promise<Blob> {
   const paint = paintGuideView(owner, guide, integratedGuide);
   const preparedAssets = [...assets], pending = new Map<string, Blob>();
-  paint.layers = paint.layers.filter(layer => layer.visible && layer.opacity > 0);
+  paint.layers = paint.layers.filter(layer => paintLayerVisible(paint,layer) && layer.opacity > 0);
   for (let index = 0; index < paint.layers.length; index++) {
     const layer = paint.layers[index];
     if (!layer.guide || layer.image) continue;

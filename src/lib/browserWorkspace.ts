@@ -39,29 +39,13 @@ const cancelled = (error: unknown) => error instanceof DOMException && error.nam
 const missing = (error: unknown) => error instanceof DOMException && error.name === 'NotFoundError';
 const displayDirectory = (record: FolderRecord) => `${record.id}/${record.handle.name}`;
 
-function folderDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('nyamuru-browser-folders', 1);
-    request.onupgradeneeded = () => request.result.createObjectStore('folders', { keyPath: 'id' });
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
+const folders = new Map<string, FolderRecord>();
 const folderStorage: BrowserFolderStorage = {
   async all() {
-    const db = await folderDatabase();
-    try { return await new Promise<FolderRecord[]>((resolve, reject) => {
-      const request = db.transaction('folders').objectStore('folders').getAll();
-      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
-    }); } finally { db.close(); }
+    return [...folders.values()];
   },
   async put(record) {
-    const db = await folderDatabase();
-    try { await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('folders', 'readwrite');
-      tx.objectStore('folders').put(record);
-      tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error);
-    }); } finally { db.close(); }
+    folders.set(record.id, record);
   },
 };
 
@@ -105,7 +89,7 @@ export async function browserReferenceCandidates(directory: BrowserDirectoryHand
   return found.sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.relativePath.localeCompare(b.relativePath, 'ja')).slice(0, 20);
 }
 
-/** FileSystem handles stay in this browser. They are never sent to the AI server. */
+/** FileSystem handles stay in page memory until it closes, never in browser storage. */
 export class BrowserWorkspaces {
   private storage: BrowserFolderStorage;
   private records = new Map<string, FolderRecord>();

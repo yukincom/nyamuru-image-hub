@@ -352,3 +352,10 @@ test('Qwen work history allows other owners only inside the selected work',async
  item={...item,document_key:'another-work'};
  await assert.rejects(listQwenJobs(plan,'work'),/対象/);
 });
+
+
+test('an explicitly chosen reference layer renders even when its parent folder is hidden',()=>{
+ const owner={paint:{width:10,height:10,layers:[{id:'ref',name:'参照',folderId:'hidden',visible:true,opacity:1,strokes:[{}]}],folders:[{id:'hidden',name:'非表示',position:0,visible:false}]}};
+ const before=structuredClone(owner),paint=qwenLayerPaint(owner,'ref');
+ assert.equal(paint.layers[0].visible,true);assert.equal(paint.layers[0].folderId,undefined);assert.equal(paint.folders,undefined);assert.deepEqual(owner,before);
+});

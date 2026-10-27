@@ -14,6 +14,7 @@ function unlockPaintChildren(artwork:ImageContent|undefined):void {
   if(!artwork)return;
   artwork.locked=false;
   for(const layer of artwork.paint?.layers??[])layer.locked=false;
+  for(const folder of artwork.paint?.folders??[])folder.locked=false;
 }
 
 /** Unlocking the panel folder also unlocks every descendant; child locks never affect the parent. */
@@ -26,13 +27,13 @@ export function unlockPanelDescendants(panel:Panel):void {
   }
   for(const image of [...(panel.background_images??[]),...(panel.images??[])])unlockPaintChildren(image);
   for(const figure of panel.figures??[]){figure.locked=undefined;unlockPaintChildren(figure.artwork);}
-  for(const bubble of panel.bubbles??[]){bubble.locked=undefined;unlockPaintChildren(bubble.paint_overlay);}
+  for(const bubble of panel.bubbles??[]){bubble.locked=undefined;bubble.nativeLocked=undefined;unlockPaintChildren(bubble.paint_overlay);}
 }
 
 /** The placement lock also honors owner locks saved by older artwork documents. */
 export function ownerItemLocked(item:Figure|Bubble):boolean {
   if(item.locked===true)return true;
-  return 'name' in item?false:(item as Bubble).paint_overlay?.locked===true;
+  return 'name' in item?false:((item as Bubble).nativeLocked===true||(item as Bubble).paint_overlay?.locked===true);
 }
 
 /** Inspector drafts may reorder siblings, but must retain every individually locked item byte-for-byte. */
@@ -82,9 +83,17 @@ export function panelFrameSegmentsOnInnerFrame(panel:Panel,inner:BBox,epsilon=.0
   ].filter((entry):entry is PanelFrameSegment=>Boolean(entry)));
 }
 
-export function toggleBubbleVisibility(document:MangaDocument,target:BubbleTextTarget):boolean {
+export function toggleBubbleVisibility(document:MangaDocument,target:BubbleTextTarget,group=false):boolean {
   const bubble=bubbleAt(document,target);if(!bubble)return false;
-  bubble.hidden=bubbleVisible(bubble);return true;
+  const page=document.manga.pages[target.pageIndex],images=target.overlay?page.images:page.panels[target.panelIndex]?.images;
+  const original=images?.find(image=>image.id===bubble.analogTextImport?.originalImageId);
+  const visible=group?(bubbleVisible(bubble)||Boolean(original&&!original.hidden&&(!original.paint||original.paint.layers.some(layer=>layer.visible)))):bubbleVisible(bubble);
+  bubble.hidden=visible;
+  if(group){
+    if(bubble.paint_overlay){bubble.paint_overlay.hidden=false;for(const layer of bubble.paint_overlay.paint?.layers??[])layer.visible=!visible;}
+    if(original){original.hidden=original.paint?false:visible;for(const layer of original.paint?.layers??[])layer.visible=!visible;}
+  }
+  return true;
 }
 
 export function normalizePanelLayer(value:unknown):Panel['layer'] {
@@ -97,10 +106,10 @@ export function bubbleAt(document:MangaDocument,target:BubbleTextTarget) {
   return (target.overlay?page?.page_overlay:page?.panels[target.panelIndex])?.bubbles?.[target.bubbleIndex];
 }
 /** Change only the addressed text; retain speaker, OCR source and reading order. */
-export function editBubbleText(document:MangaDocument,target:BubbleTextTarget,text:string,edit?:import('./textStyle.ts').TextSelection):boolean {
+export function editBubbleText(document:MangaDocument,target:BubbleTextTarget,text:string,edit?:import('./textStyle.ts').TextSelection,origin:'manual'|'agent'='manual'):boolean {
   const bubble=bubbleAt(document,target);
   const panel=!target.overlay?document.manga.pages[target.pageIndex].panels[target.panelIndex]:undefined;
-  if(!bubble || bubble.locked===true || !bubbleVisible(bubble) || (!target.overlay && (!panel||!panelVisible(panel)||panelLocked(panel))))return false;
+  if(!bubble || origin==='manual'&&ownerItemLocked(bubble) || !bubbleVisible(bubble) || (!target.overlay && (!panel||!panelVisible(panel)||origin==='manual'&&panelLocked(panel))))return false;
   if(bubble.text===text)return false;
   rebaseTextWeights(bubble,text,edit);
   if(document.manga.scenario)useScenarioBubbleText(bubble,text);else bubble.text=text;

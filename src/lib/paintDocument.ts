@@ -5,7 +5,7 @@ import { transformVector } from './vectorGeometry.ts';
 import type { BBox, Bubble, CanvasElementSelection, Figure, ImageAsset, MangaPage, PageOverlay, PaintColorMode, PaintDocument, PaintFolder, PaintLayer, Panel, PlacedImage } from '../types.ts';
 import { fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { artworkPixelSize } from './artworkClipboard.ts';
-import { paintLayerHasContent } from './paintLock.ts';
+import { paintLayerHasContent, paintLayerVisible } from './paintLock.ts';
 import { figureDisplayLabel } from './displayLabels.ts';
 import {paintStrokeContentBounds} from './paintStroke.ts';
 
@@ -65,37 +65,62 @@ export function addPaintFolder(paint:PaintDocument):{paint:PaintDocument;folder:
   return {folder,paint:{...paint,folders:[...folders,folder]}};
 }
 
-/** Move one layer to the exact visible drop target, including into or out of a user folder. */
-export function movePaintLayer(paint:PaintDocument,id:string,target:PaintLayerDropTarget):PaintDocument{
-  const source=paint.layers.find(layer=>layer.id===id);if(!source)return paint;
-  const before=paint.layers,from=before.indexOf(source),layers=before.filter(layer=>layer.id!==id),folders=(paint.folders??[]).map(folder=>({...folder}));
-  const sourceFolder=source.folderId?folders.find(folder=>folder.id===source.folderId):undefined;
-  let folderId:string|undefined,index:number;
-  if(target.kind==='root')index=target.edge==='top'?layers.length:0;
-  else if(target.kind==='layer'){
-    const at=layers.findIndex(layer=>layer.id===target.id);if(at<0||target.id===id)return paint;
-    folderId=layers[at].folderId;index=at+(target.after?0:1);
-  }else{
-    const folder=folders.find(item=>item.id===target.id);if(!folder)return paint;
-    const children=layers.map((layer,at)=>layer.folderId===folder.id?at:-1).filter(at=>at>=0);
-    const low=children.length?Math.min(...children):Math.max(0,Math.min(layers.length,folder.position));
-    const high=children.length?Math.max(...children)+1:low;
-    if(target.placement==='inside'){folderId=folder.id;index=high;}
-    else {folderId=undefined;index=target.placement==='above'?high:low;}
+/** Encode the visible sibling order once; empty folders keep their own place. */
+function withPaintLayerTree(paint:PaintDocument,entries:PaintLayerTreeEntry[]):PaintDocument {
+  const layers:PaintLayer[]=[],folders:PaintFolder[]=[];
+  for(const entry of entries){
+    if(entry.kind==='layer'){layers.push(entry.layer.folderId?{...entry.layer,folderId:undefined}:entry.layer);continue;}
+    folders.push({...entry.folder,position:layers.length});
+    layers.push(...entry.layers.map(layer=>layer.folderId===entry.folder.id?layer:{...layer,folderId:entry.folder.id}));
   }
-  const moved={...source,...(folderId?{folderId}:{folderId:undefined})};layers.splice(index,0,moved);
-  for(const folder of folders){
-    const positions=layers.map((layer,at)=>layer.folderId===folder.id?at:-1).filter(at=>at>=0);
-    if(positions.length)folder.position=Math.min(...positions);
-    else if(folder===sourceFolder)folder.position=Math.max(0,Math.min(layers.length,from));
-    else folder.position=Math.max(0,Math.min(layers.length,folder.position));
-  }
+  if(layers.length===paint.layers.length&&layers.every((layer,index)=>layer===paint.layers[index])
+    &&JSON.stringify(folders)===JSON.stringify(paint.folders??[]))return paint;
   return {...paint,layers,folders};
 }
+function editableLayerTree(paint:PaintDocument):PaintLayerTreeEntry[] {
+  return paintLayerTree(paint).map(entry=>entry.kind==='folder'?{...entry,layers:[...entry.layers]}:entry);
+}
 
-export function removePaintFolder(paint:PaintDocument,id:string):PaintDocument{
-  if(!(paint.folders??[]).some(folder=>folder.id===id))return paint;
-  return {...paint,folders:paint.folders!.filter(folder=>folder.id!==id),layers:paint.layers.map(layer=>layer.folderId===id?{...layer,folderId:undefined}:layer)};
+/** Move one layer through the existing tree, then preserve that exact folder order. */
+export function movePaintLayer(paint:PaintDocument,id:string,target:PaintLayerDropTarget):PaintDocument {
+  const source=paint.layers.find(layer=>layer.id===id);if(!source||target.kind==='layer'&&target.id===id)return paint;
+  const entries=editableLayerTree(paint).filter(entry=>entry.kind!=='layer'||entry.layer.id!==id);
+  for(const entry of entries)if(entry.kind==='folder')entry.layers=entry.layers.filter(layer=>layer.id!==id);
+  const rootLayer:PaintLayerTreeEntry={kind:'layer',layer:source.folderId?{...source,folderId:undefined}:source};
+  if(target.kind==='root')entries.splice(target.edge==='top'?entries.length:0,0,rootLayer);
+  else if(target.kind==='folder'){
+    const at=entries.findIndex(entry=>entry.kind==='folder'&&entry.folder.id===target.id),entry=entries[at];
+    if(!entry||entry.kind!=='folder')return paint;
+    if(target.placement==='inside')entry.layers.push(source.folderId===entry.folder.id?source:{...source,folderId:entry.folder.id});
+    else entries.splice(at+(target.placement==='above'?1:0),0,rootLayer);
+  }else{
+    const at=entries.findIndex(entry=>entry.kind==='layer'?entry.layer.id===target.id:entry.layers.some(layer=>layer.id===target.id));
+    const entry=entries[at];if(!entry)return paint;
+    if(entry.kind==='folder'){
+      const index=entry.layers.findIndex(layer=>layer.id===target.id);
+      entry.layers.splice(index+(target.after?0:1),0,source.folderId===entry.folder.id?source:{...source,folderId:entry.folder.id});
+    }else entries.splice(at+(target.after?0:1),0,rootLayer);
+  }
+  return withPaintLayerTree(paint,entries);
+}
+
+/** Folders move as one sibling with all their layers; user folders do not nest. */
+export function movePaintFolder(paint:PaintDocument,id:string,target:PaintLayerDropTarget):PaintDocument {
+  const entries=editableLayerTree(paint),from=entries.findIndex(entry=>entry.kind==='folder'&&entry.folder.id===id);
+  if(from<0||target.kind==='folder'&&(target.id===id||target.placement==='inside'))return paint;
+  const source=entries[from];entries.splice(from,1);
+  let at=target.kind==='root'?(target.edge==='top'?entries.length:0):entries.findIndex(entry=>target.kind==='folder'
+    ?entry.kind==='folder'&&entry.folder.id===target.id
+    :entry.kind==='layer'?entry.layer.id===target.id:entry.layers.some(layer=>layer.id===target.id));
+  if(at<0)return paint;
+  if(target.kind==='folder'&&target.placement==='above'||target.kind==='layer'&&!target.after)at++;
+  entries.splice(at,0,source);return withPaintLayerTree(paint,entries);
+}
+export function removePaintFolder(paint:PaintDocument,id:string):PaintDocument {
+  const entries=editableLayerTree(paint),at=entries.findIndex(entry=>entry.kind==='folder'&&entry.folder.id===id),entry=entries[at];
+  if(!entry||entry.kind!=='folder')return paint;
+  entries.splice(at,1,...entry.layers.map(layer=>({kind:'layer' as const,layer:{...layer,folderId:undefined}})));
+  return withPaintLayerTree(paint,entries);
 }
 export function paintAssetIds(paint?: PaintDocument): string[] {
   return paint?.layers.flatMap(layer => layer.image ? [layer.image.assetId] : []) ?? [];
@@ -113,6 +138,7 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
   const folderIds=new Set<string>();
   for(const folder of value.folders??[]){
     if(!folder||typeof folder.id!=='string'||!folder.id||folderIds.has(folder.id)||typeof folder.name!=='string'||!folder.name||!Number.isSafeInteger(folder.position)||folder.position<0||folder.position>value.layers.length)fail();
+    if(folder.visible!==undefined&&typeof folder.visible!=='boolean'||folder.locked!==undefined&&typeof folder.locked!=='boolean')fail();
     folderIds.add(folder.id);
   }
   const ids = new Set<string>(); let points = 0;
@@ -239,6 +265,8 @@ export interface PaintOwner {
   figure?: Figure;
   bubble?: Bubble;
   original?: PlacedImage;
+  /** Derived from the bubble's originalImageId; never another persisted folder. */
+  parentKey?: string;
   description?: string;
   backgroundLevel?: Panel['bg'];
   /** This folder's own lock; its right-side lock remains available for unlocking. */
@@ -305,6 +333,7 @@ export function applyPaintOwnerLock(target:Panel|PageOverlay|MangaPage,owner:Pai
   const item=owner.kind==='figure'?collection.figures?.[owner.index]:collection.bubbles?.[owner.index];
   if(!item)return;
   item.locked=locked||undefined;
+  if(owner.kind==='bubble')(item as Bubble).nativeLocked=owner.bubble?.nativeLocked||undefined;
   if(owner.kind==='figure'&&(item as Figure).artwork)(item as Figure).artwork!.locked=false;
   if(owner.kind==='bubble'&&(item as Bubble).paint_overlay)(item as Bubble).paint_overlay!.locked=false;
 }
@@ -327,7 +356,7 @@ export function figurePaintVisible(figure: Figure | undefined, guide?: boolean):
   if (!paint?.guideInitialized && guide === true) return true;
   if (!artwork) return guide !== false;
   if (artwork.hidden || artwork.opacity <= 0) return false;
-  return !paint || paint.layers.some(layer => layer.visible && layer.opacity > 0 && paintLayerHasContent(layer));
+  return !paint || paint.layers.some(layer => paintLayerVisible(paint,layer) && layer.opacity > 0 && paintLayerHasContent(layer));
 }
 
 /** Each object is a separate group; source data is referenced, never replaced by strokes. */
@@ -367,13 +396,14 @@ export function paintScene(panel: Panel, dpi: number, assets: ImageAsset[],color
   (panel.images??[]).forEach((image,index)=>{
     if(!image.bubbleOriginal)return;
     const paint=paintForFrame(image.bbox,dpi,[image],assets,colorMode,false);
-    owners.push({key:`original-${image.id}`,kind:'original',index,label:image.bubbleOriginal.name,
-      frame:{...image.bbox},original:image,locked:image.locked,inheritedLocked,paint:{...paint,guideInitialized:true}});
+    const parent=panel.bubbles.findIndex(bubble=>bubble.analogTextImport?.originalImageId===image.id);
+    owners.push({key:`original-${image.id}`,kind:'original',index,label:image.bubbleOriginal.name,...(parent>=0?{parentKey:`bubble-${parent}`} : {}),
+      frame:{...image.bbox},original:image,locked:image.locked,inheritedLocked:inheritedLocked||(parent>=0&&panel.bubbles[parent].locked===true),paint:{...paint,guideInitialized:true}});
   });
   const artKeys=panelArtKeys(panel);
   // Page foreground sits over page-direct paint; panel-direct paint sits over panel artwork.
   const baseKeys=directScope==='page'?['background','page',...artKeys.filter(key=>key!=='background')]:[...artKeys,...(directScope?[directScope]:[])];
-  const keys=[...baseKeys,...owners.filter(o=>o.kind==='bubble'||o.kind==='original').map(o=>o.key)];
+  const keys=[...baseKeys,...owners.filter(o=>o.kind==='bubble').flatMap(o=>[o.key,...owners.filter(child=>child.parentKey===o.key).map(child=>child.key)]),...owners.filter(o=>o.kind==='original'&&!o.parentKey).map(o=>o.key)];
   return {frame,owners:keys.map(key=>owners.find(o=>o.key===key)!),colorMode};
 }
 
@@ -428,6 +458,21 @@ export function expandPaintOwnerToBounds(owner:PaintOwner,bounds:BBox|undefined)
   const grow=(amount:number)=>Math.max(0,Math.ceil(amount-1e-7));
   const padding={left:grow(-bounds.x),top:grow(-bounds.y),right:grow(bounds.x+bounds.w-owner.paint.width),bottom:grow(bounds.y+bounds.h-owner.paint.height)};
   return Object.values(padding).some(Boolean)?expandPaintOwner(owner,padding):owner;
+}
+
+/** Add generated pixels above the source guide; retain the source, edits and their locks. */
+export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name:string,frame: BBox=owner.frame):{owner:PaintOwner;layer:PaintLayer} {
+  if(owner.paint.layers.length>=64)throw new Error('1つのグループには64レイヤーまで追加できます');
+  const px=owner.paint.width/owner.frame.w,py=owner.paint.height/owner.frame.h;
+  const box={x:(frame.x-owner.frame.x)*px,y:(frame.y-owner.frame.y)*py,w:frame.w*px,h:frame.h*py};
+  const expanded=expandPaintOwnerToBounds(owner,box),paint=expanded.paint;
+  const target={x:(frame.x-expanded.frame.x)*px,y:(frame.y-expanded.frame.y)*py,w:box.w,h:box.h};
+  const scale=Math.min(target.w/asset.widthPx,target.h/asset.heightPx),w=asset.widthPx*scale,h=asset.heightPx*scale;
+  const layer:PaintLayer={...newPaintLayer(name),image:{assetId:asset.id,crop:{x:0,y:0,w:asset.widthPx,h:asset.heightPx},bbox:{x:target.x+(target.w-w)/2,y:target.y+(target.h-h)/2,w,h}}};
+  const guide=paint.layers.find(item=>item.guide)??paint.layers[0];
+  const added={...paint,layers:[...paint.layers,layer]};
+  const next=guide?movePaintLayer(added,layer.id,{kind:'layer',id:guide.id,after:false}):added;
+  return {owner:{...expanded,paint:next},layer:next.layers.find(item=>item.id===layer.id)!};
 }
 
 /** Grow the backing raster only when editable content reaches beyond it.
@@ -510,8 +555,12 @@ export function applyOwnerPaint(panel: {figures?:Figure[];bubbles?:Bubble[];back
 }
 
 /** Removing the final editable layer restores the native owner instead of saving a blank PNG. */
-export function clearOwnerPaint(panel: {figures?:Figure[];bubbles?:Bubble[];background_images?:PlacedImage[];images?:PlacedImage[]}, owner: PaintOwner): void {
-  if(owner.kind==='original'){panel.images=panel.images?.filter(image=>image.id!==owner.original?.id);return;}
+export function clearOwnerPaint(panel: {figures?:Figure[];bubbles?:Bubble[];background_images?:PlacedImage[];images?:PlacedImage[];page_overlay?:PageOverlay}, owner: PaintOwner): void {
+  if(owner.kind==='original'){
+    panel.images=panel.images?.filter(image=>image.id!==owner.original?.id);
+    for(const bubble of panel.bubbles??panel.page_overlay?.bubbles??[])if(bubble.analogTextImport?.originalImageId===owner.original?.id)bubble.analogTextImport!.originalImageId=null;
+    return;
+  }
   if(owner.kind==='background'){panel.background_images=[];return;}
   if(owner.kind==='panel'||owner.kind==='page'){panel.images=(panel.images??[]).filter(item=>item.paintScope!==owner.kind);return;}
   if(owner.kind==='figure'){

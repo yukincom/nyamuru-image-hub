@@ -1,6 +1,6 @@
 import type { BBox, Bubble, MangaDocument, ScreenText, TextStyle } from '../types.ts';
 import { clamp, fallbackBox, panelBounds } from './canvasGeometry.ts';
-import { editBubbleText, panelLocked, panelVisible } from './panelLayers.ts';
+import { ownerItemLocked, editBubbleText, panelLocked, panelVisible } from './panelLayers.ts';
 import { BUBBLE_MATERIALS, replaceBubbleMaterial } from './bubblePresetData.ts';
 import { removeBubbleAt } from './bubbleConnections.ts';
 import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
@@ -37,23 +37,28 @@ export function canvasTextAt(document:MangaDocument,t:CanvasTextTarget){
   if(t.kind==='screen_text')return (t.overlay?page?.page_overlay:page?.panels[t.panelIndex])?.screen_text?.[t.index];
   return (t.overlay?page?.page_overlay:page?.panels[t.panelIndex])?.bubbles?.[t.index];
 }
-export function editCanvasText(document:MangaDocument,t:CanvasTextTarget,text:string,edit?:TextSelection){
-  if(!canvasTextEditable(document,t))return false;
+export function editCanvasText(document:MangaDocument,t:CanvasTextTarget,text:string,edit?:TextSelection,origin:'manual'|'agent'='manual'){
+  if(!canvasTextEditable(document,t,origin))return false;
   if(t.kind==='bubble'){
-    const changed=editBubbleText(document,{...t,bubbleIndex:t.index},text,edit);
-    if(changed)fitCanvasBubbleToText(document,t);
+    const changed=editBubbleText(document,{...t,bubbleIndex:t.index},text,edit,origin);
+    if(changed)fitCanvasBubbleToText(document,t,origin);
     return changed;
   }
   const panel=document.manga.pages[t.pageIndex]?.panels[t.panelIndex],item=canvasTextAt(document,t) as ScreenText|undefined;
   if((!t.overlay&&(!panel||!panelVisible(panel)))||!item||item.text===text)return false;
-  const origin=screenTextStart(item);
-  rebaseTextWeights(item,text,edit);item.text=text;fitCanvasScreenTextToText(document,t,origin);return true;
+  const start=screenTextStart(item);
+  rebaseTextWeights(item,text,edit);item.text=text;fitCanvasScreenTextToText(document,t,start,origin);return true;
 }
-export function canvasTextEditable(document:MangaDocument,t:CanvasTextTarget){
+export function canvasTextEditable(document:MangaDocument,t:CanvasTextTarget,origin:'manual'|'agent'='manual'){
   const item=canvasTextAt(document,t);
   const panel=!t.overlay?document.manga.pages[t.pageIndex]?.panels[t.panelIndex]:undefined;
-  if(!item||(!t.overlay&&(!panel||!panelVisible(panel)||panelLocked(panel))))return false;
-  return t.kind!=='bubble'||!('hidden' in item&&item.hidden===true)&&!('locked' in item&&item.locked===true)&&!('paint_overlay' in item&&item.paint_overlay?.locked===true);
+  if(!item||item.hidden===true||(!t.overlay&&(!panel||!panelVisible(panel)||origin==='manual'&&panelLocked(panel))))return false;
+  return t.kind!=='bubble'||origin==='agent'||!ownerItemLocked(item as Bubble);
+}
+/** Visibility is a saved document edit; it never changes folder expansion or text geometry. */
+export function toggleCanvasTextVisibility(document:MangaDocument,t:CanvasTextTarget):boolean {
+  const item=canvasTextAt(document,t);if(!item)return false;
+  item.hidden=item.hidden!==true;return true;
 }
 /** Return the same document on a no-op; clone the work only after a real edit. */
 export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection):MangaDocument{
@@ -117,11 +122,11 @@ export function screenTextMinimumSize(item:Pick<ScreenText,'text'|'text_style'|'
     : {w:longest*fontMm+safety,h:lineCount*lineAdvance+safety};
 }
 
-export function fitCanvasScreenTextToText(document:MangaDocument,target:CanvasTextTarget,origin?:{x:number;y:number}):boolean {
+export function fitCanvasScreenTextToText(document:MangaDocument,target:CanvasTextTarget,origin?:{x:number;y:number},operation:'manual'|'agent'='manual'):boolean {
   if(target.kind!=='screen_text')return false;
   const page=document.manga.pages[target.pageIndex],item=canvasTextAt(document,target) as ScreenText|undefined;
   const panel=!target.overlay?page?.panels[target.panelIndex]:undefined;
-  if(!page||!item||(!target.overlay&&(!panel||!panelVisible(panel)||panelLocked(panel))))return false;
+  if(!page||!item||item.hidden===true||(!target.overlay&&(!panel||!panelVisible(panel)||operation==='manual'&&panelLocked(panel))))return false;
   const source=item.bbox??(target.overlay?overlayTextFallbackBox(page.canvas,target.index):fallbackBox(panel!,'screen_text',target.index));
   const start=origin??screenTextStart(item,source)!;
   const bounds=target.overlay?{x:0,y:0,w:page.canvas.w,h:page.canvas.h}:panelBounds(panel!);
@@ -152,8 +157,8 @@ export function addCanvasTextAt(document:MangaDocument,pageIndex:number,panelInd
 }
 
 export function removeCanvasText(document:MangaDocument,target:CanvasTextTarget):boolean {
-  if(!canvasTextEditable(document,target))return false;
   const page=document.manga.pages[target.pageIndex];
+  if(target.kind==='bubble'?!canvasTextEditable(document,target):!target.overlay&&(!page?.panels[target.panelIndex]||!panelVisible(page.panels[target.panelIndex])||panelLocked(page.panels[target.panelIndex])))return false;
   const owner=target.overlay?page?.page_overlay:page?.panels[target.panelIndex];
   const items=target.kind==='bubble'?owner?.bubbles:owner?.screen_text;
   if(!items||target.index<0||target.index>=items.length)return false;
@@ -196,9 +201,9 @@ function bubbleFitBounds(document:MangaDocument,target:CanvasTextTarget):BBox|nu
   const panel=page.panels[target.panelIndex];if(!panel)return null;
   return panelBounds(panel);
 }
-export function fitCanvasBubbleToText(document:MangaDocument,target:CanvasTextTarget):boolean {
+export function fitCanvasBubbleToText(document:MangaDocument,target:CanvasTextTarget,origin:'manual'|'agent'='manual'):boolean {
   if(target.kind!=='bubble')return false;
-  if(!canvasTextEditable(document,target))return false;
+  if(!canvasTextEditable(document,target,origin))return false;
   const page=document.manga.pages[target.pageIndex],bubble=canvasTextAt(document,target) as Bubble|undefined;
   const bounds=bubble&&bubbleFitBounds(document,target);
   if(!page||!bubble||!bounds||!bubble.text.trim()||bubble.hidden===true||bubble.paint_overlay)return false;
@@ -253,6 +258,7 @@ export function screenTextCoveredByBubble(document:MangaDocument,bubbleTarget:Ca
   if(!page||!owner||!bubble||!box||bubble.text.trim()||bubble.analogTextImport||bubble.paint_overlay)return null;
   let best:{index:number;area:number}|undefined;
   for(const [index,text] of (owner.screen_text??[]).entries()){
+    if(text.hidden===true)continue;
     const b=text.bbox;if(!b)continue;const cx=b.x+b.w/2,cy=b.y+b.h/2;
     if(cx<box.x||cx>box.x+box.w||cy<box.y||cy>box.y+box.h)continue;
     const area=Math.max(0,Math.min(box.x+box.w,b.x+b.w)-Math.max(box.x,b.x))*Math.max(0,Math.min(box.y+box.h,b.y+b.h)-Math.max(box.y,b.y));

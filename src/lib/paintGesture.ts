@@ -1,6 +1,6 @@
 import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
 import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newPaintLayer,type PaintOwner,type PaintScene} from './paintDocument.ts';
-import {paintOwnerLocked} from './paintLock.ts';
+import {paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
 import {paintStrokeBounds,paintStrokeContentBounds,type PaintSmoother} from './paintStroke.ts';
 export {paintStrokeBounds} from './paintStroke.ts';
 
@@ -52,6 +52,7 @@ export function paintMarkNeedsLayer(layer:PaintLayer|undefined,kind:PaintLayer['
 }
 export function canStartPaintMark(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind']):boolean {
   return !paintOwnerLocked(owner)&&owner.bubble?.hidden!==true
+    &&(!layer||paintLayerFolder(owner.paint,layer)?.visible!==false&&!paintLayerFolder(owner.paint,layer)?.locked)
     &&(!layer||Boolean(layer.guide)||layer.visible&&(!layer.locked||Boolean(layer.image)))
     &&(!paintMarkNeedsLayer(layer,kind)||owner.paint.layers.length<64);
 }
@@ -66,7 +67,7 @@ export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;laye
   if(!owner||paintOwnerLocked(owner))return scene;
   const layers=[...owner.paint.layers];let index=layers.findIndex(layer=>layer.id===pending.layerId);
   if(index<0){if(!pending.addedLayer||!pending.paths.length||layers.length>=64)return scene;index=layers.length;layers.push(pending.addedLayer);}
-  const layer=layers[index];if(layer.locked||!layer.visible||layer.kind!=='vector')return scene;
+  const layer=layers[index];if(!paintLayerEditable(owner,layer)||!paintLayerVisible(owner.paint,layer)||layer.kind!=='vector')return scene;
   if(index<owner.paint.layers.length&&pending.paths.length===(layer.paths?.length??0)&&pending.paths.every((path,i)=>path===layer.paths![i]))return scene;
   // A source composition crop is not an editing frame. Keep authored crops;
   // new marks on cropped content already use an unrestricted sibling layer.
@@ -88,7 +89,7 @@ export function commitPaintStroke(scene: PaintScene, pending: PendingPaintStroke
     index=layers.length;layers.push(pending.addedLayer);
   }
   const layer=layers[index];
-  if(layer.locked||!layer.visible)return scene;
+  if(!paintLayerEditable(owner,layer)||!paintLayerVisible(owner.paint,layer))return scene;
   const transformed=strokeInOwner(pending,owner),stroke=transformed===pending.stroke?structuredClone(transformed):transformed;
   if(pending.target==='generationMask'){
     if(!layer.generationMask?.enabled)return scene;

@@ -4,10 +4,11 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { parseSeriesTitleText, parseStoryReferenceText } from '../src/lib/settingTextImport.ts';
-import { parseCharacterText } from '../src/lib/characterTextCatalog.ts';
+import { mergeCharacterTextCatalog, parseCharacterText, toCharacterTextMarkdown } from '../src/lib/characterTextCatalog.ts';
 import { seriesReferenceConfirmationState } from '../src/lib/seriesReferenceCandidates.ts';
 import { parseScenario, applyScenarioToNewDocument } from '../src/lib/scenario.ts';
-import { newPage, toSeparatedMangaYaml } from '../src/lib/manga.ts';
+import { cloneDocument, newPage, parseMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml } from '../src/lib/manga.ts';
+import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries } from '../src/lib/seriesCatalog.ts';
 import { attachRecognizedTextToPage } from '../src/lib/localBridge.ts';
 import { initializePanelBackgrounds } from '../src/lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../src/lib/initialBubbleLineBreaks.ts';
@@ -43,6 +44,83 @@ function stateSetters(state, names) {
     state[name] = typeof value === 'function' ? value(state[name]) : value;
   }]));
 }
+
+test('手動のネーム画像は選択順によらずファイル名の数字順に並ぶ', () => {
+  for (const [names, expected] of [
+    [['スキャン 03.jpeg', 'スキャン 01.jpeg', 'スキャン 02.jpeg', 'スキャン 00.jpeg'],
+      ['スキャン 00.jpeg', 'スキャン 01.jpeg', 'スキャン 02.jpeg', 'スキャン 03.jpeg']],
+    [['page10.png', 'page2.png', 'page1.png'], ['page1.png', 'page2.png', 'page10.png']],
+  ]) {
+    const files = names.map(name => new File(['fixture'], name));
+    const state = {};
+    const itemsRef = { current: [] };
+    const choose = handler('chooseNewLayoutImages', {
+      newLayoutTask: 'idle', newLayoutOperationGeneration: { current: 0 },
+      updateNewLayoutTask: () => {}, discardScannerSources: async () => {}, discardNewLayoutItems: () => {},
+      crypto, URL: { createObjectURL: file => `blob:${file.name}` },
+      newLayoutItemsRef: itemsRef, newLayoutImageInput: { current: null },
+      ...stateSetters(state, ['NewLayoutItems', 'NewLayoutActiveIndex', 'NewLayoutMessage']),
+    });
+    choose(files);
+    assert.deepEqual(Array.from(state.NewLayoutItems, item => item.file.name), expected);
+    assert.equal(state.NewLayoutItems, itemsRef.current);
+    assert.equal(state.NewLayoutActiveIndex, 0);
+    assert.deepEqual(files.map(file => file.name), names);
+  }
+});
+
+test('新規作成でも同じシリーズの人物画像を既存IDで引き継ぐ', async () => {
+  const catalog = createEmptyWorkspaceDocument();
+  catalog.manga.meta.series = '共通シリーズ';
+  catalog.manga.meta.series_id = 'series-shared';
+  catalog.manga.characters = [{
+    localId: 'catalog-person', catalog_id: 'character-shared', name: '人物', role: '', scope: 'series',
+    primary_material_catalog_id: 'material-shared',
+  }];
+  catalog.manga.materials = [{
+    localId: 'catalog-material', catalog_id: 'material-shared', key: 'portrait.png', type: 'character',
+    scope: 'series', keywords: [], characterId: 'catalog-person', character_catalog_id: 'character-shared',
+    source_image: {
+      schema_version: 1, asset_id: `image-${'a'.repeat(64)}`,
+      file_name: `characters/character-shared/image-${'a'.repeat(64)}.png`, original_name: 'portrait.png',
+      media_type: 'image/png', byte_size: 10, width_px: 1, height_px: 1, sha256: 'a'.repeat(64),
+    },
+  }];
+  const mergeSavedSeriesCatalog = handler('mergeSavedSeriesCatalog', {
+    cloneDocument, crypto, mergeSeriesCatalog, parseMangaYaml, structuredClone,
+    emptyNewSeriesSetting: () => structuredClone(catalog.manga.series_setting),
+    loadSeriesCatalog: async () => ({ found: true, seriesId: 'series-shared', omnyYaml: toSeriesCatalogMangaYaml(catalog) }),
+  });
+  const state = { NewWorkSetting: structuredClone(catalog.manga.setting) };
+  const begin = handler('continueFromSeriesSelection', {
+    newSeriesPreparing: false, newEpisodeWorkspace: { directory: '/fixture/episode-two' },
+    newSeriesMode: 'new', newSeriesName: '共通シリーズ', newSeriesId: '', seriesCatalogs: [],
+    crypto, mergeSavedSeriesCatalog, mergeCharacterTextCatalog, parseCharacterText, prefillEpisodeSettingFromSeries,
+    newSeriesReferences: [{ text: toCharacterTextMarkdown(catalog) }], newSeriesReference: null,
+    fillEmptySeriesSetting: value => value, seriesSettingFromImported: () => ({}), parseSeriesSettingText: () => ({}),
+    createNewCharacterDraft: (name, id) => {
+      const draft = createEmptyWorkspaceDocument();
+      Object.assign(draft.manga.meta, { series: name, series_id: id, episode_id: 'episode-two' });
+      return draft;
+    },
+    emptyNewSeriesSetting: () => structuredClone(catalog.manga.series_setting),
+    beginSeriesCatalogDraft: async (_name, id) => { state.DraftSeriesId = id; return { token: 'draft' }; },
+    newCharacterDraftSession: { current: null }, discardSeriesCatalogDraft: async () => {},
+    ...stateSetters(state, ['NewSeriesPreparing', 'SeriesCatalogMessage', 'NewWorkSetting', 'NewSeriesName',
+      'NewSeriesId', 'NewCharacterDocument', 'NewCharacterTextLink', 'NewCreationStep']),
+  });
+  await begin();
+  assert.equal(state.SeriesCatalogMessage, '');
+  assert.equal(state.NewCreationStep, 'characters');
+  assert.equal(state.DraftSeriesId, 'series-shared');
+  const restored = state.NewCharacterDocument;
+  const owner = restored.manga.characters.find(c => c.catalog_id === 'character-shared');
+  const image = restored.manga.materials.find(m => m.catalog_id === 'material-shared');
+  assert.equal(image.source_image.sha256, 'a'.repeat(64));
+  assert.equal(image.characterId, owner.localId);
+  assert.equal(owner.primary_material_catalog_id, 'material-shared');
+  assert.equal(restored.manga.materials.filter(m => m.source_image).length, 1);
+});
 
 test('フォルダの選択だけではシリーズ名を入力せず、反映済みの名称も保つ', async () => {
   for (const initial of ['', '反映済みのシリーズ名']) {

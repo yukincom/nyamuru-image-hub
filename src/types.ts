@@ -68,6 +68,8 @@ export interface AnalogTextImport {
   rasterLayerInitialized?: boolean;
   /** The source raster is an independent image placement. Never recreate it after deletion. */
   rasterLayerSeparated?: boolean;
+  /** Same-owner original placement ID; null records an explicitly removed original. */
+  originalImageId?: string | null;
   levelAdjusted: true;
   persistentAsset?: PersistentAnalogAssetRef;
 }
@@ -133,8 +135,10 @@ export interface TextWeightRange { start: number; end: number; fontWeight: numbe
 export interface Bubble {
   /** The native shape, text, tails and painted additions share one layer visibility. */
   hidden?: boolean;
-  /** Locks the native bubble and every paint layer it owns. */
+  /** Folder lock inherited by the native child, painted additions and linked original. */
   locked?: boolean;
+  /** Individual native child lock, independent of the original when the folder is unlocked. */
+  nativeLocked?: boolean;
   /** Drawing above the editable native bubble; source text/shape/OCR remain intact. */
   paint_overlay?: ImageContent;
   text: string;
@@ -172,6 +176,7 @@ export interface Bubble {
 }
 
 export interface ScreenText {
+  hidden?: boolean;
   text: string;
   text_style?: TextStyle;
   text_weights?: TextWeightRange[];
@@ -272,6 +277,8 @@ export type PaintColorMode = 'color'|'grayscale'|'monochrome';
 export interface PaintFolder {
   id: string;
   name: string;
+  visible?: boolean;
+  locked?: boolean;
   /** Bottom-to-top insertion point used only while the folder is empty. */
   position: number;
 }
@@ -352,7 +359,7 @@ export interface ImageContent {
   locked: boolean;
 }
 export interface PlacedImage extends ImageContent {
-  /** Local source crop, independent of native bubble text/shape, drawn above the other artwork. */
+  /** Local source crop, independent of native text/shape; association lives on AnalogTextImport. */
   bubbleOriginal?: { sourceRegionId: string; name: string };
   /** Generated page/panel composite; editable source objects stay underneath. */
   generationScope?: 'page'|'panel';
@@ -567,7 +574,7 @@ export interface Manga {
 export interface MangaDocument { manga: Manga }
 export type CanvasElementType = 'figure' | 'bubble' | 'screen_text' | 'image';
 export interface CanvasElementSelection {
-  type: CanvasElementType;
+  type: CanvasElementType | 'panel_frame';
   index: number;
   /** 省略時は選択中コマ。ページ画像は page を明示する。 */
   scope?: 'panel' | 'page_overlay' | 'page';

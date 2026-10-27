@@ -6,7 +6,7 @@ import ts from 'typescript';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { toStoredMangaYaml, parseMangaYaml } from '../src/lib/manga.ts';
 import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
-import { addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
+import { toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
 test('new panel and page text inherit the chosen style instead of returning to 12pt',()=>{
  const d=fixture(),style={fontSize:29,orientation:'horizontal',font:'BIZ UDP明朝',fontWeight:700};
@@ -298,7 +298,7 @@ test('T uses one click for existing text or point text and keeps a settings tool
  assert.match(toolbar,/aria-label="文字サイズ pt" type="text" inputMode="decimal"/);
  assert.match(toolbar,/aria-label="文字サイズ スライダー" type="range" min="4" max="144" step="1"/);
  assert.doesNotMatch(toolbar,/type="number"|fontSize\.toFixed/);
- assert.match(canvas,/textSettingsOwner&&textTool&&!painting&&textToolbarHost/);
+ assert.match(canvas,/textSettingsOwner&&textToolbarHost/);
  assert.match(app,/addCanvasTextAt\(next,pageIndex,panelIndex,point,textToolStyle\)/);
  assert.match(canvas,/const toolbarTarget:CanvasTextTarget\|null=textTool\?/);
  assert.match(canvas,/'--text-tool-cursor':textToolCursor\(textToolStyle\)/);
@@ -309,7 +309,6 @@ test('T uses one click for existing text or point text and keeps a settings tool
  assert.doesNotMatch(editor,/id="paint-text-settings-slot"/);
  const textTools=readFileSync(new URL('../src/components/PaintTextTools.tsx',import.meta.url),'utf8');
  assert.match(textTools,/<div id="paint-text-settings-slot" class="paint-text-settings-slot"\/>/);
- assert.match(textTools,/if\(active\|\|selectionVisible\)/);
  assert.match(app,/openRequest=\{textPaletteRequest\}/);
  assert.match(css,/\.paint-text-settings-slot:empty \{ display:none; \}/);
  assert.match(css,/\.canvas-text-toolbar \{[^}]*display:grid;[^}]*width:100%/);
@@ -324,4 +323,17 @@ test('paint cursor lives in drawing settings and the fill tool uses a recognisab
  assert.match(settings,/aria-label="ペンカーソル"/);
  assert.match(editor,/function UprightPaintBucketIcon/);
  assert.match(editor,/<UprightPaintBucketIcon\/>/);
+});
+
+
+test('text visibility survives saved YAML and leaves hidden text out of editing and coverage',()=>{
+ for(const overlay of [false,true]){
+  const doc=fixture(),target=overlay?addCanvasTextAt(doc,0,null,{x:5,y:5},{}):addCanvasTextAt(doc,0,0,{x:20,y:30},{});
+  editCanvasText(doc,target,'表示を切り替える文字');const before=structuredClone(canvasTextAt(doc,target));
+  assert.equal(toggleCanvasTextVisibility(doc,target),true);assert.equal(canvasTextEditable(doc,target),false);assert.equal(canvasTextEditable(doc,target,'agent'),false);
+  assert.equal(editCanvasText(doc,target,'書き換え'),false);
+  const saved=parseMangaYaml(toStoredMangaYaml(doc));assert.equal(canvasTextAt(saved,target).hidden,true);assert.equal(canvasTextAt(saved,target).text,before.text);
+  assert.equal(toggleCanvasTextVisibility(saved,target),true);assert.equal(canvasTextEditable(saved,target),true);assert.equal(canvasTextAt(saved,target).text,before.text);
+  toggleCanvasTextVisibility(doc,target);assert.equal(canvasTextAt(doc,target).hidden,false);
+ }
 });

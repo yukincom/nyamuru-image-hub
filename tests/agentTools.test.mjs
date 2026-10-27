@@ -12,6 +12,28 @@ function fixture(){const document=createEmptyWorkspaceDocument();document.manga.
 const request=changes=>({revision:'r1',target,changes});
 const edit=(document,changes)=>prepareAgentBubbleEdit(document,target,'r1',request(changes));
 
+test('agent edits preserve manual folder, native child, artwork and panel locks',()=>{
+  for(const overlay of [false,true])for(const lock of ['folder','native','artwork','panel']){
+    if(overlay&&lock==='panel')continue;
+    const document=fixture(),page=document.manga.pages[0],panel=page.panels[0];
+    if(overlay)page.page_overlay={bubbles:structuredClone(panel.bubbles)};
+    const bubble=(overlay?page.page_overlay:panel).bubbles[0],selected={...target,overlay};
+    if(lock==='folder')bubble.locked=true;
+    if(lock==='native')bubble.nativeLocked=true;
+    if(lock==='artwork')bubble.paint_overlay={locked:true};
+    if(lock==='panel')panel.layer={locked:true};
+    const before=structuredClone(document);
+    assert.equal(agentEditorSnapshot(document,'r1',0,selected).selected_bubble.editable,true,`${overlay}/${lock}`);
+    for(const changes of [{shape:'square'},{bbox:{x:100,y:40,w:50,h:30}},{preset:'cloud'}]){
+      const next=prepareAgentBubbleEdit(document,selected,'r1',{revision:'r1',target:selected,changes});
+      const updated=(overlay?next.manga.pages[0].page_overlay:next.manga.pages[0].panels[0]).bubbles[0];
+      assert.equal(updated.locked,bubble.locked);assert.equal(updated.nativeLocked,bubble.nativeLocked);
+      assert.deepEqual(updated.paint_overlay,bubble.paint_overlay);assert.deepEqual(next.manga.pages[0].panels[0].layer,panel.layer);
+      assert.deepEqual(document,before);
+    }
+  }
+});
+
 test('contour edits preserve dialogue role, text, tail, joins and the input document',()=>{
   for(const changes of [{preset:'cloud'},{bezier:createBubbleBezier('rounded')}]){
     const before=fixture(),saved=structuredClone(before),after=edit(before,changes);
@@ -41,7 +63,7 @@ test('character selection and current-page figures remain visible to conversatio
   const noSelection=agentEditorSnapshot(before,'r2',0,null,null,{panelIndex:0,selection:null});
   assert.equal(noSelection.selected_element,null);assert.equal(noSelection.selected_figure,null);assert.equal(noSelection.page_panels[0].figures[0].name,'小雪');
   figure.artwork.locked=true;
-  assert.equal(agentEditorSnapshot(before,'r3',0,null,null,{panelIndex:0,selection:{type:'figure',index:0}}).selected_figure.generation_available,false);
+  assert.equal(agentEditorSnapshot(before,'r3',0,null,null,{panelIndex:0,selection:{type:'figure',index:0}}).selected_figure.generation_available,true);
 });
 test('tail tip uses paper mm and may be outside the speaker box',()=>{
   const before=fixture(),after=edit(before,{tail_point:{x:130,y:78}}),b=after.manga.pages[0].panels[0].bubbles[0];
@@ -51,7 +73,7 @@ test('tail tip uses paper mm and may be outside the speaker box',()=>{
   assert.equal(edit(before,{tail_mode:'none'}).manga.pages[0].panels[0].bubbles[0].tail,false);
   assert.equal('tail' in edit(before,{tail_mode:'auto'}).manga.pages[0].panels[0].bubbles[0],false);
 });
-test('invalid, stale, hidden, locked and different targets cannot partially mutate a manuscript',()=>{
+test('invalid, stale, hidden and different targets cannot partially mutate a manuscript',()=>{
   const before=fixture(),saved=structuredClone(before);
   assert.throws(()=>prepareAgentBubbleEdit(before,target,'r2',request({preset:'cloud'})),/変わりました/);
   assert.throws(()=>prepareAgentBubbleEdit(before,{...target,index:1},'r1',request({preset:'cloud'})),/選択/);
@@ -59,7 +81,6 @@ test('invalid, stale, hidden, locked and different targets cannot partially muta
   assert.deepEqual(before,saved);
   before.manga.pages[0].panels[0].bubbles[0].hidden=true;assert.throws(()=>edit(before,{preset:'cloud'}),/非表示/);
   delete before.manga.pages[0].panels[0].bubbles[0].hidden;
-  before.manga.pages[0].panels[0].bubbles[0].paint_overlay={locked:true};assert.throws(()=>edit(before,{preset:'cloud'}),/ロック/);
   for(const changes of [{text:'勝手な書き換え'},{preset:'cloud',material:'nomal_01'},{bbox:{x:0,y:0,w:NaN,h:10}},
     {tail_mode:'bad'},{tail_mode:'auto',tail_point:{x:80,y:60}},{tail_point:{x:Infinity,y:0}},
     {bezier:{nodes:[{x:0,y:0},{x:100,y:0},{x:50,y:100,handleIn:{x:Infinity,y:0}}]}}])assert.throws(()=>parseAgentBubbleEdit(request(changes)));

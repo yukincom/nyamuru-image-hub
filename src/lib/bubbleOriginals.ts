@@ -11,7 +11,7 @@ export function needsBubbleOriginalSeparation(document:MangaDocument):boolean {
     owner?.bubbles?.some(bubble=>bubble.analogTextImport&&!bubble.analogTextImport.rasterLayerSeparated)));
 }
 
-/** Reuse normal image placements and their editable paint documents; no live link to a bubble. */
+/** Reuse independent placements; keep only their ownership relation on the native bubble. */
 export async function separateBubbleOriginals(document:MangaDocument, dependencies:{
   load?:typeof loadFigureCropAsset; prepare?:typeof prepareImageAsset;
 }={}):Promise<MangaDocument> {
@@ -23,7 +23,7 @@ export async function separateBubbleOriginals(document:MangaDocument, dependenci
     const source=bubble.analogTextImport;
     if(!source||source.rasterLayerSeparated)return;
     // A previously deleted original stays deleted. The marker is saved even when no image exists.
-    if(source.rasterLayerInitialized&&!bubble.paint_overlay){source.rasterLayerSeparated=true;return;}
+    if(source.rasterLayerInitialized&&!bubble.paint_overlay){source.rasterLayerSeparated=true;source.originalImageId=null;return;}
     const name=`原本 · 吹き出し ${index+1}`;
     let image:PlacedImage;
     if(bubble.paint_overlay){
@@ -65,6 +65,7 @@ export async function separateBubbleOriginals(document:MangaDocument, dependenci
     }
     image.bubbleOriginal={sourceRegionId:source.sourceRegionId,name};
     images.push(image);
+    source.originalImageId=image.id;
     source.rasterLayerInitialized=true;
     source.rasterLayerSeparated=true;
   }

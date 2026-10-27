@@ -1,7 +1,6 @@
 import type {BBox, Bubble, BubbleShape, CanvasElementSelection, MangaDocument,VectorNode} from '../types.ts';
-import {canvasTextAt,type CanvasTextTarget} from './canvasText.ts';
-import {bubbleVisible,panelVisible} from './panelLayers.ts';
-import {artworkLocked} from './paintLock.ts';
+import {canvasTextAt,canvasTextEditable,type CanvasTextTarget} from './canvasText.ts';
+import {panelVisible} from './panelLayers.ts';
 import {fallbackBox} from './canvasGeometry.ts';
 import {overlayFallbackBox} from './pageCanvas.ts';
 import {BUBBLE_BEZIER_PRESETS,createBubbleBezier,isBubbleBezier} from './bubbleBezier.ts';
@@ -66,7 +65,7 @@ function bubbleContext(document:MangaDocument,target:AgentBubbleTarget){
   const figureIndex=resolveBubbleSpeakerFigureIndex(owner,bubble),figure=figureIndex===null?undefined:owner.figures?.[figureIndex];
   const figureBox=figure?(figure.bbox??(target.overlay?overlayFallbackBox(page.canvas,'figure',figureIndex!):fallbackBox(page.panels[target.panelIndex],'figure',figureIndex!))):null;
   const speakerBox=figure&&figureBox?paintReferenceBox(figure.artwork?.paint,figureBox,figure.artwork?.crop):null;
-  const editable=bubbleVisible(bubble)&&!artworkLocked(bubble.paint_overlay)&&(target.overlay||panelVisible(page.panels[target.panelIndex]));
+  const editable=canvasTextEditable(document,target,'agent');
   return {page,owner,bubble,bbox,speakerBox,editable};
 }
 
@@ -93,7 +92,7 @@ export function agentEditorSnapshot(document:MangaDocument|null,revision:string,
     target:{pageIndex:activePage,panelIndex,index:selection!.index,kind:'figure' as const,overlay},
     name:figure.name,kind:isPropPlacement(figure)?'prop':'person',action:figure.action??null,size:figure.size??null,
     character:character?{name:character.name,aliases:character.aliases??[],role:character.role,visual_prompt:character.visual_prompt??null}:null,
-    generation_available:!blocked&&(overlay||panelVisible(page!.panels[panelIndex]))&&!figure.artwork?.hidden&&!artworkLocked(figure.artwork)
+    generation_available:!blocked&&(overlay||panelVisible(page!.panels[panelIndex]))&&!figure.artwork?.hidden
       &&(isPropPlacement(figure)||Boolean(character)),
   }:null;
   const figureNames=(figures:NonNullable<typeof owner>['figures'])=>(figures??[]).map((figure,index)=>({index,name:figure.name,kind:isPropPlacement(figure)?'prop':'person'}));
@@ -114,7 +113,7 @@ export function prepareAgentBubbleEdit(document:MangaDocument,selected:AgentBubb
   if(edit.revision!==currentRevision)throw Error('原稿や選択が変わりました。現在の状態を読み直してください');
   if(!selected||Object.keys(selected).some(k=>selected[k as keyof AgentBubbleTarget]!==edit.target[k as keyof AgentBubbleTarget]))throw Error('現在選択しているフキダシだけを編集できます');
   const source=bubbleContext(document,selected);
-  if(!source.editable)throw Error('対象のフキダシが非表示またはロック中です');
+  if(!source.editable)throw Error('対象のフキダシが非表示です');
   const next=structuredClone(document),c=bubbleContext(next,selected),bubble=c.bubble,changes=edit.changes;
   if(changes.shape!==undefined)setBubbleShape(bubble,changes.shape);
   if(changes.preset!==undefined)bubble.bezier=createBubbleBezier(changes.preset);

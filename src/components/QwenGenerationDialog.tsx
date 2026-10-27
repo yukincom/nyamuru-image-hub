@@ -6,7 +6,7 @@ import { canDeleteQwenJob, qwenGenerationPayload, qwenGenerationPrompt, qwenLaye
 import { validatePaintDocument, type PaintOwner } from '../lib/paintDocument.ts';
 import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } from '../lib/paintRenderer.ts';
 import { prepareGuideLayer } from '../lib/paintGuide.ts';
-import type { ImageAsset } from '../types.ts';
+import type { ImageAsset, PaintDocument } from '../types.ts';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { cloudModelAccess } from '../lib/modelPrivacy.ts';
 import { generationHandoff } from '../lib/generationHandoff.ts';
@@ -31,7 +31,7 @@ export async function qwenInputImage(blob:Blob):Promise<{image:string;width:numb
 
 /** Export a single captured owner layer using the editor's existing renderer. */
 export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsset[],liveImages?:PaintImages,includeGeneration=false):Promise<Blob> {
-  let paint=qwenLayerPaint(owner,id,includeGeneration);
+  let paint:PaintDocument=qwenLayerPaint(owner,id,includeGeneration);
   const owned:HTMLImageElement[]=[];
   let images=liveImages;
   try {
@@ -171,17 +171,17 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
     if(!alive.current||!isCurrent())return '生成の会話を終了しました';
     const intent=qwenConversationIntent(text);
     if(intent==='hold')return '新しい生成は開始していません。指示を整えてから「生成して」と送ってください。';
-    if(intent==='help')return '参照画像を追加して、追加の指示を送れます。「生成して」と送ると、生成後にこのあたりへ差し込みます。';
+    if(intent==='help')return '参照画像を追加して、追加の指示を送れます。「生成して」と送ると、生成後に新規レイヤーとして追加します。';
     if(working.current)throw new Error('処理が終わるまでお待ちください');
     if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
     if(intent==='instruction'){
       if(draft.current.prompt.length+text.length>12000)throw new Error('追加の指示が長すぎます。生成指示を整理してください');
       updatePrompt(`${draft.current.prompt}\n\n${text.trim()}`);
-      return '追加の指示を生成指示に反映しました。「生成して」で生成し、このあたりへ差し込みます。';
+      return '追加の指示を生成指示に反映しました。「生成して」で生成し、新規レイヤーとして追加します。';
     }
     const result=await generate(true,isCurrent);
     if(cloud)return '指示と参照画像のZIPを保存しました。指定のエージェントへ渡し、完成したPNGをこの画面で読み込んでください。';
-    return result?.inserted?`${plan.label}を生成し、元のあたりに差し込みました。元に戻す操作も使えます。`:'自動差し込みは中止しました。開始済みの生成は生成状況から確認できます。';
+    return result?.inserted?`${plan.label}を生成し、新規レイヤーとして追加しました。元に戻す操作も使えます。`:'自動差し込みは中止しました。開始済みの生成は生成状況から確認できます。';
   }
   useEffect(()=>{
     onConversation?.({label:`${plan.pageNumber}ページ・${plan.overlay?'ページ前景':`コマ ${plan.panelId}`}・${plan.label}`,
@@ -272,12 +272,12 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
       {error&&<p role="alert">{error}{attempt?' 送信済みの可能性があるため、生成状況を確認してください。':''}</p>}
       {job&&<section class="qwen-result" aria-live="polite"><strong>{statusLabel[job.status]}</strong>{job.error&&<p>{job.error}</p>}
         {job.documentKey&&<small>{qwenJobLocation(job)}</small>}
-        {job.image&&<><img src={job.image} alt={`${job.label}の生成結果`}/><div class="paint-entry-actions"><a href={job.image} download={job.fileName}>生成画像を保存</a><button disabled={busy} onClick={()=>void insert()}>このあたりに差し込む</button><button disabled={busy} onClick={()=>void remove([job])}>破棄する</button></div></>}
+        {job.image&&<><img src={job.image} alt={`${job.label}の生成結果`}/><div class="paint-entry-actions"><a href={job.image} download={job.fileName}>生成画像を保存</a><button disabled={busy} onClick={()=>void insert()}>新規レイヤーとして追加</button><button disabled={busy} onClick={()=>void remove([job])}>破棄する</button></div></>}
         {['prepared','succeeded','failed','outcome_unknown'].includes(job.status)&&<button disabled={busy} onClick={()=>{setAttempt(null);setJob(null);setNotice('');}}>新しい生成を準備</button>}
       </section>}
       {historyScope&&<section class="qwen-history" aria-label={historyScope==='work'?'作品の生成履歴':'生成履歴'}>
         <h3>{historyScope==='work'?'作品の生成履歴':'生成履歴'}</h3>
-        <p>{historyScope==='work'?'作品内の全ページ・全コマの生成画像です。ファイル名を押すと画像を確認し、現在のあたりに差し込めます。':'現在のあたりで生成した画像です。'} チェックした履歴は「削除」でまとめて消せます。</p>
+        <p>{historyScope==='work'?'作品内の全ページ・全コマの生成画像です。ファイル名を押すと画像を確認し、現在の対象へ新規レイヤーとして追加できます。':'現在のあたりで生成した画像です。'} チェックした履歴は「削除」でまとめて消せます。</p>
         {history.length===0?<p>生成履歴はありません。</p>:<>
           <div class="paint-entry-actions"><label><input type="checkbox" disabled={busy||!history.some(canDeleteQwenJob)} checked={history.filter(canDeleteQwenJob).length>0&&history.filter(canDeleteQwenJob).every(item=>selectedJobs.includes(item.jobId))} onChange={e=>setSelectedJobs(e.currentTarget.checked?history.filter(canDeleteQwenJob).map(item=>item.jobId):[])}/> 全て選択</label><button disabled={busy||selectedJobs.length===0} onClick={()=>void remove(history.filter(item=>selectedJobs.includes(item.jobId)))}>削除</button><span>{selectedJobs.length}件を選択</span></div>
           <ul>{history.map(item=><li key={item.jobId}>

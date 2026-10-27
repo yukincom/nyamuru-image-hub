@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
+import {runInNewContext} from 'node:vm';
+import ts from 'typescript';
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 test('T primary click and shortcut open a compact tabbed persistent settings window',()=>{
   const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=read('src/components/App.tsx'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
-  assert.match(tools,/label="通常文字"[\s\S]*?onClick=\{\(\)=>\{setOpen\(true\);select\(\);\}\}/);
   assert.match(tools,/label="通常文字を追加"[\s\S]*?onClick=\{\(\)=>add\('screen_text'\)\}/);
   assert.doesNotMatch(tools,/add\('bubble'\)|吹き出しを追加/);
   assert.match(tools,/openRequest:TextPaletteRequest/);
-  assert.match(tools,/if\(active\|\|selectionVisible\)\{setOpen\(true\);setTab\(active\?openRequest\.tab:'bubble'\);\}else setOpen\(false\);\},\[active,selectionVisible,openRequest\]/);
   assert.match(app,/openRequest=\{textPaletteRequest\}/);
   assert.ok((app.match(/setTextPaletteRequest\(value=>\(\{id:value\.id\+1,tab:'(?:text|bubble)'\}\)\)/g)??[]).length>=3);
   assert.doesNotMatch(tools,/document\.addEventListener\('pointerdown',dismiss/);
@@ -43,7 +43,7 @@ test('吹き出し素材を適用した後は選択ツールへ戻す',()=>{
 test('ordinary point text grows from its start and never shows an area frame or size badge',()=>{
   const canvas=read('src/components/MangaCanvas.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),canvasText=read('src/lib/canvasText.ts'),css=read('src/styles/global.css');
   assert.match(canvasText,/vertical columns grow left, horizontal lines grow down/);
-  assert.match(canvasText,/fitCanvasScreenTextToText\(document,t,origin\)/);
+  assert.match(canvasText,/fitCanvasScreenTextToText\(document,t,start,origin\)/);
   assert.match(toolbar,/aria-label="文字サイズ pt"[\s\S]*?onInput=/);
   assert.doesNotMatch(canvas,/\{isSelected\s*&&\s*renderHandles\(panelIndex, selection, box\)\}/);
   assert.doesNotMatch(canvas,/\{isSelected&&renderHandles\(null,selection,box\)\}/);
@@ -110,7 +110,8 @@ test('V uses the one layout selection route and A direct selection edits the sel
   assert.match(canvas,/if\(bubblePathTool==='node'&&mode==='move'\)return/);
   assert.match(canvas,/renderSelectedBubblePathOverlay/);
   assert.match(canvas,/<BubbleBezierHandles outline=/);
-  assert.doesNotMatch(canvas,/BubbleBezierSelection|bubblePathTool==='path'/);
+  assert.doesNotMatch(canvas,/bubblePathTool==='path'/);
+  assert.match(canvas,/agentWorking\(selectedElement,panelIndex\)\?<BubbleBezierSelection[^>]*label="エージェントの作業対象"/);
   assert.match(bezier,/export function BubbleBezierHandles/);
   assert.match(bezier,/class="bubble-bezier-outline-hit"[^>]*onPointerDown=\{startOutline\}/);
   assert.match(bezier,/start\(event,at,undefined,\{x:anchor\.x-point\.x,y:anchor\.y-point\.y\}\)/);
@@ -174,4 +175,39 @@ test('capture range trigger stays one row and collapses to the illustration in a
   const css=read('src/components/FigureSizePicker.css');
   assert.match(css,/\.figure-size-trigger \{[^}]*height: 36px;[^}]*max-height: 36px;/);
   assert.match(css,/@container \(max-width: 132px\)[\s\S]*?\.figure-size-trigger > span, \.figure-size-trigger > svg:last-child \{ display: none; \}/);
+});
+
+test('文字パレットはレイヤーと道具の変更で開閉せず、×だけで閉じる',()=>{
+ const slots=[],effects=[];let cursor=0,changed=false,tree;
+ const state=initial=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return [slots[i],value=>{const next=typeof value==='function'?value(slots[i]):value;if(next!==slots[i]){slots[i]=next;changed=true;}}];};
+ const effect=(run,deps)=>{const i=cursor++,before=slots[i];if(!before||deps.some((value,index)=>value!==before[index])){slots[i]=deps;effects.push(run);}};
+ const hooks={useState:state,useRef:initial=>{const i=cursor++;return slots[i]??(slots[i]={current:initial});},useEffect:effect,useLayoutEffect:effect};
+ const exports={},h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
+ const source=ts.transpileModule(read('src/components/PaintTextTools.tsx'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText;
+ runInNewContext(source,{exports,h,document:{body:{}},window:{addEventListener(){},removeEventListener(){}},innerWidth:1200,innerHeight:900,require:name=>name==='preact/hooks'?hooks:name==='preact/compat'?{createPortal:child=>child}:name==='lucide-preact'?{Type:'Type',ChevronDown:'ChevronDown',MessageCircleMore:'MessageCircleMore',X:'X'}:{PaintToolButton:'PaintToolButton'}});
+ let props={active:false,openRequest:{id:0,tab:'text'},disabled:false,select(){},add(){},onMaterials(){},bubbleLineWidthMm:.3,onChangeBubbleLineWidth(){}};
+ const render=patch=>{props={...props,...patch};for(let i=0;i<10;i++){changed=false;cursor=0;tree=exports.default(props);while(effects.length)effects.shift()();if(!changed)return;}throw Error('Render did not settle');};
+ const find=(predicate,node=tree)=>{if(!node||typeof node!=='object')return;return predicate(node)?node:node.children?.map(child=>find(predicate,child)).find(Boolean);};
+ const dialog=()=>find(node=>node.props['aria-label']==='文字ツールの設定');
+ const button=label=>find(node=>node.props.label===label||node.props['aria-label']===label);
+ const click=label=>{button(label).props.onClick();render();};
+ render();assert.equal(dialog().props.hidden,true);
+ render({active:true});assert.equal(dialog().props.hidden,true,'tool state alone does not open the palette');
+ click('通常文字');assert.equal(dialog().props.hidden,false);
+ click('ふきだし');assert.equal(button('ふきだし').props['aria-selected'],true);
+ const position=dialog().props.style;
+ for(const active of [false,true,false])for(const disabled of [true,false]){
+  render({active,disabled});assert.equal(dialog().props.hidden,false);assert.equal(button('ふきだし').props['aria-selected'],true);assert.equal(dialog().props.style,position);
+ }
+ render({openRequest:{id:1,tab:'text'}});assert.equal(button('ふきだし').props['aria-selected'],true,'an open window keeps its selected tab');
+ click('文字のツール一覧');assert.equal(dialog().props.hidden,false,'the arrow only opens');
+ tree.props.onContextMenu({preventDefault(){}});render();assert.equal(dialog().props.hidden,false,'right click only opens');
+ click('文字ツールの設定を閉じる');assert.equal(dialog().props.hidden,true);
+ render({active:true,disabled:true,openRequest:{id:1,tab:'text'}});assert.equal(dialog().props.hidden,true,'an unchanged request does not reopen after close');
+ render({active:false,disabled:false});assert.equal(dialog().props.hidden,true);
+ render({openRequest:{id:2,tab:'text'}});assert.equal(dialog().props.hidden,false,'a new explicit T request reopens');assert.equal(button('文字').props['aria-selected'],true);
+ const canvas=read('src/components/MangaCanvas.tsx');
+ assert.match(canvas,/textSettingsOwner&&textToolbarHost&&createPortal\(/,'text controls stay mounted when changing tools');
+ assert.doesNotMatch(canvas,/<CanvasTextToolbar key=/,'selection changes do not replace the settings component');
+ assert.doesNotMatch(read('src/components/App.tsx'),/<PaintTextTools[^>]+selectionVisible=/,'layer selection does not own window visibility');
 });

@@ -730,7 +730,7 @@ export function panelHasElementAt(panel: Panel, x: number, y: number): boolean {
     ...(panel.images ?? []).filter(image => !image.hidden).map(image => image.bbox),
     ...(panel.figures ?? []).flatMap((figure, index) => figure.artwork?.hidden ? [] : [figure.bbox ?? fallbackBox(panel, 'figure', index)]),
     ...panel.bubbles.flatMap((bubble, index) => bubble.hidden===true?[]:[bubble.bbox ?? fallbackBox(panel, 'bubble', index)]),
-    ...(panel.screen_text ?? []).map((screenText, index) => screenText.bbox ?? fallbackBox(panel, 'screen_text', index)),
+    ...(panel.screen_text ?? []).flatMap((screenText, index) => screenText.hidden===true?[]:[screenText.bbox ?? fallbackBox(panel, 'screen_text', index)]),
   ];
   return boxes.some((box) => x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h);
 }

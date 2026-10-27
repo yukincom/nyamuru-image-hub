@@ -1,4 +1,4 @@
-import {paintOwnerLocked} from '../src/lib/paintLock.ts';
+import {paintLayerEditable,paintOwnerLocked} from '../src/lib/paintLock.ts';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import assert from 'node:assert/strict';
@@ -11,7 +11,7 @@ import { collectFigureCropAssetIds } from '../src/lib/figureCropStore.ts';
 import { resizePanelToBounds, translatePanel, panelFigureAt, panelHasElementAt } from '../src/lib/canvasGeometry.ts';
 import { applyPanelTemplate, mergeSelectedPanels, splitPanel } from '../src/lib/panelTemplates.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
-import { newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
+import { insertGeneratedPaintImage, newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
 import { imageCrop } from '../src/lib/imagePlacement.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
@@ -371,25 +371,27 @@ test('central image entry follows the selected owner or the active paint control
 });
 
 test('central bubble import keeps its text and source while placing artwork inside its frame',async()=>{
-  for(const scope of ['panel','page_overlay']){
+  for(const scope of ['panel','page_overlay'])for(const generated of [false,true]){
     const doc=await documentWithImage(),page=doc.manga.pages[0];
-    const bubble={text:'確認用',shape:'normal',speaker:'人物',bbox:{x:20,y:30,w:40,h:60}};
+    const bubble={text:'確認用',shape:'normal',speaker:'人物',bbox:{x:20,y:30,w:40,h:60},...(generated?{locked:true,nativeLocked:true,paint_overlay:{locked:true}}:{})};
     page.panels[0].bubbles=[structuredClone(bubble)];page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[structuredClone(bubble)]};
     const context={placedImageInput:{current:{value:''}},imageImportTarget:{current:{document:doc,pageIndex:0,panelIndex:0,scope,bubbleIndex:0,box:bubble.bbox}},documentRef:{current:doc},activePageRef:{current:0},activePanelRef:{current:0},lastHistoryPush:{current:0},setImageImportBusy(){},prepareImageAsset:async()=>doc.manga.image_assets[0],loadFigureCropAsset:async()=>original,saveFigureCropAssets:async()=>{},deleteFigureCropAssets:async()=>{},cloneDocument:structuredClone,createFrameArtwork,createImagePlacement,setFigureArtwork,setDocument:next=>{context.documentRef.current=next;},setSelectedElement(){},setToast(){},Error};
-    await importHandler(context)(new File([original],'原本.png',{type:original.type}));
+    if(generated){context.imageImportTarget.current.generatedOwner=paintScene({...page.panels[0],bubbles:[{...bubble,paint_overlay:undefined}]},100,doc.manga.image_assets).owners.find(o=>o.kind==='bubble');context.imageImportTarget.current.generatedOwner.paint.layers.push({...newPaintLayer('元画像'),locked:true,image:{assetId:'art',crop:{x:0,y:0,w:1,h:1},bbox:{x:0,y:0,w:30,h:30}}});Object.assign(context,{insertGeneratedPaintImage,humanPoseOwnerImage:async()=>original,File});}
+    await importHandler(context)(new File([original],'原本.png',{type:original.type}),generated?context.imageImportTarget.current:undefined);
     const resultPage=context.documentRef.current.manga.pages[0];
     const result=(scope==='panel'?resultPage.panels[0]:resultPage.page_overlay).bubbles[0];
     assert.ok(result.paint_overlay);assert.equal(result.text,bubble.text);assert.equal(result.speaker,bubble.speaker);assert.deepEqual(result.bbox,bubble.bbox);
+    if(generated){assert.equal(result.locked,true);assert.equal(result.nativeLocked,true);assert.equal(result.paint_overlay.locked,true);assert.equal(result.paint_overlay.paint.layers.length,2);}
   }
 });
 
-test('painting import replaces the latched owner, retaining guides, other ink, and an undo snapshot',async()=>{
+test('manual replacement uses its latched owner and generation adds above the retained locked guide',async()=>{
   const scene=paintScene({id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[],figures:[{name:'確認用',action:'座る',refId:'person',bbox:{x:2,y:3,w:10,h:20}}]},100,[]);
   scene.owners=scene.owners.map(owner=>withPaintBleed(owner,200));
   for(const owner of scene.owners)owner.paint.layers[0].strokes.push({tool:'pen',color:'#000000',size:3,points:[{x:220,y:230,pressure:1,time:1}]});
   const before=structuredClone(scene),target=scene.owners[1],history=[];
   const asset=(await documentWithImage()).manga.image_assets[0];
-  const context={paintOwnerLocked,images:new Map(),operation:{current:false},inputActive:{current:false},backgroundOwner:null,suspended:false,locked:false,owner:target,finishGesture(){},imageTarget:{current:null},input:{current:{value:'',click(){}}},historyRef:{current:{present:scene}},assets:[],imports:[],setBusy(){},setError:message=>{assert.equal(message,'');},prepareImageAsset:async()=>asset,decodePaintImage:async()=>({}),Map,imagesRef:{current:null},setImages(){},setImports(){},newPaintLayer,imageCrop,fitImageBox,commit:next=>{history.push(context.historyRef.current.present);context.historyRef.current.present=next;},setOwnerKey(){},setLayerId(){}};
+  const context={insertGeneratedPaintImage,paintLayerEditable,paintOwnerLocked,images:new Map(),operation:{current:false},inputActive:{current:false},backgroundOwner:null,suspended:false,locked:false,owner:target,finishGesture(){},imageTarget:{current:null},input:{current:{value:'',click(){}}},historyRef:{current:{present:scene}},assets:[],imports:[],setBusy(){},setError:message=>{assert.equal(message,'');},prepareImageAsset:async()=>asset,decodePaintImage:async()=>({}),Map,imagesRef:{current:null},setImages(){},setImports(){},newPaintLayer,imageCrop,fitImageBox,commit:next=>{history.push(context.historyRef.current.present);context.historyRef.current.present=next;},setOwnerKey(){},setLayerId(){}};
   componentHandler('PaintEditor','chooseImage',context)(true);
   context.owner=scene.owners[0]; // Selection can change while the picker is open.
   await componentHandler('PaintEditor','importImage',context)(new File([original],'原本.png',{type:original.type}));
@@ -398,6 +400,11 @@ test('painting import replaces the latched owner, retaining guides, other ink, a
   assert.deepEqual(structuredClone(result.owners[1].paint.referenceFrame),before.owners[1].paint.referenceFrame);
   assert.deepEqual(result.owners[1].frame,target.frame);assert.equal(result.owners[1].figure,target.figure);
   assert.equal(history[0],scene);assert.deepEqual(scene,before);
+  target.locked=true;target.paint.layers[0].locked=true;context.historyRef.current.present=scene;
+  componentHandler('PaintEditor','chooseImage',context)(true,target.key);assert.equal(context.imageTarget.current,null,'manual replacement remains blocked');
+  await componentHandler('PaintEditor','importImage',context)(new File([original],'生成.png',{type:original.type}),{key:target.key,replace:false},true);
+  const generated=context.historyRef.current.present.owners.find(owner=>owner.key===target.key);
+  assert.equal(generated.locked,true);assert.equal(generated.paint.layers[0].locked,true);assert.deepEqual(generated.paint.layers[0],target.paint.layers[0]);assert.equal(generated.paint.layers.length,target.paint.layers.length+1);assert.equal(generated.paint.layers[1].image.assetId,asset.id);assert.equal(generated.paint.layers[1].locked,false);
 });
 
 test('guide display belongs to one object and OCR rasters never gate bubble text',()=>{

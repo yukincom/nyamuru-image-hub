@@ -14,6 +14,8 @@
 - シリーズごとの人物設定と複数のデザイン資料画像をローカル台帳へ保存
 - 明示的に選んだ人物資料1枚から、照合用の外見特徴候補をローカルVLMで抽出
 - 内枠スナップ、コマスナップ、Shift移動、コマ合体などでコマを調整
+- ネーム上へ通常文字を自由配置し、PC内フォントや吹き出し素材で編集
+- 舞台設定の各背景へGLB／FBXを紐づけ、シリーズ内で管理コピーを再利用
 - Nyamuru本来のネーム編集、生成プロンプト、OMAY連携を利用
 
 ※ モノクロ300dpi程度だとかなり高精度で読み取れます。
@@ -57,7 +59,11 @@ npm run setup:vision
 
 詳しい操作とセットアップは [使い方ガイド](./docs/USAGE.md) を参照してください。
 
-別のPCのChromeから使う場合は、Mac Studioで `npm run lan` を実行します。作品は編集PCで選んだ作品フォルダーへ保存し、AI処理はMacで実行します。初回の準備から保存・終了までの手順は [LAN編集](./docs/LAN_EDITING.md) を参照してください。
+## 別のPCから使う
+
+別のPCのChromeで編集し、作品は編集PCで選んだ作品フォルダーへ保存します。AI処理はMac Studioで行います。Mac Studioでは `npm run lan` で起動します。
+
+[接続から保存・終了までの手順](./docs/LAN_EDITING.md) を順番に進めてください。初回の準備もこのページにまとめています。
 
 ## 開発方針
 
@@ -66,6 +72,7 @@ npm run setup:vision
 ## ドキュメント
 
 - [使い方](./docs/USAGE.md)
+- [別のPCから使う手順](./docs/LAN_EDITING.md)
 - [このフォークの機能と既知の制限](./docs/FORK_FEATURES.md)
 - [ローカル画像解析の詳細](./docs/LOCAL_VISION_BRIDGE.md)
 - [シリーズ人物資料と照合特徴](./docs/SERIES_CHARACTER_CATALOG.md)

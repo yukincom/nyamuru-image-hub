@@ -1,6 +1,6 @@
 import type { BBox, PaintLayer, PaintStroke, VectorPoint } from '../types.ts';
 import type { PaintOwner, PaintScene } from './paintDocument.ts';
-import { paintLayerEditable } from './paintLock.ts';
+import { paintLayerEditable,paintLayerVisible } from './paintLock.ts';
 import { hitVector, transformVector } from './vectorGeometry.ts';
 import { readPaintPixels, type PaintImages } from './paintRenderer.ts';
 
@@ -16,7 +16,7 @@ export function pickPaintLayer(scene:PaintScene,point:VectorPoint,tolerance:numb
     if(owner.bubble?.hidden||!inside(point,owner.frame))continue;
     const local=paintOwnerPoint(owner,point),radius=tolerance*Math.max(owner.paint.width/owner.frame.w,owner.paint.height/owner.frame.h);
     for(const layer of [...owner.paint.layers].reverse()){
-      if(!layer.visible||layer.opacity<=0||!paintLayerEditable(owner,layer)||layer.clip&&!inside(local,layer.clip))continue;
+      if(!paintLayerVisible(owner.paint,layer)||layer.opacity<=0||!paintLayerEditable(owner,layer)||layer.clip&&!inside(local,layer.clip))continue;
       const paths=layer.paths?.filter(path=>path.style.stroke!==null||path.style.fill!==null)??[];
       const pathId=hitVector(paths,local,radius);
       if(layer.kind==='vector'&&!pathId&&!layer.image&&!layer.strokes.length&&!layer.tone?.fill)continue;

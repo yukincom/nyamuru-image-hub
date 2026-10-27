@@ -287,12 +287,14 @@ export function deduplicateFigures(figures: readonly Figure[]): Figure[] {
   return kept;
 }
 
-function mergeImages(left: PlacedImage[] | undefined, right: PlacedImage[] | undefined): PlacedImage[] | undefined {
+function mergeImages(left: PlacedImage[] | undefined, right: PlacedImage[] | undefined, bubbles:Bubble[]=[]): PlacedImage[] | undefined {
   const images = [...(left ?? [])];
   for (const image of right ?? []) {
-    if (images.some(other => other.splitOverlapId && other.splitOverlapId === image.splitOverlapId && JSON.stringify(other) === JSON.stringify(image))) continue;
+    const linked=bubbles.find(bubble=>bubble.analogTextImport?.originalImageId===image.id);
+    if (!linked&&images.some(other => other.splitOverlapId && other.splitOverlapId === image.splitOverlapId && JSON.stringify(other) === JSON.stringify(image))) continue;
     const copy = structuredClone(image);
     if (images.some(other => other.id === copy.id)) copy.id = crypto.randomUUID();
+    if(linked)linked.analogTextImport!.originalImageId=copy.id;
     images.push(copy);
   }
   return images.length ? images : undefined;
@@ -359,7 +361,7 @@ export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly n
 
   for (const source of sources.slice(1)) {
     merged.figures = [...(merged.figures ?? []), ...(source.figures ?? [])];
-    merged.images = mergeImages(merged.images, source.images);
+    merged.images = mergeImages(merged.images, source.images, source.bubbles);
     merged.background_images = mergeImages(merged.background_images, source.background_images);
     appendBubbles(merged.bubbles, source.bubbles);
     const screenText = [...(merged.screen_text ?? []), ...(source.screen_text ?? [])];
@@ -531,7 +533,14 @@ function distributePanelElements(source: Panel, first: Panel, second: Panel, dir
   const [firstBackground, secondBackground] = assign(source.background_images, 'background');
   firstBackground.length ? first.background_images = firstBackground : delete first.background_images;
   secondBackground.length ? second.background_images = secondBackground : delete second.background_images;
-  const [firstImages, secondImages] = assign(source.images, 'image');
+  const linked=new Set(source.bubbles.map(bubble=>bubble.analogTextImport?.originalImageId).filter(Boolean));
+  const [firstImages, secondImages] = assign(source.images?.filter(image=>!linked.has(image.id)), 'image');
+  for(const [child,images] of [[first,firstImages],[second,secondImages]] as const){
+    for(const bubble of child.bubbles){
+      const image=source.images?.find(image=>image.id===bubble.analogTextImport?.originalImageId);
+      if(image)images.push(structuredClone(image));
+    }
+  }
   firstImages.length ? first.images = firstImages : delete first.images;
   secondImages.length ? second.images = secondImages : delete second.images;
   const [firstFigures, secondFigures] = assign(source.figures, 'figure');
@@ -653,6 +662,13 @@ export function moveBubbleToOwner(
     ? (page.page_overlay ??= { frame: false, layer: 'above_panel_frames' }).bubbles ??= []
     : page.panels[targetOwner].bubbles;
   targetBubbles.push(bubble);
+  const sourceImages=sourceOwner==='page_overlay'?page.images:page.panels[sourceOwner].images;
+  const imageIndex=sourceImages?.findIndex(image=>image.id===bubble.analogTextImport?.originalImageId)??-1;
+  if(imageIndex>=0){
+    const image=sourceImages!.splice(imageIndex,1)[0],targetImages=targetOwner==='page_overlay'?(page.images??=[]):(page.panels[targetOwner].images??=[]);
+    if(targetImages.some(existing=>existing.id===image.id))image.id=crypto.randomUUID();
+    bubble.analogTextImport!.originalImageId=image.id;targetImages.push(image);
+  }
   if (sourceOwner === 'page_overlay' && page.page_overlay && !(page.page_overlay.bubbles?.length) && !(page.page_overlay.figures?.length) && !(page.page_overlay.screen_text?.length)) {
     delete page.page_overlay;
   }
@@ -702,7 +718,7 @@ export function applyPanelTemplate(page: MangaPage, template: PanelTemplate): vo
     for (const source of group.slice(1)) {
       const moved = movePanelContent(source, shape);
       merged.figures = [...(merged.figures ?? []), ...(moved.figures ?? [])];
-      merged.images = mergeImages(merged.images, moved.images);
+      merged.images = mergeImages(merged.images, moved.images, moved.bubbles);
       merged.background_images = mergeImages(merged.background_images, moved.background_images);
       appendBubbles(merged.bubbles, moved.bubbles);
       const mergedScreenText = [...(merged.screen_text ?? []), ...(moved.screen_text ?? [])];

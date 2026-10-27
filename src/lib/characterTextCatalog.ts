@@ -180,7 +180,7 @@ export function parseCharacterText(source: string): CharacterTextEntry[] {
     const headCount = metadataValue(line, ['基準頭身', '等身']);
     if (headCount) {
       const value = Number(headCount.replace(/頭身$/u, '').trim());
-      if (Number.isFinite(value) && value >= 1 && value <= 12) current.headCount = value;
+      if (Number.isFinite(value) && value >= 1) current.headCount = value;
       continue;
     }
     if (!line) {

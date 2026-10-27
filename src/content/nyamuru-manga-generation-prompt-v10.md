@@ -199,7 +199,7 @@ manga:
       scope:              # "episode"（この話だけ）/ "series"（シリーズ共通）。省略時はepisode
       catalog_id:         # シリーズ人物を名称変更後も追跡する安定ID（scope: series の場合）
       aliases:            # ネーム上の略称・呼び名（配列・任意）
-      default_proportion: # 人間が決めた人物単位の基準頭身（任意。1〜12）
+      default_proportion: # 人間が決めた人物単位の基準頭身（任意。1以上、上限なし）
         head_count:
       primary_material_catalog_id: # 代表人物資料のcatalog_id（任意）
       recognition:        # シリーズ人物の安定した照合特徴（任意。表情・一時的なポーズ・画風は入れない）

@@ -29,7 +29,8 @@ test('再注入の実handlerは連打・処理中編集を防ぎ、完成文を�
     manga.pages[0].panels.push(panel);
     const originalNeighbor = JSON.stringify(untouched);
     panel.action = 'ハルは窓を指す。';
-    panel.figures = [{ name: 'ハル', action: '顔は右向き。' }];
+    panel.figures = [{ name: 'ハル', action: '顔は右向き。',locked:true,artwork:{locked:true} }];
+    panel.layer={locked:true};
     const pending = [];
     const changes = [];
     const statuses = [];
@@ -40,7 +41,7 @@ test('再注入の実handlerは連打・処理中編集を防ぎ、完成文を�
     const generationInFlight = { current: false };
     const run = runInNewContext(ts.transpileModule(`(${handler})`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, {
       panel, manga, pageIndex: 0, panelIndex: 1, hasPersonFigures: true,
-      generationRequest, generationInFlight, latestPanel, latestOnChange: { current: value => changes.push(value) },
+      generationRequest, generationInFlight, latestPanel, latestOnChange: { current: (value,origin) => {assert.equal(origin,'agent');changes.push(value);} },
       setGenerationStatus: value => statuses.push(value), structuredClone, buildPanelActionSuggestionRequest, applyReconciledPanelActions,
       withPanelActionServices: (task, options) => withPanelActionServices(task, options, async (url) => {
         const path = new URL(String(url)).pathname;

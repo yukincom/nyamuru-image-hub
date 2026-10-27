@@ -273,3 +273,43 @@ test('same-folder concurrent new saves and migrations have exactly one winner', 
     assert.equal(title(await f.client.open(workspace)), 'edit-0');
   }
 });
+
+test('default folder handles stay in page memory and require selection again in a fresh page', async () => {
+  const f=fixture(),client=new BrowserWorkspaces();
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'indexedDB');
+  Object.defineProperty(globalThis,'indexedDB',{configurable:true,get:()=>assert.fail('must not access IndexedDB')});
+  try {
+    const workspace=await client.chooseEpisode();
+    assert.equal(f.episode.entries.size,0,'selection alone writes no project');
+    await client.write(project('explicit save'),await client.saveTarget(workspace));
+    assert.equal(title(await new BrowserWorkspaces().open(workspace)),'explicit save');
+    const fresh=await import('../src/lib/browserWorkspace.ts?fresh-memory-test');
+    const reopened=new fresh.BrowserWorkspaces();
+    await assert.rejects(reopened.open(workspace),/選び直し/);
+    const selected=await reopened.chooseEpisode();
+    assert.equal(title(await reopened.open(selected)),'explicit save');
+  } finally {
+    if(descriptor)Object.defineProperty(globalThis,'indexedDB',descriptor);else delete globalThis.indexedDB;
+  }
+});
+
+import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
+import { toSeriesCatalogMangaYaml } from '../src/lib/manga.ts';
+import { saveBrowserCatalog, loadBrowserCatalog, listBrowserCatalogs } from '../src/lib/browserCatalog.ts';
+test('client series catalogs are session-only and retain revision conflicts without browser writes', async () => {
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'indexedDB');
+  Object.defineProperty(globalThis,'indexedDB',{configurable:true,get:()=>assert.fail('must not access IndexedDB')});
+  try {
+    const doc=createEmptyWorkspaceDocument();doc.manga.meta.series='memory-series';doc.manga.meta.series_id='memory-series-id';
+    const yaml=toSeriesCatalogMangaYaml(doc);
+    const result=await saveBrowserCatalog('memory-series','memory-series-id',yaml,'');
+    assert.equal((await loadBrowserCatalog('memory-series','memory-series-id')).revision,result.revision);
+    await assert.rejects(saveBrowserCatalog('memory-series','memory-series-id',yaml,'stale'),/更新/);
+    const items=await listBrowserCatalogs();items[0].seriesName='mutated copy';
+    assert.equal((await loadBrowserCatalog('memory-series','memory-series-id')).seriesName,'memory-series');
+    const fresh=await import('../src/lib/browserCatalog.ts?fresh-memory-test');
+    assert.equal((await fresh.loadBrowserCatalog('memory-series','memory-series-id')).found,false);
+  } finally {
+    if(descriptor)Object.defineProperty(globalThis,'indexedDB',descriptor);else delete globalThis.indexedDB;
+  }
+});

@@ -1,6 +1,8 @@
 /** Actual App + actual bridge/classifier, dedicated origin and synthetic manuscript. */
 import {render} from 'preact';
-import {useState} from 'preact/hooks';
+import {useState,useRef} from 'preact/hooks';
+import MangaCanvas from '../src/components/MangaCanvas';
+import {BubblePathToolContext} from '../src/lib/paintWorkspace';
 import App from '../src/components/App';
 import VoiceCommands from '../src/components/VoiceCommands';
 import AgentSettings from '../src/components/AgentSettings';
@@ -11,7 +13,8 @@ import {imageSha256} from '../src/lib/imagePlacement';
 import {createBubbleBezier} from '../src/lib/bubbleBezier';
 import '../src/styles/global.css';
 
-if(location.origin!=='http://127.0.0.1:4338')throw Error('Dedicated test origin required');
+const agentLockTest=new URLSearchParams(location.search).has('agent-lock');
+if(location.origin!=='http://127.0.0.1:4338'&&!(agentLockTest&&location.origin==='http://127.0.0.1:4335'))throw Error('Dedicated test origin required');
 const generationPipeline=new URLSearchParams(location.search).has('generation-pipeline');
 const voiceStopTest=new URLSearchParams(location.search).has('voice-stop');
 if(generationPipeline||new URLSearchParams(location.search).has('character-generation')&&!localStorage.getItem('nyamuru.character-generation-fixture.v1')){
@@ -120,9 +123,11 @@ if(!localStorage.getItem(STORAGE_KEY)){
   localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(document));
 }
 function AgentUiFixture(){
-  const storage=voiceStopTest?{getItem:()=>localStorage.getItem('nyamuru.voice-stop-test.profile.v1'),setItem:(_key:string,value:string)=>localStorage.setItem('nyamuru.voice-stop-test.profile.v1',value)}:localStorage;
+  const storage=agentLockTest?{getItem:()=>null,setItem:()=>{}}:voiceStopTest?{getItem:()=>localStorage.getItem('nyamuru.voice-stop-test.profile.v1'),setItem:(_key:string,value:string)=>localStorage.setItem('nyamuru.voice-stop-test.profile.v1',value)}:localStorage;
   const [open,setOpen]=useState(false),[profile,setProfile]=useState(()=>loadAgentPreferences(storage));
   const [applied,setApplied]=useState(0),[delayed,setDelayed]=useState(false);
+  const [agentWorking,setAgentWorking]=useState(false),pendingReply=useRef<(()=>void)|null>(null);
+  const [previewPage]=useState(()=>{const page=newPage(1);page.canvas={w:100,h:100,unit:'mm'};page.panels=[{id:1,shape:{type:'rect',x:5,y:5,w:90,h:90},bg:0,action:null,bubbles:[{text:'作業対象',shape:'normal',tail:false,bbox:{x:20,y:20,w:40,h:50}}]}];return page;});
   const [signal,setSignal]=useState('無音'),[transcriptions,setTranscriptions]=useState(0);
   const change=(value:AgentPreferences)=>setProfile(saveAgentPreferences(storage,value));
   const setSignalLevel=(speaking:boolean)=>{if(!voiceTestSignal){setSignal('先に音声入力を開始してください');return;}voiceTestSignal.gain.gain.value=speaking?0.08:0;setSignal(speaking?'発話を模擬中':'無音');};
@@ -130,8 +135,10 @@ function AgentUiFixture(){
     <p>{voiceStopTest?'録音は合成信号、文字起こし応答は検証用です。実マイク・スピーカー・モデルを使いません。':'応答・接続名は検証用です。LLMやマイクには接続しません。'}</p>
     {voiceStopTest&&<section aria-label="音声停止の検証"><button type="button" onClick={()=>setSignalLevel(true)}>合成音声を出す</button> <button type="button" onClick={()=>setSignalLevel(false)}>無音にする</button><p>入力信号: {signal} · 文字起こし回数: {transcriptions}</p></section>}
     <label><input type="checkbox" checked={delayed} onChange={e=>setDelayed(e.currentTarget.checked)}/>{voiceStopTest?'分類結果を10秒待つ':'分類結果を3秒待つ'}</label>
+    {agentLockTest&&<><button disabled={!pendingReply.current} onClick={()=>{pendingReply.current?.();pendingReply.current=null;}}>検証応答を完了</button><p data-testid="agent-activity">{agentWorking?'作業中':'待機中'}</p>
+      <div style="width:460px;height:420px"><BubblePathToolContext.Provider value="node"><MangaCanvas agentWorkTarget={agentWorking?{panelIndex:0,selection:{type:'bubble',index:0}}:undefined} page={previewPage} pageCount={1} title="作業表示検証" author="" activePanel={0} selectedPanels={[]} selectedElement={{type:'bubble',index:0}} zoomPercent={70} onZoomPercentChange={()=>{}} dpi={100} frameLineWidthMm={.3} bubbleLineWidthMm={.3} defaultBubbleFont="sans-serif" showGuides={false} innerFrameSnap={false} panelGutters={{rowGapMm:2,columnGapMm:2}} panelGapSnap={false} panelSync={false} guideVisible={()=>false} onToggleGuide={()=>{}} onGenerateArtwork={()=>{}} onSelectPanel={()=>{}} onSelectElement={()=>{}} onChangeElementBBox={()=>{}} onChangeBubbleTail={()=>{}} onMovePanel={()=>{}} onResizePanel={()=>{}} onMoveVertex={()=>{}} onMovePanelEdge={()=>{}}/></BubblePathToolContext.Provider></div></>}
     <p role="status">実行回数: {applied}</p><AgentSettings profile={profile} onChange={change}/>
-    <VoiceCommands profile={profile} onChangeProfile={change} open={open} onToggle={()=>setOpen(!open)} revision={()=>'fixture'}
+    <VoiceCommands onActivity={setAgentWorking} profile={profile} onChangeProfile={change} open={open} onToggle={()=>setOpen(!open)} revision={()=>'fixture'}
       apply={()=>{setApplied(n=>n+1);return '保存しました（検証用）';}}
       connection={async()=>({connected:true,model:'gemma-4-26B-A4B-it-qat-UD-Q4_K_XL'})}
       request={async(action,body)=>{
@@ -140,6 +147,7 @@ function AgentUiFixture(){
           setTranscriptions(n=>n+1);await new Promise(resolve=>setTimeout(resolve,1800));return {text:'保存して'};
         }
         if(action!=='voice/classify')throw Error('この検証画面では録音しません');
+        if(agentLockTest)await new Promise<void>(resolve=>{pendingReply.current=resolve;});
         if(delayed)await new Promise(resolve=>setTimeout(resolve,voiceStopTest?10000:3000));
         return {text:(body as {text:string}).text,label:'save',confidence:1,model:'fixture',elapsed_ms:0};
       }}/>
@@ -181,4 +189,4 @@ function Seed43Cleanup(){
     {finished&&<p role="status">保存先を解除し、以前の検証原稿を戻しました。</p>}
   </main>;
 }
-render(generationPipeline?<GenerationPipelineQa/>:new URLSearchParams(location.search).has('seed43-cleanup')?<Seed43Cleanup/>:voiceStopTest||new URLSearchParams(location.search).has('agent-ui')?<AgentUiFixture/>:new URLSearchParams(location.search).has('bubble-material')?<BubbleQa/>:<App/>,document.getElementById('app')!);
+render(generationPipeline?<GenerationPipelineQa/>:new URLSearchParams(location.search).has('seed43-cleanup')?<Seed43Cleanup/>:agentLockTest||voiceStopTest||new URLSearchParams(location.search).has('agent-ui')?<AgentUiFixture/>:new URLSearchParams(location.search).has('bubble-material')?<BubbleQa/>:<App/>,document.getElementById('app')!);

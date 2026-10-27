@@ -86,7 +86,7 @@ test('generation resolves the selected owner and explicit panel independently',(
   assert.deepEqual(resolveVoiceGenerationTarget(document,0,1,null,{...command,locator:{panel:1,name:'こゆき'}}),{pageIndex:0,panelIndex:0,index:0,kind:'figure',overlay:false});
   assert.deepEqual(document,before);
 });
-test('generation never substitutes a missing, ambiguous, hidden, locked or mismatched target',()=>{
+test('generation never substitutes a missing, ambiguous, hidden or mismatched target',()=>{
   const document=generationFixture(),command={op:'generate_selected',kind:'figure'},selected={type:'figure',index:0};
   const resolve=(selection=selected,cmd=command)=>resolveVoiceGenerationTarget(document,0,0,selection,cmd);
   assert.throws(()=>resolve(null),/選択/);assert.throws(()=>resolve({type:'bubble',index:0}),/一致/);
@@ -96,7 +96,7 @@ test('generation never substitutes a missing, ambiguous, hidden, locked or misma
   document.manga.pages[0].panels[0].figures.push({name:'小雪',refId:'koyuki'});
   assert.throws(()=>resolve(null,{...command,locator:{panel:1,name:'小雪'}}),/複数/);
   assert.equal(resolve().index,0);
-  document.manga.pages[0].panels[0].figures[0].artwork={locked:true};assert.throws(()=>resolve(),/ロック/);
+  document.manga.pages[0].panels[0].figures[0].artwork={locked:true};assert.equal(resolve().index,0);assert.equal(document.manga.pages[0].panels[0].figures[0].artwork.locked,true);
   document.manga.pages[0].panels[0].figures[0].artwork={hidden:true};assert.throws(()=>resolve(),/非表示/);
   delete document.manga.pages[0].panels[0].figures[0].artwork;
   document.manga.pages[0].panels[0].layer={hidden:true};assert.throws(()=>resolve(),/非表示/);

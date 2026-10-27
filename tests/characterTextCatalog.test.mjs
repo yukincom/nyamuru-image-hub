@@ -16,6 +16,20 @@ function emptyStory() {
   return document;
 }
 
+test('基準頭身は12を超えても人物テキストから取り込み往復できる', () => {
+  for (const headCount of [6.5, 16, 120.5, 12345.5]) {
+    const source = emptyStory();
+    source.manga.characters = [{
+      localId: 'person-monster', catalog_id: 'character-monster',
+      name: '怪人', role: '', scope: 'series', default_proportion: { head_count: headCount },
+    }];
+    const entries = parseCharacterText(toCharacterTextMarkdown(source));
+    assert.equal(entries[0].headCount, headCount);
+    const restored = mergeCharacterTextCatalog(emptyStory(), entries).document;
+    assert.equal(restored.manga.characters[0].default_proportion.head_count, headCount);
+  }
+});
+
 test('既存の太字人物名と人物像を抽出する', () => {
   const entries = parseCharacterText(`# 登場人物設定
 ## メインキャラクター
