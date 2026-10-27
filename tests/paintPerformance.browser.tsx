@@ -36,7 +36,7 @@ function makeScene(count:number):PaintScene{
 function Probe(){
   workspace=usePaintWorkspace();
   const controls=useContext(PaintLayerControlsContext);
-  return <div style={{marginTop:'8px'}}><button id="undo" onClick={()=>workspace?.undo()}>取り消し</button><button id="redo" onClick={()=>workspace?.redo()}>やり直し</button><output id="ink-state">{workspace?.owner.paint.layers[0].strokes.length}本{workspace?.live?'・描画中':''}</output><div id="fixture-tools">{workspace?.tools}</div>{controls}</div>;
+  return <div style={{marginTop:'8px'}}><button id="undo" onClick={()=>workspace?.undo()}>取り消し</button><button id="redo" onClick={()=>workspace?.redo()}>やり直し</button><output id="ink-state">{workspace?.owner.paint.layers[0].strokes.length}本{workspace?.live?'・描画中':''}</output><div id="fixture-tools">{workspace?.tools}</div>{controls}{workspace?.status}</div>;
 }
 type MountOptions=Partial<Pick<ComponentProps<typeof PaintEditor>,'controller'|'resume'|'sharedHistory'|'initialOwner'|'assets'|'onApply'|'onClose'>>;
 async function mount(scene:PaintScene,options:MountOptions={}){
@@ -135,6 +135,61 @@ async function selectionInteraction(){
   document.getElementById('undo')!.click();await raf();await raf();check(workspace!.owner.paint.layers.length===1&&workspace!.owner.frame===before.owners[0].frame,'一度のUndoでトーンと領域拡張を同時に戻す');
   document.getElementById('redo')!.click();await raf();await raf();const restored=samples();
   check(after.length===restored.length&&after.every((v,i)=>v===restored[i]),'トーンと領域拡張のRedoで全画素を復元');
+}
+async function selectionCapacityInteraction(){
+  const controller:{current:PaintController|null}={current:null};await mount(makeScene(0),{controller});
+  const before=workspace!.scene,owner=workspace!.owner,layerId=controller.current!.snapshot().layerId,ink=samples();
+  const choose=async(label:string)=>{document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click();await raf();await raf();};
+  const pixelPointer=(type:string,x:number,y:number)=>pointer(type,owner.frame.x+x*owner.frame.w/owner.paint.width,owner.frame.y+y*owner.frame.h/owner.paint.height);
+  const rectangle=async(w:number,h:number)=>{await choose('投げ縄');pixelPointer('pointerdown',0,0);pixelPointer('pointermove',w,0);pixelPointer('pointermove',w,h);pixelPointer('pointerup',0,h);await raf();await raf();};
+  const unchanged=()=>workspace!.scene===before&&controller.current!.snapshot().layerId===layerId&&!workspace!.canUndo&&!workspace!.canRedo;
+  const error=()=>document.querySelector('.paint-error')?.textContent??'';
+  await rectangle(100,100);const previous=workspace!.selection?.boxes;
+  await rectangle(4,16385);
+  check(workspace!.selection?.boxes===previous&&unchanged()&&error().includes('選択範囲が大きすぎ'),'縦16384行を超える投げ縄は前の選択・原稿・Undoを保持して拒否');
+  pixelPointer('pointerdown',0,0);
+  for(let i=0;i<1100;i++)pixelPointer('pointermove',i%2?20:40,i%2?0:16384);
+  pixelPointer('pointerup',0,0);await raf();await raf();
+  check(workspace!.selection?.boxes===previous&&unchanged()&&error().includes('選択範囲が大きすぎ'),'輪郭点数×走査行数の上限でも前の選択を保持');
+  for(const [w,h,label] of [[20000,8,'横幅'],[10001,10000,'合計画素数']] as const){
+    await rectangle(w,h);const selected=workspace!.selection?.boxes;
+    check(selected?.length===1&&selected[0].w===w&&selected[0].h===h&&unchanged(),`${label}が画像上限を超えても疎な選択は切り詰めず保持`);
+    await choose('トーンレイヤー作成');
+    check(workspace!.selection?.boxes===selected&&unchanged()&&error().includes('各辺16384px・合計1億px'),`${label}超過のトーン作成は選択・原稿・層・Undoを保持して拒否`);
+    check(document.querySelector('[aria-label="投げ縄"]')?.getAttribute('aria-pressed')==='true','失敗したトーン作成で道具を切り替えない');
+  }
+  await rectangle(20000,8);const selected=workspace!.selection?.boxes;
+  await choose('ペン');pixelPointer('pointerdown',19990,4);pixelPointer('pointermove',19992,4);pixelPointer('pointerup',19992,4);await raf();await raf();
+  check(workspace!.selection?.boxes===selected&&unchanged()&&!workspace!.live&&error().includes('各辺16384px・合計1億px'),'実インクが容量外にある一筆は同じ制限で拒否し入力状態を解除');
+  const rejected=samples();check(ink.length===rejected.length&&ink.every((v,i)=>v===rejected[i]),'拒否後の全画素が操作前と一致');
+  await rectangle(100,100);await choose('トーンレイヤー作成');
+  check(workspace!.owner.paint.layers.length===2&&!workspace!.selection&&workspace!.canUndo&&!error(),'選択を小さくして再試行すると一度だけ成功し過去の容量エラーも消える');
+  document.getElementById('undo')!.click();await raf();await raf();
+  check(workspace!.scene===before&&!workspace!.canUndo&&workspace!.canRedo,'失敗した操作を含めず一度のUndoで再試行前へ戻る');
+  document.getElementById('redo')!.click();await raf();await raf();
+  check(workspace!.owner.paint.layers.length===2,'再試行のトーンをRedoで復元');
+  await mount(makeScene(0));await rectangle(20000,8);const wideSelection=workspace!.selection?.boxes,smallOwner=workspace!.owner;
+  await choose('ペン');pixelPointer('pointerdown',20,4);pixelPointer('pointermove',30,4);pixelPointer('pointerup',30,4);await raf();await raf();
+  check(workspace!.selection?.boxes===wideSelection&&workspace!.owner.frame===smallOwner.frame&&workspace!.owner.paint.layers[0].strokes.length===1&&!error(),'巨大な選択の近くに小さい一筆を描いても選択全体の画像確保は不要');
+  check(samples().some((v,i)=>i%4===3&&v>0),'巨大な選択内の小さい筆跡を実画素で確認');
+}
+async function draftSelectionCapacityInteraction(){
+  const scene=makeScene(0),owner=scene.owners[0],lower=owner.paint.layers[0];
+  lower.clip={x:0,y:0,w:600,h:600};owner.paint.layers.push({...newPaintLayer('固定された上段'),locked:true});
+  const controller:{current:PaintController|null}={current:null};await mount(scene,{controller});const before=workspace!.scene;
+  const choose=async(label:string)=>{document.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click();await raf();await raf();};
+  const send=(type:string,x:number,y:number)=>pointer(type,owner.frame.x+x*owner.frame.w/owner.paint.width,owner.frame.y+y*owner.frame.h/owner.paint.height);
+  await choose('投げ縄');send('pointerdown',0,0);send('pointermove',20000,0);send('pointermove',20000,8);send('pointerup',0,8);await raf();await raf();
+  const selection=workspace!.selection?.boxes;check(Boolean(selection)&&controller.current!.snapshot().layerId===lower.id,'新規筆跡の前に下段レイヤーと選択を保持');
+  await choose('ペン');send('pointerdown',19990,4);
+  for(let i=0;i<12;i++)await raf();
+  check(workspace!.selection?.boxes===selection&&controller.current!.snapshot().layerId===lower.id,'未確定の新レイヤーIDで固定上段へ選択が飛ばない');
+  send('pointerup',19992,4);await raf();await raf();
+  check(workspace!.scene===before&&workspace!.selection?.boxes===selection&&controller.current!.snapshot().layerId===lower.id&&!workspace!.canUndo&&!workspace!.live,'新レイヤーの容量失敗でも選択・原稿・Undoをすべて保持');
+  send('pointerdown',20,4);send('pointerup',30,4);await raf();await raf();
+  check(workspace!.owner.paint.layers.length===3&&controller.current!.snapshot().layerId===workspace!.owner.paint.layers[2].id&&workspace!.owner.paint.layers[2].strokes.length===1,'成功した一筆の確定時だけ追加した作業レイヤーを選択');
+  document.getElementById('undo')!.click();await raf();await raf();
+  check(workspace!.scene===before&&!workspace!.canUndo,'一回のUndoで初回筆跡と追加レイヤーを同時に戻す');
 }
 async function guideSessionInteraction(){
   const panel:Panel={id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:'',bubbles:[],figures:[
@@ -250,6 +305,7 @@ run.onclick=()=>{
     report.textContent='実PaintEditorのポインター入力・確定・取り消し・枠外描画を検証中…';const ui=await interaction();
     report.textContent='同じレイヤーへのマスク描画・確定・消去・取消を検証中…';await maskInteraction();
     report.textContent='元画像サイズに切られない投げ縄とトーン・Undo/Redoを検証中…';await selectionInteraction();
+    report.textContent='投げ縄の処理量・画像容量の境界と失敗後の再試行を検証中…';await selectionCapacityInteraction();await draftSelectionCapacityInteraction();
     report.textContent='guide準備・共有Undo/Redo・保存失敗と実PNG保存往復を検証中…';await guideSessionInteraction();
     report.textContent='文字変更時の原画21枚の保持・差替え・欠損を検証中…';await placedImageInteraction();
     report.textContent=`PASS ${checks.length}項目\n500本・600×600px・120回、同じcanvas rendererで比較\n旧組み立て方式の再現: ${JSON.stringify(baked)}\n修正後: ${JSON.stringify(cached)}\n実PaintEditor: ${JSON.stringify(ui)}\n${checks.join('\n')}\n注: この合成原稿・端末での測定。マスク/トーン・実原稿全体の速度保証ではありません。`;

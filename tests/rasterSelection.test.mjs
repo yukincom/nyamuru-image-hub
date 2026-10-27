@@ -48,3 +48,15 @@ test('run booleans retain the pixel-center convention for fractional overlapping
   assert.throws(()=>lassoSelection([{x:0,y:0},{x:NaN,y:2},{x:3,y:4}]),/有限/);
   assert.throws(()=>lassoSelection([{x:0,y:0},{x:2,y:20000},{x:3,y:4}]),/大きすぎ/);
 });
+test('sparse selection width is independent of raster capacity; scanline work has explicit bounds',()=>{
+  const rectangle=(w,h)=>[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+  for(const [w,h] of [[20000,4],[10001,10000],[4,16384]]){
+    const boxes=lassoSelection(rectangle(w,h));
+    assert.deepEqual(JSON.parse(JSON.stringify(boxes)),[{x:0,y:0,w,h}]);
+    assert.deepEqual(JSON.parse(JSON.stringify(combineSelection([],boxes,'add'))),[{x:0,y:0,w,h}]);
+  }
+  assert.throws(()=>lassoSelection(rectangle(4,16385)),/大きすぎ/);
+  const atBudget=[...Array.from({length:4093},()=>({x:0,y:0})),...rectangle(4,4096).slice(1)];
+  assert.deepEqual(JSON.parse(JSON.stringify(lassoSelection(atBudget))),[{x:0,y:0,w:4,h:4096}]);
+  assert.throws(()=>lassoSelection([...atBudget,atBudget[0]]),/大きすぎ/);
+});

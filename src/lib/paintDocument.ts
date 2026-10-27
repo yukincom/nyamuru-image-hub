@@ -7,6 +7,7 @@ import { fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { artworkPixelSize } from './artworkClipboard.ts';
 import { paintLayerHasContent } from './paintLock.ts';
 import { figureDisplayLabel } from './displayLabels.ts';
+import {paintStrokeContentBounds} from './paintStroke.ts';
 
 /** Layout selection is not a paint selection; callers choose any drawing fallback explicitly. */
 export function canvasPaintOwnerKey(page:MangaPage|undefined,panelIndex:number,selection:CanvasElementSelection|null|undefined):string|undefined {
@@ -448,9 +449,8 @@ export function expandPaintOwnerToContent(owner:PaintOwner,contents=owner.paint.
       for(const node of path.nodes){include(node.x,node.y,0,0,margin);for(const key of ['handleIn','handleOut'] as const){const handle=node[key];if(handle)include(node.x+handle.x,node.y+handle.y,0,0,margin);}}
     }
     for(const stroke of layer.strokes){
-      if(stroke.tool==='eraser'||stroke.tool==='clear')continue;
-      if(stroke.selection){for(const box of stroke.selection)include(box.x,box.y,box.w,box.h);continue;}
-      for(const point of stroke.points)include(point.x,point.y,0,0,stroke.size/2+2);
+      const bounds=paintStrokeContentBounds(stroke);
+      if(bounds)include(bounds.x,bounds.y,bounds.w,bounds.h);
     }
   }
   return expandPaintOwnerToBounds(owner,{x:left,y:top,w:right-left,h:bottom-top});

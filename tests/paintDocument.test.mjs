@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { addPaintFolder, applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, scalePaintOwner, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
+import { addPaintFolder, applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
 import { createFrameArtwork, imageAssetIds, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
@@ -356,6 +356,21 @@ test('reference bounds survive stored project normalization and invalid padding 
   for(const referenceFrame of [{x:NaN,y:0,w:1,h:1},{x:0,y:0,w:0,h:1},null])assert.throws(()=>validatePaintDocument({...owner.paint,referenceFrame},[]));
 });
 
+
+test('raster growth and saved-document validation share exact side and area limits without allocating pixels',()=>{
+  const owner=paintScene(panel(),100,[]).owners[1],before=structuredClone(owner);
+  for(const [w,h] of [[16384,owner.paint.height],[owner.paint.width,16384],[10000,10000]]){
+    const grown=expandPaintOwnerToBounds(owner,{x:0,y:0,w,h});
+    assert.deepEqual([grown.paint.width,grown.paint.height],[w,h]);
+    assert.doesNotThrow(()=>validatePaintDocument(grown.paint,[]));
+    assert.equal(grown.paint.layers,owner.paint.layers);
+  }
+  for(const [w,h] of [[16385,owner.paint.height],[owner.paint.width,16385],[10001,10000]]){
+    assert.throws(()=>expandPaintOwnerToBounds(owner,{x:0,y:0,w,h}),/各辺16384px・合計1億px/);
+    assert.throws(()=>validatePaintDocument({...owner.paint,width:w,height:h},[]));
+    assert.deepEqual(owner,before);
+  }
+});
 
 test('restoring a guide and exporting OMNY recover its reference bounds without changing local painted placement',()=>{
   const doc=panelTestDocument();

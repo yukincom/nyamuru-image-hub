@@ -1,7 +1,8 @@
 import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
 import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newPaintLayer,type PaintOwner,type PaintScene} from './paintDocument.ts';
 import {paintOwnerLocked} from './paintLock.ts';
-import type { PaintSmoother } from './paintStroke.ts';
+import {paintStrokeBounds,paintStrokeContentBounds,type PaintSmoother} from './paintStroke.ts';
+export {paintStrokeBounds} from './paintStroke.ts';
 
 export interface PendingPaintStroke {
   ownerKey: string;
@@ -14,16 +15,6 @@ export interface PendingPaintStroke {
   space?: {frame:BBox;width:number;height:number};
   /** Gesture-only ink extent, updated from new samples; never persisted. */
   bounds?: BBox;
-}
-
-/** Pen samples append; two-point shapes replace their endpoint and recompute. */
-export function paintStrokeBounds(stroke:PaintStroke,previous?:BBox,from=0):BBox|undefined {
-  if(stroke.tool==='eraser'||stroke.tool==='clear')return;
-  let left=previous?.x??Infinity,top=previous?.y??Infinity,right=previous?previous.x+previous.w:-Infinity,bottom=previous?previous.y+previous.h:-Infinity;
-  const include=(x:number,y:number,w=0,h=0,margin=0)=>{left=Math.min(left,x-margin);top=Math.min(top,y-margin);right=Math.max(right,x+w+margin);bottom=Math.max(bottom,y+h+margin);};
-  if(stroke.selection){for(const box of stroke.selection)include(box.x,box.y,box.w,box.h);}
-  else for(let i=from;i<stroke.points.length;i++){const p=stroke.points[i];include(p.x,p.y,0,0,stroke.size/2+2);}
-  return left===Infinity?undefined:{x:left,y:top,w:right-left,h:bottom-top};
 }
 
 function strokeTransform(pending:PendingPaintStroke,owner:PaintOwner){
@@ -41,7 +32,7 @@ function strokeInOwner(pending:PendingPaintStroke,owner:PaintOwner):PaintStroke 
     ...(stroke.selection?{selection:stroke.selection.map(b=>({x:b.x*sx+dx,y:b.y*sy+dy,w:b.w*sx,h:b.h*sy}))}:{})};
 }
 function strokeBoundsInOwner(pending:PendingPaintStroke,owner:PaintOwner):BBox|undefined {
-  const b=pending.bounds??paintStrokeBounds(pending.stroke);if(!b)return;
+  const b=paintStrokeContentBounds(pending.stroke,pending.bounds??paintStrokeBounds(pending.stroke));if(!b)return;
   const t=strokeTransform(pending,owner);return t?{x:b.x*t.sx+t.dx,y:b.y*t.sy+t.dy,w:b.w*t.sx,h:b.h*t.sy}:b;
 }
 

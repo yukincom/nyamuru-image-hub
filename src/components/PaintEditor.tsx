@@ -297,7 +297,10 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     // Detach first: releasing capture can synchronously produce another end event.
     gesture.current=null;inputActive.current=false;g.cleanup();cancelAnimationFrame(raf.current);raf.current=0;
     if(keep){const pending=g.live;
-      try{if(historyRef.current.initial===initial)commit(commitPaintStroke(historyRef.current.present,pending));}
+      try{if(historyRef.current.initial===initial){
+        const before=historyRef.current.present,next=commitPaintStroke(before,pending);commit(next);
+        if(next!==before){if(pending.addedLayer)setLayerId(pending.layerId);setError('');}
+      }}
       catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');}}
     rasterPreviewRef.current=undefined;setLive(undefined);
     try{if(g.target.hasPointerCapture(g.pointerId))g.target.releasePointerCapture(g.pointerId);}catch{/* Window listeners already detached. */}
@@ -570,7 +573,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
       if(erasing&&!canEditLayer)return;
       // Preview the added layer now, but commit it atomically with its first mark.
       const active=editingMask||erasing?layer:preparePaintMarkLayer(owner,hasLayer?layer:undefined,'raster',scene.colorMode);
-      if(!active)return;if(active!==layer)setLayerId(active.id);
+      if(!active)return;
       const target=event.currentTarget,rect=target.getBoundingClientRect();
       if(rect.width<=0||rect.height<=0)return;
       const point=(sample:PaintSampleEvent):PaintPoint=>({...inputPoint(sample,target,rect),pressure:sample.pointerType==='pen'?Math.max(0,Math.min(1,sample.pressure)):1,time:sample.timeStamp});
@@ -797,7 +800,7 @@ export default function PaintEditor({resume,sharedHistory,historySteps=50,stages
     try{const next=expandPaintOwnerToBounds({...owner,paint:{...owner.paint,layers:[...owner.paint.layers,added]}},added.mask?.strokes[0]?paintStrokeBounds(added.mask.strokes[0]):undefined);
       commit({...scene,owners:scene.owners.map(o=>o.key===owner.key?next:o)});}
     catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
-    clearVectorSelection();setLayerId(added.id);
+    setError('');clearVectorSelection();setLayerId(added.id);
     setMaskTarget({key:owner.key,id:added.id,kind:'mask'});setSelection(null);setTool('pen');setLineKind('raster');
   }
   function addGenerationMask(){

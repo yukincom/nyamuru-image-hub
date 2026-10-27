@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { commitPaintStroke, commitVectorPaths, canStartPaintMark, preparePaintMarkLayer, appendPaintSamples, constrainPaintPoint, paintStrokeBounds, previewPaintStroke } from '../src/lib/paintGesture.ts';
-import { paintScene, newPaintLayer, expandPaintOwnerToBounds } from '../src/lib/paintDocument.ts';
+import { paintScene, newPaintLayer, expandPaintOwnerToBounds, expandPaintOwnerToContent, validatePaintDocument } from '../src/lib/paintDocument.ts';
+import {translatePaintLayer} from '../src/lib/paintLayerPicking.ts';
 import {newToneLayer} from '../src/lib/paintTone.ts';
 import {lassoSelection,combineSelection} from '../src/lib/rasterSelection.ts';
 import { PaintSmoother } from '../src/lib/paintStroke.ts';
@@ -31,6 +32,22 @@ test('vector draft allocation is committed only by the same path preview/finish 
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:-1,action:null,bubbles:[],figures:[{name:'人物',bbox:{x:10,y:20,w:30,h:50}}]},100,[]);
 
+test('actual raster finish selects a draft layer only after success, retaining selection on error or cancel',()=>{
+  for(const ending of ['success','capacity','cancel']){
+    const scene=initial(),owner=scene.owners[0],oldId=owner.paint.layers[0].id,added=newPaintLayer();
+    let selected=oldId,commits=0,error='previous error',cleared=0;
+    const mark={tool:'pen',color:'#000000',size:2,points:[{x:ending==='capacity'?20000:5,y:5,pressure:1,time:0}]};
+    const historyRef={current:{initial:scene,present:scene}},inputActive={current:true},rasterPreviewRef={current:{}};
+    const gesture={current:{pointerId:7,live:{ownerKey:owner.key,layerId:added.id,addedLayer:added,stroke:mark},cleanup:()=>cleared++,target:{hasPointerCapture:()=>true,releasePointerCapture:()=>cleared++}}};
+    editorHandler('finishGesture',{initial:scene,historyRef,gesture,inputActive,rasterPreviewRef,selectionPointer:{current:null},raf:{current:1},endBackgroundMove(){},finishLayerMove(){},finishVector(){},setLassoPreview(){},cancelAnimationFrame(){},commitPaintStroke,
+      commit:next=>{commits++;historyRef.current.present=next;},setLayerId:id=>selected=id,setError:value=>error=value,setLive:value=>assert.equal(value,undefined)})(ending!=='cancel');
+    assert.equal(commits,ending==='success'?1:0);assert.equal(selected,ending==='success'?added.id:oldId);
+    assert.equal(gesture.current,null);assert.equal(inputActive.current,false);assert.equal(rasterPreviewRef.current,undefined);assert.equal(cleared,2);
+    if(ending==='success')assert.equal(error,'');else assert.equal(historyRef.current.present,scene);
+    if(ending==='capacity')assert.notEqual(error,'previous error');
+  }
+});
+
 test('actual lasso handler keeps outside selection without editing and cleans up failures/cancel',()=>{
  for(const ending of ['pointerup','pointercancel','oversize']){
   const scene=initial(),before=structuredClone(scene),owner=scene.owners[0],listeners=new Map();
@@ -47,13 +64,13 @@ test('actual lasso handler keeps outside selection without editing and cleans up
   assert.equal(Boolean(error),ending==='oversize');assert.equal(preview.length,0);assert.equal(released,1);assert.equal(listeners.size,0);assert.equal(selectionPointer.current,null);assert.equal(inputActive.current,false);assert.deepEqual(scene,before);
  }
 });
-test('tone from outside selection expands atomically; a failed expansion keeps selection and scene',()=>{
- for(const width of [500,20000]){
-  const scene=initial(),before=structuredClone(scene),owner=scene.owners[0],selectionBoxes=[{x:-20,y:-30,w:width,h:600}];
-  let saved,error,cleared=false,commits=0;
+test('tone from outside selection expands atomically; side/area failure preserves selection, scene and tool',()=>{
+ for(const [width,height,valid] of [[500,600,true],[20000,600,false],[500,20000,false],[10001,10000,false]]){
+  const scene=initial(),before=structuredClone(scene),owner=scene.owners[0],selectionBoxes=[{x:-20,y:-30,w:width,h:height}];
+  let saved,error='previous capacity error',cleared=false,commits=0,uiChanges=0;
   editorHandler('addToneMask',{scene,owner,selectionBoxes,images:new Map(),locked:false,busy:false,suspended:false,operation:{current:false},finishGesture(){},newToneLayer,paintStrokeBounds,expandPaintOwnerToBounds,
-   commit:next=>{saved=next;commits++;},setError:v=>error=v,clearVectorSelection(){},setLayerId(){},setMaskTarget(){},setSelection:v=>cleared=v===null,setTool(){},setLineKind(){}})();
-  assert.equal(commits,width===500?1:0);assert.equal(cleared,width===500);assert.equal(Boolean(error),width!==500);assert.deepEqual(scene,before);
+   commit:next=>{saved=next;commits++;},setError:v=>error=v,clearVectorSelection:()=>uiChanges++,setLayerId:()=>uiChanges++,setMaskTarget:()=>uiChanges++,setSelection:v=>cleared=v===null,setTool:()=>uiChanges++,setLineKind:()=>uiChanges++})();
+  assert.equal(commits,valid?1:0);assert.equal(cleared,valid);assert.equal(Boolean(error),!valid);assert.equal(uiChanges,valid?5:0);assert.deepEqual(scene,before);
   if(saved){const grown=saved.owners[0],mask=grown.paint.layers.at(-1).mask.strokes[0].selection[0];
    assert.equal(grown.paint.width,Math.max(owner.paint.width,480)+20);assert.equal(grown.paint.height,Math.max(owner.paint.height,570)+30);assert.deepEqual(mask,{x:0,y:0,w:500,h:600});
    assert.equal(saved.owners[1],scene.owners[1]);assert.deepEqual(JSON.parse(JSON.stringify(saved)),structuredClone(saved));}
@@ -179,6 +196,38 @@ test('incremental pen bounds only read appended samples and shape bounds can con
   const shape={...stroke(),tool:'rectangle',points:[{x:20,y:20},{x:90,y:90}]};
   const wide=paintStrokeBounds(shape);shape.points[1]={x:30,y:30};assert.ok(paintStrokeBounds(shape).w<wide.w);
   assert.equal(paintStrokeBounds({...mark,tool:'eraser'}),undefined);
+});
+test('wide sparse selections never allocate their whole box for a small pen or shape mark',()=>{
+  for(const tool of ['pen','line','rectangle','ellipse'])for(const selection of [[{x:0,y:0,w:20000,h:10}],[{x:0,y:0,w:11000,h:10000}]]){
+    const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];
+    const mark={...stroke(),tool,size:2,points:[{x:5,y:5,pressure:1,time:0}],selection};
+    const pending={ownerKey:owner.key,layerId:layer.id,stroke:mark,bounds:paintStrokeBounds(mark)};
+    assert.deepEqual(pending.bounds,{x:2,y:2,w:6,h:6});
+    assert.equal(previewPaintStroke(scene,pending).owner,owner);
+    const changed=commitPaintStroke(scene,pending).owners[0];
+    assert.equal(changed.frame,owner.frame);assert.equal(changed.paint.width,owner.paint.width);
+    assert.deepEqual(changed.paint.layers[0].strokes[0].selection,selection);
+    const moved=translatePaintLayer(changed.paint.layers[0],1,1),reopened={...changed,paint:JSON.parse(JSON.stringify(changed.paint))};
+    assert.doesNotThrow(()=>validatePaintDocument(reopened.paint,[]));
+    assert.equal(expandPaintOwnerToContent(reopened,[moved]),reopened,'moving saved ink never expands to its selection extent');
+    assert.throws(()=>commitPaintStroke(scene,{...pending,bounds:undefined,stroke:{...mark,tool:'fill'}}),/各辺16384px・合計1億px/);
+  }
+});
+test('selection clips only allocation bounds, retaining raw incremental samples across the selected region',()=>{
+  const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0],selection=[{x:20,y:20,w:10,h:10}];
+  const mark={...stroke(),size:2,points:[{x:-20000,y:25,pressure:1,time:0}],selection};
+  const pending={ownerKey:owner.key,layerId:layer.id,stroke:mark,bounds:paintStrokeBounds(mark)};
+  const preview=previewPaintStroke(scene,pending);assert.equal(preview.owner,owner);
+  mark.points.push({x:20000,y:25,pressure:1,time:1});
+  const first=mark.points[0];Object.defineProperty(mark.points,'0',{get(){throw Error('old samples must not be rescanned');},configurable:true});
+  pending.bounds=paintStrokeBounds(mark,pending.bounds,1);
+  assert.equal(previewPaintStroke(scene,pending,preview).owner,owner);
+  Object.defineProperty(mark.points,'0',{value:first,writable:true,configurable:true});
+  const changed=commitPaintStroke(scene,pending).owners[0];
+  assert.equal(changed.frame,owner.frame);assert.deepEqual(changed.paint.layers[0].strokes[0],mark);
+  assert.deepEqual(pending.bounds,{x:-20003,y:22,w:40006,h:6});
+  const gap={...mark,selection:[{x:0,y:0,w:10,h:10},{x:40000,y:0,w:10,h:10}],points:[{x:20000,y:5,pressure:1,time:0}]};
+  assert.equal(previewPaintStroke(scene,{...pending,stroke:gap,bounds:paintStrokeBounds(gap)}).owner,owner,'empty space between selected islands needs no backing pixels');
 });
 
 test('expanded preview bases are reused and live/committed coordinates agree in every direction',()=>{
