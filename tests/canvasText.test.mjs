@@ -6,6 +6,8 @@ import ts from 'typescript';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { toStoredMangaYaml, toSeparatedMangaYaml, parseMangaYaml, validateManga } from '../src/lib/manga.ts';
 import {bubbleStrokeWidthMm} from '../src/lib/bubblePresentation.ts';
+import {availableFontWeights,matchingFontWeight} from '../src/lib/bubbleFonts.ts';
+import {updateTextStyle,textStyleOf} from '../src/lib/textStyle.ts';
 import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
 import { changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
@@ -28,7 +30,7 @@ test('actual size controls end gestures on release, cancel, blur, Enter, key-up 
  const body=source.slice(source.indexOf('export default function')).replace('export default ','');
  const changes=[],phases=[],history=[],listeners=new Map(),cleanups=[];
  const component=runInNewContext(ts.transpileModule(`(${body})`,{fileName:'toolbar.tsx',compilerOptions:{target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText,{
-  h:(type,props,...children)=>({type,props,children}),FontFamilyPicker:()=>{},useRef:value=>({current:value}),useState:value=>[value,()=>{}],useEffect:run=>{const cleanup=run();if(cleanup)cleanups.push(cleanup);},
+  h:(type,props,...children)=>({type,props,children}),FontFamilyPicker:()=>{},availableFontWeights,matchingFontWeight,useRef:value=>({current:value}),useState:value=>[value,()=>{}],useEffect:run=>{const cleanup=run();if(cleanup)cleanups.push(cleanup);},
   window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:(type)=>listeners.delete(type)}});
  const root=component({style:{fontSize:18},defaultFont:'游明朝',disabled:false,onChange:patch=>changes.push({...patch}),onSizeGesture:phase=>phases.push(phase),onHistory:direction=>history.push(direction)});
  const nodes=[];function walk(node){if(!node||typeof node!=='object')return;nodes.push(node);node.children?.flat(Infinity).forEach(walk);}walk(root);
@@ -42,6 +44,14 @@ test('actual size controls end gestures on release, cancel, blur, Enter, key-up 
  input.onInput(event('0'));input.onInput(event('10.'));assert.equal(changes.at(-1).fontSize,28);
  input.onInput(event('32'));root.props.onKeyDown({...event('32','z'),ctrlKey:true});assert.deepEqual(history,['undo']);assert.equal(phases.at(-1),'end');
  input.onInput(event('34'));cleanups.forEach(cleanup=>cleanup());assert.equal(phases.at(-1),'end');assert.equal(listeners.size,0);
+});
+test('実Appの書体選択が新規文字と選択文字を単一の実ウェイトへ揃える',()=>{
+ const localFontCatalog={current:[{family:'Single',weights:[{value:400,label:'B'}]}]},documentRef={current:fixture()};let style={font:'Previous',fontWeight:900};
+ const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};canvasTextAt(documentRef.current,target).text_style={...style};
+ const context={localFontCatalog,availableFontWeights,updateTextStyle,textStyleOf,setTextToolStyle:fn=>{style=fn(style);},documentRef,paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,editCanvasTextStyle,canvasTextAt,imageGesture:{current:{}},lastHistoryPush:{current:0},setDocument:next=>{documentRef.current=next;},setToast:message=>assert.fail(message)};
+ context.changeTextToolStyle=appHandler('changeTextToolStyle',context);
+ context.changeTextToolStyle({font:'Single'});assert.equal(style.fontWeight,400);
+ appHandler('changeCanvasTextStyle',context)(target,{font:'Single'});assert.equal(canvasTextAt(documentRef.current,target).text_style.fontWeight,400);
 });
 test('actual style and normalized panel controls leave history, redo and save state untouched on no-ops',()=>{
  const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};

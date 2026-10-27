@@ -588,7 +588,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   const materialsByKey = new Map((manga.materials ?? []).map((item) => [item.key, item]));
   const characterNames = new Set((manga.characters ?? []).map((item) => item.name));
   const validateTextStyle = (item:Pick<Bubble,'text'|'text_style'|'text_weights'>,path:string) => {
-    if(item.text_style!==undefined&&!validTextStyle(item.text_style))issues.push({level:'error',path:`${path}.text_style`,message:'文字設定は方向・書体・サイズ（4〜144 pt）・太さ（100〜900）を指定してください'});
+    if(item.text_style!==undefined&&!validTextStyle(item.text_style))issues.push({level:'error',path:`${path}.text_style`,message:'文字設定は方向・書体・サイズ（4〜144 pt）・太さ（1〜1000）を指定してください'});
     if(item.text_weights!==undefined&&!validTextWeights(item.text_weights,item.text??''))issues.push({level:'error',path:`${path}.text_weights`,message:'文字の太さの範囲が本文と一致していません'});
   };
   const validateBubbleTail = (bubble: Bubble, path: string) => {

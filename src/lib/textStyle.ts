@@ -1,10 +1,10 @@
 import type { Bubble, ScreenText, TextStyle, TextWeightRange } from '../types.ts';
-import { bubbleCssFontFamily } from './bubbleFonts.ts';
+import { bubbleCssFontFamily,matchingFontWeight,type FontWeightOption } from './bubbleFonts.ts';
 
 export type TextStylePatch = Omit<TextStyle, 'fontSize'> & {fontSize?: number | null};
 export interface TextSelection {start:number;end:number}
 type TextItem = Pick<Bubble,'text'|'text_style'|'text_weights'>;
-export function validTextWeight(value:unknown):value is number {return typeof value==='number'&&Number.isInteger(value)&&value>=100&&value<=900;}
+export function validTextWeight(value:unknown):value is number {return typeof value==='number'&&Number.isInteger(value)&&value>=1&&value<=1000;}
 export function validTextStyle(value:unknown):value is TextStyle {
   if(!value||typeof value!=='object'||Array.isArray(value))return false;
   const s=value as TextStyle;
@@ -39,15 +39,20 @@ export function selectedTextWeight(item:TextItem,selection:TextSelection,baseWei
   if(at<selection.end||selection.start===selection.end)values.add(base);
   return values.size===1?[...values][0]:null;
 }
-export function updateTextStyle(item:Bubble|ScreenText,kind:'bubble'|'screen_text',patch:TextStylePatch,selection?:TextSelection){
+export function updateTextStyle(item:Bubble|ScreenText,kind:'bubble'|'screen_text',patch:TextStylePatch,selection?:TextSelection,fontWeights?:readonly FontWeightOption[]){
   const next={...item.text_style,...patch};
   if(next.fontSize===null)delete next.fontSize;
-  if(!validTextStyle(next))throw Error('文字設定を確認してください（4〜144 pt、太さ100〜900）');
+  const selectingFont=patch.font!==undefined&&Boolean(fontWeights?.length);
+  if(selectingFont){const weight=matchingFontWeight(next.fontWeight??600,fontWeights!)!;if(weight!==(next.fontWeight??600))next.fontWeight=weight;}
+  if(!validTextStyle(next))throw Error('文字設定を確認してください（4〜144 pt、太さ1〜1000）');
   let changed=false;
-  if(selection&&selection.end>selection.start&&patch.fontWeight!==undefined){
+  if(selectingFont&&item.text_weights){
+    const ranges=item.text_weights.map(range=>({...range,fontWeight:matchingFontWeight(range.fontWeight,fontWeights!)!}));
+    if(ranges.some((range,i)=>range.fontWeight!==item.text_weights![i].fontWeight)){item.text_weights=ranges;changed=true;}
+  }else if(!selectingFont&&selection&&selection.end>selection.start&&patch.fontWeight!==undefined){
     changed=applyTextWeight(item,selection,patch.fontWeight);
     if(item.text_style?.fontWeight===undefined)delete next.fontWeight;else next.fontWeight=item.text_style.fontWeight;
-  }else if(patch.fontWeight!==undefined&&item.text_weights!==undefined){delete item.text_weights;changed=true;}
+  }else if(!selectingFont&&patch.fontWeight!==undefined&&item.text_weights!==undefined){delete item.text_weights;changed=true;}
   if(kind==='screen_text'&&patch.orientation&&(item as ScreenText).orientation!==patch.orientation){(item as ScreenText).orientation=patch.orientation;changed=true;}
   if((['orientation','font','fontSize','fontWeight'] as const).some(key=>item.text_style?.[key]!==next[key])){item.text_style=next as TextStyle;changed=true;}
   return changed;

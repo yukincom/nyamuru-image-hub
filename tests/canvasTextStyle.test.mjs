@@ -4,7 +4,7 @@ import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {parseMangaYaml,toMangaYaml,toSeparatedMangaYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 import {canvasTextAt,changeCanvasDefaultFont,editCanvasBubbleMaterial,editCanvasText,editCanvasTextStyle} from '../src/lib/canvasText.ts';
 import {BUBBLE_MATERIALS} from '../src/lib/bubblePresetData.ts';
-import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextWeights,textWeightSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
+import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextWeight,validTextWeights,textWeightSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
 import {pixelZoomWidth} from '../src/lib/canvasZoom.ts';
 import {paintReferenceBox} from '../src/lib/paintDocument.ts';
 import {readFileSync} from 'node:fs';
@@ -13,6 +13,41 @@ function cssLengthAtWidth(css,width){
   assert.ok(match,`legacy-compatible px expression: ${css}`);return width*Number(match[1]);
 }
 const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
+
+test('実フォントのウェイト値を丸めず編集・保存・再読込する',()=>{
+  for(const weight of [1,250,950,1000]){
+    assert.equal(validTextWeight(weight),true);
+    const document=editCanvasTextStyle(fixture(),target,{fontWeight:weight});
+    assert.equal(canvasTextAt(document,target).text_style.fontWeight,weight);
+    const restored=parseMangaYaml(toStoredMangaYaml(document));
+    assert.equal(canvasTextAt(restored,target).text_style.fontWeight,weight);
+    assert.equal(validTextWeights([{start:0,end:1,fontWeight:weight}],'字'),true);
+  }
+  for(const weight of [0,1001,250.5,NaN])assert.equal(validTextWeight(weight),false);
+});
+
+test('書体の選択時だけ基本太さと部分太さを実在候補へ合わせ、元文書を保つ',()=>{
+  const original=fixture(),before=canvasTextAt(original,target);before.text_style.fontWeight=900;
+  const box={...before.bbox},ranges=before.text_weights.map(range=>({...range}));
+  const single=editCanvasTextStyle(original,target,{font:'Single'},undefined,[{value:400,label:'B'}]),item=canvasTextAt(single,target);
+  assert.equal(item.text_style.fontWeight,400);assert.ok(item.text_weights.every(range=>range.fontWeight===400));
+  assert.deepEqual(item.text_weights.map(({start,end})=>({start,end})),ranges.map(({start,end})=>({start,end})));
+  assert.deepEqual(item.bbox,box);assert.equal(before.text_style.fontWeight,900);assert.deepEqual(before.text_weights,ranges);
+  assert.equal(editCanvasTextStyle(single,target,{font:'Single'},undefined,[{value:400,label:'B'}]),single);
+  const multiple=editCanvasTextStyle(original,target,{font:'Multiple'},undefined,[{value:300,label:'W3'},{value:600,label:'W6'}]);
+  assert.equal(canvasTextAt(multiple,target).text_style.fontWeight,600);assert.ok(canvasTextAt(multiple,target).text_weights.every(range=>range.fontWeight===600));
+  const unknown=editCanvasTextStyle(original,target,{font:'Unknown'},undefined,[]);
+  assert.equal(canvasTextAt(unknown,target).text_style.fontWeight,900);assert.deepEqual(canvasTextAt(unknown,target).text_weights,ranges);
+});
+
+test('書体変更だけではシナリオ由来の強調情報を削除しない',()=>{
+  for(const keepRanges of [false,true]){
+    const document=fixture(),bubble=canvasTextAt(document,target);bubble.emphasis='元気';bubble.text_style.fontWeight=400;
+    if(keepRanges)bubble.text_weights=[{start:4,end:6,fontWeight:400}];else delete bubble.text_weights;
+    const next=editCanvasTextStyle(document,target,{font:'Single'},undefined,[{value:400,label:'B'}]);
+    assert.equal(canvasTextAt(next,target).emphasis,'元気');
+  }
+});
 
 test('same text styles keep the original work without cloning or fitting',()=>{
   const d=fixture(),b=canvasTextAt(d,target),style=b.text_style,weights=b.text_weights;

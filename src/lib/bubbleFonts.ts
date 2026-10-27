@@ -1,4 +1,5 @@
-import {readJapaneseFontFamily} from './fontNames.ts';
+import {readFontFaceMetadata,type FontFaceMetadata,type FontWeightOption} from './fontNames.ts';
+export type {FontWeightOption} from './fontNames.ts';
 
 export const BUBBLE_FONT_PRESETS = [
   'アンチック体',
@@ -12,7 +13,7 @@ export const BUBBLE_FONT_PRESETS = [
 
 export const FONT_MENU_SAMPLE='012abcABCあいう';
 export type PcFontSupport='japanese'|'other'|'unreadable';
-export interface PcFontName {family:string;displayName?:string}
+export interface PcFontName {family:string;displayName?:string;weights?:FontWeightOption[]}
 export interface PcFontFamily extends PcFontName {support:PcFontSupport}
 export type FontGlyphProbe=(family:string,sample:string)=>boolean;
 
@@ -22,17 +23,28 @@ export function mergeBubbleFontFamilies(...groups:ReadonlyArray<readonly string[
 
 /** Local Font Access requires this call to begin inside a user gesture. */
 export async function queryPcFontFamilies(target:Window=window):Promise<PcFontName[]> {
-  const query=(target as Window&{queryLocalFonts?:()=>Promise<Array<{family:string;postscriptName?:string;blob?:()=>Promise<Blob>}>>}).queryLocalFonts;
+  const query=(target as Window&{queryLocalFonts?:()=>Promise<Array<{family:string;style?:string;postscriptName?:string;blob?:()=>Promise<Blob>}>>}).queryLocalFonts;
   if(!query)throw new Error('このブラウザではPC内フォントの自動読み込みに対応していません');
-  const faces=await query.call(target),unique=new Map<string,typeof faces[number]>();
-  for(const face of faces){const family=face.family.trim();if(family&&!unique.has(family))unique.set(family,face);}
-  const entries=[...unique.entries()],catalog:PcFontName[]=new Array(entries.length);
+  const faces=await query.call(target),groups=new Map<string,typeof faces>();
+  for(const face of faces){const family=face.family.trim();if(family)groups.set(family,[...(groups.get(family)??[]),face]);}
+  const entries=[...groups.entries()],catalog:PcFontName[]=new Array(entries.length);
   let next=0;
   await Promise.all(Array.from({length:Math.min(4,entries.length)},async()=>{
     while(next<entries.length){
-      const index=next++,[family,face]=entries[index];let displayName=family;
-      try{if(face.blob)displayName=await readJapaneseFontFamily(await face.blob(),family,face.postscriptName)??family;}catch{/* Keep the usable family if its metadata cannot be read. */}
-      catalog[index]={family,displayName};
+      const index=next++,[family,group]=entries[index],metadata:FontFaceMetadata[]=[];
+      for(const face of group){
+        try{if(face.blob){const info=await readFontFaceMetadata(await face.blob(),family,face.postscriptName);metadata.push({...info,styleName:info.styleName??face.style});}}catch{/* Keep the usable family if its metadata cannot be read. */}
+      }
+      const displayName=metadata.find(face=>face.displayName)?.displayName??family;
+      const readable=metadata.filter(face=>face.weight!==undefined&&face.styleName);
+      const upright=readable.filter(face=>!face.italic),styles=upright.length?upright:readable;
+      const widths=styles.map(face=>face.width??5).sort((a,b)=>a-b),width=widths.filter(value=>value<=5).at(-1)??widths[0]??5;
+      const weights=new Map<number,FontWeightOption>();
+      for(const face of styles.filter(face=>(face.width??5)===width)){
+        for(const option of face.namedWeights??[])if(!weights.has(option.value))weights.set(option.value,option);
+        if(!weights.has(face.weight!))weights.set(face.weight!,{value:face.weight!,label:face.styleName!});
+      }
+      catalog[index]={family,displayName,weights:[...weights.values()].sort((a,b)=>a.value-b.value)};
     }
   }));
   return catalog.sort((a,b)=>a.family.localeCompare(b.family,'ja'));
@@ -87,6 +99,20 @@ const SEMANTIC_FAMILIES: Record<string, string> = {
   'Noto Serif JP': '"Noto Serif JP", "Yu Mincho", serif',
   'Noto Sans JP': '"Noto Sans JP", "Yu Gothic", sans-serif',
 };
+
+/** Resolve preset names through the same ordered CSS fallback families used for drawing. */
+export function availableFontWeights(font:string,catalog:readonly PcFontName[]):readonly FontWeightOption[] {
+  const candidates=SEMANTIC_FAMILIES[font]?[...SEMANTIC_FAMILIES[font].matchAll(/"([^"\\]+)"/g)].map(match=>match[1]):[font];
+  for(const family of candidates){const found=catalog.find(item=>item.family===family||item.displayName===family);if(found)return found.weights??[];}
+  return [];
+}
+
+/** CSS weight matching, including its special ordering for 400 through 500. */
+export function matchingFontWeight(value:number,weights:readonly FontWeightOption[]):number|undefined {
+  const values=weights.map(option=>option.value).sort((a,b)=>a-b);
+  if(value>=400&&value<=500)return values.find(weight=>weight>=value&&weight<=500)??values.filter(weight=>weight<value).at(-1)??values.find(weight=>weight>500);
+  return value<400?values.filter(weight=>weight<=value).at(-1)??values.find(weight=>weight>value):values.find(weight=>weight>=value)??values.filter(weight=>weight<value).at(-1);
+}
 
 /** 端末にある任意の書体名も、そのままCSSプレビューへ使用する。 */
 export function bubbleCssFontFamily(font: string | undefined): string {

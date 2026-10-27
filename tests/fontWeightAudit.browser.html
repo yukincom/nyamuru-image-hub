@@ -1,0 +1,37 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>Font weight audit</title>
+<h1>ヒラギノ実ウェイト検証</h1><pre id="result">検証中</pre><div id="samples"></div>
+<script type="module">
+import {h,render} from 'preact';
+import CanvasTextToolbar from '../src/components/CanvasTextToolbar.tsx';
+import {queryPcFontFamilies} from '../src/lib/bubbleFonts.ts';
+for(const [label,weight] of [['W3',300],['W6',600],['W8',800],['W9',900]]){
+  const family=`Audit ${label}`;
+  const face=new FontFace(family,`local("HiraginoSans-${label}")`,{weight:String(weight)});
+  await face.load();document.fonts.add(face);
+}
+const hash=(family,weight)=>{
+  const canvas=document.createElement('canvas');canvas.width=640;canvas.height=80;
+  const context=canvas.getContext('2d',{willReadFrequently:true});context.font=`${weight} 48px "${family}"`;
+  context.fillText('あいう愛国漫画012ABC',4,60);let value=2166136261;
+  for(const byte of context.getImageData(0,0,640,80).data){value^=byte;value=Math.imul(value,16777619);}
+  const label=document.createElement('p');label.textContent=`${family} / ${weight} : ${value>>>0}`;
+  document.getElementById('samples').append(label,canvas);return value>>>0;
+};
+const result={native:{},explicit:{}};
+for(const weight of [300,400,600,700,800,900])result.native[weight]=hash('Hiragino Sans',weight);
+for(const [label,weight] of [['W3',300],['W6',600],['W8',800],['W9',900]])result.explicit[label]=hash(`Audit ${label}`,weight);
+document.getElementById('result').textContent=JSON.stringify(result,null,2);
+const button=document.createElement('button');button.textContent='実フォントの太さメニューを確認';document.body.prepend(button);
+const controls=document.createElement('div'),status=document.createElement('pre');button.after(status,controls);
+button.onclick=async()=>{
+  status.textContent='取得中';
+  try{
+    const fonts=(await queryPcFontFamilies()).map(font=>({...font,support:'japanese'}));
+    const targets=['Hiragino Sans','Hiragino Mincho ProN','Iwata Antic Std','未取得の書体'];
+    render(h('div',{},targets.map(font=>h('section',{},h('h2',{},font),h(CanvasTextToolbar,{style:{font,fontWeight:800},defaultFont:font,fontFamilies:fonts,disabled:false,onChange:patch=>{status.textContent=JSON.stringify({font,patch});}})))),controls);
+    const menus=[...controls.querySelectorAll('select[aria-label="文字の太さ"]')];
+    const rows=menus.map((menu,i)=>({font:targets[i],disabled:menu.disabled,options:[...menu.options].map(option=>({label:option.textContent,value:option.value}))}));
+    status.textContent=JSON.stringify(rows,null,2);
+  }catch(error){status.textContent=String(error);}
+};
+</script></html>

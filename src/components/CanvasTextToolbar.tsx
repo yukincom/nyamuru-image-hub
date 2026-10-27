@@ -1,12 +1,15 @@
 import type {TextStyle} from '../types';
 import type {TextSelection,TextStylePatch} from '../lib/textStyle';
-import type {PcFontFamily} from '../lib/bubbleFonts';
+import {availableFontWeights,matchingFontWeight,type PcFontFamily} from '../lib/bubbleFonts';
 import FontFamilyPicker from './FontFamilyPicker';
 import {useEffect,useRef,useState} from 'preact/hooks';
 export default function CanvasTextToolbar({style,defaultFont,fontFamilies=[],selection,selectionWeight,disabled,onChange,onSizeGesture,onHistory,onRequestFonts,creating=false}:{
   style:TextStyle;defaultFont:string;fontFamilies?:readonly PcFontFamily[];selection?:TextSelection;selectionWeight?:number|null;disabled:boolean;onChange:(patch:TextStylePatch)=>void;onSizeGesture?:(phase:'start'|'end')=>void;onHistory?:(direction:'undo'|'redo')=>void;onRequestFonts?:()=>void;creating?:boolean;
 }){
   const size=style.fontSize??12;
+  const weights=availableFontWeights(style.font??defaultFont,fontFamilies);
+  const selectedRange=Boolean(selection&&selection.end>selection.start),mixed=selectedRange&&selectionWeight===null;
+  const weightValue=mixed?'':matchingFontWeight(selectedRange?(selectionWeight??style.fontWeight??600):style.fontWeight??600,weights)??'';
   const [sizeDraft,setSizeDraft]=useState(String(size));
   const composing=useRef(false),sizeActive=useRef(false),sizeGesture=useRef(onSizeGesture);sizeGesture.current=onSizeGesture;
   const finishSize=()=>{if(sizeActive.current){sizeActive.current=false;sizeGesture.current?.('end');}};
@@ -29,8 +32,8 @@ export default function CanvasTextToolbar({style,defaultFont,fontFamilies=[],sel
     <fieldset class="canvas-text-font-settings">
       <legend>フォント</legend>
       <div class="canvas-text-font"><span>書体</span><FontFamilyPicker value={style.font??defaultFont} families={fontFamilies} label="文字の書体" disabled={disabled} onOpen={onRequestFonts} onChange={font=>changeStyle({font})}/></div>
-      <label class="canvas-text-weight">{selection&&selection.end>selection.start?'選択文字の太さ':'太さ'}<select aria-label="文字の太さ" disabled={disabled} value={selection&&selection.end>selection.start?(selectionWeight??''):style.fontWeight??600} onChange={e=>changeStyle({fontWeight:Number(e.currentTarget.value)})}>
-        {selectionWeight===null&&<option value="" disabled>混在</option>}<option value="300">細め</option><option value="400">標準</option><option value="500">中</option><option value="600">やや太め</option><option value="700">太め</option><option value="800">極太</option><option value="900">特太</option>
+      <label class="canvas-text-weight">{selectedRange?'選択文字の太さ':'太さ'}<select aria-label="文字の太さ" disabled={disabled||weights.length<2} value={weightValue} onChange={e=>{const value=Number(e.currentTarget.value);if(!disabled&&weights.length>1&&weights.some(option=>option.value===value))changeStyle({fontWeight:value});}}>
+        {mixed&&<option value="" disabled>混在</option>}{!mixed&&!weights.length&&<option value="">変更不可</option>}{weights.map(option=><option value={option.value}>{option.label}</option>)}
       </select></label>
     </fieldset>
     <div class="canvas-text-size"><label>サイズ<input aria-label="文字サイズ pt" type="text" inputMode="decimal" value={sizeDraft} disabled={disabled}

@@ -18,7 +18,7 @@ import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
 import { addCanvasTextAt, canvasTextAt, canvasTextEditable, canvasBubbleLineWidthEditable, changeCanvasDefaultBubbleLineWidth, editCanvasBubbleLineWidth, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, removeCanvasText, screenTextCoveredByBubble, toggleCanvasTextVisibility, type CanvasTextTarget } from '../lib/canvasText';
 import {bubbleStrokeWidthMm} from '../lib/bubblePresentation';
-import {classifyPcFontFamilies,queryPcFontFamilies,type PcFontFamily} from '../lib/bubbleFonts';
+import {availableFontWeights,classifyPcFontFamilies,queryPcFontFamilies,type PcFontFamily} from '../lib/bubbleFonts';
 import PageLayerPalette from './PageLayerPalette';
 import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, reorderPanelArt, toggleBubbleVisibility, unlockPanelDescendants, type BubbleTextTarget } from '../lib/panelLayers';
 import PanelControls from './PanelControls';
@@ -273,6 +273,7 @@ function storedPcFontCatalog(): PcFontFamily[] {
       value && typeof value === 'object'
       && typeof (value as PcFontFamily).family === 'string'
       && ((value as PcFontFamily).displayName === undefined || typeof (value as PcFontFamily).displayName === 'string')
+      && ((value as PcFontFamily).weights === undefined || Array.isArray((value as PcFontFamily).weights) && (value as PcFontFamily).weights!.every(option=>option&&typeof option.label==='string'&&Number.isInteger(option.value)&&option.value>=1&&option.value<=1000))
       && ['japanese', 'other', 'unreadable'].includes((value as PcFontFamily).support),
     ));
   } catch { /* private mode or an old malformed value */ }
@@ -3121,7 +3122,10 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(localFontSynced.current)return Promise.resolve();
     const request=queryPcFontFamilies()
       .then(names=>{
-        if(names.length!==localFontCatalog.current.length||names.some((name,index)=>name.family!==localFontCatalog.current[index].family||(name.displayName??name.family)!==(localFontCatalog.current[index].displayName??localFontCatalog.current[index].family))){
+        if(names.length!==localFontCatalog.current.length||names.some((name,index)=>{
+          const old=localFontCatalog.current[index],weights=name.weights??[],oldWeights=old.weights??[];
+          return name.family!==old.family||(name.displayName??name.family)!==(old.displayName??old.family)||weights.length!==oldWeights.length||weights.some((option,i)=>option.value!==oldWeights[i].value||option.label!==oldWeights[i].label);
+        })){
           const families=classifyPcFontFamilies(names);
           localFontCatalog.current=families;
           setLocalFontFamilies(families);
@@ -3180,12 +3184,12 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   function changeTextToolStyle(patch:TextStylePatch){
     setTextToolStyle(current=>{
       const item={text:'',orientation:current.orientation??'vertical',text_style:{...current}};
-      return updateTextStyle(item,'screen_text',patch)?textStyleOf(item,'screen_text'):current;
+      return updateTextStyle(item,'screen_text',patch,undefined,patch.font?availableFontWeights(patch.font,localFontCatalog.current):undefined)?textStyleOf(item,'screen_text'):current;
     });
   }
   function changeCanvasTextStyle(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
     if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
-    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection);if(next!==documentRef.current){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));if(imageGesture.current.source!=='text-size'){imageGesture.current.pushed=false;lastHistoryPush.current=0;}setDocument(next);}}
+    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection,patch.font?availableFontWeights(patch.font,localFontCatalog.current):undefined);if(next!==documentRef.current){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));if(imageGesture.current.source!=='text-size'){imageGesture.current.pushed=false;lastHistoryPush.current=0;}setDocument(next);}}
     catch(error){setToast(error instanceof Error?error.message:'文字設定を変更できません');}
   }
   function changeSelectedBubbleLineWidth(width:number){

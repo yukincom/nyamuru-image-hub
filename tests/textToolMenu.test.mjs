@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
+import {availableFontWeights,matchingFontWeight} from '../src/lib/bubbleFonts.ts';
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
@@ -83,6 +84,28 @@ test('PCフォントの構成が同じでも日本語名をキャッシュへ反
   assert.equal(updates,1);assert.equal(writes,1);assert.equal(context.localFontCatalog.current[0].displayName,'例文');
   await request();assert.equal(queries,1);
   context.localFontSynced.current=false;await request();assert.equal(updates,1);assert.equal(writes,1);
+  names[0].weights=[{value:250,label:'W2'},{value:900,label:'W9'}];context.localFontSynced.current=false;await request();assert.equal(updates,2);assert.equal(writes,2);
+});
+
+test('文字の太さは実在ウェイトのみを表示し、単一・未取得・ロックでは変更しない',()=>{
+  const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)}),exports={};
+  const source=ts.transpileModule(read('src/components/CanvasTextToolbar.tsx'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText;
+  runInNewContext(source,{exports,h,require:name=>name==='preact/hooks'?{useState:value=>[value,()=>{}],useRef:value=>({current:value}),useEffect:()=>{}}:name==='../lib/bubbleFonts'?{availableFontWeights,matchingFontWeight}: {default:'FontFamilyPicker'}});
+  const fontFamilies=[{family:'Example',weights:[{value:250,label:'W2'},{value:800,label:'W8'},{value:900,label:'W9'}]},{family:'Single',weights:[{value:400,label:'B'}]}];
+  let updates=[];
+  const find=(node,predicate)=>!node||typeof node!=='object'?undefined:predicate(node)?node:node.children?.map(child=>find(child,predicate)).find(Boolean);
+  const render=(font,props={})=>{
+    const tree=exports.default({style:{font,fontWeight:800},defaultFont:'Example',fontFamilies,disabled:false,onChange:patch=>updates.push({...patch}),...props});
+    return find(tree,node=>node.props['aria-label']==='文字の太さ');
+  };
+  const menu=render('Example');assert.equal(menu.props.disabled,false);assert.equal(menu.props.value,800);
+  assert.deepEqual(menu.children.filter(child=>child?.type==='option').map(node=>node.children[0]),['W2','W8','W9']);
+  menu.props.onChange({currentTarget:{value:'250'}});assert.deepEqual(updates,[{fontWeight:250}]);
+  menu.props.onChange({currentTarget:{value:'700'}});assert.equal(updates.length,1);
+  for(const [font,props] of [['Single',{}],['Unknown',{}],['Example',{disabled:true}]]){
+    const inactive=render(font,props);assert.equal(inactive.props.disabled,true);inactive.props.onChange({currentTarget:{value:'900'}});assert.equal(updates.length,1);
+  }
+  const mixed=render('Example',{selection:{start:0,end:2},selectionWeight:null});assert.equal(mixed.props.value,'');assert.equal(mixed.children.find(child=>child?.type==='option').children[0],'混在');
 });
 
 test('吹き出し線幅は数値とmmを隣接させる',()=>{

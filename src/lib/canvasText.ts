@@ -8,6 +8,7 @@ import { rebaseTextWeights, syncBubbleEmphasisFromWeights, textStyleOf, updateTe
 import { cloneDocument } from './manga.ts';
 import { artworkLocked } from './paintLock.ts';
 import { bubbleStrokeWidthMm, normalizedBubbleLineWidth } from './bubblePresentation.ts';
+import type {FontWeightOption} from './bubbleFonts.ts';
 export type CanvasTextKind='bubble'|'screen_text';
 export interface CanvasTextTarget {pageIndex:number;panelIndex:number;index:number;overlay:boolean;kind:CanvasTextKind}
 const pointMm=(pt:number)=>pt*25.4/72;
@@ -91,16 +92,18 @@ export function toggleCanvasTextVisibility(document:MangaDocument,t:CanvasTextTa
   item.hidden=item.hidden!==true;return true;
 }
 /** Return the same document on a no-op; clone the work only after a real edit. */
-export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection):MangaDocument{
+export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection,fontWeights?:readonly FontWeightOption[]):MangaDocument{
   if(!canvasTextEditable(document,t))return document;
-  const updated={...canvasTextAt(document,t)!};
-  if(!updateTextStyle(updated,t.kind,patch,selection))return document;
+  const original=canvasTextAt(document,t)!,updated={...original};
+  if(!updateTextStyle(updated,t.kind,patch,selection,fontWeights))return document;
+  const normalizedRanges=patch.font!==undefined&&fontWeights?.length&&original.text_weights
+    &&(updated.text_style?.fontWeight!==original.text_style?.fontWeight||updated.text_weights!==original.text_weights);
   const next=cloneDocument(document),item=canvasTextAt(next,t)!;
   const origin=t.kind==='screen_text'?screenTextStart(item as ScreenText):undefined;
   item.text_style=updated.text_style;
   if(updated.text_weights)item.text_weights=updated.text_weights;else delete item.text_weights;
   if(t.kind==='screen_text')(item as ScreenText).orientation=(updated as ScreenText).orientation;
-  if(t.kind==='bubble'&&patch.fontWeight!==undefined)syncBubbleEmphasisFromWeights(item as Bubble);
+  if(t.kind==='bubble'&&(patch.fontWeight!==undefined||normalizedRanges))syncBubbleEmphasisFromWeights(item as Bubble);
   // A font, weight, size or orientation change is a text-only operation.
   // In particular, never recenter/expand the surrounding bubble as a side
   // effect: its authored bbox and text_position must remain byte-for-byte.
