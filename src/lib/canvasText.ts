@@ -107,7 +107,8 @@ export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,pa
   // A font, weight, size or orientation change is a text-only operation.
   // In particular, never recenter/expand the surrounding bubble as a side
   // effect: its authored bbox and text_position must remain byte-for-byte.
-  if(t.kind==='screen_text')fitCanvasScreenTextToText(next,t,origin);
+  // Alignment only rearranges lines within the existing text group.
+  if(t.kind==='screen_text'&&Object.keys(patch).some(key=>key!=='textAlign'))fitCanvasScreenTextToText(next,t,origin);
   return next;
 }
 export function editCanvasBubbleMaterial(document:MangaDocument,t:CanvasTextTarget,id:string){

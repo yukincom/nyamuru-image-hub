@@ -123,6 +123,8 @@ export interface ScenarioMatch {
 }
 
 export interface TextStyle {
+  /** Align each line within the entire text group; omitted means left/start. */
+  textAlign?: 'left' | 'center' | 'right';
   orientation?: 'vertical' | 'horizontal';
   font?: string;
   /** Printed point size, independent of canvas zoom. */

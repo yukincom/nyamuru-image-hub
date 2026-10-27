@@ -12,6 +12,30 @@ import { panelShapePoints } from '../src/lib/canvasGeometry.ts';
 import { applyArtworkSettings } from '../src/lib/artworkRules.ts';
 import { parseMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createFrameArtwork } from '../src/lib/imagePlacement.ts';
+import {textStyleOf} from '../src/lib/textStyle.ts';
+import {bubbleCssFontFamily} from '../src/lib/bubbleFonts.ts';
+import {bubbleTextPosition} from '../src/lib/bubbleClip.ts';
+
+test('画像合成の行揃えは短い行だけを送り、文字群のアンカー・改行・下線を保持する',()=>{
+ const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+ const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='drawText');assert.ok(declaration);
+ const draw=runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,qwenCompositionTextRuns});
+ const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
+ for(const orientation of ['horizontal','vertical'])for(const kind of ['bubble','screen_text']){
+  const captures=[];
+  for(const textAlign of ['left','center','right']){
+   const glyphs=[],strokes=[],context={canvas:{width:1000,height:1000},save(){},restore(){},measureText:letter=>({width:{A:11,B:13,C:7,D:9}[letter]}),fillText:(text,x,y)=>glyphs.push({text,x,y}),beginPath(){},moveTo:(x,y)=>strokes.push({x,y}),lineTo(){},stroke(){}};
+   draw(context,{text:'AABB\nCC\n\nD',text_position:{x:.3,y:.7},text_style:{orientation,textAlign,fontSize:12},text_runs:[{start:5,end:7,underline:true}]},{x:10,y:20,w:70,h:70},{x:0,y:0,w:100,h:100},kind,'serif');
+   assert.equal(glyphs.map(glyph=>glyph.text).join(''),'AABBCCD');captures.push({glyphs,strokes});
+  }
+  const axis=orientation==='horizontal'?'x':'y',cross=axis==='x'?'y':'x',size=12*25.4/72*10,difference=orientation==='horizontal'?34:2*size;
+  for(const [index,factor] of [[1,.5],[2,1]]){
+   close(captures[index].glyphs[0][axis],captures[0].glyphs[0][axis]);close(captures[index].glyphs[0][cross],captures[0].glyphs[0][cross]);
+   close(captures[index].glyphs[4][axis]-captures[0].glyphs[4][axis],difference*factor);close(captures[index].glyphs[4][cross],captures[0].glyphs[4][cross]);
+   close(captures[index].strokes[0][axis]-captures[0].strokes[0][axis],difference*factor);
+  }
+ }
+});
 
 test('export composition draws native OCR text independently and above visible raster layers',()=>{
  const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');

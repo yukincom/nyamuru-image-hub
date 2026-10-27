@@ -12,11 +12,11 @@ import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
 import { changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
 test('new panel and page text inherit the chosen style instead of returning to 12pt',()=>{
- const d=fixture(),style={fontSize:29,orientation:'horizontal',font:'BIZ UDP明朝',fontWeight:700};
+ const d=fixture(),style={fontSize:29,orientation:'horizontal',font:'BIZ UDP明朝',fontWeight:700,textAlign:'right'};
  const targets=[addCanvasTextAt(d,0,0,{x:40,y:70},style),addCanvasTextAt(d,0,null,{x:10,y:10},style),addCanvasText(d,0,0,'screen_text',style)];
- targets.forEach((target,index)=>{assert.ok(target);const item=canvasTextAt(d,target);assert.equal(item.text_style.fontSize,29);assert.equal(item.orientation,'horizontal');assert.equal(item.text_style.font,style.font);assert.equal(item.text_style.fontWeight,700);editCanvasText(d,target,`文字${index}`);});
+ targets.forEach((target,index)=>{assert.ok(target);const item=canvasTextAt(d,target);assert.equal(item.text_style.fontSize,29);assert.equal(item.orientation,'horizontal');assert.equal(item.text_style.font,style.font);assert.equal(item.text_style.fontWeight,700);assert.equal(item.text_style.textAlign,'right');editCanvasText(d,target,`文字${index}`);});
  const restored=parseMangaYaml(toStoredMangaYaml(d));
- targets.forEach(target=>assert.equal(canvasTextAt(restored,target).text_style.fontSize,29));
+ targets.forEach(target=>{assert.equal(canvasTextAt(restored,target).text_style.fontSize,29);assert.equal(canvasTextAt(restored,target).text_style.textAlign,'right');});
 });
 
 const appSource=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
@@ -451,4 +451,6 @@ test('実キャンバスは選択のないスタイル操作を本文編集・�
  change({italic:true},'selection-or-typing');assert.deepEqual(calls,[['typing',{italic:true}]]);
  context.textSelection={start:1,end:2};change({italic:true},'selection-or-typing');assert.deepEqual(calls.at(-1),['document',{italic:true},{start:1,end:2}]);
  context.textTarget=null;change({underline:true},'selection-or-typing');assert.deepEqual(calls.at(-1),['typing',{underline:true}]);
+ context.textTarget={kind:'bubble'};change({textAlign:'right'});assert.deepEqual(calls.at(-1),['document',{textAlign:'right'},{...context.textSelection}]);
+ context.toolbarTarget=null;context.toolbarItem=null;change({textAlign:'center'});assert.deepEqual(calls.at(-1),['typing',{textAlign:'center'}]);
 });

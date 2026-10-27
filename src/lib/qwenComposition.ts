@@ -162,7 +162,8 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
   const position=kind==='bubble'?bubbleTextPosition(item as Bubble):{x:.5,y:.5};
   const anchorX=(box.x-viewport.x+box.w*position.x)*scale,anchorY=(box.y-viewport.y+box.h*position.y)*context.canvas.height/viewport.h;
   lines.forEach((line, index) => {
-    let advance = 0;
+    const alignment=style.textAlign==='center'?.5:style.textAlign==='right'?1:0;
+    let advance = (longest-line.reduce((sum,run)=>sum+run.advance,0))*alignment;
     for (const run of line) {
       setFont(run);
       const px = vertical ? (kind==='bubble'?anchorX+across/2-(index+.5)*size*1.35:x+(width+across)/2-(index+.5)*size*1.35) : (kind==='bubble'?anchorX-longest/2:x) + advance;

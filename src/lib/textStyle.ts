@@ -6,7 +6,7 @@ export type TextStyleScope = 'element' | 'selection-or-typing';
 export interface TextSelection {start:number;end:number}
 type TextItem = Pick<Bubble,'text'|'text_style'|'text_runs'>;
 const INLINE_KEYS = ['fontWeight','italic','underline','strikethrough'] as const;
-const STYLE_KEYS = ['orientation','font','fontSize',...INLINE_KEYS] as const;
+const STYLE_KEYS = ['orientation','font','fontSize','textAlign',...INLINE_KEYS] as const;
 export type SelectedTextInlineStyle = {[K in keyof Required<TextInlineStyle>]:Required<TextInlineStyle>[K]|null};
 
 export function validTextWeight(value:unknown):value is number {return typeof value==='number'&&Number.isInteger(value)&&value>=1&&value<=1000;}
@@ -15,6 +15,7 @@ export function validTextStyle(value:unknown):value is TextStyle {
   const s=value as TextStyle;
   return Object.keys(s).every(k=>(STYLE_KEYS as readonly string[]).includes(k))
     &&(s.orientation===undefined||['vertical','horizontal'].includes(s.orientation))
+    &&(s.textAlign===undefined||['left','center','right'].includes(s.textAlign))
     &&(s.font===undefined||typeof s.font==='string'&&s.font.trim().length>0&&s.font.length<=120&&!/[\x00-\x1f]/.test(s.font))
     &&(s.fontSize===undefined||Number.isFinite(s.fontSize)&&s.fontSize>=4&&s.fontSize<=144)
     &&(s.fontWeight===undefined||validTextWeight(s.fontWeight))
@@ -165,7 +166,7 @@ export function textToolCursor(style:TextStyle):'text'|'vertical-text' {
 }
 export function textStyleCss(style:TextStyle,paperWidthMm:number,defaultFont?:string):Record<string,string>{
   const font=style.font??defaultFont;
-  return {...(font?{fontFamily:bubbleCssFontFamily(font)}:{}),writingMode:style.orientation==='horizontal'?'horizontal-tb':'vertical-rl','--text-tool-cursor':textToolCursor(style),
+  return {...(font?{fontFamily:bubbleCssFontFamily(font)}:{}),writingMode:style.orientation==='horizontal'?'horizontal-tb':'vertical-rl',textAlign:style.textAlign==='center'?'center':style.textAlign==='right'?'end':'start','--text-tool-cursor':textToolCursor(style),
     ...(style.fontSize?{fontSize:canvasLengthCss(style.fontSize*25.4/72,paperWidthMm)}:{}),
     ...(style.fontWeight?{fontWeight:String(style.fontWeight)}:{}),...(style.italic!==undefined?{fontStyle:style.italic?'italic':'normal'}:{})};
 }

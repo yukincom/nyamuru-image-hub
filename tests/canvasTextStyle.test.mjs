@@ -4,7 +4,7 @@ import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {parseMangaYaml,toMangaYaml,toSeparatedMangaYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 import {canvasTextAt,changeCanvasDefaultFont,editCanvasBubbleMaterial,editCanvasText,editCanvasTextStyle} from '../src/lib/canvasText.ts';
 import {BUBBLE_MATERIALS} from '../src/lib/bubblePresetData.ts';
-import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextWeight,validTextRuns,textStyleSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
+import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextStyle,validTextWeight,validTextRuns,textStyleSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
 import {pixelZoomWidth} from '../src/lib/canvasZoom.ts';
 import {paintReferenceBox} from '../src/lib/paintDocument.ts';
 import {readFileSync} from 'node:fs';
@@ -259,4 +259,36 @@ test('通常文字・吹き出し・前景のスタイルと明示解除が保�
     }
   }
   for(const invalid of [[{start:0,end:1,underline:'yes'}],[{start:0,end:1}],[{start:0,end:1,bold:true}]])assert.equal(validTextRuns(invalid,'ABC'),false);
+});
+
+test('行揃えは部分選択中も文字群全体だけに適用し、位置・部分書式・保存を保つ',()=>{
+  for(const kind of ['bubble','screen_text'])for(const overlay of [false,true]){
+    const original=fixture(),page=original.manga.pages[0],t={...target,kind,overlay};
+    if(overlay)page.page_overlay={};
+    const owner=overlay?page.page_overlay:page.panels[0],key=kind==='bubble'?'bubbles':'screen_text';
+    owner[key]=[{text:'長い文字列\n短い',bbox:{x:30,y:40,w:50,h:60},text_position:{x:.3,y:.7},text_style:{fontSize:18,underline:true},text_runs:[{start:0,end:2,italic:true}]},{text:'他の文字群'}];
+    const before=structuredClone(owner[key][0]);let doc=original;
+    for(const textAlign of ['center','right','left']){
+      doc=editCanvasTextStyle(doc,t,{textAlign},{start:1,end:2});const item=canvasTextAt(doc,t);
+      assert.equal(item.text_style.textAlign,textAlign);assert.equal(item.text,before.text);
+      assert.deepEqual(item.text_runs,before.text_runs);assert.deepEqual(item.bbox,before.bbox);assert.deepEqual(item.text_position,before.text_position);
+      assert.equal(item.text_style.underline,true);assert.equal(editCanvasTextStyle(doc,t,{textAlign},{start:1,end:2}),doc);
+      for(const writer of [toStoredMangaYaml,toSeparatedMangaYaml,toMangaYaml]){
+        const restored=parseMangaYaml(writer(doc));assert.equal(canvasTextAt(restored,t).text_style.textAlign,textAlign);
+        assert.deepEqual(canvasTextAt(restored,t).text_runs,before.text_runs);
+      }
+      const nextOwner=overlay?doc.manga.pages[0].page_overlay:doc.manga.pages[0].panels[0];assert.deepEqual(nextOwner[key][1],{text:'他の文字群'});
+    }
+    assert.deepEqual(canvasTextAt(original,t),before);
+  }
+});
+
+test('行揃えの既定は先頭で、縦横共通の行内方向へ揃え、範囲属性には入れない',()=>{
+  for(const orientation of ['horizontal','vertical'])for(const [textAlign,css] of [[undefined,'start'],['left','start'],['center','center'],['right','end']]){
+    assert.equal(textStyleCss({orientation,textAlign},182).textAlign,css);
+    assert.equal(validTextStyle(textAlign?{textAlign}:{}),true);
+  }
+  for(const textAlign of ['justify','start',1,null])assert.equal(validTextStyle({textAlign}),false);
+  assert.equal(validTextRuns([{start:0,end:1,textAlign:'center'}],'字'),false);
+  assert.throws(()=>editCanvasTextStyle(fixture(),target,{textAlign:'justify'}),/文字設定/);
 });

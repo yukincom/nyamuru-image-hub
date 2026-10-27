@@ -29,7 +29,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -116,4 +116,66 @@ async function verify(){
     report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
   }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
   finally{run.disabled=false;}
+}
+
+/** The same real editor, folder and export path used by the inline-style check. */
+async function verifyAlignment(){
+  const control=document.getElementById('alignment-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  const near=(a:number,b:number)=>Math.abs(a-b)<1;
+  const textRect=(root:HTMLElement,start:number,end:number)=>{
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),range=document.createRange();let at=0,started=false;
+    while(walker.nextNode()){const node=walker.currentNode,length=node.textContent!.length;if(!started&&start<=at+length){range.setStart(node,start-at);started=true;}if(started&&end<=at+length){range.setEnd(node,end-at);return range.getBoundingClientRect();}at+=length;}
+    throw Error('行の文字範囲がありません');
+  };
+  control.disabled=true;report.textContent='行揃え検証中';
+  try{
+    const fresh=structuredClone(source),panel=fresh.manga.pages[0].panels[0];
+    panel.bubbles[0].text='あいうえお\nかき';panel.bubbles[0].text_runs=[{start:1,end:3,underline:true,italic:true}];
+    panel.screen_text![0].text='あいうえお\nかき';
+    render(null,host);const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(fresh)));await writer.close();render(<App/>,host);
+    await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();button('通常文字').click();await settle();
+    check(button('左寄せ').getAttribute('aria-pressed')==='true','行揃えの初期値は左寄せ');
+    button('中央寄せ').click();await settle();
+    check(history('元に戻す').disabled&&getComputedStyle(nativeBubble()).textAlign==='start','未選択の行揃えは既存文字とUndoを変えない');
+    button('選択').click();await settle();button('通常文字').click();await settle();
+    check(button('中央寄せ').getAttribute('aria-pressed')==='true','道具を持ち替えても新規文字の中央寄せを保持');
+    const paper=document.querySelector<HTMLElement>('.manga-paper')!,box=paper.getBoundingClientRect();
+    paper.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,button:0,detail:1,clientX:box.x+110/182*box.width,clientY:box.y+100/257*box.height}));
+    await wait(()=>editor()?.getAttribute('aria-label')==='通常文字','クリックした場所に通常文字が作成されません');await input('新しい文字\n短');await save();
+    check((await stored()).manga.pages[0].panels[0].screen_text!.at(-1)!.text_style?.textAlign==='center','次にクリックして作成した文字領域へ中央寄せを保存');
+    button('選択').click();await settle();button('通常文字').click();await settle();nativeBubble().click();await wait(()=>editor()?.getAttribute('aria-label')==='吹き出しの文字','吹き出しを編集できません');await choose(1,3);
+    button('中央寄せ').click();await settle();
+    check(getSelection()?.toString()==='いう'&&getComputedStyle(editor()).textAlign==='center','部分選択中でも文字群全体を揃えて文字選択を保持');
+    history('元に戻す').click();await settle();check(getComputedStyle(nativeBubble()).textAlign==='start','行揃えを1回のUndoで戻す');
+    history('やり直す').click();await settle();check(getComputedStyle(nativeBubble()).textAlign==='center','Redoで行揃えを復元');
+    for(const vertical of [false,true]){
+      button('選択').click();await settle();button('通常文字').click();await settle();
+      const target=vertical?document.querySelector<HTMLElement>('[data-content-kind="screen_text"][data-content-panel="0"][data-content-index="0"]')!:nativeBubble();target.click();
+      await wait(()=>editor()?.getAttribute('aria-label')===(vertical?'通常文字':'吹き出しの文字'),'文字群を編集できません');await choose(1,3);
+      let originalRect:DOMRect|undefined;
+      for(const [label,factor] of [['左寄せ',0],['中央寄せ',.5],['右寄せ',1]] as const){
+        button(label).click();await settle();const long=textRect(editor(),0,5),short=textRect(editor(),6,8),group=editor().getBoundingClientRect();
+        const gap=vertical?short.top-long.top:short.left-long.left,space=vertical?long.height-short.height:long.width-short.width;
+        check(near(gap,space*factor),`${vertical?'縦':'横'}書きの${label}で短い行の実位置が一致`);
+        if(originalRect)check(near(group.x,originalRect.x)&&near(group.y,originalRect.y)&&near(group.width,originalRect.width)&&near(group.height,originalRect.height),`${vertical?'縦':'横'}書きの文字群の位置と大きさを保持`);else originalRect=group;
+      }
+    }
+    await save();const saved=await stored(),bubble=saved.manga.pages[0].panels[0].bubbles[0],screen=saved.manga.pages[0].panels[0].screen_text![0];
+    check(bubble.text_style?.textAlign==='right'&&screen.text_style?.textAlign==='right'&&JSON.stringify(bubble.text_runs)===JSON.stringify(panel.bubbles[0].text_runs)&&JSON.stringify(bubble.bbox)===JSON.stringify(panel.bubbles[0].bbox)&&JSON.stringify(screen.bbox)===JSON.stringify(panel.screen_text![0].bbox),'保存でも全体の行揃え・部分スタイル・枠を保持');
+    render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動待ち');await open();
+    check(getComputedStyle(nativeBubble()).textAlign==='end','作品を開き直しても右寄せを保持');
+    for(const orientation of ['horizontal','vertical'] as const){
+      const hashes=new Set<number>();
+      for(const textAlign of ['left','center','right'] as const){
+        const doc=structuredClone(saved);doc.manga.pages[0].panels[0].screen_text=[];delete doc.manga.pages[0].page_overlay;
+        const text=doc.manga.pages[0].panels[0].bubbles[0];text.text_style={...text.text_style,orientation,textAlign};
+        const canvas=await captureQwenCompositionCanvas(doc.manga,0,0,'page',{}, {width:364,height:514});let hash=2166136261;
+        for(const byte of canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data){hash^=byte;hash=Math.imul(hash,16777619);}hashes.add(hash>>>0);canvas.width=canvas.height=1;
+      }
+      check(hashes.size===3,`${orientation==='horizontal'?'横':'縦'}書きの実Canvasでも3種の行揃えを描き分ける`);
+    }
+    report.textContent=`行揃え PASS ${checks.length}\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`行揃え FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+  finally{control.disabled=false;}
 }

@@ -119,6 +119,21 @@ test('吹き出し線幅は数値とmmを隣接させる',()=>{
   assert.match(css,/\.paint-text-work-settings>label \{[^}]*grid-template-columns:max-content 54px max-content;/);
 });
 
+test('行揃えはスタイルの下に3アイコンを置き、領域全体へ一意に指定する',()=>{
+  const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)}),exports={};
+  const source=ts.transpileModule(read('src/components/CanvasTextToolbar.tsx'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText;
+  runInNewContext(source,{exports,h,require:name=>name==='preact/hooks'?{useState:value=>[value,()=>{}],useRef:value=>({current:value}),useEffect:()=>{}}:name==='../lib/bubbleFonts'?{availableFontWeights,matchingFontWeight}: {default:'FontFamilyPicker'}});
+  const all=node=>!node||typeof node!=='object'?[]:[node,...node.children.flatMap(all)],updates=[];
+  const render=(style={},disabled=false)=>exports.default({style,defaultFont:'test',selection:{start:1,end:2},disabled,onChange:(patch,scope)=>updates.push([{...patch},scope])});
+  const tree=render(),nodes=all(tree),buttons=nodes.filter(node=>['左寄せ','中央寄せ','右寄せ'].includes(node.props['aria-label']));
+  assert.equal(buttons.length,3);assert.deepEqual(buttons.map(node=>node.props['aria-pressed']),[true,false,false]);
+  assert.ok(tree.children.findIndex(node=>node?.props?.class==='canvas-text-style')<tree.children.findIndex(node=>node?.props?.class?.includes('canvas-text-alignment')));
+  for(const node of buttons){assert.equal(all(node).filter(child=>child.type==='svg').length,1);node.props.onClick();}
+  assert.deepEqual(updates,[[{textAlign:'left'},undefined],[{textAlign:'center'},undefined],[{textAlign:'right'},undefined]]);
+  const selected=all(render({textAlign:'right'})).find(node=>node.props['aria-label']==='右寄せ');selected.props.onClick();assert.deepEqual(updates.at(-1),[{textAlign:'right'},undefined]);
+  const disabled=all(render({},true)).find(node=>node.props['aria-label']==='中央寄せ');assert.equal(disabled.props.disabled,true);disabled.props.onClick();assert.equal(updates.length,4);
+});
+
 test('pen size rows and bubble text movement target are compact and forgiving',()=>{
   const css=read('src/styles/global.css');
   assert.match(css,/\.paint-size-palette \{ --paint-size-row:34px;/);
