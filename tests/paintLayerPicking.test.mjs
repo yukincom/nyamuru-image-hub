@@ -1,11 +1,29 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {newPaintLayer} from '../src/lib/paintDocument.ts';
+import {newPaintLayer,paintScene} from '../src/lib/paintDocument.ts';
 import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry.ts';
 import {pickPaintLayer,paintOwnerPoint,translatePaintLayer} from '../src/lib/paintLayerPicking.ts';
 const vector=(name)=>({...newPaintLayer(name,'vector'),paths:[vectorShape('line',{x:10,y:50},{x:90,y:50},{...defaultVectorStyle(),width:4})]});
 const owner=(key,layers)=>({key,kind:key==='background'?'background':'figure',frame:{x:10,y:20,w:100,h:100},paint:{width:100,height:100,layers}});
 const coverage=()=>true;
+test('page direct paint stays below foreground figures while panel direct paint stays above panel figures',()=>{
+ const box={x:10,y:20,w:100,h:100};
+ const panel={id:1,shape:{type:'rect',...box},bg:0,action:null,figures:[{name:'front',bbox:box}],bubbles:[{text:'front bubble',bbox:box}]};
+ const before=structuredClone(panel);
+ for(const scope of ['page','panel']){
+  const scene=paintScene(panel,25.4,[],'color',scope);
+  assert.deepEqual(scene.owners.map(o=>o.key),scope==='page'?['background','page','figure-0','bubble-0']:['background','figure-0','panel','bubble-0']);
+  // Identical real vector layers isolate stack order from coverage at one point.
+  scene.owners.forEach(o=>{o.paint={...o.paint,layers:[vector(o.key)]};});
+  const at=()=>pickPaintLayer(scene,{x:60,y:70},0,coverage)?.owner;
+  assert.equal(at()?.key,'bubble-0');
+  scene.owners.find(o=>o.key==='bubble-0').paint.layers[0].visible=false;
+  assert.equal(at()?.key,scope==='page'?'figure-0':'panel');
+  at().locked=true;
+  assert.equal(at()?.key,scope==='page'?'page':'figure-0','locked front content lets the next visible owner be picked');
+ }
+ assert.deepEqual(panel,before);
+});
 test('front-to-back picking skips a locked selected layer and owner while retaining behind vectors',()=>{
  const back=vector('back'),front={...vector('front'),locked:true},o=owner('background',[back,front]);
  const foreign=owner('figure-0',[vector('foreign')]);foreign.locked=true;

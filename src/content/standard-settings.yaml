@@ -105,8 +105,8 @@ layout_spec: |
     (If dialogue is too long, only split it according to "Split long dialogue into lengths that fit
     inside speech bubbles, using multiple bubbles"; do not remove any content.)
   - [const] If OMNY has page_overlay, do not count it as a panel or draw an enclosing panel border.
-    After drawing all panels and panel borders, draw page_overlay.figures once on the page.
-    Then draw normal in-panel speech bubbles and page_overlay.bubbles in front of all figures.
+    Draw panel artwork, normal in-panel speech bubbles and panel borders in that order.
+    Then draw direct page artwork and page_overlay.figures, followed by page_overlay.bubbles in front of the foreground figures.
     Do not duplicate the overlay into individual panels or clip it to a single panel.
   Prohibitions:
   - [const] Do not adjust the counts of panels, speech bubbles or figures for composition or page-space reasons.

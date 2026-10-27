@@ -114,14 +114,16 @@ test('composition snapshot preserves polygon, positions, order and text while ex
   layout.panels[0].panel.figures[0].bbox.x = 999; assert.deepEqual(manga, before);
 });
 
-test('page direct drawing is composited above panel frames and below foreground figures and bubbles',()=>{
+test('panel bubbles precede frames, page direct drawing and foreground bubbles',()=>{
   const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
   const ordinary=source.indexOf("layout.images.filter(image=>!image.paintScope&&!image.bubbleOriginal&&!image.generationScope)");
+  const localBubbles=source.indexOf('await drawBubbles(entry)',ordinary);
   const frames=source.indexOf("panelFrameVisible(entry.panel)");
   const direct=source.indexOf("layout.images.filter(image=>image.paintScope==='page')");
   const overlay=source.indexOf("layout.panels.filter(entry => entry.overlay)");
-  const bubbles=source.indexOf("for (const entry of layout.panels) {",direct);
-  assert.ok(ordinary>0&&ordinary<frames&&frames<direct&&direct<overlay&&overlay<bubbles);
+  const frontBubbles=source.indexOf('await drawBubbles(entry)',overlay);
+  assert.ok(ordinary>0&&ordinary<localBubbles&&localBubbles<frames&&frames<direct&&direct<overlay&&overlay<frontBubbles);
+  assert.equal(source.match(/await drawBubbles\(entry\)/g)?.length,2,'each scope uses the shared bubble renderer once');
 });
 
 test('panel direct drawing stays above ordinary images and below screen text regardless of storage order',()=>{
@@ -140,7 +142,7 @@ test('panel direct drawing stays above ordinary images and below screen text reg
 test('completed compositions cover editable text and frames but remain below original crops',()=>{
   const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
   const overlayText=source.indexOf("overlayTextFallbackBox(layout.frame, index)");
-  const bubbles=source.indexOf('const SVG_NS');
+  const bubbles=source.indexOf('await drawBubbles(entry)',overlayText);
   const generated=source.indexOf('await drawImages(qwenPanelImageLayers(entry.panel.images).generated)');
   const original=source.indexOf('Original crops are independent topmost');
   assert.ok(overlayText>0&&overlayText<bubbles&&bubbles<generated&&generated<original);

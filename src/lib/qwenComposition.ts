@@ -200,49 +200,11 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       paint: paintForFrame(frame, dpi, images, assets) };
     await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, false), frame, frame);
   };
-  for (const entry of layout.panels.filter(entry => !entry.overlay)) {
-    context.save(); outline(entry.panel); context.clip();
-    for (const owner of paintScene(entry.panel, dpi, assets).owners) {
-      if (owner.kind === 'bubble'||owner.kind==='original') continue;
-      const guide = guideFor(entry, owner.key);
-      if (owner.kind === 'figure') {
-        if (!figureVisible(entry, owner.index, guides)) continue;
-        const view = await humanPoseFigureImage(owner, entry.panel, assets, guide);
-        await drawHumanPoseImage(context, view.image, view.frame, frame);
-      } else await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, guide, entry.panel.background_images?.some(image => image.paint?.guideInitialized)), owner.frame, frame);
-    }
-    const imageLayers = qwenPanelImageLayers(entry.panel.images);
-    await drawImages(imageLayers.ordinary);
-    await drawImages(imageLayers.direct);
-    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? fallbackBox(entry.panel, 'screen_text', index), frame, 'screen_text', manga.meta.font);
-    context.restore();
-  }
-  await drawImages(layout.images.filter(image=>!image.paintScope&&!image.bubbleOriginal&&!image.generationScope));
-  for (const entry of layout.panels.filter(entry => !entry.overlay)) if (panelFrameVisible(entry.panel)) {
-    const { panel } = entry;
-    if (panel.shape.type === 'rect' && panel.bleed?.length) {
-      const points = panelShapePoints(panel), sides = ['top', 'right', 'bottom', 'left'] as const;
-      context.beginPath();
-      points.forEach((start, index) => { if (panel.bleed!.includes(sides[index])) return;
-        const [x1, y1] = point(start), [x2, y2] = point(points[(index + 1) % points.length]); context.moveTo(x1, y1); context.lineTo(x2, y2);
-      });
-    } else outline(panel);
-    context.strokeStyle = '#111'; context.lineWidth = (manga.meta.panel_frame_width_mm || .5) * canvas.width / frame.w; context.stroke();
-  }
-  await drawImages(layout.images.filter(image=>image.paintScope==='page'));
-  for (const entry of layout.panels.filter(entry => entry.overlay)) for (const owner of paintScene(entry.panel, dpi, assets).owners) {
-    if (owner.kind !== 'figure' || !figureVisible(entry, owner.index, guides)) continue;
-    const view = await humanPoseFigureImage(owner, entry.panel, assets, guideFor(entry, owner.key));
-    await drawHumanPoseImage(context, view.image, view.frame, frame);
-  }
-  for (const entry of layout.panels.filter(entry => entry.overlay)) {
-    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? overlayTextFallbackBox(layout.frame, index), frame, 'screen_text', manga.meta.font);
-  }
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const svgElement = (name: string, attributes: Record<string, string | number> = {}) => {
     const element = document.createElementNS(SVG_NS, name); Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, String(value))); return element;
   };
-  for (const entry of layout.panels) {
+  const drawBubbles = async (entry: CompositionPanel) => {
     const { panel } = entry, bubbles = panel.bubbles, stroke = manga.meta.bubble_line_width_mm || .5;
     const bubbleBox = (index: number) => { const bubble = bubbles[index]; return paintReferenceBox(bubble.paint_overlay?.paint, bubble.bbox ?? fallbackBox(panel, 'bubble', index), bubble.paint_overlay?.crop); };
     const figureBox = (index: number) => { const figure = panel.figures![index]; return paintReferenceBox(figure.artwork?.paint, figure.bbox ?? fallbackBox(panel, 'figure', index), figure.artwork?.crop); };
@@ -304,6 +266,46 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       drawText(context, bubble, bubbleTextFrame(bubbleBox(index), panel, bubble), frame, 'bubble', manga.meta.font);
       context.restore();
     }
+  };
+  for (const entry of layout.panels.filter(entry => !entry.overlay)) {
+    context.save(); outline(entry.panel); context.clip();
+    for (const owner of paintScene(entry.panel, dpi, assets).owners) {
+      if (owner.kind === 'bubble'||owner.kind==='original') continue;
+      const guide = guideFor(entry, owner.key);
+      if (owner.kind === 'figure') {
+        if (!figureVisible(entry, owner.index, guides)) continue;
+        const view = await humanPoseFigureImage(owner, entry.panel, assets, guide);
+        await drawHumanPoseImage(context, view.image, view.frame, frame);
+      } else await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, guide, entry.panel.background_images?.some(image => image.paint?.guideInitialized)), owner.frame, frame);
+    }
+    const imageLayers = qwenPanelImageLayers(entry.panel.images);
+    await drawImages(imageLayers.ordinary);
+    await drawImages(imageLayers.direct);
+    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? fallbackBox(entry.panel, 'screen_text', index), frame, 'screen_text', manga.meta.font);
+    context.restore();
+  }
+  await drawImages(layout.images.filter(image=>!image.paintScope&&!image.bubbleOriginal&&!image.generationScope));
+  for (const entry of layout.panels.filter(entry => !entry.overlay)) await drawBubbles(entry);
+  for (const entry of layout.panels.filter(entry => !entry.overlay)) if (panelFrameVisible(entry.panel)) {
+    const { panel } = entry;
+    if (panel.shape.type === 'rect' && panel.bleed?.length) {
+      const points = panelShapePoints(panel), sides = ['top', 'right', 'bottom', 'left'] as const;
+      context.beginPath();
+      points.forEach((start, index) => { if (panel.bleed!.includes(sides[index])) return;
+        const [x1, y1] = point(start), [x2, y2] = point(points[(index + 1) % points.length]); context.moveTo(x1, y1); context.lineTo(x2, y2);
+      });
+    } else outline(panel);
+    context.strokeStyle = '#111'; context.lineWidth = (manga.meta.panel_frame_width_mm || .5) * canvas.width / frame.w; context.stroke();
+  }
+  await drawImages(layout.images.filter(image=>image.paintScope==='page'));
+  for (const entry of layout.panels.filter(entry => entry.overlay)) for (const owner of paintScene(entry.panel, dpi, assets).owners) {
+    if (owner.kind !== 'figure' || !figureVisible(entry, owner.index, guides)) continue;
+    const view = await humanPoseFigureImage(owner, entry.panel, assets, guideFor(entry, owner.key));
+    await drawHumanPoseImage(context, view.image, view.frame, frame);
+  }
+  for (const entry of layout.panels.filter(entry => entry.overlay)) {
+    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? overlayTextFallbackBox(layout.frame, index), frame, 'screen_text', manga.meta.font);
+    await drawBubbles(entry);
   }
   // Completed page/panel images cover editable content, just as in MangaCanvas.
   for(const entry of layout.panels.filter(entry=>!entry.overlay)){

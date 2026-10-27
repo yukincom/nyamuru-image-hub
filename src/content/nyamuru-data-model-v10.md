@@ -88,7 +88,7 @@ page_overlay:
 
 - `frame` は `false`、`layer` は `above_panel_frames` 固定。
 - `page_overlay` 自体をコマとして数えず、囲う枠線も描かない。
-- 全コマとコマ枠を描いた後、`page_overlay.figures` を紙面上へ一度だけ描く。その後、通常のコマ内フキダシと `page_overlay.bubbles` を人物より前面へ描く。各コマへ複製しない。
+- コマ内作画、通常のコマ内フキダシ、コマ枠の順に描く。その上にページ直描きと `page_overlay.figures` を描き、`page_overlay.bubbles` を前景人物より前面へ描く。ページ前景は紙面上へ一度だけ描き、各コマへ複製しない。
 - bbox はA4紙面の絶対座標。コマ内相対位置ではないため `anchor` は使わない。
 - 通常のコマ内要素は `panels[].figures` / `panels[].bubbles` に置く。
 

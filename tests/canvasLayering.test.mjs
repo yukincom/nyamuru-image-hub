@@ -35,10 +35,20 @@ test('しっぽと結合部は各フキダシの直前に置き、フキダシ�
   assert.match(css, /\.page-overlay-bubble-stack-item\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;/);
 });
 
-test('ページ前景はコマ枠より上で、人物よりフキダシが前面にある', () => {
+test('コマ内フキダシは作画より上、コマ枠とページ前景より下にある', () => {
+  assert.ok(zIndexOf('.panel-bubble-layer') > zIndexOf('.panel-art-stack'));
+  assert.ok(zIndexOf('.panel-frame-overlay') > zIndexOf('.panel-bubble-layer'));
+  assert.ok(zIndexOf('.panel-frame-inner-overlay') > zIndexOf('.panel-bubble-layer'));
+  const bubbles = canvas.indexOf('<div class="panel-bubble-layer">');
+  assert.ok(bubbles > 0 && bubbles < canvas.indexOf('<svg class="panel-frame-overlay"'));
+});
+
+test('ページ直描きと前景は両方のコマ枠より上で、前景フキダシが人物より前面にある', () => {
+  assert.ok(zIndexOf('.page-direct-paint-layer') > zIndexOf('.panel-frame-overlay'));
+  assert.ok(zIndexOf('.page-direct-paint-layer') > zIndexOf('.panel-frame-inner-overlay'));
+  assert.ok(zIndexOf('.page-overlay-figure-layer') > zIndexOf('.page-direct-paint-layer'));
   assert.ok(zIndexOf('.page-overlay-figure-layer') > zIndexOf('.panel-frame-overlay'));
   assert.ok(zIndexOf('.page-overlay-figure-layer') > zIndexOf('.panel-frame-inner-overlay'));
-  assert.ok(zIndexOf('.panel-bubble-layer') > zIndexOf('.page-overlay-figure-layer'));
   assert.ok(zIndexOf('.page-overlay-bubble-layer') > zIndexOf('.page-overlay-figure-layer'));
 });
 

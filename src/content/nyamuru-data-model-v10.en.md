@@ -88,7 +88,7 @@ page_overlay:
 
 - `frame` is fixed to `false`; `layer` is fixed to `above_panel_frames`.
 - Do not count `page_overlay` as a panel and do not draw an enclosing frame.
-- After all panels and panel frames, draw `page_overlay.figures` exactly once on the page. Then draw ordinary panel-local balloons and `page_overlay.bubbles` in front of those figures. Never duplicate overlay elements into individual panels.
+- Draw panel artwork, ordinary panel-local balloons, and panel frames in that order. Draw direct page artwork and `page_overlay.figures` above them, then `page_overlay.bubbles` above the foreground figures. Draw the page foreground exactly once; never duplicate it into individual panels.
 - Bboxes are absolute page coordinates. Do not use panel-relative `anchor` fields here.
 - Ordinary panel-local content remains in `panels[].figures` / `panels[].bubbles`.
 

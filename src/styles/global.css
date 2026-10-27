@@ -277,14 +277,14 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 /* パネル本体の重ね順は配列順で固定（パネル1が最奥）。選択中パネルのエレメント・ハンドル類は
    専用レイヤーで常にパネル本体より前面に描く */
 .panel-element-layer { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
-.panel-frame-overlay { position: absolute; z-index: 4; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.panel-frame-overlay { position: absolute; z-index: 5; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .panel-frame-overlay rect, .panel-frame-overlay polygon, .panel-frame-overlay line { fill: none; stroke: #26232b; stroke-linejoin: miter; }
 .panel-frame-inner-overlay { position: absolute; z-index: 11; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .panel-frame-inner-overlay line { fill: none; stroke: #26232b; stroke-linejoin: miter; }
 .page-overlay-figure-layer, .page-overlay-text-layer, .panel-bubble-layer, .page-overlay-bubble-layer { position: absolute; inset: 0; pointer-events: none; }
-.page-overlay-figure-layer { z-index: 12; }
+.page-overlay-figure-layer { z-index: 13; }
 .page-overlay-text-layer { z-index: 14; }
-.panel-bubble-layer { z-index: 15; }
+.panel-bubble-layer { z-index: 4; }
 .panel-bubble-clip { position: absolute; inset: 0; pointer-events: none; }
 .page-overlay-bubble-stack-item { position:absolute; inset:0; pointer-events:none; }
 .bubble-text-frame { position: absolute; pointer-events: none; }
@@ -1255,7 +1255,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 
 /* Imported originals render independently from the figure guides. */
 .placed-image-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-.page-direct-paint-layer { position:absolute; inset:0; z-index:10; pointer-events:none; }
+.page-direct-paint-layer { position:absolute; inset:0; z-index:12; pointer-events:none; }
 .direct-paint-artwork { position:absolute; display:block; pointer-events:none; }
 .original-raster-layer { position:absolute; inset:0; z-index:21; pointer-events:none; }
 .workspace-loading { padding:2rem; }

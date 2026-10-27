@@ -1714,6 +1714,9 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       {selectedPanel && <div class="panel-element-layer" style={layerClipStyle(selectedPanel, canvas)}>
         {renderPanelBaseElements(selectedPanel, activePanel, paperBoxStyle,'screen')}
       </div>}
+      {page.panels.some((panel) => panel.bubbles.length > 0) && <div class="panel-bubble-layer">
+        {page.panels.flatMap((panel, panelIndex) => renderPanelBubbles(panel, panelIndex))}
+      </div>}
       <svg class="panel-frame-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} strokeWidth={frameLineWidthMm} aria-hidden="true">
         {page.panels.map((panel, panelIndex) => {
           if(!panelFrameVisible(panel))return null;
@@ -1741,9 +1744,6 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
         {renderPageOverlayFigures()}
       </div>}
       {(overlay?.screen_text?.length??0)>0&&<div class="page-overlay-text-layer">{renderPageOverlayText()}</div>}
-      {page.panels.some((panel) => panel.bubbles.length > 0) && <div class="panel-bubble-layer">
-        {page.panels.flatMap((panel, panelIndex) => renderPanelBubbles(panel, panelIndex))}
-      </div>}
       {(overlay?.bubbles?.length ?? 0) > 0 && <div class="page-overlay-bubble-layer">
         {renderPageOverlayBubbles()}
       </div>}

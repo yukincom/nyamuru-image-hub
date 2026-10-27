@@ -343,7 +343,10 @@ export function paintScene(panel: Panel, dpi: number, assets: ImageAsset[],color
     owners.push({key:`original-${image.id}`,kind:'original',index,label:image.bubbleOriginal.name,
       frame:{...image.bbox},original:image,locked:image.locked,inheritedLocked,paint:{...paint,guideInitialized:true}});
   });
-  const keys=[...panelArtKeys(panel),...(directScope?[directScope]:[]),...owners.filter(o=>o.kind==='bubble'||o.kind==='original').map(o=>o.key)];
+  const artKeys=panelArtKeys(panel);
+  // Page foreground sits over page-direct paint; panel-direct paint sits over panel artwork.
+  const baseKeys=directScope==='page'?['background','page',...artKeys.filter(key=>key!=='background')]:[...artKeys,...(directScope?[directScope]:[])];
+  const keys=[...baseKeys,...owners.filter(o=>o.kind==='bubble'||o.kind==='original').map(o=>o.key)];
   return {frame,owners:keys.map(key=>owners.find(o=>o.key===key)!),colorMode};
 }
 

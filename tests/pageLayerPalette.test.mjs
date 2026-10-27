@@ -16,6 +16,14 @@ const selectionSource=readFileSync(new URL('../src/components/CanvasContentSelec
 const lockIconSource=readFileSync(new URL('../src/components/LayerLockIcon.tsx',import.meta.url),'utf8');
 const headerSource=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
 
+test('palette displays original crops above the frame, then bubbles and lower art in reverse scene order',()=>{
+ assert.match(paintLayerSource,/\[\.\.\.p\.scene\.owners\][\s\S]*?\.reverse\(\)\.map/);
+ assert.match(paintLayerSource,/const frame=o\.kind!=='original'&&\(ownerIndex===0\|\|owners\[ownerIndex-1\]\.kind==='original'\)\?p\.frameLayer:null/);
+ assert.match(paintLayerSource,/return <>\{frame\}<div class="layer-group"/);
+ assert.match(pageLayerSource,/cloneElement\(paint\.layers[\s\S]*?\{frameLayer\}/);
+ assert.match(pageLayerSource,/<InactiveLayers panel=\{panel\}[^>]*frameLayer=\{frameLayer\}/);
+});
+
 test('page image import and export stay in the header immediately before New',()=>{
  assert.doesNotMatch(paintLayerSource,/layer-image-actions|画像の入出力|画像書き出し形式/);
  assert.doesNotMatch(globalCss,/\.layer-image-actions/);
