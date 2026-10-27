@@ -4,6 +4,23 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import * as jsxRuntime from 'preact/jsx-runtime';
+import { canvasPaintOwnerKey } from '../src/lib/paintDocument.ts';
+
+test('canvas selections resolve only their existing paint owner and never default to background',()=>{
+ const panel={figures:[{}],bubbles:[{}],images:[{id:'normal'},{id:'crop-a-b',bubbleOriginal:{}},{id:'direct',paintScope:'panel'}]};
+ const page={panels:[panel,{figures:[{},{}],bubbles:[]}],images:[{id:'page-crop',bubbleOriginal:{}},{id:'page-image'}],page_overlay:{figures:[{}],bubbles:[{}]}};
+ const before=structuredClone(page),key=(selection,index=0)=>canvasPaintOwnerKey(page,index,selection);
+ assert.equal(key({type:'figure',index:0}),'figure-0');
+ assert.equal(key({type:'figure',index:1,scope:'panel'},1),'figure-1');
+ assert.equal(key({type:'bubble',index:0,scope:'panel'}),'bubble-0');
+ assert.equal(key({type:'figure',index:0,scope:'page_overlay'},99),'figure-0');
+ assert.equal(key({type:'bubble',index:0,scope:'page_overlay'}),'bubble-0');
+ assert.equal(key({type:'image',index:1}),'original-crop-a-b');
+ assert.equal(key({type:'image',index:0,scope:'page'},99),'original-page-crop');
+ for(const selection of [null,{type:'screen_text',index:0},{type:'image',index:0},{type:'image',index:2},{type:'image',index:1,scope:'page'},{type:'image',index:0,scope:'page_overlay'},{type:'figure',index:0,scope:'page'},{type:'figure',index:-1},{type:'bubble',index:9}])assert.equal(key(selection),undefined);
+ assert.equal(key({type:'figure',index:0},99),undefined);
+ assert.deepEqual(page,before);
+});
 
 const paintLayerSource=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
 const globalCss=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
@@ -132,7 +149,7 @@ test('empty direct groups stay out of the tree until the user adds artwork',()=>
  const direct=pageLayerSource.indexOf('page-direct-layer-group'),panels=pageLayerSource.indexOf('p.page.panels.map');
  assert.ok(direct>0&&direct<panels);
  assert.match(pageLayerSource,/images:p\.page\.images\?\.filter\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)/);
- assert.match(pageLayerSource,/const hasPageDirect=Boolean\(p\.page\.page_overlay\?\.bubbles\?\.length\|\|p\.page\.page_overlay\?\.screen_text\?\.length\|\|p\.page\.images\?\.some\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)\|\|activePageOwner\?\.paint\.layers\.length\|\|activePageOwner\?\.paint\.folders\?\.length\)/);
+ assert.match(pageLayerSource,/const hasPageDirect=Boolean\(p\.page\.page_overlay\?\.figures\?\.length\|\|p\.page\.page_overlay\?\.bubbles\?\.length\|\|p\.page\.page_overlay\?\.screen_text\?\.length\|\|p\.page\.images\?\.some\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)\|\|activePageOwner\?\.paint\.layers\.length\|\|activePageOwner\?\.paint\.folders\?\.length\)/);
  assert.match(pageLayerSource,/\{hasPageDirect&&<div class="panel-layer-group page-direct-layer-group">/);
  assert.match(pageLayerSource,/const pageDirectAdd=!hasPageDirect&&<div class="page-direct-create-actions"/);
  assert.match(paintLayerSource,/filter\(o=>\(o\.kind!=='panel'&&o\.kind!=='page'\)\|\|o\.paint\.layers\.length>0\|\|o\.paint\.folders\?\.length\)/);

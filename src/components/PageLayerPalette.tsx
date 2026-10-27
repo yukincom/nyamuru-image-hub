@@ -1,8 +1,8 @@
 import { Bot, ChevronDown, ChevronRight, Copy, FilePlus2, FolderOpen, FolderPlus, PenTool, Trash2, Type } from 'lucide-preact';
-import { useContext, useEffect, useMemo, useState } from 'preact/hooks';
-import type { ImageAsset, MangaPage, PaintColorMode, PaintLayer, Panel, ScreenText } from '../types';
+import { useContext, useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { CanvasElementSelection, ImageAsset, MangaPage, PaintColorMode, PaintLayer, Panel, ScreenText } from '../types';
 import { panelBounds, panelShapePoints } from '../lib/canvasGeometry';
-import { paintScene, type PaintScene } from '../lib/paintDocument';
+import { canvasPaintOwnerKey, paintScene, type PaintScene } from '../lib/paintDocument';
 import { loadPaintImagesBestEffort, type PaintImages } from '../lib/paintRenderer';
 import type { PaintLayerAction } from '../lib/paintSession';
 import { panelVisible, panelFrameVisible, panelFrameLocked, panelLocked } from '../lib/panelLayers';
@@ -30,8 +30,8 @@ interface Props {
   onEditText:(panel:number,bubble:number,overlay?:boolean)=>void;
   onSelectText?:(panel:number,index:number,overlay:boolean)=>void;
   onDeleteText?:(panel:number,index:number,overlay:boolean)=>void;
-  selectedText?:{panel:number;index:number;overlay:boolean};
-  selectedBubble?:number; selectedOverlayBubble?:number; onToggleBubble:(panel:number,bubble:number,overlay?:boolean)=>void;
+  selectedElement?:CanvasElementSelection|null; canvasSelectionScrollRequest?:number; expanded?:boolean;
+  onToggleBubble:(panel:number,bubble:number,overlay?:boolean)=>void;
   guideVisible:(key:string,index:number,overlay?:boolean)=>boolean;
   toggleGuide:(key:string,index:number,overlay?:boolean)=>void;
 }
@@ -60,7 +60,7 @@ function SelectionControls({addFolder,addRaster,addVector,remove,removeLabel='�
   </div>;
 }
 const emptyLayer:PaintLayer={id:'',name:'',visible:false,locked:false,opacity:1,blend:'normal',strokes:[]};
-function InactiveLayers({panel,index,p,overlay=false,frameLayer}:{panel:Panel;index:number;p:Props;overlay?:boolean;frameLayer?:ComponentChildren}) {
+function InactiveLayers({panel,index,p,overlay=false,frameLayer,selectedOwner}:{panel:Panel;index:number;p:Props;overlay?:boolean;frameLayer?:ComponentChildren;selectedOwner?:string}) {
   const result=useMemo(()=>{try{const scene=paintScene(panel,p.dpi,p.assets,p.colorMode,overlay?'page':'panel');if(overlay)scene.owners=scene.owners.filter(o=>o.kind!=='background');return {scene};}catch(error){return {error:error instanceof Error?error.message:'画像を読み込めません'};}},[panel,p.dpi,p.assets,p.colorMode,overlay]);
   const [decoded,setDecoded]=useState<{source:typeof result;images:PaintImages}|null>(null);
   // Effects run after child layout effects: never pair a new scene with the previous image map.
@@ -74,7 +74,7 @@ function InactiveLayers({panel,index,p,overlay=false,frameLayer}:{panel:Panel;in
   if(!result.scene)return <p role="alert">{result.error}</p>;
   const scene=result.scene,owner=scene.owners.find(item=>item.kind===(overlay?'page':'panel'))??scene.owners[0];
   const act=(action:PaintLayerAction)=>p.onAction(index,action,scene,overlay);
-  return <PaintLayerPalette frameLayer={frameLayer} reorderGroup={overlay?undefined:(key,target,after)=>p.onReorderOwners(index,key,target,after)} embedded inactive selectedBubble={overlay?p.selectedOverlayBubble:index===p.activePanel?p.selectedBubble:undefined} onToggleBubble={bubble=>p.onToggleBubble(index,bubble,overlay)} openBackground3d={overlay?undefined:()=>act({type:'background3d',key:'background'})} title="" scene={scene} owner={owner} layer={owner.paint.layers[0]??emptyLayer} images={images} disabled={p.disabled||!panelVisible(panel)}
+  return <PaintLayerPalette frameLayer={frameLayer} reorderGroup={overlay?undefined:(key,target,after)=>p.onReorderOwners(index,key,target,after)} embedded inactive selectedOwner={selectedOwner} canvasSelectionScrollRequest={p.canvasSelectionScrollRequest} onToggleBubble={bubble=>p.onToggleBubble(index,bubble,overlay)} openBackground3d={overlay?undefined:()=>act({type:'background3d',key:'background'})} title="" scene={scene} owner={owner} layer={owner.paint.layers[0]??emptyLayer} images={images} disabled={p.disabled||!panelVisible(panel)}
     selectMask={(key,id,mask)=>act({type:'select',key,id,mask})}
     select={(key,id,contents)=>act({type:'select',key,id,contents})} update={(key,id,patch)=>act({type:'update',key,id,patch})}
     lockOwner={(key,locked)=>act({type:'owner-lock',key,locked})}
@@ -85,6 +85,11 @@ function InactiveLayers({panel,index,p,overlay=false,frameLayer}:{panel:Panel;in
 }
 export default function PageLayerPalette(p:Props) {
   const paint=usePaintWorkspace(),controls=useContext(PaintLayerControlsContext);
+  const paletteRef=useRef<HTMLDivElement>(null);
+  const selection=paint?null:p.selectedElement;
+  const selectedOverlay=selection?.scope==='page_overlay'||selection?.scope==='page';
+  const selectedOwner=canvasPaintOwnerKey(p.page,p.activePanel,selection);
+  const selectedText=selection?.type==='screen_text'?{panel:selectedOverlay?0:p.activePanel,index:selection.index,overlay:selectedOverlay}:undefined;
   const overlaySource=useMemo<Panel>(()=>{
     const o=p.page.page_overlay;
     return {id:0,shape:{type:'rect',x:0,y:0,...p.page.canvas},bg:0,action:null,
@@ -95,11 +100,25 @@ export default function PageLayerPalette(p:Props) {
   },[p.page.page_overlay,p.page.images,p.page.canvas]);
   const [folded,setFolded]=useState<Record<number,boolean>>({});
   useEffect(()=>{setFolded({});},[p.page.page]);
-  useEffect(()=>{if(p.selectedText&&!p.selectedText.overlay)setFolded(value=>({...value,[p.selectedText!.panel]:false}));},[p.selectedText?.panel,p.selectedText?.index,p.selectedText?.overlay]);
+  useEffect(()=>{
+    if(selection&&!selectedOverlay&&(selectedOwner||selectedText))setFolded(value=>({...value,[p.activePanel]:false}));
+  },[p.page.page,p.activePanel,selection?.type,selection?.index,selection?.scope,p.canvasSelectionScrollRequest]);
+  useEffect(()=>{
+    if(p.expanded===false||!selection||(!selectedOwner&&!selectedText))return;
+    const frame=requestAnimationFrame(()=>{
+      const root=paletteRef.current,scroller=root?.closest<HTMLElement>('.dock-content');
+      const row=root?.querySelector<HTMLElement>('[data-canvas-selected="true"]');
+      if(!scroller||!row)return;
+      const viewport=scroller.getBoundingClientRect(),bounds=row.getBoundingClientRect();
+      if(bounds.top<viewport.top)scroller.scrollTop+=bounds.top-viewport.top;
+      else if(bounds.bottom>viewport.bottom)scroller.scrollTop+=bounds.bottom-viewport.bottom;
+    });
+    return()=>cancelAnimationFrame(frame);
+  },[p.page.page,p.activePanel,selection?.type,selection?.index,selection?.scope,p.canvasSelectionScrollRequest,p.expanded,folded]);
   const textLayers=(items:ScreenText[]|undefined,panel:number,overlay=false)=>(items??[]).map((item,index)=>{
-    const selected=p.selectedText?.index===index&&p.selectedText?.panel===panel&&p.selectedText?.overlay===overlay;
+    const selected=selectedText?.index===index&&selectedText?.panel===panel&&selectedText?.overlay===overlay;
     const locked=!overlay&&panelLocked(p.page.panels[panel]);
-    return <div class={`layer-row native-text-layer ${selected?'is-selected':''}`} role="treeitem" aria-label={`文字 ${index+1}`} key={`text-${index}`}>
+    return <div class={`layer-row native-text-layer ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} data-canvas-selected={selected} aria-label={`文字 ${index+1}`} key={`text-${index}`}>
       <button class="layer-select" aria-pressed={selected} aria-label={`文字 ${index+1}を選択`} data-tool-help="編集可能な文字レイヤーです。クリックするとTの文字設定で編集できます。" disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-thumbnail text-thumbnail"><Type size={20}/></span><span class="layer-caption"><small>文字 {index+1} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
     </div>;
   });
@@ -112,18 +131,18 @@ export default function PageLayerPalette(p:Props) {
     addVector={panelEditable?()=>p.onAdd(p.activePanel,'vector'):undefined}
     remove={selected&&!panelLocked(selected)?()=>p.onDelete(p.activePanel):undefined}
     removeLabel={selected?`${panelDisplayLabel(selected.id)}を削除`:'削除'}/>;
-  const bubbleTarget=p.selectedOverlayBubble!==undefined?{panel:0,index:p.selectedOverlayBubble,overlay:true}:p.selectedBubble!==undefined?{panel:p.activePanel,index:p.selectedBubble,overlay:false}:null;
+  const bubbleTarget=selection?.type==='bubble'&&selectedOwner?{panel:selectedOverlay?0:p.activePanel,index:selection.index,overlay:selectedOverlay}:null;
   const bubbleTargetItem=bubbleTarget?(bubbleTarget.overlay?p.page.page_overlay?.bubbles?.[bubbleTarget.index]:p.page.panels[bubbleTarget.panel]?.bubbles[bubbleTarget.index]):undefined;
   const bubbleTargetLocked=bubbleTarget?Boolean(bubbleTargetItem?.locked||artworkLocked(bubbleTargetItem?.paint_overlay)||(!bubbleTarget.overlay&&panelLocked(p.page.panels[bubbleTarget.panel]))):false;
   const bubbleControls=bubbleTarget?<SelectionControls disabled={p.disabled} remove={bubbleTargetLocked?undefined:()=>p.onDeleteBubble(bubbleTarget.panel,bubbleTarget.index,bubbleTarget.overlay)} removeLabel={`吹き出し ${bubbleTarget.index+1}を削除`}/>:null;
-  const textTarget=p.selectedText;
+  const textTarget=selectedText;
   const textControls=textTarget?<SelectionControls disabled={p.disabled} remove={p.onDeleteText&&(textTarget.overlay||!panelLocked(p.page.panels[textTarget.panel]))?()=>p.onDeleteText?.(textTarget.panel,textTarget.index,textTarget.overlay):undefined} removeLabel={`文字 ${textTarget.index+1}を削除`}/>:null;
   const activePageOwner=paint?.overlay&&paint.page===p.page.page?paint.scene.owners.find(owner=>owner.kind==='page'):undefined;
-  const hasPageDirect=Boolean(p.page.page_overlay?.bubbles?.length||p.page.page_overlay?.screen_text?.length||p.page.images?.some(image=>image.paintScope==='page'||image.bubbleOriginal)||activePageOwner?.paint.layers.length||activePageOwner?.paint.folders?.length);
+  const hasPageDirect=Boolean(p.page.page_overlay?.figures?.length||p.page.page_overlay?.bubbles?.length||p.page.page_overlay?.screen_text?.length||p.page.images?.some(image=>image.paintScope==='page'||image.bubbleOriginal)||activePageOwner?.paint.layers.length||activePageOwner?.paint.folders?.length);
   const pageDirectAdd=!hasPageDirect&&<div class="page-direct-create-actions" role="group" aria-label="コマ外レイヤーを追加">
     <span>コマ外へ追加</span><button class="palette-icon" aria-label="コマ外へフォルダーを追加" disabled={p.disabled} onClick={()=>p.onAddFolder(p.activePanel,true)}><FolderPlus size={18}/></button><button class="palette-icon" aria-label="コマ外へラスターレイヤーを追加" disabled={p.disabled} onClick={()=>p.onAdd(p.activePanel,'raster',true)}><FilePlus2 size={18}/></button><button class="palette-icon" aria-label="コマ外へベクターレイヤーを追加" disabled={p.disabled} onClick={()=>p.onAdd(p.activePanel,'vector',true)}><PenTool size={18}/></button>
   </div>;
-  return <div class="page-layer-palette"><h3>レイヤー</h3>{paint?(controls??<SelectionControls disabled/>):textControls??bubbleControls??panelControls}{pageDirectAdd}
+  return <div class="page-layer-palette" ref={paletteRef}><h3>レイヤー</h3>{paint?(controls??<SelectionControls disabled/>):textControls??bubbleControls??panelControls}{pageDirectAdd}
     <div class="page-layer-tree" role="tree" aria-label="ページのレイヤー">
       {hasPageDirect&&<div class="panel-layer-group page-direct-layer-group">
         <div class="panel-layer-heading">
@@ -135,7 +154,7 @@ export default function PageLayerPalette(p:Props) {
             <button class="palette-icon" aria-label="コマ外へベクターレイヤーを追加" data-tool-help="どのコマにも属さず、余白やコマ間にも描けるベクターレイヤーを追加します。" disabled={p.disabled||p.page.layer?.directLocked} onClick={()=>p.onAdd(p.activePanel,'vector',true)}><PenTool size={18}/></button>
           </div>
         </div>
-        {paint?.overlay&&paint.page===p.page.page?paint.layers:<InactiveLayers panel={overlaySource} index={p.activePanel} p={p} overlay/>}
+        {paint?.overlay&&paint.page===p.page.page?paint.layers:<InactiveLayers panel={overlaySource} index={p.activePanel} p={p} overlay selectedOwner={selectedOverlay?selectedOwner:undefined}/>}
         {textLayers(p.page.page_overlay?.screen_text,0,true)}
       </div>}
       {p.page.panels.map((panel,index)=>{
@@ -148,14 +167,14 @@ export default function PageLayerPalette(p:Props) {
           <button type="button" class={`palette-icon layer-row-lock ${panelFrameLocked(panel)?'is-locked':'is-unlocked'} ${panelLocked(panel)?'is-inherited':''}`} aria-label={panelLocked(panel)?`${title}の枠は親フォルダーで固定中`:panelFrameLocked(panel)?`${title}の枠だけの固定を解除`:`${title}の枠だけを固定`} aria-pressed={panelFrameLocked(panel)||panelLocked(panel)} disabled={p.disabled||panelLocked(panel)} onClick={()=>p.onLock(index,true)}><LayerLockIcon size={16} locked={panelFrameLocked(panel)||panelLocked(panel)}/></button>
         </div>;
         return <div class={`panel-layer-group ${visible?'':'is-hidden'}`} key={`${p.page.page}-${panel.id}`} role="treeitem" aria-expanded={!collapsed} aria-label={title}>
-          <div class={`panel-layer-heading ${index===p.activePanel?'is-selected':''}`}>
+          <div class={`panel-layer-heading ${index===p.activePanel&&!selectedOwner&&!selectedText?'is-selected':''}`}>
             {eye(`${title}を${visible?'隠す':'表示'}`,visible,()=>p.onVisibility(index,false))}
             <button class="palette-icon" aria-label={`${title}を${collapsed?'展開':'折りたたむ'}`} aria-expanded={!collapsed} onClick={()=>setFolded({...folded,[index]:!collapsed})}>{collapsed?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
             <button class="panel-layer-select" aria-label={`${title}を選択`} data-tool-help="このコマを紙面で選択します。中のレイヤーとコマ枠をまとめるフォルダです。" onClick={()=>{setFolded({...folded,[index]:false});p.onSelect(index);}} disabled={p.disabled}><PanelThumbnail panel={panel}/><span>{title}</span></button>
             <button type="button" class={`palette-icon layer-row-lock ${panelLocked(panel)?'is-locked':'is-unlocked'}`} aria-label={panelLocked(panel)?`${title}全体の固定を解除`:`${title}全体を固定`} aria-pressed={panelLocked(panel)} disabled={p.disabled} onClick={event=>{event.stopPropagation();p.onLock(index);}}><LayerLockIcon size={16} locked={panelLocked(panel)}/></button>
           </div>
           {!collapsed&&<div class="panel-layer-children" role="group">
-            {active?cloneElement(paint.layers as VNode<{frameLayer?:ComponentChildren}>,{frameLayer}):<InactiveLayers panel={panel} index={index} p={p} frameLayer={frameLayer}/>}
+            {active?cloneElement(paint.layers as VNode<{frameLayer?:ComponentChildren}>,{frameLayer}):<InactiveLayers panel={panel} index={index} p={p} frameLayer={frameLayer} selectedOwner={!selectedOverlay&&index===p.activePanel?selectedOwner:undefined}/>}
             {textLayers(panel.screen_text,index)}
           </div>}
         </div>;

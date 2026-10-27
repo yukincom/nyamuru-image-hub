@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Box, Camera, Layers, Bot, Info } from 'lucide-preact';
+import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Box, Camera, Image as ImageIcon, Layers, Bot, Info } from 'lucide-preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PaintLayer } from '../types';
 import {paintLayerTree,type PaintLayerDropTarget,type PaintOwner,type PaintScene} from '../lib/paintDocument';
@@ -31,7 +31,7 @@ interface Props {
   selectedMask?:'mask'|'generationMask'|null;
   selectMask?:(key:string,id:string,kind:'mask'|'generationMask')=>void;
   addToneMask?:()=>void; addGenerationMask?:()=>void; disabledReason?:string;
-  selectedBubble?:number; onToggleBubble?:(index:number)=>void; openBackground3d?:()=>void;
+  selectedOwner?:string; canvasSelectionScrollRequest?:number; onToggleBubble?:(index:number)=>void; openBackground3d?:()=>void;
   reorderGroup?:(key:string,target:string,after:boolean)=>void; embedded?:boolean; inactive?:boolean; onEditText?:(index:number)=>void; title:string; scene:PaintScene; owner:PaintOwner; layer:PaintLayer; images:PaintImages|null; disabled:boolean;
   select:(key:string,id?:string,contents?:boolean)=>void; update:(key:string,id:string,patch:Partial<PaintLayer>)=>void;
   lockOwner:(key:string,locked:boolean)=>void;
@@ -77,6 +77,9 @@ export default function PaintLayerPalette(p:Props){
   const paletteRef=useRef<HTMLDivElement>(null),skipGroupClick=useRef(false);
   const groupDrag=useRef<{key:string;pointer:number;x:number;y:number;target?:string;after?:boolean}|null>(null);
   const [groupDrop,setGroupDrop]=useState<{key:string;after:boolean}|null>(null);
+  useEffect(()=>{
+    if(p.selectedOwner)setCollapsed(value=>({...value,[p.selectedOwner!]:false}));
+  },[p.selectedOwner,p.canvasSelectionScrollRequest]);
   const label=(o:PaintOwner)=>o.kind==='background'?'背景':o.kind==='panel'?'コマ内':o.kind==='page'?'コマ外':o.label;
   const beginLayerDrag=(e:PointerEvent,o:PaintOwner,l:PaintLayer)=>{if(p.disabled||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary||!(e.target as Element).closest('.layer-select')||!paintLayerEditable(o,l))return;const capture=(e.target as Element).closest<HTMLElement>('.layer-select')!;capture.classList.add('is-dragging');drag.current={key:o.key,id:l.id,x:e.clientX,y:e.clientY,pointerId:e.pointerId,capture,moved:false};try{capture.setPointerCapture(e.pointerId);}catch{}};
   const moveLayerDrag=(e:PointerEvent)=>{const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<5)return;d.moved=true;e.preventDefault();
@@ -131,11 +134,16 @@ export default function PaintLayerPalette(p:Props){
     {!p.embedded&&!p.inactive&&<PaintLayerControls {...p}/>}<div class="layer-tree" role="tree" aria-label="レイヤーの重なり">
       {!p.embedded&&<div class="layer-panel-row"><strong>{p.title}</strong></div>}
       {[...p.scene.owners].filter(o=>(o.kind!=='panel'&&o.kind!=='page')||o.paint.layers.length>0||o.paint.folders?.length).reverse().map((o,ownerIndex,owners)=>{
-        const bubble=o.kind==='bubble',visible=bubble?bubbleVisible(o.bubble!):o.paint.layers.some(l=>l.visible),folded=collapsed[o.key]??bubble,active=(!p.inactive&&o.key===p.owner.key)||(bubble&&p.selectedBubble===o.index);
+        const bubble=o.kind==='bubble',visible=bubble?bubbleVisible(o.bubble!):o.paint.layers.some(l=>l.visible),folded=collapsed[o.key]??bubble;
+        const paintActive=!p.inactive&&o.key===p.owner.key,canvasSelected=p.selectedOwner===o.key,active=paintActive||canvasSelected;
         const frame=o.kind!=='original'&&(ownerIndex===0||owners[ownerIndex-1].kind==='original')?p.frameLayer:null;
-        if(o.kind==='panel'||o.kind==='page'||o.kind==='original')return <>{frame}<div class={`layer-direct-root ${o.kind==='original'?'original-raster-root':''}`} key={o.key} data-original-raster={o.kind==='original'?o.original?.id:undefined}>{renderEntries(o,active)}</div></>;
+        if(o.kind==='panel'||o.kind==='page'||o.kind==='original')return <>{frame}<div class={`layer-direct-root ${o.kind==='original'?'original-raster-root':''}`} key={o.key} data-original-raster={o.kind==='original'?o.original?.id:undefined}>
+          {o.kind==='original'&&<div class={`layer-group-row original-owner-row ${active?'is-selected':''}`} role="treeitem" aria-selected={active} data-canvas-selected={canvasSelected} data-owner-group={o.key}>
+            <button class="layer-group-select" aria-pressed={active} aria-label={`${label(o)}を選択`} disabled={p.disabled} onClick={()=>p.select(o.key)}><ImageIcon size={17}/><span class="layer-caption">{label(o)}</span></button>
+          </div>}
+          {renderEntries(o,paintActive)}</div></>;
         return <>{frame}<div class="layer-group" key={o.key}>
-          <div data-owner-group={o.key} role={bubble?'treeitem':undefined} aria-selected={bubble?active:undefined} class={`layer-group-row ${bubble?'bubble-layer-row':''} ${active?'is-selected':''} ${groupDrop?.key===o.key?(groupDrop.after?'drop-below':'drop-above'):''}`}
+          <div data-owner-group={o.key} role="treeitem" aria-selected={active} data-canvas-selected={canvasSelected} class={`layer-group-row ${bubble?'bubble-layer-row':''} ${active?'is-selected':''} ${groupDrop?.key===o.key?(groupDrop.after?'drop-below':'drop-above'):''}`}
             onPointerDown={e=>{if(!p.reorderGroup||p.disabled||o.kind==='bubble'||o.kind==='panel'||o.kind==='page'||paintOwnerPlacementLocked(o)||e.button!==0||!(e.target as Element).closest('.layer-group-select'))return;skipGroupClick.current=false;groupDrag.current={key:o.key,pointer:e.pointerId,x:e.clientX,y:e.clientY};(e.target as Element).closest<HTMLElement>('.layer-group-select')!.setPointerCapture(e.pointerId);}}
             onPointerMove={e=>{const d=groupDrag.current;if(!d||d.pointer!==e.pointerId||Math.hypot(e.clientX-d.x,e.clientY-d.y)<5)return;
               const row=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-owner-group]'),key=row?.dataset.ownerGroup;
@@ -156,7 +164,7 @@ export default function PaintLayerPalette(p:Props){
               <span class="layer-caption"><small>3D · 非表示</small>{object.name}</span>
             </div>)}
           </div>}
-          {!folded&&<div role="group">{renderEntries(o,active)}{(o.kind==='figure'||o.kind==='bubble')&&renderOwnerInfo(o)}</div>}
+          {!folded&&<div role="group">{renderEntries(o,paintActive)}{(o.kind==='figure'||o.kind==='bubble')&&renderOwnerInfo(o)}</div>}
         </div></>;
       })}
     </div>

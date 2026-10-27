@@ -2,11 +2,25 @@ import { validPaintInk } from './paintInk.ts';
 import { mapBackgroundCapture, validateBackgroundCapture } from './background3d.ts';
 import { panelArtKeys } from './panelLayers.ts';
 import { transformVector } from './vectorGeometry.ts';
-import type { BBox, Bubble, Figure, ImageAsset, MangaPage, PageOverlay, PaintColorMode, PaintDocument, PaintFolder, PaintLayer, Panel, PlacedImage } from '../types.ts';
+import type { BBox, Bubble, CanvasElementSelection, Figure, ImageAsset, MangaPage, PageOverlay, PaintColorMode, PaintDocument, PaintFolder, PaintLayer, Panel, PlacedImage } from '../types.ts';
 import { fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { artworkPixelSize } from './artworkClipboard.ts';
 import { paintLayerHasContent } from './paintLock.ts';
 import { figureDisplayLabel } from './displayLabels.ts';
+
+/** Layout selection is not a paint selection; callers choose any drawing fallback explicitly. */
+export function canvasPaintOwnerKey(page:MangaPage|undefined,panelIndex:number,selection:CanvasElementSelection|null|undefined):string|undefined {
+  if(!page||!selection)return;
+  if(selection.type==='image'){
+    if(selection.scope==='page_overlay')return;
+    const image=(selection.scope==='page'?page.images:page.panels[panelIndex]?.images)?.[selection.index];
+    return image?.bubbleOriginal?`original-${image.id}`:undefined;
+  }
+  if(selection.scope==='page')return;
+  const target=selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex];
+  if(selection.type==='figure'&&target?.figures?.[selection.index])return `figure-${selection.index}`;
+  if(selection.type==='bubble'&&target?.bubbles?.[selection.index])return `bubble-${selection.index}`;
+}
 
 export function newPaintLayer(name = 'レイヤー',kind:PaintLayer['kind']='raster',colorMode:PaintColorMode='color'): PaintLayer {
   return { id: crypto.randomUUID(), name, visible: true, locked: false, opacity: 1, blend: 'normal', strokes: [],kind,colorMode,antialias:3,...(kind==='vector'?{paths:[]}: {}) };
