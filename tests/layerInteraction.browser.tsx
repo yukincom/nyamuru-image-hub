@@ -103,6 +103,7 @@ if(new URLSearchParams(location.search).has('render-check')){
   const controls=document.createElement('aside');controls.style.cssText='position:fixed;bottom:0;left:4px;z-index:3000;max-width:460px;background:#fff4d5;padding:6px';document.body.append(controls);
   render(<details><summary>選択同期の検証</summary><input id="selection-focus" aria-label="フォーカス保持の検証"/>
     <button id="check-selection" onClick={()=>void verifySelection()}>キャンバス選択を検証</button>
+    <button id="check-figures" onClick={()=>void verifyFigurePresentation()}>人物の確定表示を検証</button>
     <pre id="selection-report" aria-live="polite" style={{maxHeight:'200px',overflow:'auto',whiteSpace:'pre-wrap'}}>未実行</pre></details>,controls);
  }
 }
@@ -189,4 +190,76 @@ async function verifySelection(){
   report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
  }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
  finally{button.disabled=false;}
+}
+
+async function verifyFigurePresentation(){
+ const report=document.getElementById('selection-report')!,buttons=Array.from(document.querySelectorAll<HTMLButtonElement>('#check-selection,#check-figures'));
+ const original=localStorage.getItem(STORAGE_KEY),host=document.getElementById('app')!,checks:string[]=[];
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const tick=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+ const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<240&&!test();i++)await tick();if(!test())throw Error(label);};
+ const settle=async()=>{for(let i=0;i<12;i++)await tick();};
+ const active=<T extends Element>(selector:string)=>Array.from(document.querySelectorAll<T>(selector)).find(item=>!item.closest('.is-spread-partner'))!;
+ const figure=(index:number)=>active<HTMLElement>(`.manga-paper [data-content-kind="figure"][data-content-panel="0"][data-content-index="${index}"]`);
+ const stored=()=>parseMangaYaml(localStorage.getItem(STORAGE_KEY)!);
+ let mounted=false;
+ buttons.forEach(button=>button.disabled=true);report.textContent='人物表示の検証中';
+ try{
+  if(!original||stored().manga.meta.episode_id!=='layer-selection-qa')throw Error('Dedicated selection manuscript required');
+  if(document.querySelector('.app-shell.is-painting'))throw Error('先に描画を閉じてください');
+  const doc=stored(),asset=doc.manga.image_assets![0],bbox={x:25,y:55,w:25,h:35};
+  doc.manga.characters.push({localId:'person-r5',name:'確定人物',role:'',scope:'episode'});
+  const analog={schemaVersion:1 as const,sourceRegionId:'figure-state-qa',assetId:asset.storageId,sourceBBox:{x:0,y:0,w:1,h:1},detectionSource:'body' as const,draft:true as const};
+  const assigned={name:'確定人物',kind:'person' as const,refId:'person-r5',bbox,analogImport:{...analog}};
+  doc.manga.pages[0].panels[0].figures=[
+   {...assigned,name:'人物あたり',refId:undefined},
+   {...assigned,bbox:{...bbox,x:55}},
+   {...assigned,bbox:{...bbox,x:85},artwork:createFrameArtwork(asset,{...bbox,x:85})},
+   {...assigned,bbox:{...bbox,x:115},artwork:createFrameArtwork(asset,{...bbox,x:115}),analogImport:{...analog,analysisReview:'low-confidence',analysisReviewMessage:'確認が必要です'}},
+   {name:'小道具',kind:'prop',bbox:{...bbox,x:55,y:95,h:15}},
+  ];
+  doc.manga.pages[0].page_overlay!.figures=[
+   {...assigned,bbox:{x:25,y:125,w:20,h:12}},
+   {...assigned,bbox:{x:55,y:125,w:20,h:12},analogImport:{...analog,analysisReview:'error'}},
+   {...assigned,bbox:{x:125,y:125,w:20,h:12},artwork:createFrameArtwork(asset,{x:125,y:125,w:20,h:12}),analogImport:{...analog,analysisReview:'low-confidence'}},
+  ];
+  render(null,host);localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));render(<App/>,host);mounted=true;
+  await wait(()=>!!figure(1),'人物画面が表示されません');await settle();
+  check(figure(1).classList.contains('is-confirmed-person')&&getComputedStyle(figure(1)).borderTopWidth==='0px'&&getComputedStyle(figure(1)).backgroundColor==='rgba(0, 0, 0, 0)','確定済み・未描画の人物に常設色枠と色地を残さない');
+  check(figure(2).classList.contains('is-confirmed-person')&&figure(2).classList.contains('placed-image'),'画像化済み人物も同じ確定状態を使い、画像表示を保持');
+  check(figure(0).classList.contains('is-unassigned')&&!figure(0).classList.contains('is-confirmed-person'),'未割当人物は注意表示を保持');
+  check(figure(3).classList.contains('is-analysis-review')&&figure(3).classList.contains('placed-image')&&getComputedStyle(figure(3),'::after').content!=='none','名前付き低信頼人物は画像を落とさず注意枠を表示');
+  check(figure(4).classList.contains('is-object')&&!figure(4).classList.contains('is-unassigned'),'小道具は人物未割当と扱わない');
+  await wait(()=>!!figure(1).querySelector<HTMLImageElement>('.figure-crop-image')?.naturalWidth,'原画参照が表示されません');
+  check(!!figure(1).querySelector('.figure-crop-image'),'通常表示になっても原画参照を保持');
+  const foreground=Array.from(active<HTMLElement>('.page-overlay-figure-layer').querySelectorAll<HTMLElement>('[data-content-target]'));
+  check(foreground.length===3&&foreground[0].classList.contains('is-confirmed-person')&&foreground.slice(1).every(item=>item.classList.contains('is-analysis-review')),'ページ前景も通常・要確認と画像有無を同じ規則で表示');
+  figure(1).click();await wait(()=>!!figure(1).querySelector('.canvas-content-outline'),'通常の選択枠がありません');
+  check(figure(1).querySelectorAll('.resize-handle').length===4&&getComputedStyle(figure(1)).borderTopWidth==='0px','確定人物の選択は既存の輪郭と4handleだけを使用');
+  figure(0).click();await settle();
+  const dropdown=Array.from(document.querySelectorAll<HTMLSelectElement>('.panel-inspector .selectable-card.is-selected select')).find(select=>Array.from(select.options).some(option=>option.value==='person-r5'));
+  if(!dropdown)throw Error('人物確定の選択欄がありません');
+  dropdown.value='person-r5';dropdown.dispatchEvent(new Event('change',{bubbles:true}));
+  await wait(()=>stored().manga.pages[0].panels[0].figures![0].refId==='person-r5','名前確定が保存されません');await settle();
+  check(figure(0).classList.contains('is-confirmed-person')&&stored().manga.pages[0].panels[0].figures![0].analogImport?.draft===true,'draftが残る人物も名前確定で通常表示へ切替');
+  const historyButton=(name:string)=>document.querySelector<HTMLButtonElement>(`.app-header [aria-label^="${name}"]`)!;
+  historyButton('元に戻す').click();await wait(()=>figure(0).classList.contains('is-unassigned')&&!stored().manga.pages[0].panels[0].figures![0].refId,'Undoで注意表示が戻りません');
+  check(!stored().manga.pages[0].panels[0].figures![0].refId,'名前確定のUndoは既存documentと表示を同時に戻す');
+  historyButton('やり直す').click();await wait(()=>figure(0).classList.contains('is-confirmed-person')&&stored().manga.pages[0].panels[0].figures![0].refId==='person-r5','Redoで通常表示が戻りません');
+  check(stored().manga.pages[0].panels[0].figures![0].refId==='person-r5','Redoで通常表示を復元');
+  render(null,host);render(<App/>,host);await wait(()=>!!figure(0),'再読込が完了しません');await settle();
+  check(figure(0).classList.contains('is-confirmed-person')&&getComputedStyle(figure(0)).borderTopWidth==='0px','保存済みdocumentからの再読込でも通常表示を維持');
+  const ownerRoot='.page-layer-palette .panel-layer-group[aria-label="コマ 01"]',heading=`${ownerRoot} [data-owner-group="figure-0"] .layer-group-select`;
+  document.querySelector<HTMLButtonElement>(`${ownerRoot} [data-owner-root="figure-0"] .layer-row .layer-select`)!.click();
+  await wait(()=>!!document.querySelector('.app-shell.is-painting')&&!!document.querySelector(`${heading}:not(:disabled)`),'人物の描画が開きません');await settle();
+  document.querySelector<HTMLButtonElement>(heading)!.click();await wait(()=>!document.querySelector('.app-shell.is-painting'),'人物選択へ戻れません');await settle();
+  check(figure(0).classList.contains('is-confirmed-person')&&getComputedStyle(figure(0)).borderTopWidth==='0px','ペイントの無操作開閉でも確定人物の枠を変更しない');
+  const after=stored();
+  check(!after.manga.pages[0].panels[0].figures![0].artwork&&!after.manga.pages[0].panels[0].figures![1].artwork&&JSON.stringify(after.manga.image_assets)===JSON.stringify(doc.manga.image_assets),'名前確定・Undo・再読込でPNGとassetを追加しない');
+  report.textContent=`人物表示 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`人物表示 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
+ finally{
+  if(mounted){render(null,host);localStorage.setItem(STORAGE_KEY,original!);render(<App/>,host);}
+  buttons.forEach(button=>button.disabled=false);
+ }
 }

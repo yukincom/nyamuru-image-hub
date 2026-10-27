@@ -150,9 +150,11 @@ function FigureName({ name, boxW, boxH, fitEpoch }: { name: string; boxW: number
   return <span class="figure-name-layer"><small ref={ref} class="figure-name">{name}</small></span>;
 }
 
-function isUnassignedPersonFigure(figure: Figure): boolean {
-  return !isPropPlacement(figure)
-    && (!figure.refId || figure.name.normalize('NFKC').trim() === DETECTED_FIGURE_NAME);
+function figureCanvasClass(figure: Figure): string {
+  if(isPropPlacement(figure))return 'is-object';
+  if(figure.analogImport?.analysisReview)return 'is-analysis-review';
+  return !figure.refId || figure.name.normalize('NFKC').trim() === DETECTED_FIGURE_NAME
+    ?'is-unassigned':'is-confirmed-person';
 }
 
 function StoredCropImage({ assetId, persistentAsset, className }: { assetId: string; persistentAsset?: PersistentAnalogAssetRef; className: string }) {
@@ -1217,8 +1219,10 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     const isLocked=artworkLocked(image);
     const asset = imageAssets.find(item => item.id === image.assetId);
     const selected = (panelIndex === null || activePanel === panelIndex) && isSelectedElement(selection);
+    const figure=selection.type==='figure'?(selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex??-1])?.figures?.[selection.index]:undefined;
+    const figureClass=figure?figureCanvasClass(figure):'';
     const bounds = {x:0,y:0,w:canvas.w,h:canvas.h};
-    return <button type="button" data-content-target data-content-panel={panelIndex??undefined} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
+    return <button type="button" data-content-target data-content-panel={panelIndex??undefined} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
       style={{...boxStyle(image.bbox),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined} aria-label={`${label ?? '配置画像'} ${asset?.originalName ?? ''}`}
       tabIndex={!isLocked&&(panelIndex === null || activePanel === panelIndex) ? 0 : -1}
       onClick={event => { event.stopPropagation(); onSelectElement(selection, panelIndex ?? undefined); }}
@@ -1247,9 +1251,9 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
       const isSelected = activePanel === panelIndex && isSelectedElement(selection);
       const isLocked=elementLocked(selection,panelIndex);
       const cropAssetId = figure.analogImport?.assetId;
-      const isUnassigned = isUnassignedPersonFigure(figure);
+      const figureClass = figureCanvasClass(figure);
       return <button
-        data-content-target data-content-panel={panelIndex} data-content-kind="figure" data-content-index={figureIndex} class={`canvas-element figure-guide ${isPropPlacement(figure) ? 'is-object' : ''} ${isUnassigned ? 'is-unassigned' : ''} ${cropAssetId ? 'has-source-crop' : ''} ${figure.analogImport?.analysisReview ? 'is-analysis-review' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+        data-content-target data-content-panel={panelIndex} data-content-kind="figure" data-content-index={figureIndex} class={`canvas-element figure-guide ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
         style={{...boxStyle(box),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined}
         onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
         onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex); }}
@@ -1259,7 +1263,7 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
           else nudgeElement(event, {x:0,y:0,w:canvas.w,h:canvas.h}, selection, box);
         }}
         key={figure.analogImport?.sourceRegionId ?? `figure-${figureIndex}`}
-        title={`${figureDisplayLabel(figure,figureIndex)}${figure.analogImport?.draft ? '・下書き' : ''}${figure.analogImport?.analysisReviewMessage ? `・要確認：${figure.analogImport.analysisReviewMessage}` : ''}（ドラッグで移動）`}
+        title={`${figureDisplayLabel(figure,figureIndex)}${figureClass==='is-unassigned' ? '・未割当' : ''}${figure.analogImport?.analysisReviewMessage ? `・要確認：${figure.analogImport.analysisReviewMessage}` : ''}（ドラッグで移動）`}
         tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
         <span class="figure-native-reference" style={nativeStyle(box,referenceBox)}>{cropAssetId && <StoredCropImage assetId={cropAssetId} persistentAsset={figure.analogImport?.persistentAsset} className="figure-crop-image" />}
@@ -1440,9 +1444,9 @@ export default function MangaCanvas({ zoomTool=false, textTool=false,textToolSty
     const artwork = figureArtwork(figure);
     if (artwork) return renderArtwork(artwork, selection, null, paperBoxStyle, `${figureDisplayLabel(figure,figureIndex)}の画像`);
     const cropAssetId = figure.analogImport?.assetId;
-    const isUnassigned = isUnassignedPersonFigure(figure);
+    const figureClass = figureCanvasClass(figure);
     return <button
-      data-content-target class={`canvas-element figure-guide page-overlay-element ${isPropPlacement(figure) ? 'is-object' : ''} ${isUnassigned ? 'is-unassigned' : ''} ${cropAssetId ? 'has-source-crop' : ''} ${figure.analogImport?.analysisReview ? 'is-analysis-review' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+      data-content-target class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
       onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}

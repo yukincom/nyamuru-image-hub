@@ -1,10 +1,31 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
+import { isPropPlacement } from '../src/lib/catalogModel.ts';
+import { DETECTED_FIGURE_NAME } from '../src/lib/systemCharacters.ts';
 
 const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '');
 const canvas = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
+
+test('confirmed people have neutral frames with or without artwork, while attention uses existing fields',()=>{
+ assert.match(css,/\.figure-guide\.is-confirmed-person\s*\{[^}]*display:flex;[^}]*border:0;[^}]*background:transparent;/);
+ const source=canvas.slice(canvas.indexOf('function figureCanvasClass('),canvas.indexOf('function StoredCropImage('));
+ const presentation=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';figureCanvasClass',{isPropPlacement,DETECTED_FIGURE_NAME});
+ const confirmed={name:'確定人物',refId:'person-a',analogImport:{draft:true}};
+ assert.equal(presentation(confirmed),'is-confirmed-person');
+ assert.equal(presentation({...confirmed,artwork:{}}),'is-confirmed-person');
+ assert.equal(presentation({...confirmed,analogImport:{draft:true,analysisReview:'low-confidence'}}),'is-analysis-review');
+ assert.equal(presentation({...confirmed,refId:undefined}),'is-unassigned');
+ assert.equal(presentation({...confirmed,name:`　${DETECTED_FIGURE_NAME}　`}),'is-unassigned');
+ for(const prop of [{kind:'prop'},{object:true}])assert.equal(presentation({...confirmed,...prop,refId:undefined,analogImport:{analysisReview:'error'}}),'is-object');
+ assert.equal((canvas.match(/figureCanvasClass\(figure\)/g)??[]).length,3,'panel / foreground / artwork share the same display status');
+ assert.match(css,/\.placed-image\.is-unassigned::after/);
+ assert.match(css,/\.placed-image\.is-analysis-review::after/);
+ assert.doesNotMatch(source,/artwork|userEdited|\.draft/);
+});
 
 function zIndexOf(selector) {
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
