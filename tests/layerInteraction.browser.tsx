@@ -6,7 +6,10 @@ import {newToneLayer} from '../src/lib/paintTone';
 import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry';
 import type {PaintDocument} from '../src/types';
 import {createFrameArtwork,prepareImageAsset} from '../src/lib/imagePlacement';
-import {saveFigureCropAssets} from '../src/lib/figureCropStore';
+import {deleteFigureCropAssets,loadFigureCropAsset,saveFigureCropAssets} from '../src/lib/figureCropStore';
+import {prepareDetectedTextCrops} from '../src/lib/analogTextCrops';
+import {attachRecognizedTextToPage,type RecognizedTextLine} from '../src/lib/localBridge';
+import {separateBubbleOriginals} from '../src/lib/bubbleOriginals';
 import App from '../src/components/App';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import { parseMangaYaml, STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga';
@@ -104,6 +107,7 @@ if(new URLSearchParams(location.search).has('render-check')){
   render(<details><summary>選択同期の検証</summary><input id="selection-focus" aria-label="フォーカス保持の検証"/>
     <button id="check-selection" onClick={()=>void verifySelection()}>キャンバス選択を検証</button>
     <button id="check-figures" onClick={()=>void verifyFigurePresentation()}>人物の確定表示を検証</button>
+    <button id="check-originals" onClick={()=>void verifyOriginalVisibility()}>OCR原本の初期表示を検証</button>
     <pre id="selection-report" aria-live="polite" style={{maxHeight:'200px',overflow:'auto',whiteSpace:'pre-wrap'}}>未実行</pre></details>,controls);
  }
 }
@@ -193,7 +197,7 @@ async function verifySelection(){
 }
 
 async function verifyFigurePresentation(){
- const report=document.getElementById('selection-report')!,buttons=Array.from(document.querySelectorAll<HTMLButtonElement>('#check-selection,#check-figures'));
+ const report=document.getElementById('selection-report')!,buttons=Array.from(document.querySelectorAll<HTMLButtonElement>('#check-selection,#check-figures,#check-originals'));
  const original=localStorage.getItem(STORAGE_KEY),host=document.getElementById('app')!,checks:string[]=[];
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
  const tick=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
@@ -261,5 +265,56 @@ async function verifyFigurePresentation(){
  finally{
   if(mounted){render(null,host);localStorage.setItem(STORAGE_KEY,original!);render(<App/>,host);}
   buttons.forEach(button=>button.disabled=false);
+ }
+}
+
+async function verifyOriginalVisibility(){
+ const report=document.getElementById('selection-report')!,buttons=Array.from(document.querySelectorAll<HTMLButtonElement>('#check-selection,#check-figures,#check-originals'));
+ const original=localStorage.getItem(STORAGE_KEY),host=document.getElementById('app')!,checks:string[]=[],temporaryIds=new Set<string>();
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const stored=()=>parseMangaYaml(localStorage.getItem(STORAGE_KEY)!);
+ const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<240&&!test();i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));if(!test())throw Error(label);};
+ const first=<T extends Element>(selector:string)=>Array.from(document.querySelectorAll<T>(selector)).find(item=>!item.closest('.is-spread-partner'))!;
+ const sourceCanvases=()=>Array.from(document.querySelectorAll<HTMLCanvasElement>('.original-raster-layer .placed-image-viewport canvas'));
+ const opaque=(canvas:HTMLCanvasElement)=>canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data.some((value,index)=>index%4===3&&value>0);
+ let mounted=false,baselineIds=new Set<string>();
+ buttons.forEach(button=>button.disabled=true);report.textContent='OCR原本の検証中';
+ try{
+  if(!original||stored().manga.meta.episode_id!=='layer-selection-qa')throw Error('Dedicated selection manuscript required');
+  if(document.querySelector('.app-shell.is-painting'))throw Error('先に描画を閉じてください');
+  const doc=stored(),asset=doc.manga.image_assets![0],source=await loadFigureCropAsset(asset.storageId);
+  if(!source)throw Error('検証原本がありません');baselineIds=new Set(doc.manga.image_assets!.map(item=>item.storageId));
+  const lines:RecognizedTextLine[]=[{id:'panel',text:'認識した本文',bbox:{x:.2,y:.2,w:.25,h:.12},confidence:.95,needsReview:false,source:'baberu',vertical:false},
+   {id:'page',text:'前景の本文',bbox:{x:.2,y:.6,w:.25,h:.12},confidence:.95,needsReview:false,source:'baberu',vertical:false,pageOverlay:true}];
+  const prepared=await prepareDetectedTextCrops(new File([source],'原本表示検証.png',{type:'image/png'}),0,crypto.randomUUID(),lines);
+  prepared.forEach(crop=>temporaryIds.add(crop.asset.id));await saveFigureCropAssets(prepared.map(crop=>crop.asset));
+  check(prepared.length===2&&prepared.every(crop=>crop.metadata.referenceHidden===true),'実canvasの新規cropは原本を保持して初期非表示');
+  doc.manga.pages=[doc.manga.pages[0]];const page=doc.manga.pages[0];page.images=[];page.page_overlay=undefined;
+  page.panels=[{id:1,shape:{type:'rect',x:16,y:18.5,w:150,h:217},bg:0,action:null,bubbles:[]}];
+  attachRecognizedTextToPage(page,lines,new Map(prepared.map(crop=>[crop.lineId,crop.metadata])));
+  const ready=await separateBubbleOriginals(doc),image=ready.manga.pages[0].panels[0].images![0],key=`original-${image.id}`;
+  const root=`.page-layer-palette [data-owner-root="${key}"]`,heading=`.page-layer-palette [data-owner-group="${key}"] .layer-group-select`;
+  const eye=()=>first<HTMLButtonElement>(`${root} .layer-visibility`);
+  render(null,host);localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(ready));mounted=true;render(<App/>,host);
+  await wait(()=>sourceCanvases().length===2&&!!eye(),'原本レイヤーが表示されません');
+  check(eye().getAttribute('aria-pressed')==='false'&&sourceCanvases().every(canvas=>!opaque(canvas)),'通常コマとページ前景の原本は透明で本文を覆わない');
+  check(first<HTMLElement>('[data-content-kind="bubble"][data-content-panel="0"]').textContent!.includes('認識した本文'),'認識したネイティブ本文は初期状態から表示');
+  for(const visible of [true,false]){
+   eye().click();await wait(()=>!!document.querySelector('.app-shell.is-painting')&&eye()?.getAttribute('aria-pressed')===String(visible)&&!first<HTMLButtonElement>(heading)?.disabled,'原本の目が切り替わりません');
+   first<HTMLButtonElement>(heading).click();
+   await wait(()=>!document.querySelector('.app-shell.is-painting')&&stored().manga.pages[0].panels[0].images?.[0].paint?.layers[0].visible===visible,'目の状態が保存されません');
+   for(const item of stored().manga.image_assets??[])if(!baselineIds.has(item.storageId))temporaryIds.add(item.storageId);
+   await wait(()=>sourceCanvases().length===2&&sourceCanvases().some(opaque)===visible,'原本の描画状態が目に追従しません');
+   check(true,visible?'既存の目で原本を再表示できる':'既存の目で原本を再非表示にできる');
+   render(null,host);render(<App/>,host);await wait(()=>!!eye()&&sourceCanvases().length===2,'保存済み原本の再読込に失敗');
+   check(eye().getAttribute('aria-pressed')===String(visible)&&sourceCanvases().some(opaque)===visible,`再読込は保存済みlayerの目=${visible}を保持`);
+   check(stored().manga.pages[0].panels[0].bubbles[0].text==='認識した本文','目の変更と再読込は本文を変更しない');
+  }
+  check((await Promise.all(prepared.map(crop=>loadFigureCropAsset(crop.asset.id)))).every(blob=>!!blob),'非表示後も切出し原本のbyteを保持');
+  report.textContent=`OCR原本 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`OCR原本 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}
+ finally{
+  if(mounted){for(const item of stored().manga.image_assets??[])if(!baselineIds.has(item.storageId))temporaryIds.add(item.storageId);render(null,host);localStorage.setItem(STORAGE_KEY,original!);render(<App/>,host);}
+  await deleteFigureCropAssets([...temporaryIds]);buttons.forEach(button=>button.disabled=false);
  }
 }

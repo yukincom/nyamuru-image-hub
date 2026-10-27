@@ -74,7 +74,7 @@ function imported(){
   resizePageCanvas(page,{w:297,h:210},'inner-frame');
   return doc;
 }
-test('new OCR import becomes independent topmost raster placements before any paint session',async()=>{
+test('explicitly visible OCR compatibility data becomes independent topmost raster placements before any paint session',async()=>{
   const input=imported(),before=structuredClone(input),doc=await separateBubbleOriginals(input,deps),page=doc.manga.pages[0],panel=page.panels[0];
   assert.deepEqual(input,before);assert.equal(needsBubbleOriginalSeparation(doc),false);
   for(const [owner,images] of [[panel,panel.images],[page.page_overlay,page.images]]){
@@ -173,6 +173,30 @@ test('hidden original uses only the raster eye, not a second image-level eye',as
   assert.match(list,/if\(image.paintScope\|\|image.bubbleOriginal\)return null/);
   const view=readFileSync(new URL('../src/components/PlacedImageView.tsx',import.meta.url),'utf8');
   assert.match(view,/!\(image.bubbleOriginal&&paint\) && source && asset/);
+});
+test('new hidden originals keep their assets, and the saved layer eye owns visibility after separation',async()=>{
+  const input=imported();
+  for(const owner of [input.manga.pages[0].panels[0],input.manga.pages[0].page_overlay])owner.bubbles[0].analogTextImport.referenceHidden=true;
+  const separated=await separateBubbleOriginals(input,deps),page=separated.manga.pages[0];
+  assert.equal(separated.manga.image_assets.length,1);
+  for(const image of [page.panels[0].images[0],page.images[0]]){
+    assert.equal(image.hidden,false);assert.equal(image.paint.layers[0].visible,false);
+    image.paint.layers[0].visible=true;image.paint.layers[0].locked=true;
+  }
+  for(const visible of [true,false]){
+    page.panels[0].images[0].paint.layers[0].visible=visible;
+    const snapshot=await createProjectSnapshot(separated,async()=>blob),restored=await restoreProjectSnapshot(snapshot,async()=>{});
+    assert.equal(await separateBubbleOriginals(restored,{load:async()=>assert.fail('already separated')}),restored);
+    assert.equal(restored.manga.pages[0].panels[0].images[0].paint.layers[0].visible,visible);
+    assert.equal(restored.manga.pages[0].panels[0].images[0].paint.layers[0].locked,true);
+    assert.equal(restored.manga.pages[0].images[0].paint.layers[0].visible,true);
+    assert.equal(restored.manga.pages[0].panels[0].bubbles[0].analogTextImport.referenceHidden,true,'initial metadata is not a second live eye');
+  }
+});
+test('legacy missing initial visibility is not silently forced hidden',async()=>{
+  const input=imported();delete input.manga.pages[0].panels[0].bubbles[0].analogTextImport.referenceHidden;
+  const result=await separateBubbleOriginals(input,deps);
+  assert.equal(result.manga.pages[0].panels[0].images[0].paint.layers[0].visible,true);
 });
 test('selecting a page original then drawing opens the page scene with the original owner',()=>{
   const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');

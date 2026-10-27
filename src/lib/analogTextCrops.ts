@@ -167,6 +167,7 @@ export async function prepareDetectedTextCrops(
           needsReview: line.needsReview,
           ...(line.unreadable ? { unreadable: true } : {}),
           levelAdjusted: true,
+          referenceHidden: true,
         },
         asset: { id: assetId, blob: await canvasBlob(crop) },
       });
