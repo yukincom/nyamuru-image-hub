@@ -8,7 +8,9 @@ const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 test('T primary click and shortcut open a compact tabbed persistent settings window',()=>{
   const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=read('src/components/App.tsx'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
-  assert.match(tools,/label="通常文字を追加"[\s\S]*?onClick=\{\(\)=>add\('screen_text'\)\}/);
+  assert.doesNotMatch(tools,/通常文字を追加|text-settings-icon-action/);
+  assert.doesNotMatch(app,/function addText\(|add=\{addText\}/);
+  assert.match(app,/addCanvasTextAt\(next,pageIndex,panelIndex,point,textToolStyle\)/);
   assert.doesNotMatch(tools,/add\('bubble'\)|吹き出しを追加/);
   assert.match(tools,/openRequest:TextPaletteRequest/);
   assert.match(app,/openRequest=\{textPaletteRequest\}/);
@@ -185,7 +187,7 @@ test('文字パレットはレイヤーと道具の変更で開閉せず、×だ
  const exports={},h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
  const source=ts.transpileModule(read('src/components/PaintTextTools.tsx'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText;
  runInNewContext(source,{exports,h,document:{body:{}},window:{addEventListener(){},removeEventListener(){}},innerWidth:1200,innerHeight:900,require:name=>name==='preact/hooks'?hooks:name==='preact/compat'?{createPortal:child=>child}:name==='lucide-preact'?{Type:'Type',ChevronDown:'ChevronDown',MessageCircleMore:'MessageCircleMore',X:'X'}:{PaintToolButton:'PaintToolButton'}});
- let props={active:false,openRequest:{id:0,tab:'text'},disabled:false,select(){},add(){},onMaterials(){},bubbleLineWidthMm:.3,onChangeBubbleLineWidth(){}};
+ let props={active:false,openRequest:{id:0,tab:'text'},disabled:false,select(){},onMaterials(){},bubbleLineWidthMm:.3,onChangeBubbleLineWidth(){}};
  const render=patch=>{props={...props,...patch};for(let i=0;i<10;i++){changed=false;cursor=0;tree=exports.default(props);while(effects.length)effects.shift()();if(!changed)return;}throw Error('Render did not settle');};
  const find=(predicate,node=tree)=>{if(!node||typeof node!=='object')return;return predicate(node)?node:node.children?.map(child=>find(predicate,child)).find(Boolean);};
  const dialog=()=>find(node=>node.props['aria-label']==='文字ツールの設定');

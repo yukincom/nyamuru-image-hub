@@ -281,7 +281,7 @@ test('T uses one click for existing text or point text and keeps a settings tool
  const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
  assert.match(app,/function chooseTextTool\(\)\{void requestPcFonts\(\);void layerTransition\(async\(\)=>\{/);
  assert.doesNotMatch(app,/function chooseTextTool\(\)[\s\S]{0,500}addText\('screen_text'\)/);
- assert.match(app,/if\(kind==='screen_text'\)createdText\.current=target/);
+ assert.match(app,/function createScreenTextAt\([\s\S]*?createdText\.current=target/);
  assert.doesNotMatch(app,/置きたい場所をクリック/);
  assert.doesNotMatch(canvas,/if\(editingText\|\|selectedElement\)/);
  assert.match(canvas,/onClickCapture=\{event=>\{createTextAt\(event,null\);\}\}/);

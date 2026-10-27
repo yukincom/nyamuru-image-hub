@@ -1616,11 +1616,10 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .text-settings-window-grab { height:9px; border-block:1px solid var(--soft-line); background:linear-gradient(90deg,transparent 0 42%,var(--control-border) 42% 58%,transparent 58%); background-size:100% 1px; background-position:center; background-repeat:no-repeat; cursor:move; touch-action:none; }
 .text-settings-window-body { max-height:min(476px,calc(100vh - 58px)); overflow:auto; padding:5px 7px 7px; }
 .text-settings-tabs { display:grid; grid-template-columns:repeat(2,32px); justify-content:center; gap:5px; padding-bottom:5px; border-bottom:1px solid var(--line); }
-.text-settings-tabs .text-settings-tab,.text-settings-icon-action { display:grid; width:32px; height:30px; min-height:30px; place-items:center; padding:0; }
+.text-settings-tabs .text-settings-tab { display:grid; width:32px; height:30px; min-height:30px; place-items:center; padding:0; }
 .text-settings-tabs .text-settings-tab[aria-selected="true"] { border-color:var(--accent-border); background:var(--accent-fill); color:var(--accent-dark); box-shadow:inset 0 0 0 1px var(--accent-border); }
 .text-settings-panel { display:grid; gap:5px; min-width:0; padding-top:5px; }
 .text-settings-panel[hidden] { display:none; }
-.text-settings-icon-action { justify-self:start; }
 .paint-bubble-materials-slot:empty { min-height:0; }
 
 /* Page folders retain the drawing owners and the panel's clipping geometry. */
@@ -1652,7 +1651,7 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .bubble-inline-editor.is-screen-text.is-vertical .native-text-input { right:0; left:auto; }
 .bubble-guide .bubble-text.has-fixed-text-size { line-height:1.05; overflow:visible; background:none; box-shadow:none; text-shadow:none; }
 .paint-text-settings-slot:empty { display:none; }
-.canvas-text-toolbar { box-sizing:border-box; display:grid; grid-template-columns:minmax(0,1fr) minmax(112px,.45fr); align-items:center; gap:7px; width:100%; padding:8px 0 0; border-top:1px solid var(--line); background:var(--surface); font-size:11px; }
+.canvas-text-toolbar { box-sizing:border-box; display:grid; grid-template-columns:minmax(0,1fr); align-items:center; gap:7px; width:100%; padding:8px 0 0; border-top:1px solid var(--line); background:var(--surface); font-size:11px; }
 .canvas-text-toolbar label { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .canvas-text-size { display:grid; gap:4px; min-width:0; }
 .canvas-text-size>input[type=range],.paint-text-work-settings>input[type=range] { width:100%; min-width:0; padding:0; cursor:ew-resize; }
@@ -1662,10 +1661,11 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool .manga-paper * { cursor:var(--text-tool-cursor,vertical-text) !important; }
 body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool .bubble-text-move-frame.is-active { cursor:move !important; }
 .canvas-text-toolbar input,.canvas-text-toolbar select { box-sizing:border-box; min-height:27px; width:100%; max-width:none; min-width:0; padding:3px 5px; font-size:12px; }
-.canvas-text-font-settings { box-sizing:border-box; display:grid; grid-column:1/-1; grid-template-columns:minmax(0,1fr) minmax(112px,.45fr); gap:5px 7px; min-width:0; margin:0; padding:2px 5px 6px; border:1px solid var(--line); border-radius:7px; }
+.canvas-text-font-settings { box-sizing:border-box; display:grid; grid-column:1/-1; grid-template-columns:minmax(0,1fr); gap:5px 7px; min-width:0; margin:0; padding:2px 5px 6px; border:1px solid var(--line); border-radius:7px; }
 .canvas-text-font-settings legend { padding:0 4px; color:var(--muted); }
 .canvas-text-toolbar .canvas-text-font,.canvas-text-toolbar .canvas-text-weight { display:grid; min-width:0; white-space:normal; }
 .canvas-text-toolbar .canvas-text-font .font-family-trigger { width:100%; max-width:none; min-width:0; }
+.canvas-text-toolbar .font-family-trigger>span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .canvas-text-toolbar button { padding:5px 8px; white-space:nowrap; }
 .font-family-picker { min-width:0; }
 .font-family-trigger { display:flex; width:100%; min-width:0; min-height:29px; align-items:center; justify-content:space-between; gap:6px; padding:4px 7px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--ink); text-align:left; cursor:pointer; }

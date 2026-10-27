@@ -2,10 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { Type, ChevronDown, MessageCircleMore, X } from 'lucide-preact';
 import { PaintToolButton } from './PaintToolHelp';
-import type { CanvasTextKind } from '../lib/canvasText';
 export type TextPaletteTab='text'|'bubble';
 export interface TextPaletteRequest {id:number;tab:TextPaletteTab}
-export default function PaintTextTools({active,openRequest,disabled,select,add,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;add:(kind:CanvasTextKind)=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
+export default function PaintTextTools({active,openRequest,disabled,select,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
   const [open,setOpen]=useState(false),[tab,setTab]=useState<TextPaletteTab>('text'),[position,setPosition]=useState({left:0,top:0});
   const [lineDraft,setLineDraft]=useState(String(bubbleLineWidthMm));
   useEffect(()=>setLineDraft(String(bubbleLineWidthMm)),[bubbleLineWidthMm]);
@@ -36,7 +35,6 @@ export default function PaintTextTools({active,openRequest,disabled,select,add,o
           <PaintToolButton class="text-settings-tab" role="tab" label="ふきだし" help="素材を吹き出しへ重ねると輪郭だけを入れ替えます。通常文字へ重ねると、文字を中央に入れた新しい吹き出しになり、その時だけ文字量に合わせて大きさを調整します。" aria-selected={tab==='bubble'} aria-controls="text-settings-bubble-panel" onClick={()=>{setTab('bubble');onMaterials?.();}}><MessageCircleMore size={19}/></PaintToolButton>
         </div>
         <div id="text-settings-text-panel" class="text-settings-panel" role="tabpanel" aria-label="文字" hidden={tab!=='text'}>
-          <PaintToolButton class="text-settings-icon-action" label="通常文字を追加" help="空いている場所に通常文字を追加します。吹き出しは作りません。" onClick={()=>add('screen_text')}><Type size={20}/></PaintToolButton>
           <div id="paint-text-settings-slot" class="paint-text-settings-slot"/>
         </div>
         <div id="text-settings-bubble-panel" class="text-settings-panel" role="tabpanel" aria-label="ふきだし" hidden={tab!=='bubble'}>
