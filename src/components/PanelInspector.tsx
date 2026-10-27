@@ -1,3 +1,4 @@
+import BubbleInfoPortal from './BubbleInfoPortal';
 import type { ComponentChildren } from 'preact';
 import PlacedImageList from './PlacedImageList';
 import FigureSizePicker from './FigureSizePicker';
@@ -628,6 +629,7 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
       </div>
     </section>
 
+    <BubbleInfoPortal request={canvasSelectionScrollRequest} disabled={locked} label={`${panelDisplayLabel(panel.id)}の吹き出し情報`}>
     <section class="editor-section inspector-category-section panel-bubble-section">
       <SectionTitle title="フキダシ" action={<button class="inline-add" onClick={() => { const index = panel.bubbles.length; update((draft) => { draft.bubbles.push({ text: '', shape: 'normal', bbox: fallbackBox(panel, 'bubble', index) }); }); onSelectElement({ type: 'bubble', index }); }}><MessageCircleMore size={14} />追加</button>} />
       <div class="nested-list">
@@ -648,6 +650,7 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
         </div>)}
       </div>
     </section>
+    </BubbleInfoPortal>
 
     <section class="editor-section inspector-category-section panel-text-section">
       <SectionTitle title="通常文字" />

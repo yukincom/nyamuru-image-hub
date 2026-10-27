@@ -32,10 +32,10 @@ test('候補欄は要確認だけに表示し、候補横の確定と該当な�
   assert.doesNotMatch(source, /<summary>候補を確認<\/summary>|シナリオを見る/);
 });
 
-test('候補選択はコマ情報に置き、T設定には追加しない', () => {
+test('候補選択は既存カードと一緒に情報タブへ移し、紙面には重複させない', () => {
   for (const file of ['PanelInspector.tsx', 'PageOverlayInspector.tsx']) {
     const source = readFileSync(new URL(`../src/components/${file}`, import.meta.url), 'utf8');
-    assert.match(source, /<ScenarioBubbleNotice/);
+    assert.match(source, /<BubbleInfoPortal[\s\S]*?<ScenarioBubbleNotice[\s\S]*?<\/BubbleInfoPortal>/);
     assert.doesNotMatch(source, /label="所属"|onMoveBubble/, 'ownership is controlled only by the layer palette');
   }
   const canvas = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
@@ -44,7 +44,7 @@ test('候補選択はコマ情報に置き、T設定には追加しない', () =
   const review = readFileSync(new URL('../src/components/ScenarioReview.tsx', import.meta.url), 'utf8');
   assert.match(review, /entries.filter\(entry => scenarioBubbleNeedsReview\(entry.bubble\)\)/);
   assert.doesNotMatch(review, /ScenarioBubbleNotice|confirmScenarioCorrespondence|現在の本文を使う|対応だけ選び直す/);
-  assert.match(review, /コマ情報で確認/);
+  assert.match(review, /吹き出し情報で確認/);
 });
 
 test('本文だけの移動は原画ラスターレイヤーの固定と独立し、形状移動は固定を守る', () => {

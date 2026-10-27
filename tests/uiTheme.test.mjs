@@ -58,10 +58,9 @@ test('誌面と生成用の色はUIテーマから切り離され、PWAの外枠
   assert.ok(read('src/layouts/Layout.astro').includes('name="theme-color" content="#DCE9DF"'));
 });
 
-test('コマ情報はフキダシ、人物の順で始まり、背景をカテゴリの最後に置く', () => {
+test('コマ情報は人物で始まり、吹き出しカードは情報タブへ移す', () => {
   assert.match(rule('.inspector-fields'), /display:flex;\s*flex-direction:column/);
   const ordered = [
-    ['.inspector-fields>.panel-bubble-section', 1],
     ['.inspector-fields>.panel-figure-section', 2],
     ['.inspector-fields>.panel-prop-section', 3],
     ['.inspector-fields>.panel-text-section', 4],
@@ -71,5 +70,7 @@ test('コマ情報はフキダシ、人物の順で始まり、背景をカテ�
   ];
   for (const [selector, order] of ordered) assert.match(rule(selector), new RegExp(`order:${order}`));
   const inspector = read('src/components/PanelInspector.tsx');
-  for (const name of ['panel-bubble-section', 'panel-figure-section', 'panel-background-section']) assert.match(inspector, new RegExp(`class="[^"]*${name}`));
+  assert.doesNotMatch(css, /\.inspector-fields>\.panel-bubble-section/);
+  assert.match(inspector, /<BubbleInfoPortal[\s\S]*?class="editor-section inspector-category-section panel-bubble-section"[\s\S]*?<\/BubbleInfoPortal>/);
+  for (const name of [ 'panel-figure-section', 'panel-background-section']) assert.match(inspector, new RegExp(`class="[^"]*${name}`));
 });

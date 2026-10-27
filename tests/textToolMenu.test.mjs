@@ -242,8 +242,9 @@ test('文字パレットはレイヤーと道具の変更で開閉せず、×だ
  const hooks={useState:state,useRef:initial=>{const i=cursor++;return slots[i]??(slots[i]={current:initial});},useEffect:effect,useLayoutEffect:effect};
  const exports={},h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)});
  const source=ts.transpileModule(read('src/components/PaintTextTools.tsx'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText;
- runInNewContext(source,{exports,h,document:{body:{}},window:{addEventListener(){},removeEventListener(){}},innerWidth:1200,innerHeight:900,require:name=>name==='preact/hooks'?hooks:name==='preact/compat'?{createPortal:child=>child}:name==='lucide-preact'?{Type:'Type',ChevronDown:'ChevronDown',MessageCircleMore:'MessageCircleMore',X:'X'}:{PaintToolButton:'PaintToolButton'}});
- let props={active:false,openRequest:{id:0,tab:'text'},disabled:false,select(){},onMaterials(){},bubbleLineWidthMm:.3,onChangeBubbleLineWidth(){}};
+ runInNewContext(source,{exports,h,document:{body:{}},window:{addEventListener(){},removeEventListener(){}},innerWidth:1200,innerHeight:900,require:name=>name==='preact/hooks'?hooks:name==='preact/compat'?{createPortal:child=>child}:name==='./useInspectorSelectionScroll'?{scrollInspectorSelection:()=>{}}:name==='lucide-preact'?{Type:'Type',ChevronDown:'ChevronDown',MessageCircleMore:'MessageCircleMore',Info:'Info',X:'X'}:{PaintToolButton:'PaintToolButton'}});
+ let selectedTools=0;
+ let props={active:false,openRequest:{id:0,tab:'text'},disabled:false,select(){selectedTools++;},onMaterials(){},bubbleLineWidthMm:.3,onChangeBubbleLineWidth(){}};
  const render=patch=>{props={...props,...patch};for(let i=0;i<10;i++){changed=false;cursor=0;tree=exports.default(props);while(effects.length)effects.shift()();if(!changed)return;}throw Error('Render did not settle');};
  const find=(predicate,node=tree)=>{if(!node||typeof node!=='object')return;return predicate(node)?node:node.children?.map(child=>find(predicate,child)).find(Boolean);};
  const dialog=()=>find(node=>node.props['aria-label']==='文字ツールの設定');
@@ -253,17 +254,20 @@ test('文字パレットはレイヤーと道具の変更で開閉せず、×だ
  render({active:true});assert.equal(dialog().props.hidden,true,'tool state alone does not open the palette');
  click('通常文字');assert.equal(dialog().props.hidden,false);
  click('ふきだし');assert.equal(button('ふきだし').props['aria-selected'],true);
+ click('情報');assert.equal(button('情報').props['aria-selected'],true);
+ assert.equal(selectedTools,1,'information tab does not activate the text tool');
  const position=dialog().props.style;
  for(const active of [false,true,false])for(const disabled of [true,false]){
-  render({active,disabled});assert.equal(dialog().props.hidden,false);assert.equal(button('ふきだし').props['aria-selected'],true);assert.equal(dialog().props.style,position);
+  render({active,disabled});assert.equal(dialog().props.hidden,false);assert.equal(button('情報').props['aria-selected'],true);assert.equal(dialog().props.style,position);
  }
- render({openRequest:{id:1,tab:'text'}});assert.equal(button('ふきだし').props['aria-selected'],true,'an open window keeps its selected tab');
+ render({openRequest:{id:1,tab:'text'}});assert.equal(button('情報').props['aria-selected'],true,'an open window keeps its information tab');
  click('文字のツール一覧');assert.equal(dialog().props.hidden,false,'the arrow only opens');
  tree.props.onContextMenu({preventDefault(){}});render();assert.equal(dialog().props.hidden,false,'right click only opens');
  click('文字ツールの設定を閉じる');assert.equal(dialog().props.hidden,true);
  render({active:true,disabled:true,openRequest:{id:1,tab:'text'}});assert.equal(dialog().props.hidden,true,'an unchanged request does not reopen after close');
  render({active:false,disabled:false});assert.equal(dialog().props.hidden,true);
  render({openRequest:{id:2,tab:'text'}});assert.equal(dialog().props.hidden,false,'a new explicit T request reopens');assert.equal(button('文字').props['aria-selected'],true);
+ render({openRequest:{id:3,tab:'info'}});assert.equal(button('情報').props['aria-selected'],true,'explicit scenario navigation opens information even when the palette was open');
  const canvas=read('src/components/MangaCanvas.tsx');
  assert.match(canvas,/textSettingsOwner&&textToolbarHost&&createPortal\(/,'text controls stay mounted when changing tools');
  assert.doesNotMatch(canvas,/<CanvasTextToolbar key=/,'selection changes do not replace the settings component');

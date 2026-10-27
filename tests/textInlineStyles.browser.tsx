@@ -29,7 +29,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -60,8 +60,83 @@ const glyphStyle=(root:HTMLElement,index:number)=>{
   while(walker.nextNode()){const node=walker.currentNode,length=node.textContent!.length;if(index<at+length)return getComputedStyle(node.parentElement!);at+=length;}
   throw Error(`Missing glyph ${index}`);
 };
-async function save(){const control=document.querySelector<HTMLButtonElement>('[data-project-save]')!;control.click();await wait(()=>!control.disabled&&!control.textContent?.includes('処理中'),'保存完了待ち');await settle();}
+async function save(){const control=document.querySelector<HTMLButtonElement>('[data-project-save]')!;control.click();await settle();await wait(()=>!control.disabled&&!control.textContent?.includes('処理中'),'保存完了待ち');await settle();}
 async function open(){button('作品フォルダを開く').click();await wait(()=>!!nativeBubble(),'作品が開けません');await settle();}
+async function verifyBubbleInfo(){
+  const run=document.getElementById('bubble-info-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  const info=()=>document.querySelector<HTMLElement>('.bubble-info-content')!;
+  const cards=()=>[...info().querySelectorAll<HTMLElement>('.selectable-card')];
+  const field=(index:number,label:string)=>[...cards()[index].querySelectorAll<HTMLLabelElement>('label.field')].find(node=>node.querySelector('.field-label')?.textContent===label)!.querySelector<HTMLSelectElement>('select')!;
+  const change=async(index:number,label:string,value:string)=>{cards()[index].click();await settle();const select=field(index,label);select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));await settle();};
+  const selected=()=>cards().findIndex(card=>card.classList.contains('is-selected'));
+  const chooseBubble=async(panel:number,index:number,overlay=false)=>{
+    document.querySelector<HTMLElement>(`[data-content-kind="bubble"][data-content-index="${index}"]${overlay?'[data-content-overlay]':`[data-content-panel="${panel}"]:not([data-content-overlay])`}`)!.click();await settle();
+  };
+  const informationOpen=()=>button('情報')?.getAttribute('aria-selected')==='true'&&!document.querySelector<HTMLElement>('.text-settings-window')!.hidden;
+  run.disabled=true;report.textContent='情報タブを検証中';
+  try{
+    render(null,host);
+    const doc=structuredClone(source),panel=doc.manga.pages[0].panels[0];
+    doc.manga.characters=[{localId:'speaker-a',name:'アキ',role:'主人公',scope:'episode'},{localId:'speaker-b',name:'ユキ',role:'友人',scope:'episode'}];
+    panel.figures=[{refId:'speaker-a',name:'アキ',kind:'person',bbox:{x:15,y:55,w:30,h:40}},{refId:'speaker-b',name:'ユキ',kind:'person',bbox:{x:110,y:55,w:30,h:40}}];
+    panel.bubbles=Array.from({length:5},(_,index)=>({...structuredClone(panel.bubbles[0]),text:`台詞${index+1}`,bbox:{x:45,y:25+index*26,w:85,h:22},...(index===4?{locked:true}:{})}));
+    doc.manga.pages[0].panels.push({...structuredClone(panel),id:2,bubbles:[{text:'別コマ',shape:'normal',bbox:{x:30,y:185,w:50,h:20}}],shape:{type:'rect',x:15,y:180,w:150,h:50}});
+    doc.manga.pages[0].page_overlay!.bubbles=[{text:'前景一',shape:'normal',bbox:{x:1,y:1,w:30,h:20}},{text:'前景二',shape:'normal',bbox:{x:135,y:1,w:30,h:20}}];
+    doc.manga.pages[0].page_overlay!.figures=structuredClone(panel.figures);
+    doc.manga.scenario={version:1,fileName:'info-fixture.md',text:'# シナリオ\n## page1\n### コマ2\nアキ「確認した台詞」'};
+    doc.manga.pages[0].panels[1].bubbles[0].scenarioMatch={status:'review',sourceIds:[],ocrText:'別コマ',score:.2};
+    const reset=await project.createWritable();await reset.write(JSON.stringify(await createPortableProject(doc)));await reset.close();
+    render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();
+    button('文字のツール一覧').click();await settle();button('情報').click();await settle();
+    check(informationOpen()&&document.querySelectorAll('.text-settings-tabs [role="tab"]').length===3,'文字・ふきだし・情報の3タブ');
+    check(button('通常文字').getAttribute('aria-pressed')==='false'&&!editor()&&history('元に戻す').disabled,'情報を開いても選択ツールと履歴を維持');
+    check(cards().length===5&&cards().every((card,index)=>card.querySelector('.bubble-card-title')?.textContent?.replace(/\s/g,'')===`フキダシ${index+1}`),'フキダシ1〜5を元の順序で表示');
+    check(!document.querySelector('.inspector-content .panel-bubble-section')&&!document.querySelector('.inspector-content .bubble-join-control'),'コマ情報側に吹き出しカード・結合欄を残さない');
+    check([...cards()[1].querySelectorAll('.field-label')].map(node=>node.textContent).join(',')==='話者,しっぽ,結合先','話者→しっぽ→結合先の順序を保持');
+    const inspector=document.querySelector<HTMLElement>('.inspector-content')!,card=cards()[1];
+    check(Math.abs(card.getBoundingClientRect().width-(inspector.clientWidth-34))<2,'カード幅は元のコマ情報と同じ');
+    const selectStyle=getComputedStyle(field(1,'しっぽ'));
+    check(selectStyle.paddingTop==='9px'&&selectStyle.fontSize==='15px'&&selectStyle.borderRadius==='9px','入力欄の寸法は元のコマ情報と同じ');
+    await save();const baseline=(await stored()).manga.pages[0];
+    await chooseBubble(0,1);check(selected()===1&&informationOpen()&&!editor(),'選択ツールで紙面を選ぶと情報タブの該当カードへ追従');
+    const viewport=document.querySelector<HTMLElement>('.canvas-spread-scroll')!,viewportPosition=[viewport.scrollLeft,viewport.scrollTop];
+    await chooseBubble(0,3);
+    await wait(()=>document.querySelector<HTMLElement>('.text-settings-window-body')!.scrollTop>0,'情報カードのスクロール待ち');
+    check(informationOpen()&&selected()===3&&viewport.scrollLeft===viewportPosition[0]&&viewport.scrollTop===viewportPosition[1],'別の吹き出しへ変更してもタブを保持し原稿をスクロールしない');
+    await change(1,'話者','speaker-b');await save();
+    check((await stored()).manga.pages[0].panels[0].bubbles[1].speaker==='ユキ','話者を対象の吹き出しへ保存');
+    history('元に戻す').click();await settle();check(field(1,'話者').value===''&&informationOpen(),'話者変更をUndoし情報タブを維持');
+    history('やり直す').click();await settle();check(field(1,'話者').value==='speaker-b','Redoで話者を復元');
+    await change(1,'しっぽ','thinking');await change(1,'結合先','1');await save();
+    let saved=(await stored()).manga.pages[0];
+    check(saved.panels[0].bubbles[1].tail_style==='thinking'&&saved.panels[0].bubbles[1].join_to===1,'しっぽと結合先を既存の保存データへ反映');
+    check(saved.panels[0].bubbles.every((bubble,index)=>bubble.text===panel.bubbles[index].text&&JSON.stringify(bubble.bbox)===JSON.stringify(panel.bubbles[index].bbox)&&JSON.stringify(bubble.text_style)===JSON.stringify(panel.bubbles[index].text_style))&&JSON.stringify(saved.panels[1])===JSON.stringify(baseline.panels[1]),'本文・書式・位置・別コマを保持');
+    check(cards()[4].inert&&cards()[4].getAttribute('aria-disabled')==='true','吹き出し単体の手動ロックを保持');
+    await chooseBubble(1,0);check(informationOpen()&&cards().length===1,'別コマへ移っても情報タブを保持しカード一覧だけ切替');
+    await chooseBubble(0,1,true);check(informationOpen()&&cards().length===2&&info().getAttribute('aria-label')==='ページ前景の吹き出し情報','ページ前景も同じ情報タブへ表示');
+    await change(1,'話者','speaker-a');await change(1,'しっぽ','normal');await change(1,'結合先','1');await save();
+    saved=(await stored()).manga.pages[0];
+    check(saved.page_overlay!.bubbles![1].speaker==='アキ'&&saved.page_overlay!.bubbles![1].join_to===1&&saved.panels[0].bubbles[1].speaker==='ユキ','前景の操作が同じ番号のコマ内吹き出しを変更しない');
+    button('ダイレクト選択').click();await settle();await chooseBubble(0,0);check(informationOpen()&&selected()===0&&button('通常文字').getAttribute('aria-pressed')==='false','ダイレクト選択でも情報タブを操作できる');
+    button('コマ情報を閉じる').click();await settle();check(info().getBoundingClientRect().height>0&&informationOpen(),'コマ情報を閉じても情報タブは表示を維持');
+    await change(0,'しっぽ','normal');check(field(0,'しっぽ').value==='normal','コマ情報を閉じた状態でも変更できる');
+    const count=cards().length;info().querySelector<HTMLButtonElement>('.inline-add')!.click();await settle();check(cards().length===count+1&&informationOpen(),'カードの追加を移植');
+    cards().at(-1)!.querySelector<HTMLButtonElement>('.nested-card-head button')!.click();await settle();check(cards().length===count&&informationOpen(),'カードの削除を移植');
+    await save();render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動画面待ち');await open();button('文字のツール一覧').click();await settle();button('情報').click();await settle();
+    check(field(1,'話者').value==='speaker-b'&&field(1,'しっぽ').value==='thinking'&&field(1,'結合先').value==='1','フォルダーを開き直しても話者・しっぽ・結合先を復元');
+    button('コマ 01全体を固定').click();await settle();check(info().inert&&info().getAttribute('aria-disabled')==='true','コマ全体のロックも情報タブへ引き継ぐ');
+    button('コマ 01全体の固定を解除').click();await settle();check(!info().inert,'コマのロック解除で情報欄も編集可能になる');
+    button('シナリオ').click();await settle();button('吹き出し情報で確認').click();await settle();
+    await wait(()=>informationOpen()&&cards().length===1&&selected()===0,'シナリオからの移動待ち');
+    check(!!info().querySelector('.scenario-inline')&&!document.querySelector('.inspector-content .scenario-inline'),'シナリオの確認リンクが別コマの情報タブを開き対象を選択');
+    info().querySelector<HTMLInputElement>('[aria-label="「確認した台詞」を確定"]')!.click();await settle();await save();
+    check((await stored()).manga.pages[0].panels[1].bubbles[0].text==='確認した台詞'&&!info().querySelector('.scenario-inline'),'移動した候補カードの確定と保存も維持');
+    await chooseBubble(0,3);await wait(()=>document.querySelector<HTMLElement>('.text-settings-window-body')!.scrollTop>0,'再選択スクロール待ち');
+    report.textContent=`情報タブ PASS（${checks.length}項目）\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`情報タブ FAIL: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+  finally{run.disabled=false;}
+}
 async function verify(){
   const run=document.getElementById('inline-run') as HTMLButtonElement,checks:string[]=[];
   const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};

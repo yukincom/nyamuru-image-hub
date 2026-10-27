@@ -1,3 +1,4 @@
+import BubbleInfoPortal from './BubbleInfoPortal';
 import FigureSizePicker from './FigureSizePicker';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
 import { Box, MessageCircleMore, UserPlus } from 'lucide-preact';
@@ -121,6 +122,7 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
       </div>
     </section>
 
+    <BubbleInfoPortal request={canvasSelectionScrollRequest} label={"ページ前景の吹き出し情報"}>
     <section class="editor-section inspector-category-section">
       <SectionTitle index="02" title="フキダシ" action={<button class="inline-add" onClick={() => {
         const index = overlay.bubbles?.length ?? 0;
@@ -149,6 +151,7 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
         })}
       </div>
     </section>
+    </BubbleInfoPortal>
     </div>
   </div>;
 }

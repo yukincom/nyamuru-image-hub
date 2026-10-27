@@ -15,7 +15,7 @@ function CorrespondenceChoice({ document, location, onNavigate }: Props & { loca
   const bubble = location.overlay ? page.page_overlay!.bubbles![location.bubbleIndex] : page.panels[location.panelIndex].bubbles[location.bubbleIndex];
   return <div class="scenario-choice">
     <div><strong>{location.overlay ? 'ページ前景' : `コマ${page.panels[location.panelIndex].id}`}・吹き出し{location.bubbleIndex + 1}</strong>
-      <button type="button" onClick={() => onNavigate(location.pageIndex, location.panelIndex, location.bubbleIndex, location.overlay)}><ExternalLink size={14} />コマ情報で確認</button></div>
+      <button type="button" onClick={() => onNavigate(location.pageIndex, location.panelIndex, location.bubbleIndex, location.overlay)}><ExternalLink size={14} />吹き出し情報で確認</button></div>
     <p>OCR：<span class="scenario-prose">{bubble.scenarioMatch?.ocrText ?? bubble.text}</span></p>
   </div>;
 }
@@ -32,7 +32,7 @@ export default function ScenarioReview({ document, onChange, onNavigate }: Props
   const unplaced = script?.panels.flatMap(panel => panel.dialogues).filter(dialogue => !assignedIds.has(dialogue.id)).length ?? 0;
   return <section class="scenario-review">
     <h2>シナリオ</h2>
-    <p>読み込んだセリフとト書きの控えです。候補の確認はコマ情報で行います。確定時に本文をコピーして連携を切り、以後はネーム側の編集内容を保存・生成に使います。</p>
+    <p>読み込んだセリフとト書きの控えです。候補の確認は文字ツールの情報タブで行います。確定時に本文をコピーして連携を切り、以後はネーム側の編集内容を保存・生成に使います。</p>
     {!source || !script ? <p>新規作成で、資料テキストの「# シナリオ」を読み込みます。ページ・コマごとに「名前「セリフ」」とト書きを記載してください。</p> : <>
       <p>{source.fileName} · 自動対応は文字一致70％超の一意な候補。70％以下は前後の吹き出しから候補を推定します。{pending.length ? `未確認の吹き出し：${pending.length}件（本文は使用できます）。` : 'すべての吹き出しで使用する本文が決まっています。'}{unplaced > 0 && `未配置のセリフ：${unplaced}件。`}</p>
       {unknownSpeakers.length > 0 && <div class="scenario-notice">

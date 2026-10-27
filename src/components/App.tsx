@@ -4036,9 +4036,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
           linkedKeys: (materialLinkPanel.figures ?? []).filter(isPropPlacement).map((figure) => figure.name),
         } : null} onTogglePanelMaterial={toggleMaterialForPanel} onReturnToPanel={returnFromMaterials} />}
         {tab === 'coverage' && <div class="scenario-workspace"><ScenarioReview document={document} onChange={setDocument} onNavigate={(pageIndex, panelIndex, bubbleIndex, overlay) => {
-          setActivePage(pageIndex); setActivePanel(panelIndex); setSelectedPanels([panelIndex]);
-          setSelectedElement(bubbleIndex === undefined ? null : { type: 'bubble', index: bubbleIndex, ...(overlay ? { scope: 'page_overlay' as const } : {}) });
-          setTab('storyboard'); setInspectorCollapsed(false); setMobileStoryboardPane('panel');
+          setSelectedPanels([panelIndex]);
+          selectCanvasElement(bubbleIndex === undefined ? null : { type: 'bubble', index: bubbleIndex, ...(overlay ? { scope: 'page_overlay' as const } : {}) },panelIndex,pageIndex,false);
+          setTab('storyboard');
+          if(bubbleIndex!==undefined){setTextPaletteRequest(value=>({id:value.id+1,tab:'info'}));setMobileStoryboardPane('editor');}
+          else {setInspectorCollapsed(false);setMobileStoryboardPane('panel');}
         }} />
         {!document.manga.scenario && <details class="scenario-legacy"><summary>資料との文字列照合（補助機能）</summary><SourceCoverageReview
           document={document}
