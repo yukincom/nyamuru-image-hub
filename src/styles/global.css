@@ -1608,7 +1608,7 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .paint-text-font-setting { display:grid; grid-template-columns:78px minmax(0,1fr); align-items:center; gap:5px; font-size:12px; }
 .paint-text-work-settings input { min-width:0; }
 .paint-text-work-settings small { max-width:260px; color:var(--muted); line-height:1.45; }
-.text-settings-window { position:fixed; z-index:10000; box-sizing:border-box; width:min(236px,calc(100vw - 16px)); max-height:min(520px,calc(100vh - 16px)); overflow:hidden; padding:0; border:1px solid var(--control-border); border-radius:8px; background:var(--surface); color:var(--ink); box-shadow:0 6px 22px #0004; }
+.text-settings-window { position:fixed; z-index:90; box-sizing:border-box; width:min(236px,calc(100vw - 16px)); max-height:min(520px,calc(100vh - 16px)); overflow:hidden; padding:0; border:1px solid var(--control-border); border-radius:8px; background:var(--surface); color:var(--ink); box-shadow:0 6px 22px #0004; }
 .text-settings-window[hidden] { display:none; }
 .text-settings-window-header { display:flex; min-height:31px; align-items:center; justify-content:space-between; gap:6px; padding:3px 4px 3px 9px; background:var(--accent-soft); cursor:move; touch-action:none; user-select:none; }
 .text-settings-window-header strong { font-size:12px; }

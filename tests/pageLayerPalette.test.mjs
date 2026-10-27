@@ -123,8 +123,16 @@ test('owner selection waits for paint close and retains the current mode on save
  }
 });
 
-test('palette displays original crops above the frame, then bubbles and lower art in reverse scene order',()=>{
- assert.match(paintLayerSource,/\[\.\.\.p\.scene\.owners\][\s\S]*?\.reverse\(\)\.map/);
+test('palette lists bubbles in ascending number order without changing scene order or other rows',()=>{
+ const owner=(kind,index,extra={})=>({key:`${kind}-${index}`,kind,index,paint:{layers:[]},...extra});
+ const owners=[owner('background',0),owner('figure',0),owner('figure',1),owner('panel',0),
+  owner('bubble',0),owner('original',0,{parentKey:'bubble-0'}),owner('bubble',1),owner('bubble',2),owner('bubble',9),owner('original',1)];
+ const before=structuredClone(owners);
+ const source=paintLayerSource.slice(paintLayerSource.indexOf('  const displayOwners='),paintLayerSource.indexOf('  return <div class="paint-layer-palette"'));
+ const result=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';orderedOwners',{p:{scene:{owners}}});
+ assert.deepEqual(Array.from(result,o=>o.key),['original-1','bubble-0','bubble-1','bubble-2','bubble-9','figure-1','figure-0','background-0']);
+ assert.deepEqual(owners,before);
+ assert.match(paintLayerSource,/orderedOwners\.map\(\(o,ownerIndex,owners\)=>/);
  assert.match(paintLayerSource,/const frame=o\.kind!=='original'&&\(ownerIndex===0\|\|owners\[ownerIndex-1\]\.kind==='original'\)\?p\.frameLayer:null/);
  assert.match(paintLayerSource,/return <>\{frame\}<div class="layer-group"/);
  assert.match(pageLayerSource,/cloneElement\(activeLayers,\{frameLayer,images:/);

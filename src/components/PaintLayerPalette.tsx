@@ -135,10 +135,14 @@ export default function PaintLayerPalette(p:Props){
   const renderOriginal=(o:PaintOwner)=><div class="layer-direct-root original-raster-root" key={o.key} data-original-raster={o.original?.id}>
     {renderEntries(o,!p.inactive&&p.owner.key===o.key)}
   </div>;
+  const displayOwners=[...p.scene.owners].filter(o=>!o.parentKey).filter(o=>(o.kind!=='panel'&&o.kind!=='page')||o.paint.layers.length>0||o.paint.folders?.length).reverse();
+  const bubbles=displayOwners.filter(o=>o.kind==='bubble').sort((a,b)=>a.index-b.index);
+  let bubbleIndex=0;
+  const orderedOwners=displayOwners.map(o=>o.kind==='bubble'?bubbles[bubbleIndex++]:o);
   return <div class="paint-layer-palette" ref={paletteRef}>{!p.embedded&&<h3>レイヤー</h3>}
     {!p.embedded&&!p.inactive&&<PaintLayerControls {...p}/>}<div class="layer-tree" role="tree" aria-label="レイヤーの重なり">
       {!p.embedded&&<div class="layer-panel-row"><strong>{p.title}</strong></div>}
-      {[...p.scene.owners].filter(o=>!o.parentKey).filter(o=>(o.kind!=='panel'&&o.kind!=='page')||o.paint.layers.length>0||o.paint.folders?.length).reverse().map((o,ownerIndex,owners)=>{
+      {orderedOwners.map((o,ownerIndex,owners)=>{
         const bubble=o.kind==='bubble',originals=p.scene.owners.filter(child=>child.parentKey===o.key),groupLocked=o.locked===true,visible=bubble?(bubbleVisible(o.bubble!)||originals.some(child=>child.paint.layers.some(l=>paintLayerVisible(child.paint,l)))):o.paint.layers.some(l=>paintLayerVisible(o.paint,l)),folded=collapsed[o.key]??bubble;
         const paintActive=!p.inactive&&o.key===p.owner.key,canvasSelected=p.selectedOwner===o.key,active=canvasSelected||paintActive||originals.some(child=>p.selectedOwner===child.key||!p.inactive&&p.owner.key===child.key);
         const frame=o.kind!=='original'&&(ownerIndex===0||owners[ownerIndex-1].kind==='original')?p.frameLayer:null;
