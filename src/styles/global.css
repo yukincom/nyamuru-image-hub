@@ -1681,7 +1681,7 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .font-family-display button[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); color:var(--accent-dark); }
 .font-name-icon { font:italic 800 23px/1 cursive; }
 .font-sample-icon { font:800 10px/1 sans-serif; letter-spacing:-.04em; }
-.font-family-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; min-height:150px; max-height:min(52vh,420px); overflow-y:scroll; overscroll-behavior:contain; scrollbar-gutter:stable; padding:2px 5px 2px 2px; }
+.font-family-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:3px; min-height:150px; max-height:min(52vh,420px); overflow-y:scroll; overscroll-behavior:contain; scrollbar-gutter:stable; padding:2px 5px 2px 2px; }
 .font-family-grid>button { display:grid; min-width:0; min-height:30px; align-content:center; gap:0; padding:2px 5px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--ink); cursor:pointer; text-align:left; }
 .font-family-grid>button:hover,.font-family-grid>button.is-selected { border-color:var(--accent); background:var(--accent-soft); }
 .font-family-grid>button>span { overflow:visible; overflow-wrap:anywhere; font-size:13px; line-height:1.05; text-overflow:clip; white-space:normal; }
@@ -1690,7 +1690,6 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .font-family-grid::-webkit-scrollbar,.bubble-material-window-grid::-webkit-scrollbar { width:12px; }
 .font-family-grid::-webkit-scrollbar-track,.bubble-material-window-grid::-webkit-scrollbar-track { border-radius:999px; background:#eceef0; }
 .font-family-grid::-webkit-scrollbar-thumb,.bubble-material-window-grid::-webkit-scrollbar-thumb { border:3px solid #eceef0; border-radius:999px; background:#7b837f; }
-@media (max-width:780px) { .font-family-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (max-width:480px) { .font-family-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .bubble-material-window { display:flex; min-width:0; flex-direction:column; gap:5px; padding:0; border:0; background:transparent; }
 .bubble-material-window label { display:flex; align-items:center; gap:8px; font-size:12px; }

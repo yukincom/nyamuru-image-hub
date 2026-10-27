@@ -56,7 +56,7 @@ test('ordinary point text grows from its start and never shows an area frame or 
   assert.match(css,/\.bubble-inline-editor\.is-screen-text \.native-text-input \{[^}]*width:max-content;[^}]*height:max-content;[^}]*border:0;[^}]*outline:0;[^}]*background:transparent;/);
 });
 
-test('font picker has categories, full names and narrow five-column live previews',()=>{
+test('font picker has categories, full names and four-column live previews',()=>{
   const picker=read('src/components/FontFamilyPicker.tsx'),css=read('src/styles/global.css');
   assert.match(picker,/日本語対応（\{counts\.japanese\}）/);
   assert.match(picker,/すべて（\{counts\.all\}）/);
@@ -65,7 +65,7 @@ test('font picker has categories, full names and narrow five-column live preview
   assert.match(picker,/class="font-sample-icon">ABC<\/span>/);
   assert.match(picker,/FONT_MENU_SAMPLE/);
   assert.match(picker,/fontFamily:bubbleCssFontFamily\(font\.family\)/);
-  assert.match(css,/\.font-family-grid \{[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\);[^}]*overflow-y:scroll;[^}]*scrollbar-gutter:stable;/);
+  assert.match(css,/\.font-family-grid \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\);[^}]*overflow-y:scroll;[^}]*scrollbar-gutter:stable;/);
   assert.match(css,/\.font-family-grid>button \{[^}]*min-height:30px;[^}]*padding:2px 5px;/);
   assert.match(css,/\.font-family-grid>button>span \{[^}]*overflow-wrap:anywhere;[^}]*white-space:normal;/);
   assert.doesNotMatch(picker,/フォントを読み込み|fonts loaded/i);
