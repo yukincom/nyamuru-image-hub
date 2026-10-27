@@ -168,6 +168,8 @@
 3. P9c: ベクター移動・長い一筆・mask/tone/色変換の再描画を既存renderer内で分けて改善する。通常ペンだけの結果を全描画の改善と報告しない。
 4. P9d: ガイド画像の重複読み込みを既存画像ロード経路へ集約する。
 
+2026-10-27の追加診断に基づく実施順は[第10節](#10-2026-10-27-ベクター操作レイヤー履歴と描画残件の追加計画)を正とする。操作・所属の修正を先行し、P9dはUndo時の画像寿命と合わせ、P9b・P9cはその後の残存負荷を対象にする。
+
 既存 `paintGesture.test.mjs`、`paintStroke.test.mjs`、`paintColor.test.mjs`、`vectorGesture.test.mjs` と `paintPerformance.browser` を再利用する。画素一致・Undo／Redo・操作回数を確認し、CPU時間と入力から表示までの待ち時間を区別して記録する。
 
 ## 6. 共通の検証・commit条件
@@ -206,7 +208,7 @@
 | P6 持ち替え | 完了 | live previewを保持し、作品変更で既存close。関連105件・型検査・実UI・独立レビュー成功 |
 | P7a–c ディスク保存 | 完了 | P7a 1566ee3、P7b 24a33cc、P7c 29dd0c7。登録再利用・失敗取消し、Python40件／Node9件成功 |
 | P8 標準名・文書 | 完了 | シリーズa9ee62f・YAML書出93396b6・LAN0fb7814。package／ledgerの新旧互換・現行docsを整合 |
-| P9a–d 描画残件 | P9a完了・P9b–d保留 | P9aの `1393d26` に対し、R9の `6a75bf9` で横／縦／面積の容量境界と失敗保持を補修・検証。P9b–dの性能改善は別途再計画する |
+| P9a–d 描画残件 | P9a完了・P9b–d計画済み／実装未着手 | P9aの `1393d26` に対し、R9の `6a75bf9` で横／縦／面積の容量境界と失敗保持を補修・検証。P9b–dは第10節のF5〜F7へ接続 |
 | 統合検証 | コード・隔離UI確認済み | 全体verify、通常／単一HTML build、合成UI、保存済み実原稿コピー23項目を確認。自起動server終了。元タブの未保存状態・OSフォルダー保存・実モデル生成は未検証 |
 
 ### 計画・skill段階の結果
@@ -554,3 +556,129 @@
 - 検証前後で元manifestと72asset参照のbyte・SHA-256をコピーと照合し、不変を確認。外部の人物資料2件は今回のページ原本72件とは別で、外部catalogを含む可搬作品全体の検証とは扱わない。既に画像化された実原稿を自動で逆変換していない。
 - 原稿固有の繰返し復元・後片付けは通常機能に不要との利用者指摘に従い、`layerInteraction.browser.tsx` への一時追加分はすべて撤去した。本体の保存・復元経路を追加せず、既にcommit済みの汎用回帰試験とこの実施記録だけを残す。ブラウザーの今回の一時asset360件と保存試験ファイルを回収し、検証タブを閉じた。使い捨ての原稿コピーも撤去し、作品データはGitへ追加していない。
 - 最終コードは全体verify済みの `6a75bf9` と同じ。別作業7ファイルの差分は開始時とbyte一致。自起動Vite（PID2680、4335、正本checkout）を停止し、プロセス終了と待受解放を確認。元タブと原本は維持し、pushはしていない。P9b–dの性能改善は別途判断する。
+
+## 10. 2026-10-27 ベクター操作・レイヤー・履歴と描画残件の追加計画
+
+### 10.1 対象・現状・既存経路
+
+利用者の追加指示: 診断した順に修正を計画し、既存処理との重複・競合を避け、軽くできる既存経路は接続・集約する。テストに加えて実画面で一連の操作を確認し、区切りごとにcommitする。
+
+- 本節は実装前の計画。F1〜F8は未着手。計画時の回復点は `992d955639dd95055f63f39e56b7b5e7c24062d5`、正本は `/Users/yukin_co/Desktop/tools/Comic_image_Hub` / `main`。
+- 既存の別作業7ファイル（README、LAN手順・起動script、3D手順・picker、DocumentEditors、humanPoseSkeleton）と未追跡資料は保持する。今回の計画commitには本書だけを含める。本体編集前に共有掲示板のclaimを段階別の正確なpathへ更新する。
+- 診断の実操作では、Esc後の幅変更、モノクロ0.07px＋不透明下地でのV/A再選択失敗、変形handleから下地への選択抜け、原本選択中の離れた追加位置を再現した。カラーの同じ極細線は再選択できた。この条件を一般化しない。
+- Undoの画像破棄・再decode、意味上同値の移動履歴、原本の初期表示分岐はコード調査で確認した。白抜けの瞬間の記録、利用者の原本表示症状が起きた具体的読込入口は未確認。F1・F2・F5でそれぞれ実操作の証拠を補う。
+- 既存のR1〜R9の成功は、その検証条件の記録として維持する。本節の残症状まで完了済みと読み替えない。
+
+| UIの意図 | 残す正本・入口 | 今回まとめる責任・減らす仕事 |
+|---|---|---|
+| 確定・取消・Undo | `PaintEditor.finishGesture/finishVector/finishLayerMove` → `commit` → `sharedHistory.checkpoint` → `workspaceHistory`、Appの`restoreWorkspace` | 終了理由と実変更を既存gesture終了地点で判定。無変更のclone・checkpoint・保存予約を省く |
+| レイヤー選択・追加・並べ替え | `canvasPaintOwnerKey` / `paintOwnerCanvasSelection`、`PageLayerPalette` → Appの`actOnLayer` → `PaintEditor.layerAction`、`newPaintLayer` / `movePaintLayer` / `paintLayerTree` | ツールバー・メニュー・非描画時の追加先と挿入順を同じ処理へ。固定のpanel/page fallbackと個別appendを置換 |
+| 吹き出しと原本の所属 | `Bubble` / `AnalogTextImport` / `PlacedImage`、`separateBubbleOriginals`、`paintScene`、既存パレット・`MangaCanvas`・`applyOwnerPaint` | 独立assetと編集可能な文字・輪郭を保持し、関係と表示順を一か所から導出。原画像の再複製・再画像化はしない |
+| ベクターの編集 | `vectorState`、`changeVectorStyle`、`vectorGesture`、`vectorGeometry`、`pickPaintLayer` | 選択中handle優先と幾何判定を既存入口へ接続。選択のための不要なnative画素読取を減らす |
+| 画像の表示・復元 | `PaintSession` / `paintCheckpoint`、`PaintImages`、`loadPaintImages` / `decodePaintImage`、`PaintSceneView` / `PaintPreviewCanvas` | Undoのscene復元と画像の寿命を分離。同じ画像のprobe→破棄→再decodeを一本化 |
+| 再描画 | `paintPreviewRenderer`の既存cache、live stroke・mask/tone/色変換処理 | 有効な画素を再利用し、容量超過の連鎖missと変更対象外の再処理を削減 |
+
+第二の履歴、描画session、asset store、保存queue、汎用manager、常駐監査機構は追加しない。関数を増やす必要がある場合も上記の既存module内へ責任を集約し、同じ意味の旧分岐を置き換える。毎pointerの全文clone・serialize・deep-equal・hashは変更判定に使わない。サムネイルのbest-effort読込と原本必須の読込は失敗時の意味が違うので、無理に同一化しない。
+
+### 10.2 実装順とcommit単位
+
+順序は **F1 → F2 → F3 → F4 → F5（P9d）→ F6（P9b）→ F7（P9c）→ F8**。F2で所属を先に決めることでF3の追加先を作り直す手戻りを防ぐ。各段階は本体・関連試験・現行仕様の説明を揃え、関連実UIが合格した時点でlocal commitする。表面だけ動く途中状態はcheckpointとして完了扱いしない。
+
+#### F1: 操作の確定・取消・同値と履歴の境界
+
+- `finishGesture` / `finishVector` / `finishLayerMove`と既存の文字・画像gestureの終了規約を比較し、同じ操作には同じ終了理由を渡す。共通履歴の前に別履歴を作らない。
+- pointerupなどの明示確定は実変更を1件記録。pointercancelと操作中のEscは開始前へ戻し0件。通常のpointerupに伴うlostpointercaptureは二重確定しない。pointerupを伴わないcapture喪失・window blurは未完のgestureを取消す方針とし、既に確定した筆跡・ベジェ節点まで消さない。
+- 数値入力のblurやツール持ち替えで必要な確定は別の意味として維持する。ベジェの「線を描き終える」と「現在のdragを取消す」はF4と区別する。
+- ドラッグして元へ戻す、移動量0、同じ値の再指定は、変更を計算したmutatorが元参照または既存changed=falseを返す。結果としてUndoを増やさず、Redoを消さず、保存予約を増やさない。
+- 主対象: `PaintEditor.tsx`、必要な`paintGesture.ts` / `vectorGesture.ts` / `paintDocument.ts`、Appの既存履歴接続。`workspaceHistory`自体は必要な変更だけ。
+- 試験: `workspaceHistory` / `paintGesture` / `vectorGesture` / `paintSession`の既存Node試験。既存`layerInteraction.browser`で、選択のみ→往復移動→取消→実移動→Undo→Redo、途中blur・capture喪失を確認。実変更1件・取消/同値0件・Redo保持が合格条件。
+- commit例: `Keep cancelled and unchanged gestures out of history`。
+
+#### F2: 吹き出し・原本を同じフォルダーへ接続し、初期表示を統一
+
+- 採用方針は、独立した原本assetとPaintDocumentを維持したまま、既存の吹き出しgroupに対応原本ownerを参加させること。`bubble.paint_overlay`へ原画像を戻して二重管理する経路や、別のフォルダー用storeは作らない。
+- 対応づけには既存`PlacedImage.id`を利用する。`sourceRegionId`は複製で共有されるため主キーにしない。必要な関連IDは既存`AnalogTextImport`へ最小限追加する方針とし、同じ関係を両側に重複保存しない。作成・複製・削除・ページ間操作・Undo・保存の既存経路でIDを保持／付け替える。
+- 既存作品の関連づけは既存reader／`separateBubbleOriginals`の境界に限定。一意に判断できない旧データは原本を保持し、推測で別の吹き出しへ結合・削除しない。曖昧な例があれば該当条件を記録し、互換完了とはしない。
+- フォルダー内は編集可能な吹き出しと原本を別の子として選択可能にする。原本だけの目・固定・削除を維持し、フォルダー単位の操作は既存mutatorを1つの履歴操作で呼ぶ。初期非表示の原本をgroup開閉・選択だけで表示へ戻さない。
+- パレットの順序、canvasの描画順、選択先を同じ関係に合わせる。一覧上だけまとめて現在の「全原本を上段に集約」を残さない。人物・背景・コマ枠・コマ外の重なりとクリップを回帰確認する。
+- 新規作成・新規画像/OCR取込時の原本は非表示。保存済み作品の再読込は保存された目を復元する。初期値欠落の旧データは互換処理で扱い、通常のloadごとに目を上書きしない。原本を削除した状態のマーカーを保持し、再読込で復活させない。
+- 主対象: `types.ts`、`bubbleOriginals.ts`、`analogTextCrops.ts`、`paintDocument.ts`、`panelLayers.ts`、既存複製／reader、`PaintLayerPalette.tsx` / `PageLayerPalette.tsx` / `MangaCanvas.tsx` / Appの既存接続。実編集pathは着手前にclaimする。
+- 試験: `bubbleOriginals` / `analogTextCrops` / `paintDocument` / `panelLayers` / `canvasLayering` / 保存往復の既存試験。実UIで新規取込→同folder確認→原本だけ表示→文字/輪郭編集→複製→片方の原本削除→Undo/Redo→保存再読込。原文・輪郭・asset hash、個別の目と固定、対応の一意性が合格条件。実OCRモデル未実行なら、fixtureの成功と区別する。
+- commit例: `Group balloon originals with their editable balloons`。関連ID・互換・UIが大きくなる場合は、互換性が成立する単位で分割し、未使用schema/helperだけのcommitを作らない。
+
+#### F3: 全追加入口を選択行の直下へ集約
+
+- レイヤー選択中は同じ親folderの直下へ追加する。owner見出し選択時はそのownerの先頭の子へ。何も選ばれていない場合だけ、明示されたコマ内／コマ外の既存追加先を使う。描画layer、native吹き出し、原本、人物の選択を無言でpanel描画へ落とさない。
+- ユーザーフォルダーの見出しは現在クリック選択を持たない。選択先にする場合は既存選択stateへ接続し、folderの先頭の子に追加する。並行するselectedFolder storeは作らない。下位folderの無制限入れ子は今回追加しない。
+- `newPaintLayer`を生成に使い、既存`movePaintLayer` / `PaintLayerDropTarget`の順序・所属計算を挿入にも使う。append→別commitで移動にはせず、完成したsceneを1回commitする。F2で原本を含むgroupの追加先を確定してから接続する。
+- ツールバー、右クリック、非描画時のApp入口、ラスター／ベクター／トーン／画像追加の共通部分を`layerAction`へ寄せる。自動作業layerは最初の実描画時だけ作り、追加と筆跡で1Undoを維持する。複製と3D撮影／生成の順序も同じ挿入処理へ接続可能か比較し、意味が違う一括生成は必要な順序を保持する。
+- 主対象: `PaintEditor.tsx`、`PageLayerPalette.tsx`、`PaintLayerPalette.tsx`、Appの`actOnLayer` / `onAdd`、`paintDocument.ts`、初回作業layerを作る既存gesture。
+- 試験: `paintDocument` / `pageLayerPalette` / `layerGeneration` / `paintGesture`と既存`layerFolders.browser` / `layerInteraction.browser`。コマ内外、人物、原本、吹き出し、folder内で、選択→追加→1回描画→並替→Undo/Redo→保存再読込。実際の追加先・選択行・描画順が一致すること。
+- commit例: `Insert new layers below the selected row`。
+
+#### F4: ベクターの終了・線幅・再選択・変形を一続きにする
+
+- `activePath`の終了と選択解除を分離。drag中でなければEsc/Enterで線を描き終えて完成パスの選択を残し、続く幅変更を適用する。空白クリックによる解除、明示的な取消し、再開・結合・閉じる操作は既存`vectorGesture`で扱う。ショートカット説明と現行の「終了で選択0」を期待する試験も更新する。
+- 同じ`changeVectorStyle`で既存選択パスを更新する。未選択なら次の線の道具設定だけを変更し、作品・履歴を触らない。連続的な幅調整の履歴は既存gesture境界に接続する。
+- Aのanchorに加え、Vの表示中resize handleもscene pickingより先に判定する。hover cursorとpointerdownで同じ判定・座標変換を使う。
+- ベクターは幾何形状と画面上の選択許容幅を基本にする。極細線の最終alphaを必須条件にしない一方、目・opacity 0・固定・ownerのclip・有効maskなどの編集可否は保持する。ラスターのcoverage判定は引き続き使う。
+- ボックスは線幅・cap・join・矢印とズームを考慮した表示範囲を既存geometryへ集約。変形の基準となるパス座標と表示用boundsを混同せず、水平／垂直／短い線でもhandleを操作できる。描画の実線幅やモノクロの出力仕様を選択修正のためだけに変更しない。
+- 主対象: `PaintEditor.tsx`、`vectorGesture.ts`、`vectorGeometry.ts`、`paintLayerPicking.ts`、既存cursor・overlay・help。
+- 試験: `vectorGesture` / `vectorGeometry` / `paintLayerPicking` / `paintToolHelp` / `paintToolShortcuts`と既存`paintCursor.browser` / `layerInteraction.browser`。P描画→終了→幅変更→空白解除→V/A再選択→V変形→A節点移動→Undo/Redoを実操作。カラー／モノクロ、0.07px／通常／太線、水平／垂直／曲線／複数選択、透明／不透明下地、縮小／100%／拡大を代表ケースで組み合わせる。
+- commit例: `Keep vector selection and transform handles usable`。選択とboundsを分割する場合も、それぞれ実操作を通してからcommitする。
+
+#### F5: Undo時の画像とcanvasを維持し、P9dを同じ読込境界で解消
+
+- `restoreWorkspace`によるscene更新を、同じ作品・同じ資産の全面再読込と扱わない。既存`PaintSession` / `PaintImages`を生かし、必要な資産集合との差分だけを`loadPaintImages`で準備する。
+- `initial`のidentityだけでimagesをnullにする分岐、画像の一括`src=''`、canvasの条件付きunmountを整理する。必要な新画像が準備できるまで直前の有効表示を保ち、sceneと画像を揃えて反映する。読み込み中の旧表示は旧状態として保持し、編集対象だけを先行切替しない。失敗を成功済みとせず、既存エラー表示と再試行を維持する。
+- ガイドprobeで成功したdecodeを同じロード処理の本読み込みに引き継ぎ、破棄して同じ画像を再decodeしない。IDだけで無条件再利用せず、asset実体・pending blob・画像差替・保存復元を区別する。
+- 共有する画像の解放は利用終了時に限定し、cacheへの画像変更通知と整合させる。Undo内の原本を保持する既存asset leaseを再利用し、画像を無制限に蓄える常駐cacheは作らない。作品／ページ切替・セッション終了・失敗取消時の解放も確認する。
+- 主対象: Appの`restoreWorkspace`、`PaintEditor.tsx`、`paintRenderer.ts`のload/decode、`PaintSceneView.tsx` / `PaintPreviewCanvas.tsx`、必要な`paintSession.ts`。
+- 試験: `paintSession` / `projectPersistence`と既存`layerInteraction.browser` / `paintPerformance.browser`。画像入り作品で描画→幅変更→移動→Undo/Redo連打→ページ往復→保存再読込。同一作品・同一ownerで資産が不変のUndo/Redoは再decode 0・復元中canvas消失0、初回読込は同一assetのprobe＋本読み込み重複0を確認する。別ページ・資産差替で必要なdecodeやowner削除は別に数える。遅い読込と破損／欠落画像で白紙化・古いsceneとの取り違え・隠れた失敗がないこと。画面の連続記録と読込回数の両方を使う。
+- commit例: `Retain paint images across history restores`。同じ責任範囲にあるP9dはこの段階で確認し、画像寿命と重複decodeを別々の成功条件として記録する。
+
+#### F6: P9b — 既存layer cacheの容量超過時の連鎖missを解消
+
+- F5後の計測を基準にする。既存`paintPreviewRenderer`内で、描画順に追い出し続ける方式から、容量内の再利用分を安定して保持し超過分を一時描画する方式を第一候補にする。単純なLRU化だけで順次走査の全missが解消するとは扱わない。
+- 現行のowner単位64MiB相当のlayer pixel上限を維持。上限増量で解決したことにせず、owner数に応じた合計量も測る。scene全体の別cacheは作らない。画像差替、サイズ、色モード、mask/tone、表示、削除、Undoの失効条件を同じcacheで扱う。
+- `paintPerformance.browser`で容量未満／直前／超過の同じlayer群を複数frame描き、cache再利用・再描画数・保持pixel数・処理時間と画素一致を比較する。無変更frameで保持分まで毎回追い出されないこと。作業量を減らせても体感時間に差がない場合は分けて報告する。
+- 実画面で多layerの描画・移動・Undo/Redo・ズーム・ページ往復を通し、ちらつき・古い画像・メモリー残留がないことを確認してcommit。例: `Avoid cascading misses in the bounded layer cache`。
+
+#### F7: P9c — 残る再描画負荷を種類別に減らす
+
+- F4〜F6後に同じ原稿・画面サイズ・DPR・ズーム・描画条件で再計測し、残る仕事だけを対象にする。初回とcacheが温まった後を分け、複数回の処理時間・入力から表示までの待ち時間の中央値とp95、再描画数、保持pixel数を前後で記録する。既存`paintPerformance.browser`を拡張し、別のbenchmarkアプリや本体の計測frameworkは作らない。
+- F7a ベクター移動: 選択対象以外の確定描画を再利用し、hover／選択判定で描画全体を作り直さない。複数選択・重なり・選択外boundsも検証。
+- F7b 長い一筆: 既存`paintStroke`の増分boundsとlive strokeを接続し、過去の点を毎frame再走査・再描画する範囲を減らす。筆圧・補間・アンチエイリアス・消しゴム・selection clipの画素差を検証。
+- F7c mask/tone: 既存rendererの確定画素とlive maskの責任を分け、無関係layerの再処理を減らす。消去・透過・乗算・トーン表示とマスク編集表示の切替を検証。
+- F7d 色変換: 既存の変換済み画素を使える境界を広げる。カラー／グレー／モノクロ、縮小previewとnative出力を別条件で比較する。
+- 各小段階は独立の本体・関連試験・実UI確認・commitとする。既に先行修正で解消した項目は測定根拠を記録して追加実装を省く。短い通常ペンの成功で4種類すべてを完了にしない。
+
+#### F8: 一連の実操作・保存往復・最終統合
+
+- 正本で`npm run verify`（型検査、Node、Python、通常版／単一HTML版build）を行う。各段階では関連試験に絞り、失敗や新しい変更がないまま全体試験を繰り返さない。
+- 合成fixtureでの操作に加え、保存済み実原稿の使い捨てコピーを、既存のreaderで隔離した検証originへ読み込む。元の作品フォルダー・原画像・現在開いているタブの未保存状態を試験入力として書換えない。原稿固有の復元・掃除helper、同梱作品、専用永続化経路は追加しない。
+- 実操作順: 新規取込／コピー読込 → 吹き出しと原本の同folder・初期目確認 → 原本・人物・folder内でlayer追加 → ベジェ描画 → 終了・幅変更 → 解除・V/A再選択 → 変形・節点編集 → layer並替・取消 → Undo/Redo → 原本の目・固定 → ページ切替 → 通常保存 → 再読込 → 同じ編集を繰り返す。
+- 保存済みの目があるコピーはその値を正とし、「新規取込は非表示」と混同しない。原文・輪郭・座標・layer順・原本参照とhashを前後で照合する。Mac／LANそれぞれの既存保存経路のうち変更が届く入口は往復確認する。OSの通常保存UI、実OCR／モデル、ペンタブが未実行なら、その範囲を明記して合格済みとしない。
+- 実UIはネイティブのclick／drag／key操作を含める。fixtureの合成イベントやNode試験だけを実操作完了の根拠にしない。色・太さ・ズーム等の条件、結果、画像／連続表示の証拠、未確認を段階ごとに本書へ記録する。
+- 自起動serverのPID・cwd・command・portを記録し、終了時にプロセス終了と待受解放を確認する。既存serverを再起動せず、自分で開いた検証タブを閉じ、今回の試験データだけを既存の手段で片付ける。
+- 統合で見つけた修正は関連段階の責任へ戻し、該当試験と実UIを再確認してcommitする。最終記録は別commitでよい。push・公開は行わない。
+
+### 10.3 各区切りの完了判定と進捗
+
+1. 着手前に共有claim、HEAD、既存差分、対象のreader／mutator／consumerを確認する。
+2. 本書に残す入口・置換する分岐・合格条件を記録し、実装・既存試験・現行仕様を同じ範囲で更新する。重複する新経路が必要に見えたら、書く前に既存経路へ接続できない理由を示す。
+3. 関連試験とその段階の実画面の連続操作を完走する。失敗を後工程へ送って当該段階を完了にしない。
+4. `git status --short`、全unstaged差分、staged差分、未追跡依存を確認する。今回の正確なpathだけstageし、local commitする。別作業差分は保持する。
+5. commit SHA、実際の検証条件・結果、未確認範囲を本書へ記録し、次の段階へ進む。実装途中の見込み値・予定を実測結果として書かない。
+
+| 段階 | 状態 | 完了記録 |
+|---|---|---|
+| 計画 | 策定済み | 2026-10-27。既存コード・前回の実操作診断・P9計画を照合。本体変更・新たなserver起動・実UI試験は行っていない |
+| F1 履歴境界 | 未着手 | — |
+| F2 吹き出しfolder・原本初期表示 | 未着手 | — |
+| F3 追加先・挿入位置 | 未着手 | — |
+| F4 ベクター操作 | 未着手 | — |
+| F5 画像寿命・P9d | 未着手 | — |
+| F6 P9b | 未着手 | — |
+| F7a〜d P9c | 未着手 | — |
+| F8 統合・実原稿コピー・保存往復 | 未着手 | — |
