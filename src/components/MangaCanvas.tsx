@@ -3,8 +3,8 @@ import { frameFromContentEdit } from '../lib/canvasContentGeometry';
 import {artworkLocked,paintOwnerPlacementLocked,paintLayerHasContent} from '../lib/paintLock';
 import { pixelZoomWidth, canvasZoomPercent, clampCanvasZoom, canvasZoomShortcut } from '../lib/canvasZoom';
 import type { CanvasTextTarget } from '../lib/canvasText';
-import {textStyleOf,selectedTextWeight,textStyleCss,textWeightSegments,canvasLengthCss,textToolCursor,type TextStylePatch,type TextSelection} from '../lib/textStyle';
-import type {TextStyle,TextWeightRange} from '../types';
+import {textStyleOf,selectedTextInlineStyle,typingTextStyle,textStyleCss,textStyleSegments,textInlineStyleCss,canvasLengthCss,textToolCursor,type TextStylePatch,type TextStyleScope,type TextSelection} from '../lib/textStyle';
+import type {TextStyle,TextStyleRange} from '../types';
 import {BUBBLE_MATERIAL_DRAG_TYPE,materialBubbleBezier} from '../lib/bubblePresetData';
 import CanvasTextToolbar from './CanvasTextToolbar';
 import { scenarioBubbleNeedsReview } from '../lib/scenario';
@@ -180,7 +180,7 @@ function StoredCropImage({ assetId, persistentAsset, className }: { assetId: str
 }
 
 // フキダシ内テキスト。自動改行や文字縮小をせず、入力された改行をそのまま表示する。
-export function BubbleText({ text, font, shape, lengthClass, boxW, boxH, fitEpoch, position={x:.5,y:.5}, style, weights, paperWidth=210, review=false, onEdit, onMoveFrame, moveFrameActive=false }: { text: string; font: string; shape?: string; lengthClass: string; boxW: number; boxH: number; fitEpoch: number; position?:BubbleTextPosition;style?:TextStyle;weights?:TextWeightRange[];paperWidth?:number;review?:boolean;onEdit?:()=>void;onMoveFrame?:(event:PointerEvent)=>void;moveFrameActive?:boolean }) {
+export function BubbleText({ text, font, shape, lengthClass, boxW, boxH, fitEpoch, position={x:.5,y:.5}, style, runs, paperWidth=210, review=false, onEdit, onMoveFrame, moveFrameActive=false }: { text: string; font: string; shape?: string; lengthClass: string; boxW: number; boxH: number; fitEpoch: number; position?:BubbleTextPosition;style?:TextStyle;runs?:TextStyleRange[];paperWidth?:number;review?:boolean;onEdit?:()=>void;onMoveFrame?:(event:PointerEvent)=>void;moveFrameActive?:boolean }) {
   const ref = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -209,14 +209,14 @@ export function BubbleText({ text, font, shape, lengthClass, boxW, boxH, fitEpoc
     layout();
     document.fonts.addEventListener('loadingdone', layout);
     return () => document.fonts.removeEventListener('loadingdone', layout);
-  }, [text, font, shape, lengthClass, boxW, boxH, fitEpoch, position.x, position.y, style, weights]);
+  }, [text, font, shape, lengthClass, boxW, boxH, fitEpoch, position.x, position.y, style, runs]);
   const interactive=Boolean(onEdit);
   return <span ref={ref} class={`vertical-text bubble-text ${lengthClass} has-fixed-text-size ${review?'is-text-review':''} ${interactive?'is-interactive':''} ${onMoveFrame?'has-move-frame':''}`} data-review={review||undefined} title={review?'このセリフ本文は読取結果の確認が必要です。文字を編集すると通常色へ戻ります。':undefined} style={{ fontFamily: bubbleCssFontFamily(font),...textStyleCss({...style,fontSize:style?.fontSize??15},paperWidth,font) }}>
     <span class="bubble-text-content"
       onPointerDown={interactive?event=>event.stopPropagation():undefined}
       onClick={interactive?event=>{event.stopPropagation();onEdit?.();}:undefined}
       >
-      {weights?.length?textWeightSegments({text,text_weights:weights}).map((part,i)=><span key={i} style={part.fontWeight?{fontWeight:part.fontWeight}:undefined}>{part.text}</span>):text}
+      {textStyleSegments({text,text_style:style,text_runs:runs}).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}
     </span>
     {onMoveFrame&&<span class={`bubble-text-move-frame ${moveFrameActive?'is-active':''}`} aria-label="本文をドラッグして移動" onPointerDown={event=>{event.stopPropagation();onMoveFrame(event);}}>
       {(['top','right','bottom','left'] as const).map(side=><span class={`bubble-text-move-edge is-${side}`} key={side}/>)}
@@ -1309,7 +1309,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         title={`通常文字 ${screenTextIndex + 1}（ドラッグで移動・吹き出し素材を重ねられます）`}
         tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
-        <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{screenText.text_weights?.length?textWeightSegments(screenText).map((part,i)=><span key={i} style={part.fontWeight?{fontWeight:part.fontWeight}:undefined}>{part.text}</span>):screenText.text}</span>
+        <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
       </button>;
     })}
   </>;
@@ -1442,7 +1442,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </span>
       {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
       <span class="bubble-native-reference bubble-native-text" style={referenceStyle}>
-      {textFrame.w>0&&textFrame.h>0&&<span class="bubble-text-frame" style={textFrameStyle}><BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={textFrame.w} boxH={textFrame.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} weights={bubble.text_weights} paperWidth={canvas.w}
+      {textFrame.w>0&&textFrame.h>0&&<span class="bubble-text-frame" style={textFrameStyle}><BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={textFrame.w} boxH={textFrame.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
           review={scenarioBubbleNeedsReview(bubble)}
           onEdit={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?()=>onEditBubble?.({panelIndex,bubbleIndex,overlay:false}):undefined}
           onMoveFrame={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/></span>}
@@ -1504,7 +1504,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onClick={event=>{event.stopPropagation();onSelectElement(selection);if(textTool)onEditScreenText?.(0,index,true);}}
       onKeyDown={event=>{nudgeElement(event,paperBounds,selection,box);}}
       title={`通常文字 ${index+1}（ページ前景）`} tabIndex={activePanel>=0?0:-1}>
-      <span class={`screen-text-body ${screenText.orientation==='vertical'?'vertical-text':''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{screenText.text_weights?.length?textWeightSegments(screenText).map((part,i)=><span key={i} style={part.fontWeight?{fontWeight:part.fontWeight}:undefined}>{part.text}</span>):screenText.text}</span>
+      <span class={`screen-text-body ${screenText.orientation==='vertical'?'vertical-text':''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
     </button>;
   });
   const renderPageOverlayBubbles = () => (overlay?.bubbles ?? []).map((bubble, bubbleIndex) => {
@@ -1540,7 +1540,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </span>
       {editingOverlay?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
       <span class="bubble-native-reference bubble-native-text" style={referenceStyle}>
-      {<BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} weights={bubble.text_weights} paperWidth={canvas.w}
+      {<BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
           review={scenarioBubbleNeedsReview(bubble)}
           onEdit={textTool&&!elementLocked(selection)?()=>onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}):undefined}
           onMoveFrame={textTool&&!elementLocked(selection)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/>}</span>
@@ -1658,7 +1658,13 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const style=getComputedStyle(el),pt=parseFloat(style.fontSize)/width*canvas.w*72/25.4;
     return {font:defaultBubbleFont,fontSize:Math.max(4,Math.min(144,Math.round(pt*1000)/1000)),fontWeight:Number(style.fontWeight)||600};
   };
-  const changeStyle=(patch:TextStylePatch)=>{if(toolbarTarget&&toolbarItem)onTextStyle?.(toolbarTarget,patch,textTarget?textSelection:undefined);else onTextToolStyle?.(patch);};
+  const selectedStyles=textTarget&&textSelection&&toolbarItem&&toolbarTarget?selectedTextInlineStyle(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined;
+  const changeStyle=(patch:TextStylePatch,scope:TextStyleScope='element')=>{
+    const selected=Boolean(textTarget&&textSelection&&textSelection.end>textSelection.start);
+    if(scope==='selection-or-typing'&&!selected)onTextToolStyle?.(patch);
+    else if(toolbarTarget&&toolbarItem)onTextStyle?.(toolbarTarget,patch,textTarget?textSelection:undefined);
+    else onTextToolStyle?.(patch);
+  };
 
   const textPanel=textTarget&&!textTarget.overlay?page.panels[textTarget.panelIndex]:undefined;
   const textBubble=textTarget?.kind==='bubble'?(textTarget.overlay?overlay?.bubbles:textPanel?.bubbles)?.[textTarget.index]:undefined;
@@ -1672,7 +1678,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
   return (
     <div data-paint-canvas onClickCapture={event=>{createTextAt(event,null);}} onDblClickCapture={event=>{if(!textTool)createTextAt(event,null,true);}} class={`canvas-viewport ${textTool&&!painting?'is-text-tool':''} ${painting?'is-painting':''} ${backgroundEdit?'is-background3d-editing':''} ${zoomTool?'is-zoom-tool':''} ${!painting&&!textTool&&!zoomTool&&!bubblePathTool?'is-selection-tool':bubblePathTool==='node'?'is-direct-selection-tool':''}`} onPointerDownCapture={event=>{bubbleTextDragged.current=false;const target=event.target as Element;if(textTool&&!painting&&!backgroundEdit&&event.button===0&&!spacePressedRef.current&&paperRef.current?.contains(target)&&!target.closest('.bubble-inline-editor,.background3d-window,.bubble-text-move-frame.is-active')){event.preventDefault();event.stopPropagation();return;}if(editingText&&!target.closest('.bubble-inline-editor,.text-settings-window,.canvas-text-toolbar,.font-family-popover'))onEndTextEdit?.();}}>
       {textSettingsOwner&&textToolbarHost&&createPortal(
-        <CanvasTextToolbar creating={!toolbarItem} style={toolbarTarget&&toolbarItem?{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}:textToolStyle} defaultFont={defaultBubbleFont} fontFamilies={fontFamilies} selection={textTarget?textSelection:undefined} selectionWeight={textTarget&&textSelection&&toolbarItem&&toolbarTarget?selectedTextWeight(toolbarItem,textSelection,renderedTextStyle(toolbarTarget).fontWeight):undefined} disabled={Boolean(toolbarItem?.hidden||toolbarTarget&&elementLocked({type:toolbarTarget.kind,index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex))} onChange={changeStyle} onSizeGesture={toolbarItem?phase=>onImageGesture?.(phase,'text-size'):undefined} onHistory={onTextHistory} onRequestFonts={onRequestFonts}/>,
+        <CanvasTextToolbar creating={!toolbarItem} typingStyle={typingTextStyle(textToolStyle)} style={toolbarTarget&&toolbarItem?{...renderedTextStyle(toolbarTarget),...textStyleOf(toolbarItem,toolbarTarget.kind)}:textToolStyle} defaultFont={defaultBubbleFont} fontFamilies={fontFamilies} selection={textTarget?textSelection:undefined} selectionWeight={selectedStyles?.fontWeight} selectionStyles={selectedStyles} disabled={Boolean(toolbarItem?.hidden||toolbarTarget&&elementLocked({type:toolbarTarget.kind,index:toolbarTarget.index,...(toolbarTarget.overlay?{scope:'page_overlay' as const}:{})},toolbarTarget.panelIndex))} onChange={changeStyle} onSizeGesture={toolbarItem?phase=>onImageGesture?.(phase,'text-size'):undefined} onHistory={onTextHistory} onRequestFonts={onRequestFonts}/>,
         textToolbarHost,
       )}
       <div ref={scrollRef} class="canvas-scroll">
@@ -1852,7 +1858,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </div>
       {painting&&paintTarget&&<PaintInputSurface canvas={canvas}/>}
       {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&screenText?.hidden!==true&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
-        <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} weights={(textBubble??screenText)?.text_weights} label={textTarget.kind==='bubble'?'吹き出しの文字':'通常文字'} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
+        <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} runs={(textBubble??screenText)?.text_runs} inlineStyle={(textBubble??screenText)?.text_style} label={textTarget.kind==='bubble'?'吹き出しの文字':'通常文字'} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
           onText={(value,edit)=>onText?.(textTarget,value,edit)} onHistory={onTextHistory} onSelection={value=>setTextSelection(previous=>previous?.start===value.start&&previous?.end===value.end?previous:value)} onEnd={()=>onEndTextEdit?.()}/>
 
       </div>}

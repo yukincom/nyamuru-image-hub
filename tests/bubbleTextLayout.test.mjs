@@ -4,6 +4,7 @@ import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import * as bubbleBezier from '../src/lib/bubbleBezier.ts';
+import {textStyleSegments,textInlineStyleCss} from '../src/lib/textStyle.ts';
 
 const source = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
 const shapeSource = readFileSync(new URL('../src/components/BubbleShapeSvg.tsx', import.meta.url), 'utf8');
@@ -23,7 +24,7 @@ test('text content alone is centered at each zoom; move chrome, top alignment an
       scrollWidth: 40, clientWidth: 40, scrollHeight: 50, clientHeight: 50,
       getBoundingClientRect: () => ({ width: 40 * scale }),
       parentElement: { getBoundingClientRect: () => ({ x: 0, y: 0, width: 100 * scale, height: 100 * scale }) } };
-    const context = { useRef: () => ({ current: el }), useLayoutEffect: (fn, values) => { effect = fn; deps = values; },
+    const context = { textStyleSegments,textInlineStyleCss,useRef: () => ({ current: el }), useLayoutEffect: (fn, values) => { effect = fn; deps = values; },
       getComputedStyle: () => ({ width: '40px' }), bubbleCssFontFamily: font => font, textStyleCss:()=>({fontSize:'1cqw'}),
       document: { createRange: () => ({ selectNode: node => assert.equal(node, content), getBoundingClientRect: () => ({ x: 35 * scale, y: 20 * scale, width: 40 * scale, height: 50 * scale }) }),
         fonts: { addEventListener: (event, fn) => { assert.equal(event, 'loadingdone'); fontListener = fn; }, removeEventListener: (event, fn) => { assert.equal(event, 'loadingdone'); assert.equal(fn, fontListener); } } },
@@ -33,7 +34,8 @@ test('text content alone is centered at each zoom; move chrome, top alignment an
     assert.equal(properties.get('--bubble-center-x'), '-5px');
     assert.equal(properties.get('--bubble-center-y'), '5px');
     assert.equal(vnode.children[0].props.class, 'bubble-text-content');
-    assert.equal(vnode.children[0].children[0], '長い列\n短い');
+    const text=node=>typeof node==='string'?node:Array.isArray(node)?node.map(text).join(''):node?.children?.map(text).join('')??'';
+    assert.equal(text(vnode.children[0]), '長い列\n短い');
     assert.deepEqual(Array.from(deps), ['長い列\n短い', 'test', 'thought', '', 100, 100, 1, .5, .5, undefined, undefined]);
     fontListener();
     assert.equal(properties.get('--bubble-center-x'), '-5px', 'font refit resets offsets, not accumulates');
@@ -240,7 +242,7 @@ test('an explicit point size is not shrunk even when the text overflows',()=>{
   const el={style:{setProperty:(k,v)=>properties.set(k,v),getPropertyValue:k=>properties.get(k)},
     scrollWidth:200,clientWidth:20,scrollHeight:200,clientHeight:20,getBoundingClientRect:()=>({width:20}),
     querySelector:()=>({}),parentElement:{getBoundingClientRect:()=>({x:0,y:0,width:20,height:20})}};
-  const context={useRef:()=>({current:el}),useLayoutEffect:fn=>{effect=fn},getComputedStyle:()=>({width:'20px'}),
+  const context={textStyleSegments,textInlineStyleCss,useRef:()=>({current:el}),useLayoutEffect:fn=>{effect=fn},getComputedStyle:()=>({width:'20px'}),
     bubbleCssFontFamily:font=>font,textStyleCss:()=>({fontSize:'2cqw'}),h:(type,props,...children)=>({type,props,children}),
     document:{createRange:()=>({selectNode:()=>{},getBoundingClientRect:()=>({x:0,y:0,width:200,height:200})}),fonts:{addEventListener:()=>{},removeEventListener:()=>{}}}};
   runInNewContext(`${javascript}\nBubbleText({text:'長い文字列'.repeat(20),font:'test',lengthClass:'is-very-long',boxW:20,boxH:20,fitEpoch:1,style:{fontSize:12}})`,context);

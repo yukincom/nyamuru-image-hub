@@ -10,7 +10,7 @@ import PaintPreviewCanvas from './PaintPreviewCanvas';
 import { loadFigureCropAsset } from '../lib/figureCropStore';
 import FigureSizeSvg from './FigureSizeSvg';
 import BubbleShapeSvg from './BubbleShapeSvg';
-import {textStyleCss,textStyleOf,textWeightSegments} from '../lib/textStyle';
+import {textStyleCss,textStyleOf,textStyleSegments,textInlineStyleCss} from '../lib/textStyle';
 import PaintCursor from './PaintCursor';
 import {bubbleTextPosition} from '../lib/bubbleClip.ts';
 import {figureDisplayLabel} from '../lib/displayLabels.ts';
@@ -42,7 +42,7 @@ export function PaintOriginal({owner}: {owner:PaintOwner}) {
     const position=bubbleTextPosition(bubble);
     const reference=paintReferenceBox(owner.paint,owner.frame);
     return <div ref={textHost} class="paint-original paint-bubble-original"><BubbleShapeSvg shape={bubble.shape} bezier={bubble.bezier}/>
-      <span class="paint-bubble-text" style={{left:`${position.x*100}%`,top:`${position.y*100}%`,...textStyleCss(textStyleOf(bubble,'bubble'),reference.w)}}>{bubble.text_weights?.length?textWeightSegments(bubble).map((part,i)=><span key={i} style={part.fontWeight?{fontWeight:part.fontWeight}:undefined}>{part.text}</span>):bubble.text}</span></div>;
+      <span class="paint-bubble-text" style={{left:`${position.x*100}%`,top:`${position.y*100}%`,...textStyleCss(textStyleOf(bubble,'bubble'),reference.w)}}>{textStyleSegments(bubble).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span></div>;
   }
   const level=owner.backgroundLevel===-1?'n1':owner.backgroundLevel??1;
   return <div class="paint-original paint-background-original" style={{backgroundColor:`var(--panel-bg-${level}-color)`,backgroundImage:`var(--panel-bg-${level}-image, none)`}}><small>{owner.description||'背景あたり'}</small></div>;

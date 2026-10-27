@@ -7,7 +7,7 @@ import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { toStoredMangaYaml, toSeparatedMangaYaml, parseMangaYaml, validateManga } from '../src/lib/manga.ts';
 import {bubbleStrokeWidthMm} from '../src/lib/bubblePresentation.ts';
 import {availableFontWeights,matchingFontWeight} from '../src/lib/bubbleFonts.ts';
-import {updateTextStyle,textStyleOf} from '../src/lib/textStyle.ts';
+import {updateTextStyle,textStyleOf,typingTextStyle} from '../src/lib/textStyle.ts';
 import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
 import { changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
@@ -304,13 +304,13 @@ test('T click makes the point the start of ordinary text and keeps page text thr
 test('dropping a native white bubble transfers style and keeps expanding around authored text',()=>{
  const d=fixture(),screen=addCanvasTextAt(d,0,0,{x:55,y:80});
  editCanvasText(d,screen,'中央\n文字');
- const item=canvasTextAt(d,screen);item.text_style={font:'BIZ UDP明朝',fontSize:15,fontWeight:700};item.text_weights=[{start:0,end:2,fontWeight:900}];
+ const item=canvasTextAt(d,screen);item.text_style={font:'BIZ UDP明朝',fontSize:15,fontWeight:700};item.text_runs=[{start:0,end:2,fontWeight:900}];
  const center={x:item.bbox.x+item.bbox.w/2,y:item.bbox.y+item.bbox.h/2};
  const bubble=convertScreenTextToBubble(d,{screenText:screen,materialId:'nomal_01'});
  assert.ok(bubble);assert.equal(d.manga.pages[0].panels[0].screen_text,undefined);
  const converted=canvasTextAt(d,bubble);assert.equal(converted.text,'中央\n文字');
  assert.deepEqual(converted.text_style,{font:'BIZ UDP明朝',fontSize:15,fontWeight:700,orientation:'vertical'});
- assert.deepEqual(converted.text_weights,[{start:0,end:2,fontWeight:900}]);
+ assert.deepEqual(converted.text_runs,[{start:0,end:2,fontWeight:900}]);
  assert.ok(Math.abs(converted.bbox.x+converted.bbox.w/2-center.x)<1e-9);
  assert.ok(Math.abs(converted.bbox.y+converted.bbox.h/2-center.y)<1e-9);
  assert.deepEqual({w:converted.bbox.w,h:converted.bbox.h},bubbleTextMinimumSize(converted));
@@ -338,7 +338,7 @@ test('native text fitting does not depend on the OCR image visibility metadata',
 
 test('font, size and weight changes never move or resize a bubble through any selection path',()=>{
  let d=fixture();const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false},bubble=canvasTextAt(d,target);
- bubble.bbox={x:31,y:42,w:27,h:38};bubble.text_position={x:.72,y:.28};bubble.text_weights=[{start:0,end:2,fontWeight:700}];
+ bubble.bbox={x:31,y:42,w:27,h:38};bubble.text_position={x:.72,y:.28};bubble.text_runs=[{start:0,end:2,fontWeight:700}];
  const geometry=structuredClone({bbox:bubble.bbox,text_position:bubble.text_position});
  for(const [patch,selection] of [[{font:'BIZ UDP明朝'}],[{fontWeight:900},{start:1,end:3}],[{fontSize:38}]]){
   const next=editCanvasTextStyle(d,target,patch,selection);assert.notEqual(next,d);d=next;const item=canvasTextAt(d,target);assert.deepEqual({bbox:item.bbox,text_position:item.text_position},geometry);
@@ -421,4 +421,34 @@ test('text visibility survives saved YAML and leaves hidden text out of editing 
   assert.equal(toggleCanvasTextVisibility(saved,target),true);assert.equal(canvasTextEditable(saved,target),true);assert.equal(canvasTextAt(saved,target).text,before.text);
   toggleCanvasTextVisibility(doc,target);assert.equal(canvasTextAt(doc,target).hidden,false);
  }
+});
+
+test('実Appの入力待ちスタイルは部分書式・別の文字設定を経ても保持し、入力だけに反映する',()=>{
+ const documentRef={current:fixture()},target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
+ const item=canvasTextAt(documentRef.current,target);item.text='ABC';item.text_style={fontWeight:400};
+ let style={fontSize:12,orientation:'vertical'},updates=0;
+ const context={localFontCatalog:{current:[]},availableFontWeights,updateTextStyle,textStyleOf,typingTextStyle,setTextToolStyle:fn=>{style=fn(style);context.textToolStyle=style;},documentRef,textToolStyle:style,paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,editCanvasTextStyle,canvasTextAt,cloneDocument:structuredClone,editCanvasText,imageGesture:{current:{}},lastHistoryPush:{current:0},setDocument:next=>{updates++;documentRef.current=next;},setToast:message=>assert.fail(message)};
+ context.changeTextToolStyle=appHandler('changeTextToolStyle',context);
+ const patch=appHandler('changeCanvasTextStyle',context),type=appHandler('changeCanvasText',context);
+ const before=JSON.stringify(documentRef.current);
+ context.changeTextToolStyle({italic:true,underline:true});assert.equal(updates,0);assert.equal(JSON.stringify(documentRef.current),before);
+ patch(target,{strikethrough:true},{start:0,end:1});
+ patch(target,{fontSize:22});
+ assert.equal(style.italic,true);assert.equal(style.underline,true);assert.equal(style.strikethrough,true);assert.equal(style.fontSize,22);
+ type(target,'ABC新',{start:3,end:3});
+ const next=canvasTextAt(documentRef.current,target);
+ assert.equal(next.text,'ABC新');assert.deepEqual(next.text_runs,[{start:0,end:1,strikethrough:true},{start:3,end:4,italic:true,underline:true,strikethrough:true}]);
+ context.changeTextToolStyle({italic:false,underline:false,strikethrough:false});
+ type(target,'ABC新平',{start:4,end:4});
+ assert.deepEqual(canvasTextAt(documentRef.current,target).text_runs.at(-1),{start:4,end:5,italic:false,underline:false,strikethrough:false});
+});
+
+test('実キャンバスは選択のないスタイル操作を本文編集・履歴へ送らない',()=>{
+ const source=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8'),ast=ts.createSourceFile('MangaCanvas.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='changeStyle')body=node.initializer.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(body);
+ const calls=[],context={toolbarTarget:{kind:'bubble'},toolbarItem:{text:'ABC'},textTarget:{kind:'bubble'},textSelection:{start:1,end:1},onTextToolStyle:patch=>calls.push(['typing',{...patch}]),onTextStyle:(target,patch,selection)=>calls.push(['document',{...patch},{...selection}])};
+ const change=runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+ change({italic:true},'selection-or-typing');assert.deepEqual(calls,[['typing',{italic:true}]]);
+ context.textSelection={start:1,end:2};change({italic:true},'selection-or-typing');assert.deepEqual(calls.at(-1),['document',{italic:true},{start:1,end:2}]);
+ context.textTarget=null;change({underline:true},'selection-or-typing');assert.deepEqual(calls.at(-1),['typing',{underline:true}]);
 });

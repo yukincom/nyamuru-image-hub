@@ -1,6 +1,6 @@
 import type { BBox, Bubble, Figure, ImageContent, MangaDocument, Panel } from '../types.ts';
 import { useScenarioBubbleText } from './scenario.ts';
-import { rebaseTextWeights, syncBubbleEmphasisFromWeights } from './textStyle.ts';
+import { rebaseTextRuns, syncBubbleEmphasisFromStyles } from './textStyle.ts';
 
 export interface BubbleTextTarget { pageIndex:number; panelIndex:number; bubbleIndex:number; overlay:boolean }
 export const panelVisible = (panel:Panel) => panel.layer?.hidden !== true;
@@ -106,14 +106,14 @@ export function bubbleAt(document:MangaDocument,target:BubbleTextTarget) {
   return (target.overlay?page?.page_overlay:page?.panels[target.panelIndex])?.bubbles?.[target.bubbleIndex];
 }
 /** Change only the addressed text; retain speaker, OCR source and reading order. */
-export function editBubbleText(document:MangaDocument,target:BubbleTextTarget,text:string,edit?:import('./textStyle.ts').TextSelection,origin:'manual'|'agent'='manual'):boolean {
+export function editBubbleText(document:MangaDocument,target:BubbleTextTarget,text:string,edit?:import('./textStyle.ts').TextSelection,origin:'manual'|'agent'='manual',insertionStyle?:import('../types.ts').TextInlineStyle):boolean {
   const bubble=bubbleAt(document,target);
   const panel=!target.overlay?document.manga.pages[target.pageIndex].panels[target.panelIndex]:undefined;
   if(!bubble || origin==='manual'&&ownerItemLocked(bubble) || !bubbleVisible(bubble) || (!target.overlay && (!panel||!panelVisible(panel)||origin==='manual'&&panelLocked(panel))))return false;
   if(bubble.text===text)return false;
-  rebaseTextWeights(bubble,text,edit);
+  rebaseTextRuns(bubble,text,edit,insertionStyle);
   if(document.manga.scenario)useScenarioBubbleText(bubble,text);else bubble.text=text;
-  syncBubbleEmphasisFromWeights(bubble);
+  syncBubbleEmphasisFromStyles(bubble);
   if(bubble.analogTextImport)bubble.analogTextImport.needsReview=false;
   return true;
 }

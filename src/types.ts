@@ -128,9 +128,13 @@ export interface TextStyle {
   /** Printed point size, independent of canvas zoom. */
   fontSize?: number;
   fontWeight?: number;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
 }
 /** UTF-16 offsets match native text selection; ranges never split a surrogate pair. */
-export interface TextWeightRange { start: number; end: number; fontWeight: number }
+export type TextInlineStyle = Pick<TextStyle, 'fontWeight' | 'italic' | 'underline' | 'strikethrough'>;
+export interface TextStyleRange extends TextInlineStyle { start: number; end: number }
 
 export interface Bubble {
   /** The native shape, text, tails and painted additions share one layer visibility. */
@@ -143,7 +147,7 @@ export interface Bubble {
   paint_overlay?: ImageContent;
   text: string;
   text_style?: TextStyle;
-  text_weights?: TextWeightRange[];
+  text_runs?: TextStyleRange[];
   speaker?: string;
   /** 登場人物カタログへのローカル参照。 */
   speakerId?: string;
@@ -181,7 +185,7 @@ export interface ScreenText {
   hidden?: boolean;
   text: string;
   text_style?: TextStyle;
-  text_weights?: TextWeightRange[];
+  text_runs?: TextStyleRange[];
   bbox?: BBox;
   orientation?: ScreenTextOrientation;
   /** コマ分割線をまたいだため両方へ複製された、ローカル確認用フラグ。 */

@@ -6,7 +6,7 @@ import { browserWorkspaces, isBrowserWorkspace } from '../lib/browserWorkspace';
 import { chooseBrowserFiles, downloadBrowserBlob, blobRevision } from '../lib/browserFiles';
 import { createPortableProject, restorePortableProject } from '../lib/portableProject';
 import { rememberBrowserCatalog } from '../lib/browserCatalog';
-import {textStyleOf,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
+import {textStyleOf,typingTextStyle,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
 import type {Bubble,TextStyle} from '../types';
 import { loadAgentPreferences, saveAgentPreferences, type AgentPreferences } from '../lib/agentPreferences';
 import {agentEditorSnapshot,createAgentRevision,prepareAgentBubbleEdit,selectedAgentBubble} from '../lib/agentTools';
@@ -3179,7 +3179,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   }
   function changeCanvasText(target:CanvasTextTarget,text:string,edit?:TextSelection){
     const next=cloneDocument(documentRef.current);
-    if(editCanvasText(next,target,text,edit)){imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}
+    if(editCanvasText(next,target,text,edit,'manual',typingTextStyle(textToolStyle))){imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}
   }
   function changeTextToolStyle(patch:TextStylePatch){
     setTextToolStyle(current=>{
@@ -3189,7 +3189,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   }
   function changeCanvasTextStyle(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
     if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
-    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection,patch.font?availableFontWeights(patch.font,localFontCatalog.current):undefined);if(next!==documentRef.current){changeTextToolStyle(textStyleOf(canvasTextAt(next,target)!,target.kind));if(imageGesture.current.source!=='text-size'){imageGesture.current.pushed=false;lastHistoryPush.current=0;}setDocument(next);}}
+    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection,patch.font?availableFontWeights(patch.font,localFontCatalog.current):undefined);if(next!==documentRef.current){changeTextToolStyle(patch);if(imageGesture.current.source!=='text-size'){imageGesture.current.pushed=false;lastHistoryPush.current=0;}setDocument(next);}}
     catch(error){setToast(error instanceof Error?error.message:'文字設定を変更できません');}
   }
   function changeSelectedBubbleLineWidth(width:number){

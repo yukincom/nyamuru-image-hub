@@ -1,4 +1,4 @@
-import type { BBox, Bubble, Manga, Panel, PlacedImage, ScreenText } from '../types.ts';
+import type { BBox, Bubble, Manga, Panel, PlacedImage, ScreenText, TextInlineStyle } from '../types.ts';
 import { compileArtworkRules, getArtworkSettings } from './artworkRules.ts';
 import { fallbackBox, panelBounds, panelShapePoints } from './canvasGeometry.ts';
 import { isPropPlacement } from './catalogModel.ts';
@@ -9,7 +9,7 @@ import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
 import { bubbleVisible, panelFrameVisible, panelVisible } from './panelLayers.ts';
 import { QWEN_GENERATION_PROFILE, type QwenGenerationPlan, type QwenReferenceCandidate } from './qwenGeneration.ts';
 import { bubbleCssFontFamily } from './bubbleFonts.ts';
-import { textStyleOf, textWeightSegments } from './textStyle.ts';
+import { textStyleOf, textStyleSegments } from './textStyle.ts';
 import { figurePaintVisible } from './paintDocument.ts';
 import { bubbleTextPosition } from './bubbleClip.ts';
 import { bubbleStrokeWidthMm } from './bubblePresentation.ts';
@@ -132,7 +132,7 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
 
 /** Keep Unicode characters, explicit line breaks and per-range emphasis during rasterization. */
 export function qwenCompositionTextRuns(item: Bubble | ScreenText) {
-  return textWeightSegments(item).flatMap(segment => Array.from(segment.text, text => ({ text, fontWeight: segment.fontWeight })));
+  return textStyleSegments(item).flatMap(({text,...style}) => Array.from(text, character => ({ text:character, ...style })));
 }
 
 function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, box: BBox, viewport: BBox, kind: 'bubble' | 'screen_text', defaultFont: string) {
@@ -143,13 +143,13 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
   const width = box.w * (1 - padding * 2) * scale, height = box.h * (1 - padding * 2) * context.canvas.height / viewport.h;
   const family = bubbleCssFontFamily(style.font ?? defaultFont), runs = qwenCompositionTextRuns(item);
   let size = style.fontSize ? style.fontSize * 25.4 / 72 * scale : Math.min(5 * scale, Math.max(2 * scale, Math.min(width, height) / 3));
-  const setFont = (weight?: number) => { context.font = `${weight ?? style.fontWeight ?? 600} ${size}px ${family}`; };
+  const setFont = (run:TextInlineStyle) => { context.font = `${run.italic?'italic':'normal'} ${run.fontWeight ?? style.fontWeight ?? 600} ${size}px ${family}`; };
   const layout = () => {
-    const lines: Array<Array<{ text: string; fontWeight?: number; advance: number }>> = [[]]; let length = 0;
+    const lines: Array<Array<{ text: string; advance: number }&TextInlineStyle>> = [[]]; let length = 0;
     for (const run of runs) {
       if (run.text === '\r') continue;
       if (run.text === '\n') { lines.push([]); length = 0; continue; }
-      setFont(run.fontWeight); const advance = vertical ? size : context.measureText(run.text).width;
+      setFont(run); const advance = vertical ? size : context.measureText(run.text).width;
       if (length + advance > (vertical ? height : width) && lines.at(-1)!.length) { lines.push([]); length = 0; }
       lines.at(-1)!.push({ ...run, advance }); length += advance;
     }
@@ -157,19 +157,27 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
   };
   let lines = layout();
   if (!style.fontSize) for (let attempt = 0; attempt < 12 && lines.length * size * 1.35 > (vertical ? width : height); attempt++) { size *= .85; lines = layout(); }
-  context.save(); context.fillStyle = '#111'; context.textAlign = vertical ? 'center' : 'left'; context.textBaseline = 'middle';
+  context.save(); context.fillStyle = '#111'; context.strokeStyle = '#111'; context.lineWidth=Math.max(.5,size/16); context.textAlign = vertical ? 'center' : 'left'; context.textBaseline = 'middle';
   const across = lines.length * size * 1.35, longest = Math.max(...lines.map(line => line.reduce((sum, run) => sum + run.advance, 0)));
   const position=kind==='bubble'?bubbleTextPosition(item as Bubble):{x:.5,y:.5};
   const anchorX=(box.x-viewport.x+box.w*position.x)*scale,anchorY=(box.y-viewport.y+box.h*position.y)*context.canvas.height/viewport.h;
   lines.forEach((line, index) => {
     let advance = 0;
     for (const run of line) {
-      setFont(run.fontWeight);
+      setFont(run);
       const px = vertical ? (kind==='bubble'?anchorX+across/2-(index+.5)*size*1.35:x+(width+across)/2-(index+.5)*size*1.35) : (kind==='bubble'?anchorX-longest/2:x) + advance;
       const py = vertical ? (kind==='bubble'?anchorY-longest/2:y) + advance + size / 2 : (kind==='bubble'?anchorY-across/2:y) + (index + .5) * size * 1.35;
       if (vertical && /^[ー―—…()（）\[\]「」『』〈〉《》]$/u.test(run.text)) {
         context.save(); context.translate(px, py); context.rotate(Math.PI / 2); context.fillText(run.text, 0, 0); context.restore();
       } else context.fillText(run.text, px, py);
+      for(const decoration of ['underline','strikethrough'] as const){
+        if(!run[decoration])continue;
+        const offset=decoration==='underline'?size*.5:0;
+        context.beginPath();
+        if(vertical){context.moveTo(px+offset,py-size/2);context.lineTo(px+offset,py-size/2+run.advance);}
+        else {context.moveTo(px,py+offset);context.lineTo(px+run.advance,py+offset);}
+        context.stroke();
+      }
       advance += run.advance;
     }
   });

@@ -4,7 +4,7 @@ import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {parseMangaYaml,toMangaYaml,toSeparatedMangaYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 import {canvasTextAt,changeCanvasDefaultFont,editCanvasBubbleMaterial,editCanvasText,editCanvasTextStyle} from '../src/lib/canvasText.ts';
 import {BUBBLE_MATERIALS} from '../src/lib/bubblePresetData.ts';
-import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextWeight,validTextWeights,textWeightSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
+import {canvasLengthCss,textToolCursor,textStyleCss,textStyleOf,validTextWeight,validTextRuns,textStyleSegments,selectedTextWeight} from '../src/lib/textStyle.ts';
 import {pixelZoomWidth} from '../src/lib/canvasZoom.ts';
 import {paintReferenceBox} from '../src/lib/paintDocument.ts';
 import {readFileSync} from 'node:fs';
@@ -21,47 +21,47 @@ test('実フォントのウェイト値を丸めず編集・保存・再読込�
     assert.equal(canvasTextAt(document,target).text_style.fontWeight,weight);
     const restored=parseMangaYaml(toStoredMangaYaml(document));
     assert.equal(canvasTextAt(restored,target).text_style.fontWeight,weight);
-    assert.equal(validTextWeights([{start:0,end:1,fontWeight:weight}],'字'),true);
+    assert.equal(validTextRuns([{start:0,end:1,fontWeight:weight}],'字'),true);
   }
   for(const weight of [0,1001,250.5,NaN])assert.equal(validTextWeight(weight),false);
 });
 
 test('書体の選択時だけ基本太さと部分太さを実在候補へ合わせ、元文書を保つ',()=>{
   const original=fixture(),before=canvasTextAt(original,target);before.text_style.fontWeight=900;
-  const box={...before.bbox},ranges=before.text_weights.map(range=>({...range}));
+  const box={...before.bbox},ranges=before.text_runs.map(range=>({...range}));
   const single=editCanvasTextStyle(original,target,{font:'Single'},undefined,[{value:400,label:'B'}]),item=canvasTextAt(single,target);
-  assert.equal(item.text_style.fontWeight,400);assert.ok(item.text_weights.every(range=>range.fontWeight===400));
-  assert.deepEqual(item.text_weights.map(({start,end})=>({start,end})),ranges.map(({start,end})=>({start,end})));
-  assert.deepEqual(item.bbox,box);assert.equal(before.text_style.fontWeight,900);assert.deepEqual(before.text_weights,ranges);
+  assert.equal(item.text_style.fontWeight,400);assert.ok(item.text_runs.every(range=>range.fontWeight===400));
+  assert.deepEqual(item.text_runs.map(({start,end})=>({start,end})),ranges.map(({start,end})=>({start,end})));
+  assert.deepEqual(item.bbox,box);assert.equal(before.text_style.fontWeight,900);assert.deepEqual(before.text_runs,ranges);
   assert.equal(editCanvasTextStyle(single,target,{font:'Single'},undefined,[{value:400,label:'B'}]),single);
   const multiple=editCanvasTextStyle(original,target,{font:'Multiple'},undefined,[{value:300,label:'W3'},{value:600,label:'W6'}]);
-  assert.equal(canvasTextAt(multiple,target).text_style.fontWeight,600);assert.ok(canvasTextAt(multiple,target).text_weights.every(range=>range.fontWeight===600));
+  assert.equal(canvasTextAt(multiple,target).text_style.fontWeight,600);assert.ok(canvasTextAt(multiple,target).text_runs.every(range=>range.fontWeight===600));
   const unknown=editCanvasTextStyle(original,target,{font:'Unknown'},undefined,[]);
-  assert.equal(canvasTextAt(unknown,target).text_style.fontWeight,900);assert.deepEqual(canvasTextAt(unknown,target).text_weights,ranges);
+  assert.equal(canvasTextAt(unknown,target).text_style.fontWeight,900);assert.deepEqual(canvasTextAt(unknown,target).text_runs,ranges);
 });
 
 test('書体変更だけではシナリオ由来の強調情報を削除しない',()=>{
   for(const keepRanges of [false,true]){
     const document=fixture(),bubble=canvasTextAt(document,target);bubble.emphasis='元気';bubble.text_style.fontWeight=400;
-    if(keepRanges)bubble.text_weights=[{start:4,end:6,fontWeight:400}];else delete bubble.text_weights;
+    if(keepRanges)bubble.text_runs=[{start:4,end:6,fontWeight:400}];else delete bubble.text_runs;
     const next=editCanvasTextStyle(document,target,{font:'Single'},undefined,[{value:400,label:'B'}]);
     assert.equal(canvasTextAt(next,target).emphasis,'元気');
   }
 });
 
 test('same text styles keep the original work without cloning or fitting',()=>{
-  const d=fixture(),b=canvasTextAt(d,target),style=b.text_style,weights=b.text_weights;
+  const d=fixture(),b=canvasTextAt(d,target),style=b.text_style,weights=b.text_runs;
   Object.defineProperty(d.manga,'unrelated',{enumerable:true,get(){throw Error('no whole-work clone on a no-op');}});
   for(const patch of [{},{fontSize:13},{font:'游明朝'},{fontSize:13,font:'游明朝'}])assert.equal(editCanvasTextStyle(d,target,patch),d);
   assert.equal(editCanvasTextStyle(d,target,{fontWeight:800},{start:4,end:6}),d);
-  assert.equal(b.text_style,style);assert.equal(b.text_weights,weights);
+  assert.equal(b.text_style,style);assert.equal(b.text_runs,weights);
 });
 test('explicit defaults, partial weight removal and orientation synchronization remain real edits',()=>{
   const original=fixture();delete canvasTextAt(original,target).text_style.fontSize;
   const explicit=editCanvasTextStyle(original,target,{fontSize:15});assert.notEqual(explicit,original);assert.equal(canvasTextAt(original,target).text_style.fontSize,undefined);
   const inherited=editCanvasTextStyle(explicit,target,{fontSize:null});assert.notEqual(inherited,explicit);assert.equal(canvasTextAt(inherited,target).text_style.fontSize,undefined);
   assert.equal(editCanvasTextStyle(inherited,target,{fontSize:null}),inherited);
-  const cleared=editCanvasTextStyle(original,target,{fontWeight:500});assert.notEqual(cleared,original);assert.equal(canvasTextAt(cleared,target).text_weights,undefined);assert.ok(canvasTextAt(original,target).text_weights);
+  const cleared=editCanvasTextStyle(original,target,{fontWeight:500});assert.notEqual(cleared,original);assert.equal(canvasTextAt(cleared,target).text_runs,undefined);assert.ok(canvasTextAt(original,target).text_runs);
   assert.equal(editCanvasTextStyle(cleared,target,{fontWeight:500}),cleared);
   original.manga.pages[0].panels[0].screen_text=[{text:'方向',orientation:'vertical',text_style:{orientation:'horizontal'}}];
   const screen={...target,kind:'screen_text'},synced=editCanvasTextStyle(original,screen,{orientation:'horizontal'});
@@ -86,7 +86,7 @@ test('OCR text styles and body change independently of original raster eyes, loc
 });
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:180,h:240},bg:0,bubbles:[{
   text:'今日は\n元気だよ。',shape:'normal',speaker:'A',monologue:true,bbox:{x:70,y:25,w:48,h:60},tail:{x:.3,y:.7},tail_root:{x:.2,y:.5},text_position:{x:.25,y:.7},clip_to_panel:true,
-  text_style:{font:'游明朝',fontSize:13,fontWeight:500},text_weights:[{start:4,end:6,fontWeight:800}],
+  text_style:{font:'游明朝',fontSize:13,fontWeight:500},text_runs:[{start:4,end:6,fontWeight:800}],
 }]}];return d;}
 test('all 45 dropped materials, including the seven author clouds, replace only the outline; one native bubble remains',()=>{
   assert.equal(BUBBLE_MATERIALS.length,45);
@@ -103,19 +103,19 @@ test('native text styling and material geometry survive stored and exported OMNY
   d=editCanvasTextStyle(d,target,{fontSize:16,fontWeight:700});
   d=editCanvasTextStyle(d,target,{fontWeight:900},{start:4,end:6});
   const b=d.manga.pages[0].panels[0].bubbles[0];
-  assert.equal(b.text_style.fontSize,16);assert.equal(b.text_style.fontWeight,700);assert.equal(b.text_weights[0].fontWeight,900);
+  assert.equal(b.text_style.fontSize,16);assert.equal(b.text_style.fontWeight,700);assert.equal(b.text_runs[0].fontWeight,900);
   assert.equal(b.emphasis,'元気');
   for(const serialize of [toMangaYaml,toSeparatedMangaYaml,toStoredMangaYaml]){
     const r=parseMangaYaml(serialize(d)).manga.pages[0].panels[0].bubbles[0];
-    for(const key of ['text','text_style','text_weights','emphasis','bbox','bezier','tail','tail_root','text_position','clip_to_panel'])assert.deepEqual(r[key],b[key]);
+    for(const key of ['text','text_style','text_runs','emphasis','bbox','bezier','tail','tail_root','text_position','clip_to_panel'])assert.deepEqual(r[key],b[key]);
   }
-  assert.equal(validateManga(d).filter(i=>/text_style|text_weights/.test(i.path)).length,0);
+  assert.equal(validateManga(d).filter(i=>/text_style|text_runs/.test(i.path)).length,0);
 });
 test('text edits rebase unchanged styles while replacement characters do not inherit unrelated weights',()=>{
   const d=fixture();editCanvasText(d,target,'今日は\nとても元気だよ。');
-  const b=d.manga.pages[0].panels[0].bubbles[0];assert.deepEqual(b.text_weights,[{start:7,end:9,fontWeight:800}]);
-  editCanvasText(d,target,'今日は\nとても平気だよ。');assert.deepEqual(b.text_weights,[{start:8,end:9,fontWeight:800}]);
-  assert.equal(textWeightSegments(b).map(s=>s.text).join(''),b.text);
+  const b=d.manga.pages[0].panels[0].bubbles[0];assert.deepEqual(b.text_runs,[{start:7,end:9,fontWeight:800}]);
+  editCanvasText(d,target,'今日は\nとても平気だよ。');assert.deepEqual(b.text_runs,[{start:8,end:9,fontWeight:800}]);
+  assert.equal(textStyleSegments(b).map(s=>s.text).join(''),b.text);
 });
 test('size is never chosen by material replacement or weight-only edits',()=>{
   let d=fixture(),b=canvasTextAt(d,target);const box=structuredClone(b.bbox);
@@ -162,27 +162,27 @@ test('hidden/locked targets, unknown materials, invalid sizes and split surrogat
   assert.throws(()=>editCanvasBubbleMaterial(d,target,'missing'));assert.throws(()=>editCanvasTextStyle(d,target,{fontSize:0}));
   b.hidden=true;assert.equal(editCanvasBubbleMaterial(d,target,'nomal_01'),false);assert.equal(editCanvasTextStyle(d,target,{fontSize:20}),d);
   delete b.hidden;b.paint_overlay={locked:true};assert.equal(editCanvasText(d,target,'bad'),false);
-  assert.equal(validTextWeights([{start:1,end:2,fontWeight:700}],'🐱'),false);
-  assert.equal(validTextWeights([{start:0,end:2,fontWeight:700}],'🐱'),true);
+  assert.equal(validTextRuns([{start:1,end:2,fontWeight:700}],'🐱'),false);
+  assert.equal(validTextRuns([{start:0,end:2,fontWeight:700}],'🐱'),true);
 });
 
 test('editing offsets preserve emphasis when repeated characters make full-text diff ambiguous',()=>{
-  let d=fixture(),b=canvasTextAt(d,target);b.text='同同';b.text_weights=[{start:0,end:1,fontWeight:800}];
-  editCanvasText(d,target,'同同同',{start:0,end:0});assert.deepEqual(b.text_weights,[{start:1,end:2,fontWeight:800}]);
-  d=editCanvasTextStyle(d,target,{fontSize:18,orientation:'horizontal'});b=canvasTextAt(d,target);assert.deepEqual(b.text_weights,[{start:1,end:2,fontWeight:800}]);
-  editCanvasText(d,target,'同同',{start:0,end:1});assert.deepEqual(b.text_weights,[{start:0,end:1,fontWeight:800}]);
+  let d=fixture(),b=canvasTextAt(d,target);b.text='同同';b.text_runs=[{start:0,end:1,fontWeight:800}];
+  editCanvasText(d,target,'同同同',{start:0,end:0});assert.deepEqual(b.text_runs,[{start:1,end:2,fontWeight:800}]);
+  d=editCanvasTextStyle(d,target,{fontSize:18,orientation:'horizontal'});b=canvasTextAt(d,target);assert.deepEqual(b.text_runs,[{start:1,end:2,fontWeight:800}]);
+  editCanvasText(d,target,'同同',{start:0,end:1});assert.deepEqual(b.text_runs,[{start:0,end:1,fontWeight:800}]);
 });
 
 test('page-foreground and screen text preserve line breaks and partial weights in both OMNY forms',()=>{
   let d=fixture();const sample=structuredClone(d.manga.pages[0].panels[0].bubbles[0]);
   d.manga.pages[0].page_overlay={bubbles:[sample]};
-  d.manga.pages[0].panels[0].screen_text=[{text:sample.text,text_style:sample.text_style,text_weights:sample.text_weights,orientation:'horizontal'}];
+  d.manga.pages[0].panels[0].screen_text=[{text:sample.text,text_style:sample.text_style,text_runs:sample.text_runs,orientation:'horizontal'}];
   for(const t of [{...target,overlay:true},{...target,kind:'screen_text'}]){
     d=editCanvasTextStyle(d,t,{fontSize:18});editCanvasText(d,t,'今日は\n元気だよ！');
   }
   for(const serialize of [toMangaYaml,toStoredMangaYaml]){
     const r=parseMangaYaml(serialize(d)).manga.pages[0];
-    for(const b of [r.page_overlay.bubbles[0],r.panels[0].screen_text[0]]){assert.equal(b.text,'今日は\n元気だよ！');assert.equal(b.text_style.fontSize,18);assert.deepEqual(b.text_weights,[{start:4,end:6,fontWeight:800}]);}
+    for(const b of [r.page_overlay.bubbles[0],r.panels[0].screen_text[0]]){assert.equal(b.text,'今日は\n元気だよ！');assert.equal(b.text_style.fontSize,18);assert.deepEqual(b.text_runs,[{start:4,end:6,fontWeight:800}]);}
   }
   assert.equal(selectedTextWeight(sample,{start:4,end:6}),800);
   assert.equal(selectedTextWeight(sample,{start:0,end:6}),null);
@@ -199,4 +199,64 @@ test('changing the work default font preserves every existing inherited text and
   for(const item of [panel.bubbles[0],panel.screen_text[0],d.manga.pages[0].page_overlay.bubbles[0],d.manga.pages[0].page_overlay.screen_text[0]])assert.equal(item.text_style.font,'アンチック体');
   assert.equal(changeCanvasDefaultFont(d,'I-OTFアンチックStd B'),false);
   assert.throws(()=>changeCanvasDefaultFont(d,'   '),/基本書体/);
+});
+
+test('重なるスタイルは同じ範囲へ統合し、一部解除でも他の太さと装飾を保つ',()=>{
+  const original=fixture(),item=canvasTextAt(original,target);item.text='AB𠮷CDEF';item.text_style={fontWeight:400,underline:true};delete item.text_runs;
+  let doc=editCanvasTextStyle(original,target,{italic:true},{start:1,end:6});
+  doc=editCanvasTextStyle(doc,target,{fontWeight:800,strikethrough:true},{start:2,end:5});
+  doc=editCanvasTextStyle(doc,target,{underline:false,italic:false},{start:4,end:6});
+  const updated=canvasTextAt(doc,target);
+  assert.deepEqual(updated.text_runs,[
+    {start:1,end:2,italic:true},
+    {start:2,end:4,italic:true,fontWeight:800,strikethrough:true},
+    {start:4,end:5,italic:false,fontWeight:800,strikethrough:true,underline:false},
+    {start:5,end:6,italic:false,underline:false},
+  ]);
+  assert.equal(editCanvasTextStyle(doc,target,{underline:false,italic:false},{start:4,end:6}),doc);
+  assert.equal(validTextRuns(updated.text_runs,updated.text),true);
+  const segments=textStyleSegments(updated);
+  assert.equal(segments.map(part=>part.text).join(''),updated.text);
+  assert.equal(segments.find(part=>part.text==='C').underline,false);
+  assert.equal(segments[0].underline,true);assert.equal(segments.at(-1).underline,true);
+  assert.equal(item.text_runs,undefined);assert.deepEqual(item.text_style,{fontWeight:400,underline:true});
+  assert.throws(()=>editCanvasTextStyle(doc,target,{italic:true},{start:2,end:3}),/範囲/);
+});
+
+test('全体の太さを変えても部分の斜体・下線・取り消し線は消えない',()=>{
+  let doc=editCanvasTextStyle(fixture(),target,{fontWeight:900,italic:true,underline:true,strikethrough:true},{start:0,end:3});
+  doc=editCanvasTextStyle(doc,target,{fontWeight:400});
+  const item=canvasTextAt(doc,target);
+  assert.equal(item.text_style.fontWeight,400);
+  assert.deepEqual(item.text_runs,[{start:0,end:3,italic:true,underline:true,strikethrough:true}]);
+  const normalized=editCanvasTextStyle(doc,target,{font:'Single'},undefined,[{value:400,label:'Regular'}]);
+  assert.deepEqual(canvasTextAt(normalized,target).text_runs,item.text_runs);
+});
+
+test('入力待ちスタイルは挿入・置換した文字だけに適用し、削除でも前後を保持する',()=>{
+  const doc=fixture(),item=canvasTextAt(doc,target);item.text='AB𠮷CD';item.text_style={fontWeight:400,italic:true};
+  item.text_runs=[{start:1,end:4,fontWeight:800,underline:true}];
+  const insertion={fontWeight:700,italic:false,underline:false,strikethrough:true};
+  editCanvasText(doc,target,'AB新𠮷CD',{start:2,end:2},'manual',insertion);
+  assert.deepEqual(item.text_runs,[{start:1,end:2,fontWeight:800,underline:true},{start:2,end:3,...insertion},{start:3,end:5,fontWeight:800,underline:true}]);
+  editCanvasText(doc,target,'AB新語CD',{start:3,end:5},'manual',insertion);
+  assert.deepEqual(item.text_runs,[{start:1,end:2,fontWeight:800,underline:true},{start:2,end:4,...insertion}]);
+  editCanvasText(doc,target,'ABCD',{start:2,end:4},'manual',insertion);
+  assert.deepEqual(item.text_runs,[{start:1,end:2,fontWeight:800,underline:true}]);
+});
+
+test('通常文字・吹き出し・前景のスタイルと明示解除が保存往復する',()=>{
+  for(const kind of ['bubble','screen_text'])for(const overlay of [false,true]){
+    const doc=fixture(),page=doc.manga.pages[0],t={...target,kind,overlay};
+    if(overlay)page.page_overlay={};
+    const owner=overlay?page.page_overlay:page.panels[0],key=kind==='bubble'?'bubbles':'screen_text';
+    owner[key]=[{text:'ABC𠮷D',text_style:{fontSize:20,fontWeight:400,italic:true,underline:true},text_runs:[{start:1,end:3,italic:false,underline:false,strikethrough:true},{start:3,end:5,fontWeight:900}]}];
+    const item=canvasTextAt(doc,t);
+    for(const writer of [toStoredMangaYaml,toSeparatedMangaYaml,toMangaYaml]){
+      const restored=parseMangaYaml(writer(doc)),saved=canvasTextAt(restored,t);
+      assert.deepEqual(saved.text_style,item.text_style);assert.deepEqual(saved.text_runs,item.text_runs);
+      assert.equal(validateManga(restored).filter(issue=>/text_style|text_runs/.test(issue.path)).length,0);
+    }
+  }
+  for(const invalid of [[{start:0,end:1,underline:'yes'}],[{start:0,end:1}],[{start:0,end:1,bold:true}]])assert.equal(validTextRuns(invalid,'ABC'),false);
 });

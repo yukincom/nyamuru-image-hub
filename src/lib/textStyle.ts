@@ -1,25 +1,40 @@
-import type { Bubble, ScreenText, TextStyle, TextWeightRange } from '../types.ts';
-import { bubbleCssFontFamily,matchingFontWeight,type FontWeightOption } from './bubbleFonts.ts';
+import type { Bubble, ScreenText, TextStyle, TextInlineStyle, TextStyleRange } from '../types.ts';
+import { bubbleCssFontFamily, matchingFontWeight, type FontWeightOption } from './bubbleFonts.ts';
 
 export type TextStylePatch = Omit<TextStyle, 'fontSize'> & {fontSize?: number | null};
+export type TextStyleScope = 'element' | 'selection-or-typing';
 export interface TextSelection {start:number;end:number}
-type TextItem = Pick<Bubble,'text'|'text_style'|'text_weights'>;
+type TextItem = Pick<Bubble,'text'|'text_style'|'text_runs'>;
+const INLINE_KEYS = ['fontWeight','italic','underline','strikethrough'] as const;
+const STYLE_KEYS = ['orientation','font','fontSize',...INLINE_KEYS] as const;
+export type SelectedTextInlineStyle = {[K in keyof Required<TextInlineStyle>]:Required<TextInlineStyle>[K]|null};
+
 export function validTextWeight(value:unknown):value is number {return typeof value==='number'&&Number.isInteger(value)&&value>=1&&value<=1000;}
 export function validTextStyle(value:unknown):value is TextStyle {
   if(!value||typeof value!=='object'||Array.isArray(value))return false;
   const s=value as TextStyle;
-  return Object.keys(s).every(k=>['orientation','font','fontSize','fontWeight'].includes(k))
+  return Object.keys(s).every(k=>(STYLE_KEYS as readonly string[]).includes(k))
     &&(s.orientation===undefined||['vertical','horizontal'].includes(s.orientation))
     &&(s.font===undefined||typeof s.font==='string'&&s.font.trim().length>0&&s.font.length<=120&&!/[\x00-\x1f]/.test(s.font))
     &&(s.fontSize===undefined||Number.isFinite(s.fontSize)&&s.fontSize>=4&&s.fontSize<=144)
-    &&(s.fontWeight===undefined||validTextWeight(s.fontWeight));
+    &&(s.fontWeight===undefined||validTextWeight(s.fontWeight))
+    &&(['italic','underline','strikethrough'] as const).every(key=>s[key]===undefined||typeof s[key]==='boolean');
 }
 function boundary(text:string,index:number){return Number.isSafeInteger(index)&&index>=0&&index<=text.length&&!(index>0&&index<text.length&&/[\uD800-\uDBFF]/.test(text[index-1])&&/[\uDC00-\uDFFF]/.test(text[index]));}
-export function validTextWeights(value:unknown,text:string):value is TextWeightRange[]{
+function inlineStyle(style:TextInlineStyle):TextInlineStyle {
+  return Object.fromEntries(INLINE_KEYS.filter(key=>style[key]!==undefined).map(key=>[key,style[key]]));
+}
+/** Explicit off values prevent an inherited decoration from leaking into newly typed text. */
+export function typingTextStyle(style:TextInlineStyle):TextInlineStyle {
+  return {italic:false,underline:false,strikethrough:false,...inlineStyle(style)};
+}
+export function validTextRuns(value:unknown,text:string):value is TextStyleRange[]{
   if(!Array.isArray(value)||value.length>4096)return false;
   let end=0;
   return value.every(r=>{
-    if(!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).some(k=>!['start','end','fontWeight'].includes(k))||!boundary(text,r.start)||!boundary(text,r.end)||r.start<end||r.end<=r.start||!validTextWeight(r.fontWeight))return false;
+    if(!r||typeof r!=='object'||Array.isArray(r)||Object.keys(r).some(k=>!['start','end',...INLINE_KEYS].includes(k))||!boundary(text,r.start)||!boundary(text,r.end)||r.start<end||r.end<=r.start)return false;
+    const style=Object.fromEntries(Object.entries(r).filter(([key])=>key!=='start'&&key!=='end'));
+    if(!Object.keys(style).length||!validTextStyle(style))return false;
     end=r.end;return true;
   });
 }
@@ -29,15 +44,49 @@ export function textStyleOf(item:Bubble|ScreenText,kind:'bubble'|'screen_text'):
     orientation:kind==='screen_text'?(item as ScreenText).orientation??authored?.orientation??'horizontal':authored?.orientation??'vertical',
     fontSize:authored?.fontSize??(kind==='screen_text'?12:15)};
 }
-export function selectedTextWeight(item:TextItem,selection:TextSelection,baseWeight=600):number|null {
-  const base=item.text_style?.fontWeight??baseWeight,values=new Set<number>();let at=selection.start;
-  for(const r of item.text_weights??[]){
-    if(r.end<=selection.start||r.start>=selection.end)continue;
-    if(r.start>at)values.add(base);
-    values.add(r.fontWeight);at=Math.max(at,Math.min(r.end,selection.end));
+export function selectedTextInlineStyle(item:TextItem,selection:TextSelection,baseWeight=600):SelectedTextInlineStyle {
+  const base={fontWeight:baseWeight,...typingTextStyle(item.text_style??{})};
+  const spans:TextInlineStyle[]=[];let at=selection.start;
+  for(const range of item.text_runs??[]){
+    if(range.end<=selection.start||range.start>=selection.end)continue;
+    if(range.start>at)spans.push(base);
+    spans.push({...base,...inlineStyle(range)});at=Math.max(at,Math.min(range.end,selection.end));
   }
-  if(at<selection.end||selection.start===selection.end)values.add(base);
-  return values.size===1?[...values][0]:null;
+  if(at<selection.end||!spans.length)spans.push(base);
+  return Object.fromEntries(INLINE_KEYS.map(key=>{const values=new Set(spans.map(span=>span[key]));return [key,values.size===1?[...values][0]:null];})) as SelectedTextInlineStyle;
+}
+export function selectedTextWeight(item:TextItem,selection:TextSelection,baseWeight=600):number|null {
+  return selectedTextInlineStyle(item,selection,baseWeight).fontWeight;
+}
+function sameInlineStyle(a:TextInlineStyle,b:TextInlineStyle){return INLINE_KEYS.every(key=>a[key]===b[key]);}
+function replaceRuns(item:TextItem,ranges:TextStyleRange[]):boolean {
+  const merged:TextStyleRange[]=[];
+  for(const range of ranges){
+    if(range.end<=range.start||!INLINE_KEYS.some(key=>range[key]!==undefined))continue;
+    const previous=merged.at(-1);
+    if(previous&&previous.end===range.start&&sameInlineStyle(previous,range))previous.end=range.end;
+    else merged.push({...range});
+  }
+  if(merged.length>4096)throw Error('文字の書式範囲が多すぎます');
+  const old=item.text_runs??[];
+  if(old.length===merged.length&&merged.every((range,i)=>range.start===old[i].start&&range.end===old[i].end&&sameInlineStyle(range,old[i])))return false;
+  if(merged.length)item.text_runs=merged;else delete item.text_runs;
+  return true;
+}
+/** Patch just the requested properties, keeping overlapping formatting intact. */
+export function applyTextStyleRange(item:TextItem,selection:TextSelection,patch:TextInlineStyle):boolean {
+  const {start,end}=selection;
+  if(!boundary(item.text,start)||!boundary(item.text,end)||end<=start||!validTextStyle(patch))throw Error('スタイルを変える文字の範囲を選択してください');
+  const change=inlineStyle(patch);if(!Object.keys(change).length)return false;
+  const existing=item.text_runs??[],points=[...new Set([start,end,...existing.flatMap(range=>[range.start,range.end])])].sort((a,b)=>a-b);
+  const result:TextStyleRange[]=[];let index=0;
+  for(let i=0;i<points.length-1;i++){
+    const a=points[i],b=points[i+1];
+    while(index<existing.length&&existing[index].end<=a)index++;
+    const previous=existing[index]?.start<=a?existing[index]:undefined,selected=a>=start&&b<=end;
+    if(previous||selected)result.push({start:a,end:b,...(previous?inlineStyle(previous):{}),...(selected?change:{})});
+  }
+  return replaceRuns(item,result);
 }
 export function updateTextStyle(item:Bubble|ScreenText,kind:'bubble'|'screen_text',patch:TextStylePatch,selection?:TextSelection,fontWeights?:readonly FontWeightOption[]){
   const next={...item.text_style,...patch};
@@ -46,35 +95,25 @@ export function updateTextStyle(item:Bubble|ScreenText,kind:'bubble'|'screen_tex
   if(selectingFont){const weight=matchingFontWeight(next.fontWeight??600,fontWeights!)!;if(weight!==(next.fontWeight??600))next.fontWeight=weight;}
   if(!validTextStyle(next))throw Error('文字設定を確認してください（4〜144 pt、太さ1〜1000）');
   let changed=false;
-  if(selectingFont&&item.text_weights){
-    const ranges=item.text_weights.map(range=>({...range,fontWeight:matchingFontWeight(range.fontWeight,fontWeights!)!}));
-    if(ranges.some((range,i)=>range.fontWeight!==item.text_weights![i].fontWeight)){item.text_weights=ranges;changed=true;}
-  }else if(!selectingFont&&selection&&selection.end>selection.start&&patch.fontWeight!==undefined){
-    changed=applyTextWeight(item,selection,patch.fontWeight);
-    if(item.text_style?.fontWeight===undefined)delete next.fontWeight;else next.fontWeight=item.text_style.fontWeight;
-  }else if(!selectingFont&&patch.fontWeight!==undefined&&item.text_weights!==undefined){delete item.text_weights;changed=true;}
+  if(selectingFont&&item.text_runs){
+    const ranges=item.text_runs.map(range=>range.fontWeight===undefined?{...range}:{...range,fontWeight:matchingFontWeight(range.fontWeight,fontWeights!)!});
+    if(ranges.some((range,index)=>range.fontWeight!==item.text_runs![index].fontWeight))changed=replaceRuns(item,ranges);
+  }
+  const inlinePatch=inlineStyle(patch),keys=INLINE_KEYS.filter(key=>patch[key]!==undefined);
+  if(selection&&selection.end>selection.start&&keys.length){
+    changed=applyTextStyleRange(item,selection,inlinePatch)||changed;
+    for(const key of keys){if(item.text_style?.[key]===undefined)delete next[key];else Object.assign(next,{[key]:item.text_style[key]});}
+  }else if(keys.length&&item.text_runs){
+    changed=replaceRuns(item,item.text_runs.map(range=>{const copy={...range};for(const key of keys)delete copy[key];return copy;}))||changed;
+  }
   if(kind==='screen_text'&&patch.orientation&&(item as ScreenText).orientation!==patch.orientation){(item as ScreenText).orientation=patch.orientation;changed=true;}
-  if((['orientation','font','fontSize','fontWeight'] as const).some(key=>item.text_style?.[key]!==next[key])){item.text_style=next as TextStyle;changed=true;}
+  if(STYLE_KEYS.some(key=>item.text_style?.[key]!==next[key])){item.text_style=next as TextStyle;changed=true;}
   return changed;
 }
-export function applyTextWeight(item:TextItem,selection:TextSelection,fontWeight:number){
-  const {start,end}=selection;
-  if(!boundary(item.text,start)||!boundary(item.text,end)||end<=start||!validTextWeight(fontWeight))throw Error('太さを変える文字の範囲を選択してください');
-  const ranges:TextWeightRange[]=[];
-  for(const r of item.text_weights??[]){
-    if(r.end<=start||r.start>=end)ranges.push({...r});
-    else {if(r.start<start)ranges.push({...r,end:start});if(r.end>end)ranges.push({...r,start:end});}
-  }
-  ranges.push({start,end,fontWeight});ranges.sort((a,b)=>a.start-b.start);
-  const merged:TextWeightRange[]=[];
-  for(const r of ranges){const last=merged.at(-1);if(last&&last.end===r.start&&last.fontWeight===r.fontWeight)last.end=r.end;else merged.push(r);}
-  if(item.text_weights?.length===merged.length&&merged.every((range,i)=>{const old=item.text_weights![i];return old.start===range.start&&old.end===range.end&&old.fontWeight===range.fontWeight;}))return false;
-  item.text_weights=merged;return true;
-}
-/** Preserve styles outside an actual edit, without moving emphasis onto replacement text. */
-export function rebaseTextWeights(item:TextItem,nextText:string,edit?:TextSelection){
+/** Rebase existing ranges and style only the actual inserted/replaced characters. */
+export function rebaseTextRuns(item:TextItem,nextText:string,edit?:TextSelection,insertionStyle?:TextInlineStyle){
   const old=item.text;
-  if(old===nextText||!item.text_weights)return;
+  if(old===nextText||!item.text_runs&&!insertionStyle)return;
   let a=0,b=old.length,c=nextText.length;
   const inserted=edit?nextText.length-old.length+edit.end-edit.start:-1;
   if(edit&&inserted>=0&&boundary(old,edit.start)&&boundary(old,edit.end)&&edit.end>=edit.start
@@ -86,28 +125,36 @@ export function rebaseTextWeights(item:TextItem,nextText:string,edit?:TextSelect
     while(b>a&&c>a&&old[b-1]===nextText[c-1]){b--;c--;}
     while(b<old.length&&(!boundary(old,b)||!boundary(nextText,c))){b++;c++;}
   }
-  const delta=c-b,ranges:TextWeightRange[]=[];
-  for(const r of item.text_weights){
-    if(r.start<a)ranges.push({...r,end:Math.min(r.end,a)});
-    if(r.end>b)ranges.push({...r,start:Math.max(r.start,b)+delta,end:r.end+delta});
+  const delta=c-b,ranges:TextStyleRange[]=[];
+  for(const range of item.text_runs??[]){
+    if(range.start<a)ranges.push({...range,end:Math.min(range.end,a)});
+    if(range.end>b)ranges.push({...range,start:Math.max(range.start,b)+delta,end:range.end+delta});
   }
-  item.text_weights=ranges.filter(r=>r.end>r.start);
-  if(!item.text_weights.length)delete item.text_weights;
+  if(insertionStyle&&c>a)ranges.push({start:a,end:c,...inlineStyle(insertionStyle)});
+  replaceRuns(item,ranges.sort((left,right)=>left.start-right.start));
 }
-export function textWeightSegments(item:TextItem):Array<{text:string;fontWeight?:number}>{
-  const result:Array<{text:string;fontWeight?:number}>=[];let at=0;
-  for(const r of item.text_weights??[]){if(r.start>at)result.push({text:item.text.slice(at,r.start)});result.push({text:item.text.slice(r.start,r.end),fontWeight:r.fontWeight});at=r.end;}
-  if(at<item.text.length||!result.length)result.push({text:item.text.slice(at)});
+export function textStyleSegments(item:TextItem):Array<{text:string}&TextInlineStyle>{
+  const base=inlineStyle(item.text_style??{}),result:Array<{text:string}&TextInlineStyle>=[];let at=0;
+  for(const range of item.text_runs??[]){
+    if(range.start>at)result.push({text:item.text.slice(at,range.start),...base});
+    result.push({text:item.text.slice(range.start,range.end),...base,...inlineStyle(range)});at=range.end;
+  }
+  if(at<item.text.length||!result.length)result.push({text:item.text.slice(at),...base});
   return result;
 }
 /** The canvas formatting is authoritative; OMNY emphasis mirrors visibly heavier ranges. */
-export function syncBubbleEmphasisFromWeights(bubble:Bubble):void{
+export function syncBubbleEmphasisFromStyles(bubble:Bubble):void{
   const base=bubble.text_style?.fontWeight??600;
-  const phrases=[...new Set((bubble.text_weights??[])
-    .filter(range=>range.fontWeight>base)
+  const phrases=[...new Set((bubble.text_runs??[])
+    .filter(range=>(range.fontWeight??base)>base)
     .map(range=>bubble.text.slice(range.start,range.end).trim())
     .filter(Boolean))];
   if(phrases.length)bubble.emphasis=phrases.join(', ');else delete bubble.emphasis;
+}
+/** Apply decorations on leaf spans so an explicit off range can cancel its base style. */
+export function textInlineStyleCss(style:TextInlineStyle):Record<string,string>{
+  return {...(style.fontWeight!==undefined?{fontWeight:String(style.fontWeight)}:{}),fontStyle:style.italic?'italic':'normal',
+    textDecorationLine:[style.underline?'underline':'',style.strikethrough?'line-through':''].filter(Boolean).join(' ')||'none',textUnderlinePosition:'under right'};
 }
 /** The unzoomed layout host supplies its px width; works without container-query units. */
 export function canvasLengthCss(lengthMm:number,paperWidthMm:number):string {
@@ -120,5 +167,5 @@ export function textStyleCss(style:TextStyle,paperWidthMm:number,defaultFont?:st
   const font=style.font??defaultFont;
   return {...(font?{fontFamily:bubbleCssFontFamily(font)}:{}),writingMode:style.orientation==='horizontal'?'horizontal-tb':'vertical-rl','--text-tool-cursor':textToolCursor(style),
     ...(style.fontSize?{fontSize:canvasLengthCss(style.fontSize*25.4/72,paperWidthMm)}:{}),
-    ...(style.fontWeight?{fontWeight:String(style.fontWeight)}:{})};
+    ...(style.fontWeight?{fontWeight:String(style.fontWeight)}:{}),...(style.italic!==undefined?{fontStyle:style.italic?'italic':'normal'}:{})};
 }

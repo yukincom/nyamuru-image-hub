@@ -1,6 +1,6 @@
 import {useEffect,useLayoutEffect,useRef} from 'preact/hooks';
-import type {TextWeightRange} from '../types';
-import {textWeightSegments,type TextSelection} from '../lib/textStyle';
+import type {TextInlineStyle,TextStyleRange} from '../types';
+import {textStyleSegments,textInlineStyleCss,type TextSelection} from '../lib/textStyle';
 
 function selectionIn(root:HTMLElement):TextSelection|undefined{
   const selection=window.getSelection();if(!selection?.rangeCount)return;
@@ -26,8 +26,8 @@ function trailingBreak(root:HTMLElement){
   else if(!needed&&last instanceof HTMLBRElement&&last.dataset.caretBreak)last.remove();
 }
 /** The native document owns the text; this editable projection retains IME and selection. */
-export default function NativeTextEditor({text,weights,label,style,onText,onSelection,onEnd,onHistory}:{
-  text:string;weights?:TextWeightRange[];label:string;style:Record<string,string>;
+export default function NativeTextEditor({text,runs,inlineStyle,label,style,onText,onSelection,onEnd,onHistory}:{
+  text:string;runs?:TextStyleRange[];inlineStyle?:TextInlineStyle;label:string;style:Record<string,string>;
   onHistory?:(direction:'undo'|'redo')=>void;
   onText:(text:string,edit?:TextSelection)=>void;onSelection:(selection:TextSelection)=>void;onEnd:()=>void;
 }){
@@ -48,16 +48,14 @@ export default function NativeTextEditor({text,weights,label,style,onText,onSele
   const remember=()=>{if(root.current){const s=selectionIn(root.current);if(s){savedSelection.current=s;current.current.onSelection(s);}}};
   useLayoutEffect(()=>{
     const element=root.current;if(!element||composing.current)return;
-    const key=JSON.stringify([text,weights]);
+    const key=JSON.stringify([text,runs,inlineStyle]);
     if(key===rendered.current)return;
     const selection=selectionIn(element)??savedSelection.current;
-    if(read()!==text||JSON.stringify(weights)!==JSON.stringify(JSON.parse(rendered.current||'[]')[1])){
-      const parts=textWeightSegments({text,text_weights:weights}).map(segment=>{const span=document.createElement('span');span.textContent=segment.text;if(segment.fontWeight)span.style.fontWeight=String(segment.fontWeight);return span;});
-      element.replaceChildren(...parts);trailingBreak(element);
-      if(selection)restoreSelection(element,{start:Math.min(selection.start,text.length),end:Math.min(selection.end,text.length)});
-    }
+    const parts=textStyleSegments({text,text_style:inlineStyle,text_runs:runs}).map(segment=>{const span=document.createElement('span');span.textContent=segment.text;Object.assign(span.style,textInlineStyleCss(segment));return span;});
+    element.replaceChildren(...parts);trailingBreak(element);
+    if(selection)restoreSelection(element,{start:Math.min(selection.start,text.length),end:Math.min(selection.end,text.length)});
     trailingBreak(element);rendered.current=key;
-  },[text,weights]);
+  },[text,runs,inlineStyle]);
   useEffect(()=>{
     const element=root.current;if(!element)return;
     element.focus();restoreSelection(element,{start:text.length,end:text.length});remember();

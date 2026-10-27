@@ -1,10 +1,10 @@
-import type { BBox, Bubble, MangaDocument, ScreenText, TextStyle } from '../types.ts';
+import type { BBox, Bubble, MangaDocument, ScreenText, TextStyle, TextInlineStyle } from '../types.ts';
 import { clamp, fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { ownerItemLocked, editBubbleText, panelLocked, panelVisible } from './panelLayers.ts';
 import { BUBBLE_MATERIALS, replaceBubbleMaterial } from './bubblePresetData.ts';
 import { removeBubbleAt } from './bubbleConnections.ts';
 import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
-import { rebaseTextWeights, syncBubbleEmphasisFromWeights, textStyleOf, updateTextStyle, type TextSelection, type TextStylePatch } from './textStyle.ts';
+import { rebaseTextRuns, syncBubbleEmphasisFromStyles, textStyleOf, updateTextStyle, type TextSelection, type TextStylePatch } from './textStyle.ts';
 import { cloneDocument } from './manga.ts';
 import { artworkLocked } from './paintLock.ts';
 import { bubbleStrokeWidthMm, normalizedBubbleLineWidth } from './bubblePresentation.ts';
@@ -56,17 +56,17 @@ export function canvasTextAt(document:MangaDocument,t:CanvasTextTarget){
   if(t.kind==='screen_text')return (t.overlay?page?.page_overlay:page?.panels[t.panelIndex])?.screen_text?.[t.index];
   return (t.overlay?page?.page_overlay:page?.panels[t.panelIndex])?.bubbles?.[t.index];
 }
-export function editCanvasText(document:MangaDocument,t:CanvasTextTarget,text:string,edit?:TextSelection,origin:'manual'|'agent'='manual'){
+export function editCanvasText(document:MangaDocument,t:CanvasTextTarget,text:string,edit?:TextSelection,origin:'manual'|'agent'='manual',insertionStyle?:TextInlineStyle){
   if(!canvasTextEditable(document,t,origin))return false;
   if(t.kind==='bubble'){
-    const changed=editBubbleText(document,{...t,bubbleIndex:t.index},text,edit,origin);
+    const changed=editBubbleText(document,{...t,bubbleIndex:t.index},text,edit,origin,insertionStyle);
     if(changed)fitCanvasBubbleToText(document,t,origin);
     return changed;
   }
   const panel=document.manga.pages[t.pageIndex]?.panels[t.panelIndex],item=canvasTextAt(document,t) as ScreenText|undefined;
   if((!t.overlay&&(!panel||!panelVisible(panel)))||!item||item.text===text)return false;
   const start=screenTextStart(item);
-  rebaseTextWeights(item,text,edit);item.text=text;fitCanvasScreenTextToText(document,t,start,origin);return true;
+  rebaseTextRuns(item,text,edit,insertionStyle);item.text=text;fitCanvasScreenTextToText(document,t,start,origin);return true;
 }
 export function canvasTextEditable(document:MangaDocument,t:CanvasTextTarget,origin:'manual'|'agent'='manual'){
   const item=canvasTextAt(document,t);
@@ -96,14 +96,14 @@ export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,pa
   if(!canvasTextEditable(document,t))return document;
   const original=canvasTextAt(document,t)!,updated={...original};
   if(!updateTextStyle(updated,t.kind,patch,selection,fontWeights))return document;
-  const normalizedRanges=patch.font!==undefined&&fontWeights?.length&&original.text_weights
-    &&(updated.text_style?.fontWeight!==original.text_style?.fontWeight||updated.text_weights!==original.text_weights);
+  const normalizedRanges=patch.font!==undefined&&fontWeights?.length&&original.text_runs
+    &&(updated.text_style?.fontWeight!==original.text_style?.fontWeight||updated.text_runs!==original.text_runs);
   const next=cloneDocument(document),item=canvasTextAt(next,t)!;
   const origin=t.kind==='screen_text'?screenTextStart(item as ScreenText):undefined;
   item.text_style=updated.text_style;
-  if(updated.text_weights)item.text_weights=updated.text_weights;else delete item.text_weights;
+  if(updated.text_runs)item.text_runs=updated.text_runs;else delete item.text_runs;
   if(t.kind==='screen_text')(item as ScreenText).orientation=(updated as ScreenText).orientation;
-  if(t.kind==='bubble'&&(patch.fontWeight!==undefined||normalizedRanges))syncBubbleEmphasisFromWeights(item as Bubble);
+  if(t.kind==='bubble'&&(patch.fontWeight!==undefined||normalizedRanges))syncBubbleEmphasisFromStyles(item as Bubble);
   // A font, weight, size or orientation change is a text-only operation.
   // In particular, never recenter/expand the surrounding bubble as a side
   // effect: its authored bbox and text_position must remain byte-for-byte.
@@ -275,8 +275,8 @@ export function convertScreenTextToBubble(document:MangaDocument,request:ScreenT
   const bounds=request.bubble?.overlay||(!request.bubble&&source.overlay)?{x:0,y:0,w:page.canvas.w,h:page.canvas.h}:panelBounds(page.panels[request.bubble?.panelIndex??source.panelIndex]);
   bubble.text=screen.text;
   bubble.text_style={...screen.text_style,orientation:screen.text_style?.orientation??screen.orientation??'horizontal',fontSize:screen.text_style?.fontSize??15};
-  if(screen.text_weights?.length)bubble.text_weights=structuredClone(screen.text_weights);else delete bubble.text_weights;
-  syncBubbleEmphasisFromWeights(bubble);
+  if(screen.text_runs?.length)bubble.text_runs=structuredClone(screen.text_runs);else delete bubble.text_runs;
+  syncBubbleEmphasisFromStyles(bubble);
   const sourceBox=screen.bbox??{x:bounds.x+bounds.w/2,y:bounds.y+bounds.h/2,w:0,h:0};
   bubble.bbox=fittedBubbleBox(bubble,sourceBox,bounds,false);
   if(request.materialId&&preset){bubble.shape=preset.shape;replaceBubbleMaterial(bubble,request.materialId);}

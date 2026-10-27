@@ -170,7 +170,7 @@ test('integrated artwork settings, backgrounds, exact text and Unicode emphasis 
   const plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
   for (const text of ['独自の線の指定', '独自のページ指定', '窓のある室内', 'ドン！', 'aの表情', 'aの服装']) assert.ok(plan.prompt.includes(text), text);
   for (const literal of plan.literalText) assert.ok(plan.prompt.includes(literal), literal);
-  const item = { text: 'A𠮷\n句読点。', text_weights: [{ start: 1, end: 3, fontWeight: 800 }] };
+  const item = { text: 'A𠮷\n句読点。', text_runs: [{ start: 1, end: 3, fontWeight: 800 }] };
   const runs = qwenCompositionTextRuns(item); assert.equal(runs.map(run => run.text).join(''), item.text);
   assert.deepEqual(runs[1], { text: '𠮷', fontWeight: 800 }); assert.equal(runs[2].text, '\n');
 });

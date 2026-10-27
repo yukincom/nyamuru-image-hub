@@ -1654,6 +1654,15 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .canvas-text-toolbar { box-sizing:border-box; display:grid; grid-template-columns:minmax(0,1fr); align-items:center; gap:7px; width:100%; padding:8px 0 0; border-top:1px solid var(--line); background:var(--surface); font-size:11px; }
 .canvas-text-toolbar label { display:flex; align-items:center; gap:4px; white-space:nowrap; }
 .canvas-text-size { display:grid; gap:4px; min-width:0; }
+.canvas-text-style { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.canvas-text-style-buttons { display:flex; gap:3px; }
+.canvas-text-toolbar .canvas-text-style-button { display:grid; place-items:center; width:29px; height:27px; min-width:0; padding:0; border:1px solid var(--line); border-radius:4px; background:var(--surface); color:var(--ink); font:19px/1 Georgia,serif; }
+.canvas-text-style-button.is-bold { font-weight:800; }
+.canvas-text-style-button.is-italic { font-style:italic; }
+.canvas-text-style-button.is-underline span { text-decoration:underline; text-underline-offset:2px; }
+.canvas-text-style-button.is-strikethrough span { text-decoration:line-through; }
+.canvas-text-toolbar .canvas-text-style-button[aria-pressed=true] { color:var(--accent); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 15%,var(--surface)); box-shadow:inset 0 0 0 1px var(--accent); }
+.canvas-text-toolbar .canvas-text-style-button[aria-pressed=mixed] { border-style:dashed; color:var(--accent); }
 .canvas-text-size>input[type=range],.paint-text-work-settings>input[type=range] { width:100%; min-width:0; padding:0; cursor:ew-resize; }
 .bubble-line-width-scope { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
 .bubble-material-kind { display:flex; justify-content:center; align-items:center; gap:3px; color:var(--muted); font-size:9px; }

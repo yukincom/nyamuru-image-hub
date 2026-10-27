@@ -91,13 +91,11 @@ test('文字の太さは実在ウェイトのみを表示し、単一・未取�
   const h=(type,props,...children)=>({type,props:props??{},children:children.flat(Infinity)}),exports={};
   const source=ts.transpileModule(read('src/components/CanvasTextToolbar.tsx'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,jsxFactory:'h'}}).outputText;
   runInNewContext(source,{exports,h,require:name=>name==='preact/hooks'?{useState:value=>[value,()=>{}],useRef:value=>({current:value}),useEffect:()=>{}}:name==='../lib/bubbleFonts'?{availableFontWeights,matchingFontWeight}: {default:'FontFamilyPicker'}});
-  const fontFamilies=[{family:'Example',weights:[{value:250,label:'W2'},{value:800,label:'W8'},{value:900,label:'W9'}]},{family:'Single',weights:[{value:400,label:'B'}]}];
+  const fontFamilies=[{family:'Example',weights:[{value:250,label:'W2'},{value:800,label:'W8'},{value:900,label:'W9'}]},{family:'Single',weights:[{value:400,label:'B'}]},{family:'Heavy',weights:[{value:800,label:'W8'},{value:900,label:'W9'}]}];
   let updates=[];
   const find=(node,predicate)=>!node||typeof node!=='object'?undefined:predicate(node)?node:node.children?.map(child=>find(child,predicate)).find(Boolean);
-  const render=(font,props={})=>{
-    const tree=exports.default({style:{font,fontWeight:800},defaultFont:'Example',fontFamilies,disabled:false,onChange:patch=>updates.push({...patch}),...props});
-    return find(tree,node=>node.props['aria-label']==='文字の太さ');
-  };
+  const renderTree=(font,props={})=>exports.default({style:{font,fontWeight:800},defaultFont:'Example',fontFamilies,disabled:false,onChange:patch=>updates.push({...patch}),...props});
+  const render=(font,props={})=>find(renderTree(font,props),node=>node.props['aria-label']==='文字の太さ');
   const menu=render('Example');assert.equal(menu.props.disabled,false);assert.equal(menu.props.value,800);
   assert.deepEqual(menu.children.filter(child=>child?.type==='option').map(node=>node.children[0]),['W2','W8','W9']);
   menu.props.onChange({currentTarget:{value:'250'}});assert.deepEqual(updates,[{fontWeight:250}]);
@@ -106,6 +104,10 @@ test('文字の太さは実在ウェイトのみを表示し、単一・未取�
     const inactive=render(font,props);assert.equal(inactive.props.disabled,true);inactive.props.onChange({currentTarget:{value:'900'}});assert.equal(updates.length,1);
   }
   const mixed=render('Example',{selection:{start:0,end:2},selectionWeight:null});assert.equal(mixed.props.value,'');assert.equal(mixed.children.find(child=>child?.type==='option').children[0],'混在');
+  const bold=(props={})=>find(renderTree('Heavy',props),node=>node.props['aria-label']==='ボールド');
+  assert.equal(bold().props['aria-pressed'],false);bold().props.onClick();assert.deepEqual(updates.at(-1),{fontWeight:900});
+  const activeBold=bold({typingStyle:{fontWeight:900}});assert.equal(activeBold.props['aria-pressed'],true);activeBold.props.onClick();assert.deepEqual(updates.at(-1),{fontWeight:800});
+  let prevented=false;activeBold.props.onPointerDown({preventDefault:()=>{prevented=true;}});assert.equal(prevented,true);
 });
 
 test('吹き出し線幅は数値とmmを隣接させる',()=>{
