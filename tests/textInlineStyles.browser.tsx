@@ -10,7 +10,8 @@ import {saveFigureCropAssets} from '../src/lib/figureCropStore';
 import {paintForFrame,newPaintLayer,paintReferenceBox} from '../src/lib/paintDocument';
 import {renderPaintPng,paintPreviewRenderer,loadPaintImages} from '../src/lib/paintRenderer';
 import {isLanClient} from '../src/lib/clientRuntime';
-import type {MangaDocument,PlacedImage,ImageAsset,Figure,Bubble} from '../src/types';
+import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry';
+import type {MangaDocument,PlacedImage,ImageAsset,Figure,Bubble,PaintDocument} from '../src/types';
 import '../src/styles/global.css';
 if(location.origin!=='http://127.0.0.1:4339'||!isLanClient)throw Error('Dedicated LAN fixture at 127.0.0.1:4339 required');
 const originalFetch=window.fetch.bind(window);
@@ -33,7 +34,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -773,4 +774,81 @@ async function verifyLayerMoves(){
    report.textContent=`所属移動 PASS ${checks.length}\n${checks.join('\n')}`;
  }catch(error){report.textContent=`所属移動 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}\n${messages.join('\n')}`;console.error(error);}
  finally{observer.disconnect();run.disabled=false;}
+}
+
+
+async function verifySelectionLayerTools(){
+ const run=document.getElementById('selection-layer-run') as HTMLButtonElement,checks:string[]=[];
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+ const row=(id:string)=>document.querySelector<HTMLElement>(`.page-layer-palette [data-layer="${id}"] .layer-select`)!;
+ const painting=()=>Boolean(document.querySelector('.app-shell.is-painting'));
+ const guide=async()=>{row('selection-guide').click();await wait(()=>painting()&&!!document.querySelector('.paint-input')&&row('selection-guide')?.closest('.layer-row')?.classList.contains('is-selected')===true,'あたり描画待ち');await settle();};
+ const vector=async(id='selection-vector')=>{row(id).dispatchEvent(new MouseEvent('click',{ctrlKey:true,bubbles:true}));await wait(()=>painting()&&!!document.querySelector('[data-vector-resize="se"]')&&row(id)?.closest('.layer-row')?.classList.contains('is-selected')===true,'パス選択待ち');await settle();};
+ const key=async(key:string)=>{window.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}));await settle();};
+ const drag=async(element:Element,dx:number,dy:number,cancel=false)=>{
+  const box=element.getBoundingClientRect(),x=box.x+box.width/2,y=box.y+box.height/2,pointerId=96;
+  const event=(type:string,cx:number,cy:number)=>new PointerEvent(type,{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'||type==='pointercancel'?0:1,clientX:cx,clientY:cy,bubbles:true,cancelable:true});
+  element.dispatchEvent(event('pointerdown',x,y));window.dispatchEvent(event('pointermove',x+dx,y+dy));window.dispatchEvent(event(cancel?'pointercancel':'pointerup',x+dx,y+dy));await settle();
+ };
+ const surfaceClick=async(x:number,y:number)=>{
+  const paper=document.querySelector('.manga-paper')!.getBoundingClientRect(),px=paper.left+x/182*paper.width,py=paper.top+y/257*paper.height;
+  const surface=document.querySelector('.paint-input')!;
+  surface.dispatchEvent(new PointerEvent('pointerdown',{pointerId:97,pointerType:'mouse',isPrimary:true,button:0,buttons:1,clientX:px,clientY:py,bubbles:true,cancelable:true}));
+  window.dispatchEvent(new PointerEvent('pointerup',{pointerId:97,pointerType:'mouse',isPrimary:true,button:0,buttons:0,clientX:px,clientY:py,bubbles:true,cancelable:true}));await settle();
+ };
+ const currentFigure=async()=>{await save();return (await stored()).manga.pages[0].panels[0].figures![0];};
+ run.disabled=true;report.textContent='選択ツールとレイヤーの連携を検証中';
+ try{
+  render(null,host);const doc=structuredClone(source),page=doc.manga.pages[0],panel=page.panels[0];delete page.page_overlay;
+  panel.shape={type:'rect',x:15,y:15,w:150,h:105};panel.screen_text=[{text:'画面の文字',bbox:{x:80,y:95,w:60,h:15},text_style:{fontSize:18,orientation:'horizontal'}}];
+  panel.bubbles=[{text:'輪郭を編集',shape:'normal',tail:false,bbox:{x:105,y:30,w:40,h:35}}];
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=80;const ctx=canvas.getContext('2d')!;ctx.fillStyle='#326ecc';ctx.fillRect(8,8,64,64);
+  const blob=await new Promise<Blob>(resolve=>canvas.toBlob(value=>resolve(value!),'image/png')),asset=await prepareImageAsset(new File([blob],'選択あたり.png',{type:'image/png'}));await saveFigureCropAssets([{id:asset.storageId,blob}]);
+  const frame={x:25,y:55,w:45,h:45},paint=paintForFrame(frame,100,[createFrameArtwork(asset,frame)],[asset]);paint.guideInitialized=true;
+  paint.layers[0].id='selection-guide';paint.layers[0].name='選択するあたり';paint.layers[0].guide=true;paint.layers[0].locked=false;
+  const path=vectorShape('ellipse',{x:25,y:25},{x:130,y:120},{...defaultVectorStyle(),stroke:'#ff0000',width:4}),layer={...newPaintLayer('選択するベクター','vector'),id:'selection-vector',paths:[path]};paint.layers.push(layer);
+  const images=await loadPaintImages([paint],[asset]),composite=await renderPaintPng(paint,images),merged=await prepareImageAsset(new File([composite],'選択あたり合成.png',{type:'image/png'}));images.forEach(image=>{image.src='';});await saveFigureCropAssets([{id:merged.storageId,blob:composite}]);
+  doc.manga.image_assets=[asset,merged];panel.figures=[{name:'選択人物',bbox:frame,artwork:{...createFrameArtwork(merged,frame),paint}}];
+  const below={...newPaintLayer('輪郭より後ろの線','vector'),id:'selection-below',paths:[vectorShape('ellipse',{x:4,y:4},{x:24,y:24},{...defaultVectorStyle(),width:4})]},above={...newPaintLayer('輪郭より手前の線','vector'),id:'selection-above',aboveNative:true,paths:[vectorShape('line',{x:60,y:70},{x:120,y:70},{...defaultVectorStyle(),width:4})]};
+  const bubblePaint:PaintDocument={version:1,width:160,height:140,dpi:100,guideInitialized:true,layers:[below,above]},bubbleBlob=await renderPaintPng(bubblePaint,new Map()),bubbleAsset=await prepareImageAsset(new File([bubbleBlob],'輪郭の前後の線.png',{type:'image/png'}));
+  await saveFigureCropAssets([{id:bubbleAsset.storageId,blob:bubbleBlob}]);doc.manga.image_assets.push(bubbleAsset);panel.bubbles[0].paint_overlay={...createFrameArtwork(bubbleAsset,panel.bubbles[0].bbox!),paint:bubblePaint};
+  page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景',shape:'square',tail:false,bbox:{x:128,y:44,w:20,h:15}}]};
+
+  page.panels.push({id:2,shape:{type:'rect',x:15,y:140,w:150,h:100},bg:0,action:null,bubbles:[{text:'別コマ',shape:'normal',tail:false,bbox:{x:105,y:150,w:40,h:35}}]});
+  const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
+  render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();await save();const baseline=await stored();
+  await guide();button('選択').click();await wait(()=>!painting()&&!!document.querySelector('.artwork-selection-layer .handle-se'),'配置の拡縮点待ち');await settle();
+  check(!document.querySelector('.paint-input')&&!!document.querySelector('.artwork-selection-layer .handle-se'),'画像レイヤーからVで拡縮点を復帰');
+  check(document.querySelector('.page-layer-palette [data-owner-group="figure-0"]')?.classList.contains('is-selected')===true,'選択人物とレイヤーパレットを同期');
+  await save();check(JSON.stringify(await stored())===JSON.stringify(baseline),'道具切替だけでは原稿・画像・履歴を変更しない');
+  const initialFigure=await currentFigure();await drag(document.querySelector('.artwork-selection-layer .handle-se')!,18,12);
+  const scaled=await currentFigure();check(scaled.bbox!.w>initialFigure.bbox!.w&&scaled.bbox!.h>initialFigure.bbox!.h,'Vの拡縮点をドラッグして画像を拡大');
+  check(scaled.artwork!.paint!.layers.map(l=>l.id).join()===initialFigure.artwork!.paint!.layers.map(l=>l.id).join(),'拡縮でレイヤーIDと順序を保持');
+  history('元に戻す').click();await settle();check(JSON.stringify((await currentFigure()).bbox)===JSON.stringify(initialFigure.bbox),'画像拡縮を1回のUndoで復元');
+  history('やり直す').click();await settle();check(JSON.stringify((await currentFigure()).bbox)===JSON.stringify(scaled.bbox),'画像拡縮をRedoで復元');
+  await guide();await key('v');await wait(()=>!painting(),'Vショートカットで配置へ');check(!!document.querySelector('.artwork-selection-layer .handle-se'),'Vキーも画像の拡縮を復帰');
+  await guide();button('ダイレクト選択').click();await wait(()=>!painting(),'Aの配置復帰');
+  document.querySelector<HTMLElement>('[data-content-panel="0"][data-content-kind="bubble"]')!.click();await settle();
+  check(!!document.querySelector('.bubble-path-edit-layer .bubble-bezier-node-hit'),'Aで吹き出しのアンカーを表示');
+  await vector();button('選択').click();await settle();check(painting()&&!!document.querySelector('[data-vector-resize="nw"]'),'ベクターレイヤーのVはパス編集を保持');
+  const vectorBefore=(await currentFigure()).artwork!.paint!.layers.find(l=>l.id==='selection-vector')!;
+  await drag(document.querySelector('[data-vector-resize="nw"]')!,12,9,true);await save();check(JSON.stringify((await currentFigure()).artwork!.paint!.layers.find(l=>l.id==='selection-vector'))===JSON.stringify(vectorBefore),'ベクター拡縮の取消しでレイヤーを変更しない');
+  await vector();await drag(document.querySelector('[data-vector-resize="nw"]')!,12,9);const vectorAfter=(await currentFigure()).artwork!.paint!.layers.find(l=>l.id==='selection-vector')!;
+  check(JSON.stringify(vectorAfter.paths)!==JSON.stringify(vectorBefore.paths),'線の外の選択枠角からベクターを拡縮');
+  history('元に戻す').click();await settle();check(JSON.stringify((await currentFigure()).artwork!.paint!.layers.find(l=>l.id==='selection-vector')!.paths)===JSON.stringify(vectorBefore.paths),'ベクター拡縮を1回のUndoで復元');
+  history('やり直す').click();await settle();check(JSON.stringify((await currentFigure()).artwork!.paint!.layers.find(l=>l.id==='selection-vector')!.paths)===JSON.stringify(vectorAfter.paths),'ベクター拡縮をRedoで復元');
+  await vector();button('ダイレクト選択').click();await settle();check(painting()&&!!document.querySelector('.vector-edit-overlay .is-selected-anchor,.vector-edit-overlay g rect'),'ベクターのAはアンカー編集を保持');
+  await surfaceClick(125,165);await wait(()=>!painting()&&!!document.querySelector('.panel-layer-group[aria-label="コマ 02"] [data-owner-group="bubble-0"].is-selected'),'別コマnative切替待ち');
+  check(!!document.querySelector('.bubble-path-edit-layer'),'描画中のAから別コマの吹き出しへ直接選択');
+  await vector();button('選択').click();await settle();await surfaceClick(100,100);await wait(()=>!painting()&&!!document.querySelector('.panel-layer-group[aria-label="コマ 01"] .native-text-layer.is-selected'),'通常文字の選択待ち');check(document.querySelector('.native-text-layer.is-selected')?.textContent?.includes('画面の文字')===true,'描画中のVから通常文字を選択');
+  await vector();button('選択').click();await settle();await surfaceClick(80,210);await wait(()=>!painting(),'別コマの空白選択待ち');
+  check(document.querySelector('.panel-layer-group[aria-label="コマ 02"] .panel-layer-heading')?.classList.contains('is-selected')===true,'描画中のVから別コマの空白へ切替');
+  const fold=document.querySelector<HTMLButtonElement>('.panel-layer-group[aria-label="コマ 01"] [data-owner-group="bubble-0"] [aria-expanded]')!;if(fold.getAttribute('aria-expanded')==='false'){fold.click();await settle();}
+  await vector('selection-below');button('選択').click();row('selection-below').click();await settle();await surfaceClick(108.5,31);check(painting()&&row('selection-below')?.closest('.layer-row')?.classList.contains('is-selected')===true,'nativeの外にある背面描線は描線自身を選択');
+  await vector('selection-above');button('選択').click();row('selection-above').click();await settle();await surfaceClick(122,47.5);check(painting()&&row('selection-above')?.closest('.layer-row')?.classList.contains('is-selected')===true,'nativeより手前の描線は同じ文字に選択を奪われない');
+  row('selection-above').click();await settle();const handlesBefore=document.querySelectorAll('[data-vector-resize]').length;await surfaceClick(129,47.5);await wait(()=>!painting(),`前景nativeの選択待ち (handles=${handlesBefore})`);check(document.querySelector('[data-content-overlay][data-content-kind="bubble"]')?.classList.contains('is-element-selected')===true,'手前の別nativeはaboveNative描線より優先');
+  await guide();await key('a');await wait(()=>!painting(),'Aショートカットで配置へ');check(!!document.querySelector('.canvas-viewport.is-direct-selection-tool'),'Aキーもnativeのダイレクト選択へ切替');
+  report.textContent=`選択連携 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`選択連携 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+ finally{run.disabled=false;}
 }

@@ -1,13 +1,14 @@
 import type { VectorOverlayState } from '../components/VectorOverlay';
 import { createContext, type ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
-import type { BBox, VectorPoint } from '../types';
+import type { BBox, CanvasElementSelection, VectorPoint } from '../types';
 import type { PaintOwner, PaintScene } from './paintDocument';
 import type { PaintImages } from './paintRenderer';
 import type { PendingPaintStroke } from './paintGesture';
 import type { PaintCursorMode } from './paintPreferences';
 
 export type PaintPointerEvent = PointerEvent & {currentTarget: HTMLDivElement};
+export interface PaintLayoutTarget {key?:string;selection?:CanvasElementSelection|null;panelIndex?:number;additive?:boolean;direct?:boolean}
 export interface PaintWorkspaceState {
   displayOnly?: boolean;
   background3d?: {ownerKey:string;frame:BBox;setHost:(host:HTMLDivElement|null)=>void;selectedKey:string|null;select:(key:string)=>void;beginMove:(key:string)=>boolean;move:(dx:number,dy:number)=>void;endMove:(keep?:boolean)=>void};
@@ -23,6 +24,8 @@ export interface PaintWorkspaceState {
   onContextMenu: (event:MouseEvent,key:string)=>void;
   undo:()=>void; redo:()=>void; canUndo:boolean; canRedo:boolean;
   selectionTool?:boolean;
+  directSelection?:boolean;
+  selectLayout?:(target:PaintLayoutTarget)=>void;
   maskPreview?: {ownerKey:string;layerId:string};
   selection?:{boxes:BBox[];width:number;height:number};
   lasso?:VectorPoint[];
@@ -30,7 +33,7 @@ export interface PaintWorkspaceState {
   penCursor?:'pen'|'resume'|'close'|'join';
   cursor?: {mode:PaintCursorMode;size:number;eraserSize:number};
   events: {
-    onPointerDown: (event:PaintPointerEvent)=>void;
+    onPointerDown: (event:PaintPointerEvent,onSelectionMiss?:(behindOwnerKey?:string,aboveNative?:boolean)=>boolean)=>void;
     onPointerMove: (event:PaintPointerEvent)=>void;
     onPointerLeave?: (event:PaintPointerEvent)=>void;
     onPointerUp: (event:PaintPointerEvent)=>void;

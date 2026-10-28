@@ -8,6 +8,7 @@ import { paintScene } from '../src/lib/paintDocument.ts';
 import { commitPaintStroke } from '../src/lib/paintGesture.ts';
 import { paintOwnerLocked } from '../src/lib/paintLock.ts';
 import { paintToolShortcut } from '../src/lib/paintToolShortcuts.ts';
+import { paintSelectionMode } from '../src/lib/paintToolMode.ts';
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[],figures:[{name:'確認用',bbox:{x:2,y:3,w:10,h:20}}]},100,[]);
 const add=(scene,index=0)=>{const o=scene.owners[index];return commitPaintStroke(scene,{ownerKey:o.key,layerId:o.paint.layers[0].id,stroke:{tool:'pen',color:'#000000',size:3,points:[{x:4,y:5,pressure:.7,time:1}]}});};
@@ -112,15 +113,18 @@ test('T and zoom retain paint until a selected text is actually exposed for edit
  }
 });
 test('resuming a paint tool clears the other UI mode through the existing start callback',()=>{
- const calls=[],context={busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:true,zoomTool:false,onStartPaint:()=>{calls.push('resume');return true;},interactionRevision:{current:0},finishGesture:()=>calls.push('gesture'),setMaskTarget:()=>{},setTool:tool=>calls.push(tool),setLineKind:()=>{},setPenMenu:()=>{},setEraserMenu:()=>{},tool:'pen',vectorState:{current:{}}};
+ const calls=[],context={paintSelectionMode,hasLayer:false,busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:true,zoomTool:false,onStartPaint:()=>{calls.push('resume');return true;},interactionRevision:{current:0},finishGesture:()=>calls.push('gesture'),setMaskTarget:()=>{},setTool:tool=>calls.push(tool),setLineKind:()=>{},setPenMenu:()=>{},setEraserMenu:()=>{},tool:'pen',vectorState:{current:{}}};
  handler('PaintEditor.tsx','selectTool',context)('pen');assert.deepEqual(calls,['resume','gesture','pen']);
 });
 test('T/zoom shortcuts preserve layout dispatch without a session and suppress hidden paint edits',()=>{
  for(const requested of [undefined,{}]){
-  const calls=[],context={Element:class{},HTMLElement:class{},paintToolShortcut,requested,textTool:true,zoomTool:false,gesture:{current:null},vectorPointer:{current:null},busy:false,operation:{current:false},onSelectLayout:()=>calls.push('layout'),onSelectBubblePath:()=>calls.push('bubble-node'),selectTool:value=>calls.push(value),undo:()=>calls.push('undo'),redo:()=>calls.push('redo')};
+  const calls=[],context={Element:class{},HTMLElement:class{},paintToolShortcut,paintSelectionMode,hasLayer:false,owner:{key:'figure-0'},requested,textTool:true,zoomTool:false,gesture:{current:null},vectorPointer:{current:null},busy:false,toolSuspended:false,operation:{current:false},interactionRevision:{current:0},
+   onSelectLayout:target=>calls.push(target?.direct?'bubble-node':'layout'),onSelectBubblePath:()=>calls.push('bubble-node'),onStartPaint:()=>{calls.push('resume');return true;},finishGesture(){},setTool:value=>calls.push(value),setMaskTarget(){},setLineKind(){},setPenMenu(){},setEraserMenu(){},tool:'pen',vectorState:{current:{}},undo:()=>calls.push('undo'),redo:()=>calls.push('redo')};
+  context.selectTool=handler('PaintEditor.tsx','selectTool',context);
   const keydown=handler('PaintEditor.tsx','keydown',context);
   for(const key of ['v','a','p','Delete','f','x',']'])keydown({key,preventDefault(){},stopPropagation(){}});
-  assert.deepEqual(calls,requested?['vector-select','vector-node','vector-pen']:['layout','bubble-node','vector-pen']);
+  assert.deepEqual(calls,['layout','bubble-node','resume','vector-pen']);
+  assert.equal(context.interactionRevision.current,3);
  }
 });
 test('page switches wait for paint and do not discard the current page on close failure',async()=>{

@@ -1181,6 +1181,40 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       Array.from(paperRef.current!.querySelectorAll<HTMLElement>(`[data-content-panel="${index}"]`)).some(element=>elementContentHit(element,event.clientX,event.clientY))),event.shiftKey);
   };
 
+  // A paint selection can leave its current scene through the same native hit geometry.
+  const selectFromPaint = (event:PointerEvent,behindOwnerKey?:string,aboveNative=false):boolean => {
+    const paper=paperRef.current,select=paintWorkspace?.selectLayout;
+    if(!paper||!select)return false;
+    const rect=paper.getBoundingClientRect();
+    const point={x:(event.clientX-rect.left)*canvas.w/rect.width,y:(event.clientY-rect.top)*canvas.h/rect.height};
+    if(point.x<0||point.y<0||point.x>canvas.w||point.y>canvas.h)return false;
+    const preview=behindOwnerKey?paper.querySelector<HTMLElement>(`[data-paint-owner="${CSS.escape(behindOwnerKey)}"]${aboveNative?'[data-native-band="above"]':''}`):null;
+    const hit=Array.from(paper.querySelectorAll<HTMLElement>('[data-content-target][data-content-kind][data-content-index]')).reverse().find(element=>{
+      if(preview&&(element.contains(preview)?aboveNative:!(preview.compareDocumentPosition(element)&Node.DOCUMENT_POSITION_FOLLOWING)))return false;
+      const overlay=element.hasAttribute('data-content-overlay')||element.dataset.contentScope==='page_overlay'||element.dataset.contentScope==='page',panelIndex=Number(element.dataset.contentPanel);
+      if(element.hasAttribute('data-artwork-locked')||!overlay&&Number.isFinite(panelIndex)&&(!panelVisible(page.panels[panelIndex])||!pointInPanel(page.panels[panelIndex],point.x,point.y)))return false;
+      if(element.dataset.contentKind==='bubble'||element.dataset.contentKind==='screen_text'){
+        // The group's alpha also contains paint. Native selection must hit its own text/outline.
+        const text=element.querySelector<HTMLElement>('.bubble-text-content,.screen-text-body'),box=text?.getBoundingClientRect();
+        if(box&&getComputedStyle(text!).visibility!=='hidden'&&box.width&&box.height&&event.clientX>=box.left&&event.clientX<=box.right&&event.clientY>=box.top&&event.clientY<=box.bottom)return true;
+        return Array.from(element.querySelectorAll<SVGGeometryElement>('.bubble-native-reference .bubble-svg-surface,.bubble-native-reference .bubble-svg-outline-surface,.bubble-native-reference .bubble-svg-detail')).some(path=>{
+          const matrix=path.getScreenCTM();if(!matrix)return false;
+          const local=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse()),style=getComputedStyle(path);
+          return style.visibility!=='hidden'&&Number(style.opacity)>0&&(style.fill!=='none'&&Number(style.fillOpacity)>0&&path.isPointInFill(local)||style.stroke!=='none'&&Number(style.strokeOpacity)>0&&path.isPointInStroke(local));
+        });
+      }
+      return elementContentHit(element,event.clientX,event.clientY);
+    });
+    const panelIndex=hit?.dataset.contentPanel!==undefined?Number(hit.dataset.contentPanel):page.panels.findLastIndex(panel=>panelVisible(panel)&&pointInPanel(panel,point.x,point.y));
+    if(hit){
+      const overlay=hit.hasAttribute('data-content-overlay')||hit.dataset.contentScope==='page_overlay';
+      const selection:CanvasElementSelection={type:hit.dataset.contentKind as CanvasElementSelection['type'],index:Number(hit.dataset.contentIndex),...(overlay?{scope:'page_overlay' as const}:hit.dataset.contentScope==='page'?{scope:'page' as const}:{})};
+      select({selection,panelIndex:Number.isFinite(panelIndex)&&panelIndex>=0?panelIndex:undefined,direct:paintWorkspace?.directSelection});return true;
+    }
+    if(behindOwnerKey||panelIndex<0)return false;
+    select({selection:null,panelIndex:resolveOverlapClick(page.panels,panelIndex,activePanel,point.x,point.y),additive:event.shiftKey,direct:paintWorkspace?.directSelection});return true;
+  };
+
   const createTextAt=(event:MouseEvent,panelIndex:number|null,existingOnly=false)=>{
     if((!textTool&&!existingOnly)||painting||backgroundEdit||zoomTool)return false;
     if(bubbleTextDragged.current){bubbleTextDragged.current=false;event.preventDefault();event.stopPropagation();return true;}
@@ -1240,7 +1274,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const figure=selection.type==='figure'?(selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex??-1])?.figures?.[selection.index]:undefined;
     const figureClass=figure?figureCanvasClass(figure):'';
     const bounds = {x:0,y:0,w:canvas.w,h:canvas.h};
-    return <button type="button" data-content-target data-agent-working={agentWorking(selection,panelIndex??activePanel)||undefined} data-content-panel={panelIndex??undefined} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
+    return <button type="button" data-content-target data-agent-working={agentWorking(selection,panelIndex??activePanel)||undefined} data-content-panel={panelIndex??undefined} data-content-scope={selection.scope} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
       style={{...boxStyle(image.bbox),pointerEvents:isLocked||hiddenOriginal?'none':'auto'}} data-artwork-locked={isLocked||undefined} aria-label={`${label ?? '配置画像'} ${asset?.originalName ?? ''}`}
       tabIndex={!isLocked&&!hiddenOriginal&&(panelIndex === null || activePanel === panelIndex) ? 0 : -1}
       onClick={event => { event.stopPropagation(); onSelectElement(selection, panelIndex ?? undefined); }}
@@ -1491,7 +1525,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const cropAssetId = figure.analogImport?.assetId;
     const figureClass = figureCanvasClass(figure);
     return <button
-      data-content-target data-agent-working={agentWorking(selection)||undefined} class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
+      data-content-target data-content-overlay data-content-kind="figure" data-content-index={figureIndex} data-agent-working={agentWorking(selection)||undefined} class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
       onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
@@ -1882,7 +1916,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         {renderAnchorIndicator()}
       </svg>}
       </div>
-      {painting&&paintTarget&&<PaintInputSurface canvas={canvas}/>}
+      {painting&&paintTarget&&<PaintInputSurface canvas={canvas} onSelectionMiss={selectFromPaint}/>}
       {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&screenText?.hidden!==true&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
         <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} runs={(textBubble??screenText)?.text_runs} inlineStyle={(textBubble??screenText)?.text_style} label={`${textDisplayLabel(textTarget.index+(textTarget.kind==='screen_text'?((textTarget.overlay?overlay:textPanel)?.bubbles?.length??0):0))}の本文`} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
           onText={(value,edit)=>onText?.(textTarget,value,edit)} onHistory={onTextHistory} onSelection={value=>setTextSelection(previous=>previous?.start===value.start&&previous?.end===value.end?previous:value)} onEnd={()=>onEndTextEdit?.()}/>

@@ -64,24 +64,24 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false,nativeBand}:
   const showGuide=!owner.paint.guideInitialized&&state.guideVisible(owner.key);
   const fullGuide=showGuide&&!hasInk;
   if(state.background3d?.ownerKey===ownerKey){const shot=state.background3d.frame;
-    return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey}>
+    return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey} data-native-band={nativeBand}>
       <div class="background3d-window" ref={state.background3d.setHost} style={{left:`${shot.x/owner.paint.width*100}%`,top:`${shot.y/owner.paint.height*100}%`,width:`${shot.w/owner.paint.width*100}%`,height:`${shot.h/owner.paint.height*100}%`}}/>
     </div>;
   }
-  return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey}>
+  return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey} data-native-band={nativeBand}>
     {!inkOnly&&showGuide&&<div class={fullGuide?'paint-reference':'paint-reference is-underlay'} style={relativeStyle(reference,owner.frame)}><PaintOriginal owner={owner}/></div>}
     {state.images&&<PaintPreviewCanvas paint={owner.paint} images={state.images} live={live} includeGeneration={!state.displayOnly} maskPreviewId={!state.displayOnly&&state.maskPreview?.ownerKey===owner.key?state.maskPreview.layerId:undefined}/>}
   </div>;
 }
 
-export default function PaintInputSurface({canvas}:{canvas:{w:number;h:number}}) {
+export default function PaintInputSurface({canvas,onSelectionMiss}:{canvas:{w:number;h:number};onSelectionMiss?:(event:PointerEvent,behindOwnerKey?:string,aboveNative?:boolean)=>boolean}) {
   const state=usePaintWorkspace();
   const surface=useRef<HTMLDivElement>(null);
   if(!state||state.background3d||(!state.selectionTool&&state.owner.bubble?.hidden===true))return null;
   const {owner,events}=state;
   const area={x:0,y:0,...canvas};
   return <div ref={surface} class="paint-input" data-pen-cursor={state.penCursor} data-selection-surface={state.selectionTool?true:undefined} data-paper-width={canvas.w} data-paper-height={canvas.h} style={{...relativeStyle(area,{x:0,y:0,...canvas}),cursor:state.cursor?'none':'default'}}
-    aria-label={`${owner.label}の描画面（紙面全体）`} {...events} onContextMenu={event=>state.onContextMenu(event,owner.key)} onClick={event=>event.stopPropagation()}>
+    aria-label={`${owner.label}の描画面（紙面全体）`} {...events} onPointerDown={event=>events.onPointerDown(event,(key,above)=>onSelectionMiss?.(event,key,above)??false)} onContextMenu={event=>state.onContextMenu(event,owner.key)} onClick={event=>event.stopPropagation()}>
     {state.cursor&&<PaintCursor surface={surface} owner={owner} canvas={canvas} cursor={state.cursor}/>}
     <span class="paint-frame" style={relativeStyle(owner.frame,area)}>{state.vector&&<VectorOverlay state={state.vector}/>}<RasterSelectionOverlay boxes={state.selection?.boxes} points={state.lasso} width={owner.paint.width} height={owner.paint.height}/></span>
   </div>;

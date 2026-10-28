@@ -6,7 +6,9 @@ import {translatePaintLayer} from '../src/lib/paintLayerPicking.ts';
 import {newToneLayer} from '../src/lib/paintTone.ts';
 import {lassoSelection,combineSelection} from '../src/lib/rasterSelection.ts';
 import { PaintSmoother } from '../src/lib/paintStroke.ts';
-import {defaultVectorStyle} from '../src/lib/vectorGeometry.ts';
+import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry.ts';
+import {vectorResizeHandleAt,vectorAnchorAt} from '../src/lib/vectorGesture.ts';
+import {paintSelectionMode,nextPaintLineKind} from '../src/lib/paintToolMode.ts';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
@@ -429,4 +431,42 @@ test('automatic marks insert directly below their selected sibling and retain it
   assert.equal(next.owners[0].paint.layers[0].folderId,'inside');assert.equal(next.owners[0].paint.layers[0].aboveNative,true);
   assert.equal(next.layerSequence,6);assert.equal(owner.paint.layers.length,1);
  }
+});
+
+
+test('selection tools leave raster input through layout, but retain vector path editing',()=>{
+ for(const tool of ['vector-select','vector-node'])for(const kind of ['raster','vector',undefined]){
+  const calls=[],state={revision:{current:0}};
+  const context={busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:false,zoomTool:false,hasLayer:kind!==undefined,layer:{kind},owner:{key:'figure-0'},tool:'pen',
+   paintSelectionMode,nextPaintLineKind,interactionRevision:state.revision,vectorState:{current:{paths:[],selected:[]}},
+   finishGesture:()=>calls.push('finish'),onSelectLayout:target=>calls.push(['layout',target]),onSelectBubblePath:mode=>calls.push(['native-node',mode]),onStartPaint:()=>assert.fail('No scene allocation on selection'),
+   setMaskTarget(){},setTool:next=>calls.push(['paint',next]),setLineKind(){},setPenMenu(){},setEraserMenu(){}};
+  editorHandler('selectTool',context)(tool);
+  assert.equal(state.revision.current,1);assert.equal(calls[0],'finish');
+  assert.equal(calls[1][0],kind==='vector'?'paint':'layout');
+  if(kind!=='vector')assert.equal(calls[1][1].direct,tool==='vector-node');
+  if(kind!=='vector'&&tool==='vector-select')assert.equal(calls[1][1].key,'figure-0');
+ }
+});
+
+test('selected vector resize handles take priority even outside the painted path',()=>{
+ const path=vectorShape('ellipse',{x:20,y:20},{x:80,y:70},defaultVectorStyle()),layer={...newPaintLayer('ellipse','vector'),paths:[path]};
+ const owner={key:'panel',paint:{width:100,height:100,layers:[layer]},frame:{x:0,y:0,w:100,h:100}};
+ for(const tool of ['vector-select','vector-node']){
+  let begins=0,picks=0;
+  const point=tool==='vector-select'?{x:20,y:20}:path.nodes[0];
+  editorHandler('beginLayerSelection',{tool,owner,layer,layerVisible:true,paintLayerEditable:()=>true,vectorState:{current:{selected:[path.id]}},vectorResizeHandleAt,vectorAnchorAt,
+   inputPoint:()=>point,inputTolerance:()=>2,coverage:()=>false,pickPaintLayer:()=>{picks++;},beginVector:()=>begins++,historyRef:{current:{present:{owners:[owner]}}}})({currentTarget:{getBoundingClientRect:()=>({width:100,height:100})}});
+  assert.equal(begins,1);assert.equal(picks,0,'Handles must not depend on filled pixel coverage');
+ }
+});
+
+test('a missed paint selection delegates to native selection before starting a marquee',()=>{
+ let native=0,marquee=0,clear=0;
+ const layer={...newPaintLayer('path','vector'),paths:[]},owner={key:'panel',paint:{width:100,height:100,layers:[layer]},frame:{x:0,y:0,w:100,h:100}};
+ const begin=editorHandler('beginLayerSelection',{tool:'vector-select',owner,layer,layerVisible:true,paintLayerEditable:()=>true,vectorState:{current:{selected:[]}},vectorResizeHandleAt,
+  inputPoint:()=>({x:10,y:10}),inputTolerance:()=>2,coverage:()=>false,pickPaintLayer:()=>undefined,beginVector:()=>marquee++,clearVectorSelection:()=>clear++,historyRef:{current:{present:{owners:[owner]}}}});
+ const event={clientX:10,clientY:10,currentTarget:{dataset:{paperWidth:'100',paperHeight:'100'},getBoundingClientRect:()=>({left:0,top:0,width:100,height:100})}};
+ begin(event,()=>{native++;return true;});assert.equal(native,1);assert.equal(clear,1);assert.equal(marquee,0);
+ begin(event,()=>false);assert.equal(marquee,1,'Empty paper still supports vector marquee');
 });

@@ -158,10 +158,9 @@ test('all-material view reserves a scrollbar and includes the cloud category',()
 
 test('V uses the one layout selection route and A direct selection edits the selected bubble path',()=>{
   const editor=read('src/components/PaintEditor.tsx'),canvas=read('src/components/MangaCanvas.tsx'),bezier=read('src/components/BubbleBezierEditor.tsx'),css=read('src/styles/bubbleBezier.css'),globalCss=read('src/styles/global.css');
-  assert.match(editor,/!requested&&nextTool==='vector-select'\)onSelectLayout\?\.\(\)/);
-  assert.match(editor,/!requested&&nextTool==='vector-node'&&onSelectBubblePath\)onSelectBubblePath\('node'\)/);
+  assert.match(editor,/event\.stopPropagation\(\);selectTool\(nextTool\)/);
+  assert.match(editor,/onClick=\{\(\)=>selectTool\(value\)\}/);
   assert.match(editor,/const layoutSelect=value==='vector-select'/);
-  assert.match(editor,/!requested&&layoutSelect\)onSelectLayout\?\.\(\)/);
   assert.doesNotMatch(editor,/label="選択・移動"/);
   assert.match(editor,/requested&&<PaintToolButton[^>]+label="配置へ戻る"/);
   assert.match(canvas,/BubblePathToolContext/);
