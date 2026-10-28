@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { insertGeneratedPaintImage, addPaintFolder, applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
+import { paintOwnerShouldClear, movePaintEntry, paintAddPosition, ensureDirectPaintOwner, paintNativeBand, addPaintLayer, insertGeneratedPaintImage, addPaintFolder, applyPaintAnchorIds,paintAnchorIds,paintStackMatches,paintStackTarget,directPaintImages,orderedPaintOwners,applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
 import { createFrameArtwork, imageAssetIds, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
@@ -482,4 +482,159 @@ test('moving layers preserves empty sibling folder order and same-folder drops g
  assert.equal(movePaintFolder(moved,'f1',{kind:'folder',id:'f1',placement:'above'}),moved);
  assert.equal(movePaintFolder(moved,'f1',{kind:'folder',id:'f2',placement:'inside'}),moved,'folders do not nest');
  validatePaintDocument(moved,[]);
+});
+
+
+test('work-layer names share the page sequence across kinds and owners, independent of names and gaps',()=>{
+ let scene={...paintScene(panel(),100,[],'color','panel'),layerSequence:0};
+ const before=structuredClone(scene),first=addPaintLayer(scene,'panel','vector');
+ assert.equal(first.layer.name,'レイヤー 1');assert.equal(first.layer.kind,'vector');scene=first.scene;
+ const second=addPaintLayer(scene,'background','raster');assert.equal(second.layer.name,'レイヤー 2');scene=second.scene;
+ scene={...scene,owners:scene.owners.map(owner=>({...owner,paint:{...owner.paint,layers:owner.paint.layers.map(layer=>layer.id===second.layer.id?{...layer,name:'前景の人物'}:layer).filter(layer=>layer.id!==first.layer.id)}}))};
+ const third=addPaintLayer(scene,'figure-0','vector');assert.equal(third.layer.name,'レイヤー 3');assert.equal(third.scene.layerSequence,3);
+ assert.equal(before.layerSequence,0);assert.equal(before.owners.find(owner=>owner.key==='panel').paint.layers.length,0);
+ assert.equal(first.scene.layerSequence,1);assert.equal(second.scene.layerSequence,2);
+ const otherPanel={...paintScene(panel(),100,[],'color','panel'),layerSequence:third.scene.layerSequence};
+ assert.equal(addPaintLayer(otherPanel,'panel','raster').layer.name,'レイヤー 4');
+ const otherPage=paintScene(panel(),100,[],'color','page');assert.equal(addPaintLayer(otherPage,'page','vector').layer.name,'レイヤー 1');
+ const locked={...scene,owners:scene.owners.map(owner=>({...owner,locked:true}))};assert.equal(addPaintLayer(locked,'panel','raster'),undefined);assert.equal(locked.layerSequence,2);
+});
+
+test('direct work layers follow native text and linked originals while unlinked originals stay above them',()=>{
+ const p=panel(),a=asset('original');
+ p.images=[{...createFrameArtwork(a,frame),id:'unlinked',bubbleOriginal:{name:'unlinked',sourceRegionId:'unlinked'}}];
+ for(const scope of ['panel','page']){
+  const scene=paintScene(p,100,[a],'color',scope),keys=scene.owners.map(owner=>owner.key);
+  assert.ok(keys.indexOf(scope)>keys.indexOf('bubble-0'));
+  assert.ok(keys.indexOf(scope)<keys.indexOf('original-unlinked'));
+  assert.ok(keys.indexOf(scope)>keys.indexOf('figure-0'));
+ }
+});
+
+
+test('layer insertion follows a selected sibling or the open/unlocked folder, without touching the selected layer',()=>{
+  let scene=paintScene(panel(),100,[],'color','panel');
+  let first=addPaintLayer(scene,'panel','raster');scene=first.scene;
+  const second=addPaintLayer(scene,'panel','vector',paintAddPosition(scene.owners.find(o=>o.key==='panel'),first.layer.id,()=>false));scene=second.scene;
+  let owner=scene.owners.find(o=>o.key==='panel');
+  assert.deepEqual(owner.paint.layers.map(l=>l.name),['レイヤー 2','レイヤー 1']);
+  const folder=addPaintFolder(owner.paint);owner={...owner,paint:folder.paint};
+  scene={...scene,owners:scene.owners.map(o=>o.key==='panel'?owner:o)};
+  const inside=addPaintLayer(scene,'panel','raster',paintAddPosition(owner,folder.folder.id,()=>false));scene=inside.scene;
+  assert.equal(inside.layer.folderId,folder.folder.id);
+  owner=scene.owners.find(o=>o.key==='panel');
+  const below=addPaintLayer(scene,'panel','vector',paintAddPosition(owner,folder.folder.id,()=>true));
+  assert.equal(below.layer.folderId,undefined);
+  assert.deepEqual(paintLayerTree(below.scene.owners.find(o=>o.key==='panel').paint).slice(-2).map(e=>e.kind),['layer','folder']);
+  owner={...owner,paint:{...owner.paint,folders:owner.paint.folders.map(f=>({...f,locked:true}))}};
+  assert.deepEqual(paintAddPosition(owner,inside.layer.id,()=>false).target,{kind:'folder',id:folder.folder.id,placement:'below'});
+});
+
+test('direct sibling positions persist independently without overwriting another direct owner',()=>{
+  const p=panel(),a=asset('stack');
+  let scene=paintScene(p,100,[],'color','panel');
+  const root=addPaintLayer(scene,'panel','raster');scene=root.scene;
+  const sibling=addPaintLayer(scene,'panel','vector',{stack:{below:'bubble-0'}});scene=sibling.scene;
+  assert.ok(scene.owners.findIndex(o=>o.key===sibling.key)<scene.owners.findIndex(o=>o.key==='bubble-0'));
+  for(const key of ['panel',sibling.key]){
+    const owner=scene.owners.find(o=>o.key===key);
+    applyOwnerPaint(p,owner,{...createFrameArtwork(a,owner.frame),id:key,paint:owner.paint});
+  }
+  assert.equal(p.images.length,2);
+  applyPaintAnchorIds({panels:[p]},0,false,scene.anchorIds);
+  const reopened=paintScene(p,100,[a],'color','panel');
+  assert.equal(paintStackTarget(reopened.owners.find(o=>o.key===sibling.key).stack,reopened.anchorIds),'bubble-0');
+  p.bubbles.unshift({...p.bubbles[0],layerId:undefined});
+  assert.equal(paintStackTarget(p.images[1].paintStack,paintAnchorIds(p)),'bubble-1');
+  p.bubbles.pop();
+  assert.equal(paintStackMatches(p.images[1].paintStack,undefined,paintAnchorIds(p)),true);
+  assert.deepEqual(reopened.owners.find(o=>o.key==='panel').paint.layers.map(l=>l.name),['レイヤー 1']);
+  clearOwnerPaint(p,reopened.owners.find(o=>o.key===sibling.key));
+  assert.equal(p.images.length,1);assert.equal(p.images[0].paintStack,undefined);
+});
+
+test('native text bands retain folder membership and separate only the intended paint',()=>{
+  const below=newPaintLayer('文字の下'),above={...newPaintLayer('文字の上'),aboveNative:true};
+  const child={...newPaintLayer('フォルダー内'),folderId:'front'};
+  const paint={version:1,width:100,height:100,dpi:100,layers:[below,above,child],folders:[{id:'front',name:'前',position:2,aboveNative:true}]};
+  assert.deepEqual(paintNativeBand(paint,true).layers.map(l=>l.name),['文字の上','フォルダー内']);
+  assert.deepEqual(paintNativeBand(paint,false).layers.map(l=>l.name),['文字の下']);
+  assert.equal(paintNativeBand(paint,true).folders[0].id,'front');
+});
+
+
+test('orphan roots, panel-bar positions and original siblings have one display and picking order',()=>{
+ const p=panel(),ids=paintAnchorIds(p,[{...p,layerId:'one'},{...p,id:2,layerId:'two'}]);
+ const own=(key,stack,kind='page',extra={})=>({key,kind,stack,paint:{layers:[]},...extra});
+ const base=[own('figure-0',undefined,'figure',{figure:p.figures[0],index:0}),own('bubble-0',undefined,'bubble',{bubble:p.bubbles[0],index:0}),own('original-id',undefined,'original',{parentKey:'bubble-0'}),own('page')];
+ ids['original-id']='id';
+ const scene=orderedPaintOwners([...base,own('second',{beforePanel:'layer:two'}),own('first',{beforePanel:'layer:one'}),own('orphan',{below:'layer:gone'}),own('original-sibling',{below:'layer:id'})],ids);
+ assert.deepEqual(scene.map(o=>o.key),['first','second','figure-0','bubble-0','original-sibling','original-id','orphan','page']);
+ assert.equal(scene.find(o=>o.key==='original-sibling').parentKey,'bubble-0');
+ const images=[{id:'root',paintScope:'page'},{id:'orphan',paintScope:'page',paintStack:{below:'layer:gone'}},{id:'anchored',paintScope:'page',paintStack:{beforePanel:'layer:one'}}];
+ assert.deepEqual(directPaintImages(images,'page',undefined,ids).map(i=>i.id),['orphan','root']);
+});
+
+
+test('layer moves between owners retain world positions, assets, paths and both masks',()=>{
+ const ink={...newPaintLayer('移動用'),id:'moving',image:{assetId:'ink',crop:{x:1,y:2,w:20,h:30},bbox:{x:5,y:6,w:20,h:30}},strokes:[structuredClone(stroke)],
+  mask:{enabled:true,strokes:[structuredClone(stroke)]},generationMask:{enabled:true,strokes:[structuredClone(stroke)]},
+  paths:[{id:'path',nodes:[{x:8,y:9,handleOut:{x:2,y:3}}],style:{width:2,dash:[],dashOffset:0}}],tone:{...defaultPaintTone(),origin:{x:7,y:8}}};
+ const owner=(key,frame,width,height,layers)=>({key,kind:key,frame,paint:{version:1,width,height,dpi:100,guideInitialized:true,layers},index:0,label:key});
+ const source=owner('page',{x:0,y:0,w:100,h:100},200,200,[ink]),target=owner('figure',{x:40,y:50,w:25,h:25},100,100,[]),before=structuredClone([source,target]);
+ const moved=movePaintEntry(source,target,'layer','moving',{kind:'root',edge:'top'}),layer=moved.destination.paint.layers[0];
+ const world=(owner,p)=>({x:owner.frame.x+p.x*owner.frame.w/owner.paint.width,y:owner.frame.y+p.y*owner.frame.h/owner.paint.height});
+ assert.equal(moved.source.paint.layers.length,0);assert.equal(layer.id,'moving');assert.equal(layer.name,'移動用');assert.deepEqual(layer.image.crop,ink.image.crop);assert.equal(layer.image.assetId,'ink');
+ for(const [a,b] of [[ink.strokes[0].points[0],layer.strokes[0].points[0]],[ink.mask.strokes[0].points[0],layer.mask.strokes[0].points[0]],[ink.generationMask.strokes[0].points[0],layer.generationMask.strokes[0].points[0]],[ink.paths[0].nodes[0],layer.paths[0].nodes[0]],[ink.image.bbox,layer.image.bbox],[ink.tone.origin,layer.tone.origin]])assert.deepEqual(world(source,a),world(moved.destination,b));
+ assert.equal(layer.tone.lpi,ink.tone.lpi/2);assert.equal(layer.paths[0].nodes[0].handleOut.x,4);assert.equal(layer.strokes[0].size,stroke.size*2);assert.deepEqual([source,target],before);
+ const returned=movePaintEntry(moved.destination,moved.source,'layer','moving',{kind:'root',edge:'top'});
+ assert.deepEqual(world(returned.destination,returned.destination.paint.layers[0].strokes[0].points[0]),world(source,ink.strokes[0].points[0]));
+});
+
+test('folder membership and native text bands use the same move across all owner kinds',()=>{
+ const owner=(key,layers,folders=[])=>({key,kind:key,index:0,label:key,frame:{x:0,y:0,w:100,h:100},paint:{version:1,width:100,height:100,dpi:100,guideInitialized:true,layers,folders}});
+ for(const key of ['page','panel','figure','bubble','background','original']){
+  const ink={...newPaintLayer('移動'),id:'layer',folderId:'from'},source=owner('page',[ink],[{id:'from',name:'移動元',position:0}]);
+  const target=owner(key,[],[{id:'to',name:'移動先',position:0,aboveNative:true}]);
+  const moved=movePaintEntry(source,target,'layer','layer',{kind:'folder',id:'to',placement:'inside'});
+  assert.equal(moved.destination.paint.layers[0].folderId,'to');assert.equal(moved.destination.paint.layers[0].aboveNative,true);assert.equal(moved.source.paint.folders[0].id,'from');
+  const out=movePaintEntry(moved.destination,moved.destination,'layer','layer',{kind:'root',edge:'bottom',aboveNative:false});
+  assert.equal(out.destination.paint.layers[0].folderId,undefined);assert.equal(out.destination.paint.layers[0].aboveNative,undefined);
+  const grouped=movePaintEntry(moved.destination,moved.source,'folder','to',{kind:'root',edge:'top',aboveNative:false});
+  assert.equal(grouped.destination.paint.folders.at(-1).id,'to');assert.equal(grouped.destination.paint.layers.at(-1).id,'layer');
+ }
+});
+
+test('moves reject locked destinations, invalid targets and no-ops without changing owners',()=>{
+ const owner=(key,layers)=>({key,kind:'panel',index:0,label:key,frame:{x:0,y:0,w:10,h:10},paint:{version:1,width:100,height:100,dpi:100,guideInitialized:true,layers}});
+ const source=owner('source',[{...newPaintLayer(),id:'layer'}]),target=owner('target',[]),drop={kind:'root',edge:'top'};
+ assert.equal(movePaintEntry(source,source,'layer','layer',drop),undefined);
+ for(const locked of [{locked:true},{inheritedLocked:true}])assert.equal(movePaintEntry(source,{...target,...locked},'layer','layer',drop),undefined);
+ assert.equal(movePaintEntry(source,{...target,paint:{...target.paint,folders:[{id:'folder',name:'固定',position:0,locked:true}]}},'layer','layer',{kind:'folder',id:'folder',placement:'inside'}),undefined);
+ assert.equal(movePaintEntry(source,target,'layer','layer',{kind:'layer',id:'missing',after:true}),undefined);
+ assert.equal(movePaintEntry(source,{...target,paint:{...target.paint,layers:Array.from({length:64},()=>newPaintLayer())}},'layer','layer',drop),undefined);
+});
+
+test('whole-canvas fills keep their original area and an emptied initialized owner does not recreate its guide',()=>{
+ const source={key:'figure-0',kind:'figure',index:0,label:'人物',frame:{x:10,y:20,w:10,h:10},paint:{version:1,width:100,height:100,dpi:100,guideInitialized:true,layers:[{...newPaintLayer('全面'),id:'ink',tone:{...defaultPaintTone(),fill:true},strokes:[{...stroke,tool:'fill'}]}]}};
+ const target={...source,key:'page',kind:'page',frame:{x:0,y:0,w:100,h:100},paint:{...source.paint,width:1000,height:1000,layers:[]}};
+ const moved=movePaintEntry(source,target,'layer','ink',{kind:'root',edge:'top'});assert.deepEqual(moved.destination.paint.layers[0].clip,{x:100,y:200,w:100,h:100});
+ assert.doesNotThrow(()=>validatePaintDocument(moved.source.paint,[]));
+ const p=panel(),a=asset('empty',100,100);p.figures=[{name:'空になった人物',bbox:source.frame,artwork:{...createFrameArtwork(a,source.frame),paint:moved.source.paint}}];
+ const reopened=paintScene(p,100,[a],'color','panel').owners.find(owner=>owner.kind==='figure');assert.equal(reopened.paint.layers.length,0);
+ assert.throws(()=>validatePaintDocument({...moved.source.paint,guideInitialized:false},[]));
+});
+
+
+test('empty initialized artwork remains persisted after later visibility or lock edits',()=>{
+ const paint={version:1,width:100,height:100,dpi:100,guideInitialized:true,layers:[]};
+ for(const kind of ['figure','background','bubble']){
+  const owner={key:kind,kind,index:0,label:kind,frame:{x:0,y:0,w:25.4,h:25.4},paint};
+  assert.equal(paintOwnerShouldClear(owner),false);
+  assert.equal(paintOwnerShouldClear({...owner,paint:{...paint},locked:false}),false);
+  assert.equal(paintOwnerShouldClear({...owner,paint:{...paint,layers:paint.layers.map(layer=>({...layer,visible:false}))}}),false);
+  assert.equal(paintOwnerShouldClear({...owner,paint:{...paint,guideInitialized:undefined}}),true);
+ }
+ for(const kind of ['page','panel','original'])assert.equal(paintOwnerShouldClear({kind,paint}),true);
+ assert.equal(paintOwnerShouldClear({kind:'figure',paint:{...paint,folders:[{id:'kept',name:'空フォルダー',position:0}]}}),false);
 });

@@ -173,28 +173,28 @@ async function verifySelection(){
   click('.paint-layers-dock [aria-label="レイヤーを開く"]');await settle();
   check(owner('figure-0')&&selectedPanel()==='コマ 01'&&visible(),'閉じたdock内で選んだ行も再表示時にスクロール');
   click('.manga-paper .page-overlay-figure-layer .figure-guide');await settle();
-  check(owner('figure-0')&&!!selected()[0].closest('.page-direct-layer-group')&&visible(),'前景人物はコマ外のowner行を選択');
+  check(owner('figure-0')&&!!selected()[0].closest('.page-panel-outside-layers:not([data-before-panel])')&&visible(),'前景人物はコマ外のowner行を選択');
   click('.manga-paper [data-content-overlay][data-content-kind="bubble"]');await settle();
-  check(owner('bubble-0')&&!!selected()[0].closest('.page-direct-layer-group'),'前景吹き出しを通常コマと混同しない');
+  check(owner('bubble-0')&&!!selected()[0].closest('.page-panel-outside-layers:not([data-before-panel])'),'前景吹き出しを通常コマと混同しない');
   click('.manga-paper [data-content-overlay][data-content-kind="screen_text"]');await settle();
-  check(selected().length===1&&selected()[0].classList.contains('native-text-layer')&&!!selected()[0].closest('.page-direct-layer-group'),'前景の通常文字も同じ選択経路へ表示');
+  check(selected().length===1&&selected()[0].classList.contains('native-text-layer')&&!!selected()[0].closest('.page-panel-outside-layers:not([data-before-panel])'),'前景の通常文字も同じ選択経路へ表示');
   click('.manga-paper .bubble-original-child [data-content-kind="image"]:not([data-content-panel])');await settle();
-  check(owner('original-page-crop')&&!!selected()[0].closest('.page-direct-layer-group'),'ページ原本はコマ外の画像レイヤー行を選択');
+  check(owner('original-page-crop')&&!!selected()[0].closest('.page-panel-outside-layers:not([data-before-panel])'),'ページ原本はコマ外の画像レイヤー行を選択');
   click(canvas('figure',0));click('.page-switcher [aria-label="次のページ"]');await settle();
   check(selected().length===0,'ページ移動で前ページの選択・scroll予約を破棄');
   click('.manga-paper .page-overlay-figure-layer .figure-guide');await settle();
-  check(owner('figure-0')&&!!selected()[0].closest('.page-direct-layer-group')&&visible(),'人物だけのページ前景もレイヤー欄へ表示');
+  check(owner('figure-0')&&!!selected()[0].closest('.page-panel-outside-layers:not([data-before-panel])')&&visible(),'人物だけのページ前景もレイヤー欄へ表示');
   click('.page-switcher [aria-label="前のページ"]');await settle();click(canvas('figure'));await settle();
   check(!document.querySelector('.app-shell.is-painting'),'キャンバス選択だけではペンを起動しない');
   check(undo===true&&document.querySelector<HTMLButtonElement>('.app-header [aria-label^="元に戻す"]')?.disabled===true,'選択往復でUndoを追加しない');
   check(localStorage.getItem(STORAGE_KEY)===before,'選択・展開・scroll・ページ移動で保存原稿不変');
-  const panelGroup='.page-layer-palette .panel-layer-group[aria-label="コマ 01"]',pageGroup='.page-layer-palette .page-direct-layer-group';
+  const panelGroup='.page-layer-palette .panel-layer-group[aria-label="コマ 01"]',pageGroup='.page-layer-palette .page-panel-outside-layers:not([data-before-panel])';
   const heading=(key:string,overlay=false)=>`${overlay?pageGroup:panelGroup} [data-owner-group="${key}"] .layer-group-select`;
   const painting=()=>!!document.querySelector('.app-shell.is-painting');
   const until=async(test:()=>boolean)=>{for(let i=0;i<240&&!test();i++)await tick();if(!test())throw Error('描画状態の切替が完了しません');};
   for(const [key,overlay] of [['figure-0',false],['bubble-0',false],['figure-0',true],['bubble-0',true]] as const){
    click(heading(key,overlay));await settle();
-   check(!painting()&&owner(key)&&Boolean(selected()[0].closest('.page-direct-layer-group'))===overlay,`${overlay?'前景':'コマ'}の${key}見出しは描画せず対象を選択`);
+   check(!painting()&&owner(key)&&Boolean(selected()[0].closest('.page-panel-outside-layers:not([data-before-panel])'))===overlay,`${overlay?'前景':'コマ'}の${key}見出しは描画せず対象を選択`);
   }
   for(const key of ['figure-0','original-panel-crop']){
    click(key==='original-panel-crop'?canvas('image',0,1):heading(key));await settle();
@@ -328,7 +328,7 @@ async function verifyOriginalVisibility(){
   };
   check(read(70,70)==='255,255,255,255'&&read(50,60)!=='255,255,255,255','PNG出力でも前の原本より後ろの吹き出しを上に描く');
   output.width=output.height=1;
-  const root=`.page-layer-palette [data-owner-root="${key}"]`,heading='.panel-layer-group:not(.page-direct-layer-group) [data-owner-group="bubble-0"] .layer-group-select';
+  const root=`.page-layer-palette [data-owner-root="${key}"]`,heading='.panel-layer-group [data-owner-group="bubble-0"] .layer-group-select';
   const eye=()=>first<HTMLButtonElement>(`${root} .layer-visibility`);
   render(null,host);localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(ready));mounted=true;render(<App/>,host);
   const expand=async()=>{
@@ -346,7 +346,7 @@ async function verifyOriginalVisibility(){
   check(eye().getAttribute('aria-pressed')==='false'&&sourceCanvases().every(canvas=>!opaque(canvas)),'通常コマとページ前景の原本は透明で本文を覆わない');
   check(!document.querySelector('.bubble-original-child .canvas-content-hit'),'非表示の原本は遅延計測中も選択用の透明パスを持たない');
   check(first<HTMLElement>('[data-content-kind="bubble"][data-content-panel="0"]').textContent!.includes('認識した本文'),'認識したネイティブ本文は初期状態から表示');
-  const group='.panel-layer-group:not(.page-direct-layer-group) [data-owner-group="bubble-0"]';
+  const group='.panel-layer-group [data-owner-group="bubble-0"]';
   const folderLock=()=>first<HTMLButtonElement>(`${group}>.layer-row-lock`);
   const childLocks=()=>Array.from(first<HTMLElement>(group).parentElement!.querySelectorAll<HTMLButtonElement>(':scope > [role="group"] .layer-row-lock'));
   folderLock().click();
@@ -430,7 +430,7 @@ async function verifyPaletteStability(){
   check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&first<HTMLElement>('.manga-paper')===paper,'文字の目を切り替えてもパレットと紙面のDOMを保持');
   click(`${panel} [aria-label="テキスト3を表示"]`);await wait(()=>!!document.querySelector(text),'文字を再表示できません');
   check(true,'文字の目で非表示・再表示し、保存にも反映');
-  click(`${panel} .panel-layer-select`);await settle();
+  click(`${panel} [aria-label="コマ 01の枠を選択"]`);await settle();
   click('.selection-layer-controls [aria-label="ベクターレイヤー追加"]');
   await wait(()=>!!document.querySelector('.app-shell.is-painting')&&!!document.querySelector(`${panel} .layer-name-line svg`),'ベクターレイヤーを追加できません');await settle();
   check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&first<HTMLElement>('.manga-paper')===paper,'ベクターレイヤー追加と描画モード移行でもパレットと紙面のDOMを保持');
@@ -455,24 +455,24 @@ async function verifySelectionRows(){
  const click=(selector:string)=>{const item=document.querySelector<HTMLElement>(selector);if(!item)throw Error(`対象なし: ${selector}`);item.click();};
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
  const selected=(...selectors:string[])=>{const rows=[...root().querySelectorAll('.is-selected')];return rows.length===selectors.length&&selectors.every(selector=>rows.some(row=>row.matches(selector)));};
- const panel='.panel-layer-group[aria-label="コマ 01"]',other='.panel-layer-group[aria-label="コマ 02"]',page='.page-direct-layer-group';
+ const panel='.panel-layer-group[aria-label="コマ 01"]',other='.panel-layer-group[aria-label="コマ 02"]',page='.page-panel-outside-layers:not([data-before-panel])';
  const host=document.getElementById('app')!,before=localStorage.getItem(STORAGE_KEY);button.disabled=true;
  try{
   if(parseMangaYaml(before!).manga.meta.episode_id!=='layer-selection-qa')throw Error('Dedicated manuscript required');
   click('.page-switcher [aria-label="前のページ"]');await settle();
   document.querySelector<HTMLButtonElement>(`${panel} .panel-layer-heading button[aria-expanded="false"]`)?.click();
   click(`${page} [data-owner-group="figure-0"] .layer-group-select`);await settle();
-  check(selected(`${page} [data-owner-group="figure-0"]`,`${page}>.panel-layer-heading`),'前景人物と所属するコマ外を強調');
+  check(selected(`${page} [data-owner-group="figure-0"]`),'前景人物だけを強調');
   check(!document.querySelector('.manga-panel.is-selected,.manga-panel.is-group-selected,.panel-selection-overlay'),'コマ外の選択で無関係なコマを強調しない');
   const guide=`${page} [data-owner-root="figure-0"] .layer-row`;
   document.querySelector<HTMLButtonElement>(`${page} [data-owner-group="figure-0"] [aria-expanded="false"]`)?.click();
   click(`${guide} .layer-select`);await wait(()=>!!document.querySelector('.app-shell.is-painting'),'描画layerを選べません');
-  check(selected(guide,`${page} [data-owner-group="figure-0"]`,`${page}>.panel-layer-heading`),'前景あたりは人物フォルダーとコマ外だけを強調');
+  check(selected(guide,`${page} [data-owner-group="figure-0"]`),'前景あたりと人物フォルダーだけを強調');
   check(!!document.querySelector('.page-overlay-inspector'),'前景の描画中も詳細欄の所属をページ前景に保つ');
   check(getComputedStyle(document.querySelector(`${guide} .layer-select`)!).backgroundColor==='rgba(0, 0, 0, 0)','選択ボタンは行全体の背景色を使用');
   click(`${page} .native-text-layer .layer-select`);await wait(()=>!document.querySelector('.app-shell.is-painting'),'文字選択で描画を終了できません');
-  check(selected(`${page} .native-text-layer`,`${page}>.panel-layer-heading`),'前景文字はコマ外だけを強調し人物フォルダーを強調しない');
-  const textX=document.querySelector(`${page} .native-text-layer .layer-thumbnail`)!.getBoundingClientRect().left;
+  check(selected(`${page} .native-text-layer`),'前景文字だけを強調し人物フォルダーを強調しない');
+  const textX=document.querySelector(`${page} .native-text-layer .layer-kind-icon`)!.getBoundingClientRect().left;
   const guideX=document.querySelector(`${guide} .layer-thumbnail`)!.getBoundingClientRect().left;
   check(guideX>textX+10,'人物内のあたりをコマ外直下の文字より一段深く字下げ');
   click(`${panel} [aria-label="コマ 01の枠を選択"]`);await settle();
@@ -487,6 +487,7 @@ async function verifySelectionRows(){
   check(selected(`${panel} .native-text-layer`,`${panel}>.panel-layer-heading`),'コマ内の文字と所属コマを強調');
   click(`${panel} .panel-layer-select`);await settle();
   check(localStorage.getItem(STORAGE_KEY)===before,'選択の往復で保存原稿を変更しない');
+  click(`${panel} [aria-label="コマ 01の枠を選択"]`);await settle();
   click('.selection-layer-controls [aria-label="フォルダー追加"]');await wait(()=>!!document.querySelector(`${panel} .layer-user-folder-row`),'通常folderを追加できません');
   check(selected(`${panel} .layer-user-folder-row`,`${panel}>.panel-layer-heading`),'通常フォルダーの選択でも所属コマを強調');
   click('.layer-controls [aria-label="ラスターレイヤー追加"]');await wait(()=>!!document.querySelector(`${panel} .layer-direct-root [data-owner="panel"].is-selected`),'通常layerを追加できません');
@@ -507,7 +508,7 @@ async function verifyPaletteGeometry(){
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
  const first=<T extends Element>(selector:string)=>document.querySelector<T>(selector)!;
  const click=(selector:string)=>first<HTMLElement>(selector).click();
- const page='.page-direct-layer-group',group=`${page} [data-owner-group="bubble-0"]`,imageRow=`${page} [data-original-raster="page-crop"] .layer-row`;
+ const page='.page-panel-outside-layers:not([data-before-panel])',group=`${page} [data-owner-group="bubble-0"]`,imageRow=`${page} [data-original-raster="page-crop"] .layer-row`;
  const pixels=()=>{const canvas=first<HTMLCanvasElement>(`${imageRow} canvas`);return {width:canvas.width,height:canvas.height,data:Array.from(canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data)};};
  button.disabled=true;
  try{

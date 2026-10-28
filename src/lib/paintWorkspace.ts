@@ -47,7 +47,13 @@ export type BubblePathToolMode = false|'node';
 export const BubblePathToolContext = createContext<BubblePathToolMode>(false);
 /** Synchronous, shared with native capture-phase pan/pinch handlers. */
 export const PaintInputActivityContext = createContext<{current:boolean}|null>(null);
-export const PaintLayerControlsContext = createContext<ComponentChildren>(null);
+export const paintPaletteScope=(page:number,panel:number,overlay=false)=>`${page}/${overlay?'page':`panel-${panel}`}`;
+export interface PaintPaletteControls {
+  controls:ComponentChildren;
+  folded:Record<string,boolean>;
+  setFolded:(key:string,value:boolean)=>void;
+}
+export const PaintLayerControlsContext = createContext<PaintPaletteControls>({controls:null,folded:{},setFolded:()=>{}});
 export const PaintDetailsContext = createContext<ComponentChildren>(null);
 export const PaintToolsContext = createContext<ComponentChildren>(null);
 export const PaintWorkspaceContext = createContext<PaintWorkspaceState|null>(null);

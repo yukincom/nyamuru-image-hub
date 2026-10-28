@@ -24,7 +24,7 @@ test('only an explicit pointerup commits the pending raster mark',()=>{
 test('vector draft allocation is committed only by the same path preview/finish route',()=>{
   const begin=editorSource.slice(editorSource.indexOf('  function beginVector('),editorSource.indexOf('  function changePaths('));
   assert.doesNotMatch(begin,/changeLayers\(/,'pointerdown must not checkpoint a blank vector layer');
-  assert.match(begin,/addedLayer,target,point,cleanup/);
+  assert.match(begin,/addedLayer,addedBelow:addedLayer\?existing\?\.id:undefined,target,point,cleanup/);
   assert.match(begin,/finishVector\(e.type==='pointerup'\)/);
   const finish=editorSource.slice(editorSource.indexOf('  function showVectorDrag('),editorSource.indexOf('  function inputPoint('));
   assert.equal((finish.match(/commitVectorPaths\(/g)??[]).length,2,'preview and commit share atomic insertion');
@@ -400,4 +400,33 @@ test('a mask eraser beyond current ink is retained when later ink grows the laye
   const mask=saved.paint.layers[0].mask.strokes[0],ink=saved.paint.layers[0].strokes[0];
   assert.deepEqual(mask.points,ink.points);assert.equal(mask.selection,undefined);
   assert.deepEqual(layer.mask.strokes,[]);
+});
+
+
+test('automatic raster and vector layers consume the same sequence only on successful commit',()=>{
+ for(const kind of ['raster','vector']){
+  const scene={...initial(),layerSequence:7},owner=scene.owners[0];owner.paint.layers=[];
+  const draft=preparePaintMarkLayer(owner,undefined,kind,'color',scene.layerSequence),before=structuredClone(scene);
+  assert.equal(draft.name,'レイヤー 8');assert.equal(scene.layerSequence,7);
+  const pending={ownerKey:owner.key,layerId:draft.id,addedLayer:draft};
+  assert.equal(commitVectorPaths(scene,{...pending,paths:[]}),scene);
+  const next=kind==='raster'?commitPaintStroke(scene,{...pending,stroke:stroke()}):commitVectorPaths(scene,{...pending,paths:[{id:'v',closed:false,nodes:[{x:1,y:2},{x:4,y:5}],style:defaultVectorStyle()}]});
+  assert.equal(next.layerSequence,8);assert.equal(next.owners[0].paint.layers[0].name,'レイヤー 8');assert.deepEqual(scene,before);
+  const continued=kind==='raster'?commitPaintStroke(next,{...pending,stroke:stroke()}):commitVectorPaths(next,{...pending,paths:[...next.owners[0].paint.layers[0].paths,{id:'v2',closed:false,nodes:[{x:4,y:5},{x:8,y:9}],style:defaultVectorStyle()}]});
+  assert.equal(continued.layerSequence,8);assert.equal(continued.owners[0].paint.layers.length,1);
+ }
+});
+
+
+test('automatic marks insert directly below their selected sibling and retain its folder and native band',()=>{
+ for(const kind of ['raster','vector']){
+  const scene={...initial(),layerSequence:5},owner=scene.owners[0],selected=owner.paint.layers[0];
+  selected.kind=kind==='raster'?'vector':'raster';selected.folderId='inside';
+  owner.paint.folders=[{id:'inside',name:'folder',position:0,aboveNative:true}];
+  const draft=preparePaintMarkLayer(owner,selected,kind,'color',5),pending={ownerKey:owner.key,layerId:draft.id,addedLayer:draft,addedBelow:selected.id};
+  const next=kind==='raster'?commitPaintStroke(scene,{...pending,stroke:stroke()}):commitVectorPaths(scene,{...pending,paths:[{id:'v',closed:false,nodes:[{x:1,y:2},{x:4,y:5}],style:defaultVectorStyle()}]});
+  assert.deepEqual(next.owners[0].paint.layers.map(l=>l.id),[draft.id,selected.id]);
+  assert.equal(next.owners[0].paint.layers[0].folderId,'inside');assert.equal(next.owners[0].paint.layers[0].aboveNative,true);
+  assert.equal(next.layerSequence,6);assert.equal(owner.paint.layers.length,1);
+ }
 });

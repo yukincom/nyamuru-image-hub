@@ -89,11 +89,12 @@ export function toggleBubbleVisibility(document:MangaDocument,target:BubbleTextT
   const bubble=bubbleAt(document,target);if(!bubble)return false;
   const page=document.manga.pages[target.pageIndex],images=target.overlay?page.images:page.panels[target.panelIndex]?.images;
   const original=images?.find(image=>image.id===bubble.analogTextImport?.originalImageId);
-  const visible=group?(bubbleVisible(bubble)||Boolean(original&&!original.hidden&&(!original.paint||original.paint.layers.some(layer=>layer.visible)))):bubbleVisible(bubble);
+  const children=images?.filter(image=>image===original||original&&image.paintStack&&'below' in image.paintStack&&image.paintStack.below===`layer:${original.id}`)??[];
+  const visible=group?(bubbleVisible(bubble)||children.some(image=>!image.hidden&&(!image.paint||image.paint.layers.some(layer=>layer.visible)))):bubbleVisible(bubble);
   bubble.hidden=visible;
   if(group){
     if(bubble.paint_overlay){bubble.paint_overlay.hidden=false;for(const layer of bubble.paint_overlay.paint?.layers??[])layer.visible=!visible;}
-    if(original){original.hidden=original.paint?false:visible;for(const layer of original.paint?.layers??[])layer.visible=!visible;}
+    for(const image of children){image.hidden=image.paint?false:visible;for(const layer of image.paint?.layers??[])layer.visible=!visible;}
   }
   return true;
 }

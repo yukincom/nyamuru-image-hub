@@ -125,20 +125,20 @@ test('owner selection waits for paint close and retains the current mode on save
 
 test('palette preserves initial and edited scene order without sorting text numbers again',()=>{
  const owner=(kind,index,extra={})=>({key:`${kind}-${index}`,kind,index,paint:{layers:[]},...extra});
- const source=paintLayerSource.slice(paintLayerSource.indexOf('  const displayOwners='),paintLayerSource.indexOf('  return <div class="paint-layer-palette"'));
+ const source=paintLayerSource.slice(paintLayerSource.indexOf('  const textDirectOwners='),paintLayerSource.indexOf('  const relations='));
  for(const textOrder of [[9,2,1,0],[1,0,9,2]]){
   const owners=[owner('background',0),owner('figure',0),owner('figure',1),owner('panel',0),
    ...textOrder.flatMap(index=>[owner('bubble',index),...(index===0?[owner('original',0,{parentKey:'bubble-0'})]:[])]),owner('original',1)];
   const before=structuredClone(owners);
-  const result=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';displayOwners',{p:{scene:{owners}}});
+  const result=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';displayOwners',{p:{scene:{owners}},paintStackTarget:paintDocument.paintStackTarget});
   assert.deepEqual(Array.from(result,o=>o.key),['original-1',...textOrder.toReversed().map(index=>`bubble-${index}`),'figure-1','figure-0','background-0']);
   assert.deepEqual(owners,before);
  }
  assert.match(paintLayerSource,/displayOwners\.map\(\(o,ownerIndex,owners\)=>/);
- assert.match(paintLayerSource,/const frame=o\.kind!=='original'&&\(ownerIndex===0\|\|owners\[ownerIndex-1\]\.kind==='original'\)\?p\.frameLayer:null/);
+ assert.ok(paintLayerSource.indexOf('{p.frameLayer}')<paintLayerSource.indexOf('{displayOwners.map'));
  assert.match(paintLayerSource,/return <>\{frame\}<div class="layer-group"/);
- assert.match(pageLayerSource,/cloneElement\(activeLayers,\{frameLayer,images:/);
- assert.match(pageLayerSource,/<PanelPaintLayers panel=\{panel\}[^>]*frameLayer=\{frameLayer\}/);
+ assert.match(pageLayerSource,/cloneElement\(activeLayers,\{\.\.\.moves\(activeLayers\.props\.scene\),frameLayer,paletteScope,directPanel,nativeTextLayers,images:/);
+ assert.match(pageLayerSource,/<PanelPaintLayers panel=\{panel\}.*?frameLayer=\{frameLayer\}/);
 });
 
 test('page image import and export stay in the header immediately before New',()=>{
@@ -153,7 +153,7 @@ test('page image import and export stay in the header immediately before New',()
 });
 
 test('panel, page and bubble selections expose their own actions and direct drawing routes',()=>{
- assert.match(pageLayerSource,/paint\?\(controls\?\?<SelectionControls disabled\/>\):textControls\?\?bubbleControls\?\?panelControls/);
+ assert.match(pageLayerSource,/paint&&!closedPanel\?palette\.controls:textControls\?\?ownerControls\?\?panelControls/);
  assert.match(pageLayerSource,/function SelectionControls/);
  const fixedTools=['フォルダー追加','ラスターレイヤー追加','ベクターレイヤー追加','トーンレイヤー作成','生成マスク化','複製'];
  const controlsSource=pageLayerSource.slice(pageLayerSource.indexOf('function SelectionControls'),pageLayerSource.indexOf('const emptyLayer'));
@@ -161,23 +161,19 @@ test('panel, page and bubble selections expose their own actions and direct draw
  assert.match(pageLayerSource,/label="トーンレイヤー作成"[^>]*disabled/);
  assert.match(globalCss,/\.paint-dock \.paint-help-button\[aria-disabled=true\] \{ opacity:\.35; filter:grayscale\(1\); cursor:not-allowed; \}/);
  assert.match(pageLayerSource,/onDeleteBubble:\(panel:number,bubble:number,overlay\?:boolean\)=>void/);
- assert.match(pageLayerSource,/removeLabel=\{`\$\{textDisplayLabel\(bubbleTarget\.index\)\}を削除`\}/);
+ assert.match(pageLayerSource,/removeLabel=\{bubbleTarget\?`\$\{textDisplayLabel\(bubbleTarget\.index\)\}を削除`:'削除'\}/);
  assert.match(pageLayerSource,/\?`\$\{title\}全体の固定を解除`:`\$\{title\}全体を固定`/);
  assert.match(pageLayerSource,/\?`\$\{title\}の枠だけの固定を解除`:`\$\{title\}の枠だけを固定`/);
  assert.match(pageLayerSource,/removeLabel=\{selected\?`\$\{panelDisplayLabel\(selected\.id\)\}を削除`:'削除'\}/);
- assert.match(pageLayerSource,/p\.onAdd\(p\.activePanel,'raster'\)/);
- assert.match(pageLayerSource,/p\.onAdd\(p\.activePanel,'vector'\)/);
- assert.match(pageLayerSource,/>コマ外</);
- assert.match(pageLayerSource,/addFolder=\{panelEditable\?\(\)=>p\.onAddFolder\(p\.activePanel\):undefined\}/);
- assert.match(pageLayerSource,/aria-label="コマ外へフォルダーを追加"/);
- assert.match(pageLayerSource,/p\.onAdd\(p\.activePanel,'raster',true\)/);
- assert.match(pageLayerSource,/p\.onAdd\(p\.activePanel,'vector',true\)/);
- assert.match(pageLayerSource,/paintScene\(panel,p\.dpi,p\.assets,p\.colorMode,overlay\?'page':'panel'\)/);
- assert.match(appSource,/onAdd=\{\(index,kind,overlay=false\)=>\{try\{const scene=makePaintScene\(documentRef\.current,index,activePage,overlay\);actOnLayer\(index,\{type:'add',key:overlay\?'page':'panel',kind\},scene,overlay\);/);
- assert.match(appSource,/paintScene\(source,setup\.dpi,current\.manga\.image_assets\?\?\[\],paintColorMode\(setup\.format\),overlay\?'page':'panel'\)/);
+ assert.match(pageLayerSource,/p\.onAdd\(p\.activePanel,'raster',addOutside,outsidePosition\)/);
+ assert.match(pageLayerSource,/p\.onAdd\(p\.activePanel,'vector',addOutside,outsidePosition\)/);
+ assert.doesNotMatch(pageLayerSource,/>コマ外<|page-direct-layer-group|page-direct-layer-actions/);
+ assert.match(pageLayerSource,/addFolder=\{panelEditable\?\(\)=>p\.onAddFolder\(p\.activePanel,addOutside,outsidePosition\):undefined\}/);
+ assert.match(pageLayerSource,/paintScene\(panel,p\.dpi,p\.assets,p\.colorMode,overlay\?'page':'panel',overlay\?p\.page\.panels:undefined\)/);
+ assert.match(appSource,/onAdd=\{\(index,kind,overlay=false,position\)=>\{try\{const scene=makePaintScene\(documentRef\.current,index,activePage,overlay\);actOnLayer\(index,\{type:'add',key:overlay\?'page':'panel',kind,position:position\?\?\{\}\},scene,overlay\);/);
+ assert.match(appSource,/paintScene\(source,setup\.dpi,current\.manga\.image_assets\?\?\[\],paintColorMode\(setup\.format\),overlay\?'page':'panel',overlay\?targetPage\.panels:undefined\)/);
  assert.match(paintEditorSource,/if\(action\.type==='add'\)\{/);
  assert.match(paintEditorSource,/disabled=\{!requested\|\|busy\|\|suspended\}/);
- assert.equal((pageLayerSource.match(/class="palette-icon"/g)??[]).length>=4,true);
  assert.doesNotMatch(pageLayerSource,/コマ枠を固定すると、紙面上で動かなくなります/);
 });
 
@@ -226,7 +222,7 @@ test('the selected-art overlay keeps handles but cannot steal hits from visibly 
 test('the final paint layer can be removed completely and recreated only on demand',()=>{
  assert.match(paintEditorSource,/const remaining=owner\.paint\.layers\.filter\(l=>l\.id!==layer\.id\);changeLayers\(remaining\)/);
  assert.doesNotMatch(paintEditorSource,/owner\.paint\.layers\.length===1\?\[newPaintLayer/);
- assert.match(paintEditorSource,/if\(!owner\.paint\.layers\.length&&!owner\.paint\.folders\?\.length\)\{result\.owners\.push\(\{owner,blob:new Blob\(\),remove:true\}\);continue;\}/);
+ assert.match(paintEditorSource,/if\(paintOwnerShouldClear\(owner\)\)\{result\.owners\.push\(\{owner,blob:new Blob\(\),remove:true\}\);continue;\}/);
  assert.match(appSource,/if\(remove\)\{clearOwnerPaint\(target,owner\);continue;\}/);
 });
 
@@ -235,22 +231,24 @@ function fixture(){
  const hooks={useMemo:(make,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j]))slots[i]={deps,value:make()};return slots[i].value},
   useState:initial=>{const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>slots[i]=value]},
   useEffect:(run,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j])){const before=slots[i];slots[i]={deps};effects.push(()=>{before?.cleanup?.();slots[i].cleanup=run()})}}};
- const modules={'preact':{cloneElement:(element,props)=>({...element,props:{...element.props,...props}})},'preact/hooks':hooks,'preact/jsx-runtime':jsxRuntime,'lucide-preact':{},'../lib/canvasGeometry':{},'../lib/paintDocument':{paintAssetIds:paintDocument.paintAssetIds,paintScene:(panel,_dpi,_assets,_color,scope)=>({owners:[{key:scope??'figure-0',kind:scope??'figure',paint:{layers:[{id:panel.id,image:{assetId:String(panel.id)}}]}}]})},
-  '../lib/paintRenderer':{loadPaintImagesBestEffort:()=>new Promise(resolve=>requests.push(resolve))},'../lib/panelLayers':{panelVisible:()=>true,panelLocked:()=>false,panelFrameLocked:()=>false,panelFrameVisible:()=>true},'../lib/paintWorkspace':{},'../lib/pageCanvas':{},'../lib/displayLabels':{},
+ hooks.useContext=context=>context;hooks.useLayoutEffect=hooks.useEffect;
+ const modules={'preact':{createContext:value=>value,cloneElement:(element,props)=>({...element,props:{...element.props,...props}})},'preact/hooks':hooks,'preact/jsx-runtime':jsxRuntime,'lucide-preact':{},'../lib/canvasGeometry':{},'../lib/paintDocument':{paintAssetIds:paintDocument.paintAssetIds,paintScene:(panel,_dpi,_assets,_color,scope)=>({owners:[{key:scope??'figure-0',kind:scope??'figure',paint:{layers:[{id:panel.id,image:{assetId:String(panel.id)}}]}}]})},
+  '../lib/paintRenderer':{loadPaintImagesBestEffort:()=>new Promise(resolve=>requests.push(resolve))},'../lib/panelLayers':{panelVisible:()=>true,panelLocked:()=>false,panelFrameLocked:()=>false,panelFrameVisible:()=>true},'../lib/paintWorkspace':{paintPaletteScope:()=> 'test'},'../lib/pageCanvas':{},'../lib/displayLabels':{},
   '../lib/paintLock':{artworkLocked:()=>false},
   './PaintLayerPalette':{__esModule:true,default:'Palette'},'./LayerVisibilityButton':{__esModule:true,default:'Visibility'},'./LayerLockIcon':{__esModule:true,default:'Lock'},'./PaintToolHelp':{PaintToolButton:'Tool'}};
  const source=readFileSync(new URL('../src/components/PageLayerPalette.tsx',import.meta.url),'utf8').replace('function PanelPaintLayers(','export function PanelPaintLayers(');
  runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,jsxImportSource:'preact'}}).outputText,{exports,require:name=>{assert.ok(name in modules,name);return modules[name]}});
- return {requests,render(panel,assets){cursor=0;const tree=exports.PanelPaintLayers({panel,index:0,p:{dpi:100,assets}});return tree.props.images},
+ return {requests,render(panel,assets){cursor=0;const tree=exports.PanelPaintLayers({panel,index:0,p:{dpi:100,assets,page:{page:1,panels:[panel]}}});return tree.props.images},
   flush(){while(effects.length)effects.shift()()},dispose(){for(const slot of slots)slot?.cleanup?.()}};
 }
 test('empty direct groups stay out of the tree until the user adds artwork',()=>{
- const direct=pageLayerSource.indexOf('page-direct-layer-group'),panels=pageLayerSource.indexOf('{p.page.panels.map');
+ const direct=pageLayerSource.indexOf('{renderPageLayers()}'),panels=pageLayerSource.indexOf('{p.page.panels.map');
  assert.ok(direct>0&&direct<panels);
  assert.match(pageLayerSource,/images:p\.page\.images\?\.filter\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)/);
- assert.match(pageLayerSource,/const hasPageDirect=Boolean\(p\.page\.page_overlay\?\.figures\?\.length\|\|p\.page\.page_overlay\?\.bubbles\?\.length\|\|p\.page\.page_overlay\?\.screen_text\?\.length\|\|p\.page\.images\?\.some\(image=>image\.paintScope==='page'\|\|image\.bubbleOriginal\)\|\|activePageOwner\?\.paint\.layers\.length\|\|activePageOwner\?\.paint\.folders\?\.length\)/);
- assert.match(pageLayerSource,/\{hasPageDirect&&<div class="panel-layer-group page-direct-layer-group">/);
- assert.match(pageLayerSource,/const pageDirectAdd=!hasPageDirect&&<div class="page-direct-create-actions"/);
+ assert.match(pageLayerSource,/if\(!native&&!saved&&!live\)return null/);
+ assert.match(pageLayerSource,/paintStackTarget\(stack,pageAnchors\)\?\.startsWith\('panel-'\)/);
+ assert.match(pageLayerSource,/\{renderPageLayers\(panel\.id\)\}/);
+ assert.doesNotMatch(pageLayerSource,/pageDirectAdd|page-direct-create-actions|>コマ外へ追加</);
  assert.match(paintLayerSource,/filter\(o=>\(o\.kind!=='panel'&&o\.kind!=='page'\)\|\|o\.paint\.layers\.length>0\|\|o\.paint\.folders\?\.length\)/);
  assert.match(pageLayerSource,/const scene=result\.scene,owner=scene\.owners\.find\(item=>item\.kind===\(overlay\?'page':'panel'\)\)\?\?scene\.owners\[0\]/);
 });
@@ -259,13 +257,14 @@ test('layer folders are explicit and drag targets distinguish inside from outsid
  assert.match(paintLayerSource,/icon\('フォルダー追加',p\.addFolder,FolderPlus/);
  assert.match(paintLayerSource,/data-layer-drop="folder"/);
  assert.match(paintLayerSource,/ratio<\.25\?'above':ratio>\.75\?'below':'inside'/);
- assert.match(paintLayerSource,/p\.moveLayer\(d\.key,d\.id,d\.drop\)/);
+ assert.match(paintLayerSource,/p\.moveLayer\(d\.key,d\.id,target,destination\)/);
  assert.match(paintLayerSource,/if\(o\.kind==='panel'\|\|o\.kind==='page'\)return/);
  assert.match(paintLayerSource,/if\(o\.kind==='original'\)return/);
  assert.match(paintLayerSource,/data-original-raster=/);
  assert.match(paintEditorSource,/requested&&key==='f'/);
  assert.match(appSource,/key==='f'[\s\S]{0,180}?addDirectFolder/);
- assert.match(globalCss,/\.layer-user-folder\.drop-inside>/);
+ assert.doesNotMatch(paintLayerSource,/layer-root-drop/);
+ assert.match(globalCss,/--layer-drop-color:#df861f/);
 });
 
 test('representative locks live at row right and inherited locks disable descendant toggles',()=>{

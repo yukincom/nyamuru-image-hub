@@ -5,7 +5,7 @@ import VectorOverlay from './VectorOverlay';
 import { Box } from 'lucide-preact';
 import { useEffect, useLayoutEffect, useState, useRef } from 'preact/hooks';
 import type { BBox, PersistentAnalogAssetRef } from '../types';
-import { paintReferenceBox, type PaintOwner } from '../lib/paintDocument';
+import { paintReferenceBox, paintNativeBand, type PaintOwner } from '../lib/paintDocument';
 import { usePaintWorkspace } from '../lib/paintWorkspace';
 import PaintPreviewCanvas from './PaintPreviewCanvas';
 import { loadFigureCropAsset } from '../lib/figureCropStore';
@@ -51,13 +51,15 @@ export function PaintOriginal({owner}: {owner:PaintOwner}) {
 
 const relativeStyle=(box:BBox,container:BBox)=>({left:`${(box.x-container.x)/container.w*100}%`,top:`${(box.y-container.y)/container.h*100}%`,width:`${box.w/container.w*100}%`,height:`${box.h/container.h*100}%`});
 /** Preview in the native page's existing stacking layer; bubbles keep their native text/tails. */
-export function PaintOwnerPreview({ownerKey,container,inkOnly=false}:{ownerKey:string;container:BBox;inkOnly?:boolean}) {
+export function PaintOwnerPreview({ownerKey,container,inkOnly=false,nativeBand}:{ownerKey:string;container:BBox;inkOnly?:boolean;nativeBand?:'above'|'below'}) {
   const state=usePaintWorkspace();
   if(!state)return null;
-  const owner=state.scene.owners.find(o=>o.key===ownerKey);
-  if(!owner||owner.bubble?.hidden===true)return null;
+  const original=state.scene.owners.find(o=>o.key===ownerKey);
+  if(!original||original.bubble?.hidden===true&&!nativeBand)return null;
+  const owner=nativeBand?{...original,paint:paintNativeBand(original.paint,nativeBand==='above')}:original;
   const reference=paintReferenceBox(owner.paint,owner.frame);
-  const live=state.live?.ownerKey===owner.key?state.live:undefined;
+  const candidate=state.live?.ownerKey===owner.key?state.live:undefined;
+  const live=candidate&&(!nativeBand||owner.paint.layers.some(layer=>layer.id===candidate.layerId)||candidate.addedLayer&&Boolean(candidate.addedLayer.aboveNative)===(nativeBand==='above'))?candidate:undefined;
   const hasInk=Boolean(live)||owner.paint.layers.some(layer=>paintLayerVisible(owner.paint,layer)&&(layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.fill));
   const showGuide=!owner.paint.guideInitialized&&state.guideVisible(owner.key);
   const fullGuide=showGuide&&!hasInk;

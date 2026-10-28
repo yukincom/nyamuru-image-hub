@@ -509,3 +509,13 @@ test('異なるスキーマ名をNDM検査で拒否する', () => {
   const issues = validateManga(parseMangaYaml(source));
   assert.ok(issues.some((issue) => issue.level === 'error' && issue.path === 'manga.schema_name'));
 });
+
+
+test('ページのレイヤー連番は名前と別に通常保存・YAML・snapshotを往復する',async()=>{
+ const document=parseMangaYaml(sampleSource),page=document.manga.pages[0];page.paint_layer_sequence=17;
+ for(const serialize of [toStoredMangaYaml,toMangaYaml])assert.equal(parseMangaYaml(serialize(document)).manga.pages[0].paint_layer_sequence,17);
+ const {createProjectSnapshot,restoreProjectSnapshot}=await import('../src/lib/projectPersistence.ts');
+ assert.equal((await restoreProjectSnapshot(await createProjectSnapshot(document))).manga.pages[0].paint_layer_sequence,17);
+ for(const invalid of [-1,1.5,'3',Infinity]){page.paint_layer_sequence=invalid;assert.ok(validateManga(document).some(issue=>issue.path==='manga.pages[0].paint_layer_sequence'&&issue.level==='error'));}
+ delete page.paint_layer_sequence;assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.paint_layer_sequence')));
+});

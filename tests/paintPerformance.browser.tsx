@@ -36,7 +36,7 @@ function makeScene(count:number):PaintScene{
 }
 function Probe(){
   workspace=usePaintWorkspace();
-  const controls=useContext(PaintLayerControlsContext);
+  const {controls}=useContext(PaintLayerControlsContext);
   return <div style={{marginTop:'8px'}}><button id="undo" onClick={()=>workspace?.undo()}>取り消し</button><button id="redo" onClick={()=>workspace?.redo()}>やり直し</button><output id="ink-state">{workspace?.owner.paint.layers[0].strokes.length}本{workspace?.live?'・描画中':''}</output><div id="fixture-tools">{workspace?.tools}</div>{controls}{workspace?.status}</div>;
 }
 type MountOptions=Partial<Pick<ComponentProps<typeof PaintEditor>,'controller'|'resume'|'sharedHistory'|'initialOwner'|'assets'|'onApply'|'onClose'>>;

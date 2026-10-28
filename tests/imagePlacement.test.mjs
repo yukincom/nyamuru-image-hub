@@ -83,6 +83,15 @@ test('direct drawing markers keep their exact owner through validation, save and
   assert.deepEqual(restored.manga.pages[0].images,doc.manga.pages[0].images);
   assert.equal(restored.manga.pages[0].images.at(-1).paintScope,'page');
 
+  for(const position of [{below:'layer:text-id'},{beforePanel:'layer:panel-id'}]){
+    marker.paintStack=position;validateImagePlacements(doc);
+    assert.deepEqual(parseMangaYaml(toStoredMangaYaml(doc)).manga.pages[0].images.at(-1).paintStack,position);
+  }
+  for(const position of [{below:'bubble-0'},{beforePanel:1},{beforePanel:''},{below:'layer:a',beforePanel:'layer:b'}]){
+    marker.paintStack=position;assert.throws(()=>validateImagePlacements(doc),/位置/);
+  }
+  delete marker.paintStack;
+
   for(const mutate of [
     d=>{const item=d.manga.pages[0].images.pop();item.paintScope='panel';d.manga.pages[0].panels[0].images=[item];item.paintScope='page';},
     d=>{d.manga.pages[0].images.at(-1).paintScope='panel';},

@@ -1,17 +1,17 @@
-import type { PaintLayerDropTarget, PaintOwner, PaintScene } from './paintDocument.ts';
+import type { PaintAddPosition, PaintLayerDestination, PaintLayerDropTarget, PaintOwner, PaintScene } from './paintDocument.ts';
 import type { BackgroundStage, BBox, ImageAsset, PaintFolder, PaintLayer } from '../types.ts';
 export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox }
 
 export type PaintLayerAction =
   | {type:'background3d';key:'background'}
-  | {type:'add';key:string;kind:'raster'|'vector'}
-  | {type:'add-folder';key:string}
+  | {type:'add';key:string;kind:'raster'|'vector';position?:PaintAddPosition}
+  | {type:'add-folder';key:string;position?:PaintAddPosition}
   | {type:'rename-folder';key:string;id:string;name:string}
   | {type:'remove-folder';key:string;id:string}
   | {type:'update-folder';key:string;id:string;patch:Partial<Pick<PaintFolder,'visible'|'locked'>>}
-  | {type:'move-folder';key:string;id:string;target:PaintLayerDropTarget}
-  | {type:'move-layer';key:string;id:string;target:PaintLayerDropTarget}
-  | {type:'select';key:string;id?:string;contents?:boolean;mask?:'mask'|'generationMask'}
+  | {type:'move-folder';key:string;id:string;target:PaintLayerDropTarget;destination?:PaintLayerDestination}
+  | {type:'move-layer';key:string;id:string;target:PaintLayerDropTarget;destination?:PaintLayerDestination}
+  | {type:'select';key:string;id?:string;contents?:boolean;native?:boolean;mask?:'mask'|'generationMask'}
   | {type:'menu';key:string;x:number;y:number}
   | {type:'update';key:string;id:string;patch:Partial<PaintLayer>}
   | {type:'owner-lock';key:string;locked:boolean;group?:boolean}

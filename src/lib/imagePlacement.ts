@@ -103,6 +103,10 @@ export function validateImagePlacements(document: MangaDocument): void {
     for (const item of items ?? []) {
       if (!item || typeof item.id !== 'string' || !item.id || ids.has(item.id)) throw new Error('画像の配置情報が不正です');
       if(item.paintScope!==undefined&&(!['panel','page'].includes(item.paintScope)||item.paintScope!==scope||!item.paint||item.generationScope!==undefined))throw new Error('描画レイヤーの所属が不正です');
+      if(item.paintStack!==undefined){
+        const stack=item.paintStack;
+        if(!item.paintScope||!stack||typeof stack!=='object'||Object.keys(stack).length!==1||!('below' in stack&&typeof stack.below==='string'&&/^layer:.+/.test(stack.below)||'beforePanel' in stack&&item.paintScope==='page'&&typeof stack.beforePanel==='string'&&/^layer:.+/.test(stack.beforePanel)))throw new Error('描画レイヤーの位置が不正です');
+      }
       if(item.bubbleOriginal&&(scope==='background'||typeof item.bubbleOriginal.sourceRegionId!=='string'||!item.bubbleOriginal.sourceRegionId||typeof item.bubbleOriginal.name!=='string'||!item.bubbleOriginal.name||item.paintScope||item.generationScope))throw new Error('原本レイヤーの所属が不正です');
       ids.add(item.id);
       validate(item, item.bbox);

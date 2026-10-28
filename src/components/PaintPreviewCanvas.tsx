@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PaintDocument } from '../types';
 import type { PendingPaintStroke } from '../lib/paintGesture';
 import { paintPreviewRenderer, type PaintImages } from '../lib/paintRenderer';
+import { movePaintLayer } from '../lib/paintDocument';
 import { paintPreviewSize } from '../lib/paintPreviewSize';
 
 export default function PaintPreviewCanvas({paint,images,live,maskPreviewId,includeGeneration=true,style}:{
@@ -21,7 +22,9 @@ export default function PaintPreviewCanvas({paint,images,live,maskPreviewId,incl
   },[paint.width,paint.height]);
   useLayoutEffect(()=>{
     if(!ref.current)return;renderer.current??=paintPreviewRenderer();
-    renderer.current.draw(ref.current,live?.addedLayer?{...paint,layers:[...paint.layers,live.addedLayer]}:paint,images,live,maskPreviewId,includeGeneration);
+    let preview=live?.addedLayer?{...paint,layers:[...paint.layers,live.addedLayer]}:paint;
+    if(live?.addedLayer&&live.addedBelow)preview=movePaintLayer(preview,live.addedLayer.id,{kind:'layer',id:live.addedBelow,after:true});
+    renderer.current.draw(ref.current,preview,images,live,maskPreviewId,includeGeneration);
     ref.current.dispatchEvent(new Event('paint-preview-rendered',{bubbles:true}));
   },[paint,images,live,maskPreviewId,includeGeneration,size]);
   useEffect(()=>()=>{renderer.current?.dispose();},[]);

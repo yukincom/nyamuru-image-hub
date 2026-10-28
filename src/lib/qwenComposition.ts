@@ -54,7 +54,7 @@ export function qwenCompositionLayout(manga: Manga, pageIndex: number, panelInde
     overlay.bubbles?.forEach((bubble, index) => { bubble.bbox ??= overlayFallbackBox(page.canvas, 'bubble', index); });
     overlay.screen_text?.forEach((text,index)=>{text.bbox??=overlayTextFallbackBox(page.canvas,index);});
     panels.push({ panelIndex: -1, overlay: true, panel: { id: 0, shape: { type: 'rect', ...frame }, bg: 0, action: null,
-      layer:structuredClone(page.layer),figures: overlay.figures, bubbles: overlay.bubbles ?? [],screen_text:overlay.screen_text,images:structuredClone(editableImages(page.images,includeGenerated).filter(image=>image.bubbleOriginal)) } });
+      layer:structuredClone(page.layer),figures: overlay.figures, bubbles: overlay.bubbles ?? [],screen_text:overlay.screen_text,images:structuredClone(editableImages(page.images,includeGenerated).filter(image=>image.bubbleOriginal||image.paintScope==='page')) } });
   }
   return { frame, ...humanPoseSceneFrame(frame.w / frame.h), panels, images: scope === 'page' ? structuredClone(editableImages(page.images,includeGenerated)) : [] };
 }
@@ -209,7 +209,7 @@ export interface CompositionCaptureOptions {width?:number;height?:number;include
 /** Render only manuscript content; no live editor DOM or selection chrome. */
 export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>,options:CompositionCaptureOptions={}): Promise<HTMLCanvasElement> {
   const layout = qwenCompositionLayout(manga, pageIndex, panelIndex, scope,options.includeGenerated), assets = manga.image_assets ?? [];
-  const [{ paintScene, paintForFrame, paintReferenceBox }, { humanPoseFigureImage, humanPoseOwnerImage, drawHumanPoseImage }, { decodePaintImage },
+  const [{ paintScene, paintForFrame, paintReferenceBox, paintNativeBand, paintAnchorIds, paintStackMatches, directPaintImages }, { humanPoseFigureImage, humanPoseOwnerImage, drawHumanPoseImage }, { decodePaintImage },
     { h, render }, { default: BubbleShapeSvg }, tail, { bubbleUsesMonologueTail }, { resolveBubbleSpeakerFigureIndex }, { bubbleTextFrame, compatibleBubbleClips }] = await Promise.all([
     import('./paintDocument.ts'), import('./humanPoseComposition.ts'), import('./paintRenderer.ts'), import('preact'), import('../components/BubbleShapeSvg'),
     import('./bubbleTail.ts'), import('./bubblePresentation.ts'), import('./bubbleRelations.ts'), import('./bubbleClip.ts'),
@@ -229,6 +229,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       paint: paintForFrame(frame, dpi, images, assets) };
     await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, false), frame, frame);
   };
+  const drawDirect=async(entry:CompositionPanel,stack?:import('../types.ts').PaintStackPosition)=>drawImages(directPaintImages(entry.panel.images,entry.overlay?'page':'panel',stack,paintAnchorIds(entry.panel,entry.overlay?manga.pages[pageIndex].panels:undefined)));
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const svgElement = (name: string, attributes: Record<string, string | number> = {}) => {
     const element = document.createElementNS(SVG_NS, name); Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, String(value))); return element;
@@ -271,6 +272,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       if(letteringFigureIndex(panel,bubble)!==relatedFigure||relatedFigure!==null&&(bubble.lettering_depth??'front')!==depth)continue;
       context.save(); if (!entry.overlay) { outline(panel); context.clip(); }
       try {
+        await drawDirect(entry,{below:`bubble-${index}`});
         if (bubbleVisible(bubble)) {
           const stroke = bubbleStrokeWidthMm(bubble, manga.meta.bubble_line_width_mm);
           const box = bubbleBox(index), host = document.createElement('div'), layer=group(bubble);
@@ -291,12 +293,18 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
           } finally { render(null, host); layer.remove(); }
           if (bubble.paint_overlay && !bubble.paint_overlay.hidden) {
             const owner = paintScene(panel, dpi, assets).owners.find(owner => owner.key === `bubble-${index}`)!;
-            await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, false), owner.frame, frame);
+            await drawHumanPoseImage(context, await humanPoseOwnerImage({...owner,paint:paintNativeBand(owner.paint,false)}, assets, false), owner.frame, frame);
           }
           if(letteringGuideVisible(bubble))drawText(context, bubble, bubbleTextFrame(box, panel, bubble), frame, 'bubble', manga.meta.font);
         }
         // Each independent original follows its own native child, even if native text is hidden.
+        if(bubble.analogTextImport?.originalImageId)await drawDirect(entry,{below:`original-${bubble.analogTextImport.originalImageId}`});
         await drawImages((panel.images??[]).filter(image=>image.id===bubble.analogTextImport?.originalImageId));
+        if(bubble.paint_overlay&&!bubble.paint_overlay.hidden){
+          const owner=paintScene(panel,dpi,assets).owners.find(owner=>owner.key===`bubble-${index}`)!;
+          const paint=paintNativeBand(owner.paint,true);
+          if(paint.layers.length)await drawHumanPoseImage(context,await humanPoseOwnerImage({...owner,paint},assets,false),owner.frame,frame);
+        }
       } finally { context.restore(); }
     }
   };
@@ -307,21 +315,26 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       const guide = guideFor(entry, owner.key);
       if (owner.kind === 'figure') {
         await drawBubbles(entry,owner.index,'behind');
+        await drawDirect(entry,{below:owner.key});
         if (figureVisible(entry, owner.index, guides)) {
           const view = await humanPoseFigureImage(owner, entry.panel, assets, guide);
           await drawHumanPoseImage(context, view.image, view.frame, frame);
         }
         await drawBubbles(entry,owner.index,'front');
-      } else await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, guide, entry.panel.background_images?.some(image => image.paint?.guideInitialized)), owner.frame, frame);
+      } else {await drawDirect(entry,{below:owner.key});await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, guide, entry.panel.background_images?.some(image => image.paint?.guideInitialized)), owner.frame, frame);}
     }
     const imageLayers = qwenPanelImageLayers(entry.panel.images);
     await drawImages(imageLayers.ordinary);
-    await drawImages(imageLayers.direct);
-    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? fallbackBox(entry.panel, 'screen_text', index), frame, 'screen_text', manga.meta.font);
+    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) {await drawDirect(entry,{below:`screen-text-${index}`});drawText(context, text, text.bbox ?? fallbackBox(entry.panel, 'screen_text', index), frame, 'screen_text', manga.meta.font);}
     context.restore();
   }
   await drawImages(layout.images.filter(image=>!image.paintScope&&!image.bubbleOriginal&&!image.generationScope));
   for (const entry of layout.panels.filter(entry => !entry.overlay)) await drawBubbles(entry);
+  for (const entry of layout.panels.filter(entry => !entry.overlay)) {
+    context.save();outline(entry.panel);context.clip();
+    await drawDirect(entry);
+    context.restore();
+  }
   for (const entry of layout.panels.filter(entry => !entry.overlay)) if (panelFrameVisible(entry.panel)) {
     const { panel } = entry;
     if (panel.shape.type === 'rect' && panel.bleed?.length) {
@@ -333,10 +346,12 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
     } else outline(panel);
     context.strokeStyle = '#111'; context.lineWidth = (manga.meta.panel_frame_width_mm || .5) * canvas.width / frame.w; context.stroke();
   }
-  await drawImages(layout.images.filter(image=>image.paintScope==='page'));
+  const pageAnchors=paintAnchorIds({...manga.pages[pageIndex].page_overlay,bubbles:manga.pages[pageIndex].page_overlay?.bubbles??[],images:layout.images},manga.pages[pageIndex].panels);
+  for(const panel of manga.pages[pageIndex].panels)await drawImages(directPaintImages(layout.images,'page',{beforePanel:`panel-${panel.id}`},pageAnchors));
   for (const entry of layout.panels.filter(entry => entry.overlay)) for (const owner of paintScene(entry.panel, dpi, assets).owners) {
     if (owner.kind !== 'figure') continue;
     await drawBubbles(entry,owner.index,'behind');
+    await drawDirect(entry,{below:owner.key});
     if (figureVisible(entry, owner.index, guides)) {
       const view = await humanPoseFigureImage(owner, entry.panel, assets, guideFor(entry, owner.key));
       await drawHumanPoseImage(context, view.image, view.frame, frame);
@@ -344,9 +359,10 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
     await drawBubbles(entry,owner.index,'front');
   }
   for (const entry of layout.panels.filter(entry => entry.overlay)) {
-    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? overlayTextFallbackBox(layout.frame, index), frame, 'screen_text', manga.meta.font);
+    for (const [index, text] of (entry.panel.screen_text ?? []).entries()) {await drawDirect(entry,{below:`screen-text-${index}`});drawText(context, text, text.bbox ?? overlayTextFallbackBox(layout.frame, index), frame, 'screen_text', manga.meta.font);}
     await drawBubbles(entry);
   }
+  await drawImages(directPaintImages(layout.images,'page',undefined,pageAnchors));
   // Completed page/panel images cover editable content, just as in MangaCanvas.
   for(const entry of layout.panels.filter(entry=>!entry.overlay)){
     context.save();outline(entry.panel);context.clip();
@@ -357,10 +373,12 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
   // Unlinked originals remain separate topmost placements until explicitly associated.
   for(const entry of layout.panels.filter(entry=>!entry.overlay)){
     context.save();outline(entry.panel);context.clip();
-    await drawImages((entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)));
+    for(const image of (entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id))){await drawDirect(entry,{below:`original-${image.id}`});await drawImages([image]);}
     context.restore();
   }
-  await drawImages(layout.images.filter(image=>image.bubbleOriginal&&!layout.panels.some(entry=>entry.overlay&&entry.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id))));
+  for(const image of layout.images.filter(image=>image.bubbleOriginal&&!layout.panels.some(entry=>entry.overlay&&entry.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)))){
+    await drawImages(layout.images.filter(layer=>layer.paintScope==='page'&&paintStackMatches(layer.paintStack,{below:`original-${image.id}`},pageAnchors)));await drawImages([image]);
+  }
   return canvas;
 }
 

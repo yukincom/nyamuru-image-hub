@@ -60,7 +60,7 @@ async function run(){
  const panelActions=headerActions(),panelSlots=panelActions.map(el=>el.getBoundingClientRect().left);
  check(panelActions.length===7&&fixedLabels.every((label,index)=>panelActions[index].getAttribute('aria-label')===label),'コマ選択でも上部7操作を固定順で表示');
  check(panelActions.slice(0,3).every(el=>el.getAttribute('aria-disabled')!=='true')&&panelActions.slice(3,6).every(el=>el.getAttribute('aria-disabled')==='true'&&Number(getComputedStyle(el).opacity)<=.35),'コマでは使える追加操作だけを有効にし、他は同じ位置で灰色表示');
- check(!Array.from(document.querySelectorAll('.layer-group-select .layer-caption')).some(el=>el.textContent?.trim()==='コマ内')&&!document.querySelector('.page-direct-layer-group')&&!!document.querySelector('[aria-label="コマ外レイヤーを追加"]'),'空のコマ内・コマ外フォルダーは出さず、追加操作だけを表示');
+ check(!Array.from(document.querySelectorAll('.layer-group-select .layer-caption')).some(el=>el.textContent?.trim()==='コマ内')&&!document.querySelector('.page-direct-layer-group,[aria-label="コマ外レイヤーを追加"]'),'コマ外の仮想フォルダーと専用追加行を出さない');
  await selectLayer('手前の線');
  const actions=document.querySelector('.page-layer-palette>.layer-controls>.layer-icon-actions')!,actionButtons=Array.from(actions.querySelectorAll<HTMLButtonElement>('button')),labels=actionButtons.map(el=>el.getAttribute('aria-label'));
  check(actionButtons.length===7&&fixedLabels.every((label,index)=>labels[index]===label)&&!labels.some(label=>label?.includes('固定'))&&labels.indexOf('複製')===labels.indexOf('生成マスク化')+1,'描画レイヤーでも同じ7操作を固定順で表示');

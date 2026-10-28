@@ -195,6 +195,7 @@ export interface Bubble {
 }
 
 export interface ScreenText {
+  layerId?: string;
   hidden?: boolean;
   text: string;
   text_style?: TextStyle;
@@ -208,6 +209,7 @@ export interface ScreenText {
 }
 
 export interface Panel {
+  layerId?: string;
   /** Editor-only visibility, independent folder locks and stable artwork order. */
   layer?: { hidden?: boolean; frameHidden?: boolean; locked?: boolean; frameLocked?:boolean; backgroundLocked?:boolean; directLocked?:boolean; artOrder?:string[] };
   /** 背景あたりの表示内容。操作枠はコマ形状を共用する。 */
@@ -300,6 +302,8 @@ export interface PaintFolder {
   locked?: boolean;
   /** Bottom-to-top insertion point used only while the folder is empty. */
   position: number;
+  /** Inside a text folder, this folder is in front of its native text. */
+  aboveNative?: boolean;
 }
 export interface PaintLayer {
   id: string;
@@ -324,13 +328,15 @@ export interface PaintLayer {
   tone?: PaintTone;
   /** Optional user-created palette folder. This never changes rendering by itself. */
   folderId?: string;
+  /** Inside a text folder, this layer is in front of its native text. */
+  aboveNative?: boolean;
 }
 export interface PaintDocument {
   version: 1;
   width: number;
   height: number;
   dpi: number;
-  /** The original guide has become an editable layer (even if later deleted). */
+  /** The original guide has become an editable layer; an empty initialized document suppresses its recreation. */
   guideInitialized?: boolean;
   /** Original guide region in document pixels. Canvas padding does not stretch the guide. */
   referenceFrame?: BBox;
@@ -384,12 +390,17 @@ export interface PlacedImage extends ImageContent {
   generationScope?: 'page'|'panel';
   /** Editable freehand/vector artwork owned directly by a panel folder or the page root. */
   paintScope?: 'panel'|'page';
+  /** Position of direct artwork among native folders, or above a panel bar. */
+  paintStack?: PaintStackPosition;
   id: string;
   bbox: BBox;
   splitOverlap?: true;
   splitOverlapId?: string;
 }
+export type PaintStackPosition = {below:string} | {beforePanel:string};
 export interface MangaPage {
+  /** Last allocated raster/vector work-layer number, shared by all owners on this page. */
+  paint_layer_sequence?: number;
   /** Local artwork placements; original pixels live in manga.image_assets. */
   images?: PlacedImage[];
   /** Editor-only state for artwork owned directly by the page. */
@@ -597,6 +608,8 @@ export interface CanvasElementSelection {
   index: number;
   /** 省略時は選択中コマ。ページ画像は page を明示する。 */
   scope?: 'panel' | 'page_overlay' | 'page';
+  /** Native text row inside a text folder, rather than the folder heading. */
+  part?: 'native';
 }
 export type IssueLevel = 'error' | 'warning';
 export interface ValidationIssue { level: IssueLevel; path: string; message: string }

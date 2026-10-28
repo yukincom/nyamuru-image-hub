@@ -685,6 +685,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   });
   (manga.pages ?? []).forEach((page, pageIndex) => {
     const base = `manga.pages[${pageIndex}]`;
+    if(page.paint_layer_sequence!==undefined&&(!Number.isSafeInteger(page.paint_layer_sequence)||page.paint_layer_sequence<0))issues.push({level:'error',path:`${base}.paint_layer_sequence`,message:'レイヤー番号は0以上の整数で指定してください'});
     if (page.page !== pageIndex + 1) issues.push({ level: 'warning', path: `${base}.page`, message: `配列順に合わせて ${pageIndex + 1} を推奨します` });
     if (!Number.isFinite(page.canvas?.w) || !Number.isFinite(page.canvas?.h) || page.canvas.w <= 0 || page.canvas.h <= 0 || page.canvas.unit !== 'mm') issues.push({ level: 'error', path: `${base}.canvas`, message: '用紙サイズはmm単位の正の数にしてください' });
     if ((page.panels?.length ?? 0) > MAX_PANELS_PER_PAGE) issues.push({ level: 'error', path: `${base}.panels`, message: `1ページは最大${MAX_PANELS_PER_PAGE}コマです` });

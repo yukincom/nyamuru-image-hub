@@ -1,5 +1,5 @@
 import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
-import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newPaintLayer,type PaintOwner,type PaintScene} from './paintDocument.ts';
+import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newNumberedPaintLayer,movePaintLayer,paintLayerAboveNative,type PaintOwner,type PaintScene} from './paintDocument.ts';
 import {paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
 import {paintStrokeBounds,paintStrokeContentBounds,type PaintSmoother} from './paintStroke.ts';
 export {paintStrokeBounds} from './paintStroke.ts';
@@ -11,6 +11,7 @@ export interface PendingPaintStroke {
   target?: 'mask'|'generationMask';
   /** Insert with the first stroke, so a quick mark on cropped art is one undo step. */
   addedLayer?: PaintLayer;
+  addedBelow?: string;
   /** Pointerdown coordinates; another completed mark may have grown the owner. */
   space?: {frame:BBox;width:number;height:number};
   /** Gesture-only ink extent, updated from new samples; never persisted. */
@@ -56,13 +57,13 @@ export function canStartPaintMark(owner:PaintOwner,layer:PaintLayer|undefined,ki
     &&(!layer||Boolean(layer.guide)||layer.visible&&(!layer.locked||Boolean(layer.image)))
     &&(!paintMarkNeedsLayer(layer,kind)||owner.paint.layers.length<64);
 }
-export function preparePaintMarkLayer(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind'],colorMode:PaintColorMode='color'):PaintLayer|undefined {
+export function preparePaintMarkLayer(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind'],colorMode:PaintColorMode='color',sequence=0):PaintLayer|undefined {
   if(!canStartPaintMark(owner,layer,kind))return;
-  return paintMarkNeedsLayer(layer,kind)?newPaintLayer(kind==='vector'?`ベクター ${owner.paint.layers.length+1}`:'レイヤー',kind,colorMode):layer;
+  return paintMarkNeedsLayer(layer,kind)?{...newNumberedPaintLayer(sequence,kind,colorMode),...(layer?.folderId?{folderId:layer.folderId}:{}),...(layer&&paintLayerAboveNative(owner.paint,layer)?{aboveNative:true}:{})}:layer;
 }
 
 /** Preview and commit use the same paths; a draft layer is not saved until it has a path. */
-export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;layerId:string;paths:VectorPath[];addedLayer?:PaintLayer}):PaintScene {
+export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;layerId:string;paths:VectorPath[];addedLayer?:PaintLayer;addedBelow?:string}):PaintScene {
   const owner=scene.owners.find(o=>o.key===pending.ownerKey);
   if(!owner||paintOwnerLocked(owner))return scene;
   const layers=[...owner.paint.layers];let index=layers.findIndex(layer=>layer.id===pending.layerId);
@@ -75,7 +76,7 @@ export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;laye
   const changed:VectorPath[]=[];
   const paths=pending.paths.map(path=>{if(previous.get(path.id)===path)return path;const next=structuredClone(path);changed.push(next);return next;});
   layers[index]={...layer,paths};
-  return {...scene,owners:scene.owners.map(o=>o===owner?expandPaintOwnerToContent({...o,paint:{...o.paint,layers}},[{...layer,image:undefined,strokes:[],paths:changed}]):o)};
+  return {...scene,...(index===owner.paint.layers.length?{layerSequence:(scene.layerSequence??0)+1}:{}),owners:scene.owners.map(o=>o===owner?expandPaintOwnerToContent({...o,paint:pending.addedLayer&&pending.addedBelow?movePaintLayer({...o.paint,layers},layer.id,{kind:'layer',id:pending.addedBelow,after:true}):{...o.paint,layers}},[{...layer,image:undefined,strokes:[],paths:changed}]):o)};
 }
 
 /** Append to the latest scene, never to the scene captured by pointerdown/render. */
@@ -99,7 +100,7 @@ export function commitPaintStroke(scene: PaintScene, pending: PendingPaintStroke
     layers[index]={...layer,mask:{...layer.mask,strokes:[...layer.mask.strokes,stroke]}};
   }else layers[index]={...layer,strokes:[...layer.strokes,stroke]};
   // Existing content is already inside the backing canvas; inspect only this mark.
-  return {...scene,owners:scene.owners.map(o=>o===owner?expandPaintOwnerToBounds({...owner,paint:{...owner.paint,layers}},strokeBoundsInOwner(pending,owner)):o)};
+  return {...scene,...(index===owner.paint.layers.length?{layerSequence:(scene.layerSequence??0)+1}:{}),owners:scene.owners.map(o=>o===owner?expandPaintOwnerToBounds({...owner,paint:pending.addedLayer&&pending.addedBelow?movePaintLayer({...owner.paint,layers},layer.id,{kind:'layer',id:pending.addedBelow,after:true}):{...owner.paint,layers}},strokeBoundsInOwner(pending,owner)):o)};
 }
 
 export interface PaintSampleEvent {

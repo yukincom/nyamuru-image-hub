@@ -76,7 +76,7 @@ function imported(){
   resizePageCanvas(page,{w:297,h:210},'inner-frame');
   return doc;
 }
-test('explicitly visible OCR compatibility data becomes independent topmost raster placements before any paint session',async()=>{
+test('explicitly visible OCR compatibility data becomes independent raster placements beside their native text before any paint session',async()=>{
   const input=imported(),before=structuredClone(input),doc=await separateBubbleOriginals(input,deps),page=doc.manga.pages[0],panel=page.panels[0];
   assert.deepEqual(input,before);assert.equal(needsBubbleOriginalSeparation(doc),false);
   for(const [owner,images] of [[panel,panel.images],[page.page_overlay,page.images]]){
@@ -86,7 +86,7 @@ test('explicitly visible OCR compatibility data becomes independent topmost rast
     assert.deepEqual(images[0].bbox,owner.bubbles[0].bbox);
   }
   const scene=paintScene(panel,100,doc.manga.image_assets,'color','panel');
-  assert.equal(scene.owners.at(-1).kind,'original');assert.equal(scene.owners.find(o=>o.kind==='bubble').paint.layers.length,0);
+  assert.equal(scene.owners.find(owner=>owner.kind==='original').kind,'original');assert.equal(scene.owners.find(o=>o.kind==='bubble').paint.layers.length,0);
   assert.equal(qwenPanelImageLayers(panel.images).ordinary.length,0);
   assert.equal(doc.manga.image_assets.length,1);validateImagePlacements(doc);
   assert.doesNotMatch(toSeparatedMangaYaml(doc),/bubbleOriginal|analogTextImport|image_assets/);
@@ -102,18 +102,18 @@ test('duplicated legacy bubbles sharing one source region each retain their own 
 test('native visibility, lock, movement and deletion do not change the independent original',async()=>{
   const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0],original=structuredClone(panel.images[0]);
   panel.bubbles[0].hidden=true;panel.bubbles[0].nativeLocked=true;panel.bubbles[0].bbox.x+=10;
-  let scene=paintScene(panel,100,doc.manga.image_assets,'color','panel'),owner=scene.owners.at(-1);
+  let scene=paintScene(panel,100,doc.manga.image_assets,'color','panel'),owner=scene.owners.find(owner=>owner.kind==='original');
   assert.equal(paintOwnerLocked(owner),false);assert.equal(owner.paint.layers.length,1);
   assert.equal(pickPaintLayer(scene,{x:owner.frame.x+owner.frame.w/2,y:owner.frame.y+owner.frame.h/2},0,()=>true)?.owner.kind,'original');
   panel.bubbles=[];assert.deepEqual(panel.images[0],original);
-  scene=paintScene(panel,100,doc.manga.image_assets,'color','panel');assert.equal(scene.owners.at(-1).kind,'original');
+  scene=paintScene(panel,100,doc.manga.image_assets,'color','panel');assert.equal(scene.owners.find(owner=>owner.kind==='original').kind,'original');
 });
 test('locking or moving only the original never locks or reframes native vectors',async()=>{
   const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0],native=structuredClone(panel.bubbles[0]);
   panel.images[0].paint.layers[0].locked=true;panel.images[0].bbox.x+=7;
   const scene=paintScene(panel,100,doc.manga.image_assets,'color','panel');
   assert.equal(paintOwnerPlacementLocked(scene.owners.find(o=>o.kind==='bubble')),false);
-  assert.equal(paintOwnerPlacementLocked(scene.owners.at(-1)),true);assert.deepEqual(panel.bubbles[0],native);
+  assert.equal(paintOwnerPlacementLocked(scene.owners.find(owner=>owner.kind==='original')),true);assert.deepEqual(panel.bubbles[0],native);
   panel.layer={locked:true};assert.ok(paintScene(panel,100,doc.manga.image_assets,'color','panel').owners.every(o=>o.inheritedLocked));
 });
 test('saved source edits and native reference frame survive legacy migration without flattening',async()=>{
@@ -128,7 +128,7 @@ test('saved source edits and native reference frame survive legacy migration wit
 });
 test('independent original saves through the normal paint route and deletion is persistent',async()=>{
   const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0];
-  const owner=paintScene(panel,100,doc.manga.image_assets,'color','panel').owners.at(-1),before=structuredClone(panel.bubbles);
+  const owner=paintScene(panel,100,doc.manga.image_assets,'color','panel').owners.find(owner=>owner.kind==='original'),before=structuredClone(panel.bubbles);
   applyOwnerPaint(panel,owner,{...panel.images[0],bbox:{...owner.frame,x:owner.frame.x+5},paint:owner.paint});
   assert.deepEqual(panel.bubbles,before);assert.equal(panel.images[0].bbox.x,owner.frame.x+5);
   clearOwnerPaint(panel,owner);assert.equal(panel.images.length,0);
@@ -164,7 +164,7 @@ test('a legacy flat original retains crop and receives an independently unlockab
   const result=await separateBubbleOriginals(input,deps),panel=result.manga.pages[0].panels[0],image=panel.images[0];
   assert.deepEqual(image.crop,bubble.paint_overlay.crop);assert.equal(image.opacity,.6);assert.equal(image.locked,false);assert.equal(image.hidden,false);
   assert.equal(image.paint.layers[0].locked,true);assert.equal(image.paint.layers[0].visible,false);
-  const owner=paintScene(panel,100,result.manga.image_assets,'color','panel').owners.at(-1);
+  const owner=paintScene(panel,100,result.manga.image_assets,'color','panel').owners.find(owner=>owner.kind==='original');
   assert.equal(paintOwnerLocked(owner),false);assert.equal(owner.paint.layers[0].locked,true);
 });
 test('hidden original uses only the raster eye, not a second image-level eye',async()=>{
@@ -232,9 +232,11 @@ test('split, merge and owner transfer keep each linked original distinct, includ
 
 test('native and original eyes remain independent, with group toggle applying all children atomically',async()=>{
   const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0],target={pageIndex:0,panelIndex:0,bubbleIndex:0,overlay:false};
+  const sibling={...structuredClone(panel.images[0]),id:'original-sibling',bubbleOriginal:undefined,paintScope:'panel',paintStack:{below:`layer:${panel.images[0].id}`}};panel.images.push(sibling);
   toggleBubbleVisibility(doc,target);assert.equal(panel.bubbles[0].hidden,true);assert.equal(panel.images[0].paint.layers[0].visible,true);
-  toggleBubbleVisibility(doc,target,true);assert.equal(panel.bubbles[0].hidden,true);assert.equal(panel.images[0].paint.layers[0].visible,false);
-  toggleBubbleVisibility(doc,target,true);assert.equal(panel.bubbles[0].hidden,false);assert.equal(panel.images[0].paint.layers[0].visible,true);
+  toggleBubbleVisibility(doc,target,true);assert.equal(panel.bubbles[0].hidden,true);assert.equal(panel.images[0].paint.layers[0].visible,false);assert.equal(sibling.paint.layers[0].visible,false);
+  toggleBubbleVisibility(doc,target,true);assert.equal(panel.bubbles[0].hidden,false);assert.equal(panel.images[0].paint.layers[0].visible,true);assert.equal(sibling.paint.layers[0].visible,true);
+  panel.images.pop();
   const owners=paintScene(panel,100,doc.manga.image_assets).owners;
   assert.deepEqual(owners.slice(-2).map(o=>o.key),['bubble-0',`original-${panel.images[0].id}`]);
   assert.equal(owners.at(-1).parentKey,'bubble-0');assert.equal(owners.at(-1).bubble,undefined);
@@ -267,7 +269,7 @@ test('folder lock is inherited, rejects child unlocks, and native child lock sta
   act({type:'owner-lock',key:child().key,locked:false});act({type:'owner-lock',key:'bubble-0',locked:false});assert.equal(commits.length,1,'no child can unlock its folder');
   for(const owner of historyRef.current.present.owners.filter(o=>o.kind==='bubble'||o.kind==='original'))applyPaintOwnerLock(panel,owner);
   assert.equal(artworkLocked(panel.images[0],panel.bubbles),true,'native canvas follows the parent lock without copying it onto the original');
-  assert.equal(paintScene(panel,100,doc.manga.image_assets).owners.at(-1).inheritedLocked,true);
+  assert.equal(paintScene(panel,100,doc.manga.image_assets).owners.find(owner=>owner.kind==='original').inheritedLocked,true);
   act({type:'owner-lock',key:'bubble-0',locked:false,group:true});assert.equal(child().inheritedLocked,false);
   act({type:'owner-lock',key:'bubble-0',locked:true});assert.equal(native().locked,false);assert.equal(native().bubble.nativeLocked,true);assert.equal(paintOwnerLocked(child()),false);
   applyPaintOwnerLock(panel,native());assert.equal(panel.bubbles[0].nativeLocked,true);

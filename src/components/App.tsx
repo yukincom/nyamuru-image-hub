@@ -26,7 +26,7 @@ import PanelControls from './PanelControls';
 import { namedBackgroundStages, prepareBackgroundStage, verifyBackgroundStage } from '../lib/background3d';
 import { persistSeriesBackgroundModels } from '../lib/backgroundStageStore';
 import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
-import { applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, newPaintLayer, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
+import { applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, newPaintLayer, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
 import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
@@ -47,7 +47,8 @@ import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, 
 import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
 import { downloadImageBlob, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
 import { humanPoseOwnerImage } from '../lib/humanPoseComposition';
-import type { PaintImages } from '../lib/paintRenderer';
+import {loadPaintImages,renderPaintPng,type PaintImages} from '../lib/paintRenderer';
+import {prepareGuideLayer} from '../lib/paintGuide';
 import PageOverlayInspector from './PageOverlayInspector';
 import EnvironmentSettings from './EnvironmentSettings';
 import { loadEditGuide, saveEditGuide, loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing, loadPaintCursor, savePaintCursor, type PaintCursorMode } from '../lib/paintPreferences';
@@ -3070,12 +3071,12 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(!targetPage||(!overlay&&!targetPanel))throw new Error('対象のあたりが見つかりません');
     validateImagePlacements(current);
     const source=overlay?{id:0,shape:{type:'rect' as const,x:0,y:0,...targetPage.canvas},bg:0 as const,action:null,
-      layer:targetPage.layer,
+      layer:targetPage.layer,screen_text:targetPage.page_overlay?.screen_text,
       images:targetPage.images?.filter(image=>image.paintScope==='page'||image.bubbleOriginal),
       figures:targetPage.page_overlay?.figures?.map((figure,index)=>({...figure,bbox:figure.bbox??overlayFallbackBox(targetPage.canvas,'figure',index)})),
       bubbles:(targetPage.page_overlay?.bubbles??[]).map((bubble,index)=>({...bubble,bbox:bubble.bbox??overlayFallbackBox(targetPage.canvas,'bubble',index)}))}:targetPanel;
     const setup=getPrintSetup(current.manga);
-    const scene=paintScene(source,setup.dpi,current.manga.image_assets??[],paintColorMode(setup.format),overlay?'page':'panel');
+    const scene=paintScene(source,setup.dpi,current.manga.image_assets??[],paintColorMode(setup.format),overlay?'page':'panel',overlay?targetPage.panels:undefined);
     if(overlay)scene.owners=scene.owners.filter(owner=>owner.kind!=='background');
     if(!scene.owners.length)throw new Error('描画先を選んでください');
     return scene;
@@ -3113,7 +3114,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     try {
       if(!overlay&&!panelVisible(current.manga.pages[pageIndex].panels[panelIndex]))throw new Error('レイヤーの目を押してコマを表示してください');
       setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-      const scene=preview?{...preview}:makePaintScene(current,panelIndex,pageIndex,overlay);
+      const scene={...(preview??makePaintScene(current,panelIndex,pageIndex,overlay)),layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0};
       scene.owners=scene.owners.map(owner=>withPaintBleed(owner,paintBleedPx));
       setMobileStoryboardPane('editor');setPaintToolsCollapsed(false);setPaintLayersCollapsed(false);
       const ownerKey=initialOwner??selectedPaintOwner(),owner=scene.owners.find(o=>o.key===ownerKey);
@@ -3318,13 +3319,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setTextTool(false);setZoomTool(false);setBubblePathTool(false);
     setToast('文字を吹き出しの中央へ入れ、文字量に合わせて一度だけサイズを調整しました');
   }
-  function selectLayerOwner(key:string,panelIndex:number,pageIndex=activePage,overlay=false){void layerTransition(async()=>{
+  function selectLayerOwner(key:string,panelIndex:number,pageIndex=activePage,overlay=false,native=false){void layerTransition(async()=>{
     if(paintSessionRef.current)await paintController.current?.close();
     const page=documentRef.current.manga.pages[pageIndex],selection=paintOwnerCanvasSelection(page,panelIndex,key,overlay);
     if(!selection)return;
     if(selection.type==='bubble'&&!bubbleVisible((overlay?page.page_overlay:page.panels[panelIndex])!.bubbles![selection.index]))return;
     autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-    selectCanvasElement(selection,panelIndex,pageIndex);
+    selectCanvasElement(native?{...selection,part:'native'}:selection,panelIndex,pageIndex);
   });}
   function toggleTextLayer(target:CanvasTextTarget,group=false){void layerTransition(async()=>{
     if(paintSessionRef.current)await paintController.current?.close();
@@ -3357,8 +3358,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
   });}
   function actOnLayer(index:number,action:PaintLayerAction,preview:PaintScene,overlay=false){
-    if(action.type==='select'&&!action.id&&paintOwnerCanvasSelection(documentRef.current.manga.pages[activePage],index,action.key,overlay)){selectLayerOwner(action.key,index,activePage,overlay);return;}
+    if(action.type==='select'&&!action.id&&paintOwnerCanvasSelection(documentRef.current.manga.pages[activePage],index,action.key,overlay)){selectLayerOwner(action.key,index,activePage,overlay,action.native);return;}
     void layerTransition(async()=>{
+    if((action.type==='move-layer'||action.type==='move-folder')&&action.destination){await movePaletteEntry(index,overlay,preview,action);return;}
     const session=paintSessionRef.current;
     if(session?.pageIndex===activePage&&session.panelIndex===index&&session.overlay===overlay){paintController.current?.layerAction(action);return;}
     if(session)await paintController.current?.close();
@@ -3367,8 +3369,61 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     // Use the preview's layer IDs; untouched empty layers do not exist in the document yet.
     if(!openPaint(action.key,index,activePage,overlay,preview))pendingLayerAction.current=null;
   });}
-  function addDirectFolder(index:number,overlay=false){
-    try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add-folder',key:overlay?'page':'panel'},scene,overlay);}
+  async function movePaletteEntry(index:number,overlay:boolean,preview:PaintScene,action:Extract<PaintLayerAction,{type:'move-layer'|'move-folder'}>){
+    const destination=action.destination;if(!destination)return;
+    const pageIndex=activePage,session=paintSessionRef.current;
+    if(session)await paintController.current?.pause();
+    const liveSnapshot=paintController.current?.snapshot(),live=liveSnapshot?.scene;
+    const sourceLive=session?.pageIndex===pageIndex&&session.overlay===overlay&&(overlay||session.panelIndex===index);
+    const targetLive=session?.pageIndex===pageIndex&&session.overlay===destination.overlay&&(destination.overlay||session.panelIndex===destination.panelIndex);
+    const sameScope=overlay===destination.overlay&&(overlay||index===destination.panelIndex);
+    let sourceScene=sourceLive&&live?live:preview;
+    let targetScene=sameScope?sourceScene:targetLive&&live?live:destination.scene??makePaintScene(documentRef.current,destination.panelIndex,pageIndex,destination.overlay);
+    let targetKey=destination.key;
+    if(destination.stack){const direct=ensureDirectPaintOwner(targetScene,destination.stack);if(!direct)return;targetScene=direct.scene;targetKey=direct.key;if(sameScope)sourceScene=targetScene;}
+    let source=sourceScene.owners.find(owner=>owner.key===action.key),target=targetScene.owners.find(owner=>owner.key===targetKey);
+    if(!source||!target)return;
+    const kind=action.type==='move-folder'?'folder':'layer';
+    if(!movePaintEntry(source,target,kind,action.id,action.target))return;
+    const before=workspaceSnapshot();
+    if(session)await paintController.current?.close();
+    endTextEdit();
+    const current=documentRef.current,imports:PaintResult['imports']=[...(liveSnapshot?.imports??[])];
+    const prepare=async(owner:PaintOwner)=>{
+      let paint=owner.paint;
+      for(const layer of paint.layers)if(layer.guide&&!layer.image){
+        const prepared=await prepareGuideLayer(owner,layer);imports.push(prepared);
+        paint={...paint,layers:paint.layers.map(item=>item.id===layer.id?{...prepared.layer,locked:layer.locked}:item)};
+      }
+      return paint===owner.paint?owner:{...owner,paint};
+    };
+    const sameOwner=source===target;
+    source=await prepare(source);target=sameOwner?source:await prepare(target);
+    const moved=movePaintEntry(source,target,kind,action.id,action.target);if(!moved)return;
+    const owners=sameOwner?[moved.destination]:[moved.source,moved.destination];
+    const assets=[...(current.manga.image_assets??[]),...imports.map(item=>item.asset)];
+    const images=await loadPaintImages(owners.map(owner=>owner.paint),assets,new Map(imports.map(item=>[item.asset.id,item.blob])));
+    try{
+      const resultFor=async(scene:PaintScene,changed:PaintOwner[]):Promise<PaintResult>=>{
+        const result:PaintResult={scene,owners:[],imports,stageImports:liveSnapshot?.stageImports};
+        for(const owner of changed){
+          if(paintOwnerShouldClear(owner))result.owners.push({owner,blob:new Blob(),remove:true});
+          else {validatePaintDocument(owner.paint,assets);result.owners.push({owner,blob:await renderPaintPng(owner.paint,images)});}
+        }
+        return result;
+      };
+      const batches=sameScope
+        ?[{pageIndex,panelIndex:index,overlay,title:current.manga.meta.title,result:await resultFor(targetScene,owners)}]
+        :[{pageIndex,panelIndex:index,overlay,title:current.manga.meta.title,result:await resultFor(sourceScene,[moved.source])},
+          {pageIndex,panelIndex:destination.panelIndex,overlay:destination.overlay,title:current.manga.meta.title,result:await resultFor(targetScene,[moved.destination])}];
+      await persistPaintResults(current,batches,next=>{setDocument(next,false);timeline.current.record(before);lastHistoryPush.current=0;changedHistory();});
+      setActivePanel(destination.panelIndex);setSelectedPanels([destination.panelIndex]);setSelectedElement(null);
+      pendingLayerAction.current={type:'select',key:targetKey,id:action.id};
+      if(!openPaint(targetKey,destination.panelIndex,pageIndex,destination.overlay))pendingLayerAction.current=null;
+    }finally{images.forEach(image=>{image.src='';});}
+  }
+  function addDirectFolder(index:number,overlay=false,position?:import('../lib/paintDocument').PaintAddPosition){
+    try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add-folder',key:overlay?'page':'panel',position:position??{}},scene,overlay);}
     catch(error){setToast(error instanceof Error?error.message:'フォルダーを追加できませんでした');}
   }
   function openPanelBackground3d(index:number){
@@ -3472,11 +3527,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }catch(error){setToast(error instanceof Error?error.message:'画像を書き出せませんでした');}
     finally{setImageExportBusy(false);}
   };
-  const applyPaint = async (result:PaintResult) => {
-    const session=paintSessionRef.current;
-    if(!session)throw new Error('描画先が見つかりません');
-    if(documentRef.current!==session.document)throw new Error('作品が変更されています。ペイントを閉じて配置を確認してください');
-    const next=cloneDocument(session.document), stored=next.manga.image_assets??=[];
+  async function persistPaintResults(current:MangaDocument,batches:Array<{pageIndex:number;panelIndex:number;overlay:boolean;title:string;result:PaintResult}>,publish:(next:MangaDocument)=>void){
+    const next=cloneDocument(current), stored=next.manga.image_assets??=[];
     const writes:Array<{id:string;blob:Blob}>=[];
     let committed=false;
     try {
@@ -3490,6 +3542,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
         if(existing)stored.splice(stored.indexOf(existing),1,asset);else stored.push(asset);
         writes.push({id:asset.storageId,blob});pendingPaintAssets.current.add(asset.storageId);return asset;
       };
+      for(const batch of batches){
+      const {result}=batch;
       if(result.stageImports?.length){
         const stages=next.manga.background_stages??=[];
         for(const {stage,blob} of result.stageImports){
@@ -3503,29 +3557,40 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       }
       const needed=new Set(result.owners.flatMap(({owner})=>paintAssetIds(owner.paint)));
       for(const item of result.imports)if(needed.has(item.asset.id))await register(item.asset,item.blob);
-      const targetPage=next.manga.pages[session.pageIndex];
+      const targetPage=next.manga.pages[batch.pageIndex];
       if(!targetPage)throw new Error('描画先が見つかりません');
+      applyPaintAnchorIds(targetPage,batch.panelIndex,batch.overlay,result.scene?.anchorIds);
+      if(result.scene?.layerSequence!==undefined)targetPage.paint_layer_sequence=result.scene.layerSequence;
       for(const {owner,blob,remove,metadataOnly} of result.owners){
-        const target=owner.kind==='page'||(owner.kind==='original'&&session.overlay)?targetPage:session.overlay?targetPage.page_overlay:targetPage.panels[session.panelIndex];
+        const target=owner.kind==='page'||(owner.kind==='original'&&batch.overlay)?targetPage:batch.overlay?targetPage.page_overlay:targetPage.panels[batch.panelIndex];
         if(!target)throw new Error('描画先が見つかりません');
         applyPaintOwnerLock(target,owner);
         if(metadataOnly)continue;
         if(remove){clearOwnerPaint(target,owner);continue;}
         if(!blob)throw new Error('描画画像が見つかりません');
-        const prepared=await prepareImageAsset(new File([blob],`${session.title}-${owner.label}.png`,{type:'image/png'}));
+        const prepared=await prepareImageAsset(new File([blob],`${batch.title}-${owner.label}.png`,{type:'image/png'}));
         const asset=await register(prepared,blob);
         const image={...createFrameArtwork(asset,owner.frame),paint:owner.paint};
         applyOwnerPaint(target,owner,image);
+      }
       }
       const used=imageAssetIds(next);
       next.manga.image_assets=stored.filter(asset=>!asset.storageId.startsWith('paint-')||used.has(asset.id));
       validateImagePlacements(next);
       await paintAssets.save(writes);
-      if(documentRef.current!==session.document)throw new Error('保存中に作品が変更されました。描画内容はこの画面に残っています');
-      setDocument(next,false);committed=true;
+      if(documentRef.current!==current)throw new Error('保存中に作品が変更されました。描画内容はこの画面に残っています');
+      publish(next);committed=true;
+    }finally{writes.forEach(item=>pendingPaintAssets.current.delete(item.id));if(!committed&&writes.length)await deleteFigureCropAssets(writes.map(item=>item.id)).catch(()=>undefined);}
+  }
+  const applyPaint = async (result:PaintResult) => {
+    const session=paintSessionRef.current;
+    if(!session)throw new Error('描画先が見つかりません');
+    if(documentRef.current!==session.document)throw new Error('作品が変更されています。ペイントを閉じて配置を確認してください');
+    await persistPaintResults(session.document,[{...session,result}],next=>{
+      setDocument(next,false);
       const live=paintController.current?.snapshot();
       const updated={...session,document:next,...(result.rebase&&result.scene&&live?{scene:result.scene,resume:{...live,scene:result.scene,saved:result.scene}}:{})};paintSessionRef.current=updated;setPaintSession(updated);
-    }finally{writes.forEach(item=>pendingPaintAssets.current.delete(item.id));if(!committed&&writes.length)await deleteFigureCropAssets(writes.map(item=>item.id)).catch(()=>undefined);}
+    });
   };
   const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
     const page = documentRef.current.manga.pages[pageIndex];
@@ -3974,7 +4039,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     onChangeSaveDirectory={() => saveProject(true)}
   />;
 
-  return <PaintEditor selectedBubbleStroke={selectedBubbleStroke} resume={paintSession?.resume} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={()=>{autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);setSelectedElement(null);}} onToggleBubble={(index,group)=>{const s=paintSessionRef.current;if(s)toggleTextLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,index,overlay:s.overlay,kind:'bubble'},group);}} onSelectOwner={key=>{const s=paintSessionRef.current;if(s)selectLayerOwner(key,s.panelIndex,s.pageIndex,s.overlay);}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session)reorderOwnerLayers(session.panelIndex,key,target,after,session.overlay);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
+  return <PaintEditor onAddOutside={action=>{const s=paintSessionRef.current;if(!s)return;const page=documentRef.current.manga.pages[s.pageIndex],panel=page.panels[s.panelIndex];if(!panel)return;actOnLayer(s.panelIndex,{...action,key:'page',position:{stack:{beforePanel:`panel-${panel.id}`}}},makePaintScene(documentRef.current,s.panelIndex,s.pageIndex,true),true);}} selectedBubbleStroke={selectedBubbleStroke} resume={paintSession?.resume} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={()=>{autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);setSelectedElement(null);}} onToggleBubble={(index,group)=>{const s=paintSessionRef.current;if(s)toggleTextLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,index,overlay:s.overlay,kind:'bubble'},group);}} onSelectOwner={(key,native)=>{const s=paintSessionRef.current;if(s)selectLayerOwner(key,s.panelIndex,s.pageIndex,s.overlay,native);}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session)reorderOwnerLayers(session.panelIndex,key,target,after,session.overlay);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
     <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onPointerOverCapture={autoPaintBoundary} onFocusCapture={autoPaintBoundary} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
     <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog || Boolean(imageExportDialog)} hasDocument={hasDocument} busy={projectBusy||imageImportBusy||imageExportBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo}
       onImportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();choosePlacedImage('page');});}}
@@ -4044,7 +4109,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
           </div>
           {<aside class={`paint-dock paint-layers-dock ${paintLayersCollapsed?'is-collapsed':''}`}>
             <button class="dock-rail" aria-expanded={!paintLayersCollapsed} aria-label={paintLayersCollapsed?'レイヤーを開く':'レイヤーを閉じる'} onClick={()=>setPaintLayersCollapsed(!paintLayersCollapsed)}><span>レイヤー</span>{paintLayersCollapsed?'‹':'›'}</button>
-            <div class="dock-content"><PaintDetails/><PageLayerPalette expanded={!paintLayersCollapsed} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} onSelectText={(panelIndex,index,overlay)=>startTextEdit({pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'})} onDeleteText={deleteScreenTextAt} onToggleText={(panelIndex,index,overlay)=>toggleTextLayer({pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'})} onToggleBubble={(panelIndex,bubbleIndex,overlay=false,group=false)=>toggleTextLayer({pageIndex:activePage,panelIndex,index:bubbleIndex,overlay,kind:'bubble'},group)} onDeleteBubble={deleteBubbleAt} onReorderOwners={reorderOwnerLayers} page={page} activePanel={activePanel} assets={document.manga.image_assets??[]} dpi={getPrintSetup(document.manga).dpi} colorMode={paintColorMode(getPrintSetup(document.manga).format)} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} onSelect={selectLayerPanel} onVisibility={togglePanelLayer} onLock={togglePanelLock} onDelete={deletePanelAt} onAddFolder={addDirectFolder} onAdd={(index,kind,overlay=false)=>{try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add',key:overlay?'page':'panel',kind},scene,overlay);}catch(error){setToast(error instanceof Error?error.message:'レイヤーを追加できませんでした');}}} onAction={actOnLayer} onEditText={(panelIndex,bubbleIndex,overlay=false)=>startBubbleEdit({pageIndex:activePage,panelIndex,bubbleIndex,overlay})} guideVisible={(key,index,overlay=false)=>artworkGuideVisible(key,index,activePage,overlay)} toggleGuide={(key,index,overlay=false)=>toggleArtworkGuide(key,index,activePage,overlay)}/></div>
+            <div class="dock-content"><PaintDetails/><PageLayerPalette expanded={!paintLayersCollapsed} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} onSelectText={(panelIndex,index,overlay)=>startTextEdit({pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'})} onDeleteText={deleteScreenTextAt} onToggleText={(panelIndex,index,overlay)=>toggleTextLayer({pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'})} onToggleBubble={(panelIndex,bubbleIndex,overlay=false,group=false)=>toggleTextLayer({pageIndex:activePage,panelIndex,index:bubbleIndex,overlay,kind:'bubble'},group)} onDeleteBubble={deleteBubbleAt} onReorderOwners={reorderOwnerLayers} page={page} activePanel={activePanel} assets={document.manga.image_assets??[]} dpi={getPrintSetup(document.manga).dpi} colorMode={paintColorMode(getPrintSetup(document.manga).format)} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} onSelect={selectLayerPanel} onVisibility={togglePanelLayer} onLock={togglePanelLock} onDelete={deletePanelAt} onAddFolder={addDirectFolder} onAdd={(index,kind,overlay=false,position)=>{try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add',key:overlay?'page':'panel',kind,position:position??{}},scene,overlay);}catch(error){setToast(error instanceof Error?error.message:'レイヤーを追加できませんでした');}}} onAction={actOnLayer} onEditText={(panelIndex,bubbleIndex,overlay=false)=>startBubbleEdit({pageIndex:activePage,panelIndex,bubbleIndex,overlay})} guideVisible={(key,index,overlay=false)=>artworkGuideVisible(key,index,activePage,overlay)} toggleGuide={(key,index,overlay=false)=>toggleArtworkGuide(key,index,activePage,overlay)}/></div>
           </aside>}
           <aside id="mobile-panel-pane" class={`inspector-pane ${inspectorCollapsed?'is-collapsed':''}`}>
             <button class="dock-rail" aria-expanded={!inspectorCollapsed} aria-label={inspectorCollapsed?'コマ情報を開く':'コマ情報を閉じる'} onClick={()=>setInspectorCollapsed(!inspectorCollapsed)}><span>コマ情報</span>{inspectorCollapsed?'‹':'›'}</button>

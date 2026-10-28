@@ -3,15 +3,15 @@ import { useEffect, useState } from 'preact/hooks';
 import type { ImageAsset, PlacedImage } from '../types';
 import { loadFigureCropAsset } from '../lib/figureCropStore';
 import { loadPaintImages, type PaintImages } from '../lib/paintRenderer';
-import { paintAssetIds } from '../lib/paintDocument';
+import { paintAssetIds, paintNativeBand } from '../lib/paintDocument';
 import PaintPreviewCanvas from './PaintPreviewCanvas';
 
 const EMPTY_ASSETS:ImageAsset[]=[];
 
-export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS }: { asset?: ImageAsset; image: PlacedImage; assets?:ImageAsset[] }) {
+export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS, nativeBand }: { asset?: ImageAsset; image: PlacedImage; assets?:ImageAsset[];nativeBand?:'above'|'below' }) {
   const [storedSource, setSource] = useState<{key:string;url:string|null} | null>(null);
-  const paint=image.paint;
-  const hasTone=paint&&(Boolean(image.bubbleOriginal)||paint.layers.some(layer=>layer.visible&&layer.tone?.enabled));
+  const paint=nativeBand&&image.paint?paintNativeBand(image.paint,nativeBand==='above'):image.paint;
+  const hasTone=paint&&(Boolean(nativeBand)||Boolean(image.bubbleOriginal)||paint.layers.some(layer=>layer.visible&&layer.tone?.enabled));
   // Document edits clone paint/asset objects. Only a source or its validation
   // metadata changing requires another decode; composition still uses live paint.
   const sources=hasTone?JSON.stringify([...new Set(paintAssetIds(paint))].sort().map(id=>{
@@ -48,7 +48,7 @@ export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS }: {
   return <span class="placed-image-viewport" style={{ opacity: image.opacity }}>
     {toneReady?<span class="placed-image-content" style={contentStyle}><PaintPreviewCanvas paint={paint} images={toneReady} includeGeneration={false} style={{
       width:`${paint.width/crop.w*100}%`,height:`${paint.height/crop.h*100}%`,left:`${-crop.x/crop.w*100}%`,top:`${-crop.y/crop.h*100}%`,
-    }}/></span>:!(image.bubbleOriginal&&paint) && source && asset && <span class="placed-image-content" style={contentStyle}><img src={source} alt="" draggable={false} onError={() => setSource({key:asset.storageId,url:null})} style={{
+    }}/></span>:!(nativeBand==='above'||nativeBand&&paint)&&!(image.bubbleOriginal&&paint) && source && asset && <span class="placed-image-content" style={contentStyle}><img src={source} alt="" draggable={false} onError={() => setSource({key:asset.storageId,url:null})} style={{
       width: `${asset.widthPx / crop.w * 100}%`, height: `${asset.heightPx / crop.h * 100}%`,
       left: `${-crop.x / crop.w * 100}%`, top: `${-crop.y / crop.h * 100}%`,
     }} /></span>}

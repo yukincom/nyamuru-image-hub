@@ -67,7 +67,11 @@ test('コマ内フキダシは作画より上、コマ枠とページ前景よ�
 test('ページ直描きと前景は両方のコマ枠より上で、前景フキダシが人物より前面にある', () => {
   assert.ok(zIndexOf('.page-direct-paint-layer') > zIndexOf('.panel-frame-overlay'));
   assert.ok(zIndexOf('.page-direct-paint-layer') > zIndexOf('.panel-frame-inner-overlay'));
-  assert.ok(zIndexOf('.page-overlay-figure-layer') > zIndexOf('.page-direct-paint-layer'));
+  assert.ok(zIndexOf('.page-direct-paint-layer') > zIndexOf('.page-overlay-bubble-layer'));
+  assert.equal(zIndexOf('.panel-direct-paint-layer'),zIndexOf('.panel-bubble-layer'));
+  assert.ok(zIndexOf('.panel-direct-paint-layer')<zIndexOf('.panel-frame-overlay'));
+  assert.ok(canvas.indexOf('<div class="panel-direct-paint-layer">')>canvas.indexOf('<div class="panel-bubble-layer">'));
+  assert.ok(canvas.indexOf('<div class="page-direct-paint-layer">')>canvas.indexOf('<div class="page-overlay-bubble-layer">'));
   assert.ok(zIndexOf('.page-overlay-figure-layer') > zIndexOf('.panel-frame-overlay'));
   assert.ok(zIndexOf('.page-overlay-figure-layer') > zIndexOf('.panel-frame-inner-overlay'));
   assert.ok(zIndexOf('.page-overlay-bubble-layer') > zIndexOf('.page-overlay-figure-layer'));

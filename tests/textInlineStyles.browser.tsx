@@ -7,9 +7,10 @@ import {textStyleSegments} from '../src/lib/textStyle';
 import {captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
 import {prepareImageAsset,createFrameArtwork} from '../src/lib/imagePlacement';
 import {saveFigureCropAssets} from '../src/lib/figureCropStore';
-import {paintForFrame} from '../src/lib/paintDocument';
+import {paintForFrame,newPaintLayer,paintReferenceBox} from '../src/lib/paintDocument';
+import {renderPaintPng,paintPreviewRenderer,loadPaintImages} from '../src/lib/paintRenderer';
 import {isLanClient} from '../src/lib/clientRuntime';
-import type {MangaDocument} from '../src/types';
+import type {MangaDocument,PlacedImage,ImageAsset,Figure,Bubble} from '../src/types';
 import '../src/styles/global.css';
 if(location.origin!=='http://127.0.0.1:4339'||!isLanClient)throw Error('Dedicated LAN fixture at 127.0.0.1:4339 required');
 const originalFetch=window.fetch.bind(window);
@@ -32,7 +33,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -191,7 +192,7 @@ async function verifyLetteringDepth(){
   const node=(overlay:boolean)=>document.querySelector<HTMLElement>(`.spread-pane:not(.is-spread-partner) [data-content-kind="bubble"][data-content-index="0"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
   const choose=async(overlay:boolean)=>{node(overlay).click();await settle();};
   const owner=(doc:MangaDocument,overlay:boolean)=>overlay?doc.manga.pages[0].page_overlay!:doc.manga.pages[0].panels[0];
-  const layerRoot=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette ${overlay?'.page-direct-layer-group':'.panel-layer-group:not(.page-direct-layer-group)'}`)!;
+  const layerRoot=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette ${overlay?'.page-panel-outside-layers:not([data-before-panel])':'.panel-layer-group'}`)!;
   const layerRow=(overlay:boolean,key:string)=>layerRoot(overlay).querySelector<HTMLElement>(`[data-owner-group="${key}"]`)!;
   const dragGroup=async(overlay:boolean,key:string,target:string,below:boolean)=>{
     const dest=layerRow(overlay,target);dest.scrollIntoView({block:'center'});await settle();
@@ -274,7 +275,7 @@ async function verifyLetteringDepth(){
 async function verifyTextOrder(){
   const run=document.getElementById('text-order-run') as HTMLButtonElement,checks:string[]=[];
   const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
-  const root=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette ${overlay?'.page-direct-layer-group':'.panel-layer-group:not(.page-direct-layer-group)'}`)!;
+  const root=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette ${overlay?'.page-panel-outside-layers:not([data-before-panel])':'.panel-layer-group'}`)!;
   const rows=(overlay:boolean)=>[...root(overlay).querySelectorAll<HTMLElement>('[data-owner-group]')].filter(row=>row.dataset.ownerGroup?.startsWith('bubble-'));
   const palette=(overlay:boolean)=>rows(overlay).map(row=>row.dataset.ownerGroup).join(',');
   const node=(overlay:boolean)=>document.querySelector<HTMLElement>(`.spread-pane:not(.is-spread-partner) [data-content-kind="bubble"][data-content-index="0"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
@@ -503,4 +504,273 @@ async function verifyHandwritten(){
     report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
   }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
   finally{run.disabled=false;}
+}
+
+
+async function verifyLayerAdd(){
+  const run=document.getElementById('layer-add-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  const palette=()=>document.querySelector<HTMLElement>('.page-layer-palette')!;
+  const row=(name:string)=>[...(palette()?.querySelectorAll<HTMLElement>('[data-layer]')??[])].find(node=>node.querySelector('.layer-name-line')?.textContent===name)!;
+  const current=(name:string)=>Boolean(row(name)?.classList.contains('is-selected'));
+  const add=async(name:string,kind='raster')=>{button(kind==='vector'?'ベクターレイヤー追加':'ラスターレイヤー追加').click();await wait(()=>current(name),`${name}の追加待ち`);await settle();};
+  const choose=async(label:string)=>{const b=button(label);if(!b)throw Error(`操作なし: ${label}`);b.click();await settle();await wait(()=>{const b=button('ラスターレイヤー追加');return Boolean(b&&!b.disabled&&b.getAttribute('aria-disabled')!=='true');},`${label}の切替待ち`);};
+  const rename=async(name:string,value:string,key='Enter')=>{
+    row(name).querySelector('button.layer-select')!.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));await settle();
+    const field=palette().querySelector<HTMLInputElement>('[aria-label="レイヤー名"]')!;if(!field)throw Error('名称入力なし');
+    field.value=value;field.dispatchEvent(new Event('input',{bubbles:true}));await settle();field.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true}));await settle();
+  };
+  const tree=(owner:string)=>[...palette().querySelectorAll<HTMLElement>(`[data-owner="${owner}"][data-layer]`)].map(node=>node.querySelector('.layer-name-line')?.textContent);
+  const reopen=async()=>{render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動画面待ち');await open();};
+  run.disabled=true;report.textContent='レイヤー追加を検証中';
+  try{
+    render(null,host);const doc=structuredClone(source),page=doc.manga.pages[0];
+    page.panels[0].figures=[{name:'人物A',kind:'person',bbox:{x:30,y:80,w:50,h:65}}];
+    page.panels.push({id:2,shape:{type:'rect',x:15,y:220,w:150,h:25},bg:0,action:null,bubbles:[]});
+    doc.manga.pages.push({...structuredClone(source.manga.pages[0]),page:2});
+    page.page_overlay=undefined;doc.manga.pages[1].page_overlay=undefined;
+    const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
+    render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();
+    await choose('コマ 02を選択');button('ペン').click();await wait(()=>!!host.querySelector('.is-painting'),'描画開始');await settle();
+    document.dispatchEvent(new KeyboardEvent('keydown',{key:'f',bubbles:true,cancelable:true}));
+    await wait(()=>!!palette().querySelector('[data-before-panel="2"] .layer-user-folder'),'閉鎖コマ外のフォルダー追加');
+    check(Boolean(palette().querySelector('[data-before-panel="2"] .layer-user-folder')),'初期状態で閉じたコマもFキーで外側へ追加');
+    history('元に戻す').click();await settle();
+    await choose('コマ 01の枠を選択');await add('レイヤー 1');
+    check(row('レイヤー 1').closest('.panel-layer-group')?.getAttribute('aria-label')==='コマ 01','コマ枠選択でコマ内へ追加');
+    const panelTree=row('レイヤー 1').closest('.panel-layer-children')!;
+    check(Boolean(panelTree.querySelector('.panel-frame-layer')!.compareDocumentPosition(row('レイヤー 1'))&Node.DOCUMENT_POSITION_FOLLOWING),'固定最上段のコマ枠直下に新規レイヤー');
+    await add('レイヤー 2','vector');check(tree('panel').join(',')==='レイヤー 1,レイヤー 2','ラスターとベクターを統一名で選択レイヤー直下に追加');
+    await rename('レイヤー 2','');check(current('レイヤー 2'),'空欄のEnter確定で元名を保持');
+    await rename('レイヤー 2','別名','Escape');check(current('レイヤー 2'),'Escapeで元名を保持');
+    await rename('レイヤー 2','人物線');check(current('人物線'),'名称変更を一度で確定');
+    history('元に戻す').click();await settle();check(current('レイヤー 2'),'名称変更を一回でUndo');
+    history('やり直す').click();await settle();check(current('人物線'),'名称変更を一回でRedo');
+    await add('レイヤー 3');check(tree('panel').join(',')==='レイヤー 1,人物線,レイヤー 3','名前の欠番を埋めず次の番号を追加');
+    await choose('コマ 01の枠を選択');button('フォルダー追加').click();await wait(()=>!!button('フォルダー 1を選択'),'フォルダー作成');await settle();
+    await add('レイヤー 4');const folder=row('レイヤー 4').closest('.layer-user-folder')!;check(Boolean(folder),'展開中フォルダーの中へ追加');
+    await add('レイヤー 5','vector');check([...folder.querySelectorAll('.layer-name-line')].map(n=>n.textContent).join(',')==='レイヤー 4,レイヤー 5','フォルダー内レイヤーの直下へ追加');
+    await choose('フォルダー 1を選択');button('フォルダー 1を折りたたむ').click();await settle();await add('レイヤー 6');
+    check(!row('レイヤー 6').closest('.layer-user-folder'),'閉じたフォルダーの外へ追加');
+    check(Boolean(folder.compareDocumentPosition(row('レイヤー 6'))&Node.DOCUMENT_POSITION_FOLLOWING),'閉じたフォルダー直下へ配置');
+    button('フォルダー 1を展開').click();await settle();await choose('フォルダー 1を選択');await add('レイヤー 7');
+    check([...row('レイヤー 7').closest('.layer-user-folder')!.querySelectorAll('.layer-name-line')][0].textContent==='レイヤー 7','展開中フォルダーを選ぶと中の最上段');
+    await choose('フォルダー 1を選択');button('フォルダー 1を固定').click();await settle();await add('レイヤー 8');
+    check(!row('レイヤー 8').closest('.layer-user-folder'),'固定中フォルダーへ編集可能レイヤーを入れない');
+    await choose('コマ 01の枠を選択');button('コマ 01を折りたたむ').click();await settle();await add('レイヤー 9');
+    check(row('レイヤー 9').closest('[data-before-panel]')?.getAttribute('data-before-panel')==='1','閉じたコマ枠選択からはコマ外のバー上');
+    await choose('コマ 02を選択');await add('レイヤー 10','vector');
+    check(row('レイヤー 10').closest('[data-before-panel]')?.getAttribute('data-before-panel')==='2','コマ 02バー選択ではそのバー上のコマ外');
+    button('コマ 02を展開').click();await settle();await choose('コマ 02の枠を選択');await add('レイヤー 11');
+    check(row('レイヤー 11').closest('.panel-layer-group')?.getAttribute('aria-label')==='コマ 02','別コマ内でもページ共通の連番');
+    await save();let saved=(await stored()).manga.pages;check(saved[0].paint_layer_sequence===11,'ページの採番を保存');
+    check(saved[0].images?.filter(i=>i.paintStack&&'beforePanel' in i.paintStack).length===2,'コマ 01と02の外側を独立して保存');
+    button('次のページ').click();await settle();await choose('コマ 01の枠を選択');await add('レイヤー 1');await save();
+    saved=(await stored()).manga.pages;check(saved[1].paint_layer_sequence===1&&saved[0].paint_layer_sequence===11,'別ページは1から始まり元ページの番号を保持');
+    button('前のページ').click();await settle();await reopen();await choose('コマ 01の枠を選択');await add('レイヤー 12');
+    check(current('レイヤー 12'),'保存・再読込後も次番号へ進む');
+    // Native folders and their text rows have separate insertion positions.
+    await choose('テキスト1の文字を選択').catch(async()=>{button('テキスト1を展開').click();await settle();await choose('テキスト1の文字を選択');});
+    await add('レイヤー 13');await save();saved=(await stored()).manga.pages;
+    check(!saved[0].panels[0].bubbles[0].paint_overlay?.paint?.layers.find(l=>l.name==='レイヤー 13')?.aboveNative,'文字レイヤーの直下は同じフォルダーの文字より下');
+    await choose('コマ 01の枠を選択');const group=palette().querySelector<HTMLElement>('[data-owner-group="bubble-0"]')!;group.querySelector<HTMLButtonElement>('.layer-group-select')!.click();await settle();await add('レイヤー 14');await save();saved=(await stored()).manga.pages;
+    check(saved[0].panels[0].bubbles[0].paint_overlay?.paint?.layers.find(l=>l.name==='レイヤー 14')?.aboveNative===true,'展開中テキストフォルダーでは文字の手前へ追加');
+    await choose('コマ 01の枠を選択');button('テキスト1を折りたたむ').click();await settle();palette().querySelector<HTMLButtonElement>('[data-owner-group="bubble-0"] .layer-group-select')!.click();await settle();await add('レイヤー 15');await save();saved=(await stored()).manga.pages;
+    check(saved[0].panels[0].images?.some(i=>i.paintStack&&'below' in i.paintStack&&i.paintStack.below===`layer:${saved[0].panels[0].bubbles[0].layerId}`&&i.paint?.layers.some(l=>l.name==='レイヤー 15'))===true,'閉じたテキストフォルダーの外側直下を保存');
+    report.textContent=`PASS ${checks.length}\n`+checks.join('\n');report.dataset.result='pass';
+  }catch(error){report.textContent=`FAIL after ${checks.length}\n${String(error)}\n`+checks.join('\n');report.dataset.result='fail';console.error(error);}
+  finally{run.disabled=false;}
+}
+
+async function verifyLayerPaintOrder(){
+  const run=document.getElementById('layer-paint-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  run.disabled=true;report.textContent='レイヤー描画順を検証中';
+  try{
+    const assets:ImageAsset[]=[];
+    for(const [name,color] of [['下側','#dd2222'],['手前','#2244dd'],['外側','#22dd44']]){
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=80;const ctx=canvas.getContext('2d')!;ctx.fillStyle=color;ctx.fillRect(0,0,80,80);
+      const blob=await new Promise<Blob>(resolve=>canvas.toBlob(blob=>resolve(blob!),'image/png'));
+      const asset=await prepareImageAsset(new File([blob],`${name}.png`,{type:'image/png'}));await saveFigureCropAssets([{id:asset.storageId,blob}]);assets.push(asset);
+    }
+    for(const overlay of [false,true]){
+      const doc=structuredClone(source),page=doc.manga.pages[0],label=overlay?'前景':'コマ',box={x:25,y:25,w:50,h:50},whole={x:0,y:0,w:100,h:100};
+      doc.manga.pages=[page];page.canvas={w:100,h:100,unit:'mm'};doc.manga.finish_settings={width_mm:100,height_mm:100,dpi:100,bleed_mm:0};doc.manga.image_assets=assets;
+      page.panels=[{id:1,shape:{type:'rect',...whole},bg:0,action:null,bubbles:[]}];page.page_overlay=overlay?{frame:false,layer:'above_panel_frames',bubbles:[]}:undefined;
+      const native=overlay?page.page_overlay!:page.panels[0];
+      const image=(index:number,frame=box)=>({...createFrameArtwork(assets[index],frame),id:`order-${index}`,bbox:frame});
+      const ink=paintForFrame(box,80*25.4/50,[image(0),image(1)],assets,'color',false);
+      ink.layers.forEach((layer,index)=>{layer.name=index?'手前検証':'下側検証';layer.locked=false;layer.aboveNative=index===1;});
+      native.bubbles=[{text:'MMMM',shape:'square',tail:false,layerId:'stable-text',bbox:box,text_style:{font:'Hiragino Sans',fontSize:24,fontWeight:700,orientation:'horizontal'},paint_overlay:{...image(0),paint:ink}}];
+      const direct:PlacedImage=image(2,whole);direct.paint=paintForFrame(whole,80*25.4/100,[direct],assets,'color',false);
+      const sibling={...direct,paintScope:overlay?'page' as const:'panel' as const,paintStack:{below:'layer:stable-text'}};
+      if(overlay)page.images=[sibling];else page.panels[0].images=[sibling];
+      for(const band of ['outside','below','above']){
+        ink.layers[0].visible=band!=='outside';ink.layers[1].visible=band==='above';
+        const canvas=await captureQwenCompositionCanvas(doc.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200});
+        const ctx=canvas.getContext('2d')!,pixel=(x:number,y:number)=>[...ctx.getImageData(x*2,y*2,1,1).data].slice(0,3).join(',');
+        check(pixel(15,15)==='34,221,68',`${label}：${band}の外側直下は文字の外に表示`);
+        check(pixel(30,30)===(band==='outside'?'255,255,255':band==='below'?'221,34,34':'34,68,221'),`${label}：${band}の文字内の画素順`);
+        const data=ctx.getImageData(65,65,70,70).data;let dark=0;for(let i=0;i<data.length;i+=4)if(data[i]<70&&data[i+1]<70&&data[i+2]<70)dark++;
+        check(band==='above'?dark===0:dark>0,`${label}：${band==='above'?'手前の絵で文字が隠れる':'文字が絵の手前に残る'}`);
+        const captures=document.getElementById('inline-captures')!;captures.replaceChildren(canvas);canvas.style.width='160px';canvas.style.height='160px';
+      }
+      if(overlay){
+        for(let id=2;id<=5;id++)page.panels.push({id,layerId:`panel-${id}`,shape:{type:'rect',...whole},bg:0,action:null,bubbles:[]});
+        const free=(name:string,stack?:PlacedImage['paintStack']):PlacedImage=>({...direct,id:crypto.randomUUID(),opacity:0,paintScope:'page',paintStack:stack,paint:{...structuredClone(direct.paint!),layers:direct.paint!.layers.map(layer=>({...structuredClone(layer),id:crypto.randomUUID(),name,opacity:0}))}});
+        page.images!.push(free('ページ直下検証'),free('コマ05直上検証',{beforePanel:'layer:panel-5'}));
+      }
+      render(null,host);const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
+      render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'描画順作品の起動');button('作品フォルダを開く').click();await wait(()=>!!document.querySelector('.manga-paper [data-content-kind="bubble"]'),'描画順作品の読込');await settle();
+      if(overlay){
+        const palette=document.querySelector<HTMLElement>('.page-layer-palette')!,row=(name:string)=>[...palette.querySelectorAll<HTMLElement>('[data-layer]')].find(node=>node.querySelector('.layer-name-line')?.textContent===name)!;
+        const root=row('ページ直下検証'),fifth=row('コマ05直上検証'),section=root.closest<HTMLElement>('.page-panel-outside-layers')!,fifthSection=fifth.closest<HTMLElement>('.page-panel-outside-layers')!;
+        check(!palette.querySelector('.page-direct-layer-group,.page-direct-layer-actions')&&!root.closest('.panel-layer-group,.layer-group,.layer-user-folder'),'ページ直下にコマ外フォルダーを作らない');
+        check(Boolean(section.compareDocumentPosition(palette.querySelector('.panel-layer-group')!)&Node.DOCUMENT_POSITION_FOLLOWING),'ページ直下の通常レイヤーはコマ01バーより上');
+        check(section.className===fifthSection.className&&!fifth.closest('.panel-layer-group,.layer-group,.layer-user-folder'),'ページ直下とコマ05バー上は同じ通常レイヤー表示');
+        check(fifthSection.dataset.beforePanel==='5'&&fifthSection.nextElementSibling?.getAttribute('aria-label')==='コマ 05','コマ05バー上のレイヤー位置を保持');
+      }
+      const pane=document.querySelector<HTMLElement>('.spread-pane:not(.is-spread-partner)')!;
+      const selector=`[data-content-kind="bubble"]${overlay?'[data-content-overlay]':':not([data-content-overlay])'}`;
+      const nativeNode=pane.querySelector<HTMLElement>(selector)!,group=nativeNode.parentElement!;
+      const front=group.querySelector<HTMLElement>('.bubble-paint-front')!,below=group.querySelector<HTMLElement>('.direct-paint-stack')!;
+      check(Number(getComputedStyle(front).zIndex)>Number(getComputedStyle(nativeNode).zIndex)&&Boolean(below.compareDocumentPosition(nativeNode)&Node.DOCUMENT_POSITION_FOLLOWING),`${label}：通常DOMも外側・文字・手前の順`);
+      button('テキスト1を展開').click();await settle();
+      const frontRow=[...document.querySelectorAll<HTMLElement>('.layer-row[data-layer]')].find(row=>row.querySelector('.layer-name-line')?.textContent==='手前検証')!;
+      frontRow.querySelector<HTMLButtonElement>('button.layer-select')!.click();await wait(()=>!!document.querySelector('.app-shell.is-painting'),'描画モード待ち');
+      button('コマ情報を閉じる')?.click();button('ページ一覧を閉じる')?.click();await settle();
+      await wait(()=>{const c=pane.querySelector<HTMLCanvasElement>('.bubble-paint-front canvas');return Boolean(c&&c.width>1&&c.height>1);},'手前preview待ち');await settle();
+      const preview=pane.querySelector<HTMLCanvasElement>('.bubble-paint-front canvas')!,rgb=[...preview.getContext('2d')!.getImageData(preview.width/2,preview.height/2,1,1).data].slice(0,3).join(',');
+      check(rgb==='34,68,221',`${label}：編集previewでも手前帯の青を維持`);
+      await save();const saved=await stored();check((overlay?saved.manga.pages[0].images:saved.manga.pages[0].panels[0].images)?.some(image=>image.paintStack&&'below' in image.paintStack&&image.paintStack.below==='layer:stable-text')===true,`${label}：保存後も安定した所属を保持`);
+    }
+    report.textContent=`描画順 PASS ${checks.length}\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`描画順 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+  finally{run.disabled=false;}
+}
+
+
+async function verifyLayerMoves(){
+ const run=document.getElementById('layer-move-run') as HTMLButtonElement,checks:string[]=[];
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+ const palette=()=>document.querySelector<HTMLElement>('.page-layer-palette')!;
+ const row=(id:string)=>[...(palette()?.querySelectorAll<HTMLElement>('[data-layer]')??[])].find(node=>node.dataset.layer===id)!;
+ const panel=(index:number)=>palette().querySelector<HTMLElement>(`.panel-layer-group[aria-label="コマ 0${index+1}"]`)!;
+ const group=(index:number,key:string)=>panel(index).querySelector<HTMLElement>(`[data-owner-group="${key}"]`)!;
+ const location=(id:string)=>{const node=row(id),host=node?.closest<HTMLElement>('[data-paint-panel]');return node?`${host?.dataset.paintOverlay}/${host?.dataset.paintPanel}/${node.dataset.owner}`:'';};
+ const drag=async(source:HTMLElement,target:HTMLElement,ratio=.5,cancel=false,probe?:(marker:HTMLElement)=>void|Promise<void>)=>{
+   target.scrollIntoView({block:'center'});await settle();const a=source.getBoundingClientRect(),b=target.getBoundingClientRect(),pointerId=94;
+   const x=a.left+a.width/2,y=a.top+a.height/2,tx=b.left+b.width/2,ty=b.top+b.height*ratio;
+   source.dispatchEvent(new PointerEvent('pointerdown',{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:1,clientX:x,clientY:y,bubbles:true,cancelable:true}));
+   if(!source.classList.contains('is-dragging'))throw Error('レイヤーのドラッグ開始');
+   source.dispatchEvent(new PointerEvent('pointermove',{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:1,clientX:tx,clientY:ty,bubbles:true,cancelable:true}));
+   if(!source.dataset.dragTarget)throw Error(`移動先が見つかりません: ${target.outerHTML.slice(0,160)} hit=${document.elementFromPoint(tx,ty)?.outerHTML.slice(0,160)}`);
+   const markers=[...palette().querySelectorAll<HTMLElement>('[data-layer-drop].drop-above,[data-layer-drop].drop-below,[data-layer-drop].drop-inside')];if(markers.length!==1)throw Error(`同時に表示されたマーカー: ${markers.length}`);await probe?.(markers[0]);
+   source.dispatchEvent(new PointerEvent(cancel?'pointercancel':'pointerup',{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:0,clientX:tx,clientY:ty,bubbles:true,cancelable:true}));await settle();
+ };
+ const move=async(id:string,target:HTMLElement,expected:string,ratio=.5)=>{await drag(row(id).querySelector<HTMLElement>('.layer-select')!,target,ratio);await wait(()=>location(id)===expected&&row(id).classList.contains('is-selected'),`移動待ち: ${expected} / ${location(id)}`);await settle();};
+ const locate=(doc:MangaDocument,id:string)=>{
+   const page=doc.manga.pages[0];
+   for(const [index,container] of [[-1,page],...page.panels.map((p,i)=>[i,p] as const)] as const){
+     const images=(container as typeof page).images??[];
+     for(const image of images)if(image.paint?.layers.some(layer=>layer.id===id))return {paint:image.paint,frame:image.bbox,index,key:index<0?'page':'panel',image};
+     if(index<0)continue;
+     const p=page.panels[index];
+     for(const [kind,items] of [['figure',p.figures??[]],['bubble',p.bubbles]] as const)for(const [n,item] of items.entries()){
+       const art=kind==='figure'?(item as Figure).artwork:(item as Bubble).paint_overlay;
+       if(art?.paint?.layers.some(layer=>layer.id===id))return {paint:art.paint,frame:item.bbox!,index,key:`${kind}-${n}`,image:undefined};
+     }
+   }
+   throw Error(`保存先にレイヤーがありません: ${id}`);
+ };
+ const verifySaved=async(id:string,label:string)=>{
+   await save();const doc=await stored(),found=locate(doc,id),layer=found.paint.layers.find(layer=>layer.id===id)!;
+   check(layer.name==='移動する青'&&layer.id===id,`${label}: レイヤー名とIDを保持`);
+   const images=await loadPaintImages([found.paint],doc.manga.image_assets??[]),renderer=paintPreviewRenderer(),canvas=document.createElement('canvas');
+   canvas.width=found.paint.width;canvas.height=found.paint.height;
+   renderer.draw(canvas,{...found.paint,folders:undefined,layers:[{...layer,folderId:undefined}]},images);
+   const x=Math.round((50-found.frame.x)*found.paint.width/found.frame.w),y=Math.round((50-found.frame.y)*found.paint.height/found.frame.h);
+   const rgba=canvas.getContext('2d')!.getImageData(x,y,1,1).data;check(rgba[2]>180&&rgba[0]<80&&rgba[3]===255,`${label}: 紙面50mm地点の青画素を保持`);
+   renderer.dispose();images.forEach(image=>{image.src='';});return {doc,found,layer};
+ };
+ const messages:string[]=[];const observer=new MutationObserver(()=>{const text=document.querySelector('.toast')?.textContent;if(text&&messages.at(-1)!==text)messages.push(text);});observer.observe(host,{subtree:true,childList:true,characterData:true});
+ run.disabled=true;report.textContent='所属をまたぐ移動を検証中';
+ try{
+   render(null,host);const doc=structuredClone(source),page=doc.manga.pages[0];
+   doc.manga.finish_settings={width_mm:120,height_mm:120,dpi:100,bleed_mm:0};page.canvas={w:120,h:120,unit:'mm'};page.page_overlay=undefined;page.paint_layer_sequence=12;
+   const ink={...newPaintLayer('移動する青'),id:'move-blue',strokes:[{tool:'fill' as const,color:'#2244dd',size:1,points:[{x:100,y:100,pressure:1,time:0}],selection:[{x:90,y:90,w:20,h:20}]}]};
+   const paint={version:1 as const,width:240,height:240,dpi:100,guideInitialized:true,layers:[ink]};
+   const blob=await renderPaintPng(paint,new Map()),asset=await prepareImageAsset(new File([blob],'移動検証.png',{type:'image/png'}));await saveFigureCropAssets([{id:asset.storageId,blob}]);doc.manga.image_assets=[asset];
+   page.images=[{...createFrameArtwork(asset,{x:0,y:0,w:120,h:120}),paint,paintScope:'page'}];
+   const empty={...paint,layers:[],folders:[{id:'test-folder',name:'移動先フォルダー',position:0}]};
+   page.panels=[{id:1,layerId:'first-panel',shape:{type:'rect',x:10,y:10,w:100,h:100},bg:0,action:null,
+     figures:[{name:'移動先人物',bbox:{x:70,y:70,w:20,h:20}},{name:'空になる人物',bbox:{x:15,y:75,w:20,h:20}}],
+     bubbles:[{text:'文字',layerId:'test-text',shape:'square',tail:false,bbox:{x:75,y:15,w:25,h:25},analogTextImport:{schemaVersion:1,sourceRegionId:'move-region',assetId:asset.storageId,sourceBBox:{x:0,y:0,w:1,h:1},detectionSource:'baberu',recognitionEngine:'Baberu OCR',needsReview:false,levelAdjusted:true,rasterLayerInitialized:true,rasterLayerSeparated:true,originalImageId:'move-original'}}],
+     images:[{...createFrameArtwork(asset,{x:0,y:0,w:120,h:120}),paint:empty,paintScope:'panel'},{...createFrameArtwork(asset,{x:75,y:15,w:25,h:25}),id:'move-original',bubbleOriginal:{sourceRegionId:'move-region',name:'原本・文字'}}]},
+     {id:2,layerId:'second-panel',shape:{type:'rect',x:20,y:20,w:80,h:80},bg:0,action:null,bubbles:[]}];
+   const w=await project.createWritable();await w.write(JSON.stringify(await createPortableProject(doc)));await w.close();
+   render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'作品を開くボタン');button('作品フォルダを開く').click();await wait(()=>!!row('move-blue'),'移動検証作品');await settle();
+   button('コマ情報を閉じる')?.click();button('ページ一覧を閉じる')?.click();await settle();
+   check(!palette().querySelector('.layer-root-drop'),'グループ上下に透明な追加判定帯を置かない');
+   const rootMargin=Number.parseFloat(getComputedStyle(row('move-blue').querySelector('.layer-select')!).marginLeft);
+   const guideMargin=Number.parseFloat(getComputedStyle(group(0,'figure-0').parentElement!.querySelector('.layer-select')!).marginLeft);
+   check(rootMargin===0&&guideMargin===32,'フォルダー外は目玉へ寄せ、人物フォルダー内は階層分だけ下げる');
+   const probeFolder=panel(0).querySelector<HTMLElement>('[data-folder="test-folder"]')!,widths:number[]=[];
+   for(const ratio of [.5,.9])await drag(row('move-blue').querySelector<HTMLElement>('.layer-select')!,probeFolder,ratio,true,async marker=>{
+     const style=getComputedStyle(marker,'::after');widths.push(Number.parseFloat(style.width));
+     if(ratio===.9)check(style.left==='0px'&&style.right==='0px'&&Number.parseFloat(style.width)===marker.getBoundingClientRect().width,'外側の線は左右端まで届き、目玉列の下を通る');
+     check(style.backgroundColor==='rgb(223, 134, 31)'&&style.height==='4px'&&getComputedStyle(marker).boxShadow==='none',`${ratio===.5?'内部':'外側'}の挿入先はオレンジの4px線を1本だけ表示`);
+     if(ratio===.9&&new URLSearchParams(window.location.search).has('marker-preview')){
+       report.textContent='外側の挿入線プレビュー（Escで検証続行）';
+       await new Promise<void>(resolve=>{const resume=(event:KeyboardEvent)=>{if(event.key==='Escape'){window.removeEventListener('keydown',resume);resolve();}};window.addEventListener('keydown',resume);});
+     }
+   });
+   check(widths[1]-widths[0]===48,'フォルダー外の線は目玉の下まで全幅、内部の線は48px短い');
+   await move('move-blue',panel(0).querySelector<HTMLElement>('.panel-frame-layer')!,'false/0/panel');await verifySaved('move-blue','ページからコマ内');
+   history('元に戻す').click();await wait(()=>location('move-blue')==='true/0/page','Undoでページへ復帰');check(true,'コマへの移動を1回のUndoで取り消せる');
+   history('やり直す').click();await wait(()=>location('move-blue')==='false/0/panel','Redoでコマへ復帰');check(true,'Redoで所属を復元');
+   await move('move-blue',group(0,'figure-0'),'false/0/figure-0');const figureMove=await verifySaved('move-blue','人物フォルダー内');
+   const figure=figureMove.doc.manga.pages[0].panels[0].figures![0],ref=paintReferenceBox(figure.artwork!.paint,figure.bbox!,figure.artwork!.crop);
+   check(Math.abs(ref.x-70)<.01&&Math.abs(ref.y-70)<.01,'人物あたりの元位置を保持');
+   await move('move-blue',group(0,'bubble-0'),'false/0/bubble-0');check((await verifySaved('move-blue','テキストフォルダー内')).layer.aboveNative===true,'文字フォルダーへ入れると文字の上に配置');
+   await move('move-blue',panel(0).querySelector<HTMLElement>('.bubble-native-row')!,'false/0/bubble-0',.8);
+   check(!(await verifySaved('move-blue','文字の下')).layer.aboveNative,'同じ文字フォルダー内で文字の下へ移動');
+   const native=panel(0).querySelector<HTMLElement>('.bubble-native-row')!,boundaryLines:number[]=[];
+   for(const ratio of [-.08,-.02,.02,.08])await drag(row('move-blue').querySelector<HTMLElement>('.layer-select')!,native,ratio,true,marker=>{
+     const line=getComputedStyle(marker,'::after'),box=marker.getBoundingClientRect();boundaryLines.push(Math.round((box.top+Number.parseFloat(line.top))*10));
+   });
+   check(new Set(boundaryLines).size===1,'原本と文字の境界を横切っても、3段階の判定帯にせず同じ1本の挿入線を示す');
+   await drag(row('move-blue').querySelector<HTMLElement>('.layer-select')!,native,.2);
+   await wait(()=>row('move-blue')?.dataset.owner?.startsWith('panel:below:')===true,'原本と文字の間への移動');
+   const originalRow=panel(0).querySelector<HTMLElement>('[data-original-raster="move-original"] [data-layer]')!;
+   check(Boolean(originalRow.compareDocumentPosition(row('move-blue'))&Node.DOCUMENT_POSITION_FOLLOWING)&&Boolean(row('move-blue').compareDocumentPosition(panel(0).querySelector('.bubble-native-row')!)&Node.DOCUMENT_POSITION_FOLLOWING),'原本と文字の境界のマーカーどおり、間へ配置');
+
+   const folderRow=()=>panel(0).querySelector<HTMLElement>('[data-folder="test-folder"]')!;
+   await move('move-blue',folderRow(),'false/0/panel');check((await verifySaved('move-blue','通常フォルダー内')).layer.folderId==='test-folder','テキストから通常フォルダーへ入る');
+   await move('move-blue',folderRow(),'false/0/panel',.9);check(!(await verifySaved('move-blue','通常フォルダー外')).layer.folderId,'フォルダー下端から外へ出る');
+   await move('move-blue',panel(1).querySelector<HTMLElement>('.panel-layer-heading')!,'false/1/panel',.65);await verifySaved('move-blue','別コマ内');
+   await move('move-blue',panel(0).querySelector<HTMLElement>('.panel-layer-heading')!,'true/0/page:panel:layer:first-panel',.1);const outside=await verifySaved('move-blue','コマバー上');
+   check(!!outside.found.image?.paintStack&&'beforePanel' in outside.found.image.paintStack&&outside.found.image.paintStack.beforePanel==='layer:first-panel','コマバー上の所属を安定IDで保存');
+   await move('move-blue',palette().querySelector<HTMLElement>('.page-layer-root-drop')!,'true/0/page');await verifySaved('move-blue','ページ直下へ戻す');
+   const beforeCancel=location('move-blue');await drag(row('move-blue').querySelector<HTMLElement>('.layer-select')!,group(0,'bubble-0'),.5,true);await settle();check(location('move-blue')===beforeCancel,'ドラッグ取消しで所属を変えない');
+   await drag(folderRow().querySelector<HTMLElement>('.layer-folder-select')!,group(0,'bubble-0'));
+   await wait(()=>!!group(0,'bubble-0').parentElement!.querySelector('[data-folder="test-folder"]'),'空フォルダーをテキストへ');check(true,'空フォルダー自体もテキストフォルダー内へ移せる');
+   const guideGroup=group(0,'figure-1');guideGroup.querySelector<HTMLButtonElement>('[aria-expanded="false"]')?.click();await settle();
+   const guideRow=guideGroup.parentElement!.querySelector<HTMLElement>('[data-layer]')!,guideId=guideRow.dataset.layer!;
+   await move(guideId,palette().querySelector<HTMLElement>('.page-layer-root-drop')!,'true/0/page');await save();
+   const saved=await stored();check(saved.manga.pages[0].panels[0].figures![1].artwork?.paint?.layers.length===0,'最後のあたりを移した人物は空で保存');
+   check(saved.manga.pages[0].paint_layer_sequence===12,'移動はページの追加連番を消費しない');
+   group(0,'figure-1').querySelector<HTMLButtonElement>('.layer-group-select')!.click();await settle();
+   for(let i=0;i<2;i++){group(0,'figure-1').querySelector<HTMLButtonElement>('.layer-row-lock')!.click();await settle();}
+   await save();check((await stored()).manga.pages[0].panels[0].figures![1].artwork?.paint?.layers.length===0,'空の人物のロック解除を保存してもあたりを再生成しない');
+   group(0,'figure-1').querySelector<HTMLButtonElement>('.layer-visibility')!.click();await settle();await save();
+   check((await stored()).manga.pages[0].panels[0].figures![1].artwork?.paint?.layers.length===0,'空の人物の目を操作しても空paintを保持');
+
+   render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動');button('作品フォルダを開く').click();await wait(()=>!!row('move-blue'),'保存作品の再読込');await settle();
+   group(0,'figure-1').querySelector<HTMLButtonElement>('[aria-expanded="false"]')?.click();await settle();
+   check(!group(0,'figure-1').parentElement!.querySelector('[data-layer]'),'再読込で移動済みのあたりを再生成しない');
+   check(location('move-blue')==='true/0/page'&&location(guideId)==='true/0/page','作成場所の異なる2レイヤーを同じページ直下へ保存');
+   report.textContent=`所属移動 PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`所属移動 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}\n${messages.join('\n')}`;console.error(error);}
+ finally{observer.disconnect();run.disabled=false;}
 }

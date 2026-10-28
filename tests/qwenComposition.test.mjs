@@ -203,19 +203,19 @@ test('composition snapshot preserves polygon, positions, order and text while ex
   layout.panels[0].panel.figures[0].bbox.x = 999; assert.deepEqual(manga, before);
 });
 
-test('panel bubbles precede frames, page direct drawing and foreground bubbles',()=>{
+test('panel bubbles precede frames and foreground; page work layers cover foreground text',()=>{
   const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
   const ordinary=source.indexOf("layout.images.filter(image=>!image.paintScope&&!image.bubbleOriginal&&!image.generationScope)");
   const localBubbles=source.indexOf('await drawBubbles(entry)',ordinary);
   const frames=source.indexOf("panelFrameVisible(entry.panel)");
-  const direct=source.indexOf("layout.images.filter(image=>image.paintScope==='page')");
+  const direct=source.indexOf("directPaintImages(layout.images,'page',undefined,pageAnchors)");
   const overlay=source.indexOf("layout.panels.filter(entry => entry.overlay)");
   const frontBubbles=source.indexOf('await drawBubbles(entry)',overlay);
-  assert.ok(ordinary>0&&ordinary<localBubbles&&localBubbles<frames&&frames<direct&&direct<overlay&&overlay<frontBubbles);
+  assert.ok(ordinary>0&&ordinary<localBubbles&&localBubbles<frames&&frames<overlay&&overlay<frontBubbles&&frontBubbles<direct);
   assert.equal(source.match(/await drawBubbles\(entry\)/g)?.length,2,'each scope uses the shared bubble renderer once');
 });
 
-test('panel direct drawing stays above ordinary images and below screen text regardless of storage order',()=>{
+test('panel direct drawing covers text and remains below its frame regardless of storage order',()=>{
   const image=(id,paintScope)=>({id,paintScope,assetId:id,bbox:{x:0,y:0,w:10,h:10},opacity:1,crop:{x:0,y:0,w:10,h:10},hidden:false,locked:false});
   const layers=qwenPanelImageLayers([image('direct-a','panel'),image('ordinary-a'),{...image('generated'),generationScope:'panel'},image('wrong-scope','page'),image('ordinary-b'),image('direct-b','panel')]);
   assert.deepEqual(layers.ordinary.map(item=>item.id),['ordinary-a','ordinary-b']);
@@ -223,9 +223,10 @@ test('panel direct drawing stays above ordinary images and below screen text reg
   assert.deepEqual(layers.generated.map(item=>item.id),['generated']);
   const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
   const ordinary=source.indexOf('await drawImages(imageLayers.ordinary)');
-  const direct=source.indexOf('await drawImages(imageLayers.direct)');
-  const screenText=source.indexOf('entry.panel.screen_text',direct);
-  assert.ok(ordinary>0&&ordinary<direct&&direct<screenText);
+  const direct=source.indexOf('await drawDirect(entry)');
+  const screenText=source.indexOf('entry.panel.screen_text',ordinary);
+  const localBubbles=source.indexOf('await drawBubbles(entry)',screenText),frames=source.indexOf('panelFrameVisible(entry.panel)');
+  assert.ok(ordinary>0&&ordinary<screenText&&screenText<localBubbles&&localBubbles<direct&&direct<frames);
 });
 
 test('completed compositions cover native bubble folders and remain below unlinked original crops',()=>{
@@ -233,7 +234,7 @@ test('completed compositions cover native bubble folders and remain below unlink
   const overlayText=source.indexOf("overlayTextFallbackBox(layout.frame, index)");
   const bubbles=source.indexOf('await drawBubbles(entry)',overlayText);
   const generated=source.indexOf('await drawImages(qwenPanelImageLayers(entry.panel.images).generated)');
-  const original=source.indexOf('await drawImages((entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some');
+  const original=source.indexOf('for(const image of (entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some');
   assert.ok(overlayText>0&&overlayText<bubbles&&bubbles<generated&&generated<original);
   assert.match(source,/await drawImages\(\(panel.images\?\?\[\]\).filter\(image=>image.id===bubble.analogTextImport\?\.originalImageId\)\)/);
   assert.match(source,/dpi = canvas\.width \/ frame\.w \* 25\.4/);
@@ -323,7 +324,7 @@ test('composition export uses each bubble width for its body, thought tail and j
    document:{createElement:name=>new Element(name)},svgElement:(name,attrs)=>new Element(name,attrs),panelShapePoints,paintReferenceBox:(_paint,box)=>box,
    bubbleVisible:()=>true,resolveBubbleSpeakerFigureIndex:()=>0,compatibleBubbleClips:()=>true,bubbleArtIndices,letteringFigureIndex,
    tail:{bubbleTailDisabled:()=>false,bubbleTailTargetPoint:()=>({x:5,y:5}),monologueTailEllipses:()=>[{cx:12,cy:12,rx:2,ry:3}],bubbleTailComposite:()=>null,bubbleJoinGeometry:()=>({firstSeamMask:{},secondSeamMask:{},fillPath:'fill',outlinePaths:['join']})},
-   context:{save(){},restore(){},clip(){},drawImage(){}},outline(){},drawImages:async()=>{},drawText(){},bubbleTextFrame:box=>box,
+   context:{save(){},restore(){},clip(){},drawImage(){}},outline(){},drawImages:async()=>{},drawDirect:async()=>{},drawText(){},bubbleTextFrame:box=>box,
    BubbleShapeSvg:'BubbleShapeSvg',h:(type,props)=>({type,props}),render:(node,host)=>{if(!node){host.childNodes=[];return;}const svg=new Element('svg');svg.append(new Element('path',{class:'bubble-svg-surface'}),new Element('path',{class:'bubble-svg-outline-surface'}),new Element('path',{class:'bubble-svg-detail'}));host.append(svg);},
    Blob,XMLSerializer:class {serializeToString(svg){return JSON.stringify(svg);}},decodePaintImage:async blob=>{captured.push(JSON.parse(await blob.text()));return {src:''};},
   };

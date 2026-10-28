@@ -13,7 +13,7 @@ import NativeTextEditor from './NativeTextEditor';
 import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, panelFrameVisible, panelFrameSegmentsOnInnerFrame, panelArtKeys, bubbleArtIndices, type BubbleTextTarget } from '../lib/panelLayers';
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, usePaintWorkspace } from '../lib/paintWorkspace';
 import PaintInputSurface, { PaintOwnerPreview } from './PaintSceneView';
-import { paintReferenceBox } from '../lib/paintDocument';
+import { paintReferenceBox, paintStackKey, paintAnchorIds, paintStackMatches, directPaintImages } from '../lib/paintDocument';
 import { artworkPixelSize, copyArtworkSize } from '../lib/artworkClipboard';
 import PlacedImageView from './PlacedImageView';
 import { figureArtwork, resizeImageBox } from '../lib/imagePlacement';
@@ -1259,6 +1259,20 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const paint=key==='background'?page.panels[panelIndex]?.background_images?.[0]?.paint:key.startsWith('figure-')?target?.figures?.[Number(key.split('-')[1])]?.artwork?.paint:undefined;
     return !paint?.guideInitialized&&guideVisible(key,panelIndex,overlay);
   };
+  const renderDirectPaint=(panelIndex:number|null,stack?:import('../types').PaintStackPosition)=>{
+    const scope=panelIndex===null?'page':'panel',key=paintStackKey(stack),editing=panelIndex===null?editingOverlay:editingPanel(panelIndex);
+    const images=panelIndex===null?page.images:page.panels[panelIndex].images;
+    const anchors=editing?paintWorkspace?.scene.anchorIds:paintAnchorIds(panelIndex===null?{...page.page_overlay,bubbles:page.page_overlay?.bubbles??[],images:page.images}:page.panels[panelIndex],panelIndex===null?page.panels:undefined);
+    return <div class="direct-paint-stack" data-direct-stack={`${scope}:${key}`}>
+      {editing?paintWorkspace?.scene.owners.filter(owner=>owner.kind===scope&&paintStackMatches(owner.stack,stack,anchors)).map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={{x:0,y:0,...canvas}}/>)
+        :directPaintImages(images,scope,stack,anchors).filter(image=>!image.hidden).map(image=><span class="direct-paint-artwork" key={image.id} style={paperBoxStyle(image.bbox)}><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===image.assetId)} image={image}/></span>)}
+    </div>;
+  };
+  const renderBubbleFront=(bubble:Bubble,index:number,box:BBox,panelIndex:number|null)=>{
+    const editing=panelIndex===null?editingOverlay:editingPanel(panelIndex);
+    return <span class="bubble-paint-front" style={paperBoxStyle(box)}>{editing?<PaintOwnerPreview ownerKey={`bubble-${index}`} container={box} inkOnly nativeBand="above"/>
+      :bubble.paint_overlay&&!bubble.paint_overlay.hidden&&<PlacedImageView nativeBand="above" assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-front',bbox:box}}/>}</span>;
+  };
   const renderPanelBaseElements = (panel: Panel, panelIndex: number, boxStyle: (box: BBox) => Record<string, string>, only?:number|'screen') => <>
     {(panel.figures ?? []).map((figure, figureIndex) => {
       if(only!==undefined&&only!==figureIndex)return null;
@@ -1291,12 +1305,12 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </button>;
     })}
     {(typeof only==='number'?[]:panel.screen_text ?? []).map((screenText, screenTextIndex) => {
-      if(screenText.hidden===true)return null;
+      if(screenText.hidden===true)return renderDirectPaint(panelIndex,{below:`screen-text-${screenTextIndex}`});
       const selection: CanvasElementSelection = { type: 'screen_text', index: screenTextIndex };
       const box = screenText.bbox ?? fallbackBox(panel, 'screen_text', screenTextIndex);
       const isLocked=elementLocked(selection,panelIndex);
       const isSelected = !isLocked&&activePanel === panelIndex && isSelectedElement(selection);
-      return <button
+      return <div class="native-text-stack-item" key={`screen-text-${screenTextIndex}`}>{renderDirectPaint(panelIndex,{below:`screen-text-${screenTextIndex}`})}<button
         onDragEnter={event=>{if(!isLocked&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
         onDragOver={event=>{if(!isLocked&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
         onDragLeave={event=>{if(!(event.relatedTarget instanceof Node)||!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('is-material-drop-target');}}
@@ -1311,7 +1325,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
         <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
-      </button>;
+      </button></div>;
     })}
   </>;
 
@@ -1401,7 +1415,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const index=images?.findIndex(image=>image.id===bubble.analogTextImport?.originalImageId)??-1;
     if(index<0)return null;
     const image=images![index],key=`original-${image.id}`;
-    return <div class="bubble-original-child" data-bubble-original={image.id}>
+    return <div class="bubble-original-child" data-bubble-original={image.id}>{renderDirectPaint(panelIndex,{below:key})}
       {(panelIndex===null?editingOverlay:editingPanel(panelIndex))?<PaintOwnerPreview ownerKey={key} container={paperBounds}/>
         :renderArtwork(image,{type:'image',scope:panelIndex===null?'page':'panel',index},panelIndex,paperBoxStyle,image.bubbleOriginal?.name)}
     </div>;
@@ -1420,6 +1434,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
     const presentation=panelBubblePresentations[panelIndex];
     return <div class="panel-bubble-clip" style={{...layerClipStyle(panel,canvas),'--bubble-line-width':canvasLengthCss(bubbleStrokeWidthMm(bubble,bubbleLineWidthMm),canvas.w)}} key={`panel-${panelIndex}-bubble-${bubbleIndex}`}>
+      {renderDirectPaint(panelIndex,{below:`bubble-${bubbleIndex}`})}
       {bubbleVisible(bubble)&&<>{presentation?.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{presentation.elementsByBubble[bubbleIndex]}</svg>:null}
       <button
       onDragEnter={event=>{if(!painting&&!elementLocked(selection,panelIndex)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
@@ -1443,7 +1458,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         maskId={`bubble-outline-mask-page-${page.page}-panel-${panelIndex}-${bubbleIndex}`}
       />
       </span>
-      {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
+      {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly nativeBand="below"/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView nativeBand="below" assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
       <span class="bubble-native-reference bubble-native-text" style={referenceStyle}>
       {letteringGuideVisible(bubble)&&textFrame.w>0&&textFrame.h>0&&<span class="bubble-text-frame" style={textFrameStyle}><BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={textFrame.w} boxH={textFrame.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
           review={scenarioBubbleNeedsReview(bubble)}
@@ -1451,7 +1466,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           onMoveFrame={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/></span>}
       </span>
       <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection,panelIndex)} handles={visible=>!backgroundEdit&&!bubblePathTool&&renderHandles(panelIndex,selection,box,visible,false)}/>
-    </button></>}{renderBubbleOriginal(bubble,panelIndex)}</div>;
+    </button></>}{renderBubbleOriginal(bubble,panelIndex)}{renderBubbleFront(bubble,bubbleIndex,box,panelIndex)}</div>;
   });
 
   const paperBounds: BBox = { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h };
@@ -1493,10 +1508,10 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     </button>;
   });
   const renderPageOverlayText=()=>(overlay?.screen_text??[]).map((screenText,index)=>{
-    if(screenText.hidden===true)return null;
+    if(screenText.hidden===true)return renderDirectPaint(null,{below:`screen-text-${index}`});
     const selection:CanvasElementSelection={scope:'page_overlay',type:'screen_text',index};
     const box=screenText.bbox??overlayTextFallbackBox(canvas,index),isSelected=isSelectedElement(selection);
-    return <button
+    return <div class="native-text-stack-item" key={index}>{renderDirectPaint(null,{below:`screen-text-${index}`})}<button
       onDragEnter={event=>{if(event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
       onDragOver={event=>{if(event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
       onDragLeave={event=>{if(!(event.relatedTarget instanceof Node)||!event.currentTarget.contains(event.relatedTarget))event.currentTarget.classList.remove('is-material-drop-target');}}
@@ -1508,7 +1523,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onKeyDown={event=>{nudgeElement(event,paperBounds,selection,box);}}
       title={`${textDisplayLabel((overlay?.bubbles?.length??0)+index)}（ページ前景）`} tabIndex={activePanel>=0?0:-1}>
       <span class={`screen-text-body ${screenText.orientation==='vertical'?'vertical-text':''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
-    </button>;
+    </button></div>;
   });
   const renderPageOverlayBubbles = (relatedFigure:number|null=null, depth:'front'|'behind'='front') => bubbleArtIndices({bubbles:overlayBubbles,layer:page.layer}).map(bubbleIndex => {
     const bubble=overlayBubbles[bubbleIndex];
@@ -1520,6 +1535,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const isSelected = isSelectedElement(selection)&&!agentWorking(selection);
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
     return <div class="page-overlay-bubble-stack-item" style={{'--bubble-line-width':canvasLengthCss(bubbleStrokeWidthMm(bubble,bubbleLineWidthMm),canvas.w)}} key={`page-overlay-bubble-${bubbleIndex}`}>
+      {renderDirectPaint(null,{below:`bubble-${bubbleIndex}`})}
       {bubbleVisible(bubble)&&<>{overlayBubblePresentation.elementsByBubble[bubbleIndex]?.length?<svg class="bubble-tail-layer" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">{overlayBubblePresentation.elementsByBubble[bubbleIndex]}</svg>:null}
       <button
       onDragEnter={event=>{if(!painting&&!elementLocked(selection)&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
@@ -1543,14 +1559,14 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         maskId={`bubble-outline-mask-page-${page.page}-overlay-${bubbleIndex}`}
       />
       </span>
-      {editingOverlay?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
+      {editingOverlay?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly nativeBand="below"/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView nativeBand="below" assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
       <span class="bubble-native-reference bubble-native-text" style={referenceStyle}>
       {letteringGuideVisible(bubble)&&<BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
           review={scenarioBubbleNeedsReview(bubble)}
           onEdit={textTool&&!elementLocked(selection)?()=>onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}):undefined}
           onMoveFrame={textTool&&!elementLocked(selection)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/>}</span>
       <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection)} handles={visible=>!bubblePathTool&&renderHandles(null,selection,box,visible,false)}/>
-    </button></>}{renderBubbleOriginal(bubble,null)}</div>;
+    </button></>}{renderBubbleOriginal(bubble,null)}{renderBubbleFront(bubble,bubbleIndex,box,null)}</div>;
   });
 
   const panelSelectionVisible=!painting&&(!selectedElement||selectedElement.type==='panel_frame');
@@ -1724,16 +1740,15 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       ))}
       {page.panels.map((panel,panelIndex)=>panelVisible(panel)&&<div class={`panel-art-stack ${panelIndex===activePanel?'is-active':''}`} style={layerClipStyle(panel,canvas)} data-panel-outline={panelShapePoints(panel).map(([x,y])=>`${x/canvas.w},${y/canvas.h}`).join(' ')} key={`art-stack-${panelIndex}`}>
         {panelArtKeys(panel).map(key=>{
-          if(key==='background')return <div class={`panel-art-background manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex)?'has-background-artwork':''} panel-bg-${panel.bg}`} style={panelStyle(panel,canvas)} key={key}>
+          if(key==='background')return <Fragment key={key}>{renderDirectPaint(panelIndex,{below:key})}<div class={`panel-art-background manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex)?'has-background-artwork':''} panel-bg-${panel.bg}`} style={panelStyle(panel,canvas)} key={key}>
             {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey="background" container={panelBounds(panel)}/>:(!originalGuideVisible('background',panelIndex)&&panel.background_images?.map(image=>!image.hidden&&<span class="panel-background-artwork" key={image.id} style={bboxStyle(image.bbox,panel)}><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===image.assetId)} image={image}/></span>))}
-          </div>;
+          </div></Fragment>;
           const index=Number(key.slice(7)),figure=panel.figures![index],image=figureArtwork(figure);
-          return <Fragment key={key}>{renderPanelBubbles(panel,panelIndex,index,'behind')}<div class="panel-art-owner" data-art-owner={key}>
+          return <Fragment key={key}>{renderPanelBubbles(panel,panelIndex,index,'behind')}{renderDirectPaint(panelIndex,{below:key})}<div class="panel-art-owner" data-art-owner={key}>
             {editingPanel(panelIndex)?backgroundEdit&&previewOwner(key,panelIndex)?<button type="button" data-content-target class={`background3d-layout-item background3d-figure-move ${backgroundEdit.selectedKey===key?'background3d-layout-selected':''}`} data-background3d-owner={key} aria-label={`${figureDisplayLabel(figure,index)}の位置を移動`} style={{...paperBoxStyle(previewOwner(key,panelIndex)!.frame),pointerEvents:elementLocked({type:'figure',index},panelIndex)?'none':'auto'}} data-artwork-locked={elementLocked({type:'figure',index},panelIndex)||undefined} tabIndex={elementLocked({type:'figure',index},panelIndex)?-1:0} onPointerDown={event=>startInteraction(event,panelIndex,{type:'figure',index},previewOwner(key,panelIndex)!.frame,'move')} onClick={event=>{event.stopPropagation();if(!elementLocked({type:'figure',index},panelIndex))backgroundEdit.select(key);}} onKeyDown={event=>nudgeElement(event,panelBounds(panel),{type:'figure',index},previewOwner(key,panelIndex)!.frame)}><PaintOwnerPreview ownerKey={key} container={previewOwner(key,panelIndex)!.frame}/><CanvasContentSelection frame={previewOwner(key,panelIndex)!.frame} revision={previewOwner(key,panelIndex)!.paint} selected={backgroundEdit.selectedKey===key}/></button>:<PaintOwnerPreview ownerKey={key} container={{x:0,y:0,w:canvas.w,h:canvas.h}}/>:image?renderArtwork(image,{type:'figure',scope:'panel',index},panelIndex,paperBoxStyle,`${figureDisplayLabel(figure,index)}の画像`):renderPanelBaseElements(panel,panelIndex,paperBoxStyle,index)}
           </div>{renderPanelBubbles(panel,panelIndex,index,'front')}</Fragment>;
         })}
         {panel.images?.map((image,index)=>!image.generationScope&&!image.paintScope&&!image.bubbleOriginal&&renderArtwork(image,{type:'image',scope:'panel',index},panelIndex,paperBoxStyle))}
-        {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey="panel" container={paperBounds}/>:panel.images?.filter(image=>image.paintScope==='panel'&&!image.hidden).map(image=><span class="direct-paint-artwork" key={image.id} style={paperBoxStyle(image.bbox)}><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===image.assetId)} image={image}/></span>)}
         {panelIndex!==activePanel&&renderPanelBaseElements(panel,panelIndex,paperBoxStyle,'screen')}
         {panelIndex!==activePanel&&<div class="panel-number-layer" style={panelStyle(panel,canvas)}><span class="panel-number">{panel.id}</span></div>}
       </div>)}
@@ -1762,6 +1777,11 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       {page.panels.some((panel) => panel.bubbles.length > 0) && <div class="panel-bubble-layer">
         {page.panels.flatMap((panel, panelIndex) => renderPanelBubbles(panel, panelIndex))}
       </div>}
+      <div class="panel-direct-paint-layer">
+        {page.panels.map((panel,panelIndex)=>panelVisible(panel)&&<div key={panel.id} style={{position:'absolute',inset:0,...layerClipStyle(panel,canvas),pointerEvents:'none'}}>
+        {renderDirectPaint(panelIndex)}
+        </div>)}
+      </div>
       <svg class="panel-frame-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} strokeWidth={frameLineWidthMm} aria-hidden="true">
         {page.panels.map((panel, panelIndex) => {
           if(!panelFrameVisible(panel))return null;
@@ -1779,19 +1799,20 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           </g>;
         })}
       </svg>
-      <div class="page-direct-paint-layer">
-        {editingOverlay?<PaintOwnerPreview ownerKey="page" container={paperBounds}/>:page.images?.filter(image=>image.paintScope==='page'&&!image.hidden).map(image=><span class="direct-paint-artwork" key={image.id} style={paperBoxStyle(image.bbox)}><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===image.assetId)} image={image}/></span>)}
-      </div>
       {showGuides&&<svg class="panel-frame-inner-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} strokeWidth={frameLineWidthMm} aria-hidden="true">
         {page.panels.flatMap((panel,panelIndex)=>panelFrameVisible(panel)?panelFrameSegmentsOnInnerFrame(panel,inner).map((segment,segmentIndex)=><line {...segment} key={`inner-frame-${panelIndex}-${segmentIndex}`}/>):[])}
       </svg>}
+      <div class="page-panel-direct-layer">{page.panels.map(panel=><Fragment key={panel.id}>{renderDirectPaint(null,{beforePanel:`panel-${panel.id}`})}</Fragment>)}</div>
       {(overlay?.figures?.length ?? 0) > 0 && <div class="page-overlay-figure-layer">
-        {renderPageOverlayFigures().map((figure,index)=><div class="page-overlay-figure-stack-item" data-art-owner={`figure-${index}`} key={index}>{renderPageOverlayBubbles(index,'behind')}<div class="page-overlay-figure-artwork">{figure}</div>{renderPageOverlayBubbles(index,'front')}</div>)}
+        {renderPageOverlayFigures().map((figure,index)=><div class="page-overlay-figure-stack-item" data-art-owner={`figure-${index}`} key={index}>{renderPageOverlayBubbles(index,'behind')}{renderDirectPaint(null,{below:`figure-${index}`})}<div class="page-overlay-figure-artwork">{figure}</div>{renderPageOverlayBubbles(index,'front')}</div>)}
       </div>}
       {(overlay?.screen_text?.length??0)>0&&<div class="page-overlay-text-layer">{renderPageOverlayText()}</div>}
       {(overlay?.bubbles?.length ?? 0) > 0 && <div class="page-overlay-bubble-layer">
         {renderPageOverlayBubbles()}
       </div>}
+      <div class="page-direct-paint-layer">
+        {renderDirectPaint(null)}
+      </div>
       {renderSelectedBubblePathOverlay()}
       <div class="generated-composition-layer" style={{position:'absolute',inset:0,zIndex:20,pointerEvents:'none'}}>
         {page.panels.map((panel,panelIndex)=>panelVisible(panel)&&<div style={{position:'absolute',inset:0,...layerClipStyle(panel,canvas),pointerEvents:'none'}}>
@@ -1801,11 +1822,11 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </div>
       <div class="original-raster-layer">
         {page.panels.map((panel,panelIndex)=>panelVisible(panel)&&<div key={panel.id} style={{position:'absolute',inset:0,...layerClipStyle(panel,canvas),pointerEvents:'none'}}>
-          {editingPanel(panelIndex)?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original'&&!owner.parentKey).map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={paperBounds}/>)
-            :panel.images?.map((image,index)=>image.bubbleOriginal&&!panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)&&renderArtwork(image,{type:'image',scope:'panel',index},panelIndex,paperBoxStyle,image.bubbleOriginal.name))}
+          {editingPanel(panelIndex)?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original'&&!owner.parentKey).map(owner=><Fragment key={owner.key}>{renderDirectPaint(panelIndex,{below:owner.key})}<PaintOwnerPreview ownerKey={owner.key} container={paperBounds}/></Fragment>)
+            :panel.images?.map((image,index)=>image.bubbleOriginal&&!panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)&&<Fragment key={image.id}>{renderDirectPaint(panelIndex,{below:`original-${image.id}`})}{renderArtwork(image,{type:'image',scope:'panel',index},panelIndex,paperBoxStyle,image.bubbleOriginal.name)}</Fragment>)}
         </div>)}
-        {editingOverlay?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original'&&!owner.parentKey).map(owner=><PaintOwnerPreview key={owner.key} ownerKey={owner.key} container={paperBounds}/>)
-          :page.images?.map((image,index)=>image.bubbleOriginal&&!overlay?.bubbles?.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)&&renderArtwork(image,{type:'image',scope:'page',index},null,paperBoxStyle,image.bubbleOriginal.name))}
+        {editingOverlay?paintWorkspace?.scene.owners.filter(owner=>owner.kind==='original'&&!owner.parentKey).map(owner=><Fragment key={owner.key}>{renderDirectPaint(null,{below:owner.key})}<PaintOwnerPreview ownerKey={owner.key} container={paperBounds}/></Fragment>)
+          :page.images?.map((image,index)=>image.bubbleOriginal&&!overlay?.bubbles?.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)&&<Fragment key={image.id}>{renderDirectPaint(null,{below:`original-${image.id}`})}{renderArtwork(image,{type:'image',scope:'page',index},null,paperBoxStyle,image.bubbleOriginal.name)}</Fragment>)}
       </div>
       {!painting&&renderBubbleTailEditor()}
       {panelSelectionVisible&&selectedPanels.length > 1 && <svg class="panel-group-selection-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true">

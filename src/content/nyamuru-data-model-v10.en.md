@@ -54,12 +54,16 @@ manga:
 
 ## 2. Pages and panels
 
+- `page.paint_layer_sequence` is the last allocated work-layer number on this page (optional nonnegative integer). New raster and vector work layers are named “レイヤー N”, sharing the page sequence across panels and paint owners. Renaming or deleting layers does not reuse gaps; another page starts at 1.
+
 - `canvas` is A4 portrait as a rule: **210 × 297 mm**.
 - `panels` holds at most 10 panels per page.
 - Array order and `id` follow reading order, from top right to bottom left.
 - `shape.type` is `rect` or `polygon`.
 - `bg` is required and is `-1` / `0` / `1` / `2`. At most 2 panels per page may use `2` (`-1` does not count toward this limit).
 - `bg: -1` means no background art (a single flat mid-gray fill only, with no contact shadow). Use it only for panels specified in the request; never select it automatically as a staging choice.
+- `paintStack.below` refers to the target `layerId` as `layer:<id>` and places work immediately below it. `paintStack.beforePanel` refers to a panel identity in the same format and places work outside, above its bar. Reordering preserves identity; deleting an anchor leaves the work at the root of its current scope.
+- Paint layers and user folders can move between page, panel, character, and text owners regardless of their creation location. Preserve layer IDs, names, and page coordinates, and apply the destination folder and clip. An owner whose layers have all moved away retains an empty paint document with `guideInitialized: true`, suppressing guide recreation.
 - `background_description` is optional. It describes location, composition, perspective, light, and emotional effects for the background layer only, without characters. Do not use it with `bg: -1`.
 - `bleed` declares full-bleed (edge-to-edge) panel edges (optional; an array of `left` / `right` / `top` / `bottom`). Declared edges must also reach the paper edge in coordinates (left = `x: 0`, right = `x + w = 210`, top = `y: 0`, bottom = `y + h = 297`). Rect panels only. A panel declaring `top` is drawn behind the header band, and the header text is layered on top of the panel art.
 - `no_figures: true` declares an intentionally figure-less panel (optional). Attach it to panels that draw no characters at all; do not combine it with `figures`.
@@ -90,7 +94,7 @@ page_overlay:
 
 - `frame` is fixed to `false`; `layer` is fixed to `above_panel_frames`.
 - Do not count `page_overlay` as a panel and do not draw an enclosing frame.
-- Draw panel artwork, ordinary panel-local balloons, and panel frames in that order. Draw direct page artwork and `page_overlay.figures` above them, then `page_overlay.bubbles` above the foreground figures. Draw the page foreground exactly once; never duplicate it into individual panels.
+- Clip panel artwork and text to the panel shape, then draw the frame. Draw the page foreground once above panel frames. Work layers follow their saved insertion positions: layers below a frame cover panel text; layers above a panel bar sit above frames and behind the page foreground. Within a text folder, `aboveNative` places paint in front of or behind the native text, with folder values applying to their children.
 - Bboxes are absolute page coordinates. Do not use panel-relative `anchor` fields here.
 - Ordinary panel-local content remains in `panels[].figures` / `panels[].bubbles`.
 
