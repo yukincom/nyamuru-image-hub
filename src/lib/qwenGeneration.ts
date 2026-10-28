@@ -1,7 +1,7 @@
 import {paintLayerVisible} from './paintLock.ts';
 import type { Manga, CharacterReferenceSourceImage, FigureSize, BBox } from '../types.ts';
 import type { PaintOwner } from './paintDocument.ts';
-import { compileArtworkRules, getArtworkSettings } from './artworkRules.ts';
+import { compileArtworkRules, getArtworkSettings, type ArtworkSource } from './artworkRules.ts';
 import { isPropPlacement } from './catalogModel.ts';
 import { FIGURE_SIZE_LABELS } from './manga.ts';
 import { requireHumanPoseGenerationReady } from './humanPoseSelection.ts';
@@ -13,6 +13,7 @@ import { humanPoseFigureFrame, humanPosePanelCutFrame, type HumanPoseCutFrame } 
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
 import { isHandwrittenText } from './bubblePresentation.ts';
 import { textStyleOf } from './textStyle.ts';
+import { figureDisplayLabel, textDisplayLabel } from './displayLabels.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
   characterKeys?: string[];
@@ -79,14 +80,14 @@ export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','fa
 export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
 
 /** The owner is resolved by the editor, never inferred from a name or a filename. */
-export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner):QwenGenerationPlan {
+export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource):QwenGenerationPlan {
   const page=manga.pages[pageIndex], panel=page?.panels[panelIndex];
   if(!page||(!overlay&&!panel))throw new Error('生成対象が見つかりません');
   if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字が対象です');
   const lettering=owner.kind==='bubble'?owner.bubble:undefined;
   if(lettering){
     const current=(overlay?page.page_overlay:panel)?.bubbles?.[owner.index];
-    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description)throw new Error('描き文字が変更されました。生成対象を選び直してください');
+    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description||current?.speakerId!==lettering.speakerId||current?.speaker!==lettering.speaker||current?.lettering_depth!==lettering.lettering_depth)throw new Error('描き文字が変更されました。生成対象を選び直してください');
     if(!lettering.text.trim()||lettering.text.length>500)throw new Error('描き文字の本文を1〜500文字で入力してください');
   }
   const pose = owner.figure?.human_pose;
@@ -101,15 +102,30 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
       m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))
       .sort((a,b)=>Number(b.catalog_id===character.primary_material_catalog_id)-Number(a.catalog_id===character.primary_material_catalog_id))
       .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!,characterKeys})) : [];
-  const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character');
+  const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character',standardArtwork);
   const style=artwork.style_notes;
+  const contextOwner=overlay?page.page_overlay:panel;
+  const characterName=(bubble:NonNullable<typeof lettering>)=>(bubble.speakerId?manga.characters.find(character=>character.localId===bubble.speakerId)?.name:undefined)||bubble.speaker||'なし';
+  const sceneContext=lettering?[
+    !overlay&&panel.action?`コマのト書き：${panel.action}`:'',
+    !overlay&&panel.background_description?`コマの場面：${panel.background_description}`:'',
+    `対象の対応キャラクター：${characterName(lettering)}。文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`,
+    lettering.speakerId||lettering.speaker?`合成時の重なり：対応キャラクター「${characterName(lettering)}」の${lettering.lettering_depth==='behind'?'後ろ':'手前'}。今回の単品画像には人物や人物による隠れを描き込まず、文字全体を生成してください。`:'',
+    ...(contextOwner?.figures??[]).flatMap((figure,index)=>figure.action?[`${figureDisplayLabel(figure,index)}の表情・動作：${figure.action}`]:[]),
+    ...(contextOwner?.bubbles??[]).flatMap((bubble,index)=>index!==owner.index&&bubble.hidden!==true&&bubble.text.trim()
+      ?[`${textDisplayLabel(index)}（${isHandwrittenText(bubble)?'描き文字':bubble.shape==='typeset'?'写植文字':bubble.monologue||bubble.shape==='thought'?'心の声':'セリフ'}、対応キャラクター：${characterName(bubble)}${bubble.offscreen?'、画面外':''}）：${JSON.stringify(bubble.text)}`]:[]),
+    ...(contextOwner?.screen_text??[]).flatMap((text,index)=>text.hidden!==true&&text.text.trim()
+      ?[`${textDisplayLabel((contextOwner?.bubbles?.length??0)+index)}（写植文字）：${JSON.stringify(text.text)}`]:[]),
+  ].filter(Boolean).join('\n'):'';
   const letteringContext=lettering?[
-    'OMNY: shape=handwritten',
+    '描く対象：描き文字（shape=handwritten）。',
     `meta.text_orientation=${textStyleOf(lettering,'bubble').orientation}`,
     `meta.reading_direction=${manga.meta.reading_direction}`,
     `text:\n${lettering.text}`,
     lettering.lettering_description?`描き方：${lettering.lettering_description}`:'',
     ...style,artwork.layout_spec,
+    '描くのは上記の本文の描き文字だけです。以下の文脈は、文字の感情・勢い・ニュアンスを判断するための資料です。文脈の人物・背景・他の文字は描かず、明示された「描き方」があれば優先してください。',
+    `${overlay?'同じページ前景':'同じコマ'}の文脈：\n${sceneContext}`,
   ].filter(Boolean).join('\n\n'):undefined;
   const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [

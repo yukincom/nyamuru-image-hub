@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Box, Camera, Layers, Bot } from 'lucide-preact';
+import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Type, Box, Camera, Layers, Bot } from 'lucide-preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PaintFolder, PaintLayer } from '../types';
 import {paintLayerTree,type PaintLayerDropTarget,type PaintOwner,type PaintScene} from '../lib/paintDocument';
@@ -6,7 +6,8 @@ import { drawPaintMask, paintPreviewRenderer, type PaintImages } from '../lib/pa
 import { PaintOriginal } from './PaintSceneView';
 import { PaintToolButton } from './PaintToolHelp';
 import LayerVisibilityButton from './LayerVisibilityButton';
-import { bubbleVisible } from '../lib/panelLayers';
+import { bubbleVisible, canReorderBubbleLayers } from '../lib/panelLayers';
+import { letteringLayerMove } from '../lib/bubbleRelations';
 import LayerLockIcon from './LayerLockIcon';
 import {paintLayerVisible,paintLayerInheritedLocked,paintLayerEditable,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import type { ComponentChildren } from 'preact';
@@ -107,7 +108,7 @@ export default function PaintLayerPalette(p:Props){
     data-layer-drop="layer" data-layer={l.id} data-owner={o.key}
     onPointerDown={e=>beginLayerDrag(e,o,l)} onPointerMove={moveLayerDrag} onPointerUp={endLayerDrag} onPointerCancel={cancelLayerDrag} onLostPointerCapture={cancelLayerDrag} onContextMenu={e=>p.menu(e,o.key)}>
     <LayerVisibilityButton label={`${label(o)}・${l.name}を${l.visible?'隠す':'表示'}`} visible={l.visible} disabled={p.disabled} onClick={()=>p.update(o.key,l.id,{visible:!l.visible})}/>
-    <button class="layer-select" data-tool-label={l.name} data-tool-help="クリックで描くレイヤーを選びます。ドラッグした位置へ移動し、フォルダーの中央へ重ねると中へ、上下へ置くと外へ移動します。ダブルクリックで名前を変えます。" disabled={p.disabled} onClick={e=>{if(!(active&&l.id===p.layer.id&&p.selectedMask==='mask')||e.metaKey||e.ctrlKey||e.altKey)p.select(o.key,l.id,e.metaKey||e.ctrlKey||e.altKey);}} onDblClick={()=>{p.select(o.key,l.id);if(paintLayerEditable(o,l))setRenaming(l.id);}}><span class="layer-thumbnail">{l.guide&&!l.image?<PaintOriginal owner={o}/>:<Thumbnail owner={o} layer={l} images={p.images}/>}</span><span class="layer-caption"><small>{Math.round(l.opacity*100)}% {l.blend==='multiply'?'乗算':'通常'}{l.tone?.enabled?` · ${l.tone.lpi}線`:''}{l.mask?.enabled?' · マスク':''}</small><span class="layer-name-line">{l.kind==='vector'&&<PenTool size={12}/>}<span>{l.name}</span></span></span></button>
+    <button class="layer-select" data-tool-label={l.name} data-tool-help="クリックで描くレイヤーを選びます。ドラッグした位置へ移動し、フォルダーの中央へ重ねると中へ、上下へ置くと外へ移動します。ダブルクリックで名前を変えます。" disabled={p.disabled} onClick={e=>{if(!(active&&l.id===p.layer.id&&p.selectedMask==='mask')||e.metaKey||e.ctrlKey||e.altKey)p.select(o.key,l.id,e.metaKey||e.ctrlKey||e.altKey);}} onDblClick={()=>{p.select(o.key,l.id);if(paintLayerEditable(o,l))setRenaming(l.id);}}>{l.kind==='vector'?<span class="layer-kind-icon"><PenTool size={18}/></span>:<span class="layer-thumbnail">{l.guide&&!l.image?<PaintOriginal owner={o}/>:<Thumbnail owner={o} layer={l} images={p.images}/>}</span>}<span class="layer-caption"><small>{Math.round(l.opacity*100)}% {l.blend==='multiply'?'乗算':'通常'}{l.tone?.enabled?` · ${l.tone.lpi}線`:''}{l.mask?.enabled?' · マスク':''}</small><span class="layer-name-line"><span>{l.name}</span></span></span></button>
     {l.mask&&<PaintToolButton class="layer-mask-toggle" label={`${l.name}のマスク編集`} help="オンで赤い範囲を編集し、もう一度押すとトーンを表示します。" aria-pressed={Boolean(active&&l.id===p.layer.id&&p.selectedMask==='mask')} disabled={p.disabled} onClick={()=>p.selectMask?.(o.key,l.id,'mask')}><MaskThumbnail owner={o} layer={l}/></PaintToolButton>}
     <LockButton label={l.name} locked={l.locked} inherited={paintLayerInheritedLocked(o,l)} disabled={p.disabled} onClick={()=>p.update(o.key,l.id,{locked:!l.locked})}/>
     {renaming===l.id&&<input autoFocus aria-label="レイヤー名" value={l.name} onInput={e=>p.update(o.key,l.id,{name:e.currentTarget.value})} onBlur={()=>setRenaming(null)} onKeyDown={e=>{if(e.key==='Enter'||e.key==='Escape')setRenaming(null);}}/>}
@@ -123,7 +124,7 @@ export default function PaintLayerPalette(p:Props){
         <div class={`layer-user-folder-row ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} aria-expanded={!folded} data-layer-drop="folder" data-folder={entry.folder.id} data-owner={o.key} onPointerDown={event=>beginFolderDrag(event,o,entry.folder)} onPointerMove={moveLayerDrag} onPointerUp={endLayerDrag} onPointerCancel={cancelLayerDrag} onLostPointerCapture={cancelLayerDrag}>
           <LayerVisibilityButton label={`${entry.folder.name}を${entry.folder.visible===false?'表示':'隠す'}`} visible={entry.folder.visible!==false} disabled={p.disabled} onClick={()=>p.updateFolder(o.key,entry.folder.id,{visible:entry.folder.visible===false})}/>
           <button class="palette-icon layer-folder-toggle" aria-label={`${entry.folder.name}を${folded?'展開':'折りたたむ'}`} onClick={()=>setFolderCollapsed({...folderCollapsed,[entry.folder.id]:!folded})}>{folded?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
-          <button class="layer-folder-select" aria-label={`${entry.folder.name}を選択`} data-tool-help="クリックで選択し、ドラッグでフォルダーごと順番を変えます。レイヤーを中央へドロップすると中の一番上へ入ります。" disabled={p.disabled} onClick={()=>p.select(o.key,entry.folder.id)} onDblClick={()=>{if(!paintOwnerLocked(o)&&!entry.folder.locked)setRenamingFolder(entry.folder.id);}}><FolderOpen size={17}/><span>{entry.folder.name}</span></button>
+          <button class="layer-folder-select" aria-label={`${entry.folder.name}を選択`} data-tool-help="クリックで選択し、ドラッグでフォルダーごと順番を変えます。レイヤーを中央へドロップすると中の一番上へ入ります。" disabled={p.disabled} onClick={()=>p.select(o.key,entry.folder.id)} onDblClick={()=>{if(!paintOwnerLocked(o)&&!entry.folder.locked)setRenamingFolder(entry.folder.id);}}><span class="layer-kind-icon"><FolderOpen size={17}/></span><span>{entry.folder.name}</span></button>
           <LockButton label={entry.folder.name} locked={entry.folder.locked===true} inherited={paintOwnerLocked(o)} disabled={p.disabled} onClick={()=>p.updateFolder(o.key,entry.folder.id,{locked:!entry.folder.locked})}/>
           {renamingFolder===entry.folder.id&&<input autoFocus aria-label="フォルダー名" value={entry.folder.name} onInput={event=>p.renameFolder(o.key,entry.folder.id,event.currentTarget.value)} onBlur={()=>setRenamingFolder(null)} onKeyDown={event=>{if(event.key==='Enter'||event.key==='Escape')setRenamingFolder(null);}}/>}
         </div>
@@ -136,13 +137,17 @@ export default function PaintLayerPalette(p:Props){
     {renderEntries(o,!p.inactive&&p.owner.key===o.key)}
   </div>;
   const displayOwners=[...p.scene.owners].filter(o=>!o.parentKey).filter(o=>(o.kind!=='panel'&&o.kind!=='page')||o.paint.layers.length>0||o.paint.folders?.length).reverse();
-  const bubbles=displayOwners.filter(o=>o.kind==='bubble').sort((a,b)=>a.index-b.index);
-  let bubbleIndex=0;
-  const orderedOwners=displayOwners.map(o=>o.kind==='bubble'?bubbles[bubbleIndex++]:o);
+  const relations={figures:p.scene.owners.filter(o=>o.kind==='figure').sort((a,b)=>a.index-b.index).map(o=>o.figure!),bubbles:p.scene.owners.filter(o=>o.kind==='bubble').sort((a,b)=>a.index-b.index).map(o=>o.bubble!)};
+  const pageForeground=p.scene.owners.some(o=>o.kind==='page');
+  const canReorderGroup=(key:string,target:string,after=false)=>{
+    const lettering=letteringLayerMove(relations,key,target,after);
+    if(lettering){const text=p.scene.owners.find(o=>o.key===`bubble-${lettering.index}`);return !!text&&!paintOwnerPlacementLocked(text);}
+    return canReorderBubbleLayers(relations,key,target)||!pageForeground&&key!==target&&[key,target].every(value=>value==='background'||/^figure-\d+$/.test(value));
+  };
   return <div class="paint-layer-palette" ref={paletteRef}>{!p.embedded&&<h3>レイヤー</h3>}
     {!p.embedded&&!p.inactive&&<PaintLayerControls {...p}/>}<div class="layer-tree" role="tree" aria-label="レイヤーの重なり">
       {!p.embedded&&<div class="layer-panel-row"><strong>{p.title}</strong></div>}
-      {orderedOwners.map((o,ownerIndex,owners)=>{
+      {displayOwners.map((o,ownerIndex,owners)=>{
         const bubble=o.kind==='bubble',originals=p.scene.owners.filter(child=>child.parentKey===o.key),groupLocked=o.locked===true,visible=bubble?(bubbleVisible(o.bubble!)||originals.some(child=>child.paint.layers.some(l=>paintLayerVisible(child.paint,l)))):o.paint.layers.some(l=>paintLayerVisible(o.paint,l)),folded=collapsed[o.key]??bubble;
         const paintActive=!p.inactive&&o.key===p.owner.key,canvasSelected=p.selectedOwner===o.key,active=canvasSelected||paintActive||originals.some(child=>p.selectedOwner===child.key||!p.inactive&&p.owner.key===child.key);
         const frame=o.kind!=='original'&&(ownerIndex===0||owners[ownerIndex-1].kind==='original')?p.frameLayer:null;
@@ -150,26 +155,26 @@ export default function PaintLayerPalette(p:Props){
         if(o.kind==='panel'||o.kind==='page')return <>{frame}<div class="layer-direct-root" key={o.key}>{renderEntries(o,paintActive)}</div></>;
         return <>{frame}<div class="layer-group" key={o.key}>
           <div data-owner-group={o.key} role="treeitem" aria-selected={active} data-canvas-selected={!bubble&&canvasSelected} class={`layer-group-row ${bubble?'bubble-layer-row':''} ${active?'is-selected':''} ${groupDrop?.key===o.key?(groupDrop.after?'drop-below':'drop-above'):''}`}
-            onPointerDown={e=>{if(!p.reorderGroup||p.disabled||o.kind==='bubble'||o.kind==='panel'||o.kind==='page'||paintOwnerPlacementLocked(o)||e.button!==0||!(e.target as Element).closest('.layer-group-select'))return;skipGroupClick.current=false;groupDrag.current={key:o.key,pointer:e.pointerId,x:e.clientX,y:e.clientY};(e.target as Element).closest<HTMLElement>('.layer-group-select')!.setPointerCapture(e.pointerId);}}
+            onPointerDown={e=>{if(!p.reorderGroup||p.disabled||!displayOwners.some(target=>canReorderGroup(o.key,target.key))||paintOwnerPlacementLocked(o)||e.button!==0||!(e.target as Element).closest('.layer-group-select'))return;skipGroupClick.current=false;groupDrag.current={key:o.key,pointer:e.pointerId,x:e.clientX,y:e.clientY};try{(e.target as Element).closest<HTMLElement>('.layer-group-select')!.setPointerCapture(e.pointerId);}catch{}}}
             onPointerMove={e=>{const d=groupDrag.current;if(!d||d.pointer!==e.pointerId||Math.hypot(e.clientX-d.x,e.clientY-d.y)<5)return;
               const row=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-owner-group]'),key=row?.dataset.ownerGroup;
-              if(!row||row.closest('.paint-layer-palette')!==paletteRef.current||!key||key.startsWith('bubble-')||key===d.key){d.target=undefined;setGroupDrop(null);return;}
+              if(!row||row.closest('.paint-layer-palette')!==paletteRef.current||!key||!canReorderGroup(d.key,key)){d.target=undefined;setGroupDrop(null);return;}
               e.preventDefault();const after=e.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;d.target=key;d.after=after;setGroupDrop({key,after});}}
             onPointerUp={e=>{const d=groupDrag.current;groupDrag.current=null;setGroupDrop(null);if(d?.target){skipGroupClick.current=true;e.preventDefault();e.stopPropagation();p.reorderGroup?.(d.key,d.target,!!d.after);}}}
             onClickCapture={e=>{if(skipGroupClick.current){skipGroupClick.current=false;e.preventDefault();e.stopPropagation();}}}
             onPointerCancel={()=>{groupDrag.current=null;setGroupDrop(null);}} onContextMenu={e=>p.menu(e,o.key)}>
             {<LayerVisibilityButton label={`${label(o)}${bubble?'全体':'の画像'}を${visible?'隠す':'表示'}`} visible={visible} disabled={p.disabled} onClick={()=>bubble?p.onToggleBubble?.(o.index,true):p.toggleGroup(o.key)}/>}
             <button class="palette-icon layer-folder-toggle" data-tool-label="グループの開閉" data-tool-help={bubble?'文字・輪郭と原本画像を同じフォルダー内で別々に選択します。開閉で目の状態は変わりません。':'描画レイヤーを折りたたむか、一覧へ展開します。'} aria-label={`${label(o)}を${folded?'展開':'折りたたむ'}`} aria-expanded={!folded} onClick={()=>setCollapsed({...collapsed,[o.key]:!folded})}>{folded?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
-            <button class="layer-group-select" data-tool-label={bubble?'テキストを選択':o.kind==='figure'?'人物・小道具を選択':'背景を描画'} data-tool-help={o.kind==='bubble'?'編集可能な文字とベクターの輪郭を選択します。原本画像とは独立しています。Tを選び、紙面のテキストを1回クリックして文字を編集します。':o.kind==='figure'?'キャンバスの人物・小道具を選択してコマ情報を表示します。描くときは中のレイヤーを選びます。フォルダをドラッグして重なり順を変えられます。':'背景を描画対象にします。フォルダを上下へドラッグして重なり順を変えられます。'} aria-pressed={active} onClick={()=>p.select(o.key)} disabled={p.disabled}>{folded?<Folder size={17}/>:<FolderOpen size={17}/>}<span class="layer-caption">{label(o)}</span></button>
+            <button class="layer-group-select" data-tool-label={bubble?'テキストを選択':o.kind==='figure'?'人物・小道具を選択':'背景を描画'} data-tool-help={o.kind==='bubble'?'編集可能な文字とベクターの輪郭を選択します。原本画像とは独立しています。Tを選び、紙面のテキストを1回クリックして文字を編集します。':o.kind==='figure'?'キャンバスの人物・小道具を選択してコマ情報を表示します。描くときは中のレイヤーを選びます。フォルダをドラッグして重なり順を変えられます。':'背景を描画対象にします。フォルダを上下へドラッグして重なり順を変えられます。'} aria-pressed={active} onClick={()=>p.select(o.key)} disabled={p.disabled}><span class="layer-kind-icon">{folded?<Folder size={17}/>:<FolderOpen size={17}/>}</span><span class="layer-caption">{label(o)}</span></button>
             {o.kind==='background'&&p.openBackground3d&&(p.backgroundCapture?<button class="background3d-open" aria-label="3D背景を撮影" title="今の構図を編集可能な線画・ベタ・トーンとして保存します。" disabled={!p.backgroundCapture.ready} onClick={p.backgroundCapture.capture}><Camera size={15}/>撮影</button>:<button class="background3d-open" aria-label="背景あたりの3Dモデルを配置・調整" title="このコマの背景で3Dモデルの構図を決め、線画・ベタ・トーンとして撮影します。" disabled={p.disabled||paintOwnerLocked(o)||(!p.inactive&&!p.images)} onClick={p.openBackground3d}><Box size={15}/>3D編集</button>)}
             <LockButton label={bubble?`${label(o)}全体`:label(o)} locked={bubble?groupLocked:o.locked===true} inherited={o.inheritedLocked===true} disabled={p.disabled} onClick={()=>p.lockOwner(o.key,bubble?!groupLocked:o.locked!==true,bubble)}/>
           </div>
           {!folded&&<div class="layer-group-children" role="group">
             {[...originals].reverse().map(renderOriginal)}
             {bubble&&<div class={`layer-row bubble-native-row ${canvasSelected?'is-selected':''}`} role="treeitem" aria-selected={canvasSelected} data-canvas-selected={canvasSelected} data-owner={o.key}>
-              <LayerVisibilityButton label={`${label(o)}の文字・輪郭を${bubbleVisible(o.bubble!)?'隠す':'表示'}`} visible={bubbleVisible(o.bubble!)} disabled={p.disabled} onClick={()=>p.onToggleBubble?.(o.index)}/>
-              <button class="layer-select" aria-label={`${label(o)}の文字・輪郭を選択`} disabled={p.disabled} onClick={()=>p.select(o.key)}><PenTool size={16}/><span class="layer-caption">文字・輪郭<small>{o.bubble?.text||'テキスト'}</small></span></button>
-              <LockButton label={`${label(o)}の文字・輪郭`} locked={o.bubble?.nativeLocked===true} inherited={o.inheritedLocked===true||o.locked===true} disabled={p.disabled} onClick={()=>p.lockOwner(o.key,o.bubble?.nativeLocked!==true)}/>
+              <LayerVisibilityButton label={`${label(o)}の文字を${bubbleVisible(o.bubble!)?'隠す':'表示'}`} visible={bubbleVisible(o.bubble!)} disabled={p.disabled} onClick={()=>p.onToggleBubble?.(o.index)}/>
+              <button class="layer-select" aria-label={`${label(o)}の文字を選択`} disabled={p.disabled} onClick={()=>p.select(o.key)}><span class="layer-kind-icon"><Type size={18}/></span><span class="layer-caption">{o.bubble?.text}</span></button>
+              <LockButton label={`${label(o)}の文字`} locked={o.bubble?.nativeLocked===true} inherited={o.inheritedLocked===true||o.locked===true} disabled={p.disabled} onClick={()=>p.lockOwner(o.key,o.bubble?.nativeLocked!==true)}/>
             </div>}
             {renderEntries(o,paintActive)}</div>}
         </div></>;

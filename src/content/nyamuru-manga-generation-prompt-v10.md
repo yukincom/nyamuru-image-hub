@@ -108,7 +108,7 @@ OMNY本体は、チャット内のコードブロックとして貼り付ける�
 
 6. **セリフは必ず `bubbles`（配列）に入れる。**（セリフをコマ直下の個別キーで書いてはならない）
    - 一つのコマに複数のフキダシを入れてよい。連続する同一話者のセリフは、意味のまとまりごとに一つのコマへ寄せる。
-   - **話者は各フキダシの `speaker` で示す。** 同じ話者が続く場合も毎回明記する。省略はナレーション（caption）・効果音（handwritten）など話者のいないフキダシだけに使う。1コマに複数の話者がいる掛け合いもこれで表現できる。
+   - **文字の対応キャラクターは `speaker` で示す。** 会話では同じ話者が続く場合も毎回明記する。描き文字（handwritten）では意味・ニュアンスに関係する人物を任意で指定し、発話・しっぽ・発言順を意味しない。対応キャラクターがいないナレーション・効果音などでは省略する。1コマに複数の話者がいる掛け合いもこれで表現できる。
    - **コマ内の発言順は、そのままキャラの立ち位置になる**（作画時、最初の話者がコマの右側・以降は発言順に左へ並ぶ——OMAYのstyle_notes参照）。立ち位置を動かしたいときは発言順を組み替えるか、`action` に構図を明示する。
    - ※「最初の話者がコマの右側・以降は発言順に左へ並ぶ」の立ち位置規則は、**figuresを省略したコマ専用のフォールバック**。figures（bbox/anchor）を明示したコマではそちらが常に優先され、この規則を理由に人物を右へ寄せてはならない。
    - **長いセリフは、フキダシ1つに無理なく収まる長さに分割する。** 句点・読点・意味の切れ目で分けて、同じ `bubbles` 配列内に別の `text` 要素として並べる（話者が同じでも各フキダシの `speaker` は明記）。目安は1フキダシあたり20〜40文字程度、縦書きで2〜3行に収まる分量。1つの `text` が長すぎるとフキダシが巨大化して画面バランスを崩したり、文字が潰れて読めなくなる。
@@ -250,10 +250,11 @@ manga:
           assets:         # このコマで使う素材（materials の key の配列・任意）
           bubbles:        # フキダシ（配列・縦書きなので右上のフキダシから順に）
             - text:       # フキダシの本文（必須）
-              speaker:    # 話者名（会話では毎回明記。ナレーション・効果音など話者なしの場合だけ省略）
+              speaker:    # 対応キャラクター名（会話では話者を毎回明記。描き文字は任意。対応キャラクターなしの場合は省略）
               join_to:    # 結合相手となる、同じbubbles配列内の先行フキダシ番号（1始まり・任意）
               shape:      # フキダシの形・文字の種類（任意。normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/typeset/critical/tense/toge/announce/toge_natural。省略=normal）
               lettering_description: # handwrittenの描き方。文字の形・線・勢い・質感を指定する文章（任意）
+              lettering_depth: # handwrittenの対応キャラクターに対して front=手前／behind=後ろ（任意、省略=front）。後ろでは人物が文字を隠す。
               lettering_guide_hidden: # handwrittenの文字あたりだけを非表示にする場合true。生成画の表示とは独立（任意・省略=表示）
               line_width_mm: # 本体としっぽの個別線幅（mm、0より大きい有限値・任意。省略=meta.bubble_line_width_mm）
               emphasis:   # そのフキダシ内で大きくする語（任意）
@@ -297,7 +298,7 @@ manga:
 - `figures` は**人物専用ではない**。物（小道具等）の配置も figures で座標管理する——物の figure は **`object: true` で宣言**し、`name` を materials の `key` に一致させ、`bbox` / `anchor` で置き場所を示す（`size` / `role` は人物向けの語彙なので物には付けない）。顔ゾーン・人物センター原則・発言順規則は **object の無い figure（人物）にのみ適用**する。
 - `panels.assets` は任意。そのコマで参照すべき素材の `key` を並べる。bg:0の感情コマなど素材不要のコマは省略。
 - `bubbles` は**常に配列**（フキダシ1個でも配列）。`text` は各フキダシの必須フィールド。長いセリフの分割は手順7に従う。
-- `bubbles[].speaker` は任意だが、会話では同じ話者が続く場合も毎回明記する。省略時は話者なし。ナレーション（caption）・効果音（handwritten）など話者のいないフキダシで省略する。
+- `bubbles[].speaker` は対応キャラクター名。会話では同じ話者が続く場合も毎回明記する。描き文字（handwritten）では意味・ニュアンスに関係する人物を任意で指定でき、発話・しっぽ・発言順を意味しない。対応キャラクターがいないナレーション・効果音などでは省略する。
 - `bubbles[].join_to` は任意。同じ `bubbles` 配列内で結合する先行フキダシの1始まり番号を指定する。話者設定とは独立し、結合したフキダシも配列順で読む。
 - `bubbles[].shape` は任意。15種の語彙（normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/typeset/critical/tense/toge/announce/toge_natural）から選ぶ。省略時は `normal`（丸い通常フキダシ）。`typeset` は輪郭のない写植文字。`uniflash` は1ページ1個までが目安。
 - `critical` / `tense` / `toge` / `announce` / `toge_natural` は素材作者の分類。見本と場面・発話・表情を照合して選び、固定の感情対応を仮定しない。素材分類 `nomal` は `normal` に対応する。素材選択時は輪郭の `bezier` も保持する。

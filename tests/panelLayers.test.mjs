@@ -7,6 +7,84 @@ import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projec
 import { bubbleAt, bubbleVisible, toggleBubbleVisibility, editBubbleText, normalizePanelLayer, ownerItemLocked, panelGeometryLocked, panelLocked, panelVisible, panelFrameLocked, panelFrameVisible, panelFrameSegmentsOnInnerFrame, panelArtKeys, preservesLockedItems, reorderPanelArt, unlockPanelDescendants } from '../src/lib/panelLayers.ts';
 import { panelHasElementAt } from '../src/lib/canvasGeometry.ts';
 import { paintScene } from '../src/lib/paintDocument.ts';
+import { bubbleArtIndices, canReorderBubbleLayers } from '../src/lib/panelLayers.ts';
+import { qwenCompositionLayout } from '../src/lib/qwenComposition.ts';
+
+const textStack = owner => bubbleArtIndices(owner).reverse().map(index=>owner.bubbles[index].text);
+
+test('text stack starts in reading order and stores later moves without changing numbering or connections',async()=>{
+ const doc=fixture(),p=doc.manga.pages[0].panels[0];
+ p.bubbles=[{text:'1',shape:'normal'},{text:'2',shape:'normal',join_to:1},{text:'3',shape:'typeset'}];
+ const before=structuredClone(p);
+ assert.deepEqual(textStack(p),['1','2','3']);assert.deepEqual(p,before);
+ assert.equal(reorderPanelArt(p,'bubble-0','bubble-1',false),false);assert.deepEqual(p,before,'a no-op must not allocate IDs or save order');
+ assert.ok(reorderPanelArt(p,'bubble-2','bubble-0',false));
+ assert.deepEqual(textStack(p),['3','1','2']);assert.deepEqual(p.bubbles.map(({layerId,...bubble})=>bubble),before.bubbles);
+ const stored=parseMangaYaml(toStoredMangaYaml(doc)),snapshot=await restoreProjectSnapshot(await createProjectSnapshot(doc));
+ for(const restored of [stored,snapshot]){
+  const item=restored.manga.pages[0].panels[0];
+  assert.deepEqual(textStack(item),['3','1','2']);
+  assert.deepEqual(paintScene(item,100,[]).owners.filter(owner=>owner.kind==='bubble').reverse().map(owner=>owner.bubble.text),['3','1','2']);
+  assert.deepEqual(item.bubbles.map(b=>b.text),['1','2','3']);assert.equal(item.bubbles[1].join_to,1);
+ }
+});
+
+test('figure and text reorders preserve each other, and stable text IDs survive deletion and additions',()=>{
+ const p=fixture().manga.pages[0].panels[0];p.bubbles=['1','2','3'].map(text=>({text,shape:'normal'}));
+ reorderPanelArt(p,'bubble-2','bubble-0',false);
+ const textIds=p.layer.artOrder.filter(id=>id.startsWith('bubble:'));
+ reorderPanelArt(p,'figure-0','figure-1',false);
+ assert.deepEqual(p.layer.artOrder.filter(id=>id.startsWith('bubble:')),textIds);assert.deepEqual(textStack(p),['3','1','2']);
+ const figures=panelArtKeys(p);reorderPanelArt(p,'bubble-1','bubble-2',false);
+ assert.deepEqual(panelArtKeys(p),figures);assert.deepEqual(textStack(p),['2','3','1']);
+ p.bubbles.splice(0,1);p.bubbles.push({text:'4',shape:'normal'});
+ assert.deepEqual(textStack(p),['2','3','4']);
+});
+
+test('page foreground text order uses page layer state and survives both persistence and render snapshots',async()=>{
+ const doc=fixture(),page=doc.manga.pages[0],owner=page.page_overlay;
+ owner.bubbles=['1','2','3'].map(text=>({text,shape:'normal'}));page.layer={directLocked:true};
+ assert.ok(reorderPanelArt(owner,'bubble-2','bubble-0',false,page.layer));
+ for(const restored of [parseMangaYaml(toStoredMangaYaml(doc)),await restoreProjectSnapshot(await createProjectSnapshot(doc))]){
+  const next=restored.manga.pages[0];
+  assert.equal(next.layer.directLocked,true);
+  assert.deepEqual(textStack({...next.page_overlay,layer:next.layer}),['3','1','2']);
+  assert.equal(next.panels[0].layer,undefined);
+  assert.deepEqual(textStack(qwenCompositionLayout(restored.manga,0,0,'page').panels.find(entry=>entry.overlay).panel),['3','1','2']);
+ }
+});
+
+test('text reorders keep character/depth groups and locks intact',()=>{
+ const p=fixture().manga.pages[0].panels[0];p.figures[0].refId='a';
+ p.bubbles=[{text:'1',shape:'handwritten',speakerId:'a'},{text:'2',shape:'handwritten',speakerId:'a'},{text:'3',shape:'normal'},{text:'4',shape:'handwritten',speakerId:'a',lettering_depth:'behind'}];
+ assert.ok(canReorderBubbleLayers(p,'bubble-0','bubble-1'));
+ for(const key of ['bubble-2','bubble-3','bubble-99','figure-0']){
+  assert.equal(canReorderBubbleLayers(p,'bubble-0',key),false);
+  if(key!=='figure-0')assert.equal(reorderPanelArt(p,'bubble-0',key,false),false);
+ }
+ const before=structuredClone(p);p.bubbles[1].nativeLocked=true;
+ assert.equal(reorderPanelArt(p,'bubble-1','bubble-0',false),false);delete p.bubbles[1].nativeLocked;assert.deepEqual(p,before);
+ assert.ok(reorderPanelArt(p,'bubble-1','bubble-0',false));
+ const keys=paintScene(p,100,[]).owners.map(owner=>owner.key).reverse();
+ assert.equal(keys.indexOf('bubble-1'),keys.indexOf('figure-0')-2);assert.equal(keys.indexOf('bubble-0'),keys.indexOf('figure-0')-1);
+ assert.ok(reorderPanelArt(p,'bubble-0','figure-0',true));assert.equal(p.bubbles[0].lettering_depth,'behind');
+});
+
+test('merging and splitting retain saved text order with unique identities',()=>{
+ const doc=fixture(),page=doc.manga.pages[0];
+ for(const [index,p] of page.panels.entries()){
+  p.bubbles=['1','2','3'].map(text=>({text:`${index}-${text}`,shape:'normal',bbox:{x:20,y:70+index*50,w:10,h:10}}));
+  reorderPanelArt(p,'bubble-2','bubble-0',false);
+ }
+ // A split copy may carry the same IDs in another panel.
+ page.panels[1].bubbles.forEach((bubble,index)=>{const previous=bubble.layerId;bubble.layerId=page.panels[0].bubbles[index].layerId;page.panels[1].layer.artOrder=page.panels[1].layer.artOrder.map(id=>id===`bubble:${previous}`?`bubble:${bubble.layerId}`:id);});
+ mergeSelectedPanels(page,[0,1]);
+ assert.deepEqual(textStack(page.panels[0]),['0-3','0-1','0-2','1-3','1-1','1-2']);
+ assert.equal(new Set(page.panels[0].bubbles.map(b=>b.layerId)).size,6);
+ splitPanel(page,0,'horizontal',3);
+ const expected=['0-3','0-1','0-2','1-3','1-1','1-2'];
+ for(const p of page.panels)assert.deepEqual(textStack(p),expected.filter(text=>p.bubbles.some(b=>b.text===text)));
+});
 
 function fixture(){
  const doc=createEmptyWorkspaceDocument();
@@ -137,4 +215,32 @@ test('invalid hidden values never hide native bubbles during normalization',()=>
  doc.manga.pages[0].page_overlay.bubbles[0].hidden=1;
  const restored=parseMangaYaml(toStoredMangaYaml(doc));
  assert.ok(bubbleVisible(restored.manga.pages[0].panels[0].bubbles[0]));assert.ok(bubbleVisible(restored.manga.pages[0].page_overlay.bubbles[0]));
+});
+
+test('文字と対応人物のレイヤー移動は前後指定だけを更新し、保存後も同じ順序を導出する',()=>{
+ const doc=fixture(),panel=doc.manga.pages[0].panels[0];
+ panel.figures[0].refId='a';panel.bubbles[0]={text:'ドン',shape:'handwritten',speakerId:'a',speaker:'A'};
+ panel.bubbles.push({text:'セリフ',shape:'normal'});
+ for(const owner of [panel,doc.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',figures:structuredClone(panel.figures),bubbles:structuredClone(panel.bubbles)}]){
+  const before=structuredClone(owner);
+  assert.equal(reorderPanelArt(owner,'bubble-0','figure-0',false),false);
+  assert.deepEqual(owner,before);
+  assert.equal(reorderPanelArt(owner,'bubble-0','figure-1',true),false);
+  assert.ok(reorderPanelArt(owner,'bubble-0','figure-0',true));
+  assert.equal(owner.bubbles[0].lettering_depth,'behind');
+  assert.deepEqual(owner.figures,before.figures);assert.deepEqual(owner.layer,before.layer);
+  const changed=structuredClone(owner.bubbles[0]);delete changed.lettering_depth;assert.deepEqual(changed,before.bubbles[0]);
+  assert.equal(reorderPanelArt(owner,'figure-0','bubble-0',false),false);
+  assert.ok(reorderPanelArt(owner,'figure-0','bubble-0',true));
+  assert.equal(owner.bubbles[0].lettering_depth,undefined);
+  for(const patch of [{locked:true},{nativeLocked:true},{paint_overlay:{locked:true}}]){
+   Object.assign(owner.bubbles[0],patch);assert.equal(reorderPanelArt(owner,'bubble-0','figure-0',true),false);
+   for(const key of Object.keys(patch))delete owner.bubbles[0][key];
+  }
+  reorderPanelArt(owner,'bubble-0','figure-0',true);
+ }
+ const restored=parseMangaYaml(toStoredMangaYaml(doc));
+ assert.equal(restored.manga.pages[0].page_overlay.bubbles[0].lettering_depth,'behind');
+ const p=restored.manga.pages[0].panels[0],keys=paintScene(p,100,[]).owners.map(owner=>owner.key);
+ assert.ok(keys.indexOf('bubble-0')<keys.indexOf('figure-0'));assert.ok(keys.indexOf('bubble-1')>keys.indexOf('figure-1'));
 });

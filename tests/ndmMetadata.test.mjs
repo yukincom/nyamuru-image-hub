@@ -16,6 +16,20 @@ import { PROP_A, standardRulesTestDocument } from './fixtures/emptyTestDocument.
 const standardSource = readFileSync(new URL('../src/content/standard-settings.yaml', import.meta.url), 'utf8');
 const sampleSource = toStoredMangaYaml(standardRulesTestDocument(standardSource));
 
+test('描き文字の重なりはコマと前景で保存・公開YAMLを往復し、未知の値は検査で拒否する',()=>{
+  const document=parseMangaYaml(sampleSource),p=document.manga.pages[0];
+  const text={text:'かぁぁ',shape:'handwritten',speaker:document.manga.characters[0].name,lettering_depth:'behind'};
+  p.panels[0].bubbles=[text];p.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{...text,lettering_depth:'front'}]};
+  for(const serialize of [toStoredMangaYaml,toMangaYaml]){
+    const restored=parseMangaYaml(serialize(document)).manga.pages[0];
+    assert.equal(restored.panels[0].bubbles[0].lettering_depth,'behind');
+    assert.equal(restored.page_overlay.bubbles[0].lettering_depth,'front');
+  }
+  assert.ok(!validateManga(document).some(issue=>issue.path.endsWith('.lettering_depth')));
+  text.lettering_depth='middle';
+  assert.ok(validateManga(document).some(issue=>issue.level==='error'&&issue.path.endsWith('.lettering_depth')));
+});
+
 test('中立fixtureがNDMの正式なスキーマ名とバージョンを持つ', () => {
   const document = parseMangaYaml(sampleSource);
   assert.equal(document.manga.schema_name, NDM_SCHEMA_NAME);

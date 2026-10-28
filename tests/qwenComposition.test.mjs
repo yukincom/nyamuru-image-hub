@@ -16,12 +16,48 @@ import { createFrameArtwork } from '../src/lib/imagePlacement.ts';
 import {textStyleOf} from '../src/lib/textStyle.ts';
 import {bubbleCssFontFamily} from '../src/lib/bubbleFonts.ts';
 import {bubbleTextPosition} from '../src/lib/bubbleClip.ts';
+import {bubbleArtIndices} from '../src/lib/panelLayers.ts';
+import {letteringFigureIndex} from '../src/lib/bubbleRelations.ts';
 
 function compositionTextRenderer(){
  const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='drawText');assert.ok(declaration);
  return runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,qwenCompositionTextRuns,isBalloonText});
 }
+
+test('描き文字の対応キャラクターをコマと前景の指示へ渡し、対応なしも区別する',()=>{
+ const {manga}=createEmptyWorkspaceDocument();manga.characters=[{localId:'aki',name:'アキ'}];
+ manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[{text:'かぁぁ',shape:'handwritten',speakerId:'aki',speaker:'古い名前',lettering_depth:'behind'}]}];
+ manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'ドン',shape:'handwritten'},{text:'ふわっ',shape:'handwritten',speaker:'アキ'}]};
+ const before=structuredClone(manga),plan=buildQwenCompositionPlan(manga,0,0,'page');
+ assert.match(plan.prompt,/描き文字、対応キャラクター：アキ）：「かぁぁ」/);
+ assert.match(plan.prompt,/描き文字、対応キャラクター：なし）：「ドン」/);
+ assert.match(plan.prompt,/描き文字、対応キャラクター：アキ）：「ふわっ」/);
+ assert.match(plan.prompt,/発話やしっぽを意味しない/);assert.doesNotMatch(plan.prompt,/古い名前/);
+ assert.match(plan.prompt,/対応キャラクター「アキ」の後ろに配置し、重なる部分は人物が文字を隠す/);
+ assert.match(plan.prompt,/対応キャラクター「アキ」の手前に配置し、重なる部分は文字を人物より手前に見せる/);
+ assert.deepEqual(plan.literalText,['かぁぁ','ドン','ふわっ']);assert.deepEqual(manga,before);
+});
+
+test('写植の個別書体と既定書体・部分装飾をコマと前景の生成指示へ渡す',()=>{
+ const {manga}=createEmptyWorkspaceDocument();manga.meta.font='Noto Serif JP';
+ const text={text:'A😀B',text_style:{font:'Yu Gothic',fontSize:24,fontWeight:700,orientation:'horizontal',textAlign:'center',underline:true},text_runs:[{start:1,end:3,fontWeight:400,italic:true,underline:false}]};
+ const panel={id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[{...text,shape:'typeset'}],screen_text:[{text:'既定の書体',orientation:'vertical'}]};
+ manga.pages[0].panels=[panel];
+ manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景の写植',shape:'typeset'}],screen_text:[{...structuredClone(text),orientation:'horizontal'}]};
+ const before=structuredClone(manga);
+ for(const scope of ['panel','page']){
+  const plan=buildQwenCompositionPlan(manga,0,0,scope);
+  const formats=[...plan.prompt.matchAll(/写植の書式：(\{[^\n]*\})。参照画像/g)].map(match=>JSON.parse(match[1]));
+  assert.equal(formats.length,scope==='page'?4:2);
+  const explicit=formats[0];assert.equal(explicit.font,'Yu Gothic');assert.equal(explicit.fontSizePt,24);assert.equal(explicit.orientation,'horizontal');assert.equal(explicit.textAlign,'center');
+  assert.deepEqual(explicit.ranges[1],{start:1,end:3,fontWeight:400,italic:true,underline:false,strikethrough:false});
+  assert.equal(formats[1].font,'Noto Serif JP');assert.equal(formats[1].fontSizePt,12);assert.equal(formats[1].orientation,'vertical');
+  if(scope==='page'){assert.equal(formats[2].font,'Noto Serif JP');assert.equal(formats[2].fontSizePt,15);assert.equal(formats[3].font,'Yu Gothic');}
+  assert.deepEqual(plan.literalText,scope==='page'?['A😀B','既定の書体','前景の写植','A😀B']:['A😀B','既定の書体']);
+ }
+ assert.deepEqual(manga,before);
+});
 
 test('画像合成の行揃えは短い行だけを送り、文字群のアンカー・改行・下線を保持する',()=>{
  const draw=compositionTextRenderer();
@@ -285,7 +321,7 @@ test('composition export uses each bubble width for its body, thought tail and j
   ]};
   const context={manga,canvas:{width:1000,height:1000},frame:{x:0,y:0,w:100,h:100},bubbleStrokeWidthMm,bubbleUsesMonologueTail,letteringGuideVisible:()=>true,SVG_NS:'http://www.w3.org/2000/svg',
    document:{createElement:name=>new Element(name)},svgElement:(name,attrs)=>new Element(name,attrs),panelShapePoints,paintReferenceBox:(_paint,box)=>box,
-   bubbleVisible:()=>true,resolveBubbleSpeakerFigureIndex:()=>0,compatibleBubbleClips:()=>true,
+   bubbleVisible:()=>true,resolveBubbleSpeakerFigureIndex:()=>0,compatibleBubbleClips:()=>true,bubbleArtIndices,letteringFigureIndex,
    tail:{bubbleTailDisabled:()=>false,bubbleTailTargetPoint:()=>({x:5,y:5}),monologueTailEllipses:()=>[{cx:12,cy:12,rx:2,ry:3}],bubbleTailComposite:()=>null,bubbleJoinGeometry:()=>({firstSeamMask:{},secondSeamMask:{},fillPath:'fill',outlinePaths:['join']})},
    context:{save(){},restore(){},clip(){},drawImage(){}},outline(){},drawImages:async()=>{},drawText(){},bubbleTextFrame:box=>box,
    BubbleShapeSvg:'BubbleShapeSvg',h:(type,props)=>({type,props}),render:(node,host)=>{if(!node){host.childNodes=[];return;}const svg=new Element('svg');svg.append(new Element('path',{class:'bubble-svg-surface'}),new Element('path',{class:'bubble-svg-outline-surface'}),new Element('path',{class:'bubble-svg-detail'}));host.append(svg);},
@@ -294,11 +330,11 @@ test('composition export uses each bubble width for its body, thought tail and j
   const draw=runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
   await draw({panel,panelIndex:0,overlay});assert.equal(captured.length,3);
   const descendants=node=>[node,...node.children.flatMap(descendants)];
-  for(const [index,width] of [.2,1.4,.7].entries()){
+  for(const [index,width] of [.7,1.4,.2].entries()){
    const outlines=descendants(captured[index]).filter(node=>['bubble-svg-outline-surface','bubble-svg-detail'].includes(node.attrs.class));
    assert.equal(outlines.length,2);assert.ok(outlines.every(node=>Number(node.attrs['stroke-width'])===width*10));
   }
-  const bead=descendants(captured[0]).find(node=>node.name==='ellipse');assert.equal(bead.attrs['stroke-width'],.2);
+  const bead=descendants(captured[2]).find(node=>node.name==='ellipse');assert.equal(bead.attrs['stroke-width'],.2);
   const join=descendants(captured[1]).find(node=>node.attrs.d==='join');assert.equal(join.attrs['stroke-width'],1.4);
  }
 });

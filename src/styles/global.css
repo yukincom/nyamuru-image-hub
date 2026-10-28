@@ -287,6 +287,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .panel-bubble-layer { z-index: 4; }
 .panel-bubble-clip { position: absolute; inset: 0; pointer-events: none; isolation:isolate; }
 .page-overlay-bubble-stack-item { position:absolute; inset:0; pointer-events:none; isolation:isolate; }
+.page-overlay-figure-stack-item, .page-overlay-figure-artwork { position:absolute; inset:0; pointer-events:none; isolation:isolate; z-index:0; }
 .bubble-original-child { position:absolute; inset:0; z-index:17; pointer-events:none; }
 .bubble-text-frame { position: absolute; pointer-events: none; }
 .page-overlay-bubble-layer { z-index: 15; }
@@ -1460,7 +1461,7 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .layer-tree { font-size:14px; }
 .layer-panel-row { display:flex; align-items:center; gap:7px; padding:9px 8px 9px 30px; border-bottom:1px solid var(--line); }
 .layer-group-row { display:flex; align-items:center; border-bottom:1px solid var(--soft-line); min-height:36px; }
-.paint-dock :is(.layer-group-select,.layer-folder-select) { gap:7px; padding:6px 4px; }
+.paint-dock :is(.layer-group-select,.layer-folder-select) { gap:6px; padding:6px 2px; }
 .paint-dock .layer-row-lock { flex:0 0 28px; width:28px; min-width:28px; min-height:28px; margin-left:auto; color:var(--ink); }
 .paint-dock .layer-row-lock[aria-pressed] { background:transparent; border:0; box-shadow:none; }
 .paint-dock .layer-row-lock svg { display:block; }
@@ -1476,8 +1477,10 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .layer-row { position:relative; display:flex; align-items:center; min-height:46px; border-bottom:1px solid var(--soft-line); padding-left:0; }
 
 
-.paint-dock .layer-select { gap:8px; margin-left:calc(21px + var(--layer-depth, 0) * 16px); padding:4px; }
-.layer-row .layer-thumbnail { height:36px; }
+.paint-dock .layer-select { gap:6px; margin-left:16px; padding:4px 2px; }
+.paint-dock .layer-select>.layer-thumbnail { flex-basis:32px; width:32px; height:32px; }
+.layer-kind-icon { display:flex; align-items:center; justify-content:center; flex:0 0 32px; width:32px; min-height:26px; }
+.layer-kind-icon svg { flex:none; }
 .layer-name-line { display:flex; min-width:0; align-items:center; gap:4px; }
 .layer-name-line>span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .layer-caption { display:grid; gap:3px; min-width:0; overflow-wrap:anywhere; }
@@ -1509,13 +1512,11 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .layer-user-folder { border:0; }
 .layer-user-folder-row { position:relative; display:flex; align-items:center; min-height:38px; border-bottom:1px solid var(--soft-line); }
 
-.layer-user-folder-row>.palette-icon { flex:0 0 28px; }
+
 .paint-dock .layer-folder-select { touch-action:none; cursor:grab; }
 .layer-folder-select span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .layer-user-folder-row>input { position:absolute; z-index:2; left:34px; right:34px; width:calc(100% - 68px); }
-.layer-group-children,.layer-user-folder-children { --layer-depth:2; }
-.layer-group-children .layer-user-folder-children { --layer-depth:3; }
-.paint-dock .layer-folder-toggle { margin-left:calc(var(--layer-depth, 0) * 16px); }
+.paint-dock .layer-folder-toggle { flex:0 0 16px; width:16px; min-width:16px; padding:0; margin:0; }
 .layer-user-folder.drop-above>.layer-user-folder-row { box-shadow:inset 0 3px var(--direct-selection); }
 .layer-user-folder.drop-below>.layer-user-folder-row { box-shadow:inset 0 -3px var(--direct-selection); }
 .layer-user-folder.drop-inside>.layer-user-folder-row { background:var(--accent-fill); }
@@ -1545,7 +1546,7 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .paint-dock .paint-help-button:active:not([aria-disabled=true]) { background:var(--accent-fill); border-color:var(--accent-border); }
 .paint-dock .paint-help-button[aria-disabled=true] { opacity:.35; filter:grayscale(1); cursor:not-allowed; }
 .paint-dock .paint-help-button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-.paint-dock .layer-tree .palette-icon { background:#fff; color:var(--ink); min-height:26px; margin-inline:2px; }
+.paint-dock .layer-tree .palette-icon { background:#fff; color:var(--ink); min-height:26px; margin-inline:0; }
 .paint-dock .layer-icon-actions .palette-icon { min-width:28px; min-height:28px; padding:4px; }
 .paint-tool-icon svg,.pen-family-menu svg { stroke-width:1.35; }
 .paint-tool-icon.tool-vector-select svg { fill:currentColor; }
@@ -1621,22 +1622,22 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .page-layer-palette>.layer-controls { padding:0 6px; border-bottom:1px solid var(--line); }
 .panel-layer-heading { display:flex; align-items:center; min-height:52px; border-top:1px solid var(--line); border-bottom:1px solid var(--soft-line); }
 
-.paint-dock .panel-layer-select { gap:5px; padding:4px 2px; font-size:14px; }
+.paint-dock .panel-layer-select { gap:6px; padding:4px 2px; font-size:14px; }
 .page-direct-layer-group>.panel-layer-heading { min-height:42px; }
 .page-direct-layer-label { padding-left:4px!important; font-weight:600; }
 .page-direct-layer-actions { display:flex; flex:none; align-items:center; }
 .page-direct-create-actions { display:flex; align-items:center; justify-content:flex-end; gap:3px; min-height:36px; padding:3px 7px; border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
 .page-direct-create-actions>span { margin-right:auto; }
-.panel-layer-thumbnail { flex-basis:30px; width:30px; height:34px; color:var(--control-border); }
+.panel-layer-thumbnail { flex-basis:32px; width:32px; height:32px; color:var(--control-border); }
 .panel-layer-thumbnail svg { width:100%; height:100%; }
-.panel-layer-children { --layer-depth:1; }
-.panel-layer-heading .palette-icon,.panel-frame-layer .palette-icon { background:transparent; color:var(--ink); min-height:26px; margin-inline:2px; }
+
+.panel-layer-heading .palette-icon,.panel-frame-layer .palette-icon { background:transparent; color:var(--ink); min-height:26px; margin-inline:0; }
 .panel-inspector.is-locked .inspector-fields { pointer-events:none; opacity:.58; }
 .nested-card.is-locked { pointer-events:none; opacity:.58; }
 .panel-layer-group.is-hidden .panel-layer-select { opacity:.6; }
 
 .layer-text-row .layer-caption { max-height:3.5em; overflow:hidden; }
-.layer-text-row .layer-select { margin-left:49px; }
+
 .text-thumbnail { font-family:serif; font-size:24px; font-weight:bold; }
 .bubble-inline-editor { position:absolute; z-index:110; box-sizing:border-box; pointer-events:none; }
 .bubble-inline-editor .native-text-input { box-sizing:border-box; padding:1px; margin:0; border:1.5px solid var(--accent); outline:2px solid var(--accent-soft); background:rgba(255,255,255,.94); color:#18151b; text-orientation:upright; line-height:1.05; white-space:pre; overflow:visible; overflow-wrap:normal; user-select:text; touch-action:auto; pointer-events:auto; }
@@ -1709,6 +1710,7 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .panel-art-stack .panel-art-background { pointer-events:none; }
 .panel-art-stack > * { z-index:0; isolation:isolate; }
 .panel-art-stack .canvas-element { pointer-events:auto; }
+.panel-art-stack .panel-bubble-clip .bubble-guide { display:flex; }
 .layer-group-row.drop-above { box-shadow:inset 0 3px var(--accent); }
 .layer-group-row.drop-below { box-shadow:inset 0 -3px var(--accent); }
 .layer-group-row[data-owner-group] .layer-group-select { touch-action:none; cursor:grab; }
@@ -1787,7 +1789,7 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .paint-dock .palette-icon svg { stroke-width:1.5; }
 .paint-dock .layer-visibility.paint-help-button,
 .paint-dock .layer-visibility.paint-help-button[aria-pressed=true],
-.paint-dock .layer-visibility.paint-help-button[aria-pressed=false] { flex:0 0 26px; width:26px; min-width:26px; height:26px; min-height:26px; padding:4px; margin-inline:2px; background:transparent; color:var(--ink); border:0; box-shadow:none; }
+.paint-dock .layer-visibility.paint-help-button[aria-pressed=false] { flex:0 0 22px; width:22px; min-width:22px; height:26px; min-height:26px; padding:3px; margin-inline:0; background:transparent; color:var(--ink); border:0; box-shadow:none; }
 
 .paint-dock .layer-visibility svg { width:16px; height:16px; }
 .layer-visibility .lucide-eye circle { fill:currentColor; }

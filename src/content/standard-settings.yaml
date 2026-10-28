@@ -332,8 +332,11 @@ layout_spec: |
     If proximity to speakers cannot coexist with top-right-to-bottom-left reading, prioritize array order as reading order
     and use tails to indicate the corresponding speakers. Place speakerless bubbles (captions, handwritten text,
     machine speech, etc.) in panel corners or empty space.
-  - [const] speaker identifies each bubble's speaker. Specify it every time, even for consecutive lines by the same speaker.
-    Treat a bubble without speaker as speakerless (narration, sound effects, etc.).
+  - [const] speaker identifies the character associated with each text item. For dialogue, specify the speaker every time, even for consecutive lines by the same speaker.
+    For handwritten text, it optionally associates the text's meaning or nuance with a character; it does not imply speech or a tail.
+    For handwritten text with an associated character, lettering_depth: front (default) places the text in front of that character;
+    lettering_depth: behind places it behind that character, with the character occluding the overlapping text. Keep its text, coordinates and reading order.
+    Omit speaker when no character is associated. Do not treat handwritten associations as speaking order or use them to place characters.
     The presence and direction of a tail depend on bubble type and tail: ① ordinary-speech types
     (normal/thought, etc., without offscreen): add a tail. tail: {x, y} gives the tip position
     relative to the speaker's figure bbox (values outside 0–1 are allowed). Keep it appropriately short, pointing toward the mouth. If omitted, target the figure center.

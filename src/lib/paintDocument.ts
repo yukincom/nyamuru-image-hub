@@ -1,6 +1,7 @@
 import { validPaintInk } from './paintInk.ts';
 import { mapBackgroundCapture, validateBackgroundCapture } from './background3d.ts';
-import { panelArtKeys } from './panelLayers.ts';
+import { bubbleArtIndices, panelArtKeys } from './panelLayers.ts';
+import { letteringFigureIndex } from './bubbleRelations.ts';
 import { transformVector } from './vectorGeometry.ts';
 import type { BBox, Bubble, CanvasElementSelection, Figure, ImageAsset, MangaPage, PageOverlay, PaintColorMode, PaintDocument, PaintFolder, PaintLayer, Panel, PlacedImage } from '../types.ts';
 import { fallbackBox, panelBounds } from './canvasGeometry.ts';
@@ -403,7 +404,15 @@ export function paintScene(panel: Panel, dpi: number, assets: ImageAsset[],color
   const artKeys=panelArtKeys(panel);
   // Page foreground sits over page-direct paint; panel-direct paint sits over panel artwork.
   const baseKeys=directScope==='page'?['background','page',...artKeys.filter(key=>key!=='background')]:[...artKeys,...(directScope?[directScope]:[])];
-  const keys=[...baseKeys,...owners.filter(o=>o.kind==='bubble').flatMap(o=>[o.key,...owners.filter(child=>child.parentKey===o.key).map(child=>child.key)]),...owners.filter(o=>o.kind==='original'&&!o.parentKey).map(o=>o.key)];
+  const bubbles=bubbleArtIndices(panel).map(index=>owners.find(owner=>owner.key===`bubble-${index}`)!);
+  const keys=[...baseKeys,...bubbles.flatMap(o=>[o.key,...owners.filter(child=>child.parentKey===o.key).map(child=>child.key)]),...owners.filter(o=>o.kind==='original'&&!o.parentKey).map(o=>o.key)];
+  for(const figure of owners.filter(owner=>owner.kind==='figure')){
+    const related=bubbles.filter(owner=>letteringFigureIndex(panel,owner.bubble!)===figure.index);
+    const group=(behind:boolean)=>related.filter(owner=>(owner.bubble!.lettering_depth==='behind')===behind).flatMap(owner=>[owner.key,...owners.filter(child=>child.parentKey===owner.key).map(child=>child.key)]);
+    const back=group(true),front=group(false);
+    for(const key of [...back,...front])keys.splice(keys.indexOf(key),1);
+    keys.splice(keys.indexOf(figure.key),1,...back,figure.key,...front);
+  }
   return {frame,owners:keys.map(key=>owners.find(o=>o.key===key)!),colorMode};
 }
 

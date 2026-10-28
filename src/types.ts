@@ -141,6 +141,8 @@ export type TextInlineStyle = Pick<TextStyle, 'fontWeight' | 'italic' | 'underli
 export interface TextStyleRange extends TextInlineStyle { start: number; end: number }
 
 export interface Bubble {
+  /** Stable identity for saved layer order; the array still defines numbering and reading order. */
+  layerId?: string;
   /** The native shape, text, tails and painted additions share one layer visibility. */
   hidden?: boolean;
   /** Folder lock inherited by the native child, painted additions and linked original. */
@@ -152,12 +154,15 @@ export interface Bubble {
   text: string;
   text_style?: TextStyle;
   text_runs?: TextStyleRange[];
+  /** 対応キャラクター名。描き文字では発話を意味しない。 */
   speaker?: string;
-  /** 登場人物カタログへのローカル参照。 */
+  /** 対応キャラクターの登場人物カタログへのローカル参照。 */
   speakerId?: string;
   shape?: BubbleShape;
   /** Drawing direction for handwritten lettering, separate from its literal text. */
   lettering_description?: string;
+  /** 対応キャラクターとの重なり。描き文字だけに適用し、省略時は手前。 */
+  lettering_depth?: 'front' | 'behind';
   /** Hide only the editable lettering guide; painted results retain their visibility. */
   lettering_guide_hidden?: boolean;
   /** Body and tail stroke width in millimeters; absent uses the creation default. */
@@ -388,7 +393,7 @@ export interface MangaPage {
   /** Local artwork placements; original pixels live in manga.image_assets. */
   images?: PlacedImage[];
   /** Editor-only state for artwork owned directly by the page. */
-  layer?: { directLocked?:boolean };
+  layer?: { directLocked?:boolean; artOrder?:string[] };
   page: number;
   canvas: { w: number; h: number; unit: string };
   panels: Panel[];

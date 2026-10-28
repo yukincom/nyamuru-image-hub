@@ -1,4 +1,4 @@
-import { panelArtKeys } from './panelLayers.ts';
+import { bubbleArtIndices, panelArtKeys } from './panelLayers.ts';
 import type { PlacedImage, BBox, BleedEdge, Bubble, Figure, MangaDocument, MangaPage, Panel, PanelShape } from '../types';
 import { appendBubbles, removeBubbleAt } from './bubbleConnections.ts';
 import { innerFrameBounds, fallbackBox, nearestAnchor, panelBounds, resizePanelToBounds, roundMm } from './canvasGeometry.ts';
@@ -354,6 +354,16 @@ export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly n
     ? sources.flatMap((source,i)=>panelArtKeys(source).flatMap<Figure|'background'>(key=>
       key==='background'?(i===0?['background']:[]):[source.figures![Number(key.slice(7))]]))
     : null;
+  const textSequence = sources.some(source=>source.layer?.artOrder?.some(key=>key.startsWith('bubble:')))
+    ? sources.map(source=>bubbleArtIndices(source).map(index=>source.bubbles[index])).reverse().flat()
+    : null;
+  if(textSequence){
+    const ids=new Set<string>();
+    for(const bubble of sources.flatMap(source=>source.bubbles)){
+      if(!bubble.layerId||ids.has(bubble.layerId))bubble.layerId=crypto.randomUUID();
+      ids.add(bubble.layerId);
+    }
+  }
   const merged = sources[0];
   merged.shape = mergedPanelShape(sources);
   merged.bg = Math.max(...sources.map((panel) => panel.bg)) as Panel['bg'];
@@ -374,7 +384,7 @@ export function mergeSelectedPanels(page: MangaPage, selectedIndices: readonly n
   if(artSequence){
     const figures=merged.figures??[],ids=new Set<string>();
     for(const figure of figures){if(!figure.layerId||ids.has(figure.layerId))figure.layerId=crypto.randomUUID();ids.add(figure.layerId);}
-    merged.layer={...merged.layer,artOrder:artSequence.flatMap(item=>item==='background'?['background']:figures.includes(item)?[`figure:${item.layerId}`]:[])};
+    merged.layer={...merged.layer,artOrder:[...artSequence.flatMap(item=>item==='background'?['background']:figures.includes(item)?[`figure:${item.layerId}`]:[]),...(textSequence??[]).map(item=>`bubble:${item.layerId}`)]};
   }
   if (merged.figures?.length) delete merged.no_figures;
   else if (sources.every((panel) => panel.no_figures)) merged.no_figures = true;

@@ -19,7 +19,7 @@ import { cloneElement, type ComponentChildren, type ComponentProps, type VNode }
 interface Props {
   page:MangaPage; activePanel:number; assets:ImageAsset[]; dpi:number; colorMode?:PaintColorMode; disabled:boolean;
   onSelect:(index:number,frame?:boolean)=>void;
-  onReorderOwners:(index:number,key:string,target:string,after:boolean)=>void;
+  onReorderOwners:(index:number,key:string,target:string,after:boolean,overlay?:boolean)=>void;
   onVisibility:(index:number,frame:boolean)=>void;
   onLock:(index:number,frame?:boolean)=>void;
   onDelete:(index:number)=>void;
@@ -84,7 +84,7 @@ function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,
   if(!result.scene)return <p role="alert">{result.error}</p>;
   const scene=result.scene,owner=scene.owners.find(item=>item.kind===(overlay?'page':'panel'))??scene.owners[0];
   const act=(action:PaintLayerAction)=>p.onAction(index,action,scene,overlay);
-  return <PaintLayerPalette frameLayer={frameLayer} reorderGroup={overlay?undefined:(key,target,after)=>p.onReorderOwners(index,key,target,after)} embedded inactive selectedOwner={selectedOwner} canvasSelectionScrollRequest={p.canvasSelectionScrollRequest} onToggleBubble={(bubble,group)=>p.onToggleBubble(index,bubble,overlay,group)} openBackground3d={overlay?undefined:()=>act({type:'background3d',key:'background'})} title="" scene={scene} owner={owner} layer={owner.paint.layers[0]??emptyLayer} images={images} disabled={p.disabled||!panelVisible(panel)}
+  return <PaintLayerPalette frameLayer={frameLayer} reorderGroup={(key,target,after)=>p.onReorderOwners(index,key,target,after,overlay)} embedded inactive selectedOwner={selectedOwner} canvasSelectionScrollRequest={p.canvasSelectionScrollRequest} onToggleBubble={(bubble,group)=>p.onToggleBubble(index,bubble,overlay,group)} openBackground3d={overlay?undefined:()=>act({type:'background3d',key:'background'})} title="" scene={scene} owner={owner} layer={owner.paint.layers[0]??emptyLayer} images={images} disabled={p.disabled||!panelVisible(panel)}
     selectMask={(key,id,mask)=>act({type:'select',key,id,mask})}
     select={(key,id,contents)=>act({type:'select',key,id,contents})} update={(key,id,patch)=>act({type:'update',key,id,patch})}
     lockOwner={(key,locked,group)=>act({type:'owner-lock',key,locked,group})}
@@ -103,11 +103,11 @@ export default function PageLayerPalette(p:Props) {
   const overlaySource=useMemo<Panel>(()=>{
     const o=p.page.page_overlay;
     return {id:0,shape:{type:'rect',x:0,y:0,...p.page.canvas},bg:0,action:null,
-      layer:p.page.layer?.directLocked?{directLocked:true}:undefined,
+      layer:p.page.layer,
       images:p.page.images?.filter(image=>image.paintScope==='page'||image.bubbleOriginal),
       figures:o?.figures?.map((f,i)=>({...f,bbox:f.bbox??overlayFallbackBox(p.page.canvas,'figure',i)})),
       bubbles:(o?.bubbles??[]).map((b,i)=>({...b,bbox:b.bbox??overlayFallbackBox(p.page.canvas,'bubble',i)}))};
-  },[p.page.page_overlay,p.page.images,p.page.canvas]);
+  },[p.page.page_overlay,p.page.layer,p.page.images,p.page.canvas]);
   const [folded,setFolded]=useState<Record<string,boolean>>(()=>Object.fromEntries(p.page.panels.map((panel,index)=>[`${p.page.page}-${panel.id}`,index!==p.activePanel])));
   useEffect(()=>{
     if(p.expanded===false||!selection||(!selectedOwner&&!selectedText))return;
@@ -127,7 +127,7 @@ export default function PageLayerPalette(p:Props) {
     const label=textDisplayLabel(index+((overlay?p.page.page_overlay:p.page.panels[panel])?.bubbles?.length??0));
     return <div class={`layer-row native-text-layer ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} data-canvas-selected={selected} aria-label={label} key={`text-${index}`}>
       <LayerVisibilityButton label={`${overlay?'前景の':''}${label}を${item.hidden===true?'表示':'隠す'}`} visible={item.hidden!==true} disabled={p.disabled||!p.onToggleText} onClick={()=>p.onToggleText?.(panel,index,overlay)}/>
-      <button class="layer-select" aria-pressed={selected} aria-label={`${label}を選択`} data-tool-help="編集可能な文字レイヤーです。クリックするとTの文字設定で編集できます。" disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-thumbnail text-thumbnail"><Type size={20}/></span><span class="layer-caption"><small>{label} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
+      <button class="layer-select" aria-pressed={selected} aria-label={`${label}を選択`} data-tool-help="編集可能な文字レイヤーです。クリックするとTの文字設定で編集できます。" disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-kind-icon"><Type size={18}/></span><span class="layer-caption"><small>{label} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
     </div>;
   });
   const eye=(label:string,visible:boolean,action:()=>void)=><LayerVisibilityButton label={label} visible={visible} disabled={p.disabled} onClick={action}/>;

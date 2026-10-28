@@ -1,3 +1,4 @@
+import { letteringFigureIndex } from './bubbleRelations.ts';
 import { textDisplayLabel } from './displayLabels.ts';
 import type { BBox, Bubble, Manga, Panel, PlacedImage, ScreenText, TextInlineStyle } from '../types.ts';
 import { compileArtworkRules, getArtworkSettings } from './artworkRules.ts';
@@ -7,7 +8,7 @@ import { humanPoseCameraPromptText, humanPoseSceneFrame } from './humanPoseScene
 import { requireHumanPoseGenerationReady } from './humanPoseSelection.ts';
 import { FIGURE_SIZE_LABELS } from './manga.ts';
 import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
-import { bubbleVisible, panelFrameVisible, panelVisible } from './panelLayers.ts';
+import { bubbleArtIndices, bubbleVisible, panelFrameVisible, panelVisible } from './panelLayers.ts';
 import { QWEN_GENERATION_PROFILE, type QwenGenerationPlan, type QwenReferenceCandidate } from './qwenGeneration.ts';
 import { bubbleCssFontFamily } from './bubbleFonts.ts';
 import { textStyleOf, textStyleSegments } from './textStyle.ts';
@@ -53,9 +54,21 @@ export function qwenCompositionLayout(manga: Manga, pageIndex: number, panelInde
     overlay.bubbles?.forEach((bubble, index) => { bubble.bbox ??= overlayFallbackBox(page.canvas, 'bubble', index); });
     overlay.screen_text?.forEach((text,index)=>{text.bbox??=overlayTextFallbackBox(page.canvas,index);});
     panels.push({ panelIndex: -1, overlay: true, panel: { id: 0, shape: { type: 'rect', ...frame }, bg: 0, action: null,
-      figures: overlay.figures, bubbles: overlay.bubbles ?? [],screen_text:overlay.screen_text,images:structuredClone(editableImages(page.images,includeGenerated).filter(image=>image.bubbleOriginal)) } });
+      layer:structuredClone(page.layer),figures: overlay.figures, bubbles: overlay.bubbles ?? [],screen_text:overlay.screen_text,images:structuredClone(editableImages(page.images,includeGenerated).filter(image=>image.bubbleOriginal)) } });
   }
   return { frame, ...humanPoseSceneFrame(frame.w / frame.h), panels, images: scope === 'page' ? structuredClone(editableImages(page.images,includeGenerated)) : [] };
+}
+
+/** Describe the same authored typography used in the composition image; font files stay local. */
+function typesetTextInstruction(item:Bubble|ScreenText,kind:'bubble'|'screen_text',defaultFont:string):string {
+  const style=textStyleOf(item,kind);
+  const inline=(value:TextInlineStyle)=>({fontWeight:value.fontWeight??600,italic:value.italic??false,underline:value.underline??false,strikethrough:value.strikethrough??false});
+  let offset=0;
+  const ranges=item.text_runs?.length?textStyleSegments(item).map(segment=>{
+    const start=offset;offset+=segment.text.length;
+    return {start,end:offset,...inline(segment)};
+  }):undefined;
+  return `写植の書式：${JSON.stringify({font:style.font??defaultFont,fontSizePt:style.fontSize,orientation:style.orientation,lineHeight:style.lineHeight??1.35,textAlign:style.textAlign??'left',...inline(style),...(ranges?{rangeOffsets:'UTF-16, start inclusive / end exclusive',ranges}:{})})}。参照画像の書体・サイズ・配置・装飾を保ってください。`;
 }
 
 export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>): QwenGenerationPlan {
@@ -109,10 +122,14 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
       ].filter(Boolean).join('\n'));
     }
     for (const [index, bubble] of panel.bubbles.entries()) if (bubbleVisible(bubble) && bubble.text) {
-      literalText.push(bubble.text); instructions.push(isHandwrittenText(bubble)?`${label}の${textDisplayLabel(index)}（描き文字）：「${bubble.text}」。${bubble.lettering_description||''}`:`${label}の${textDisplayLabel(index)}（${isBalloonText(bubble)?'フキダシ':'写植文字'}、話者：${bubble.speaker || '指定なし'}）：「${bubble.text}」`);
+      const characterName=(bubble.speakerId?manga.characters.find(character=>character.localId===bubble.speakerId)?.name:undefined)||bubble.speaker||'なし';
+      literalText.push(bubble.text); instructions.push(`${label}の${textDisplayLabel(index)}（${isHandwrittenText(bubble)?'描き文字':isBalloonText(bubble)?'フキダシ':'写植文字'}、対応キャラクター：${characterName}）：「${bubble.text}」${isHandwrittenText(bubble)?`。${bubble.lettering_description||''} 対応キャラクターは文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`:''}`);
+      if(isHandwrittenText(bubble)&&(bubble.speakerId||bubble.speaker))instructions.push(`${label}の${textDisplayLabel(index)}の重なり：対応キャラクター「${characterName}」の${bubble.lettering_depth==='behind'?'後ろに配置し、重なる部分は人物が文字を隠す':'手前に配置し、重なる部分は文字を人物より手前に見せる'}。`);
+      if(bubble.shape==='typeset')instructions.push(typesetTextInstruction(bubble,'bubble',manga.meta.font));
     }
     for (const [index, text] of (panel.screen_text ?? []).entries()) if (text.text&&text.hidden!==true) {
       literalText.push(text.text); instructions.push(`${label}の${textDisplayLabel(panel.bubbles.length+index)}（写植文字）：「${text.text}」`);
+      instructions.push(typesetTextInstruction(text,'screen_text',manga.meta.font));
     }
   }
   const rules = compileArtworkRules(getArtworkSettings(manga), 'integrated');
@@ -216,8 +233,9 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
   const svgElement = (name: string, attributes: Record<string, string | number> = {}) => {
     const element = document.createElementNS(SVG_NS, name); Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, String(value))); return element;
   };
-  const drawBubbles = async (entry: CompositionPanel) => {
+  const drawBubbles = async (entry: CompositionPanel, relatedFigure:number|null=null, depth:'front'|'behind'='front') => {
     const { panel } = entry, bubbles = panel.bubbles;
+    if(!bubbles.some(bubble=>letteringFigureIndex(panel,bubble)===relatedFigure&&(relatedFigure===null||(bubble.lettering_depth??'front')===depth)))return;
     const bubbleBox = (index: number) => { const bubble = bubbles[index]; return paintReferenceBox(bubble.paint_overlay?.paint, bubble.bbox ?? fallbackBox(panel, 'bubble', index), bubble.paint_overlay?.crop); };
     const figureBox = (index: number) => { const figure = panel.figures![index]; return paintReferenceBox(figure.artwork?.paint, figure.bbox ?? fallbackBox(panel, 'figure', index), figure.artwork?.crop); };
     const svg = svgElement('svg', { xmlns: SVG_NS, width: canvas.width, height: canvas.height, viewBox: `${frame.x} ${frame.y} ${frame.w} ${frame.h}`, preserveAspectRatio: 'none' });
@@ -248,7 +266,9 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       join.outlinePaths.forEach(path => layer.append(svgElement('path', { d: path, fill: 'none', stroke: '#111', 'stroke-width': stroke })));
       connections[index].push(layer);
     }
-    for (const [index, bubble] of bubbles.entries()) {
+    for (const index of bubbleArtIndices(panel)) {
+      const bubble=bubbles[index];
+      if(letteringFigureIndex(panel,bubble)!==relatedFigure||relatedFigure!==null&&(bubble.lettering_depth??'front')!==depth)continue;
       context.save(); if (!entry.overlay) { outline(panel); context.clip(); }
       try {
         if (bubbleVisible(bubble)) {
@@ -286,9 +306,12 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
       if (owner.kind === 'bubble'||owner.kind==='original') continue;
       const guide = guideFor(entry, owner.key);
       if (owner.kind === 'figure') {
-        if (!figureVisible(entry, owner.index, guides)) continue;
-        const view = await humanPoseFigureImage(owner, entry.panel, assets, guide);
-        await drawHumanPoseImage(context, view.image, view.frame, frame);
+        await drawBubbles(entry,owner.index,'behind');
+        if (figureVisible(entry, owner.index, guides)) {
+          const view = await humanPoseFigureImage(owner, entry.panel, assets, guide);
+          await drawHumanPoseImage(context, view.image, view.frame, frame);
+        }
+        await drawBubbles(entry,owner.index,'front');
       } else await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, guide, entry.panel.background_images?.some(image => image.paint?.guideInitialized)), owner.frame, frame);
     }
     const imageLayers = qwenPanelImageLayers(entry.panel.images);
@@ -312,9 +335,13 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
   }
   await drawImages(layout.images.filter(image=>image.paintScope==='page'));
   for (const entry of layout.panels.filter(entry => entry.overlay)) for (const owner of paintScene(entry.panel, dpi, assets).owners) {
-    if (owner.kind !== 'figure' || !figureVisible(entry, owner.index, guides)) continue;
-    const view = await humanPoseFigureImage(owner, entry.panel, assets, guideFor(entry, owner.key));
-    await drawHumanPoseImage(context, view.image, view.frame, frame);
+    if (owner.kind !== 'figure') continue;
+    await drawBubbles(entry,owner.index,'behind');
+    if (figureVisible(entry, owner.index, guides)) {
+      const view = await humanPoseFigureImage(owner, entry.panel, assets, guideFor(entry, owner.key));
+      await drawHumanPoseImage(context, view.image, view.frame, frame);
+    }
+    await drawBubbles(entry,owner.index,'front');
   }
   for (const entry of layout.panels.filter(entry => entry.overlay)) {
     for (const [index, text] of (entry.panel.screen_text ?? []).entries()) drawText(context, text, text.bbox ?? overlayTextFallbackBox(layout.frame, index), frame, 'screen_text', manga.meta.font);

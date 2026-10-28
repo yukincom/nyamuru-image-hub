@@ -507,7 +507,8 @@ export function normalizeDocument(document: MangaDocument): MangaDocument {
     page.page ??= pageIndex + 1;
     page.canvas ??= { w: 210, h: 297, unit: 'mm' };
     page.panels ??= [];
-    if(page.layer?.directLocked===true)page.layer={directLocked:true};
+    const pageLayer=normalizePanelLayer(page.layer);
+    if(pageLayer?.directLocked||pageLayer?.artOrder?.length)page.layer={...(pageLayer.directLocked?{directLocked:true}:{}),...(pageLayer.artOrder?.length?{artOrder:pageLayer.artOrder}:{})};
     else delete page.layer;
     page.panels.forEach((panel, panelIndex) => {
       if(panel.layer !== undefined)panel.layer=normalizePanelLayer(panel.layer);
@@ -594,6 +595,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   const validateBubbleTail = (bubble: Bubble, path: string) => {
     validateTextStyle(bubble,path);
     if(bubble.lettering_description!==undefined&&typeof bubble.lettering_description!=='string')issues.push({level:'error',path:`${path}.lettering_description`,message:'描き文字の描き方は文章で指定してください'});
+    if(bubble.lettering_depth!==undefined&&!['front','behind'].includes(bubble.lettering_depth))issues.push({level:'error',path:`${path}.lettering_depth`,message:'描き文字の重なりは front（手前）または behind（後ろ）を指定してください'});
     if(bubble.lettering_guide_hidden!==undefined&&typeof bubble.lettering_guide_hidden!=='boolean')issues.push({level:'error',path:`${path}.lettering_guide_hidden`,message:'文字あたりの非表示は true / false で指定してください'});
     if(bubble.line_width_mm!==undefined&&(!Number.isFinite(bubble.line_width_mm)||bubble.line_width_mm<=0)){
       issues.push({level:'error',path:`${path}.line_width_mm`,message:'フキダシ個別の線幅は0より大きい有限のmm値を指定してください'});

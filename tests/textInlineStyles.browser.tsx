@@ -7,6 +7,7 @@ import {textStyleSegments} from '../src/lib/textStyle';
 import {captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
 import {prepareImageAsset,createFrameArtwork} from '../src/lib/imagePlacement';
 import {saveFigureCropAssets} from '../src/lib/figureCropStore';
+import {paintForFrame} from '../src/lib/paintDocument';
 import {isLanClient} from '../src/lib/clientRuntime';
 import type {MangaDocument} from '../src/types';
 import '../src/styles/global.css';
@@ -31,7 +32,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -127,18 +128,34 @@ async function verifyBubbleInfo(){
     await save();await reload();button('文字のツール一覧').click();await settle();button('情報').click();await settle();await choose(0);
     check(category().value==='typeset'&&body().value==='ゴ  ゴ\nゴ','再読込で種類と本文を復元');
     await save();check(JSON.stringify((await stored()).manga.pages[0].panels[0].images)===JSON.stringify(baseline.panels[0].images),'再読込後も原字画像を保持');
-    await change('bubble');await updateField('話者','speaker-a');await updateField('しっぽ','normal');await save();
+    await change('bubble');await updateField('対応キャラクター','speaker-a');await updateField('しっぽ','normal');await save();
     check((await stored()).manga.pages[0].panels[0].bubbles[0].speaker==='アキ','フキダシへ戻した後の既存話者・しっぽ操作');
+    await change('handwritten');
+    check(field('対応キャラクター').value==='speaker-a'&&!info().querySelector('.bubble-card'),'描き文字は対応キャラクターだけを共有し、しっぽ・結合欄を出さない');
+    await updateField('対応キャラクター','');await save();
+    check(!(await stored()).manga.pages[0].panels[0].bubbles[0].speaker&&!(await stored()).manga.pages[0].panels[0].bubbles[0].speakerId,'なしで対応名と参照IDを両方解除');
+    history('元に戻す').click();await settle();check(field('対応キャラクター').value==='speaker-a'&&category().value==='handwritten','対応解除を1回のUndoで戻し、種類は維持');
+    history('やり直す').click();await settle();check(field('対応キャラクター').value==='','Redoで対応なしへ戻る');
+    await updateField('対応キャラクター','speaker-a');await save();const associated=(await stored()).manga.pages[0].panels[0].bubbles[0];
+    check(associated.speakerId==='speaker-a'&&associated.speaker==='アキ'&&associated.text===baseline.panels[0].bubbles[0].text&&JSON.stringify(associated.bbox)===JSON.stringify(baseline.panels[0].bubbles[0].bbox),'対応付けは本文・位置を維持して名前とIDを保存');
+    await reload();button('文字のツール一覧').click();await settle();button('情報').click();await settle();await choose(0);
+    check(category().value==='handwritten'&&field('対応キャラクター').value==='speaker-a','描き文字の対応キャラクターを保存再読込で復元');
+    await change('bubble');
     await choose(1);check(body().value==='別の文字'&&info().querySelectorAll('.bubble-card').length===1,'別の文字を選ぶと情報が追従');
     check(info().querySelector('.selected-text-info h3')?.textContent==='テキスト2'&&[...field('結合先').options].some(option=>option.textContent==='テキスト1'),'見出しと結合先もテキスト番号へ統一');
     await updateField('結合先','1');await save();check((await stored()).manga.pages[0].panels[0].bubbles[1].join_to===1,'既存の結合操作を保持');
     await choose(0);await change('typeset');await save();check((await stored()).manga.pages[0].panels[0].bubbles[1].join_to===undefined,'写植文字への結合線を解除');
     // A layer selection may inspect a locked native object; controls must still reject manual editing.
     const lockedLayer=[...document.querySelectorAll<HTMLButtonElement>('.page-layer-palette button')].find(b=>b.textContent?.includes('テキスト3'));
-    if(lockedLayer){lockedLayer.click();await settle();check(category().disabled,'固定した文字は種類を変更できない');}
+    if(lockedLayer){lockedLayer.click();await settle();check(category().disabled&&field('対応キャラクター').disabled,'固定した文字は種類と対応キャラクターを変更できない');}
     await choose(0,true);check(body().value==='前景の文字'&&info().getAttribute('aria-label')==='ページ前景の文字情報','前景の選択も同じ情報タブへ追従');
     await change('handwritten');await save();const page=(await stored()).manga.pages[0];
     check(page.page_overlay!.bubbles![0].shape==='handwritten'&&page.panels[0].bubbles[0].shape==='typeset','前景の切替はコマ内の同番号に影響しない');
+    check(field('対応キャラクター').value==='','前景の描き文字も対応なしを選べる');
+    await updateField('対応キャラクター','speaker-a');await save();
+    check((await stored()).manga.pages[0].page_overlay!.bubbles![0].speakerId==='speaker-a','前景の対応キャラクターを既存保存へ反映');
+    await updateField('対応キャラクター','');await save();
+    check(!(await stored()).manga.pages[0].page_overlay!.bubbles![0].speakerId&&(await stored()).manga.pages[0].panels[0].bubbles[0].speakerId==='speaker-a','前景の対応解除はコマ内の同番号に影響しない');
     await choose(0,false,'screen_text');check(category().value==='typeset'&&body().value==='あいう\nえお','Tで作る既存写植形式も同じ情報欄に表示');
     check(info().querySelector('.selected-text-info h3')?.textContent==='テキスト4','Tの写植文字にも同じコマ内で重複しない番号を表示');
     await save();const screenBefore=(await stored()).manga.pages[0].panels[0].screen_text![0],screenRect=node(0,false,'screen_text').querySelector('.screen-text-body')!.getBoundingClientRect();
@@ -165,6 +182,145 @@ async function verifyBubbleInfo(){
   }catch(error){report.textContent=`文字の種類 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
   finally{run.disabled=false;}
 }
+async function verifyLetteringDepth(){
+  const run=document.getElementById('depth-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  const info=()=>document.querySelector<HTMLElement>('.bubble-info-content')!;
+  const field=(label:string)=>[...info().querySelectorAll<HTMLLabelElement>('label.field')].find(node=>node.querySelector('.field-label')?.textContent===label)?.querySelector<HTMLSelectElement>('select');
+  const change=async(label:string,value:string)=>{const select=field(label)!;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));await settle();};
+  const node=(overlay:boolean)=>document.querySelector<HTMLElement>(`.spread-pane:not(.is-spread-partner) [data-content-kind="bubble"][data-content-index="0"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
+  const choose=async(overlay:boolean)=>{node(overlay).click();await settle();};
+  const owner=(doc:MangaDocument,overlay:boolean)=>overlay?doc.manga.pages[0].page_overlay!:doc.manga.pages[0].panels[0];
+  const layerRoot=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette ${overlay?'.page-direct-layer-group':'.panel-layer-group:not(.page-direct-layer-group)'}`)!;
+  const layerRow=(overlay:boolean,key:string)=>layerRoot(overlay).querySelector<HTMLElement>(`[data-owner-group="${key}"]`)!;
+  const dragGroup=async(overlay:boolean,key:string,target:string,below:boolean)=>{
+    const dest=layerRow(overlay,target);dest.scrollIntoView({block:'center'});await settle();
+    const source=layerRow(overlay,key).querySelector<HTMLElement>('.layer-group-select')!,from=source.getBoundingClientRect(),to=dest.getBoundingClientRect();
+    const x=from.x+from.width/2,y=from.y+from.height/2,tx=to.x+to.width*.5,ty=to.y+to.height*(below?.8:.2);
+    const pointer=(type:string,cx:number,cy:number)=>source.dispatchEvent(new PointerEvent(type,{pointerId:41,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'?0:1,clientX:cx,clientY:cy,bubbles:true,cancelable:true}));
+    pointer('pointerdown',x,y);pointer('pointermove',tx,ty);await settle();
+    check(dest.classList.contains(below?'drop-below':'drop-above'),`${overlay?'前景':'コマ'}：${key}を${target}の${below?'下':'上'}へドロップ表示`);
+    pointer('pointerup',tx,ty);await settle();
+  };
+  const makeAsset=async(name:string,color:string)=>{
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d')!;ctx.fillStyle=color;ctx.fillRect(0,0,100,100);
+    const blob=await new Promise<Blob>(resolve=>canvas.toBlob(blob=>resolve(blob!),'image/png'));
+    const asset=await prepareImageAsset(new File([blob],name,{type:'image/png'}));await saveFigureCropAssets([{id:asset.storageId,blob}]);return asset;
+  };
+  run.disabled=true;controls.style.pointerEvents='none';report.textContent='描き文字の重なりを検証中';
+  try{
+    const red=await makeAsset('人物の検証.png','#dd2222'),blue=await makeAsset('描き文字の検証.png','#2244dd'),green=await makeAsset('原字の検証.png','#22dd44');
+    const captures=document.getElementById('inline-captures')!;captures.replaceChildren();captures.style.cssText='display:flex;flex-wrap:wrap';
+    for(const overlay of [false,true]){
+      render(null,host);const doc=structuredClone(source),page=doc.manga.pages[0];doc.manga.pages=[page];
+      page.canvas={w:100,h:100,unit:'mm'};doc.manga.finish_settings={width_mm:100,height_mm:100,dpi:100,bleed_mm:0};
+      doc.manga.characters=[{localId:'depth-character',name:'アキ',role:'主人公',scope:'episode'}];doc.manga.image_assets=[red,blue,green];
+      page.panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[],figures:[]}];delete page.page_overlay;
+      if(overlay)page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[],figures:[]};
+      const target=owner(doc,overlay);
+      target.figures=[{name:'アキ',refId:'depth-character',kind:'person',bbox:{x:20,y:20,w:60,h:60},artwork:createFrameArtwork(red,{x:20,y:20,w:60,h:60})}];
+      target.bubbles=[{text:'ドン',shape:'handwritten',speakerId:'depth-character',speaker:'アキ',bbox:{x:35,y:35,w:30,h:30},lettering_guide_hidden:true,paint_overlay:createFrameArtwork(blue,{x:35,y:35,w:30,h:30}),analogTextImport:{schemaVersion:1,sourceBBox:{x:0,y:0,w:100,h:100},detectionSource:'baberu',recognitionEngine:'Baberu OCR',needsReview:false,levelAdjusted:true,assetId:green.storageId,sourceRegionId:'depth-original',originalImageId:'depth-original',rasterLayerInitialized:true,rasterLayerSeparated:true}}];
+      const ink=target.bubbles[0].paint_overlay!,inkBox=target.bubbles[0].bbox!;
+      ink.paint=paintForFrame(inkBox,blue.widthPx*25.4/inkBox.w,[{...ink,id:'depth-ink',bbox:inkBox}],doc.manga.image_assets,'color',false);
+      ink.paint.layers.forEach(layer=>{layer.locked=false;});
+      target.bubbles.push({text:'別の文字',shape:'normal',bbox:{x:1,y:1,w:10,h:10}});
+      const original={...createFrameArtwork(green,{x:50,y:50,w:10,h:10}),id:'depth-original',bubbleOriginal:{name:'原字',sourceRegionId:'depth-original'}};
+      if(overlay)page.images=[original];else page.panels[0].images=[original];
+      const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
+      render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動画面待ち');button('作品フォルダを開く').click();await wait(()=>!!node(overlay),'作品読込待ち');await settle();
+      button('文字のツール一覧').click();await settle();button('情報').click();await settle();await choose(overlay);
+      const label=overlay?'前景':'コマ';
+      check(field('重なり')?.value==='front',`${label}：既定は手前`);
+      await save();const before=structuredClone(owner(await stored(),overlay).bubbles![0]);
+      for(const depth of ['front','behind','front']){
+        if(field('重なり')!.value!==depth)await change('重なり',depth);
+        await save();const current=await stored(),text=owner(current,overlay).bubbles![0];
+        check((text.lettering_depth??'front')===depth,`${label}：${depth}を保存`);
+        for(const key of ['text','bbox','speakerId','speaker','paint_overlay','analogTextImport'] as const)check(JSON.stringify(text[key])===JSON.stringify(before[key]),`${label}：${depth}で${key}を維持`);
+        const expected=overlay?'.page-overlay-figure-layer':'.panel-art-stack';
+        check(!!node(overlay).closest(expected),`${label}：${depth}の実DOM描画階層`);
+        const order=[...layerRoot(overlay).querySelectorAll<HTMLElement>('[data-owner-group]')].map(row=>row.dataset.ownerGroup);
+        check(order.indexOf('bubble-0')===order.indexOf('figure-0')+(depth==='behind'?1:-1),`${label}：${depth}と人物直上/直下のレイヤー順が同期`);
+        check(order.indexOf('bubble-1')<order.indexOf('figure-0'),`${label}：別の文字を番号順へ入れ替えない`);
+        const nativeStack=node(overlay).closest(overlay?'.page-overlay-bubble-stack-item':'.panel-bubble-clip')!,figureStack=overlay?nativeStack.parentElement!.querySelector('.page-overlay-figure-artwork')!:nativeStack.parentElement!.querySelector('[data-art-owner="figure-0"]')!;
+        check(Boolean(nativeStack.compareDocumentPosition(figureStack)&Node.DOCUMENT_POSITION_FOLLOWING)===(depth==='behind'),`${label}：DOMも人物の直前/直後に同期`);
+        const canvas=await captureQwenCompositionCanvas(current.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200}),ctx=canvas.getContext('2d')!;
+        const pixel=(x:number,y:number)=>[...ctx.getImageData(x*2,y*2,1,1).data].slice(0,3).join(',');
+        check(pixel(42,42)===(depth==='behind'?'221,34,34':'34,68,221'),`${label}：${depth}で人物と描き文字の画素が一致`);
+        check(pixel(55,55)===(depth==='behind'?'221,34,34':'34,221,68'),`${label}：${depth}で原字も同じ重なり`);
+        const image=document.createElement('img');image.src=canvas.toDataURL();image.alt=`${label} ${depth}`;image.width=100;captures.append(image);canvas.width=canvas.height=1;
+      }
+      history('元に戻す').click();await settle();check(field('重なり')?.value==='behind',`${label}：Undoで後ろへ戻る`);
+      history('やり直す').click();await settle();check(field('重なり')?.value==='front',`${label}：Redoで手前へ戻る`);
+      await dragGroup(overlay,'bubble-0','figure-0',true);
+      check(field('重なり')?.value==='behind',`${label}：文字を人物の下へドラッグすると後ろ`);
+      history('元に戻す').click();await settle();check(field('重なり')?.value==='front',`${label}：レイヤードラッグを1回でUndo`);
+      history('やり直す').click();await settle();check(field('重なり')?.value==='behind',`${label}：レイヤードラッグをRedo`);
+      await dragGroup(overlay,'figure-0','bubble-0',true);
+      check(field('重なり')?.value==='front',`${label}：人物を文字の下へドラッグすると手前`);
+      await dragGroup(overlay,'bubble-0','figure-0',true);await save();
+
+      render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再読込待ち');button('作品フォルダを開く').click();await wait(()=>!!node(overlay),'作品読込待ち');await settle();button('文字のツール一覧').click();await settle();button('情報').click();await settle();await choose(overlay);
+      check(field('重なり')?.value==='behind',`${label}：保存再読込で後ろを維持`);
+      await change('対応キャラクター','');await save();
+      check(!field('重なり')&&!owner(await stored(),overlay).bubbles![0].lettering_depth,`${label}：対応なしで重なりを解除`);
+      history('元に戻す').click();await settle();check(field('重なり')?.value==='behind'&&field('対応キャラクター')?.value==='depth-character',`${label}：対応解除のUndoで人物と重なりを一緒に復元`);
+    }
+    report.textContent=`描き文字の重なり PASS ${checks.length}\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`描き文字の重なり FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+  finally{run.disabled=false;controls.style.pointerEvents='';}
+}
+
+async function verifyTextOrder(){
+  const run=document.getElementById('text-order-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  const root=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette ${overlay?'.page-direct-layer-group':'.panel-layer-group:not(.page-direct-layer-group)'}`)!;
+  const rows=(overlay:boolean)=>[...root(overlay).querySelectorAll<HTMLElement>('[data-owner-group]')].filter(row=>row.dataset.ownerGroup?.startsWith('bubble-'));
+  const palette=(overlay:boolean)=>rows(overlay).map(row=>row.dataset.ownerGroup).join(',');
+  const node=(overlay:boolean)=>document.querySelector<HTMLElement>(`.spread-pane:not(.is-spread-partner) [data-content-kind="bubble"][data-content-index="0"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
+  const reopen=async(overlay:boolean)=>{render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動画面待ち');button('作品フォルダを開く').click();await wait(()=>!!node(overlay),'作品読込待ち');await settle();button('文字のツール一覧').click();await settle();};
+  run.disabled=true;controls.style.pointerEvents='none';
+  try{
+    const assets=[];
+    for(const [index,color] of ['#dd2222','#2244dd','#22dd44'].entries()){
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=80;const context=canvas.getContext('2d')!;context.fillStyle=color;context.fillRect(0,0,80,80);
+      const blob=await new Promise<Blob>(resolve=>canvas.toBlob(blob=>resolve(blob!),'image/png'));
+      const asset=await prepareImageAsset(new File([blob],`順序${index+1}.png`,{type:'image/png'}));await saveFigureCropAssets([{id:asset.storageId,blob}]);assets.push(asset);
+    }
+    for(const overlay of [false,true]){
+      render(null,host);const doc=structuredClone(source),page=doc.manga.pages[0],label=overlay?'前景':'コマ';doc.manga.pages=[page];
+      page.canvas={w:100,h:100,unit:'mm'};doc.manga.finish_settings={width_mm:100,height_mm:100,dpi:100,bleed_mm:0};doc.manga.image_assets=assets;
+      page.panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[]}];delete page.page_overlay;
+      if(overlay)page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[]};
+      const owner=overlay?page.page_overlay!:page.panels[0],box={x:25,y:25,w:50,h:50};
+      owner.bubbles=assets.map((asset,index)=>({text:String(index+1),shape:'handwritten',lettering_guide_hidden:true,bbox:{...box},paint_overlay:createFrameArtwork(asset,box)}));
+      for(const [index,bubble] of owner.bubbles.entries()){const ink=bubble.paint_overlay!;ink.paint=paintForFrame(box,assets[index].widthPx*25.4/box.w,[{...ink,id:`order-ink-${index}`,bbox:box}],assets,'color',false);ink.paint.layers.forEach(layer=>{layer.locked=false;});}
+      const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();await reopen(overlay);
+      const verifyOrder=async(order:string,pixel:string,stage:string)=>{
+        check(palette(overlay)===order,`${label}：${stage}の一覧順`);
+        const dom=[...document.querySelectorAll<HTMLElement>(`.spread-pane:not(.is-spread-partner) [data-content-kind="bubble"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)].map(item=>`bubble-${item.dataset.contentIndex}`).reverse().join(',');
+        check(dom===order,`${label}：${stage}のDOM描画順`);
+        await save();const saved=await stored(),storedOwner=overlay?saved.manga.pages[0].page_overlay!:saved.manga.pages[0].panels[0];
+        check(storedOwner.bubbles!.map(item=>item.text).join(',')==='1,2,3',`${label}：${stage}でも本文番号を維持`);
+        const canvas=await captureQwenCompositionCanvas(saved.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200});
+        check([...canvas.getContext('2d')!.getImageData(100,100,1,1).data].slice(0,3).join(',')===pixel,`${label}：${stage}の書出画素`);canvas.width=canvas.height=1;
+      };
+      await verifyOrder('bubble-0,bubble-1,bubble-2','221,34,34','初期1・2・3');
+      const dest=rows(overlay)[0],sourceEl=rows(overlay)[2].querySelector<HTMLElement>('.layer-group-select')!;
+      dest.scrollIntoView({block:'center'});await settle();const from=sourceEl.getBoundingClientRect(),to=dest.getBoundingClientRect();
+      const pointer=(type:string,x:number,y:number)=>sourceEl.dispatchEvent(new PointerEvent(type,{pointerId:43,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'?0:1,clientX:x,clientY:y,bubbles:true,cancelable:true}));
+      pointer('pointerdown',from.x+from.width/2,from.y+from.height/2);pointer('pointermove',to.x+to.width/2,to.y+to.height*.2);await settle();
+      check(dest.classList.contains('drop-above'),`${label}：3を1の上へドラッグ可能`);pointer('pointerup',to.x+to.width/2,to.y+to.height*.2);await settle();
+      await verifyOrder('bubble-2,bubble-0,bubble-1','34,221,68','変更3・1・2');
+      history('元に戻す').click();await settle();check(palette(overlay)==='bubble-0,bubble-1,bubble-2',`${label}：1回のUndoで初期順へ戻る`);
+      history('やり直す').click();await settle();check(palette(overlay)==='bubble-2,bubble-0,bubble-1',`${label}：Redoで変更順へ戻る`);
+      await save();await reopen(overlay);await verifyOrder('bubble-2,bubble-0,bubble-1','34,221,68','再読込3・1・2');
+    }
+    report.textContent=`文字順 PASS ${checks.length}\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`文字順 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+  finally{run.disabled=false;controls.style.pointerEvents='';}
+}
+
 async function verify(){
   const run=document.getElementById('inline-run') as HTMLButtonElement,checks:string[]=[];
   const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};

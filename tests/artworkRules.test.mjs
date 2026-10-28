@@ -38,6 +38,22 @@ test('描き文字の独自YAML本文と共通画風は保存後も変更せず�
   assert.ok(rules.style_notes.includes('青いインクと細い線'));
 });
 
+test('描き文字の未設定項目は標準YAMLから補い、独自定義と明示OFFを保持する', () => {
+  const defaults=standard(),empty={version:1,groups:[],fragments:[]};
+  const fallback=compileArtworkRules(empty,'handwritten',defaults);
+  assert.match(fallback.layout_spec,/^handwritten=フキダシなしの手描き文字/);
+  assert.doesNotMatch(fallback.layout_spec,/normal=|thought=|uniflash=/);
+  assert.ok(fallback.style_notes.includes(defaults.style_notes.find(note=>note.includes('meta.text_orientation'))));
+  const settings={version:1,groups:[{id:'ink',label:'画風',scope:'common',enabled:true}],fragments:[{groupId:'ink',kind:'style',text:'細い墨線'}]};
+  const before=structuredClone(settings);
+  assert.deepEqual(compileArtworkRules(settings,'handwritten',defaults),{...fallback,style_notes:['細い墨線',...fallback.style_notes]});
+  assert.deepEqual(settings,before);
+  const custom=artworkSettingsFromSource({...defaults,layout_spec:defaults.layout_spec.replace('handwritten=フキダシなしの手描き文字','handwritten=柔らかく細い筆文字')});
+  assert.match(compileArtworkRules(custom,'handwritten',defaults).layout_spec,/handwritten=柔らかく細い筆文字/);
+  custom.groups.forEach(group=>{group.enabled=false;});
+  assert.deepEqual(compileArtworkRules(custom,'handwritten',defaults),{style_notes:[],layout_spec:''});
+});
+
 test('作品の画風は既存ルールを保って全生成対象へ届き、作品保存から原文を復元できる', async () => {
   const document = sample();
   const prior = getArtworkSettings(document.manga);

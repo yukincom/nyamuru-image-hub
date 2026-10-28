@@ -179,8 +179,10 @@ test('bubble inspectors do not expose optional coordinate placement fields', () 
   const pageOverlayInspector = readFileSync(new URL('../src/components/PageOverlayInspector.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(panelInspector, /配置情報（任意）/);
   assert.doesNotMatch(pageOverlayInspector, /配置情報（任意）/);
-  assert.match(panelInspector, /<Field label="話者">/);
-  assert.match(pageOverlayInspector, /<Field label="話者">/);
+  for (const inspector of [panelInspector, pageOverlayInspector]) {
+    assert.match(inspector, /<SelectedTextInfo[^>]+characters=\{manga.characters\}/);
+    assert.doesNotMatch(inspector, /<Field label="話者">/);
+  }
 });
 
 test('choosing a bubble join target applies the join without a separate checkbox', () => {

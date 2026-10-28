@@ -395,3 +395,32 @@ test('lettering instructions and guide visibility survive stored YAML and foregr
  const plan=buildQwenGenerationPlan(manga,0,0,true,owner);assert.equal(plan.panelId,0);assert.equal(plan.overlay,true);assert.deepEqual(plan.literalText,['ふわっ']);
  bubble.text='';assert.throws(()=>buildQwenGenerationPlan(manga,0,0,true,owner),/本文/);
 });
+
+test('empty artwork settings still deliver YAML lettering rules and same-panel dialogue and expressions',()=>{
+ const manga=fixture(),panel=manga.pages[0].panels[0];
+ const standard=parseOmayYaml(readFileSync(new URL('../src/content/standard-settings.yaml',import.meta.url),'utf8'));
+ panel.action='相手の言葉に戸惑う場面';panel.figures[0].action='困惑した表情で頬に赤みがある';
+ panel.bubbles=[{text:'えっと……',speakerId:'person-id'},{text:'かぁぁ',shape:'handwritten',speakerId:'person-id',lettering_depth:'behind',lettering_description:'細く柔らかく',bbox:{x:5,y:5,w:30,h:20}},
+   {text:'非表示の文脈',hidden:true}];
+ panel.screen_text=[{text:'同じコマの補足'}];
+ manga.pages[0].panels.push({...structuredClone(panel),id:2,action:'別コマの怒り'});
+ manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景だけの文脈'}]};
+ const before=structuredClone(manga),owner=paintScene(panel,100,[]).owners.find(owner=>owner.key==='bubble-1');
+ const plan=buildQwenGenerationPlan(manga,0,0,false,owner,standard);
+ for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
+  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','相手の言葉に戸惑う場面','困惑した表情で頬に赤みがある','えっと……','対象の対応キャラクター：確認用','発話やしっぽを意味しない','対応キャラクター「確認用」の後ろ','人物や人物による隠れを描き込まず','同じコマの補足','文脈の人物・背景・他の文字は描かず'])assert.ok(prompt.includes(value),value);
+  assert.doesNotMatch(prompt,/別コマの怒り|前景だけの文脈|非表示の文脈|normal=|OMNY: shape/);
+ }
+ assert.deepEqual(qwenGenerationPayload(plan,[]).literal_text,['かぁぁ']);
+ assert.deepEqual(manga,before);
+ const staleOwner={...owner,bubble:structuredClone(owner.bubble)};panel.bubbles[1].lettering_depth='front';
+ assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,staleOwner,standard),/選び直してください/);
+ panel.bubbles[1].lettering_depth='behind';
+ const foreground={...panel.bubbles[1],text:'ふわっ'};
+ manga.pages[0].page_overlay.bubbles=[foreground,{text:'前景のセリフ'}];
+ manga.pages[0].page_overlay.figures=[{name:'前景人物',action:'穏やかにほほ笑む'}];
+ const foregroundOwner={...owner,key:'bubble-0',index:0,bubble:foreground};
+ const overlayPlan=buildQwenGenerationPlan(manga,0,0,true,foregroundOwner,standard);
+ assert.match(overlayPlan.prompt,/同じページ前景の文脈/);assert.match(overlayPlan.prompt,/前景のセリフ/);assert.match(overlayPlan.prompt,/穏やかにほほ笑む/);
+ assert.doesNotMatch(overlayPlan.prompt,/戸惑う場面|頬に赤み|えっと/);
+});

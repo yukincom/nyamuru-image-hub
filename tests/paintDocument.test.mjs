@@ -16,6 +16,28 @@ const panel=()=>({id:1,shape:{type:'rect',x:0,y:0,w:100,h:120},bg:1,action:'話�
 const asset=(id,w=100,h=200)=>({id,storageId:`original-${id}`,sha256:'a'.repeat(64),mediaType:'image/png',originalName:`${id}.png`,widthPx:w,heightPx:h,byteLength:1});
 const stroke={tool:'pen',color:'#000000',size:3,points:[{x:4,y:5,pressure:.3,time:0},{x:10,y:20,pressure:.9,time:8}]};
 
+test('後ろの描き文字と原字は対応人物の直前へ集まり、元の配列と人物順は保持する',()=>{
+  const p=panel(),originalAsset=asset('lettering-original');
+  p.bubbles.push({text:'かぁぁ',shape:'handwritten',speakerId:'person-id',speaker:'確認用',lettering_depth:'behind',bbox:frame,analogTextImport:{originalImageId:'original'}});
+  p.bubbles.push({...structuredClone(p.bubbles[1]),text:'ふわっ',analogTextImport:undefined});
+  p.images=[{...createFrameArtwork(originalAsset,frame),id:'original',bubbleOriginal:{name:'原字',sourceRegionId:'lettering'}}];
+  p.layer={artOrder:['figure-1','background','figure-0']};
+  const before=structuredClone(p);
+  for(const scope of [undefined,'panel','page']){
+    const keys=paintScene(p,100,[originalAsset],'color',scope).owners.map(owner=>owner.key);
+    assert.deepEqual(keys.slice(keys.indexOf('bubble-2'),keys.indexOf('figure-0')+1),['bubble-2','bubble-1','original-original','figure-0']);
+    assert.ok(keys.indexOf('figure-1')<keys.indexOf('figure-0'));
+    assert.ok(keys.indexOf('bubble-0')>keys.indexOf('figure-0'));
+    assert.equal(new Set(keys).size,keys.length);
+  }
+  assert.deepEqual(p,before);
+  p.bubbles[1].lettering_depth='front';p.bubbles[2].lettering_depth='front';
+  const frontKeys=paintScene(p,100,[originalAsset]).owners.map(owner=>owner.key);
+  assert.deepEqual(frontKeys.slice(frontKeys.indexOf('figure-0'),frontKeys.indexOf('bubble-0')),['figure-0','bubble-2','bubble-1','original-original']);
+  p.figures=[];
+  assert.ok(paintScene(p,100,[originalAsset]).owners.find(owner=>owner.key==='bubble-1'));
+});
+
 test('right/bottom growth never traverses or copies retained ink',()=>{
   const layer={...newPaintLayer(),get strokes(){throw Error('old strokes traversed');}};
   const owner={key:'free',kind:'figure',index:0,label:'free',frame:{x:10,y:20,w:100,h:100},paint:{version:1,width:100,height:100,dpi:25.4,layers:[layer]}};

@@ -123,16 +123,18 @@ test('owner selection waits for paint close and retains the current mode on save
  }
 });
 
-test('palette lists bubbles in ascending number order without changing scene order or other rows',()=>{
+test('palette preserves initial and edited scene order without sorting text numbers again',()=>{
  const owner=(kind,index,extra={})=>({key:`${kind}-${index}`,kind,index,paint:{layers:[]},...extra});
- const owners=[owner('background',0),owner('figure',0),owner('figure',1),owner('panel',0),
-  owner('bubble',0),owner('original',0,{parentKey:'bubble-0'}),owner('bubble',1),owner('bubble',2),owner('bubble',9),owner('original',1)];
- const before=structuredClone(owners);
  const source=paintLayerSource.slice(paintLayerSource.indexOf('  const displayOwners='),paintLayerSource.indexOf('  return <div class="paint-layer-palette"'));
- const result=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';orderedOwners',{p:{scene:{owners}}});
- assert.deepEqual(Array.from(result,o=>o.key),['original-1','bubble-0','bubble-1','bubble-2','bubble-9','figure-1','figure-0','background-0']);
- assert.deepEqual(owners,before);
- assert.match(paintLayerSource,/orderedOwners\.map\(\(o,ownerIndex,owners\)=>/);
+ for(const textOrder of [[9,2,1,0],[1,0,9,2]]){
+  const owners=[owner('background',0),owner('figure',0),owner('figure',1),owner('panel',0),
+   ...textOrder.flatMap(index=>[owner('bubble',index),...(index===0?[owner('original',0,{parentKey:'bubble-0'})]:[])]),owner('original',1)];
+  const before=structuredClone(owners);
+  const result=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';displayOwners',{p:{scene:{owners}}});
+  assert.deepEqual(Array.from(result,o=>o.key),['original-1',...textOrder.toReversed().map(index=>`bubble-${index}`),'figure-1','figure-0','background-0']);
+  assert.deepEqual(owners,before);
+ }
+ assert.match(paintLayerSource,/displayOwners\.map\(\(o,ownerIndex,owners\)=>/);
  assert.match(paintLayerSource,/const frame=o\.kind!=='original'&&\(ownerIndex===0\|\|owners\[ownerIndex-1\]\.kind==='original'\)\?p\.frameLayer:null/);
  assert.match(paintLayerSource,/return <>\{frame\}<div class="layer-group"/);
  assert.match(pageLayerSource,/cloneElement\(activeLayers,\{frameLayer,images:/);
@@ -279,10 +281,12 @@ test('representative locks live at row right and inherited locks disable descend
  assert.match(appSource,/selectedPanels\.some\(index=>page\?\.panels\[index\]&&panelGeometryLocked\(page\.panels\[index\]\)\)/);
  assert.match(appSource,/if\(panelGeometryLocked\(panel\)\)\{setToast\('固定中のコマは分割できません'\)/);
 });
-test('vector kind icon shares the name line so layer rows stay compact',()=>{
- assert.match(paintLayerSource,/class="layer-name-line">\{l\.kind==='vector'&&<PenTool size=\{12\}\/?>\}<span>\{l\.name\}<\/span>/);
+test('vector and text icons use the same column as folders and raster previews',()=>{
+ assert.match(paintLayerSource,/l\.kind==='vector'\?<span class="layer-kind-icon"><PenTool size=\{18\}\/?>/);
+ assert.match(paintLayerSource,/class="layer-kind-icon"><Type size=\{18\}\/?>/);
  assert.match(globalCss,/\.layer-row \{[^}]*min-height:46px;/);
- assert.match(globalCss,/\.layer-row \.layer-thumbnail \{ height:36px; \}/);
+ assert.match(globalCss,/\.paint-dock \.layer-select>\.layer-thumbnail \{[^}]*width:32px; height:32px;/);
+ assert.match(globalCss,/\.layer-kind-icon \{[^}]*flex:0 0 32px; width:32px;/);
 });
 test('new artwork and Undo cannot expose an older decoded map before effects load the current scene',async()=>{
  const f=fixture(),assets=[],original={id:1};assert.equal(f.render(original,assets),null);f.flush();
