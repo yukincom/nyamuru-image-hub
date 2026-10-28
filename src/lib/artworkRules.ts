@@ -1,6 +1,6 @@
 import type { ArtworkMode, ArtworkRuleGroup, ArtworkSettingsData, Manga } from '../types.ts';
 
-export type ArtworkTarget = 'integrated' | 'character';
+export type ArtworkTarget = 'integrated' | 'character' | 'handwritten';
 export interface ArtworkSource { style_notes: string[]; layout_spec: string }
 
 const TONE = '[style] 作品の出力形式はOMNYの meta.format に従う。カラー漫画は線画＋ベタ塗り（必要に応じてグラデーション）、モノクロ漫画は白黒線画＋ベタ・スクリーントーン、グレースケール漫画は灰色階調で描く';
@@ -109,6 +109,20 @@ export function compileArtworkForMode(settings: ArtworkSettingsData, mode = getA
 
 /** 生成用にはONかつ対象に合う本文だけ。OFFの原本や他モードの設定を混ぜない。 */
 export function compileArtworkRules(settings: ArtworkSettingsData, target: ArtworkTarget): ArtworkSource {
+  if (target === 'handwritten') {
+    const enabled = settings.groups.filter(group => group.enabled);
+    const common = new Set(enabled.filter(group => group.scope === 'common').map(group => group.id));
+    const active = new Set(enabled.map(group => group.id));
+    const parts = settings.fragments.filter(part => active.has(part.groupId));
+    return {
+      // Use the authored text rule verbatim, alongside the work's common style.
+      style_notes: parts.filter(part => part.kind === 'style' && (common.has(part.groupId) || /\bmeta\.text_orientation\b/.test(part.text))).map(part => part.text),
+      // Keep the complete shape-definition bullet, including its continuation lines.
+      // Other page-layout, bubble-placement and dialogue-splitting rules do not apply.
+      layout_spec: parts.filter(part => part.kind === 'layout').flatMap(part => part.text.split(/(?=^[-#])/m))
+        .filter(block => block.startsWith('- ') && /\bhandwritten\s*=/.test(block)).join('\n'),
+    };
+  }
   const active = new Set(settings.groups.filter(group => group.enabled && (group.scope === 'common' || target === 'integrated')).map(group => group.id));
   const parts = settings.fragments.filter(part => active.has(part.groupId));
   return {

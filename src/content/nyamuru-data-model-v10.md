@@ -181,7 +181,7 @@ bubbles:
     tail: { x: 0.5, y: 0.35 }
 ```
 
-使用できる `shape` は次の14種類です。
+使用できる `shape` は次の15種類です。
 
 | shape | 用途 |
 |---|---|
@@ -193,8 +193,13 @@ bubbles:
 | `uniflash` | 最大級の絶叫・衝撃 |
 | `wobbly` | 弱り声・恐怖・脱力 |
 | `whisper` | ひそひそ声 |
-| `handwritten` | 効果音・手描き文字 |
+| `handwritten` | 描き文字（効果音・手描き文字） |
+| `typeset` | 輪郭を描かない写植文字。原字画像・描画レイヤーを同じ文字オブジェクトに保持 |
 | `critical` / `tense` / `toge` / `announce` / `toge_natural` | 登録素材の作者分類。場面・発話・表情と見本を照合して選ぶ |
+
+`shape: typeset` は本文と `text_position` による配置を持ち、輪郭・しっぽ・結合線を描かない。`analogTextImport` の原字参照と `paint_overlay` は同じ対象に保持する。Tツールで直接追加する文字は `screen_text` に入り、種類を切り替えた文字は同じ `bubbles` 要素上で `normal`・`handwritten`・`typeset` を使う。種類切り替えでは本文・書式・位置・原字画像を引き継ぐ。
+
+`shape: handwritten` はコマ情報の「描き文字」で編集・生成する。`text` は描く文字そのもの、`lettering_description` は形・線・勢い・質感などの描き方（任意の文字列）。単品生成は描き文字だけを対象とし、吹き出しの外形を生成しない。生成結果は同じ対象へ新規レイヤーとして加え、元の文字・あたり・レイヤーと表示状態を保持する。`lettering_guide_hidden: true` は編集可能な文字あたりだけを非表示にする（任意・省略時は表示）。描き文字の生成画像の表示とは独立する。
 
 素材分類 `nomal` は `shape: normal` に対応する。素材ウィンドウからフキダシへ重ねると、選んだ輪郭の `bezier` を保存する。`shape`・本文・文字設定・`bbox`・話者・しっぽは保持する。上記5分類で `bezier` が省略される場合は、その分類の先頭素材を使う。
 
@@ -202,13 +207,13 @@ bubbles:
 
 - モノローグは `monologue: true` を付け、`text` から括弧「（）」を外す。
 - コマ外の声は `offscreen: true` を付ける（話者はコマ外＝姿を描かず、尻尾も描かない。`speaker` は明記する）。
-- `tail: { x, y }` は話者の人物 `bbox` を基準にした、しっぽ先端の相対位置（左上0・右下1、枠外は0未満・1超も可）。口元の方向を示す適切な短さにし、口まで届かせる必要はない。通常形状で省略した場合は人物中央、`tail: false` はしっぽなし。`square` / `caption` / `flash` / `uniflash` / `handwritten` は省略時にしっぽを描かない。
+- `tail: { x, y }` は話者の人物 `bbox` を基準にした、しっぽ先端の相対位置（左上0・右下1、枠外は0未満・1超も可）。口元の方向を示す適切な短さにし、口まで届かせる必要はない。通常形状で省略した場合は人物中央、`tail: false` はしっぽなし。`square` / `caption` / `flash` / `uniflash` / `handwritten` / `typeset` は省略時にしっぽを描かない。
 - `tail_root: { x, y }` はフキダシ `bbox` を基準にした根元方向（左上0・右下1、枠外の有限値も使用可能）。省略時は先端方向へ自動配置する。根元と先端はキャンバス上で別々に移動できる。
 - 通常のしっぽは本体と別の白い面・左右輪郭として描き、接続口だけ本体輪郭をマスクする。本体の `bezier`、根元の `tail_root`、先端の `tail` は別々に保存し、どの編集でも本体パスへ完全結合しない。
 - `shape: thought` でしっぽを描く場合は、フキダシから離れるほど小さくなる2〜3個の縦長楕円で表す。
 - 会話の話者は各フキダシの `speaker` に明記する。省略時は話者なしとして扱う。
 - `join_to` は同じ `bubbles` 配列内で結合する、先行フキダシの1始まり番号。話者とは別の設定で、三つ以上を一つへ結合するときは同じ番号を指定する。
-- `text_style` は任意の文字設定。`font` は書体名、`fontSize` は4〜144のポイント数、`fontWeight` は1〜1000の整数、`orientation` は `vertical` / `horizontal`、`italic`・`underline`・`strikethrough` は斜体・下線・取り消し線の真偽値。`fontWeight` はフォントのウェイト値を使い、100刻みに丸めない。`fontSize` の明示指定は文字量や素材の輪郭によって自動縮小しない。フキダシと `screen_text` に保存できる。
+- `text_style` は任意の文字設定。`font` は書体名、`fontSize` は4〜144のポイント数、`fontWeight` は1〜1000の整数、`lineHeight` は文字サイズに対する行送りの倍率（0.5〜3、省略時は表示の既定値）、`orientation` は `vertical` / `horizontal`、`italic`・`underline`・`strikethrough` は斜体・下線・取り消し線の真偽値。`fontWeight` はフォントのウェイト値を使い、100刻みに丸めない。`fontSize` の明示指定は文字量や素材の輪郭によって自動縮小しない。フキダシと `screen_text` に保存できる。
 - `text_runs` は部分的な文字スタイルの配列。各要素は `{ start, end, fontWeight?, italic?, underline?, strikethrough? }`。`fontWeight` は太さ、`italic`・`underline`・`strikethrough` は斜体・下線・取り消し線の真偽値で、1つ以上を指定する。`false` はその範囲だけ解除する明示値。`start` は本文の先頭からのUTF-16位置、`end` は終端を含まない位置で、改行は1として数える。サロゲートペアを分割せず、範囲の重複は認めない。範囲で省略した項目は `text_style` または表示既定値を使う。本文・文字設定は原稿上で直接編集し、OMNYへ保存する。
 - `text_style.textAlign` は文字群全体の行揃えで、`left`・`center`・`right` を指定する。省略時は `left`。最長の行に対して各行を先頭・中央・末尾へ揃え、横書きでは左・中央・右、縦書きでは上・中央・下に対応する。部分文字の `text_runs` には指定しない。文字群の位置と囲むフキダシの輪郭は変えない。
 - `text_position: { x, y }` はフキダシ本文の中心を、フキダシ `bbox` の左上0・右下1を基準とする有限の相対座標で表す。0未満・1超の値も使え、ベジェ輪郭を広げても基準は同じ `bbox` のまま。省略時は `{ x: 0.5, y: 0.5 }`。本文は文字自体のクリックで編集し、選択時の青い文字枠をドラッグすると輪郭とは独立して移動できる。

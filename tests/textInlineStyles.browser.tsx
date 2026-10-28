@@ -5,6 +5,8 @@ import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {createPortableProject} from '../src/lib/portableProject';
 import {textStyleSegments} from '../src/lib/textStyle';
 import {captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
+import {prepareImageAsset,createFrameArtwork} from '../src/lib/imagePlacement';
+import {saveFigureCropAssets} from '../src/lib/figureCropStore';
 import {isLanClient} from '../src/lib/clientRuntime';
 import type {MangaDocument} from '../src/types';
 import '../src/styles/global.css';
@@ -29,7 +31,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -66,75 +68,101 @@ async function verifyBubbleInfo(){
   const run=document.getElementById('bubble-info-run') as HTMLButtonElement,checks:string[]=[];
   const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
   const info=()=>document.querySelector<HTMLElement>('.bubble-info-content')!;
-  const cards=()=>[...info().querySelectorAll<HTMLElement>('.selectable-card')];
-  const field=(index:number,label:string)=>[...cards()[index].querySelectorAll<HTMLLabelElement>('label.field')].find(node=>node.querySelector('.field-label')?.textContent===label)!.querySelector<HTMLSelectElement>('select')!;
-  const change=async(index:number,label:string,value:string)=>{cards()[index].click();await settle();const select=field(index,label);select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));await settle();};
-  const selected=()=>cards().findIndex(card=>card.classList.contains('is-selected'));
-  const chooseBubble=async(panel:number,index:number,overlay=false)=>{
-    document.querySelector<HTMLElement>(`[data-content-kind="bubble"][data-content-index="${index}"]${overlay?'[data-content-overlay]':`[data-content-panel="${panel}"]:not([data-content-overlay])`}`)!.click();await settle();
-  };
-  const informationOpen=()=>button('情報')?.getAttribute('aria-selected')==='true'&&!document.querySelector<HTMLElement>('.text-settings-window')!.hidden;
-  run.disabled=true;report.textContent='情報タブを検証中';
+  const category=()=>info().querySelector<HTMLSelectElement>('[aria-label="文字の種類"]')!;
+  const body=()=>info().querySelector<HTMLTextAreaElement>('[aria-label="選択中の文字の本文"]')!;
+  const node=(index:number,overlay=false,kind='bubble')=>document.querySelector<HTMLElement>(`.spread-pane:not(.is-spread-partner) [data-content-kind="${kind}"][data-content-index="${index}"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
+  const choose=async(index:number,overlay=false,kind='bubble')=>{node(index,overlay,kind).click();await settle();};
+  const change=async(value:string)=>{category().value=value;category().dispatchEvent(new Event('change',{bubbles:true}));await settle();};
+  const field=(label:string)=>[...info().querySelectorAll<HTMLLabelElement>('label.field')].find(n=>n.querySelector('.field-label')?.textContent===label)!.querySelector<HTMLSelectElement>('select')!;
+  const updateField=async(label:string,value:string)=>{const select=field(label);select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));await settle();};
+  const reload=async()=>{render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動画面待ち');await open();};
+  run.disabled=true;report.textContent='文字の種類と情報タブを検証中';
   try{
-    render(null,host);
-    const doc=structuredClone(source),panel=doc.manga.pages[0].panels[0];
-    doc.manga.characters=[{localId:'speaker-a',name:'アキ',role:'主人公',scope:'episode'},{localId:'speaker-b',name:'ユキ',role:'友人',scope:'episode'}];
-    panel.figures=[{refId:'speaker-a',name:'アキ',kind:'person',bbox:{x:15,y:55,w:30,h:40}},{refId:'speaker-b',name:'ユキ',kind:'person',bbox:{x:110,y:55,w:30,h:40}}];
-    panel.bubbles=Array.from({length:5},(_,index)=>({...structuredClone(panel.bubbles[0]),text:`台詞${index+1}`,bbox:{x:45,y:25+index*26,w:85,h:22},...(index===4?{locked:true}:{})}));
-    doc.manga.pages[0].panels.push({...structuredClone(panel),id:2,bubbles:[{text:'別コマ',shape:'normal',bbox:{x:30,y:185,w:50,h:20}}],shape:{type:'rect',x:15,y:180,w:150,h:50}});
-    doc.manga.pages[0].page_overlay!.bubbles=[{text:'前景一',shape:'normal',bbox:{x:1,y:1,w:30,h:20}},{text:'前景二',shape:'normal',bbox:{x:135,y:1,w:30,h:20}}];
-    doc.manga.pages[0].page_overlay!.figures=structuredClone(panel.figures);
-    doc.manga.scenario={version:1,fileName:'info-fixture.md',text:'# シナリオ\n## page1\n### コマ2\nアキ「確認した台詞」'};
-    doc.manga.pages[0].panels[1].bubbles[0].scenarioMatch={status:'review',sourceIds:[],ocrText:'別コマ',score:.2};
-    const reset=await project.createWritable();await reset.write(JSON.stringify(await createPortableProject(doc)));await reset.close();
+    render(null,host);const doc=structuredClone(source),panel=doc.manga.pages[0].panels[0];
+    const raster=document.createElement('canvas');raster.width=96;raster.height=64;const ctx=raster.getContext('2d')!;
+    ctx.fillStyle='#497ea9';ctx.fillRect(8,8,80,48);const blob=await new Promise<Blob>(resolve=>raster.toBlob(blob=>resolve(blob!),'image/png'));
+    const asset=await prepareImageAsset(new File([blob],'原字の検証.png',{type:'image/png'}));await saveFigureCropAssets([{id:asset.storageId,blob}]);
+    doc.manga.image_assets=[asset];
+    panel.screen_text![0].text='あいう\nえお';
+    panel.bubbles[0].text='ゴ  ゴ\nゴ';panel.bubbles[0].text_position={x:.4,y:.6};panel.bubbles[0].text_runs=[{start:0,end:1,italic:true}];
+    panel.bubbles[0].analogTextImport={schemaVersion:1,sourceBBox:{x:0,y:0,w:96,h:64},detectionSource:'baberu',recognitionEngine:'Baberu OCR',needsReview:false,levelAdjusted:true,assetId:asset.storageId,sourceRegionId:'category-ocr',originalImageId:'category-original',rasterLayerInitialized:true,rasterLayerSeparated:true};
+    panel.images=[{...createFrameArtwork(asset,{x:20,y:180,w:30,h:20}),id:'category-original',bubbleOriginal:{sourceRegionId:'category-ocr',name:'原字'}}];
+    panel.bubbles[0].paint_overlay={...createFrameArtwork(asset,panel.bubbles[0].bbox!),hidden:true};
+    panel.bubbles.push({text:'別の文字',shape:'normal',bbox:{x:40,y:75,w:70,h:30}},{text:'固定した文字',shape:'normal',locked:true,bbox:{x:40,y:120,w:70,h:30}});
+    doc.manga.characters=[{localId:'speaker-a',name:'アキ',role:'主人公',scope:'episode'}];
+    panel.figures=[{refId:'speaker-a',name:'アキ',kind:'person',bbox:{x:20,y:55,w:30,h:40}}];
+    doc.manga.pages[0].panels.push({id:2,shape:{type:'rect',x:15,y:220,w:150,h:25},bg:0,action:null,bubbles:[{text:'別コマの文字',shape:'normal',bbox:{x:25,y:222,w:100,h:20}}]});
+    doc.manga.pages.push({...structuredClone(source.manga.pages[0]),page:2});
+    const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
     render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();
     button('文字のツール一覧').click();await settle();button('情報').click();await settle();
-    check(informationOpen()&&document.querySelectorAll('.text-settings-tabs [role="tab"]').length===3,'文字・ふきだし・情報の3タブ');
-    check(button('通常文字').getAttribute('aria-pressed')==='false'&&!editor()&&history('元に戻す').disabled,'情報を開いても選択ツールと履歴を維持');
-    check(cards().length===5&&cards().every((card,index)=>card.querySelector('.bubble-card-title')?.textContent?.replace(/\s/g,'')===`フキダシ${index+1}`),'フキダシ1〜5を元の順序で表示');
-    check(!document.querySelector('.inspector-content .panel-bubble-section')&&!document.querySelector('.inspector-content .bubble-join-control'),'コマ情報側に吹き出しカード・結合欄を残さない');
-    check([...cards()[1].querySelectorAll('.field-label')].map(node=>node.textContent).join(',')==='話者,しっぽ,結合先','話者→しっぽ→結合先の順序を保持');
-    const inspector=document.querySelector<HTMLElement>('.inspector-content')!,card=cards()[1];
-    check(Math.abs(card.getBoundingClientRect().width-(inspector.clientWidth-34))<2,'カード幅は元のコマ情報と同じ');
-    const selectStyle=getComputedStyle(field(1,'しっぽ'));
-    check(selectStyle.paddingTop==='9px'&&selectStyle.fontSize==='15px'&&selectStyle.borderRadius==='9px','入力欄の寸法は元のコマ情報と同じ');
-    await save();const baseline=(await stored()).manga.pages[0];
-    await chooseBubble(0,1);check(selected()===1&&informationOpen()&&!editor(),'選択ツールで紙面を選ぶと情報タブの該当カードへ追従');
-    const viewport=document.querySelector<HTMLElement>('.canvas-spread-scroll')!,viewportPosition=[viewport.scrollLeft,viewport.scrollTop];
-    await chooseBubble(0,3);
-    await wait(()=>document.querySelector<HTMLElement>('.text-settings-window-body')!.scrollTop>0,'情報カードのスクロール待ち');
-    check(informationOpen()&&selected()===3&&viewport.scrollLeft===viewportPosition[0]&&viewport.scrollTop===viewportPosition[1],'別の吹き出しへ変更してもタブを保持し原稿をスクロールしない');
-    await change(1,'話者','speaker-b');await save();
-    check((await stored()).manga.pages[0].panels[0].bubbles[1].speaker==='ユキ','話者を対象の吹き出しへ保存');
-    history('元に戻す').click();await settle();check(field(1,'話者').value===''&&informationOpen(),'話者変更をUndoし情報タブを維持');
-    history('やり直す').click();await settle();check(field(1,'話者').value==='speaker-b','Redoで話者を復元');
-    await change(1,'しっぽ','thinking');await change(1,'結合先','1');await save();
-    let saved=(await stored()).manga.pages[0];
-    check(saved.panels[0].bubbles[1].tail_style==='thinking'&&saved.panels[0].bubbles[1].join_to===1,'しっぽと結合先を既存の保存データへ反映');
-    check(saved.panels[0].bubbles.every((bubble,index)=>bubble.text===panel.bubbles[index].text&&JSON.stringify(bubble.bbox)===JSON.stringify(panel.bubbles[index].bbox)&&JSON.stringify(bubble.text_style)===JSON.stringify(panel.bubbles[index].text_style))&&JSON.stringify(saved.panels[1])===JSON.stringify(baseline.panels[1]),'本文・書式・位置・別コマを保持');
-    check(cards()[4].inert&&cards()[4].getAttribute('aria-disabled')==='true','吹き出し単体の手動ロックを保持');
-    await chooseBubble(1,0);check(informationOpen()&&cards().length===1,'別コマへ移っても情報タブを保持しカード一覧だけ切替');
-    await chooseBubble(0,1,true);check(informationOpen()&&cards().length===2&&info().getAttribute('aria-label')==='ページ前景の吹き出し情報','ページ前景も同じ情報タブへ表示');
-    await change(1,'話者','speaker-a');await change(1,'しっぽ','normal');await change(1,'結合先','1');await save();
-    saved=(await stored()).manga.pages[0];
-    check(saved.page_overlay!.bubbles![1].speaker==='アキ'&&saved.page_overlay!.bubbles![1].join_to===1&&saved.panels[0].bubbles[1].speaker==='ユキ','前景の操作が同じ番号のコマ内吹き出しを変更しない');
-    button('ダイレクト選択').click();await settle();await chooseBubble(0,0);check(informationOpen()&&selected()===0&&button('通常文字').getAttribute('aria-pressed')==='false','ダイレクト選択でも情報タブを操作できる');
-    button('コマ情報を閉じる').click();await settle();check(info().getBoundingClientRect().height>0&&informationOpen(),'コマ情報を閉じても情報タブは表示を維持');
-    await change(0,'しっぽ','normal');check(field(0,'しっぽ').value==='normal','コマ情報を閉じた状態でも変更できる');
-    const count=cards().length;info().querySelector<HTMLButtonElement>('.inline-add')!.click();await settle();check(cards().length===count+1&&informationOpen(),'カードの追加を移植');
-    cards().at(-1)!.querySelector<HTMLButtonElement>('.nested-card-head button')!.click();await settle();check(cards().length===count&&informationOpen(),'カードの削除を移植');
-    await save();render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動画面待ち');await open();button('文字のツール一覧').click();await settle();button('情報').click();await settle();
-    check(field(1,'話者').value==='speaker-b'&&field(1,'しっぽ').value==='thinking'&&field(1,'結合先').value==='1','フォルダーを開き直しても話者・しっぽ・結合先を復元');
-    button('コマ 01全体を固定').click();await settle();check(info().inert&&info().getAttribute('aria-disabled')==='true','コマ全体のロックも情報タブへ引き継ぐ');
-    button('コマ 01全体の固定を解除').click();await settle();check(!info().inert,'コマのロック解除で情報欄も編集可能になる');
-    button('シナリオ').click();await settle();button('吹き出し情報で確認').click();await settle();
-    await wait(()=>informationOpen()&&cards().length===1&&selected()===0,'シナリオからの移動待ち');
-    check(!!info().querySelector('.scenario-inline')&&!document.querySelector('.inspector-content .scenario-inline'),'シナリオの確認リンクが別コマの情報タブを開き対象を選択');
-    info().querySelector<HTMLInputElement>('[aria-label="「確認した台詞」を確定"]')!.click();await settle();await save();
-    check((await stored()).manga.pages[0].panels[1].bubbles[0].text==='確認した台詞'&&!info().querySelector('.scenario-inline'),'移動した候補カードの確定と保存も維持');
-    await chooseBubble(0,3);await wait(()=>document.querySelector<HTMLElement>('.text-settings-window-body')!.scrollTop>0,'再選択スクロール待ち');
-    report.textContent=`情報タブ PASS（${checks.length}項目）\n${checks.join('\n')}`;
-  }catch(error){report.textContent=`情報タブ FAIL: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+    check(!info()&&history('元に戻す').disabled,'未選択では案内だけを表示し、履歴を変えない');
+    await choose(0);check(category().value==='bubble'&&body().value==='ゴ  ゴ\nゴ'&&info().querySelectorAll('.bubble-card').length===1,'選択したOCR文字だけと種類を表示');
+    check(category().options.length===3&&[...category().options].map(o=>o.textContent).join(',')==='フキダシ,描き文字,写植文字','種類は3つのプルダウン');
+    check(info().querySelector('.selected-text-info h3')?.textContent==='テキスト1','情報見出しにテキスト番号を表示');
+    check(!info().querySelector('.nested-card-head')&&!info().querySelector('.inline-add')&&info().querySelectorAll('h3').length===1,'本文下の追加・番号・選択中・削除見出しを撤去');
+    check(document.querySelector('.page-layer-palette [data-owner-group="bubble-0"] .layer-caption')?.textContent==='テキスト1','レイヤーと情報の名前が一致');
+    check(document.querySelectorAll('.text-settings-tabs [role="tab"]').length===3,'文字ツールのタブ数は3つを維持');
+    await save();const baseline=(await stored()).manga.pages[0],beforeText=node(0).querySelector('.bubble-text-content')!.getBoundingClientRect();
+    await change('handwritten');check(category().value==='handwritten'&&!info().querySelector('.bubble-join-control')&&!node(0).querySelector('.bubble-shape-svg'),'描き文字へ切替え、輪郭とフキダシ専用欄を非表示');
+    await save();const handwritten=(await stored()).manga.pages[0];
+    for(const key of ['text','bbox','text_position','text_style','text_runs','analogTextImport','paint_overlay'] as const)check(JSON.stringify(handwritten.panels[0].bubbles[0][key])===JSON.stringify(baseline.panels[0].bubbles[0][key]),`${key}を維持`);
+    check(JSON.stringify(handwritten.panels[0].images)===JSON.stringify(baseline.panels[0].images),'原字画像のID・位置・内容・表示を維持');
+    const afterText=node(0).querySelector('.bubble-text-content')!.getBoundingClientRect();
+    check(Math.abs(afterText.x-beforeText.x)<.5&&Math.abs(afterText.y-beforeText.y)<.5,'実画面の本文位置も維持');
+    history('元に戻す').click();await settle();check(category().value==='bubble'&&!!node(0).querySelector('.bubble-shape-svg'),'切替を1回のUndoで復元');
+    history('やり直す').click();await settle();check(category().value==='handwritten','Redoで描き文字へ戻る');
+    document.querySelector<HTMLElement>('[data-content-kind="bubble"][data-content-panel="1"][data-content-index="0"]')!.click();await settle();
+    check(body().value==='別コマの文字','別コマの文字を選択');
+    history('元に戻す').click();await settle();check(category().value==='bubble'&&body().value==='ゴ  ゴ\nゴ','別コマからUndoしても種類と文字選択を復元');
+    history('やり直す').click();await settle();check(body().value==='別コマの文字','Redoで元いたコマの文字選択を復元');
+    await choose(0);
+    button('次のページ').click();await settle();await choose(0);
+    check(body().value==='ABCDEF','別ページの文字を選択');
+    history('元に戻す').click();await settle();check(category().value==='bubble'&&body().value==='ゴ  ゴ\nゴ','別ページからUndoしても種類と文字選択を復元');
+    history('やり直す').click();await settle();check(body().value==='ABCDEF','Redoで元いたページの文字選択を復元');
+    button('前のページ').click();await settle();await choose(0);
+    await change('typeset');check(category().value==='typeset'&&!node(0).querySelector('.bubble-shape-svg'),'写植文字へ切替');
+    check(info().querySelector('.selected-text-info h3')?.textContent==='テキスト1','種類変更後も同じテキスト名を維持');
+    await save();await reload();button('文字のツール一覧').click();await settle();button('情報').click();await settle();await choose(0);
+    check(category().value==='typeset'&&body().value==='ゴ  ゴ\nゴ','再読込で種類と本文を復元');
+    await save();check(JSON.stringify((await stored()).manga.pages[0].panels[0].images)===JSON.stringify(baseline.panels[0].images),'再読込後も原字画像を保持');
+    await change('bubble');await updateField('話者','speaker-a');await updateField('しっぽ','normal');await save();
+    check((await stored()).manga.pages[0].panels[0].bubbles[0].speaker==='アキ','フキダシへ戻した後の既存話者・しっぽ操作');
+    await choose(1);check(body().value==='別の文字'&&info().querySelectorAll('.bubble-card').length===1,'別の文字を選ぶと情報が追従');
+    check(info().querySelector('.selected-text-info h3')?.textContent==='テキスト2'&&[...field('結合先').options].some(option=>option.textContent==='テキスト1'),'見出しと結合先もテキスト番号へ統一');
+    await updateField('結合先','1');await save();check((await stored()).manga.pages[0].panels[0].bubbles[1].join_to===1,'既存の結合操作を保持');
+    await choose(0);await change('typeset');await save();check((await stored()).manga.pages[0].panels[0].bubbles[1].join_to===undefined,'写植文字への結合線を解除');
+    // A layer selection may inspect a locked native object; controls must still reject manual editing.
+    const lockedLayer=[...document.querySelectorAll<HTMLButtonElement>('.page-layer-palette button')].find(b=>b.textContent?.includes('テキスト3'));
+    if(lockedLayer){lockedLayer.click();await settle();check(category().disabled,'固定した文字は種類を変更できない');}
+    await choose(0,true);check(body().value==='前景の文字'&&info().getAttribute('aria-label')==='ページ前景の文字情報','前景の選択も同じ情報タブへ追従');
+    await change('handwritten');await save();const page=(await stored()).manga.pages[0];
+    check(page.page_overlay!.bubbles![0].shape==='handwritten'&&page.panels[0].bubbles[0].shape==='typeset','前景の切替はコマ内の同番号に影響しない');
+    await choose(0,false,'screen_text');check(category().value==='typeset'&&body().value==='あいう\nえお','Tで作る既存写植形式も同じ情報欄に表示');
+    check(info().querySelector('.selected-text-info h3')?.textContent==='テキスト4','Tの写植文字にも同じコマ内で重複しない番号を表示');
+    await save();const screenBefore=(await stored()).manga.pages[0].panels[0].screen_text![0],screenRect=node(0,false,'screen_text').querySelector('.screen-text-body')!.getBoundingClientRect();
+    await change('bubble');await save();const converted=(await stored()).manga.pages[0].panels[0];
+    check(!converted.screen_text&&converted.bubbles.at(-1)!.text===screenBefore.text&&JSON.stringify(converted.bubbles.at(-1)!.bbox)===JSON.stringify(screenBefore.bbox),'写植からフキダシへ変えても本文・位置・寸法を維持し二重登録しない');
+    const convertedRect=node(converted.bubbles.length-1).querySelector('.bubble-text-content')!.getBoundingClientRect();
+    check(Math.abs(screenRect.width-convertedRect.width)<.5&&Math.abs(screenRect.height-convertedRect.height)<.5&&Math.abs(screenRect.x+screenRect.width/2-convertedRect.x-convertedRect.width/2)<.5&&Math.abs(screenRect.y+screenRect.height/2-convertedRect.y-convertedRect.height/2)<.5,'余白のある写植枠でも複数行の寸法・行間・中心位置を保持');
+    history('元に戻す').click();await settle();check(category().value==='typeset'&&body().value===screenBefore.text,'Undoで写植形式と選択先を復元');
+    history('やり直す').click();await settle();check(category().value==='bubble'&&body().value===screenBefore.text,'Redoでフキダシ形式と選択先を復元');
+    button('写植文字').click();await settle();const paper=document.querySelector<HTMLElement>('.spread-pane:not(.is-spread-partner) .manga-paper')!,paperBox=paper.getBoundingClientRect();
+    paper.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1,clientX:paperBox.left+paperBox.width*140/182,clientY:paperBox.top+paperBox.height*205/257}));
+    await wait(()=>!!editor(),'Tクリックの文字入力待ち');await settle();await input('追加した文字');button('情報').click();await settle();
+    check(category().value==='typeset'&&body().value==='追加した文字','Tの空き位置クリックで文字を追加できる');
+    await change('handwritten');await save();check((await stored()).manga.pages[0].panels[0].bubbles.at(-1)?.text==='追加した文字','Tで新規追加した文字も同じ種類切替に合流');
+    button('選択').click();await settle();await choose(0);await change('typeset');await save();
+    const saved=await stored(),out=await captureQwenCompositionCanvas(saved.manga,0,0,'page',{}, {width:364,height:514});
+    check(out.width===364&&out.height===514,'原字・描画レイヤーを持つ写植文字を実Canvasへ書き出し');
+    const asBalloon=structuredClone(saved);asBalloon.manga.pages[0].panels[0].bubbles[0].shape='normal';
+    const withOutline=await captureQwenCompositionCanvas(asBalloon.manga,0,0,'page',{}, {width:364,height:514});
+    const pixels=out.getContext('2d')!.getImageData(0,0,out.width,out.height).data,outlined=withOutline.getContext('2d')!.getImageData(0,0,withOutline.width,withOutline.height).data;
+    check(pixels.some((value,index)=>value!==outlined[index]),'書き出しでも写植文字は吹き出しの輪郭を描かない');
+    out.width=out.height=withOutline.width=withOutline.height=1;
+    report.textContent=`文字の種類 PASS ${checks.length}\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`文字の種類 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
   finally{run.disabled=false;}
 }
 async function verify(){
@@ -143,11 +171,11 @@ async function verify(){
   run.disabled=true;report.textContent='検証中';
   try{
     if(!nativeBubble())await open();
-    button('通常文字').click();await wait(()=>!!button('ボールド'),'文字パレットがありません');await settle();
+    button('写植文字').click();await wait(()=>!!button('ボールド'),'文字パレットがありません');await settle();
     const labels=['ボールド','イタリック','下線','取り消し線'];
     for(const label of labels)await toggle(label,true);
     check(nativeBubble().textContent==='ABCDEF'&&history('元に戻す').disabled,'無選択のスタイル操作は既存本文・Undoを変えない');
-    button('選択').click();await settle();button('通常文字').click();await settle();
+    button('選択').click();await settle();button('写植文字').click();await settle();
     check(labels.every(label=>button(label).getAttribute('aria-pressed')==='true'),'ツールを持ち替えても4つの状態を保持');
     nativeBubble().click();await wait(()=>!!editor(),'本文編集が開けません');await settle();
     await choose(6);await input('新',true);
@@ -172,10 +200,10 @@ async function verify(){
     check(bubble.text==='ABCDEF新平'&&textStyleSegments(bubble).some(part=>part.strikethrough&&part.fontWeight!>=700),'実フォルダー保存が本文と範囲書式を保持');
     render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();
     check(nativeBubble().textContent==='ABCDEF新平'&&glyphStyle(nativeBubble(),1).textDecorationLine==='underline line-through','保存済み作品を開き直しても表示が一致');
-    button('通常文字').click();await settle();
-    document.querySelector<HTMLElement>('[data-content-kind="screen_text"][data-content-panel="0"]')!.click();await wait(()=>editor()?.getAttribute('aria-label')==='通常文字','縦書き編集が開けません');
+    button('写植文字').click();await settle();
+    document.querySelector<HTMLElement>('[data-content-kind="screen_text"][data-content-panel="0"]')!.click();await wait(()=>editor()?.getAttribute('aria-label')==='テキスト2の本文','縦書き編集が開けません');
     await choose(1,3);await toggle('下線',true);await toggle('取り消し線',true);await toggle('イタリック',true);
-    check(glyphStyle(editor(),1).writingMode==='vertical-rl'&&glyphStyle(editor(),1).textDecorationLine==='underline line-through','縦書き通常文字も選択した範囲へ適用');
+    check(glyphStyle(editor(),1).writingMode==='vertical-rl'&&glyphStyle(editor(),1).textDecorationLine==='underline line-through','縦書き写植文字も選択した範囲へ適用');
     await save();
     const snapshots=await stored();
     for(const orientation of ['horizontal','vertical'] as const){
@@ -186,7 +214,7 @@ async function verify(){
       const canvas=await captureQwenCompositionCanvas(doc.manga,0,0,'page',{}, {width:364,height:514});let hash=2166136261;
       for(const byte of canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data){hash^=byte;hash=Math.imul(hash,16777619);}hashes.add(hash>>>0);canvas.width=canvas.height=1;
     }
-    check(hashes.size===5,`${orientation==='horizontal'?'横':'縦'}書きの実Canvas画素でも4種がそれぞれ通常文字と異なる`);
+    check(hashes.size===5,`${orientation==='horizontal'?'横':'縦'}書きの実Canvas画素でも4種がそれぞれ装飾なしの文字と異なる`);
     }
     report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
   }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
@@ -209,25 +237,25 @@ async function verifyAlignment(){
     panel.bubbles[0].text='あいうえお\nかき';panel.bubbles[0].text_runs=[{start:1,end:3,underline:true,italic:true}];
     panel.screen_text![0].text='あいうえお\nかき';
     render(null,host);const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(fresh)));await writer.close();render(<App/>,host);
-    await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();button('通常文字').click();await settle();
+    await wait(()=>!!button('作品フォルダを開く'),'起動画面待ち');await open();button('写植文字').click();await settle();
     check(button('左寄せ').getAttribute('aria-pressed')==='true','行揃えの初期値は左寄せ');
     button('中央寄せ').click();await settle();
     check(history('元に戻す').disabled&&getComputedStyle(nativeBubble()).textAlign==='start','未選択の行揃えは既存文字とUndoを変えない');
-    button('選択').click();await settle();button('通常文字').click();await settle();
+    button('選択').click();await settle();button('写植文字').click();await settle();
     check(button('中央寄せ').getAttribute('aria-pressed')==='true','道具を持ち替えても新規文字の中央寄せを保持');
     const paper=document.querySelector<HTMLElement>('.manga-paper')!,box=paper.getBoundingClientRect();
     paper.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,button:0,detail:1,clientX:box.x+110/182*box.width,clientY:box.y+100/257*box.height}));
-    await wait(()=>editor()?.getAttribute('aria-label')==='通常文字','クリックした場所に通常文字が作成されません');await input('新しい文字\n短');await save();
+    await wait(()=>editor()?.getAttribute('aria-label')==='テキスト3の本文','クリックした場所に写植文字が作成されません');await input('新しい文字\n短');await save();
     check((await stored()).manga.pages[0].panels[0].screen_text!.at(-1)!.text_style?.textAlign==='center','次にクリックして作成した文字領域へ中央寄せを保存');
-    button('選択').click();await settle();button('通常文字').click();await settle();nativeBubble().click();await wait(()=>editor()?.getAttribute('aria-label')==='吹き出しの文字','吹き出しを編集できません');await choose(1,3);
+    button('選択').click();await settle();button('写植文字').click();await settle();nativeBubble().click();await wait(()=>editor()?.getAttribute('aria-label')==='テキスト1の本文','吹き出しを編集できません');await choose(1,3);
     button('中央寄せ').click();await settle();
     check(getSelection()?.toString()==='いう'&&getComputedStyle(editor()).textAlign==='center','部分選択中でも文字群全体を揃えて文字選択を保持');
     history('元に戻す').click();await settle();check(getComputedStyle(nativeBubble()).textAlign==='start','行揃えを1回のUndoで戻す');
     history('やり直す').click();await settle();check(getComputedStyle(nativeBubble()).textAlign==='center','Redoで行揃えを復元');
     for(const vertical of [false,true]){
-      button('選択').click();await settle();button('通常文字').click();await settle();
+      button('選択').click();await settle();button('写植文字').click();await settle();
       const target=vertical?document.querySelector<HTMLElement>('[data-content-kind="screen_text"][data-content-panel="0"][data-content-index="0"]')!:nativeBubble();target.click();
-      await wait(()=>editor()?.getAttribute('aria-label')===(vertical?'通常文字':'吹き出しの文字'),'文字群を編集できません');await choose(1,3);
+      await wait(()=>editor()?.getAttribute('aria-label')===(vertical?'テキスト2の本文':'テキスト1の本文'),'文字群を編集できません');await choose(1,3);
       let originalRect:DOMRect|undefined;
       for(const [label,factor] of [['左寄せ',0],['中央寄せ',.5],['右寄せ',1]] as const){
         button(label).click();await settle();const long=textRect(editor(),0,5),short=textRect(editor(),6,8),group=editor().getBoundingClientRect();
@@ -253,4 +281,70 @@ async function verifyAlignment(){
     report.textContent=`行揃え PASS ${checks.length}\n${checks.join('\n')}`;
   }catch(error){report.textContent=`行揃え FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
   finally{control.disabled=false;}
+}
+
+
+/** No generation request: verify editing, selection, locks and persistence only. */
+async function verifyHandwritten(){
+  const run=document.getElementById('handwritten-run') as HTMLButtonElement,checks:string[]=[];
+  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
+  const section=()=>document.querySelector<HTMLElement>('.handwritten-text-section')!;
+  const cards=()=>[...section().querySelectorAll<HTMLElement>('.selectable-card')];
+  const field=(index:number,label:string)=>[...cards()[index].querySelectorAll<HTMLLabelElement>('label.field')].find(node=>node.querySelector('.field-label')?.textContent===label)!.querySelector<HTMLTextAreaElement>('textarea')!;
+  const change=async(index:number,label:string,value:string)=>{const area=field(index,label);area.focus();area.value=value;area.dispatchEvent(new Event('input',{bubbles:true}));await settle();area.blur();};
+  const node=(index:number,overlay=false)=>document.querySelector<HTMLElement>(`[data-content-kind="bubble"][data-content-index="${index}"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
+  const guide=(index:number)=>cards()[index].querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+  const generate=(index:number)=>[...cards()[index].querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.includes('描き文字を生成'))!;
+  const choose=async(index:number,overlay=false)=>{node(index,overlay).click();await settle();};
+  const reload=async()=>{render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動待ち');await open();};
+  run.disabled=true;report.textContent='描き文字の編集を検証中';
+  try{
+    render(null,host);const doc=structuredClone(source),panel=doc.manga.pages[0].panels[0];
+    panel.bubbles.push({text:'ドン',shape:'handwritten',lettering_description:'太い線',bbox:{x:60,y:90,w:60,h:35}},
+      {text:'ふわっ',shape:'handwritten',locked:true,bbox:{x:70,y:130,w:60,h:30}});
+    doc.manga.pages[0].page_overlay!.bubbles!.push({text:'前景描き文字',shape:'handwritten',bbox:{x:80,y:210,w:70,h:30}});
+    const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();render(<App/>,host);
+    await wait(()=>!!button('作品フォルダを開く'),'起動待ち');await open();button('選択').click();await settle();await choose(1);
+    check(cards().length===2&&field(0,'文字').value==='ドン','コマ情報には描き文字だけを表示');
+    check(field(1,'文字').disabled&&field(1,'描き方').disabled&&!generate(1).disabled&&getComputedStyle(generate(1)).pointerEvents!=='none','手動ロック中は入力不可、生成操作は可能');
+    button('写植文字').click();await settle();button('情報').click();await settle();
+    check(document.querySelector<HTMLSelectElement>('.bubble-info-content [aria-label="文字の種類"]')?.value==='handwritten','文字パレットの情報タブに選択中の描き文字を表示');
+    button('選択').click();await settle();await choose(1);
+    await change(0,'文字','ド  ン！\nドン');await save();
+    check((await stored()).manga.pages[0].panels[0].bubbles[1].text==='ド  ン！\nドン','本文の連続空白と改行を保存');
+    await change(0,'描き方','太く角張る');history('元に戻す').click();await settle();
+    check(field(0,'描き方').value==='太い線','描き方をUndoできる');history('やり直す').click();await settle();
+    check(field(0,'描き方').value==='太く角張る','描き方をRedoできる');
+    guide(0).click();await settle();check(!node(1).querySelector('.bubble-text-content'),'文字あたりだけを非表示にする');
+    check(node(0).querySelector('.bubble-text-content')?.textContent==='ABCDEF','通常吹き出しの文字は維持');
+    history('元に戻す').click();await settle();check(!!node(1).querySelector('.bubble-text-content'),'表示切替をUndoできる');
+    history('やり直す').click();await settle();await save();
+    const baseline=(await stored()).manga.pages[0].panels[0];
+    check(baseline.bubbles[1].lettering_guide_hidden===true&&baseline.bubbles[1].text==='ド  ン！\nドン','非表示でも本文と描き方を保持して保存');
+    await choose(1,true);check(cards().length===1&&field(0,'文字').value==='前景描き文字','前景選択で描き文字一覧を切替');
+    await change(0,'描き方','細い線');guide(0).click();await settle();await save();
+    check(!node(1,true).querySelector('.bubble-text-content'),'前景の文字あたりも非表示にする');
+    check(JSON.stringify((await stored()).manga.pages[0].panels[0])===JSON.stringify(baseline),'前景の編集はコマ内の同番号を変更しない');
+    await reload();button('選択').click();await settle();await choose(1);
+    check(field(0,'描き方').value==='太く角張る'&&!guide(0).checked&&!node(1).querySelector('.bubble-text-content'),'再読込でコマの本文・描き方・非表示を復元');
+    section().querySelector<HTMLButtonElement>('.inline-add')!.click();await settle();
+    check(cards().length===3&&field(2,'文字').value===''&&generate(2).disabled,'新規描き文字を追加し空本文の生成を拒否');
+    await change(2,'文字','ザッ');check(!generate(2).disabled,'本文入力で生成操作を有効にする');
+    cards()[2].querySelector<HTMLButtonElement>('.nested-card-head button')!.click();await settle();check(cards().length===2,'描き文字を既存削除経路で削除');
+    history('元に戻す').click();await settle();check(cards().length===3&&field(2,'文字').value==='ザッ','削除をUndoできる');
+    await choose(1,true);check(field(0,'描き方').value==='細い線'&&!guide(0).checked,'再読込で前景の描き方と非表示を復元');
+    // Existing canvas menus must expose generation only for handwritten content.
+    node(0,true).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:300,clientY:220}));await settle();
+    check(![...document.querySelectorAll('[role="menuitem"]')].some(n=>/生成/.test(n.textContent??'')),'通常吹き出しのメニューに単品生成を表示しない');
+    document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();
+    node(1,true).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:300,clientY:220}));await settle();
+    check([...document.querySelectorAll('[role="menuitem"]')].some(n=>n.textContent==='描き文字を生成'),'描き文字のメニューに既存生成入口を表示');
+    document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();
+    const lockedDoc=await stored();lockedDoc.manga.pages[0].panels[0].layer={...lockedDoc.manga.pages[0].panels[0].layer,locked:true};
+    render(null,host);const lockWriter=await project.createWritable();await lockWriter.write(JSON.stringify(await createPortableProject(lockedDoc)));await lockWriter.close();
+    render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'ロック作品待ち');await open();
+    check(field(0,'文字').disabled&&field(0,'描き方').disabled&&!generate(0).disabled&&!generate(0).closest('[inert],[aria-disabled="true"]')&&getComputedStyle(generate(0)).pointerEvents!=='none','コマ全体のロック中も手動入力だけを禁止し生成操作を保持');
+    report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
+  }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+  finally{run.disabled=false;}
 }

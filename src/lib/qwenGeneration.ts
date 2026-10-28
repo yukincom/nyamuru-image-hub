@@ -11,6 +11,8 @@ import { paintReferenceBox } from './paintDocument.ts';
 import { panelBounds } from './canvasGeometry.ts';
 import { humanPoseFigureFrame, humanPosePanelCutFrame, type HumanPoseCutFrame } from './humanPoseFraming.ts';
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
+import { isHandwrittenText } from './bubblePresentation.ts';
+import { textStyleOf } from './textStyle.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
   characterKeys?: string[];
@@ -26,6 +28,8 @@ export interface QwenGenerationPlan {
   humanPose?: { selection: HumanPoseTextSelection; framing: FigureSize; aspect?: number; cutFrame?: HumanPoseCutFrame };
   scope?: 'page'|'panel';
   literalText?: string[];
+  contentKind?: 'handwritten';
+  letteringContext?: string;
   compositionImage?: string;
   outputFrame?: BBox;
   referenceFrame?: BBox;
@@ -34,6 +38,9 @@ export interface QwenGenerationPlan {
 export interface QwenReference { label: string; characterKeys: string[]; image: string }
 export interface QwenLayerCandidate { id:string; label:string; kind:'paint'|'sketch'; hidden:boolean; empty:boolean }
 export interface QwenLayerReference extends QwenLayerCandidate { image:string }
+export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): boolean {
+  return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&isHandwrittenText(owner.bubble);
+}
 export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
   return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
     kind:layer.guide&&owner.figure?.analogImport?'sketch':'paint',hidden:!paintLayerVisible(owner.paint,layer),
@@ -56,6 +63,7 @@ export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLaye
     plan.characterKeys.length?'キャラクター設定画は、同じ人物の外見と画風を保つための資料です。':'',
     '修正を指示する印・塗り・文字は、完成画像には残さないでください。',
     plan.poseContext ? `以下は修正部分の人物・ポーズの指定です。修正対象以外は保ってください。\n${plan.poseContext}` : '',
+    plan.letteringContext ?? '',
   ].filter(Boolean).join('\n\n');
   if(reference?.kind==='paint'&&plan.humanPose)return `${plan.prompt}\n\n描画レイヤー参照は描き方の参考に使い、ポーズ・アングル・描写範囲は今回の指定を優先してください。`;
   return reference?.kind==='sketch'?(plan.sketchPrompt??plan.prompt):plan.prompt;
@@ -74,6 +82,13 @@ export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ペ�
 export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner):QwenGenerationPlan {
   const page=manga.pages[pageIndex], panel=page?.panels[panelIndex];
   if(!page||(!overlay&&!panel))throw new Error('生成対象が見つかりません');
+  if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字が対象です');
+  const lettering=owner.kind==='bubble'?owner.bubble:undefined;
+  if(lettering){
+    const current=(overlay?page.page_overlay:panel)?.bubbles?.[owner.index];
+    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description)throw new Error('描き文字が変更されました。生成対象を選び直してください');
+    if(!lettering.text.trim()||lettering.text.length>500)throw new Error('描き文字の本文を1〜500文字で入力してください');
+  }
   const pose = owner.figure?.human_pose;
   if(owner.kind==='figure' && JSON.stringify(pose) !== JSON.stringify((overlay?page.page_overlay:panel)?.figures?.[owner.index]?.human_pose)) throw new Error('人体ポーズが変更されました。生成対象を選び直してください');
   requireHumanPoseGenerationReady(pose);
@@ -86,7 +101,16 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
       m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))
       .sort((a,b)=>Number(b.catalog_id===character.primary_material_catalog_id)-Number(a.catalog_id===character.primary_material_catalog_id))
       .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!,characterKeys})) : [];
-  const style=compileArtworkRules(getArtworkSettings(manga),'character').style_notes;
+  const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character');
+  const style=artwork.style_notes;
+  const letteringContext=lettering?[
+    'OMNY: shape=handwritten',
+    `meta.text_orientation=${textStyleOf(lettering,'bubble').orientation}`,
+    `meta.reading_direction=${manga.meta.reading_direction}`,
+    `text:\n${lettering.text}`,
+    lettering.lettering_description?`描き方：${lettering.lettering_description}`:'',
+    ...style,artwork.layout_spec,
+  ].filter(Boolean).join('\n\n'):undefined;
   const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [
     pose.input_mode === 'image'
@@ -108,14 +132,14 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     '漫画用の独立した画像を1枚描いてください。参照資料の画風と形を尊重してください。',
     `出力形式：${manga.meta.format}。`,
     owner.kind==='background'?`背景のみ。人物や吹き出しは描かない。背景指示：${owner.description||panel?.background_description||manga.setting.location||'無地'}`
-      :owner.kind==='bubble'?'吹き出しの外形だけを描く。文字は加えない。'
+      :lettering?letteringContext
       :`${person?'人物':'小道具'}：${owner.figure?.name||owner.label}。\n背景・文字・吹き出しは加えず、外側は透明にする。`,
     pose?.input_mode!=='image'&&(owner.figure?.size || pose) ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。${framing==='bust-up'?'頭頂から胸までを画面に収めた構図で描く。':'指定した範囲を画面に収めた構図で描く。'}`:'',
     owner.figure?.action?`動作・表情・視線：${owner.figure.action}`:'',
     poseInstructions,
     character?.visual_prompt?.trim()?`人物のビジュアル指定：${character.visual_prompt}`:'',
     character?.default_proportion?`体型：${character.default_proportion.head_count}頭身を保つ。`:'',
-    ...style,
+    ...(lettering?[]:style),
     '新しい絵を1枚描く。資料集・コラージュ・コマ枠・署名・透かしは加えない。',
   ].filter(Boolean).join('\n\n');
   const sketchPrompt=person && pose ? [
@@ -144,11 +168,14 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
+    ...(lettering?{contentKind:'handwritten' as const,literalText:[lettering.text],letteringContext}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
     ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
 }
 
 export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string){
+  if(plan.ownerKey.startsWith('bubble-')&&(plan.contentKind!=='handwritten'||plan.literalText?.length!==1||!plan.literalText[0].trim()))throw new Error('吹き出し単品は生成できません。描き文字を選択してください');
+  if(plan.contentKind&&(!plan.ownerKey.startsWith('bubble-')||plan.scope))throw new Error('描き文字の生成対象が不正です');
   if(plan.scope){
     if(!plan.compositionImage)throw new Error('紙面の参照画像を用意してから生成してください');
     if(paintImage||sketchImage||correctionImage||poseImage)throw new Error('全体生成の紙面参照に単品レイヤーは追加できません');
@@ -173,7 +200,8 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
   return {profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
     overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
-    ...(plan.scope?{literal_text:plan.literalText??[]}:{}),
+    ...(plan.scope||plan.contentKind==='handwritten'?{literal_text:plan.literalText??[]}:{}),
+    ...(plan.contentKind?{content_kind:plan.contentKind}:{}),
     prompt:roles?`${plan.prompt}\n\n添付画像の役割：\n${roles}`:plan.prompt,character_keys:plan.characterKeys,
     mode:sketchImage?'sketch':sourcePaint?'paint':'new',...(sourcePaint?{paint_image:sourcePaint}:{}),...(sketchImage?{sketch_image:sketchImage}:{}),
     ...(correctionImage?{correction_image:correctionImage}:{}),

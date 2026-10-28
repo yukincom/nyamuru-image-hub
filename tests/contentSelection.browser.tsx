@@ -92,11 +92,11 @@ const appChecks=async()=>{
  const drag=async(e:Element,x:number,y:number,dx:number,dy:number)=>{pointer(e,'pointerdown',x,y);pointer(window,'pointermove',x+dx,y+dy);pointer(window,'pointerup',x+dx,y+dy);await tick();};
  const hitBounds=(e:Element)=>{const svg=e.querySelector<SVGSVGElement>('.canvas-content-hit')!,path=svg.querySelector('path')!,b=path.getBBox(),r=e.getBoundingClientRect(),v=svg.viewBox.baseVal;return {x:r.x+b.x/v.width*r.width,y:r.y+b.y/v.height*r.height,w:b.width/v.width*r.width,h:b.height/v.height*r.height};};
  await click('ネーム');
- await click('通常文字');await wait(()=>!!document.querySelector('.text-settings-window:not([hidden])'),'text palette opens');
+ await click('写植文字');await wait(()=>!!document.querySelector('.text-settings-window:not([hidden])'),'text palette opens');
  check(Boolean(document.querySelector('.text-settings-window:not([hidden])')),'Tボタンで文字ツールパレットが開く');
  const textPalette=document.querySelector<HTMLElement>('.text-settings-window:not([hidden])')!;
  check(textPalette.getBoundingClientRect().width<=240,'文字ツールパレットを従来のおよそ半分の幅に収める');
- check(findButton('通常文字を追加')?.textContent?.trim()===''&&findButton('ふきだし')?.textContent?.trim()==='','通常文字とふきだしの操作をアイコンだけで表示する');
+ check(findButton('写植文字を追加')?.textContent?.trim()===''&&findButton('ふきだし')?.textContent?.trim()==='','写植文字とふきだしの操作をアイコンだけで表示する');
  await click('ふきだし');await wait(()=>!!textPalette.querySelector('.bubble-material-window'),'embedded bubble materials');
  const bubblePanel=textPalette.querySelector<HTMLElement>('#text-settings-bubble-panel')!;
  check(Boolean(bubblePanel.querySelector('.paint-text-work-settings')?.nextElementSibling?.classList.contains('paint-bubble-materials-slot')),'線幅をふきだしタブの先頭へ置き、その下へ素材を内蔵する');

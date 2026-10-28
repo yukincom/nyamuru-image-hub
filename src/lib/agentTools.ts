@@ -9,8 +9,9 @@ import {resolveBubbleSpeakerFigureIndex} from './bubbleRelations.ts';
 import {paintReferenceBox} from './paintDocument.ts';
 import {bubbleTailDisabled,bubbleTailTargetPoint,normalizedBubbleTailTarget} from './bubbleTail.ts';
 import {isPropPlacement} from './catalogModel.ts';
+import {BUBBLE_SHAPES} from './manga.ts';
 
-export const AGENT_BUBBLE_SHAPES:readonly BubbleShape[]=['normal','thought','square','caption','flash','uniflash','wobbly','whisper','handwritten','critical','tense','toge','announce','toge_natural'];
+export const AGENT_BUBBLE_SHAPES:readonly BubbleShape[]=BUBBLE_SHAPES;
 export type AgentBubbleTarget=CanvasTextTarget & {kind:'bubble'};
 export interface AgentBubbleEdit {revision:string;target:AgentBubbleTarget;changes:{preset?:typeof BUBBLE_BEZIER_PRESETS[number][0];shape?:BubbleShape;bezier?:NonNullable<Bubble['bezier']>;node_updates?:(Partial<VectorNode>&{index:number})[];bbox?:BBox;tail_mode?:'auto'|'none';tail_point?:{x:number;y:number}}}
 

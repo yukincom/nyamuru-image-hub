@@ -10,7 +10,7 @@ export default function BubbleMaterialPicker({onClose,onApply,canApply}:{onClose
   if(!target)return null;
   return createPortal(<div class="bubble-material-window" aria-label="吹き出し素材" onKeyDown={event=>{if(event.key==='Escape'){event.stopPropagation();onClose();}}}>
     <label>分類<select aria-label="吹き出し素材の分類" value={layer} onChange={e=>setLayer(e.currentTarget.value)}><option value="all">すべて（{BUBBLE_PRESETS.length}）</option>{BUBBLE_PRESET_LAYERS.map(name=><option value={name}>{layerLabel(name)}（{BUBBLE_PRESETS.filter(preset=>preset.layer===name).length}）</option>)}</select></label>
-    <div class="bubble-material-window-grid">{BUBBLE_PRESETS.filter(p=>layer==='all'||p.layer===layer).map(p=><button type="button" draggable={true} class="bubble-material-tile" aria-label={`${p.label}を重ねる`} title={canApply?'クリックで選択中の吹き出しに適用／文字や吹き出しへドラッグ':'通常文字または吹き出しへドラッグして重ねる'}
+    <div class="bubble-material-window-grid">{BUBBLE_PRESETS.filter(p=>layer==='all'||p.layer===layer).map(p=><button type="button" draggable={true} class="bubble-material-tile" aria-label={`${p.label}を重ねる`} title={canApply?'クリックで選択中の吹き出しに適用／文字や吹き出しへドラッグ':'写植文字または吹き出しへドラッグして重ねる'}
       onDragStart={e=>{if(e.dataTransfer){e.dataTransfer.setData(BUBBLE_MATERIAL_DRAG_TYPE,p.id);e.dataTransfer.effectAllowed='copy';}}}
       onClick={()=>{if(canApply)onApply(p.id);}}><span class="bubble-material-preview" style={`--bubble-material-url:url("${p.asset}")`} aria-hidden="true"/><span>{p.label}</span><small class="bubble-material-kind"><PenTool size={11} aria-hidden="true"/>ベクター</small></button>)}</div>
   </div>,target);

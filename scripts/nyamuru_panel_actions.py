@@ -260,7 +260,7 @@ class PanelActionSuggester:
         from qwen_generation import split_fixed_generation_prompt, validate_english
         prompt = value["prompt"]
         protected = []
-        literal_text = value.get("literal_text", []) if value.get("owner_key") in ("page", "panel") else []
+        literal_text = value.get("literal_text", []) if value.get("owner_key") in ("page", "panel") or value.get("content_kind") == "handwritten" else []
         if literal_text:
             if any(literal not in prompt for literal in literal_text):
                 raise ValueError('ページに描く文字が生成指示から欠落しています')

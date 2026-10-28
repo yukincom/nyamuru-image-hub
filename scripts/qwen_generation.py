@@ -204,12 +204,29 @@ def keys(value, maximum=1):
     return value
 
 
+def validate_generation_subject(value):
+    """Only authored handwritten lettering may use a bubble-owned generation job."""
+    bubble = bool(re.fullmatch(r'bubble-\d+', value.get('owner_key', '')))
+    kind = value.get('content_kind')
+    if bubble:
+        literals = value.get('literal_text')
+        if kind != 'handwritten' or not isinstance(literals, list) or len(literals) != 1:
+            raise ValueError('吹き出し単品は生成できません。描き文字を選択してください')
+        text(literals[0], '描き文字の本文', 500)
+        if not literals[0].strip():
+            raise ValueError('描き文字の本文を入力してください')
+    elif kind is not None:
+        raise ValueError('描き文字の生成対象が不正です')
+
+
 def normalize(body):
     if body.get('profile') != PROFILE or body.get('mode') not in ('new', 'paint', 'sketch'):
         raise ValueError('Qwen生成の指定が不正です')
     owner = text(body.get('owner_key'), '描画対象', 100)
     if not re.fullmatch(r'page|panel|background|figure-\d+|bubble-\d+', owner):
         raise ValueError('描画対象が不正です')
+    validate_generation_subject(body)
+    handwritten = body.get('content_kind') == 'handwritten'
     overlay = body.get('overlay')
     page, panel = body.get('page_number'), body.get('panel_id')
     if not isinstance(overlay, bool) or any(isinstance(v, bool) or not isinstance(v, int) for v in (page, panel)) \
@@ -225,7 +242,7 @@ def normalize(body):
     if body['mode'] == 'sketch' and (not owner.startswith('figure-') or not character_keys):
         raise ValueError('ネームのラフ生成には登場人物の指定が必要です')
     literal_text = body.get('literal_text', [])
-    if not isinstance(literal_text, list) or len(literal_text) > 100 or (literal_text and owner not in ('page', 'panel')):
+    if not isinstance(literal_text, list) or len(literal_text) > 100 or (literal_text and owner not in ('page', 'panel') and not handwritten):
         raise ValueError('ページに描く文字の指定が不正です')
     for item in literal_text:
         text(item, 'ページに描く文字', 500)
@@ -284,8 +301,10 @@ def normalize(body):
              'width': width, 'height': height, 'input_size': input_size, 'output_size': output_size,
              'prompt': text(body.get('prompt'), '生成指示'), 'character_keys': character_keys,
              'references': refs, 'settings': json.loads(json.dumps(settings))}
-    if owner in ('page', 'panel'):
+    if owner in ('page', 'panel') or handwritten:
         value['literal_text'] = literal_text
+    if handwritten:
+        value['content_kind'] = 'handwritten'
     return value, images
 
 
@@ -299,7 +318,7 @@ def validate_english(value, english):
         raise ValueError('英訳の参照資料が元の入力と一致しません')
     prompt = english.get('prompt')
     text(prompt, '英訳', 40_000)
-    if value.get('owner_key') in ('page', 'panel'):
+    if value.get('owner_key') in ('page', 'panel') or value.get('content_kind') == 'handwritten':
         # Only explicitly authored on-page text may stay Japanese. Instructions
         # and reference labels still obey the existing English-only contract.
         for literal in value.get('literal_text', []):
@@ -402,6 +421,7 @@ class QwenGenerationService:
         token = body.get('image_session_token')
         with hold_generation_lease(token) as lease_fd, self.thread_lock, self.store.lock():
             value = self.load(job_id)
+            validate_generation_subject(value)
             if body.get('request_sha256') != sha256(canonical(value)):
                 raise ValueError('準備した生成入力と一致しません')
             self.load_english(job_id)
@@ -516,6 +536,7 @@ class QwenGenerationService:
         try:
             validate_generation_fd(token, lease_fd)
             value = self.load(job_id)
+            validate_generation_subject(value)
             self.load_english(job_id)
             lock = os.open(self.store.root / '.execution.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
             try:

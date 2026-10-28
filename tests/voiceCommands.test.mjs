@@ -54,7 +54,8 @@ test('quoted dialogue is one balanced span, never two independent changes',()=>{
     {op:'bubble_text',text:'彼が「保存して」と言った'});
 });
 test('generation retains the requested kind and never aliases background',()=>{
-  assert.deepEqual(resolveVoiceCommand(prediction('選択中の吹き出しを生成して','generate_request')).command,{op:'generate_selected',kind:'bubble'});
+  assert.equal(resolveVoiceCommand(prediction('選択中の吹き出しを生成して','generate_request')).command,undefined);
+  assert.deepEqual(resolveVoiceCommand(prediction('選択中の描き文字を生成して','generate_request')).command,{op:'generate_selected',kind:'bubble'});
   assert.deepEqual(resolveVoiceCommand(prediction('選択中の人物を生成して','generate_request')).command,{op:'generate_selected',kind:'figure'});
   assert.deepEqual(resolveVoiceCommand(prediction('これを生成して','generate_request')).command,{op:'generate_selected',kind:'selected'});
   assert.equal(resolveVoiceCommand(prediction('選択中の背景を生成して','generate_request')).command,undefined);
@@ -111,4 +112,15 @@ test('material window requires view_change and a whole, positive request',()=>{
     assert.equal(resolveVoiceCommand(prediction(text,'view_change')).command,undefined);
   for(const [label,confidence] of [['out_of_scope_request',1],['view_change',.7],['not_command',1]])
     assert.equal(resolveVoiceCommand(prediction('吹き出し素材を開いて',label,confidence)).command,undefined);
+});
+
+
+test('generic voice generation rejects balloons and resolves handwritten lettering in both scopes',()=>{
+  const document=generationFixture(),page=document.manga.pages[0],command={op:'generate_selected',kind:'selected'};
+  page.panels[0].bubbles=[{text:'台詞',shape:'normal'},{text:'ドン！',shape:'handwritten',locked:true}];
+  page.page_overlay.bubbles=[{text:'さらり',shape:'handwritten'}];
+  assert.throws(()=>resolveVoiceGenerationTarget(document,0,0,{type:'bubble',index:0},command),/吹き出し単品/);
+  assert.equal(resolveVoiceGenerationTarget(document,0,0,{type:'bubble',index:1},command).index,1);
+  assert.equal(page.panels[0].bubbles[1].locked,true);
+  assert.equal(resolveVoiceGenerationTarget(document,0,0,{type:'bubble',index:0,scope:'page_overlay'},command).overlay,true);
 });

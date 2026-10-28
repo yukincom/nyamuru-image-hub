@@ -1,3 +1,4 @@
+import {letteringGuideVisible} from '../lib/bubblePresentation';
 import {paintLayerVisible} from '../lib/paintLock';
 import RasterSelectionOverlay from './RasterSelectionOverlay';
 import VectorOverlay from './VectorOverlay';
@@ -42,7 +43,7 @@ export function PaintOriginal({owner}: {owner:PaintOwner}) {
     const position=bubbleTextPosition(bubble);
     const reference=paintReferenceBox(owner.paint,owner.frame);
     return <div ref={textHost} class="paint-original paint-bubble-original"><BubbleShapeSvg shape={bubble.shape} bezier={bubble.bezier}/>
-      <span class="paint-bubble-text" style={{left:`${position.x*100}%`,top:`${position.y*100}%`,...textStyleCss(textStyleOf(bubble,'bubble'),reference.w)}}>{textStyleSegments(bubble).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span></div>;
+      {letteringGuideVisible(bubble)&&<span class="paint-bubble-text" style={{left:`${position.x*100}%`,top:`${position.y*100}%`,...textStyleCss(textStyleOf(bubble,'bubble'),reference.w)}}>{textStyleSegments(bubble).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>}</div>;
   }
   const level=owner.backgroundLevel===-1?'n1':owner.backgroundLevel??1;
   return <div class="paint-original paint-background-original" style={{backgroundColor:`var(--panel-bg-${level}-color)`,backgroundImage:`var(--panel-bg-${level}-image, none)`}}><small>{owner.description||'背景あたり'}</small></div>;

@@ -1,21 +1,24 @@
+import SelectedTextInfo from './SelectedTextInfo';
+import type { TextCategory } from '../lib/canvasText';
 import BubbleInfoPortal from './BubbleInfoPortal';
+import HandwrittenTextSection from './HandwrittenTextSection';
 import type { ComponentChildren } from 'preact';
 import PlacedImageList from './PlacedImageList';
 import FigureSizePicker from './FigureSizePicker';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
-import { Ban, Box, Check, Download, FolderOpen, Image as ImageIcon, MessageCircleMore, Plus, RefreshCw, Trash2, UserPlus, WandSparkles, X } from 'lucide-preact';
+import { Ban, Box, Check, Download, FolderOpen, Image as ImageIcon, Plus, RefreshCw, Trash2, UserPlus, WandSparkles, X } from 'lucide-preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { ANCHOR_LABELS, ANCHORS, FIGURE_SIZE_LABELS, FIGURE_ROLE_LABELS, FIGURE_ROLES } from '../lib/manga';
 import { fallbackBox } from '../lib/canvasGeometry';
-import { bubbleTailStyle, setBubbleTailStyle } from '../lib/bubblePresentation.ts';
+import { bubbleTailStyle, setBubbleTailStyle, isBalloonText } from '../lib/bubblePresentation.ts';
 import { removeBubbleAt } from '../lib/bubbleConnections.ts';
 import type { CanvasElementSelection, Manga, Material, Panel } from '../types';
 import { isPropPlacement } from '../lib/catalogModel.ts';
 import { generatePanelDraftWithComfyUI, listPanelDraftAttempts, reconcilePanelDraftAttempt, reviewPanelDraftAttempt, suggestPanelFigureActions, type PanelDraftAttemptSummary, type PanelDraftResult, type PanelDraftReviewAction } from '../lib/localBridge.ts';
 import { applyReconciledPanelActions, buildPanelActionSuggestionRequest } from '../lib/panelActions.ts';
 import { withPanelActionServices } from '../lib/localBridgeLifecycle.ts';
-import { panelDisplayLabel } from '../lib/displayLabels.ts';
+import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels.ts';
 import { buildPanelDraftPlan, MANGA_BASE_PALETTE, type PanelDraftPlan } from '../lib/panelDraft.ts';
 
 const BACKGROUND_DETAIL_OPTIONS = [
@@ -25,7 +28,6 @@ const BACKGROUND_DETAIL_OPTIONS = [
   { level: 2, label: '詳細', description: 'ロケーションをしっかり描き込む見せゴマです' },
 ] as const;
 import { Field, SectionTitle } from './Fields';
-import BubbleCardTitle from './BubbleCardTitle';
 import ScenarioBubbleNotice, { type ScenarioBubbleChoiceProps } from './ScenarioBubbleNotice';
 import { panelBackgroundDescription } from '../lib/panelContext.ts';
 import { useInspectorSelectionScroll } from './useInspectorSelectionScroll.ts';
@@ -34,7 +36,13 @@ import { getOutputSettings } from '../lib/finishLayout.ts';
 import { ownerItemLocked, preservesLockedItems } from '../lib/panelLayers.ts';
 
 interface Props extends ScenarioBubbleChoiceProps {
+  onTextCategory:(category:TextCategory)=>void;
+  onSelectedText:(text:string)=>void;
   onOpenBackground3d:()=>void;
+  onHandwrittenHistoryBoundary:()=>void;
+  onGenerateHandwritten:(index:number)=>void;
+  onHandwrittenText:(index:number,text:string)=>void;
+  generationBusy?:boolean;
   panelControls?:ComponentChildren;
   painting?: boolean;
   imageImportBusy:boolean;
@@ -97,7 +105,7 @@ function setLinkedMaterial(panel: Panel, material: Material, linked: boolean): v
   }
 }
 
-export default function PanelInspector({ onOpenBackground3d, panelControls, painting=false, imageImportBusy, guideVisible, onToggleGuide, panelDraftToolbarTarget, manga, panel, pageIndex, panelIndex, selectedElement, canvasSelectionScrollRequest, episodeWorkspaceToken, episodeWorkspaceFolder, seriesId, episodeId, getOmnySnapshot, onChooseEpisodeWorkspace, onSelectElement, onChange, onOpenBackgrounds, onOpenProps, onScenarioChoice, onAdd, onDelete }: Props) {
+export default function PanelInspector({ onTextCategory, onSelectedText, onHandwrittenHistoryBoundary, onGenerateHandwritten, onHandwrittenText, generationBusy=false, onOpenBackground3d, panelControls, painting=false, imageImportBusy, guideVisible, onToggleGuide, panelDraftToolbarTarget, manga, panel, pageIndex, panelIndex, selectedElement, canvasSelectionScrollRequest, episodeWorkspaceToken, episodeWorkspaceFolder, seriesId, episodeId, getOmnySnapshot, onChooseEpisodeWorkspace, onSelectElement, onChange, onOpenBackgrounds, onOpenProps, onScenarioChoice, onAdd, onDelete }: Props) {
   const inspectorRef = useInspectorSelectionScroll(canvasSelectionScrollRequest);
   const [generationStatus, setGenerationStatus] = useState<{ kind: 'loading' | 'success' | 'error'; message: string } | null>(null);
   const [panelDraftDialog, setPanelDraftDialog] = useState<PanelDraftDialogState | null>(null);
@@ -126,6 +134,7 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
     panelDraftReviewRequest.current += 1;
   }, []);
   if (!panel) return <div class="empty-inspector"><div>◫</div><h3>コマを選択してください</h3><p>紙面上のコマをクリックすると、内容を編集できます。</p><button class="primary-button" onClick={onAdd}><Plus size={16} />コマを追加</button></div>;
+  const selectedText=selectedElement?.type==='bubble'?panel.bubbles?.[selectedElement.index]:selectedElement?.type==='screen_text'?panel.screen_text?.[selectedElement.index]:undefined;
   const locked=panel.layer?.locked===true;
   const update = (recipe: (draft: Panel) => void) => {
     if(locked)return;
@@ -483,7 +492,7 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
       void loadPanelDraftHistory(panelDraftDialog.plan);
     }
   };
-  return <><div ref={inspectorRef} class={`panel-inspector ${locked?'is-locked':''}`} aria-disabled={locked}>
+  return <><div ref={inspectorRef} class={`panel-inspector ${locked?'is-locked':''}`}>
     <div class="inspector-sticky-head">
       <strong class="inspector-panel-label">{panelDisplayLabel(panel.id)}</strong>
       <div class="mini-actions"><button disabled={painting||locked} onClick={onDelete} title="コマを削除" aria-label="コマを削除"><Trash2 size={16} /></button></div>
@@ -629,12 +638,20 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
       </div>
     </section>
 
-    <BubbleInfoPortal request={canvasSelectionScrollRequest} disabled={locked} label={`${panelDisplayLabel(panel.id)}の吹き出し情報`}>
-    <section class="editor-section inspector-category-section panel-bubble-section">
-      <SectionTitle title="フキダシ" action={<button class="inline-add" onClick={() => { const index = panel.bubbles.length; update((draft) => { draft.bubbles.push({ text: '', shape: 'normal', bbox: fallbackBox(panel, 'bubble', index) }); }); onSelectElement({ type: 'bubble', index }); }}><MessageCircleMore size={14} />追加</button>} />
+    </div>
+    <HandwrittenTextSection onHistoryBoundary={onHandwrittenHistoryBoundary} bubbles={panel.bubbles} selectedIndex={selectedElement?.type==='bubble'?selectedElement.index:undefined} disabled={locked||painting} busy={generationBusy}
+      onAdd={()=>{const index=panel.bubbles.length;update(draft=>draft.bubbles.push({text:'',shape:'handwritten',tail:false,bbox:fallbackBox(panel,'bubble',index)}));onSelectElement({type:'bubble',index});}}
+      onSelect={index=>onSelectElement({type:'bubble',index})} onText={onHandwrittenText}
+      onUpdate={(index,recipe)=>update(draft=>recipe(draft.bubbles[index]))}
+      onRemove={index=>{update(draft=>removeBubbleAt(draft.bubbles,index));onSelectElement(null);}}
+      onGenerate={onGenerateHandwritten}/>
+    <div class="inspector-fields" inert={locked} aria-disabled={locked}>
+
+    {selectedText&&(selectedElement?.type==='bubble'||selectedElement?.type==='screen_text')&&<BubbleInfoPortal request={canvasSelectionScrollRequest} disabled={locked} label={`${panelDisplayLabel(panel.id)}の文字情報`}>
+    <SelectedTextInfo item={selectedText} index={selectedElement.index+(selectedElement.type==='screen_text'?(panel.bubbles?.length??0):0)} kind={selectedElement.type} disabled={locked||painting||generationBusy||(selectedElement.type==='bubble'&&ownerItemLocked(selectedText))} onCategory={onTextCategory} onText={onSelectedText} onHistoryBoundary={onHandwrittenHistoryBoundary}/>
+    {selectedElement.type==='bubble'&&isBalloonText(selectedText)&&<section class="editor-section inspector-category-section panel-bubble-section">
       <div class="nested-list">
-        {panel.bubbles.map((bubble, index) => <div class={`nested-card bubble-card selectable-card ${ownerItemLocked(bubble)?'is-locked':''} ${bubble.splitOverlap ? 'is-split-overlap' : ''} ${selectedElement?.type === 'bubble' && selectedElement.index === index ? 'is-selected' : ''}`} inert={ownerItemLocked(bubble)} aria-disabled={ownerItemLocked(bubble)} key={index} onClick={(event) => selectCard(event, { type: 'bubble', index })}>
-          <div class="nested-card-head"><BubbleCardTitle number={index + 1} selected={selectedElement?.type === 'bubble' && selectedElement.index === index} splitOverlap={bubble.splitOverlap} /><button onClick={(event) => { event.stopPropagation(); update((draft) => { removeBubbleAt(draft.bubbles, index); }); if (selectedElement?.type === 'bubble') onSelectElement(null); }}>×</button></div>
+        {panel.bubbles.map((bubble,index)=>({bubble,index})).filter(({bubble,index})=>isBalloonText(bubble)&&selectedElement?.type==='bubble'&&selectedElement.index===index).map(({bubble, index}) => <div class={`nested-card bubble-card selectable-card ${ownerItemLocked(bubble)?'is-locked':''} ${bubble.splitOverlap ? 'is-split-overlap' : ''} ${selectedElement?.type === 'bubble' && selectedElement.index === index ? 'is-selected' : ''}`} inert={ownerItemLocked(bubble)} aria-disabled={ownerItemLocked(bubble)} key={index} onClick={(event) => selectCard(event, { type: 'bubble', index })}>
           {manga.scenario && <ScenarioBubbleNotice manga={manga} bubble={bubble} location={{ pageIndex, panelIndex, bubbleIndex: index }} onScenarioChoice={onScenarioChoice} />}
           <div class="field-grid">
             <Field label="話者"><select value={bubble.speakerId ?? ''} onChange={(event) => update((draft) => { const character = manga.characters.find((entry) => entry.localId === event.currentTarget.value); if (character) { draft.bubbles[index].speakerId = character.localId; draft.bubbles[index].speaker = character.name; } else { delete draft.bubbles[index].speakerId; delete draft.bubbles[index].speaker; } })}><option value="">話者なし</option>{manga.characters.map((character) => <option value={character.localId}>{character.name}</option>)}</select></Field>
@@ -644,19 +661,19 @@ export default function PanelInspector({ onOpenBackground3d, panelControls, pain
           {index > 0 && <div class="bubble-join-control">
             <Field label="結合先"><select value={bubble.join_to === undefined ? '' : String(bubble.join_to)} onChange={(event) => { const value=event.currentTarget.value;update((draft) => { value ? draft.bubbles[index].join_to=Number(value) : delete draft.bubbles[index].join_to; }); }}>
               <option value="">結合しない</option>
-              {panel.bubbles.slice(0, index).map((_, targetIndex) => <option value={String(targetIndex + 1)}>フキダシ {targetIndex + 1}</option>)}
+              {panel.bubbles.slice(0,index).map((item,targetIndex)=>({item,targetIndex})).filter(({item})=>isBalloonText(item)).map(({targetIndex}) => <option value={String(targetIndex + 1)}>{textDisplayLabel(targetIndex)}</option>)}
             </select></Field>
           </div>}
         </div>)}
       </div>
-    </section>
-    </BubbleInfoPortal>
+    </section>}
+    </BubbleInfoPortal>}
 
     <section class="editor-section inspector-category-section panel-text-section">
-      <SectionTitle title="通常文字" />
+      <SectionTitle title="写植文字" />
       <div class="nested-list">
         {(panel.screen_text ?? []).map((screenText, index) => <div class={`nested-card selectable-card ${screenText.splitOverlap ? 'is-split-overlap' : ''} ${selectedElement?.type === 'screen_text' && selectedElement.index === index ? 'is-selected' : ''}`} key={index} onClick={(event) => selectCard(event, { type: 'screen_text', index })}>
-          <div class="nested-card-head"><strong>TEXT {index + 1}{selectedElement?.type === 'screen_text' && selectedElement.index === index ? ' · 選択中' : ''}{screenText.splitOverlap && <em class="split-overlap-badge">分割重複</em>}</strong><button onClick={(event) => { event.stopPropagation(); update((draft) => { draft.screen_text?.splice(index, 1); if (!draft.screen_text?.length) delete draft.screen_text; }); if (selectedElement?.type === 'screen_text') onSelectElement(null); }}>×</button></div>
+          <div class="nested-card-head"><strong>{textDisplayLabel(panel.bubbles.length+index)}{selectedElement?.type === 'screen_text' && selectedElement.index === index ? ' · 選択中' : ''}{screenText.splitOverlap && <em class="split-overlap-badge">分割重複</em>}</strong><button onClick={(event) => { event.stopPropagation(); update((draft) => { draft.screen_text?.splice(index, 1); if (!draft.screen_text?.length) delete draft.screen_text; }); if (selectedElement?.type === 'screen_text') onSelectElement(null); }}>×</button></div>
           <Field label="文字" wide><textarea rows={2} value={screenText.text} placeholder="紙面へ置く文字" onInput={(event) => update((draft) => { draft.screen_text![index].text = event.currentTarget.value; })} /></Field>
         </div>)}
       </div>

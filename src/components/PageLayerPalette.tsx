@@ -8,7 +8,7 @@ import type { PaintLayerAction } from '../lib/paintSession';
 import { ownerItemLocked, panelVisible, panelFrameVisible, panelFrameLocked, panelLocked } from '../lib/panelLayers';
 import { PaintLayerControlsContext, usePaintWorkspace } from '../lib/paintWorkspace';
 import { overlayFallbackBox } from '../lib/pageCanvas';
-import { panelDisplayLabel } from '../lib/displayLabels';
+import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels';
 import PaintLayerPalette from './PaintLayerPalette';
 import LayerVisibilityButton from './LayerVisibilityButton';
 import LayerLockIcon from './LayerLockIcon';
@@ -124,9 +124,10 @@ export default function PageLayerPalette(p:Props) {
   const textLayers=(items:ScreenText[]|undefined,panel:number,overlay=false)=>(items??[]).map((item,index)=>{
     const selected=selectedText?.index===index&&selectedText?.panel===panel&&selectedText?.overlay===overlay;
     const locked=!overlay&&panelLocked(p.page.panels[panel]);
-    return <div class={`layer-row native-text-layer ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} data-canvas-selected={selected} aria-label={`文字 ${index+1}`} key={`text-${index}`}>
-      <LayerVisibilityButton label={`${overlay?'前景の':''}文字 ${index+1}を${item.hidden===true?'表示':'隠す'}`} visible={item.hidden!==true} disabled={p.disabled||!p.onToggleText} onClick={()=>p.onToggleText?.(panel,index,overlay)}/>
-      <button class="layer-select" aria-pressed={selected} aria-label={`文字 ${index+1}を選択`} data-tool-help="編集可能な文字レイヤーです。クリックするとTの文字設定で編集できます。" disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-thumbnail text-thumbnail"><Type size={20}/></span><span class="layer-caption"><small>文字 {index+1} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
+    const label=textDisplayLabel(index+((overlay?p.page.page_overlay:p.page.panels[panel])?.bubbles?.length??0));
+    return <div class={`layer-row native-text-layer ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} data-canvas-selected={selected} aria-label={label} key={`text-${index}`}>
+      <LayerVisibilityButton label={`${overlay?'前景の':''}${label}を${item.hidden===true?'表示':'隠す'}`} visible={item.hidden!==true} disabled={p.disabled||!p.onToggleText} onClick={()=>p.onToggleText?.(panel,index,overlay)}/>
+      <button class="layer-select" aria-pressed={selected} aria-label={`${label}を選択`} data-tool-help="編集可能な文字レイヤーです。クリックするとTの文字設定で編集できます。" disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-thumbnail text-thumbnail"><Type size={20}/></span><span class="layer-caption"><small>{label} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
     </div>;
   });
   const eye=(label:string,visible:boolean,action:()=>void)=><LayerVisibilityButton label={label} visible={visible} disabled={p.disabled} onClick={action}/>;
@@ -141,9 +142,9 @@ export default function PageLayerPalette(p:Props) {
   const bubbleTarget=selection?.type==='bubble'&&selectedOwner?{panel:selectedOverlay?0:p.activePanel,index:selection.index,overlay:selectedOverlay}:null;
   const bubbleTargetItem=bubbleTarget?(bubbleTarget.overlay?p.page.page_overlay?.bubbles?.[bubbleTarget.index]:p.page.panels[bubbleTarget.panel]?.bubbles[bubbleTarget.index]):undefined;
   const bubbleTargetLocked=bubbleTarget?Boolean((bubbleTargetItem&&ownerItemLocked(bubbleTargetItem))||artworkLocked(bubbleTargetItem?.paint_overlay)||(!bubbleTarget.overlay&&panelLocked(p.page.panels[bubbleTarget.panel]))):false;
-  const bubbleControls=bubbleTarget?<SelectionControls disabled={p.disabled} remove={bubbleTargetLocked?undefined:()=>p.onDeleteBubble(bubbleTarget.panel,bubbleTarget.index,bubbleTarget.overlay)} removeLabel={`吹き出し ${bubbleTarget.index+1}を削除`}/>:null;
+  const bubbleControls=bubbleTarget?<SelectionControls disabled={p.disabled} remove={bubbleTargetLocked?undefined:()=>p.onDeleteBubble(bubbleTarget.panel,bubbleTarget.index,bubbleTarget.overlay)} removeLabel={`${textDisplayLabel(bubbleTarget.index)}を削除`}/>:null;
   const textTarget=selectedText;
-  const textControls=textTarget?<SelectionControls disabled={p.disabled} remove={p.onDeleteText&&(textTarget.overlay||!panelLocked(p.page.panels[textTarget.panel]))?()=>p.onDeleteText?.(textTarget.panel,textTarget.index,textTarget.overlay):undefined} removeLabel={`文字 ${textTarget.index+1}を削除`}/>:null;
+  const textControls=textTarget?<SelectionControls disabled={p.disabled} remove={p.onDeleteText&&(textTarget.overlay||!panelLocked(p.page.panels[textTarget.panel]))?()=>p.onDeleteText?.(textTarget.panel,textTarget.index,textTarget.overlay):undefined} removeLabel={`${textDisplayLabel(textTarget.index+((textTarget.overlay?p.page.page_overlay:p.page.panels[textTarget.panel])?.bubbles?.length??0))}を削除`}/>:null;
   const activePageOwner=paint?.overlay&&paint.page===p.page.page?paint.scene.owners.find(owner=>owner.kind==='page'):undefined;
   const hasPageDirect=Boolean(p.page.page_overlay?.figures?.length||p.page.page_overlay?.bubbles?.length||p.page.page_overlay?.screen_text?.length||p.page.images?.some(image=>image.paintScope==='page'||image.bubbleOriginal)||activePageOwner?.paint.layers.length||activePageOwner?.paint.folders?.length);
   const pageDirectAdd=!hasPageDirect&&<div class="page-direct-create-actions" role="group" aria-label="コマ外レイヤーを追加">

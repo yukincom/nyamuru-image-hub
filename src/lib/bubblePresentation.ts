@@ -2,12 +2,25 @@ import type { Bubble, BubbleShape, BubbleTailStyle } from '../types.ts';
 
 export const DEFAULT_BUBBLE_LINE_WIDTH_MM = 0.5;
 
+export function isHandwrittenText(bubble: Pick<Bubble, 'shape'> | undefined): boolean {
+  return bubble?.shape === 'handwritten';
+}
+
+export function isBalloonText(bubble: Pick<Bubble, 'shape'|'text'>): boolean {
+  return bubble.shape !== 'handwritten' && bubble.shape !== 'typeset';
+}
+
+export function letteringGuideVisible(bubble: Pick<Bubble, 'shape' | 'lettering_guide_hidden'>): boolean {
+  return !isHandwrittenText(bubble) || bubble.lettering_guide_hidden !== true;
+}
+
 const NO_TAIL_BY_DEFAULT = new Set<BubbleShape>([
   'square',
   'caption',
   'flash',
   'uniflash',
   'handwritten',
+  'typeset',
 ]);
 
 export function normalizedBubbleLineWidth(value: number): number {
@@ -26,6 +39,7 @@ export function bubbleShapeHasTailByDefault(shape: BubbleShape | undefined): boo
 }
 
 export function bubbleTailIsEnabled(bubble: Pick<Bubble, 'tail' | 'offscreen' | 'shape'>): boolean {
+  if (bubble.shape === 'typeset') return false;
   if (bubble.offscreen === true || bubble.tail === false) return false;
   if (bubble.tail && typeof bubble.tail === 'object') return true;
   return bubbleShapeHasTailByDefault(bubble.shape);

@@ -6,7 +6,7 @@ import type { BBox, Bubble, CanvasElementSelection, Figure, ImageAsset, MangaPag
 import { fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { artworkPixelSize } from './artworkClipboard.ts';
 import { paintLayerHasContent, paintLayerVisible } from './paintLock.ts';
-import { figureDisplayLabel } from './displayLabels.ts';
+import { figureDisplayLabel, textDisplayLabel } from './displayLabels.ts';
 import {paintStrokeContentBounds} from './paintStroke.ts';
 
 /** Layout selection is not a paint selection; callers choose any drawing fallback explicitly. */
@@ -304,7 +304,7 @@ function bubblePaintForFrame(bubble:Bubble,frame:BBox,dpi:number,assets:ImageAss
   if(initialized)return {...paint,guideInitialized:true};
   if(!bubble.analogTextImport||paint.layers.length>=64)return paint;
   // Pending source decoding uses the existing guide loader once. OCR text is shown immediately.
-  const original={...newPaintLayer('吹き出し原画'),guide:true,visible:false};
+  const original={...newPaintLayer('テキスト原画'),guide:true,visible:false};
   return {...paint,guideInitialized:true,layers:[original,...(bubble.paint_overlay?paint.layers:[])]};
 }
 
@@ -376,7 +376,7 @@ export function paintScene(panel: Panel, dpi: number, assets: ImageAsset[],color
   });
   panel.bubbles.forEach((bubble,index)=>{
     const box = bubble.bbox ?? fallbackBox(panel,'bubble',index);
-    owners.push({key:`bubble-${index}`,kind:'bubble',index,label:`吹き出し ${index+1}`,frame:box,bubble,locked:bubble.locked===true||bubble.paint_overlay?.locked===true,inheritedLocked,
+    owners.push({key:`bubble-${index}`,kind:'bubble',index,label:textDisplayLabel(index),frame:box,bubble,locked:bubble.locked===true||bubble.paint_overlay?.locked===true,inheritedLocked,
       paint:bubblePaintForFrame(bubble,box,dpi,assets,colorMode)});
   });
   if(directScope){
@@ -548,7 +548,7 @@ export function applyOwnerPaint(panel: {figures?:Figure[];bubbles?:Bubble[];back
     if(figure.analogImport&&owner.figure?.analogImport?.userEdited)figure.analogImport={...figure.analogImport,userEdited:true};
   } else if(owner.kind==='bubble') {
     const bubble=panel.bubbles?.[owner.index];
-    if(!bubble)throw new Error('吹き出しの配置先が見つかりません');
+    if(!bubble)throw new Error('テキストの配置先が見つかりません');
     bubble.paint_overlay=content; bubble.bbox={...bbox};
     if(bubble.analogTextImport&&owner.paint.guideInitialized)bubble.analogTextImport.rasterLayerInitialized=true;
   } else throw new Error('描画先が見つかりません');
@@ -570,7 +570,7 @@ export function clearOwnerPaint(panel: {figures?:Figure[];bubbles?:Bubble[];back
   }
   if(owner.kind!=='bubble')throw new Error('描画先が見つかりません');
   const bubble=panel.bubbles?.[owner.index];
-  if(!bubble)throw new Error('吹き出しの配置先が見つかりません');
+  if(!bubble)throw new Error('テキストの配置先が見つかりません');
   delete bubble.paint_overlay;
   if(bubble.analogTextImport)bubble.analogTextImport.rasterLayerInitialized=true;
 }

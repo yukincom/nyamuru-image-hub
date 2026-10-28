@@ -425,10 +425,10 @@ async function verifyPaletteStability(){
   click('.manga-paper [data-content-kind="figure"][data-content-panel="0"][data-content-index="0"]');await settle();
   check(figureFold().getAttribute('aria-expanded')==='false','編集画面で人物を選択しても閉じたフォルダーを開かない');
   const text='.manga-paper [data-content-kind="screen_text"][data-content-panel="0"]';
-  click(`${panel} [aria-label="文字 1を隠す"]`);await wait(()=>!document.querySelector(text),'文字を隠せません');
+  click(`${panel} [aria-label="テキスト3を隠す"]`);await wait(()=>!document.querySelector(text),'文字を隠せません');
   await wait(()=>stored().manga.pages[0].panels[0].screen_text![0].hidden===true,'文字の非表示を保存できません');
   check(first<HTMLElement>(`${panel} .paint-layer-palette`)===tree&&first<HTMLElement>('.manga-paper')===paper,'文字の目を切り替えてもパレットと紙面のDOMを保持');
-  click(`${panel} [aria-label="文字 1を表示"]`);await wait(()=>!!document.querySelector(text),'文字を再表示できません');
+  click(`${panel} [aria-label="テキスト3を表示"]`);await wait(()=>!!document.querySelector(text),'文字を再表示できません');
   check(true,'文字の目で非表示・再表示し、保存にも反映');
   click(`${panel} .panel-layer-select`);await settle();
   click('.selection-layer-controls [aria-label="ベクターレイヤー追加"]');

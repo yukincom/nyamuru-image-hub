@@ -3,7 +3,7 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
-import {buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint,QWEN_GENERATION_PROFILE} from '../src/lib/qwenGeneration.ts';
+import {canGeneratePaintOwner,buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint,QWEN_GENERATION_PROFILE} from '../src/lib/qwenGeneration.ts';
 import {setWorkStylePrompt,artworkSettingsFromSource,applyArtworkSettings} from '../src/lib/artworkRules.ts';
 import {FIGURE_SIZE_LABELS,parseMangaYaml,parseOmayYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 import {confirmHumanPoseCameraPrompt} from '../src/lib/humanPoseScene.ts';
@@ -358,4 +358,40 @@ test('an explicitly chosen reference layer renders even when its parent folder i
  const owner={paint:{width:10,height:10,layers:[{id:'ref',name:'参照',folderId:'hidden',visible:true,opacity:1,strokes:[{}]}],folders:[{id:'hidden',name:'非表示',position:0,visible:false}]}};
  const before=structuredClone(owner),paint=qwenLayerPaint(owner,'ref');
  assert.equal(paint.layers[0].visible,true);assert.equal(paint.layers[0].folderId,undefined);assert.equal(paint.folders,undefined);assert.deepEqual(owner,before);
+});
+
+
+test('handwritten generation keeps literal text and owner while ordinary balloon generation is unavailable',()=>{
+ const manga=fixture(),panel=manga.pages[0].panels[0];
+ applyArtworkSettings(manga,artworkSettingsFromSource(parseOmayYaml(readFileSync(new URL('../src/content/standard-settings.yaml',import.meta.url),'utf8'))));
+ panel.bubbles=[{text:'台詞',shape:'normal'},{text:'ド  ン！\nドン',shape:'handwritten',lettering_description:'太く角張る',lettering_guide_hidden:true,text_style:{orientation:'horizontal'},bbox:{x:20,y:30,w:40,h:30}}];
+ const scene=paintScene(panel,100,[]),normal=scene.owners.find(o=>o.key==='bubble-0'),lettering=scene.owners.find(o=>o.key==='bubble-1'),before=structuredClone(manga);
+ assert.equal(canGeneratePaintOwner(normal),false);assert.equal(canGeneratePaintOwner(lettering),true);
+ assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,normal),/単品生成/);
+ const plan=buildQwenGenerationPlan(manga,0,0,false,lettering),payload=qwenGenerationPayload(plan,[]);
+ assert.equal(plan.scope,undefined);assert.equal(plan.contentKind,'handwritten');assert.equal(plan.label,'テキスト2');
+ assert.match(plan.prompt,/太く角張る/);assert.match(plan.prompt,/meta.text_orientation=horizontal/);assert.doesNotMatch(plan.prompt,/文字は加えない|外形だけ|形・線・勢い・質感/);
+ assert.deepEqual(payload.literal_text,[panel.bubbles[1].text]);assert.equal(payload.content_kind,'handwritten');assert.equal(payload.owner_key,'bubble-1');assert.equal(payload.mode,'new');
+ assert.ok(qwenGenerationPrompt(plan,undefined,{kind:'paint'}).includes(panel.bubbles[1].text));
+ for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
+  assert.match(prompt,/handwritten=フキダシなしの手描き文字/);
+  assert.match(prompt,/OMNY記載どおりの日本語/);
+  assert.doesNotMatch(prompt,/ヘッダーの文字|一発生成/);
+ }
+ assert.equal(qwenGenerationPayload(plan,[],'data:paint').mode,'paint');
+ assert.throws(()=>qwenGenerationPayload({...plan,contentKind:undefined},[]),/吹き出し単品/);
+ assert.throws(()=>qwenGenerationPayload({...plan,scope:'panel'},[]),/生成対象/);
+ assert.deepEqual(manga,before);
+ panel.bubbles[1].shape='normal';assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,{...lettering,bubble:before.pages[0].panels[0].bubbles[1]}),/選び直し/);
+});
+
+test('lettering instructions and guide visibility survive stored YAML and foreground generation stays scoped',()=>{
+ const manga=fixture(),bubble={text:'ふわっ',shape:'handwritten',lettering_description:'細く柔らかな線',lettering_guide_hidden:true,bbox:{x:5,y:5,w:40,h:25}};
+ manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[bubble]};
+ const document={manga},parsed=parseMangaYaml(toStoredMangaYaml(document));
+ assert.equal(parsed.manga.pages[0].page_overlay.bubbles[0].lettering_description,bubble.lettering_description);
+ assert.equal(parsed.manga.pages[0].page_overlay.bubbles[0].lettering_guide_hidden,true);
+ const owner={...paintScene({...manga.pages[0].panels[0],bubbles:[bubble]},100,[]).owners.find(o=>o.kind==='bubble')};
+ const plan=buildQwenGenerationPlan(manga,0,0,true,owner);assert.equal(plan.panelId,0);assert.equal(plan.overlay,true);assert.deepEqual(plan.literalText,['ふわっ']);
+ bubble.text='';assert.throws(()=>buildQwenGenerationPlan(manga,0,0,true,owner),/本文/);
 });

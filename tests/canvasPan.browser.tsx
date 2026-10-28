@@ -122,9 +122,9 @@ async function run(){
  const screenLayoutAfter={fontSize:parseFloat(getComputedStyle(screenText).fontSize),width:screenText.offsetWidth,height:screenText.offsetHeight,scrollWidth:screenText.scrollWidth,scrollHeight:screenText.scrollHeight};
  check(getComputedStyle(paper).transform==='none'&&Math.abs(paper.clientWidth-after.width)<1,'画面ズームは表示幅で直接描画し、caretと編集枠を祖先scaleで細くしない');
  check(Math.abs(bubbleLayoutAfter.fontSize/bubbleLayoutBefore.fontSize-paperRatio)<.015,'吹き出し文字ptを変更せず表示幅に応じたCSS pxへ換算する');
- check(Math.abs(screenLayoutAfter.fontSize/screenLayoutBefore.fontSize-paperRatio)<.015,'通常文字ptを変更せず表示幅に応じたCSS pxへ換算する');
+ check(Math.abs(screenLayoutAfter.fontSize/screenLayoutBefore.fontSize-paperRatio)<.015,'写植文字ptを変更せず表示幅に応じたCSS pxへ換算する');
  check(Math.abs(bubbleVisualAfter.width/Math.max(1,bubbleVisualBefore.width)-paperRatio)<.015,'吹き出し文字は紙面全体と一緒に表示だけ拡大する');
- check(Math.abs(screenVisualAfter.width/Math.max(1,screenVisualBefore.width)-paperRatio)<.015,'通常文字は紙面全体と一緒に表示だけ拡大する');
+ check(Math.abs(screenVisualAfter.width/Math.max(1,screenVisualBefore.width)-paperRatio)<.015,'写植文字は紙面全体と一緒に表示だけ拡大する');
  check(localStorage.getItem(STORAGE_KEY)===storedBeforeZoom,'ズームで文字サイズや文書を保存変更しない');
  // Observe the real alpha-measurement path during a burst, not a mocked scheduler.
  const readPixels=CanvasRenderingContext2D.prototype.getImageData;let smallReads=0;
@@ -168,7 +168,7 @@ async function run(){
  const stored=()=>parseMangaYaml(localStorage.getItem(STORAGE_KEY)!);
  const settle=async()=>{for(let i=0;i<6;i++)await tick();};
  const originalBubble=structuredClone(stored().manga.pages[0].panels[0].bubbles[0]);
- await mouseClick(button('選択'));await mouseClick(find('.bubble-guide') as HTMLButtonElement);await mouseClick(button('通常文字'));
+ await mouseClick(button('選択'));await mouseClick(find('.bubble-guide') as HTMLButtonElement);await mouseClick(button('写植文字'));
  const textFrame=find('.bubble-text-move-frame.is-active'),textBox=textFrame.getBoundingClientRect(),paperBox=paper.getBoundingClientRect();
  const dx=originalBubble.bbox!.w*.25/stored().manga.pages[0].canvas.w*paperBox.width,dy=originalBubble.bbox!.h*.25/stored().manga.pages[0].canvas.h*paperBox.height;
  pointer(textFrame,'pointerdown',textBox.left+1,textBox.top+1);pointer(window,'pointermove',textBox.left+1+dx,textBox.top+1+dy);pointer(window,'pointerup',textBox.left+1+dx,textBox.top+1+dy);await settle();

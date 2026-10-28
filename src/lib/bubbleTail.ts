@@ -8,6 +8,7 @@ import { EXTRACTED_BUBBLE_ASSETS } from '../data/extractedBubbleAssets.ts';
 
 /** Same outline sources as BubbleShapeSvg; all computation is disposable. */
 function bodyCurve(shape: BubbleShape, bezier?: Bubble['bezier']) {
+  if (shape === 'typeset') return null;
   const outline = bezier ?? materialBubbleBezier(shape);
   if (isBubbleBezier(outline)) return paperPath(bubbleBezierPath(outline));
   if (shape === 'handwritten') return null;
@@ -270,6 +271,7 @@ export function bubbleJoinGeometry(
   firstBezier?: Bubble['bezier'],
   secondBezier?: Bubble['bezier'],
 ): BubbleJoinGeometry | null {
+  if (firstShape === 'typeset' || secondShape === 'typeset') return null;
   const firstCenter = bubbleBezierCenter(firstBox, firstBezier) ?? { x: firstBox.x + firstBox.w / 2, y: firstBox.y + firstBox.h / 2 };
   const secondCenter = bubbleBezierCenter(secondBox, secondBezier) ?? { x: secondBox.x + secondBox.w / 2, y: secondBox.y + secondBox.h / 2 };
   const centerDistance = Math.hypot(secondCenter.x - firstCenter.x, secondCenter.y - firstCenter.y);

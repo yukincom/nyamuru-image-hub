@@ -4,6 +4,11 @@ export function panelDisplayLabel(panelId: number): string {
   return `コマ ${String(panelId).padStart(2, '0')}`;
 }
 
+/** A text item's name stays independent of its balloon/lettering/typeset category. */
+export function textDisplayLabel(index:number):string {
+  return `テキスト${index+1}`;
+}
+
 /** Never leave a visible guide unnamed when imported or unresolved data has a blank name. */
 export function figureDisplayLabel(figure:Pick<Figure,'name'|'kind'|'object'>,index:number):string {
   const name=figure.name?.normalize('NFKC').trim();

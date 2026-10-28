@@ -1,19 +1,28 @@
+import { textDisplayLabel } from '../lib/displayLabels';
+import SelectedTextInfo from './SelectedTextInfo';
+import type { TextCategory } from '../lib/canvasText';
 import BubbleInfoPortal from './BubbleInfoPortal';
+import HandwrittenTextSection from './HandwrittenTextSection';
 import FigureSizePicker from './FigureSizePicker';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
-import { Box, MessageCircleMore, UserPlus } from 'lucide-preact';
+import { Box, UserPlus } from 'lucide-preact';
 import { FIGURE_SIZE_LABELS, FIGURE_ROLE_LABELS, FIGURE_ROLES } from '../lib/manga';
-import { bubbleTailStyle, setBubbleTailStyle } from '../lib/bubblePresentation.ts';
+import { bubbleTailStyle, setBubbleTailStyle, isBalloonText } from '../lib/bubblePresentation.ts';
 import { removeBubbleAt } from '../lib/bubbleConnections.ts';
 import type { CanvasElementSelection, Manga, PageOverlay, Panel } from '../types';
 import { isPropPlacement } from '../lib/catalogModel.ts';
 import { Field, SectionTitle } from './Fields';
-import BubbleCardTitle from './BubbleCardTitle';
 import ScenarioBubbleNotice, { type ScenarioBubbleChoiceProps } from './ScenarioBubbleNotice';
 import { useInspectorSelectionScroll } from './useInspectorSelectionScroll.ts';
 import { ownerItemLocked, preservesLockedItems } from '../lib/panelLayers.ts';
 
 interface Props extends ScenarioBubbleChoiceProps {
+  onTextCategory:(category:TextCategory)=>void;
+  onSelectedText:(text:string)=>void;
+  onHandwrittenHistoryBoundary:()=>void;
+  onGenerateHandwritten:(index:number)=>void;
+  onHandwrittenText:(index:number,text:string)=>void;
+  generationBusy?:boolean;
   painting?: boolean;
   pageIndex: number;
   manga: Manga;
@@ -25,14 +34,15 @@ interface Props extends ScenarioBubbleChoiceProps {
   onChange: (overlay: PageOverlay | undefined) => void;
 }
 
-export default function PageOverlayInspector({ manga, panels, overlay, pageIndex, selectedElement, canvasSelectionScrollRequest, onSelectElement, onChange, onScenarioChoice }: Props) {
+export default function PageOverlayInspector({ onTextCategory, onSelectedText, onHandwrittenHistoryBoundary, onGenerateHandwritten, onHandwrittenText, generationBusy=false, painting=false, manga, panels, overlay, pageIndex, selectedElement, canvasSelectionScrollRequest, onSelectElement, onChange, onScenarioChoice }: Props) {
   const inspectorRef = useInspectorSelectionScroll(canvasSelectionScrollRequest);
+  const selectedText=selectedElement?.type==='bubble'?overlay.bubbles?.[selectedElement.index]:selectedElement?.type==='screen_text'?overlay.screen_text?.[selectedElement.index]:undefined;
   const props = manga.materials.filter((material) => material.type === 'prop');
   const update = (recipe: (draft: PageOverlay) => void) => {
     const draft = structuredClone(overlay);
     recipe(draft);
     if(!preservesLockedItems(overlay.figures,draft.figures)||!preservesLockedItems(overlay.bubbles,draft.bubbles))return;
-    if (!(draft.figures?.length) && !(draft.bubbles?.length)) onChange(undefined);
+    if (!(draft.figures?.length) && !(draft.bubbles?.length) && !(draft.screen_text?.length)) onChange(undefined);
     else onChange(draft);
   };
   const selectCard = (_event: MouseEvent, selection: CanvasElementSelection) => onSelectElement(selection);
@@ -122,19 +132,21 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
       </div>
     </section>
 
-    <BubbleInfoPortal request={canvasSelectionScrollRequest} label={"ページ前景の吹き出し情報"}>
-    <section class="editor-section inspector-category-section">
-      <SectionTitle index="02" title="フキダシ" action={<button class="inline-add" onClick={() => {
-        const index = overlay.bubbles?.length ?? 0;
-        update((draft) => { (draft.bubbles ??= []).push({ text: '', shape: 'normal', bbox: { x: 150, y: 20, w: 38, h: 55 } }); });
-        onSelectElement({ scope: 'page_overlay', type: 'bubble', index });
-      }}><MessageCircleMore size={14} />追加</button>} />
+    <HandwrittenTextSection onHistoryBoundary={onHandwrittenHistoryBoundary} bubbles={overlay.bubbles??[]} selectedIndex={selectedElement?.type==='bubble'?selectedElement.index:undefined} disabled={painting} busy={generationBusy}
+      onAdd={()=>{const index=overlay.bubbles?.length??0;update(draft=>(draft.bubbles??=[]).push({text:'',shape:'handwritten',tail:false,bbox:{x:55,y:45,w:40,h:35}}));onSelectElement({scope:'page_overlay',type:'bubble',index});}}
+      onSelect={index=>onSelectElement({scope:'page_overlay',type:'bubble',index})} onText={onHandwrittenText}
+      onUpdate={(index,recipe)=>update(draft=>recipe(draft.bubbles![index]))}
+      onRemove={index=>{update(draft=>removeBubbleAt(draft.bubbles!,index));onSelectElement(null);}}
+      onGenerate={onGenerateHandwritten}/>
+
+    {selectedText&&(selectedElement?.type==='bubble'||selectedElement?.type==='screen_text')&&<BubbleInfoPortal request={canvasSelectionScrollRequest} label={"ページ前景の文字情報"}>
+    <SelectedTextInfo item={selectedText} index={selectedElement.index+(selectedElement.type==='screen_text'?(overlay.bubbles?.length??0):0)} kind={selectedElement.type} disabled={painting||generationBusy||(selectedElement.type==='bubble'&&ownerItemLocked(selectedText))} onCategory={onTextCategory} onText={onSelectedText} onHistoryBoundary={onHandwrittenHistoryBoundary}/>
+    {selectedElement.type==='bubble'&&isBalloonText(selectedText)&&<section class="editor-section inspector-category-section">
       <div class="nested-list">
-        {(overlay.bubbles ?? []).map((bubble, index) => {
+        {(overlay.bubbles ?? []).map((bubble,index)=>({bubble,index})).filter(({bubble,index})=>isBalloonText(bubble)&&selectedElement?.type==='bubble'&&selectedElement.index===index).map(({bubble, index}) => {
           const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'bubble', index };
           const selected = selectedElement?.type === 'bubble' && selectedElement.index === index;
           return <div class={`nested-card selectable-card ${ownerItemLocked(bubble)?'is-locked':''} ${bubble.splitOverlap ? 'is-split-overlap' : ''} ${selected ? 'is-selected' : ''}`} inert={ownerItemLocked(bubble)} aria-disabled={ownerItemLocked(bubble)} key={bubble.analogTextImport?.sourceRegionId ?? index} onClick={(event) => selectCard(event, selection)}>
-            <div class="nested-card-head"><BubbleCardTitle number={index + 1} selected={selected} splitOverlap={bubble.splitOverlap} /><button onClick={(event) => { event.stopPropagation(); update((draft) => { if (draft.bubbles) removeBubbleAt(draft.bubbles, index); }); onSelectElement(null); }}>×</button></div>
             {manga.scenario && <ScenarioBubbleNotice manga={manga} bubble={bubble} location={{ pageIndex, panelIndex: 0, bubbleIndex: index, overlay: true }} onScenarioChoice={onScenarioChoice} />}
             <div class="field-grid">
               <Field label="話者"><select value={bubble.speakerId ?? ''} onChange={(event) => update((draft) => { const character = manga.characters.find((entry) => entry.localId === event.currentTarget.value); if (character) { draft.bubbles![index].speakerId = character.localId; draft.bubbles![index].speaker = character.name; } else { delete draft.bubbles![index].speakerId; delete draft.bubbles![index].speaker; } })}><option value="">話者なし</option>{manga.characters.map((character) => <option value={character.localId}>{character.name}</option>)}</select></Field>
@@ -144,14 +156,14 @@ export default function PageOverlayInspector({ manga, panels, overlay, pageIndex
             {index > 0 && <div class="bubble-join-control">
               <Field label="結合先"><select value={bubble.join_to === undefined ? '' : String(bubble.join_to)} onChange={(event) => { const value=event.currentTarget.value;update((draft) => { value ? draft.bubbles![index].join_to=Number(value) : delete draft.bubbles![index].join_to; }); }}>
                 <option value="">結合しない</option>
-                {(overlay.bubbles ?? []).slice(0, index).map((_, targetIndex) => <option value={String(targetIndex + 1)}>フキダシ {targetIndex + 1}</option>)}
+                {(overlay.bubbles??[]).slice(0,index).map((item,targetIndex)=>({item,targetIndex})).filter(({item})=>isBalloonText(item)).map(({targetIndex}) => <option value={String(targetIndex + 1)}>{textDisplayLabel(targetIndex)}</option>)}
               </select></Field>
             </div>}
           </div>;
         })}
       </div>
-    </section>
-    </BubbleInfoPortal>
+    </section>}
+    </BubbleInfoPortal>}
     </div>
   </div>;
 }

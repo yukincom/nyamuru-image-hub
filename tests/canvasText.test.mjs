@@ -9,8 +9,53 @@ import {bubbleStrokeWidthMm} from '../src/lib/bubblePresentation.ts';
 import {availableFontWeights,matchingFontWeight} from '../src/lib/bubbleFonts.ts';
 import {updateTextStyle,textStyleOf,typingTextStyle} from '../src/lib/textStyle.ts';
 import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
-import { changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
+import {createFrameArtwork} from '../src/lib/imagePlacement.ts';
+import {newPaintLayer} from '../src/lib/paintDocument.ts';
+import { changeCanvasTextCategory, canvasTextCategory, changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
+test('OCR text reclassification retains the owner, original image, paint, text and exact position through every category and storage',()=>{
+ for(const overlay of [false,true]){
+  const d=fixture(),page=d.manga.pages[0];
+  if(overlay)page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:structuredClone(page.panels[0].bubbles)};
+  const owner=overlay?page.page_overlay:page.panels[0],bubble=owner.bubbles[0];
+  const asset={id:'ink',storageId:'ink',sha256:'1'.repeat(64),mediaType:'image/png',originalName:'test.png',widthPx:30,heightPx:40,byteLength:128};d.manga.image_assets=[asset];
+  const paint={version:1,width:30,height:40,dpi:100,layers:[{...newPaintLayer('保持する描画'),id:'painted',visible:false,locked:true}]};
+  Object.assign(bubble,{text:'ゴ  ゴ\nゴ',bbox:{x:21,y:33,w:48,h:67},text_position:{x:.3,y:1.2},text_style:{fontSize:19,orientation:'horizontal',fontWeight:500},text_runs:[{start:0,end:1,italic:true}],
+   analogTextImport:{assetId:'original',sourceRegionId:'ocr',originalImageId:'original-image',rasterLayerSeparated:true,rasterLayerInitialized:true},
+   paint_overlay:{...createFrameArtwork(asset,{x:21,y:33,w:48,h:67}),paint}});
+  const source=structuredClone(bubble),original={...createFrameArtwork(asset,{x:5,y:7,w:8,h:9}),id:'original-image',bubbleOriginal:{sourceRegionId:'ocr',name:'原字'},paint:{...paint,layers:[{...newPaintLayer('原字'),id:'original-layer',visible:false}]}};
+  (overlay?page:owner).images=[original];owner.bubbles.push({text:'後続',join_to:1});
+  const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay};
+  for(const category of ['handwritten','typeset','bubble']){
+   assert.deepEqual(changeCanvasTextCategory(d,target,category),target);assert.equal(owner.bubbles[0],bubble);assert.equal(canvasTextCategory(bubble,'bubble'),category);
+   for(const key of ['text','bbox','text_position','text_style','text_runs','analogTextImport','paint_overlay'])assert.deepEqual(bubble[key],source[key],key);
+   assert.equal((overlay?page:owner).images[0],original);assert.equal(owner.bubbles[1].join_to,undefined);assert.equal(bubble.tail,false);
+   // Stored YAML retains editing metadata without making a second original or paint owner.
+   const restored=parseMangaYaml(toStoredMangaYaml(d)),roundtrip=canvasTextAt(restored,target);
+   for(const key of ['text','bbox','text_position','text_style','text_runs','analogTextImport','paint_overlay'])assert.deepEqual(roundtrip[key],source[key],key);
+   assert.equal(roundtrip.shape,category==='bubble'?'normal':category);
+  }
+ }
+});
+test('T-created text enters the same category switch without fitting, moving or duplicating text',()=>{
+ for(const overlay of [false,true]){
+  const d=fixture(),target=addCanvasTextAt(d,0,overlay?null:0,{x:60,y:75},{orientation:'horizontal',fontSize:20,fontWeight:450});
+  editCanvasText(d,target,'看 板\n二行');const screen=structuredClone(canvasTextAt(d,target));
+  const converted=changeCanvasTextCategory(d,target,'handwritten');assert.ok(converted);assert.equal(converted.overlay,overlay);
+  const bubble=canvasTextAt(d,converted);assert.equal(bubble.text,screen.text);assert.deepEqual(bubble.bbox,screen.bbox);assert.deepEqual(bubble.text_style,{...screen.text_style,lineHeight:1.15});
+  assert.equal((overlay?d.manga.pages[0].page_overlay:d.manga.pages[0].panels[0]).screen_text,undefined);
+  changeCanvasTextCategory(d,converted,'typeset');assert.equal(canvasTextAt(d,converted),bubble);assert.deepEqual(bubble.bbox,screen.bbox);
+ }
+});
+test('category no-ops, missing targets and manual locks leave the document untouched',()=>{
+ const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
+ for(const lock of ['same','missing','locked','nativeLocked','panel']){
+  const d=fixture();if(lock==='missing')target.index=12;else target.index=0;
+  if(lock==='locked'||lock==='nativeLocked')d.manga.pages[0].panels[0].bubbles[0][lock]=true;
+  if(lock==='panel')d.manga.pages[0].panels[0].layer={locked:true};
+  const before=structuredClone(d);assert.equal(changeCanvasTextCategory(d,target,lock==='same'?'bubble':'typeset'),null);assert.deepEqual(d,before);
+ }
+});
 test('new panel and page text inherit the chosen style instead of returning to 12pt',()=>{
  const d=fixture(),style={fontSize:29,orientation:'horizontal',font:'BIZ UDP明朝',fontWeight:700,textAlign:'right'};
  const targets=[addCanvasTextAt(d,0,0,{x:40,y:70},style),addCanvasTextAt(d,0,null,{x:10,y:10},style),addCanvasText(d,0,0,'screen_text',style)];

@@ -349,6 +349,40 @@ class QwenJobsTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '描く文字'):
             normalize({**body(), 'literal_text': ['こんにちは']})
 
+    def test_handwritten_subject_requires_one_literal_and_preserves_it_through_translation(self):
+        literal = 'ド  ン！\nドン'
+        request = {**self.request, 'owner_key': 'bubble-0', 'character_keys': [], 'references': [],
+                   'content_kind': 'handwritten', 'literal_text': [literal], 'prompt': '描く文字：' + literal}
+        value, _ = normalize(request)
+        self.assertEqual(value['content_kind'], 'handwritten')
+        self.assertEqual(value['literal_text'], [literal])
+        english = {**translate(value), 'prompt': 'Draw the lettering: ' + literal}
+        validate_english(value, english)
+        with self.assertRaisesRegex(ValueError, '欠落'):
+            validate_english(value, translate(value))
+        for change in ({'content_kind': None}, {'literal_text': []}, {'literal_text': ['a', 'b']},
+                       {'literal_text': ['   ']}, {'owner_key': 'background'}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                normalize({**request, **change})
+
+    def test_saved_balloon_outline_jobs_remain_readable_but_cannot_submit_or_run(self):
+        value, _ = normalize(self.request)
+        value.update(owner_key='bubble-0', character_keys=[], references=[])
+        job_id, store = self.request['job_id'], self.service.store
+        raw = canonical(value)
+        store.create(job_id)
+        store.write_once(job_id, 'request.json', raw)
+        store.write_once(job_id, 'request.sha256', sha256(raw).encode())
+        store.event(job_id, 'prepared')
+        self.assertEqual(self.service.load(job_id), value)
+        with self.assertRaisesRegex(ValueError, '吹き出し単品'):
+            self.submit({'job_id': job_id, 'request_sha256': sha256(raw)})
+        with hold_generation_lease(self.token, root=self.leases) as lease_fd:
+            self.service.run(job_id, os.dup(lease_fd), self.token)
+        self.assertEqual(store.latest(job_id)['status'], 'failed')
+        self.assertIn('吹き出し単品', str(store.latest(job_id)))
+        self.assertFalse((store.root / job_id / 'execution.json').exists())
+
     def test_saved_page_job_with_old_panel_id_remains_readable_without_rewriting(self):
         value, _ = normalize(self.request)
         value.update(owner_key='page', character_keys=[], references=[], literal_text=[])

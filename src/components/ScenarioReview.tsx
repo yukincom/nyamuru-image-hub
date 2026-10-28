@@ -1,3 +1,4 @@
+import { textDisplayLabel } from '../lib/displayLabels';
 import { useMemo, useState } from 'preact/hooks';
 import { ExternalLink } from 'lucide-preact';
 import type { MangaDocument } from '../types.ts';
@@ -14,8 +15,8 @@ function CorrespondenceChoice({ document, location, onNavigate }: Props & { loca
   const page = document.manga.pages[location.pageIndex];
   const bubble = location.overlay ? page.page_overlay!.bubbles![location.bubbleIndex] : page.panels[location.panelIndex].bubbles[location.bubbleIndex];
   return <div class="scenario-choice">
-    <div><strong>{location.overlay ? 'ページ前景' : `コマ${page.panels[location.panelIndex].id}`}・吹き出し{location.bubbleIndex + 1}</strong>
-      <button type="button" onClick={() => onNavigate(location.pageIndex, location.panelIndex, location.bubbleIndex, location.overlay)}><ExternalLink size={14} />吹き出し情報で確認</button></div>
+    <div><strong>{location.overlay ? 'ページ前景' : `コマ${page.panels[location.panelIndex].id}`}・{textDisplayLabel(location.bubbleIndex)}</strong>
+      <button type="button" onClick={() => onNavigate(location.pageIndex, location.panelIndex, location.bubbleIndex, location.overlay)}><ExternalLink size={14} />テキスト情報で確認</button></div>
     <p>OCR：<span class="scenario-prose">{bubble.scenarioMatch?.ocrText ?? bubble.text}</span></p>
   </div>;
 }
@@ -63,7 +64,7 @@ export default function ScenarioReview({ document, onChange, onNavigate }: Props
               return <div class="scenario-dialogue" key={dialogue.id}>
                 <div><strong>{dialogue.speaker}</strong><p class="scenario-prose">{dialogue.text}</p>{dialogue.emphasis && <small>強調：{dialogue.emphasis}</small>}</div>
                 <div>{matched ? <>
-                  <button type="button" onClick={() => onNavigate(matched.pageIndex, matched.panelIndex, matched.bubbleIndex, matched.overlay)}><ExternalLink size={14} />{matched.overlay ? 'ページ前景' : `コマ${document.manga.pages[matched.pageIndex].panels[matched.panelIndex].id}`}・吹き出し{matched.bubbleIndex + 1}</button>
+                  <button type="button" onClick={() => onNavigate(matched.pageIndex, matched.panelIndex, matched.bubbleIndex, matched.overlay)}><ExternalLink size={14} />{matched.overlay ? 'ページ前景' : `コマ${document.manga.pages[matched.pageIndex].panels[matched.panelIndex].id}`}・{textDisplayLabel(matched.bubbleIndex)}</button>
                   <small>{matched.bubble.scenarioMatch?.status === 'manual' ? '本文を編集済み' : matched.bubble.scenarioMatch?.status === 'confirmed' ? '確定済み' : '自動対応済み'} · 取込時の文字一致 {Math.round((matched.bubble.scenarioMatch?.score ?? 0) * 100)}％ · 連携終了</small>
                   <details><summary>OCRと現在の本文</summary><p class="scenario-prose">OCR：{matched.bubble.scenarioMatch?.ocrText}</p><p class="scenario-prose">現在：{matched.bubble.text}</p>
                   </details>

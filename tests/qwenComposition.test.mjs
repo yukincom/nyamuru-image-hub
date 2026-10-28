@@ -3,7 +3,8 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
-import {bubbleStrokeWidthMm,bubbleUsesMonologueTail} from '../src/lib/bubblePresentation.ts';
+import {bubbleStrokeWidthMm,bubbleUsesMonologueTail,isBalloonText} from '../src/lib/bubblePresentation.ts';
+import {changeCanvasTextCategory} from '../src/lib/canvasText.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 import { buildQwenCompositionPlan, qwenCompositionLayout, qwenCompositionTextRuns, qwenPanelImageLayers } from '../src/lib/qwenComposition.ts';
 import { selectHumanPose } from '../src/lib/humanPoseSelection.ts';
@@ -16,10 +17,14 @@ import {textStyleOf} from '../src/lib/textStyle.ts';
 import {bubbleCssFontFamily} from '../src/lib/bubbleFonts.ts';
 import {bubbleTextPosition} from '../src/lib/bubbleClip.ts';
 
-test('画像合成の行揃えは短い行だけを送り、文字群のアンカー・改行・下線を保持する',()=>{
+function compositionTextRenderer(){
  const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='drawText');assert.ok(declaration);
- const draw=runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,qwenCompositionTextRuns});
+ return runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,qwenCompositionTextRuns,isBalloonText});
+}
+
+test('画像合成の行揃えは短い行だけを送り、文字群のアンカー・改行・下線を保持する',()=>{
+ const draw=compositionTextRenderer();
  const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`);
  for(const orientation of ['horizontal','vertical'])for(const kind of ['bubble','screen_text']){
   const captures=[];
@@ -33,6 +38,27 @@ test('画像合成の行揃えは短い行だけを送り、文字群のアン�
    close(captures[index].glyphs[0][axis],captures[0].glyphs[0][axis]);close(captures[index].glyphs[0][cross],captures[0].glyphs[0][cross]);
    close(captures[index].glyphs[4][axis]-captures[0].glyphs[4][axis],difference*factor);close(captures[index].glyphs[4][cross],captures[0].glyphs[4][cross]);
    close(captures[index].strokes[0][axis]-captures[0].strokes[0][axis],difference*factor);
+  }
+ }
+});
+
+test('種類を切り替えた写植文字と描き文字は狭いbboxでも明示改行と空行を保つ',()=>{
+ const draw=compositionTextRenderer();
+ for(const orientation of ['horizontal','vertical']){
+  const document=createEmptyWorkspaceDocument(),panel={id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[]};
+  document.manga.pages[0].panels=[panel];
+  panel.screen_text=[{text:'ABCDE\n\nFG',bbox:{x:10,y:10,w:10,h:10},text_style:{orientation,fontSize:12}}];
+  let target={pageIndex:0,panelIndex:0,index:0,kind:'screen_text',overlay:false};
+  for(const category of ['handwritten','typeset']){
+   target=changeCanvasTextCategory(document,target,category);assert.ok(target);
+   const bubble=panel.bubbles[target.index],glyphs=[],context={canvas:{width:1000,height:1000},save(){},restore(){},measureText:()=>({width:30}),fillText:(text,x,y)=>glyphs.push({text,x,y})};
+   draw(context,bubble,bubble.bbox,{x:0,y:0,w:100,h:100},'bubble','serif');
+   const cross=orientation==='horizontal'?'y':'x';
+   assert.equal(glyphs.map(g=>g.text).join(''),'ABCDEFG');
+   assert.ok(glyphs.slice(0,5).every(g=>g[cross]===glyphs[0][cross]),`${orientation}/${category}: 勝手に折り返さない`);
+   assert.equal(glyphs[5][cross],glyphs[6][cross]);
+   const expected=2*12*25.4/72*10*1.15;
+   assert.ok(Math.abs(Math.abs(glyphs[5][cross]-glyphs[0][cross])-expected)<1e-8,'空行の送りを保つ');
   }
  }
 });
@@ -257,7 +283,7 @@ test('composition export uses each bubble width for its body, thought tail and j
    {text:'結合',shape:'normal',join_to:1,line_width_mm:1.4,bbox:{x:40,y:10,w:20,h:20}},
    {text:'既定',shape:'normal',bbox:{x:70,y:10,w:20,h:20}},
   ]};
-  const context={manga,canvas:{width:1000,height:1000},frame:{x:0,y:0,w:100,h:100},bubbleStrokeWidthMm,bubbleUsesMonologueTail,SVG_NS:'http://www.w3.org/2000/svg',
+  const context={manga,canvas:{width:1000,height:1000},frame:{x:0,y:0,w:100,h:100},bubbleStrokeWidthMm,bubbleUsesMonologueTail,letteringGuideVisible:()=>true,SVG_NS:'http://www.w3.org/2000/svg',
    document:{createElement:name=>new Element(name)},svgElement:(name,attrs)=>new Element(name,attrs),panelShapePoints,paintReferenceBox:(_paint,box)=>box,
    bubbleVisible:()=>true,resolveBubbleSpeakerFigureIndex:()=>0,compatibleBubbleClips:()=>true,
    tail:{bubbleTailDisabled:()=>false,bubbleTailTargetPoint:()=>({x:5,y:5}),monologueTailEllipses:()=>[{cx:12,cy:12,rx:2,ry:3}],bubbleTailComposite:()=>null,bubbleJoinGeometry:()=>({firstSeamMask:{},secondSeamMask:{},fillPath:'fill',outlinePaths:['join']})},

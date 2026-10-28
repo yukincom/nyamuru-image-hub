@@ -1,3 +1,4 @@
+import { isHandwrittenText, letteringGuideVisible, isBalloonText } from '../lib/bubblePresentation';
 import CanvasContentSelection, { elementContentBox, elementContentHit } from './CanvasContentSelection';
 import { frameFromContentEdit } from '../lib/canvasContentGeometry';
 import {artworkLocked,paintOwnerPlacementLocked,paintLayerHasContent} from '../lib/paintLock';
@@ -35,7 +36,7 @@ import { bubbleJoinGeometry, bubbleTailComposite, bubbleTailDisabled, bubbleTail
 import { bubbleUsesMonologueTail, bubbleStrokeWidthMm } from '../lib/bubblePresentation.ts';
 import { bubbleTextFrame, bubbleTextPosition, compatibleBubbleClips } from '../lib/bubbleClip.ts';
 import { overlayFallbackBox as pageOverlayFallbackBox,overlayTextFallbackBox } from '../lib/pageCanvas.ts';
-import { figureDisplayLabel, panelDisplayLabel } from '../lib/displayLabels.ts';
+import { figureDisplayLabel, panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels.ts';
 import { createBubbleBezier, isBubbleBezier, type BubbleBezier } from '../lib/bubbleBezier.ts';
 
 interface Props {
@@ -1306,7 +1307,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         onClick={(event) => { event.stopPropagation(); if(!isLocked){onSelectElement(selection, panelIndex);if(textTool)onEditScreenText?.(panelIndex,screenTextIndex);} }}
         onKeyDown={event=>{if(isLocked)return;nudgeElement(event,panelBounds(panel),selection,box);}}
         key={`screen-text-${screenTextIndex}`}
-        title={`通常文字 ${screenTextIndex + 1}（ドラッグで移動・吹き出し素材を重ねられます）`}
+        title={`${textDisplayLabel(panel.bubbles.length+screenTextIndex)}（ドラッグで移動・吹き出し素材を重ねられます）`}
         tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
         <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
@@ -1430,7 +1431,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex);if(textTool&&!backgroundEdit)onEditBubble?.({panelIndex,bubbleIndex,overlay:false}); }}
       onContextMenu={event=>openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex)}
       onKeyDown={event=>{if(elementLocked(selection,panelIndex))return;if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
-      title={`フキダシ ${bubbleIndex + 1}（ドラッグで移動）`}
+      title={`${textDisplayLabel(bubbleIndex)}（ドラッグで移動）`}
       tabIndex={!elementLocked(selection,panelIndex)&&activePanel === panelIndex ? 0 : -1}
     >
       <span class="bubble-native-reference" style={referenceStyle}><BubbleShapeSvg
@@ -1442,7 +1443,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </span>
       {editingPanel(panelIndex)?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
       <span class="bubble-native-reference bubble-native-text" style={referenceStyle}>
-      {textFrame.w>0&&textFrame.h>0&&<span class="bubble-text-frame" style={textFrameStyle}><BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={textFrame.w} boxH={textFrame.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
+      {letteringGuideVisible(bubble)&&textFrame.w>0&&textFrame.h>0&&<span class="bubble-text-frame" style={textFrameStyle}><BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={textFrame.w} boxH={textFrame.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
           review={scenarioBubbleNeedsReview(bubble)}
           onEdit={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?()=>onEditBubble?.({panelIndex,bubbleIndex,overlay:false}):undefined}
           onMoveFrame={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/></span>}
@@ -1503,7 +1504,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       style={{...paperBoxStyle(box),'--text-tool-cursor':textToolCursor(textStyleOf(screenText,'screen_text'))}} onPointerDown={event=>startInteraction(event,null,selection,box,'move')}
       onClick={event=>{event.stopPropagation();onSelectElement(selection);if(textTool)onEditScreenText?.(0,index,true);}}
       onKeyDown={event=>{nudgeElement(event,paperBounds,selection,box);}}
-      title={`通常文字 ${index+1}（ページ前景）`} tabIndex={activePanel>=0?0:-1}>
+      title={`${textDisplayLabel((overlay?.bubbles?.length??0)+index)}（ページ前景）`} tabIndex={activePanel>=0?0:-1}>
       <span class={`screen-text-body ${screenText.orientation==='vertical'?'vertical-text':''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
     </button>;
   });
@@ -1528,7 +1529,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection);if(textTool)onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}); }}
       onContextMenu={event=>openGenerationMenu(event,0,undefined,true,bubbleIndex)}
       onKeyDown={event=>{if(elementLocked(selection))return;if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,0,undefined,true,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
-      title={`ページ前景フキダシ ${bubbleIndex + 1}（ドラッグで移動）`}
+      title={`ページ前景${textDisplayLabel(bubbleIndex)}（ドラッグで移動）`}
       tabIndex={!elementLocked(selection)&&activePanel >= 0 ? 0 : -1}
     >
       <span class="bubble-native-reference" style={referenceStyle}><BubbleShapeSvg
@@ -1540,7 +1541,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </span>
       {editingOverlay?<PaintOwnerPreview ownerKey={`bubble-${bubbleIndex}`} container={box} inkOnly/>:(bubble.paint_overlay && !bubble.paint_overlay.hidden && <span class="bubble-paint-overlay"><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-paint',bbox:box}}/></span>)}
       <span class="bubble-native-reference bubble-native-text" style={referenceStyle}>
-      {<BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
+      {letteringGuideVisible(bubble)&&<BubbleText text={bubble.text} font={defaultBubbleFont} shape={bubble.shape} lengthClass={textLengthClass} boxW={referenceBox.w} boxH={referenceBox.h} fitEpoch={fitEpoch} position={bubbleTextPosition(bubble)} style={bubble.text_style} runs={bubble.text_runs} paperWidth={canvas.w}
           review={scenarioBubbleNeedsReview(bubble)}
           onEdit={textTool&&!elementLocked(selection)?()=>onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}):undefined}
           onMoveFrame={textTool&&!elementLocked(selection)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/>}</span>
@@ -1562,12 +1563,12 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     if(!bubblePathTool||!selectedElement||selectedElement.type!=='bubble'||painting||backgroundEdit)return null;
     const pageOverlay=selectedElement.scope==='page_overlay',panelIndex=pageOverlay?0:activePanel;
     const owner=pageOverlay?overlay:page.panels[panelIndex],bubble=owner?.bubbles?.[selectedElement.index];
-    if(!owner||!bubble||!bubbleVisible(bubble)||elementLocked(selectedElement,panelIndex))return null;
+    if(!owner||!bubble||!isBalloonText(bubble)||!bubbleVisible(bubble)||elementLocked(selectedElement,panelIndex))return null;
     const box=previewOwner(`bubble-${selectedElement.index}`,panelIndex,pageOverlay)?.frame??bubble.bbox??(pageOverlay?overlayFallbackBox('bubble',selectedElement.index):fallbackBox(owner as Panel,'bubble',selectedElement.index));
     const referenceBox=nativeBox(bubble,box,`bubble-${selectedElement.index}`,panelIndex,pageOverlay);
     return <span class="bubble-path-edit-layer" data-agent-working={agentWorking(selectedElement,panelIndex)||undefined} style={paperBoxStyle(referenceBox)}>
       {agentWorking(selectedElement,panelIndex)?<BubbleBezierSelection outline={bubbleOutlineForDirectEdit(bubble)} label="エージェントの作業対象"/>:
-      <BubbleBezierHandles outline={bubbleOutlineForDirectEdit(bubble)} overlay label={`${pageOverlay?'ページ前景':''}フキダシ ${selectedElement.index+1} の輪郭を編集`} onChange={bezier=>onChangeBubbleTail(selectedElement,undefined,{bezier})}/>}
+      <BubbleBezierHandles outline={bubbleOutlineForDirectEdit(bubble)} overlay label={`${pageOverlay?'ページ前景':''}${textDisplayLabel(selectedElement.index)} の輪郭を編集`} onChange={bezier=>onChangeBubbleTail(selectedElement,undefined,{bezier})}/>}
     </span>;
   };
 
@@ -1858,7 +1859,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       </div>
       {painting&&paintTarget&&<PaintInputSurface canvas={canvas}/>}
       {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&screenText?.hidden!==true&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
-        <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} runs={(textBubble??screenText)?.text_runs} inlineStyle={(textBubble??screenText)?.text_style} label={textTarget.kind==='bubble'?'吹き出しの文字':'通常文字'} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
+        <NativeTextEditor key={JSON.stringify(textTarget)} text={textValue} runs={(textBubble??screenText)?.text_runs} inlineStyle={(textBubble??screenText)?.text_style} label={`${textDisplayLabel(textTarget.index+(textTarget.kind==='screen_text'?((textTarget.overlay?overlay:textPanel)?.bubbles?.length??0):0))}の本文`} style={textStyleCss({...renderedTextStyle(textTarget),...textStyleOf((textBubble??screenText)!,textTarget.kind)},canvas.w,defaultBubbleFont)}
           onText={(value,edit)=>onText?.(textTarget,value,edit)} onHistory={onTextHistory} onSelection={value=>setTextSelection(previous=>previous?.start===value.start&&previous?.end===value.end?previous:value)} onEnd={()=>onEndTextEdit?.()}/>
 
       </div>}
@@ -1887,14 +1888,14 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
               buttons[(index + (event.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length]?.focus();
             }
           }}>
-          <strong>{menuScope==='page'?'ページ全体':`${generationMenu.overlay ? 'ページ前景' : panelDisplayLabel(menuPanel?.id ?? 0)}${menuScope?'':` · ${menuFigure?.name ?? (menuBubble?'吹き出し':'背景')}`}`}</strong>
+          <strong>{menuScope==='page'?'ページ全体':`${generationMenu.overlay ? 'ページ前景' : panelDisplayLabel(menuPanel?.id ?? 0)}${menuScope?'':` · ${menuFigure?.name ?? (menuBubble?isHandwrittenText(menuBubble)?'描き文字':'吹き出し':'背景')}`}`}</strong>
           {menuScope&&onGenerateComposition&&<button role="menuitem" onClick={()=>{onGenerateComposition(menuScope,generationMenu.panelIndex);setGenerationMenu(null);}}>{menuScope==='page'?'ページ全体を生成':'このコマを生成'}</button>}
           {menuScope!=='page'&&<>
           {menuSize && <small>{menuSize.width} × {menuSize.height} px（{dpi} dpi換算）</small>}
           <button role="menuitem" disabled={!menuBox} onClick={copyMenuSize}>サイズコピー</button>
           {onReplaceArtwork && <button role="menuitem" disabled={Boolean(menuFigure&&artworkLocked(menuFigure.artwork))} onClick={() => { onReplaceArtwork(generationMenu.panelIndex, generationMenu.figureIndex, generationMenu.overlay,generationMenu.bubbleIndex); setGenerationMenu(null); }}>画像を読み込む</button>}
           {!menuFigure&&!menuBubble&&<button role="menuitemcheckbox" aria-checked={guideVisible(menuKey,generationMenu.panelIndex,generationMenu.overlay)} onClick={()=>{onToggleGuide(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>あたり画像表示</button>}
-          <button role="menuitem" onClick={()=>{onGenerateArtwork(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>{menuFigure?'人物単品を生成':menuBubble?'吹き出しを生成':'背景だけ生成'}</button></>}
+          {(!menuBubble||isHandwrittenText(menuBubble))&&<button role="menuitem" onClick={()=>{onGenerateArtwork(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>{menuFigure?'人物単品を生成':menuBubble?'描き文字を生成':'背景だけ生成'}</button>}</>}
         </div>
       </>, window.document.body)}
     </div>

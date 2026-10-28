@@ -21,6 +21,7 @@ function parseViewBox(viewBox: string): [number, number, number, number] {
 }
 
 export default function BubbleShapeSvg({ shape = 'normal', bezier, seamMasks = [], maskId, composite }: Props) {
+  if (shape === 'typeset') return null;
   const materialOutline = materialBubbleBezier(shape);
   const sourcePath = bubbleBezierData(bezier ?? materialOutline);
   const customPath = composite?.path ?? sourcePath;

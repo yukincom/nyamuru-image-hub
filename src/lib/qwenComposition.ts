@@ -1,3 +1,4 @@
+import { textDisplayLabel } from './displayLabels.ts';
 import type { BBox, Bubble, Manga, Panel, PlacedImage, ScreenText, TextInlineStyle } from '../types.ts';
 import { compileArtworkRules, getArtworkSettings } from './artworkRules.ts';
 import { fallbackBox, panelBounds, panelShapePoints } from './canvasGeometry.ts';
@@ -12,7 +13,7 @@ import { bubbleCssFontFamily } from './bubbleFonts.ts';
 import { textStyleOf, textStyleSegments } from './textStyle.ts';
 import { figurePaintVisible } from './paintDocument.ts';
 import { bubbleTextPosition } from './bubbleClip.ts';
-import { bubbleStrokeWidthMm } from './bubblePresentation.ts';
+import { bubbleStrokeWidthMm, isHandwrittenText, letteringGuideVisible, isBalloonText } from './bubblePresentation.ts';
 
 export type QwenCompositionScope = 'page' | 'panel';
 interface CompositionPanel { panel: Panel; panelIndex: number; overlay: boolean }
@@ -108,10 +109,10 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
       ].filter(Boolean).join('\n'));
     }
     for (const [index, bubble] of panel.bubbles.entries()) if (bubbleVisible(bubble) && bubble.text) {
-      literalText.push(bubble.text); instructions.push(`${label}のフキダシ ${index + 1}（話者：${bubble.speaker || '指定なし'}）：「${bubble.text}」`);
+      literalText.push(bubble.text); instructions.push(isHandwrittenText(bubble)?`${label}の${textDisplayLabel(index)}（描き文字）：「${bubble.text}」。${bubble.lettering_description||''}`:`${label}の${textDisplayLabel(index)}（${isBalloonText(bubble)?'フキダシ':'写植文字'}、話者：${bubble.speaker || '指定なし'}）：「${bubble.text}」`);
     }
     for (const [index, text] of (panel.screen_text ?? []).entries()) if (text.text&&text.hidden!==true) {
-      literalText.push(text.text); instructions.push(`${label}の画面内文字 ${index + 1}：「${text.text}」`);
+      literalText.push(text.text); instructions.push(`${label}の${textDisplayLabel(panel.bubbles.length+index)}（写植文字）：「${text.text}」`);
     }
   }
   const rules = compileArtworkRules(getArtworkSettings(manga), 'integrated');
@@ -137,8 +138,9 @@ export function qwenCompositionTextRuns(item: Bubble | ScreenText) {
 
 function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, box: BBox, viewport: BBox, kind: 'bubble' | 'screen_text', defaultFont: string) {
   if (item.hidden===true || !item.text || box.w <= 0 || box.h <= 0) return;
-  const style = textStyleOf(item, kind), vertical = style.orientation !== 'horizontal';
-  const scale = context.canvas.width / viewport.w, padding = kind === 'bubble' ? .16 : 0;
+  const style = textStyleOf(item, kind), lineHeight=style.lineHeight??1.35, vertical = style.orientation !== 'horizontal';
+  const balloon=kind==='bubble'&&isBalloonText(item as Bubble);
+  const scale = context.canvas.width / viewport.w, padding = balloon ? .16 : 0;
   const x = (box.x - viewport.x + box.w * padding) * scale, y = (box.y - viewport.y + box.h * padding) * context.canvas.height / viewport.h;
   const width = box.w * (1 - padding * 2) * scale, height = box.h * (1 - padding * 2) * context.canvas.height / viewport.h;
   const family = bubbleCssFontFamily(style.font ?? defaultFont), runs = qwenCompositionTextRuns(item);
@@ -150,15 +152,15 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
       if (run.text === '\r') continue;
       if (run.text === '\n') { lines.push([]); length = 0; continue; }
       setFont(run); const advance = vertical ? size : context.measureText(run.text).width;
-      if (length + advance > (vertical ? height : width) && lines.at(-1)!.length) { lines.push([]); length = 0; }
+      if ((kind==='screen_text'||balloon) && length + advance > (vertical ? height : width) && lines.at(-1)!.length) { lines.push([]); length = 0; }
       lines.at(-1)!.push({ ...run, advance }); length += advance;
     }
     return lines;
   };
   let lines = layout();
-  if (!style.fontSize) for (let attempt = 0; attempt < 12 && lines.length * size * 1.35 > (vertical ? width : height); attempt++) { size *= .85; lines = layout(); }
+  if (!style.fontSize) for (let attempt = 0; attempt < 12 && lines.length * size * lineHeight > (vertical ? width : height); attempt++) { size *= .85; lines = layout(); }
   context.save(); context.fillStyle = '#111'; context.strokeStyle = '#111'; context.lineWidth=Math.max(.5,size/16); context.textAlign = vertical ? 'center' : 'left'; context.textBaseline = 'middle';
-  const across = lines.length * size * 1.35, longest = Math.max(...lines.map(line => line.reduce((sum, run) => sum + run.advance, 0)));
+  const across = lines.length * size * lineHeight, longest = Math.max(...lines.map(line => line.reduce((sum, run) => sum + run.advance, 0)));
   const position=kind==='bubble'?bubbleTextPosition(item as Bubble):{x:.5,y:.5};
   const anchorX=(box.x-viewport.x+box.w*position.x)*scale,anchorY=(box.y-viewport.y+box.h*position.y)*context.canvas.height/viewport.h;
   lines.forEach((line, index) => {
@@ -166,8 +168,8 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
     let advance = (longest-line.reduce((sum,run)=>sum+run.advance,0))*alignment;
     for (const run of line) {
       setFont(run);
-      const px = vertical ? (kind==='bubble'?anchorX+across/2-(index+.5)*size*1.35:x+(width+across)/2-(index+.5)*size*1.35) : (kind==='bubble'?anchorX-longest/2:x) + advance;
-      const py = vertical ? (kind==='bubble'?anchorY-longest/2:y) + advance + size / 2 : (kind==='bubble'?anchorY-across/2:y) + (index + .5) * size * 1.35;
+      const px = vertical ? (kind==='bubble'?anchorX+across/2-(index+.5)*size*lineHeight:x+(width+across)/2-(index+.5)*size*lineHeight) : (kind==='bubble'?anchorX-longest/2:x) + advance;
+      const py = vertical ? (kind==='bubble'?anchorY-longest/2:y) + advance + size / 2 : (kind==='bubble'?anchorY-across/2:y) + (index + .5) * size * lineHeight;
       if (vertical && /^[ー―—…()（）\[\]「」『』〈〉《》]$/u.test(run.text)) {
         context.save(); context.translate(px, py); context.rotate(Math.PI / 2); context.fillText(run.text, 0, 0); context.restore();
       } else context.fillText(run.text, px, py);
@@ -271,7 +273,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
             const owner = paintScene(panel, dpi, assets).owners.find(owner => owner.key === `bubble-${index}`)!;
             await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, false), owner.frame, frame);
           }
-          drawText(context, bubble, bubbleTextFrame(box, panel, bubble), frame, 'bubble', manga.meta.font);
+          if(letteringGuideVisible(bubble))drawText(context, bubble, bubbleTextFrame(box, panel, bubble), frame, 'bubble', manga.meta.font);
         }
         // Each independent original follows its own native child, even if native text is hidden.
         await drawImages((panel.images??[]).filter(image=>image.id===bubble.analogTextImport?.originalImageId));

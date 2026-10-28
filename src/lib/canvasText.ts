@@ -1,4 +1,4 @@
-import type { BBox, Bubble, MangaDocument, ScreenText, TextStyle, TextInlineStyle } from '../types.ts';
+import type { BBox, Bubble, BubbleTextPosition, MangaDocument, ScreenText, TextStyle, TextInlineStyle } from '../types.ts';
 import { clamp, fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { ownerItemLocked, editBubbleText, panelLocked, panelVisible } from './panelLayers.ts';
 import { BUBBLE_MATERIALS, replaceBubbleMaterial } from './bubblePresetData.ts';
@@ -7,10 +7,42 @@ import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
 import { rebaseTextRuns, syncBubbleEmphasisFromStyles, textStyleOf, updateTextStyle, type TextSelection, type TextStylePatch } from './textStyle.ts';
 import { cloneDocument } from './manga.ts';
 import { artworkLocked } from './paintLock.ts';
-import { bubbleStrokeWidthMm, normalizedBubbleLineWidth } from './bubblePresentation.ts';
+import { bubbleStrokeWidthMm, normalizedBubbleLineWidth, isBalloonText } from './bubblePresentation.ts';
 import type {FontWeightOption} from './bubbleFonts.ts';
 export type CanvasTextKind='bubble'|'screen_text';
 export interface CanvasTextTarget {pageIndex:number;panelIndex:number;index:number;overlay:boolean;kind:CanvasTextKind}
+export type TextCategory='bubble'|'handwritten'|'typeset';
+export function canvasTextCategory(item:Bubble|ScreenText,kind:CanvasTextKind):TextCategory {
+  return kind==='screen_text'?'typeset':isBalloonText(item as Bubble)?'bubble':(item as Bubble).shape as 'handwritten'|'typeset';
+}
+
+/** Retain the native owner and its original/painted layers when reclassifying OCR. */
+export function changeCanvasTextCategory(document:MangaDocument,target:CanvasTextTarget,category:TextCategory,screenPosition?:BubbleTextPosition):CanvasTextTarget|null {
+  const item=canvasTextAt(document,target);
+  if(!item||!canvasTextEditable(document,target)||canvasTextCategory(item,target.kind)===category)return null;
+  const page=document.manga.pages[target.pageIndex],owner=target.overlay?page.page_overlay!:page.panels[target.panelIndex];
+  let bubble:Bubble,converted=target;
+  if(target.kind==='screen_text'){
+    const screen=item as ScreenText;
+    bubble={...screen,text_style:{...textStyleOf(screen,'screen_text'),fontWeight:screen.text_style?.fontWeight??700,lineHeight:screen.text_style?.lineHeight??1.15},bbox:screen.bbox??(target.overlay?overlayTextFallbackBox(page.canvas,target.index):fallbackBox(page.panels[target.panelIndex],'screen_text',target.index))};
+    const size=screenTextMinimumSize(screen),box=bubble.bbox!;
+    bubble.text_position=screenPosition??{x:bubble.text_style!.orientation==='vertical'?1-size.w/(2*box.w):size.w/(2*box.w),y:size.h/(2*box.h)};
+    delete (bubble as ScreenText).orientation;
+    (owner.bubbles??=[]).push(bubble);
+    owner.screen_text!.splice(target.index,1);if(!owner.screen_text!.length)delete owner.screen_text;
+    converted={...target,kind:'bubble',index:owner.bubbles.length-1};
+  }else{
+    bubble=item as Bubble;
+    bubble.text_style={...bubble.text_style,fontWeight:bubble.text_style?.fontWeight??(bubble.shape==='handwritten'?800:600)};
+  }
+  bubble.shape=category==='bubble'?'normal':category;
+  delete bubble.bezier;
+  bubble.tail=false;delete bubble.tail_style;delete bubble.tail_root;
+  delete bubble.join_to;
+  // A non-balloon cannot remain the endpoint of another balloon's connector.
+  if(category!=='bubble')for(const other of owner.bubbles??[])if(other.join_to===converted.index+1)delete other.join_to;
+  return converted;
+}
 const pointMm=(pt:number)=>pt*25.4/72;
 const textUnits=(value:string)=>[...value].reduce((sum,character)=>sum+(/[\u0000-\u00ff]/u.test(character)?.62:1),0);
 
@@ -75,7 +107,7 @@ export function canvasTextEditable(document:MangaDocument,t:CanvasTextTarget,ori
   return t.kind!=='bubble'||origin==='agent'||!ownerItemLocked(item as Bubble);
 }
 export function canvasBubbleLineWidthEditable(document:MangaDocument,t:CanvasTextTarget):boolean {
-  return t.kind==='bubble'&&canvasTextEditable(document,t)&&!artworkLocked((canvasTextAt(document,t) as Bubble).paint_overlay);
+  return t.kind==='bubble'&&canvasTextEditable(document,t)&&isBalloonText(canvasTextAt(document,t) as Bubble)&&!artworkLocked((canvasTextAt(document,t) as Bubble).paint_overlay);
 }
 /** A native outline edit uses the existing document history, without resizing its box or text. */
 export function editCanvasBubbleLineWidth(document:MangaDocument,t:CanvasTextTarget,width:number):MangaDocument {
@@ -113,7 +145,10 @@ export function editCanvasTextStyle(document:MangaDocument,t:CanvasTextTarget,pa
 }
 export function editCanvasBubbleMaterial(document:MangaDocument,t:CanvasTextTarget,id:string){
   if(t.kind!=='bubble'||!canvasTextEditable(document,t))return false;
-  replaceBubbleMaterial(canvasTextAt(document,t)!,id);fitCanvasBubbleToText(document,t);return true;
+  const bubble=canvasTextAt(document,t) as Bubble;
+  replaceBubbleMaterial(bubble,id);
+  if(!isBalloonText(bubble))bubble.shape=BUBBLE_MATERIALS.find(preset=>preset.id===id)!.shape;
+  fitCanvasBubbleToText(document,t);return true;
 }
 /** Use the same native objects as imported/generated panels, never a paint bitmap. */
 export function addCanvasText(document:MangaDocument,pageIndex:number,panelIndex:number,kind:CanvasTextKind,style?:TextStyle):CanvasTextTarget|null{
@@ -150,7 +185,7 @@ function pointTextBox(bounds:BBox,point:{x:number;y:number},size:{w:number;h:num
 
 export function screenTextMinimumSize(item:Pick<ScreenText,'text'|'text_style'|'orientation'>):{w:number;h:number} {
   const style=textStyleOf(item as ScreenText,'screen_text'),fontMm=pointMm(style.fontSize??12),lines=(item.text||' ').split('\n');
-  const lineCount=Math.max(1,lines.length),longest=Math.max(1,...lines.map(textUnits)),lineAdvance=fontMm*1.15,safety=Math.max(.4,fontMm*.08);
+  const lineCount=Math.max(1,lines.length),longest=Math.max(1,...lines.map(textUnits)),lineAdvance=fontMm*(style.lineHeight??1.15),safety=Math.max(.4,fontMm*.08);
   return style.orientation==='vertical'
     ? {w:lineCount*lineAdvance+safety,h:longest*fontMm+safety}
     : {w:longest*fontMm+safety,h:lineCount*lineAdvance+safety};
@@ -169,7 +204,7 @@ export function fitCanvasScreenTextToText(document:MangaDocument,target:CanvasTe
   item.bbox=fitted;return true;
 }
 
-/** Tツールのクリック位置へ、保存可能な通常文字を置く。 */
+/** Tツールのクリック位置へ、保存可能な写植文字を置く。 */
 export function addCanvasTextAt(document:MangaDocument,pageIndex:number,panelIndex:number|null,point:{x:number;y:number},style?:TextStyle):CanvasTextTarget|null {
   const page=document.manga.pages[pageIndex];
   if(!page)return null;
@@ -217,8 +252,8 @@ export function bubbleTextMinimumSize(bubble:Pick<Bubble,'text'|'text_style'|'sh
   const fontMm=pointMm(bubble.text_style?.fontSize??15),lines=(bubble.text||' ').split('\n');
   const columns=Math.max(1,lines.length),longest=Math.max(1,...lines.map(textUnits));
   const vertical=(bubble.text_style?.orientation??'vertical')!=='horizontal';
-  const textW=vertical?columns*fontMm*1.12:longest*fontMm;
-  const textH=vertical?longest*fontMm:columns*fontMm*1.12;
+  const textW=vertical?columns*fontMm*(bubble.text_style?.lineHeight??1.12):longest*fontMm;
+  const textH=vertical?longest*fontMm:columns*fontMm*(bubble.text_style?.lineHeight??1.12);
   const inner=bubbleTextFractions(bubble.shape),safety=Math.max(1.2,fontMm*.35);
   return {w:textW/inner.w+safety,h:textH/inner.h+safety};
 }
@@ -253,7 +288,7 @@ export interface ScreenTextBubbleConversion {
   materialId?:string;
 }
 
-/** 通常文字を白いネイティブ吹き出しへ一度だけ取り込み、その瞬間だけ寸法を合わせる。 */
+/** 写植文字を白いネイティブ吹き出しへ一度だけ取り込み、その瞬間だけ寸法を合わせる。 */
 export function convertScreenTextToBubble(document:MangaDocument,request:ScreenTextBubbleConversion):CanvasTextTarget|null {
   const source=request.screenText;
   if(source.kind!=='screen_text'||!canvasTextEditable(document,source))return null;

@@ -159,7 +159,7 @@ test('panel, page and bubble selections expose their own actions and direct draw
  assert.match(pageLayerSource,/label="トーンレイヤー作成"[^>]*disabled/);
  assert.match(globalCss,/\.paint-dock \.paint-help-button\[aria-disabled=true\] \{ opacity:\.35; filter:grayscale\(1\); cursor:not-allowed; \}/);
  assert.match(pageLayerSource,/onDeleteBubble:\(panel:number,bubble:number,overlay\?:boolean\)=>void/);
- assert.match(pageLayerSource,/removeLabel=\{`吹き出し \$\{bubbleTarget\.index\+1\}を削除`\}/);
+ assert.match(pageLayerSource,/removeLabel=\{`\$\{textDisplayLabel\(bubbleTarget\.index\)\}を削除`\}/);
  assert.match(pageLayerSource,/\?`\$\{title\}全体の固定を解除`:`\$\{title\}全体を固定`/);
  assert.match(pageLayerSource,/\?`\$\{title\}の枠だけの固定を解除`:`\$\{title\}の枠だけを固定`/);
  assert.match(pageLayerSource,/removeLabel=\{selected\?`\$\{panelDisplayLabel\(selected\.id\)\}を削除`:'削除'\}/);

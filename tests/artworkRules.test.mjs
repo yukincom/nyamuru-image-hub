@@ -11,6 +11,33 @@ const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8'
 const standard = () => parseOmayYaml(read('src/content/standard-settings.yaml'));
 const sample = () => standardRulesTestDocument(read('src/content/standard-settings.yaml'));
 
+test('描き文字は有効なYAMLの形状定義と本文規則を原文で使いページ構成を混ぜない', () => {
+  for (const source of [standard(), parse(read('src/content/standard-settings.yaml'))]) {
+    const settings = artworkSettingsFromSource(source), before = structuredClone(settings);
+    const result = compileArtworkRules(settings, 'handwritten');
+    const textRule = source.style_notes.find(note => note.includes('meta.text_orientation'));
+    assert.ok(result.style_notes.includes(textRule));
+    assert.match(result.layout_spec, /handwritten=/);
+    assert.ok(source.layout_spec.includes(result.layout_spec));
+    assert.doesNotMatch(result.layout_spec, /Split long dialogue|長いセリフ|Generation workflow|生成手順|screen_text/);
+    assert.doesNotMatch(result.style_notes.join('\n'), /Header text|ヘッダーの文字|Footer text|フッターの文字/);
+    assert.deepEqual(settings, before);
+    settings.groups.forEach(group => { group.enabled = false; });
+    assert.deepEqual(compileArtworkRules(settings, 'handwritten'), { style_notes: [], layout_spec: '' });
+  }
+});
+
+test('描き文字の独自YAML本文と共通画風は保存後も変更せず使用する', () => {
+  const document = sample(), source = standard();
+  source.layout_spec = source.layout_spec.replace('handwritten=フキダシなしの手描き文字', 'handwritten=細い筆で、かすれを残す文字');
+  applyArtworkSettings(document.manga, artworkSettingsFromSource(source));
+  setWorkStylePrompt(document.manga, '青いインクと細い線');
+  const restored = parseMangaYaml(toStoredMangaYaml(document));
+  const rules = compileArtworkRules(getArtworkSettings(restored.manga), 'handwritten');
+  assert.match(rules.layout_spec, /handwritten=細い筆で、かすれを残す文字/);
+  assert.ok(rules.style_notes.includes('青いインクと細い線'));
+});
+
 test('作品の画風は既存ルールを保って全生成対象へ届き、作品保存から原文を復元できる', async () => {
   const document = sample();
   const prior = getArtworkSettings(document.manga);

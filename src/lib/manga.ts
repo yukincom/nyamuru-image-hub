@@ -25,7 +25,7 @@ export const NDM_SCHEMA_NAME = 'Nyamuru Data Model' as const;
 export const CURRENT_NDM_SCHEMA_VERSION = 10.33;
 export const OMAY_SPEC_NAME = 'Open Manga Artwork YAML' as const;
 const LEGACY_OMNY_SCHEMA_NAME = 'Open Manga Name YAML';
-export const BUBBLE_SHAPES = ['normal', 'thought', 'square', 'caption', 'flash', 'uniflash', 'wobbly', 'whisper', 'handwritten', 'critical', 'tense', 'toge', 'announce', 'toge_natural'] as const;
+export const BUBBLE_SHAPES = ['normal', 'thought', 'square', 'caption', 'flash', 'uniflash', 'wobbly', 'whisper', 'handwritten', 'typeset', 'critical', 'tense', 'toge', 'announce', 'toge_natural'] as const;
 export const ANCHORS = ['right', 'left', 'center', 'top-right', 'top-left', 'bottom-right', 'bottom-left'] as const;
 export const ANCHOR_LABELS: Record<(typeof ANCHORS)[number], string> = {
   right: '右',
@@ -593,6 +593,8 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   };
   const validateBubbleTail = (bubble: Bubble, path: string) => {
     validateTextStyle(bubble,path);
+    if(bubble.lettering_description!==undefined&&typeof bubble.lettering_description!=='string')issues.push({level:'error',path:`${path}.lettering_description`,message:'描き文字の描き方は文章で指定してください'});
+    if(bubble.lettering_guide_hidden!==undefined&&typeof bubble.lettering_guide_hidden!=='boolean')issues.push({level:'error',path:`${path}.lettering_guide_hidden`,message:'文字あたりの非表示は true / false で指定してください'});
     if(bubble.line_width_mm!==undefined&&(!Number.isFinite(bubble.line_width_mm)||bubble.line_width_mm<=0)){
       issues.push({level:'error',path:`${path}.line_width_mm`,message:'フキダシ個別の線幅は0より大きい有限のmm値を指定してください'});
     }
@@ -708,7 +710,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
         const screenTextPath=`${overlayPath}.screen_text[${index}]`;
         validateTextStyle(screenText,screenTextPath);
         if(screenText.hidden!==undefined&&typeof screenText.hidden!=='boolean')issues.push({level:'error',path:`${screenTextPath}.hidden`,message:'hidden は真偽値で指定してください'});
-        if(!screenText.text?.trim())issues.push({level:'error',path:`${screenTextPath}.text`,message:'通常文字の本文は必須です'});
+        if(!screenText.text?.trim())issues.push({level:'error',path:`${screenTextPath}.text`,message:'写植文字の本文は必須です'});
         if(screenText.orientation&&!SCREEN_TEXT_ORIENTATIONS.includes(screenText.orientation))issues.push({level:'error',path:`${screenTextPath}.orientation`,message:'orientation は horizontal / vertical から選んでください'});
       });
     }

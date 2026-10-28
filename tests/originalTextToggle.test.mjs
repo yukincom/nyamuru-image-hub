@@ -44,7 +44,7 @@ test('候補選択は既存カードと一緒に情報タブへ移し、紙面�
   const review = readFileSync(new URL('../src/components/ScenarioReview.tsx', import.meta.url), 'utf8');
   assert.match(review, /entries.filter\(entry => scenarioBubbleNeedsReview\(entry.bubble\)\)/);
   assert.doesNotMatch(review, /ScenarioBubbleNotice|confirmScenarioCorrespondence|現在の本文を使う|対応だけ選び直す/);
-  assert.match(review, /吹き出し情報で確認/);
+  assert.match(review, /テキスト情報で確認/);
 });
 
 test('本文だけの移動は原画ラスターレイヤーの固定と独立し、形状移動は固定を守る', () => {

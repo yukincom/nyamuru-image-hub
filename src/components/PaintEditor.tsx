@@ -1,3 +1,4 @@
+import {canGeneratePaintOwner} from '../lib/qwenGeneration';
 import { useContext, useEffect, useRef, useState, useLayoutEffect, useMemo } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { appendBackgroundCapture } from '../lib/background3d';
@@ -871,7 +872,7 @@ export default function PaintEditor({selectedBubbleStroke:bubbleStroke,resume,sh
     <button role="menuitem" onClick={()=>{void copyArtworkSize(menuOwner.frame,menuOwner.paint.dpi).catch(e=>setError(String(e)));setMenu(null);}}>サイズコピー</button>
     {menuOwner.kind==='background'&&<button role="menuitemcheckbox" aria-checked={menuOwner.paint.guideInitialized?menuOwner.paint.layers.some(l=>l.guide&&l.visible):guideVisible(menu.key)} onClick={()=>{toggleGuide(menu.key);setMenu(null);}}>あたり画像表示</button>}
     <button role="menuitem" disabled={paintOwnerLocked(menuOwner)||menuOwner.paint.layers.some(l=>!paintLayerEditable(menuOwner,l))} onClick={()=>{chooseImage(true,menu.key);setMenu(null);}}>画像を読み込む</button>
-    {menuOwner.kind!=='panel'&&menuOwner.kind!=='page'&&<button role="menuitem" onClick={()=>{void generate(menu.key);setMenu(null);}}>生成</button>}
+    {canGeneratePaintOwner(menuOwner)&&<button role="menuitem" onClick={()=>{void generate(menu.key);setMenu(null);}}>{menuOwner.kind==='bubble'?'描き文字を生成':'生成'}</button>}
   </div></>,window.document.body);
   const geometryKey=scene.owners.map(o=>JSON.stringify([o.frame,o.paint.width,o.paint.height,o.paint.referenceFrame])).join('|');
   const geometry=useMemo(()=>requested?scene:null,[requested,geometryKey]);

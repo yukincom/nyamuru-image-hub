@@ -9,7 +9,7 @@ const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 test('T primary click and shortcut open a compact tabbed persistent settings window',()=>{
   const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=read('src/components/App.tsx'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
-  assert.doesNotMatch(tools,/通常文字を追加|text-settings-icon-action/);
+  assert.doesNotMatch(tools,/写植文字を追加|text-settings-icon-action/);
   assert.doesNotMatch(app,/function addText\(|add=\{addText\}/);
   assert.match(app,/addCanvasTextAt\(next,pageIndex,panelIndex,point,textToolStyle\)/);
   assert.doesNotMatch(tools,/add\('bubble'\)|吹き出しを追加/);
@@ -252,7 +252,7 @@ test('文字パレットはレイヤーと道具の変更で開閉せず、×だ
  const click=label=>{button(label).props.onClick();render();};
  render();assert.equal(dialog().props.hidden,true);
  render({active:true});assert.equal(dialog().props.hidden,true,'tool state alone does not open the palette');
- click('通常文字');assert.equal(dialog().props.hidden,false);
+ click('写植文字');assert.equal(dialog().props.hidden,false);
  click('ふきだし');assert.equal(button('ふきだし').props['aria-selected'],true);
  click('情報');assert.equal(button('情報').props['aria-selected'],true);
  assert.equal(selectedTools,1,'information tab does not activate the text tool');

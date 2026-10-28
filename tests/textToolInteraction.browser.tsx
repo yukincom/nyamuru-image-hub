@@ -85,7 +85,7 @@ async function verifyExpandedText(){
     check(historyButton('元に戻す').disabled,'初期表示だけでUndoを追加しない');
     const centers=[textCenter(false),textCenter(true)];
     for(const overlay of [false,true]){
-      tool('選択');await settle();element(overlay).click();await settle();tool('通常文字');await settle();
+      tool('選択');await settle();element(overlay).click();await settle();tool('写植文字');await settle();
       const before=structuredClone(bubble(overlay)),frame=element(overlay).querySelector<HTMLElement>('.bubble-text-move-frame.is-active');
       if(!frame)throw Error('T本文移動用の枠がありません');
       const selectedCenter=textCenter(overlay);
@@ -130,7 +130,7 @@ async function verifyExpandedText(){
     check(pixels.data.every((value,index)=>index%4===3||value===psd[offset+(index%4)*count+Math.floor(index/4)]),'PSDの全RGB画素も同じ本文位置');
     render(null,host);render(<App/>,host);await wait(()=>!!element(false),'再読込が完了しません');await settle();
     check([false,true].every(overlay=>{const position=bubble(overlay).text_position!,box=bubble(overlay).bbox!,center=textCenter(overlay);return close(center.x,box.x+box.w*position.x)&&close(center.y,box.y+box.h*position.y); }),'再読込後もコマ・前景の枠外本文位置を保持');
-    tool('通常文字');await settle();element(false).querySelector<HTMLElement>('.bubble-text-content')!.click();await wait(()=>!!document.querySelector('.native-text-input'),'Tの本文編集を開けません');
+    tool('写植文字');await settle();element(false).querySelector<HTMLElement>('.bubble-text-content')!.click();await wait(()=>!!document.querySelector('.native-text-input'),'Tの本文編集を開けません');
     check(document.querySelector('.native-text-input')!.textContent==='AB','枠外へ移動した本文をTで再編集できる');
     report.textContent=`拡張本文 PASS ${checks.length}\n${checks.join('\n')}`;
   }catch(error){report.textContent=`拡張本文 FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;throw error;}

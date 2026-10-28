@@ -79,7 +79,7 @@ test('ordinary owner generation is Qwen and separate from panel splitting and ac
   assert.match(app, /QwenGenerationDialog/);
   for(const component of ['MangaCanvas','PaintEditor']){
     const source=read(`../src/components/${component}.tsx`);
-    assert.match(source, component==='MangaCanvas' ? /人物単品を生成/ : /role="menuitem"[^\n]*>生成<\/button>/);
+    assert.match(source, component==='MangaCanvas' ? /人物単品を生成/ : /canGeneratePaintOwner\(menuOwner\)[^\n]*role="menuitem"[^\n]*\{menuOwner.kind==='bubble'\?'描き文字を生成':'生成'\}/);
     assert.doesNotMatch(source, /この画像を参照して生成する|ネームの人物ラフから生成/);
   }
   const lower = inspector.slice(inspector.indexOf('<div class="panel-generation-assistant">'), inspector.indexOf('{panelDraftToolbarTarget &&'));

@@ -252,7 +252,9 @@ manga:
             - text:       # フキダシの本文（必須）
               speaker:    # 話者名（会話では毎回明記。ナレーション・効果音など話者なしの場合だけ省略）
               join_to:    # 結合相手となる、同じbubbles配列内の先行フキダシ番号（1始まり・任意）
-              shape:      # フキダシの形（任意。normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/critical/tense/toge/announce/toge_natural。省略=normal）
+              shape:      # フキダシの形・文字の種類（任意。normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/typeset/critical/tense/toge/announce/toge_natural。省略=normal）
+              lettering_description: # handwrittenの描き方。文字の形・線・勢い・質感を指定する文章（任意）
+              lettering_guide_hidden: # handwrittenの文字あたりだけを非表示にする場合true。生成画の表示とは独立（任意・省略=表示）
               line_width_mm: # 本体としっぽの個別線幅（mm、0より大きい有限値・任意。省略=meta.bubble_line_width_mm）
               emphasis:   # そのフキダシ内で大きくする語（任意）
               monologue:  # このフキダシが心の声なら true（任意。見た目は shape で指定）
@@ -297,7 +299,7 @@ manga:
 - `bubbles` は**常に配列**（フキダシ1個でも配列）。`text` は各フキダシの必須フィールド。長いセリフの分割は手順7に従う。
 - `bubbles[].speaker` は任意だが、会話では同じ話者が続く場合も毎回明記する。省略時は話者なし。ナレーション（caption）・効果音（handwritten）など話者のいないフキダシで省略する。
 - `bubbles[].join_to` は任意。同じ `bubbles` 配列内で結合する先行フキダシの1始まり番号を指定する。話者設定とは独立し、結合したフキダシも配列順で読む。
-- `bubbles[].shape` は任意。14種の語彙（normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/critical/tense/toge/announce/toge_natural）から選ぶ。省略時は `normal`（丸い通常フキダシ）。`uniflash` は1ページ1個までが目安。
+- `bubbles[].shape` は任意。15種の語彙（normal/thought/square/caption/flash/uniflash/wobbly/whisper/handwritten/typeset/critical/tense/toge/announce/toge_natural）から選ぶ。省略時は `normal`（丸い通常フキダシ）。`typeset` は輪郭のない写植文字。`uniflash` は1ページ1個までが目安。
 - `critical` / `tense` / `toge` / `announce` / `toge_natural` は素材作者の分類。見本と場面・発話・表情を照合して選び、固定の感情対応を仮定しない。素材分類 `nomal` は `normal` に対応する。素材選択時は輪郭の `bezier` も保持する。
 - コマ所属の `bubbles[]` は輪郭・しっぽ・描き足し・本文を所有コマの形状で常に切り取る。ページ前景は切り取らない。旧互換フィールド `clip_to_panel` は新規出力へ書かない。
 - `bubbles[].text_position` は本文中心のフキダシ `bbox` を基準とした有限の相対座標（左上0・右下1）。0未満・1超も使え、ベジェ輪郭を広げても同じ `bbox` を基準にする。省略時は中央。フキダシが見切れる場合も本文を可視部分へ自動再配置せず、読みやすい位置が中央でないときだけ明示する。

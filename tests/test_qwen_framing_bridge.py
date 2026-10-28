@@ -163,6 +163,20 @@ class QwenFramingTest(unittest.TestCase):
                 self.assertEqual(result['request_sha256'], sha256(canonical(original)))
                 self.assertEqual(value, original)
 
+    def test_handwritten_literal_is_protected_from_translation(self):
+        literal = 'ド  ン！\nドン'
+        value = {'owner_key': 'bubble-0', 'content_kind': 'handwritten', 'literal_text': [literal],
+                 'prompt': '太い文字で「' + literal + '」と描く', 'references': []}
+        client = self.translator(None)
+        def translated(instruction, source, **kwargs):
+            self.assertNotIn(literal, source['prompt'])
+            token = re.search(r'__NYAMURU_LITERAL_\d+__', source['prompt'])[0]
+            return {'prompt': 'Draw bold lettering "' + token + '".', 'references': []}, {}
+        client.request_json_completion.side_effect = translated
+        result = client.translate_image_generation_prompt(value)
+        self.assertIn(literal, result['prompt'])
+        self.assertEqual(result['request_sha256'], sha256(canonical(value)))
+
     def test_group_character_framing_stays_attached_to_each_person(self):
         for owner in ('page', 'panel'):
             with self.subTest(owner=owner):

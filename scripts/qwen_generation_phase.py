@@ -62,7 +62,7 @@ def generation_prompt(config, english):
         instruction = ('Create a new drawing with the requested composition. Use the supplied images as references for the requested subject and style.'
                        if config['references'] else 'Create a new drawing with the requested composition.')
     prompt = ' '.join([instruction, *roles, english['prompt']])
-    if not (config['owner_key'] in ('page', 'panel') and config.get('literal_text')):
+    if not ((config['owner_key'] in ('page', 'panel') or config.get('content_kind') == 'handwritten') and config.get('literal_text')):
         prompt = ' '.join(prompt.split())
     if config['mode'] == 'sketch' and config['settings'].get('transparency_mode') == 'alpha-pass-v1':
         prompt += ' Use a plain white background for this finished illustration.'

@@ -3,7 +3,7 @@ import type { HumanPoseTextSelection } from './lib/humanPoseTypes.ts';
 export type Anchor = 'right' | 'left' | 'center' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 export type FigureSize = 'long' | 'full' | 'knee-up' | 'waist-up' | 'bust-up' | 'shoulder-up' | 'face' | 'face-detail' | 'hand' | 'foot' | 'part';
 export type FigureRole = 'main' | 'sub';
-export type BubbleShape = 'normal' | 'thought' | 'square' | 'caption' | 'flash' | 'uniflash' | 'wobbly' | 'whisper' | 'handwritten' | 'critical' | 'tense' | 'toge' | 'announce' | 'toge_natural';
+export type BubbleShape = 'normal' | 'thought' | 'square' | 'caption' | 'flash' | 'uniflash' | 'wobbly' | 'whisper' | 'handwritten' | 'typeset' | 'critical' | 'tense' | 'toge' | 'announce' | 'toge_natural';
 export type MaterialType = 'character' | 'background' | 'prop';
 export type MaterialScope = 'episode' | 'series';
 export type CharacterReferenceView = 'turnaround' | 'front' | 'three-quarter' | 'side' | 'back' | 'expression' | 'costume' | 'other';
@@ -129,6 +129,8 @@ export interface TextStyle {
   font?: string;
   /** Printed point size, independent of canvas zoom. */
   fontSize?: number;
+  /** Line advance relative to font size, retained when changing text category. */
+  lineHeight?: number;
   fontWeight?: number;
   italic?: boolean;
   underline?: boolean;
@@ -154,6 +156,10 @@ export interface Bubble {
   /** 登場人物カタログへのローカル参照。 */
   speakerId?: string;
   shape?: BubbleShape;
+  /** Drawing direction for handwritten lettering, separate from its literal text. */
+  lettering_description?: string;
+  /** Hide only the editable lettering guide; painted results retain their visibility. */
+  lettering_guide_hidden?: boolean;
   /** Body and tail stroke width in millimeters; absent uses the creation default. */
   line_width_mm?: number;
   /** Closed cubic outline in a fixed 0..100 box; handles are relative to each anchor. */
@@ -227,7 +233,7 @@ export interface PageOverlay {
   layer: 'above_panel_frames';
   figures?: Figure[];
   bubbles?: Bubble[];
-  /** コマに属さず、紙面の余白やコマ間にも置ける通常文字。 */
+  /** コマに属さず、紙面の余白やコマ間にも置ける写植文字。 */
   screen_text?: ScreenText[];
 }
 

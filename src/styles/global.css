@@ -406,7 +406,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .bubble-guide.bubble-handwritten .bubble-text { --bubble-text-top: 20%; --bubble-text-bottom: 20%; --bubble-text-horizontal: 40%; font-weight: 800; text-shadow: 0 0 2px rgba(255,255,255,.95); }
 .bubble-guide .bubble-text.is-long { font-size: calc(clamp(10.5px, 2.16cqh, 21px) * var(--bubble-fit, 1)); line-height: 1; }
 .bubble-guide .bubble-text.is-very-long { font-size: calc(clamp(9px, 1.8cqh, 18px) * var(--bubble-fit, 1)); line-height: .95; }
-/* 通常文字（screen_text）はクリック位置始点のポイント文字。あたり枠や寸法ラベルは描かない。 */
+/* 写植文字（screen_text）はクリック位置始点のポイント文字。あたり枠や寸法ラベルは描かない。 */
 .screen-text-guide { align-items:flex-start; justify-content:flex-start; overflow:visible; color:#17161a; border:0; border-radius:0; background:transparent; padding:0; }
 [data-content-target].screen-text-guide { pointer-events:auto!important; }
 .screen-text-guide .screen-text-body { position:absolute; z-index:2; top:0; left:0; display:block; width:max-content; height:max-content; max-width:none; max-height:none; overflow:visible; white-space:pre; font:700 clamp(6px,1.7cqh,15px)/1.15 "Consolas","Yu Gothic",monospace; text-align:start; color:inherit; pointer-events:none; }
@@ -520,11 +520,6 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .selectable-card.is-split-overlap .nested-card-head strong { color: #28764a; }
 .nested-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .nested-card-head strong { color: var(--muted); font: 800 11px/1 monospace; letter-spacing: .09em; }
-.nested-card-head .bubble-card-title { display: flex; align-items: center; gap: 6px; color: #4d4952; font-family: inherit; font-size:14px; line-height: 1; letter-spacing: .02em; }
-.bubble-card-kind { font-weight: 900; }
-.bubble-card-number { min-width: 23px; height: 23px; display: inline-grid; place-items: center; padding: 0 6px; border-radius: 999px; background: var(--accent); color: white; font: 900 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace; box-shadow: 0 2px 6px rgba(var(--accent-rgb),.2); }
-.bubble-card-selected { padding: 3px 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-dark); font-size:11px; font-weight: 900; }
-.selectable-card.is-selected .bubble-card-number { background: var(--accent-dark); }
 .split-overlap-badge { display: inline-flex; align-items: center; margin-left: 7px; padding: 3px 5px; border-radius: 999px; background: #d8f2e1; color: #28764a; font: 800 11px/1 ui-sans-serif, system-ui, sans-serif; font-style: normal; letter-spacing: 0; vertical-align: middle; }
 .nested-card-head button { width: 22px; height: 22px; }
 .nested-card .field-grid { margin-bottom: 9px; }
@@ -1607,13 +1602,13 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .paint-text-font-setting { display:grid; grid-template-columns:78px minmax(0,1fr); align-items:center; gap:5px; font-size:12px; }
 .paint-text-work-settings input { min-width:0; }
 .paint-text-work-settings small { max-width:260px; color:var(--muted); line-height:1.45; }
-.text-settings-window { position:fixed; z-index:90; box-sizing:border-box; width:min(236px,calc(100vw - 16px)); max-height:min(520px,calc(100vh - 16px)); overflow:hidden; padding:0; border:1px solid var(--control-border); border-radius:8px; background:var(--surface); color:var(--ink); box-shadow:0 6px 22px #0004; }
+.text-settings-window { position:fixed; z-index:90; display:grid; grid-template-rows:auto auto minmax(0,1fr); box-sizing:border-box; width:min(236px,calc(100vw - 16px)); height:min(520px,calc(100vh - 16px)); overflow:hidden; padding:0; border:1px solid var(--control-border); border-radius:8px; background:var(--surface); color:var(--ink); box-shadow:0 6px 22px #0004; }
 .text-settings-window[hidden] { display:none; }
 .text-settings-window-header { display:flex; min-height:31px; align-items:center; justify-content:space-between; gap:6px; padding:3px 4px 3px 9px; background:var(--accent-soft); cursor:move; touch-action:none; user-select:none; }
 .text-settings-window-header strong { font-size:12px; }
 .text-settings-window-header button { display:grid; width:24px; height:24px; place-items:center; padding:0; border:1px solid var(--line); border-radius:4px; background:var(--surface); cursor:pointer; }
 .text-settings-window-grab { height:9px; border-block:1px solid var(--soft-line); background:linear-gradient(90deg,transparent 0 42%,var(--control-border) 42% 58%,transparent 58%); background-size:100% 1px; background-position:center; background-repeat:no-repeat; cursor:move; touch-action:none; }
-.text-settings-window-body { max-height:min(476px,calc(100vh - 58px)); overflow:auto; padding:5px 7px 7px; }
+.text-settings-window-body { min-height:0; overflow:auto; padding:5px 7px 7px; }
 .text-settings-tabs { display:grid; grid-template-columns:repeat(3,32px); justify-content:center; gap:5px; padding-bottom:5px; border-bottom:1px solid var(--line); }
 .text-settings-tabs .text-settings-tab { display:grid; width:32px; height:30px; min-height:30px; place-items:center; padding:0; }
 .text-settings-tabs .text-settings-tab[aria-selected="true"] { border-color:var(--accent-border); background:var(--accent-fill); color:var(--accent-dark); box-shadow:inset 0 0 0 1px var(--accent-border); }
@@ -2007,9 +2002,17 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .bubble-path-edit-layer[data-agent-working] .bubble-bezier-canvas { left:-20%; top:-20%; width:140%; height:140%; }
 .bubble-path-edit-layer[data-agent-working] .bubble-bezier-box { display:none; }
 
-/* Information cards keep the inspector width, spacing and control styles. */
-.text-settings-window.is-bubble-info { width:min(calc(clamp(270px,26vw,380px) - 4px),calc(100vw - 16px)); }
+/* All text tabs share the same window; information fields use its compact spacing. */
 .text-settings-window.is-bubble-info .text-settings-tabs { position:sticky; top:-5px; z-index:2; background:var(--surface); }
+.bubble-info-content { display:grid; gap:6px; padding-top:2px; }
+.bubble-info-content .editor-section { display:grid; gap:6px; padding:0; border:0; }
+.bubble-info-content .section-title { margin:0; }
+.bubble-info-content .section-title h3 { color:var(--ink); font-size:16px; font-weight:800; line-height:1.2; }
+.bubble-info-content .nested-card { display:grid; gap:6px; padding:0; border:0; border-radius:0; background:none; box-shadow:none; cursor:default; }
+.bubble-info-content .field-grid { grid-template-columns:minmax(0,1fr); gap:6px; margin:0; }
+.bubble-info-content .field { gap:3px; margin:0; }
+.bubble-info-content .field select,.bubble-info-content .field textarea { width:100%; padding:5px 6px; font-size:14px; line-height:1.4; border-radius:4px; }
+.bubble-info-content .bubble-join-control { margin:0; }
 .bubble-info-content[aria-disabled="true"] { opacity:.58; }
 #paint-bubble-info-slot:not(:empty) + .bubble-info-empty { display:none; }
 .bubble-info-empty { padding:8px 10px; font-size:12px; color:var(--muted); }

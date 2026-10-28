@@ -88,6 +88,14 @@ class QwenGenerationPromptTest(unittest.TestCase):
                 self.assertIn(f'"{literal}"', prompt)
 
 
+    def test_handwritten_final_conditioning_preserves_spaces_newlines_and_rgba_request(self):
+        literal = 'ド  ン！\nドン'
+        config = dict(owner_key='bubble-1', content_kind='handwritten', mode='new', references=[], settings=SETTINGS, literal_text=[literal])
+        prompt = generation_prompt(config, dict(prompt=f'Draw "{literal}".', references=[]))
+        self.assertIn(literal, prompt)
+        self.assertTrue(prompt.startswith('This is an RGBA image with transparency.'))
+
+
 class RecordingClip:
     def __init__(self):
         self.calls = []

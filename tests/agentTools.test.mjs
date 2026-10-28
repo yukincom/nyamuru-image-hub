@@ -4,6 +4,7 @@ import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {agentEditorSnapshot,createAgentRevision,parseAgentBubbleEdit,prepareAgentBubbleEdit,selectedAgentBubble} from '../src/lib/agentTools.ts';
 import {createBubbleBezier} from '../src/lib/bubbleBezier.ts';
 import {bubbleTailTargetPoint} from '../src/lib/bubbleTail.ts';
+import {BUBBLE_SHAPES} from '../src/lib/manga.ts';
 
 const target={pageIndex:0,panelIndex:0,index:0,kind:'bubble',overlay:false};
 function fixture(){const document=createEmptyWorkspaceDocument();document.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:20,y:20,w:170,h:230},bg:0,action:'',
@@ -11,6 +12,14 @@ function fixture(){const document=createEmptyWorkspaceDocument();document.manga.
     {text:'続き',shape:'normal',clip_to_panel:true}]}];return document;}
 const request=changes=>({revision:'r1',target,changes});
 const edit=(document,changes)=>prepareAgentBubbleEdit(document,target,'r1',request(changes));
+
+test('agent shape edits accept every current editor category without changing text or position',()=>{
+  const before=fixture(),original=before.manga.pages[0].panels[0].bubbles[0];
+  for(const shape of BUBBLE_SHAPES){
+    const bubble=edit(before,{shape}).manga.pages[0].panels[0].bubbles[0];
+    assert.equal(bubble.shape,shape);assert.equal(bubble.text,original.text);assert.deepEqual(bubble.bbox,original.bbox);
+  }
+});
 
 test('agent edits preserve manual folder, native child, artwork and panel locks',()=>{
   for(const overlay of [false,true])for(const lock of ['folder','native','artwork','panel']){

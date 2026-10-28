@@ -5,7 +5,7 @@ from copy import deepcopy
 
 BUBBLE_SHAPES = (
     "normal", "thought", "square", "caption", "flash", "uniflash", "wobbly",
-    "whisper", "handwritten", "critical", "tense", "toge", "announce", "toge_natural",
+    "whisper", "handwritten", "typeset", "critical", "tense", "toge", "announce", "toge_natural",
 )
 
 

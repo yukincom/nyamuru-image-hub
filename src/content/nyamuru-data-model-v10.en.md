@@ -181,7 +181,7 @@ bubbles:
     tail: { x: 0.5, y: 0.35 }
 ```
 
-The following 14 `shape` values are available.
+The following 15 `shape` values are available.
 
 | shape | Use |
 |---|---|
@@ -194,6 +194,7 @@ The following 14 `shape` values are available.
 | `wobbly` | Weak voice, fear, exhaustion |
 | `whisper` | Whispering |
 | `handwritten` | Sound effects, hand-drawn text |
+| `typeset` | Typeset text without an outline; original images and painted layers retain the same owner |
 | `critical` / `tense` / `toge` / `announce` / `toge_natural` | Author-defined material classes. Select by comparing the samples with the scene, dialogue, and expression |
 
 The material class `nomal` maps to `shape: normal`. Selecting a material saves its class as `shape` and its editable outline as `bezier`. For the five author-defined classes above, omitting `bezier` uses the first material in that class.
@@ -202,12 +203,14 @@ Initial placement from a text plot stores dialogue and monologue as `shape: norm
 
 - Inner voices get `monologue: true`, and parentheses "（）" are removed from `text`.
 - Voices from outside the panel get `offscreen: true` (the speaker is off-panel: their figure is not drawn and the balloon gets no tail; still spell out `speaker`).
-- `tail: { x, y }` locates the tail tip relative to the speaker figure's `bbox` (top-left 0, bottom-right 1; values outside 0–1 are allowed). Use an appropriate short length pointing toward the mouth; the tip need not reach the mouth. Omission targets the figure center for ordinary shapes; `tail: false` draws no tail. `square`, `caption`, `flash`, `uniflash`, and `handwritten` omit tails by default.
+- `tail: { x, y }` locates the tail tip relative to the speaker figure's `bbox` (top-left 0, bottom-right 1; values outside 0–1 are allowed). Use an appropriate short length pointing toward the mouth; the tip need not reach the mouth. Omission targets the figure center for ordinary shapes; `tail: false` draws no tail. `square`, `caption`, `flash`, `uniflash`, `handwritten`, and `typeset` omit tails by default.
 - `tail_root: { x, y }` locates the root direction relative to the bubble `bbox` (top-left 0, bottom-right 1; finite values outside this range are allowed). When omitted, the root follows the tip direction. Root and tip can be moved independently on the canvas.
 - An ordinary tail remains a separate white surface with two open side outlines; only its opening masks the body outline. The body `bezier`, root `tail_root`, and tip `tail` are stored independently and are never permanently united into one body path.
 - A tailed `shape: thought` balloon uses two or three vertically elongated beads that shrink away from the balloon body.
 - Write `speaker` on every spoken balloon. Omission means that the balloon has no speaker.
 - `join_to` is the 1-based number of an earlier balloon in the same `bubbles` array to join. It is independent from the speaker; point multiple balloons to the same number for a chain of three or more.
+- `shape: typeset` retains text and `text_position` without drawing an outline, tail, or connector. Its `analogTextImport` original reference and `paint_overlay` retain the same owner. T creates entries in `screen_text`; category changes use `normal`, `handwritten`, or `typeset` on the same `bubbles` entry, preserving text, formatting, position, and original images. Optional `text_style.lineHeight` retains line advance relative to font size (0.5–3); omission uses the renderer default.
+- `shape: handwritten` is editable and generatable as hand-drawn lettering in the panel inspector. `text` is the literal text to draw; optional `lettering_description` describes its shapes, strokes, energy, and texture. Individual balloon generation is available only for handwritten lettering, never for balloon outlines. Generated images are added as new layers of the same owner, preserving the original text, guides, layers, and visibility. Optional `lettering_guide_hidden: true` hides only the editable text guide, independently of painted results; omission shows the guide.
 - `text_position: { x, y }` locates the center of the balloon text in finite coordinates relative to its `bbox`, with 0 at the top-left and 1 at the bottom-right. Values below 0 or above 1 are allowed; expanding the Bézier outline does not change this reference frame. It defaults to `{ x: 0.5, y: 0.5 }`. Clicking the text edits it; dragging its blue selection frame moves only the text, independently of the outline.
 - Separate multiple emphasized phrases in `emphasis` with ASCII commas.
 - `bezier: { nodes: [...] }` defines an editable closed cubic outline. List 3–128 nodes in contour order, each as `{ x, y, handleIn?: { x, y }, handleOut?: { x, y } }`. Anchor coordinates use the balloon `bbox` as a 0–100 reference; handles are vectors relative to their anchor. Anchors and absolute handle endpoints may use finite coordinates outside this range. Outline edits do not automatically move or resize the reference frame, source artwork, or text. The final node connects back to the first. A valid `bezier` supplies the contour, while `shape` supplies text padding, line style, and tail defaults. Text, speaker, and placement remain in their usual fields.

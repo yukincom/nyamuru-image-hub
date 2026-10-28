@@ -84,6 +84,7 @@ test('hidden paint folders and zero-opacity content do not reappear as 3D people
 test('automatic groups separate background, each person/prop and each bubble, preserving source references',()=>{
   const p=panel(),before=structuredClone(p),scene=paintScene(p,100,[]);
   assert.deepEqual(scene.owners.map(o=>o.key),['background','figure-0','figure-1','bubble-0']);
+  assert.equal(scene.owners.find(o=>o.kind==='bubble').label,'テキスト1');
   assert.equal(new Set(scene.owners.flatMap(o=>o.paint.layers.map(layer=>layer.id))).size,3);
   assert.equal(scene.owners.find(o=>o.kind==='bubble').paint.layers.length,0);
   assert.equal(scene.owners[1].paint.width,100);assert.equal(scene.owners[1].paint.height,200);
@@ -142,7 +143,7 @@ test('OCR original is one independent raster; saved eyes and locks survive and d
   const p=panel();p.bubbles[0].analogTextImport={assetId:'bubble-scan',sourceRegionId:'bubble-region',referenceHidden:false,needsReview:true};
   const owner=paintScene(p,100,[]).owners.find(owner=>owner.key==='bubble-0'),original=owner.paint.layers.find(layer=>layer.guide);
   assert.equal(owner.paint.layers.length,1);
-  assert.equal(original.name,'吹き出し原画');assert.equal(original.kind,'raster');assert.equal(original.visible,false);
+  assert.equal(original.name,'テキスト原画');assert.equal(original.kind,'raster');assert.equal(original.visible,false);
   original.visible=true;original.locked=true;original.generationMask={enabled:true,strokes:[]};
   const flat=asset('bubble-flat',owner.paint.width,owner.paint.height);
   original.image={assetId:flat.id,crop:{x:0,y:0,w:flat.widthPx,h:flat.heightPx},bbox:{x:0,y:0,w:owner.paint.width,h:owner.paint.height}};

@@ -1,4 +1,5 @@
 import type { Bubble, ImageAsset, MangaDocument, PlacedImage } from '../types.ts';
+import { textDisplayLabel } from './displayLabels.ts';
 import { fallbackBox } from './canvasGeometry.ts';
 import { overlayFallbackBox } from './pageCanvas.ts';
 import { loadFigureCropAsset } from './figureCropStore.ts';
@@ -24,7 +25,7 @@ export async function separateBubbleOriginals(document:MangaDocument, dependenci
     if(!source||source.rasterLayerSeparated)return;
     // A previously deleted original stays deleted. The marker is saved even when no image exists.
     if(source.rasterLayerInitialized&&!bubble.paint_overlay){source.rasterLayerSeparated=true;source.originalImageId=null;return;}
-    const name=`原本 · 吹き出し ${index+1}`;
+    const name=`原本 · ${textDisplayLabel(index)}`;
     let image:PlacedImage;
     if(bubble.paint_overlay){
       // Keep all existing pixels, strokes, eyes, locks and user layers exactly as saved.

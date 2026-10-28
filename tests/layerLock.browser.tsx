@@ -93,10 +93,10 @@ async function run(){
  check(visibleMarks.every(mark=>{const r=mark.getBoundingClientRect();return r.left>=svgRect.left-1&&r.top>=svgRect.top-1&&r.right<=svgRect.right+1&&r.bottom<=svgRect.bottom+1;})&&getComputedStyle(nodeDot).stroke==='rgb(35, 107, 196)'&&Number(nodeDot.getAttribute('width'))===1.5,'青い小型の輪郭点とハンドルを編集枠外でも欠けずに表示');
  const tailDot=document.querySelector<SVGCircleElement>('.bubble-tail-target-dot')!,tailHit=document.querySelector<SVGCircleElement>('.bubble-tail-target-hit')!;
  check(Number(tailDot.getAttribute('r'))<Number(tailHit.getAttribute('r'))&&Number(tailHit.getAttribute('r'))===7,'しっぽ先端は小さな表示点と広いドラッグ領域を分離');
- await click('吹き出し 1全体を固定');
- const deleteBubbleButton=button('吹き出し 1を削除');
+ await click('テキスト1全体を固定');
+ const deleteBubbleButton=button('テキスト1を削除');
  check(!document.querySelector('.bubble-bezier-canvas.is-paper-overlay')&&!document.querySelector('.bubble-tail-editor-overlay')&&(!deleteBubbleButton||deleteBubbleButton.disabled),'吹き出しフォルダ固定で輪郭・しっぽ・削除を一括停止');
- await click('吹き出し 1全体の固定を解除');
+ await click('テキスト1全体の固定を解除');
  // Frame-only lock affects panel geometry; whole-panel lock is inherited by every descendant and inspector field.
  await click('コマ 01の枠だけを固定');
  check(button('コマ 01全体を固定')?.getAttribute('aria-pressed')==='false'&&button('背景を固定')?.disabled===false&&!document.querySelector('.panel-resize-hit')&&!document.querySelector('[data-content-kind="screen_text"][data-artwork-locked]'),'コマ枠固定は枠形状だけを停め、中の背景・文字は編集可能');

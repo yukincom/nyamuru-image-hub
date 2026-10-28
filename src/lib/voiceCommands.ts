@@ -1,3 +1,4 @@
+import {isHandwrittenText} from './bubblePresentation.ts';
 import type {CanvasElementSelection,MangaDocument} from '../types.ts';
 import {isPropPlacement} from './catalogModel.ts';
 import {bubbleVisible,panelVisible} from './panelLayers.ts';
@@ -104,8 +105,8 @@ export function resolveVoiceCommand(prediction:VoicePrediction):VoiceResolution 
     if(quoted!==undefined)return {command:{op:'bubble_text',text:quoted}};
   }
   if(label==='generate_request'){
-    const target=match(text,'(これ|(?:この|選択中の|今選択している|今選んでいる)(人物|キャラクター|キャラ|吹き出し|フキダシ))を(?:画像)?生成して');
-    if(target)return {command:{op:'generate_selected',kind:!target[2]?'selected':['吹き出し','フキダシ'].includes(target[2])?'bubble':'figure'}};
+    const target=match(text,'(これ|(?:この|選択中の|今選択している|今選んでいる)(人物|キャラクター|キャラ|描き文字|書き文字))を(?:画像)?生成して');
+    if(target)return {command:{op:'generate_selected',kind:!target[2]?'selected':['描き文字','書き文字'].includes(target[2])?'bubble':'figure'}};
     const named=match(text,'([0-9〇一二三四五六七八九十]+)コマ(?:目)?の([^「」\\n]{1,80})を(?:画像)?生成して');
     if(named){const panel=number(named[1]);if(Number.isSafeInteger(panel)&&panel>0)return {command:{op:'generate_selected',kind:'figure',locator:{panel,name:named[2].trim()}}};}
   }
@@ -134,13 +135,14 @@ export function resolveVoiceGenerationTarget(document:MangaDocument,pageIndex:nu
     if(matches.length!==1)throw Error(`${command.locator.panel}コマ目に「${command.locator.name}」が複数あります。生成する人物を一つ選択してください`);
     kind='figure';index=matches[0];
   }else{
-    if(!selection||selection.scope==='page'||!['figure','bubble'].includes(selection.type))throw Error('生成する人物かフキダシを選択してください');
+    if(!selection||selection.scope==='page'||!['figure','bubble'].includes(selection.type))throw Error('生成する人物か描き文字を選択してください');
     if(command.kind!=='selected'&&selection.type!==command.kind)throw Error('入力した種類と選択中の生成対象が一致しません');
     kind=selection.type as 'figure'|'bubble';index=selection.index;overlay=selection.scope==='page_overlay';
   }
   const owner=overlay?page.page_overlay:page.panels[panelIndex];
   const figure=kind==='figure'?owner?.figures?.[index]:undefined,bubble=kind==='bubble'?owner?.bubbles?.[index]:undefined;
   if(!owner||(!figure&&!bubble))throw Error('選択中の生成対象が見つかりません');
+  if(bubble&&!isHandwrittenText(bubble))throw Error('吹き出し単品は生成できません。描き文字を選択してください');
   if(figure&&isPropPlacement(figure)&&command.kind==='figure')throw Error('選択中の対象は小道具です。生成する人物を選択してください');
   if((!overlay&&!panelVisible(page.panels[panelIndex]))||figure?.artwork?.hidden||bubble&&!bubbleVisible(bubble))throw Error('生成対象が非表示です');
   return {pageIndex,panelIndex:overlay?0:panelIndex,index,kind,overlay};
