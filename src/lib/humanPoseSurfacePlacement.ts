@@ -39,6 +39,15 @@ export function humanPoseSurfaceAnchor(points: Map<string, Vector3>, anchor: Hum
 export function humanPosePlacementScale(scene: HumanPoseSceneSettings, nativeHeight: number): number {
   return (scene.placement.scale ?? 1) * (scene.stature_m ? scene.stature_m / nativeHeight : 1);
 }
+/** Keep the head centre in world space when exchanging registered poses. */
+export function keepHumanPoseHeadPosition(scene: HumanPoseSceneSettings, head: Vector3, nativeHeight: number, target: Vector3): HumanPoseSceneSettings {
+  const next = structuredClone(scene);
+  const offset = head.clone().multiplyScalar(humanPosePlacementScale(scene, nativeHeight))
+    .applyAxisAngle(new Vector3(0, 1, 0), scene.placement.yaw_degrees * Math.PI / 180);
+  next.placement.position = target.clone().sub(offset).toArray();
+  if (!vector(next.placement.position)) throw new Error('配置が扱える座標範囲を超えます。人物の大きさを確認してください');
+  return next;
+}
 export const wrapHumanPoseDegrees = (degrees: number): number => ((degrees + 180) % 360 + 360) % 360 - 180;
 /** The pelvis, rather than gaze or shoulder twist, defines the body's facing direction. */
 export function humanPoseBodyFacing(rig: HumanPoseRig, pose: HumanPoseData, requireUpright = false): number | undefined {

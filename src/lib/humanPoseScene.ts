@@ -70,6 +70,15 @@ export function sameHumanPoseSource(a: HumanPoseSceneSettings['source'], b: Huma
   return hashes.every(key => a[key] === b[key]) && a.pose_revision === b.pose_revision;
 }
 
+/** An explicit preset change keeps staging and camera, and starts from the new registered body pose. */
+export function humanPoseSceneForPreset(scene: HumanPoseSceneSettings, source: HumanPoseSceneSettings['source']): HumanPoseSceneSettings {
+  const next = structuredClone(scene);
+  next.source = { ...source };
+  delete next.joint_edits;
+  delete next.motion;
+  return next;
+}
+
 /** Y-up、現在姿勢の骨盤正面を基準にする。顔/目線や動作を推測しない。 */
 export function humanPoseCameraFacing(rig: HumanPoseRig, pose: HumanPoseData, placementYaw: number): number | null {
   const local = humanPoseBodyFacing(rig, pose, true);

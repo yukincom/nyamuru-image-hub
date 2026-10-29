@@ -103,7 +103,7 @@ export default function FigureHumanPoseEditor({ value, aspect: figureAspect, fra
       <button type="button" class="secondary-button" onClick={() => onChange(undefined)}>ポーズと編集文を解除</button>
     </>}
     {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} cutFrame={cutFrame} panelContext={panelContext} stages={stages} backgroundCaptures={backgroundCaptures}
-      onConfirm={(scene, subject) => onChange({ ...sceneValue, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, sceneValue.camera_prompt) }, scene.framing?.size)}
+      onConfirm={(scene, subject, selection) => onChange({ ...selection, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, selection.camera_prompt) }, scene.framing?.size)}
       onClose={() => { setSceneValue(null); sceneTrigger.current?.focus(); }} />}
   </section>;
 }

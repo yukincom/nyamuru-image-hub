@@ -22,6 +22,10 @@
 .human-pose-scene-dialog .background3d-gizmo [role="button"] { cursor: pointer; }
 .human-pose-scene-dialog .background3d-gizmo [role="button"]:focus { outline: 2px solid #23675c; }
 .human-pose-scene-layout aside { display: grid; gap: 12px; }
+.human-pose-presets input[type="search"] { width: 100%; box-sizing: border-box; }
+.human-pose-presets .human-pose-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 260px; overflow: auto; margin-top: 8px; }
+.human-pose-presets .human-pose-card { min-width: 0; font-size: .8rem; }
+.human-pose-presets .human-pose-card img { height: 96px; }
 .human-pose-scene-layout > div:first-child { position: sticky; top: 8px; }
 .human-pose-scene-buttons button[aria-pressed="true"] { border-color: #34685c; background: #d7e7dd; box-shadow: inset 0 0 0 1px #34685c; }
 .human-pose-scene-layout fieldset { border: 1px solid #c5d1ce; border-radius: 8px; padding: 12px; }

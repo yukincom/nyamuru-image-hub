@@ -17,7 +17,7 @@ import { loadBackgroundStage } from './backgroundStageStore.ts';
 import { loadStageShape, stageClipPlanes, type StageShape } from './background3dRenderer.ts';
 import { applyBackgroundVisibility, prepareBackgroundCutaway, visibleCutawayMeshes, type BackgroundCutawayModel } from './background3dCutaway.ts';
 import { pickBackgroundSurface } from './background3dSurfacePick.ts';
-import { alignHumanPoseSurface, humanPoseBodyFacing, humanPosePlacementScale, humanPoseSurfaceAligned, humanPoseSurfaceFromHit, wrapHumanPoseDegrees } from './humanPoseSurfacePlacement.ts';
+import { alignHumanPoseSurface, humanPoseBodyFacing, humanPosePlacementScale, humanPoseSurfaceAligned, humanPoseSurfaceFromHit, keepHumanPoseHeadPosition, wrapHumanPoseDegrees } from './humanPoseSurfacePlacement.ts';
 
 export interface HumanPoseBackground { sourceId: string; shape: StageShape }
 export async function loadHumanPoseBackground(sourceId: string, stages: BackgroundStage[]): Promise<HumanPoseBackground> {
@@ -25,6 +25,39 @@ export async function loadHumanPoseBackground(sourceId: string, stages: Backgrou
   const stage = stages.find(item => item.id === sourceId);
   if (!stage) throw new Error('保存した3D舞台が見つかりません。舞台を含む作品を開き直してください');
   return { sourceId, shape: await loadStageShape(stage, await loadBackgroundStage(stage)) };
+}
+
+function poseSupports(pose: HumanPoseData): Mesh[] {
+  const group = new Group(), material = new MeshStandardMaterial({ color: '#b3b3b3', roughness: .9 });
+  try {
+    for (const support of pose.supports) {
+      if (!support.position?.every(Number.isFinite) || support.position.length !== 3) throw new Error('支持物の位置が不正です');
+      let geometry;
+      if (support.kind === 'box' && support.size.length === 3 && support.size.every(v => Number.isFinite(v) && v > 0 && v <= 100)) geometry = new BoxGeometry(...support.size);
+      else if (support.kind === 'cylinder' && Number.isFinite(support.radius) && support.radius > 0 && support.radius <= 100
+        && Number.isFinite(support.height) && support.height > 0 && support.height <= 100) geometry = new CylinderGeometry(support.radius, support.radius, support.height, 24);
+      else throw new Error('支持物の形状が不正です');
+      const mesh = new Mesh(geometry, material); mesh.position.fromArray(support.position); group.add(mesh);
+    }
+    if (!group.children.length) material.dispose();
+    return [...group.children] as Mesh[];
+  } catch (error) { if (!group.children.length) material.dispose(); disposeThreeObject(group); throw error; }
+}
+
+function poseBackgroundGroup(background?: HumanPoseBackground): Group {
+  const group = new Group();
+  try {
+    if (background) {
+      const material = new MeshStandardMaterial({ color: '#ccd5d4', roughness: 1, side: DoubleSide });
+      for (const mesh of background.shape.meshes) {
+        const geometry = new BufferGeometry();
+        geometry.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3)); geometry.setIndex(mesh.indices); geometry.computeVertexNormals();
+        group.add(new Mesh(geometry, material));
+      }
+      if (!group.children.length) material.dispose();
+    }
+    return group;
+  } catch (error) { disposeThreeObject(group); throw error; }
 }
 
 /** 1件だけ開き、closeでGPU資源も解放する。体勢は登録姿勢から導出する。 */
@@ -78,17 +111,8 @@ export class HumanPoseSceneRenderer {
       const ring = new Mesh(new RingGeometry(.07, .09, 32), new MeshBasicMaterial({ color: '#e18b16', side: DoubleSide, depthTest: false }));
       ring.rotation.x = -Math.PI / 2; ring.renderOrder = 11;
       this.surfaceMarker.add(ring, this.surfaceArrow);
-      const grey = new MeshStandardMaterial({ color: '#b3b3b3', roughness: .9 });
       // 登録された支持物だけを描画し、床や椅子を推測して追加しない。
-      for (const support of assets.pose.supports) {
-        if (!support.position?.every(Number.isFinite) || support.position.length !== 3) throw new Error('支持物の位置が不正です');
-        let geometry;
-        if (support.kind === 'box' && support.size.length === 3 && support.size.every(v => Number.isFinite(v) && v > 0 && v <= 100)) geometry = new BoxGeometry(...support.size);
-        else if (support.kind === 'cylinder' && Number.isFinite(support.radius) && support.radius > 0 && support.radius <= 100
-          && Number.isFinite(support.height) && support.height > 0 && support.height <= 100) geometry = new CylinderGeometry(support.radius, support.radius, support.height, 24);
-        else throw new Error('支持物の形状が不正です');
-        const mesh = new Mesh(geometry, grey); mesh.position.fromArray(support.position); this.placement.add(mesh); this.supports.push(mesh);
-      }
+      this.supports = poseSupports(assets.pose); if (this.supports.length) this.placement.add(...this.supports);
       this.scene.add(new AmbientLight('#ffffff', 2));
       const light = new DirectionalLight('#ffffff', 3); light.position.set(3, 5, 4); this.scene.add(light);
       this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
@@ -113,6 +137,43 @@ export class HumanPoseSceneRenderer {
     return changeHumanPoseMotion(this.motions, this.rig, this.basePose, settings, clipId, phase);
   }
   snapshot(): HumanPoseSceneSettings { return structuredClone(this.settings); }
+  /** Exchange only pose resources; the canvas, camera and viewport remain mounted. */
+  replacePose(assets: HumanPoseSceneAssets, settings: HumanPoseSceneSettings, keepHead = false, background?: HumanPoseBackground): void {
+    validateHumanPoseScene(settings);
+    if (!sameHumanPoseSource(settings.source, assets.source)) throw new Error('保存した撮影設定と素材の版が異なります');
+    const nextBackground = background ?? (this.background?.sourceId === settings.background?.sourceId ? this.background : undefined);
+    if (nextBackground?.sourceId !== settings.background?.sourceId) throw new Error('背景モデルと保存する舞台が一致しません');
+    const runtime = new HumanPoseSkeleton(assets.rig);
+    let supports: Mesh[] = [], group: Group | undefined;
+    let next = structuredClone(settings), cutaway = this.cutaway;
+    try {
+      const baseline = settings.motion ? sampleHumanPoseMotion(this.motions, assets.rig, assets.pose, settings.motion) : assets.pose;
+      const pose = editedHumanPose(assets.rig, baseline, settings);
+      runtime.applyPose(pose); runtime.showDetails(this.detail, '');
+      if (keepHead) {
+        const previousHead = this.runtime.points.get('headCentre'), nextHead = runtime.points.get('headCentre');
+        if (!previousHead || !nextHead) throw new Error('頭の基準点がありません');
+        next = keepHumanPoseHeadPosition(next, nextHead, runtime.nativeHeight, this.placement.localToWorld(previousHead.clone()));
+      }
+      validateHumanPoseScene(next);
+      supports = poseSupports(pose);
+      if (nextBackground !== this.background) {
+        group = poseBackgroundGroup(nextBackground);
+        cutaway = nextBackground && prepareBackgroundCutaway(nextBackground.shape.meshes, nextBackground.shape.groups, nextBackground.shape);
+      }
+    } catch (error) {
+      runtime.dispose(); if (supports.length) disposeThreeObject(new Group().add(...supports)); if (group) disposeThreeObject(group); throw error;
+    }
+    this.runtime.scene.removeFromParent(); this.runtime.dispose();
+    if (this.supports.length) disposeThreeObject(new Group().add(...this.supports));
+    this.runtime = runtime; this.rig = assets.rig; this.basePose = structuredClone(assets.pose); this.supports = supports;
+    this.placement.add(runtime.scene, ...supports); this.settings = next; this.handleDrag = undefined;
+    if (group) {
+      disposeThreeObject(this.backgroundGroup); this.backgroundGroup.removeFromParent();
+      this.backgroundGroup = group; this.background = nextBackground; this.cutaway = cutaway; this.scene.add(group);
+    }
+    this.updatePlacement(); this.render();
+  }
   setPreviewMargin(margin: number, cut?: HumanPoseCutFrame): void {
     if (!Number.isFinite(margin) || margin < 0 || margin >= .4) throw new Error('撮影枠の余白が不正です');
     this.previewMargin = margin; this.previewCut = cut; this.render();
@@ -157,17 +218,7 @@ export class HumanPoseSceneRenderer {
   replaceBackground(background: HumanPoseBackground | undefined, settings: HumanPoseSceneSettings): void {
     validateHumanPoseScene(settings);
     if (background?.sourceId !== settings.background?.sourceId) throw new Error('背景モデルと保存する舞台が一致しません');
-    const group = new Group();
-    try {
-      if (background) {
-        const material = new MeshStandardMaterial({ color: '#ccd5d4', roughness: 1, side: DoubleSide });
-        for (const mesh of background.shape.meshes) {
-          const geometry = new BufferGeometry();
-          geometry.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3)); geometry.setIndex(mesh.indices); geometry.computeVertexNormals();
-          group.add(new Mesh(geometry, material));
-        }
-      }
-    } catch (error) { disposeThreeObject(group); throw error; }
+    const group = poseBackgroundGroup(background);
     disposeThreeObject(this.backgroundGroup); this.backgroundGroup.removeFromParent();
     this.backgroundGroup = group; this.background = background;
     this.cutaway = background && prepareBackgroundCutaway(background.shape.meshes, background.shape.groups, background.shape);

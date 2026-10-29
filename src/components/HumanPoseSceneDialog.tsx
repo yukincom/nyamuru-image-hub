@@ -1,15 +1,18 @@
 import { createPortal } from 'preact/compat';
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
-import { loadHumanPoseScene } from '../lib/localBridge.ts';
+import { loadHumanPoseCatalog, loadHumanPoseScene } from '../lib/localBridge.ts';
 import { withNewCreationBridgeSession } from '../lib/localBridgeLifecycle.ts';
 import { dollyBackgroundCamera, shiftBackgroundCamera } from '../lib/background3dCamera.ts';
 import { HumanPoseSceneRenderer, loadHumanPoseBackground } from '../lib/humanPoseSceneRenderer.ts';
-import { humanPoseCameraParts, humanPoseSceneFrame, useHumanPoseBackgroundCamera } from '../lib/humanPoseScene.ts';
+import { humanPoseCameraParts, humanPoseSceneFrame, humanPoseSceneForPreset, useHumanPoseBackgroundCamera } from '../lib/humanPoseScene.ts';
+import { humanPoseSelectable, selectHumanPose } from '../lib/humanPoseSelection.ts';
+import { searchHumanPoses } from '../lib/humanPoseSearch.ts';
+import { HUMAN_POSE_PREVIEW_ART } from '../lib/humanPosePreviewArt.ts';
 import { CUBE_STAGE_ID } from '../lib/background3d.ts';
 import type { BackgroundCapture, BackgroundStage, FigureSize } from '../types.ts';
 import { HUMAN_POSE_PREVIEW_MARGIN, humanPoseCutOutline, humanPosePreviewWindow, MANUAL_HUMAN_POSE_FRAMING, type HumanPoseCutFrame } from '../lib/humanPoseFraming.ts';
 import type { HumanPosePanelContext } from '../lib/humanPoseComposition.ts';
-import type { HumanPoseCameraSubject, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, HumanPoseSurfacePlacement, HumanPoseTextSelection, PoseVector } from '../lib/humanPoseTypes.ts';
+import type { HumanPoseCameraSubject, HumanPoseCatalog, HumanPoseCatalogEntry, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, HumanPoseSurfacePlacement, HumanPoseTextSelection, PoseVector } from '../lib/humanPoseTypes.ts';
 import HumanPoseMotionControls from './HumanPoseMotionControls.tsx';
 import HumanPoseSurfaceControls, { type HumanPoseSurfacePickMode } from './HumanPoseSurfaceControls.tsx';
 import BackgroundCameraGizmo from './BackgroundCameraGizmo.tsx';
@@ -27,19 +30,28 @@ interface Props {
   panelContext?: HumanPosePanelContext;
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
-  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject) => void;
+  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject, selection: HumanPoseTextSelection) => void;
   onClose: () => void;
 }
 type Camera = HumanPoseSceneSettings['camera'];
+type PoseSnapshot = { selection: HumanPoseTextSelection; scene: HumanPoseSceneSettings };
 
 export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, framingSize: initialFramingSize = 'bust-up', cutFrame, panelContext, stages = [], backgroundCaptures = [], onConfirm, onClose }: Props) {
   const aspect = cutFrame?.aspect ?? figureAspect;
   const id = useId(), dialog = useRef<HTMLDialogElement>(null), host = useRef<HTMLDivElement>(null);
   const renderer = useRef<HumanPoseSceneRenderer | null>(null);
-  const initial = useRef<HumanPoseSceneSettings | null>(null);
+  const initial = useRef<PoseSnapshot | null>(null);
+  const [poseValue, setPoseValue] = useState(() => structuredClone(value));
+  const poseRef = useRef(poseValue); poseRef.current = poseValue;
+  const presetScene = useRef<HumanPoseSceneSettings>();
+  const exactScene = useRef(false), poseLoading = useRef(true);
+  const [catalog, setCatalog] = useState<HumanPoseCatalog | null>(null), [query, setQuery] = useState('');
+  const [catalogError, setCatalogError] = useState(''), [catalogAttempt, setCatalogAttempt] = useState(0);
+  const ready = catalog?.poses.filter(humanPoseSelectable) ?? [];
+  const matches = catalog ? searchHumanPoses(ready, catalog.tags, query) : [];
   const drag = useRef<{ pointer: number; x: number; y: number; camera: Camera; moved: boolean } | null>(null);
   const jointDrag = useRef<{ pointer: number; scene: HumanPoseSceneSettings } | null>(null);
-  const undo = useRef<HumanPoseSceneSettings[]>([]), redo = useRef<HumanPoseSceneSettings[]>([]);
+  const undo = useRef<PoseSnapshot[]>([]), redo = useRef<PoseSnapshot[]>([]);
   const [playing, setPlaying] = useState(false);
   const motionRun = useRef<number | null>(null), motionStart = useRef<HumanPoseSceneSettings | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -58,10 +70,15 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
   const [backgroundBusy, setBackgroundBusy] = useState(false), [detachBackground, setDetachBackground] = useState(false);
   const [previewBackground, setPreviewBackground] = useState(false);
   const backgroundRequest = useRef(0);
-  const frame = draft?.frame ?? value.scene?.frame ?? humanPoseSceneFrame(aspect);
+  const frame = draft?.frame ?? poseValue.scene?.frame ?? humanPoseSceneFrame(aspect);
   const framingSize = draft?.framing?.size ?? initialFramingSize;
   const outputFrame = cutFrame ? humanPoseSceneFrame(cutFrame.aspect * cutFrame.bounds.w / cutFrame.bounds.h) : frame;
   const previewWindow = humanPosePreviewWindow(cutFrame);
+  const snapshot = (scene = renderer.current?.snapshot()): PoseSnapshot | null => scene
+    ? { selection: structuredClone(poseRef.current), scene: structuredClone(scene) } : null;
+  const remember = (scene: HumanPoseSceneSettings) => {
+    undo.current.push(snapshot(scene)!); redo.current = []; setHistoryVersion(v => v + 1);
+  };
 
   const finishPan = () => {
     const active = drag.current; drag.current = null; setPanning(false);
@@ -73,7 +90,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
     const reverted = renderer.current?.endHandleDrag(cancel);
     if (reverted) { renderer.current?.apply(reverted); setDraft(reverted); setPreview(''); }
     else if (renderer.current && JSON.stringify(active.scene) !== JSON.stringify(renderer.current.snapshot())) {
-      undo.current.push(active.scene); redo.current = []; setHistoryVersion(v => v + 1);
+      remember(active.scene);
     }
     if (host.current?.hasPointerCapture(active.pointer)) host.current.releasePointerCapture(active.pointer);
   };
@@ -81,6 +98,12 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
   const cancelInteraction = () => { stopMotion(); setSurfacePicking(null); releaseSpace(); finishJoint(true); };
 
   useEffect(() => { dialog.current?.showModal(); host.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => {
+    let cancelled = false; setCatalogError('');
+    void withNewCreationBridgeSession(loadHumanPoseCatalog).then(next => { if (!cancelled) setCatalog(next); })
+      .catch(cause => { if (!cancelled) setCatalogError(cause instanceof Error ? cause.message : '人体ポーズを読み込めませんでした'); });
+    return () => { cancelled = true; };
+  }, [catalogAttempt]);
   useEffect(() => {
     let cancelled = false;
     if (panelContext) void import('../lib/humanPoseComposition.ts').then(({ captureHumanPoseCompanions }) => captureHumanPoseCompanions(panelContext))
@@ -101,41 +124,51 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
     };
   }, []);
   useEffect(() => {
-    let cancelled = false, active: HumanPoseSceneRenderer | null = null;
-    setLoading(true); setError(''); setDraft(null); setPreview('');
+    let cancelled = false;
+    poseLoading.current = true; setLoading(true); setError(''); setPreview('');
     void (async () => {
       try {
-        const assets = await withNewCreationBridgeSession(() => loadHumanPoseScene(value.pose_id, value.catalog_sha256));
+        const assets = await withNewCreationBridgeSession(() => loadHumanPoseScene(poseValue.pose_id, poseValue.catalog_sha256));
         if (cancelled || !host.current) return;
-        const saved = value.scene && structuredClone(value.scene);
+        const changingPreset = Boolean(presetScene.current);
+        const saved = presetScene.current ? humanPoseSceneForPreset(presetScene.current, assets.source) : poseValue.scene && structuredClone(poseValue.scene);
         if (saved && detachBackground) delete saved.background;
-        const background = saved?.background && await loadHumanPoseBackground(saved.background.sourceId, stages);
+        const existing = renderer.current;
+        const background = saved?.background && (!existing || existing.snapshot().background?.sourceId !== saved.background.sourceId)
+          ? await loadHumanPoseBackground(saved.background.sourceId, stages) : undefined;
         if (cancelled || !host.current) return;
-        active = await HumanPoseSceneRenderer.create(host.current, assets, saved, aspect, background);
-        if (cancelled) { active.dispose(); return; }
-        if (saved?.framing?.size !== framingSize || Math.abs(active.snapshot().frame.width / active.snapshot().frame.height / aspect - 1) > .01) active.apply(active.frameFor(framingSize, aspect));
+        let active = existing;
+        if (active && saved) active.replacePose(assets, saved, changingPreset, background);
+        else {
+          active = await HumanPoseSceneRenderer.create(host.current, assets, saved, aspect, background);
+          if (cancelled) { active.dispose(); return; }
+          if (!exactScene.current && (saved?.framing?.size !== framingSize || Math.abs(active.snapshot().frame.width / active.snapshot().frame.height / aspect - 1) > .01)) active.apply(active.frameFor(framingSize, aspect));
+        }
         active.setPreviewMargin(HUMAN_POSE_PREVIEW_MARGIN, cutFrame);
-        renderer.current = active; initial.current = active.snapshot(); setDraft(active.snapshot());
-      } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : '3D表示を開けませんでした'); }
-      finally { if (!cancelled) setLoading(false); }
+        active.selectJoint('', details);
+        renderer.current = active; presetScene.current = undefined; exactScene.current = false;
+        initial.current ??= snapshot(active.snapshot()); setDraft(active.snapshot());
+      } catch (cause) { if (!cancelled) { setDraft(null); setError(cause instanceof Error ? cause.message : '3D表示を開けませんでした'); } }
+      finally { if (!cancelled) { poseLoading.current = false; setLoading(false); } }
     })();
-    return () => { cancelled = true; if (motionRun.current !== null) cancelAnimationFrame(motionRun.current); motionRun.current = null; motionStart.current = null; backgroundRequest.current++; drag.current = null; active?.dispose(); renderer.current = null; };
+    return () => { cancelled = true; if (motionRun.current !== null) cancelAnimationFrame(motionRun.current); motionRun.current = null; motionStart.current = null; backgroundRequest.current++; drag.current = null; };
     // 開いた時点の保存値をdraftへ複製し、確定するまで親を書き換えない。
-  }, [value.pose_id, value.catalog_sha256, attempt]);
+  }, [poseValue.pose_id, poseValue.catalog_sha256, attempt]);
+  useEffect(() => () => { renderer.current?.dispose(); renderer.current = null; }, []);
 
   const update = (next: HumanPoseSceneSettings, remember = true) => {
     if (remember) stopMotion();
     try {
       const before = renderer.current?.snapshot();
       renderer.current?.apply(next);
-      if (remember && before && JSON.stringify(before) !== JSON.stringify(next)) { undo.current.push(before); redo.current = []; setHistoryVersion(v => v + 1); } setDraft(structuredClone(next)); setPreview(''); setError(''); }
+      if (remember && before && JSON.stringify(before) !== JSON.stringify(next)) { undo.current.push(snapshot(before)!); redo.current = []; setHistoryVersion(v => v + 1); } setDraft(structuredClone(next)); setPreview(''); setError(''); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '撮影設定を変更できません'); }
   };
   const beginMotion = () => { motionStart.current ??= renderer.current?.snapshot() ?? null; };
   const endMotion = () => {
     const before = motionStart.current; motionStart.current = null;
     if (before && renderer.current && JSON.stringify(before) !== JSON.stringify(renderer.current.snapshot())) {
-      undo.current.push(before); redo.current = []; setHistoryVersion(v => v + 1);
+      remember(before);
     }
   };
   const stopMotion = () => {
@@ -176,9 +209,25 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
   };
   const stepHistory = (back: boolean) => {
     stopMotion(); setSurfacePicking(null);
-    const stack = back ? undo.current : redo.current, next = stack.pop(); if (!next || !renderer.current) return;
-    (back ? redo.current : undo.current).push(renderer.current.snapshot());
-    void changeBackground(next); setHistoryVersion(v => v + 1);
+    const stack = back ? undo.current : redo.current, next = stack.pop(); if (!next) return;
+    const current = snapshot(); if (current) (back ? redo.current : undo.current).push(current);
+    restoreSnapshot(next); setHistoryVersion(v => v + 1);
+  };
+  const restoreSnapshot = (next: PoseSnapshot) => {
+    cancelInteraction(); presetScene.current = undefined; exactScene.current = true;
+    const samePose = next.selection.pose_id === poseRef.current.pose_id && next.selection.catalog_sha256 === poseRef.current.catalog_sha256;
+    const selection = { ...structuredClone(next.selection), scene: structuredClone(next.scene) };
+    poseRef.current = selection; setPoseValue(selection);
+    if (samePose && renderer.current) void changeBackground(next.scene);
+    else { poseLoading.current = true; setLoading(true); setSelected(''); if (samePose) setAttempt(v => v + 1); }
+  };
+  const choosePose = (pose: HumanPoseCatalogEntry) => {
+    if (!catalog || poseLoading.current || backgroundBusy || pose.id === poseRef.current.pose_id && catalog.catalog_sha256 === poseRef.current.catalog_sha256) return;
+    cancelInteraction();
+    const before = snapshot(); if (before) remember(before.scene);
+    const next = { ...selectHumanPose(pose, catalog.catalog_sha256), input_mode: poseRef.current.input_mode };
+    presetScene.current = before?.scene; exactScene.current = false; poseLoading.current = true;
+    poseRef.current = next; setPoseValue(next); setLoading(true); setSelected(''); setDetachBackground(false);
   };
   const camera = (next: Camera) => { if (draft) update({ ...draft, camera: next }); };
   const flipBody = () => {
@@ -218,13 +267,14 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
       if (event.detail > 0 && event.target instanceof Element && event.target.closest('button') && dialog.current?.open) host.current?.focus({ preventScroll: true });
     }}>
     <div class="human-pose-scene-content">
-      <header><h2 id={`${id}-title`}>{value.label_ja} — 3D配置と撮影</h2><button type="button" class="icon-button" aria-label="閉じる" onClick={close}>×</button></header>
+      <header><h2 id={`${id}-title`}>{poseValue.label_ja} — 3D配置と撮影</h2><button type="button" class="icon-button" aria-label="閉じる" onClick={close}>×</button></header>
       <p class="field-note">マーカーを掴んで姿勢を作り、「確定」で保存します。ポーズの説明文は自動では書き換わりません。</p>
-      {loading && <p role="status">3D素材を読み込んでいます…</p>}
+      {loading && !draft && <p role="status">3D素材を読み込んでいます…</p>}
       {error && <p role="alert">{error}</p>}
       {showCompanions && companionError && <p role="alert">{companionError}</p>}
       {!loading && !draft && <><button type="button" class="secondary-button" onClick={() => setAttempt(v => v + 1)}>再読込</button>
-        {value.scene?.background && !detachBackground && <button type="button" class="secondary-button" onClick={() => { setDetachBackground(true); setAttempt(v => v + 1); }}>背景との関連付けを外して開く</button>}</>}
+        {undo.current.length > 0 && <button type="button" class="secondary-button" onClick={() => stepHistory(true)}>元に戻す</button>}
+        {poseValue.scene?.background && !detachBackground && <button type="button" class="secondary-button" onClick={() => { setDetachBackground(true); setAttempt(v => v + 1); }}>背景との関連付けを外して開く</button>}</>}
       {backgroundBusy && <p role="status">背景を読み込んでいます…</p>}
       <div class="human-pose-scene-layout">
         <div>
@@ -233,7 +283,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
               if (event.button === 0 && event.target instanceof Element && event.target.closest('.background3d-gizmo')) host.current?.focus({ preventScroll: true });
             }}
             onWheel={event => {
-              if (!draft || backgroundBusy) return;
+              if (!draft || loading || backgroundBusy) return;
               event.preventDefault();
               if (!event.deltaY || drag.current || jointDrag.current) return;
               const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientHeight : 1;
@@ -244,12 +294,12 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
               tabIndex={0} role="group" aria-label="人体ポーズの操作領域" aria-describedby={`${id}-controls`}
               onContextMenu={event => event.preventDefault()}
               onKeyDown={event => {
-                if (event.code !== 'Space' || !draft || backgroundBusy) return;
+                if (event.code !== 'Space' || !draft || loading || backgroundBusy) return;
                 event.preventDefault(); spaceHeld.current = true; setSpacePan(true);
               }}
               onBlur={() => { releaseSpace(); finishJoint(true); }}
               onPointerDown={event => {
-                if (!draft || backgroundBusy || event.button !== 0 || drag.current) return;
+                if (!draft || loading || backgroundBusy || event.button !== 0 || drag.current) return;
                 event.preventDefault(); stopMotion(); event.currentTarget.focus({ preventScroll: true });
                 if (surfacePicking && !spaceHeld.current) {
                   try {
@@ -290,7 +340,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             {draft && <BackgroundCameraGizmo camera={draft.camera} disabled={loading || backgroundBusy} onChange={camera} />}
           </div>
           <p class="field-note" id={`${id}-controls`}>三方矢印：ドラッグで角度調整・クリックで軸方向へ ／ ホイール：近づく・離れる ／ Space＋ドラッグ：画面を掴んで移動。マーカー：姿勢を動かす ／ Shift＋ドラッグ：奥行き移動。暗い部分は撮影範囲外です。枠線・暗幕・床・操作マーカーは撮影に入りません。</p>
-          {draft && <fieldset class="human-pose-body-choice" disabled={backgroundBusy}><legend>体勢の左右</legend>
+          {draft && <fieldset class="human-pose-body-choice" disabled={loading || backgroundBusy}><legend>体勢の左右</legend>
             <div class="human-pose-scene-buttons">
               <button type="button" class="secondary-button" aria-pressed={draft.body_mirror === 'mirrored'} onClick={flipBody}>左右反転</button>
             </div>
@@ -301,10 +351,25 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             {showCompanions && <p class="field-note">相方は現在の配置で仮表示しています。人物単品の撮影・生成には含めず、コマ・ページの生成では一緒に送ります。</p>}</>}
           {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
         </div>
-        {draft && <aside aria-label="配置・撮影設定">
-          <HumanPoseMotionControls clips={renderer.current?.motionClips ?? []} value={draft.motion} playing={playing} disabled={backgroundBusy}
+        <aside aria-label="配置・撮影設定">
+          <fieldset class="human-pose-presets" disabled={loading || backgroundBusy}><legend>登録ポーズ</legend>
+            <label for={`${id}-search`}>番号・ポーズ・動作で検索</label>
+            <input id={`${id}-search`} type="search" value={query} onInput={event => setQuery(event.currentTarget.value)} />
+            {catalogError && <div role="alert">{catalogError}<button type="button" onClick={() => setCatalogAttempt(v => v + 1)}>再読込</button></div>}
+            {catalog && <><output>{matches.length}件 / {ready.length}件</output>
+              {matches.length === 0 && <p>条件に合うポーズがありません。</p>}
+              <div class="human-pose-grid" aria-label="ポーズ候補">
+                {matches.map(pose => <button key={pose.id} type="button" data-pose-id={pose.id} class={`human-pose-card ${poseValue.pose_id === pose.id ? 'is-selected' : ''}`}
+                  aria-pressed={poseValue.pose_id === pose.id} onClick={() => choosePose(pose)}>
+                  {HUMAN_POSE_PREVIEW_ART[pose.id] && <img src={HUMAN_POSE_PREVIEW_ART[pose.id]} alt="" width={100} height={100} loading="lazy" />}
+                  <span>{pose.display_number} {pose.label_ja}</span>
+                </button>)}
+              </div></>}
+          </fieldset>
+          {draft && <>
+          <HumanPoseMotionControls clips={renderer.current?.motionClips ?? []} value={draft.motion} playing={playing} disabled={loading || backgroundBusy}
             onClip={changeMotion} onPhase={scrubMotion} onPlay={playMotion} onPause={stopMotion} onBegin={beginMotion} onEnd={endMotion} />
-          <fieldset disabled={backgroundBusy}><legend>関節を動かす</legend>
+          <fieldset disabled={loading || backgroundBusy}><legend>関節を動かす</legend>
             <div class="human-pose-scene-buttons">
               <button type="button" class="secondary-button" aria-pressed={handleMode === 'move'} onClick={() => setHandleMode('move')}>掴んで動かす</button>
               <button type="button" class="secondary-button" aria-pressed={handleMode === 'rotate'} onClick={() => setHandleMode('rotate')}>掴んで回す</button>
@@ -321,12 +386,12 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             </>}
             <p class="field-note">回転には作画用の目安となる制限があります。足は足首・土踏まず・つま先の付け根で曲がる板です。</p>
             <div class="human-pose-scene-buttons" data-history-version={historyVersion}>
-              <button type="button" class="secondary-button" disabled={!undo.current.length} onClick={() => stepHistory(true)}>元に戻す</button>
-              <button type="button" class="secondary-button" disabled={!redo.current.length} onClick={() => stepHistory(false)}>やり直す</button>
-              <button type="button" class="secondary-button" disabled={!draft.joint_edits} onClick={() => update({ ...draft, joint_edits: undefined })}>微調整を戻す</button>
+              <button type="button" class="secondary-button" disabled={loading || backgroundBusy || !undo.current.length} onClick={() => stepHistory(true)}>元に戻す</button>
+              <button type="button" class="secondary-button" disabled={loading || backgroundBusy || !redo.current.length} onClick={() => stepHistory(false)}>やり直す</button>
+              <button type="button" class="secondary-button" disabled={loading || backgroundBusy || !draft.joint_edits} onClick={() => update({ ...draft, joint_edits: undefined })}>微調整を戻す</button>
             </div>
           </fieldset>
-          <fieldset disabled={backgroundBusy}><legend>一緒に表示する背景</legend>
+          <fieldset disabled={loading || backgroundBusy}><legend>一緒に表示する背景</legend>
             <label>3D舞台<select value={draft.background?.sourceId ?? ''} onChange={event => {
               const sourceId = event.currentTarget.value;
               void changeBackground({ ...draft, background: sourceId ? { sourceId } : undefined, ...(sourceId ? { show_supports: false } : {}) });
@@ -344,12 +409,12 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             </>}
           </fieldset>
           {draft.background && <HumanPoseSurfaceControls anchor={draft.background.surface?.anchor ?? surfaceAnchor} surface={draft.background.surface}
-            picking={surfacePicking} disabled={backgroundBusy} aligned={renderer.current?.surfaceAligned() ?? false}
+            picking={surfacePicking} disabled={loading || backgroundBusy} aligned={renderer.current?.surfaceAligned() ?? false}
             onPick={mode => { stopMotion(); finishJoint(true); setSurfacePicking(mode); setError(''); }}
             onAnchor={anchor => { setSurfaceAnchor(anchor); setSurfacePicking(null); if (draft.background?.surface) update({ ...draft, background: { ...draft.background, surface: { ...draft.background.surface, anchor } } }); }}
             onAlign={alignSurface} onClear={() => { setSurfacePicking(null); update({ ...draft, background: { ...draft.background!, surface: undefined } }); }}
             onClearFacing={() => { setSurfacePicking(null); update({ ...draft, background: { ...draft.background!, surface: { ...draft.background!.surface!, facing_degrees: undefined } } }); }} />}
-          <fieldset disabled={backgroundBusy}><legend>人物全体の配置</legend>
+          <fieldset disabled={loading || backgroundBusy}><legend>人物全体の配置</legend>
             <p class="field-note">{draft.background ? '背景の座標に合わせて位置と大きさを調整します。' : '位置の単位はm。'}Yが高さ、素材の正面は＋Zです。</p>
             <div class="human-pose-scene-coordinates">{['X', 'Y', 'Z'].map((axis, index) => <label key={axis}>{axis}
               <input type="number" step="0.05" min="-10000" max="10000" value={draft.placement.position[index]} onInput={event => {
@@ -369,7 +434,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
               <button type="button" class="secondary-button" onClick={() => { if (renderer.current) update(renderer.current.placeAtBackgroundCentre()); }}>背景の中央へ移動（高さは維持）</button></>}
             <label><input type="checkbox" disabled={Boolean(draft.motion)} checked={!draft.motion && draft.show_supports !== false} onChange={event => update({ ...draft, show_supports: event.currentTarget.checked })} />ポーズ付属の台・椅子を表示</label>
           </fieldset>
-          <fieldset disabled={backgroundBusy}><legend>撮影カメラ</legend>
+          <fieldset disabled={loading || backgroundBusy}><legend>撮影カメラ</legend>
             <label>撮影範囲プリセット</label>
             <FigureSizePicker value={framingSize} onChange={size => { if (renderer.current) update(renderer.current.frameFor(size, aspect)); }} />
             <p class="field-note">プリセットで最初の範囲を合わせ、画面を見ながら移動・拡大で調整できます。画像で送る場合は、最後に確定した構図を使います。</p>
@@ -387,16 +452,17 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             <p lang="en">{[description.angle.en, description.lens.en].filter(Boolean).join(', ')}.</p>
             {description.azimuth === null && <p role="status" class="field-note">この姿勢・カメラ位置では身体に対する前後左右を確定できません。</p>}
             <p class="field-note">現在の骨盤の正面と人物の配置を基準にしています。顔と目線の指定は含みません。確定後、人物欄で文面を修正できます。</p></section>}
-          <div class="human-pose-scene-buttons"><button type="button" class="secondary-button" disabled={backgroundBusy} onClick={() => { if (initial.current) void changeBackground(initial.current); }}>開いた時の設定に戻す</button>
-            <button type="button" class="primary-button" disabled={backgroundBusy} onClick={() => capture()}>撮影プレビュー</button>
-            {draft.background && <button type="button" class="secondary-button" disabled={backgroundBusy} onClick={() => capture(true)}>背景と一緒に撮影</button>}</div>
-        </aside>}
+          <div class="human-pose-scene-buttons"><button type="button" class="secondary-button" disabled={loading || backgroundBusy} onClick={() => { if (initial.current && (poseValue.pose_id !== initial.current.selection.pose_id || JSON.stringify(draft) !== JSON.stringify(initial.current.scene))) { remember(draft); restoreSnapshot(initial.current); } }}>開いた時の設定に戻す</button>
+            <button type="button" class="primary-button" disabled={loading || backgroundBusy} onClick={() => capture()}>撮影プレビュー</button>
+            {draft.background && <button type="button" class="secondary-button" disabled={loading || backgroundBusy} onClick={() => capture(true)}>背景と一緒に撮影</button>}</div>
+        </>}
+        </aside>
       </div>
       <footer><p class="field-note">姿勢・配置・撮影範囲を保存します。撮影画像で送る場合は、この範囲をポーズ参照に使います。</p>
         <button type="button" class="secondary-button" onClick={close}>取消</button>
         <button type="button" class="primary-button" disabled={!draft || loading || backgroundBusy} onClick={() => {
           if (!renderer.current) return;
-          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); renderer.current.capture(false, cutFrame); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject()); close(); }
+          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); renderer.current.capture(false, cutFrame); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject(), poseRef.current); close(); }
           catch (cause) { setError(cause instanceof Error ? cause.message : '撮影範囲を確認してください'); }
         }}>確定</button></footer>
     </div>

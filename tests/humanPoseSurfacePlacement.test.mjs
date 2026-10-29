@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Quaternion, Vector3 } from 'three';
-import { alignHumanPoseSurface, humanPoseBodyFacing, humanPosePlacementScale, humanPoseSurfaceAligned, humanPoseSurfaceAnchor, validateHumanPoseSurface } from '../src/lib/humanPoseSurfacePlacement.ts';
+import { alignHumanPoseSurface, humanPoseBodyFacing, humanPosePlacementScale, humanPoseSurfaceAligned, humanPoseSurfaceAnchor, keepHumanPoseHeadPosition, validateHumanPoseSurface } from '../src/lib/humanPoseSurfacePlacement.ts';
 
 const points = () => {
   const result = new Map([['upperleg01.L', new Vector3(.1, .8, .1)], ['upperleg01.R', new Vector3(-.1, .82, .1)]]);
@@ -16,6 +16,25 @@ const scene = () => ({ placement: { position: [8, 2, 1], yaw_degrees: 37, scale:
   frame: { width: 1024, height: 768 }, body_mirror: 'mirrored', motion: { clip_id: 'ual1-jog-fwd-loop', phase: .45 }, joint_edits: { rotations: { 'wrist.L': [0, 0, 0, 1] } } });
 const world = (p, s) => p.clone().multiplyScalar(humanPosePlacementScale(s, 1.4)).applyAxisAngle(new Vector3(0, 1, 0), s.placement.yaw_degrees * Math.PI / 180).add(new Vector3(...s.placement.position));
 const close = (a, b) => assert.ok(a.distanceTo(b) < 1e-9, `${a.toArray()} != ${b.toArray()}`);
+
+// 見込み: 新姿勢の頭へ身長・倍率・yawを適用した差分で配置を補正すれば、頭のworld位置を維持できる。
+// 合格: 異なる頭の座標と連続切替でもworld位置が一致し、位置以外の設定・入力が不変。純粋な配置計算のみ、実描画はbrowser検証。
+test('登録姿勢の切替は頭を基準に配置し、カメラと切取りを保つ', () => {
+  const s = { ...scene(), framing: { size: 'bust-up', crop: { x: -.2, y: .1, w: 1.3, h: 1.3 } } }, before = structuredClone(s);
+  const target = world(new Vector3(.2, 1.3, -.1), s);
+  let next = s;
+  for (const head of [new Vector3(-.3, .7, .5), new Vector3(.8, 1.1, -.4), new Vector3(.2, 1.3, -.1)]) {
+    const headBefore = head.clone(), targetBefore = target.clone();
+    next = keepHumanPoseHeadPosition(next, head, 1.4, target);
+    close(world(head, next), target);
+    assert.deepEqual({ ...next, placement: s.placement }, before);
+    assert.equal(next.placement.yaw_degrees, s.placement.yaw_degrees); assert.equal(next.placement.scale, s.placement.scale);
+    close(head, headBefore); close(target, targetBefore);
+  }
+  close(new Vector3(...next.placement.position), new Vector3(...s.placement.position));
+  assert.deepEqual(s, before);
+  assert.throws(() => keepHumanPoseHeadPosition(s, new Vector3(), 1.4, new Vector3(Infinity, 0, 0)), /座標範囲/);
+});
 
 test('両足の板端を床に合わせ、上がった足と身長・倍率・yawを保つ', () => {
   const p = points(), s = scene(), before = structuredClone(s), next = alignHumanPoseSurface(s, p, 1.4, 0, surface());

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
 import { Group, Quaternion, Vector3 } from 'three';
-import { describeHumanPoseCamera, humanPoseSceneFrame, sameHumanPoseSource, validateHumanPoseScene, useHumanPoseBackgroundCamera } from '../src/lib/humanPoseScene.ts';
+import { describeHumanPoseCamera, humanPoseSceneFrame, humanPoseSceneForPreset, sameHumanPoseSource, validateHumanPoseScene, useHumanPoseBackgroundCamera } from '../src/lib/humanPoseScene.ts';
 import { defaultBackgroundCapture } from '../src/lib/background3d.ts';
 import { decodeHumanPoseScene } from '../src/lib/humanPoseSceneAssets.ts';
 import { loadHumanPoseRuntime } from '../src/lib/humanPoseRuntime.ts';
@@ -13,6 +13,18 @@ const trs = (x = 0) => ({ translation: [x, 0, 0], rotation: [0, 0, 0, 1], scale:
 const scene = () => ({ version: 1, source: { base_sha256: digest, rig_sha256: digest, pose_sha256: digest, rig_signature: digest, pose_revision: 1 },
   placement: { position: [0, 0, 0], yaw_degrees: 0 }, camera: { position: [0, 0, 5], target: [0, 0, 0], fov: 40 },
   projection: 'perspective', up: [0, 1, 0], frame: { width: 1024, height: 1024 } });
+
+// 見込み: 明示的な登録ポーズ変更だけで素材と身体の基準を切り替えれば、カメラ・配置を保って新しい姿勢から編集できる。
+// 合格: 新sourceへ交換、関節微調整/motionは除去、他の全設定と元入力を保持し、返値の変更も元へ伝わらない。
+// 範囲: 切替時の設定作成。実素材の姿勢・頭位置/撮影枠の保持・Undo/確定/取消はbrowser fixtureで確認。
+test('preset change keeps staging and camera while clearing edits based on the previous body pose',()=>{
+ const old={...scene(),stature_m:1.7,body_mirror:'mirrored',joint_edits:{version:1,rotations:{root:[0,0,0,1]}},motion:{clip_id:'walk',phase:.4},
+  background:{sourceId:'builtin:cube'},framing:{size:'waist-up',crop:{x:.1,y:.2,w:.6,h:.7}}};
+ const before=structuredClone(old),source={...old.source,pose_sha256:'b'.repeat(64),pose_revision:2};
+ const next=humanPoseSceneForPreset(old,source),expected={...before,source};delete expected.joint_edits;delete expected.motion;
+ assert.deepEqual(next,expected);assert.deepEqual(old,before);next.camera.position[0]++;next.placement.position[1]++;next.source.pose_revision++;
+ assert.deepEqual(old,before);assert.equal(source.pose_revision,2);
+});
 
 test('骨盤の現在yawと配置yawを合成し、横寝・仰向け・倒立では人物の左右を断定しない', () => {
   const rest = { ...trs(), rotation: new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), .3).toArray() };

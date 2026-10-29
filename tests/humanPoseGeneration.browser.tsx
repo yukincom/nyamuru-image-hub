@@ -13,7 +13,8 @@ import { buildQwenGenerationPlan, QWEN_GENERATION_PROFILE, type QwenGenerationPl
 import { decodeHumanPoseScene } from '../src/lib/humanPoseSceneAssets';
 import { HumanPoseSceneRenderer } from '../src/lib/humanPoseSceneRenderer';
 import { confirmHumanPoseCameraPrompt } from '../src/lib/humanPoseScene';
-import { selectHumanPose } from '../src/lib/humanPoseSelection';
+import { selectHumanPose, humanPoseSelectable, requireHumanPoseGenerationReady } from '../src/lib/humanPoseSelection';
+import type {HumanPoseTextSelection, HumanPoseCatalogEntry} from '../src/lib/humanPoseTypes';
 import { FIGURE_SIZE_LABELS, parseMangaYaml, toStoredMangaYaml } from '../src/lib/manga';
 import { imageSha256, prepareImageAsset, createFrameArtwork } from '../src/lib/imagePlacement';
 import { saveFigureCropAssets, deleteFigureCropAssets } from '../src/lib/figureCropStore';
@@ -22,6 +23,7 @@ import type { FigureSize, ImageAsset, BBox } from '../src/types';
 import '../src/styles/global.css';
 
 const fixture = await (await fetch('/pose-fixture')).json();
+const fixtureFetch=window.fetch.bind(window);
 if (fixture.error) throw new Error(fixture.error);
 const assets = await decodeHumanPoseScene(fixture.scene, fixture.scene.pose_id, fixture.scene.catalog_sha256);
 const entry = fixture.catalog.catalog.poses.find((p: {id:string}) => p.id === fixture.scene.pose_id);
@@ -52,6 +54,7 @@ if(new URLSearchParams(location.search).has('opaque-companion')){
 }
 const supervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1},bridge={service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3};
 let lastPayload:Record<string,any>={},report=()=>{},requests=0;
+const poseSources=new Map<string,string>();
 const job=(status:string)=>({profile:QWEN_GENERATION_PROFILE,job_id:lastPayload.job_id,status,request_sha256:'a'.repeat(64),label:'検証用人物',width:512,height:1024,
   document_key:lastPayload.document_key,page_number:lastPayload.page_number,panel_id:lastPayload.panel_id,overlay:false,owner_key:lastPayload.owner_key,created_at:Date.now(),
   ...(status==='succeeded'?{file_name:`qwen_${lastPayload.job_id}.png`,image,image_sha256:digest}:{})});
@@ -63,7 +66,11 @@ window.fetch=async(input,options)=>{
   if(path==='/api/panel-actions/prepare')return Response.json(supervisor);
   if(path==='/api/image-generation/prepare')return Response.json({...supervisor,llm_stopped:true});
   if(path==='/api/human-pose/catalog')return Response.json({...bridge,...fixture.catalog});
-  if(path==='/api/human-pose/scene')return Response.json({...bridge,...fixture.scene});
+  if(path==='/api/human-pose/scene'){
+    const selected=body.pose_id===fixture.scene.pose_id?fixture:await (await fixtureFetch(`/pose-fixture?pose=${encodeURIComponent(body.pose_id)}`)).json();
+    poseSources.set(body.pose_id,selected.scene.pose.sha256);
+    return Response.json({...bridge,...selected.scene});
+  }
   if(path==='/api/series/character-images/load')return Response.json({...bridge,...body,found:true,image});
   if(path==='/api/qwen-generation/prepare'){
     lastPayload=body;requests++;report();
@@ -78,9 +85,82 @@ window.fetch=async(input,options)=>{
   if(path==='/api/image-generation/submit')return Response.json({...supervisor,...job('succeeded')});
   throw new Error(`Fixture blocked unexpected request: ${path}`);
 };
+// 見込み: 既存カタログと選択処理をdialog draftへ接続すれば、登録姿勢を3Dへ反映し確定/取消で作品との境界を保てる。
+// 合格: 一覧位置/番号検索、実姿勢切替、頭のworld位置/カメラ/切取り/canvas/スクロール保持、同値選択、Undo/Redo、取消・保存往復が一致。
+// 範囲: 実FigureHumanPoseEditor/3D rendererとインストール済み素材。APIは同じローカル素材のfixture、作品はメモリ内。生成未実行。
+async function verifyPosePresets(){
+ const host=document.createElement('div');document.body.append(host);let checks=0,changes=0;
+ let activeRenderer:HumanPoseSceneRenderer|undefined,creates=0;
+ const errors:unknown[][]=[],logError=console.error;
+ console.error=(...args:unknown[])=>{errors.push(args);logError(...args);};
+ const createRenderer=HumanPoseSceneRenderer.create;
+ HumanPoseSceneRenderer.create=async(...args:Parameters<typeof createRenderer>)=>{creates++;activeRenderer=await createRenderer(...args);return activeRenderer;};
+ const head=()=>activeRenderer!.focusJoint('head').camera.target;
+ const sameHead=(expected:number[])=>head().every((coordinate,index)=>Math.abs(coordinate-expected[index])<1e-9);
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks++;};
+ const settle=async()=>{for(let i=0;i<4;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
+ const wait=async(test:()=>boolean,label:string)=>{const deadline=performance.now()+15000;while(!test()&&performance.now()<deadline)await settle();check(test(),label);};
+ const poses=(fixture.catalog.catalog.poses as HumanPoseCatalogEntry[]).filter(humanPoseSelectable),first=poses.find(pose=>pose.display_number===30)!,second=poses.find(pose=>pose.display_number===50)!;
+ let value:HumanPoseTextSelection|undefined={...selectHumanPose(entry,fixture.scene.catalog_sha256),edited_text_ja:'元の手修正文を保持',input_mode:'image'};
+ const before=JSON.stringify(value);
+ const draw=()=>render(<FigureHumanPoseEditor value={value} aspect={.5} framingSize="bust-up" onChange={next=>{value=next;changes++;draw();}}/>,host);
+ const dialog=()=>document.querySelector<HTMLElement>('.human-pose-scene-dialog')!;
+ const button=(name:string)=>{const found=[...dialog().querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.trim()===name);if(!found)throw Error(`ボタンなし：${name}`);return found;};
+ const loaded=()=>!!dialog()?.querySelector('canvas')&&!dialog()?.querySelector<HTMLFieldSetElement>('.human-pose-presets')?.disabled;
+ const open=async()=>{host.querySelector<HTMLButtonElement>('.figure-human-pose-edit')!.click();await wait(loaded,'実3Dの読込完了');};
+ const choose=async(pose:HumanPoseCatalogEntry)=>{dialog().querySelector<HTMLButtonElement>(`[data-pose-id="${pose.id}"]`)!.click();await settle();await wait(()=>loaded()&&dialog().querySelector('h2')?.textContent?.includes(pose.label_ja)===true,`${pose.display_number}番の姿勢を反映`);};
+ const capture=async()=>{button('撮影プレビュー').click();await settle();return dialog().querySelector<HTMLImageElement>('.human-pose-scene-preview img')!.src;};
+ try{
+  draw();await open();await wait(()=>dialog().querySelectorAll('.human-pose-card').length===poses.length,'全登録ポーズを表示');
+  const aside=dialog().querySelector('aside')!,legends=[...aside.querySelectorAll('legend')].map(item=>item.textContent);
+  check(legends[0]==='登録ポーズ'&&legends[1]==='モーションサポーター','一覧をモーションサポーターの直上に配置');
+  const search=dialog().querySelector<HTMLInputElement>('input[type=search]')!;search.value='23';search.dispatchEvent(new Event('input',{bubbles:true}));await settle();
+  check(dialog().querySelectorAll('.human-pose-card').length===1&&dialog().querySelector('.human-pose-card')!.textContent!.includes('23'),'既存の番号検索を利用');
+  search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));await settle();
+  button('左右反転').click();await settle();
+  const numbers=[...dialog().querySelectorAll<HTMLInputElement>('input[type=number]')];
+  for(const [index,value] of ['0.15','0.07','-0.1','168','1.1'].entries()){
+    numbers[index].value=value;numbers[index].dispatchEvent(new Event('input',{bubbles:true}));await settle();
+  }
+  const yaw=[...dialog().querySelectorAll<HTMLInputElement>('input[type=range]')].find(input=>input.closest('label')?.textContent?.startsWith('人物の向き'))!;
+  yaw.value='31';yaw.dispatchEvent(new Event('input',{bubbles:true}));await settle();
+  dialog().querySelector('.human-pose-scene-view')!.dispatchEvent(new WheelEvent('wheel',{deltaY:-70,bubbles:true,cancelable:true}));await settle();
+  const baseline=await capture(),sceneBefore=activeRenderer!.snapshot(),headBefore=head(),canvasBefore=dialog().querySelector('canvas');
+  const grid=dialog().querySelector<HTMLElement>('.human-pose-grid')!;grid.scrollTop=160;await settle();const scrollBefore=grid.scrollTop;
+  await choose(first);check(changes===0&&JSON.stringify(value)===before,'選択段階では作品の値を変えない');
+  check(sameHead(headBefore),'頭のworld位置を基準に登録姿勢を交換');
+  const after=activeRenderer!.snapshot();
+  check(['camera','frame','framing','stature_m','body_mirror','background'].every(key=>JSON.stringify(after[key as keyof typeof after])===JSON.stringify(sceneBefore[key as keyof typeof sceneBefore])),'カメラ・撮影枠・身長・反転・背景を保持');
+  check(after.placement.yaw_degrees===31&&after.placement.scale===1.1,'向きと倍率を保持');
+  check(creates===1&&dialog().querySelector('canvas')===canvasBefore,'同じcanvasとWebGL表示を使い続ける');
+  check(dialog().querySelector('.human-pose-grid')===grid&&grid.scrollTop===scrollBefore,'登録一覧のDOMとスクロール位置を保持');
+  const firstImage=await capture();check(firstImage!==baseline,'実素材の切替で撮影画像も変わる');
+  const version=dialog().querySelector('[data-history-version]')!.getAttribute('data-history-version');await choose(first);
+  check(dialog().querySelector('[data-history-version]')!.getAttribute('data-history-version')===version,'同じ登録ポーズの再選択はUndoを増やさない');
+  button('元に戻す').click();await settle();await wait(()=>loaded()&&dialog().querySelector('h2')?.textContent?.includes(entry.label_ja)===true,'Undoで元の登録姿勢へ戻る');
+  check(await capture()===baseline,'Undoはカメラと切取りを含む元画像を再現');
+  button('やり直す').click();await settle();await wait(()=>loaded()&&dialog().querySelector('h2')?.textContent?.includes(first.label_ja)===true,'Redoで選び直した登録姿勢を再現');
+  check(await capture()===firstImage,'Redoは同じ3D撮影画像を再現');
+  await choose(second);check(sameHead(headBefore)&&dialog().querySelector('canvas')===canvasBefore&&creates===1,'連続切替でも頭の位置と表示を保持');
+  button('取消').click();await settle();check(!dialog()&&changes===0&&JSON.stringify(value)===before,'別のポーズまで選んでも取消は作品を変えない');
+  await open();await choose(first);button('確定').click();await settle();
+  check(changes===1&&value?.pose_id===first.id&&value?.label_ja===first.label_ja,'確定したポーズのIDと名前を保存');
+  check(value?.edited_text_ja===first.pose_text_ja&&JSON.stringify(value?.baseline_segments)===JSON.stringify(first.prompt_segments)&&value?.input_mode==='image','ポーズの基準文・編集文・送り方を対応させる');
+  check(value?.scene?.source.pose_sha256===poseSources.get(first.id),'選んだIDと実際の3D素材hashが一致');
+  requireHumanPoseGenerationReady(value);
+  const stored=structuredClone(initial);stored.manga.pages[0].panels[0].figures![0].human_pose=value;
+  check(JSON.stringify(parseMangaYaml(toStoredMangaYaml(stored)).manga.pages[0].panels[0].figures![0].human_pose)===JSON.stringify(value),'OMNY往復で選択・撮影設定・本文を保持');
+  await open();check(dialog().querySelector<HTMLButtonElement>(`[data-pose-id="${first.id}"]`)?.getAttribute('aria-pressed')==='true','開き直した一覧で保存ポーズを選択表示');
+  button('開いた時の設定に戻す').click();await settle();check(button('元に戻す').disabled,'同じ初期設定への復帰ではUndoを増やさない');
+  button('取消').click();await settle();
+  check(errors.length===0,'姿勢の交換・履歴復元・終了でconsole errorを出さない');
+  return `${checks}項目成功：番号付き一覧・検索・実3D切替・頭位置/カメラ/撮影枠/canvas/スクロール保持・Undo/Redo・取消・確定・保存往復`;
+ }finally{render(null,host);host.remove();HumanPoseSceneRenderer.create=createRenderer;console.error=logError;}
+}
 function Fixture(){
   const [active,setActive]=useState(0),[selection,setSelection]=useState<any>(null);
   const [doc,setDoc]=useState(initial),[plan,setPlan]=useState<QwenGenerationPlan|null>(null),[summary,setSummary]=useState('未実行'),[shots,setShots]=useState<Array<{label:string;image:string}>>([]),[error,setError]=useState('');
+  const [presetReport,setPresetReport]=useState('未実行');
   const figure=doc.manga.pages[0].panels[0].figures![0];
   report=()=>setSummary(JSON.stringify({requests,mode:lastPayload.mode,referenceRoles:lastPayload.references?.map((r:any)=>({label:r.label,characters:r.character_keys})),prompt:lastPayload.prompt},null,2));
   const compare=async()=>{
@@ -142,6 +222,7 @@ function Fixture(){
   const noChange=()=>{};
   const currentPanel=doc.manga.pages[0].panels[0];
   return <main style="padding:24px;max-width:1000px;margin:auto"><h1>3Dポーズから生成までの検証</h1><p>実際のポーズ素材を使用。生成APIは模擬応答で、作品・生成履歴・稼働サービスを変更しません。</p>
+    <button onClick={()=>void verifyPosePresets().then(setPresetReport,error=>setPresetReport(error instanceof Error?error.stack??error.message:String(error)))}>登録ポーズの切替を検証</button><output id="pose-preset-report">{presetReport}</output>
     <button onClick={()=>void compare()}>切り取り比較を描画</button>
     <button onClick={()=>void verifyExport()}>画像書き出しの画素を検証</button>
     <button onClick={()=>{const next=parseMangaYaml(toStoredMangaYaml(doc));if(JSON.stringify(next.manga.pages[0].panels[0].figures![0].human_pose)!==JSON.stringify(figure.human_pose))throw new Error('保存値が変わりました');setDoc(next);setSummary('OMNY保存と再読込でポーズ・撮影範囲・編集文を保持');}}>保存して再読込</button>
