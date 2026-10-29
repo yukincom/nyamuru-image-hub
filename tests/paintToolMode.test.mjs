@@ -1,8 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { nextPaintLineKind, vectorInput, paintSelectionMode } from '../src/lib/paintToolMode.ts';
+import { nextPaintLineKind, paintToolForLayer, vectorInput, paintSelectionMode } from '../src/lib/paintToolMode.ts';
 import { commitPaintStroke } from '../src/lib/paintGesture.ts';
 import { newPaintLayer } from '../src/lib/paintDocument.ts';
+
+// 見込み: レイヤー種との不一致をペンだけで判定すると、投げ縄などの操作意図を保持できる。
+// 合格: ペン⇔ベジェペンだけを必要時に交換し、選択・図形・消しゴム等は全レイヤー種で同じ値。
+// 範囲: 共通判定のNode試験。生成マスク作成と実UIへの接続はpaintEffects.browser.tsxで確認する。
+test('layer changes replace only an incompatible raster or Bezier pen',()=>{
+  for(const kind of ['raster',undefined]){
+    assert.equal(paintToolForLayer('pen',kind),'pen');
+    assert.equal(paintToolForLayer('vector-pen',kind),'pen');
+  }
+  assert.equal(paintToolForLayer('pen','vector'),'vector-pen');
+  assert.equal(paintToolForLayer('vector-pen','vector'),'vector-pen');
+  for(const tool of ['lasso','wand','eraser','fill','line','rectangle','ellipse','vector-select','vector-node','vector-add','vector-delete','vector-anchor']){
+    for(const kind of ['raster','vector',undefined])assert.equal(paintToolForLayer(tool,kind),tool,`${tool} on ${kind}`);
+  }
+});
 
 test('shapes keep the last drawing kind across selection and erasing',()=>{
   let kind=nextPaintLineKind('vector','pen');

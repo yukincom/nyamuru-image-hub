@@ -1457,7 +1457,11 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-paint-tool="pen"] .app-shell.is-painting .manga-paper { cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M4 20l4.2-1 11-11-3.2-3.2-11 11L4 20Z' fill='%23fff' stroke='%23111' stroke-width='1.5'/%3E%3Cpath d='m14.8 6 3.2 3.2' stroke='%23111' stroke-width='1.5'/%3E%3C/svg%3E") 4 20,crosshair; }
 .paint-status:empty { display:none; }
 .paint-layers-dock { flex-basis:300px; }
-.paint-layers-dock .dock-content { padding:8px 0; }
+.paint-layers-dock .dock-content { display:flex; flex-direction:column; overflow:hidden; padding:8px 0; }
+.paint-layers-dock .paint-layer-settings { flex:0 1 auto; min-height:0; max-height:50%; overflow:auto; overscroll-behavior:contain; }
+.paint-layers-dock .page-layer-palette { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+.paint-layers-dock .page-layer-palette>h3,.paint-layers-dock .page-layer-palette>.layer-controls { flex:none; }
+.paint-layers-dock .page-layer-tree { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; }
 .paint-layer-palette h3 { margin:0; padding:0 8px 7px; }
 .layer-properties { display:flex; align-items:center; gap:5px; padding:5px 7px; border-block:1px solid var(--soft-line); }
 .layer-properties select { width:70px; }

@@ -608,15 +608,20 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const isSpreadPartner=()=>Boolean(scroll.closest('.is-spread-partner'));
     const panSurface=spreadScroll??scroll;
     let finishPan: (() => void) | null = null;
+    let pointerOverPan=panSurface.matches(':hover');
+    const onPanEnter=()=>{pointerOverPan=true;};
+    const onPanLeave=()=>{pointerOverPan=false;};
 
     const isTextEditing = (target: EventTarget | null) => target instanceof Element
-      && Boolean(target.closest('input, textarea, select, button, a, summary, [contenteditable="true"], [role="dialog"], [role="menu"]'));
+      && Boolean(target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"]'));
+    const focusedControl = (target: EventTarget | null) => target instanceof Element
+      && Boolean(target.closest('button, a, summary'));
     const stopPan = () => {
       finishPan?.();
       finishPan = null;
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isSpreadPartner()||event.code !== 'Space' || isTextEditing(event.target)) return;
+      if (isSpreadPartner()||event.code !== 'Space'||event.isComposing||isTextEditing(event.target)||!pointerOverPan&&focusedControl(event.target)) return;
       event.preventDefault();
       spacePressedRef.current = true;
       document.body.classList.add('is-canvas-space-pan-ready');
@@ -624,7 +629,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const onKeyUp = (event: KeyboardEvent) => {
       // A page can become the partner while Space is held. Its own pressed
       // state must still be released, even when focus moved to a page button.
-      if (event.code !== 'Space' || (!spacePressedRef.current && (isSpreadPartner()||isTextEditing(event.target)))) return;
+      if (event.code !== 'Space' || (!spacePressedRef.current && (isSpreadPartner()||event.isComposing||isTextEditing(event.target)||!pointerOverPan&&focusedControl(event.target)))) return;
       event.preventDefault();
       spacePressedRef.current = false;
       stopPan();
@@ -677,12 +682,16 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     window.addEventListener('keydown', onKeyDown, { capture: true });
     window.addEventListener('keyup', onKeyUp, { capture: true });
     window.addEventListener('blur', onBlur);
+    panSurface.addEventListener('pointerenter',onPanEnter);
+    panSurface.addEventListener('pointerleave',onPanLeave);
     panSurface.addEventListener('pointerdown', onPanPointerDown, { capture: true });
     return () => {
       stopPan();
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('keyup', onKeyUp, { capture: true });
       window.removeEventListener('blur', onBlur);
+      panSurface.removeEventListener('pointerenter',onPanEnter);
+      panSurface.removeEventListener('pointerleave',onPanLeave);
       panSurface.removeEventListener('pointerdown', onPanPointerDown, { capture: true });
       document.body.classList.remove('is-canvas-space-pan-ready', 'is-canvas-space-panning');
     };

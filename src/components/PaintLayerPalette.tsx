@@ -105,7 +105,7 @@ export default function PaintLayerPalette(p:Props){
   };
   const moveLayerDrag=(e:PointerEvent)=>{const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<5)return;d.moved=true;e.preventDefault();clearDrop();
     const root=paletteRef.current?.closest('.page-layer-palette')??paletteRef.current;
-    const scroller=root?.closest<HTMLElement>('.dock-content'),view=scroller?.getBoundingClientRect();
+    const scroller=root?.querySelector<HTMLElement>('.page-layer-tree')??root?.closest<HTMLElement>('.dock-content'),view=scroller?.getBoundingClientRect();
     if(scroller&&view){if(e.clientY<view.top+28)scroller.scrollTop-=14;else if(e.clientY>view.bottom-28)scroller.scrollTop+=14;}
     const row=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-layer-drop]');
     if(!row||!root?.contains(row))return;

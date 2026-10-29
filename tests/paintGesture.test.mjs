@@ -8,7 +8,7 @@ import {lassoSelection,combineSelection} from '../src/lib/rasterSelection.ts';
 import { PaintSmoother } from '../src/lib/paintStroke.ts';
 import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry.ts';
 import {vectorResizeHandleAt,vectorAnchorAt} from '../src/lib/vectorGesture.ts';
-import {paintSelectionMode,nextPaintLineKind} from '../src/lib/paintToolMode.ts';
+import {paintSelectionMode,nextPaintLineKind,paintToolForLayer} from '../src/lib/paintToolMode.ts';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
@@ -88,13 +88,19 @@ test('actual lasso handler keeps outside selection without editing and cleans up
   assert.equal(Boolean(error),ending==='oversize');assert.equal(preview.length,0);assert.equal(released,1);assert.equal(listeners.size,0);assert.equal(selectionPointer.current,null);assert.equal(inputActive.current,false);assert.deepEqual(scene,before);
  }
 });
+// 見込み: 範囲検査後に共通ペン判定へ進めば、成功時も投げ縄を保持し、容量超過時は編集状態を変えない。
+// 合格: 有効範囲だけ1commitし、ベジェペンだけペンへ交換。失敗時は選択・scene・道具・描画種類を保持。
+// 範囲: 実addToneMask/matchLayerPenの抽出handlerと本体の拡張処理。DOM/実描画はbrowser試験が担当する。
 test('tone from outside selection expands atomically; side/area failure preserves selection, scene and tool',()=>{
- for(const [width,height,valid] of [[500,600,true],[20000,600,false],[500,20000,false],[10001,10000,false]]){
+ for(const initialTool of ['pen','vector-pen','lasso'])for(const [width,height,valid] of [[500,600,true],[20000,600,false],[500,20000,false],[10001,10000,false]]){
   const scene=initial(),before=structuredClone(scene),owner=scene.owners[0],selectionBoxes=[{x:-20,y:-30,w:width,h:height}];
+  const initialKind=initialTool==='pen'?'raster':'vector';let tool=initialTool,lineKind=initialKind;
   let saved,error='previous capacity error',cleared=false,commits=0,uiChanges=0;
-  editorHandler('addToneMask',{scene,owner,selectionBoxes,images:new Map(),locked:false,busy:false,suspended:false,operation:{current:false},finishGesture(){},newToneLayer,paintStrokeBounds,expandPaintOwnerToBounds,
-   commit:next=>{saved=next;commits++;},setError:v=>error=v,clearVectorSelection:()=>uiChanges++,setLayerId:()=>uiChanges++,setMaskTarget:()=>uiChanges++,setSelection:v=>cleared=v===null,setTool:()=>uiChanges++,setLineKind:()=>uiChanges++})();
-  assert.equal(commits,valid?1:0);assert.equal(cleared,valid);assert.equal(Boolean(error),!valid);assert.equal(uiChanges,valid?5:0);assert.deepEqual(scene,before);
+  const context={scene,owner,tool,selectionBoxes,images:new Map(),locked:false,busy:false,suspended:false,operation:{current:false},finishGesture(){},newToneLayer,paintStrokeBounds,expandPaintOwnerToBounds,paintToolForLayer,nextPaintLineKind,
+   commit:next=>{saved=next;commits++;},setError:v=>error=v,clearVectorSelection:()=>uiChanges++,setLayerId:()=>uiChanges++,setMaskTarget:()=>uiChanges++,setSelection:v=>cleared=v===null,setTool:next=>{tool=next;uiChanges++;},setLineKind:change=>{lineKind=change(lineKind);uiChanges++;}};
+  context.matchLayerPen=editorHandler('matchLayerPen',context);editorHandler('addToneMask',context)();
+  assert.equal(commits,valid?1:0);assert.equal(cleared,valid);assert.equal(Boolean(error),!valid);assert.equal(uiChanges,valid?3+(initialTool==='vector-pen'?2:0):0);assert.deepEqual(scene,before);
+  assert.equal(tool,valid&&initialTool==='vector-pen'?'pen':initialTool);assert.equal(lineKind,valid&&initialTool==='vector-pen'?'raster':initialKind);
   if(saved){const grown=saved.owners[0],mask=grown.paint.layers.at(-1).mask.strokes[0].selection[0];
    assert.equal(grown.paint.width,Math.max(owner.paint.width,480)+20);assert.equal(grown.paint.height,Math.max(owner.paint.height,570)+30);assert.deepEqual(mask,{x:0,y:0,w:500,h:600});
    assert.equal(saved.owners[1],scene.owners[1]);assert.deepEqual(JSON.parse(JSON.stringify(saved)),structuredClone(saved));}

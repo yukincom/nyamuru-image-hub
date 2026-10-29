@@ -9,6 +9,63 @@ import {paintPreviewSize} from '../src/lib/paintPreviewSize.ts';
 const canvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
 const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
 
+// Use the actual Space-pan effect with DOM/event doubles; it does not render a browser.
+function spacePanFixture(spread=false){
+ const ast=ts.createSourceFile('MangaCanvas.tsx',canvasSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);let effect;
+ const visit=node=>{if(ts.isCallExpression(node)&&node.expression.getText(ast)==='useEffect'&&node.arguments[0]?.getText(ast).includes('const onPanPointerDown'))effect=node.arguments[0].getText(ast);ts.forEachChild(node,visit);};visit(ast);assert.ok(effect);
+ class Element{
+  constructor(selectors=[]){this.selectors=selectors;this.events=new Map();this.scrollLeft=200;this.scrollTop=180;this.partner=false;}
+  closest(selector){return selector==='.is-spread-partner'?(this.partner?this:null):selector.split(',').some(item=>this.selectors.includes(item.trim()))?this:null;}
+  matches(){return false;}
+  addEventListener(type,fn){this.events.set(type,fn);}
+  removeEventListener(type){this.events.delete(type);}
+ }
+ const scroll=new Element(),surface=spread?new Element():scroll,window=new Element(),classes=new Set(),pressed={current:false};
+ const classList={add:(...names)=>names.forEach(name=>classes.add(name)),remove:(...names)=>names.forEach(name=>classes.delete(name))};
+ const cleanup=runInNewContext(ts.transpileModule(`(${effect})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,
+  {Element,window,document:{body:{classList}},scrollRef:{current:scroll},spacePressedRef:pressed,spreadScrollFor:()=>spread?surface:null,cleanupRef:{current:null},paintInputActive:{current:false}})();
+ const key=(type,target=new Element(),extra={})=>{const event={code:'Space',target,defaultPrevented:false,preventDefault(){this.defaultPrevented=true;},...extra};window.events.get(type)?.(event);return event;};
+ return {Element,scroll,surface,window,classes,pressed,key,cleanup};
+}
+
+// 見込み: 画面上のpointerを優先すれば、残ったfolder-buttonのfocusでSpaceを奪われない。
+// 合格: 画面内ではbutton/link/summaryのSpaceをpanに使い、画面外と入力/選択/menu/dialog/IMEは保持。
+// 範囲: 本体effectのevent分岐。DOMはdoubleで、フォルダー開閉と実移動はbrowser fixtureで確認する。
+test('Space over the canvas overrides stale button focus while text and menus retain it',()=>{
+ for(const spread of [false,true]){
+  const f=spacePanFixture(spread);
+  for(const selector of ['button','a','summary']){
+   const target=new f.Element([selector]);
+   assert.equal(f.key('keydown',target).defaultPrevented,false);
+   f.surface.events.get('pointerenter')();assert.equal(f.key('keydown',target).defaultPrevented,true);assert.equal(f.pressed.current,true);
+   assert.equal(f.key('keyup',target).defaultPrevented,true);assert.equal(f.pressed.current,false);
+   f.surface.events.get('pointerleave')();assert.equal(f.key('keydown',target).defaultPrevented,false);
+  }
+  f.surface.events.get('pointerenter')();
+  for(const selector of ['input','textarea','select','[contenteditable="true"]','[role="dialog"]','[role="menu"]']){
+   const target=new f.Element([selector]);assert.equal(f.key('keydown',target).defaultPrevented,false,selector);assert.equal(f.key('keyup',target).defaultPrevented,false,selector);
+  }
+  assert.equal(f.key('keydown',undefined,{isComposing:true}).defaultPrevented,false);assert.equal(f.key('keyup',undefined,{isComposing:true}).defaultPrevented,false);
+  f.scroll.partner=true;assert.equal(f.key('keydown',new f.Element(['button'])).defaultPrevented,false);
+  f.cleanup();assert.equal(f.surface.events.size,0);assert.equal(f.window.events.size,0);
+ }
+});
+
+// 見込み: pointerの所在をkey開始時だけに使えば、画面外へ出ても開始済みpanを確実に解放できる。
+// 合格: ドラッグの差分だけscrollし、画面外buttonへのkeyup/blurでreadyとpanを解除。cleanupでlistenerなし。
+// 範囲: 本体のwindow/pointer handlerとscroll値。実ブラウザーの配置・ネイティブclickは別検証。
+test('Space-pan drag releases after leaving the canvas or losing window focus',()=>{
+ for(const spread of [false,true]){
+  const f=spacePanFixture(spread),button=new f.Element(['button']);f.surface.events.get('pointerenter')();f.key('keydown',button);
+  f.surface.events.get('pointerdown')({target:f.surface,button:0,pointerType:'mouse',clientX:500,clientY:400,preventDefault(){},stopImmediatePropagation(){}});
+  f.window.events.get('pointermove')({clientX:540,clientY:425,preventDefault(){}});
+  assert.equal(f.surface.scrollLeft,160);assert.equal(f.surface.scrollTop,155);assert.ok(f.classes.has('is-canvas-space-panning'));
+  f.surface.events.get('pointerleave')();assert.equal(f.key('keyup',button).defaultPrevented,true);assert.equal(f.classes.size,0);assert.equal(f.pressed.current,false);
+  f.surface.events.get('pointerenter')();f.key('keydown',button);f.window.events.get('blur')();assert.equal(f.classes.size,0);assert.equal(f.pressed.current,false);
+  f.cleanup();assert.equal(f.surface.events.size,0);assert.equal(f.window.events.size,0);
+ }
+});
+
 test('100 percent maps A4 output pixels one to one on standard and Retina displays',()=>{
  for(const [dpi,width] of [[350,2894],[600,4961]])for(const dpr of [1,2,3]){
   assert.equal(Math.round(210*dpi/25.4),width);

@@ -93,16 +93,19 @@ test('owner keys invert the shared canvas mapping without manufacturing missing 
  assert.equal(paintDocument.paintOwnerCanvasSelection(undefined,0,'figure-0'),undefined);
 });
 
+// 見込み: 親見出しは配置へ渡し、子の選択だけが共通ペン判定へ進む。
+// 合格: 親はlayout callbackだけ、子はowner/idとraster種を共通判定へ渡す。抽出handlerの配線を確認する。
 test('active paint headings leave through the same layout callback without changing the paint layer',()=>{
- const calls=[],scene={owners:[{key:'figure-0',kind:'figure',index:0,paint:{layers:[{id:'child',visible:true,locked:false}]}}]};
+ const calls=[],scene={owners:[{key:'figure-0',kind:'figure',index:0,paint:{layers:[{id:'child',kind:'raster',visible:true,locked:false}]}}]};
  const source=paintEditorSource.slice(paintEditorSource.indexOf('  function selectOwner('),paintEditorSource.indexOf('  function updateOwnerLayer('));
  const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectOwner',{
   operation:{current:false},suspended:false,inputActive:{current:false},pendingContents:{current:null},scene,owner:scene.owners[0],
   onSelectOwner:key=>calls.push(['layout',key]),onSelectFigure:index=>calls.push(['figure',index]),
   clearVectorSelection:()=>{},setMaskTarget:()=>{},setOwnerKey:key=>calls.push(['paint',key]),setLayerId:id=>calls.push(['layer',id]),setSelection:()=>{},
+  matchLayerPen:kind=>calls.push(['pen',kind]),
  });
  select('figure-0');assert.deepEqual(calls,[['layout','figure-0']]);calls.length=0;
- select('figure-0','child');assert.deepEqual(calls,[['paint','figure-0'],['layer','child']]);
+ select('figure-0','child');assert.deepEqual(calls,[['paint','figure-0'],['layer','child'],['pen','raster']]);
 });
 
 test('owner selection waits for paint close and retains the current mode on save failure',async()=>{

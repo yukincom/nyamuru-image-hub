@@ -146,7 +146,7 @@ async function verifySelection(){
  const palette=()=>document.querySelector<HTMLElement>('.page-layer-palette')!;
  const selected=()=>Array.from(palette().querySelectorAll<HTMLElement>('[data-canvas-selected="true"]'));
  const owner=(key:string)=>selected().length===1&&(selected()[0].dataset.ownerGroup??selected()[0].dataset.owner)===key&&selected()[0].getAttribute('aria-selected')==='true';
- const visible=()=>{const row=selected()[0]?.getBoundingClientRect(),viewport=palette().closest('.dock-content')!.getBoundingClientRect();return !!row&&row.top>=viewport.top-1&&row.bottom<=viewport.bottom+1;};
+ const visible=()=>{const row=selected()[0]?.getBoundingClientRect(),viewport=palette().querySelector('.page-layer-tree')!.getBoundingClientRect();return !!row&&row.top>=viewport.top-1&&row.bottom<=viewport.bottom+1;};
  const selectedPanel=()=>selected()[0]?.closest('.panel-layer-group')?.getAttribute('aria-label');
  button.disabled=true;report.textContent='検証中';
  try{
@@ -521,7 +521,7 @@ async function verifyPaletteGeometry(){
   const original=pixels();check(original.data.some((v,i)=>i%4===3&&v>0),'選択前に原本画像の画素を確認');
   for(let cycle=0;cycle<2;cycle++){
    for(const [name,selector,painting] of [['画像',`${imageRow} .layer-select`,true],['文字・輪郭',`${page} .bubble-native-row .layer-select`,false]] as const){
-    const scroller=first<HTMLElement>('.paint-layers-dock .dock-content');
+    const scroller=first<HTMLElement>('.paint-layers-dock .page-layer-tree');
     const measure=()=>({y:first<HTMLElement>(imageRow).getBoundingClientRect().top,scroll:scroller.scrollTop,header:first<HTMLElement>('.page-layer-palette>.layer-controls').getBoundingClientRect().height});
     const initial=measure(),samples=[initial];click(selector);
     for(let i=0;i<70;i++){await tick();samples.push(measure());}

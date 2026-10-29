@@ -53,11 +53,52 @@ try{
 
 function Controls(){const state=usePaintWorkspace();return <div class="test-history"><button disabled={!state?.canUndo} onClick={()=>state?.undo()}>元に戻す</button><button disabled={!state?.canRedo} onClick={()=>state?.redo()}>やり直す</button><output aria-label="検証状態">{JSON.stringify(state?.scene.owners[0].paint.layers.map(l=>({name:l.name,strokes:l.strokes.length,lastColor:l.strokes.at(-1)?.color,maskStrokes:l.mask?.strokes.length,maskPoints:l.mask?.strokes.at(-1)?.points.length,tone:l.tone})))}</output></div>;}
 function Fixture(){
-  const controller=useRef<PaintController|null>(null),[saved,setSaved]=useState('未出力');
+  const controller=useRef<PaintController|null>(null),[saved,setSaved]=useState('未出力'),[toolReport,setToolReport]=useState('未検証');
+  // 見込み: 通常の作成・選択入口が同じペン判定を使えば、生成マスクでも投げ縄等を保持できる。
+  // 合格: 非ペン7種を作成/選択で保持し、不一致のペンだけ双方向に交換。マスク作成のUndo/Redoも成功。
+  // 範囲: 実PaintEditorとツール/レイヤーUI。合成sceneのみで、作品保存・実モデル・ペンタブは対象外。
+  async function verifyToolRetention(){
+    const results:string[]=[],check=(ok:unknown,label:string)=>{if(!ok)throw Error(label);results.push(label);};
+    const settle=async()=>{for(let i=0;i<4;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
+    const control=(label:string)=>Array.from(document.querySelectorAll<HTMLButtonElement>('button')).findLast(button=>button.getAttribute('aria-label')===label||button.textContent?.trim()===label)!;
+    const click=async(label:string)=>{const button=control(label);if(!button||button.disabled)throw Error(`操作不可: ${label}`);button.click();await settle();};
+    const active=(label:string)=>control(label)?.getAttribute('aria-pressed')==='true';
+    const snapshot=()=>controller.current!.snapshot();
+    const selected=()=>snapshot().scene.owners[0].paint.layers.find(layer=>layer.id===snapshot().layerId)!;
+    const action=async(value:Parameters<PaintController['layerAction']>[0])=>{controller.current!.layerAction(value);await settle();};
+    try{
+      setToolReport('検証中');await settle();
+      await click('投げ縄');await click('生成マスク化');const mask=selected();
+      check(mask.generationMask&&active('投げ縄'),'投げ縄のまま生成マスクを作成');
+      await click('元に戻す');check(!snapshot().scene.owners[0].paint.layers.some(layer=>layer.id===mask.id)&&active('投げ縄'),'作成Undoでも投げ縄を保持');
+      await click('やり直す');check(snapshot().scene.owners[0].paint.layers.some(layer=>layer.id===mask.id)&&active('投げ縄'),'作成Redoでも投げ縄を保持');
+      for(const label of ['投げ縄','自動選択','消しゴム','四角','選択','ダイレクト選択','バケツ']){
+        if(label==='自動選択')await click('選択のツール一覧');
+        await click(label);await click('ベクターレイヤー追加');const vector=selected();
+        check(vector.kind==='vector'&&active(label),`${label}: ベクター追加で保持`);
+        await action({type:'select',key:'background',id:mask.id,mask:'generationMask'});
+        check(selected().id===mask.id&&active(label),`${label}: 生成マスク選択で保持`);
+        await click('ラスターレイヤー追加');check(selected().kind==='raster'&&active(label),`${label}: ラスター追加で保持`);
+        const before=snapshot().scene;await action({type:'select',key:'background',id:vector.id});
+        check(active(label)&&snapshot().scene===before,`${label}: ベクター選択で道具と原稿を保持`);
+      }
+      await click('ペン');await click('ベクターレイヤー追加');const vector=selected();
+      check(active('ベジェペン'),'ラスターのペンからベクター追加でベジェペンへ');
+      await click('ラスターレイヤー追加');const raster=selected();check(active('ペン'),'ベジェペンからラスター追加でペンへ');
+      await action({type:'select',key:'background',id:vector.id});check(active('ベジェペン'),'ベクター選択で不一致のペンを交換');
+      await action({type:'select',key:'background',id:raster.id});check(active('ペン'),'ラスター選択で不一致のペンを交換');
+      await click('ベジェペン');await action({type:'select',key:'background',id:mask.id,mask:'generationMask'});check(active('ペン'),'生成マスクはベジェペンだけをラスターのペンへ交換');
+      await action({type:'update',key:'background',id:vector.id,patch:{mask:newPaintMask([])}});
+      await click('ベジェペン');await action({type:'select',key:'background',id:vector.id,mask:'mask'});check(active('ペン'),'ベクターに付くクリッピングマスクもラスターのペンへ');
+      await action({type:'select',key:'background',id:vector.id,mask:'mask'});check(active('ベジェペン'),'クリッピングマスクの選択解除でベクターのペンへ戻る');
+      await click('選択のツール一覧');await click('投げ縄');await click('トーンレイヤー作成');check(selected().tone&&active('投げ縄'),'投げ縄のままトーンレイヤーを作成');
+      setToolReport(`ツール保持 PASS ${results.length}\n${results.join('\n')}`);
+    }catch(error){setToolReport(`ツール保持 FAIL after ${results.length}: ${String(error)}\n${results.join('\n')}`);console.error(error);}
+  }
   return <><style>{`body{padding:14px;background:#f6f5f3}h1{font-size:20px}.test-workspace{display:flex;gap:20px;align-items:flex-start}.test-tools{width:86px;flex:none}.test-layers{width:270px;flex:none}.test-paper{position:relative;width:800px;height:600px;background:white;border:1px solid #ccc;flex:none}.test-history{margin:8px 0}.test-history output{display:block;max-width:1100px;overflow-wrap:anywhere;font-size:10px}.test-tools .paint-tools{display:block}.test-tools .paint-tool-icons{display:grid;grid-template-columns:1fr 1fr}.test-tools .paint-size{display:flex}.test-tools .paint-aa{display:none}`}</style><h1>マスク・トーン検証（合成したテスト画像）</h1>
     <p role="status">{checks.some(s=>s.startsWith('FAIL'))?'FAIL':'PASS'}: {checks.join(' / ')}</p>
     <PaintEditor initial={initial} assets={[]} title="検証" page={0} panelIndex={0} overlay={false} controller={controller} onApply={async result=>setSaved(result.owners[0]?.remove?'作画削除を保存（PNGなし）':`PNG出力済み: ${result.owners.length}件、${result.owners[0]?.blob.size} bytes`)} onClose={()=>{}}>
-      <Controls/><button onClick={()=>{
+      <Controls/><button id="tool-retention-run" onClick={()=>void verifyToolRetention()}>レイヤー変更時のツール保持を検証</button><pre id="tool-retention-report">{toolReport}</pre><button onClick={()=>{
         const surface=document.querySelector<HTMLDivElement>('.paint-input')!;
         const rect=surface.getBoundingClientRect();
         const event=(type:string,x:number,y:number,buttons:number)=>new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:777,pointerType:'pen',isPrimary:true,button:0,buttons,pressure:buttons?.8:0,clientX:rect.x+rect.width*x,clientY:rect.y+rect.height*y});

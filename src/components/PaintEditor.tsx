@@ -19,7 +19,7 @@ import PaintSelectionTools from './PaintSelectionTools';
 import { nextMonoInk, swapPaintInk, paintInks } from '../lib/paintInk';
 import { alphaSelection, combineSelection, floodSelection, lassoSelection, type SelectionMode } from '../lib/rasterSelection';
 import PaintShapeTools from './PaintShapeTools';
-import { isShapeTool, nextPaintLineKind, vectorInput, paintSelectionMode, type PaintLineKind } from '../lib/paintToolMode';
+import { isShapeTool, nextPaintLineKind, paintToolForLayer, vectorInput, paintSelectionMode, type PaintLineKind } from '../lib/paintToolMode';
 import { paintToolShortcut, paintInkShortcut, paintSizeShortcut, stepPaintSize, PAINT_SIZE_PRESETS } from '../lib/paintToolShortcuts';
 import { loadVectorEraseMode, saveVectorEraseMode, type PaintCursorMode } from '../lib/paintPreferences';
 import { PaintToolButton } from './PaintToolHelp';
@@ -526,12 +526,17 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       commit({...snapshot,owners:snapshot.owners.map(o=>o.key===target.key?updated:o)});if(!images)image.src='';setOwnerKey(target.key);setLayerId(added.id);
     }catch(e){setError(e instanceof Error?e.message:'取り込めませんでした');if(fromDialog)throw e;}finally{operation.current=false;setBusy(false);}
   }
-  function selectOwner(key:string,id?:string,contents=false,native=false){
+  function matchLayerPen(kind:PaintLayer['kind']){
+    const next=paintToolForLayer(tool,kind);
+    if(next!==tool){setTool(next);setLineKind(previous=>nextPaintLineKind(previous,next));}
+  }
+  function selectOwner(key:string,id?:string,contents=false,native=false,rasterMask=false){
     if(operation.current||suspended||inputActive.current)return;
     pendingContents.current=null;
     const target=scene.owners.find(o=>o.key===key);if(!target)return;
     if(!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){onSelectOwner(key,native);return;}
     clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=id?target.paint.layers.find(l=>l.id===id):undefined;setLayerId(id??'');
+    if(selectedLayer&&!contents)matchLayerPen(rasterMask?'raster':selectedLayer.kind);
     if(selectedLayer?.generationMask&&!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
     if(target.kind==='background')onSelectLayout?.();
     if(key!==owner.key)setSelection(null);
@@ -772,7 +777,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       if(action.type==='add'){
         const added=addPaintLayer(current,target.key,action.kind,{...position,stack:undefined});if(!added)return;
         commit(added.scene);setOwnerKey(added.key);setLayerId(added.layer.id);clearVectorSelection();setMaskTarget(null);
-        if(action.kind==='vector'){setTool('vector-pen');setLineKind('vector');}
+        matchLayerPen(action.kind);
       }else{
         if((target.paint.folders?.length??0)>=64)return;
         const next=addPaintFolder(target.paint);
@@ -887,13 +892,13 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       finishGesture();clearVectorSelection();setOwnerKey(target.key);setLayerId(selected.id);setMaskTarget(null);setSelection(null);
       setPaletteFolded(current=>({...current,[`${paletteScope}/owner/${target.key}`]:false}));
       if(!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
+      matchLayerPen('raster');
     }else{
-      if(selectedMask==='mask'&&owner.key===key&&layer.id===id){finishGesture();setMaskTarget(null);setSelection(null);return;}
-      selectOwner(key,id);setMaskTarget({key,id,kind});
+      if(selectedMask==='mask'&&owner.key===key&&layer.id===id){finishGesture();setMaskTarget(null);setSelection(null);matchLayerPen(layer.kind);return;}
+      selectOwner(key,id,false,false,true);setMaskTarget({key,id,kind});
       const target=scene.owners.find(o=>o.key===key)?.paint.layers.find(l=>l.id===id);
       if(target?.mask&&!target.mask.enabled&&!target.locked)updateOwnerLayer(key,id,{mask:{...target.mask,enabled:true}});
     }
-    setTool('pen');setLineKind('raster');
   }
   function addToneMask(){
     if(!images||locked||busy||suspended||operation.current||owner.paint.layers.length>=64)return;
@@ -902,7 +907,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       commit({...scene,owners:scene.owners.map(o=>o.key===owner.key?next:o)});}
     catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
     setError('');clearVectorSelection();setLayerId(added.id);
-    setMaskTarget({key:owner.key,id:added.id,kind:'mask'});setSelection(null);setTool('pen');setLineKind('raster');
+    setMaskTarget({key:owner.key,id:added.id,kind:'mask'});setSelection(null);matchLayerPen('raster');
   }
   function addGenerationMask(){
     if(!images||busy||suspended)return;

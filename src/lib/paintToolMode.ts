@@ -4,6 +4,12 @@ export type PaintLineKind = 'raster' | 'vector';
 export type DrawingTool = PaintStroke['tool'] | VectorTool | 'lasso' | 'wand';
 export type ShapeTool = 'line' | 'rectangle' | 'ellipse';
 export const isShapeTool = (tool:string):tool is ShapeTool => ['line','rectangle','ellipse'].includes(tool);
+/** Layer changes only replace an incompatible drawing pen; other tools stay selected. */
+export function paintToolForLayer<T extends DrawingTool>(tool:T,layerKind:PaintLayer['kind']):T|'pen'|'vector-pen' {
+  if(tool==='pen'&&layerKind==='vector')return 'vector-pen';
+  if(tool==='vector-pen'&&layerKind!=='vector')return 'pen';
+  return tool;
+}
 /** Navigation, text and erasing never replace the remembered drawing style. */
 export function nextPaintLineKind(previous:PaintLineKind,tool:DrawingTool):PaintLineKind {
   return tool==='pen'?'raster':tool==='vector-pen'?'vector':previous;

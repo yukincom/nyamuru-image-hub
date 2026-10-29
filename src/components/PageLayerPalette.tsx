@@ -134,7 +134,7 @@ export default function PageLayerPalette(p:Props) {
   useEffect(()=>{
     if(p.expanded===false||!selection||(!selectedOwner&&!selectedText))return;
     const frame=requestAnimationFrame(()=>{
-      const root=paletteRef.current,scroller=root?.closest<HTMLElement>('.dock-content');
+      const root=paletteRef.current,scroller=root?.querySelector<HTMLElement>('.page-layer-tree');
       const row=root?.querySelector<HTMLElement>('[data-canvas-selected="true"]');
       if(!scroller||!row||!row.getClientRects().length)return;
       const viewport=scroller.getBoundingClientRect(),bounds=row.getBoundingClientRect();

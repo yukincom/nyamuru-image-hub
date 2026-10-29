@@ -34,7 +34,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="generation-owner-run" onClick={()=>void verifyGenerationOwner()}>生成マスクの独立操作を検証</button><button id="layer-continuity-run" onClick={()=>void verifyLayerMoveContinuity()}>移動中の状態保持を検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="generation-owner-run" onClick={()=>void verifyGenerationOwner()}>生成マスクの独立操作を検証</button><button id="layer-continuity-run" onClick={()=>void verifyLayerMoveContinuity()}>移動中の状態保持を検証</button><button id="folder-space-run" onClick={()=>void verifyFolderSpacePan()}>フォルダー選択後のSpaceを検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -862,6 +862,41 @@ async function verifySelectionLayerTools(){
  finally{run.disabled=false;}
 }
 
+
+// 見込み: folderボタンにfocusが残っても、canvasへのpointerenterでSpaceの行先をpanへ切り替えられる。
+// 合格: 開閉状態を保持したまま実scrollが移動し、keyup・blurで解除。画面外buttonと入力中はSpaceを保持。
+// 範囲: 実App/DOMと合成pointer・keyboard。専用OPFS作品のみを使用し、実作品や外部サービスへ触れない。
+async function verifyFolderSpacePan(){
+ const run=document.getElementById('folder-space-run') as HTMLButtonElement,checks:string[]=[];
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const key=(type:string,target:EventTarget,isComposing=false)=>{const event=new KeyboardEvent(type,{key:' ',code:'Space',isComposing,bubbles:true,cancelable:true});target.dispatchEvent(event);return event;};
+ run.disabled=true;report.textContent='フォルダー選択後のSpaceを検証中';
+ try{
+  render(null,host);const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(source)));await writer.close();render(<App/>,host);await open();
+  button('100%表示').click();await settle();
+  const scroll=(document.querySelector('.spread-pane:not(.is-spread-partner) .canvas-scroll')??document.querySelector('.canvas-scroll')) as HTMLElement;
+  const surface=scroll.closest<HTMLElement>('.canvas-spread-scroll')??scroll,folder=document.querySelector<HTMLButtonElement>('.panel-layer-heading button[aria-expanded]')!;
+  folder.click();await settle();folder.focus();const folded=folder.getAttribute('aria-expanded');
+  check(document.activeElement===folder,'フォルダー開閉ボタンにフォーカスが残る状態を用意');
+  surface.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}));
+  check(key('keydown',folder).defaultPrevented&&document.body.classList.contains('is-canvas-space-pan-ready'),'画面上のSpaceをボタン開閉でなく掴むモードへ');
+  surface.scrollLeft=400;surface.scrollTop=400;const left=surface.scrollLeft,top=surface.scrollTop,box=surface.getBoundingClientRect(),x=box.left+box.width/2,y=box.top+box.height/2;
+  const pointer=(target:EventTarget,type:string,dx=0,dy=0)=>target.dispatchEvent(new PointerEvent(type,{pointerId:131,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'?0:1,clientX:x+dx,clientY:y+dy,bubbles:true,cancelable:true}));
+  pointer(surface,'pointerdown');pointer(window,'pointermove',30,20);
+  check(Math.abs(surface.scrollLeft-left+30)<1&&Math.abs(surface.scrollTop-top+20)<1,'Spaceドラッグで紙面を縦横に移動');
+  pointer(window,'pointerup',30,20);check(key('keyup',folder).defaultPrevented&&!document.body.classList.contains('is-canvas-space-pan-ready'),'Spaceを離すとボタンのclickを抑止して掴むモードを解除');
+  check(folder.getAttribute('aria-expanded')===folded,'Space操作でフォルダーの開閉状態を保持');
+  surface.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));check(!key('keydown',folder).defaultPrevented&&!key('keyup',folder).defaultPrevented,'画面外ではフォルダーボタンのSpaceを保持');
+  surface.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}));
+  const textarea=document.querySelector<HTMLTextAreaElement>('textarea')!;check(!!textarea&&!key('keydown',textarea).defaultPrevented&&!key('keyup',textarea).defaultPrevented,'カーソルが画面上でも文字入力のSpaceを保持');
+  check(!key('keydown',folder,true).defaultPrevented&&!key('keyup',folder,true).defaultPrevented,'IME変換中のSpaceを奪わない');
+  key('keydown',folder);surface.dispatchEvent(new PointerEvent('pointerleave',{pointerType:'mouse'}));check(key('keyup',folder).defaultPrevented&&!document.body.classList.contains('is-canvas-space-pan-ready'),'画面外へカーソルを移してもkeyupで解除');
+  surface.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}));key('keydown',folder);window.dispatchEvent(new Event('blur'));check(!document.body.classList.contains('is-canvas-space-pan-ready'),'windowのblurでも掴むモードを解除');
+  folder.focus();surface.dispatchEvent(new PointerEvent('pointerenter',{pointerType:'mouse'}));
+  report.textContent=`Spaceパン PASS ${checks.length}\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`Spaceパン FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
+ finally{run.disabled=false;}
+}
 
 async function verifyGenerationOwner(){
  const run=document.getElementById('generation-owner-run') as HTMLButtonElement,checks:string[]=[];
