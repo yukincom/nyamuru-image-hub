@@ -13,7 +13,8 @@ import { humanPoseFigureFrame, humanPosePanelCutFrame, type HumanPoseCutFrame } 
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
 import { isHandwrittenText } from './bubblePresentation.ts';
 import { textStyleOf } from './textStyle.ts';
-import { figureDisplayLabel, textDisplayLabel } from './displayLabels.ts';
+import { letteringFigureIndex } from './bubbleRelations.ts';
+import { characterGenderLabel } from './characterGender.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
   characterKeys?: string[];
@@ -34,6 +35,7 @@ export interface QwenGenerationPlan {
   compositionImage?: string;
   outputFrame?: BBox;
   referenceFrame?: BBox;
+  generationArea?: BBox;
   poseContext?: string;
 }
 export interface QwenReference { label: string; characterKeys: string[]; image: string }
@@ -69,6 +71,21 @@ export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLaye
   if(reference?.kind==='paint'&&plan.humanPose)return `${plan.prompt}\n\n描画レイヤー参照は描き方の参考に使い、ポーズ・アングル・描写範囲は今回の指定を優先してください。`;
   return reference?.kind==='sketch'?(plan.sketchPrompt??plan.prompt):plan.prompt;
 }
+
+/** A correction keeps the full captured canvas; a new lettering image uses its marker bounds. */
+export function qwenGenerationTarget(plan:QwenGenerationPlan,correction=false):QwenGenerationPlan {
+  const area=plan.contentKind==='handwritten'&&!correction?plan.generationArea:undefined,frame=plan.outputFrame;
+  if(!area||!frame)return plan;
+  return {...plan,generationArea:undefined,width:area.w,height:area.h,outputFrame:{
+    x:frame.x+area.x*frame.w/plan.width,y:frame.y+area.y*frame.h/plan.height,
+    w:area.w*frame.w/plan.width,h:area.h*frame.h/plan.height,
+  }};
+}
+export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false):string {
+  if(plan.contentKind!=='handwritten')return '';
+  const target=qwenGenerationTarget(plan,correction),frame=target.outputFrame;
+  return `出力キャンバス：幅${target.width} × 高さ${target.height} px。${frame?`原稿上の配置サイズ：幅${Number(frame.w.toFixed(2))} × 高さ${Number(frame.h.toFixed(2))} mm。`:''}文字全体をこの縦横比の範囲内に収めてください。`;
+}
 export interface QwenJob {
   jobId: string; status: 'preparing'|'prepared'|'queued'|'running'|'succeeded'|'failed'|'outcome_unknown';
   requestSha256: string; label: string; phase?: string; error?: string;
@@ -80,7 +97,7 @@ export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','fa
 export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
 
 /** The owner is resolved by the editor, never inferred from a name or a filename. */
-export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource):QwenGenerationPlan {
+export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource,generationArea?:BBox):QwenGenerationPlan {
   const page=manga.pages[pageIndex], panel=page?.panels[panelIndex];
   if(!page||(!overlay&&!panel))throw new Error('生成対象が見つかりません');
   if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字が対象です');
@@ -105,17 +122,24 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character',standardArtwork);
   const style=artwork.style_notes;
   const contextOwner=overlay?page.page_overlay:panel;
-  const characterName=(bubble:NonNullable<typeof lettering>)=>(bubble.speakerId?manga.characters.find(character=>character.localId===bubble.speakerId)?.name:undefined)||bubble.speaker||'なし';
+  const figureIndex=lettering?letteringFigureIndex(contextOwner??{},lettering):null;
+  const linkedFigure=figureIndex===null?undefined:contextOwner?.figures?.[figureIndex];
+  const linkedCharacterId=linkedFigure?.refId||lettering?.speakerId;
+  const linkedCharacter=linkedCharacterId?manga.characters.find(character=>character.localId===linkedCharacterId):undefined;
+  const characterName=linkedCharacter?.name||lettering?.speaker||linkedFigure?.name||'なし';
+  let letteringPosition='';
+  if(linkedFigure?.bbox&&lettering?.bbox){
+    const figure=humanPoseFigureFrame(linkedFigure,linkedFigure.bbox),text=lettering.bbox;
+    const x=(text.x+text.w/2-figure.x)/figure.w,y=(text.y+text.h/2-figure.y)/figure.h;
+    const side=`${x<.25?'左':x>.75?'右':''}${y<.25?'上':y>.75?'下':''}`;
+    const subject=linkedFigure.size==='face'?'顔':linkedFigure.size==='face-detail'?'顔の一部':'描写範囲';
+    letteringPosition=`文字の配置：対応キャラクターの${subject}の${side?`${side}側`:'周辺'}に添える。`;
+  }
   const sceneContext=lettering?[
-    !overlay&&panel.action?`コマのト書き：${panel.action}`:'',
-    !overlay&&panel.background_description?`コマの場面：${panel.background_description}`:'',
-    `対象の対応キャラクター：${characterName(lettering)}。文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`,
-    lettering.speakerId||lettering.speaker?`合成時の重なり：対応キャラクター「${characterName(lettering)}」の${lettering.lettering_depth==='behind'?'後ろ':'手前'}。今回の単品画像には人物や人物による隠れを描き込まず、文字全体を生成してください。`:'',
-    ...(contextOwner?.figures??[]).flatMap((figure,index)=>figure.action?[`${figureDisplayLabel(figure,index)}の表情・動作：${figure.action}`]:[]),
-    ...(contextOwner?.bubbles??[]).flatMap((bubble,index)=>index!==owner.index&&bubble.hidden!==true&&bubble.text.trim()
-      ?[`${textDisplayLabel(index)}（${isHandwrittenText(bubble)?'描き文字':bubble.shape==='typeset'?'写植文字':bubble.monologue||bubble.shape==='thought'?'心の声':'セリフ'}、対応キャラクター：${characterName(bubble)}${bubble.offscreen?'、画面外':''}）：${JSON.stringify(bubble.text)}`]:[]),
-    ...(contextOwner?.screen_text??[]).flatMap((text,index)=>text.hidden!==true&&text.text.trim()
-      ?[`${textDisplayLabel((contextOwner?.bubbles?.length??0)+index)}（写植文字）：${JSON.stringify(text.text)}`]:[]),
+    `対象の対応キャラクター：${characterName}${linkedCharacter?.gender?`（${characterGenderLabel(linkedCharacter.gender)}）`:''}。文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`,
+    linkedFigure?.action?`対応キャラクターの表情・動作：${linkedFigure.action}`:'',
+    letteringPosition,
+    linkedFigure&&lettering.lettering_depth==='behind'?`合成時の重なり：対応キャラクター「${characterName}」の後ろ。人物や人物による隠れを描き込まず、文字全体を生成してください。`:'',
   ].filter(Boolean).join('\n'):'';
   const letteringContext=lettering?[
     '描く対象：描き文字（shape=handwritten）。',
@@ -124,8 +148,8 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     `text:\n${lettering.text}`,
     lettering.lettering_description?`描き方：${lettering.lettering_description}`:'',
     ...style,artwork.layout_spec,
-    '描くのは上記の本文の描き文字だけです。以下の文脈は、文字の感情・勢い・ニュアンスを判断するための資料です。文脈の人物・背景・他の文字は描かず、明示された「描き方」があれば優先してください。',
-    `${overlay?'同じページ前景':'同じコマ'}の文脈：\n${sceneContext}`,
+    '描くのは上記の本文の描き文字だけです。以下は文字の感情・勢い・ニュアンスを判断するための資料です。人物や背景は描かず、文字の外側は透明にしてください。明示された「描き方」があれば優先してください。',
+    `文字の文脈：\n${sceneContext}`,
   ].filter(Boolean).join('\n\n'):undefined;
   const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [
@@ -179,17 +203,22 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   ].filter(Boolean).join('\n\n'):undefined;
   const referenceFrame=owner.paint.referenceFrame?paintReferenceBox(owner.paint,owner.frame):owner.figure?humanPoseFigureFrame({...owner.figure,bbox:owner.frame},owner.frame):owner.frame;
   const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
-  const outputFrame=cutFrame?panelBounds(panel):undefined;
-  const dimensions=outputFrame?humanPoseSceneFrame(outputFrame.w/outputFrame.h):{width:owner.paint.width,height:owner.paint.height};
+  const outputFrame=lettering?{...owner.frame}:cutFrame?panelBounds(panel):undefined;
+  const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):{width:owner.paint.width,height:owner.paint.height};
+  if(generationArea&&(!lettering||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
     ...(lettering?{contentKind:'handwritten' as const,literalText:[lettering.text],letteringContext}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
+    ...(generationArea?{generationArea:{...generationArea}}:{}),
     ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
 }
 
 export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string){
+  if(!plan.prompt.trim())throw new Error('生成指示を入力してください');
+  const sizePrompt=qwenGenerationSizePrompt(plan,Boolean(correctionImage));
+  plan={...qwenGenerationTarget(plan,Boolean(correctionImage)),prompt:[plan.prompt,sizePrompt].filter(Boolean).join('\n\n')};
   if(plan.ownerKey.startsWith('bubble-')&&(plan.contentKind!=='handwritten'||plan.literalText?.length!==1||!plan.literalText[0].trim()))throw new Error('吹き出し単品は生成できません。描き文字を選択してください');
   if(plan.contentKind&&(!plan.ownerKey.startsWith('bubble-')||plan.scope))throw new Error('描き文字の生成対象が不正です');
   if(plan.scope){
@@ -211,7 +240,6 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   if(allReferences.length+Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage))>10)throw new Error('設定画・3Dポーズ画像・選択レイヤーは合計10枚までです');
   if(plan.characterKeys.some(key=>!references.some(r=>r.characterKeys.includes(key))))throw new Error('指定した登場人物の参照資料を選んでください');
   if(references.some(r=>r.characterKeys.some(key=>!plan.characterKeys.includes(key))))throw new Error('参照資料と生成する人物が一致しません');
-  if(!plan.prompt.trim())throw new Error('生成指示を入力してください');
   const offset=Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage));
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
   return {profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,

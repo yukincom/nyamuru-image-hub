@@ -3,7 +3,7 @@ import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
-import {canGeneratePaintOwner,buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenLayerCandidates,qwenLayerPaint,QWEN_GENERATION_PROFILE} from '../src/lib/qwenGeneration.ts';
+import {canGeneratePaintOwner,buildQwenGenerationPlan,qwenGenerationPayload,qwenGenerationPrompt,qwenGenerationTarget,qwenGenerationSizePrompt,qwenLayerCandidates,qwenLayerPaint,QWEN_GENERATION_PROFILE} from '../src/lib/qwenGeneration.ts';
 import {setWorkStylePrompt,artworkSettingsFromSource,applyArtworkSettings} from '../src/lib/artworkRules.ts';
 import {FIGURE_SIZE_LABELS,parseMangaYaml,parseOmayYaml,toStoredMangaYaml,validateManga} from '../src/lib/manga.ts';
 import {confirmHumanPoseCameraPrompt} from '../src/lib/humanPoseScene.ts';
@@ -396,31 +396,55 @@ test('lettering instructions and guide visibility survive stored YAML and foregr
  bubble.text='';assert.throws(()=>buildQwenGenerationPlan(manga,0,0,true,owner),/本文/);
 });
 
-test('empty artwork settings still deliver YAML lettering rules and same-panel dialogue and expressions',()=>{
+test('lettering context includes only its associated character and placement',()=>{
  const manga=fixture(),panel=manga.pages[0].panels[0];
  const standard=parseOmayYaml(readFileSync(new URL('../src/content/standard-settings.yaml',import.meta.url),'utf8'));
- panel.action='相手の言葉に戸惑う場面';panel.figures[0].action='困惑した表情で頬に赤みがある';
- panel.bubbles=[{text:'えっと……',speakerId:'person-id'},{text:'かぁぁ',shape:'handwritten',speakerId:'person-id',lettering_depth:'behind',lettering_description:'細く柔らかく',bbox:{x:5,y:5,w:30,h:20}},
-   {text:'非表示の文脈',hidden:true}];
+ manga.characters[0].gender='female';
+ panel.action='相手の言葉に戸惑う場面';panel.figures[0].action='困惑した表情で頬に赤みがある';panel.figures[0].size='face';
+ panel.figures.push({name:'別の人物',action:'無関係な表情'});
+ panel.bubbles=[{text:'えっと……',speakerId:'person-id'},{text:'かぁぁ',shape:'handwritten',speakerId:'person-id',lettering_description:'細く柔らかく',bbox:{x:30,y:5,w:10,h:20}},{text:'非表示の文脈',hidden:true}];
  panel.screen_text=[{text:'同じコマの補足'}];
  manga.pages[0].panels.push({...structuredClone(panel),id:2,action:'別コマの怒り'});
  manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景だけの文脈'}]};
  const before=structuredClone(manga),owner=paintScene(panel,100,[]).owners.find(owner=>owner.key==='bubble-1');
  const plan=buildQwenGenerationPlan(manga,0,0,false,owner,standard);
  for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
-  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','相手の言葉に戸惑う場面','困惑した表情で頬に赤みがある','えっと……','対象の対応キャラクター：確認用','発話やしっぽを意味しない','対応キャラクター「確認用」の後ろ','人物や人物による隠れを描き込まず','同じコマの補足','文脈の人物・背景・他の文字は描かず'])assert.ok(prompt.includes(value),value);
-  assert.doesNotMatch(prompt,/別コマの怒り|前景だけの文脈|非表示の文脈|normal=|OMNY: shape/);
+  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','困惑した表情で頬に赤みがある','対象の対応キャラクター：確認用（女性）','発話やしっぽを意味しない','顔の右側','文字の外側は透明'])assert.ok(prompt.includes(value),value);
+  assert.doesNotMatch(prompt,/戸惑う場面|室内|無関係な表情|えっと|同じコマの補足|別コマの怒り|前景だけの文脈|非表示の文脈|合成時の重なり|normal=|OMNY: shape/);
  }
- assert.deepEqual(qwenGenerationPayload(plan,[]).literal_text,['かぁぁ']);
+ const payload=qwenGenerationPayload(plan,[]);
+ assert.deepEqual(payload.literal_text,['かぁぁ']);assert.ok(payload.prompt.includes(qwenGenerationSizePrompt(plan)));
  assert.deepEqual(manga,before);
- const staleOwner={...owner,bubble:structuredClone(owner.bubble)};panel.bubbles[1].lettering_depth='front';
- assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,staleOwner,standard),/選び直してください/);
  panel.bubbles[1].lettering_depth='behind';
- const foreground={...panel.bubbles[1],text:'ふわっ'};
+ const staleOwner={...owner,bubble:structuredClone(before.pages[0].panels[0].bubbles[1])};
+ assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,staleOwner,standard),/選び直してください/);
+ const behind=buildQwenGenerationPlan(manga,0,0,false,{...owner,bubble:panel.bubbles[1]},standard);
+ assert.match(behind.prompt,/対応キャラクター「確認用」の後ろ/);assert.match(behind.prompt,/人物や人物による隠れを描き込まず/);
+ const foreground={...panel.bubbles[1],text:'ふわっ',speakerId:undefined,speaker:'前景人物'};
  manga.pages[0].page_overlay.bubbles=[foreground,{text:'前景のセリフ'}];
  manga.pages[0].page_overlay.figures=[{name:'前景人物',action:'穏やかにほほ笑む'}];
- const foregroundOwner={...owner,key:'bubble-0',index:0,bubble:foreground};
- const overlayPlan=buildQwenGenerationPlan(manga,0,0,true,foregroundOwner,standard);
- assert.match(overlayPlan.prompt,/同じページ前景の文脈/);assert.match(overlayPlan.prompt,/前景のセリフ/);assert.match(overlayPlan.prompt,/穏やかにほほ笑む/);
- assert.doesNotMatch(overlayPlan.prompt,/戸惑う場面|頬に赤み|えっと/);
+ const overlayPlan=buildQwenGenerationPlan(manga,0,0,true,{...owner,key:'bubble-0',index:0,bubble:foreground},standard);
+ assert.match(overlayPlan.prompt,/穏やかにほほ笑む/);assert.doesNotMatch(overlayPlan.prompt,/前景のセリフ|戸惑う場面|頬に赤み|えっと/);
+ manga.pages[0].page_overlay.figures.push({name:'前景人物',action:'曖昧な関連先'});
+ const ambiguous=buildQwenGenerationPlan(manga,0,0,true,{...owner,key:'bubble-0',index:0,bubble:foreground},standard);
+ assert.doesNotMatch(ambiguous.prompt,/穏やかにほほ笑む|曖昧な関連先/);
+});
+
+test('lettering mask dimensions, payload and placement share one target while corrections keep the full canvas',()=>{
+ const manga=fixture(),panel=manga.pages[0].panels[0];
+ panel.bubbles=[{text:'ド  ン！\nドン',shape:'handwritten',bbox:{x:20,y:30,w:40,h:30}}];
+ const owner=paintScene(panel,100,[]).owners.find(owner=>owner.kind==='bubble');
+ owner.frame={x:-10,y:15,w:80,h:60};owner.paint={...owner.paint,width:800,height:600,referenceFrame:{x:300,y:150,w:400,h:300}};
+ const area={x:300,y:100,w:200,h:300},before=structuredClone(owner);
+ const plan=buildQwenGenerationPlan(manga,0,0,false,owner,undefined,area),target=qwenGenerationTarget(plan),correction=qwenGenerationTarget(plan,true);
+ assert.equal(plan.width,800);assert.equal(target.width,200);assert.equal(target.height,300);
+ assert.deepEqual(target.outputFrame,{x:20,y:25,w:20,h:30});assert.deepEqual(qwenGenerationTarget(target),target);
+ assert.equal(correction,plan);assert.deepEqual(correction.outputFrame,owner.frame);
+ assert.deepEqual(target.referenceFrame,plan.referenceFrame);
+ const fresh=qwenGenerationPayload(plan,[]),repair=qwenGenerationPayload({...plan,prompt:qwenGenerationPrompt(plan,undefined,{kind:'paint'})},[],undefined,undefined,'data:correction');
+ assert.equal(fresh.width,200);assert.equal(fresh.height,300);assert.match(fresh.prompt,/幅200 × 高さ300 px/);assert.match(fresh.prompt,/幅20 × 高さ30 mm/);
+ assert.equal(repair.width,800);assert.equal(repair.height,600);assert.match(repair.prompt,/幅800 × 高さ600 px/);
+ assert.deepEqual(fresh.literal_text,['ド  ン！\nドン']);assert.deepEqual(owner,before);
+ assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,owner,undefined,{x:790,y:0,w:20,h:20}),/マスク/);
+ const noMask=buildQwenGenerationPlan(manga,0,0,false,owner);assert.equal(qwenGenerationTarget(noMask),noMask);
 });

@@ -18,7 +18,7 @@ import PaintTextTools, {type TextPaletteTab} from './PaintTextTools';
 import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
 import { addCanvasTextAt, canvasTextAt, canvasTextCategory, changeCanvasTextCategory, type TextCategory, canvasTextEditable, canvasBubbleLineWidthEditable, changeCanvasDefaultBubbleLineWidth, editCanvasBubbleLineWidth, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, removeCanvasText, screenTextCoveredByBubble, toggleCanvasTextVisibility, type CanvasTextTarget } from '../lib/canvasText';
-import {bubbleStrokeWidthMm} from '../lib/bubblePresentation';
+import {bubbleStrokeWidthMm,isHandwrittenText} from '../lib/bubblePresentation';
 import {availableFontWeights,classifyPcFontFamilies,queryPcFontFamilies,type PcFontFamily} from '../lib/bubbleFonts';
 import PageLayerPalette from './PageLayerPalette';
 import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, reorderPanelArt, toggleBubbleVisibility, unlockPanelDescendants, type BubbleTextTarget } from '../lib/panelLayers';
@@ -47,7 +47,7 @@ import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, 
 import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
 import { downloadImageBlob, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
 import { humanPoseOwnerImage } from '../lib/humanPoseComposition';
-import {loadPaintImages,renderPaintPng,type PaintImages} from '../lib/paintRenderer';
+import {generationMaskBounds,loadPaintImages,renderPaintPng,type PaintImages} from '../lib/paintRenderer';
 import {prepareGuideLayer} from '../lib/paintGuide';
 import PageOverlayInspector from './PageOverlayInspector';
 import EnvironmentSettings from './EnvironmentSettings';
@@ -412,7 +412,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const qwenPreparing=useRef(false);
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
-  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest}|null>(null);
+  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest}|null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
@@ -3446,11 +3446,12 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     catch(error){setToast(error instanceof Error?error.message:'背景の3D編集を開けません');}
   }
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest) => {
-    const plan=buildQwenGenerationPlan(current.manga,pageIndex,panelIndex,overlay,owner,parseOmayYaml(standardArtworkSource));
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
-    const loadLayer=async(id:string,correction:boolean)=>{
+    const area=captured.kind==='bubble'&&isHandwrittenText(captured.bubble)?generationMaskBounds(captured.paint):undefined;
+    const plan=buildQwenGenerationPlan(current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area);
+    const loadLayer=async(id:string,correction:boolean,crop?:BBox)=>{
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
-      const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction));
+      const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop);
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       return result.image;
     };
@@ -3707,10 +3708,10 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       if(explicitTarget)throw error;
     } finally { setImageImportBusy(false); }
   };
-  const insertQwenImage = async(file:File) => {
+  const insertQwenImage = async(file:File,generationPlan?:QwenGenerationPlan) => {
     const target=qwenGeneration;
     if(!target||documentRef.current!==target.document||projectOperation.current||imageImportBusy)throw new Error('作品が変更されました。差し込み先を選び直してください');
-    const {pageIndex,panelIndex,overlay,owner,plan}=target,session=paintSessionRef.current;
+    const {pageIndex,panelIndex,overlay,owner}=target,plan=generationPlan??target.plan,session=paintSessionRef.current;
     if(plan.scope){
       await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:plan.scope,generationScope:plan.scope,box:plan.outputFrame!});
       setQwenGeneration(null);setToast(`${plan.label}の生成画像を配置しました`);return;

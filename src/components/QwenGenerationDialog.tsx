@@ -2,29 +2,31 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { deleteQwenJobs, loadCharacterReferenceImage, prepareQwenJob, listQwenJobs, reconcileQwenJob, submitQwenJob } from '../lib/localBridge.ts';
 import { withNewCreationBridgeSession, withImageGenerationServices } from '../lib/localBridgeLifecycle.ts';
-import { canDeleteQwenJob, qwenGenerationPayload, qwenGenerationPrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenGenerationConversation, type QwenReferenceRole, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
+import { canDeleteQwenJob, qwenGenerationPayload, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenGenerationConversation, type QwenReferenceRole, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
 import { validatePaintDocument, type PaintOwner } from '../lib/paintDocument.ts';
 import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } from '../lib/paintRenderer.ts';
 import { prepareGuideLayer } from '../lib/paintGuide.ts';
-import type { ImageAsset, PaintDocument } from '../types.ts';
+import type { BBox, ImageAsset, PaintDocument } from '../types.ts';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { cloudModelAccess } from '../lib/modelPrivacy.ts';
 import { generationHandoff } from '../lib/generationHandoff.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../lib/browserFiles.ts';
 import {runQwenAgentRequest,type QwenAgentRequest} from '../lib/qwenGeneration.ts';
 
-interface Props { plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
+interface Props { plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox)=>Promise<string>; onClose:()=>void; onInsert:(file:File,target:QwenGenerationPlan)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
 const statusLabel={preparing:'英訳を保存中',prepared:'英訳保存済み',queued:'生成待ち',running:'生成中',succeeded:'生成完了',failed:'失敗',outcome_unknown:'結果未確定'};
 
 /** Full reference sheets stay separate. Only the input copy is proportionally resized. */
-export async function qwenInputImage(blob:Blob):Promise<{image:string;width:number;height:number}> {
+export async function qwenInputImage(blob:Blob,crop?:BBox):Promise<{image:string;width:number;height:number}> {
   if(!blob.type.startsWith('image/')||blob.size>40*1024*1024)throw new Error('40MiB以内の画像を選んでください');
   const bitmap=await createImageBitmap(blob);
   try{
-    const scale=Math.min(1,2048/Math.max(bitmap.width,bitmap.height));
-    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+    const source=crop??{x:0,y:0,w:bitmap.width,h:bitmap.height};
+    if(![source.x,source.y,source.w,source.h].every(Number.isFinite)||source.x<0||source.y<0||source.w<=0||source.h<=0||source.x+source.w>bitmap.width||source.y+source.h>bitmap.height)throw new Error('参照画像の切り出し範囲が不正です');
+    const scale=Math.min(1,2048/Math.max(source.w,source.h));
+    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(source.w*scale));canvas.height=Math.max(1,Math.round(source.h*scale));
     const context=canvas.getContext('2d');if(!context)throw new Error('参照画像を用意できません');
-    context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    context.drawImage(bitmap,source.x,source.y,source.w,source.h,0,0,canvas.width,canvas.height);
     return {image:canvas.toDataURL('image/png'),width:canvas.width,height:canvas.height};
   }finally{bitmap.close();}
 }
@@ -62,6 +64,7 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
   const usesPoseImage=plan.humanPose?.selection.input_mode==='image';
   const referenceLimit=usesPoseImage?8:9;
   const submitted=useRef(false);
+  const generatedTarget=useRef<{jobId?:string;plan:QwenGenerationPlan}>();
   const alive=useRef(true),working=useRef(false),close=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLElement>(null);
   useEffect(()=>{alive.current=true;const before=document.activeElement;close.current?.focus();return()=>{alive.current=false;if(before instanceof HTMLElement)before.focus();};},[]);
   useEffect(()=>{
@@ -107,35 +110,39 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
   async function selectLayer(slot:'reference'|'correction',id:string){await operation(async()=>{
     const candidate=id?layers.find(layer=>layer.id===id):undefined;
     if(id&&(!candidate||candidate.empty||!loadLayer))throw new Error('参照できるレイヤーを選んでください');
-    const selected=candidate?{...candidate,image:await loadLayer!(candidate.id,slot==='correction')}:undefined;
+    const referenceCandidate=slot==='reference'?candidate:reference,correctionCandidate=slot==='correction'?candidate:correction;
+    const crop=plan.contentKind==='handwritten'&&!correctionCandidate?plan.generationArea:undefined;
+    const nextReference=referenceCandidate?{...referenceCandidate,image:await loadLayer!(referenceCandidate.id,false,crop)}:undefined;
+    const nextCorrection=correctionCandidate?{...correctionCandidate,image:await loadLayer!(correctionCandidate.id,true)}:undefined;
     if(!alive.current)return;
-    const nextReference=slot==='reference'?selected:reference,nextCorrection=slot==='correction'?selected:correction;
-    setPrompt(current=>current===qwenGenerationPrompt(plan,reference,correction)
-      ? qwenGenerationPrompt(plan,nextReference,nextCorrection):current);
-    if(slot==='reference')setReference(selected);else setCorrection(selected);
+    const nextPrompt=draft.current.prompt===qwenGenerationPrompt(plan,reference,correction)
+      ? qwenGenerationPrompt(plan,nextReference,nextCorrection):draft.current.prompt;
+    draft.current={...draft.current,prompt:nextPrompt,reference:nextReference,correction:nextCorrection};
+    setPrompt(nextPrompt);setReference(nextReference);setCorrection(nextCorrection);
   });}
   async function insertResult(result:QwenJob){
     if(!result.image||!result.fileName)throw new Error('差し込む画像がありません');
     const bytes=Uint8Array.from(atob(result.image.split(',')[1]),char=>char.charCodeAt(0));
-    await insertImage(new File([bytes],result.fileName,{type:'image/png'}));
+    await insertImage(new File([bytes],result.fileName,{type:'image/png'}),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined);
   }
-  async function insertImage(file:File){
-    if(!plan.outputFrame){await onInsert(file);return;}
+  async function insertImage(file:File,capturedTarget?:QwenGenerationPlan){
+    const target=capturedTarget??qwenGenerationTarget(plan,Boolean(draft.current.correction));
+    if(!target.outputFrame){await onInsert(file,target);return;}
     const bitmap=await createImageBitmap(file);
     try{
-      const canvas=document.createElement('canvas');canvas.width=plan.width;canvas.height=plan.height;
+      const canvas=document.createElement('canvas');canvas.width=target.width;canvas.height=target.height;
       const context=canvas.getContext('2d');if(!context)throw new Error('生成画像を配置できません');
       const cut=plan.humanPose?.cutFrame;
       if(cut){context.beginPath();cut.points.forEach(([x,y],index)=>{const px=(x-cut.bounds.x)/cut.bounds.w*canvas.width,py=(y-cut.bounds.y)/cut.bounds.h*canvas.height;if(index)context.lineTo(px,py);else context.moveTo(px,py);});context.closePath();context.clip();}
       if(plan.scope){context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);}
       context.drawImage(bitmap,0,0,canvas.width,canvas.height);
       const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('生成画像を保存できません')),'image/png'));
-      await onInsert(new File([blob],file.name,{type:'image/png'}));
+      await onInsert(new File([blob],file.name,{type:'image/png'}),target);
     }finally{bitmap.close();}
   }
   async function importGenerated(){
     const files=await chooseBrowserFiles('image/png,image/jpeg');
-    if(files[0])await operation(()=>insertImage(files[0]));
+    if(files[0])await operation(()=>insertImage(files[0],generatedTarget.current?.plan));
   }
   async function generate(autoInsert=false,inputIsCurrent:()=>boolean=()=>true){return operation(async()=>{
     if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
@@ -145,19 +152,22 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
     const capturedPose=usesPoseImage?await posePending.current:undefined;
     if(!isCurrent())throw new Error('生成を中止しました');
     const sketch=reference?.kind==='sketch'&&!correction;
+    const target=qwenGenerationTarget(plan,Boolean(correction));
     const payload=qwenGenerationPayload({...plan,prompt},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,capturedPose);
     if(cloud){
       if(execution.cloud.method!=='agent')throw new Error('API実行は未接続です。環境設定でエージェントを選んでください');
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
       if(!access.allowed)throw new Error(access.reason==='adult-terms-required'?'環境設定でクラウドの成人向け利用条件を確認してください':'環境設定でクラウドを選んでください');
       const agent=execution.cloud.agent==='codex'?'Codex':execution.cloud.agentName||'指定のエージェント';
-      downloadBrowserBlob(generationHandoff(plan,payload,agent),`generation-${plan.pageNumber}-${plan.ownerKey}.zip`);
+      downloadBrowserBlob(generationHandoff(target,payload,agent),`generation-${plan.pageNumber}-${plan.ownerKey}.zip`);
+      generatedTarget.current={plan:target};
       setNotice(`${agent}へ渡す指示と参照画像を保存しました。生成したPNGを「生成画像を読み込む」で戻せます。`);
       return {inserted:false};
     }
     const id=crypto.randomUUID();
+    generatedTarget.current={jobId:id,plan:target};
     submitted.current=false;
-    return executeQwenGeneration({id,payload,plan,isCurrent,
+    return executeQwenGeneration({id,payload,plan:target,isCurrent,
       prepare:(id,payload)=>{attempted.current=id;setAttempt(id);return prepareQwenJob(id,payload);},
       submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
       onJob:current=>{if(alive.current)setJob(current);},
@@ -258,6 +268,7 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
         <p>設定画は人物の外見と画風の参照に使います。「設定画を追加」は今回の生成だけに使い、人物資料には登録しません。</p>
         <div class="qwen-reference-list">{references.map((reference,index)=><figure><img src={reference.image} alt={reference.label}/><figcaption>{reference.label} · {reference.characterKeys.length?'人物設定画':'描画参考'}</figcaption><button onClick={()=>updateReferences(references.filter((_,i)=>i!==index))}>外す</button></figure>)}</div>
       </fieldset>}
+      {plan.contentKind==='handwritten'&&<div class="qwen-output-size"><output>{qwenGenerationSizePrompt(plan,Boolean(correction))}</output><div>生成範囲：{plan.generationArea&&!correction?'生成マスクの外接矩形':'フォルダーのキャンバス全体'} · 生成解像度：{cloud?'指定サイズ':'Qwenが縦横比に合わせて調整'}</div></div>}
       <label class="qwen-prompt">生成指示<textarea rows={8} value={prompt} disabled={busy||Boolean(attempt)} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>
       <div class="paint-entry-actions">
         <button class="primary-button" disabled={busy||Boolean(attempt)||usesPoseImage&&!poseImage} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'Qwenで実行'}</button>

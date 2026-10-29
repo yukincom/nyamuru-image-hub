@@ -251,3 +251,16 @@ export function readGenerationMaskPixels(paint:PaintDocument,layer:PaintLayer):I
   const canvas=document.createElement('canvas');canvas.width=paint.width;canvas.height=paint.height;
   try{drawGenerationMask(canvas,paint,layer);return context(canvas).getImageData(0,0,canvas.width,canvas.height);}finally{canvas.width=canvas.height=1;}
 }
+
+/** Capture the visible marker extent after erasing and clipping, in paint pixels. */
+export function generationMaskBounds(paint:PaintDocument):BBox|undefined {
+  let left=paint.width,top=paint.height,right=0,bottom=0;
+  for(const layer of paint.layers){
+    if(!layer.generationMask?.enabled||layer.opacity<=0||!paintLayerVisible(paint,layer))continue;
+    const {data,width,height}=readGenerationMaskPixels(paint,layer);
+    for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]){
+      left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x+1);bottom=Math.max(bottom,y+1);
+    }
+  }
+  return right>left&&bottom>top?{x:left,y:top,w:right-left,h:bottom-top}:undefined;
+}

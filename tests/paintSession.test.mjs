@@ -246,3 +246,16 @@ test('single pose output keeps the original guide frame after adopting its panel
   assert.deepEqual({...placement[paint?'frame':'box']},frame);if(paint)assert.equal(placement.referenceFrame,referenceFrame);else assert.equal(placement.generatedOwner,h.context.qwenGeneration.owner);
  }
 });
+
+test('lettering insertion uses the resolved mask frame through both existing import paths',async()=>{
+ const file={name:'lettering.png'},frame={x:12,y:24,w:20,h:30},referenceFrame={x:0,y:0,w:80,h:60};
+ for(const paint of [false,true]){
+  const h=appQwenInsert({paint});
+  let placement;
+  if(paint)h.context.paintController.current.insertImage=async(file,key,value)=>{placement=value;h.calls.push(['paint',file,key]);};
+  await h.insert(file,{outputFrame:frame,referenceFrame});
+  if(paint)assert.deepEqual({...placement},{frame,referenceFrame});
+  else assert.deepEqual({...h.calls[0][2].box},frame);
+  assert.deepEqual(h.calls[1],['dialog',null]);
+ }
+});
