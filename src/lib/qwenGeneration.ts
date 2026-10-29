@@ -13,8 +13,6 @@ import { humanPoseFigureFrame, humanPosePanelCutFrame, type HumanPoseCutFrame } 
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
 import { isHandwrittenText } from './bubblePresentation.ts';
 import { textStyleOf } from './textStyle.ts';
-import { letteringFigureIndex } from './bubbleRelations.ts';
-import { characterGenderLabel } from './characterGender.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
   characterKeys?: string[];
@@ -44,20 +42,25 @@ export interface QwenLayerReference extends QwenLayerCandidate { image:string }
 export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): boolean {
   return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&isHandwrittenText(owner.bubble);
 }
+export const QWEN_GENERATION_MASK_ID='generation-mask';
 export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
-  return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
-    kind:layer.guide&&owner.figure?.analogImport?'sketch':'paint',hidden:!paintLayerVisible(owner.paint,layer),
-    empty:layer.opacity<=0||!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill||layer.generationMask?.enabled&&layer.generationMask.strokes.length)}));
+  const mask=owner.paint.generationMask;
+  return [...(mask?[{id:QWEN_GENERATION_MASK_ID,label:'生成マスク',kind:'paint' as const,hidden:!mask.enabled,empty:!mask.strokes.length}]:[]),
+    ...[...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
+    kind:layer.guide&&owner.figure?.analogImport?'sketch' as const:'paint' as const,hidden:!paintLayerVisible(owner.paint,layer),
+    empty:layer.opacity<=0||!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill)}))];
 }
 /** Select only inside the captured owner; visibility changes affect this export copy only. */
 export function qwenLayerPaint(owner:PaintOwner,id:string,includeGeneration=false) {
   const candidate=qwenLayerCandidates(owner).find(layer=>layer.id===id);
   if(!candidate)throw new Error('選択したレイヤーがこのフォルダにありません');
   if(candidate.empty)throw new Error('空または濃度0%のレイヤーは参照できません');
+  if(id===QWEN_GENERATION_MASK_ID){
+    if(!includeGeneration)throw new Error('生成マスクは、ピンポイント修正用に選んでください');
+    return {...owner.paint,generationMask:{...owner.paint.generationMask!,enabled:true}};
+  }
   const layer=owner.paint.layers.find(layer=>layer.id===id)!;
-  if(!includeGeneration&&!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill))
-    throw new Error('生成マーカーだけのレイヤーは、ピンポイント修正用に選んでください');
-  return {...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true}]};
+  return {...owner.paint,folders:undefined,generationMask:includeGeneration?owner.paint.generationMask:undefined,layers:[{...layer,folderId:undefined,visible:true}]};
 }
 export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLayerReference,correction?:QwenLayerReference) {
   if(correction)return [
@@ -104,7 +107,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const lettering=owner.kind==='bubble'?owner.bubble:undefined;
   if(lettering){
     const current=(overlay?page.page_overlay:panel)?.bubbles?.[owner.index];
-    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description||current?.speakerId!==lettering.speakerId||current?.speaker!==lettering.speaker||current?.lettering_depth!==lettering.lettering_depth)throw new Error('描き文字が変更されました。生成対象を選び直してください');
+    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description)throw new Error('描き文字が変更されました。生成対象を選び直してください');
     if(!lettering.text.trim()||lettering.text.length>500)throw new Error('描き文字の本文を1〜500文字で入力してください');
   }
   const pose = owner.figure?.human_pose;
@@ -121,26 +124,6 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
       .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!,characterKeys})) : [];
   const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character',standardArtwork);
   const style=artwork.style_notes;
-  const contextOwner=overlay?page.page_overlay:panel;
-  const figureIndex=lettering?letteringFigureIndex(contextOwner??{},lettering):null;
-  const linkedFigure=figureIndex===null?undefined:contextOwner?.figures?.[figureIndex];
-  const linkedCharacterId=linkedFigure?.refId||lettering?.speakerId;
-  const linkedCharacter=linkedCharacterId?manga.characters.find(character=>character.localId===linkedCharacterId):undefined;
-  const characterName=linkedCharacter?.name||lettering?.speaker||linkedFigure?.name||'なし';
-  let letteringPosition='';
-  if(linkedFigure?.bbox&&lettering?.bbox){
-    const figure=humanPoseFigureFrame(linkedFigure,linkedFigure.bbox),text=lettering.bbox;
-    const x=(text.x+text.w/2-figure.x)/figure.w,y=(text.y+text.h/2-figure.y)/figure.h;
-    const side=`${x<.25?'左':x>.75?'右':''}${y<.25?'上':y>.75?'下':''}`;
-    const subject=linkedFigure.size==='face'?'顔':linkedFigure.size==='face-detail'?'顔の一部':'描写範囲';
-    letteringPosition=`文字の配置：対応キャラクターの${subject}の${side?`${side}側`:'周辺'}に添える。`;
-  }
-  const sceneContext=lettering?[
-    `対象の対応キャラクター：${characterName}${linkedCharacter?.gender?`（${characterGenderLabel(linkedCharacter.gender)}）`:''}。文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`,
-    linkedFigure?.action?`対応キャラクターの表情・動作：${linkedFigure.action}`:'',
-    letteringPosition,
-    linkedFigure&&lettering.lettering_depth==='behind'?`合成時の重なり：対応キャラクター「${characterName}」の後ろ。人物や人物による隠れを描き込まず、文字全体を生成してください。`:'',
-  ].filter(Boolean).join('\n'):'';
   const letteringContext=lettering?[
     '描く対象：描き文字（shape=handwritten）。',
     `meta.text_orientation=${textStyleOf(lettering,'bubble').orientation}`,
@@ -148,8 +131,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     `text:\n${lettering.text}`,
     lettering.lettering_description?`描き方：${lettering.lettering_description}`:'',
     ...style,artwork.layout_spec,
-    '描くのは上記の本文の描き文字だけです。以下は文字の感情・勢い・ニュアンスを判断するための資料です。人物や背景は描かず、文字の外側は透明にしてください。明示された「描き方」があれば優先してください。',
-    `文字の文脈：\n${sceneContext}`,
+    '上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、明示された「描き方」に従ってください。',
   ].filter(Boolean).join('\n\n'):undefined;
   const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [

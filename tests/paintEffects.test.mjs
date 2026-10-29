@@ -67,14 +67,14 @@ test('all six inks survive raster fill and vector validation; corrupt effects ar
 });
 
 test('generation region hints follow padding and reframing and validate independently',()=>{
-  const source=paint();source.guideInitialized=true;source.layers[0].guide=true;source.layers[0].generationMask={enabled:true,strokes:[structuredClone(mark)]};
+  const source=paint();source.guideInitialized=true;source.layers[0].guide=true;source.generationMask={enabled:true,strokes:[structuredClone(mark)]};
   const expanded=expandPaintOwner({key:'figure-0',kind:'figure',index:0,label:'',frame:{x:0,y:0,w:25.4,h:25.4},paint:source},{left:10,right:0,top:20,bottom:0});
-  assert.deepEqual(expanded.paint.layers[0].generationMask.strokes[0].points[0],{x:20,y:40,pressure:1,time:0});
-  assert.equal(source.layers[0].generationMask.strokes[0].points[0].x,10);
+  assert.deepEqual(expanded.paint.generationMask.strokes[0].points[0],{x:20,y:40,pressure:1,time:0});
+  assert.equal(source.generationMask.strokes[0].points[0].x,10);
   const asset={id:'flat',widthPx:100,heightPx:100};
   const reframed=paintForFrame({x:0,y:0,w:60.96,h:50.8},100,[{id:'x',assetId:'flat',bbox:{x:0,y:0,w:50.8,h:50.8},crop:{x:0,y:0,w:100,h:100},opacity:1,paint:source}],[asset]);
-  assert.equal(reframed.guideInitialized,true);assert.equal(reframed.layers[0].generationMask.strokes[0].points[0].x,20);validatePaintDocument(reframed,[asset]);
-  for(const mutate of [p=>p.guideInitialized='yes',p=>p.layers[0].guide='yes',p=>p.layers[0].generationMask.enabled=1,p=>p.layers[0].generationMask.strokes[0].points[0].x=NaN]){const broken=structuredClone(source);mutate(broken);assert.throws(()=>validatePaintDocument(broken,[]));}
+  assert.equal(reframed.guideInitialized,true);assert.equal(reframed.generationMask.strokes[0].points[0].x,20);validatePaintDocument(reframed,[asset]);
+  for(const mutate of [p=>p.guideInitialized='yes',p=>p.layers[0].guide='yes',p=>p.generationMask.enabled=1,p=>p.generationMask.strokes[0].points[0].x=NaN]){const broken=structuredClone(source);mutate(broken);assert.throws(()=>validatePaintDocument(broken,[]));}
 });
 
 

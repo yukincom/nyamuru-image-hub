@@ -1893,7 +1893,6 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 
 .layer-mask-actions { display:flex; gap:4px; margin:6px 0; }
 .layer-mask-actions button { flex:1; padding:5px 3px; font-size:14px; }
-.layer-mask-row { margin-left:28px; border-left:1px solid #b6bdc8; }
 .layer-mask-row .layer-select { min-height:38px; gap:7px; font-size:14px; }
 .layer-mask-row small { display:block; font-size:12px; opacity:.65; }
 .layer-mask-thumbnail { display:flex; align-items:center; justify-content:center; width:32px; height:32px; flex:none; background:#111; border:1px solid #777; }

@@ -190,9 +190,9 @@ test('stored-image decode failures identify the source in Japanese without freez
  assert.match(paintRendererSource,/const png=\[137,80,78,71,13,10,26,10\]/);
  assert.match(paintRendererSource,/image\.onload=\(\)=>resolve\(\)/);
  assert.doesNotMatch(paintRendererSource,/image\.decode\(\)/);
- assert.match(pageLayerSource,/loadPaintImagesBestEffort\(result\.scene\.owners\.map\(o=>o\.paint\),p\.assets\)/);
+ assert.match(pageLayerSource,/loadPaintImagesBestEffort\(result\.scene\.owners\.map\(o=>o\.paint\),p\.assets,new Map\(\),reusable\)/);
  assert.match(paintRendererSource,/export async function loadPaintImagesBestEffort/);
- assert.match(paintEditorSource,/if\(layer\.guide&&layer\.image\)[\s\S]*?loadPaintImages\(\[\{\.\.\.owner\.paint,layers:\[layer\]\}\],assets,pending\)[\s\S]*?catch\{repair=true;repairedImage=true;\}/);
+ assert.match(paintEditorSource,/if\(layer\.guide&&layer\.image&&!resumeImages\?\.has\(layer\.image\.assetId\)\)[\s\S]*?loadPaintImages\(\[\{\.\.\.owner\.paint,layers:\[layer\]\}\],assets,pending\)[\s\S]*?catch\{repair=true;repairedImage=true;\}/);
  assert.match(paintEditorSource,/if\(prepared!==owner&&!repairedImage\)preparedGuides\.push/);
  assert.match(paintEditorSource,/prepareGuideLayer\(owner,\{\.\.\.layer,image:undefined\}\)/);
 });
@@ -228,7 +228,7 @@ test('the final paint layer can be removed completely and recreated only on dema
 
 function fixture(){
  let cursor=0;const slots=[],effects=[],requests=[],exports={};
- const hooks={useMemo:(make,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j]))slots[i]={deps,value:make()};return slots[i].value},
+ const hooks={useRef:initial=>{const i=cursor++;if(!(i in slots))slots[i]={current:initial};return slots[i]},useMemo:(make,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j]))slots[i]={deps,value:make()};return slots[i].value},
   useState:initial=>{const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>slots[i]=value]},
   useEffect:(run,deps)=>{const i=cursor++;if(!slots[i]||deps.some((d,j)=>d!==slots[i].deps[j])){const before=slots[i];slots[i]={deps};effects.push(()=>{before?.cleanup?.();slots[i].cleanup=run()})}}};
  hooks.useContext=context=>context;hooks.useLayoutEffect=hooks.useEffect;

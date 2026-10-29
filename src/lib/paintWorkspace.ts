@@ -11,6 +11,7 @@ export type PaintPointerEvent = PointerEvent & {currentTarget: HTMLDivElement};
 export interface PaintLayoutTarget {key?:string;selection?:CanvasElementSelection|null;panelIndex?:number;additive?:boolean;direct?:boolean}
 export interface PaintWorkspaceState {
   displayOnly?: boolean;
+  editingMask?:'mask'|'generationMask';
   background3d?: {ownerKey:string;frame:BBox;setHost:(host:HTMLDivElement|null)=>void;selectedKey:string|null;select:(key:string)=>void;beginMove:(key:string)=>boolean;move:(dx:number,dy:number)=>void;endMove:(keep?:boolean)=>void};
   page: number;
   panelIndex: number;

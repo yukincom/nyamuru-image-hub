@@ -210,14 +210,15 @@ test('layer choices are confined to the captured owner and export hidden layers 
  assert.throws(()=>qwenLayerPaint(owner,'empty'),/空/);assert.throws(()=>qwenLayerPaint(owner,'zero'),/濃度/);
  assert.deepEqual(scene,before);
 });
-test('generation-marker-only layers are available only as correction inputs',()=>{
+test('the owner generation mask is a correction reference containing all visible layers',()=>{
  const owner=paintScene(fixture().pages[0].panels[0],100,[]).owners[1];
- owner.paint.layers=[{...owner.paint.layers[0],id:'mask',guide:false,image:undefined,strokes:[],
-   generationMask:{enabled:true,strokes:[{tool:'pen',color:'#ff0000',size:10,points:[{x:1,y:2}]}]}}];
- assert.equal(qwenLayerCandidates(owner)[0].empty,false);
- assert.throws(()=>qwenLayerPaint(owner,'mask'),/ピンポイント修正用/);
- assert.equal(qwenLayerPaint(owner,'mask',true).layers[0].id,'mask');
+ owner.paint.generationMask={enabled:true,strokes:[{tool:'pen',color:'#ff0000',size:10,points:[{x:1,y:2}]}]};
+ assert.equal(qwenLayerCandidates(owner)[0].empty,false);assert.equal(qwenLayerCandidates(owner)[0].id,'generation-mask');
+ assert.throws(()=>qwenLayerPaint(owner,'generation-mask'),/ピンポイント修正用/);
+ assert.deepEqual(qwenLayerPaint(owner,'generation-mask',true).layers,owner.paint.layers);
+ assert.equal(qwenLayerPaint(owner,owner.paint.layers[0].id).generationMask,undefined);
 });
+
 test('reference and correction are independently optional and character sheets share the ten-image limit',()=>{
  const manga=fixture(),owner=paintScene(manga.pages[0].panels[0],100,[]).owners[1],plan=buildQwenGenerationPlan(manga,0,0,false,owner);
  const refs=[{label:'設定画',characterKeys:['person-id'],image:'data:sheet'}];
@@ -370,7 +371,7 @@ test('handwritten generation keeps literal text and owner while ordinary balloon
  assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,normal),/単品生成/);
  const plan=buildQwenGenerationPlan(manga,0,0,false,lettering),payload=qwenGenerationPayload(plan,[]);
  assert.equal(plan.scope,undefined);assert.equal(plan.contentKind,'handwritten');assert.equal(plan.label,'テキスト2');
- assert.match(plan.prompt,/太く角張る/);assert.match(plan.prompt,/meta.text_orientation=horizontal/);assert.doesNotMatch(plan.prompt,/文字は加えない|外形だけ|形・線・勢い・質感/);
+ assert.match(plan.prompt,/太く角張る/);assert.match(plan.prompt,/meta.text_orientation=horizontal/);assert.doesNotMatch(plan.prompt,/文字は加えない|外形だけ|本文は描かず/);
  assert.deepEqual(payload.literal_text,[panel.bubbles[1].text]);assert.equal(payload.content_kind,'handwritten');assert.equal(payload.owner_key,'bubble-1');assert.equal(payload.mode,'new');
  assert.ok(qwenGenerationPrompt(plan,undefined,{kind:'paint'}).includes(panel.bubbles[1].text));
  for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
@@ -396,7 +397,7 @@ test('lettering instructions and guide visibility survive stored YAML and foregr
  bubble.text='';assert.throws(()=>buildQwenGenerationPlan(manga,0,0,true,owner),/本文/);
 });
 
-test('lettering context includes only its associated character and placement',()=>{
+test('lettering generation includes only lettering data and ignores character context',()=>{
  const manga=fixture(),panel=manga.pages[0].panels[0];
  const standard=parseOmayYaml(readFileSync(new URL('../src/content/standard-settings.yaml',import.meta.url),'utf8'));
  manga.characters[0].gender='female';
@@ -409,25 +410,26 @@ test('lettering context includes only its associated character and placement',()
  const before=structuredClone(manga),owner=paintScene(panel,100,[]).owners.find(owner=>owner.key==='bubble-1');
  const plan=buildQwenGenerationPlan(manga,0,0,false,owner,standard);
  for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
-  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','困惑した表情で頬に赤みがある','対象の対応キャラクター：確認用（女性）','発話やしっぽを意味しない','顔の右側','文字の外側は透明'])assert.ok(prompt.includes(value),value);
-  assert.doesNotMatch(prompt,/戸惑う場面|室内|無関係な表情|えっと|同じコマの補足|別コマの怒り|前景だけの文脈|非表示の文脈|合成時の重なり|normal=|OMNY: shape/);
+  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','細く柔らかく','文字以外の絵は加えず','文字の外側は透明'])assert.ok(prompt.includes(value),value);
+  assert.doesNotMatch(prompt,/確認用|女性|人物|キャラクター|顔|困惑|頬|文字の文脈|文字の配置|戸惑う場面|室内|無関係な表情|えっと|同じコマの補足|別コマの怒り|前景だけの文脈|非表示の文脈|合成時の重なり|normal=|OMNY: shape/);
  }
  const payload=qwenGenerationPayload(plan,[]);
  assert.deepEqual(payload.literal_text,['かぁぁ']);assert.ok(payload.prompt.includes(qwenGenerationSizePrompt(plan)));
+ assert.deepEqual(plan.characterKeys,[]);assert.deepEqual(plan.candidates,[]);assert.deepEqual(payload.character_keys,[]);assert.deepEqual(payload.references,[]);
  assert.deepEqual(manga,before);
  panel.bubbles[1].lettering_depth='behind';
  const staleOwner={...owner,bubble:structuredClone(before.pages[0].panels[0].bubbles[1])};
- assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,staleOwner,standard),/選び直してください/);
+ assert.equal(buildQwenGenerationPlan(manga,0,0,false,staleOwner,standard).prompt,plan.prompt);
  const behind=buildQwenGenerationPlan(manga,0,0,false,{...owner,bubble:panel.bubbles[1]},standard);
- assert.match(behind.prompt,/対応キャラクター「確認用」の後ろ/);assert.match(behind.prompt,/人物や人物による隠れを描き込まず/);
+ assert.equal(behind.prompt,plan.prompt);
  const foreground={...panel.bubbles[1],text:'ふわっ',speakerId:undefined,speaker:'前景人物'};
  manga.pages[0].page_overlay.bubbles=[foreground,{text:'前景のセリフ'}];
  manga.pages[0].page_overlay.figures=[{name:'前景人物',action:'穏やかにほほ笑む'}];
  const overlayPlan=buildQwenGenerationPlan(manga,0,0,true,{...owner,key:'bubble-0',index:0,bubble:foreground},standard);
- assert.match(overlayPlan.prompt,/穏やかにほほ笑む/);assert.doesNotMatch(overlayPlan.prompt,/前景のセリフ|戸惑う場面|頬に赤み|えっと/);
+ assert.match(overlayPlan.prompt,/ふわっ/);assert.doesNotMatch(overlayPlan.prompt,/前景人物|穏やかにほほ笑む|人物|キャラクター|前景のセリフ|戸惑う場面|頬に赤み|えっと/);
  manga.pages[0].page_overlay.figures.push({name:'前景人物',action:'曖昧な関連先'});
  const ambiguous=buildQwenGenerationPlan(manga,0,0,true,{...owner,key:'bubble-0',index:0,bubble:foreground},standard);
- assert.doesNotMatch(ambiguous.prompt,/穏やかにほほ笑む|曖昧な関連先/);
+ assert.equal(ambiguous.prompt,overlayPlan.prompt);
 });
 
 test('lettering mask dimensions, payload and placement share one target while corrections keep the full canvas',()=>{

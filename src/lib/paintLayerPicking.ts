@@ -65,6 +65,5 @@ export function translatePaintLayer(layer:PaintLayer,dx:number,dy:number):PaintL
   return {...layer,...(layer.image?{image:{...layer.image,bbox:box(layer.image.bbox)}}:{}),...(layer.clip?{clip:box(layer.clip)}:{}),
     strokes:layer.strokes.map(stroke),...(layer.paths?{paths:layer.paths.map(p=>transformVector(p,dx,dy))}:{}),
     ...(layer.mask?{mask:{...layer.mask,strokes:layer.mask.strokes.map(stroke)}}:{}),
-    ...(layer.generationMask?{generationMask:{...layer.generationMask,strokes:layer.generationMask.strokes.map(stroke)}}:{}),
     ...(layer.tone?{tone:{...layer.tone,origin:{x:(layer.tone.origin?.x??0)+dx,y:(layer.tone.origin?.y??0)+dy}}}:{})};
 }

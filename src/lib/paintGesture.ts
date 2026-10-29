@@ -1,6 +1,6 @@
 import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
 import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newNumberedPaintLayer,movePaintLayer,paintLayerAboveNative,type PaintOwner,type PaintScene} from './paintDocument.ts';
-import {paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
+import {paintGenerationMaskLocked,paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
 import {paintStrokeBounds,paintStrokeContentBounds,type PaintSmoother} from './paintStroke.ts';
 export {paintStrokeBounds} from './paintStroke.ts';
 
@@ -82,7 +82,13 @@ export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;laye
 /** Append to the latest scene, never to the scene captured by pointerdown/render. */
 export function commitPaintStroke(scene: PaintScene, pending: PendingPaintStroke): PaintScene {
   const owner=scene.owners.find(o=>o.key===pending.ownerKey);
-  if(!owner||paintOwnerLocked(owner))return scene;
+  if(!owner||(pending.target==='generationMask'?paintGenerationMaskLocked(owner):paintOwnerLocked(owner)))return scene;
+  if(pending.target==='generationMask'){
+    const mask=owner.paint.generationMask;if(!mask?.enabled)return scene;
+    const stroke=structuredClone(strokeInOwner(pending,owner));
+    const next=expandPaintOwnerToBounds({...owner,paint:{...owner.paint,generationMask:{...mask,strokes:[...mask.strokes,stroke]}}},strokeBoundsInOwner(pending,owner));
+    return {...scene,owners:scene.owners.map(item=>item===owner?next:item)};
+  }
   const layers=[...owner.paint.layers];
   let index=layers.findIndex(layer=>layer.id===pending.layerId);
   if(index<0){
@@ -92,10 +98,7 @@ export function commitPaintStroke(scene: PaintScene, pending: PendingPaintStroke
   const layer=layers[index];
   if(!paintLayerEditable(owner,layer)||!paintLayerVisible(owner.paint,layer))return scene;
   const transformed=strokeInOwner(pending,owner),stroke=transformed===pending.stroke?structuredClone(transformed):transformed;
-  if(pending.target==='generationMask'){
-    if(!layer.generationMask?.enabled)return scene;
-    layers[index]={...layer,generationMask:{...layer.generationMask,strokes:[...layer.generationMask.strokes,stroke]}};
-  }else if(pending.target==='mask'){
+  if(pending.target==='mask'){
     if(!layer.mask?.enabled)return scene;
     layers[index]={...layer,mask:{...layer.mask,strokes:[...layer.mask.strokes,stroke]}};
   }else layers[index]={...layer,strokes:[...layer.strokes,stroke]};

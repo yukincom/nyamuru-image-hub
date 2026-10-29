@@ -283,7 +283,7 @@ test('selecting a page original then drawing opens the page scene with the origi
   const ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let declaration;const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='openPaint')declaration=node;ts.forEachChild(node,visit);};visit(ast);
   let session;const original={key:'original-raw',kind:'original',paint:{layers:[]}};
-  const context={activePanel:0,activePage:0,selectedElement:{scope:'page',type:'image',index:0},imageImportBusy:false,paintSessionRef:{current:null},qwenPreparing:{current:false},
+  const context={activePanel:0,activePage:0,selectedElement:{scope:'page',type:'image',index:0},imageImportBusy:false,paintSessionRef:{current:null},qwenPreparing:{current:false},pendingLayerAction:{current:null},
     documentRef:{current:{manga:{pages:[{panels:[]}]}}},endTextEdit(){},setTextTool(){},setZoomTool(){},setBubblePathTool(){},
     makePaintScene(_doc,_panel,_page,overlay){assert.equal(overlay,true);return {owners:[original]};},withPaintBleed:o=>o,paintBleedPx:0,
     setMobileStoryboardPane(){},setPaintToolsCollapsed(){},setPaintLayersCollapsed(){},selectedPaintOwner:()=>original.key,

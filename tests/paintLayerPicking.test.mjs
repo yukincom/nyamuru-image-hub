@@ -49,7 +49,7 @@ test('hidden, zero opacity, clipped and out-of-frame content cannot be selected'
  o.bubble={hidden:true};assert.equal(pickPaintLayer({owners:[o]},{x:60,y:70},1,coverage),undefined);
 });
 test('moving one layer retains sibling/source data and translates images, erasure, masks and tone origin together',()=>{
- const l={...vector('move'),image:{assetId:'a',crop:{x:0,y:0,w:50,h:50},bbox:{x:10,y:20,w:50,h:50}},clip:{x:1,y:2,w:90,h:90},strokes:[{tool:'clear',points:[{x:10,y:20,pressure:1}],selection:[{x:1,y:2,w:3,h:4}]}],mask:{enabled:true,reveal:false,strokes:[{tool:'pen',points:[{x:5,y:6}]}]},generationMask:{enabled:true,strokes:[]},tone:{origin:{x:1,y:2}}};
+ const l={...vector('move'),image:{assetId:'a',crop:{x:0,y:0,w:50,h:50},bbox:{x:10,y:20,w:50,h:50}},clip:{x:1,y:2,w:90,h:90},strokes:[{tool:'clear',points:[{x:10,y:20,pressure:1}],selection:[{x:1,y:2,w:3,h:4}]}],mask:{enabled:true,reveal:false,strokes:[{tool:'pen',points:[{x:5,y:6}]}]},tone:{origin:{x:1,y:2}}};
  const before=structuredClone(l),next=translatePaintLayer(l,7,-4);
  assert.deepEqual(l,before);assert.equal(next.image.assetId,'a');assert.deepEqual(next.image.crop,l.image.crop);assert.equal(next.image.bbox.x,17);assert.equal(next.clip.y,-2);
  assert.deepEqual(next.strokes[0].selection[0],{x:8,y:-2,w:3,h:4});assert.equal(next.mask.strokes[0].points[0].y,2);assert.equal(next.paths[0].nodes[0].x,l.paths[0].nodes[0].x+7);assert.deepEqual(next.tone.origin,{x:8,y:-2});

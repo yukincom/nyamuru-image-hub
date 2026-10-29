@@ -27,15 +27,18 @@ test('描き文字は有効なYAMLの形状定義と本文規則を原文で使�
   }
 });
 
-test('描き文字の独自YAML本文と共通画風は保存後も変更せず使用する', () => {
+test('描き文字の独自YAML本文を使い共通画風の人物指定は渡さない', () => {
   const document = sample(), source = standard();
   source.layout_spec = source.layout_spec.replace('handwritten=フキダシなしの手描き文字', 'handwritten=細い筆で、かすれを残す文字');
   applyArtworkSettings(document.manga, artworkSettingsFromSource(source));
-  setWorkStylePrompt(document.manga, '青いインクと細い線');
+  const workStyle='青いインクと細い線。人物の顔と髪を細かく描く。';
+  setWorkStylePrompt(document.manga, workStyle);
   const restored = parseMangaYaml(toStoredMangaYaml(document));
   const rules = compileArtworkRules(getArtworkSettings(restored.manga), 'handwritten');
   assert.match(rules.layout_spec, /handwritten=細い筆で、かすれを残す文字/);
-  assert.ok(rules.style_notes.includes('青いインクと細い線'));
+  assert.doesNotMatch(rules.style_notes.join('\n'), /青いインク|人物|顔|髪/);
+  assert.equal(getWorkStylePrompt(restored.manga),workStyle);
+  assert.ok(compileArtworkRules(getArtworkSettings(restored.manga),'character').style_notes.includes(workStyle));
 });
 
 test('描き文字の未設定項目は標準YAMLから補い、独自定義と明示OFFを保持する', () => {
@@ -46,7 +49,7 @@ test('描き文字の未設定項目は標準YAMLから補い、独自定義と�
   assert.ok(fallback.style_notes.includes(defaults.style_notes.find(note=>note.includes('meta.text_orientation'))));
   const settings={version:1,groups:[{id:'ink',label:'画風',scope:'common',enabled:true}],fragments:[{groupId:'ink',kind:'style',text:'細い墨線'}]};
   const before=structuredClone(settings);
-  assert.deepEqual(compileArtworkRules(settings,'handwritten',defaults),{...fallback,style_notes:['細い墨線',...fallback.style_notes]});
+  assert.deepEqual(compileArtworkRules(settings,'handwritten',defaults),fallback);
   assert.deepEqual(settings,before);
   const custom=artworkSettingsFromSource({...defaults,layout_spec:defaults.layout_spec.replace('handwritten=フキダシなしの手描き文字','handwritten=柔らかく細い筆文字')});
   assert.match(compileArtworkRules(custom,'handwritten',defaults).layout_spec,/handwritten=柔らかく細い筆文字/);
@@ -54,7 +57,7 @@ test('描き文字の未設定項目は標準YAMLから補い、独自定義と�
   assert.deepEqual(compileArtworkRules(custom,'handwritten',defaults),{style_notes:[],layout_spec:''});
 });
 
-test('作品の画風は既存ルールを保って全生成対象へ届き、作品保存から原文を復元できる', async () => {
+test('作品の画風は人物とページの生成へ届き、作品保存から原文を復元できる', async () => {
   const document = sample();
   const prior = getArtworkSettings(document.manga);
   prior.groups.find(group => group.id === 'page').enabled = false;

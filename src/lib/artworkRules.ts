@@ -111,12 +111,11 @@ export function compileArtworkForMode(settings: ArtworkSettingsData, mode = getA
 export function compileArtworkRules(settings: ArtworkSettingsData, target: ArtworkTarget, defaults?: ArtworkSource): ArtworkSource {
   if (target === 'handwritten') {
     const enabled = settings.groups.filter(group => group.enabled);
-    const common = new Set(enabled.filter(group => group.scope === 'common').map(group => group.id));
     const active = new Set(enabled.map(group => group.id));
     const parts = settings.fragments.filter(part => active.has(part.groupId));
     const result = {
-      // Use the authored text rule verbatim, alongside the work's common style.
-      style_notes: parts.filter(part => part.kind === 'style' && (common.has(part.groupId) || /\bmeta\.text_orientation\b/.test(part.text))).map(part => part.text),
+      // Only authored lettering rules belong to the standalone lettering image.
+      style_notes: parts.filter(part => part.kind === 'style' && /\bmeta\.text_orientation\b/.test(part.text)).map(part => part.text),
       // Keep the authored handwritten clause, without unrelated balloon definitions.
       layout_spec: parts.filter(part => part.kind === 'layout').flatMap(part => part.text.split(/(?=^[-#])/m))
         .filter(block => block.startsWith('- ')).flatMap(block => {

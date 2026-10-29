@@ -93,7 +93,7 @@ function handler(file,name,context){
  const source=ts.createSourceFile(file,readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  let found;
  const visit=node=>{if(ts.isFunctionDeclaration(node)&&node.name?.text===name)found=node.getText(source);if(ts.isVariableDeclaration(node)&&node.name.getText(source)===name)found=node.initializer.getText(source);ts.forEachChild(node,visit);};visit(source);
- assert.ok(found);return runInNewContext(ts.transpileModule(`(${found})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+ assert.ok(found);return runInNewContext(ts.transpileModule(`(${found.replace(/^export\s+/,'')})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
 }
 test('paint pause settles the existing gesture with no PNG; only active 3D needs close',async()=>{
  for(const backgroundOwner of [null,'background']){
@@ -258,4 +258,28 @@ test('lettering insertion uses the resolved mask frame through both existing imp
   else assert.deepEqual({...h.calls[0][2].box},frame);
   assert.deepEqual(h.calls[1],['dialog',null]);
  }
+});
+
+
+test('owner stack changes retain pending guide imports and the selected generation mask',async()=>{
+ const scene=initial(),guide=scene.owners[0].paint.layers[0],asset={id:'pending-guide'};
+ scene.owners[0].paint.layers=[{...guide,image:{assetId:asset.id,crop:{x:0,y:0,w:2,h:2},bbox:{x:0,y:0,w:2,h:2}}}];
+ const state={scene,saved:scene,imports:[{asset,blob:new Blob(['guide'])}],stageImports:[],ownerKey:scene.owners[0].key,layerId:guide.id,maskTarget:{key:'background',id:'',kind:'generationMask'}};
+ const doc={manga:{pages:[{panels:[{id:1}]}]}},session={document:doc,pageIndex:0,panelIndex:0,overlay:false,scene},calls=[],tasks=[];
+ const context={Map,cloneDocument:structuredClone,documentRef:{current:doc},activePage:0,paintSessionRef:{current:session},paintController:{current:{pause:async()=>calls.push('pause'),flush:async()=>calls.push('flush'),snapshot:()=>state,images:()=>new Map()}},
+  layerTransition:action=>tasks.push(action()),workspaceSnapshot:()=>state,panelVisible:()=>true,panelLocked:()=>false,paintOwnerPlacementLocked:()=>false,reorderPanelArt:()=>true,makePaintScene:()=>scene,
+  setDocument:next=>{context.documentRef.current=next;},timeline:{current:{record:()=>calls.push('history')}},lastHistoryPush:{current:0},changedHistory:()=>{},setPaintSession:()=>{}};
+ handler('App.tsx','reorderOwnerLayers',context)(0,'background','figure-0',true);await Promise.all(tasks);
+ const resumed=context.paintSessionRef.current.resume;
+ assert.equal(resumed.imports,state.imports);assert.equal(resumed.stageImports,state.stageImports);assert.equal(resumed.maskTarget,state.maskTarget);
+ assert.equal(resumed.scene.owners[0].paint,state.scene.owners[0].paint);assert.deepEqual(calls,['pause','flush','history']);
+});
+
+test('image reuse avoids original reads and a failed load releases only newly decoded images',async()=>{
+ const retained={naturalWidth:2,naturalHeight:2,src:'retained'},created={naturalWidth:2,naturalHeight:2,src:'created'},reuse=new Map([['old',retained]]),calls=[];
+ const read=handler('../lib/paintRenderer.ts','loadPaintImages',{Map,Error,Set,paintAssetIds:paint=>paint.layers.flatMap(layer=>layer.image?[layer.image.assetId]:[]),loadFigureCropAsset:async()=>{calls.push('read');return null;},decodePaintImage:async()=>{calls.push('decode');return created;}});
+ const paint=ids=>({layers:ids.map(assetId=>({image:{assetId}}))});
+ const images=await read([paint(['old'])],[],new Map(),reuse);assert.equal(images.get('old'),retained);assert.deepEqual(calls,[]);
+ await assert.rejects(read([paint(['old','new','missing'])],[],new Map([['new',new Blob(['image'])]]),reuse),/元画像/);
+ assert.deepEqual(calls,['decode']);assert.equal(retained.src,'retained');assert.equal(created.src,'');
 });

@@ -28,10 +28,11 @@ export async function decodePaintImage(blob: Blob): Promise<HTMLImageElement> {
     return image;
   } finally { URL.revokeObjectURL(url); }
 }
-export async function loadPaintImages(documents: PaintDocument[], assets: ImageAsset[], pending:ReadonlyMap<string,Blob>=new Map()): Promise<PaintImages> {
+export async function loadPaintImages(documents: PaintDocument[], assets: ImageAsset[], pending:ReadonlyMap<string,Blob>=new Map(),reuse:ReadonlyMap<string,HTMLImageElement>=new Map()): Promise<PaintImages> {
   const images: PaintImages = new Map();
   try {
     for (const id of new Set(documents.flatMap(paintAssetIds))) {
+      const retained=reuse.get(id);if(retained?.naturalWidth&&retained.naturalHeight){images.set(id,retained);continue;}
       const asset = assets.find(asset=>asset.id===id), blob = pending.get(id) ?? (asset && await loadFigureCropAsset(asset.storageId));
       const label=asset?.originalName||id;
       if (!blob) throw new Error(`元画像「${label}」が保存先にありません。作品フォルダから開き直してください`);
@@ -40,13 +41,14 @@ export async function loadPaintImages(documents: PaintDocument[], assets: ImageA
       catch{throw new Error(`元画像「${label}」を画像としてデコードできません。原画像を差し替えてください`);}
     }
     return images;
-  } catch (error) { images.forEach(image=>{image.src='';}); throw error; }
+  } catch (error) { images.forEach((image,id)=>{if(image!==reuse.get(id))image.src='';}); throw error; }
 }
 
 /** Layer-tree thumbnails are diagnostic previews: one stale asset must not hide unrelated rows. */
-export async function loadPaintImagesBestEffort(documents: PaintDocument[], assets: ImageAsset[], pending:ReadonlyMap<string,Blob>=new Map()): Promise<PaintImages> {
+export async function loadPaintImagesBestEffort(documents: PaintDocument[], assets: ImageAsset[], pending:ReadonlyMap<string,Blob>=new Map(),reuse:ReadonlyMap<string,HTMLImageElement>=new Map()): Promise<PaintImages> {
   const images:PaintImages=new Map();
   for(const id of new Set(documents.flatMap(paintAssetIds))){
+    const retained=reuse.get(id);if(retained?.naturalWidth&&retained.naturalHeight){images.set(id,retained);continue;}
     const asset=assets.find(item=>item.id===id),blob=pending.get(id)??(asset&&await loadFigureCropAsset(asset.storageId));
     if(!blob||asset&&blob.size!==asset.byteLength)continue;
     try{images.set(id,await decodePaintImage(blob));}catch{/* The affected thumbnail stays blank. */}
@@ -110,7 +112,7 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: PaintLayer, images: Pai
 }
 
 type LiveStroke=Pick<PendingPaintStroke,'layerId'|'stroke'|'target'>;
-function applyMaskAntialias(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer){
+function applyMaskAntialias(canvas:HTMLCanvasElement,paint:PaintDocument,layer:Pick<PaintLayer,'colorMode'|'antialias'>){
   // Quantize coverage at document resolution. A reduced preview still needs
   // fractional coverage to represent edges smaller than a display pixel.
   applyInkAntialias(context(canvas),canvas.width,canvas.height,
@@ -126,22 +128,21 @@ export function drawPaintMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer
   if(live?.target==='mask')drawPaintStroke(ctx,maskStroke(live.stroke));
   applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},layer);
 }
-function drawGenerationMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,live?:LiveStroke,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
+export function drawGenerationMask(canvas:HTMLCanvasElement,paint:PaintDocument,live?:LiveStroke,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
-  if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
-  for(const stroke of layer.generationMask?.strokes??[])drawPaintStroke(ctx,stroke);
+  for(const stroke of paint.generationMask?.strokes??[])drawPaintStroke(ctx,stroke);
   if(live?.target==='generationMask')drawPaintStroke(ctx,live.stroke);
-  ctx.restore();applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},layer);
+  ctx.restore();applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},{antialias:paint.generationMask?.antialias});
 }
-function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,images:PaintImages,mask:HTMLCanvasElement,live?:LiveStroke,includeGeneration=false,preview=false,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
+function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,images:PaintImages,mask:HTMLCanvasElement,live?:LiveStroke,preview=false,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
   const convert=layer.colorMode!==undefined&&layer.colorMode!=='color';
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
   // Threshold imported pixels before resampling; thresholding a reduced image
   // would erase thin black lines blended with opaque white surroundings.
   if(layer.colorMode==='monochrome'&&layer.image&&!layer.tone?.enabled&&(canvas.width<view.w||canvas.height<view.h)){
     const native=document.createElement('canvas'),nativeMask=document.createElement('canvas');native.width=paint.width;native.height=paint.height;
-    try{renderLayer(native,paint,layer,images,nativeMask,live,includeGeneration,false);
+    try{renderLayer(native,paint,layer,images,nativeMask,live,false);
       ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(native,view.x,view.y,view.w,view.h,0,0,canvas.width,canvas.height);
     }finally{native.width=native.height=nativeMask.width=nativeMask.height=1;}
     return;
@@ -156,10 +157,7 @@ function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLay
   }
   if(convert){const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
     applyPaintColor(pixels.data,layer.colorMode,canvas.width>=view.w&&canvas.height>=view.h);ctx.putImageData(pixels,0,0);}
-  if(includeGeneration&&layer.generationMask?.enabled){
-    mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint,layer,live,view);
-    ctx.drawImage(mask,0,0);
-  }
+
 }
 
 /** Cache final layers. Live mask edits always render from the retained artwork. */
@@ -189,7 +187,7 @@ export function paintPreviewRenderer() {
         const cached=cache.get(layer.id);
         let source=cached?.canvas ?? document.createElement('canvas');
         if(cached?.layer!==layer){source.width=canvas.width;source.height=canvas.height;
-          renderLayer(source,paint,layer,images,mask,undefined,includeGeneration,true,view);
+          renderLayer(source,paint,layer,images,mask,undefined,true,view);
           const pixels=canvas.width*canvas.height;
           if(pixels<=maxCachePixels){
             if(!cached){while(cachePixels+pixels>maxCachePixels)release(cache.keys().next().value!);cachePixels+=pixels;}
@@ -197,9 +195,9 @@ export function paintPreviewRenderer() {
           }
         }
         const rendered=source;
-        if(live?.layerId===layer.id){scratch.width=canvas.width;scratch.height=canvas.height;
+        if(live?.layerId===layer.id&&live.target!=='generationMask'){scratch.width=canvas.width;scratch.height=canvas.height;
           const reducedMono=layer.colorMode==='monochrome'&&(canvas.width<view.w||canvas.height<view.h);
-          if(layer.mask?.enabled||layer.tone?.enabled||layer.generationMask?.enabled||layer.colorMode&&layer.colorMode!=='color'&&!reducedMono)renderLayer(scratch,paint,layer,images,mask,live,includeGeneration,true,view);
+          if(layer.mask?.enabled||layer.tone?.enabled||layer.colorMode&&layer.colorMode!=='color'&&!reducedMono)renderLayer(scratch,paint,layer,images,mask,live,true,view);
           else {const ctx=context(scratch);ctx.drawImage(source,0,0);ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
             if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
             // Keep the converted image cached while the pointer moves. Native
@@ -219,6 +217,9 @@ export function paintPreviewRenderer() {
         if(coverage.clip){const b=coverage.clip,sx=canvas.width/paint.width,sy=canvas.height/paint.height;out.beginPath();out.rect(b.x*sx,b.y*sy,b.w*sx,b.h*sy);out.clip();}
         out.drawImage(mask,0,0);out.restore();
       }
+      if(includeGeneration&&paint.generationMask?.enabled){
+        mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint,live,view);out.drawImage(mask,0,0);
+      }
     },
     dispose(){clear();scratch.width=mask.width=1;scratch.height=mask.height=1;},
   };
@@ -231,8 +232,9 @@ export async function renderPaintPng(paint:PaintDocument,images:PaintImages,incl
   canvas.width=scratch.width=paint.width;canvas.height=scratch.height=paint.height;
   try{
     const out=context(canvas);
-    for(const layer of paint.layers){if(!paintLayerVisible(paint,layer))continue;renderLayer(scratch,paint,layer,images,mask,undefined,includeGeneration);
+    for(const layer of paint.layers){if(!paintLayerVisible(paint,layer))continue;renderLayer(scratch,paint,layer,images,mask);
       out.globalAlpha=layer.opacity;out.globalCompositeOperation=layer.blend==='multiply'?'multiply':'source-over';out.drawImage(scratch,0,0);}
+    if(includeGeneration&&paint.generationMask?.enabled){mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint);out.globalAlpha=1;out.globalCompositeOperation='source-over';out.drawImage(mask,0,0);}
     return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像の書き出しに失敗しました')),'image/png'));
   }finally{canvas.width=scratch.width=mask.width=1;canvas.height=scratch.height=mask.height=1;}
 }
@@ -247,20 +249,18 @@ export function readPaintMaskPixels(paint:PaintDocument,layer:PaintLayer):ImageD
   try{drawPaintMask(canvas,paint,layer);return context(canvas).getImageData(0,0,canvas.width,canvas.height);}finally{canvas.width=canvas.height=1;}
 }
 
-export function readGenerationMaskPixels(paint:PaintDocument,layer:PaintLayer):ImageData {
+export function readGenerationMaskPixels(paint:PaintDocument):ImageData {
   const canvas=document.createElement('canvas');canvas.width=paint.width;canvas.height=paint.height;
-  try{drawGenerationMask(canvas,paint,layer);return context(canvas).getImageData(0,0,canvas.width,canvas.height);}finally{canvas.width=canvas.height=1;}
+  try{drawGenerationMask(canvas,paint);return context(canvas).getImageData(0,0,canvas.width,canvas.height);}finally{canvas.width=canvas.height=1;}
 }
 
 /** Capture the visible marker extent after erasing and clipping, in paint pixels. */
 export function generationMaskBounds(paint:PaintDocument):BBox|undefined {
+  if(!paint.generationMask?.enabled)return;
   let left=paint.width,top=paint.height,right=0,bottom=0;
-  for(const layer of paint.layers){
-    if(!layer.generationMask?.enabled||layer.opacity<=0||!paintLayerVisible(paint,layer))continue;
-    const {data,width,height}=readGenerationMaskPixels(paint,layer);
-    for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]){
-      left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x+1);bottom=Math.max(bottom,y+1);
-    }
+  const {data,width,height}=readGenerationMaskPixels(paint);
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]){
+    left=Math.min(left,x);top=Math.min(top,y);right=Math.max(right,x+1);bottom=Math.max(bottom,y+1);
   }
   return right>left&&bottom>top?{x:left,y:top,w:right-left,h:bottom-top}:undefined;
 }

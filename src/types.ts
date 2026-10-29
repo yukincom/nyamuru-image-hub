@@ -322,14 +322,17 @@ export interface PaintLayer {
   /** Edge coverage levels: none, weak, medium, strong. No blur. */
   antialias?: 0|1|2|3;
   mask?: PaintMask;
-  /** Colored region hints attached to this image; omitted from artwork export. */
-  generationMask?: { enabled:boolean; strokes:PaintStroke[] };
   guide?: boolean;
   tone?: PaintTone;
   /** Optional user-created palette folder. This never changes rendering by itself. */
   folderId?: string;
   /** Inside a text folder, this layer is in front of its native text. */
   aboveNative?: boolean;
+}
+export interface PaintGenerationMask {
+  enabled:boolean;
+  strokes:PaintStroke[];
+  antialias?:0|1|2|3;
 }
 export interface PaintDocument {
   version: 1;
@@ -340,6 +343,8 @@ export interface PaintDocument {
   guideInitialized?: boolean;
   /** Original guide region in document pixels. Canvas padding does not stretch the guide. */
   referenceFrame?: BBox;
+  /** Region hints for this entire generation owner; excluded from normal artwork export. */
+  generationMask?:PaintGenerationMask;
   /** Last 3D camera and source; generated layers remain ordinary editable artwork. */
   background3d?: BackgroundCapture;
   /** Bottom to top. Pixel coordinates belong to this document, not the page. */

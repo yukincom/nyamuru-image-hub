@@ -3,7 +3,7 @@ import { mapBackgroundCapture, validateBackgroundCapture } from './background3d.
 import { bubbleArtIndices, panelArtKeys } from './panelLayers.ts';
 import { letteringFigureIndex } from './bubbleRelations.ts';
 import { transformVector } from './vectorGeometry.ts';
-import type { BBox, Bubble, CanvasElementSelection, Figure, ImageAsset, MangaPage, PageOverlay, PaintColorMode, PaintDocument, PaintFolder, PaintLayer, PaintStackPosition, Panel, PlacedImage } from '../types.ts';
+import type { BBox, Bubble, CanvasElementSelection, Figure, ImageAsset, MangaPage, PageOverlay, PaintColorMode, PaintDocument, PaintFolder, PaintLayer, PaintStroke, PaintStackPosition, Panel, PlacedImage } from '../types.ts';
 import { fallbackBox, panelBounds } from './canvasGeometry.ts';
 import { artworkPixelSize } from './artworkClipboard.ts';
 import { paintLayerHasContent, paintLayerVisible, paintLayerEditable, paintOwnerLocked } from './paintLock.ts';
@@ -139,7 +139,7 @@ export function paintLayerTree(paint:PaintDocument):PaintLayerTreeEntry[]{
 }
 export function paintNativeBand(paint:PaintDocument,above:boolean):PaintDocument {
   const folders=paint.folders?.filter(folder=>Boolean(folder.aboveNative)===above);
-  return {...paint,folders,layers:paint.layers.filter(layer=>paintLayerAboveNative(paint,layer)===above)};
+  return {...paint,...(paint.generationMask&&!above?{generationMask:undefined}:{}),folders,layers:paint.layers.filter(layer=>paintLayerAboveNative(paint,layer)===above)};
 }
 export function paintLayerAboveNative(paint:PaintDocument,layer:PaintLayer):boolean {
   const folder=paint.folders?.find(folder=>folder.id===layer.folderId);
@@ -218,17 +218,30 @@ export function removePaintFolder(paint:PaintDocument,id:string):PaintDocument {
   return withPaintLayerTree(paint,entries);
 }
 
+function mapPaintStroke(stroke:PaintStroke,dx:number,dy:number,sx=1,sy=sx):PaintStroke {
+  return {...stroke,size:stroke.size*Math.sqrt(sx*sy),
+    ...(stroke.selection?{selection:stroke.selection.map(b=>({x:dx+b.x*sx,y:dy+b.y*sy,w:b.w*sx,h:b.h*sy}))}:{}),
+    points:stroke.points.map(p=>({...p,x:dx+p.x*sx,y:dy+p.y*sy}))};
+}
 /** Map every editable part together; image crops remain in their original asset coordinates. */
 function mapPaintLayer(layer:PaintLayer,dx:number,dy:number,sx=1,sy=sx):PaintLayer {
-  const scale=Math.sqrt(sx*sy),box=(b:BBox):BBox=>({x:dx+b.x*sx,y:dy+b.y*sy,w:b.w*sx,h:b.h*sy});
-  const stroke=(s:PaintLayer['strokes'][number])=>({...s,size:s.size*scale,...(s.selection?{selection:s.selection.map(box)}:{}),points:s.points.map(p=>({...p,x:dx+p.x*sx,y:dy+p.y*sy}))});
+  const box=(b:BBox):BBox=>({x:dx+b.x*sx,y:dy+b.y*sy,w:b.w*sx,h:b.h*sy});
+  const stroke=(s:PaintStroke)=>mapPaintStroke(s,dx,dy,sx,sy);
   return {...layer,strokes:layer.strokes.map(stroke),
     ...(layer.image?{image:{...layer.image,bbox:box(layer.image.bbox)}}:{}),
     ...(layer.clip?{clip:box(layer.clip)}:{}),
     ...(layer.paths?{paths:layer.paths.map(path=>transformVector(path,dx,dy,sx,sy))}:{}),
     ...(layer.mask?{mask:{...layer.mask,strokes:layer.mask.strokes.map(stroke)}}:{}),
-    ...(layer.generationMask?{generationMask:{...layer.generationMask,strokes:layer.generationMask.strokes.map(stroke)}}:{}),
     ...(layer.tone?{tone:{...layer.tone,origin:{x:dx+(layer.tone.origin?.x??0)*sx,y:dy+(layer.tone.origin?.y??0)*sy}}}:{})};
+}
+
+function mapGenerationMask(mask:NonNullable<PaintDocument['generationMask']>,dx:number,dy:number,scale=1){
+  return {...mask,strokes:mask.strokes.map(stroke=>mapPaintStroke(stroke,dx,dy,scale))};
+}
+/** Originals belong to their enclosing generation target, never to a separate generation group. */
+export function paintGenerationOwner(scene:PaintScene,key:string):PaintOwner|undefined {
+  const selected=scene.owners.find(owner=>owner.key===key),owner=selected?.parentKey?scene.owners.find(owner=>owner.key===selected.parentKey):selected;
+  return owner&&['figure','background','bubble'].includes(owner.kind)?owner:undefined;
 }
 
 /** Use the same tree move for local and cross-owner drops; retain layer/folder identities. */
@@ -265,7 +278,7 @@ export function movePaintEntry(source:PaintOwner,destination:PaintOwner,kind:'la
 }
 /** Empty initialized artwork retains the absence of its guide across later edits. */
 export function paintOwnerShouldClear(owner:PaintOwner):boolean {
-  return !owner.paint.layers.length&&!owner.paint.folders?.length&&(!owner.paint.guideInitialized||owner.kind==='page'||owner.kind==='panel'||owner.kind==='original');
+  return !owner.paint.generationMask&&!owner.paint.layers.length&&!owner.paint.folders?.length&&(!owner.paint.guideInitialized||owner.kind==='page'||owner.kind==='panel'||owner.kind==='original');
 }
 export function paintAssetIds(paint?: PaintDocument): string[] {
   return paint?.layers.flatMap(layer => layer.image ? [layer.image.assetId] : []) ?? [];
@@ -275,7 +288,7 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
   const box = (b?: BBox) => b && [b.x,b.y,b.w,b.h].every(Number.isFinite) && b.w > 0 && b.h > 0;
   if (!value || value.version !== 1 || ![value.width,value.height].every(n => Number.isSafeInteger(n) && n > 0 && n <= 16384)
       || value.width * value.height > 100_000_000 || !Number.isFinite(value.dpi) || value.dpi <= 0
-      || !Array.isArray(value.layers) || (!allowEmptyScene&&!value.guideInitialized&&!value.layers.length&&!value.folders?.length) || value.layers.length > 64
+      || !Array.isArray(value.layers) || (!allowEmptyScene&&!value.guideInitialized&&!value.generationMask&&!value.layers.length&&!value.folders?.length) || value.layers.length > 64
       || (value.folders!==undefined&&(!Array.isArray(value.folders)||value.folders.length>64))
       || (value.referenceFrame !== undefined && !box(value.referenceFrame))) fail();
   if(value.guideInitialized!==undefined&&typeof value.guideInitialized!=='boolean')fail();
@@ -287,13 +300,24 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
     folderIds.add(folder.id);
   }
   const ids = new Set<string>(); let points = 0;
+  const validateStrokes=(strokes:PaintStroke[])=>{
+    for(const stroke of strokes){
+      if (!stroke || !['pen','eraser','line','rectangle','ellipse','fill','clear'].includes(stroke.tool) || (stroke.color!==null&&(typeof stroke.color!=='string'||!/^#[0-9a-f]{6}$/i.test(stroke.color)))
+        || !Number.isFinite(stroke.size) || stroke.size <= 0 || !Array.isArray(stroke.points) || !stroke.points.length) fail();
+      if(stroke.fill!==undefined&&!validPaintInk(stroke.fill))fail();
+      if(stroke.selection!==undefined&&(!Array.isArray(stroke.selection)||stroke.selection.some(b=>!box(b))))fail();
+      if((stroke.tool==='fill'||stroke.tool==='clear')&&!stroke.selection)fail();
+      points += stroke.points.length+(stroke.selection?.length??0);
+      if (points > 2_000_000) fail();
+      for (const p of stroke.points) if (!p || ![p.x,p.y,p.pressure,p.time].every(Number.isFinite) || p.pressure < 0 || p.pressure > 1) fail();
+    }
+  };
   for (const layer of value.layers) {
     if (!layer || typeof layer.id !== 'string' || !layer.id || ids.has(layer.id) || typeof layer.name !== 'string'
       || typeof layer.visible !== 'boolean' || typeof layer.locked !== 'boolean' || !Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1
       || !['normal','multiply'].includes(layer.blend) || !Array.isArray(layer.strokes) || (layer.clip && !box(layer.clip))) fail();
     if(layer.guide!==undefined&&typeof layer.guide!=='boolean')fail();
     if(layer.aboveNative!==undefined&&typeof layer.aboveNative!=='boolean')fail();
-    if(layer.generationMask&&(typeof layer.generationMask.enabled!=='boolean'||!Array.isArray(layer.generationMask.strokes)))fail();
     if(layer.kind!==undefined&&!['raster','vector'].includes(layer.kind))fail();
     if(layer.antialias!==undefined&&![0,1,2,3].includes(layer.antialias))fail();
     if(layer.colorMode!==undefined&&!['color','grayscale','monochrome'].includes(layer.colorMode))fail();
@@ -322,16 +346,12 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
         ||(tone.angle!==undefined&&(!Number.isFinite(tone.angle)||tone.angle<0||tone.angle>360))
         ||(tone.origin!==undefined&&(!tone.origin||!Number.isFinite(tone.origin.x)||!Number.isFinite(tone.origin.y))))fail();
     }
-    for (const stroke of [...layer.strokes,...(layer.mask?.strokes??[]),...(layer.generationMask?.strokes??[])]) {
-      if (!stroke || !['pen','eraser','line','rectangle','ellipse','fill','clear'].includes(stroke.tool) || (stroke.color!==null&&(typeof stroke.color!=='string'||!/^#[0-9a-f]{6}$/i.test(stroke.color)))
-        || !Number.isFinite(stroke.size) || stroke.size <= 0 || !Array.isArray(stroke.points) || !stroke.points.length) fail();
-      if(stroke.fill!==undefined&&!validPaintInk(stroke.fill))fail();
-      if(stroke.selection!==undefined&&(!Array.isArray(stroke.selection)||stroke.selection.some(b=>!box(b))))fail();
-      if((stroke.tool==='fill'||stroke.tool==='clear')&&!stroke.selection)fail();
-      points += stroke.points.length+(stroke.selection?.length??0);
-      if (points > 2_000_000) fail();
-      for (const p of stroke.points) if (!p || ![p.x,p.y,p.pressure,p.time].every(Number.isFinite) || p.pressure < 0 || p.pressure > 1) fail();
-    }
+    validateStrokes([...layer.strokes,...(layer.mask?.strokes??[])]);
+  }
+  if(value.generationMask!==undefined){
+    const mask=value.generationMask;
+    if(!mask||typeof mask.enabled!=='boolean'||!Array.isArray(mask.strokes)||mask.antialias!==undefined&&![0,1,2,3].includes(mask.antialias))fail();
+    validateStrokes(mask.strokes);
   }
 }
 
@@ -361,6 +381,10 @@ export function paintForFrame(frame: BBox, dpi: number, images: PlacedImage[], a
     if (image.paint) {
       validatePaintDocument(image.paint,assets);
       if(image.paint.guideInitialized)doc.guideInitialized=true;
+      if(image.paint.generationMask){
+        const mask=mapGenerationMask(image.paint.generationMask,offset.x,offset.y,scale);
+        doc.generationMask=doc.generationMask?{...doc.generationMask,enabled:doc.generationMask.enabled&&mask.enabled,strokes:[...doc.generationMask.strokes,...mask.strokes]}:mask;
+      }
       if(image.paint.background3d&&images.length===1)doc.background3d=mapBackgroundCapture(image.paint.background3d,mapBox,scale);
       if (images.length === 1) doc.referenceFrame = mapBox(image.paint.referenceFrame ?? {x:0,y:0,w:image.paint.width,h:image.paint.height});
       const folderStart=doc.layers.length,folderIds=new Map((image.paint.folders??[]).map(folder=>[folder.id,crypto.randomUUID()]));
@@ -619,11 +643,10 @@ export function expandPaintOwner(owner: PaintOwner, padding: {left:number;right:
   const shift=(box:BBox):BBox=>({...box,x:box.x+left,y:box.y+top});
   const shiftStroke=(stroke:PaintLayer['strokes'][number])=>({...stroke,...(stroke.selection?{selection:stroke.selection.map(shift)}:{}),points:stroke.points.map(p=>({...p,x:p.x+left,y:p.y+top}))});
   return {...owner,frame,
-    paint:{...old,width,height,...(old.background3d?{background3d:mapBackgroundCapture(old.background3d,shift)}:{}),referenceFrame:shift(referenceFrame),layers:old.layers.map(layer=>({...layer,
+    paint:{...old,width,height,...(old.generationMask?{generationMask:{...old.generationMask,strokes:old.generationMask.strokes.map(shiftStroke)}}:{}),...(old.background3d?{background3d:mapBackgroundCapture(old.background3d,shift)}:{}),referenceFrame:shift(referenceFrame),layers:old.layers.map(layer=>({...layer,
       ...(layer.clip?{clip:shift(layer.clip)}:{}),...(layer.image?{image:{...layer.image,bbox:shift(layer.image.bbox)}}:{}),
       ...(layer.paths?{paths:layer.paths.map(path=>transformVector(path,left,top))}:{}),
       ...(layer.mask?{mask:{...layer.mask,strokes:layer.mask.strokes.map(shiftStroke)}}:{}),
-      ...(layer.generationMask?{generationMask:{...layer.generationMask,strokes:layer.generationMask.strokes.map(shiftStroke)}}:{}),
       ...(layer.tone?{tone:{...layer.tone,origin:{x:(layer.tone.origin?.x??0)+left,y:(layer.tone.origin?.y??0)+top}}}:{}),
       strokes:layer.strokes.map(shiftStroke)}))}};
 }

@@ -11,6 +11,10 @@ export function paintLayerVisible(paint:PaintDocument,layer:PaintLayer):boolean 
 export function paintLayerInheritedLocked(owner:PaintOwner,layer:PaintLayer):boolean {
   return paintOwnerLocked(owner)||paintLayerFolder(owner.paint,layer)?.locked===true;
 }
+/** Generation hints belong to the folder; a native text lock does not lock these hints. */
+export function paintGenerationMaskLocked(owner:PaintOwner):boolean {
+  return Boolean(owner.inheritedLocked||owner.locked||owner.bubble?.paint_overlay?.locked);
+}
 /** A source image's layer lock is independent of its placement/owner lock. */
 export function paintOwnerLocked(owner:PaintOwner):boolean {
   return Boolean(owner.inheritedLocked||owner.locked||owner.bubble?.nativeLocked||(owner.kind!=='figure'&&owner.bubble?.paint_overlay?.locked));

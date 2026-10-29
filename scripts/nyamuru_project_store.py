@@ -191,7 +191,8 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
     if (paint["version"] != 1 or any(type(paint[k]) is not int or not 0 < paint[k] <= 16384 for k in ("width", "height"))
             or paint["width"] * paint["height"] > 100_000_000 or not number(paint["dpi"]) or paint["dpi"] <= 0
             or (paint["width"], paint["height"]) != (image["widthPx"], image["heightPx"])
-            or not isinstance(paint["layers"], list) or not 1 <= len(paint["layers"]) <= 64
+            or not isinstance(paint["layers"], list) or not 0 <= len(paint["layers"]) <= 64
+            or (not paint["layers"] and not paint.get("guideInitialized") and not paint.get("generationMask") and not paint.get("folders"))
             or ("referenceFrame" in paint and not box(paint["referenceFrame"]))):
         raise ValueError()
     if "guideInitialized" in paint and type(paint["guideInitialized"]) is not bool:
@@ -200,6 +201,28 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
         validate_background_capture(paint["background3d"], stage_ids or set())
     ids = set()
     points = 0
+    def validate_strokes(strokes):
+        nonlocal points
+        for stroke in strokes:
+            if (stroke["tool"] not in ("pen", "eraser", "line", "rectangle", "ellipse", "fill", "clear")
+                    or (stroke["color"] is not None and (not isinstance(stroke["color"], str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", stroke["color"])))
+                    or not number(stroke["size"]) or stroke["size"] <= 0
+                    or not isinstance(stroke["points"], list) or not stroke["points"]):
+                raise ValueError()
+            if "fill" in stroke and not paint_ink(stroke["fill"]):
+                raise ValueError()
+            selection = stroke.get("selection")
+            if "selection" in stroke and (not isinstance(selection, list) or any(not box(b) for b in selection)):
+                raise ValueError()
+            if stroke["tool"] in ("fill", "clear") and not isinstance(selection, list):
+                raise ValueError()
+            points += len(stroke["points"]) + len(selection or [])
+            if points > 2_000_000:
+                raise ValueError()
+            for point in stroke["points"]:
+                if not all(number(point[k]) for k in ("x", "y", "pressure", "time")) or not 0 <= point["pressure"] <= 1:
+                    raise ValueError()
+
     for layer in paint["layers"]:
         if (not isinstance(layer["id"], str) or not layer["id"] or layer["id"] in ids or not isinstance(layer["name"], str)
                 or type(layer["visible"]) is not bool or type(layer["locked"]) is not bool
@@ -247,9 +270,6 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
                 raise ValueError()
         if "guide" in layer and type(layer["guide"]) is not bool:
             raise ValueError()
-        generation_mask = layer.get("generationMask", {})
-        if "generationMask" in layer and (not isinstance(generation_mask, dict) or type(generation_mask.get("enabled")) is not bool or not isinstance(generation_mask.get("strokes"), list)):
-            raise ValueError()
         mask = layer.get("mask", {})
         if "mask" in layer and (not isinstance(mask, dict) or type(mask.get("enabled")) is not bool or type(mask.get("reveal")) is not bool or not isinstance(mask.get("strokes"), list)):
             raise ValueError()
@@ -261,25 +281,15 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
                     or ("angle" in tone and (not number(tone["angle"]) or not 0 <= tone["angle"] <= 360))
                     or ("origin" in tone and not vector_point(tone["origin"]))):
                 raise ValueError()
-        for stroke in [*layer["strokes"], *mask.get("strokes", []), *generation_mask.get("strokes", [])]:
-            if (stroke["tool"] not in ("pen", "eraser", "line", "rectangle", "ellipse", "fill", "clear")
-                    or (stroke["color"] is not None and (not isinstance(stroke["color"], str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", stroke["color"])))
-                    or not number(stroke["size"]) or stroke["size"] <= 0
-                    or not isinstance(stroke["points"], list) or not stroke["points"]):
-                raise ValueError()
-            if "fill" in stroke and not paint_ink(stroke["fill"]):
-                raise ValueError()
-            selection = stroke.get("selection")
-            if "selection" in stroke and (not isinstance(selection, list) or any(not box(b) for b in selection)):
-                raise ValueError()
-            if stroke["tool"] in ("fill", "clear") and not isinstance(selection, list):
-                raise ValueError()
-            points += len(stroke["points"]) + len(selection or [])
-            if points > 2_000_000:
-                raise ValueError()
-            for point in stroke["points"]:
-                if not all(number(point[k]) for k in ("x", "y", "pressure", "time")) or not 0 <= point["pressure"] <= 1:
-                    raise ValueError()
+        validate_strokes([*layer["strokes"], *mask.get("strokes", [])])
+
+    if "generationMask" in paint:
+        generation_mask = paint["generationMask"]
+        if (not isinstance(generation_mask, dict) or type(generation_mask.get("enabled")) is not bool
+                or not isinstance(generation_mask.get("strokes"), list)
+                or type(generation_mask.get("antialias", 3)) is not int or generation_mask.get("antialias", 3) not in (0, 1, 2, 3)):
+            raise ValueError()
+        validate_strokes(generation_mask["strokes"])
 
 
 def validate_snapshot(value: object) -> dict:

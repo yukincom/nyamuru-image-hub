@@ -55,11 +55,11 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false,nativeBand}:
   const state=usePaintWorkspace();
   if(!state)return null;
   const original=state.scene.owners.find(o=>o.key===ownerKey);
-  if(!original||original.bubble?.hidden===true&&!nativeBand)return null;
+  if(!original||original.bubble?.hidden===true&&!nativeBand&&!(state.editingMask==='generationMask'&&state.owner.key===ownerKey))return null;
   const owner=nativeBand?{...original,paint:paintNativeBand(original.paint,nativeBand==='above')}:original;
   const reference=paintReferenceBox(owner.paint,owner.frame);
   const candidate=state.live?.ownerKey===owner.key?state.live:undefined;
-  const live=candidate&&(!nativeBand||owner.paint.layers.some(layer=>layer.id===candidate.layerId)||candidate.addedLayer&&Boolean(candidate.addedLayer.aboveNative)===(nativeBand==='above'))?candidate:undefined;
+  const live=candidate&&(!nativeBand||candidate.target==='generationMask'&&nativeBand==='above'||owner.paint.layers.some(layer=>layer.id===candidate.layerId)||candidate.addedLayer&&Boolean(candidate.addedLayer.aboveNative)===(nativeBand==='above'))?candidate:undefined;
   const hasInk=Boolean(live)||owner.paint.layers.some(layer=>paintLayerVisible(owner.paint,layer)&&(layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.fill));
   const showGuide=!owner.paint.guideInitialized&&state.guideVisible(owner.key);
   const fullGuide=showGuide&&!hasInk;
@@ -77,7 +77,7 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false,nativeBand}:
 export default function PaintInputSurface({canvas,onSelectionMiss}:{canvas:{w:number;h:number};onSelectionMiss?:(event:PointerEvent,behindOwnerKey?:string,aboveNative?:boolean)=>boolean}) {
   const state=usePaintWorkspace();
   const surface=useRef<HTMLDivElement>(null);
-  if(!state||state.background3d||(!state.selectionTool&&state.owner.bubble?.hidden===true))return null;
+  if(!state||state.background3d||(!state.selectionTool&&state.owner.bubble?.hidden===true&&state.editingMask!=='generationMask'))return null;
   const {owner,events}=state;
   const area={x:0,y:0,...canvas};
   return <div ref={surface} class="paint-input" data-pen-cursor={state.penCursor} data-selection-surface={state.selectionTool?true:undefined} data-paper-width={canvas.w} data-paper-height={canvas.h} style={{...relativeStyle(area,{x:0,y:0,...canvas}),cursor:state.cursor?'none':'default'}}

@@ -367,26 +367,27 @@ test('mask gestures retain source strokes and vector paths and stay on their ori
   }
 });
 
-test('generation mask strokes attach to their image without modifying source ink or tone mask',()=>{
-  const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];layer.generationMask={enabled:true,strokes:[]};
+test('generation mask strokes belong to the owner without modifying its layers or tone masks',()=>{
+  const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];owner.paint.generationMask={enabled:true,strokes:[]};
   const next=commitPaintStroke(scene,{ownerKey:owner.key,layerId:layer.id,target:'generationMask',stroke:{...stroke(),color:'#ff0000'}});
-  assert.equal(next.owners[0].paint.layers[0].generationMask.strokes[0].color,'#ff0000');assert.deepEqual(layer.generationMask.strokes,[]);assert.deepEqual(next.owners[0].paint.layers[0].strokes,[]);
-  layer.generationMask.enabled=false;assert.equal(commitPaintStroke(scene,{ownerKey:owner.key,layerId:layer.id,target:'generationMask',stroke:stroke()}),scene);
+  assert.equal(next.owners[0].paint.generationMask.strokes[0].color,'#ff0000');assert.deepEqual(owner.paint.generationMask.strokes,[]);assert.deepEqual(next.owners[0].paint.layers[0].strokes,[]);
+  owner.paint.generationMask.enabled=false;assert.equal(commitPaintStroke(scene,{ownerKey:owner.key,layerId:layer.id,target:'generationMask',stroke:stroke()}),scene);
 });
 
 test('masks have no implicit rectangle and use the same growing layer coordinates as ink',()=>{
   for(const target of ['mask','generationMask'])for(const x of [-90,500])for(const y of [-70,500]){
     const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];
-    layer[target]={enabled:true,...(target==='mask'?{reveal:false}:{}),strokes:[]};
+    if(target==='generationMask')owner.paint.generationMask={enabled:true,strokes:[]};else layer.mask={enabled:true,reveal:false,strokes:[]};
     const space={frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height};
     const mark={...stroke(),points:[{x,y,pressure:1,time:0}]};
     const pending={ownerKey:owner.key,layerId:layer.id,target,space,stroke:mark,bounds:paintStrokeBounds(mark)};
     const preview=previewPaintStroke(scene,pending),saved=commitPaintStroke(scene,pending).owners[0];
     assert.deepEqual(preview.owner.frame,saved.frame);
-    const savedMark=saved.paint.layers[0][target].strokes[0];assert.equal(preview.live.stroke.size,savedMark.size);
+    const savedMask=target==='generationMask'?saved.paint.generationMask:saved.paint.layers[0].mask;
+    const savedMark=savedMask.strokes[0];assert.equal(preview.live.stroke.size,savedMark.size);
     for(const axis of ['x','y'])assert.ok(Math.abs(preview.live.stroke.points[0][axis]-savedMark.points[0][axis])<1e-8);
-    assert.equal(preview.live.stroke.selection,undefined);assert.equal(layer[target].strokes.length,0);
-    const p=saved.paint.layers[0][target].strokes[0].points[0];
+    assert.equal(preview.live.stroke.selection,undefined);assert.equal((target==='generationMask'?owner.paint.generationMask:layer.mask).strokes.length,0);
+    const p=savedMark.points[0];
     assert.ok(Math.abs(saved.frame.x+p.x*saved.frame.w/saved.paint.width-(space.frame.x+x*space.frame.w/space.width))<1e-8);
     assert.ok(Math.abs(saved.frame.y+p.y*saved.frame.h/saved.paint.height-(space.frame.y+y*space.frame.h/space.height))<1e-8);
     assert.deepEqual(JSON.parse(JSON.stringify(saved)),saved);
@@ -469,4 +470,15 @@ test('a missed paint selection delegates to native selection before starting a m
  const event={clientX:10,clientY:10,currentTarget:{dataset:{paperWidth:'100',paperHeight:'100'},getBoundingClientRect:()=>({left:0,top:0,width:100,height:100})}};
  begin(event,()=>{native++;return true;});assert.equal(native,1);assert.equal(clear,1);assert.equal(marquee,0);
  begin(event,()=>false);assert.equal(marquee,1,'Empty paper still supports vector marquee');
+});
+
+
+test('generation mask painting works without a child layer and ignores child and native text locks',()=>{
+ const scene=initial(),owner=scene.owners[0];owner.paint.layers=[];owner.paint.generationMask={enabled:true,strokes:[]};owner.bubble={nativeLocked:true};
+ const pending={ownerKey:owner.key,layerId:'',target:'generationMask',stroke:stroke()};
+ const next=commitPaintStroke(scene,pending);
+ assert.equal(next.owners[0].paint.generationMask.strokes.length,1);assert.equal(next.owners[0].paint.layers.length,0);assert.equal(owner.paint.generationMask.strokes.length,0);
+ owner.locked=true;assert.equal(commitPaintStroke(scene,pending),scene);owner.locked=false;
+ owner.paint.layers=[{id:'invisible',visible:false,locked:true,opacity:0,strokes:[]}];
+ assert.equal(commitPaintStroke(scene,pending).owners[0].paint.generationMask.strokes.length,1);
 });

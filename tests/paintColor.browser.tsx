@@ -28,7 +28,7 @@ async function pixels(){
   const image=await decodePaintImage(await renderPaintPng(paint,images)),out=canvas();out.getContext('2d')!.drawImage(image,0,0);image.src='';
   check(out.getContext('2d')!.getImageData(0,0,size,size).data.every((v,i)=>v===data[i]),`${mode} PNGが原寸と一致`);
   if(mode==='monochrome'){
-   const hints={...empty,generationMask:{enabled:true,strokes:[mark]}};renderer.draw(preview,{...paint,layers:[hints]},images);
+   renderer.draw(preview,{...paint,layers:[empty],generationMask:{enabled:true,strokes:[mark]}},images);
    const rgba=preview.getContext('2d')!.getImageData(0,0,size,size).data;check(rgba.some((v,i)=>i%4===0&&v>rgba[i+1]),'モノクロでも生成マーカーは赤を保持');
    renderer.draw(preview,{...paint,layers:[{...layer,colorMode:'color'}]},images);
    check(preview.getContext('2d')!.getImageData(0,0,size,size).data.some((v,i,a)=>i%4===0&&v>a[i+1]),'表現色をカラーへ戻すと元の赤が戻る');

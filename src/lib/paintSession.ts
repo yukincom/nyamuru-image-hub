@@ -11,6 +11,7 @@ export type PaintLayerAction =
   | {type:'update-folder';key:string;id:string;patch:Partial<Pick<PaintFolder,'visible'|'locked'>>}
   | {type:'move-folder';key:string;id:string;target:PaintLayerDropTarget;destination?:PaintLayerDestination}
   | {type:'move-layer';key:string;id:string;target:PaintLayerDropTarget;destination?:PaintLayerDestination}
+  | {type:'generation-mask';key:string;patch?:Partial<NonNullable<PaintOwner['paint']['generationMask']>>;remove?:boolean;select?:boolean}
   | {type:'select';key:string;id?:string;contents?:boolean;native?:boolean;mask?:'mask'|'generationMask'}
   | {type:'menu';key:string;x:number;y:number}
   | {type:'update';key:string;id:string;patch:Partial<PaintLayer>}
@@ -26,6 +27,7 @@ export interface PaintSessionSnapshot {
   stageImports:Array<{stage:BackgroundStage;blob:Blob}>;
   ownerKey:string;
   layerId:string;
+  maskTarget?:{key:string;id:string;kind:'mask'|'generationMask'};
 }
 export interface SharedPaintHistory {
   checkpoint:(before:PaintSessionSnapshot)=>void;
@@ -36,6 +38,8 @@ export interface PaintController {
   selectTool?: (tool:'pen'|'vector-pen') => void;
   interactionRevision?: () => number;
   snapshot: () => PaintSessionSnapshot;
+  /** Borrow decoded originals during a move; ownership stays with the editor. */
+  images: () => ReadonlyMap<string,HTMLImageElement>;
   canRestore: () => boolean;
   pause: () => Promise<void>;
   layerAction: (action:PaintLayerAction) => void;

@@ -2,7 +2,7 @@ import { Bot, ChevronDown, ChevronRight, Copy, FilePlus2, FolderPlus, PenTool, T
 import { useContext, useLayoutEffect, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { CanvasElementSelection, ImageAsset, MangaPage, PaintColorMode, PaintLayer, Panel, ScreenText } from '../types';
 import { panelBounds, panelShapePoints } from '../lib/canvasGeometry';
-import { paintAnchorIds, paintStackMatches, paintStackTarget, canvasPaintOwnerKey, paintAssetIds, paintScene, type PaintAddPosition, type PaintScene } from '../lib/paintDocument';
+import { paintGenerationOwner, paintAnchorIds, paintStackMatches, paintStackTarget, canvasPaintOwnerKey, paintAssetIds, paintScene, type PaintAddPosition, type PaintScene } from '../lib/paintDocument';
 import { loadPaintImagesBestEffort, type PaintImages } from '../lib/paintRenderer';
 import type { PaintLayerAction } from '../lib/paintSession';
 import { ownerItemLocked, panelVisible, panelFrameVisible, panelFrameLocked, panelLocked } from '../lib/panelLayers';
@@ -41,10 +41,10 @@ function PanelThumbnail({panel,frame=false}:{panel:Panel;frame?:boolean}) {
   return <span class={`layer-thumbnail panel-layer-thumbnail ${frame?'is-frame':''}`}><svg viewBox={`${b.x-pad} ${b.y-pad} ${b.w+pad*2} ${b.h+pad*2}`} aria-hidden="true"><polygon points={panelShapePoints(panel).map(p=>p.join(',')).join(' ')} fill={frame?'white':'currentColor'} stroke="currentColor" stroke-width={Math.max(b.w,b.h)*.035}/></svg></span>;
 }
 interface SelectionControlsProps {
-  addFolder?:()=>void; addRaster?:()=>void; addVector?:()=>void; remove?:()=>void;
+  addFolder?:()=>void; addRaster?:()=>void; addVector?:()=>void; addGenerationMask?:()=>void; remove?:()=>void;
   removeLabel?:string; disabled?:boolean;
 }
-function SelectionControls({addFolder,addRaster,addVector,remove,removeLabel='削除',disabled=false}:SelectionControlsProps) {
+function SelectionControls({addFolder,addRaster,addVector,addGenerationMask,remove,removeLabel='削除',disabled=false}:SelectionControlsProps) {
   const tool=(label:string,help:string,Icon:typeof FolderPlus,action?:()=>void)=><PaintToolButton class="palette-icon" label={label} help={help} disabled={disabled||!action} onClick={action}><Icon size={18}/></PaintToolButton>;
   return <div class="layer-controls selection-layer-controls" role="group" aria-label="レイヤー操作">
     <div class="layer-properties"><select aria-label="レイヤーの合成" disabled value="normal"><option value="normal">通常</option></select>
@@ -54,7 +54,7 @@ function SelectionControls({addFolder,addRaster,addVector,remove,removeLabel='�
       {tool('ラスターレイヤー追加','選択中の描画範囲へ空のラスターレイヤーを追加します。',FilePlus2,addRaster)}
       {tool('ベクターレイヤー追加','選択中の描画範囲へベクターレイヤーを追加します。',PenTool,addVector)}
       <PaintToolButton class="palette-icon" label="トーンレイヤー作成" help="描画レイヤーを選択するとトーンレイヤーを作成できます。" disabled><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="m12 1 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Zm14 0 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Z"/></svg></PaintToolButton>
-      {tool('生成マスク化','描画レイヤーを選択すると生成用マスクを作成できます。',Bot)}
+      {tool('生成マスク化','生成対象フォルダーにマスクを作成します。',Bot,addGenerationMask)}
       {tool('複製','描画レイヤーを選択すると複製できます。',Copy)}
       {tool(removeLabel,remove?'選択中の項目を削除します。':'削除できる項目を選択してください。',Trash2,remove)}
     </div>
@@ -65,19 +65,28 @@ const emptyLayer:PaintLayer={id:'',name:'',visible:false,locked:false,opacity:1,
 function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,activeLayers,directPanel,nativeTextLayers}:{panel:Panel;index:number;p:Props;overlay?:boolean;frameLayer?:ComponentChildren;selectedOwner?:string;activeLayers?:VNode<ComponentProps<typeof PaintLayerPalette>>;directPanel?:number;nativeTextLayers?:ComponentProps<typeof PaintLayerPalette>['nativeTextLayers']}) {
   const paletteScope=paintPaletteScope(p.page.page,index,overlay),scenes=useContext(PaletteScenes);
   const result=useMemo(()=>{try{const scene=paintScene(panel,p.dpi,p.assets,p.colorMode,overlay?'page':'panel',overlay?p.page.panels:undefined);if(overlay)scene.owners=scene.owners.filter(o=>o.kind!=='background');return {scene};}catch(error){return {error:error instanceof Error?error.message:'画像を読み込めません'};}},[panel,p.dpi,p.assets,p.colorMode,overlay,p.page.panels]);
-  const source=JSON.stringify([...new Set(result.scene?.owners.flatMap(owner=>paintAssetIds(owner.paint))??[])].sort().map(id=>{
+  const sourceEntries=[...new Set(result.scene?.owners.flatMap(owner=>paintAssetIds(owner.paint))??[])].sort().map(id=>{
     const asset=p.assets.find(item=>item.id===id);
-    return [id,asset?.storageId,asset?.byteLength,asset?.sha256,asset?.mediaType,asset?.widthPx,asset?.heightPx];
-  }));
-  const [decoded,setDecoded]=useState<{source:string;images:PaintImages}|null>(null);
-  // Effects run after child layout effects: never pair a new scene with the previous image map.
-  const images=decoded?.source===source?decoded.images:null;
+    return [id,asset?.storageId,asset?.byteLength,asset?.sha256,asset?.mediaType,asset?.widthPx,asset?.heightPx] as const;
+  });
+  const source=JSON.stringify(sourceEntries),signatures=new Map(sourceEntries.map(entry=>[entry[0],JSON.stringify(entry)]));
+  type Decoded={source:string;images:PaintImages;signatures:Map<string,string>};
+  const [decoded,setDecoded]=useState<Decoded|null>(null),decodedRef=useRef<Decoded|null>(null);
+  // A changed layer list keeps compatible thumbnails; only new or changed assets are decoded.
+  const reusable=new Map([...(decoded?.images??[])].filter(([id])=>signatures.has(id)&&decoded?.signatures.get(id)===signatures.get(id)));
+  const images=decoded?.source===source?decoded.images:reusable.size?reusable:null;
   useEffect(()=>{
-    setDecoded(null);if(!result.scene)return;
-    let cancelled=false,map:PaintImages|null=null;
-    void loadPaintImagesBestEffort(result.scene.owners.map(o=>o.paint),p.assets).then(value=>{if(cancelled)value.forEach(i=>{i.src='';});else{map=value;setDecoded({source,images:value});}});
-    return()=>{cancelled=true;map?.forEach(i=>{i.src='';});};
+    if(!result.scene)return;
+    const retained=new Set(reusable.values());decodedRef.current?.images.forEach(image=>{if(!retained.has(image))image.src='';});
+    let cancelled=false;
+    void loadPaintImagesBestEffort(result.scene.owners.map(o=>o.paint),p.assets,new Map(),reusable).then(value=>{
+      if(cancelled){value.forEach((image,id)=>{if(image!==reusable.get(id))image.src='';});return;}
+      const retained=new Set(value.values());decodedRef.current?.images.forEach(image=>{if(!retained.has(image))image.src='';});
+      const next={source,images:value,signatures};decodedRef.current=next;setDecoded(next);
+    });
+    return()=>{cancelled=true;};
   },[source]);
+  useEffect(()=>()=>{decodedRef.current?.images.forEach(image=>{image.src='';});},[]);
   useLayoutEffect(()=>{const scene=activeLayers?.props.scene??result.scene;if(!scene)return;scenes.set(paletteScope,scene);return()=>{if(scenes.get(paletteScope)===scene)scenes.delete(paletteScope);};},[scenes,paletteScope,activeLayers?.props.scene,result.scene]);
   const destinationScene=(destination:import('../lib/paintDocument').PaintLayerDestination|undefined)=>destination?{...destination,scene:scenes.get(paintPaletteScope(p.page.page,destination.panelIndex,destination.overlay))}:undefined;
   const moves=(scene:PaintScene):Pick<ComponentProps<typeof PaintLayerPalette>,'location'|'moveLayer'|'moveFolder'>=>({
@@ -94,7 +103,7 @@ function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,
   const scene=result.scene,owner=scene.owners.find(item=>item.kind===(overlay?'page':'panel'))??scene.owners[0];
   const act=(action:PaintLayerAction)=>p.onAction(index,action,scene,overlay);
   return <PaintLayerPalette {...moves(scene)} frameLayer={frameLayer} paletteScope={paletteScope} directPanel={directPanel} nativeTextLayers={nativeTextLayers} reorderGroup={(key,target,after)=>p.onReorderOwners(index,key,target,after,overlay)} embedded inactive selectedOwner={selectedOwner} canvasSelectionScrollRequest={p.canvasSelectionScrollRequest} onToggleBubble={(bubble,group)=>p.onToggleBubble(index,bubble,overlay,group)} openBackground3d={overlay?undefined:()=>act({type:'background3d',key:'background'})} title="" scene={scene} owner={owner} layer={owner.paint.layers[0]??emptyLayer} images={images} disabled={p.disabled||!panelVisible(panel)}
-    selectMask={(key,id,mask)=>act({type:'select',key,id,mask})}
+    selectMask={(key,id,mask)=>act({type:'select',key,id,mask})} updateGenerationMask={(key,patch)=>act({type:'generation-mask',key,patch})}
     select={(key,id,contents,native)=>act({type:'select',key,id,contents,native})} update={(key,id,patch)=>act({type:'update',key,id,patch})}
     lockOwner={(key,locked,group)=>act({type:'owner-lock',key,locked,group})}
     toggleGroup={key=>act({type:'toggle',key})} reorder={(key,id,target,after)=>act({type:'reorder',key,id,target,after})} updateFolder={(key,id,patch)=>act({type:'update-folder',key,id,patch})} renameFolder={(key,id,name)=>act({type:'rename-folder',key,id,name})}
@@ -170,7 +179,12 @@ export default function PageLayerPalette(p:Props) {
     p.onAction(p.activePanel,kind==='folder'?{type:'add-folder',key,position}:{type:'add',key,kind,position},scene,overlay);
   };
   const addControls={addFolder:()=>addSelected('folder'),addRaster:()=>addSelected('raster'),addVector:()=>addSelected('vector')};
-  const ownerControls=selectedOwner?<SelectionControls {...addControls} disabled={p.disabled} remove={bubbleTarget&&!bubbleTargetLocked?()=>p.onDeleteBubble(bubbleTarget.panel,bubbleTarget.index,bubbleTarget.overlay):undefined} removeLabel={bubbleTarget?`${textDisplayLabel(bubbleTarget.index)}を削除`:'削除'}/>:null;
+  const addSelectedGenerationMask=selectedOwner&&!closedPanel?()=>{
+    const overlay=Boolean(selectedOverlay),scene=paintScene(overlay?overlaySource:selected,p.dpi,p.assets,p.colorMode,overlay?'page':'panel',overlay?p.page.panels:undefined);
+    const owner=paintGenerationOwner(scene,selectedOwner);if(!owner)return;
+    p.onAction(p.activePanel,{type:'generation-mask',key:owner.key,patch:{enabled:true},select:true},scene,overlay);
+  }:undefined;
+  const ownerControls=selectedOwner?<SelectionControls {...addControls} addGenerationMask={addSelectedGenerationMask} disabled={p.disabled} remove={bubbleTarget&&!bubbleTargetLocked?()=>p.onDeleteBubble(bubbleTarget.panel,bubbleTarget.index,bubbleTarget.overlay):undefined} removeLabel={bubbleTarget?`${textDisplayLabel(bubbleTarget.index)}を削除`:'削除'}/>:null;
   const textTarget=selectedText;
   const textControls=textTarget?<SelectionControls {...addControls} disabled={p.disabled} remove={p.onDeleteText&&(textTarget.overlay||!panelLocked(p.page.panels[textTarget.panel]))?()=>p.onDeleteText?.(textTarget.panel,textTarget.index,textTarget.overlay):undefined} removeLabel={`${textDisplayLabel(textTarget.index+((textTarget.overlay?p.page.page_overlay:p.page.panels[textTarget.panel])?.bubbles?.length??0))}を削除`}/>:null;
   const pageAnchors=paint?.overlay?paint.scene.anchorIds:paintAnchorIds(overlaySource,p.page.panels);

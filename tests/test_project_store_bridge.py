@@ -178,9 +178,8 @@ class ProjectStoreTests(unittest.TestCase):
     def test_generation_mask_and_materialized_guide_roundtrip(self):
         value = placed_snapshot()
         image = value["document"]["manga"]["pages"][0]["images"][0]
-        layer = {"id": "guide", "name": "あたり", "guide": True, "visible": True, "locked": False, "opacity": 1, "blend": "normal", "strokes": [],
-                 "generationMask": {"enabled": True, "strokes": [{"tool": "pen", "color": "#ff0000", "size": 1, "points": [{"x": 0, "y": 0, "pressure": .7, "time": 0}]}]}}
-        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "guideInitialized": True, "layers": [layer]}
+        layer = {"id": "guide", "name": "あたり", "guide": True, "visible": True, "locked": False, "opacity": 1, "blend": "normal", "strokes": []}
+        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "guideInitialized": True, "layers": [layer], "generationMask": {"enabled": True, "strokes": [{"tool": "pen", "color": "#ff0000", "size": 1, "points": [{"x": 0, "y": 0, "pressure": .7, "time": 0}]}]}}
         saved = store.save_project(self.root, value, None)
         self.assertEqual(store.load_project(self.root)["snapshot"], value)
         for key, invalid in (("guideInitialized", "yes"), ("guide", 1), ("enabled", "yes"), ("color", "red")):
@@ -188,10 +187,23 @@ class ProjectStoreTests(unittest.TestCase):
             paint = broken["document"]["manga"]["pages"][0]["images"][0]["paint"]
             if key == "guideInitialized": paint[key] = invalid
             elif key == "guide": paint["layers"][0][key] = invalid
-            elif key == "enabled": paint["layers"][0]["generationMask"][key] = invalid
-            else: paint["layers"][0]["generationMask"]["strokes"][0][key] = invalid
+            elif key == "enabled": paint["generationMask"][key] = invalid
+            else: paint["generationMask"]["strokes"][0][key] = invalid
             with self.assertRaises(ValueError): store.save_project(self.root, broken, saved["revision"])
             self.assertEqual(store.load_project(self.root)["snapshot"], value)
+
+    def test_owner_generation_mask_roundtrip_without_any_child_layers(self):
+        value = placed_snapshot()
+        image = value["document"]["manga"]["pages"][0]["images"][0]
+        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "layers": [],
+                          "generationMask": {"enabled": False, "antialias": 0, "strokes": []}}
+        saved = store.save_project(self.root, value, None)
+        self.assertEqual(store.load_project(self.root)["snapshot"], value)
+        broken = deepcopy(value)
+        broken["document"]["manga"]["pages"][0]["images"][0]["paint"]["generationMask"]["antialias"] = 4
+        with self.assertRaises(ValueError):
+            store.save_project(self.root, broken, saved["revision"])
+        self.assertEqual(store.load_project(self.root)["snapshot"], value)
 
     def test_independent_tone_and_coverage_mask_roundtrip(self):
         value = placed_snapshot()

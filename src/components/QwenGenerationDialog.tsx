@@ -37,7 +37,7 @@ export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsse
   const owned:HTMLImageElement[]=[];
   let images=liveImages;
   try {
-    if(paint.layers[0].guide&&!paint.layers[0].image){
+    if(paint.layers[0]?.guide&&!paint.layers[0].image){
       const prepared=await prepareGuideLayer(owner,paint.layers[0]);
       paint={...paint,layers:[prepared.layer]};assets=[...assets,prepared.asset];
       images=new Map(liveImages);

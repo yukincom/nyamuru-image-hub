@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {newPaintLayer} from '../src/lib/paintDocument.ts';
-import {paintLayerVisible,paintLayerPatchAllowed,paintLayerEditable,paintContentsLocked,artworkLocked,paintOwnerLocked,paintOwnerPlacementLocked} from '../src/lib/paintLock.ts';
+import {paintGenerationMaskLocked,paintLayerVisible,paintLayerPatchAllowed,paintLayerEditable,paintContentsLocked,artworkLocked,paintOwnerLocked,paintOwnerPlacementLocked} from '../src/lib/paintLock.ts';
 const layer=(locked=false)=>({...newPaintLayer(),locked,strokes:[{tool:'pen',points:[{x:1,y:1}],size:2,color:'#000'}]});
 const owner=(layers)=>({key:'figure-0',kind:'figure',paint:{layers},figure:{}});
 test('locked layers reject content and property changes, while allowing visibility and unlocking',()=>{
@@ -42,4 +42,10 @@ test('user folder eyes and locks apply without overwriting child flags',()=>{
  assert.equal(paintLayerPatchAllowed(o,child,{locked:false}),false);assert.equal(paintLayerPatchAllowed(o,child,{visible:false}),true);
  o.paint.folders[0].visible=true;assert.equal(paintLayerVisible(o.paint,child),true);assert.equal(paintContentsLocked(o.paint),true);
  o.paint.folders[0].locked=false;assert.equal(paintLayerEditable(o,child),true);assert.equal(child.locked,false);
+});
+
+
+test('folder generation mask locking stays independent of native text and child layer locks',()=>{
+ const o=owner([layer(true)]);o.bubble={nativeLocked:true};assert.equal(paintGenerationMaskLocked(o),false);
+ for(const patch of [{locked:true},{inheritedLocked:true},{bubble:{paint_overlay:{locked:true}}}])assert.equal(paintGenerationMaskLocked({...o,...patch}),true);
 });

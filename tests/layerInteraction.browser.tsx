@@ -69,12 +69,12 @@ if(selectionChecks){
 async function rendererChecks(){
  const checks:string[]=[];const check=(ok:boolean,label:string)=>{if(!ok)throw new Error(label);checks.push(label);};
  const fill=(color:string)=>({tool:'fill' as const,color,size:1,points:[{x:0,y:0,pressure:1,time:0}],selection:[{x:0,y:0,w:100,h:100}]});
- const base={...newPaintLayer(),strokes:[fill('#ffffff')],clip:{x:0,y:0,w:50,h:100},generationMask:{enabled:true,strokes:[fill('#ff0000')]}};
- const paint:PaintDocument={version:1,width:100,height:100,dpi:100,layers:[base]};
+ const base={...newPaintLayer(),strokes:[fill('#ffffff')],clip:{x:0,y:0,w:50,h:100}};
+ const paint:PaintDocument={version:1,width:100,height:100,dpi:100,layers:[base],generationMask:{enabled:true,strokes:[fill('#ff0000')]}};
  const read=async(blob:Blob)=>{const image=await decodePaintImage(blob),canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);image.src='';return ctx.getImageData(0,0,100,100).data;};
  const pixel=(d:Uint8ClampedArray,x:number)=>Array.from(d.slice((50*100+x)*4,(50*100+x)*4+4)).join(',');
  const normal=await read(await renderPaintPng(paint,new Map())),generation=await read(await renderPaintPng(paint,new Map(),true));
- check(pixel(normal,25)==='255,255,255,255','通常PNGは元の白画像を保持');check(pixel(generation,25)==='255,0,0,255','生成入力は赤領域を合成');check(pixel(generation,75)==='0,0,0,0','生成領域も画像のclipを保持');
+ check(pixel(normal,25)==='255,255,255,255','通常PNGは元の白画像を保持');check(pixel(generation,25)==='255,0,0,255','生成入力は赤領域を合成');check(pixel(generation,75)==='255,0,0,255','フォルダーの生成領域は個別レイヤーのclipから独立');
  const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const preview=paintPreviewRenderer();
  preview.draw(canvas,paint,new Map(),{layerId:base.id,target:'generationMask',stroke:{...fill('#000000'),tool:'clear'}});
  check(pixel(canvas.getContext('2d')!.getImageData(0,0,100,100).data,25)==='255,255,255,255','生成マスクの消去は原画像を消さない');preview.dispose();
