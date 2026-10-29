@@ -126,11 +126,10 @@ export default function PageLayerPalette(p:Props) {
       figures:o?.figures?.map((f,i)=>({...f,bbox:f.bbox??overlayFallbackBox(p.page.canvas,'figure',i)})),
       bubbles:(o?.bubbles??[]).map((b,i)=>({...b,bbox:b.bbox??overlayFallbackBox(p.page.canvas,'bubble',i)}))};
   },[p.page.page_overlay,p.page.layer,p.page.images,p.page.canvas]);
-  const initialPanel=useMemo(()=>p.activePanel,[p.page.page]);
   useEffect(()=>{
-    p.page.panels.forEach((_,index)=>{const key=paintPaletteScope(p.page.page,index);if(palette.folded[key]===undefined)palette.setFolded(key,index!==initialPanel);});
-  },[p.page.page,p.page.panels.length,initialPanel]);
-  const panelFolded=(index:number)=>palette.folded[paintPaletteScope(p.page.page,index)]??index!==initialPanel;
+    p.page.panels.forEach((_,index)=>{const key=paintPaletteScope(p.page.page,index);if(palette.folded[key]===undefined)palette.setFolded(key,true);});
+  },[p.page.page,p.page.panels.length]);
+  const panelFolded=(index:number)=>palette.folded[paintPaletteScope(p.page.page,index)]??true;
   useEffect(()=>{
     if(p.expanded===false||!selection||(!selectedOwner&&!selectedText))return;
     const frame=requestAnimationFrame(()=>{

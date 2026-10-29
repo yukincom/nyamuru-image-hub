@@ -1,10 +1,12 @@
-/** Browser integration fixture: synthetic images and in-memory APIs only. */
+/** Browser integration fixture: synthetic images and in-memory APIs only.
+ * 見込み: 実ダイアログのdraftを使えば、手修正を次の要求へ渡して前の履歴を保持できる。
+ * 合格条件は各検証関数に記載。確認範囲は実UIと模擬APIで、実モデル・作品保存は含まない。 */
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import QwenGenerationDialog, { qwenInputImage, qwenLayerImage } from '../src/components/QwenGenerationDialog';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import { paintScene, insertGeneratedPaintImage, newPaintLayer, type PaintScene } from '../src/lib/paintDocument';
-import { buildQwenGenerationPlan, qwenLayerCandidates, QWEN_GENERATION_PROFILE } from '../src/lib/qwenGeneration';
+import { buildQwenGenerationPlan, qwenLayerCandidates, QWEN_GENERATION_PROFILE, type QwenGenerationConversation } from '../src/lib/qwenGeneration';
 import { imageSha256, prepareImageAsset, createFrameArtwork } from '../src/lib/imagePlacement';
 import { decodePaintImage, generationMaskBounds } from '../src/lib/paintRenderer';
 import type { BBox, PaintLayer, PaintDocument } from '../src/types';
@@ -73,6 +75,8 @@ async function checkGenerationArea(){
  return `${checks}項目成功：フォルダーの範囲・消去・レイヤー状態からの独立・参照画像・原本保持`;
 }
 let jobId='',lastPayload:Record<string,unknown>={},requests:string[]=[],report=()=>{};
+let submitGate:Promise<void>|undefined;
+const savedJobs=new Map<string,ReturnType<typeof job>>();
 const supervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1};
 const bridge={service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3};
 const job=(status:string)=>({profile:QWEN_GENERATION_PROFILE,job_id:jobId,status,request_sha256:'a'.repeat(64),label:plan.label,width:320,height:224,
@@ -98,9 +102,59 @@ window.fetch=async(input,options)=>{
    }
    return Response.json({...bridge,...job('prepared')});
  }
- if(apiPath==='/api/image-generation/submit')return Response.json({...supervisor,...job('succeeded')});
+ if(apiPath==='/api/image-generation/submit'){
+   await submitGate;
+   const result=job('succeeded');savedJobs.set(result.job_id,result);
+   return Response.json({...supervisor,...result});
+ }
+ if(apiPath==='/api/qwen-generation/list')return Response.json({...bridge,jobs:[...savedJobs.values()]});
  throw new Error(`Unexpected fixture request: ${url.pathname}`);
 };
+// 見込み: 完了後の入力で既存の新規準備へ戻せば、再送を起こさず次の生成指示を変更できる。
+// 合格: 初回/完了後に入力可、実行中は不可。編集だけでは送信せず、次の要求だけが新本文になり前の履歴と資料を保持。
+// 範囲: 実QwenGenerationDialog・合成input event・既存payload/lifecycle。APIと画像は模擬、モデル品質と永続保存は対象外。
+async function checkPromptEditing(){
+ let checks=0;const check=(condition:boolean,label:string)=>{if(!condition)throw new Error(label);checks++;};
+ const settle=async()=>{for(let i=0;i<4;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
+ const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<120&&!test();i++)await settle();check(test(),label);};
+ const host=document.createElement('div');document.body.append(host);
+ const setting=localStorage.getItem(GENERATION_PREFERENCES_STORAGE_KEY);
+ let release:()=>void=()=>{};const conversation:{current:QwenGenerationConversation|null}={current:null};
+ try{
+  saveGenerationPreferences(localStorage,{...DEFAULT_GENERATION_PREFERENCES,execution:'local'});
+  render(<QwenGenerationDialog plan={plan} onClose={()=>{}} onInsert={async()=>{}}
+    onConversation={value=>{conversation.current=value;}}/>,host);await settle();
+  const dialog=()=>document.querySelector<HTMLElement>('.qwen-generation-dialog')!;
+  const button=(name:string)=>{const result=[...dialog().querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.trim()===name);if(!result)throw Error(`ボタンなし：${name}`);return result;};
+  const prompt=()=>dialog().querySelector<HTMLTextAreaElement>('.qwen-prompt textarea')!;
+  const input=async(value:string)=>{prompt().value=value;prompt().dispatchEvent(new Event('input',{bubbles:true}));await settle();};
+  check(!prompt().disabled,'初回は生成指示を編集できる');
+  await input('最初の手修正\nミリペンの線');
+  await conversation.current!.addFiles([new File([blob],'設定画.png',{type:'image/png'})],'character');await settle();
+  check(dialog().querySelectorAll('.qwen-reference-list img').length===1,'既存の追加経路から参照資料を用意');
+  const submittedBefore=requests.filter(path=>path==='/api/image-generation/submit').length;
+  submitGate=new Promise<void>(resolve=>{release=resolve;});button('Qwenで実行').click();
+  await wait(()=>requests.filter(path=>path==='/api/image-generation/submit').length===submittedBefore+1,'模擬生成を開始');
+  check(prompt().disabled,'実行中は入力を固定する');release();submitGate=undefined;
+  await wait(()=>!button('閉じる').disabled&&!!dialog().querySelector('.qwen-result img'),'模擬生成完了');
+  check(!prompt().disabled,'完了後は準備ボタンなしで入力できる');
+  const previousId=jobId,previousJob=JSON.stringify(savedJobs.get(previousId)),previousPayload=JSON.stringify(lastPayload);
+  const edited='ピグマの細い均一な線。\n線の中ほどにかすれ。';
+  await input(prompt().value);check(button('Qwenで実行').disabled&&!!dialog().querySelector('.qwen-result img'),'同じ値のinputは完了状態を解除しない');
+  await input(edited);
+  check(prompt().value===edited&&!button('Qwenで実行').disabled,'手修正と改行を保持して次の生成が可能');
+  check(conversation.current?.locked===false,'既存の生成会話も新しい準備状態になる');
+  check(!dialog().querySelector('.qwen-result')&&dialog().querySelectorAll('.qwen-reference-list img').length===1,'古い結果の選択を解除し参照資料は保持');
+  check(JSON.stringify(lastPayload)===previousPayload&&requests.filter(path=>path==='/api/image-generation/submit').length===submittedBefore+1,'入力だけでは要求を書き換えず生成しない');
+  button('Qwenで実行').click();await settle();await wait(()=>!button('閉じる').disabled&&!!dialog().querySelector('.qwen-result img'),'修正後の模擬生成完了');
+  check(lastPayload.prompt===edited,'次の要求に手修正した本文をそのまま渡す');
+  check(jobId!==previousId&&JSON.stringify(savedJobs.get(previousId))===previousJob,'別の生成IDを使い前の生成結果を保持');
+  check(requests.filter(path=>path==='/api/image-generation/submit').length===submittedBefore+2,'実行ボタン2回に対して送信も2回');
+  button('生成履歴').click();await settle();await wait(()=>!button('閉じる').disabled,'履歴読込完了');
+  check(!!dialog().querySelector('.qwen-history')?.textContent?.includes(`qwen_${previousId}.png`),'前の結果は既存の履歴一覧から確認できる');
+ }finally{release();submitGate=undefined;render(null,host);host.remove();if(setting===null)localStorage.removeItem(GENERATION_PREFERENCES_STORAGE_KEY);else localStorage.setItem(GENERATION_PREFERENCES_STORAGE_KEY,setting);}
+ return `${checks}項目成功：生成指示の直接編集・再生成への反映・実行中の固定・資料と前の履歴保持`;
+}
 async function checkLetteringDialog(){
  let checks=0;const check=(condition:boolean,label:string)=>{if(!condition)throw new Error(label);checks++;};
  const settle=async()=>{for(let i=0;i<4;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
@@ -216,10 +270,12 @@ async function checkOwnerMaskEditor(){
  return `${checks}項目成功：実PaintEditorの独立レイヤー・サムネイル・道具切替・履歴・保存再読込`;
 }
 function Fixture(){
+ const [promptReport,setPromptReport]=useState('未実行');
  const [areaReport,setAreaReport]=useState('未実行'),[dialogReport,setDialogReport]=useState('未実行'),[editorReport,setEditorReport]=useState('未実行');
  const [open,setOpen]=useState(false),[summary,setSummary]=useState('描画チェック成功：単一レイヤー・マーカー分離・原本保持・仮想あたり'),[inserted,setInserted]=useState(false),[session,setSession]=useState(0);
  report=()=>setSummary(JSON.stringify({mode:lastPayload.mode,reference:Boolean(lastPayload.sketch_image||lastPayload.paint_image),correction:Boolean(lastPayload.correction_image),characterRefs:(lastPayload.references as unknown[]|undefined)?.length,prompt:lastPayload.prompt,requests},null,2));
  return <main style="padding:24px"><h1>レイヤー選択からQwen生成の検証</h1><p>合成画像のみ。モデル・作品保存・稼働サービスへのアクセスなし。</p>
+   <button onClick={()=>void checkPromptEditing().then(setPromptReport,error=>setPromptReport(error instanceof Error?error.stack??error.message:String(error)))}>生成指示の直接編集を検証</button><output id="prompt-edit-report">{promptReport}</output>
    <button onClick={()=>void checkGenerationArea().then(setAreaReport,error=>setAreaReport(String(error)))}>生成範囲の画素を検証</button><output id="area-report">{areaReport}</output>
    <button onClick={()=>void checkLetteringDialog().then(setDialogReport,error=>setDialogReport(error instanceof Error?error.stack??error.message:String(error)))}>描き文字の範囲切替を検証</button><output id="lettering-dialog-report">{dialogReport}</output>
    <button onClick={()=>void checkOwnerMaskEditor().then(setEditorReport,error=>setEditorReport(error instanceof Error?error.stack??error.message:String(error)))}>フォルダーの生成マスクを検証</button><output id="mask-editor-report">{editorReport}</output>

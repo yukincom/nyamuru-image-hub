@@ -1,5 +1,8 @@
 // Use a dedicated localhost origin: this fixture seeds only its own browser storage.
 import { render } from 'preact';
+import {useState} from 'preact/hooks';
+import PageLayerPalette from '../src/components/PageLayerPalette';
+import {PaintLayerControlsContext} from '../src/lib/paintWorkspace';
 import {renderPaintPng,decodePaintImage,paintPreviewRenderer} from '../src/lib/paintRenderer';
 import {newPaintLayer,withPaintBleed,type PaintOwner} from '../src/lib/paintDocument';
 import {newToneLayer} from '../src/lib/paintTone';
@@ -18,6 +21,7 @@ import { parseMangaYaml, STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga
 import '../src/styles/global.css';
 if(!['127.0.0.1','selection.localhost'].includes(location.hostname)||!['4325','4335'].includes(location.port))throw new Error('Dedicated local test origin required.');
 const selectionChecks=new URLSearchParams(location.search).has('selection-check');
+const panelFoldChecks=new URLSearchParams(location.search).has('panel-fold-check');
 if(selectionChecks){
  if(location.port!=='4335')throw Error('Selection tests require isolated port 4335');
  const stored=localStorage.getItem(STORAGE_KEY);
@@ -58,7 +62,7 @@ if(selectionChecks){
   return url.protocol==='http:'&&(url.origin!==location.origin||url.pathname.startsWith('/__nyamuru/'))
    ?Promise.resolve(Response.json({error:'UI fixture: service calls disabled'},{status:503})):fetchOriginal(input,init);
  };
-}else if(!localStorage.getItem(STORAGE_KEY)){
+}else if(!panelFoldChecks&&!localStorage.getItem(STORAGE_KEY)){
  const doc=createEmptyWorkspaceDocument();doc.manga.meta.title='レイヤー操作テスト';doc.manga.meta.episode_id='layer-flow-qa';
  doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:20,y:35,w:170,h:180},bg:1,action:null,figures:[{name:'テスト人物',size:'bust-up',bbox:{x:40,y:125,w:65,h:70}}],bubbles:[
  {text:'文字と形を一緒に選択',speaker:'テスト人物',shape:'normal',bbox:{x:130,y:55,w:40,h:45}},
@@ -119,7 +123,23 @@ async function rendererChecks(){
  screen.dispose();
  return checks;
 }
-if(new URLSearchParams(location.search).has('render-check')){
+const foldPages=[1,2].map(page=>({...createEmptyWorkspaceDocument().manga.pages[0],page,panels:[1,2].map(id=>({id,shape:{type:'rect' as const,x:10,y:id*60,w:100,h:50},bg:0 as const,action:null,bubbles:[]}))}));
+function PanelFoldFixture(){
+ const [page,setPage]=useState(0),[active,setActive]=useState(1),[folded,setFolded]=useState<Record<string,boolean>>({});
+ return <main style="width:420px;padding:16px;height:100vh;display:flex;flex-direction:column"><h1>コマの初期開閉</h1>
+  <p>合成2ページ・実レイヤーパレット・共有開閉state。作品保存・モデル呼び出しなし。</p>
+  <div><button data-fold-page="前" disabled={page===0} onClick={()=>setPage(0)}>前のページ</button> {page+1}ページ <button data-fold-page="次" disabled={page===1} onClick={()=>setPage(1)}>次のページ</button></div>
+  <PaintLayerControlsContext.Provider value={{controls:null,folded,setFolded:(key,value)=>setFolded(current=>({...current,[key]:value}))}}>
+   <PageLayerPalette page={foldPages[page]} activePanel={active} assets={[]} dpi={100} disabled={false} onSelect={setActive}
+    onReorderOwners={()=>{}} onVisibility={()=>{}} onLock={()=>{}} onDelete={()=>{}} onDeleteBubble={()=>{}} onAddFolder={()=>{}} onAdd={()=>{}}
+    onAction={()=>{}} onEditText={()=>{}} onToggleBubble={()=>{}} guideVisible={()=>true} toggleGuide={()=>{}}/>
+  </PaintLayerControlsContext.Provider>
+  <button id="check-panel-fold" onClick={()=>void verifyInitialPanelFold()}>コマの初期開閉を検証</button><pre id="selection-report">未実行</pre>
+ </main>;
+}
+if(panelFoldChecks){
+ render(<PanelFoldFixture/>,document.getElementById('app')!);
+}else if(new URLSearchParams(location.search).has('render-check')){
  rendererChecks().then(checks=>render(<main><h1>描画検証 PASS</h1><ul>{checks.map(item=><li>{item}</li>)}</ul></main>,document.getElementById('app')!)).catch(error=>render(<main><h1>描画検証 FAIL</h1><pre>{String(error)}</pre></main>,document.getElementById('app')!));
 }else{
  render(<App/>,document.getElementById('app')!);
@@ -134,6 +154,37 @@ if(new URLSearchParams(location.search).has('render-check')){
     <button id="check-originals" onClick={()=>void verifyOriginalVisibility()}>OCR原本の初期表示を検証</button>
     <pre id="selection-report" aria-live="polite" style={{maxHeight:'200px',overflow:'auto',whiteSpace:'pre-wrap'}}>未実行</pre></details>,controls);
  }
+}
+
+// 見込み: コマの初期値だけを閉じれば、選択先と無関係に全ページを閉じ、手動の開閉を保持できる。
+// 合格: 起動直後/未訪問ページが全閉、手動展開後の往復で展開保持、選択で開閉不変、作品データ不変。
+// 範囲: 実PageLayerPalette・既存共有context・合成2ページ。Appの作品読込/ディスク保存・モデルは対象外。
+async function verifyInitialPanelFold(){
+ const report=document.getElementById('selection-report')!,button=document.getElementById('check-panel-fold') as HTMLButtonElement,checks:string[]=[];
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const settle=async()=>{for(let i=0;i<12;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
+ const root=()=>document.querySelector<HTMLElement>('.page-layer-palette')!;
+ const toggles=()=>[...root().querySelectorAll<HTMLButtonElement>('.panel-layer-heading .layer-folder-toggle')];
+ const pageButton=(direction:string)=>document.querySelector<HTMLButtonElement>(`[data-fold-page="${direction}"]`)!;
+ const allClosed=()=>toggles().length>0&&toggles().every(button=>button.getAttribute('aria-expanded')==='false');
+ button.disabled=true;report.textContent='検証中';
+ try{
+  await settle();const before=JSON.stringify(foldPages);
+  check(allClosed(),'起動直後は選択中のコマを含めて全コマを閉じる');
+  const goBack=!pageButton('前').disabled;
+  pageButton(goBack?'前':'次').click();await settle();
+  check(allClosed(),'未訪問ページもコマ01を含めて全コマを閉じる');
+  toggles()[0].click();await settle();
+  check(toggles()[0].getAttribute('aria-expanded')==='true','開閉ボタンで手動展開できる');
+  pageButton(goBack?'次':'前').click();await settle();check(allClosed(),'元のページは閉じた状態を保持');
+  pageButton(goBack?'前':'次').click();await settle();
+  check(toggles()[0].getAttribute('aria-expanded')==='true','ページ往復後も手動の展開状態を保持');
+  toggles()[0].click();await settle();root().querySelector<HTMLButtonElement>('.panel-layer-select')!.click();await settle();
+  check(allClosed(),'閉じたコマを選択しても自動展開しない');
+  check(JSON.stringify(foldPages)===before,'開閉と選択は作品データを変えない');
+  report.textContent=`PASS ${checks.length}項目\n${checks.join('\n')}`;
+ }catch(error){report.textContent=`FAIL ${String(error)}\n${checks.join('\n')}`;}
+ finally{button.disabled=false;}
 }
 
 async function verifySelection(){

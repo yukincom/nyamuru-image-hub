@@ -79,8 +79,16 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
   },[plan,poseAttempt]);
   const draft=useRef({prompt,references,reference,correction});draft.current={prompt,references,reference,correction};
   const attempted=useRef<string|null>(null);attempted.current=attempt;
+  const canPrepareNewGeneration=!attempt||(job?['prepared','succeeded','failed','outcome_unknown'].includes(job.status):!submitted.current);
+  function prepareNewGeneration(){
+    attempted.current=null;submitted.current=false;setAttempt(null);setJob(null);setError('');setNotice('');
+  }
   const updateReferences=(value:QwenReference[])=>{draft.current.references=value;setReferences(value);};
-  const updatePrompt=(value:string)=>{draft.current.prompt=value;setPrompt(value);};
+  const updatePrompt=(value:string)=>{
+    if(working.current||!canPrepareNewGeneration||draft.current.prompt===value)return;
+    if(attempted.current)prepareNewGeneration();
+    draft.current.prompt=value;setPrompt(value);
+  };
   async function operation<T>(task:()=>Promise<T>,propagate=false):Promise<T|undefined>{
     if(working.current){if(propagate)throw new Error('処理が終わるまでお待ちください');return;}working.current=true;setBusy(true);setError('');setNotice('');
     try{return await task();}catch(e){if(alive.current)setError(e instanceof Error?e.message:'処理できませんでした');if(propagate)throw e;}
@@ -225,7 +233,7 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
       const ids=new Set(jobs.map(item=>item.jobId));
       setHistory(items=>items.filter(item=>!ids.has(item.jobId)));setSelectedJobs(items=>items.filter(id=>!ids.has(id)));
       if(job&&ids.has(job.jobId)){
-        setJob(null);setAttempt(null);submitted.current=false;
+        prepareNewGeneration();
       }
       setNotice(`${jobs.length}件の生成画像・中間データ・履歴を削除しました。`);
     });
@@ -270,7 +278,7 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
         <div class="qwen-reference-list">{references.map((reference,index)=><figure><img src={reference.image} alt={reference.label}/><figcaption>{reference.label} · {reference.characterKeys.length?'人物設定画':'描画参考'}</figcaption><button onClick={()=>updateReferences(references.filter((_,i)=>i!==index))}>外す</button></figure>)}</div>
       </fieldset>}
       {plan.contentKind==='handwritten'&&<div class="qwen-output-size"><output>{qwenGenerationSizePrompt(plan,Boolean(correction))}</output><div>生成範囲：{plan.generationArea&&!correction?'生成マスクの外接矩形':'フォルダーのキャンバス全体'} · 生成解像度：{cloud?'指定サイズ':'Qwenが縦横比に合わせて調整'}</div></div>}
-      <label class="qwen-prompt">生成指示<textarea rows={8} value={prompt} disabled={busy||Boolean(attempt)} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>
+      <label class="qwen-prompt">生成指示<textarea rows={8} value={prompt} disabled={busy||!canPrepareNewGeneration} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>
       <div class="paint-entry-actions">
         <button class="primary-button" disabled={busy||Boolean(attempt)||usesPoseImage&&!poseImage} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'Qwenで実行'}</button>
         {cloud&&<button disabled={busy} onClick={()=>void importGenerated()}>生成画像を読み込む</button>}
@@ -280,12 +288,12 @@ export default function QwenGenerationDialog({plan,adultContent=false,agentReque
       </div>
       {busy&&phase&&<p role="status">{phase}</p>}
       {notice&&<p role="status">{notice}</p>}
-      {attempt&&!busy&&!job&&!submitted.current&&<button onClick={()=>{setAttempt(null);setError('');}}>新しい生成を準備</button>}
+      {attempt&&!busy&&!job&&canPrepareNewGeneration&&<button onClick={prepareNewGeneration}>新しい生成を準備</button>}
       {error&&<p role="alert">{error}{attempt?' 送信済みの可能性があるため、生成状況を確認してください。':''}</p>}
       {job&&<section class="qwen-result" aria-live="polite"><strong>{statusLabel[job.status]}</strong>{job.error&&<p>{job.error}</p>}
         {job.documentKey&&<small>{qwenJobLocation(job)}</small>}
         {job.image&&<><img src={job.image} alt={`${job.label}の生成結果`}/><div class="paint-entry-actions"><a href={job.image} download={job.fileName}>生成画像を保存</a><button disabled={busy} onClick={()=>void insert()}>新規レイヤーとして追加</button><button disabled={busy} onClick={()=>void remove([job])}>破棄する</button></div></>}
-        {['prepared','succeeded','failed','outcome_unknown'].includes(job.status)&&<button disabled={busy} onClick={()=>{setAttempt(null);setJob(null);setNotice('');}}>新しい生成を準備</button>}
+        {canPrepareNewGeneration&&<button disabled={busy} onClick={prepareNewGeneration}>新しい生成を準備</button>}
       </section>}
       {historyScope&&<section class="qwen-history" aria-label={historyScope==='work'?'作品の生成履歴':'生成履歴'}>
         <h3>{historyScope==='work'?'作品の生成履歴':'生成履歴'}</h3>

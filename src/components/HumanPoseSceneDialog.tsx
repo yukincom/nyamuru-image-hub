@@ -53,6 +53,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
   const [error, setError] = useState(''), [preview, setPreview] = useState('');
   const [loading, setLoading] = useState(true), [attempt, setAttempt] = useState(0);
   const [companions, setCompanions] = useState<{ behind: string; ahead: string }>();
+  const [showCompanions, setShowCompanions] = useState(false);
   const [companionError, setCompanionError] = useState('');
   const [backgroundBusy, setBackgroundBusy] = useState(false), [detachBackground, setDetachBackground] = useState(false);
   const [previewBackground, setPreviewBackground] = useState(false);
@@ -221,7 +222,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
       <p class="field-note">マーカーを掴んで姿勢を作り、「確定」で保存します。ポーズの説明文は自動では書き換わりません。</p>
       {loading && <p role="status">3D素材を読み込んでいます…</p>}
       {error && <p role="alert">{error}</p>}
-      {companionError && <p role="alert">{companionError}</p>}
+      {showCompanions && companionError && <p role="alert">{companionError}</p>}
       {!loading && !draft && <><button type="button" class="secondary-button" onClick={() => setAttempt(v => v + 1)}>再読込</button>
         {value.scene?.background && !detachBackground && <button type="button" class="secondary-button" onClick={() => { setDetachBackground(true); setAttempt(v => v + 1); }}>背景との関連付けを外して開く</button>}</>}
       {backgroundBusy && <p role="status">背景を読み込んでいます…</p>}
@@ -238,7 +239,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
               const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientHeight : 1;
               camera(dollyBackgroundCamera(draft.camera, Math.exp(Math.max(-1, Math.min(1, event.deltaY * unit * .001))), .02, 10000));
             }}>
-            {companions && <img class="human-pose-companions" src={companions.behind} alt="後ろの人物の仮表示" />}
+            {showCompanions && companions && <img class="human-pose-companions" src={companions.behind} alt="後ろの人物の仮表示" />}
             <div ref={host} class={`human-pose-scene-canvas${spacePan ? ' is-space-pan' : ''}${panning ? ' is-panning' : ''}${surfacePicking ? ' is-surface-picking' : ''}`}
               tabIndex={0} role="group" aria-label="人体ポーズの操作領域" aria-describedby={`${id}-controls`}
               onContextMenu={event => event.preventDefault()}
@@ -281,7 +282,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
               }}
               onPointerUp={event => { if (jointDrag.current?.pointer === event.pointerId) finishJoint(); if (drag.current?.pointer === event.pointerId) finishPan(); }}
               onPointerCancel={cancelInteraction} onLostPointerCapture={() => { finishJoint(true); finishPan(); }} />
-            {companions && <img class="human-pose-companions" src={companions.ahead} alt="前の人物の仮表示" />}
+            {showCompanions && companions && <img class="human-pose-companions" src={companions.ahead} alt="前の人物の仮表示" />}
             <svg class="human-pose-cut-frame" viewBox="0 0 1 1" preserveAspectRatio="none" aria-label={cutFrame ? 'コマの撮影枠・枠外を30%暗く表示' : '撮影枠・枠外を30%暗く表示'}>
               <path class="human-pose-cut-shade" d={`M0 0H1V1H0Z ${humanPoseCutOutline(cutFrame)}`} fill-rule="evenodd" />
               <path class="human-pose-cut-border" d={humanPoseCutOutline(cutFrame)} vector-effect="non-scaling-stroke" />
@@ -296,7 +297,8 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             <p class="field-note" role="status">現在：{draft.body_mirror === 'mirrored' ? '左右反転した体勢' : '元の体勢'}。押すたびに切り替わります。</p>
             <p class="field-note">顔の向き・配置・カメラは変わりません。ポーズの説明文は自動で書き換えません。</p>
           </fieldset>}
-          {panelContext && <p class="field-note">相方は現在の配置で仮表示しています。人物単品の撮影・生成には含めず、コマ・ページの生成では一緒に送ります。</p>}
+          {panelContext && <><label><input type="checkbox" checked={showCompanions} onChange={event => setShowCompanions(event.currentTarget.checked)} />相方を仮表示</label>
+            {showCompanions && <p class="field-note">相方は現在の配置で仮表示しています。人物単品の撮影・生成には含めず、コマ・ページの生成では一緒に送ります。</p>}</>}
           {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
         </div>
         {draft && <aside aria-label="配置・撮影設定">

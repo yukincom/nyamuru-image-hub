@@ -17,6 +17,7 @@ import { selectHumanPose } from '../src/lib/humanPoseSelection';
 import { FIGURE_SIZE_LABELS, parseMangaYaml, toStoredMangaYaml } from '../src/lib/manga';
 import { imageSha256, prepareImageAsset, createFrameArtwork } from '../src/lib/imagePlacement';
 import { saveFigureCropAssets, deleteFigureCropAssets } from '../src/lib/figureCropStore';
+import {panelBounds} from '../src/lib/canvasGeometry';
 import type { FigureSize, ImageAsset, BBox } from '../src/types';
 import '../src/styles/global.css';
 
@@ -40,6 +41,15 @@ initial.manga.pages[0].panels=[{id:1,shape:{type:'polygon',points:[[8,12],[95,22
 initial.manga.pages[0].canvas={...initial.manga.pages[0].canvas,w:110,h:180};
 initial.manga.pages[0].panels[0].figures!.push({name:'相方',refId:'person',size:'full',action:'右手を振る',bbox:{x:57,y:55,w:25,h:70}});
 initial.manga.pages[0].panels[0].bubbles.push({text:'こんにちは！',speaker:'検証用人物',shape:'normal',bbox:{x:62,y:25,w:24,h:27}});
+// 見込み: コマ全体の白地を持つ相方でも、仮表示を初期OFFにすればモデルと操作マーカーを隠さない。
+// 合格: 初回/再度開いた時は仮表示OFF、ON/OFFで画像だけ切替。カメラ/関節を操作でき、仮表示切替で単品撮影PNGは変わらない。
+// 範囲: 実3D素材/renderer/編集UIと合成原画。画像保存は専用originのfixture、APIは模擬。実作品・モデル生成は対象外。
+if(new URLSearchParams(location.search).has('opaque-companion')){
+  const asset=await prepareImageAsset(new File([blob],'opaque-companion.png',{type:'image/png'}));
+  await saveFigureCropAssets([{id:asset.storageId,blob}]);initial.manga.image_assets=[asset];
+  const panel=initial.manga.pages[0].panels[0],companion=panel.figures![1];companion.bbox=panelBounds(panel);
+  companion.artwork=createFrameArtwork(asset,companion.bbox);
+}
 const supervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1},bridge={service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3};
 let lastPayload:Record<string,any>={},report=()=>{},requests=0;
 const job=(status:string)=>({profile:QWEN_GENERATION_PROFILE,job_id:lastPayload.job_id,status,request_sha256:'a'.repeat(64),label:'検証用人物',width:512,height:1024,
@@ -136,7 +146,7 @@ function Fixture(){
     <button onClick={()=>void verifyExport()}>画像書き出しの画素を検証</button>
     <button onClick={()=>{const next=parseMangaYaml(toStoredMangaYaml(doc));if(JSON.stringify(next.manga.pages[0].panels[0].figures![0].human_pose)!==JSON.stringify(figure.human_pose))throw new Error('保存値が変わりました');setDoc(next);setSummary('OMNY保存と再読込でポーズ・撮影範囲・編集文を保持');}}>保存して再読込</button>
     <div aria-label="人物設定の撮影範囲"><label>撮影範囲</label><FigureSizePicker value={figure.size??'bust-up'} onChange={size=>{const next=structuredClone(doc);next.manga.pages[0].panels[0].figures![0].size=size;setDoc(next);}}/></div>
-    <FigureHumanPoseEditor value={figure.human_pose} aspect={.5} framingSize={figure.size} framingLabel={FIGURE_SIZE_LABELS[figure.size!]} cutFrame={humanPosePanelCutFrame(currentPanel,figure.bbox!)} panelContext={{panel:currentPanel,selectedIndex:0,assets:[],dpi:100}}
+    <FigureHumanPoseEditor value={figure.human_pose} aspect={.5} framingSize={figure.size} framingLabel={FIGURE_SIZE_LABELS[figure.size!]} cutFrame={humanPosePanelCutFrame(currentPanel,figure.bbox!)} panelContext={{panel:currentPanel,selectedIndex:0,assets:doc.manga.image_assets??[],dpi:100}}
       onChange={(value,confirmedFramingSize)=>{const next=structuredClone(doc),figure=next.manga.pages[0].panels[0].figures![0];figure.human_pose=value;if(confirmedFramingSize)figure.size=confirmedFramingSize;setDoc(next);}}/>
     <div style="height:500px;display:grid;grid-template-rows:minmax(0,1fr);position:relative;border:1px solid #aaa;margin:12px 0;">
       <MangaCanvas title="生成対象の検証" author="" page={doc.manga.pages[0]} pageCount={1} zoomPercent={null} onZoomPercentChange={noChange}
