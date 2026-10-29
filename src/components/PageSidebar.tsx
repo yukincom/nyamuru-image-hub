@@ -24,7 +24,7 @@ export default function PageSidebar(props: Props) {
   return (
     <aside id="mobile-pages-pane" class={`page-sidebar ${collapsed ? 'is-collapsed' : ''}`}>
       <div class="sidebar-boundary-rail">
-        <button class="collapse-button sidebar-edge-toggle" onClick={props.onCollapse} aria-label={collapsed ? 'ページ一覧を開く' : 'ページ一覧を閉じる'} title={collapsed ? 'ページ一覧を開く' : 'ページ一覧を閉じる'}>
+        <button class="collapse-button sidebar-edge-toggle" onClick={props.onCollapse} aria-label={collapsed ? 'ページ一覧を開く' : 'ページ一覧を閉じる'} >
           {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
         </button>
       </div>
@@ -46,7 +46,7 @@ export default function PageSidebar(props: Props) {
                 onDragLeave={() => { if (overIndex === index) setOverIndex(null); }}
                 onDrop={(event) => { event.preventDefault(); if (dragIndex !== null && dragIndex !== index) props.onReorderPage(dragIndex, index); resetDrag(); }}
                 onDragEnd={resetDrag}
-                title="ドラッグでページ順を入れ替え"
+
                 style={{ gridRow: gridPosition.row, gridColumn: gridPosition.column }}
                 key={`${page.page}-${index}`}
               >
@@ -60,8 +60,8 @@ export default function PageSidebar(props: Props) {
                 </div>
                 <strong class="page-card-number">{String(index + 1).padStart(2, '0')}</strong>
                 <span class="page-move">
-                  <button type="button" disabled={index === 0} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index - 1); }} aria-label={`ページ ${index + 1} を上へ移動`} title="上へ移動"><ChevronUp size={13} /></button>
-                  <button type="button" disabled={index === manga.pages.length - 1} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index + 1); }} aria-label={`ページ ${index + 1} を下へ移動`} title="下へ移動"><ChevronDown size={13} /></button>
+                  <button type="button" disabled={index === 0} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index - 1); }} aria-label={`ページ ${index + 1} を上へ移動`} ><ChevronUp size={13} /></button>
+                  <button type="button" disabled={index === manga.pages.length - 1} onClick={(event) => { event.stopPropagation(); props.onReorderPage(index, index + 1); }} aria-label={`ページ ${index + 1} を下へ移動`} ><ChevronDown size={13} /></button>
                 </span>
               </div>
             );

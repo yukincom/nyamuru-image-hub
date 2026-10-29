@@ -1,6 +1,6 @@
 ---
 import Layout from './Layout.astro';
-import { version as appVersion, versionCode as appVersionCode } from '../../package.json';
+import { version as appVersion } from '../../package.json';
 
 interface Props {
   title: string;
@@ -30,7 +30,7 @@ const links = [
     <footer class="docs-public-footer">
       <span>© 2026 sa-san10</span>
       <a href="/licenses/">MIT License</a>
-      <a href="/changelog/" title={`バージョンコード ${appVersionCode}`}>v{appVersion}</a>
+      <a href="/changelog/">v{appVersion}</a>
     </footer>
   </main>
 </Layout>

@@ -24,7 +24,7 @@ export function TextListEditor({ values, placeholder, onChange, compactAdd = fal
       <input value={value} placeholder={placeholder} onInput={(event) => { const next = [...values]; next[index] = event.currentTarget.value; onChange(next); }} />
       <button type="button" onClick={() => onChange(values.filter((_, itemIndex) => itemIndex !== index))} aria-label="削除">×</button>
     </div>)}
-    <button type="button" class={`inline-add ${compactAdd ? 'compact-add' : ''}`} aria-label="項目を追加" title="項目を追加" onClick={() => onChange([...values, ''])}>{compactAdd ? '＋' : '＋ 項目を追加'}</button>
+    <button type="button" class={`inline-add ${compactAdd ? 'compact-add' : ''}`} aria-label="項目を追加"  onClick={() => onChange([...values, ''])}>{compactAdd ? '＋' : '＋ 項目を追加'}</button>
   </div>;
 }
 

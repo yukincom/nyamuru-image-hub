@@ -104,8 +104,8 @@ export default function DownloadableMarkdownGuide({ readmeMarkdown, markdown, ey
       <div><span class="eyebrow">{eyebrow}</span><h2>{title}</h2><p>{description}</p></div>
       <div class="document-head-actions markdown-resource-actions">
         <DocsLangToggle lang={lang} onChange={onChangeLang} />
-        <button type="button" class="secondary-button" title={copyLabel} aria-label={copyLabel} onClick={handleCopy}><ClipboardCopy size={16} /><span>{en ? 'Copy content' : '内容をコピー'}</span></button>
-        <button type="button" class="primary-button" title={downloadLabel} aria-label={downloadLabel} onClick={handleDownload}><Download size={16} /><span>{en ? 'Save Markdown' : 'Markdown保存'}</span></button>
+        <button type="button" class="secondary-button"  aria-label={copyLabel} onClick={handleCopy}><ClipboardCopy size={16} /><span>{en ? 'Copy content' : '内容をコピー'}</span></button>
+        <button type="button" class="primary-button"  aria-label={downloadLabel} onClick={handleDownload}><Download size={16} /><span>{en ? 'Save Markdown' : 'Markdown保存'}</span></button>
       </div>
     </div>
     <div class="document-editor-body schema-markdown-wrap">

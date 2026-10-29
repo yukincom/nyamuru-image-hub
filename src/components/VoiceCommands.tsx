@@ -30,7 +30,7 @@ export default function VoiceCommands(props:Props){
   useEffect(()=>{if(container)(props.portalTarget??document.body).appendChild(container);},[container,props.portalTarget]);
   useEffect(()=>()=>container?.remove(),[container]);
   const view=<aside class={`agent-popup ${props.open?'is-open':'is-collapsed'} ${props.portalTarget?'is-generation':''}`}  aria-label={props.profile.name} data-voice-command>
-    <button type="button" class="agent-popup-heading" aria-expanded={props.open} aria-controls="agent-popup-body" title={props.open?'折りたたんで履歴を消去':'開く'} onClick={props.onToggle}>
+    <button type="button" class="agent-popup-heading" aria-expanded={props.open} aria-controls="agent-popup-body" aria-label={props.open?'折りたたんで履歴を消去':'開く'} onClick={props.onToggle}>
       {!props.open&&<AgentAvatar profile={props.profile}/>}<strong>{props.profile.name}</strong><span class="agent-fold" aria-hidden="true">{props.open?'△':'▽'}</span>
     </button>
     {props.open&&<AgentConversation {...props}/>}
@@ -150,10 +150,10 @@ function AgentConversation(props:Props){
     <p class={`agent-voice-hint ${quickActive?'is-handsfree':''}`}>{quickActive?`軽量対話オン · 無音${silenceMs/1000}秒で自動送信`:manualActive?'手動入力 · 停止してから確認・送信':'軽量対話は自動送信 · 手動入力は確認して送信'}</p>
     <div class="agent-composer-row"><AgentAvatar profile={props.profile}/><form class="agent-composer" onSubmit={submit}>
       <textarea aria-label="メッセージ" rows={2} maxLength={4000} value={text} disabled={generationBusy} placeholder={props.generation?'追加の指示、または「生成して」':'話しかける…'} onInput={e=>setText(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void submit(e);}}}/>
-      <div class="agent-composer-footer"><small class="agent-model" title={model}>{model}</small>
-        <button type="button" class={`agent-mic agent-handsfree ${quickActive?'is-active':''}`} disabled={!quickActive&&(generationBusy||recording||processing)} aria-label={quickActive?'軽量対話をオフ':'軽量対話をオン（自動送信）'} title={quickActive?'軽量対話をオフ':'軽量対話をオン（自動送信）'} aria-pressed={quickActive} onClick={()=>toggleVoice('quick')}><VoiceInputIcon mode="quick"/></button>
-        <button type="button" class={`agent-mic ${manualActive?'is-active':''}`} disabled={quickActive||generationBusy||(!manualActive&&processing)} aria-label={manualActive?'手動入力を停止して文字起こし':'手動入力を開始'} title={manualActive?'手動入力を停止して文字起こし':'手動入力を開始'} aria-pressed={manualActive} onClick={()=>toggleVoice('manual')}>{manualActive?<Square size={14}/>:<VoiceInputIcon mode="manual"/>}</button>
-        <button type="submit" class="agent-send" aria-label="送信" title="送信" disabled={generationBusy||recording||processing||!text.trim()}><ArrowUp size={18}/></button>
+      <div class="agent-composer-footer"><small class="agent-model" >{model}</small>
+        <button type="button" class={`agent-mic agent-handsfree ${quickActive?'is-active':''}`} disabled={!quickActive&&(generationBusy||recording||processing)} aria-label={quickActive?'軽量対話をオフ':'軽量対話をオン（自動送信）'}  aria-pressed={quickActive} onClick={()=>toggleVoice('quick')}><VoiceInputIcon mode="quick"/></button>
+        <button type="button" class={`agent-mic ${manualActive?'is-active':''}`} disabled={quickActive||generationBusy||(!manualActive&&processing)} aria-label={manualActive?'手動入力を停止して文字起こし':'手動入力を開始'}  aria-pressed={manualActive} onClick={()=>toggleVoice('manual')}>{manualActive?<Square size={14}/>:<VoiceInputIcon mode="manual"/>}</button>
+        <button type="submit" class="agent-send" aria-label="送信"  disabled={generationBusy||recording||processing||!text.trim()}><ArrowUp size={18}/></button>
       </div>
     </form></div>
     {(generationBusy||processing||recording||status)&&<p class="agent-status" role="status">{props.generation?.busy?(props.generation.phase||'生成を準備中…'):busy?'考え中…':recording&&recordingMode.current==='manual'&&status!=='マイクの使用を確認しています…'

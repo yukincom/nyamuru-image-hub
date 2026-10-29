@@ -52,7 +52,7 @@ export default function CanvasTextToolbar({style,typingStyle,defaultFont,fontFam
         {label:'イタリック',icon:'I',key:'italic',active:inline.italic,patch:{italic:!inline.italic}},
         {label:'下線',icon:'U',key:'underline',active:inline.underline,patch:{underline:!inline.underline}},
         {label:'取り消し線',icon:'S',key:'strikethrough',active:inline.strikethrough,patch:{strikethrough:!inline.strikethrough}},
-      ] as const).map(control=><button type="button" class={`canvas-text-style-button is-${control.key}`} aria-label={control.label} title={control.label} aria-pressed={control.active===null?'mixed':Boolean(control.active)} disabled={disabled}
+      ] as const).map(control=><button type="button" class={`canvas-text-style-button is-${control.key}`} aria-label={control.label}  aria-pressed={control.active===null?'mixed':Boolean(control.active)} disabled={disabled}
         onPointerDown={event=>event.preventDefault()} onClick={()=>{if(!disabled)changeStyle(control.patch,'selection-or-typing');}}><span aria-hidden="true">{control.icon}</span></button>)}
     </div></div>
     <div class="canvas-text-style canvas-text-alignment"><span>行揃え</span><div class="canvas-text-style-buttons" role="group" aria-label="行揃え">
@@ -60,7 +60,7 @@ export default function CanvasTextToolbar({style,typingStyle,defaultFont,fontFam
         {value:'left',label:'左寄せ',path:'M3 5h18M3 10h12M3 15h18M3 20h12'},
         {value:'center',label:'中央寄せ',path:'M3 5h18M6 10h12M3 15h18M6 20h12'},
         {value:'right',label:'右寄せ',path:'M3 5h18M9 10h12M3 15h18M9 20h12'},
-      ] as const).map(control=><button type="button" class="canvas-text-style-button" aria-label={control.label} title={control.label} aria-pressed={(style.textAlign??'left')===control.value} disabled={disabled}
+      ] as const).map(control=><button type="button" class="canvas-text-style-button" aria-label={control.label}  aria-pressed={(style.textAlign??'left')===control.value} disabled={disabled}
         onPointerDown={event=>event.preventDefault()} onClick={()=>{if(!disabled)changeStyle({textAlign:control.value});}}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d={control.path}/></svg></button>)}
     </div></div>
     <label>方向<select aria-label="文字の方向" disabled={disabled} value={style.orientation??'vertical'} onChange={e=>changeStyle({orientation:e.currentTarget.value as 'vertical'|'horizontal'})}><option value="vertical">縦</option><option value="horizontal">横</option></select></label>

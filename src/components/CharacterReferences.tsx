@@ -402,7 +402,7 @@ export default function CharacterReferences({ document, character, onChange, onN
       const taskId = material.localId ?? material.catalog_id ?? material.source_image!.asset_id;
       return <article class={`character-reference-card ${primary ? 'is-primary' : ''}`} key={taskId}>
         <div class="character-reference-thumb"><ReferenceThumbnail document={document} character={character} material={material} />{primary && <span class="character-reference-primary"><Star size={11} />代表</span>}</div>
-        <div class="character-reference-file-name" title={material.source_image?.original_name ?? material.key}>
+        <div class="character-reference-file-name" >
           {material.source_image?.original_name ?? material.key}
         </div>
         <select value={material.view ?? 'other'} onChange={(event) => patchDocument((draft) => {

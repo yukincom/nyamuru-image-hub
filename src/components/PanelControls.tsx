@@ -13,6 +13,6 @@ export default function PanelControls(p:Props){
     <label class="panel-snap-setting"><input type="checkbox" checked={p.panelSync} onChange={p.onTogglePanelSync}/>コマシンクロ</label>
     <div class="panel-control-actions"><button onClick={p.onMerge} disabled={p.painting||p.selectedCount<2}><Combine size={15}/>合体</button>
       <select disabled={p.painting} aria-label="コマ分割" value={p.splitDirection} onChange={e=>p.onSplitDirection(e.currentTarget.value as Props['splitDirection'])}><option value="vertical">タテ分割</option><option value="horizontal">ヨコ分割</option></select>
-      <button disabled={p.painting} onClick={p.onSplit} title="コマ分割" aria-label="コマ分割を適用"><Scissors size={15}/></button></div>
+      <button disabled={p.painting} onClick={p.onSplit}  aria-label="コマ分割を適用"><Scissors size={15}/></button></div>
   </div></details>;
 }

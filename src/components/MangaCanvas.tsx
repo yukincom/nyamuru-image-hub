@@ -212,7 +212,7 @@ export function BubbleText({ text, font, shape, lengthClass, boxW, boxH, fitEpoc
     return () => document.fonts.removeEventListener('loadingdone', layout);
   }, [text, font, shape, lengthClass, boxW, boxH, fitEpoch, position.x, position.y, style, runs]);
   const interactive=Boolean(onEdit);
-  return <span ref={ref} class={`vertical-text bubble-text ${lengthClass} has-fixed-text-size ${review?'is-text-review':''} ${interactive?'is-interactive':''} ${onMoveFrame?'has-move-frame':''}`} data-review={review||undefined} title={review?'このセリフ本文は読取結果の確認が必要です。文字を編集すると通常色へ戻ります。':undefined} style={{ fontFamily: bubbleCssFontFamily(font),...textStyleCss({...style,fontSize:style?.fontSize??15},paperWidth,font) }}>
+  return <span ref={ref} class={`vertical-text bubble-text ${lengthClass} has-fixed-text-size ${review?'is-text-review':''} ${interactive?'is-interactive':''} ${onMoveFrame?'has-move-frame':''}`} data-review={review||undefined}  style={{ fontFamily: bubbleCssFontFamily(font),...textStyleCss({...style,fontSize:style?.fontSize??15},paperWidth,font) }}>
     <span class="bubble-text-content"
       onPointerDown={interactive?event=>event.stopPropagation():undefined}
       onClick={interactive?event=>{event.stopPropagation();onEdit?.();}:undefined}
@@ -1338,7 +1338,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           else nudgeElement(event, {x:0,y:0,w:canvas.w,h:canvas.h}, selection, box);
         }}
         key={figure.analogImport?.sourceRegionId ?? `figure-${figureIndex}`}
-        title={`${figureDisplayLabel(figure,figureIndex)}${figureClass==='is-unassigned' ? '・未割当' : ''}${figure.analogImport?.analysisReviewMessage ? `・要確認：${figure.analogImport.analysisReviewMessage}` : ''}（ドラッグで移動）`}
+        aria-label={figureDisplayLabel(figure,figureIndex)}
         tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
         <span class="figure-native-reference" style={nativeStyle(box,referenceBox)}>{cropAssetId && <StoredCropImage assetId={cropAssetId} persistentAsset={figure.analogImport?.persistentAsset} className="figure-crop-image" />}
@@ -1364,7 +1364,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         onClick={(event) => { event.stopPropagation(); if(!isLocked){onSelectElement(selection, panelIndex);if(textTool)onEditScreenText?.(panelIndex,screenTextIndex);} }}
         onKeyDown={event=>{if(isLocked)return;nudgeElement(event,panelBounds(panel),selection,box);}}
         key={`screen-text-${screenTextIndex}`}
-        title={`${textDisplayLabel(panel.bubbles.length+screenTextIndex)}（ドラッグで移動・吹き出し素材を重ねられます）`}
+        aria-label={textDisplayLabel(panel.bubbles.length+screenTextIndex)}
         tabIndex={!isLocked&&activePanel === panelIndex ? 0 : -1}
       >
         <span class={`screen-text-body ${screenText.orientation === 'vertical' ? 'vertical-text' : ''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
@@ -1491,7 +1491,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex);if(textTool&&!backgroundEdit)onEditBubble?.({panelIndex,bubbleIndex,overlay:false}); }}
       onContextMenu={event=>openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex)}
       onKeyDown={event=>{if(elementLocked(selection,panelIndex))return;if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
-      title={`${textDisplayLabel(bubbleIndex)}（ドラッグで移動）`}
+      aria-label={textDisplayLabel(bubbleIndex)}
       tabIndex={!elementLocked(selection,panelIndex)&&activePanel === panelIndex ? 0 : -1}
     >
       <span class="bubble-native-reference" style={referenceStyle}><BubbleShapeSvg
@@ -1541,7 +1541,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onContextMenu={event => openGenerationMenu(event, 0, figureIndex, true)}
       onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, 0, figureIndex, true); else nudgeElement(event, paperBounds, selection, box); }}
       key={figure.analogImport?.sourceRegionId ?? `page-overlay-figure-${figureIndex}`}
-      title={`${figureDisplayLabel(figure,figureIndex)}・ページ前景${figure.analogImport?.analysisReviewMessage ? `・要確認：${figure.analogImport.analysisReviewMessage}` : ''}（ドラッグで移動）`}
+      aria-label={figureDisplayLabel(figure,figureIndex)}
       tabIndex={!elementLocked(selection)&&activePanel >= 0 ? 0 : -1}
     >
       <span class="figure-native-reference" style={nativeStyle(box,referenceBox)}>{cropAssetId && <StoredCropImage assetId={cropAssetId} persistentAsset={figure.analogImport?.persistentAsset} className="figure-crop-image" />}
@@ -1564,7 +1564,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       style={{...paperBoxStyle(box),'--text-tool-cursor':textToolCursor(textStyleOf(screenText,'screen_text'))}} onPointerDown={event=>startInteraction(event,null,selection,box,'move')}
       onClick={event=>{event.stopPropagation();onSelectElement(selection);if(textTool)onEditScreenText?.(0,index,true);}}
       onKeyDown={event=>{nudgeElement(event,paperBounds,selection,box);}}
-      title={`${textDisplayLabel((overlay?.bubbles?.length??0)+index)}（ページ前景）`} tabIndex={activePanel>=0?0:-1}>
+      aria-label={textDisplayLabel((overlay?.bubbles?.length??0)+index)} tabIndex={activePanel>=0?0:-1}>
       <span class={`screen-text-body ${screenText.orientation==='vertical'?'vertical-text':''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
     </button></div>;
   });
@@ -1592,7 +1592,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
       onClick={(event) => { event.stopPropagation(); onSelectElement(selection);if(textTool)onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}); }}
       onContextMenu={event=>openGenerationMenu(event,0,undefined,true,bubbleIndex)}
       onKeyDown={event=>{if(elementLocked(selection))return;if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,0,undefined,true,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
-      title={`ページ前景${textDisplayLabel(bubbleIndex)}（ドラッグで移動）`}
+      aria-label={textDisplayLabel(bubbleIndex)}
       tabIndex={!elementLocked(selection)&&activePanel >= 0 ? 0 : -1}
     >
       <span class="bubble-native-reference" style={referenceStyle}><BubbleShapeSvg
@@ -1658,7 +1658,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
     const above = target.y - 9*screenUnit - labelH;
     const labelY = above < 1 ? target.y + 9*screenUnit : above;
     return <svg class="bubble-tail-editor-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`}>
-      {root&&<><rect class="bubble-tail-root-dot" x={root.x-3.5*screenUnit} y={root.y-3.5*screenUnit} width={7*screenUnit} height={7*screenUnit} rx={screenUnit}/><circle class="bubble-tail-root-hit" cx={root.x} cy={root.y} r={8*screenUnit} onPointerDown={event=>startBubbleTailRootDrag(event,selectedElement,bubbleBox)}><title>ドラッグしてしっぽの根元を吹き出しの輪郭上で移動</title></circle></>}
+      {root&&<><rect class="bubble-tail-root-dot" x={root.x-3.5*screenUnit} y={root.y-3.5*screenUnit} width={7*screenUnit} height={7*screenUnit} rx={screenUnit}/><circle class="bubble-tail-root-hit" cx={root.x} cy={root.y} r={8*screenUnit} onPointerDown={event=>startBubbleTailRootDrag(event,selectedElement,bubbleBox)}></circle></>}
       <circle class="bubble-tail-target-dot" cx={target.x} cy={target.y} r={3.5*screenUnit} />
       <circle
         class="bubble-tail-target-hit"
@@ -1666,7 +1666,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         cy={target.y}
         r={8*screenUnit}
         onPointerDown={(event) => startBubbleTailDrag(event, selectedElement, speakerBox)}
-      ><title>ドラッグしてしっぽの先端を口元の方向へ、適切な長さに移動</title></circle>
+      ></circle>
       <rect class="anchor-indicator-label-bg" x={labelX} y={labelY} width={labelW} height={labelH} rx={3*screenUnit} />
       <text class="anchor-indicator-text" style={{fontSize:`${12*screenUnit}px`}} x={labelX + labelW / 2} y={labelY + 12*screenUnit}>{bubble.speaker}</text>
     </svg>;
@@ -1776,7 +1776,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           aria-pressed={panelSelectionVisible&&selectedPanels.includes(panelIndex)}
           tabIndex={0}
           aria-label={`${panelDisplayLabel(panel.id)} を編集`}
-          title={panel.action ? `${panelDisplayLabel(panel.id)}: ${panel.action}` : panelDisplayLabel(panel.id)}
+
         >
 
         </div>
@@ -1895,11 +1895,11 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           return <g class={`panel-edge-handle ${activeEdgeIndex === edgeIndex ? 'is-active' : ''}`} key={`edge-${edgeIndex}`}>
             <line class="panel-edge-guide" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} />
             <line class="panel-edge-hit" x1={point[0]} y1={point[1]} x2={next[0]} y2={next[1]} onPointerDown={(event) => startPanelEdgeDrag(event, edgeIndex)}>
-              <title>辺 {edgeIndex + 1} を平行移動（Shiftで開始位置基準の水平・垂直に固定）</title>
+
             </line>
             <circle class="panel-edge-midpoint" cx={midpoint[0]} cy={midpoint[1]} r={2.5*screenUnit} />
             <circle class="panel-edge-midpoint-hit" cx={midpoint[0]} cy={midpoint[1]} r={7*screenUnit} onPointerDown={(event)=>startPanelEdgeDrag(event,edgeIndex)}>
-              <title>辺 {edgeIndex + 1} の中央つまみ（辺全体を移動）</title>
+
             </circle>
           </g>;
         })}
@@ -1912,14 +1912,14 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
               if (selectedPanel.shape.type === 'rect' && event.shiftKey) startVertexDrag(event, vertexIndex);
               else startPanelResize(event, handle);
             }}>
-              <title>{selectedPanel.shape.type === 'rect' ? 'ドラッグでリサイズ・Shift+ドラッグで頂点を開始位置基準の水平または垂直移動' : 'ドラッグでリサイズ'}</title>
+
             </rect>
           </g>;
         })}
         {!panelGeometryLocked(selectedPanel)&&selectedPanel.shape.type === 'polygon' && selectedPanel.shape.points.map(([x, y], vertexIndex) => <g class="panel-vertex-handle" key={`vertex-${vertexIndex}`}>
           <circle class="panel-vertex-dot" cx={x} cy={y} r={3.5*screenUnit} />
           <rect class="panel-resize-hit" x={x - 7*screenUnit} y={y - 7*screenUnit} width={14*screenUnit} height={14*screenUnit} onPointerDown={(event) => startVertexDrag(event, vertexIndex)}>
-            <title>頂点 {vertexIndex + 1} を移動（Shiftで開始位置基準の水平・垂直に固定）</title>
+
           </rect>
         </g>)}
         {renderAnchorIndicator()}
@@ -1938,10 +1938,10 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         // Pointer clicks return shortcuts to the canvas; keyboard activation keeps focus.
         if(event.detail>0&&event.target instanceof Element)event.target.closest<HTMLButtonElement>('button')?.blur();
       }}>
-        <button type="button" class="zoom-fit" aria-pressed={zoomPercent===null} onClick={()=>{zoomPercentRef.current=null;onZoomPercentChange(null);fitPaper(true);}} title="紙面全体を表示">全体</button>
-        <button type="button" onClick={() => zoomAt(1 / 1.25)} aria-label="縮小" title="縮小（⌘/Ctrl − / ホイール / 二本指ピンチ）"><ZoomOut size={14} /></button>
-        <button type="button" class="zoom-reset" onClick={resetZoom} aria-label="100%表示" title="100%表示（出力画像の1pxを画面の1pxで表示）">{zoomPercent??fitPercent}%</button>
-        <button type="button" onClick={() => zoomAt(1.25)} aria-label="拡大" title="拡大（⌘/Ctrl ＋ / ホイール / 二本指ピンチ）"><ZoomIn size={14} /></button>
+        <button type="button" class="zoom-fit" aria-pressed={zoomPercent===null} onClick={()=>{zoomPercentRef.current=null;onZoomPercentChange(null);fitPaper(true);}} >全体</button>
+        <button type="button" onClick={() => zoomAt(1 / 1.25)} aria-label="縮小" ><ZoomOut size={14} /></button>
+        <button type="button" class="zoom-reset" onClick={resetZoom} aria-label="100%表示" >{zoomPercent??fitPercent}%</button>
+        <button type="button" onClick={() => zoomAt(1.25)} aria-label="拡大" ><ZoomIn size={14} /></button>
       </div>
       {generationMenu && typeof window !== 'undefined' && createPortal(<>
         <button class="canvas-generation-menu-dismiss" aria-label="操作メニューを閉じる" onClick={() => setGenerationMenu(null)} />

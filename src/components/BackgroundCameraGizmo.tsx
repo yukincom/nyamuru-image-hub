@@ -5,7 +5,7 @@ import { backgroundAxisProjection, backgroundCameraAtAxis, orbitBackgroundCamera
 type Camera=BackgroundCapture['camera'];
 export default function BackgroundCameraGizmo({camera,pivot,disabled,onChange}:{camera:Camera;pivot?:[number,number,number];disabled:boolean;onChange:(camera:Camera)=>void}){
   const drag=useRef<{pointer:number;x:number;y:number;camera:Camera;pivot?:[number,number,number];axis?:string;moved:boolean}|null>(null);
-  return <svg class="background3d-gizmo" viewBox="0 0 144 144" role="group" aria-label="カメラの向き" data-tool-label="カメラの向き" data-tool-help="矢印をクリックすると軸方向から表示します。ドラッグで自由に回転します。" aria-disabled={disabled}
+  return <svg class="background3d-gizmo" viewBox="0 0 144 144" role="group" aria-label="カメラの向き" data-tool-label="カメラの向き"  aria-disabled={disabled}
     onPointerDown={event=>{
       if(disabled||event.button!==0)return;event.preventDefault();event.stopPropagation();
       drag.current={pointer:event.pointerId,x:event.clientX,y:event.clientY,camera,pivot,axis:(event.target as Element).closest('[data-axis]')?.getAttribute('data-axis')??undefined,moved:false};

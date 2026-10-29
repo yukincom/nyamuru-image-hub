@@ -85,8 +85,8 @@ export default function NyamurutanGuide({ lang, onChangeLang, onNotify }: Props)
         : 'NDMデータモデルの妖精にして公式マスコット。デザイン・設定ともCC BY 4.0で、「にゃむるたん © sa-san10 / CC BY 4.0」のクレジットを書けば誰でも自由に使えます。'}</p></div>
       <div class="document-head-actions markdown-resource-actions">
         <DocsLangToggle lang={lang} onChange={onChangeLang} />
-        <button type="button" class="secondary-button" title={copyLabel} aria-label={copyLabel} onClick={copyMarkdown}><ClipboardCopy size={16} /><span>{en ? 'Copy setting' : '設定をコピー'}</span></button>
-        <button type="button" class="primary-button" title={downloadLabel} aria-label={downloadLabel} onClick={downloadMarkdown}><Download size={16} /><span>{en ? 'Save setting' : '設定を保存'}</span></button>
+        <button type="button" class="secondary-button"  aria-label={copyLabel} onClick={copyMarkdown}><ClipboardCopy size={16} /><span>{en ? 'Copy setting' : '設定をコピー'}</span></button>
+        <button type="button" class="primary-button"  aria-label={downloadLabel} onClick={downloadMarkdown}><Download size={16} /><span>{en ? 'Save setting' : '設定を保存'}</span></button>
       </div>
     </div>
     <div class="document-editor-body schema-markdown-wrap">
@@ -94,7 +94,7 @@ export default function NyamurutanGuide({ lang, onChangeLang, onNotify }: Props)
         {IMAGES.map((image) => <figure class="nyamurutan-figure" key={image.fileName}>
           <div class="nyamurutan-figure-frame">
             <img src={image.url} alt={en ? image.alt.en : image.alt.ja} loading="lazy" />
-            <button type="button" class="nyamurutan-image-download" title={en ? `Download the ${image.title.en}` : `${image.title.ja}をダウンロード`} aria-label={en ? `Download the ${image.title.en}` : `${image.title.ja}をダウンロード`} onClick={() => downloadImage(image)}><Download size={15} /><span>{en ? 'Download' : 'ダウンロード'}</span></button>
+            <button type="button" class="nyamurutan-image-download"  aria-label={en ? `Download the ${image.title.en}` : `${image.title.ja}をダウンロード`} onClick={() => downloadImage(image)}><Download size={15} /><span>{en ? 'Download' : 'ダウンロード'}</span></button>
           </div>
           <figcaption><strong>{en ? image.title.en : image.title.ja}</strong><span>{en ? image.caption.en : image.caption.ja}</span></figcaption>
         </figure>)}

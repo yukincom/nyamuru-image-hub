@@ -223,7 +223,7 @@ export class Background3dRenderer {
     this.renderer.setClearColor(0x000000,0);this.renderer.setPixelRatio(1);
     this.material=new MeshBasicMaterial({side:DoubleSide,blending:NoBlending});
     this.scope.type='button';this.scope.className='background3d-scope';this.scope.hidden=true;
-    this.scope.setAttribute('aria-label','注目点をドラッグして移動');this.scope.title='見えている表面をドラッグして回転の中心を移動（矢印キーでも移動）';
+    this.scope.setAttribute('aria-label','注目点をドラッグして移動');
     this.scope.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M24 16a8 8 0 1 1-16 0 8 8 0 0 1 16 0M3 16h26M16 3v26" fill="none" stroke="white" stroke-width="4"/><path d="M24 16a8 8 0 1 1-16 0 8 8 0 0 1 16 0M3 16h26M16 3v26" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
     document.body.append(this.scope);
     this.scene.add(this.group);this.controls=new OrbitControls(this.camera,this.canvas);this.controls.enableDamping=false;this.controls.enableRotate=false;this.controls.enablePan=false;this.controls.touches.ONE=null;

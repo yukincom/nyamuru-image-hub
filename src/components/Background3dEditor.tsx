@@ -121,8 +121,8 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
   const sunlight=light.preset!=='indoor';
   const chooseFocus=()=>{pickingMode.current='object';setPicking(value=>!value);setFocusHint('');};
   const choosePoint=()=>{pickingMode.current='point';setPicking(true);setFocusHint('緑の輪郭の内側をクリックするか、緑のスコープをドラッグして回転の中心を選んでください。');};
-  const range=(label:string,key:'outlineWidth'|'detailWidth'|'creaseAngle'|'detail'|'lineGap'|'blackAmount'|'toneThreshold',min:number,max:number,step:number,suffix='',description='')=><label>{caption(label,description)}<span><input aria-label={label} type="range" min={min} max={max} step={step} value={config[key]??45} disabled={busy} onInput={e=>change({[key]:Number(e.currentTarget.value)})}/><output>{Math.round((config[key]??45)*100)/100}{suffix}</output></span></label>;
-  const lightRange=(label:string,key:'intensity'|'bounce',min:number,max:number,ariaLabel=label,description='')=><label>{caption(label,description)}<span>
+  const range=(label:string,key:'outlineWidth'|'detailWidth'|'creaseAngle'|'detail'|'lineGap'|'blackAmount'|'toneThreshold',min:number,max:number,step:number,suffix='')=><label>{caption(label)}<span><input aria-label={label} type="range" min={min} max={max} step={step} value={config[key]??45} disabled={busy} onInput={e=>change({[key]:Number(e.currentTarget.value)})}/><output>{Math.round((config[key]??45)*100)/100}{suffix}</output></span></label>;
+  const lightRange=(label:string,key:'intensity'|'bounce',min:number,max:number,ariaLabel=label)=><label>{caption(label)}<span>
     <input aria-label={ariaLabel} type="range" min={min/100} max={max/100} step=".01" value={light[key]} onInput={e=>change({light:{...config.light,[key]:Number(e.currentTarget.value)}})}/>
     <span class="background3d-percent"><input aria-label={`${ariaLabel}（%）`} type="number" min={min} max={max} step="1" value={Math.round(light[key]*100)}
       onInput={e=>{if(e.currentTarget.value!==''&&e.currentTarget.validity.valid)change({light:{...config.light,[key]:e.currentTarget.valueAsNumber/100}});}}
@@ -133,8 +133,8 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
     try{renderer.current.configure(current.current);const result=await renderer.current.capture();await onCapture({...result,stageImports});}
     catch(error){setError(error instanceof Error?error.message:String(error));setBusy(false);}
   }
-  const help=(label:string,text:string)=>({'data-tool-label':label,'data-tool-help':text});
-  const caption=(label:string,text='')=>text?<span class="background3d-help-label" tabIndex={0} {...help(label,text)}>{label}</span>:label;
+
+  const caption=(label:string)=><span data-tool-label={label}>{label}</span>;
   const standard=background3dDefaults(applyBackground3dDefaults(defaultBackgroundCapture(config.frame,paint.dpi),defaults,paint.dpi));
   const onOff=(value:boolean)=>value?'オン':'オフ',number=(value:number)=>Math.round(value*100)/100;
   const savedValues=[
@@ -148,9 +148,9 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
   const preferences=(group:Background3dDefaultGroup,label:string)=>{
     const open=!!preferencesOpen[group],id=`${preferencesId}-${group}`,keys:readonly string[]=background3dDefaultGroups[group];
     return <>
-      <div class="background3d-default-trigger"><button type="button" disabled={busy} aria-label={`${label}の環境設定`} aria-expanded={open} aria-controls={id} {...help(`${label}の環境設定`,`${label}の現在値を、この端末のデフォルトとして保存・復元します。新しい3D背景にも使います。`)} onClick={()=>setPreferencesOpen(value=>({...value,[group]:!value[group]}))}><Settings size={16} aria-hidden="true"/>環境設定</button></div>
+      <div class="background3d-default-trigger"><button type="button" disabled={busy} aria-label={`${label}の環境設定`} aria-expanded={open} aria-controls={id} data-tool-label={`${label}の環境設定`} onClick={()=>setPreferencesOpen(value=>({...value,[group]:!value[group]}))}><Settings size={16} aria-hidden="true"/>環境設定</button></div>
       {open&&<fieldset id={id} disabled={busy} class="background3d-preferences" data-default-group={group}><legend>{label}の環境設定</legend>
-        {group==='stage'&&<label class="background3d-check"><input type="checkbox" aria-label="大型オブジェクトを自動で隠す" checked={config.cutaway?.enabled??false} onChange={e=>change({cutaway:{enabled:e.currentTarget.checked,depth:config.cutaway?.depth??.25}})}/>{caption('大型オブジェクトを自動で隠す','カメラ側の壁や大きな物を隠します。右クリックで個別に隠した物は、レイヤー欄の目に×を押すと再表示できます。')}</label>}
+        {group==='stage'&&<label class="background3d-check"><input type="checkbox" aria-label="大型オブジェクトを自動で隠す" checked={config.cutaway?.enabled??false} onChange={e=>change({cutaway:{enabled:e.currentTarget.checked,depth:config.cutaway?.depth??.25}})}/>{caption('大型オブジェクトを自動で隠す')}</label>}
         <strong>{hasSavedBackground3dDefault(defaults,group)?'保存済みのデフォルト':'デフォルト（未保存・初期値）'}</strong>
         <dl class="background3d-saved-defaults">{savedValues.filter(([key])=>keys.includes(key)).map(([key,label,value])=><div key={key}><dt>{label}</dt><dd data-default-key={key}>{value}</dd></div>)}</dl>
         <button type="button" aria-label={`${label}のデフォルトを保存`} onClick={()=>saveDefaults(group)}>表示中の値をデフォルトとして保存</button>
@@ -159,50 +159,50 @@ export default function Background3dEditor({host,paint,stages,pendingStages,cont
       </fieldset>}
     </>;
   };
-  const scopeHelp='緑のスコープをドラッグすると、見えている表面で回転の中心を移せます。背景を移動しても注目点は保たれます。';
+
   return <>{visibilityMenu}<Background3dFocus host={host}>
     <BackgroundCameraGizmo camera={config.camera} pivot={config.focusPoint} disabled={!ready||busy||picking} onChange={camera=>change({camera})}/>
-    <button type="button" class="background3d-focus-pick" disabled={!ready||busy} aria-pressed={picking} {...help('注目する物を選ぶ','原稿内の物をクリックして、回転の中心を選びます。')} onClick={chooseFocus}>{picking?'選択をやめる':'注目する物を選ぶ'}</button>
-    {focus&&<small class="background3d-selected-name" tabIndex={0} {...help('選択中の物',scopeHelp)}>選択中：{focus.name}</small>}
+    <button type="button" class="background3d-focus-pick" disabled={!ready||busy} aria-pressed={picking} data-tool-label={'注目する物を選ぶ'} onClick={chooseFocus}>{picking?'選択をやめる':'注目する物を選ぶ'}</button>
+    {focus&&<small class="background3d-selected-name" tabIndex={0} data-tool-label={'選択中の物'}>選択中：{focus.name}</small>}
     <div class="background3d-viewport-actions">
-      {focus&&<><button disabled={!ready||busy} onClick={()=>focusAt(focus.mesh)}>物全体へ寄る</button><button disabled={!ready||busy} {...help('部分に注目',scopeHelp)} onClick={choosePoint}>部分に注目</button><button disabled={busy} onClick={()=>change({focusMesh:undefined,focusPoint:undefined})}>注目を解除</button></>}
+      {focus&&<><button disabled={!ready||busy} onClick={()=>focusAt(focus.mesh)}>物全体へ寄る</button><button disabled={!ready||busy} data-tool-label={'部分に注目'} onClick={choosePoint}>部分に注目</button><button disabled={busy} onClick={()=>change({focusMesh:undefined,focusPoint:undefined})}>注目を解除</button></>}
       <button disabled={!ready||busy} onClick={()=>{if(shape.current){setPicking(false);change({focusMesh:undefined,focusPoint:undefined,camera:fitStageCamera(shape.current)});}}}>全体を収める</button>
       <div class="background3d-actions" role="group" aria-label="カメラの距離"><button disabled={!ready||busy||picking} onClick={()=>dolly(.8)}>近づく</button><button disabled={!ready||busy||picking} onClick={()=>dolly(1.25)}>離れる</button></div>
     </div>
     {picking&&<small role="status">{focusHint||'原稿内の物をクリックして選んでください。'}</small>}
   </Background3dFocus><section class="background3d-controls" role="dialog" aria-label="3D背景の調整" onPointerDown={e=>e.stopPropagation()}>
-    <header><strong tabIndex={0} {...help('3D背景編集モード','背景をドラッグすると、絵を平行移動してカット位置を変えられます。回転は右上の矢印、ホイールは近づく・離れる操作です。人物と吹き出しは、そのままドラッグして配置を調整できます。Escで編集を閉じます。')}>3D背景編集モード</strong><button type="button" disabled={busy} aria-label="3D背景を閉じる" onClick={onCancel}>保存せずに閉じる</button></header>
-    <fieldset disabled={busy}><legend>{caption('舞台','舞台設定で登録した3Dモデルを選びます。')}</legend><select aria-label="3Dの舞台" disabled={busy} value={config.sourceId} onChange={e=>{fitNext.current=true;change({sourceId:e.currentTarget.value});}}><option value={CUBE_STAGE_ID}>テスト用の立方体</option>{allStages.map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select>{preferences('stage','舞台')}</fieldset>
+    <header><strong tabIndex={0} data-tool-label={'3D背景編集モード'}>3D背景編集モード</strong><button type="button" disabled={busy} aria-label="3D背景を閉じる" onClick={onCancel}>保存せずに閉じる</button></header>
+    <fieldset disabled={busy}><legend>{caption('舞台')}</legend><select aria-label="3Dの舞台" disabled={busy} value={config.sourceId} onChange={e=>{fitNext.current=true;change({sourceId:e.currentTarget.value});}}><option value={CUBE_STAGE_ID}>テスト用の立方体</option>{allStages.map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select>{preferences('stage','舞台')}</fieldset>
     {objects.some(object=>!object.visible&&object.mode==='hide')&&<fieldset disabled={!ready||busy}><legend>非表示の3Dオブジェクト</legend>
       {objects.filter(object=>!object.visible&&object.mode==='hide').map(object=><div class="background3d-actions" key={object.mesh} data-background-object={object.mesh}><span>{object.name}</span><button type="button" aria-label={`${object.name}を再表示`} onClick={()=>setVisibility(object.mesh,'show')}>再表示</button></div>)}
     </fieldset>}
     <fieldset disabled={busy}><legend>線</legend>{range('輪郭の太さ','outlineWidth',1,20,.1,'px')}{range('細部の太さ','detailWidth',1,20,.1,'px')}{range('角の抽出','creaseAngle',0,180,1,'°')}
-      <label>{caption('細部の省略','密集した形の線と陰影をまとめます。100%では塊の輪郭や大きな奥行きの境目を中心に残します。')}<span><input aria-label="細部の省略" type="range" min="0" max="100" step="5" value={Math.round((1-config.detail)*100)} onInput={e=>change({detail:1-Number(e.currentTarget.value)/100})}/><output>{Math.round((1-config.detail)*100)}%</output></span></label>
-      {range('線の抜き','lineGap',0,.8,.05,'','明るい面ほど線を抜きます。値を上げると、光の強い部分から抜ける範囲が広がります。')}
+      <label>{caption('細部の省略')}<span><input aria-label="細部の省略" type="range" min="0" max="100" step="5" value={Math.round((1-config.detail)*100)} onInput={e=>change({detail:1-Number(e.currentTarget.value)/100})}/><output>{Math.round((1-config.detail)*100)}%</output></span></label>
+      {range('線の抜き','lineGap',0,.8,.05,'')}
       {preferences('line','線')}
     </fieldset>
-    <fieldset disabled={busy}><legend>{caption('光源の設定','日差し・窓光・室内灯の影と、壁や床からの反射を使います。テクスチャ、屈折、アニメーションは反映しません。')}</legend>
-      <label>{caption('光の雰囲気','室内灯では日差しと窓からの外光を使いません。')}<select aria-label="光の雰囲気" value={light.preset} onChange={e=>{setPicking(false);setFocusHint('');change({light:backgroundPresetLight(config.light,e.currentTarget.value as typeof light.preset,shape.current??undefined)});}}>{backgroundLightPresets.map(preset=><option key={preset.value} value={preset.value}>{preset.label}</option>)}</select></label>
-      <fieldset class="background3d-daylight" aria-label="日差しと窓の光" disabled={busy||!sunlight} data-inactive={!sunlight||undefined}><legend>{caption('日差しと窓の光','方角・高さで動くのは日差しです。窓から広がる光は窓、室内灯は天井の位置から照らします。')}</legend>
+    <fieldset disabled={busy}><legend>{caption('光源の設定')}</legend>
+      <label>{caption('光の雰囲気')}<select aria-label="光の雰囲気" value={light.preset} onChange={e=>{setPicking(false);setFocusHint('');change({light:backgroundPresetLight(config.light,e.currentTarget.value as typeof light.preset,shape.current??undefined)});}}>{backgroundLightPresets.map(preset=><option key={preset.value} value={preset.value}>{preset.label}</option>)}</select></label>
+      <fieldset class="background3d-daylight" aria-label="日差しと窓の光" disabled={busy||!sunlight} data-inactive={!sunlight||undefined}><legend>{caption('日差しと窓の光')}</legend>
       <small>{lightWindow?`窓の光：${config.light.windowMesh===undefined?'自動検出':'選択した面'}`:'窓の光：未検出'}</small>
       {lightWindow&&<label class="background3d-check"><input type="checkbox" checked={config.light.ceiling!==false} onChange={e=>change({light:{...config.light,ceiling:e.currentTarget.checked}})}/>天井からの外光を遮る</label>}
-      <div class="background3d-actions"><button disabled={!ready||busy} {...help('窓の面を選ぶ','窓が見つからない場合は、このボタンを押して原稿上の窓ガラスをクリックしてください。')} onClick={()=>{pickingMode.current='window';setPicking(true);setFocusHint('窓ガラスの面をクリックしてください。');}}>窓の面を選ぶ</button>{config.light.windowMesh!==undefined&&<button onClick={()=>change({light:backgroundPresetLight({...config.light,windowMesh:undefined},light.preset,shape.current??undefined)})}>窓を自動検出</button>}</div>
-      <label>{caption('日差しの方角','舞台の中心が基準です。カメラを回しても光の向きは変わりません。右上の軸表示で、Z側が0°、X側が90°、反対のZ側が±180°、反対のX側が−90°です。')}<span><input aria-label="日差しの方角" type="range" min="-180" max="180" value={config.light.azimuth} onInput={e=>change({light:{...config.light,azimuth:Number(e.currentTarget.value)}})}/><output>{sunlight?`${config.light.azimuth}°`:''}</output></span></label>
-      <label>{caption('日差しの高さ','0°＝水平、90°＝真上、−90°＝真下。天井や壁に遮られた場所には日差しが届きません。')}<span><input aria-label="日差しの高さ" type="range" min="-90" max="90" value={config.light.elevation} onInput={e=>change({light:{...config.light,elevation:Number(e.currentTarget.value)}})}/><output>{sunlight?`${config.light.elevation}°`:''}</output></span></label>
+      <div class="background3d-actions"><button disabled={!ready||busy} data-tool-label={'窓の面を選ぶ'} onClick={()=>{pickingMode.current='window';setPicking(true);setFocusHint('窓ガラスの面をクリックしてください。');}}>窓の面を選ぶ</button>{config.light.windowMesh!==undefined&&<button onClick={()=>change({light:backgroundPresetLight({...config.light,windowMesh:undefined},light.preset,shape.current??undefined)})}>窓を自動検出</button>}</div>
+      <label>{caption('日差しの方角')}<span><input aria-label="日差しの方角" type="range" min="-180" max="180" value={config.light.azimuth} onInput={e=>change({light:{...config.light,azimuth:Number(e.currentTarget.value)}})}/><output>{sunlight?`${config.light.azimuth}°`:''}</output></span></label>
+      <label>{caption('日差しの高さ')}<span><input aria-label="日差しの高さ" type="range" min="-90" max="90" value={config.light.elevation} onInput={e=>change({light:{...config.light,elevation:Number(e.currentTarget.value)}})}/><output>{sunlight?`${config.light.elevation}°`:''}</output></span></label>
       {preferences('daylight','日差しと窓の光')}
       </fieldset>
-      {lightRange('明るさ','intensity',10,200,'照明の明るさ','100％＝選んだ「光の雰囲気」の標準の強さ。200％＝光源の強さを2倍にします。')}
-      {lightRange('反射光','bounce',0,100,'反射光','壁や床からの反射を含む間接光を、100％で計算どおりに、0％でなしにします。')}
+      {lightRange('明るさ','intensity',10,200,'照明の明るさ')}
+      {lightRange('反射光','bounce',0,100,'反射光')}
       {preferences('light','光源')}
     </fieldset>
     <fieldset disabled={busy} class="background3d-tone"><legend>ベタとスクリーントーン</legend>
       {range('ベタの量','blackAmount',0,100,1,'%')}
-      <label class="background3d-check"><input type="checkbox" checked={config.toneEnabled} onChange={e=>change({toneEnabled:e.currentTarget.checked})}/>{caption('スクリーントーン','プレビューでは、トーンの線数と濃度はレイヤーパレットのデフォルトを使います。')}</label>
-      {range('トーンの境界','toneThreshold',0,100,1,'','左ほど広く、右ほど深い影だけにトーンを貼ります。トーンの濃度は一定です。')}
+      <label class="background3d-check"><input type="checkbox" checked={config.toneEnabled} onChange={e=>change({toneEnabled:e.currentTarget.checked})}/>{caption('スクリーントーン')}</label>
+      {range('トーンの境界','toneThreshold',0,100,1,'')}
       {preferences('tone','ベタとスクリーントーン')}
     </fieldset>
     <output aria-label="3D背景の状態">{status}</output>{error&&<p role="alert" class="paint-error">{error}</p>}
-    <button class="background3d-capture" disabled={!canCapture} {...help('撮影して線画にする','編集可能な線画・ベタ・トーンとして保存します。前の撮影結果とは「元に戻す・やり直す」で比較できます。')} onClick={()=>void capture()}><Camera size={18} aria-hidden="true"/>{busy?'撮影中…':'撮影して線画にする'}</button>
+    <button class="background3d-capture" disabled={!canCapture} data-tool-label={'撮影して線画にする'} onClick={()=>void capture()}><Camera size={18} aria-hidden="true"/>{busy?'撮影中…':'撮影して線画にする'}</button>
     {availableLayers>61&&<p>撮影には空きレイヤーが3枚必要です。</p>}
   </section></>;
 }

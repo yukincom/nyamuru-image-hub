@@ -188,7 +188,7 @@ export function SettingEditor({ document, onChange, panelLinkMode, onTogglePanel
           {onImportBackgroundModel&&<BackgroundModelPicker stageId={material.source_stage_id} stages={document.manga.background_stages??[]} disabled={backgroundsSaving} seriesShared={material.scope==='series'} onSelect={id=>update(draft=>{const target=draft.manga.materials.find(entry=>entry.localId===material.localId);if(target){if(id)target.source_stage_id=id;else target.source_stage_id=null;}})} onImport={file=>onImportBackgroundModel(material.localId!,file)}/>}
 
         </div>
-        <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="背景を複製" title="複製"><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="背景を削除" title="削除"><Trash2 size={16} /></button></div>
+        <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="背景を複製" ><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="背景を削除" ><Trash2 size={16} /></button></div>
       </section>;})}
       {!backgrounds.length && <p class="muted-message">未登録</p>}</div>
     </section>;
@@ -334,7 +334,7 @@ export function CharactersEditor({ document, onChange, onNotify, embedded = fals
     {onLinkCharacterText && <button class="secondary-button character-text-link-button" disabled={!document.manga.meta.series.trim() || characterTextBusy || charactersSaving} onClick={() => void onLinkCharacterText()}><FileText size={16} />{characterTextBusy ? '連携中…' : characterTextLink?.needsRelink ? 'テキスト再リンク' : 'テキスト参照'}</button>}
     <button class="primary-button" disabled={characterTextBusy} onClick={addCharacter}><Plus size={16} />人物を追加</button>
   </>}>
-    {characterTextLink?.linked && <p class="character-text-link-status" title={characterTextLink.relativePath}><FileText size={14} />{characterTextLink.fileName} と同期中</p>}
+    {characterTextLink?.linked && <p class="character-text-link-status" ><FileText size={14} />{characterTextLink.fileName} と同期中</p>}
     {characterTextLink?.needsRelink && <p class="character-text-link-status needs-relink"><FileText size={14} />参照テキストが見つかりません。「テキスト再リンク」でシリーズフォルダを選んでください。</p>}
     {!!characterTextLink?.deletedCharacters.length && <section class="character-restore-strip" aria-label="削除した人物の復元">
       <strong>30日以内に削除した人物</strong>
@@ -409,7 +409,7 @@ export function CharactersEditor({ document, onChange, onNotify, embedded = fals
                   <Field label="検索キーワード" hint="カンマ区切り"><input value={material.keywords.join(', ')} onInput={(event) => update((draft) => { draft.manga.materials[materialIndex].keywords = event.currentTarget.value.split(',').map((item) => item.trim()).filter(Boolean); })} /></Field>
                   <Field label="デザインコンセプト"><textarea rows={3} value={material.note ?? ''} onInput={(event) => update((draft) => { draft.manga.materials[materialIndex].note = event.currentTarget.value; })} /></Field>
                 </div>
-                <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="人物資料を複製" title="複製"><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(materialIndex, 1); })} aria-label="人物資料を削除" title="削除"><Trash2 size={16} /></button></div>
+                <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="人物資料を複製" ><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(materialIndex, 1); })} aria-label="人物資料を削除" ><Trash2 size={16} /></button></div>
               </section>)}
               {!visuals.length && <p class="muted-message">テキスト資料は未登録です。</p>}</div>
             </div>
@@ -424,7 +424,7 @@ export function CharactersEditor({ document, onChange, onNotify, embedded = fals
         <div class="material-fields"><Field label="資料名"><input value={material.key} onInput={(event) => update((draft) => { if (material.localId) renameMaterial(draft, material.localId, event.currentTarget.value); })} /></Field>
           <Field label="対応人物"><select value="" onChange={(event) => update((draft) => { if (material.localId) assignCharacterMaterial(draft, material.localId, event.currentTarget.value); })}><option value="">未割当</option>{visibleCharacters.map((entry) => <option value={entry.localId}>{entry.name}</option>)}</select></Field>
         </div>
-        <div class="material-card-actions"><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="人物資料を削除" title="削除"><Trash2 size={16} /></button></div>
+        <div class="material-card-actions"><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="人物資料を削除" ><Trash2 size={16} /></button></div>
       </section>)}</div>
     </section>}
     {!!orphanImageVisuals.length && <section class="content-card unassigned-character-materials"><SectionTitle title="画像資料のリンク確認" description="保存先の人物IDと一致するシリーズ人物が見つかりません" />
@@ -462,7 +462,7 @@ export function PropsEditor({ document, onChange, panelLinkMode, onTogglePanelMa
             <Field label="検索キーワード" hint="カンマ区切り"><input value={material.keywords.join(', ')} onInput={(event) => update((draft) => { draft.manga.materials[index].keywords = event.currentTarget.value.split(',').map((item) => item.trim()).filter(Boolean); })} /></Field>
             <Field label="デザインコンセプト"><textarea rows={3} value={material.note ?? ''} onInput={(event) => update((draft) => { draft.manga.materials[index].note = event.currentTarget.value; })} /></Field>
           </div>
-          <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="小道具を複製" title="複製"><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="小道具を削除" title="削除"><Trash2 size={16} /></button></div>
+          <div class="material-card-actions"><button onClick={() => update((draft) => { const source = draft.manga.materials.find((entry) => entry.localId === material.localId); if (source) draft.manga.materials.unshift(duplicateMaterial(draft, source)); })} aria-label="小道具を複製" ><Copy size={15} /></button><button onClick={() => update((draft) => { draft.manga.materials.splice(index, 1); })} aria-label="小道具を削除" ><Trash2 size={16} /></button></div>
         </section>})}
       {!materials.length && <p class="muted-message">未登録</p>}</div>
     </section>;

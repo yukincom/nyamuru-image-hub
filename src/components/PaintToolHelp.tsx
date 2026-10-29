@@ -5,14 +5,14 @@ import { paintHelpItems } from '../lib/paintHelp';
 
 interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'title'> {
   label:string;
-  help:string|string[];
+  shortcut?:string|string[];
   disabled?:boolean;
 }
-/** Keep unavailable tools focusable so their explanation remains accessible. */
-export function PaintToolButton({label,help,disabled=false,children,onClick,...props}:ButtonProps){
-  const helpText=Array.isArray(help)?help.join('\n'):help;
+/** Keep tool names accessible, with optional short keyboard hints. */
+export function PaintToolButton({label,shortcut,disabled=false,children,onClick,...props}:ButtonProps){
+  const shortcutText=Array.isArray(shortcut)?shortcut.join('\n'):shortcut;
   return <button {...props} type="button" class={`paint-help-button ${props.class??''}`}
-    aria-label={label} aria-disabled={disabled||undefined} data-tool-label={label} data-tool-help={helpText}
+    aria-label={label} aria-disabled={disabled||undefined} data-tool-label={label} data-tool-shortcut={shortcutText||undefined}
     onClick={event=>{if(disabled){event.preventDefault();event.stopPropagation();return;}
       // Do not leave Space bound to a tool that was just clicked with a mouse or pen.
       if(event.detail>0)event.currentTarget.blur();
@@ -27,10 +27,10 @@ export default function PaintToolHelp({enabled=true}:{enabled?:boolean}){
     if(!enabled)return;
     let timer:ReturnType<typeof setTimeout>|undefined,target:HTMLElement|null=null;
     const clear=()=>{clearTimeout(timer);timer=undefined;target?.removeAttribute('aria-describedby');target=null;setHint(null);};
-    const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tool-help]'):null;
+    const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tool-shortcut]'):null;
     const schedule=(next:HTMLElement|null)=>{
       if(next===target)return;clear();if(!next)return;target=next;
-      timer=setTimeout(()=>{if(target!==next||!next.isConnected)return;next.setAttribute('aria-describedby','paint-tool-description');setHint({target:next,label:next.dataset.toolLabel??next.getAttribute('aria-label')??'',text:next.dataset.toolHelp??''});},1000);
+      timer=setTimeout(()=>{if(target!==next||!next.isConnected)return;next.setAttribute('aria-describedby','paint-tool-description');setHint({target:next,label:next.dataset.toolLabel??next.getAttribute('aria-label')??'',text:next.dataset.toolShortcut??''});},1000);
     };
     const over=(event:PointerEvent)=>{if(event.pointerType!=='touch'&&!event.buttons)schedule(find(event.target));};
     const out=(event:PointerEvent)=>{if(find(event.relatedTarget)!==target)clear();};

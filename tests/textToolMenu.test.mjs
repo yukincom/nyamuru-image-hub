@@ -7,6 +7,7 @@ import {availableFontWeights,matchingFontWeight} from '../src/lib/bubbleFonts.ts
 
 const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
+// 見込み: 説明popupの削除後もTとふきだしタブは残る。合格: タブ・既存設定経路が存在しhelp属性はない。範囲: ソース契約、実操作はbrowser fixtureで確認。
 test('T primary click and shortcut open a compact tabbed persistent settings window',()=>{
   const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=read('src/components/App.tsx'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
   assert.doesNotMatch(tools,/写植文字を追加|text-settings-icon-action/);
@@ -21,7 +22,8 @@ test('T primary click and shortcut open a compact tabbed persistent settings win
   assert.match(tools,/id="paint-text-settings-slot"/);
   assert.match(tools,/role="tablist"[\s\S]*?label="文字"[\s\S]*?label="ふきだし"/);
   assert.match(tools,/id="paint-bubble-materials-slot"/);
-  assert.match(tools,/label="ふきだし" help="素材を吹き出しへ重ねると輪郭だけを入れ替えます。/);
+  assert.match(tools,/label="ふきだし"/);
+  assert.doesNotMatch(tools,/\bhelp=|data-tool-help=/);
   assert.doesNotMatch(toolbar,/>吹き出し素材<|onMaterials/);
   assert.doesNotMatch(tools,/FontFamilyPicker|作品の基本書体|PC内フォントを再読込/);
   assert.match(toolbar,/<FontFamilyPicker[^>]+label="文字の書体"[^>]+onChange=\{font=>changeStyle\(\{font\}\)\}/);
@@ -110,10 +112,11 @@ test('文字の太さは実在ウェイトのみを表示し、単一・未取�
   let prevented=false;activeBold.props.onPointerDown({preventDefault:()=>{prevented=true;}});assert.equal(prevented,true);
 });
 
+// 見込み: popupを消しても線幅の入力と単位は残る。合格: 数値とmmの隣接、説明属性なし。範囲: ソースとCSSの構造。
 test('吹き出し線幅は数値とmmを隣接させる',()=>{
   const tools=read('src/components/PaintTextTools.tsx'),css=read('src/styles/global.css');
   assert.doesNotMatch(tools,/<strong>吹き出し設定<\/strong>/);
-  assert.match(tools,/新しく作る吹き出しのデフォルト/);
+  assert.doesNotMatch(tools,/data-tool-help=/);
   assert.doesNotMatch(tools,/作品内の全吹き出しに適用/);
   assert.match(tools,/<span>線幅<\/span><input aria-label="吹き出し線幅 mm"[\s\S]*?<span>mm<\/span>/);
   assert.match(css,/\.paint-text-work-settings>label \{[^}]*grid-template-columns:max-content 54px max-content;/);

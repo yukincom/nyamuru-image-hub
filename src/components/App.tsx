@@ -4123,7 +4123,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
 
     {hasDocument ? <>
     <nav inert={environmentOpen} class="workspace-tabs" aria-label="編集カテゴリ">
-      {TABS.map((item) => <button class={tab === item.id ? 'is-active' : ''} title={item.label} onClick={() => changeTab(item.id)} key={item.id}><item.icon size={17} /><span>{item.label}</span></button>)}
+      {TABS.map((item) => <button class={tab === item.id ? 'is-active' : ''} aria-label={item.label} onClick={() => changeTab(item.id)} key={item.id}><item.icon size={17} /><span>{item.label}</span></button>)}
     </nav>
 
     <main inert={environmentOpen} class={`workspace-shell ${tab === 'storyboard' ? 'is-storyboard' : ''} mobile-pane-${mobileStoryboardPane}`}>
@@ -4156,8 +4156,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
                 <div class="canvas-spread-scroll">
                   <div class="canvas-spread-stage">
                     <div class="canvas-spread-pair">
-                      <div class={`spread-pane ${leftIndex !== activePage ? 'is-spread-partner' : ''}`} title={leftIndex !== activePage ? `ページ ${leftIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? activeCanvas : partnerCanvas}</div>
-                      {spreadPartnerIndex!==null&&<div class={`spread-pane ${leftIndex === activePage ? 'is-spread-partner' : ''}`} title={leftIndex === activePage ? `ページ ${spreadPartnerIndex + 1} をクリックで編集` : undefined}>{leftIndex === activePage ? partnerCanvas : activeCanvas}</div>}
+                      <div class={`spread-pane ${leftIndex !== activePage ? 'is-spread-partner' : ''}`} >{leftIndex === activePage ? activeCanvas : partnerCanvas}</div>
+                      {spreadPartnerIndex!==null&&<div class={`spread-pane ${leftIndex === activePage ? 'is-spread-partner' : ''}`} >{leftIndex === activePage ? partnerCanvas : activeCanvas}</div>}
                     </div>
                   </div>
                 </div>
@@ -4293,7 +4293,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
               {(newSeriesMode === 'new' || newSeriesId) && <>
                 <div class="new-creation-row" aria-label="シリーズフォルダ">
                   <strong>保存先</strong>
-                  <span class="new-creation-value" title={isLanClient ? undefined : newSeriesDirectory}>{newSeriesDirectory.split('/').filter(Boolean).at(-1) || 'フォルダを選択してください。'}</span>
+                  <span class="new-creation-value" >{newSeriesDirectory.split('/').filter(Boolean).at(-1) || 'フォルダを選択してください。'}</span>
                   <button class="new-creation-change" type="button" onClick={() => void chooseNewSeriesDirectory()} disabled={newSeriesDirectorySelecting || newSeriesReferenceSelecting || newSeriesPreparing || newWorkspaceSelecting}><FolderOpen size={15} aria-hidden="true" />{newSeriesDirectorySelecting ? '選択中…' : newSeriesDirectory ? '変更' : '選択'}</button>
                 </div>
                 {newSeriesDirectoryMessage && <p class="new-workspace-message" role="status">{newSeriesDirectoryMessage}</p>}
@@ -4310,15 +4310,15 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
                           ? current.filter((path) => path !== reference.relativePath)
                           : [...current, reference.relativePath])}
                       />
-                      <span class="new-creation-file-name" title={reference.relativePath}>{reference.fileName}</span>
+                      <span class="new-creation-file-name" >{reference.fileName}</span>
                     </label>
                   </div>)}
                   </div>
                   <div class="new-creation-reference-actions">
                     {newSeriesReferenceMessage && <p class="new-reference-message" role="status">{newSeriesReferenceMessage}</p>}
                     <button class="new-creation-change" type="button" onClick={() => void chooseNewSeriesReferenceTextFile()} disabled={newSeriesReferenceBusy}><FilePlus2 size={15} aria-hidden="true" />{newSeriesReferenceSelecting ? '選択中…' : newSeriesReferenceRows.length ? '資料を追加' : '資料を選択'}</button>
-                    <button class="new-creation-change" type="button" aria-label="選択した資料を変更" title="変更する資料を1件選択してください" disabled={newSeriesReferenceBusy || selectedNewSeriesReferenceRows.length !== 1} onClick={() => { if (selectedNewSeriesReferenceRows.length === 1) void chooseNewSeriesReferenceTextFile(selectedNewSeriesReferenceRows[0].relativePath); }}><FileText size={15} aria-hidden="true" />変更</button>
-                    <button class="new-creation-change" type="button" aria-label="選択した資料を削除" title="一覧から外します。元のファイルは削除しません" disabled={newSeriesReferenceBusy || !selectedNewSeriesReferenceRows.length} onClick={removeSelectedNewSeriesReferences}><Trash2 size={15} aria-hidden="true" />削除</button>
+                    <button class="new-creation-change" type="button" aria-label="選択した資料を変更"  disabled={newSeriesReferenceBusy || selectedNewSeriesReferenceRows.length !== 1} onClick={() => { if (selectedNewSeriesReferenceRows.length === 1) void chooseNewSeriesReferenceTextFile(selectedNewSeriesReferenceRows[0].relativePath); }}><FileText size={15} aria-hidden="true" />変更</button>
+                    <button class="new-creation-change" type="button" aria-label="選択した資料を削除"  disabled={newSeriesReferenceBusy || !selectedNewSeriesReferenceRows.length} onClick={removeSelectedNewSeriesReferences}><Trash2 size={15} aria-hidden="true" />削除</button>
                     {newSeriesReferenceCandidates.length > 0 && <button class="primary-button" type="button" disabled={!selectedNewSeriesReferenceRows.length || newSeriesReferenceBusy} onClick={applySelectedNewSeriesReferences}><ClipboardCheck size={15} aria-hidden="true" />選んだ{selectedNewSeriesReferenceRows.length}件を反映</button>}
                   </div>
                 </div>}
@@ -4329,13 +4329,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
               <h4 id="new-episode-topic-title"><span>今回のエピソード</span>{newWorkTitle.trim() && <span class="new-creation-topic-name">{`「　${newWorkTitle.trim()}　」`}</span>}</h4>
               <div class="new-creation-row" aria-label="今回のエピソード保存先">
                 <strong>保存先</strong>
-                <span class="new-creation-value" title={isLanClient ? undefined : newEpisodeWorkspace?.directory}>{newEpisodeWorkspace?.folderName || 'フォルダを選択してください。'}</span>
+                <span class="new-creation-value" >{newEpisodeWorkspace?.folderName || 'フォルダを選択してください。'}</span>
                 <button class="new-creation-change" type="button" onClick={() => void chooseNewEpisodeWorkspace()} disabled={newWorkspaceSelecting || newReferenceSelecting || newSeriesReferenceSelecting || newSeriesDirectorySelecting || newSeriesPreparing}><FolderOpen size={15} aria-hidden="true" />{newWorkspaceSelecting ? '選択中…' : newEpisodeWorkspace ? '変更' : '選択'}</button>
               </div>
               {newWorkspaceMessage && <p class="new-workspace-message" role="status">{newWorkspaceMessage}</p>}
               {newEpisodeWorkspace && <div class="new-creation-references" aria-label="今回のエピソード資料">
                 <div class="new-creation-source-row">
-                  <div class="new-creation-reference-list"><span class="new-creation-file-name" title={newSourceSnapshot?.source.relativePath || newSuggestedEpisodeReference?.relativePath}>{newReferenceFileName || newSuggestedEpisodeReference?.fileName || '資料を指定できます'}</span></div>
+                  <div class="new-creation-reference-list"><span class="new-creation-file-name" >{newReferenceFileName || newSuggestedEpisodeReference?.fileName || '資料を指定できます'}</span></div>
                   <button class="new-creation-change" type="button" onClick={() => void chooseNewReferenceTextFile()} disabled={newReferenceSelecting || newWorkspaceSelecting || newSeriesDirectorySelecting || newSeriesPreparing}><FileText size={15} aria-hidden="true" />{newReferenceSelecting ? '選択中…' : newReferenceFileName || newSuggestedEpisodeReference ? '変更' : '資料を選択'}</button>
                 </div>
                 {newSuggestedEpisodeReference && <div class="new-creation-reference-actions is-end"><button class="primary-button" type="button" disabled={newReferenceSelecting || newWorkspaceSelecting || newSeriesDirectorySelecting || newSeriesPreparing} onClick={() => void applySuggestedReferenceTexts()}><ClipboardCheck size={15} aria-hidden="true" />この資料を反映</button></div>}
@@ -4465,10 +4465,10 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
                   <div class="new-layout-focus-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={layoutPreviewImageStyle(displayedLayoutRotation(activeLayoutItem))} /></div>
                   <div class="new-layout-focus-controls">
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
-                    <strong title={activeLayoutItem.file.name}>{activeLayoutItem.file.name}</strong>
+                    <strong >{activeLayoutItem.file.name}</strong>
                     <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
-                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} title="現在表示している向きで解析します"><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : '解析開始'}</button>
-                    <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} title={canCreateAnalyzedPages ? '検出したコマから編集を開始します' : 'すべての画像の解析完了後に使用できます'}><FilePlus2 size={15} />編集開始</button>
+                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} ><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : '解析開始'}</button>
+                    <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} ><FilePlus2 size={15} />編集開始</button>
                   </div>
                 </div>
                 <NewLayoutAnalysisFeed items={newLayoutItems} message={newLayoutMessage} characterProgress={newCharacterReadProgress} />

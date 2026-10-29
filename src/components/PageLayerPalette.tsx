@@ -45,18 +45,18 @@ interface SelectionControlsProps {
   removeLabel?:string; disabled?:boolean;
 }
 function SelectionControls({addFolder,addRaster,addVector,addGenerationMask,remove,removeLabel='削除',disabled=false}:SelectionControlsProps) {
-  const tool=(label:string,help:string,Icon:typeof FolderPlus,action?:()=>void)=><PaintToolButton class="palette-icon" label={label} help={help} disabled={disabled||!action} onClick={action}><Icon size={18}/></PaintToolButton>;
+  const tool=(label:string,Icon:typeof FolderPlus,action?:()=>void)=><PaintToolButton class="palette-icon" label={label}  disabled={disabled||!action} onClick={action}><Icon size={18}/></PaintToolButton>;
   return <div class="layer-controls selection-layer-controls" role="group" aria-label="レイヤー操作">
     <div class="layer-properties"><select aria-label="レイヤーの合成" disabled value="normal"><option value="normal">通常</option></select>
       <label class="layer-density">濃度<input aria-label="レイヤーの濃度" type="range" min="0" max="1" step="0.01" disabled value="1"/><span>100%</span></label></div>
     <div class="layer-icon-actions">
-      {tool('フォルダー追加','選択中の描画範囲へフォルダーを追加します。',FolderPlus,addFolder)}
-      {tool('ラスターレイヤー追加','選択中の描画範囲へ空のラスターレイヤーを追加します。',FilePlus2,addRaster)}
-      {tool('ベクターレイヤー追加','選択中の描画範囲へベクターレイヤーを追加します。',PenTool,addVector)}
-      <PaintToolButton class="palette-icon" label="トーンレイヤー作成" help="描画レイヤーを選択するとトーンレイヤーを作成できます。" disabled><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="m12 1 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Zm14 0 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Z"/></svg></PaintToolButton>
-      {tool('生成マスク化','生成対象フォルダーにマスクを作成します。',Bot,addGenerationMask)}
-      {tool('複製','描画レイヤーを選択すると複製できます。',Copy)}
-      {tool(removeLabel,remove?'選択中の項目を削除します。':'削除できる項目を選択してください。',Trash2,remove)}
+      {tool('フォルダー追加',FolderPlus,addFolder)}
+      {tool('ラスターレイヤー追加',FilePlus2,addRaster)}
+      {tool('ベクターレイヤー追加',PenTool,addVector)}
+      <PaintToolButton class="palette-icon" label="トーンレイヤー作成"  disabled><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="m12 1 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Zm14 0 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Z"/></svg></PaintToolButton>
+      {tool('生成マスク化',Bot,addGenerationMask)}
+      {tool('複製',Copy)}
+      {tool(removeLabel,Trash2,remove)}
     </div>
   </div>;
 }
@@ -149,7 +149,7 @@ export default function PageLayerPalette(p:Props) {
     const label=textDisplayLabel(index+((overlay?p.page.page_overlay:p.page.panels[panel])?.bubbles?.length??0));
     return <div class={`layer-row native-text-layer ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} data-canvas-selected={selected} data-layer-depth={overlay?0:1} style={{'--layer-indent':overlay?'0px':'16px'}} aria-label={label} key={`text-${index}`}>
       <LayerVisibilityButton label={`${overlay?'前景の':''}${label}を${item.hidden===true?'表示':'隠す'}`} visible={item.hidden!==true} disabled={p.disabled||!p.onToggleText} onClick={()=>p.onToggleText?.(panel,index,overlay)}/>
-      <button class="layer-select" aria-pressed={selected} aria-label={`${label}を選択`} data-tool-help="編集可能な文字レイヤーです。クリックするとTの文字設定で編集できます。" disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-kind-icon"><Type size={18}/></span><span class="layer-caption"><small>{label} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
+      <button class="layer-select" aria-pressed={selected} aria-label={`${label}を選択`}  disabled={p.disabled||locked} onClick={()=>p.onSelectText?.(panel,index,overlay)}><span class="layer-kind-icon"><Type size={18}/></span><span class="layer-caption"><small>{label} · {item.text_style?.fontSize??12}pt</small><span>{item.text||'（入力中）'}</span></span></button>
     </div>;
   });
   const eye=(label:string,visible:boolean,action:()=>void)=><LayerVisibilityButton label={label} visible={visible} disabled={p.disabled} onClick={action}/>;
@@ -212,7 +212,7 @@ export default function PageLayerPalette(p:Props) {
         const frameSelected=selection?.type==='panel_frame'&&selection.index===index;
         const frameLayer=<div class={`layer-row panel-frame-layer ${frameSelected?'is-selected':''}`} data-layer-depth="1" style={{'--layer-indent':'16px'}} data-layer-drop="root" data-owner="panel" data-edge="top" data-paint-panel={index} data-paint-overlay="false" data-drop-locked={panelLocked(panel)||panel.layer?.directLocked===true||!visible} role="treeitem" aria-selected={frameSelected}>
           {eye(`${title}の枠線を${panelFrameVisible(panel)?'隠す':'表示'}`,panelFrameVisible(panel),()=>p.onVisibility(index,true))}
-          <button class="layer-select" aria-label={`${title}の枠を選択`} data-tool-help="コマ枠を紙面で選択し、辺や頂点を動かせます。枠線を隠しても絵のクリップ範囲は変わりません。" disabled={p.disabled} onClick={()=>p.onSelect(index,true)}><PanelThumbnail panel={panel} frame/><span>コマ枠</span></button>
+          <button class="layer-select" aria-label={`${title}の枠を選択`}  disabled={p.disabled} onClick={()=>p.onSelect(index,true)}><PanelThumbnail panel={panel} frame/><span>コマ枠</span></button>
           <button type="button" class={`palette-icon layer-row-lock ${panelFrameLocked(panel)?'is-locked':'is-unlocked'} ${panelLocked(panel)?'is-inherited':''}`} aria-label={panelLocked(panel)?`${title}の枠は親フォルダーで固定中`:panelFrameLocked(panel)?`${title}の枠だけの固定を解除`:`${title}の枠だけを固定`} aria-pressed={panelFrameLocked(panel)||panelLocked(panel)} disabled={p.disabled||panelLocked(panel)} onClick={()=>p.onLock(index,true)}><LayerLockIcon size={16} locked={panelFrameLocked(panel)||panelLocked(panel)}/></button>
         </div>;
         return <Fragment key={`${p.page.page}-${panel.id}`}>
@@ -221,7 +221,7 @@ export default function PageLayerPalette(p:Props) {
           <div class={`panel-layer-heading ${panelSelected?'is-selected':''}`} data-layer-depth="0" data-layer-drop="panel" data-owner="panel" data-panel-anchor={`panel-${panel.id}`} data-paint-panel={index} data-paint-overlay="false" data-drop-locked={panelLocked(panel)||panel.layer?.directLocked===true||!visible} aria-selected={panelSelected}>
             {eye(`${title}を${visible?'隠す':'表示'}`,visible,()=>p.onVisibility(index,false))}
             <button class="palette-icon layer-folder-toggle" aria-label={`${title}を${collapsed?'展開':'折りたたむ'}`} aria-expanded={!collapsed} onClick={()=>palette.setFolded(folderKey,!collapsed)}>{collapsed?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
-            <button class="panel-layer-select" aria-label={`${title}を選択`} data-tool-help="このコマを紙面で選択します。中のレイヤーとコマ枠をまとめるフォルダです。" onClick={()=>p.onSelect(index)} disabled={p.disabled}><PanelThumbnail panel={panel}/><span>{title}</span></button>
+            <button class="panel-layer-select" aria-label={`${title}を選択`}  onClick={()=>p.onSelect(index)} disabled={p.disabled}><PanelThumbnail panel={panel}/><span>{title}</span></button>
             <button type="button" class={`palette-icon layer-row-lock ${panelLocked(panel)?'is-locked':'is-unlocked'}`} aria-label={panelLocked(panel)?`${title}全体の固定を解除`:`${title}全体を固定`} aria-pressed={panelLocked(panel)} disabled={p.disabled} onClick={event=>{event.stopPropagation();p.onLock(index);}}><LayerLockIcon size={16} locked={panelLocked(panel)}/></button>
           </div>
           <div class="panel-layer-children" role="group" hidden={collapsed}>

@@ -83,16 +83,16 @@ async function run(){
  check(['舞台','線','日差しと窓の光','光源','ベタとスクリーントーン'].every(label=>!!button(`${label}の環境設定`))&&document.querySelectorAll('.background3d-default-trigger').length===5&&!button('デフォルトに戻す'),'各項目に環境設定を一つずつ配置し、復元は開いた項目内だけに表示');
  check(!!button('日差しと窓の光の環境設定').closest('.background3d-daylight')&&!!button('ベタとスクリーントーンの環境設定').closest('.background3d-tone')&&!!document.querySelector('[data-tool-label="光源の設定"]')&&!document.querySelector('[data-tool-label="室内の光"]'),'項目ごとの設定を各欄に配置し、見出しを光源の設定に変更');
  check(!document.querySelector('.background3d-controls input[type=file],.background3d-focus-status')&&!!button('全体を収める').closest('.background3d-viewport-tools'),'右側からモデル読込と重複する注目操作を外し、構図合わせは原稿側へ配置');
- const hover=async(target:Element)=>{await tick();target.dispatchEvent(new PointerEvent('pointerover',{pointerType:'mouse',bubbles:true}));await wait(()=>!!document.querySelector('[role=tooltip]'),'hover guide');};
+ // 見込み: 3D説明の撤去後はhoverしても設定値と編集画面を保つ。合格: 1秒経過後もtooltipなし。範囲: 実3D設定の合成hover。
+ const hover=async(target:Element)=>{await tick();target.dispatchEvent(new PointerEvent('pointerover',{pointerType:'mouse',bubbles:true}));for(let i=0;i<12;i++)await tick();};
  const header=document.querySelector('.background3d-controls header strong')!;await hover(header);
- check(document.querySelector('[role=tooltip]')!.textContent!.includes('背景をドラッグすると'),'編集モード名にカーソルを合わせると操作説明を表示');
- header.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));await tick();
- check(!!stage()&&brightness.value==='35'&&!document.querySelector('[role=tooltip]'),'Escで説明だけを閉じ、3D編集と微調整は保持');
- check(!document.querySelector('[role=tooltip]')&&!document.querySelector('.background3d-controls')!.textContent!.includes('背景をドラッグすると'),'説明は必要時だけ表示し、設定欄には常駐しない');
+ check(!!stage()&&brightness.value==='35'&&!document.querySelector('[role=tooltip]'),'編集モード名のhoverで説明を出さず、3D編集と微調整は保持');
+ check(!document.querySelector('.background3d-controls')!.textContent!.includes('背景をドラッグすると'),'削除した説明を設定欄に常駐させない');
  const detailHelp=document.querySelector('.background3d-controls [data-tool-label="細部の省略"]')!;await hover(detailHelp);
- check(document.querySelector('[role=tooltip]')!.textContent!.includes('密集した形'),'各メニュー名にも対応した説明が出る');
+ check(!document.querySelector('[role=tooltip]'),'各設定名のhoverにも説明を出さない');
  detailHelp.dispatchEvent(new PointerEvent('pointerout',{pointerType:'mouse',relatedTarget:document.body,bubbles:true}));await tick();
- check(document.querySelector('[data-tool-label="スクリーントーン"]')!.getAttribute('data-tool-help')!.startsWith('プレビューでは'),'トーンの説明にプレビューでの標準値であることを明記');
+ // 見込み: 3D設定の操作は残り説明popupだけ消える。合格: トーン名が見え、調整欄に独自/標準tooltip属性がない。範囲: 実Appと合成文書。
+ check(document.querySelector('[data-tool-label="スクリーントーン"]')?.textContent==='スクリーントーン'&&!document.querySelector('.background3d-controls [data-tool-help],.background3d-controls [data-tool-shortcut],.background3d-controls [title]'),'トーン設定を保持し、3D設定の説明popupを表示しない');
  await click('舞台の環境設定');
  check(!!document.querySelector('[data-default-group="stage"] [aria-label="大型オブジェクトを自動で隠す"]')&&document.querySelectorAll('[data-default-group="stage"] dd').length===1,'舞台の環境設定には大型オブジェクトの自動非表示だけを表示');
  await click('舞台の環境設定');
@@ -226,7 +226,8 @@ async function run(){
  document.querySelector('.background3d-controls header strong')!.dispatchEvent(new PointerEvent('pointerover',{pointerType:'mouse',bubbles:true}));await new Promise(resolve=>setTimeout(resolve,1200));
  check(!document.querySelector('[role=tooltip]'),'共通の編集ガイドをオフにすると3Dの説明も表示しない');
  await click('環境設定');await click('表示');const guideOn=document.querySelector<HTMLInputElement>('[aria-label="編集ガイド"]')!;guideOn.checked=true;guideOn.dispatchEvent(new Event('change',{bubbles:true}));await tick();await click('ネーム');await open3d();
- await hover(document.querySelector('.background3d-controls header strong')!);check(!!document.querySelector('[role=tooltip]'),'編集ガイドをオンに戻すと3D説明も復元');
+ // 見込み: 編集ガイドONは道具のキー案内だけに適用。合格: 3D説明は再表示されない。範囲: 設定切替後の3Dヘッダー。
+ await hover(document.querySelector('.background3d-controls header strong')!);check(!document.querySelector('[role=tooltip]'),'編集ガイドをオンに戻しても3D説明は表示しない');
  document.querySelector('.background3d-controls header strong')!.dispatchEvent(new PointerEvent('pointerout',{pointerType:'mouse',relatedTarget:document.body,bubbles:true}));
  return checks;
 }

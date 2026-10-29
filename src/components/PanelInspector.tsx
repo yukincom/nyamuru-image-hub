@@ -495,7 +495,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
   return <><div ref={inspectorRef} class={`panel-inspector ${locked?'is-locked':''}`}>
     <div class="inspector-sticky-head">
       <strong class="inspector-panel-label">{panelDisplayLabel(panel.id)}</strong>
-      <div class="mini-actions"><button disabled={painting||locked} onClick={onDelete} title="コマを削除" aria-label="コマを削除"><Trash2 size={16} /></button></div>
+      <div class="mini-actions"><button disabled={painting||locked} onClick={onDelete}  aria-label="コマを削除"><Trash2 size={16} /></button></div>
     </div>
 
 
@@ -504,7 +504,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
       <SectionTitle title="ト書き" />
       <textarea rows={5} value={panel.action ?? ''} placeholder="キャラクターの表情や動作、カメラの指示を入力" aria-label="ト書き" onInput={(event) => update((draft) => { draft.action = event.currentTarget.value || null; })} />
       <div class="panel-generation-assistant">
-        <button type="button" class="panel-generation-button" disabled={generationStatus?.kind === 'loading' || !hasPersonFigures || !panel.action?.trim()} title={`${panelDisplayLabel(panel.id)}のト書きと人物のアクションをすり合わせ、重複のない文章に整えます`} onClick={() => void requestPanelGeneration()}>
+        <button type="button" class="panel-generation-button" disabled={generationStatus?.kind === 'loading' || !hasPersonFigures || !panel.action?.trim()}  onClick={() => void requestPanelGeneration()}>
           <WandSparkles size={17} />{generationStatus?.kind === 'loading' ? 'ト書きとすり合わせ中…' : `${panelDisplayLabel(panel.id)}の人物へ注入`}
         </button>
         {generationStatus && <p class={`panel-generation-status is-${generationStatus.kind}`} role={generationStatus.kind === 'error' ? 'alert' : 'status'}>{generationStatus.message}</p>}
@@ -516,7 +516,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
       <label class="check-row guide-display-control"><input type="checkbox" checked={guideVisible('background')} onChange={()=>onToggleGuide('background')}/><span>あたり画像表示</span></label>
       <details class="bg-selector background-detail-settings">
         <summary>背景詳細度</summary>
-        <div class="background-detail-settings-body"><div>{BACKGROUND_DETAIL_OPTIONS.map((option) => <button class={`bg-option bg-option-${option.level} ${panel.bg === option.level ? 'is-active' : ''}`} aria-label={option.description} title={option.description} onClick={() => update((draft) => {
+        <div class="background-detail-settings-body"><div>{BACKGROUND_DETAIL_OPTIONS.map((option) => <button class={`bg-option bg-option-${option.level} ${panel.bg === option.level ? 'is-active' : ''}`} aria-label={option.description}  onClick={() => update((draft) => {
           draft.bg = option.level;
           if (option.level === -1) delete draft.background_description;
           })} key={option.level}><span>{option.label}</span></button>)}</div>
@@ -555,7 +555,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
 
     <section class="editor-section inspector-category-section panel-figure-section">
       <SectionTitle title="人物" action={<button class="inline-add" disabled={!manga.characters.length} onClick={() => { const index = panel.figures?.length ?? 0; const character = manga.characters[0]; update((draft) => { delete draft.no_figures; (draft.figures ??= []).push({ name: character?.name ?? '', kind: 'person', refId: character?.localId, bbox: fallbackBox(panel, 'figure', index), anchor: 'center', size: 'bust-up', role: 'main' }); }); onSelectElement({ type: 'figure', index }); }}><UserPlus size={14} />人物を追加</button>} />
-      <label class="check-row" title={hasPersonFigures ? '人物が配置されているため選択できません' : undefined}><input type="checkbox" disabled={hasPersonFigures} checked={!hasPersonFigures && (panel.no_figures ?? false)} onChange={(event) => update((draft) => { event.currentTarget.checked ? draft.no_figures = true : delete draft.no_figures; })} /><span>人物の描画なし</span></label>
+      <label class="check-row" ><input type="checkbox" disabled={hasPersonFigures} checked={!hasPersonFigures && (panel.no_figures ?? false)} onChange={(event) => update((draft) => { event.currentTarget.checked ? draft.no_figures = true : delete draft.no_figures; })} /><span>人物の描画なし</span></label>
       <div class="nested-list">
         {(panel.figures ?? []).map((figure, index) => ({ figure, index })).filter(({ figure }) => !isPropPlacement(figure)).map(({ figure, index }) => <div class={`nested-card selectable-card ${ownerItemLocked(figure)?'is-locked':''} ${figure.splitOverlap ? 'is-split-overlap' : ''} ${figure.analogImport?.analysisReview ? 'is-analysis-review' : ''} ${selectedElement?.type === 'figure' && selectedElement.index === index ? 'is-selected' : ''}`} inert={ownerItemLocked(figure)} aria-disabled={ownerItemLocked(figure)} key={`${figure.refId ?? figure.name}-${index}`} onClick={(event) => selectCard(event, { type: 'figure', index })}>
           <div class="nested-card-head">{(selectedElement?.type === 'figure' && selectedElement.index === index) || figure.splitOverlap
@@ -679,7 +679,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
     </div>
   </div>
   {panelDraftToolbarTarget && createPortal(
-    <button type="button" class="panel-draft-toolbar-button" title="選択中のコマのラフ生成内容を確認" aria-haspopup="dialog" disabled={Boolean(panelDraftDialog)} onClick={openPanelDraftDialog}>
+    <button type="button" class="panel-draft-toolbar-button"  aria-haspopup="dialog" disabled={Boolean(panelDraftDialog)} onClick={openPanelDraftDialog}>
       <ImageIcon size={15} />{panelDisplayLabel(panel.id)}・4値ラフ（Animagine）…
     </button>, panelDraftToolbarTarget,
   )}
