@@ -1,15 +1,15 @@
-import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Type, Box, Camera, Layers, Bot } from 'lucide-preact';
+import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Type, Box, Camera, Bot } from 'lucide-preact';
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { PaintFolder, PaintLayer, PaintGenerationMask } from '../types';
+import type { PaintFolder, PaintLayer } from '../types';
 import {paintStackTarget,paintLayerTree,type PaintLayerDestination,type PaintLayerDropTarget,type PaintOwner,type PaintScene} from '../lib/paintDocument';
-import { drawPaintMask, drawGenerationMask, paintPreviewRenderer, type PaintImages } from '../lib/paintRenderer';
+import { drawPaintMask, paintPreviewRenderer, type PaintImages } from '../lib/paintRenderer';
 import { PaintOriginal } from './PaintSceneView';
 import { PaintToolButton } from './PaintToolHelp';
 import LayerVisibilityButton from './LayerVisibilityButton';
 import { bubbleVisible, canReorderBubbleLayers } from '../lib/panelLayers';
 import { letteringFigureIndex, letteringLayerMove } from '../lib/bubbleRelations';
 import LayerLockIcon from './LayerLockIcon';
-import {paintGenerationMaskLocked,paintLayerVisible,paintLayerInheritedLocked,paintLayerEditable,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {paintLayerVisible,paintLayerInheritedLocked,paintLayerEditable,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import type { ComponentChildren } from 'preact';
 import {PaintLayerControlsContext} from '../lib/paintWorkspace';
 
@@ -18,7 +18,7 @@ function Thumbnail({owner,layer,images}:{owner:PaintOwner;layer:PaintLayer;image
   // Working bleed is not part of the layer's thumbnail framing.
   const view=owner.paint.referenceFrame??{x:0,y:0,w:owner.paint.width,h:owner.paint.height};
   useEffect(()=>()=>renderer.current?.dispose(),[]);
-  useLayoutEffect(()=>{if(!canvas.current||!images)return;const context=canvas.current.getContext('2d');if(layer.image&&!images.has(layer.image.assetId)){context?.clearRect(0,0,canvas.current.width,canvas.current.height);return;}renderer.current??=paintPreviewRenderer();try{renderer.current.draw(canvas.current,{...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true,opacity:1}]},images,undefined,undefined,false,view);}catch{context?.clearRect(0,0,canvas.current.width,canvas.current.height);}},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer,images]);
+  useLayoutEffect(()=>{if(!canvas.current||!images)return;const context=canvas.current.getContext('2d',{willReadFrequently:true});if(layer.image&&!images.has(layer.image.assetId)){context?.clearRect(0,0,canvas.current.width,canvas.current.height);return;}renderer.current??=paintPreviewRenderer();try{renderer.current.draw(canvas.current,{...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true,opacity:1}]},images,undefined,undefined,true,view);}catch{context?.clearRect(0,0,canvas.current.width,canvas.current.height);}},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer,images]);
   const scale=40/Math.max(view.w,view.h);
   return <canvas ref={canvas} width={Math.max(1,Math.round(view.w*scale))} height={Math.max(1,Math.round(view.h*scale))}/>;
 }
@@ -28,11 +28,6 @@ function MaskThumbnail({owner,layer}:{owner:PaintOwner;layer:PaintLayer}){
   useLayoutEffect(()=>{if(ref.current)drawPaintMask(ref.current,owner.paint,layer,undefined,view);},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer.mask]);
   return <span class="layer-mask-thumbnail"><canvas ref={ref} width={Math.max(1,Math.round(view.w*scale))} height={Math.max(1,Math.round(view.h*scale))}/></span>;
 }
-function GenerationMaskThumbnail({owner}:{owner:PaintOwner}){
-  const ref=useRef<HTMLCanvasElement>(null),scale=40/Math.max(owner.paint.width,owner.paint.height);
-  useLayoutEffect(()=>{if(ref.current)drawGenerationMask(ref.current,owner.paint);},[owner.paint.width,owner.paint.height,owner.paint.generationMask]);
-  return <span class="layer-thumbnail generation-mask-thumbnail"><canvas ref={ref} width={Math.max(1,Math.round(owner.paint.width*scale))} height={Math.max(1,Math.round(owner.paint.height*scale))}/></span>;
-}
 interface Props {
   paletteScope?:string; directPanel?:number; location?:{panelIndex:number;overlay:boolean};
   nativeTextLayers?:Array<{key:string;node:ComponentChildren}>;
@@ -41,7 +36,6 @@ interface Props {
   selectedMask?:'mask'|'generationMask'|null;
   selectMask?:(key:string,id:string,kind:'mask'|'generationMask')=>void;
   addToneMask?:()=>void; addGenerationMask?:()=>void;canAddGenerationMask?:boolean;
-  updateGenerationMask?:(key:string,patch:Partial<PaintGenerationMask>)=>void;
   selectedOwner?:string; canvasSelectionScrollRequest?:number; onToggleBubble?:(index:number,group?:boolean)=>void; openBackground3d?:()=>void;
   reorderGroup?:(key:string,target:string,after:boolean)=>void; embedded?:boolean; inactive?:boolean; onEditText?:(index:number)=>void; title:string; scene:PaintScene; owner:PaintOwner; layer:PaintLayer; images:PaintImages|null; disabled:boolean;
   select:(key:string,id?:string,contents?:boolean,native?:boolean)=>void; update:(key:string,id:string,patch:Partial<PaintLayer>)=>void;
@@ -76,7 +70,7 @@ export function PaintLayerControls(p:ControlsProps){
       {icon('ベクターレイヤー追加',p.addVector,PenTool,p.owner.paint.layers.length>=64)}
       <PaintToolButton class="palette-icon" label="トーンレイヤー作成" help="トーンレイヤーを追加し、赤いマスクで範囲を塗ります。選択範囲があれば引き継ぎます。" disabled={p.disabled||!hasLayer||p.owner.paint.layers.length>=64||!p.addToneMask} onClick={p.addToneMask}><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="m12 1 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Zm14 0 4 4-4 4-4-4Zm-7 7 4 4-4 4-4-4Z"/></svg></PaintToolButton>
       <PaintToolButton class="palette-icon" label="生成マスク化" help="選択中の生成対象フォルダーにマスクを作り、色で領域を指定します。" disabled={p.disabled||!p.canAddGenerationMask||!p.addGenerationMask} onClick={p.addGenerationMask}><Bot size={18}/></PaintToolButton>
-      {icon('複製',p.duplicate,Copy,!hasLayer||p.owner.paint.layers.length>=64||p.selectedMask==='generationMask')}{icon(p.selectedFolder?'フォルダーを解除':'削除',p.remove,Trash2,p.selectedMask==='generationMask'?paintGenerationMaskLocked(p.owner):p.selectedFolder?paintOwnerLocked(p.owner)||p.selectedFolder.locked===true:!hasLayer||!paintLayerEditable(p.owner,p.layer))}
+      {icon('複製',p.duplicate,Copy,!hasLayer||p.owner.paint.layers.length>=64)}{icon(p.selectedFolder?'フォルダーを解除':'削除',p.remove,Trash2,p.selectedFolder?paintOwnerLocked(p.owner)||p.selectedFolder.locked===true:!hasLayer||!paintLayerEditable(p.owner,p.layer))}
     </div>
   </div>;
 }
@@ -165,7 +159,7 @@ export default function PaintLayerPalette(p:Props){
     const move=(event:PointerEvent)=>{
       const d=groupDrag.current;if(!d||d.pointer!==event.pointerId||Math.hypot(event.clientX-d.x,event.clientY-d.y)<5)return;
       d.moved=true;event.preventDefault();
-      const row=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-owner-group],[data-generation-mask]'),key=row?.dataset.ownerGroup??row?.dataset.generationMask;
+      const row=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-owner-group]'),key=row?.dataset.ownerGroup;
       if(!row||row.closest('.paint-layer-palette')!==paletteRef.current||!key||!canReorderGroup(d.key,key)){d.target=undefined;setGroupDrop(null);return;}
       d.target=key;d.after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;setGroupDrop({key,after:d.after});
     };
@@ -176,13 +170,13 @@ export default function PaintLayerPalette(p:Props){
     try{capture.setPointerCapture(e.pointerId);}catch{}
   };
   const renderLayer=(o:PaintOwner,l:PaintLayer,active:boolean,depth=baseDepth)=>{
-    const canvasSelected=p.selectedMask!=='generationMask'&&p.selectedOwner===o.key&&o.kind==='original'&&l.id===o.paint.layers.at(-1)?.id;
-    const selected=canvasSelected||active&&l.id===p.layer.id&&p.selectedMask!=='generationMask';
+    const canvasSelected=p.selectedOwner===o.key&&o.kind==='original'&&l.id===o.paint.layers.at(-1)?.id;
+    const selected=canvasSelected||active&&l.id===p.layer.id;
     return <div class="layer-entry" key={l.id}><div role="treeitem" aria-selected={selected} data-canvas-selected={canvasSelected} class={`layer-row ${selected?'is-selected':''}`}
-    data-layer-depth={depth} style={{'--layer-indent':`${depth*16}px`}} data-layer-drop="layer" data-layer={l.id} data-owner={o.key} data-drop-locked={paintOwnerLocked(o)||paintLayerInheritedLocked(o,l)}
+    data-generation-mask={l.generationMask?o.key:undefined} data-layer-depth={depth} style={{'--layer-indent':`${depth*16}px`}} data-layer-drop="layer" data-layer={l.id} data-owner={o.key} data-drop-locked={paintOwnerLocked(o)||paintLayerInheritedLocked(o,l)}
     onPointerDown={e=>beginLayerDrag(e,o,l)} onPointerCancel={cancelLayerDrag} onLostPointerCapture={cancelLayerDrag} onContextMenu={e=>p.menu(e,o.key)}>
     <LayerVisibilityButton label={`${label(o)}・${l.name}を${l.visible?'隠す':'表示'}`} visible={l.visible} disabled={p.disabled} onClick={()=>p.update(o.key,l.id,{visible:!l.visible})}/>
-    <button class="layer-select" data-tool-label={l.name} data-tool-help="クリックで描くレイヤーを選びます。ドラッグした位置へ移動し、フォルダーの中央へ重ねると中へ、上下へ置くと外へ移動します。ダブルクリックで名前を変えます。" disabled={p.disabled} onClick={e=>{if(!(active&&l.id===p.layer.id&&p.selectedMask==='mask')||e.metaKey||e.ctrlKey||e.altKey)p.select(o.key,l.id,e.metaKey||e.ctrlKey||e.altKey);}} onDblClick={()=>{p.select(o.key,l.id);if(paintLayerEditable(o,l))setRenaming(l.id);}}>{l.kind==='vector'?<span class="layer-kind-icon"><PenTool size={18}/></span>:<span class="layer-thumbnail">{l.guide&&!l.image?<PaintOriginal owner={o}/>:<Thumbnail owner={o} layer={l} images={p.images}/>}</span>}<span class="layer-caption"><small>{Math.round(l.opacity*100)}% {l.blend==='multiply'?'乗算':'通常'}{l.tone?.enabled?` · ${l.tone.lpi}線`:''}{l.mask?.enabled?' · マスク':''}</small><span class="layer-name-line"><span>{l.name}</span></span></span></button>
+    <button class="layer-select" data-tool-label={l.name} data-tool-help="クリックで描くレイヤーを選びます。ドラッグした位置へ移動し、フォルダーの中央へ重ねると中へ、上下へ置くと外へ移動します。ダブルクリックで名前を変えます。" disabled={p.disabled} onClick={e=>{if(!(active&&l.id===p.layer.id&&p.selectedMask==='mask')||e.metaKey||e.ctrlKey||e.altKey)p.select(o.key,l.id,e.metaKey||e.ctrlKey||e.altKey);}} onDblClick={()=>{p.select(o.key,l.id);if(paintLayerEditable(o,l))setRenaming(l.id);}}>{l.generationMask&&<Bot size={16}/>}{l.kind==='vector'?<span class="layer-kind-icon"><PenTool size={18}/></span>:<span class="layer-thumbnail">{l.guide&&!l.image?<PaintOriginal owner={o}/>:<Thumbnail owner={o} layer={l} images={p.images}/>}</span>}<span class="layer-caption"><small>{Math.round(l.opacity*100)}% {l.blend==='multiply'?'乗算':'通常'}{l.tone?.enabled?` · ${l.tone.lpi}線`:''}{l.mask?.enabled?' · マスク':''}</small><span class="layer-name-line"><span>{l.name}</span></span></span></button>
     {l.mask&&<PaintToolButton class="layer-mask-toggle" label={`${l.name}のマスク編集`} help="オンで赤い範囲を編集し、もう一度押すとトーンを表示します。" aria-pressed={Boolean(active&&l.id===p.layer.id&&p.selectedMask==='mask')} disabled={p.disabled} onClick={()=>p.selectMask?.(o.key,l.id,'mask')}><MaskThumbnail owner={o} layer={l}/></PaintToolButton>}
     <LockButton label={l.name} locked={l.locked} inherited={paintLayerInheritedLocked(o,l)} disabled={p.disabled} onClick={()=>p.update(o.key,l.id,{locked:!l.locked})}/>
     {renaming===l.id&&<LayerNameEditor name={l.name} label="レイヤー名" commit={name=>p.update(o.key,l.id,{name})} close={()=>setRenaming(null)}/>}
@@ -202,20 +196,8 @@ export default function PaintLayerPalette(p:Props){
       </div>})())}
     </div>;
   };
-  const renderGenerationGroup=(o:PaintOwner,active:boolean,children:ComponentChildren)=>{
-    const mask=o.paint.generationMask;if(!mask)return children;
-    const foldKey=`${scope}/generation-mask/${o.key}`,folded=palette.folded[foldKey]??false,selected=active&&p.selectedMask==='generationMask',depth=baseDepth+1;
-    return <div class="generation-mask-group" data-generation-mask-owner={o.key}>
-      <div class={`layer-row layer-mask-row ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} aria-expanded={!folded} data-generation-mask={o.key} data-layer-depth={depth} data-layer-drop="owner" data-owner={o.key} data-drop-locked={paintGenerationMaskLocked(o)} style={{'--layer-indent':`${depth*16}px`}} onPointerDown={e=>beginGroupDrag(e,o,'.layer-select')} onPointerCancel={cancelGroupDrag} onLostPointerCapture={cancelGroupDrag}>
-        <LayerVisibilityButton label={`${label(o)}の生成マスクを${mask.enabled?'無効':'有効'}にする`} visible={mask.enabled} disabled={p.disabled||paintGenerationMaskLocked(o)} onClick={()=>p.updateGenerationMask?.(o.key,{enabled:!mask.enabled})}/>
-        <button class="palette-icon layer-folder-toggle" aria-label={`${label(o)}の生成マスクを${folded?'展開':'折りたたむ'}`} aria-expanded={!folded} onClick={()=>palette.setFolded(foldKey,!folded)}>{folded?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
-        <button class="layer-select" aria-label={`${label(o)}の生成マスクを編集`} disabled={p.disabled} onClick={()=>p.selectMask?.(o.key,'','generationMask')}><GenerationMaskThumbnail owner={o}/><Bot size={16}/><span>生成マスク</span></button>
-      </div>
-      {!folded&&<div class="generation-mask-children" role="group">{children}</div>}
-    </div>;
-  };
   const renderOriginal=(o:PaintOwner)=><div class="layer-direct-root original-raster-root" key={o.key} data-original-raster={o.original?.id}>
-    {renderEntries(o,!p.inactive&&p.owner.key===o.key,undefined,baseDepth+Number(!!o.parentKey)+Number(!!p.scene.owners.find(parent=>parent.key===o.parentKey)?.paint.generationMask))}
+    {renderEntries(o,!p.inactive&&p.owner.key===o.key,undefined,baseDepth+Number(!!o.parentKey))}
   </div>;
   const textDirectOwners=p.scene.owners.filter(o=>paintStackTarget(o.stack,p.scene.anchorIds)?.startsWith('screen-text-'));
   const displayOwners=[...p.scene.owners].filter(o=>!textDirectOwners.includes(o)).filter(o=>p.directPanel!==undefined?paintStackTarget(o.stack,p.scene.anchorIds)===`panel-${p.directPanel}`:!paintStackTarget(o.stack,p.scene.anchorIds)?.startsWith('panel-')).filter(o=>!o.parentKey).filter(o=>(o.kind!=='panel'&&o.kind!=='page')||o.paint.layers.length>0||o.paint.folders?.length).reverse();
@@ -234,9 +216,8 @@ export default function PaintLayerPalette(p:Props){
     {!p.embedded&&!p.inactive&&<PaintLayerControls {...p}/>}<div class="layer-tree" role="tree" aria-label="レイヤーの重なり">
       {!p.embedded&&<div class="layer-panel-row"><strong>{p.title}</strong></div>}
       {p.frameLayer}
-      {displayOwners.map((o,ownerIndex,owners)=>{
-        const bubble=o.kind==='bubble',originals=p.scene.owners.filter(child=>child.parentKey===o.key),groupLocked=o.locked===true,visible=bubble?(bubbleVisible(o.bubble!)||originals.some(child=>child.paint.layers.some(l=>paintLayerVisible(child.paint,l)))):o.paint.layers.some(l=>paintLayerVisible(o.paint,l)),foldKey=`${scope}/owner/${o.key}`,folded=palette.folded[foldKey]??bubble;
-        const generationIndent=Number(!!o.paint.generationMask);
+      {displayOwners.map((o,ownerIndex)=>{
+        const bubble=o.kind==='bubble',originals=p.scene.owners.filter(child=>child.parentKey===o.key),groupLocked=o.locked===true,visible=bubble?(bubbleVisible(o.bubble!)||o.paint.layers.some(l=>paintLayerVisible(o.paint,l))||originals.some(child=>child.paint.layers.some(l=>paintLayerVisible(child.paint,l)))):o.paint.layers.some(l=>paintLayerVisible(o.paint,l)),foldKey=`${scope}/owner/${o.key}`,folded=palette.folded[foldKey]??bubble;
         const paintActive=!p.inactive&&o.key===p.owner.key,canvasSelected=p.selectedOwner===o.key,active=canvasSelected||paintActive||originals.some(child=>p.selectedOwner===child.key||!p.inactive&&p.owner.key===child.key);
         const frame=ownerIndex===screenIndex?renderTexts():null;
         if(o.kind==='original')return <>{frame}{renderOriginal(o)}</>;
@@ -250,15 +231,15 @@ export default function PaintLayerPalette(p:Props){
             {o.kind==='background'&&p.openBackground3d&&(p.backgroundCapture?<button class="background3d-open" aria-label="3D背景を撮影" title="今の構図を編集可能な線画・ベタ・トーンとして保存します。" disabled={!p.backgroundCapture.ready} onClick={p.backgroundCapture.capture}><Camera size={15}/>撮影</button>:<button class="background3d-open" aria-label="背景あたりの3Dモデルを配置・調整" title="このコマの背景で3Dモデルの構図を決め、線画・ベタ・トーンとして撮影します。" disabled={p.disabled||paintOwnerLocked(o)||(!p.inactive&&!p.images)} onClick={p.openBackground3d}><Box size={15}/>3D編集</button>)}
             <LockButton label={bubble?`${label(o)}全体`:label(o)} locked={bubble?groupLocked:o.locked===true} inherited={o.inheritedLocked===true} disabled={p.disabled} onClick={()=>p.lockOwner(o.key,bubble?!groupLocked:o.locked!==true,bubble)}/>
           </div>
-          {!folded&&<div class="layer-group-children" role="group">{renderGenerationGroup(o,paintActive,<>
-            {bubble&&renderEntries(o,paintActive,true,baseDepth+1+generationIndent)}
+          {!folded&&<div class="layer-group-children" role="group">
+            {bubble&&renderEntries(o,paintActive,true,baseDepth+1)}
             {[...originals].reverse().map(renderOriginal)}
-            {bubble&&<div class={`layer-row bubble-native-row ${canvasSelected?'is-selected':''}`} role="treeitem" aria-selected={canvasSelected} data-canvas-selected={canvasSelected} data-layer-depth={baseDepth+1+generationIndent} style={{'--layer-indent':`${(baseDepth+1+generationIndent)*16}px`}} data-layer-drop="native" data-native-below={originals.find(child=>child.kind==='original')?.key} data-owner={o.key} data-drop-locked={paintOwnerLocked(o)}>
+            {bubble&&<div class={`layer-row bubble-native-row ${canvasSelected?'is-selected':''}`} role="treeitem" aria-selected={canvasSelected} data-canvas-selected={canvasSelected} data-layer-depth={baseDepth+1} style={{'--layer-indent':`${(baseDepth+1)*16}px`}} data-layer-drop="native" data-native-below={originals.find(child=>child.kind==='original')?.key} data-owner={o.key} data-drop-locked={paintOwnerLocked(o)}>
               <LayerVisibilityButton label={`${label(o)}の文字を${bubbleVisible(o.bubble!)?'隠す':'表示'}`} visible={bubbleVisible(o.bubble!)} disabled={p.disabled} onClick={()=>p.onToggleBubble?.(o.index)}/>
               <button class="layer-select" aria-label={`${label(o)}の文字を選択`} disabled={p.disabled} onClick={()=>p.select(o.key,undefined,false,true)}><span class="layer-kind-icon"><Type size={18}/></span><span class="layer-caption">{o.bubble?.text}</span></button>
               <LockButton label={`${label(o)}の文字`} locked={o.bubble?.nativeLocked===true} inherited={o.inheritedLocked===true||o.locked===true} disabled={p.disabled} onClick={()=>p.lockOwner(o.key,o.bubble?.nativeLocked!==true)}/>
             </div>}
-            {renderEntries(o,paintActive,bubble?false:undefined,baseDepth+1+generationIndent)}</>)}</div>}
+            {renderEntries(o,paintActive,bubble?false:undefined,baseDepth+1)}</div>}
         </div></>;
       })}
       {screenIndex===displayOwners.length&&renderTexts()}

@@ -299,3 +299,12 @@ test('every UI opening boundary runs separation before exposing the editor',()=>
   const view=readFileSync(new URL('../src/components/PaintSceneView.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(view.slice(view.indexOf('if(owner.bubble)'),view.indexOf('const level=')),/SourceImage/);
 });
+
+test('a hidden native text does not hide its own paint and the group eye includes visible paint children',async()=>{
+ const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0],bubble=panel.bubbles[0],target={pageIndex:0,panelIndex:0,bubbleIndex:0,overlay:false};
+ for(const image of panel.images)for(const layer of image.paint?.layers??[])layer.visible=false;
+ const paint=structuredClone(panel.images[0].paint);paint.layers=paint.layers.map(layer=>({...layer,visible:true}));
+ bubble.hidden=true;bubble.paint_overlay={...structuredClone(panel.images[0]),paint};
+ toggleBubbleVisibility(doc,target,true);assert.equal(bubble.hidden,true);assert.equal(bubble.paint_overlay.paint.layers[0].visible,false);
+ toggleBubbleVisibility(doc,target,true);assert.equal(bubble.hidden,false);assert.equal(bubble.paint_overlay.paint.layers[0].visible,true);
+});

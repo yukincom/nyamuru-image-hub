@@ -40,7 +40,7 @@ async function run(){
  const soft=newToneLayer();soft.antialias=3;soft.mask!.strokes=[stroke('pen')];
  const paint:PaintDocument={version:1,width,height,dpi:600,layers:[soft]};
  check(partial(readPaintMaskPixels(paint,soft).data)>0,'アンチエイリアス強のマスクは設定を保持する');
- const hint={...paint,generationMask:{enabled:true,antialias:0 as const,strokes:[{...stroke('pen'),color:'#ff0000'}]}};
+ const hint={...paint,layers:[{...newPaintLayer('生成マスク'),generationMask:true,antialias:0 as const,strokes:[{...stroke('pen'),color:'#ff0000'}]}]};
  check(partial(readGenerationMaskPixels(hint).data)===0,'生成マーカーもAAなしの境界を使う');
  const imageCanvas=canvas(),ic=imageCanvas.getContext('2d')!;ic.fillStyle='rgba(20,40,80,.4)';ic.fillRect(0,0,width,height);
  const source=await new Promise<Blob>(resolve=>imageCanvas.toBlob(blob=>resolve(blob!)));images.set('source',await decodePaintImage(source));

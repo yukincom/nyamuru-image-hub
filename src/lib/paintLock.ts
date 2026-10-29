@@ -11,13 +11,9 @@ export function paintLayerVisible(paint:PaintDocument,layer:PaintLayer):boolean 
 export function paintLayerInheritedLocked(owner:PaintOwner,layer:PaintLayer):boolean {
   return paintOwnerLocked(owner)||paintLayerFolder(owner.paint,layer)?.locked===true;
 }
-/** Generation hints belong to the folder; a native text lock does not lock these hints. */
-export function paintGenerationMaskLocked(owner:PaintOwner):boolean {
-  return Boolean(owner.inheritedLocked||owner.locked||owner.bubble?.paint_overlay?.locked);
-}
 /** A source image's layer lock is independent of its placement/owner lock. */
 export function paintOwnerLocked(owner:PaintOwner):boolean {
-  return Boolean(owner.inheritedLocked||owner.locked||owner.bubble?.nativeLocked||(owner.kind!=='figure'&&owner.bubble?.paint_overlay?.locked));
+  return Boolean(owner.inheritedLocked||owner.locked||(owner.kind!=='figure'&&owner.bubble?.paint_overlay?.locked));
 }
 export function paintLayerEditable(owner:PaintOwner,layer:PaintLayer):boolean {
   return !paintLayerInheritedLocked(owner,layer)&&!layer.locked;
@@ -42,5 +38,5 @@ export function artworkLocked(image:(Pick<ImageContent,'locked'|'paint'>&Partial
   return Boolean(image?.locked)||paintContentsLocked(image?.paint)||Boolean(image?.bubbleOriginal&&bubbles.some(bubble=>bubble.locked&&bubble.analogTextImport?.originalImageId===image.id));
 }
 export function paintOwnerPlacementLocked(owner:PaintOwner):boolean {
-  return paintOwnerLocked(owner)||paintContentsLocked(owner.paint);
+  return paintOwnerLocked(owner)||Boolean(owner.bubble?.nativeLocked)||paintContentsLocked(owner.paint);
 }

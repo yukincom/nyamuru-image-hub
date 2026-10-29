@@ -42,25 +42,22 @@ export interface QwenLayerReference extends QwenLayerCandidate { image:string }
 export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): boolean {
   return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&isHandwrittenText(owner.bubble);
 }
-export const QWEN_GENERATION_MASK_ID='generation-mask';
 export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
-  const mask=owner.paint.generationMask;
-  return [...(mask?[{id:QWEN_GENERATION_MASK_ID,label:'生成マスク',kind:'paint' as const,hidden:!mask.enabled,empty:!mask.strokes.length}]:[]),
-    ...[...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
+  return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
     kind:layer.guide&&owner.figure?.analogImport?'sketch' as const:'paint' as const,hidden:!paintLayerVisible(owner.paint,layer),
-    empty:layer.opacity<=0||!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill)}))];
+    empty:layer.opacity<=0||!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill)}));
 }
-/** Select only inside the captured owner; visibility changes affect this export copy only. */
+/** Select only inside the captured owner; the export copy can reveal the chosen layer. */
 export function qwenLayerPaint(owner:PaintOwner,id:string,includeGeneration=false) {
   const candidate=qwenLayerCandidates(owner).find(layer=>layer.id===id);
   if(!candidate)throw new Error('選択したレイヤーがこのフォルダにありません');
   if(candidate.empty)throw new Error('空または濃度0%のレイヤーは参照できません');
-  if(id===QWEN_GENERATION_MASK_ID){
-    if(!includeGeneration)throw new Error('生成マスクは、ピンポイント修正用に選んでください');
-    return {...owner.paint,generationMask:{...owner.paint.generationMask!,enabled:true}};
-  }
   const layer=owner.paint.layers.find(layer=>layer.id===id)!;
-  return {...owner.paint,folders:undefined,generationMask:includeGeneration?owner.paint.generationMask:undefined,layers:[{...layer,folderId:undefined,visible:true}]};
+  if(layer.generationMask){
+    if(!includeGeneration)throw new Error('生成マスクは、ピンポイント修正用に選んでください');
+    return {...owner.paint,folders:undefined,layers:[...owner.paint.layers.filter(item=>!item.generationMask).map(item=>({...item,folderId:undefined,visible:paintLayerVisible(owner.paint,item)})),{...layer,folderId:undefined,visible:true}]};
+  }
+  return {...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true}]};
 }
 export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLayerReference,correction?:QwenLayerReference) {
   if(correction)return [

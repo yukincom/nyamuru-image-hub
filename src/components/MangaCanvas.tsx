@@ -1302,10 +1302,10 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
         :directPaintImages(images,scope,stack,anchors).filter(image=>!image.hidden).map(image=><span class="direct-paint-artwork" key={image.id} style={paperBoxStyle(image.bbox)}><PlacedImageView assets={imageAssets} asset={imageAssets.find(asset=>asset.id===image.assetId)} image={image}/></span>)}
     </div>;
   };
-  const renderBubbleFront=(bubble:Bubble,index:number,box:BBox,panelIndex:number|null)=>{
+  const renderBubblePaint=(bubble:Bubble,index:number,box:BBox,panelIndex:number|null,nativeBand:'above'|'below')=>{
     const editing=panelIndex===null?editingOverlay:editingPanel(panelIndex);
-    return <span class="bubble-paint-front" style={paperBoxStyle(box)}>{editing?<PaintOwnerPreview ownerKey={`bubble-${index}`} container={box} inkOnly nativeBand="above"/>
-      :bubble.paint_overlay&&!bubble.paint_overlay.hidden&&<PlacedImageView nativeBand="above" assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-front',bbox:box}}/>}</span>;
+    return <span class={nativeBand==='above'?'bubble-paint-front':'bubble-paint-back'} style={paperBoxStyle(box)}>{editing?<PaintOwnerPreview ownerKey={`bubble-${index}`} container={box} inkOnly nativeBand={nativeBand}/>
+      :bubble.paint_overlay&&!bubble.paint_overlay.hidden&&<PlacedImageView nativeBand={nativeBand} assets={imageAssets} asset={imageAssets.find(asset=>asset.id===bubble.paint_overlay!.assetId)} image={{...bubble.paint_overlay,id:'bubble-front',bbox:box}}/>}</span>;
   };
   const renderPanelBaseElements = (panel: Panel, panelIndex: number, boxStyle: (box: BBox) => Record<string, string>, only?:number|'screen') => <>
     {(panel.figures ?? []).map((figure, figureIndex) => {
@@ -1500,7 +1500,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           onMoveFrame={textTool&&!backgroundEdit&&!elementLocked(selection,panelIndex)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/></span>}
       </span>
       <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection,panelIndex)} handles={visible=>!backgroundEdit&&!bubblePathTool&&renderHandles(panelIndex,selection,box,visible,false)}/>
-    </button></>}{renderBubbleOriginal(bubble,panelIndex)}{renderBubbleFront(bubble,bubbleIndex,box,panelIndex)}</div>;
+    </button></>}{!bubbleVisible(bubble)&&renderBubblePaint(bubble,bubbleIndex,box,panelIndex,'below')}{renderBubbleOriginal(bubble,panelIndex)}{renderBubblePaint(bubble,bubbleIndex,box,panelIndex,'above')}</div>;
   });
 
   const paperBounds: BBox = { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h };
@@ -1600,7 +1600,7 @@ export default function MangaCanvas({ agentWorkTarget, zoomTool=false, textTool=
           onEdit={textTool&&!elementLocked(selection)?()=>onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}):undefined}
           onMoveFrame={textTool&&!elementLocked(selection)?event=>startBubbleTextDrag(event,selection,referenceBox,bubbleTextPosition(bubble)):undefined} moveFrameActive={isSelected}/>}</span>
       <CanvasContentSelection frame={box} revision={bubble} selected={isSelected&&!elementLocked(selection)} handles={visible=>!bubblePathTool&&renderHandles(null,selection,box,visible,false)}/>
-    </button></>}{renderBubbleOriginal(bubble,null)}{renderBubbleFront(bubble,bubbleIndex,box,null)}</div>;
+    </button></>}{!bubbleVisible(bubble)&&renderBubblePaint(bubble,bubbleIndex,box,null,'below')}{renderBubbleOriginal(bubble,null)}{renderBubblePaint(bubble,bubbleIndex,box,null,'above')}</div>;
   });
 
   const panelSelectionVisible=!painting&&(!selectedElement||selectedElement.type==='panel_frame');

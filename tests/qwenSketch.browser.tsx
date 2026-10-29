@@ -33,28 +33,36 @@ const owner=paintScene(manga.pages[0].panels[0],100,[]).owners[1];
 const base:PaintLayer={id:'rough',name:'人物ラフ',visible:false,locked:true,opacity:1,blend:'normal',strokes:[],guide:true,
  image:{assetId:roughAsset.id,crop:{x:0,y:0,w:320,h:224},bbox:{x:0,y:0,w:320,h:224}}};
 owner.paint={...owner.paint,width:320,height:224,referenceFrame:{x:0,y:0,w:320,h:224},
- generationMask:{enabled:true,strokes:[{tool:'rectangle',color:'#ff0000',size:10,points:[{x:180,y:80,pressure:.5,time:0},{x:220,y:120,pressure:.5,time:1}]}]},
- layers:[base,{...base,id:'empty',name:'空のレイヤー',guide:false,image:undefined}]};
+ layers:[base,{...base,id:'empty',name:'空のレイヤー',guide:false,image:undefined},{...newPaintLayer('生成マスク'),id:'generation-mask',generationMask:true,strokes:[{tool:'rectangle',color:'#ff0000',size:10,points:[{x:180,y:80,pressure:.5,time:0},{x:220,y:120,pressure:.5,time:1}]}]}]};
 const plan=buildQwenGenerationPlan(manga,0,0,false,owner),before=JSON.stringify(owner);
 const borrowed=await decodePaintImage(sketchBlob),borrowedSrc=borrowed.src,live=new Map([[roughAsset.id,borrowed]]);
 const layerImage=async(id:string,correction:boolean)=>(await qwenInputImage(await qwenLayerImage(owner,id,[roughAsset],live,correction))).image;
 const clean=await layerImage('rough',false),marked=await layerImage('rough',true),mask=await layerImage('generation-mask',true);
-if(clean!==sketch||marked===clean||mask===marked||borrowed.src!==borrowedSrc||JSON.stringify(owner)!==before)throw new Error('レイヤー分離・マーカー・借用画像・原本保持の検証に失敗');
+if(clean!==sketch||marked!==clean||mask===marked||borrowed.src!==borrowedSrc||JSON.stringify(owner)!==before)throw new Error('レイヤー分離・マーカー・借用画像・原本保持の検証に失敗');
 try{await layerImage('different-owner-layer',false);throw new Error('対象外レイヤーを許可しました');}catch(error){if(!String(error).includes('このフォルダ'))throw error;}
 const native=structuredClone(owner);delete native.figure!.analogImport;native.paint.layers=[{...base,image:undefined}];
 await qwenLayerImage(native,'rough',[]); // Virtual guide uses the existing materialization path.
+const nativeMarker={...newPaintLayer('生成マスク'),generationMask:true,strokes:owner.paint.layers.find(layer=>layer.generationMask)!.strokes};
+native.paint.layers=[{...base,image:undefined,visible:true},nativeMarker];
+const nativeCorrection=await decodePaintImage(await qwenLayerImage(native,nativeMarker.id,[],undefined,true));
+const nativeCheck=document.createElement('canvas');nativeCheck.width=320;nativeCheck.height=224;nativeCheck.getContext('2d')!.drawImage(nativeCorrection,0,0);nativeCorrection.src='';
+if(!nativeCheck.getContext('2d')!.getImageData(0,0,320,224).data.some((value,index,data)=>index%4===0&&value>data[index+1]&&data[index+3]>0))throw Error('あたりを画像化しても選択マーカーを保持');
+
 async function checkGenerationArea(){
  let checks=0;
  const check=(condition:boolean,message:string)=>{if(!condition)throw new Error(message);checks++;};
  const fill=(x:number,y:number,w:number,h:number,tool:'fill'|'clear'='fill')=>({tool,color:'#ff0000',size:1,points:[{x,y,pressure:.5,time:0}],selection:[{x,y,w,h}]});
- const marker:PaintLayer={...base,id:'area',name:'元の線画',visible:true,guide:false,image:undefined,strokes:[],clip:{x:40,y:30,w:120,h:110}};
- const paint:PaintDocument={...owner.paint,layers:[marker],generationMask:{enabled:true,antialias:0,strokes:[fill(20,40,160,60),fill(20,40,50,60,'clear')]}},before=JSON.stringify(paint);
+ const original:PaintLayer={...base,id:'area',name:'元の線画',visible:true,guide:false,image:undefined,strokes:[],clip:{x:40,y:30,w:120,h:110}};
+ const marker:PaintLayer={...newPaintLayer('生成マスク'),generationMask:true,antialias:0,strokes:[fill(20,40,160,60),fill(20,40,50,60,'clear')]};
+ const paint:PaintDocument={...owner.paint,layers:[original,marker]},before=JSON.stringify(paint);
  const area=generationMaskBounds(paint)!;
- check(JSON.stringify(area)===JSON.stringify({x:70,y:40,w:110,h:60}),'生成範囲はレイヤーclipから独立し消去を反映');
- for(const layer of [{...marker,visible:false},{...marker,opacity:0},{...marker,locked:true}])
-  check(JSON.stringify(generationMaskBounds({...paint,layers:[layer]}))===JSON.stringify(area),'レイヤーの目・濃度・錠前で生成範囲を失わない');
- check(generationMaskBounds({...paint,generationMask:{...paint.generationMask!,enabled:false}})===undefined,'生成マスクの目だけを尊重');
- check(generationMaskBounds({...paint,generationMask:{enabled:true,strokes:[...paint.generationMask!.strokes,fill(0,0,320,224,'clear')]}})===undefined,'すべて消した範囲は未指定');
+ check(JSON.stringify(area)===JSON.stringify({x:70,y:40,w:110,h:60}),'生成範囲は他レイヤーのclipから独立し消去を反映');
+ for(const layer of [{...original,visible:false},{...original,opacity:0},{...original,locked:true}])
+  check(JSON.stringify(generationMaskBounds({...paint,layers:[layer,marker]}))===JSON.stringify(area),'他レイヤーの目・濃度・錠前で生成範囲を失わない');
+ for(const patch of [{visible:false},{opacity:0}])check(generationMaskBounds({...paint,layers:[original,{...marker,...patch}]})===undefined,'マスク自身の目と濃度を尊重');
+ check(JSON.stringify(generationMaskBounds({...paint,layers:[{...marker,locked:true}]}))===JSON.stringify(area),'固定したマスクの生成範囲を保持');
+ check(JSON.stringify(generationMaskBounds({...paint,layers:[{...marker,clip:original.clip}]}))===JSON.stringify({x:70,y:40,w:90,h:60}),'マスク自身のclipを尊重');
+ check(generationMaskBounds({...paint,layers:[{...marker,strokes:[...marker.strokes,fill(0,0,320,224,'clear')]}]})===undefined,'すべて消した範囲は未指定');
  const cropped=await qwenInputImage(sketchBlob,area);
  check(cropped.width===110&&cropped.height===60,'参照画像も同じ範囲へ切出し');
  const expected=document.createElement('canvas');expected.width=110;expected.height=60;
@@ -100,8 +108,7 @@ async function checkLetteringDialog(){
  const source=structuredClone(manga);source.pages[0].panels[0].bubbles=[{text:'かぁぁ',shape:'handwritten',speakerId:'person',bbox:{x:10,y:20,w:80,h:56}}];
  const letterOwner=paintScene(source.pages[0].panels[0],100,[]).owners.find(owner=>owner.kind==='bubble')!;
  const area:BBox={x:70,y:40,w:90,h:60},frame:BBox={x:27.5,y:30,w:22.5,h:15};
- letterOwner.paint={...letterOwner.paint,width:320,height:224,layers:[{...base,visible:true,guide:false}],
-  generationMask:{enabled:true,antialias:0,strokes:[{tool:'fill',color:'#ff0000',size:1,points:[{x:70,y:40,pressure:.5,time:0}],selection:[area]}]}};
+ letterOwner.paint={...letterOwner.paint,width:320,height:224,layers:[{...base,visible:true,guide:false},{...newPaintLayer('生成マスク'),id:'generation-mask',generationMask:true,antialias:0,strokes:[{tool:'fill',color:'#ff0000',size:1,points:[{x:70,y:40,pressure:.5,time:0}],selection:[area]}]}]};
  const captured=JSON.stringify(letterOwner),letterPlan=buildQwenGenerationPlan(source,0,0,false,letterOwner,undefined,generationMaskBounds(letterOwner.paint));
  const host=document.createElement('div');document.body.append(host);
  const setting=localStorage.getItem(GENERATION_PREFERENCES_STORAGE_KEY);
@@ -140,6 +147,7 @@ async function checkLetteringDialog(){
    check(JSON.stringify(result.target.outputFrame)===JSON.stringify(repair?letterOwner.frame:frame),'生成時の配置枠を保持');
    const asset=await prepareImageAsset(result.file),added=insertGeneratedPaintImage(letterOwner,asset,'生成文字',result.target.outputFrame);
    check(JSON.stringify(added.layer.image!.bbox)===JSON.stringify(repair?{x:0,y:0,w:320,h:224}:area),'既存の追加経路でマスク矩形へ配置');
+   check(added.owner.paint.layers.at(-1)===added.layer&&added.layer.aboveNative===true,'生成画像を文字フォルダー最上段へ新規追加');
    check(JSON.stringify(letterOwner)===captured,'マスクと元レイヤーを保持');
    render(null,host);await settle();
   }
@@ -151,7 +159,7 @@ async function checkOwnerMaskEditor(){
  const settle=async()=>{for(let i=0;i<4;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
  const wait=async(test:()=>boolean,label:string)=>{for(let i=0;i<120&&!test();i++)await settle();check(test(),label);};
  const frame={x:0,y:0,w:50.8,h:40.64},paint:PaintDocument={version:1,width:200,height:160,dpi:100,guideInitialized:true,layers:[]};
- const text={text:'確認用',shape:'handwritten' as const,bbox:frame};
+ const text={text:'確認用',shape:'handwritten' as const,bbox:frame,hidden:true,nativeLocked:true};
  const initial:PaintScene={frame,owners:[{key:'bubble-0',kind:'bubble',index:0,label:'テキスト1',frame,bubble:text,paint},
   {key:'original-test',kind:'original',parentKey:'bubble-0',index:0,label:'原本画像',frame,paint:{...paint,layers:[newPaintLayer('原本画像')]}}]};
  const original=JSON.stringify(initial.owners[1]);
@@ -162,7 +170,7 @@ async function checkOwnerMaskEditor(){
   <div id="mask-stage" style="position:relative;width:400px;height:320px;background:white"><PaintOwnerPreview ownerKey="bubble-0" container={frame} inkOnly/><PaintInputSurface canvas={frame}/></div></>;}
  const button=(name:string)=>{const result=[...host.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.getAttribute('aria-label')===name||button.textContent?.trim()===name);if(!result)throw Error(`ボタンがありません：${name}`);return result;};
  const row=()=>host.querySelector<HTMLElement>('[data-generation-mask="bubble-0"]')!;
- const mask=()=>workspace!.scene.owners.find(owner=>owner.key==='bubble-0')!.paint.generationMask;
+ const mask=()=>workspace!.scene.owners.find(owner=>owner.key==='bubble-0')!.paint.layers.find(layer=>layer.generationMask);
  const pixels=(canvas:HTMLCanvasElement)=>canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data;
  const marked=(canvas:HTMLCanvasElement)=>pixels(canvas).some((value,index,data)=>index%4===0&&value>data[index+1]&&data[index+3]>0);
  const pointer=(type:string,x:number,y:number)=>{const input=host.querySelector<HTMLElement>('.paint-input')!,box=input.getBoundingClientRect();input.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:91,pointerType:'pen',button:0,buttons:type==='pointerup'?0:1,pressure:.7,isPrimary:true,clientX:box.left+box.width*x,clientY:box.top+box.height*y}));};
@@ -171,37 +179,41 @@ async function checkOwnerMaskEditor(){
   await wait(()=>ready&&!!workspace?.images,'実PaintEditorの準備');
   check(!button('生成マスク化').disabled,'原本レイヤーから親の生成マスクを作成できる');button('生成マスク化').click();await settle();
   check(!!row()&&workspace!.owner.key==='bubble-0'&&workspace!.editingMask==='generationMask','生成対象フォルダーのマスクを選択');
-  check(workspace!.owner.paint.layers.length===0&&!!workspace!.cursor,'レイヤー0枚でもマスクへ描ける');
-  const group=row().parentElement!;
-  check(!!row().querySelector('canvas')&&!!group.querySelector('.generation-mask-children .bubble-native-row')&&!!group.querySelector('.generation-mask-children .original-raster-root'),'マスク行に描画領域があり全レイヤーを内包');
+  check(workspace!.owner.paint.layers.length===1&&!!workspace!.cursor,'通常のラスター1枚へ描ける');
+  check(!!row().querySelector('canvas')&&!row().hasAttribute('aria-expanded')&&!host.querySelector('.generation-mask-group,.generation-mask-children'),'マスクは開閉や子を持たない通常レイヤー');
   pointer('pointerdown',.25,.25);pointer('pointermove',.35,.35);await settle();
-  check(workspace!.live?.target==='generationMask','描画中もフォルダーのマスクを対象にする');pointer('pointerup',.35,.35);await settle();
-  check(mask()!.strokes.length===1&&workspace!.owner.paint.layers.length===0,'通常レイヤーを作らずマスクだけへ確定');
+  check(workspace!.live?.layerId===mask()!.id&&!workspace!.live?.target,'描画中もフォルダーのマスクを対象にする');pointer('pointerup',.35,.35);await settle();
+  check(mask()!.strokes.length===1&&workspace!.owner.paint.layers.length===1,'通常レイヤーのstrokesへ確定');
   check(marked(row().querySelector<HTMLCanvasElement>('canvas')!),'塗った範囲をマスクのサムネイルへ表示');
   check(marked(host.querySelector<HTMLCanvasElement>('#mask-stage .paint-preview-canvas')!),'紙面にも同じ色の生成範囲を表示');
   button('マスクを元に戻す').click();await settle();check(mask()!.strokes.length===0,'一回のUndoで線だけ戻す');
   button('マスクをやり直す').click();await settle();check(mask()!.strokes.length===1,'Redoで生成範囲を復元');
   button('ラスターレイヤー追加').click();await settle();
-  const layer=workspace!.owner.paint.layers[0];
-  check(!!group.querySelector(`.generation-mask-children [data-layer="${layer.id}"]`)&&mask()!.strokes.length===1,'後から追加したレイヤーもマスクの内側');
+  const layer=workspace!.owner.paint.layers.find(layer=>!layer.generationMask)!;
+  check(!!host.querySelector(`[data-layer="${layer.id}"]`)&&!row().contains(host.querySelector(`[data-layer="${layer.id}"]`))&&mask()!.strokes.length===1,'追加レイヤーはマスクの兄弟');
   controller.current!.layerAction({type:'update',key:'bubble-0',id:layer.id,patch:{visible:false,locked:true}});await settle();
   row().querySelector<HTMLButtonElement>('.layer-select')!.click();await settle();check(!!workspace!.cursor,'子レイヤーが非表示・固定中でもマスクは描ける');
   pointer('pointerdown',.55,.55);pointer('pointerup',.55,.55);await settle();check(mask()!.strokes.length===2,'固定した子レイヤーを触らず別の生成範囲を追加');
   check(JSON.stringify(workspace!.scene.owners.find(owner=>owner.key==='original-test'))===original,'原本画像を保持');
-  button('テキスト1の生成マスクを無効にする').click();await settle();check(!mask()!.enabled&&generationMaskBounds(workspace!.owner.paint)===undefined,'マスクの目だけで生成指定を無効化');
-  button('マスクを元に戻す').click();await settle();check(mask()!.enabled&&mask()!.strokes.length===2,'無効化のUndoで範囲も保持');
-  button('テキスト1の生成マスクを折りたたむ').click();await settle();check(!row().parentElement!.querySelector('.generation-mask-children'),'マスクの折りたたみで内包レイヤーを閉じる');
-  button('テキスト1の生成マスクを展開').click();await settle();
-  button('削除').click();await settle();check(!mask()&&workspace!.owner.paint.layers.length===1,'マスクの削除で中のレイヤーを削除しない');
-  button('マスクを元に戻す').click();await settle();check(mask()!.strokes.length===2&&workspace!.owner.paint.layers.length===1,'削除のUndoでマスクを復元');
-  await controller.current!.flush();await settle();check(!!saved?.owners.find(item=>item.owner.key==='bubble-0')?.owner.paint.generationMask,'既存flushからマスクを保存');
+  button('テキスト1・生成マスクを隠す').click();await settle();check(!mask()!.visible&&generationMaskBounds(workspace!.owner.paint)===undefined&&!workspace!.cursor,'マスクの目は自身だけを隠して描画も停止');
+  check(workspace!.owner.paint.layers.find(item=>item.id===layer.id)?.locked===true,'兄弟の固定を保持');
+  button('マスクを元に戻す').click();await settle();check(mask()!.visible&&mask()!.strokes.length===2,'非表示のUndoで範囲も保持');
+  button('生成マスクを固定').click();await settle();check(mask()!.locked&&!workspace!.cursor,'通常レイヤーの固定を適用');
+  button('生成マスクの固定を解除').click();await settle();check(!mask()!.locked&&!!workspace!.cursor,'通常レイヤーの解除で描画を再開');
+  button('削除').click();await settle();check(!mask()&&workspace!.owner.paint.layers.length===1,'マスクだけを削除');
+  button('マスクを元に戻す').click();await settle();check(mask()!.strokes.length===2&&workspace!.owner.paint.layers.length===2,'削除のUndoでマスクを復元');
+  row().querySelector<HTMLButtonElement>('.layer-select')!.click();await settle();button('ベジェペン').click();await settle();
+  pointer('pointerdown',.65,.6);pointer('pointerup',.65,.6);await settle();
+  check(workspace!.owner.paint.layers.some(item=>item.kind==='vector'&&!item.generationMask),'ベジェペンはマスクの兄弟ベクターへ描く');
+  check(mask()!.strokes.every(stroke=>!stroke.tool.startsWith('vector-')),'生成マスクへベクター道具を保存しない');
+  await controller.current!.flush();await settle();check(!!saved?.owners.find(item=>item.owner.key==='bubble-0')?.owner.paint.layers.some(layer=>layer.generationMask),'既存flushからマスクを保存');
   const stored=saved!.owners.find(item=>item.owner.key==='bubble-0')!,asset=await prepareImageAsset(new File([stored.blob],'mask-owner.png',{type:'image/png'}));
   const document=createEmptyWorkspaceDocument();document.manga.image_assets=[asset];document.manga.pages[0].panels=[{id:1,shape:{type:'rect',...frame},bg:0,action:null,bubbles:[{...text,paint_overlay:{...createFrameArtwork(asset,frame),paint:stored.owner.paint}}]}];
   const restored=paintScene(parseMangaYaml(toStoredMangaYaml(document)).manga.pages[0].panels[0],100,[asset]).owners.find(owner=>owner.kind==='bubble')!;
-  check(JSON.stringify(restored.paint.generationMask)===JSON.stringify(mask()),'保存再読込でフォルダーのマスクを復元');
-  check(restored.paint.layers[0].locked&&restored.paint.layers[0].visible===false,'保存再読込で子レイヤーの目と錠前を保持');
+  check(JSON.stringify(restored.paint.layers.find(layer=>layer.generationMask))===JSON.stringify(mask()),'保存再読込で独立マスクを復元');
+  check(restored.paint.layers.find(item=>item.id===layer.id)?.locked===true&&restored.paint.layers.find(item=>item.id===layer.id)?.visible===false,'保存再読込で子レイヤーの目と錠前を保持');
  }finally{render(null,host);host.remove();}
- return `${checks}項目成功：実PaintEditorの親フォルダー・サムネイル・空レイヤー描画・履歴・保存再読込`;
+ return `${checks}項目成功：実PaintEditorの独立レイヤー・サムネイル・道具切替・履歴・保存再読込`;
 }
 function Fixture(){
  const [areaReport,setAreaReport]=useState('未実行'),[dialogReport,setDialogReport]=useState('未実行'),[editorReport,setEditorReport]=useState('未実行');

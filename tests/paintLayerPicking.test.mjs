@@ -46,7 +46,7 @@ test('hidden, zero opacity, clipped and out-of-frame content cannot be selected'
  const back=vector('back'),o=owner('background',[back,{...vector('hidden'),visible:false},{...vector('zero'),opacity:0},{...vector('clipped'),clip:{x:0,y:0,w:20,h:20}}]);
  assert.equal(pickPaintLayer({owners:[o]},{x:60,y:70},1,coverage).layer,back);
  assert.equal(pickPaintLayer({owners:[o]},{x:9,y:70},1,coverage),undefined);
- o.bubble={hidden:true};assert.equal(pickPaintLayer({owners:[o]},{x:60,y:70},1,coverage),undefined);
+ o.bubble={hidden:true,nativeLocked:true};assert.equal(pickPaintLayer({owners:[o]},{x:60,y:70},1,coverage).layer,back);
 });
 test('moving one layer retains sibling/source data and translates images, erasure, masks and tone origin together',()=>{
  const l={...vector('move'),image:{assetId:'a',crop:{x:0,y:0,w:50,h:50},bbox:{x:10,y:20,w:50,h:50}},clip:{x:1,y:2,w:90,h:90},strokes:[{tool:'clear',points:[{x:10,y:20,pressure:1}],selection:[{x:1,y:2,w:3,h:4}]}],mask:{enabled:true,reveal:false,strokes:[{tool:'pen',points:[{x:5,y:6}]}]},tone:{origin:{x:1,y:2}}};

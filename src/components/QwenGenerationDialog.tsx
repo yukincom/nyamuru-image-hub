@@ -37,14 +37,15 @@ export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsse
   const owned:HTMLImageElement[]=[];
   let images=liveImages;
   try {
-    if(paint.layers[0]?.guide&&!paint.layers[0].image){
-      const prepared=await prepareGuideLayer(owner,paint.layers[0]);
-      paint={...paint,layers:[prepared.layer]};assets=[...assets,prepared.asset];
-      images=new Map(liveImages);
+    for(const layer of paint.layers.filter(layer=>layer.guide&&!layer.image)){
+      const prepared=await prepareGuideLayer(owner,layer);
+      paint={...paint,layers:paint.layers.map(item=>item===layer?prepared.layer:item)};assets=[...assets,prepared.asset];
+      images=new Map(images);
       const image=await decodePaintImage(prepared.blob);owned.push(image);images.set(prepared.asset.id,image);
     }
     validatePaintDocument(paint,assets);
-    if(!images){images=await loadPaintImages([paint],assets);owned.push(...images.values());}
+    const retained=images??new Map(),loaded=await loadPaintImages([paint],assets,new Map(),retained);
+    loaded.forEach((image,id)=>{if(image!==retained.get(id))owned.push(image);});images=loaded;
     return await renderPaintPng(paint,images,includeGeneration);
   } finally { owned.forEach(image=>{image.src='';}); }
 }

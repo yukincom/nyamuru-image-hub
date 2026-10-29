@@ -289,6 +289,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .page-overlay-bubble-stack-item { position:absolute; inset:0; pointer-events:none; isolation:isolate; }
 .page-overlay-figure-stack-item, .page-overlay-figure-artwork { position:absolute; inset:0; pointer-events:none; isolation:isolate; z-index:0; }
 .bubble-paint-front { position:absolute; z-index:18; pointer-events:none; }
+.bubble-paint-back { position:absolute; z-index:16; pointer-events:none; }
 .native-text-stack-item { position:absolute; inset:0; z-index:0; isolation:isolate; pointer-events:none; }
 .direct-paint-stack { position:absolute; inset:0; pointer-events:none; }
 .page-panel-direct-layer { position:absolute; inset:0; z-index:12; pointer-events:none; }

@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {runQwenAgentRequest,qwenConversationIntent,executeQwenGeneration,qwenGenerationPayload,requireQwenInsertionTarget} from '../src/lib/qwenGeneration.ts';
+import {runQwenAgentRequest,qwenConversationIntent,executeQwenGeneration,qwenGenerationPayload,qwenGenerationTarget,requireQwenInsertionTarget} from '../src/lib/qwenGeneration.ts';
 import {loadGenerationPreferences,saveGenerationPreferences} from '../src/lib/generationPreferences.ts';
 import {cloudModelAccess} from '../src/lib/modelPrivacy.ts';
 
@@ -86,6 +86,7 @@ function appFunction(name,context,file='App.tsx'){
    if(ts.isFunctionDeclaration(node)&&node.name?.getText(ast)===name)expression=node.getText(ast);ts.forEachChild(node,visit);};visit(ast);
  assert.ok(expression);return runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{Error,...context});
 }
+// 見込み: 撮影待ちの間にクラウド設定・同意が撤回されたら送信資料を作らない。合格: 許可時だけZIPとdownload各1回、撤回時は両方0回。範囲: 実generate関数と模擬撮影待ち、生成範囲helperは実装を使用。
 test('cloud handoff rechecks current execution and adult consent after pending capture, before ZIP creation',async()=>{
  for(const revoked of ['none','execution','consent']){
   const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
@@ -93,7 +94,7 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   saveGenerationPreferences(storage,execution);
   let finishCapture;const calls=[];
   const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
-   alive:{current:true},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,
+   alive:{current:true},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
    cloud:true,execution,adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,
    generationHandoff:()=>{calls.push('zip');return 'archive';},downloadBrowserBlob:()=>calls.push('download'),setNotice:()=>{}};
   const pending=appFunction('generate',context,'QwenGenerationDialog.tsx')();

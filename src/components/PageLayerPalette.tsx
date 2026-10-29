@@ -103,7 +103,7 @@ function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,
   const scene=result.scene,owner=scene.owners.find(item=>item.kind===(overlay?'page':'panel'))??scene.owners[0];
   const act=(action:PaintLayerAction)=>p.onAction(index,action,scene,overlay);
   return <PaintLayerPalette {...moves(scene)} frameLayer={frameLayer} paletteScope={paletteScope} directPanel={directPanel} nativeTextLayers={nativeTextLayers} reorderGroup={(key,target,after)=>p.onReorderOwners(index,key,target,after,overlay)} embedded inactive selectedOwner={selectedOwner} canvasSelectionScrollRequest={p.canvasSelectionScrollRequest} onToggleBubble={(bubble,group)=>p.onToggleBubble(index,bubble,overlay,group)} openBackground3d={overlay?undefined:()=>act({type:'background3d',key:'background'})} title="" scene={scene} owner={owner} layer={owner.paint.layers[0]??emptyLayer} images={images} disabled={p.disabled||!panelVisible(panel)}
-    selectMask={(key,id,mask)=>act({type:'select',key,id,mask})} updateGenerationMask={(key,patch)=>act({type:'generation-mask',key,patch})}
+    selectMask={(key,id,mask)=>act({type:'select',key,id,mask})}
     select={(key,id,contents,native)=>act({type:'select',key,id,contents,native})} update={(key,id,patch)=>act({type:'update',key,id,patch})}
     lockOwner={(key,locked,group)=>act({type:'owner-lock',key,locked,group})}
     toggleGroup={key=>act({type:'toggle',key})} reorder={(key,id,target,after)=>act({type:'reorder',key,id,target,after})} updateFolder={(key,id,patch)=>act({type:'update-folder',key,id,patch})} renameFolder={(key,id,name)=>act({type:'rename-folder',key,id,name})}
@@ -182,7 +182,7 @@ export default function PageLayerPalette(p:Props) {
   const addSelectedGenerationMask=selectedOwner&&!closedPanel?()=>{
     const overlay=Boolean(selectedOverlay),scene=paintScene(overlay?overlaySource:selected,p.dpi,p.assets,p.colorMode,overlay?'page':'panel',overlay?p.page.panels:undefined);
     const owner=paintGenerationOwner(scene,selectedOwner);if(!owner)return;
-    p.onAction(p.activePanel,{type:'generation-mask',key:owner.key,patch:{enabled:true},select:true},scene,overlay);
+    p.onAction(p.activePanel,{type:'generation-mask',key:owner.key,select:true},scene,overlay);
   }:undefined;
   const ownerControls=selectedOwner?<SelectionControls {...addControls} addGenerationMask={addSelectedGenerationMask} disabled={p.disabled} remove={bubbleTarget&&!bubbleTargetLocked?()=>p.onDeleteBubble(bubbleTarget.panel,bubbleTarget.index,bubbleTarget.overlay):undefined} removeLabel={bubbleTarget?`${textDisplayLabel(bubbleTarget.index)}を削除`:'削除'}/>:null;
   const textTarget=selectedText;

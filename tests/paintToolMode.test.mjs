@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { nextPaintLineKind, vectorInput } from '../src/lib/paintToolMode.ts';
+import { nextPaintLineKind, vectorInput, paintSelectionMode } from '../src/lib/paintToolMode.ts';
 import { commitPaintStroke } from '../src/lib/paintGesture.ts';
 import { newPaintLayer } from '../src/lib/paintDocument.ts';
 
@@ -33,4 +33,12 @@ test('raster rectangle on vector artwork inserts an independent layer with its c
   assert.equal(after.owners[0].paint.layers[0],vector);
   assert.equal(after.owners[0].paint.layers[1].kind,'raster');
   assert.deepEqual(after.owners[0].paint.layers[1].strokes,[stroke]);
+});
+
+test('V moves selected raster paint while guides and direct selection retain native layout',()=>{
+ assert.equal(paintSelectionMode('vector-select',true,'raster',true),'paint');
+ assert.equal(paintSelectionMode('vector-select',true,'raster',false),'layout');
+ assert.equal(paintSelectionMode('vector-node',true,'raster',true),'layout');
+ assert.equal(paintSelectionMode('vector-node',true,'vector',true),'paint');
+ assert.equal(paintSelectionMode('vector-select',false,'raster',true),'layout');
 });

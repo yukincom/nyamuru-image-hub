@@ -175,35 +175,37 @@ class ProjectStoreTests(unittest.TestCase):
                     store.save_project(self.root, broken, saved["revision"])
                 self.assertEqual(store.load_project(self.root)["snapshot"], value)
 
+    # 見込み: 共通layerへ保存すればguideとmarkerを独立して往復できる。合格: JSON一致と不正flag/色の保存拒否、失敗後の既存データ保持。範囲: 一時フォルダーと実writer/reader。
     def test_generation_mask_and_materialized_guide_roundtrip(self):
         value = placed_snapshot()
         image = value["document"]["manga"]["pages"][0]["images"][0]
         layer = {"id": "guide", "name": "あたり", "guide": True, "visible": True, "locked": False, "opacity": 1, "blend": "normal", "strokes": []}
-        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "guideInitialized": True, "layers": [layer], "generationMask": {"enabled": True, "strokes": [{"tool": "pen", "color": "#ff0000", "size": 1, "points": [{"x": 0, "y": 0, "pressure": .7, "time": 0}]}]}}
+        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "guideInitialized": True, "layers": [layer, {**layer,"id":"marker","guide":False,"generationMask":True,"strokes": [{"tool": "pen", "color": "#ff0000", "size": 1, "points": [{"x": 0, "y": 0, "pressure": .7, "time": 0}]}]}]}
         saved = store.save_project(self.root, value, None)
         self.assertEqual(store.load_project(self.root)["snapshot"], value)
-        for key, invalid in (("guideInitialized", "yes"), ("guide", 1), ("enabled", "yes"), ("color", "red")):
+        for key, invalid in (("guideInitialized", "yes"), ("guide", 1), ("generationMask", "yes"), ("color", "red")):
             broken = deepcopy(value)
             paint = broken["document"]["manga"]["pages"][0]["images"][0]["paint"]
             if key == "guideInitialized": paint[key] = invalid
             elif key == "guide": paint["layers"][0][key] = invalid
-            elif key == "enabled": paint["generationMask"][key] = invalid
-            else: paint["generationMask"]["strokes"][0][key] = invalid
+            elif key == "generationMask": paint["layers"][1][key] = invalid
+            else: paint["layers"][1]["strokes"][0][key] = invalid
             with self.assertRaises(ValueError): store.save_project(self.root, broken, saved["revision"])
             self.assertEqual(store.load_project(self.root)["snapshot"], value)
 
-    def test_owner_generation_mask_roundtrip_without_any_child_layers(self):
+    # 見込み: markerはラスターだけに付けられ、AAは0-3に限る。合格: 通常leafは往復しvector/AA4は拒否、保存済み内容は不変。範囲: 実writer/reader。
+    def test_generation_mask_leaf_roundtrip_and_rejects_non_raster_content(self):
         value = placed_snapshot()
         image = value["document"]["manga"]["pages"][0]["images"][0]
-        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "layers": [],
-                          "generationMask": {"enabled": False, "antialias": 0, "strokes": []}}
+        image["paint"] = {"version": 1, "width": 1, "height": 1, "dpi": 350, "layers": [{"id":"mask", "name":"生成マスク", "visible":False, "locked":False, "opacity":1,"blend":"normal", "generationMask": True, "antialias": 0, "strokes": []}]}
         saved = store.save_project(self.root, value, None)
         self.assertEqual(store.load_project(self.root)["snapshot"], value)
-        broken = deepcopy(value)
-        broken["document"]["manga"]["pages"][0]["images"][0]["paint"]["generationMask"]["antialias"] = 4
-        with self.assertRaises(ValueError):
-            store.save_project(self.root, broken, saved["revision"])
-        self.assertEqual(store.load_project(self.root)["snapshot"], value)
+        for key, invalid in (("kind", "vector"), ("antialias", 4)):
+            broken = deepcopy(value)
+            broken["document"]["manga"]["pages"][0]["images"][0]["paint"]["layers"][0][key] = invalid
+            with self.assertRaises(ValueError):
+                store.save_project(self.root, broken, saved["revision"])
+            self.assertEqual(store.load_project(self.root)["snapshot"], value)
 
     def test_independent_tone_and_coverage_mask_roundtrip(self):
         value = placed_snapshot()

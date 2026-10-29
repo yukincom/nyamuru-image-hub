@@ -13,13 +13,13 @@ export function paintOwnerPoint(owner:PaintOwner,point:VectorPoint):VectorPoint 
 /** Scene owners and their layers are stored back-to-front. Tolerance is in paper units. */
 export function pickPaintLayer(scene:PaintScene,point:VectorPoint,tolerance:number,coverage:PaintLayerCoverage):PaintLayerHit|undefined {
   const bands=scene.owners.filter(owner=>!owner.parentKey).toReversed().flatMap(owner=>{
-    if(owner.kind!=='bubble')return [{owner,layers:owner.paint.layers,above:false}];
-    return [{owner,layers:owner.paint.layers.filter(layer=>paintLayerAboveNative(owner.paint,layer)),above:true},
-      ...scene.owners.filter(child=>child.parentKey===owner.key).toReversed().map(child=>({owner:child,layers:child.paint.layers,above:false})),
-      {owner,layers:owner.paint.layers.filter(layer=>!paintLayerAboveNative(owner.paint,layer)),above:false}];
+    if(owner.kind!=='bubble')return [{owner,layers:owner.paint.layers}];
+    return [{owner,layers:owner.paint.layers.filter(layer=>paintLayerAboveNative(owner.paint,layer))},
+      ...scene.owners.filter(child=>child.parentKey===owner.key).toReversed().map(child=>({owner:child,layers:child.paint.layers})),
+      {owner,layers:owner.paint.layers.filter(layer=>!paintLayerAboveNative(owner.paint,layer))}];
   });
-  for(const {owner,layers,above} of bands){
-    if(owner.bubble?.hidden&&!above||!inside(point,owner.frame))continue;
+  for(const {owner,layers} of bands){
+    if(!inside(point,owner.frame))continue;
     const local=paintOwnerPoint(owner,point),radius=tolerance*Math.max(owner.paint.width/owner.frame.w,owner.paint.height/owner.frame.h);
     for(const layer of [...layers].reverse()){
       if(!paintLayerVisible(owner.paint,layer)||layer.opacity<=0||!paintLayerEditable(owner,layer)||layer.clip&&!inside(local,layer.clip))continue;

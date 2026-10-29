@@ -192,7 +192,7 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
             or paint["width"] * paint["height"] > 100_000_000 or not number(paint["dpi"]) or paint["dpi"] <= 0
             or (paint["width"], paint["height"]) != (image["widthPx"], image["heightPx"])
             or not isinstance(paint["layers"], list) or not 0 <= len(paint["layers"]) <= 64
-            or (not paint["layers"] and not paint.get("guideInitialized") and not paint.get("generationMask") and not paint.get("folders"))
+            or (not paint["layers"] and not paint.get("guideInitialized") and not paint.get("folders"))
             or ("referenceFrame" in paint and not box(paint["referenceFrame"]))):
         raise ValueError()
     if "guideInitialized" in paint and type(paint["guideInitialized"]) is not bool:
@@ -270,6 +270,9 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
                 raise ValueError()
         if "guide" in layer and type(layer["guide"]) is not bool:
             raise ValueError()
+        if "generationMask" in layer and (type(layer["generationMask"]) is not bool
+                or (layer["generationMask"] and (layer.get("kind") == "vector" or layer.get("image") or layer.get("mask") or layer.get("tone")))):
+            raise ValueError()
         mask = layer.get("mask", {})
         if "mask" in layer and (not isinstance(mask, dict) or type(mask.get("enabled")) is not bool or type(mask.get("reveal")) is not bool or not isinstance(mask.get("strokes"), list)):
             raise ValueError()
@@ -282,14 +285,6 @@ def validate_paint(content: dict, images: dict, stage_ids: set[str] | None = Non
                     or ("origin" in tone and not vector_point(tone["origin"]))):
                 raise ValueError()
         validate_strokes([*layer["strokes"], *mask.get("strokes", [])])
-
-    if "generationMask" in paint:
-        generation_mask = paint["generationMask"]
-        if (not isinstance(generation_mask, dict) or type(generation_mask.get("enabled")) is not bool
-                or not isinstance(generation_mask.get("strokes"), list)
-                or type(generation_mask.get("antialias", 3)) is not int or generation_mask.get("antialias", 3) not in (0, 1, 2, 3)):
-            raise ValueError()
-        validate_strokes(generation_mask["strokes"])
 
 
 def validate_snapshot(value: object) -> dict:

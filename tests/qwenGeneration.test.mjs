@@ -210,13 +210,15 @@ test('layer choices are confined to the captured owner and export hidden layers 
  assert.throws(()=>qwenLayerPaint(owner,'empty'),/空/);assert.throws(()=>qwenLayerPaint(owner,'zero'),/濃度/);
  assert.deepEqual(scene,before);
 });
-test('the owner generation mask is a correction reference containing all visible layers',()=>{
+test('a mask correction overlays only its chosen marker above artwork without changing saved order',()=>{
  const owner=paintScene(fixture().pages[0].panels[0],100,[]).owners[1];
- owner.paint.generationMask={enabled:true,strokes:[{tool:'pen',color:'#ff0000',size:10,points:[{x:1,y:2}]}]};
- assert.equal(qwenLayerCandidates(owner)[0].empty,false);assert.equal(qwenLayerCandidates(owner)[0].id,'generation-mask');
- assert.throws(()=>qwenLayerPaint(owner,'generation-mask'),/ピンポイント修正用/);
- assert.deepEqual(qwenLayerPaint(owner,'generation-mask',true).layers,owner.paint.layers);
- assert.equal(qwenLayerPaint(owner,owner.paint.layers[0].id).generationMask,undefined);
+ const mask={...owner.paint.layers[0],id:'mask-leaf',name:'生成マスク',guide:false,generationMask:true,visible:false,strokes:[{tool:'pen',color:'#ff0000',size:10,points:[{x:1,y:2}]}]};
+ owner.paint.layers.unshift(mask);owner.paint.layers.push({...mask,id:'other-marker'});owner.paint.folders=[{id:'empty-folder',name:'空',position:owner.paint.layers.length},{id:'hidden-folder',name:'非表示',position:0,visible:false}];owner.paint.layers[1].folderId='hidden-folder';
+ assert.equal(qwenLayerCandidates(owner).find(candidate=>candidate.id===mask.id).empty,false);
+ assert.throws(()=>qwenLayerPaint(owner,mask.id),/ピンポイント修正用/);
+ const correction=qwenLayerPaint(owner,mask.id,true);
+ assert.equal(correction.folders,undefined);assert.equal(correction.layers[0].visible,false);assert.equal(correction.layers[0].folderId,undefined);assert.equal(correction.layers.length,owner.paint.layers.length-1);assert.equal(correction.layers.at(-1).id,mask.id);assert.equal(correction.layers.at(-1).visible,true);
+ assert.equal(qwenLayerPaint(owner,owner.paint.layers[1].id).layers.some(layer=>layer.generationMask),false);assert.equal(mask.visible,false);assert.equal(owner.paint.layers[0],mask);
 });
 
 test('reference and correction are independently optional and character sheets share the ten-image limit',()=>{

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { paintGenerationOwner, paintOwnerShouldClear, movePaintEntry, paintAddPosition, ensureDirectPaintOwner, paintNativeBand, addPaintLayer, insertGeneratedPaintImage, addPaintFolder, applyPaintAnchorIds,paintAnchorIds,paintStackMatches,paintStackTarget,directPaintImages,orderedPaintOwners,applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
+import { paintGenerationOwner, paintOwnerShouldClear, movePaintEntry, paintAddPosition, paintNativeBand, addPaintLayer, insertGeneratedPaintImage, addPaintFolder, applyPaintAnchorIds,paintAnchorIds,paintStackMatches,paintStackTarget,directPaintImages,orderedPaintOwners,applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
 import { createFrameArtwork, imageAssetIds, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
@@ -166,7 +166,7 @@ test('OCR original is one independent raster; saved eyes and locks survive and d
   const owner=paintScene(p,100,[]).owners.find(owner=>owner.key==='bubble-0'),original=owner.paint.layers.find(layer=>layer.guide);
   assert.equal(owner.paint.layers.length,1);
   assert.equal(original.name,'テキスト原画');assert.equal(original.kind,'raster');assert.equal(original.visible,false);
-  original.visible=true;original.locked=true;owner.paint.generationMask={enabled:true,strokes:[]};
+  original.visible=true;original.locked=true;
   const flat=asset('bubble-flat',owner.paint.width,owner.paint.height);
   original.image={assetId:flat.id,crop:{x:0,y:0,w:flat.widthPx,h:flat.heightPx},bbox:{x:0,y:0,w:owner.paint.width,h:owner.paint.height}};
   applyOwnerPaint(p,owner,{...createFrameArtwork(flat,owner.frame),paint:owner.paint});
@@ -451,15 +451,15 @@ test('character guides start as one raster layer and deletion survives reopen wi
 });
 
 
-test('generated image is inserted directly above its guide without replacing source ink or locks',()=>{
+test('generated image is inserted at the folder top without replacing source ink or locks',()=>{
  const guide={...newPaintLayer('あたり'),guide:true,locked:true,visible:false,folderId:'f',image:{assetId:'source',crop:{x:0,y:0,w:30,h:60},bbox:{x:2,y:3,w:30,h:60}}};
  const ink={...newPaintLayer('線'),strokes:[{tool:'pen',color:'#123456',size:4,points:[{x:12,y:18,pressure:1,time:0}]}]};
  const owner={key:'figure-0',kind:'figure',index:0,label:'人物',locked:true,frame:{x:10,y:20,w:50,h:100},paint:{version:1,width:100,height:200,dpi:100,guideInitialized:true,layers:[guide,ink],folders:[{id:'f',name:'あたり',position:0,locked:true,visible:true}]}};
  const before=structuredClone(owner),asset={id:'generated',widthPx:100,heightPx:200};
  const result=insertGeneratedPaintImage(owner,asset,'生成画像');
  assert.deepEqual(owner,before);assert.deepEqual(result.owner.paint.layers.filter(layer=>layer.id!==result.layer.id),before.paint.layers);
- assert.deepEqual(result.owner.paint.layers.map(layer=>layer.id),[guide.id,result.layer.id,ink.id]);
- assert.equal(result.layer.folderId,'f');assert.equal(result.layer.locked,false);assert.equal(result.owner.locked,true);
+ assert.deepEqual(result.owner.paint.layers.map(layer=>layer.id),[guide.id,ink.id,result.layer.id]);
+ assert.equal(result.layer.folderId,undefined);assert.equal(result.layer.locked,false);assert.equal(result.owner.locked,true);
  assert.deepEqual(result.owner.paint.folders,before.paint.folders);
  const world=(o,point)=>[o.frame.x+point.x/o.paint.width*o.frame.w,o.frame.y+point.y/o.paint.height*o.frame.h];
  const expanded=insertGeneratedPaintImage(owner,asset,'広い生成画像',{x:0,y:0,w:100,h:150}).owner;
@@ -582,10 +582,9 @@ test('layer moves between owners retain world positions, assets, paths and both 
   paths:[{id:'path',nodes:[{x:8,y:9,handleOut:{x:2,y:3}}],style:{width:2,dash:[],dashOffset:0}}],tone:{...defaultPaintTone(),origin:{x:7,y:8}}};
  const owner=(key,frame,width,height,layers)=>({key,kind:key,frame,paint:{version:1,width,height,dpi:100,guideInitialized:true,layers},index:0,label:key});
  const source=owner('page',{x:0,y:0,w:100,h:100},200,200,[ink]),target=owner('figure',{x:40,y:50,w:25,h:25},100,100,[]);
- source.paint.generationMask={enabled:true,strokes:[structuredClone(stroke)]};target.paint.generationMask={enabled:false,strokes:[]};const before=structuredClone([source,target]);
+ const before=structuredClone([source,target]);
  const moved=movePaintEntry(source,target,'layer','moving',{kind:'root',edge:'top'}),layer=moved.destination.paint.layers[0];
  const world=(owner,p)=>({x:owner.frame.x+p.x*owner.frame.w/owner.paint.width,y:owner.frame.y+p.y*owner.frame.h/owner.paint.height});
- assert.deepEqual(moved.source.paint.generationMask,source.paint.generationMask);assert.deepEqual(moved.destination.paint.generationMask,target.paint.generationMask);
  assert.equal(moved.source.paint.layers.length,0);assert.equal(layer.id,'moving');assert.equal(layer.name,'移動用');assert.deepEqual(layer.image.crop,ink.image.crop);assert.equal(layer.image.assetId,'ink');
  for(const [a,b] of [[ink.strokes[0].points[0],layer.strokes[0].points[0]],[ink.mask.strokes[0].points[0],layer.mask.strokes[0].points[0]],[ink.paths[0].nodes[0],layer.paths[0].nodes[0]],[ink.image.bbox,layer.image.bbox],[ink.tone.origin,layer.tone.origin]])assert.deepEqual(world(source,a),world(moved.destination,b));
  assert.equal(layer.tone.lpi,ink.tone.lpi/2);assert.equal(layer.paths[0].nodes[0].handleOut.x,4);assert.equal(layer.strokes[0].size,stroke.size*2);assert.deepEqual([source,target],before);
@@ -642,16 +641,31 @@ test('empty initialized artwork remains persisted after later visibility or lock
 });
 
 
-test('an owner generation mask persists without layers and originals resolve to that owner',()=>{
- const paint={version:1,width:100,height:100,dpi:100,layers:[],generationMask:{enabled:false,antialias:0,strokes:[structuredClone(stroke)]}};
+// 見込み: boolean markerだけを許せば、画像レイヤーに古いmask objectが残ったデータを正規形式と誤認しない。合格: 通常マスクは有効、object等は拒否。範囲: 型/参照検証で、実データ修復は別に確認。
+test('generation masks are ordinary leaf layers with shared visibility, bands and validation',()=>{
+ const mask={...newPaintLayer('生成マスク'),generationMask:true,visible:false,antialias:0,aboveNative:true,strokes:[structuredClone(stroke)]};
+ const paint={version:1,width:100,height:100,dpi:100,layers:[mask]};
  validatePaintDocument(paint,[]);
- const owner={kind:'bubble',key:'bubble-0',paint},original={kind:'original',key:'original-0',parentKey:'bubble-0',paint:{...paint,generationMask:undefined}};
+ const owner={kind:'bubble',key:'bubble-0',paint},original={kind:'original',key:'original-0',parentKey:'bubble-0',paint:{...paint,layers:[]}};
  assert.equal(paintOwnerShouldClear(owner),false);assert.equal(paintGenerationOwner({owners:[owner,original]},original.key),owner);
  assert.equal(paintGenerationOwner({owners:[owner,original]},owner.key),owner);
  assert.equal(paintGenerationOwner({owners:[{kind:'panel',key:'panel'}]},'panel'),undefined);
- for(const change of [mask=>mask.enabled=1,mask=>mask.antialias=5,mask=>mask.strokes[0].points[0].x=NaN]){
-  const broken=structuredClone(paint);change(broken.generationMask);assert.throws(()=>validatePaintDocument(broken,[]));
+ for(const change of [layer=>layer.generationMask=1,layer=>layer.generationMask={enabled:true,strokes:[]},layer=>layer.antialias=5,layer=>layer.strokes[0].points[0].x=NaN,layer=>layer.kind='vector',layer=>layer.mask={enabled:true,reveal:false,strokes:[]}]){
+  const broken=structuredClone(paint);change(broken.layers[0]);assert.throws(()=>validatePaintDocument(broken,[]));
  }
- const above=paintNativeBand(paint,true),below=paintNativeBand(paint,false);
- assert.equal(above.generationMask,paint.generationMask);assert.equal(below.generationMask,undefined);
+ assert.deepEqual(paintNativeBand(paint,true).layers,[mask]);assert.deepEqual(paintNativeBand(paint,false).layers,[]);
+});
+
+test('a generation mask moves alone outside a hidden locked native text while retaining its world coordinates',()=>{
+ const mask={...newPaintLayer('生成マスク'),id:'marker',generationMask:true,aboveNative:true,strokes:[structuredClone(stroke)]};
+ const sibling=newPaintLayer('生成画像'),paint={version:1,width:100,height:100,dpi:100,layers:[mask,sibling]};
+ const source={kind:'bubble',key:'bubble-0',index:0,label:'文字',frame:{x:20,y:30,w:25,h:25},bubble:{hidden:true,nativeLocked:true},paint};
+ const target={kind:'page',key:'page',index:0,label:'紙面',frame:{x:0,y:0,w:100,h:100},paint:{version:1,width:200,height:200,dpi:100,layers:[]}};
+ const before=structuredClone(source),moved=movePaintEntry(source,target,'layer',mask.id,{kind:'root',edge:'top'});
+ assert.ok(moved);assert.deepEqual(moved.source.paint.layers,[sibling]);assert.equal(moved.destination.paint.layers[0].generationMask,true);
+ const point=moved.destination.paint.layers[0].strokes[0].points[0],original=mask.strokes[0].points[0];
+ assert.equal(point.x/200*100,20+original.x/100*25);assert.equal(point.y/200*100,30+original.y/100*25);
+ assert.deepEqual(source,before);
+ const added=insertGeneratedPaintImage(source,{id:'image',widthPx:100,heightPx:100},'AI画像');
+ assert.equal(added.owner.paint.layers.at(-1),added.layer);assert.equal(added.layer.aboveNative,true);assert.deepEqual(added.owner.bubble,source.bubble);
 });

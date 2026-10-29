@@ -139,7 +139,7 @@ export function paintLayerTree(paint:PaintDocument):PaintLayerTreeEntry[]{
 }
 export function paintNativeBand(paint:PaintDocument,above:boolean):PaintDocument {
   const folders=paint.folders?.filter(folder=>Boolean(folder.aboveNative)===above);
-  return {...paint,...(paint.generationMask&&!above?{generationMask:undefined}:{}),folders,layers:paint.layers.filter(layer=>paintLayerAboveNative(paint,layer)===above)};
+  return {...paint,folders,layers:paint.layers.filter(layer=>paintLayerAboveNative(paint,layer)===above)};
 }
 export function paintLayerAboveNative(paint:PaintDocument,layer:PaintLayer):boolean {
   const folder=paint.folders?.find(folder=>folder.id===layer.folderId);
@@ -218,13 +218,13 @@ export function removePaintFolder(paint:PaintDocument,id:string):PaintDocument {
   return withPaintLayerTree(paint,entries);
 }
 
-function mapPaintStroke(stroke:PaintStroke,dx:number,dy:number,sx=1,sy=sx):PaintStroke {
+export function mapPaintStroke(stroke:PaintStroke,dx:number,dy:number,sx=1,sy=sx):PaintStroke {
   return {...stroke,size:stroke.size*Math.sqrt(sx*sy),
     ...(stroke.selection?{selection:stroke.selection.map(b=>({x:dx+b.x*sx,y:dy+b.y*sy,w:b.w*sx,h:b.h*sy}))}:{}),
     points:stroke.points.map(p=>({...p,x:dx+p.x*sx,y:dy+p.y*sy}))};
 }
 /** Map every editable part together; image crops remain in their original asset coordinates. */
-function mapPaintLayer(layer:PaintLayer,dx:number,dy:number,sx=1,sy=sx):PaintLayer {
+export function mapPaintLayer(layer:PaintLayer,dx:number,dy:number,sx=1,sy=sx):PaintLayer {
   const box=(b:BBox):BBox=>({x:dx+b.x*sx,y:dy+b.y*sy,w:b.w*sx,h:b.h*sy});
   const stroke=(s:PaintStroke)=>mapPaintStroke(s,dx,dy,sx,sy);
   return {...layer,strokes:layer.strokes.map(stroke),
@@ -235,9 +235,6 @@ function mapPaintLayer(layer:PaintLayer,dx:number,dy:number,sx=1,sy=sx):PaintLay
     ...(layer.tone?{tone:{...layer.tone,origin:{x:dx+(layer.tone.origin?.x??0)*sx,y:dy+(layer.tone.origin?.y??0)*sy}}}:{})};
 }
 
-function mapGenerationMask(mask:NonNullable<PaintDocument['generationMask']>,dx:number,dy:number,scale=1){
-  return {...mask,strokes:mask.strokes.map(stroke=>mapPaintStroke(stroke,dx,dy,scale))};
-}
 /** Originals belong to their enclosing generation target, never to a separate generation group. */
 export function paintGenerationOwner(scene:PaintScene,key:string):PaintOwner|undefined {
   const selected=scene.owners.find(owner=>owner.key===key),owner=selected?.parentKey?scene.owners.find(owner=>owner.key===selected.parentKey):selected;
@@ -278,7 +275,7 @@ export function movePaintEntry(source:PaintOwner,destination:PaintOwner,kind:'la
 }
 /** Empty initialized artwork retains the absence of its guide across later edits. */
 export function paintOwnerShouldClear(owner:PaintOwner):boolean {
-  return !owner.paint.generationMask&&!owner.paint.layers.length&&!owner.paint.folders?.length&&(!owner.paint.guideInitialized||owner.kind==='page'||owner.kind==='panel'||owner.kind==='original');
+  return !owner.paint.layers.length&&!owner.paint.folders?.length&&(!owner.paint.guideInitialized||owner.kind==='page'||owner.kind==='panel'||owner.kind==='original');
 }
 export function paintAssetIds(paint?: PaintDocument): string[] {
   return paint?.layers.flatMap(layer => layer.image ? [layer.image.assetId] : []) ?? [];
@@ -288,7 +285,7 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
   const box = (b?: BBox) => b && [b.x,b.y,b.w,b.h].every(Number.isFinite) && b.w > 0 && b.h > 0;
   if (!value || value.version !== 1 || ![value.width,value.height].every(n => Number.isSafeInteger(n) && n > 0 && n <= 16384)
       || value.width * value.height > 100_000_000 || !Number.isFinite(value.dpi) || value.dpi <= 0
-      || !Array.isArray(value.layers) || (!allowEmptyScene&&!value.guideInitialized&&!value.generationMask&&!value.layers.length&&!value.folders?.length) || value.layers.length > 64
+      || !Array.isArray(value.layers) || (!allowEmptyScene&&!value.guideInitialized&&!value.layers.length&&!value.folders?.length) || value.layers.length > 64
       || (value.folders!==undefined&&(!Array.isArray(value.folders)||value.folders.length>64))
       || (value.referenceFrame !== undefined && !box(value.referenceFrame))) fail();
   if(value.guideInitialized!==undefined&&typeof value.guideInitialized!=='boolean')fail();
@@ -317,6 +314,7 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
       || typeof layer.visible !== 'boolean' || typeof layer.locked !== 'boolean' || !Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1
       || !['normal','multiply'].includes(layer.blend) || !Array.isArray(layer.strokes) || (layer.clip && !box(layer.clip))) fail();
     if(layer.guide!==undefined&&typeof layer.guide!=='boolean')fail();
+    if(layer.generationMask!==undefined&&(typeof layer.generationMask!=='boolean'||layer.generationMask&&(layer.kind==='vector'||layer.image||layer.mask||layer.tone)))fail();
     if(layer.aboveNative!==undefined&&typeof layer.aboveNative!=='boolean')fail();
     if(layer.kind!==undefined&&!['raster','vector'].includes(layer.kind))fail();
     if(layer.antialias!==undefined&&![0,1,2,3].includes(layer.antialias))fail();
@@ -348,11 +346,6 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
     }
     validateStrokes([...layer.strokes,...(layer.mask?.strokes??[])]);
   }
-  if(value.generationMask!==undefined){
-    const mask=value.generationMask;
-    if(!mask||typeof mask.enabled!=='boolean'||!Array.isArray(mask.strokes)||mask.antialias!==undefined&&![0,1,2,3].includes(mask.antialias))fail();
-    validateStrokes(mask.strokes);
-  }
 }
 
 /** Convert existing art to editable layers, including clipped pieces after panel split/merge. */
@@ -381,10 +374,6 @@ export function paintForFrame(frame: BBox, dpi: number, images: PlacedImage[], a
     if (image.paint) {
       validatePaintDocument(image.paint,assets);
       if(image.paint.guideInitialized)doc.guideInitialized=true;
-      if(image.paint.generationMask){
-        const mask=mapGenerationMask(image.paint.generationMask,offset.x,offset.y,scale);
-        doc.generationMask=doc.generationMask?{...doc.generationMask,enabled:doc.generationMask.enabled&&mask.enabled,strokes:[...doc.generationMask.strokes,...mask.strokes]}:mask;
-      }
       if(image.paint.background3d&&images.length===1)doc.background3d=mapBackgroundCapture(image.paint.background3d,mapBox,scale);
       if (images.length === 1) doc.referenceFrame = mapBox(image.paint.referenceFrame ?? {x:0,y:0,w:image.paint.width,h:image.paint.height});
       const folderStart=doc.layers.length,folderIds=new Map((image.paint.folders??[]).map(folder=>[folder.id,crypto.randomUUID()]));
@@ -643,7 +632,7 @@ export function expandPaintOwner(owner: PaintOwner, padding: {left:number;right:
   const shift=(box:BBox):BBox=>({...box,x:box.x+left,y:box.y+top});
   const shiftStroke=(stroke:PaintLayer['strokes'][number])=>({...stroke,...(stroke.selection?{selection:stroke.selection.map(shift)}:{}),points:stroke.points.map(p=>({...p,x:p.x+left,y:p.y+top}))});
   return {...owner,frame,
-    paint:{...old,width,height,...(old.generationMask?{generationMask:{...old.generationMask,strokes:old.generationMask.strokes.map(shiftStroke)}}:{}),...(old.background3d?{background3d:mapBackgroundCapture(old.background3d,shift)}:{}),referenceFrame:shift(referenceFrame),layers:old.layers.map(layer=>({...layer,
+    paint:{...old,width,height,...(old.background3d?{background3d:mapBackgroundCapture(old.background3d,shift)}:{}),referenceFrame:shift(referenceFrame),layers:old.layers.map(layer=>({...layer,
       ...(layer.clip?{clip:shift(layer.clip)}:{}),...(layer.image?{image:{...layer.image,bbox:shift(layer.image.bbox)}}:{}),
       ...(layer.paths?{paths:layer.paths.map(path=>transformVector(path,left,top))}:{}),
       ...(layer.mask?{mask:{...layer.mask,strokes:layer.mask.strokes.map(shiftStroke)}}:{}),
@@ -660,7 +649,7 @@ export function expandPaintOwnerToBounds(owner:PaintOwner,bounds:BBox|undefined)
   return Object.values(padding).some(Boolean)?expandPaintOwner(owner,padding):owner;
 }
 
-/** Add generated pixels above the source guide; retain the source, edits and their locks. */
+/** Add generated pixels at the top of the target folder; retain the source, edits and their locks. */
 export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name:string,frame: BBox=owner.frame):{owner:PaintOwner;layer:PaintLayer} {
   if(owner.paint.layers.length>=64)throw new Error('1つのグループには64レイヤーまで追加できます');
   const px=owner.paint.width/owner.frame.w,py=owner.paint.height/owner.frame.h;
@@ -668,11 +657,8 @@ export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name
   const expanded=expandPaintOwnerToBounds(owner,box),paint=expanded.paint;
   const target={x:(frame.x-expanded.frame.x)*px,y:(frame.y-expanded.frame.y)*py,w:box.w,h:box.h};
   const scale=Math.min(target.w/asset.widthPx,target.h/asset.heightPx),w=asset.widthPx*scale,h=asset.heightPx*scale;
-  const layer:PaintLayer={...newPaintLayer(name),image:{assetId:asset.id,crop:{x:0,y:0,w:asset.widthPx,h:asset.heightPx},bbox:{x:target.x+(target.w-w)/2,y:target.y+(target.h-h)/2,w,h}}};
-  const guide=paint.layers.find(item=>item.guide)??paint.layers[0];
-  const added={...paint,layers:[...paint.layers,layer]};
-  const next=guide?movePaintLayer(added,layer.id,{kind:'layer',id:guide.id,after:false}):added;
-  return {owner:{...expanded,paint:next},layer:next.layers.find(item=>item.id===layer.id)!};
+  const layer:PaintLayer={...newPaintLayer(name),...(owner.kind==='bubble'?{aboveNative:true}:{}),image:{assetId:asset.id,crop:{x:0,y:0,w:asset.widthPx,h:asset.heightPx},bbox:{x:target.x+(target.w-w)/2,y:target.y+(target.h-h)/2,w,h}}};
+  return {owner:{...expanded,paint:{...paint,layers:[...paint.layers,layer]}},layer};
 }
 
 /** Grow the backing raster only when editable content reaches beyond it.

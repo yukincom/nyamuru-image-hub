@@ -29,8 +29,8 @@ export default function PaintLayerEffects({layer,disabled,update,generationMask=
         {!layer&&<option value="" disabled>レイヤーを選択</option>}
         {paintColorModes.map(mode=><option value={mode.value}>{mode.label}</option>)}
       </select></label>
-    </fieldset>:<fieldset disabled={disabled||!layer||layer.locked}>
-      {!tone.fill&&<label><input type="checkbox" disabled={disabled||!layer||layer.locked} checked={Boolean(layer?.tone?.enabled)} onChange={e=>setTone({enabled:e.currentTarget.checked})}/>画像を網点化（丸）</label>}
+    </fieldset>:<fieldset disabled={disabled||!layer||layer.locked||generationMask}>
+      {!tone.fill&&<label><input type="checkbox" disabled={disabled||!layer||layer.locked||generationMask} checked={Boolean(layer?.tone?.enabled)} onChange={e=>setTone({enabled:e.currentTarget.checked})}/>画像を網点化（丸）</label>}
       {layer?.tone?.enabled&&<>
         <label>線数<select aria-label="トーンの線数" value={tone.lpi} onChange={e=>setTone({lpi:Number(e.currentTarget.value)})}>
           <optgroup label="よく使う線数"><option value={30}>30線</option><option value={60}>60線</option></optgroup>

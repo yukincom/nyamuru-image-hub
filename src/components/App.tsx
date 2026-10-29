@@ -13,7 +13,7 @@ import {agentEditorSnapshot,createAgentRevision,prepareAgentBubbleEdit,selectedA
 import {resolveVoiceGenerationTarget,type VoiceCommand} from '../lib/voiceCommands';
 import { applyArtworkSettings, getArtworkSettings } from '../lib/artworkRules';
 import standardArtworkSource from '../content/standard-settings.yaml?raw';
-import {artworkLocked,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {artworkLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import PaintTextTools, {type TextPaletteTab} from './PaintTextTools';
 import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
@@ -26,7 +26,7 @@ import PanelControls from './PanelControls';
 import { namedBackgroundStages, prepareBackgroundStage, verifyBackgroundStage } from '../lib/background3d';
 import { persistSeriesBackgroundModels } from '../lib/backgroundStageStore';
 import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
-import { applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, newPaintLayer, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
+import { applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
 import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
@@ -3117,9 +3117,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       const scene={...(preview??makePaintScene(current,panelIndex,pageIndex,overlay)),layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0};
       scene.owners=scene.owners.map(owner=>withPaintBleed(owner,paintBleedPx));
       setMobileStoryboardPane('editor');setPaintToolsCollapsed(false);setPaintLayersCollapsed(false);
-      const ownerKey=initialOwner??selectedPaintOwner(),owner=scene.owners.find(o=>o.key===ownerKey);
-      const action=pendingLayerAction.current,generationMaskAction=action?.type==='generation-mask'||action?.type==='select'&&action.mask==='generationMask';
-      if(owner?.bubble&&!bubbleVisible(owner.bubble)&&!generationMaskAction)throw new Error('レイヤーの目を押して吹き出しを表示してください');
+      const ownerKey=initialOwner??selectedPaintOwner();
       const session={document:current,pageIndex,panelIndex,overlay,scene,initialOwner:ownerKey,title:overlay?'ページ前景':panelDisplayLabel(current.manga.pages[pageIndex].panels[panelIndex].id)};
       autoPaintResume.current=null;paintSessionRef.current=session;setPaintSession(session);return true;
     }catch(error){setToast(error instanceof Error?error.message:'ペイントを開けませんでした');return false;}
@@ -3444,7 +3442,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     const owners=sameOwner?[moved.destination]:[moved.source,moved.destination];
     const replace=(scene:PaintScene,changed:PaintOwner[])=>({...scene,layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,owners:scene.owners.map(owner=>changed.find(item=>item.key===owner.key)??owner)});
     const sourceAfter=replace(sourceScene,sameScope?owners:[moved.source]),targetAfter=sameScope?sourceAfter:replace(targetScene,[moved.destination]);
-    const selectedMoves=sourceLive&&liveSnapshot?.ownerKey===action.key&&liveSnapshot?.maskTarget?.kind!=='generationMask'&&(liveSnapshot?.layerId===action.id||kind==='folder'&&source.paint.layers.some(layer=>layer.folderId===action.id&&layer.id===liveSnapshot?.layerId));
+    const selectedMoves=sourceLive&&liveSnapshot?.ownerKey===action.key&&(liveSnapshot?.layerId===action.id||kind==='folder'&&source.paint.layers.some(layer=>layer.folderId===action.id&&layer.id===liveSnapshot?.layerId));
     let resumeScene=selectedMoves?targetAfter:sourceLive?sourceAfter:targetLive?targetAfter:liveSnapshot?.scene;
     if(resumeScene){
       const prepared:PaintOwner[]=[];for(const owner of resumeScene.owners)prepared.push(await prepare(withPaintBleed(owner,paintBleedPx)));
@@ -3471,7 +3469,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
         if(session&&liveSnapshot&&resumeScene){
           const scene=resumeScene;
           const panelIndex=selectedMoves?destination.panelIndex:session.panelIndex,overlay=selectedMoves?destination.overlay:session.overlay;
-          const maskTarget=selectedMoves&&liveSnapshot.maskTarget?.kind==='mask'?{...liveSnapshot.maskTarget,key:targetKey}:liveSnapshot.maskTarget;
+          const maskTarget=selectedMoves&&liveSnapshot.maskTarget?{...liveSnapshot.maskTarget,key:targetKey}:liveSnapshot.maskTarget;
           const resume={...liveSnapshot,scene,saved:scene,imports,stageImports:[],maskTarget,...(selectedMoves?{ownerKey:targetKey}:{})};
           const updated={...session,document:next,panelIndex,overlay,scene,resume,images:new Map([...borrowed,...images]),title:overlay?'ページ前景':panelDisplayLabel(next.manga.pages[pageIndex].panels[panelIndex].id)};
           paintSessionRef.current=updated;setPaintSession(updated);handedOff=true;

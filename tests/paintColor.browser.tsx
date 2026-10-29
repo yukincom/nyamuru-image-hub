@@ -1,3 +1,4 @@
+// 見込み: 同じ描線は表現色ごとに原寸・ライブ・PNGで同じ画素になる。合格: 全RGBA一致、モノクロは白黒/透明のみ。範囲: 合成入力と実ブラウザー描画。実作品・モデル生成は含めない。
 import {render} from 'preact';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
@@ -11,8 +12,10 @@ if(location.port!=='4325')throw Error('Dedicated test origin required');
 const checks:string[]=[],check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
 const images=new Map<string,HTMLImageElement>(),size=126;
 const mark:PaintStroke={tool:'pen',color:'#ff0000',size:44,points:[{x:28.3,y:20.4,pressure:.6,time:0},{x:73.8,y:104.1,pressure:1,time:1}]};
-const canvas=()=>{const c=document.createElement('canvas');c.width=c.height=size;return c;};
+// PNGも本体と同じ読み取り用Contextで復号する。GPUへの再合成による丸めをエンコーダーの差として測らない。
+const canvas=()=>{const c=document.createElement('canvas');c.width=c.height=size;c.getContext('2d',{willReadFrequently:true});return c;};
 const progress=document.createElement('p');progress.textContent='表現色の画素を検証中…';document.getElementById('app')!.append(progress);
+// 見込み: 読み取りと合成の描画方式を揃えれば、半透明の灰色も丸め直されない。合格: 許容差なしの画素一致。範囲: CanvasからPNGまで。
 async function pixels(){
  for(const mode of ['color','grayscale','monochrome'] as PaintColorMode[]){
   progress.textContent=`表現色の画素を検証中：${mode}`;
@@ -28,7 +31,7 @@ async function pixels(){
   const image=await decodePaintImage(await renderPaintPng(paint,images)),out=canvas();out.getContext('2d')!.drawImage(image,0,0);image.src='';
   check(out.getContext('2d')!.getImageData(0,0,size,size).data.every((v,i)=>v===data[i]),`${mode} PNGが原寸と一致`);
   if(mode==='monochrome'){
-   renderer.draw(preview,{...paint,layers:[empty],generationMask:{enabled:true,strokes:[mark]}},images);
+   renderer.draw(preview,{...paint,layers:[{...empty,generationMask:true,colorMode:'color',strokes:[mark]}]},images);
    const rgba=preview.getContext('2d')!.getImageData(0,0,size,size).data;check(rgba.some((v,i)=>i%4===0&&v>rgba[i+1]),'モノクロでも生成マーカーは赤を保持');
    renderer.draw(preview,{...paint,layers:[{...layer,colorMode:'color'}]},images);
    check(preview.getContext('2d')!.getImageData(0,0,size,size).data.some((v,i,a)=>i%4===0&&v>a[i+1]),'表現色をカラーへ戻すと元の赤が戻る');

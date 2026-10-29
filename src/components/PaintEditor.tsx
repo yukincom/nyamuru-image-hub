@@ -2,7 +2,7 @@ import {canGeneratePaintOwner} from '../lib/qwenGeneration';
 import { useContext, useEffect, useRef, useState, useLayoutEffect, useMemo } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { appendBackgroundCapture } from '../lib/background3d';
-import {paintGenerationMaskLocked,paintLayerFolder,paintLayerVisible,paintLayerEditable,paintLayerPatchAllowed,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {paintLayerVisible,paintLayerEditable,paintLayerPatchAllowed,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import {paintLayerCoverage,pickPaintLayer,paintOwnerPoint,translatePaintLayer} from '../lib/paintLayerPicking';
 import { moveBackgroundLayoutOwner } from '../lib/background3dLayout';
 import type { BackgroundStage } from '../types';
@@ -31,7 +31,7 @@ import { paintCheckpoint, type PaintController, type PaintImagePlacement, type P
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, PaintToolsContext, PaintDetailsContext, PaintLayerControlsContext, PaintWorkspaceContext, paintPaletteScope, usePaintWorkspace, type BubblePathToolMode, type PaintWorkspaceState, type PaintLayoutTarget } from '../lib/paintWorkspace';
 import type { BBox, ImageAsset, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
 import { movePaintEntry, paintGenerationOwner, addPaintLayer, addPaintFolder, ensureDirectPaintOwner, paintAddPosition, expandPaintOwnerToBounds, expandPaintOwnerToContent, insertGeneratedPaintImage, movePaintFolder, movePaintLayer, newPaintLayer, paintLayerAboveNative, removePaintFolder, validatePaintDocument, type PaintAddPosition, type PaintOwner, type PaintScene, paintOwnerShouldClear, paintAssetIds } from '../lib/paintDocument';
-import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, readGenerationMaskPixels, type PaintImages } from '../lib/paintRenderer';
+import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, type PaintImages } from '../lib/paintRenderer';
 import { prepareImageAsset, fitImageBox, imageCrop } from '../lib/imagePlacement';
 import { PaintSmoother } from '../lib/paintStroke';
 import { appendPaintSamples, canStartPaintMark, preparePaintMarkLayer, commitPaintStroke, commitVectorPaths, paintStrokeBounds, previewPaintStroke, type PaintStrokePreview, type PendingPaintStroke, type PaintSampleEvent } from '../lib/paintGesture';
@@ -116,9 +116,9 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   function setImports(value:typeof imports|((items:typeof imports)=>typeof imports)){const next=typeof value==='function'?value(importsRef.current):value;importsRef.current=next;setImportsState(next);}
   const [tool,setTool]=useState<PaintTool>('pen');
   const interactionRevision=useRef(0);
-  const [maskTarget,setMaskTarget]=useState<{key:string;id:string;kind:'mask'|'generationMask'}|null>(null);
-  const selectedMask=maskTarget?.key===owner.key&&(maskTarget.kind==='generationMask'?owner.paint.generationMask:maskTarget.id===layer.id&&layer.mask)?maskTarget.kind:null;
-  const paintTarget=selectedMask??(layer.tone?.fill&&layer.mask&&!tool.startsWith('vector-')?'mask':null);
+  const [maskTarget,setMaskTarget]=useState<{key:string;id:string;kind:'mask'}|null>(null);
+  const selectedMask=layer.generationMask?'generationMask':maskTarget?.key===owner.key&&maskTarget.id===layer.id&&layer.mask?'mask':null;
+  const paintTarget=(selectedMask==='generationMask'&&tool.startsWith('vector-')?null:selectedMask)??(layer.tone?.fill&&layer.mask&&!tool.startsWith('vector-')?'mask':null);
   const editingMask=paintTarget!==null;
   const maskPreview=selectedMask==='mask';
   const [penMenu,setPenMenu]=useState(false);
@@ -171,7 +171,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const operation=useRef(false);
   const raf=useRef(0),alive=useRef(true),imagesRef=useRef<PaintImages|null>(null);
   const dirty=checkpoint.hasChanges(scene);
-  const locked=selectedMask==='generationMask'?paintGenerationMaskLocked(owner):paintOwnerLocked(owner),layerLocked=selectedMask==='generationMask'?false:!paintLayerEditable(owner,layer),layerVisible=selectedMask==='generationMask'||paintLayerVisible(owner.paint,layer);
+  const locked=paintOwnerLocked(owner),layerLocked=!paintLayerEditable(owner,layer),layerVisible=paintLayerVisible(owner.paint,layer);
   const selectionTool=tool==='vector-select'||tool==='vector-node';
   const coverage=useMemo(()=>images?paintLayerCoverage(images):null,[images]);
   const layerMove=useRef<{pointerId:number;before:PaintScene;current:PaintScene;cleanup:()=>void;target:HTMLDivElement}|null>(null);
@@ -181,10 +181,10 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     const outside=(event:PointerEvent)=>{if(!(event.target instanceof Element&&event.target.closest('.vector-eraser-menu')))setEraserMenu(null);};
     document.addEventListener('pointerdown',outside,true);return()=>document.removeEventListener('pointerdown',outside,true);
   },[eraserMenu]);
-  const canEditLayer=Boolean(paintTarget==='generationMask'?owner.paint.generationMask?.enabled:hasLayer&&layerVisible&&!layerLocked&&(!paintTarget||layer.mask?.enabled));
+  const canEditLayer=Boolean(hasLayer&&layerVisible&&!layerLocked&&(paintTarget!=='mask'||layer.mask?.enabled));
   const createsMark=['pen','fill','line','rectangle','ellipse','vector-pen'].includes(tool);
   const paintActive=Boolean(requested)&&!textTool&&!zoomTool;
-  const canDraw=Boolean(paintActive&&!selectedFolder&&images&&!busy&&!suspended&&!locked&&(paintTarget==='generationMask'||owner.bubble?.hidden!==true)&&(canEditLayer||!editingMask&&createsMark&&canStartPaintMark(owner,hasLayer?layer:undefined,vectorMode?'vector':'raster')));
+  const canDraw=Boolean(paintActive&&!selectedFolder&&images&&!busy&&!suspended&&!locked&&(canEditLayer||!editingMask&&createsMark&&canStartPaintMark(owner,hasLayer?layer:undefined,vectorMode?'vector':'raster')));
   useEffect(()=>{penHover.current=null;setPenCursor('pen');},[tool,ownerKey,layerId,canDraw]);
   useEffect(()=>{
     const root=document.documentElement;
@@ -532,6 +532,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     const target=scene.owners.find(o=>o.key===key);if(!target)return;
     if(!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){onSelectOwner(key,native);return;}
     clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=id?target.paint.layers.find(l=>l.id===id):undefined;setLayerId(id??'');
+    if(selectedLayer?.generationMask&&!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
     if(target.kind==='background')onSelectLayout?.();
     if(key!==owner.key)setSelection(null);
     if(contents&&selectedLayer&&paintLayerVisible(target.paint,selectedLayer)&&paintLayerEditable(target,selectedLayer)){
@@ -549,19 +550,19 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     if(patch.locked&&key===owner.key&&id===layer.id){clearVectorSelection();setSelection(null);}
     commit({...scene,owners:scene.owners.map(o=>o.key===key?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===id?{...l,...patch}:l)}}:o)});
   }
-  function updateGenerationMask(key:string,patch?:Partial<NonNullable<PaintOwner['paint']['generationMask']>>,remove=false){
+  function createGenerationMask(key:string){
     if(operation.current||busy||suspended||inputActive.current)return;
-    const current=historyRef.current.present,target=paintGenerationOwner(current,key);if(!target||paintGenerationMaskLocked(target))return;
-    const old=target.paint.generationMask;
-    if(remove){if(!old)return;}
-    else if(old&&patch&&Object.entries(patch).every(([key,value])=>old[key as keyof typeof old]===value))return target;
-    else if(old&&!patch)return target;
-    const mask=remove?undefined:{enabled:true,strokes:[],...old,...patch};
-    commit({...current,owners:current.owners.map(owner=>owner===target?{...owner,paint:{...owner.paint,generationMask:mask}}:owner)});
-    return target;
+    const current=historyRef.current.present,target=paintGenerationOwner(current,key);if(!target||paintOwnerLocked(target))return;
+    const old=target.paint.layers.find(layer=>layer.generationMask);
+    if(old)return {owner:target,layer:old};
+    if(target.paint.layers.length>=64)return;
+    const added:PaintLayer={...newPaintLayer('生成マスク'),generationMask:true,colorMode:'color',...(target.kind==='bubble'?{aboveNative:true}:{})};
+    const updated={...target,paint:{...target.paint,layers:[...target.paint.layers,added]}};
+    commit({...current,owners:current.owners.map(owner=>owner===target?updated:owner)});
+    return {owner:updated,layer:added};
   }
   function openMenu(event:MouseEvent,key:string){event.preventDefault();event.stopPropagation();finishGesture();setMenu({x:event.clientX,y:event.clientY,key});}
-  function selectionPixels(){return paintTarget==='generationMask'?readGenerationMaskPixels(owner.paint):paintTarget==='mask'?readPaintMaskPixels(owner.paint,layer):readPaintPixels(owner.paint,layer,images!);}
+  function selectionPixels(){return paintTarget==='mask'?readPaintMaskPixels(owner.paint,layer):readPaintPixels(owner.paint,layer,images!);}
   function beginSelection(event:PointerEvent&{currentTarget:HTMLDivElement}){
     const target=event.currentTarget,rect=target.getBoundingClientRect();
     const point=(e:PointerEvent)=>inputPoint(e,target,rect);
@@ -583,7 +584,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     if(clear&&(!canEditLayer||!editingMask&&layer.kind==='vector'))return;
     const active=editingMask||clear?layer:preparePaintMarkLayer(owner,hasLayer?layer:undefined,'raster',scene.colorMode,scene.layerSequence);
     if(!active)return;if(active!==layer)setLayerId(active.id);
-    const next=commitPaintStroke(historyRef.current.present,{ownerKey:owner.key,layerId:active.id,...(paintTarget?{target:paintTarget}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:clear?'clear':'fill',color:inkColor,size:1,points:[{x:0,y:0,pressure:1,time:0}],selection:boxes}});commit(next);
+    const next=commitPaintStroke(historyRef.current.present,{ownerKey:owner.key,layerId:active.id,...(paintTarget==='mask'?{target:'mask' as const}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:clear?'clear':'fill',color:inkColor,size:1,points:[{x:0,y:0,pressure:1,time:0}],selection:boxes}});commit(next);
   }
   function hoverPen(event:PointerEvent&{currentTarget:HTMLDivElement}){
     if(tool!=='vector-pen'||!canDraw||event.buttons||event.pointerType==='touch'||vectorPointer.current)return;
@@ -613,7 +614,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       const point=(sample:PaintSampleEvent):PaintPoint=>({...inputPoint(sample,target,rect),pressure:sample.pointerType==='pen'?Math.max(0,Math.min(1,sample.pressure)):1,time:sample.timeStamp});
       const smoother=new PaintSmoother(isShapeTool(tool)?0:smoothing);
       const selectionForMark=selectionBoxes;
-      const next:Live={ownerKey:owner.key,layerId:active.id,space:{frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height},...(paintTarget?{target:paintTarget}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:event.button===5?'eraser':tool as PaintStroke['tool'],color,...(selectionForMark?{selection:selectionForMark}:{}),...(event.button!==5&&(tool==='rectangle'||tool==='ellipse')?{fill:vectorStyle.fill}:{}),size:event.button===5?eraserSize:size,points:[smoother.push(point(event))]}};
+      const next:Live={ownerKey:owner.key,layerId:active.id,space:{frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height},...(paintTarget==='mask'?{target:'mask' as const}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:event.button===5?'eraser':tool as PaintStroke['tool'],color,...(selectionForMark?{selection:selectionForMark}:{}),...(event.button!==5&&(tool==='rectangle'||tool==='ellipse')?{fill:vectorStyle.fill}:{}),size:event.button===5?eraserSize:size,points:[smoother.push(point(event))]}};
       next.bounds=paintStrokeBounds(next.stroke);
       const blur=()=>finishGesture(false);
       const cleanup=()=>{window.removeEventListener('pointermove',movePointer,true);window.removeEventListener('pointerup',endPointer,true);window.removeEventListener('pointercancel',endPointer,true);window.removeEventListener('blur',blur);};
@@ -632,7 +633,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   function selectTool(next:PaintTool){
     if(busy||toolSuspended||operation.current)return;
     interactionRevision.current++;
-    if(paintSelectionMode(next,Boolean(requested)&&!textTool&&!zoomTool,hasLayer?layer.kind:undefined)==='layout'&&(next==='vector-node'?onSelectBubblePath:onSelectLayout)){
+    if(paintSelectionMode(next,Boolean(requested)&&!textTool&&!zoomTool,hasLayer?layer.kind:undefined,hasLayer&&!layer.guide&&owner.kind!=='original')==='layout'&&(next==='vector-node'?onSelectBubblePath:onSelectLayout)){
       finishGesture();
       if(requested&&onSelectLayout)onSelectLayout({key:owner.key,direct:next==='vector-node'});
       else if(next==='vector-node'&&onSelectBubblePath)onSelectBubblePath('node');
@@ -732,7 +733,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     </div>
     {(tool==='wand'||tool==='fill')&&<label>許容差<input aria-label="色の許容差" type="number" min="0" max="255" value={selectTolerance} onChange={e=>setSelectTolerance(Math.max(0,Math.min(255,e.currentTarget.valueAsNumber||0)))}/></label>}
     <div class="paint-size" data-line-kind={selectedBubbleStroke||vectorMode?'vector':'raster'} data-tool-help="線種ごとの太さを保持します。[ / ] でも変更できます。トーンと生成マーカーはラスターの太さを使います。"><span>太さ</span><output>{selectedBubbleStroke?Math.round(size*1000)/1000:size} px</output><div class="paint-size-palette" role="radiogroup" aria-label={selectedBubbleStroke?'吹き出しの太さ':tool==='eraser'?'消しゴムの太さ':vectorMode?'ベクターの太さ':'ペンの太さ'}>{PAINT_SIZE_PRESETS.map(value=>{const diameter=Math.min(18,Math.max(2,2+Math.log10(value*10+1)*6));return <button key={value} type="button" role="radio" disabled={busy||suspended||selectedBubbleStroke?.disabled} data-paint-size={value} aria-label={`太さ ${value} px`} aria-checked={selectedBubbleStroke?Math.abs(size-value)<1e-6:size===value} aria-pressed={selectedBubbleStroke?Math.abs(size-value)<1e-6:size===value} onClick={()=>setCurrentSize(value)}><span class="paint-size-dot" style={{width:`${diameter}px`,height:`${diameter}px`}}/><small>{value}</small></button>;})}</div></div>
-    <div class="paint-aa"><span>{inkMode==='monochrome'?'アンチエイリアス：なし固定':'アンチエイリアス'}</span><div class="vector-choice-icons" role="group" aria-label="アンチエイリアス">{(['なし','弱','中','強'] as const).map((label,value)=><PaintToolButton label={`アンチエイリアス：${label}`} help={`選択レイヤーの線の境界を「${label}」にします。ぼかしは使わず、輪郭の濃度を調整します。読み込んだ画像は変えません。`} disabled={!requested||busy||suspended||locked||layerLocked||inkMode==='monochrome'} aria-pressed={(inkMode==='monochrome'?0:(selectedMask==='generationMask'?owner.paint.generationMask?.antialias:toolbarLayer.antialias)??3)===value} onClick={()=>selectedMask==='generationMask'?updateGenerationMask(owner.key,{antialias:value as 0|1|2|3}):updateOwnerLayer(owner.key,layer.id,{antialias:value as 0|1|2|3})}><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="currentColor"/>{value>0&&<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="3" opacity={value/5}/>}</svg></PaintToolButton>)}</div></div>
+    <div class="paint-aa"><span>{inkMode==='monochrome'?'アンチエイリアス：なし固定':'アンチエイリアス'}</span><div class="vector-choice-icons" role="group" aria-label="アンチエイリアス">{(['なし','弱','中','強'] as const).map((label,value)=><PaintToolButton label={`アンチエイリアス：${label}`} help={`選択レイヤーの線の境界を「${label}」にします。ぼかしは使わず、輪郭の濃度を調整します。読み込んだ画像は変えません。`} disabled={!requested||busy||suspended||locked||layerLocked||inkMode==='monochrome'} aria-pressed={(inkMode==='monochrome'?0:toolbarLayer.antialias??3)===value} onClick={()=>updateOwnerLayer(owner.key,layer.id,{antialias:value as 0|1|2|3})}><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="7" fill="currentColor"/>{value>0&&<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="3" opacity={value/5}/>}</svg></PaintToolButton>)}</div></div>
   </div>;
   const eraseModeMenu=eraserMenu&&typeof document!=='undefined'?createPortal(<div class="paint-dock vector-eraser-menu" role="menu" aria-label="ベクター消しゴムの消し方" style={{left:eraserMenu.x,top:eraserMenu.y}} onKeyDown={event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const choices=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=menuitemradio]')),at=choices.indexOf(document.activeElement as HTMLButtonElement),next=event.key==='Home'?0:event.key==='End'?choices.length-1:event.key==='ArrowDown'?(at+1)%choices.length:(at+choices.length-1)%choices.length;choices[next]?.focus();}}>{vectorEraseChoices.map(([mode,label,description])=><button type="button" role="menuitemradio" aria-checked={eraseMode===mode} data-erase-mode={mode} autoFocus={eraseMode===mode} onClick={()=>{setEraseMode(mode);selectTool('eraser');setEraserMenu(null);}}><span aria-hidden="true">{eraseMode===mode?'●':'○'}</span><span><strong>{label}</strong><small>{description}</small></span></button>)}</div>,document.body):null;
   function layerAction(action:PaintLayerAction){
@@ -741,7 +742,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     if(action.type==='menu'){setMenu({key:action.key,x:action.x,y:action.y});return;}
     if(action.type==='select'){if(action.mask&&(action.id!==undefined||action.mask==='generationMask'))selectMask(action.key,action.id??'',action.mask);else selectOwner(action.key,action.id,action.contents,action.native);return;}
     if(action.type==='update'){updateOwnerLayer(action.key,action.id,action.patch);return;}
-    if(action.type==='generation-mask'){const target=updateGenerationMask(action.key,action.patch,action.remove);if(action.select&&target)selectMask(target.key,'','generationMask');return;}
+    if(action.type==='generation-mask'){const target=createGenerationMask(action.key);if(action.select&&target)selectMask(target.owner.key,target.layer.id,'generationMask');return;}
     const moving=action.type==='move-layer'||action.type==='move-folder';
     if(busy||(moving?toolSuspended:suspended)||operation.current||inputActive.current)return;
     let current=historyRef.current.present,target=current.owners.find(o=>o.key===action.key);
@@ -754,8 +755,8 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       if(other!==target){
         const moved=movePaintEntry(target,other,action.type==='move-folder'?'folder':'layer',action.id,action.target);if(!moved)return;
         commit({...current,owners:current.owners.map(item=>item===target?moved.source:item===other?moved.destination:item)});
-        if(selectedMask!=='generationMask'&&ownerKey===target.key&&(layerId===action.id||action.type==='move-folder'&&layer.folderId===action.id)){
-          setOwnerKey(other.key);if(maskTarget?.kind==='mask')setMaskTarget({...maskTarget,key:other.key});
+        if(ownerKey===target.key&&(layerId===action.id||action.type==='move-folder'&&layer.folderId===action.id)){
+          setOwnerKey(other.key);if(maskTarget)setMaskTarget({...maskTarget,key:other.key});
         }
         return;
       }
@@ -882,9 +883,9 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   function selectMask(key:string,id:string,kind:'mask'|'generationMask'){
     if(busy||suspended||operation.current||inputActive.current)return;
     if(kind==='generationMask'){
-      const target=paintGenerationOwner(historyRef.current.present,key);if(!target?.paint.generationMask)return;
-      finishGesture();clearVectorSelection();setOwnerKey(target.key);setLayerId('');setMaskTarget({key:target.key,id:'',kind});setSelection(null);
-      setPaletteFolded(current=>({...current,[`${paletteScope}/owner/${target.key}`]:false,[`${paletteScope}/generation-mask/${target.key}`]:false}));
+      const target=historyRef.current.present.owners.find(owner=>owner.key===key),selected=target?.paint.layers.find(layer=>layer.generationMask&&(!id||layer.id===id));if(!target||!selected)return;
+      finishGesture();clearVectorSelection();setOwnerKey(target.key);setLayerId(selected.id);setMaskTarget(null);setSelection(null);
+      setPaletteFolded(current=>({...current,[`${paletteScope}/owner/${target.key}`]:false}));
       if(!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
     }else{
       if(selectedMask==='mask'&&owner.key===key&&layer.id===id){finishGesture();setMaskTarget(null);setSelection(null);return;}
@@ -905,8 +906,8 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   }
   function addGenerationMask(){
     if(!images||busy||suspended)return;
-    const target=updateGenerationMask(owner.key,{enabled:true});
-    if(target)selectMask(target.key,'','generationMask');
+    const target=createGenerationMask(owner.key);
+    if(target)selectMask(target.owner.key,target.layer.id,'generationMask');
   }
   function toggleGuide(key:string){
     if(busy||suspended||operation.current||!images)return;
@@ -918,7 +919,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   }
   const effects=<PaintLayerEffects layer={requested&&hasLayer?layer:undefined} generationMask={selectedMask==='generationMask'} disabled={!requested||!hasLayer||locked||layerLocked||busy||suspended||!images} update={patch=>updateOwnerLayer(owner.key,layer.id,patch)}/>;
   const layerProps:ComponentProps<typeof PaintLayerPalette>={
-    selectedMask,selectMask,addToneMask,addGenerationMask,canAddGenerationMask:!!paintGenerationOwner(scene,owner.key)&&!paintGenerationMaskLocked(paintGenerationOwner(scene,owner.key)!),updateGenerationMask:(key,patch)=>updateGenerationMask(key,patch),selectedFolder,paletteScope,
+    selectedMask,selectMask,addToneMask,addGenerationMask,canAddGenerationMask:!!paintGenerationOwner(scene,owner.key)&&!paintOwnerLocked(paintGenerationOwner(scene,owner.key)!),selectedFolder,paletteScope,
     backgroundCapture:backgroundOwner?{ready:backgroundCaptureReady&&!busy&&!externalSuspended,capture:()=>void backgroundController.current?.capture()}:undefined,
     onToggleBubble,openBackground3d:!overlay?()=>openBackground3d('background'):undefined,
     reorderGroup:(key,target,after)=>{const moved=scene.owners.find(o=>o.key===key);if(moved&&!paintOwnerPlacementLocked(moved))onReorderOwners?.(key,target,after);},embedded:embeddedLayers,onEditText,title,scene,owner,layer,images,disabled:busy||suspended,
@@ -927,7 +928,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     addVector:()=>layerAction({type:'add',key:owner.key,kind:'vector'}),
     importImage:()=>chooseImage(),reorder:(key,id,target,after)=>layerAction({type:'reorder',key,id,target,after}),moveLayer:(key,id,target)=>layerAction({type:'move-layer',key,id,target}),moveFolder:(key,id,target)=>layerAction({type:'move-folder',key,id,target}),updateFolder:(key,id,patch)=>layerAction({type:'update-folder',key,id,patch}),renameFolder:(key,id,name)=>layerAction({type:'rename-folder',key,id,name}),
     duplicate:()=>{if(!hasLayer)return;const added={...layer,id:crypto.randomUUID(),name:`${layer.name} 複製`};changeLayers([...owner.paint.layers,added]);setLayerId(added.id);setMaskTarget(selectedMask==='mask'?{key:owner.key,id:added.id,kind:'mask'}:null);},
-    remove:()=>{if(selectedFolder){layerAction({type:'remove-folder',key:owner.key,id:selectedFolder.id});setLayerId('');return;}if(selectedMask==='generationMask'){updateGenerationMask(owner.key,undefined,true);setMaskTarget(null);setSelection(null);return;}if(!hasLayer||!paintLayerEditable(owner,layer))return;{const remaining=owner.paint.layers.filter(l=>l.id!==layer.id);changeLayers(remaining);setLayerId(remaining.findLast(l=>!l.locked)?.id??remaining.at(-1)?.id??'');}setMaskTarget(null);clearVectorSelection();setSelection(null);},
+    remove:()=>{if(selectedFolder){layerAction({type:'remove-folder',key:owner.key,id:selectedFolder.id});setLayerId('');return;}if(!hasLayer||!paintLayerEditable(owner,layer))return;{const remaining=owner.paint.layers.filter(l=>l.id!==layer.id);changeLayers(remaining);setLayerId(remaining.findLast(l=>!l.locked)?.id??remaining.at(-1)?.id??'');}setMaskTarget(null);clearVectorSelection();setSelection(null);},
   };
   const layerControls=<PaintLayerPalette {...layerProps}/>;
   const layerHeader=<PaintLayerControls {...layerProps} disabled={!requested||busy||suspended}/>;

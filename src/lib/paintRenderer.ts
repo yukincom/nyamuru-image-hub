@@ -2,7 +2,7 @@ import {paintLayerVisible} from './paintLock.ts';
 import { drawVectorPath, applyInkAntialias } from './vectorRenderer.ts';
 import type { BBox, ImageAsset, PaintDocument, PaintLayer, PaintStroke } from '../types.ts';
 import { loadFigureCropAsset } from './figureCropStore.ts';
-import { paintAssetIds } from './paintDocument.ts';
+import { paintAssetIds, mapPaintLayer, mapPaintStroke } from './paintDocument.ts';
 import { applyPaintTone } from './paintTone.ts';
 import { maskStroke } from './paintMask.ts';
 import type { PendingPaintStroke } from './paintGesture.ts';
@@ -99,10 +99,10 @@ function context(canvas: HTMLCanvasElement,readPixels=false): CanvasRenderingCon
 function monochromeStroke(stroke:PaintStroke):PaintStroke {
   return {...stroke,color:paintColorInk(stroke.color,'monochrome'),...(stroke.fill!==undefined?{fill:paintColorInk(stroke.fill,'monochrome')}:{})};
 }
-function drawLayer(ctx: CanvasRenderingContext2D, layer: PaintLayer, images: PaintImages, paint:PaintDocument) {
+function drawLayer(ctx: CanvasRenderingContext2D, layer: PaintLayer, images: PaintImages, paint:PaintDocument,origin={x:0,y:0}) {
   ctx.save();
   if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
-  if(layer.tone?.fill){ctx.fillStyle='#000000';ctx.fillRect(0,0,paint.width,paint.height);}
+  if(layer.tone?.fill){ctx.fillStyle='#000000';ctx.fillRect(-origin.x,-origin.y,paint.width,paint.height);}
   if(layer.image){const image=images.get(layer.image.assetId);if(!image)throw new Error('レイヤーの元画像が不足しています');
     const c=layer.image.crop,b=layer.image.bbox;ctx.drawImage(image,c.x,c.y,c.w,c.h,b.x,b.y,b.w,b.h);}
   const mono=layer.colorMode==='monochrome'&&!layer.tone?.enabled;
@@ -123,17 +123,20 @@ export function drawPaintMask(canvas:HTMLCanvasElement,paint:PaintDocument,layer
   // the committed mask, which can move thresholded boundary pixels.
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
   if(layer.mask?.reveal){ctx.fillStyle='#ffffff';ctx.fillRect(0,0,canvas.width,canvas.height);}
-  ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
-  for(const stroke of layer.mask?.strokes??[])drawPaintStroke(ctx,maskStroke(stroke));
-  if(live?.target==='mask')drawPaintStroke(ctx,maskStroke(live.stroke));
+  ctx.scale(canvas.width/view.w,canvas.height/view.h);
+  const local=(stroke:PaintStroke)=>view.x||view.y?mapPaintStroke(stroke,-view.x,-view.y):stroke;
+  for(const stroke of layer.mask?.strokes??[])drawPaintStroke(ctx,maskStroke(local(stroke)));
+  if(live?.target==='mask')drawPaintStroke(ctx,maskStroke(local(live.stroke)));
   applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},layer);
 }
 export function drawGenerationMask(canvas:HTMLCanvasElement,paint:PaintDocument,live?:LiveStroke,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
   const ctx=context(canvas,true);ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.save();ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
-  for(const stroke of paint.generationMask?.strokes??[])drawPaintStroke(ctx,stroke);
-  if(live?.target==='generationMask')drawPaintStroke(ctx,live.stroke);
-  ctx.restore();applyMaskAntialias(canvas,{...paint,width:view.w,height:view.h},{antialias:paint.generationMask?.antialias});
+  const scratch=document.createElement('canvas'),mask=document.createElement('canvas');scratch.width=canvas.width;scratch.height=canvas.height;
+  try{for(const layer of paint.layers){
+    if(!layer.generationMask||!paintLayerVisible(paint,layer)||layer.opacity<=0)continue;
+    renderLayer(scratch,paint,layer,new Map(),mask,live?.layerId===layer.id?live:undefined,false,view);
+    ctx.globalAlpha=layer.opacity;ctx.drawImage(scratch,0,0);
+  }}finally{ctx.globalAlpha=1;scratch.width=scratch.height=mask.width=mask.height=1;}
 }
 function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLayer,images:PaintImages,mask:HTMLCanvasElement,live?:LiveStroke,preview=false,view:BBox={x:0,y:0,w:paint.width,h:paint.height}){
   const convert=layer.colorMode!==undefined&&layer.colorMode!=='color';
@@ -147,8 +150,12 @@ function renderLayer(canvas:HTMLCanvasElement,paint:PaintDocument,layer:PaintLay
     }finally{native.width=native.height=nativeMask.width=nativeMask.height=1;}
     return;
   }
-  ctx.save();ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
-  drawLayer(ctx,live&&!live.target?{...layer,strokes:[...layer.strokes,live.stroke]}:layer,images,paint);ctx.restore();
+  // Rebase in document coordinates before Canvas scaling. Large bleed offsets
+  // otherwise cancel after float32 conversion and change antialiased edge pixels.
+  const local=view.x||view.y?mapPaintLayer(layer,-view.x,-view.y):layer;
+  const stroke=live&&(view.x||view.y)?mapPaintStroke(live.stroke,-view.x,-view.y):live?.stroke;
+  ctx.save();ctx.scale(canvas.width/view.w,canvas.height/view.h);
+  drawLayer(ctx,live&&!live.target?{...local,strokes:[...local.strokes,stroke!]}:local,images,paint,view);ctx.restore();
   if(!layer.image&&layer.colorMode!=='monochrome')applyInkAntialias(ctx,canvas.width,canvas.height,layer.antialias);
   if(layer.tone?.enabled){const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);applyPaintTone(pixels,layer.tone,paint.dpi,view.w,view.h,preview,view);ctx.putImageData(pixels,0,0);}
   if(layer.mask?.enabled){
@@ -178,9 +185,9 @@ export function paintPreviewRenderer() {
       const nextDimensions=[canvas.width,canvas.height,paint.width,paint.height,paint.dpi,includeGeneration,view.x,view.y,view.w,view.h].join(':');
       if(dimensions!==nextDimensions){clear();dimensions=nextDimensions;}
       for(const id of cache.keys())if(!paint.layers.some(layer=>layer.id===id&&paintLayerVisible(paint,layer)))release(id);
-      const out=context(canvas);out.clearRect(0,0,canvas.width,canvas.height);
+      const out=context(canvas,true);out.clearRect(0,0,canvas.width,canvas.height);
       for(const layer of paint.layers){
-        if(!paintLayerVisible(paint,layer))continue;
+        if(!paintLayerVisible(paint,layer)||layer.generationMask&&!includeGeneration)continue;
         // Show coverage instead of dots while editing an independent tone.
         if(layer.id===maskPreviewId&&layer.tone?.fill&&layer.mask?.enabled)continue;
         if(cache.get(layer.id)?.layer.colorMode!==layer.colorMode)release(layer.id);
@@ -195,14 +202,15 @@ export function paintPreviewRenderer() {
           }
         }
         const rendered=source;
-        if(live?.layerId===layer.id&&live.target!=='generationMask'){scratch.width=canvas.width;scratch.height=canvas.height;
+        if(live?.layerId===layer.id){scratch.width=canvas.width;scratch.height=canvas.height;
           const reducedMono=layer.colorMode==='monochrome'&&(canvas.width<view.w||canvas.height<view.h);
           if(layer.mask?.enabled||layer.tone?.enabled||layer.colorMode&&layer.colorMode!=='color'&&!reducedMono)renderLayer(scratch,paint,layer,images,mask,live,true,view);
-          else {const ctx=context(scratch);ctx.drawImage(source,0,0);ctx.scale(canvas.width/view.w,canvas.height/view.h);ctx.translate(-view.x,-view.y);
-            if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
+          else {const ctx=context(scratch);ctx.drawImage(source,0,0);ctx.scale(canvas.width/view.w,canvas.height/view.h);
+            if(layer.clip){const b=layer.clip;ctx.beginPath();ctx.rect(b.x-view.x,b.y-view.y,b.w,b.h);ctx.clip();}
             // Keep the converted image cached while the pointer moves. Native
             // pixels are rebuilt on commit; reduced live ink keeps coverage.
-            drawPaintStroke(ctx,reducedMono?monochromeStroke(live.stroke):live.stroke);if(!layer.image&&!reducedMono)applyInkAntialias(ctx,scratch.width,scratch.height,layer.antialias);}
+            const stroke=view.x||view.y?mapPaintStroke(live.stroke,-view.x,-view.y):live.stroke;
+            drawPaintStroke(ctx,reducedMono?monochromeStroke(stroke):stroke);if(!layer.image&&!reducedMono)applyInkAntialias(ctx,scratch.width,scratch.height,layer.antialias);}
           source=scratch;}
         out.globalAlpha=layer.opacity;out.globalCompositeOperation=layer.blend==='multiply'?'multiply':'source-over';out.drawImage(source,0,0);
         if(!cache.has(layer.id))rendered.width=rendered.height=1;
@@ -214,11 +222,8 @@ export function paintPreviewRenderer() {
         drawPaintMask(mask,paint,coverage,live?.layerId===coverage.id?live:undefined,view);
         const ctx=context(mask);ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-in';ctx.fillStyle='#ff0000';ctx.fillRect(0,0,mask.width,mask.height);ctx.globalCompositeOperation='source-over';
         out.save();out.globalAlpha=.58;
-        if(coverage.clip){const b=coverage.clip,sx=canvas.width/paint.width,sy=canvas.height/paint.height;out.beginPath();out.rect(b.x*sx,b.y*sy,b.w*sx,b.h*sy);out.clip();}
+        if(coverage.clip){const b=coverage.clip,sx=canvas.width/view.w,sy=canvas.height/view.h;out.beginPath();out.rect((b.x-view.x)*sx,(b.y-view.y)*sy,b.w*sx,b.h*sy);out.clip();}
         out.drawImage(mask,0,0);out.restore();
-      }
-      if(includeGeneration&&paint.generationMask?.enabled){
-        mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint,live,view);out.drawImage(mask,0,0);
       }
     },
     dispose(){clear();scratch.width=mask.width=1;scratch.height=mask.height=1;},
@@ -231,10 +236,9 @@ export async function renderPaintPng(paint:PaintDocument,images:PaintImages,incl
   context(scratch,true);
   canvas.width=scratch.width=paint.width;canvas.height=scratch.height=paint.height;
   try{
-    const out=context(canvas);
-    for(const layer of paint.layers){if(!paintLayerVisible(paint,layer))continue;renderLayer(scratch,paint,layer,images,mask);
+    const out=context(canvas,true);
+    for(const layer of paint.layers){if(!paintLayerVisible(paint,layer)||layer.generationMask&&!includeGeneration)continue;renderLayer(scratch,paint,layer,images,mask);
       out.globalAlpha=layer.opacity;out.globalCompositeOperation=layer.blend==='multiply'?'multiply':'source-over';out.drawImage(scratch,0,0);}
-    if(includeGeneration&&paint.generationMask?.enabled){mask.width=canvas.width;mask.height=canvas.height;drawGenerationMask(mask,paint);out.globalAlpha=1;out.globalCompositeOperation='source-over';out.drawImage(mask,0,0);}
     return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('画像の書き出しに失敗しました')),'image/png'));
   }finally{canvas.width=scratch.width=mask.width=1;canvas.height=scratch.height=mask.height=1;}
 }
@@ -256,7 +260,7 @@ export function readGenerationMaskPixels(paint:PaintDocument):ImageData {
 
 /** Capture the visible marker extent after erasing and clipping, in paint pixels. */
 export function generationMaskBounds(paint:PaintDocument):BBox|undefined {
-  if(!paint.generationMask?.enabled)return;
+  if(!paint.layers.some(layer=>layer.generationMask&&paintLayerVisible(paint,layer)&&layer.opacity>0))return;
   let left=paint.width,top=paint.height,right=0,bottom=0;
   const {data,width,height}=readGenerationMaskPixels(paint);
   for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]){

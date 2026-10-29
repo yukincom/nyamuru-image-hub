@@ -123,6 +123,7 @@ test('owner selection waits for paint close and retains the current mode on save
  }
 });
 
+// 見込み: 一覧がsceneの順序だけを反転表示すれば、初期順と並べ替え後の文字順を保持できる。合格: 2通りのID順を厳密比較し入力不変。範囲: 一覧構築、実DOM操作はbrowser fixture。
 test('palette preserves initial and edited scene order without sorting text numbers again',()=>{
  const owner=(kind,index,extra={})=>({key:`${kind}-${index}`,kind,index,paint:{layers:[]},...extra});
  const source=paintLayerSource.slice(paintLayerSource.indexOf('  const textDirectOwners='),paintLayerSource.indexOf('  const relations='));
@@ -134,7 +135,7 @@ test('palette preserves initial and edited scene order without sorting text numb
   assert.deepEqual(Array.from(result,o=>o.key),['original-1',...textOrder.toReversed().map(index=>`bubble-${index}`),'figure-1','figure-0','background-0']);
   assert.deepEqual(owners,before);
  }
- assert.match(paintLayerSource,/displayOwners\.map\(\(o,ownerIndex,owners\)=>/);
+ assert.match(paintLayerSource,/displayOwners\.map\(\(o,ownerIndex\)=>/);
  assert.ok(paintLayerSource.indexOf('{p.frameLayer}')<paintLayerSource.indexOf('{displayOwners.map'));
  assert.match(paintLayerSource,/return <>\{frame\}<div class="layer-group"/);
  assert.match(pageLayerSource,/cloneElement\(activeLayers,\{\.\.\.moves\(activeLayers\.props\.scene\),frameLayer,paletteScope,directPanel,nativeTextLayers,images:/);

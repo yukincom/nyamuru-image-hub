@@ -1,6 +1,6 @@
 import type { BBox, Bubble, Figure, ImageContent, MangaDocument, Panel, PageOverlay } from '../types.ts';
 import { letteringFigureIndex, letteringLayerMove } from './bubbleRelations.ts';
-import { artworkLocked } from './paintLock.ts';
+import { artworkLocked,paintLayerVisible } from './paintLock.ts';
 import { useScenarioBubbleText } from './scenario.ts';
 import { rebaseTextRuns, syncBubbleEmphasisFromStyles } from './textStyle.ts';
 
@@ -90,7 +90,7 @@ export function toggleBubbleVisibility(document:MangaDocument,target:BubbleTextT
   const page=document.manga.pages[target.pageIndex],images=target.overlay?page.images:page.panels[target.panelIndex]?.images;
   const original=images?.find(image=>image.id===bubble.analogTextImport?.originalImageId);
   const children=images?.filter(image=>image===original||original&&image.paintStack&&'below' in image.paintStack&&image.paintStack.below===`layer:${original.id}`)??[];
-  const visible=group?(bubbleVisible(bubble)||children.some(image=>!image.hidden&&(!image.paint||image.paint.layers.some(layer=>layer.visible)))):bubbleVisible(bubble);
+  const visible=group?(bubbleVisible(bubble)||Boolean(bubble.paint_overlay&&!bubble.paint_overlay.hidden&&(!bubble.paint_overlay.paint||bubble.paint_overlay.paint.layers.some(layer=>paintLayerVisible(bubble.paint_overlay!.paint!,layer))))||children.some(image=>!image.hidden&&(!image.paint||image.paint.layers.some(layer=>layer.visible)))):bubbleVisible(bubble);
   bubble.hidden=visible;
   if(group){
     if(bubble.paint_overlay){bubble.paint_overlay.hidden=false;for(const layer of bubble.paint_overlay.paint?.layers??[])layer.visible=!visible;}

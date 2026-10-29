@@ -297,6 +297,10 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
           }
           if(letteringGuideVisible(bubble))drawText(context, bubble, bubbleTextFrame(box, panel, bubble), frame, 'bubble', manga.meta.font);
         }
+        if(!bubbleVisible(bubble)&&bubble.paint_overlay&&!bubble.paint_overlay.hidden){
+          const owner=paintScene(panel,dpi,assets).owners.find(owner=>owner.key===`bubble-${index}`)!;
+          await drawHumanPoseImage(context,await humanPoseOwnerImage({...owner,paint:paintNativeBand(owner.paint,false)},assets,false),owner.frame,frame);
+        }
         // Each independent original follows its own native child, even if native text is hidden.
         if(bubble.analogTextImport?.originalImageId)await drawDirect(entry,{below:`original-${bubble.analogTextImport.originalImageId}`});
         await drawImages((panel.images??[]).filter(image=>image.id===bubble.analogTextImport?.originalImageId));

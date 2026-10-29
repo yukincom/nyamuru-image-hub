@@ -1,6 +1,6 @@
 import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
 import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newNumberedPaintLayer,movePaintLayer,paintLayerAboveNative,type PaintOwner,type PaintScene} from './paintDocument.ts';
-import {paintGenerationMaskLocked,paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
+import {paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
 import {paintStrokeBounds,paintStrokeContentBounds,type PaintSmoother} from './paintStroke.ts';
 export {paintStrokeBounds} from './paintStroke.ts';
 
@@ -8,7 +8,7 @@ export interface PendingPaintStroke {
   ownerKey: string;
   layerId: string;
   stroke: PaintStroke;
-  target?: 'mask'|'generationMask';
+  target?: 'mask';
   /** Insert with the first stroke, so a quick mark on cropped art is one undo step. */
   addedLayer?: PaintLayer;
   addedBelow?: string;
@@ -52,7 +52,7 @@ export function paintMarkNeedsLayer(layer:PaintLayer|undefined,kind:PaintLayer['
   return !layer||Boolean(layer.guide)||Boolean(layer.locked&&layer.image)||layer.kind!==kind||Boolean(layer.clip);
 }
 export function canStartPaintMark(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind']):boolean {
-  return !paintOwnerLocked(owner)&&owner.bubble?.hidden!==true
+  return !paintOwnerLocked(owner)
     &&(!layer||paintLayerFolder(owner.paint,layer)?.visible!==false&&!paintLayerFolder(owner.paint,layer)?.locked)
     &&(!layer||Boolean(layer.guide)||layer.visible&&(!layer.locked||Boolean(layer.image)))
     &&(!paintMarkNeedsLayer(layer,kind)||owner.paint.layers.length<64);
@@ -82,13 +82,7 @@ export function commitVectorPaths(scene:PaintScene,pending:{ownerKey:string;laye
 /** Append to the latest scene, never to the scene captured by pointerdown/render. */
 export function commitPaintStroke(scene: PaintScene, pending: PendingPaintStroke): PaintScene {
   const owner=scene.owners.find(o=>o.key===pending.ownerKey);
-  if(!owner||(pending.target==='generationMask'?paintGenerationMaskLocked(owner):paintOwnerLocked(owner)))return scene;
-  if(pending.target==='generationMask'){
-    const mask=owner.paint.generationMask;if(!mask?.enabled)return scene;
-    const stroke=structuredClone(strokeInOwner(pending,owner));
-    const next=expandPaintOwnerToBounds({...owner,paint:{...owner.paint,generationMask:{...mask,strokes:[...mask.strokes,stroke]}}},strokeBoundsInOwner(pending,owner));
-    return {...scene,owners:scene.owners.map(item=>item===owner?next:item)};
-  }
+  if(!owner||paintOwnerLocked(owner))return scene;
   const layers=[...owner.paint.layers];
   let index=layers.findIndex(layer=>layer.id===pending.layerId);
   if(index<0){

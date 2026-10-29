@@ -66,17 +66,19 @@ if(selectionChecks){
  doc.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景の吹き出し',shape:'normal',bbox:{x:30,y:230,w:40,h:40}}]};
  localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(doc));
 }
+// 見込み: マスクの専用用途と共通レイヤーの表示を分離すれば、通常PNGに印が混ざらず、余白追加でも同じ範囲の描画が保たれる。合格: マスク除外・ライブは代表画素、縮小画像は全RGBA一致。範囲: 合成原稿と実Canvas。
 async function rendererChecks(){
  const checks:string[]=[];const check=(ok:boolean,label:string)=>{if(!ok)throw new Error(label);checks.push(label);};
  const fill=(color:string)=>({tool:'fill' as const,color,size:1,points:[{x:0,y:0,pressure:1,time:0}],selection:[{x:0,y:0,w:100,h:100}]});
  const base={...newPaintLayer(),strokes:[fill('#ffffff')],clip:{x:0,y:0,w:50,h:100}};
- const paint:PaintDocument={version:1,width:100,height:100,dpi:100,layers:[base],generationMask:{enabled:true,strokes:[fill('#ff0000')]}};
+ const marker={...newPaintLayer('生成マスク'),generationMask:true,strokes:[fill('#ff0000')]};
+ const paint:PaintDocument={version:1,width:100,height:100,dpi:100,layers:[base,marker]};
  const read=async(blob:Blob)=>{const image=await decodePaintImage(blob),canvas=document.createElement('canvas');canvas.width=canvas.height=100;const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);image.src='';return ctx.getImageData(0,0,100,100).data;};
  const pixel=(d:Uint8ClampedArray,x:number)=>Array.from(d.slice((50*100+x)*4,(50*100+x)*4+4)).join(',');
  const normal=await read(await renderPaintPng(paint,new Map())),generation=await read(await renderPaintPng(paint,new Map(),true));
  check(pixel(normal,25)==='255,255,255,255','通常PNGは元の白画像を保持');check(pixel(generation,25)==='255,0,0,255','生成入力は赤領域を合成');check(pixel(generation,75)==='255,0,0,255','フォルダーの生成領域は個別レイヤーのclipから独立');
  const canvas=document.createElement('canvas');canvas.width=canvas.height=100;const preview=paintPreviewRenderer();
- preview.draw(canvas,paint,new Map(),{layerId:base.id,target:'generationMask',stroke:{...fill('#000000'),tool:'clear'}});
+ preview.draw(canvas,paint,new Map(),{layerId:marker.id,stroke:{...fill('#000000'),tool:'clear'}});
  check(pixel(canvas.getContext('2d')!.getImageData(0,0,100,100).data,25)==='255,255,255,255','生成マスクの消去は原画像を消さない');preview.dispose();
  const source={...newPaintLayer('元の線画'),strokes:[fill('#ffffff'),{...fill('#000000'),selection:[{x:0,y:49,w:100,h:3}]}]};
  const tone=newToneLayer([{x:20,y:10,w:60,h:80}]);
