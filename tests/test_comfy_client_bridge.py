@@ -227,6 +227,27 @@ class ComfyClientTests(unittest.TestCase):
         client._opener.responder = lambda request: URLError("offline")
         self.assertEqual(client.prompt_state(TOKEN)["state"], "unknown")
 
+    # 見込み: 正常に読めた不在だけを識別すれば、取消受付と通信障害を終了証拠に混ぜない。
+    # 合格: queue/history両方が正常な不在だけmissing=true、通信/構造/別ID/未完了履歴は付けない。範囲: 模擬HTTP、再試行なし。
+    def test_missing_prompt_requires_successful_queue_and_history_observations(self):
+        cases = [(IDLE, {}, True),
+                 (URLError('queue offline'), {}, False),
+                 (IDLE, URLError('history offline'), False),
+                 ({'queue_running': None, 'queue_pending': []}, {}, False),
+                 (IDLE, {TOKEN: None}, False),
+                 (IDLE, {OTHER: {}}, False),
+                 (IDLE, {TOKEN: {}}, False),
+                 (IDLE, {TOKEN: {'status': {'status_str': 'success', 'completed': False}}}, False)]
+        for queue, history, missing in cases:
+            with self.subTest(queue=queue, history=history):
+                client = self.client(lambda request, q=queue, h=history: q if urlsplit(request.full_url).path == '/queue' else h)
+                result = client.prompt_state(TOKEN)
+                self.assertEqual(result['state'], 'unknown')
+                self.assertEqual(result.get('missing', False), missing)
+                paths = [urlsplit(request.full_url).path for request in client._opener.calls]
+                self.assertEqual(paths.count('/queue'), 1)
+                self.assertLessEqual(paths.count('/history/' + TOKEN), 1)
+
     # 見込み: 登録node/indexをそのまま使えば別枝や先頭プレビューを採用しない。
     # 合格: 任意node IDのindex1だけをGETし、exact PNG bytesを返す。範囲: 模擬view。
     def test_exact_output_node_and_index(self):
@@ -239,17 +260,17 @@ class ComfyClientTests(unittest.TestCase):
         self.assertEqual(query, {"filename": ["chosen.png"], "subfolder": ["job 1/成果"], "type": ["output"]})
 
     # 見込み: transportは指定画像の取得に絞り、内容の判定はjobの回収箇所へ集約できる。
-    # 合格: 欠けたnode/位置とJPEG名は拒否、PNG名のbytesは再解析せず返す。範囲: 模擬view、内容検査はcollector側。
+    # 合格: 欠けたnode/位置とJPEG名は確定出力error、PNG名のbytesは再解析せず返す。範囲: 模擬view、内容検査はcollector側。
     def test_output_locator_is_checked_but_image_bytes_are_not_reparsed(self):
         client = self.client(lambda request: b"\xff\xd8jpeg")
         history = {"outputs": {"x": {"images": [{"filename": "image.png", "type": "output"}]}}}
         for binding in [{"node": "missing", "index": 0}, {"node": "x", "index": 2}]:
-            with self.assertRaises(client_module.ComfyError):
+            with self.assertRaises(client_module.ComfyOutputError):
                 client.get_image(history, binding)
         self.assertEqual(client._opener.calls, [])
         self.assertEqual(client.get_image(history, {"node": "x", "index": 0}), b"\xff\xd8jpeg")
         history["outputs"]["x"]["images"][0]["filename"] = "image.jpg"
-        with self.assertRaises(client_module.ComfyError):
+        with self.assertRaises(client_module.ComfyOutputError):
             client.get_image(history, {"node": "x", "index": 0})
 
     # 見込み: 原子的な単一ID取消routeだけなら他人の実行を中断する要求を送らない。

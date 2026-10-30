@@ -1,3 +1,5 @@
+// 見込み: 接続状態と所有状態を分ければ、別サービスを触らず画像生成へ移れる。
+// 合格: 各ケースの呼出順・停止/起動件数が一致。範囲: controller本体、通信・プロセス・待機は模擬。実LLMは未検証。
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -97,6 +99,55 @@ test('画像生成の一時停止だけが元から動いていたLLMの復帰�
   await controller.ensure('anything');
   await controller.suspendForImages();
   assert.deepEqual(flags, [true]);
+});
+
+// 見込み: 不明な応答は停止前の1回確認で知らせる。合格: foreign/unavailableとも確認1回、所有childも停止せず起動・再試行・session作成0件。範囲: 状態/childは模擬。
+test('画像生成は別サービス・応答不能を1回の確認で返し、所有childがあっても停止しない', async () => {
+  for (const state of ['foreign', 'unavailable']) {
+    for (const owned of [false, true]) {
+      const { controller, events } = fakeController({
+        env: {},
+        check: async () => { events.push('check'); return state; },
+        suspendShared: async () => { events.push('suspend'); return {}; },
+        sleep: async () => { events.push('retry'); },
+      });
+      if (owned) controller.child = { running: true };
+      await assert.rejects(controller.suspendForImages('image-token'), /接続先が応答しないか、別のサービス.*停止・置換していません/);
+      assert.deepEqual(events, ['check']);
+      assert.equal(Boolean(controller.child?.running), owned);
+    }
+  }
+});
+
+// 見込み: 終了済みcontrollerでは接続確認も新sessionも始めない。合格: 即時の終了error、既存session照合・接続・停止・起動0件。範囲: controllerと模擬依存。
+test('終了済みcontrollerは画像生成の一時停止を開始しない', async () => {
+  const { controller, events } = fakeController({
+    imageSession: async () => { events.push('image-session'); return false; },
+    check: async () => { events.push('check'); return 'ready'; },
+    suspendShared: async () => { events.push('suspend'); return {}; },
+  });
+  await controller.close();
+  await assert.rejects(controller.suspendForImages('image-token'), /ローカル起動管理は終了/);
+  assert.deepEqual(events, []);
+});
+
+// 見込み: 非同期確認中のcloseも終了として扱う。合格: 確認を返しても次の接続/停止/session作成へ進まない。範囲: session照合・接続の待機を手動解決する模擬競合。
+test('画像生成の事前確認中に終了したcontrollerは遅れて停止sessionを作らない', async () => {
+  for (const pendingStep of ['image-session', 'check']) {
+    const gate = deferred();
+    const { controller, events } = fakeController({
+      imageSession: async () => { events.push('image-session'); if (pendingStep === 'image-session') await gate.promise; return false; },
+      check: async () => { events.push('check'); if (pendingStep === 'check') await gate.promise; return 'ready'; },
+      suspendShared: async () => { events.push('suspend'); return {}; },
+    });
+    const pending = controller.suspendForImages('image-token');
+    const rejected = assert.rejects(pending, /ローカル起動管理は終了/);
+    await new Promise(done => setImmediate(done));
+    await controller.close();
+    gate.resolve();
+    await rejected;
+    assert.deepEqual(events, pendingStep === 'check' ? ['image-session', 'check'] : ['image-session']);
+  }
 });
 
 test('同時要求は一度だけ起動し、明示タスク後に解放して次回は再起動する', async () => {

@@ -25,6 +25,10 @@ class ComfyError(OSError):
     """A transport, protocol or observation failure, not execution evidence."""
 
 
+class ComfyOutputError(ValueError):
+    """A completed prompt has no usable image at its configured output."""
+
+
 class ComfyHTTPError(ComfyError):
     def __init__(self, status: int, detail: object = None):
         self.status = status
@@ -296,9 +300,14 @@ class ComfyClient:
             for key, state in (("queue_running", "running"), ("queue_pending", "queued")):
                 if any(item[1] == prompt_id for item in queue[key]):
                     return {"state": state}
-            record = self.history(prompt_id).get(prompt_id)
+            history = self.history(prompt_id)
+            record = history.get(prompt_id)
             if record is None:
-                return {"state": "unknown"}
+                if history:
+                    raise ComfyError("ComfyUI履歴のprompt_idが一致しません")
+                # Absence is observed only after BOTH successful reads. A cancel
+                # receipt can then distinguish a dequeued job from lost history.
+                return {"state": "unknown", "missing": True}
             status = record.get("status")
             if not isinstance(status, dict):
                 return {"state": "unknown", "history": record}
@@ -336,7 +345,7 @@ class ComfyClient:
             if kind not in {"output", "temp"} or not filename.lower().endswith(".png"):
                 raise ValueError
         except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
-            raise ComfyError("指定した出力ノード・画像位置にPNGの完成画像がありません") from exc
+            raise ComfyOutputError("指定した出力ノード・画像位置にPNGの完成画像がありません") from exc
         path = "/view?" + urlencode({"filename": filename, "subfolder": folder, "type": kind})
         # Image metadata is read once by the job collector, alongside output dimensions.
         return self._request(path, limit=MAX_IMAGE_BYTES, accept="image/png")
