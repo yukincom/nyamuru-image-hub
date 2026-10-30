@@ -227,26 +227,28 @@ class ComfyClientTests(unittest.TestCase):
         client._opener.responder = lambda request: URLError("offline")
         self.assertEqual(client.prompt_state(TOKEN)["state"], "unknown")
 
-    # 見込み: 正常に読めた不在だけを識別すれば、取消受付と通信障害を終了証拠に混ぜない。
-    # 合格: queue/history両方が正常な不在だけmissing=true、通信/構造/別ID/未完了履歴は付けない。範囲: 模擬HTTP、再試行なし。
+    # 見込み: 正常に観測した不在だけを区別すれば、取消しの誤終端化を防げる。
+    # 合格: 正常不在だけmissing=true、通信・不正・別ID・未完了履歴では付けず再試行0回。範囲: 実client、HTTPは模擬。
     def test_missing_prompt_requires_successful_queue_and_history_observations(self):
-        cases = [(IDLE, {}, True),
-                 (URLError('queue offline'), {}, False),
-                 (IDLE, URLError('history offline'), False),
-                 ({'queue_running': None, 'queue_pending': []}, {}, False),
-                 (IDLE, {TOKEN: None}, False),
-                 (IDLE, {OTHER: {}}, False),
-                 (IDLE, {TOKEN: {}}, False),
-                 (IDLE, {TOKEN: {'status': {'status_str': 'success', 'completed': False}}}, False)]
-        for queue, history, missing in cases:
+        cases = [(IDLE, {}, True, 1),
+                 (URLError('queue offline'), {}, False, 0),
+                 (IDLE, URLError('history offline'), False, 1),
+                 ({'queue_running': None, 'queue_pending': []}, {}, False, 0),
+                 (IDLE, {TOKEN: None}, False, 1),
+                 (IDLE, {OTHER: {}}, False, 1),
+                 (IDLE, {TOKEN: {}}, False, 1),
+                 (IDLE, {TOKEN: {'status': {'status_str': 'success', 'completed': False}}}, False, 1)]
+        for queue, history, missing, history_reads in cases:
             with self.subTest(queue=queue, history=history):
                 client = self.client(lambda request, q=queue, h=history: q if urlsplit(request.full_url).path == '/queue' else h)
                 result = client.prompt_state(TOKEN)
                 self.assertEqual(result['state'], 'unknown')
                 self.assertEqual(result.get('missing', False), missing)
+                if not missing:
+                    self.assertNotIn('missing', result)
                 paths = [urlsplit(request.full_url).path for request in client._opener.calls]
                 self.assertEqual(paths.count('/queue'), 1)
-                self.assertLessEqual(paths.count('/history/' + TOKEN), 1)
+                self.assertEqual(paths.count('/history/' + TOKEN), history_reads)
 
     # 見込み: 登録node/indexをそのまま使えば別枝や先頭プレビューを採用しない。
     # 合格: 任意node IDのindex1だけをGETし、exact PNG bytesを返す。範囲: 模擬view。
@@ -259,8 +261,8 @@ class ComfyClientTests(unittest.TestCase):
         query = parse_qs(urlsplit(client._opener.calls[0].full_url).query)
         self.assertEqual(query, {"filename": ["chosen.png"], "subfolder": ["job 1/成果"], "type": ["output"]})
 
-    # 見込み: transportは指定画像の取得に絞り、内容の判定はjobの回収箇所へ集約できる。
-    # 合格: 欠けたnode/位置とJPEG名は確定出力error、PNG名のbytesは再解析せず返す。範囲: 模擬view、内容検査はcollector側。
+    # 見込み: 出力位置の確定不備を通信障害と分け、画像解析は回収側へ任せる。
+    # 合格: node・位置欠落やJPEG名はComfyOutputError。PNG名のbytesはそのまま返す。範囲: 実client、viewは模擬。
     def test_output_locator_is_checked_but_image_bytes_are_not_reparsed(self):
         client = self.client(lambda request: b"\xff\xd8jpeg")
         history = {"outputs": {"x": {"images": [{"filename": "image.png", "type": "output"}]}}}

@@ -101,7 +101,8 @@ test('画像生成の一時停止だけが元から動いていたLLMの復帰�
   assert.deepEqual(flags, [true]);
 });
 
-// 見込み: 不明な応答は停止前の1回確認で知らせる。合格: foreign/unavailableとも確認1回、所有childも停止せず起動・再試行・session作成0件。範囲: 状態/childは模擬。
+// 見込み: 不明な接続先を一度で通知し、所有子プロセスがあっても誤停止を防ぐ。
+// 合格: 接続確認1回、停止・起動・再試行・生成セッション作成0回。範囲: 実controller、通信とプロセスは模擬。
 test('画像生成は別サービス・応答不能を1回の確認で返し、所有childがあっても停止しない', async () => {
   for (const state of ['foreign', 'unavailable']) {
     for (const owned of [false, true]) {
@@ -119,7 +120,8 @@ test('画像生成は別サービス・応答不能を1回の確認で返し、�
   }
 });
 
-// 見込み: 終了済みcontrollerでは接続確認も新sessionも始めない。合格: 即時の終了error、既存session照合・接続・停止・起動0件。範囲: controllerと模擬依存。
+// 見込み: 終了済みなら新しい画像生成を受け付けず、後続処理を増やさない。
+// 合格: 終了エラーを返し、既存セッション照合・接続・停止・起動0回。範囲: 実controllerと模擬依存。
 test('終了済みcontrollerは画像生成の一時停止を開始しない', async () => {
   const { controller, events } = fakeController({
     imageSession: async () => { events.push('image-session'); return false; },
@@ -131,7 +133,8 @@ test('終了済みcontrollerは画像生成の一時停止を開始しない', a
   assert.deepEqual(events, []);
 });
 
-// 見込み: 非同期確認中のcloseも終了として扱う。合格: 確認を返しても次の接続/停止/session作成へ進まない。範囲: session照合・接続の待機を手動解決する模擬競合。
+// 見込み: 確認中に終了しても、遅い応答から停止処理を開始しない。
+// 合格: 終了エラーを返し、次の確認・停止・セッション作成へ進まない。範囲: 実controller、照合と接続の待機を模擬。
 test('画像生成の事前確認中に終了したcontrollerは遅れて停止sessionを作らない', async () => {
   for (const pendingStep of ['image-session', 'check']) {
     const gate = deferred();
