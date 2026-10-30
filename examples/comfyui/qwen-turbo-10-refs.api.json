@@ -1,0 +1,235 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "QwenImage21Cache",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "device": "cpu",
+      "dtype": "default"
+    }
+  },
+  "3": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": {
+      "model": [
+        "2",
+        0
+      ],
+      "attention": "pytorch attention"
+    }
+  },
+  "4": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+      "type": "qwen_image",
+      "device": "cpu"
+    }
+  },
+  "5": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+    }
+  },
+  "6": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": [
+        "4",
+        0
+      ],
+      "prompt": "Draw the requested illustration.",
+      "negative_prompt": "",
+      "vae": [
+        "5",
+        0
+      ],
+      "resolution": 1024,
+      "images.image_1": [
+        "21",
+        0
+      ],
+      "images.image_2": [
+        "22",
+        0
+      ],
+      "images.image_3": [
+        "23",
+        0
+      ],
+      "images.image_4": [
+        "24",
+        0
+      ],
+      "images.image_5": [
+        "25",
+        0
+      ],
+      "images.image_6": [
+        "26",
+        0
+      ],
+      "images.image_7": [
+        "27",
+        0
+      ],
+      "images.image_8": [
+        "28",
+        0
+      ],
+      "images.image_9": [
+        "29",
+        0
+      ],
+      "images.image_10": [
+        "30",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1024,
+      "batch_size": 1
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "9": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0.0"
+    }
+  },
+  "10": {
+    "class_type": "SamplerCustom",
+    "inputs": {
+      "model": [
+        "3",
+        0
+      ],
+      "add_noise": true,
+      "noise_seed": 260921,
+      "cfg": 1,
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        1
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "7",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "filename_prefix": "nyamuru/qwen-turbo-10-refs"
+    }
+  },
+  "21": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-1.png"
+    }
+  },
+  "22": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-2.png"
+    }
+  },
+  "23": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-3.png"
+    }
+  },
+  "24": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-4.png"
+    }
+  },
+  "25": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-5.png"
+    }
+  },
+  "26": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-6.png"
+    }
+  },
+  "27": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-7.png"
+    }
+  },
+  "28": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-8.png"
+    }
+  },
+  "29": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-9.png"
+    }
+  },
+  "30": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "nyamuru-reference-10.png"
+    }
+  }
+}

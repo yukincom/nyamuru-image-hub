@@ -1,0 +1,52 @@
+{
+  "prompt": [
+    {
+      "node": "6",
+      "input": "prompt"
+    }
+  ],
+  "seed": [
+    {
+      "node": "10",
+      "input": "noise_seed"
+    }
+  ],
+  "width": [
+    {
+      "node": "7",
+      "input": "width"
+    }
+  ],
+  "height": [
+    {
+      "node": "7",
+      "input": "height"
+    }
+  ],
+  "images": [
+    [
+      {
+        "node": "21",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "22",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "23",
+        "input": "image"
+      }
+    ]
+  ],
+  "output": {
+    "node": "12",
+    "index": 0
+  },
+  "prompt_mode": "qwen",
+  "fixed_size": null
+}

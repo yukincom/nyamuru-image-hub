@@ -1,0 +1,94 @@
+{
+  "prompt": [
+    {
+      "node": "6",
+      "input": "prompt"
+    }
+  ],
+  "seed": [
+    {
+      "node": "10",
+      "input": "noise_seed"
+    }
+  ],
+  "width": [
+    {
+      "node": "7",
+      "input": "width"
+    }
+  ],
+  "height": [
+    {
+      "node": "7",
+      "input": "height"
+    }
+  ],
+  "images": [
+    [
+      {
+        "node": "21",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "22",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "23",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "24",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "25",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "26",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "27",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "28",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "29",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "30",
+        "input": "image"
+      }
+    ]
+  ],
+  "output": {
+    "node": "12",
+    "index": 0
+  },
+  "prompt_mode": "qwen",
+  "fixed_size": null
+}
