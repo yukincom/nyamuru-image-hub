@@ -1,0 +1,106 @@
+{
+  "pens": [
+    {
+      "id": "maru-soft",
+      "ja": "丸ペン　柔らかめ",
+      "en": "maru pen with a soft nib"
+    },
+    {
+      "id": "g-pen-firm",
+      "ja": "Gペン　ややハード",
+      "en": "G-pen with a slightly firm nib"
+    },
+    {
+      "id": "fountain",
+      "ja": "万年筆",
+      "en": "fountain pen"
+    },
+    {
+      "id": "bamboo",
+      "ja": "竹ペン",
+      "en": "bamboo pen"
+    },
+    {
+      "id": "brush",
+      "ja": "筆ペン",
+      "en": "brush pen"
+    },
+    {
+      "id": "ballpoint",
+      "ja": "ボールペン",
+      "en": "ballpoint pen"
+    },
+    {
+      "id": "pencil-hb",
+      "ja": "鉛筆　HB",
+      "en": "HB pencil"
+    },
+    {
+      "id": "pencil-b",
+      "ja": "鉛筆　B",
+      "en": "B pencil"
+    },
+    {
+      "id": "felt-tip",
+      "ja": "サインペン",
+      "en": "felt-tip pen"
+    },
+    {
+      "id": "marker-broad",
+      "ja": "マジックペン　太",
+      "en": "broad-tip marker"
+    },
+    {
+      "id": "marker-fine",
+      "ja": "マジックペン　細",
+      "en": "fine-tip marker"
+    },
+    {
+      "id": "fineliner-005",
+      "ja": "ミリペン　0.05",
+      "en": "0.05 mm fineliner"
+    },
+    {
+      "id": "fineliner-01",
+      "ja": "ミリペン　0.1",
+      "en": "0.1 mm fineliner"
+    }
+  ],
+  "expressions": [
+    {
+      "id": "sketch",
+      "ja": "スケッチ",
+      "en": "sketchy strokes"
+    },
+    {
+      "id": "scratchy",
+      "ja": "かすれ",
+      "en": "broken, scratchy strokes"
+    },
+    {
+      "id": "ink-pooling",
+      "ja": "インクだまり",
+      "en": "ink pooling"
+    },
+    {
+      "id": "freehand",
+      "ja": "フリーハンド",
+      "en": "freehand strokes"
+    },
+    {
+      "id": "wobbly",
+      "ja": "ふにゃふにゃ",
+      "en": "loose, wobbly strokes"
+    },
+    {
+      "id": "cute",
+      "ja": "かわいい",
+      "en": "cute lettering"
+    },
+    {
+      "id": "energetic",
+      "ja": "いきおい",
+      "en": "energetic strokes"
+    }
+  ]
+}

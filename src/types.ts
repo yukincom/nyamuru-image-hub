@@ -161,6 +161,9 @@ export interface Bubble {
   shape?: BubbleShape;
   /** Drawing direction for handwritten lettering, separate from its literal text. */
   lettering_description?: string;
+  /** Fixed drawing-tool and expression IDs from handwritten-styles.json. */
+  lettering_pen?: string;
+  lettering_expressions?: string[];
   /** 対応キャラクターとの重なり。描き文字だけに適用し、省略時は手前。 */
   lettering_depth?: 'front' | 'behind';
   /** Hide only the editable lettering guide; painted results retain their visibility. */

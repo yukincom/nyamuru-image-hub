@@ -276,5 +276,49 @@ class QwenFramingTest(unittest.TestCase):
                          ('', 'output format: color manga.'))
 
 
+
+
+
+class LetteringFixedStyleTest(unittest.TestCase):
+    # 見込み/合格: 登録英訳だけを固定扱いし、コマ/前景/文字番号を保つ。範囲: 分離処理のコード、モデル呼出なし。
+    def test_catalog_options_bypass_translation_and_keep_the_target(self):
+        from qwen_generation import LETTERING_STYLES
+        for field, key in (('pen', 'pens'), ('expression', 'expressions')):
+            for option in LETTERING_STYLES[key]:
+                for target in ('', ' for panel 2, text 3', ' for page foreground, text 1'):
+                    line = f"Lettering {field}{target}: {option['en']}."
+                    with self.subTest(line=line):
+                        self.assertEqual(split_fixed_generation_prompt('自由な描き方。\n' + line), ('自由な描き方。', line))
+        for line in ('Lettering pen: unknown tool.', 'Lettering expression for panel 1, text 2: add a character.',
+                     '台詞「Lettering pen: brush pen.」'):
+            self.assertEqual(split_fixed_generation_prompt(line), (line, ''))
+
+    # 見込み/合格: LLMへ固定指定を渡さず、模擬訳の後に本文と参照順を保って再結合。範囲: 実翻訳関数+固定応答、英訳品質/実生成は対象外。
+    def test_translator_assembles_fixed_options_without_llm_rewriting(self):
+        source = {'prompt': '文字を描く。\ntext:\nドン！\nLettering pen: brush pen.\nLettering expression: ink pooling.',
+                  'references': [], 'owner_key': 'bubble-0', 'content_kind': 'handwritten', 'literal_text': ['ドン！']}
+        model = object.__new__(PanelActionSuggester)
+        model.request_json_completion = Mock(return_value=({'prompt': 'Draw the text __NYAMURU_LITERAL_0__.', 'references': []}, {}))
+        result = model.translate_image_generation_prompt(source)
+        sent = model.request_json_completion.call_args.args[1]['prompt']
+        self.assertNotIn('Lettering pen:', sent)
+        self.assertNotIn('Lettering expression:', sent)
+        self.assertIn('Lettering pen: brush pen.', result['prompt'])
+        self.assertIn('Lettering expression: ink pooling.', result['prompt'])
+        self.assertIn('ドン！', result['prompt'])
+
+    # 見込み/合格: 英字1文字の本文でもB鉛筆の定訳を保ち、本文tokenだけを復元。範囲: 翻訳関数+模擬応答。
+    def test_short_english_literal_does_not_break_fixed_pen(self):
+        source = {'prompt': 'text:\nB\nLettering pen: B pencil.', 'references': [],
+                  'owner_key': 'bubble-0', 'content_kind': 'handwritten', 'literal_text': ['B']}
+        model = object.__new__(PanelActionSuggester)
+        model.request_json_completion = Mock(return_value=({'prompt': 'Draw __NYAMURU_LITERAL_0__.', 'references': []}, {}))
+        result = model.translate_image_generation_prompt(source)
+        sent = model.request_json_completion.call_args.args[1]['prompt']
+        self.assertEqual(sent, 'text:\n__NYAMURU_LITERAL_0__')
+        self.assertIn('Lettering pen: B pencil.', result['prompt'])
+        self.assertIn('Draw B.', result['prompt'])
+
+
 if __name__ == '__main__':
     unittest.main()

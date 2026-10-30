@@ -257,7 +257,7 @@ class PanelActionSuggester:
 
     def translate_image_generation_prompt(self, value: dict[str, Any]) -> dict[str, Any]:
         from generation_store import canonical, sha256, text
-        from qwen_generation import split_fixed_generation_prompt, validate_english
+        from qwen_generation import split_fixed_generation_prompt, is_fixed_lettering_line, validate_english
         prompt = value["prompt"]
         protected = []
         literal_text = value.get("literal_text", []) if value.get("owner_key") in ("page", "panel") or value.get("content_kind") == "handwritten" else []
@@ -272,6 +272,12 @@ class PanelActionSuggester:
                 prefix = "_" + prefix
 
             def protect(match):
+                # A short English text (e.g. "B") must not tokenize the fixed "B pencil" option.
+                line_start = prompt.rfind('\n', 0, match.start()) + 1
+                line_end = prompt.find('\n', match.end())
+                line = prompt[line_start:line_end if line_end >= 0 else len(prompt)].strip()
+                if line != match[0].strip() and is_fixed_lettering_line(line):
+                    return match[0]
                 token = f"{prefix}{len(protected)}__"
                 protected.append((token, match[0]))
                 return token

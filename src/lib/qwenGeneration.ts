@@ -1,3 +1,4 @@
+import { handwrittenStylePrompt } from './handwrittenStyle.ts';
 import {paintLayerVisible} from './paintLock.ts';
 import type { Manga, CharacterReferenceSourceImage, FigureSize, BBox } from '../types.ts';
 import type { PaintOwner } from './paintDocument.ts';
@@ -104,7 +105,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const lettering=owner.kind==='bubble'?owner.bubble:undefined;
   if(lettering){
     const current=(overlay?page.page_overlay:panel)?.bubbles?.[owner.index];
-    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description)throw new Error('描き文字が変更されました。生成対象を選び直してください');
+    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description||handwrittenStylePrompt(current)!==handwrittenStylePrompt(lettering))throw new Error('描き文字が変更されました。生成対象を選び直してください');
     if(!lettering.text.trim()||lettering.text.length>500)throw new Error('描き文字の本文を1〜500文字で入力してください');
   }
   const pose = owner.figure?.human_pose;
@@ -127,6 +128,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     `meta.reading_direction=${manga.meta.reading_direction}`,
     `text:\n${lettering.text}`,
     lettering.lettering_description?`描き方：${lettering.lettering_description}`:'',
+    handwrittenStylePrompt(lettering),
     ...style,artwork.layout_spec,
     '上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、明示された「描き方」に従ってください。',
   ].filter(Boolean).join('\n\n'):undefined;

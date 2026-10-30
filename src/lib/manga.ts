@@ -1,3 +1,4 @@
+import { LETTERING_PENS, LETTERING_EXPRESSIONS } from './handwrittenStyle.ts';
 import { backgroundMaterialStages } from './background3d.ts';
 import { validateHumanPoseSelection } from './humanPoseSelection.ts';
 import { validateImagePlacements } from './imagePlacement.ts';
@@ -594,6 +595,8 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   };
   const validateBubbleTail = (bubble: Bubble, path: string) => {
     validateTextStyle(bubble,path);
+    if(bubble.lettering_pen!==undefined&&!LETTERING_PENS.some(option=>option.id===bubble.lettering_pen))issues.push({level:'error',path:`${path}.lettering_pen`,message:'描き文字のペンは登録済みのIDで指定してください'});
+    if(bubble.lettering_expressions!==undefined&&(!Array.isArray(bubble.lettering_expressions)||bubble.lettering_expressions.some(id=>!LETTERING_EXPRESSIONS.some(option=>option.id===id))||new Set(bubble.lettering_expressions).size!==bubble.lettering_expressions.length))issues.push({level:'error',path:`${path}.lettering_expressions`,message:'描き文字の表現は登録済みのIDを重複なしで指定してください'});
     if(bubble.lettering_description!==undefined&&typeof bubble.lettering_description!=='string')issues.push({level:'error',path:`${path}.lettering_description`,message:'描き文字の描き方は文章で指定してください'});
     if(bubble.lettering_depth!==undefined&&!['front','behind'].includes(bubble.lettering_depth))issues.push({level:'error',path:`${path}.lettering_depth`,message:'描き文字の重なりは front（手前）または behind（後ろ）を指定してください'});
     if(bubble.lettering_guide_hidden!==undefined&&typeof bubble.lettering_guide_hidden!=='boolean')issues.push({level:'error',path:`${path}.lettering_guide_hidden`,message:'文字あたりの非表示は true / false で指定してください'});

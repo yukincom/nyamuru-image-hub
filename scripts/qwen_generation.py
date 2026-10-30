@@ -92,6 +92,11 @@ FORMAT_LABELS = {label: item['en'] for item in MANGA_FORMATS
 FIXED_ARTWORK = {item['ja']: item['en'].lower()
                  for item in json.loads((CONTENT_ROOT / 'artwork-translations.json').read_text(encoding='utf-8'))
                  if '{{' not in item['ja'] and not re.search(r'[\u3040-\u30ff\u3400-\u9fff]', item['en'])}
+LETTERING_STYLES = json.loads((CONTENT_ROOT / 'handwritten-styles.json').read_text(encoding='utf-8'))
+LETTERING_ENGLISH = {field: {item['en'] for item in LETTERING_STYLES[key]}
+                     for field, key in (('pen', 'pens'), ('expression', 'expressions'))}
+FIXED_LETTERING_LINE = re.compile(
+    r'Lettering (?P<field>pen|expression)(?: for (?:panel [0-9]+|page foreground), text [1-9][0-9]*)?: (?P<value>.+)\.')
 TRANSPARENT_SUBJECT = '背景・文字・吹き出しは加えず、外側は透明にする。'
 BACKGROUND_LABELS = {
     '透過': 'transparent background.', '透明': 'transparent background.',
@@ -102,6 +107,11 @@ BACKGROUND_LABELS = {
 FIXED_OPTION_LINE = re.compile(
     r'^[ \t]*(?P<field>出力形式|背景)[ \t]*(?:は|[：:])[ \t]*'
     r'(?P<label>[^。\r\n]+?)[ \t]*(?:。|(?=\r?$))', re.MULTILINE)
+
+
+def is_fixed_lettering_line(line):
+    match = FIXED_LETTERING_LINE.fullmatch(line.strip())
+    return bool(match and match['value'] in LETTERING_ENGLISH[match['field']])
 
 
 def split_fixed_generation_prompt(prompt, *, extract_framing=True):
@@ -129,7 +139,10 @@ def split_fixed_generation_prompt(prompt, *, extract_framing=True):
     lines = []
     for line in remaining.splitlines(keepends=True):
         body = line.strip()
-        if body in FIXED_ARTWORK:
+        if is_fixed_lettering_line(body):
+            # Preserve the authored English and its text target; never ask the LLM to rewrite it.
+            fixed.append(body)
+        elif body in FIXED_ARTWORK:
             if body == TRANSPARENT_SUBJECT:
                 select('背景', 'transparent background.')
             fixed.append(FIXED_ARTWORK[body])
