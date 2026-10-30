@@ -1,5 +1,5 @@
-"""見込み: 明示した対応だけを保存・反映すれば原グラフと参照順を保てる。
-合格: 版競合・不正対応を拒否し、指定欄だけを更新する。確認範囲: 一時保存先と模擬object_info。通信・モデル生成・画質は対象外。
+"""見込み: 保存境界と対応欄だけを検査すれば、ComfyUIの実行判定を重複せず原グラフと参照順を保てる。
+合格: 版競合・不正対応を拒否し、候補ごとに指定欄だけを更新する。確認範囲: 一時保存先と模擬object_info。通信・モデル生成・画質は対象外。
 """
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
@@ -58,42 +58,52 @@ def object_info():
 
 
 class DefinitionTests(unittest.TestCase):
-    # 見込み: API形式だけを受け付ければ編集画面JSONを誤実行しない。合格: UI形式・不正node・欠損接続を拒否。範囲: JSON構造検証のみ。
-    def test_rejects_editor_json_bad_nodes_and_broken_links(self):
-        examples = [{'nodes': [], 'links': []}, {'1': {'inputs': {}}}, {'1': {'class_type': 'Text', 'inputs': []}}]
+    # 見込み: API外形を保存境界で確かめれば編集画面JSONを誤登録しない。合格: UI形式・空graph・class_type/inputs不備を拒否。範囲: JSON構造のみ。
+    def test_rejects_editor_json_and_bad_node_envelopes(self):
+        examples = [{'nodes': [], 'links': []}, {}, {'1': {'inputs': {}}},
+                    {'1': {'class_type': 'Text', 'inputs': []}}, {'1': {'class_type': '', 'inputs': {}}}]
         for graph in examples:
             with self.subTest(graph=graph), self.assertRaisesRegex(ValueError, 'API形式'):
                 workflows.validate_definition({**definition(), 'graph': graph})
+
+    # 見込み: graph内部の解釈をComfyUIへ任せれば独自の接続判定で登録を妨げない。合格: 欠損・不正port・循環を変更せず保存可能。範囲: 定義のみ、実行可否は未検証。
+    def test_link_details_and_cycles_are_deferred_to_comfyui(self):
         for link in (['missing', 0], ['text', -1], ['text', True], ['text'], [1, 0]):
             body = definition()
             body['graph']['sample']['inputs']['positive'] = link
-            with self.subTest(link=link), self.assertRaisesRegex(ValueError, '接続先'):
-                workflows.validate_definition(body)
-
-    # 見込み: 循環は実行前に発見できる。合格: 2ノードの循環を拒否し、通常DAGは通る。範囲: 静的グラフのみ。
-    def test_rejects_cycles(self):
+            with self.subTest(link=link):
+                self.assertEqual(workflows.validate_definition(body), body)
         body = definition()
         body['graph']['text']['inputs']['loop'] = ['sample', 0]
-        with self.assertRaisesRegex(ValueError, '循環'):
-            workflows.validate_definition(body)
-        self.assertEqual(workflows.validate_definition(definition())['binding'], definition()['binding'])
+        self.assertEqual(workflows.validate_definition(body), body)
 
-    # 見込み: 対応を補完しなければ作者が選んだ受け渡し先を保てる。合格: 欠落・リンク先指定・重複・非整数を拒否。範囲: 定義の検証。
+    # 見込み: 対応を補完しなければ作者が選んだ受け渡し先を保てる。合格: 欠落・リンク先指定・重複・存在しない欄を拒否。範囲: 定義の保存境界。
     def test_bindings_must_be_explicit_unique_literal_sinks(self):
         changes = [lambda b: b.pop('prompt_mode'), lambda b: b.update(prompt=[]), lambda b: b.update(seed=[]),
                    lambda b: b.update(prompt=[sink('sample', 'positive')]),
                    lambda b: b.update(seed=[sink('sample', 'seed'), sink('sample', 'seed')]),
-                   lambda b: b.update(prompt=[sink('missing', 'text')]), lambda b: b.update(images=[[]]),
+                   lambda b: b.update(prompt=[sink('missing', 'text')]), lambda b: b.update(prompt=[sink('text', 'gone')]),
+                   lambda b: b.update(images=[[]]),
                    lambda b: b.update(images=[[sink('text', 'text')]])]
         for change in changes:
             body = definition()
             change(body['binding'])
             with self.subTest(binding=body['binding']), self.assertRaises(ValueError):
                 workflows.validate_definition(body)
+
+    # 見込み: 差し替え前のplaceholder型は実際の送信値を決めない。合格: null/bool/配列/辞書を登録でき、bind後は指定した文字列と整数になる。範囲: 保存と変換のみ。
+    def test_placeholder_types_do_not_restrict_bound_values(self):
         body = definition()
-        body['graph']['sample']['inputs']['seed'] = True
-        with self.assertRaises(ValueError):
-            workflows.validate_definition(body)
+        body['graph']['text']['inputs']['text'] = None
+        body['graph']['sample']['inputs'].update(seed=True, width={'placeholder': 512}, height=[768])
+        body['graph']['image-1']['inputs']['image'] = {'placeholder': 'input.png'}
+        saved = workflows.validate_definition(body)
+        self.assertEqual(saved, body)
+        bound = workflows.bind_graph(saved, '指示', ['uploaded.png'], 42, 480, 320)
+        self.assertEqual(bound['text']['inputs']['text'], '指示')
+        self.assertEqual({key: bound['sample']['inputs'][key] for key in ('seed', 'width', 'height')},
+                         {'seed': 42, 'width': 480, 'height': 320})
+        self.assertEqual(bound['image-1']['inputs']['image'], 'uploaded.png')
 
     # 見込み: 寸法方式を一つに限定すれば固定画像を任意サイズと誤認しない。合格: 対応片方・二重指定・範囲外を拒否。範囲: 定義と数値境界。
     def test_dimensions_and_output_bounds(self):
@@ -153,6 +163,24 @@ class DefinitionTests(unittest.TestCase):
         bound['text']['_meta']['title'] = '変更'
         self.assertEqual(body, before)
 
+    # 見込み: 保存済み定義を使う5候補は毎回の全検証が不要。合格: 定義/JSON/runtime再検証0、graph複製5回、異なる5seedと元定義不変。範囲: binder、実送信は未実施。
+    def test_five_candidate_bindings_do_not_repeat_definition_validation(self):
+        body = workflows.validate_definition(definition())
+        before = deepcopy(body)
+        with patch.object(workflows, 'validate_definition', side_effect=AssertionError('定義再検証')) as validate, \
+                patch.object(workflows, '_json_copy', side_effect=AssertionError('JSON再検証')) as json_copy, \
+                patch.object(workflows, 'validate_runtime', side_effect=AssertionError('runtime再検証')) as runtime, \
+                patch.object(workflows, 'deepcopy', wraps=deepcopy) as copy_graph:
+            workflows.validate_request(body, 1)
+            candidates = [workflows.bind_graph(body, '指示', ['uploaded.png'], seed, 480, 320) for seed in range(5)]
+        validate.assert_not_called()
+        json_copy.assert_not_called()
+        runtime.assert_not_called()
+        self.assertEqual(copy_graph.call_count, 5)
+        self.assertTrue(all(call.args[0] is body['graph'] for call in copy_graph.call_args_list))
+        self.assertEqual([candidate['sample']['inputs']['seed'] for candidate in candidates], list(range(5)))
+        self.assertEqual(body, before)
+
     # 見込み: 固定寸法の欄は変更しない。合格: requested寸法が異なっても元の幅高さを保持し、seedの範囲外は拒否。範囲: binderの境界。
     def test_fixed_size_is_not_rewritten_and_values_are_bounded(self):
         body = definition(0, fixed=True)
@@ -167,7 +195,7 @@ class DefinitionTests(unittest.TestCase):
 
 
 class RuntimeTests(unittest.TestCase):
-    # 見込み: アップロード予定名は現在の画像一覧になくても利用できる。合格: 対応済み画像だけenum検査を保留し、通信0回で検証成功。範囲: 模擬object_info。
+    # 見込み: アップロード予定名は現在の画像一覧になくても利用できる。合格: 2形式の画像enumで事前拒否せず通信0回。範囲: 模擬object_info、実uploadは未実施。
     def test_valid_upload_placeholder_does_not_require_upload_or_network(self):
         with patch('socket.socket', side_effect=AssertionError('通信は禁止')):
             self.assertEqual(workflows.validate_runtime(definition(), object_info()), [])
@@ -175,69 +203,82 @@ class RuntimeTests(unittest.TestCase):
         info['Load']['input']['required']['image'] = ['COMBO', {'options': [], 'image_upload': True}]
         self.assertEqual(workflows.validate_runtime(definition(), info), [])
 
-    # 見込み: 必要node/inputの変更を送信前に示せる。合格: 消失node、未知入力、必須欠落それぞれ場所付きerror。範囲: 模擬仕様照合。
-    def test_missing_nodes_inputs_and_required_fields(self):
+    # 見込み: 差込先と選択出力の消失は送信前に示せる。合格: Text/Save不在、対応input不在を場所付きerrorにする。範囲: 模擬object_info照合。
+    def test_missing_bound_nodes_inputs_and_selected_output_are_reported(self):
+        for class_name, node_id in (('Text', 'text'), ('Save', 'save')):
+            info = object_info()
+            del info[class_name]
+            with self.subTest(class_name=class_name):
+                errors = workflows.validate_runtime(definition(), info)
+                self.assertEqual(len(errors), 1)
+                self.assertIn(f'ノード{node_id}', errors[0])
+                self.assertIn('ありません', errors[0])
         info = object_info()
-        del info['Model']
-        self.assertTrue(any('model' in error and 'ありません' in error for error in workflows.validate_runtime(definition(), info)))
-        body = definition()
-        body['graph']['sample']['inputs']['typo'] = 1
-        del body['graph']['text']['inputs']['unchanged']
-        errors = workflows.validate_runtime(body, object_info())
-        self.assertTrue(any('typo' in error for error in errors))
-        self.assertTrue(any('unchanged' in error for error in errors))
+        del info['Text']['input']['required']['text']
+        errors = workflows.validate_runtime(definition(), info)
+        self.assertEqual(len(errors), 1)
+        self.assertIn('入力textがComfyUIの入力仕様にありません', errors[0])
 
-    # 見込み: literalの見た目だけで型を決めずobject_infoを照合する。合格: prompt/seed/画像の誤型と非upload enumを拒否。範囲: 模擬仕様照合。
-    def test_mapped_runtime_types_are_checked(self):
+    # 見込み: 差込先の型判定はComfyUIに任せれば独自の型固定で拒否しない。合格: union/INT/IMAGE/enum/wrapped型も存在照合を通る。範囲: 模擬仕様、実行可否は未検証。
+    def test_bound_input_types_are_deferred_to_comfyui(self):
         for class_name, input_name, spec in [('Text', 'text', ['INT']), ('Sample', 'seed', ['STRING']),
-                                             ('Load', 'image', [['placeholder-1.png'], {}]), ('Load', 'image', ['IMAGE'])]:
+                                             ('Load', 'image', [['placeholder-1.png'], {}]), ('Load', 'image', ['IMAGE']),
+                                             ('Text', 'text', ['STRING,INT']), ('Text', 'text', [[['wrapped']], {}])]:
             info = object_info()
             info[class_name]['input']['required'][input_name] = spec
             with self.subTest(spec=spec):
-                self.assertTrue(any(input_name in error and '必要' in error for error in workflows.validate_runtime(definition(), info)))
+                self.assertEqual(workflows.validate_runtime(definition(), info), [])
 
-    # 見込み: 保存グラフの接続型とportが現node仕様と異なれば停止できる。合格: IMAGE→MODELと範囲外portを拒否。範囲: 模擬object_info。
-    def test_link_type_and_port_are_checked(self):
+    # 見込み: 保存graphのリンク型とportの解釈はComfyUIへ委譲する。合格: IMAGE→MODELと範囲外portで独自errorを出さない。範囲: 模擬object_info、実行は未実施。
+    def test_link_type_and_port_are_deferred_to_comfyui(self):
         body = definition()
         body['graph']['sample']['inputs']['model'] = ['image-1', 0]
-        self.assertTrue(any('接続の型' in error for error in workflows.validate_runtime(body, object_info())))
+        self.assertEqual(workflows.validate_runtime(body, object_info()), [])
         body['graph']['sample']['inputs']['model'] = ['model', 1]
-        self.assertTrue(any('出力1' in error for error in workflows.validate_runtime(body, object_info())))
+        self.assertEqual(workflows.validate_runtime(body, object_info()), [])
 
-    # 見込み: モデル未導入や固定値の誤りを検出し、勝手に候補へ置換しない。合格: model/sampler enumと数値型を場所付き拒否、原グラフ不変。範囲: 固定メニュー。
-    def test_unavailable_models_and_other_literal_values_are_reported(self):
+    # 見込み: 無関係な枝や値を検査しなければcustom nodeの値表現を妨げない。合格: 未導入枝・必須欠落・enum/型/範囲/wrapped multiselectで拒否せず元graph不変。範囲: 模擬仕様。
+    def test_unbound_branches_and_values_are_deferred_to_comfyui(self):
         body = definition()
         body['graph']['model']['inputs']['model_name'] = 'missing.safetensors'
         body['graph']['sample']['inputs']['sampler'] = 'unknown-sampler'
-        body['graph']['text']['inputs']['unchanged'] = 1
+        del body['graph']['text']['inputs']['unchanged']
+        body['graph']['sample']['inputs'].update(typo=True, custom_float=100, choices=[['red', 'blue']])
+        body['graph']['unused'] = {'class_type': 'Uninstalled', 'inputs': {'union_value': {'value': 'text'}}}
+        info = object_info()
+        del info['Model']
+        info['Sample']['input']['optional'].update(
+            custom_float=['FLOAT', {'min': 0, 'max': 1}],
+            choices=[['red', 'blue'], {'multiselect': True}])
         before = deepcopy(body)
-        errors = workflows.validate_runtime(body, object_info())
-        for name in ('model_name', 'sampler', 'unchanged'):
-            self.assertTrue(any(name in error for error in errors), errors)
+        saved = workflows.validate_definition(body)
+        self.assertEqual(workflows.validate_runtime(saved, info), [])
         self.assertEqual(body, before)
+        self.assertEqual(saved, before)
 
-    # 見込み: 非対応のoutputを完成画像と誤認しない。合格: 非output nodeは拒否、画像位置63はport数に拘らず許可。範囲: history画像位置の静的契約。
-    def test_output_must_be_image_capable_output_node(self):
+    # 見込み: history出力を型から推測しなければcustom出力を妨げない。合格: output_node/IMAGE属性がなくても選択nodeがあれば通る。範囲: 模擬仕様、画像取得は別確認。
+    def test_selected_output_does_not_require_inferred_image_capability(self):
         body = definition()
         body['binding']['output'] = {'node': 'sample', 'index': 0}
-        self.assertTrue(any('出力ノード' in error for error in workflows.validate_runtime(body, object_info())))
-        body['binding']['output'] = {'node': 'save', 'index': 63}
         self.assertEqual(workflows.validate_runtime(body, object_info()), [])
-
-    # 見込み: V3の明示Autogrow名を展開すればQwenの画像接続を照合できる。合格: 3接続が通り、未定義名と不足minimumを拒否。範囲: installed schema形式の固定fixture。
-    def test_autogrow_image_links_are_validated(self):
-        body, info = definition(3), object_info()
-        sample = body['graph']['sample']['inputs']
-        for index in range(1, 4):
-            sample[f'images.image_{index}'] = sample.pop(f'reference_{index}')
-        info['Sample']['input']['optional'] = {}
-        info['Sample']['input']['required']['images'] = ['COMFY_AUTOGROW_V3', {'template': {
-            'input': {'required': {'image': ['IMAGE', {}]}}, 'names': ['image_1', 'image_2', 'image_3'], 'min': 3}}]
+        body['binding']['output'] = {'node': 'save', 'index': 63}
+        info = object_info()
+        info['Save'] = {}
         self.assertEqual(workflows.validate_runtime(body, info), [])
-        sample['images.image_4'] = sample.pop('images.image_3')
+
+    # 見込み: 動的inputはrootの存在だけ確認すれば細部をComfyUIへ任せられる。合格: nested差込先を通し、root不在だけ拒否。範囲: 模擬dynamic schema、展開は未実施。
+    def test_dynamic_bound_inputs_check_only_the_declared_root(self):
+        body, info = definition(), object_info()
+        text = body['graph']['text']['inputs'].pop('text')
+        body['graph']['text']['inputs']['group.generated.text'] = text
+        body['binding']['prompt'] = [sink('text', 'group.generated.text')]
+        body = workflows.validate_definition(body)
+        info['Text']['input']['required'] = {'group': ['COMFY_AUTOGROW_V3', {'template': {}}]}
+        self.assertEqual(workflows.validate_runtime(body, info), [])
+        info['Text']['input']['required'] = {}
         errors = workflows.validate_runtime(body, info)
-        self.assertTrue(any('image_3' in error for error in errors))
-        self.assertTrue(any('image_4' in error for error in errors))
+        self.assertEqual(len(errors), 1)
+        self.assertIn('group.generated.textがComfyUIの入力仕様にありません', errors[0])
 
     # 見込み: 未取得・壊れた仕様は利用可能としない。合格: 例外でなくerror一覧を返す。範囲: 不正object_infoの境界。
     def test_missing_or_malformed_object_info_returns_errors(self):

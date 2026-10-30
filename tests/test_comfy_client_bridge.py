@@ -238,17 +238,16 @@ class ComfyClientTests(unittest.TestCase):
         query = parse_qs(urlsplit(client._opener.calls[0].full_url).query)
         self.assertEqual(query, {"filename": ["chosen.png"], "subfolder": ["job 1/成果"], "type": ["output"]})
 
-    # 見込み: 不明なbindingや別形式の出力をPNGへ読み替えない。
-    # 合格: 欠けたnode/位置、JPEG名、偽PNG内容が例外。範囲: 模擬view。
-    def test_missing_output_and_non_png_are_rejected(self):
+    # 見込み: transportは指定画像の取得に絞り、内容の判定はjobの回収箇所へ集約できる。
+    # 合格: 欠けたnode/位置とJPEG名は拒否、PNG名のbytesは再解析せず返す。範囲: 模擬view、内容検査はcollector側。
+    def test_output_locator_is_checked_but_image_bytes_are_not_reparsed(self):
         client = self.client(lambda request: b"\xff\xd8jpeg")
         history = {"outputs": {"x": {"images": [{"filename": "image.png", "type": "output"}]}}}
         for binding in [{"node": "missing", "index": 0}, {"node": "x", "index": 2}]:
             with self.assertRaises(client_module.ComfyError):
                 client.get_image(history, binding)
         self.assertEqual(client._opener.calls, [])
-        with self.assertRaises(client_module.ComfyError):
-            client.get_image(history, {"node": "x", "index": 0})
+        self.assertEqual(client.get_image(history, {"node": "x", "index": 0}), b"\xff\xd8jpeg")
         history["outputs"]["x"]["images"][0]["filename"] = "image.jpg"
         with self.assertRaises(client_module.ComfyError):
             client.get_image(history, {"node": "x", "index": 0})

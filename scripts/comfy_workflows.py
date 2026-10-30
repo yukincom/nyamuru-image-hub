@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from copy import deepcopy
-from collections import deque
 import fcntl
 import json
 import math
@@ -77,39 +76,17 @@ def _link(value):
 
 
 def validate_definition(body):
-    """Validate a registration or saved definition; never guess missing bindings."""
+    """Validate Nyamuru's registration boundary, leaving graph execution to ComfyUI."""
     if not isinstance(body, dict):
         raise ValueError('ワークフロー登録の形式が正しくありません')
     value = _json_copy(body)
     name = _name(value.get('name'), 'ワークフロー名').strip()
     graph, binding = value.get('graph'), value.get('binding')
     if not isinstance(graph, dict) or not graph or any(
-            not isinstance(node, dict) or not isinstance(node.get('inputs'), dict) or not isinstance(node.get('class_type'), str)
+            not isinstance(node, dict) or not isinstance(node.get('inputs'), dict)
+            or not isinstance(node.get('class_type'), str) or not node['class_type'].strip()
             for node in graph.values()):
         raise ValueError('ComfyUIのAPI形式JSON（ノードIDごとのclass_typeとinputs）を書き出してください')
-    for node_id, node in graph.items():
-        _name(node_id, 'ノードID')
-        _name(node['class_type'], f'ノード{node_id}のclass_type')
-        for key, item in node['inputs'].items():
-            _name(key, f'ノード{node_id}の入力名')
-            if isinstance(item, list) and (not _link(item) or item[0] not in graph):
-                raise ValueError(f'ノード{node_id}の入力{key}の接続先が正しくありません')
-    dependencies = {node_id: {item[0] for item in node['inputs'].values() if _link(item)} for node_id, node in graph.items()}
-    consumers = {node_id: [] for node_id in graph}
-    for node_id, sources in dependencies.items():
-        for source in sources:
-            consumers[source].append(node_id)
-    ready = deque(node_id for node_id, sources in dependencies.items() if not sources)
-    visited = 0
-    while ready:
-        source = ready.popleft()
-        visited += 1
-        for consumer in consumers[source]:
-            dependencies[consumer].remove(source)
-            if not dependencies[consumer]:
-                ready.append(consumer)
-    if visited != len(graph):
-        raise ValueError('ワークフローの接続が循環しています')
     if not isinstance(binding, dict) or set(binding) != _BINDING_KEYS:
         raise ValueError('指示・シード・寸法・参照画像・完成画像・プロンプト処理の対応付けを指定してください')
     if binding['prompt_mode'] not in ('qwen', 'plain'):
@@ -126,10 +103,8 @@ def validate_definition(body):
             key = _name(sink['input'], f'{role}の入力名')
             if node_id not in graph or key not in graph[node_id]['inputs']:
                 raise ValueError(f'{role}の受け渡し先{node_id}.{key}がグラフにありません')
-            item = graph[node_id]['inputs'][key]
-            expected = str if role in ('prompt', 'images') else int
-            if type(item) is not expected:
-                raise ValueError(f'{role}の受け渡し先{node_id}.{key}は接続ではなく{expected.__name__}の値にしてください')
+            if _link(graph[node_id]['inputs'][key]):
+                raise ValueError(f'{role}の受け渡し先{node_id}.{key}は接続ではなく差し替える値にしてください')
             if (node_id, key) in assigned:
                 raise ValueError(f'受け渡し先{node_id}.{key}が重複しています')
             assigned.add((node_id, key))
@@ -167,7 +142,7 @@ def validate_definition(body):
 
 
 def validate_request(definition, reference_count):
-    definition = validate_definition(definition)
+    """Check reference count for a definition validated at the registration/job boundary."""
     _integer(reference_count, '参照画像の枚数', 0, MAX_REFERENCES)
     expected = len(definition['binding']['images'])
     if reference_count != expected:
@@ -175,14 +150,18 @@ def validate_request(definition, reference_count):
 
 
 def bind_graph(definition, prompt, images, seed, width, height):
-    definition = validate_definition(definition)
+    """Bind request values to a previously validated definition, copying its graph once."""
     if not isinstance(prompt, str):
         raise ValueError('指示文は文字列で指定してください')
     if not isinstance(images, list) or any(not isinstance(item, str) or not item.strip() for item in images):
         raise ValueError('アップロード済み参照画像の名前を順番どおり指定してください')
     validate_request(definition, len(images))
     _integer(seed, 'シード', 0, MAX_SEED)
-    binding, graph = definition['binding'], deepcopy(definition['graph'])
+    binding = definition['binding']
+    if binding['width']:
+        _integer(width, '幅', 32, 4096)
+        _integer(height, '高さ', 32, 4096)
+    graph = deepcopy(definition['graph'])
 
     def put(sinks, value):
         for sink in sinks:
@@ -191,16 +170,16 @@ def bind_graph(definition, prompt, images, seed, width, height):
     put(binding['prompt'], prompt)
     put(binding['seed'], seed)
     if binding['width']:
-        put(binding['width'], _integer(width, '幅', 32, 4096))
-        put(binding['height'], _integer(height, '高さ', 32, 4096))
+        put(binding['width'], width)
+        put(binding['height'], height)
     for sinks, filename in zip(binding['images'], images):
         put(sinks, filename)
     return graph
 
 
-def _input_schema(schema):
-    """Expand the explicit names of standard V3 Autogrow sockets."""
-    available, required = {}, set()
+def _declared_inputs(schema):
+    """Read input names only; ComfyUI resolves dynamic paths and validates their values."""
+    available = set()
     inputs = schema.get('input', {})
     if not isinstance(inputs, dict):
         raise ValueError('入力仕様がありません')
@@ -208,124 +187,43 @@ def _input_schema(schema):
         entries = inputs.get(category, {})
         if not isinstance(entries, dict):
             raise ValueError('入力仕様が正しくありません')
-        for name, spec in entries.items():
-            if not isinstance(spec, (list, tuple)) or not spec:
-                raise ValueError(f'入力{name}の型がありません')
-            if not isinstance(spec[0], (str, list)):
-                raise ValueError(f'入力{name}の型が正しくありません')
-            if spec[0] == 'COMBO' and (len(spec) < 2 or not isinstance(spec[1], dict) or not isinstance(spec[1].get('options'), list)):
-                raise ValueError(f'入力{name}の選択肢がありません')
-            if spec[0] != 'COMFY_AUTOGROW_V3':
-                available[name] = spec
-                if category == 'required':
-                    required.add(name)
-                continue
-            template = spec[1]['template']
-            names = template.get('names')
-            if names is None:
-                maximum = _integer(template['max'], 'Autogrowの上限', 1, 100)
-                names = [f"{template['prefix']}{i}" for i in range(maximum)]
-            minimum = template['min']
-            if not isinstance(names, list) or len(names) > 100 or any(not isinstance(name, str) for name in names):
-                raise ValueError('Autogrowの入力名が正しくありません')
-            _integer(minimum, 'Autogrowの最小入力数', 0, len(names))
-            template_inputs = template['input']
-            template_required = bool(template_inputs.get('required'))
-            template_spec = next(iter((template_inputs.get('required') or template_inputs.get('optional')).values()))
-            if not isinstance(template_spec, (list, tuple)) or not template_spec:
-                raise ValueError('Autogrowの入力型がありません')
-            for i, suffix in enumerate(names):
-                key = f'{name}.{suffix}'
-                available[key] = template_spec
-                if template_required and i < minimum:
-                    required.add(key)
-    return available, required
-
-
-def _spec_parts(spec):
-    kind = spec[0]
-    options = spec[1] if len(spec) > 1 and isinstance(spec[1], dict) else {}
-    choices = kind if isinstance(kind, list) else options.get('options') if kind == 'COMBO' else None
-    return kind, options, choices
-
-
-def _compatible(source, target):
-    if isinstance(target, list):
-        target = 'COMBO'
-    if not isinstance(source, str) or not isinstance(target, str):
-        return False
-    return '*' in (source, target) or bool(set(source.split(',')) & set(target.split(',')))
+        available.update(entries)
+    return available
 
 
 def validate_runtime(definition, object_info):
-    """Report static incompatibilities; image uploads and inference are not run."""
-    try:
-        definition = validate_definition(definition)
-    except ValueError as error:
-        return [str(error)]
+    """Check bound input/output existence for a definition already validated at its boundary."""
     if not isinstance(object_info, dict):
         return ['ComfyUIのobject_infoが取得できません']
     graph, binding = definition['graph'], definition['binding']
-    mapped = {(sink['node'], sink['input']): role for role in _FIELDS for sink in binding[role]}
-    mapped.update({(sink['node'], sink['input']): 'images' for slots in binding['images'] for sink in slots})
-    errors, schemas = [], {}
-    for node_id, node in graph.items():
+    mapped = {}
+    for sinks in [*(binding[field] for field in _FIELDS), *binding['images']]:
+        for sink in sinks:
+            mapped.setdefault(sink['node'], set()).add(sink['input'])
+    mapped.setdefault(binding['output']['node'], set())
+    errors = []
+    for node_id, names in mapped.items():
+        node = graph.get(node_id)
+        if node is None:
+            errors.append(f'ノード{node_id}が登録グラフにありません')
+            continue
         schema = object_info.get(node['class_type'])
         if not isinstance(schema, dict):
             errors.append(f"ノード{node_id}: {node['class_type']}がComfyUIにありません")
             continue
+        if not names:
+            continue
         try:
-            inputs, required = _input_schema(schema)
-            schemas[node_id] = schema, inputs
-        except (ValueError, KeyError, TypeError, IndexError, AttributeError, StopIteration) as error:
+            inputs = _declared_inputs(schema)
+        except ValueError as error:
             errors.append(f'ノード{node_id}: object_infoの入力仕様を確認できません（{error}）')
             continue
-        for name in sorted(required - node['inputs'].keys()):
-            errors.append(f'ノード{node_id}: 必須入力{name}がありません')
-        for name, value in node['inputs'].items():
+        for name in sorted(names):
             label = f'ノード{node_id}の入力{name}'
-            if name not in inputs:
+            if name not in node['inputs']:
+                errors.append(f'{label}が登録グラフにありません')
+            elif name not in inputs and name.partition('.')[0] not in inputs:
                 errors.append(f'{label}がComfyUIの入力仕様にありません')
-                continue
-            kind, options, choices = _spec_parts(inputs[name])
-            role = mapped.get((node_id, name))
-            if role:
-                expected = 'STRING' if role in ('prompt', 'images') else 'INT'
-                upload = role == 'images' and choices is not None and options.get('image_upload') is True
-                if kind != expected and not upload:
-                    errors.append(f'{label}: {role}には{expected}入力が必要です')
-                # Values mapped at submit time are placeholders, including upload enums.
-                continue
-            if _link(value):
-                source = graph[value[0]]
-                source_schema = object_info.get(source['class_type'])
-                outputs = source_schema.get('output') if isinstance(source_schema, dict) else None
-                if not isinstance(outputs, (list, tuple)) or value[1] >= len(outputs):
-                    errors.append(f'{label}: 接続先{value[0]}の出力{value[1]}がありません')
-                elif not _compatible(outputs[value[1]], kind):
-                    errors.append(f'{label}: 接続の型{outputs[value[1]]}と{kind}が一致しません')
-                continue
-            if choices is not None:
-                if value not in choices:
-                    errors.append(f'{label}: 選択値「{value}」がComfyUIにありません')
-                continue
-            valid_literal = (kind == 'STRING' and isinstance(value, str)
-                             or kind == 'INT' and type(value) is int
-                             or kind == 'FLOAT' and type(value) in (int, float)
-                             or kind == 'BOOLEAN' and type(value) is bool
-                             or kind == '*')
-            if not valid_literal:
-                errors.append(f'{label}: {kind}型の値または接続が必要です')
-            elif type(value) in (int, float) and (
-                    'min' in options and value < options['min'] or 'max' in options and value > options['max']):
-                errors.append(f'{label}: ComfyUIの入力範囲を外れています')
-    output_id = binding['output']['node']
-    if output_id in schemas:
-        schema, inputs = schemas[output_id]
-        outputs = schema.get('output')
-        image_capable = isinstance(outputs, (list, tuple)) and 'IMAGE' in outputs or any(spec[0] == 'IMAGE' for spec in inputs.values())
-        if schema.get('output_node') is not True or not image_capable:
-            errors.append(f'完成画像のノード{output_id}は画像を保存する出力ノードではありません')
     return errors
 
 

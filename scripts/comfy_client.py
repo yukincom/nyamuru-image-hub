@@ -19,7 +19,6 @@ from uuid import UUID, uuid4
 
 MAX_JSON_BYTES = 64 * 1024 * 1024
 MAX_IMAGE_BYTES = 64 * 1024 * 1024
-PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
 class ComfyError(OSError):
@@ -339,10 +338,8 @@ class ComfyClient:
         except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
             raise ComfyError("指定した出力ノード・画像位置にPNGの完成画像がありません") from exc
         path = "/view?" + urlencode({"filename": filename, "subfolder": folder, "type": kind})
-        raw = self._request(path, limit=MAX_IMAGE_BYTES, accept="image/png")
-        if not raw.startswith(PNG_SIGNATURE) or len(raw) < 24 or raw[12:16] != b"IHDR":
-            raise ComfyError("指定出力の内容がPNGではありません")
-        return raw
+        # Image metadata is read once by the job collector, alongside output dimensions.
+        return self._request(path, limit=MAX_IMAGE_BYTES, accept="image/png")
 
     def cancel(self, prompt_id: str) -> dict:
         prompt_id = _identifier(prompt_id)
