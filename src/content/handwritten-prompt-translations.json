@@ -1,0 +1,54 @@
+[
+  {
+    "ja": "漫画用の独立した画像を1枚描いてください。参照資料の画風と形を尊重してください。",
+    "en": "Create one standalone manga image. Follow the style and shapes in the references."
+  },
+  {
+    "ja": "描く対象：描き文字（shape=handwritten）。",
+    "en": "Subject: handwritten lettering, without a speech bubble."
+  },
+  {
+    "ja": "描く対象：写植文字（shape=typeset）。",
+    "en": "Subject: typeset text, without a speech bubble."
+  },
+  {
+    "ja": "指定した本文だけを写植文字として描いてください。指定した書体と太さに従い、文字の外側は透明にしてください。",
+    "en": "Render only the specified text as clean typeset text. Follow the specified font and weight, and keep the background transparent."
+  },
+  {
+    "ja": "上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、選択したペンと表現に従ってください。",
+    "en": "Draw only this lettering, with a transparent background. Follow the selected pen and lettering styles for its shape, strokes, energy, and texture."
+  },
+  {
+    "ja": "[const] セリフはOMNY記載どおりの日本語を使用する。文字の組み方向はOMNYの meta.text_orientation、ページとコマの読み方向は meta.reading_direction に従う",
+    "en": "Render the text exactly as written, in Japanese. Follow the specified text orientation and reading direction."
+  },
+  {
+    "ja": "handwritten=フキダシなしの手描き文字",
+    "en": "handwritten=handwritten lettering without a speech bubble."
+  },
+  {
+    "ja": "上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、明示された「描き方」に従ってください。",
+    "en": "Draw only this lettering, with a transparent background. Follow the specified lettering instructions for its shape, strokes, energy, and texture."
+  },
+  {
+    "ja": "新しい絵を1枚描く。資料集・コラージュ・コマ枠・署名・透かしは加えない。",
+    "en": "Do not add illustrations, a reference sheet, a collage, panel borders, a signature, or a watermark."
+  },
+  {
+    "ja": "修正用レイヤーの印・塗り・書き込みが示す箇所を、今回の修正指示に従って編集してください。",
+    "en": "Edit the areas indicated by marks, paint, or notes on the correction layer, following the current correction instructions."
+  },
+  {
+    "ja": "参照画像の構図と、修正対象以外の内容を保ってください。",
+    "en": "Preserve the reference image's composition and everything outside the areas being corrected."
+  },
+  {
+    "ja": "書き込み付き画像の構図と、修正対象以外の内容を保ってください。",
+    "en": "Preserve the annotated image's composition and everything outside the areas being corrected."
+  },
+  {
+    "ja": "修正を指示する印・塗り・文字は、完成画像には残さないでください。",
+    "en": "Remove the correction marks, paint, and notes from the finished image."
+  }
+]

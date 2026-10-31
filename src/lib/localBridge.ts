@@ -1430,9 +1430,9 @@ export async function loadHumanPoseCatalog(): Promise<HumanPoseCatalog> {
   return { ...catalog, previews };
 }
 
-export async function loadHumanPoseScene(poseId: string, catalogSha256: string) {
-  const payload = await postJson('/api/human-pose/scene', { pose_id: poseId, catalog_sha256: catalogSha256, include_base: false });
-  return decodeHumanPoseScene(payload, poseId, catalogSha256);
+export async function loadHumanPoseScene(poseId: string, catalogSha256: string, bodyModel?: import('./humanPoseTypes.ts').HumanPoseBodyModel) {
+  const payload = await postJson('/api/human-pose/scene', { pose_id: poseId, catalog_sha256: catalogSha256, include_base: false, ...(bodyModel ? { body_model: bodyModel } : {}) });
+  return decodeHumanPoseScene(payload, poseId, catalogSha256, bodyModel);
 }
 
 /** 明示操作時だけ、保存済みの人物切り抜き1枚をlocalhostのVLMへ渡す。 */
@@ -2822,11 +2822,16 @@ export async function loadPersistedAnalogAsset(reference: PersistentAnalogAssetR
 
 export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:string):Promise<import('./qwenGeneration.ts').QwenJob>{
   const value=raw as Record<string,unknown>;
+  const selectedWorkflow=Boolean(value&&value.status==='succeeded'&&typeof value.workflow_id==='string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.workflow_id)
+    && Number.isInteger(value.selected_candidate)&&Number(value.selected_candidate)>=1&&Number(value.selected_candidate)<=5);
+  const minSize=selectedWorkflow?1:32,maxSize=selectedWorkflow?16384:4096;
   if(!value||value.profile!=='qwen-image-2.1-owner-v1'||typeof value.job_id!=='string'||!/^[-a-f0-9]{36}$/.test(value.job_id)
     ||(jobId&&value.job_id!==jobId)||typeof value.request_sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.request_sha256)
     ||(requestSha256&&value.request_sha256!==requestSha256)||typeof value.label!=='string'
     ||!['preparing','prepared','queued','running','succeeded','failed','outcome_unknown'].includes(String(value.status))
-    ||![value.width,value.height].every(n=>typeof n==='number'&&Number.isInteger(n)&&n>=32&&n<=4096))throw new Error('Qwen生成結果の対応を確認できません');
+    ||![value.width,value.height].every(n=>typeof n==='number'&&Number.isInteger(n)&&n>=minSize&&n<=maxSize)
+    ||Number(value.width)*Number(value.height)>100_000_000)throw new Error('Qwen生成結果の対応を確認できません');
   const job:import('./qwenGeneration.ts').QwenJob={jobId:value.job_id,status:value.status as import('./qwenGeneration.ts').QwenJob['status'],
     requestSha256:value.request_sha256,label:value.label,width:value.width as number,height:value.height as number,error:typeof value.error==='string'?value.error:undefined};
   if(value.document_key!==undefined){

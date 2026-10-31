@@ -11,7 +11,7 @@ import {updateTextStyle,textStyleOf,typingTextStyle} from '../src/lib/textStyle.
 import {workspaceHistory} from '../src/lib/workspaceHistory.ts';
 import {createFrameArtwork} from '../src/lib/imagePlacement.ts';
 import {newPaintLayer} from '../src/lib/paintDocument.ts';
-import { changeCanvasTextCategory, canvasTextCategory, changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
+import { ensureCanvasTextOwner, changeCanvasTextCategory, canvasTextCategory, changeCanvasDefaultBubbleLineWidth, canvasBubbleLineWidthEditable, editCanvasBubbleLineWidth, toggleCanvasTextVisibility, addCanvasText, addCanvasTextAt, bubbleTextMinimumSize, canvasTextAt, canvasTextEditable, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, fitCanvasBubbleToText, fitCanvasScreenTextToText, removeCanvasText, screenTextCoveredByBubble } from '../src/lib/canvasText.ts';
 function fixture(){const d=createEmptyWorkspaceDocument();d.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:20,w:90,h:120},bg:0,bubbles:[{text:'生成済み',shape:'normal',speaker:'A',analogTextImport:{assetId:'original',sourceRegionId:'ocr'}}]}];return d;}
 test('OCR text reclassification retains the owner, original image, paint, text and exact position through every category and storage',()=>{
  for(const overlay of [false,true]){
@@ -498,4 +498,18 @@ test('実キャンバスは選択のないスタイル操作を本文編集・�
  context.textTarget=null;change({underline:true},'selection-or-typing');assert.deepEqual(calls.at(-1),['typing',{underline:true}]);
  context.textTarget={kind:'bubble'};change({textAlign:'right'});assert.deepEqual(calls.at(-1),['document',{textAlign:'right'},{...context.textSelection}]);
  context.toolbarTarget=null;context.toolbarItem=null;change({textAlign:'center'});assert.deepEqual(calls.at(-1),['typing',{textAlign:'center'}]);
+});
+
+// 見込み: 既存の点文字変換を再利用すれば生成の取消しで本文を変えず、追加時だけ同じ書式/中心の文字folderへまとめられる。
+// 合格: previewは原本不変、移した本文/runs/style/bbox/layerId/lock/中心を保持し、再呼出しは同値。範囲: 変換本体、追加とUndoは実Appで検証。
+test('point-text materialization preserves the native text and stable anchor identity',()=>{
+ for(const overlay of [false,true]){
+  const doc=fixture(),page=doc.manga.pages[0];if(overlay)page.page_overlay={frame:false,layer:'above_panel_frames',bubbles:[]};
+  const owner=overlay?page.page_overlay:page.panels[0],screen={text:'写植\n二行',layerId:'stable-text',orientation:'horizontal',bbox:{x:20,y:30,w:40,h:25},locked:true,hidden:true,text_style:{font:'Test Serif',fontSize:16,fontWeight:700,lineHeight:1.2,orientation:'horizontal'},text_runs:[{start:0,end:2,fontWeight:800}]};
+  owner.screen_text=[screen];const before=structuredClone(doc),preview=structuredClone(doc),target={pageIndex:0,panelIndex:0,index:0,overlay,kind:'screen_text'},position={x:.2,y:.3};
+  const converted=ensureCanvasTextOwner(preview,target,position),text=canvasTextAt(preview,converted);
+  assert.deepEqual(doc,before);for(const key of ['text','layerId','bbox','locked','hidden','text_runs','text_style'])assert.deepEqual(text[key],screen[key],key);
+  assert.equal(text.shape,'typeset');assert.deepEqual(text.text_position,position);assert.equal(canvasTextAt(preview,target),undefined);
+  assert.deepEqual(ensureCanvasTextOwner(preview,converted),converted);
+ }
 });

@@ -73,12 +73,13 @@ export function rebaseHumanPoseMotionEdits(edits: HumanPoseJointEdits | undefine
   }
   validateHumanPoseJointEdits(next); return next;
 }
-export function changeHumanPoseMotion(library: HumanPoseMotionLibrary, rig: HumanPoseRig, template: HumanPoseData, scene: HumanPoseSceneSettings, clipId: string, phase: number): HumanPoseSceneSettings {
+export function changeHumanPoseMotion(library: HumanPoseMotionLibrary, rig: HumanPoseRig, template: HumanPoseData, scene: HumanPoseSceneSettings, clipId: string, phase: number,
+  sample = (selection: HumanPoseMotionSelection) => sampleHumanPoseMotion(library, rig, template, selection)): HumanPoseSceneSettings {
   const next = structuredClone(scene);
   if (!clipId) { delete next.motion; delete next.joint_edits; return next; }
   const selection: HumanPoseMotionSelection = { version: 1, library_sha256: library.sha256, clip_id: clipId, phase };
-  const after = sampleHumanPoseMotion(library, rig, template, selection);
+  const after = sample(selection);
   next.joint_edits = scene.motion?.clip_id === clipId
-    ? rebaseHumanPoseMotionEdits(scene.joint_edits, sampleHumanPoseMotion(library, rig, template, scene.motion), after) : undefined;
+    ? rebaseHumanPoseMotionEdits(scene.joint_edits, sample(scene.motion), after) : undefined;
   next.motion = selection; return next;
 }

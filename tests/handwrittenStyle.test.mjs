@@ -11,7 +11,7 @@ import {buildQwenCompositionPlan} from '../src/lib/qwenComposition.ts';
 function fixture(){
  const doc=createEmptyWorkspaceDocument();
  doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:10,y:10,w:100,h:100},bg:0,action:null,bubbles:[
-  {text:'ドン！',shape:'handwritten',bbox:{x:20,y:20,w:40,h:25},lettering_pen:'g-pen-firm',lettering_expressions:['scratchy','energetic']},
+  {text:'ドン！',shape:'handwritten',lettering_description:'使わない旧描き方',bbox:{x:20,y:20,w:40,h:25},lettering_pen:'g-pen-firm',lettering_expressions:['scratchy','energetic']},
   {text:'普通の台詞',shape:'normal',lettering_pen:'brush',lettering_expressions:['cute']}]}];
  doc.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'ふわっ',shape:'handwritten',bbox:{x:30,y:150,w:30,h:20},lettering_pen:'pencil-hb',lettering_expressions:['wobbly','cute']}]};
  return doc;
@@ -41,12 +41,14 @@ test('pen and multiple expressions persist and malformed options are rejected',(
  for(const bad of ['cute',['unknown'],['cute','cute']]){bubble.lettering_expressions=bad;assert.equal(issues().length,1);}
  delete bubble.lettering_expressions;assert.deepEqual(issues(),[]);
 });
-// 見込み/合格: 単品と修正のpayloadが選択英訳・原文だけを保持し、撮影後に設定が変われば再選択を要求。範囲: 生成入力の組立のみ。
+// 見込み/合格: 単品/修正の確認は日本語で、本文・定型指定を保持する。表現は1行、古いownerは拒否。範囲: 組立のみ、送信英文/モデルはPython試験。
 test('individual and correction payloads carry fixed selections and reject a stale owner',()=>{
  const doc=fixture(),manga=doc.manga,panel=manga.pages[0].panels[0],owner=paintScene(panel,100,[]).owners.find(x=>x.key==='bubble-0');
- const plan=buildQwenGenerationPlan(manga,0,0,false,owner),expected='Lettering pen: G-pen with a slightly firm nib.\nLettering expression: broken, scratchy strokes.\nLettering expression: energetic strokes.';
+ const plan=buildQwenGenerationPlan(manga,0,0,false,owner),expected='ペン：Gペン　ややハード\n表現：かすれ、いきおい';
  for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){assert.ok(prompt.includes(expected));assert.ok(!prompt.includes('HB pencil'));}
  assert.deepEqual(qwenGenerationPayload(plan,[]).literal_text,['ドン！']);
+ assert.ok(plan.prompt.includes('文字の組み方向：縦書き'));
+ assert.equal(handwrittenStylePrompt(panel.bubbles[0]),'Lettering pen: G-pen with a slightly firm nib.\nLettering style: broken, scratchy strokes; energetic strokes.');
  const captured=structuredClone(owner);panel.bubbles[0].lettering_pen='brush';
  assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,captured),/選び直し/);
 });
@@ -54,10 +56,11 @@ test('individual and correction payloads carry fixed selections and reject a sta
 test('composition options stay with their target lettering',()=>{
  const {manga}=fixture(),before=structuredClone(manga);
  const page=buildQwenCompositionPlan(manga,0,0,'page');
+ assert.ok(!page.prompt.includes('使わない旧描き方'));
  assert.ok(page.prompt.includes('Lettering pen for panel 1, text 1: G-pen with a slightly firm nib.'));
- assert.ok(page.prompt.includes('Lettering expression for panel 1, text 1: energetic strokes.'));
+ assert.ok(page.prompt.includes('Lettering style for panel 1, text 1: broken, scratchy strokes; energetic strokes.'));
  assert.ok(page.prompt.includes('Lettering pen for page foreground, text 1: HB pencil.'));
- assert.ok(page.prompt.includes('Lettering expression for page foreground, text 1: cute lettering.'));
+ assert.ok(page.prompt.includes('Lettering style for page foreground, text 1: loose, wobbly strokes; cute lettering.'));
  assert.ok(!page.prompt.includes('Lettering pen for panel 1, text 2:'));
  assert.ok(!buildQwenCompositionPlan(manga,0,0,'panel').prompt.includes('HB pencil'));
  assert.deepEqual(manga,before);

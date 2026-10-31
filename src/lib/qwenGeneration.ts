@@ -13,7 +13,6 @@ import { paintReferenceBox } from './paintDocument.ts';
 import { panelBounds } from './canvasGeometry.ts';
 import { humanPoseFigureFrame, humanPosePanelCutFrame, threeImageFigureTarget, type HumanPoseCutFrame } from './humanPoseFraming.ts';
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
-import { isHandwrittenText } from './bubblePresentation.ts';
 import { textStyleOf } from './textStyle.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
@@ -32,8 +31,9 @@ export interface QwenGenerationPlan {
   humanPose?: { selection: HumanPoseTextSelection; framing: FigureSize; aspect?: number; cutFrame?: HumanPoseCutFrame };
   scope?: 'page'|'panel';
   literalText?: string[];
-  contentKind?: 'handwritten';
+  contentKind?: 'handwritten'|'typeset';
   letteringContext?: string;
+  handwrittenPrompt?: { confirmation:string; description?:string };
   compositionImage?: string;
   outputFrame?: BBox;
   referenceFrame?: BBox;
@@ -44,7 +44,7 @@ export interface QwenReference { label: string; characterKeys: string[]; image: 
 export interface QwenLayerCandidate { id:string; label:string; kind:'paint'|'sketch'; hidden:boolean; empty:boolean }
 export interface QwenLayerReference extends QwenLayerCandidate { image:string }
 export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): boolean {
-  return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&isHandwrittenText(owner.bubble);
+  return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&Boolean(owner.bubble&&['handwritten','typeset'].includes(owner.bubble.shape??''));
 }
 export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
   return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
@@ -78,7 +78,7 @@ export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLaye
 
 /** A correction keeps the full captured canvas; a new lettering image uses its marker bounds. */
 export function qwenGenerationTarget(plan:QwenGenerationPlan,correction=false):QwenGenerationPlan {
-  const area=plan.contentKind==='handwritten'&&!correction?plan.generationArea:undefined,frame=plan.outputFrame;
+  const area=Boolean(plan.contentKind)&&!correction?plan.generationArea:undefined,frame=plan.outputFrame;
   if(!area||!frame)return plan;
   return {...plan,generationArea:undefined,width:area.w,height:area.h,outputFrame:{
     x:frame.x+area.x*frame.w/plan.width,y:frame.y+area.y*frame.h/plan.height,
@@ -113,12 +113,12 @@ export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ペ�
 export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource,generationArea?:BBox):QwenGenerationPlan {
   const page=manga.pages[pageIndex], panel=page?.panels[panelIndex];
   if(!page||(!overlay&&!panel))throw new Error('生成対象が見つかりません');
-  if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字が対象です');
+  if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字・写植文字が対象です');
   const lettering=owner.kind==='bubble'?owner.bubble:undefined;
   if(lettering){
     const current=(overlay?page.page_overlay:panel)?.bubbles?.[owner.index];
-    if(!isHandwrittenText(current)||current?.text!==lettering.text||current?.lettering_description!==lettering.lettering_description||handwrittenStylePrompt(current)!==handwrittenStylePrompt(lettering))throw new Error('描き文字が変更されました。生成対象を選び直してください');
-    if(!lettering.text.trim()||lettering.text.length>500)throw new Error('描き文字の本文を1〜500文字で入力してください');
+    if(!current||!['handwritten','typeset'].includes(current.shape??'')||current.shape!==lettering.shape||current.text!==lettering.text||JSON.stringify(current.text_style)!==JSON.stringify(lettering.text_style)||handwrittenStylePrompt(current)!==handwrittenStylePrompt(lettering))throw new Error('描き文字が変更されました。生成対象を選び直してください');
+    if(!lettering.text.trim()||lettering.text.length>500)throw new Error('文字の本文を1〜500文字で入力してください');
   }
   const pose = owner.figure?.human_pose;
   if(owner.kind==='figure' && JSON.stringify(pose) !== JSON.stringify((overlay?page.page_overlay:panel)?.figures?.[owner.index]?.human_pose)) throw new Error('人体ポーズが変更されました。生成対象を選び直してください');
@@ -135,14 +135,14 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character',standardArtwork);
   const style=artwork.style_notes;
   const letteringContext=lettering?[
-    '描く対象：描き文字（shape=handwritten）。',
-    `meta.text_orientation=${textStyleOf(lettering,'bubble').orientation}`,
-    `meta.reading_direction=${manga.meta.reading_direction}`,
+    lettering.shape==='typeset'?'描く対象：写植文字（shape=typeset）。':'描く対象：描き文字（shape=handwritten）。',
+    `文字の組み方向：${textStyleOf(lettering,'bubble').orientation==='vertical'?'縦書き':'横書き'}`,
+    `読み方向：${manga.meta.reading_direction==='right-to-left'?'右から左':'左から右'}`,
     `text:\n${lettering.text}`,
-    lettering.lettering_description?`描き方：${lettering.lettering_description}`:'',
-    handwrittenStylePrompt(lettering),
-    ...style,artwork.layout_spec,
-    '上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、明示された「描き方」に従ってください。',
+    ...(lettering.shape==='typeset'?[`書体：${textStyleOf(lettering,'bubble').font??manga.meta.font??'アンチック体'}`,`文字の太さ：${textStyleOf(lettering,'bubble').fontWeight??600}`]:[]),
+    handwrittenStylePrompt(lettering,undefined,'ja'),
+    ...style,lettering.shape==='handwritten'?artwork.layout_spec:'',
+    lettering.shape==='typeset'?'指定した本文だけを写植文字として描いてください。指定した書体と太さに従い、文字の外側は透明にしてください。':'上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、選択したペンと表現に従ってください。',
   ].filter(Boolean).join('\n\n'):undefined;
   const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [
@@ -166,7 +166,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     `出力形式：${manga.meta.format}。`,
     owner.kind==='background'?`背景のみ。人物や吹き出しは描かない。背景指示：${owner.description||panel?.background_description||manga.setting.location||'無地'}`
       :lettering?letteringContext
-      :`${person?'人物':'小道具'}：${owner.figure?.name||owner.label}。\n背景・文字・吹き出しは加えず、外側は透明にする。`,
+      :`${person?'人物':'小道具'}：${owner.figure?.name||owner.label}。\n文字・吹き出し・背景の風景は加えない。`,
     pose?.input_mode!=='image'&&(owner.figure?.size || pose) ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。${framing==='bust-up'?'頭頂から胸までを画面に収めた構図で描く。':'指定した範囲を画面に収めた構図で描く。'}`:'',
     owner.figure?.action?`動作・表情・視線：${owner.figure.action}`:'',
     poseInstructions,
@@ -203,7 +203,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
-    ...(lettering?{contentKind:'handwritten' as const,literalText:[lettering.text],letteringContext}:{}),
+    ...(lettering?{contentKind:lettering.shape as 'handwritten'|'typeset',literalText:[lettering.text],letteringContext,handwrittenPrompt:{confirmation:prompt}}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
     ...(figureTarget?{threeImageTarget:{...figureTarget,referenceFrame}}:{}),
     ...(lettering&&generationArea?{generationArea:{...generationArea}}:{}),
@@ -214,7 +214,7 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   if(!plan.prompt.trim())throw new Error('生成指示を入力してください');
   const sizePrompt=qwenGenerationSizePrompt(plan,Boolean(correctionImage),outputSize);
   plan={...qwenGenerationTarget(plan,Boolean(correctionImage)),prompt:[plan.prompt,sizePrompt].filter(Boolean).join('\n\n')};
-  if(plan.ownerKey.startsWith('bubble-')&&(plan.contentKind!=='handwritten'||plan.literalText?.length!==1||!plan.literalText[0].trim()))throw new Error('吹き出し単品は生成できません。描き文字を選択してください');
+  if(plan.ownerKey.startsWith('bubble-')&&(!plan.contentKind||plan.literalText?.length!==1||!plan.literalText[0].trim()))throw new Error('吹き出し単品は生成できません。描き文字を選択してください');
   if(plan.contentKind&&(!plan.ownerKey.startsWith('bubble-')||plan.scope))throw new Error('描き文字の生成対象が不正です');
   if(plan.scope){
     if(!plan.compositionImage)throw new Error('紙面の参照画像を用意してから生成してください');
@@ -242,8 +242,9 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
   return {candidate_count:5,profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
     overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
-    ...(plan.scope||plan.contentKind==='handwritten'?{literal_text:plan.literalText??[]}:{}),
+    ...(plan.scope||plan.contentKind?{literal_text:plan.literalText??[]}:{}),
     ...(plan.contentKind?{content_kind:plan.contentKind}:{}),
+    ...(plan.contentKind&&plan.handwrittenPrompt?{handwritten_prompt:{...plan.handwrittenPrompt,confirmation:[plan.handwrittenPrompt.confirmation,sizePrompt].filter(Boolean).join('\n\n')}}:{}),
     prompt:roles?`${plan.prompt}\n\n添付画像の役割：\n${roles}`:plan.prompt,character_keys:plan.characterKeys,
     mode:sketchImage?'sketch':sourcePaint?'paint':'new',...(sourcePaint?{paint_image:sourcePaint}:{}),...(sketchImage?{sketch_image:sketchImage}:{}),
     ...(correctionImage?{correction_image:correctionImage}:{}),

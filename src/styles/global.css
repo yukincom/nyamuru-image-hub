@@ -2008,7 +2008,7 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .bubble-info-content .field { gap:3px; margin:0; }
 .bubble-info-content .field select,.bubble-info-content .field textarea { width:100%; padding:5px 6px; font-size:14px; line-height:1.4; border-radius:4px; }
 .bubble-info-content .bubble-join-control { margin:0; }
-.bubble-info-content[aria-disabled="true"] { opacity:.58; }
+.bubble-info-fields[aria-disabled="true"] { opacity:.58; }
 #paint-bubble-info-slot:not(:empty) + .bubble-info-empty { display:none; }
 .bubble-info-empty { padding:8px 10px; font-size:12px; color:var(--muted); }
 
@@ -2025,8 +2025,7 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 :is(.page-layer-palette,.paint-layer-palette) [data-layer-drop].drop-above::after { top:-2px; bottom:auto; }
 :is(.page-layer-palette,.paint-layer-palette) [data-layer-drop].drop-outside::after { left:0; right:0; }
 
-/* Lettering options belong to the active text tool and selected handwritten text. */
-.text-settings-window[data-text-tool-active="false"] .handwritten-style-fields { display:none; }
+/* Keep lettering options with the selected handwritten text while the info window is open. */
 .handwritten-expression-options { border:0; padding:0; margin:6px 0 0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:2px 8px; }
 .handwritten-expression-options legend { margin-bottom:4px; font-size:12px; }
 .handwritten-expression-options .check-row { margin:0; min-height:18px; gap:5px; line-height:1.2; }

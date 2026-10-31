@@ -16,25 +16,29 @@ export function canvasTextCategory(item:Bubble|ScreenText,kind:CanvasTextKind):T
   return kind==='screen_text'?'typeset':isBalloonText(item as Bubble)?'bubble':(item as Bubble).shape as 'handwritten'|'typeset';
 }
 
+/** Materialize point text in the existing text-folder representation; callers own edit authorization. */
+export function ensureCanvasTextOwner(document:MangaDocument,target:CanvasTextTarget,screenPosition?:BubbleTextPosition):CanvasTextTarget|null {
+  const item=canvasTextAt(document,target);
+  if(!item)return null;
+  if(target.kind==='bubble')return target;
+  const page=document.manga.pages[target.pageIndex],owner=target.overlay?page.page_overlay!:page.panels[target.panelIndex],screen=item as ScreenText;
+  const bubble:Bubble={...screen,shape:'typeset',tail:false,text_style:{...textStyleOf(screen,'screen_text'),fontWeight:screen.text_style?.fontWeight??700,lineHeight:screen.text_style?.lineHeight??1.15},bbox:screen.bbox??(target.overlay?overlayTextFallbackBox(page.canvas,target.index):fallbackBox(page.panels[target.panelIndex],'screen_text',target.index))};
+  const size=screenTextMinimumSize(screen),box=bubble.bbox!;
+  bubble.text_position=screenPosition??{x:bubble.text_style!.orientation==='vertical'?1-size.w/(2*box.w):size.w/(2*box.w),y:size.h/(2*box.h)};
+  delete (bubble as ScreenText).orientation;
+  (owner.bubbles??=[]).push(bubble);
+  owner.screen_text!.splice(target.index,1);if(!owner.screen_text!.length)delete owner.screen_text;
+  return {...target,kind:'bubble',index:owner.bubbles.length-1};
+}
+
 /** Retain the native owner and its original/painted layers when reclassifying OCR. */
 export function changeCanvasTextCategory(document:MangaDocument,target:CanvasTextTarget,category:TextCategory,screenPosition?:BubbleTextPosition):CanvasTextTarget|null {
   const item=canvasTextAt(document,target);
   if(!item||!canvasTextEditable(document,target)||canvasTextCategory(item,target.kind)===category)return null;
-  const page=document.manga.pages[target.pageIndex],owner=target.overlay?page.page_overlay!:page.panels[target.panelIndex];
-  let bubble:Bubble,converted=target;
-  if(target.kind==='screen_text'){
-    const screen=item as ScreenText;
-    bubble={...screen,text_style:{...textStyleOf(screen,'screen_text'),fontWeight:screen.text_style?.fontWeight??700,lineHeight:screen.text_style?.lineHeight??1.15},bbox:screen.bbox??(target.overlay?overlayTextFallbackBox(page.canvas,target.index):fallbackBox(page.panels[target.panelIndex],'screen_text',target.index))};
-    const size=screenTextMinimumSize(screen),box=bubble.bbox!;
-    bubble.text_position=screenPosition??{x:bubble.text_style!.orientation==='vertical'?1-size.w/(2*box.w):size.w/(2*box.w),y:size.h/(2*box.h)};
-    delete (bubble as ScreenText).orientation;
-    (owner.bubbles??=[]).push(bubble);
-    owner.screen_text!.splice(target.index,1);if(!owner.screen_text!.length)delete owner.screen_text;
-    converted={...target,kind:'bubble',index:owner.bubbles.length-1};
-  }else{
-    bubble=item as Bubble;
-    bubble.text_style={...bubble.text_style,fontWeight:bubble.text_style?.fontWeight??(bubble.shape==='handwritten'?800:600)};
-  }
+  const converted=ensureCanvasTextOwner(document,target,screenPosition);
+  if(!converted)return null;
+  const page=document.manga.pages[target.pageIndex],owner=target.overlay?page.page_overlay!:page.panels[target.panelIndex],bubble=canvasTextAt(document,converted) as Bubble;
+  if(target.kind==='bubble')bubble.text_style={...bubble.text_style,fontWeight:bubble.text_style?.fontWeight??(bubble.shape==='handwritten'?800:600)};
   bubble.shape=category==='bubble'?'normal':category;
   delete bubble.bezier;
   bubble.tail=false;delete bubble.tail_style;delete bubble.tail_root;

@@ -12,7 +12,7 @@ import { CUBE_STAGE_ID } from '../lib/background3d.ts';
 import type { BackgroundCapture, BackgroundStage, FigureSize } from '../types.ts';
 import { HUMAN_POSE_PREVIEW_MARGIN, humanPoseCutOutline, humanPosePreviewWindow, MANUAL_HUMAN_POSE_FRAMING, type HumanPoseCutFrame } from '../lib/humanPoseFraming.ts';
 import type { HumanPosePanelContext } from '../lib/humanPoseComposition.ts';
-import type { HumanPoseCameraSubject, HumanPoseCatalog, HumanPoseCatalogEntry, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, HumanPoseSurfacePlacement, HumanPoseTextSelection, PoseVector } from '../lib/humanPoseTypes.ts';
+import type { HumanPoseBodyModel, HumanPoseCameraSubject, HumanPoseCatalog, HumanPoseCatalogEntry, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, HumanPoseSurfacePlacement, HumanPoseTextSelection, PoseVector } from '../lib/humanPoseTypes.ts';
 import HumanPoseMotionControls from './HumanPoseMotionControls.tsx';
 import HumanPoseSurfaceControls, { type HumanPoseSurfacePickMode } from './HumanPoseSurfaceControls.tsx';
 import BackgroundCameraGizmo from './BackgroundCameraGizmo.tsx';
@@ -44,6 +44,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
   const [poseValue, setPoseValue] = useState(() => structuredClone(value));
   const poseRef = useRef(poseValue); poseRef.current = poseValue;
   const presetScene = useRef<HumanPoseSceneSettings>();
+  const bodyChange = useRef(false);
   const exactScene = useRef(false), poseLoading = useRef(true);
   const [catalog, setCatalog] = useState<HumanPoseCatalog | null>(null), [query, setQuery] = useState('');
   const [catalogError, setCatalogError] = useState(''), [catalogAttempt, setCatalogAttempt] = useState(0);
@@ -128,7 +129,8 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
     poseLoading.current = true; setLoading(true); setError(''); setPreview('');
     void (async () => {
       try {
-        const assets = await withNewCreationBridgeSession(() => loadHumanPoseScene(poseValue.pose_id, poseValue.catalog_sha256));
+        const bodyModel = (presetScene.current ?? poseValue.scene)?.body_model;
+        const assets = await withNewCreationBridgeSession(() => loadHumanPoseScene(poseValue.pose_id, poseValue.catalog_sha256, bodyModel));
         if (cancelled || !host.current) return;
         const changingPreset = Boolean(presetScene.current);
         const saved = presetScene.current ? humanPoseSceneForPreset(presetScene.current, assets.source) : poseValue.scene && structuredClone(poseValue.scene);
@@ -138,7 +140,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
           ? await loadHumanPoseBackground(saved.background.sourceId, stages) : undefined;
         if (cancelled || !host.current) return;
         let active = existing;
-        if (active && saved) active.replacePose(assets, saved, changingPreset, background);
+        if (active && saved) { await active.replacePose(assets, saved, changingPreset || bodyChange.current, background, bodyChange.current); if (cancelled) return; }
         else {
           active = await HumanPoseSceneRenderer.create(host.current, assets, saved, aspect, background);
           if (cancelled) { active.dispose(); return; }
@@ -146,14 +148,14 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
         }
         active.setPreviewMargin(HUMAN_POSE_PREVIEW_MARGIN, cutFrame);
         active.selectJoint('', details);
-        renderer.current = active; presetScene.current = undefined; exactScene.current = false;
+        renderer.current = active; presetScene.current = undefined; exactScene.current = false; bodyChange.current = false;
         initial.current ??= snapshot(active.snapshot()); setDraft(active.snapshot());
       } catch (cause) { if (!cancelled) { setDraft(null); setError(cause instanceof Error ? cause.message : '3D表示を開けませんでした'); } }
       finally { if (!cancelled) { poseLoading.current = false; setLoading(false); } }
     })();
     return () => { cancelled = true; if (motionRun.current !== null) cancelAnimationFrame(motionRun.current); motionRun.current = null; motionStart.current = null; backgroundRequest.current++; drag.current = null; };
     // 開いた時点の保存値をdraftへ複製し、確定するまで親を書き換えない。
-  }, [poseValue.pose_id, poseValue.catalog_sha256, attempt]);
+  }, [poseValue.pose_id, poseValue.catalog_sha256, poseValue.scene?.body_model, attempt]);
   useEffect(() => () => { renderer.current?.dispose(); renderer.current = null; }, []);
 
   const update = (next: HumanPoseSceneSettings, remember = true) => {
@@ -214,11 +216,12 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
     restoreSnapshot(next); setHistoryVersion(v => v + 1);
   };
   const restoreSnapshot = (next: PoseSnapshot) => {
-    cancelInteraction(); presetScene.current = undefined; exactScene.current = true;
+    cancelInteraction(); presetScene.current = undefined; exactScene.current = true; bodyChange.current = false;
     const samePose = next.selection.pose_id === poseRef.current.pose_id && next.selection.catalog_sha256 === poseRef.current.catalog_sha256;
+    const sameModel = next.scene.body_model === renderer.current?.snapshot().body_model;
     const selection = { ...structuredClone(next.selection), scene: structuredClone(next.scene) };
     poseRef.current = selection; setPoseValue(selection);
-    if (samePose && renderer.current) void changeBackground(next.scene);
+    if (samePose && sameModel && renderer.current) void changeBackground(next.scene);
     else { poseLoading.current = true; setLoading(true); setSelected(''); if (samePose) setAttempt(v => v + 1); }
   };
   const choosePose = (pose: HumanPoseCatalogEntry) => {
@@ -228,6 +231,14 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
     const next = { ...selectHumanPose(pose, catalog.catalog_sha256), input_mode: poseRef.current.input_mode };
     presetScene.current = before?.scene; exactScene.current = false; poseLoading.current = true;
     poseRef.current = next; setPoseValue(next); setLoading(true); setSelected(''); setDetachBackground(false);
+  };
+  const chooseBodyModel = (model?: HumanPoseBodyModel) => {
+    if (poseLoading.current || backgroundBusy || !renderer.current || renderer.current.snapshot().body_model === model) return;
+    cancelInteraction();
+    const before = snapshot()!; remember(before.scene);
+    const next = { ...structuredClone(poseRef.current), scene: { ...before.scene, body_model: model } };
+    presetScene.current = undefined; bodyChange.current = true; exactScene.current = false; poseLoading.current = true;
+    poseRef.current = next; setPoseValue(next); setAttempt(v => v + 1); setLoading(true); setSelected(''); setDetachBackground(false);
   };
   const camera = (next: Camera) => { if (draft) update({ ...draft, camera: next }); };
   const flipBody = () => {
@@ -340,6 +351,11 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             {draft && <BackgroundCameraGizmo camera={draft.camera} disabled={loading || backgroundBusy} onChange={camera} />}
           </div>
           <p class="field-note" id={`${id}-controls`}>三方矢印：ドラッグで角度調整・クリックで軸方向へ ／ ホイール：近づく・離れる ／ Space＋ドラッグ：画面を掴んで移動。マーカー：姿勢を動かす ／ Shift＋ドラッグ：奥行き移動。暗い部分は撮影範囲外です。枠線・暗幕・床・操作マーカーは撮影に入りません。</p>
+          {draft && <fieldset disabled={loading || backgroundBusy}><legend>表示モデル</legend>
+            <select aria-label="表示モデル" value={draft.body_model ?? ''} onChange={event => chooseBodyModel(event.currentTarget.value === 'bodychan-female' ? 'bodychan-female' : undefined)}>
+              <option value="">軽量表示</option><option value="bodychan-female">女性モデル</option>
+            </select>
+          </fieldset>}
           {draft && <fieldset class="human-pose-body-choice" disabled={loading || backgroundBusy}><legend>体勢の左右</legend>
             <div class="human-pose-scene-buttons">
               <button type="button" class="secondary-button" aria-pressed={draft.body_mirror === 'mirrored'} onClick={flipBody}>左右反転</button>

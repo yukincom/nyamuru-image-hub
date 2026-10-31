@@ -17,6 +17,7 @@ export function validateHumanPoseScene(value: unknown): asserts value is HumanPo
   const { source, placement, camera, frame } = value;
   if (!hashes.every(key => hash(source[key])) || !Number.isSafeInteger(source.pose_revision) || Number(source.pose_revision) < 1
     || (value.body_mirror !== undefined && value.body_mirror !== 'original' && value.body_mirror !== 'mirrored')
+    || (value.body_model !== undefined && value.body_model !== 'bodychan-female')
     || (value.stature_m !== undefined && !finite(value.stature_m, .3, 3))
     || !vector(placement.position) || !finite(placement.yaw_degrees, -180, 180)
     || (placement.scale !== undefined && !finite(placement.scale, .001, 1000))

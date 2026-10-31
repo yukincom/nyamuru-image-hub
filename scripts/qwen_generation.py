@@ -1,5 +1,6 @@
 """Immutable, owner-scoped Qwen jobs; no LLM/server start and no manuscript writes."""
 from __future__ import annotations
+from difflib import SequenceMatcher
 import base64
 import json
 import math
@@ -91,11 +92,14 @@ FORMAT_LABELS = {label: item['en'] for item in MANGA_FORMATS
 FIXED_ARTWORK = {item['ja']: item['en'].lower()
                  for item in json.loads((CONTENT_ROOT / 'artwork-translations.json').read_text(encoding='utf-8'))
                  if '{{' not in item['ja'] and not re.search(r'[\u3040-\u30ff\u3400-\u9fff]', item['en'])}
+FIXED_ARTWORK['文字・吹き出し・背景の風景は加えない。'] = 'Do not add text, speech balloons, or background scenery.'
 LETTERING_STYLES = json.loads((CONTENT_ROOT / 'handwritten-styles.json').read_text(encoding='utf-8'))
 LETTERING_ENGLISH = {field: {item['en'] for item in LETTERING_STYLES[key]}
                      for field, key in (('pen', 'pens'), ('expression', 'expressions'))}
 FIXED_LETTERING_LINE = re.compile(
-    r'Lettering (?P<field>pen|expression)(?: for (?:panel [0-9]+|page foreground), text [1-9][0-9]*)?: (?P<value>.+)\.')
+    r'Lettering (?P<field>pen|expression|style)(?: for (?:panel [0-9]+|page foreground), text [1-9][0-9]*)?: (?P<value>.+)\.')
+HANDWRITTEN_TRANSLATIONS = {**FIXED_ARTWORK, **{item['ja']: item['en'] for item in
+    json.loads((CONTENT_ROOT / 'handwritten-prompt-translations.json').read_text(encoding='utf-8'))}}
 TRANSPARENT_SUBJECT = '背景・文字・吹き出しは加えず、外側は透明にする。'
 BACKGROUND_LABELS = {
     '透過': 'transparent background.', '透明': 'transparent background.',
@@ -110,7 +114,120 @@ FIXED_OPTION_LINE = re.compile(
 
 def is_fixed_lettering_line(line):
     match = FIXED_LETTERING_LINE.fullmatch(line.strip())
-    return bool(match and match['value'] in LETTERING_ENGLISH[match['field']])
+    if not match:
+        return False
+    if match['field'] == 'style':
+        return all(value in LETTERING_ENGLISH['expression'] for value in match['value'].split('; '))
+    return match['value'] in LETTERING_ENGLISH[match['field']]
+
+
+def prepare_handwritten_prompt(value):
+    """Compile known UI instructions; authored text and free instructions remain verbatim."""
+    prompt = value['prompt']
+    literal = value['literal_text'][0]
+    if literal not in prompt:
+        raise ValueError('ページに描く文字が生成指示から欠落しています')
+    token = '__NYAMURU_HANDWRITTEN_TEXT__'
+    while token in prompt:
+        token = '_' + token
+    protected = {}
+    def opaque(text):
+        key = token + str(len(protected)) + '__'
+        protected[key] = text
+        return key
+    authored = value.get('handwritten_prompt', {})
+    original = authored.get('confirmation', prompt)
+    description = authored.get('description', '')
+    description_start = original.find('描き方：' + description) + 4 if description and '描き方：' + description in original else -1
+    description_end = description_start + len(description)
+    before, after = original.splitlines(keepends=True), prompt.splitlines(keepends=True)
+    before_offsets, after_offsets = [0], [0]
+    for line in before:
+        before_offsets.append(before_offsets[-1] + len(line))
+    for line in after:
+        after_offsets.append(after_offsets[-1] + len(line))
+    spans = []
+    # Line provenance preserves separate edits and unchanged fixed lines between them.
+    for tag, a, b, c, d in SequenceMatcher(None, [line.rstrip('\r\n') for line in before], [line.rstrip('\r\n') for line in after], autojunk=False).get_opcodes():
+        if tag != 'equal':
+            for index in range(c, d):
+                start = after_offsets[index] + (4 if after[index].startswith('描き方：') else 0)
+                spans.append((start, after_offsets[index + 1]))
+        elif description_start >= 0:
+            for old_index, new_index in zip(range(a, b), range(c, d)):
+                start, end = max(before_offsets[old_index], description_start), min(before_offsets[old_index + 1], description_end)
+                if start < end:
+                    offset = after_offsets[new_index] - before_offsets[old_index]
+                    spans.append((start + offset, min(end + offset, after_offsets[new_index + 1])))
+    merged = []
+    for start, end in sorted(spans):
+        if start >= end:
+            continue
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    for start, end in reversed(merged):
+        prompt = prompt[:start] + opaque(prompt[start:end]) + prompt[end:]
+    block = 'text:\n' + literal
+    if block in prompt:
+        prompt = prompt.replace(block, 'text:\n' + opaque(literal))
+    elif literal in prompt:
+        prompt = prompt.replace(literal, opaque(literal))
+    # Opaque spans remain separate so an appended note cannot hide a preceding fixed line.
+    def translate_fragment(fragment):
+        paragraphs = []
+        for paragraph in re.split(r'(\n[ \t]*\n)', fragment):
+            if not paragraph.strip():
+                paragraphs.append(paragraph)
+                continue
+            if paragraph.strip() in HANDWRITTEN_TRANSLATIONS:
+                paragraphs.append(HANDWRITTEN_TRANSLATIONS[paragraph.strip()])
+                continue
+            lines = []
+            for raw_line in paragraph.splitlines(keepends=True):
+                line = raw_line.rstrip('\r\n')
+                ending = raw_line[len(line):]
+                body = line.strip()
+                translated = HANDWRITTEN_TRANSLATIONS.get(body)
+                if translated is not None:
+                    lines.append(translated + ending)
+                    continue
+                match = FIXED_OPTION_LINE.fullmatch(body)
+                if match and match['field'] == '出力形式' and match['label'].strip() in FORMAT_LABELS:
+                    lines.append(f"Output format: {FORMAT_LABELS[match['label'].strip()]}.")
+                elif body in ('文字の組み方向：縦書き', '文字の組み方向：横書き'):
+                    lines.append('Text orientation: ' + ('vertical.' if body.endswith('縦書き') else 'horizontal.'))
+                elif body in ('読み方向：右から左', '読み方向：左から右'):
+                    lines.append('Reading direction: ' + ('right to left.' if body.endswith('右から左') else 'left to right.'))
+                elif body.startswith('ペン：') and (pen := next((item for item in LETTERING_STYLES['pens'] if item['ja'] == body[3:]), None)):
+                    lines.append(f"Lettering pen: {pen['en']}.")
+                elif body.startswith('表現：') and all(label in {item['ja'] for item in LETTERING_STYLES['expressions']} for label in body[3:].split('、')):
+                    selected = body[3:].split('、')
+                    lines.append('Lettering style: ' + '; '.join(item['en'] for item in LETTERING_STYLES['expressions'] if item['ja'] in selected) + '.')
+                elif body.startswith('書体：'):
+                    lines.append('Font family: ' + body[3:])
+                elif body.startswith('文字の太さ：'):
+                    lines.append('Font weight: ' + body[6:])
+                elif body.startswith('描き方：'):
+                    lines.append('Lettering instructions: ' + line[line.index('描き方：') + 4:])
+                elif (size := re.fullmatch(r'出力キャンバス：幅(\d+) × 高さ(\d+) px。(?:原稿上の配置サイズ：幅([\d.]+) × 高さ([\d.]+) mm。)?文字全体をこの縦横比の範囲内に収めてください。', body)):
+                    lines.append(f'Output canvas: {size[1]} × {size[2]} px. ' +
+                                 (f'Manuscript placement: {size[3]} × {size[4]} mm. ' if size[3] else '') +
+                                 'Fit all of the lettering within this aspect ratio.')
+                else:
+                    lines.append(line)
+                lines[-1] += ending
+            paragraphs.append(''.join(lines))
+        return ''.join(paragraphs)
+
+    chunks = re.split('(' + '|'.join(re.escape(key) for key in protected) + ')', prompt) if protected else [prompt]
+    compiled = ''.join(protected[chunk] if chunk in protected else translate_fragment(chunk) for chunk in chunks)
+    return {'prompt': compiled,
+            'references': [{'file': ref['file'], 'label': {'paint': 'Drawing reference', 'correction': 'Correction layer',
+                            'style': 'Style reference'}.get(ref.get('role'), 'Reference') + f' {index}'}
+                           for index, ref in enumerate(value['references'], 1)],
+            'request_sha256': sha256(canonical(value))}
 
 
 def split_fixed_generation_prompt(prompt, *, extract_framing=True):
@@ -202,7 +319,7 @@ def validate_generation_subject(value):
     kind = value.get('content_kind')
     if bubble:
         literals = value.get('literal_text')
-        if kind != 'handwritten' or not isinstance(literals, list) or len(literals) != 1:
+        if kind not in ('handwritten', 'typeset') or not isinstance(literals, list) or len(literals) != 1:
             raise ValueError('吹き出し単品は生成できません。描き文字を選択してください')
         text(literals[0], '描き文字の本文', 500)
         if not literals[0].strip():
@@ -218,7 +335,7 @@ def normalize(body, *, fixed_size=None):
     if not re.fullmatch(r'page|panel|background|figure-\d+|bubble-\d+', owner):
         raise ValueError('描画対象が不正です')
     validate_generation_subject(body)
-    handwritten = body.get('content_kind') == 'handwritten'
+    handwritten = body.get('content_kind') in ('handwritten', 'typeset')
     overlay = body.get('overlay')
     page, panel = body.get('page_number'), body.get('panel_id')
     if not isinstance(overlay, bool) or any(isinstance(v, bool) or not isinstance(v, int) for v in (page, panel)) \
@@ -299,7 +416,14 @@ def normalize(body, *, fixed_size=None):
     if owner in ('page', 'panel') or handwritten:
         value['literal_text'] = literal_text
     if handwritten:
-        value['content_kind'] = 'handwritten'
+        value['content_kind'] = body['content_kind']
+        if 'handwritten_prompt' in body:
+            authored = body['handwritten_prompt']
+            if not isinstance(authored, dict):
+                raise ValueError('描き文字の確認指示が不正です')
+            value['handwritten_prompt'] = {'confirmation': text(authored.get('confirmation'), '描き文字の確認指示')}
+            if authored.get('description') is not None:
+                value['handwritten_prompt']['description'] = text(authored['description'], '描き方', required=False)
     return value, images
 
 
@@ -313,7 +437,13 @@ def validate_english(value, english):
         raise ValueError('英訳の参照資料が元の入力と一致しません')
     prompt = english.get('prompt')
     text(prompt, '英訳', 40_000)
-    if value.get('owner_key') in ('page', 'panel') or value.get('content_kind') == 'handwritten':
+    if value.get('content_kind') in ('handwritten', 'typeset'):
+        if any(literal not in prompt for literal in value.get('literal_text', [])):
+            raise ValueError('ページに描く文字が生成指示から欠落しています')
+        if english != prepare_handwritten_prompt(value):
+            raise ValueError('描き文字の生成指示が定型文・原文と一致しません')
+        return
+    if value.get('owner_key') in ('page', 'panel') or value.get('content_kind') in ('handwritten', 'typeset'):
         # Only explicitly authored on-page text may stay Japanese. Instructions
         # and reference labels still obey the existing English-only contract.
         for literal in value.get('literal_text', []):
@@ -513,7 +643,7 @@ class QwenGenerationService:
                     english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
                     final_prompt = direct_workflow_prompt(value)
                 else:
-                    english = translate(value)
+                    english = prepare_handwritten_prompt(value) if value.get('content_kind') in ('handwritten', 'typeset') else translate(value)
                     from qwen_generation_phase import generation_prompt
                     final_prompt = generation_prompt(value, english)
                 raw = canonical(english)

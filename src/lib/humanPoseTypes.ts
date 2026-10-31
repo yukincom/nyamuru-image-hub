@@ -56,6 +56,7 @@ export interface HumanPoseCameraPrompt {
 
 // 作品内の配置と撮影設定。素材のbone transform・一覧画像とは独立に保存する。
 export type HumanPoseBodyMirror = 'original' | 'mirrored';
+export type HumanPoseBodyModel = 'bodychan-female';
 export interface HumanPoseJointEdits {
   version: 1;
   rotations: Record<string, PoseQuaternion>;
@@ -81,6 +82,7 @@ export interface HumanPoseSceneSettings {
   version: 1;
   source: { base_sha256: string; rig_sha256: string; pose_sha256: string; rig_signature: string; pose_revision: number };
   body_mirror?: HumanPoseBodyMirror;
+  body_model?: HumanPoseBodyModel;
   joint_edits?: HumanPoseJointEdits;
   motion?: HumanPoseMotionSelection;
   stature_m?: number;
@@ -99,6 +101,7 @@ export interface HumanPoseSceneAssets {
   rig: HumanPoseRig;
   pose: HumanPoseData;
   source: HumanPoseSceneSettings['source'];
+  body?: { id: HumanPoseBodyModel; base: ArrayBuffer; rig: HumanPoseRig };
 }
 
 // 一覧の情報と表示用URLは、人物に保存する選択値から分ける。
@@ -128,6 +131,7 @@ export interface HumanPoseRig {
   rig_signature: string;
   base_glb_sha256: string;
   placement_root: string;
+  head_length_m?: number;
   bones: { name: string; parent: string | null; rest: HumanPoseTransform }[];
 }
 export interface HumanPoseCamera {

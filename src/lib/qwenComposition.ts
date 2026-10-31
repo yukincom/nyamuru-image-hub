@@ -124,7 +124,7 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
     }
     for (const [index, bubble] of panel.bubbles.entries()) if (bubbleVisible(bubble) && bubble.text) {
       const characterName=(bubble.speakerId?manga.characters.find(character=>character.localId===bubble.speakerId)?.name:undefined)||bubble.speaker||'なし';
-      literalText.push(bubble.text); instructions.push(`${label}の${textDisplayLabel(index)}（${isHandwrittenText(bubble)?'描き文字':isBalloonText(bubble)?'フキダシ':'写植文字'}、対応キャラクター：${characterName}）：「${bubble.text}」${isHandwrittenText(bubble)?`。${bubble.lettering_description||''} 対応キャラクターは文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`:''}`);
+      literalText.push(bubble.text); instructions.push(`${label}の${textDisplayLabel(index)}（${isHandwrittenText(bubble)?'描き文字':isBalloonText(bubble)?'フキダシ':'写植文字'}、対応キャラクター：${characterName}）：「${bubble.text}」${isHandwrittenText(bubble)?`。対応キャラクターは文字の意味・ニュアンスに関係する人物であり、発話やしっぽを意味しない。`:''}`);
       if(isHandwrittenText(bubble))instructions.push(handwrittenStylePrompt(bubble,{...(entry.overlay?{}:{panelId:panel.id}),text:index+1}));
       if(isHandwrittenText(bubble)&&(bubble.speakerId||bubble.speaker))instructions.push(`${label}の${textDisplayLabel(index)}の重なり：対応キャラクター「${characterName}」の${bubble.lettering_depth==='behind'?'後ろに配置し、重なる部分は人物が文字を隠す':'手前に配置し、重なる部分は文字を人物より手前に見せる'}。`);
       if(bubble.shape==='typeset')instructions.push(typesetTextInstruction(bubble,'bubble',manga.meta.font));

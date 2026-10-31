@@ -12,6 +12,7 @@ import { paintScene } from '../src/lib/paintDocument';
 import { buildQwenGenerationPlan, QWEN_GENERATION_PROFILE, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
 import { decodeHumanPoseScene } from '../src/lib/humanPoseSceneAssets';
 import { HumanPoseSceneRenderer } from '../src/lib/humanPoseSceneRenderer';
+import { captureHumanPoseReference } from '../src/lib/humanPoseGeneration';
 import { confirmHumanPoseCameraPrompt } from '../src/lib/humanPoseScene';
 import { selectHumanPose, humanPoseSelectable, requireHumanPoseGenerationReady } from '../src/lib/humanPoseSelection';
 import type {HumanPoseTextSelection, HumanPoseCatalogEntry} from '../src/lib/humanPoseTypes';
@@ -67,7 +68,7 @@ window.fetch=async(input,options)=>{
   if(path==='/api/image-generation/prepare')return Response.json({...supervisor,llm_stopped:true});
   if(path==='/api/human-pose/catalog')return Response.json({...bridge,...fixture.catalog});
   if(path==='/api/human-pose/scene'){
-    const selected=body.pose_id===fixture.scene.pose_id?fixture:await (await fixtureFetch(`/pose-fixture?pose=${encodeURIComponent(body.pose_id)}`)).json();
+    const selected=body.pose_id===fixture.scene.pose_id&&!body.body_model?fixture:await (await fixtureFetch(`/pose-fixture?pose=${encodeURIComponent(body.pose_id)}${body.body_model?`&body=${encodeURIComponent(body.body_model)}`:''}`)).json();
     poseSources.set(body.pose_id,selected.scene.pose.sha256);
     return Response.json({...bridge,...selected.scene});
   }
@@ -157,10 +158,83 @@ async function verifyPosePresets(){
   return `${checks}項目成功：番号付き一覧・検索・実3D切替・頭位置/カメラ/撮影枠/canvas/スクロール保持・Undo/Redo・取消・確定・保存往復`;
  }finally{render(null,host);host.remove();HumanPoseSceneRenderer.create=createRenderer;console.error=logError;}
 }
+// 見込み: 女性モデルのnative骨格へ同じポーズを移し、既存編集と保存へ接続すれば、体形を保って手指を動かせる。
+// 合格: 同一canvasでモデル交換・頭/カメラ保持、指編集のPNG変化と他部位不変、Undo/Redo完全一致、姿勢・動き・OMNY・再撮影を確認。
+// 範囲: 実GLB/骨格/編集UIとメモリ内作品。APIはローカル素材fixture。生成モデル・実作品のディスク保存は含まない。
+async function verifyFemaleBody(){
+ const host=document.createElement('div');document.body.append(host);let active:HumanPoseSceneRenderer|undefined,creates=0,changes=0;
+ const originalCreate=HumanPoseSceneRenderer.create,errors:unknown[][]=[],logError=console.error,checks:string[]=[];
+ HumanPoseSceneRenderer.create=async(...args:Parameters<typeof originalCreate>)=>{creates++;active=await originalCreate(...args);return active;};
+ console.error=(...args:unknown[])=>{errors.push(args);logError(...args);};
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const settle=async()=>{for(let i=0;i<4;i++)await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));};
+ const wait=async(test:()=>boolean,label:string)=>{const deadline=performance.now()+20000;while(!test()&&performance.now()<deadline)await settle();check(test(),label);};
+ let value:HumanPoseTextSelection|undefined={...selectHumanPose(entry,fixture.scene.catalog_sha256),input_mode:'image'};
+ const originalValue=JSON.stringify(value);
+ const draw=()=>render(<FigureHumanPoseEditor value={value} aspect={.5} framingSize="full" onChange={next=>{value=next;changes++;draw();}}/>,host);
+ const dialog=()=>document.querySelector<HTMLElement>('.human-pose-scene-dialog')!;
+ const button=(name:string)=>[...dialog().querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.trim()===name)!;
+ const loaded=()=>!!dialog()?.querySelector('canvas')&&!dialog()?.querySelector<HTMLFieldSetElement>('.human-pose-presets')?.disabled;
+ const open=async()=>{host.querySelector<HTMLButtonElement>('.figure-human-pose-edit')!.click();await wait(loaded,'3D読込');};
+ const head=()=>active!.focusJoint('head').camera.target;
+ const equalPoint=(a:number[],b:number[])=>a.every((v,i)=>Math.abs(v-b[i])<1e-8);
+ const chooseModel=async(id:string)=>{const select=dialog().querySelector<HTMLSelectElement>('select[aria-label="表示モデル"]')!;select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));await settle();await wait(()=>loaded()&&(active!.snapshot().body_model??'')===id,`モデル交換：${id||'軽量'}`);};
+ const capture=async()=>{button('撮影プレビュー').click();await settle();return dialog().querySelector<HTMLImageElement>('.human-pose-scene-preview img')!.src;};
+ try{
+  draw();await open();const originalCanvas=dialog().querySelector('canvas'),originalScene=active!.snapshot(),originalHead=head(),lightImage=await capture();
+  await chooseModel('bodychan-female');
+  check(creates===1&&dialog().querySelector('canvas')===originalCanvas,'表示キャンバスを交換せず女性モデルを使う');
+  check(equalPoint(head(),originalHead),'モデル交換でも頭のworld位置を保持');
+  check(JSON.stringify(active!.snapshot().camera)===JSON.stringify(originalScene.camera)&&JSON.stringify(active!.snapshot().framing)===JSON.stringify(originalScene.framing),'カメラと切取りを保持');
+  check(JSON.stringify(active!.snapshot().source)===JSON.stringify(originalScene.source),'catalogの素体とポーズのsourceを保持');
+  const femaleImage=await capture();check(femaleImage!==lightImage,'撮影にも女性モデルの面を反映');
+  check(changes===0&&JSON.stringify(value)===originalValue,'モデル交換は確定まで作品へ書かない');
+  check(active!.snapshot().joint_edits===undefined,'無編集のモデル交換では関節編集を作らない');
+  await chooseModel('');check(await capture()===lightImage,'無編集で軽量表示へ戻すと元のPNGへ完全一致');
+  await chooseModel('bodychan-female');check(await capture()===femaleImage,'無編集で女性モデルへ戻してもPNG完全一致');
+  const angle=async(id:string,value:string)=>{
+    const joints=[...dialog().querySelectorAll<HTMLSelectElement>('select')].find(select=>select.closest('label')?.textContent?.startsWith('選択中の関節'))!;
+    joints.value=id;joints.dispatchEvent(new Event('change',{bubbles:true}));await settle();
+    const bend=[...dialog().querySelectorAll<HTMLInputElement>('input[type=range]')].find(input=>input.closest('label')?.textContent?.startsWith('曲げ'))!;
+    bend.value=value;bend.dispatchEvent(new Event('input',{bubbles:true}));await settle();
+  };
+  await angle('footBall.L','40');check(await capture()!==femaleImage,'足先の曲げも実メッシュと撮影PNGに反映');
+  button('元に戻す').click();await settle();await wait(loaded,'足編集Undo');check(await capture()===femaleImage,'足の曲げを解除すると元のPNGへ完全一致');
+  const wristBefore=active!.focusJoint('wrist.L').camera.target,rightFingerBefore=active!.focusJoint('finger2-tip.R').camera.target;
+  await angle('finger2-1.L','45');
+  const fingerImage=await capture();check(fingerImage!==femaleImage&&!!active!.snapshot().joint_edits?.rotations['finger2-1.L'],'指の編集で実メッシュと撮影PNGが変わる');
+  check(equalPoint(wristBefore,active!.focusJoint('wrist.L').camera.target)&&equalPoint(rightFingerBefore,active!.focusJoint('finger2-tip.R').camera.target),'左指だけの編集で手首と右指を動かさない');
+  button('元に戻す').click();await settle();await wait(loaded,'指編集Undo');check(await capture()===femaleImage,'指編集Undoで撮影PNG完全一致');
+  button('やり直す').click();await settle();await wait(loaded,'指編集Redo');check(await capture()===fingerImage,'指編集Redoで撮影PNG完全一致');
+  await chooseModel('');check(dialog().querySelector('canvas')===originalCanvas,'軽量表示へ戻ってもcanvasを保持');
+  button('元に戻す').click();await settle();await wait(()=>loaded()&&active!.snapshot().body_model==='bodychan-female','モデル交換Undo');
+  check(await capture()===fingerImage,'モデル交換Undoで指編集込みの女性PNGを復元');
+  const beforePreset=active!.snapshot(),headBeforePreset=head();
+  dialog().querySelector<HTMLButtonElement>('[data-pose-id="pose-mh-sit01"]')!.click();await settle();await wait(()=>loaded()&&dialog().querySelector('h2')?.textContent?.includes('床に座る')===true,'女性モデルで座る');
+  check(active!.snapshot().body_model==='bodychan-female'&&equalPoint(head(),headBeforePreset),'姿勢変更でも女性モデルと頭の位置を保持');
+  check(JSON.stringify(active!.snapshot().camera)===JSON.stringify(beforePreset.camera)&&dialog().querySelector('canvas')===originalCanvas,'姿勢変更でもカメラとcanvasを保持');
+  check(await capture()!==fingerImage,'座る姿勢を実メッシュへ反映');
+  button('元に戻す').click();await settle();await wait(()=>loaded()&&dialog().querySelector('h2')?.textContent?.includes(entry.label_ja)===true,'女性姿勢Undo');check(await capture()===fingerImage,'姿勢Undoで指編集込みの女性PNGを復元');
+  const motions=dialog().querySelector<HTMLSelectElement>('.human-pose-motion select')!;motions.value=active!.motionClips[0].id;motions.dispatchEvent(new Event('change',{bubbles:true}));await settle();
+  const phase=dialog().querySelector<HTMLInputElement>('.human-pose-motion input[type=range]')!;phase.value='500';phase.dispatchEvent(new Event('input',{bubbles:true}));phase.dispatchEvent(new Event('blur'));await settle();
+  check(active!.snapshot().motion?.phase===.5&&active!.snapshot().body_model==='bodychan-female','女性モデルでモーションの時点を編集');
+  const savedImage=await capture();button('確定').click();await settle();check(changes===1&&value?.scene?.body_model==='bodychan-female','女性モデルと動き・姿勢を確定');
+  const stored=structuredClone(initial);stored.manga.pages[0].panels[0].figures![0].human_pose=value;
+  check(JSON.stringify(parseMangaYaml(toStoredMangaYaml(stored)).manga.pages[0].panels[0].figures![0].human_pose)===JSON.stringify(value),'OMNY往復で表示モデルと全編集を保持');
+  HumanPoseSceneRenderer.create=originalCreate;
+  check(await captureHumanPoseReference(value!,'full',.5)===savedImage,'生成参照の再撮影も同じ女性PNGになる');
+  HumanPoseSceneRenderer.create=async(...args:Parameters<typeof originalCreate>)=>{creates++;active=await originalCreate(...args);return active;};
+  await open();check(dialog().querySelector<HTMLSelectElement>('select[aria-label="表示モデル"]')!.value==='bodychan-female'&&await capture()===savedImage,'開き直して同じ女性モデル・撮影画像を復元');
+  button('取消').click();await settle();check(changes===1,'取消で保存済み作品へ追加変更を出さない');
+  check(errors.length===0,'モデル交換・手指・動き・履歴・終了でconsole errorなし');
+  return `PASS ${checks.length}項目\n${checks.join('\n')}`;
+ }finally{render(null,host);host.remove();HumanPoseSceneRenderer.create=originalCreate;console.error=logError;}
+}
 function Fixture(){
   const [active,setActive]=useState(0),[selection,setSelection]=useState<any>(null);
   const [doc,setDoc]=useState(initial),[plan,setPlan]=useState<QwenGenerationPlan|null>(null),[summary,setSummary]=useState('未実行'),[shots,setShots]=useState<Array<{label:string;image:string}>>([]),[error,setError]=useState('');
   const [presetReport,setPresetReport]=useState('未実行');
+  const [bodyReport,setBodyReport]=useState('未実行');
   const figure=doc.manga.pages[0].panels[0].figures![0];
   report=()=>setSummary(JSON.stringify({requests,mode:lastPayload.mode,referenceRoles:lastPayload.references?.map((r:any)=>({label:r.label,characters:r.character_keys})),prompt:lastPayload.prompt},null,2));
   const compare=async()=>{
@@ -223,6 +297,7 @@ function Fixture(){
   const currentPanel=doc.manga.pages[0].panels[0];
   return <main style="padding:24px;max-width:1000px;margin:auto"><h1>3Dポーズから生成までの検証</h1><p>実際のポーズ素材を使用。生成APIは模擬応答で、作品・生成履歴・稼働サービスを変更しません。</p>
     <button onClick={()=>void verifyPosePresets().then(setPresetReport,error=>setPresetReport(error instanceof Error?error.stack??error.message:String(error)))}>登録ポーズの切替を検証</button><output id="pose-preset-report">{presetReport}</output>
+    <button onClick={()=>void verifyFemaleBody().then(setBodyReport,error=>setBodyReport(error instanceof Error?error.stack??error.message:String(error)))}>女性モデルを検証</button><output id="body-model-report" style="white-space:pre-wrap;display:block">{bodyReport}</output>
     <button onClick={()=>void compare()}>切り取り比較を描画</button>
     <button onClick={()=>void verifyExport()}>画像書き出しの画素を検証</button>
     <button onClick={()=>{const next=parseMangaYaml(toStoredMangaYaml(doc));if(JSON.stringify(next.manga.pages[0].panels[0].figures![0].human_pose)!==JSON.stringify(figure.human_pose))throw new Error('保存値が変わりました');setDoc(next);setSummary('OMNY保存と再読込でポーズ・撮影範囲・編集文を保持');}}>保存して再読込</button>

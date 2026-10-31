@@ -78,10 +78,11 @@ class QwenGenerationPromptTest(unittest.TestCase):
     # 見込み: 文字生成は原文を保ち透過書式を付ける。合格: 描き文字/写植とも改行・連続空白・RGBA指示あり。範囲: 文字列構築のみ。
     def test_handwritten_final_conditioning_preserves_spaces_newlines_and_rgba_request(self):
         literal = 'ド  ン！\nドン'
-        config = dict(owner_key='bubble-1', content_kind='handwritten', mode='new', references=[], settings=SETTINGS, literal_text=[literal])
-        prompt = generation_prompt(config, dict(prompt=f'Draw "{literal}".', references=[]))
-        self.assertIn(literal, prompt)
-        self.assertTrue(prompt.startswith('This is an RGBA image with transparency.'))
+        for kind in ('handwritten', 'typeset'):
+            config = dict(owner_key='bubble-1', content_kind=kind, mode='new', references=[], settings=SETTINGS, literal_text=[literal])
+            prompt = generation_prompt(config, dict(prompt=f'Draw "{literal}".', references=[]))
+            self.assertIn(literal, prompt)
+            self.assertTrue(prompt.startswith('This is an RGBA image with transparency.'))
 
 
 class QwenReferencePromptTest(unittest.TestCase):

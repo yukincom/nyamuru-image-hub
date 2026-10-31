@@ -3,6 +3,14 @@ import { canvasTextCategory, type CanvasTextKind, type TextCategory } from '../l
 import { Field, SectionTitle } from './Fields';
 import { textDisplayLabel } from '../lib/displayLabels';
 import { LETTERING_PENS, LETTERING_EXPRESSIONS, handwrittenStyleExpressions, type HandwrittenStylePatch } from '../lib/handwrittenStyle';
+import { WandSparkles } from 'lucide-preact';
+
+/** Generation uses the existing tool path even when manual text editing is locked. */
+export function TextGenerateButton({item,kind,busy=false,onGenerate}:{item:Bubble|ScreenText;kind:CanvasTextKind;busy?:boolean;onGenerate:()=>void}){
+  const category=canvasTextCategory(item,kind);
+  if(category==='bubble')return null;
+  return <button type="button" class="inline-add" disabled={busy||item.hidden===true||!item.text.trim()||item.text.length>500} onClick={event=>{event.stopPropagation();onGenerate();}}><WandSparkles size={14}/>{category==='handwritten'?'描き文字を生成':'写植文字を生成'}</button>;
+}
 
 /** One selection and the existing text mutator serve all three categories. */
 export default function SelectedTextInfo({item,index,kind,disabled,characters,onCharacter,onDepth,onCategory,onText,onHistoryBoundary,onHandwrittenStyle}:{

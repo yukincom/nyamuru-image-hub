@@ -10,7 +10,8 @@ import type { HumanPoseCutFrame } from './humanPoseFraming.ts';
 export async function captureHumanPoseReference(value: HumanPoseTextSelection, size: FigureSize, aspect: number, cut?: HumanPoseCutFrame): Promise<string> {
   requireHumanPoseGenerationReady(value);
   if (!value.scene || value.input_mode !== 'image') throw new Error('撮影画像で送るポーズを選んでください');
-  const assets = await withNewCreationBridgeSession(() => loadHumanPoseScene(value.pose_id, value.catalog_sha256));
+  const bodyModel = value.scene.body_model;
+  const assets = await withNewCreationBridgeSession(() => loadHumanPoseScene(value.pose_id, value.catalog_sha256, bodyModel));
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-10000px;top:0;width:512px;height:512px;pointer-events:none';
   document.body.append(host);

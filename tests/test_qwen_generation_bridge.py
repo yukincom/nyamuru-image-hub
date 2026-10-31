@@ -16,7 +16,7 @@ from unittest.mock import patch, Mock
 from types import SimpleNamespace
 from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from qwen_generation import QwenGenerationService, PROFILE, normalize, dimensions, SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS, validate_english
+from qwen_generation import QwenGenerationService, PROFILE, normalize, dimensions, SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS, validate_english, prepare_handwritten_prompt
 from generation_store import canonical, sha256
 from image_generation_lock import create_generation_lease, hold_generation_lease, validate_generation_fd
 from comfy_client import ComfyRejected
@@ -386,7 +386,7 @@ class QwenJobsTest(unittest.TestCase):
         value, _ = normalize(request)
         self.assertEqual(value['content_kind'], 'handwritten')
         self.assertEqual(value['literal_text'], [literal])
-        english = {**translate(value), 'prompt': 'Draw the lettering: ' + literal}
+        english = prepare_handwritten_prompt(value)
         validate_english(value, english)
         with self.assertRaisesRegex(ValueError, '欠落'):
             validate_english(value, translate(value))
@@ -642,6 +642,89 @@ class QwenJobsTest(unittest.TestCase):
                 self.assertFalse((self.service.store.root / prepared['job_id']).exists())
             else:
                 self.assertEqual(self.service.payload(prepared['job_id'])['status'], 'succeeded')
+
+
+
+class HandwrittenPromptPreparationTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name).resolve()
+        self.workflows = WorkflowStore(root / 'workflows')
+        self.api = API()
+        self.service = QwenGenerationService(root / 'jobs', workflows=self.workflows, client_factory=lambda endpoint: self.api)
+        self.workflow = self.workflows.save(definition(0, 'qwen'))
+        patcher = patch.object(self.service, 'preflight')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    # 見込み: 実frontendの確認文は固定英訳で準備できる。合格: 本文以外CJKなし、表現1行、参照は同順、翻訳callbackゼロ。範囲: TS→Python実コード、画像/モデルのみ模擬。
+    def test_handwritten_frontend_prompt_is_prepared_without_a_translator(self):
+        program = """
+import {createEmptyWorkspaceDocument} from './src/lib/workspaceStartup.ts';
+import {paintScene} from './src/lib/paintDocument.ts';
+import {buildQwenGenerationPlan,qwenGenerationPrompt,qwenGenerationPayload} from './src/lib/qwenGeneration.ts';
+const {manga}=createEmptyWorkspaceDocument();
+manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[{text:'かぁぁ',shape:'handwritten',bbox:{x:10,y:10,w:30,h:20},lettering_pen:'fineliner-01',lettering_expressions:['freehand','energetic']}]}];
+const results=[];
+for(const shape of ['handwritten','typeset']){
+manga.pages[0].panels[0].bubbles[0].shape=shape;
+manga.pages[0].panels[0].bubbles[0].text_style={font:'Test Serif',fontWeight:700};
+const owner=paintScene(manga.pages[0].panels[0],100,[]).owners.find(o=>o.kind==='bubble');
+const plan=buildQwenGenerationPlan(manga,0,0,false,owner);
+results.push(...[false,true].map(correction=>qwenGenerationPayload({...plan,prompt:qwenGenerationPrompt(plan,undefined,correction?{kind:'paint'}:undefined),handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:qwenGenerationPrompt(plan,undefined,correction?{kind:'paint'}:undefined)}},[])));
+}
+console.log(JSON.stringify(results));
+"""
+        result = subprocess.run(['node', '--no-warnings', '--experimental-strip-types', '--input-type=module', '-e', program], cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True, check=True)
+        for source in json.loads(result.stdout):
+            self.request = {**source, 'job_id': str(uuid4()), 'workflow_id': self.workflow['id'], 'workflow_version': self.workflow['version']}
+            translator = Mock(side_effect=AssertionError('Gemma must not be called'))
+            prepared = self.service.prepare(self.request, translator)
+            english = self.service.load_english(prepared['job_id'])
+            translator.assert_not_called()
+            if source['content_kind'] == 'handwritten':
+                self.assertIn('Lettering pen: 0.1 mm fineliner.', english['prompt'])
+                self.assertIn('Lettering style: freehand strokes; energetic strokes.', english['prompt'])
+                self.assertEqual(english['prompt'].count('Lettering style:'), 1)
+            else:
+                self.assertIn('Subject: typeset text', english['prompt'])
+                self.assertIn('Font family: Test Serif', english['prompt'])
+                self.assertIn('Font weight: 700', english['prompt'])
+                self.assertNotIn('Lettering pen:', english['prompt'])
+            self.assertNotRegex(english['prompt'].replace('かぁぁ', ''), r'[\u3040-\u30ff\u3400-\u9fff]')
+            self.assertIn('Output canvas:', english['prompt'])
+            value = self.service.load(prepared['job_id'])
+            validate_english(value, english)
+            with self.assertRaisesRegex(ValueError, '一致'):
+                validate_english(value, {**english, 'prompt': english['prompt'] + ' Add another word.'})
+
+    # 見込み/合格: 日本語の自由入力・改行・原文は保持し、既知語を含む本文も書き換えない。範囲: 定型準備のみ、モデルなし。
+    def test_handwritten_free_instructions_and_literal_are_verbatim(self):
+        literal = 'ペン：筆ペン\nかぁぁ'
+        free = '細く、柔らかく\nペン：万年筆\n表現：かすれ\n\n  余韻を残す'
+        value = {'content_kind':'handwritten', 'literal_text':[literal], 'prompt':f'text:\n{literal}\n\n描き方：{free}\n\nペン：筆ペン',
+                 'references':[{'file':'image-1.png','role':'style','label':'日本語の資料名'}], 'handwritten_prompt':{'description':free}}
+        english = prepare_handwritten_prompt(value)
+        self.assertIn('text:\n' + literal, english['prompt'])
+        self.assertIn('Lettering instructions: ' + free, english['prompt'])
+        self.assertIn('Lettering pen: brush pen.', english['prompt'])
+        self.assertEqual(english['references'], [{'file':'image-1.png','label':'Style reference 1'}])
+        validate_english(value, english)
+        original = 'text:\nかぁぁ\n\nペン：ミリペン　0.1'
+        addition = '\n\nペン：万年筆\n表現：かすれ'
+        edited = {'content_kind':'handwritten','literal_text':['かぁぁ'],'references':[], 'prompt':original+addition, 'handwritten_prompt':{'confirmation':original}}
+        compiled = prepare_handwritten_prompt(edited)['prompt']
+        self.assertIn('Lettering pen: 0.1 mm fineliner.', compiled)
+        self.assertTrue(compiled.endswith(addition))
+        original = 'text:\nかぁぁ\n\n描き方：柔らかく\nペン：万年筆\n\nペン：筆ペン\n表現：かすれ'
+        edited = {**edited, 'prompt':original.replace('柔らかく','強く')+addition, 'handwritten_prompt':{'confirmation':original,'description':'柔らかく\nペン：万年筆'}}
+        compiled = prepare_handwritten_prompt(edited)['prompt']
+        self.assertIn('Lettering instructions: 強く\nペン：万年筆', compiled)
+        self.assertIn('Lettering pen: brush pen.', compiled)
+        self.assertIn('Lettering style: broken, scratchy strokes.', compiled)
+        self.assertTrue(compiled.endswith(addition))
+
 
 
 if __name__ == '__main__': unittest.main()

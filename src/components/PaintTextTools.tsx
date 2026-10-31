@@ -5,7 +5,7 @@ import { PaintToolButton } from './PaintToolHelp';
 import { scrollInspectorSelection } from './useInspectorSelectionScroll';
 export type TextPaletteTab='text'|'bubble'|'info';
 export interface TextPaletteRequest {id:number;tab:TextPaletteTab}
-export default function PaintTextTools({active,openRequest,disabled,select,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
+export default function PaintTextTools({active,openRequest,disabled,select,onClose,onMaterials,bubbleLineWidthMm,onChangeBubbleLineWidth}:{active:boolean;openRequest:TextPaletteRequest;disabled:boolean;select:()=>void;onClose:()=>void;onMaterials?:()=>void;bubbleLineWidthMm:number;onChangeBubbleLineWidth:(value:number)=>void}){
   const [open,setOpen]=useState(false),[tab,setTab]=useState<TextPaletteTab>('text'),[position,setPosition]=useState({left:0,top:0});
   const [lineDraft,setLineDraft]=useState(String(bubbleLineWidthMm));
   useEffect(()=>setLineDraft(String(bubbleLineWidthMm)),[bubbleLineWidthMm]);
@@ -29,7 +29,7 @@ export default function PaintTextTools({active,openRequest,disabled,select,onMat
     <PaintToolButton class="paint-tool-icon" label="写植文字" shortcut="T" aria-keyshortcuts="T" aria-pressed={active} disabled={disabled} onClick={()=>{if(!open)setTab('text');setOpen(true);select();}}><Type size={23}/></PaintToolButton>
     <PaintToolButton class="pen-family-toggle" label="文字のツール一覧"  aria-expanded={open} disabled={disabled} onClick={()=>setOpen(true)}><ChevronDown size={12}/></PaintToolButton>
     {typeof document!=='undefined'&&createPortal(<section class={`paint-dock text-settings-window ${tab==='info'?'is-bubble-info':''}`} ref={popup} style={position} role="dialog" aria-label="文字ツールの設定" data-text-tool-active={String(active)} hidden={!open} onPointerDown={event=>event.stopPropagation()}>
-      <header class="text-settings-window-header" onPointerDown={beginDrag}><strong>文字ツール</strong><button type="button" aria-label="文字ツールの設定を閉じる" onPointerDown={event=>event.stopPropagation()} onClick={()=>setOpen(false)}><X size={16}/></button></header>
+      <header class="text-settings-window-header" onPointerDown={beginDrag}><strong>文字ツール</strong><button type="button" aria-label="文字ツールの設定を閉じる" disabled={disabled} onPointerDown={event=>event.stopPropagation()} onClick={()=>{if(active)onClose();setOpen(false);}}><X size={16}/></button></header>
       <div class="text-settings-window-grab" aria-hidden="true" onPointerDown={beginDrag}/>
       <div class="text-settings-window-body">
         <div class="text-settings-tabs" role="tablist" aria-label="文字ツールの種類">

@@ -68,7 +68,7 @@ test('撮影記録は描画と素材の変更を検出し、背景表示やobjec
   assert.equal(confirmHumanPoseCameraPrompt(background, subject).scene.background, undefined);
   for (const mutate of [v => v.camera.position[0]++, v => v.camera.target[1]++, v => v.camera.fov++, v => v.camera.shift = [.2, 0],
     v => v.placement.yaw_degrees++, v => v.placement.position[0]++, v => v.frame.width = 512, v => v.stature_m = 1.7,
-    v => v.source.pose_revision++, v => v.body_mirror = 'mirrored', v => v.joint_edits = { version: 1, rotations: { root: [0, 0, 0, 1] } }]) {
+    v => v.source.pose_revision++, v => v.body_model = 'bodychan-female', v => v.body_mirror = 'mirrored', v => v.joint_edits = { version: 1, rotations: { root: [0, 0, 0, 1] } }]) {
     const changed = structuredClone(s); mutate(changed); assert.equal(humanPoseCameraPromptCurrent(saved, changed), false);
   }
   assert.equal(humanPoseCameraPromptCurrent(saved), false);
@@ -213,6 +213,33 @@ function fixture() {
     mime_type: kind === 'base' ? 'model/gltf-binary' : 'application/json', usage: 'pose_asset', byte_size: bytes.length, sha256: hash(bytes), data: bytes.toString('base64') });
   return { pose_id: pose.pose_id, catalog_sha256: digest, base: record('base', raw), rig: record('rig', Buffer.from(JSON.stringify(rig))), pose: record('pose', Buffer.from(JSON.stringify(pose))) };
 }
+
+// 見込み: 表示素材を別に検証すれば、catalogの素体識別子を保って別の女性骨格を読める。
+// 合格: 指定ID・GLB/rigのhashと対応を照合し、欠損/差替え/未要求素材を拒否。合成GLBの応答検証で、実モデルの見た目はbrowser対象。
+test('女性モデルの表示応答を独立に検証し、元のpose sourceを変えない', async () => {
+  const payload = fixture(), before = structuredClone(payload);
+  const raw = Buffer.from(payload.base.data, 'base64'), rig = JSON.parse(Buffer.from(payload.rig.data, 'base64'));
+  rig.head_length_m = .2;
+  const record = (kind, bytes) => ({ kind, pose_id: null, catalog_sha256: digest, usage: 'pose_asset',
+    mime_type: kind === 'body_base' ? 'model/gltf-binary' : 'application/json', sha256: hash(bytes), byte_size: bytes.length, data: bytes.toString('base64') });
+  payload.body_model = { id: 'bodychan-female', base: record('body_base', raw), rig: record('body_rig', Buffer.from(JSON.stringify(rig))) };
+  const result = await decodeHumanPoseScene(payload, 'pose-test', digest, 'bodychan-female');
+  assert.equal(result.body.id, 'bodychan-female'); assert.equal(result.body.rig.head_length_m, .2);
+  assert.equal(result.source.base_sha256, before.base.sha256); assert.deepEqual(result.pose, JSON.parse(Buffer.from(before.pose.data, 'base64')));
+  await assert.rejects(decodeHumanPoseScene(payload, 'pose-test', digest), /表示モデル/);
+  for (const mutate of [v => v.body_model.id = 'other', v => delete v.body_model.base, v => v.body_model.base.sha256 = 'b'.repeat(64),
+    v => v.body_model.rig.data = 'AAAA']) {
+    const bad = structuredClone(payload); mutate(bad); await assert.rejects(decodeHumanPoseScene(bad, 'pose-test', digest, 'bodychan-female'));
+  }
+  for (const mutate of [v => v.base_glb_sha256 = 'b'.repeat(64), v => delete v.head_length_m, v => v.head_length_m = NaN,
+    v => v.bones = v.bones.filter(bone => bone.name !== 'jaw')]) {
+    const bad = structuredClone(payload), changed = structuredClone(rig); mutate(changed);
+    bad.body_model.rig = record('body_rig', Buffer.from(JSON.stringify(changed)));
+    await assert.rejects(decodeHumanPoseScene(bad, 'pose-test', digest, 'bodychan-female'));
+  }
+  const sceneValue = { ...scene(), body_model: 'bodychan-female' }; validateHumanPoseScene(sceneValue);
+  for (const model of ['male', '', {}, null, 1]) assert.throws(() => validateHumanPoseScene({ ...sceneValue, body_model: model }));
+});
 
 test('素材の取り違え・内容差し替え・壊れた全bone指定を表示前に拒否する', async () => {
   const payload = fixture();

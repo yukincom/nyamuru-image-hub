@@ -1,0 +1,12 @@
+{
+  "source_repository": "https://github.com/ukr8b3g-cmyk/Danbooru-Tag-JP-Assist",
+  "revision": "f7ec1512e26ca36f306af063ce85fa61c6186036",
+  "source_path": "tags/translation_files/moss_image_natural_language_ja.csv",
+  "git_blob_sha1": "c1be3d964cafd6c2e52ba6a56b2c0549fad41279",
+  "sha256": "c8cbe5b0ab38b0ae2300a2b2f28c83f25b9e0bc024e34fc9aaf306c8ffd9d77b",
+  "bytes": 186013,
+  "entries": 1701,
+  "modified": false,
+  "retrieved_on": "2026-10-30",
+  "license": "MIT for upstream original contributions; third-party data terms retained in THIRD_PARTY_NOTICES.md"
+}

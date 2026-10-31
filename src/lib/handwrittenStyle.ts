@@ -11,11 +11,12 @@ export function handwrittenStyleExpressions(ids: readonly string[] = []): string
 }
 
 /** Fixed, complete lines can bypass free-prose translation through the existing splitter. */
-export function handwrittenStylePrompt(bubble: Bubble, target?: { panelId?: number; text: number }): string {
+export function handwrittenStylePrompt(bubble: Bubble, target?: { panelId?: number; text: number }, language:'en'|'ja'='en'): string {
   if (bubble.shape !== 'handwritten') return '';
   const scope = target ? ` for ${target.panelId === undefined ? 'page foreground' : `panel ${target.panelId}`}, text ${target.text}` : '';
   const pen = LETTERING_PENS.find(option => option.id === bubble.lettering_pen);
+  const expressions=LETTERING_EXPRESSIONS.filter(option => bubble.lettering_expressions?.includes(option.id));
+  if(language==='ja')return [pen?`ペン：${pen.ja}`:'',expressions.length?`表現：${expressions.map(option=>option.ja).join('、')}`:''].filter(Boolean).join('\n');
   return [pen ? `Lettering pen${scope}: ${pen.en}.` : '',
-    ...LETTERING_EXPRESSIONS.filter(option => bubble.lettering_expressions?.includes(option.id))
-      .map(option => `Lettering expression${scope}: ${option.en}.`)].filter(Boolean).join('\n');
+    expressions.length?`Lettering style${scope}: ${expressions.map(option=>option.en).join('; ')}.`:''].filter(Boolean).join('\n');
 }

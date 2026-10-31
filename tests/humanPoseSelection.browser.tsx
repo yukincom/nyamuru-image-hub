@@ -30,7 +30,7 @@ function Fixture() {
       pageIndex={0} selectedElement={selection} canvasSelectionScrollRequest={0}
       onSelectElement={value => value && setSelection(value)} onScenarioChoice={() => {}}
       onTextCategory={() => {}} onSelectedText={() => {}} onHandwrittenHistoryBoundary={() => {}}
-      onGenerateHandwritten={() => {}} onHandwrittenText={() => {}}
+      onGenerateText={() => {}}
       onChange={value => {
         const next = structuredClone(doc); next.manga.pages[0].page_overlay = value; setDoc(next);
       }} />}

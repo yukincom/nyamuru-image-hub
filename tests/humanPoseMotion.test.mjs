@@ -5,12 +5,59 @@ import { createHash } from 'node:crypto';
 import { Quaternion, Vector3 } from 'three';
 import { changeHumanPoseMotion, sampleHumanPoseMotion, rebaseHumanPoseMotionEdits, validateHumanPoseMotion } from '../src/lib/humanPoseMotion.ts';
 import { editedHumanPose, humanPoseEdits, validateHumanPoseJointEdits } from '../src/lib/humanPoseJoints.ts';
+import { HumanPoseMotionRetarget } from '../src/lib/humanPoseMotionRetarget.ts';
+import { humanPoseWorldMatrices } from '../src/lib/humanPoseMirror.ts';
 const library = JSON.parse(readFileSync(new URL('../src/assets/human-pose-motions/quaternius-standard.json', import.meta.url)));
 const rig = { rig_signature: library.rig_signature, bones: library.bone_names.map(name => ({ name, parent: null,
   rest: { translation: [0, .1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] } })) };
 const template = { bones: {}, root: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }, supports: [{ id: 'chair' }], contacts: { chair: true } };
 const selection = (clip = library.clips[0], phase = .5) => ({ version: 1, library_sha256: library.sha256, clip_id: clip.id, phase });
 const sample = (clip, phase) => sampleHumanPoseMotion(library, rig, template, selection(clip, phase));
+
+// 見込み: 編集のworld回転差分だけを移せば、補助骨へ余計な編集を追加せずnative骨格の体形を保てる。
+// 合格: 無編集はundefined、編集骨集合/他の手/入力不変、異なる軸と長さの骨格を往復して角度・腰・足の編集が一致。
+// 範囲: 合成の全身骨格を使うretarget/編集保存。実GLB変形とUIはbrowser fixtureで確認。
+test('モデル間の編集差分は無編集骨を増やさず、異なる骨格を往復できる', () => {
+  const names = [...library.bone_names, 'toe3-1.L', 'toe3-1.R'];
+  const parent = name => {
+    const centre = { root: null, spine04: 'root', spine03: 'spine04', spine02: 'spine03', spine01: 'spine02', neck01: 'spine01', neck02: 'neck01', neck03: 'neck02', head: 'neck03' };
+    if (name in centre) return centre[name];
+    const side = name.slice(-1), base = name.slice(0, -2), finger = /^finger(\d)-(\d)$/u.exec(base);
+    if (finger) return +finger[2] === 1 ? `wrist.${side}` : `finger${finger[1]}-${+finger[2] - 1}.${side}`;
+    return ({ clavicle: 'spine01', shoulder01: `clavicle.${side}`, upperarm01: `shoulder01.${side}`, upperarm02: `upperarm01.${side}`, lowerarm01: `upperarm02.${side}`, lowerarm02: `lowerarm01.${side}`, wrist: `lowerarm02.${side}`, upperleg01: 'root', upperleg02: `upperleg01.${side}`, lowerleg01: `upperleg02.${side}`, lowerleg02: `lowerleg01.${side}`, foot: `lowerleg02.${side}`, 'toe3-1': `foot.${side}` })[base];
+  };
+  const position = name => {
+    const centre = { root: .8, spine04: .9, spine03: .99, spine02: 1.1, spine01: 1.2, neck01: 1.3, neck02: 1.33, neck03: 1.36, head: 1.4 };
+    if (name in centre) return new Vector3(0, centre[name], 0);
+    const side = name.endsWith('.L') ? 1 : -1, base = name.slice(0, -2), finger = /^finger(\d)-(\d)$/u.exec(base);
+    if (finger) return new Vector3(side * (.235 + +finger[1] * .014), .72 - +finger[2] * .024, .09 + (+finger[1] === 1 ? .028 : 0));
+    const xyz = { clavicle: [.03, 1.25, 0], shoulder01: [.09, 1.25, 0], upperarm01: [.17, 1.25, 0], upperarm02: [.21, 1.13, .02], lowerarm01: [.26, 1, .04], lowerarm02: [.265, .88, .06], wrist: [.27, .77, .09], upperleg01: [.1, .8, 0], upperleg02: [.105, .62, .015], lowerleg01: [.11, .44, .03], lowerleg02: [.11, .25, .015], foot: [.11, .07, 0], 'toe3-1': [.11, .02, .1] }[base];
+    return new Vector3(side * xyz[0], xyz[1], xyz[2]);
+  };
+  const makeRig = (scale, twist) => {
+    const worldQ = name => new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), name.startsWith('wrist.') ? twist : 0);
+    return { rig_signature: 'a'.repeat(64), base_glb_sha256: 'b'.repeat(64), placement_root: 'human_rig', bones: names.map(name => {
+      const p = parent(name), q = p ? worldQ(p) : new Quaternion();
+      return { name, parent: p, rest: { translation: position(name).sub(p ? position(p) : new Vector3()).multiplyScalar(scale).applyQuaternion(q.clone().invert()).toArray(), rotation: q.invert().multiply(worldQ(name)).toArray(), scale: [1, 1, 1] } };
+    }) };
+  };
+  const source = makeRig(1, 0), target = makeRig(1.2, .4);
+  const restPose = rig => ({ schema_version: 1, pose_id: 'pose-test', revision: 1, rig_signature: rig.rig_signature, base_glb_sha256: rig.base_glb_sha256, transform_space: 'absolute_parent_local', user_confirmed: true,
+    root: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }, bones: Object.fromEntries(rig.bones.map(bone => [bone.name, structuredClone(bone.rest)])), supports: [], contacts: {} });
+  const before = restPose(source), transfer = new HumanPoseMotionRetarget(source, target, true), after = transfer.pose(before, restPose(target));
+  assert.equal(transfer.rebaseEdits(undefined, before, after), undefined);
+  const edits = { version: 1, rotations: { 'wrist.L': new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), .3).toArray(), 'finger2-1.L': new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), .2).toArray() }, root_offset: [.1, .2, .3], foot_bends: { L: [5, 10] } };
+  const original = structuredClone(edits), next = transfer.rebaseEdits(edits, before, after);
+  assert.deepEqual(Object.keys(next.rotations).sort(), Object.keys(edits.rotations).sort());
+  assert.deepEqual(next.foot_bends, edits.foot_bends); assert.deepEqual(next.root_offset, edits.root_offset.map(v => v * 1.2));
+  const restored = new HumanPoseMotionRetarget(target, source, true).rebaseEdits(next, after, before);
+  for (const name of Object.keys(edits.rotations)) assert.ok(new Quaternion(...restored.rotations[name]).angleTo(new Quaternion(...edits.rotations[name])) < 1e-7);
+  restored.root_offset.forEach((v, i) => assert.ok(Math.abs(v - edits.root_offset[i]) < 1e-9));
+  assert.deepEqual(edits, original);
+  for (const bone of target.bones) assert.deepEqual(after.bones[bone.name].translation, bone.rest.translation);
+  const changed = humanPoseWorldMatrices(target, editedHumanPose(target, after, { joint_edits: { ...next, root_offset: undefined } }));
+  assert.deepEqual(changed.get('wrist.R').elements, humanPoseWorldMatrices(target, after).get('wrist.R').elements);
+});
 
 test('指定された9系統17本が同梱され、Sitting Talkingと移動重複版を含めない', () => {
   const { sha256, ...content } = library;

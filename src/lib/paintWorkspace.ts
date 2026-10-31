@@ -2,7 +2,7 @@ import type { VectorOverlayState } from '../components/VectorOverlay';
 import { createContext, type ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
 import type { BBox, CanvasElementSelection, VectorPoint } from '../types';
-import type { PaintOwner, PaintScene } from './paintDocument';
+import { paintGenerationOwner, type PaintOwner, type PaintScene } from './paintDocument';
 import type { PaintImages } from './paintRenderer';
 import type { PendingPaintStroke } from './paintGesture';
 import type { PaintCursorMode } from './paintPreferences';
@@ -62,3 +62,12 @@ export const PaintDetailsContext = createContext<ComponentChildren>(null);
 export const PaintToolsContext = createContext<ComponentChildren>(null);
 export const PaintWorkspaceContext = createContext<PaintWorkspaceState|null>(null);
 export const usePaintWorkspace = () => useContext(PaintWorkspaceContext);
+
+/** Information follows the selected text owner without replacing the selected paint layer. */
+export function usePaintTextSelection(selection:CanvasElementSelection|null,page:number|undefined,panelIndex:number,overlay=false):CanvasElementSelection|null {
+  const paint=usePaintWorkspace();
+  if(!paint)return selection;
+  if(paint.page!==page||paint.overlay!==overlay||(!overlay&&paint.panelIndex!==panelIndex))return null;
+  const owner=paintGenerationOwner(paint.scene,paint.owner.key);
+  return owner?.kind==='bubble'?{type:'bubble',index:owner.index,...(overlay?{scope:'page_overlay' as const}:{})}:null;
+}

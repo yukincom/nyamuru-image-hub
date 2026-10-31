@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { paintCheckpoint } from '../src/lib/paintSession.ts';
-import { paintScene } from '../src/lib/paintDocument.ts';
+import { paintScene, paintGenerationOwner, paintOwnerCanvasSelection } from '../src/lib/paintDocument.ts';
 import { commitPaintStroke } from '../src/lib/paintGesture.ts';
 import { paintOwnerLocked } from '../src/lib/paintLock.ts';
 import { paintToolShortcut } from '../src/lib/paintToolShortcuts.ts';
+import { canvasTextAt } from '../src/lib/canvasText.ts';
 import { paintSelectionMode } from '../src/lib/paintToolMode.ts';
 
 const initial=()=>paintScene({id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[],figures:[{name:'確認用',bbox:{x:2,y:3,w:10,h:20}}]},100,[]);
@@ -103,13 +104,34 @@ test('paint pause settles the existing gesture with no PNG; only active 3D needs
   context.operation.current=true;await assert.rejects(pause(),/画像を処理/);assert.equal(calls.length,1);
  }
 });
-test('T and zoom retain paint until a selected text is actually exposed for editing',async()=>{
- for(const name of ['chooseTextTool','chooseZoomTool'])for(const selected of [null,{type:'bubble'},{type:'screen_text'}]){
-  const session={},calls=[],transitions=[];
-  const context={selectedElement:selected,paintSessionRef:{current:session},paintController:{current:{pause:async()=>calls.push('pause'),close:async()=>calls.push('close')}},
-   requestPcFonts:()=>{},layerTransition:fn=>{const task=fn();transitions.push(task);return task;},setTextPaletteRequest:()=>{},autoPaintResume:{current:null},endTextEdit:()=>{},setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{}};
+// 見込み: Tは選択レイヤーの所属テキストを開き、非文字とズームは描画を一時停止する。
+// 合格: 古いcanvas選択を使わず、原画も親へ解決。範囲: 実handler/owner解決＋模擬controller。画面・保存はbrowser試験。
+test('T resolves the live text owner while zoom and non-text selections retain paint',async()=>{
+ for(const name of ['chooseTextTool','chooseZoomTool'])for(const key of ['background','bubble-0','original-crop']){
+  const panel={id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[{text:'対象',shape:'handwritten',bbox:{x:1,y:2,w:10,h:10}}]};
+  const page={page:1,panels:[panel]},scene=paintScene(panel,100,[]);
+  scene.owners.push({key:'original-crop',kind:'original',parentKey:'bubble-0'});
+  const session={pageIndex:0,panelIndex:0,overlay:false,scene,initialOwner:'background'},calls=[],transitions=[],selections=[];
+  const context={paintGenerationOwner,paintOwnerCanvasSelection,documentRef:{current:{manga:{pages:[page]}}},selectedElement:{type:'bubble',index:99},paintSessionRef:{current:session},
+   paintController:{current:{snapshot:()=>({scene,ownerKey:key}),pause:async()=>calls.push('pause'),close:async()=>calls.push('close')}},
+   requestPcFonts:()=>{},layerTransition:fn=>{const task=fn();transitions.push(task);return task;},setTextPaletteRequest:()=>{},autoPaintResume:{current:null},endTextEdit:()=>{},setSelectedElement:value=>selections.push(value),selectCanvasElement:value=>selections.push(value),setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{}};
   handler('App.tsx',name,context)();await Promise.all(transitions);
-  assert.deepEqual(calls,[name==='chooseTextTool'&&selected?'close':'pause']);assert.equal(context.paintSessionRef.current,session);
+  const opensText=name==='chooseTextTool'&&key!=='background';
+  assert.deepEqual(calls,[opensText?'close':'pause']);
+  if(opensText)assert.deepEqual(JSON.parse(JSON.stringify(selections)),[{type:'bubble',index:0}]);
+  else assert.deepEqual(selections,name==='chooseTextTool'?[null]:[]);
+ }
+});
+// 見込み: ownerを持たない写植文字は明示選択を使ってP→Tへ戻る。合格: コマ/前景とも描画close後に同じ文字を選ぶ。範囲: 実handlerとtarget検査、controllerのみ模擬。
+test('point text keeps its P to T editing target in panel and page overlay',async()=>{
+ for(const overlay of [false,true]){
+  const panel={id:1,shape:{type:'rect',x:0,y:0,w:30,h:40},bg:0,action:null,bubbles:[],screen_text:[{text:'写植',bbox:{x:1,y:1,w:5,h:5}}]};
+  const page={page:1,panels:[panel],page_overlay:{screen_text:panel.screen_text}},scene=paintScene(panel,100,[]);
+  const selected={type:'screen_text',index:0,...(overlay?{scope:'page_overlay'}:{})},calls=[],transitions=[];
+  const context={paintGenerationOwner,paintOwnerCanvasSelection,canvasTextAt,documentRef:{current:{manga:{pages:[page]}}},activePage:0,activePanel:0,selectedElement:selected,paintSessionRef:{current:{pageIndex:0,panelIndex:0,overlay,scene}},
+   paintController:{current:{snapshot:()=>({scene,ownerKey:'background'}),pause:async()=>calls.push('pause'),close:async()=>calls.push('close')}},
+   requestPcFonts(){},layerTransition:fn=>{const task=fn();transitions.push(task);return task;},setTextPaletteRequest(){},autoPaintResume:{current:null},setSelectedElement:value=>calls.push(value),selectCanvasElement:value=>calls.push(value),setTextTool(){},setZoomTool(){},setBubblePathTool(){},setPaintToolsCollapsed(){}};
+  handler('App.tsx','chooseTextTool',context)();await Promise.all(transitions);assert.deepEqual(calls,['close',selected]);
  }
 });
 test('resuming a paint tool clears the other UI mode through the existing start callback',()=>{

@@ -1,11 +1,11 @@
 import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
-import type { HumanPoseData, HumanPoseRig, HumanPoseSceneAssets } from './humanPoseTypes.ts';
+import type { HumanPoseBodyModel, HumanPoseData, HumanPoseRig, HumanPoseSceneAssets } from './humanPoseTypes.ts';
 
 const object = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const hash = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value);
 async function decode(record: unknown, kind: string, poseId: string | null, digest: string, limit: number): Promise<{ bytes: Uint8Array<ArrayBuffer>; sha256: string }> {
   if (!object(record) || record.kind !== kind || record.pose_id !== poseId || record.catalog_sha256 !== digest
-    || record.usage !== 'pose_asset' || record.mime_type !== (kind === 'base' ? 'model/gltf-binary' : 'application/json')
+    || record.usage !== 'pose_asset' || record.mime_type !== (kind.endsWith('base') ? 'model/gltf-binary' : 'application/json')
     || !hash(record.sha256) || !Number.isSafeInteger(record.byte_size) || Number(record.byte_size) <= 0 || Number(record.byte_size) > limit
     || typeof record.data !== 'string' || record.data.length > Math.ceil(limit / 3) * 4) throw new Error('人体ポーズ素材の応答が不正です');
   const bytes = Uint8Array.from(atob(record.data), c => c.charCodeAt(0));
@@ -15,7 +15,7 @@ async function decode(record: unknown, kind: string, poseId: string | null, dige
 }
 
 /** 同じcatalog snapshotを検証する。線骨格ではbody meshの転送・読込を省く。 */
-export async function decodeHumanPoseScene(payload: unknown, poseId: string, digest: string): Promise<HumanPoseSceneAssets> {
+export async function decodeHumanPoseScene(payload: unknown, poseId: string, digest: string, bodyModel?: HumanPoseBodyModel): Promise<HumanPoseSceneAssets> {
   if (!object(payload) || payload.pose_id !== poseId || payload.catalog_sha256 !== digest || !hash(digest)) throw new Error('選択時と人体ポーズの版が一致しません');
   const skeleton = payload.representation === 'skeleton';
   if (skeleton && (!hash(payload.base_sha256) || payload.base !== undefined)) throw new Error('線骨格の素材識別子が不正です');
@@ -40,7 +40,25 @@ export async function decodeHumanPoseScene(payload: unknown, poseId: string, dig
     || pose.transform_space !== 'absolute_parent_local' || !Array.isArray(pose.supports)) throw new Error('人体素体と姿勢の対応が不正です');
   humanPoseWorldMatrices(rig);
   humanPoseWorldMatrices(rig, pose);
+  let body: HumanPoseSceneAssets['body'];
+  if (bodyModel !== undefined || payload.body_model !== undefined) {
+    if (bodyModel !== 'bodychan-female' || !object(payload.body_model) || payload.body_model.id !== bodyModel) throw new Error('指定した表示モデルと素材が一致しません');
+    const [bodyBase, bodyRigFile] = await Promise.all([
+      decode(payload.body_model.base, 'body_base', null, digest, 64 * 1024 * 1024),
+      decode(payload.body_model.rig, 'body_rig', null, digest, 16 * 1024 * 1024),
+    ]);
+    const header = new DataView(bodyBase.bytes.buffer);
+    if (bodyBase.bytes.length < 20 || header.getUint32(0, true) !== 0x46546c67 || header.getUint32(4, true) !== 2
+      || header.getUint32(8, true) !== bodyBase.bytes.length) throw new Error('女性モデルがGLB形式ではありません');
+    const bodyRig = JSON.parse(decoder.decode(bodyRigFile.bytes)) as HumanPoseRig;
+    if (!bodyRig || !hash(bodyRig.rig_signature) || bodyRig.base_glb_sha256 !== bodyBase.sha256
+      || !bodyRig.placement_root || !Number.isFinite(bodyRig.head_length_m) || bodyRig.head_length_m! <= .01 || bodyRig.head_length_m! > 1) throw new Error('女性モデルと骨格の対応が不正です');
+    humanPoseWorldMatrices(bodyRig);
+    if (rig.bones.some(bone => !bodyRig.bones.some(target => target.name === bone.name))) throw new Error('女性モデルの操作用の骨が不足しています');
+    body = { id: bodyModel, base: bodyBase.bytes.buffer, rig: bodyRig };
+  }
   return { catalog_sha256: digest, ...(base ? { base: base.bytes.buffer } : {}), rig, pose,
+    ...(body ? { body } : {}),
     source: { base_sha256: baseHash, rig_sha256: rigFile.sha256, pose_sha256: poseFile.sha256,
       rig_signature: rig.rig_signature, pose_revision: pose.revision } };
 }

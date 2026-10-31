@@ -30,6 +30,8 @@ SOURCE_FILES = {"sources/index.json", "sources/common.md", "sources/LICENSE", "s
 SOURCE_FILES.update(f"sources/study/pose/{category}.md" for category in CATEGORIES)
 SOURCE_FILES.add("sources/curated/index.json")
 COMMON_FILES = {"base": "models/human_base.glb", "rig": "models/human_base.rig.json"}
+BODY_MODEL_FILES = {"body_base": "models/bodychan_female.glb", "body_rig": "models/bodychan_female.rig.json"}
+BODY_MODEL_METADATA = "models/bodychan_female.metadata.json"
 POSE_FILES = {"pose": "pose.json", "preview": "preview.png",
               "reference_krea": f"references/{MODELS[0]}.webp",
               "reference_qwen": f"references/{MODELS[1]}.webp"}
@@ -39,7 +41,7 @@ MEDIA_TYPES = {"base": "model/gltf-binary", "rig": "application/json", "pose": "
 
 # validatorが必要とする固定ファイルだけを、開いたrootから相対的に読む。
 def _allowed_file(relative: str) -> bool:
-    if relative in {"catalog.json", *SOURCE_FILES, *COMMON_FILES.values()}:
+    if relative in {"catalog.json", *SOURCE_FILES, *COMMON_FILES.values(), *BODY_MODEL_FILES.values(), BODY_MODEL_METADATA}:
         return True
     parts = relative.split("/")
     return (len(parts) >= 3 and parts[0] == "poses" and bool(POSE_ID.fullmatch(parts[1]))
@@ -147,9 +149,11 @@ class HumanPoseStore:
         catalog, digest, files = self._load()
         return self._asset_from_snapshot(catalog, digest, files, pose_id, kind)
 
-    def scene(self, pose_id: str, catalog_sha256: str, include_base: bool = True) -> dict:
+    def scene(self, pose_id: str, catalog_sha256: str, include_base: bool = True, body_model: str | None = None) -> dict:
         if not isinstance(include_base, bool):
             raise ValueError("素体の読込指定が不正です")
+        if body_model is not None and body_model != 'bodychan-female':
+            raise ValueError("表示モデルの指定が不正です")
         if not isinstance(pose_id, str) or not POSE_ID.fullmatch(pose_id):
             raise ValueError("ポーズIDが不正です")
         if not isinstance(catalog_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", catalog_sha256):
@@ -162,11 +166,39 @@ class HumanPoseStore:
                 or pose.get("review", {}).get("status") != "confirmed"
                 or pose.get("review", {}).get("user_confirmed") is not True):
             raise ValueError("確認済みのポーズだけを3Dで開けます")
-        return {"pose_id": pose_id, "catalog_sha256": digest,
+        result = {"pose_id": pose_id, "catalog_sha256": digest,
                 "representation": "mesh" if include_base else "skeleton",
                 "base_sha256": catalog["coordinate_contract"]["base"]["sha256"],
                 **{kind: self._asset_from_snapshot(catalog, digest, files, None if kind in COMMON_FILES else pose_id, kind)
                    for kind in (("base", "rig", "pose") if include_base else ("rig", "pose"))}}
+        if body_model:
+            result['body_model'] = self._body_model(catalog, digest)
+        return result
+
+    def _body_model(self, catalog, digest):
+        # Same fixed-path, no-symlink reader as the catalog. Display assets do not change its base contract.
+        try:
+            with directory_fd(self.root) as descriptor:
+                snapshot = _Snapshot(self.root, descriptor)
+                metadata = json.loads(snapshot.read(BODY_MODEL_METADATA))
+                if (metadata.get('version') != 1 or metadata.get('id') != 'bodychan-female'
+                        or metadata.get('reference_rig_sha256') != catalog['coordinate_contract']['rig']['sha256']):
+                    raise ValueError('女性モデルとポーズ骨格の対応が不正です')
+                result = {'id': 'bodychan-female'}
+                for kind, path in BODY_MODEL_FILES.items():
+                    record = metadata.get('files', {}).get('glb' if kind == 'body_base' else 'rig', {})
+                    raw = snapshot.read(path)
+                    if record.get('path') != path or record.get('byte_size') != len(raw) or record.get('sha256') != sha256(raw):
+                        raise ValueError('女性モデルのサイズまたはhashが一致しません')
+                    if kind == 'body_base' and (len(raw) < 20 or struct.unpack_from('<4sII', raw) != (b'glTF', 2, len(raw))):
+                        raise ValueError('女性モデルがGLB形式ではありません')
+                    result['base' if kind == 'body_base' else 'rig'] = {
+                        'pose_id': None, 'kind': kind, 'catalog_sha256': digest, 'usage': 'pose_asset',
+                        'mime_type': 'model/gltf-binary' if kind == 'body_base' else 'application/json',
+                        'sha256': record['sha256'], 'byte_size': len(raw), 'data': base64.b64encode(raw).decode('ascii')}
+                return result
+        except (OSError, UnicodeError, KeyError, TypeError, AttributeError, struct.error) as error:
+            raise ValueError('女性モデルを読み込めません。試用モデルの登録を確認してください') from error
 
     @staticmethod
     def _asset_from_snapshot(catalog, digest, files, pose_id, kind) -> dict:

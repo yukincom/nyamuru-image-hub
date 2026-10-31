@@ -192,7 +192,7 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
     if(!isCurrent())throw new Error('生成を中止しました');
     const sketch=!threeImages&&reference?.kind==='sketch'&&!correction;
     const target=qwenGenerationTarget(plan,Boolean(correction));
-    const payload=qwenGenerationPayload({...plan,prompt},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,capturedPose,workflow?.binding.fixed_size??undefined);
+    const payload=qwenGenerationPayload({...plan,prompt,...(plan.handwrittenPrompt?{handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:qwenGenerationPrompt(plan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,capturedPose,workflow?.binding.fixed_size??undefined);
     if(cloud){
       if(execution.cloud.method!=='agent')throw new Error('API実行は未接続です。環境設定でエージェントを選んでください');
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
@@ -216,7 +216,7 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
       submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
       onJob:current=>{if(alive.current)setJob(current);},
       ...(autoInsert?{insert:insertResult}:{}),
-      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,requiresLlm:workflow.binding.prompt_mode==='qwen',onPhase:value=>{
+      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,requiresLlm:workflow.binding.prompt_mode==='qwen'&&!plan.contentKind,onPhase:value=>{
         if(alive.current)setPhase({bridge:'準備中',llm:'英訳の準備中',translate:Boolean(plan.contentKind)?'生成指示を保存中':'英訳を保存中',suspend:'文章LLMを停止中',generate:'5枚の画像を生成中',restore:'生成後の復帰を確認中'}[value]);
       }}),
     });

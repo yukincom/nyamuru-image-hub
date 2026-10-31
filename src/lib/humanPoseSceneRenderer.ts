@@ -3,6 +3,8 @@ import { applyBackgroundCameraShift, focusBackgroundCamera } from './background3
 import { changeHumanPoseMotion, sampleHumanPoseMotion, type HumanPoseMotionLibrary } from './humanPoseMotion.ts';
 import { loadHumanPoseMotionLibrary } from './humanPoseMotionLibrary.ts';
 import { HumanPoseSkeleton } from './humanPoseSkeleton.ts';
+import { loadHumanPoseRuntime, type HumanPoseRuntime } from './humanPoseRuntime.ts';
+import { HumanPoseMotionRetarget } from './humanPoseMotionRetarget.ts';
 import { editedHumanPose, humanPoseEdits, humanPoseJointAngles, setHumanPoseJointAngles, HUMAN_POSE_HANDLES } from './humanPoseJoints.ts';
 import { moveHumanPoseHandle, humanPoseLimbFlex, setHumanPoseLimbFlex } from './humanPoseIk.ts';
 import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
@@ -60,6 +62,10 @@ function poseBackgroundGroup(background?: HumanPoseBackground): Group {
   } catch (error) { disposeThreeObject(group); throw error; }
 }
 
+function bodyPose(assets: HumanPoseSceneAssets, source: HumanPoseData, retarget?: HumanPoseMotionRetarget): HumanPoseData {
+  return retarget ? retarget.pose(source, { ...source, rig_signature: assets.body!.rig.rig_signature, base_glb_sha256: assets.body!.rig.base_glb_sha256 }) : source;
+}
+
 /** 1件だけ開き、closeでGPU資源も解放する。体勢は登録姿勢から導出する。 */
 export class HumanPoseSceneRenderer {
   readonly canvas!: HTMLCanvasElement;
@@ -68,6 +74,9 @@ export class HumanPoseSceneRenderer {
   private camera = new PerspectiveCamera();
   private placement = new Group();
   private runtime: HumanPoseSkeleton;
+  private body?: HumanPoseRuntime;
+  private assets: HumanPoseSceneAssets;
+  private retarget?: HumanPoseMotionRetarget;
   private rig: HumanPoseRig;
   private detail = true;
   private handleDrag?: { id: string; scene: HumanPoseSceneSettings; plane: Plane; offset: Vector3; x: number; y: number; mode: 'move' | 'rotate'; start: Vector3; normal: Vector3 };
@@ -91,28 +100,37 @@ export class HumanPoseSceneRenderer {
       validateHumanPoseScene(saved);
       if (!sameHumanPoseSource(saved.source, assets.source)) throw new Error('保存した撮影設定と素材の版が異なります');
     }
+    if (saved && saved.body_model !== assets.body?.id) throw new Error('保存した表示モデルと素材が一致しません');
     const motions = await loadHumanPoseMotionLibrary();
-    if (saved?.motion) sampleHumanPoseMotion(motions, assets.rig, assets.pose, saved.motion);
-    const runtime = new HumanPoseSkeleton(assets.rig);
-    try { runtime.applyPose(assets.pose); }
-    catch (error) { runtime.dispose(); throw error; }
-    return new HumanPoseSceneRenderer(host, assets, runtime, saved, aspect, motions, background);
+    const rig = assets.body?.rig ?? assets.rig, retarget = assets.body ? new HumanPoseMotionRetarget(assets.rig, rig, true) : undefined;
+    const runtime = new HumanPoseSkeleton(rig);
+    let body: HumanPoseRuntime | undefined;
+    try {
+      body = assets.body ? await loadHumanPoseRuntime(assets.body.base, rig) : undefined;
+      const source = saved?.motion ? sampleHumanPoseMotion(motions, assets.rig, assets.pose, saved.motion) : assets.pose;
+      const pose = editedHumanPose(rig, bodyPose(assets, source, retarget), saved ?? {});
+      runtime.applyPose(pose); runtime.showBody(!body); body?.applyPose(pose);
+    } catch (error) { runtime.dispose(); body?.dispose(); throw error; }
+    return new HumanPoseSceneRenderer(host, assets, runtime, saved, aspect, motions, background, body, retarget);
   }
 
-  private constructor(host: HTMLElement, assets: HumanPoseSceneAssets, runtime: HumanPoseSkeleton, saved: HumanPoseSceneSettings | undefined, aspect: number, motions: HumanPoseMotionLibrary, background?: HumanPoseBackground) {
-    this.motions = motions; this.runtime = runtime; this.rig = assets.rig; this.basePose = structuredClone(assets.pose);
+  private constructor(host: HTMLElement, assets: HumanPoseSceneAssets, runtime: HumanPoseSkeleton, saved: HumanPoseSceneSettings | undefined, aspect: number, motions: HumanPoseMotionLibrary, background?: HumanPoseBackground, body?: HumanPoseRuntime, retarget?: HumanPoseMotionRetarget) {
+    this.assets = assets; this.body = body; this.retarget = retarget;
+    this.motions = motions; this.runtime = runtime; this.rig = assets.body?.rig ?? assets.rig; this.basePose = structuredClone(assets.pose);
     this.settings = structuredClone(saved ?? {
       version: 1, source: assets.source, stature_m: 1.57, placement: { position: [0, 0, 0], yaw_degrees: 0 },
       camera: { position: [3, 2, 5], target: [0, 1, 0], fov: 40 }, projection: 'perspective', up: [0, 1, 0], frame: humanPoseSceneFrame(aspect),
+      ...(assets.body ? { body_model: assets.body.id } : {}),
     });
     this.placement.add(runtime.scene);
+    if (body) this.placement.add(body.scene);
     this.scene.add(this.placement, this.grid, this.backgroundGroup, this.surfaceMarker);
     try {
       const ring = new Mesh(new RingGeometry(.07, .09, 32), new MeshBasicMaterial({ color: '#e18b16', side: DoubleSide, depthTest: false }));
       ring.rotation.x = -Math.PI / 2; ring.renderOrder = 11;
       this.surfaceMarker.add(ring, this.surfaceArrow);
       // 登録された支持物だけを描画し、床や椅子を推測して追加しない。
-      this.supports = poseSupports(assets.pose); if (this.supports.length) this.placement.add(...this.supports);
+      this.supports = poseSupports(this.baseline(this.settings)); if (this.supports.length) this.placement.add(...this.supports);
       this.scene.add(new AmbientLight('#ffffff', 2));
       const light = new DirectionalLight('#ffffff', 3); light.position.set(3, 5, 4); this.scene.add(light);
       this.renderer = new WebGLRenderer({ alpha: true, antialias: true });
@@ -131,25 +149,37 @@ export class HumanPoseSceneRenderer {
 
   get motionClips() { return this.motions.clips; }
   private baseline(settings: HumanPoseSceneSettings): HumanPoseData {
-    return settings.motion ? sampleHumanPoseMotion(this.motions, this.rig, this.basePose, settings.motion) : this.basePose;
+    const source = settings.motion ? sampleHumanPoseMotion(this.motions, this.assets.rig, this.basePose, settings.motion) : this.basePose;
+    return bodyPose(this.assets, source, this.retarget);
   }
   changeMotion(clipId: string, phase: number, settings = this.settings): HumanPoseSceneSettings {
-    return changeHumanPoseMotion(this.motions, this.rig, this.basePose, settings, clipId, phase);
+    return changeHumanPoseMotion(this.motions, this.assets.rig, this.basePose, settings, clipId, phase,
+      selection => this.baseline({ ...settings, motion: selection }));
   }
   snapshot(): HumanPoseSceneSettings { return structuredClone(this.settings); }
   /** Exchange only pose resources; the canvas, camera and viewport remain mounted. */
-  replacePose(assets: HumanPoseSceneAssets, settings: HumanPoseSceneSettings, keepHead = false, background?: HumanPoseBackground): void {
+  async replacePose(assets: HumanPoseSceneAssets, settings: HumanPoseSceneSettings, keepHead = false, background?: HumanPoseBackground, preserveEdits = false): Promise<void> {
     validateHumanPoseScene(settings);
     if (!sameHumanPoseSource(settings.source, assets.source)) throw new Error('保存した撮影設定と素材の版が異なります');
+    if (settings.body_model !== assets.body?.id) throw new Error('保存した表示モデルと素材が一致しません');
     const nextBackground = background ?? (this.background?.sourceId === settings.background?.sourceId ? this.background : undefined);
     if (nextBackground?.sourceId !== settings.background?.sourceId) throw new Error('背景モデルと保存する舞台が一致しません');
-    const runtime = new HumanPoseSkeleton(assets.rig);
+    const rig = assets.body?.rig ?? assets.rig, retarget = assets.body ? new HumanPoseMotionRetarget(assets.rig, rig, true) : undefined;
+    const runtime = new HumanPoseSkeleton(rig);
+    const reuseBody = this.body && this.settings.body_model === settings.body_model && this.rig.rig_signature === rig.rig_signature;
+    let body = reuseBody ? this.body : undefined;
     let supports: Mesh[] = [], group: Group | undefined;
     let next = structuredClone(settings), cutaway = this.cutaway;
     try {
-      const baseline = settings.motion ? sampleHumanPoseMotion(this.motions, assets.rig, assets.pose, settings.motion) : assets.pose;
-      const pose = editedHumanPose(assets.rig, baseline, settings);
-      runtime.applyPose(pose); runtime.showDetails(this.detail, '');
+      if (assets.body && !body) body = await loadHumanPoseRuntime(assets.body.base, rig);
+      if (this.disposed) throw new Error('3D表示は閉じられています');
+      const source = settings.motion ? sampleHumanPoseMotion(this.motions, assets.rig, assets.pose, settings.motion) : assets.pose;
+      const baseline = bodyPose(assets, source, retarget);
+      if (preserveEdits) {
+        next.joint_edits = new HumanPoseMotionRetarget(this.rig, rig, true).rebaseEdits(this.settings.joint_edits, this.baseline(this.settings), baseline);
+      }
+      const pose = editedHumanPose(rig, baseline, next);
+      runtime.applyPose(pose); runtime.showDetails(this.detail, ''); runtime.showBody(!body);
       if (keepHead) {
         const previousHead = this.runtime.points.get('headCentre'), nextHead = runtime.points.get('headCentre');
         if (!previousHead || !nextHead) throw new Error('頭の基準点がありません');
@@ -161,12 +191,15 @@ export class HumanPoseSceneRenderer {
         group = poseBackgroundGroup(nextBackground);
         cutaway = nextBackground && prepareBackgroundCutaway(nextBackground.shape.meshes, nextBackground.shape.groups, nextBackground.shape);
       }
+      body?.applyPose(pose);
     } catch (error) {
-      runtime.dispose(); if (supports.length) disposeThreeObject(new Group().add(...supports)); if (group) disposeThreeObject(group); throw error;
+      runtime.dispose(); if (body && !reuseBody) body.dispose(); if (supports.length) disposeThreeObject(new Group().add(...supports)); if (group) disposeThreeObject(group); throw error;
     }
     this.runtime.scene.removeFromParent(); this.runtime.dispose();
     if (this.supports.length) disposeThreeObject(new Group().add(...this.supports));
-    this.runtime = runtime; this.rig = assets.rig; this.basePose = structuredClone(assets.pose); this.supports = supports;
+    if (this.body !== body) { this.body?.scene.removeFromParent(); this.body?.dispose(); if (body) this.placement.add(body.scene); }
+    this.body = body; this.assets = assets; this.retarget = retarget;
+    this.runtime = runtime; this.rig = rig; this.basePose = structuredClone(assets.pose); this.supports = supports;
     this.placement.add(runtime.scene, ...supports); this.settings = next; this.handleDrag = undefined;
     if (group) {
       disposeThreeObject(this.backgroundGroup); this.backgroundGroup.removeFromParent();
@@ -227,9 +260,11 @@ export class HumanPoseSceneRenderer {
   apply(settings: HumanPoseSceneSettings): void {
     validateHumanPoseScene(settings);
     if (!sameHumanPoseSource(settings.source, this.settings.source)) throw new Error('保存した撮影設定と素材の版が異なります');
+    if (settings.body_model !== this.settings.body_model) throw new Error('表示モデルの読み込みが必要です');
     if (settings.background?.sourceId !== this.background?.sourceId) throw new Error('背景モデルの読み込みが必要です');
     const pose = editedHumanPose(this.rig, this.baseline(settings), settings);
     this.runtime.applyPose(pose);
+    this.body?.applyPose(pose);
     for (const [index, mesh] of this.supports.entries()) if (pose.supports[index]) mesh.position.fromArray(pose.supports[index].position);
     this.settings = structuredClone(settings); this.updatePlacement(); this.render();
   }

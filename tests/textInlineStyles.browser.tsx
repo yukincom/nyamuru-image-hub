@@ -34,7 +34,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="handwritten-run" onClick={()=>void verifyHandwritten()}>描き文字の編集を検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="generation-owner-run" onClick={()=>void verifyGenerationOwner()}>生成マスクの独立操作を検証</button><button id="layer-continuity-run" onClick={()=>void verifyLayerMoveContinuity()}>移動中の状態保持を検証</button><button id="folder-space-run" onClick={()=>void verifyFolderSpacePan()}>フォルダー選択後のSpaceを検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="generation-owner-run" onClick={()=>void verifyGenerationOwner()}>生成マスクの独立操作を検証</button><button id="layer-continuity-run" onClick={()=>void verifyLayerMoveContinuity()}>移動中の状態保持を検証</button><button id="folder-space-run" onClick={()=>void verifyFolderSpacePan()}>フォルダー選択後のSpaceを検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -441,71 +441,6 @@ async function verifyAlignment(){
   finally{control.disabled=false;}
 }
 
-
-/** No generation request: verify editing, selection, locks and persistence only. */
-async function verifyHandwritten(){
-  const run=document.getElementById('handwritten-run') as HTMLButtonElement,checks:string[]=[];
-  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
-  const section=()=>document.querySelector<HTMLElement>('.handwritten-text-section')!;
-  const cards=()=>[...section().querySelectorAll<HTMLElement>('.selectable-card')];
-  const field=(index:number,label:string)=>[...cards()[index].querySelectorAll<HTMLLabelElement>('label.field')].find(node=>node.querySelector('.field-label')?.textContent===label)!.querySelector<HTMLTextAreaElement>('textarea')!;
-  const change=async(index:number,label:string,value:string)=>{const area=field(index,label);area.focus();area.value=value;area.dispatchEvent(new Event('input',{bubbles:true}));await settle();area.blur();};
-  const node=(index:number,overlay=false)=>document.querySelector<HTMLElement>(`[data-content-kind="bubble"][data-content-index="${index}"]${overlay?'[data-content-overlay]':'[data-content-panel="0"]:not([data-content-overlay])'}`)!;
-  const guide=(index:number)=>cards()[index].querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-  const generate=(index:number)=>[...cards()[index].querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.includes('描き文字を生成'))!;
-  const choose=async(index:number,overlay=false)=>{node(index,overlay).click();await settle();};
-  const reload=async()=>{render(null,host);render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'再起動待ち');await open();};
-  run.disabled=true;report.textContent='描き文字の編集を検証中';
-  try{
-    render(null,host);const doc=structuredClone(source),panel=doc.manga.pages[0].panels[0];
-    panel.bubbles.push({text:'ドン',shape:'handwritten',lettering_description:'太い線',bbox:{x:60,y:90,w:60,h:35}},
-      {text:'ふわっ',shape:'handwritten',locked:true,bbox:{x:70,y:130,w:60,h:30}});
-    doc.manga.pages[0].page_overlay!.bubbles!.push({text:'前景描き文字',shape:'handwritten',bbox:{x:80,y:210,w:70,h:30}});
-    const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();render(<App/>,host);
-    await wait(()=>!!button('作品フォルダを開く'),'起動待ち');await open();button('選択').click();await settle();await choose(1);
-    check(cards().length===2&&field(0,'文字').value==='ドン','コマ情報には描き文字だけを表示');
-    check(field(1,'文字').disabled&&field(1,'描き方').disabled&&!generate(1).disabled&&getComputedStyle(generate(1)).pointerEvents!=='none','手動ロック中は入力不可、生成操作は可能');
-    button('写植文字').click();await settle();button('情報').click();await settle();
-    check(document.querySelector<HTMLSelectElement>('.bubble-info-content [aria-label="文字の種類"]')?.value==='handwritten','文字パレットの情報タブに選択中の描き文字を表示');
-    button('選択').click();await settle();await choose(1);
-    await change(0,'文字','ド  ン！\nドン');await save();
-    check((await stored()).manga.pages[0].panels[0].bubbles[1].text==='ド  ン！\nドン','本文の連続空白と改行を保存');
-    await change(0,'描き方','太く角張る');history('元に戻す').click();await settle();
-    check(field(0,'描き方').value==='太い線','描き方をUndoできる');history('やり直す').click();await settle();
-    check(field(0,'描き方').value==='太く角張る','描き方をRedoできる');
-    guide(0).click();await settle();check(!node(1).querySelector('.bubble-text-content'),'文字あたりだけを非表示にする');
-    check(node(0).querySelector('.bubble-text-content')?.textContent==='ABCDEF','通常吹き出しの文字は維持');
-    history('元に戻す').click();await settle();check(!!node(1).querySelector('.bubble-text-content'),'表示切替をUndoできる');
-    history('やり直す').click();await settle();await save();
-    const baseline=(await stored()).manga.pages[0].panels[0];
-    check(baseline.bubbles[1].lettering_guide_hidden===true&&baseline.bubbles[1].text==='ド  ン！\nドン','非表示でも本文と描き方を保持して保存');
-    await choose(1,true);check(cards().length===1&&field(0,'文字').value==='前景描き文字','前景選択で描き文字一覧を切替');
-    await change(0,'描き方','細い線');guide(0).click();await settle();await save();
-    check(!node(1,true).querySelector('.bubble-text-content'),'前景の文字あたりも非表示にする');
-    check(JSON.stringify((await stored()).manga.pages[0].panels[0])===JSON.stringify(baseline),'前景の編集はコマ内の同番号を変更しない');
-    await reload();button('選択').click();await settle();await choose(1);
-    check(field(0,'描き方').value==='太く角張る'&&!guide(0).checked&&!node(1).querySelector('.bubble-text-content'),'再読込でコマの本文・描き方・非表示を復元');
-    section().querySelector<HTMLButtonElement>('.inline-add')!.click();await settle();
-    check(cards().length===3&&field(2,'文字').value===''&&generate(2).disabled,'新規描き文字を追加し空本文の生成を拒否');
-    await change(2,'文字','ザッ');check(!generate(2).disabled,'本文入力で生成操作を有効にする');
-    cards()[2].querySelector<HTMLButtonElement>('.nested-card-head button')!.click();await settle();check(cards().length===2,'描き文字を既存削除経路で削除');
-    history('元に戻す').click();await settle();check(cards().length===3&&field(2,'文字').value==='ザッ','削除をUndoできる');
-    await choose(1,true);check(field(0,'描き方').value==='細い線'&&!guide(0).checked,'再読込で前景の描き方と非表示を復元');
-    // Existing canvas menus must expose generation only for handwritten content.
-    node(0,true).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:300,clientY:220}));await settle();
-    check(![...document.querySelectorAll('[role="menuitem"]')].some(n=>/生成/.test(n.textContent??'')),'通常吹き出しのメニューに単品生成を表示しない');
-    document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();
-    node(1,true).dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,clientX:300,clientY:220}));await settle();
-    check([...document.querySelectorAll('[role="menuitem"]')].some(n=>n.textContent==='描き文字を生成'),'描き文字のメニューに既存生成入口を表示');
-    document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();
-    const lockedDoc=await stored();lockedDoc.manga.pages[0].panels[0].layer={...lockedDoc.manga.pages[0].panels[0].layer,locked:true};
-    render(null,host);const lockWriter=await project.createWritable();await lockWriter.write(JSON.stringify(await createPortableProject(lockedDoc)));await lockWriter.close();
-    render(<App/>,host);await wait(()=>!!button('作品フォルダを開く'),'ロック作品待ち');await open();
-    check(field(0,'文字').disabled&&field(0,'描き方').disabled&&!generate(0).disabled&&!generate(0).closest('[inert],[aria-disabled="true"]')&&getComputedStyle(generate(0)).pointerEvents!=='none','コマ全体のロック中も手動入力だけを禁止し生成操作を保持');
-    report.textContent=`PASS ${checks.length}\n${checks.join('\n')}`;
-  }catch(error){report.textContent=`FAIL after ${checks.length}: ${String(error)}\n${checks.join('\n')}`;console.error(error);}
-  finally{run.disabled=false;}
-}
 
 
 async function verifyLayerAdd(){

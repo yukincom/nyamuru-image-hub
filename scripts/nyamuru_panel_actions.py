@@ -258,9 +258,12 @@ class PanelActionSuggester:
     def translate_image_generation_prompt(self, value: dict[str, Any]) -> dict[str, Any]:
         from generation_store import canonical, sha256, text
         from qwen_generation import split_fixed_generation_prompt, is_fixed_lettering_line, validate_english
+        if value.get('content_kind') in ('handwritten', 'typeset'):
+            from qwen_generation import prepare_handwritten_prompt
+            return prepare_handwritten_prompt(value)
         prompt = value["prompt"]
         protected = []
-        literal_text = value.get("literal_text", []) if value.get("owner_key") in ("page", "panel") or value.get("content_kind") == "handwritten" else []
+        literal_text = value.get("literal_text", []) if value.get("owner_key") in ("page", "panel") or value.get("content_kind") in ("handwritten", "typeset") else []
         if literal_text:
             if any(literal not in prompt for literal in literal_text):
                 raise ValueError('ページに描く文字が生成指示から欠落しています')

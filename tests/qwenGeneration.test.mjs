@@ -373,7 +373,7 @@ test('handwritten generation keeps literal text and owner while ordinary balloon
  assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,normal),/単品生成/);
  const plan=buildQwenGenerationPlan(manga,0,0,false,lettering),payload=qwenGenerationPayload(plan,[]);
  assert.equal(plan.scope,undefined);assert.equal(plan.contentKind,'handwritten');assert.equal(plan.label,'テキスト2');
- assert.match(plan.prompt,/太く角張る/);assert.match(plan.prompt,/meta.text_orientation=horizontal/);assert.doesNotMatch(plan.prompt,/文字は加えない|外形だけ|本文は描かず/);
+ assert.doesNotMatch(plan.prompt,/太く角張る|描き方：/);assert.match(plan.prompt,/文字の組み方向：横書き/);assert.doesNotMatch(plan.prompt,/文字は加えない|外形だけ|本文は描かず/);
  assert.deepEqual(payload.literal_text,[panel.bubbles[1].text]);assert.equal(payload.content_kind,'handwritten');assert.equal(payload.owner_key,'bubble-1');assert.equal(payload.mode,'new');
  assert.ok(qwenGenerationPrompt(plan,undefined,{kind:'paint'}).includes(panel.bubbles[1].text));
  for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
@@ -412,9 +412,10 @@ test('lettering generation includes only lettering data and ignores character co
  const before=structuredClone(manga),owner=paintScene(panel,100,[]).owners.find(owner=>owner.key==='bubble-1');
  const plan=buildQwenGenerationPlan(manga,0,0,false,owner,standard);
  for(const prompt of [plan.prompt,qwenGenerationPrompt(plan,undefined,{kind:'paint'})]){
-  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','細く柔らかく','文字以外の絵は加えず','文字の外側は透明'])assert.ok(prompt.includes(value),value);
+  for(const value of ['handwritten=フキダシなしの手描き文字','OMNY記載どおりの日本語','かぁぁ','文字以外の絵は加えず','文字の外側は透明'])assert.ok(prompt.includes(value),value);
   assert.doesNotMatch(prompt,/確認用|女性|人物|キャラクター|顔|困惑|頬|文字の文脈|文字の配置|戸惑う場面|室内|無関係な表情|えっと|同じコマの補足|別コマの怒り|前景だけの文脈|非表示の文脈|合成時の重なり|normal=|OMNY: shape/);
  }
+ assert.doesNotMatch(plan.prompt,/細く柔らかく|描き方：/);
  const payload=qwenGenerationPayload(plan,[]);
  assert.deepEqual(payload.literal_text,['かぁぁ']);assert.ok(payload.prompt.includes(qwenGenerationSizePrompt(plan)));
  assert.deepEqual(plan.characterKeys,[]);assert.deepEqual(plan.candidates,[]);assert.deepEqual(payload.character_keys,[]);assert.deepEqual(payload.references,[]);
@@ -451,4 +452,31 @@ test('lettering mask dimensions, payload and placement share one target while co
  assert.deepEqual(fresh.literal_text,['ド  ン！\nドン']);assert.deepEqual(owner,before);
  assert.throws(()=>buildQwenGenerationPlan(manga,0,0,false,owner,undefined,{x:790,y:0,w:20,h:20}),/マスク/);
  const noMask=buildQwenGenerationPlan(manga,0,0,false,owner);assert.equal(qwenGenerationTarget(noMask),noMask);
+});
+
+// 見込み: 写植の既存文字ownerが同じ単品経路へ合流する。合格: font/太さ/縦横/本文を保持し、描き文字のペンと旧描き方を混ぜない。範囲: 計画/送信入力のみ、モデルなし。
+test('typeset folders use the existing text generation payload with their typography',()=>{
+ const manga=fixture(),panel=manga.pages[0].panels[0];
+ panel.bubbles=[{text:'写植\n二行',shape:'typeset',bbox:{x:10,y:10,w:30,h:20},text_style:{font:'Test Serif',fontWeight:700,orientation:'horizontal'},lettering_description:'使わない旧指定',lettering_pen:'brush'}];
+ const before=structuredClone(manga),owner=paintScene(panel,100,[]).owners.find(o=>o.kind==='bubble');
+ assert.equal(canGeneratePaintOwner(owner),true);
+ const plan=buildQwenGenerationPlan(manga,0,0,false,owner),payload=qwenGenerationPayload(plan,[]);
+ assert.equal(plan.contentKind,'typeset');assert.equal(payload.content_kind,'typeset');assert.deepEqual(payload.literal_text,['写植\n二行']);
+ assert.match(plan.prompt,/書体：Test Serif/);assert.match(plan.prompt,/文字の太さ：700/);assert.match(plan.prompt,/文字の組み方向：横書き/);
+ assert.doesNotMatch(plan.prompt,/使わない旧指定|ペン：|表現：|handwritten=/);assert.deepEqual(manga,before);
+});
+
+
+// 見込み: 採用PNGは生成解像度から原稿寸法へ変わるため、確定済み登録jobだけ原稿の寸法を受理する。
+// 合格: 50×20と5000×50を受理、未採用・版なし・面積超過は拒否。範囲: 実bridge decoder、PNGと応答は模擬。
+test('selected workflow PNGs retain small and large manuscript dimensions',async()=>{
+ const {decodeQwenJob}=await import('../src/lib/localBridge.ts');
+ const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const job={profile:QWEN_GENERATION_PROFILE,job_id:id,status:'succeeded',request_sha256:'a'.repeat(64),label:'採用画像',
+   width:50,height:20,workflow_id:id,selected_candidate:3,file_name:`qwen_${id}.png`,image:'data:image/png;base64,aGVsbG8='};
+ assert.equal((await decodeQwenJob(job,id)).height,20);
+ assert.equal((await decodeQwenJob({...job,width:5000,height:50},id)).width,5000);
+ for(const change of [{selected_candidate:undefined},{workflow_id:undefined},{width:16385},{width:16384,height:16384}]){
+  await assert.rejects(decodeQwenJob({...job,...change},id),/対応/);
+ }
 });

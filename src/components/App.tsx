@@ -17,8 +17,8 @@ import {artworkLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import PaintTextTools, {type TextPaletteTab} from './PaintTextTools';
 import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
-import { addCanvasTextAt, canvasTextAt, canvasTextCategory, changeCanvasTextCategory, type TextCategory, canvasTextEditable, canvasBubbleLineWidthEditable, changeCanvasDefaultBubbleLineWidth, editCanvasBubbleLineWidth, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, removeCanvasText, screenTextCoveredByBubble, toggleCanvasTextVisibility, type CanvasTextTarget } from '../lib/canvasText';
-import {bubbleStrokeWidthMm,isHandwrittenText} from '../lib/bubblePresentation';
+import { addCanvasTextAt, ensureCanvasTextOwner, canvasTextAt, canvasTextCategory, changeCanvasTextCategory, type TextCategory, canvasTextEditable, canvasBubbleLineWidthEditable, changeCanvasDefaultBubbleLineWidth, editCanvasBubbleLineWidth, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, removeCanvasText, screenTextCoveredByBubble, toggleCanvasTextVisibility, type CanvasTextTarget } from '../lib/canvasText';
+import {bubbleStrokeWidthMm,isHandwrittenText,isBalloonText} from '../lib/bubblePresentation';
 import {availableFontWeights,classifyPcFontFamilies,queryPcFontFamilies,type PcFontFamily} from '../lib/bubbleFonts';
 import PageLayerPalette from './PageLayerPalette';
 import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, reorderPanelArt, toggleBubbleVisibility, unlockPanelDescendants, type BubbleTextTarget } from '../lib/panelLayers';
@@ -26,7 +26,7 @@ import PanelControls from './PanelControls';
 import { namedBackgroundStages, prepareBackgroundStage, verifyBackgroundStage } from '../lib/background3d';
 import { persistSeriesBackgroundModels } from '../lib/backgroundStageStore';
 import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
-import { applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
+import { paintGenerationOwner, applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
 import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
@@ -411,13 +411,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const qwenPreparing=useRef(false);
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
-  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest}|null>(null);
+  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest;textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}}|null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
   const [selectedElement, setSelectedElement] = useState<CanvasElementSelection | null>(null);
   const placedImageInput = useRef<HTMLInputElement>(null);
-  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox; generatedOwner?:PaintOwner; generationScope?:'page'|'panel' } | null>(null);
+  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox; generatedOwner?:PaintOwner; textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}; generationScope?:'page'|'panel' } | null>(null);
   const [imageImportBusy, setImageImportBusy] = useState(false);
   const [imageExportDialog,setImageExportDialog]=useState<{mode:'current'|'range'|'all';from:number;to:number;format:ImageExportFormat}|null>(null);
   const [imageExportBusy,setImageExportBusy]=useState(false);
@@ -3247,12 +3247,28 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   function chooseTextTool(){void requestPcFonts();void layerTransition(async()=>{
     setTextPaletteRequest(value=>({id:value.id+1,tab:'text'}));
     autoPaintResume.current=null;
-    if(paintSessionRef.current){
-      if(selectedElement?.type==='bubble'||selectedElement?.type==='screen_text')await paintController.current?.close();
-      else await paintController.current?.pause();
+    const session=paintSessionRef.current;
+    if(session){
+      const snapshot=paintController.current?.snapshot(),scene=snapshot?.scene??session.scene;
+      const key=snapshot?.ownerKey??session.initialOwner;
+      const owner=key?paintGenerationOwner(scene,key):undefined;
+      let selection=owner?.kind==='bubble'?paintOwnerCanvasSelection(documentRef.current.manga.pages[session.pageIndex],session.panelIndex,owner.key,session.overlay):undefined;
+      // Point text has no paint owner; preserve its existing P -> T editing route.
+      if(!selection&&selectedElement?.type==='screen_text'&&session.pageIndex===activePage&&session.panelIndex===activePanel&&(selectedElement.scope==='page_overlay')===session.overlay
+        &&canvasTextAt(documentRef.current,{pageIndex:session.pageIndex,panelIndex:session.panelIndex,index:selectedElement.index,kind:'screen_text',overlay:session.overlay}))selection=selectedElement;
+      if(selection){
+        await paintController.current?.close();
+        selectCanvasElement(selection,session.panelIndex,session.pageIndex,false);
+      }else{
+        await paintController.current?.pause();
+        setSelectedElement(null);
+      }
     }
     setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
   });}
+  function closeTextTool(){
+    endTextEdit();setTextTool(false);
+  }
   function chooseBubblePathTool(mode:Exclude<BubblePathToolMode,false>){void layerTransition(async()=>{
     autoPaintResume.current=null;
     if(paintSessionRef.current)await paintController.current?.close();
@@ -3294,6 +3310,17 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(selectedElement?.type!=='bubble'&&selectedElement?.type!=='screen_text')return;
     changeCanvasText({pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,overlay:selectedElement.scope==='page_overlay',kind:selectedElement.type},text);
   }
+  function screenTextPosition(target:CanvasTextTarget):Bubble['text_position']{
+    if(target.kind!=='screen_text')return;
+    const element=window.document.querySelector<HTMLElement>(`[data-content-kind="screen_text"][data-content-index="${target.index}"].is-element-selected${target.overlay?'[data-content-overlay]':`[data-content-panel="${target.panelIndex}"]`}`);
+    const frame=element?.getBoundingClientRect(),body=element?.querySelector('.screen-text-body');
+    if(frame?.width&&frame.height&&body){
+      // Match BubbleText's content-block range, including glyph overhang beyond its line box.
+      const range=window.document.createRange();range.selectNode(body);
+      const content=range.getBoundingClientRect();
+      return {x:(content.x+content.width/2-frame.x)/frame.width,y:(content.y+content.height/2-frame.y)/frame.height};
+    }
+  }
   function changeSelectedTextCategory(category:TextCategory){
     if(selectedElement?.type!=='bubble'&&selectedElement?.type!=='screen_text')return;
     const target:CanvasTextTarget={pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,overlay:selectedElement.scope==='page_overlay',kind:selectedElement.type};
@@ -3301,12 +3328,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(!item||!canvasTextEditable(documentRef.current,target)||canvasTextCategory(item,target.kind)===category)return;
     // Point text starts at an edge; native balloon text is centered on text_position.
     // Keep the visible text center even when its authored box has spare space.
-    let screenPosition:Bubble['text_position'];
-    if(target.kind==='screen_text'){
-      const element=window.document.querySelector<HTMLElement>(`[data-content-kind="screen_text"][data-content-index="${target.index}"].is-element-selected${target.overlay?'[data-content-overlay]':`[data-content-panel="${target.panelIndex}"]`}`);
-      const frame=element?.getBoundingClientRect(),content=element?.querySelector('.screen-text-body')?.getBoundingClientRect();
-      if(frame?.width&&frame.height&&content)screenPosition={x:(content.x+content.width/2-frame.x)/frame.width,y:(content.y+content.height/2-frame.y)/frame.height};
-    }
+    const screenPosition=screenTextPosition(target);
     void layerTransition(async()=>{
       if(paintSessionRef.current)await paintController.current?.close();
       const next=cloneDocument(documentRef.current),converted=changeCanvasTextCategory(next,target,category,screenPosition);
@@ -3415,7 +3437,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }
     if(session?.pageIndex===activePage&&session.panelIndex===index&&session.overlay===overlay){paintController.current?.layerAction(action);return;}
     if(session)await paintController.current?.close();
-    setActivePanel(index);setSelectedPanels([index]);setSelectedElement(null);
+    setActivePanel(index);setSelectedPanels([index]);
+    // Locking uses paint persistence, but its native owner remains the information target after close.
+    setSelectedElement(action.type==='owner-lock'?paintOwnerCanvasSelection(documentRef.current.manga.pages[activePage],index,action.key,overlay)??null:null);
     pendingLayerAction.current=action;
     // Use the preview's layer IDs; untouched empty layers do not exist in the document yet.
     if(!openPaint(action.key,index,activePage,overlay,preview))pendingLayerAction.current=null;
@@ -3501,19 +3525,20 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     try{actOnLayer(index,{type:'background3d',key:'background'},makePaintScene(documentRef.current,index,activePage,false));}
     catch(error){setToast(error instanceof Error?error.message:'背景の3D編集を開けません');}
   }
-  const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest) => {
+  const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
-    const area=((captured.kind==='bubble'&&isHandwrittenText(captured.bubble))||(captured.figure?.human_pose?.input_mode==='image'&&!isPropPlacement(captured.figure)))?generationMaskBounds(captured.paint):undefined;
-    const plan=buildQwenGenerationPlan(current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area);
+    const needsMask=(captured.kind==='bubble'&&captured.bubble&&!isBalloonText(captured.bubble))
+      || (captured.figure?.human_pose?.input_mode==='image'&&!isPropPlacement(captured.figure));
+    const area=needsMask?generationMaskBounds(captured.paint):undefined;
+    const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area);
     const loadLayer=async(id:string,correction:boolean,crop?:BBox)=>{
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop);
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       return result.image;
     };
-    if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
     setVoiceOpen(true);
-    const next={id:crypto.randomUUID(),plan,layers:qwenLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest};
+    const next={id:crypto.randomUUID(),plan,layers:qwenLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest,...(textSource?{textSource:{target:textSource.target,position:textSource.position}}:{})};
     qwenGenerationRef.current=next;setQwenGeneration(next);
   };
   const requestOwnerGeneration = async(key?:string,overlay=selectedElement?.scope==='page_overlay',panelIndex=activePanel,pageIndex=activePage,agentRequest?:QwenAgentRequest) => {
@@ -3533,6 +3558,22 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       return true;
     }catch(error){setToast(error instanceof Error?error.message:'生成の準備ができませんでした');return false;}finally{qwenPreparing.current=false;}
   };
+  async function requestTextGeneration(kind:'bubble'|'screen_text',index:number,overlay:boolean,panelIndex:number,pageIndex=activePage){
+    endTextEdit();
+    if(kind==='bubble')return requestOwnerGeneration(`bubble-${index}`,overlay,panelIndex,pageIndex);
+    if(qwenGenerationRef.current||qwenPreparing.current||imageImportBusy||projectOperation.current)return;
+    qwenPreparing.current=true;
+    try{
+      if(paintSessionRef.current)await paintController.current?.close();
+      const current=documentRef.current,target:CanvasTextTarget={pageIndex,panelIndex,index,overlay,kind},position=screenTextPosition(target),preview=cloneDocument(current);
+      const converted=ensureCanvasTextOwner(preview,target,position);
+      if(!converted)throw new Error('生成する写植文字が見つかりません');
+      const owner=makePaintScene(preview,panelIndex,pageIndex,overlay).owners.find(item=>item.key===`bubble-${converted.index}`);
+      if(!owner)throw new Error('生成する文字のフォルダが見つかりません');
+      await prepareQwen(current,pageIndex,panelIndex,overlay,owner,undefined,[],undefined,{target,position,document:preview});
+    }catch(error){setToast(error instanceof Error?error.message:'文字の生成を準備できませんでした');}
+    finally{qwenPreparing.current=false;}
+  }
   const requestCompositionGeneration = async(scope:QwenCompositionScope,panelIndex:number,pageIndex:number) => {
     if(qwenGenerationRef.current||qwenPreparing.current||imageImportBusy||projectOperation.current)return;
     qwenPreparing.current=true;
@@ -3707,6 +3748,10 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       const prepared = await prepareImageAsset(file);
       if (documentRef.current !== target.document) throw new Error('取り込み中に作品が変更されたため、配置先を選んでやり直してください');
       const next = cloneDocument(documentRef.current);
+      if(target.textSource){
+        const converted=ensureCanvasTextOwner(next,target.textSource.target,target.textSource.position);
+        if(!converted||converted.index!==target.bubbleIndex)throw new Error('生成する写植文字の差し込み先が変わりました');
+      }
       const register=async(prepared:ImageAsset,blob:Blob)=>{
         const existing=next.manga.image_assets?.find(asset=>asset.sha256===prepared.sha256);
         const cached=existing?await loadFigureCropAsset(existing.storageId):null;
@@ -3784,7 +3829,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       await paintController.current.insertImage(file,owner.key,placement);
     }else{
       await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
-        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner});
+        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner,...(target.textSource?{textSource:target.textSource}:{})});
     }
     setQwenGeneration(null);setToast(`${file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);
   };
@@ -4114,7 +4159,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     onChangeSaveDirectory={() => saveProject(true)}
   />;
 
-  return <PaintEditor onAddOutside={action=>{const s=paintSessionRef.current;if(!s)return;const page=documentRef.current.manga.pages[s.pageIndex],panel=page.panels[s.panelIndex];if(!panel)return;actOnLayer(s.panelIndex,{...action,key:'page',position:{stack:{beforePanel:`panel-${panel.id}`}}},makePaintScene(documentRef.current,s.panelIndex,s.pageIndex,true),true);}} selectedBubbleStroke={selectedBubbleStroke} resume={paintSession?.resume} resumeImages={paintSession?.images} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={chooseLayoutTool} onToggleBubble={(index,group)=>{const s=paintSessionRef.current;if(s)toggleTextLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,index,overlay:s.overlay,kind:'bubble'},group);}} onSelectOwner={(key,native)=>{const s=paintSessionRef.current;if(s)selectLayerOwner(key,s.panelIndex,s.pageIndex,s.overlay,native);}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session)reorderOwnerLayers(session.panelIndex,key,target,after,session.overlay);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen||layerSwitchBusy} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
+  return <PaintEditor onAddOutside={action=>{const s=paintSessionRef.current;if(!s)return;const page=documentRef.current.manga.pages[s.pageIndex],panel=page.panels[s.panelIndex];if(!panel)return;actOnLayer(s.panelIndex,{...action,key:'page',position:{stack:{beforePanel:`panel-${panel.id}`}}},makePaintScene(documentRef.current,s.panelIndex,s.pageIndex,true),true);}} selectedBubbleStroke={selectedBubbleStroke} resume={paintSession?.resume} resumeImages={paintSession?.images} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} onClose={closeTextTool} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={chooseLayoutTool} onToggleBubble={(index,group)=>{const s=paintSessionRef.current;if(s)toggleTextLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,index,overlay:s.overlay,kind:'bubble'},group);}} onSelectOwner={(key,native)=>{const s=paintSessionRef.current;if(s)selectLayerOwner(key,s.panelIndex,s.pageIndex,s.overlay,native);}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session)reorderOwnerLayers(session.panelIndex,key,target,after,session.overlay);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen||layerSwitchBusy} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
     <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onPointerOverCapture={autoPaintBoundary} onFocusCapture={autoPaintBoundary} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
     <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog || Boolean(imageExportDialog)} hasDocument={hasDocument} busy={projectBusy||imageImportBusy||imageExportBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo}
       onImportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();choosePlacedImage('page');});}}
@@ -4195,11 +4240,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
               onChange={images => { lastHistoryPush.current = 0; mutate(draft => { draft.manga.pages[activePage].images = images; }); lastHistoryPush.current = 0; }}
               onMoveToPanel={panel ? movePageImageToPanel : undefined} />}
             {(paintSession?paintSession.overlay:selectedElement?.scope === 'page_overlay') && page.page_overlay
-            ? <PageOverlayInspector onTextCategory={changeSelectedTextCategory} onSelectedText={changeSelectedTextBody} onHandwrittenHistoryBoundary={()=>{lastHistoryPush.current=0;}} onGenerateHandwritten={index=>void requestOwnerGeneration(`bubble-${index}`,true,0,activePage)} onHandwrittenText={(index,text)=>changeCanvasText({pageIndex:activePage,panelIndex:0,overlay:true,kind:'bubble',index},text)} generationBusy={Boolean(qwenGeneration)||imageImportBusy||projectBusy} painting={Boolean(paintSession)} pageIndex={activePage} onScenarioChoice={chooseScenarioBubble} manga={document.manga} panels={page.panels} overlay={page.page_overlay} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} onSelectElement={setSelectedElement} onChange={(nextOverlay) => mutate((draft) => {
+            ? <PageOverlayInspector onTextCategory={changeSelectedTextCategory} onSelectedText={changeSelectedTextBody} onHandwrittenHistoryBoundary={()=>{lastHistoryPush.current=0;}} onGenerateText={(kind,index)=>void requestTextGeneration(kind,index,true,0)} generationBusy={Boolean(qwenGeneration)||imageImportBusy||projectBusy} painting={Boolean(paintSession)} pageIndex={activePage} onScenarioChoice={chooseScenarioBubble} manga={document.manga} panels={page.panels} overlay={page.page_overlay} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} onSelectElement={setSelectedElement} onChange={(nextOverlay) => mutate((draft) => {
               if (nextOverlay) draft.manga.pages[activePage].page_overlay = nextOverlay;
               else delete draft.manga.pages[activePage].page_overlay;
             })} />
-            : <PanelInspector onTextCategory={changeSelectedTextCategory} onSelectedText={changeSelectedTextBody} onHandwrittenHistoryBoundary={()=>{lastHistoryPush.current=0;}} onGenerateHandwritten={index=>void requestOwnerGeneration(`bubble-${index}`,false,activePanel,activePage)} onHandwrittenText={(index,text)=>changeCanvasText({pageIndex:activePage,panelIndex:activePanel,overlay:false,kind:'bubble',index},text)} generationBusy={Boolean(qwenGeneration)||imageImportBusy||projectBusy} onOpenBackground3d={()=>openPanelBackground3d(activePanel)} panelControls={<PanelControls painting={Boolean(paintSession)} innerFrameSnap={innerFrameSnap} panelGapSnap={panelGapSnap} panelSync={panelSync} onToggleInnerFrameSnap={toggleInnerFrameSnap} onTogglePanelGapSnap={togglePanelGapSnap} onTogglePanelSync={togglePanelSync} selectedCount={selectedPanels.length} onMerge={mergeSelectedPanelGroup} splitDirection={panelSplitDirection} onSplitDirection={setPanelSplitDirection} onSplit={splitActivePanel}/>} imageImportBusy={imageImportBusy} panelDraftToolbarTarget={null} painting={Boolean(paintSession)} guideVisible={key=>artworkGuideVisible(key,activePanel,activePage,false)} onToggleGuide={key=>toggleArtworkGuide(key,activePanel,activePage,false)} onScenarioChoice={chooseScenarioBubble} manga={document.manga} panel={panel} pageIndex={activePage} panelIndex={activePanel} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} episodeWorkspaceToken={!isLanClient && boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.token : ''} episodeWorkspaceFolder={boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.folderName : ''} seriesId={document.manga.meta.series_id} episodeId={document.manga.meta.episode_id} getOmnySnapshot={getOmnySnapshot} onChooseEpisodeWorkspace={choosePanelDraftWorkspace} onSelectElement={setSelectedElement} onChange={(nextPanel,origin='manual') => mutate((draft) => { const current=draft.manga.pages[activePage]?.panels[activePanel];if(current&&(origin==='agent'||!panelLocked(current)))draft.manga.pages[activePage].panels[activePanel] = nextPanel; })} onOpenBackgrounds={() => openMaterialsForPanel('background')} onOpenProps={() => openMaterialsForPanel('prop')} onAdd={addPanel} onDelete={deletePanel} />}</div></aside>
+            : <PanelInspector onTextCategory={changeSelectedTextCategory} onSelectedText={changeSelectedTextBody} onHandwrittenHistoryBoundary={()=>{lastHistoryPush.current=0;}} onGenerateText={(kind,index)=>void requestTextGeneration(kind,index,false,activePanel)} generationBusy={Boolean(qwenGeneration)||imageImportBusy||projectBusy} onOpenBackground3d={()=>openPanelBackground3d(activePanel)} panelControls={<PanelControls painting={Boolean(paintSession)} innerFrameSnap={innerFrameSnap} panelGapSnap={panelGapSnap} panelSync={panelSync} onToggleInnerFrameSnap={toggleInnerFrameSnap} onTogglePanelGapSnap={togglePanelGapSnap} onTogglePanelSync={togglePanelSync} selectedCount={selectedPanels.length} onMerge={mergeSelectedPanelGroup} splitDirection={panelSplitDirection} onSplitDirection={setPanelSplitDirection} onSplit={splitActivePanel}/>} imageImportBusy={imageImportBusy} panelDraftToolbarTarget={null} painting={Boolean(paintSession)} guideVisible={key=>artworkGuideVisible(key,activePanel,activePage,false)} onToggleGuide={key=>toggleArtworkGuide(key,activePanel,activePage,false)} onScenarioChoice={chooseScenarioBubble} manga={document.manga} panel={panel} pageIndex={activePage} panelIndex={activePanel} selectedElement={selectedElement} canvasSelectionScrollRequest={canvasSelectionScrollRequest} episodeWorkspaceToken={!isLanClient && boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.token : ''} episodeWorkspaceFolder={boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? boundEpisodeWorkspace.folderName : ''} seriesId={document.manga.meta.series_id} episodeId={document.manga.meta.episode_id} getOmnySnapshot={getOmnySnapshot} onChooseEpisodeWorkspace={choosePanelDraftWorkspace} onSelectElement={setSelectedElement} onChange={(nextPanel,origin='manual') => mutate((draft) => { const current=draft.manga.pages[activePage]?.panels[activePanel];if(current&&(origin==='agent'||!panelLocked(current)))draft.manga.pages[activePage].panels[activePanel] = nextPanel; })} onOpenBackgrounds={() => openMaterialsForPanel('background')} onOpenProps={() => openMaterialsForPanel('prop')} onAdd={addPanel} onDelete={deletePanel} />}</div></aside>
         </div>}
         {tab === 'meta' && <MetaEditor document={document} onChange={setDocument} />}
         {tab === 'setting' && <SettingEditor document={document} onChange={setDocument} onImportBackgroundModel={importBackgroundModel} onSaveBackgrounds={saveBackgroundsFromEditor} backgroundsSaving={seriesCatalogSaving||projectBusy} panelLinkMode={materialLinkTarget?.materialType === 'background' && materialLinkPanel ? {

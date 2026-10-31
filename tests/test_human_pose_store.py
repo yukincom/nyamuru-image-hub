@@ -219,6 +219,58 @@ class HumanPoseStoreTests(unittest.TestCase):
         for identifier, kind in [("pose-not-in-catalog", "pose"), (self.catalog["poses"][1]["id"], "pose")]:
             with self.subTest(identifier=identifier), self.assertRaises(ValueError):
                 self.store.asset(identifier, kind)
+
+    # 見込み: 同じ固定path readerで表示GLBを読むことで、catalogのbaseを変更せず女性素材を返せる。
+    # 合格: 要求時のみGLB/rigを返し、原catalog/base不変、欠損・hash・path差替え・symlink拒否。合成素材/API境界のみ。
+    def test_female_body_model_uses_fixed_assets_and_keeps_catalog_identity(self):
+        catalog, digest, files = self.store._load()
+        catalog['poses'][0].update(production_status='ready', review={'status': 'confirmed', 'user_confirmed': True})
+        records = {}
+        for kind, relative in store_module.BODY_MODEL_FILES.items():
+            raw = (self.root / store_module.COMMON_FILES['base' if kind == 'body_base' else 'rig']).read_bytes()
+            records['glb' if kind == 'body_base' else 'rig'] = self.record(relative, raw)
+        metadata = {'version': 1, 'id': 'bodychan-female', 'reference_rig_sha256': catalog['coordinate_contract']['rig']['sha256'], 'files': records}
+        path = self.root / store_module.BODY_MODEL_METADATA
+        path.write_bytes(canonical(metadata))
+        with patch.object(self.store, '_load', return_value=(catalog, digest, files)):
+            normal = self.store.scene(self.pose_id, digest, False)
+            self.assertNotIn('body_model', normal)
+            result = self.store.scene(self.pose_id, digest, False, body_model='bodychan-female')
+            self.assertEqual({key: value for key, value in result.items() if key != 'body_model'}, normal)
+            self.assertEqual(result['body_model']['id'], 'bodychan-female')
+            self.assertEqual(base64.b64decode(result['body_model']['base']['data']), files['models/human_base.glb'])
+            for changed in [dict(metadata, reference_rig_sha256='0' * 64), dict(metadata, files={**records, 'glb': {**records['glb'], 'path': '../outside'}})]:
+                path.write_bytes(canonical(changed))
+                with self.assertRaises(ValueError):
+                    self.store.scene(self.pose_id, digest, False, body_model='bodychan-female')
+            path.write_bytes(canonical(metadata))
+            body = self.root / store_module.BODY_MODEL_FILES['body_base']
+            body.write_bytes(body.read_bytes() + b'bad')
+            with self.assertRaisesRegex(ValueError, 'hash'):
+                self.store.scene(self.pose_id, digest, False, body_model='bodychan-female')
+            body.unlink()
+            body.symlink_to(self.root / 'models/human_base.glb')
+            with self.assertRaises(ValueError):
+                self.store.scene(self.pose_id, digest, False, body_model='bodychan-female')
+        self.assertEqual((self.root / 'models/human_base.glb').read_bytes(), files['models/human_base.glb'])
+
+    # 見込み: 未知IDを読込前に拒否すれば、モデル名をpathや任意素材指定として使わない。
+    # 合格: 不正値ではroot未読込。登録fileの欠損と容量制限も拒否。実モデルの重さ・変形は対象外。
+    def test_female_body_model_rejects_unknown_missing_and_oversized_assets(self):
+        for model in ['../bodykun', '', False, [], {}]:
+            with patch.object(self.store, '_load') as load, self.assertRaises(ValueError):
+                self.store.scene(self.pose_id, 'a' * 64, False, body_model=model)
+            load.assert_not_called()
+        catalog, digest, files = self.store._load()
+        catalog['poses'][0].update(production_status='ready', review={'status': 'confirmed', 'user_confirmed': True})
+        with patch.object(self.store, '_load', return_value=(catalog, digest, files)):
+            with self.assertRaises(ValueError):
+                self.store.scene(self.pose_id, digest, False, body_model='bodychan-female')
+            records = {kind: self.record(relative, files['models/human_base.glb' if kind == 'body_base' else 'models/human_base.rig.json']) for kind, relative in store_module.BODY_MODEL_FILES.items()}
+            (self.root / store_module.BODY_MODEL_METADATA).write_bytes(canonical({'version': 1, 'id': 'bodychan-female',
+                'reference_rig_sha256': catalog['coordinate_contract']['rig']['sha256'], 'files': {'glb': records['body_base'], 'rig': records['body_rig']}}))
+            with patch.object(store_module, 'MAX_FILE_BYTES', 16), self.assertRaises(ValueError):
+                self.store.scene(self.pose_id, digest, False, body_model='bodychan-female')
         self.catalog["coordinate_contract"] = {"status": "pending_p2"}
         first = self.catalog["poses"][0]
         first.update(production_status="unmade", asset_files={}, asset_revision=None)

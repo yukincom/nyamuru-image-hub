@@ -31,7 +31,7 @@ export function humanPoseSkeletonPoints(rig: HumanPoseRig, pose?: HumanPoseData)
   const worlds = humanPoseWorldMatrices(rig, pose), rest = humanPoseWorldMatrices(rig);
   const points = new Map<string, Vector3>();
   for (const { id } of HUMAN_POSE_JOINTS) if (worlds.has(id)) points.set(id, posePoint(worlds, id));
-  const headLength = Math.max(.14, posePoint(rest, 'head').distanceTo(posePoint(rest, 'neck01')) * 1.8);
+  const headLength = rig.head_length_m ?? Math.max(.14, posePoint(rest, 'head').distanceTo(posePoint(rest, 'neck01')) * 1.8);
   points.set('headCentre', new Vector3(0, headLength * .43, 0).applyMatrix4(worlds.get('head')!));
   points.set('headTop', new Vector3(0, headLength, 0).applyMatrix4(worlds.get('head')!));
   for (const side of ['L', 'R'] as const) {
@@ -75,6 +75,7 @@ export class HumanPoseSkeleton {
     }
   }
   showDetails(show: boolean, selected = this.selected): void { this.detail = show; this.selected = selected; this.updateMarkers(); }
+  showBody(show: boolean): void { this.head.visible = show; this.plates.visible = show; this.lines.visible = show; }
   private updateMarkers(): void {
     for (const def of HUMAN_POSE_HANDLES) {
       const marker = this.markers.get(def.id); if (!marker) continue;

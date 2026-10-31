@@ -1,8 +1,8 @@
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
-import { posePoint, worldRotation } from './humanPoseJoints.ts';
+import { editedHumanPose, posePoint, validateHumanPoseJointEdits, worldRotation } from './humanPoseJoints.ts';
 import { humanPoseSkeletonPoints } from './humanPoseSkeleton.ts';
-import type { HumanPoseData, HumanPoseRig } from './humanPoseTypes.ts';
+import type { HumanPoseData, HumanPoseJointEdits, HumanPoseRig } from './humanPoseTypes.ts';
 
 // Build-time retargeting. Each anatomical segment can contain several target bones.
 // They receive one world-space turn, so the intermediate bones do not double it.
@@ -56,14 +56,17 @@ export class HumanPoseMotionRetarget {
   private targetRest: Map<string, Matrix4>;
   private corrections = new Map<string, { source: string; after: Quaternion }>();
   private lengthScale: number;
+  private canonical: boolean;
 
-  constructor(source: HumanPoseRig, target: HumanPoseRig) {
+  constructor(source: HumanPoseRig, target: HumanPoseRig, canonical = false) {
+    this.canonical = canonical;
     this.source = source; this.target = target;
     this.sourceRest = humanPoseWorldMatrices(source); this.targetRest = humanPoseWorldMatrices(target);
-    for (const group of segments) {
+    const groups = canonical ? segments.map(group => ({ ...group, source: group.target[0], sourceEnd: group.targetEnd })) : segments;
+    for (const group of groups) {
       let alignment = new Quaternion();
       if (group.sourceEnd) {
-        const normalS = group.palm ? palmNormal(this.sourceRest, group.palm, true) : new Vector3(0, 0, 1);
+        const normalS = group.palm ? palmNormal(this.sourceRest, group.palm, !canonical) : new Vector3(0, 0, 1);
         const normalT = group.palm ? palmNormal(this.targetRest, group.palm, false) : new Vector3(0, 0, 1);
         alignment = segmentFrame(this.sourceRest, group.source, group.sourceEnd, normalS)
           .multiply(segmentFrame(this.targetRest, group.target[0], group.targetEnd, normalT).invert());
@@ -77,14 +80,17 @@ export class HumanPoseMotionRetarget {
     this.boneNames = [...this.corrections.keys()];
     const distance = (worlds: Map<string, Matrix4>, a: string, b: string) => posePoint(worlds, a).distanceTo(posePoint(worlds, b));
     this.lengthScale = (distance(this.targetRest, 'upperleg01.L', 'lowerleg01.L') + distance(this.targetRest, 'lowerleg01.L', 'foot.L'))
-      / (distance(this.sourceRest, 'thigh_l', 'calf_l') + distance(this.sourceRest, 'calf_l', 'foot_l'));
+      / (canonical ? distance(this.sourceRest, 'upperleg01.L', 'lowerleg01.L') + distance(this.sourceRest, 'lowerleg01.L', 'foot.L')
+        : distance(this.sourceRest, 'thigh_l', 'calf_l') + distance(this.sourceRest, 'calf_l', 'foot_l'));
   }
 
   pose(sourcePose: HumanPoseData, template: HumanPoseData): HumanPoseData {
     const sourceWorlds = humanPoseWorldMatrices(this.source, sourcePose), pose = structuredClone(template);
     pose.bones = Object.fromEntries(this.target.bones.map(bone => [bone.name, structuredClone(bone.rest)]));
     pose.root = { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] };
-    pose.supports = []; pose.contacts = {}; delete pose.foot_bends;
+    pose.supports = this.canonical ? sourcePose.supports.map(support => ({ ...structuredClone(support), position: support.position.map(v => v * this.lengthScale) as [number, number, number],
+      ...(support.kind === 'box' ? { size: support.size.map(v => v * this.lengthScale) as [number, number, number] } : { radius: support.radius * this.lengthScale, height: support.height * this.lengthScale }) })) : [];
+    pose.contacts = this.canonical ? structuredClone(sourcePose.contacts) : {}; delete pose.foot_bends;
     const targetBones = new Map(this.target.bones.map(bone => [bone.name, bone]));
     const worldQuats = new Map<string, Quaternion>();
     const visit = (name: string): Quaternion => {
@@ -98,7 +104,12 @@ export class HumanPoseMotionRetarget {
       pose.bones[name].scale = [1, 1, 1]; worldQuats.set(name, world); return world;
     };
     for (const bone of this.target.bones) visit(bone.name);
-    pose.root.translation = posePoint(sourceWorlds, 'pelvis').sub(posePoint(this.sourceRest, 'pelvis')).multiplyScalar(this.lengthScale).toArray();
+    const pelvis = this.canonical ? 'root' : 'pelvis';
+    pose.root.translation = posePoint(sourceWorlds, pelvis).sub(posePoint(this.sourceRest, pelvis)).multiplyScalar(this.lengthScale).toArray();
+    if (this.canonical) {
+      if (sourcePose.foot_bends) pose.foot_bends = structuredClone(sourcePose.foot_bends);
+      return pose;
+    }
     pose.foot_bends = {};
     for (const side of ['L', 'R'] as const) {
       const s = side.toLowerCase(), name = `ball_${s}`;
@@ -110,6 +121,30 @@ export class HumanPoseMotionRetarget {
       pose.foot_bends[side] = [0, Math.max(-65, Math.min(60, angle))];
     }
     return pose;
+  }
+
+  /** Transfer only explicit editing deltas; untouched helper bones keep the target baseline. */
+  rebaseEdits(edits: HumanPoseJointEdits | undefined, before: HumanPoseData, after: HumanPoseData): HumanPoseJointEdits | undefined {
+    if (!edits) return undefined;
+    validateHumanPoseJointEdits(edits);
+    const sourceBase = humanPoseWorldMatrices(this.source, before);
+    const sourceEdited = humanPoseWorldMatrices(this.source, editedHumanPose(this.source, before, { joint_edits: edits }));
+    const targetBase = humanPoseWorldMatrices(this.target, after), definitions = new Map(this.target.bones.map(bone => [bone.name, bone]));
+    const next = structuredClone(edits), quaternions = new Map<string, Quaternion>(); next.rotations = {};
+    const visit = (name: string): Quaternion => {
+      const found = quaternions.get(name); if (found) return found;
+      const definition = definitions.get(name)!;
+      const parent = definition.parent ? visit(definition.parent) : new Quaternion(...after.root.rotation);
+      let world = parent.clone().multiply(new Quaternion(...after.bones[name].rotation));
+      if (edits.rotations[name]) {
+        world = worldRotation(sourceEdited.get(name)!).multiply(worldRotation(sourceBase.get(name)!).invert()).multiply(worldRotation(targetBase.get(name)!));
+        next.rotations[name] = parent.clone().invert().multiply(world).normalize().toArray();
+      }
+      quaternions.set(name, world); return world;
+    };
+    for (const name of definitions.keys()) visit(name);
+    if (next.root_offset) next.root_offset = next.root_offset.map(value => value * this.lengthScale) as [number, number, number];
+    validateHumanPoseJointEdits(next); return next;
   }
 }
 

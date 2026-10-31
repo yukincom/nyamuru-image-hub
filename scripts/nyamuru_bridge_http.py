@@ -130,7 +130,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self.send_json(200, self.state.human_poses.catalog(include_previews=True))
                 return
             if path == "/api/human-pose/scene":
-                self.send_json(200, self.state.human_poses.scene(body.get("pose_id"), body.get("catalog_sha256"), body.get("include_base", True)))
+                self.send_json(200, self.state.human_poses.scene(body.get("pose_id"), body.get("catalog_sha256"), body.get("include_base", True), body_model=body.get('body_model')))
                 return
             if path == "/api/series/directory/choose":
                 result = self.state.series_catalogs.choose_directory(body.get("default_directory"))
