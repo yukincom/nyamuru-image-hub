@@ -1,3 +1,5 @@
+// 見込み: 画面終了の理由を保持すれば、遅い完了からLLMを復帰しない。
+// 合格: pagehideと後続通知はshutdown、生成完了は通常通知。範囲: 実lifecycle、画面とHTTPは模擬。
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
@@ -9,6 +11,8 @@ import {
   submitImageGenerationRequest,
 } from '../src/lib/localBridgeLifecycle.ts';
 
+// 見込み: 生成完了時は通常終了と区別して、元のLLMを復帰できる。
+// 合格: 英訳→停止→生成→終了通知の順、shutdown指定なし。範囲: 実lifecycleと模擬HTTP、実画面・LLMは対象外。
 test('画像生成は共有LLMで英訳→停止確認→全画像→復帰の順を維持する', async () => {
   const events = [];
   const fetchImpl = async (url, options) => {
@@ -16,6 +20,7 @@ test('画像生成は共有LLMで英訳→停止確認→全画像→復帰の�
     events.push(path);
     if (path.endsWith('/start')) return jsonResponse({ ...common, lease_token: 'image-lease' });
     assert.equal(JSON.parse(options.body).lease_token, 'image-lease');
+    assert.equal(JSON.parse(options.body).shutdown, undefined);
     if (path === '/api/panel-actions/prepare') return jsonResponse({ ...common, llm_mode: 'external-shared' });
     if (path === '/api/image-generation/prepare') return jsonResponse({ ...common, llm_stopped: true });
     return jsonResponse({ ...common, released: true, llm_released: true, llm_restored: true });
@@ -25,6 +30,41 @@ test('画像生成は共有LLMで英訳→停止確認→全画像→復帰の�
   }, {}, fetchImpl);
   assert.equal(result, 'PNG');
   assert.deepEqual(events, ['/api/new-creation/start', '/api/panel-actions/prepare', 'translate', '/api/image-generation/prepare', 'generate', '/api/new-creation/stop']);
+});
+
+// 見込み: 終了監視を復帰待ちまで続ければ、遅い応答からLLMを再起動しない。
+// 合格: 英訳・停止・生成・復帰の各待機中に終了通知、生成前終了は送信0回。範囲: 実lifecycle、画面イベントとHTTPは模擬。
+test('画面終了は生成完了より優先し、最後の通知も再起動を要求しない', async () => {
+  const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  try {
+    for (const exitAt of ['translate', 'suspend', 'generate', 'restore']) {
+      const surface = new EventTarget(), beacons = [], stops = [], phases = [];
+      let generations = 0;
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: surface });
+      Object.defineProperty(globalThis, 'navigator', { configurable: true, value: {
+        sendBeacon: (_url, blob) => { beacons.push(blob); return true; },
+      } });
+      const exit = () => surface.dispatchEvent(new Event('pagehide'));
+      await withImageGenerationServices(async () => { if (exitAt === 'translate') exit(); return 'English'; },
+        async () => { generations++; if (exitAt === 'generate') exit(); return 'PNG'; }, { onPhase: phase => phases.push(phase) }, async (url, options) => {
+          const path = new URL(String(url)).pathname;
+          if (path === '/api/image-generation/prepare' && exitAt === 'suspend') exit();
+          if (path.endsWith('/stop')) { stops.push(JSON.parse(options.body)); if (exitAt === 'restore') exit(); }
+          return jsonResponse({ ...common, lease_token: 'exit-token', llm_stopped: true, llm_released: true });
+        });
+      assert.equal(beacons.length, 1);
+      assert.deepEqual(JSON.parse(await beacons[0].text()), { lease_token: 'exit-token', shutdown: true });
+      assert.deepEqual(stops, [{ lease_token: 'exit-token', ...(exitAt === 'restore' ? {} : { shutdown: true }) }]);
+      assert.equal(phases.includes('restore'), exitAt === 'restore');
+      assert.equal(generations, ['translate', 'suspend'].includes(exitAt) ? 0 : 1);
+      surface.dispatchEvent(new Event('pagehide'));
+      assert.equal(beacons.length, 1);
+    }
+  } finally {
+    if (windowDescriptor) Object.defineProperty(globalThis, 'window', windowDescriptor); else delete globalThis.window;
+    if (navigatorDescriptor) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor); else delete globalThis.navigator;
+  }
 });
 
 test('画像生成失敗でも復帰を要求し、復帰失敗も隠さない', async () => {
@@ -69,6 +109,20 @@ test('画像送信は復帰管理のleaseを伴ってsupervisor経由で行う',
 });
 
 const common = { service: 'nyamuru-image-hub-bridge-supervisor', protocol_version: 1 };
+
+// 見込み: 定型の描き文字は文章LLMを起動せず、画像生成前のメモリ解放と終了処理を再利用する。
+// 合格: LLM準備API/llm phaseなし、入力準備→画像準備→送信→解放。範囲: 実lifecycle＋模擬HTTP、実モデルなし。
+test('描き文字は翻訳用LLMを起動せず既存の画像生成leaseを通す',async()=>{
+ const events=[],phases=[];
+ const result=await withImageGenerationServices(async()=>{events.push('fixed-prompt');return 'Fixed English';},async(value)=>{assert.equal(value,'Fixed English');events.push('generate');return 'PNG';},
+  {requiresLlm:false,onPhase:phase=>phases.push(phase)},async url=>{
+   const path=new URL(String(url)).pathname;events.push(path);
+   assert.notEqual(path,'/api/panel-actions/prepare');
+   return jsonResponse({...common,lease_token:'lettering-lease',llm_stopped:true,released:true});
+  });
+ assert.equal(result,'PNG');assert.ok(!phases.includes('llm'));
+ assert.deepEqual(events,['/api/new-creation/start','fixed-prompt','/api/image-generation/prepare','generate','/api/new-creation/stop']);
+});
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {

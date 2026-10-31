@@ -9,7 +9,7 @@ import sys
 import time
 
 from generation_store import canonical, checked_id, sha256, MAX_PNG
-from qwen_generation import QwenGenerationService, PROFILE, MODELS, SETTINGS, normalize, validate_english
+from qwen_generation import QwenGenerationService, PROFILE, MODELS, SETTINGS, normalize, validate_english, direct_workflow_prompt
 from qwen_generation_phase import generation_prompt
 
 
@@ -20,7 +20,7 @@ def request_file(path):
         raise ValueError('Request must be a JSON object')
     allowed = {'job_id', 'prompt', 'width', 'height', 'label', 'document_key', 'page_number',
                'panel_id', 'overlay', 'owner_key', 'mode', 'character_keys', 'references',
-               'paint_image', 'sketch_image', 'correction_image', 'literal_text'}
+               'paint_image', 'sketch_image', 'correction_image', 'literal_text', 'workflow_id', 'workflow_version', 'comfyui_url', 'chroma_key_color', 'candidate_count'}
     if set(source) - allowed:
         raise ValueError('Unsupported request fields: ' + ', '.join(sorted(set(source) - allowed)))
 
@@ -66,18 +66,23 @@ def supplied_english(value):
     return result
 
 
-def preview(body):
-    value, _ = normalize(body)
-    english = supplied_english(value)
-    return {'job_id': body['job_id'], 'request': value, 'generation_prompt': generation_prompt(value, english)}
+def preview(body, service=None):
+    service = service or QwenGenerationService()
+    value, _ = service.normalize_request(body)
+    prompt = generation_prompt(value, supplied_english(value)) if value['workflow']['binding']['prompt_mode'] == 'qwen' else direct_workflow_prompt(value)
+    return {'job_id': body['job_id'], 'request': value, 'generation_prompt': prompt}
 
 
 def result(service, job_id):
     payload = service.payload(job_id, include_image=False)
     payload['job_directory'] = str(service.store.root / job_id)
     if payload['status'] == 'succeeded':
-        raw = service.verified_output(job_id, service.load(job_id))
-        payload.update(image_path=str(service.store.root / job_id / 'output.png'), image_sha256=sha256(raw))
+        directory = service.store.root / job_id
+        if (directory / 'output.png').exists():
+            payload['image_path'] = str(directory / 'output.png')
+        else:
+            payload['candidate_paths'] = [str(directory / f'candidate-{i}.png') for i in range(1, 6)]
+            payload['selection_required'] = True
     return payload
 
 
@@ -104,25 +109,24 @@ def run_job(service, job_id, token, sleep=time.sleep):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['catalog', 'preview', 'prepare', 'status', 'run'])
+    parser.add_argument('command', choices=['catalog', 'preview', 'prepare', 'status', 'run', 'select', 'cancel'])
     parser.add_argument('--request', type=Path)
     parser.add_argument('--job')
+    parser.add_argument('--candidate', type=int)
     parser.add_argument('--image-session-token')
     args = parser.parse_args()
     service = QwenGenerationService()
     if args.command == 'catalog':
-        service.preflight()
-        output = {'ok': True, 'runtime_ready': True, 'execution': 'nyamuru-qwen-isolated-phases',
-                  'profile': PROFILE, 'lab': str(service.lab), 'models': MODELS, 'settings': SETTINGS,
-                  'commands': ['preview', 'prepare', 'generate', 'status'],
-                  'comfy_cli_required': False, 'server_8188_required': False}
+        output = {'ok': True, 'execution': 'comfyui-api', 'workflows': service.workflows.list(),
+                  'default_endpoint': service.endpoint, 'commands': ['preview', 'prepare', 'generate', 'status', 'select', 'cancel'],
+                  'comfyui_server_required': True}
     elif args.command in ('preview', 'prepare'):
         if not args.request:
             parser.error('--request is required')
         body = request_file(args.request)
-        output = preview(body)
-        service.preflight(output['request']['settings'])
-        if args.command == 'prepare':
+        if args.command == 'preview':
+            output = preview(body, service)
+        else:
             service.prepare(body, supplied_english)
             output = result(service, body['job_id'])
     else:
@@ -131,6 +135,12 @@ def main():
             if not args.image_session_token:
                 parser.error('Run generation through hermes_qwen.mjs generate')
             output = run_job(service, job_id, args.image_session_token)
+        elif args.command == 'select':
+            service.select({'job_id': job_id, 'candidate_index': args.candidate})
+            output = result(service, job_id)
+        elif args.command == 'cancel':
+            service.cancel({'job_id': job_id})
+            output = result(service, job_id)
         else:
             service.reconcile({'job_id': job_id})
             output = result(service, job_id)

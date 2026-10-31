@@ -272,8 +272,8 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
         </fieldset>
         {generationPreferences.execution === 'local' ? <section aria-label="ローカルモデル設定">
           <LocalImageModelSettings onOpenAgent={onOpenAgent} endpoint={localModelPreferences.comfyuiUrl}
-            imageModel={generationPreferences.local.imageModel}
-            onModelChange={imageModel => updateGenerationPreferences({ ...generationPreferences, local: { imageModel } })}
+            workflowId={generationPreferences.local.workflowId}
+            onWorkflowChange={workflowId => updateGenerationPreferences({ ...generationPreferences, local: { ...generationPreferences.local, workflowId } })}
             onChange={comfyuiUrl => updateLocalModelPreferences({ comfyuiUrl })} />
           <details class="environment-settings-details">
             <summary>文章・画像解析のモデル</summary>

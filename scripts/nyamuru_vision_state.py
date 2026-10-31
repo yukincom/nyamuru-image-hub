@@ -124,7 +124,7 @@ class LocalVisionState:
         self.panel_drafts = ComfyUIDraftGenerator(comfyui_url)
         self.agent_chat = AgentChatService(self.panel_actions.endpoint, self.panel_actions.request_model)
         self.panel_draft_jobs = PanelDraftJobService(self.episode_workspaces, self.panel_drafts)
-        self.qwen_jobs = QwenGenerationService()
+        self.qwen_jobs = QwenGenerationService(endpoint=comfyui_url)
         self.generation_cache = GenerationCacheStore(DEFAULT_CACHE_ROOT)
         # HTTP経由のRT-DETR/OCR/WD/VLMを一列にする。外部のLLMやComfyUIはこのlockの対象外。
         self.analysis_lock = threading.Lock()

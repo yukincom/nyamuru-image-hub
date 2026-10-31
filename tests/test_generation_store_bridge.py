@@ -11,6 +11,18 @@ from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import generation_store as store_module
 
+class PngValidationTests(unittest.TestCase):
+    # 見込み: PillowのPNG検査とdecodeに集約しても破損/過大寸法は受付で検出できる。
+    # 合格: 正常PNGは寸法を返し、CRC破損・切断・過大寸法を拒否。範囲: 実fixture、モデルなし。
+    def test_png_input_is_decoded_once_with_bounded_dimensions(self):
+        fixtures = Path(__file__).parent / 'fixtures/generation_qa'
+        dimensions = store_module.validate_png((fixtures / 'valid-four-color.png').read_bytes())
+        self.assertGreater(min(dimensions), 0)
+        for name in ('invalid-crc.png', 'invalid-truncated.png', 'invalid-unsafe-dimension.png'):
+            with self.subTest(name=name), self.assertRaises((ValueError, OSError, SyntaxError)):
+                store_module.validate_png((fixtures / name).read_bytes())
+
+
 class StoreTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -37,11 +49,13 @@ class StoreTests(unittest.TestCase):
                 self.store.write_once(self.job_id, name, b'complete data')
                 self.assertEqual(self.store.read(self.job_id, name), b'complete data')
 
+    # 見込み/合格: 既存内容を読み返さずOSの排他作成で上書きを拒否し、外部リンクを辿らない。範囲: 実ファイル操作。
     def test_immutable_write_and_symlink_rejection(self):
         self.store.write_once(self.job_id, 'request.json', b'first')
-        self.store.write_once(self.job_id, 'request.json', b'first')
-        with self.assertRaises(ValueError):
-            self.store.write_once(self.job_id, 'request.json', b'second')
+        for raw in (b'first', b'second'):
+            with self.assertRaises(FileExistsError):
+                self.store.write_once(self.job_id, 'request.json', raw)
+        self.assertEqual(self.store.read(self.job_id, 'request.json'), b'first')
         (self.root / self.job_id / 'link').symlink_to(self.root / self.job_id / 'request.json')
         with self.assertRaises(OSError):
             self.store.read(self.job_id, 'link')

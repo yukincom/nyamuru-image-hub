@@ -11,13 +11,13 @@ export interface GenerationPreferences {
     agent: 'codex' | 'other';
     agentName: string;
   };
-  local: { imageModel: 'qwen-image-2.1-turbo' };
+  local: { imageModel: 'qwen-image-2.1-turbo'; workflowId: string };
 }
 
 export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = Object.freeze({
   execution: 'local',
   cloud: Object.freeze({ adultTermsConfirmed: false, method: 'agent', apiEndpoint: '', apiModel: '', agent: 'codex', agentName: '' }),
-  local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo' }),
+  local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: '' }),
 });
 
 function defaults(): GenerationPreferences {
@@ -34,7 +34,9 @@ function text(value: unknown, maximum: number): string {
 
 /** Only connection descriptions are stored here. Credentials belong to the chosen provider. */
 function normalize(value: unknown): GenerationPreferences {
-  const source = record(value), cloud = record(source.cloud);
+  const source = record(value), cloud = record(source.cloud), local = record(source.local);
+  const workflowId = typeof local.workflowId === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(local.workflowId) ? local.workflowId : '';
   let apiEndpoint = text(cloud.apiEndpoint, 500);
   if (/[?#@]/u.test(apiEndpoint)) apiEndpoint = '';
   try {
@@ -51,7 +53,7 @@ function normalize(value: unknown): GenerationPreferences {
       agent: cloud.agent === 'other' ? 'other' : 'codex',
       agentName: text(cloud.agentName, 120),
     },
-    local: { imageModel: 'qwen-image-2.1-turbo' },
+    local: { imageModel: 'qwen-image-2.1-turbo', workflowId },
   };
 }
 
@@ -77,6 +79,9 @@ export function saveGenerationPreferences(storage: Pick<Storage, 'setItem'>, val
   const normalized = normalize(value);
   if (normalized.cloud.apiEndpoint !== value.cloud.apiEndpoint) {
     throw new Error('API接続先には認証情報・クエリ・フラグメントを含めず、500文字以内で入力してください');
+  }
+  if (normalized.local.workflowId !== (value.local.workflowId ?? '')) {
+    throw new Error('登録したワークフローを選択してください');
   }
   storage.setItem(GENERATION_PREFERENCES_STORAGE_KEY, JSON.stringify({ version: 2, ...normalized }));
   return normalized;

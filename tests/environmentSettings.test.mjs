@@ -694,6 +694,7 @@ test('settings overlay toggles independently of the current page and commits a f
     setEnvironmentOpen: value => { calls.push(value ? 'open' : 'close'); context.environmentOpen = value; },
   };
   context.closeEnvironmentSettings = appHandler('closeEnvironmentSettings', context);
+  context.showEnvironmentSettings = appHandler('showEnvironmentSettings', context);
   const toggle = appHandler('toggleEnvironmentSettings', context);
   await toggle(); await toggle();
   assert.deepEqual(calls, ['open', 'autosave on blur', 'close', 'focus gear']);
@@ -743,6 +744,7 @@ test('opening settings pauses ink without materializing it and preserves errors'
     const context={Error,environmentOpen:false,openingEnvironment:{current:false},projectOperation:{current:false},qwenGeneration:null,
       paintSessionRef:{current:{document:{}}},paintController:{current:{pause:async()=>{calls.push('pause');if(fail)throw Error('描画確定失敗');}}},
       endTextEdit:()=>calls.push('end-text'),setEnvironmentOpen:()=>{assert.ok(context.paintSessionRef.current);calls.push('open');},setToast:value=>calls.push(value)};
+    context.showEnvironmentSettings=appHandler('showEnvironmentSettings',context);
     await appHandler('toggleEnvironmentSettings',context)();
     assert.deepEqual(calls,fail?['pause','描画確定失敗']:['pause','end-text','open']);
     assert.equal(context.openingEnvironment.current,false);

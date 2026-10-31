@@ -4,15 +4,17 @@ import {runAgentConversation} from '../src/lib/agentChat.ts';
 const tool=(name,args={},id='call')=>({message:{role:'assistant',content:null,tool_calls:[{id,type:'function',function:{name,arguments:typeof args==='string'?args:JSON.stringify(args)}}]},model:'fixture'});
 const final=text=>({message:{role:'assistant',content:text},model:'fixture'});
 
+// 見込み: 保存先の接続結果を優先し、会話が成功を作り出さない。合格: 未接続と未選択を区別し編集・生成しない。範囲: 模擬bridgeから実会話制御まで。
+const statusFixture=(connected=false)=>({workflow:null,memory_release:{available:false},comfyui:{endpoint:'http://127.0.0.1:8188',version:'',status:connected?'connected':'unavailable',message:connected?'ComfyUIに接続できました':'ComfyUIに接続できませんでした'}});
 test('agent can inspect saved model connections without generating or editing', async () => {
   const f = setup(); let n = 0, inspected = 0;
-  f.options.modelConnections = async () => { inspected++; return { qwen: { available: false }, comfyui: { status: 'unavailable' } }; };
+  f.options.modelConnections = async () => { inspected++; return statusFixture(); };
   f.options.reply = async () => [tool('model_connections'), final('接続できませんでした。')][n++];
   const result = await runAgentConversation(f.options);
   assert.equal(inspected, 1); assert.equal(f.edits, 0); assert.equal(f.applied, 0);
-  assert.match(result.text, /モデルファイルを確認できません/);
-  assert.match(result.text, /ComfyUIサーバーには接続できません/);
-  assert.deepEqual(f.results[0], { name: 'model_connections', result: { ok: true, qwen: { available: false }, comfyui: { status: 'unavailable' } } });
+  assert.match(result.text, /使用するワークフローを選んで/);
+  assert.match(result.text, /ComfyUIに接続できません/);
+  assert.deepEqual(f.results[0], { name: 'model_connections', result: { ok: true, ...statusFixture() } });
 });
 
 test('agent cannot override a saved endpoint or submit jobs through model inspection', async () => {
@@ -23,16 +25,17 @@ test('agent cannot override a saved endpoint or submit jobs through model inspec
   assert.equal(f.results[0].result.ok, false); assert.equal(f.edits, 0); assert.equal(f.applied, 0);
 });
 
+// 見込み: 再接続は通信エラーだけを解消する。合格: 直近の接続成功または残った編集失敗を返す。応答は模擬。
 test('successful connection retry clears only connection errors and preserves edit failures', async () => {
   for (const editFailure of [false, true]) {
     const f = setup(); let round = 0, probes = 0;
-    f.options.modelConnections = async () => { if (++probes === 1) throw Error('一時的な接続失敗'); return { comfyui: { status: 'connected' } }; };
+    f.options.modelConnections = async () => { if (++probes === 1) throw Error('一時的な接続失敗'); return statusFixture(true); };
     f.options.edit = () => { throw Error('原稿の編集失敗'); };
     const replies = [tool('model_connections'), ...(editFailure ? [tool('editor_bubble_edit', {})] : []), tool('model_connections'), final('接続を確認できました。')];
     f.options.reply = async () => replies[round++];
     const result = await runAgentConversation(f.options);
     if (editFailure) assert.match(result.text, /原稿の編集失敗/);
-    else assert.match(result.text, /ComfyUIサーバーにも接続できました/);
+    else assert.match(result.text, /ComfyUIに接続できました/);
     assert.doesNotMatch(result.text, /一時的な接続失敗/); assert.equal(f.edits, 0);
   }
 });
@@ -159,12 +162,13 @@ test('failed edit cannot be disguised by a model success sentence and no-op edit
 });
 
 
+// 見込み: 接続不可の観測はモデルの成功発話に優先する。合格: 模擬の失敗理由を表示し、成功を表示しない。
 test('unavailable connection data overrides an invented LLM success',async()=>{
   const f=setup();let round=0;
-  f.options.modelConnections=async()=>({qwen:{available:false},comfyui:{status:'unavailable'}});
+  f.options.modelConnections=async()=>statusFixture();
   f.options.reply=async()=>[tool('model_connections'),final('接続できました。')][round++];
   const result=await runAgentConversation(f.options);
-  assert.match(result.text,/確認できません/);assert.doesNotMatch(result.text,/接続できました/);
+  assert.match(result.text,/ComfyUIに接続できません/);assert.doesNotMatch(result.text,/接続できました/);
 });
 test('agent image actions execute once only after the conversation service lease is released',async()=>{
   for(const action of ['connect','generate']){

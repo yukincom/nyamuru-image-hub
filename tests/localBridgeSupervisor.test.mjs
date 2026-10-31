@@ -1,3 +1,5 @@
+// 見込み: 生成完了と画面・サーバー終了を分ければ、後片付け後の不要な復帰を防げる。
+// 合格: 通常終了はshutdown、完了はresume。範囲: controllerと一時HTTP、LLMは模擬。
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
@@ -14,6 +16,22 @@ import {
 function fakeChild() {
   return { running: true };
 }
+
+// 見込み: 翻訳不要でもbridge leaseで画像用の排他と復帰を確保する。合格: ensureゼロで送信/復帰、他の文章lease中は拒否。範囲: 実controller＋模擬LLM、実プロセスなし。
+test('描き文字は文章LLMを起動せず画像用の排他と復帰を確保する',async()=>{
+ const events=[],controller=new PanelActionLeaseController({bridgeLeases:new Set(['image','text']),llmController:{
+  ensure:async()=>{events.push('ensure');return {modelAlias:'same'};},
+  suspendForImages:async()=>{events.push('suspend');return {resume:async()=>{events.push('resume');return true;}};},unload:async()=>false,close:async()=>{},
+ }});
+ await controller.suspendForImages('image',{requiresLlm:false});
+ await controller.submitImage('image',async()=>events.push('submit'));
+ await assert.rejects(()=>controller.prepare('text'),/画像生成/);
+ await controller.release('image');assert.deepEqual(events,['suspend','submit','resume']);
+ await controller.prepare('text');
+ await assert.rejects(()=>controller.suspendForImages('image',{requiresLlm:false}),/別の文章処理/);
+ await assert.rejects(()=>controller.suspendForImages('unknown',{requiresLlm:false}),/先に/);
+ await controller.release('text');await controller.close();
+});
 
 test('画像生成中は文章処理を拒否し、送信完了後にだけ復帰する', async () => {
   const events = [];
@@ -52,19 +70,66 @@ test('別の文章処理のleaseが残る間はLLMを停止しない', async () 
   await controller.close();
 });
 
-test('supervisor終了も画像完了後の復帰を要求し、失敗を隠さない', async () => {
+// 見込み: 通常終了を復帰と分ければ、LANサーバー停止後にLLMを起動しない。
+// 合格: shutdown→closeのみでresume0回、後片付け失敗は通知する。範囲: 実controller、LLMと終了処理は模擬。
+test('supervisor終了は復帰せず後片付けし、失敗を隠さない', async () => {
   const events = [];
   const controller = new PanelActionLeaseController({ bridgeLeases: new Set(['a']), llmController: {
     ensure: async () => ({ modelAlias: 'same' }),
-    suspendForImages: async () => ({ resume: async () => { events.push('resume'); throw new Error('resume failed'); } }),
+    suspendForImages: async () => ({ resume: async () => assert.fail('must not resume'),
+      shutdown: async () => { events.push('shutdown'); throw new Error('cleanup failed'); } }),
     close: async () => { events.push('close'); },
   } });
   await controller.prepare('a', 'same'); await controller.suspendForImages('a');
-  await assert.rejects(() => controller.close(), /resume failed/);
-  assert.deepEqual(events, ['resume', 'close']);
+  await assert.rejects(() => controller.close(), /cleanup failed/);
+  assert.deepEqual(events, ['shutdown', 'close']);
 });
 
-test('画像生成HTTPは準備済みleaseだけを転送し、復帰完了を返す', async t => {
+// 見込み: 準備待ちにも終了を届ければ、遅く停止したLLMを再起動しない。
+// 合格: close直後にabort、準備後はshutdown→closeでresume0回。範囲: 実controller、停止待ちは模擬。
+test('supervisor終了は一時停止の準備待ちにも即座に伝わる', async () => {
+  const events = []; let finish, signal;
+  const gate = new Promise(resolve => { finish = resolve; });
+  const controller = new PanelActionLeaseController({ bridgeLeases: new Set(['a']), llmController: {
+    suspendForImages: async (_token, options) => { signal = options.signal; await gate; return {
+      resume: async () => assert.fail('must not resume'), shutdown: async () => { events.push('shutdown'); return false; },
+    }; }, close: async () => events.push('close'),
+  } });
+  const preparing = controller.suspendForImages('a', { requiresLlm: false });
+  await new Promise(resolve => setImmediate(resolve));
+  const closing = controller.close();
+  assert.equal(signal.aborted, true);
+  finish(); await preparing; await closing;
+  assert.deepEqual(events, ['shutdown', 'close']);
+});
+
+// 見込み: 復帰待ちで直列処理が塞がっても、画面終了とサーバー終了を優先できる。
+// 合格: 両終了で即abort、復帰結果false、処理は解放。範囲: 実controller、guardianの待機と復帰は模擬。
+test('画面とサーバーの終了は既に待機中の復帰要求にも優先する', async () => {
+  for (const kind of ['page', 'server']) {
+    let signal, finish;
+    const gate = new Promise(resolve => { finish = resolve; });
+    const controller = new PanelActionLeaseController({ bridgeLeases: new Set(['a']), llmController: {
+      suspendForImages: async (_token, options) => { signal = options.signal; return {
+        resume: async () => { await gate; return !signal.aborted; },
+        shutdown: async () => { await gate; return false; },
+      }; }, close: async () => {},
+    } });
+    await controller.suspendForImages('a', { requiresLlm: false });
+    const completing = controller.release('a');
+    await new Promise(resolve => setImmediate(resolve));
+    const closing = kind === 'page' ? controller.release('a', { shutdown: true }) : controller.close();
+    assert.equal(signal.aborted, true);
+    finish();
+    assert.equal((await completing).restored, false);
+    await closing;
+    assert.equal(controller.imageRecovery, null);
+  }
+});
+
+// 見込み: LANからも同じ終了APIへ理由を渡せば、生成完了と画面終了を区別できる。
+// 合格: 通常完了は復帰、shutdown指定は復帰なしで後片付け1回。範囲: localhost実HTTP、bridgeとLLMは模擬。
+test('画像生成HTTPは準備済みleaseだけを転送し、終了理由を保持する', async t => {
   const received = [];
   const bridge = createServer(async (request, response) => {
     response.setHeader('Content-Type', 'application/json');
@@ -81,12 +146,13 @@ test('画像生成HTTPは準備済みleaseだけを転送し、復帰完了を�
   });
   await new Promise(resolve => bridge.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => bridge.close(resolve)));
-  let resumes = 0;
+  let resumes = 0, ensures = 0, shutdowns = 0;
   const supervisor = await startLocalBridgeSupervisor({ repoRoot: process.cwd(), port: 0,
     bridgeUrl: `http://127.0.0.1:${bridge.address().port}`, llmController: {
       ownershipMode: 'auto', modelIdentity: () => 'default_model',
-      ensure: async () => ({ modelAlias: 'default_model', ownershipMode: 'external-shared' }),
-      suspendForImages: async () => ({ resume: async () => { resumes++; return true; } }),
+      ensure: async () => { ensures++; return { modelAlias: 'default_model', ownershipMode: 'external-shared' }; },
+      suspendForImages: async () => ({ resume: async () => { resumes++; return true; },
+        shutdown: async () => { shutdowns++; return false; } }),
       unload: async () => false, close: async () => {},
     } });
   t.after(() => supervisor.close());
@@ -109,6 +175,26 @@ test('画像生成HTTPは準備済みleaseだけを転送し、復帰完了を�
   assert.deepEqual(received, [['/api/qwen-generation/submit', { ...input, image_session_token: lease_token }]]);
   const end = await (await post('/api/new-creation/stop', { lease_token })).json();
   assert.equal(end.llm_restored, true); assert.equal(resumes, 1);
+  // 見込み/合格: 同じHTTP受付で翻訳なしの生成も通り、LLM ensureを増やさず排他/復帰する。範囲: 実supervisor HTTP＋模擬bridge/LLM。
+  const direct = await (await post('/api/new-creation/start')).json();
+  assert.equal((await post('/api/image-generation/prepare', {lease_token:direct.lease_token,requires_llm:false})).status, 200);
+  const submitted = await (await post('/api/image-generation/submit', {lease_token:direct.lease_token,payload:input})).json();
+  assert.equal(submitted.status, 'queued');assert.equal(ensures, 1);
+  const released = await (await post('/api/new-creation/stop', {lease_token:direct.lease_token})).json();
+  assert.equal(released.llm_restored, true);assert.equal(resumes, 2);
+
+  const exiting = await (await post('/api/new-creation/start')).json();
+  await post('/api/image-generation/prepare', { lease_token: exiting.lease_token, requires_llm: false });
+  const stopped = await (await post('/api/new-creation/stop', { lease_token: exiting.lease_token, shutdown: true })).json();
+  assert.equal(stopped.llm_restored, false);
+  assert.equal(shutdowns, 1); assert.equal(resumes, 2);
+
+  const serverExit = await (await post('/api/new-creation/start')).json();
+  await post('/api/image-generation/prepare', { lease_token: serverExit.lease_token, requires_llm: false });
+  await supervisor.close();
+  assert.equal(shutdowns, 2); assert.equal(resumes, 2);
+  await assert.rejects(fetch(`${supervisor.url}/api/health`));
+
 });
 
 test('localhostと127.0.0.1の画面だけが起動管理を操作できる', () => {

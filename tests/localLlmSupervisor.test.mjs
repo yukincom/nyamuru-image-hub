@@ -153,6 +153,23 @@ test('画像生成の事前確認中に終了したcontrollerは遅れて停止s
   }
 });
 
+// 見込み: 画面終了を準備中とguardianへ渡せば、遅い停止後の復帰を防げる。
+// 合格: 確認中abortは停止0回、同じsignalをguardianへ渡す。範囲: 実controller、接続・guardianは模擬。
+test('image shutdown aborts preparation and is forwarded to the guardian', async () => {
+  const aborted = new AbortController();
+  const { controller, events } = fakeController({
+    check: async () => { aborted.abort(); return 'ready'; },
+    suspendShared: async () => assert.fail('must not suspend'),
+  });
+  await assert.rejects(controller.suspendForImages('token', { signal: aborted.signal }), /終了/);
+  assert.deepEqual(events, []);
+  const live = new AbortController();
+  const ready = fakeController({ check: async () => 'ready', suspendShared: async (restore, token, signal) => {
+    assert.equal(restore, true); assert.equal(token, 'token'); assert.equal(signal, live.signal); return {};
+  } }).controller;
+  await ready.suspendForImages('token', { signal: live.signal });
+});
+
 test('同時要求は一度だけ起動し、明示タスク後に解放して次回は再起動する', async () => {
   const { controller, events } = fakeController();
   const [first, second] = await Promise.all([controller.ensure(), controller.ensure()]);

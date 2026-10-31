@@ -7,10 +7,11 @@ import { isPropPlacement } from './catalogModel.ts';
 import { FIGURE_SIZE_LABELS } from './manga.ts';
 import { requireHumanPoseGenerationReady } from './humanPoseSelection.ts';
 import { humanPoseCameraPromptText } from './humanPoseScene.ts';
+import type { ComfyWorkflowDefinition } from './comfyWorkflows.ts';
 import type { HumanPoseTextSelection } from './humanPoseTypes.ts';
 import { paintReferenceBox } from './paintDocument.ts';
 import { panelBounds } from './canvasGeometry.ts';
-import { humanPoseFigureFrame, humanPosePanelCutFrame, type HumanPoseCutFrame } from './humanPoseFraming.ts';
+import { humanPoseFigureFrame, humanPosePanelCutFrame, threeImageFigureTarget, type HumanPoseCutFrame } from './humanPoseFraming.ts';
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
 import { isHandwrittenText } from './bubblePresentation.ts';
 import { textStyleOf } from './textStyle.ts';
@@ -25,6 +26,8 @@ export interface QwenGenerationPlan {
   documentKey: string; pageNumber: number; panelId: number; overlay: boolean;
   ownerKey: string; label: string; width: number; height: number;
   prompt: string; characterKeys: string[]; candidates: QwenReferenceCandidate[];
+  threeImageTarget?: NonNullable<ReturnType<typeof threeImageFigureTarget>> & { referenceFrame:BBox };
+  threeImages?: boolean;
   sketchPrompt?: string;
   humanPose?: { selection: HumanPoseTextSelection; framing: FigureSize; aspect?: number; cutFrame?: HumanPoseCutFrame };
   scope?: 'page'|'panel';
@@ -82,15 +85,24 @@ export function qwenGenerationTarget(plan:QwenGenerationPlan,correction=false):Q
     w:area.w*frame.w/plan.width,h:area.h*frame.h/plan.height,
   }};
 }
-export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false):string {
-  if(plan.contentKind!=='handwritten')return '';
+/** Keep the registered prompt and captured manuscript target together for this workflow only. */
+export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null):QwenGenerationPlan {
+  if(workflow?.binding.prompt_mode!=='qwen-three-images'||!plan.humanPose||!plan.threeImageTarget)return plan;
+  const {width,height,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
+  const slot=workflow.binding.prompt[0],prompt=String(workflow.graph[slot.node].inputs[slot.input]);
+  return {...plan,threeImages:true,width,height,referenceFrame,outputFrame,prompt,humanPose:{...plan.humanPose,cutFrame}};
+}
+export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
+  if(!plan.contentKind)return '';
   const target=qwenGenerationTarget(plan,correction),frame=target.outputFrame;
-  return `出力キャンバス：幅${target.width} × 高さ${target.height} px。${frame?`原稿上の配置サイズ：幅${Number(frame.w.toFixed(2))} × 高さ${Number(frame.h.toFixed(2))} mm。`:''}文字全体をこの縦横比の範囲内に収めてください。`;
+  return `出力キャンバス：幅${outputSize?.[0]??target.width} × 高さ${outputSize?.[1]??target.height} px。${frame?`原稿上の配置サイズ：幅${Number(frame.w.toFixed(2))} × 高さ${Number(frame.h.toFixed(2))} mm。`:''}文字全体をこの縦横比の範囲内に収めてください。`;
 }
 export interface QwenJob {
   jobId: string; status: 'preparing'|'prepared'|'queued'|'running'|'succeeded'|'failed'|'outcome_unknown';
   requestSha256: string; label: string; phase?: string; error?: string;
   image?: string; fileName?: string; width: number; height: number;
+  workflowId?:string; workflowName?:string; workflowVersion?:number; comfyuiUrl?:string; generationPrompt?:string; candidateSeeds?:number[];
+  candidates?: {index:number;seed:number;image:string}[]; selectedCandidate?:number; requiresCutout?:boolean;
   documentKey?: string; pageNumber?: number; panelId?: number; overlay?: boolean; ownerKey?: string; createdAt?: number;
 }
 export type QwenHistoryScope = 'owner'|'work';
@@ -186,19 +198,21 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
   const outputFrame=lettering?{...owner.frame}:cutFrame?panelBounds(panel):undefined;
   const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):{width:owner.paint.width,height:owner.paint.height};
-  if(generationArea&&(!lettering||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
+  const figureTarget=person&&pose?.input_mode==='image'?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea):undefined;
+  if(generationArea&&((!lettering&&!figureTarget)||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
     ...(lettering?{contentKind:'handwritten' as const,literalText:[lettering.text],letteringContext}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
-    ...(generationArea?{generationArea:{...generationArea}}:{}),
+    ...(figureTarget?{threeImageTarget:{...figureTarget,referenceFrame}}:{}),
+    ...(lettering&&generationArea?{generationArea:{...generationArea}}:{}),
     ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
 }
 
-export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string){
+export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string,outputSize?:readonly [number,number]){
   if(!plan.prompt.trim())throw new Error('生成指示を入力してください');
-  const sizePrompt=qwenGenerationSizePrompt(plan,Boolean(correctionImage));
+  const sizePrompt=qwenGenerationSizePrompt(plan,Boolean(correctionImage),outputSize);
   plan={...qwenGenerationTarget(plan,Boolean(correctionImage)),prompt:[plan.prompt,sizePrompt].filter(Boolean).join('\n\n')};
   if(plan.ownerKey.startsWith('bubble-')&&(plan.contentKind!=='handwritten'||plan.literalText?.length!==1||!plan.literalText[0].trim()))throw new Error('吹き出し単品は生成できません。描き文字を選択してください');
   if(plan.contentKind&&(!plan.ownerKey.startsWith('bubble-')||plan.scope))throw new Error('描き文字の生成対象が不正です');
@@ -211,11 +225,14 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   if(usesPoseImage&&!poseImage)throw new Error('3Dポーズの撮影画像を用意してから生成してください');
   if(poseImage&&!usesPoseImage)throw new Error('ポーズ文で送る場合は3D画像を送信できません');
   if(paintImage&&sketchImage)throw new Error('描画画像とネームのラフを同時には指定できません');
+  if(plan.threeImages && (!paintImage||!poseImage||sketchImage||correctionImage||references.length!==1||
+    plan.characterKeys.length!==1||!references[0].characterKeys.includes(plan.characterKeys[0])))
+    throw new Error('ネーム・人物設定画1枚・3Dポーズを指定してください');
   // A pose directive owns the new composition. Paint editing would force the source pose.
   const drawingReference = plan.humanPose && paintImage && !correctionImage ? paintImage : undefined;
   const sourcePaint = drawingReference ? undefined : paintImage;
-  const allReferences = [...(drawingReference ? [{label:'描画レイヤー参照：描き方の参考。ポーズ・アングル・描写範囲は今回の指定を優先する。',characterKeys:[],image:drawingReference}] : []),...references,
-    ...(poseImage ? [{label:'3Dポーズ参照：身体の姿勢・アングル・切り取りのみ。人物の外見と画風はキャラクター設定画を使う。',characterKeys:[],image:poseImage}] : [])];
+  const allReferences = [...(drawingReference ? [{label:plan.threeImages?'ネームの表情・感情':'描画レイヤー参照：描き方の参考。ポーズ・アングル・描写範囲は今回の指定を優先する。',characterKeys:[],image:drawingReference}] : []),...references,
+    ...(poseImage ? [{label:plan.threeImages?'3Dの詳細ポーズ':'3Dポーズ参照：身体の姿勢・アングル・切り取りのみ。人物の外見と画風はキャラクター設定画を使う。',characterKeys:[],image:poseImage}] : [])];
   if(sketchImage&&(!plan.ownerKey.startsWith('figure-')||!plan.characterKeys.length))throw new Error('ネームのラフ生成には登場人物の指定が必要です');
   if(allReferences.length>9)throw new Error(usesPoseImage?'3Dポーズ画像と参照資料は合計9枚までです':'参照資料は9枚までです');
   if(allReferences.length+Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage))>10)throw new Error('設定画・3Dポーズ画像・選択レイヤーは合計10枚までです');
@@ -223,7 +240,7 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   if(references.some(r=>r.characterKeys.some(key=>!plan.characterKeys.includes(key))))throw new Error('参照資料と生成する人物が一致しません');
   const offset=Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage));
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
-  return {profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
+  return {candidate_count:5,profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
     overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
     ...(plan.scope||plan.contentKind==='handwritten'?{literal_text:plan.literalText??[]}:{}),
     ...(plan.contentKind?{content_kind:plan.contentKind}:{}),
@@ -267,8 +284,8 @@ export function qwenConversationIntent(text:string):'generate'|'hold'|'help'|'in
   return 'instruction';
 }
 
-export function requireQwenInsertionTarget(job:QwenJob,plan:QwenGenerationPlan,id:string,sha:string) {
-  if(job.jobId!==id||job.requestSha256!==sha||job.documentKey!==plan.documentKey||job.pageNumber!==plan.pageNumber||
+export function requireQwenInsertionTarget(job:QwenJob,plan:QwenGenerationPlan) {
+  if(job.documentKey!==plan.documentKey||job.pageNumber!==plan.pageNumber||
     job.panelId!==plan.panelId||job.overlay!==plan.overlay||job.ownerKey!==plan.ownerKey)
     throw new Error('生成結果と差し込み先が一致しません。生成履歴を確認してください');
   if(job.status!=='succeeded'||!job.image||!job.fileName)throw new Error(job.error||'生成は完了していません。生成状況を確認してください');
@@ -284,8 +301,7 @@ export async function executeQwenGeneration({id,payload,plan,services,prepare,su
   isCurrent:()=>boolean;onJob:(job:QwenJob)=>void;
   insert?:(job:QwenJob)=>Promise<void>;wait?:()=>Promise<void>;
 }):Promise<{job?:QwenJob;inserted:boolean}> {
-  let expected:QwenJob|undefined;
-  const result=await services(async()=>expected=await prepare(id,payload),async(prepared,token)=>{
+  const result=await services(()=>prepare(id,payload),async(prepared,token)=>{
     if(!isCurrent())return prepared;
     let current=await submit(prepared,token);onJob(current);
     while(isCurrent()&&['queued','running'].includes(current.status)){
@@ -295,8 +311,8 @@ export async function executeQwenGeneration({id,payload,plan,services,prepare,su
     }
     return current;
   },{isCurrent});
-  if(insert&&isCurrent()&&result&&expected){
-    requireQwenInsertionTarget(result,plan,id,expected.requestSha256);
+  if(insert&&isCurrent()&&result&&!result.candidates?.length){
+    requireQwenInsertionTarget(result,plan);
     await insert(result);return {job:result,inserted:true};
   }
   return {job:result,inserted:false};

@@ -1,5 +1,38 @@
 # Qwen Image 2.1 Turboの登録例
 
+## nyamuru_qwen_turbo_3images
+
+`nyamuru_qwen_turbo_3images.api.json` と同名の `.binding.json` は、人物の表情・外見・ポーズを別々の画像で指定する登録例です。既存の3枚版から `6.prompt`、`6.negative_prompt`、`10.cfg` の3入力だけを変更しています。CFGは2、モデル・サンプラー・シグマ・画像接続・保存先prefixは基準例を保持します。
+
+| 順番 | 資料の役割 | 受渡し先 |
+|---|---|---|
+| 画像1 | 手書きネームの表情・感情のニュアンス | `21.image` → `6.images.image_1` |
+| 画像2 | 人物設定画の外見・画風 | `22.image` → `6.images.image_2` |
+| 画像3 | 3Dの身体・手足の詳細ポーズ | `23.image` → `6.images.image_3` |
+
+Positive：
+
+```text
+Black-and-white manga.
+Facial expression and emotional nuance from <image1>.
+Character design and drawing style from <image2>.
+Detailed body pose, including hand and limb positions, from <image3>.
+```
+
+Negative（`6.negative_prompt` の固定値）：
+
+```text
+text, speech bubbles, panel borders, background scenery, extra people, collage, multiple views, 3D mannequin, skeleton guides, joint markers, signature, watermark
+```
+
+環境設定 → モデル →「人物3枚参照を追加」で登録内容を開き、保存して使用するワークフローに選びます。人物に3Dポーズを設定し、画像で送るモードにします。生成画面で表情のネームレイヤーと設定画1枚を指定します。「登録資料を読み込む」は優先設定画（指定がない場合は先頭）を1枚使います。別の設定画はファイルから選べます。
+
+`qwen-three-images` は4行の登録文を生成画面の初期値にします。確認した本文に透過用の背景色だけを1行追加し、翻訳や人物設定の自動追記は行いません。参照3枚とCFG2を保ち、シードだけを変えて5枚生成します。採用した候補だけを透過し、生成マスクがあればその外接矩形、なければ対象コマの原稿寸法（DPI換算）に合わせてPNGを保存します。ページ前景の人物には生成マスクが必要です。採用後、「新規レイヤーとして追加」で元のあたりを残して配置します。
+
+モノクロ／カラー等の選択UI、追加自由記述だけの英訳、86表情IDの自動候補付けは、この例の実装範囲に含みません。人物用negativeは写植・描き文字・ページ生成へ流用しません。
+
+## 参照枚数別の基準例
+
 `qwen-turbo-{0,1,3,10}-refs.api.json` はComfyUIのAPIグラフ、同名の `.binding.json` はニャムルへの入出力対応です。必要な参照枚数と同じ例を選び、登録時に `{name, graph, binding}` として渡します。参照枚数を自動変更するグラフではありません。
 
 指示文はノード6、シードは10、幅・高さは7に渡します。参照画像は配列順でLoadImageの21番以降へ渡り、`images.image_1` 以降に接続されます。完成画像はSaveImageの12番が返す画像配列の0番です。`prompt_mode` は既存のQwen指示文処理を使う `qwen` です。

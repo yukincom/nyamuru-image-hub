@@ -1,0 +1,200 @@
+/** 見込み: 登録ワークフローの会話生成も候補選択で止まり、採用1枚だけを明示追加できる。
+ * 合格: 5候補→候補3の確定PNG→追加callback1回。部分失敗・未確定は2枚を保持して採用不可。
+ * 範囲: 実Dialog・bridge decoder・lifecycle。設定/HTTP/PNGは模擬、実生成/透過処理/作品保存は対象外。 */
+import { render } from 'preact';
+import QwenGenerationDialog from '../src/components/QwenGenerationDialog';
+import { QWEN_GENERATION_PROFILE, type QwenGenerationConversation, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
+import { DEFAULT_GENERATION_PREFERENCES, saveGenerationPreferences } from '../src/lib/generationPreferences';
+import { DEFAULT_LOCAL_MODEL_PREFERENCES, saveLocalModelPreferences } from '../src/lib/localModelPreferences';
+import type { ComfyWorkflowDefinition } from '../src/lib/comfyWorkflows';
+import '../src/styles/global.css';
+
+interface Result {
+  done: boolean; passed: boolean; status: 'running' | 'passed' | 'failed' | 'preview';
+  checks: string[]; scenarios: string[]; error?: string; requests: Record<string, number>;
+  selected: number[]; insertions: number; blockedRequests: number; scope: string;
+}
+declare global { interface Window { __qwenCandidatesTest: Result } }
+const result: Result = { done: false, passed: false, status: 'running', checks: [], scenarios: [],
+  requests: {}, selected: [], insertions: 0, blockedRequests: 0,
+  scope: '実Dialog・localBridge・lifecycle、メモリ内設定と模擬HTTP/PNG。実モデル・透過処理・作品保存は未検証。' };
+window.__qwenCandidatesTest = result;
+
+// The real preference readers use page-local Storage; device preferences are untouched.
+const values = new Map<string, string>();
+const storage: Storage = {
+  get length() { return values.size; }, clear: () => values.clear(),
+  getItem: key => values.get(key) ?? null, key: index => Array.from(values.keys())[index] ?? null,
+  removeItem: key => { values.delete(key); }, setItem: (key, value) => { values.set(key, value); },
+};
+Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
+const endpoint = 'http://127.0.0.1:8199';
+const workflow: ComfyWorkflowDefinition = {
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', name: '候補検証ワークフロー', version: 7,
+  graph: {
+    text: { class_type: 'TextEncode', inputs: { text: 'fixture prompt' } },
+    sampler: { class_type: 'Sampler', inputs: { seed: 260921 } },
+    output: { class_type: 'SaveImage', inputs: { images: ['sampler', 0], filename_prefix: 'fixture' } },
+  },
+  binding: { prompt: [{ node: 'text', input: 'text' }], seed: [{ node: 'sampler', input: 'seed' }],
+    width: [], height: [], images: [], output: { node: 'output', index: 0 }, prompt_mode: 'qwen', fixed_size: [160, 224] },
+};
+const otherWorkflow: ComfyWorkflowDefinition = { ...workflow, id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: '未選択ワークフロー', version: 1 };
+saveGenerationPreferences(storage, { ...DEFAULT_GENERATION_PREFERENCES,
+  local: { ...DEFAULT_GENERATION_PREFERENCES.local, workflowId: workflow.id } });
+saveLocalModelPreferences(storage, { ...DEFAULT_LOCAL_MODEL_PREFERENCES, comfyuiUrl: endpoint });
+
+const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 224;
+const context = canvas.getContext('2d')!;
+function fixtureImage(index: number, transparent: boolean) {
+  context.clearRect(0, 0, 160, 224);
+  if (!transparent) { context.fillStyle = '#00ff00'; context.fillRect(0, 0, 160, 224); }
+  context.fillStyle = ['#874d79', '#607ba1', '#ba744b', '#598575', '#8c854f'][index];
+  context.fillRect(25 + index * 4, 30, 100, 160);
+  context.fillStyle = 'black'; context.font = '28px sans-serif'; context.fillText(String(index + 1), 70, 110);
+  return canvas.toDataURL('image/png');
+}
+const images = Array.from({ length: 5 }, (_, index) => fixtureImage(index, false));
+const finalImages = Array.from({ length: 5 }, (_, index) => fixtureImage(index, true));
+type Scenario = 'succeeded' | 'failed' | 'outcome_unknown';
+let scenario: Scenario = 'succeeded', conversation: QwenGenerationConversation | null = null;
+let job: Record<string, unknown> = {};
+const inserted: { file: File; target: QwenGenerationPlan }[] = [];
+const calls: { scenario: Scenario; path: string; body: Record<string, unknown> }[] = [];
+const failureMessage = (status: Scenario) => status === 'failed'
+  ? '候補3の生成に失敗しました（検証用の固定応答）' : '候補3の結果を確認できません（検証用の固定応答）';
+window.fetch = async (input, options) => {
+  const url = input instanceof Request ? input.url : String(input);
+  const path = new URL(url, location.href).pathname.replace(/^\/__nyamuru\/(?:bridge|supervisor)/, '');
+  const body: Record<string, unknown> = options?.body ? JSON.parse(String(options.body)) : {};
+  calls.push({ scenario, path, body }); result.requests[path] = (result.requests[path] ?? 0) + 1;
+  const bridge = { service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3 };
+  const supervisor = { service: 'nyamuru-image-hub-bridge-supervisor', protocol_version: 1 };
+  if (path === '/api/health') return Response.json(bridge);
+  if (path === '/api/new-creation/start') return Response.json({ ...supervisor, lease_token: 'candidate-fixture' });
+  if (path === '/api/new-creation/stop') return Response.json({ ...supervisor, released: true, llm_released: true });
+  if (path === '/api/comfy-workflows/list') return Response.json({ ...bridge, workflows: [otherWorkflow, workflow] });
+  if (path === '/api/panel-actions/prepare') return Response.json({ ...supervisor, ready: true });
+  if (path === '/api/image-generation/prepare') return Response.json({ ...supervisor, llm_stopped: true });
+  if (path === '/api/qwen-generation/prepare') {
+    if (body.candidate_count !== 5 || body.workflow_id !== workflow.id || body.workflow_version !== workflow.version
+      || body.comfyui_url !== endpoint || body.width !== 160 || body.height !== 224 || body.chroma_key_color !== '#00FF00') {
+      throw new Error('5候補・選択ワークフロー/版・接続先・固定寸法・背景色の送信内容が一致しません');
+    }
+    job = { ...body, request_sha256: 'a'.repeat(64), status: 'prepared', created_at: 1,
+      workflow_name: workflow.name, file_name: `qwen_${body.job_id}.png` };
+    return Response.json({ ...bridge, ...job });
+  }
+  if (path === '/api/image-generation/submit') {
+    const payload = body.payload as Record<string, unknown>;
+    if (payload?.job_id !== job.job_id || payload.request_sha256 !== job.request_sha256) throw new Error('確定済みjobと異なる送信です');
+    return Response.json({ ...supervisor, ...job, status: scenario, requires_cutout: true,
+      ...(scenario === 'succeeded' ? {} : { error: failureMessage(scenario) }),
+      candidates: images.slice(0, scenario === 'succeeded' ? 5 : 2).map((image, index) => ({ image, index: index + 1, seed: 260921 + index })) });
+  }
+  if (path === '/api/qwen-generation/select') {
+    if (scenario !== 'succeeded' || body.job_id !== job.job_id || body.candidate_index !== 3) throw new Error('完了jobの候補3以外が採用されました');
+    result.selected.push(body.candidate_index);
+    return Response.json({ ...bridge, ...job, status: 'succeeded', selected_candidate: body.candidate_index, image: finalImages[2] });
+  }
+  result.blockedRequests++;
+  throw new Error(`Fixture blocked unexpected request: ${path}`);
+};
+// A page close during a test must not send a real lifecycle request either.
+Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: () => { result.blockedRequests++; return false; } });
+
+const plan: QwenGenerationPlan = { profile: QWEN_GENERATION_PROFILE, documentKey: 'candidate-fixture', pageNumber: 1,
+  panelId: 1, overlay: false, ownerKey: 'figure-0', label: '検証人物', width: 160, height: 224,
+  prompt: '人物を描く', characterKeys: [], candidates: [] };
+const root = document.getElementById('test-root')!;
+const report = document.createElement('output'); report.setAttribute('aria-label', '候補生成の検証結果');
+report.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:99999;background:white;color:black;padding:8px;max-width:90vw';
+report.textContent = '候補生成を検証中'; document.body.append(report);
+const tick = () => new Promise(resolve => setTimeout(resolve, 30));
+const button = (name: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('.qwen-generation-dialog button'))
+  .find(element => element.textContent?.trim() === name);
+async function wait(test: () => boolean, label: string) {
+  for (let attempt = 0; attempt < 150; attempt++) { if (test()) return; await tick(); }
+  throw new Error(`待機失敗: ${label}`);
+}
+function check(condition: unknown, label: string) {
+  if (!condition) throw new Error(label);
+  result.checks.push(label);
+}
+async function mount(status: Scenario) {
+  render(null, root); await tick(); conversation = null; job = {}; scenario = status;
+  render(<QwenGenerationDialog plan={plan} onClose={() => {}}
+    onConversation={value => { conversation = value; }}
+    onInsert={async (file, target) => { inserted.push({ file, target }); result.insertions = inserted.length; }} />, root);
+  await wait(() => Boolean(conversation) && button('5枚を生成する')?.disabled === false, `${status}: 登録ワークフロー読込`);
+}
+async function generate(status: Scenario) {
+  await mount(status);
+  const reply = await conversation!.send('生成して', () => true);
+  await wait(() => document.querySelectorAll('.qwen-candidate').length === (status === 'succeeded' ? 5 : 2)
+    && !conversation?.busy, `${status}: 候補表示`);
+  return reply;
+}
+const selectionButton = () => button('選んだ1枚の背景を透過する');
+
+async function run() {
+  // 見込み: 保存済みIDで一覧中の定義を選べば、版・URL・寸法を保って5候補を作れる。合格: 実要求の各値一致、生成中も追加0件。範囲: 実読込と模擬登録API。
+  const reply = await generate('succeeded');
+  const prepared = calls.find(call => call.path === '/api/qwen-generation/prepare')!.body;
+  check(result.requests['/api/comfy-workflows/list'] === 1 && prepared.workflow_id === workflow.id
+    && prepared.workflow_version === 7 && prepared.comfyui_url === endpoint && prepared.width === 160 && prepared.height === 224,
+  '保存済みIDを一覧から選び、版7・接続先・固定寸法を生成要求へ渡す');
+  check(document.querySelector('.qwen-output-size')?.textContent?.includes(workflow.name), '選択した登録ワークフローを表示');
+  check(reply.includes('5枚') && reply.includes('選んで'), '成功時の会話は5候補からの選択を案内');
+  check(document.querySelectorAll('.qwen-candidate').length === 5 && result.selected.length === 0 && inserted.length === 0,
+    '5候補の表示時点では採用APIも追加callbackも0件');
+  check(selectionButton()?.disabled && !button('新規レイヤーとして追加'), '候補未選択では確定も追加もできない');
+
+  // 見込み: 候補クリックは選択だけ、確定で得たPNGも明示追加まで保持する。合格: 候補3だけの確定1件→同PNGを追加callback1件。範囲: 実DOM、透過済みPNG応答は固定。
+  const candidate = document.querySelectorAll<HTMLButtonElement>('.qwen-candidate')[2]; candidate.click(); await tick();
+  check(candidate.getAttribute('aria-pressed') === 'true'
+    && document.querySelector<HTMLImageElement>('.qwen-candidate-preview')?.src === images[2]
+    && result.selected.length === 0 && inserted.length === 0, '候補3のクリックは拡大表示だけで採用・追加しない');
+  if (new URLSearchParams(location.search).has('preview')) {
+    result.status = 'preview'; result.done = true;
+    report.textContent = '候補生成 PREVIEW：5候補から候補3を選択中（後続検査は未実行）'; return;
+  }
+  selectionButton()!.click();
+  await wait(() => button('新規レイヤーとして追加')?.disabled === false, '候補3の確定PNG');
+  check(result.selected.join(',') === '3' && inserted.length === 0
+    && document.querySelector<HTMLImageElement>('.qwen-result > img')?.src === finalImages[2]
+    && document.querySelectorAll('.qwen-candidate').length === 0, '候補3の確定PNGだけを表示し、追加操作を待つ');
+  button('新規レイヤーとして追加')!.click(); await wait(() => inserted.length === 1 && !conversation?.busy, '明示追加');
+  const bytes = new Uint8Array(await inserted[0].file.arrayBuffer());
+  const expected = Uint8Array.from(atob(finalImages[2].split(',')[1]), character => character.charCodeAt(0));
+  check(bytes.length === expected.length && bytes.every((byte, index) => byte === expected[index])
+    && inserted[0].file.name === job.file_name && inserted[0].target.documentKey === plan.documentKey
+    && inserted[0].target.ownerKey === plan.ownerKey, '明示追加1回で候補3の確定PNGと元の追加先を渡す');
+  result.scenarios.push('5候補成功→候補3確定→明示追加1回');
+
+  // 見込み: 部分失敗を完了と扱わなければ、残った2候補を保持して理由を伝えられる。合格: failed/unknown各々の状態・理由・2枚、採用不可、成功や挿入の誤案内なし。範囲: 終端/未確定応答は固定。
+  for (const status of ['failed', 'outcome_unknown'] as const) {
+    const partialReply = await generate(status);
+    check(partialReply.includes('候補2枚') && partialReply.includes('保持') && partialReply.includes(failureMessage(status))
+      && !/5枚生成しました|新規レイヤーとして追加しました/.test(partialReply), `${status}: 会話は2枚保持と理由を伝え、完了・追加を主張しない`);
+    check(document.querySelector('.qwen-result > strong')?.textContent === (status === 'failed' ? '失敗' : '結果未確定')
+      && document.querySelector('.qwen-result')?.textContent?.includes(failureMessage(status))
+      && document.querySelectorAll('.qwen-candidate').length === 2, `${status}: 正しい状態・理由と2候補を表示`);
+    document.querySelector<HTMLButtonElement>('.qwen-candidate')!.click(); await tick();
+    check(selectionButton()?.disabled && !button('新規レイヤーとして追加')
+      && result.selected.join(',') === '3' && inserted.length === 1, `${status}: 候補を選んでも確定・追加不可、成功ケース以外の変更0件`);
+    result.scenarios.push(`${status}: 2候補保持・採用不可・誤成功案内なし`);
+  }
+  check(result.requests['/api/comfy-workflows/list'] === 3 && result.requests['/api/qwen-generation/prepare'] === 3
+    && result.requests['/api/image-generation/submit'] === 3 && result.requests['/api/qwen-generation/select'] === 1
+    && !result.requests['/api/qwen-generation/reconcile'] && result.blockedRequests === 0,
+  '3ケース各1回の読込・準備・送信、成功候補の確定だけ1回、再送・予期しない通信0件');
+  render(null, root);
+  result.done = true; result.passed = true; result.status = 'passed';
+  report.textContent = `候補生成 PASS：${result.scenarios.length}ケース・${result.checks.length}検査（HTTP/PNG模擬）`;
+}
+void run().catch(error => {
+  render(null, root);
+  result.done = true; result.status = 'failed'; result.error = String(error);
+  report.textContent = `候補生成 FAIL：${result.error}`;
+});

@@ -1,5 +1,8 @@
+"""見込み: ComfyUIへの移行後も入力・指示・履歴の所有を保てる。
+合格: 選択した定義と参照を保存し、失敗時は再送せず5候補から明示選択する。
+範囲: 実PNG/保存/プロンプト構築、APIとworker起動は模擬。実推論の品質は未検証。
+"""
 import base64
-import fcntl
 from functools import partial
 import io
 import json
@@ -13,9 +16,12 @@ from unittest.mock import patch, Mock
 from types import SimpleNamespace
 from uuid import uuid4
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from qwen_generation import QwenGenerationService, PROFILE, normalize, dimensions, SETTINGS, LEGACY_SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS, validate_english, validate_transparency, apply_generated_alpha
+from qwen_generation import QwenGenerationService, PROFILE, normalize, dimensions, SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS, validate_english
 from generation_store import canonical, sha256
 from image_generation_lock import create_generation_lease, hold_generation_lease, validate_generation_fd
+from comfy_client import ComfyRejected
+from comfy_workflows import WorkflowStore
+from test_comfy_generation_bridge import API, definition
 try:
     from PIL import Image
 except ImportError:
@@ -26,6 +32,9 @@ def encoded(size=(540, 1000)):
     buffer = io.BytesIO()
     Image.new('RGBA', size, (0, 0, 0, 0)).save(buffer, format='PNG')
     return 'data:image/png;base64,' + base64.b64encode(buffer.getvalue()).decode()
+
+
+LEGACY_SETTINGS = {'resolution': 1024, 'steps': 40, 'cfg': 1.0, 'seed': 260921, 'sampler': 'euler', 'scheduler': 'simple'}
 
 
 def body():
@@ -41,26 +50,23 @@ def translate(value):
 
 
 class QwenPreflightTest(unittest.TestCase):
-    def test_only_turbo_and_shared_assets_are_required_for_every_mode(self):
+    # 見込み: 登録定義とAPIの実装情報を照合すれば、ローカルlabなしで利用可否を判定できる。
+    # 合格: 有効定義は通り、ノード欠落/解放拡張なしは拒否。範囲: API応答は固定、HTTP/モデルなし。
+    def test_registered_workflow_checks_runtime_nodes_and_release_extension(self):
         with tempfile.TemporaryDirectory() as directory:
-            lab = Path(directory)
-            service = QwenGenerationService(lab / 'jobs', lab)
-            for name in ('.venv/bin/python', 'runtime/ComfyUI/comfy_extras/nodes_qwen.py',
-                         'models/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors',
-                         'models/text_encoders/qwen3vl_8b_int8_convrot.safetensors',
-                         'models/vae/qwen_image_2.1_vae_bf16.safetensors'):
-                path = lab / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.touch()
-            for settings in (None, SETTINGS, SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS):
-                with self.subTest(settings=settings):
-                    service.preflight(settings)
-            turbo = lab / 'models/diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors'
-            turbo.rename(turbo.with_name('qwen_image_2.1_int8_convrot.safetensors'))
-            with self.assertRaisesRegex(ValueError, 'モデルが見つかりません'):
-                service.preflight()
-            with self.assertRaisesRegex(ValueError, '新しい生成を準備'):
-                service.preflight(LEGACY_SETTINGS)
+            root = Path(directory).resolve()
+            workflows = WorkflowStore(root / 'workflows')
+            workflow = workflows.save(definition(1, 'qwen'))
+            api = API()
+            service = QwenGenerationService(root / 'jobs', workflows=workflows, client_factory=lambda endpoint: api)
+            service.preflight(workflow)
+            with patch.object(api, 'object_info', return_value={}):
+                with self.assertRaisesRegex(ValueError, 'ワークフローを利用できません'):
+                    service.preflight(workflow)
+            api.extension = False
+            with self.assertRaisesRegex(ValueError, '解放確認拡張'):
+                service.preflight(workflow)
+            self.assertEqual(api.calls, [])
 
 
 @unittest.skipIf(Image is None, 'Pillow required')
@@ -72,8 +78,11 @@ class QwenJobsTest(unittest.TestCase):
         self.leases = self.root / 'leases'
         self.token = str(uuid4())
         create_generation_lease(self.token, self.leases)
-        self.service = QwenGenerationService(self.root / 'jobs', self.root / 'fake-lab')
+        self.workflows = WorkflowStore(self.root / 'workflows')
+        self.api = API()
+        self.service = QwenGenerationService(self.root / 'jobs', workflows=self.workflows, client_factory=lambda endpoint: self.api)
         self.request = body()
+        self.bind_workflow()
         for target, replacement in (
             ('qwen_generation.hold_generation_lease', partial(hold_generation_lease, root=self.leases)),
             ('qwen_generation.validate_generation_fd', partial(validate_generation_fd, root=self.leases)),
@@ -84,7 +93,15 @@ class QwenJobsTest(unittest.TestCase):
         patcher = patch('qwen_generation.subprocess.Popen', return_value=Mock(pid=123))
         self.spawn = patcher.start(); self.addCleanup(patcher.stop)
 
+    def bind_workflow(self):
+        count = len(self.request['references']) + sum(key in self.request for key in ('paint_image', 'sketch_image', 'correction_image'))
+        current = self.workflows.get(self.request['workflow_id']) if self.request.get('workflow_id') else None
+        if current is None or len(current['binding']['images']) != count:
+            current = self.workflows.save(definition(count, 'qwen'))
+            self.request.update(workflow_id=current['id'], workflow_version=current['version'])
+
     def prepare(self):
+        self.bind_workflow()
         return self.service.prepare(self.request, translate)
 
     def submit(self, prepared=None):
@@ -95,10 +112,53 @@ class QwenJobsTest(unittest.TestCase):
         value = self.service.load(self.request['job_id'])
         raw = base64.b64decode(encoded(tuple(value['output_size'])).split(',')[1])
         self.service.store.write_once(self.request['job_id'], 'output.png', raw)
-        self.service.store.write_once(self.request['job_id'], 'output.json', canonical(dict(sha256=sha256(raw), request_sha256=sha256(canonical(value)))))
+        if value['settings'].get('candidate_count', 1) > 1:
+            self.service.store.write_once(self.request['job_id'], 'selection.json', canonical({'index': 1}))
+            self.service.store.write_once(self.request['job_id'], 'candidates.json', canonical({'count': 5}))
         return raw
 
-    def test_all_new_jobs_persist_turbo_sampling_and_existing_mode_behaviour(self):
+    # 見込み: PNG検査で得た寸法を再利用すれば二重decodeは不要。
+    # 合格: 原画/修正/設定画の3枚を各1回検査し、入力寸法・原本を保持。範囲: 実PNG、推論なし。
+    def test_each_input_png_is_validated_once(self):
+        from generation_store import validate_png
+        self.request.update(mode='paint', paint_image=encoded(), correction_image=encoded())
+        with patch('qwen_generation.validate_png', wraps=validate_png) as validate:
+            value, images = normalize(self.request)
+        self.assertEqual(validate.call_count, 3)
+        self.assertEqual(value['input_size'], [540, 1000])
+        self.assertEqual([ref['role'] for ref in value['references']], ['paint', 'correction', 'identity'])
+        raw = base64.b64decode(self.request['paint_image'].split(',')[1])
+        self.assertEqual(images['image-1.png'], raw)
+
+    # 見込み: 固定寸法を先に選べば、細長い配置枠や参照比率に不要な生成寸法制限を掛けない。
+    # 合格: new/paint/sketchで8000x100の枠を受理し出力512x768・5seed・キー色を保持。不正な枠寸法は拒否。
+    # 範囲: prepareと実PNG保存、接続/起動はsetUpの模擬。原稿上の配置や実推論は未検証。
+    def test_fixed_output_dimensions_precede_canvas_and_source_ratio(self):
+        for mode in ('new', 'paint', 'sketch'):
+            with self.subTest(mode=mode):
+                self.request = body()
+                self.request.update(mode=mode, width=8000, height=100)
+                if mode != 'new':
+                    self.request[f'{mode}_image'] = encoded((3200, 40))
+                self.bind_workflow()
+                fixed = self.workflows.get(self.request['workflow_id'])
+                fixed['binding'].update(width=[], height=[], fixed_size=[512, 768])
+                fixed['graph']['p']['inputs'].update(width=512, height=768)
+                saved = self.workflows.save({**fixed, 'expected_version': fixed['version']})
+                self.request['workflow_version'] = saved['version']
+                prepared = self.prepare()
+                value = self.service.load(prepared['job_id'])
+                self.assertEqual(value['output_size'], [512, 768])
+                self.assertEqual([value['width'], value['height']], [8000, 100])
+                self.assertEqual(value['candidate_seeds'], list(range(SETTINGS['seed'], SETTINGS['seed'] + 5)))
+                self.assertEqual(value['settings']['transparency_mode'], 'chroma-key-v1')
+                self.assertEqual(value['settings']['chroma_key']['color'], '#00FF00')
+                with self.assertRaisesRegex(ValueError, 'キャンバスの寸法が不正'):
+                    self.service.normalize_request({**self.request, 'width': False})
+
+    # 見込み: 選択したグラフと版を保存すれば生成モードごとの参照・寸法を保てる。
+    # 合格: 3モードとも定義/5seed固定、lab設定を持たずsubmit後も入力不変。範囲: 実保存、起動は模擬。
+    def test_all_new_jobs_persist_workflow_snapshot_and_existing_mode_behaviour(self):
         for mode in ('new', 'paint', 'sketch'):
             with self.subTest(mode=mode):
                 self.request = body()
@@ -107,19 +167,14 @@ class QwenJobsTest(unittest.TestCase):
                     self.request[f'{mode}_image'] = encoded()
                 prepared = self.prepare()
                 value = self.service.load(prepared['job_id'])
-                settings = value['settings']
-                self.assertEqual(settings['diffusion_model'], 'qwen_image_2.1_turbo_int8_convrot.safetensors')
-                self.assertEqual((settings['steps'], settings['cfg'], settings['sampler']), (8, 1, 'euler'))
-                self.assertEqual(settings['sigmas'], [1.0, .978453, .95418, .926626, .89508, .845148, .704534, .414568, 0.0])
-                self.assertEqual(settings['scheduler'], 'official-fixed-sigmas')
-                self.assertEqual(settings['resolution'], 768 if mode == 'sketch' else 1024)
-                self.assertEqual(value['output_size'], dimensions(540, 1000, settings['resolution']))
-                self.assertEqual(settings['vae_device'], 'cpu')
-                self.assertEqual(settings['minimum_start_available_gib'], 21)
-                self.assertEqual(settings['minimum_available_gib'], 6)
-                self.assertEqual(settings['maximum_swap_increase_gib'], 1)
-                self.assertEqual(settings.get('require_transparency', False), mode == 'sketch')
-                self.assertEqual(settings.get('transparency_mode'), 'alpha-pass-v1' if mode == 'sketch' else None)
+                self.assertEqual(value['workflow'], self.workflows.get(self.request['workflow_id']))
+                self.assertEqual(value['settings']['candidate_count'], 5)
+                self.assertEqual(value['candidate_seeds'], list(range(SETTINGS['seed'], SETTINGS['seed'] + 5)))
+                self.assertNotIn('diffusion_model', value['settings'])
+                self.assertNotIn('steps', value['settings'])
+                self.assertEqual(value['output_size'], dimensions(540, 1000, 768 if mode == 'sketch' else 1024))
+                self.assertEqual(value['settings']['transparency_mode'], 'chroma-key-v1')
+                self.assertEqual(value['settings']['chroma_key']['color'], '#00FF00')
                 self.assertEqual(self.submit(prepared)['status'], 'queued')
                 self.assertEqual(self.service.load(prepared['job_id']), value)
 
@@ -142,9 +197,8 @@ class QwenJobsTest(unittest.TestCase):
                 store.write_once(job_id, 'generation-prompt.sha256', sha256(english).encode())
                 store.event(job_id, 'prepared')
                 prepared = self.service.payload(job_id)
-                with patch.object(self.service, 'preflight', wraps=partial(QwenGenerationService.preflight, self.service)):
-                    with self.assertRaisesRegex(ValueError, '新しい生成を準備'):
-                        self.submit(prepared)
+                with self.assertRaisesRegex(ValueError, '新しい生成を準備'):
+                    self.submit(prepared)
                 self.spawn.assert_not_called()
                 self.assertFalse((store.root / job_id / 'submission-intent.json').exists())
                 self.assertEqual(self.service.payload(job_id)['status'], 'prepared')
@@ -153,14 +207,16 @@ class QwenJobsTest(unittest.TestCase):
                 output = self.output()
                 store.event(job_id, 'succeeded')
                 result = self.service.reconcile({'job_id': job_id})
-                self.assertEqual(result['image_sha256'], sha256(output))
+                self.assertEqual(base64.b64decode(result['image'].split(',', 1)[1]), output)
                 self.assertEqual(self.submit(prepared)['status'], 'succeeded')
                 self.assertIn(job_id, [item['job_id'] for item in self.service.list(self.request)['jobs']])
                 self.assertEqual(store.read(job_id, 'request.json'), source)
                 self.assertEqual(store.read(job_id, 'generation-prompt.json'), english)
                 self.assertEqual(self.service.delete(self.deletion(prepared))['deleted_job_ids'], [job_id])
 
-    def test_sketch_keeps_its_own_crop_aspect_and_uses_verified_turbo_profile(self):
+    # 見込み: ラフの切抜き寸法は原稿枠から独立し、APIジョブでもその縦横比を保つ。
+    # 合格: 原本2枚・800x736・5候補・キー色を保存。範囲: 実PNG/保存、起動は模擬。
+    def test_sketch_keeps_its_own_crop_aspect_and_workflow_contract(self):
         self.request.update(mode='sketch', sketch_image=encoded((544, 496)))
         value, images = normalize(self.request)
         self.assertEqual(value['input_size'], [544, 496])
@@ -173,7 +229,10 @@ class QwenJobsTest(unittest.TestCase):
         self.assertEqual(SKETCH_SETTINGS['sigmas'][0], 1)
         prepared = self.prepare()
         self.assertEqual(prepared['status'], 'prepared')
-        self.assertEqual(self.service.load(self.request['job_id'])['settings'], SKETCH_SETTINGS)
+        saved = self.service.load(self.request['job_id'])
+        self.assertEqual(saved['output_size'], [800, 736])
+        self.assertEqual(saved['settings']['candidate_count'], 5)
+        self.assertEqual(saved['settings']['transparency_mode'], 'chroma-key-v1')
         self.assertEqual(self.submit(prepared)['status'], 'queued')
 
     def test_sketch_requires_bound_character_and_exactly_one_guide(self):
@@ -185,21 +244,6 @@ class QwenJobsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize({**self.request, 'mode': 'new'})
 
-    def test_alpha_pass_uses_only_mask_alpha_preserving_all_finished_rgb_pixels(self):
-        color = Image.new('RGB', (64, 64), 'white')
-        color.paste((20, 40, 80), (16, 16, 48, 48))
-        mask = Image.new('RGBA', (64, 64), (255, 0, 255, 0))
-        mask.paste((0, 255, 0, 255), (16, 16, 48, 48))
-        source = io.BytesIO(); color.save(source, format='PNG')
-        alpha = io.BytesIO(); mask.save(alpha, format='PNG')
-        raw = apply_generated_alpha(source.getvalue(), alpha.getvalue())
-        with Image.open(io.BytesIO(raw)) as output:
-            self.assertEqual(output.convert('RGB').tobytes(), color.tobytes())
-            self.assertEqual(output.getchannel('A').tobytes(), mask.getchannel('A').tobytes())
-        mismatch = io.BytesIO(); mask.resize((32, 32)).save(mismatch, format='PNG')
-        with self.assertRaisesRegex(ValueError, '寸法'):
-            apply_generated_alpha(source.getvalue(), mismatch.getvalue())
-
     def test_existing_native_sketch_job_remains_readable_without_rewriting_it(self):
         self.request.update(mode='sketch', sketch_image=encoded())
         value, _ = normalize(self.request)
@@ -208,20 +252,6 @@ class QwenJobsTest(unittest.TestCase):
         self.service.store.write_once(self.request['job_id'], 'request.json', canonical(value))
         self.service.store.write_once(self.request['job_id'], 'request.sha256', sha256(canonical(value)).encode())
         self.assertEqual(self.service.load(self.request['job_id']), value)
-
-    def test_transparency_retains_opaque_white_clothes_and_rejects_opaque_or_empty_output(self):
-        image = Image.new('RGBA', (64, 64), (255, 255, 255, 0))
-        image.paste((255, 255, 255, 255), (16, 16, 48, 48))
-        stream = io.BytesIO(); image.save(stream, format='PNG')
-        report = validate_transparency(stream.getvalue())
-        self.assertEqual(report['transparent_fraction'], .75)
-        self.assertEqual(report['opaque_fraction'], .25)
-        self.assertEqual(image.getpixel((32, 32)), (255, 255, 255, 255))
-        for mode, alpha in (('RGBA', 255), ('RGBA', 0), ('RGBA', 128), ('RGB', None)):
-            stream = io.BytesIO()
-            Image.new(mode, (32, 32), (255, 255, 255, alpha) if alpha is not None else 'white').save(stream, format='PNG')
-            with self.assertRaises(ValueError):
-                validate_transparency(stream.getvalue())
 
     def test_new_and_paint_reference_order_dimensions(self):
         value, images = normalize(self.request)
@@ -365,24 +395,6 @@ class QwenJobsTest(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 normalize({**request, **change})
 
-    def test_saved_balloon_outline_jobs_remain_readable_but_cannot_submit_or_run(self):
-        value, _ = normalize(self.request)
-        value.update(owner_key='bubble-0', character_keys=[], references=[])
-        job_id, store = self.request['job_id'], self.service.store
-        raw = canonical(value)
-        store.create(job_id)
-        store.write_once(job_id, 'request.json', raw)
-        store.write_once(job_id, 'request.sha256', sha256(raw).encode())
-        store.event(job_id, 'prepared')
-        self.assertEqual(self.service.load(job_id), value)
-        with self.assertRaisesRegex(ValueError, '吹き出し単品'):
-            self.submit({'job_id': job_id, 'request_sha256': sha256(raw)})
-        with hold_generation_lease(self.token, root=self.leases) as lease_fd:
-            self.service.run(job_id, os.dup(lease_fd), self.token)
-        self.assertEqual(store.latest(job_id)['status'], 'failed')
-        self.assertIn('吹き出し単品', str(store.latest(job_id)))
-        self.assertFalse((store.root / job_id / 'execution.json').exists())
-
     def test_saved_page_job_with_old_panel_id_remains_readable_without_rewriting(self):
         value, _ = normalize(self.request)
         value.update(owner_key='page', character_keys=[], references=[], literal_text=[])
@@ -404,7 +416,7 @@ class QwenJobsTest(unittest.TestCase):
         for field, index in [('paint_image', 1), ('correction_image', 2)]:
             self.assertEqual(images[f'image-{index}.png'], base64.b64decode(self.request[field].split(',')[1]))
         self.assertEqual(value['references'][1]['character_keys'], [])
-        prepared = self.service.prepare(self.request, translate)
+        prepared = self.prepare()
         self.assertEqual(self.service.load(prepared['job_id'])['references'], value['references'])
         with self.assertRaisesRegex(ValueError, '寸法が一致'):
             normalize({**self.request, 'correction_image': encoded((200, 200))})
@@ -431,22 +443,6 @@ class QwenJobsTest(unittest.TestCase):
         self.assertEqual(value['references'], [])
         self.assertIsNone(value['input_size'])
         self.assertEqual(value['output_size'], dimensions(540, 1000))
-
-    def test_prepared_legacy_canvas_job_cannot_be_newly_submitted(self):
-        value, images = normalize(self.request)
-        value['references'].insert(0, dict(file='old-canvas.png', role='canvas', label='出力キャンバス', character_keys=[], sha256='0'*64))
-        store, job_id = self.service.store, self.request['job_id']
-        store.create(job_id)
-        store.write_once(job_id, 'request.json', canonical(value))
-        store.write_once(job_id, 'request.sha256', sha256(canonical(value)).encode())
-        raw = canonical(translate(value))
-        store.write_once(job_id, 'generation-prompt.json', raw)
-        store.write_once(job_id, 'generation-prompt.sha256', sha256(raw).encode())
-        store.event(job_id, 'prepared')
-        with self.assertRaisesRegex(ValueError, '新しい生成を準備'):
-            self.submit(self.service.payload(job_id))
-        self.spawn.assert_not_called()
-        self.assertEqual(self.service.payload(job_id)['status'], 'prepared')
 
     def test_wrong_missing_and_excess_references_rejected(self):
         for refs in ([], self.request['references'] * 10, [dict(label='bad', character_keys=['other'], image=encoded())]):
@@ -484,69 +480,71 @@ class QwenJobsTest(unittest.TestCase):
             self.assertEqual(translator.call_count, 1)
         self.spawn.assert_not_called()
 
-    def test_no_unprepared_or_tampered_prompt_launch(self):
+    # 見込み: UIの実行状態と保存した準備完了状態で開始を管理する。
+    # 合格: 未準備・session未開始は子processゼロ。範囲: 実service、モデル起動だけ模擬。
+    def test_missing_session_and_unprepared_job_do_not_launch(self):
         prepared = self.prepare()
-        with self.assertRaises(ValueError): self.service.submit(dict(job_id=prepared['job_id'], request_sha256=prepared['request_sha256']))
-        path = self.service.store.root / prepared['job_id'] / 'generation-prompt.json'
-        path.write_text('{}')
-        with self.assertRaises(ValueError): self.submit(prepared)
+        with self.assertRaises(ValueError):
+            self.service.submit(dict(job_id=prepared['job_id'], request_sha256=prepared['request_sha256']))
+        self.service.store.event(prepared['job_id'], 'preparing')
+        self.assertEqual(self.submit(prepared)['status'], 'preparing')
         self.spawn.assert_not_called()
 
+    # 見込み/合格: 書込中断したジョブはpreparingのまま返し、生成しない。範囲: 実保存・模擬起動。
     def test_incomplete_preparation_never_claims_saved_english(self):
-        value, images = normalize(self.request)
+        value, images = self.service.normalize_request(self.request)
         store = self.service.store
         store.create(self.request['job_id'])
         store.write_once(self.request['job_id'], 'request.json', canonical(value))
         store.write_once(self.request['job_id'], 'request.sha256', sha256(canonical(value)).encode())
-        with self.assertRaises(FileNotFoundError): self.prepare()
+        self.assertEqual(self.prepare()['status'], 'preparing')
         self.spawn.assert_not_called()
 
-    def test_phase_failure_inherits_both_locks_and_stops_sequence(self):
+    # 見込み: API拒否は終端としてleaseへ記録し、後続候補へ進まない。
+    # 合格: POST1回、terminal記録1件、failed、候補2未送信。範囲: 実lease/保存、API拒否は模擬。
+    def test_api_rejection_keeps_session_lease_and_stops_candidates(self):
         self.submit()
         with hold_generation_lease(self.token, self.leases) as fd:
-            with patch('qwen_generation.subprocess.run', side_effect=RuntimeError('encode failed')) as run:
+            with patch.object(self.api, 'submit', side_effect=ComfyRejected('node rejected')) as submit:
                 self.service.run(self.request['job_id'], os.dup(fd), self.token)
-            self.assertEqual(run.call_count, 1)
-            self.assertEqual(len(run.call_args.kwargs['pass_fds']), 2)
+            submit.assert_called_once()
+            ledger = json.loads(os.pread(fd, 1024 * 1024, 0))
+            self.assertEqual(len(ledger['api_submissions']), 1)
+            self.assertTrue(ledger['api_submissions'][0]['terminal'])
         self.assertEqual(self.service.payload(self.request['job_id'])['status'], 'failed')
+        self.assertFalse((self.service.store.root / self.request['job_id'] / 'api-intent-2.json').exists())
 
-    def test_memory_guard_stops_before_alpha_and_reports_actionable_error(self):
-        self.request.update(mode='sketch', sketch_image=encoded())
-        self.submit()
-        with hold_generation_lease(self.token, self.leases) as fd:
-            with patch('qwen_generation.subprocess.run', side_effect=subprocess.CalledProcessError(75, 'phase')) as run:
-                self.service.run(self.request['job_id'], os.dup(fd), self.token)
-            self.assertEqual(run.call_count, 1)
-        result = self.service.payload(self.request['job_id'])
-        self.assertEqual(result['status'], 'failed')
-        self.assertIn('メモリ上限', result['error'])
-        self.assertFalse((self.service.store.root / self.request['job_id'] / 'output.png').exists())
-
-    def test_missing_process_lease_fails_before_comfy_start(self):
+    # 見込み: 正規leaseがないworkerは外部APIへ進まず、復帰可能とも断定しない。
+    # 合格: API呼出し0回、outcome_unknown。範囲: 無関係なFDと実worker境界、APIは模擬。
+    def test_missing_process_lease_stops_before_comfy_start(self):
         self.submit()
         with open(self.root / 'unrelated', 'w+') as stream:
-            with patch('qwen_generation.subprocess.run') as run:
-                self.service.run(self.request['job_id'], os.dup(stream.fileno()), self.token)
-            run.assert_not_called()
-        self.assertEqual(self.service.payload(self.request['job_id'])['status'], 'failed')
+            self.service.run(self.request['job_id'], os.dup(stream.fileno()), self.token)
+        self.assertEqual(self.api.calls, [])
+        self.assertEqual(self.api.uploads, [])
+        self.assertEqual(self.service.payload(self.request['job_id'])['status'], 'outcome_unknown')
 
-    def test_output_recovers_without_regeneration_and_tampering_rejected(self):
+    # 見込み/合格: 採用画像と候補完了記録から結果を回収し、再生成しない。範囲: 実保存・固定PNG。
+    def test_output_recovers_without_regeneration_or_hash_sidecar(self):
         prepared = self.prepare(); self.submit(prepared)
         raw = self.output()
         result = self.service.reconcile(self.request)
         self.assertEqual(result['status'], 'succeeded')
-        self.assertEqual(result['image_sha256'], sha256(raw))
+        self.assertEqual(base64.b64decode(result['image'].split(',', 1)[1]), raw)
         self.assertNotEqual(result['width'], result['height'])
         self.assertEqual(self.submit(prepared)['status'], 'succeeded')
         self.assertEqual(self.spawn.call_count, 1)
-        (self.service.store.root / self.request['job_id'] / 'output.png').write_bytes(raw+b'bad')
-        with self.assertRaises(ValueError): self.service.payload(self.request['job_id'])
 
+    # 見込み: worker消失後に受付記録だけ残っても同じ候補を再送しない。
+    # 合格: 相関IDが未発見ならunknown、worker起動1回、API送信0回。範囲: process照合とAPIは模擬。
     def test_stale_job_unknown_without_respawn(self):
         with patch('qwen_generation.time.time', return_value=1): self.submit()
+        self.service.store.write_once(self.request['job_id'], 'api-intent-1.json',
+            canonical({'correlation_id': str(uuid4()), 'seed': SETTINGS['seed']}))
         with patch('qwen_generation.subprocess.run', return_value=Mock(stdout='')):
             self.assertEqual(self.service.reconcile(self.request)['status'], 'outcome_unknown')
         self.assertEqual(self.spawn.call_count, 1)
+        self.assertEqual(self.api.calls, [])
 
     def deletion(self, *jobs):
         return dict(document_key=self.request['document_key'], jobs=[dict(job_id=job['job_id'], request_sha256=job['request_sha256']) for job in jobs])
@@ -571,29 +569,30 @@ class QwenJobsTest(unittest.TestCase):
         self.assertFalse(directory.exists())
         self.assertEqual(original.read_bytes(), b'original')
         self.assertEqual(self.service.delete(request), result)
-        restarted = QwenGenerationService(self.service.store.root, self.service.lab)
+        restarted = QwenGenerationService(self.service.store.root, workflows=self.workflows, client_factory=lambda endpoint: self.api)
         self.assertEqual([job['job_id'] for job in restarted.list(self.request)['jobs']], [other['job_id']])
         with self.assertRaises(FileNotFoundError): restarted.reconcile({'job_id': prepared['job_id']})
         for name, content in before.items():
             self.assertEqual((other_dir / name).read_bytes(), content)
         self.spawn.assert_not_called()
 
+    # 見込み/合格: 作品とジョブ範囲だけを確認し、選択外を消さない。内容hashは不要。範囲: 一時フォルダの実削除。
     def test_delete_validates_entire_batch_before_removing_any_job(self):
         prepared = self.prepare()
         self.request['job_id'] = str(uuid4())
         second = self.prepare()
         request = self.deletion(prepared, second)
-        invalid = json.loads(json.dumps(request)); invalid['jobs'][1]['request_sha256'] = '0'*64
+        invalid = json.loads(json.dumps(request)); invalid['jobs'][1]['job_id'] = '../outside'
         with self.assertRaises(ValueError): self.service.delete(invalid)
         with self.assertRaises(ValueError): self.service.delete({**request, 'document_key': 'another-work'})
-        with self.assertRaises(ValueError): self.service.delete(self.deletion(prepared, prepared))
         with self.assertRaises(ValueError): self.service.delete({**request, 'jobs': [{'job_id': '../outside', 'request_sha256': 'a'*64}]})
         self.assertEqual(len(self.service.list(self.request)['jobs']), 2)
         result = self.service.delete(request)
         self.assertEqual(result['deleted_job_ids'], [prepared['job_id'], second['job_id']])
         self.assertEqual(self.service.list(self.request)['jobs'], [])
 
-    def test_delete_rejects_active_uncertain_jobs_and_a_live_execution_lock(self):
+    # 見込み/合格: UIと同じ保存statusで実行中の削除を拒否し、failed後のみ削除。範囲: 実保存。
+    def test_delete_rejects_active_uncertain_jobs(self):
         prepared = self.prepare(); request = self.deletion(prepared)
         for status in ('preparing', 'queued', 'running', 'outcome_unknown'):
             self.service.store.event(prepared['job_id'], status)
@@ -601,9 +600,6 @@ class QwenJobsTest(unittest.TestCase):
                 self.service.delete(request)
             self.assertEqual(self.service.store.latest(prepared['job_id'])['status'], status)
         self.service.store.event(prepared['job_id'], 'failed')
-        with (self.service.store.root / '.execution.lock').open('r+') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            with self.assertRaisesRegex(ValueError, '実行中'): self.service.delete(request)
         self.service.delete(request)
         self.assertFalse((self.service.store.root / prepared['job_id']).exists())
 
@@ -646,5 +642,6 @@ class QwenJobsTest(unittest.TestCase):
                 self.assertFalse((self.service.store.root / prepared['job_id']).exists())
             else:
                 self.assertEqual(self.service.payload(prepared['job_id'])['status'], 'succeeded')
+
 
 if __name__ == '__main__': unittest.main()

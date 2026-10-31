@@ -89,8 +89,8 @@ def validate_definition(body):
         raise ValueError('ComfyUIのAPI形式JSON（ノードIDごとのclass_typeとinputs）を書き出してください')
     if not isinstance(binding, dict) or set(binding) != _BINDING_KEYS:
         raise ValueError('指示・シード・寸法・参照画像・完成画像・プロンプト処理の対応付けを指定してください')
-    if binding['prompt_mode'] not in ('qwen', 'plain'):
-        raise ValueError('プロンプト処理はqwenまたはplainで指定してください')
+    if binding['prompt_mode'] not in ('qwen', 'plain', 'qwen-three-images'):
+        raise ValueError('指示文の扱いを選択してください')
     assigned = set()
 
     def sinks(items, role, required=False):
@@ -119,6 +119,8 @@ def validate_definition(body):
     if bool(binding['width']) != bool(binding['height']):
         raise ValueError('幅と高さの受け渡し先を両方指定してください')
     fixed = binding['fixed_size']
+    if binding['prompt_mode'] == 'qwen-three-images' and (len(images) != 3 or fixed is not None):
+        raise ValueError('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください')
     if binding['width']:
         if fixed is not None:
             raise ValueError('寸法の受け渡し先と固定寸法は同時に指定できません')

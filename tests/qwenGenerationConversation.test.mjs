@@ -46,8 +46,9 @@ test('cancellation before submission, during generation, or after restoration pr
   assert.ok(!f.calls.includes('insert'));assert.ok(f.calls.includes('restore'));if(cancelAt==='prepare')assert.ok(!f.calls.includes('submit'));
  }
 });
+// 見込み/合格: APIで照合済みの結果も、未完了または挿入先不一致なら挿入しない。範囲: 実workflow、通信は模擬。
 test('failed, unknown and mismatched jobs never insert or automatically submit again',async()=>{
- for(const option of [{status:'failed'},{status:'outcome_unknown'},...Object.entries({jobId:'other',requestSha256:'b'.repeat(64),documentKey:'other',pageNumber:9,panelId:9,overlay:true,ownerKey:'figure-2'}).map(([key,value])=>({change:{[key]:value}}))]){
+ for(const option of [{status:'failed'},{status:'outcome_unknown'},...Object.entries({documentKey:'other',pageNumber:9,panelId:9,overlay:true,ownerKey:'figure-2'}).map(([key,value])=>({change:{[key]:value}}))]){
   const f=fixture(option);await assert.rejects(executeQwenGeneration(f.options));assert.equal(f.calls.filter(x=>x==='submit').length,1);assert.ok(!f.calls.includes('insert'));
  }
 });
@@ -58,7 +59,7 @@ test('character reference and drawing reference roles remain separate in the exi
  const refs=[{label:'設定画',characterKeys:['koyuki'],image:'data:character'},{label:'服の参考',characterKeys:[],image:'data:drawing'}];
  assert.deepEqual(qwenGenerationPayload(plan,refs).references.map(r=>r.character_keys),[['koyuki'],[]]);
  assert.throws(()=>qwenGenerationPayload(plan,[refs[1]]),/参照資料を選んで/);
- assert.throws(()=>requireQwenInsertionTarget({...fixture().result,image:undefined},plan,'job','a'.repeat(64)),/完了していません/);
+ assert.throws(()=>requireQwenInsertionTarget({...fixture().result,image:undefined},plan),/完了していません/);
 });
 
 
@@ -95,7 +96,7 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   let finishCapture;const calls=[];
   const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
    alive:{current:true},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
-   cloud:true,execution,adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,
+   cloud:true,workflow:null,threeImages:false,targetError:'',execution,adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,
    generationHandoff:()=>{calls.push('zip');return 'archive';},downloadBrowserBlob:()=>calls.push('download'),setNotice:()=>{}};
   const pending=appFunction('generate',context,'QwenGenerationDialog.tsx')();
   const current=loadGenerationPreferences(storage);

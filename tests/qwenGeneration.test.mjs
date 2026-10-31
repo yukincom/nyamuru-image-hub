@@ -277,15 +277,15 @@ test('saved page jobs accept their original nonzero panel id without rewriting h
  for(const panelId of [0,1,3])assert.equal((await decodeQwenJob({...response,panel_id:panelId})).panelId,panelId);
  for(const patch of [{panel_id:-1},{panel_id:1.5},{overlay:true},{owner_key:'panel',panel_id:0}])await assert.rejects(decodeQwenJob({...response,...patch}));
 });
-test('Qwen PNG decoding accepts nonsquare output only with matching job, size and digest',async t=>{
+// 見込み/合格: サーバー検査済みPNGをそのまま渡し、API境界でjob/inputの取り違えだけ拒否する。範囲: 応答デコード、画像描画は別確認。
+test('Qwen response decoding keeps the server PNG and checks job identity once',async t=>{
  const prior=globalThis.window;globalThis.window={atob};t.after(()=>{globalThis.window=prior;});
  const id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',raw=Buffer.alloc(33);
  Buffer.from([137,80,78,71,13,10,26,10]).copy(raw);raw.writeUInt32BE(768,16);raw.writeUInt32BE(1376,20);
  const response={profile:'qwen-image-2.1-owner-v1',job_id:id,status:'succeeded',request_sha256:'a'.repeat(64),label:'人物',width:768,height:1376,
    image:'data:image/png;base64,'+raw.toString('base64'),image_sha256:createHash('sha256').update(raw).digest('hex'),file_name:`qwen_${id}.png`};
  assert.equal((await decodeQwenJob(response,id)).image,response.image);
- await assert.rejects(decodeQwenJob({...response,width:1024},id));
- await assert.rejects(decodeQwenJob({...response,image_sha256:'0'.repeat(64)},id));
+ assert.equal((await decodeQwenJob({...response,image_sha256:undefined},id)).image,response.image);
  await assert.rejects(decodeQwenJob(response,'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'));
  await assert.rejects(decodeQwenJob(response,id,'b'.repeat(64)));
 });
@@ -306,7 +306,7 @@ test('Qwen preparation persists English before a hash-bound supervisor submissio
   };
   const prepared=await prepareQwenJob(id,{prompt:'日本語の元入力'});
   await submitQwenJob(prepared,'prepared-session');
-  assert.deepEqual(calls,[['/api/qwen-generation/prepare',{prompt:'日本語の元入力',job_id:id}],
+  assert.deepEqual(calls,[['/api/qwen-generation/prepare',{workflow_id:'',comfyui_url:'',prompt:'日本語の元入力',job_id:id}],
     ['/api/image-generation/submit',{lease_token:'prepared-session',payload:{job_id:id,request_sha256:'a'.repeat(64)}}]]);
 });
 

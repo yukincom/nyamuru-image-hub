@@ -1,3 +1,7 @@
+"""見込み: guardianは生成完了と通常終了を分け、自身が止めたLLMだけ復帰する。
+合格: 通常終了は復帰0回、生成完了は外部終了後に復帰し、後片付け済みの予約を解放する。
+範囲: 局所ケースは実leaseとmock。Native/孫processのケースだけ別途実processを使う。
+"""
 import importlib.util
 import io
 import os
@@ -13,7 +17,7 @@ import time
 import unittest
 from uuid import uuid4
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, ANY
 from urllib.error import URLError
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
@@ -49,17 +53,67 @@ class SharedLlmTests(unittest.TestCase):
             kill.assert_called_once_with(42, signal.SIGTERM)
             self.assertEqual(sleeps, [0.1])
 
+    # 見込み: 明示した生成完了だけで復帰すれば、通常終了と混同しない。
+    # 合格: resume受信後に停止→lease終了→外部終了待ち→復帰、最後に記録除去。範囲: 実lease、プロセスとAPIは模擬。
     def test_session_stops_without_inspecting_comfy_and_restores_after_lease_closes(self):
         events = []
         saved = {"original": True}
+        token = str(uuid4())
+        def stop(*_):
+            saved['stop_requested'] = True
+            events.append('stop')
+        def close(*args):
+            events.append('close')
+            return close_generation_lease(*args)
         with tempfile.TemporaryDirectory() as root, \
                 patch.object(session, 'snapshot', return_value=saved), \
-                patch.object(session, 'stop_original', side_effect=lambda *_: events.append('stop')), \
-                patch.object(session, 'restart', side_effect=lambda *args: events.append('restart')), \
+                patch.object(session, 'stop_original', side_effect=stop), \
+                patch.object(session, 'close_generation_lease', side_effect=close), \
+                patch('image_generation_lock.await_api_release', side_effect=lambda *args, **kw: events.append('external-wait')), \
+                patch.object(session, 'restart', side_effect=lambda *args, **kwargs: events.append('restart')), \
                 patch.object(session, 'emit', side_effect=lambda state, **kw: events.append(state)), \
-                patch.object(session.sys, 'stdin', io.StringIO('')):
-            self.assertEqual(session.run_session(8080, '/tmp/log', lease_root=root), 0)
-        self.assertEqual(events, ['stop', 'paused', 'restart', 'restored'])
+                patch.object(session.sys, 'stdin', io.StringIO('resume\n')):
+            self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 0)
+            self.assertFalse((Path(root) / f'{token}.json').exists())
+        self.assertEqual(events, ['stop', 'paused', 'close', 'external-wait', 'restart', 'restored'])
+
+    # 見込み: 通常終了と完了指示なしの切断は、後片付けだけに限定できる。
+    # 合格: shutdown/EOFとも外部終了を待って記録除去、再起動0回・復帰false。範囲: 実lease、入力とLLMプロセスは模擬。
+    def test_shutdown_and_unrequested_eof_clean_up_without_restoring(self):
+        for command in ('shutdown\n', ''):
+            with self.subTest(command=command), tempfile.TemporaryDirectory() as root:
+                token = str(uuid4()); saved = {}
+                def stop(*_): saved['stop_requested'] = True
+                with patch.object(session, 'snapshot', return_value=saved), \
+                        patch.object(session, 'stop_original', side_effect=stop), \
+                        patch.object(session, 'restart') as restart, \
+                        patch('image_generation_lock.await_api_release') as cleanup, \
+                        patch.object(session, 'emit') as emit, \
+                        patch.object(session.sys, 'stdin', io.StringIO(command)):
+                    self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 0)
+                cleanup.assert_called_once(); restart.assert_not_called()
+                emit.assert_called_with('restored', was_running=False)
+                self.assertFalse((Path(root) / f'{token}.json').exists())
+
+    # 見込み: 画像終了待ち中の通常終了は、先に届いたresumeより優先できる。
+    # 合格: 実pipeへresume後shutdownを送り、待機後の再起動0回・記録除去。範囲: 実pipe/lease、画像終了待ちとLLMは模擬。
+    def test_shutdown_during_image_cleanup_supersedes_resume(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            with os.fdopen(read_fd) as stream, tempfile.TemporaryDirectory() as root:
+                os.write(write_fd, b'resume\n')
+                token = str(uuid4()); saved = {}
+                def stop(*_): saved['stop_requested'] = True
+                with patch.object(session, 'snapshot', return_value=saved), \
+                        patch.object(session, 'stop_original', side_effect=stop), \
+                        patch.object(session, 'restart') as restart, patch.object(session, 'emit'), \
+                        patch('image_generation_lock.await_api_release', side_effect=lambda *a, **kw: os.write(write_fd, b'shutdown\n')), \
+                        patch.object(session.sys, 'stdin', stream):
+                    self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 0)
+                restart.assert_not_called()
+                self.assertFalse((Path(root) / f'{token}.json').exists())
+        finally:
+            os.close(write_fd)
 
     def test_originally_off_never_starts_llm(self):
         with tempfile.TemporaryDirectory() as root, \
@@ -69,26 +123,103 @@ class SharedLlmTests(unittest.TestCase):
             snapshot.assert_not_called(); restart.assert_not_called()
             emit.assert_called_with('restored', was_running=False)
 
-    def test_stop_failure_still_recovers_original(self):
-        saved = {'original': True}
+    # 見込み: 起動情報の取得失敗は停止責任を生まず、後続の予約を塞がない。
+    # 合格: 開始エラー、停止・復帰0回、記録除去。同tokenの次利用が成功。範囲: 実lease、情報取得だけ故障を模擬。
+    def test_snapshot_failure_reports_error_and_releases_marker(self):
+        token = str(uuid4())
+        with tempfile.TemporaryDirectory() as root, \
+                patch.object(session, 'snapshot', side_effect=session.SessionError('開始情報を取得できません')) as snapshot, \
+                patch.object(session, 'stop_original') as stop, patch.object(session, 'restart') as restart, \
+                patch.object(session, 'emit') as emit, patch.object(session.sys, 'stdin', io.StringIO('')):
+            self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 1)
+            emit.assert_called_once_with('error', message='開始情報を取得できません')
+            self.assertFalse((Path(root) / f'{token}.json').exists())
+            self.assertEqual(session.run_session(8080, '/tmp/log', restore=False, token=token, lease_root=root), 0)
+            snapshot.assert_called_once_with(8080)
+            stop.assert_not_called()
+            restart.assert_not_called()
+            self.assertFalse((Path(root) / f'{token}.json').exists())
+
+    # 見込み: 停止要求前にPIDが入れ替わっても、元のLLMを勝手に復帰しない。
+    # 合格: 開始エラーを返し、再起動0回でlease記録を除去する。範囲: 実lease、停止要求前の入替りを模擬。
+    def test_stop_refused_before_signal_does_not_restart_and_releases_marker(self):
+        saved = {'pid': 42, 'identity': (42, 1)}
+        token = str(uuid4())
         with tempfile.TemporaryDirectory() as root, \
                 patch.object(session, 'snapshot', return_value=saved), \
-                patch.object(session, 'stop_original', side_effect=session.SessionError('停止失敗')), \
+                patch.object(session, 'stop_original', side_effect=session.SessionError('停止前に入れ替わりました')), \
                 patch.object(session, 'restart') as restart, patch.object(session, 'emit') as emit:
-            self.assertEqual(session.run_session(8080, '/tmp/log', lease_root=root), 1)
-            restart.assert_called_once_with(saved, 8080, '/tmp/log')
-            emit.assert_called_once_with('error', message='停止失敗')
+            self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 1)
+            restart.assert_not_called()
+            emit.assert_called_once_with('error', message='停止前に入れ替わりました')
+            self.assertFalse((Path(root) / f'{token}.json').exists())
 
+    # 見込み: 自身が停止要求を出した後のtimeoutでは、復帰責任を保持する。
+    # 合格: 復帰1回を完了して記録を除去し、元の開始エラーを返す。範囲: 実lease、停止と復帰のプロセス操作は模擬。
+    def test_stop_timeout_after_own_signal_recovers_and_releases_marker(self):
+        saved = {'original': True}
+        token = str(uuid4())
+        def stop(*_):
+            saved['stop_requested'] = True
+            raise session.SessionError('停止失敗')
+        with tempfile.TemporaryDirectory() as root, \
+                patch.object(session, 'snapshot', return_value=saved), \
+                patch.object(session, 'stop_original', side_effect=stop), \
+                patch.object(session, 'restart') as restart, patch.object(session, 'emit') as emit, \
+                patch.object(session.sys, 'stdin', io.StringIO('resume\n')):
+            self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 1)
+            restart.assert_called_once_with(saved, 8080, '/tmp/log', should_restore=ANY)
+            emit.assert_called_once_with('error', message='停止失敗')
+            self.assertFalse((Path(root) / f'{token}.json').exists())
+
+    # 見込み: 外部終了待ちや復帰が未解決なら、開始失敗後も予約を残す。
+    # 合格: 後片付けエラーとinactive記録を保持し、外部待機失敗なら復帰0回。範囲: 実lease、待機・復帰の障害は模擬。
+    def test_unresolved_cleanup_keeps_marker_and_reports_cleanup_error(self):
+        for failed_step in ('external-wait', 'restart'):
+            with self.subTest(failed_step=failed_step), tempfile.TemporaryDirectory() as root:
+                token = str(uuid4())
+                saved = {}
+                failure = session.SessionError('復帰未完了')
+                def stop(*_):
+                    saved['stop_requested'] = True
+                    raise session.SessionError('開始失敗')
+                with patch.object(session, 'snapshot', return_value=saved), \
+                        patch.object(session, 'stop_original', side_effect=stop), \
+                        patch('image_generation_lock.await_api_release', side_effect=failure if failed_step == 'external-wait' else None), \
+                        patch.object(session, 'restart', side_effect=failure if failed_step == 'restart' else None) as restart, \
+                        patch.object(session, 'emit') as emit, \
+                        patch.object(session.sys, 'stdin', io.StringIO('resume\n')):
+                    self.assertEqual(session.run_session(8080, '/tmp/log', token=token, lease_root=root), 1)
+                emit.assert_called_once_with('error', message='復帰未完了')
+                self.assertFalse(json.loads((Path(root) / f'{token}.json').read_text())['active'])
+                self.assertEqual(restart.call_count, 0 if failed_step == 'external-wait' else 1)
+
+    # 見込み: 自身の停止要求があっても別listenerへ割り込まず、元processも重複起動しない。
+    # 合格: どちらも起動0回、停止後の別listenerはエラー。範囲: restart本体、PID照合と起動は模擬。
     def test_restart_does_not_overwrite_new_listener_or_duplicate_old_process(self):
         saved = {'pid': 42, 'identity': (42, 1)}
         with patch.object(session, 'identity', return_value=(42, 1)), patch.object(session.subprocess, 'Popen') as start:
             session.restart(saved, 8080, '/tmp/log')
             start.assert_not_called()
+        saved['stop_requested'] = True
         with patch.object(session, 'identity', return_value=None), patch.object(session, 'listener', return_value=99), \
                 patch.object(session.subprocess, 'Popen') as start:
             with self.assertRaisesRegex(session.SessionError, '別のLLM'):
                 session.restart(saved, 8080, '/tmp/log')
             start.assert_not_called()
+
+    # 見込み: 元PIDの消失・入替りだけでは、LLMを再起動する権限は生じない。
+    # 合格: 自身の停止要求がなければPID・listener照合も起動も0回。範囲: restart本体、プロセス状態と起動は模擬。
+    def test_restart_never_starts_without_own_stop_request(self):
+        saved = {'pid': 42, 'identity': (42, 1)}
+        for current in (None, (42, 2)):
+            with self.subTest(current=current), patch.object(session, 'identity', return_value=current) as identity, \
+                    patch.object(session, 'listener', return_value=None) as listener, \
+                    patch.object(session.subprocess, 'Popen') as start:
+                session.restart(saved, 8080, '/tmp/log')
+                identity.assert_not_called()
+                listener.assert_not_called()
+                start.assert_not_called()
 
     def test_slow_sigterm_keeps_waiting_then_restarts(self):
         with tempfile.TemporaryDirectory() as root:
@@ -104,6 +235,47 @@ class SharedLlmTests(unittest.TestCase):
                 self.assertEqual(sleeps, [0.5, 0.5])
                 self.assertEqual(start.call_args.args[0], saved['args'])
                 self.assertEqual(start.call_args.kwargs['env'], saved['env'])
+
+    # 見込み: 復帰直前・起動中の終了要求にも従えば、終了後にLLMを残さない。
+    # 合格: 起動前はPopen0回、起動後は自身のchildだけ終了確認し復帰false。範囲: restart本体、終了要求・PID照合・起動は模擬。
+    def test_shutdown_prevents_launch_or_stops_only_the_new_child(self):
+        for stage in ('before-launch', 'during-startup'):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory() as root:
+                saved = {'pid': 42, 'identity': (42, 1), 'stop_requested': True,
+                         'args': ['/fixture/python'], 'env': {}, 'cwd': root, 'streams': {}}
+                allow = iter([True, False] if stage == 'before-launch' else [True, True, True, False])
+                child = Mock(pid=99)
+                with patch.object(session, 'identity', return_value=None), \
+                        patch.object(session, 'listener', return_value=None), \
+                        patch.object(session.subprocess, 'Popen', return_value=child) as start:
+                    self.assertFalse(session.restart(saved, 8080, str(Path(root) / 'log'), should_restore=lambda: next(allow)))
+                if stage == 'before-launch':
+                    start.assert_not_called(); child.terminate.assert_not_called()
+                else:
+                    start.assert_called_once(); child.terminate.assert_called_once(); child.wait.assert_called_once_with(timeout=5)
+
+    # 見込み: 接続確認中の終了も成功応答より優先すれば、通常終了後にLLMを残さない。
+    # 合格: 接続成功でもshutdownを再読、自身のchildを終了し復帰false。範囲: 実pipe、接続と子プロセスは模擬。
+    def test_shutdown_during_ready_check_stops_restored_child(self):
+        read_fd, write_fd = os.pipe()
+        try:
+            with os.fdopen(read_fd) as stream, tempfile.TemporaryDirectory() as root:
+                os.write(write_fd, b'resume\n')
+                commands = session.SessionCommands(stream); commands.wait()
+                saved = {'pid': 42, 'identity': (42, 1), 'stop_requested': True,
+                         'args': ['/fixture/python'], 'env': {}, 'cwd': root, 'streams': {}}
+                child = Mock(pid=99); child.poll.return_value = None
+                def ready(_port):
+                    os.write(write_fd, b'shutdown\n')
+                    return True
+                with patch.object(session, 'identity', return_value=None), \
+                        patch.object(session, 'listener', side_effect=[None, 99]), \
+                        patch.object(session, 'restored_ready', side_effect=ready), \
+                        patch.object(session.subprocess, 'Popen', return_value=child):
+                    self.assertFalse(session.restart(saved, 8080, str(Path(root) / 'log'), should_restore=commands.allows_restore))
+                child.terminate.assert_called_once(); child.wait.assert_called_once_with(timeout=5)
+        finally:
+            os.close(write_fd)
 
     def test_submission_is_disabled_until_stop_confirmation(self):
         with tempfile.TemporaryDirectory() as root:
@@ -158,7 +330,9 @@ class SharedLlmTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == 'darwin' or sys.platform.startswith('linux'), 'native process snapshots need macOS or Linux')
 class SharedLlmNativeTests(unittest.TestCase):
-    def test_exact_launch_restored_after_parent_input_closes_and_images_finish(self):
+    # 見込み: 明示resumeなら、画像処理終了後に元の起動条件を復元できる。
+    # 合格: resume後に同じargv/env/cwdで復帰、画像処理中は未起動。範囲: 一時portの模擬HTTPと実子プロセス、実モデルなし。
+    def test_exact_launch_restored_after_explicit_resume_and_images_finish(self):
         """Real processes on ephemeral ports; no model, user service, or network outside localhost."""
         with tempfile.TemporaryDirectory(prefix='comic llm restore ') as directory:
             root = Path(directory)
@@ -190,7 +364,7 @@ class SharedLlmNativeTests(unittest.TestCase):
                     # This process represents ComfyUI and survives release of the HTTP submission lock.
                     worker = subprocess.Popen([sys.executable, '-c', 'import sys; sys.stdin.read()'],
                         stdin=subprocess.PIPE, pass_fds=(fd,))
-                guardian.stdin.close()
+                guardian.stdin.write('resume\n'); guardian.stdin.flush(); guardian.stdin.close()
                 time.sleep(0.3)
                 self.assertIsNone(session.listener(port))
                 self.assertIsNone(guardian.poll())
@@ -221,6 +395,10 @@ class SharedLlmNativeTests(unittest.TestCase):
                 if original.poll() is None: original.terminate()
                 original.wait(timeout=5)
                 log.close()
+                for _ in range(100):
+                    if session.listener(port) is None: break
+                    time.sleep(0.05)
+                self.assertIsNone(session.listener(port))
 
 
 if __name__ == '__main__':

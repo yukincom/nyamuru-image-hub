@@ -1,3 +1,4 @@
+import { beginFigureCropImport } from '../src/lib/figureCropStore.ts';
 import { isBrowserWorkspace } from '../src/lib/browserWorkspace.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -58,7 +59,8 @@ function handler(name, overrides = {}) {
     isLanClient: false, hasDocument: true, showNewDialog: false, projectOperation: { current: false },
     paintController: { current: null }, paintSessionRef: { current: null }, setPaintSession: () => {},
     documentRef: { current: original }, boundEpisodeWorkspace: { ...binding },
-    isBrowserWorkspace, structuredClone, crypto, Error, cloneDocument, createProjectSnapshot, restoreProjectSnapshot, separateBubbleOriginals,
+    // 作品を開く間は本体の画像取込保護を使う。フォルダへの入出力だけを模擬する。
+    beginFigureCropImport, isBrowserWorkspace, structuredClone, crypto, Error, cloneDocument, createProjectSnapshot, restoreProjectSnapshot, separateBubbleOriginals,
     localStorage: {}, rememberProjectBinding: () => {},
     setProjectBusy: value => calls.push(['busy', value]),
     setToast: value => notices.push(value),

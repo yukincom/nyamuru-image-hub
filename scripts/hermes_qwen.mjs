@@ -7,11 +7,9 @@ import { LocalLlmController } from './local-llm-supervisor.mjs';
 
 const thisFile = fileURLToPath(import.meta.url);
 const root = resolve(dirname(thisFile), '..');
-const python = resolve(root, '../qwen-image-2.1-lab/.venv/bin/python');
+const python = process.env.NYAMURU_BRIDGE_PYTHON || resolve(process.env.NYAMURU_VISION_ROOT || resolve(root, '.local-vision'), '.venv/bin/python');
 
 export async function withImageSession(run, { controller = new LocalLlmController(), token = randomUUID() } = {}) {
-  const state = await controller.check();
-  if (!['ready', 'missing'].includes(state)) throw new Error('Local LLM is unresponsive or the port belongs to another service; nothing was stopped');
   const session = await controller.suspendForImages(token);
   try { return await run(token); }
   finally { await session.resume(); }
@@ -45,10 +43,10 @@ export async function generate(args, { run = worker, session = withImageSession 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (!command || ['--help', '-h'].includes(command)) {
-    console.log('Usage: node scripts/hermes_qwen.mjs catalog | preview --request FILE | prepare --request FILE | generate --request FILE | status --job UUID');
+    console.log('Usage: node scripts/hermes_qwen.mjs catalog | preview --request FILE | prepare --request FILE | generate --request FILE | status --job UUID | select --job UUID --candidate 1 | cancel --job UUID');
     return;
   }
-  if (!['catalog', 'preview', 'prepare', 'generate', 'status'].includes(command)) throw new Error('Unknown command');
+  if (!['catalog', 'preview', 'prepare', 'generate', 'status', 'select', 'cancel'].includes(command)) throw new Error('Unknown command');
   const output = command === 'generate' ? await generate(args) : await worker([command, ...args]);
   console.log(JSON.stringify(output, null, 2));
 }

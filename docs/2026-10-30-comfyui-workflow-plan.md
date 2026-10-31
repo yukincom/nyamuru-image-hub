@@ -139,3 +139,9 @@ ComfyUIで変更したグラフを再書き出しし、環境設定から更新�
 - 標準ノードで必要条件を満たせない場合だけ、不足を具体化して独立カスタムノードの範囲を決める。Desktop coreへ直接パッチを当てたり、先にvenvをコピーしたりしない。
 
 参照: [ComfyUI標準API](https://docs.comfy.org/development/comfyui-server/comms_routes)、[接続仕様](COMFYUI_WORKFLOW_SPEC.md)。ローカルcoreの確認対象は `comfy_extras/nodes_qwen.py`、`comfy_extras/nodes_model_advanced.py`、`comfy/cli_args.py`。
+
+## 人物3枚参照の通常生成への接続（2026-10-31）
+
+専用の登録モードを通常の登録・生成・候補選択・画像追加へ接続。操作と入力順は[専用登録例](../examples/comfyui/README.md#nyamuru_qwen_turbo_3images)を参照。候補は元の生成解像度のまま表示し、採用したPNGだけをマスクまたはコマの寸法にする。ネームは編集元にせず、独立した表情参照として送る。
+
+合成PNG・模擬ComfyUIで、同一入力3枚に対しシードだけ異なる5送信、3番採用時の背景透過と318×159pxでの保存を確認。原稿座標の局所テストはコマのDPI換算と中心からずれたマスクを含む。ブラウザーでは3D撮影とAPI応答を模擬し、実際の生成ダイアログでネーム選択・設定画追加・候補3の採用・指定配置での追加要求を確認した。実モデルの絵・実3D撮影・作品保存までの通し確認は別途。

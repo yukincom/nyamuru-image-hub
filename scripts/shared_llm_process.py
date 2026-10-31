@@ -1,12 +1,13 @@
 """Suspend a same-user local LLM and restore its exact launch after image work.
 
-Launch data stays in this guardian's memory. Closing its input (including parent
-death) requests restoration; a detached child survives the original supervisor.
+Launch data stays in this guardian's memory. Explicit resume permits restoration;
+shutdown or EOF without a resume only finishes image cleanup.
 """
 import ctypes
 import errno
 import json
 import os
+import select
 from pathlib import Path
 import signal
 import stat
@@ -162,14 +163,18 @@ def restored_ready(port):
         return False
 
 
-def restart(saved, port, fallback_log, sleep=time.sleep, now=time.monotonic):
+def restart(saved, port, fallback_log, sleep=time.sleep, now=time.monotonic, should_restore=lambda: True):
+    if not saved.get('stop_requested') or not should_restore():
+        return False
     while identity(saved['pid']) == saved['identity']:
-        if not saved.get('stop_requested'):
-            return
+        if not should_restore():
+            return False
         # SIGTERM cannot be revoked. Keep recovery responsibility after a slow stop.
         sleep(0.5)
     if listener(port) is not None:
         raise SessionError('別のLLMが接続先で起動したため、元のLLMは再起動していません')
+    if not should_restore():
+        return False
     streams = []
     try:
         for fd in ('1', '2'):
@@ -178,6 +183,8 @@ def restart(saved, port, fallback_log, sleep=time.sleep, now=time.monotonic):
                 name = fallback_log
             Path(name).parent.mkdir(parents=True, exist_ok=True)
             streams.append(open(name, 'ab', buffering=0))
+        if not should_restore():
+            return False
         child = subprocess.Popen(saved['args'], cwd=saved['cwd'], env=saved['env'],
                                  stdin=subprocess.DEVNULL, stdout=streams[0], stderr=streams[1], start_new_session=True)
     finally:
@@ -185,10 +192,25 @@ def restart(saved, port, fallback_log, sleep=time.sleep, now=time.monotonic):
             stream.close()
     deadline = now() + 120
     while now() < deadline:
-        if child.poll() is not None:
-            raise SessionError('共有LLMが再起動中に終了しました。サーバーのログを確認してください')
-        if listener(port) == child.pid and restored_ready(port):
-            return
+        allowed = should_restore()
+        ready = False
+        if allowed:
+            if child.poll() is not None:
+                raise SessionError('共有LLMが再起動中に終了しました。サーバーのログを確認してください')
+            ready = listener(port) == child.pid and restored_ready(port)
+            allowed = should_restore()  # Shutdown can arrive during the HTTP readiness check.
+        if not allowed:
+            # This child was launched here; a shutdown during startup must not
+            # leave it resident. Never signal the previously borrowed listener.
+            child.terminate()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait(timeout=5)
+            return False
+        if ready:
+            return True
         sleep(0.5)
     raise SessionError('共有LLMを再起動しましたが、接続の復帰を時間内に確認できませんでした')
 
@@ -200,10 +222,62 @@ def emit(state, **fields):
         pass  # The parent can exit while restoration still needs to finish.
 
 
+class SessionCommands:
+    """Read completion/shutdown without a reader thread or a second worker."""
+    def __init__(self, stream):
+        self.stream = stream
+        try:
+            self.fd = stream.fileno()
+        except (AttributeError, OSError, ValueError):
+            self.fd = None
+        self.resume = False
+        self.shutdown = False
+        self.eof = False
+        self.buffer = b''
+
+    def read(self, block=False):
+        if self.eof:
+            return False
+        if self.fd is None:
+            chunk = self.stream.readline().encode()
+        else:
+            if not select.select([self.fd], [], [], None if block else 0)[0]:
+                return False
+            chunk = os.read(self.fd, 4096)
+        if not chunk:
+            self.eof = True
+            if not self.resume or self.buffer:
+                self.shutdown = True
+            return False
+        self.buffer += chunk
+        while b'\n' in self.buffer:
+            line, self.buffer = self.buffer.split(b'\n', 1)
+            if line == b'resume':
+                self.resume = True
+            else:
+                # Only explicit task completion permits restoration.
+                self.shutdown = True
+        return True
+
+    def wait(self):
+        while not (self.resume or self.shutdown):
+            if not self.read(block=True):
+                break
+
+    def allows_restore(self):
+        # Drain shutdown even if resume arrived earlier during image cleanup.
+        while self.read():
+            pass
+        return not self.shutdown
+
+
 def run_session(port, fallback_log, restore=True, token=None, lease_root=LEASE_ROOT):
     saved = None
-    problem = None
+    start_problem = None
+    cleanup_problem = None
     lease = None
+    commands = SessionCommands(sys.stdin)
+    restored = False
     token = token or str(uuid4())
     try:
         lease = create_generation_lease(token, lease_root, active=False)
@@ -212,25 +286,29 @@ def run_session(port, fallback_log, restore=True, token=None, lease_root=LEASE_R
             stop_original(saved, port)
         activate_generation_lease(token, lease_root)
         emit('paused')
-        sys.stdin.readline()  # Explicit completion, page exit, or parent death.
+        commands.wait()
     except BaseException as failure:
-        problem = failure
+        start_problem = failure
     finally:
         try:
             if lease is not None:
-                close_generation_lease(token, lease_root)
-            if saved is not None:
-                restart(saved, port, fallback_log)
-        except BaseException as failure:
-            problem = failure
-        finally:
+                records = close_generation_lease(token, lease_root)
+                from image_generation_lock import await_api_release
+                await_api_release(records, on_wait=lambda message: emit('waiting', message=message))
+            if saved is not None and saved.get('stop_requested') and commands.allows_restore():
+                restored = bool(restart(saved, port, fallback_log, should_restore=commands.allows_restore))
+            # A start error does not leave recovery work once the external
+            # barrier and our own stop have both been resolved.
             if lease is not None:
                 lease.unlink(missing_ok=True)
+        except BaseException as failure:
+            cleanup_problem = failure
+    problem = cleanup_problem if cleanup_problem is not None else start_problem
     if problem is not None:
         message = str(problem) if isinstance(problem, SessionError) else '共有LLMの一時停止・復帰を完了できませんでした。起動権限とサーバーのログを確認してください'
         emit('error', message=message)
         return 1
-    emit('restored', was_running=saved is not None)
+    emit('restored', was_running=restored)
     return 0
 
 

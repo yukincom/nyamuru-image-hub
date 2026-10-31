@@ -1,63 +1,68 @@
-"""Inspect existing image runtimes without loading models or submitting jobs."""
-
-import json
-from http.client import HTTPException
-from urllib.parse import urlsplit
-from urllib.request import ProxyHandler, build_opener
-
-from nyamuru_agent_connection import NoRedirect
-from nyamuru_comfy_draft import ComfyUIDraftGenerator
-from qwen_generation import MODELS, SETTINGS
+"""Read-only inspection of the selected API workflow and running ComfyUI."""
+from comfy_client import ComfyClient
+from comfy_workflows import validate_runtime
 
 
 def comfy_endpoint(value):
-    if not isinstance(value, str) or len(value) > 200:
-        raise ValueError('ComfyUI接続先をHTTP URLで指定してください')
-    endpoint = value.strip()
-    parsed = urlsplit(endpoint)
-    if parsed.path not in ('', '/') or parsed.port == 0 or any(c.isspace() for c in endpoint) or '\\' in endpoint:
-        raise ValueError('ComfyUI接続先はlocalhostのポートまでを指定してください')
-    # Keep the same loopback-only boundary as the existing generator.
-    return ComfyUIDraftGenerator(endpoint).endpoint
+    return ComfyClient(value).endpoint
 
 
 def image_generation_connections(body, qwen, comfy):
-    if set(body) - {'comfyui_url', 'check_comfyui'}:
+    if set(body) - {'comfyui_url', 'check_comfyui', 'workflow_id'}:
         raise ValueError('画像生成の接続確認に不明な項目があります')
-    check = body.get('check_comfyui', False)
-    if not isinstance(check, bool):
-        raise ValueError('接続確認の指定が正しくありません')
-    requested = body.get('comfyui_url', '')
-    if not isinstance(requested, str):
-        raise ValueError('ComfyUI接続先をHTTP URLで指定してください')
-    endpoint = comfy_endpoint(requested or comfy.endpoint)
-    try:
-        qwen.preflight()
-        available, message = True, '実行環境とモデルファイルを確認しました'
-    except (ValueError, OSError):
-        available, message = False, '実行環境またはモデルファイルが見つかりません'
-    connection = {'endpoint': endpoint, 'status': 'unchecked', 'version': '',
+    if type(body.get('check_comfyui', False)) is not bool:
+        raise ValueError('接続確認の指定は真偽値にしてください')
+    if 'comfyui_url' in body and not isinstance(body['comfyui_url'], str):
+        raise ValueError('ComfyUI接続先を文字列で指定してください')
+    client = qwen.client_factory(body.get('comfyui_url') or comfy.endpoint)
+    connection = {'endpoint': client.endpoint, 'status': 'unchecked', 'version': '',
                   'message': '接続はまだ確認していません'}
-    if check:
+    selected = None
+    memory_release = False
+    if body.get('workflow_id'):
+        definition = qwen.workflows.get(body['workflow_id'])
+        selected = {key: definition[key] for key in ('id', 'name', 'version')}
+        selected.update(available=False, message='利用可否はまだ確認していません')
+    if body.get('check_comfyui', False):
         try:
-            opener = build_opener(ProxyHandler({}), NoRedirect())
-            with opener.open(endpoint + '/system_stats', timeout=3) as response:
-                raw = response.read(64 * 1024 + 1)
-            if len(raw) > 64 * 1024:
-                raise ValueError('response too large')
-            value = json.loads(raw)
-            if not isinstance(value, dict) or not isinstance(value.get('system'), dict) or not isinstance(value.get('devices'), list):
-                raise ValueError('not a ComfyUI response')
-            version = value['system'].get('comfyui_version', '')
-            connection.update(status='connected', version=version[:80] if isinstance(version, str) else '',
+            stats = client.system_stats()
+            if not isinstance(stats, dict) or not isinstance(stats.get('system'), dict) or not isinstance(stats.get('devices'), list) or not isinstance(stats['system'].get('comfyui_version', ''), str):
+                raise ValueError('ComfyUIの接続情報の形式を確認できません')
+            connection.update(status='connected', version=stats['system'].get('comfyui_version', ''),
                               message='ComfyUIに接続できました')
-        except (OSError, ValueError, TypeError, HTTPException):
-            connection.update(status='unavailable', message='ComfyUIに接続できませんでした。起動状態と接続先を確認してください')
-    return {
-        'qwen': {'label': 'Qwen-Image-2.1 Turbo', 'runtime': 'ComfyUI Python',
-                 'available': available, 'message': message,
-                 'models': [{'role': role, 'file': file} for role, file in zip(('generation', 'text_encoder', 'vae'), MODELS)],
-                 'steps': SETTINGS['steps'], 'resolution': SETTINGS['resolution'],
-                 'entrypoint': 'generate_selected'},
-        'comfyui': connection,
-    }
+            if selected is not None:
+                errors = validate_runtime(definition, client.object_info())
+                memory_release = client.memory_release_available()
+                if not memory_release:
+                    errors.append('ComfyUIにニャムルのモデル解放確認拡張が必要です')
+                selected.update(available=not errors, message=' / '.join(errors) if errors else '入力の対応と必要ノードを確認しました。実生成は未確認です')
+        except (OSError, ValueError) as exc:
+            connection.update(status='unavailable', message=str(exc))
+            if selected is not None:
+                selected.update(available=False, message=str(exc))
+    return {'workflow': selected, 'comfyui': connection, 'memory_release': {'available': memory_release}}
+
+
+def workflow_operation(action, body, service, default_endpoint):
+    store = service.workflows
+    if action == 'list':
+        return {'workflows': store.list()}
+    if action == 'save':
+        return {'workflow': store.save(body)}
+    if action == 'delete':
+        store.delete(body.get('id'), body.get('expected_version'))
+        return {'deleted_id': body['id']}
+    client = service.client_factory(body.get('comfyui_url') or default_endpoint)
+    if action == 'info':
+        stats = client.system_stats()
+        return {'object_info': client.object_info(), 'endpoint': client.endpoint,
+                'version': stats['system'].get('comfyui_version', '')}
+    if action == 'check':
+        definition = store.get(body.get('id'))
+        try:
+            service.preflight(definition, client.endpoint)
+            errors = []
+        except (ValueError, OSError) as exc:
+            errors = [str(exc)]
+        return {'available': not errors, 'errors': errors, 'endpoint': client.endpoint}
+    raise ValueError('ワークフロー操作を確認できません')

@@ -1,3 +1,5 @@
+// 見込み: 生成完了と通常終了を別命令にすれば、終了後の復帰を防げる。
+// 合格: 復帰はresumeだけ、shutdown優先。範囲: 実wrapperと模擬workerのpipe、実LLMなし。
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
@@ -27,6 +29,40 @@ test('guardian stays paused until explicit completion and one resume waits for v
   send({ state: 'restored', was_running: true });
   assert.equal(await first, true);
   assert.deepEqual(events, ['resume\n']);
+});
+
+// 見込み: 通常終了は生成完了の復帰要求より優先できる。
+// 合格: resume待機中もshutdownを1回送り、後からresumeしても復帰しない。範囲: 実wrapperと模擬pipe、実LLMなし。
+test('shutdown supersedes a pending resume and cannot be undone by another resume', async () => {
+  const { child, events, send } = fakeWorker();
+  const recovery = await suspendSharedLlm({ spawnImpl: () => {
+    queueMicrotask(() => send({ state: 'paused' })); return child;
+  } });
+  const resumed = recovery.resume();
+  assert.equal(child.stdin.writableEnded, false);
+  const stopped = recovery.shutdown();
+  assert.equal(recovery.resume(), stopped);
+  assert.equal(recovery.shutdown(), stopped);
+  send({ state: 'restored', was_running: false });
+  assert.equal(await resumed, false);
+  assert.equal(await stopped, false);
+  assert.deepEqual(events, ['resume\n', 'shutdown\n']);
+});
+
+// 見込み: 一時停止の準備中にも終了理由を届ければ、遅い完了後の復帰を防げる。
+// 合格: 準備中abortでshutdown1回、resume0回、終了結果false。範囲: 実wrapperと模擬worker、実プロセスなし。
+test('shutdown signal reaches the guardian before pause preparation completes', async () => {
+  const { child, events, send } = fakeWorker();
+  const shutdown = new AbortController();
+  const pending = suspendSharedLlm({ signal: shutdown.signal, spawnImpl: () => child });
+  shutdown.abort();
+  assert.deepEqual(events, ['shutdown\n']);
+  send({ state: 'paused' });
+  const recovery = await pending;
+  const result = recovery.resume();
+  send({ state: 'restored', was_running: false });
+  assert.equal(await result, false);
+  assert.deepEqual(events, ['shutdown\n']);
 });
 
 test('missing original selects image cleanup only; failed restoration reaches caller', async () => {

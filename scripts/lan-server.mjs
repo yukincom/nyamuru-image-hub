@@ -12,6 +12,9 @@ export const BRIDGE_PATHS = new Set([
   '/api/character-reference/analyze-set', '/api/character-match/analyze', '/api/panel-actions/suggest',
   '/api/qwen-generation/prepare', '/api/qwen-generation/reconcile', '/api/qwen-generation/list',
   '/api/qwen-generation/delete', '/api/layer-generation/cache/list', '/api/layer-generation/cache/delete',
+  '/api/qwen-generation/select', '/api/qwen-generation/cancel',
+  '/api/comfy-workflows/list', '/api/comfy-workflows/save', '/api/comfy-workflows/delete',
+  '/api/comfy-workflows/check', '/api/comfy-workflows/info',
   '/api/image-generation/connections',
 ]);
 export const SUPERVISOR_PATHS = new Set([

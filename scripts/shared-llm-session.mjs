@@ -5,8 +5,8 @@ import { randomUUID } from 'node:crypto';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** A detached guardian keeps the original launch data in memory, including after UI/supervisor exit. */
-export async function suspendSharedLlm({ env = process.env, port = '8080', restore = true, token = randomUUID(), spawnImpl = spawn } = {}) {
+/** A detached guardian finishes image cleanup; only explicit task completion permits restoration. */
+export async function suspendSharedLlm({ env = process.env, port = '8080', restore = true, token = randomUUID(), signal, spawnImpl = spawn } = {}) {
   const python = env.NYAMURU_BRIDGE_PYTHON || resolve(env.NYAMURU_VISION_ROOT || resolve(root, '.local-vision'), '.venv/bin/python');
   const child = spawnImpl(python, [resolve(root, 'scripts/shared_llm_process.py'), restore ? '--session' : '--images-only', String(port),
     resolve(root, '.astro/shared-llm.log'), token], {
@@ -19,8 +19,22 @@ export async function suspendSharedLlm({ env = process.env, port = '8080', resto
   void restored.catch(() => undefined);
   let finished = false;
   let resumeRequested = false;
+  let shutdownRequested = false;
+  const shutdown = () => {
+    if (!finished && !shutdownRequested) {
+      shutdownRequested = true;
+      child.stdin.end('shutdown\n');
+    }
+    return restored;
+  };
+  const onShutdown = () => { void shutdown(); };
+  const finishInput = () => {
+    signal?.removeEventListener('abort', onShutdown);
+    if (!child.stdin.writableEnded) child.stdin.end();
+  };
   const fail = message => {
     finished = true;
+    finishInput();
     const error = new Error(message);
     readyReject(error);
     restoredReject(error);
@@ -36,13 +50,15 @@ export async function suspendSharedLlm({ env = process.env, port = '8080', resto
       let value;
       try { value = JSON.parse(line); } catch { continue; }
       if (value.state === 'paused') readyResolve();
-      if (value.state === 'restored') { finished = true; restoredResolve(value.was_running === true); }
+      if (value.state === 'restored') { finished = true; finishInput(); restoredResolve(value.was_running === true); }
       if (value.state === 'error') fail(typeof value.message === 'string' ? value.message : '共有LLMを復帰できませんでした');
     }
   });
   // Never relay argv/environment or native diagnostics to the browser.
   child.stderr.resume();
   child.stdin.on('error', () => {});
+  signal?.addEventListener('abort', onShutdown, { once: true });
+  if (signal?.aborted) onShutdown();
   child.once('error', () => fail('共有LLMの復帰管理を起動できませんでした'));
   child.once('close', () => { if (!finished) fail('共有LLMの復帰管理が予期せず終了しました'); });
   // The HTTP caller has a timeout, but recovery must retain its lease until the
@@ -50,8 +66,10 @@ export async function suspendSharedLlm({ env = process.env, port = '8080', resto
   await ready;
   return {
     resume() {
-      if (!resumeRequested) { resumeRequested = true; child.stdin.end('resume\n'); }
+      // Keep stdin open so normal shutdown can supersede a pending restoration.
+      if (!finished && !resumeRequested && !shutdownRequested) { resumeRequested = true; child.stdin.write('resume\n'); }
       return restored;
     },
+    shutdown,
   };
 }

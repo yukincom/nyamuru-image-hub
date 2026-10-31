@@ -12,7 +12,6 @@ import re
 import stat
 import time
 from uuid import uuid4
-import zlib
 
 CACHE_SCHEMA_VERSION = 1
 ONE_SHOT_CACHE_TTL = timedelta(days=30)
@@ -49,46 +48,18 @@ def valid_cache_owner_id(value):
 
 
 def validate_png(raw: bytes):
-    """Validate container/dimensions before Pillow allocates pixels; no palette rule."""
+    """Let Pillow check PNG chunks once, then decode within the pixel limit."""
     if not isinstance(raw, bytes) or not 33 <= len(raw) <= MAX_PNG or not raw.startswith(b"\x89PNG\r\n\x1a\n"):
         raise ValueError("画像がPNGではないか、20MiBを超えています")
-    offset, dimensions, idat, ended = 8, None, False, False
-    while offset < len(raw):
-        if offset + 12 > len(raw):
-            raise ValueError("PNG chunkが途中で切れています")
-        size = int.from_bytes(raw[offset:offset + 4], "big")
-        kind = raw[offset + 4:offset + 8]
-        end = offset + size + 12
-        if end > len(raw):
-            raise ValueError("PNG chunkが途中で切れています")
-        data = raw[offset + 8:end - 4]
-        if zlib.crc32(kind + data) & 0xffffffff != int.from_bytes(raw[end - 4:end], "big"):
-            raise ValueError("PNG CRCが一致しません")
-        if dimensions is None:
-            if kind != b"IHDR" or size != 13:
-                raise ValueError("PNG IHDRが不正です")
-            dimensions = (int.from_bytes(data[:4], "big"), int.from_bytes(data[4:8], "big"))
-            if min(dimensions) < 1 or max(dimensions) > 4096 or dimensions[0] * dimensions[1] > 16_777_216:
-                raise ValueError("参照PNGは4096px以内の入力用コピーにしてください")
-        elif kind == b"IHDR":
-            raise ValueError("PNG IHDRが重複しています")
-        if kind in {b"acTL", b"fcTL", b"fdAT"}:
-            raise ValueError("アニメーションPNGは使えません")
-        if kind == b"IDAT":
-            idat = True
-        if kind == b"IEND":
-            if size or not idat or end != len(raw):
-                raise ValueError("PNGのIENDまたは末尾が不正です")
-            ended = True
-        offset = end
-    if not ended:
-        raise ValueError("PNGが完結していません")
     from PIL import Image
     with Image.open(io.BytesIO(raw)) as image:
+        dimensions = image.size
+        if min(dimensions) < 1 or max(dimensions) > 4096:
+            raise ValueError("参照PNGは4096px以内の入力用コピーにしてください")
+        if image.format != "PNG" or getattr(image, "is_animated", False):
+            raise ValueError("静止PNGを指定してください")
         image.verify()
     with Image.open(io.BytesIO(raw)) as image:
-        if image.format != "PNG" or getattr(image, "n_frames", 1) != 1 or image.size != dimensions:
-            raise ValueError("PNGの実寸法・フレームが正しくありません")
         image.load()
     return dimensions
 
@@ -389,8 +360,6 @@ class JobStore:
         with directory_fd(self.root, create=True) as root_fd:
             fd = os.open(".jobs.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=root_fd)
             try:
-                if not stat.S_ISREG(os.fstat(fd).st_mode):
-                    raise ValueError("画像生成lock fileが通常ファイルではありません")
                 fcntl.flock(fd, fcntl.LOCK_EX)
                 yield
             finally:
@@ -412,28 +381,11 @@ class JobStore:
             except FileExistsError:
                 return False
 
-    def read(self, job_id, name, maximum=MAX_JSON):
+    def read(self, job_id, name):
         with directory_fd(self.root / checked_id(job_id)) as fd:
             source = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
-            try:
-                before = os.fstat(source)
-                if not stat.S_ISREG(before.st_mode) or before.st_size > maximum:
-                    raise ValueError("画像生成保存ファイルが通常ファイルでないか大きすぎます")
-                parts, length = [], 0
-                while True:
-                    chunk = os.read(source, min(65536, maximum + 1 - length))
-                    if not chunk:
-                        break
-                    parts.append(chunk)
-                    length += len(chunk)
-                    if length > maximum:
-                        raise ValueError("画像生成保存ファイルが大きすぎます")
-                after = os.fstat(source)
-                if before.st_size != after.st_size or before.st_mtime_ns != after.st_mtime_ns or length != before.st_size:
-                    raise ValueError("画像生成保存ファイルが読み取り中に変更されました")
-                return b"".join(parts)
-            finally:
-                os.close(source)
+            with os.fdopen(source, 'rb') as stream:
+                return stream.read()
 
     def json(self, job_id, name):
         return json.loads(self.read(job_id, name).decode("utf-8"))
@@ -450,12 +402,8 @@ class JobStore:
                         raise OSError("画像生成保存ファイルに書き込めません")
                     remaining = remaining[count:]
                 os.fsync(destination)
-                try:
-                    # Publish the complete inode atomically, without replacing any prior file.
-                    os.link(temporary, name, src_dir_fd=fd, dst_dir_fd=fd, follow_symlinks=False)
-                except FileExistsError:
-                    if self.read(job_id, name, max(MAX_JSON, MAX_PNG)) != raw:
-                        raise ValueError("既存の画像生成保存ファイルを上書きできません")
+                # Publish the complete inode atomically, without replacing a prior file.
+                os.link(temporary, name, src_dir_fd=fd, dst_dir_fd=fd, follow_symlinks=False)
                 os.fsync(fd)
             finally:
                 os.close(destination)
@@ -472,4 +420,4 @@ class JobStore:
     def latest(self, job_id):
         with directory_fd(self.root / checked_id(job_id)) as fd:
             names = sorted(name for name in os.listdir(fd) if re.fullmatch(r"event-\d{20}-[a-f0-9-]{36}\.json", name))
-        return self.json(job_id, names[-1]) if names else {"status": "prepared"}
+        return self.json(job_id, names[-1]) if names else {"status": "preparing"}

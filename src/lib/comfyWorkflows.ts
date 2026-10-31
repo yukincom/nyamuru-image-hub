@@ -13,7 +13,7 @@ export interface ComfyWorkflowBinding {
   height: ComfyInputBinding[];
   images: ComfyInputBinding[][];
   output: { node: string; index: number };
-  prompt_mode: 'qwen' | 'plain';
+  prompt_mode: 'qwen' | 'plain' | 'qwen-three-images';
   fixed_size: [number, number] | null;
 }
 export interface ComfyWorkflowDefinition {
@@ -105,7 +105,12 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
     || typeof output.index !== 'number' || !Number.isSafeInteger(output.index) || output.index < 0 || output.index > 63) {
     throw new Error('完成画像の出力ノードと画像位置を選択してください');
   }
-  if (value.prompt_mode !== 'qwen' && value.prompt_mode !== 'plain') throw new Error('指示文の扱いを選択してください');
+  if (value.prompt_mode !== 'qwen' && value.prompt_mode !== 'plain' && value.prompt_mode !== 'qwen-three-images') {
+    throw new Error('指示文の扱いを選択してください');
+  }
+  if (value.prompt_mode === 'qwen-three-images' && (images.length !== 3 || fixed_size !== null)) {
+    throw new Error('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください');
+  }
   return { prompt, seed, width, height, images, output: { node: output.node, index: output.index },
     prompt_mode: value.prompt_mode, fixed_size };
 }

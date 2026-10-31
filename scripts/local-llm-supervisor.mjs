@@ -122,7 +122,7 @@ export class LocalLlmController {
     this.check = check || (() => checkLlmState(llmTarget(env).modelsUrl));
     this.launcher = launcher || ((requestedAlias) => existingLlmLauncher(env, requestedAlias));
     this.launch = launch || ((config) => launchLlm(config, llmTarget(env), env));
-    this.suspendShared = suspendShared || ((restore, token) => suspendSharedLlm({ env, port: llmTarget(env).port, restore, token }));
+    this.suspendShared = suspendShared || ((restore, token, signal) => suspendSharedLlm({ env, port: llmTarget(env).port, restore, token, signal }));
     Object.assign(this, { running, stop, sleep, now, timeoutMs, imageSession });
     this.child = null;
     this.childAlias = '';
@@ -246,21 +246,21 @@ export class LocalLlmController {
     await this.unload();
   }
 
-  async suspendForImages(token) {
-    if (this.closed) throw new Error('ローカル起動管理は終了しています');
+  async suspendForImages(token, { signal } = {}) {
+    if (this.closed || signal?.aborted) throw new Error('ローカル起動管理は終了しています');
     await this.assertImageSessionIdle();
-    if (this.closed) throw new Error('ローカル起動管理は終了しています');
+    if (this.closed || signal?.aborted) throw new Error('ローカル起動管理は終了しています');
     const state = await this.check();
-    if (this.closed) throw new Error('ローカル起動管理は終了しています');
+    if (this.closed || signal?.aborted) throw new Error('ローカル起動管理は終了しています');
     if (state !== 'ready' && state !== 'missing') {
       throw new Error('LLMの接続先が応答しないか、別のサービスです。既存サービスは停止・置換していません');
     }
     if (this.child) {
       if (!await this.unload()) throw new Error('文章LLMの終了を確認できませんでした');
-      if (this.closed) throw new Error('ローカル起動管理は終了しています');
-      return this.suspendShared(false, token); // Wait for ComfyUI exit; the LLM was originally off.
+      if (this.closed || signal?.aborted) throw new Error('ローカル起動管理は終了しています');
+      return this.suspendShared(false, token, signal); // Wait for ComfyUI exit; the LLM was originally off.
     }
-    return this.suspendShared(state === 'ready', token);
+    return this.suspendShared(state === 'ready', token, signal);
   }
 
   /** Stop an app-owned model after one explicit task, while allowing a later task to start it again. */

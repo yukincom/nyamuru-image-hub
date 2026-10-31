@@ -71,9 +71,10 @@ export async function stopNewCreationBridgeSession(
   token: string,
   fetchImpl: typeof fetch = fetch,
   timeoutMs = 25_000,
+  shutdown = false,
 ): Promise<{ released: boolean; stopped: boolean; llmReleased: boolean; llmStopped: boolean }> {
   if (!token) return { released: false, stopped: false, llmReleased: false, llmStopped: false };
-  const payload = await lifecycleRequest('/api/new-creation/stop', { lease_token: token }, fetchImpl, timeoutMs);
+  const payload = await lifecycleRequest('/api/new-creation/stop', { lease_token: token, ...(shutdown ? { shutdown: true } : {}) }, fetchImpl, timeoutMs);
   return {
     released: payload.released === true,
     stopped: payload.stopped === true,
@@ -90,51 +91,56 @@ export async function submitImageGenerationRequest(token: string, payload: objec
 export async function withImageGenerationServices<T, R>(
   translate: () => Promise<T>,
   generate: (translated: T, token: string) => Promise<R>,
-  { onPhase = () => {}, isCurrent = () => true, llmModelAlias = currentLocalModelPreferences().llmAlias }: {
+  { onPhase = () => {}, isCurrent = () => true, llmModelAlias = currentLocalModelPreferences().llmAlias, requiresLlm = true }: {
     onPhase?: (phase: 'bridge' | 'llm' | 'translate' | 'suspend' | 'generate' | 'restore') => void;
     isCurrent?: () => boolean;
     llmModelAlias?: string;
+    requiresLlm?: boolean;
   } = {},
   fetchImpl: typeof fetch = fetch,
 ): Promise<R | undefined> {
   onPhase('bridge');
   const session = await startNewCreationBridgeSession(fetchImpl);
-  const onExit = () => stopNewCreationBridgeSessionOnPageExit(session.token);
+  let pageExited = false;
+  const onExit = () => { pageExited = true; stopNewCreationBridgeSessionOnPageExit(session.token); };
   if (typeof window !== 'undefined') window.addEventListener('pagehide', onExit, { once: true });
   let prepared = false;
   let suspended = false;
   let failure: unknown;
   try {
-    if (!isCurrent()) return;
-    onPhase('llm');
-    await lifecycleRequest('/api/panel-actions/prepare', {
-      lease_token: session.token,
-      llm_model_alias: llmModelAlias.trim() || currentLocalModelPreferences().llmAlias,
-    }, fetchImpl, 135_000);
-    prepared = true;
-    if (!isCurrent()) return;
+    if (!isCurrent() || pageExited) return;
+    if(requiresLlm){
+      onPhase('llm');
+      await lifecycleRequest('/api/panel-actions/prepare', {
+        lease_token: session.token,
+        llm_model_alias: llmModelAlias.trim() || currentLocalModelPreferences().llmAlias,
+      }, fetchImpl, 135_000);
+      prepared = true;
+    }
+    if (!isCurrent() || pageExited) return;
     onPhase('translate');
     const translated = await translate();
-    if (!isCurrent()) return;
+    if (!isCurrent() || pageExited) return;
     onPhase('suspend');
-    const result = await lifecycleRequest('/api/image-generation/prepare', { lease_token: session.token }, fetchImpl, 70_000);
+    const result = await lifecycleRequest('/api/image-generation/prepare', { lease_token: session.token, ...(!requiresLlm?{requires_llm:false}:{}) }, fetchImpl, 70_000);
     if (result.llm_stopped !== true) throw new Error('文章LLMの一時停止を確認できませんでした');
     suspended = true;
-    if (!isCurrent()) return;
+    if (!isCurrent() || pageExited) return;
     onPhase('generate');
     return await generate(translated, session.token);
   } catch (error) {
     failure = error;
     throw error;
   } finally {
-    if (typeof window !== 'undefined') window.removeEventListener('pagehide', onExit);
-    if (suspended) onPhase('restore');
     try {
-      const result = await stopNewCreationBridgeSession(session.token, fetchImpl, 150_000);
+      if (suspended && !pageExited) onPhase('restore');
+      const result = await stopNewCreationBridgeSession(session.token, fetchImpl, 150_000, pageExited);
       if (prepared && !result.llmReleased) throw new Error('文章LLMの利用終了を確認できませんでした');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(failure ? `${failure instanceof Error ? failure.message : String(failure)}\n${message}` : message);
+    } finally {
+      if (typeof window !== 'undefined') window.removeEventListener('pagehide', onExit);
     }
   }
 }
@@ -153,7 +159,7 @@ export async function withNewCreationBridgeSession<T>(
 
 export function stopNewCreationBridgeSessionOnPageExit(token: string): void {
   if (!token || typeof navigator === 'undefined') return;
-  const body = JSON.stringify({ lease_token: token });
+  const body = JSON.stringify({ lease_token: token, shutdown: true });
   if (typeof navigator.sendBeacon === 'function') {
     navigator.sendBeacon(supervisorUrl('/api/new-creation/stop'), new Blob([body], { type: 'text/plain' }));
     return;

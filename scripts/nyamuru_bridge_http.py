@@ -23,7 +23,7 @@ from nyamuru_project_store import load_project, save_project
 from nyamuru_editor_voice import EditorVoiceError
 from nyamuru_agent_connection import connection_status
 from nyamuru_agent_chat import AgentChatUnavailable
-from nyamuru_model_connections import image_generation_connections
+from nyamuru_model_connections import image_generation_connections, workflow_operation
 
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -105,6 +105,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
         try:
             body = self.read_json()
             path = urlparse(self.path).path
+            if path.startswith('/api/comfy-workflows/'):
+                self.send_json(200, workflow_operation(path.rsplit('/', 1)[1], body, self.state.qwen_jobs, self.state.panel_drafts.endpoint))
+                return
             if path == "/api/image-generation/connections":
                 self.send_json(200, image_generation_connections(body, self.state.qwen_jobs, self.state.panel_drafts))
                 return
@@ -281,6 +284,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/qwen-generation/reconcile":
                 self.send_json(200, self.state.qwen_jobs.reconcile(body))
+                return
+            if path == "/api/qwen-generation/select":
+                self.send_json(200, self.state.qwen_jobs.select(body))
+                return
+            if path == "/api/qwen-generation/cancel":
+                self.send_json(200, self.state.qwen_jobs.cancel(body))
                 return
             if path == "/api/qwen-generation/list":
                 self.send_json(200, self.state.qwen_jobs.list(body))

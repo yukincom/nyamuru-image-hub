@@ -2,7 +2,8 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import type { BBox, Figure, FigureSize, Panel } from '../types.ts';
 import type { HumanPoseFraming, HumanPoseSceneSettings } from './humanPoseTypes.ts';
 import { panelBounds, panelShapePoints } from './canvasGeometry.ts';
-import { paintReferenceBox } from './paintDocument.ts';
+import { paintReferenceBox, type PaintOwner } from './paintDocument.ts';
+import { artworkPixelSize } from './artworkClipboard.ts';
 
 export function humanPoseFigureFrame(figure: Figure, fallback: BBox): BBox {
   return paintReferenceBox(figure.artwork?.paint, figure.bbox ?? fallback, figure.artwork?.crop);
@@ -20,11 +21,32 @@ export interface HumanPoseCutFrame { aspect: number; points: [number, number][];
 export const HUMAN_POSE_PREVIEW_MARGIN = .08;
 
 /** Reuse the manuscript outline; its placement is supplied by the editing owner. */
-export function humanPosePanelCutFrame(panel: Panel, frame: BBox = panelBounds(panel)): HumanPoseCutFrame {
-  const bounds = panelBounds(panel);
+function poseCutFrame(frame: BBox, bounds: BBox, outline: [number, number][]): HumanPoseCutFrame {
   return { aspect: frame.w / frame.h,
     bounds: { x: (bounds.x - frame.x) / frame.w, y: (bounds.y - frame.y) / frame.h, w: bounds.w / frame.w, h: bounds.h / frame.h },
-    points: panelShapePoints(panel).map(([x, y]) => [(x - frame.x) / frame.w, (y - frame.y) / frame.h]) };
+    points: outline.map(([x, y]) => [(x - frame.x) / frame.w, (y - frame.y) / frame.h]) };
+}
+
+export function humanPosePanelCutFrame(panel: Panel, frame: BBox = panelBounds(panel)): HumanPoseCutFrame {
+  return poseCutFrame(frame, panelBounds(panel), panelShapePoints(panel));
+}
+
+/** Capture the same part of the original camera view that the adopted layer will occupy. */
+export function threeImageFigureTarget(owner: PaintOwner, referenceFrame: BBox, panel?: Panel, mask?: BBox) {
+  if (!mask && !panel) return;
+  if (mask && (![mask.x, mask.y, mask.w, mask.h].every(Number.isSafeInteger)
+      || mask.x < 0 || mask.y < 0 || mask.w < 1 || mask.h < 1
+      || mask.x + mask.w > owner.paint.width || mask.y + mask.h > owner.paint.height)) {
+    throw new Error('生成マスクの範囲が不正です');
+  }
+  // Use the inverse of insertGeneratedPaintImage's manuscript-to-layer transform.
+  const sx = owner.frame.w / owner.paint.width, sy = owner.frame.h / owner.paint.height;
+  const outputFrame = mask ? { x: owner.frame.x + mask.x*sx, y: owner.frame.y + mask.y*sy,
+    w: mask.w*sx, h: mask.h*sy } : panelBounds(panel!);
+  const { x, y, w, h } = outputFrame;
+  const outline: [number, number][] = panel ? panelShapePoints(panel) : [[x, y], [x+w, y], [x+w, y+h], [x, y+h]];
+  const { width, height } = mask ? { width: mask.w, height: mask.h } : artworkPixelSize(outputFrame, owner.paint.dpi);
+  return { outputFrame, width, height, cutFrame: poseCutFrame(referenceFrame, outputFrame, outline) };
 }
 
 export function humanPosePreviewWindow(cut?: HumanPoseCutFrame, margin = HUMAN_POSE_PREVIEW_MARGIN): BBox {

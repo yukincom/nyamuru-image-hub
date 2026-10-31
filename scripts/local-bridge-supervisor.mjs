@@ -110,6 +110,7 @@ export class PanelActionLeaseController {
     this.closed = false;
     this.imageToken = null;
     this.imageRecovery = null;
+    this.imageShutdown = null;
   }
 
   exclusive(task) {
@@ -147,18 +148,20 @@ export class PanelActionLeaseController {
     });
   }
 
-  async suspendForImages(token) {
+  async suspendForImages(token, { requiresLlm = true } = {}) {
     return this.exclusive(async () => {
-      if (this.closed || !this.bridgeLeases.has(token) || !this.leases.has(token)) {
+      if (this.closed || !this.bridgeLeases.has(token) || requiresLlm && !this.leases.has(token)) {
         throw new Error('先に画像生成指示の英訳を準備してください');
       }
       if (this.imageToken === token) return;
-      if (this.imageToken || this.leases.size !== 1) throw new Error('別の文章処理が実行中です。完了後に生成してください');
+      if (this.imageToken || this.leases.size !== Number(this.leases.has(token))) throw new Error('別の文章処理が実行中です。完了後に生成してください');
       this.imageToken = token;
+      this.imageShutdown = new AbortController();
       try {
-        this.imageRecovery = await this.llmController.suspendForImages(token);
+        this.imageRecovery = await this.llmController.suspendForImages(token, { signal: this.imageShutdown.signal });
       } catch (error) {
         this.imageToken = null;
+        this.imageShutdown = null;
         throw error;
       }
     });
@@ -173,16 +176,20 @@ export class PanelActionLeaseController {
     });
   }
 
-  async release(token) {
+  async release(token, { shutdown = false } = {}) {
+    // Shutdown must reach a guardian even while submit/resume holds the queue.
+    if (shutdown && this.imageToken === token) this.imageShutdown?.abort();
     return this.exclusive(async () => {
       const released = this.leases.delete(token);
       if (this.imageToken === token) {
         try {
-          const restored = await this.imageRecovery.resume();
+          const restored = await (shutdown || this.closed || this.imageShutdown?.signal.aborted
+            ? this.imageRecovery.shutdown() : this.imageRecovery.resume());
           return { released, stopped: true, restored };
         } finally {
           this.imageToken = null;
           this.imageRecovery = null;
+          this.imageShutdown = null;
         }
       }
       if (!released || this.leases.size) return { released, stopped: false };
@@ -192,12 +199,14 @@ export class PanelActionLeaseController {
 
   async close() {
     this.closed = true;
+    this.imageShutdown?.abort();
     return this.exclusive(async () => {
       this.leases.clear();
-      try { await this.imageRecovery?.resume(); }
+      try { await this.imageRecovery?.shutdown(); }
       finally {
         this.imageToken = null;
         this.imageRecovery = null;
+        this.imageShutdown = null;
         await this.llmController.close();
       }
     });
@@ -399,8 +408,9 @@ export async function startLocalBridgeSupervisor({
         }
         let llm;
         let llmError;
+        if (body.shutdown !== undefined && typeof body.shutdown !== 'boolean') throw new Error('終了理由が不正です');
         try {
-          llm = await panelActions.release(token);
+          llm = await panelActions.release(token, { shutdown: body.shutdown === true });
         } catch (error) {
           llmError = error;
         }
@@ -421,8 +431,9 @@ export async function startLocalBridgeSupervisor({
       if (request.method === 'POST' && pathname === '/api/image-generation/prepare') {
         const body = await jsonBody(request);
         if (typeof body?.lease_token !== 'string') throw new Error('画像生成の利用情報がありません');
-        await panelActions.suspendForImages(body.lease_token);
-        // Even if the browser goes away, its stop beacon or guardian EOF owns restoration.
+        if(body.requires_llm !== undefined && typeof body.requires_llm !== 'boolean')throw new Error('文章LLMの準備指定が不正です');
+        await panelActions.suspendForImages(body.lease_token, { requiresLlm: body.requires_llm !== false });
+        // Page exit requests cleanup without restoration, including through LAN.
         jsonResponse(response, 200, {
           ok: true, service: BRIDGE_SUPERVISOR_SERVICE, protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
           llm_stopped: true,

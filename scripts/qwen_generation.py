@@ -1,7 +1,6 @@
 """Immutable, owner-scoped Qwen jobs; no LLM/server start and no manuscript writes."""
 from __future__ import annotations
 import base64
-import fcntl
 import json
 import math
 import os
@@ -9,15 +8,16 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-import threading
 import time
 from generation_store import JobStore, canonical, checked_id, sha256, text, validate_png, MAX_PNG, directory_fd, remove_tree_at
 
 from image_generation_lock import hold_generation_lease, validate_generation_fd
+from comfy_client import ComfyClient, ComfyOutputError, ComfySubmissionUnknown, ComfyRejected
+from comfy_generation import ComfySaveError
+from comfy_workflows import WorkflowStore, validate_runtime, validate_request
 
 PROFILE = 'qwen-image-2.1-owner-v1'
-# Read-only compatibility for saved jobs; never use this profile for new execution.
-LEGACY_SETTINGS = {'resolution': 1024, 'steps': 40, 'cfg': 1.0, 'seed': 260921, 'sampler': 'euler', 'scheduler': 'simple'}
+SAVE_FAILURE_EXIT_CODE = 74
 TURBO_MODEL = 'qwen_image_2.1_turbo_int8_convrot.safetensors'
 SETTINGS = {
     'resolution': 1024, 'steps': 8, 'cfg': 1.0, 'seed': 260921, 'sampler': 'euler',
@@ -25,12 +25,11 @@ SETTINGS = {
     'diffusion_model': TURBO_MODEL,
     'sigmas': [1.0, .978453, .95418, .926626, .89508, .845148, .704534, .414568, 0.0],
     'vae_device': 'cpu', 'mps_limit_gib': 16,
-    'minimum_start_available_gib': 21, 'minimum_available_gib': 6, 'maximum_swap_increase_gib': 1,
 }
-NATIVE_SKETCH_SETTINGS = {**SETTINGS, 'resolution': 768, 'require_transparency': True}
-SKETCH_SETTINGS = {**NATIVE_SKETCH_SETTINGS, 'transparency_mode': 'alpha-pass-v1'}
+NATIVE_SKETCH_SETTINGS = {**SETTINGS, 'resolution': 768}
+SKETCH_SETTINGS = {**NATIVE_SKETCH_SETTINGS, 'transparency_mode': 'code-white-v1'}
 DEFAULT_ROOT = Path(__file__).resolve().parents[1] / '.local-generation' / 'qwen'
-DEFAULT_LAB = Path(__file__).resolve().parents[2] / 'qwen-image-2.1-lab'
+
 MODELS = ['diffusion_models/' + TURBO_MODEL,
           'text_encoders/qwen3vl_8b_int8_convrot.safetensors', 'vae/qwen_image_2.1_vae_bf16.safetensors']
 
@@ -159,9 +158,23 @@ def split_fixed_generation_prompt(prompt, *, extract_framing=True):
     return (''.join(lines).strip(), ' '.join(dict.fromkeys(fixed))) if fixed else (prompt, '')
 
 
-def dimensions(width, height, resolution=1024):
+def three_image_workflow(value):
+    return value.get('workflow', {}).get('binding', {}).get('prompt_mode') == 'qwen-three-images'
+
+
+def direct_workflow_prompt(value):
+    if three_image_workflow(value):
+        color = value['settings']['chroma_key']['color']
+        return value['prompt'] + f'\nUniform solid {color} background.'
+    return value['prompt']
+
+
+def dimensions(width, height, resolution=1024, *, fixed_size=None):
     if any(isinstance(v, bool) or not isinstance(v, int) or not 1 <= v <= 16384 for v in (width, height)):
         raise ValueError('キャンバスの寸法が不正です')
+    if fixed_size is not None:
+        # The selected workflow owns its output dimensions; the canvas still owns placement.
+        return list(fixed_size)
     ratio = width / height
     size = [max(32, round(math.sqrt(resolution * resolution * r) / 32) * 32) for r in (ratio, 1 / ratio)]
     if max(size) > 4096:
@@ -173,41 +186,7 @@ def png(encoded):
     if not isinstance(encoded, str) or not encoded.startswith('data:image/png;base64,') or len(encoded) > MAX_PNG * 4 // 3 + 100:
         raise ValueError('参照画像は20MiB以内のPNGで指定してください')
     raw = base64.b64decode(encoded.split(',', 1)[1], validate=True)
-    validate_png(raw)
-    return raw
-
-
-def validate_transparency(raw):
-    """Do not publish an opaque or empty model output as a transparent character."""
-    import io
-    from PIL import Image
-    with Image.open(io.BytesIO(raw)) as image:
-        if image.mode != 'RGBA':
-            raise ValueError('生成画像に透過情報がありません。生成原本はrender.pngに保持しています')
-        histogram = image.getchannel('A').histogram()
-        count = image.width * image.height
-        transparent = sum(histogram[:16]) / count
-        opaque = sum(histogram[240:]) / count
-        if transparent < .01 or opaque < .01:
-            raise ValueError('人物と透過背景を確認できませんでした。生成原本はrender.pngに保持しています')
-        return {'transparent_fraction': transparent, 'opaque_fraction': opaque,
-                'alpha_min': next(i for i, n in enumerate(histogram) if n),
-                'alpha_max': next(i for i in range(255, -1, -1) if histogram[i])}
-
-
-def apply_generated_alpha(color_raw, alpha_raw):
-    """Keep the finished drawing's RGB bytes; use only the extraction pass's alpha."""
-    import io
-    from PIL import Image
-    validate_transparency(alpha_raw)
-    with Image.open(io.BytesIO(color_raw)) as color, Image.open(io.BytesIO(alpha_raw)) as matte:
-        if color.size != matte.size:
-            raise ValueError('背景透過の寸法が完成画と一致しません')
-        result = color.convert('RGBA')
-        result.putalpha(matte.getchannel('A'))
-        output = io.BytesIO()
-        result.save(output, format='PNG')
-        return output.getvalue()
+    return raw, validate_png(raw)
 
 
 def keys(value, maximum=1):
@@ -232,7 +211,7 @@ def validate_generation_subject(value):
         raise ValueError('描き文字の生成対象が不正です')
 
 
-def normalize(body):
+def normalize(body, *, fixed_size=None):
     if body.get('profile') != PROFILE or body.get('mode') not in ('new', 'paint', 'sketch'):
         raise ValueError('Qwen生成の指定が不正です')
     owner = text(body.get('owner_key'), '描画対象', 100)
@@ -247,7 +226,7 @@ def normalize(body):
             or (overlay and owner in ('page', 'panel', 'background')):
         raise ValueError('ページとコマの指定が不正です')
     width, height = body.get('width'), body.get('height')
-    output_size = dimensions(width, height)
+    output_size = dimensions(width, height, fixed_size=fixed_size)
     character_limit = 10 if owner in ('page', 'panel') else 1
     character_keys = keys(body.get('character_keys'), character_limit)
     if character_keys and not (owner.startswith('figure-') or owner in ('page', 'panel')):
@@ -259,7 +238,11 @@ def normalize(body):
         raise ValueError('ページに描く文字の指定が不正です')
     for item in literal_text:
         text(item, 'ページに描く文字', 500)
-    settings = SKETCH_SETTINGS if body['mode'] == 'sketch' else SETTINGS
+    settings = dict(SKETCH_SETTINGS if body['mode'] == 'sketch' else SETTINGS)
+    if body.get('candidate_count') == 5:
+        settings['candidate_count'] = 5
+        if owner.startswith('figure-'):
+            settings['transparency_mode'] = 'code-white-v1'
     references = body.get('references')
     if not isinstance(references, list) or len(references) > 9:
         raise ValueError('参照資料は最大9枚です')
@@ -269,12 +252,11 @@ def normalize(body):
         source_key = 'sketch_image' if body['mode'] == 'sketch' else 'paint_image'
         if ('paint_image' if source_key == 'sketch_image' else 'sketch_image') in body:
             raise ValueError('描画画像とネームのラフを同時には指定できません')
-        raw = png(body.get(source_key))
-        input_width, input_height = validate_png(raw)
+        raw, (input_width, input_height) = png(body.get(source_key))
         if body['mode'] == 'paint' and abs(input_width * height - input_height * width) > width + height:
             raise ValueError('描画画像とキャンバスの縦横比が一致しません')
         # The sketch owns its framing; the manuscript's placement box is independent.
-        output_size = dimensions(input_width, input_height, settings['resolution'])
+        output_size = dimensions(input_width, input_height, settings['resolution'], fixed_size=fixed_size)
         input_size = [input_width, input_height]
         images['image-1.png'] = raw
         refs.append({'file': 'image-1.png', 'role': body['mode'], 'label': 'ネームの人物ラフ' if body['mode'] == 'sketch' else '描画画像',
@@ -283,12 +265,12 @@ def normalize(body):
         if 'paint_image' in body or 'sketch_image' in body:
             raise ValueError('通常生成に描画画像は渡せません')
     if 'correction_image' in body:
-        raw = png(body['correction_image'])
-        correction_size = list(validate_png(raw))
+        raw, correction_size = png(body['correction_image'])
+        correction_size = list(correction_size)
         if input_size and correction_size != input_size:
             raise ValueError('参照画像と修正用レイヤーの寸法が一致しません')
         if not input_size:
-            output_size = dimensions(*correction_size, settings['resolution'])
+            output_size = dimensions(*correction_size, settings['resolution'], fixed_size=fixed_size)
         name = f'image-{len(refs) + 1}.png'
         images[name] = raw
         refs.append({'file': name, 'role': 'correction', 'label': '局所修正の書き込み・マスク',
@@ -301,7 +283,7 @@ def normalize(body):
         assigned = keys(reference.get('character_keys'), character_limit)
         if any(k not in character_keys for k in assigned):
             raise ValueError('参照資料と人物が一致しません')
-        raw = png(reference.get('image'))
+        raw, _ = png(reference.get('image'))
         name = f'image-{index}.png'
         images[name] = raw
         refs.append({'file': name, 'role': 'identity' if assigned else 'style',
@@ -346,129 +328,283 @@ def validate_english(value, english):
 
 
 class QwenGenerationService:
-    def __init__(self, root=None, lab=None):
+    def __init__(self, root=None, *, workflows=None, endpoint=None, client_factory=ComfyClient):
         self.store = JobStore(Path(root or DEFAULT_ROOT))
-        self.lab = Path(lab or os.environ.get('NYAMURU_QWEN_LAB_ROOT', DEFAULT_LAB)).absolute()
-        self.thread_lock = threading.RLock()
+        self.workflows = workflows or WorkflowStore()
+        self.endpoint = endpoint or os.environ.get('NYAMURU_COMFYUI_URL', 'http://127.0.0.1:8188')
+        self.client_factory = client_factory
+        self._workers = {}
+        self._save_failures = {}
 
-    def preflight(self, settings=None):
-        model = (SETTINGS if settings is None else settings).get('diffusion_model')
-        if model != TURBO_MODEL:
-            raise ValueError('Turboへの切り替え前の生成設定です。新しい生成を準備してください')
-        models = ['diffusion_models/' + model, *MODELS[1:]]
-        required = [self.lab / '.venv/bin/python', self.lab / 'runtime/ComfyUI/comfy_extras/nodes_qwen.py'] + [self.lab / 'models' / m for m in models]
-        if any(not p.is_file() for p in required):
-            raise ValueError('Qwen-Image-2.1の実行環境またはモデルが見つかりません')
+    def _latest(self, job_id):
+        if job_id in self._save_failures:
+            return {'status': 'failed', 'error': self._save_failures[job_id]}
+        return self.store.latest(job_id)
+
+    def _record_save_failure(self, job_id, message):
+        # The job event can share the same full/unwritable disk as the image.
+        # Keep a live bridge notification even when that event cannot be saved.
+        self._save_failures[job_id] = message
+        try:
+            self.store.event(job_id, 'failed', message)
+        except OSError:
+            return
+        self._save_failures.pop(job_id, None)
+
+    def _reap_workers(self):
+        for job_id, process in list(self._workers.items()):
+            code = process.poll()
+            if code is None:
+                continue
+            del self._workers[job_id]
+            if code == SAVE_FAILURE_EXIT_CODE:
+                try:
+                    failed = self._latest(job_id)['status'] == 'failed'
+                except FileNotFoundError:
+                    # A terminal job may have been deleted just before its child exited.
+                    continue
+                except OSError:
+                    failed = False
+                if not failed:
+                    self._record_save_failure(job_id, '画像のローカル保存に失敗しました。保存できた候補は保持しています')
+
+    def preflight(self, workflow, endpoint=None):
+        client = self.client_factory(endpoint or self.endpoint)
+        client.system_stats()
+        errors = validate_runtime(workflow, client.object_info())
+        if errors:
+            raise ValueError('ワークフローを利用できません: ' + ' / '.join(errors))
+        if not client.memory_release_available():
+            raise ValueError('ComfyUIにニャムルのモデル解放確認拡張を追加し、ComfyUIを起動し直してください')
 
     def load(self, job_id):
-        raw = self.store.read(job_id, 'request.json')
-        if sha256(raw) != self.store.read(job_id, 'request.sha256', 64).decode():
-            raise ValueError('Qwen入力のSHA-256が一致しません')
-        value = json.loads(raw)
-        expected = (SKETCH_SETTINGS, NATIVE_SKETCH_SETTINGS) if value.get('mode') == 'sketch' else (SETTINGS, LEGACY_SETTINGS)
-        if value.get('profile') != PROFILE or value.get('mode') not in ('new', 'paint', 'sketch') or value.get('settings') not in expected:
-            raise ValueError('Qwenジョブの形式が一致しません')
-        return value
+        return self.store.json(job_id, 'request.json')
 
-    def payload(self, job_id, include_image=True):
-        value = self.load(job_id)
-        event = self.store.latest(job_id)
+    def payload(self, job_id, include_image=True, *, value=None, output=None):
+        value = self.load(job_id) if value is None else value
+        event = self._latest(job_id)
         result = {'job_id': job_id, 'profile': PROFILE, 'status': event['status'], 'error': event.get('error', ''),
                   'request_sha256': sha256(canonical(value)), 'label': value['label'],
                   'width': value['output_size'][0], 'height': value['output_size'][1],
                   'file_name': f'qwen_{job_id}.png',
                   'created_at': (self.store.root / job_id / 'request.json').stat().st_mtime,
                   **{k: value[k] for k in ('document_key', 'page_number', 'panel_id', 'overlay', 'owner_key')}}
-        if event['status'] == 'succeeded' and include_image:
-            raw = self.verified_output(job_id, value)
-            result.update(image='data:image/png;base64,' + base64.b64encode(raw).decode(), image_sha256=sha256(raw), file_name=f'qwen_{job_id}.png')
+        if 'workflow' in value:
+            result.update(workflow_id=value['workflow']['id'], workflow_name=value['workflow']['name'],
+                          workflow_version=value['workflow']['version'], comfyui_url=value['comfyui_url'],
+                          candidate_seeds=value['candidate_seeds'])
+            try:
+                result['generation_prompt'] = self.store.read(job_id, 'conditioning-prompt.txt').decode('utf-8')
+            except FileNotFoundError:
+                pass
+        count = value['settings'].get('candidate_count', 1)
+        if count > 1:
+            result['requires_cutout'] = value['settings'].get('transparency_mode') in ('code-white-v1', 'chroma-key-v1')
+        if include_image and count > 1 and event['status'] != 'succeeded':
+            result['candidates'] = [dict(index=i, seed=value['settings']['seed'] + i - 1,
+                image='data:image/png;base64,' + base64.b64encode(self.store.read(job_id, f'candidate-{i}.png')).decode())
+                for i in range(1, count + 1) if (self.store.root / job_id / f'candidate-{i}.png').exists()]
+        if event['status'] == 'succeeded' and (include_image or three_image_workflow(value)):
+            if count > 1:
+                try:
+                    result['selected_candidate'] = self.store.json(job_id, 'selection.json')['index']
+                except FileNotFoundError:
+                    if not include_image:
+                        return result
+                    result['candidates'] = [dict(index=i, seed=value['settings']['seed'] + i - 1,
+                        image='data:image/png;base64,' + base64.b64encode(self.store.read(job_id, f'candidate-{i}.png')).decode())
+                        for i in range(1, count + 1)]
+                    return result
+            if three_image_workflow(value):
+                result.update(width=value['width'], height=value['height'])
+            if not include_image:
+                return result
+            raw = self.read_output(job_id) if output is None else output
+            result.update(image='data:image/png;base64,' + base64.b64encode(raw).decode())
         return result
 
-    def verified_output(self, job_id, value):
-        raw = self.store.read(job_id, 'output.png', MAX_PNG)
-        meta = self.store.json(job_id, 'output.json')
-        if sha256(raw) != meta['sha256'] or meta['request_sha256'] != sha256(canonical(value)) or list(validate_png(raw)) != value['output_size']:
-            raise ValueError('Qwen出力の寸法またはSHA-256が一致しません')
-        return raw
+    def select(self, body):
+        """Only an explicit user choice creates the final image; no model or LLM."""
+        job_id = checked_id(body.get('job_id'))
+        index = body.get('candidate_index')
+        with self.store.lock():
+            value = self.load(job_id)
+            count = value['settings'].get('candidate_count', 1)
+            if self._latest(job_id)['status'] != 'succeeded' or type(index) is not int or not 1 <= index <= count or count == 1:
+                raise ValueError('完成した候補から1枚選んでください')
+            try:
+                selected = self.store.json(job_id, 'selection.json')['index']
+            except FileNotFoundError:
+                selected = None
+            if selected is not None:
+                if selected != index:
+                    raise ValueError('この生成では採用する画像を決定済みです')
+                return self.payload(job_id, value=value)
+            raw = self.store.read(job_id, f'candidate-{index}.png')
+            if value['settings'].get('transparency_mode') == 'chroma-key-v1':
+                from qwen_background import remove_chroma_background
+                size = (value['width'], value['height']) if three_image_workflow(value) else None
+                raw = remove_chroma_background(raw, value['settings']['chroma_key'], output_size=size)
+            elif value['settings'].get('transparency_mode') == 'code-white-v1':
+                from qwen_background import remove_white_background
+                raw = remove_white_background(raw)
+            self.store.write_once(job_id, 'output.png', raw)
+            self.store.write_once(job_id, 'selection.json', canonical({'index': index}))
+            return self.payload(job_id, value=value, output=raw)
+
+    def read_output(self, job_id):
+        return self.store.read(job_id, 'output.png')
+
+    def normalize_request(self, body):
+        """Resolve a selected definition once, keeping a prior job snapshot on retries."""
+        job_id = checked_id(body.get('job_id'))
+        workflow_id = body.get('workflow_id')
+        if not workflow_id:
+            raise ValueError('環境設定 → モデルで、使用するComfyUIワークフローを選んでください')
+        try:
+            previous = self.load(job_id)
+        except FileNotFoundError:
+            previous = None
+        workflow = previous['workflow'] if previous and previous.get('workflow', {}).get('id') == workflow_id else self.workflows.get(workflow_id)
+        if body.get('workflow_version') is not None and body['workflow_version'] != workflow['version']:
+            raise ValueError('ワークフローが更新されました。生成画面を開き直してください')
+        value, images = normalize(body, fixed_size=workflow['binding']['fixed_size'])
+        validate_request(workflow, len(value['references']))
+        endpoint = body.get('comfyui_url') or self.endpoint
+        endpoint = self.client_factory(endpoint).endpoint
+        value.update(workflow=workflow, comfyui_url=endpoint)
+        value['settings'] = {'seed': SETTINGS['seed'], 'candidate_count': 5}
+        value['candidate_seeds'] = [SETTINGS['seed'] + i for i in range(5)]
+        if three_image_workflow(value):
+            if not value['owner_key'].startswith('figure-') or value['mode'] != 'new' or len(value['character_keys']) != 1 or [
+                ref['role'] for ref in value['references']
+            ] != ['style', 'identity', 'style']:
+                raise ValueError('人物3枚参照には、ネーム・人物設定画1枚・3Dポーズを順に指定してください')
+            if value['width'] * value['height'] > 100_000_000:
+                raise ValueError('採用する画像の寸法が大きすぎます')
+        if value['owner_key'].startswith('figure-') and workflow['binding']['prompt_mode'] in ('qwen', 'qwen-three-images'):
+            color = body.get('chroma_key_color', '#00FF00')
+            if color not in ('#00FF00', '#0000FF', '#FF00FF'):
+                raise ValueError('背景色は緑・青・マゼンタから選んでください')
+            value['settings'].update(transparency_mode='chroma-key-v1',
+                chroma_key={'color': color, 'similarity': .08, 'blend': .12, 'despill': True})
+        elif body.get('chroma_key_color') is not None:
+            raise ValueError('クロマキー背景色はQwen用の人物ワークフローだけに指定できます')
+        return value, images
 
     def prepare(self, body, translate):
-        """Keep the immutable source and English prompt before allowing LLM suspension."""
+        """Keep the immutable source and final prompt before allowing LLM suspension."""
         job_id = checked_id(body.get('job_id'))
-        value, images = normalize(body)
-        with self.thread_lock, self.store.lock():
+        value, images = self.normalize_request(body)
+        workflow = value['workflow']
+        if not (self.store.root / job_id / 'request.json').exists():
+            self.preflight(workflow, value['comfyui_url'])
+        with self.store.lock():
             if not self.store.create(job_id):
                 if self.load(job_id) != value:
                     raise ValueError('同じジョブIDに異なる入力を送れません')
-                if self.store.latest(job_id)['status'] == 'prepared':
-                    self.load_english(job_id)
-                return self.payload(job_id)
+                return self.payload(job_id, value=value)
             self.store.write_once(job_id, 'request.json', canonical(value))
-            self.store.write_once(job_id, 'request.sha256', sha256(canonical(value)).encode())
             for name, raw in images.items():
                 self.store.write_once(job_id, name, raw)
             self.store.event(job_id, 'preparing')
             try:
-                self.preflight(value['settings'])
-                english = translate(value)
-                validate_english(value, english)
+                if workflow['binding']['prompt_mode'] in ('plain', 'qwen-three-images'):
+                    english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
+                    final_prompt = direct_workflow_prompt(value)
+                else:
+                    english = translate(value)
+                    from qwen_generation_phase import generation_prompt
+                    final_prompt = generation_prompt(value, english)
                 raw = canonical(english)
                 self.store.write_once(job_id, 'generation-prompt.json', raw)
-                self.store.write_once(job_id, 'generation-prompt.sha256', sha256(raw).encode())
-                self.load_english(job_id)
+                self.store.write_once(job_id, 'conditioning-prompt.txt', final_prompt.encode('utf-8'))
                 self.store.event(job_id, 'prepared')
             except Exception as exc:
                 self.store.event(job_id, 'failed', str(exc))
                 raise
-            return self.payload(job_id)
+            return self.payload(job_id, value=value)
 
     def load_english(self, job_id):
-        raw = self.store.read(job_id, 'generation-prompt.json')
-        if sha256(raw) != self.store.read(job_id, 'generation-prompt.sha256', 64).decode():
-            raise ValueError('保存した英訳のSHA-256が一致しません')
-        english = json.loads(raw)
-        validate_english(self.load(job_id), english)
-        return english
+        return self.store.json(job_id, 'generation-prompt.json')
 
     def submit(self, body):
         job_id = checked_id(body.get('job_id'))
         token = body.get('image_session_token')
-        with hold_generation_lease(token) as lease_fd, self.thread_lock, self.store.lock():
+        with hold_generation_lease(token) as lease_fd, self.store.lock():
+            self._reap_workers()
             value = self.load(job_id)
-            validate_generation_subject(value)
             if body.get('request_sha256') != sha256(canonical(value)):
                 raise ValueError('準備した生成入力と一致しません')
-            self.load_english(job_id)
-            if self.store.latest(job_id)['status'] != 'prepared':
-                return self.payload(job_id)
-            if any(ref['role'] == 'canvas' for ref in value['references']):
-                raise ValueError('自動追加の空画像を含む生成入力です。新しい生成を準備してください')
-            self.preflight(value['settings'])
+            if self._latest(job_id)['status'] != 'prepared':
+                return self.payload(job_id, value=value)
+            if 'workflow' not in value:
+                raise ValueError('ワークフローを選んで新しい生成を準備してください')
             # Persist intent before spawning; uncertain outcomes never replay a UUID.
             self.store.write_once(job_id, 'submission-intent.json', canonical({'job_id': job_id, 'request_sha256': sha256(canonical(value))}))
             self.store.event(job_id, 'queued')
             try:
-                process = subprocess.Popen([str(self.lab / '.venv/bin/python'), str(Path(__file__).resolve()), '--run', job_id,
-                                  '--root', str(self.store.root), '--lab', str(self.lab),
+                process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--run', job_id,
+                                  '--root', str(self.store.root),
                                   '--image-lease-fd', str(lease_fd), '--image-session-token', token],
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                  start_new_session=True, close_fds=True, pass_fds=(lease_fd,))
+                self._workers[job_id] = process
                 self.store.write_once(job_id, 'launch.json', canonical({'pid': process.pid, 'at': time.time()}))
             except Exception as exc:
                 self.store.event(job_id, 'failed', str(exc))
-            return self.payload(job_id)
+            return self.payload(job_id, value=value)
 
     def reconcile(self, body):
-        with self.thread_lock, self.store.lock():
+        with self.store.lock():
+            self._reap_workers()
             return self._reconcile(body)
+
+    def cancel(self, body):
+        """Stop only this job's accepted IDs; the worker will submit no further candidates."""
+        job_id = checked_id(body.get('job_id'))
+        with self.store.lock():
+            value = self.load(job_id)
+            event = self._latest(job_id)
+            if event['status'] in ('succeeded', 'failed'):
+                return self.payload(job_id, value=value)
+            if event['status'] == 'prepared':
+                self.store.event(job_id, 'failed', '生成を取り消しました')
+                return self.payload(job_id, value=value)
+            if not (self.store.root / job_id / 'cancel-request.json').exists():
+                self.store.write_once(job_id, 'cancel-request.json', canonical({'requested': True}))
+            from comfy_generation import read_optional
+            client = self.client_factory(value['comfyui_url'])
+            for index in range(1, value['settings']['candidate_count'] + 1):
+                intent = read_optional(self.store, job_id, f'api-intent-{index}.json')
+                if not intent:
+                    continue
+                accepted = read_optional(self.store, job_id, f'api-accepted-{index}.json')
+                prompt_id = accepted['prompt_id'] if accepted else client.find_prompt(intent['correlation_id'])
+                if prompt_id:
+                    receipt = client.cancel(prompt_id)
+                    if not receipt.get('supported'):
+                        raise ValueError('このComfyUIは対象IDを指定した取消しに対応していません。全体停止は行っていません')
+                    if receipt.get('cancelled'):
+                        try:
+                            self.store.write_once(job_id, f'api-cancelled-{index}.json', canonical(receipt))
+                        except FileExistsError:
+                            pass
+            return self.payload(job_id, value=value)
 
     def _reconcile(self, body):
         job_id = checked_id(body.get('job_id'))
-        event = self.store.latest(job_id)
+        value = self.load(job_id)
+        event = self._latest(job_id)
         if event['status'] in ('queued', 'running', 'outcome_unknown'):
             try:
-                self.verified_output(job_id, self.load(job_id))
+                if value['settings'].get('candidate_count', 1) > 1:
+                    self.store.read(job_id, 'candidates.json')
+                    output = None
+                else:
+                    output = self.read_output(job_id)
                 self.store.event(job_id, 'succeeded')
-                return self.payload(job_id)
+                return self.payload(job_id, value=value, output=output)
             except FileNotFoundError:
                 pass
             try:
@@ -478,13 +614,24 @@ class QwenGenerationService:
                     launch = self.store.json(job_id, 'execution.json')
                 command = subprocess.run(['ps', '-p', str(launch['pid']), '-o', 'command='], capture_output=True, text=True, timeout=5).stdout
                 if time.time() - launch['at'] > 10 and not (str(Path(__file__).resolve()) in command and f'--run {job_id}' in command):
-                    if self.store.latest(job_id)['status'] in ('queued', 'running'):
-                        self.store.event(job_id, 'outcome_unknown', '実行プロセスが終了しました。自動再生成は行いません。保存先のログを確認してください')
+                    if 'workflow' in value:
+                        from comfy_generation import reconcile_candidates
+                        try:
+                            state = reconcile_candidates(self, job_id)
+                            self.store.event(job_id, state, '' if state == 'succeeded' else '送信済み候補を照合しました。未完了の候補は自動再送しません')
+                        except ComfySaveError as exc:
+                            self._record_save_failure(job_id, str(exc))
+                        except ComfyOutputError as exc:
+                            self.store.event(job_id, 'failed', str(exc))
+                        except (OSError, ValueError) as exc:
+                            self.store.event(job_id, 'outcome_unknown', str(exc))
+                    elif self._latest(job_id)['status'] in ('queued', 'running'):
+                        self.store.event(job_id, 'outcome_unknown', '実行プロセスが終了しました。自動再生成は行いません')
             except FileNotFoundError:
                 # The request may have been saved but never launched. Never replay it.
                 if time.time() - (self.store.root / job_id / 'request.json').stat().st_mtime > 30:
                     self.store.event(job_id, 'outcome_unknown', '実行記録を確認できません。自動再生成は行いません')
-        return self.payload(job_id)
+        return self.payload(job_id, value=value)
 
     def list(self, body):
         document_key = text(body.get('document_key'), '作品キー', 500)
@@ -492,13 +639,14 @@ class QwenGenerationService:
         if scope not in ('owner', 'work'):
             raise ValueError('生成履歴の範囲が不正です')
         jobs = []
-        with self.thread_lock, self.store.lock():
+        with self.store.lock():
+            self._reap_workers()
             for job_id in self.store.ids():
                 try:
                     value = self.load(job_id)
                     if value['document_key'] == document_key and (scope == 'work' or all(
                             value.get(k) == body.get(k) for k in ('page_number', 'panel_id', 'overlay', 'owner_key'))):
-                        jobs.append(self.payload(job_id, include_image=False))
+                        jobs.append(self.payload(job_id, include_image=False, value=value))
                 except (ValueError, OSError):
                     continue
         return {'jobs': sorted(jobs, key=lambda job: (job['created_at'], job['job_id']), reverse=True)}
@@ -514,88 +662,53 @@ class QwenGenerationService:
             if not isinstance(item, dict):
                 raise ValueError('削除する生成履歴が不正です')
             job_id = checked_id(item.get('job_id'))
-            digest = item.get('request_sha256')
-            if job_id in [target[0] for target in targets] or not isinstance(digest, str) or not re.fullmatch(r'[a-f0-9]{64}', digest):
-                raise ValueError('削除する生成履歴のIDまたはSHA-256が不正です')
-            targets.append((job_id, digest))
-        with self.thread_lock, self.store.lock(), directory_fd(self.store.root) as root_fd:
-            lock = os.open('.execution.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600, dir_fd=root_fd)
-            try:
+            if job_id not in targets:
+                targets.append(job_id)
+        with self.store.lock(), directory_fd(self.store.root) as root_fd:
+            self._reap_workers()
+            # Validate the whole selection before removing any directory.
+            for job_id in targets:
                 try:
-                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError as exc:
-                    raise ValueError('画像生成が実行中です。完了してから削除してください') from exc
-                # Validate the whole selection before removing any directory.
-                for job_id, digest in targets:
-                    try:
-                        os.stat(job_id, dir_fd=root_fd, follow_symlinks=False)
-                    except FileNotFoundError:
-                        continue  # A repeated, already completed deletion is harmless.
-                    value = self.load(job_id)
-                    if value['document_key'] != document_key or sha256(canonical(value)) != digest:
-                        raise ValueError('削除する生成履歴の作品または入力が一致しません')
-                    if self.store.latest(job_id)['status'] not in ('prepared', 'succeeded', 'failed'):
-                        raise ValueError('実行中または結果未確定の生成は削除できません。生成状況を確認してください')
-                for job_id, _digest in targets:
-                    remove_tree_at(root_fd, job_id)
-                os.fsync(root_fd)
-            finally:
-                os.close(lock)
-        return {'document_key': document_key, 'deleted_job_ids': [job_id for job_id, _digest in targets]}
+                    os.stat(job_id, dir_fd=root_fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    continue  # A repeated, already completed deletion is harmless.
+                value = self.load(job_id)
+                if value['document_key'] != document_key:
+                    raise ValueError('削除する生成履歴の作品が一致しません')
+                if self._latest(job_id)['status'] not in ('prepared', 'succeeded', 'failed'):
+                    raise ValueError('実行中または結果未確定の生成は削除できません。生成状況を確認してください')
+            for job_id in targets:
+                remove_tree_at(root_fd, job_id)
+                self._save_failures.pop(job_id, None)
+            os.fsync(root_fd)
+        return {'document_key': document_key, 'deleted_job_ids': targets}
 
     def run(self, job_id, lease_fd, token):
-        # Only one job holds the accelerator, even across bridge restarts.
-        lock = None
+        # The inherited session lease keeps Gemma suspended until all phases exit.
         try:
             validate_generation_fd(token, lease_fd)
             value = self.load(job_id)
-            validate_generation_subject(value)
-            self.load_english(job_id)
-            lock = os.open(self.store.root / '.execution.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise ValueError('別のQwen生成が実行中です。完了してから実行してください') from exc
-            if self.store.latest(job_id)['status'] != 'queued':
-                return
-            self.preflight(value['settings'])
-            for ref in value['references']:
-                if sha256(self.store.read(job_id, ref['file'], MAX_PNG)) != ref['sha256']:
-                    raise ValueError('参照画像のSHA-256が一致しません')
-            self.store.write_once(job_id, 'execution.json', canonical({'pid': os.getpid(), 'at': time.time()}))
-            self.store.event(job_id, 'running')
-            directory = self.store.root / job_id
-            alpha_pass = value['settings'].get('transparency_mode') == 'alpha-pass-v1'
-            phases = ('encode', 'sample', 'decode') + (('alpha-encode', 'alpha-sample', 'alpha-decode') if alpha_pass else ())
-            for phase in phases:
-                with (directory / f'{phase}.log').open('xb') as log:
-                    try:
-                        subprocess.run([str(self.lab / '.venv/bin/python'), str(Path(__file__).with_name('qwen_generation_phase.py')),
-                                        phase, str(directory), str(self.lab), str(lease_fd), token], check=True, stdin=subprocess.DEVNULL,
-                                       stdout=log, stderr=subprocess.STDOUT, timeout=7200, pass_fds=(lock, lease_fd))
-                    except subprocess.CalledProcessError as exc:
-                        if exc.returncode == 75:
-                            raise ValueError('画像生成のメモリ上限に達しました。他のモデルの処理が終わってから新しい生成を実行してください') from exc
-                        raise
-            raw = self.store.read(job_id, 'render.png', MAX_PNG)
-            if list(validate_png(raw)) != value['output_size']:
-                raise ValueError('Qwenの出力寸法がキャンバスと一致しません')
-            sources = {}
-            if alpha_pass:
-                alpha_raw = self.store.read(job_id, 'alpha-render.png', MAX_PNG)
-                sources = {'color_source_sha256': sha256(raw), 'alpha_source_sha256': sha256(alpha_raw),
-                           'transparency_mode': 'alpha-pass-v1'}
-                raw = apply_generated_alpha(raw, alpha_raw)
-            transparency = validate_transparency(raw) if value['settings'].get('require_transparency') else None
-            self.store.write_once(job_id, 'output.png', raw)
-            self.store.write_once(job_id, 'output.json', canonical({'sha256': sha256(raw), 'request_sha256': sha256(canonical(value)),
-                                                                 **sources, **({'transparency': transparency} if transparency else {})}))
+            with self.store.lock():
+                if self._latest(job_id)['status'] != 'queued':
+                    return
+                self.store.write_once(job_id, 'execution.json', canonical({'pid': os.getpid(), 'at': time.time()}))
+                self.store.event(job_id, 'running')
+            from comfy_generation import run_candidates
+            run_candidates(self, job_id, lease_fd)
             self.store.event(job_id, 'succeeded')
+        except ComfySaveError as exc:
+            self._record_save_failure(job_id, str(exc))
+            return SAVE_FAILURE_EXIT_CODE
+        except ComfySubmissionUnknown as exc:
+            self.store.event(job_id, 'outcome_unknown', str(exc))
         except Exception as exc:
-            self.store.event(job_id, 'failed', str(exc))
+            try:
+                ledger = json.loads(os.pread(lease_fd, 1024 * 1024, 0))
+                uncertain = any(not item.get('terminal') for item in ledger.get('api_submissions', []))
+            except (OSError, ValueError):
+                uncertain = True
+            self.store.event(job_id, 'outcome_unknown' if uncertain else 'failed', str(exc))
         finally:
-            if lock is not None:
-                os.close(lock)
             os.close(lease_fd)
 
 
@@ -604,8 +717,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--run', required=True)
     parser.add_argument('--root', required=True)
-    parser.add_argument('--lab', required=True)
     parser.add_argument('--image-lease-fd', type=int, required=True)
     parser.add_argument('--image-session-token', required=True)
     args = parser.parse_args()
-    QwenGenerationService(args.root, args.lab).run(checked_id(args.run), args.image_lease_fd, args.image_session_token)
+    sys.exit(QwenGenerationService(args.root).run(checked_id(args.run), args.image_lease_fd, args.image_session_token))

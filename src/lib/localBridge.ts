@@ -7,7 +7,8 @@ import type { PanelActionSuggestionRequest, PanelActionSuggestionResponse } from
 import { MANGA_BASE_PALETTE, PANEL_DRAFT_PROFILE, type PanelDraftPlan } from './panelDraft.ts';
 import type { SourceCoverageReport } from './sourceCoverage.ts';
 import { currentLocalModelPreferences, normalizeComfyuiUrl } from './localModelPreferences.ts';
-import { decodeImageGenerationConnections, IMAGE_GENERATION_MODEL_KEY, QWEN_AGENT_MODEL } from './modelConnections.ts';
+import { decodeImageGenerationConnections } from './modelConnections.ts';
+import { currentGenerationPreferences } from './generationPreferences.ts';
 import { FIGURE_SIZES } from './manga.ts';
 import { humanPoseSelectable, parseHumanPoseCatalog } from './humanPoseSelection.ts';
 import { withNewCreationBridgeSession,withPanelActionServices } from './localBridgeLifecycle.ts';
@@ -1390,18 +1391,21 @@ async function postBridgeJson(path: string, body: object, timeoutMs: number): Pr
 export async function getImageGenerationConnections(comfyuiUrl = currentLocalModelPreferences().comfyuiUrl, checkComfyui = false) {
   const endpoint = normalizeComfyuiUrl(comfyuiUrl);
   return withNewCreationBridgeSession(async () => decodeImageGenerationConnections(await postBridgeJson('/api/image-generation/connections', {
-    comfyui_url: endpoint, check_comfyui: checkComfyui,
+    comfyui_url: endpoint, check_comfyui: checkComfyui, workflow_id: currentGenerationPreferences().local.workflowId,
   }, 15_000)));
 }
 
-/** Bind the existing local executor to the built-in agent after checking its actual installation. */
+/** Verify the selected definition without creating another device setting. */
 export async function connectAgentImageGeneration(isCurrent: () => boolean = () => true) {
-  const result = await getImageGenerationConnections('', false);
+  if (!currentGenerationPreferences().local.workflowId) throw new Error('環境設定 → モデルで、使用するComfyUIワークフローを選んでください');
+  const result = await getImageGenerationConnections(undefined, true);
   if (!isCurrent()) throw new Error('接続を中止しました');
-  if (!result.qwen.available) throw new Error(result.qwen.message);
-  window.localStorage.setItem(IMAGE_GENERATION_MODEL_KEY, QWEN_AGENT_MODEL);
-  window.dispatchEvent?.(new Event('nyamuru:image-generation-connected'));
+  if (!result.workflow?.available) throw new Error(result.workflow?.message || result.comfyui.message);
   return result;
+}
+
+export function requestComfyWorkflows(action: 'list' | 'save' | 'delete' | 'check' | 'info', body: object = {}): Promise<unknown> {
+  return withNewCreationBridgeSession(() => postBridgeJson(`/api/comfy-workflows/${action}`, body, 30_000));
 }
 
 /** 一度検証したsnapshotから一覧とPNGを読み、原本に変更があれば表示しない。 */
@@ -2839,16 +2843,29 @@ export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:str
   if(value.image!==undefined){
     if(job.status!=='succeeded'||typeof value.image!=='string'||!value.image.startsWith('data:image/png;base64,')
       ||value.image.length>Math.ceil(PANEL_DRAFT_MAX_PNG_BYTES/3)*4+100||value.file_name!==`qwen_${job.jobId}.png`)throw new Error('Qwen生成画像の形式が不正です');
-    const blob=dataUrlBlob(value.image);
-    if(!blob||blob.size<33||blob.size>PANEL_DRAFT_MAX_PNG_BYTES)throw new Error('Qwen生成PNGが不正です');
-    const header=new DataView(await blob.slice(0,33).arrayBuffer());
-    if(header.getUint32(16)!==job.width||header.getUint32(20)!==job.height||await verifiedPngSha256(blob)!==value.image_sha256)throw new Error('Qwen生成PNGの寸法またはSHA-256が一致しません');
     job.image=value.image;job.fileName=value.file_name as string;
   }
+  if(Array.isArray(value.candidates)){
+    job.candidates=value.candidates.map((raw:unknown)=>{
+      const item=raw as {index:number;seed:number;image:string};
+      if(!Number.isInteger(item.index)||item.index<1||item.index>5||!Number.isSafeInteger(item.seed)||typeof item.image!=='string'||!item.image.startsWith('data:image/png;base64,'))throw new Error('生成候補の形式が不正です');
+      return {index:item.index,seed:item.seed,image:item.image};
+    });
+  }
+  if(typeof value.selected_candidate==='number')job.selectedCandidate=value.selected_candidate;
+  job.requiresCutout=value.requires_cutout===true;
+  if(typeof value.workflow_name==='string')job.workflowName=value.workflow_name;
+  if(typeof value.workflow_id==='string')job.workflowId=value.workflow_id;
+  if(typeof value.workflow_version==='number')job.workflowVersion=value.workflow_version;
+  if(typeof value.comfyui_url==='string')job.comfyuiUrl=value.comfyui_url;
+  if(typeof value.generation_prompt==='string')job.generationPrompt=value.generation_prompt;
+  if(Array.isArray(value.candidate_seeds)&&value.candidate_seeds.every(Number.isSafeInteger))job.candidateSeeds=value.candidate_seeds as number[];
   return job;
 }
 export async function prepareQwenJob(jobId:string,payload:ReturnType<typeof import('./qwenGeneration.ts').qwenGenerationPayload>){
-  const job=await decodeQwenJob(await postJson('/api/qwen-generation/prepare',{...payload,job_id:jobId},320_000),jobId);
+  const job=await decodeQwenJob(await postJson('/api/qwen-generation/prepare',{
+    workflow_id:currentGenerationPreferences().local.workflowId,comfyui_url:currentLocalModelPreferences().comfyuiUrl,
+    ...payload,job_id:jobId},320_000),jobId);
   if(job.status!=='prepared')throw new Error(job.error||'英訳の保存を確認できません。生成履歴を確認してください');
   return job;
 }
@@ -2857,6 +2874,12 @@ export async function submitQwenJob(prepared:import('./qwenGeneration.ts').QwenJ
 }
 export async function reconcileQwenJob(jobId:string,requestSha256?:string){
   return decodeQwenJob(await postJson('/api/qwen-generation/reconcile',{job_id:jobId},30_000),jobId,requestSha256);
+}
+export async function cancelQwenJob(jobId:string){
+  return withNewCreationBridgeSession(async()=>decodeQwenJob(await postJson('/api/qwen-generation/cancel',{job_id:jobId},30_000),jobId));
+}
+export async function selectQwenCandidate(job:import('./qwenGeneration.ts').QwenJob,index:number){
+  return decodeQwenJob(await postJson('/api/qwen-generation/select',{job_id:job.jobId,candidate_index:index},30_000),job.jobId,job.requestSha256);
 }
 export async function deleteQwenJobs(plan:import('./qwenGeneration.ts').QwenGenerationPlan,jobs:import('./qwenGeneration.ts').QwenJob[]){
   if(!jobs.length||jobs.some(job=>job.documentKey!==plan.documentKey))throw new Error('削除する生成履歴の作品が一致しません');
