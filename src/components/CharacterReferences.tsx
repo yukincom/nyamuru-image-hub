@@ -1,3 +1,4 @@
+import { beginFigureCropImport } from '../lib/figureCropStore';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Check, FileImage, ScanSearch, Star, Trash2, Upload } from 'lucide-preact';
 import type { Character, CharacterRecognitionProfile, MangaDocument, Material, VisualEvidence } from '../types.ts';
@@ -171,6 +172,7 @@ export default function CharacterReferences({ document, character, onChange, onN
     const originalSeriesId = document.manga.meta.series_id;
     const originalCharacterId = character.catalog_id;
     setSaving(true);
+    const finishImageImport=beginFigureCropImport();
     try {
       if (!onPersistSeriesCatalog) throw new Error('シリーズ台帳の保存機能を利用できません');
       // 画像保存先はシリーズ台帳の配下にある。新規シリーズ／人物でも、別の保存操作を
@@ -273,6 +275,7 @@ export default function CharacterReferences({ document, character, onChange, onN
       notify(error instanceof Error ? error.message : '人物資料画像を保存できませんでした');
     } finally {
       setSaving(false);
+      finishImageImport();
     }
   };
 

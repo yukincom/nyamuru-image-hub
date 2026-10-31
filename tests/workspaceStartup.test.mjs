@@ -39,28 +39,34 @@ test('artwork-only and character-only documents still count as edited work', () 
   assert.equal(isUnstartedDocument(character),false);
 });
 
+// 見込み: 回収は常に最新の作品・履歴・未確定描画・資料を読む。合格: 参照集合に必要IDだけを含み、終了通知でも再回収する。範囲: 実Appの関数・effectを抽出、保存先と画面は模擬。
 test('editing and Undo/Redo collect only memory assets without saving or consulting browser storage', () => {
   const editor=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='EditorApp');
   const statements=editor.body.statements.filter(node=>{
     const text=node.getText(ast);
-    return text.startsWith('const prunePaintAssets =') || (text.startsWith('useEffect(')&&text.includes('prunePaintAssets();'));
+    return text.startsWith('const prunePaintAssets =') || (text.startsWith('useEffect(')&&(text.includes('prunePaintAssets();')||text.includes('onFigureCropAssetsChanged')));
   });
   const code=ts.transpileModule(statements.map(node=>node.getText(ast)).join('\n'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText;
   const doc=createEmptyWorkspaceDocument();doc.manga.meta.title='current';
   const effects=[],references=[];
-  let deferred;
-  const context={document:doc,hasDocument:true,past:[],future:[],pendingPaintAssets:{current:new Set(['pending-original'])},timeline:{current:{past:[],future:[]}},
+  let deferred,settled;
+  const context={document:doc,hasDocument:true,past:[],future:[],newCharacterDocument:null,newCharacterDocumentRef:{current:null},paintSession:null,seriesCatalogSaving:false,pendingPaintAssets:{current:new Set(['pending-original'])},timeline:{current:{past:[],future:[]}},
     localStorage:{getItem:()=>assert.fail('no saved work read'),setItem:()=>assert.fail('no autosave')},
-    collectFigureCropAssetIds:document=>[document.manga.meta.title],workspaceSnapshot:()=>({document:context.document,paint:{state:{imports:[{asset:{storageId:'live-paint'}}]}}}),
-    paintAssets:{prune:read=>{deferred=read;references.push(read());return Promise.resolve();}}};
+    collectFigureCropAssetIds:(document,extra=[])=>[document.manga.meta.title,...extra],paintAssetIds:paint=>paint.ids,
+    browserCatalogImageIds:()=>['library-image'],onFigureCropAssetsChanged:callback=>{settled=callback;return()=>{};},
+    workspaceSnapshot:()=>({document:context.document,paint:{state:{scene:{owners:[{paint:{ids:['unflushed-original']}}]},imports:[{asset:{storageId:'live-paint'}}],stageImports:[{stage:{storageId:'live-stage'}}]}}}),
+    pruneFigureCropAssets:(_,read)=>{deferred=read;references.push(read());return Promise.resolve();}};
   const render=()=>{let index=0;runInNewContext(code,{...context,useEffect:(run,deps)=>{const slot=index++,previous=effects[slot];if(previous&&deps.every((dep,i)=>dep===previous[i]))return;effects[slot]=deps;run();}});};
   render();assert.ok(references.length);
   context.timeline.current.past=context.past=[{document:{manga:{meta:{title:'undo-original'}}}}];
   context.timeline.current.future=context.future=[{document:{manga:{meta:{title:'redo-original'}}}}];render();
-  for(const id of ['current','undo-original','redo-original','pending-original','live-paint'])assert.ok(references.at(-1).includes(id),id);
+  for(const id of ['current','undo-original','redo-original','pending-original','live-paint','live-stage','unflushed-original','library-image'])assert.ok(references.at(-1).includes(id),id);
   context.document=structuredClone(doc);context.document.manga.meta.title='new-edit';render();
   assert.ok(deferred().includes('new-edit'));
   assert.equal(deferred().includes('current'),false);
+  context.newCharacterDocumentRef.current=context.newCharacterDocument={manga:{meta:{title:'new-draft'}}};render();assert.ok(references.at(-1).includes('new-draft'));
+  const before=references.length;settled();assert.equal(references.length,before+1);assert.ok(references.at(-1).includes('new-edit'));
+  context.newCharacterDocumentRef.current=context.newCharacterDocument=null;render();assert.equal(references.at(-1).includes('new-draft'),false);
 });
 
 test('work autosave and restoration entry points have been removed', () => {

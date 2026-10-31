@@ -4,9 +4,9 @@ import { prepareDocumentForSeriesSave } from './seriesCatalog.ts';
 import { blobRevision } from './browserFiles.ts';
 
 interface BrowserCatalog { seriesId: string; seriesName: string; omnyYaml: string; revision: string; updatedAt: string }
-const catalogs = new Map<string, BrowserCatalog>();
+const catalogs = new Map<string, BrowserCatalog & { imageRefs: string[] }>();
 export async function listBrowserCatalogs(): Promise<BrowserCatalog[]> {
-  return [...catalogs.values()].map(item => ({ ...item }));
+  return [...catalogs.values()].map(({ imageRefs, ...item }) => item);
 }
 export async function loadBrowserCatalog(seriesName: string, seriesId: string) {
   const catalogs = await listBrowserCatalogs();
@@ -18,7 +18,8 @@ export async function saveBrowserCatalog(seriesName: string, seriesId: string, o
   if (!seriesId || parsed.manga.meta.series_id !== seriesId || parsed.manga.meta.series !== seriesName) throw new Error('シリーズの保存情報が一致しません');
   const revision = await blobRevision(new Blob([omnyYaml]));
   if ((catalogs.get(seriesId)?.revision ?? '') !== expectedRevision) throw new Error('シリーズが更新されました。開き直してください');
-  catalogs.set(seriesId, { seriesName, seriesId, omnyYaml, revision, updatedAt: new Date().toISOString() });
+  catalogs.set(seriesId, { seriesName, seriesId, omnyYaml, revision, updatedAt: new Date().toISOString(),
+    imageRefs: [...characterImageCacheIds(parsed), ...(parsed.manga.background_stages ?? []).map(stage => stage.storageId)] });
   return { seriesId, directory: '編集中のシリーズ', revision };
 }
 /** File import populates this page's series picker only for the current session. */
@@ -32,3 +33,16 @@ export async function rememberBrowserCatalog(document: MangaDocument): Promise<v
 }
 
 export const characterImageCacheId = (seriesId: string, characterId: string, assetId: string) => `original-character-${seriesId}-${characterId}-${assetId}`;
+
+export function characterImageCacheIds(document: MangaDocument): string[] {
+  return (document.manga.materials ?? []).flatMap(material => {
+    const characterId = material.character_catalog_id || document.manga.characters?.find(item => item.localId === material.characterId)?.catalog_id;
+    return material.source_image && characterId && document.manga.meta?.series_id
+      ? [characterImageCacheId(document.manga.meta.series_id, characterId, material.source_image.asset_id)] : [];
+  });
+}
+
+/** Resolve at catalog updates, rather than parsing every catalog on each edit. */
+export function browserCatalogImageIds(): string[] {
+  return [...new Set([...catalogs.values()].flatMap(catalog => catalog.imageRefs))];
+}

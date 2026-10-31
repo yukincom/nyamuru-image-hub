@@ -5,7 +5,7 @@ import { isLanClient } from '../lib/clientRuntime';
 import { browserWorkspaces, isBrowserWorkspace } from '../lib/browserWorkspace';
 import { chooseBrowserFiles, downloadBrowserBlob, blobRevision } from '../lib/browserFiles';
 import { createPortableProject, restorePortableProject } from '../lib/portableProject';
-import { rememberBrowserCatalog } from '../lib/browserCatalog';
+import { rememberBrowserCatalog, browserCatalogImageIds } from '../lib/browserCatalog';
 import {textStyleOf,typingTextStyle,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
 import type {Bubble,TextStyle} from '../types';
 import { loadAgentPreferences, saveAgentPreferences, type AgentPreferences } from '../lib/agentPreferences';
@@ -52,7 +52,6 @@ import {prepareGuideLayer} from '../lib/paintGuide';
 import PageOverlayInspector from './PageOverlayInspector';
 import EnvironmentSettings from './EnvironmentSettings';
 import { loadEditGuide, saveEditGuide, loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing, loadPaintCursor, savePaintCursor, type PaintCursorMode } from '../lib/paintPreferences';
-import { paintAssetLease } from '../lib/paintAssetLease';
 import { workspaceHistory } from '../lib/workspaceHistory';
 import { loadHistorySteps, saveHistorySteps } from '../lib/historyPreferences';
 import type { PaintController, PaintLayerAction, PaintSessionSnapshot } from '../lib/paintSession';
@@ -73,7 +72,7 @@ import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentFor
 import { prepareDetectedFigureCrops } from '../lib/analogFigureCrops';
 import { prepareDetectedTextCrops } from '../lib/analogTextCrops';
 import { separateBubbleOriginals } from '../lib/bubbleOriginals';
-import { collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
+import { beginFigureCropImport, onFigureCropAssetsChanged, pruneFigureCropAssets, collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
 import { spreadPartnerIndex as findSpreadPartnerIndex } from '../lib/pageSpread';
 import { setPanelMaterialLink, type PanelMaterialLinkTarget } from '../lib/panelMaterialLinks';
 import { isPropPlacement, synchronizeCatalogReferences } from '../lib/catalogModel';
@@ -568,8 +567,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const [,refreshHistory]=useState(0);
   const {past,future}=timeline.current;
   const changedHistory=()=>refreshHistory(value=>value+1);
-  const [paintAssets]=useState(()=>paintAssetLease());
-  useEffect(()=>()=>paintAssets.dispose(),[paintAssets]);
   const pendingPaintAssets=useRef(new Set<string>());
   const workspaceSnapshot=(state?:PaintSessionSnapshot):WorkspaceSnapshot=>{
     const session=paintSessionRef.current,snapshot=state??paintController.current?.snapshot()??session?.resume;
@@ -1033,15 +1030,21 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   };
 
   const prunePaintAssets = () => {
-    void paintAssets.prune(() => {
-      const snapshots=[workspaceSnapshot(),...timeline.current.past,...timeline.current.future];
-      return [...pendingPaintAssets.current,...snapshots.flatMap(snapshot=>[...collectFigureCropAssetIds(snapshot.document),...(snapshot.paint?.state.imports.map(item=>item.asset.storageId)??[])])];
+    void pruneFigureCropAssets([],() => {
+      const snapshots:WorkspaceSnapshot[]=[workspaceSnapshot(),...timeline.current.past,...timeline.current.future];
+      if(newCharacterDocumentRef.current)snapshots.push({document:newCharacterDocumentRef.current});
+      return [...pendingPaintAssets.current,...browserCatalogImageIds(),...snapshots.flatMap(snapshot=>[
+        ...collectFigureCropAssetIds(snapshot.document,snapshot.paint?.state.scene.owners.flatMap(owner=>paintAssetIds(owner.paint))),
+        ...(snapshot.paint?.state.imports.map(item=>item.asset.storageId)??[]),
+        ...(snapshot.paint?.state.stageImports.map(item=>item.stage.storageId)??[]),
+      ])];
     }).catch(() => undefined);
   };
 
+  useEffect(() => onFigureCropAssetsChanged(prunePaintAssets), []);
   useEffect(() => {
-    if (hasDocument) prunePaintAssets();
-  }, [document, hasDocument, past, future]);
+    prunePaintAssets();
+  }, [document, past, future, newCharacterDocument, paintSession, seriesCatalogSaving]);
 
 
   useEffect(() => {
@@ -2255,6 +2258,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if(projectOperation.current)throw new Error('保存・読み込みが終わってから登録してください');
     const episodeId=documentRef.current.manga.meta.episode_id;
     projectOperation.current=true;setProjectBusy(true);
+    const finishImageImport=beginFigureCropImport();
     try{
       const item=await prepareBackgroundStage(file);
       const {loadStageShape}=await import('../lib/background3dRenderer');
@@ -2272,7 +2276,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
         material.source_stage_id=item.stage.id;
       });
       setToast('背景の3Dモデルを登録しました');
-    }finally{projectOperation.current=false;setProjectBusy(false);}
+    }finally{projectOperation.current=false;setProjectBusy(false);finishImageImport();}
   };
 
   const exportOmny = () => {
@@ -2326,6 +2330,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     endTextEdit();
     projectOperation.current = true; setProjectBusy(true);
     const current = documentRef.current;
+    const finishImageImport=beginFigureCropImport();
     try {
       const workspace = await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory);
       if (!workspace) return;
@@ -2341,7 +2346,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       setToast(`${selected.file.name} から作品と画像を読み込みました`);
       if (isLanClient) await rememberBrowserCatalog(restored).catch(() => setToast('作品は開きましたが、このブラウザーのシリーズ一覧への登録に失敗しました'));
     } catch (error) { setToast(`読み込みできませんでした: ${error instanceof Error ? error.message : String(error)}`); }
-    finally { projectOperation.current = false; setProjectBusy(false); }
+    finally { projectOperation.current = false; setProjectBusy(false); finishImageImport(); }
   };
 
   const saveProject = async (chooseDestination = false) => {
@@ -2419,6 +2424,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     projectOperation.current = true;
     setProjectBusy(true);
     const current = documentRef.current;
+    const finishImageImport=beginFigureCropImport();
     try {
       await withNewCreationBridgeSession(async () => {
         const workspace = await selectEpisodeWorkspace(boundEpisodeWorkspace?.directory ?? savedWorkspaceRoot('__one_shot__'));
@@ -2441,6 +2447,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     } finally {
       projectOperation.current = false;
       setProjectBusy(false);
+      finishImageImport();
     }
   };
 
@@ -2672,6 +2679,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     confirmScannedLayouts = false,
   ) => {
     if (newLayoutTask !== 'idle' || !newPrintConfirmed || editingNewPrintSetup) return;
+    const finishImageImport=beginFigureCropImport();
+    try {
     const generation = ++newLayoutOperationGeneration.current;
     const isCurrentOperation = () => generation === newLayoutOperationGeneration.current;
     updateNewLayoutTask('creating');
@@ -2994,6 +3003,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       : `${creationMessage}${seriesMerge.warning ? `。${seriesMerge.warning}` : ''}`;
     const completionWarnings = [coverageSaveWarning, bridgeStopWarning].filter(Boolean).join('。');
     setToast(completionWarnings ? `${completedMessage}。${completionWarnings}` : completedMessage);
+    } finally { finishImageImport(); }
   };
 
   const addPage = () => {endTextEdit();mutate((draft) => { const index = draft.manga.pages.length; const setup = getPrintSetup(draft.manga); draft.manga.pages.push(newPage(index + 1, { w: setup.width_mm, h: setup.height_mm })); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });};
@@ -3588,14 +3598,14 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     const next=cloneDocument(current), stored=next.manga.image_assets??=[];
     const writes:Array<{id:string;blob:Blob}>=[];
     let committed=false;
+    const finishImageImport=beginFigureCropImport();
     try {
-      await paintAssets.ready;
       const register=async(prepared:ImageAsset,blob:Blob):Promise<ImageAsset>=>{
         const existing=stored.find(a=>a.id===prepared.id);
         if(existing&&writes.some(item=>item.id===existing.storageId))return existing;
         const cached=existing?await loadFigureCropAsset(existing.storageId):null;
         if(existing&&cached)return existing;
-        const asset={...prepared,storageId:paintAssets.storageId()};
+        const asset={...prepared,storageId:`paint-${crypto.randomUUID()}`};
         if(existing)stored.splice(stored.indexOf(existing),1,asset);else stored.push(asset);
         writes.push({id:asset.storageId,blob});pendingPaintAssets.current.add(asset.storageId);return asset;
       };
@@ -3634,10 +3644,14 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       const used=imageAssetIds(next);
       next.manga.image_assets=stored.filter(asset=>!asset.storageId.startsWith('paint-')||used.has(asset.id));
       validateImagePlacements(next);
-      await paintAssets.save(writes);
+      await saveFigureCropAssets(writes);
       if(documentRef.current!==current)throw new Error('保存中に作品が変更されました。描画内容はこの画面に残っています');
       publish(next);committed=true;
-    }finally{writes.forEach(item=>pendingPaintAssets.current.delete(item.id));if(!committed&&writes.length)await deleteFigureCropAssets(writes.map(item=>item.id)).catch(()=>undefined);}
+    }finally{
+      writes.forEach(item=>pendingPaintAssets.current.delete(item.id));
+      if(!committed&&writes.length)await deleteFigureCropAssets(writes.map(item=>item.id)).catch(()=>undefined);
+      finishImageImport();
+    }
   }
   const applyPaint = async (result:PaintResult) => {
     const session=paintSessionRef.current;
@@ -3685,6 +3699,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if (!file || !target) return;
     setImageImportBusy(true);
     const newStorageIds:string[]=[];
+    const finishImageImport=beginFigureCropImport();
     try {
       const prepared = await prepareImageAsset(file);
       if (documentRef.current !== target.document) throw new Error('取り込み中に作品が変更されたため、配置先を選んでやり直してください');
@@ -3749,7 +3764,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       if (newStorageIds.length) void deleteFigureCropAssets(newStorageIds).catch(() => undefined);
       setToast(error instanceof Error ? error.message : '画像を取り込めませんでした');
       if(explicitTarget)throw error;
-    } finally { setImageImportBusy(false); }
+    } finally { setImageImportBusy(false); finishImageImport(); }
   };
   const insertQwenImage = async(file:File,generationPlan?:QwenGenerationPlan) => {
     const target=qwenGeneration;

@@ -7,13 +7,16 @@ import { readFileSync } from 'node:fs';
 import { figureArtwork, setFigureArtwork, imageAssetIds, imageContents, changeImageCrop, createFrameArtwork, createImagePlacement, fitImageBox, imageSha256, resizeImageBox, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
-import { collectFigureCropAssetIds } from '../src/lib/figureCropStore.ts';
+import { beginFigureCropImport, collectFigureCropAssetIds, saveFigureCropAssets, loadFigureCropAsset, deleteFigureCropAssets, pruneFigureCropAssets, onFigureCropAssetsChanged } from '../src/lib/figureCropStore.ts';
 import { resizePanelToBounds, translatePanel, panelFigureAt, panelHasElementAt } from '../src/lib/canvasGeometry.ts';
 import { applyPanelTemplate, mergeSelectedPanels, splitPanel } from '../src/lib/panelTemplates.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
 import { insertGeneratedPaintImage, newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
 import { imageCrop } from '../src/lib/imagePlacement.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
+
+// 見込み: 配置・保存・履歴の参照先を保ち、取り込みの未確定画像だけ一時保護する。
+// 合格: 配置値と原本bytes、成功/中止後の実メモリストアを比較する。DOM・画像復号・ファイル選択は模擬。
 
 const sample = linkedTestDocument;
 const original = new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==', 'base64')], { type: 'image/png' });
@@ -139,7 +142,7 @@ function importHandler(context) {
     ts.forEachChild(node, visit);
   }
   visit(ast);
-  return runInNewContext(ts.transpileModule(`(${initializer.getText(ast)})`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {setShowOriginalArtwork() {}, ...context});
+  return runInNewContext(ts.transpileModule(`(${initializer.getText(ast)})`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {beginFigureCropImport, setShowOriginalArtwork() {}, ...context});
 }
 
 test('real import handler repairs a missing original with a fresh cache ID and respects current page selection', async () => {
@@ -165,6 +168,48 @@ test('real import handler repairs a missing original with a fresh cache ID and r
   assert.equal(doc.manga.image_assets[0].storageId, 'original');
   assert.equal(selections.length, 0);
   assert.match(notices[0], /読み込みました/);
+});
+
+// 見込み: 取込中の回収を止め、成功なら作品へ引き継ぎ、失敗/作品切替なら解放する。
+// 合格: 待機中のBlob保持と終了後の有無を実handler・storeで検査する。画像prepareと画面通知だけ模擬。
+test('import completion, failure and stale targets release pending protection without losing committed images', async () => {
+  for(const outcome of ['commit','failure','stale']){
+    const doc=await documentWithImage(),id=`original-inflight-${outcome}`,prepared={...doc.manga.image_assets[0],storageId:id};
+    doc.manga.image_assets=[];doc.manga.pages[0].images=[];
+    let proceed,started,cleanup;
+    const gate=new Promise(resolve=>proceed=resolve),entered=new Promise(resolve=>started=resolve);
+    const notices=[],context={
+      placedImageInput:{current:{value:''}},imageImportTarget:{current:{document:doc,pageIndex:0,panelIndex:0,scope:'page',box:{x:0,y:0,w:10,h:10}}},
+      documentRef:{current:doc},activePageRef:{current:0},activePanelRef:{current:0},lastHistoryPush:{current:0},setImageImportBusy(){},
+      prepareImageAsset:async()=>{await saveFigureCropAssets([{id,blob:original}]);started();await gate;if(outcome==='failure')throw Error('synthetic import failure');return prepared;},
+      loadFigureCropAsset,saveFigureCropAssets,deleteFigureCropAssets,cloneDocument:structuredClone,createFrameArtwork,createImagePlacement,
+      setDocument:next=>{context.documentRef.current=next;},setSelectedElement(){},setToast:value=>notices.push(value),Error,
+    };
+    const unsubscribe=onFigureCropAssetsChanged(()=>{cleanup=pruneFigureCropAssets(collectFigureCropAssetIds(context.documentRef.current));});
+    try{
+      const running=importHandler(context)(new File([original],'inflight.png',{type:original.type}));await entered;
+      assert.equal(await pruneFigureCropAssets([]),0);assert.equal(await loadFigureCropAsset(id),original);
+      if(outcome==='stale')context.documentRef.current=structuredClone(doc);
+      proceed();await running;await cleanup;
+      assert.equal(Boolean(await loadFigureCropAsset(id)),outcome==='commit',outcome);
+      if(outcome==='commit')assert.equal(context.documentRef.current.manga.pages[0].images.at(-1).assetId,prepared.id);
+      else assert.match(notices.at(-1),outcome==='failure'?/synthetic import failure/:/作品が変更/);
+    }finally{proceed();unsubscribe();await deleteFigureCropAssets([id]);}
+  }
+});
+
+// 見込み: 不要な復号画像を履歴用に抱え続けない。合格: commit後は未使用Imageのsrcと所有Setを解放し、使用中の画像を保持。範囲: 実PaintEditor関数、Imageは模擬。
+test('paint commit releases discarded decoded images from the ownership set', () => {
+  const source=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8'),ast=ts.createSourceFile('PaintEditor.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const editor=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='PaintEditor');
+  const code=editor.body.statements.filter(node=>ts.isFunctionDeclaration(node)&&['releaseImages','commit'].includes(node.name?.text)).map(node=>node.getText(ast)).join('\n');
+  const keep={src:'keep'},discard={src:'discard'},before={owners:[]},next={owners:[{key:'background',paint:{layers:[{image:{assetId:'keep'}}]}}]};
+  const ownedImages={current:new Set([keep,discard])},imagesRef={current:new Map([['keep',keep],['discard',discard]])},historyRef={current:{past:[],present:before}};
+  const context={ownedImages,imagesRef,historyRef,initial:before,ownerKey:'background',selection:null,sharedHistory:{checkpoint(){}},
+    snapshot:()=>({imports:[],stageImports:[]}),setImports(){},setStageImports(){},paintAssetIds:paint=>paint.layers.map(layer=>layer.image.assetId),
+    setHistory:update=>{historyRef.current=update(historyRef.current);},setImages(){},Map,Set,next};
+  runInNewContext(ts.transpileModule(code+'\ncommit(next);',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  assert.equal(discard.src,'');assert.equal(keep.src,'keep');assert.deepEqual([...ownedImages.current],[keep]);assert.deepEqual([...imagesRef.current.keys()],['keep']);
 });
 
 

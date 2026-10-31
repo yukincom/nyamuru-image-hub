@@ -1,3 +1,4 @@
+import { beginFigureCropImport } from '../src/lib/figureCropStore.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -36,7 +37,7 @@ function handler(name, context) {
   const js = ts.transpileModule(`(${initializer.getText(ast)})`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
   }).outputText;
-  return runInNewContext(js, { isLanClient: false, ...context });
+  return runInNewContext(js, { isLanClient: false, beginFigureCropImport, ...context });
 }
 
 function stateSetters(state, names) {

@@ -287,8 +287,8 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     setHistory(()=>({initial,past:sharedHistory?[]:[...h.past,h.present].slice(-historySteps),present:next,future:[]}));
     if(sharedHistory){const state=snapshot(next);setImports(state.imports);setStageImports(state.stageImports);
       const ids=new Set(next.owners.flatMap(o=>paintAssetIds(o.paint))),map=new Map(imagesRef.current??[]);
-      for(const [id,image] of map)if(!ids.has(id)){image.src='';map.delete(id);}
-      if(map.size!==imagesRef.current?.size){imagesRef.current=map;setImages(map);}
+      for(const id of map.keys())if(!ids.has(id))map.delete(id);
+      if(map.size!==imagesRef.current?.size){releaseImages(map);imagesRef.current=map;setImages(map);}
     }
   }
   function changeLayers(layers:PaintLayer[]){if(locked||busy||suspended||operation.current||inputActive.current)return;commit({...scene,owners:scene.owners.map(o=>o.key===owner.key?{...o,paint:{...o.paint,layers}}:o)});}

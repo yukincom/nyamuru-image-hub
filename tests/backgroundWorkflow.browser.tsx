@@ -4,8 +4,7 @@ import type {BackgroundCapture} from '../src/types';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {STORAGE_KEY,toStoredMangaYaml,parseMangaYaml} from '../src/lib/manga';
-import {paintAssetLease} from '../src/lib/paintAssetLease';
-import {loadFigureCropAsset,pruneFigureCropAssets} from '../src/lib/figureCropStore';
+import {beginFigureCropImport,saveFigureCropAssets,deleteFigureCropAssets,loadFigureCropAsset,pruneFigureCropAssets} from '../src/lib/figureCropStore';
 import {saveHistorySteps} from '../src/lib/historyPreferences';
 import '../src/styles/global.css';
 if(location.port!=='4325')throw Error('Dedicated test origin required');
@@ -47,16 +46,16 @@ async function redo(){await click('やり直す');await wait(()=>!document.query
 async function run(assetsOnly=false){
  const checks:string[]=[],check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);summary.textContent=`撮影と履歴 検証中（${checks.length}）${label}`;};
  render(null,document.getElementById('app')!);await tick();
- const leaseA=paintAssetLease(),leaseB=paintAssetLease();await Promise.all([leaseA.ready,leaseB.ready]);
- const assetA=leaseA.storageId(),assetB=leaseB.storageId();
+ // 見込み: 原画像も未参照なら回収し、取り込み中だけ保護する。合格: 途中0件・終了後は不要な1件だけ削除。範囲: 実ブラウザ内store、実ファイル取り込みはしない。
+ const finish=beginFigureCropImport(),assetA='original-'+crypto.randomUUID(),assetB='paint-'+crypto.randomUUID();
  try{
-  await leaseA.save([{id:assetA,blob:new Blob(['A'])}]);await leaseB.save([{id:assetB,blob:new Blob(['B'])}]);
-  await leaseA.prune(()=>[]);await leaseB.prune(()=>[assetB]);check(!!await loadFigureCropAsset(assetA),'別タブに相当する稼働中sessionの作画原本は回収しない');
-  await pruneFigureCropAssets([]);check(!!await loadFigureCropAsset(assetA),'一般的な画像整理でも稼働中の撮影を消さない');
-  leaseA.dispose();await tick();
-  check(await leaseB.prune(()=>null)===0&&!!await loadFigureCropAsset(assetA),'保存中の作品が不明な場合は終了sessionの原本も回収しない');
-  await leaseB.prune(()=>[assetB]);check(!await loadFigureCropAsset(assetA)&&!!await loadFigureCropAsset(assetB),'終了したsessionの未参照撮影だけ回収できる');
- }finally{leaseA.dispose();leaseB.dispose();}
+  await saveFigureCropAssets([{id:assetA,blob:new Blob(['A'])},{id:assetB,blob:new Blob(['B'])}]);
+  check(await pruneFigureCropAssets([])===0&&!!await loadFigureCropAsset(assetA),'取り込み中の公開前画像は回収しない');
+  finish();
+  check(await pruneFigureCropAssets([],()=>null)===0&&!!await loadFigureCropAsset(assetA),'参照先が未確定なら回収しない');
+  check(await pruneFigureCropAssets([assetB])===1&&!await loadFigureCropAsset(assetA)&&!!await loadFigureCropAsset(assetB),'終了後は参照のある画像だけ保持する');
+ }finally{finish();await deleteFigureCropAssets([assetA,assetB]);}
+
  if(assetsOnly)return checks;
  render(<App/>,document.getElementById('app')!);
  await wait(()=>!!button('ネーム'),'app ready');await click('ネーム');
