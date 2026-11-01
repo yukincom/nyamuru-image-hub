@@ -1,5 +1,5 @@
 import type { AnalogTextImport, BBox } from '../types.ts';
-import { cropPixelBounds } from './analogFigureCrops.ts';
+import { analogCropPng, cropPixelBounds } from './analogFigureCrops.ts';
 import type { FigureCropAsset } from './figureCropStore.ts';
 import { groupRecognizedTextLines, recognizedTextOwnerKey, type RecognizedTextLine } from './localBridge.ts';
 
@@ -121,14 +121,7 @@ function levelCorrect(canvas: HTMLCanvasElement): void {
   context.putImageData(image, 0, 0);
 }
 
-function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => canvas.toBlob(
-    (blob) => blob ? resolve(blob) : reject(new Error('原字参照画像を作成できませんでした')),
-    'image/png',
-  ));
-}
-
-/** RT-DETRの文字領域を正確な位置のまま切り出し、レベル補正だけを適用する。 */
+/** 原寸で文字領域を切り抜いてレベル補正し、保存用PNGを作る。 */
 export async function prepareDetectedTextCrops(
   file: File,
   rotation: 0 | 90 | 180 | 270,
@@ -169,7 +162,10 @@ export async function prepareDetectedTextCrops(
           levelAdjusted: true,
           referenceHidden: true,
         },
-        asset: { id: assetId, blob: await canvasBlob(crop) },
+        asset: {
+          id: assetId,
+          blob: await analogCropPng(crop, { x: 0, y: 0, w: crop.width, h: crop.height }, '原字参照'),
+        },
       });
       crop.width = 1;
       crop.height = 1;

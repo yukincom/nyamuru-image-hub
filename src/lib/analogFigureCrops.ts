@@ -73,11 +73,27 @@ function uprightCanvas(image: DecodedImage, rotation: 0 | 90 | 180 | 270): HTMLC
   return canvas;
 }
 
-function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => canvas.toBlob(
-    (blob) => blob ? resolve(blob) : reject(new Error('人物切り抜き画像を作成できませんでした')),
-    'image/png',
-  ));
+/** ネームの保存用PNGは縦横60%。人物の読み取り用は原寸を指定する。 */
+export async function analogCropPng(
+  source: HTMLCanvasElement,
+  bounds: BBox,
+  label: '人物切り抜き' | '原字参照',
+  scale = 0.6,
+): Promise<Blob> {
+  const crop = document.createElement('canvas');
+  crop.width = Math.max(1, Math.round(bounds.w * scale));
+  crop.height = Math.max(1, Math.round(bounds.h * scale));
+  const context = crop.getContext('2d');
+  if (!context) throw new Error(`${label}用の画像処理を開始できませんでした`);
+  context.drawImage(source, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, crop.width, crop.height);
+  try {
+    return await new Promise<Blob>((resolve, reject) => crop.toBlob(
+      blob => blob ? resolve(blob) : reject(new Error(`${label}画像を作成できませんでした`)),
+      'image/png',
+    ));
+  } finally {
+    crop.width = crop.height = 1;
+  }
 }
 
 export function detectedFigureImport(sourceItemId: string, region: DetectedFigureRegion): AnalogFigureImport {
@@ -106,20 +122,11 @@ export async function* detectedFigureCrops(
     upright = page;
     for (const region of regions) {
       const bounds = cropPixelBounds(region.bbox, page.width, page.height);
-      const png = async (scale: number) => {
-        const crop = document.createElement('canvas');
-        crop.width = Math.max(1, Math.round(bounds.w * scale));
-        crop.height = Math.max(1, Math.round(bounds.h * scale));
-        const context = crop.getContext('2d');
-        if (!context) throw new Error('人物切り抜き用の画像処理を開始できませんでした');
-        context.drawImage(page, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, crop.width, crop.height);
-        try {
-          return await canvasBlob(crop);
-        } finally {
-          crop.width = crop.height = 1;
-        }
+      yield {
+        regionId: region.id,
+        original: () => analogCropPng(page, bounds, '人物切り抜き', 1),
+        forStorage: () => analogCropPng(page, bounds, '人物切り抜き'),
       };
-      yield { regionId: region.id, original: () => png(1), forStorage: () => png(0.6) };
     }
   } finally {
     if (upright) {
