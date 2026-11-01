@@ -41,7 +41,7 @@ async function run(){
    if(path==='/api/comfy-workflows/list')return Response.json({...common,workflows:[{id:QWEN_FIGURE_WORKFLOW,name:'nyamuru_qwen_turbo_3images',version:1,graph,binding}]});
    if(path==='/api/human-pose/catalog')return Response.json({...common,...fixture.catalog});
    if(path==='/api/human-pose/scene')return Response.json({...common,...fixture.scene});
-   if(path==='/api/qwen-generation/prepare'){submitted=body;return Response.json({error:'送信内容の確認まで'},{status:400});}
+   if(path==='/api/qwen-generation/prepare'){submitted=body;return Response.json({error:'モデル解放確認拡張がありません'},{status:400});}
    throw Error('検証対象外: '+path);
  };
  function Room(){const [conversation,setConversation]=useState<QwenGenerationConversation|null>(null),[host,setHost]=useState<HTMLElement|null>(null);
@@ -68,6 +68,10 @@ async function run(){
  const req=await wait(()=>submitted,'送信内容');
  if(req.prompt!=='positive test'||req.negative_prompt!=='negative test'||req.workflow_id!==QWEN_FIGURE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
  if(JSON.stringify(req.references.map((x:{image:string})=>x.image))!==JSON.stringify([addr(first),addr(second),addr(third)]))throw Error('送信画像の役割');
- report.textContent='PASS：人物のネーム・優先設定画の自動表示、会話入力、3D編集・撮影、正負と3画像の送信順';
+ // 見込み: 準備で拒否されれば生成は未送信。合格: 再実行可・照合ボタンなし・原因だけを表示。HTTPは模擬。
+ await wait(()=>button('5枚を生成する')&&document.querySelector('.qwen-generation-dialog [role=alert]'),'準備失敗後の再試行');
+ const alert=document.querySelector('.qwen-generation-dialog [role=alert]')!.textContent;
+ if(!alert?.includes('モデル解放確認拡張')||alert.includes('送信済み')||button('生成状況を確認'))throw Error('送信前に受付済みと誤表示');
+ report.textContent='PASS：人物3画像の順序、3D撮影、正負入力、送信前のエラーと再試行';
 }
 void run().catch(error=>{report.textContent='FAIL：'+String(error);});

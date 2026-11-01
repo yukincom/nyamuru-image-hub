@@ -259,7 +259,12 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     generatedTarget.current={jobId:id,plan:target};
     submitted.current=false;
     return executeQwenGeneration({id,payload:workflowPayload,plan:target,isCurrent,
-      prepare:(id,payload)=>{attempted.current=id;setAttempt(id);return prepareQwenJob(id,payload);},
+      prepare:async(id,payload)=>{
+        const prepared=await prepareQwenJob(id,payload);
+        attempted.current=id;
+        if(alive.current)setAttempt(id);
+        return prepared;
+      },
       submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
       onJob:current=>{if(alive.current)setJob(current);},
       ...(autoInsert?{insert:insertResult}:{}),
@@ -412,7 +417,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
       {!cloud&&attempt&&job&&['queued','running','outcome_unknown'].includes(job.status)&&<button onClick={()=>void cancelQwenJob(attempt).then(result=>{if(alive.current){setJob(result);setNotice('取消しを要求しました。実行状況とモデル解放を確認しています');}}).catch(cause=>{if(alive.current)setError(String(cause));})}>この生成を取り消す</button>}
       {notice&&<p role="status">{notice}</p>}
       {attempt&&!busy&&!job&&canPrepareNewGeneration&&<button onClick={prepareNewGeneration}>新しい生成を準備</button>}
-      {error&&<p role="alert">{error}{attempt?' 送信済みの可能性があるため、生成状況を確認してください。':''}</p>}
+      {error&&<p role="alert">{error}{attempt&&((submitted.current&&!job)||job?.status==='outcome_unknown')?' 送信済みの可能性があるため、生成状況を確認してください。':''}</p>}
       {job&&<section class="qwen-result" aria-live="polite"><strong>{statusLabel[job.status]}</strong>{job.error&&<p>{job.error}</p>}
         {job.workflowName&&<p>{job.workflowName} · 版{job.workflowVersion} · {job.width} × {job.height} px</p>}
         {job.generationPrompt&&<details><summary>送信した指示とシード</summary><pre style={{whiteSpace:'pre-wrap'}}>{job.generationPrompt}</pre><p>{job.candidateSeeds?.join(', ')}</p></details>}
