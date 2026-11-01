@@ -126,7 +126,7 @@ def validate_definition(body):
         if fixed is not None:
             raise ValueError('寸法の受け渡し先と固定寸法は同時に指定できません')
     elif binding['prompt_mode'] == 'qwen-three-images' and fixed is None:
-        pass  # The panel-sized image3 drives both the native latent and the final crop.
+        pass  # The panel-sized pose drives both the native latent and the final crop.
     elif not isinstance(fixed, list) or len(fixed) != 2:
         raise ValueError('寸法の受け渡し先がない場合はfixed_sizeに幅と高さを指定してください')
     else:
@@ -385,7 +385,10 @@ def install_qwen_defaults(store):
             return
         # Update only the exact shipped graph; keep user edits, renames and deleted presets.
         previous = {key: current[key] for key in ('graph', 'binding')}
-        if hashlib.sha256(canonical(previous)).hexdigest() == 'fe427df378bb686284604ad997cb39a87490f85ea13990b2047e4db8e1310596':
+        if hashlib.sha256(canonical(previous)).hexdigest() in {
+            'fe427df378bb686284604ad997cb39a87490f85ea13990b2047e4db8e1310596',
+            'b883dbec6548fef076e23cb0bb911837f7dd88fcef44e59a2da8095bf863729f',
+        }:
             store.save({**figure, 'name': current['name'], 'id': current['id'], 'expected_version': current['version']})
         return
     store.save(figure, initial_id=QWEN_FIGURE_ID)

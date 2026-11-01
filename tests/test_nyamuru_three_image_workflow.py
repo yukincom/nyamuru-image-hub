@@ -23,12 +23,19 @@ from PIL import Image
 
 EXAMPLES = ROOT / 'examples' / 'comfyui'
 NAME = 'nyamuru_qwen_turbo_3images'
-POSITIVE = ('Black-and-white manga.\n'
+PREVIOUS_POSITIVE = ('Black-and-white manga.\n'
             'Facial expression and emotional nuance from <image1>.\n'
             'Character design and drawing style from <image2>.\n'
             'Detailed body pose, including hand and limb positions, from <image3>.')
-NEGATIVE = ('text, speech bubbles, panel borders, background scenery, extra people, collage, '
+PREVIOUS_NEGATIVE = ('text, speech bubbles, panel borders, background scenery, extra people, collage, '
             'multiple views, 3D mannequin, skeleton guides, joint markers, signature, watermark')
+
+POSITIVE = """Redraw <image1> into a 2D manga character isolated on a flat, uniform solid chroma green (#00FF00, RGB 0, 255, 0) background.
+Completely replace the light gray background of <image1> with solid bright chroma green (#00FF00) right up to the character's outer black outline.
+Completely replace the bald 3D mannequin head and jointed plastic body with the character from <image2>, while keeping the exact camera angle, framing, body position, chest/shoulder orientation, and head turn angle from <image1>.
+Draw a single character matching <image2>. Do not reproduce the reference sheet layout.
+Use the sketch in <image3> for the facial expression and emotional nuance. Apply the inking and pen touch of <image2> to the character only."""
+NEGATIVE = 'white background, gray background, off-white background, gradient background, green skin, green tint on character, 3D render, CGI, bald head, mannequin, doll joints, spherical shoulders, gray 3D shading, soft shading, screentone dots, halftone, pencil sketch lines, blank white eyes, multiple views, character sheet, text, speech bubbles, panel borders, background scenery, shadows on background'
 
 
 def read_definition():
@@ -75,7 +82,7 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             old['graph'] = json.loads((EXAMPLES/'qwen-turbo-3-refs.api.json').read_text())
             old['binding'] = json.loads((EXAMPLES/'qwen-turbo-3-refs.binding.json').read_text())
             old['binding']['prompt_mode'] = 'qwen-three-images'
-            old['graph']['6']['inputs'].update(prompt=POSITIVE,negative_prompt=NEGATIVE)
+            old['graph']['6']['inputs'].update(prompt=PREVIOUS_POSITIVE,negative_prompt=PREVIOUS_NEGATIVE)
             old['graph']['10']['inputs']['cfg'] = 2
             old['name'] = '作品の設定'
             store.save(old,initial_id=QWEN_FIGURE_ID)
@@ -89,6 +96,29 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             store.delete(QWEN_FIGURE_ID,2)
             install_qwen_defaults(store)
             self.assertEqual(store.list(),[])
+
+    # 見込み: 原寸の旧同梱グラフも更新でき、編集済みの登録を区別できる。
+    # 合格: 同梱グラフだけを差し替え、個別変更済みなら保存版と内容が一致する。一時ストアで確認。
+    def test_native_sketch_first_preset_migrates_only_when_unmodified(self):
+        old = read_definition()
+        graph = old['graph']
+        graph['6']['inputs'].update(prompt=PREVIOUS_POSITIVE+'\nUniform solid #00FF00 background.',
+                                    negative_prompt=PREVIOUS_NEGATIVE)
+        graph['41']['inputs'] = {'image':['21',0], 'alpha':['21',1]}
+        for node,source in [('31','41'),('33','23'),('34','23'),('35','33')]:
+            graph[node]['inputs']['image'] = [source,0]
+        with tempfile.TemporaryDirectory() as tmp:
+            store = WorkflowStore(Path(tmp).resolve())
+            previous = store.save(old,initial_id=QWEN_FIGURE_ID)
+            (Path(tmp)/'.bundled-qwen-1').touch()
+            install_qwen_defaults(store)
+            updated = store.get(QWEN_FIGURE_ID)
+            self.assertEqual(updated['graph'], read_definition()['graph'])
+            self.assertEqual(updated['version'], previous['version']+1)
+            graph['6']['inputs']['prompt'] += '\nMy character.'
+            custom = store.save({**old, 'id':QWEN_FIGURE_ID, 'expected_version':updated['version']})
+            install_qwen_defaults(store)
+            self.assertEqual(store.get(QWEN_FIGURE_ID), custom)
 
     # 見込み: DesktopとAPIが同じ接続なら、原寸ポーズが出力を決定し、負の指示もCFG2で効く。
     # 合格: UIリンクをたどりAPI全リンクと照合、参照の余白・原寸クロップ・正負とCFGを確認。範囲: 配布する両グラフ、推論なし。
@@ -112,12 +142,16 @@ class ThreeImageWorkflowTests(unittest.TestCase):
         self.assertEqual(graph['10']['inputs']['cfg'], 2)
         self.assertEqual(graph['12']['inputs']['images'], ['38',0])
         self.assertEqual(graph['38']['inputs']['width'], ['34',0])
-        self.assertEqual(graph['34']['inputs']['image'], ['23',0])
+        self.assertEqual(graph['34']['inputs']['image'], ['21',0])
+        self.assertEqual(graph['35']['inputs']['image'], ['31',0])
+        self.assertEqual(graph['31']['inputs']['image'], ['21',0])
+        self.assertEqual(graph['33']['inputs']['image'], ['41',0])
+        self.assertEqual(graph['41']['inputs'], {'image':['23',0], 'alpha':['23',1]})
 
     # 見込み: 3資料を共用しseedのみを変えれば、選択まで無加工の5候補を保持できる。
     # 合格: 編集したnegativeと固定positiveが別入力へ届き、upload3回、5グラフの差はseedのみ、選んだ3番の背景は透明・中央色は3番・318×159。範囲: 模擬APIと実PNG、実推論を除く。
     def test_five_seeds_and_exact_selected_png(self):
-        raw_images = [png('red',(359,450)), png('green',(2101,123)), png('blue',(318,159))]
+        raw_images = [png('blue',(318,159)), png('green',(2101,123)), png('red',(359,450))]
         api = Mock(endpoint='http://127.0.0.1:8188')
         api.upload_image.side_effect = lambda _raw, name: 'input/' + name
         api.submit.side_effect = lambda _graph, correlation: correlation
@@ -133,10 +167,13 @@ class ThreeImageWorkflowTests(unittest.TestCase):
                 'label': '人物名は生成文に追加しない', 'mode': 'new', 'width': 318, 'height': 159, 'dpi':600, 'clip_polygon':[[0,0],[1,0],[0,1]],
                 'prompt': POSITIVE, 'character_keys': ['character-1'],
                 'references': [
-                    {'label': 'ネームの表情', 'character_keys': [], 'image': data_url(raw_images[0])},
+                    {'label': '3Dの詳細ポーズ', 'character_keys': [], 'image': data_url(raw_images[0])},
                     {'label': '人物設定画', 'character_keys': ['character-1'], 'image': data_url(raw_images[1])},
-                    {'label': '3Dの詳細ポーズ', 'character_keys': [], 'image': data_url(raw_images[2])}],
+                    {'label': 'ネームの表情', 'character_keys': [], 'image': data_url(raw_images[2])}],
                 'negative_prompt': 'test exclusions', 'workflow_id': definition['id'], 'workflow_version': definition['version']}
+            # The original aspect of the sketch is valid in slot 3 but cannot define the canvas.
+            with self.assertRaisesRegex(ValueError, 'image1'):
+                service.normalize_request({**request, 'references': list(reversed(request['references']))})
             translate = Mock(side_effect=AssertionError('固定英文で翻訳を呼ばない'))
             job_id = request['job_id']
             with patch.object(service, 'preflight'):
@@ -145,6 +182,10 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             final_prompt = POSITIVE + '\nUniform solid #00FF00 background.'
             self.assertEqual(prepared['generation_prompt'], final_prompt)
             self.assertEqual(preview(request, service)['generation_prompt'], final_prompt)
+            blue = preview({**request, 'chroma_key_color':'#0000FF'},service)['generation_prompt']
+            self.assertIn('chroma blue (#0000FF, RGB 0, 0, 255)',blue)
+            self.assertIn('bright chroma blue (#0000FF)',blue)
+            self.assertNotIn('#00FF00',blue)
             value = service.load(job_id)
             self.assertEqual(value['output_size'], [318, 159])
             self.assertEqual(value['settings']['transparency_mode'], 'chroma-key-v1')

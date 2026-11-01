@@ -48,8 +48,8 @@
         "4",
         0
       ],
-      "prompt": "Black-and-white manga.\nFacial expression and emotional nuance from <image1>.\nCharacter design and drawing style from <image2>.\nDetailed body pose, including hand and limb positions, from <image3>.\nUniform solid #00FF00 background.",
-      "negative_prompt": "text, speech bubbles, panel borders, background scenery, extra people, collage, multiple views, 3D mannequin, skeleton guides, joint markers, signature, watermark",
+      "prompt": "Redraw <image1> into a 2D manga character isolated on a flat, uniform solid chroma green (#00FF00, RGB 0, 255, 0) background.\nCompletely replace the light gray background of <image1> with solid bright chroma green (#00FF00) right up to the character's outer black outline.\nCompletely replace the bald 3D mannequin head and jointed plastic body with the character from <image2>, while keeping the exact camera angle, framing, body position, chest/shoulder orientation, and head turn angle from <image1>.\nDraw a single character matching <image2>. Do not reproduce the reference sheet layout.\nUse the sketch in <image3> for the facial expression and emotional nuance. Apply the inking and pen touch of <image2> to the character only.\nUniform solid #00FF00 background.",
+      "negative_prompt": "white background, gray background, off-white background, gradient background, green skin, green tint on character, 3D render, CGI, bald head, mannequin, doll joints, spherical shoulders, gray 3D shading, soft shading, screentone dots, halftone, pencil sketch lines, blank white eyes, multiple views, character sheet, text, speech bubbles, panel borders, background scenery, shadows on background",
       "vae": [
         "5",
         0
@@ -173,11 +173,11 @@
     "class_type": "JoinImageWithAlpha",
     "inputs": {
       "image": [
-        "21",
+        "23",
         0
       ],
       "alpha": [
-        "21",
+        "23",
         1
       ]
     }
@@ -186,7 +186,7 @@
     "class_type": "PadImageNode",
     "inputs": {
       "image": [
-        "41",
+        "21",
         0
       ],
       "padding_type": "pad to multiple",
@@ -223,7 +223,7 @@
     "class_type": "PadImageNode",
     "inputs": {
       "image": [
-        "23",
+        "41",
         0
       ],
       "padding_type": "pad to multiple",
@@ -235,7 +235,7 @@
     "class_type": "GetImageSize",
     "inputs": {
       "image": [
-        "23",
+        "21",
         0
       ]
     }
@@ -244,7 +244,7 @@
     "class_type": "GetImageSize",
     "inputs": {
       "image": [
-        "33",
+        "31",
         0
       ]
     }

@@ -283,6 +283,12 @@ def direct_workflow_prompt(value):
     if three_image_workflow(value):
         color = value['settings']['chroma_key']['color']
         base = re.sub(r'\nUniform solid #(00FF00|0000FF|FF00FF) background\.$', '', value['prompt'])
+        if color != '#00FF00':
+            name, rgb = {'#0000FF': ('blue', '0, 0, 255'), '#FF00FF': ('magenta', '255, 0, 255')}[color]
+            base = base.replace('solid chroma green (#00FF00, RGB 0, 255, 0) background.',
+                                f'solid chroma {name} ({color}, RGB {rgb}) background.')
+            base = base.replace('with solid bright chroma green (#00FF00) right up',
+                                f'with solid bright chroma {name} ({color}) right up')
         return base + f'\nUniform solid {color} background.'
     return value['prompt']
 
@@ -618,17 +624,17 @@ class QwenGenerationService:
             if not value['owner_key'].startswith('figure-') or value['mode'] != 'new' or len(value['character_keys']) != 1 or [
                 ref['role'] for ref in value['references']
             ] != ['style', 'identity', 'style']:
-                raise ValueError('人物3枚参照には、ネーム・人物設定画1枚・3Dポーズを順に指定してください')
+                raise ValueError('人物3枚参照には、3Dポーズ・人物設定画1枚・ネームを順に指定してください')
             dpi = body.get('dpi')
             if isinstance(dpi, bool) or not isinstance(dpi, (float,int)) or not math.isfinite(dpi) or not 1 <= dpi <= 10000:
                 raise ValueError('原稿のdpiを指定してください')
             value['dpi'] = dpi
             from PIL import Image
             import io
-            with Image.open(io.BytesIO(images[value['references'][2]['file']])) as pose:
+            with Image.open(io.BytesIO(images[value['references'][0]['file']])) as pose:
                 has_alpha = 'A' in pose.getbands() or 'transparency' in pose.info
                 if pose.size != tuple(value['output_size']) or (has_alpha and pose.convert('RGBA').getchannel('A').getextrema()[0] != 255):
-                    raise ValueError('image3は原稿と同じ寸法の不透明なプレビューを指定してください')
+                    raise ValueError('image1は原稿と同じ寸法の不透明な3Dプレビューを指定してください')
             polygon = body.get('clip_polygon')
             if polygon is not None:
                 if not isinstance(polygon,list) or not 3 <= len(polygon) <= 1024 or any(
