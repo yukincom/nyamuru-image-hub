@@ -1,4 +1,4 @@
-// 見込み: 人物を開くだけで、その人物の原画と優先設定画がimage1/2になり、image3で3Dを確定できる。
+// 見込み: 人物を開くだけで、その人物の原画と優先設定画がimage3/2になり、image1で3Dを確定できる。
 // 合格: 異なる2色の自動プレビュー、確定後の撮影、正負の独立編集と送信3枚の画素・順序。実UI/3D素材、HTTPは模擬。実推論なし。
 import {render} from 'preact';
 import {useState} from 'preact/hooks';
@@ -51,24 +51,24 @@ async function run(){
  const wait=async<T,>(check:()=>T|null|undefined|false,label:string)=>{for(let i=0;i<300;i++){const result=check();if(result)return result;await new Promise(r=>setTimeout(r,50));}throw Error(label+' / '+(document.querySelector('[role=alert]')?.textContent||''));};
  const img=(n:number)=>document.querySelector<HTMLImageElement>(`img[alt^="image${n} "]`);
  const button=(label:string)=>Array.from(document.querySelectorAll('button')).find(b=>b.textContent?.trim()===label&&!b.disabled);
- const first=await wait(()=>img(1),'image1'),second=await wait(()=>img(2),'image2');
+ const third=await wait(()=>img(3),'image3'),second=await wait(()=>img(2),'image2');
  const addr=(image:HTMLImageElement)=>image.getAttribute('src');
  const color=async(image:HTMLImageElement)=>{await image.decode();const c=document.createElement('canvas');const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);return Array.from(ctx.getImageData(0,0,1,1).data).join(',');};
- if(await color(first)!=='255,0,0,255'||await color(second)!=='0,0,255,255')throw Error('人物の原画と優先資料の取り違え');
+ if(await color(third)!=='255,0,0,255'||await color(second)!=='0,0,255,255')throw Error('人物の原画と優先資料の取り違え');
  if(!document.querySelector('.agent-popup.is-generation textarea')||document.querySelector('.agent-popup input[type=file],.agent-popup select'))throw Error('会話の入力欄');
  const legends=Array.from(document.querySelectorAll('legend')).map(e=>e.textContent?.slice(0,6)).filter(x=>x?.startsWith('image'));
  if(legends.join()!=='image1,image2,image3')throw Error('表示の順序');
- report.textContent='image1・image2 自動表示、会話欄、表示順 OK';
+ report.textContent='image3・image2 自動表示、会話欄、表示順 OK';
  (await wait(()=>button('3D編集'),'3D編集の入口')).click();
  (await wait(()=>button('撮影プレビュー'),'3D編集を開く')).click();
- const preview=await wait(()=>document.querySelector<HTMLImageElement>('img[alt="image3の撮影プレビュー"]'),'不透明なプレビュー');
+ const preview=await wait(()=>document.querySelector<HTMLImageElement>('img[alt="image1の撮影プレビュー"]'),'不透明なプレビュー');
  await preview.decode();
  const previewPng=addr(preview);
  (await wait(()=>button('確定'),'撮影を確定')).click();
- const third=await wait(()=>img(3),'image3の3D撮影');
- await third.decode();await second.decode();
- if(addr(third)!==previewPng||second.naturalWidth!==2101||first.naturalWidth!==64)throw Error('プレビュー実体または原寸が変化');
- if(third.naturalWidth!==plan.threeImageTarget!.width||third.naturalHeight!==plan.threeImageTarget!.height||!(await color(third)).endsWith(',255'))throw Error('不透明な原稿寸法のimage3');
+ const first=await wait(()=>img(1),'image1の3D撮影');
+ await first.decode();await second.decode();
+ if(addr(first)!==previewPng||second.naturalWidth!==2101||third.naturalWidth!==64)throw Error('プレビュー実体または原寸が変化');
+ if(first.naturalWidth!==plan.threeImageTarget!.width||first.naturalHeight!==plan.threeImageTarget!.height||!(await color(first)).endsWith(',255'))throw Error('不透明な原稿寸法のimage1');
  const edit=(label:string,value:string)=>{const input=Array.from(document.querySelectorAll('.qwen-prompt')).find(item=>item.textContent?.startsWith(label))?.querySelector('textarea');if(!input)throw Error(label);input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));};
  edit('ポジティブ','positive test');edit('ネガティブ','negative test');
  (await wait(()=>button('5枚を生成する'),'生成ボタン')).click();

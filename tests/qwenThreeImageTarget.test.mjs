@@ -34,12 +34,13 @@ test('panel and manuscript DPI win over the figure mask and layer DPI', () => {
 });
 
 import {readFileSync} from 'node:fs';
-import {buildQwenGenerationPlan,qwenPlanForWorkflow,qwenGenerationPayload} from '../src/lib/qwenGeneration.ts';
+import {buildQwenGenerationPlan,figureBackgroundPrompt,qwenPlanForWorkflow,qwenGenerationPayload} from '../src/lib/qwenGeneration.ts';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
+import {setWorkStylePrompt} from '../src/lib/artworkRules.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
 
 // 見込み: 人物IDで登録設定を引けば、同名の別人や未確認の特徴を混ぜずに生成できる。
-// 合格: 3枚参照の初期文に登録した外見だけが入り、編集結果とネームが送信値に残る。計画と要求を検査し、画像推論はしない。
+// 合格: 3枚参照の初期文に登録した外見・今回の演技・作品の画風が入り、設定を変えると新しい文面だけが残る。編集後の送信値とネームも検査。実推論なし。
 test('three-image positive defaults use only the linked character’s saved appearance',()=>{
   const {manga}=createEmptyWorkspaceDocument();
   manga.characters=[{localId:'other',name:'人物',visual_prompt:'別人の衣装'},
@@ -47,8 +48,8 @@ test('three-image positive defaults use only the linked character’s saved appe
       hair:{observed:['前髪あり'],inferred:['推測の髪色']},accessories:{observed:['黒いリボン','前髪あり'],inferred:[]},
       ambiguous_design:{observed:['形不明'],inferred:[]}}}];
   const p={id:1,shape:{type:'rect',x:0,y:0,w:40,h:50},bg:0,bubbles:[],
-    figures:[{refId:'who',name:'人物',bbox:{x:2,y:2,w:20,h:30}}]};
-  manga.pages[0].panels=[p];
+    figures:[{refId:'who',name:'人物',action:'A tired smile.',bbox:{x:2,y:2,w:20,h:30}}]};
+  manga.pages[0].panels=[p];setWorkStylePrompt(manga,'Fine pen lines.');
   const who=paintScene(p,144,[]).owners.find(o=>o.key==='figure-0');
   const build=()=>buildQwenGenerationPlan(manga,0,0,false,who);
   const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/nyamuru_qwen_turbo_3images.'+ext+'.json',import.meta.url)));
@@ -58,17 +59,26 @@ test('three-image positive defaults use only the linked character’s saved appe
     assert.match(text,/細い眉/);assert.match(text,/黒いリボン/);assert.equal(text.split('前髪あり').length,2);
     assert.doesNotMatch(text,/別人の衣装|推測の髪色|形不明/);
   }
+  assert.match(plan.prompt,/Expression and acting \(from <image3>\):\nA tired smile\./);
+  assert.match(plan.prompt,/Character Inking & Pen Touch[\s\S]*Fine pen lines\./);
+  setWorkStylePrompt(manga,'Dry brush strokes.');p.figures[0].action='Eyes wide open.';
+  const revised=qwenPlanForWorkflow(build(),flow).prompt;
+  assert.match(revised,/Dry brush strokes\./);assert.match(revised,/Eyes wide open\./);
+  assert.doesNotMatch(revised,/Fine pen lines|A tired smile/);
+  const blue=figureBackgroundPrompt(plan.prompt,'#0000FF');
+  assert.match(blue,/chroma blue \(#0000FF, RGB 0, 0, 255\)/);assert.doesNotMatch(blue,/#00FF00/);
+  assert.equal(figureBackgroundPrompt(blue,'#00FF00'),plan.prompt);
   const ref={image:'identity',characterKeys:['who'],label:'設定'};
   const send=prompt=>qwenGenerationPayload({...plan,prompt},[ref],'storyboard',undefined,undefined,'pose');
   assert.equal(send(plan.prompt).prompt,plan.prompt);
   assert.equal(send('今回だけの指示').prompt,'今回だけの指示');
-  assert.deepEqual(send(plan.prompt).references.map(r=>r.image),['storyboard','identity','pose']);
+  assert.deepEqual(send(plan.prompt).references.map(r=>r.image),['pose','identity','storyboard']);
   delete manga.characters[1].recognition;delete manga.characters[1].visual_prompt;
-  assert.doesNotMatch(qwenPlanForWorkflow(build(),flow).prompt,/人物設定の特徴|人物のビジュアル指定|黒いリボン/);
+  assert.doesNotMatch(qwenPlanForWorkflow(build(),flow).prompt,/Character & Design|Observed features|黒いリボン/);
 });
 
 // 見込み: 3枚専用の登録だけに役割と寸法を適用すれば、ネームの比率・人物名・一般向け生成指示は混ざらない。
-// 合格: 3スロットが表情/設定/ポーズ順、元のカメラを保持、指定寸法と登録英文が一致。不足・役割誤りは拒否。範囲: UI直下の実送信値、画像は識別用文字列。
+// 合格: 3スロットがポーズ/設定/表情順、元のカメラを保持、指定寸法と登録英文が一致。不足・役割誤りは拒否。範囲: UI直下の実送信値、画像は識別用文字列。
 test('only the dedicated workflow sends the sketch as expression reference at panel dimensions',()=>{
   const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/nyamuru_qwen_turbo_3images.'+ext+'.json',import.meta.url)));
   const workflow={graph:example('api'),binding:example('binding')},mask={x:10,y:25,w:50,h:20};
@@ -82,7 +92,7 @@ test('only the dedicated workflow sends the sketch as expression reference at pa
   const payload=qwenGenerationPayload(plan,[ref],'expression',undefined,undefined,'pose');
   assert.deepEqual([payload.width,payload.height,payload.candidate_count,payload.mode,payload.dpi],[300,400,5,'new',254]);
   assert.equal(payload.prompt+'\nUniform solid #00FF00 background.',workflow.graph['6'].inputs.prompt);assert.ok(!('sketch_image' in payload));
-  assert.deepEqual(payload.references.map(r=>[r.image,r.character_keys]),[['expression',[]],['identity',['id']],['pose',[]]]);
+  assert.deepEqual(payload.references.map(r=>[r.image,r.character_keys]),[['pose',[]],['identity',['id']],['expression',[]]]);
   assert.throws(()=>qwenGenerationPayload(plan,[ref],undefined,'expression',undefined,'pose'),/ネーム/);
   assert.throws(()=>qwenGenerationPayload(plan,[ref,ref],'expression',undefined,undefined,'pose'),/設定画1枚/);
   assert.throws(()=>qwenGenerationPayload(plan,[ref],'expression',undefined,undefined,undefined),/3D/);

@@ -366,7 +366,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
           </fieldset>}
           {panelContext && <><label><input type="checkbox" checked={showCompanions} onChange={event => setShowCompanions(event.currentTarget.checked)} />相方を仮表示</label>
             {showCompanions && <p class="field-note">相方は現在の配置で仮表示しています。人物単品の撮影・生成には含めず、コマ・ページの生成では一緒に送ります。</p>}</>}
-          {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewSize?'image3の撮影プレビュー':previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewSize?'image3':previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
+          {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewSize?'image1の撮影プレビュー':previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewSize?'image1':previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
         </div>
         <aside aria-label="配置・撮影設定">
           <fieldset class="human-pose-presets" disabled={loading || backgroundBusy}><legend>登録ポーズ</legend>
