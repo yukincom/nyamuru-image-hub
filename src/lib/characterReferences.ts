@@ -62,17 +62,28 @@ function imageElement(file: File): Promise<HTMLImageElement> {
   });
 }
 
+export const CHARACTER_REFERENCE_LONG_EDGE = 351;
+export const CHARACTER_REFERENCE_SHORT_EDGE = 248;
+
+export function checkCharacterReferenceSize(width: number, height: number): void {
+  if (width < 1 || height < 1) throw new Error('設定画の寸法を確認できません');
+  const maxWidth = width >= height ? CHARACTER_REFERENCE_LONG_EDGE : CHARACTER_REFERENCE_SHORT_EDGE;
+  const maxHeight = width >= height ? CHARACTER_REFERENCE_SHORT_EDGE : CHARACTER_REFERENCE_LONG_EDGE;
+  if (width <= maxWidth && height <= maxHeight) return;
+  const scale = Math.min(maxWidth / width, maxHeight / height);
+  const targetWidth = Math.max(1, Math.round(width * scale));
+  const targetHeight = Math.max(1, Math.round(height * scale));
+  throw new Error(`設定画は ${width} × ${height} px です（上限 ${maxWidth} × ${maxHeight} px）。推奨寸法 ${targetWidth} × ${targetHeight} px に縮小して選び直してください。`);
+}
+
 /** bridgeへ保存する前にブラウザ内でPNGへ統一する。画像選択だけではVLMへ送らない。 */
 export async function imageFileToPng(file: File): Promise<Blob> {
   if (!file.type.startsWith('image/') && !/\.(?:png|jpe?g|webp|gif|bmp)$/iu.test(file.name)) {
     throw new Error(`${file.name}は画像として読み込めません`);
   }
   const image = await imageElement(file);
-  const longest = Math.max(image.naturalWidth, image.naturalHeight);
-  if (!longest) throw new Error(`${file.name}の寸法を確認できません`);
-  const scale = Math.min(1, 4096 / longest);
-  const width = Math.max(1, Math.round(image.naturalWidth * scale));
-  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const { naturalWidth: width, naturalHeight: height } = image;
+  checkCharacterReferenceSize(width, height);
   const canvas = window.document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;

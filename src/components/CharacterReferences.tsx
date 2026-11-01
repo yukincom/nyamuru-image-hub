@@ -12,6 +12,8 @@ import {
 import {
   CHARACTER_RECOGNITION_FIELDS,
   CHARACTER_REFERENCE_VIEWS,
+  CHARACTER_REFERENCE_LONG_EDGE,
+  CHARACTER_REFERENCE_SHORT_EDGE,
   applySuggestedReferenceView,
   imageFileToPng,
   prepareCharacterReferenceDestination,
@@ -120,6 +122,7 @@ function CandidateEvidence({
 export default function CharacterReferences({ document, character, onChange, onNotify, onPatchDocument, onPersistSeriesCatalog, onFinalizeDeletedSeriesMaterial, onChooseImageFiles }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
+  const [fileErrors, setFileErrors] = useState<string[]>([]);
   const [analyzingId, setAnalyzingId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [recognitionEditorOpen, setRecognitionEditorOpen] = useState(false);
@@ -133,6 +136,7 @@ export default function CharacterReferences({ document, character, onChange, onN
   const [candidate, setCandidate] = useState<{ identityKey: string; materialIds: string[]; value: CharacterReferenceSetSuggestion } | null>(null);
   useEffect(() => {
     setCandidate(null);
+    setFileErrors([]);
   }, [identityKey]);
   useEffect(() => {
     if (recognitionEntryCount) setRecognitionEditorOpen(true);
@@ -172,9 +176,22 @@ export default function CharacterReferences({ document, character, onChange, onN
     const originalSeriesId = document.manga.meta.series_id;
     const originalCharacterId = character.catalog_id;
     setSaving(true);
+    setFileErrors([]);
     const finishImageImport=beginFigureCropImport();
     try {
       if (!onPersistSeriesCatalog) throw new Error('シリーズ台帳の保存機能を利用できません');
+      const preparedFiles: Array<{ file: File; png: Blob }> = [];
+      const failures: string[] = [];
+      for (const file of selected) {
+        try {
+          preparedFiles.push({ file, png: await imageFileToPng(file) });
+        } catch (error) {
+          failures.push(`${file.name}: ${error instanceof Error ? error.message : '読込失敗'}`);
+        }
+      }
+      if (identityKeyRef.current !== requestIdentity) return;
+      setFileErrors([...failures]);
+      if (!preparedFiles.length) return;
       // 画像保存先はシリーズ台帳の配下にある。新規シリーズ／人物でも、別の保存操作を
       // 要求せず、画像を送る前に台帳と安定IDを確定させる。
       const destination = await prepareCharacterReferenceDestination(document, character, onPersistSeriesCatalog);
@@ -186,10 +203,8 @@ export default function CharacterReferences({ document, character, onChange, onN
         return;
       }
       const saved: Array<{ file: File; source: Material['source_image']; created: boolean }> = [];
-      const failures: string[] = [];
-      for (const file of selected) {
+      for (const { file, png } of preparedFiles) {
         try {
-          const png = await imageFileToPng(file);
           const result = await saveCharacterReferenceImage(
             png,
             file.name,
@@ -217,6 +232,7 @@ export default function CharacterReferences({ document, character, onChange, onN
         notify(`別のシリーズまたは人物へ移動したため、追加を中止しました${cleanupFailures.length ? `（未参照画像${cleanupFailures.length}件の整理は再試行が必要です）` : ''}`);
         return;
       }
+      setFileErrors(failures);
       let added = 0;
       let appliedToCurrentDocument = false;
       const next = patchDocument((draft) => {
@@ -287,7 +303,12 @@ export default function CharacterReferences({ document, character, onChange, onN
     try {
       await addImages(await onChooseImageFiles());
     } catch (error) {
-      notify(error instanceof Error ? error.message : '人物資料画像を選べませんでした');
+      const message = error instanceof Error ? error.message : '人物資料画像を選べませんでした';
+      if (/MBを超え/.test(message)) {
+        setFileErrors([`${message}。設定画は長辺${CHARACTER_REFERENCE_LONG_EDGE} px・短辺${CHARACTER_REFERENCE_SHORT_EDGE} px以内に縮小して選び直してください。`]);
+      } else {
+        notify(message);
+      }
     }
   };
 
@@ -398,6 +419,7 @@ export default function CharacterReferences({ document, character, onChange, onN
       <button type="button" class="character-extract-all" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady || !imageVisuals.length} onClick={() => void analyzeAll()}><ScanSearch size={14} />{analyzingId ? '...抽出中' : 'まとめて特徴を抽出'}</button>
     </div></div>
     <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(event) => addImages(event.currentTarget.files)} />
+    {fileErrors.length > 0 && <div role="alert">{fileErrors.map((message, index) => <p key={index}>{message}</p>)}</div>}
     {character.scope !== 'series' && <p class="muted-message">画像資料と照合特徴は、シリーズ共通人物にすると登録できます。</p>}
     {character.scope === 'series' && (!document.manga.meta.series.trim() || !document.manga.meta.series_id) && <p class="muted-message">シリーズ名を入力して保存すると画像を登録できます。</p>}
     {!!imageVisuals.length && <div class="character-reference-grid">{imageVisuals.map((material) => {

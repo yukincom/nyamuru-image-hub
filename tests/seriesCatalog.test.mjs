@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parse } from 'yaml';
-import { applySuggestedReferenceView, prepareCharacterReferenceDestination } from '../src/lib/characterReferences.ts';
+import { applySuggestedReferenceView, checkCharacterReferenceSize, prepareCharacterReferenceDestination } from '../src/lib/characterReferences.ts';
 import { parseMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml, validateManga } from '../src/lib/manga.ts';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../src/lib/seriesCatalog.ts';
 import { SYSTEM_MOB_CATALOG_ID } from '../src/lib/systemCharacters.ts';
@@ -9,6 +9,20 @@ import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projec
 import { linkedTestDocument, PROP_A } from './fixtures/emptyTestDocument.ts';
 
 const sample = linkedTestDocument;
+
+// 選択画像の寸法判定。縦横どちらでも境界値を通し、一辺だけ超える場合も実寸と比率を保つ推奨値を返す。
+test('設定画の登録上限と推奨寸法は選択画像の向きに従う', () => {
+  for (const [width, height] of [[351, 248], [248, 351], [248, 248], [100, 50]]) {
+    assert.doesNotThrow(() => checkCharacterReferenceSize(width, height));
+  }
+  for (const [width, height, target] of [
+    [354, 189, '351 × 187'], [189, 354, '187 × 351'],
+    [300, 249, '299 × 248'], [249, 300, '248 × 299'], [249, 249, '248 × 248'],
+  ]) {
+    assert.throws(() => checkCharacterReferenceSize(width, height), error =>
+      error.message.includes(`${width} × ${height} px`) && error.message.includes(`推奨寸法 ${target} px`));
+  }
+});
 
 test('人物のビジュアル指定は台帳と作品保存で人物像から独立し、空欄への変更も保持する', async () => {
   const episode = sample();

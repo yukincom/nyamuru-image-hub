@@ -616,6 +616,25 @@ class SeriesCatalogStoreTest(unittest.TestCase):
             self.assertTrue(store.delete_character_image("series-one", "character-one", source["asset_id"])["deleted"])
             self.assertFalse(store.load_character_image("series-one", "character-one", source["asset_id"])["found"])
 
+    @unittest.skipIf(Image is None, "画像生成にPillowが必要です")
+    def test_character_image_size_limit_before_write(self):
+        """実PNGで保存入口を確認。超過時は推奨寸法を返し、人物フォルダーを作らず、境界値は元寸法で通す。"""
+        with tempfile.TemporaryDirectory() as directory_name:
+            root = Path(directory_name)
+            store = bridge.SeriesCatalogStore(root)
+            store.save("猫の旅", "series-one", "manga:\n  materials: []\n", "")
+            for width, height, target in [(354, 189, "351 × 187"), (249, 300, "248 × 299"), (248, 351, None), (351, 248, None)]:
+                with self.subTest(width=width, height=height):
+                    png = io.BytesIO()
+                    Image.new("RGB", (width, height)).save(png, "PNG")
+                    if target:
+                        with self.assertRaisesRegex(ValueError, f"推奨寸法 {target} px"):
+                            store.save_character_image("series-one", "character-one", "sheet.png", png.getvalue())
+                        self.assertFalse((root / "series-one/characters/character-one").exists())
+                    else:
+                        source = store.save_character_image("series-one", "character-one", "sheet.png", png.getvalue())["source_image"]
+                        self.assertEqual((source["width_px"], source["height_px"]), (width, height))
+
     def test_character_image_rejects_unknown_series_and_path_components(self):
         with tempfile.TemporaryDirectory() as directory_name:
             store = bridge.SeriesCatalogStore(Path(directory_name))

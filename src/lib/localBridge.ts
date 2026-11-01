@@ -1,4 +1,5 @@
 import { stageMediaType, verifyBackgroundStage } from './background3d.ts';
+import { checkCharacterReferenceSize } from './characterReferences.ts';
 import type { BackgroundStage } from '../types.ts';
 import { clamp, DEFAULT_PANEL_GUTTERS, INNER_FRAME_BOUNDS, nearestAnchor, panelBounds, pointInPanel, roundMm, type PanelGutterSettings } from './canvasGeometry.ts';
 import type { AnalogAssetKind, AnalogFigureImport, AnalogTextImport, BBox, Bubble, CharacterRecognitionProfile, CharacterReferenceSourceImage, CharacterReferenceView, FigureSize, LocalVlmAnalyzer, MangaPage, Panel, PanelShape, PersistentAnalogAssetRef, VisualEvidence } from '../types';
@@ -2680,7 +2681,8 @@ export async function saveCharacterReferenceImage(
     const id = `image-${uploadedSha256}`, key = characterImageCacheId(seriesId, characterCatalogId, id);
     const bytes = new DataView(await blob.arrayBuffer());
     const width = bytes.byteLength >= 24 ? bytes.getUint32(16) : 0, height = bytes.byteLength >= 24 ? bytes.getUint32(20) : 0;
-    if (blob.size > 40 * 1024 * 1024 || width < 1 || height < 1 || width > 12000 || height > 12000 || width * height > 60_000_000) throw new Error('人物資料画像の寸法・容量が上限を超えています');
+    checkCharacterReferenceSize(width, height);
+    if (blob.size > 40 * 1024 * 1024) throw new Error('人物資料画像は40MB以内にしてください');
     const created = !await loadFigureCropAsset(key);
     await saveFigureCropAssets([{ id: key, blob }]);
     return { created, sourceImage: { schema_version: 1, asset_id: id, file_name: `characters/${characterCatalogId}/${id}.png`,
