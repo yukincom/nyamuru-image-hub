@@ -38,6 +38,7 @@ export interface HumanPoseTextSelection {
   baseline_segments: HumanPoseSegment[];
   edited_text_ja: string;
   scene?: HumanPoseSceneSettings;
+  preview?: { assetId: string };
   camera_prompt?: HumanPoseCameraPrompt;
 }
 

@@ -1324,7 +1324,7 @@ export function blobDataUrl(blob: Blob): Promise<string> {
   });
 }
 
-function dataUrlBlob(value: unknown): Blob | null {
+export function dataUrlBlob(value: unknown): Blob | null {
   if (typeof value !== 'string' || !value.startsWith('data:image/') || !value.includes(',')) return null;
   const [header, encoded] = value.split(',', 2);
   const mimeType = header.slice(5).split(';', 1)[0] || 'image/png';

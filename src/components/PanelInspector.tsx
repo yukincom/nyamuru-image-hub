@@ -10,7 +10,8 @@ import { Ban, Box, Check, Download, FolderOpen, Image as ImageIcon, Plus, Refres
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { ANCHOR_LABELS, ANCHORS, FIGURE_SIZE_LABELS, FIGURE_ROLE_LABELS, FIGURE_ROLES } from '../lib/manga';
-import { fallbackBox } from '../lib/canvasGeometry';
+import { artworkPixelSize } from '../lib/artworkClipboard.ts';
+import { fallbackBox, panelBounds } from '../lib/canvasGeometry';
 import { bubbleTailStyle, setBubbleTailStyle, isBalloonText } from '../lib/bubblePresentation.ts';
 import type { CanvasElementSelection, Manga, Material, Panel } from '../types';
 import { isPropPlacement } from '../lib/catalogModel.ts';
@@ -591,6 +592,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
             })} /></Field>
           </div>
           <FigureHumanPoseEditor key={`${manga.meta.series_id}:${manga.meta.episode_id}:${pageIndex}:${panelIndex}:${figure.layerId ?? index}`}
+            previewSize={artworkPixelSize(panelBounds(panel), getOutputSettings(manga).dpi)}
             cutFrame={humanPosePanelCutFrame(panel, humanPoseFigureFrame(figure, fallbackBox(panel, 'figure', index)))}
             panelContext={{ panel, selectedIndex: index, assets: manga.image_assets ?? [], dpi: getOutputSettings(manga).dpi,
               guides: Object.fromEntries((panel.figures ?? []).map((_, i) => [`figure-${i}`, guideVisible(`figure-${i}`)])) }}

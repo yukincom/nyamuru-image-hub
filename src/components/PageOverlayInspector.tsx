@@ -4,6 +4,11 @@ import SelectedTextInfo, { TextGenerateButton } from './SelectedTextInfo';
 import type { CanvasTextKind, TextCategory } from '../lib/canvasText';
 import BubbleInfoPortal from './BubbleInfoPortal';
 import FigureSizePicker from './FigureSizePicker';
+import { artworkPixelSize } from '../lib/artworkClipboard.ts';
+import { overlayFallbackBox } from '../lib/pageCanvas.ts';
+import { getPrintSetup } from '../lib/printSettings.ts';
+import { generationMaskBounds } from '../lib/paintRenderer.ts';
+import { humanPoseFigureFrame, threeImageFigureTarget } from '../lib/humanPoseFraming.ts';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
 import { Box, UserPlus } from 'lucide-preact';
 import { FIGURE_SIZE_LABELS, FIGURE_ROLE_LABELS, FIGURE_ROLES } from '../lib/manga';
@@ -91,6 +96,13 @@ export default function PageOverlayInspector({ onTextCategory, onSelectedText, o
               })} /></Field>
             </div>
             <FigureHumanPoseEditor key={`${manga.meta.series_id}:${manga.meta.episode_id}:${pageIndex}:overlay:${figure.layerId ?? index}`}
+              getPreviewTarget={() => {
+                const frame = figure.bbox ?? overlayFallbackBox(manga.pages[pageIndex].canvas, 'figure', index);
+                const paint = figure.artwork?.paint;
+                const dpi = getPrintSetup(manga).dpi;
+                const target = paint && threeImageFigureTarget({frame,paint}, humanPoseFigureFrame(figure,frame), undefined, generationMaskBounds(paint), dpi);
+                return target ?? artworkPixelSize(frame,dpi);
+              }}
               stages={manga.background_stages} backgroundCaptures={panels.flatMap((panel, p) => (panel.background_images ?? []).flatMap((image, i) => image.paint?.background3d ? [{ label: `コマ${p + 1}の背景 ${i + 1}`, capture: image.paint.background3d }] : []))}
               aspect={figure.bbox && figure.bbox.h > 0 ? figure.bbox.w / figure.bbox.h : 1} framingLabel={FIGURE_SIZE_LABELS[figure.size ?? 'bust-up']} framingSize={figure.size ?? 'bust-up'}
               value={figure.human_pose} onChange={(value, confirmedFramingSize) => update(draft => {

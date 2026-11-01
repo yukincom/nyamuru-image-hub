@@ -10,6 +10,7 @@ import {buildQwenGenerationPlan,type QwenGenerationConversation} from '../src/li
 import {QWEN_FIGURE_WORKFLOW} from '../src/lib/comfyWorkflows';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {saveFigureCropAssets} from '../src/lib/figureCropStore';
+import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence';
 import {imageSha256} from '../src/lib/imagePlacement';
 import {characterImageCacheId} from '../src/lib/browserCatalog';
 import graph from '../examples/comfyui/nyamuru_qwen_turbo_3images.api.json';
@@ -23,12 +24,12 @@ async function run(){
  const rough=await mk('red'),sheet=await mk('blue',2101),hash=await imageSha256(sheet),id='image-'+hash;
  const work=createEmptyWorkspaceDocument(),m=work.manga; m.meta.series_id='fixture';m.meta.episode_id='test';
  m.characters=[{localId:'who',catalog_id:'catalog',name:'テスト人物',role:'主人公',scope:'series',primary_material_catalog_id:'primary'}];
- const mat={keywords:[],type:'character' as const,scope:'series' as const,key:'青い設定画',catalog_id:'primary',characterId:'who',character_catalog_id:'catalog',source_image:{schema_version:1 as const,asset_id:id,file_name:id+'.png',media_type:'image/png' as const,byte_size:sheet.size,width_px:2101,height_px:64,sha256:hash}};
+ const mat={keywords:[],type:'character' as const,scope:'series' as const,key:'青い設定画',catalog_id:'primary',characterId:'who',character_catalog_id:'catalog',source_image:{schema_version:1 as const,asset_id:id,file_name:'characters/catalog/'+id+'.png',media_type:'image/png' as const,byte_size:sheet.size,width_px:2101,height_px:64,sha256:hash}};
  m.materials=[{...mat,catalog_id:'other',key:'非優先',source_image:{...mat.source_image,asset_id:'unavailable'}},mat];
  m.pages[0].panels=[{id:1,shape:{type:'rect',x:1,y:1,w:25,h:40},bg:0,action:null,bubbles:[],figures:[{refId:'who',name:'テスト人物',size:'full',bbox:{x:4,y:4,w:12,h:25},analogImport:{schemaVersion:1,assetId:'rough',sourceRegionId:'r',sourceBBox:{x:0,y:0,w:64,h:64},detectionSource:'body',draft:true}}]}];
  await saveFigureCropAssets([{id:'rough',blob:rough},{id:characterImageCacheId('fixture','catalog',id),blob:sheet}]);
  const owner=paintScene(m.pages[0].panels[0],144,[]).owners.find(o=>o.key==='figure-0')!;
- const plan=buildQwenGenerationPlan(m,0,0,false,owner);
+ let plan=buildQwenGenerationPlan(m,0,0,false,owner);
  const common={service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3},supervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1};
  let submitted:Record<string,any>|undefined;
  window.fetch=async(input,options)=>{
@@ -45,7 +46,9 @@ async function run(){
    throw Error('検証対象外: '+path);
  };
  function Room(){const [conversation,setConversation]=useState<QwenGenerationConversation|null>(null),[host,setHost]=useState<HTMLElement|null>(null);
-   return <><QwenGenerationDialog plan={plan} onClose={()=>{}} onInsert={async()=>{}} onConversation={setConversation} onConversationHost={setHost}/>
+   return <><QwenGenerationDialog plan={plan} poseEditorContext={{onConfirmed:(value,size)=>{
+     const figure=m.pages[0].panels[0].figures![0];figure.human_pose=value;figure.size=size;
+   }}} onClose={()=>{}} onInsert={async()=>{}} onConversation={setConversation} onConversationHost={setHost}/>
      <VoiceCommands profile={loadAgentPreferences()} onChangeProfile={()=>{}} open onToggle={()=>{}} revision={()=>'fixture'} apply={()=>''} generation={conversation} portalTarget={host}/></>;}
  render(<Room/>,document.querySelector('#test-root')!);
  const wait=async<T,>(check:()=>T|null|undefined|false,label:string)=>{for(let i=0;i<300;i++){const result=check();if(result)return result;await new Promise(r=>setTimeout(r,50));}throw Error(label+' / '+(document.querySelector('[role=alert]')?.textContent||''));};
@@ -68,7 +71,18 @@ async function run(){
  const first=await wait(()=>img(1),'image1の3D撮影');
  await first.decode();await second.decode();
  if(addr(first)!==previewPng||second.naturalWidth!==2101||third.naturalWidth!==64)throw Error('プレビュー実体または原寸が変化');
- if(first.naturalWidth!==plan.threeImageTarget!.width||first.naturalHeight!==plan.threeImageTarget!.height||!(await color(first)).endsWith(',255'))throw Error('不透明な原稿寸法のimage1');
+ if(first.naturalWidth!==Math.max(1,Math.round(plan.threeImageTarget!.width*.2))||first.naturalHeight!==Math.max(1,Math.round(plan.threeImageTarget!.height*.2))||!(await color(first)).endsWith(',255'))throw Error('不透明な20%プレビュー');
+ // 保存・再読込後にも、同じPNGをimage1に使えることを確認する。
+ const snapshot=await createProjectSnapshot(work);
+ const reopened=await restoreProjectSnapshot(snapshot);
+ const figureFrame = reopened.manga.pages[0].panels[0].figures![0].bbox!;
+ if(figureFrame.x!==4||figureFrame.y!==4||figureFrame.w!==12||figureFrame.h!==25)throw Error('コマ内の人物配置が変化');
+ const storedOwner=paintScene(reopened.manga.pages[0].panels[0],144,[]).owners.find(o=>o.key==='figure-0')!;
+ plan=buildQwenGenerationPlan(reopened.manga,0,0,false,storedOwner);
+ render(null,document.querySelector('#test-root')!);
+ render(<Room/>,document.querySelector('#test-root')!);
+ const restored=await wait(()=>img(1),'作品を開き直したimage1');
+ if(addr(restored)!==previewPng)throw Error('作品保存後のimage1が確定PNGと異なる');
  const edit=(label:string,value:string)=>{const input=Array.from(document.querySelectorAll('.qwen-prompt')).find(item=>item.textContent?.startsWith(label))?.querySelector('textarea');if(!input)throw Error(label);input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));};
  edit('ポジティブ','positive test');edit('ネガティブ','negative test');
  (await wait(()=>button('5枚を生成する'),'生成ボタン')).click();

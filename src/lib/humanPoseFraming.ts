@@ -18,6 +18,10 @@ export function humanPoseReferencePixels(reference: BBox, frame: BBox, width: nu
 
 /** The source frame is the figure's reference frame, not the panel's bounding box. */
 export interface HumanPoseCutFrame { aspect: number; points: [number, number][]; bounds: BBox }
+export function posePreviewSize({width, height}: {width: number; height: number}) {
+  return {width: Math.max(1, Math.round(width * 0.2)), height: Math.max(1, Math.round(height * 0.2))};
+}
+
 export const HUMAN_POSE_PREVIEW_MARGIN = .08;
 
 /** Reuse the manuscript outline; its placement is supplied by the editing owner. */
@@ -32,7 +36,7 @@ export function humanPosePanelCutFrame(panel: Panel, frame: BBox = panelBounds(p
 }
 
 /** Capture the same part of the original camera view that the adopted layer will occupy. */
-export function threeImageFigureTarget(owner: PaintOwner, referenceFrame: BBox, panel?: Panel, mask?: BBox, dpi = owner.paint.dpi) {
+export function threeImageFigureTarget(owner: Pick<PaintOwner, 'frame' | 'paint'>, referenceFrame: BBox, panel?: Panel, mask?: BBox, dpi = owner.paint.dpi) {
   if (!mask && !panel) return;
   if (mask && (![mask.x, mask.y, mask.w, mask.h].every(Number.isSafeInteger)
       || mask.x < 0 || mask.y < 0 || mask.w < 1 || mask.h < 1

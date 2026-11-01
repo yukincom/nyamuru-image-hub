@@ -15,7 +15,7 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from comfy_generation import desktop_workflow_for_job, run_candidates
-from comfy_workflows import (WorkflowStore, validate_definition, validate_request, install_qwen_defaults,
+from comfy_workflows import (WorkflowStore, bind_graph, validate_definition, validate_request, install_qwen_defaults,
                              QWEN_FIGURE_ID, QWEN_STANDARD_PREFIX)
 from hermes_qwen import preview
 from qwen_generation import PROFILE, QwenGenerationService
@@ -147,6 +147,28 @@ class ThreeImageWorkflowTests(unittest.TestCase):
         self.assertEqual(graph['31']['inputs']['image'], ['21',0])
         self.assertEqual(graph['33']['inputs']['image'], ['41',0])
         self.assertEqual(graph['41']['inputs'], {'image':['23',0], 'alpha':['23',1]})
+
+    # The saved preview must reach the image1 upload unchanged. Exercise intake only.
+    def test_confirmed_preview_keeps_its_png_bytes_and_panel_dimensions(self):
+        raw = png('blue', (359, 176))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            workflows = WorkflowStore(root / 'workflows')
+            definition = workflows.save(read_definition())
+            service = QwenGenerationService(root / 'jobs', workflows=workflows)
+            request = {'job_id': str(uuid4()), 'workflow_id': definition['id'], 'profile': PROFILE,
+                'document_key': 'test', 'page_number': 1, 'panel_id': 1, 'overlay': False,
+                'owner_key': 'figure-0', 'label': '人物', 'mode': 'new', 'prompt': POSITIVE,
+                'width': 1793, 'height': 880, 'dpi': 600, 'character_keys': ['person'],
+                'references': [{'label': label, 'character_keys': keys, 'image': data_url(image)}
+                    for label, keys, image in [('3D', [], raw), ('設定画', ['person'], png('green')), ('ネーム', [], png('red'))]]}
+            value, images = service.normalize_request(request)
+            self.assertEqual(images[value['references'][0]['file']], raw)
+            self.assertEqual(value['output_size'], [1793, 880])
+            names = [ref['file'] for ref in value['references']]
+            graph = bind_graph(definition, POSITIVE, names, 1, 1793, 880)
+            slot = definition['binding']['images'][0][0]
+            self.assertEqual(graph[slot['node']]['inputs'][slot['input']], names[0])
 
     # 見込み: 3資料を共用しseedのみを変えれば、選択まで無加工の5候補を保持できる。
     # 合格: 編集したnegativeと固定positiveが別入力へ届き、upload3回、5グラフの差はseedのみ、選んだ3番の背景は透明・中央色は3番・318×159。範囲: 模擬APIと実PNG、実推論を除く。

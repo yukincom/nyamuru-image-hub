@@ -21,7 +21,9 @@ import type {HumanPoseTextSelection} from '../lib/humanPoseTypes.ts';
 import {requireHumanPoseGenerationReady} from '../lib/humanPoseSelection.ts';
 import type {ComponentProps} from 'preact';
 
-export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPoseEditor>,'panelContext'|'stages'|'backgroundCaptures'>;
+export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPoseEditor>,'panelContext'|'stages'|'backgroundCaptures'> & {
+  onConfirmed?: (value: HumanPoseTextSelection, framing: FigureSize) => void;
+};
 interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File,target:QwenGenerationPlan)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
 const statusLabel={preparing:'入力を準備中',prepared:'生成準備済み',queued:'生成待ち',running:'生成中',succeeded:'生成完了',failed:'失敗',outcome_unknown:'結果未確定'};
 
@@ -84,7 +86,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   const [repair,setRepair]=useState(false);
   const automatic=chosen?.id===QWEN_FIGURE_WORKFLOW;
   const threeImages=chosen?.binding.prompt_mode==='qwen-three-images'&&(!automatic||person&&!repair);
-  const [poseDraft,setPoseDraft]=useState<{selection:HumanPoseTextSelection;framing:FigureSize;previewPng?:string}>();
+  const [poseDraft,setPoseDraft]=useState<{selection:HumanPoseTextSelection;framing:FigureSize}>();
   const [reference,setReference]=useState<QwenLayerReference>(),[correction,setCorrection]=useState<QwenLayerReference>();
   const [linked,setLinked]=useState<QwenReference[]>([]),[extra,setExtra]=useState<QwenReference[]>([]);
   const [sourceErrors,setSourceErrors]=useState({expression:'',character:''});
@@ -125,12 +127,19 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   useEffect(()=>{
     setPoseImage('');setPoseError('');posePending.current=undefined;
     if(!usesPoseImage||!plan.humanPose?.selection.scene||targetError||waitingForWorkflow)return;
-    if(threeImages && poseDraft?.previewPng){
-      setPoseImage(poseDraft.previewPng);posePending.current=Promise.resolve(poseDraft.previewPng);return;
-    }
-    let cancelled=false;setPoseImage('');setPoseError('');
+    let cancelled=false;
     const {selection,framing,aspect,cutFrame}=plan.humanPose;
-    posePending.current=import('../lib/humanPoseGeneration.ts').then(({captureHumanPoseReference})=>captureHumanPoseReference(selection,framing,aspect??plan.width/plan.height,cutFrame,threeImages?{width:plan.width,height:plan.height}:undefined,poseEditorContext?.stages)).then(image=>{
+    const capture = async () => {
+      const saved = threeImages && selection.preview;
+      if (saved) {
+        const blob = await loadFigureCropAsset(saved.assetId);
+        if (!blob) throw new Error('確定した3Dプレビューを読み込めません');
+        return blobDataUrl(blob);
+      }
+      const {captureHumanPoseReference} = await import('../lib/humanPoseGeneration.ts');
+      return captureHumanPoseReference(selection,framing,aspect??plan.width/plan.height,cutFrame,threeImages?{width:plan.width,height:plan.height}:undefined,poseEditorContext?.stages);
+    };
+    posePending.current=capture().then(image=>{
       if(!cancelled){setPoseImage(image);return image;}
     }).catch(cause=>{if(!cancelled)setPoseError(cause instanceof Error?cause.message:'3Dポーズを撮影できませんでした');return undefined;});
     return()=>{cancelled=true;};
@@ -379,9 +388,15 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
         setRepair(e.currentTarget.value==='repair');setReference(undefined);setCorrection(undefined);setExtra([]);setPrompt(undefined);setNegative(undefined);
       }}><option value="figure">人物3枚参照</option><option value="repair">ピンポイント修正</option></select></label>}
       {(threeImages||usesPoseImage)&&<fieldset disabled={busy||Boolean(attempt)}><legend>{threeImages?'image1 · 3Dモデル調整':'送信する3Dポーズ'}</legend>
-        {threeImages&&person&&<FigureHumanPoseEditor imageSlot {...poseEditorContext} previewSize={{width:plan.width,height:plan.height}} value={plan.humanPose?.selection}
+        {threeImages&&person&&<FigureHumanPoseEditor imageSlot {...poseEditorContext} previewSize={sourcePlan.threeImageTarget} value={plan.humanPose?.selection}
           framingSize={plan.humanPose?.framing??sourcePlan.figureFraming} aspect={sourcePlan.threeImageTarget?.cutFrame.aspect} cutFrame={sourcePlan.threeImageTarget?.cutFrame}
-          onChange={(value,framing,previewPng)=>{if(value)setPoseDraft({previewPng,selection:{...value,input_mode:'image'},framing:framing??plan.humanPose?.framing??sourcePlan.figureFraming??'bust-up'});}}/>}
+          onChange={(value,framing)=>{
+            if (!value) return;
+            const selection = {...value, input_mode:'image' as const};
+            const size = framing ?? plan.humanPose?.framing ?? sourcePlan.figureFraming ?? 'bust-up';
+            poseEditorContext?.onConfirmed?.(value, size);
+            setPoseDraft({selection, framing:size});
+          }}/>}
         {poseImage?<figure class="qwen-paint-reference"><img src={poseImage} alt={threeImages?'image1 3Dポーズ':'描写範囲に合わせた3Dポーズ参照'}/></figure>
           :poseError?<><p role="alert">{poseError}</p><button onClick={()=>setPoseAttempt(value=>value+1)}>撮影を再試行</button></>:null}
       </fieldset>}

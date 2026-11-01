@@ -19,7 +19,10 @@ function imageReferences(document: MangaDocument) {
   const refs: Array<{ assetId: string; persistentAsset?: PersistentAnalogAssetRef }> = [];
   for (const page of document.manga.pages) {
     for (const owner of [...page.panels, ...(page.page_overlay ? [page.page_overlay] : [])]) {
-      for (const figure of owner.figures ?? []) if (figure.analogImport) refs.push(figure.analogImport);
+      for (const figure of owner.figures ?? []) {
+        if (figure.analogImport) refs.push(figure.analogImport);
+        if (figure.human_pose?.preview) refs.push(figure.human_pose.preview);
+      }
       for (const bubble of owner.bubbles ?? []) if (bubble.analogTextImport) refs.push(bubble.analogTextImport);
     }
   }

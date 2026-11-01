@@ -31,7 +31,7 @@ interface Props {
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
   previewSize?: {width:number;height:number};
-  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject, selection: HumanPoseTextSelection, previewPng?:string) => void;
+  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject, selection: HumanPoseTextSelection, previewPng?:string) => void | Promise<void>;
   onClose: () => void;
 }
 type Camera = HumanPoseSceneSettings['camera'];
@@ -477,9 +477,9 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
       </div>
       <footer><p class="field-note">姿勢・配置・撮影範囲を保存します。撮影画像で送る場合は、この範囲をポーズ参照に使います。</p>
         <button type="button" class="secondary-button" onClick={close}>取消</button>
-        <button type="button" class="primary-button" disabled={!draft || loading || backgroundBusy} onClick={() => {
+        <button type="button" class="primary-button" disabled={!draft || loading || backgroundBusy} onClick={async () => {
           if (!renderer.current) return;
-          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); const png = preview || renderer.current.capture(Boolean(previewSize), cutFrame, previewSize); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject(), poseRef.current, previewSize ? png : undefined); close(); }
+          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); const png = preview || renderer.current.capture(Boolean(previewSize), cutFrame, previewSize); await onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject(), poseRef.current, previewSize ? png : undefined); close(); }
           catch (cause) { setError(cause instanceof Error ? cause.message : '撮影範囲を確認してください'); }
         }}>確定</button></footer>
     </div>

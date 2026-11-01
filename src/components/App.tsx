@@ -3547,6 +3547,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   }
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
+    if (captured.figure) {
+      const sourcePage=current.manga.pages[pageIndex];
+      const figure=(overlay?sourcePage.page_overlay:sourcePage.panels[panelIndex])?.figures?.[captured.index];
+      if (figure) { captured.figure.human_pose=figure.human_pose; captured.figure.size=figure.size; }
+    }
     const needsMask=(captured.kind==='bubble'&&captured.bubble&&!isBalloonText(captured.bubble))
       || (captured.figure&&!isPropPlacement(captured.figure));
     const area=needsMask?generationMaskBounds(captured.paint):undefined;
@@ -3560,6 +3565,25 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setVoiceOpen(true);
     const panel=current.manga.pages[pageIndex]?.panels[panelIndex];
     const poseEditorContext:GenerationPoseEditorContext|undefined=captured.figure?{
+      onConfirmed:(selection, framing)=>{
+        const opened=qwenGenerationRef.current;
+        if (!opened || opened.document!==current || documentRef.current!==current) throw new Error('作品が変更されました。生成対象を選び直してください');
+        const updated=cloneDocument(current), page=updated.manga.pages[pageIndex];
+        const figure=(overlay?page.page_overlay:page.panels[panelIndex])?.figures?.[captured.index];
+        if (!figure) throw new Error('対象の人物が見つかりません');
+        figure.human_pose=selection;
+        figure.size=framing;
+        const session=paintSessionRef.current;
+        if (session?.document===current) {
+          const refreshed={...session,document:updated};
+          paintSessionRef.current=refreshed;setPaintSession(refreshed);
+        }
+        current=updated;
+        lastHistoryPush.current=0;
+        setDocument(updated);
+        const generation={...opened,document:updated};
+        qwenGenerationRef.current=generation;setQwenGeneration(generation);
+      },
       stages:current.manga.background_stages,
       ...(!overlay&&panel?{panelContext:{panel,selectedIndex:captured.index,assets,dpi:getOutputSettings(current.manga).dpi,
         guides:Object.fromEntries((panel.figures??[]).map((_,i)=>[`figure-${i}`,artworkGuideVisible(`figure-${i}`,panelIndex,pageIndex,false,current)]))},

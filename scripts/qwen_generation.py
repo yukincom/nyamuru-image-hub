@@ -633,8 +633,10 @@ class QwenGenerationService:
             import io
             with Image.open(io.BytesIO(images[value['references'][0]['file']])) as pose:
                 has_alpha = 'A' in pose.getbands() or 'transparency' in pose.info
-                if pose.size != tuple(value['output_size']) or (has_alpha and pose.convert('RGBA').getchannel('A').getextrema()[0] != 255):
-                    raise ValueError('image1は原稿と同じ寸法の不透明な3Dプレビューを指定してください')
+                frame_size = tuple(value['output_size'])
+                preview_size = tuple(max(1, round(side / 5)) for side in frame_size)
+                if pose.size not in (frame_size, preview_size) or (has_alpha and pose.convert('RGBA').getchannel('A').getextrema()[0] != 255):
+                    raise ValueError('image1にはコマに対応する不透明な3Dプレビューを指定してください')
             polygon = body.get('clip_polygon')
             if polygon is not None:
                 if not isinstance(polygon,list) or not 3 <= len(polygon) <= 1024 or any(

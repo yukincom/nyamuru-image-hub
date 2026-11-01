@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'preact/hooks';
-import { loadHumanPoseCatalog } from '../lib/localBridge.ts';
+import { dataUrlBlob, loadHumanPoseCatalog } from '../lib/localBridge.ts';
 import { withNewCreationBridgeSession } from '../lib/localBridgeLifecycle.ts';
 import { selectHumanPose } from '../lib/humanPoseSelection.ts';
 import { renderHumanPoseTemplate } from '../lib/humanPoseTemplate.ts';
@@ -7,7 +7,8 @@ import { confirmHumanPoseCameraPrompt, humanPoseCameraPromptCurrent, humanPoseCa
 import type { HumanPoseTextSelection } from '../lib/humanPoseTypes.ts';
 import type { BackgroundCapture, BackgroundStage, FigureSize } from '../types.ts';
 import HumanPoseSceneDialog from './HumanPoseSceneDialog.tsx';
-import type { HumanPoseCutFrame } from '../lib/humanPoseFraming.ts';
+import { beginFigureCropImport, saveFigureCropAssets } from '../lib/figureCropStore.ts';
+import { posePreviewSize, type HumanPoseCutFrame } from '../lib/humanPoseFraming.ts';
 import type { HumanPosePanelContext } from '../lib/humanPoseComposition.ts';
 import './FigureHumanPoseEditor.css';
 
@@ -15,6 +16,7 @@ interface Props {
   value?: HumanPoseTextSelection;
   imageSlot?: boolean;
   previewSize?: {width:number;height:number};
+  getPreviewTarget?: () => {width:number;height:number;cutFrame?: HumanPoseCutFrame};
   aspect?: number;
   framingLabel?: string;
   framingSize?: FigureSize;
@@ -22,10 +24,14 @@ interface Props {
   panelContext?: HumanPosePanelContext;
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
-  onChange: (value: HumanPoseTextSelection | undefined, confirmedFramingSize?: FigureSize, previewPng?:string) => void;
+  onChange: (value: HumanPoseTextSelection | undefined, confirmedFramingSize?: FigureSize) => void;
 }
 
-export default function FigureHumanPoseEditor({ value, imageSlot=false, previewSize, aspect: figureAspect, framingLabel, framingSize, cutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
+export default function FigureHumanPoseEditor({ value, imageSlot=false, previewSize, getPreviewTarget, aspect: figureAspect, framingLabel, framingSize, cutFrame: initialCutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
+  const [openingTarget,setOpeningTarget] = useState<ReturnType<NonNullable<Props['getPreviewTarget']>>>();
+  const target = openingTarget ?? previewSize;
+  const savedSize = target && posePreviewSize(target);
+  const cutFrame = openingTarget?.cutFrame ?? initialCutFrame;
   const aspect = cutFrame?.aspect ?? figureAspect;
   const id = useId();
   const sceneTrigger = useRef<HTMLButtonElement>(null);
@@ -47,6 +53,10 @@ export default function FigureHumanPoseEditor({ value, imageSlot=false, previewS
 
   useEffect(() => () => { request.current += 1; }, []);
   const openScene = async () => {
+    if (getPreviewTarget) {
+      try { setOpeningTarget(getPreviewTarget()); }
+      catch (cause) { setError(cause instanceof Error ? cause.message : '撮影範囲を読み込めません'); return; }
+    }
     if (value) { setSceneValue(structuredClone(value)); return; }
     const token = ++request.current;
     setLoading(true); setError('');
@@ -104,8 +114,22 @@ export default function FigureHumanPoseEditor({ value, imageSlot=false, previewS
       {value.input_mode === 'image' && <p class="field-note">描写範囲に合わせた3D画像を生成画面で確認して送ります。人物の外見と画風には登場人物の資料を使います。</p>}
       <button type="button" class="secondary-button" onClick={() => onChange(undefined)}>ポーズと編集文を解除</button>
     </>}
-    {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} cutFrame={cutFrame} previewSize={previewSize} panelContext={panelContext} stages={stages} backgroundCaptures={backgroundCaptures}
-      onConfirm={(scene, subject, selection, png) => onChange({ ...selection, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, selection.camera_prompt) }, scene.framing?.size, png)}
+    {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} cutFrame={cutFrame} previewSize={savedSize} panelContext={panelContext} stages={stages} backgroundCaptures={backgroundCaptures}
+      onConfirm={async (scene, subject, selection, png) => {
+        const confirmed = { ...selection, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, selection.camera_prompt) };
+        delete confirmed.preview;
+        const release = beginFigureCropImport();
+        try {
+          if (png && savedSize) {
+            const blob = dataUrlBlob(png);
+            if (!blob) throw new Error('3Dの撮影画像を保存できません');
+            const assetId = `pose-preview:${crypto.randomUUID()}`;
+            await saveFigureCropAssets([{ id: assetId, blob }]);
+            confirmed.preview = { assetId };
+          }
+          onChange(confirmed, scene.framing?.size);
+        } finally { release(); }
+      }}
       onClose={() => { setSceneValue(null); sceneTrigger.current?.focus(); }} />}
   </section>;
 }

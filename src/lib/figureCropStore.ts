@@ -1,4 +1,4 @@
-import type { MangaDocument, PersistentAnalogAssetRef } from '../types.ts';
+import type { MangaDocument, Panel, PersistentAnalogAssetRef } from '../types.ts';
 import { loadPersistedAnalogAsset } from './localBridge.ts';
 import { imageAssetIds } from './imagePlacement.ts';
 import { characterImageCacheIds } from './browserCatalog.ts';
@@ -38,8 +38,9 @@ export function collectFigureCropAssetIds(document: MangaDocument, pendingImageI
   // Registered stages and character materials remain usable without a canvas placement.
   document.manga?.background_stages?.forEach(asset => assetIds.add(asset.storageId));
   characterImageCacheIds(document).forEach(id => assetIds.add(id));
-  const collect = (owner: { figures?: Array<{ analogImport?: { assetId?: string } }>; bubbles?: Array<{ analogTextImport?: { assetId?: string } }> }) => {
+  const collect = (owner: Partial<Pick<Panel, 'figures' | 'bubbles'>>) => {
     owner.figures?.forEach((figure) => {
+      if (figure.human_pose?.preview) assetIds.add(figure.human_pose.preview.assetId);
       const assetId = figure.analogImport?.assetId?.trim();
       if (assetId) assetIds.add(assetId);
     });
