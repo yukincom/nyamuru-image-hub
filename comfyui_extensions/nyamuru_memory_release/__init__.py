@@ -175,6 +175,10 @@ def _bootstrap():
     import execution
     import comfy.model_management
     from server import PromptServer
+    from .print_png import NyamuruSavePrintPNG
+
+    NODE_CLASS_MAPPINGS["NyamuruSavePrintPNG"] = NyamuruSavePrintPNG
+    NODE_DISPLAY_NAME_MAPPINGS["NyamuruSavePrintPNG"] = "Save Print PNG (Nyamuru)"
 
     install(PromptServer.instance, execution.PromptExecutor, comfy.model_management, web)
 

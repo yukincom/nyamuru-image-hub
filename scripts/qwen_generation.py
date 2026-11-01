@@ -282,7 +282,8 @@ def three_image_workflow(value):
 def direct_workflow_prompt(value):
     if three_image_workflow(value):
         color = value['settings']['chroma_key']['color']
-        return value['prompt'] + f'\nUniform solid {color} background.'
+        base = re.sub(r'\nUniform solid #(00FF00|0000FF|FF00FF) background\.$', '', value['prompt'])
+        return base + f'\nUniform solid {color} background.'
     return value['prompt']
 
 
@@ -299,11 +300,11 @@ def dimensions(width, height, resolution=1024, *, fixed_size=None):
     return size
 
 
-def png(encoded):
+def png(encoded, *, native_size=False):
     if not isinstance(encoded, str) or not encoded.startswith('data:image/png;base64,') or len(encoded) > MAX_PNG * 4 // 3 + 100:
         raise ValueError('参照画像は20MiB以内のPNGで指定してください')
     raw = base64.b64decode(encoded.split(',', 1)[1], validate=True)
-    return raw, validate_png(raw)
+    return raw, validate_png(raw, native_size=native_size)
 
 
 def keys(value, maximum=1):
@@ -328,7 +329,7 @@ def validate_generation_subject(value):
         raise ValueError('描き文字の生成対象が不正です')
 
 
-def normalize(body, *, fixed_size=None):
+def normalize(body, *, fixed_size=None, native_size=False):
     if body.get('profile') != PROFILE or body.get('mode') not in ('new', 'paint', 'sketch'):
         raise ValueError('Qwen生成の指定が不正です')
     owner = text(body.get('owner_key'), '描画対象', 100)
@@ -343,7 +344,7 @@ def normalize(body, *, fixed_size=None):
             or (overlay and owner in ('page', 'panel', 'background')):
         raise ValueError('ページとコマの指定が不正です')
     width, height = body.get('width'), body.get('height')
-    output_size = dimensions(width, height, fixed_size=fixed_size)
+    output_size = dimensions(width, height, fixed_size=[width,height] if native_size else fixed_size)
     character_limit = 10 if owner in ('page', 'panel') else 1
     character_keys = keys(body.get('character_keys'), character_limit)
     if character_keys and not (owner.startswith('figure-') or owner in ('page', 'panel')):
@@ -400,7 +401,7 @@ def normalize(body, *, fixed_size=None):
         assigned = keys(reference.get('character_keys'), character_limit)
         if any(k not in character_keys for k in assigned):
             raise ValueError('参照資料と人物が一致しません')
-        raw, _ = png(reference.get('image'))
+        raw, _ = png(reference.get('image'), native_size=native_size)
         name = f'image-{index}.png'
         images[name] = raw
         refs.append({'file': name, 'role': 'identity' if assigned else 'style',
@@ -575,8 +576,7 @@ class QwenGenerationService:
             raw = self.store.read(job_id, f'candidate-{index}.png')
             if value['settings'].get('transparency_mode') == 'chroma-key-v1':
                 from qwen_background import remove_chroma_background
-                size = (value['width'], value['height']) if three_image_workflow(value) else None
-                raw = remove_chroma_background(raw, value['settings']['chroma_key'], output_size=size)
+                raw = remove_chroma_background(raw, value['settings']['chroma_key'], dpi=value.get('dpi'), polygon=value.get('clip_polygon'))
             elif value['settings'].get('transparency_mode') == 'code-white-v1':
                 from qwen_background import remove_white_background
                 raw = remove_white_background(raw)
@@ -600,7 +600,7 @@ class QwenGenerationService:
         workflow = previous['workflow'] if previous and previous.get('workflow', {}).get('id') == workflow_id else self.workflows.get(workflow_id)
         if body.get('workflow_version') is not None and body['workflow_version'] != workflow['version']:
             raise ValueError('ワークフローが更新されました。生成画面を開き直してください')
-        value, images = normalize(body, fixed_size=workflow['binding']['fixed_size'])
+        value, images = normalize(body, fixed_size=workflow['binding']['fixed_size'], native_size=workflow['binding']['prompt_mode']=='qwen-three-images')
         validate_request(workflow, len(value['references']))
         endpoint = body.get('comfyui_url') or self.endpoint
         endpoint = self.client_factory(endpoint).endpoint
@@ -619,6 +619,22 @@ class QwenGenerationService:
                 ref['role'] for ref in value['references']
             ] != ['style', 'identity', 'style']:
                 raise ValueError('人物3枚参照には、ネーム・人物設定画1枚・3Dポーズを順に指定してください')
+            dpi = body.get('dpi')
+            if isinstance(dpi, bool) or not isinstance(dpi, (float,int)) or not math.isfinite(dpi) or not 1 <= dpi <= 10000:
+                raise ValueError('原稿のdpiを指定してください')
+            value['dpi'] = dpi
+            from PIL import Image
+            import io
+            with Image.open(io.BytesIO(images[value['references'][2]['file']])) as pose:
+                has_alpha = 'A' in pose.getbands() or 'transparency' in pose.info
+                if pose.size != tuple(value['output_size']) or (has_alpha and pose.convert('RGBA').getchannel('A').getextrema()[0] != 255):
+                    raise ValueError('image3は原稿と同じ寸法の不透明なプレビューを指定してください')
+            polygon = body.get('clip_polygon')
+            if polygon is not None:
+                if not isinstance(polygon,list) or not 3 <= len(polygon) <= 1024 or any(
+                    not isinstance(pt,list) or len(pt)!=2 or any(type(x) not in (float,int) or not math.isfinite(x) or abs(x)>2 for x in pt) for pt in polygon):
+                    raise ValueError('生成対象のコマ枠が不正です')
+                value['clip_polygon'] = polygon
             if value['width'] * value['height'] > 100_000_000:
                 raise ValueError('採用する画像の寸法が大きすぎます')
         if value['owner_key'].startswith('figure-') and workflow['binding']['prompt_mode'] in ('qwen', 'qwen-three-images'):

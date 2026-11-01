@@ -14,6 +14,7 @@ import './FigureHumanPoseEditor.css';
 interface Props {
   value?: HumanPoseTextSelection;
   imageSlot?: boolean;
+  previewSize?: {width:number;height:number};
   aspect?: number;
   framingLabel?: string;
   framingSize?: FigureSize;
@@ -21,10 +22,10 @@ interface Props {
   panelContext?: HumanPosePanelContext;
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
-  onChange: (value: HumanPoseTextSelection | undefined, confirmedFramingSize?: FigureSize) => void;
+  onChange: (value: HumanPoseTextSelection | undefined, confirmedFramingSize?: FigureSize, previewPng?:string) => void;
 }
 
-export default function FigureHumanPoseEditor({ value, imageSlot=false, aspect: figureAspect, framingLabel, framingSize, cutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
+export default function FigureHumanPoseEditor({ value, imageSlot=false, previewSize, aspect: figureAspect, framingLabel, framingSize, cutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
   const aspect = cutFrame?.aspect ?? figureAspect;
   const id = useId();
   const sceneTrigger = useRef<HTMLButtonElement>(null);
@@ -103,8 +104,8 @@ export default function FigureHumanPoseEditor({ value, imageSlot=false, aspect: 
       {value.input_mode === 'image' && <p class="field-note">描写範囲に合わせた3D画像を生成画面で確認して送ります。人物の外見と画風には登場人物の資料を使います。</p>}
       <button type="button" class="secondary-button" onClick={() => onChange(undefined)}>ポーズと編集文を解除</button>
     </>}
-    {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} cutFrame={cutFrame} panelContext={panelContext} stages={stages} backgroundCaptures={backgroundCaptures}
-      onConfirm={(scene, subject, selection) => onChange({ ...selection, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, selection.camera_prompt) }, scene.framing?.size)}
+    {sceneValue && <HumanPoseSceneDialog key={`${sceneValue.pose_id}:${sceneValue.catalog_sha256}`} value={sceneValue} aspect={aspect} framingLabel={framingLabel} framingSize={framingSize} cutFrame={cutFrame} previewSize={previewSize} panelContext={panelContext} stages={stages} backgroundCaptures={backgroundCaptures}
+      onConfirm={(scene, subject, selection, png) => onChange({ ...selection, scene, camera_prompt: confirmHumanPoseCameraPrompt(scene, subject, selection.camera_prompt) }, scene.framing?.size, png)}
       onClose={() => { setSceneValue(null); sceneTrigger.current?.focus(); }} />}
   </section>;
 }

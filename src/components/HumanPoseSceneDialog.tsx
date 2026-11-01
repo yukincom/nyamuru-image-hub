@@ -30,13 +30,14 @@ interface Props {
   panelContext?: HumanPosePanelContext;
   stages?: BackgroundStage[];
   backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
-  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject, selection: HumanPoseTextSelection) => void;
+  previewSize?: {width:number;height:number};
+  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject, selection: HumanPoseTextSelection, previewPng?:string) => void;
   onClose: () => void;
 }
 type Camera = HumanPoseSceneSettings['camera'];
 type PoseSnapshot = { selection: HumanPoseTextSelection; scene: HumanPoseSceneSettings };
 
-export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, framingSize: initialFramingSize = 'bust-up', cutFrame, panelContext, stages = [], backgroundCaptures = [], onConfirm, onClose }: Props) {
+export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, framingSize: initialFramingSize = 'bust-up', cutFrame, panelContext, stages = [], backgroundCaptures = [], previewSize, onConfirm, onClose }: Props) {
   const aspect = cutFrame?.aspect ?? figureAspect;
   const id = useId(), dialog = useRef<HTMLDialogElement>(null), host = useRef<HTMLDivElement>(null);
   const renderer = useRef<HumanPoseSceneRenderer | null>(null);
@@ -73,7 +74,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
   const backgroundRequest = useRef(0);
   const frame = draft?.frame ?? poseValue.scene?.frame ?? humanPoseSceneFrame(aspect);
   const framingSize = draft?.framing?.size ?? initialFramingSize;
-  const outputFrame = cutFrame ? humanPoseSceneFrame(cutFrame.aspect * cutFrame.bounds.w / cutFrame.bounds.h) : frame;
+  const outputFrame = previewSize ?? (cutFrame ? humanPoseSceneFrame(cutFrame.aspect * cutFrame.bounds.w / cutFrame.bounds.h) : frame);
   const previewWindow = humanPosePreviewWindow(cutFrame);
   const snapshot = (scene = renderer.current?.snapshot()): PoseSnapshot | null => scene
     ? { selection: structuredClone(poseRef.current), scene: structuredClone(scene) } : null;
@@ -249,7 +250,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
     stopMotion();
     try {
       if (renderer.current && !renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect));
-      setPreview(renderer.current?.capture(includeBackground, cutFrame) ?? ''); setPreviewBackground(includeBackground); setError(''); }
+      setPreview(renderer.current?.capture(Boolean(previewSize)||includeBackground, cutFrame, previewSize) ?? ''); setPreviewBackground(includeBackground); setError(''); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '撮影できませんでした'); }
   };
   const close = () => { cancelInteraction(); dialog.current?.close(); onClose(); };
@@ -365,7 +366,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
           </fieldset>}
           {panelContext && <><label><input type="checkbox" checked={showCompanions} onChange={event => setShowCompanions(event.currentTarget.checked)} />相方を仮表示</label>
             {showCompanions && <p class="field-note">相方は現在の配置で仮表示しています。人物単品の撮影・生成には含めず、コマ・ページの生成では一緒に送ります。</p>}</>}
-          {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
+          {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewSize?'image3の撮影プレビュー':previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewSize?'image3':previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
         </div>
         <aside aria-label="配置・撮影設定">
           <fieldset class="human-pose-presets" disabled={loading || backgroundBusy}><legend>登録ポーズ</legend>
@@ -470,7 +471,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             <p class="field-note">現在の骨盤の正面と人物の配置を基準にしています。顔と目線の指定は含みません。確定後、人物欄で文面を修正できます。</p></section>}
           <div class="human-pose-scene-buttons"><button type="button" class="secondary-button" disabled={loading || backgroundBusy} onClick={() => { if (initial.current && (poseValue.pose_id !== initial.current.selection.pose_id || JSON.stringify(draft) !== JSON.stringify(initial.current.scene))) { remember(draft); restoreSnapshot(initial.current); } }}>開いた時の設定に戻す</button>
             <button type="button" class="primary-button" disabled={loading || backgroundBusy} onClick={() => capture()}>撮影プレビュー</button>
-            {draft.background && <button type="button" class="secondary-button" disabled={loading || backgroundBusy} onClick={() => capture(true)}>背景と一緒に撮影</button>}</div>
+            {!previewSize && draft.background && <button type="button" class="secondary-button" disabled={loading || backgroundBusy} onClick={() => capture(true)}>背景と一緒に撮影</button>}</div>
         </>}
         </aside>
       </div>
@@ -478,7 +479,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
         <button type="button" class="secondary-button" onClick={close}>取消</button>
         <button type="button" class="primary-button" disabled={!draft || loading || backgroundBusy} onClick={() => {
           if (!renderer.current) return;
-          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); renderer.current.capture(false, cutFrame); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject(), poseRef.current); close(); }
+          try { stopMotion(); if (!renderer.current.snapshot().framing) update(renderer.current.frameFor(framingSize, aspect)); const png = preview || renderer.current.capture(Boolean(previewSize), cutFrame, previewSize); onConfirm(renderer.current.snapshot(), renderer.current.cameraSubject(), poseRef.current, previewSize ? png : undefined); close(); }
           catch (cause) { setError(cause instanceof Error ? cause.message : '撮影範囲を確認してください'); }
         }}>確定</button></footer>
     </div>

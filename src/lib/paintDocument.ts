@@ -656,7 +656,8 @@ export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name
   const box={x:(frame.x-owner.frame.x)*px,y:(frame.y-owner.frame.y)*py,w:frame.w*px,h:frame.h*py};
   const expanded=expandPaintOwnerToBounds(owner,box),paint=expanded.paint;
   const target={x:(frame.x-expanded.frame.x)*px,y:(frame.y-expanded.frame.y)*py,w:box.w,h:box.h};
-  const scale=Math.min(target.w/asset.widthPx,target.h/asset.heightPx),w=asset.widthPx*scale,h=asset.heightPx*scale;
+  // Fit in manuscript coordinates; the layer can have a different pixel density on each axis.
+  const scale=Math.min(frame.w/asset.widthPx,frame.h/asset.heightPx),w=asset.widthPx*scale*px,h=asset.heightPx*scale*py;
   const layer:PaintLayer={...newPaintLayer(name),...(owner.kind==='bubble'?{aboveNative:true}:{}),image:{assetId:asset.id,crop:{x:0,y:0,w:asset.widthPx,h:asset.heightPx},bbox:{x:target.x+(target.w-w)/2,y:target.y+(target.h-h)/2,w,h}}};
   return {owner:{...expanded,paint:{...paint,layers:[...paint.layers,layer]}},layer};
 }

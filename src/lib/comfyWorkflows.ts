@@ -97,7 +97,7 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
       throw new Error('固定寸法は幅と高さを正の整数で指定し、寸法の受け渡し先は外してください');
     }
     fixed_size = [fixed[0], fixed[1]];
-  } else if (!width.length || !height.length) {
+  } else if ((!width.length || !height.length) && !(value.prompt_mode === 'qwen-three-images' && !width.length && !height.length)) {
     throw new Error('幅・高さの両方に受け渡し先を設定するか、固定寸法を指定してください');
   }
   const output = value.output;

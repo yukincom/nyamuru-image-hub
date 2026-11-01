@@ -1,13 +1,13 @@
 import { loadHumanPoseScene } from './localBridge.ts';
 import { withNewCreationBridgeSession } from './localBridgeLifecycle.ts';
-import { HumanPoseSceneRenderer } from './humanPoseSceneRenderer.ts';
+import { HumanPoseSceneRenderer, loadHumanPoseBackground } from './humanPoseSceneRenderer.ts';
 import { requireHumanPoseGenerationReady } from './humanPoseSelection.ts';
-import type { FigureSize } from '../types.ts';
+import type { BackgroundStage, FigureSize } from '../types.ts';
 import type { HumanPoseTextSelection } from './humanPoseTypes.ts';
 import type { HumanPoseCutFrame } from './humanPoseFraming.ts';
 
 /** Reuse the editor's renderer; only the generated PNG is temporary. */
-export async function captureHumanPoseReference(value: HumanPoseTextSelection, size: FigureSize, aspect: number, cut?: HumanPoseCutFrame): Promise<string> {
+export async function captureHumanPoseReference(value: HumanPoseTextSelection, size: FigureSize, aspect: number, cut?: HumanPoseCutFrame, previewSize?: {width:number;height:number}, stages: BackgroundStage[] = []): Promise<string> {
   requireHumanPoseGenerationReady(value);
   if (!value.scene || value.input_mode !== 'image') throw new Error('撮影画像で送るポーズを選んでください');
   const bodyModel = value.scene.body_model;
@@ -17,11 +17,12 @@ export async function captureHumanPoseReference(value: HumanPoseTextSelection, s
   document.body.append(host);
   let renderer: HumanPoseSceneRenderer | undefined;
   try {
-    // Placement is already world-space. Stage geometry is not needed for a person-only capture.
-    // Retain the complete stored settings in value; detach only this rendering copy.
-    const scene = structuredClone(value.scene); delete scene.background;
-    renderer = await HumanPoseSceneRenderer.create(host, assets, scene, aspect);
+    // Image3 uses the preview camera and stage. Other pose references are person-only.
+    const scene = structuredClone(value.scene);
+    const background = previewSize && scene.background ? await loadHumanPoseBackground(scene.background.sourceId, stages) : undefined;
+    if (!previewSize) delete scene.background;
+    renderer = await HumanPoseSceneRenderer.create(host, assets, scene, aspect, background);
     if (scene.framing?.size !== size || Math.abs(scene.frame.width / scene.frame.height / aspect - 1) > .01) renderer.apply(renderer.frameFor(size, aspect));
-    return renderer.capture(false, cut);
+    return renderer.capture(Boolean(previewSize), cut, previewSize);
   } finally { renderer?.dispose(); host.remove(); }
 }

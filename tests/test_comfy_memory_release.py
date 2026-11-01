@@ -101,7 +101,8 @@ class MemoryReleaseTests(unittest.TestCase):
         comfy.model_management = self.models
         server = ModuleType("server")
         server.PromptServer = SimpleNamespace(instance=self.server)
-        modules = {"aiohttp": aiohttp, "execution": execution, "comfy": comfy,
+        modules = {"memory_release_under_test.print_png": SimpleNamespace(NyamuruSavePrintPNG=object),
+                   "aiohttp": aiohttp, "execution": execution, "comfy": comfy,
                    "comfy.model_management": self.models, "server": server}
         spec = importlib.util.spec_from_file_location("memory_release_under_test", EXTENSION)
         self.module = importlib.util.module_from_spec(spec)

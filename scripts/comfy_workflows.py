@@ -8,6 +8,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 import fcntl
+import hashlib
 import json
 import math
 import os
@@ -124,6 +125,8 @@ def validate_definition(body):
     if binding['width']:
         if fixed is not None:
             raise ValueError('寸法の受け渡し先と固定寸法は同時に指定できません')
+    elif binding['prompt_mode'] == 'qwen-three-images' and fixed is None:
+        pass  # The panel-sized image3 drives both the native latent and the final crop.
     elif not isinstance(fixed, list) or len(fixed) != 2:
         raise ValueError('寸法の受け渡し先がない場合はfixed_sizeに幅と高さを指定してください')
     else:
@@ -158,7 +161,7 @@ def negative_prompt_nodes(definition):
             and isinstance(definition['graph'][sink['node']]['inputs'].get('negative_prompt'), str)]
 
 
-def bind_graph(definition, prompt, images, seed, width, height, *, negative_prompt=None):
+def bind_graph(definition, prompt, images, seed, width, height, *, negative_prompt=None, dpi=None):
     """Bind request values to a previously validated definition, copying its graph once."""
     if not isinstance(prompt, str):
         raise ValueError('指示文は文字列で指定してください')
@@ -176,6 +179,11 @@ def bind_graph(definition, prompt, images, seed, width, height, *, negative_prom
         for sink in sinks:
             graph[sink['node']]['inputs'][sink['input']] = value
 
+    if dpi is not None:
+        save = graph[binding['output']['node']]
+        if save['class_type'] != 'NyamuruSavePrintPNG':
+            raise ValueError('コマの解像度を受け取る保存ノードを指定してください')
+        save['inputs']['dpi'] = dpi
     put(binding['prompt'], prompt)
     if negative_prompt is not None:
         for node_id in negative_prompt_nodes(definition):
@@ -360,16 +368,27 @@ def install_qwen_defaults(store):
         try:
             if not stat.S_ISREG(os.stat(marker, dir_fd=directory, follow_symlinks=False).st_mode):
                 raise ValueError("既定ワークフローの登録記録が不正です")
-            return
+            installed = True
         except FileNotFoundError:
-            pass
+            installed = False
     examples = Path(__file__).resolve().parents[1] / 'examples' / 'comfyui'
 
     def read(name, kind):
         return json.loads((examples / f'{name}.{kind}.json').read_text(encoding='utf-8'))
 
     name = 'nyamuru_qwen_turbo_3images'
-    store.save(dict(name=name, graph=read(name, 'api'), binding=read(name, 'binding')), initial_id=QWEN_FIGURE_ID)
+    figure = dict(name=name, graph=read(name, 'api'), binding=read(name, 'binding'))
+    if installed:
+        try:
+            current = store.get(QWEN_FIGURE_ID)
+        except FileNotFoundError:
+            return
+        # Update only the exact shipped graph; keep user edits, renames and deleted presets.
+        previous = {key: current[key] for key in ('graph', 'binding')}
+        if hashlib.sha256(canonical(previous)).hexdigest() == 'fe427df378bb686284604ad997cb39a87490f85ea13990b2047e4db8e1310596':
+            store.save({**figure, 'name': current['name'], 'id': current['id'], 'expected_version': current['version']})
+        return
+    store.save(figure, initial_id=QWEN_FIGURE_ID)
     # The usual editing graph accepts exactly the number of occupied inputs.
     # Keep it separate from the three-image figure instructions.
     name = 'qwen-turbo-10-refs'

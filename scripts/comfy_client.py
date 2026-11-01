@@ -230,7 +230,7 @@ class ComfyClient:
             raise ComfyError(str(exc)) from exc
         return f"{folder}/{name}" if folder else name
 
-    def submit(self, graph: dict, correlation_id: str) -> str:
+    def submit(self, graph: dict, correlation_id: str, *, workflow=None) -> str:
         if not isinstance(graph, dict) or not graph:
             raise ValueError("空でないComfyUI API graphを指定してください")
         correlation_id = _identifier(correlation_id, "correlation_id")
@@ -241,6 +241,8 @@ class ComfyClient:
             raise ValueError("correlation_idは小文字・ハイフン付きUUIDで指定してください") from None
         payload = {"prompt": graph, "prompt_id": correlation_id, "client_id": correlation_id,
                    "extra_data": {"nyamuru_submission_id": correlation_id}}
+        if workflow is not None:
+            payload['extra_data']['extra_pnginfo'] = {'workflow': workflow}
         # Validate serialization before the request: local invalid input is not
         # an ambiguous network submission and must never reach the server.
         json.dumps(payload, ensure_ascii=False, allow_nan=False)

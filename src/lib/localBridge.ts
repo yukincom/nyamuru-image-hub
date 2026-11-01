@@ -1313,7 +1313,7 @@ async function imageDataUrl(file: File): Promise<string> {
   });
 }
 
-function blobDataUrl(blob: Blob): Promise<string> {
+export function blobDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => typeof reader.result === 'string'

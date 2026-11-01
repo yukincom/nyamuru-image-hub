@@ -3,7 +3,7 @@ import io
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 
-def remove_chroma_background(raw, settings, *, output_size=None):
+def remove_chroma_background(raw, settings, *, dpi=None, polygon=None):
     """Key the chosen colour throughout the image, preserving interior foreground RGB."""
     import numpy as np
     colors = {'#00FF00': (0, 255, 0), '#0000FF': (0, 0, 255), '#FF00FF': (255, 0, 255)}
@@ -30,9 +30,11 @@ def remove_chroma_background(raw, settings, *, output_size=None):
     pixels[:, :, 3] = np.rint(pixels[:, :, 3].astype(np.float32) * alpha).astype(np.uint8)
     output = io.BytesIO()
     image = Image.fromarray(pixels)
-    if output_size is not None and image.size != tuple(output_size):
-        image = image.resize(tuple(output_size), Image.Resampling.LANCZOS)
-    image.save(output, format='PNG')
+    if polygon:
+        mask = Image.new('L', image.size, 0)
+        ImageDraw.Draw(mask).polygon([(x*image.width, y*image.height) for x,y in polygon], fill=255)
+        image.putalpha(ImageChops.multiply(image.getchannel('A'), mask))
+    image.save(output, format='PNG', **({'dpi': (dpi,dpi)} if dpi else {}))
     return output.getvalue()
 
 

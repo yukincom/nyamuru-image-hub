@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import time
 import io
+import json
+from pathlib import Path
 from uuid import UUID, uuid5
 
 from comfy_client import ComfyClient, ComfyOutputError, ComfyRejected, ComfySubmissionUnknown
-from comfy_workflows import bind_graph
+from comfy_workflows import bind_graph, QWEN_FIGURE_ID
 from generation_store import canonical
 from image_generation_lock import record_api_submission
 
@@ -69,6 +71,11 @@ def collect_candidate(service, job_id, index, client, *, submission=None, value=
                 with Image.open(io.BytesIO(raw)) as image:
                     if image.format != 'PNG' or getattr(image, 'is_animated', False) or list(image.size) != value['output_size']:
                         raise ComfyOutputError('ワークフローの完成画像は準備した寸法の静止PNGにしてください')
+                    if 'dpi' in value:
+                        density = image.info.get('dpi')
+                        if not isinstance(density,tuple) or len(density)!=2 or not all(
+                                isinstance(d,(int,float)) and abs(d-value['dpi']) <= .02 for d in density):
+                            raise ComfyOutputError('完成画像の印刷解像度が原稿と一致しません')
             except ComfyOutputError:
                 raise
             except (OSError, ValueError, SyntaxError, Image.DecompressionBombError) as exc:
@@ -106,6 +113,24 @@ def reconcile_candidates(service, job_id, client=None):
     return 'failed'
 
 
+def desktop_workflow_for_job(definition, graph):
+    """Embed the submitted inputs, so opening a candidate in Desktop restores the actual job."""
+    if definition.get('id') != QWEN_FIGURE_ID:
+        return None
+    examples = Path(__file__).resolve().parents[1]/'examples'/'comfyui'
+    base = 'nyamuru_qwen_turbo_3images'
+    if definition['graph'] != json.loads((examples/f'{base}.api.json').read_text()):
+        return None
+    workflow = json.loads((examples/f'{base}.json').read_text())
+    for node in workflow['nodes']:
+        inputs = graph[str(node['id'])]['inputs']
+        for index, name in enumerate(node.get('widgets_values_named', {})):
+            if name in inputs and not isinstance(inputs[name],list):
+                node['widgets_values_named'][name] = inputs[name]
+                node['widgets_values'][index] = inputs[name]
+    return workflow
+
+
 def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.monotonic):
     store, value = service.store, service.load(job_id)
     client = service.client_factory(value['comfyui_url'])
@@ -120,7 +145,7 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
         if (store.root / job_id / 'cancel-request.json').exists():
             raise ValueError('生成を取り消しました。取得済みの候補は保持しています')
         correlation = submission_id(job_id, index)
-        graph = bind_graph(value['workflow'], prompt, uploads, seed, *value['output_size'], negative_prompt=value.get('negative_prompt'))
+        graph = bind_graph(value['workflow'], prompt, uploads, seed, *value['output_size'], negative_prompt=value.get('negative_prompt'), dpi=value.get('dpi'))
         # Both intent records precede POST. A lost reply is never an excuse to replay.
         intent = {'correlation_id': correlation, 'seed': seed}
         submission = dict(intent)
@@ -133,7 +158,8 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
             record_api_submission(lease_fd, value['comfyui_url'], correlation, terminal=True)
             raise ValueError('生成を取り消しました')
         try:
-            prompt_id = client.submit(graph, correlation)
+            ui = desktop_workflow_for_job(value['workflow'], graph)
+            prompt_id = client.submit(graph, correlation, workflow=ui) if ui else client.submit(graph, correlation)
             store.write_once(job_id, f'api-accepted-{index}.json', canonical({'prompt_id': prompt_id}))
             record_api_submission(lease_fd, value['comfyui_url'], correlation, prompt_id=prompt_id)
             submission['prompt_id'] = recorded_prompt_id = prompt_id

@@ -13,6 +13,7 @@ import { paintReferenceBox } from './paintDocument.ts';
 import { panelBounds } from './canvasGeometry.ts';
 import { humanPoseFigureFrame, humanPosePanelCutFrame, threeImageFigureTarget, type HumanPoseCutFrame } from './humanPoseFraming.ts';
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
+import { getPrintSetup } from './printSettings.ts';
 import { textStyleOf } from './textStyle.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
@@ -27,6 +28,8 @@ export interface QwenGenerationPlan {
   prompt: string; characterKeys: string[]; candidates: QwenReferenceCandidate[];
   threeImageTarget?: NonNullable<ReturnType<typeof threeImageFigureTarget>> & { referenceFrame:BBox };
   threeImages?: boolean;
+  dpi?: number;
+  artworkStyle?: string[];
   expressionSource?: Pick<AnalogFigureImport,'assetId'|'persistentAsset'>;
   figureFraming?: FigureSize;
   sketchPrompt?: string;
@@ -90,10 +93,13 @@ export function qwenGenerationTarget(plan:QwenGenerationPlan,correction=false):Q
 /** Keep the registered prompt and captured manuscript target together for this workflow only. */
 export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null):QwenGenerationPlan {
   if(workflow?.binding.prompt_mode!=='qwen-three-images')return plan;
-  const slot=workflow.binding.prompt[0],prompt=String(workflow.graph[slot.node].inputs[slot.input]);
+  const slot=workflow.binding.prompt[0];
+  // The colour selector supplies this last line; keep the artwork text editable.
+  const base=String(workflow.graph[slot.node].inputs[slot.input]).replace(/\nUniform solid #(00FF00|0000FF|FF00FF) background\.$/,'');
+  const prompt=[base,...(plan.artworkStyle??[])].filter(Boolean).join('\n');
   if(!plan.threeImageTarget)return {...plan,prompt};
-  const {width,height,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
-  return {...plan,threeImages:true,width,height,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
+  const {width,height,dpi,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
+  return {...plan,threeImages:true,width,height,dpi,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
 }
 export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
   if(!plan.contentKind)return '';
@@ -201,7 +207,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
   const outputFrame=lettering?{...owner.frame}:cutFrame?panelBounds(panel):undefined;
   const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):{width:owner.paint.width,height:owner.paint.height};
-  const figureTarget=person?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea):undefined;
+  const figureTarget=person?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea,getPrintSetup(manga).dpi):undefined;
   if(generationArea&&((!lettering&&!figureTarget)||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
@@ -210,7 +216,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
     ...(person?{figureFraming:framing}:{}),
     ...(person&&owner.figure?.analogImport?{expressionSource:{assetId:owner.figure.analogImport.assetId,persistentAsset:owner.figure.analogImport.persistentAsset}}:{}),
-    ...(figureTarget?{threeImageTarget:{...figureTarget,referenceFrame}}:{}),
+    ...(figureTarget?{artworkStyle:style,threeImageTarget:{...figureTarget,referenceFrame}}:{}),
     ...(lettering&&generationArea?{generationArea:{...generationArea}}:{}),
     ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
 }
@@ -245,8 +251,10 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   if(references.some(r=>r.characterKeys.some(key=>!plan.characterKeys.includes(key))))throw new Error('参照資料と生成する人物が一致しません');
   const offset=Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage));
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
+  const cut=plan.threeImages?plan.humanPose?.cutFrame:undefined;
   return {candidate_count:5,profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
     overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
+    ...(cut?{dpi:plan.dpi,clip_polygon:cut.points.map(([x,y])=>[(x-cut.bounds.x)/cut.bounds.w,(y-cut.bounds.y)/cut.bounds.h])}:{}),
     ...(plan.scope||plan.contentKind?{literal_text:plan.literalText??[]}:{}),
     ...(plan.contentKind?{content_kind:plan.contentKind}:{}),
     ...(plan.contentKind&&plan.handwrittenPrompt?{handwritten_prompt:{...plan.handwrittenPrompt,confirmation:[plan.handwrittenPrompt.confirmation,sizePrompt].filter(Boolean).join('\n\n')}}:{}),

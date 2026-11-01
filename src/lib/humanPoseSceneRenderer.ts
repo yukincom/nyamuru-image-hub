@@ -384,9 +384,10 @@ export class HumanPoseSceneRenderer {
     applyBackgroundCameraShift(this.camera, this.settings.camera); applyHumanPoseFraming(this.camera, this.settings, view || undefined); this.camera.updateProjectionMatrix();
     this.renderer.render(this.scene, this.camera);
   }
-  capture(includeBackground = false, cut?: HumanPoseCutFrame): string {
+  capture(includeBackground = false, cut?: HumanPoseCutFrame, previewSize?: {width:number;height:number}): string {
     if (this.disposed) throw new Error('3D表示は閉じられています');
-    const { width, height } = cut ? humanPoseSceneFrame(cut.aspect * cut.bounds.w / cut.bounds.h) : this.settings.frame;
+    const { width, height } = previewSize ?? (cut ? humanPoseSceneFrame(cut.aspect * cut.bounds.w / cut.bounds.h) : this.settings.frame);
+    if (Math.max(width,height) > this.renderer.capabilities.maxTextureSize) throw new Error('このコマの寸法は3D撮影可能なサイズを超えています');
     const target = new WebGLRenderTarget(width, height, { samples: 4 });
     target.texture.colorSpace = SRGBColorSpace;
     const handlesVisible = this.runtime.handles.visible;
@@ -419,6 +420,11 @@ export class HumanPoseSceneRenderer {
         context.globalCompositeOperation = 'destination-in'; context.fillStyle = '#ffffff'; context.beginPath();
         polygon.forEach(({x, y}, index) => index ? context.lineTo(x * width, y * height) : context.moveTo(x * width, y * height));
         context.closePath(); context.fill();
+      }
+      if (previewSize) {
+        context.globalCompositeOperation = 'destination-over';
+        context.fillStyle = '#eef2f3'; // Same background as the 3D viewport.
+        context.fillRect(0, 0, width, height);
       }
       return canvas.toDataURL('image/png');
     } finally { this.supports.forEach((mesh, index) => { mesh.visible = supportsVisible[index]; }); this.runtime.handles.visible = handlesVisible; this.surfaceMarker.visible = surfaceVisible; this.renderer.setRenderTarget(previous); this.grid.visible = gridVisible; this.backgroundGroup.visible = backgroundVisible; target.dispose(); this.render(); }

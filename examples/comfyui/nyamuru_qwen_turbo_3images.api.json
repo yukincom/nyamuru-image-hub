@@ -48,23 +48,23 @@
         "4",
         0
       ],
-      "prompt": "Black-and-white manga.\nFacial expression and emotional nuance from <image1>.\nCharacter design and drawing style from <image2>.\nDetailed body pose, including hand and limb positions, from <image3>.",
+      "prompt": "Black-and-white manga.\nFacial expression and emotional nuance from <image1>.\nCharacter design and drawing style from <image2>.\nDetailed body pose, including hand and limb positions, from <image3>.\nUniform solid #00FF00 background.",
       "negative_prompt": "text, speech bubbles, panel borders, background scenery, extra people, collage, multiple views, 3D mannequin, skeleton guides, joint markers, signature, watermark",
       "vae": [
         "5",
         0
       ],
-      "resolution": 1024,
+      "resolution": 0,
       "images.image_1": [
-        "21",
+        "31",
         0
       ],
       "images.image_2": [
-        "22",
+        "32",
         0
       ],
       "images.image_3": [
-        "23",
+        "33",
         0
       ]
     }
@@ -72,8 +72,14 @@
   "7": {
     "class_type": "EmptyLatentImage",
     "inputs": {
-      "width": 1024,
-      "height": 1024,
+      "width": [
+        "35",
+        0
+      ],
+      "height": [
+        "35",
+        1
+      ],
       "batch_size": 1
     }
   },
@@ -135,13 +141,14 @@
     }
   },
   "12": {
-    "class_type": "SaveImage",
+    "class_type": "NyamuruSavePrintPNG",
     "inputs": {
       "images": [
-        "11",
+        "38",
         0
       ],
-      "filename_prefix": "nyamuru/qwen-turbo-3-refs"
+      "filename_prefix": "nyamuru/qwen-turbo-3-refs",
+      "dpi": 600
     }
   },
   "21": {
@@ -160,6 +167,131 @@
     "class_type": "LoadImage",
     "inputs": {
       "image": "nyamuru-reference-3.png"
+    }
+  },
+  "41": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {
+      "image": [
+        "21",
+        0
+      ],
+      "alpha": [
+        "21",
+        1
+      ]
+    }
+  },
+  "31": {
+    "class_type": "PadImageNode",
+    "inputs": {
+      "image": [
+        "41",
+        0
+      ],
+      "padding_type": "pad to multiple",
+      "padding_type.multiple": 32,
+      "padding_style": "mirror image"
+    }
+  },
+  "42": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": {
+      "image": [
+        "22",
+        0
+      ],
+      "alpha": [
+        "22",
+        1
+      ]
+    }
+  },
+  "32": {
+    "class_type": "PadImageNode",
+    "inputs": {
+      "image": [
+        "42",
+        0
+      ],
+      "padding_type": "pad to multiple",
+      "padding_type.multiple": 32,
+      "padding_style": "mirror image"
+    }
+  },
+  "33": {
+    "class_type": "PadImageNode",
+    "inputs": {
+      "image": [
+        "23",
+        0
+      ],
+      "padding_type": "pad to multiple",
+      "padding_type.multiple": 32,
+      "padding_style": "mirror image"
+    }
+  },
+  "34": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "23",
+        0
+      ]
+    }
+  },
+  "35": {
+    "class_type": "GetImageSize",
+    "inputs": {
+      "image": [
+        "33",
+        0
+      ]
+    }
+  },
+  "36": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "((32 - a % 32) % 32) // 2",
+      "values.a": [
+        "34",
+        0
+      ]
+    }
+  },
+  "37": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "((32 - a % 32) % 32) // 2",
+      "values.a": [
+        "34",
+        1
+      ]
+    }
+  },
+  "38": {
+    "class_type": "ImageCrop",
+    "inputs": {
+      "image": [
+        "11",
+        0
+      ],
+      "width": [
+        "34",
+        0
+      ],
+      "height": [
+        "34",
+        1
+      ],
+      "x": [
+        "36",
+        1
+      ],
+      "y": [
+        "37",
+        1
+      ]
     }
   }
 }

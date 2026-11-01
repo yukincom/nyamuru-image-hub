@@ -412,7 +412,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const qwenPreparing=useRef(false);
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
-  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;poseEditorContext?:GenerationPoseEditorContext;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest;textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}}|null>(null);
+  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;poseEditorContext?:GenerationPoseEditorContext;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest;textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}}|null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
@@ -3532,9 +3532,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       || (captured.figure&&!isPropPlacement(captured.figure));
     const area=needsMask?generationMaskBounds(captured.paint):undefined;
     const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area,Boolean(captured.figure&&!isPropPlacement(captured.figure)));
-    const loadLayer=async(id:string,correction:boolean,crop?:BBox)=>{
+    const loadLayer=async(id:string,correction:boolean,crop?:BBox,native=false)=>{
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
-      const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop);
+      const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop,native);
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       return result.image;
     };

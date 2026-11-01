@@ -14,7 +14,7 @@ from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
-from comfy_generation import run_candidates
+from comfy_generation import desktop_workflow_for_job, run_candidates
 from comfy_workflows import (WorkflowStore, validate_definition, validate_request, install_qwen_defaults,
                              QWEN_FIGURE_ID, QWEN_STANDARD_PREFIX)
 from hermes_qwen import preview
@@ -37,9 +37,9 @@ def read_definition():
             'binding': json.loads((EXAMPLES / f'{NAME}.binding.json').read_text())}
 
 
-def png(color):
+def png(color, size=(64,64)):
     buffer = io.BytesIO()
-    Image.new('RGB', (64, 64), color).save(buffer, format='PNG')
+    Image.new('RGB', size, color).save(buffer, format='PNG')
     return buffer.getvalue()
 
 
@@ -67,25 +67,57 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             self.assertEqual(store.get(preset['id']), preset)
             self.assertNotIn(double['id'], [item['id'] for item in store.list()])
 
-    # 見込み: 専用定義の変更を3入力に限定すれば既存のモデル・接続を保てる。
-    # 合格: 固定positive/negative/CFG2以外が基準グラフと一致。範囲: API定義のみ、Desktop保存UIやモデル品質は未確認。
-    def test_only_approved_prompt_and_cfg_change(self):
+    # 見込み: 同梱旧版だけを更新する。合格: カスタム名保持、2回目は更新なし、削除済みは復活しない。実ストアのみ。
+    def test_installed_previous_preset_is_updated_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = WorkflowStore(Path(tmp).resolve())
+            old = read_definition()
+            old['graph'] = json.loads((EXAMPLES/'qwen-turbo-3-refs.api.json').read_text())
+            old['binding'] = json.loads((EXAMPLES/'qwen-turbo-3-refs.binding.json').read_text())
+            old['binding']['prompt_mode'] = 'qwen-three-images'
+            old['graph']['6']['inputs'].update(prompt=POSITIVE,negative_prompt=NEGATIVE)
+            old['graph']['10']['inputs']['cfg'] = 2
+            old['name'] = '作品の設定'
+            store.save(old,initial_id=QWEN_FIGURE_ID)
+            (Path(tmp)/'.bundled-qwen-1').touch()
+            install_qwen_defaults(store)
+            new = store.get(QWEN_FIGURE_ID)
+            self.assertEqual((new['name'],new['version']), ('作品の設定',2))
+            self.assertEqual(new['graph'],read_definition()['graph'])
+            install_qwen_defaults(store)
+            self.assertEqual(new,store.get(QWEN_FIGURE_ID))
+            store.delete(QWEN_FIGURE_ID,2)
+            install_qwen_defaults(store)
+            self.assertEqual(store.list(),[])
+
+    # 見込み: DesktopとAPIが同じ接続なら、原寸ポーズが出力を決定し、負の指示もCFG2で効く。
+    # 合格: UIリンクをたどりAPI全リンクと照合、参照の余白・原寸クロップ・正負とCFGを確認。範囲: 配布する両グラフ、推論なし。
+    def test_desktop_and_api_use_the_same_native_size_graph(self):
         definition = validate_definition(read_definition())
-        expected = json.loads((EXAMPLES / 'qwen-turbo-3-refs.api.json').read_text())
-        expected['6']['inputs'].update(prompt=POSITIVE, negative_prompt=NEGATIVE)
-        expected['10']['inputs']['cfg'] = 2
-        self.assertEqual(definition['graph'], expected)
-        self.assertEqual(definition['binding']['prompt_mode'], 'qwen-three-images')
-        self.assertEqual(definition['binding']['output'], {'node': '12', 'index': 0})
-        self.assertEqual(definition['graph']['10']['inputs']['negative'], ['6', 1])
-        for index, node in enumerate(('21', '22', '23'), 1):
-            self.assertEqual(definition['binding']['images'][index - 1], [{'node': node, 'input': 'image'}])
-            self.assertEqual(definition['graph']['6']['inputs'][f'images.image_{index}'], [node, 0])
+        graph = definition['graph']
+        ui = json.loads((EXAMPLES/f'{NAME}.json').read_text())
+        nodes = {str(n['id']):n for n in ui['nodes']}
+        links = {n:(str(src),slot) for n,src,slot,*_ in ui['links']}
+        for key, n in graph.items():
+            self.assertEqual(nodes[key]['type'], n['class_type'])
+            for port in nodes[key]['inputs']:
+                if port['link'] is not None:
+                    self.assertEqual(n['inputs'][port['name']], list(links[port['link']]))
+            for field,val in n['inputs'].items():
+                if not isinstance(val,list):
+                    self.assertEqual(nodes[key]['widgets_values_named'][field], val)
+        self.assertEqual(graph['6']['inputs']['resolution'], 0)
+        self.assertEqual(graph['6']['inputs']['prompt'], POSITIVE+'\nUniform solid #00FF00 background.')
+        self.assertEqual(graph['6']['inputs']['negative_prompt'], NEGATIVE)
+        self.assertEqual(graph['10']['inputs']['cfg'], 2)
+        self.assertEqual(graph['12']['inputs']['images'], ['38',0])
+        self.assertEqual(graph['38']['inputs']['width'], ['34',0])
+        self.assertEqual(graph['34']['inputs']['image'], ['23',0])
 
     # 見込み: 3資料を共用しseedのみを変えれば、選択まで無加工の5候補を保持できる。
     # 合格: 編集したnegativeと固定positiveが別入力へ届き、upload3回、5グラフの差はseedのみ、選んだ3番の背景は透明・中央色は3番・318×159。範囲: 模擬APIと実PNG、実推論を除く。
     def test_five_seeds_and_exact_selected_png(self):
-        raw_images = [png(color) for color in ('red', 'green', 'blue')]
+        raw_images = [png('red',(359,450)), png('green',(2101,123)), png('blue',(318,159))]
         api = Mock(endpoint='http://127.0.0.1:8188')
         api.upload_image.side_effect = lambda _raw, name: 'input/' + name
         api.submit.side_effect = lambda _graph, correlation: correlation
@@ -98,7 +130,7 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             service = QwenGenerationService(root / 'jobs', workflows=workflows, client_factory=lambda endpoint: api)
             request = {'job_id': str(uuid4()), 'profile': PROFILE, 'document_key': 'test',
                 'page_number': 1, 'panel_id': 1, 'overlay': False, 'owner_key': 'figure-0',
-                'label': '人物名は生成文に追加しない', 'mode': 'new', 'width': 318, 'height': 159,
+                'label': '人物名は生成文に追加しない', 'mode': 'new', 'width': 318, 'height': 159, 'dpi':600, 'clip_polygon':[[0,0],[1,0],[0,1]],
                 'prompt': POSITIVE, 'character_keys': ['character-1'],
                 'references': [
                     {'label': 'ネームの表情', 'character_keys': [], 'image': data_url(raw_images[0])},
@@ -114,14 +146,14 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             self.assertEqual(prepared['generation_prompt'], final_prompt)
             self.assertEqual(preview(request, service)['generation_prompt'], final_prompt)
             value = service.load(job_id)
-            self.assertEqual(value['output_size'], [1440, 736])
+            self.assertEqual(value['output_size'], [318, 159])
             self.assertEqual(value['settings']['transparency_mode'], 'chroma-key-v1')
             samples = []
             for i in range(1, 6):
-                canvas = Image.new('RGB', (1440, 736), '#00FF00')
-                canvas.paste((20*i, 0, 0), (360, 184, 1080, 552))
+                canvas = Image.new('RGB', (318,159), '#00FF00')
+                canvas.paste((20*i, 0, 0), (15,15,300,146))
                 with io.BytesIO() as stream:
-                    canvas.save(stream, 'PNG')
+                    canvas.save(stream, 'PNG', dpi=(600,600))
                     samples.append(stream.getvalue())
             api.get_image.side_effect = samples
             with patch('comfy_generation.record_api_submission'):
@@ -136,10 +168,16 @@ class ThreeImageWorkflowTests(unittest.TestCase):
                 expected = deepcopy(snapshot['graph'])
                 expected['6']['inputs'].update(prompt=final_prompt, negative_prompt='test exclusions')
                 expected['10']['inputs']['noise_seed'] = graph['10']['inputs']['noise_seed']
-                expected['7']['inputs'].update(width=1440, height=736)
+                expected['12']['inputs']['dpi'] = 600
                 for node, name in zip(('21', '22', '23'), names, strict=True):
                     expected[node]['inputs']['image'] = name
                 self.assertEqual(graph, expected)
+            ui = desktop_workflow_for_job({**snapshot,'id':QWEN_FIGURE_ID},graphs[-1])
+            actual = {node['id']:node.get('widgets_values_named',{}) for node in ui['nodes']}
+            self.assertEqual([actual[n]['image'] for n in (21,22,23)],names)
+            self.assertEqual(actual[6]['prompt'],final_prompt)
+            self.assertEqual(actual[6]['negative_prompt'],'test exclusions')
+            self.assertEqual((actual[10]['cfg'],actual[10]['noise_seed'],actual[12]['dpi']),(2,seeds[-1],600))
             candidates = service.payload(job_id)
             self.assertNotIn('image', candidates)
             self.assertEqual([c['image'] for c in candidates['candidates']], list(map(data_url, samples)))
@@ -153,7 +191,9 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             with Image.open(io.BytesIO(saved)) as adopted:
                 self.assertEqual((adopted.mode, adopted.size), ('RGBA', (318, 159)))
                 self.assertEqual(adopted.getpixel((0, 0))[3], 0)
-                self.assertEqual(adopted.getpixel((159, 79)), (60, 0, 0, 255))
+                self.assertEqual(adopted.getpixel((15,15)), (60, 0, 0, 255))
+                self.assertEqual(adopted.getpixel((280,139))[3], 0)
+                self.assertAlmostEqual(adopted.info['dpi'][0],600,delta=.02)
             self.assertEqual(workflows.get(definition['id']), snapshot)
             with self.assertRaises(ValueError):
                 service.normalize_request({**request, 'job_id': str(uuid4()), 'references': list(reversed(request['references'][:2])) + request['references'][2:]})

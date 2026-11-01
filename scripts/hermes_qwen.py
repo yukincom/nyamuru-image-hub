@@ -20,7 +20,7 @@ def request_file(path):
         raise ValueError('Request must be a JSON object')
     allowed = {'job_id', 'prompt', 'width', 'height', 'label', 'document_key', 'page_number',
                'panel_id', 'overlay', 'owner_key', 'mode', 'character_keys', 'references',
-               'paint_image', 'sketch_image', 'correction_image', 'literal_text', 'workflow_id', 'workflow_version', 'comfyui_url', 'chroma_key_color', 'candidate_count'}
+               'paint_image', 'sketch_image', 'correction_image', 'literal_text', 'workflow_id', 'workflow_version', 'comfyui_url', 'chroma_key_color', 'candidate_count', 'negative_prompt', 'dpi', 'clip_polygon'}
     if set(source) - allowed:
         raise ValueError('Unsupported request fields: ' + ', '.join(sorted(set(source) - allowed)))
 

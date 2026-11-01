@@ -47,14 +47,17 @@ def valid_cache_owner_id(value):
         and all(ord(character) >= 32 and ord(character) != 127 for character in value)
 
 
-def validate_png(raw: bytes):
+def validate_png(raw: bytes, *, native_size=False):
     """Let Pillow check PNG chunks once, then decode within the pixel limit."""
     if not isinstance(raw, bytes) or not 33 <= len(raw) <= MAX_PNG or not raw.startswith(b"\x89PNG\r\n\x1a\n"):
         raise ValueError("画像がPNGではないか、20MiBを超えています")
     from PIL import Image
     with Image.open(io.BytesIO(raw)) as image:
         dimensions = image.size
-        if min(dimensions) < 1 or max(dimensions) > 4096:
+        if native_size:
+            if min(dimensions) < 1 or max(dimensions) > 16384 or dimensions[0] * dimensions[1] > 100_000_000:
+                raise ValueError("参照画像が処理可能な画素数を超えています")
+        elif min(dimensions) < 1 or max(dimensions) > 4096:
             raise ValueError("参照PNGは4096px以内の入力用コピーにしてください")
         if image.format != "PNG" or getattr(image, "is_animated", False):
             raise ValueError("静止PNGを指定してください")

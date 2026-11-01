@@ -1,0 +1,1842 @@
+{
+  "id": "ee345dc9-f689-49af-8257-1a9cde9f869e",
+  "revision": 1,
+  "last_node_id": 42,
+  "last_link_id": 34,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "pos": [
+        100,
+        130
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "showAdvanced": true,
+      "inputs": [
+        {
+          "localized_name": "unet_name",
+          "name": "unet_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "unet_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "重みdtype",
+          "name": "weight_dtype",
+          "type": "COMBO",
+          "widget": {
+            "name": "weight_dtype"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "モデル",
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "qwen_image_2.1_turbo_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    {
+      "id": 2,
+      "type": "QwenImage21Cache",
+      "pos": [
+        544,
+        130
+      ],
+      "size": [
+        277.74375,
+        82
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "localized_name": "device",
+          "name": "device",
+          "type": "COMBO",
+          "widget": {
+            "name": "device"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "dtype",
+          "name": "dtype",
+          "type": "COMBO",
+          "widget": {
+            "name": "dtype"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "モデル",
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "QwenImage21Cache"
+      },
+      "widgets_values": [
+        "cpu",
+        "default"
+      ],
+      "widgets_values_named": {
+        "device": "cpu",
+        "dtype": "default"
+      }
+    },
+    {
+      "id": 3,
+      "type": "ModelAttentionBackend",
+      "pos": [
+        1044,
+        130
+      ],
+      "size": [
+        309.9,
+        58
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "MODEL",
+          "link": 2
+        },
+        {
+          "localized_name": "attention",
+          "name": "attention",
+          "type": "COMBO",
+          "widget": {
+            "name": "attention"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ModelAttentionBackend"
+      },
+      "widgets_values": [
+        "pytorch attention"
+      ],
+      "widgets_values_named": {
+        "attention": "pytorch attention"
+      }
+    },
+    {
+      "id": 4,
+      "type": "CLIPLoader",
+      "pos": [
+        100,
+        342
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip名",
+          "name": "clip_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "clip_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "タイプ",
+          "name": "type",
+          "type": "COMBO",
+          "widget": {
+            "name": "type"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "デバイス",
+          "name": "device",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "device"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "CLIP",
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen3vl_8b_int8_convrot.safetensors",
+        "qwen_image",
+        "cpu"
+      ],
+      "widgets_values_named": {
+        "clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+        "type": "qwen_image",
+        "device": "cpu"
+      }
+    },
+    {
+      "id": 5,
+      "type": "VAELoader",
+      "pos": [
+        100,
+        578
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "vae_name",
+          "name": "vae_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "vae_name"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "VAE",
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            7,
+            17
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "qwen_image_2.1_vae_bf16.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "qwen_image_2.1_vae_bf16.safetensors"
+      }
+    },
+    {
+      "id": 6,
+      "type": "TextEncodeQwenImage21",
+      "pos": [
+        544,
+        342
+      ],
+      "size": [
+        400,
+        266
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "clip",
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        },
+        {
+          "localized_name": "image_1",
+          "name": "images.image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 4
+        },
+        {
+          "localized_name": "image_2",
+          "name": "images.image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 5
+        },
+        {
+          "localized_name": "image_3",
+          "name": "images.image_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 6
+        },
+        {
+          "localized_name": "image_4",
+          "name": "images.image_4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "vae",
+          "name": "vae",
+          "shape": 7,
+          "type": "VAE",
+          "link": 7
+        },
+        {
+          "localized_name": "prompt",
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "negative_prompt",
+          "name": "negative_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "negative_prompt"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "resolution",
+          "name": "resolution",
+          "type": "INT",
+          "widget": {
+            "name": "resolution"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "positive",
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            11
+          ]
+        },
+        {
+          "localized_name": "negative",
+          "name": "negative",
+          "type": "CONDITIONING",
+          "links": [
+            12
+          ]
+        },
+        {
+          "localized_name": "latent",
+          "name": "latent",
+          "type": "LATENT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "TextEncodeQwenImage21"
+      },
+      "widgets_values": [
+        "Black-and-white manga.\nFacial expression and emotional nuance from <image1>.\nCharacter design and drawing style from <image2>.\nDetailed body pose, including hand and limb positions, from <image3>.\nUniform solid #00FF00 background.",
+        "text, speech bubbles, panel borders, background scenery, extra people, collage, multiple views, 3D mannequin, skeleton guides, joint markers, signature, watermark",
+        0
+      ],
+      "widgets_values_named": {
+        "prompt": "Black-and-white manga.\nFacial expression and emotional nuance from <image1>.\nCharacter design and drawing style from <image2>.\nDetailed body pose, including hand and limb positions, from <image3>.\nUniform solid #00FF00 background.",
+        "negative_prompt": "text, speech bubbles, panel borders, background scenery, extra people, collage, multiple views, 3D mannequin, skeleton guides, joint markers, signature, watermark",
+        "resolution": 0
+      }
+    },
+    {
+      "id": 7,
+      "type": "EmptyLatentImage",
+      "pos": [
+        100,
+        766
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "幅",
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 8
+        },
+        {
+          "localized_name": "高さ",
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 9
+        },
+        {
+          "localized_name": "バッチサイズ",
+          "name": "batch_size",
+          "type": "INT",
+          "widget": {
+            "name": "batch_size"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "潜在",
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            15
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "widgets_values_named": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    {
+      "id": 8,
+      "type": "KSamplerSelect",
+      "pos": [
+        100,
+        1002
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "サンプラー名",
+          "name": "sampler_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "sampler_name"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "サンプラー",
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            13
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "euler"
+      }
+    },
+    {
+      "id": 9,
+      "type": "ManualSigmas",
+      "pos": [
+        100,
+        1190
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "シグマ",
+          "name": "sigmas",
+          "type": "STRING",
+          "widget": {
+            "name": "sigmas"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "シグマ",
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ManualSigmas"
+      },
+      "widgets_values": [
+        "1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0.0"
+      ],
+      "widgets_values_named": {
+        "sigmas": "1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0.0"
+      }
+    },
+    {
+      "id": 10,
+      "type": "SamplerCustom",
+      "pos": [
+        1453.9,
+        130
+      ],
+      "size": [
+        270,
+        230
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "モデル",
+          "name": "model",
+          "type": "MODEL",
+          "link": 10
+        },
+        {
+          "localized_name": "ポジティブ",
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 11
+        },
+        {
+          "localized_name": "ネガティブ",
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 12
+        },
+        {
+          "localized_name": "サンプラー",
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 13
+        },
+        {
+          "localized_name": "シグマ",
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 14
+        },
+        {
+          "localized_name": "潜在画像",
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 15
+        },
+        {
+          "localized_name": "ノイズを追加",
+          "name": "add_noise",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "add_noise"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "ノイズシード",
+          "name": "noise_seed",
+          "type": "INT",
+          "widget": {
+            "name": "noise_seed"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "cfg",
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "出力",
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            16
+          ]
+        },
+        {
+          "localized_name": "ノイズ除去出力",
+          "name": "denoised_output",
+          "type": "LATENT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SamplerCustom"
+      },
+      "widgets_values": [
+        true,
+        260921,
+        "randomize",
+        2
+      ],
+      "widgets_values_named": {
+        "add_noise": true,
+        "noise_seed": 260921,
+        "control_after_generate": "randomize",
+        "cfg": 2
+      }
+    },
+    {
+      "id": 11,
+      "type": "VAEDecode",
+      "pos": [
+        1823.9,
+        130
+      ],
+      "size": [
+        140,
+        46
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "サンプル",
+          "name": "samples",
+          "type": "LATENT",
+          "link": 16
+        },
+        {
+          "localized_name": "vae",
+          "name": "vae",
+          "type": "VAE",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "画像",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            30
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 12,
+      "type": "NyamuruSavePrintPNG",
+      "pos": [
+        2170,
+        790
+      ],
+      "size": [
+        313.47265625,
+        58
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "画像",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 18
+        },
+        {
+          "localized_name": "ファイル名_プレフィックス",
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        },
+        {
+          "name": "dpi",
+          "type": "FLOAT",
+          "widget": {
+            "name": "dpi"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "NyamuruSavePrintPNG"
+      },
+      "widgets_values": [
+        "nyamuru/qwen-turbo-3-refs",
+        600
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "nyamuru/qwen-turbo-3-refs",
+        "dpi": 600
+      }
+    },
+    {
+      "id": 21,
+      "type": "LoadImage",
+      "pos": [
+        -940,
+        860
+      ],
+      "size": [
+        344,
+        102
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "画像",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "アップロードするファイルを選択",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "画像",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            19
+          ]
+        },
+        {
+          "localized_name": "マスク",
+          "name": "MASK",
+          "type": "MASK",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "nyamuru-reference-1.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "nyamuru-reference-1.png",
+        "upload": "image"
+      },
+      "title": "image1 · ネームの表情"
+    },
+    {
+      "id": 22,
+      "type": "LoadImage",
+      "pos": [
+        -940,
+        1190
+      ],
+      "size": [
+        344,
+        102
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "画像",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "アップロードするファイルを選択",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "画像",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            21
+          ]
+        },
+        {
+          "localized_name": "マスク",
+          "name": "MASK",
+          "type": "MASK",
+          "links": [
+            22
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "nyamuru-reference-2.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "nyamuru-reference-2.png",
+        "upload": "image"
+      },
+      "title": "image2 · キャラクター設定画"
+    },
+    {
+      "id": 23,
+      "type": "LoadImage",
+      "pos": [
+        -940,
+        1520
+      ],
+      "size": [
+        344,
+        102
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "画像",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "アップロードするファイルを選択",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "画像",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            25,
+            26
+          ]
+        },
+        {
+          "localized_name": "マスク",
+          "name": "MASK",
+          "type": "MASK",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "nyamuru-reference-3.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "nyamuru-reference-3.png",
+        "upload": "image"
+      },
+      "title": "image3 · 3Dプレビュー"
+    },
+    {
+      "id": 41,
+      "type": "JoinImageWithAlpha",
+      "pos": [
+        -610,
+        860
+      ],
+      "size": [
+        255,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 19
+        },
+        {
+          "name": "alpha",
+          "type": "MASK",
+          "link": 20
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            23
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JoinImageWithAlpha"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 42,
+      "type": "JoinImageWithAlpha",
+      "pos": [
+        -610,
+        1190
+      ],
+      "size": [
+        255,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 21
+        },
+        {
+          "name": "alpha",
+          "type": "MASK",
+          "link": 22
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            24
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "JoinImageWithAlpha"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 31,
+      "type": "PadImageNode",
+      "pos": [
+        -290,
+        860
+      ],
+      "size": [
+        255,
+        182
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 23
+        },
+        {
+          "name": "padding_type",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "padding_type"
+          },
+          "link": null
+        },
+        {
+          "name": "padding_type.multiple",
+          "type": "INT",
+          "widget": {
+            "name": "padding_type.multiple"
+          },
+          "link": null
+        },
+        {
+          "name": "padding_style",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "padding_style"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PadImageNode"
+      },
+      "widgets_values": [
+        "pad to multiple",
+        32,
+        "mirror image"
+      ],
+      "widgets_values_named": {
+        "padding_type": "pad to multiple",
+        "padding_type.multiple": 32,
+        "padding_style": "mirror image"
+      }
+    },
+    {
+      "id": 32,
+      "type": "PadImageNode",
+      "pos": [
+        -290,
+        1190
+      ],
+      "size": [
+        255,
+        182
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 24
+        },
+        {
+          "name": "padding_type",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "padding_type"
+          },
+          "link": null
+        },
+        {
+          "name": "padding_type.multiple",
+          "type": "INT",
+          "widget": {
+            "name": "padding_type.multiple"
+          },
+          "link": null
+        },
+        {
+          "name": "padding_style",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "padding_style"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PadImageNode"
+      },
+      "widgets_values": [
+        "pad to multiple",
+        32,
+        "mirror image"
+      ],
+      "widgets_values_named": {
+        "padding_type": "pad to multiple",
+        "padding_type.multiple": 32,
+        "padding_style": "mirror image"
+      }
+    },
+    {
+      "id": 33,
+      "type": "PadImageNode",
+      "pos": [
+        -290,
+        1520
+      ],
+      "size": [
+        255,
+        182
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 25
+        },
+        {
+          "name": "padding_type",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "padding_type"
+          },
+          "link": null
+        },
+        {
+          "name": "padding_type.multiple",
+          "type": "INT",
+          "widget": {
+            "name": "padding_type.multiple"
+          },
+          "link": null
+        },
+        {
+          "name": "padding_style",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "padding_style"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            6,
+            27
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PadImageNode"
+      },
+      "widgets_values": [
+        "pad to multiple",
+        32,
+        "mirror image"
+      ],
+      "widgets_values_named": {
+        "padding_type": "pad to multiple",
+        "padding_type.multiple": 32,
+        "padding_style": "mirror image"
+      }
+    },
+    {
+      "id": 34,
+      "type": "GetImageSize",
+      "pos": [
+        10,
+        1870
+      ],
+      "size": [
+        255,
+        113
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 26
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            28,
+            31
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            29,
+            32
+          ]
+        },
+        {
+          "name": "batch_size",
+          "type": "INT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GetImageSize"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {},
+      "title": "コマの原寸（image3）"
+    },
+    {
+      "id": 35,
+      "type": "GetImageSize",
+      "pos": [
+        10,
+        2110
+      ],
+      "size": [
+        255,
+        113
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 27
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "batch_size",
+          "type": "INT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GetImageSize"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {},
+      "title": "作業用の幅・高さ"
+    },
+    {
+      "id": 36,
+      "type": "ComfyMathExpression",
+      "pos": [
+        335,
+        1760
+      ],
+      "size": [
+        255,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "expression",
+          "type": "STRING",
+          "widget": {
+            "name": "expression"
+          },
+          "link": null
+        },
+        {
+          "name": "values.a",
+          "type": "INT,FLOAT,BOOLEAN",
+          "link": 28
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": []
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            33
+          ]
+        },
+        {
+          "name": "BOOL",
+          "type": "BOOLEAN",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+        "((32 - a % 32) % 32) // 2"
+      ],
+      "widgets_values_named": {
+        "expression": "((32 - a % 32) % 32) // 2"
+      },
+      "title": "左右の余白"
+    },
+    {
+      "id": 37,
+      "type": "ComfyMathExpression",
+      "pos": [
+        335,
+        2020
+      ],
+      "size": [
+        255,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "expression",
+          "type": "STRING",
+          "widget": {
+            "name": "expression"
+          },
+          "link": null
+        },
+        {
+          "name": "values.a",
+          "type": "INT,FLOAT,BOOLEAN",
+          "link": 29
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": []
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            34
+          ]
+        },
+        {
+          "name": "BOOL",
+          "type": "BOOLEAN",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+        "((32 - a % 32) % 32) // 2"
+      ],
+      "widgets_values_named": {
+        "expression": "((32 - a % 32) % 32) // 2"
+      },
+      "title": "上下の余白"
+    },
+    {
+      "id": 38,
+      "type": "ImageCrop",
+      "pos": [
+        1860,
+        790
+      ],
+      "size": [
+        255,
+        205
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 30
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 31
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 32
+        },
+        {
+          "name": "x",
+          "type": "INT",
+          "widget": {
+            "name": "x"
+          },
+          "link": 33
+        },
+        {
+          "name": "y",
+          "type": "INT",
+          "widget": {
+            "name": "y"
+          },
+          "link": 34
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            18
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageCrop"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        0,
+        0
+      ],
+      "widgets_values_named": {},
+      "title": "コマの原寸で切り出す"
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "MODEL"
+    ],
+    [
+      3,
+      4,
+      0,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      4,
+      31,
+      0,
+      6,
+      1,
+      "IMAGE"
+    ],
+    [
+      5,
+      32,
+      0,
+      6,
+      2,
+      "IMAGE"
+    ],
+    [
+      6,
+      33,
+      0,
+      6,
+      3,
+      "IMAGE"
+    ],
+    [
+      7,
+      5,
+      0,
+      6,
+      5,
+      "VAE"
+    ],
+    [
+      8,
+      35,
+      0,
+      7,
+      0,
+      "INT"
+    ],
+    [
+      9,
+      35,
+      1,
+      7,
+      1,
+      "INT"
+    ],
+    [
+      10,
+      3,
+      0,
+      10,
+      0,
+      "MODEL"
+    ],
+    [
+      11,
+      6,
+      0,
+      10,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      12,
+      6,
+      1,
+      10,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      13,
+      8,
+      0,
+      10,
+      3,
+      "SAMPLER"
+    ],
+    [
+      14,
+      9,
+      0,
+      10,
+      4,
+      "SIGMAS"
+    ],
+    [
+      15,
+      7,
+      0,
+      10,
+      5,
+      "LATENT"
+    ],
+    [
+      16,
+      10,
+      0,
+      11,
+      0,
+      "LATENT"
+    ],
+    [
+      17,
+      5,
+      0,
+      11,
+      1,
+      "VAE"
+    ],
+    [
+      18,
+      38,
+      0,
+      12,
+      0,
+      "IMAGE"
+    ],
+    [
+      19,
+      21,
+      0,
+      41,
+      0,
+      "IMAGE"
+    ],
+    [
+      20,
+      21,
+      1,
+      41,
+      1,
+      "MASK"
+    ],
+    [
+      21,
+      22,
+      0,
+      42,
+      0,
+      "IMAGE"
+    ],
+    [
+      22,
+      22,
+      1,
+      42,
+      1,
+      "MASK"
+    ],
+    [
+      23,
+      41,
+      0,
+      31,
+      0,
+      "IMAGE"
+    ],
+    [
+      24,
+      42,
+      0,
+      32,
+      0,
+      "IMAGE"
+    ],
+    [
+      25,
+      23,
+      0,
+      33,
+      0,
+      "IMAGE"
+    ],
+    [
+      26,
+      23,
+      0,
+      34,
+      0,
+      "IMAGE"
+    ],
+    [
+      27,
+      33,
+      0,
+      35,
+      0,
+      "IMAGE"
+    ],
+    [
+      28,
+      34,
+      0,
+      36,
+      1,
+      "INT"
+    ],
+    [
+      29,
+      34,
+      1,
+      37,
+      1,
+      "INT"
+    ],
+    [
+      30,
+      11,
+      0,
+      38,
+      0,
+      "IMAGE"
+    ],
+    [
+      31,
+      34,
+      0,
+      38,
+      1,
+      "INT"
+    ],
+    [
+      32,
+      34,
+      1,
+      38,
+      2,
+      "INT"
+    ],
+    [
+      33,
+      36,
+      1,
+      38,
+      3,
+      "INT"
+    ],
+    [
+      34,
+      37,
+      1,
+      38,
+      4,
+      "INT"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.1000000000000005,
+      "offset": [
+        19.130864792350078,
+        -31.73377447882645
+      ]
+    }
+  },
+  "version": 0.4
+}
