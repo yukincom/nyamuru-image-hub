@@ -4,6 +4,7 @@ import type { Manga, CharacterReferenceSourceImage, AnalogFigureImport, FigureSi
 import type { PaintOwner } from './paintDocument.ts';
 import { compileArtworkRules, getArtworkSettings, type ArtworkSource } from './artworkRules.ts';
 import { isPropPlacement } from './catalogModel.ts';
+import { CHARACTER_RECOGNITION_FIELDS } from './characterReferences.ts';
 import { FIGURE_SIZE_LABELS } from './manga.ts';
 import { requireHumanPoseGenerationReady } from './humanPoseSelection.ts';
 import { humanPoseCameraPromptText } from './humanPoseScene.ts';
@@ -30,6 +31,7 @@ export interface QwenGenerationPlan {
   threeImages?: boolean;
   dpi?: number;
   artworkStyle?: string[];
+  characterAppearance?: string;
   expressionSource?: Pick<AnalogFigureImport,'assetId'|'persistentAsset'>;
   figureFraming?: FigureSize;
   sketchPrompt?: string;
@@ -75,6 +77,7 @@ export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLaye
     plan.characterKeys.length?'キャラクター設定画は、同じ人物の外見と画風を保つための資料です。':'',
     '修正を指示する印・塗り・文字は、完成画像には残さないでください。',
     plan.poseContext ? `以下は修正部分の人物・ポーズの指定です。修正対象以外は保ってください。\n${plan.poseContext}` : '',
+    !plan.poseContext ? plan.characterAppearance : '',
     plan.letteringContext ?? '',
   ].filter(Boolean).join('\n\n');
   if(reference?.kind==='paint'&&plan.humanPose)return `${plan.prompt}\n\n描画レイヤー参照は描き方の参考に使い、ポーズ・アングル・描写範囲は今回の指定を優先してください。`;
@@ -96,7 +99,7 @@ export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkfl
   const slot=workflow.binding.prompt[0];
   // The colour selector supplies this last line; keep the artwork text editable.
   const base=String(workflow.graph[slot.node].inputs[slot.input]).replace(/\nUniform solid #(00FF00|0000FF|FF00FF) background\.$/,'');
-  const prompt=[base,...(plan.artworkStyle??[])].filter(Boolean).join('\n');
+  const prompt=[base,plan.characterAppearance,...(plan.artworkStyle??[])].filter(Boolean).join('\n');
   if(!plan.threeImageTarget)return {...plan,prompt};
   const {width,height,dpi,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
   return {...plan,threeImages:true,width,height,dpi,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
@@ -136,6 +139,12 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const character=person&&owner.figure?.refId?manga.characters.find(c=>c.localId===owner.figure!.refId):undefined;
   if(person&&!character)throw new Error('この人物あたりの登場人物を指定してから生成してください');
   const characterKeys=character?.localId?[character.localId]:[];
+  const observed=Array.from(new Set(CHARACTER_RECOGNITION_FIELDS.flatMap(({key})=>
+    character?.recognition?.[key]?.observed.map(value=>value.trim()).filter(Boolean)??[])));
+  const characterAppearance=[
+    character?.visual_prompt?.trim() ? `人物のビジュアル指定：${character.visual_prompt.trim()}` : '',
+    observed.length ? `人物設定の特徴：${observed.join('、')}` : '',
+  ].filter(Boolean).join('\n');
   const candidates:QwenReferenceCandidate[]=character?.catalog_id&&manga.meta.series_id
     ? manga.materials.filter(m=>m.type==='character'&&m.source_image&&(
       m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))
@@ -166,7 +175,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     pose.input_mode==='prompt' ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。` : '',
     owner.figure?.action ? `動作・表情・視線：${owner.figure.action}` : '',
     poseInstructions,
-    character?.visual_prompt?.trim() ? `人物のビジュアル指定：${character.visual_prompt}` : '',
+    characterAppearance,
     character?.default_proportion ? `体型：${character.default_proportion.head_count}頭身を保つ。` : '',
     ...style,
   ].filter(Boolean).join('\n\n') : undefined;
@@ -179,7 +188,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     pose?.input_mode!=='image'&&(owner.figure?.size || pose) ? `描写範囲は${FIGURE_SIZE_LABELS[framing]}。${framing==='bust-up'?'頭頂から胸までを画面に収めた構図で描く。':'指定した範囲を画面に収めた構図で描く。'}`:'',
     owner.figure?.action?`動作・表情・視線：${owner.figure.action}`:'',
     poseInstructions,
-    character?.visual_prompt?.trim()?`人物のビジュアル指定：${character.visual_prompt}`:'',
+    characterAppearance,
     character?.default_proportion?`体型：${character.default_proportion.head_count}頭身を保つ。`:'',
     ...(lettering?[]:style),
     '新しい絵を1枚描く。資料集・コラージュ・コマ枠・署名・透かしは加えない。',
@@ -198,7 +207,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     'ラフの手は、人間の手として描き起こす。開いているか握っているか、手の向きは保つ。線のゆらぎ、線幅、ベタ、ハッチングなど、人物資料の描き方を保つ。',
     '指定がなければラフの顔の向きと表情を保つ。今回の動作・表情・視線の指定は、ラフや人物資料・人物設定の標準的な表情より優先する。目線に合わせて目や顔の向きを調整し、体のポーズと服装は保つ。',
     owner.figure?.action?`今回の動作・表情・視線：${owner.figure.action}`:'',
-    character?.visual_prompt?.trim()?`人物の外見・画風の指定：${character.visual_prompt}`:'',
+    characterAppearance,
     character?.default_proportion?`体型：${character.default_proportion.head_count}頭身を保つ。`:'',
     ...style,
     '人物は1人だけ。画面外の手足を描き足さず、別の人物・資料集の別アングル・コマ枠・文字を加えない。',
@@ -212,6 +221,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
+    ...(characterAppearance?{characterAppearance}:{}),
     ...(lettering?{contentKind:lettering.shape as 'handwritten'|'typeset',literalText:[lettering.text],letteringContext,handwrittenPrompt:{confirmation:prompt}}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
     ...(person?{figureFraming:framing}:{}),

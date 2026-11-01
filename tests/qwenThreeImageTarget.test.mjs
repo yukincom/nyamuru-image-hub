@@ -34,7 +34,38 @@ test('panel and manuscript DPI win over the figure mask and layer DPI', () => {
 });
 
 import {readFileSync} from 'node:fs';
-import {qwenPlanForWorkflow,qwenGenerationPayload} from '../src/lib/qwenGeneration.ts';
+import {buildQwenGenerationPlan,qwenPlanForWorkflow,qwenGenerationPayload} from '../src/lib/qwenGeneration.ts';
+import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
+import {paintScene} from '../src/lib/paintDocument.ts';
+
+// 見込み: 人物IDで登録設定を引けば、同名の別人や未確認の特徴を混ぜずに生成できる。
+// 合格: 3枚参照の初期文に登録した外見だけが入り、編集結果とネームが送信値に残る。計画と要求を検査し、画像推論はしない。
+test('three-image positive defaults use only the linked character’s saved appearance',()=>{
+  const {manga}=createEmptyWorkspaceDocument();
+  manga.characters=[{localId:'other',name:'人物',visual_prompt:'別人の衣装'},
+    {localId:'who',name:'人物',visual_prompt:'細い眉',recognition:{
+      hair:{observed:['前髪あり'],inferred:['推測の髪色']},accessories:{observed:['黒いリボン','前髪あり'],inferred:[]},
+      ambiguous_design:{observed:['形不明'],inferred:[]}}}];
+  const p={id:1,shape:{type:'rect',x:0,y:0,w:40,h:50},bg:0,bubbles:[],
+    figures:[{refId:'who',name:'人物',bbox:{x:2,y:2,w:20,h:30}}]};
+  manga.pages[0].panels=[p];
+  const who=paintScene(p,144,[]).owners.find(o=>o.key==='figure-0');
+  const build=()=>buildQwenGenerationPlan(manga,0,0,false,who);
+  const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/nyamuru_qwen_turbo_3images.'+ext+'.json',import.meta.url)));
+  const flow={graph:example('api'),binding:example('binding')},source=build();
+  const plan=qwenPlanForWorkflow({...source,humanPose:{selection:{input_mode:'image'}}},flow);
+  for(const text of [source.prompt,source.sketchPrompt,plan.prompt]){
+    assert.match(text,/細い眉/);assert.match(text,/黒いリボン/);assert.equal(text.split('前髪あり').length,2);
+    assert.doesNotMatch(text,/別人の衣装|推測の髪色|形不明/);
+  }
+  const ref={image:'identity',characterKeys:['who'],label:'設定'};
+  const send=prompt=>qwenGenerationPayload({...plan,prompt},[ref],'storyboard',undefined,undefined,'pose');
+  assert.equal(send(plan.prompt).prompt,plan.prompt);
+  assert.equal(send('今回だけの指示').prompt,'今回だけの指示');
+  assert.deepEqual(send(plan.prompt).references.map(r=>r.image),['storyboard','identity','pose']);
+  delete manga.characters[1].recognition;delete manga.characters[1].visual_prompt;
+  assert.doesNotMatch(qwenPlanForWorkflow(build(),flow).prompt,/人物設定の特徴|人物のビジュアル指定|黒いリボン/);
+});
 
 // 見込み: 3枚専用の登録だけに役割と寸法を適用すれば、ネームの比率・人物名・一般向け生成指示は混ざらない。
 // 合格: 3スロットが表情/設定/ポーズ順、元のカメラを保持、指定寸法と登録英文が一致。不足・役割誤りは拒否。範囲: UI直下の実送信値、画像は識別用文字列。
