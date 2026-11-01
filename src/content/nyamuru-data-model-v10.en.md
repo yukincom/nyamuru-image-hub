@@ -268,6 +268,8 @@ source_image:
 
 `file_name` is relative to the series storage directory, while `original_name` is the selected file name displayed in the UI. Absolute paths, `..`, and backslashes are not permitted. Selecting an image does not analyze it. An explicit local-analysis action compares all registered references for the same character and proposes traits supported across images, plus stable traits visible only from a complementary view. It also classifies each image's `view` from that comparison, and the user can correct it afterward.
 
+Before registering a character reference, check the selected image’s width and height. If either exceeds its limit, reject the image and let the user resize the source and select it again. A dimension equal to its limit is allowed. Nyamuru does not automatically resize or overwrite the source file. `width_px` and `height_px` describe the registered PNG’s actual pixel dimensions, independently of its display size.
+
 ## 7. Full panel example
 
 ```yaml
