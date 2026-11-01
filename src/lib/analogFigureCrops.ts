@@ -1,12 +1,5 @@
 import type { AnalogFigureImport, BBox } from '../types.ts';
 import type { DetectedFigureRegion } from './localBridge.ts';
-import type { FigureCropAsset } from './figureCropStore.ts';
-
-export interface PreparedFigureCrop {
-  regionId: string;
-  metadata: AnalogFigureImport;
-  asset: FigureCropAsset;
-}
 
 interface DecodedImage {
   source: CanvasImageSource;
@@ -87,46 +80,47 @@ function canvasBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   ));
 }
 
-/** 検出時と同じ向きへ回転した原画から、色調加工を加えず各人物領域を切り抜く。 */
-export async function prepareDetectedFigureCrops(
+export function detectedFigureImport(sourceItemId: string, region: DetectedFigureRegion): AnalogFigureImport {
+  const sourceRegionId = `${sourceItemId}:${region.id}`;
+  return {
+    schemaVersion: 1,
+    sourceRegionId,
+    assetId: `analog-figure:${sourceRegionId}`,
+    sourceBBox: structuredClone(region.bbox),
+    detectionSource: region.source,
+    ...(region.confidence === undefined ? {} : { confidence: region.confidence }),
+    draft: true,
+  };
+}
+
+/** 原画を1ページずつ開き、同じ領域から解析用と保存用のPNGを必要な順に作る。 */
+export async function* detectedFigureCrops(
   file: File,
   rotation: 0 | 90 | 180 | 270,
-  sourceItemId: string,
   regions: readonly DetectedFigureRegion[],
-): Promise<PreparedFigureCrop[]> {
-  if (!regions.length) return [];
+) {
   const decoded = await decodeImage(file);
   let upright: HTMLCanvasElement | null = null;
   try {
-    upright = uprightCanvas(decoded, rotation);
-    const prepared: PreparedFigureCrop[] = [];
+    const page = uprightCanvas(decoded, rotation);
+    upright = page;
     for (const region of regions) {
-      const bounds = cropPixelBounds(region.bbox, upright.width, upright.height);
-      const crop = document.createElement('canvas');
-      crop.width = bounds.w;
-      crop.height = bounds.h;
-      const context = crop.getContext('2d');
-      if (!context) throw new Error('人物切り抜き用の画像処理を開始できませんでした');
-      context.drawImage(upright, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h);
-      const sourceRegionId = `${sourceItemId}:${region.id}`;
-      const assetId = `analog-figure:${sourceRegionId}`;
-      prepared.push({
-        regionId: region.id,
-        metadata: {
-          schemaVersion: 1,
-          sourceRegionId,
-          assetId,
-          sourceBBox: structuredClone(region.bbox),
-          detectionSource: region.source,
-          ...(region.confidence === undefined ? {} : { confidence: region.confidence }),
-          draft: true,
-        },
-        asset: { id: assetId, blob: await canvasBlob(crop) },
-      });
-      crop.width = 1;
-      crop.height = 1;
+      const bounds = cropPixelBounds(region.bbox, page.width, page.height);
+      const png = async (scale: number) => {
+        const crop = document.createElement('canvas');
+        crop.width = Math.max(1, Math.round(bounds.w * scale));
+        crop.height = Math.max(1, Math.round(bounds.h * scale));
+        const context = crop.getContext('2d');
+        if (!context) throw new Error('人物切り抜き用の画像処理を開始できませんでした');
+        context.drawImage(page, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, crop.width, crop.height);
+        try {
+          return await canvasBlob(crop);
+        } finally {
+          crop.width = crop.height = 1;
+        }
+      };
+      yield { regionId: region.id, original: () => png(1), forStorage: () => png(0.6) };
     }
-    return prepared;
   } finally {
     if (upright) {
       upright.width = 1;

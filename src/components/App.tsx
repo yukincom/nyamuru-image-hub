@@ -70,7 +70,7 @@ import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as moveP
 import { applyPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
 import { analyzeFigureCharacterMatchWithLocalVlm, attachDetectedFiguresToPage, attachRecognizedTextToPage, beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, persistAnalogAsset, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type DetectedFigureRegion, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type LayoutRecognitionResult, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../lib/seriesCatalog';
-import { prepareDetectedFigureCrops } from '../lib/analogFigureCrops';
+import { detectedFigureCrops, detectedFigureImport } from '../lib/analogFigureCrops';
 import { prepareDetectedTextCrops } from '../lib/analogTextCrops';
 import { separateBubbleOriginals } from '../lib/bubbleOriginals';
 import { beginFigureCropImport, onFigureCropAssetsChanged, pruneFigureCropAssets, collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
@@ -2721,24 +2721,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       for (const item of analyzedItems) {
         if (!usedSourceItemIds.has(item.id) || !item.analysis) continue;
         if (item.analysis.detectedFigures.length) {
-          setNewLayoutMessage(`${item.file.name} から人物の下書き画像を切り抜いています…`);
-          const prepared = await prepareDetectedFigureCrops(item.file, item.rotationOverride, item.id, item.analysis.detectedFigures);
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-          await saveFigureCropAssets(prepared.map((crop) => crop.asset));
-          savedAssetIds.push(...prepared.map((crop) => crop.asset.id));
-          if (!isLanClient && persistAnalogAssets) {
-            for (const crop of prepared) {
-              crop.metadata.persistentAsset = await persistAnalogAsset(
-                crop.asset.blob,
-                freshEpisodeId,
-                newWorkTitle.trim(),
-                'figures',
-                crop.asset.id,
-              );
-            }
-          }
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-          figureImportsByItem.set(item.id, new Map(prepared.map((crop) => [crop.regionId, crop.metadata])));
+          figureImportsByItem.set(item.id, new Map(item.analysis.detectedFigures.map(
+            region => [region.id, detectedFigureImport(item.id, region)],
+          )));
         }
         if (item.analysis.ocrLines.length) {
           setNewLayoutMessage(`${item.file.name} から手書き文字の参照画像を作っています…`);
@@ -2768,18 +2753,23 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       setNewLayoutMessage(`原画参照を保存できなかったため、原画は破棄していません。${error instanceof Error ? error.message : ''}`.trim());
       return;
     }
-    try {
-      if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-      if (confirmScannedLayouts) await commitActiveScannerSession();
-      else await discardScannerSources();
-      if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-    } catch (error) {
-      await deleteFigureCropAssets(savedAssetIds).catch(() => undefined);
-      if (!isCurrentOperation()) return;
-      updateNewLayoutTask('idle');
-      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン処理を完了できませんでした');
-      return;
-    }
+    const finishScannerImport = async () => {
+      try {
+        if (!isCurrentOperation()) { await discardStaleAssets(); return false; }
+        if (confirmScannedLayouts) await commitActiveScannerSession();
+        else await discardScannerSources();
+        if (!isCurrentOperation()) { await discardStaleAssets(); return false; }
+        return true;
+      } catch (error) {
+        await discardStaleAssets();
+        if (isCurrentOperation()) {
+          updateNewLayoutTask('idle');
+          setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン処理を完了できませんでした');
+        }
+        return false;
+      }
+    };
+    if (!figureImportsByItem.size && !(await finishScannerImport())) return;
     const empty = createEmptyWorkspaceDocument();
     let importedFigureCount = 0;
     let importedTextCount = 0;
@@ -2895,29 +2885,58 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     initializePanelBackgrounds(seriesMerge.document);
     const characterCandidates = buildCharacterMatchCandidates(seriesMerge.document.manga.characters);
     const characterReadOutcomes = new Map<string, CharacterReadOutcome>();
-    for (let index = 0; index < characterReadTargets.length; index += 1) {
-      const target = characterReadTargets[index];
-      setNewLayoutMessage('人物と演技を読み取っています…');
-      setNewCharacterReadProgress({ completed: index, total: characterReadTargets.length, startedAt: Date.now() });
-      try {
-        const blob = await loadFigureCropAsset(target.assetId, target.persistentAsset);
-        if (!blob) throw new Error('人物の切り抜き画像が見つかりません');
-        const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(blob, characterCandidates, target.currentSize);
-        characterReadOutcomes.set(target.sourceRegionId, {
-          ok: true,
-          candidateId: suggestion.candidateId,
-          confidence: suggestion.confidence,
-          action: suggestion.action,
-          suggestedSize: suggestion.suggestedSize,
-          reason: suggestion.reason,
-        });
-      } catch (error) {
-        characterReadOutcomes.set(target.sourceRegionId, {
-          ok: false,
-          error: error instanceof Error ? error.message : '人物と演技を読み取れませんでした',
-        });
+    const readTargetsByRegion = new Map(characterReadTargets.map(target => [target.sourceRegionId, target]));
+    const persistedFigures = new Map<string, NonNullable<AnalogFigureImport['persistentAsset']>>();
+    try {
+      for (const item of analyzedItems) {
+        const imports = figureImportsByItem.get(item.id);
+        if (!imports || !item.analysis) continue;
+        for await (const crop of detectedFigureCrops(item.file, item.rotationOverride, item.analysis.detectedFigures)) {
+          const metadata = imports.get(crop.regionId)!;
+          const target = readTargetsByRegion.get(metadata.sourceRegionId);
+          if (target) {
+            setNewLayoutMessage('人物と演技を読み取っています…');
+            setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
+            try {
+              const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(await crop.original(), characterCandidates, target.currentSize);
+              const { candidateId, confidence, action, suggestedSize, reason } = suggestion;
+              characterReadOutcomes.set(target.sourceRegionId, { ok: true, candidateId, confidence, action, suggestedSize, reason });
+            } catch (error) {
+              characterReadOutcomes.set(target.sourceRegionId, {
+                ok: false,
+                error: error instanceof Error ? error.message : '人物と演技を読み取れませんでした',
+              });
+            }
+          }
+          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
+          const blob = await crop.forStorage();
+          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
+          await saveFigureCropAssets([{ id: metadata.assetId, blob }]);
+          savedAssetIds.push(metadata.assetId);
+          if (!isLanClient && persistAnalogAssets) {
+            persistedFigures.set(metadata.assetId, await persistAnalogAsset(blob, freshEpisodeId, newWorkTitle.trim(), 'figures', metadata.assetId));
+          }
+          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
+        }
       }
-      if (!isCurrentOperation()) { await discardStaleAssets(); return; }
+    } catch (error) {
+      await discardStaleAssets();
+      if (!isCurrentOperation()) return;
+      updateNewLayoutTask('idle');
+      setNewLayoutMessage(`原画参照を保存できなかったため、原画は破棄していません。${error instanceof Error ? error.message : ''}`.trim());
+      return;
+    }
+    if (figureImportsByItem.size && !(await finishScannerImport())) return;
+    if (persistedFigures.size) {
+      for (const page of seriesMerge.document.manga.pages) {
+        for (const owner of [...page.panels, page.page_overlay]) {
+          for (const figure of owner?.figures ?? []) {
+            const metadata = figure.analogImport;
+            const ref = metadata && persistedFigures.get(metadata.assetId);
+            if (metadata && ref) metadata.persistentAsset = ref;
+          }
+        }
+      }
     }
     setNewCharacterReadProgress(characterReadTargets.length ? { completed: characterReadTargets.length, total: characterReadTargets.length, startedAt: Date.now() } : null);
     const characterRead = applyCharacterReadOutcomes(seriesMerge.document, characterReadOutcomes);
