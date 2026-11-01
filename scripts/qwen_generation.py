@@ -15,7 +15,7 @@ from generation_store import JobStore, canonical, checked_id, sha256, text, vali
 from image_generation_lock import hold_generation_lease, validate_generation_fd
 from comfy_client import ComfyClient, ComfyOutputError, ComfySubmissionUnknown, ComfyRejected
 from comfy_generation import ComfySaveError
-from comfy_workflows import WorkflowStore, validate_runtime, validate_request
+from comfy_workflows import WorkflowStore, install_qwen_defaults, negative_prompt_nodes, validate_runtime, validate_request
 
 PROFILE = 'qwen-image-2.1-owner-v1'
 SAVE_FAILURE_EXIT_CODE = 74
@@ -461,6 +461,8 @@ class QwenGenerationService:
     def __init__(self, root=None, *, workflows=None, endpoint=None, client_factory=ComfyClient):
         self.store = JobStore(Path(root or DEFAULT_ROOT))
         self.workflows = workflows or WorkflowStore()
+        if workflows is None and root is None:
+            install_qwen_defaults(self.workflows)
         self.endpoint = endpoint or os.environ.get('NYAMURU_COMFYUI_URL', 'http://127.0.0.1:8188')
         self.client_factory = client_factory
         self._workers = {}
@@ -603,6 +605,13 @@ class QwenGenerationService:
         endpoint = body.get('comfyui_url') or self.endpoint
         endpoint = self.client_factory(endpoint).endpoint
         value.update(workflow=workflow, comfyui_url=endpoint)
+        if 'negative_prompt' in body:
+            negative = body['negative_prompt']
+            if not isinstance(negative, str) or len(negative) > 12000:
+                raise ValueError('ネガティブプロンプトは12000文字以内で入力してください')
+            if not negative_prompt_nodes(workflow):
+                raise ValueError('このワークフローにネガティブプロンプトの入力はありません')
+            value['negative_prompt'] = negative
         value['settings'] = {'seed': SETTINGS['seed'], 'candidate_count': 5}
         value['candidate_seeds'] = [SETTINGS['seed'] + i for i in range(5)]
         if three_image_workflow(value):

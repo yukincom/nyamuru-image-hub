@@ -124,9 +124,9 @@ test('generation busy state blocks typed submission but preserves the active han
  const f=voiceFixture({generation});button(f.render(),'軽量対話をオン（自動送信）').props.onClick();generation.busy=true;
  let tree=f.render();assert.equal(button(tree,'送信').props.disabled,true);assert.equal(button(tree,'軽量対話をオフ').props.disabled,false);assert.match(text(tree),/画像生成中/);f.view.dispose();
 });
-test('conversation attachments use the chosen reference role and show errors without sending an agent command',async()=>{
- const added=[];const generation={label:'小雪',busy:false,locked:false,phase:'',character:true,references:[],send:async()=>'',addFiles:async(files,role)=>{added.push({files,role})}};
- const f=voiceFixture({generation});let tree=f.render();select(tree,'添付画像の用途').props.onChange({currentTarget:{value:'drawing'}});tree=f.render();
- const file={name:'参考.png'};find(tree,n=>n.type==='input'&&n.props.type==='file').props.onChange({currentTarget:{files:[file],value:'x'}});
- await new Promise(resolve=>setImmediate(resolve));assert.equal(added[0].role,'drawing');assert.equal(added[0].files[0],file);assert.match(text(f.render()),/参考.png/);assert.equal(f.classified,0);f.view.dispose();
+// 見込み: 生成の資料操作は左側に集約する。合格: 会話入力と送信はあり、資料用のselect/file/buttonはない。範囲: 生成時の実コンポーネント、音声機器なし。
+test('generation conversation keeps its composer and has no parallel attachment controls',()=>{
+ const f=voiceFixture({generation:{label:'小雪',busy:false,phase:'',send:async()=>''}}),tree=f.render();
+ assert.ok(find(tree,n=>n.type==='textarea'&&n.props['aria-label']==='メッセージ'));assert.ok(button(tree,'送信'));
+ assert.equal(nodes(tree).some(n=>n.type==='select'||n.type==='input'&&n.props.type==='file'||text(n)==='登録資料を使う'),false);f.view.dispose();
 });

@@ -120,7 +120,7 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
         if (store.root / job_id / 'cancel-request.json').exists():
             raise ValueError('生成を取り消しました。取得済みの候補は保持しています')
         correlation = submission_id(job_id, index)
-        graph = bind_graph(value['workflow'], prompt, uploads, seed, *value['output_size'])
+        graph = bind_graph(value['workflow'], prompt, uploads, seed, *value['output_size'], negative_prompt=value.get('negative_prompt'))
         # Both intent records precede POST. A lost reply is never an excuse to replay.
         intent = {'correlation_id': correlation, 'seed': seed}
         submission = dict(intent)

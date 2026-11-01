@@ -13,6 +13,7 @@ import './FigureHumanPoseEditor.css';
 
 interface Props {
   value?: HumanPoseTextSelection;
+  imageSlot?: boolean;
   aspect?: number;
   framingLabel?: string;
   framingSize?: FigureSize;
@@ -23,7 +24,7 @@ interface Props {
   onChange: (value: HumanPoseTextSelection | undefined, confirmedFramingSize?: FigureSize) => void;
 }
 
-export default function FigureHumanPoseEditor({ value, aspect: figureAspect, framingLabel, framingSize, cutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
+export default function FigureHumanPoseEditor({ value, imageSlot=false, aspect: figureAspect, framingLabel, framingSize, cutFrame, panelContext, stages, backgroundCaptures, onChange }: Props) {
   const aspect = cutFrame?.aspect ?? figureAspect;
   const id = useId();
   const sceneTrigger = useRef<HTMLButtonElement>(null);
@@ -62,7 +63,7 @@ export default function FigureHumanPoseEditor({ value, aspect: figureAspect, fra
     <button type="button" class="primary-button figure-human-pose-edit" ref={sceneTrigger} disabled={loading} onClick={() => void openScene()}>3D編集</button>
     {loading && <p role="status">3Dの初期姿勢を読み込んでいます…</p>}
     {error && <p role="alert">{error}</p>}
-    {value && <>
+    {value && !imageSlot && <>
       <fieldset class="human-pose-input-mode" aria-describedby={`${id}-mode-note`}>
         <legend>ポーズの送り方</legend>
         {([['prompt', 'プロンプトで送る'], ['image', '撮影画像で送る']] as const).map(([mode, label]) =>

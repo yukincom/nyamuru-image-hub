@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
-import type {QwenGenerationConversation,QwenReferenceRole} from '../lib/qwenGeneration';
+import type {QwenGenerationConversation} from '../lib/qwenGeneration';
 import { ArrowUp, Clock, Mic, Square } from 'lucide-preact';
 import { createEditorDictation } from '../lib/editorVoice';
 import { connectAgentImageGeneration, getAgentConnection, getImageGenerationConnections, requestVoiceCommand,requestAgentReply,withAgentServices } from '../lib/localBridge';
@@ -43,7 +43,6 @@ function AgentConversation(props:Props){
   const session=useRef(createAgentSession());
   const [messages,setMessages]=useState<AgentMessage[]>([]);
   const [text,setText]=useState(''),[status,setStatus]=useState('');
-  const [referenceRole,setReferenceRole]=useState<QwenReferenceRole>('character');
   const [recording,setRecording]=useState(false),[processing,setProcessing]=useState(false),[busy,setBusy]=useState(false);
   useEffect(()=>{if(!busy)return;latest.current.onActivity?.(true);return()=>latest.current.onActivity?.(false);},[busy]);
   const [model,setModel]=useState('接続を確認中…');
@@ -121,33 +120,12 @@ function AgentConversation(props:Props){
       if(isCurrent())setMessages(session.current.append({role:'assistant',content:[operation?.message,error instanceof Error?error.message:'応答できませんでした'].filter(Boolean).join('\n')}));
     }finally{pending.current=false;if(conversationIsCurrent())setBusy(false);}
   }
-  async function attach(files:File[]){
-    const generation=latest.current.generation;if(!generation||pending.current||!files.length)return;
-    const ticket=session.current.ticket();pending.current=true;setBusy(true);setStatus('参照画像を準備中…');
-    try{
-      await generation.addFiles(files,generation.character?referenceRole:'drawing');
-      if(session.current.isCurrent(ticket)){setStatus('');setMessages(session.current.append({role:'user',content:`参照画像を追加：${files.map(file=>file.name).join('、')}`}));}
-    }catch(error){if(session.current.isCurrent(ticket))setStatus(error instanceof Error?error.message:'参照画像を追加できませんでした');}
-    finally{pending.current=false;if(session.current.isCurrent(ticket)){setBusy(false);}}
-  }
   const generationBusy=busy||Boolean(props.generation?.busy);
   return <div id="agent-popup-body" class="agent-popup-body">
-    {props.generation&&<section class="agent-generation-context" aria-label="生成対象">
-      <strong>{props.generation.label}</strong><p>画像を追加して「生成して」と送ると、このあたりへ差し込みます。</p>
-      <fieldset disabled={generationBusy||props.generation.locked}>
-        {props.generation.character&&props.generation.loadRegistered&&<button type="button" onClick={()=>{
-          if(pending.current)return;pending.current=true;setBusy(true);
-          void props.generation!.loadRegistered!().catch(error=>setStatus(error instanceof Error?error.message:'資料を読み込めません')).finally(()=>{pending.current=false;setBusy(false);});
-        }}>登録資料を使う</button>}
-        {props.generation.character&&<select aria-label="添付画像の用途" value={referenceRole} onChange={e=>setReferenceRole(e.currentTarget.value as QwenReferenceRole)}><option value="character">人物の設定画</option><option value="drawing">描画の参考</option></select>}
-        <label class="qwen-file-label">参照画像を添付<input aria-label="会話に参照画像を添付" type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={e=>{const files=Array.from(e.currentTarget.files??[]);e.currentTarget.value='';void attach(files);}}/></label>
-      </fieldset>
-      <div class="agent-reference-thumbnails">{props.generation.references.map(reference=><img src={reference.image} alt={`${reference.label}（${reference.characterKeys.length?'人物設定画':'描画参考'}）`}/>)}</div>
-    </section>}
     {messages.length>0&&<div ref={log} class="agent-history" role="log" aria-label="会話履歴" aria-live="polite">
       {messages.map((message,index)=><p key={index} class={`agent-message is-${message.role}`}>{message.content}</p>)}
     </div>}
-    <p class={`agent-voice-hint ${quickActive?'is-handsfree':''}`}>{quickActive?`軽量対話オン · 無音${silenceMs/1000}秒で自動送信`:manualActive?'手動入力 · 停止してから確認・送信':'軽量対話は自動送信 · 手動入力は確認して送信'}</p>
+    {!props.generation&&<p class={`agent-voice-hint ${quickActive?'is-handsfree':''}`}>{quickActive?`軽量対話オン · 無音${silenceMs/1000}秒で自動送信`:manualActive?'手動入力 · 停止してから確認・送信':'軽量対話は自動送信 · 手動入力は確認して送信'}</p>}
     <div class="agent-composer-row"><AgentAvatar profile={props.profile}/><form class="agent-composer" onSubmit={submit}>
       <textarea aria-label="メッセージ" rows={2} maxLength={4000} value={text} disabled={generationBusy} placeholder={props.generation?'追加の指示、または「生成して」':'話しかける…'} onInput={e=>setText(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void submit(e);}}}/>
       <div class="agent-composer-footer"><small class="agent-model" >{model}</small>

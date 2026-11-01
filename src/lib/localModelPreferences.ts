@@ -10,7 +10,7 @@ export interface LocalModelPreferences {
 export const DEFAULT_LOCAL_MODEL_PREFERENCES: Readonly<LocalModelPreferences> = Object.freeze({
   llmAlias: 'Qwen3.8-27B-8bit',
   vlmModelId: 'lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit',
-  comfyuiUrl: '',
+  comfyuiUrl: 'http://127.0.0.1:8188',
 });
 
 function normalizedLlmAlias(value: unknown): string {
@@ -51,7 +51,7 @@ export function normalizeLocalModelPreferences(value: unknown): LocalModelPrefer
   return {
     llmAlias: normalizedLlmAlias(record.llmAlias),
     vlmModelId: normalizedVlmModelId(record.vlmModelId),
-    comfyuiUrl: normalizeComfyuiUrl(record.comfyuiUrl),
+    comfyuiUrl: normalizeComfyuiUrl(record.comfyuiUrl) || DEFAULT_LOCAL_MODEL_PREFERENCES.comfyuiUrl,
   };
 }
 

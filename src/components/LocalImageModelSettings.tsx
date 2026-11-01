@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { requestComfyWorkflows } from '../lib/localBridge';
 import { normalizeComfyuiUrl } from '../lib/localModelPreferences';
 import {
-  comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding, parseComfyWorkflowCheck,
+  QWEN_FIGURE_WORKFLOW, isStandardQwenVariant, comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding, parseComfyWorkflowCheck,
   parseComfyWorkflowFile, parseComfyWorkflowInfo, parseComfyWorkflowList, parseSavedComfyWorkflow,
   type ComfyApiGraph, type ComfyInputBinding, type ComfyWorkflowBinding, type ComfyWorkflowCheck,
   type ComfyWorkflowDefinition, type ComfyWorkflowInfo, type ComfyWorkflowSave,
@@ -160,18 +160,18 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
       onChange={event => { setCheck(null); setNotice(''); onWorkflowChange(event.currentTarget.value); }}>
       <option value="">未選択</option>
       {workflowId && !selected && <option value={workflowId}>{loaded ? '選択した登録が見つかりません' : '登録を読み込んでいます'}</option>}
-      {workflows.map(workflow => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
+      {workflows.filter(item=>item.id===workflowId||!isStandardQwenVariant(item.id)).map(workflow => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
     </select></Field>
     <div class="paint-entry-actions">
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => void refresh()}>一覧を読み直す</button>
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => chooseFile(null)}>ファイルから追加</button>
-      <button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => {
+      {loaded&&!workflows.some(item=>item.id===QWEN_FIGURE_WORKFLOW)&&<button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => {
         const graph = structuredClone(threeImageGraph);
         setDraft({ name: 'nyamuru_qwen_turbo_3images', graph, binding: parseComfyWorkflowBinding(threeImageBinding, graph),
           sizeMode: 'mapped', fixedSize: [0, 0] });
         setCheck(null);
         setRemovePending(false);
-      }}>人物3枚参照を追加</button>
+      }}>人物3枚参照を追加</button>}
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft) || !selected} onClick={() => selected && chooseFile(selected)}>ファイルから更新</button>
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft) || !selected} onClick={() => { if (selected) { setDraft(editWorkflow(selected)); setCheck(null); setRemovePending(false); } }}>入出力の設定</button>
     </div>

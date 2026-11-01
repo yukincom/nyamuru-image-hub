@@ -150,3 +150,22 @@ export function parseComfyWorkflowInfo(value: unknown): ComfyWorkflowInfo {
   }
   return { object_info: value.object_info, endpoint: value.endpoint, version: value.version };
 }
+
+
+export const QWEN_FIGURE_WORKFLOW = '132c3a87-8f0a-4591-b2e0-4a28a7b7b002';
+const standardQwenPrefix='c7b07cf5-7e69-43e4-b380-';
+export function standardQwenWorkflowId(inputs:number) {
+  return standardQwenPrefix+String(inputs).padStart(12,'0');
+}
+const standardQwenIds=new Set(Array.from({length:11},(_,i)=>standardQwenWorkflowId(i)));
+export function isStandardQwenVariant(id:string) {
+  return standardQwenIds.has(id);
+}
+export function workflowNegativePrompt(workflow:ComfyWorkflowDefinition|null) {
+  if(!workflow)return undefined;
+  for(const {node,input} of workflow.binding.prompt){
+    const encoder=workflow.graph[node];
+    if(input==='prompt'&&encoder.class_type==='TextEncodeQwenImage21'&&typeof encoder.inputs.negative_prompt==='string')return encoder.inputs.negative_prompt;
+  }
+  return undefined;
+}

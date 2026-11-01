@@ -42,7 +42,8 @@ import { saveEpisodeProject, loadEpisodeProject } from '../lib/localBridge';
 import PageSidebar from './PageSidebar';
 import MangaCanvas from './MangaCanvas';
 import PanelInspector from './PanelInspector';
-import QwenGenerationDialog, { qwenInputImage, qwenLayerImage } from './QwenGenerationDialog';
+import {getOutputSettings} from '../lib/finishLayout.ts';
+import QwenGenerationDialog, { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from './QwenGenerationDialog';
 import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation } from '../lib/qwenGeneration';
 import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
 import { downloadImageBlob, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
@@ -411,7 +412,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const qwenPreparing=useRef(false);
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
-  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest;textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}}|null>(null);
+  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;poseEditorContext?:GenerationPoseEditorContext;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest;textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}}|null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
@@ -3528,9 +3529,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
     const needsMask=(captured.kind==='bubble'&&captured.bubble&&!isBalloonText(captured.bubble))
-      || (captured.figure?.human_pose?.input_mode==='image'&&!isPropPlacement(captured.figure));
+      || (captured.figure&&!isPropPlacement(captured.figure));
     const area=needsMask?generationMaskBounds(captured.paint):undefined;
-    const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area);
+    const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area,Boolean(captured.figure&&!isPropPlacement(captured.figure)));
     const loadLayer=async(id:string,correction:boolean,crop?:BBox)=>{
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop);
@@ -3538,7 +3539,14 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       return result.image;
     };
     setVoiceOpen(true);
-    const next={id:crypto.randomUUID(),plan,layers:qwenLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest,...(textSource?{textSource:{target:textSource.target,position:textSource.position}}:{})};
+    const panel=current.manga.pages[pageIndex]?.panels[panelIndex];
+    const poseEditorContext:GenerationPoseEditorContext|undefined=captured.figure?{
+      stages:current.manga.background_stages,
+      ...(!overlay&&panel?{panelContext:{panel,selectedIndex:captured.index,assets,dpi:getOutputSettings(current.manga).dpi,
+        guides:Object.fromEntries((panel.figures??[]).map((_,i)=>[`figure-${i}`,artworkGuideVisible(`figure-${i}`,panelIndex,pageIndex,false,current)]))},
+        backgroundCaptures:(panel.background_images??[]).flatMap((item,i)=>item.paint?.background3d?[{label:`このコマの背景 ${i+1}`,capture:item.paint.background3d}]:[])}:{}),
+    }:undefined;
+    const next={id:crypto.randomUUID(),plan,poseEditorContext,layers:qwenLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest,...(textSource?{textSource:{target:textSource.target,position:textSource.position}}:{})};
     qwenGenerationRef.current=next;setQwenGeneration(next);
   };
   const requestOwnerGeneration = async(key?:string,overlay=selectedElement?.scope==='page_overlay',panelIndex=activePanel,pageIndex=activePage,agentRequest?:QwenAgentRequest) => {
@@ -4556,7 +4564,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
         </div>
       </section>
     </>}
-    {qwenGeneration&&<QwenGenerationDialog onOpenSettings={()=>{qwenGeneration.agentRequest?.reject(new Error('環境設定へ移動しました'));setQwenGeneration(null);void showEnvironmentSettings();}} adultContent={Boolean(document.manga.series_setting?.adult_content)} agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
+    {qwenGeneration&&<QwenGenerationDialog onOpenSettings={()=>{qwenGeneration.agentRequest?.reject(new Error('環境設定へ移動しました'));setQwenGeneration(null);void showEnvironmentSettings();}} adultContent={Boolean(document.manga.series_setting?.adult_content)} agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} poseEditorContext={qwenGeneration.poseEditorContext} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
     {toast && <div class="toast"><span>{toast}</span><button onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div></PaintEditor>;
 }

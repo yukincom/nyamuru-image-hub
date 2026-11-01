@@ -82,7 +82,7 @@ test('legacy settings are read without writes; disagreement never grants cloud a
     assert.equal(storage.writes.length, 0);
     saveGenerationPreferences(storage, loaded);
     assert.equal(storage.writes.length, 1);
-    assert.equal(JSON.parse(storage.writes[0]).version, 2);
+    assert.equal(JSON.parse(storage.writes[0]).version, 3);
     assert.equal(storage.getItem(LEGACY_CLOUD_MODEL_PREFERENCES_KEY), legacy);
     assert.deepEqual(loadGenerationPreferences(storage), loaded);
   }
@@ -121,7 +121,7 @@ test('workflow selection survives reload, execution changes and other device pre
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
   const id = 'c556af83-d9bb-42b0-ae40-67e999130180';
   const initial = loadGenerationPreferences(storage);
-  assert.equal(initial.local.workflowId, '');
+  assert.equal(initial.local.workflowId, '132c3a87-8f0a-4591-b2e0-4a28a7b7b002');
   const selected = { ...initial, local: { ...initial.local, workflowId: id } };
   saveGenerationPreferences(storage, selected);
   assert.deepEqual(loadGenerationPreferences(storage), selected);

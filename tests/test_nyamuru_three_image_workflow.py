@@ -15,7 +15,8 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from comfy_generation import run_candidates
-from comfy_workflows import WorkflowStore, validate_definition, validate_request
+from comfy_workflows import (WorkflowStore, validate_definition, validate_request, install_qwen_defaults,
+                             QWEN_FIGURE_ID, QWEN_STANDARD_PREFIX)
 from hermes_qwen import preview
 from qwen_generation import PROFILE, QwenGenerationService
 from PIL import Image
@@ -47,6 +48,25 @@ def data_url(raw):
 
 
 class ThreeImageWorkflowTests(unittest.TestCase):
+    # 見込み: 初期登録を一度だけ行えば、人物専用・通常編集を使い分けても手動設定を上書きしない。
+    # 合格: 専用定義と通常2枚の接続、既存登録、削除後の再起動を確認。範囲: 一時フォルダーの本物の登録処理、推論なし。
+    def test_defaults_provision_the_requested_graph_without_replacing_saved_choices(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = WorkflowStore(Path(directory).resolve())
+            custom = store.save({**read_definition(), 'name': 'カスタム'})
+            install_qwen_defaults(store)
+            preset = store.get(QWEN_FIGURE_ID)
+            self.assertEqual(preset['graph'], read_definition()['graph'])
+            double = store.get(QWEN_STANDARD_PREFIX + '000000000002')
+            self.assertEqual(double['binding']['prompt_mode'], 'qwen')
+            self.assertEqual(double['graph']['6']['inputs']['images.image_2'], ['22', 0])
+            self.assertNotIn('images.image_3', double['graph']['6']['inputs'])
+            store.delete(double['id'], double['version'])
+            install_qwen_defaults(store)
+            self.assertEqual(store.get(custom['id']), custom)
+            self.assertEqual(store.get(preset['id']), preset)
+            self.assertNotIn(double['id'], [item['id'] for item in store.list()])
+
     # 見込み: 専用定義の変更を3入力に限定すれば既存のモデル・接続を保てる。
     # 合格: 固定positive/negative/CFG2以外が基準グラフと一致。範囲: API定義のみ、Desktop保存UIやモデル品質は未確認。
     def test_only_approved_prompt_and_cfg_change(self):
@@ -63,7 +83,7 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             self.assertEqual(definition['graph']['6']['inputs'][f'images.image_{index}'], [node, 0])
 
     # 見込み: 3資料を共用しseedのみを変えれば、選択まで無加工の5候補を保持できる。
-    # 合格: upload3回、5グラフの差はseedのみ、選んだ3番の背景は透明・中央色は3番・318×159。範囲: 模擬APIと実PNG、実推論を除く。
+    # 合格: 編集したnegativeと固定positiveが別入力へ届き、upload3回、5グラフの差はseedのみ、選んだ3番の背景は透明・中央色は3番・318×159。範囲: 模擬APIと実PNG、実推論を除く。
     def test_five_seeds_and_exact_selected_png(self):
         raw_images = [png(color) for color in ('red', 'green', 'blue')]
         api = Mock(endpoint='http://127.0.0.1:8188')
@@ -84,7 +104,7 @@ class ThreeImageWorkflowTests(unittest.TestCase):
                     {'label': 'ネームの表情', 'character_keys': [], 'image': data_url(raw_images[0])},
                     {'label': '人物設定画', 'character_keys': ['character-1'], 'image': data_url(raw_images[1])},
                     {'label': '3Dの詳細ポーズ', 'character_keys': [], 'image': data_url(raw_images[2])}],
-                'workflow_id': definition['id'], 'workflow_version': definition['version']}
+                'negative_prompt': 'test exclusions', 'workflow_id': definition['id'], 'workflow_version': definition['version']}
             translate = Mock(side_effect=AssertionError('固定英文で翻訳を呼ばない'))
             job_id = request['job_id']
             with patch.object(service, 'preflight'):
@@ -114,7 +134,7 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             self.assertEqual(seeds, list(range(260921, 260926)))
             for graph in graphs:
                 expected = deepcopy(snapshot['graph'])
-                expected['6']['inputs']['prompt'] = final_prompt
+                expected['6']['inputs'].update(prompt=final_prompt, negative_prompt='test exclusions')
                 expected['10']['inputs']['noise_seed'] = graph['10']['inputs']['noise_seed']
                 expected['7']['inputs'].update(width=1440, height=736)
                 for node, name in zip(('21', '22', '23'), names, strict=True):

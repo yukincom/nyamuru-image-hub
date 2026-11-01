@@ -1,6 +1,6 @@
 import { handwrittenStylePrompt } from './handwrittenStyle.ts';
 import {paintLayerVisible} from './paintLock.ts';
-import type { Manga, CharacterReferenceSourceImage, FigureSize, BBox } from '../types.ts';
+import type { Manga, CharacterReferenceSourceImage, AnalogFigureImport, FigureSize, BBox } from '../types.ts';
 import type { PaintOwner } from './paintDocument.ts';
 import { compileArtworkRules, getArtworkSettings, type ArtworkSource } from './artworkRules.ts';
 import { isPropPlacement } from './catalogModel.ts';
@@ -27,6 +27,8 @@ export interface QwenGenerationPlan {
   prompt: string; characterKeys: string[]; candidates: QwenReferenceCandidate[];
   threeImageTarget?: NonNullable<ReturnType<typeof threeImageFigureTarget>> & { referenceFrame:BBox };
   threeImages?: boolean;
+  expressionSource?: Pick<AnalogFigureImport,'assetId'|'persistentAsset'>;
+  figureFraming?: FigureSize;
   sketchPrompt?: string;
   humanPose?: { selection: HumanPoseTextSelection; framing: FigureSize; aspect?: number; cutFrame?: HumanPoseCutFrame };
   scope?: 'page'|'panel';
@@ -87,10 +89,11 @@ export function qwenGenerationTarget(plan:QwenGenerationPlan,correction=false):Q
 }
 /** Keep the registered prompt and captured manuscript target together for this workflow only. */
 export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null):QwenGenerationPlan {
-  if(workflow?.binding.prompt_mode!=='qwen-three-images'||!plan.humanPose||!plan.threeImageTarget)return plan;
-  const {width,height,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
+  if(workflow?.binding.prompt_mode!=='qwen-three-images')return plan;
   const slot=workflow.binding.prompt[0],prompt=String(workflow.graph[slot.node].inputs[slot.input]);
-  return {...plan,threeImages:true,width,height,referenceFrame,outputFrame,prompt,humanPose:{...plan.humanPose,cutFrame}};
+  if(!plan.threeImageTarget)return {...plan,prompt};
+  const {width,height,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
+  return {...plan,threeImages:true,width,height,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
 }
 export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
   if(!plan.contentKind)return '';
@@ -110,7 +113,7 @@ export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','fa
 export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
 
 /** The owner is resolved by the editor, never inferred from a name or a filename. */
-export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource,generationArea?:BBox):QwenGenerationPlan {
+export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource,generationArea?:BBox,editPoseInDialog=false):QwenGenerationPlan {
   const page=manga.pages[pageIndex], panel=page?.panels[panelIndex];
   if(!page||(!overlay&&!panel))throw new Error('生成対象が見つかりません');
   if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字・写植文字が対象です');
@@ -122,7 +125,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   }
   const pose = owner.figure?.human_pose;
   if(owner.kind==='figure' && JSON.stringify(pose) !== JSON.stringify((overlay?page.page_overlay:panel)?.figures?.[owner.index]?.human_pose)) throw new Error('人体ポーズが変更されました。生成対象を選び直してください');
-  requireHumanPoseGenerationReady(pose);
+  if(!editPoseInDialog)requireHumanPoseGenerationReady(pose);
   const person=owner.figure&&!isPropPlacement(owner.figure);
   const character=person&&owner.figure?.refId?manga.characters.find(c=>c.localId===owner.figure!.refId):undefined;
   if(person&&!character)throw new Error('この人物あたりの登場人物を指定してから生成してください');
@@ -198,13 +201,15 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
   const outputFrame=lettering?{...owner.frame}:cutFrame?panelBounds(panel):undefined;
   const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):{width:owner.paint.width,height:owner.paint.height};
-  const figureTarget=person&&pose?.input_mode==='image'?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea):undefined;
+  const figureTarget=person?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea):undefined;
   if(generationArea&&((!lettering&&!figureTarget)||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
     ...(lettering?{contentKind:lettering.shape as 'handwritten'|'typeset',literalText:[lettering.text],letteringContext,handwrittenPrompt:{confirmation:prompt}}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
+    ...(person?{figureFraming:framing}:{}),
+    ...(person&&owner.figure?.analogImport?{expressionSource:{assetId:owner.figure.analogImport.assetId,persistentAsset:owner.figure.analogImport.persistentAsset}}:{}),
     ...(figureTarget?{threeImageTarget:{...figureTarget,referenceFrame}}:{}),
     ...(lettering&&generationArea?{generationArea:{...generationArea}}:{}),
     ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
@@ -252,7 +257,6 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
 }
 
 
-export type QwenReferenceRole = 'character'|'drawing';
 export interface QwenAgentRequest {
   isCurrent:()=>boolean;
   resolve:(message:string)=>void;
@@ -260,9 +264,6 @@ export interface QwenAgentRequest {
 }
 export interface QwenGenerationConversation {
   label:string; busy:boolean; locked:boolean; phase:string;
-  references:QwenReference[]; character:boolean;
-  addFiles:(files:File[],role:QwenReferenceRole)=>Promise<void>;
-  loadRegistered?:()=>Promise<void>;
   send:(text:string,isCurrent:()=>boolean)=>Promise<string>;
 }
 

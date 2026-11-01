@@ -151,7 +151,14 @@ def validate_request(definition, reference_count):
         raise ValueError(f'このワークフローの参照画像は{expected}枚です（入力は{reference_count}枚）')
 
 
-def bind_graph(definition, prompt, images, seed, width, height):
+def negative_prompt_nodes(definition):
+    return [sink['node'] for sink in definition['binding']['prompt']
+            if sink['input'] == 'prompt'
+            and definition['graph'][sink['node']]['class_type'] == 'TextEncodeQwenImage21'
+            and isinstance(definition['graph'][sink['node']]['inputs'].get('negative_prompt'), str)]
+
+
+def bind_graph(definition, prompt, images, seed, width, height, *, negative_prompt=None):
     """Bind request values to a previously validated definition, copying its graph once."""
     if not isinstance(prompt, str):
         raise ValueError('指示文は文字列で指定してください')
@@ -170,6 +177,9 @@ def bind_graph(definition, prompt, images, seed, width, height):
             graph[sink['node']]['inputs'][sink['input']] = value
 
     put(binding['prompt'], prompt)
+    if negative_prompt is not None:
+        for node_id in negative_prompt_nodes(definition):
+            graph[node_id]['inputs']['negative_prompt'] = negative_prompt
     put(binding['seed'], seed)
     if binding['width']:
         put(binding['width'], width)
@@ -279,7 +289,7 @@ class WorkflowStore:
         with self._lock() as directory:
             return self._read(directory, identifier)
 
-    def save(self, body):
+    def save(self, body, *, initial_id=None):
         value = validate_definition(body)
         updating = 'id' in value
         expected = body.get('expected_version')
@@ -287,7 +297,7 @@ class WorkflowStore:
             _integer(expected, '更新元の版', 1)
         elif expected is not None:
             raise ValueError('新規登録には更新元の版を指定しないでください')
-        identifier = value.get('id') or str(uuid4())
+        identifier = value.get('id') or (_identifier(initial_id) if initial_id is not None else str(uuid4()))
         with self._lock(create=not updating) as directory:
             if updating:
                 previous = self._read(directory, identifier)
@@ -301,6 +311,8 @@ class WorkflowStore:
                 except FileNotFoundError:
                     pass
                 else:
+                    if initial_id is not None:
+                        return self._read(directory, identifier)
                     raise ValueError('ワークフローIDが重複しました')
             value.update(id=identifier, version=version)
             raw = canonical(value)
@@ -336,3 +348,42 @@ class WorkflowStore:
             os.unlink(f'{identifier}.json', dir_fd=directory)
             os.fsync(directory)
         return value
+
+# Stable identities let the normal client use the supplied graphs without a browser setup step.
+QWEN_FIGURE_ID = '132c3a87-8f0a-4591-b2e0-4a28a7b7b002'
+QWEN_STANDARD_PREFIX = 'c7b07cf5-7e69-43e4-b380-'
+
+
+def install_qwen_defaults(store):
+    marker = '.bundled-qwen-1'
+    with store._lock(create=True) as directory:
+        try:
+            if not stat.S_ISREG(os.stat(marker, dir_fd=directory, follow_symlinks=False).st_mode):
+                raise ValueError("既定ワークフローの登録記録が不正です")
+            return
+        except FileNotFoundError:
+            pass
+    examples = Path(__file__).resolve().parents[1] / 'examples' / 'comfyui'
+
+    def read(name, kind):
+        return json.loads((examples / f'{name}.{kind}.json').read_text(encoding='utf-8'))
+
+    name = 'nyamuru_qwen_turbo_3images'
+    store.save(dict(name=name, graph=read(name, 'api'), binding=read(name, 'binding')), initial_id=QWEN_FIGURE_ID)
+    # The usual editing graph accepts exactly the number of occupied inputs.
+    # Keep it separate from the three-image figure instructions.
+    name = 'qwen-turbo-10-refs'
+    template, ports = read(name, 'api'), read(name, 'binding')
+    for count in range(11):
+        graph, binding = deepcopy(template), deepcopy(ports)
+        for slot in range(count + 1, 11):
+            del graph['6']['inputs'][f'images.image_{slot}']
+            del graph[str(20 + slot)]
+        binding['images'] = binding['images'][:count]
+        graph['12']['inputs']['filename_prefix'] = f'nyamuru/qwen-turbo-{count}-refs'
+        store.save(dict(name=f'Qwen Turbo · 参照{count}枚', graph=graph, binding=binding),
+                   initial_id=f'{QWEN_STANDARD_PREFIX}{count:012d}')
+
+    with store._lock() as directory:
+        fd = os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=directory)
+        os.close(fd)

@@ -1,3 +1,4 @@
+import {QWEN_FIGURE_WORKFLOW} from './comfyWorkflows.ts';
 export const GENERATION_PREFERENCES_STORAGE_KEY = 'nyamuru.generation-preferences.v1';
 export const LEGACY_CLOUD_MODEL_PREFERENCES_KEY = 'manga-name-studio.cloud-model-preferences.v1';
 
@@ -17,7 +18,7 @@ export interface GenerationPreferences {
 export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = Object.freeze({
   execution: 'local',
   cloud: Object.freeze({ adultTermsConfirmed: false, method: 'agent', apiEndpoint: '', apiModel: '', agent: 'codex', agentName: '' }),
-  local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: '' }),
+  local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: QWEN_FIGURE_WORKFLOW }),
 });
 
 function defaults(): GenerationPreferences {
@@ -62,13 +63,19 @@ export function loadGenerationPreferences(storage?: Pick<Storage, 'getItem'>): G
   try {
     const raw = storage.getItem(GENERATION_PREFERENCES_STORAGE_KEY);
     const source = raw ? record(JSON.parse(raw)) : null;
-    if (source?.version === 2) return normalize(source);
+    if (source?.version === 3) return typeof record(source.local).workflowId === 'string' ? normalize(source) : defaults();
+    if (source?.version === 2) {
+      const prefs = normalize(source);
+      if (!record(source.local).workflowId) prefs.local.workflowId = QWEN_FIGURE_WORKFLOW;
+      return prefs;
+    }
     if (source?.version !== undefined) return defaults();
     // Read the old two-key contract only. Conflicting/invalid settings must not enable cloud use.
     let legacy: Record<string, unknown> = {};
     try { legacy = record(JSON.parse(storage.getItem(LEGACY_CLOUD_MODEL_PREFERENCES_KEY) || 'null')); }
     catch { /* A missing or unreadable legacy grant is not consent. */ }
     const next = source ? normalize(source) : defaults();
+    if (!record(source?.local).workflowId) next.local.workflowId = QWEN_FIGURE_WORKFLOW;
     next.execution = legacy.enabled === true && (!source || source.execution === 'cloud') ? 'cloud' : 'local';
     next.cloud.adultTermsConfirmed = legacy.adultTermsConfirmed === true;
     return next;
@@ -83,7 +90,7 @@ export function saveGenerationPreferences(storage: Pick<Storage, 'setItem'>, val
   if (normalized.local.workflowId !== (value.local.workflowId ?? '')) {
     throw new Error('登録したワークフローを選択してください');
   }
-  storage.setItem(GENERATION_PREFERENCES_STORAGE_KEY, JSON.stringify({ version: 2, ...normalized }));
+  storage.setItem(GENERATION_PREFERENCES_STORAGE_KEY, JSON.stringify({ version: 3, ...normalized }));
   return normalized;
 }
 

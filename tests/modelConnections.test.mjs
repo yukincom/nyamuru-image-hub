@@ -21,7 +21,7 @@ async function withBrowser({ workflowId = WORKFLOW_ID, result = response() } = {
   const calls = [], reads = [], writes = [];
   const saved = new Map([
     [LOCAL_MODEL_PREFERENCES_STORAGE_KEY, JSON.stringify({ ...DEFAULT_LOCAL_MODEL_PREFERENCES, comfyuiUrl: 'http://localhost:8199' })],
-    [GENERATION_PREFERENCES_STORAGE_KEY, JSON.stringify({ version: 2, ...DEFAULT_GENERATION_PREFERENCES,
+    [GENERATION_PREFERENCES_STORAGE_KEY, JSON.stringify({ version: 3, ...DEFAULT_GENERATION_PREFERENCES,
       local: { ...DEFAULT_GENERATION_PREFERENCES.local, workflowId } })],
     [LEGACY_IMAGE_MODEL_KEY, 'qwen-image-2.1-turbo'],
   ]);

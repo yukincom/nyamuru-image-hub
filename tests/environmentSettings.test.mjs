@@ -370,7 +370,7 @@ test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存�
   input(field(ai, '画像VLM')).props.onInput({ currentTarget: { value: 'local-owner/vision-model-4bit' } });
   ai = panel(component.render(props), 'ai');
   const saved = JSON.parse(component.writes.at(-1)[1]);
-  assert.deepEqual(saved, { llmAlias: 'Qwen3.6-35B-A3B-4bit-DWQ', vlmModelId: 'local-owner/vision-model-4bit', comfyuiUrl: '' });
+  assert.deepEqual(saved, { llmAlias: 'Qwen3.6-35B-A3B-4bit-DWQ', vlmModelId: 'local-owner/vision-model-4bit', comfyuiUrl: 'http://127.0.0.1:8188' });
   assert.equal(notices.length, 0, 'typing should not produce save notifications');
   input(field(ai, '画像VLM')).props.onInput({ currentTarget: { value: 'new-owner/' } });
   ai = panel(component.render(props), 'ai');

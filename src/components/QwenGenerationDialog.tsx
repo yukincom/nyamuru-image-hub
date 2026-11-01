@@ -2,20 +2,27 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { requestComfyWorkflows, cancelQwenJob, selectQwenCandidate, deleteQwenJobs, loadCharacterReferenceImage, prepareQwenJob, listQwenJobs, reconcileQwenJob, submitQwenJob } from '../lib/localBridge.ts';
 import { withNewCreationBridgeSession, withImageGenerationServices } from '../lib/localBridgeLifecycle.ts';
-import { canDeleteQwenJob, qwenGenerationPayload, qwenPlanForWorkflow, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenGenerationConversation, type QwenReferenceRole, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
+import { canDeleteQwenJob, qwenGenerationPayload, qwenPlanForWorkflow, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenGenerationConversation, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
 import { validatePaintDocument, type PaintOwner } from '../lib/paintDocument.ts';
 import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } from '../lib/paintRenderer.ts';
 import { prepareGuideLayer } from '../lib/paintGuide.ts';
-import type { BBox, ImageAsset, PaintDocument } from '../types.ts';
+import type { BBox, ImageAsset, PaintDocument, FigureSize } from '../types.ts';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { currentLocalModelPreferences } from '../lib/localModelPreferences.ts';
-import { parseComfyWorkflowList, type ComfyWorkflowDefinition } from '../lib/comfyWorkflows.ts';
+import { parseComfyWorkflowList, QWEN_FIGURE_WORKFLOW, standardQwenWorkflowId, workflowNegativePrompt, type ComfyWorkflowDefinition } from '../lib/comfyWorkflows.ts';
 import { cloudModelAccess } from '../lib/modelPrivacy.ts';
 import { generationHandoff } from '../lib/generationHandoff.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../lib/browserFiles.ts';
 import {runQwenAgentRequest,type QwenAgentRequest} from '../lib/qwenGeneration.ts';
 
-interface Props { onOpenSettings?:()=>void; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox)=>Promise<string>; onClose:()=>void; onInsert:(file:File,target:QwenGenerationPlan)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
+import FigureHumanPoseEditor from './FigureHumanPoseEditor';
+import {loadFigureCropAsset} from '../lib/figureCropStore.ts';
+import type {HumanPoseTextSelection} from '../lib/humanPoseTypes.ts';
+import {requireHumanPoseGenerationReady} from '../lib/humanPoseSelection.ts';
+import type {ComponentProps} from 'preact';
+
+export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPoseEditor>,'panelContext'|'stages'|'backgroundCaptures'>;
+interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox)=>Promise<string>; onClose:()=>void; onInsert:(file:File,target:QwenGenerationPlan)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
 const statusLabel={preparing:'入力を準備中',prepared:'生成準備済み',queued:'生成待ち',running:'生成中',succeeded:'生成完了',failed:'失敗',outcome_unknown:'結果未確定'};
 
 /** Full reference sheets stay separate. Only the input copy is proportionally resized. */
@@ -52,11 +59,11 @@ export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsse
   } finally { owned.forEach(image=>{image.src='';}); }
 }
 
-export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adultContent=false,agentRequest,layers=[],loadLayer,onClose,onInsert,onConversation,onConversationHost}:Props){
+export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,plan:sourcePlan,adultContent=false,agentRequest,layers=[],loadLayer,onClose,onInsert,onConversation,onConversationHost}:Props){
   const [execution]=useState(currentGenerationPreferences);
   const cloud=execution.execution==='cloud';
   const [connection]=useState(currentLocalModelPreferences);
-  const [workflow,setWorkflow]=useState<ComfyWorkflowDefinition|null>(null),[workflowError,setWorkflowError]=useState('');
+  const [registry,setRegistry]=useState<ComfyWorkflowDefinition[]>([]),[workflowError,setWorkflowError]=useState('');
   const [chromaKeyColor,setChromaKeyColor]=useState('#00FF00');
   useEffect(()=>{
     if(cloud)return;
@@ -64,20 +71,43 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
     if(!execution.local.workflowId){setWorkflowError('環境設定 → モデルで、使用するワークフローを選んでください');return;}
     requestComfyWorkflows('list').then(raw=>{
       if(!current)return;
-      const selected=parseComfyWorkflowList(raw).find(item=>item.id===execution.local.workflowId);
+      const list=parseComfyWorkflowList(raw);
+      const selected=list.find(item=>item.id===execution.local.workflowId);
       if(!selected)throw new Error('選択したワークフローの登録がありません。環境設定を確認してください');
-      setWorkflow(selected);
+      setRegistry(list);
     }).catch(cause=>{if(current)setWorkflowError(cause instanceof Error?cause.message:'ワークフローを読み込めません');});
     return()=>{current=false;};
   },[]);
-  const threeImages=workflow?.binding.prompt_mode==='qwen-three-images';
-  const plan=useMemo(()=>qwenPlanForWorkflow(sourcePlan,workflow),[sourcePlan,workflow]);
-  const targetError=threeImages&&!plan.threeImages?'人物3枚参照には、3Dポーズを画像で送る人物と、対象のコマまたは生成マスクを指定してください':'';
-  const waitingForWorkflow=!cloud&&!workflow;
-  const figureChroma=plan.ownerKey.startsWith('figure-')&&(threeImages||workflow?.binding.prompt_mode==='qwen');
-  const [referenceCharacter,setReferenceCharacter]=useState(plan.characterKeys[0]??'');
+  const chosen=registry.find(item=>item.id===execution.local.workflowId);
+  const person=sourcePlan.ownerKey.startsWith('figure-')&&sourcePlan.characterKeys.length===1;
+  const [repair,setRepair]=useState(false);
+  const automatic=chosen?.id===QWEN_FIGURE_WORKFLOW;
+  const threeImages=chosen?.binding.prompt_mode==='qwen-three-images'&&(!automatic||person&&!repair);
+  const [poseDraft,setPoseDraft]=useState<{selection:HumanPoseTextSelection;framing:FigureSize}>();
   const [reference,setReference]=useState<QwenLayerReference>(),[correction,setCorrection]=useState<QwenLayerReference>();
-  const [editedPrompt,setPrompt]=useState<string>(),[references,setReferences]=useState<QwenReference[]>([]);
+  const [linked,setLinked]=useState<QwenReference[]>([]),[extra,setExtra]=useState<QwenReference[]>([]);
+  const [sourceErrors,setSourceErrors]=useState({expression:'',character:''});
+  const [expressionRetry,retryExpression]=useState(0),[characterRetry,retryCharacter]=useState(0);
+  const [characterLoading,setCharacterLoading]=useState(Boolean(sourcePlan.characterKeys.length));
+  const [sketchLoading,setSketchLoading]=useState(false);
+  const references=useMemo(()=>[...linked,...extra],[linked,extra]);
+  const basePlan=useMemo(()=>{
+    if(!threeImages)return sourcePlan;
+    const selection=poseDraft?.selection??sourcePlan.humanPose?.selection;
+    return {...sourcePlan,humanPose:selection?{selection:{...selection,input_mode:'image' as const},
+      framing:poseDraft?.framing??sourcePlan.figureFraming??sourcePlan.humanPose?.framing??'bust-up',
+      aspect:sourcePlan.threeImageTarget?.cutFrame.aspect}:undefined};
+  },[sourcePlan,threeImages,poseDraft]);
+  const usesPoseImage=basePlan.humanPose?.selection.input_mode==='image';
+  const expectedInputs=references.length+Number(Boolean(reference))+Number(Boolean(correction))+Number(usesPoseImage)+Number(Boolean(sourcePlan.compositionImage));
+  const workflow=automatic&&!threeImages?registry.find(item=>item.id===standardQwenWorkflowId(expectedInputs))??null:chosen??null;
+  const missingWorkflow=workflowError || (chosen&&!workflow?'この参照枚数に対応する通常Qwen定義がありません':'');
+  const plan=useMemo(()=>qwenPlanForWorkflow(basePlan,workflow),[basePlan,workflow]);
+  const targetError=threeImages&&!plan.threeImages?'人物3枚参照には対象のコマまたは生成マスクを指定してください':'';
+  const waitingForWorkflow=!cloud&&!chosen;
+  const figureChroma=plan.ownerKey.startsWith('figure-')&&(threeImages||workflow?.binding.prompt_mode==='qwen');
+  const [editedPrompt,setPrompt]=useState<string>(),[editedNegative,setNegative]=useState<string>();
+  const defaultNegative=workflowNegativePrompt(workflow),negative=editedNegative??defaultNegative;
   const prompt=editedPrompt??plan.prompt;
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[job,setJob]=useState<QwenJob|null>(null);
   const [history,setHistory]=useState<QwenJob[]>([]),[attempt,setAttempt]=useState<string|null>(null);
@@ -86,28 +116,27 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
   const [selectedCandidate,setSelectedCandidate]=useState<number|null>(null);
   const [poseImage,setPoseImage]=useState(''),[poseError,setPoseError]=useState(''),[poseAttempt,setPoseAttempt]=useState(0);
   const posePending=useRef<Promise<string|undefined>>();
-  const usesPoseImage=plan.humanPose?.selection.input_mode==='image';
   const referenceLimit=threeImages?1:usesPoseImage?8:9;
   const submitted=useRef(false);
   const generatedTarget=useRef<{jobId?:string;plan:QwenGenerationPlan}>();
   const alive=useRef(true),working=useRef(false),close=useRef<HTMLButtonElement>(null),dialog=useRef<HTMLElement>(null);
   useEffect(()=>{alive.current=true;const before=document.activeElement;close.current?.focus();return()=>{alive.current=false;if(before instanceof HTMLElement)before.focus();};},[]);
   useEffect(()=>{
-    if(!usesPoseImage||!plan.humanPose||targetError||(!cloud&&!workflow))return;
+    setPoseImage('');setPoseError('');posePending.current=undefined;
+    if(!usesPoseImage||!plan.humanPose?.selection.scene||targetError||waitingForWorkflow)return;
     let cancelled=false;setPoseImage('');setPoseError('');
     const {selection,framing,aspect,cutFrame}=plan.humanPose;
     posePending.current=import('../lib/humanPoseGeneration.ts').then(({captureHumanPoseReference})=>captureHumanPoseReference(selection,framing,aspect??plan.width/plan.height,cutFrame)).then(image=>{
       if(!cancelled){setPoseImage(image);return image;}
     }).catch(cause=>{if(!cancelled)setPoseError(cause instanceof Error?cause.message:'3Dポーズを撮影できませんでした');return undefined;});
     return()=>{cancelled=true;};
-  },[plan,workflow,poseAttempt]);
+  },[plan,waitingForWorkflow,poseAttempt]);
   const draft=useRef({prompt,references,reference,correction});draft.current={prompt,references,reference,correction};
   const attempted=useRef<string|null>(null);attempted.current=attempt;
   const canPrepareNewGeneration=!attempt||(job?['prepared','succeeded','failed','outcome_unknown'].includes(job.status):!submitted.current);
   function prepareNewGeneration(){
     attempted.current=null;submitted.current=false;setAttempt(null);setJob(null);setSelectedCandidate(null);setError('');setNotice('');
   }
-  const updateReferences=(value:QwenReference[])=>{draft.current.references=value;setReferences(value);};
   const updatePrompt=(value:string)=>{
     if(working.current||!canPrepareNewGeneration||draft.current.prompt===value)return;
     if(attempted.current)prepareNewGeneration();
@@ -118,29 +147,43 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
     try{return await task();}catch(e){if(alive.current)setError(e instanceof Error?e.message:'処理できませんでした');if(propagate)throw e;}
     finally{working.current=false;if(alive.current){setBusy(false);setPhase('');}}
   }
-  async function loadRegistered(propagate=false){await operation(async()=>{
-    if(attempted.current)throw new Error('生成を開始した資料は変更できません');
-    if(!plan.candidates.length)throw new Error('登録済みの人物資料がありません。資料画像を追加してください');
-    const candidates=threeImages?plan.candidates.slice(0,1):plan.candidates;
-    if(candidates.length>referenceLimit)throw new Error(`登録資料が${referenceLimit}枚を超えています。使う資料を画像から選んで追加してください`);
-    const loaded=await withNewCreationBridgeSession(async()=>{
-      const result:QwenReference[]=[];
-      for(const candidate of candidates){
-        const blob=await loadCharacterReferenceImage(candidate.seriesId,candidate.characterCatalogId,candidate.source.asset_id);
-        if(!blob)throw new Error(`${candidate.label}の原本が見つかりません`);
-        result.push({label:candidate.label,characterKeys:candidate.characterKeys??plan.characterKeys,image:(await qwenInputImage(blob)).image});
-      }
-      return result;
-    });
-    if(alive.current)updateReferences(loaded);
-  },propagate);}
-  async function addFiles(files:File[],role:QwenReferenceRole='character',propagate=false){await operation(async()=>{
+  useEffect(()=>{
+    let current=true;
+    setLinked([]);setCharacterLoading(Boolean(sourcePlan.characterKeys.length));
+    setSourceErrors(old=>({...old,character:''}));
+    if(!sourcePlan.characterKeys.length)return;
+    void withNewCreationBridgeSession(async()=>Promise.all(sourcePlan.characterKeys.map(async key=>{
+      const candidate=sourcePlan.candidates.find(item=>item.characterKeys?.includes(key) || !item.characterKeys&&sourcePlan.characterKeys.length===1);
+      if(!candidate)throw new Error('この人物に紐づくキャラクター設定画がありません');
+      const blob=await loadCharacterReferenceImage(candidate.seriesId,candidate.characterCatalogId,candidate.source.asset_id);
+      if(!blob)throw new Error(`${candidate.label}の設定画が見つかりません`);
+      return {label:candidate.label,characterKeys:[key],image:(await qwenInputImage(blob)).image};
+    }))).then(result=>{if(current)setLinked(result);}).catch(cause=>{if(current)setSourceErrors(old=>({...old,character:String(cause.message??cause)}));})
+      .finally(()=>{if(current)setCharacterLoading(false);});
+    return()=>{current=false;};
+  },[sourcePlan,characterRetry]);
+  useEffect(()=>{
+    let current=true;
+    const source=sourcePlan.expressionSource;
+    setSourceErrors(old=>({...old,expression:''}));setSketchLoading(false);
+    if(!threeImages||!source)return;
+    setSketchLoading(true);setReference(undefined);
+    void withNewCreationBridgeSession(async()=>{
+      const blob=await loadFigureCropAsset(source.assetId,source.persistentAsset);
+      if(!blob)throw new Error('この人物のネーム原画が見つかりません');
+      return (await qwenInputImage(blob)).image;
+    }).then(image=>{if(current)setReference({id:source.assetId,label:'ネームの表情',image,kind:'sketch',hidden:false,empty:false});})
+      .catch(cause=>{if(current)setSourceErrors(old=>({...old,expression:String(cause.message??cause)}));})
+      .finally(()=>{if(current)setSketchLoading(false);});
+    return()=>{current=false;};
+  },[sourcePlan,threeImages,expressionRetry]);
+  async function addFiles(files:File[]){await operation(async()=>{
     if(attempted.current)throw new Error('生成を開始した資料は変更できません');
     if(draft.current.references.length+files.length>referenceLimit)throw new Error(`参照資料は最大${referenceLimit}枚です${usesPoseImage?'（3Dポーズ画像を別に1枚送ります）':''}`);
     const loaded:QwenReference[]=[];
-    for(const file of files)loaded.push({label:file.name,characterKeys:role==='character'?[referenceCharacter].filter(Boolean):[],image:(await qwenInputImage(file)).image});
-    if(alive.current)updateReferences([...draft.current.references,...loaded]);
-  },propagate);}
+    for(const file of files)loaded.push({label:file.name,characterKeys:[],image:(await qwenInputImage(file)).image});
+    if(alive.current)setExtra(previous=>[...previous,...loaded]);
+  });}
   async function selectLayer(slot:'reference'|'correction',id:string){await operation(async()=>{
     const candidate=id?layers.find(layer=>layer.id===id):undefined;
     if(id&&(!candidate||candidate.empty||!loadLayer))throw new Error('参照できるレイヤーを選んでください');
@@ -186,6 +229,9 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
     if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
     if(targetError)throw new Error(targetError);
     const {prompt,references,reference,correction}=draft.current;
+    if(plan.characterKeys?.length && plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key))))throw new Error('人物に紐づく設定画を読み込めません');
+    if(threeImages&&!usesPoseImage)throw new Error('image3で3Dモデルを調整してください');
+    if(plan.humanPose)requireHumanPoseGenerationReady(plan.humanPose.selection);
     const isCurrent=()=>alive.current&&inputIsCurrent();
     if(usesPoseImage)setPhase('3Dポーズの撮影を確認中');
     const capturedPose=usesPoseImage?await posePending.current:undefined;
@@ -203,10 +249,11 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
       setNotice(`${agent}へ渡す指示と参照画像を保存しました。生成したPNGを「生成画像を読み込む」で戻せます。`);
       return {inserted:false};
     }
-    if(!workflow)throw new Error(workflowError||'ワークフローを確認しています');
+    if(!workflow)throw new Error(missingWorkflow||'ワークフローを確認しています');
     const inputCount=payload.references.length+Number('paint_image' in payload)+Number('sketch_image' in payload)+Number('correction_image' in payload);
     if(inputCount!==workflow.binding.images.length)throw new Error(`${workflow.name}は参照画像${workflow.binding.images.length}枚の定義です。現在は${inputCount}枚です。環境設定で対応する定義を選んでください`);
     const workflowPayload={...payload,workflow_id:workflow.id,workflow_version:workflow.version,comfyui_url:connection.comfyuiUrl,
+      ...(defaultNegative!==undefined?{negative_prompt:negative}:{}),
       ...(figureChroma?{chroma_key_color:chromaKeyColor}:{})};
     const id=crypto.randomUUID();
     generatedTarget.current={jobId:id,plan:target};
@@ -225,7 +272,7 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
     if(!alive.current||!isCurrent())return '生成の会話を終了しました';
     const intent=qwenConversationIntent(text);
     if(intent==='hold')return '新しい生成は開始していません。指示を整えてから「生成して」と送ってください。';
-    if(intent==='help')return '参照画像を追加して、追加の指示を送れます。「生成して」と送ると、シードを変えた5枚を表示します。画面で採用する1枚を選んでください。';
+    if(intent==='help')return '追加の指示を送れます。「生成して」と送ると、シードを変えた5枚を表示します。画面で採用する1枚を選んでください。';
     if(intent==='instruction'){
       if(working.current)throw new Error('処理が終わるまでお待ちください');
       if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
@@ -243,9 +290,8 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
   }
   useEffect(()=>{
     onConversation?.({label:`${plan.pageNumber}ページ・${plan.overlay?'ページ前景':`コマ ${plan.panelId}`}・${plan.label}`,
-      busy,locked:Boolean(attempt),phase,references,character:plan.characterKeys.length>0,
-      addFiles:(files,role)=>addFiles(files,role,true),loadRegistered:()=>loadRegistered(true),send:conversationSend});
-  },[onConversation,busy,attempt,phase,prompt,references,reference,correction,job,referenceCharacter,workflow,workflowError,chromaKeyColor]);
+      busy:busy||characterLoading||sketchLoading,locked:Boolean(attempt),phase,send:conversationSend});
+  },[onConversation,busy,attempt,phase,prompt,references,reference,correction,job,workflow,workflowError,chromaKeyColor,negative,characterLoading,sketchLoading,poseImage,plan]);
   useEffect(()=>()=>onConversation?.(null),[onConversation]);
   const agentStarted=useRef(false);
   useEffect(()=>{
@@ -254,9 +300,10 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
       if(workflowError){agentStarted.current=true;agentRequest.reject(new Error(workflowError));}
       return;
     }
+    if(characterLoading||sketchLoading||threeImages&&sourcePlan.expressionSource&&!reference&&!sourceErrors.expression)return;
     agentStarted.current=true;
-    void runQwenAgentRequest(agentRequest,async()=>{if(plan.characterKeys.length)await loadRegistered(true);},conversationSend);
-  },[agentRequest,workflow,workflowError]);
+    void runQwenAgentRequest(agentRequest,async()=>{},conversationSend);
+  },[agentRequest,workflow,workflowError,characterLoading,sketchLoading,threeImages,reference,sourceErrors]);
   async function check(id:string){await operation(async()=>{
     const expected=job?.jobId===id?job:history.find(item=>item.jobId===id);
     const result=await withNewCreationBridgeSession(()=>reconcileQwenJob(id,expected?.requestSha256));
@@ -305,7 +352,7 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
       {!cloud&&<div class="qwen-output-size">
         {workflow?<p>ワークフロー：{workflow.name} · 版{workflow.version} · 参照画像{workflow.binding.images.length}枚
           {workflow.binding.fixed_size&&` · 固定寸法 ${workflow.binding.fixed_size[0]} × ${workflow.binding.fixed_size[1]} px（原稿には縦横比を保って配置）`}</p>
-          :<p role={workflowError?'alert':'status'}>{workflowError||'ワークフローを確認しています…'}</p>}
+          :<p role={missingWorkflow?'alert':'status'}>{missingWorkflow||'ワークフローを確認しています…'}</p>}
         {onOpenSettings&&<button disabled={busy} onClick={onOpenSettings}>環境設定を開く</button>}
       </div>}
       {targetError&&<p role="alert">{targetError}</p>}
@@ -315,34 +362,47 @@ export default function QwenGenerationDialog({onOpenSettings,plan:sourcePlan,adu
         </select>
       </label>}
       {plan.compositionImage&&<fieldset><legend>送信する紙面</legend><figure class="qwen-paint-reference"><img src={plan.compositionImage} alt={`${plan.label}の参照画像`}/><figcaption>人物配置・コマ形状・フキダシと文字の参照</figcaption></figure></fieldset>}
-      {usesPoseImage&&<fieldset><legend>送信する3Dポーズ</legend>
-        {poseImage?<figure class="qwen-paint-reference"><img src={poseImage} alt="描写範囲に合わせた3Dポーズ参照"/><figcaption>姿勢・アングル・切り取り範囲の参照</figcaption></figure>
-          :poseError?<><p role="alert">{poseError}</p><button disabled={busy||Boolean(attempt)} onClick={()=>setPoseAttempt(value=>value+1)}>撮影を再試行</button></>:<p role="status">保存した3Dポーズを撮影しています…</p>}
-        <p>人物の外見と画風には、下のキャラクター設定画を使います。</p>
+      {automatic&&person&&<label>生成方法<select value={repair?'repair':'figure'} disabled={busy||Boolean(attempt)} onChange={e=>{
+        setRepair(e.currentTarget.value==='repair');setReference(undefined);setCorrection(undefined);setExtra([]);setPrompt(undefined);setNegative(undefined);
+      }}><option value="figure">人物3枚参照</option><option value="repair">ピンポイント修正</option></select></label>}
+      {threeImages&&<fieldset disabled={busy||Boolean(attempt)}><legend>image1 · ネームの表情</legend>
+        {reference&&<figure class="qwen-paint-reference"><img src={reference.image} alt="image1 ネームの表情"/></figure>}
+        {sourceErrors.expression&&<p role="alert">{sourceErrors.expression}</p>}
+        {(!sourcePlan.expressionSource||sourceErrors.expression)&&<label>ネームのレイヤー<select aria-label="ネームのレイヤー" value={reference?.id??''} onChange={e=>void selectLayer('reference',e.currentTarget.value)}>
+          <option value="">選択してください</option>{layers.filter(layer=>!layer.empty).map(layer=><option value={layer.id}>{layer.label}</option>)}</select></label>}
+        {sourceErrors.expression&&<button onClick={()=>retryExpression(x=>x+1)}>読み込みを再試行</button>}
       </fieldset>}
-      {!plan.scope&&<fieldset disabled={busy||Boolean(attempt)||waitingForWorkflow}><legend>「{plan.label}」フォルダのレイヤー</legend>
-        {!threeImages&&<p>参照画像とピンポイント修正用を、それぞれ1枚まで選べます。どちらも任意です。</p>}
-        <div class="qwen-layer-inputs">{(['reference','correction'] as const).filter(slot=>!threeImages||slot==='reference').map(slot=>{
+      {!plan.scope&&!threeImages&&<fieldset disabled={busy||Boolean(attempt)}><legend>「{plan.label}」フォルダのレイヤー</legend>
+        <p>参照画像とピンポイント修正用を、それぞれ1枚まで選べます。どちらも任意です。</p>
+        <div class="qwen-layer-inputs">{(['reference','correction'] as const).map(slot=>{
           const selected=slot==='reference'?reference:correction;
-          const label=slot==='reference'?(threeImages?'ネーム（表情・感情）':'参照画像'):'ピンポイント修正用';
+          const label=slot==='reference'?'参照画像':'ピンポイント修正用';
           return <div class="qwen-layer-input"><label>{label}<select aria-label={label} value={selected?.id??''} onChange={e=>void selectLayer(slot,e.currentTarget.value)}>
-            <option value="">{threeImages?'選択してください':'使わない'}</option>{layers.map(layer=><option value={layer.id} disabled={layer.empty}>{layer.label}{layer.empty?'（空・濃度0%）':layer.hidden?'（非表示）':''}</option>)}
+            <option value="">使わない</option>{layers.map(layer=><option value={layer.id} disabled={layer.empty}>{layer.label}{layer.empty?'（空・濃度0%）':layer.hidden?'（非表示）':''}</option>)}
           </select></label>{selected&&<figure class="qwen-paint-reference"><img src={selected.image} alt={`${label}：${selected.label}`}/><figcaption>{selected.label}</figcaption></figure>}</div>;
         })}</div>
         {!layers.length&&<p>このフォルダには参照できるレイヤーがありません。</p>}
-        {!threeImages&&<p>修正用には、直したい場所を囲んだ画像、書き込み、マスクを選びます。修正内容は下の生成指示に入力できます。</p>}
+        <p>修正用には、直したい場所を囲んだ画像、書き込み、マスクを選びます。修正内容は下の生成指示に入力できます。</p>
         {correction&&!reference&&<p>参照画像を使わない場合は、元の絵に書き込みを加えたレイヤーを選んでください。マスクだけの場合は参照画像も必要です。</p>}
       </fieldset>}
-      {plan.characterKeys.length>0&&<fieldset disabled={busy||Boolean(attempt)||waitingForWorkflow}><legend>キャラクター設定画</legend>
-        {plan.characterKeys.length>1&&<label>追加する設定画の人物<select aria-label="設定画の人物" value={referenceCharacter} onChange={e=>setReferenceCharacter(e.currentTarget.value)}>{plan.characterKeys.map((key,index)=><option value={key}>Character {index+1} · {plan.candidates.find(candidate=>candidate.characterKeys?.includes(key))?.label??key}</option>)}</select></label>}
-        <div class="paint-entry-actions"><button onClick={()=>void loadRegistered()} disabled={!plan.candidates.length}>登録資料を読み込む</button><label class="qwen-file-label">設定画を追加<input type="file" accept="image/png,image/jpeg,image/webp" multiple={!threeImages} onChange={e=>{const files=Array.from(e.currentTarget.files??[]);e.currentTarget.value='';void addFiles(files);}}/></label></div>
-        <p>設定画は人物の外見と画風の参照に使います。「設定画を追加」は今回の生成だけに使い、人物資料には登録しません。</p>
-        <div class="qwen-reference-list">{references.map((reference,index)=><figure><img src={reference.image} alt={reference.label}/><figcaption>{reference.label} · {reference.characterKeys.length?'人物設定画':'描画参考'}</figcaption><button onClick={()=>updateReferences(references.filter((_,i)=>i!==index))}>外す</button></figure>)}</div>
+      {plan.characterKeys.length>0&&<fieldset disabled={busy||Boolean(attempt)}><legend>{threeImages?'image2 · キャラクター設定画':'キャラクター設定画'}</legend>
+        {sourceErrors.character&&<><p role="alert">{sourceErrors.character}</p><button onClick={()=>retryCharacter(x=>x+1)}>設定画の読み込みを再試行</button></>}
+        <div class="qwen-reference-list">{linked.map(ref=><figure key={ref.characterKeys.join()}><img src={ref.image} alt={threeImages?`image2 キャラクター設定画：${ref.label}`:ref.label}/><figcaption>{ref.label}</figcaption></figure>)}</div>
+        {!threeImages&&<><label class="qwen-file-label">参考画像を追加<input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e=>{const files=Array.from(e.currentTarget.files??[]);e.currentTarget.value='';void addFiles(files);}}/></label>
+          {extra.map((ref,index)=><figure class="qwen-paint-reference"><img src={ref.image} alt={ref.label}/><button onClick={()=>setExtra(previous=>previous.filter((_,i)=>i!==index))}>外す</button></figure>)}</>}
+      </fieldset>}
+      {(threeImages||usesPoseImage)&&<fieldset disabled={busy||Boolean(attempt)}><legend>{threeImages?'image3 · 3Dモデル調整':'送信する3Dポーズ'}</legend>
+        {threeImages&&person&&<FigureHumanPoseEditor imageSlot {...poseEditorContext} value={plan.humanPose?.selection}
+          framingSize={plan.humanPose?.framing??sourcePlan.figureFraming} aspect={sourcePlan.threeImageTarget?.cutFrame.aspect} cutFrame={sourcePlan.threeImageTarget?.cutFrame}
+          onChange={(value,framing)=>{if(value)setPoseDraft({selection:{...value,input_mode:'image'},framing:framing??plan.humanPose?.framing??sourcePlan.figureFraming??'bust-up'});}}/>}
+        {poseImage?<figure class="qwen-paint-reference"><img src={poseImage} alt={threeImages?'image3 3Dポーズ':'描写範囲に合わせた3Dポーズ参照'}/></figure>
+          :poseError?<><p role="alert">{poseError}</p><button onClick={()=>setPoseAttempt(value=>value+1)}>撮影を再試行</button></>:null}
       </fieldset>}
       {Boolean(plan.contentKind)&&<div class="qwen-output-size"><output>{qwenGenerationSizePrompt(plan,Boolean(correction),workflow?.binding.fixed_size??undefined)}</output><div>生成範囲：{plan.generationArea&&!correction?'生成マスクの外接矩形':'フォルダーのキャンバス全体'} · 生成解像度：{cloud?'指定サイズ':workflow?.binding.fixed_size?workflow.binding.fixed_size.join(' × '):'縦横比に合わせて調整'}</div></div>}
-      <label class="qwen-prompt">生成指示<textarea rows={8} value={waitingForWorkflow?'':prompt} disabled={busy||!canPrepareNewGeneration||waitingForWorkflow} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>
+      <label class="qwen-prompt">{defaultNegative!==undefined?'ポジティブプロンプト':'生成指示'}<textarea rows={8} value={waitingForWorkflow?'':prompt} disabled={busy||!canPrepareNewGeneration||waitingForWorkflow} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>
+      {defaultNegative!==undefined&&<label class="qwen-prompt">ネガティブプロンプト<textarea rows={3} maxLength={12000} value={negative} disabled={busy||!canPrepareNewGeneration} onInput={e=>{if(attempted.current)prepareNewGeneration();setNegative(e.currentTarget.value);}}/></label>}
       <div class="paint-entry-actions">
-        <button class="primary-button" disabled={busy||Boolean(attempt)||usesPoseImage&&!poseImage||!cloud&&!workflow||threeImages&&(!!targetError||!reference||references.length!==1)} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'5枚を生成する'}</button>
+        <button class="primary-button" disabled={busy||Boolean(attempt)||characterLoading||Boolean(sourceErrors.character)||usesPoseImage&&!poseImage||!cloud&&!workflow||threeImages&&(!!targetError||!reference||!poseImage||references.length!==1)} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'5枚を生成する'}</button>
         {cloud&&<button disabled={busy} onClick={()=>void importGenerated()}>生成画像を読み込む</button>}
         {!cloud&&attempt&&<button disabled={busy} onClick={()=>void check(attempt)}>生成状況を確認</button>}
         {!cloud&&<><button disabled={busy} aria-pressed={historyScope==='owner'} onClick={()=>void loadHistory('owner')}>生成履歴</button>

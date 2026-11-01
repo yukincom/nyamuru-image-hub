@@ -130,8 +130,7 @@ async function checkPromptEditing(){
   const input=async(value:string)=>{prompt().value=value;prompt().dispatchEvent(new Event('input',{bubbles:true}));await settle();};
   check(!prompt().disabled,'初回は生成指示を編集できる');
   await input('最初の手修正\nミリペンの線');
-  await conversation.current!.addFiles([new File([blob],'設定画.png',{type:'image/png'})],'character');await settle();
-  check(dialog().querySelectorAll('.qwen-reference-list img').length===1,'既存の追加経路から参照資料を用意');
+  await wait(()=>dialog().querySelectorAll('.qwen-reference-list img').length===1,'人物に紐づく設定画を自動表示');
   const submittedBefore=requests.filter(path=>path==='/api/image-generation/submit').length;
   submitGate=new Promise<void>(resolve=>{release=resolve;});button('Qwenで実行').click();
   await wait(()=>requests.filter(path=>path==='/api/image-generation/submit').length===submittedBefore+1,'模擬生成を開始');
