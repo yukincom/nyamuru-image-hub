@@ -55,7 +55,7 @@ test('user folders preserve render order while layers move into, within and back
  assert.deepEqual(one.layers.map(layer=>[layer.id,layer.folderId??null]),[['bottom',null],['top',null],['middle',folder.id]]);
  const two=movePaintLayer(one,'top',{kind:'folder',id:folder.id,placement:'inside'});
  assert.deepEqual(two.layers.map(layer=>layer.id),['bottom','middle','top']);
- assert.deepEqual(paintLayerTree(two).map(entry=>entry.kind==='layer'?entry.layer.id:[entry.folder.id,...entry.layers.map(layer=>layer.id)]),['bottom',[folder.id,'middle','top']]);
+ assert.deepEqual(paintLayerTree(two).map(entry=>entry.kind==='layer'?entry.layer.id:[entry.folder.id,...entry.children.map(child=>child.layer.id)]),['bottom',[folder.id,'middle','top']]);
  const outside=movePaintLayer(two,'top',{kind:'folder',id:folder.id,placement:'below'});
  assert.equal(outside.layers.find(layer=>layer.id==='top').folderId,undefined);assert.deepEqual(outside.layers.map(layer=>layer.id),['bottom','top','middle']);
  const ungrouped=removePaintFolder(outside,folder.id);assert.equal(ungrouped.folders.length,0);assert.ok(ungrouped.layers.every(layer=>!layer.folderId));
@@ -74,7 +74,7 @@ test('reframing artwork preserves user folders and remaps their layer references
  const reopened=paintForFrame({x:0,y:0,w:50.8,h:50.8},100,[image],[flat]);
  assert.equal(reopened.folders.length,1);assert.notEqual(reopened.folders[0].id,folder.id);
  assert.equal(reopened.layers.find(layer=>layer.name==='ink').folderId,reopened.folders[0].id);
- assert.deepEqual(paintLayerTree(reopened).filter(entry=>entry.kind==='folder').map(entry=>[entry.folder.name,...entry.layers.map(layer=>layer.name)]),[['線画','ink']]);
+ assert.deepEqual(paintLayerTree(reopened).filter(entry=>entry.kind==='folder').map(entry=>[entry.folder.name,...entry.children.map(child=>child.layer.name)]),[['線画','ink']]);
  validatePaintDocument(reopened,[flat]);
 });
 
@@ -90,6 +90,37 @@ test('composition preserves initialized guide plus ink but can select a legacy g
  assert.ok(paintGuideView(owner,false).layers.some(layer=>layer.strokes.length));
  assert.ok(paintGuideView(owner,false).layers.every(layer=>!layer.guide));
  assert.deepEqual(owner.paint,before);
+});
+
+// 見込み: フォルダーを描画対象間で移しても、空の枝・子の順序・紙面座標を維持する。
+// 合格: 移動後と再構成後の親ID、葉順、逆変換した座標が一致。UI保存はブラウザー試験で確認する。
+test('a nested subtree keeps empty siblings, editable bounds and parent links across owners',()=>{
+ const nested={...newPaintLayer('ink'),id:'ink',folderId:'child',strokes:[stroke]};
+ const paint={version:1,width:100,height:100,dpi:100,guideInitialized:true,layers:[nested],
+   folders:[{id:'outer',name:'同名',position:0},{id:'child',name:'同名',parentFolderId:'outer',position:0},
+            {id:'space',name:'空',parentFolderId:'outer',position:1}]};
+ const source={key:'source',kind:'figure',frame:{x:10,y:20,w:100,h:100},paint};
+ const target={key:'target',kind:'panel',frame:{x:0,y:0,w:200,h:200},paint:{...paint,width:200,height:200,layers:[],folders:[{id:'dest',name:'同名',position:0}]}};
+ const moved=movePaintEntry(source,target,'folder','outer',{kind:'folder',id:'dest',placement:'inside'});
+ assert.equal(moved.source.paint.folders.length,0);
+ const dest=moved.destination.paint;
+ assert.deepEqual(dest.folders.map(f=>[f.id,f.parentFolderId]),[['dest',undefined],['outer','dest'],['child','outer'],['space','outer']]);
+ assert.deepEqual(dest.layers[0].strokes[0].points.map(p=>[p.x,p.y]),[[14,25],[20,40]]);
+ const flat=asset('snapshot',200,200),art={...createFrameArtwork(flat,target.frame),paint:dest};
+ const restored=paintForFrame({...target.frame,w:201},25.4,[art],[flat]);
+ assert.notEqual(restored.folders[0].id,flat.id);
+ assert.ok(restored.folders.every(f=>!dest.folders.some(original=>original.id===f.id)));
+ const tree=paintLayerTree(restored);
+ assert.equal(tree[0].children[0].children[0].children[0].layer.name,'ink');
+ assert.equal(tree[0].children[0].children[1].folder.name,'空');
+ assert.doesNotThrow(()=>validatePaintDocument(dest,[]));
+ for(const invalid of ['missing','space']){
+   const folders=dest.folders.map(f=>f.id==='outer'?{...f,parentFolderId:invalid}:f);
+   assert.throws(()=>validatePaintDocument({...dest,folders},[]),/不正/);
+ }
+ const released=removePaintFolder(dest,'outer');
+ assert.deepEqual(released.folders.map(f=>[f.id,f.parentFolderId]),[['dest',undefined],['child','dest'],['space','dest']]);
+ assert.equal(released.layers[0].folderId,'child');
 });
 
 test('hidden paint folders and zero-opacity content do not reappear as 3D people',()=>{
@@ -480,7 +511,9 @@ test('moving layers preserves empty sibling folder order and same-folder drops g
  const across=movePaintLayer(inside,'a',{kind:'folder',id:'f1',placement:'inside'});assert.deepEqual(order(across),['f1','f2']);assert.deepEqual(across.layers.map(l=>[l.id,l.folderId]),[['a','f1'],['b','f2']]);
  const moved=movePaintFolder(across,'f2',{kind:'folder',id:'f1',placement:'below'});assert.deepEqual(order(moved),['f2','f1']);assert.deepEqual(moved.layers.map(l=>l.id),['b','a']);
  assert.equal(movePaintFolder(moved,'f1',{kind:'folder',id:'f1',placement:'above'}),moved);
- assert.equal(movePaintFolder(moved,'f1',{kind:'folder',id:'f2',placement:'inside'}),moved,'folders do not nest');
+ const nested=movePaintFolder(moved,'f1',{kind:'folder',id:'f2',placement:'inside'});
+ assert.equal(nested.folders.find(f=>f.id==='f1').parentFolderId,'f2');
+ assert.equal(movePaintFolder(nested,'f2',{kind:'folder',id:'f1',placement:'inside'}),nested,'a folder cannot be moved into its descendant');
  validatePaintDocument(moved,[]);
 });
 

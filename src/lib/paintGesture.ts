@@ -1,6 +1,6 @@
 import type { BBox, PaintColorMode, PaintLayer, PaintPoint, PaintStroke, VectorPath } from '../types.ts';
 import {expandPaintOwnerToBounds,expandPaintOwnerToContent,newNumberedPaintLayer,movePaintLayer,paintLayerAboveNative,type PaintOwner,type PaintScene} from './paintDocument.ts';
-import {paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintLayerFolder} from './paintLock.ts';
+import {paintOwnerLocked,paintLayerEditable,paintLayerVisible,paintFolderChain} from './paintLock.ts';
 import {paintStrokeBounds,paintStrokeContentBounds,type PaintSmoother} from './paintStroke.ts';
 export {paintStrokeBounds} from './paintStroke.ts';
 
@@ -53,7 +53,7 @@ export function paintMarkNeedsLayer(layer:PaintLayer|undefined,kind:PaintLayer['
 }
 export function canStartPaintMark(owner:PaintOwner,layer:PaintLayer|undefined,kind:PaintLayer['kind']):boolean {
   return !paintOwnerLocked(owner)
-    &&(!layer||paintLayerFolder(owner.paint,layer)?.visible!==false&&!paintLayerFolder(owner.paint,layer)?.locked)
+    &&(!layer||!paintFolderChain(owner.paint,layer.folderId).some(folder=>folder.visible===false||folder.locked))
     &&(!layer||Boolean(layer.guide)||layer.visible&&(!layer.locked||Boolean(layer.image)))
     &&(!paintMarkNeedsLayer(layer,kind)||owner.paint.layers.length<64);
 }

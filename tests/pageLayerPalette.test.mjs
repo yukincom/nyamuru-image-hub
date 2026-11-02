@@ -224,7 +224,7 @@ test('the selected-art overlay keeps handles but cannot steal hits from visibly 
 });
 
 test('the final paint layer can be removed completely and recreated only on demand',()=>{
- assert.match(paintEditorSource,/const remaining=owner\.paint\.layers\.filter\(l=>l\.id!==layer\.id\);changeLayers\(remaining\)/);
+ assert.match(paintEditorSource,/removePaintLayer\(owner\.paint,layer\.id\)/);
  assert.doesNotMatch(paintEditorSource,/owner\.paint\.layers\.length===1\?\[newPaintLayer/);
  assert.match(paintEditorSource,/if\(paintOwnerShouldClear\(owner\)\)\{result\.owners\.push\(\{owner,blob:new Blob\(\),remove:true\}\);continue;\}/);
  assert.match(appSource,/if\(remove\)\{clearOwnerPaint\(target,owner\);continue;\}/);
@@ -274,7 +274,7 @@ test('layer folders are explicit and drag targets distinguish inside from outsid
 test('representative locks live at row right and inherited locks disable descendant toggles',()=>{
  assert.match(paintLayerSource,/class=\{`palette-icon layer-row-lock/);
  assert.match(paintLayerSource,/inherited=\{o\.inheritedLocked===true\}/);
- assert.match(paintLayerSource,/inherited=\{paintOwnerLocked\(o\)\}/);
+ assert.match(paintLayerSource,/inherited=\{inherited\}/);
  assert.match(paintLayerSource,/lockOwner:\(key:string,locked:boolean,group\?:boolean\)=>void/);
  assert.match(pageLayerSource,/disabled=\{p\.disabled\|\|panelLocked\(panel\)\}/);
  assert.match(globalCss,/\.paint-dock \.layer-row-lock\.is-inherited \{[^}]*opacity:\.28;[^}]*filter:grayscale\(1\);/);

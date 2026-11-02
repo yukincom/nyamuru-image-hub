@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlus2, Copy, Trash2, PenTool, Type, Box, Camera, Bot } from 'lucide-preact';
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PaintFolder, PaintLayer } from '../types';
-import {paintStackTarget,paintLayerTree,type PaintLayerDestination,type PaintLayerDropTarget,type PaintOwner,type PaintScene} from '../lib/paintDocument';
+import {paintStackTarget,paintLayerTree,type PaintLayerTreeEntry,type PaintLayerDestination,type PaintLayerDropTarget,type PaintOwner,type PaintScene} from '../lib/paintDocument';
 import { drawPaintMask, paintPreviewRenderer, type PaintImages } from '../lib/paintRenderer';
 import { PaintOriginal } from './PaintSceneView';
 import { PaintToolButton } from './PaintToolHelp';
@@ -9,7 +9,7 @@ import LayerVisibilityButton from './LayerVisibilityButton';
 import { bubbleVisible, canReorderBubbleLayers } from '../lib/panelLayers';
 import { letteringFigureIndex, letteringLayerMove } from '../lib/bubbleRelations';
 import LayerLockIcon from './LayerLockIcon';
-import {paintLayerVisible,paintLayerInheritedLocked,paintLayerEditable,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {paintFolderChain,paintLayerVisible,paintLayerInheritedLocked,paintLayerEditable,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import type { ComponentChildren } from 'preact';
 import {PaintLayerControlsContext} from '../lib/paintWorkspace';
 
@@ -91,7 +91,7 @@ export default function PaintLayerPalette(p:Props){
   };
   const beginLayerDrag=(e:PointerEvent,o:PaintOwner,l:PaintLayer)=>{if(p.disabled||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary||!paintLayerEditable(o,l))return;beginDrag(e,o,l.id,'layer','.layer-select');};
   const beginFolderDrag=(e:PointerEvent,o:PaintOwner,folder:PaintFolder)=>{
-    if(p.disabled||paintOwnerLocked(o)||folder.locked||o.paint.layers.some(layer=>layer.folderId===folder.id&&!paintLayerEditable(o,layer))||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary)return;
+    if(p.disabled||paintOwnerLocked(o)||paintFolderChain(o.paint,folder.id).some(item=>item.locked)||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary)return;
     beginDrag(e,o,folder.id,'folder','.layer-folder-select');
   };
   const moveLayerDrag=(e:PointerEvent)=>{const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;if(!d.moved&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<5)return;d.moved=true;e.preventDefault();clearDrop();
@@ -113,7 +113,7 @@ export default function PaintLayerPalette(p:Props){
       target={kind:'layer',id,after};placement=after?'below':'above';
     }else if(kind==='folder'){
       const id=row.dataset.folder;if(!id||same&&d.kind==='folder'&&id===d.id)return;
-      placement=d.kind==='folder'?(ratio<.5?'above':'below'):ratio<.25?'above':ratio>.75?'below':'inside';
+      placement=ratio<.25?'above':ratio>.75?'below':'inside';
       if(placement==='inside'&&row.dataset.dropLocked==='true')return;
       target={kind:'folder',id,placement};if(placement==='inside')depth++;
     }else if(kind==='panel'){
@@ -136,6 +136,11 @@ export default function PaintLayerPalette(p:Props){
     }else{
       if(row.dataset.dropLocked==='true')return;
       target={kind:'root',edge:row.dataset.edge==='bottom'?'bottom':'top'};placement='inside';
+    }
+    if(same&&d.kind==='folder'&&(kind==='folder'||kind==='layer')){
+      const paint=p.scene.owners.find(owner=>owner.key===key)?.paint;
+      const parent=kind==='folder'?row.dataset.folder:paint?.layers.find(layer=>layer.id===row.dataset.layer)?.folderId;
+      if(paint&&paintFolderChain(paint,parent).some(folder=>folder.id===d.id))return;
     }
     const outside=depth===0||placement!=='inside'&&['folder','owner','panel'].includes(kind??'')||kind==='layer'&&!row.closest('.layer-user-folder-children,.layer-group-children')&&/^(panel|page)(:|$)/.test(key);
     d.drop=target;d.destination=destination;d.marker=row;row.style.setProperty('--layer-drop-indent',`${outside?0:Math.max(48,depth*16)}px`);row.classList.add(`drop-${placement}`);if(outside)row.classList.add('drop-outside');d.capture.dataset.dragTarget=`${kind}:${placement}`;
@@ -174,18 +179,24 @@ export default function PaintLayerPalette(p:Props){
   </div></div>;};
   const renderEntries=(o:PaintOwner,active:boolean,aboveNative?:boolean,depth=baseDepth)=>{
     const entries=paintLayerTree(o.paint).filter(entry=>aboveNative===undefined||Boolean(entry.kind==='folder'?entry.folder.aboveNative:entry.layer.aboveNative)===aboveNative).reverse();
-    return <div class="layer-owner-entries" data-owner-root={o.key}>
-      {entries.map(entry=>entry.kind==='layer'?renderLayer(o,entry.layer,active,depth):(()=>{const foldKey=`${scope}/folder/${entry.folder.id}`,folded=palette.folded[foldKey]??false,selected=active&&(p.selectedFolder?.id===entry.folder.id||p.layer.folderId===entry.folder.id);return <div class="layer-user-folder" key={entry.folder.id}>
-        <div class={`layer-user-folder-row ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} aria-expanded={!folded} data-layer-depth={depth} style={{'--layer-indent':`${depth*16}px`}} data-layer-drop="folder" data-folder={entry.folder.id} data-owner={o.key} data-drop-locked={paintOwnerLocked(o)||entry.folder.locked===true} onPointerDown={event=>beginFolderDrag(event,o,entry.folder)} onPointerCancel={cancelLayerDrag} onLostPointerCapture={cancelLayerDrag}>
+    const selectedParents=paintFolderChain(o.paint,p.selectedFolder?.id??p.layer.folderId);
+    function renderEntry(entry:PaintLayerTreeEntry,depth:number):ComponentChildren {
+      if(entry.kind==='layer')return renderLayer(o,entry.layer,active,depth);
+      const foldKey=`${scope}/folder/${entry.folder.id}`,folded=palette.folded[foldKey]??false;
+      const selected=active&&selectedParents.some(folder=>folder.id===entry.folder.id);
+      const inherited=paintOwnerLocked(o)||paintFolderChain(o.paint,entry.folder.parentFolderId).some(folder=>folder.locked);
+      return <div class="layer-user-folder" key={entry.folder.id}>
+        <div class={`layer-user-folder-row ${selected?'is-selected':''}`} role="treeitem" aria-selected={selected} aria-expanded={!folded} data-layer-depth={depth} style={{'--layer-indent':`${depth*16}px`}} data-layer-drop="folder" data-folder={entry.folder.id} data-owner={o.key} data-drop-locked={inherited||entry.folder.locked===true} onPointerDown={event=>beginFolderDrag(event,o,entry.folder)} onPointerCancel={cancelLayerDrag} onLostPointerCapture={cancelLayerDrag}>
           <LayerVisibilityButton label={`${entry.folder.name}を${entry.folder.visible===false?'表示':'隠す'}`} visible={entry.folder.visible!==false} disabled={p.disabled} onClick={()=>p.updateFolder(o.key,entry.folder.id,{visible:entry.folder.visible===false})}/>
           <button class="palette-icon layer-folder-toggle" aria-label={`${entry.folder.name}を${folded?'展開':'折りたたむ'}`} onClick={()=>palette.setFolded(foldKey,!folded)}>{folded?<ChevronRight size={14}/>:<ChevronDown size={14}/>}</button>
-          <button class="layer-folder-select" aria-label={`${entry.folder.name}を選択`}  disabled={p.disabled} onClick={()=>p.select(o.key,entry.folder.id)} onDblClick={()=>{if(!paintOwnerLocked(o)&&!entry.folder.locked)setRenamingFolder(entry.folder.id);}}><span class="layer-kind-icon"><FolderOpen size={17}/></span><span>{entry.folder.name}</span></button>
-          <LockButton label={entry.folder.name} locked={entry.folder.locked===true} inherited={paintOwnerLocked(o)} disabled={p.disabled} onClick={()=>p.updateFolder(o.key,entry.folder.id,{locked:!entry.folder.locked})}/>
+          <button class="layer-folder-select" aria-label={`${entry.folder.name}を選択`}  disabled={p.disabled} onClick={()=>p.select(o.key,entry.folder.id)} onDblClick={()=>{if(!inherited&&!entry.folder.locked)setRenamingFolder(entry.folder.id);}}><span class="layer-kind-icon"><FolderOpen size={17}/></span><span>{entry.folder.name}</span></button>
+          <LockButton label={entry.folder.name} locked={entry.folder.locked===true} inherited={inherited} disabled={p.disabled} onClick={()=>p.updateFolder(o.key,entry.folder.id,{locked:!entry.folder.locked})}/>
           {renamingFolder===entry.folder.id&&<LayerNameEditor name={entry.folder.name} label="フォルダー名" commit={name=>p.renameFolder(o.key,entry.folder.id,name)} close={()=>setRenamingFolder(null)}/>}
         </div>
-        {!folded&&<div class="layer-user-folder-children" role="group">{[...entry.layers].reverse().map(layer=>renderLayer(o,layer,active,depth+1))}</div>}
-      </div>})())}
-    </div>;
+        {!folded&&<div class="layer-user-folder-children" role="group">{[...entry.children].reverse().map(child=>renderEntry(child,depth+1))}</div>}
+      </div>;
+    }
+    return <div class="layer-owner-entries" data-owner-root={o.key}>{entries.map(entry=>renderEntry(entry,depth))}</div>;
   };
   const renderOriginal=(o:PaintOwner)=><div class="layer-direct-root original-raster-root" key={o.key} data-original-raster={o.original?.id}>
     {renderEntries(o,!p.inactive&&p.owner.key===o.key,undefined,baseDepth+Number(!!o.parentKey))}

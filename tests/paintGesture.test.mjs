@@ -167,6 +167,20 @@ test('first-mark allocation respects owner/child locks, source images, visibilit
   owner.paint.layers=Array.from({length:64},()=>newPaintLayer());assert.equal(canStartPaintMark(owner,undefined,'vector'),false);
   assert.equal(preparePaintMarkLayer(owner,owner.paint.layers[0],'raster'),owner.paint.layers[0]);
 });
+// 見込み: 祖先の固定・非表示中は、子の原画の上に描画用レイヤーを作れない。
+// 合格: どちらの状態でも追加を拒み、解除後は元の子フォルダーに追加できる。描画開始判定のみ検証する。
+test('a hidden or locked ancestor prevents a new mark on a nested source',()=>{
+  const owner=initial().owners[0],layer={...newPaintLayer(),folderId:'child',guide:true};
+  const parent={id:'parent',name:'親',position:0};
+  owner.paint.folders=[parent,{id:'child',name:'子',position:0,parentFolderId:'parent'}];
+  owner.paint.layers=[layer];
+  for(const state of [{locked:true},{visible:false}]){
+    owner.paint.folders[0]={...parent,...state};
+    assert.equal(preparePaintMarkLayer(owner,layer,'raster'),undefined);
+  }
+  owner.paint.folders[0]=parent;
+  assert.equal(preparePaintMarkLayer(owner,layer,'raster')?.folderId,'child');
+});
 test('rapid completions append to current owner layers without replacing earlier strokes or another owner',()=>{
   let scene=initial();const source=structuredClone(scene);
   const commands=Array.from({length:10},(_,i)=>{const owner=scene.owners[i%2];return{ownerKey:owner.key,layerId:owner.paint.layers[0].id,stroke:stroke(i*10)};});

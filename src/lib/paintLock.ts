@@ -5,11 +5,21 @@ import type { PaintOwner } from './paintDocument.ts';
 export function paintLayerFolder(paint:PaintDocument,layer:PaintLayer):PaintFolder|undefined {
   return layer.folderId?paint.folders?.find(folder=>folder.id===layer.folderId):undefined;
 }
+export function paintFolderChain(paint:PaintDocument,id?:string):PaintFolder[] {
+  const chain:PaintFolder[]=[];
+  while(id){
+    const folder=paint.folders?.find(item=>item.id===id);
+    if(!folder)break;
+    chain.push(folder);
+    id=folder.parentFolderId;
+  }
+  return chain;
+}
 export function paintLayerVisible(paint:PaintDocument,layer:PaintLayer):boolean {
-  return layer.visible&&paintLayerFolder(paint,layer)?.visible!==false;
+  return layer.visible&&!paintFolderChain(paint,layer.folderId).some(folder=>folder.visible===false);
 }
 export function paintLayerInheritedLocked(owner:PaintOwner,layer:PaintLayer):boolean {
-  return paintOwnerLocked(owner)||paintLayerFolder(owner.paint,layer)?.locked===true;
+  return paintOwnerLocked(owner)||paintFolderChain(owner.paint,layer.folderId).some(folder=>folder.locked);
 }
 /** A source image's layer lock is independent of its placement/owner lock. */
 export function paintOwnerLocked(owner:PaintOwner):boolean {
@@ -32,7 +42,7 @@ export function paintLayerHasContent(layer:PaintLayer):boolean {
 /** Blank editable children don't make locked visible artwork movable. */
 export function paintContentsLocked(paint:PaintDocument|undefined):boolean {
   const content=paint?.layers.filter(layer=>paintLayerVisible(paint!,layer)&&layer.opacity>0&&paintLayerHasContent(layer))??[];
-  return content.length>0&&content.every(layer=>layer.locked||paintLayerFolder(paint!,layer)?.locked);
+  return content.length>0&&content.every(layer=>layer.locked||paintFolderChain(paint!,layer.folderId).some(folder=>folder.locked));
 }
 export function artworkLocked(image:(Pick<ImageContent,'locked'|'paint'>&Partial<Pick<PlacedImage,'id'|'bubbleOriginal'>>)|undefined,bubbles:readonly Bubble[]=[]):boolean {
   return Boolean(image?.locked)||paintContentsLocked(image?.paint)||Boolean(image?.bubbleOriginal&&bubbles.some(bubble=>bubble.locked&&bubble.analogTextImport?.originalImageId===image.id));

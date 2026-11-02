@@ -2,7 +2,7 @@ import {canGeneratePaintOwner} from '../lib/qwenGeneration';
 import { useContext, useEffect, useRef, useState, useLayoutEffect, useMemo } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { appendBackgroundCapture } from '../lib/background3d';
-import {paintLayerVisible,paintLayerEditable,paintLayerPatchAllowed,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {paintFolderChain,paintLayerVisible,paintLayerEditable,paintLayerPatchAllowed,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import {paintLayerCoverage,pickPaintLayer,paintOwnerPoint,translatePaintLayer} from '../lib/paintLayerPicking';
 import { moveBackgroundLayoutOwner } from '../lib/background3dLayout';
 import type { BackgroundStage } from '../types';
@@ -30,7 +30,7 @@ import type { ComponentChildren, ComponentProps, RefObject } from 'preact';
 import { paintCheckpoint, type PaintController, type PaintImagePlacement, type PaintLayerAction, type PaintSessionSnapshot, type SharedPaintHistory } from '../lib/paintSession';
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, PaintToolsContext, PaintDetailsContext, PaintLayerControlsContext, PaintWorkspaceContext, paintPaletteScope, usePaintWorkspace, type BubblePathToolMode, type PaintWorkspaceState, type PaintLayoutTarget } from '../lib/paintWorkspace';
 import type { BBox, ImageAsset, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
-import { movePaintEntry, paintGenerationOwner, addPaintLayer, addPaintFolder, ensureDirectPaintOwner, paintAddPosition, expandPaintOwnerToBounds, expandPaintOwnerToContent, insertGeneratedPaintImage, movePaintFolder, movePaintLayer, newPaintLayer, paintLayerAboveNative, removePaintFolder, validatePaintDocument, type PaintAddPosition, type PaintOwner, type PaintScene, paintOwnerShouldClear, paintAssetIds } from '../lib/paintDocument';
+import { movePaintEntry, paintGenerationOwner, addPaintLayer, addPaintFolder, ensureDirectPaintOwner, paintAddPosition, expandPaintOwnerToBounds, expandPaintOwnerToContent, insertGeneratedPaintImage, movePaintFolder, newPaintLayer, paintLayerAboveNative, removePaintFolder, removePaintLayer, validatePaintDocument, type PaintAddPosition, type PaintOwner, type PaintScene, paintOwnerShouldClear, paintAssetIds } from '../lib/paintDocument';
 import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, type PaintImages } from '../lib/paintRenderer';
 import { prepareImageAsset, fitImageBox, imageCrop } from '../lib/imagePlacement';
 import { PaintSmoother } from '../lib/paintStroke';
@@ -748,7 +748,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       if(other!==target){
         const moved=movePaintEntry(target,other,action.type==='move-folder'?'folder':'layer',action.id,action.target);if(!moved)return;
         commit({...current,owners:current.owners.map(item=>item===target?moved.source:item===other?moved.destination:item)});
-        if(ownerKey===target.key&&(layerId===action.id||action.type==='move-folder'&&layer.folderId===action.id)){
+        if(ownerKey===target.key&&(layerId===action.id||action.type==='move-folder'&&paintFolderChain(target.paint,selectedFolder?.id??layer.folderId).some(folder=>folder.id===action.id))){
           setOwnerKey(other.key);if(maskTarget)setMaskTarget({...maskTarget,key:other.key});
         }
         return;
@@ -770,7 +770,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
         if((target.paint.folders?.length??0)>=64)return;
         const next=addPaintFolder(target.paint);
         if(position.aboveNative)next.folder.aboveNative=true;
-        const drop=position.target?.kind==='folder'&&position.target.placement==='inside'?{...position.target,placement:'below' as const}:position.target;
+        const drop=position.target;
         const paint=drop?movePaintFolder(next.paint,next.folder.id,drop):next.paint;
         commit({...current,owners:current.owners.map(item=>item===target?{...item,paint}:item)});
         setOwnerKey(target.key);setLayerId(next.folder.id);clearVectorSelection();setMaskTarget(null);setSelection(null);
@@ -792,13 +792,12 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     }
     if(action.type==='update-folder'){
       const folder=target.paint.folders?.find(folder=>folder.id===action.id);if(!folder)return;
-      if(action.patch.locked!==undefined&&paintOwnerLocked(target))return;
+      if(action.patch.locked!==undefined&&(paintOwnerLocked(target)||paintFolderChain(target.paint,folder.parentFolderId).some(parent=>parent.locked)))return;
       const folders=target.paint.folders!.map(item=>item===folder?{...item,...action.patch}:item);
-      const layers=action.patch.locked===false?target.paint.layers.map(layer=>layer.folderId===folder.id?{...layer,locked:false}:layer):target.paint.layers;
-      commit({...current,owners:current.owners.map(o=>o===target?{...o,paint:{...o.paint,folders,layers}}:o)});return;
+      commit({...current,owners:current.owners.map(o=>o===target?{...o,paint:{...o.paint,folders}}:o)});return;
     }
     if(action.type!=='toggle'&&paintOwnerLocked(target))return;
-    if((action.type==='rename-folder'||action.type==='remove-folder'||action.type==='move-folder')&&target.paint.folders?.find(folder=>folder.id===action.id)?.locked)return;
+    if((action.type==='rename-folder'||action.type==='remove-folder'||action.type==='move-folder')&&paintFolderChain(target.paint,action.id).some(folder=>folder.locked))return;
     if(action.type==='rename-folder'){
       const name=action.name.trim();if(!name||target.paint.folders?.find(folder=>folder.id===action.id)?.name===name)return;
       const folders=target.paint.folders?.map(folder=>folder.id===action.id?{...folder,name}:folder);if(!folders?.some(folder=>folder.id===action.id))return;
@@ -808,17 +807,10 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       const paint=removePaintFolder(target.paint,action.id);if(paint===target.paint)return;
       commit({...current,owners:current.owners.map(o=>o.key===action.key?{...o,paint}:o)});return;
     }
-    if(action.type==='move-folder'){
-      const paint=movePaintFolder(target.paint,action.id,action.target);if(paint===target.paint)return;
-      commit({...current,owners:current.owners.map(o=>o===target?{...o,paint}:o)});return;
-    }
-    if(action.type==='move-layer'){
-      const drop=action.target;
-      const destination=drop.kind==='folder'&&drop.placement==='inside'?target.paint.folders?.find(folder=>folder.id===drop.id):drop.kind==='layer'?target.paint.folders?.find(folder=>folder.id===target.paint.layers.find(layer=>layer.id===drop.id)?.folderId):undefined;
-      if(destination?.locked)return;
-      const moved=target.paint.layers.find(layer=>layer.id===action.id);if(!moved||!paintLayerEditable(target,moved))return;
-      const paint=movePaintLayer(target.paint,action.id,action.target);if(paint===target.paint)return;
-      commit({...current,owners:current.owners.map(o=>o.key===action.key?{...o,paint}:o)});return;
+    if(action.type==='move-folder'||action.type==='move-layer'){
+      const moved=movePaintEntry(target,target,action.type==='move-folder'?'folder':'layer',action.id,action.target);
+      if(moved)commit({...current,owners:current.owners.map(o=>o===target?moved.destination:o)});
+      return;
     }
     let layers=target.paint.layers;
     if(action.type==='toggle'){
@@ -919,9 +911,9 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     select:selectOwner,update:updateOwnerLayer,lockOwner:(key,locked,group)=>layerAction({type:'owner-lock',key,locked,group}),guideVisible,toggleGuide,menu:openMenu,
     toggleGroup:key=>layerAction({type:'toggle',key}),addFolder:()=>layerAction({type:'add-folder',key:owner.key}),add:()=>layerAction({type:'add',key:owner.key,kind:'raster'}),
     addVector:()=>layerAction({type:'add',key:owner.key,kind:'vector'}),
-    importImage:()=>chooseImage(),reorder:(key,id,target,after)=>layerAction({type:'reorder',key,id,target,after}),moveLayer:(key,id,target)=>layerAction({type:'move-layer',key,id,target}),moveFolder:(key,id,target)=>layerAction({type:'move-folder',key,id,target}),updateFolder:(key,id,patch)=>layerAction({type:'update-folder',key,id,patch}),renameFolder:(key,id,name)=>layerAction({type:'rename-folder',key,id,name}),
+    importImage:()=>chooseImage(),reorder:(key,id,target,after)=>layerAction({type:'reorder',key,id,target,after}),moveLayer:(key,id,target,destination)=>layerAction({type:'move-layer',key,id,target,destination}),moveFolder:(key,id,target,destination)=>layerAction({type:'move-folder',key,id,target,destination}),updateFolder:(key,id,patch)=>layerAction({type:'update-folder',key,id,patch}),renameFolder:(key,id,name)=>layerAction({type:'rename-folder',key,id,name}),
     duplicate:()=>{if(!hasLayer)return;const added={...layer,id:crypto.randomUUID(),name:`${layer.name} 複製`};changeLayers([...owner.paint.layers,added]);setLayerId(added.id);setMaskTarget(selectedMask==='mask'?{key:owner.key,id:added.id,kind:'mask'}:null);},
-    remove:()=>{if(selectedFolder){layerAction({type:'remove-folder',key:owner.key,id:selectedFolder.id});setLayerId('');return;}if(!hasLayer||!paintLayerEditable(owner,layer))return;{const remaining=owner.paint.layers.filter(l=>l.id!==layer.id);changeLayers(remaining);setLayerId(remaining.findLast(l=>!l.locked)?.id??remaining.at(-1)?.id??'');}setMaskTarget(null);clearVectorSelection();setSelection(null);},
+    remove:()=>{if(selectedFolder){layerAction({type:'remove-folder',key:owner.key,id:selectedFolder.id});setLayerId('');return;}if(!hasLayer||!paintLayerEditable(owner,layer))return;{if(locked||busy||suspended||operation.current||inputActive.current)return;const paint=removePaintLayer(owner.paint,layer.id);commit({...scene,owners:scene.owners.map(o=>o===owner?{...o,paint}:o)});setLayerId(paint.layers.findLast(l=>!l.locked)?.id??paint.layers.at(-1)?.id??'');}setMaskTarget(null);clearVectorSelection();setSelection(null);},
   };
   const layerControls=<PaintLayerPalette {...layerProps}/>;
   const layerHeader=<PaintLayerControls {...layerProps} disabled={!requested||busy||suspended}/>;

@@ -1,17 +1,24 @@
 import {newPaintLayer} from '../src/lib/paintDocument';
-import {paintPreviewRenderer} from '../src/lib/paintRenderer';
+import {paintPreviewRenderer,renderPaintPng} from '../src/lib/paintRenderer';
 import {render} from 'preact';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {STORAGE_KEY,toStoredMangaYaml,parseMangaYaml} from '../src/lib/manga';
+import {createPortableProject} from '../src/lib/portableProject';
+import {prepareImageAsset,createFrameArtwork} from '../src/lib/imagePlacement';
+import {saveFigureCropAssets} from '../src/lib/figureCropStore';
+import type {PaintDocument,MangaDocument} from '../src/types';
 import '../src/styles/global.css';
 
 if(!['4325','4335'].includes(location.port))throw new Error('Use a dedicated test origin.');
-const previous=localStorage.getItem(STORAGE_KEY);if(previous&&parseMangaYaml(previous).manga.meta.episode_id!=='layer-folder-qa')throw Error('Do not replace another manuscript');
 const fixture=createEmptyWorkspaceDocument();fixture.manga.meta.title='レイヤーフォルダー検証';fixture.manga.meta.episode_id='layer-folder-qa';
 fixture.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:20,y:30,w:170,h:220},bg:0,action:null,bubbles:[]}];
-localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(fixture));
-render(<App/>,document.getElementById('app')!);
+const nested=new URLSearchParams(location.search).has('nested');
+if(!nested){
+ const previous=localStorage.getItem(STORAGE_KEY);if(previous&&parseMangaYaml(previous).manga.meta.episode_id!=='layer-folder-qa')throw Error('Do not replace another manuscript');
+ localStorage.setItem(STORAGE_KEY,toStoredMangaYaml(fixture));
+ render(<App/>,document.getElementById('app')!);
+}
 
 const tick=()=>new Promise(resolve=>setTimeout(resolve,100));
 const wait=async<T extends Element>(selector:string,root:ParentNode=document)=>{for(let i=0;i<80;i++){const found=root.querySelector<T>(selector);if(found)return found;await tick();}throw new Error(`Missing ${selector}`);};
@@ -98,5 +105,95 @@ async function run(){
  return checks;
 }
 
+// 見込み: 同名の枝を実パレットで入れ子にして、保存→開くと所属・重なり・描画位置を復元する。
+// 合格: Undo/Redo、親ID・空の子・葉順と重なった色を照合。LAN版の実Appとブラウザー内の作品ファイルを使い、選択ダイアログのみ検証用のフォルダーに向ける。
+async function runNested(){
+ const checks:string[]=[];
+ const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);};
+ const until=async(test:()=>boolean,label:string)=>{for(let i=0;i<100;i++){if(test())return;await tick();}throw Error(label);};
+ const originalFetch=window.fetch.bind(window);
+ window.fetch=(input,init)=>{
+   const url=new URL(input instanceof Request?input.url:String(input),location.href);
+   return url.origin===location.origin&&!url.pathname.startsWith('/__nyamuru/')?originalFetch(input,init):Promise.resolve(Response.json({error:'fixture'},{status:503}));
+ };
+ const storage=await navigator.storage.getDirectory();
+ const folder=await storage.getDirectoryHandle('nested-folders-qa',{create:true});
+ const file=await folder.getFileHandle('project.json',{create:true});
+ Object.assign(window,{showDirectoryPicker:async()=>folder});
+ const fill=(id:string,parent:string,color:string,x:number)=>({...newPaintLayer(id),id,folderId:parent,strokes:[{
+   tool:'fill' as const,color,size:1,points:[{x,y:5,pressure:1,time:0}],selection:[{x,y:5,w:20,h:18}]
+ }]});
+ const paint:PaintDocument={version:1,width:96,height:96,dpi:100,guideInitialized:true,
+   layers:[fill('red','one','#ff0000',3),fill('blue','two','#0000ff',14)],
+   folders:[{id:'one',name:'同名',position:0},{id:'empty',name:'空',parentFolderId:'one',position:1},{id:'two',name:'同名',position:1}]};
+ const blob=await renderPaintPng(paint,new Map());
+ const asset=await prepareImageAsset(new File([blob],'位置確認.png',{type:'image/png'}));
+ await saveFigureCropAssets([{id:asset.storageId,blob}]);
+ const doc=createEmptyWorkspaceDocument(),frame={x:12,y:17,w:60,h:60};
+ doc.manga.meta.episode_id='nested-folder-qa';doc.manga.meta.title='入れ子確認';
+ doc.manga.finish_settings={width_mm:120,height_mm:120,dpi:100,bleed_mm:0};
+ doc.manga.pages[0].canvas={w:120,h:120,unit:'mm'};
+ doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',...frame},action:null,bg:0,bubbles:[],
+   images:[{...createFrameArtwork(asset,frame),paint,paintScope:'panel'}]}];
+ doc.manga.image_assets=[asset];
+ const writer=await file.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
+ const host=document.getElementById('app')!;
+ const open=async()=>{
+   render(null,host);render(<App/>,host);
+   const openButton=()=>Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(b=>b.textContent?.trim()==='作品フォルダを開く'&&!b.disabled);
+   await until(()=>!!openButton(),'作品フォルダを開く');openButton()!.click();
+   await until(()=>!!host.querySelector('.panel-layer-heading')&&!!host.querySelector('.toast')?.textContent?.includes('読み込みました'),'作品読込完了');
+   host.querySelector<HTMLButtonElement>('.panel-layer-heading button[aria-expanded="false"]')?.click();
+   await wait('[data-folder="two"]',host);
+ };
+ const row=(id:string)=>host.querySelector<HTMLElement>('[data-folder="'+id+'"]')!;
+ const parent=(id:string)=>row(id)?.parentElement?.parentElement?.closest('.layer-user-folder')?.querySelector<HTMLElement>('[data-folder]')?.dataset.folder;
+ const readFile=async()=>JSON.parse(await(await file.getFile()).text()).snapshot.document as MangaDocument;
+ const save=async()=>{
+   const button=await wait<HTMLButtonElement>('[data-project-save]',host);
+   button.click();await tick();await until(()=>!button.disabled,'作品保存完了');
+   return readFile();
+ };
+ function verify(doc:MangaDocument,isNested:boolean){
+   const image=doc.manga.pages[0].panels[0].images!.find(item=>item.paint?.layers.some(l=>l.id==='red'))!;
+   const actual=image.paint!;
+   check(actual.folders?.find(f=>f.id==='one')?.parentFolderId===(isNested?'two':undefined),'保存した直接の親が一致');
+   check(actual.folders?.find(f=>f.id==='empty')?.parentFolderId==='one','空フォルダーの所属を保持');
+   check(actual.layers.map(l=>l.id).join(',')===(isNested?'blue,red':'red,blue'),'描画順が一致');
+   // Compare in paper coordinates: paint owners may gain a working bleed.
+   for(const l of actual.layers){
+     const original=paint.layers.find(item=>item.id===l.id)!;
+     const point=l.strokes[0].points[0],before=original.strokes[0].points[0];
+     check(Math.abs(image.bbox.x+point.x*image.bbox.w/actual.width-(frame.x+before.x*frame.w/paint.width))<.01
+       &&Math.abs(image.bbox.y+point.y*image.bbox.h/actual.height-(frame.y+before.y*frame.h/paint.height))<.01,'紙面上の描画位置を保持');
+   }
+   const canvas=document.createElement('canvas');canvas.width=actual.width;canvas.height=actual.height;
+   const renderer=paintPreviewRenderer();renderer.draw(canvas,actual,new Map());
+   const pixel=(x:number)=>{const px=Math.floor((frame.x+x*frame.w/paint.width-image.bbox.x)*actual.width/image.bbox.w);
+     const py=Math.floor((frame.y+10*frame.h/paint.height-image.bbox.y)*actual.height/image.bbox.h);
+     return [...canvas.getContext('2d')!.getImageData(px,py,1,1).data].join(',');};
+   check(pixel(8)==='255,0,0,255'&&pixel(28)==='0,0,255,255'&&pixel(18)===(isNested?'255,0,0,255':'0,0,255,255'),'重なる部分と左右の描画色が一致');
+   renderer.dispose();
+ }
+ await open();
+ verify(await readFile(),false);
+ await drag(row('one').querySelector<HTMLElement>('.layer-folder-select')!,row('two'),.5);
+ await until(()=>parent('one')==='two','片方の同名フォルダーをもう一方へ入れる');
+ const undo=await wait<HTMLButtonElement>('.app-header [aria-label^="元に戻す"]',host);
+ undo.click();await until(()=>!parent('one'),'ドラッグを1回のUndoで戻す');
+ verify(await save(),false);
+ const redo=await wait<HTMLButtonElement>('.app-header [aria-label^="やり直す"]',host);
+ redo.click();await until(()=>parent('one')==='two','Redoで枝を復元');
+ verify(await save(),true);
+ await open();
+ check(parent('one')==='two'&&parent('empty')==='one','作品を閉じて実ファイルを開き直し、二段の入れ子を復元');
+ check([...row('two').parentElement!.querySelectorAll<HTMLElement>('[data-layer]')].map(el=>el.dataset.layer).join(',')==='red,blue','再読込後のパレットは描画順の逆');
+ verify(await save(),true);
+ await drag(row('one').querySelector<HTMLElement>('.layer-folder-select')!,row('two'),.9);
+ await until(()=>!parent('one'),'親の外へ戻す');
+ verify(await save(),false);
+ return checks;
+}
+
 const report=document.createElement('details');report.open=true;report.style.cssText='position:fixed;bottom:10px;left:170px;z-index:10001;max-width:620px;padding:8px 12px;background:#fff;border:1px solid #acb6b2;font-size:12px;color:#17231d';
-const summary=document.createElement('summary'),button=document.createElement('button'),output=document.createElement('ol');summary.textContent='レイヤーフォルダー操作の検証';button.textContent='実行';button.onclick=()=>{button.disabled=true;run().then(checks=>{summary.textContent=`レイヤーフォルダー操作 PASS（${checks.length}項目）`;for(const item of checks){const li=document.createElement('li');li.textContent=item;output.append(li);}}).catch(error=>{summary.textContent='レイヤーフォルダー操作 FAIL';const li=document.createElement('li');li.textContent=String(error?.stack??error);output.append(li);}).finally(()=>button.disabled=false);};report.append(summary,button,output);document.body.append(report);
+const summary=document.createElement('summary'),button=document.createElement('button'),output=document.createElement('ol');summary.textContent='レイヤーフォルダー操作の検証';button.textContent='実行';button.onclick=()=>{button.disabled=true;(nested?runNested():run()).then(checks=>{summary.textContent=`レイヤーフォルダー操作 PASS（${checks.length}項目）`;for(const item of checks){const li=document.createElement('li');li.textContent=item;output.append(li);}}).catch(error=>{summary.textContent='レイヤーフォルダー操作 FAIL';const li=document.createElement('li');li.textContent=String(error?.stack??error);output.append(li);}).finally(()=>button.disabled=false);};report.append(summary,button,output);document.body.append(report);

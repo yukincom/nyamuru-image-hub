@@ -13,7 +13,7 @@ import {agentEditorSnapshot,createAgentRevision,prepareAgentBubbleEdit,selectedA
 import {resolveVoiceGenerationTarget,type VoiceCommand} from '../lib/voiceCommands';
 import { applyArtworkSettings, getArtworkSettings } from '../lib/artworkRules';
 import standardArtworkSource from '../content/standard-settings.yaml?raw';
-import {artworkLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
+import {artworkLocked,paintFolderChain,paintOwnerPlacementLocked} from '../lib/paintLock';
 import PaintTextTools, {type TextPaletteTab} from './PaintTextTools';
 import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
@@ -3499,7 +3499,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     const owners=sameOwner?[moved.destination]:[moved.source,moved.destination];
     const replace=(scene:PaintScene,changed:PaintOwner[])=>({...scene,layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,owners:scene.owners.map(owner=>changed.find(item=>item.key===owner.key)??owner)});
     const sourceAfter=replace(sourceScene,sameScope?owners:[moved.source]),targetAfter=sameScope?sourceAfter:replace(targetScene,[moved.destination]);
-    const selectedMoves=sourceLive&&liveSnapshot?.ownerKey===action.key&&(liveSnapshot?.layerId===action.id||kind==='folder'&&source.paint.layers.some(layer=>layer.folderId===action.id&&layer.id===liveSnapshot?.layerId));
+    const selectedMoves=sourceLive&&liveSnapshot?.ownerKey===action.key&&(liveSnapshot?.layerId===action.id||kind==='folder'&&paintFolderChain(source.paint,source.paint.layers.find(layer=>layer.id===liveSnapshot.layerId)?.folderId??liveSnapshot.layerId).some(folder=>folder.id===action.id));
     let resumeScene=selectedMoves?targetAfter:sourceLive?sourceAfter:targetLive?targetAfter:liveSnapshot?.scene;
     if(resumeScene){
       const prepared:PaintOwner[]=[];for(const owner of resumeScene.owners)prepared.push(await prepare(withPaintBleed(owner,paintBleedPx)));

@@ -301,9 +301,11 @@ export type PaintColorMode = 'color'|'grayscale'|'monochrome';
 export interface PaintFolder {
   id: string;
   name: string;
+  /** Direct parent within this paint document. Omit at the root. */
+  parentFolderId?: string;
   visible?: boolean;
   locked?: boolean;
-  /** Bottom-to-top insertion point used only while the folder is empty. */
+  /** Index of the first descendant layer, or the insertion boundary for an empty folder. */
   position: number;
   /** Inside a text folder, this folder is in front of its native text. */
   aboveNative?: boolean;
