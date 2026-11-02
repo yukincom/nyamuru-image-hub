@@ -81,7 +81,7 @@ def parse_procargs(data):
     return args, env
 
 
-def process_launch(pid):
+def process_launch(pid, *, include_env=True):
     if sys.platform == 'darwin':
         libc = ctypes.CDLL(None, use_errno=True)
         mib = (ctypes.c_int * 3)(1, 49, pid)
@@ -89,13 +89,15 @@ def process_launch(pid):
         buffer = ctypes.create_string_buffer(size.value)
         if libc.sysctl(mib, 3, buffer, ctypes.byref(size), None, 0):
             raise SessionError('共有LLMの起動設定を取得できません')
-        return parse_procargs(buffer.raw[:size.value])
+        args, env = parse_procargs(buffer.raw[:size.value])
+        return args, env if include_env else {}
     path = Path(f'/proc/{pid}')
     raw_args = (path / 'cmdline').read_bytes().split(b'\0')
     if raw_args and raw_args[-1] == b'':
         raw_args.pop()  # Only the terminator; preserve a trailing empty argv entry.
     args = [os.fsdecode(value) for value in raw_args]
-    env = dict(os.fsdecode(value).split('=', 1) for value in (path / 'environ').read_bytes().split(b'\0') if b'=' in value)
+    env = (dict(os.fsdecode(value).split('=', 1) for value in (path / 'environ').read_bytes().split(b'\0') if b'=' in value)
+           if include_env else {})
     return args, env
 
 

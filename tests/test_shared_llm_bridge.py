@@ -22,7 +22,7 @@ from urllib.error import URLError
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
 from image_generation_lock import (create_generation_lease, hold_generation_lease, close_generation_lease,
-    activate_generation_lease, record_generation_job, recover_abandoned_leases)
+    activate_generation_lease, record_generation_job, recover_abandoned_leases, request_generation_shutdown)
 
 spec = importlib.util.spec_from_file_location('shared_llm_process', Path(__file__).parents[1] / 'scripts/shared_llm_process.py')
 session = importlib.util.module_from_spec(spec)
@@ -30,6 +30,35 @@ spec.loader.exec_module(session)
 
 
 class SharedLlmTests(unittest.TestCase):
+    # 見込み: 終了workerの環境を読まずにargvと同一性を照合すれば、Linuxの終了中も正しい対象を停止できる。
+    # 合格: environ拒否下でも対象workerだけSIGTERM・取消記録保存、復元用snapshotは同じ拒否を隠さない。実leaseとhelper、OS照会/信号は模擬。
+    def test_linux_worker_shutdown_does_not_read_environment_required_for_restoration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); token = str(uuid4()); job_id = str(uuid4())
+            job_root = root / 'jobs'; (job_root / job_id).mkdir(parents=True)
+            (job_root / job_id / 'request.json').write_text('{}')
+            create_generation_lease(token, root)
+            with hold_generation_lease(token, root) as fd:
+                record_generation_job(fd, job_id, job_root, worker={'pid': 42, 'identity': (42, 'start')})
+            args = ['/usr/bin/python3', str(Path(session.__file__).with_name('qwen_generation.py')),
+                    '--run', job_id, '--image-session-token', token]
+            def read_process_file(path):
+                if path == Path('/proc/42/cmdline'):
+                    return b'\0'.join(os.fsencode(arg) for arg in args) + b'\0'
+                if path == Path('/proc/42/environ'):
+                    raise PermissionError('terminating worker environment unavailable')
+                raise AssertionError(path)
+            with patch.dict(sys.modules, {'shared_llm_process': session}), \
+                    patch.object(session.sys, 'platform', 'linux'), \
+                    patch.object(session, 'identity', return_value=(42, 'start')), \
+                    patch.object(Path, 'read_bytes', read_process_file), \
+                    patch.object(session.os, 'kill') as kill:
+                with self.assertRaises(PermissionError):
+                    session.process_launch(42)
+                request_generation_shutdown(token, root, terminate=True)
+                kill.assert_called_once_with(42, signal.SIGTERM)
+            self.assertTrue((job_root / job_id / 'cancel-request.json').exists())
+
     def test_native_args_keep_spaces_json_empty_arguments_and_environment(self):
         args = ['/path with spaces/python', '/priority server.py', '--model', 'org/huihui',
                 '--chat-template-args', '{"enable_thinking": false}', '']

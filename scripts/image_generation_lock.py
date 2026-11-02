@@ -121,7 +121,9 @@ def request_generation_shutdown(token, root=ROOT, *, terminate=False):
         try:
             if identity(worker['pid']) != stamp:
                 continue
-            args, _ = process_launch(worker['pid'])
+            # A terminating Linux worker can deny environ before releasing its FD.
+            # Cleanup needs only argv and the unchanged process identity.
+            args, _ = process_launch(worker['pid'], include_env=False)
             def argument(flag):
                 index = args.index(flag) + 1 if flag in args else len(args)
                 return args[index] if index < len(args) else None
