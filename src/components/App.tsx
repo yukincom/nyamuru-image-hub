@@ -2899,8 +2899,8 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
             setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
             try {
               const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(await crop.original(), characterCandidates, target.currentSize);
-              const { candidateId, confidence, action, suggestedSize, reason } = suggestion;
-              characterReadOutcomes.set(target.sourceRegionId, { ok: true, candidateId, confidence, action, suggestedSize, reason });
+              const { candidateId, confidence, action, suggestedSize, reason, expressionReading } = suggestion;
+              characterReadOutcomes.set(target.sourceRegionId, { ok: true, candidateId, confidence, action, suggestedSize, reason, expressionReading });
             } catch (error) {
               characterReadOutcomes.set(target.sourceRegionId, {
                 ok: false,

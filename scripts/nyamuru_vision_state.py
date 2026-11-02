@@ -62,6 +62,19 @@ from nyamuru_voice_intent import VoiceIntentService
 from nyamuru_agent_chat import AgentChatService
 
 
+def valid_performance_action(action: object, analysis: object) -> bool:
+    if not isinstance(action, str) or len(action) > 800:
+        return False
+    if action.strip():
+        return True
+    # No visible performance is a valid result; a missing or malformed response is not.
+    expression = analysis.get("expression") if isinstance(analysis, dict) else None
+    return (isinstance(expression, dict) and isinstance(expression.get("faces"), list)
+            and bool(expression.get("catalog_version"))
+            and isinstance(expression.get("catalog_sha256"), str)
+            and bool(re.fullmatch(r"[a-f0-9]{64}", expression["catalog_sha256"])))
+
+
 class LocalVisionState:
     def __init__(
         self,
@@ -249,7 +262,7 @@ class LocalVisionState:
         action = result.get("suggested_action")
         suggested_size = result.get("suggested_size")
         analysis = result.get("analysis")
-        if not isinstance(action, str) or not action.strip() or len(action) > 800:
+        if not valid_performance_action(action, analysis):
             raise RuntimeError("人物演技の候補形式が正しくありません")
         if not isinstance(suggested_size, str) or suggested_size not in FIGURE_PERFORMANCE_SIZES:
             suggested_size = current_size
@@ -263,7 +276,7 @@ class LocalVisionState:
                 "provider": "local",
                 "runtime": "mlx-vlm",
                 "model": selected_label,
-                "prompt_version": str(result.get("prompt_version") or "figure-performance-v2-wd-hints"),
+                "prompt_version": str(result.get("prompt_version") or ""),
                 "analyzed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
@@ -350,7 +363,7 @@ class LocalVisionState:
                 "provider": "local",
                 "runtime": "mlx-vlm",
                 "model": selected_label,
-                "prompt_version": str(result.get("prompt_version") or "character-reference-v1"),
+                "prompt_version": str(result.get("prompt_version") or ""),
                 "analyzed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
@@ -397,8 +410,8 @@ class LocalVisionState:
             if total_bytes > 80 * 1024 * 1024:
                 raise ValueError("一括解析する人物資料画像の合計サイズは80MB以内にしてください")
             image_payloads.append(image_payload)
-        # 一括比較では文字の内容を使わない。文字領域は顔・体画像から消すためのマスクとしてだけ渡す。
-        auxiliaries = [self.character_reference_auxiliary(payload, include_ocr=False) for payload in image_payloads]
+        # 1枚の設定画では注記も照合する。複数枚では文字をマスクし、顔同士・体同士を比較する。
+        auxiliaries = [self.character_reference_auxiliary(payload, include_ocr=len(image_payloads) == 1) for payload in image_payloads]
         try:
             result = run_character_reference_set_worker(
                 python=self.vlm_python,
@@ -433,7 +446,7 @@ class LocalVisionState:
                 "provider": "local",
                 "runtime": "mlx-vlm",
                 "model": selected_label,
-                "prompt_version": str(result.get("prompt_version") or "character-reference-v17"),
+                "prompt_version": str(result.get("prompt_version") or ""),
                 "analyzed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
@@ -455,19 +468,16 @@ class LocalVisionState:
             if not isinstance(value, dict):
                 continue
             candidate_id = value.get("id")
-            name = value.get("name")
             if not isinstance(candidate_id, str) or not candidate_id.strip() or len(candidate_id) > 160:
                 continue
-            if not isinstance(name, str) or not name.strip() or len(name) > 100 or candidate_id in used_ids:
+            if candidate_id in used_ids:
                 continue
             used_ids.add(candidate_id)
-            aliases = [item.strip()[:100] for item in value.get("aliases", [])[:16] if isinstance(item, str) and item.strip()]
-            traits = [item.strip()[:180] for item in value.get("observed_traits", [])[:64] if isinstance(item, str) and item.strip()]
+            raw_traits = value.get("observed_traits")
+            traits = [item.strip()[:180] for item in raw_traits[:64] if isinstance(item, str) and item.strip()] if isinstance(raw_traits, list) else []
             candidates.append({
                 "id": candidate_id,
-                "name": name.strip(),
-                "aliases": aliases,
-                "observed_traits": traits,
+                "observed_traits": list(dict.fromkeys(traits)),
             })
         selected_model, selected_label = self.resolve_vlm_model(requested_vlm_model)
         if not self.vlm_available(selected_model):
@@ -504,7 +514,7 @@ class LocalVisionState:
             observed = []
         if not isinstance(reason, str):
             reason = ""
-        if not isinstance(action, str) or not action.strip() or len(action) > 800:
+        if not valid_performance_action(action, analysis):
             raise RuntimeError("人物演技の候補形式が正しくありません")
         if not isinstance(suggested_size, str) or suggested_size not in FIGURE_PERFORMANCE_SIZES:
             suggested_size = current_size
@@ -522,7 +532,7 @@ class LocalVisionState:
                 "provider": "local",
                 "runtime": "mlx-vlm",
                 "model": selected_label,
-                "prompt_version": str(result.get("prompt_version") or "character-and-performance-v3-wd-hints"),
+                "prompt_version": str(result.get("prompt_version") or ""),
                 "analyzed_at": datetime.now(timezone.utc).isoformat(),
             },
         }

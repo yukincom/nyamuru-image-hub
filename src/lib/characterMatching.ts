@@ -1,4 +1,5 @@
-import type { Character, Figure, FigureSize, MangaDocument, PersistentAnalogAssetRef } from '../types.ts';
+import type { Character, Figure, FigureSize, FigureExpressionReading, MangaDocument, PersistentAnalogAssetRef } from '../types.ts';
+import { CHARACTER_RECOGNITION_FIELDS } from './characterReferences.ts';
 import { DETECTED_FIGURE_NAME, isDetectedFigureCharacter, isSystemMobCharacter } from './systemCharacters.ts';
 
 export interface CharacterMatchTarget {
@@ -11,8 +12,6 @@ export interface CharacterMatchTarget {
 
 export interface CharacterMatchCandidate {
   id: string;
-  name: string;
-  aliases: string[];
   observedTraits: string[];
 }
 
@@ -23,6 +22,7 @@ export type CharacterReadOutcome = {
   action: string;
   suggestedSize: FigureSize;
   reason: string;
+  expressionReading: FigureExpressionReading;
 } | {
   ok: false;
   error: string;
@@ -74,20 +74,10 @@ export function collectUnmatchedCharacterTargets(document: MangaDocument): Chara
 export function buildCharacterMatchCandidates(characters: readonly Character[]): CharacterMatchCandidate[] {
   return characters.flatMap((character) => {
     if (!character.localId || isDetectedFigureCharacter(character) || isSystemMobCharacter(character)) return [];
-    const recognition = character.recognition;
-    const observedTraits = recognition
-      ? Object.entries(recognition).flatMap(([field, evidence]) => (
-        field === 'analyzer' || !evidence || typeof evidence !== 'object' || !('observed' in evidence)
-          ? []
-          : Array.isArray(evidence.observed) ? evidence.observed : []
-      ))
-      : [];
-    return [{
-      id: character.localId,
-      name: character.name,
-      aliases: [...(character.aliases ?? [])],
-      observedTraits: [...new Set(observedTraits.map((value) => value.trim()).filter(Boolean))].slice(0, 64),
-    }];
+    const observedTraits = CHARACTER_RECOGNITION_FIELDS.flatMap(({ key }) =>
+      character.recognition?.[key]?.observed ?? []);
+    const traits = [...new Set(observedTraits.map(value => value.trim()).filter(Boolean))].slice(0, 64);
+    return traits.length ? [{ id: character.localId, observedTraits: traits }] : [];
   });
 }
 
@@ -113,6 +103,7 @@ export function applyCharacterReadOutcomes(
       reviewRegions.add(sourceRegionId);
       return;
     }
+    metadata.expressionReading = structuredClone(outcome.expressionReading);
     figure.action = outcome.action;
     figure.size = outcome.suggestedSize;
     const character = outcome.candidateId ? characters.get(outcome.candidateId) : undefined;
@@ -124,6 +115,10 @@ export function applyCharacterReadOutcomes(
     if (outcome.confidence === 'low' || outcome.confidence === 'none' || !character) {
       metadata.analysisReview = 'low-confidence';
       metadata.analysisReviewMessage = outcome.reason || '人物を確定できませんでした';
+      reviewRegions.add(sourceRegionId);
+    } else if (outcome.expressionReading.faces.length > 1 && !outcome.expressionReading.target_face_id) {
+      metadata.analysisReview = 'low-confidence';
+      metadata.analysisReviewMessage = '切り抜きに複数の顔があり、対象人物の表情を確定できませんでした';
       reviewRegions.add(sourceRegionId);
     } else {
       delete metadata.analysisReview;

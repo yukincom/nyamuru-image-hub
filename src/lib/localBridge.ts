@@ -2,7 +2,8 @@ import { stageMediaType, verifyBackgroundStage } from './background3d.ts';
 import { checkCharacterReferenceSize } from './characterReferences.ts';
 import type { BackgroundStage } from '../types.ts';
 import { clamp, DEFAULT_PANEL_GUTTERS, INNER_FRAME_BOUNDS, nearestAnchor, panelBounds, pointInPanel, roundMm, type PanelGutterSettings } from './canvasGeometry.ts';
-import type { AnalogAssetKind, AnalogFigureImport, AnalogTextImport, BBox, Bubble, CharacterRecognitionProfile, CharacterReferenceSourceImage, CharacterReferenceView, FigureSize, LocalVlmAnalyzer, MangaPage, Panel, PanelShape, PersistentAnalogAssetRef, VisualEvidence } from '../types';
+import type { AnalogAssetKind, AnalogFigureImport, AnalogTextImport, BBox, Bubble, CharacterRecognitionProfile, CharacterReferenceSourceImage, CharacterReferenceView, FigureSize, FigureExpressionReading, ReadExpressionFace, LocalVlmAnalyzer, MangaPage, Panel, PanelShape, PersistentAnalogAssetRef, VisualEvidence } from '../types';
+import type { CharacterMatchCandidate } from './characterMatching.ts';
 import { DETECTED_FIGURE_NAME } from './bubbleRelations.ts';
 import type { PanelActionSuggestionRequest, PanelActionSuggestionResponse } from './panelActions.ts';
 import { MANGA_BASE_PALETTE, PANEL_DRAFT_PROFILE, type PanelDraftPlan } from './panelDraft.ts';
@@ -161,12 +162,6 @@ export interface CharacterReferenceSetSuggestion extends Omit<CharacterReference
   }>;
 }
 
-export interface CharacterMatchCandidateRequest {
-  id: string;
-  name: string;
-  aliases: string[];
-  observedTraits: string[];
-}
 
 export interface CharacterMatchSuggestion {
   candidateId: string;
@@ -176,6 +171,7 @@ export interface CharacterMatchSuggestion {
   action: string;
   suggestedSize: FigureSize;
   analysis: Record<string, unknown>;
+  expressionReading: FigureExpressionReading;
   analyzer: LocalVlmAnalyzer;
 }
 
@@ -1436,6 +1432,25 @@ export async function loadHumanPoseScene(poseId: string, catalogSha256: string, 
   return decodeHumanPoseScene(payload, poseId, catalogSha256, bodyModel);
 }
 
+// The local worker validates parts against its pinned catalog. Keep just that record
+// in the project; auxiliary tagger hints, model paths and unrelated pose data stay out.
+function expressionReadingFromAnalysis(analysis: Record<string, unknown> | null): FigureExpressionReading {
+  const reading = analysis?.expression as Partial<FigureExpressionReading> | undefined;
+  if (!reading || typeof reading.catalog_version !== 'string' || !reading.catalog_version
+    || typeof reading.catalog_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(reading.catalog_sha256)
+    || !Array.isArray(reading.faces) || !reading.faces.every(face =>
+      face && typeof face.face_id === 'string' && face.parts_mapping && Array.isArray(face.parts_mapping.extras))
+    || (reading.target_face_id !== null && !reading.faces.some(face => face.face_id === reading.target_face_id))) {
+    throw new Error('人物表情の解析結果形式が正しくありません');
+  }
+  return {
+    catalog_version: reading.catalog_version, catalog_sha256: reading.catalog_sha256,
+    target_face_id: reading.target_face_id ?? null, target_evidence_en: reading.target_evidence_en ?? null,
+    faces: reading.faces.map(({ face_id, bbox, confidence, parts_mapping, qwen_image21_prompt_en }: ReadExpressionFace) =>
+      ({ face_id, bbox, confidence, parts_mapping, qwen_image21_prompt_en })),
+  };
+}
+
 /** 明示操作時だけ、保存済みの人物切り抜き1枚をlocalhostのVLMへ渡す。 */
 export async function analyzeFigurePerformanceWithLocalVlm(
   blob: Blob,
@@ -1457,10 +1472,11 @@ export async function analyzeFigurePerformanceWithLocalVlm(
   const analyzer = payload.analyzer && typeof payload.analyzer === 'object' && !Array.isArray(payload.analyzer)
     ? payload.analyzer as Record<string, unknown>
     : null;
-  if (!action || action.length > 800 || !analysis || !analyzer
+  if (typeof payload.action !== 'string' || action.length > 800 || !analysis || !analyzer
     || analyzer.provider !== 'local' || analyzer.runtime !== 'mlx-vlm') {
     throw new Error('人物演技の解析結果形式が正しくありません');
   }
+  if (!action) expressionReadingFromAnalysis(analysis);
   return {
     action,
     suggestedSize,
@@ -1588,15 +1604,13 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
 /** 明示操作時だけ、ネームから切り抜いた人物1人をlocalhostのVLMへ渡して登録人物と照合する。 */
 export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,
-  candidates: readonly CharacterMatchCandidateRequest[],
+  candidates: readonly CharacterMatchCandidate[],
   currentSize: FigureSize,
 ): Promise<CharacterMatchSuggestion> {
   const payload = await postJson('/api/character-match/analyze', {
     image: await blobDataUrl(blob),
     candidates: candidates.map((candidate) => ({
       id: candidate.id,
-      name: candidate.name,
-      aliases: candidate.aliases,
       observed_traits: candidate.observedTraits,
     })),
     current_size: currentSize,
@@ -1620,7 +1634,7 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
   const analysis = payload.analysis && typeof payload.analysis === 'object' && !Array.isArray(payload.analysis)
     ? payload.analysis as Record<string, unknown>
     : null;
-  if (!action || action.length > 800 || !analysis) {
+  if (typeof payload.action !== 'string' || action.length > 800 || !analysis) {
     throw new Error('人物演技の解析結果形式が正しくありません');
   }
   const candidateId = typeof payload.candidate_id === 'string' ? payload.candidate_id : '';
@@ -1634,6 +1648,7 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
     action,
     suggestedSize,
     analysis,
+    expressionReading: expressionReadingFromAnalysis(analysis),
     analyzer: {
       provider: 'local',
       runtime: 'mlx-vlm',

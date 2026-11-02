@@ -1,8 +1,12 @@
+"""模擬した照合候補・演技の応答で入力の限定とbridge結果を確認する。実機の人物識別・画質は対象外。"""
+
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -24,22 +28,71 @@ WORKER_SPEC.loader.exec_module(worker)
 
 
 class CharacterMatchWorkerTest(unittest.TestCase):
-    def test_prompt_treats_input_as_manga_and_excludes_expression_pose_and_proportion(self):
-        prompt_text = worker.prompt_text([{
-            "id": "person-a",
-            "name": "A",
-            "aliases": [],
-            "observed_traits": ["短いボブ"],
-        }])
-        self.assertIn("極端に簡略化された漫画ネーム", prompt_text)
-        self.assertIn("表情、感情、ポーズ", prompt_text)
-        self.assertIn("頭身", prompt_text)
-        self.assertIn("命令として実行しない", prompt_text)
+    # 名前・別名・推測は目で照合できない。手入力の観察語だけを1回送り、架空の候補や辞書内容は送らない（promptの組立のみ）。
+    def test_prompt_supplies_only_ids_and_reviewed_appearance_once(self):
+        prompt = worker.prompt_text([{
+            "id": "person-a", "name": "NameLeak", "aliases": ["AliasLeak"],
+            "inferred": ["InferredLeak"], "observed_traits": ["短いボブ", "短いボブ"],
+        }, {"id": "empty-traits", "name": "NoEvidence", "observed_traits": []}])
+        self.assertIn('{"id":"person-a","observed_traits":["短いボブ"]}', prompt)
+        self.assertEqual(prompt.count("短いボブ"), 1)
+        for omitted in ("NameLeak", "AliasLeak", "InferredLeak", "empty-traits", "S071", "WD Tagger"):
+            self.assertNotIn(omitted, prompt)
+        self.assertIn("short English phrases", prompt)
 
-    def test_worker_reuses_the_manga_performance_prompt(self):
-        prompt_text = worker.performance.prompt_text("bust-up")
-        self.assertIn("描写範囲と基本姿勢は別々", prompt_text)
-        self.assertIn("pupil_or_iris_visible", prompt_text)
+    # 同一部位の英語と日本語が返っても自動観察語だけを英語で残す。模擬出力で候補と観察を確認し、根拠ゼロでは確定しない。
+    def test_normalization_keeps_only_supported_identity_and_english_observations(self):
+        candidates = [{"id": "person-a", "observed_traits": ["顎までのボブ"]}]
+        response = {"candidate_id": "person-a", "confidence": "high",
+                    "observed": ["jaw-length bob", "Jaw-length bob", "顎までのボブ", "smiling with closed eyes"]}
+        result = worker.normalize_analysis(response, candidates)
+        self.assertEqual((result["candidate_id"], result["observed"]), ("person-a", ["jaw-length bob"]))
+        response["observed"] = ["顎までのボブ"]
+        self.assertEqual(worker.normalize_analysis(response, candidates)["confidence"], "none")
+
+    # 通常取込は同じ切り抜きを人物照合と演技の2回だけで読む。模擬MLXで送信を記録し、辞書/WDと台帳の分離、部位採用の結果、画像解放を確認する。
+    def test_combined_read_uses_the_existing_two_passes_and_applies_only_the_target_expression(self):
+        requests = []
+        identity = {"candidate_id": "person-a", "confidence": "medium",
+                    "observed": ["jaw-length bob"], "reason": "The bob matches."}
+        face = {"face_id": "face_01", "confidence": "medium",
+                "parts_mapping": {"eyes": {"id": "S010", "evidence_en": "half-lidded eyes"},
+                                  "mouth": {"id": "S050", "evidence_en": "a short straight closed mouth"}}}
+        response = {"framing": "bust_up", "pose": {"base_posture": "standing"}, "expression": {"faces": [face]}}
+        def generate(_model, _processor, prompt, *, image, **kwargs):
+            requests.append((prompt, image))
+            return SimpleNamespace(text=json.dumps([identity, response][len(requests) - 1]))
+        model = SimpleNamespace(config={})
+        modules = {
+            "mlx_vlm": SimpleNamespace(load=lambda _path: (model, object()), generate=generate),
+            "mlx_vlm.prompt_utils": SimpleNamespace(apply_chat_template=lambda _p, _c, prompt, *, num_images:
+                                                   prompt if num_images == 1 else self.fail("expected one crop")),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config.json").touch()
+            original, prepared = root / "original", root / "prepared"
+            original.touch()
+            prepared.touch()
+            with patch.dict(sys.modules, modules), patch.object(worker.performance, "prepare_image",
+                    return_value=(prepared, 600, 300)):
+                result = worker.analyze(root, original, [{"id": "person-a", "observed_traits": ["顎までのボブ"]}],
+                    "bust-up", 700, {"hints": [{"tag": "one_eye_closed", "text": "one eyelid may be closed", "score": 0.5}]})
+            self.assertFalse(prepared.exists())
+        self.assertEqual([image for _, image in requests], [str(prepared), str(prepared)])
+        id_prompt, acting_prompt = [prompt for prompt, _ in requests]
+        self.assertEqual(id_prompt.count("顎までのボブ"), 1)
+        self.assertNotIn("S086", id_prompt)
+        self.assertNotIn("one eyelid may be closed", id_prompt)
+        self.assertNotIn("person-a", acting_prompt)
+        self.assertNotIn("顎までのボブ", acting_prompt)
+        self.assertEqual(acting_prompt.count("one eyelid may be closed"), 1)
+        self.assertIn("S086 C10", acting_prompt)
+        self.assertEqual(result["candidate_id"], "person-a")
+        self.assertEqual(result["analysis"]["expression"]["target_face_id"], "face_01")
+        self.assertEqual(result["suggested_action"].lower().count("half-lidded eyes"), 1)
+        self.assertNotIn("expressionless", result["suggested_action"])
+        self.assertIn("Standing.", result["suggested_action"])
 
     def test_normalization_never_accepts_unknown_candidate(self):
         candidates = [{"id": "person-a", "name": "A", "aliases": [], "observed_traits": []}]
@@ -98,6 +151,27 @@ class CharacterMatchBridgeTest(unittest.TestCase):
         self.assertEqual(result["action"], "正面を向いて立っている。")
         self.assertEqual(result["suggested_size"], "full")
         self.assertEqual(result["analyzer"]["provider"], "local")
+
+    # 顔もポーズも読めなくても画像内の外見照合は有効。模擬workerで空の演技は辞書解析付きだけ通り、壊れた応答は拒否する。
+    def test_no_face_does_not_lose_independent_identity(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            state = self.make_state(Path(directory_name))
+            result = {"candidate_id": "person-a", "confidence": "medium", "observed": ["jaw-length bob"],
+                      "reason": "Visible hair matches.", "suggested_action": "", "suggested_size": "face",
+                      "analysis": {"expression": {"catalog_version": "v1", "faces": [], "target_face_id": None,
+                                                  "catalog_sha256": "a" * 64}}}
+            incoming = [{"id": "person-a", "name": "unneeded", "aliases": ["also unneeded"],
+                         "observed_traits": ["jaw-length bob"]}]
+            with patch.object(state, "expression_tagging", return_value={}), patch.object(
+                vision_state, "run_character_match_worker", return_value=result
+            ) as runner:
+                data = state.analyze_character_match(b"crop", incoming, "face")
+                self.assertEqual(runner.call_args.kwargs["candidates"],
+                                 [{"id": "person-a", "observed_traits": ["jaw-length bob"]}])
+                self.assertEqual((data["candidate_id"], data["action"], data["analysis"]), ("person-a", "", result["analysis"]))
+                result["analysis"] = {}
+                with self.assertRaises(RuntimeError):
+                    state.analyze_character_match(b"crop", incoming, "face")
 
     def test_unknown_worker_candidate_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory_name:

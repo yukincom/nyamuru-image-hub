@@ -1,0 +1,961 @@
+{
+  "version": "2.0.0",
+  "source": "https://lulinaworks.com/dictionary/expression",
+  "source_sha256": "6bd93e067410380469bdbad8ef13615a9a52439b44d5e4394823f1c5d43b01b6",
+  "entries": [
+    {
+      "id": "S001",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "smile",
+      "visual_description_en": "Relaxed open eyes and a closed smile with both mouth corners visibly raised.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S002",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "soft smile",
+      "visual_description_en": "Relaxed eyebrows, softly open eyes, and a tiny closed smile with subtly lifted corners.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S003",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "grin",
+      "visual_description_en": "Open cheerful eyes and a broad symmetric smile showing a horizontal band of teeth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S004",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "laughing",
+      "visual_description_en": "Upward-arching closed eyes and a wide open smile with raised corners and visible upper teeth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S005",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "excited",
+      "visual_description_en": "Raised eyebrows, wide bright eyes, and an open mouth with distinctly raised corners.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S006",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "smirk",
+      "visual_description_en": "Slightly narrowed eyes and an asymmetric closed smile with one mouth corner raised.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S007",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "smug",
+      "visual_description_en": "Half-lidded eyes, gently raised eyebrows, and a small symmetric closed smile.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S008",
+      "category": "C01",
+      "role": "whole_expression",
+      "prompt": "evil grin",
+      "visual_description_en": "Lowered inner eyebrows, narrowed eyes, and a broad tooth-bearing smile with raised corners.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S009",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "angry",
+      "visual_description_en": "Inner eyebrows slanting down toward the nose, tense eyes, and a closed downturned mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S010",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "annoyed",
+      "visual_description_en": "Slightly lowered inner eyebrows, half-lidded eyes, and a small downturned closed mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S011",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "irritated",
+      "visual_description_en": "Slightly contracted eyebrows, narrowed tense eyes, and tightly pressed downturned lips.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S012",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "upset",
+      "visual_description_en": "Raised and contracted inner eyebrows, lowered eyelids, and a firmly downturned closed mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S013",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "frown",
+      "visual_description_en": "Lower the mouth corners into a clearly downturned closed mouth, with mildly contracted eyebrows.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S014",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "scowl",
+      "visual_description_en": "Very low tightly contracted inner eyebrows, a visible crease between them, narrowed eyes, and a deeply downturned closed mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S015",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "pout",
+      "visual_description_en": "Mildly contracted eyebrows and small pursed lips pushed forward.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S016",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "clenched teeth",
+      "visual_description_en": "Contracted eyebrows, narrowed eyes, and exposed upper and lower teeth pressed together in a horizontal tense mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S017",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "shouting",
+      "visual_description_en": "Lowered inner eyebrows, tense narrowed eyes, and a large open mouth showing teeth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S018",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "disgust",
+      "visual_description_en": "Narrowed eyes, short wrinkles beside the nose, and an asymmetrically raised upper lip.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S019",
+      "category": "C02",
+      "role": "whole_expression",
+      "prompt": "disdain",
+      "visual_description_en": "One raised eyebrow, lowered eyelids, and a small mouth with one corner slightly lowered.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S020",
+      "category": "C02",
+      "role": "feature",
+      "prompt": "v-shaped eyebrows",
+      "visual_description_en": "Lower the inner ends of both eyebrows toward the bridge of the nose.",
+      "slots": [
+        "brows"
+      ]
+    },
+    {
+      "id": "S021",
+      "category": "C03",
+      "role": "whole_expression",
+      "prompt": "sad",
+      "visual_description_en": "Raised inner eyebrows, lowered gaze, and softly downturned closed lips.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S022",
+      "category": "C03",
+      "role": "feature",
+      "prompt": "tearing up",
+      "visual_description_en": "Add visible tear pools along the lower eyelids, without trails down the cheeks.",
+      "slots": [
+        "eyes",
+        "extras"
+      ]
+    },
+    {
+      "id": "S023",
+      "category": "C03",
+      "role": "feature",
+      "prompt": "tears",
+      "visual_description_en": "Add a distinct teardrop immediately below each eye.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S024",
+      "category": "C03",
+      "role": "feature",
+      "prompt": "streaming tears",
+      "visual_description_en": "Add continuous tear tracks from the lower eyelids down the cheeks.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S025",
+      "category": "C03",
+      "role": "whole_expression",
+      "prompt": "crying",
+      "visual_description_en": "Raised inner eyebrows, wet open eyes with tear tracks, and a small downturned partly open mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S026",
+      "category": "C03",
+      "role": "whole_expression",
+      "prompt": "sobbing",
+      "visual_description_en": "Contracted raised inner eyebrows, eyes squeezed shut, a small trembling downturned mouth, and tears running down the cheeks.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S027",
+      "category": "C03",
+      "role": "whole_expression",
+      "prompt": "tearful smile",
+      "visual_description_en": "Softly open eyes, raised mouth corners in a closed smile, and visible tears on both cheeks.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S028",
+      "category": "C04",
+      "role": "whole_expression",
+      "prompt": "surprised",
+      "visual_description_en": "Both eyebrows raised, eyes opened wide, and a small round open mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S029",
+      "category": "C04",
+      "role": "feature",
+      "prompt": "wide eyed",
+      "visual_description_en": "Increase the vertical opening of both eyes.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S030",
+      "category": "C04",
+      "role": "whole_expression",
+      "prompt": "scared",
+      "visual_description_en": "Inner eyebrows raised and drawn together, wide eyes, and a small tense parted mouth with lowered corners.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S031",
+      "category": "C04",
+      "role": "whole_expression",
+      "prompt": "frightened",
+      "visual_description_en": "Raised contracted inner eyebrows, widened tense eyes, and a small trembling parted mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S032",
+      "category": "C04",
+      "role": "whole_expression",
+      "prompt": "horrified",
+      "visual_description_en": "High contracted eyebrows, very wide eyes with small pupils, and a stretched angular open mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S033",
+      "category": "C04",
+      "role": "whole_expression",
+      "prompt": "panicking",
+      "visual_description_en": "High contracted eyebrows, wide eyes, an irregular jagged open mouth, and small sweat beads at the temples.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S034",
+      "category": "C04",
+      "role": "whole_expression",
+      "prompt": "screaming face",
+      "visual_description_en": "High inward-raised eyebrows, very wide eyes with small pupils, and an extremely wide vertically open mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S035",
+      "category": "C05",
+      "role": "feature",
+      "prompt": "blush",
+      "visual_description_en": "Add subtle localized pink patches on both cheeks.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S036",
+      "category": "C05",
+      "role": "feature",
+      "prompt": "deep blush",
+      "visual_description_en": "Add a strong red-pink flush across both cheeks and the bridge of the nose.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S037",
+      "category": "C05",
+      "role": "whole_expression",
+      "prompt": "embarrassed",
+      "visual_description_en": "Slightly raised inner eyebrows, averted downward eyes, a small tense closed mouth, and lightly flushed cheeks.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S038",
+      "category": "C05",
+      "role": "whole_expression",
+      "prompt": "shy",
+      "visual_description_en": "A slightly lowered averted gaze, softly raised inner eyebrows, and a small reserved closed mouth with faint cheek blush.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S039",
+      "category": "C05",
+      "role": "whole_expression",
+      "prompt": "embarrassed smile",
+      "visual_description_en": "Slightly raised inner eyebrows, an averted gaze, a small closed smile, and lightly flushed cheeks.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S040",
+      "category": "C05",
+      "role": "whole_expression",
+      "prompt": "flustered",
+      "visual_description_en": "Uneven raised eyebrows, wide sideways-looking eyes, an irregular parted mouth, and strong cheek-and-nose blush.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S041",
+      "category": "C06",
+      "role": "whole_expression",
+      "prompt": "worried",
+      "visual_description_en": "Inner eyebrows lifted and pulled together, open eyes, and downturned closed lips.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S042",
+      "category": "C06",
+      "role": "whole_expression",
+      "prompt": "nervous",
+      "visual_description_en": "Taut raised inner eyebrows, wide forward eyes, tightly stretched horizontal lips, and a tiny temple sweat bead.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S043",
+      "category": "C06",
+      "role": "feature",
+      "prompt": "sweatdrop",
+      "visual_description_en": "Add one large stylized sweatdrop at a temple, above the outer eye corner.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S044",
+      "category": "C06",
+      "role": "feature",
+      "prompt": "cold sweat",
+      "visual_description_en": "Add several small sweat beads on the forehead and temples.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S045",
+      "category": "C06",
+      "role": "whole_expression",
+      "prompt": "confused",
+      "visual_description_en": "One eyebrow higher than the other, open eyes, and a small uneven partly open mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S046",
+      "category": "C06",
+      "role": "whole_expression",
+      "prompt": "wince",
+      "visual_description_en": "Tightly contracted eyebrows, one eye squeezed shut and the other narrowed, and a tense pulled mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S047",
+      "category": "C06",
+      "role": "whole_expression",
+      "prompt": "sigh",
+      "visual_description_en": "Heavy lowered eyelids, relaxed raised inner eyebrows, and a small loosely open pursed mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S048",
+      "category": "C06",
+      "role": "whole_expression",
+      "prompt": "forced smile",
+      "visual_description_en": "Tense raised inner eyebrows, open eyes without a smiling squint, and a stretched slightly asymmetric closed smile.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S049",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "neutral",
+      "visual_description_en": "Relaxed eyebrows, naturally open eyes, and a small relaxed closed mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S050",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "expressionless",
+      "visual_description_en": "Level eyebrows, still open eyes, and a short straight closed mouth with no lifted corners.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S051",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "blank expression",
+      "visual_description_en": "Level relaxed eyebrows, still open eyes, and a tiny relaxed straight mouth with little visible change.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S052",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "blank stare",
+      "visual_description_en": "Relaxed eyebrows, a fixed forward gaze, and a tiny loosely parted mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S053",
+      "category": "C07",
+      "role": "feature",
+      "prompt": "empty eyes",
+      "visual_description_en": "Render the irises and pupils without white highlights.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S054",
+      "category": "C07",
+      "role": "feature",
+      "prompt": "dead eyes",
+      "visual_description_en": "Heavy upper eyelids, dark irises without bright highlights, and a small straight closed mouth.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S055",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "serious",
+      "visual_description_en": "Slightly lowered inner eyebrows, attentive open eyes, and a straight closed mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S056",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "determined",
+      "visual_description_en": "Inner eyebrows drawn together, focused open eyes, and firmly pressed lips.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S057",
+      "category": "C07",
+      "role": "whole_expression",
+      "prompt": "sleepy",
+      "visual_description_en": "Heavy half-closed upper eyelids, relaxed eyebrows, and a small loosely parted mouth.",
+      "slots": [
+        "brows",
+        "eyes",
+        "mouth"
+      ]
+    },
+    {
+      "id": "S058",
+      "category": "C08",
+      "role": "feature",
+      "prompt": ":d",
+      "visual_description_en": "Raised eyebrows, wide bright eyes, and an open mouth with distinctly raised corners.",
+      "slots": [
+        "brows",
+        "eyes"
+      ]
+    },
+    {
+      "id": "S059",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "> <",
+      "visual_description_en": "Replace the eyes with inward-pointing angle strokes shaped like > and <.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S060",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "xd",
+      "visual_description_en": "Replace both eyes with > and < shaped closed-eye strokes and use a broad open smiling mouth.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S061",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "^ ^",
+      "visual_description_en": "Replace both eyes with upward-arching curved lines, with no visible eyeballs.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S062",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "^o^",
+      "visual_description_en": "Use upward-arching closed-eye curves and a round open smiling mouth.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S063",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "x3",
+      "visual_description_en": "Use > and < shaped closed eyes and a small rounded w-like cat mouth.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S064",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "= =",
+      "visual_description_en": "Replace each eye with two short parallel horizontal strokes.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S065",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "x x",
+      "visual_description_en": "Replace each eye with a diagonal X-shaped mark.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S066",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "o o",
+      "visual_description_en": "Replace both eyes with empty outlined white circles, without pupils.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S067",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "@ @",
+      "visual_description_en": "Replace both eyes with bold spiral-like at-sign symbols.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S068",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "spiral eyes",
+      "visual_description_en": "Replace each eye with a clear spiral line.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S069",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "+ +",
+      "visual_description_en": "Replace each eye with an upright plus sign.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S070",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "heart eyes",
+      "visual_description_en": "Keep normal eyelid contours, white sclera and round irises. Place a small heart-shaped highlight or pupil motif inside each iris, with a light center and a subtle pink rim. Preserve the natural eye silhouette.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S071",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "starry eyes",
+      "visual_description_en": "Keep normal almond-shaped eyelid contours, white sclera and round irises. Shape only the central pupil inside each iris as a small five-pointed star, surrounded by a visible ring of iris. Preserve the natural outer eye shape.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S072",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "sparkling eyes",
+      "visual_description_en": "Keep normal eye and iris shapes and add multiple bright glints inside the irises.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S073",
+      "category": "C08",
+      "role": "feature",
+      "prompt": "sanpaku",
+      "visual_description_en": "Place the irises high enough to leave visible white sclera beneath them.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S074",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "cat mouth",
+      "visual_description_en": "Shape the closed mouth as a small symmetric rounded w-like double curve.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S075",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "w shaped mouth",
+      "visual_description_en": "Shape the closed mouth as a small clearly recognizable W with two troughs and a central peak.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S076",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "triangle mouth",
+      "visual_description_en": "Shape the open mouth as a small downward-pointing triangle.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S077",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "o shaped mouth",
+      "visual_description_en": "Shape the open mouth as a small round O.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S078",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "jagged mouth",
+      "visual_description_en": "Draw the closed mouth as a single angular zigzag line.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S079",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "tongue out",
+      "visual_description_en": "Extend the tongue clearly downward out of the open mouth.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S080",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "blep",
+      "visual_description_en": "Let only a tiny rounded tongue tip peek between otherwise closed lips.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S081",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "drooling",
+      "visual_description_en": "Add a thin saliva thread and droplet from a mouth corner toward the chin.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S082",
+      "category": "C09",
+      "role": "feature",
+      "prompt": "fanged smile",
+      "visual_description_en": "Use a small open smile showing one tiny pointed upper canine tooth.",
+      "slots": [
+        "mouth"
+      ]
+    },
+    {
+      "id": "S083",
+      "category": "C10",
+      "role": "feature",
+      "prompt": "wink",
+      "visual_description_en": "Close one eye in a curved wink while the other remains open, with a small friendly smile.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S084",
+      "category": "C10",
+      "role": "feature",
+      "prompt": "one eye closed",
+      "visual_description_en": "Close exactly one eye while keeping the other open; keep the mouth otherwise neutral.",
+      "slots": [
+        "eyes"
+      ]
+    },
+    {
+      "id": "S085",
+      "category": "C10",
+      "role": "feature",
+      "prompt": "puffed cheeks",
+      "visual_description_en": "Round both cheeks outward and tightly purse the closed lips.",
+      "slots": [
+        "extras"
+      ]
+    },
+    {
+      "id": "S086",
+      "category": "C10",
+      "role": "feature",
+      "prompt": "anger vein",
+      "visual_description_en": "Add a small four-pronged curved manga anger-vein symbol on the forehead.",
+      "slots": [
+        "extras"
+      ]
+    }
+  ]
+}

@@ -36,6 +36,33 @@ export interface PersistentAnalogAssetRef {
   fileName: string;
 }
 
+/** Local provenance for one expression read; the editable Figure.action is the generation input. */
+export interface ExpressionPart {
+  id: string | null;
+  evidence_en: string;
+  source: 'catalog' | 'observation';
+}
+export interface ReadExpressionFace {
+  face_id: string;
+  bbox: [number, number, number, number] | null; // normalized xyxy within this figure crop
+  confidence: 'high' | 'medium' | 'low';
+  parts_mapping: {
+    base_emotion: ExpressionPart | null;
+    brows: ExpressionPart | null;
+    eyes: (ExpressionPart & { is_symbolic_eye: boolean | null }) | null;
+    mouth: ExpressionPart | null;
+    extras: ExpressionPart[];
+  };
+  qwen_image21_prompt_en: string | null;
+}
+export interface FigureExpressionReading {
+  catalog_version: string;
+  catalog_sha256: string;
+  target_face_id: string | null;
+  target_evidence_en: string | null;
+  faces: ReadExpressionFace[];
+}
+
 /** OMNYへは書き出さない、アナログ取込由来のローカル中間データ。 */
 export interface AnalogFigureImport {
   schemaVersion: 1;
@@ -46,7 +73,8 @@ export interface AnalogFigureImport {
   confidence?: number;
   draft: true;
   userEdited?: boolean;
-  /** 人物同定を人間が確認する必要がある時だけ、ネーム画面の人物あたりを警告色にする。 */
+  expressionReading?: FigureExpressionReading;
+  /** 人物同定または対象の顔を確認する必要がある時だけ警告色にする。 */
   analysisReview?: 'low-confidence' | 'error';
   analysisReviewMessage?: string;
   persistentAsset?: PersistentAnalogAssetRef;
