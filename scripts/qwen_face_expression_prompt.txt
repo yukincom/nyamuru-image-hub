@@ -7,38 +7,48 @@ CRITICAL RULES FOR ROUGH STORYBOARDS / SKETCHES (NAME)
 1. Do NOT misinterpret rough sketch shorthand as literal abnormal eyes:
    - In rough manga storyboards, normal eyes are frequently drawn with simple outline strokes without black pupil fills or white highlights. If iris/pupil outlines (vertical lines or circles) are present, treat them as NORMAL eyes. Do NOT select S066 (white eyes / no pupil) or S053/S054 (empty eyes / dead eyes) from missing fills or highlights. S066 requires two deliberately empty outlined circle symbols. An impression of extreme shock, fainting, or lifelessness alone is insufficient. Leave unreadable eyes null.
    - Ignore pencil textures, sketchy construction lines, center cross-guidelines on the face, and paper grain. Extract ONLY the intended geometric shapes, angles, and openness of the eyebrows, eyelids, mouth, and comic symbols.
-2. Ignore hairstyle, hair color, clothing, head rotation/camera angle, and drawing style. In the downstream pipeline, head angle is controlled by <image1> and character identity/inking style is controlled by <image2>; the visible expression comes from <image3>. The generation template already assigns these roles; do not repeat the image labels in the expression sentence.
+2. Ignore hairstyle, hair color, clothing, head rotation/camera angle, and drawing style. Downstream generation controls head angle and character identity/inking style separately; extract ONLY the facial expression and surface emotion marks. Never write angle-bracket image tokens in any output field.
+
+CATALOG FORMAT AND STRICT SLOT VALIDATION
+Each line under CATALOG_ENTRIES has the format:
+`ID CATEGORY ROLE SLOTS PROMPT_LABEL | VISUAL_DESCRIPTION_EN`
+- `ROLE`: `W` = whole_expression (C01-C07), `F` = feature.
+- `SLOTS`: allowed part slots for that entry: `b` = `brows`, `e` = `eyes`, `m` = `mouth`, `x` = `extras`.
+- Only assign an `id` to a slot if that slot's letter (`b`, `e`, `m`, or `x`) appears in the entry's `SLOTS` column (and for `base_emotion`, only if `ROLE` is `W` in C01-C07).
+- Copy `prompt` character-for-character from `PROMPT_LABEL` before `|` (preserving exact lowercase and symbols such as `:d`, `xd`, `x x`, `o o`, `^ ^`, `^o^`).
+- When a slot matches a catalog entry, copy `extract_en` as an exact, contiguous English substring from that entry's `VISUAL_DESCRIPTION_EN` after `|` that describes ONLY that specific part (for example: `"slightly lowered inner eyebrows"`, `"half-lidded eyes"`, `"a short straight closed mouth with no lifted corners"`, `"a small symmetric rounded w-like double curve"`, `"one large stylized sweatdrop at a temple"`).
 
 PART-BY-PART HYBRID MATCHING RULES
-Rough storyboard faces often combine parts from different dictionary entries (e.g., the half-lidded eyes of S010 "annoyed" with the straight closed mouth of S050 "expressionless"). Instead of forcing a single ID onto the whole face or returning "ambiguous", decompose the face into the following 5 slots and match each slot to the best entry in CATALOG_ENTRIES. Leave a hidden or undecidable slot null; if a visible part has no fitting entry, use null id/prompt and describe the image directly.
+Rough storyboard faces often combine parts from different dictionary entries (e.g., the half-lidded eyes of S010 "annoyed" with the straight closed mouth of S050 "expressionless"). Instead of forcing a single ID onto the whole face or returning "ambiguous", decompose the face into the following 5 slots and match each slot to the best entry in CATALOG_ENTRIES. Leave a hidden or undecidable slot null; if a visible part has no fitting entry, use null id/prompt and describe the visible shape directly in `extract_en`.
 
-1. `base_emotion` (at most 1 whole-expression entry from C01–C07, or null):
-   - Select a W entry only if the combination of brows, eyes, and mouth supports that overall emotional nuance (e.g., S010 "annoyed", S041 "worried", S050 "expressionless"). Give the combined visible evidence in reason. The face may have readable parts without a clear overall emotion.
-2. `brows` (1 entry, or null):
-   - Match the eyebrow angle, tension, and shape against visual_description_en (e.g., inner brows lowered/furrowed, inner brows raised/worried, level/relaxed, one brow raised). Extract the matching eyebrow phrase from visual_description_en.
-3. `eyes` (1 entry, or null):
-   - Match the eyelid openness and eye shape against visual_description_en (including C08 for symbolic eyes and C10 for wink/one eye closed).
-   - Distinguish carefully between normal lidded eyes (e.g., half-lidded/jitome, wide open, softly open) and symbolic eyes (S059–S069 where the eyeball is replaced by > <, curved arcs, = =, X, + or spirals). Set is_symbolic_eye to true ONLY for symbolic non-eyeball eyes.
-4. `mouth` (1 entry, or null):
-   - Match the mouth shape and openness against C09 (S074–S082: cat mouth, w mouth, triangle mouth, o mouth, jagged mouth, tongue out, blep, drooling, fanged smile) OR the mouth clauses in C01–C07 visual_description_en (e.g., short straight closed mouth, downturned closed mouth, wide open smile showing teeth, clenched teeth). Extract ONLY the mouth phrase. A mouth matched to S050 does not make the whole face expressionless.
-5. `extras` (0 or more entries):
-   - Select additional surface markers ONLY if clearly drawn on the face: tears (S022–S024), blush lines/patches (S035–S036), sweatdrops (S043–S044), puffed cheeks (S085), or anger vein mark (S086). If none are present, return [].
+1. `base_emotion` (at most 1 `W` whole-expression entry from C01-C07, or null):
+   - Select a `W` entry only if the combination of brows, eyes, and mouth supports that overall emotional nuance (e.g., S010 "annoyed", S041 "worried", S050 "expressionless"). Give the combined visible evidence in `reason`. Never put an `F` feature entry (such as S043 "sweatdrop" or S020 "v-shaped eyebrows") in `base_emotion`. The face may have readable parts without a clear overall emotion.
+2. `brows` (1 entry with `b` in SLOTS, or null):
+   - Match the eyebrow angle, tension, and shape against `visual_description_en` (e.g., `"slightly lowered inner eyebrows"`, `"inner eyebrows lifted and pulled together"`, `"level eyebrows"`, `"one raised eyebrow"`, or S020 `"the inner ends of both eyebrows toward the bridge of the nose"`). Copy the matching eyebrow phrase from `visual_description_en` into `extract_en`.
+3. `eyes` (1 entry with `e` in SLOTS, or null):
+   - Match the eyelid openness and eye shape against `visual_description_en` (including C08 for symbolic/special eyes and C10 S083/S084 for wink/one eye closed).
+   - Distinguish carefully between normal lidded eyes (e.g., `"half-lidded eyes"`, `"eyes opened wide"`, `"softly open eyes"`, `"upward-arching closed eyes"`) and symbolic replacement eyes (S059-S069 where the eyeball is replaced by `> <`, curved arcs, `= =`, `X`, `+` or spirals). Set `is_symbolic_eye` to `true` ONLY when the eyeball itself is replaced by a symbol (S059-S069); set `is_symbolic_eye` to `false` for normal lidded eyes and for iris/pupil motifs that keep normal eyelid contours (such as S058, S070, S071, S072, S073, S083, S084).
+4. `mouth` (1 entry with `m` in SLOTS, or null):
+   - Match the mouth shape and openness against C09 (S074-S082: cat mouth, w shaped mouth, triangle mouth, o shaped mouth, jagged mouth, tongue out, blep, drooling, fanged smile) OR the mouth clauses in C01-C07 `visual_description_en` (e.g., `"a short straight closed mouth with no lifted corners"`, `"a small downturned closed mouth"`, `"a wide open smile with raised corners and visible upper teeth"`, `"exposed upper and lower teeth pressed together in a horizontal tense mouth"`). Extract ONLY the mouth phrase into `extract_en`. A mouth matched to S050 does not make the whole face expressionless. Note that S081 ("drooling") belongs to `mouth` (`m`), whereas S085 ("puffed cheeks") belongs to `extras` (`x`).
+5. `extras` (0 or more entries with `x` in SLOTS):
+   - Select additional surface markers ONLY from entries with `x` in SLOTS when clearly drawn on the face: tear pools/drops/tracks (S022, S023, S024), cheek blush (S035, S036), sweatdrops/cold sweat (S043, S044), puffed cheeks (S085), or anger vein mark (S086). Copy the relevant phrase from `visual_description_en` into `extract_en`. If none are present, return `[]`.
 
 IMPORTANT VISUAL DISTINCTIONS
-- Tears originate from the eyelids/eye corners; sweatdrops appear on the forehead, temple, or upper cheek. Saliva originates at the mouth.
-- Distinguish angular > < eyes (S059/S060/S063), smooth upward-curved arc ∩ ∩ eyes (S061/S062), and parallel horizontal = = lines (S064).
+- Tears originate from the eyelids/eye corners (S022-S024); sweatdrops appear on the forehead, temple, or upper cheek (S043-S044). Saliva originates at the mouth corner (S081 in `mouth`).
+- Distinguish angular `> <` eyes (S059/S060/S063), smooth upward-curved arc `^ ^` eyes (S061/S062), and parallel horizontal `= =` lines (S064).
 - Distinguish S070 (heart inside a normal iris) from S071 (a STAR-SHAPED CENTRAL PUPIL INSIDE A ROUND IRIS) and S072 (sparkling glints inside normal irises). S073 has visible white below the iris. S083/S084 require one actually closed eye; an occluded eye is not closed.
-- Never combine contradictory traits on the same feature (e.g., closed mouth + open mouth, normal pupils + symbolic > < eyes). Preserve a subtle smile only if the mouth corners visibly rise; do not add details to indistinct lines.
+- Never combine contradictory traits on the same feature (e.g., closed mouth + open mouth, normal pupils + symbolic `> <` eyes). Preserve a subtle smile only if the mouth corners visibly rise; do not add details to indistinct lines.
 
 SYNTHESIZING qwen_image21_prompt_en
-Combine the extracted English phrases from visual_description_en for the supported slots into a single instruction sentence for Qwen-Image 2.1. Prefer the corresponding English phrase where it fits; describe independently observed marks directly when there is no fitting catalog phrase. Never include words like "sketch", "pencil", "rough", or "blank pupils".
-- When is_symbolic_eye is false (Normal Manga Eyes): describe the supported base emotion (if any), brow shape, actual eyelid/iris shape, mouth and extras. Do not prescribe lashes, double eyelids, detailed pupils or drawing style from the reference.
-- When is_symbolic_eye is true (Symbolic / Gag Eyes): describe the supported brow shape, actual replacement strokes, mouth and extras. Omit hidden or unreadable parts in both cases.
-Do not copy IDs, image labels, selected_tags, or a list of emotions into the instruction. If no expression part is readable, return null for the sentence.
+Combine the extracted English phrases (`extract_en`) for the supported slots into a single natural English instruction sentence (`qwen_image21_prompt_en`) for Qwen-Image 2.1. Prefer the exact catalog phrases where they fit; describe independently observed marks directly when there is no fitting catalog phrase.
+- STRICT FORBIDDEN TOKENS in `qwen_image21_prompt_en`, `extract_en`, and `reason`: NEVER include words like `"sketch"`, `"sketchy"`, `"pencil"`, `"rough"`, `"blank pupils"`, catalog IDs (`"S001"`..`"S086"`), or angle-bracket image tags. Including any of those invalidates the sentence.
+- When `is_symbolic_eye` is `false` (Normal Manga Eyes): describe the supported base emotion (if any), brow shape, actual eyelid/iris shape, mouth, and extras. Do not prescribe lashes, double eyelids, detailed pupils, or drawing style from the reference.
+- When `is_symbolic_eye` is `true` (Symbolic / Gag Eyes): describe the supported brow shape, actual replacement eye strokes, mouth, and extras. Omit hidden or unreadable parts in both cases.
+Do not copy IDs, image labels, `selected_tags`, or a raw list of emotion tags into the instruction. If no expression part is readable, return `null` for `qwen_image21_prompt_en`.
 
 OUTPUT FORMAT
-Return ONLY valid JSON matching the structure below. Do NOT include markdown code fences or any introductory/explanatory text. Include id and the exact prompt label for each matched slot, extract_en for each matched part (only its visible shape), and an English reason citing marks on THIS face. selected_tags lists unique matched labels for provenance only.
-Use face_01, face_02, etc. in top-to-bottom then left-to-right order. bbox is normalized [left,top,right,bottom] in TARGET_IMAGE, or null if unclear; use the viewer's left/right. Return faces: [] when there is no visible face. For multiple faces, set target_face_id only if target_evidence_en describes an unambiguous association; otherwise leave it null. confidence is high, medium, or low.
+Return ONLY valid JSON matching the structure below. Do NOT include markdown code fences or any introductory/explanatory text. Include `id` and the exact `prompt` label for each matched slot, `extract_en` for each matched part (only its visible shape, copied as a substring from `visual_description_en` when matched to a catalog ID), and an English `reason` citing marks on THIS face. `selected_tags` lists unique matched `prompt` labels for provenance only.
+Use `face_01`, `face_02`, etc. in top-to-bottom then left-to-right order. `bbox` is normalized `[left,top,right,bottom]` in TARGET_IMAGE, or `null` if unclear; use the viewer's left/right. Return `"faces": []` when there is no visible face. For multiple faces, set `target_face_id` only if `target_evidence_en` describes an unambiguous association; otherwise leave it `null`. `confidence` is `"high"`, `"medium"`, or `"low"`.
 This example applies only if supported by TARGET_IMAGE. Do not use it as a default.
 
 {
@@ -66,7 +76,7 @@ This example applies only if supported by TARGET_IMAGE. Do not use it as a defau
           "prompt": "annoyed",
           "extract_en": "half-lidded eyes",
           "is_symbolic_eye": false,
-          "reason": "Flat horizontal upper eyelids lowered halfway across the irises; unfilled sketch irises are treated as normal eyes."
+          "reason": "Flat horizontal upper eyelids lowered halfway across the irises; unfilled irises are treated as normal eyes."
         },
         "mouth": {
           "id": "S050",

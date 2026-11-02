@@ -200,11 +200,9 @@ class BridgeMemoryTest(unittest.TestCase):
             with patch.object(state, 'vlm_available', return_value=True), \
                     patch.object(state.series_catalogs, 'read_character_image', side_effect=lambda *_: {'found': True, 'image_bytes': LargeImage()}) as read, \
                     patch.object(state.series_catalogs, 'load_character_image', side_effect=AssertionError('no Base64')), \
-                    patch.object(state, 'character_reference_auxiliary') as auxiliary, \
                     self.assertRaisesRegex(ValueError, '80MB'):
                 state.analyze_character_reference_set('series', 'character', [f'image-{index:064x}' for index in range(12)], '')
             self.assertEqual(read.call_count, 3)
-            auxiliary.assert_not_called()
 
     def test_all_analysis_handlers_hold_one_lock_and_release_base64_before_inference(self):
         lock = threading.Lock()

@@ -298,72 +298,22 @@ class LocalVisionState:
             },
         }
 
-    def character_reference_auxiliary(self, image_bytes: bytes, *, include_ocr: bool = True) -> dict[str, Any]:
-        auxiliary: dict[str, Any] = {}
-        if self.rtdetr_python.is_file() and self.rtdetr_model.is_file():
-            try:
-                detection = run_local_worker(
-                    python=self.rtdetr_python,
-                    engine="rtdetr",
-                    root=self.vision_root,
-                    image_bytes=image_bytes,
-                    model=self.rtdetr_model,
-                    # 設定画の手書き注記は漫画本文より弱いため、ここだけ補助候補を広く拾う。
-                    confidence=0.05,
-                )
-                regions = {
-                    "faces": detector_regions(detection, "faces", min_score=0.05, max_area_ratio=0.45),
-                    "bodies": detector_regions(detection, "bodies", min_score=0.05, max_area_ratio=0.82),
-                    "texts": detector_regions(detection, "texts", min_score=0.05, max_area_ratio=0.45),
-                }
-                ocr_lines: list[dict[str, Any]] = []
-                buckets = detection.get("detections") if isinstance(detection.get("detections"), dict) else {}
-                raw_text_regions = buckets.get("texts") if isinstance(buckets.get("texts"), list) else []
-                text_regions = [item for item in raw_text_regions[:32] if isinstance(item, dict)]
-                baberu_available = (
-                    (self.baberu_model / "onnx_infer.py").is_file()
-                    and (self.baberu_model / "onnx" / "vision_int4.onnx").is_file()
-                    and (self.baberu_model / "onnx" / "decoder_prefill_int8.onnx").is_file()
-                    and (self.baberu_model / "onnx" / "decoder_step_int8.onnx").is_file()
-                    and (self.baberu_model / "tokenizer" / "vocab.json").is_file()
-                )
-                if include_ocr and text_regions and baberu_available:
-                    ocr_payload = run_local_worker(
-                        python=self.rtdetr_python,
-                        engine="baberu",
-                        root=self.vision_root,
-                        image_bytes=image_bytes,
-                        model=self.baberu_model,
-                        request={"regions": text_regions},
-                    )
-                    ocr_lines = usable_ocr_lines(ocr_payload)
-                auxiliary = {
-                    "detector": "RT-DETR Manga109s",
-                    "regions": regions,
-                    "ocr_lines": ocr_lines,
-                }
-            except (OSError, RuntimeError, subprocess.TimeoutExpired, ValueError):
-                # 補助解析だけが失敗しても、元画像1枚での明示的VLM解析は継続する。
-                auxiliary = {}
-        return auxiliary
-
     def analyze_character_reference(
         self, image_bytes: bytes, target_character_value: object, requested_vlm_model: object = None,
     ) -> dict[str, Any]:
+        # アナログネームとは異なるパイプライン、一枚のイラストからデザインを抽出する。
         target_character = target_character_value.strip()[:100] if isinstance(target_character_value, str) else ""
         selected_model, selected_label = self.resolve_vlm_model(requested_vlm_model)
         if not self.vlm_available(selected_model):
             raise FileNotFoundError(
                 "Qwen3-VL/MLXのローカル環境が見つかりません。`npm run bridge:check-vlm`で配置を確認してください"
             )
-        auxiliary = self.character_reference_auxiliary(image_bytes)
         try:
             result = run_character_reference_worker(
                 python=self.vlm_python,
                 model=selected_model,
                 image_bytes=image_bytes,
                 target_character=target_character,
-                auxiliary=auxiliary,
             )
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("人物資料のローカルVLM解析が時間内に完了しませんでした") from exc
@@ -394,6 +344,7 @@ class LocalVisionState:
         requested_vlm_model: object = None,
         supplied_images_value: object = None,
     ) -> dict[str, Any]:
+        # アナログネームとは異なるパイプライン、一枚のイラストからデザインを抽出する。
         if not isinstance(asset_ids_value, list) or not 1 <= len(asset_ids_value) <= 12:
             raise ValueError("一括解析する人物資料画像は1〜12枚にしてください")
         asset_ids: list[str] = []
@@ -427,15 +378,12 @@ class LocalVisionState:
             if total_bytes > 80 * 1024 * 1024:
                 raise ValueError("一括解析する人物資料画像の合計サイズは80MB以内にしてください")
             image_payloads.append(image_payload)
-        # 1枚の設定画では注記も照合する。複数枚では文字をマスクし、顔同士・体同士を比較する。
-        auxiliaries = [self.character_reference_auxiliary(payload, include_ocr=len(image_payloads) == 1) for payload in image_payloads]
         try:
             result = run_character_reference_set_worker(
                 python=self.vlm_python,
                 model=selected_model,
                 image_bytes=image_payloads,
                 target_character=target_character,
-                auxiliaries=auxiliaries,
             )
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("人物資料の一括解析が時間内に完了しませんでした") from exc

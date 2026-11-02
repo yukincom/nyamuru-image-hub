@@ -317,8 +317,8 @@ def run_character_reference_worker(
     model: Path,
     image_bytes: bytes,
     target_character: str,
-    auxiliary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # アナログネームとは異なるパイプライン、一枚のイラストからデザインを抽出する。
     return run_mlx_vlm_worker(
         python=python,
         model=model,
@@ -326,7 +326,6 @@ def run_character_reference_worker(
         image_bytes=image_bytes,
         request_payload={
             "target_character": target_character,
-            "auxiliary": auxiliary or {},
         },
         temporary_prefix="nyamuru-character-reference-",
     )
@@ -338,8 +337,8 @@ def run_character_reference_set_worker(
     model: Path,
     image_bytes: list[bytes],
     target_character: str,
-    auxiliaries: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    # アナログネームとは異なるパイプライン、一枚のイラストからデザインを抽出する。
     return run_mlx_vlm_worker(
         python=python,
         model=model,
@@ -347,7 +346,6 @@ def run_character_reference_set_worker(
         image_bytes=image_bytes,
         request_payload={
             "target_character": target_character,
-            "auxiliaries": auxiliaries,
             "set_analysis": True,
         },
         temporary_prefix="nyamuru-character-reference-set-",

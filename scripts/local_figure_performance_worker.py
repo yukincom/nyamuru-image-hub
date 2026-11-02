@@ -170,17 +170,18 @@ def expression_prompt_text(expression_hints: object = None) -> str:
 
 
 def pose_prompt_text(locate_face: bool) -> str:
-    prompt = """Read the person in this cropped manga storyboard as drawn. Return only one JSON object. All descriptions are short English phrases. Ignore writing and construction lines. Use unrotated image directions. Report visible head, torso, limbs and contacts independently; never infer proportions, unseen limbs, or motion from tilt alone. Distinguish a cut at the image edge from occlusion. Decide framing and posture separately: a standing figure may be cropped at the chest. Preserve anatomical sides only if clear; otherwise use unknown. Describe the subject's visible pose only, excluding expression, in pose_draft.
+    face_keys = ',\n "subject_face_status":"located|no_face|ambiguous|unreadable",\n "subject_face":{"bbox":[0.0,0.0,1.0,1.0],"reason":""}' if locate_face else ""
+    prompt = f"""Read the person in this cropped manga storyboard as drawn. Return only one JSON object. All descriptions are short English phrases. Ignore writing and construction lines. Use unrotated image directions. Report visible head, torso, limbs and contacts independently; never infer proportions, unseen limbs, or motion from tilt alone. Distinguish a cut at the image edge from occlusion. Decide framing and posture separately: a standing figure may be cropped at the chest. Preserve anatomical sides only if clear; otherwise use unknown. Describe the subject's visible pose only, excluding expression, in pose_draft.
 
 Return these keys:
-{
+{{
  "framing":"face_closeup|bust_up|waist_up|knee_up|full_body|full_body_compact|other|uncertain",
- "edge_truncation":{"cropped_by_image_edge":false,"cropped_parts":[],"fully_visible_parts":[],"occluded_but_not_cropped_parts":[]},
- "canvas_orientation":{"body_axis":"upright|upside_down|horizontal_head_left|horizontal_head_right|diagonal_head_up_left|diagonal_head_up_right|diagonal_head_down_left|diagonal_head_down_right|uncertain","head_relative_to_pelvis":"above|below|image_left|image_right|uncertain","is_upside_down":false},
- "view_direction":{"head":{"view_angle":"front|three_quarter_front|profile|three_quarter_back|back|uncertain","horizontal_facing":"image_left|image_right|center|away|uncertain","evidence":[]},"torso":{"view_angle":"","horizontal_facing":"","evidence":[]},"head_torso_twist":"none|slight|clear|uncertain"},
- "pose":{"base_posture":"standing|sitting|kneeling|crouching|lying|reclining|curled|running|airborne_or_falling|other|uncertain","torso_shape":"","arms":[{"side":"left|right|unknown","image_direction":"","elbow":"straight|slightly_bent|bent|uncertain","hand_position_or_contact":"","visibility":"full|partial|cropped|uncertain"}],"legs":[{"side":"","image_direction":"","knee":"","foot_position_or_contact":"","visibility":""}],"support_or_contact":"","action_candidate":""},
- "pose_draft":"","confidence":"high|medium|low","uncertainties":[]
-}"""
+ "edge_truncation":{{"cropped_by_image_edge":false,"cropped_parts":[],"fully_visible_parts":[],"occluded_but_not_cropped_parts":[]}},
+ "canvas_orientation":{{"body_axis":"upright|upside_down|horizontal_head_left|horizontal_head_right|diagonal_head_up_left|diagonal_head_up_right|diagonal_head_down_left|diagonal_head_down_right|uncertain","head_relative_to_pelvis":"above|below|image_left|image_right|uncertain","is_upside_down":false}},
+ "view_direction":{{"head":{{"view_angle":"front|three_quarter_front|profile|three_quarter_back|back|uncertain","horizontal_facing":"image_left|image_right|center|away|uncertain","evidence":[]}},"torso":{{"view_angle":"","horizontal_facing":"","evidence":[]}},"head_torso_twist":"none|slight|clear|uncertain"}},
+ "pose":{{"base_posture":"standing|sitting|kneeling|crouching|lying|reclining|curled|running|airborne_or_falling|other|uncertain","torso_shape":"","arms":[{{"side":"left|right|unknown","image_direction":"","elbow":"straight|slightly_bent|bent|uncertain","hand_position_or_contact":"","visibility":"full|partial|cropped|uncertain"}}],"legs":[{{"side":"","image_direction":"","knee":"","foot_position_or_contact":"","visibility":""}}],"support_or_contact":"","action_candidate":""}},
+ "pose_draft":"","confidence":"high|medium|low","uncertainties":[]{face_keys}
+}}"""
     if locate_face:
         prompt += """
 Also return subject_face_status: "located", "no_face", "ambiguous", or "unreadable". For "located", include subject_face: {"bbox":[left,top,right,bottom],"reason":"..."} for the visible face belonging to this cropped figure. Coordinates are normalized to 0..1 in this unrotated image. Enclose the whole face including brows, chin and surface marks. Use its anatomical connection to the body, not its expression. For a hidden or indistinct face use "unreadable", for no face use "no_face", and when multiple faces cannot be uniquely associated use "ambiguous"; in these cases return subject_face: null. Do not analyze the facial expression."""
