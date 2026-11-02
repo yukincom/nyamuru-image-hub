@@ -1,5 +1,5 @@
 // 見込み: 人物を開くだけで、その人物の原画と優先設定画がimage3/2になり、image1で3Dを確定できる。
-// 合格: 異なる2色の自動プレビュー、確定後の撮影、正負の独立編集と送信3枚の画素・順序。実UI/3D素材、HTTPは模擬。実推論なし。
+// 合格: image2用の採用特徴が初期文と送信に残り、旧自由文は入らない。3画像の画素・順序と手動編集も確認。実UI/3D素材、HTTPは模擬、実推論なし。
 import {render} from 'preact';
 import {useState} from 'preact/hooks';
 import QwenGenerationDialog from '../src/components/QwenGenerationDialog';
@@ -23,7 +23,15 @@ async function run(){
  const mk=async(color:string,width=64)=>{const c=document.createElement('canvas');c.width=width;c.height=64;const g=c.getContext('2d')!;g.fillStyle=color;g.fillRect(0,0,c.width,c.height);return await new Promise<Blob>(resolve=>c.toBlob(b=>resolve(b!)));};
  const rough=await mk('red'),sheet=await mk('blue',2101),hash=await imageSha256(sheet),id='image-'+hash;
  const work=createEmptyWorkspaceDocument(),m=work.manga; m.meta.series_id='fixture';m.meta.episode_id='test';
- m.characters=[{localId:'who',catalog_id:'catalog',name:'テスト人物',role:'主人公',scope:'series',primary_material_catalog_id:'primary'}];
+ m.characters=[{
+   localId:'who',catalog_id:'catalog',name:'テスト人物',role:'主人公',scope:'series',primary_material_catalog_id:'primary',
+   visual_prompt:'obsolete visual prompt',
+   recognition:{
+     hair:{observed:[],inferred:[]},face:{observed:[],inferred:[]},silhouette:{observed:[],inferred:[]},ambiguous_design:{observed:[],inferred:[]},
+     accessories:{observed:['wide solid black headband'],inferred:[]},
+     outfit:{observed:['white sleeveless V-neck dress'],inferred:[]},
+   },
+ }];
  const mat={keywords:[],type:'character' as const,scope:'series' as const,key:'青い設定画',catalog_id:'primary',characterId:'who',character_catalog_id:'catalog',source_image:{schema_version:1 as const,asset_id:id,file_name:'characters/catalog/'+id+'.png',media_type:'image/png' as const,byte_size:sheet.size,width_px:2101,height_px:64,sha256:hash}};
  m.materials=[{...mat,catalog_id:'other',key:'非優先',source_image:{...mat.source_image,asset_id:'unavailable'}},mat];
  m.pages[0].panels=[{id:1,shape:{type:'rect',x:1,y:1,w:25,h:40},bg:0,action:null,bubbles:[],figures:[{refId:'who',name:'テスト人物',size:'full',bbox:{x:4,y:4,w:12,h:25},analogImport:{schemaVersion:1,assetId:'rough',sourceRegionId:'r',sourceBBox:{x:0,y:0,w:64,h:64},detectionSource:'body',draft:true}}]}];
@@ -35,6 +43,9 @@ async function run(){
  window.fetch=async(input,options)=>{
    const url=new URL(String(input),location.href),path=url.pathname,body=JSON.parse(String(options?.body||'{}'));
    if(url.origin===location.origin&&!path.startsWith('/api/'))return nativeFetch(input,options);
+   if(path==='/api/image-generation/start')return Response.json({...supervisor,session_token:body.session_token,comfy_ready:true});
+   if(path==='/api/image-generation/stop')return Response.json({...supervisor,comfy_released:true,comfy_stopped:true});
+   if(path==='/api/image-generation/prepare')return Response.json({...supervisor,llm_stopped:true});
    if(path==='/api/new-creation/start')return Response.json({...supervisor,lease_token:'fixture'});
    if(path==='/api/new-creation/stop')return Response.json({...supervisor,released:true});
    if(path==='/api/health')return Response.json(common);
@@ -84,10 +95,13 @@ async function run(){
  const restored=await wait(()=>img(1),'作品を開き直したimage1');
  if(addr(restored)!==previewPng)throw Error('作品保存後のimage1が確定PNGと異なる');
  const edit=(label:string,value:string)=>{const input=Array.from(document.querySelectorAll('.qwen-prompt')).find(item=>item.textContent?.startsWith(label))?.querySelector('textarea');if(!input)throw Error(label);input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));};
- edit('ポジティブ','positive test');edit('ネガティブ','negative test');
+ const initialPrompt=document.querySelector<HTMLTextAreaElement>('.qwen-prompt textarea')!.value;
+ if(!initialPrompt.includes('Character & Design (from <image2>):')||!initialPrompt.includes('wide solid black headband')||!initialPrompt.includes('white sleeveless V-neck dress')||initialPrompt.includes('obsolete visual prompt'))throw Error('image2の特徴が編集欄から届いていません');
+ const editedPrompt=initialPrompt+'\npositive test';
+ edit('ポジティブ',editedPrompt);edit('ネガティブ','negative test');
  (await wait(()=>button('5枚を生成する'),'生成ボタン')).click();
  const req=await wait(()=>submitted,'送信内容');
- if(req.prompt!=='positive test'||req.negative_prompt!=='negative test'||req.workflow_id!==QWEN_FIGURE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
+ if(req.prompt!==editedPrompt||req.negative_prompt!=='negative test'||req.workflow_id!==QWEN_FIGURE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
  if(JSON.stringify(req.references.map((x:{image:string})=>x.image))!==JSON.stringify([addr(first),addr(second),addr(third)]))throw Error('送信画像の役割');
  // 見込み: 準備で拒否されれば生成は未送信。合格: 再実行可・照合ボタンなし・原因だけを表示。HTTPは模擬。
  await wait(()=>button('5枚を生成する')&&document.querySelector('.qwen-generation-dialog [role=alert]'),'準備失敗後の再試行');

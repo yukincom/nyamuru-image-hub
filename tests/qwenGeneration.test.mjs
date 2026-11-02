@@ -25,7 +25,7 @@ function posePlan(mode='image'){
    placement:{position:[0,0,0],yaw_degrees:0},camera:{position:[3,2,5],target:[0,1,0],fov:40},projection:'perspective',up:[0,1,0],frame:{width:512,height:1024}}});
  figure.human_pose.camera_prompt=confirmHumanPoseCameraPrompt(figure.human_pose.scene,{centre:[0,1,0],world_facing_degrees:0});
  figure.human_pose.camera_prompt.overrides.angle_ja='左斜め前から少し見下ろす';
- figure.action='驚いた表情で左を見る';figure.size='bust-up';manga.characters[0].visual_prompt='細い眉と短い黒髪';
+ figure.action='驚いた表情で左を見る';figure.size='bust-up';manga.characters[0].recognition={face:{observed:['細い眉と短い黒髪'],inferred:[]}};
  return {manga,plan:buildQwenGenerationPlan(manga,0,0,false,paintScene(manga.pages[0].panels[0],100,[]).owners[1])};
 }
 test('pose, action, angle, framing and identity survive normal, sketch and correction prompts',()=>{
@@ -138,7 +138,7 @@ test('framing uses the visible body range, separately from output pixel size and
  for(const [size,label] of Object.entries(FIGURE_SIZE_LABELS)){
   const manga=fixture();manga.pages[0].panels[0].figures[0].size=size;
   manga.pages[0].panels[0].figures[0].action='顔を右に向ける';
-  manga.characters[0].visual_prompt='細い眉';
+  manga.characters[0].recognition={face:{observed:['細い眉'],inferred:[]}};
   const scene=paintScene(manga.pages[0].panels[0],100,[]);
   const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
   assert.ok(plan.prompt.includes(`描写範囲は${label}。`));
@@ -159,11 +159,14 @@ test('all framing values survive the existing document save and load path',()=>{
   assert.equal(validateManga(restored).filter(issue=>issue.path.endsWith('.size')).length,0);
  }
 });
-test('only work style and the bound visual prompt reach English preparation; persona and other characters stay out', async t => {
+// 見込み: 編集中の特徴一覧を唯一の外見指定にすれば、旧自由文に左右されず生成へ渡せる。
+// 合格: 本人のobservedと作品画風だけが実payloadへ届き、特徴を消すと消える。推論APIは模擬。
+test('only work style and the bound reviewed features reach preparation; legacy visual prompts stay out', async t => {
  const manga=fixture(),style='黒い筆線。外周は太く、内側は細い。',profile='6.5〜7頭身。\n細い眉と小さな顎。';
  setWorkStylePrompt(manga,style);
  manga.characters[0].role='好奇心が強く、新技術を好む性格。';
- manga.characters[0].visual_prompt=profile;
+ manga.characters[0].visual_prompt='使わない旧ビジュアル文';
+ manga.characters[0].recognition={face:{observed:[profile],inferred:[]}};
  manga.characters.push({localId:'other',name:'別人',role:'陽気な性格',visual_prompt:'赤い帽子の巨人'});
  const scene=paintScene(manga.pages[0].panels[0],100,[]);
  const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
@@ -171,6 +174,9 @@ test('only work style and the bound visual prompt reach English preparation; per
  assert.ok(!plan.prompt.includes(manga.characters[0].role));
  assert.ok(!plan.prompt.includes('人物像'));
  assert.ok(!plan.prompt.includes('赤い帽子の巨人'));
+ assert.ok(!plan.prompt.includes('使わない旧ビジュアル文'));
+ const editor=readFileSync(new URL('../src/components/DocumentEditors.tsx',import.meta.url),'utf8');
+ assert.doesNotMatch(editor,/画像生成用ビジュアルプロンプト|character\.visual_prompt/);
  const background=buildQwenGenerationPlan(manga,0,0,false,scene.owners[0]);
  assert.ok(background.prompt.includes(style));assert.ok(!background.prompt.includes(profile));
  const priorWindow=globalThis.window,priorFetch=globalThis.fetch;
@@ -186,7 +192,7 @@ test('only work style and the bound visual prompt reach English preparation; per
  const {prepareQwenJob}=await import('../src/lib/localBridge.ts');
  await prepareQwenJob(id,qwenGenerationPayload(plan,[{label:'全身資料',characterKeys:['person-id'],image:'data:ref'}]));
  assert.equal(preparedPrompt,plan.prompt);
- manga.characters[0].visual_prompt='';
+ manga.characters[0].recognition.face.observed=[];
  const cleared=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
  assert.ok(!cleared.prompt.includes(profile));assert.ok(!cleared.prompt.includes(manga.characters[0].role));
  delete manga.characters[0].visual_prompt;

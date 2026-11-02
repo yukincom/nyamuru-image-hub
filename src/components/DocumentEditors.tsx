@@ -383,11 +383,6 @@ export function CharactersEditor({ document, onChange, onNotify, embedded = fals
             </div>
           </div>
           <Field label="人物像"><textarea disabled={isSystemMob} class="character-role-textarea" rows={3} value={character.role} onInput={(event) => update((draft) => { if (!isSystemMob) draft.manga.characters[index].role = event.currentTarget.value; })} /></Field>
-          <Field label="画像生成用ビジュアルプロンプト" hint="外見・描き方の指定。画像生成時に英訳して使います">
-            <textarea disabled={isSystemMob} rows={8} value={character.visual_prompt ?? ''} onInput={(event) => update((draft) => {
-              if (!isSystemMob) draft.manga.characters[index].visual_prompt = event.currentTarget.value;
-            })} />
-          </Field>
 
           <details class="character-design-details">
             <summary><span>デザイン詳細</span></summary>

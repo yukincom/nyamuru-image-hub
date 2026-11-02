@@ -161,10 +161,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const characterKeys=character?.localId?[character.localId]:[];
   const observed=Array.from(new Set(CHARACTER_RECOGNITION_FIELDS.flatMap(({key})=>
     character?.recognition?.[key]?.observed.map(value=>value.trim()).filter(Boolean)??[])));
-  const characterAppearance=[
-    character?.visual_prompt?.trim(),
-    observed.length ? `Observed features: ${observed.join('; ')}` : '',
-  ].filter(Boolean).join('\n');
+  const characterAppearance=observed.length ? `Observed features: ${observed.join('; ')}` : '';
   const candidates:QwenReferenceCandidate[]=character?.catalog_id&&manga.meta.series_id
     ? manga.materials.filter(m=>m.type==='character'&&m.source_image&&(
       m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))

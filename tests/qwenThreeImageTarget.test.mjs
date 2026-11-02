@@ -40,11 +40,12 @@ import {setWorkStylePrompt} from '../src/lib/artworkRules.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
 
 // 見込み: 人物IDで登録設定を引けば、同名の別人や未確認の特徴を混ぜずに生成できる。
-// 合格: 3枚参照の初期文に登録した外見・今回の演技・作品の画風が入り、設定を変えると新しい文面だけが残る。編集後の送信値とネームも検査。実推論なし。
+// 合格: 3枚参照のimage2指示へ本人のobservedだけが入り、旧自由文と他人の特徴を除外。設定変更・手動編集後の送信も検査。実推論なし。
 test('three-image positive defaults use only the linked character’s saved appearance',()=>{
   const {manga}=createEmptyWorkspaceDocument();
   manga.characters=[{localId:'other',name:'人物',visual_prompt:'別人の衣装'},
-    {localId:'who',name:'人物',visual_prompt:'細い眉',recognition:{
+    {localId:'who',name:'人物',visual_prompt:'使わない旧ビジュアル文',recognition:{
+      face:{observed:['細い眉'],inferred:[]},
       hair:{observed:['前髪あり'],inferred:['推測の髪色']},accessories:{observed:['黒いリボン','前髪あり'],inferred:[]},
       ambiguous_design:{observed:['形不明'],inferred:[]}}}];
   const p={id:1,shape:{type:'rect',x:0,y:0,w:40,h:50},bg:0,bubbles:[],
@@ -57,7 +58,7 @@ test('three-image positive defaults use only the linked character’s saved appe
   const plan=qwenPlanForWorkflow({...source,humanPose:{selection:{input_mode:'image'}}},flow);
   for(const text of [source.prompt,source.sketchPrompt,plan.prompt]){
     assert.match(text,/細い眉/);assert.match(text,/黒いリボン/);assert.equal(text.split('前髪あり').length,2);
-    assert.doesNotMatch(text,/別人の衣装|推測の髪色|形不明/);
+    assert.doesNotMatch(text,/別人の衣装|推測の髪色|形不明|使わない旧ビジュアル文/);
   }
   assert.match(plan.prompt,/Expression and acting \(from <image3>\):\nA tired smile\./);
   assert.match(plan.prompt,/Character Inking & Pen Touch[\s\S]*Fine pen lines\./);
