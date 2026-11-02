@@ -689,28 +689,24 @@ def detected_person_regions(detection: dict[str, Any]) -> list[dict[str, Any]]:
             "bbox": [round(value, 6) for value in body],
         })
 
+    matched_faces = [[] for _ in kept_bodies]
     kept_faces: list[tuple[float, float, float, float]] = []
     for face_region in faces:
         face = tuple(face_region["bbox"])
         face_x, face_y, face_w, face_h = face
         face_center = (face_x + face_w / 2, face_y + face_h / 2)
         face_area = box_area(face)
-        matched_body = any(
-            (
-                body_x <= face_center[0] <= body_x + body_w
-                and body_y <= face_center[1] <= body_y + body_h
-            )
-            # Browser-side JPEG conversion can shift the body edge just past the
-            # face centre. A substantial face/body overlap still represents the
-            # same person and must not create a second editable figure.
-            or (
-                face_area > 0
-                and face_area <= box_area((body_x, body_y, body_w, body_h)) * 0.40
-                and box_intersection_area(face, (body_x, body_y, body_w, body_h)) / face_area >= 0.30
-            )
-            for body_x, body_y, body_w, body_h in kept_bodies
-        )
-        if matched_body:
+        owners = [
+            index for index, body in enumerate(kept_bodies)
+            if (body[0] <= face_center[0] <= body[0] + body[2]
+                and body[1] <= face_center[1] <= body[1] + body[3])
+            # Browser JPEG detection sometimes shifts the body edge past the face centre.
+            or (0 < face_area <= box_area(body) * 0.40
+                and box_intersection_area(face, body) / face_area >= 0.30)
+        ]
+        if owners:
+            for index in owners:
+                matched_faces[index].append(face if len(owners) == 1 else None)
             continue
         if any(
             box_overlap_ratios(face, kept)[0] >= 0.58
@@ -725,6 +721,10 @@ def detected_person_regions(detection: dict[str, Any]) -> list[dict[str, Any]]:
             "confidence": face_region["confidence"],
             "bbox": [round(value, 6) for value in face],
         })
+    # Only an unambiguous one-to-one association supplies a face crop.
+    for index, matches in enumerate(matched_faces):
+        if len(matches) == 1 and matches[0] is not None:
+            regions[index]["face_bbox"] = [round(value, 6) for value in matches[0]]
     return regions
 
 

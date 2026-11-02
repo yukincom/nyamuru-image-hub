@@ -1,5 +1,5 @@
 import type { AnalogFigureImport, BBox } from '../types.ts';
-import type { DetectedFigureRegion } from './localBridge.ts';
+import type { DetectedFigureRegion, FigureFaceInput } from './localBridge.ts';
 
 interface DecodedImage {
   source: CanvasImageSource;
@@ -125,6 +125,20 @@ export async function* detectedFigureCrops(
       yield {
         regionId: region.id,
         original: () => analogCropPng(page, bounds, '人物切り抜き', 1),
+        face: async (): Promise<FigureFaceInput | undefined> => {
+          if (region.source === 'face') return { bbox: [0, 0, 1, 1] };
+          if (!region.faceBBox) return undefined;
+          const face = cropPixelBounds(region.faceBBox, page.width, page.height);
+          if (face.x === bounds.x && face.y === bounds.y && face.w === bounds.w && face.h === bounds.h) {
+            return { bbox: [0, 0, 1, 1] };
+          }
+          const left = Math.max(0, (face.x - bounds.x) / bounds.w);
+          const top = Math.max(0, (face.y - bounds.y) / bounds.h);
+          const right = Math.min(1, (face.x + face.w - bounds.x) / bounds.w);
+          const bottom = Math.min(1, (face.y + face.h - bounds.y) / bounds.h);
+          if (left >= right || top >= bottom) return undefined;
+          return { bbox: [left, top, right, bottom], image: await analogCropPng(page, face, '人物切り抜き', 1) };
+        },
         forStorage: () => analogCropPng(page, bounds, '人物切り抜き'),
       };
     }

@@ -14,14 +14,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import local_figure_performance_worker as performance  # noqa: E402
 from local_character_reference_worker import sanitized_trait_text  # noqa: E402
 
-PROMPT_VERSION = "character-and-performance-v4-expression86"
+PROMPT_VERSION = "character-and-performance-v5-face-crop"
 CONFIDENCE_VALUES = {"high", "medium", "low", "none"}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=Path, required=True)
-    parser.add_argument("--image", type=Path, required=True)
+    parser.add_argument("--image", type=Path, required=True, action="append")
     parser.add_argument("--max-tokens", type=int, default=700)
     return parser.parse_args()
 
@@ -111,6 +111,8 @@ def analyze(
     current_size: str,
     max_tokens: int,
     expression_tagging: dict[str, Any] | None = None,
+    face_image: Path | None = None,
+    face_bbox: object = None,
 ) -> dict[str, Any]:
     if not model_path.is_dir() or not (model_path / "config.json").is_file():
         raise FileNotFoundError("ローカルVLMモデルが見つかりません")
@@ -145,27 +147,9 @@ def analyze(
                 "reason": "照合できる外見の特徴が登録されていません",
             }
 
-        performance_prompt = apply_chat_template(
-            processor,
-            model.config,
-            performance.prompt_text(current_size, (expression_tagging or {}).get("hints")),
-            num_images=1,
-        )
-        performance_response = generate(
-            model,
-            processor,
-            performance_prompt,
-            image=str(prepared_path),
-            max_tokens=performance.PERFORMANCE_MAX_TOKENS,
-            temp=0.0,
-            repetition_penalty=1.05,
-            verbose=False,
-        )
-        raw_performance = performance.extract_json_object(performance_response.text)
-        expression = raw_performance.get("expression") if isinstance(raw_performance.get("expression"), dict) else {}
-        analysis = performance.normalize_analysis(raw_performance, expression, current_size)
-        analysis["expression"] = performance.attach_expression_hint_provenance(
-            analysis["expression"], expression_tagging or {},
+        analysis = performance.read_performance(
+            model, processor, image_path, prepared_path, current_size, performance.PERFORMANCE_MAX_TOKENS,
+            expression_tagging or {}, face_image, face_bbox,
         )
         action = performance.compose_action(analysis)
         return {
@@ -192,13 +176,16 @@ def main() -> int:
         expression_tagging = request.get("expression_tagging")
         if not isinstance(expression_tagging, dict):
             expression_tagging = {}
+        if len(args.image) > 2:
+            raise ValueError("人物画像と顔画像は各1枚までです")
         result = analyze(
             args.model.resolve(),
-            args.image.resolve(),
+            args.image[0].resolve(),
             candidates,
             current_size,
             args.max_tokens,
             expression_tagging,
+            args.image[1].resolve() if len(args.image) == 2 else None, request.get("face_bbox"),
         )
         print(json.dumps({"ok": True, "result": result}, ensure_ascii=False))
         return 0

@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCharacterMatchAssignments, applyCharacterReadOutcomes, buildCharacterMatchCandidates, collectUnmatchedCharacterTargets } from '../src/lib/characterMatching.ts';
 
-import { analyzeFigureCharacterMatchWithLocalVlm } from '../src/lib/localBridge.ts';
+import { analyzeFigureCharacterMatchWithLocalVlm, analyzeFigurePerformanceWithLocalVlm } from '../src/lib/localBridge.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
-const noFace = {catalog_version: '86-test', catalog_sha256: 'a'.repeat(64), target_face_id: null, target_evidence_en: null, faces: []};
+const noFace = {read_status:'no_face', catalog_version: '86-test', catalog_sha256: 'a'.repeat(64), target_face_id: null, target_evidence_en: null, faces: []};
 const face = { face_id: 'face_01', bbox: [0.1, 0.1, 0.9, 0.9], confidence: 'medium',
-  parts_mapping: {base_emotion: null, brows: null, eyes: null, mouth: {id: 'S050', evidence_en: 'short straight closed mouth', source: 'observation'}, extras: []},
-  qwen_image21_prompt_en: 'Short straight closed mouth.' };
+  parts_mapping: {base_emotion: null, brows: null, eyes: null, mouth: {id: 'S050', evidence_en: 'short straight closed mouth', prompt:'expressionless', extract_en:'short straight closed mouth', reason:'A straight horizontal stroke closes the lips.', source: 'observation'}, extras: []},
+  selected_tags:['expressionless'], qwen_image21_prompt_en: 'Short straight closed mouth.' };
 
 function documentFixture() {
   const analogImport = { schemaVersion: 1, sourceRegionId: 'region-1', assetId: 'asset-1', sourceBBox: { x: 0, y: 0, w: 1, h: 1 }, detectionSource: 'body', draft: true };
@@ -73,7 +73,7 @@ test('新規作成時の人物・演技を反映し、低信頼だけ要確認�
     ok: true,
     candidateId: 'person-a',
     confidence: 'low',
-    expressionReading: {...noFace, target_face_id: face.face_id, faces: [face]},
+    expressionReading: {...noFace, read_status: 'read', target_face_id: face.face_id, faces: [face]},
     action: 'Facing front. Short straight closed mouth.',
     suggestedSize: 'full',
     reason: '髪型は近いが顔が簡略化されている',
@@ -121,8 +121,68 @@ test('照合要求は人物の観察語とIDだけを送り、空の演技と顔
   assert.equal(result.action, '');
   assert.equal(result.candidateId, 'a');
   assert.deepEqual(result.expressionReading, noFace);
+  const matched = {...noFace, read_status:'read', faces:[face], target_face_id:face.face_id};
+  analysis = {expression: matched};
+  assert.deepEqual((await read()).expressionReading,matched);
   analysis = {expression: {faces: []}};
   await assert.rejects(read, /人物表情/);
+});
+
+// 同じ顔は再送せず、別に切り抜いた顔だけ2枚目にする。模擬HTTPで両入口の画像・顔位置を直接確認する。
+test('人物切り抜きと顔原画を既存の演技・照合APIへ必要な画像数だけ送る', async t => {
+  const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
+  globalThis.window = { setTimeout, clearTimeout };
+  globalThis.FileReader = class {
+    async readAsDataURL(blob) { this.result = 'data:image/png;base64,' + Buffer.from(await blob.arrayBuffer()).toString('base64'); this.onload(); }
+  };
+  t.after(() => {
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+    if (originalReader === undefined) delete globalThis.FileReader; else globalThis.FileReader = originalReader;
+  });
+  const requests = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const common = {ok:true, service:'nyamuru-image-hub-local-bridge', layout_protocol_version:3};
+    if (String(url).endsWith('/api/health')) return Response.json(common);
+    requests.push(JSON.parse(options.body));
+    return Response.json({...common, analyzer: {provider:'local',runtime:'mlx-vlm'}, action:'Head in front view.',
+      analysis:{expression:noFace}, candidate_id:'a', confidence:'high', suggested_size:'face'});
+  });
+  const figure = new Blob(['original figure']), faceImage = new Blob(['original face']);
+  const faceBox = {bbox:[0, 0.1, 0.75, 0.5], image:faceImage};
+  for (const read of [
+    (input, face) => analyzeFigureCharacterMatchWithLocalVlm(input, [], 'bust-up', face),
+    (input, face) => analyzeFigurePerformanceWithLocalVlm(input, 'face', face),
+  ]) {
+    await read(figure, faceBox);
+    await read(faceImage, {bbox:[0,0,1,1]});
+    await read(figure);
+    const [separate, same, unknown] = requests.splice(0);
+    assert.equal(separate.image, 'data:image/png;base64,' + Buffer.from('original figure').toString('base64'));
+    assert.equal(separate.face_image, same.image);
+    assert.deepEqual(separate.face_bbox, faceBox.bbox);
+    assert.deepEqual(same.face_bbox, [0,0,1,1]);
+    assert.equal('face_image' in same, false);
+    assert.equal('face_image' in unknown || 'face_bbox' in unknown, false);
+  }
+});
+
+// 向きだけでも、本当に顔がない場合と表情を読めなかった場合は異なる。固定したQwenの状態で確認表示と保存を検証する。
+test('正面向きのみの演技では、顔が読めなければ要確認、顔なしなら人物照合成功を保つ', () => {
+  for (const [status, needsReview] of [['unreadable',1], ['no_face',0], ['ambiguous',1]]) {
+    const doc = documentFixture();
+    const result = applyCharacterReadOutcomes(doc, new Map([['region-1', {
+      ok:true, candidateId:'person-a', confidence:'high', action:'Head in front view.', suggestedSize:'bust-up',
+      reason:'', expressionReading:{...noFace, read_status:status},
+    }]]));
+    assert.deepEqual(result,{applied:2, needsReview});
+    for (const panel of doc.manga.pages[0].panels) {
+      const {action, analogImport, refId} = panel.figures[0];
+      assert.equal(action,'Head in front view.');
+      assert.equal(refId,'person-a');
+      assert.equal(analogImport.expressionReading.read_status,status);
+      assert.equal(analogImport.analysisReview,needsReview ? 'low-confidence' : undefined);
+    }
+  }
 });
 
 // 所属の決められない2顔は両方の根拠を残し、古い生成案を現在の演技欄へ戻さない。通常の作品用YAMLの往復・公開形式を確認（作品の実保存なし）。
@@ -130,7 +190,7 @@ test('複数顔の要確認と部位記録を作品で保持し、公開OMNYに�
   const doc = emptyTestDocument(), fixture = documentFixture().manga;
   doc.manga.characters = fixture.characters;
   doc.manga.pages = fixture.pages;
-  const reading = {...noFace, faces: [face, {...face, face_id: 'face_02'}]};
+  const reading = {...noFace, read_status:'ambiguous', faces: [face, {...face, face_id: 'face_02'}]};
   const result = applyCharacterReadOutcomes(doc, new Map([['region-1', {
     ok: true, candidateId: 'person-a', confidence: 'high', suggestedSize: 'waist-up', reason: '',
     action: 'Standing.', expressionReading: reading,

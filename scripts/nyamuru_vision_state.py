@@ -207,6 +207,23 @@ class LocalVisionState:
             print(f"[bridge] WD expression hint skipped: {exc}", file=sys.stderr)
             return {}
 
+    def expression_worker_fields(
+        self, figure_image: bytes, face_image: bytes | None, face_bbox: object,
+    ) -> dict[str, Any]:
+        if face_image is None and face_bbox is None:
+            # Qwen will localize the face in its pose pass. Whole-body WD tags are unrelated.
+            return {}
+        from local_figure_performance_worker import normalized_bbox
+        box = normalized_bbox(face_bbox)
+        if box is None or (face_image is None and box != [0, 0, 1, 1]):
+            raise ValueError("表情用の顔の切り抜きと人物内の位置が一致しません")
+        if face_image is not None and not face_image:
+            raise ValueError("表情用の顔画像が空です")
+        return {
+            "face_bbox": box, "face_image_bytes": face_image,
+            "expression_tagging": self.expression_tagging(figure_image if face_image is None else face_image),
+        }
+
     def check(self) -> dict[str, Any]:
         return {
             "rtdetr_available": self.rtdetr_python.is_file() and self.rtdetr_model.is_file(),
@@ -240,6 +257,7 @@ class LocalVisionState:
 
     def analyze_figure_performance(
         self, image_bytes: bytes, current_size: object, requested_vlm_model: object = None,
+        *, face_image_bytes: bytes | None = None, face_bbox: object = None,
     ) -> dict[str, Any]:
         if not isinstance(current_size, str) or current_size not in FIGURE_PERFORMANCE_SIZES:
             raise ValueError("人物の描写範囲が正しくありません")
@@ -249,13 +267,12 @@ class LocalVisionState:
                 "Qwen3-VL/MLXのローカル環境が見つかりません。`npm run bridge:check-vlm`で配置を確認してください"
             )
         try:
-            expression_tagging = self.expression_tagging(image_bytes)
             result = run_figure_performance_worker(
                 python=self.vlm_python,
                 model=selected_model,
                 image_bytes=image_bytes,
                 current_size=current_size,
-                expression_tagging=expression_tagging,
+                **self.expression_worker_fields(image_bytes, face_image_bytes, face_bbox),
             )
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("人物演技のローカルVLM解析が時間内に完了しませんでした") from exc
@@ -457,6 +474,7 @@ class LocalVisionState:
         candidates_value: object,
         current_size: object,
         requested_vlm_model: object = None,
+        *, face_image_bytes: bytes | None = None, face_bbox: object = None,
     ) -> dict[str, Any]:
         if not isinstance(candidates_value, list):
             raise ValueError("照合候補が正しくありません")
@@ -485,14 +503,13 @@ class LocalVisionState:
                 "Qwen3-VL/MLXのローカル環境が見つかりません。`npm run bridge:check-vlm`で配置を確認してください"
             )
         try:
-            expression_tagging = self.expression_tagging(image_bytes)
             result = run_character_match_worker(
                 python=self.vlm_python,
                 model=selected_model,
                 image_bytes=image_bytes,
                 candidates=candidates,
                 current_size=current_size,
-                expression_tagging=expression_tagging,
+                **self.expression_worker_fields(image_bytes, face_image_bytes, face_bbox),
             )
         except subprocess.TimeoutExpired as exc:
             raise RuntimeError("人物照合のローカルVLM解析が時間内に完了しませんでした") from exc

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+from contextlib import contextmanager
 import re
 import sys
 import tempfile
@@ -12,11 +14,10 @@ from pathlib import Path
 from typing import Any
 
 
-PROMPT_VERSION = "figure-performance-v3-expression86"
+PROMPT_VERSION = "figure-performance-v4-face-crop"
 PERFORMANCE_MAX_TOKENS = 2400
 CATALOG = json.loads(Path(__file__).with_name("expression_catalog.json").read_text(encoding="utf-8"))
 ENTRIES = {entry["id"]: entry for entry in CATALOG["entries"]}
-SYMBOLIC_EYE_IDS = {f"S{index:03d}" for index in range(59, 70)}
 FIGURE_SIZES = {"long", "full", "knee-up", "waist-up", "bust-up", "shoulder-up", "face", "face-detail", "hand", "foot", "part"}
 FRAMINGS = {"face_closeup", "bust_up", "waist_up", "knee_up", "full_body", "full_body_compact", "other", "uncertain"}
 BODY_AXES = {
@@ -53,7 +54,7 @@ LIMB_VISIBILITY = {"full", "partial", "cropped", "uncertain"}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=Path, required=True)
-    parser.add_argument("--image", type=Path, required=True)
+    parser.add_argument("--image", type=Path, required=True, action="append")
     parser.add_argument("--max-tokens", type=int, default=PERFORMANCE_MAX_TOKENS)
     return parser.parse_args()
 
@@ -158,23 +159,18 @@ def attach_expression_hint_provenance(
     return expression
 
 
-def prompt_text(current_size: str, expression_hints: object = None) -> str:
-    # The importer's fallback size would bias the model's framing judgment.
+def expression_prompt_text(expression_hints: object = None) -> str:
     slot_codes = {"brows": "b", "eyes": "e", "mouth": "m", "extras": "x"}
     catalogue = "\n".join(
         f'{entry["id"]} {entry["category"]} {"W" if entry["role"] == "whole_expression" else "F"} '
         f'{"".join(slot_codes[slot] for slot in entry["slots"])} {entry["prompt"]} | {entry["visual_description_en"]}'
         for entry in ENTRIES.values()
     )
-    return """Read the person in this cropped manga storyboard as drawn. Return only one JSON object. All descriptions are short English phrases. Ignore dialogue, annotations, sound effects, paper, panel borders, and construction lines. Separate pose from expression.
+    return Path(__file__).with_name("qwen_face_expression_prompt.txt").read_text(encoding="utf-8") + catalogue + expression_hint_prompt(expression_hints)
 
-POSE: Use unrotated image directions. Report visible head, torso, limbs and contacts independently; never infer proportions, unseen limbs, or motion from tilt alone. Distinguish a cut at the image edge from occlusion. Decide framing and posture separately: a standing figure may be cropped at the chest. Preserve anatomical sides only if clear; otherwise use unknown. Describe the subject's visible pose only, excluding expression, in pose_draft.
 
-EXPRESSION: Read each visible face in top-to-bottom, then left-to-right order. Refer to the viewer's left/right. Use face_01, face_02, etc.; normalized bbox is [left,top,right,bottom] from 0 to 1, or null if unclear. Return faces: [] when there is no face. Set target_face_id to the visible subject face (face_01 for a single subject face). For multiple faces set target_face_id only if you can say how the face belongs to the cropped figure in target_evidence_en; otherwise leave it null. Do not use hair, dress, identity, style or head direction to decide expression.
-
-Read five independent slots. Base is at most one W from C01-C07, and may be null even when parts are clear. Match brows, eyes and mouth independently, including visible parts from whole-expression entries. A mouth from S050 does not imply an expressionless face. Each selected part contains id (catalog ID or null if there is no fitting entry) and evidence_en (one short English phrase describing ONLY that visible part). Use a corresponding catalog phrase if it fits the drawing; otherwise describe the image directly. For base_emotion give the combined visible evidence. Keep evidence_en free of instructions, reference labels, or words such as sketch, pencil, rough, and blank pupils. A hidden or undecidable slot is null. Extras are visible tears, blush, sweat, puffed cheeks or anger vein; otherwise []. Do not copy whole-face descriptions, combine contradictory shapes, or add detail to indistinct lines.
-
-Unfilled irises with visible contours are normal; absent black fill or highlights do not support S053/S054/S066. S066 needs two deliberately empty outlined circle symbols. An impression of shock is insufficient. For replaced eyes distinguish angled, curved, parallel, X, plus and spiral strokes; only S059-S069 replace the eyeballs. S070 has hearts inside normal irises, S071 has star-shaped central pupils in round irises, S072 has multiple glints inside irises. S073 has white below the iris. S083/S084 have a single closed eye; an occluded eye is not closed. Distinguish tears at eyelids from sweat on forehead/temple and saliva at the mouth. Preserve subtle smiles only when mouth corners visibly rise. Do not infer unseen lashes, pupils or a drawing style.
+def pose_prompt_text(locate_face: bool) -> str:
+    prompt = """Read the person in this cropped manga storyboard as drawn. Return only one JSON object. All descriptions are short English phrases. Ignore writing and construction lines. Use unrotated image directions. Report visible head, torso, limbs and contacts independently; never infer proportions, unseen limbs, or motion from tilt alone. Distinguish a cut at the image edge from occlusion. Decide framing and posture separately: a standing figure may be cropped at the chest. Preserve anatomical sides only if clear; otherwise use unknown. Describe the subject's visible pose only, excluding expression, in pose_draft.
 
 Return these keys:
 {
@@ -183,14 +179,15 @@ Return these keys:
  "canvas_orientation":{"body_axis":"upright|upside_down|horizontal_head_left|horizontal_head_right|diagonal_head_up_left|diagonal_head_up_right|diagonal_head_down_left|diagonal_head_down_right|uncertain","head_relative_to_pelvis":"above|below|image_left|image_right|uncertain","is_upside_down":false},
  "view_direction":{"head":{"view_angle":"front|three_quarter_front|profile|three_quarter_back|back|uncertain","horizontal_facing":"image_left|image_right|center|away|uncertain","evidence":[]},"torso":{"view_angle":"","horizontal_facing":"","evidence":[]},"head_torso_twist":"none|slight|clear|uncertain"},
  "pose":{"base_posture":"standing|sitting|kneeling|crouching|lying|reclining|curled|running|airborne_or_falling|other|uncertain","torso_shape":"","arms":[{"side":"left|right|unknown","image_direction":"","elbow":"straight|slightly_bent|bent|uncertain","hand_position_or_contact":"","visibility":"full|partial|cropped|uncertain"}],"legs":[{"side":"","image_direction":"","knee":"","foot_position_or_contact":"","visibility":""}],"support_or_contact":"","action_candidate":""},
- "pose_draft":"","confidence":"high|medium|low","uncertainties":[],
- "expression":{"target_face_id":null,"target_evidence_en":"","faces":[{"face_id":"face_01","bbox":null,"confidence":"high|medium|low","parts_mapping":{"base_emotion":null,"brows":null,"eyes":{"id":null,"evidence_en":""},"mouth":null,"extras":[]}}]}
-}
-CATALOG (ID, category, W=whole expression / F=feature, valid slots b=brows e=eyes m=mouth x=extras, original label | English visual cue):
-""" + catalogue + expression_hint_prompt(expression_hints)
+ "pose_draft":"","confidence":"high|medium|low","uncertainties":[]
+}"""
+    if locate_face:
+        prompt += """
+Also return subject_face_status: "located", "no_face", "ambiguous", or "unreadable". For "located", include subject_face: {"bbox":[left,top,right,bottom],"reason":"..."} for the visible face belonging to this cropped figure. Coordinates are normalized to 0..1 in this unrotated image. Enclose the whole face including brows, chin and surface marks. Use its anatomical connection to the body, not its expression. For a hidden or indistinct face use "unreadable", for no face use "no_face", and when multiple faces cannot be uniquely associated use "ambiguous"; in these cases return subject_face: null. Do not analyze the facial expression."""
+    return prompt
 
 
-def extract_json_object(raw: str) -> dict[str, Any]:
+def extract_json_object(raw: str, *, face: bool = False) -> dict[str, Any]:
     cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
     start = cleaned.find("{")
     if start < 0:
@@ -199,8 +196,10 @@ def extract_json_object(raw: str) -> dict[str, Any]:
         result, _ = json.JSONDecoder().raw_decode(cleaned[start:])
     except json.JSONDecodeError as exc:
         raise ValueError("人物の演技のJSONが途中で切れているか、形式が正しくありません") from exc
-    if (not isinstance(result.get("pose"), dict) or not isinstance(result.get("framing"), str)
-            or not isinstance(result.get("expression"), dict) or not isinstance(result["expression"].get("faces"), list)):
+    if face:
+        if not isinstance(result.get("faces"), list):
+            raise ValueError("顔表情のJSONにfacesがありません")
+    elif not isinstance(result.get("pose"), dict) or not isinstance(result.get("framing"), str):
         raise ValueError("人物の演技のJSONに必要な項目がありません")
     return result
 
@@ -264,23 +263,30 @@ def english_observation(raw: object, limit: int = 160) -> str:
 def normalized_part(raw: object, slot: str) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         return None
-    evidence = english_observation(raw.get("evidence_en"), 100)
+    reason = short_text(raw.get("reason"), 380)
+    reason = reason if english_observation(reason, 380) else ""
+    extract = english_observation(raw.get("extract_en"), 200)
+    evidence = (reason or extract) if slot == "base_emotion" else (extract or reason)
     if not evidence:
         return None
     code = raw.get("id")
     entry = ENTRIES.get(code) if isinstance(code, str) else None
-    if code is not None and entry is None:
-        return None
-    if slot == "base_emotion" and (not entry or entry["role"] != "whole_expression" or entry["category"] > "C07"):
-        return None
-    if slot == "extras" and not entry:
-        return None
-    if entry and slot != "base_emotion" and slot not in entry["slots"]:
+    # A bad catalog citation must never erase independent observations, another
+    # part's match, or the model's sentence. Keep only validated dictionary IDs.
+    if entry and (raw.get("prompt") not in (None, entry["prompt"])
+                  or (slot == "base_emotion" and (entry["role"] != "whole_expression" or entry["category"] > "C07"))
+                  or (slot != "base_emotion" and slot not in entry["slots"])):
+        entry = None
+    if slot == "base_emotion" and not entry:
         return None
     source = "catalog" if entry and evidence.casefold() in entry["visual_description_en"].casefold() else "observation"
-    part = {"id": code, "source": source, "evidence_en": evidence}
+    part = {"id": entry["id"] if entry else None, "prompt": entry["prompt"] if entry else None,
+            "source": source, "evidence_en": evidence, "reason": reason}
+    if extract:
+        part["extract_en"] = extract
     if slot == "eyes":
-        part["is_symbolic_eye"] = code in SYMBOLIC_EYE_IDS if entry else None
+        symbolic = raw.get("is_symbolic_eye")
+        part["is_symbolic_eye"] = symbolic if type(symbolic) is bool else None
     return part
 
 
@@ -293,21 +299,16 @@ def normalized_bbox(raw: object) -> list[float] | None:
     return None
 
 
-def expression_sentence(parts: dict[str, Any]) -> str | None:
-    # Only the base slot contributes an emotion label. Component entries contribute
-    # their observed geometry, never the other parts of their dictionary examples.
-    details = [parts[key] for key in ("brows", "eyes", "mouth")] + parts["extras"]
-    phrases = list(dict.fromkeys(part["evidence_en"] for part in details if part))
-    base = parts["base_emotion"]
-    lead = ENTRIES[base["id"]]["prompt"] if base else ""
-    sentence = "Expression: " + lead if lead else ""
-    # Keep whole observed clauses within the editable field's 800-character limit;
-    # all the extra marks remain in the structured analysis even in a crowded face.
-    for index, phrase in enumerate(phrases):
-        connector = (" with " if base else "") if index == 0 else ", "
-        if len(sentence) + len(connector) + len(phrase) < 800:
-            sentence += connector + phrase
-    return sentence[:1].upper() + sentence[1:] + "." if sentence else None
+def model_expression_sentence(raw: object) -> str | None:
+    # Only the language model writes the generator instruction. If it is missing or
+    # invalid, keep the observations for review without inventing a replacement.
+    if not isinstance(raw, str):
+        return None
+    sentence = " ".join(raw.split())
+    if (len(sentence) > 800 or not english_observation(sentence, 800)
+            or re.search(r"\b(?:sketch(?:y)?|pencil|rough|blank pupils|S\d{3})\b|<image\s*\d+>", sentence, re.I)):
+        return None
+    return sentence
 
 
 def normalized_expression(value: dict[str, Any]) -> dict[str, Any]:
@@ -331,27 +332,40 @@ def normalized_expression(value: dict[str, Any]) -> dict[str, Any]:
         raw_extras = mapping.get("extras")
         for extra in raw_extras if isinstance(raw_extras, list) else []:
             part = normalized_part(extra, "extras")
-            if part and all(previous["id"] != part["id"] for previous in extras):
+            if part and part not in extras:
                 extras.append(part)
         parts["extras"] = extras
+        observed_parts = [p for slot, p in parts.items() if slot != "extras" and p] + extras
+        labels = {part["prompt"] for part in observed_parts if part["prompt"]}
+        tags = [tag for tag in normalized_strings(raw.get("selected_tags"), 86) if tag in labels]
+        sentence = model_expression_sentence(raw.get("qwen_image21_prompt_en")) if observed_parts else None
         faces.append({
             "face_id": expected_id,
             "bbox": normalized_bbox(raw.get("bbox")),
             "confidence": normalized_enum(raw.get("confidence"), {"high", "medium", "low"}, "low"),
             "parts_mapping": parts,
-            "qwen_image21_prompt_en": expression_sentence(parts),
+            "selected_tags": tags,
+            "qwen_image21_prompt_en": sentence,
         })
     target = value.get("target_face_id")
     target_evidence = english_observation(value.get("target_evidence_en"))
-    if len(faces) == 1 and reliable_ids and target is None:
+    if len(raw_faces) == len(faces) == 1:
         target = faces[0]["face_id"]
-    if not reliable_ids or not any(face["face_id"] == target for face in faces) or (len(faces) > 1 and not target_evidence):
+    elif not reliable_ids or not any(face["face_id"] == target for face in faces) or not target_evidence:
         target = None
+    selected = next((face for face in faces if face["face_id"] == target), None)
+    if not faces:
+        status = normalized_enum(value.get("read_status"), {"no_face", "ambiguous", "unreadable"}, "no_face")
+    elif not selected:
+        status = "ambiguous"
+    else:
+        status = "read" if selected["qwen_image21_prompt_en"] else "unreadable"
     return {
+        "read_status": status,
         "catalog_version": CATALOG["version"],
         "catalog_sha256": CATALOG["source_sha256"],
         "target_face_id": target,
-        "target_evidence_en": target_evidence if target and len(faces) > 1 else None,
+        "target_evidence_en": (target_evidence or None) if target else None,
         "faces": faces,
     }
 
@@ -443,7 +457,7 @@ def compose_action(analysis: dict[str, Any]) -> str:
     expression = analysis["expression"]
     target_sentence = next((face["qwen_image21_prompt_en"] for face in expression["faces"]
                             if face["face_id"] == expression["target_face_id"]), None)
-    phrases = [target_sentence] if target_sentence else []
+    phrases = []
     draft = safe_pose_draft(pose["draft"], framing["size"])
     posture = {"curled": "curled up", "airborne_or_falling": "airborne or falling"}.get(pose["base"], pose["base"])
     if posture not in {"other", "uncertain"} and posture not in draft.lower():
@@ -497,9 +511,9 @@ def compose_action(analysis: dict[str, Any]) -> str:
             seen.add(cleaned.casefold())
     # The editable field is limited to 800 characters. Keep the expression first,
     # fitting complete sentences rather than cutting the final word in half.
-    action = ""
+    action = target_sentence or ""
     for sentence in sentences:
-        if len(action) + len(sentence) + bool(action) <= 800:
+        if sentence != target_sentence and len(action) + len(sentence) + bool(action) <= 800:
             action += (" " if action else "") + sentence
     return action
 
@@ -519,58 +533,133 @@ def prepare_image(source: Path) -> tuple[Path, int, int]:
     return target, width, height
 
 
+@contextmanager
+def face_target_image(figure: Path, supplied: Path | None, bbox: list[float]):
+    """Use original face pixels. If Qwen localized it, crop the source, never the pose thumbnail."""
+    from PIL import Image, ImageOps
+
+    source_path = supplied if supplied is not None else figure
+    crop_needed = supplied is None and bbox != [0, 0, 1, 1]
+    with Image.open(source_path) as source:
+        oriented = source.getexif().get(274, 1) != 1
+        image = ImageOps.exif_transpose(source) if oriented else source
+        if crop_needed:
+            w, h = image.size
+            x1, y1, x2, y2 = bbox
+            image = image.crop((math.floor(x1*w), math.floor(y1*h), math.ceil(x2*w), math.ceil(y2*h)))
+        # mlx-vlm converts images to RGB, dropping alpha. Flatten translucent
+        # pixels onto white here so black line art on transparent black stays visible.
+        translucent = False
+        if "A" in image.getbands() or "transparency" in image.info:
+            rgba = image.convert("RGBA")
+            translucent = rgba.getchannel("A").getextrema()[0] < 255
+            if translucent:
+                white = Image.new("RGBA", image.size, "white")
+                image = Image.alpha_composite(white, rgba).convert("RGB")
+        if not (crop_needed or oriented or translucent):
+            yield source_path
+            return
+        with tempfile.NamedTemporaryFile(prefix="nyamuru-expression-face-", suffix=".png") as temporary:
+            image.save(temporary, format="PNG")
+            temporary.flush()
+            yield Path(temporary.name)
+
+
+def infer_object(model, processor, prompt: str, image_path: Path, max_tokens: int, *, face: bool = False):
+    from mlx_vlm import generate
+    from mlx_vlm.prompt_utils import apply_chat_template
+
+    response = generate(
+        model, processor, apply_chat_template(processor, model.config, prompt, num_images=1),
+        image=str(image_path), max_tokens=max_tokens, temp=0.0, repetition_penalty=1.05, verbose=False,
+    )
+    try:
+        return extract_json_object(response.text, face=face)
+    except ValueError:
+        if not face:
+            raise
+        # The face pass alone returned truncated/malformed JSON. Retain the
+        # independently completed pose and identity. Model and I/O errors propagate.
+        return {"faces": [], "read_status": "unreadable"}
+
+
+def read_performance(model, processor, figure: Path, prepared: Path, current_size: str, max_tokens: int,
+                     expression_tagging: dict[str, Any], face_image: Path | None, face_bbox: object):
+    bbox = normalized_bbox(face_bbox)
+    if face_bbox is not None and bbox is None:
+        raise ValueError("人物内の顔の座標が不正です")
+    if face_image is not None and (not face_image.is_file() or bbox is None):
+        raise ValueError("顔の原寸画像と人物内の座標が必要です")
+    locate = bbox is None
+    pose = infer_object(model, processor, pose_prompt_text(locate), prepared, max_tokens)
+    subject = pose.get("subject_face")
+    reason = ""
+    if locate and pose.get("subject_face_status") == "located" and isinstance(subject, dict):
+        reason = english_observation(subject.get("reason"), 380)
+        bbox = normalized_bbox(subject.get("bbox")) if reason else None
+    if bbox is None:
+        status = normalized_enum(pose.get("subject_face_status"), {"ambiguous", "unreadable", "no_face"}, "unreadable")
+        reading = {"faces": [], "read_status": status}
+    else:
+        with face_target_image(figure, face_image, bbox) as target:
+            reading = infer_object(model, processor, expression_prompt_text(expression_tagging.get("hints")),
+                                   target, PERFORMANCE_MAX_TOKENS, face=True)
+        # Persist coordinates within the figure (not within this second image).
+        raw_faces = reading["faces"]
+        reading["read_status"] = "unreadable"  # An empty/unusable response for a located face needs review.
+        for face in raw_faces:
+            if not isinstance(face, dict):
+                continue
+            if len(raw_faces) == 1:
+                face["bbox"] = bbox
+            elif face_image is None and (local := normalized_bbox(face.get("bbox"))):
+                x1, y1, x2, y2 = bbox
+                face["bbox"] = [x1 + (x2-x1)*local[0], y1 + (y2-y1)*local[1],
+                                x1 + (x2-x1)*local[2], y1 + (y2-y1)*local[3]]
+            else:
+                # A supplied detector crop can extend beyond the figure; its local
+                # coordinates cannot safely be projected from the clipped bbox.
+                face["bbox"] = None
+        if len(raw_faces) == 1 and reason:
+            reading["target_evidence_en"] = reason
+    analysis = normalize_analysis(pose, reading, current_size)
+    if not locate and reading.get("faces"):
+        attach_expression_hint_provenance(analysis["expression"], expression_tagging)
+    return analysis
+
+
 def analyze(
     model_path: Path,
     image_path: Path,
     current_size: str,
     max_tokens: int,
     expression_tagging: dict[str, Any] | None = None,
+    face_image: Path | None = None,
+    face_bbox: object = None,
 ) -> dict[str, Any]:
     if not model_path.is_dir() or not (model_path / "config.json").is_file():
         raise FileNotFoundError("ローカルVLMモデルが見つかりません")
     if not image_path.is_file():
         raise FileNotFoundError("解析対象の人物切り抜きが見つかりません")
 
-    from mlx_vlm import generate, load
-    from mlx_vlm.prompt_utils import apply_chat_template
+    from mlx_vlm import load
 
-    prepared_path: Path | None = None
+    prepared_path, width, height = prepare_image(image_path)
     try:
-        prepared_path, width, height = prepare_image(image_path)
         model, processor = load(str(model_path))
-        pose_prompt = apply_chat_template(
-            processor,
-            model.config,
-            prompt_text(current_size, (expression_tagging or {}).get("hints")),
-            num_images=1,
+        analysis = read_performance(
+            model, processor, image_path, prepared_path, current_size, max(900, min(max_tokens, PERFORMANCE_MAX_TOKENS)),
+            expression_tagging or {}, face_image, face_bbox,
         )
-        response = generate(
-            model,
-            processor,
-            pose_prompt,
-            image=str(prepared_path),
-            max_tokens=max(900, min(max_tokens, PERFORMANCE_MAX_TOKENS)),
-            temp=0.0,
-            repetition_penalty=1.05,
-            verbose=False,
-        )
-        raw_analysis = extract_json_object(response.text)
-        expression_analysis = raw_analysis.get("expression") if isinstance(raw_analysis.get("expression"), dict) else {}
-        analysis = normalize_analysis(raw_analysis, expression_analysis, current_size)
-        analysis["expression"] = attach_expression_hint_provenance(
-            analysis["expression"], expression_tagging or {},
-        )
-        action = compose_action(analysis)
         return {
-            "suggested_action": action,
+            "suggested_action": compose_action(analysis),
             "suggested_size": analysis["framing"]["size"],
             "analysis": analysis,
             "image": {"width_px": width, "height_px": height},
             "prompt_version": PROMPT_VERSION,
         }
     finally:
-        if prepared_path is not None:
-            prepared_path.unlink(missing_ok=True)
+        prepared_path.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -583,12 +672,15 @@ def main() -> int:
         expression_tagging = request.get("expression_tagging")
         if not isinstance(expression_tagging, dict):
             expression_tagging = {}
+        if len(args.image) > 2:
+            raise ValueError("人物画像と顔画像は各1枚までです")
         result = analyze(
             args.model.resolve(),
-            args.image.resolve(),
+            args.image[0].resolve(),
             current_size,
             args.max_tokens,
             expression_tagging,
+            args.image[1].resolve() if len(args.image) == 2 else None, request.get("face_bbox"),
         )
         print(json.dumps({"ok": True, "result": result}, ensure_ascii=False))
         return 0

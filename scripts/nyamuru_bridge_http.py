@@ -98,6 +98,16 @@ class BridgeHandler(BaseHTTPRequestHandler):
             raise ValueError("JSONオブジェクトが必要です")
         return value
 
+    @staticmethod
+    def expression_face_fields(body: dict[str, Any]) -> dict[str, Any]:
+        # Both person readers use the existing image request and analysis lock.
+        fields = {}
+        if "face_bbox" in body:
+            fields["face_bbox"] = body["face_bbox"]
+        if "face_image" in body:
+            fields["face_image_bytes"] = decode_image_data(body.pop("face_image"))
+        return fields
+
     def do_POST(self) -> None:
         if self.allowed_origin() == "":
             self.send_json(403, {"error": "このOriginからの接続は許可されていません"})
@@ -232,6 +242,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         decode_image_data(body.pop("image", None)),
                         body.get("current_size"),
                         body.get("vlm_model"),
+                        **self.expression_face_fields(body),
                     )
                 self.send_json(200, result)
                 return
@@ -263,6 +274,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         body.get("candidates"),
                         body.get("current_size"),
                         body.get("vlm_model"),
+                        **self.expression_face_fields(body),
                     )
                 self.send_json(200, result)
                 return

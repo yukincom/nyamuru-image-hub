@@ -1,4 +1,5 @@
 """Model-free checks for process, image and request ownership."""
+import base64
 import io
 import subprocess
 import sys
@@ -128,6 +129,67 @@ class BridgeMemoryTest(unittest.TestCase):
                     patch.object(vision_state, 'run_local_worker', side_effect=RuntimeError('optional model unavailable')), \
                     patch.object(bridge.sys, 'stderr', io.StringIO()):
                 self.assertEqual(state.expression_tagging(b'image'), {})
+
+    # 通常の人物照合・単独演技で、人物と顔は1枚ずつ別の引数で渡し、顔だけの時は二重送信しない。
+    # 実HTTPハンドラ・一時ファイルまで通し、模擬workerで画像順、顔だけのWD、終了時の回収を調べる。実画像判定は行わない。
+    def test_face_pixels_survive_both_readers_without_duplicate_images(self):
+        import nyamuru_worker_runtime as runner_module
+        roi = [0.1, 0.2, 0.4, 0.5]
+        full = [0, 0, 1, 1]
+        def image_data(data):
+            return "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config.json").touch()
+            state = self.state(root)
+            state.vlm_model = root
+            state.vlm_python = Path(sys.executable)
+            for reader in ("figure-performance", "character-match"):
+                for bbox, face, expected in [(roi, b"face", [b"person", b"face"]),
+                                             (full, None, [b"person"]), (None, None, [b"person"])]:
+                    with self.subTest(reader=reader, bbox=bbox):
+                        request = {"image": image_data(b"person"), "current_size": "bust-up", "candidates": []}
+                        if bbox is not None:
+                            request["face_bbox"] = bbox
+                        if face is not None:
+                            request["face_image"] = image_data(face)
+                        files = []
+                        def intercept(command, **kwargs):
+                            self.assertTrue(state.analysis_lock.locked())
+                            self.assertNotIn("image", request)
+                            self.assertNotIn("face_image", request)
+                            files.extend(Path(command[i + 1]) for i, word in enumerate(command) if word == "--image")
+                            self.assertEqual([f.read_bytes() for f in files], expected)
+                            self.assertEqual(kwargs["request"].get("face_bbox"), bbox)
+                            return {"suggested_action": "Standing.", "suggested_size": "bust-up", "analysis": {}}
+                        handler = bridge.BridgeHandler.__new__(bridge.BridgeHandler)
+                        handler.server = SimpleNamespace(state=state)
+                        handler.path = f"/api/{reader}/analyze"
+                        handler.allowed_origin = lambda: None
+                        handler.read_json = lambda: request
+                        handler.send_json = Mock()
+                        with patch.object(state, "vlm_available", return_value=True), patch.object(
+                                state, "expression_tagging", return_value={}) as wd, patch.object(
+                                runner_module, "run_worker_process", side_effect=intercept):
+                            handler.do_POST()
+                        self.assertEqual(handler.send_json.call_args.args[0], 200)
+                        self.assertEqual(len(files), len(expected))
+                        self.assertFalse(any(path.exists() for path in files))
+                        if bbox is None:
+                            wd.assert_not_called()
+                        else:
+                            wd.assert_called_once_with(face or b"person")
+
+    # 別画像のない局所bboxや位置のない別画像は顔の対応を保証できない。模擬入力でworker・WDに届く前の拒否を確認する。
+    def test_face_image_must_match_its_declared_bounds(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = self.state(Path(directory))
+            with patch.object(state, "expression_tagging") as wd:
+                for face, box in ((b"face", None), (None, [0.2, 0.2, 0.5, 0.5]), (b"", [0, 0, 1, 1]),
+                                  (b"face", [0.8, 0.5, 0.2, 1])):
+                    with self.subTest(box=box), self.assertRaises(ValueError):
+                        state.expression_worker_fields(b"person", face, box)
+                wd.assert_not_called()
 
     def test_batch_stops_loading_at_existing_total_limit_without_base64(self):
         class LargeImage:

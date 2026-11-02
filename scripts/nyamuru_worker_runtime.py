@@ -295,13 +295,18 @@ def run_figure_performance_worker(
     image_bytes: bytes,
     current_size: str,
     expression_tagging: dict[str, Any] | None = None,
+    face_image_bytes: bytes | None = None,
+    face_bbox: list[float] | None = None,
 ) -> dict[str, Any]:
     return run_mlx_vlm_worker(
         python=python,
         model=model,
         worker_name="local_figure_performance_worker.py",
-        image_bytes=image_bytes,
-        request_payload={"current_size": current_size, "expression_tagging": expression_tagging or {}},
+        image_bytes=image_bytes if face_image_bytes is None else [image_bytes, face_image_bytes],
+        request_payload={
+            "current_size": current_size, "expression_tagging": expression_tagging or {},
+            "face_bbox": face_bbox,
+        },
         temporary_prefix="nyamuru-figure-performance-",
     )
 
@@ -358,16 +363,19 @@ def run_character_match_worker(
     candidates: list[dict[str, Any]],
     current_size: str,
     expression_tagging: dict[str, Any] | None = None,
+    face_image_bytes: bytes | None = None,
+    face_bbox: list[float] | None = None,
 ) -> dict[str, Any]:
     return run_mlx_vlm_worker(
         python=python,
         model=model,
         worker_name="local_character_match_worker.py",
-        image_bytes=image_bytes,
+        image_bytes=image_bytes if face_image_bytes is None else [image_bytes, face_image_bytes],
         request_payload={
             "candidates": candidates,
             "current_size": current_size,
             "expression_tagging": expression_tagging or {},
+            "face_bbox": face_bbox,
         },
         temporary_prefix="nyamuru-character-match-",
     )

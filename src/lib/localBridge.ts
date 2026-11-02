@@ -218,6 +218,8 @@ export interface RecognizedTextLine {
 export interface DetectedFigureRegion {
   id: string;
   bbox: BBox;
+  /** 原稿全体に対する、一意に対応した顔の範囲。 */
+  faceBBox?: BBox;
   source: 'body' | 'face';
   confidence?: number;
   /** 編集用の整形後も変わらない、検出時点の所属コマID。 */
@@ -398,7 +400,7 @@ function sourceFrameShapeToInnerFrame(shape: PanelShape, sourceFrame: BBox): Pan
   return { type: 'rect', x: left, y: top, w: roundMm(right - left), h: roundMm(bottom - top) };
 }
 
-function normalizedPanelBox(entry: unknown): BBox | null {
+function normalizedPanelBox(entry: unknown, minimumSize = 0.005): BBox | null {
   const values = Array.isArray(entry) ? entry.map(Number) : [];
   if (values.length !== 4 || values.some((value) => !Number.isFinite(value))) return null;
   const [rawX, rawY, rawWidth, rawHeight] = values;
@@ -406,7 +408,7 @@ function normalizedPanelBox(entry: unknown): BBox | null {
   const top = clamp(rawY, 0, 1);
   const right = clamp(rawX + rawWidth, 0, 1);
   const bottom = clamp(rawY + rawHeight, 0, 1);
-  if (right - left < 0.005 || bottom - top < 0.005) return null;
+  if (right <= left || bottom <= top || right - left < minimumSize || bottom - top < minimumSize) return null;
   return { x: left, y: top, w: right - left, h: bottom - top };
 }
 
@@ -1063,24 +1065,16 @@ export function normalizeLayoutRecognition(
     if (!entry || typeof entry !== 'object') return [];
     const item = entry as Record<string, unknown>;
     const source = item.source === 'face' ? 'face' : item.source === 'body' ? 'body' : null;
-    const rawBox = Array.isArray(item.bbox) ? item.bbox.map(Number) : [];
-    if (!source || rawBox.length !== 4 || rawBox.some((value) => !Number.isFinite(value))) return [];
-    const [rawX, rawY, rawWidth, rawHeight] = rawBox;
-    const left = clamp(rawX, 0, 1);
-    const top = clamp(rawY, 0, 1);
-    const right = clamp(rawX + rawWidth, 0, 1);
-    const bottom = clamp(rawY + rawHeight, 0, 1);
-    if (right - left < 0.005 || bottom - top < 0.005) return [];
+    const regionBox = normalizedPanelBox(item.bbox);
+    if (!source || !regionBox) return [];
+    const faceBBox = source === 'body' ? normalizedPanelBox(item.face_bbox, 0) : null;
     const rawConfidence = Number(item.confidence ?? item.score);
     return [{
       id: typeof item.id === 'string' ? item.id.trim() : '',
       source,
-      bbox: {
-        x: Number(left.toFixed(6)),
-        y: Number(top.toFixed(6)),
-        w: Number((right - left).toFixed(6)),
-        h: Number((bottom - top).toFixed(6)),
-      },
+      bbox: { x: Number(regionBox.x.toFixed(6)), y: Number(regionBox.y.toFixed(6)),
+        w: Number(regionBox.w.toFixed(6)), h: Number(regionBox.h.toFixed(6)) },
+      ...(faceBBox ? { faceBBox } : {}),
       ...(Number.isFinite(rawConfidence) ? { confidence: clamp(rawConfidence, 0, 1) } : {}),
     }];
   }).sort((left, right) => Number(left.source === 'face') - Number(right.source === 'face')
@@ -1436,7 +1430,8 @@ export async function loadHumanPoseScene(poseId: string, catalogSha256: string, 
 // in the project; auxiliary tagger hints, model paths and unrelated pose data stay out.
 function expressionReadingFromAnalysis(analysis: Record<string, unknown> | null): FigureExpressionReading {
   const reading = analysis?.expression as Partial<FigureExpressionReading> | undefined;
-  if (!reading || typeof reading.catalog_version !== 'string' || !reading.catalog_version
+  if (!reading || !reading.read_status || !['read', 'unreadable', 'no_face', 'ambiguous'].includes(reading.read_status)
+    || typeof reading.catalog_version !== 'string' || !reading.catalog_version
     || typeof reading.catalog_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(reading.catalog_sha256)
     || !Array.isArray(reading.faces) || !reading.faces.every(face =>
       face && typeof face.face_id === 'string' && face.parts_mapping && Array.isArray(face.parts_mapping.extras))
@@ -1444,10 +1439,24 @@ function expressionReadingFromAnalysis(analysis: Record<string, unknown> | null)
     throw new Error('人物表情の解析結果形式が正しくありません');
   }
   return {
+    read_status: reading.read_status,
     catalog_version: reading.catalog_version, catalog_sha256: reading.catalog_sha256,
     target_face_id: reading.target_face_id ?? null, target_evidence_en: reading.target_evidence_en ?? null,
-    faces: reading.faces.map(({ face_id, bbox, confidence, parts_mapping, qwen_image21_prompt_en }: ReadExpressionFace) =>
-      ({ face_id, bbox, confidence, parts_mapping, qwen_image21_prompt_en })),
+    faces: reading.faces.map(({ face_id, bbox, confidence, parts_mapping, selected_tags, qwen_image21_prompt_en }: ReadExpressionFace) =>
+      ({ face_id, bbox, confidence, parts_mapping, ...(selected_tags && { selected_tags }), qwen_image21_prompt_en })),
+  };
+}
+
+export interface FigureFaceInput {
+  bbox: [number, number, number, number]; // xyxy in the original figure crop
+  image?: Blob; // absent when the figure crop is itself the detected face
+}
+
+async function figureImagePayload(figure: Blob, face?: FigureFaceInput) {
+  return {
+    image: await blobDataUrl(figure),
+    ...(face && {face_bbox: face.bbox}),
+    ...(face?.image && {face_image: await blobDataUrl(face.image)}),
   };
 }
 
@@ -1455,9 +1464,10 @@ function expressionReadingFromAnalysis(analysis: Record<string, unknown> | null)
 export async function analyzeFigurePerformanceWithLocalVlm(
   blob: Blob,
   currentSize: FigureSize,
+  face?: FigureFaceInput,
 ): Promise<FigurePerformanceSuggestion> {
   const payload = await postJson('/api/figure-performance/analyze', {
-    image: await blobDataUrl(blob),
+    ...await figureImagePayload(blob, face),
     current_size: currentSize,
     vlm_model: currentLocalModelPreferences().vlmModelId,
   }, 650_000) as Record<string, unknown>;
@@ -1606,9 +1616,10 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,
   candidates: readonly CharacterMatchCandidate[],
   currentSize: FigureSize,
+  face?: FigureFaceInput,
 ): Promise<CharacterMatchSuggestion> {
   const payload = await postJson('/api/character-match/analyze', {
-    image: await blobDataUrl(blob),
+    ...await figureImagePayload(blob, face),
     candidates: candidates.map((candidate) => ({
       id: candidate.id,
       observed_traits: candidate.observedTraits,

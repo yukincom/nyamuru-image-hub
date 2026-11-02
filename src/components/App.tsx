@@ -2898,7 +2898,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
             setNewLayoutMessage('人物と演技を読み取っています…');
             setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
             try {
-              const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(await crop.original(), characterCandidates, target.currentSize);
+              const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(
+                await crop.original(), characterCandidates, target.currentSize, await crop.face(),
+              );
               const { candidateId, confidence, action, suggestedSize, reason, expressionReading } = suggestion;
               characterReadOutcomes.set(target.sourceRegionId, { ok: true, candidateId, confidence, action, suggestedSize, reason, expressionReading });
             } catch (error) {

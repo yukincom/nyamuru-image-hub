@@ -40,6 +40,9 @@ export interface PersistentAnalogAssetRef {
 export interface ExpressionPart {
   id: string | null;
   evidence_en: string;
+  prompt?: string | null;
+  extract_en?: string;
+  reason?: string;
   source: 'catalog' | 'observation';
 }
 export interface ReadExpressionFace {
@@ -53,9 +56,11 @@ export interface ReadExpressionFace {
     mouth: ExpressionPart | null;
     extras: ExpressionPart[];
   };
+  selected_tags?: string[];
   qwen_image21_prompt_en: string | null;
 }
 export interface FigureExpressionReading {
+  read_status?: 'read' | 'unreadable' | 'no_face' | 'ambiguous';
   catalog_version: string;
   catalog_sha256: string;
   target_face_id: string | null;

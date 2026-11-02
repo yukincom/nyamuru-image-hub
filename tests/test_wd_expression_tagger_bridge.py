@@ -60,7 +60,7 @@ class WdExpressionTaggerTest(unittest.TestCase):
 
     # WDが渡すのは英語候補1回。辞書との同時入力でもraw tagを含めず、実線の根拠を求める。模擬タグのみ。
     def test_qwen_prompt_receives_natural_english_not_danbooru_tokens(self):
-        prompt = performance.prompt_text("face", [{
+        prompt = performance.expression_prompt_text([{
             "tag": "one_eye_closed",
             "score": 0.82,
             "text": "one eye is closed",
@@ -75,14 +75,14 @@ class WdExpressionTaggerTest(unittest.TestCase):
 
     # WD候補なしでも同じ辞書で表情を読む。promptにヒント欄がなく5枠と辞書が残ることを確認。
     def test_prompt_without_hints_keeps_the_existing_qwen_path(self):
-        prompt = performance.prompt_text("bust-up", [])
+        prompt = performance.expression_prompt_text([])
         self.assertNotIn("Expression-only visual hints", prompt)
         self.assertIn("parts_mapping", prompt)
         self.assertIn("S050", prompt)
 
     # 閉じた口だけでは顔全体の感情を示さない。promptにヒントを追加せず、通常の読み取り指示が残ることを確認。
     def test_closed_mouth_alone_is_recorded_but_not_sent_as_emotion_context(self):
-        prompt = performance.prompt_text("face", [{
+        prompt = performance.expression_prompt_text([{
             "tag": "closed_mouth",
             "score": 0.74,
             "threshold": 0.35,

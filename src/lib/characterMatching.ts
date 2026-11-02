@@ -116,9 +116,10 @@ export function applyCharacterReadOutcomes(
       metadata.analysisReview = 'low-confidence';
       metadata.analysisReviewMessage = outcome.reason || '人物を確定できませんでした';
       reviewRegions.add(sourceRegionId);
-    } else if (outcome.expressionReading.faces.length > 1 && !outcome.expressionReading.target_face_id) {
+    } else if (outcome.expressionReading.read_status === 'ambiguous' || outcome.expressionReading.read_status === 'unreadable') {
       metadata.analysisReview = 'low-confidence';
-      metadata.analysisReviewMessage = '切り抜きに複数の顔があり、対象人物の表情を確定できませんでした';
+      metadata.analysisReviewMessage = outcome.expressionReading.read_status === 'ambiguous'
+        ? '対象人物の顔を確定できませんでした' : '顔の表情を読み取れませんでした';
       reviewRegions.add(sourceRegionId);
     } else {
       delete metadata.analysisReview;

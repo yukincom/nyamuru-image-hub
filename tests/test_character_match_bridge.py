@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).parents[1]
@@ -50,49 +50,101 @@ class CharacterMatchWorkerTest(unittest.TestCase):
         response["observed"] = ["顎までのボブ"]
         self.assertEqual(worker.normalize_analysis(response, candidates)["confidence"], "none")
 
-    # 通常取込は同じ切り抜きを人物照合と演技の2回だけで読む。模擬MLXで送信を記録し、辞書/WDと台帳の分離、部位採用の結果、画像解放を確認する。
-    def test_combined_read_uses_the_existing_two_passes_and_applies_only_the_target_expression(self):
+    # 人物同定と姿勢は人物画像、表情は添付した原寸顔だけで読む。模擬MLXで辞書/候補の分離・1ロード・
+    # Qwen独自の英文の保持を確認する。顔ID表記や補助欄が欠けても正常な部位と本文は失われない。
+    def test_same_model_reads_identity_pose_then_the_supplied_face(self):
+        from PIL import Image
         requests = []
         identity = {"candidate_id": "person-a", "confidence": "medium",
                     "observed": ["jaw-length bob"], "reason": "The bob matches."}
-        face = {"face_id": "face_01", "confidence": "medium",
-                "parts_mapping": {"eyes": {"id": "S010", "evidence_en": "half-lidded eyes"},
-                                  "mouth": {"id": "S050", "evidence_en": "a short straight closed mouth"}}}
-        response = {"framing": "bust_up", "pose": {"base_posture": "standing"}, "expression": {"faces": [face]}}
+        sentence = "Give the face a reserved look with half-lidded eyes and a level mouth."
+        eye_reason = "Flat lids cover half the irises."
+        face = {"face_id": "face_1", "confidence": "medium",
+                "parts_mapping": {"eyes": {"id": "S010", "prompt": "annoyed", "extract_en": "half-lidded eyes",
+                                           "reason": eye_reason, "is_symbolic_eye": False},
+                                  "mouth": {"id": "S050", "extract_en": "a short straight closed mouth"}},
+                "selected_tags": ["annoyed", "expressionless"], "qwen_image21_prompt_en": sentence}
+        responses = [identity, {"framing": "bust_up", "pose": {"base_posture": "standing"}}, {"faces": [face]}]
         def generate(_model, _processor, prompt, *, image, **kwargs):
-            requests.append((prompt, image))
-            return SimpleNamespace(text=json.dumps([identity, response][len(requests) - 1]))
-        model = SimpleNamespace(config={})
+            requests.append((prompt, image, Path(image).read_bytes()))
+            return SimpleNamespace(text=json.dumps(responses[len(requests) - 1]))
+        load = Mock(return_value=(SimpleNamespace(config={}), object()))
         modules = {
-            "mlx_vlm": SimpleNamespace(load=lambda _path: (model, object()), generate=generate),
+            "mlx_vlm": SimpleNamespace(load=load, generate=generate),
             "mlx_vlm.prompt_utils": SimpleNamespace(apply_chat_template=lambda _p, _c, prompt, *, num_images:
                                                    prompt if num_images == 1 else self.fail("expected one crop")),
         }
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "config.json").touch()
-            original, prepared = root / "original", root / "prepared"
+            original, prepared, original_face = root / "original", root / "prepared", root / "face"
             original.touch()
-            prepared.touch()
+            prepared.write_bytes(b"figure preview")
+            with Image.new("RGB", (3, 4), (12, 23, 34)) as opaque:
+                opaque.save(original_face, format="PNG")
+            original_bytes = original_face.read_bytes()
+            bbox = [0.2, 0.1, 0.6, 0.4]
             with patch.dict(sys.modules, modules), patch.object(worker.performance, "prepare_image",
                     return_value=(prepared, 600, 300)):
                 result = worker.analyze(root, original, [{"id": "person-a", "observed_traits": ["顎までのボブ"]}],
-                    "bust-up", 700, {"hints": [{"tag": "one_eye_closed", "text": "one eyelid may be closed", "score": 0.5}]})
+                    "bust-up", 700, {"hints": [{"tag": "one_eye_closed", "text": "one eyelid may be closed",
+                                               "score": 0.5}]}, original_face, bbox)
             self.assertFalse(prepared.exists())
-        self.assertEqual([image for _, image in requests], [str(prepared), str(prepared)])
-        id_prompt, acting_prompt = [prompt for prompt, _ in requests]
+            self.assertTrue(original_face.exists())
+            load.assert_called_once_with(str(root))
+        self.assertEqual([pixels for _, _, pixels in requests], [b"figure preview", b"figure preview", original_bytes])
+        id_prompt, pose_prompt, face_prompt = [prompt for prompt, _, _ in requests]
         self.assertEqual(id_prompt.count("顎までのボブ"), 1)
-        self.assertNotIn("S086", id_prompt)
-        self.assertNotIn("one eyelid may be closed", id_prompt)
-        self.assertNotIn("person-a", acting_prompt)
-        self.assertNotIn("顎までのボブ", acting_prompt)
-        self.assertEqual(acting_prompt.count("one eyelid may be closed"), 1)
-        self.assertIn("S086 C10", acting_prompt)
+        for prompt in (id_prompt, pose_prompt):
+            self.assertNotIn("S086", prompt)
+            self.assertNotIn("one eyelid may be closed", prompt)
+        for prompt in (pose_prompt, face_prompt):
+            self.assertNotIn("person-a", prompt)
+            self.assertNotIn("顎までのボブ", prompt)
+        self.assertEqual(face_prompt.count("one eyelid may be closed"), 1)
+        self.assertIn("S086 C10", face_prompt)
         self.assertEqual(result["candidate_id"], "person-a")
-        self.assertEqual(result["analysis"]["expression"]["target_face_id"], "face_01")
-        self.assertEqual(result["suggested_action"].lower().count("half-lidded eyes"), 1)
-        self.assertNotIn("expressionless", result["suggested_action"])
-        self.assertIn("Standing.", result["suggested_action"])
+        reading = result["analysis"]["expression"]
+        self.assertEqual((reading["read_status"], reading["target_face_id"]), ("read", "face_01"))
+        stored = reading["faces"][0]
+        self.assertEqual((stored["bbox"], stored["selected_tags"]), (bbox, ["annoyed", "expressionless"]))
+        self.assertEqual(stored["parts_mapping"]["eyes"]["reason"], eye_reason)
+        self.assertEqual(stored["qwen_image21_prompt_en"], sentence)
+        self.assertEqual(result["suggested_action"], sentence + " Standing.")
+
+    # 顔専用回答のJSON切れ／faces欠落は顔だけ要確認。一方generateの例外は伝播。模擬モデルで姿勢・照合の保持を確かめる。
+    def test_bad_face_json_preserves_completed_pose_and_identity_but_runtime_error_propagates(self):
+        from PIL import Image
+        for output in ('{"faces":[', '{"other":true}', ValueError("model failed")):
+            with self.subTest(output=output), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "config.json").touch()
+                original, prepared = root / "face", root / "prepared"
+                with Image.new("RGB", (10, 10), "white") as opaque:
+                    opaque.save(original, format="PNG")
+                prepared.touch()
+                identity = {"candidate_id": "ava", "confidence": "high", "observed": ["a short bob"]}
+                pose = {"pose": {"base_posture": "standing"}, "framing": "bust_up"}
+                responses = [SimpleNamespace(text=json.dumps(item)) for item in [identity, pose]]
+                responses.append(output if isinstance(output, Exception) else SimpleNamespace(text=output))
+                modules = {
+                    "mlx_vlm": SimpleNamespace(load=lambda _: (SimpleNamespace(config={}), object()),
+                                               generate=Mock(side_effect=responses)),
+                    "mlx_vlm.prompt_utils": SimpleNamespace(apply_chat_template=lambda _p, _c, text, *, num_images: text),
+                }
+                with patch.dict(sys.modules, modules), patch.object(worker.performance, "prepare_image",
+                        return_value=(prepared, 10, 10)):
+                    def run():
+                        return worker.analyze(root, original, [{"id": "ava", "observed_traits": ["a short bob"]}],
+                                              "bust-up", 700, face_bbox=[0, 0, 1, 1])
+                    if isinstance(output, Exception):
+                        with self.assertRaisesRegex(ValueError, "model failed"):
+                            run()
+                    else:
+                        result = run()
+                        self.assertEqual(result["analysis"]["expression"]["read_status"], "unreadable")
+                        self.assertEqual((result["candidate_id"], result["suggested_action"]), ("ava", "Standing."))
+                self.assertFalse(prepared.exists())
 
     def test_normalization_never_accepts_unknown_candidate(self):
         candidates = [{"id": "person-a", "name": "A", "aliases": [], "observed_traits": []}]
@@ -250,7 +302,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
                     "name": "A",
                     "aliases": [],
                     "observed_traits": ["短いボブ"],
-                }], "face")
+                }], "face", face_bbox=[0, 0, 1, 1])
 
         self.assertEqual(vlm_worker.call_args.kwargs["candidates"][0]["id"], "person-a")
         self.assertEqual(vlm_worker.call_args.kwargs["expression_tagging"], tagging)

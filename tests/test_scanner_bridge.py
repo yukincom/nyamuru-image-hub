@@ -1249,6 +1249,7 @@ class LocalVisionResultTest(unittest.TestCase):
         self.assertEqual(len(panels), 8)
         self.assertTrue(all(box[3] > 0.15 for box in panels))
 
+    # 模擬検出で体内の唯一の顔位置を保持し、重複身体やその顔を別人物にしない。未所属の顔だけが別領域になる。
     def test_fuses_bodies_with_only_unmatched_faces_as_person_regions(self):
         detection = {
             "page": {"width": 1000, "height": 1400},
@@ -1264,9 +1265,23 @@ class LocalVisionResultTest(unittest.TestCase):
             },
         }
         self.assertEqual(bridge.detected_person_regions(detection), [
-            {"id": "bodies-0", "source": "body", "confidence": 0.9, "bbox": [0.26, 0.142857, 0.22, 0.3]},
+            {"id": "bodies-0", "source": "body", "confidence": 0.9, "bbox": [0.26, 0.142857, 0.22, 0.3],
+             "face_bbox": [0.3, 0.157143, 0.12, 0.085714]},
             {"id": "faces-1", "source": "face", "confidence": 0.8, "bbox": [0.7, 0.128571, 0.1, 0.071429]},
         ])
+
+    # 一人の体に複数顔が入る／一顔が複数の体に重なる場合、双方の顔を決め打ちしない。模擬検出bboxのみ。
+    def test_does_not_attach_a_face_with_ambiguous_ownership(self):
+        detection = {"page": {"width": 100, "height": 100}, "detections": {
+            "bodies": [{"id": "a", "score": 0.9, "bbox": [5, 5, 60, 85]},
+                       {"id": "b", "score": 0.9, "bbox": [40, 10, 95, 90]}],
+            "faces": [{"score": 0.95, "bbox": [42, 12, 54, 23]},
+                      {"score": 0.85, "bbox": [12, 15, 27, 29]}]}}
+        regions = bridge.detected_person_regions(detection)
+        self.assertEqual([region["id"] for region in regions], ["a", "b"])
+        self.assertTrue(all("face_bbox" not in region for region in regions))
+        del detection["detections"]["bodies"][1]
+        self.assertNotIn("face_bbox", bridge.detected_person_regions(detection)[0])
 
     def test_fuses_face_that_substantially_overlaps_browser_shifted_body(self):
         detection = {

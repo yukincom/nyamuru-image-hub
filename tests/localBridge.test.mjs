@@ -414,6 +414,7 @@ test('bridge v3のコマID重複とshape欠落を拒否する', () => {
   }), /編集形状がありません/);
 });
 
+// 模擬検出で体に付随する顔だけ原稿座標に残し、二重に人物を作らない。OCR・コマの所属も保持する。
 test('OCR候補と人物領域を安全に正規化する', () => {
   const result = normalizeLayoutRecognition({
     panel_boxes: [[0.05, 0.04, 0.9, 0.42], [0.05, 0.5, 0.9, 0.44]],
@@ -428,7 +429,7 @@ test('OCR候補と人物領域を安全に正規化する', () => {
       body_region_count: 3,
     },
     people: { engine: 'RT-DETR', regions: [
-      { source: 'body', bbox: [0.18, 0.12, 0.2, 0.3] },
+      { source: 'body', bbox: [0.18, 0.12, 0.2, 0.3], face_bbox: [0.25, 0.125, 0.125, 0.125] },
       { source: 'face', bbox: [0.22, 0.15, 0.08, 0.08] },
       { source: 'face', bbox: [0.7, 0.62, 0.1, 0.1] },
     ] },
@@ -454,7 +455,7 @@ test('OCR候補と人物領域を安全に正規化する', () => {
   assert.equal(result.detectedFaceRegionCount, 2);
   assert.equal(result.detectedBodyRegionCount, 3);
   assert.deepEqual(result.detectedFigures, [
-    { id: 'figure-001', source: 'body', bbox: { x: 0.18, y: 0.12, w: 0.2, h: 0.3 }, sourcePanelId: 'panel-001' },
+    { id: 'figure-001', source: 'body', bbox: { x: 0.18, y: 0.12, w: 0.2, h: 0.3 }, faceBBox: { x: 0.25, y: 0.125, w: 0.125, h: 0.125 }, sourcePanelId: 'panel-001' },
     { id: 'figure-002', source: 'face', bbox: { x: 0.7, y: 0.62, w: 0.1, h: 0.1 }, sourcePanelId: 'panel-002' },
   ]);
   assert.equal(result.ocrLines[0].text, 'こんにちは');
