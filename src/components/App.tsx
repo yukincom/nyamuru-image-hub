@@ -64,6 +64,7 @@ import { initializePanelBackgrounds } from '../lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../lib/initialBubbleLineBreaks.ts';
 import CharacterReadProgress, { type CharacterReadProgressState } from './CharacterReadProgress';
 import NewLayoutAnalysisFeed from './NewLayoutAnalysisFeed';
+import NewLayoutSourceImage from './NewLayoutSourceImage';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
 import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, parseOmayYaml, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml } from '../lib/manga';
 import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
@@ -116,7 +117,6 @@ type RightAngle = 0 | 90 | 180 | 270;
 interface NewLayoutItem {
   id: string;
   file: File;
-  previewUrl: string;
   source: NewLayoutSource;
   analysis: LayoutRecognitionResult | null;
   analyzing: boolean;
@@ -776,7 +776,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   };
 
   const discardNewLayoutItems = () => {
-    newLayoutItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     newLayoutItemsRef.current = [];
     setNewLayoutItems([]);
     setNewLayoutActiveIndex(0);
@@ -1071,7 +1070,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   useEffect(() => () => {
     newLayoutOperationGeneration.current += 1;
     window.clearTimeout(characterTextSyncTimer.current);
-    newLayoutItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     const draftSession = newCharacterDraftSession.current;
     newCharacterDraftSession.current = null;
     if (draftSession) discardSeriesCatalogDraftOnPageExit(draftSession.token);
@@ -2467,7 +2465,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     void discardScannerSources().catch(() => undefined);
     discardNewLayoutItems();
     const items = selected.map((file) => ({
-      id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), source: 'manual' as const,
+      id: crypto.randomUUID(), file, source: 'manual' as const,
       analysis: null, analyzing: false, rotationOverride: 0 as const,
     }));
     newLayoutItemsRef.current = items;
@@ -2587,7 +2585,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
         if (scannerSessionRef.current?.id !== session.id) break;
         if (batch.files.length) {
           const additions = batch.files.map(({ id, file }) => ({
-            id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
+            id, file, source: 'scanner' as const,
             analysis: null, analyzing: false, rotationOverride: 0 as const,
           }));
           const existing = newLayoutItemsRef.current;
@@ -2637,7 +2635,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       setScannerSession(resumed.session);
       setPendingScannerSession(null);
       const items = resumed.files.map(({ id, file }) => ({
-        id, file, previewUrl: URL.createObjectURL(file), source: 'scanner' as const,
+        id, file, source: 'scanner' as const,
         analysis: null, analyzing: false, rotationOverride: 0 as const,
       }));
       newLayoutItemsRef.current = items;
@@ -4579,7 +4577,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
                     const item = newLayoutItems[itemIndex];
                     if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`source-empty-${itemIndex}`} />;
                     return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''}`} aria-label={`原画 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`source-${item.id}`}>
-                      <span class="new-layout-thumb-media"><img src={item.previewUrl} alt="" style={layoutPreviewImageStyle(displayedLayoutRotation(item))} /></span>
+                      <span class="new-layout-thumb-media"><NewLayoutSourceImage file={item.file} alt="" style={layoutPreviewImageStyle(displayedLayoutRotation(item))} /></span>
                       <em>{String(itemIndex + 1).padStart(2, '0')}</em>
                     </button>;
                   })}
@@ -4602,7 +4600,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
               <section class="new-layout-focus-pane" aria-labelledby="new-layout-focus-title">
                 <h4 id="new-layout-focus-title">フォーカス中</h4>
                 <div class="new-layout-focus-body">
-                  <div class="new-layout-focus-image"><img src={activeLayoutItem.previewUrl} alt="読み込んだネーム画像のプレビュー" style={layoutPreviewImageStyle(displayedLayoutRotation(activeLayoutItem))} /></div>
+                  <div class="new-layout-focus-image"><NewLayoutSourceImage file={activeLayoutItem.file} alt="読み込んだネーム画像のプレビュー" style={layoutPreviewImageStyle(displayedLayoutRotation(activeLayoutItem))} /></div>
                   <div class="new-layout-focus-controls">
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
                     <strong >{activeLayoutItem.file.name}</strong>
