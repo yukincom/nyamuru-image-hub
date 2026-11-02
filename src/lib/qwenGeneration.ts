@@ -119,7 +119,7 @@ export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkfl
   ].filter(Boolean).join('\n\n');
   if(!plan.threeImageTarget)return {...plan,prompt};
   const {width,height,dpi,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
-  return {...plan,threeImages:true,width,height,dpi,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
+  return {...plan,threeImages:true,width:Math.max(1,Math.round(width*.6)),height:Math.max(1,Math.round(height*.6)),dpi,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
 }
 export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
   if(!plan.contentKind)return '';

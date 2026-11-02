@@ -388,6 +388,7 @@ def install_qwen_defaults(store):
         if hashlib.sha256(canonical(previous)).hexdigest() in {
             'fe427df378bb686284604ad997cb39a87490f85ea13990b2047e4db8e1310596',
             'b883dbec6548fef076e23cb0bb911837f7dd88fcef44e59a2da8095bf863729f',
+            '024936763209c1c5f14db72a830f6ba576a56bdbe7fa5b834bb2775de22a6aae',
         }:
             store.save({**figure, 'name': current['name'], 'id': current['id'], 'expected_version': current['version']})
         return

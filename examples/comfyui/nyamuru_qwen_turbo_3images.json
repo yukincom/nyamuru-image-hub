@@ -1,8 +1,8 @@
 {
   "id": "ee345dc9-f689-49af-8257-1a9cde9f869e",
-  "revision": 1,
-  "last_node_id": 42,
-  "last_link_id": 34,
+  "revision": 2,
+  "last_node_id": 44,
+  "last_link_id": 36,
   "nodes": [
     {
       "id": 1,
@@ -819,8 +819,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            23,
-            26
+            23
           ]
         },
         {
@@ -1105,8 +1104,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            4,
-            27
+            4
           ]
         }
       ],
@@ -1262,7 +1260,7 @@
     },
     {
       "id": 34,
-      "type": "GetImageSize",
+      "type": "PrimitiveInt",
       "pos": [
         10,
         1870
@@ -1276,44 +1274,40 @@
       "mode": 0,
       "inputs": [
         {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 26
+          "name": "value",
+          "type": "INT",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
         }
       ],
       "outputs": [
         {
-          "name": "width",
+          "name": "INT",
           "type": "INT",
           "links": [
             28,
-            31
+            31,
+            35
           ]
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": [
-            29,
-            32
-          ]
-        },
-        {
-          "name": "batch_size",
-          "type": "INT",
-          "links": []
         }
       ],
       "properties": {
-        "Node name for S&R": "GetImageSize"
+        "Node name for S&R": "PrimitiveInt"
       },
-      "widgets_values": [],
-      "widgets_values_named": {},
-      "title": "コマの原寸（image1）"
+      "widgets_values": [
+        1024,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "value": 1024
+      },
+      "title": "受け取り幅（px）"
     },
     {
       "id": 35,
-      "type": "GetImageSize",
+      "type": "PrimitiveInt",
       "pos": [
         10,
         2110
@@ -1327,38 +1321,36 @@
       "mode": 0,
       "inputs": [
         {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 27
+          "name": "value",
+          "type": "INT",
+          "widget": {
+            "name": "value"
+          },
+          "link": null
         }
       ],
       "outputs": [
         {
-          "name": "width",
+          "name": "INT",
           "type": "INT",
           "links": [
-            8
+            29,
+            32,
+            36
           ]
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": [
-            9
-          ]
-        },
-        {
-          "name": "batch_size",
-          "type": "INT",
-          "links": []
         }
       ],
       "properties": {
-        "Node name for S&R": "GetImageSize"
+        "Node name for S&R": "PrimitiveInt"
       },
-      "widgets_values": [],
-      "widgets_values_named": {},
-      "title": "作業用の幅・高さ"
+      "widgets_values": [
+        1024,
+        "fixed"
+      ],
+      "widgets_values_named": {
+        "value": 1024
+      },
+      "title": "受け取り高さ（px）"
     },
     {
       "id": 36,
@@ -1550,7 +1542,125 @@
         0
       ],
       "widgets_values_named": {},
-      "title": "コマの原寸で切り出す"
+      "title": "指定した受け取り寸法で切り出す"
+    },
+    {
+      "id": 43,
+      "type": "ComfyMathExpression",
+      "pos": [
+        640,
+        1760
+      ],
+      "size": [
+        255,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "expression",
+          "type": "STRING",
+          "widget": {
+            "name": "expression"
+          },
+          "link": null
+        },
+        {
+          "name": "values.a",
+          "type": "INT,FLOAT,BOOLEAN",
+          "link": 35
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": []
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            8
+          ]
+        },
+        {
+          "name": "BOOL",
+          "type": "BOOLEAN",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+        "a + (32 - a % 32) % 32"
+      ],
+      "widgets_values_named": {
+        "expression": "a + (32 - a % 32) % 32"
+      },
+      "title": "生成用の幅（32の倍数）"
+    },
+    {
+      "id": 44,
+      "type": "ComfyMathExpression",
+      "pos": [
+        640,
+        2020
+      ],
+      "size": [
+        255,
+        136
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "expression",
+          "type": "STRING",
+          "widget": {
+            "name": "expression"
+          },
+          "link": null
+        },
+        {
+          "name": "values.a",
+          "type": "INT,FLOAT,BOOLEAN",
+          "link": 36
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": []
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            9
+          ]
+        },
+        {
+          "name": "BOOL",
+          "type": "BOOLEAN",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+        "a + (32 - a % 32) % 32"
+      ],
+      "widgets_values_named": {
+        "expression": "a + (32 - a % 32) % 32"
+      },
+      "title": "生成用の高さ（32の倍数）"
     }
   ],
   "links": [
@@ -1612,15 +1722,15 @@
     ],
     [
       8,
-      35,
-      0,
+      43,
+      1,
       7,
       0,
       "INT"
     ],
     [
       9,
-      35,
+      44,
       1,
       7,
       1,
@@ -1755,22 +1865,6 @@
       "IMAGE"
     ],
     [
-      26,
-      21,
-      0,
-      34,
-      0,
-      "IMAGE"
-    ],
-    [
-      27,
-      31,
-      0,
-      35,
-      0,
-      "IMAGE"
-    ],
-    [
       28,
       34,
       0,
@@ -1780,8 +1874,8 @@
     ],
     [
       29,
-      34,
-      1,
+      35,
+      0,
       37,
       1,
       "INT"
@@ -1804,8 +1898,8 @@
     ],
     [
       32,
-      34,
-      1,
+      35,
+      0,
       38,
       2,
       "INT"
@@ -1824,6 +1918,22 @@
       1,
       38,
       4,
+      "INT"
+    ],
+    [
+      35,
+      34,
+      0,
+      43,
+      1,
+      "INT"
+    ],
+    [
+      36,
+      35,
+      0,
+      44,
+      1,
       "INT"
     ]
   ],

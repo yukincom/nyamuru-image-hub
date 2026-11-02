@@ -101,6 +101,7 @@ async function run(){
  edit('ポジティブ',editedPrompt);edit('ネガティブ','negative test');
  (await wait(()=>button('5枚を生成する'),'生成ボタン')).click();
  const req=await wait(()=>submitted,'送信内容');
+ if(req.width!==Math.round(plan.threeImageTarget!.width*.6)||req.height!==Math.round(plan.threeImageTarget!.height*.6))throw Error('完成画像が原稿60%の寸法ではありません');
  if(req.prompt!==editedPrompt||req.negative_prompt!=='negative test'||req.workflow_id!==QWEN_FIGURE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
  if(JSON.stringify(req.references.map((x:{image:string})=>x.image))!==JSON.stringify([addr(first),addr(second),addr(third)]))throw Error('送信画像の役割');
  // 見込み: 準備で拒否されれば生成は未送信。合格: 再実行可・照合ボタンなし・原因だけを表示。HTTPは模擬。

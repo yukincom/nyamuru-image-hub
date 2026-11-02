@@ -11,8 +11,18 @@
       "input": "noise_seed"
     }
   ],
-  "width": [],
-  "height": [],
+  "width": [
+    {
+      "node": "34",
+      "input": "value"
+    }
+  ],
+  "height": [
+    {
+      "node": "35",
+      "input": "value"
+    }
+  ],
   "images": [
     [
       {

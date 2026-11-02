@@ -705,7 +705,8 @@ class QwenGenerationService:
             with Image.open(io.BytesIO(images[value['references'][0]['file']])) as pose:
                 has_alpha = 'A' in pose.getbands() or 'transparency' in pose.info
                 frame_size = tuple(value['output_size'])
-                preview_size = tuple(max(1, round(side / 5)) for side in frame_size)
+                # Output is 60% of the manuscript, while image1 remains the 20% reference.
+                preview_size = tuple(max(1, round(side / 3)) for side in frame_size)
                 if pose.size not in (frame_size, preview_size) or (has_alpha and pose.convert('RGBA').getchannel('A').getextrema()[0] != 255):
                     raise ValueError('image1にはコマに対応する不透明な3Dプレビューを指定してください')
             polygon = body.get('clip_polygon')

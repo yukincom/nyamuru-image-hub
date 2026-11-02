@@ -54,6 +54,20 @@ def data_url(raw):
     return 'data:image/png;base64,' + base64.b64encode(raw).decode()
 
 
+def native_definition():
+    # Known shipped graph before output dimensions were separated from image1.
+    old = read_definition()
+    g = old['graph']
+    g['34'] = {'class_type':'GetImageSize','inputs':{'image':['21',0]}}
+    g['35'] = {'class_type':'GetImageSize','inputs':{'image':['31',0]}}
+    g['7']['inputs'].update(width=['35',0],height=['35',1])
+    g['37']['inputs']['values.a'] = ['34',1]
+    g['38']['inputs']['height'] = ['34',1]
+    g.pop('43'); g.pop('44')
+    old['binding'].update(width=[],height=[])
+    return old
+
+
 class ThreeImageWorkflowTests(unittest.TestCase):
     # 見込み: 初期登録を一度だけ行えば、人物専用・通常編集を使い分けても手動設定を上書きしない。
     # 合格: 専用定義と通常2枚の接続、既存登録、削除後の再起動を確認。範囲: 一時フォルダーの本物の登録処理、推論なし。
@@ -100,7 +114,7 @@ class ThreeImageWorkflowTests(unittest.TestCase):
     # 見込み: 原寸の旧同梱グラフも更新でき、編集済みの登録を区別できる。
     # 合格: 同梱グラフだけを差し替え、個別変更済みなら保存版と内容が一致する。一時ストアで確認。
     def test_native_sketch_first_preset_migrates_only_when_unmodified(self):
-        old = read_definition()
+        old = native_definition()
         graph = old['graph']
         graph['6']['inputs'].update(prompt=PREVIOUS_POSITIVE+'\nUniform solid #00FF00 background.',
                                     negative_prompt=PREVIOUS_NEGATIVE)
@@ -120,9 +134,29 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             install_qwen_defaults(store)
             self.assertEqual(store.get(QWEN_FIGURE_ID), custom)
 
-    # 見込み: DesktopとAPIが同じ接続なら、原寸ポーズが出力を決定し、負の指示もCFG2で効く。
-    # 合格: UIリンクをたどりAPI全リンクと照合、参照の余白・原寸クロップ・正負とCFGを確認。範囲: 配布する両グラフ、推論なし。
-    def test_desktop_and_api_use_the_same_native_size_graph(self):
+    # 見込み: 使用中の同梱設定だけを更新し、利用者のプロンプト変更を保持できる。
+    # 合格: 同梱設定の寸法bindingが一度だけ更新され、編集済み設定はbyte相当で不変。実ストア、推論なし。
+    def test_current_image1_sized_preset_gets_output_dimensions_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = WorkflowStore(Path(tmp).resolve())
+            previous = store.save({**native_definition(), 'name':'作品の設定'}, initial_id=QWEN_FIGURE_ID)
+            (Path(tmp)/'.bundled-qwen-1').touch()
+            install_qwen_defaults(store)
+            updated = store.get(QWEN_FIGURE_ID)
+            self.assertEqual(updated['graph'], read_definition()['graph'])
+            self.assertEqual(updated['binding'], read_definition()['binding'])
+            self.assertEqual((updated['name'], updated['version']), ('作品の設定', previous['version']+1))
+            install_qwen_defaults(store)
+            self.assertEqual(store.get(QWEN_FIGURE_ID), updated)
+            edited = native_definition()
+            edited['graph']['6']['inputs']['prompt'] += '\nMy character.'
+            custom = store.save({**edited, 'id':QWEN_FIGURE_ID, 'expected_version':updated['version']})
+            install_qwen_defaults(store)
+            self.assertEqual(store.get(QWEN_FIGURE_ID), custom)
+
+    # 見込み: DesktopとAPIの接続が同じなら、参照画像と完成寸法を分けて生成できる。
+    # 合格: UIとAPIの全リンク・指定寸法のcrop・32倍数の生成寸法・正負とCFG2を照合。配布グラフ、推論なし。
+    def test_desktop_and_api_separate_reference_and_output_dimensions(self):
         definition = validate_definition(read_definition())
         graph = definition['graph']
         ui = json.loads((EXAMPLES/f'{NAME}.json').read_text())
@@ -142,13 +176,17 @@ class ThreeImageWorkflowTests(unittest.TestCase):
         self.assertEqual(graph['10']['inputs']['cfg'], 2)
         self.assertEqual(graph['12']['inputs']['images'], ['38',0])
         self.assertEqual(graph['38']['inputs']['width'], ['34',0])
-        self.assertEqual(graph['34']['inputs']['image'], ['21',0])
-        self.assertEqual(graph['35']['inputs']['image'], ['31',0])
+        self.assertEqual(graph['34']['class_type'], 'PrimitiveInt')
+        self.assertEqual(graph['35']['class_type'], 'PrimitiveInt')
+        self.assertEqual(graph['38']['inputs']['height'], ['35',0])
+        self.assertEqual(graph['7']['inputs']['width'], ['43',1])
+        self.assertEqual(graph['7']['inputs']['height'], ['44',1])
         self.assertEqual(graph['31']['inputs']['image'], ['21',0])
         self.assertEqual(graph['33']['inputs']['image'], ['41',0])
         self.assertEqual(graph['41']['inputs'], {'image':['23',0], 'alpha':['23',1]})
 
-    # The saved preview must reach the image1 upload unchanged. Exercise intake only.
+    # 見込み: 原稿20%のプレビューを変更せずに60%出力を要求できる。
+    # 合格: image1は359×176のbyte不変、出力1076×528、生成1088×544。実受付とbinding、推論なし。
     def test_confirmed_preview_keeps_its_png_bytes_and_panel_dimensions(self):
         raw = png('blue', (359, 176))
         with tempfile.TemporaryDirectory() as directory:
@@ -159,16 +197,21 @@ class ThreeImageWorkflowTests(unittest.TestCase):
             request = {'job_id': str(uuid4()), 'workflow_id': definition['id'], 'profile': PROFILE,
                 'document_key': 'test', 'page_number': 1, 'panel_id': 1, 'overlay': False,
                 'owner_key': 'figure-0', 'label': '人物', 'mode': 'new', 'prompt': POSITIVE,
-                'width': 1793, 'height': 880, 'dpi': 600, 'character_keys': ['person'],
+                'width': 1076, 'height': 528, 'dpi': 600, 'character_keys': ['person'],
                 'references': [{'label': label, 'character_keys': keys, 'image': data_url(image)}
                     for label, keys, image in [('3D', [], raw), ('設定画', ['person'], png('green')), ('ネーム', [], png('red'))]]}
             value, images = service.normalize_request(request)
             self.assertEqual(images[value['references'][0]['file']], raw)
-            self.assertEqual(value['output_size'], [1793, 880])
+            self.assertEqual(value['output_size'], [1076, 528])
             names = [ref['file'] for ref in value['references']]
-            graph = bind_graph(definition, POSITIVE, names, 1, 1793, 880)
+            graph = bind_graph(definition, POSITIVE, names, 1, 1076, 528)
             slot = definition['binding']['images'][0][0]
             self.assertEqual(graph[slot['node']]['inputs'][slot['input']], names[0])
+            self.assertEqual(graph['34']['inputs']['value'],1076)
+            self.assertEqual(graph['35']['inputs']['value'],528)
+            for node, expected in [('43',1088),('44',544)]:
+                a=graph[graph[node]['inputs']['values.a'][0]]['inputs']['value']
+                self.assertEqual(eval(graph[node]['inputs']['expression'],{'__builtins__':{}},{'a':a}),expected)
 
     # 見込み: 3資料を共用しseedのみを変えれば、選択まで無加工の5候補を保持できる。
     # 合格: 編集したnegativeと固定positiveが別入力へ届き、upload3回、5グラフの差はseedのみ、選んだ3番の背景は透明・中央色は3番・318×159。範囲: 模擬APIと実PNG、実推論を除く。
@@ -232,6 +275,8 @@ class ThreeImageWorkflowTests(unittest.TestCase):
                 expected['6']['inputs'].update(prompt=final_prompt, negative_prompt='test exclusions')
                 expected['10']['inputs']['noise_seed'] = graph['10']['inputs']['noise_seed']
                 expected['12']['inputs']['dpi'] = 600
+                expected['34']['inputs']['value'] = 318
+                expected['35']['inputs']['value'] = 159
                 for node, name in zip(('21', '22', '23'), names, strict=True):
                     expected[node]['inputs']['image'] = name
                 self.assertEqual(graph, expected)

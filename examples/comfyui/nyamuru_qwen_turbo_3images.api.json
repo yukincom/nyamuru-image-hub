@@ -73,11 +73,11 @@
     "class_type": "EmptyLatentImage",
     "inputs": {
       "width": [
-        "35",
-        0
+        "43",
+        1
       ],
       "height": [
-        "35",
+        "44",
         1
       ],
       "batch_size": 1
@@ -232,21 +232,15 @@
     }
   },
   "34": {
-    "class_type": "GetImageSize",
+    "class_type": "PrimitiveInt",
     "inputs": {
-      "image": [
-        "21",
-        0
-      ]
+      "value": 1024
     }
   },
   "35": {
-    "class_type": "GetImageSize",
+    "class_type": "PrimitiveInt",
     "inputs": {
-      "image": [
-        "31",
-        0
-      ]
+      "value": 1024
     }
   },
   "36": {
@@ -264,8 +258,8 @@
     "inputs": {
       "expression": "((32 - a % 32) % 32) // 2",
       "values.a": [
-        "34",
-        1
+        "35",
+        0
       ]
     }
   },
@@ -281,8 +275,8 @@
         0
       ],
       "height": [
-        "34",
-        1
+        "35",
+        0
       ],
       "x": [
         "36",
@@ -291,6 +285,26 @@
       "y": [
         "37",
         1
+      ]
+    }
+  },
+  "43": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a + (32 - a % 32) % 32",
+      "values.a": [
+        "34",
+        0
+      ]
+    }
+  },
+  "44": {
+    "class_type": "ComfyMathExpression",
+    "inputs": {
+      "expression": "a + (32 - a % 32) % 32",
+      "values.a": [
+        "35",
+        0
       ]
     }
   }

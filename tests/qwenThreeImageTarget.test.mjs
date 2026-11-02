@@ -91,10 +91,30 @@ test('only the dedicated workflow sends the sketch as expression reference at pa
   assert.equal(plan.humanPose.selection,source.humanPose.selection);assert.deepEqual(plan.referenceFrame,camera);
   assert.deepEqual(plan.outputFrame,{x:0,y:0,w:30,h:40});
   const payload=qwenGenerationPayload(plan,[ref],'expression',undefined,undefined,'pose');
-  assert.deepEqual([payload.width,payload.height,payload.candidate_count,payload.mode,payload.dpi],[300,400,5,'new',254]);
+  assert.deepEqual([payload.width,payload.height,payload.candidate_count,payload.mode,payload.dpi],[180,240,5,'new',254]);
   assert.equal(payload.prompt+'\nUniform solid #00FF00 background.',workflow.graph['6'].inputs.prompt);assert.ok(!('sketch_image' in payload));
   assert.deepEqual(payload.references.map(r=>[r.image,r.character_keys]),[['pose',[]],['identity',['id']],['expression',[]]]);
   assert.throws(()=>qwenGenerationPayload(plan,[ref],undefined,'expression',undefined,'pose'),/ネーム/);
   assert.throws(()=>qwenGenerationPayload(plan,[ref,ref],'expression',undefined,undefined,'pose'),/設定画1枚/);
   assert.throws(()=>qwenGenerationPayload(plan,[ref],'expression',undefined,undefined,undefined),/3D/);
+});
+
+// 見込み: 出力だけ60%へ変えれば、20%の撮影資料と紙面の配置枠を保ったまま低解像度画像を採用できる。
+// 合格: 原稿1793×880→送信1076×528、元の撮影寸法とmm枠は不変。実plan/payload/配置、画像は識別用。
+test('sixty-percent output keeps the manuscript placement and twenty-percent pose target',()=>{
+  const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/nyamuru_qwen_turbo_3images.'+ext+'.json',import.meta.url)));
+  const frame={x:5,y:7,w:75.9036666667,h:37.2533333333};
+  const source={ownerKey:'figure-0',label:'人物',width:200,height:150,prompt:'',characterKeys:['id'],humanPose:{selection:{input_mode:'image'}},
+    threeImageTarget:{width:1793,height:880,dpi:600,outputFrame:frame,referenceFrame:camera,cutFrame:{bounds:{x:0,y:0,w:1,h:1},points:[[0,0],[1,0],[1,1],[0,1]]}}};
+  const plan=qwenPlanForWorkflow(source,{graph:example('api'),binding:example('binding')});
+  const sent=qwenGenerationPayload(plan,[{image:'identity',characterKeys:['id'],label:'設定'}],'expression',undefined,undefined,'pose');
+  assert.deepEqual([sent.width,sent.height],[1076,528]);
+  assert.deepEqual([source.threeImageTarget.width,source.threeImageTarget.height],[1793,880]);
+  assert.deepEqual(plan.outputFrame,frame);
+  const placed=insertGeneratedPaintImage({...owner,kind:'figure',paint:{...owner.paint,layers:[]}},
+    {id:'result',widthPx:1076,heightPx:528},'候補',frame);
+  const bbox=placed.layer.image.bbox;
+  const original=insertGeneratedPaintImage({...owner,kind:'figure',paint:{...owner.paint,layers:[]}},
+    {id:'full',widthPx:1793,heightPx:880},'原寸',frame).layer.image.bbox;
+  assert.ok(Math.abs(bbox.w-original.w)<1 && Math.abs(bbox.h-original.h)<1);
 });
