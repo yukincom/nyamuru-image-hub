@@ -32,7 +32,9 @@ const storage: Storage = {
   removeItem: key => { values.delete(key); }, setItem: (key, value) => { values.set(key, value); },
 };
 Object.defineProperty(window, 'localStorage', { configurable: true, value: storage });
-const endpoint = 'http://127.0.0.1:8199';
+// Explicit live mode uses only the real runtime lifecycle; generation and manuscript pixels remain synthetic.
+const liveRuntime=new URLSearchParams(location.search).has('liveRuntime'),nativeFetch=window.fetch.bind(window);
+const endpoint = liveRuntime?'http://127.0.0.1:8188':'http://127.0.0.1:8199';
 const workflow: ComfyWorkflowDefinition = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', name: '候補検証ワークフロー', version: 7,
   graph: {
@@ -63,6 +65,7 @@ type Scenario = 'succeeded' | 'failed' | 'outcome_unknown';
 let scenario: Scenario = 'succeeded', conversation: QwenGenerationConversation | null = null;
 let job: Record<string, unknown> = {};
 let failInsertOnce=false,failCleanupOnce=false,closed=false,insertAttempts=0,cleanupAttempts=0;
+let runtimeReady=false,runtimeStops=0;
 const inserted: { files: File[]; target: QwenGenerationPlan }[] = [];
 const calls: { scenario: Scenario; path: string; body: Record<string, unknown> }[] = [];
 const failureMessage = (status: Scenario) => status === 'failed'
@@ -75,12 +78,31 @@ window.fetch = async (input, options) => {
   const bridge = { service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3 };
   const supervisor = { service: 'nyamuru-image-hub-bridge-supervisor', protocol_version: 1 };
   if (path === '/api/health') return Response.json(bridge);
+  if(path==='/api/image-generation/start'){
+    if(liveRuntime){
+      const response=await nativeFetch('http://127.0.0.1:8786'+path,options),payload=await response.json();
+      if(!response.ok||payload.comfy_ready!==true)throw new Error(payload.error||'実ComfyUIの起動を確認できません');
+      runtimeReady=true;return Response.json(payload);
+    }
+    runtimeReady=true;
+    return Response.json({...supervisor,session_token:body.session_token,comfy_ready:true,comfy_started:true,comfy_managed:true});
+  }
+  if(path==='/api/image-generation/stop'){
+    if(liveRuntime){
+      const response=await nativeFetch('http://127.0.0.1:8786'+path,options),payload=await response.json();
+      if(!response.ok||payload.comfy_stopped!==true)throw new Error(payload.error||'実ComfyUIの終了を確認できません');
+      runtimeReady=false;runtimeStops++;return Response.json(payload);
+    }
+    runtimeReady=false;runtimeStops++;
+    return Response.json({...supervisor,comfy_released:true,comfy_stopped:true});
+  }
   if (path === '/api/new-creation/start') return Response.json({ ...supervisor, lease_token: 'candidate-fixture' });
   if (path === '/api/new-creation/stop') return Response.json({ ...supervisor, released: true, llm_released: true });
   if (path === '/api/comfy-workflows/list') return Response.json({ ...bridge, workflows: [otherWorkflow, workflow] });
   if (path === '/api/panel-actions/prepare') return Response.json({ ...supervisor, ready: true });
   if (path === '/api/image-generation/prepare') return Response.json({ ...supervisor, llm_stopped: true });
   if (path === '/api/qwen-generation/prepare') {
+    if(!runtimeReady)throw new Error('ComfyUI起動前に生成準備されました');
     if (body.candidate_count !== 5 || body.workflow_id !== workflow.id || body.workflow_version !== workflow.version
       || body.comfyui_url !== endpoint || body.width !== 160 || body.height !== 224 || body.chroma_key_color !== '#00FF00'||body.candidate_cutout!==true) {
       throw new Error('5候補・選択ワークフロー/版・接続先・固定寸法・背景色の送信内容が一致しません');
@@ -142,8 +164,9 @@ function check(condition: unknown, label: string) {
 }
 async function mount(status: Scenario) {
   render(null, root); await tick(); conversation = null; job = {}; scenario = status;
-  ready=false;
-  render(<><PaintEditor initial={initialPaint} assets={[]} page={1} panelIndex={0} overlay={false} initialOwner="figure-0" title="採用検証" controller={paintControl} onReady={()=>{ready=true;}} onApply={async()=>{}} onClose={()=>{}}><PaintProbe/><PaintLayers/></PaintEditor>
+  ready=false;closed=false;
+  // The host keeps PaintEditor mounted after fake onClose; disable its background key handler as the real App does while a dialog is open.
+  render(<><PaintEditor toolPaletteEnabled={false} initial={initialPaint} assets={[]} page={1} panelIndex={0} overlay={false} initialOwner="figure-0" title="採用検証" controller={paintControl} onReady={()=>{ready=true;}} onApply={async()=>{}} onClose={()=>{}}><PaintProbe/><PaintLayers/></PaintEditor>
     <QwenGenerationDialog plan={plan} onClose={() => {closed=true;}}
     onConversation={value => { conversation = value; }}
     onInsert={async (file, target, adoption) => {
@@ -175,6 +198,7 @@ async function run() {
   check(reply.includes('5枚') && reply.includes('選んで'), '成功時の会話は5候補からの選択を案内');
   check(document.querySelectorAll('.qwen-candidate').length === 5 && result.selected.length === 0 && inserted.length === 0,
     '5候補の表示時点では採用APIも追加callbackも0件');
+  check(runtimeReady&&runtimeStops===0,'生成ボタンからComfyUIを準備し、5候補の表示中は起動を保持');
   check(selectionButton()?.disabled && !button('新規レイヤーとして追加'), '候補未選択では確定も追加もできない');
 
   // 見込み: 選択は候補比較だけに留め、一括追加の成功後に破棄する。失敗時は同じ操作を続けられる。
@@ -196,6 +220,7 @@ async function run() {
   check(selectionButton()?.textContent==='未採用画像の削除を再試行'&&insertAttempts===2,'状況確認後も同じjobの追加済み状態を保持');
   selectionButton()!.click();await wait(()=>closed&&!conversation?.busy,'削除だけ再試行');
   check(insertAttempts===2&&inserted.length===1&&cleanupAttempts===2,'削除の再試行で採用レイヤーを重複追加しない');
+  check(!runtimeReady&&runtimeStops===1,'全追加と削除の成功後に画面を閉じ、ComfyUIを解放');
   check(result.selected.join(',')==='2,4'&&inserted[0].files.length===2&&inserted[0].target.ownerKey===plan.ownerKey,'候補2/4を元の対象へ別画像としてまとめて渡す');
   for(const [index,file] of inserted[0].files.entries()){
     const actual=new Uint8Array(await file.arrayBuffer()),expected=Uint8Array.from(atob(finalImages[[1,3][index]].split(',')[1]),c=>c.charCodeAt(0));
@@ -222,6 +247,13 @@ async function run() {
     document.querySelector<HTMLButtonElement>('.qwen-candidate')!.click(); await tick();
     check(selectionButton()?.disabled && !button('新規レイヤーとして追加')
       && result.selected.join(',') === '2,4' && inserted.length === 1, `${status}: 候補を選んでも確定・追加不可、成功ケース以外の変更0件`);
+    // 見込み: 失敗後も閉じる/Escapeを共通終了へ通せば、runtimeだけが残らない。
+    // 合格: 明示closeとEscapeそれぞれでstop1回、画面終了。範囲: 実Dialog、HTTPは固定。
+    const stopsBefore=runtimeStops;
+    if(status==='failed')button('閉じる')!.click();
+    else document.querySelector('.qwen-generation-dialog')!.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    await wait(()=>closed&&!conversation?.busy,`${status}: 画面close`);
+    check(!runtimeReady&&runtimeStops===stopsBefore+1,`${status}: 閉じる/EscapeでComfyUIを終了`);
     result.scenarios.push(`${status}: 2候補保持・採用不可・誤成功案内なし`);
   }
   check(result.requests['/api/comfy-workflows/list'] === 3 && result.requests['/api/qwen-generation/prepare'] === 3
@@ -230,7 +262,7 @@ async function run() {
   '3ケース各1回の読込・準備・送信、確定1回・削除2回・状況確認1回、生成再送・予期しない通信0件');
   render(null, root);
   result.done = true; result.passed = true; result.status = 'passed';
-  report.textContent = `候補生成 PASS：${result.scenarios.length}ケース・${result.checks.length}検査（HTTP/PNG模擬）`;
+  report.textContent = `候補生成 PASS：${result.scenarios.length}ケース・${result.checks.length}検査（${liveRuntime?'ComfyUI起動/終了は実処理、生成/PNGは模擬':'HTTP/PNG模擬'}）`;
 }
 void run().catch(error => {
   render(null, root);

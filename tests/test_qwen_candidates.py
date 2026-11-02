@@ -4,6 +4,7 @@
 """
 import base64
 import io
+from hashlib import sha256
 import os
 from unittest.mock import patch
 import unittest
@@ -54,6 +55,7 @@ class CandidateTests(unittest.TestCase):
             result = self.service.reconcile({'job_id': job_id})
             self.assertEqual(cutout.call_count, 5)
             self.assertEqual(len(result['candidates']), 5)
+            self.assertEqual(self.service.store.json(job_id, 'candidate-output-1.json')['sha256'], sha256(raw.getvalue()).hexdigest())
             for item in result['candidates']:
                 with Image.open(io.BytesIO(base64.b64decode(item['image'].split(',')[1]))) as image:
                     self.assertEqual(image.getpixel((0, 0))[3], 0)

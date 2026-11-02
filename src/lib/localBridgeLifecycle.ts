@@ -87,6 +87,22 @@ export async function submitImageGenerationRequest(token: string, payload: objec
   return lifecycleRequest('/api/image-generation/submit', { lease_token: token, payload }, fetchImpl, 190_000);
 }
 
+/** The dialog retains this runtime after generation so candidates can still be adopted/discarded. */
+export async function startImageGenerationSession(token:string,endpoint:string,fetchImpl:typeof fetch=fetch):Promise<void> {
+  const payload=await lifecycleRequest('/api/image-generation/start',{session_token:token,comfyui_url:endpoint},fetchImpl,170_000);
+  if(payload.session_token!==token||payload.comfy_ready!==true)throw new Error('ComfyUIの起動完了を確認できませんでした');
+}
+export async function stopImageGenerationSession(token:string,fetchImpl:typeof fetch=fetch):Promise<void> {
+  if(!token)return;
+  await lifecycleRequest('/api/image-generation/stop',{session_token:token},fetchImpl);
+}
+export function stopImageGenerationSessionOnPageExit(token:string):void {
+  if(!token)return;
+  const body=JSON.stringify({session_token:token}),url=supervisorUrl('/api/image-generation/stop');
+  if(typeof navigator!=='undefined'&&typeof navigator.sendBeacon==='function'&&navigator.sendBeacon(url,new Blob([body],{type:'text/plain'})))return;
+  void fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}).catch(()=>undefined);
+}
+
 /** One lease spans translation, image submission/completion, and restoration of the original server. */
 export async function withImageGenerationServices<T, R>(
   translate: () => Promise<T>,

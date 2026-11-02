@@ -12,6 +12,24 @@ import {
   selectLocalBridgeTarget,
   startLocalBridgeSupervisor,
 } from '../scripts/local-bridge-supervisor.mjs';
+import { LocalComfyController } from '../scripts/local-comfy-supervisor.mjs';
+
+// 見込み: UIと同じHTTP受付から所有runtimeを管理すれば、接続とcloseの境界を確認できる。
+// 合格: 同一tokenでstart→stopが1回ずつ、未知tokenは他の利用を終了しない。範囲: localhost実HTTP、ComfyUIプロセスは模擬。
+test('generation dialog HTTP starts and stops only its leased ComfyUI',async t=>{
+ let state='missing',launches=0,stops=0;const child={running:true};
+ const comfy=new LocalComfyController({check:async()=>state,launcher:async()=>({}),launch:()=>{launches++;state='ready';return child;},
+  isRunning:item=>item.running,idle:async()=>true,stop:async item=>{stops++;item.running=false;}});
+ const supervisor=await startLocalBridgeSupervisor({repoRoot:process.cwd(),port:0,comfyController:comfy});
+ t.after(()=>supervisor.close());
+ const post=async(path,body)=>fetch(supervisor.url+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const token='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ const started=await(await post('/api/image-generation/start',{session_token:token,comfyui_url:'http://127.0.0.1:8188'})).json();
+ assert.equal(started.comfy_ready,true);assert.equal(started.comfy_started,true);assert.equal(started.comfy_managed,true);
+ await post('/api/image-generation/stop',{session_token:'unrelated'});assert.equal(stops,0);
+ const ended=await(await post('/api/image-generation/stop',{session_token:token})).json();
+ assert.equal(ended.comfy_stopped,true);assert.equal(ended.comfy_released,true);assert.equal(launches,1);assert.equal(stops,1);
+});
 
 function fakeChild() {
   return { running: true };

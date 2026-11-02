@@ -37,6 +37,9 @@ let letteringJob:Record<string,unknown>={};
 window.fetch=async(input,options)=>{
   const url=new URL(String(input),location.href),body=options?.body?JSON.parse(String(options.body)):{};
   url.pathname=url.pathname.replace(/^\/__nyamuru\/(?:bridge|supervisor)/,'');
+  const runtimeSupervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1};
+  if(url.pathname==='/api/image-generation/start')return Response.json({...runtimeSupervisor,session_token:body.session_token,comfy_ready:true});
+  if(url.pathname==='/api/image-generation/stop')return Response.json({...runtimeSupervisor,comfy_released:true});
   if(letteringChecks){
     const path=url.pathname;letteringEvents.push(path);
     const supervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1};
@@ -65,6 +68,8 @@ window.fetch=async(input,options)=>{
   }
   throw new Error(`Fixture blocked unexpected request: ${url.pathname}`);
 };
+// Keep dialog-unmount cleanup inside the same mocked fetch path.
+Object.defineProperty(navigator,'sendBeacon',{configurable:true,value:()=>false});
 function PaintState(){
   const state=usePaintWorkspace();
   return <><button disabled={!state?.canUndo} onClick={()=>state?.undo()}>差し込みを元に戻す</button><button disabled={!state?.canRedo} onClick={()=>state?.redo()}>差し込みをやり直す</button><output aria-label="配置された画像">{state?.scene.owners[1].paint.layers.map(layer=>layer.image?layer.name:'画像なし').join(', ')}</output></>;

@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import hashlib
 import importlib.util
 from pathlib import Path
 import sys
@@ -154,6 +155,28 @@ class MemoryReleaseTests(unittest.TestCase):
                 image['subfolder'] = '..';bad['image'] = image
                 self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [bad]}).status, 400)
             self.assertEqual((root / 'keep.png').read_bytes(), b'keep')
+
+    # 見込み: 取得時の画像指紋を残せば、runtime再起動で履歴が消えても同じ出力だけを削除できる。
+    # 合格: 指紋なし/不一致は保持、一致した未採用だけ削除・再試行成功。範囲: 実ファイル・実route、再起動後の空履歴は模擬。
+    def test_output_cleanup_after_restart_requires_the_persisted_content_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'unused.png').write_bytes(b'original unused image')
+            (root / 'adopted.png').write_bytes(b'adopted image')
+            image = {'filename': 'unused.png', 'subfolder': '', 'type': 'output'}
+            output = {'prompt_id': TOKEN, 'node': 'out', 'index': 0, 'image': image}
+            self.queue.get_history = lambda key: {}
+            paths = SimpleNamespace(get_output_directory=lambda: root, get_temp_directory=lambda: root)
+            with patch.dict(sys.modules, {'folder_paths': paths}):
+                self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [output]}).status, 400)
+                output['sha256'] = 'a' * 64
+                self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [output]}).status, 400)
+                self.assertEqual((root / 'unused.png').read_bytes(), b'original unused image')
+                output['sha256'] = hashlib.sha256(b'original unused image').hexdigest()
+                for _ in range(2):
+                    self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [output]}).status, 200)
+            self.assertFalse((root / 'unused.png').exists())
+            self.assertEqual((root / 'adopted.png').read_bytes(), b'adopted image')
 
     def worker_release(self):
         """Simulate installed main.py's unload -> reset order, without models."""

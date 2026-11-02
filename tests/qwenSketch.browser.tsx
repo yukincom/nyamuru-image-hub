@@ -87,6 +87,8 @@ window.fetch=async(input,options)=>{
  const apiPath=url.pathname.replace(/^\/__nyamuru\/(?:supervisor|bridge)/,'');
  requests.push(apiPath);report();
  if(apiPath==='/api/health')return Response.json(bridge);
+ if(apiPath==='/api/image-generation/start')return Response.json({...supervisor,session_token:body.session_token,comfy_ready:true});
+ if(apiPath==='/api/image-generation/stop')return Response.json({...supervisor,comfy_released:true});
  if(apiPath==='/api/new-creation/start')return Response.json({...supervisor,lease_token:'fixture'});
  if(apiPath==='/api/new-creation/stop')return Response.json({...supervisor,released:true,llm_released:true});
  if(apiPath==='/api/panel-actions/prepare')return Response.json(supervisor);
@@ -110,6 +112,8 @@ window.fetch=async(input,options)=>{
  if(apiPath==='/api/qwen-generation/list')return Response.json({...bridge,jobs:[...savedJobs.values()]});
  throw new Error(`Unexpected fixture request: ${url.pathname}`);
 };
+// Keep dialog-unmount cleanup inside the same mocked fetch path.
+Object.defineProperty(navigator,'sendBeacon',{configurable:true,value:()=>false});
 // 見込み: 完了後の入力で既存の新規準備へ戻せば、再送を起こさず次の生成指示を変更できる。
 // 合格: 初回/完了後に入力可、実行中は不可。編集だけでは送信せず、次の要求だけが新本文になり前の履歴と資料を保持。
 // 範囲: 実QwenGenerationDialog・合成input event・既存payload/lifecycle。APIと画像は模擬、モデル品質と永続保存は対象外。

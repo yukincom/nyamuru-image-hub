@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 import io
 import json
+from hashlib import sha256
 from pathlib import Path
 from uuid import UUID, uuid5
 
@@ -86,7 +87,8 @@ def collect_candidate(service, job_id, index, client, *, submission=None, value=
                 if value['settings'].get('candidate_cutout') and not (store.root / job_id / f'candidate-output-{index}.json').exists():
                     image = ComfyClient.output_image(result['history'], value['workflow']['binding']['output'])
                     store.write_once(job_id, f'candidate-output-{index}.json', canonical({
-                        'prompt_id': prompt_id, **value['workflow']['binding']['output'], 'image': image}))
+                        'prompt_id': prompt_id, **value['workflow']['binding']['output'], 'image': image,
+                        'sha256': sha256(raw).hexdigest()}))
                 store.write_once(job_id, path.name, raw)
             except OSError as exc:
                 raise ComfySaveError(f'画像のローカル保存に失敗しました（候補{index}）: {exc}') from exc

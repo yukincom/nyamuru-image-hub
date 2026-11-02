@@ -9,7 +9,38 @@ import {
   withPanelActionServices,
   withImageGenerationServices,
   submitImageGenerationRequest,
+  startImageGenerationSession,
+  stopImageGenerationSession,
+  stopImageGenerationSessionOnPageExit,
 } from '../src/lib/localBridgeLifecycle.ts';
+
+// 見込み: 生成画面のruntime利用を独立させれば、モデル復帰時にComfyUIを終了せずcloseで解放できる。
+// 合格: 同じtokenと設定URLでstart/stop、ready未確認は失敗。範囲: 実client、HTTP固定応答。
+test('ComfyUI runtime starts for a dialog and has a separate explicit close',async()=>{
+ const events=[],token='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',endpoint='http://127.0.0.1:8188';
+ const fetchImpl=async(url,options)=>{
+  events.push([new URL(url).pathname,JSON.parse(options.body)]);
+  return jsonResponse({...common,session_token:token,comfy_ready:true,comfy_released:true});
+ };
+ await startImageGenerationSession(token,endpoint,fetchImpl);
+ assert.deepEqual(events,[['/api/image-generation/start',{session_token:token,comfyui_url:endpoint}]]);
+ await stopImageGenerationSession(token,fetchImpl);
+ assert.deepEqual(events[1],['/api/image-generation/stop',{session_token:token}]);
+ await assert.rejects(()=>startImageGenerationSession(token,endpoint,async()=>jsonResponse(common)),/起動完了/);
+ await assert.rejects(()=>stopImageGenerationSession(token,async()=>jsonResponse({error:'stop failed'},503)),/stop failed/);
+});
+
+// 見込み: 画面が外側から閉じられても、小さな終了通知で所有runtimeを回収できる。
+// 合格: 同じtokenだけを終了APIへBeacon送信。範囲: 実通知、navigatorは模擬。
+test('dialog unmount notification targets only its ComfyUI runtime token',async()=>{
+ const descriptor=Object.getOwnPropertyDescriptor(globalThis,'navigator'),beacons=[];
+ try{
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{sendBeacon:(url,body)=>{beacons.push([url,body]);return true;}}});
+  stopImageGenerationSessionOnPageExit('dialog-token');
+  assert.equal(new URL(beacons[0][0]).pathname,'/api/image-generation/stop');
+  assert.deepEqual(JSON.parse(await beacons[0][1].text()),{session_token:'dialog-token'});
+ }finally{if(descriptor)Object.defineProperty(globalThis,'navigator',descriptor);else delete globalThis.navigator;}
+});
 
 // 見込み: 生成完了時は通常終了と区別して、元のLLMを復帰できる。
 // 合格: 英訳→停止→生成→終了通知の順、shutdown指定なし。範囲: 実lifecycleと模擬HTTP、実画面・LLMは対象外。

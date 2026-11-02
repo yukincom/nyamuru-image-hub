@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { LocalLlmController, llmOwnershipMode } from './local-llm-supervisor.mjs';
+import { LocalComfyController } from './local-comfy-supervisor.mjs';
 
 export const BRIDGE_SUPERVISOR_SERVICE = 'nyamuru-image-hub-bridge-supervisor';
 export const BRIDGE_SUPERVISOR_PROTOCOL_VERSION = 1;
@@ -337,6 +338,7 @@ export async function startLocalBridgeSupervisor({
   bridgePort = DEFAULT_BRIDGE_PORT,
   bridgeUrl = `http://${DEFAULT_BRIDGE_HOST}:${bridgePort}`,
   llmController = new LocalLlmController(),
+  comfyController,
 } = {}) {
   if (!repoRoot) throw new Error('bridge supervisorにはリポジトリの場所が必要です');
   const expectedLlmMode = llmController.ownershipMode || llmOwnershipMode();
@@ -354,6 +356,7 @@ export async function startLocalBridgeSupervisor({
     llmController,
     bridgeLeases: controller.leases,
   });
+  const comfy = comfyController ?? new LocalComfyController({repoRoot,busy:()=>Boolean(panelActions.imageToken)});
 
   const server = createServer(async (request, response) => {
     const origin = request.headers.origin;
@@ -380,7 +383,29 @@ export async function startLocalBridgeSupervisor({
           ok: true,
           service: BRIDGE_SUPERVISOR_SERVICE,
           protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
+          comfy_lifecycle_version: 1,
         }, origin);
+        return;
+      }
+      if(request.method === 'POST' && pathname === '/api/image-generation/start') {
+        const body = await jsonBody(request);
+        if(typeof body.session_token !== 'string' || typeof body.comfyui_url !== 'string') throw new Error('生成画面の起動情報がありません');
+        const result = await comfy.acquire(body.session_token,body.comfyui_url);
+        if(response.destroyed) { await comfy.release(body.session_token); return; }
+        jsonResponse(response,200,{
+          ok:true,service:BRIDGE_SUPERVISOR_SERVICE,protocol_version:BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
+          session_token:body.session_token,comfy_ready:true,comfy_started:result.started,comfy_managed:result.managed,
+        },origin);
+        return;
+      }
+      if(request.method === 'POST' && pathname === '/api/image-generation/stop') {
+        const body = await jsonBody(request);
+        if(typeof body.session_token !== 'string' || !body.session_token) throw new Error('生成画面の終了情報がありません');
+        const result = await comfy.release(body.session_token);
+        jsonResponse(response,200,{
+          ok:true,service:BRIDGE_SUPERVISOR_SERVICE,protocol_version:BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
+          comfy_released:result.released,comfy_stopped:result.stopped,
+        },origin);
         return;
       }
       if (request.method === 'POST' && pathname === '/api/new-creation/start') {
@@ -503,7 +528,7 @@ export async function startLocalBridgeSupervisor({
       await Promise.all([
         new Promise((resolveClose) => server.close(() => resolveClose())),
         controller.close(),
-        panelActions.close(),
+        (async()=>{try{await panelActions.close();}finally{await comfy.close();}})(),
       ]);
     },
   };
