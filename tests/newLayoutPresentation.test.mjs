@@ -68,7 +68,8 @@ test('進捗と全ページの詳細はフォーカス欄内の画像操作よ�
   }
   visit(ast);
   const text = focus.getText(ast);
-  assert.ok(text.indexOf('<NewLayoutAnalysisFeed') > text.indexOf('編集開始</button>'));
+  assert.ok(text.indexOf('<NewLayoutAnalysisFeed') > text.indexOf("onClick={analyzeNewLayouts}"));
+  assert.doesNotMatch(text, /編集開始<\/button>/);
   assert.match(text, /items=\{newLayoutItems\} message=\{newLayoutMessage\}/);
   assert.match(source, /!activeLayoutItem && \(newCharacterReadProgress \? <CharacterReadProgress/);
   assert.match(feed([], '人物と演技を読み取っています… 3 / 13'), /role="status">人物と演技を読み取っています… 3 \/ 13/);
@@ -126,16 +127,25 @@ test('記録内の矢印キーはページ切替へ伝播させず、ブラウ�
   }
 });
 
-test('実解析ハンドラは全件完了を待たずに公開し、次の結果を上へ追加する', async () => {
+// 見込み: コマ解析中も各ページの結果を逐次表示し、全件成功時だけ既存作成へ引き継ぐ。
+// 合格: 後の結果ほど上に表示され、作成へ渡す結果・世代・scanner指定が一致。確認範囲は実handlerと実feed、検出APIと作成先は模擬。
+test('実解析ハンドラは進捗を逐次表示し、最新の全件結果から自動作成を始める', async () => {
   const pending = [];
   const state = { items: [item('first', analysis('前回の結果')), item('second')], message: '' };
   const itemsRef = { current: state.items };
   const run = handler('analyzeNewLayouts', {
-    newLayoutItemsRef: itemsRef, newLayoutTask: 'idle', newLayoutOperationGeneration: { current: 0 },
+    newLayoutItemsRef: itemsRef, newLayoutTaskRef: { current: 'idle' }, newLayoutOperationGeneration: { current: 0 },
     updateNewLayoutTask: () => {}, setNewLayoutItems: items => { state.items = items; },
     setNewLayoutActiveIndex: () => {}, setNewLayoutMessage: message => { state.message = message; },
     newLayoutRowGapMm: 5, newLayoutColumnGapMm: 5,
     recognizePanelLayout: () => new Promise(resolve => pending.push(resolve)),
+    createNewDocument: async (layouts, scanned, generation) => {
+      assert.equal(layouts.length, 2);
+      assert.equal(layouts[0].analysis, itemsRef.current[0].analysis);
+      assert.equal(layouts[1].analysis, itemsRef.current[1].analysis);
+      assert.equal(scanned, false);
+      assert.equal(generation, 1);
+    },
   });
   const completion = run();
   assert.doesNotMatch(feed(state.items), /前回の結果/);

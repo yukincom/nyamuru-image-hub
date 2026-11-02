@@ -2498,7 +2498,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   };
 
   const analyzeNewLayouts = async () => {
-    if (!newLayoutItemsRef.current.length || newLayoutTask !== 'idle') return;
+    if (!newLayoutItemsRef.current.length || newLayoutTaskRef.current !== 'idle') return;
     const generation = ++newLayoutOperationGeneration.current;
     updateNewLayoutTask('analyzing');
     let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
@@ -2532,8 +2532,15 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     if (generation !== newLayoutOperationGeneration.current) return;
     const matched = working.filter((item) => item.analysis?.detectedPanels.length).length;
     const recognized = working.reduce((total, item) => total + (item.analysis?.ocrLines.length ?? 0), 0);
-    setNewLayoutMessage(`${working.length}枚の解析が終わりました。${matched}枚でコマ領域、${recognized}件の文字候補を取得しました。検出したコマはそのまま編集開始位置に使えます。`);
-    updateNewLayoutTask('idle');
+    setNewLayoutMessage(`${working.length}枚の解析が終わりました。${matched}枚でコマ領域、${recognized}件の文字候補を取得しました。`);
+    const layouts = working.flatMap((item): DetectedPageLayout[] => item.analysis?.detectedPanels.length
+      ? [{ sourceItemId: item.id, analysis: item.analysis }]
+      : []);
+    if (layouts.length !== working.length) {
+      updateNewLayoutTask('idle');
+      return;
+    }
+    await createNewDocument(layouts, working.some((item) => item.source === 'scanner'), generation);
   };
 
   const setActiveLayoutRotation = (rotation: RightAngle) => {
@@ -2681,11 +2688,15 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const createNewDocument = async (
     layout?: PanelTemplate | DetectedPageLayout[],
     confirmScannedLayouts = false,
+    analysisGeneration?: number,
   ) => {
-    if (newLayoutTask !== 'idle' || !newPrintConfirmed || editingNewPrintSetup) return;
+    const continuingAnalysis = analysisGeneration !== undefined;
+    if (newLayoutTaskRef.current !== (continuingAnalysis ? 'analyzing' : 'idle')
+      || (continuingAnalysis && analysisGeneration !== newLayoutOperationGeneration.current)
+      || !newPrintConfirmed || editingNewPrintSetup) return;
     const finishImageImport=beginFigureCropImport();
     try {
-    const generation = ++newLayoutOperationGeneration.current;
+    const generation = analysisGeneration ?? ++newLayoutOperationGeneration.current;
     const isCurrentOperation = () => generation === newLayoutOperationGeneration.current;
     updateNewLayoutTask('creating');
     if (!newEpisodeWorkspace) {
@@ -4154,10 +4165,6 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const selectedNewSeriesReferenceRows = newSeriesReferenceRows.filter(reference => newSelectedSeriesReferencePaths.includes(reference.relativePath));
   const newSeriesReferenceBusy = newSeriesReferenceSelecting || newSeriesDirectorySelecting || newSeriesPreparing || newWorkspaceSelecting;
   const hasScannedLayoutItems = newLayoutItems.some((item) => item.source === 'scanner');
-  const detectedPageLayouts = newLayoutItems.flatMap((item): DetectedPageLayout[] => item.analysis?.detectedPanels.length
-    ? [{ sourceItemId: item.id, analysis: item.analysis }]
-    : []);
-  const canCreateAnalyzedPages = newLayoutItems.length > 0 && detectedPageLayouts.length === newLayoutItems.length;
 
   const autoPaintBoundary=(event:Event)=>{
     if(!(event.target instanceof Element))return;
@@ -4538,7 +4545,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
             catch { setToast('今回の設定は使えますが、本体へ前回設定を保存できませんでした。'); }
           }} /> : <div class="print-summary"><p>{printSummary(newPrintSetup)}{newPrintSetup.printer && <small>{newPrintSetup.printer}</small>}</p><button type="button" class="secondary-button" disabled={newLayoutTask !== 'idle'} onClick={() => setEditingNewPrintSetup(true)}>変更</button></div>}
           {newPrintConfirmed && !editingNewPrintSetup && <>
-          <button class="new-blank-button" onClick={() => createNewDocument()}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
+          <button class="new-blank-button" onClick={() => createNewDocument()} disabled={newLayoutTask !== 'idle'}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
           <section class="new-layout-import" aria-labelledby="new-layout-import-title">
             <div class="new-layout-import-head">
               <div><h3 id="new-layout-import-title">紙のネームからコマを読み取る</h3></div>
@@ -4600,8 +4607,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
                     <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
                     <strong >{activeLayoutItem.file.name}</strong>
                     <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
-                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} ><Sparkles size={15} />{newLayoutTask === 'analyzing' ? '解析中…' : '解析開始'}</button>
-                    <button type="button" class="primary-button new-layout-complete-button" onClick={() => createNewDocument(detectedPageLayouts, hasScannedLayoutItems)} disabled={newLayoutTask !== 'idle' || !canCreateAnalyzedPages} ><FilePlus2 size={15} />編集開始</button>
+                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} ><Sparkles size={15} />{newLayoutTask === 'analyzing' || newLayoutTask === 'creating' ? '解析中…' : '解析開始'}</button>
                   </div>
                 </div>
                 <NewLayoutAnalysisFeed items={newLayoutItems} message={newLayoutMessage} characterProgress={newCharacterReadProgress} />

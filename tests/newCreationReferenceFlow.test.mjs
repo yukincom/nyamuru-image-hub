@@ -10,7 +10,9 @@ import { seriesReferenceConfirmationState } from '../src/lib/seriesReferenceCand
 import { parseScenario, applyScenarioToNewDocument } from '../src/lib/scenario.ts';
 import { cloneDocument, newPage, parseMangaYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml } from '../src/lib/manga.ts';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries } from '../src/lib/seriesCatalog.ts';
-import { attachRecognizedTextToPage } from '../src/lib/localBridge.ts';
+import { attachDetectedFiguresToPage, attachRecognizedTextToPage } from '../src/lib/localBridge.ts';
+import { detectedFigureImport } from '../src/lib/analogFigureCrops.ts';
+import { applyCharacterReadOutcomes, buildCharacterMatchCandidates, collectUnmatchedCharacterTargets } from '../src/lib/characterMatching.ts';
 import { initializePanelBackgrounds } from '../src/lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../src/lib/initialBubbleLineBreaks.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
@@ -45,6 +47,130 @@ function stateSetters(state, names) {
     state[name] = typeof value === 'function' ? value(state[name]) : value;
   }]));
 }
+
+// 見込み: 同じ操作世代でコマ解析→人物・表情読取→既存作成をつなぐと、一度の開始で編集へ到達する。
+// 確認範囲: Appの実handler、実人物配置・結果反映を使用。画像の切り抜き、推論、ディスク書込は模擬で、実モデル精度は対象外。
+function automaticImportFixture(sourceKind = 'manual') {
+  const state = { ShowNewDialog: true }, tasks = [], progress = [], events = [];
+  const draft = createEmptyWorkspaceDocument();
+  draft.manga.characters = [{ localId: 'person', name: '人物', role: '', scope: 'episode' }];
+  const region = { id: 'figure', source: 'body', sourcePanelId: 'panel', bbox: { x: .2, y: .2, w: .2, h: .4 } };
+  const analysis = {
+    detectedPanels: [{ type: 'rect', x: 10, y: 10, w: 180, h: 268 }], detectedPanelIds: ['panel'],
+    detectedFigures: [region], ocrLines: [], sourceFrame: null,
+  };
+  const items = [{ id: 'page', file: { name: 'page.png' }, source: sourceKind, analysis: null, rotationOverride: 0 }];
+  const context = {
+    newLayoutTaskRef: { current: 'idle' }, newLayoutOperationGeneration: { current: 0 },
+    newLayoutItemsRef: { current: items }, newPrintConfirmed: true, editingNewPrintSetup: false,
+    newPrintSetup: defaultPrintSetup(), newLayoutRowGapMm: 5, newLayoutColumnGapMm: 5, newLayoutFrameLineWidthMm: 1,
+    updateNewLayoutTask: task => { context.newLayoutTaskRef.current = task; tasks.push(task); },
+    ...stateSetters(state, ['NewLayoutItems', 'NewLayoutMessage', 'NewLayoutActiveIndex', 'NewCharacterTextLink',
+      'BoundEpisodeWorkspace', 'BoundSourceSnapshot', 'SourceCoverageDecisions', 'CharacterTextLink', 'ActivePage',
+      'ActivePanel', 'SelectedPanels', 'SelectedElement', 'Tab', 'MobileStoryboardPane', 'ShowNewDialog', 'NewCharacterDocument', 'Toast']),
+    setNewCharacterReadProgress: value => progress.push(value),
+    newEpisodeWorkspace: { token: 'fixture', directory: '/fixture/episode' },
+    newCharacterDocumentRef: { current: draft }, newSourceSnapshot: null, newCharacterTextLink: null,
+    newWorkTitle: 'テスト', newSeriesName: '', newSeriesId: '', newEpisodeNumber: '',
+    newWorkSetting: { location: '', time: '', weather: '', situation: '' },
+    recognizePanelLayout: async () => { events.push('panels'); return analysis; },
+    prepareEpisodeWorkspace: async () => events.push('prepare'),
+    deleteFigureCropAssets: async () => {}, saveFigureCropAssets: async () => {}, persistAnalogAssets: false,
+    commitActiveScannerSession: async () => events.push('commit-scan'),
+    discardScannerSources: async () => events.push('discard-scan'),
+    createEmptyWorkspaceDocument, newPage, withPrintSetup, resizePageCanvas, initializePanelBackgrounds,
+    attachDetectedFiguresToPage, detectedFigureImport, collectUnmatchedCharacterTargets, buildCharacterMatchCandidates,
+    detectedFigureCrops: async function* () {
+      yield { regionId: region.id, original: async () => 'original-body', face: async () => 'original-face', forStorage: async () => ({}) };
+    },
+    mergeSavedSeriesCatalog: async document => ({ document, added: 0 }),
+    analyzeFigureCharacterMatchWithLocalVlm: async (original, candidates, size, face) => {
+      assert.equal(original, 'original-body');
+      assert.equal(face, 'original-face');
+      events.push('expression');
+      return { candidateId: 'person', confidence: 'high', action: 'Half-lidded eyes and a straight closed mouth.',
+        suggestedSize: 'bust-up', reason: '', expressionReading: { schemaVersion: 1, read_status: 'read', faces: [] } };
+    },
+    applyCharacterReadOutcomes, initializeImportedBubbleLineBreaks,
+    separateBubbleOriginals: async document => document, commitNewCharacterDraft: async () => {},
+    endNewCreationBridgeSession: async () => events.push('end-bridge'), lastHistoryPush: { current: 0 },
+    replaceDocument: document => { state.document = document; events.push('editor'); },
+    discardNewLayoutItems: () => {}, structuredClone, crypto, Error,
+  };
+  // Forward both handlers through the same context so task refs remain current across awaits.
+  context.createNewDocument = (...args) => handler('createNewDocument', context)(...args);
+  return { context, state, tasks, progress, events };
+}
+
+for (const sourceKind of ['manual', 'scanner']) {
+  // 合格: 解析開始の1回で表情文が人物へ入り編集へ遷移。推論待ち中はcreating・進捗0/1、終了時1/1で、scanner確定は既存経路を通る。
+  test(`${sourceKind}の解析開始だけで表情の完了を待ち、進捗を維持して編集へ進む`, async () => {
+    const { context, state, tasks, progress, events } = automaticImportFixture(sourceKind);
+    const infer = context.analyzeFigureCharacterMatchWithLocalVlm;
+    let finishExpression;
+    context.analyzeFigureCharacterMatchWithLocalVlm = (...args) => new Promise(resolve => {
+      finishExpression = async () => resolve(await infer(...args));
+    });
+    const run = handler('analyzeNewLayouts', context);
+    const completed = run();
+    for (let attempt = 0; attempt < 100 && !finishExpression; attempt += 1) {
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    assert.ok(finishExpression, '既存の人物・表情読取へ到達すること');
+    assert.equal(context.newLayoutTaskRef.current, 'creating');
+    assert.equal(state.ShowNewDialog, true);
+    assert.equal(state.document, undefined);
+    assert.equal(progress.at(-1).completed, 0);
+    assert.equal(progress.at(-1).total, 1);
+    await run(); // A second click must not submit another analysis.
+    assert.equal(events.filter(event => event === 'panels').length, 1);
+    await finishExpression();
+    await completed;
+    assert.deepEqual(tasks, ['analyzing', 'creating', 'idle']);
+    assert.equal(context.newLayoutOperationGeneration.current, 1);
+    assert.equal(state.ShowNewDialog, false);
+    assert.equal(state.Tab, 'storyboard');
+    assert.equal(progress.at(-1).completed, 1);
+    const figure = state.document.manga.pages[0].panels[0].figures[0];
+    assert.equal(figure.action, 'Half-lidded eyes and a straight closed mouth.');
+    assert.equal(figure.analogImport.expressionReading.read_status, 'read');
+    assert.deepEqual(events, ['panels', 'prepare', 'expression', sourceKind === 'scanner' ? 'commit-scan' : 'discard-scan', 'end-bridge', 'editor']);
+  });
+}
+
+// 合格: コマ未検出、API失敗、閉じた後の遅延応答では作成へ進まず、再試行できる状態や現在の操作を保つ。API応答のみ模擬。
+test('コマ未検出・解析失敗・取消しでは自動遷移しない', async () => {
+  for (const outcome of ['no-panels', 'error', 'cancelled']) {
+    const { context, state, events } = automaticImportFixture();
+    context.recognizePanelLayout = async () => {
+      if (outcome === 'error') throw Error('解析失敗');
+      if (outcome === 'cancelled') context.newLayoutOperationGeneration.current += 1;
+      return { detectedPanels: [], ocrLines: [] };
+    };
+    await handler('analyzeNewLayouts', context)();
+    assert.deepEqual(events, []);
+    assert.equal(state.ShowNewDialog, true);
+    assert.equal(state.document, undefined);
+    if (outcome !== 'cancelled') assert.equal(context.newLayoutTaskRef.current, 'idle');
+    if (outcome === 'error') assert.equal(context.newLayoutItemsRef.current[0].error, '解析失敗');
+  }
+});
+
+// 合格: 古い世代の引継ぎは無視し、保存先準備の失敗は通知してidleへ戻す。既存作成handlerの入口とエラー処理を確認。
+test('古い解析からの作成を拒否し、準備失敗では編集へ遷移しない', async () => {
+  const { context, state, events } = automaticImportFixture();
+  context.newLayoutTaskRef.current = 'analyzing';
+  context.newLayoutOperationGeneration.current = 2;
+  await context.createNewDocument([], false, 1);
+  assert.deepEqual(events, []);
+  context.newLayoutTaskRef.current = 'idle';
+  context.prepareEpisodeWorkspace = async () => { throw Error('保存先の準備失敗'); };
+  await handler('analyzeNewLayouts', context)();
+  assert.equal(state.NewLayoutMessage, '保存先の準備失敗');
+  assert.equal(context.newLayoutTaskRef.current, 'idle');
+  assert.equal(state.ShowNewDialog, true);
+  assert.equal(state.document, undefined);
+});
 
 test('手動のネーム画像は選択順によらずファイル名の数字順に並ぶ', () => {
   for (const [names, expected] of [
@@ -264,7 +390,7 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
       isLanClient: false, portableBinding: { current: null }, setPortableName: () => {},
       ...stateSetters(state, ['NewLayoutMessage', 'NewCharacterTextLink', 'BoundEpisodeWorkspace', 'BoundSourceSnapshot', 'SourceCoverageDecisions', 'CharacterTextLink', 'ActivePage', 'ActivePanel', 'SelectedPanels', 'SelectedElement', 'Tab', 'MobileStoryboardPane', 'ShowNewDialog', 'NewCharacterDocument', 'Toast']),
       newPrintConfirmed: true, editingNewPrintSetup: false, newPrintSetup: { ...defaultPrintSetup(), width_mm: paper.w, height_mm: paper.h, dpi: paper.dpi }, withPrintSetup, resizePageCanvas,
-      newLayoutTask: 'idle', newLayoutOperationGeneration: { current: 0 }, updateNewLayoutTask: () => {},
+      newLayoutTaskRef: { current: 'idle' }, newLayoutOperationGeneration: { current: 0 }, updateNewLayoutTask: () => {},
       setNewCharacterReadProgress: value => { progress.push(value); }, initializePanelBackgrounds,
       newEpisodeWorkspace: { token: 'fixture', directory: '/fixture/episode' },
       prepareEpisodeWorkspace: async () => {}, newLayoutItemsRef: { current: mode === 'blank' ? [] : [{ id: 'img', file: { name: 'test.png' }, analysis: importedAnalysis, rotationOverride: 0 }] },
@@ -337,7 +463,7 @@ for (const isLanClient of [false, true]) test(`new creation requires an episode 
   const messages = [], tasks = [];
   const context = {
     isLanClient, newEpisodeWorkspace: null, newSeriesPreparing: false,
-    newLayoutTask: 'idle', newPrintConfirmed: true, editingNewPrintSetup: false,
+    newLayoutTask: 'idle', newLayoutTaskRef: { current: 'idle' }, newPrintConfirmed: true, editingNewPrintSetup: false,
     newLayoutOperationGeneration: { current: 0 },
     updateNewLayoutTask: value => tasks.push(value),
     setNewLayoutMessage: value => messages.push(value),
