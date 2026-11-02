@@ -38,6 +38,69 @@ import {buildQwenGenerationPlan,figureBackgroundPrompt,qwenPlanForWorkflow,qwenG
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup.ts';
 import {setWorkStylePrompt} from '../src/lib/artworkRules.ts';
 import {paintScene} from '../src/lib/paintDocument.ts';
+import framingPrompts from '../src/content/figure-framing.json' with {type:'json'};
+
+function appearanceFixture(){
+  const {manga}=createEmptyWorkspaceDocument();
+  manga.characters=[{localId:'who',name:'人物',recognition:{
+    hair:{observed:['chin-length white bob'],inferred:[]},
+    face:{observed:['large rounded eyes','two eyes high near the top of the head'],inferred:[]},
+    accessories:{observed:['wide black headband','gold bracelet at the wrist','silver belt at the waist'],inferred:[]},
+    silhouette:{observed:['flared A-line silhouette over dark sleeves and legs','narrow shoulders','slender full figure'],inferred:[]},
+    outfit:{observed:['black high-neck long-sleeved shirt','a white sleeveless V-neck dress','high collar',
+      'solid black opaque tights','solid black low-heeled shoes','white gloves on the hands'],inferred:[]},
+  }}];
+  const panel={id:1,shape:{type:'rect',x:0,y:0,w:40,h:30},bg:0,bubbles:[],
+    figures:[{refId:'who',name:'人物',size:'face',bbox:{x:2,y:2,w:20,h:20}}]};
+  manga.pages[0].panels=[panel];
+  const build=size=>{panel.figures[0].size=size;return buildQwenGenerationPlan(manga,0,0,false,paintScene(panel,144,[]).owners.find(o=>o.key==='figure-0'));};
+  const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/nyamuru_qwen_turbo_3images.'+ext+'.json',import.meta.url)));
+  return {manga,build,flow:{graph:example('api'),binding:example('binding')}};
+}
+
+// 見込み: 生成用の派生文だけを選別すれば、顔アップに全身衣装を指示せず元の特徴を保持できる。
+// 合格: 顔/髪/頭飾りだけ送信し、衣装・脚・靴・複合シルエットは除外。全身へ戻すと復帰し原本不変。実plan/payload、推論なし。
+test('face generation filters body traits without editing or losing the reviewed character features',()=>{
+  const {manga,build,flow}=appearanceFixture(),recognition=structuredClone(manga.characters[0].recognition);
+  const source={...build('face'),humanPose:{framing:'face',selection:{input_mode:'image'}}},before=structuredClone(source),face=qwenPlanForWorkflow(source,flow);
+  const payload=qwenGenerationPayload(face,[{label:'設定',characterKeys:['who'],image:'identity'}],'sketch',undefined,undefined,'pose');
+  for(const text of ['chin-length white bob','large rounded eyes','wide black headband','two eyes high near the top of the head'])assert.ok(payload.prompt.includes(text));
+  for(const text of ['shirt','dress','tights','shoes','bracelet','belt','A-line'])assert.ok(!payload.prompt.includes(text),text);
+  assert.ok(payload.prompt.includes(`Framing (from <image1>): ${framingPrompts.face}`));
+  assert.match(payload.prompt,/Match the crop, subject scale, camera angle and visible body region of <image1>/);
+  assert.deepEqual(payload.references.map(ref=>ref.image),['pose','identity','sketch']);
+  assert.deepEqual(source,before);assert.deepEqual(manga.characters[0].recognition,recognition);
+  const full=qwenPlanForWorkflow({...source,humanPose:{framing:'full',selection:{input_mode:'image'}}},flow);
+  assert.match(full.prompt,/full-body shot/);assert.match(full.prompt,/solid black low-heeled shoes/);
+  assert.equal(full.characterFeatures,source.characterFeatures);
+});
+
+// 見込み: 既存の撮影範囲が同じ固定英文と特徴選択に届けば、部分撮影でも全身説明を引き戻さない。
+// 合格: 11種類すべての英文と代表的な内外部位を照合。手/足は対応する特徴、任意の部分は画像に委ねる。実plan、推論なし。
+test('all declared framings select visible design features using the shared shot dictionary',()=>{
+  const {build,flow}=appearanceFixture();
+  const cases=[
+    ['long','solid black low-heeled shoes',null],['full','solid black low-heeled shoes',null],
+    ['knee-up','solid black opaque tights','solid black low-heeled shoes'],
+    ['waist-up','black high-neck long-sleeved shirt','solid black opaque tights'],
+    ['bust-up','black high-neck long-sleeved shirt','white gloves on the hands'],
+    ['shoulder-up','high collar','black high-neck long-sleeved shirt'],
+    ['face','large rounded eyes','high collar'],['face-detail','large rounded eyes','a white sleeveless V-neck dress'],
+    ['hand','white gloves on the hands','large rounded eyes'],['foot','solid black low-heeled shoes','chin-length white bob'],
+    ['part',null,'Observed features:'],
+  ];
+  for(const [size,kept,removed] of cases){
+    const plan=qwenPlanForWorkflow(build(size),flow);
+    assert.ok(plan.prompt.includes(`Framing (from <image1>): ${framingPrompts[size]}`),size);
+    if(kept)assert.ok(plan.prompt.includes(kept),`${size}: ${kept}`);
+    if(removed)assert.ok(!plan.prompt.includes(removed),`${size}: ${removed}`);
+    // 全身の体型を上半身の特徴として残さず、見える肩幅だけを保持する。
+    if(['waist-up','bust-up'].includes(size)){
+      assert.ok(plan.prompt.includes('narrow shoulders'),size);
+      assert.ok(!plan.prompt.includes('slender full figure'),size);
+    }
+  }
+});
 
 // 見込み: 人物IDで登録設定を引けば、同名の別人や未確認の特徴を混ぜずに生成できる。
 // 合格: 3枚参照のimage2指示へ本人のobservedだけが入り、旧自由文と他人の特徴を除外。設定変更・手動編集後の送信も検査。実推論なし。

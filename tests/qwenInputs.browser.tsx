@@ -1,5 +1,5 @@
 // 見込み: 人物を開くだけで、その人物の原画と優先設定画がimage3/2になり、image1で3Dを確定できる。
-// 合格: image2用の採用特徴が初期文と送信に残り、旧自由文は入らない。3画像の画素・順序と手動編集も確認。実UI/3D素材、HTTPは模擬、実推論なし。
+// 合格: 全身→顔で衣装だけを生成文から外し、保存往復後の元特徴と手動送信を保持。3画像の画素・順序も確認。実UI/3D素材、HTTPは模擬、実推論なし。
 import {render} from 'preact';
 import {useState} from 'preact/hooks';
 import QwenGenerationDialog from '../src/components/QwenGenerationDialog';
@@ -29,7 +29,7 @@ async function run(){
    recognition:{
      hair:{observed:[],inferred:[]},face:{observed:[],inferred:[]},silhouette:{observed:[],inferred:[]},ambiguous_design:{observed:[],inferred:[]},
      accessories:{observed:['wide solid black headband'],inferred:[]},
-     outfit:{observed:['white sleeveless V-neck dress'],inferred:[]},
+     outfit:{observed:['white sleeveless V-neck dress','solid black opaque tights','solid black low-heeled shoes'],inferred:[]},
    },
  }];
  const mat={keywords:[],type:'character' as const,scope:'series' as const,key:'青い設定画',catalog_id:'primary',characterId:'who',character_catalog_id:'catalog',source_image:{schema_version:1 as const,asset_id:id,file_name:'characters/catalog/'+id+'.png',media_type:'image/png' as const,byte_size:sheet.size,width_px:2101,height_px:64,sha256:hash}};
@@ -73,7 +73,14 @@ async function run(){
  const legends=Array.from(document.querySelectorAll('legend')).map(e=>e.textContent?.slice(0,6)).filter(x=>x?.startsWith('image'));
  if(legends.join()!=='image1,image2,image3')throw Error('表示の順序');
  report.textContent='image3・image2 自動表示、会話欄、表示順 OK';
+ const promptBeforeCrop=document.querySelector<HTMLTextAreaElement>('.qwen-prompt textarea')!.value;
+ if(!promptBeforeCrop.includes('full-body shot.')||!promptBeforeCrop.includes('solid black low-heeled shoes'))throw Error('全身の初期指示');
  (await wait(()=>button('3D編集'),'3D編集の入口')).click();
+ const sizePicker=await wait(()=>document.querySelector<HTMLButtonElement>('.human-pose-scene-dialog .figure-size-trigger'),'撮影範囲');sizePicker.click();
+ (await wait(()=>document.querySelector<HTMLButtonElement>('[data-figure-size="face"]'),'顔の撮影範囲')).click();
+ await wait(()=>document.querySelector('[data-figure-size="face"]')?.getAttribute('aria-pressed')==='true','顔を選択');
+ document.querySelector<HTMLButtonElement>('.figure-size-confirm')!.click();
+ await wait(()=>sizePicker.getAttribute('aria-label')==='描写範囲：顔','顔の範囲を確定');
  (await wait(()=>button('撮影プレビュー'),'3D編集を開く')).click();
  const preview=await wait(()=>document.querySelector<HTMLImageElement>('img[alt="image1の撮影プレビュー"]'),'不透明なプレビュー');
  await preview.decode();
@@ -96,7 +103,8 @@ async function run(){
  if(addr(restored)!==previewPng)throw Error('作品保存後のimage1が確定PNGと異なる');
  const edit=(label:string,value:string)=>{const input=Array.from(document.querySelectorAll('.qwen-prompt')).find(item=>item.textContent?.startsWith(label))?.querySelector('textarea');if(!input)throw Error(label);input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));};
  const initialPrompt=document.querySelector<HTMLTextAreaElement>('.qwen-prompt textarea')!.value;
- if(!initialPrompt.includes('Character & Design (from <image2>):')||!initialPrompt.includes('wide solid black headband')||!initialPrompt.includes('white sleeveless V-neck dress')||initialPrompt.includes('obsolete visual prompt'))throw Error('image2の特徴が編集欄から届いていません');
+ if(!initialPrompt.includes('close-up of the face.')||!initialPrompt.includes('Character & Design (from <image2>):')||!initialPrompt.includes('wide solid black headband')||/white sleeveless V-neck dress|opaque tights|low-heeled shoes|obsolete visual prompt/.test(initialPrompt))throw Error('撮影範囲とimage2の特徴が対応していません');
+ if(m.characters[0].recognition!.outfit.observed.length!==3||reopened.manga.characters[0].recognition!.outfit.observed.length!==3)throw Error('元の特徴一覧を変更しました');
  const editedPrompt=initialPrompt+'\npositive test';
  edit('ポジティブ',editedPrompt);edit('ネガティブ','negative test');
  (await wait(()=>button('5枚を生成する'),'生成ボタン')).click();
@@ -108,6 +116,6 @@ async function run(){
  await wait(()=>button('5枚を生成する')&&document.querySelector('.qwen-generation-dialog [role=alert]'),'準備失敗後の再試行');
  const alert=document.querySelector('.qwen-generation-dialog [role=alert]')!.textContent;
  if(!alert?.includes('モデル解放確認拡張')||alert.includes('送信済み')||button('生成状況を確認'))throw Error('送信前に受付済みと誤表示');
- report.textContent='PASS：人物3画像の順序、3D撮影、正負入力、送信前のエラーと再試行';
+ report.textContent='PASS：元の特徴保持・全身→顔の生成文切替・3画像・20%参照/60%出力・手動編集の送信';
 }
 void run().catch(error=>{report.textContent='FAIL：'+String(error);});

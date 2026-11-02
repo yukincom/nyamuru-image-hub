@@ -36,20 +36,8 @@ MODELS = ['diffusion_models/' + TURBO_MODEL,
           'text_encoders/qwen3vl_8b_int8_convrot.safetensors', 'vae/qwen_image_2.1_vae_bf16.safetensors']
 
 # Fixed translations, not a Qwen shot-size standard. Do not invent crop boundaries.
-FRAMING_PROMPTS = {
-    'long': 'long shot.',
-    'full': 'full-body shot.',
-    'knee-up': 'knee-up shot.',
-    'waist-up': 'waist-up shot.',
-    'bust-up': 'chest-up shot.',
-    'shoulder-up': 'shoulders-up shot.',
-    'face': 'close-up of the face.',
-    'face-detail': 'extreme close-up of the face.',
-    'close-up': 'close-up.',
-    'hand': 'close-up of the specified hand area.',
-    'foot': 'close-up of the specified foot area.',
-    'part': 'detail shot of the specified body part.',
-}
+CONTENT_ROOT = Path(__file__).resolve().parents[1] / 'src' / 'content'
+FRAMING_PROMPTS = json.loads((CONTENT_ROOT / 'figure-framing.json').read_text(encoding='utf-8'))
 FRAMING_ALIASES = {
     'ロングショット': 'long', 'ロング': 'long',
     '全身': 'full', 'フルショット': 'full',
@@ -86,7 +74,6 @@ def split_framing_prompt(prompt):
     return (remaining.strip(), FRAMING_PROMPTS[framing[0]]) if framing else (prompt, '')
 
 
-CONTENT_ROOT = Path(__file__).resolve().parents[1] / 'src' / 'content'
 MANGA_FORMATS = json.loads((CONTENT_ROOT / 'manga-formats.json').read_text(encoding='utf-8'))
 FORMAT_LABELS = {label: item['en'] for item in MANGA_FORMATS
                  for label in (item['ja'], item['ja'].removesuffix('漫画'), item['en'])}

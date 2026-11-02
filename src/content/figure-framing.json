@@ -1,0 +1,14 @@
+{
+  "long": "long shot.",
+  "full": "full-body shot.",
+  "knee-up": "knee-up shot.",
+  "waist-up": "waist-up shot.",
+  "bust-up": "chest-up shot.",
+  "shoulder-up": "shoulders-up shot.",
+  "face": "close-up of the face.",
+  "face-detail": "extreme close-up of the face.",
+  "close-up": "close-up.",
+  "hand": "close-up of the specified hand area.",
+  "foot": "close-up of the specified foot area.",
+  "part": "detail shot of the specified body part."
+}

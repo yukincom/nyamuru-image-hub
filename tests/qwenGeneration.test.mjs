@@ -144,7 +144,9 @@ test('framing uses the visible body range, separately from output pixel size and
   assert.ok(plan.prompt.includes(`描写範囲は${label}。`));
   assert.ok(plan.prompt.includes('顔を右に向ける'));
   assert.doesNotMatch(plan.prompt,/画角：|Camera angle:|bust-up|waist-up/);
-  assert.ok(plan.prompt.indexOf('描写範囲')<plan.prompt.indexOf('人物のビジュアル指定'));
+  // 手・足・任意の部分では、この顔の特徴は撮影範囲外なので生成文に入れない。
+  if(['hand','foot','part'].includes(size))assert.doesNotMatch(plan.prompt,/細い眉/);
+  else assert.ok(plan.prompt.indexOf('描写範囲')<plan.prompt.indexOf('人物のビジュアル指定'));
   if(size==='bust-up')assert.ok(plan.prompt.includes('頭頂から胸までを画面に収めた構図で描く。'));
   const payload=qwenGenerationPayload(plan,[{label:'資料',characterKeys:['person-id'],image:'data:ref'}]);
   assert.equal(payload.width,scene.owners[1].paint.width);

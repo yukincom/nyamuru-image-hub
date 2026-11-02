@@ -16,12 +16,14 @@ import { humanPoseFigureFrame, humanPosePanelCutFrame, threeImageFigureTarget, t
 import { humanPoseSceneFrame } from './humanPoseScene.ts';
 import { getPrintSetup } from './printSettings.ts';
 import { textStyleOf } from './textStyle.ts';
+import framingPrompts from '../content/figure-framing.json' with { type: 'json' };
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
   characterKeys?: string[];
 }
 
 export const QWEN_GENERATION_PROFILE = 'qwen-image-2.1-owner-v1' as const;
+type QwenCharacterFeature = { field: (typeof CHARACTER_RECOGNITION_FIELDS)[number]['key']; text:string };
 export interface QwenGenerationPlan {
   profile: typeof QWEN_GENERATION_PROFILE;
   documentKey: string; pageNumber: number; panelId: number; overlay: boolean;
@@ -32,7 +34,7 @@ export interface QwenGenerationPlan {
   dpi?: number;
   artworkStyle?: string[];
   figureAction?: string;
-  characterAppearance?: string;
+  characterFeatures?: readonly QwenCharacterFeature[];
   expressionSource?: Pick<AnalogFigureImport,'assetId'|'persistentAsset'>;
   figureFraming?: FigureSize;
   sketchPrompt?: string;
@@ -52,6 +54,48 @@ export interface QwenGenerationPlan {
 export interface QwenReference { label: string; characterKeys: string[]; image: string }
 export interface QwenLayerCandidate { id:string; label:string; kind:'paint'|'sketch'; hidden:boolean; empty:boolean }
 export interface QwenLayerReference extends QwenLayerCandidate { image:string }
+
+// These describe the generated view only; the character's reviewed recognition stays intact.
+const FEATURE_PARTS = {
+  head: /\b(?:hair|bangs|fringe|head|face|eyes?|brows?|eyebrows?|lashes|eyelashes|pupils?|irises|iris|nose|mouth|ears?|cheeks?|chin|jaw|headband|headwear|hairpins?|hairclips?|barrettes?|earrings?|glasses|eyewear|goggles|hats?|caps?|crowns?|horns?|antennae|snout|beak|whiskers?)\b|髪|頭|顔|眉|目|瞳|まつげ|睫毛|耳|鼻|口|顎|頬|ヘア|カチューシャ|帽子|眼鏡|メガネ|触角/iu,
+  neck: /\b(?:neck|neckline|collar|turtleneck|scarf|choker|necklace|v-neck|high-neck)\b|首|襟|えり|ネック|スカーフ|チョーカー/iu,
+  torso: /\b(?:body|figure|silhouette|torso|chest|shoulders?|shirts?|dresses?|coats?|jackets?|vests?|bodice|sleeves?)\b|身体|体型|胴|胸|肩|上半身|服|シャツ|ドレス|コート|ジャケット|袖/iu,
+  waist: /\b(?:waist|hips?|belts?|abdomen|pelvis|buttocks)\b|腰|尻|腹|ベルト|ウエスト/iu,
+  hand: /\b(?:hands?|fingers?|wrists?|forearms?|elbows?|gloves?|bracelets?)\b|手|指|手首|前腕|肘|ひじ|グローブ|ブレスレット/iu,
+  leg: /\b(?:legs?|knees?|thighs?|calves|calf|tights?|pantyhose|stockings?|pants|trousers|jeans|shorts)\b|脚|足|膝|ひざ|太もも|タイツ|ストッキング|ズボン|パンツ/iu,
+  foot: /\b(?:feet|foot|ankles?|shoes?|boots?|socks?|sandals?|heels?|footwear)\b|足首|足先|靴|ブーツ|ソックス|サンダル/iu,
+  hem: /\b(?:skirts?|hems?|midi|maxi|a-line|flared|flaring|floor-length|full-length)\b|スカート|裾|すそ|フレア|Aライン/iu,
+};
+const UPPER_BODY_FEATURE = /\b(?:torso|chest|shoulders?|upper[ -]body)\b|胴|胸|肩|上半身/iu;
+function characterFeatureVisible(feature:QwenCharacterFeature,framing:FigureSize|undefined):boolean {
+  if(!framing||framing==='long'||framing==='full')return true;
+  const has=(...parts:(keyof typeof FEATURE_PARTS)[])=>parts.some(part=>FEATURE_PARTS[part].test(feature.text));
+  // An arbitrary manual detail has no known body region. Let its images supply design.
+  if(framing==='part')return false;
+  if(framing==='hand')return has('hand')&&!has('head','neck','torso','waist','leg','foot','hem');
+  if(framing==='foot')return has('foot')&&!has('head','neck','torso','waist','hand','leg','hem');
+  if(framing==='face'||framing==='face-detail'){
+    if(has('neck','torso','waist','hand','leg','foot','hem'))return false;
+    return feature.field==='hair'||feature.field==='face'||feature.field==='accessories'&&has('head');
+  }
+  if(framing==='knee-up')return !has('foot')&&!/\b(?:calves|calf|floor-length|ankle-length|calf-length|maxi)\b|ふくらはぎ|足首丈|床丈/iu.test(feature.text);
+  if(has('leg','foot','hem'))return false;
+  if(framing==='waist-up')return feature.field!=='silhouette'||has('neck')||UPPER_BODY_FEATURE.test(feature.text);
+  if(has('waist','hand'))return false;
+  if(framing==='shoulder-up'){
+    if(has('hand'))return false;
+    if(feature.field==='silhouette')return false;
+    if(feature.field==='outfit')return has('neck')&&!has('torso');
+  }
+  return feature.field!=='silhouette'||has('neck')||UPPER_BODY_FEATURE.test(feature.text);
+}
+function characterAppearanceForFraming(features:readonly QwenCharacterFeature[]=[],framing?:FigureSize):string {
+  const visible=Array.from(new Set(features.filter(feature=>characterFeatureVisible(feature,framing)).map(feature=>feature.text)));
+  return visible.length?`Observed features: ${visible.join('; ')}`:'';
+}
+function planFraming(plan:QwenGenerationPlan):FigureSize|undefined {
+  return plan.humanPose?.framing??plan.figureFraming;
+}
 export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): boolean {
   return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&Boolean(owner.bubble&&['handwritten','typeset'].includes(owner.bubble.shape??''));
 }
@@ -79,7 +123,7 @@ export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLaye
     plan.characterKeys.length?'キャラクター設定画は、同じ人物の外見と画風を保つための資料です。':'',
     '修正を指示する印・塗り・文字は、完成画像には残さないでください。',
     plan.poseContext ? `以下は修正部分の人物・ポーズの指定です。修正対象以外は保ってください。\n${plan.poseContext}` : '',
-    !plan.poseContext ? plan.characterAppearance : '',
+    !plan.poseContext ? characterAppearanceForFraming(plan.characterFeatures,planFraming(plan)) : '',
     plan.letteringContext ?? '',
   ].filter(Boolean).join('\n\n');
   if(reference?.kind==='paint'&&plan.humanPose)return `${plan.prompt}\n\n描画レイヤー参照は描き方の参考に使い、ポーズ・アングル・描写範囲は今回の指定を優先してください。`;
@@ -112,8 +156,10 @@ export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkfl
   // The colour selector supplies this last line; keep the artwork text editable.
   const base=String(workflow.graph[slot.node].inputs[slot.input]).replace(/\nUniform solid #(00FF00|0000FF|FF00FF) background\.$/,'');
   const style=plan.artworkStyle?.filter(Boolean).join('\n');
+  const framing=planFraming(plan),appearance=characterAppearanceForFraming(plan.characterFeatures,framing);
   const prompt=[base,
-    plan.characterAppearance && `Character & Design (from <image2>):\n${plan.characterAppearance}`,
+    framing&&`Framing (from <image1>): ${framingPrompts[framing]}\nMatch the crop, subject scale, camera angle and visible body region of <image1>. Keep its cut edges; draw only the body parts visible there. Use <image2> for the appearance of those visible parts. Render one view of one character.`,
+    appearance && `Character & Design (from <image2>):\n${appearance}`,
     plan.figureAction && `Expression and acting (from <image3>):\n${plan.figureAction}`,
     style && `Character Inking & Pen Touch (character only, matching <image2>):\nApply these techniques only to features and clothing present in this character's design.\n${style}`,
   ].filter(Boolean).join('\n\n');
@@ -159,9 +205,10 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const character=person&&owner.figure?.refId?manga.characters.find(c=>c.localId===owner.figure!.refId):undefined;
   if(person&&!character)throw new Error('この人物あたりの登場人物を指定してから生成してください');
   const characterKeys=character?.localId?[character.localId]:[];
-  const observed=Array.from(new Set(CHARACTER_RECOGNITION_FIELDS.flatMap(({key})=>
-    character?.recognition?.[key]?.observed.map(value=>value.trim()).filter(Boolean)??[])));
-  const characterAppearance=observed.length ? `Observed features: ${observed.join('; ')}` : '';
+  const framing = owner.figure?.size ?? 'bust-up';
+  const characterFeatures=CHARACTER_RECOGNITION_FIELDS.flatMap(({key})=>
+    (character?.recognition?.[key]?.observed??[]).map(value=>({field:key,text:value.trim()})).filter(value=>value.text));
+  const characterAppearance=characterAppearanceForFraming(characterFeatures,framing);
   const candidates:QwenReferenceCandidate[]=character?.catalog_id&&manga.meta.series_id
     ? manga.materials.filter(m=>m.type==='character'&&m.source_image&&(
       m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))
@@ -179,7 +226,6 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     ...style,lettering.shape==='handwritten'?artwork.layout_spec:'',
     lettering.shape==='typeset'?'指定した本文だけを写植文字として描いてください。指定した書体と太さに従い、文字の外側は透明にしてください。':'上記の本文の描き文字だけを描いてください。文字以外の絵は加えず、文字の外側は透明にしてください。文字の形・線・勢い・質感は、選択したペンと表現に従ってください。',
   ].filter(Boolean).join('\n\n'):undefined;
-  const framing = owner.figure?.size ?? 'bust-up';
   const poseInstructions = pose ? [
     pose.input_mode === 'image'
       ? '3Dポーズ参照は、身体の姿勢・手足の位置・カメラの視点・切り取り範囲を指定する画像です。この姿勢と見切れを保ち、画面外の身体を描き足さない。線骨格・関節マーカー・素体の色は完成画に残さない。'
@@ -238,7 +284,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
     ...dimensions,prompt,characterKeys,candidates,
-    ...(characterAppearance?{characterAppearance}:{}),
+    ...(characterFeatures.length?{characterFeatures}:{}),
     ...(lettering?{contentKind:lettering.shape as 'handwritten'|'typeset',literalText:[lettering.text],letteringContext,handwrittenPrompt:{confirmation:prompt}}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),
     ...(person?{figureFraming:framing,figureAction:owner.figure?.action?.trim()}:{}),
