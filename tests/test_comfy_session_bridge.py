@@ -73,23 +73,62 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(record['prompt_id'], 'owned')
         self.assertEqual(events, ['find', 'running', 'wait', 'unknown', 'wait', 'succeeded', ('release', False), 'wait', ('release', True)])
 
-    # 見込み: 履歴消去は失敗証拠ではないため復帰しない。
-    # 合格: 3回照合してもrelease0回、結果不明を通知。範囲: 模擬履歴、試験内例外で待機を終了。
-    def test_missing_history_never_becomes_terminal(self):
-        messages = []
-        class Halt(Exception): pass
+    # 見込み: 正常応答でqueue/履歴の不在が続くなら中断として後片付けできる。
+    # 合格: 2回の不在後にinterrupted、成功扱い0件、解放確認1回。範囲: 実待機関数、APIは模擬。
+    def test_missing_history_is_interrupted_without_inventing_success(self):
+        events = []
         class Client:
-            def find_prompt(self, correlation): return None
-            def release_models(self): self.fail('must not release')
-        loops = []
-        def sleep(seconds):
-            loops.append(seconds)
-            if len(loops) == 3: raise Halt()
-        with self.assertRaises(Halt):
-            await_api_release([{'endpoint': 'http://localhost:8188', 'correlation_id': 'own'}],
-                client_factory=lambda endpoint: Client(), sleep=sleep, on_wait=messages.append)
-        self.assertEqual(len(messages), 3)
-        self.assertTrue(all('未確定' in message for message in messages))
+            def find_prompt(self, correlation): events.append('find'); return None
+            def release_models(self): events.append('release'); return True
+        record = {'endpoint': 'http://localhost:8188', 'correlation_id': 'own'}
+        await_api_release([record], client_factory=lambda endpoint: Client(), sleep=lambda _: events.append('wait'))
+        self.assertEqual(events, ['find', 'wait', 'find', 'release'])
+        self.assertEqual(record['outcome'], 'interrupted')
+        self.assertTrue(record['terminal'])
+
+    # 見込み: 通信失敗を正常な不在に数えなければ、誤った解放を防げる。
+    # 合格: 有限期限でエラー、終端化/解放0回。範囲: 実待機関数、時計と通信は模擬。
+    def test_transport_failure_times_out_without_releasing_or_becoming_success(self):
+        events = []
+        class Client:
+            def find_prompt(self, correlation): raise OSError('offline')
+            def release_models(self): events.append('release'); return True
+        record = {'endpoint': 'http://localhost:8188', 'correlation_id': 'own'}
+        clock = iter([0, 0, 4])
+        with self.assertRaisesRegex(ValueError, '後片付け'):
+            await_api_release([record], client_factory=lambda endpoint: Client(), sleep=lambda _: None,
+                              now=lambda: next(clock), timeout=3)
+        self.assertEqual(events, [])
+        self.assertFalse(record.get('terminal', False))
+
+    # 見込み: 取消しは受付だけでなく実際のqueue終了と解放を待つ。
+    # 合格: 自分のIDだけ取消1回、running中の解放0回、failed後に解放1回。範囲: 模擬API。
+    def test_shutdown_cancels_only_the_recorded_prompt_and_waits_for_termination(self):
+        events = []
+        class Client:
+            states = iter(['running', 'failed'])
+            def prompt_state(self, prompt): events.append(prompt); return {'state': next(self.states)}
+            def cancel(self, prompt): events.append(('cancel', prompt)); return {'cancelled': True}
+            def release_models(self): events.append('release'); return True
+        record = {'endpoint': 'http://localhost:8188', 'correlation_id': 'own', 'prompt_id': 'owned'}
+        await_api_release([record], client_factory=lambda endpoint: Client(), should_shutdown=lambda: True,
+                          sleep=lambda _: events.append('wait'))
+        self.assertEqual(events, ['owned', ('cancel', 'owned'), 'wait', 'owned', 'release'])
+
+    # 見込み: サーバー自体の停止と応答不能を分ければ、shutdown中の終了済み記録を残さない。
+    # 合格: 終了済みAPIの接続拒否は後片付け完了、一般の通信障害は期限エラー。範囲: 解放状態は模擬。
+    def test_shutdown_releases_terminal_record_when_server_itself_is_missing(self):
+        class Client:
+            last_release_status = 'server_missing'
+            def release_models(self): return False
+        record = {'endpoint': 'http://localhost:8188', 'correlation_id': 'own', 'terminal': True}
+        await_api_release([record], client_factory=lambda endpoint: Client(), should_shutdown=lambda: True,
+                          sleep=lambda _: self.fail('must already be finished'))
+        client = Client();client.last_release_status = 'observation_unavailable'
+        clock = iter([0, 4])
+        with self.assertRaisesRegex(ValueError, '後片付け'):
+            await_api_release([record], client_factory=lambda endpoint: client, should_shutdown=lambda: True,
+                              now=lambda: next(clock), timeout=3)
 
     # 見込み: 同IDの取消受付に加え正常な不在を要求すれば、実行中の解放を防げる。
     # 合格: runningでは待機し、missing=true後に終端化・モデル解放1回。範囲: 実受付記録と待機関数、APIは模擬。

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { blobDataUrl, requestComfyWorkflows, cancelQwenJob, selectQwenCandidate, deleteQwenJobs, loadCharacterReferenceImage, prepareQwenJob, listQwenJobs, reconcileQwenJob, submitQwenJob } from '../lib/localBridge.ts';
-import { withNewCreationBridgeSession, withImageGenerationServices, startImageGenerationSession, stopImageGenerationSession, stopImageGenerationSessionOnPageExit } from '../lib/localBridgeLifecycle.ts';
+import { withNewCreationBridgeSession, withImageGenerationServices, startImageGenerationSession, stopImageGenerationSession, stopImageGenerationSessionOnPageExit, imageGenerationProgress } from '../lib/localBridgeLifecycle.ts';
 import { canDeleteQwenJob, figureBackgroundPrompt, qwenGenerationPayload, qwenPlanForWorkflow, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenAdoption, type QwenGenerationConversation, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
 import { validatePaintDocument, type PaintOwner } from '../lib/paintDocument.ts';
 import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } from '../lib/paintRenderer.ts';
@@ -116,6 +116,9 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   const [history,setHistory]=useState<QwenJob[]>([]),[attempt,setAttempt]=useState<string|null>(null);
   const [historyScope,setHistoryScope]=useState<QwenHistoryScope|null>(null),[selectedJobs,setSelectedJobs]=useState<string[]>([]);
   const [phase,setPhase]=useState(''),[notice,setNotice]=useState('');
+  const [comfyPhase,setComfyPhase]=useState('');
+  const generationAbort=useRef<AbortController>();
+  const closing=useRef(false);
   const [selectedCandidate,setSelectedCandidate]=useState<number|null>(null);
   const [selectedCandidates,setSelectedCandidates]=useState<number[]>([]);
   const insertedBatch=useRef<string|null>(null);
@@ -130,7 +133,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     alive.current=true;const before=document.activeElement;close.current?.focus();
     const release=()=>{if(comfySession.current)stopImageGenerationSessionOnPageExit(comfySession.current);};
     window.addEventListener('pagehide',release);
-    return()=>{alive.current=false;window.removeEventListener('pagehide',release);release();if(before instanceof HTMLElement)before.focus();};
+    return()=>{alive.current=false;generationAbort.current?.abort();window.removeEventListener('pagehide',release);release();if(before instanceof HTMLElement)before.focus();};
   },[]);
   async function ensureComfy(endpoint=connection.comfyuiUrl){
     const token=comfySession.current??crypto.randomUUID();comfySession.current=token;
@@ -138,10 +141,36 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     await startImageGenerationSession(token,endpoint);
   }
   async function releaseComfy(){
-    if(!comfySession.current)return;
-    await stopImageGenerationSession(comfySession.current);comfySession.current=null;
+    const token=comfySession.current;if(!token)return;
+    await stopImageGenerationSession(token);if(comfySession.current===token)comfySession.current=null;
   }
-  async function closeDialog(){await operation(async()=>{await releaseComfy();onClose();});}
+  async function closeDialog(){
+    if(closing.current)return;closing.current=true;generationAbort.current?.abort();
+    try{await releaseComfy();onClose();}
+    catch(cause){if(alive.current)setError(cause instanceof Error?cause.message:String(cause));}
+    finally{closing.current=false;}
+  }
+  async function cancelGeneration(){
+    generationAbort.current?.abort();setPhase('生成の取消しと終了を確認中');
+    try{
+      if(attempted.current)await cancelQwenJob(attempted.current);
+    }catch(cause){if(alive.current)setError(String(cause));}
+    finally{await releaseComfy().catch(cause=>{if(alive.current)setError(String(cause));});}
+  }
+  const observing=busy&&phase==='5枚の画像を生成中';
+  useEffect(()=>{
+    const progress=job?.progress,token=comfySession.current;
+    if(!observing||!progress||!token){setComfyPhase('');return;}
+    let active=true,timer:ReturnType<typeof setTimeout>;
+    const poll=async()=>{
+      try{
+        const node=await imageGenerationProgress(token,progress);
+        if(active)setComfyPhase(`候補 ${progress.candidate}/${progress.total}：${node&&progress.nodes[node]||'ComfyUIの実行工程を確認中'}`);
+      }catch{if(active)setComfyPhase(`候補 ${progress.candidate}/${progress.total}：ComfyUIの接続を確認中`);}
+      if(active)timer=setTimeout(poll,500);
+    };
+    void poll();return()=>{active=false;clearTimeout(timer);};
+  },[observing,job?.progress?.clientId,job?.progress?.promptId]);
   useEffect(()=>{
     setPoseImage('');setPoseError('');posePending.current=undefined;
     if(!usesPoseImage||!plan.humanPose?.selection.scene||targetError||waitingForWorkflow)return;
@@ -265,13 +294,14 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     if(files[0])await operation(()=>insertImage(files[0],generatedTarget.current?.plan));
   }
   async function generate(autoInsert=false,inputIsCurrent:()=>boolean=()=>true){return operation(async()=>{
-    if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
+    if(attempted.current)throw new Error('この生成は開始済みです');
     if(targetError)throw new Error(targetError);
     const {prompt,references,reference,correction}=draft.current;
     if(plan.characterKeys?.length && plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key))))throw new Error('人物に紐づく設定画を読み込めません');
     if(threeImages&&!usesPoseImage)throw new Error('image1で3Dモデルを調整してください');
     if(plan.humanPose)requireHumanPoseGenerationReady(plan.humanPose.selection);
-    const isCurrent=()=>alive.current&&inputIsCurrent();
+    const abort=new AbortController();generationAbort.current=abort;
+    const isCurrent=()=>alive.current&&!abort.signal.aborted&&inputIsCurrent();
     if(usesPoseImage)setPhase('3Dポーズの撮影を確認中');
     const capturedPose=usesPoseImage?await posePending.current:undefined;
     if(!isCurrent())throw new Error('生成を中止しました');
@@ -309,7 +339,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
       submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
       onJob:current=>{if(alive.current)setJob(current);},
       ...(autoInsert?{insert:insertResult}:{}),
-      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,requiresLlm:workflow.binding.prompt_mode==='qwen'&&!plan.contentKind,onPhase:value=>{
+      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm:workflow.binding.prompt_mode==='qwen'&&!plan.contentKind,onPhase:value=>{
         if(alive.current)setPhase({bridge:'準備中',llm:'英訳の準備中',translate:Boolean(plan.contentKind)?'生成指示を保存中':'英訳を保存中',suspend:'文章LLMを停止中',generate:'5枚の画像を生成中',restore:'生成後の復帰を確認中'}[value]);
       }}),
     });
@@ -321,7 +351,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     if(intent==='help')return '追加の指示を送れます。「生成して」と送ると、シードを変えた5枚を表示します。画面で採用する画像を選んでください。';
     if(intent==='instruction'){
       if(working.current)throw new Error('処理が終わるまでお待ちください');
-      if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
+      if(attempted.current)throw new Error('この生成は開始済みです');
       if(draft.current.prompt.length+text.length>12000)throw new Error('追加の指示が長すぎます。生成指示を整理してください');
       updatePrompt(`${draft.current.prompt}\n\n${text.trim()}`);
       return '追加の指示を生成指示に反映しました。「生成して」で5枚を生成します。採用する画像は画面で選んでください。';
@@ -330,14 +360,14 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     if(cloud)return '指示と参照画像のZIPを保存しました。指定のエージェントへ渡し、完成したPNGをこの画面で読み込んでください。';
     if(result?.job?.candidates?.length){
       if(result.job.status==='succeeded'&&result.job.candidates.length===5)return `${plan.label}の候補を5枚生成しました。画面で採用する画像を選んでください。`;
-      return `候補${result.job.candidates.length}枚を保持しています。${result.job.error||'生成は完了していません。生成状況を確認してください。'}`;
+      return `候補${result.job.candidates.length}枚を保持しています。${result.job.error||'生成は完了していません。状態を自動で確認しています。'}`;
     }
-    return result?.inserted?`${plan.label}を生成し、新規レイヤーとして追加しました。元に戻す操作も使えます。`:'自動差し込みは中止しました。開始済みの生成は生成状況から確認できます。';
+    return result?.inserted?`${plan.label}を生成し、新規レイヤーとして追加しました。元に戻す操作も使えます。`:'自動差し込みは中止しました。';
   }
   useEffect(()=>{
     onConversation?.({label:`${plan.pageNumber}ページ・${plan.overlay?'ページ前景':`コマ ${plan.panelId}`}・${plan.label}`,
-      busy:busy||characterLoading||sketchLoading,locked:Boolean(attempt),phase,send:conversationSend});
-  },[onConversation,busy,attempt,phase,prompt,references,reference,correction,job,workflow,workflowError,chromaKeyColor,negative,characterLoading,sketchLoading,poseImage,plan]);
+      busy:busy||characterLoading||sketchLoading,locked:Boolean(attempt),phase:comfyPhase||phase,send:conversationSend});
+  },[onConversation,busy,attempt,phase,comfyPhase,prompt,references,reference,correction,job,workflow,workflowError,chromaKeyColor,negative,characterLoading,sketchLoading,poseImage,plan]);
   useEffect(()=>()=>onConversation?.(null),[onConversation]);
   const agentStarted=useRef(false);
   useEffect(()=>{
@@ -355,6 +385,19 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     const result=await withNewCreationBridgeSession(()=>reconcileQwenJob(id,expected?.requestSha256));
     if(alive.current){setJob(result);setAttempt(id);setSelectedCandidate(result.selectedCandidate??result.selectedCandidates?.[0]??null);setSelectedCandidates(result.selectedCandidates??[]);if(insertedBatch.current!==id)insertedBatch.current=null;}
   });}
+  useEffect(()=>{
+    if(busy||!job||!['queued','running','outcome_unknown'].includes(job.status)||!attempt)return;
+    let current=true,timer:ReturnType<typeof setTimeout>;
+    const poll=async()=>{
+      try{
+        const value=await withNewCreationBridgeSession(()=>reconcileQwenJob(attempt,job.requestSha256));
+        if(current)setJob(value);
+      }catch(cause){if(current)setError(String(cause));}
+      if(current)timer=setTimeout(poll,2000);
+    };
+    timer=setTimeout(poll,2000);
+    return()=>{current=false;clearTimeout(timer);};
+  },[busy,job?.jobId,job?.status,job?.requestSha256,attempt]);
   async function loadHistory(scope:QwenHistoryScope){await operation(async()=>{
     const jobs=await withNewCreationBridgeSession(()=>listQwenJobs(plan,scope));
     if(alive.current){setHistory(jobs);setHistoryScope(scope);setSelectedJobs([]);}
@@ -411,7 +454,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   }
   async function insert(){if(job)await operation(()=>insertResult(job));}
   function keydown(event:KeyboardEvent){
-    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();if(!busy)void closeDialog();}
+    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();void closeDialog();}
     if(event.key==='Tab'){
       const items=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]')??[]).filter(el=>!el.hidden);
       const first=items[0],last=items.at(-1);
@@ -421,7 +464,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   }
   return createPortal(<div class="layer-generation-backdrop" onKeyDown={keydown}>
     <section ref={dialog} class="layer-generation-dialog qwen-generation-dialog qwen-with-conversation" role="dialog" aria-modal="true" aria-labelledby="qwen-generation-title">
-      <header><div><h2 id="qwen-generation-title">生成</h2><p>{cloud?'クラウドへ渡す画像と指示':workflow?.name??'ComfyUIワークフロー'} · {plan.scope==='page'?'ページ全体':plan.overlay?'ページ前景':`コマ ${plan.panelId}`} · {plan.label}</p></div><button ref={close} disabled={busy} onClick={()=>void closeDialog()}>閉じる</button></header>
+      <header><div><h2 id="qwen-generation-title">生成</h2><p>{cloud?'クラウドへ渡す画像と指示':workflow?.name??'ComfyUIワークフロー'} · {plan.scope==='page'?'ページ全体':plan.overlay?'ページ前景':`コマ ${plan.panelId}`} · {plan.label}</p></div><button ref={close} onClick={()=>void closeDialog()}>閉じる</button></header>
       <div class="qwen-conversation-layout"><div class="qwen-generation-controls">
       {!cloud&&<div class="qwen-output-size">
         {workflow?<p>ワークフロー：{workflow.name} · 版{workflow.version} · 参照画像{workflow.binding.images.length}枚
@@ -486,15 +529,13 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
       <div class="paint-entry-actions">
         <button class="primary-button" disabled={busy||Boolean(attempt)||characterLoading||Boolean(sourceErrors.character)||usesPoseImage&&!poseImage||!cloud&&!workflow||threeImages&&(!!targetError||!reference||!poseImage||references.length!==1)} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'5枚を生成する'}</button>
         {cloud&&<button disabled={busy} onClick={()=>void importGenerated()}>生成画像を読み込む</button>}
-        {!cloud&&attempt&&<button disabled={busy} onClick={()=>void check(attempt)}>生成状況を確認</button>}
         {!cloud&&<><button disabled={busy} aria-pressed={historyScope==='owner'} onClick={()=>void loadHistory('owner')}>生成履歴</button>
         <button disabled={busy} aria-pressed={historyScope==='work'} onClick={()=>void loadHistory('work')}>作品の生成履歴</button></>}
       </div>
-      {busy&&phase&&<p role="status">{phase}</p>}
-      {!cloud&&attempt&&job&&['queued','running','outcome_unknown'].includes(job.status)&&<button onClick={()=>void cancelQwenJob(attempt).then(result=>{if(alive.current){setJob(result);setNotice('取消しを要求しました。実行状況とモデル解放を確認しています');}}).catch(cause=>{if(alive.current)setError(String(cause));})}>この生成を取り消す</button>}
+      {!cloud&&(busy||job&&['queued','running','outcome_unknown'].includes(job.status))&&<button onClick={()=>void cancelGeneration()}>この生成を取り消す</button>}
       {notice&&<p role="status">{notice}</p>}
       {attempt&&!busy&&!job&&canPrepareNewGeneration&&<button onClick={prepareNewGeneration}>新しい生成を準備</button>}
-      {error&&<p role="alert">{error}{attempt&&((submitted.current&&!job)||job?.status==='outcome_unknown')?' 送信済みの可能性があるため、生成状況を確認してください。':''}</p>}
+      {error&&<p role="alert">{error}{attempt&&((submitted.current&&!job)||job?.status==='outcome_unknown')?' 送信済みの可能性があるため、自動で照合しています。':''}</p>}
       {job&&<section class="qwen-result" aria-live="polite"><strong>{statusLabel[job.status]}</strong>{job.error&&<p>{job.error}</p>}
         {job.workflowName&&<p>{job.workflowName} · 版{job.workflowVersion} · {job.width} × {job.height} px</p>}
         {job.generationPrompt&&<details><summary>送信した指示とシード</summary><pre style={{whiteSpace:'pre-wrap'}}>{job.generationPrompt}</pre><p>{job.candidateSeeds?.join(', ')}</p></details>}

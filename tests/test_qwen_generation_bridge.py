@@ -86,6 +86,8 @@ class QwenJobsTest(unittest.TestCase):
         for target, replacement in (
             ('qwen_generation.hold_generation_lease', partial(hold_generation_lease, root=self.leases)),
             ('qwen_generation.validate_generation_fd', partial(validate_generation_fd, root=self.leases)),
+            # Popen is synthetic; PID 123 must never inspect a resident process.
+            ('qwen_generation.identity', lambda pid: None),
         ):
             patcher = patch(target, replacement); patcher.start(); self.addCleanup(patcher.stop)
         patcher = patch.object(self.service, 'preflight'); patcher.start(); self.addCleanup(patcher.stop)

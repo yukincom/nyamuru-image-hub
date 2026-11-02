@@ -56,8 +56,9 @@ async function lifecycleRequest(
 
 export async function startNewCreationBridgeSession(
   fetchImpl: typeof fetch = fetch,
+  runtimeToken?: string,
 ): Promise<NewCreationBridgeSession> {
-  const payload = await lifecycleRequest('/api/new-creation/start', {}, fetchImpl);
+  const payload = await lifecycleRequest('/api/new-creation/start', runtimeToken ? {session_token:runtimeToken} : {}, fetchImpl);
   const token = typeof payload.lease_token === 'string' ? payload.lease_token : '';
   if (!token) throw new Error('ローカル連携の終了情報を受け取れませんでした');
   return {
@@ -94,7 +95,11 @@ export async function startImageGenerationSession(token:string,endpoint:string,f
 }
 export async function stopImageGenerationSession(token:string,fetchImpl:typeof fetch=fetch):Promise<void> {
   if(!token)return;
-  await lifecycleRequest('/api/image-generation/stop',{session_token:token},fetchImpl);
+  await lifecycleRequest('/api/image-generation/stop',{session_token:token},fetchImpl,100_000);
+}
+export async function imageGenerationProgress(token:string,progress:{clientId:string;promptId?:string},fetchImpl:typeof fetch=fetch) {
+  const result=await lifecycleRequest('/api/image-generation/progress',{session_token:token,client_id:progress.clientId,prompt_id:progress.promptId},fetchImpl,5_000);
+  return typeof result.node==='string'?result.node:null;
 }
 export function stopImageGenerationSessionOnPageExit(token:string):void {
   if(!token)return;
@@ -107,24 +112,29 @@ export function stopImageGenerationSessionOnPageExit(token:string):void {
 export async function withImageGenerationServices<T, R>(
   translate: () => Promise<T>,
   generate: (translated: T, token: string) => Promise<R>,
-  { onPhase = () => {}, isCurrent = () => true, llmModelAlias = currentLocalModelPreferences().llmAlias, requiresLlm = true }: {
+  { onPhase = () => {}, isCurrent = () => true, llmModelAlias = currentLocalModelPreferences().llmAlias, requiresLlm = true, runtimeToken, signal }: {
     onPhase?: (phase: 'bridge' | 'llm' | 'translate' | 'suspend' | 'generate' | 'restore') => void;
     isCurrent?: () => boolean;
     llmModelAlias?: string;
     requiresLlm?: boolean;
+    runtimeToken?: string;
+    signal?: AbortSignal;
   } = {},
   fetchImpl: typeof fetch = fetch,
 ): Promise<R | undefined> {
   onPhase('bridge');
-  const session = await startNewCreationBridgeSession(fetchImpl);
+  const session = await startNewCreationBridgeSession(fetchImpl,runtimeToken);
   let pageExited = false;
   const onExit = () => { pageExited = true; stopNewCreationBridgeSessionOnPageExit(session.token); };
   if (typeof window !== 'undefined') window.addEventListener('pagehide', onExit, { once: true });
+  const onCancel = () => stopNewCreationBridgeSessionOnPageExit(session.token);
+  signal?.addEventListener('abort',onCancel,{once:true});
+  if(signal?.aborted)onCancel();
   let prepared = false;
   let suspended = false;
   let failure: unknown;
   try {
-    if (!isCurrent() || pageExited) return;
+    if (!isCurrent() || pageExited || signal?.aborted) return;
     if(requiresLlm){
       onPhase('llm');
       await lifecycleRequest('/api/panel-actions/prepare', {
@@ -133,15 +143,15 @@ export async function withImageGenerationServices<T, R>(
       }, fetchImpl, 135_000);
       prepared = true;
     }
-    if (!isCurrent() || pageExited) return;
+    if (!isCurrent() || pageExited || signal?.aborted) return;
     onPhase('translate');
     const translated = await translate();
-    if (!isCurrent() || pageExited) return;
+    if (!isCurrent() || pageExited || signal?.aborted) return;
     onPhase('suspend');
     const result = await lifecycleRequest('/api/image-generation/prepare', { lease_token: session.token, ...(!requiresLlm?{requires_llm:false}:{}) }, fetchImpl, 70_000);
     if (result.llm_stopped !== true) throw new Error('文章LLMの一時停止を確認できませんでした');
     suspended = true;
-    if (!isCurrent() || pageExited) return;
+    if (!isCurrent() || pageExited || signal?.aborted) return;
     onPhase('generate');
     return await generate(translated, session.token);
   } catch (error) {
@@ -150,13 +160,14 @@ export async function withImageGenerationServices<T, R>(
   } finally {
     try {
       if (suspended && !pageExited) onPhase('restore');
-      const result = await stopNewCreationBridgeSession(session.token, fetchImpl, 150_000, pageExited);
-      if (prepared && !result.llmReleased) throw new Error('文章LLMの利用終了を確認できませんでした');
+      const result = await stopNewCreationBridgeSession(session.token, fetchImpl, 150_000, pageExited || signal?.aborted === true);
+      if (prepared && !pageExited && !signal?.aborted && !result.llmReleased) throw new Error('文章LLMの利用終了を確認できませんでした');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(failure ? `${failure instanceof Error ? failure.message : String(failure)}\n${message}` : message);
     } finally {
       if (typeof window !== 'undefined') window.removeEventListener('pagehide', onExit);
+      signal?.removeEventListener('abort',onCancel);
     }
   }
 }

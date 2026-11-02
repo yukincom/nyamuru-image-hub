@@ -357,6 +357,10 @@ export async function startLocalBridgeSupervisor({
     bridgeLeases: controller.leases,
   });
   const comfy = comfyController ?? new LocalComfyController({repoRoot,busy:()=>Boolean(panelActions.imageToken)});
+  const runtimeOperations = new Map();
+  const forgetOperation = token => {
+    for(const operations of runtimeOperations.values()) operations.delete(token);
+  };
 
   const server = createServer(async (request, response) => {
     const origin = request.headers.origin;
@@ -401,16 +405,42 @@ export async function startLocalBridgeSupervisor({
       if(request.method === 'POST' && pathname === '/api/image-generation/stop') {
         const body = await jsonBody(request);
         if(typeof body.session_token !== 'string' || !body.session_token) throw new Error('生成画面の終了情報がありません');
-        const result = await comfy.release(body.session_token);
+        // Abort the guardian immediately, including while prepare/submit owns its queue.
+        const operations = [...(runtimeOperations.get(body.session_token) ?? [])];
+        const cleanup = operations.map(async token => {
+          try { await panelActions.release(token,{shutdown:true}); }
+          finally { await controller.release(token); forgetOperation(token); }
+        });
+        const release = comfy.release(body.session_token);
+        const outcomes = await Promise.allSettled([...cleanup,release]);
+        const last = outcomes.at(-1);
+        const result = last.status === 'fulfilled' ? last.value : null;
+        runtimeOperations.delete(body.session_token);
+        const failed = outcomes.find(item=>item.status === 'rejected');
+        if(failed) throw failed.reason;
         jsonResponse(response,200,{
           ok:true,service:BRIDGE_SUPERVISOR_SERVICE,protocol_version:BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
           comfy_released:result.released,comfy_stopped:result.stopped,
         },origin);
         return;
       }
+      if(request.method === 'POST' && pathname === '/api/image-generation/progress') {
+        const body = await jsonBody(request);
+        const progress = comfy.progress(body.session_token,body);
+        jsonResponse(response,200,{service:BRIDGE_SUPERVISOR_SERVICE,protocol_version:BRIDGE_SUPERVISOR_PROTOCOL_VERSION,...progress},origin);
+        return;
+      }
       if (request.method === 'POST' && pathname === '/api/new-creation/start') {
+        const body = await jsonBody(request);
+        const runtime = body.session_token;
+        if(runtime !== undefined && !comfy.leases.has(runtime)) throw new Error('生成画面の利用が終了しています');
         const result = await controller.acquire();
-        if (request.destroyed || response.destroyed) {
+        if(runtime !== undefined) {
+          if(!comfy.leases.has(runtime) || comfy.cancelled?.has(runtime)) { await controller.release(result.token); throw new Error('生成画面の利用が終了しています'); }
+          if(!runtimeOperations.has(runtime)) runtimeOperations.set(runtime,new Set());
+          runtimeOperations.get(runtime).add(result.token);
+        }
+        if (response.destroyed) {
           await controller.release(result.token);
           return;
         }
@@ -441,6 +471,7 @@ export async function startLocalBridgeSupervisor({
         }
         // Always release the bridge lease even when unloading the owned LLM reports an error.
         const result = await controller.release(token);
+        forgetOperation(token);
         if (llmError) throw llmError;
         jsonResponse(response, 200, {
           ok: true,

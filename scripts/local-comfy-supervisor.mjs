@@ -113,16 +113,18 @@ async function stopComfy(child) {
 export class LocalComfyController {
   constructor({ repoRoot, check = checkComfyState, launcher = existingComfyLauncher,
     launch = config => launchComfy(config,repoRoot), stop = stopComfy, isRunning = running,
-    idle = queueIsIdle, busy = () => false, sleep = delay, now = Date.now, timeoutMs = 150_000 } = {}) {
-    Object.assign(this,{ check,launcher,launch,stop,isRunning,idle,busy,sleep,now,timeoutMs });
+    idle = queueIsIdle, busy = () => false, sleep = delay, now = Date.now, timeoutMs = 150_000,
+    socket = url => new WebSocket(url) } = {}) {
+    Object.assign(this,{ check,launcher,launch,stop,isRunning,idle,busy,sleep,now,timeoutMs,socket });
     this.child = null; this.endpoint = ''; this.leases = new Set(); this.queue = Promise.resolve(); this.closed = false; this.reaper = null;
+    this.cancelled = new Set(); this.observers = new Map();
   }
   exclusive(task) { const next = this.queue.then(task); this.queue = next.catch(() => undefined); return next; }
   acquire(token,value) {
     if(!tokenPattern.test(token)) throw new Error('生成画面の起動情報が不正です');
     const {endpoint} = comfyTarget(value);
     return this.exclusive(async () => {
-      if(this.closed) throw new Error('ComfyUIの起動管理は終了しています');
+      if(this.closed || this.cancelled.has(token)) throw new Error('生成画面を終了しました');
       if(this.endpoint && this.endpoint !== endpoint && (this.leases.size || this.child)) throw new Error('別のComfyUI接続を使用中です');
       if(this.child && !this.isRunning(this.child)) this.child = null;
       const state = await this.check(endpoint);
@@ -135,6 +137,7 @@ export class LocalComfyController {
         try {
           const deadline = this.now() + this.timeoutMs;
           while(await this.check(endpoint) !== 'ready') {
+            if(this.closed || this.cancelled.has(token)) throw new Error('生成画面を終了しました');
             if(!this.isRunning(this.child) || this.now() >= deadline) throw new Error('ComfyUIを起動できませんでした。起動ログ .astro/comfyui.log を確認してください');
             await this.sleep(250);
           }
@@ -142,6 +145,10 @@ export class LocalComfyController {
           if(!this.leases.size) { await this.stop(this.child); this.child = null; }
           throw error;
         }
+      }
+      if(this.closed || this.cancelled.has(token)) {
+        if(this.child && !this.leases.size) { await this.stop(this.child); this.child = null; }
+        throw new Error('生成画面を終了しました');
       }
       this.endpoint = endpoint; this.leases.add(token);
       return { started, managed:Boolean(this.child) };
@@ -165,6 +172,8 @@ export class LocalComfyController {
     this.reaper.unref();
   }
   release(token) {
+    this.cancelled.add(token); // Reach a pending acquire before its serial queue finishes.
+    this.observers.get(token)?.socket.close(); this.observers.delete(token);
     return this.exclusive(async () => {
       const released = this.leases.delete(token);
       let stopped;
@@ -173,8 +182,35 @@ export class LocalComfyController {
       return { released, stopped, managed:Boolean(this.child) };
     });
   }
+  progress(token,{client_id,prompt_id}) {
+    if(!this.leases.has(token) || !tokenPattern.test(client_id)
+      || prompt_id != null && (typeof prompt_id !== 'string' || prompt_id.length > 256)) throw new Error('生成工程の照合情報が不正です');
+    let entry = this.observers.get(token);
+    if(entry && (entry.clientId !== client_id || entry.socket.readyState > 1)) {
+      entry.socket.close(); this.observers.delete(token); entry = null;
+    }
+    if(!entry) {
+      const url = new URL('/ws',this.endpoint); url.protocol = 'ws:'; url.searchParams.set('clientId',client_id);
+      entry = {clientId:client_id,promptId:prompt_id,node:null,socket:this.socket(url.href)};
+      const current = entry;
+      entry.socket.addEventListener('error',()=>{});
+      entry.socket.addEventListener('message',event=>{
+        if(typeof event.data !== 'string' || event.data.length > 65_536) return;
+        let value; try { value = JSON.parse(event.data); } catch { return; }
+        const data = value.data;
+        if(value.type !== 'executing' || !data || current.promptId && data.prompt_id !== current.promptId) return;
+        if(data.prompt_id && typeof data.prompt_id === 'string') current.promptId ??= data.prompt_id;
+        if(data.node === null || typeof data.node === 'string') current.node = data.node;
+      });
+      this.observers.set(token,entry);
+    }
+    if(prompt_id) { if(entry.promptId && entry.promptId !== prompt_id) entry.node = null; entry.promptId = prompt_id; }
+    return {node:entry.node,connected:entry.socket.readyState === 1};
+  }
   async close() {
     this.closed = true;
+    for(const entry of this.observers.values()) entry.socket.close();
+    this.observers.clear();
     return this.exclusive(async () => {
       this.leases.clear(); clearTimeout(this.reaper); this.reaper = null;
       if(this.child) { await this.stop(this.child); this.child = null; }

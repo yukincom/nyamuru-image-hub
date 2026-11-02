@@ -16,7 +16,8 @@ import sys
 import time
 from urllib import request
 from uuid import uuid4
-from image_generation_lock import create_generation_lease, close_generation_lease, activate_generation_lease, ROOT as LEASE_ROOT
+from image_generation_lock import (create_generation_lease, close_generation_lease,
+    activate_generation_lease, request_generation_shutdown, ROOT as LEASE_ROOT)
 
 
 class SessionError(RuntimeError):
@@ -166,10 +167,12 @@ def restored_ready(port):
 def restart(saved, port, fallback_log, sleep=time.sleep, now=time.monotonic, should_restore=lambda: True):
     if not saved.get('stop_requested') or not should_restore():
         return False
+    stop_deadline = now() + 25
     while identity(saved['pid']) == saved['identity']:
         if not should_restore():
             return False
-        # SIGTERM cannot be revoked. Keep recovery responsibility after a slow stop.
+        if now() >= stop_deadline:
+            raise SessionError('元の文章LLMの終了を確認できないため、重複起動せず復帰管理を終了しました')
         sleep(0.5)
     if listener(port) is not None:
         raise SessionError('別のLLMが接続先で起動したため、元のLLMは再起動していません')
@@ -279,22 +282,50 @@ def run_session(port, fallback_log, restore=True, token=None, lease_root=LEASE_R
     commands = SessionCommands(sys.stdin)
     restored = False
     token = token or str(uuid4())
+    previous_handlers = {}
+    def shutdown(*_):
+        commands.shutdown = True
+    # Unit callers may run outside the main thread; native guardians always own signals.
+    import threading
+    if threading.current_thread() is threading.main_thread():
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            previous_handlers[sig] = signal.signal(sig, shutdown)
+    def drain():
+        commands.allows_restore()
+        if commands.shutdown:
+            try:
+                request_generation_shutdown(token, lease_root, terminate=True)
+            except json.JSONDecodeError:
+                pass  # The worker may be updating its inherited inode; retry while waiting for flock.
     try:
-        lease = create_generation_lease(token, lease_root, active=False)
+        lease = create_generation_lease(token, lease_root, active=False,
+            owner={'pid': os.getpid(), 'identity': identity(os.getpid())})
         if restore:
             saved = snapshot(port)
             stop_original(saved, port)
         activate_generation_lease(token, lease_root)
         emit('paused')
-        commands.wait()
+        while not (commands.resume or commands.shutdown):
+            commands.read()
+            if not (commands.resume or commands.shutdown):
+                time.sleep(.1)
     except BaseException as failure:
         start_problem = failure
     finally:
         try:
             if lease is not None:
-                records = close_generation_lease(token, lease_root)
+                drain()
+                try:
+                    records = close_generation_lease(token, lease_root, on_wait=drain, timeout=15)
+                except ValueError:
+                    # Completion cannot abandon a still-live worker after the bounded drain.
+                    commands.shutdown = True
+                    drain()
+                    records = close_generation_lease(token, lease_root, on_wait=drain, timeout=5)
+                    start_problem = SessionError('生成workerが終了しなかったため中断しました。取得済みの候補は保持しています')
                 from image_generation_lock import await_api_release
-                await_api_release(records, on_wait=lambda message: emit('waiting', message=message))
+                await_api_release(records, on_wait=lambda message: (drain(), emit('waiting', message=message)),
+                                  should_shutdown=lambda: (drain(), commands.shutdown)[1])
             if saved is not None and saved.get('stop_requested') and commands.allows_restore():
                 restored = bool(restart(saved, port, fallback_log, should_restore=commands.allows_restore))
             # A start error does not leave recovery work once the external
@@ -303,9 +334,12 @@ def run_session(port, fallback_log, restore=True, token=None, lease_root=LEASE_R
                 lease.unlink(missing_ok=True)
         except BaseException as failure:
             cleanup_problem = failure
+        finally:
+            for sig, handler in previous_handlers.items():
+                signal.signal(sig, handler)
     problem = cleanup_problem if cleanup_problem is not None else start_problem
     if problem is not None:
-        message = str(problem) if isinstance(problem, SessionError) else '共有LLMの一時停止・復帰を完了できませんでした。起動権限とサーバーのログを確認してください'
+        message = str(problem) if isinstance(problem, (SessionError, ValueError)) else '共有LLMの一時停止・復帰を完了できませんでした。起動権限とサーバーのログを確認してください'
         emit('error', message=message)
         return 1
     emit('restored', was_running=restored)
@@ -313,6 +347,10 @@ def run_session(port, fallback_log, restore=True, token=None, lease_root=LEASE_R
 
 
 if __name__ == '__main__':
+    if len(sys.argv) in (2, 3) and sys.argv[1] == '--reconcile':
+        from image_generation_lock import recover_abandoned_leases
+        print(json.dumps(recover_abandoned_leases(sys.argv[2] if len(sys.argv) == 3 else LEASE_ROOT)))
+        raise SystemExit(0)
     if len(sys.argv) != 5 or sys.argv[1] not in ('--session', '--images-only') or not sys.argv[2].isdigit() or not 1 <= int(sys.argv[2]) <= 65535:
         raise SystemExit(2)
     raise SystemExit(run_session(int(sys.argv[2]), sys.argv[3], sys.argv[1] == '--session', sys.argv[4]))

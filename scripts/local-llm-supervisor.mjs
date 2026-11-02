@@ -1,4 +1,5 @@
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { access, readFile, readdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
@@ -108,9 +109,16 @@ async function stopLlm(child) {
 /** A guardian retains its record until ComfyUI exit AND original-server recovery finish.
  * Fail closed on an interrupted guardian record; never silently start a competing LLM.
  */
-export async function hasImageGenerationSession(root = resolve(thisFile, '../../.astro/image-generation')) {
-  try { return (await readdir(root)).some(name => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.json$/u.test(name)); }
+export async function hasImageGenerationSession(root = resolve(thisFile, '../../.astro/image-generation'), env = process.env) {
+  let names;
+  try { names = await readdir(root); }
   catch (error) { if (error?.code === 'ENOENT') return false; throw error; }
+  if(!names.some(name => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.json$/u.test(name))) return false;
+  const repoRoot = resolve(thisFile,'../..');
+  const python = env.NYAMURU_BRIDGE_PYTHON || resolve(env.NYAMURU_VISION_ROOT || resolve(repoRoot,'.local-vision'),'.venv/bin/python');
+  const {stdout} = await promisify(execFile)(python,[resolve(repoRoot,'scripts/shared_llm_process.py'),'--reconcile',root],
+    {cwd:repoRoot,env,timeout:25_000,maxBuffer:4096});
+  return JSON.parse(stdout).blocked !== false;
 }
 
 // Ordinary text tasks borrow external servers. Image tasks have a separate reversible suspension.
@@ -123,7 +131,7 @@ export class LocalLlmController {
     this.launcher = launcher || ((requestedAlias) => existingLlmLauncher(env, requestedAlias));
     this.launch = launch || ((config) => launchLlm(config, llmTarget(env), env));
     this.suspendShared = suspendShared || ((restore, token, signal) => suspendSharedLlm({ env, port: llmTarget(env).port, restore, token, signal }));
-    Object.assign(this, { running, stop, sleep, now, timeoutMs, imageSession });
+    Object.assign(this, { running, stop, sleep, now, timeoutMs, imageSession: imageSession === hasImageGenerationSession ? () => imageSession(undefined,env) : imageSession });
     this.child = null;
     this.childAlias = '';
     this.task = null;

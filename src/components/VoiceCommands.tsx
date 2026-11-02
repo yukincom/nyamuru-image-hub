@@ -63,7 +63,7 @@ function AgentConversation(props:Props){
     });
     return ()=>{active=false;session.current.reset();dictation.current?.dispose();dictation.current=null;};
   },[]);
-  useEffect(()=>{log.current?.scrollTo({top:log.current.scrollHeight});},[messages,busy]);
+  useEffect(()=>{log.current?.scrollTo({top:log.current.scrollHeight});},[messages,busy,props.generation?.phase]);
   const silenceMs=normalizeVoiceSilenceMs(props.profile.voiceSilenceMs);
   const quickActive=recording&&recordingMode.current==='quick',manualActive=recording&&recordingMode.current==='manual';
   function toggleVoice(mode:VoiceInputMode){
@@ -122,8 +122,9 @@ function AgentConversation(props:Props){
   }
   const generationBusy=busy||Boolean(props.generation?.busy);
   return <div id="agent-popup-body" class="agent-popup-body">
-    {messages.length>0&&<div ref={log} class="agent-history" role="log" aria-label="会話履歴" aria-live="polite">
+    {(messages.length>0||props.generation?.phase)&&<div ref={log} class="agent-history" role="log" aria-label="会話履歴" aria-live="polite">
       {messages.map((message,index)=><p key={index} class={`agent-message is-${message.role}`}>{message.content}</p>)}
+      {props.generation?.phase&&<p class="agent-message is-assistant" data-generation-progress>{props.generation.phase}</p>}
     </div>}
     {!props.generation&&<p class={`agent-voice-hint ${quickActive?'is-handsfree':''}`}>{quickActive?`軽量対話オン · 無音${silenceMs/1000}秒で自動送信`:manualActive?'手動入力 · 停止してから確認・送信':'軽量対話は自動送信 · 手動入力は確認して送信'}</p>}
     <div class="agent-composer-row"><AgentAvatar profile={props.profile}/><form class="agent-composer" onSubmit={submit}>
@@ -134,7 +135,7 @@ function AgentConversation(props:Props){
         <button type="submit" class="agent-send" aria-label="送信"  disabled={generationBusy||recording||processing||!text.trim()}><ArrowUp size={18}/></button>
       </div>
     </form></div>
-    {(generationBusy||processing||recording||status)&&<p class="agent-status" role="status">{props.generation?.busy?(props.generation.phase||'生成を準備中…'):busy?'考え中…':recording&&recordingMode.current==='manual'&&status!=='マイクの使用を確認しています…'
+    {(!props.generation&&generationBusy||processing||recording||status)&&<p class="agent-status" role="status">{busy?'考え中…':recording&&recordingMode.current==='manual'&&status!=='マイクの使用を確認しています…'
       ?<>じっくり入力中<span class="agent-listening-dots" aria-hidden="true">{Array.from({length:9},(_,index)=><span key={index} style={{animationDelay:`${index*.13}s`}}>.</span>)}</span></>
       :processing?'文字起こし中…':recording?(status||'録音中…'):status}</p>}
   </div>;

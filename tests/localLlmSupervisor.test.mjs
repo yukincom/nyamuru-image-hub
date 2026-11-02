@@ -2,6 +2,9 @@
 // 合格: 各ケースの呼出順・停止/起動件数が一致。範囲: controller本体、通信・プロセス・待機は模擬。実LLMは未検証。
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {
   checkLlmState,
   llmOwnershipMode,
@@ -9,9 +12,20 @@ import {
   selectModelAlias,
   LocalLlmController,
   runnerHasParent,
+  hasImageGenerationSession,
 } from '../scripts/local-llm-supervisor.mjs';
 
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
+
+// 見込み: 復旧helperが無いことと利用記録が無いことを区別すれば、競合起動を防げる。
+// 合格: 記録なしはfalse、記録あり/不在PythonはrejectしてLLM準備へ進ませない。範囲: 実一時記録とhelper起動失敗、モデルなし。
+test('missing recovery executable never silently clears an existing image-session barrier',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'nyamuru-image-barrier-'));t.after(()=>rm(root,{recursive:true,force:true}));
+ const env={NYAMURU_BRIDGE_PYTHON:join(root,'missing-python')};
+ assert.equal(await hasImageGenerationSession(root,env),false);
+ await writeFile(join(root,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.json'),'{}');
+ await assert.rejects(()=>hasImageGenerationSession(root,env),{code:'ENOENT'});
+});
 
 test('runner初期化前にsupervisorを失った場合、PID 1を新しい親としてMLXを起動しない', () => {
   assert.equal(runnerHasParent(1234, 1234), true);

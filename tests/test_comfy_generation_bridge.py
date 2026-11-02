@@ -115,6 +115,9 @@ class IntegrationTests(unittest.TestCase):
         self.token = str(uuid4())
         self.leases = self.root / 'leases'
         create_generation_lease(self.token, self.leases)
+        # Worker launches in this suite are synthetic, including their process identity.
+        patcher = patch('qwen_generation.identity', return_value=None)
+        patcher.start(); self.addCleanup(patcher.stop)
 
     def body(self, count=0, mode='plain'):
         workflow = self.workflows.save(definition(count, mode))

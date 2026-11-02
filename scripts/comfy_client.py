@@ -25,6 +25,10 @@ class ComfyError(OSError):
     """A transport, protocol or observation failure, not execution evidence."""
 
 
+class ComfyServerMissing(ComfyError):
+    """The loopback listener refused the connection, rather than timing out."""
+
+
 class ComfyOutputError(ValueError):
     """A completed prompt has no usable image at its configured output."""
 
@@ -165,6 +169,10 @@ class ComfyClient:
         except ComfyError:
             raise
         except (OSError, URLError, HTTPException) as exc:
+            import errno
+            reason = getattr(exc, 'reason', exc)
+            if getattr(reason, 'errno', None) == errno.ECONNREFUSED:
+                raise ComfyServerMissing('ComfyUIが停止しています') from exc
             raise ComfyError(f"ComfyUIとの通信を確認できません: {exc}") from exc
 
     def _json(self, path: str, *, method: str = "GET", payload=None,
@@ -326,6 +334,8 @@ class ComfyClient:
             if status.get("status_str") == "success" and status.get("completed") is True:
                 return {"state": "succeeded", "history": record}
             return {"state": "unknown", "history": record}
+        except ComfyServerMissing as exc:
+            return {"state": "unknown", "server_missing": True, "error": str(exc)}
         except ComfyError as exc:
             return {"state": "unknown", "error": str(exc)}
 
@@ -430,6 +440,10 @@ class ComfyClient:
                     "ComfyUIにnyamuru_memory_release拡張を配置し再起動してから接続を確認してください"
                 ) from exc
             self.last_release_status = "observation_unavailable"
+            self.last_release_error = str(exc)
+            return False
+        except ComfyServerMissing as exc:
+            self.last_release_status = "server_missing"
             self.last_release_error = str(exc)
             return False
         except ComfyError as exc:

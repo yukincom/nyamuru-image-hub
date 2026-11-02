@@ -2872,6 +2872,13 @@ export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:str
   if(typeof value.workflow_version==='number')job.workflowVersion=value.workflow_version;
   if(typeof value.comfyui_url==='string')job.comfyuiUrl=value.comfyui_url;
   if(typeof value.generation_prompt==='string')job.generationPrompt=value.generation_prompt;
+  if(value.progress!==undefined){
+    const p=value.progress as Record<string,unknown>;
+    if(!p||!Number.isInteger(p.candidate)||!Number.isInteger(p.total)||Number(p.candidate)<1||Number(p.candidate)>Number(p.total)||Number(p.total)>5
+      ||typeof p.client_id!=='string'||!/^[a-f0-9-]{36}$/iu.test(p.client_id)||p.prompt_id!=null&&typeof p.prompt_id!=='string'
+      ||!p.nodes||typeof p.nodes!=='object'||Array.isArray(p.nodes)||Object.values(p.nodes).some(name=>typeof name!=='string'||name.length>200))throw new Error('生成工程の形式が不正です');
+    job.progress={candidate:Number(p.candidate),total:Number(p.total),clientId:p.client_id,...(typeof p.prompt_id==='string'?{promptId:p.prompt_id}:{}),nodes:p.nodes as Record<string,string>};
+  }
   if(Array.isArray(value.candidate_seeds)&&value.candidate_seeds.every(Number.isSafeInteger))job.candidateSeeds=value.candidate_seeds as number[];
   return job;
 }

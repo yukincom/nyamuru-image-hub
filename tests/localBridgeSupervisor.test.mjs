@@ -31,6 +31,38 @@ test('generation dialog HTTP starts and stops only its leased ComfyUI',async t=>
  assert.equal(ended.comfy_stopped,true);assert.equal(ended.comfy_released,true);assert.equal(launches,1);assert.equal(stops,1);
 });
 
+// 見込み: runtimeと操作leaseを結べば、画面closeが送信待ちにもguardianの終了を届ける。
+// 合格: stop直後に対象signalだけabort、送信後shutdown1回、別lease/借用ComfyUIは保持。範囲: 実HTTP、LLMとbridge応答は模擬。
+test('dialog close cancels its in-flight image session and rejects late runtime reuse',async t=>{
+ const signals=[],events=[];let finishSubmit,enteredSubmit;
+ const gate=new Promise(done=>{finishSubmit=done;}),entered=new Promise(done=>{enteredSubmit=done;});
+ const bridge=createServer(async(request,response)=>{
+   response.setHeader('Content-Type','application/json');
+   if(request.url==='/api/health')return response.end(JSON.stringify({service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3,image_generation_lifecycle_version:2,panel_action_llm_mode:'auto',panel_action_llm_url:'http://127.0.0.1:8080/v1/chat/completions'}));
+   for await(const _ of request){} enteredSubmit();await gate;response.end(JSON.stringify({ok:true}));
+ });
+ await new Promise(done=>bridge.listen(0,'127.0.0.1',done));t.after(()=>new Promise(done=>bridge.close(done)));
+ const comfy=new LocalComfyController({check:async()=> 'ready',stop:async()=>assert.fail('borrowed server')});
+ const supervisor=await startLocalBridgeSupervisor({repoRoot:process.cwd(),port:0,comfyController:comfy,
+  bridgeUrl:`http://127.0.0.1:${bridge.address().port}`,llmController:{ownershipMode:'auto',
+   suspendForImages:async(_token,{signal})=>{signals.push(signal);return {resume:async()=>assert.fail('closed session'),shutdown:async()=>{events.push('shutdown');return false;}};},
+   unload:async()=>false,close:async()=>{},
+  }});t.after(()=>supervisor.close());
+ const post=(path,body={})=>fetch(supervisor.url+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const runtime='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+ await post('/api/image-generation/start',{session_token:runtime,comfyui_url:'http://127.0.0.1:8188'});
+ const other=await(await post('/api/new-creation/start')).json();
+ const {lease_token}=await(await post('/api/new-creation/start',{session_token:runtime})).json();
+ await post('/api/image-generation/prepare',{lease_token,requires_llm:false});
+ const submitting=post('/api/image-generation/submit',{lease_token,payload:{job_id:'fixture'}});await entered;
+ const closing=post('/api/image-generation/stop',{session_token:runtime});
+ for(let i=0;i<100&&!signals[0].aborted;i++)await new Promise(done=>setTimeout(done,5));
+ assert.equal(signals[0].aborted,true);finishSubmit();await submitting;
+ assert.equal((await closing).status,200);assert.deepEqual(events,['shutdown']);
+ assert.equal((await post('/api/new-creation/start',{session_token:runtime})).status,503);
+ const result=await(await post('/api/new-creation/stop',{lease_token:other.lease_token})).json();assert.equal(result.released,true);
+});
+
 function fakeChild() {
   return { running: true };
 }

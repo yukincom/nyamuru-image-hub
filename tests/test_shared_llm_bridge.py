@@ -21,7 +21,8 @@ from unittest.mock import patch, Mock, ANY
 from urllib.error import URLError
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
-from image_generation_lock import create_generation_lease, hold_generation_lease, close_generation_lease, activate_generation_lease
+from image_generation_lock import (create_generation_lease, hold_generation_lease, close_generation_lease,
+    activate_generation_lease, record_generation_job, recover_abandoned_leases)
 
 spec = importlib.util.spec_from_file_location('shared_llm_process', Path(__file__).parents[1] / 'scripts/shared_llm_process.py')
 session = importlib.util.module_from_spec(spec)
@@ -62,9 +63,9 @@ class SharedLlmTests(unittest.TestCase):
         def stop(*_):
             saved['stop_requested'] = True
             events.append('stop')
-        def close(*args):
+        def close(*args, **kwargs):
             events.append('close')
-            return close_generation_lease(*args)
+            return close_generation_lease(*args, **kwargs)
         with tempfile.TemporaryDirectory() as root, \
                 patch.object(session, 'snapshot', return_value=saved), \
                 patch.object(session, 'stop_original', side_effect=stop), \
@@ -194,6 +195,25 @@ class SharedLlmTests(unittest.TestCase):
                 self.assertFalse(json.loads((Path(root) / f'{token}.json').read_text())['active'])
                 self.assertEqual(restart.call_count, 0 if failed_step == 'external-wait' else 1)
 
+    # 見込み: 完了通知後もworkerが居残る場合は期限後に取消し、復帰せず終了を確認する。
+    # 合格: 2度目のclose前にshutdownを渡し、記録除去と中断エラー、LLM復帰0回。範囲: 実lease、待機/worker/APIは模擬。
+    def test_completion_drain_timeout_cancels_instead_of_abandoning_worker(self):
+        token = str(uuid4()); attempts = []
+        def close(*args, **kwargs):
+            attempts.append(kwargs['timeout'])
+            if len(attempts) == 1: raise ValueError('worker timeout')
+            return close_generation_lease(*args, **kwargs)
+        with tempfile.TemporaryDirectory() as root, \
+                patch.object(session.sys, 'stdin', io.StringIO('resume\n')), \
+                patch.object(session, 'close_generation_lease', side_effect=close), \
+                patch.object(session, 'request_generation_shutdown') as cancel, \
+                patch.object(session, 'restart') as restart, \
+                patch.object(session, 'emit') as emit:
+            self.assertEqual(session.run_session(8080, '/tmp/log', restore=False, token=token, lease_root=root), 1)
+            self.assertFalse((Path(root) / f'{token}.json').exists())
+        self.assertEqual(attempts, [15, 5]);cancel.assert_called_once_with(token, root, terminate=True)
+        restart.assert_not_called();self.assertIn('中断', emit.call_args.kwargs['message'])
+
     # 見込み: 自身の停止要求があっても別listenerへ割り込まず、元processも重複起動しない。
     # 合格: どちらも起動0回、停止後の別listenerはエラー。範囲: restart本体、PID照合と起動は模擬。
     def test_restart_does_not_overwrite_new_listener_or_duplicate_old_process(self):
@@ -235,6 +255,17 @@ class SharedLlmTests(unittest.TestCase):
                 self.assertEqual(sleeps, [0.5, 0.5])
                 self.assertEqual(start.call_args.args[0], saved['args'])
                 self.assertEqual(start.call_args.kwargs['env'], saved['env'])
+
+    # 見込み: SIGTERMを受けても終了しない元LLMを有限に待てば、管理だけが残り続けない。
+    # 合格: 期限で終了未確認のエラー、重複起動も追加signalも0回。範囲: 復帰関数、時計とPIDは模擬。
+    def test_unresponsive_original_does_not_keep_restoration_guardian_alive_forever(self):
+        saved = {'pid': 42, 'identity': (42, 1), 'stop_requested': True}
+        clock = iter([0, 26])
+        with patch.object(session, 'identity', return_value=(42, 1)), \
+                patch.object(session.subprocess, 'Popen') as start, patch.object(session.os, 'kill') as kill:
+            with self.assertRaisesRegex(session.SessionError, '終了を確認できない'):
+                session.restart(saved, 8080, '/tmp/log', now=lambda: next(clock))
+        start.assert_not_called();kill.assert_not_called()
 
     # 見込み: 復帰直前・起動中の終了要求にも従えば、終了後にLLMを残さない。
     # 合格: 起動前はPopen0回、起動後は自身のchildだけ終了確認し復帰false。範囲: restart本体、終了要求・PID照合・起動は模擬。
@@ -330,6 +361,48 @@ class SharedLlmTests(unittest.TestCase):
 
 @unittest.skipUnless(sys.platform == 'darwin' or sys.platform.startswith('linux'), 'native process snapshots need macOS or Linux')
 class SharedLlmNativeTests(unittest.TestCase):
+    # 見込み: guardianのSIGTERM/EOFと突然死を分けて回収すれば、FDを持つworkerを残さない。
+    # 合格: SIGTERM/EOFは自力終了、SIGKILLは次回照合で対象workerだけ終了しleaseを退避。範囲: 実pipe/FD/プロセス、モデル/APIなし。
+    def test_signal_eof_and_killed_owner_release_only_their_own_worker(self):
+        for action in ('term', 'eof', 'kill'):
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory); leases = root / 'leases'; token = str(uuid4()); job_id = str(uuid4())
+                job_root = root / 'jobs'; (job_root / job_id).mkdir(parents=True)
+                (job_root / job_id / 'request.json').write_text('{}')
+                wrapper = root / 'guardian.py'
+                wrapper.write_text('import sys\nsys.path.insert(0, '+repr(str(Path(session.__file__).parent))+')\nfrom shared_llm_process import run_session\nraise SystemExit(run_session(8080,sys.argv[1],restore=False,token=sys.argv[2],lease_root=sys.argv[3]))\n')
+                guardian = subprocess.Popen([sys.executable, str(wrapper), str(root / 'log'), token, str(leases)],
+                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                worker = None
+                try:
+                    self.assertEqual(json.loads(guardian.stdout.readline())['state'], 'paused')
+                    value = json.loads((leases / f'{token}.json').read_text())
+                    self.assertEqual(value['owner']['pid'], guardian.pid)
+                    with hold_generation_lease(token, leases) as fd:
+                        # argv markers identify this fixture, while -c executes only a sleep.
+                        worker = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)',
+                            str(Path(session.__file__).with_name('qwen_generation.py')), '--run', job_id,
+                            '--image-session-token', token], pass_fds=(fd,))
+                        record_generation_job(fd, job_id, job_root,
+                            worker={'pid': worker.pid, 'identity': session.identity(worker.pid)})
+                    if action == 'term': guardian.terminate()
+                    elif action == 'eof': guardian.stdin.close()
+                    else:
+                        guardian.kill(); guardian.wait(timeout=5)
+                        self.assertEqual(recover_abandoned_leases(leases), {'blocked': False, 'recovered': 1})
+                        self.assertTrue((leases / 'archive' / f'{token}.json').exists())
+                    guardian.wait(timeout=10); worker.wait(timeout=5)
+                    self.assertFalse((leases / f'{token}.json').exists())
+                    self.assertTrue((job_root / job_id / 'cancel-request.json').exists())
+                    if action != 'kill':
+                        self.assertEqual(guardian.returncode, 0, guardian.stderr.read())
+                        self.assertEqual(json.loads(guardian.stdout.readline()), {'state': 'restored', 'was_running': False})
+                finally:
+                    for process in (guardian, worker):
+                        if process and process.poll() is None: process.kill(); process.wait(timeout=5)
+                    for stream in (guardian.stdin, guardian.stdout, guardian.stderr):
+                        if stream and not stream.closed: stream.close()
+
     # 見込み: 明示resumeなら、画像処理終了後に元の起動条件を復元できる。
     # 合格: resume後に同じargv/env/cwdで復帰、画像処理中は未起動。範囲: 一時portの模擬HTTPと実子プロセス、実モデルなし。
     def test_exact_launch_restored_after_explicit_resume_and_images_finish(self):

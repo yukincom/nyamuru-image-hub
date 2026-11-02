@@ -40,12 +40,12 @@ test('an already running ComfyUI remains externally owned',async()=>{
 });
 
 // 見込み: 起動待ちにもcloseを並べれば、遅く起動した子を取り残さない。
-// 合格: 起動完了後すぐその子だけstop、lease0。範囲: 待機は制御したPromise、実プロセスなし。
+// 合格: 開始を拒否しその子だけstop、lease0。範囲: 待機は制御したPromise、実プロセスなし。
 test('close arriving during startup releases the late owned process',async()=>{
   let finish;const gate=new Promise(done=>{finish=done;});let checks=0;
   const f=fixture({check:async()=>++checks===1?'missing':(await gate,'ready')});
   const starting=f.controller.acquire(a,endpoint);await new Promise(done=>setImmediate(done));
-  const closing=f.controller.release(a);finish();await starting;await closing;
+  const closing=f.controller.release(a);finish();await assert.rejects(starting,/生成画面を終了/);await closing;
   assert.equal(f.controller.leases.size,0);assert.equal(f.events[1][0],'stop');await f.controller.close();
 });
 
@@ -67,6 +67,30 @@ test('closing defers shutdown until submission and the queue are idle',async()=>
   await f.controller.acquire(a,endpoint);await f.controller.release(a);assert.equal(f.events.length,1);
   busy=false;await f.controller.release(a);assert.equal(f.events.length,1);
   idle=true;await f.controller.release(a);assert.equal(f.events.length,2);await f.controller.close();
+});
+
+// 見込み: client IDとprompt IDを限定すれば他の生成工程を混ぜずに表示できる。
+// 合格: 対象executingだけnodeを更新し、割合や別promptを無視。releaseでsocketを閉じる。範囲: 実observer、WSは模擬。
+test('progress observes only its client and prompt, and closes its socket with the dialog',async()=>{
+  const sockets=[];
+  class Socket extends EventTarget {
+    readyState=1;
+    close(){this.readyState=3;}
+    send(type,data){this.dispatchEvent(new MessageEvent('message',{data:JSON.stringify({type,data})}));}
+  }
+  const f=fixture({socket:url=>{const socket=new Socket();sockets.push({url,socket});return socket;}});
+  await f.controller.acquire(a,endpoint);
+  assert.deepEqual(f.controller.progress(a,{client_id:b,prompt_id:'own'}),{node:null,connected:true});
+  assert.equal(new URL(sockets[0].url).searchParams.get('clientId'),b);
+  const {socket}=sockets[0];
+  socket.send('executing',{node:'wrong',prompt_id:'other'});
+  socket.send('progress',{value:1,max:100,prompt_id:'own'});
+  assert.equal(f.controller.progress(a,{client_id:b,prompt_id:'own'}).node,null);
+  socket.send('executing',{node:'sampler',prompt_id:'own'});
+  assert.equal(f.controller.progress(a,{client_id:b,prompt_id:'own'}).node,'sampler');
+  await f.controller.release(a);assert.equal(socket.readyState,3);
+  assert.throws(()=>f.controller.progress(a,{client_id:b}),/照合情報/);
+  await f.controller.close();
 });
 
 // 見込み: Desktopの登録済み環境と共有設定を読めば、新たな環境やモデルを作らず同じmainを使える。

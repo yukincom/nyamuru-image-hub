@@ -36,6 +36,16 @@ def read_optional(store, job_id, name):
         return None
 
 
+def missing_candidate(store, job_id, index):
+    name = f'api-missing-{index}.json'
+    missing = read_optional(store, job_id, name)
+    if missing is None:
+        store.write_once(job_id, name, canonical({'at': time.time()}))
+    elif time.time() - missing['at'] >= 2:
+        return 'failed'
+    return 'unknown'
+
+
 def collect_candidate(service, job_id, index, client, *, submission=None, value=None):
     """Reconcile only an already submitted candidate. Never sends a prompt."""
     store = service.store
@@ -54,7 +64,7 @@ def collect_candidate(service, job_id, index, client, *, submission=None, value=
     if not prompt_id:
         prompt_id = client.find_prompt(submission['correlation_id'])
         if not prompt_id:
-            return 'unknown'
+            return missing_candidate(store, job_id, index)
         store.write_once(job_id, f'api-accepted-{index}.json', canonical({'prompt_id': prompt_id}))
         submission['prompt_id'] = prompt_id
     result = client.prompt_state(prompt_id)
@@ -62,6 +72,9 @@ def collect_candidate(service, job_id, index, client, *, submission=None, value=
         cancelled = read_optional(store, job_id, f'api-cancelled-{index}.json')
         if cancelled and cancelled.get('prompt_id') == prompt_id and cancelled.get('cancelled') is True:
             return 'failed'
+        return missing_candidate(store, job_id, index)  # Never synthesize success from lost history.
+    else:
+        (store.root / job_id / f'api-missing-{index}.json').unlink(missing_ok=True)
     if result['state'] == 'succeeded':
         value = service.load(job_id) if value is None else value
         path = store.root / job_id / f'candidate-{index}.png'
@@ -181,6 +194,9 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
         while True:
             try:
                 if (store.root / job_id / 'cancel-request.json').exists():
+                    if not submission.get('prompt_id'):
+                        # The guardian reconciles an ambiguous POST using its persisted correlation ID.
+                        raise ComfySubmissionUnknown(correlation, '生成の取消しを要求しました')
                     active_id = submission.get('prompt_id') or client.find_prompt(correlation)
                     if active_id and not read_optional(store, job_id, f'api-cancelled-{index}.json'):
                         cancelled = client.cancel(active_id)

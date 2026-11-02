@@ -133,6 +133,7 @@ export interface QwenJob {
   workflowId?:string; workflowName?:string; workflowVersion?:number; comfyuiUrl?:string; generationPrompt?:string; candidateSeeds?:number[];
   candidates?: {index:number;seed:number;image:string}[]; selectedCandidate?:number; requiresCutout?:boolean;
   candidateCutout?:boolean; selectedCandidates?:number[]; adopted?:boolean; candidatesDiscarded?:boolean;
+  progress?:{candidate:number;total:number;clientId:string;promptId?:string;nodes:Record<string,string>};
   documentKey?: string; pageNumber?: number; panelId?: number; overlay?: boolean; ownerKey?: string; createdAt?: number;
 }
 export interface QwenAdoption { jobId:string; indices:number[] }

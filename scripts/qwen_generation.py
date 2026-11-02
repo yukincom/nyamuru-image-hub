@@ -12,7 +12,8 @@ import sys
 import time
 from generation_store import JobStore, canonical, checked_id, sha256, text, validate_png, MAX_PNG, directory_fd, remove_tree_at
 
-from image_generation_lock import hold_generation_lease, validate_generation_fd
+from image_generation_lock import hold_generation_lease, validate_generation_fd, record_generation_job
+from shared_llm_process import identity
 from comfy_client import ComfyClient, ComfyOutputError, ComfySubmissionUnknown, ComfyRejected
 from comfy_generation import ComfySaveError
 from comfy_workflows import WorkflowStore, install_qwen_defaults, negative_prompt_nodes, validate_runtime, validate_request
@@ -532,6 +533,16 @@ class QwenGenerationService:
             result.update(workflow_id=value['workflow']['id'], workflow_name=value['workflow']['name'],
                           workflow_version=value['workflow']['version'], comfyui_url=value['comfyui_url'],
                           candidate_seeds=value['candidate_seeds'])
+            if event['status'] in ('queued', 'running', 'outcome_unknown'):
+                from comfy_generation import submission_id, read_optional
+                total = value['settings']['candidate_count']
+                index = next((i for i in range(1, total + 1)
+                              if not (self.store.root / job_id / f'candidate-{i}.png').exists()), total)
+                accepted = read_optional(self.store, job_id, f'api-accepted-{index}.json')
+                result['progress'] = {'candidate': index, 'total': total, 'client_id': submission_id(job_id, index),
+                    'prompt_id': accepted.get('prompt_id') if accepted else None,
+                    'nodes': {key: str((node['_meta'].get('title') if isinstance(node.get('_meta'), dict) else None) or node['class_type'])[:200]
+                              for key, node in value['workflow']['graph'].items()}}
             try:
                 result['generation_prompt'] = self.store.read(job_id, 'conditioning-prompt.txt').decode('utf-8')
             except FileNotFoundError:
@@ -769,12 +780,17 @@ class QwenGenerationService:
             self.store.write_once(job_id, 'submission-intent.json', canonical({'job_id': job_id, 'request_sha256': sha256(canonical(value))}))
             self.store.event(job_id, 'queued')
             try:
+                record_generation_job(lease_fd, job_id, self.store.root)
                 process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--run', job_id,
                                   '--root', str(self.store.root),
                                   '--image-lease-fd', str(lease_fd), '--image-session-token', token],
                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                  start_new_session=True, close_fds=True, pass_fds=(lease_fd,))
                 self._workers[job_id] = process
+                stamp = identity(process.pid)
+                if stamp:
+                    record_generation_job(lease_fd, job_id, self.store.root,
+                        worker={'pid': process.pid, 'identity': stamp})
                 self.store.write_once(job_id, 'launch.json', canonical({'pid': process.pid, 'at': time.time()}))
             except Exception as exc:
                 self.store.event(job_id, 'failed', str(exc))
@@ -914,6 +930,8 @@ class QwenGenerationService:
             validate_generation_fd(token, lease_fd)
             value = self.load(job_id)
             with self.store.lock():
+                record_generation_job(lease_fd, job_id, self.store.root,
+                    worker={'pid': os.getpid(), 'identity': identity(os.getpid())})
                 if self._latest(job_id)['status'] != 'queued':
                     return
                 self.store.write_once(job_id, 'execution.json', canonical({'pid': os.getpid(), 'at': time.time()}))

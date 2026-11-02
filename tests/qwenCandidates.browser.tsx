@@ -2,6 +2,9 @@
  * 合格: 候補2/4を1回で追加。追加失敗時は削除0件、削除再試行で重複追加0件。未完了は採用不可。
  * 範囲: 実Dialog・bridge decoder・lifecycle。設定/HTTP/PNGは模擬、実生成/透過処理/作品保存は対象外。 */
 import { render } from 'preact';
+import {useCallback,useState} from 'preact/hooks';
+import VoiceCommands from '../src/components/VoiceCommands';
+import {DEFAULT_AGENT_PREFERENCES} from '../src/lib/agentPreferences';
 import PaintEditor,{PaintLayers} from '../src/components/PaintEditor';
 import {usePaintWorkspace,type PaintWorkspaceState} from '../src/lib/paintWorkspace';
 import {newPaintLayer,type PaintScene} from '../src/lib/paintDocument';
@@ -61,11 +64,12 @@ function fixtureImage(index: number, transparent: boolean) {
   return canvas.toDataURL('image/png');
 }
 const finalImages = Array.from({ length: 5 }, (_, index) => fixtureImage(index, true));
-type Scenario = 'succeeded' | 'failed' | 'outcome_unknown';
+type Scenario = 'succeeded' | 'failed' | 'outcome_unknown' | 'running';
 let scenario: Scenario = 'succeeded', conversation: QwenGenerationConversation | null = null;
 let job: Record<string, unknown> = {};
 let failInsertOnce=false,failCleanupOnce=false,closed=false,insertAttempts=0,cleanupAttempts=0;
 let runtimeReady=false,runtimeStops=0;
+let progressTicks=0,cancelled=false;
 const inserted: { files: File[]; target: QwenGenerationPlan }[] = [];
 const calls: { scenario: Scenario; path: string; body: Record<string, unknown> }[] = [];
 const failureMessage = (status: Scenario) => status === 'failed'
@@ -93,7 +97,7 @@ window.fetch = async (input, options) => {
       if(!response.ok||payload.comfy_stopped!==true)throw new Error(payload.error||'実ComfyUIの終了を確認できません');
       runtimeReady=false;runtimeStops++;return Response.json(payload);
     }
-    runtimeReady=false;runtimeStops++;
+    if(runtimeReady)runtimeStops++;runtimeReady=false;
     return Response.json({...supervisor,comfy_released:true,comfy_stopped:true});
   }
   if (path === '/api/new-creation/start') return Response.json({ ...supervisor, lease_token: 'candidate-fixture' });
@@ -114,11 +118,22 @@ window.fetch = async (input, options) => {
   if (path === '/api/image-generation/submit') {
     const payload = body.payload as Record<string, unknown>;
     if (payload?.job_id !== job.job_id || payload.request_sha256 !== job.request_sha256) throw new Error('確定済みjobと異なる送信です');
+    if(scenario==='running')return Response.json({...supervisor,...job,status:'running',progress:{candidate:1,total:5,
+      client_id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',prompt_id:'fixture-prompt',nodes:{load:'モデル読込',encode:'参照処理',sampler:'画像生成',vae:'画像復元',save:'PNG保存'}}});
     return Response.json({ ...supervisor, ...job, status: scenario, requires_cutout: true,
       ...(scenario === 'succeeded' ? {} : { error: failureMessage(scenario) }),
       candidate_cutout:true,candidates: finalImages.slice(0, scenario === 'succeeded' ? 5 : 2).map((image, index) => ({ image, index: index + 1, seed: 260921 + index })) });
   }
+  if(path==='/api/image-generation/progress'){
+    if(body.client_id!=='cccccccc-cccc-4ccc-8ccc-cccccccccccc'||body.prompt_id!=='fixture-prompt')throw Error('別のジョブの工程を要求しました');
+    const nodes=['load','encode','sampler','vae','save'];
+    return Response.json({...supervisor,node:nodes[Math.min(progressTicks++,nodes.length-1)],connected:true});
+  }
+  if(path==='/api/qwen-generation/cancel'){cancelled=true;return Response.json({...bridge,...job,status:'failed',error:'生成を取り消しました'});}
+  if(path==='/api/qwen-generation/list')return Response.json({...bridge,jobs:[{...job,status:'succeeded'}]});
   if(path==='/api/qwen-generation/reconcile'){
+    if(scenario==='running')return Response.json({...bridge,...job,status:cancelled?'failed':'running',error:cancelled?'生成を取り消しました':'',progress:{candidate:1,total:5,
+      client_id:'cccccccc-cccc-4ccc-8ccc-cccccccccccc',prompt_id:'fixture-prompt',nodes:{load:'モデル読込',encode:'参照処理',sampler:'画像生成',vae:'画像復元',save:'PNG保存'}}});
     if(body.job_id!==job.job_id||cleanupAttempts!==1)throw new Error('削除失敗後の照合以外が呼ばれました');
     return Response.json({...bridge,...job,status:'succeeded',candidate_cutout:true,selected_candidates:[2,4],adopted:true,candidates_discarded:false,
       candidates:finalImages.map((image,index)=>({image,index:index+1,seed:260921+index}))});
@@ -137,7 +152,9 @@ window.fetch = async (input, options) => {
   throw new Error(`Fixture blocked unexpected request: ${path}`);
 };
 // A page close during a test must not send a real lifecycle request either.
-Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: () => { result.blockedRequests++; return false; } });
+Object.defineProperty(navigator, 'sendBeacon', { configurable: true, value: (url:string,body:Blob) => {
+  void body.text().then(body=>window.fetch(url,{method:'POST',body}));return true;
+} });
 
 const plan: QwenGenerationPlan = { profile: QWEN_GENERATION_PROFILE, documentKey: 'candidate-fixture', pageNumber: 1,
   panelId: 1, overlay: false, ownerKey: 'figure-0', label: '検証人物', width: 160, height: 224,
@@ -164,18 +181,24 @@ function check(condition: unknown, label: string) {
 }
 async function mount(status: Scenario) {
   render(null, root); await tick(); conversation = null; job = {}; scenario = status;
-  ready=false;closed=false;
+  ready=false;closed=false;progressTicks=0;cancelled=false;
   // The host keeps PaintEditor mounted after fake onClose; disable its background key handler as the real App does while a dialog is open.
-  render(<><PaintEditor toolPaletteEnabled={false} initial={initialPaint} assets={[]} page={1} panelIndex={0} overlay={false} initialOwner="figure-0" title="採用検証" controller={paintControl} onReady={()=>{ready=true;}} onApply={async()=>{}} onClose={()=>{}}><PaintProbe/><PaintLayers/></PaintEditor>
+  function Room(){
+    const [view,setView]=useState<QwenGenerationConversation|null>(null),[host,setHost]=useState<HTMLElement|null>(null);
+    const update=useCallback((value:QwenGenerationConversation|null)=>{conversation=value;setView(value);},[]);
+    return <><PaintEditor toolPaletteEnabled={false} initial={initialPaint} assets={[]} page={1} panelIndex={0} overlay={false} initialOwner="figure-0" title="採用検証" controller={paintControl} onReady={()=>{ready=true;}} onApply={async()=>{}} onClose={()=>{}}><PaintProbe/><PaintLayers/></PaintEditor>
     <QwenGenerationDialog plan={plan} onClose={() => {closed=true;}}
-    onConversation={value => { conversation = value; }}
+    onConversation={update} onConversationHost={setHost}
     onInsert={async (file, target, adoption) => {
       insertAttempts++;const files=Array.isArray(file)?file:[file];
       if(JSON.stringify(adoption?.indices)!=='[2,4]')throw new Error('採用集合が一致しません');
       if(failInsertOnce){failInsertOnce=false;try{await paintControl.current!.insertImage([files[0],new File(['invalid PNG'],'失敗.png',{type:'image/png'})],plan.ownerKey,{frame,referenceFrame:frame,folderId:'child'},adoption);}catch{throw new Error('検証用：画像の追加失敗');}throw new Error('不正PNGを受け付けた');}
       await paintControl.current!.insertImage(files,plan.ownerKey,{frame,referenceFrame:frame,folderId:'child'},adoption);
       inserted.push({files,target});result.insertions=inserted.length;
-    }}/></>, root);
+    }}/><VoiceCommands profile={{...DEFAULT_AGENT_PREFERENCES}} onChangeProfile={()=>{}} open onToggle={()=>{}} revision={()=>'fixture'} apply={()=>''}
+      connection={async()=>({connected:false,model:''})} generation={view} portalTarget={host}/></>;
+  }
+  render(<Room/>,root);
   await wait(() => ready&&Boolean(conversation) && button('5枚を生成する')?.disabled === false, `${status}: 登録ワークフロー読込`);
 }
 async function generate(status: Scenario) {
@@ -216,7 +239,9 @@ async function run() {
   check(inserted.length===1&&insertAttempts===2&&cleanupAttempts===1,'追加の再試行は1バッチとして成功し、削除失敗でも追加済みを保持');
   // 見込み: 同じjobの状況確認でも追加済み状態が残り、削除だけを続けられる。
   // 合格: 照合後も削除再試行の表示と追加回数2を保持。範囲: 実Dialog、照合応答は固定。
-  button('生成状況を確認')!.click();await wait(()=>result.requests['/api/qwen-generation/reconcile']===1&&!conversation?.busy,'削除失敗後の状況確認');
+  check(!button('生成状況を確認'),'手動の生成状況確認ボタンを表示しない');
+  button('生成履歴')!.click();await wait(()=>Boolean(button(`qwen_${job.job_id}.png`)),'生成履歴');
+  button(`qwen_${job.job_id}.png`)!.click();await wait(()=>result.requests['/api/qwen-generation/reconcile']===1&&!conversation?.busy,'削除失敗後の履歴確認');
   check(selectionButton()?.textContent==='未採用画像の削除を再試行'&&insertAttempts===2,'状況確認後も同じjobの追加済み状態を保持');
   selectionButton()!.click();await wait(()=>closed&&!conversation?.busy,'削除だけ再試行');
   check(insertAttempts===2&&inserted.length===1&&cleanupAttempts===2,'削除の再試行で採用レイヤーを重複追加しない');
@@ -260,6 +285,26 @@ async function run() {
     && result.requests['/api/image-generation/submit'] === 3 && result.requests['/api/qwen-generation/select'] === 3
     && result.requests['/api/qwen-generation/reconcile']===1 && result.blockedRequests === 0,
   '3ケース各1回の読込・準備・送信、確定1回・削除2回・状況確認1回、生成再送・予期しない通信0件');
+
+  // 見込み: ComfyUI工程を会話stateへ渡せば、LLMなしで一つのassistant欄を自動更新できる。
+  // 合格: 5工程と候補番号、割合なし。実行中のclose/Escape/取消し/unmountは終了通知を送り追加0件。範囲: 実Dialog/VoiceCommands、工程/生成は模擬。
+  for(const action of ['close','escape','cancel','unmount']){
+    await mount('running');const before=runtimeStops;
+    const generating=conversation!.send('生成して',()=>true);
+    for(const name of ['モデル読込','参照処理','画像生成','画像復元','PNG保存']){
+      await wait(()=>document.querySelector('[data-generation-progress]')?.textContent?.includes(name)===true,`${action}: ${name}`);
+    }
+    check(document.querySelectorAll('[data-generation-progress]').length===1&&document.querySelector('[data-generation-progress]')?.textContent==='候補 1/5：PNG保存'
+      &&!document.querySelector('[data-generation-progress]')?.textContent?.includes('%'),`${action}: 5工程を一つのassistant欄へ自動表示し、候補番号のみを示す`);
+    if(action==='unmount')render(null,root);
+    else if(action==='escape')document.querySelector('.qwen-generation-dialog')!.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    else button(action==='cancel'?'この生成を取り消す':'閉じる')!.click();
+    await generating;
+    await wait(()=>!runtimeReady&&runtimeStops===before+1,`${action}: 実行中の終了`);
+    check(inserted.length===1,`${action}: 終了後の自動追加0件`);
+    result.scenarios.push(`工程表示・実行中${action}`);
+  }
+  check(result.blockedRequests===0,'工程照合と終了の通信だけを使い、LLM要求0件');
   render(null, root);
   result.done = true; result.passed = true; result.status = 'passed';
   report.textContent = `候補生成 PASS：${result.scenarios.length}ケース・${result.checks.length}検査（${liveRuntime?'ComfyUI起動/終了は実処理、生成/PNGは模擬':'HTTP/PNG模擬'}）`;
