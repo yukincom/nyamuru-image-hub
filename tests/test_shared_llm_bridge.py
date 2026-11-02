@@ -370,7 +370,22 @@ class SharedLlmNativeTests(unittest.TestCase):
                 job_root = root / 'jobs'; (job_root / job_id).mkdir(parents=True)
                 (job_root / job_id / 'request.json').write_text('{}')
                 wrapper = root / 'guardian.py'
-                wrapper.write_text('import sys\nsys.path.insert(0, '+repr(str(Path(session.__file__).parent))+')\nfrom shared_llm_process import run_session\nraise SystemExit(run_session(8080,sys.argv[1],restore=False,token=sys.argv[2],lease_root=sys.argv[3]))\n')
+                wrapper.write_text('import sys, traceback\nsys.path.insert(0, '+repr(str(Path(session.__file__).parent))+')\n' + '''
+import shared_llm_process as session
+import image_generation_lock as leases
+def diagnose(function):
+    def checked(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except BaseException:
+            traceback.print_exc()
+            raise
+    return checked
+session.request_generation_shutdown = diagnose(session.request_generation_shutdown)
+session.close_generation_lease = diagnose(session.close_generation_lease)
+leases.await_api_release = diagnose(leases.await_api_release)
+raise SystemExit(session.run_session(8080,sys.argv[1],restore=False,token=sys.argv[2],lease_root=sys.argv[3]))
+''')
                 guardian = subprocess.Popen([sys.executable, str(wrapper), str(root / 'log'), token, str(leases)],
                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 worker = None
@@ -392,11 +407,12 @@ class SharedLlmNativeTests(unittest.TestCase):
                         self.assertEqual(recover_abandoned_leases(leases), {'blocked': False, 'recovered': 1})
                         self.assertTrue((leases / 'archive' / f'{token}.json').exists())
                     guardian.wait(timeout=10); worker.wait(timeout=5)
+                    if action != 'kill':
+                        events = guardian.stdout.read()
+                        self.assertEqual(guardian.returncode, 0, guardian.stderr.read() + '\n' + events)
+                        self.assertEqual(json.loads(events), {'state': 'restored', 'was_running': False})
                     self.assertFalse((leases / f'{token}.json').exists())
                     self.assertTrue((job_root / job_id / 'cancel-request.json').exists())
-                    if action != 'kill':
-                        self.assertEqual(guardian.returncode, 0, guardian.stderr.read())
-                        self.assertEqual(json.loads(guardian.stdout.readline()), {'state': 'restored', 'was_running': False})
                 finally:
                     for process in (guardian, worker):
                         if process and process.poll() is None: process.kill(); process.wait(timeout=5)
