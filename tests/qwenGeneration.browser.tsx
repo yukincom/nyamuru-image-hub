@@ -78,7 +78,7 @@ function Fixture(){
     <PaintEditor initial={scene} initialOwner="figure-0" assets={[]} title="テスト" page={1} panelIndex={0} overlay={false} suspended={open} controller={controller} onReady={()=>setReady(true)} onApply={async()=>{}} onClose={()=>{}}>
       <PaintState/><div class="fixture-grid"><div class="fixture-paper"><PaintOwnerPreview ownerKey="figure-0" container={{x:0,y:0,w:40,h:56}} inkOnly/></div><PaintLayers/></div>
     </PaintEditor>
-    {open&&<QwenGenerationDialog plan={plan} onClose={()=>setOpen(false)} onInsert={async file=>{
+    {open&&<QwenGenerationDialog plan={plan} onClose={()=>setOpen(false)} onInsert={async inputFile=>{const file=Array.isArray(inputFile)?inputFile[0]:inputFile;
       if(await imageSha256(file)!==digest)throw new Error('PNG bytes changed');
       await controller.current!.insertImage(file,'figure-0');setInserted(`差し込み済み：${file.name}（元PNGとSHA一致）`);setOpen(false);
     }}/>}

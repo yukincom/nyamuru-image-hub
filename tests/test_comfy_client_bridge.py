@@ -261,6 +261,21 @@ class ComfyClientTests(unittest.TestCase):
         query = parse_qs(urlsplit(client._opener.calls[0].full_url).query)
         self.assertEqual(query, {"filename": ["chosen.png"], "subfolder": ["job 1/成果"], "type": ["output"]})
 
+    # 見込み: 実出力のidentityを削除拡張へ渡せば、成功を誤認せず対象を限定できる。
+    # 合格: exact body/pathをPOSTし、削除集合の不一致は失敗。範囲: 実client・HTTP固定応答、実体は拡張側の試験。
+    def test_unused_output_deletion_requires_matching_receipt(self):
+        outputs = [{'prompt_id': TOKEN, 'node': 'out', 'index': 0,
+                    'image': {'filename': 'unused.png', 'subfolder': 'job', 'type': 'output'}}]
+        client = self.client(lambda request: json.dumps({'deleted': outputs}).encode())
+        client.delete_outputs(outputs)
+        request = client._opener.calls[0]
+        self.assertEqual(urlsplit(request.full_url).path, '/nyamuru/outputs/delete')
+        self.assertEqual(request.method, 'POST')
+        self.assertEqual(json.loads(request.data), {'outputs': outputs})
+        other = self.client(lambda request: json.dumps({'deleted': []}).encode())
+        with self.assertRaises(client_module.ComfyError):
+            other.delete_outputs(outputs)
+
     # 見込み: 出力位置の確定不備を通信障害と分け、画像解析は回収側へ任せる。
     # 合格: node・位置欠落やJPEG名はComfyOutputError。PNG名のbytesはそのまま返す。範囲: 実client、viewは模擬。
     def test_output_locator_is_checked_but_image_bytes_are_not_reparsed(self):

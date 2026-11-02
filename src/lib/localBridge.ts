@@ -2824,9 +2824,9 @@ export async function loadPersistedAnalogAsset(reference: PersistentAnalogAssetR
 
 export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:string):Promise<import('./qwenGeneration.ts').QwenJob>{
   const value=raw as Record<string,unknown>;
-  const selectedWorkflow=Boolean(value&&value.status==='succeeded'&&typeof value.workflow_id==='string'
+  const selectedWorkflow=Boolean(value&&typeof value.workflow_id==='string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.workflow_id)
-    && Number.isInteger(value.selected_candidate)&&Number(value.selected_candidate)>=1&&Number(value.selected_candidate)<=5);
+    && (value.candidate_cutout===true||value.status==='succeeded'&&Number.isInteger(value.selected_candidate)&&Number(value.selected_candidate)>=1&&Number(value.selected_candidate)<=5));
   const minSize=selectedWorkflow?1:32,maxSize=selectedWorkflow?16384:4096;
   if(!value||value.profile!=='qwen-image-2.1-owner-v1'||typeof value.job_id!=='string'||!/^[-a-f0-9]{36}$/.test(value.job_id)
     ||(jobId&&value.job_id!==jobId)||typeof value.request_sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.request_sha256)
@@ -2861,6 +2861,12 @@ export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:str
   }
   if(typeof value.selected_candidate==='number')job.selectedCandidate=value.selected_candidate;
   job.requiresCutout=value.requires_cutout===true;
+  job.candidateCutout=value.candidate_cutout===true;
+  if(value.selected_candidates!==undefined){
+    if(!Array.isArray(value.selected_candidates)||!value.selected_candidates.length||value.selected_candidates.some(i=>!Number.isInteger(i)||i<1||i>5)||new Set(value.selected_candidates).size!==value.selected_candidates.length)throw new Error('採用する候補の形式が不正です');
+    job.selectedCandidates=value.selected_candidates as number[];
+  }
+  job.adopted=value.adopted===true;job.candidatesDiscarded=value.candidates_discarded===true;
   if(typeof value.workflow_name==='string')job.workflowName=value.workflow_name;
   if(typeof value.workflow_id==='string')job.workflowId=value.workflow_id;
   if(typeof value.workflow_version==='number')job.workflowVersion=value.workflow_version;
@@ -2885,8 +2891,10 @@ export async function reconcileQwenJob(jobId:string,requestSha256?:string){
 export async function cancelQwenJob(jobId:string){
   return withNewCreationBridgeSession(async()=>decodeQwenJob(await postJson('/api/qwen-generation/cancel',{job_id:jobId},30_000),jobId));
 }
-export async function selectQwenCandidate(job:import('./qwenGeneration.ts').QwenJob,index:number){
-  return decodeQwenJob(await postJson('/api/qwen-generation/select',{job_id:job.jobId,candidate_index:index},30_000),job.jobId,job.requestSha256);
+export async function selectQwenCandidate(job:import('./qwenGeneration.ts').QwenJob,index:number|number[],adopted=false){
+  const result=await decodeQwenJob(await postJson('/api/qwen-generation/select',{job_id:job.jobId,...(Array.isArray(index)?{candidate_indices:index,adopted}:{candidate_index:index})},30_000),job.jobId,job.requestSha256);
+  if(Array.isArray(index)&&(JSON.stringify(result.selectedCandidates)!==JSON.stringify([...index].sort((a,b)=>a-b))||adopted&&!result.candidatesDiscarded))throw new Error('候補の採用・削除結果を確認できません');
+  return result;
 }
 export async function deleteQwenJobs(plan:import('./qwenGeneration.ts').QwenGenerationPlan,jobs:import('./qwenGeneration.ts').QwenJob[]){
   if(!jobs.length||jobs.some(job=>job.documentKey!==plan.documentKey))throw new Error('削除する生成履歴の作品が一致しません');

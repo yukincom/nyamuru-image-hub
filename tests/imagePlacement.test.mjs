@@ -11,7 +11,7 @@ import { beginFigureCropImport, collectFigureCropAssetIds, saveFigureCropAssets,
 import { resizePanelToBounds, translatePanel, panelFigureAt, panelHasElementAt } from '../src/lib/canvasGeometry.ts';
 import { applyPanelTemplate, mergeSelectedPanels, splitPanel } from '../src/lib/panelTemplates.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
-import { insertGeneratedPaintImage, newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
+import { insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
 import { imageCrop } from '../src/lib/imagePlacement.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
@@ -142,8 +142,40 @@ function importHandler(context) {
     ts.forEachChild(node, visit);
   }
   visit(ast);
-  return runInNewContext(ts.transpileModule(`(${initializer.getText(ast)})`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {beginFigureCropImport, setShowOriginalArtwork() {}, ...context});
+  return runInNewContext(ts.transpileModule(`(${initializer.getText(ast)})`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {beginFigureCropImport, generatedPaintName, hasAdoptedPaintImages, setShowOriginalArtwork() {}, ...context});
 }
+
+// 見込み: 通常Appも全候補の準備後に1回だけ確定すれば、途中失敗で作品や通番を変えない。
+// 合格: 成功は同じ親へ生成01/02を1回確定、2枚目の失敗は変更0・未確定資産を回収。範囲: 実App handler/配置、PNG準備・合成・保存は模擬。
+test('normal App adopts a candidate batch atomically and cleans up a failed batch',async()=>{
+ for(const failSecond of [false,true]){
+  const doc=await documentWithImage(),before=structuredClone(doc),owner=paintScene(doc.manga.pages[0].panels[0],100,[]).owners.find(item=>item.kind==='figure');
+  owner.paint.folders=[{id:'outer',name:'親',position:0},{id:'inner',name:'候補',parentFolderId:'outer',position:0}];
+  const target={document:doc,pageIndex:0,panelIndex:0,scope:'panel',figureIndex:0,box:owner.frame,generatedOwner:owner,generatedFolderId:'inner',generatedAdoption:{jobId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',indices:[2,4]}};
+  const writes=[],removed=[],commits=[],context={
+   placedImageInput:{current:null},imageImportTarget:{current:null},documentRef:{current:doc},activePageRef:{current:0},activePanelRef:{current:0},lastHistoryPush:{current:0},
+   setImageImportBusy(){},cloneDocument:structuredClone,createFrameArtwork,createImagePlacement,setFigureArtwork,insertGeneratedPaintImage,generatedPaintName,hasAdoptedPaintImages,
+   prepareImageAsset:async file=>{
+    if(failSecond&&file.name==='two.png')throw Error('second candidate decode failed');
+    const key=file.name==='one.png'?'a':file.name==='two.png'?'b':'c';
+    return {id:key,storageId:`cache-${key}`,sha256:key.repeat(64),mediaType:'image/png',originalName:file.name,widthPx:1,heightPx:1,byteLength:file.size};
+   },
+   humanPoseOwnerImage:async()=>original,loadFigureCropAsset:async()=>null,saveFigureCropAssets:async rows=>writes.push(...rows),deleteFigureCropAssets:async ids=>removed.push(...ids),
+   setDocument:next=>{commits.push(next);context.documentRef.current=next;},setSelectedElement(){},setToast(){},File,Error,
+  };
+  const pending=importHandler(context)([new File(['first'],'one.png'),new File(['second'],'two.png')],target);
+  if(failSecond){
+   await assert.rejects(pending,/second candidate decode failed/);
+   assert.equal(commits.length,0);assert.equal(context.documentRef.current,doc);assert.deepEqual(removed,['cache-a']);
+  }else{
+   await pending;assert.equal(commits.length,1);assert.equal(writes.length,3);assert.deepEqual(removed,[]);
+   const next=commits[0],added=next.manga.pages[0].panels[0].figures[0].artwork.paint.layers.filter(layer=>layer.generation);
+   assert.deepEqual(added.map(layer=>[layer.name,layer.folderId,layer.generation.candidateIndex]),[['生成 01','inner',2],['生成 02','inner',4]]);
+   assert.equal(next.manga.generated_image_sequence,2);
+  }
+  assert.deepEqual(doc,before);
+ }
+});
 
 test('real import handler repairs a missing original with a fresh cache ID and respects current page selection', async () => {
   const doc = await documentWithImage();
@@ -410,7 +442,7 @@ function componentHandler(file, name, context) {
     ts.forEachChild(node,visit);
   }
   visit(ast);assert.ok(expression, name);
-  return runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);
+  return runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,Object.assign(context,{generatedPaintName,hasAdoptedPaintImages}));
 }
 
 test('central image entry follows the selected owner or the active paint controller',()=>{

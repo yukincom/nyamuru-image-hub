@@ -1,6 +1,6 @@
 # Nyamuru memory release observer
 
-ComfyUIのworkerが画像モデルを解放し、実行キャッシュを初期化した後に、モデルの解放を確認する小さな拡張です。生成ノードは追加しません。
+ComfyUIのworkerが画像モデルを解放し、実行キャッシュを初期化した後に、モデルの解放を確認する小さな拡張です。原稿dpiを保持するPNG保存ノードと、ジョブに対応する未採用PNGの削除も提供します。
 
 ## 配置
 
@@ -9,7 +9,7 @@ ComfyUIのworkerが画像モデルを解放し、実行キャッシュを初期�
 3. ComfyUIを通常の方法で起動します。
 4. ニャムル側の接続確認で `GET /nyamuru/memory/capabilities` が `{"protocol":1}` を返すことを確認します。
 
-この成果物は配置用フォルダーです。作成・テスト時に実際のComfyUIへのインストール、再起動、モデル実行は行っていません。削除する場合はComfyUIを終了し、コピーしたフォルダーだけを取り除いてから起動してください。
+拡張を更新した場合は、ComfyUIを再起動して新しい操作を読み込みます。削除する場合はComfyUIを終了し、コピーしたフォルダーだけを取り除いてから起動してください。
 
 ## API
 
@@ -27,3 +27,9 @@ ComfyUIのworkerが画像モデルを解放し、実行キャッシュを初期�
 調査したComfyUIではworkerの処理順が `unload_all_models()` → `e.reset()` です。この順序、`PromptExecutor.reset`、`prompt_queue` のmutex・flags・task_counter、`current_loaded_models` に依存します。ComfyUI更新後はこの互換性を再確認してください。キュー件数や通常の `/free` のHTTP 200、WebSocketの実行完了通知だけを解放完了として扱いません。
 
 自動試験は偽のキュー・executor・モデル管理・HTTP応答による契約の確認です。実ComfyUIの起動・GPU/MPSメモリ回収・他のカスタムノードとの併用は別途実機確認が必要です。また `released` は観測時点の確認であり、その後の別クライアントの送信を禁止するleaseではありません。LLMを復帰する側は、自分が休止したLLMだけを対象にしてください。
+
+## 未採用画像の削除
+
+`POST /nyamuru/outputs/delete` は `outputs` 配列を受け取ります。各要素は `prompt_id`、出力`node`、画像`index`、`image`（`filename`・`subfolder`・`type`）です。完了したComfyUI履歴の該当出力と一致する1〜5件だけを削除します。入力資料や別の出力は対象外です。
+
+削除済みファイルへの再要求は成功として返します。履歴の不一致・欠落、親ディレクトリーの参照、外部接続は拒否します。ComfyUI再起動などで完了履歴が無い出力は、保存パスだけを信用して削除しません。採用画像の原稿への追加後に、ニャムルが未採用分だけを指定して呼び出します。

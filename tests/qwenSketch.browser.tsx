@@ -175,7 +175,7 @@ async function checkLetteringDialog(){
    let inserted:{file:File;target:typeof letterPlan}|undefined;
    render(<QwenGenerationDialog plan={letterPlan} layers={qwenLayerCandidates(letterOwner)}
     loadLayer={async(id,correction,crop)=>(await qwenInputImage(await qwenLayerImage(letterOwner,id,[roughAsset],live,correction),crop)).image}
-    onClose={()=>{}} onInsert={async(file,target)=>{inserted={file,target};}}/>,host);await settle();
+    onClose={()=>{}} onInsert={async(inputFile,target)=>{const file=Array.isArray(inputFile)?inputFile[0]:inputFile;inserted={file,target};}}/>,host);await settle();
    const dialog=()=>document.querySelector<HTMLElement>('.qwen-generation-dialog')!;
    const button=(name:string)=>{const buttons=[...dialog().querySelectorAll<HTMLButtonElement>('button')],found=buttons.find(button=>button.textContent?.trim()===name);if(!found)throw new Error(`検証操作のボタンがありません：${name} / ${buttons.map(button=>button.textContent?.trim()).join(',')}`);return found;};
    const select=async(label:string,value:string)=>{const select=dialog().querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));await settle();await wait(()=>!button('閉じる').disabled,'選択完了');};
@@ -281,7 +281,7 @@ function Fixture(){
    <button onClick={()=>{setSession(value=>value+1);setOpen(true);}}>生成画面を開く</button>
    <pre aria-label="検証結果">{summary}</pre>
    {inserted&&<section class="qwen-result"><p>差し込み済み・透過PNGのSHA一致</p><img src={image} alt="差し込み後の透過画像"/></section>}
-   {open&&<QwenGenerationDialog key={session} plan={plan} layers={qwenLayerCandidates(owner)} loadLayer={layerImage} onClose={()=>setOpen(false)} onInsert={async file=>{
+   {open&&<QwenGenerationDialog key={session} plan={plan} layers={qwenLayerCandidates(owner)} loadLayer={layerImage} onClose={()=>setOpen(false)} onInsert={async inputFile=>{const file=Array.isArray(inputFile)?inputFile[0]:inputFile;
      if(await imageSha256(file)!==digest)throw new Error('差し込みでPNGが変更されました');
      setInserted(true);setOpen(false);
    }}/>}

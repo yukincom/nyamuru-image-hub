@@ -480,3 +480,15 @@ test('selected workflow PNGs retain small and large manuscript dimensions',async
   await assert.rejects(decodeQwenJob({...job,...change},id),/対応/);
  }
 });
+
+// 見込み: 作品の生成通番とレイヤーの採用identityを保存すれば、改名しても再採用を区別できる。
+// 合格: 通常のYAML保存/再読込で通番2とjob/候補2を保持。範囲: serializer往復、ファイル選択やPNGは含まない。
+test('generated image numbering and adoption provenance survive the document round trip',()=>{
+ const doc=createEmptyWorkspaceDocument();doc.manga.generated_image_sequence=2;
+ doc.manga.image_assets=[{id:'image',storageId:'fixture-image',sha256:'a'.repeat(64),mediaType:'image/png',originalName:'合成.png',widthPx:100,heightPx:100,byteLength:1}];
+ doc.manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[],images:[{id:'art',assetId:'image',hidden:false,locked:false,bbox:{x:0,y:0,w:100,h:100},crop:{x:0,y:0,w:1,h:1},opacity:1,paint:{version:1,width:100,height:100,dpi:25.4,layers:[{id:'layer',name:'改名済み',kind:'raster',visible:true,locked:false,opacity:1,blend:'normal',strokes:[],generation:{jobId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',candidateIndex:2}}]}}]}];
+ const restored=parseMangaYaml(toStoredMangaYaml(doc));
+ assert.equal(restored.manga.generated_image_sequence,2);
+ assert.deepEqual(restored.manga.pages[0].panels[0].images[0].paint.layers[0].generation,{jobId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',candidateIndex:2});
+ assert.equal(restored.manga.pages[0].panels[0].images[0].paint.layers[0].name,'改名済み');
+});

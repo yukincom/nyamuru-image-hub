@@ -329,7 +329,8 @@ class ComfyClient:
         except ComfyError as exc:
             return {"state": "unknown", "error": str(exc)}
 
-    def get_image(self, history: dict, output_binding: dict) -> bytes:
+    @staticmethod
+    def output_image(history: dict, output_binding: dict) -> dict:
         if not isinstance(output_binding, dict) or set(output_binding) != {"node", "index"}:
             raise ValueError("完成画像のnodeとindexを明示してください")
         node, index = output_binding["node"], output_binding["index"]
@@ -348,9 +349,19 @@ class ComfyClient:
                 raise ValueError
         except (KeyError, IndexError, TypeError, ValueError, AttributeError) as exc:
             raise ComfyOutputError("指定した出力ノード・画像位置にPNGの完成画像がありません") from exc
-        path = "/view?" + urlencode({"filename": filename, "subfolder": folder, "type": kind})
+        return {"filename": filename, "subfolder": folder, "type": kind}
+
+    def get_image(self, history: dict, output_binding: dict) -> bytes:
+        path = "/view?" + urlencode(self.output_image(history, output_binding))
         # Image metadata is read once by the job collector, alongside output dimensions.
         return self._request(path, limit=MAX_IMAGE_BYTES, accept="image/png")
+
+    def delete_outputs(self, outputs: list) -> None:
+        if not outputs:
+            return
+        result = self._json('/nyamuru/outputs/delete', method='POST', payload={'outputs': outputs})
+        if result.get('deleted') != outputs:
+            raise ComfyError('ComfyUIの未採用画像の削除結果を確認できません')
 
     def cancel(self, prompt_id: str) -> dict:
         prompt_id = _identifier(prompt_id)

@@ -8,6 +8,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import threading
+import tempfile
 from types import ModuleType, SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -106,12 +107,53 @@ class MemoryReleaseTests(unittest.TestCase):
                    "comfy.model_management": self.models, "server": server}
         spec = importlib.util.spec_from_file_location("memory_release_under_test", EXTENSION)
         self.module = importlib.util.module_from_spec(spec)
-        with patch.dict(sys.modules, modules):
+        with patch.dict(sys.modules, {**modules,"memory_release_under_test":self.module}):
             spec.loader.exec_module(self.module)
         self.observer = getattr(Executor, "_nyamuru_memory_release_observer")
         self.observer.collect = lambda: self.events.append("gc")
         self.executor = Executor(self.server)
         self.events.clear()
+
+    # 見込み: 完了履歴と一致する出力だけを削除すれば、採用画像や資料に波及しない。
+    # 合格: 1/3/5のみ消え、2/4/資料はbyte不変、再試行成功、外部接続拒否。範囲: 実ファイル＋模擬ComfyUI履歴。
+    def test_unused_outputs_only_and_idempotent_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            histories = {}; outputs = []
+            for index in range(1, 6):
+                image = {'filename': f'candidate-{index}.png', 'subfolder': '', 'type': 'output'}
+                (root / image['filename']).write_bytes(f'image-{index}'.encode())
+                histories[str(index)] = {'outputs': {'out': {'images': [image]}}}
+                if index in (1, 3, 5):
+                    outputs.append({'prompt_id': str(index), 'node': 'out', 'index': 0, 'image': image})
+            (root / 'reference.png').write_bytes(b'original reference')
+            self.queue.get_history = lambda key: {key: histories[key]} if key in histories else {}
+            paths = SimpleNamespace(get_output_directory=lambda: root, get_temp_directory=lambda: root)
+            with patch.dict(sys.modules, {'folder_paths': paths}):
+                rejected = self.call('POST', '/nyamuru/outputs/delete', {'outputs': outputs}, remote='192.168.1.5')
+                self.assertEqual(rejected.status, 403)
+                self.assertEqual(len(list(root.iterdir())), 6)
+                for _ in range(2):
+                    reply = self.call('POST', '/nyamuru/outputs/delete', {'outputs': outputs})
+                    self.assertEqual(reply.status, 200)
+                    self.assertEqual(reply.body['deleted'], outputs)
+            self.assertEqual({p.name: p.read_bytes() for p in root.iterdir()}, {
+                'candidate-2.png': b'image-2', 'candidate-4.png': b'image-4', 'reference.png': b'original reference'})
+
+    # 見込み: 履歴・pathが不一致なら要求全体を拒否し、所有外のファイルを削除しない。
+    # 合格: 別出力や親参照を400で拒否し元ファイル不変。範囲: 実削除routeと模擬履歴。
+    def test_output_mismatch_and_parent_path_leave_files_untouched(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory);(root / 'keep.png').write_bytes(b'keep')
+            image = {'filename': 'keep.png', 'subfolder': '', 'type': 'output'}
+            self.queue.get_history = lambda key: {key: {'outputs': {'out': {'images': [image]}}}}
+            paths = SimpleNamespace(get_output_directory=lambda: root, get_temp_directory=lambda: root)
+            with patch.dict(sys.modules, {'folder_paths': paths}):
+                bad = {'prompt_id': TOKEN, 'node': 'out', 'index': 0, 'image': {**image, 'filename': 'other.png'}}
+                self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [bad]}).status, 400)
+                image['subfolder'] = '..';bad['image'] = image
+                self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [bad]}).status, 400)
+            self.assertEqual((root / 'keep.png').read_bytes(), b'keep')
 
     def worker_release(self):
         """Simulate installed main.py's unload -> reset order, without models."""
@@ -323,7 +365,7 @@ class MemoryReleaseTests(unittest.TestCase):
         before = self.executor.reset_calls
         self.executor.reset()
         self.assertEqual(self.executor.reset_calls, before + 1)
-        self.assertEqual(len(self.server.routes.handlers), 2)
+        self.assertEqual(len(self.server.routes.handlers), 3)
 
     # 見込み: 能力確認は純粋な読取で、LAN直通や不正tokenは変更を起こさない。
     # 合格: capabilities=1、非loopback403、不正body400、flagsなし。範囲: 本体HTTP handlersの模擬要求。

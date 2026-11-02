@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { paintGenerationOwner, paintOwnerShouldClear, movePaintEntry, paintAddPosition, paintNativeBand, addPaintLayer, insertGeneratedPaintImage, addPaintFolder, applyPaintAnchorIds,paintAnchorIds,paintStackMatches,paintStackTarget,directPaintImages,orderedPaintOwners,applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
+import { paintGenerationOwner, paintOwnerShouldClear, movePaintEntry, paintAddPosition, paintNativeBand, addPaintLayer, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, addPaintFolder, applyPaintAnchorIds,paintAnchorIds,paintStackMatches,paintStackTarget,directPaintImages,orderedPaintOwners,applyOwnerPaint, applyPaintOwnerLock, clearOwnerPaint, restoreFigureGuide, expandPaintOwner, expandPaintOwnerToBounds, scalePaintOwner, movePaintFolder, movePaintLayer, paintLayerTree, paintInputPoint, paintReferenceBox, newPaintLayer, paintForFrame, paintScene, removePaintFolder, validatePaintDocument, paintGuideView, figurePaintVisible } from '../src/lib/paintDocument.ts';
 import { createFrameArtwork, imageAssetIds, validateImagePlacements } from '../src/lib/imagePlacement.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
@@ -701,4 +701,17 @@ test('a generation mask moves alone outside a hidden locked native text while re
  assert.deepEqual(source,before);
  const added=insertGeneratedPaintImage(source,{id:'image',widthPx:100,heightPx:100},'AI画像');
  assert.equal(added.owner.paint.layers.at(-1),added.layer);assert.equal(added.layer.aboveNative,true);assert.deepEqual(added.owner.bubble,source.bubble);
+});
+
+// 見込み: 同じ挿入処理に直接の親と生成identityを渡せば、名前と所属を固定して再試行を認識できる。
+// 合格: 2/4は生成01/02、同名の別枝や原画を保持し、指定した枝の最上段へ追加。範囲: 配置とID、UI/保存は別確認。
+test('adopted candidates receive editable names and stay in the captured nested folder',()=>{
+ const owner={key:'figure-0',kind:'figure',frame:{x:10,y:20,w:100,h:100},paint:{version:1,width:100,height:100,dpi:25.4,layers:[{...newPaintLayer('原画'),id:'original',folderId:'inner'}],folders:[{id:'outer',name:'同名',position:0},{id:'inner',name:'同名',parentFolderId:'outer',position:0},{id:'other',name:'同名',position:1}]}};
+ const before=structuredClone(owner),jobId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';let updated=owner;
+ for(const [number,index] of [2,4].entries())updated=insertGeneratedPaintImage(updated,{id:'image-'+index,widthPx:100,heightPx:100},generatedPaintName(number),owner.frame,{folderId:'inner',generation:{jobId,candidateIndex:index}}).owner;
+ assert.deepEqual(owner,before);
+ assert.deepEqual(updated.paint.layers.map(layer=>[layer.name,layer.folderId]),[['原画','inner'],['生成 01','inner'],['生成 02','inner']]);
+ assert.ok(hasAdoptedPaintImages(updated,jobId,[2,4]));assert.equal(hasAdoptedPaintImages(updated,jobId,[2,3]),false);
+ assert.deepEqual(updated.paint.layers[1].image.bbox,{x:0,y:0,w:100,h:100});
+ assert.equal(updated.paint.folders.find(f=>f.id==='inner').parentFolderId,'outer');
 });

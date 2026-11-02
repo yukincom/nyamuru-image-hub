@@ -2036,6 +2036,7 @@ body:not(.is-canvas-space-pan-ready):not(.is-canvas-space-panning) .is-text-tool
 .qwen-candidates { display:grid; width:100%; min-width:0; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin:12px 0; }
 .qwen-candidate { display:flex; flex-direction:column; gap:6px; padding:6px; border:2px solid transparent; }
 .qwen-candidate[aria-pressed="true"] { outline:2px solid var(--accent,#4f7cff); outline-offset:1px; }
-.qwen-result .qwen-candidate img { width:100%; height:180px; object-fit:contain; background:white; }
+.qwen-result .qwen-candidate img { width:100%; height:180px; object-fit:contain; }
+.qwen-result :is(.qwen-candidate img,.qwen-candidate-preview) { background-color:white; background-image:conic-gradient(#ddd 25%,transparent 0 50%,#ddd 0 75%,transparent 0); background-size:10px 10px; }
 .qwen-candidate span { font-size:12px; }
 .qwen-result .qwen-candidate-preview { max-height:55vh; }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { blobDataUrl, requestComfyWorkflows, cancelQwenJob, selectQwenCandidate, deleteQwenJobs, loadCharacterReferenceImage, prepareQwenJob, listQwenJobs, reconcileQwenJob, submitQwenJob } from '../lib/localBridge.ts';
 import { withNewCreationBridgeSession, withImageGenerationServices } from '../lib/localBridgeLifecycle.ts';
-import { canDeleteQwenJob, figureBackgroundPrompt, qwenGenerationPayload, qwenPlanForWorkflow, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenGenerationConversation, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
+import { canDeleteQwenJob, figureBackgroundPrompt, qwenGenerationPayload, qwenPlanForWorkflow, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenAdoption, type QwenGenerationConversation, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
 import { validatePaintDocument, type PaintOwner } from '../lib/paintDocument.ts';
 import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } from '../lib/paintRenderer.ts';
 import { prepareGuideLayer } from '../lib/paintGuide.ts';
@@ -24,7 +24,7 @@ import type {ComponentProps} from 'preact';
 export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPoseEditor>,'panelContext'|'stages'|'backgroundCaptures'> & {
   onConfirmed?: (value: HumanPoseTextSelection, framing: FigureSize) => void;
 };
-interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File,target:QwenGenerationPlan)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
+interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File|File[],target:QwenGenerationPlan,adoption?:QwenAdoption)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
 const statusLabel={preparing:'入力を準備中',prepared:'生成準備済み',queued:'生成待ち',running:'生成中',succeeded:'生成完了',failed:'失敗',outcome_unknown:'結果未確定'};
 
 /** Crop only an explicitly selected area; references retain their native pixel grid. */
@@ -117,6 +117,8 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   const [historyScope,setHistoryScope]=useState<QwenHistoryScope|null>(null),[selectedJobs,setSelectedJobs]=useState<string[]>([]);
   const [phase,setPhase]=useState(''),[notice,setNotice]=useState('');
   const [selectedCandidate,setSelectedCandidate]=useState<number|null>(null);
+  const [selectedCandidates,setSelectedCandidates]=useState<number[]>([]);
+  const insertedBatch=useRef<string|null>(null);
   const [poseImage,setPoseImage]=useState(''),[poseError,setPoseError]=useState(''),[poseAttempt,setPoseAttempt]=useState(0);
   const posePending=useRef<Promise<string|undefined>>();
   const referenceLimit=threeImages?1:usesPoseImage?8:9;
@@ -148,7 +150,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   const attempted=useRef<string|null>(null);attempted.current=attempt;
   const canPrepareNewGeneration=!attempt||(job?['prepared','succeeded','failed','outcome_unknown'].includes(job.status):!submitted.current);
   function prepareNewGeneration(){
-    attempted.current=null;submitted.current=false;setAttempt(null);setJob(null);setSelectedCandidate(null);setError('');setNotice('');
+    attempted.current=null;submitted.current=false;setAttempt(null);setJob(null);setSelectedCandidate(null);setSelectedCandidates([]);insertedBatch.current=null;setError('');setNotice('');
   }
   const updatePrompt=(value:string)=>{
     if(working.current||!canPrepareNewGeneration||draft.current.prompt===value)return;
@@ -215,14 +217,13 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     const bytes=Uint8Array.from(atob(result.image.split(',')[1]),char=>char.charCodeAt(0));
     await insertImage(new File([bytes],result.fileName,{type:'image/png'}),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined,Boolean(result.workflowId));
   }
-  async function insertImage(file:File,capturedTarget?:QwenGenerationPlan,preserveAspect=false){
-    const target=capturedTarget??qwenGenerationTarget(plan,Boolean(draft.current.correction));
-    if(!target.outputFrame){await onInsert(file,target);return;}
+  async function insertionFile(file:File,target:QwenGenerationPlan,preserveAspect=false):Promise<File>{
+    if(!target.outputFrame)return file;
     const bitmap=await createImageBitmap(file);
     try{
       if(target.threeImages && preserveAspect){
         if(bitmap.width!==target.width || bitmap.height!==target.height)throw new Error('生成画像の寸法がコマと一致しません');
-        await onInsert(file,target);return; // Preserve the print DPI and pixels of the adopted PNG.
+        return file; // Preserve the print DPI and pixels of the adopted PNG.
       }
       const canvas=document.createElement('canvas');canvas.width=target.width;canvas.height=target.height;
       const context=canvas.getContext('2d');if(!context)throw new Error('生成画像を配置できません');
@@ -235,8 +236,13 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
         context.drawImage(bitmap,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
       }else context.drawImage(bitmap,0,0,canvas.width,canvas.height);
       const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('生成画像を保存できません')),'image/png'));
-      await onInsert(new File([blob],file.name,{type:'image/png'}),target);
+      return new File([blob],file.name,{type:'image/png'});
     }finally{bitmap.close();}
+  }
+  async function insertImage(file:File|File[],capturedTarget?:QwenGenerationPlan,preserveAspect=false,adoption?:QwenAdoption){
+    const target=capturedTarget??qwenGenerationTarget(plan,Boolean(draft.current.correction)),files=Array.isArray(file)?file:[file],prepared:File[]=[];
+    for(const item of files)prepared.push(await insertionFile(item,target,preserveAspect));
+    await onInsert(Array.isArray(file)?prepared:prepared[0],target,adoption);
   }
   async function importGenerated(){
     const files=await chooseBrowserFiles('image/png,image/jpeg');
@@ -271,7 +277,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     if(inputCount!==workflow.binding.images.length)throw new Error(`${workflow.name}は参照画像${workflow.binding.images.length}枚の定義です。現在は${inputCount}枚です。環境設定で対応する定義を選んでください`);
     const workflowPayload={...payload,workflow_id:workflow.id,workflow_version:workflow.version,comfyui_url:connection.comfyuiUrl,
       ...(defaultNegative!==undefined?{negative_prompt:negative}:{}),
-      ...(figureChroma?{chroma_key_color:chromaKeyColor}:{})};
+      ...(figureChroma?{chroma_key_color:chromaKeyColor,candidate_cutout:true}:{})};
     const id=crypto.randomUUID();
     generatedTarget.current={jobId:id,plan:target};
     submitted.current=false;
@@ -294,18 +300,18 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     if(!alive.current||!isCurrent())return '生成の会話を終了しました';
     const intent=qwenConversationIntent(text);
     if(intent==='hold')return '新しい生成は開始していません。指示を整えてから「生成して」と送ってください。';
-    if(intent==='help')return '追加の指示を送れます。「生成して」と送ると、シードを変えた5枚を表示します。画面で採用する1枚を選んでください。';
+    if(intent==='help')return '追加の指示を送れます。「生成して」と送ると、シードを変えた5枚を表示します。画面で採用する画像を選んでください。';
     if(intent==='instruction'){
       if(working.current)throw new Error('処理が終わるまでお待ちください');
       if(attempted.current)throw new Error('この生成は開始済みです。生成状況を確認してください');
       if(draft.current.prompt.length+text.length>12000)throw new Error('追加の指示が長すぎます。生成指示を整理してください');
       updatePrompt(`${draft.current.prompt}\n\n${text.trim()}`);
-      return '追加の指示を生成指示に反映しました。「生成して」で5枚を生成します。採用する1枚は画面で選んでください。';
+      return '追加の指示を生成指示に反映しました。「生成して」で5枚を生成します。採用する画像は画面で選んでください。';
     }
     const result=await generate(true,isCurrent);
     if(cloud)return '指示と参照画像のZIPを保存しました。指定のエージェントへ渡し、完成したPNGをこの画面で読み込んでください。';
     if(result?.job?.candidates?.length){
-      if(result.job.status==='succeeded'&&result.job.candidates.length===5)return `${plan.label}の候補を5枚生成しました。画面で採用する1枚を選んでください。`;
+      if(result.job.status==='succeeded'&&result.job.candidates.length===5)return `${plan.label}の候補を5枚生成しました。画面で採用する画像を選んでください。`;
       return `候補${result.job.candidates.length}枚を保持しています。${result.job.error||'生成は完了していません。生成状況を確認してください。'}`;
     }
     return result?.inserted?`${plan.label}を生成し、新規レイヤーとして追加しました。元に戻す操作も使えます。`:'自動差し込みは中止しました。開始済みの生成は生成状況から確認できます。';
@@ -329,7 +335,7 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   async function check(id:string){await operation(async()=>{
     const expected=job?.jobId===id?job:history.find(item=>item.jobId===id);
     const result=await withNewCreationBridgeSession(()=>reconcileQwenJob(id,expected?.requestSha256));
-    if(alive.current){setJob(result);setAttempt(id);setSelectedCandidate(result.selectedCandidate??null);}
+    if(alive.current){setJob(result);setAttempt(id);setSelectedCandidate(result.selectedCandidate??result.selectedCandidates?.[0]??null);setSelectedCandidates(result.selectedCandidates??[]);if(insertedBatch.current!==id)insertedBatch.current=null;}
   });}
   async function loadHistory(scope:QwenHistoryScope){await operation(async()=>{
     const jobs=await withNewCreationBridgeSession(()=>listQwenJobs(plan,scope));
@@ -350,12 +356,39 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
     });
   }
   async function selectCandidate(){
-    if(!job||selectedCandidate===null)return;
+    if(!job)return;
+    if(job.candidateCutout){
+      const indices=job.selectedCandidates??[...selectedCandidates].sort((a,b)=>a-b);
+      if(!indices.length)return;
+      await operation(async()=>{
+        const result=job.selectedCandidates?job:await withNewCreationBridgeSession(()=>selectQwenCandidate(job,indices));
+        if(alive.current)setJob(result);
+        if(insertedBatch.current!==job.jobId){
+          const files=indices.map(index=>{
+            const image=result.candidates?.find(candidate=>candidate.index===index)?.image;
+            if(!image)throw new Error('採用する候補を読み込めません');
+            return new File([Uint8Array.from(atob(image.split(',')[1]),char=>char.charCodeAt(0))],`qwen_${job.jobId}_${index}.png`,{type:'image/png'});
+          });
+          await insertImage(files,generatedTarget.current?.jobId===job.jobId?generatedTarget.current.plan:undefined,true,{jobId:job.jobId,indices});
+          insertedBatch.current=job.jobId;
+        }
+        setPhase('未採用画像を削除中');
+        const finished=await withNewCreationBridgeSession(()=>selectQwenCandidate(result,indices,true));
+        if(alive.current){setJob(finished);onClose();}
+      });
+      return;
+    }
+    if(selectedCandidate===null)return;
     await operation(async()=>{
       setPhase(job.requiresCutout?'選んだ画像の背景を透過中':'選んだ画像を準備中');
       const result=await withNewCreationBridgeSession(()=>selectQwenCandidate(job,selectedCandidate));
       if(alive.current)setJob(result);
     });
+  }
+  function chooseCandidate(index:number){
+    setSelectedCandidate(index);
+    if(!job?.candidateCutout||job.selectedCandidates)return;
+    setSelectedCandidates(previous=>previous.includes(index)?previous.filter(item=>item!==index):[...previous,index]);
   }
   async function insert(){if(job)await operation(()=>insertResult(job));}
   function keydown(event:KeyboardEvent){
@@ -449,12 +482,12 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
         {job.documentKey&&<small>{qwenJobLocation(job)}</small>}
         {job.candidates?.length&&!job.image&&<>
           <div class="qwen-candidates" role="group" aria-label="生成候補">
-            {job.candidates.map(candidate=><button type="button" class="qwen-candidate" disabled={busy} aria-pressed={selectedCandidate===candidate.index} onClick={()=>setSelectedCandidate(candidate.index)} key={candidate.index}>
+            {job.candidates.map(candidate=><button type="button" class="qwen-candidate" disabled={busy} aria-pressed={job.candidateCutout?(job.selectedCandidates??selectedCandidates).includes(candidate.index):selectedCandidate===candidate.index} onClick={()=>chooseCandidate(candidate.index)} key={candidate.index}>
               <img src={candidate.image} alt={`候補${candidate.index}・シード${candidate.seed}`}/><span>候補{candidate.index} · seed {candidate.seed}</span>
             </button>)}
           </div>
           {selectedCandidate!==null&&<img class="qwen-candidate-preview" src={job.candidates.find(candidate=>candidate.index===selectedCandidate)?.image} alt={`選択中の候補${selectedCandidate}`}/>}
-          <button class="primary-button" disabled={busy||selectedCandidate===null||job.status!=='succeeded'} onClick={()=>void selectCandidate()}>{job.requiresCutout?'選んだ1枚の背景を透過する':'選んだ1枚を採用する'}</button>
+          <button class="primary-button" disabled={busy||job.status!=='succeeded'||(job.candidateCutout?!(job.selectedCandidates??selectedCandidates).length||job.candidates.length!==5&&!job.selectedCandidates:selectedCandidate===null)} onClick={()=>void selectCandidate()}>{job.candidateCutout?(insertedBatch.current===job.jobId?'未採用画像の削除を再試行':`選択した${(job.selectedCandidates??selectedCandidates).length}枚を追加`):job.requiresCutout?'選んだ1枚の背景を透過する':'選んだ1枚を採用する'}</button>
         </>}
         {job.image&&<><img src={job.image} alt={`${job.label}の生成結果`}/><div class="paint-entry-actions"><a href={job.image} download={job.fileName}>生成画像を保存</a><button disabled={busy} onClick={()=>void insert()}>新規レイヤーとして追加</button><button disabled={busy} onClick={()=>void remove([job])}>破棄する</button></div></>}
         {canPrepareNewGeneration&&<button disabled={busy} onClick={prepareNewGeneration}>新しい生成を準備</button>}

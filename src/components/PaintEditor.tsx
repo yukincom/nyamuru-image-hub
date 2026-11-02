@@ -26,11 +26,12 @@ import { PaintToolButton } from './PaintToolHelp';
 import { defaultVectorStyle, alignVectors, distributeVectors, type VectorReference, type VectorEraseMode } from '../lib/vectorGeometry';
 import { beginVectorDrag, updateVectorDrag, vectorAnchorAt, vectorResizeHandleAt, selectedVectorNodes, deleteSelectedVectorNodes, vectorPenEndpoint, type VectorDrag, type VectorState, type VectorTool } from '../lib/vectorGesture';
 import { copyArtworkSize } from '../lib/artworkClipboard';
+import type {QwenAdoption} from '../lib/qwenGeneration';
 import type { ComponentChildren, ComponentProps, RefObject } from 'preact';
 import { paintCheckpoint, type PaintController, type PaintImagePlacement, type PaintLayerAction, type PaintSessionSnapshot, type SharedPaintHistory } from '../lib/paintSession';
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, PaintToolsContext, PaintDetailsContext, PaintLayerControlsContext, PaintWorkspaceContext, paintPaletteScope, usePaintWorkspace, type BubblePathToolMode, type PaintWorkspaceState, type PaintLayoutTarget } from '../lib/paintWorkspace';
 import type { BBox, ImageAsset, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
-import { movePaintEntry, paintGenerationOwner, addPaintLayer, addPaintFolder, ensureDirectPaintOwner, paintAddPosition, expandPaintOwnerToBounds, expandPaintOwnerToContent, insertGeneratedPaintImage, movePaintFolder, newPaintLayer, paintLayerAboveNative, removePaintFolder, removePaintLayer, validatePaintDocument, type PaintAddPosition, type PaintOwner, type PaintScene, paintOwnerShouldClear, paintAssetIds } from '../lib/paintDocument';
+import { movePaintEntry, paintGenerationOwner, addPaintLayer, addPaintFolder, ensureDirectPaintOwner, paintAddPosition, expandPaintOwnerToBounds, expandPaintOwnerToContent, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, movePaintFolder, newPaintLayer, paintLayerAboveNative, removePaintFolder, removePaintLayer, validatePaintDocument, type PaintAddPosition, type PaintOwner, type PaintScene, paintOwnerShouldClear, paintAssetIds } from '../lib/paintDocument';
 import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, type PaintImages } from '../lib/paintRenderer';
 import { prepareImageAsset, fitImageBox, imageCrop } from '../lib/imagePlacement';
 import { PaintSmoother } from '../lib/paintStroke';
@@ -484,7 +485,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     }catch(e){if(alive.current)setError(e instanceof Error?e.message:'保存できませんでした');throw e;}
     finally{operation.current=false;if(alive.current)setBusy(false);}
   }
-  if(controller)controller.current=requested?{snapshot,images:()=>imagesRef.current??new Map(),pause,selectTool,interactionRevision:()=>interactionRevision.current,canRestore:()=>!operation.current&&!busy&&!externalSuspended&&!inputActive.current&&!backgroundOwner,layerAction,flush,close:requestClose,generate,chooseImage:key=>chooseImage(true,key),insertImage:(file,key,placement)=>importImage(file,{key,replace:false,placement},true)}:null;
+  if(controller)controller.current=requested?{snapshot,images:()=>imagesRef.current??new Map(),pause,selectTool,interactionRevision:()=>interactionRevision.current,canRestore:()=>!operation.current&&!busy&&!externalSuspended&&!inputActive.current&&!backgroundOwner,layerAction,flush,close:requestClose,generate,chooseImage:key=>chooseImage(true,key),insertImage:(file,key,placement,adoption)=>importImage(file,{key,replace:false,placement},true,adoption)}:null;
   async function generate(key=owner.key){
     if(!onGenerate||operation.current||!images)return;
     finishGesture();
@@ -502,29 +503,40 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     imageTarget.current={key,replace};
     input.current?.click();
   }
-  async function importImage(file?:File,explicitTarget?:{key:string;replace:boolean;placement?:PaintImagePlacement},fromDialog=false){
+  async function importImage(file?:File|File[],explicitTarget?:{key:string;replace:boolean;placement?:PaintImagePlacement},fromDialog=false,adoption?:QwenAdoption){
     if(input.current)input.current.value='';
+    const files=file?(Array.isArray(file)?file:[file]):[];
     const target=explicitTarget??imageTarget.current;imageTarget.current=null;
     const snapshot=historyRef.current.present;
     const targetOwner=snapshot.owners.find(o=>o.key===target?.key);
-    if(!file||!target||!targetOwner||operation.current||inputActive.current||backgroundOwner||!fromDialog&&(suspended||paintOwnerLocked(targetOwner)||target.replace&&targetOwner.paint.layers.some(l=>!paintLayerEditable(targetOwner,l)))){
+    if(!files.length||!target||!targetOwner||operation.current||inputActive.current||backgroundOwner||!fromDialog&&(suspended||paintOwnerLocked(targetOwner)||target.replace&&targetOwner.paint.layers.some(l=>!paintLayerEditable(targetOwner,l)))){
       if(fromDialog)throw new Error('差し込み先で別の操作が進行中です。状態を確認してください');
       return;
     }
-    if(!target.replace&&targetOwner.paint.layers.length>=64){const message='1つのグループには64レイヤーまで追加できます';setError(message);if(fromDialog)throw new Error(message);return;}
+    if(adoption&&hasAdoptedPaintImages(targetOwner,adoption.jobId,adoption.indices))return;
+    if(!target.replace&&targetOwner.paint.layers.length+files.length>64){const message='1つのグループには64レイヤーまで追加できます';setError(message);if(fromDialog)throw new Error(message);return;}
     operation.current=true;setBusy(true);setError('');
+    const decoded:HTMLImageElement[]=[];let committed=false;
     try{
-      const prepared=await prepareImageAsset(file),asset=[...assets,...imports.map(i=>i.asset)].find(a=>a.id===prepared.id)??prepared;
-      const image=await decodePaintImage(file),map=new Map(images??[]);map.set(asset.id,image);
-      if(images){imagesRef.current=map;setImages(map);}
-      setImports(items=>[...items.filter(i=>i.asset.id!==asset.id),{asset,blob:file.slice(0,file.size,asset.mediaType)}]);
+      const map=new Map(imagesRef.current??[]),pending:Array<{asset:ImageAsset;blob:Blob}>=[];
       const placement='placement' in target?target.placement as PaintImagePlacement|undefined:undefined;
-      const paint=targetOwner.paint;
-      const generated=fromDialog?insertGeneratedPaintImage(targetOwner,asset,file.name,placement?.frame):undefined;
-      const added=generated?.layer??{...newPaintLayer(file.name),image:{assetId:asset.id,crop:imageCrop(asset),bbox:fitImageBox({w:asset.widthPx,h:asset.heightPx},{x:0,y:0,w:paint.width,h:paint.height})}};
-      const updated=generated?.owner??{...targetOwner,paint:{...paint,layers:target.replace?[added]:[...paint.layers,added]}};
-      commit({...snapshot,owners:snapshot.owners.map(o=>o.key===target.key?updated:o)});if(!images)image.src='';setOwnerKey(target.key);setLayerId(added.id);
-    }catch(e){setError(e instanceof Error?e.message:'取り込めませんでした');if(fromDialog)throw e;}finally{operation.current=false;setBusy(false);}
+      let updated=targetOwner,lastId='',sequence=snapshot.generatedImageSequence??0;
+      for(const [index,file] of files.entries()){
+        const prepared=await prepareImageAsset(file),asset=[...assets,...imports.map(i=>i.asset),...pending.map(i=>i.asset)].find(a=>a.id===prepared.id)??prepared;
+        if(!map.has(asset.id)){const image=await decodePaintImage(file);decoded.push(image);map.set(asset.id,image);}
+        if(!pending.some(item=>item.asset.id===asset.id))pending.push({asset,blob:file.slice(0,file.size,asset.mediaType)});
+        const paint=updated.paint;
+        const generated=fromDialog?insertGeneratedPaintImage(updated,asset,generatedPaintName(sequence++),placement?.frame,
+          {folderId:placement?.folderId,...(adoption?{generation:{jobId:adoption.jobId,candidateIndex:adoption.indices[index]}}:{})}):undefined;
+        const added=generated?.layer??{...newPaintLayer(file.name),image:{assetId:asset.id,crop:imageCrop(asset),bbox:fitImageBox({w:asset.widthPx,h:asset.heightPx},{x:0,y:0,w:paint.width,h:paint.height})}};
+        updated=generated?.owner??{...updated,paint:{...paint,layers:target.replace?[added]:[...paint.layers,added]}};lastId=added.id;
+      }
+      if(historyRef.current.present!==snapshot)throw new Error('差し込み先が変更されました。生成対象を選び直してください');
+      if(images){imagesRef.current=map;setImages(map);}
+      setImports(items=>[...items.filter(i=>!pending.some(item=>item.asset.id===i.asset.id)),...pending]);
+      commit({...snapshot,...(fromDialog?{generatedImageSequence:sequence}:{}),owners:snapshot.owners.map(o=>o.key===target.key?updated:o)});
+      committed=true;if(!images)decoded.forEach(image=>{image.src='';});setOwnerKey(target.key);setLayerId(lastId);
+    }catch(e){if(!committed)decoded.forEach(image=>{image.src='';});setError(e instanceof Error?e.message:'取り込めませんでした');if(fromDialog)throw e;}finally{operation.current=false;setBusy(false);}
   }
   function matchLayerPen(kind:PaintLayer['kind']){
     const next=paintToolForLayer(tool,kind);

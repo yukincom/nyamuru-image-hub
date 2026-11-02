@@ -572,6 +572,7 @@ export function validateManga(document: MangaDocument): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const manga = document?.manga;
   if (!manga) return [{ level: 'error', path: 'manga', message: 'manga ルートが必要です' }];
+  if(manga.generated_image_sequence!==undefined&&(!Number.isSafeInteger(manga.generated_image_sequence)||manga.generated_image_sequence<0))issues.push({level:'error',path:'manga.generated_image_sequence',message:'生成画像番号は0以上の整数で指定してください'});
   if (manga.schema_name !== NDM_SCHEMA_NAME) issues.push({ level: 'error', path: 'manga.schema_name', message: `固定値「${NDM_SCHEMA_NAME}」にしてください` });
   if (manga.schema_version !== CURRENT_NDM_SCHEMA_VERSION) issues.push({ level: 'warning', path: 'manga.schema_version', message: `NDMスキーマは v${CURRENT_NDM_SCHEMA_VERSION} です（現在 v${manga.schema_version ?? '不明'}）` });
   if (manga.meta?.page_count !== manga.pages?.length) issues.push({ level: 'error', path: 'manga.meta.page_count', message: `pages の実数 ${manga.pages?.length ?? 0} と一致しません` });

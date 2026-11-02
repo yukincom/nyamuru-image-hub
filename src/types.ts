@@ -311,6 +311,8 @@ export interface PaintFolder {
   aboveNative?: boolean;
 }
 export interface PaintLayer {
+  /** Provenance used to recognize a retried candidate adoption independently of its editable name. */
+  generation?: {jobId:string;candidateIndex:number};
   id: string;
   name: string;
   visible: boolean;
@@ -567,6 +569,7 @@ export interface ArtworkSettingsData {
 }
 
 export interface Manga {
+  generated_image_sequence?: number;
   /** Original 3D stage files, shared by panel cameras and saved with the work. */
   background_stages?: BackgroundStage[];
   image_assets?: ImageAsset[];

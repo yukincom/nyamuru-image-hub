@@ -494,7 +494,7 @@ export interface PaintOwner {
   /** An enclosing panel folder owns the lock; descendant locks are display-only. */
   inheritedLocked?: boolean;
 }
-export interface PaintScene { frame: BBox; owners: PaintOwner[]; colorMode?:PaintColorMode; anchorIds?:Record<string,string>; /** Page-wide last allocated work-layer number. */ layerSequence?:number }
+export interface PaintScene { frame: BBox; owners: PaintOwner[]; colorMode?:PaintColorMode; anchorIds?:Record<string,string>; /** Page-wide last allocated work-layer number. */ layerSequence?:number; generatedImageSequence?:number }
 
 /** Bottom to top, with each direct sibling immediately behind its native anchor. */
 export function orderedPaintOwners(owners:PaintOwner[],anchorIds:Record<string,string>={}):PaintOwner[] {
@@ -716,16 +716,23 @@ export function expandPaintOwnerToBounds(owner:PaintOwner,bounds:BBox|undefined)
 }
 
 /** Add generated pixels at the top of the target folder; retain the source, edits and their locks. */
-export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name:string,frame: BBox=owner.frame):{owner:PaintOwner;layer:PaintLayer} {
+export function generatedPaintName(sequence:number):string { return `生成 ${String(sequence+1).padStart(2,'0')}`; }
+export function hasAdoptedPaintImages(owner:PaintOwner,jobId:string,indices:number[]):boolean {
+  return indices.every(index=>owner.paint.layers.some(layer=>layer.generation?.jobId===jobId&&layer.generation.candidateIndex===index));
+}
+export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name:string,frame: BBox=owner.frame,options:{folderId?:string;generation?:PaintLayer['generation']}={}):{owner:PaintOwner;layer:PaintLayer} {
   if(owner.paint.layers.length>=64)throw new Error('1つのグループには64レイヤーまで追加できます');
+  if(options.folderId&&!owner.paint.folders?.some(folder=>folder.id===options.folderId))throw new Error('追加先のフォルダーが見つかりません');
   const px=owner.paint.width/owner.frame.w,py=owner.paint.height/owner.frame.h;
   const box={x:(frame.x-owner.frame.x)*px,y:(frame.y-owner.frame.y)*py,w:frame.w*px,h:frame.h*py};
   const expanded=expandPaintOwnerToBounds(owner,box),paint=expanded.paint;
   const target={x:(frame.x-expanded.frame.x)*px,y:(frame.y-expanded.frame.y)*py,w:box.w,h:box.h};
   // Fit in manuscript coordinates; the layer can have a different pixel density on each axis.
   const scale=Math.min(frame.w/asset.widthPx,frame.h/asset.heightPx),w=asset.widthPx*scale*px,h=asset.heightPx*scale*py;
-  const layer:PaintLayer={...newPaintLayer(name),...(owner.kind==='bubble'?{aboveNative:true}:{}),image:{assetId:asset.id,crop:{x:0,y:0,w:asset.widthPx,h:asset.heightPx},bbox:{x:target.x+(target.w-w)/2,y:target.y+(target.h-h)/2,w,h}}};
-  return {owner:{...expanded,paint:{...paint,layers:[...paint.layers,layer]}},layer};
+  const layer:PaintLayer={...newPaintLayer(name),...(options.generation?{generation:options.generation}:{}),...(owner.kind==='bubble'?{aboveNative:true}:{}),image:{assetId:asset.id,crop:{x:0,y:0,w:asset.widthPx,h:asset.heightPx},bbox:{x:target.x+(target.w-w)/2,y:target.y+(target.h-h)/2,w,h}}};
+  const appended={...paint,layers:[...paint.layers,layer]};
+  const placed=options.folderId?movePaintLayer(appended,layer.id,{kind:'folder',id:options.folderId,placement:'inside'}):appended;
+  return {owner:{...expanded,paint:placed},layer:placed.layers.find(item=>item.id===layer.id)!};
 }
 
 /** Grow the backing raster only when editable content reaches beyond it.

@@ -46,6 +46,7 @@ export interface QwenGenerationPlan {
   outputFrame?: BBox;
   referenceFrame?: BBox;
   generationArea?: BBox;
+  folderId?: string;
   poseContext?: string;
 }
 export interface QwenReference { label: string; characterKeys: string[]; image: string }
@@ -131,8 +132,10 @@ export interface QwenJob {
   image?: string; fileName?: string; width: number; height: number;
   workflowId?:string; workflowName?:string; workflowVersion?:number; comfyuiUrl?:string; generationPrompt?:string; candidateSeeds?:number[];
   candidates?: {index:number;seed:number;image:string}[]; selectedCandidate?:number; requiresCutout?:boolean;
+  candidateCutout?:boolean; selectedCandidates?:number[]; adopted?:boolean; candidatesDiscarded?:boolean;
   documentKey?: string; pageNumber?: number; panelId?: number; overlay?: boolean; ownerKey?: string; createdAt?: number;
 }
+export interface QwenAdoption { jobId:string; indices:number[] }
 export type QwenHistoryScope = 'owner'|'work';
 export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','failed'].includes(job.status);}
 export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}

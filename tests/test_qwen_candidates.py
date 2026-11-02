@@ -1,5 +1,5 @@
-"""見込み: APIの5候補は原画像で保存し、明示採用した1枚だけ色抜きする。
-合格: 参照アップロード共有・異なる5seed・選択前未加工・採用後の保存復元。
+"""見込み: 5候補を保存し、人物用は全候補を透過して複数採用できる。
+合格: 参照共有・異なる5seed・保存済み透過PNGの同一性・追加確定後だけ未採用削除。
 範囲: 実PNG/保存/色抜き、ComfyUI APIは固定応答。推論品質・速度は対象外。
 """
 import base64
@@ -11,6 +11,7 @@ import test_qwen_generation_bridge as fixture
 from test_qwen_generation_bridge import encoded, Image, hold_generation_lease
 from qwen_background import remove_chroma_background, remove_white_background
 from qwen_generation import QwenGenerationService
+from comfy_generation import collect_candidate, ComfySaveError
 
 
 @unittest.skipIf(Image is None, 'Pillow required')
@@ -19,6 +20,66 @@ class CandidateTests(unittest.TestCase):
     bind_workflow = fixture.QwenJobsTest.bind_workflow
     prepare = fixture.QwenJobsTest.prepare
     submit = fixture.QwenJobsTest.submit
+
+    # 見込み: 出力位置の記録後に画像保存が失敗しても、再取得は同じ記録を再利用できる。
+    # 合格: 2回目にraw/透過PNGが揃い、prompt送信は1回だけ。範囲: 実保存・模擬ComfyUI完了結果。
+    def test_candidate_save_retry_reuses_its_output_identity(self):
+        self.request.update(candidate_cutout=True);self.prepare()
+        job_id=self.request['job_id'];value=self.service.load(job_id)
+        prompt_id=self.api.submit({'p':{'inputs':{'width':value['output_size'][0],'height':value['output_size'][1]}}}, 'fixture-output')
+        write=self.service.store.write_once
+        def fail_raw(job,name,raw):
+            if name=='candidate-1.png':raise OSError('disk full')
+            return write(job,name,raw)
+        with patch.object(self.service.store,'write_once',side_effect=fail_raw):
+            with self.assertRaises(ComfySaveError):
+                collect_candidate(self.service,job_id,1,self.api,submission={'prompt_id':prompt_id},value=value)
+        self.assertEqual(collect_candidate(self.service,job_id,1,self.api,submission={'prompt_id':prompt_id},value=value),'succeeded')
+        self.assertEqual(len(self.api.calls),1)
+        self.assertTrue((self.service.store.root/job_id/'candidate-1-cutout.png').exists())
+
+    # 見込み: 取得時に透過を保存すれば再表示・複数採用で再処理せず、追加確定まで候補を守れる。
+    # 合格: 5枚のalpha・2/4選択前後の同一PNG、追加確定後だけ1/3/5の実体削除。範囲: 色抜き/保存は実処理、ComfyUI削除は模擬。
+    def test_five_cutout_previews_multi_adoption_and_retry(self):
+        self.request.update(candidate_cutout=True)
+        self.submit()
+        job_id = self.request['job_id']
+        source = Image.new('RGB', tuple(self.service.load(job_id)['output_size']), '#00FF00')
+        source.paste((20, 40, 80), (16, 16, 48, 48))
+        raw = io.BytesIO(); source.save(raw, format='PNG')
+        with patch('qwen_background.remove_chroma_background', wraps=remove_chroma_background) as cutout:
+            with hold_generation_lease(self.token, self.leases) as fd:
+                with patch.object(self.api, 'get_image', return_value=raw.getvalue()):
+                    self.service.run(job_id, os.dup(fd), self.token)
+            result = self.service.reconcile({'job_id': job_id})
+            self.assertEqual(cutout.call_count, 5)
+            self.assertEqual(len(result['candidates']), 5)
+            for item in result['candidates']:
+                with Image.open(io.BytesIO(base64.b64decode(item['image'].split(',')[1]))) as image:
+                    self.assertEqual(image.getpixel((0, 0))[3], 0)
+                    self.assertEqual(image.getpixel((32, 32)), (20, 40, 80, 255))
+            selected = self.service.select({'job_id': job_id, 'candidate_indices': [4, 2]})
+            self.assertEqual(selected['selected_candidates'], [2, 4])
+            self.assertEqual(selected['candidates'], result['candidates'])
+            self.assertFalse(self.api.deleted_outputs)
+            for i in range(1, 6):
+                self.assertTrue((self.service.store.root / job_id / f'candidate-{i}.png').exists())
+            with patch.object(self.api, 'delete_outputs', side_effect=OSError('cleanup offline')):
+                with self.assertRaises(OSError):
+                    self.service.select({'job_id': job_id, 'candidate_indices': [2, 4], 'adopted': True})
+            self.assertTrue(self.service.reconcile({'job_id': job_id})['adopted'])
+            finished = self.service.select({'job_id': job_id, 'candidate_indices': [2, 4], 'adopted': True})
+            self.assertTrue(finished['candidates_discarded'])
+            self.assertEqual([item['index'] for item in finished['candidates']], [2, 4])
+            self.assertEqual(len(self.api.deleted_outputs), 3)
+            self.assertEqual({item['prompt_id'] for item in self.api.deleted_outputs},
+                {self.service.store.json(job_id, f'api-accepted-{i}.json')['prompt_id'] for i in (1, 3, 5)})
+            for i in range(1, 6):
+                for suffix in ('', '-cutout'):
+                    self.assertEqual((self.service.store.root / job_id / f'candidate-{i}{suffix}.png').exists(), i in (2, 4))
+            self.service.select({'job_id': job_id, 'candidate_indices': [2, 4], 'adopted': True})
+            self.assertEqual(len(self.api.deleted_outputs), 3)
+            self.assertEqual(cutout.call_count, 5)
 
     # 見込み: 5枚は同一参照を共有し、選択前に透過しない。
     # 合格: 同順の参照アップロード各1回、API実行5回、seed重複なし、選択3だけ透過1回、再取得で保持。

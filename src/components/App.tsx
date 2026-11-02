@@ -26,7 +26,7 @@ import PanelControls from './PanelControls';
 import { namedBackgroundStages, prepareBackgroundStage, verifyBackgroundStage } from '../lib/background3d';
 import { persistSeriesBackgroundModels } from '../lib/backgroundStageStore';
 import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
-import { paintGenerationOwner, applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
+import { paintGenerationOwner, applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
 import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
@@ -44,7 +44,7 @@ import MangaCanvas from './MangaCanvas';
 import PanelInspector from './PanelInspector';
 import {getOutputSettings} from '../lib/finishLayout.ts';
 import QwenGenerationDialog, { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from './QwenGenerationDialog';
-import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation } from '../lib/qwenGeneration';
+import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation, type QwenAdoption } from '../lib/qwenGeneration';
 import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
 import { downloadImageBlob, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
 import { humanPoseOwnerImage } from '../lib/humanPoseComposition';
@@ -418,7 +418,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
   const [selectedElement, setSelectedElement] = useState<CanvasElementSelection | null>(null);
   const placedImageInput = useRef<HTMLInputElement>(null);
-  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox; generatedOwner?:PaintOwner; textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}; generationScope?:'page'|'panel' } | null>(null);
+  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox; generatedOwner?:PaintOwner; generatedAdoption?:QwenAdoption; generatedFolderId?:string; textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}; generationScope?:'page'|'panel' } | null>(null);
   const [imageImportBusy, setImageImportBusy] = useState(false);
   const [imageExportDialog,setImageExportDialog]=useState<{mode:'current'|'range'|'all';from:number;to:number;format:ImageExportFormat}|null>(null);
   const [imageExportBusy,setImageExportBusy]=useState(false);
@@ -3112,7 +3112,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     const scene=paintScene(source,setup.dpi,current.manga.image_assets??[],paintColorMode(setup.format),overlay?'page':'panel',overlay?targetPage.panels:undefined);
     if(overlay)scene.owners=scene.owners.filter(owner=>owner.kind!=='background');
     if(!scene.owners.length)throw new Error('描画先を選んでください');
-    return scene;
+    return {...scene,generatedImageSequence:current.manga.generated_image_sequence??0};
   };
   const artworkGuideVisible=(key:string,panelIndex=activePanel,pageIndex=activePage,overlay=false,source=document):boolean=>{
     if(key.startsWith('bubble-'))return false;
@@ -3147,7 +3147,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     try {
       if(!overlay&&!panelVisible(current.manga.pages[pageIndex].panels[panelIndex]))throw new Error('レイヤーの目を押してコマを表示してください');
       setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-      const scene={...(preview??makePaintScene(current,panelIndex,pageIndex,overlay)),layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0};
+      const scene={...(preview??makePaintScene(current,panelIndex,pageIndex,overlay)),layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,generatedImageSequence:preview?.generatedImageSequence??current.manga.generated_image_sequence??0};
       scene.owners=scene.owners.map(owner=>withPaintBleed(owner,paintBleedPx));
       setMobileStoryboardPane('editor');setPaintToolsCollapsed(false);setPaintLayersCollapsed(false);
       const ownerKey=initialOwner??selectedPaintOwner();
@@ -3497,7 +3497,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     source=await prepare(source);target=sameOwner?source:await prepare(target);
     const moved=movePaintEntry(source,target,kind,action.id,action.target);if(!moved)return;
     const owners=sameOwner?[moved.destination]:[moved.source,moved.destination];
-    const replace=(scene:PaintScene,changed:PaintOwner[])=>({...scene,layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,owners:scene.owners.map(owner=>changed.find(item=>item.key===owner.key)??owner)});
+    const replace=(scene:PaintScene,changed:PaintOwner[])=>({...scene,layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,generatedImageSequence:liveSnapshot?.scene.generatedImageSequence??current.manga.generated_image_sequence??0,owners:scene.owners.map(owner=>changed.find(item=>item.key===owner.key)??owner)});
     const sourceAfter=replace(sourceScene,sameScope?owners:[moved.source]),targetAfter=sameScope?sourceAfter:replace(targetScene,[moved.destination]);
     const selectedMoves=sourceLive&&liveSnapshot?.ownerKey===action.key&&(liveSnapshot?.layerId===action.id||kind==='folder'&&paintFolderChain(source.paint,source.paint.layers.find(layer=>layer.id===liveSnapshot.layerId)?.folderId??liveSnapshot.layerId).some(folder=>folder.id===action.id));
     let resumeScene=selectedMoves?targetAfter:sourceLive?sourceAfter:targetLive?targetAfter:liveSnapshot?.scene;
@@ -3556,6 +3556,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       || (captured.figure&&!isPropPlacement(captured.figure));
     const area=needsMask?generationMaskBounds(captured.paint):undefined;
     const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area,Boolean(captured.figure&&!isPropPlacement(captured.figure)));
+    const selected=paintController.current?.snapshot();
+    if(selected?.ownerKey===captured.key){
+      plan.folderId=captured.paint.layers.find(layer=>layer.id===selected.layerId)?.folderId
+        ??captured.paint.folders?.find(folder=>folder.id===selected.layerId)?.id;
+    }
     const loadLayer=async(id:string,correction:boolean,crop?:BBox,native=false)=>{
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop,native);
@@ -3723,6 +3728,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       if(!targetPage)throw new Error('描画先が見つかりません');
       applyPaintAnchorIds(targetPage,batch.panelIndex,batch.overlay,result.scene?.anchorIds);
       if(result.scene?.layerSequence!==undefined)targetPage.paint_layer_sequence=result.scene.layerSequence;
+      if(result.scene?.generatedImageSequence!==undefined)next.manga.generated_image_sequence=result.scene.generatedImageSequence;
       for(const {owner,blob,remove,metadataOnly} of result.owners){
         const target=owner.kind==='page'||(owner.kind==='original'&&batch.overlay)?targetPage:batch.overlay?targetPage.page_overlay:targetPage.panels[batch.panelIndex];
         if(!target)throw new Error('描画先が見つかりません');
@@ -3787,11 +3793,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }
     choosePlacedImage(overlay?'page_overlay':'panel',key.startsWith('figure-')?Number(key.slice(7)):undefined,panelIndex,pageIndex,key.startsWith('bubble-')?Number(key.slice(7)):undefined);
   };
-  const importPlacedImage = async (file?: File, explicitTarget?:NonNullable<typeof imageImportTarget.current>) => {
+  const importPlacedImage = async (inputFile?: File|File[], explicitTarget?:NonNullable<typeof imageImportTarget.current>) => {
     if (placedImageInput.current) placedImageInput.current.value = '';
+    const files=inputFile?(Array.isArray(inputFile)?inputFile:[inputFile]):[],file=files[0];
     const target = explicitTarget??imageImportTarget.current;
     imageImportTarget.current = null;
     if (!file || !target) return;
+    if(target.generatedOwner&&target.generatedAdoption&&hasAdoptedPaintImages(target.generatedOwner,target.generatedAdoption.jobId,target.generatedAdoption.indices))return;
     setImageImportBusy(true);
     const newStorageIds:string[]=[];
     const finishImageImport=beginFigureCropImport();
@@ -3817,7 +3825,15 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       const targetPage = next.manga.pages[target.pageIndex];
       let placement = target.scope === 'page' && !target.generationScope ? createImagePlacement(asset, target.box) : createFrameArtwork(asset, target.box);
       if(target.generatedOwner){
-        const generated=insertGeneratedPaintImage(target.generatedOwner,asset,file.name,target.box).owner;
+        const adoption=target.generatedAdoption;
+        if(target.generatedOwner.paint.layers.length+files.length>64)throw new Error('1つのグループには64レイヤーまで追加できます');
+        let generated=target.generatedOwner,sequence=next.manga.generated_image_sequence??0;
+        for(const [index,source] of files.entries()){
+          const image=index===0?asset:await register(await prepareImageAsset(source),source);
+          generated=insertGeneratedPaintImage(generated,image,generatedPaintName(sequence++),target.box,
+            {folderId:target.generatedFolderId,...(adoption?{generation:{jobId:adoption.jobId,candidateIndex:adoption.indices[index]}}:{})}).owner;
+        }
+        next.manga.generated_image_sequence=sequence;
         const composite=await humanPoseOwnerImage(generated,next.manga.image_assets??[]);
         const flat=await register(await prepareImageAsset(new File([composite],`${file.name}-layers.png`,{type:'image/png'})),composite);
         placement={...createFrameArtwork(flat,generated.frame),paint:generated.paint};
@@ -3865,7 +3881,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       if(explicitTarget)throw error;
     } finally { setImageImportBusy(false); finishImageImport(); }
   };
-  const insertQwenImage = async(file:File,generationPlan?:QwenGenerationPlan) => {
+  const insertQwenImage = async(file:File|File[],generationPlan?:QwenGenerationPlan,adoption?:QwenAdoption) => {
     const target=qwenGeneration;
     if(!target||documentRef.current!==target.document||projectOperation.current||imageImportBusy)throw new Error('作品が変更されました。差し込み先を選び直してください');
     const {pageIndex,panelIndex,overlay,owner}=target,plan=generationPlan??target.plan,session=paintSessionRef.current;
@@ -3874,15 +3890,16 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       setQwenGeneration(null);setToast(`${plan.label}の生成画像を配置しました`);return;
     }
     if(!owner)throw new Error('生成対象がありません');
-    const placement=plan.outputFrame&&plan.referenceFrame?{frame:plan.outputFrame,referenceFrame:plan.referenceFrame}:undefined;
+    const placement=plan.outputFrame&&plan.referenceFrame?{frame:plan.outputFrame,referenceFrame:plan.referenceFrame,...(plan.folderId?{folderId:plan.folderId}:{})}:plan.folderId?{frame:owner.frame,referenceFrame:owner.frame,folderId:plan.folderId}:undefined;
     if(session){
       if(session.pageIndex!==pageIndex||session.panelIndex!==panelIndex||session.overlay!==overlay||!paintController.current)throw new Error('描画先が変更されています。差し込み先を選び直してください');
-      await paintController.current.insertImage(file,owner.key,placement);
+      await paintController.current.insertImage(file,owner.key,placement,adoption);
     }else{
       await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
-        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner,...(target.textSource?{textSource:target.textSource}:{})});
+        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner,generatedAdoption:adoption,generatedFolderId:plan.folderId,...(target.textSource?{textSource:target.textSource}:{})});
     }
-    setQwenGeneration(null);setToast(`${file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);
+    if(!adoption)setQwenGeneration(null);
+    setToast(`${Array.isArray(file)?file.length+'枚の生成画像':file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);
   };
   const imageGestureBoundary = (phase: 'start' | 'end', source?:'text-size') => {
     if(source&&(phase==='start'?imageGesture.current.source===source:imageGesture.current.source!==source))return;

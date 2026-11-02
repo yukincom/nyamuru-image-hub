@@ -55,6 +55,7 @@ class API:
         self.lose_once = False
         self.reject_second = False
         self.extension = True
+        self.deleted_outputs = []
 
     def system_stats(self):
         return {'system': {'comfyui_version': 'fixture'}, 'devices': []}
@@ -77,7 +78,8 @@ class API:
         self.calls.append(copy.deepcopy(graph))
         if self.reject_second and len(self.calls) == 2:
             raise ComfyRejected('node rejected')
-        self.prompts[correlation] = {'state': 'succeeded', 'history': {'marker': correlation, 'size': (graph['p']['inputs']['width'], graph['p']['inputs']['height'])}}
+        self.prompts[correlation] = {'state': 'succeeded', 'history': {'marker': correlation, 'size': (graph['p']['inputs']['width'], graph['p']['inputs']['height']),
+            'outputs': {'out': {'images': [{'filename': f'comfy-{correlation}.png', 'subfolder': '', 'type': 'output'}]}}}}
         if self.lose_once:
             self.lose_once = False
             raise ComfySubmissionUnknown(correlation)
@@ -97,6 +99,9 @@ class API:
     def cancel(self, prompt_id):
         self.prompts.pop(prompt_id, None)
         return {'prompt_id': prompt_id, 'supported': True, 'cancelled': True}
+
+    def delete_outputs(self, outputs):
+        self.deleted_outputs.extend(outputs)
 
 
 class IntegrationTests(unittest.TestCase):

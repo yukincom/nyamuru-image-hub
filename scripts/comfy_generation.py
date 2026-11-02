@@ -83,9 +83,14 @@ def collect_candidate(service, job_id, index, client, *, submission=None, value=
                 # Transport failures and local saving failures are classified separately.
                 raise ComfyOutputError('ワークフローの完成画像を静止PNGとして読み取れません') from exc
             try:
+                if value['settings'].get('candidate_cutout') and not (store.root / job_id / f'candidate-output-{index}.json').exists():
+                    image = ComfyClient.output_image(result['history'], value['workflow']['binding']['output'])
+                    store.write_once(job_id, f'candidate-output-{index}.json', canonical({
+                        'prompt_id': prompt_id, **value['workflow']['binding']['output'], 'image': image}))
                 store.write_once(job_id, path.name, raw)
             except OSError as exc:
                 raise ComfySaveError(f'画像のローカル保存に失敗しました（候補{index}）: {exc}') from exc
+        service.prepare_candidate(job_id, index, value)
         return 'succeeded'
     if result['state'] == 'failed':
         return 'failed'
@@ -99,6 +104,7 @@ def reconcile_candidates(service, job_id, client=None):
     states = []
     for index in range(1, value['settings']['candidate_count'] + 1):
         if (service.store.root / job_id / f'candidate-{index}.png').exists():
+            service.prepare_candidate(job_id, index, value)
             states.append('succeeded')
         else:
             states.append(collect_candidate(service, job_id, index, client, value=value))

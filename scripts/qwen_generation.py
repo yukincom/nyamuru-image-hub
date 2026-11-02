@@ -537,6 +537,22 @@ class QwenGenerationService:
             except FileNotFoundError:
                 pass
         count = value['settings'].get('candidate_count', 1)
+        if value['settings'].get('candidate_cutout'):
+            result['candidate_cutout'] = True
+            try:
+                result['selected_candidates'] = self.store.json(job_id, 'selection.json')['indices']
+            except FileNotFoundError:
+                pass
+            result['adopted'] = (self.store.root / job_id / 'adoption.json').exists()
+            result['candidates_discarded'] = (self.store.root / job_id / 'discarded.json').exists()
+            if three_image_workflow(value):
+                result.update(width=value['width'], height=value['height'])
+            if include_image:
+                indices = result.get('selected_candidates', list(range(1, count + 1))) if result['candidates_discarded'] else range(1, count + 1)
+                result['candidates'] = [dict(index=i, seed=value['settings']['seed'] + i - 1,
+                    image='data:image/png;base64,' + base64.b64encode(self.store.read(job_id, f'candidate-{i}-cutout.png')).decode())
+                    for i in indices if (self.store.root / job_id / f'candidate-{i}-cutout.png').exists()]
+            return result
         if count > 1:
             result['requires_cutout'] = value['settings'].get('transparency_mode') in ('code-white-v1', 'chroma-key-v1')
         if include_image and count > 1 and event['status'] != 'succeeded':
@@ -568,6 +584,8 @@ class QwenGenerationService:
         index = body.get('candidate_index')
         with self.store.lock():
             value = self.load(job_id)
+            if value['settings'].get('candidate_cutout'):
+                return self.select_candidates(job_id, body, value)
             count = value['settings'].get('candidate_count', 1)
             if self._latest(job_id)['status'] != 'succeeded' or type(index) is not int or not 1 <= index <= count or count == 1:
                 raise ValueError('完成した候補から1枚選んでください')
@@ -589,6 +607,48 @@ class QwenGenerationService:
             self.store.write_once(job_id, 'output.png', raw)
             self.store.write_once(job_id, 'selection.json', canonical({'index': index}))
             return self.payload(job_id, value=value, output=raw)
+
+    def prepare_candidate(self, job_id, index, value):
+        if not value['settings'].get('candidate_cutout'):
+            return
+        name = f'candidate-{index}-cutout.png'
+        if not (self.store.root / job_id / name).exists():
+            from qwen_background import remove_chroma_background
+            raw = remove_chroma_background(self.store.read(job_id, f'candidate-{index}.png'),
+                value['settings']['chroma_key'], dpi=value.get('dpi'), polygon=value.get('clip_polygon'))
+            self.store.write_once(job_id, name, raw)
+
+    def select_candidates(self, job_id, body, value):
+        indices = body.get('candidate_indices')
+        if self._latest(job_id)['status'] != 'succeeded' or not isinstance(indices, list) or not indices \
+                or any(type(i) is not int or i < 1 or i > 5 for i in indices) or len(set(indices)) != len(indices):
+            raise ValueError('完成した5候補から1枚以上選んでください')
+        indices = sorted(indices)
+        selection = {'indices': indices}
+        try:
+            if self.store.json(job_id, 'selection.json') != selection:
+                raise ValueError('この生成では採用する画像を決定済みです')
+        except FileNotFoundError:
+            for i in range(1, 6):
+                self.store.read(job_id, f'candidate-{i}-cutout.png')
+            self.store.write_once(job_id, 'selection.json', canonical(selection))
+        if body.get('adopted') is True:
+            if not (self.store.root / job_id / 'adoption.json').exists():
+                self.store.write_once(job_id, 'adoption.json', canonical(selection))
+            if not (self.store.root / job_id / 'discarded.json').exists():
+                discarded = [i for i in range(1, 6) if i not in indices]
+                outputs = [self.store.json(job_id, f'candidate-output-{i}.json') for i in discarded]
+                self.client_factory(value['comfyui_url']).delete_outputs(outputs)
+                with directory_fd(self.store.root / job_id) as job_fd:
+                    for i in discarded:
+                        for name in (f'candidate-{i}.png', f'candidate-{i}-cutout.png'):
+                            try:
+                                os.unlink(name, dir_fd=job_fd)
+                            except FileNotFoundError:
+                                pass
+                    os.fsync(job_fd)
+                self.store.write_once(job_id, 'discarded.json', canonical({'indices': discarded}))
+        return self.payload(job_id, value=value)
 
     def read_output(self, job_id):
         return self.store.read(job_id, 'output.png')
@@ -651,6 +711,8 @@ class QwenGenerationService:
                 raise ValueError('背景色は緑・青・マゼンタから選んでください')
             value['settings'].update(transparency_mode='chroma-key-v1',
                 chroma_key={'color': color, 'similarity': .08, 'blend': .12, 'despill': True})
+            if body.get('candidate_cutout') is True:
+                value['settings']['candidate_cutout'] = True
         elif body.get('chroma_key_color') is not None:
             raise ValueError('クロマキー背景色はQwen用の人物ワークフローだけに指定できます')
         return value, images

@@ -1,7 +1,11 @@
-/** 見込み: 登録ワークフローの会話生成も候補選択で止まり、採用1枚だけを明示追加できる。
- * 合格: 5候補→候補3の確定PNG→追加callback1回。部分失敗・未確定は2枚を保持して採用不可。
+/** 見込み: 登録ワークフローの会話生成も候補選択で止まり、透過5候補から複数をまとめて採用できる。
+ * 合格: 候補2/4を1回で追加。追加失敗時は削除0件、削除再試行で重複追加0件。未完了は採用不可。
  * 範囲: 実Dialog・bridge decoder・lifecycle。設定/HTTP/PNGは模擬、実生成/透過処理/作品保存は対象外。 */
 import { render } from 'preact';
+import PaintEditor,{PaintLayers} from '../src/components/PaintEditor';
+import {usePaintWorkspace,type PaintWorkspaceState} from '../src/lib/paintWorkspace';
+import {newPaintLayer,type PaintScene} from '../src/lib/paintDocument';
+import type {PaintController} from '../src/lib/paintSession';
 import QwenGenerationDialog from '../src/components/QwenGenerationDialog';
 import { QWEN_GENERATION_PROFILE, type QwenGenerationConversation, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
 import { DEFAULT_GENERATION_PREFERENCES, saveGenerationPreferences } from '../src/lib/generationPreferences';
@@ -54,12 +58,12 @@ function fixtureImage(index: number, transparent: boolean) {
   context.fillStyle = 'black'; context.font = '28px sans-serif'; context.fillText(String(index + 1), 70, 110);
   return canvas.toDataURL('image/png');
 }
-const images = Array.from({ length: 5 }, (_, index) => fixtureImage(index, false));
 const finalImages = Array.from({ length: 5 }, (_, index) => fixtureImage(index, true));
 type Scenario = 'succeeded' | 'failed' | 'outcome_unknown';
 let scenario: Scenario = 'succeeded', conversation: QwenGenerationConversation | null = null;
 let job: Record<string, unknown> = {};
-const inserted: { file: File; target: QwenGenerationPlan }[] = [];
+let failInsertOnce=false,failCleanupOnce=false,closed=false,insertAttempts=0,cleanupAttempts=0;
+const inserted: { files: File[]; target: QwenGenerationPlan }[] = [];
 const calls: { scenario: Scenario; path: string; body: Record<string, unknown> }[] = [];
 const failureMessage = (status: Scenario) => status === 'failed'
   ? '候補3の生成に失敗しました（検証用の固定応答）' : '候補3の結果を確認できません（検証用の固定応答）';
@@ -78,7 +82,7 @@ window.fetch = async (input, options) => {
   if (path === '/api/image-generation/prepare') return Response.json({ ...supervisor, llm_stopped: true });
   if (path === '/api/qwen-generation/prepare') {
     if (body.candidate_count !== 5 || body.workflow_id !== workflow.id || body.workflow_version !== workflow.version
-      || body.comfyui_url !== endpoint || body.width !== 160 || body.height !== 224 || body.chroma_key_color !== '#00FF00') {
+      || body.comfyui_url !== endpoint || body.width !== 160 || body.height !== 224 || body.chroma_key_color !== '#00FF00'||body.candidate_cutout!==true) {
       throw new Error('5候補・選択ワークフロー/版・接続先・固定寸法・背景色の送信内容が一致しません');
     }
     job = { ...body, request_sha256: 'a'.repeat(64), status: 'prepared', created_at: 1,
@@ -90,12 +94,22 @@ window.fetch = async (input, options) => {
     if (payload?.job_id !== job.job_id || payload.request_sha256 !== job.request_sha256) throw new Error('確定済みjobと異なる送信です');
     return Response.json({ ...supervisor, ...job, status: scenario, requires_cutout: true,
       ...(scenario === 'succeeded' ? {} : { error: failureMessage(scenario) }),
-      candidates: images.slice(0, scenario === 'succeeded' ? 5 : 2).map((image, index) => ({ image, index: index + 1, seed: 260921 + index })) });
+      candidate_cutout:true,candidates: finalImages.slice(0, scenario === 'succeeded' ? 5 : 2).map((image, index) => ({ image, index: index + 1, seed: 260921 + index })) });
+  }
+  if(path==='/api/qwen-generation/reconcile'){
+    if(body.job_id!==job.job_id||cleanupAttempts!==1)throw new Error('削除失敗後の照合以外が呼ばれました');
+    return Response.json({...bridge,...job,status:'succeeded',candidate_cutout:true,selected_candidates:[2,4],adopted:true,candidates_discarded:false,
+      candidates:finalImages.map((image,index)=>({image,index:index+1,seed:260921+index}))});
   }
   if (path === '/api/qwen-generation/select') {
-    if (scenario !== 'succeeded' || body.job_id !== job.job_id || body.candidate_index !== 3) throw new Error('完了jobの候補3以外が採用されました');
-    result.selected.push(body.candidate_index);
-    return Response.json({ ...bridge, ...job, status: 'succeeded', selected_candidate: body.candidate_index, image: finalImages[2] });
+    if(scenario!=='succeeded'||body.job_id!==job.job_id||JSON.stringify(body.candidate_indices)!=='[2,4]')throw new Error('完了jobの候補2/4以外が採用されました');
+    if(body.adopted){
+      if(inserted.length!==1)throw new Error('レイヤー追加成功前に削除されました');
+      cleanupAttempts++;
+      if(failCleanupOnce){failCleanupOnce=false;throw new Error('検証用：ComfyUI削除失敗');}
+    }else result.selected.push(...body.candidate_indices as number[]);
+    return Response.json({...bridge,...job,status:'succeeded',candidate_cutout:true,selected_candidates:[2,4],adopted:body.adopted===true,candidates_discarded:body.adopted===true,
+      candidates:finalImages.flatMap((image,index)=>!body.adopted||[1,3].includes(index)?[{image,index:index+1,seed:260921+index}]:[])});
   }
   result.blockedRequests++;
   throw new Error(`Fixture blocked unexpected request: ${path}`);
@@ -107,6 +121,11 @@ const plan: QwenGenerationPlan = { profile: QWEN_GENERATION_PROFILE, documentKey
   panelId: 1, overlay: false, ownerKey: 'figure-0', label: '検証人物', width: 160, height: 224,
   prompt: '人物を描く', characterKeys: [], candidates: [] };
 const root = document.getElementById('test-root')!;
+const paintControl:{current:PaintController|null}={current:null};let workspace:PaintWorkspaceState|null=null;
+function PaintProbe(){workspace=usePaintWorkspace();return null;}
+const frame={x:0,y:0,w:160,h:224};
+const initialPaint:PaintScene={frame,generatedImageSequence:0,owners:[{key:'figure-0',kind:'figure',index:0,label:'原稿の人物',frame,paint:{version:1,dpi:25.4,width:160,height:224,guideInitialized:true,layers:[newPaintLayer('あたり')],folders:[{id:'parent',name:'親',position:0},{id:'child',name:'候補',parentFolderId:'parent',position:0}]}}]};
+let ready=false;
 const report = document.createElement('output'); report.setAttribute('aria-label', '候補生成の検証結果');
 report.style.cssText = 'position:fixed;bottom:8px;left:8px;z-index:99999;background:white;color:black;padding:8px;max-width:90vw';
 report.textContent = '候補生成を検証中'; document.body.append(report);
@@ -123,10 +142,18 @@ function check(condition: unknown, label: string) {
 }
 async function mount(status: Scenario) {
   render(null, root); await tick(); conversation = null; job = {}; scenario = status;
-  render(<QwenGenerationDialog plan={plan} onClose={() => {}}
+  ready=false;
+  render(<><PaintEditor initial={initialPaint} assets={[]} page={1} panelIndex={0} overlay={false} initialOwner="figure-0" title="採用検証" controller={paintControl} onReady={()=>{ready=true;}} onApply={async()=>{}} onClose={()=>{}}><PaintProbe/><PaintLayers/></PaintEditor>
+    <QwenGenerationDialog plan={plan} onClose={() => {closed=true;}}
     onConversation={value => { conversation = value; }}
-    onInsert={async (file, target) => { inserted.push({ file, target }); result.insertions = inserted.length; }} />, root);
-  await wait(() => Boolean(conversation) && button('5枚を生成する')?.disabled === false, `${status}: 登録ワークフロー読込`);
+    onInsert={async (file, target, adoption) => {
+      insertAttempts++;const files=Array.isArray(file)?file:[file];
+      if(JSON.stringify(adoption?.indices)!=='[2,4]')throw new Error('採用集合が一致しません');
+      if(failInsertOnce){failInsertOnce=false;try{await paintControl.current!.insertImage([files[0],new File(['invalid PNG'],'失敗.png',{type:'image/png'})],plan.ownerKey,{frame,referenceFrame:frame,folderId:'child'},adoption);}catch{throw new Error('検証用：画像の追加失敗');}throw new Error('不正PNGを受け付けた');}
+      await paintControl.current!.insertImage(files,plan.ownerKey,{frame,referenceFrame:frame,folderId:'child'},adoption);
+      inserted.push({files,target});result.insertions=inserted.length;
+    }}/></>, root);
+  await wait(() => ready&&Boolean(conversation) && button('5枚を生成する')?.disabled === false, `${status}: 登録ワークフロー読込`);
 }
 async function generate(status: Scenario) {
   await mount(status);
@@ -135,7 +162,7 @@ async function generate(status: Scenario) {
     && !conversation?.busy, `${status}: 候補表示`);
   return reply;
 }
-const selectionButton = () => button('選んだ1枚の背景を透過する');
+const selectionButton = () => Array.from(document.querySelectorAll<HTMLButtonElement>('.qwen-result button.primary-button')).find(element=>element.textContent?.includes('枚を追加')||element.textContent?.includes('削除を再試行'));
 
 async function run() {
   // 見込み: 保存済みIDで一覧中の定義を選べば、版・URL・寸法を保って5候補を作れる。合格: 実要求の各値一致、生成中も追加0件。範囲: 実読込と模擬登録API。
@@ -150,27 +177,39 @@ async function run() {
     '5候補の表示時点では採用APIも追加callbackも0件');
   check(selectionButton()?.disabled && !button('新規レイヤーとして追加'), '候補未選択では確定も追加もできない');
 
-  // 見込み: 候補クリックは選択だけ、確定で得たPNGも明示追加まで保持する。合格: 候補3だけの確定1件→同PNGを追加callback1件。範囲: 実DOM、透過済みPNG応答は固定。
-  const candidate = document.querySelectorAll<HTMLButtonElement>('.qwen-candidate')[2]; candidate.click(); await tick();
-  check(candidate.getAttribute('aria-pressed') === 'true'
-    && document.querySelector<HTMLImageElement>('.qwen-candidate-preview')?.src === images[2]
-    && result.selected.length === 0 && inserted.length === 0, '候補3のクリックは拡大表示だけで採用・追加しない');
-  if (new URLSearchParams(location.search).has('preview')) {
-    result.status = 'preview'; result.done = true;
-    report.textContent = '候補生成 PREVIEW：5候補から候補3を選択中（後続検査は未実行）'; return;
+  // 見込み: 選択は候補比較だけに留め、一括追加の成功後に破棄する。失敗時は同じ操作を続けられる。
+  // 合格: 2/4のPNGと元対象を1回のcallbackへ渡す。追加失敗は削除0件、削除再試行は再追加0件。範囲: 実Dialog・模擬HTTP/PNG。
+  for(const index of [1,3])document.querySelectorAll<HTMLButtonElement>('.qwen-candidate')[index].click();
+  await tick();
+  check(document.querySelectorAll('.qwen-candidate[aria-pressed="true"]').length===2
+    &&document.querySelector<HTMLImageElement>('.qwen-candidate-preview')?.src===finalImages[3]
+    &&result.selected.length===0&&inserted.length===0,'候補2/4は透過済みで比較し、選択だけでは追加しない');
+  if(new URLSearchParams(location.search).has('preview')){result.status='preview';result.done=true;report.textContent='透過5候補・2/4選択中';return;}
+  failInsertOnce=true;failCleanupOnce=true;
+  selectionButton()!.click();await wait(()=>document.querySelector('[role="alert"]')?.textContent?.includes('画像の追加失敗')===true&&!conversation?.busy,'追加失敗');
+  check(cleanupAttempts===0&&inserted.length===0&&document.querySelectorAll('.qwen-candidate').length===5&&paintControl.current!.snapshot().scene.owners[0].paint.layers.length===1&&paintControl.current!.snapshot().imports.length===0,'2枚目の読込失敗でも原稿・番号・取込画像を確定せず、5候補を保持');
+  selectionButton()!.click();await wait(()=>document.querySelector('[role="alert"]')?.textContent?.includes('ComfyUI削除失敗')===true&&!conversation?.busy,'削除失敗');
+  check(inserted.length===1&&insertAttempts===2&&cleanupAttempts===1,'追加の再試行は1バッチとして成功し、削除失敗でも追加済みを保持');
+  // 見込み: 同じjobの状況確認でも追加済み状態が残り、削除だけを続けられる。
+  // 合格: 照合後も削除再試行の表示と追加回数2を保持。範囲: 実Dialog、照合応答は固定。
+  button('生成状況を確認')!.click();await wait(()=>result.requests['/api/qwen-generation/reconcile']===1&&!conversation?.busy,'削除失敗後の状況確認');
+  check(selectionButton()?.textContent==='未採用画像の削除を再試行'&&insertAttempts===2,'状況確認後も同じjobの追加済み状態を保持');
+  selectionButton()!.click();await wait(()=>closed&&!conversation?.busy,'削除だけ再試行');
+  check(insertAttempts===2&&inserted.length===1&&cleanupAttempts===2,'削除の再試行で採用レイヤーを重複追加しない');
+  check(result.selected.join(',')==='2,4'&&inserted[0].files.length===2&&inserted[0].target.ownerKey===plan.ownerKey,'候補2/4を元の対象へ別画像としてまとめて渡す');
+  for(const [index,file] of inserted[0].files.entries()){
+    const actual=new Uint8Array(await file.arrayBuffer()),expected=Uint8Array.from(atob(finalImages[[1,3][index]].split(',')[1]),c=>c.charCodeAt(0));
+    check(actual.length===expected.length&&actual.every((byte,i)=>byte===expected[i]),'採用PNGと透過プレビューが一致');
   }
-  selectionButton()!.click();
-  await wait(() => button('新規レイヤーとして追加')?.disabled === false, '候補3の確定PNG');
-  check(result.selected.join(',') === '3' && inserted.length === 0
-    && document.querySelector<HTMLImageElement>('.qwen-result > img')?.src === finalImages[2]
-    && document.querySelectorAll('.qwen-candidate').length === 0, '候補3の確定PNGだけを表示し、追加操作を待つ');
-  button('新規レイヤーとして追加')!.click(); await wait(() => inserted.length === 1 && !conversation?.busy, '明示追加');
-  const bytes = new Uint8Array(await inserted[0].file.arrayBuffer());
-  const expected = Uint8Array.from(atob(finalImages[2].split(',')[1]), character => character.charCodeAt(0));
-  check(bytes.length === expected.length && bytes.every((byte, index) => byte === expected[index])
-    && inserted[0].file.name === job.file_name && inserted[0].target.documentKey === plan.documentKey
-    && inserted[0].target.ownerKey === plan.ownerKey, '明示追加1回で候補3の確定PNGと元の追加先を渡す');
-  result.scenarios.push('5候補成功→候補3確定→明示追加1回');
+  // 見込み: バッチを既存の描画確定に渡せば同じ親に追加でき、履歴も1操作になる。
+  // 合格: 改名可能な生成01/02・元あたり保持・追加再試行無変化、Undo1回/Redoで同じID。範囲: 実PaintEditor、作品ファイル保存は別確認。
+  const saved=paintControl.current!.snapshot(),layers=saved.scene.owners[0].paint.layers,added=layers.filter(layer=>layer.generation);
+  check(added.map(layer=>layer.name).join(',')==='生成 01,生成 02'&&added.every(layer=>layer.folderId==='child')&&layers.some(layer=>layer.name==='あたり')&&saved.scene.generatedImageSequence===2,'元の入れ子フォルダーに生成01/02を追加し、あたりと通番を保持');
+  await paintControl.current!.insertImage(inserted[0].files,plan.ownerKey,{frame,referenceFrame:frame,folderId:'child'},{jobId:String(job.job_id),indices:[2,4]});await tick();
+  check(paintControl.current!.snapshot().scene===saved.scene,'同じ採用の再試行は番号も履歴も増やさない');
+  workspace!.undo();await tick();check(paintControl.current!.snapshot().scene.owners[0].paint.layers.length===1,'Undo1回で2枚とも戻る');
+  workspace!.redo();await tick();check(paintControl.current!.snapshot().scene.owners[0].paint.layers.filter(layer=>layer.generation).map(layer=>layer.id).join(',')===added.map(layer=>layer.id).join(','),'Redoは同じ2枚の名前とIDを復元');
+  result.scenarios.push('透過5候補・複数採用・追加失敗・削除再試行');
 
   // 見込み: 部分失敗を完了と扱わなければ、残った2候補を保持して理由を伝えられる。合格: failed/unknown各々の状態・理由・2枚、採用不可、成功や挿入の誤案内なし。範囲: 終端/未確定応答は固定。
   for (const status of ['failed', 'outcome_unknown'] as const) {
@@ -182,13 +221,13 @@ async function run() {
       && document.querySelectorAll('.qwen-candidate').length === 2, `${status}: 正しい状態・理由と2候補を表示`);
     document.querySelector<HTMLButtonElement>('.qwen-candidate')!.click(); await tick();
     check(selectionButton()?.disabled && !button('新規レイヤーとして追加')
-      && result.selected.join(',') === '3' && inserted.length === 1, `${status}: 候補を選んでも確定・追加不可、成功ケース以外の変更0件`);
+      && result.selected.join(',') === '2,4' && inserted.length === 1, `${status}: 候補を選んでも確定・追加不可、成功ケース以外の変更0件`);
     result.scenarios.push(`${status}: 2候補保持・採用不可・誤成功案内なし`);
   }
   check(result.requests['/api/comfy-workflows/list'] === 3 && result.requests['/api/qwen-generation/prepare'] === 3
-    && result.requests['/api/image-generation/submit'] === 3 && result.requests['/api/qwen-generation/select'] === 1
-    && !result.requests['/api/qwen-generation/reconcile'] && result.blockedRequests === 0,
-  '3ケース各1回の読込・準備・送信、成功候補の確定だけ1回、再送・予期しない通信0件');
+    && result.requests['/api/image-generation/submit'] === 3 && result.requests['/api/qwen-generation/select'] === 3
+    && result.requests['/api/qwen-generation/reconcile']===1 && result.blockedRequests === 0,
+  '3ケース各1回の読込・準備・送信、確定1回・削除2回・状況確認1回、生成再送・予期しない通信0件');
   render(null, root);
   result.done = true; result.passed = true; result.status = 'passed';
   report.textContent = `候補生成 PASS：${result.scenarios.length}ケース・${result.checks.length}検査（HTTP/PNG模擬）`;

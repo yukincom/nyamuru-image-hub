@@ -1,6 +1,7 @@
 import type { PaintAddPosition, PaintLayerDestination, PaintLayerDropTarget, PaintOwner, PaintScene } from './paintDocument.ts';
 import type { BackgroundStage, BBox, ImageAsset, PaintFolder, PaintLayer } from '../types.ts';
-export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox }
+import type {QwenAdoption} from './qwenGeneration.ts';
+export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox; folderId?:string }
 
 export type PaintLayerAction =
   | {type:'background3d';key:'background'}
@@ -47,7 +48,7 @@ export interface PaintController {
   close: () => Promise<void>;
   generate: (key?:string) => Promise<void>;
   chooseImage: (key?:string) => void;
-  insertImage: (file:File,key:string,placement?:PaintImagePlacement) => Promise<void>;
+  insertImage: (file:File|File[],key:string,placement?:PaintImagePlacement,adoption?:QwenAdoption) => Promise<void>;
 }
 
 /** Compare immutable owners; actual edits advance only after their writer succeeds. */
