@@ -374,14 +374,17 @@ test('restarted supervisor cannot prepare or suspend an LLM during surviving Com
   await controller.close();
 });
 
+// 見込み: 導入先に固有の仮想環境を使わなくても、復旧中の記録を検出して競合起動を防げる。
+// 合格: 空の保存先はfalse、inactive記録があるとtrue。実Pythonの復旧helperと一時JSON、モデル起動なし。
 test('session discovery retains protection through inactive restoration records', async t => {
   const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const { hasImageGenerationSession } = await import('../scripts/local-llm-supervisor.mjs');
+  const env = { ...process.env, NYAMURU_BRIDGE_PYTHON: 'python3' };
   const root = await mkdtemp(join(tmpdir(), 'comfy-session-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  assert.equal(await hasImageGenerationSession(root), false);
+  assert.equal(await hasImageGenerationSession(root, env), false);
   await writeFile(join(root, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.json'), '{"active":false}');
-  assert.equal(await hasImageGenerationSession(root), true);
+  assert.equal(await hasImageGenerationSession(root, env), true);
 });
