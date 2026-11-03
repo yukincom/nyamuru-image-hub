@@ -1034,7 +1034,7 @@ def exclude_non_panel_regions(
 
 def exclude_paired_title_header_boxes(
     boxes: list[tuple[float, float, float, float]],
-) -> tuple[list[tuple[float, float, float, float]], int]:
+) -> tuple[list[PanelBox], list[PanelBox]]:
     """Remove a paired row of thin title boxes above comic-strip columns.
 
     A thin horizontal comic panel is valid on its own, so geometry alone must
@@ -1082,4 +1082,30 @@ def exclude_paired_title_header_boxes(
             paired.add(box)
             paired.update(same_row_peers)
 
-    return [box for box in boxes if box not in paired], len(paired)
+    return [box for box in boxes if box not in paired], sorted(paired, reverse=True)
+
+
+def strip_reading_order(boxes: list[PanelBox], headers: list[PanelBox]) -> list[int]:
+    """Reorder two titled four-panel strips; keep the given order on ambiguous pages."""
+    original = list(range(len(boxes)))
+    if len(headers) != 2 or len(boxes) != 8:
+        return original
+
+    strips: list[list[int]] = []
+    for x, y, width, height in sorted(headers, reverse=True):  # right-hand title first
+        # Both sides of each panel should track its own title, so a spanning
+        # panel or a split within a strip cannot silently change reading order.
+        column = sorted((i for i, (bx, _, bw, _) in enumerate(boxes)
+                         if abs(bx - x) <= width * 0.2 and abs(bx + bw - x - width) <= width * 0.2),
+                        key=lambda i: boxes[i][1])
+        if len(column) != 4 or not -0.005 <= boxes[column[0]][1] - (y + height) <= 0.04:
+            return original
+        for upper, lower in zip(column, column[1:]):
+            gap = boxes[lower][1] - (boxes[upper][1] + boxes[upper][3])
+            if not -0.01 <= gap <= 0.5 * min(boxes[upper][3], boxes[lower][3]):
+                return original
+        strips.append(column)
+    right, left = strips
+    if max(boxes[i][0] + boxes[i][2] for i in left) > min(boxes[i][0] for i in right):
+        return original
+    return right + left

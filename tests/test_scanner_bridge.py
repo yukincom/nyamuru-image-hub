@@ -1278,6 +1278,8 @@ class LocalVisionResultTest(unittest.TestCase):
         self.assertEqual(kept, [])
         self.assertEqual(excluded, {"texts": 1, "faces": 0, "bodies": 0})
 
+    # 模擬RT検出: 題枠を除いても文字・人物と重なる本文は残る。各列の元の検出枠を、
+    # 右の上→下4つ、左の上→下4つの順で返せば合格。実画像の編集座標は画像テストで検査。
     def test_one03_keeps_eight_story_panels_despite_cross_class_overlap(self):
         detection = {
             "page": {"width": 600, "height": 848},
@@ -1314,9 +1316,25 @@ class LocalVisionResultTest(unittest.TestCase):
 
         self.assertEqual(len(raw_boxes), 10)
         self.assertEqual(excluded, {"texts": 0, "faces": 0, "bodies": 0})
-        self.assertEqual(removed_headers, 2)
+        self.assertEqual(len(removed_headers), 2)
         self.assertEqual(len(panels), 8)
         self.assertTrue(all(box[3] > 0.15 for box in panels))
+        rows = bridge.sort_panel_boxes_reading_order(panels)
+        order = layout_geometry.strip_reading_order(rows, removed_headers)
+        self.assertEqual([rows[i] for i in order], [raw_boxes[i] for i in (3, 2, 6, 9, 4, 0, 5, 1)])
+
+    # 見込み: 2列4段でも題が両列にない、途中に横断コマがある、または同じ列のコマが重なるなら
+    # 独立した4コマとは断定できない。模擬枠の全8件が元の段順を保てば合格。
+    def test_ambiguous_eight_panel_pages_keep_row_order(self):
+        headers = [(.05, .01, .4, .04), (.55, .01, .4, .04)]
+        rows = [(x, .06 + row * .21, .4, .19) for row in range(4) for x in (.55, .05)]
+        spanning = rows.copy()
+        spanning[2] = (.05, .27, .9, .19)
+        overlapping = rows.copy()
+        overlapping[2] = (.55, .12, .4, .19)
+        for panels, titles in [(rows, []), (rows, headers[:1]), (spanning, headers), (overlapping, headers)]:
+            with self.subTest(panels=panels, titles=titles):
+                self.assertEqual(layout_geometry.strip_reading_order(panels, titles), list(range(8)))
 
     # 模擬検出で体内の唯一の顔位置を保持し、重複身体やその顔を別人物にしない。未所属の顔だけが別領域になる。
     def test_fuses_bodies_with_only_unmatched_faces_as_person_regions(self):

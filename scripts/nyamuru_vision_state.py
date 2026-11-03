@@ -30,6 +30,7 @@ from nyamuru_layout_geometry import (
     recover_missing_panel_rows,
     single_page_role,
     sort_panel_boxes_reading_order,
+    strip_reading_order,
     detector_regions,
     detector_boxes,
     detected_person_regions,
@@ -528,7 +529,7 @@ class LocalVisionState:
         raw_rtdetr_boxes = [box for box in all_frames if box[2] * box[3] <= MAX_PANEL_AREA_RATIO]
         segments = detect_panel_segments(upright_bytes) if raw_rtdetr_boxes and not page_role else []
         rtdetr_boxes, rtdetr_excluded = exclude_non_panel_regions(raw_rtdetr_boxes, detection, segments=segments)
-        rtdetr_boxes, rtdetr_header_excluded = exclude_paired_title_header_boxes(rtdetr_boxes)
+        rtdetr_boxes, rtdetr_headers = exclude_paired_title_header_boxes(rtdetr_boxes)
         rtdetr_boxes = deduplicate_panel_boxes(rtdetr_boxes)
         if page_role or rtdetr_boxes:
             layout_boxes, detector_name = rtdetr_boxes, "RT-DETR"
@@ -537,15 +538,15 @@ class LocalVisionState:
             elif page_role == "title":
                 layout_boxes = []
             selected_excluded = rtdetr_excluded
-            selected_header_excluded = rtdetr_header_excluded
+            selected_headers = rtdetr_headers
         else:
             raw_opencv_boxes = detect_panel_boxes(upright_bytes)
             opencv_boxes, opencv_excluded = exclude_non_panel_regions(raw_opencv_boxes, detection)
-            opencv_boxes, opencv_header_excluded = exclude_paired_title_header_boxes(opencv_boxes)
+            opencv_boxes, opencv_headers = exclude_paired_title_header_boxes(opencv_boxes)
             opencv_boxes = deduplicate_panel_boxes(opencv_boxes)
             layout_boxes, detector_name = opencv_boxes, "OpenCV補助"
             selected_excluded = opencv_excluded
-            selected_header_excluded = opencv_header_excluded
+            selected_headers = opencv_headers
         recovered_row_count = 0
         if rtdetr_boxes and not page_role:
             layout_boxes = recover_missing_panel_rows(layout_boxes, segments, detection)
@@ -564,10 +565,10 @@ class LocalVisionState:
         panels = [
             {
                 "id": f"panel-{index + 1:03d}",
-                "detector_box": [round(value, 6) for value in box],
-                "shape": shape,
+                "detector_box": [round(value, 6) for value in layout_boxes[i]],
+                "shape": panel_shapes[i],
             }
-            for index, (box, shape) in enumerate(zip(layout_boxes, panel_shapes))
+            for index, i in enumerate(strip_reading_order(layout_boxes, selected_headers))
         ]
         detected_count = len(panel_shapes)
 
@@ -600,8 +601,8 @@ class LocalVisionState:
                 result["reason"] += f" 原稿の仕切り線から中間の{recovered_row_count}コマを補いました。"
             if sum(selected_excluded.values()):
                 result["reason"] += f" 文字・人物との信頼度競合で弱い枠候補を{sum(selected_excluded.values())}個除外しました。"
-            if selected_header_excluded:
-                result["reason"] += f" 本文コマ直前の対になったタイトル枠を{selected_header_excluded}個除外しました。"
+            if selected_headers:
+                result["reason"] += f" 本文コマ直前の対になったタイトル枠を{len(selected_headers)}個除外しました。"
         else:
             result = {
                 "layout_protocol_version": LAYOUT_PROTOCOL_VERSION,
@@ -615,7 +616,7 @@ class LocalVisionState:
             "excluded_as_text_count": selected_excluded["texts"],
             "excluded_as_face_count": selected_excluded["faces"],
             "excluded_as_body_count": selected_excluded["bodies"],
-            "excluded_as_header_count": selected_header_excluded,
+            "excluded_as_header_count": len(selected_headers),
             "text_region_count": len(detector_boxes(detection, "texts", max_area_ratio=0.45)),
             "face_region_count": len(detector_boxes(detection, "faces", max_area_ratio=0.45)),
             "body_region_count": len(detector_boxes(detection, "bodies", max_area_ratio=0.82)),

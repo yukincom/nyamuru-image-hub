@@ -54,13 +54,22 @@ test('local scan01: image detection through canvas geometry retains staggered di
 // Preserve existing layout, including known title/line-tracing imperfections;
 // these are non-regression references, not ground-truth typesetting targets.
 const references = {
-  'one03.jpg': [[106.3,53.7,73.7,47.5],[29.9,53.7,73.4,39.2],[106.3,106.2,73.7,46.2],[29.9,97.9,73.4,54.5],
-    [106.3,157.4,73.7,44.7],[29.9,157.4,73.4,44.7],[106.3,207.1,73.7,51.5],[29.9,207.1,73.4,51.5]],
   // Pre-change (606bc49) with today's manuscript inner frame. Both column titles are retained.
   'one04.jpg': [[106.5,14.6,88.5,17.8],[15,14.5,88.5,20.7],[106.2,37.4,88.7,60.9],[15.1,40.2,88.3,58.1],
     [113.4,103.3,81.5,54.8],[15.1,103.3,95.3,52.7],[106.3,160.7,88.6,65.8],[15.1,161,88.6,60.4],
     [111.4,222.3,83.5,60.1],[15.1,226.2,93.3,56.3]],
 };
+
+// 見込み: 左右の列題の下に4コマずつ並ぶので、右列を読み切ってから左列へ移る。
+// 実RT→編集用変換。元の8矩形（8212dc2、mm）の位置と寸法は変えず、順番だけが変われば合格。
+test('local one03.jpg: read down the right strip then the left without moving a frame', { skip: !(one && vision) }, () => {
+  const panels = recognizeLayout(join(one, 'one03.jpg')).detectedPanels;
+  assert.ok(panels.every(p => p.type === 'rect'));
+  assert.deepEqual(panels.map(bounds), [
+    [106.4,53.7,73.4,47.5], [106.4,106.2,73.4,46.2], [106.4,157.4,73.4,44.7], [106.4,207.1,73.4,51.5],
+    [29.9,53.7,73.5,39.2], [29.9,97.9,73.5,54.5], [29.9,157.4,73.5,44.7], [29.9,207.1,73.5,51.5],
+  ]);
+});
 for (const [name, expected] of Object.entries(references)) {
   test(`local ${name}: both four-panel strips retain count, order and frame bounds`, { skip }, () => {
     const panels = recognizeLayout(join(one, name)).detectedPanels.map(bounds);
