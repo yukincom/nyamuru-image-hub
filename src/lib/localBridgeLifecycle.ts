@@ -23,6 +23,7 @@ async function lifecycleRequest(
   body: object,
   fetchImpl: typeof fetch,
   timeoutMs = 25_000,
+  signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -31,7 +32,7 @@ async function lifecycleRequest(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal: signal ? AbortSignal.any([controller.signal, signal]) : controller.signal,
     });
     const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
     if (!response.ok) {
@@ -82,6 +83,12 @@ export async function stopNewCreationBridgeSession(
     llmReleased: payload.llm_released === true,
     llmStopped: payload.llm_stopped === true,
   };
+}
+
+export async function requestMangaFinish(image: string, longEdge: number, signal: AbortSignal) {
+  const payload = await lifecycleRequest('/api/manga-finish', {image, long_edge: longEdge}, fetch, 120_000, signal);
+  if (!payload.layers || typeof payload.layers !== 'object') throw new Error('仕上げ画像を受信できませんでした');
+  return payload.layers as Partial<Record<'line' | 'black' | 'shade' | 'white', string>>;
 }
 
 export async function submitImageGenerationRequest(token: string, payload: object, fetchImpl: typeof fetch = fetch) {

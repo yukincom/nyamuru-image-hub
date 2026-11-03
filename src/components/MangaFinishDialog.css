@@ -1,0 +1,9 @@
+.manga-finish-dialog { margin: auto; color: var(--ink); width: min(620px, 94vw); }
+.manga-finish-dialog::backdrop { background: rgb(22 32 29 / 48%); }
+.manga-finish-dialog fieldset { max-height: 28vh; overflow: auto; }
+.manga-finish-dialog .manga-finish-size { display: flex; align-items: center; gap: 12px; }
+.manga-finish-comparison { display: grid; gap: 8px; margin-top: 14px; }
+.manga-finish-comparison > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.manga-finish-comparison figure { margin: 0; }
+.manga-finish-comparison figcaption { margin-bottom: 4px; font-size: 13px; }
+.manga-finish-comparison canvas, .manga-finish-comparison img { display: block; width: 100%; height: auto; max-height: 30vh; object-fit: contain; background: white; border: 1px solid var(--line); }

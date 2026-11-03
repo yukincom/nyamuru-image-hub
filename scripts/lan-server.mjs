@@ -18,6 +18,7 @@ export const BRIDGE_PATHS = new Set([
   '/api/image-generation/connections',
 ]);
 export const SUPERVISOR_PATHS = new Set([
+  '/api/manga-finish',
   '/api/new-creation/start', '/api/new-creation/stop', '/api/panel-actions/prepare',
   '/api/image-generation/start', '/api/image-generation/prepare', '/api/image-generation/submit',
   '/api/image-generation/progress', '/api/image-generation/stop',

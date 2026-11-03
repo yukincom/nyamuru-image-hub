@@ -7,8 +7,10 @@ import {paintLayerCoverage,pickPaintLayer,paintOwnerPoint,translatePaintLayer} f
 import { moveBackgroundLayoutOwner } from '../lib/background3dLayout';
 import type { BackgroundStage } from '../types';
 import type { Background3dResult, Background3dController } from './Background3dEditor';
-import { Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, Move, ArrowLeftRight } from 'lucide-preact';
+import { Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, Move, ArrowLeftRight, Sparkles } from 'lucide-preact';
 import PaintLayerPalette, { PaintLayerControls } from './PaintLayerPalette';
+import MangaFinishDialog, { type FinishBatch } from './MangaFinishDialog';
+import { canFinishPaintLayer, finishLayerKey } from '../lib/mangaFinishLayers';
 import PaintLayerEffects from './PaintLayerEffects';
 import { prepareGuideLayer } from '../lib/paintGuide';
 import { newToneLayer } from '../lib/paintTone';
@@ -100,6 +102,13 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const paletteScope=paintPaletteScope(page,panelIndex,overlay);
   const owner=scene.owners.find(o=>o.key===ownerKey)??scene.owners[0];
   const [layerId,setLayerId]=useState(owner.paint.layers.findLast(layer=>!layer.locked)?.id??owner.paint.layers[0]?.id??'');
+  const [finishOpen,setFinishOpen]=useState(false);
+  const [finishSelection,setFinishSelection]=useState<{anchor:string;scope:string;keys:string[]}|null>(null);
+  const anchor=finishLayerKey(owner.key,layerId);
+  const finishKeys=finishSelection?.anchor===anchor&&finishSelection.scope===paletteScope?finishSelection.keys:[anchor];
+  useEffect(()=>{
+    if(requested)return ()=>setFinishOpen(false);
+  },[requested]);
   const selectedFolder=owner.paint.folders?.find(folder=>folder.id===layerId);
   const layer=selectedFolder||!layerId?noPaintLayer:owner.paint.layers.find(l=>l.id===layerId)??owner.paint.layers[owner.paint.layers.length-1]??noPaintLayer;
   const hasLayer=layer!==noPaintLayer;
@@ -547,6 +556,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     pendingContents.current=null;
     const target=scene.owners.find(o=>o.key===key);if(!target)return;
     if(!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){onSelectOwner(key,native);return;}
+    setFinishSelection(null);
     clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=id?target.paint.layers.find(l=>l.id===id):undefined;setLayerId(id??'');
     if(selectedLayer&&!contents)matchLayerPen(rasterMask?'raster':selectedLayer.kind);
     if(selectedLayer?.generationMask&&!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
@@ -714,6 +724,24 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       align={mode=>changePaths(paths=>alignVectors(paths,vectorSelected,mode,vectorReference,{x:0,y:0,w:owner.paint.width,h:owner.paint.height},vectorSelected[0]))}
       distribute={(axis,mode,fixed)=>changePaths(paths=>distributeVectors(paths,vectorSelected,axis,mode,vectorReference,{x:0,y:0,w:owner.paint.width,h:owner.paint.height},vectorSelected[0],fixed?vectorGap:undefined))}
       eraseMode={eraseMode} setEraseMode={setEraseMode} erasing={tool==='eraser'}/></div>;
+  function toggleFinishLayer(key:string,id:string){
+    const target=scene.owners.find(item=>item.key===key)?.paint.layers.find(item=>item.id===id);
+    if(!target||!canFinishPaintLayer(target)||busy||suspended)return;
+    const picked=finishLayerKey(key,id);
+    const previous=finishSelection?.anchor===anchor&&finishSelection.scope===paletteScope?finishKeys:hasLayer&&canFinishPaintLayer(layer)?[anchor]:[];
+    setFinishSelection({anchor,scope:paletteScope,keys:previous.includes(picked)?previous.filter(item=>item!==picked):[...previous,picked]});
+  }
+  function openFinish(){
+    if(overlay||busy||toolSuspended||operation.current)return;
+    if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
+    finishGesture();setMenu(null);setFinishOpen(true);
+  }
+  function acceptFinish(batch:FinishBatch){
+    if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。仕上げを開き直してください');
+    imagesRef.current=batch.images;setImages(batch.images);
+    setImports(items=>[...items,...batch.imports.filter(add=>!items.some(item=>item.asset.id===add.asset.id))]);
+    commit(batch.scene);setFinishSelection(null);setOwnerKey(batch.focus.ownerKey);setLayerId(batch.focus.folderId);setMaskTarget(null);setSelection(null);setFinishOpen(false);
+  }
   const toolControls=<div class="paint-tools">
     <div class="paint-tool-icons">
       {tools.slice(0,2).map(([value,label,Icon])=>{
@@ -724,6 +752,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       <PaintToolButton class="paint-tool-icon" label="ペン" shortcut="[ / ]：太さ" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='pen'} onClick={()=>selectTool('pen')}><Pencil size={23}/></PaintToolButton>
       <PaintShapeTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>{textTools}
       <PaintToolButton class="paint-tool-icon" label="消しゴム"  disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||toolSuspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>
+      <PaintToolButton class="paint-tool-icon" label="漫画仕上げ" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openFinish}><Sparkles size={23}/></PaintToolButton>
       {requested&&<PaintToolButton class="paint-tool-icon" label="配置へ戻る"  disabled={busy||toolSuspended} onClick={()=>void requestClose().catch(()=>{})}><Move size={23}/></PaintToolButton>}
       <PaintToolButton class="paint-tool-icon" label="バケツ"  disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
     </div>
@@ -916,6 +945,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   }
   const effects=<PaintLayerEffects layer={requested&&hasLayer?layer:undefined} generationMask={selectedMask==='generationMask'} disabled={!requested||!hasLayer||locked||layerLocked||busy||suspended||!images} update={patch=>updateOwnerLayer(owner.key,layer.id,patch)}/>;
   const layerProps:ComponentProps<typeof PaintLayerPalette>={
+    finishSelection:!overlay&&finishSelection?.anchor===anchor&&finishSelection.scope===paletteScope?finishKeys:undefined,toggleFinishLayer:overlay?undefined:toggleFinishLayer,
     selectedMask,selectMask,addToneMask,addGenerationMask,canAddGenerationMask:!!paintGenerationOwner(scene,owner.key)&&!paintOwnerLocked(paintGenerationOwner(scene,owner.key)!),selectedFolder,paletteScope,
     backgroundCapture:backgroundOwner?{ready:backgroundCaptureReady&&!busy&&!externalSuspended,capture:()=>void backgroundController.current?.capture()}:undefined,
     onToggleBubble,openBackground3d:!overlay?()=>openBackground3d('background'):undefined,
@@ -942,5 +972,5 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   </div></>,window.document.body);
   const geometryKey=scene.owners.map(o=>JSON.stringify([o.frame,o.paint.width,o.paint.height,o.paint.referenceFrame])).join('|');
   const geometry=useMemo(()=>requested?scene:null,[requested,geometryKey]);
-  return <PaintLayerControlsContext.Provider value={{controls:layerHeader,folded:paletteFolded,setFolded:(key,value)=>setPaletteFolded(current=>({...current,[key]:value}))}}><PaintDetailsContext.Provider value={<>{detailControls}{effects}</>}><PaintToolsContext.Provider value={toolControls}><BubblePathToolContext.Provider value={bubblePathTool}><PaintInputActivityContext.Provider value={inputActive}><PaintWorkspaceContext.Provider value={value}><PaintGeometryContext.Provider value={geometry}>{children}{contextMenu}{eraseModeMenu}{backgroundTarget&&(BackgroundEditor?<BackgroundEditor onCaptureReady={setBackgroundCaptureReady} controller={backgroundController} disabled={busy||externalSuspended} pendingStages={stageImports} host={backgroundHost} paint={backgroundTarget.paint} stages={[...stages,...stageImports.map(i=>i.stage).filter(s=>!stages.some(saved=>saved.id===s.id))]} onCapture={captureBackground3d} onCancel={closeBackground3d}/>:<section class="background3d-controls" role="dialog" aria-label="3D背景の読み込み"><header><strong>3D背景</strong><button onClick={()=>setBackgroundOwner(null)}>保存せずに閉じる</button></header>{backgroundLoadError?<><p role="alert">3D機能を読み込めませんでした。{backgroundLoadError}</p><button onClick={()=>retryBackgroundLoad(value=>value+1)}>再試行</button></>:null}</section>)}<input hidden ref={input} type="file" accept="image/png,image/jpeg" onChange={e=>void importImage(e.currentTarget.files?.[0])}/></PaintGeometryContext.Provider></PaintWorkspaceContext.Provider></PaintInputActivityContext.Provider></BubblePathToolContext.Provider></PaintToolsContext.Provider></PaintDetailsContext.Provider></PaintLayerControlsContext.Provider>;
+  return <PaintLayerControlsContext.Provider value={{controls:layerHeader,folded:paletteFolded,setFolded:(key,value)=>setPaletteFolded(current=>({...current,[key]:value}))}}><PaintDetailsContext.Provider value={<>{detailControls}{effects}</>}><PaintToolsContext.Provider value={toolControls}><BubblePathToolContext.Provider value={bubblePathTool}><PaintInputActivityContext.Provider value={inputActive}><PaintWorkspaceContext.Provider value={value}><PaintGeometryContext.Provider value={geometry}>{children}{finishOpen&&requested&&!overlay&&<MangaFinishDialog loadError={images?'':error} scene={historyRef.current.present} images={images} assets={[...assets,...imports.map(item=>item.asset)]} initialKeys={finishKeys} panel={panelIndex+1} onApply={acceptFinish} onClose={()=>setFinishOpen(false)}/>} {contextMenu}{eraseModeMenu}{backgroundTarget&&(BackgroundEditor?<BackgroundEditor onCaptureReady={setBackgroundCaptureReady} controller={backgroundController} disabled={busy||externalSuspended} pendingStages={stageImports} host={backgroundHost} paint={backgroundTarget.paint} stages={[...stages,...stageImports.map(i=>i.stage).filter(s=>!stages.some(saved=>saved.id===s.id))]} onCapture={captureBackground3d} onCancel={closeBackground3d}/>:<section class="background3d-controls" role="dialog" aria-label="3D背景の読み込み"><header><strong>3D背景</strong><button onClick={()=>setBackgroundOwner(null)}>保存せずに閉じる</button></header>{backgroundLoadError?<><p role="alert">3D機能を読み込めませんでした。{backgroundLoadError}</p><button onClick={()=>retryBackgroundLoad(value=>value+1)}>再試行</button></>:null}</section>)}<input hidden ref={input} type="file" accept="image/png,image/jpeg" onChange={e=>void importImage(e.currentTarget.files?.[0])}/></PaintGeometryContext.Provider></PaintWorkspaceContext.Provider></PaintInputActivityContext.Provider></BubblePathToolContext.Provider></PaintToolsContext.Provider></PaintDetailsContext.Provider></PaintLayerControlsContext.Provider>;
 }

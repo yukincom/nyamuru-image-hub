@@ -243,6 +243,41 @@ export async function renderPaintPng(paint:PaintDocument,images:PaintImages,incl
   }finally{canvas.width=scratch.width=mask.width=1;canvas.height=scratch.height=mask.height=1;}
 }
 
+/** Export a single layer at a bounded resolution, with its edits and coverage. */
+export async function renderPaintLayerCrop(paint:PaintDocument,layer:PaintLayer,images:PaintImages,view:BBox,longEdge:number):Promise<Blob>{
+  const scale=Math.min(1,longEdge/Math.max(view.w,view.h));
+  const canvas=document.createElement('canvas'),scratch=document.createElement('canvas'),mask=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(view.w*scale));
+  canvas.height=Math.max(1,Math.round(view.h*scale));
+  const out=context(canvas);
+  out.globalAlpha=layer.opacity;
+  try{
+    if(scale<1&&layer.image&&layer.colorMode==='monochrome'&&!layer.tone?.enabled){
+      // Threshold native black ink before reduction. Tile it so a small finish never allocates a full-page canvas.
+      const sx=view.w/canvas.width,sy=view.h/canvas.height;
+      const stepX=Math.max(1,Math.floor(1024/sx)),stepY=Math.max(1,Math.floor(1024/sy));
+      out.imageSmoothingQuality='high';
+      for(let y=0;y<canvas.height;y+=stepY)for(let x=0;x<canvas.width;x+=stepX){
+        const w=Math.min(stepX,canvas.width-x),h=Math.min(stepY,canvas.height-y);
+        const sourceX=view.x+x*sx,sourceY=view.y+y*sy;
+        const tileX=Math.max(view.x,Math.floor(sourceX)-2),tileY=Math.max(view.y,Math.floor(sourceY)-2);
+        const tileRight=Math.min(view.x+view.w,Math.ceil(sourceX+w*sx)+2);
+        const tileBottom=Math.min(view.y+view.h,Math.ceil(sourceY+h*sy)+2);
+        scratch.width=tileRight-tileX;
+        scratch.height=tileBottom-tileY;
+        renderLayer(scratch,paint,layer,images,mask,undefined,false,{x:tileX,y:tileY,w:scratch.width,h:scratch.height});
+        out.drawImage(scratch,sourceX-tileX,sourceY-tileY,w*sx,h*sy,x,y,w,h);
+      }
+    }else{
+      scratch.width=canvas.width;
+      scratch.height=canvas.height;
+      renderLayer(scratch,paint,layer,images,mask,undefined,true,view);
+      out.drawImage(scratch,0,0);
+    }
+    return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('仕上げ用の画像を書き出せませんでした')),'image/png'));
+  }finally{canvas.width=canvas.height=scratch.width=scratch.height=mask.width=mask.height=1;}
+}
+
 /** Read actual document pixels, independent of page zoom and layer opacity. */
 export function readPaintPixels(paint:PaintDocument,layer:PaintLayer,images:PaintImages):ImageData {
   const canvas=document.createElement('canvas'),mask=document.createElement('canvas');canvas.width=paint.width;canvas.height=paint.height;

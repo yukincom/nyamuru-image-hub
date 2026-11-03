@@ -163,7 +163,7 @@ export function addPaintFolder(paint:PaintDocument):{paint:PaintDocument;folder:
 }
 
 /** Encode the visible sibling order once; empty folders keep their own place. */
-function withPaintLayerTree(paint:PaintDocument,entries:PaintLayerTreeEntry[]):PaintDocument {
+export function withPaintLayerTree(paint:PaintDocument,entries:PaintLayerTreeEntry[]):PaintDocument {
   const layers:PaintLayer[]=[],folders:PaintFolder[]=[];
   function write(items:PaintLayerTreeEntry[],parent?:PaintFolder){
     for(const entry of items){

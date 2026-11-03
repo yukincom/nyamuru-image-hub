@@ -1,9 +1,9 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { LocalLlmController, llmOwnershipMode } from './local-llm-supervisor.mjs';
-import { LocalComfyController } from './local-comfy-supervisor.mjs';
+import { existingComfyLauncher, LocalComfyController } from './local-comfy-supervisor.mjs';
 
 export const BRIDGE_SUPERVISOR_SERVICE = 'nyamuru-image-hub-bridge-supervisor';
 export const BRIDGE_SUPERVISOR_PROTOCOL_VERSION = 1;
@@ -331,6 +331,24 @@ async function jsonBody(request, maximum = 8_192) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+async function finishMangaRaster(repoRoot, body, signal) {
+  const { root } = await existingComfyLauncher('http://127.0.0.1:8188');
+  const python = process.env.NYAMURU_BRIDGE_PYTHON || resolve(process.env.NYAMURU_VISION_ROOT || resolve(repoRoot, '.local-vision'),
+    process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python');
+  signal.throwIfAborted();
+  return new Promise((done, fail) => {
+    const child = execFile(python, ['-B', resolve(repoRoot, 'scripts/manga_finish.py'), root], {
+      signal, timeout: 120_000, maxBuffer: 96 * 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) return fail(new Error(stderr.trim() || 'MangaScreenの画像処理を実行できませんでした'));
+      try { done(JSON.parse(stdout)); } catch { fail(new Error('MangaScreenの処理結果を読み込めませんでした')); }
+    });
+    // A worker can exit before consuming stdin (for example if its environment is missing).
+    child.stdin.on('error', fail);
+    child.stdin.end(JSON.stringify(body));
+  });
+}
+
 export async function startLocalBridgeSupervisor({
   repoRoot,
   host = '127.0.0.1',
@@ -358,6 +376,7 @@ export async function startLocalBridgeSupervisor({
   });
   const comfy = comfyController ?? new LocalComfyController({repoRoot,busy:()=>Boolean(panelActions.imageToken)});
   const runtimeOperations = new Map();
+  let mangaFinish = null;
   const forgetOperation = token => {
     for(const operations of runtimeOperations.values()) operations.delete(token);
   };
@@ -389,6 +408,25 @@ export async function startLocalBridgeSupervisor({
           protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
           comfy_lifecycle_version: 1,
         }, origin);
+        return;
+      }
+      if (request.method === 'POST' && pathname === '/api/manga-finish') {
+        if (mangaFinish) {
+          jsonResponse(response, 409, { ok: false, error: '別の漫画仕上げの完了をお待ちください' }, origin);
+          return;
+        }
+        const operation = new AbortController();
+        mangaFinish = operation;
+        response.once('close', () => operation.abort());
+        try {
+          const body = await jsonBody(request, 96 * 1024 * 1024);
+          const result = await finishMangaRaster(repoRoot, body, operation.signal);
+          if (!response.destroyed) jsonResponse(response, 200, {
+            ...result, ok: true, service: BRIDGE_SUPERVISOR_SERVICE, protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
+          }, origin);
+        } finally {
+          mangaFinish = null;
+        }
         return;
       }
       if(request.method === 'POST' && pathname === '/api/image-generation/start') {
@@ -556,6 +594,7 @@ export async function startLocalBridgeSupervisor({
     async close() {
       if (closed) return;
       closed = true;
+      mangaFinish?.abort();
       await Promise.all([
         new Promise((resolveClose) => server.close(() => resolveClose())),
         controller.close(),

@@ -11,6 +11,7 @@ import { letteringFigureIndex, letteringLayerMove } from '../lib/bubbleRelations
 import LayerLockIcon from './LayerLockIcon';
 import {paintFolderChain,paintLayerVisible,paintLayerInheritedLocked,paintLayerEditable,paintOwnerLocked,paintOwnerPlacementLocked} from '../lib/paintLock';
 import type { ComponentChildren } from 'preact';
+import {finishLayerKey} from '../lib/mangaFinishLayers';
 import {PaintLayerControlsContext} from '../lib/paintWorkspace';
 
 function Thumbnail({owner,layer,images}:{owner:PaintOwner;layer:PaintLayer;images:PaintImages|null}){
@@ -33,6 +34,8 @@ interface Props {
   nativeTextLayers?:Array<{key:string;node:ComponentChildren}>;
   frameLayer?:ComponentChildren; selectedFolder?:PaintFolder;
   backgroundCapture?:{ready:boolean;capture:()=>void};
+  finishSelection?:string[];
+  toggleFinishLayer?:(key:string,id:string)=>void;
   selectedMask?:'mask'|'generationMask'|null;
   selectMask?:(key:string,id:string,kind:'mask'|'generationMask')=>void;
   addToneMask?:()=>void; addGenerationMask?:()=>void;canAddGenerationMask?:boolean;
@@ -89,7 +92,7 @@ export default function PaintLayerPalette(p:Props){
     drag.current={kind,key:o.key,id,x:e.clientX,y:e.clientY,pointerId:e.pointerId,capture,moved:false,cleanup:()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',cancel);}};
     try{capture.setPointerCapture(e.pointerId);}catch{}
   };
-  const beginLayerDrag=(e:PointerEvent,o:PaintOwner,l:PaintLayer)=>{if(p.disabled||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary||!paintLayerEditable(o,l))return;beginDrag(e,o,l.id,'layer','.layer-select');};
+  const beginLayerDrag=(e:PointerEvent,o:PaintOwner,l:PaintLayer)=>{if(p.disabled||p.toggleFinishLayer&&e.shiftKey||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary||!paintLayerEditable(o,l))return;beginDrag(e,o,l.id,'layer','.layer-select');};
   const beginFolderDrag=(e:PointerEvent,o:PaintOwner,folder:PaintFolder)=>{
     if(p.disabled||paintOwnerLocked(o)||paintFolderChain(o.paint,folder.id).some(item=>item.locked)||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary)return;
     beginDrag(e,o,folder.id,'folder','.layer-folder-select');
@@ -167,12 +170,12 @@ export default function PaintLayerPalette(p:Props){
   };
   const renderLayer=(o:PaintOwner,l:PaintLayer,active:boolean,depth=baseDepth)=>{
     const canvasSelected=p.selectedOwner===o.key&&o.kind==='original'&&l.id===o.paint.layers.at(-1)?.id;
-    const selected=canvasSelected||active&&l.id===p.layer.id;
+    const selected=p.finishSelection?p.finishSelection.includes(finishLayerKey(o.key,l.id)):canvasSelected||active&&l.id===p.layer.id;
     return <div class="layer-entry" key={l.id}><div role="treeitem" aria-selected={selected} data-canvas-selected={canvasSelected} class={`layer-row ${selected?'is-selected':''}`}
     data-generation-mask={l.generationMask?o.key:undefined} data-layer-depth={depth} style={{'--layer-indent':`${depth*16}px`}} data-layer-drop="layer" data-layer={l.id} data-owner={o.key} data-drop-locked={paintOwnerLocked(o)||paintLayerInheritedLocked(o,l)}
     onPointerDown={e=>beginLayerDrag(e,o,l)} onPointerCancel={cancelLayerDrag} onLostPointerCapture={cancelLayerDrag} onContextMenu={e=>p.menu(e,o.key)}>
     <LayerVisibilityButton label={`${label(o)}・${l.name}を${l.visible?'隠す':'表示'}`} visible={l.visible} disabled={p.disabled} onClick={()=>p.update(o.key,l.id,{visible:!l.visible})}/>
-    <button class="layer-select" data-tool-label={l.name}  disabled={p.disabled} onClick={e=>{if(!(active&&l.id===p.layer.id&&p.selectedMask==='mask')||e.metaKey||e.ctrlKey||e.altKey)p.select(o.key,l.id,e.metaKey||e.ctrlKey||e.altKey);}} onDblClick={()=>{p.select(o.key,l.id);if(paintLayerEditable(o,l))setRenaming(l.id);}}>{l.generationMask&&<Bot size={16}/>}{l.kind==='vector'?<span class="layer-kind-icon"><PenTool size={18}/></span>:<span class="layer-thumbnail">{l.guide&&!l.image?<PaintOriginal owner={o}/>:<Thumbnail owner={o} layer={l} images={p.images}/>}</span>}<span class="layer-caption"><small>{Math.round(l.opacity*100)}% {l.blend==='multiply'?'乗算':'通常'}{l.tone?.enabled?` · ${l.tone.lpi}線`:''}{l.mask?.enabled?' · マスク':''}</small><span class="layer-name-line"><span>{l.name}</span></span></span></button>
+    <button class="layer-select" data-tool-label={l.name}  disabled={p.disabled} onClick={e=>{if(e.shiftKey&&p.toggleFinishLayer){p.toggleFinishLayer(o.key,l.id);return;}if(!(active&&l.id===p.layer.id&&p.selectedMask==='mask')||e.metaKey||e.ctrlKey||e.altKey)p.select(o.key,l.id,e.metaKey||e.ctrlKey||e.altKey);}} onDblClick={()=>{p.select(o.key,l.id);if(paintLayerEditable(o,l))setRenaming(l.id);}}>{l.generationMask&&<Bot size={16}/>}{l.kind==='vector'?<span class="layer-kind-icon"><PenTool size={18}/></span>:<span class="layer-thumbnail">{l.guide&&!l.image?<PaintOriginal owner={o}/>:<Thumbnail owner={o} layer={l} images={p.images}/>}</span>}<span class="layer-caption"><small>{Math.round(l.opacity*100)}% {l.blend==='multiply'?'乗算':'通常'}{l.tone?.enabled?` · ${l.tone.lpi}線`:''}{l.mask?.enabled?' · マスク':''}</small><span class="layer-name-line"><span>{l.name}</span></span></span></button>
     {l.mask&&<PaintToolButton class="layer-mask-toggle" label={`${l.name}のマスク編集`}  aria-pressed={Boolean(active&&l.id===p.layer.id&&p.selectedMask==='mask')} disabled={p.disabled} onClick={()=>p.selectMask?.(o.key,l.id,'mask')}><MaskThumbnail owner={o} layer={l}/></PaintToolButton>}
     <LockButton label={l.name} locked={l.locked} inherited={paintLayerInheritedLocked(o,l)} disabled={p.disabled} onClick={()=>p.update(o.key,l.id,{locked:!l.locked})}/>
     {renaming===l.id&&<LayerNameEditor name={l.name} label="レイヤー名" commit={name=>p.update(o.key,l.id,{name})} close={()=>setRenaming(null)}/>}
