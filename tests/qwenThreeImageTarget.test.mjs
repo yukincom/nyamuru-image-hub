@@ -163,7 +163,7 @@ test('only the dedicated workflow sends the sketch as expression reference at pa
 });
 
 // 見込み: 出力だけ60%へ変えれば、20%の撮影資料と紙面の配置枠を保ったまま低解像度画像を採用できる。
-// 合格: 原稿1793×880→送信1076×528、元の撮影寸法とmm枠は不変。実plan/payload/配置、画像は識別用。
+// 合格: 原稿1793×880→既定1076×528、試作用40%は717×352。同じ3資料とmm枠を使用。実plan/payload/配置、推論なし。
 test('sixty-percent output keeps the manuscript placement and twenty-percent pose target',()=>{
   const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/nyamuru_qwen_turbo_3images.'+ext+'.json',import.meta.url)));
   const frame={x:5,y:7,w:75.9036666667,h:37.2533333333};
@@ -172,6 +172,11 @@ test('sixty-percent output keeps the manuscript placement and twenty-percent pos
   const plan=qwenPlanForWorkflow(source,{graph:example('api'),binding:example('binding')});
   const sent=qwenGenerationPayload(plan,[{image:'identity',characterKeys:['id'],label:'設定'}],'expression',undefined,undefined,'pose');
   assert.deepEqual([sent.width,sent.height],[1076,528]);
+  const small=qwenPlanForWorkflow(source,{graph:example('api'),binding:example('binding')},0.4);
+  const trial=qwenGenerationPayload(small,[{image:'identity',characterKeys:['id'],label:'設定'}],'expression',undefined,undefined,'pose');
+  assert.deepEqual([trial.width,trial.height],[717,352]);
+  assert.deepEqual(trial.references,sent.references);
+  assert.deepEqual(small.outputFrame,plan.outputFrame);
   assert.deepEqual([source.threeImageTarget.width,source.threeImageTarget.height],[1793,880]);
   assert.deepEqual(plan.outputFrame,frame);
   const placed=insertGeneratedPaintImage({...owner,kind:'figure',paint:{...owner.paint,layers:[]}},

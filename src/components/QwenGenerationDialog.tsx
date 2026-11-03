@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import { blobDataUrl, requestComfyWorkflows, cancelQwenJob, selectQwenCandidate, deleteQwenJobs, loadCharacterReferenceImage, prepareQwenJob, listQwenJobs, reconcileQwenJob, submitQwenJob } from '../lib/localBridge.ts';
 import { withNewCreationBridgeSession, withImageGenerationServices, startImageGenerationSession, stopImageGenerationSession, stopImageGenerationSessionOnPageExit, imageGenerationProgress } from '../lib/localBridgeLifecycle.ts';
+import { posePreviewSize } from '../lib/humanPoseFraming.ts';
 import { canDeleteQwenJob, figureBackgroundPrompt, qwenGenerationPayload, qwenPlanForWorkflow, qwenGenerationPrompt, qwenGenerationTarget, qwenGenerationSizePrompt, qwenLayerPaint, qwenJobLocation, type QwenGenerationPlan, type QwenLayerCandidate, type QwenLayerReference, type QwenHistoryScope, type QwenReference, type QwenJob, type QwenAdoption, type QwenGenerationConversation, qwenConversationIntent, executeQwenGeneration } from '../lib/qwenGeneration.ts';
 import { validatePaintDocument, type PaintOwner } from '../lib/paintDocument.ts';
 import { decodePaintImage, loadPaintImages, renderPaintPng, type PaintImages } from '../lib/paintRenderer.ts';
@@ -105,7 +106,8 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
   const expectedInputs=references.length+Number(Boolean(reference))+Number(Boolean(correction))+Number(usesPoseImage)+Number(Boolean(sourcePlan.compositionImage));
   const workflow=automatic&&!threeImages?registry.find(item=>item.id===standardQwenWorkflowId(expectedInputs))??null:chosen??null;
   const missingWorkflow=workflowError || (chosen&&!workflow?'この参照枚数に対応する通常Qwen定義がありません':'');
-  const plan=useMemo(()=>qwenPlanForWorkflow(basePlan,workflow),[basePlan,workflow]);
+  const [outputScale,setOutputScale]=useState(0.6);
+  const plan=useMemo(()=>qwenPlanForWorkflow(basePlan,workflow,outputScale),[basePlan,workflow,outputScale]);
   const targetError=threeImages&&!plan.threeImages?'人物3枚参照には対象のコマまたは生成マスクを指定してください':'';
   const waitingForWorkflow=!cloud&&!chosen;
   const figureChroma=plan.ownerKey.startsWith('figure-')&&(threeImages||workflow?.binding.prompt_mode==='qwen');
@@ -184,13 +186,13 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
         return blobDataUrl(blob);
       }
       const {captureHumanPoseReference} = await import('../lib/humanPoseGeneration.ts');
-      return captureHumanPoseReference(selection,framing,aspect??plan.width/plan.height,cutFrame,threeImages?{width:plan.width,height:plan.height}:undefined,poseEditorContext?.stages);
+      return captureHumanPoseReference(selection,framing,aspect??plan.width/plan.height,cutFrame,threeImages&&basePlan.threeImageTarget?posePreviewSize(basePlan.threeImageTarget):undefined,poseEditorContext?.stages);
     };
     posePending.current=capture().then(image=>{
       if(!cancelled){setPoseImage(image);return image;}
     }).catch(cause=>{if(!cancelled)setPoseError(cause instanceof Error?cause.message:'3Dポーズを撮影できませんでした');return undefined;});
     return()=>{cancelled=true;};
-  },[plan,threeImages,poseDraft,waitingForWorkflow,poseAttempt,poseEditorContext?.stages]);
+  },[basePlan,workflow,threeImages,waitingForWorkflow,poseAttempt,poseEditorContext?.stages]);
   const draft=useRef({prompt,references,reference,correction});draft.current={prompt,references,reference,correction};
   const attempted=useRef<string|null>(null);attempted.current=attempt;
   const canPrepareNewGeneration=!attempt||(job?['prepared','succeeded','failed','outcome_unknown'].includes(job.status):!submitted.current);
@@ -472,6 +474,9 @@ export default function QwenGenerationDialog({poseEditorContext,onOpenSettings,p
           :<p role={missingWorkflow?'alert':'status'}>{missingWorkflow||'ワークフローを確認しています…'}</p>}
         {onOpenSettings&&<button disabled={busy} onClick={onOpenSettings}>環境設定を開く</button>}
       </div>}
+      {plan.threeImages&&!workflow?.binding.fixed_size&&<label>生成サイズ<select aria-label="3枚参照の生成サイズ" value={outputScale} disabled={busy||Boolean(attempt)} onChange={event=>setOutputScale(Number(event.currentTarget.value))}>
+        {[0.4,0.5,0.6].map(scale=><option key={scale} value={scale}>原稿の{Math.round(scale*100)}%</option>)}
+      </select> {plan.width} × {plan.height} px</label>}
       {targetError&&<p role="alert">{targetError}</p>}
       {!cloud&&figureChroma&&<label>透過用の背景色
         <select aria-label="透過用の背景色" value={chromaKeyColor} disabled={busy||Boolean(attempt)} onChange={event=>{const color=event.currentTarget.value;setChromaKeyColor(color);if(threeImages&&editedPrompt!==undefined)setPrompt(figureBackgroundPrompt(editedPrompt,color));}}>

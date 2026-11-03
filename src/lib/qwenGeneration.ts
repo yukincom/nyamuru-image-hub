@@ -150,7 +150,7 @@ export function figureBackgroundPrompt(prompt:string,color:string):string {
   }
   return prompt;
 }
-export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null):QwenGenerationPlan {
+export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null, outputScale = 0.6):QwenGenerationPlan {
   if(workflow?.binding.prompt_mode!=='qwen-three-images')return plan;
   const slot=workflow.binding.prompt[0];
   // The colour selector supplies this last line; keep the artwork text editable.
@@ -165,7 +165,7 @@ export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkfl
   ].filter(Boolean).join('\n\n');
   if(!plan.threeImageTarget)return {...plan,prompt};
   const {width,height,dpi,referenceFrame,outputFrame,cutFrame}=plan.threeImageTarget;
-  return {...plan,threeImages:true,width:Math.max(1,Math.round(width*.6)),height:Math.max(1,Math.round(height*.6)),dpi,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
+  return {...plan,threeImages:true,width:Math.max(1,Math.round(width*outputScale)),height:Math.max(1,Math.round(height*outputScale)),dpi,referenceFrame,outputFrame,prompt,...(plan.humanPose?{humanPose:{...plan.humanPose,cutFrame}}:{})};
 }
 export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
   if(!plan.contentKind)return '';
