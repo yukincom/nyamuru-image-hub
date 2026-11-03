@@ -583,7 +583,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
             }}><option value="">未指定</option>{ANCHORS.map((anchor) => <option value={anchor}>{ANCHOR_LABELS[anchor]}</option>)}</select></Field>
             <Field label="撮影範囲"><FigureSizePicker value={figure.size ?? 'bust-up'} onChange={size => update(draft => { draft.figures![index].size = size; })} /></Field>
             <Field label="あつかい"><select value={figure.role ?? 'main'} onChange={(event) => update((draft) => { draft.figures![index].role = event.currentTarget.value as typeof figure.role; })}>{FIGURE_ROLES.map((role) => <option value={role}>{FIGURE_ROLE_LABELS[role]}</option>)}</select></Field>
-            <Field label="アクション" wide><textarea rows={3} value={figure.action ?? ''} placeholder="この人物の表情・姿勢・視線・動作" onInput={(event) => update((draft) => {
+            <Field label="表情プロンプト" wide><textarea rows={6} value={figure.action ?? ''} placeholder="この人物の表情・姿勢・視線・動作" onInput={(event) => update((draft) => {
               const value = event.currentTarget.value;
               value ? draft.figures![index].action = value : delete draft.figures![index].action;
             })} /></Field>

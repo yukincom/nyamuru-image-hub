@@ -451,7 +451,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .inspector-fields>.panel-figure-section { order:2; }
 .inspector-fields>.panel-prop-section { order:3; }
 .inspector-fields>.panel-text-section { order:4; }
-.inspector-fields>.panel-action-section { order:5; }
+.inspector-fields>.panel-action-section { order:1; }
 .inspector-fields>.panel-images-section { order:6; }
 .inspector-fields>.panel-background-section { order:7; }
 .inspector-fields>.panel-add-section { order:8; }
