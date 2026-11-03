@@ -19,7 +19,8 @@ export const BRIDGE_PATHS = new Set([
 ]);
 export const SUPERVISOR_PATHS = new Set([
   '/api/new-creation/start', '/api/new-creation/stop', '/api/panel-actions/prepare',
-  '/api/image-generation/prepare', '/api/image-generation/submit',
+  '/api/image-generation/start', '/api/image-generation/prepare', '/api/image-generation/submit',
+  '/api/image-generation/progress', '/api/image-generation/stop',
 ]);
 const MAX_BODY = 96 * 1024 * 1024;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.wasm': 'application/wasm' };
@@ -76,8 +77,9 @@ export async function startLanServer({ host, port, cert, key, root, bridgeUrl, s
         const length = Number(req.headers['content-length'] ?? 0);
         if (!Number.isSafeInteger(length) || length < 0 || length > MAX_BODY || req.headers['transfer-encoding']) return reply(res, 413, { error: 'リクエストが大きすぎます' });
         const contentType = req.headers['content-type'] ?? '';
-        if (req.method === 'POST' && !/^application\/json(?:;|$)/i.test(contentType)
-          && !(path === '/api/new-creation/stop' && /^text\/plain(?:;|$)/i.test(contentType))) return reply(res, 415, { error: 'JSON形式で送信してください' });
+        const stopBeacon = kind === 'supervisor' && ['/api/new-creation/stop', '/api/image-generation/stop'].includes(path)
+          && /^text\/plain(?:;|$)/i.test(contentType);
+        if (req.method === 'POST' && !/^application\/json(?:;|$)/i.test(contentType) && !stopBeacon) return reply(res, 415, { error: 'JSON形式で送信してください' });
         const target = targets[kind];
         const upstream = httpRequest(new URL(path, target), {
           method: req.method, headers: { Origin: target.origin, 'Content-Type': contentType, 'Content-Length': length },

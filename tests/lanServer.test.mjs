@@ -118,6 +118,37 @@ test('trusted HTTPS and code-free processing retain origin and workspace/file-sy
   assert.equal(calls.length, 1);
   assert.equal((await send('/__nyamuru/supervisor/api/new-creation/stop', { ...post, headers: { ...post.headers, 'Content-Type': 'text/plain;charset=UTF-8' } })).status, 200);
   assert.equal(calls.length, 2);
+  // 見込み: LANでも生成画面を開き、処理を依頼し、候補を受け取って採用してから閉じられる。
+  // 合格: 各本文がHTTPSで対応する処理へ届き、離脱時のtext/plainは停止だけ許可。転送先は模擬、モデルは未使用。
+  const token = '0165bcda-37bb-49c7-a0ce-e29591a8f638';
+  const start = '/api/image-generation/start', progress = '/api/image-generation/progress', stop = '/api/image-generation/stop';
+  const client = 'd4c3692f-87a6-47b0-9f0a-d7fe07ff756a';
+  const job = '974ba5d1-2d06-4275-8003-1118300384ea';
+  for (const [kind, path, body, contentType = 'application/json'] of [
+    ['supervisor', start, { session_token: token, comfyui_url: 'http://127.0.0.1:8188' }],
+    ['supervisor', '/api/image-generation/prepare', { lease_token: token }],
+    ['supervisor', '/api/image-generation/submit', { lease_token: token, payload: { job_id: job } }],
+    ['supervisor', progress, { session_token: token, client_id: client, prompt_id: 'prompt' }],
+    ['bridge', '/api/qwen-generation/reconcile', { job_id: job }],
+    ['bridge', '/api/qwen-generation/select', { job_id: job, candidate_indices: [2, 4], adopted: true }],
+    ['supervisor', stop, { session_token: token }],
+    ['supervisor', stop, { session_token: token }, 'text/plain;charset=UTF-8'],
+  ]) {
+    const input = JSON.stringify(body);
+    const response = await send(`/__nyamuru/${kind}${path}`, { ...post, headers: { ...post.headers, 'Content-Type': contentType }, body: input });
+    assert.equal(response.status, 200, path);
+    assert.equal(calls.at(-1).path, path);
+    assert.equal(calls.at(-1).body, input);
+    assert.equal(calls.at(-1).headers['content-type'], contentType);
+  }
+  const forwarded = calls.length;
+  for (const path of [start, progress]) {
+    assert.equal((await send('/__nyamuru/supervisor' + path, { ...post, headers: { ...post.headers, 'Content-Type': 'text/plain' } })).status, 415);
+  }
+  assert.equal((await send('/__nyamuru/supervisor' + stop, { ...post, headers: { ...post.headers, Origin: 'https://other.test', 'Content-Type': 'text/plain' } })).status, 403);
+  assert.equal((await send('/__nyamuru/bridge' + start, post)).status, 403);
+  assert.equal((await send('/__nyamuru/bridge/api/qwen-generation/submit', post)).status, 403);
+  assert.equal(calls.length, forwarded);
   await assert.rejects(send('/__nyamuru/bridge/api/layout/analyze', post));
   assert.match((await send('/')).text, /Editor/);
   assert.equal((await send('/__nyamuru/bridge/api/health')).status, 200, 'same-origin health check does not need a cookie');
