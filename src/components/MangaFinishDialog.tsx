@@ -18,11 +18,11 @@ export interface FinishBatch {
   scene: PaintScene;
   imports: Array<{asset:ImageAsset;blob:Blob}>;
   images: PaintImages;
-  focus: {ownerKey:string;folderId:string};
+  focus: {ownerKey:string;folderId:string;shadeId?:string};
 }
 interface Comparison { label:string; before:Blob; after:PaintDocument; bbox:BBox; width:number; height:number }
 interface Props {
-  scene:PaintScene; images:PaintImages|null; assets:ImageAsset[]; panel:number; initialKeys:string[]; loadError:string;
+  scene:PaintScene; images:PaintImages|null; assets:ImageAsset[]; panel:number; selectedKeys:string[]; loadError:string;
   onApply:(batch:FinishBatch)=>void; onClose:()=>void;
 }
 
@@ -46,9 +46,8 @@ function Preview({paint,images,bbox,width,height}:{paint:PaintDocument;images:Pa
   return <canvas ref={canvas} width={Math.max(1,Math.round(width*scale))} height={Math.max(1,Math.round(height*scale))}/>;
 }
 
-export default function MangaFinishDialog({scene,images,assets,panel,initialKeys,loadError,onApply,onClose}:Props) {
+export default function MangaFinishDialog({scene,images,assets,panel,selectedKeys,loadError,onApply,onClose}:Props) {
   const dialog=useRef<HTMLDialogElement>(null);
-  const [keys,setKeys]=useState(initialKeys);
   const [edge,setEdge]=useState(512);
   const [progress,setProgress]=useState(''), [error,setError]=useState('');
   const [preview,setPreview]=useState<{batch:FinishBatch;comparisons:Comparison[]}|null>(null);
@@ -59,9 +58,9 @@ export default function MangaFinishDialog({scene,images,assets,panel,initialKeys
     current.current=true;dialog.current?.showModal();
     return ()=>{current.current=false;request.current?.abort();release();};
   },[]);
-  const choices=scene.owners.flatMap(owner=>[...owner.paint.layers].reverse().filter(canFinishPaintLayer)
-    .map(layer=>({owner,layer,key:finishLayerKey(owner.key,layer.id),label:owner.label+' / '+layer.name})));
-  const selected=choices.filter(item=>keys.includes(item.key));
+  const selected=scene.owners.flatMap(owner=>owner.paint.layers.filter(layer=>
+    selectedKeys.includes(finishLayerKey(owner.key,layer.id)) && canFinishPaintLayer(layer)
+  ).map(layer=>({owner,layer,label:owner.label+' / '+layer.name})));
   function resetPreview(){release();setPreview(null);setIndex(0);setError('');}
 
   async function generate(){
@@ -103,8 +102,10 @@ export default function MangaFinishDialog({scene,images,assets,panel,initialKeys
         const paint=finished.owners.find(item=>item.key===owner.key)!.paint;
         const folderId=paint.layers[paint.layers.findIndex(item=>item.id===layer.id)+1]?.folderId;
         if(!folderId)throw new Error('仕上げフォルダーが見つかりません');
-        focus??={ownerKey:owner.key,folderId};
-        comparisons[i].after={...paint,folders:undefined,layers:paint.layers.filter(item=>item.folderId===folderId)};
+        const children=paint.layers.filter(item=>item.folderId===folderId);
+        const shadeId=children.find(item=>item.tone?.enabled)?.id;
+        if(!focus||(!focus.shadeId&&shadeId))focus={ownerKey:owner.key,folderId,shadeId};
+        comparisons[i].after={...paint,folders:undefined,layers:children};
       });
       if(current.current&&focus)setPreview({batch:{source:scene,scene:finished,images:map,imports:[...pending.values()],focus},comparisons});
     }catch(cause){
@@ -121,11 +122,7 @@ export default function MangaFinishDialog({scene,images,assets,panel,initialKeys
     onCancel={event=>{event.preventDefault();onClose();}} onKeyDown={event=>event.stopPropagation()}>
     <header><div><h2 id="manga-finish-title">漫画仕上げ</h2><p>MangaScreen · コマ {panel}</p></div>
       <button type="button" class="icon-button" aria-label="閉じる" onClick={onClose}><X size={18}/></button></header>
-    <fieldset disabled={Boolean(progress)}><legend>対象レイヤー · {selected.length}枚</legend>
-      {choices.length?choices.map(({key,label})=><label key={key}><input type="checkbox" checked={keys.includes(key)} onChange={event=>{
-        const checked=event.currentTarget.checked;resetPreview();setKeys(items=>checked?[...items,key]:items.filter(id=>id!==key));
-      }}/>{label}</label>):<p>{images?'このコマに仕上げられる画像がありません':'画像を読み込み中…'}</p>}
-    </fieldset>
+    <p class="manga-finish-target">{selected.length?selected.map(item=>item.label).join('、'):'原稿で仕上げたい画像レイヤーを選んでください。'}</p>
     <label class="manga-finish-size">出力の長辺<select value={edge} disabled={Boolean(progress)} onChange={event=>{resetPreview();setEdge(Number(event.currentTarget.value));}}>
       {[512,768,1024,1536,2048].map(size=><option key={size} value={size}>{size} px</option>)}
     </select></label>
@@ -133,7 +130,7 @@ export default function MangaFinishDialog({scene,images,assets,panel,initialKeys
       {preview.comparisons.length>1?<select aria-label="比較するレイヤー" value={index} onChange={e=>setIndex(Number(e.currentTarget.value))}>{preview.comparisons.map((item,i)=><option value={i}>{item.label}</option>)}</select>:<strong>{shown.label}</strong>}
       <div><figure><figcaption>元画像</figcaption><Original blob={shown.before}/></figure>
         <figure><figcaption>仕上げ</figcaption><Preview paint={shown.after} images={preview.batch.images} bbox={shown.bbox} width={shown.width} height={shown.height}/></figure></div>
-      <small>{shown.width} × {shown.height} px</small>
+      <small>{shown.width} × {shown.height} px{!shown.after.layers.some(layer=>layer.tone?.enabled)&&' · 網点にする陰影はありません'}</small>
     </section>}
     {(error||loadError)&&<p role="alert">{error||loadError}</p>}
     {progress&&<p role="status">{progress}</p>}

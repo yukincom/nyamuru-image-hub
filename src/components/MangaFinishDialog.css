@@ -1,6 +1,6 @@
 .manga-finish-dialog { margin: auto; color: var(--ink); width: min(620px, 94vw); }
 .manga-finish-dialog::backdrop { background: rgb(22 32 29 / 48%); }
-.manga-finish-dialog fieldset { max-height: 28vh; overflow: auto; }
+.manga-finish-target { max-height: 20vh; overflow: auto; overflow-wrap: anywhere; }
 .manga-finish-dialog .manga-finish-size { display: flex; align-items: center; gap: 12px; }
 .manga-finish-comparison { display: grid; gap: 8px; margin-top: 14px; }
 .manga-finish-comparison > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
