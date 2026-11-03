@@ -895,6 +895,19 @@ async function verifyFolderSpacePan(){
  finally{run.disabled=false;}
 }
 
+// 折り畳み中も子のDOMは存在する。操作前に、表示中の開閉ボタンで対象行までの階層を開く。
+async function showLayerBranches(...branches:string[]){
+ for(const name of ['レイヤー',...branches]){
+  const label=name==='レイヤー'?'レイヤーを開く':name+'を展開';
+  const closed=button(label);
+  if(closed){closed.click();await settle();}
+  const open=button(name+(name==='レイヤー'?'を閉じる':'を折りたたむ'));
+  if(open?.getAttribute('aria-expanded')!=='true'||!open.getClientRects().length)throw Error(name+'を展開できません');
+ }
+}
+
+// 見込み・合格: 空の文字フォルダーにマスクを1枚作り、文字を隠して保存・再読込しても同じマスクを再編集できる。
+// 範囲: 実Appとブラウザー内の使い捨て作品で、選択・描画開始・保存を確認する。画像生成は行わない。
 async function verifyGenerationOwner(){
  const run=document.getElementById('generation-owner-run') as HTMLButtonElement,checks:string[]=[];
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
@@ -908,22 +921,23 @@ async function verifyGenerationOwner(){
   const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
   render(<App/>,host);await open();
   nativeBubble().closest<HTMLElement>('[data-content-target]')!.click();await settle();
-  document.querySelector<HTMLButtonElement>('.paint-layers-dock [aria-label="レイヤーを開く"]')?.click();await settle();
-  check(!button('生成マスク化').disabled,'キャンバスで選んだ空テキストフォルダーから作成できる');
-  button('生成マスク化').click();await wait(()=>painting()&&!!maskRow()&&maskRow()!.classList.contains('is-selected'),'マスク作成と描画開始待ち');await settle();
+  await showLayerBranches('コマ 01');
+  const create=button('生成マスク化');
+  check(!!create?.getClientRects().length&&!create.disabled&&create.getAttribute('aria-disabled')!=='true','キャンバスで選んだ空テキストフォルダーから作成できる');
+  create.click();await wait(()=>painting()&&!!maskRow()&&maskRow()!.classList.contains('is-selected'),'マスク作成と描画開始待ち');await settle();
   check(!!document.querySelector('.paint-input')&&!!maskRow()!.querySelector('canvas'),'生成マスクのサムネイルと描画面を表示');
   check(maskRow()!.dataset.layerDrop==='layer'&&!maskRow()!.hasAttribute('aria-expanded')&&!document.querySelector('.generation-mask-children'),'マスクは子を持たない通常レイヤー');
-  await save();check((await stored()).manga.pages[0].panels[0].bubbles[0].paint_overlay?.paint?.layers.some(layer=>layer.generationMask)===true,'マスク1レイヤーを既存保存へ接続');
+  const maskId=maskRow()!.dataset.layer;
+  await save();const masks=(await stored()).manga.pages[0].panels[0].bubbles[0].paint_overlay?.paint?.layers.filter(layer=>layer.generationMask);
+  check(masks?.length===1&&masks[0].id===maskId,'選択した生成マスク1枚を対象フォルダーに保存');
   await exitPaintWithEscape();await settle();
   check(!!maskRow(),'描画を終了してもフォルダーのマスクを表示');
   button('テキスト1の文字を隠す').click();await settle();
   maskRow()!.querySelector<HTMLButtonElement>('.layer-select')!.click();await wait(()=>painting()&&maskRow()!.classList.contains('is-selected'),'保存済みマスクの描画再開待ち');await settle();
   check(!!document.querySelector('.paint-input'),'ネイティブ文字を隠してもマスク行から範囲編集を再開');
   await exitPaintWithEscape();await save();await reopen();
-  document.querySelector<HTMLButtonElement>('.paint-layers-dock [aria-label="レイヤーを開く"]')?.click();await settle();
-  document.querySelector<HTMLButtonElement>('.page-layer-palette [aria-label="コマ 01を展開"]')?.click();await settle();
-  document.querySelector<HTMLButtonElement>('.page-layer-palette [aria-label="テキスト1を展開"]')?.click();await settle();
-  check(!!maskRow()&&!!maskRow()!.querySelector('canvas'),'作品再読込でも独立マスクと描画領域を復元');
+  await showLayerBranches('コマ 01','テキスト1');
+  check(maskRow()?.dataset.layer===maskId&&!!maskRow()?.querySelector('canvas'),'作品再読込でも同じ独立マスクと描画領域を復元');
   maskRow()!.querySelector<HTMLButtonElement>('.layer-select')!.click();await wait(()=>painting()&&maskRow()!.classList.contains('is-selected'),'再読込後のマスク編集待ち');
   check(!!document.querySelector('.paint-input'),'再読込直後のマスク行からも描画できる');
   report.textContent=`App生成マスク PASS ${checks.length}\n${checks.join('\n')}`;
@@ -932,6 +946,8 @@ async function verifyGenerationOwner(){
 }
 
 
+// 見込み・合格: 上の絵を下の絵の直下へ移すと、表示順と保存順が入れ替わり、描画面・道具・マスク選択は保たれる。
+// 範囲: 合成画像を含む実Appでポインター操作、別フォルダー・別コマへの移動、Undo/Redo、保存・再読込を検証する。
 async function verifyLayerMoveContinuity(){
  const run=document.getElementById('layer-continuity-run') as HTMLButtonElement,checks:string[]=[];
  const check=(ok:boolean,label:string)=>{if(!ok)throw Error(label);checks.push(label);report.textContent=checks.join('\n');};
@@ -942,10 +958,13 @@ async function verifyLayerMoveContinuity(){
  const group=(key:string,index=0)=>scope(index).querySelector<HTMLElement>(`[data-owner-group="${key}"]`)!;
  const tools=()=>JSON.stringify([...document.querySelectorAll<HTMLElement>('.paint-tool-icons [aria-pressed],.paint-colors [aria-pressed],.paint-size [aria-checked]')].map(n=>[n.getAttribute('aria-label'),n.getAttribute('aria-pressed'),n.getAttribute('aria-checked')]));
  const drag=async(source:HTMLElement,target:HTMLElement,ratio=.8,cancel=false)=>{
-  target.scrollIntoView({block:'center'});await settle();const a=source.getBoundingClientRect(),b=target.getBoundingClientRect(),pointerId=121;
-  const x=a.left+a.width/2,y=a.top+a.height/2,tx=b.left+b.width/2,ty=b.top+b.height*ratio;
+  source.scrollIntoView({block:'center'});await settle();const a=source.getBoundingClientRect(),pointerId=121;
+  const x=a.left+a.width/2,y=a.top+a.height/2;
+  if(!source.contains(document.elementFromPoint(x,y)))throw Error('ドラッグ開始点に移動元のレイヤーがありません');
   source.dispatchEvent(new PointerEvent('pointerdown',{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:1,clientX:x,clientY:y,bubbles:true,cancelable:true}));
+  target.scrollIntoView({block:'center'});await settle();const b=target.getBoundingClientRect(),tx=b.left+b.width/2,ty=b.top+b.height*ratio;
   window.dispatchEvent(new PointerEvent('pointermove',{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:1,clientX:tx,clientY:ty,bubbles:true,cancelable:true}));
+  if(!target.matches('.drop-above,.drop-below,.drop-inside'))throw Error('指定した移動先にドロップ位置が表示されません');
   window.dispatchEvent(new PointerEvent(cancel?'pointercancel':'pointerup',{pointerId,pointerType:'mouse',isPrimary:true,button:0,buttons:0,clientX:tx,clientY:ty,bubbles:true,cancelable:true}));
   if(!cancel)source.click();await settle();
  };
@@ -972,18 +991,24 @@ async function verifyLayerMoveContinuity(){
   page.panels.push({id:2,shape:{type:'rect',x:15,y:140,w:150,h:100},bg:0,action:null,bubbles:[],figures:[{name:'移動先の絵',bbox:{x:25,y:170,w:40,h:40},artwork:createFrameArtwork(otherAsset,{x:25,y:170,w:40,h:40})}]});
   const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(doc)));await writer.close();
   render(<App/>,host);await open();button('コマ情報を閉じる')?.click();button('ページ一覧を閉じる')?.click();await settle();
-  group('bubble-0').querySelector<HTMLButtonElement>('[aria-expanded="false"]')?.click();await settle();mask().querySelector<HTMLButtonElement>('.layer-select')!.click();await wait(()=>!!document.querySelector('.paint-input')&&mask().classList.contains('is-selected'),'マスク選択');await settle();
+  await showLayerBranches('コマ 01','テキスト1','コマ 02');
+  mask().querySelector<HTMLButtonElement>('.layer-select')!.click();await wait(()=>!!document.querySelector('.paint-input')&&mask().classList.contains('is-selected'),'マスク選択');await settle();
   button('ペン').click();button('描画色：赤').click();button('太さ 3 px').click();await settle();await save();
   check(getComputedStyle(mask()).borderLeftWidth==='0px'&&getComputedStyle(mask()).marginLeft==='0px','生成マスク行の余分な枠と余白を除去');
   button('ペンツールを閉じる')?.click();await settle();
   let observedDecodes=-1;for(let stable=0,attempt=0;stable<3&&attempt<120;attempt++){await settle();if(decoded.length===observedDecodes)stable++;else{observedDecodes=decoded.length;stable=0;}}
   const localSurface=document.querySelector('.paint-input'),localTools=tools();decoded.length=0;
-  await drag(row('continuity-top').querySelector<HTMLElement>('.layer-select')!,row('continuity-bottom'),.8);await wait(()=>Boolean(row('continuity-bottom').compareDocumentPosition(row('continuity-top'))&Node.DOCUMENT_POSITION_FOLLOWING),'同一ownerの順序移動');await settle();
+  const displayed=()=>Array.from(scope().querySelectorAll<HTMLElement>('[data-owner="bubble-0"][data-layer]'),node=>node.dataset.layer).join(',');
+  check(displayed()==='continuity-mask,continuity-top,continuity-bottom','並べ替え前の表示順は生成マスク・上の絵・下の絵');
+  await drag(row('continuity-top').querySelector<HTMLElement>('.layer-select')!,row('continuity-bottom'),.8);
+  await wait(()=>displayed()==='continuity-mask,continuity-bottom,continuity-top','生成マスクの下で2枚の絵を並べ替える');await settle();
   check(document.querySelector('.paint-input')===localSurface&&tools()===localTools&&mask().classList.contains('is-selected'),'同一フォルダーの並べ替えで描画面・道具・生成マスク選択を保持');
   check(decoded.length===0,'同一フォルダーの並べ替えで原画像を再デコードしない');
   check(!!button('ペンツールを開く'),'同一フォルダーの移動で閉じたツールパレットを開かない');
   await save();
-  const original=await stored(),surface=document.querySelector('.paint-input'),signature=tools();decoded.length=0;
+  const savedLayers=(await stored()).manga.pages[0].panels[0].bubbles[0].paint_overlay?.paint?.layers;
+  check(savedLayers?.map(layer=>layer.id).join(',')==='continuity-top,continuity-bottom,continuity-mask','同じフォルダーの3枚を新しい順序（背面から前面）で保存');
+  const surface=document.querySelector('.paint-input'),signature=tools();decoded.length=0;
   await drag(mask().querySelector<HTMLElement>('.layer-select')!,group('bubble-1'),.5);await wait(()=>mask().dataset.owner==='bubble-1','独立マスクの所属移動');await settle();
   check(document.querySelector('.paint-input')===surface,'生成マスクの移動で描画面を閉じない');check(tools()===signature&&mask().classList.contains('is-selected'),'生成マスクの選択・道具・色・太さを保持');
   check(row('continuity-bottom').dataset.owner==='bubble-0'&&row('continuity-top').dataset.owner==='bubble-0'&&!!group('bubble-0').parentElement!.querySelector('.bubble-native-row'),'マスクだけが移動し画像と文字は残る');
