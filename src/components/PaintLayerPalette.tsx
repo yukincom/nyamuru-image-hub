@@ -74,24 +74,65 @@ function LayerNameEditor({name,label,commit,close}:{name:string;label:string;com
   const finish=(accept:boolean)=>{if(finished.current)return;finished.current=true;const value=draft.trim();if(accept&&value&&value!==name)commit(value);close();};
   return <input autoFocus aria-label={label} value={draft} onInput={event=>setDraft(event.currentTarget.value)} onBlur={()=>finish(true)} onKeyDown={event=>{event.stopPropagation();if(event.key==='Enter'||event.key==='Escape'){event.preventDefault();finish(event.key==='Enter');}}}/>;
 }
+interface PaletteDragPointer {
+  pointerId: number;
+  capture: HTMLElement;
+  x: number;
+  y: number;
+  moved: boolean;
+  stopTracking: () => void;
+}
+type PointerHandler = (event: PointerEvent) => void;
+
+function trackPalettePointer(
+  event: PointerEvent, capture: HTMLElement,
+  handlers: { move: PointerHandler; end: PointerHandler; cancel: () => void },
+  activate: (pointer: PaletteDragPointer) => void,
+) {
+  const { pointerId, clientX: x, clientY: y } = event;
+  const { move, end, cancel } = handlers;
+  capture.classList.add('is-dragging');
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', cancel);
+  activate({
+    pointerId, capture, x, y, moved: false,
+    stopTracking() {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', cancel);
+      capture.classList.remove('is-dragging');
+      try { capture.releasePointerCapture(pointerId); } catch {}
+    },
+  });
+  try { capture.setPointerCapture(pointerId); } catch {}
+}
+
 export default function PaintLayerPalette(p:Props){
   const palette=useContext(PaintLayerControlsContext),scope=p.paletteScope??'',baseDepth=p.location?.overlay?0:1;
   const [renaming,setRenaming]=useState<string|null>(null),[renamingFolder,setRenamingFolder]=useState<string|null>(null);
-  const drag=useRef<{kind:'layer'|'folder';key:string;id:string;x:number;y:number;pointerId:number;capture:HTMLElement;moved:boolean;drop?:PaintLayerDropTarget;destination?:PaintLayerDestination;marker?:HTMLElement;cleanup:()=>void}|null>(null);
-  const paletteRef=useRef<HTMLDivElement>(null),skipGroupClick=useRef(false),skipLayerClick=useRef(false);
-  const groupDrag=useRef<{key:string;pointer:number;x:number;y:number;target?:string;after?:boolean;capture:HTMLElement;moved:boolean;cleanup:()=>void}|null>(null);
+  const drag=useRef<(PaletteDragPointer & {kind:'layer'|'folder';key:string;id:string;drop?:PaintLayerDropTarget;destination?:PaintLayerDestination;marker?:HTMLElement})|null>(null);
+  const paletteRef=useRef<HTMLDivElement>(null),skipLayerClick=useRef(false);
+  const groupDrag=useRef<(PaletteDragPointer & {key:string;target?:string;after?:boolean})|null>(null);
   const [groupDrop,setGroupDrop]=useState<{key:string;after:boolean}|null>(null);
   const label=(o:PaintOwner)=>o.kind==='background'?'背景':o.kind==='panel'?'コマ内':o.kind==='page'?'コマ外':o.label;
   const clearDrop=()=>{const d=drag.current;if(!d)return;if(d.marker){d.marker.classList.remove('drop-above','drop-below','drop-inside','drop-outside');d.marker.style.removeProperty('--layer-drop-indent');}d.marker=undefined;d.drop=undefined;d.destination=undefined;delete d.capture.dataset.dragTarget;};
-  const cancelLayerDrag=()=>{const d=drag.current;if(!d)return;clearDrop();drag.current=null;d.cleanup();d.capture.classList.remove('is-dragging');try{d.capture.releasePointerCapture(d.pointerId);}catch{}};
+  const cancelLayerDrag=()=>{
+    const d=drag.current;
+    if(!d)return;
+    clearDrop();
+    drag.current=null;
+    d.stopTracking();
+  };
   useEffect(()=>cancelLayerDrag,[]);
   const beginDrag=(e:PointerEvent,o:PaintOwner,id:string,kind:'layer'|'folder',selector:string)=>{
     const capture=(e.target as Element).closest<HTMLElement>(selector);if(!capture)return;
-    skipLayerClick.current=false;capture.classList.add('is-dragging');
-    const move=(event:PointerEvent)=>moveLayerDrag(event),end=(event:PointerEvent)=>endLayerDrag(event),cancel=()=>cancelLayerDrag();
-    window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',cancel);
-    drag.current={kind,key:o.key,id,x:e.clientX,y:e.clientY,pointerId:e.pointerId,capture,moved:false,cleanup:()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',cancel);}};
-    try{capture.setPointerCapture(e.pointerId);}catch{}
+    skipLayerClick.current=false;
+    trackPalettePointer(e, capture, {
+      move: event => moveLayerDrag(event),
+      end: event => endLayerDrag(event),
+      cancel: () => cancelLayerDrag(),
+    }, pointer => { drag.current = { ...pointer, kind, key: o.key, id }; });
   };
   const beginLayerDrag=(e:PointerEvent,o:PaintOwner,l:PaintLayer)=>{if(p.disabled||p.toggleFinishLayer&&e.shiftKey||e.metaKey||e.ctrlKey||e.altKey||e.button!==0||!e.isPrimary||!paintLayerEditable(o,l))return;beginDrag(e,o,l.id,'layer','.layer-select');};
   const beginFolderDrag=(e:PointerEvent,o:PaintOwner,folder:PaintFolder)=>{
@@ -124,24 +165,27 @@ export default function PaintLayerPalette(p:Props){
     d.capture.dataset.dragTarget = `${row.dataset.layerDrop}:${drop.placement}`;
   };
   const endLayerDrag=(e:PointerEvent)=>{const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;const target=d.drop,destination=d.destination;cancelLayerDrag();if(d.moved){skipLayerClick.current=true;e.preventDefault();e.stopPropagation();if(target){if(destination){const nextScope=`${scope.split('/')[0]}/${destination.overlay?'page':`panel-${destination.panelIndex}`}`;palette.setFolded(nextScope,false);palette.setFolded(`${nextScope}/owner/${destination.key}`,false);if(target.kind==='folder'&&target.placement==='inside')palette.setFolded(`${nextScope}/folder/${target.id}`,false);}if(d.kind==='folder')p.moveFolder(d.key,d.id,target,destination);else p.moveLayer(d.key,d.id,target,destination);}}};
-  const cancelGroupDrag=()=>{const d=groupDrag.current;if(!d)return;groupDrag.current=null;d.cleanup();d.capture.classList.remove('is-dragging');try{d.capture.releasePointerCapture(d.pointer);}catch{}setGroupDrop(null);};
+  const cancelGroupDrag=()=>{
+    const d=groupDrag.current;
+    if(!d)return;
+    groupDrag.current=null;
+    d.stopTracking();
+    setGroupDrop(null);
+  };
   useEffect(()=>cancelGroupDrag,[]);
   const beginGroupDrag=(e:PointerEvent,o:PaintOwner,selector:string)=>{
     if(!p.reorderGroup||p.disabled||paintOwnerPlacementLocked(o)||e.button!==0||!e.isPrimary||!displayOwners.some(target=>canReorderGroup(o.key,target.key)))return;
     const capture=(e.target as Element).closest<HTMLElement>(selector);if(!capture)return;
-    skipGroupClick.current=false;capture.classList.add('is-dragging');
     const move=(event:PointerEvent)=>{
-      const d=groupDrag.current;if(!d||d.pointer!==event.pointerId||Math.hypot(event.clientX-d.x,event.clientY-d.y)<5)return;
+      const d=groupDrag.current;if(!d||d.pointerId!==event.pointerId||Math.hypot(event.clientX-d.x,event.clientY-d.y)<5)return;
       d.moved=true;event.preventDefault();
       const row=document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-owner-group]'),key=row?.dataset.ownerGroup;
       if(!row||row.closest('.paint-layer-palette')!==paletteRef.current||!key||!canReorderGroup(d.key,key)){d.target=undefined;setGroupDrop(null);return;}
       d.target=key;d.after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;setGroupDrop({key,after:d.after});
     };
-    const end=(event:PointerEvent)=>{const d=groupDrag.current;if(!d||d.pointer!==event.pointerId)return;cancelGroupDrag();if(d.moved){skipLayerClick.current=true;event.preventDefault();event.stopPropagation();if(d.target)p.reorderGroup?.(d.key,d.target,!!d.after);}};
-    const cancel=()=>cancelGroupDrag();
-    window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',cancel);
-    groupDrag.current={key:o.key,pointer:e.pointerId,x:e.clientX,y:e.clientY,capture,moved:false,cleanup:()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',cancel);}};
-    try{capture.setPointerCapture(e.pointerId);}catch{}
+    const end=(event:PointerEvent)=>{const d=groupDrag.current;if(!d||d.pointerId!==event.pointerId)return;cancelGroupDrag();if(d.moved){skipLayerClick.current=true;event.preventDefault();event.stopPropagation();if(d.target)p.reorderGroup?.(d.key,d.target,!!d.after);}};
+    trackPalettePointer(e, capture, { move, end, cancel: () => cancelGroupDrag() },
+      pointer => { groupDrag.current = { ...pointer, key: o.key }; });
   };
   const renderLayer=(o:PaintOwner,l:PaintLayer,active:boolean,depth=baseDepth)=>{
     const canvasSelected=p.selectedOwner===o.key&&o.kind==='original'&&l.id===o.paint.layers.at(-1)?.id;
