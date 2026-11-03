@@ -24,7 +24,9 @@ from nyamuru_bridge_identity import LAYOUT_PROTOCOL_VERSION
 from nyamuru_layout_geometry import (
     detect_panel_boxes,
     deduplicate_panel_boxes,
-    detect_panel_shapes,
+    detect_panel_segments,
+    infer_panel_shapes_from_segments,
+    recover_missing_panel_rows,
     sort_panel_boxes_reading_order,
     detector_regions,
     detector_boxes,
@@ -520,7 +522,8 @@ class LocalVisionState:
             confidence=0.2,
         )
         raw_rtdetr_boxes = detector_boxes(detection, "frames")
-        rtdetr_boxes, rtdetr_excluded = exclude_non_panel_regions(raw_rtdetr_boxes, detection)
+        segments = detect_panel_segments(upright_bytes) if raw_rtdetr_boxes else []
+        rtdetr_boxes, rtdetr_excluded = exclude_non_panel_regions(raw_rtdetr_boxes, detection, segments=segments)
         rtdetr_boxes, rtdetr_header_excluded = exclude_paired_title_header_boxes(rtdetr_boxes)
         rtdetr_boxes = deduplicate_panel_boxes(rtdetr_boxes)
         if rtdetr_boxes:
@@ -535,8 +538,14 @@ class LocalVisionState:
             layout_boxes, detector_name = opencv_boxes, "OpenCV補助"
             selected_excluded = opencv_excluded
             selected_header_excluded = opencv_header_excluded
+        recovered_row_count = 0
+        if rtdetr_boxes:
+            layout_boxes = recover_missing_panel_rows(layout_boxes, segments, detection)
+            recovered_row_count = len(layout_boxes) - len(rtdetr_boxes)
+        elif layout_boxes and not raw_rtdetr_boxes:
+            segments = detect_panel_segments(upright_bytes)
         layout_boxes = sort_panel_boxes_reading_order(layout_boxes)
-        panel_shapes = detect_panel_shapes(upright_bytes, layout_boxes)
+        panel_shapes = infer_panel_shapes_from_segments(layout_boxes, segments)
         if len(panel_shapes) != len(layout_boxes):
             raise RuntimeError(
                 "コマ形状と検出枠の対応が崩れたため、誤った配置を返さず解析を中止しました"
@@ -574,6 +583,8 @@ class LocalVisionState:
                 "panels": panels,
                 "reason": f"{detector_name}と枠線解析で復元した{detected_count}個のコマ形状を、テンプレートへ変換せず編集開始位置として使用します。",
             }
+            if recovered_row_count:
+                result["reason"] += f" 原稿の仕切り線から中間の{recovered_row_count}コマを補いました。"
             if sum(selected_excluded.values()):
                 result["reason"] += f" 文字・人物との信頼度競合で弱い枠候補を{sum(selected_excluded.values())}個除外しました。"
             if selected_header_excluded:

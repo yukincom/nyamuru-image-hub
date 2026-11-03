@@ -557,13 +557,11 @@ def infer_panel_shapes_from_segments(
     return result
 
 
-def detect_panel_shapes(
-    image_bytes: bytes,
-    boxes: list[tuple[float, float, float, float]],
-) -> list[dict[str, Any]]:
-    """Recover diagonal dividers while keeping RT-DETR as the row/frame detector."""
-    if not boxes:
-        return []
+PanelBox = tuple[float, float, float, float]
+LineSegment = tuple[float, float, float, float]
+
+
+def detect_panel_segments(image_bytes: bytes) -> list[LineSegment]:
     import cv2
     import numpy as np
 
@@ -573,20 +571,67 @@ def detect_panel_shapes(
     height, width = image.shape
     detector = cv2.createLineSegmentDetector(cv2.LSD_REFINE_STD)
     detected = detector.detect(image)[0]
-    segments = [] if detected is None else [
+    return [] if detected is None else [
         (float(x1) / width, float(y1) / height, float(x2) / width, float(y2) / height)
         for [[x1, y1, x2, y2]] in detected
     ]
-    inferred = infer_panel_shapes_from_segments(boxes, segments)
-    if inferred:
-        return inferred
-    return [
-        {
-            "type": "polygon",
-            "points": [[x, y], [x + box_width, y], [x + box_width, y + box_height], [x, y + box_height]],
-        }
-        for x, y, box_width, box_height in boxes
-    ]
+
+
+def detect_panel_shapes(image_bytes: bytes, boxes: list[PanelBox]) -> list[dict[str, Any]]:
+    return infer_panel_shapes_from_segments(boxes, detect_panel_segments(image_bytes)) if boxes else []
+
+
+def _edge_coverage(segments: list[LineSegment], position: float, start: float, end: float, band: float) -> float:
+    """Fraction of a vertical edge traced by near-parallel ink, without counting a stroke twice."""
+    intervals = []
+    for x1, y1, x2, y2 in segments:
+        if max(abs(x1 - position), abs(x2 - position)) > band:
+            continue
+        span = abs(y2 - y1)
+        if span >= max(0.012, (end - start) * 0.04) and abs(x2 - x1) <= span * 0.22:
+            intervals.append((max(start, min(y1, y2)), min(end, max(y1, y2))))
+    return _covered_length(intervals) / (end - start)
+
+
+def recover_missing_panel_rows(
+    boxes: list[PanelBox], segments: list[LineSegment], detection: dict[str, Any],
+) -> list[PanelBox]:
+    """Bridge a gap only when two separate traced borders enclose a populated, otherwise unclaimed row."""
+    rows = _group_panel_rows(boxes)
+    if len(rows) < 2:
+        return boxes
+    added = []
+    transposed = [(y1, x1, y2, x2) for x1, y1, x2, y2 in segments]
+    people = detector_boxes(detection, "faces") + detector_boxes(detection, "bodies")
+    for upper, lower in zip(rows, rows[1:]):
+        if len(upper["boxes"]) != 1 or len(lower["boxes"]) != 1:
+            continue
+        left, right = max(upper["left"], lower["left"]), min(upper["right"], lower["right"])
+        width = right - left
+        top_end, bottom_start = upper["bottom"], lower["top"]
+        if (width <= 0 or bottom_start - top_end < 0.07
+                or max(abs(upper[k] - lower[k]) for k in ("left", "right")) > width * 0.06):
+            continue
+        gap = (left, top_end, width, bottom_start - top_end)
+        if any(box_intersection_area(box, gap) > 0 for box in boxes
+               if box not in (upper["boxes"][0], lower["boxes"][0])):
+            continue
+        if not any(left < x + w / 2 < right and top_end < y + h / 2 < bottom_start for x, y, w, h in people):
+            continue
+        column = {"top": left, "bottom": right, "left": upper["top"], "right": lower["bottom"]}
+        dividers = _row_dividers(column, transposed)
+        # Each adjoining detector rectangle ends at the *outermost* point of its sloping edge.
+        upper_lines = [(a, b) for a, b, score in dividers if score >= 1.45 and abs(max(a, b) - top_end) <= 0.03]
+        lower_lines = [(a, b) for a, b, score in dividers if score >= 1.45 and abs(min(a, b) - bottom_start) <= 0.03]
+        if len(upper_lines) != 1 or len(lower_lines) != 1:
+            continue
+        top, bottom = upper_lines[0], lower_lines[0]
+        if min(bottom[i] - top[i] for i in (0, 1)) < 0.07:
+            continue
+        if min(_edge_coverage(segments, x, top[i], bottom[i], 0.015) for i, x in enumerate((left, right))) < 0.65:
+            continue
+        added.append((left, min(top), width, max(bottom) - min(top)))
+    return boxes + added
 
 
 def sort_panel_boxes_reading_order(
@@ -841,9 +886,43 @@ def box_overlap_ratios(
     )
 
 
+def _is_framed_row_part(box: PanelBox, kept: list[PanelBox], segments: list[LineSegment]) -> bool:
+    """Treat a frame/body conflict as a panel only when it completes a split row and has its own outline."""
+    x, y, w, h = box
+    for parent in kept:
+        _, py, pw, ph = parent
+        if not (0.2 * pw < w < 0.8 * pw and box_intersection_area(box, parent) >= 0.90 * w * h):
+            continue
+        for sibling in kept:
+            sx, sy, sw, sh = sibling
+            if sibling == parent or box_intersection_area(sibling, parent) < 0.90 * sw * sh:
+                continue
+            if max(abs(y - py), abs(y + h - py - ph), abs(sy - py), abs(sy + sh - py - ph)) > 0.12 * ph:
+                continue
+            overlap = box_intersection_area(box, sibling)
+            if overlap > 0.16 * min(w * h, sw * sh):
+                continue
+            covered = box_intersection_area(box, parent) + box_intersection_area(sibling, parent) - overlap
+            if covered < 0.85 * pw * ph:
+                continue
+            transposed = [(y1, x1, y2, x2) for x1, y1, x2, y2 in segments]
+            # Four visible sides distinguish the framed close-up from a figure or balloon on top of it.
+            return all(
+                _edge_coverage(lines, edge, start, end, min(0.03, 0.075 * across)) >= 0.70
+                for lines, start, end, across, edges in (
+                    (segments, y, y + h, w, (x, x + w)),
+                    (transposed, x, x + w, h, (y, y + h)),
+                )
+                for edge in edges
+            )
+    return False
+
+
 def exclude_non_panel_regions(
-    boxes: list[tuple[float, float, float, float]],
+    boxes: list[PanelBox],
     detection: dict[str, Any],
+    *,
+    segments: list[LineSegment] | None = None,
 ) -> tuple[list[tuple[float, float, float, float]], dict[str, int]]:
     """Reject weak panel candidates that substantially duplicate another class.
 
@@ -854,9 +933,8 @@ def exclude_non_panel_regions(
     its bubbles and figures.
 
     OpenCV fallback boxes have no class confidence, so they retain the original
-    overlap-only rejection. RT-DETR frame boxes are rejected only when the frame
-    is below the high-confidence guard and a high-confidence competing class is
-    decisively stronger.
+    overlap-only rejection. For RT-DETR a stronger competing class can exclude a weak
+    frame, but a traced panel that completes a row survives a body conflict.
     """
     frame_regions = detector_regions(detection, "frames")
     exclusions = {
@@ -874,7 +952,8 @@ def exclude_non_panel_regions(
                 return float(region["confidence"])
         return None
 
-    kept: list[tuple[float, float, float, float]] = []
+    kept: list[PanelBox] = []
+    body_conflicts: list[PanelBox] = []
     excluded = {"texts": 0, "faces": 0, "bodies": 0}
     for box in boxes:
         frame_confidence = matching_frame_confidence(box)
@@ -898,8 +977,14 @@ def exclude_non_panel_regions(
                 break
         if rejected_by:
             excluded[rejected_by] += 1
+            if rejected_by == "bodies" and frame_confidence is not None:
+                body_conflicts.append(box)
         else:
             kept.append(box)
+    if body_conflicts and segments:
+        recovered = [box for box in body_conflicts if _is_framed_row_part(box, kept, segments)]
+        kept.extend(recovered)
+        excluded["bodies"] -= len(recovered)
     return kept, excluded
 
 

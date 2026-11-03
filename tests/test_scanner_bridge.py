@@ -943,11 +943,11 @@ class LocalVisionResultTest(unittest.TestCase):
                 "bodies": [],
             },
         }
-        shape = {"type": "rect", "x": 0.05, "y": 50 / 1400, "w": 0.9, "h": 600 / 1400}
+        shape = {"type": "polygon", "points": [[.05, .035714], [.95, .035714], [.95, .464286], [.05, .464286]]}
         with (
             patch.object(vision_state, "rotated_image_bytes", return_value=b"upright"),
             patch.object(vision_state, "run_local_worker", return_value=detection) as run_worker,
-            patch.object(vision_state, "detect_panel_shapes", return_value=[shape]),
+            patch.object(vision_state, "detect_panel_segments", return_value=[]),
         ):
             result = state.analyze(b"image", 0)
 
@@ -960,6 +960,37 @@ class LocalVisionResultTest(unittest.TestCase):
         }])
         self.assertNotIn("panel_boxes", result)
         self.assertNotIn("panel_shapes", result)
+
+    def test_gap_needs_a_populated_panel_and_a_continuous_outline(self):
+        # 見込み: 間が空いた2枠だけでは増やさない。模擬線・人物を使い、囲いと人物が揃ったときだけ1枠補う。
+        boxes = [(.1, .08, .8, .28), (.1, .62, .8, .28)]
+        dividers = [(.1, .26, .90, .36), (.1, .72, .90, .62)]
+        sides = [(.1, .26, .1, .72), (.90, .36, .90, .62)]
+        populated = {"page": {"width": 100, "height": 100}, "detections": {
+            "bodies": [{"bbox": [25, 42, 65, 60], "score": .9}],
+        }}
+        recover = layout_geometry.recover_missing_panel_rows
+        self.assertEqual(len(recover(boxes, dividers + sides, populated)), 3)
+        self.assertEqual(recover(boxes, dividers + sides, {}), boxes)
+        self.assertEqual(recover(boxes, dividers[:1] + sides, populated), boxes)
+        self.assertEqual(recover(boxes, dividers + sides[:1], populated), boxes)
+
+    def test_body_conflict_needs_both_the_outline_and_an_adjacent_panel(self):
+        # 見込み: 人物に重なる弱い候補を復帰するには枠線と反対側のコマが必要。合成RT・線分で負例も確認する。
+        frame = {"bbox": [50, 60, 90, 90], "score": .54}
+        detection = {"page": {"width": 100, "height": 100}, "detections": {
+            "frames": [{"bbox": [10, 60, 90, 90], "score": .8}, {"bbox": [10, 60, 50, 90], "score": .8}, frame],
+            "bodies": [{**frame, "score": .92}],
+        }}
+        boxes = bridge.detector_boxes(detection, "frames")
+        edges = [(.5, .6, .9, .6), (.5, .9, .9, .9), (.5, .6, .5, .9), (.9, .6, .9, .9)]
+        for candidates, lines, accepted in [
+            (boxes, edges, True), (boxes, edges[:-1], False), ([boxes[0], boxes[2]], edges, False),
+        ]:
+            with self.subTest(candidate_count=len(candidates), edge_count=len(lines)):
+                kept, excluded = bridge.exclude_non_panel_regions(candidates, detection, segments=lines)
+                self.assertEqual(boxes[2] in kept, accepted)
+                self.assertEqual(excluded["bodies"], int(not accepted))
 
     def test_orders_detected_panels_top_to_bottom_and_right_to_left(self):
         boxes = [
