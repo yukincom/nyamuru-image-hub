@@ -47,4 +47,18 @@ class ChromaTests(unittest.TestCase):
         untouched=keyed(source,'#00FF00',False)
         self.assertEqual(untouched.getpixel((3,7))[:3],source.getpixel((3,7))[:3])
 
+    # 見込み: VAE復号で純色の主チャンネルが200前後へ減衰した背景も半透明の灰色幕を残さず抜ける。
+    # 合格: 減衰した緑/青/マゼンタ背景がalpha0、白/黒の内部RGBは不変。範囲: 合成32px。
+    def test_vae_attenuated_chroma_background_keys_to_zero_alpha(self):
+        for key, bg in [('#00FF00', (0, 202, 0, 255)), ('#0000FF', (0, 0, 202, 255)), ('#FF00FF', (202, 0, 202, 255))]:
+            source = Image.new('RGBA', (32, 32), bg)
+            source.putpixel((0, 0), tuple(max(0, c - 3) for c in bg[:3]) + (255,))
+            source.paste((255, 255, 255, 255), (8, 8, 24, 24))
+            source.paste((0, 0, 0, 255), (12, 12, 20, 20))
+            output = keyed(source, key)
+            self.assertEqual(output.getpixel((0, 0))[3], 0)
+            self.assertEqual(output.getpixel((2, 2))[3], 0)
+            self.assertEqual(output.getpixel((10, 10)), (255, 255, 255, 255))
+            self.assertEqual(output.getpixel((16, 16)), (0, 0, 0, 255))
+
 if __name__=='__main__':unittest.main()

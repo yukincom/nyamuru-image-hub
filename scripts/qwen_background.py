@@ -12,11 +12,18 @@ def remove_chroma_background(raw, settings, *, dpi=None, polygon=None):
         pixels = np.array(source.convert('RGBA'), dtype=np.uint8)
     rgb = pixels[:, :, :3].astype(np.float32) / 255
     key = np.array(color, dtype=np.float32) / 255
-    distance = np.sqrt(np.mean((rgb - key) ** 2, axis=2))
+    active = key > 0
+    primary = np.min(rgb[:, :, active], axis=2)
+    secondary = np.max(rgb[:, :, ~active], axis=2)
+    pure = (secondary <= 0.05) & (primary >= 0.65)
+    scale = float(np.percentile(primary[pure], 10)) if np.any(pure) else 1.0
+    keyed_rgb = rgb.copy()
+    keyed_rgb[:, :, active] = np.clip(rgb[:, :, active] / max(scale, 0.65), 0, 1)
+    distance = np.sqrt(np.mean((keyed_rgb - key) ** 2, axis=2))
     alpha = np.clip((distance - settings['similarity']) / settings['blend'], 0, 1)
     if settings.get('despill'):
         cut = Image.fromarray(np.where(alpha < 1, 255, 0).astype(np.uint8))
-        boundary = (np.asarray(cut.filter(ImageFilter.MaxFilter(3))) > 0) & (alpha > 0)
+        boundary = (np.asarray(cut.filter(ImageFilter.MaxFilter(5))) > 0) & (alpha > 0)
         corrected = rgb.copy()
         if settings['color'] == '#00FF00':
             corrected[:, :, 1] = np.minimum(rgb[:, :, 1], np.maximum(rgb[:, :, 0], rgb[:, :, 2]))
