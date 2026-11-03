@@ -1,10 +1,12 @@
 import type { PaintLayer, PaintTone } from '../types';
 import { defaultPaintTone } from '../lib/paintTone';
 import { paintColorModes } from '../lib/paintColor';
-import { useId, useState } from 'preact/hooks';
+import { useId } from 'preact/hooks';
 
+export type PaintEffectsTab='tone'|'color';
 interface Props {
   layer?:PaintLayer; disabled:boolean; generationMask?:boolean;
+  tab:PaintEffectsTab; setTab:(tab:PaintEffectsTab)=>void;
   update:(patch:Partial<PaintLayer>)=>void;
 }
 function TonePreset({label,value,values,unit,change}:{label:string;value:number;values:number[];unit:string;change:(value:number)=>void}){
@@ -13,8 +15,8 @@ function TonePreset({label,value,values,unit,change}:{label:string;value:number;
     {values.map(option=><option value={option}>{option}{unit}</option>)}
   </select></label>;
 }
-export default function PaintLayerEffects({layer,disabled,update,generationMask=false}:Props){
-  const [tab,setTab]=useState<'tone'|'color'>('tone'),id=useId();
+export default function PaintLayerEffects({layer,disabled,update,generationMask=false,tab,setTab}:Props){
+  const id=useId();
   const tone=layer?.tone??defaultPaintTone();
   const setTone=(patch:Partial<PaintTone>)=>{if(layer)update({tone:{...tone,...patch}});};
   return <section class="paint-layer-effects paint-tone-panel" aria-label="トーン設定">

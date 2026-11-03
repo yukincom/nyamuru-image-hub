@@ -11,7 +11,7 @@ import { Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, Pen
 import PaintLayerPalette, { PaintLayerControls } from './PaintLayerPalette';
 import MangaFinishDialog, { type FinishBatch } from './MangaFinishDialog';
 import { canFinishPaintLayer, finishLayerKey } from '../lib/mangaFinishLayers';
-import PaintLayerEffects from './PaintLayerEffects';
+import PaintLayerEffects, { type PaintEffectsTab } from './PaintLayerEffects';
 import { prepareGuideLayer } from '../lib/paintGuide';
 import { newToneLayer } from '../lib/paintTone';
 import { paintColorInk } from '../lib/paintColor';
@@ -144,6 +144,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const gesture=useRef<{pointerId:number;live:Live;smoother:PaintSmoother;point:(event:PaintSampleEvent)=>PaintPoint;target:HTMLDivElement;cleanup:()=>void}|null>(null);
   const [vectorStyle,setVectorStyle]=useState(defaultVectorStyle);
   const [vectorTab,setVectorTab]=useState<VectorDetailTab>('line');
+  const [effectsTab,setEffectsTab]=useState<PaintEffectsTab>('tone');
   const lastToolbarLayer=useRef(layer);if(requested)lastToolbarLayer.current=layer;
   const toolbarLayer=requested?layer:lastToolbarLayer.current;
   const vectorMode=!editingMask&&(tool==='eraser'?toolbarLayer.kind==='vector':tool.startsWith('vector-')||lineKind==='vector');
@@ -558,6 +559,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     if(!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){onSelectOwner(key,native);return;}
     setFinishSelection(null);
     clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=id?target.paint.layers.find(l=>l.id===id):undefined;setLayerId(id??'');
+    if(selectedLayer?.tone?.enabled&&!rasterMask)setEffectsTab('tone');
     if(selectedLayer&&!contents)matchLayerPen(rasterMask?'raster':selectedLayer.kind);
     if(selectedLayer?.generationMask&&!['#ff0000','#0000ff','#00ff00','#ffff00'].includes(inkColor))setInkColor('#ff0000');
     if(target.kind==='background')onSelectLayout?.();
@@ -744,6 +746,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     const target=batch.scene.owners.find(item=>item.key===ownerKey)!;
     commit(batch.scene);
     setFinishSelection(null);setOwnerKey(ownerKey);setLayerId(shadeId??folderId);
+    if(shadeId)setEffectsTab('tone');
     setMaskTarget(null);setSelection(null);setFinishOpen(false);
     setPaletteFolded(current=>{
       const next={...current,[paletteScope]:false,[`${paletteScope}/owner/${ownerKey}`]:false};
@@ -953,7 +956,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     const visible=!guides.some(l=>l.visible);
     commit({...scene,owners:scene.owners.map(o=>o===target?{...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.guide?{...l,visible}:l)}}:o)});
   }
-  const effects=<PaintLayerEffects layer={requested&&hasLayer?layer:undefined} generationMask={selectedMask==='generationMask'} disabled={!requested||!hasLayer||locked||layerLocked||busy||suspended||!images} update={patch=>updateOwnerLayer(owner.key,layer.id,patch)}/>;
+  const effects=<PaintLayerEffects tab={effectsTab} setTab={setEffectsTab} layer={requested&&hasLayer?layer:undefined} generationMask={selectedMask==='generationMask'} disabled={!requested||!hasLayer||locked||layerLocked||busy||suspended||!images} update={patch=>updateOwnerLayer(owner.key,layer.id,patch)}/>;
   const layerProps:ComponentProps<typeof PaintLayerPalette>={
     finishSelection:!overlay&&finishSelection?.anchor===anchor&&finishSelection.scope===paletteScope?finishKeys:undefined,toggleFinishLayer:overlay?undefined:toggleFinishLayer,
     selectedMask,selectMask,addToneMask,addGenerationMask,canAddGenerationMask:!!paintGenerationOwner(scene,owner.key)&&!paintOwnerLocked(paintGenerationOwner(scene,owner.key)!),selectedFolder,paletteScope,

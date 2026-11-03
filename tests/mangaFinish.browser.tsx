@@ -57,12 +57,17 @@ async function run(){
   };
   await open();row('imported')!.querySelector<HTMLButtonElement>('.layer-select')!.click();
   await wait(()=>row('imported')?.classList.contains('is-selected'),'描画セッション');
+  // 見込み: カラーモードからプレビューを取り消してもタブは変わらない。実Appの表示で判定。
+  await click('カラーモード');
+  const colorTabActive=()=>host.querySelector('[role="tab"][data-tab="color"][aria-selected="true"]');
+  await wait(colorTabActive,'仕上げ前にカラーモードを選択');
   await click('漫画仕上げ');
   const dialog=await wait(()=>document.querySelector('dialog[open]'),'単独選択の仕上げ');
   check(!dialog.querySelector('input[type=checkbox]') && !dialog.textContent?.includes('ネーム原画') && dialog.textContent?.includes('読み込み'),'選択していない原画が候補に出た');
   await click('仕上げを試す');await wait(()=>button('原稿に適用'),'単独の比較');
   check(!dialog.querySelector('[aria-label="比較するレイヤー"]'),'単独選択で複数の結果が作られた');
   await click('キャンセル');await wait(()=>!document.querySelector('dialog[open]'),'単独の取消し');
+  check(colorTabActive(),'取消しでカラーモードが切り替わった');
   row('name')!.querySelector('button.layer-select')!.dispatchEvent(new MouseEvent('click',{bubbles:true,shiftKey:true}));
   await wait(()=>row('name')?.classList.contains('is-selected'),'Shift複数選択');
   await click('漫画仕上げ');
@@ -71,11 +76,21 @@ async function run(){
   await click('仕上げを試す');await wait(()=>button('原稿に適用'),'実MangaScreenの比較');
   check(groups().length===0,'比較中に原稿を変更した');
   await click('キャンセル');await wait(()=>!document.querySelector('dialog[open]'),'取消しで閉じる');check(groups().length===0,'取消しで原稿を変更した');
+  // 見込み: カラーモードから適用すると、陰影を選びトーンに切り替わる。実UIで線数と濃度が操作可能なら合格。
+  check(colorTabActive(),'適用の前提がカラーモードではない');
   await click('漫画仕上げ');await click('仕上げを試す');await click('原稿に適用');
   await wait(()=>groups().length===2,'2フォルダー');
-  await wait(()=>host.querySelector('.layer-row.is-selected [data-tool-label="陰影"]') &&
+  const toneControls=()=>host.querySelector('[role="tab"][data-tab="tone"][aria-selected="true"]') &&
     host.querySelector('select[aria-label="トーンの線数"]:enabled') &&
-    host.querySelector('select[aria-label="トーンの濃度方式"]:enabled'),'陰影を選択して線数と濃度を表示');
+    host.querySelector('select[aria-label="トーンの濃度方式"]:enabled');
+  const shade=await wait(()=>host.querySelector<HTMLButtonElement>('.layer-row.is-selected [data-tool-label="陰影"]'),'適用後の陰影選択');
+  check(toneControls(),'適用後に陰影の線数と濃度が表示されない');
+  // 見込み: カラータブは手動で選べる。白下地を選んでも保持し、陰影へ戻るとトーンが開く。実UIの選択と編集欄を確認。
+  await click('カラーモード');await wait(colorTabActive,'陰影でもカラータブは選べる');
+  const white=await wait(()=>host.querySelector<HTMLButtonElement>('[data-tool-label="白下地"]'),'白下地');
+  white.click();await wait(()=>white.closest('.layer-row')?.classList.contains('is-selected'),'白下地を選択');
+  check(colorTabActive(),'白下地でカラーモードが切り替わった');
+  shade.click();await wait(toneControls,'陰影を再選択して線数と濃度を表示');
   host.querySelector<HTMLButtonElement>('.app-header [aria-label^="元に戻す"]')!.click();
   await wait(()=>groups().length===0,'一括Undo');
   host.querySelector<HTMLButtonElement>('.app-header [aria-label^="やり直す"]')!.click();
