@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Eye, Folder, FolderOpen, FolderPlus, FilePlu
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PaintFolder, PaintLayer } from '../types';
 import {paintStackTarget,paintLayerTree,type PaintLayerTreeEntry,type PaintLayerDestination,type PaintLayerDropTarget,type PaintOwner,type PaintScene} from '../lib/paintDocument';
+import { resolvePaintLayerDrop } from '../lib/paintLayerDrop';
 import { drawPaintMask, paintPreviewRenderer, type PaintImages } from '../lib/paintRenderer';
 import { PaintOriginal } from './PaintSceneView';
 import { PaintToolButton } from './PaintToolHelp';
@@ -103,50 +104,24 @@ export default function PaintLayerPalette(p:Props){
     if(scroller&&view){if(e.clientY<view.top+28)scroller.scrollTop-=14;else if(e.clientY>view.bottom-28)scroller.scrollTop+=14;}
     const row=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-layer-drop]');
     if(!row||!root?.contains(row))return;
-    const host=row.closest<HTMLElement>('[data-paint-panel]'),key=row.dataset.owner;
-    const location=host?{panelIndex:Number(host.dataset.paintPanel),overlay:host.dataset.paintOverlay==='true'}:p.location;
-    if(!key||p.location&&!location)return;
-    const same=(!location||location.panelIndex===p.location?.panelIndex&&location.overlay===p.location?.overlay)&&key===d.key;
-    const kind=row.dataset.layerDrop,box=row.getBoundingClientRect(),ratio=(e.clientY-box.top)/Math.max(1,box.height);
-    let depth=Number(row.dataset.layerDepth??0);
-    let target:PaintLayerDropTarget,placement:'above'|'inside'|'below',destination=location?{...location,key} as PaintLayerDestination:undefined;
-    if(kind==='layer'){
-      if(row.dataset.dropLocked==='true')return;
-      const id=row.dataset.layer;if(!id||same&&d.kind==='layer'&&id===d.id)return;const after=ratio>.5;
-      target={kind:'layer',id,after};placement=after?'below':'above';
-    }else if(kind==='folder'){
-      const id=row.dataset.folder;if(!id||same&&d.kind==='folder'&&id===d.id)return;
-      placement=ratio<.25?'above':ratio>.75?'below':'inside';
-      if(placement==='inside'&&row.dataset.dropLocked==='true')return;
-      target={kind:'folder',id,placement};if(placement==='inside')depth++;
-    }else if(kind==='panel'){
-      if(!destination)return;
-      const outside=ratio<.35;
-      if(!outside&&row.dataset.dropLocked==='true')return;
-      destination=outside?{...destination,overlay:true,key:'page',stack:{beforePanel:row.dataset.panelAnchor!}}:{...destination,key:'panel'};
-      target={kind:'root',edge:'top'};placement=outside?'above':'inside';depth=outside?0:1;
-    }else if(kind==='owner'){
-      const outside=ratio>.75;
-      if(!outside&&row.dataset.dropLocked==='true')return;
-      if(outside){if(!destination)return;destination={...destination,key:destination.overlay?'page':'panel',stack:{below:key}};}
-      target={kind:'root',edge:'top',aboveNative:!outside&&key.startsWith('bubble-')};placement=outside?'below':'inside';if(!outside)depth++;
-    }else if(kind==='native'){
-      if(row.dataset.dropLocked==='true')return;
-      const above=ratio<.5;
-      if(above&&row.dataset.nativeBelow&&destination){destination={...destination,key:destination.overlay?'page':'panel',stack:{below:row.dataset.nativeBelow}};target={kind:'root',edge:'top'};}
-      else target={kind:'root',edge:above?'bottom':'top',aboveNative:above};
-      placement=above?'above':'below';
-    }else{
-      if(row.dataset.dropLocked==='true')return;
-      target={kind:'root',edge:row.dataset.edge==='bottom'?'bottom':'top'};placement='inside';
-    }
-    if(same&&d.kind==='folder'&&(kind==='folder'||kind==='layer')){
-      const paint=p.scene.owners.find(owner=>owner.key===key)?.paint;
-      const parent=kind==='folder'?row.dataset.folder:paint?.layers.find(layer=>layer.id===row.dataset.layer)?.folderId;
-      if(paint&&paintFolderChain(paint,parent).some(folder=>folder.id===d.id))return;
-    }
-    const outside=depth===0||placement!=='inside'&&['folder','owner','panel'].includes(kind??'')||kind==='layer'&&!row.closest('.layer-user-folder-children,.layer-group-children')&&/^(panel|page)(:|$)/.test(key);
-    d.drop=target;d.destination=destination;d.marker=row;row.style.setProperty('--layer-drop-indent',`${outside?0:Math.max(48,depth*16)}px`);row.classList.add(`drop-${placement}`);if(outside)row.classList.add('drop-outside');d.capture.dataset.dragTarget=`${kind}:${placement}`;
+    const host = row.closest<HTMLElement>('[data-paint-panel]');
+    const rowLocation = host
+      ? { panelIndex: Number(host.dataset.paintPanel), overlay: host.dataset.paintOverlay === 'true' }
+      : p.location;
+    const box = row.getBoundingClientRect();
+    const drop = resolvePaintLayerDrop({
+      source: d, sourceLocation: p.location, row: row.dataset, rowLocation, scene: p.scene,
+      ratio: (e.clientY - box.top) / Math.max(1, box.height),
+      nestedLayer: row.dataset.layerDrop === 'layer' && !!row.closest('.layer-user-folder-children,.layer-group-children'),
+    });
+    if (!drop) return;
+    d.drop = drop.target;
+    d.destination = drop.destination;
+    d.marker = row;
+    row.style.setProperty('--layer-drop-indent', `${drop.indent}px`);
+    row.classList.add(`drop-${drop.placement}`);
+    if (drop.outside) row.classList.add('drop-outside');
+    d.capture.dataset.dragTarget = `${row.dataset.layerDrop}:${drop.placement}`;
   };
   const endLayerDrag=(e:PointerEvent)=>{const d=drag.current;if(!d||d.pointerId!==e.pointerId)return;const target=d.drop,destination=d.destination;cancelLayerDrag();if(d.moved){skipLayerClick.current=true;e.preventDefault();e.stopPropagation();if(target){if(destination){const nextScope=`${scope.split('/')[0]}/${destination.overlay?'page':`panel-${destination.panelIndex}`}`;palette.setFolded(nextScope,false);palette.setFolded(`${nextScope}/owner/${destination.key}`,false);if(target.kind==='folder'&&target.placement==='inside')palette.setFolded(`${nextScope}/folder/${target.id}`,false);}if(d.kind==='folder')p.moveFolder(d.key,d.id,target,destination);else p.moveLayer(d.key,d.id,target,destination);}}};
   const cancelGroupDrag=()=>{const d=groupDrag.current;if(!d)return;groupDrag.current=null;d.cleanup();d.capture.classList.remove('is-dragging');try{d.capture.releasePointerCapture(d.pointer);}catch{}setGroupDrop(null);};

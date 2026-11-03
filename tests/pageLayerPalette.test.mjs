@@ -6,6 +6,7 @@ import ts from 'typescript';
 import * as jsxRuntime from 'preact/jsx-runtime';
 import { canvasPaintOwnerKey } from '../src/lib/paintDocument.ts';
 import * as paintDocument from '../src/lib/paintDocument.ts';
+import {resolvePaintLayerDrop} from '../src/lib/paintLayerDrop.ts';
 import {canvasTextEditable,canvasTextAt,editCanvasText} from '../src/lib/canvasText.ts';
 
 test('canvas selections resolve only their existing paint owner and never default to background',()=>{
@@ -268,7 +269,6 @@ test('empty direct groups stay out of the tree until the user adds artwork',()=>
 test('layer folders are explicit and drag targets distinguish inside from outside placement',()=>{
  assert.match(paintLayerSource,/icon\('フォルダー追加',p\.addFolder,FolderPlus/);
  assert.match(paintLayerSource,/data-layer-drop="folder"/);
- assert.match(paintLayerSource,/ratio<\.25\?'above':ratio>\.75\?'below':'inside'/);
  assert.match(paintLayerSource,/p\.moveLayer\(d\.key,d\.id,target,destination\)/);
  assert.match(paintLayerSource,/if\(o\.kind==='panel'\|\|o\.kind==='page'\)return/);
  assert.match(paintLayerSource,/if\(o\.kind==='original'\)return/);
@@ -277,6 +277,28 @@ test('layer folders are explicit and drag targets distinguish inside from outsid
  assert.match(appSource,/key==='f'[\s\S]{0,180}?addDirectFolder/);
  assert.doesNotMatch(paintLayerSource,/layer-root-drop/);
  assert.match(globalCss,/--layer-drop-color:#df861f/);
+});
+
+// 見込み・合格: フォルダー行の25～75%は中、両端は外。ロック時は中だけを拒否し、移動先と挿入線は一致する。
+// 範囲: 行の判定を直接検査する。実際のドラッグ・描画状態・保存はブラウザーの移動状態保持試験で確認する。
+test('folder drop boundaries and locks agree with the insertion line',()=>{
+ const location = {panelIndex: 1, overlay: false};
+ const input = {
+   source: {kind: 'layer', key: 'panel', id: 'source'}, sourceLocation: location,
+   rowLocation: location, nestedLayer: false, scene: {owners: []},
+ };
+ for (const locked of [false, true]) {
+   const row = {layerDrop: 'folder', folder: 'folder-id', owner: 'panel', layerDepth: '2', dropLocked: String(locked)};
+   for (const [ratio, placement] of [[0.24,'above'],[0.25,'inside'],[0.26,'inside'],[0.74,'inside'],[0.75,'inside'],[0.76,'below']]) {
+     const actual = resolvePaintLayerDrop({...input, row, ratio});
+     const inside = placement === 'inside';
+     const expected = inside && locked ? undefined : {
+       target: {kind: 'folder', id: 'folder-id', placement},
+       destination: {...location, key: 'panel'}, placement, outside: !inside, indent: inside ? 48 : 0,
+     };
+     assert.deepEqual(actual, expected, `ratio=${ratio}, locked=${locked}`);
+   }
+ }
 });
 
 test('representative locks live at row right and inherited locks disable descendant toggles',()=>{
