@@ -5,13 +5,12 @@ import BubbleInfoPortal from './BubbleInfoPortal';
 import type { ComponentChildren } from 'preact';
 import PlacedImageList from './PlacedImageList';
 import FigureSizePicker from './FigureSizePicker';
-import FigureHumanPoseEditor from './FigureHumanPoseEditor';
+import ExpressionDictionary from './ExpressionDictionary';
 import { Ban, Box, Check, Download, FolderOpen, Image as ImageIcon, Plus, RefreshCw, Trash2, UserPlus, WandSparkles, X } from 'lucide-preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
-import { ANCHOR_LABELS, ANCHORS, FIGURE_SIZE_LABELS, FIGURE_ROLE_LABELS, FIGURE_ROLES } from '../lib/manga';
-import { artworkPixelSize } from '../lib/artworkClipboard.ts';
-import { fallbackBox, panelBounds } from '../lib/canvasGeometry';
+import { ANCHOR_LABELS, ANCHORS, FIGURE_ROLE_LABELS, FIGURE_ROLES } from '../lib/manga';
+import { fallbackBox } from '../lib/canvasGeometry';
 import { bubbleTailStyle, setBubbleTailStyle, isBalloonText } from '../lib/bubblePresentation.ts';
 import type { CanvasElementSelection, Manga, Material, Panel } from '../types';
 import { isPropPlacement } from '../lib/catalogModel.ts';
@@ -31,8 +30,6 @@ import { Field, SectionTitle } from './Fields';
 import ScenarioBubbleNotice, { type ScenarioBubbleChoiceProps } from './ScenarioBubbleNotice';
 import { panelBackgroundDescription } from '../lib/panelContext.ts';
 import { useInspectorSelectionScroll } from './useInspectorSelectionScroll.ts';
-import { humanPoseFigureFrame, humanPosePanelCutFrame } from '../lib/humanPoseFraming.ts';
-import { getOutputSettings } from '../lib/finishLayout.ts';
 import { ownerItemLocked, preservesLockedItems } from '../lib/panelLayers.ts';
 
 interface Props extends ScenarioBubbleChoiceProps {
@@ -591,18 +588,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
               value ? draft.figures![index].action = value : delete draft.figures![index].action;
             })} /></Field>
           </div>
-          <FigureHumanPoseEditor key={`${manga.meta.series_id}:${manga.meta.episode_id}:${pageIndex}:${panelIndex}:${figure.layerId ?? index}`}
-            previewSize={artworkPixelSize(panelBounds(panel), getOutputSettings(manga).dpi)}
-            cutFrame={humanPosePanelCutFrame(panel, humanPoseFigureFrame(figure, fallbackBox(panel, 'figure', index)))}
-            panelContext={{ panel, selectedIndex: index, assets: manga.image_assets ?? [], dpi: getOutputSettings(manga).dpi,
-              guides: Object.fromEntries((panel.figures ?? []).map((_, i) => [`figure-${i}`, guideVisible(`figure-${i}`)])) }}
-            stages={manga.background_stages} backgroundCaptures={(panel.background_images ?? []).flatMap((image, i) => image.paint?.background3d ? [{ label: `このコマの背景 ${i + 1}`, capture: image.paint.background3d }] : [])}
-            aspect={figure.bbox && figure.bbox.h > 0 ? figure.bbox.w / figure.bbox.h : 1} framingLabel={FIGURE_SIZE_LABELS[figure.size ?? 'bust-up']} framingSize={figure.size ?? 'bust-up'}
-            value={figure.human_pose} onChange={(value, confirmedFramingSize) => update(draft => {
-              if (value) draft.figures![index].human_pose = value;
-              else delete draft.figures![index].human_pose;
-              if (confirmedFramingSize) draft.figures![index].size = confirmedFramingSize;
-            })} />
+          <ExpressionDictionary />
         </div>)}
       </div>
     </section>
