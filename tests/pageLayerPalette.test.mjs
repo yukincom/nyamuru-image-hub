@@ -93,19 +93,27 @@ test('owner keys invert the shared canvas mapping without manufacturing missing 
  assert.equal(paintDocument.paintOwnerCanvasSelection(undefined,0,'figure-0'),undefined);
 });
 
-// 見込み: 親見出しは配置へ渡し、子の選択だけが共通ペン判定へ進む。
-// 合格: 親はlayout callbackだけ、子はowner/idとraster種を共通判定へ渡す。抽出handlerの配線を確認する。
+// 見込み: 親見出しは配置へ渡し、子を選ぶと仕上げの複数選択を解除する。
+// 合格: 子はowner/idとペン種を更新し、陰影を選んだ場合だけトーンを開く。抽出handlerを検証し、実DOMは別試験。
 test('active paint headings leave through the same layout callback without changing the paint layer',()=>{
- const calls=[],scene={owners:[{key:'figure-0',kind:'figure',index:0,paint:{layers:[{id:'child',kind:'raster',visible:true,locked:false}]}}]};
+ const child={id:'child',kind:'raster',visible:true,locked:false};
+ const calls=[],scene={owners:[{key:'figure-0',kind:'figure',index:0,paint:{layers:[child,{...child,id:'shade',tone:{enabled:true}}]}}]};
+ const previousSelection={keys:['child','shade']};
+ let finishSelection=previousSelection,effectsTab='color';
  const source=paintEditorSource.slice(paintEditorSource.indexOf('  function selectOwner('),paintEditorSource.indexOf('  function updateOwnerLayer('));
  const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectOwner',{
   operation:{current:false},suspended:false,inputActive:{current:false},pendingContents:{current:null},scene,owner:scene.owners[0],
   onSelectOwner:key=>calls.push(['layout',key]),onSelectFigure:index=>calls.push(['figure',index]),
   clearVectorSelection:()=>{},setMaskTarget:()=>{},setOwnerKey:key=>calls.push(['paint',key]),setLayerId:id=>calls.push(['layer',id]),setSelection:()=>{},
   matchLayerPen:kind=>calls.push(['pen',kind]),
+  setFinishSelection:value=>{finishSelection=value;},setEffectsTab:tab=>{effectsTab=tab;},
  });
  select('figure-0');assert.deepEqual(calls,[['layout','figure-0']]);calls.length=0;
+ assert.equal(finishSelection,previousSelection);assert.equal(effectsTab,'color');
  select('figure-0','child');assert.deepEqual(calls,[['paint','figure-0'],['layer','child'],['pen','raster']]);
+ assert.equal(finishSelection,null);assert.equal(effectsTab,'color');calls.length=0;
+ select('figure-0','shade');assert.deepEqual(calls,[['paint','figure-0'],['layer','shade'],['pen','raster']]);
+ assert.equal(effectsTab,'tone');
 });
 
 test('owner selection waits for paint close and retains the current mode on save failure',async()=>{
