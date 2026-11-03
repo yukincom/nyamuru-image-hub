@@ -22,11 +22,13 @@ from nyamuru_bridge_constants import (
 )
 from nyamuru_bridge_identity import LAYOUT_PROTOCOL_VERSION
 from nyamuru_layout_geometry import (
+    MAX_PANEL_AREA_RATIO,
     detect_panel_boxes,
     deduplicate_panel_boxes,
     detect_panel_segments,
     infer_panel_shapes_from_segments,
     recover_missing_panel_rows,
+    single_page_role,
     sort_panel_boxes_reading_order,
     detector_regions,
     detector_boxes,
@@ -521,13 +523,19 @@ class LocalVisionState:
             model=self.rtdetr_model,
             confidence=0.2,
         )
-        raw_rtdetr_boxes = detector_boxes(detection, "frames")
-        segments = detect_panel_segments(upright_bytes) if raw_rtdetr_boxes else []
+        all_frames = detector_boxes(detection, "frames", max_area_ratio=1.0)
+        page_role = single_page_role(detection, all_frames, upright_bytes)
+        raw_rtdetr_boxes = [box for box in all_frames if box[2] * box[3] <= MAX_PANEL_AREA_RATIO]
+        segments = detect_panel_segments(upright_bytes) if raw_rtdetr_boxes and not page_role else []
         rtdetr_boxes, rtdetr_excluded = exclude_non_panel_regions(raw_rtdetr_boxes, detection, segments=segments)
         rtdetr_boxes, rtdetr_header_excluded = exclude_paired_title_header_boxes(rtdetr_boxes)
         rtdetr_boxes = deduplicate_panel_boxes(rtdetr_boxes)
-        if rtdetr_boxes:
+        if page_role or rtdetr_boxes:
             layout_boxes, detector_name = rtdetr_boxes, "RT-DETR"
+            if page_role == "borderless":
+                layout_boxes = all_frames
+            elif page_role == "title":
+                layout_boxes = []
             selected_excluded = rtdetr_excluded
             selected_header_excluded = rtdetr_header_excluded
         else:
@@ -539,13 +547,16 @@ class LocalVisionState:
             selected_excluded = opencv_excluded
             selected_header_excluded = opencv_header_excluded
         recovered_row_count = 0
-        if rtdetr_boxes:
+        if rtdetr_boxes and not page_role:
             layout_boxes = recover_missing_panel_rows(layout_boxes, segments, detection)
             recovered_row_count = len(layout_boxes) - len(rtdetr_boxes)
-        elif layout_boxes and not raw_rtdetr_boxes:
+        elif layout_boxes and not raw_rtdetr_boxes and not page_role:
             segments = detect_panel_segments(upright_bytes)
         layout_boxes = sort_panel_boxes_reading_order(layout_boxes)
-        panel_shapes = infer_panel_shapes_from_segments(layout_boxes, segments)
+        panel_shapes = (
+            [{"type": "rect", "x": 0, "y": 0, "w": 1, "h": 1}] if page_role == "borderless"
+            else infer_panel_shapes_from_segments(layout_boxes, segments)
+        )
         if len(panel_shapes) != len(layout_boxes):
             raise RuntimeError(
                 "コマ形状と検出枠の対応が崩れたため、誤った配置を返さず解析を中止しました"
@@ -564,7 +575,7 @@ class LocalVisionState:
         buckets = detection.get("detections") if isinstance(detection.get("detections"), dict) else {}
         if isinstance(buckets.get("texts"), list):
             text_regions = [item for item in buckets["texts"] if isinstance(item, dict)]
-        if text_regions:
+        if text_regions and page_role != "title":
             ocr_payload = run_local_worker(
                 python=self.rtdetr_python,
                 engine="baberu",
@@ -573,7 +584,7 @@ class LocalVisionState:
                 model=self.baberu_model,
                 request={"regions": text_regions},
             )
-            ocr_lines = usable_ocr_lines(ocr_payload)
+            ocr_lines = usable_ocr_lines(ocr_payload, borderless=page_role == "borderless")
         else:
             ocr_lines = []
 
@@ -583,6 +594,8 @@ class LocalVisionState:
                 "panels": panels,
                 "reason": f"{detector_name}と枠線解析で復元した{detected_count}個のコマ形状を、テンプレートへ変換せず編集開始位置として使用します。",
             }
+            if page_role == "borderless":
+                result["reason"] = "人物が描かれた全面の絵を、原稿の四隅まで1コマとして取り込みます。"
             if recovered_row_count:
                 result["reason"] += f" 原稿の仕切り線から中間の{recovered_row_count}コマを補いました。"
             if sum(selected_excluded.values()):
@@ -595,6 +608,8 @@ class LocalVisionState:
                 "panels": [],
                 "reason": "専用検出器で読み取れるコマ領域が見つかりませんでした。手動プリセットを選ぶか、コマ枠を描き足して再解析してください。",
             }
+            if page_role == "title":
+                result["reason"] = "文字が中央にまとまった表紙と判定しました。用紙の外枠と題字を本文のコマやふきだしとして取り込みません。"
         result["structure"] = {
             "engine": detector_name,
             "excluded_as_text_count": selected_excluded["texts"],

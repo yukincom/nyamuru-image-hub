@@ -8,6 +8,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+MAX_PANEL_AREA_RATIO = 0.82
+
 
 def detect_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, float]]:
     import cv2
@@ -41,7 +43,7 @@ def detect_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, fl
             and extent >= 0.72
             and box_width / width >= 0.14
             and box_height / height >= 0.05
-            and box_area / page_area <= 0.82
+            and box_area / page_area <= MAX_PANEL_AREA_RATIO
         ):
             raw.append((x, y, box_width, box_height, contour_area))
 
@@ -664,7 +666,7 @@ def detector_regions(
     key: str,
     *,
     min_score: float = 0.2,
-    max_area_ratio: float = 0.82,
+    max_area_ratio: float = MAX_PANEL_AREA_RATIO,
 ) -> list[dict[str, Any]]:
     page = detection.get("page") if isinstance(detection.get("page"), dict) else {}
     width = float(page.get("width", 0) or 0)
@@ -701,7 +703,7 @@ def detector_boxes(
     key: str,
     *,
     min_score: float = 0.2,
-    max_area_ratio: float = 0.82,
+    max_area_ratio: float = MAX_PANEL_AREA_RATIO,
 ) -> list[tuple[float, float, float, float]]:
     return [tuple(region["bbox"]) for region in detector_regions(
         detection,
@@ -709,6 +711,48 @@ def detector_boxes(
         min_score=min_score,
         max_area_ratio=max_area_ratio,
     )]
+
+
+def single_page_role(detection: dict[str, Any], frames: list[PanelBox], image_bytes: bytes) -> str | None:
+    """Resolve a lone page-sized frame before the ordinary panel area filter."""
+    if len(frames) != 1 or box_area(frames[0]) < 0.70:
+        return None
+    texts = detector_boxes(detection, "texts", max_area_ratio=0.45)
+    bodies = detector_boxes(detection, "bodies", max_area_ratio=1.0)
+    faces = detector_boxes(detection, "faces", max_area_ratio=0.45)
+    if bodies or faces:
+        if box_area(frames[0]) <= MAX_PANEL_AREA_RATIO:
+            return None
+        # Separate text across the scene is stronger evidence than a single
+        # centered heading. Ignore small marginal labels and duplicate crops.
+        dialogue = [(x + w / 2, y + h / 2) for x, y, w, h in texts
+                    if 0.06 < y + h / 2 < 0.94 and max(w, h) >= 0.05]
+        if any(math.hypot(x - xx, y - yy) > 0.35 for x, y in dialogue for xx, yy in dialogue):
+            return "borderless"
+        if not texts and faces:
+            prominent = detector_boxes(detection, "bodies", min_score=0.55, max_area_ratio=1.0)
+            if any(h >= 0.55 and w * h >= 0.16 for _, _, w, h in prominent):
+                return "borderless"
+        return None
+    if not texts or not all(
+        w > h and 0.2 <= x + w / 2 <= 0.8 and 0.25 <= y + h / 2 <= 0.70 for x, y, w, h in texts
+    ) or not any(w >= 0.25 for _, _, w, _ in texts):
+        return None
+
+    # A centered caption can occur in a landscape too. Check for ink away from
+    # the title block and inside the printer's border before suppressing the frame.
+    import io
+    from PIL import Image
+
+    x, y, w, h = frames[0]
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        for top, bottom in ((0.07, 0.23), (0.79, 0.93)):
+            strip = image.crop((int((x + 0.08 * w) * image.width), int((y + top * h) * image.height),
+                                int((x + 0.92 * w) * image.width), int((y + bottom * h) * image.height)))
+            ink = sum(strip.convert("L").histogram()[:160])
+            if not strip.width or not strip.height or ink > 0.003 * strip.width * strip.height:
+                return None
+    return "title"
 
 
 def detected_person_regions(detection: dict[str, Any]) -> list[dict[str, Any]]:

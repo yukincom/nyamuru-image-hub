@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 import io
+import re
+import unicodedata
 from typing import Any
 
 
@@ -39,7 +41,33 @@ def ocr_text_quality(text: str) -> float:
     return japanese * 2.0 + min(len(compact), 24) * 0.08 - latin * 0.6 - max(0, repeated - 5)
 
 
-def usable_ocr_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _borderless_dialogue(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep separate dialogue crops when a detector box joins speech to a margin note."""
+    def contains(outer, inner):
+        x, y, w, h = outer
+        a, b, c, d = inner
+        area = max(0, min(x + w, a + c) - max(x, a)) * max(0, min(y + h, b + d) - max(y, b))
+        return c * d > 0 and area >= 0.85 * c * d
+
+    excluded = set()
+    for i, line in enumerate(lines):
+        _, y, w, h = line["bbox"]
+        label = unicodedata.normalize("NFKC", line["text"]).strip()
+        if (y + h < 0.07 and h < 0.05 and not line["vertical"]
+                and re.fullmatch(r"(?:\d+\s*[Pp頁]|[Pp]\s*\d+|\d+)", label)):
+            excluded.add(i)
+        if y < 0.92 or w < h * 2 or h > 0.05:
+            continue
+        for j, outer in enumerate(lines):
+            if i == j or not contains(outer["bbox"], line["bbox"]):
+                continue
+            if any(k not in (i, j) and body["vertical"] and body["bbox"][1] + body["bbox"][3] <= y
+                   and contains(outer["bbox"], body["bbox"]) for k, body in enumerate(lines)):
+                excluded.update((i, j))
+    return [line for i, line in enumerate(lines) if i not in excluded]
+
+
+def usable_ocr_lines(payload: dict[str, Any], *, borderless: bool = False) -> list[dict[str, Any]]:
     width = float(payload.get("width", 0) or 0)
     height = float(payload.get("height", 0) or 0)
     if width <= 0 or height <= 0:
@@ -49,7 +77,7 @@ def usable_ocr_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
         raw.extend(payload["region_lines"])
     if isinstance(payload.get("detected_lines"), list):
         raw.extend(payload["detected_lines"])
-    selected: list[dict[str, Any]] = []
+    candidates: list[dict[str, Any]] = []
     for item in raw:
         if not isinstance(item, dict):
             continue
@@ -67,7 +95,7 @@ def usable_ocr_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
         if area_ratio > 0.18 or (not unreadable and (not text or quality < -1.0)):
             continue
         normalized = {
-            "id": str(item.get("id", f"ocr-{len(selected)}")),
+            "id": str(item.get("id", f"ocr-{len(candidates)}")),
             "text": text[:500],
             "bbox": [x / width, y / height, box_width / width, box_height / height],
             "confidence": max(0.0, min(1.0, float(item.get("confidence", 0) or 0))),
@@ -83,6 +111,15 @@ def usable_ocr_lines(payload: dict[str, Any]) -> list[dict[str, Any]]:
         }
         if item.get("group_id"):
             normalized["group_id"] = str(item["group_id"])
+        candidates.append(normalized)
+    if borderless:
+        candidates = _borderless_dialogue(candidates)
+        # RT-DETR confidence scores text localization, not the transcription
+        # of handwriting on these unframed illustrated pages.
+        for candidate in candidates:
+            candidate["needs_review"] = True
+    selected: list[dict[str, Any]] = []
+    for normalized in candidates:
         duplicate = False
         for previous in selected:
             px, py, pw, ph = previous["bbox"]

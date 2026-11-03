@@ -815,6 +815,44 @@ class AnalogAssetStoreTest(unittest.TestCase):
 
 
 class LocalVisionResultTest(unittest.TestCase):
+    # 全面判定の誤作動を模擬入力で検査。実原稿での位置・所属はpanelGeometryImagesで別途検査する。
+    def test_enclosing_frame_does_not_replace_subpanels(self):
+        # 見込み: 人物と離れた発話があっても、別の枠が写れば全面コマに置換しない。
+        # 合格: 模擬検出の全紙枠だけなら全面、内側に1枠追加すると通常処理に委ねる。
+        detection = {"page": {"width": 100, "height": 100}, "detections": {
+            "bodies": [{"score": .9, "bbox": [25, 30, 80, 90]}],
+            "texts": [{"score": .8, "bbox": box} for box in ([80, 10, 83, 25], [20, 70, 24, 85])],
+        }}
+        frames = [(0, 0, 1, .98)]
+        self.assertEqual(layout_geometry.single_page_role(detection, frames, b""), "borderless")
+        self.assertIsNone(layout_geometry.single_page_role(detection, [*frames, (.1, .1, .8, .3)], b""))
+
+    def test_full_page_figure_can_be_silent_but_a_heading_is_ambiguous(self):
+        # 見込み: 大きな人物・顔・全紙枠がそろえば無言でも1コマ。単独の中央見出しを伴う
+        # 人物画は表紙とも取れるので自動復元しない。模擬RT応答で両分岐を検査する。
+        buckets = {"bodies": [{"score": .8, "bbox": [20, 10, 80, 98]}],
+                   "faces": [{"score": .8, "bbox": [40, 15, 53, 28]}]}
+        detection = {"page": {"width": 100, "height": 100}, "detections": buckets}
+        frames = [(0, 0, 1, .98)]
+        self.assertEqual(layout_geometry.single_page_role(detection, frames, b""), "borderless")
+        buckets["texts"] = [{"score": .9, "bbox": [20, 40, 75, 55]}]
+        self.assertIsNone(layout_geometry.single_page_role(detection, frames, b""))
+
+    @unittest.skipIf(Image is None, "画像生成にPillowが必要です")
+    def test_centered_heading_with_art_does_not_suppress_panel(self):
+        # 見込み: 中央の横書きだけで表紙にしない。同じ検出応答でも上下が白なら表紙、
+        # 下部に描画があればコマを残す。合成画像で分類のみを検査する。
+        detection = {"page": {"width": 200, "height": 200}, "detections": {
+            "texts": [{"score": .8, "bbox": [55, 70, 145, 95]}],
+        }}
+        image = Image.new("L", (200, 200), 255)
+        image.paste(60, (55, 70, 145, 95))
+        for expected in ["title", None]:
+            output = io.BytesIO()
+            image.save(output, format="PNG")
+            self.assertEqual(layout_geometry.single_page_role(detection, [(.04, .04, .92, .92)], output.getvalue()), expected)
+            image.paste(100, (25, 158, 150, 164))
+
     def test_every_success_response_identifies_this_bridge_and_protocol(self):
         handler = object.__new__(bridge.BridgeHandler)
         handler.wfile = io.BytesIO()
@@ -1413,6 +1451,18 @@ class LocalVisionResultTest(unittest.TestCase):
         self.assertTrue(lines[0]["unreadable"])
         self.assertTrue(lines[0]["needs_review"])
         self.assertEqual(lines[0]["source"], "rtdetr-text")
+
+    def test_borderless_page_keeps_isolated_horizontal_speech_near_bottom(self):
+        # 見込み: 下端にあるだけでは発話を消さない。模擬OCRの独立した横書きは元位置のまま
+        # 1件・要確認で残り、上端のページ番号はふきだしにしない。
+        payload = {"width": 1000, "height": 1000, "region_lines": [
+            {"id": "folio", "text": "１２Ｐ", "bbox": [160, 10, 60, 35], "confidence": .9},
+            {"id": "voice", "text": "またね", "bbox": [60, 945, 140, 25], "confidence": .9},
+        ]}
+        lines = bridge.usable_ocr_lines(payload, borderless=True)
+        self.assertEqual([line["id"] for line in lines], ["voice"])
+        self.assertEqual(lines[0]["bbox"], [.06, .945, .14, .025])
+        self.assertTrue(lines[0]["needs_review"])
 
 
 class PanelActionSuggesterTest(unittest.TestCase):

@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import test from 'node:test';
 import { INNER_FRAME_BOUNDS, pointInPanel } from '../src/lib/canvasGeometry.ts';
-import { normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
+import { attachRecognizedTextToPage, normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
+import { newPage } from '../src/lib/manga.ts';
 
 // Opt-in local image regression: originals/models are never copied to the repo.
 // See docs/PANEL_AXIS_RECOVERY.md. The worker only reads existing local assets.
@@ -17,17 +18,18 @@ from types import SimpleNamespace
 from unittest.mock import patch
 sys.path.insert(0,'scripts')
 import nyamuru_vision_state as vision
-image,root=map(Path,sys.argv[1:])
+image,root=map(Path,sys.argv[1:3])
+include_ocr=sys.argv[3]=='with-ocr'
 state=SimpleNamespace(vision_root=root, rtdetr_python=root/'.venv/bin/python',
     rtdetr_model=root/'models/rtdetrv4-x-manga109s_v2/model.onnx', baberu_model=root/'models/baberu-ocr')
 worker=vision.run_local_worker
 def layout_worker(**kwargs):
-    return {"lines": []} if kwargs['engine']=='baberu' else worker(**kwargs)
+    return {"lines": []} if kwargs['engine']=='baberu' and not include_ocr else worker(**kwargs)
 with patch.object(vision,'run_local_worker',side_effect=layout_worker):
     print(json.dumps(vision.LocalVisionState.analyze(state,image.read_bytes(),0)))
 `;
-function recognizeLayout(path) {
-  const payload = JSON.parse(execFileSync(join(vision, '.venv/bin/python'), ['-B', '-c', worker, path, vision],
+function recognizeLayout(path, includeOcr = false) {
+  const payload = JSON.parse(execFileSync(join(vision, '.venv/bin/python'), ['-B', '-c', worker, path, vision, includeOcr ? 'with-ocr' : 'layout'],
     { cwd: new URL('../', import.meta.url), encoding: 'utf8', timeout: 120000, maxBuffer: 8e6 }));
   return normalizeLayoutRecognition(payload, { rowGapMm: 5, columnGapMm: 3 });
 }
@@ -91,6 +93,38 @@ function checkOwner(polygons, x, y, expectedIndex) {
     pointInPanel({ shape: { type: 'polygon', points } }, x, y) ? [index] : []);
   assert.deepEqual(owners, [expectedIndex], `owners of source point (${x}, ${y})`);
 }
+
+// 見込み: 紙いっぱいの人物と離れたセリフは全面1コマ。実RT・Baberuから編集データまで通し、
+// 四隅と本文4か所の位置・所属を検査する。OCRの正確さや手描き輪郭の復元は保証しない。
+test('local borderless scene: one full frame owns four editable dialogue regions', { skip: !(pages && vision) }, () => {
+  const result = recognizeLayout(join(pages, 'yunchan', 'yun00.jpg'), true);
+  assert.equal(result.detectedPanels.length, 1);
+  assert.deepEqual(result.sourceFrame, { x: 0, y: 0, w: 1, h: 1 });
+  const inner = INNER_FRAME_BOUNDS;
+  assert.deepEqual(bounds(result.detectedPanels[0]), [inner.x, inner.y, inner.w, inner.h]);
+  const page = newPage(1);
+  page.panels = [{ ...page.panels[0], shape: result.detectedPanels[0], bubbles: [] }];
+  const owners = new Map([[result.detectedPanelIds[0], page.panels[0]]]);
+  for (const line of result.ocrLines) assert.equal(line.sourcePanelId, result.detectedPanelIds[0]);
+  const attached = attachRecognizedTextToPage(page, result.ocrLines, undefined, result.sourceFrame, owners);
+  assert.deepEqual(attached, { added: 4, needsReview: 4 });
+  const expected = [[.77,.09], [.27,.41], [.69,.85], [.22,.81]];
+  assert.equal(page.panels[0].bubbles.length, expected.length);
+  page.panels[0].bubbles.forEach(({ bbox: b }, i) => {
+    near((b.x + b.w / 2 - inner.x) / inner.w, expected[i][0]);
+    near((b.y + b.h / 2 - inner.y) / inner.h, expected[i][1]);
+    if (i === 3) assert.ok((b.y + b.h - inner.y) / inner.h < .92, 'exclude bottom production note');
+  });
+});
+
+// 見込み: 人物も場面の描線もない表紙の用紙枠・題字は本文ではない。実モデルと編集用変換で
+// コマと発話がともに0になり、未検出と違って表紙と説明されれば合格。
+test('local title sheet: the paper guide and heading are not a panel and speech', { skip: !(pages && vision) }, () => {
+  const result = recognizeLayout(join(pages, '00.jpeg'), true);
+  assert.equal(result.detectedPanels.length, 0);
+  assert.equal(result.ocrLines.length, 0);
+  assert.match(result.reason, /表紙/);
+});
 
 // 見込み: 上下の実枠に続く斜線2本と人物が中央の欠落を裏付ける。実モデル→編集枠で
 // 上中下の3場面を分離し、両斜線の両端（表裏とも）を原稿高3.5%以内に復元する。OCRは対象外。
