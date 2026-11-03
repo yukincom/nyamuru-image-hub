@@ -7,7 +7,7 @@ import {paintLayerCoverage,pickPaintLayer,paintOwnerPoint,translatePaintLayer} f
 import { moveBackgroundLayoutOwner } from '../lib/background3dLayout';
 import type { BackgroundStage } from '../types';
 import type { Background3dResult, Background3dController } from './Background3dEditor';
-import { Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, Move, ArrowLeftRight, Sparkles } from 'lucide-preact';
+import { Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, ArrowLeftRight, Sparkles } from 'lucide-preact';
 import PaintLayerPalette, { PaintLayerControls } from './PaintLayerPalette';
 import MangaFinishDialog, { type FinishBatch } from './MangaFinishDialog';
 import { canFinishPaintLayer, finishLayerKey } from '../lib/mangaFinishLayers';
@@ -766,7 +766,6 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       <PaintShapeTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>{textTools}
       <PaintToolButton class="paint-tool-icon" label="消しゴム"  disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||toolSuspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>
       <PaintToolButton class="paint-tool-icon" label="漫画仕上げ" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openFinish}><Sparkles size={23}/></PaintToolButton>
-      {requested&&<PaintToolButton class="paint-tool-icon" label="配置へ戻る"  disabled={busy||toolSuspended} onClick={()=>void requestClose().catch(()=>{})}><Move size={23}/></PaintToolButton>}
       <PaintToolButton class="paint-tool-icon" label="バケツ"  disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
     </div>
     <div class={`paint-ink-controls ${brushInk?'is-brush-ink':''}`}>

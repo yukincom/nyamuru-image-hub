@@ -1,4 +1,5 @@
 // 見込み: 同じ描線は表現色ごとに原寸・ライブ・PNGで同じ画素になる。合格: 全RGBA一致、モノクロは白黒/透明のみ。範囲: 合成入力と実ブラウザー描画。実作品・モデル生成は含めない。
+import {exitPaintWithEscape} from './exitPaintWithEscape';
 import {render} from 'preact';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
@@ -84,7 +85,7 @@ async function ui(){
  await click('ラスターレイヤー追加');await click('生成マスク化');
  check(document.querySelectorAll('.paint-colors .paint-color').length===6,'生成マーカーには識別用カラーが使える');
  check(mode()?.value==='color','生成マーカーのカラーモード表示はカラー');
- await click('配置へ戻る');await tick();
+ await exitPaintWithEscape();await tick();
  for(let i=0;i<100&&document.querySelector('.paint-input');i++)await tick();
  check(mode()?.value===''&&Boolean(mode()?.matches(':disabled')),'描画を終了すると未選択表示に戻る');
  const rows=Array.from(document.querySelectorAll<HTMLButtonElement>('.layer-select')),last=rows.find(b=>b.textContent?.includes('レイヤー'));last?.click();

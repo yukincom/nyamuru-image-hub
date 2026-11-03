@@ -165,7 +165,6 @@ test('V uses the one layout selection route and A direct selection edits the sel
   assert.match(editor,/onClick=\{\(\)=>selectTool\(value\)\}/);
   assert.match(editor,/const layoutSelect=value==='vector-select'/);
   assert.doesNotMatch(editor,/label="選択・移動"/);
-  assert.match(editor,/requested&&<PaintToolButton[^>]+label="配置へ戻る"/);
   assert.match(canvas,/BubblePathToolContext/);
   assert.match(canvas,/if\(bubblePathTool==='node'&&mode==='move'\)return/);
   assert.match(canvas,/renderSelectedBubblePathOverlay/);

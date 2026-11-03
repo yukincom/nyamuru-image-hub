@@ -1,4 +1,5 @@
 /** Dedicated origin only. Uses the real App and synthetic documents/assets. */
+import {exitPaintWithEscape} from './exitPaintWithEscape';
 import {render} from 'preact';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
@@ -68,20 +69,20 @@ async function run(){
  const unlockedRow=layerRow('手前の線')!,rowLock=unlockedRow.querySelector<HTMLButtonElement>('.layer-row-lock')!;
  const openIcon=rowLock.querySelector<SVGElement>('[data-layer-lock-icon="open"]')!,openBody=openIcon.querySelector<SVGRectElement>('rect')!;
  check(rowLock===unlockedRow.lastElementChild&&rowLock.getAttribute('aria-label')==='手前の線を固定'&&rowLock.getAttribute('aria-pressed')==='false'&&rowLock.classList.contains('is-unlocked')&&getComputedStyle(rowLock).opacity==='0'&&openIcon.getAttribute('stroke')==='#000'&&openIcon.getAttribute('stroke-width')==='1.25'&&openBody.getAttribute('fill')==='#fff','未固定の錠は通常時に隠れ、ホバー時用の黒い細線・白塗りの開錠表示を右端に持つ');
- await click('配置へ戻る');await gesture(50,30);check(selected('手前の線')&&document.querySelector('.vector-selection-path'),'別ownerの固定線と上層の透明部を飛ばして手前の線を選択');
+ await exitPaintWithEscape();await gesture(50,30);check(selected('手前の線')&&document.querySelector('.vector-selection-path'),'別ownerの固定線と上層の透明部を飛ばして手前の線を選択');
  await click('手前の線を固定');check(layerRow('手前の線')?.querySelector('.layer-row-lock.is-locked')&&!document.querySelector('.vector-selection-path'),'右端の錠で固定し選択中のパスを解除');
  const density=document.querySelector<HTMLInputElement>('[aria-label="レイヤーの濃度"]')!,blend=document.querySelector<HTMLSelectElement>('[aria-label="レイヤーの合成"]')!;
  await wait(()=>{const remove=document.querySelector<HTMLButtonElement>('.layer-icon-actions [aria-label="削除"]'),effects=document.querySelector<HTMLFieldSetElement>('.paint-layer-effects fieldset');return density.disabled&&blend.disabled&&Boolean(remove&&(remove.disabled||remove.getAttribute('aria-disabled')==='true'))&&Boolean(effects?.disabled);},'locked controls disabled');
  check(true,'固定中は濃度・合成・効果・削除を無効化');
  density.value='0.2';density.dispatchEvent(new Event('input',{bubbles:true}));window.dispatchEvent(new KeyboardEvent('keydown',{key:'Delete',bubbles:true}));await tick();
- await click('ペン');await gesture(50,30,0,2);await click('配置へ戻る');
+ await click('ペン');await gesture(50,30,0,2);await exitPaintWithEscape();
  await gesture(50,30,0,5);check(selected('奥の線'),'固定した選択層を飛ばし奥の線を同じドラッグで選択・移動');
  await selectLayer('手前の線');await wait(()=>Boolean(button('手前の線の固定を解除')&&!button('手前の線の固定を解除')!.disabled),'locked row controls ready');check(true,'固定行自身の右端錠は解除可能');await click('手前の線の固定を解除');check(layerRow('手前の線')?.querySelector('.layer-row-lock.is-unlocked')&&!document.querySelector<HTMLInputElement>('[aria-label="レイヤーの濃度"]')!.disabled,'同じ右端錠で解除し編集を再開');
- await click('配置へ戻る');await gesture(50,30);check(selected('手前の線'),'解除した線を再び掴める');
+ await exitPaintWithEscape();await gesture(50,30);check(selected('手前の線'),'解除した線を再び掴める');
  await click('手前の線を固定');await click('背景を固定');const inherited=layerRow('手前の線')?.querySelector<HTMLButtonElement>('.layer-row-lock');
  check(button('背景の固定を解除')&&!button('背景の固定を解除')!.disabled&&inherited?.disabled&&inherited.classList.contains('is-inherited')&&inherited.getAttribute('aria-label')==='手前の線は親フォルダーで固定中','背景フォルダー固定は子レイヤーへ灰色の解除不能な継承錠として伝わる');
  await click('背景の固定を解除');const childAfterParentUnlock=layerRow('手前の線')?.querySelector<HTMLButtonElement>('.layer-row-lock');check(!childAfterParentUnlock?.disabled&&childAfterParentUnlock?.getAttribute('aria-pressed')==='false','親フォルダー解除時は子レイヤーもまとめて解除');
- await selectLayer('透明な上層');await click('配置へ戻る');await gesture(25,65,5,0);check(selected('透明な上層'),'描かれた画素ではラスター層を選択・単独移動');await click('ペン');await gesture(50,75,0,2);
+ await selectLayer('透明な上層');await exitPaintWithEscape();await gesture(25,65,5,0);check(selected('透明な上層'),'描かれた画素ではラスター層を選択・単独移動');await click('ペン');await gesture(50,75,0,2);
  // Native bubble direct selection uses visually small anchors with fixed-screen, forgiving hit areas.
  const bubbleRow=document.querySelector<HTMLElement>('[data-owner-group="bubble-0"] .layer-group-select')!;bubbleRow.click();await tick();await click('ダイレクト選択');
  await wait(()=>!!document.querySelector('.bubble-bezier-canvas.is-paper-overlay'),'bubble direct handles');

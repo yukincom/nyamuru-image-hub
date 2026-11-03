@@ -1,4 +1,5 @@
 /** Real App/editor integration on an isolated origin, using only a disposable browser folder. */
+import {exitPaintWithEscape} from './exitPaintWithEscape';
 import {render} from 'preact';
 import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
@@ -34,7 +35,7 @@ Object.assign(window,{showDirectoryPicker:async()=>folder});
 const host=document.getElementById('app')!;
 render(<App/>,host);
 const controls=document.createElement('aside');controls.style.cssText='position:fixed;z-index:99999;bottom:8px;left:8px;max-width:540px;background:#fff5ce;padding:8px;border:1px solid #d6bc68;font:12px sans-serif';document.body.append(controls);
-render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="generation-owner-run" onClick={()=>void verifyGenerationOwner()}>生成マスクの独立操作を検証</button><button id="layer-continuity-run" onClick={()=>void verifyLayerMoveContinuity()}>移動中の状態保持を検証</button><button id="folder-space-run" onClick={()=>void verifyFolderSpacePan()}>フォルダー選択後のSpaceを検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
+render(<><button onClick={()=>{controls.hidden=true;}}>検証パネルを閉じる</button><button id="inline-run" onClick={()=>void verify()}>スタイルを一括検証</button><button id="alignment-run" onClick={()=>void verifyAlignment()}>行揃えを一括検証</button><button id="bubble-info-run" onClick={()=>void verifyBubbleInfo()}>情報タブを一括検証</button><button id="depth-run" onClick={()=>void verifyLetteringDepth()}>描き文字の重なりを検証</button><button id="text-order-run" onClick={()=>void verifyTextOrder()}>文字の初期順と保存を検証</button><button id="layer-add-run" onClick={()=>void verifyLayerAdd()}>レイヤー追加ルールを検証</button><button id="layer-paint-run" onClick={()=>void verifyLayerPaintOrder()}>追加レイヤーの描画順を検証</button><button id="layer-move-run" onClick={()=>void verifyLayerMoves()}>レイヤーの所属移動を検証</button><button id="selection-layer-run" onClick={()=>void verifySelectionLayerTools()}>選択ツールとレイヤーを検証</button><button id="generation-owner-run" onClick={()=>void verifyGenerationOwner()}>生成マスクの独立操作を検証</button><button id="layer-continuity-run" onClick={()=>void verifyLayerMoveContinuity()}>移動中の状態保持を検証</button><button id="palette-stress-run" onClick={()=>void verifyToolPaletteStress()}>ツールパレット往復を検証</button><button id="folder-space-run" onClick={()=>void verifyFolderSpacePan()}>フォルダー選択後のSpaceを検証</button><button id="inline-inspect" onClick={()=>void inspect()}>保存データを表示</button><pre id="inline-report" style={{maxHeight:'180px',overflow:'auto',whiteSpace:'pre-wrap'}}>検証用の作品フォルダを用意しました。</pre><div id="inline-captures"/></>,controls);
 const report=document.getElementById('inline-report')!;
 const frame=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
 const settle=async()=>{for(let i=0;i<4;i++)await frame();};
@@ -798,6 +799,67 @@ async function verifySelectionLayerTools(){
 }
 
 
+// 見込み: 描画・配置を往復してもパレットの道具は同じ位置に残る。
+// 合格: 30周の各遷移で十字の挿入0、バケツの位置不変。Esc確定後も描いた線が1本だけ保存される。
+// 範囲: 合成作品の実App・実DOMでクリック／pointer／キー入力を発行。端末固有のペン入力は含まない。
+async function verifyToolPaletteStress(){
+ const run=document.getElementById('palette-stress-run') as HTMLButtonElement;
+ const painting=()=>Boolean(host.querySelector('.app-shell.is-painting'));
+ const grid=()=>host.querySelector<HTMLElement>('.paint-tool-icons')!;
+ const bucketPosition=()=>{
+  const base=grid().getBoundingClientRect(),bucket=grid().querySelector<HTMLElement>('[aria-label="バケツ"]')!.getBoundingClientRect();
+  if(!bucket.width||!bucket.height)throw Error('バケツが画面に表示されていません');
+  return [bucket.x-base.x,bucket.y-base.y];
+ };
+ const removed='button[aria-label="配置へ戻る"], button[data-tool-label="配置へ戻る"], .paint-tool-icons svg.lucide-move';
+ let observer:MutationObserver|undefined,appearances=0,steps=0;
+ run.disabled=true;
+ try{
+  render(null,host);const writer=await project.createWritable();await writer.write(JSON.stringify(await createPortableProject(source)));await writer.close();render(<App/>,host);await open();
+  button('ペンツールを開く')?.click();button('レイヤーを開く')?.click();await settle();
+  host.querySelector<HTMLButtonElement>('[aria-label="コマ 01を展開"]')?.click();await settle();
+  const initial=bucketPosition();
+  const checkPalette=(label:string)=>{
+   const next=bucketPosition();
+   if(appearances||host.querySelector(removed))throw Error(label+'：十字が再表示されました');
+   if(next.some((x,i)=>Math.abs(x-initial[i])>.5))throw Error(label+'：バケツが別の位置へ移動しました');
+   steps++;
+  };
+  observer=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes){
+   if(node instanceof Element&&(node.matches(removed)||node.querySelector(removed)))appearances++;
+  }});
+  observer.observe(host,{childList:true,subtree:true});
+  checkPalette('配置開始時');
+  button('コマ 01の枠を選択').click();await settle();button('ラスターレイヤー追加').click();
+  await wait(()=>painting()&&Boolean(host.querySelector('.layer-row.is-selected[data-layer]')&&host.querySelector('.paint-input')),'描画レイヤーを追加');
+  checkPalette('最初の描画');
+  const layerId=host.querySelector<HTMLElement>('.layer-row.is-selected[data-layer]')!.dataset.layer!;
+  button('ペン').click();await settle();
+  const surface=host.querySelector<HTMLElement>('.paint-input')!,r=surface.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
+  const pointer=(target:EventTarget,type:string,dx:number)=>target.dispatchEvent(new PointerEvent(type,{pointerId:119,pointerType:'mouse',isPrimary:true,button:0,buttons:type==='pointerup'?0:1,clientX:x+dx,clientY:y,bubbles:true,cancelable:true}));
+  pointer(surface,'pointerdown',0);pointer(window,'pointermove',12);pointer(window,'pointerup',12);await settle();
+  await exitPaintWithEscape();await save();
+  const savedLine=async()=>(await stored()).manga.pages[0].panels[0].images?.flatMap(i=>i.paint?.layers??[]).find(l=>l.id===layerId)?.strokes;
+  const line=await savedLine();if(line?.length!==1||line[0].tool!=='pen')throw Error('Escで終了したペン線が1本残らない');
+  const tools=['ペン','消しゴム','バケツ','投げ縄'];
+  for(let i=0;i<30;i++){
+   const phase=(label:string)=>checkPalette(`${i+1}周目 ${label}`);
+   host.querySelector<HTMLButtonElement>(`[data-layer="${layerId}"] .layer-select`)!.click();
+   await wait(()=>painting()&&Boolean(host.querySelector(`.layer-row.is-selected[data-layer="${layerId}"]`)),'子レイヤーの選択');phase('レイヤー');
+   const tool=button(tools[i%tools.length]);tool.click();await wait(()=>tool.getAttribute('aria-pressed')==='true','道具の切替');phase('道具');
+   const hover=(selector:string)=>host.querySelector(selector)!.dispatchEvent(new PointerEvent('pointerover',{pointerType:'mouse',bubbles:true}));
+   hover('.inspector-content');await wait(()=>!painting(),'コマ情報で描画を終了');phase('コマ情報');
+   hover('[data-paint-canvas]');await wait(painting,'キャンバスで描画を再開');phase('自動再開');
+   if(i%2===0)await exitPaintWithEscape();
+   else {button('コマ 01の枠を選択').click();await wait(()=>!painting(),'コマ枠で配置復帰');}
+   phase('配置');
+  }
+  await save();if(JSON.stringify(await savedLine())!==JSON.stringify(line))throw Error('往復でペン線が変化');
+  report.textContent=`パレット往復 PASS 30周（${steps}地点、十字の挿入${appearances}件、バケツ位置不変、ペン線1本保持）`;
+ }catch(error){report.textContent=`パレット往復 FAIL ${steps}地点: ${String(error)}`;console.error(error);}
+ finally{observer?.disconnect();run.disabled=false;}
+}
+
 // 見込み: folderボタンにfocusが残っても、canvasへのpointerenterでSpaceの行先をpanへ切り替えられる。
 // 合格: 開閉状態を保持したまま実scrollが移動し、keyup・blurで解除。画面外buttonと入力中はSpaceを保持。
 // 範囲: 実App/DOMと合成pointer・keyboard。専用OPFS作品のみを使用し、実作品や外部サービスへ触れない。
@@ -852,12 +914,12 @@ async function verifyGenerationOwner(){
   check(!!document.querySelector('.paint-input')&&!!maskRow()!.querySelector('canvas'),'生成マスクのサムネイルと描画面を表示');
   check(maskRow()!.dataset.layerDrop==='layer'&&!maskRow()!.hasAttribute('aria-expanded')&&!document.querySelector('.generation-mask-children'),'マスクは子を持たない通常レイヤー');
   await save();check((await stored()).manga.pages[0].panels[0].bubbles[0].paint_overlay?.paint?.layers.some(layer=>layer.generationMask)===true,'マスク1レイヤーを既存保存へ接続');
-  button('配置へ戻る').click();await wait(()=>!painting(),'描画終了待ち');await settle();
+  await exitPaintWithEscape();await settle();
   check(!!maskRow(),'描画を終了してもフォルダーのマスクを表示');
   button('テキスト1の文字を隠す').click();await settle();
   maskRow()!.querySelector<HTMLButtonElement>('.layer-select')!.click();await wait(()=>painting()&&maskRow()!.classList.contains('is-selected'),'保存済みマスクの描画再開待ち');await settle();
   check(!!document.querySelector('.paint-input'),'ネイティブ文字を隠してもマスク行から範囲編集を再開');
-  button('配置へ戻る').click();await wait(()=>!painting(),'描画終了待ち');await save();await reopen();
+  await exitPaintWithEscape();await save();await reopen();
   document.querySelector<HTMLButtonElement>('.paint-layers-dock [aria-label="レイヤーを開く"]')?.click();await settle();
   document.querySelector<HTMLButtonElement>('.page-layer-palette [aria-label="コマ 01を展開"]')?.click();await settle();
   document.querySelector<HTMLButtonElement>('.page-layer-palette [aria-label="テキスト1を展開"]')?.click();await settle();
@@ -959,7 +1021,7 @@ async function verifyLayerMoveContinuity(){
   check(!document.querySelector('.paint-error'),'移動先の他ownerの画像も欠落せず表示');
   check(!!button('ペンツールを開く'),'別コマへの移動で閉じたツールパレットを開かない');
   button('ペンツールを開く')?.click();await settle();
-  button('配置へ戻る').click();await wait(()=>!document.querySelector('.app-shell.is-painting'),'配置へ復帰');await settle();
+  await exitPaintWithEscape();await settle();
   const layout=tools();await drag(row('continuity-top').querySelector<HTMLElement>('.layer-select')!,scope().querySelector<HTMLElement>('.panel-frame-layer')!,.5);await wait(()=>row('continuity-top').closest<HTMLElement>('[data-paint-panel]')?.dataset.paintPanel==='0','配置中の移動');await settle();
   check(!document.querySelector('.app-shell.is-painting')&&tools()===layout,'配置中の移動はペイントを開かず道具を保持');
   await save();render(null,host);render(<App/>,host);button('作品フォルダを開く').click();await wait(()=>!!host.querySelector('[data-owner-group="bubble-0"]'),'非表示文字を含む作品の再読込');await settle();check((await stored()).manga.pages[0].panels[0].bubbles[1].paint_overlay?.paint?.layers.some(layer=>layer.generationMask&&layer.name==='生成マスク'&&layer.strokes.length===1)===true,'作品を再読込して独立マスクの所属と内容を復元');
