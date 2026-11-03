@@ -1126,7 +1126,13 @@ export function normalizeLayoutRecognition(
   const calibratedPanels = sourceFrame
     ? editingShapes.map((shape) => sourceFrameShapeToInnerFrame(shape, sourceFrame))
     : editingShapes;
-  const detectedPanels = normalizeDetectedPanelGeometry(calibratedPanels, gutterSettings);
+  // Independently framed strips have their own printed margins. Apply gutter
+  // adjustments inside each story without treating the two strips as one row.
+  const separateStrips = structure.independent_four_panel_strips === true
+    && rawPanelRegions.length === 8 && calibratedPanels.length === 8;
+  const detectedPanels = separateStrips
+    ? [calibratedPanels.slice(0, 4), calibratedPanels.slice(4)].flatMap(strip => normalizeDetectedPanelGeometry(strip, gutterSettings))
+    : normalizeDetectedPanelGeometry(calibratedPanels, gutterSettings);
   const detectedPanelIds = keptPanelRegions.map((region) => region.id);
   const removedPanelCount = rawPanelRegions.length - detectedPanels.length;
   const baseReason = removedPanelCount > 0
@@ -1135,7 +1141,9 @@ export function normalizeLayoutRecognition(
       ? payload.reason.trim()
       : detectedPanels.length ? '検出したコマ領域を編集開始位置として使用できます。' : '読み取れるコマ領域を特定できませんでした。';
   const reason = detectedPanels.length
-    ? `${baseReason} ${sourceFrame ? '検出原稿の外枠を内枠へ対応させ、' : '内枠内へ収め、'}4mm以内の辺を整列し、コマ間は上下${roundMm(clamp(gutterSettings.rowGapMm, 0, 20))}mm・左右${roundMm(clamp(gutterSettings.columnGapMm, 0, 20))}mmに整えています。`
+    ? separateStrips
+      ? `${baseReason} 右列4コマ、左列4コマの順です。列の間は原稿の余白を保ち、列内の上下間隔を${roundMm(clamp(gutterSettings.rowGapMm, 0, 20))}mmに整えています。`
+      : `${baseReason} ${sourceFrame ? '検出原稿の外枠を内枠へ対応させ、' : '内枠内へ収め、'}4mm以内の辺を整列し、コマ間は上下${roundMm(clamp(gutterSettings.rowGapMm, 0, 20))}mm・左右${roundMm(clamp(gutterSettings.columnGapMm, 0, 20))}mmに整えています。`
     : baseReason;
   const detectedPanelCount = detectedPanels.length;
   return {

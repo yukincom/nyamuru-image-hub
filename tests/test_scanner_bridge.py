@@ -1336,6 +1336,26 @@ class LocalVisionResultTest(unittest.TestCase):
             with self.subTest(panels=panels, titles=titles):
                 self.assertEqual(layout_geometry.strip_reading_order(panels, titles), list(range(8)))
 
+    # 見込み: 少し高い先頭枠は左右の題字・4段の印刷線が揃うときだけ除く。模擬検出で8枠を
+    # 元座標の右列→左列で返し、題字欠落・本文外辺欠落・先頭枠に顔がある場合は除外しない。
+    def test_taller_strip_headers_require_letters_and_closed_story_frames(self):
+        headers = [(x, .05, .36, .06) for x in (.54, .08)]
+        story = [(x, .125 + row * .20, .36, .17) for x in (.54, .08) for row in range(4)]
+        boxes = list(reversed(headers + story))
+        lines = []
+        for x, y, w, h in boxes:
+            lines.extend([(x, y, x + w, y), (x + w, y, x + w, y + h),
+                          (x, y + h, x + w, y + h), (x, y, x, y + h)])
+        texts = [{"score": .85, "bbox": coords} for coords in ([58,6,85,10], [12,6,39,10])]
+        page = {"width": 100, "height": 100}
+        def detect(letters, edges, faces=()):
+            data = {"page": page, "detections": {"texts": letters, "faces": list(faces)}}
+            return layout_geometry.printed_four_panel_strips(boxes, data, edges)
+        self.assertEqual(detect(texts, lines), (story, headers))
+        self.assertIsNone(detect(texts[:1], lines))
+        self.assertIsNone(detect(texts, lines[:2] + lines[3:]))  # first story box in reversed input
+        self.assertIsNone(detect(texts, lines, [{"score": .85, "bbox": [13, 6, 18, 10]}]))
+
     # 模擬検出で体内の唯一の顔位置を保持し、重複身体やその顔を別人物にしない。未所属の顔だけが別領域になる。
     def test_fuses_bodies_with_only_unmatched_faces_as_person_regions(self):
         detection = {

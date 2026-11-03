@@ -1087,9 +1087,12 @@ def exclude_paired_title_header_boxes(
 
 def strip_reading_order(boxes: list[PanelBox], headers: list[PanelBox]) -> list[int]:
     """Reorder two titled four-panel strips; keep the given order on ambiguous pages."""
-    original = list(range(len(boxes)))
+    return _four_panel_strip_order(boxes, headers) or list(range(len(boxes)))
+
+
+def _four_panel_strip_order(boxes: list[PanelBox], headers: list[PanelBox]) -> list[int] | None:
     if len(headers) != 2 or len(boxes) != 8:
-        return original
+        return None
 
     strips: list[list[int]] = []
     for x, y, width, height in sorted(headers, reverse=True):  # right-hand title first
@@ -1099,13 +1102,53 @@ def strip_reading_order(boxes: list[PanelBox], headers: list[PanelBox]) -> list[
                          if abs(bx - x) <= width * 0.2 and abs(bx + bw - x - width) <= width * 0.2),
                         key=lambda i: boxes[i][1])
         if len(column) != 4 or not -0.005 <= boxes[column[0]][1] - (y + height) <= 0.04:
-            return original
+            return None
         for upper, lower in zip(column, column[1:]):
             gap = boxes[lower][1] - (boxes[upper][1] + boxes[upper][3])
             if not -0.01 <= gap <= 0.5 * min(boxes[upper][3], boxes[lower][3]):
-                return original
+                return None
         strips.append(column)
     right, left = strips
     if max(boxes[i][0] + boxes[i][2] for i in left) > min(boxes[i][0] for i in right):
-        return original
+        return None
     return right + left
+
+
+def text_in_header(text: PanelBox, header: PanelBox) -> bool:
+    area = box_area(text)
+    return area > 0 and box_intersection_area(text, header) >= 0.90 * area
+
+
+def printed_four_panel_strips(
+    boxes: list[PanelBox], detection: dict[str, Any], segments: list[LineSegment],
+) -> tuple[list[PanelBox], list[PanelBox]] | None:
+    """Recover taller titles only when the lettering and both printed strips corroborate them."""
+    if len(boxes) != 10 or not segments:
+        return None
+    top_first = sorted(boxes, key=lambda b: b[1])
+    headers = sorted(top_first[:2], reverse=True)
+    body = top_first[2:]
+    order = _four_panel_strip_order(body, headers)
+    if order is None or abs(headers[0][1] - headers[1][1]) > 0.015:
+        return None
+    ordered = [body[i] for i in order]
+    texts = detector_boxes(detection, "texts", max_area_ratio=0.45)
+    people = detector_boxes(detection, "faces") + detector_boxes(detection, "bodies")
+    for header, column in zip(headers, (ordered[:4], ordered[4:])):
+        if header[3] > 0.5 * min(b[3] for b in column):
+            return None
+        if not any(t[2] >= 0.45 * header[2] and t[2] > t[3] and text_in_header(t, header) for t in texts):
+            return None
+        # A short panel containing a character can be the first story beat.
+        if any(box_intersection_area(p, header) >= 0.5 * box_area(p) for p in people):
+            return None
+    # A detected box is a trustworthy rectangle here only if ink traces all
+    # four sides. Interior diagonal strokes are not dividers between strips.
+    transposed = [(y1, x1, y2, x2) for x1, y1, x2, y2 in segments]
+    for x, y, w, h in boxes:
+        if min(_edge_coverage(segments, x, y, y + h, 0.006),
+               _edge_coverage(segments, x + w, y, y + h, 0.006),
+               _edge_coverage(transposed, y, x, x + w, 0.006),
+               _edge_coverage(transposed, y + h, x, x + w, 0.006)) < 0.80:
+            return None
+    return ordered, headers

@@ -31,6 +31,8 @@ from nyamuru_layout_geometry import (
     single_page_role,
     sort_panel_boxes_reading_order,
     strip_reading_order,
+    printed_four_panel_strips,
+    text_in_header,
     detector_regions,
     detector_boxes,
     detected_person_regions,
@@ -554,21 +556,30 @@ class LocalVisionState:
         elif layout_boxes and not raw_rtdetr_boxes and not page_role:
             segments = detect_panel_segments(upright_bytes)
         layout_boxes = sort_panel_boxes_reading_order(layout_boxes)
-        panel_shapes = (
-            [{"type": "rect", "x": 0, "y": 0, "w": 1, "h": 1}] if page_role == "borderless"
-            else infer_panel_shapes_from_segments(layout_boxes, segments)
-        )
+        # The thin-title path already established a layout. Only investigate
+        # still-unclassified frames for a pair of taller, lettered titles.
+        printed_strips = None
+        if not selected_headers and len(layout_boxes) == 10:
+            printed_strips = printed_four_panel_strips(layout_boxes, detection, segments)
+        if printed_strips:
+            layout_boxes, selected_headers = printed_strips
+            panel_shapes = [{"type": "rect", "x": x, "y": y, "w": w, "h": h} for x, y, w, h in layout_boxes]
+        elif page_role == "borderless":
+            panel_shapes = [{"type": "rect", "x": 0, "y": 0, "w": 1, "h": 1}]
+        else:
+            panel_shapes = infer_panel_shapes_from_segments(layout_boxes, segments)
         if len(panel_shapes) != len(layout_boxes):
             raise RuntimeError(
                 "コマ形状と検出枠の対応が崩れたため、誤った配置を返さず解析を中止しました"
             )
+        order = range(len(layout_boxes)) if printed_strips else strip_reading_order(layout_boxes, selected_headers)
         panels = [
             {
                 "id": f"panel-{index + 1:03d}",
                 "detector_box": [round(value, 6) for value in layout_boxes[i]],
                 "shape": panel_shapes[i],
             }
-            for index, i in enumerate(strip_reading_order(layout_boxes, selected_headers))
+            for index, i in enumerate(order)
         ]
         detected_count = len(panel_shapes)
 
@@ -586,6 +597,10 @@ class LocalVisionState:
                 request={"regions": text_regions},
             )
             ocr_lines = usable_ocr_lines(ocr_payload, borderless=page_role == "borderless")
+            if printed_strips:
+                ocr_lines = [line for line in ocr_lines if not any(
+                    text_in_header(line["bbox"], header) for header in selected_headers
+                )]
         else:
             ocr_lines = []
 
@@ -626,6 +641,8 @@ class LocalVisionState:
             "engine": "Baberu OCR",
             "lines": ocr_lines,
         }
+        if printed_strips:
+            result["structure"]["independent_four_panel_strips"] = True
         result["people"] = {
             "regions": detected_person_regions(detection),
         }

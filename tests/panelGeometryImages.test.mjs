@@ -50,16 +50,6 @@ test('local scan01: image detection through canvas geometry retains staggered di
   }
 });
 
-// Measured pre-fix canvas bounds, in mm, from the same local detector pipeline.
-// Preserve existing layout, including known title/line-tracing imperfections;
-// these are non-regression references, not ground-truth typesetting targets.
-const references = {
-  // Pre-change (606bc49) with today's manuscript inner frame. Both column titles are retained.
-  'one04.jpg': [[106.5,14.6,88.5,17.8],[15,14.5,88.5,20.7],[106.2,37.4,88.7,60.9],[15.1,40.2,88.3,58.1],
-    [113.4,103.3,81.5,54.8],[15.1,103.3,95.3,52.7],[106.3,160.7,88.6,65.8],[15.1,161,88.6,60.4],
-    [111.4,222.3,83.5,60.1],[15.1,226.2,93.3,56.3]],
-};
-
 // 見込み: 左右の列題の下に4コマずつ並ぶので、右列を読み切ってから左列へ移る。
 // 実RT→編集用変換。元の8矩形（8212dc2、mm）の位置と寸法は変えず、順番だけが変われば合格。
 test('local one03.jpg: read down the right strip then the left without moving a frame', { skip: !(one && vision) }, () => {
@@ -70,14 +60,27 @@ test('local one03.jpg: read down the right strip then the left without moving a 
     [29.9,53.7,73.5,39.2], [29.9,97.9,73.5,54.5], [29.9,157.4,73.5,44.7], [29.9,207.1,73.5,51.5],
   ]);
 });
-for (const [name, expected] of Object.entries(references)) {
-  test(`local ${name}: both four-panel strips retain count, order and frame bounds`, { skip }, () => {
-    const panels = recognizeLayout(join(one, name)).detectedPanels.map(bounds);
-    assert.equal(panels.length, expected.length);
-    panels.forEach((box, i) => box.forEach((value, axis) =>
-      assert.ok(Math.abs(value - expected[i][axis]) < 1, `${name} panel ${i + 1}, axis ${axis}: ${value} vs ${expected[i][axis]}`)));
+
+// 見込み: 各列の題字とその下の印刷枠から本文8枠を特定する。実RT・OCR→編集座標で、
+// 列題はコマ・発話に入らず、右列→左列の全辺が原画の線中心から2px以内なら合格（上下溝5mm）。
+test('local one04.jpg: keep the printed frames and exclude both strip titles', { skip: !(one && vision) }, () => {
+  const result = recognizeLayout(join(one, 'one04.jpg'), true);
+  assert.equal(result.detectedPanels.length, 8);
+  assert.ok(result.ocrLines.length > 0, 'body dialogue must survive title removal');
+  assert.ok(result.ocrLines.every(line => line.bbox.y * 851 > 145 && line.sourcePanelId));
+  const frame = result.sourceFrame;
+  const inner = INNER_FRAME_BOUNDS;
+  const sourceX = x => 601 * (frame ? frame.x + (x - inner.x) * frame.w / inner.w : x / 210);
+  const sourceY = y => 851 * (frame ? frame.y + (y - inner.y) * frame.h / inner.h : y / 297);
+  const rows = [[156.5,296.5], [308.5,448.5], [460.5,600.5], [612.5,752.5]];
+  result.detectedPanels.forEach((shape, i) => {
+    assert.equal(shape.type, 'rect');
+    const [l, r] = i < 4 ? [311.5, 522.5] : [77.5, 288.5];
+    const [t, b] = rows[i % 4];
+    const actual = [sourceX(shape.x), sourceX(shape.x + shape.w), sourceY(shape.y), sourceY(shape.y + shape.h)];
+    [l, r, t, b].forEach((edge, axis) => near(actual[axis], edge, 2));
   });
-}
+});
 
 // Compare editable shapes to the source in page fractions, undoing the editor's inner-frame scaling.
 function sourcePolygons(path) {
