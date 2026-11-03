@@ -1,3 +1,5 @@
+// 見込み: 共通テーマと欄の順序を固定すれば、依頼したUIの意味を維持できる。
+// 合格: CSSと表示部品の契約が一致。ここは静的検査で、実際の位置・寸法は画面で確認する。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -58,13 +60,14 @@ test('誌面と生成用の色はUIテーマから切り離され、PWAの外枠
   assert.ok(read('src/layouts/Layout.astro').includes('name="theme-color" content="#DCE9DF"'));
 });
 
-test('コマ情報は人物で始まり、吹き出しカードは情報タブへ移す', () => {
+// 見込み: ト書きを最優先にするとコマ見出しの直下に置ける。合格: ト書き1→人物2の順で、他の欄と吹き出しの情報タブを維持。
+test('コマ情報はト書きで始まり、吹き出しカードは情報タブへ移す', () => {
   assert.match(rule('.inspector-fields'), /display:flex;\s*flex-direction:column/);
   const ordered = [
+    ['.inspector-fields>.panel-action-section', 1],
     ['.inspector-fields>.panel-figure-section', 2],
     ['.inspector-fields>.panel-prop-section', 3],
     ['.inspector-fields>.panel-text-section', 4],
-    ['.inspector-fields>.panel-action-section', 5],
     ['.inspector-fields>.panel-images-section', 6],
     ['.inspector-fields>.panel-background-section', 7],
   ];

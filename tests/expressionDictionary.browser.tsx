@@ -4,11 +4,12 @@ import {render} from 'preact';
 import PanelInspector from '../src/components/PanelInspector';
 import expressions from '../scripts/expression_catalog.json';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
+import type {Panel} from '../src/types';
 import '../src/styles/global.css';
 if(location.origin!=='http://127.0.0.1:4326')throw Error('Dedicated dictionary test origin required');
 const doc=createEmptyWorkspaceDocument(),manga=doc.manga;
-manga.characters=[{localId:'person',name:'確認用人物'}];
-const panel={id:1,shape:{type:'rect' as const,x:0,y:0,w:50,h:50},bg:0,bubbles:[],figures:[{
+manga.characters=[{localId:'person',name:'確認用人物',role:'確認用',scope:'episode'}];
+const panel:Panel={id:1,shape:{type:'rect',x:0,y:0,w:50,h:50},bg:0,action:null,bubbles:[],figures:[{
   refId:'person',name:'確認用人物',action:'Half-lidded eyes and a straight closed mouth.',size:'face' as const,
 }]};
 manga.pages[0].panels=[panel];
