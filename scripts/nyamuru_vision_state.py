@@ -532,7 +532,7 @@ class LocalVisionState:
         segments = detect_panel_segments(upright_bytes) if raw_rtdetr_boxes and not page_role else []
         rtdetr_boxes, rtdetr_excluded = exclude_non_panel_regions(raw_rtdetr_boxes, detection, segments=segments)
         rtdetr_boxes, rtdetr_headers = exclude_paired_title_header_boxes(rtdetr_boxes)
-        rtdetr_boxes = deduplicate_panel_boxes(rtdetr_boxes)
+        rtdetr_boxes = deduplicate_panel_boxes(rtdetr_boxes, segments=segments)
         if page_role or rtdetr_boxes:
             layout_boxes, detector_name = rtdetr_boxes, "RT-DETR"
             if page_role == "borderless":

@@ -1054,6 +1054,25 @@ class LocalVisionResultTest(unittest.TestCase):
             [right, left],
         )
 
+    # 見込み: 片側だけ短い重複候補は、余分な幅を横切る横線と外側の縦線で判別できる。
+    # 模擬枠で、両線が揃う場合だけ広い方を残し、実在する内辺や隣のコマがあれば拡張しない。
+    def test_wider_duplicate_needs_a_traced_extension_without_a_sibling(self):
+        narrow, wide = (.1, .51, .6, .4), (.1, .51, .8, .4)
+        outside = (.9, .51, .9, .91)
+        bottom = (.1, .91, .9, .91)
+        inside = (.7, .51, .7, .91)
+        sibling = (.73, .51, .15, .4)
+        for segments, boxes, expected in [
+            ([outside, bottom], [narrow, wide], [wide]),
+            ([outside, bottom], [wide, narrow], [wide]),
+            ([bottom], [narrow, wide], [narrow]),
+            ([outside], [narrow, wide], [narrow]),
+            ([outside, bottom, inside], [narrow, wide], [narrow]),
+            ([outside, bottom], [narrow, wide, sibling], [narrow, sibling]),
+        ]:
+            with self.subTest(segments=segments, boxes=boxes):
+                self.assertEqual(bridge.deduplicate_panel_boxes(boxes, segments=segments), expected)
+
     def test_recovers_only_rtdetr_supported_diagonal_panel_dividers(self):
         boxes = [
             (0.00, 0.00, 0.66, 0.45),

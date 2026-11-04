@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import test from 'node:test';
 import { INNER_FRAME_BOUNDS, pointInPanel } from '../src/lib/canvasGeometry.ts';
-import { attachRecognizedTextToPage, normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
+import { attachDetectedFiguresToPage, attachRecognizedTextToPage, normalizeLayoutRecognition } from '../src/lib/localBridge.ts';
 import { newPage } from '../src/lib/manga.ts';
 
 // Opt-in local image regression: originals/models are never copied to the repo.
@@ -105,6 +105,42 @@ function checkOwner(polygons, x, y, expectedIndex) {
     pointInPanel({ shape: { type: 'polygon', points } }, x, y) ? [index] : []);
   assert.deepEqual(owners, [expectedIndex], `owners of source point (${x}, ${y})`);
 }
+
+// 見込み: 上下をまたぐ横顔の裏には右辺と下辺の実線がある。実RTから編集ページまで通し、
+// 上下2枠が印刷外周に届くこと、横顔だけが枠より上の前景に入り上下の人物が各コマに残ることを検査。
+test('local 07.jpeg: extend the lower frame behind the page foreground figure', { skip: !(pages && vision) }, () => {
+  const result = recognizeLayout(join(pages, '07.jpeg'));
+  assert.equal(result.detectedPanels.length, 2);
+  const frame = result.sourceFrame;
+  assert.ok(frame);
+  const inner = INNER_FRAME_BOUNDS;
+  const xPx = x => 725 * (frame.x + (x - inner.x) * frame.w / inner.w);
+  const yPx = y => 1047 * (frame.y + (y - inner.y) * frame.h / inner.h);
+  const [upper, lower] = result.detectedPanels;
+  for (const panel of [upper, lower]) {
+    assert.equal(panel.type, 'rect');
+    near(xPx(panel.x), 39, 4);
+    near(xPx(panel.x + panel.w), 666.5, 4);
+  }
+  near(yPx(upper.y), 60, 4);
+  near(yPx((upper.y + upper.h + lower.y) / 2), 530, 4); // 溝の中心。右端の交点は横顔で隠れる
+  near(yPx(lower.y + lower.h), 1002, 4);
+
+  const overlays = result.detectedFigures.filter(f => f.pageOverlay);
+  assert.equal(overlays.length, 1);
+  assert.equal(overlays[0].sourcePanelId, undefined);
+  near(overlays[0].bbox.x, .438, .03);
+  near(overlays[0].bbox.y, .258, .03);
+  near(overlays[0].bbox.x + overlays[0].bbox.w, 1, .015); // 横顔は印刷枠の外にも続く
+  near(overlays[0].bbox.y + overlays[0].bbox.h, .87, .03);
+  const page = newPage(1);
+  page.panels = result.detectedPanels.map((shape, i) => ({ id: i + 1, shape, bubbles: [], bg: 1, action: null }));
+  const owners = new Map(result.detectedPanelIds.map((id, i) => [id, page.panels[i]]));
+  assert.equal(attachDetectedFiguresToPage(page, result.detectedFigures, undefined, frame, owners).added, 3);
+  assert.equal(page.page_overlay.layer, 'above_panel_frames');
+  assert.equal(page.page_overlay.figures.length, 1);
+  assert.deepEqual(page.panels.map(p => p.figures.length), [1, 1]);
+});
 
 // 見込み: 紙いっぱいの人物と離れたセリフは全面1コマ。実RT・Baberuから編集データまで通し、
 // 四隅と本文4か所の位置・所属を検査する。OCRの正確さや手描き輪郭の復元は保証しない。

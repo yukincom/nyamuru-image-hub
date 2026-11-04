@@ -68,6 +68,7 @@ def detect_panel_boxes(image_bytes: bytes) -> list[tuple[float, float, float, fl
 
 def deduplicate_panel_boxes(
     boxes: list[tuple[float, float, float, float]],
+    *, segments: list[LineSegment] | None = None,
 ) -> list[tuple[float, float, float, float]]:
     """Drop duplicate frames and a large frame that merely encloses split panels."""
 
@@ -84,6 +85,7 @@ def deduplicate_panel_boxes(
         )
 
     kept: set[int] = set()
+    duplicates: dict[int, list[PanelBox]] = {}
     for candidate_index in sorted(range(len(boxes)), key=lambda index: area(boxes[index])):
         candidate = boxes[candidate_index]
         candidate_area = area(candidate)
@@ -100,6 +102,8 @@ def deduplicate_panel_boxes(
                 and smaller / larger >= 0.68
                 and (overlap / smaller >= 0.9 or (union > 0 and overlap / union >= 0.72))
             ):
+                if segments:
+                    duplicates.setdefault(kept_index, []).append(candidate)
                 duplicate = True
                 break
         if duplicate:
@@ -125,7 +129,17 @@ def deduplicate_panel_boxes(
         )
         if not split_artifact:
             kept.add(candidate_index)
-    return [box for index, box in enumerate(boxes) if index in kept]
+    selected = [box for index, box in enumerate(boxes) if index in kept]
+    if not duplicates or not segments:
+        return selected
+    horizontal = [(y1, x1, y2, x2) for x1, y1, x2, y2 in segments]
+    replacements = {}
+    for index, alternatives in duplicates.items():
+        narrow = boxes[index]
+        traced = [box for box in alternatives if _traced_row_extension(narrow, box, selected, segments, horizontal)]
+        if len(traced) == 1:
+            replacements[narrow] = traced[0]
+    return [replacements.get(box, box) for box in selected]
 
 
 def _group_panel_rows(
@@ -593,6 +607,35 @@ def _edge_coverage(segments: list[LineSegment], position: float, start: float, e
         if span >= max(0.012, (end - start) * 0.04) and abs(x2 - x1) <= span * 0.22:
             intervals.append((max(start, min(y1, y2)), min(end, max(y1, y2))))
     return _covered_length(intervals) / (end - start)
+
+
+def _traced_row_extension(
+    narrow: PanelBox, wide: PanelBox, selected: list[PanelBox],
+    vertical: list[LineSegment], horizontal: list[LineSegment],
+) -> bool:
+    """Prefer a wider duplicate only when the drawing supports its extra strip."""
+    x, y, w, h = narrow
+    left, top, width, height = wide
+    right, bottom = left + width, top + height
+    band = 0.008
+    if max(abs(top - y), abs(bottom - y - h)) > band:
+        return False
+    if abs(left - x) <= band and right - (x + w) >= 0.04:
+        inner, outer = x + w, right
+    elif abs(right - x - w) <= band and x - left >= 0.04:
+        inner, outer = x, left
+    else:
+        return False
+    start, end = sorted((inner, outer))
+    extension = (start, top, end - start, height)
+    # A wide enclosing box must not absorb a separate panel in the same row.
+    if any(other != narrow and box_overlap_ratios(extension, other)[1] > 0.15 for other in selected):
+        return False
+    return (
+        _edge_coverage(vertical, inner, y, y + h, band) < 0.25
+        and _edge_coverage(vertical, outer, top, bottom, band) >= 0.60
+        and any(_edge_coverage(horizontal, edge, start, end, band) >= 0.70 for edge in (top, bottom))
+    )
 
 
 def recover_missing_panel_rows(
