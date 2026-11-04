@@ -2,7 +2,6 @@ import { usePaintTextSelection } from '../lib/paintWorkspace';
 import SelectedTextInfo, { TextGenerateButton } from './SelectedTextInfo';
 import type { CanvasTextKind, TextCategory } from '../lib/canvasText';
 import BubbleInfoPortal from './BubbleInfoPortal';
-import type { ComponentChildren } from 'preact';
 import PlacedImageList from './PlacedImageList';
 import FigureSizePicker from './FigureSizePicker';
 import ExpressionDictionary from './ExpressionDictionary';
@@ -39,7 +38,6 @@ interface Props extends ScenarioBubbleChoiceProps {
   onHandwrittenHistoryBoundary:()=>void;
   onGenerateText:(kind:CanvasTextKind,index:number)=>void;
   generationBusy?:boolean;
-  panelControls?:ComponentChildren;
   painting?: boolean;
   imageImportBusy:boolean;
   guideVisible:(key:string)=>boolean;
@@ -101,7 +99,7 @@ function setLinkedMaterial(panel: Panel, material: Material, linked: boolean): v
   }
 }
 
-export default function PanelInspector({ onTextCategory, onSelectedText, onHandwrittenHistoryBoundary, onGenerateText, generationBusy=false, onOpenBackground3d, panelControls, painting=false, imageImportBusy, guideVisible, onToggleGuide, panelDraftToolbarTarget, manga, panel, pageIndex, panelIndex, selectedElement, canvasSelectionScrollRequest, episodeWorkspaceToken, episodeWorkspaceFolder, seriesId, episodeId, getOmnySnapshot, onChooseEpisodeWorkspace, onSelectElement, onChange, onOpenBackgrounds, onOpenProps, onScenarioChoice, onAdd, onDelete }: Props) {
+export default function PanelInspector({ onTextCategory, onSelectedText, onHandwrittenHistoryBoundary, onGenerateText, generationBusy=false, onOpenBackground3d, painting=false, imageImportBusy, guideVisible, onToggleGuide, panelDraftToolbarTarget, manga, panel, pageIndex, panelIndex, selectedElement, canvasSelectionScrollRequest, episodeWorkspaceToken, episodeWorkspaceFolder, seriesId, episodeId, getOmnySnapshot, onChooseEpisodeWorkspace, onSelectElement, onChange, onOpenBackgrounds, onOpenProps, onScenarioChoice, onAdd, onDelete }: Props) {
   const inspectorRef = useInspectorSelectionScroll(canvasSelectionScrollRequest);
   const textSelection=usePaintTextSelection(selectedElement,manga.pages[pageIndex]?.page,panelIndex);
   const [generationStatus, setGenerationStatus] = useState<{ kind: 'loading' | 'success' | 'error'; message: string } | null>(null);
@@ -647,8 +645,6 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
     </section>}
     </BubbleInfoPortal>}
 
-    <button class="add-panel-bottom panel-add-section" onClick={onAdd}><Plus size={16} />新しいコマを追加</button>
-    {panelControls}
     </div>
   </div>
   {panelDraftToolbarTarget && createPortal(
