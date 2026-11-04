@@ -200,7 +200,10 @@ class GenerationQAStructuralTest(unittest.TestCase):
         }
         paths = [
             SCRIPTS / "generation_qa.py",
+            SCRIPTS / "generation_qa_contract.py",
+            SCRIPTS / "generation_qa_results.py",
             SCRIPTS / "generation_qa_report.py",
+            SCRIPTS / "generation_qa_manifest.py",
             FIXTURES / "build_fixtures.py",
         ]
         for path in paths:
