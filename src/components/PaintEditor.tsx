@@ -127,7 +127,11 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const [imports,setImportsState]=useState<PaintResult['imports']>(resume?.imports??[]);
   const importsRef=useRef(imports);
   function setImports(value:typeof imports|((items:typeof imports)=>typeof imports)){const next=typeof value==='function'?value(importsRef.current):value;importsRef.current=next;setImportsState(next);}
-  const [tool,setTool]=useState<PaintTool>('pen');
+  const [chosenTool,setTool]=useState<PaintTool>('pen');
+  const [commandHeld,setCommandHeld]=useState(false);
+  const [temporaryLayoutSelection,setTemporaryLayoutSelection]=useState(false);
+  // Keep the chosen tool intact: holding Command changes input/display, not the document.
+  const tool:PaintTool=commandHeld?'vector-select':chosenTool;
   const [rulerState,setRulerState]=useState<RulerState|null>(null);
   const ruler=rulerState&&'page' in rulerState&&rulerState.page===page?rulerState.ruler:null;
   const rulerMode=rulerState&&'mode' in rulerState?rulerState.mode:ruler?.mode??null;
@@ -202,6 +206,30 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const canEditLayer=Boolean(hasLayer&&layerVisible&&!layerLocked&&(paintTarget!=='mask'||layer.mask?.enabled));
   const createsMark=['pen','fill','line','rectangle','ellipse','vector-pen'].includes(tool);
   const paintActive=Boolean(requested)&&!textTool&&!zoomTool;
+  useEffect(()=>{
+    const release=()=>setCommandHeld(false);
+    const modifiers=(event:KeyboardEvent)=>{
+      if(!event.metaKey){release();return;}
+      if(event.type!=='keydown'||event.key!=='Meta'||!paintActive||!toolPaletteEnabled||busy||suspended||event.isComposing)return;
+      if(event.target instanceof HTMLElement&&(event.target.closest('input,textarea,select,dialog[open]')||event.target.isContentEditable))return;
+      setCommandHeld(true);
+    };
+    const visibility=()=>{if(document.hidden)release();};
+    window.addEventListener('keydown',modifiers,true);window.addEventListener('keyup',modifiers,true);
+    window.addEventListener('blur',release);document.addEventListener('visibilitychange',visibility);
+    return()=>{window.removeEventListener('keydown',modifiers,true);window.removeEventListener('keyup',modifiers,true);window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',visibility);};
+  });
+  useEffect(()=>{
+    // Native/panel selection closes the paint scene asynchronously. Resume only after
+    // that transition and Command release, using the latest selected canvas target.
+    if(!temporaryLayoutSelection||commandHeld||requested||suspended)return;
+    setTemporaryLayoutSelection(false);
+    if(toolPaletteEnabled&&!textTool&&!zoomTool)onStartPaint?.();
+  },[temporaryLayoutSelection,commandHeld,requested,suspended,toolPaletteEnabled,textTool,zoomTool]);
+  function selectLayout(target:PaintLayoutTarget){
+    if(commandHeld)setTemporaryLayoutSelection(true);
+    onSelectLayout?.(target);
+  }
   const rulerActive=paintActive&&tool==='ruler'&&!busy&&!suspended;
   const canDraw=Boolean(paintActive&&tool!=='ruler'&&!selectedFolder&&images&&!busy&&!suspended&&!locked&&(canEditLayer||!editingMask&&createsMark&&canStartPaintMark(owner,hasLayer?layer:undefined,vectorMode?'vector':'raster')));
   useEffect(()=>{penHover.current=null;setPenCursor('pen');},[tool,ownerKey,layerId,canDraw]);
@@ -382,8 +410,8 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     const start=paperPoint(event,target,rect);
     const current=ruler??{mode:rulerMode,origin:start,angle:0,enabled:true};
     const hit=placing?'move':hitPaintRuler(current,{x:event.clientX-rect.left,y:event.clientY-rect.top},{x:rect.width/Number(target.dataset.paperWidth),y:rect.height/Number(target.dataset.paperHeight)});
-    // Away from the ruler, vector Command-selection/anchor editing keeps its normal path.
-    if(!hit)return !tool.startsWith('vector-');
+    // Command only operates the ruler on its handles; elsewhere it selects artwork.
+    if(!hit)return false;
     const before=rulerState;
     const initial=placing?{...current,origin:start}:current;
     if(placing)setRulerState({page,ruler:initial});
@@ -416,25 +444,25 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   function inputTolerance(target:HTMLDivElement,rect:DOMRect,targetOwner=owner){
     return 7*Number(target.dataset.paperWidth)/rect.width*targetOwner.paint.width/targetOwner.frame.w;
   }
-  function beginLayerSelection(event:PointerEvent&{currentTarget:HTMLDivElement},onSelectionMiss?:(behindOwnerKey?:string,aboveNative?:boolean)=>boolean){
+  function beginLayerSelection(event:PointerEvent&{currentTarget:HTMLDivElement},onSelectionMiss?:(behindOwnerKey?:string,aboveNative?:boolean)=>boolean,selectionMode:PaintTool=tool){
     const target=event.currentTarget,rect=target.getBoundingClientRect();if(!rect.width||!rect.height||!coverage)return;
     const local=inputPoint(event,target,rect),tolerance=inputTolerance(target,rect);
     // Handles can be outside the visible stroke. Only the active editable layer owns them.
-    if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&(tool==='vector-node'
+    if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&(selectionMode==='vector-node'
       ?vectorAnchorAt(layer.paths??[],vectorState.current.selected,local,tolerance)
-      :tool==='vector-select'&&vectorResizeHandleAt(layer.paths??[],vectorState.current.selected,local,tolerance))){
-      beginVector(event);return;
+      :selectionMode==='vector-select'&&vectorResizeHandleAt(layer.paths??[],vectorState.current.selected,local,tolerance))){
+      beginVector(event,owner,layer,selectionMode);return;
     }
     const point={x:(event.clientX-rect.left)*Number(target.dataset.paperWidth)/rect.width,y:(event.clientY-rect.top)*Number(target.dataset.paperHeight)/rect.height};
     const hit=pickPaintLayer(historyRef.current.present,point,7*Number(target.dataset.paperWidth)/rect.width,coverage);
     if(hit){
       if(onSelectionMiss?.(hit.owner.key,hit.owner.kind==='bubble'&&paintLayerAboveNative(hit.owner.paint,hit.layer))){clearVectorSelection();return;}
-      if(tool==='vector-node'&&hit.layer.kind!=='vector'&&onSelectLayout){onSelectLayout({key:hit.owner.key,direct:tool==='vector-node'});return;}
-      if(hit.pathId){beginVector(event,hit.owner,hit.layer);return;}
+      if(selectionMode==='vector-node'&&hit.layer.kind!=='vector'&&onSelectLayout){selectLayout({key:hit.owner.key,direct:true});return;}
+      if(hit.pathId){beginVector(event,hit.owner,hit.layer,selectionMode);return;}
       clearVectorSelection();setOwnerKey(hit.owner.key);setLayerId(hit.layer.id);setMaskTarget(null);setSelection(null);
-      if(tool==='vector-select')beginLayerMove(event,hit.owner,hit.layer);
+      if(selectionMode==='vector-select')beginLayerMove(event,hit.owner,hit.layer);
     }else if(onSelectionMiss?.())clearVectorSelection();
-    else if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&layer.kind==='vector')beginVector(event);
+    else if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&layer.kind==='vector')beginVector(event,owner,layer,selectionMode);
     else clearVectorSelection();
   }
   function finishLayerMove(keep=true){
@@ -463,15 +491,15 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',blur);target.addEventListener('lostpointercapture',end);
     try{target.setPointerCapture(event.pointerId);}catch{}
   }
-  function beginVector(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner=owner,pickedLayer=layer){
+  function beginVector(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner=owner,pickedLayer=layer,inputTool=tool){
     penHover.current=null;setPenCursor('pen');
-    const createsPath=event.button!==5&&['vector-pen','line','rectangle','ellipse'].includes(tool);
+    const createsPath=event.button!==5&&['vector-pen','line','rectangle','ellipse'].includes(inputTool);
     const existing=pickedLayer===noPaintLayer?undefined:pickedLayer;
     const targetLayer=createsPath?preparePaintMarkLayer(targetOwner,existing,'vector',scene.colorMode,scene.layerSequence):existing;
     if(!targetLayer||!paintLayerEditable(targetOwner,targetLayer)||targetLayer.kind!=='vector'){clearVectorSelection();return;}
     const addedLayer=targetLayer!==existing?targetLayer:undefined;
     const target=event.currentTarget,rect=target.getBoundingClientRect();if(!rect.width||!rect.height)return;
-    const ruled=event.button!==5&&!event.metaKey&&!event.ctrlKey&&ruler?.enabled&&(tool==='vector-pen'||tool==='line');
+    const ruled=event.button!==5&&!event.metaKey&&!event.ctrlKey&&ruler?.enabled&&(inputTool==='vector-pen'||inputTool==='line');
     const project=paintRulerProjection(ruled?ruler:null,paperPoint(event,target,rect));
     const point=(e:PointerEvent)=>({...paintOwnerPoint(targetOwner,project(paperPoint(e,target,rect))),shift:ruled?false:e.shiftKey,alt:e.altKey,meta:e.metaKey||e.ctrlKey});
     const tolerance=inputTolerance(target,rect,targetOwner);
@@ -479,7 +507,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     const before={...(same?vectorState.current:{selected:[]}),paths:targetLayer.paths??[]};
     if(!same){setOwnerKey(targetOwner.key);setLayerId(targetLayer.id);setMaskTarget(null);setSelection(null);}
     const inputSize=event.button===5?eraserSize:size;
-    const drag=beginVectorDrag(before,(event.button===5?'eraser':ruled?'line':tool) as VectorTool,point(event),{...vectorStyle,width:inputSize},tolerance,eraseMode,inputSize/2);
+    const drag=beginVectorDrag(before,(event.button===5?'eraser':ruled?'line':inputTool) as VectorTool,point(event),{...vectorStyle,width:inputSize},tolerance,eraseMode,inputSize/2);
     const move=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.buttons===0){finishVector(false);return;}updateVectorDrag(g.drag,g.point(e));showVectorDrag();};
     const end=(e:PointerEvent)=>{const g=vectorPointer.current;if(!g||e.pointerId!==g.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup'&&(g.drag.kind!=='new-anchor'||Math.hypot(g.point(e).x-g.drag.start.x,g.point(e).y-g.drag.start.y)>.1))updateVectorDrag(g.drag,g.point(e));finishVector(e.type==='pointerup');};
     const blur=()=>finishVector(false);const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
@@ -618,7 +646,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     if(operation.current||suspended||inputActive.current)return;
     pendingContents.current=null;
     const target=scene.owners.find(o=>o.key===key);if(!target)return;
-    if(tool!=='ruler'&&!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){onSelectOwner(key,native);return;}
+    if(tool!=='ruler'&&!id&&onSelectOwner&&(target.kind==='figure'||target.kind==='bubble'||target.kind==='original')){if(commandHeld)setTemporaryLayoutSelection(true);onSelectOwner(key,native);return;}
     setFinishSelection(null);
     clearVectorSelection();setMaskTarget(null);setOwnerKey(key);const selectedLayer=id?target.paint.layers.find(l=>l.id===id):undefined;setLayerId(id??'');
     if(selectedLayer?.tone?.enabled&&!rasterMask)setEffectsTab('tone');
@@ -627,8 +655,8 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     if(target.kind==='background'&&tool!=='ruler')onSelectLayout?.();
     if(key!==owner.key)setSelection(null);
     if(contents&&selectedLayer&&paintLayerVisible(target.paint,selectedLayer)&&paintLayerEditable(target,selectedLayer)){
-      if(selectedLayer.kind==='vector'){const paths=selectedLayer.paths??[];vectorState.current={paths,selected:paths.map(p=>p.id)};setVectorSelected(paths.map(p=>p.id));setTool('vector-select');}
-      else if(images&&loadedInitial.current===initial){setSelection({key,boxes:alphaSelection(readPaintPixels(target.paint,selectedLayer,images))});setTool('lasso');}
+      if(selectedLayer.kind==='vector'){const paths=selectedLayer.paths??[];vectorState.current={paths,selected:paths.map(p=>p.id)};setVectorSelected(paths.map(p=>p.id));if(!commandHeld)setTool('vector-select');}
+      else if(images&&loadedInitial.current===initial){setSelection({key,boxes:alphaSelection(readPaintPixels(target.paint,selectedLayer,images))});if(!commandHeld)setTool('lasso');}
       else pendingContents.current={key,id:selectedLayer.id};
     }
   }
@@ -689,11 +717,12 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
     onPointerDown:(event,onSelectionMiss)=>{
       if(event.pointerType==='touch'){if(rulerPointer.current||gesture.current||vectorPointer.current||selectionPointer.current){event.preventDefault();event.stopPropagation();}return;}
       if(paintActive&&!busy&&!suspended&&!operation.current&&!inputActive.current&&event.isPrimary&&event.button===0&&beginRuler(event))return;
-      if(tool==='ruler')return;
-      if((!canDraw&&!(selectionTool&&event.button===0))||busy||suspended||operation.current||inputActive.current||!event.isPrimary||(event.button!==0&&event.button!==5)||gesture.current||vectorPointer.current||selectionPointer.current)return;
+      const pointerSelection=event.metaKey||selectionTool;
+      if(tool==='ruler'&&!pointerSelection)return;
+      if((!canDraw&&!(pointerSelection&&event.button===0))||busy||suspended||operation.current||inputActive.current||!event.isPrimary||(event.button!==0&&event.button!==5)||gesture.current||vectorPointer.current||selectionPointer.current)return;
       event.preventDefault();event.stopPropagation();
       if(event.button===5&&!canEditLayer)return;
-      if(event.button===0&&selectionTool){beginLayerSelection(event,onSelectionMiss);return;}
+      if(event.button===0&&pointerSelection){beginLayerSelection(event,onSelectionMiss,event.metaKey?'vector-select':tool);return;}
       if(event.button!==5&&(tool==='lasso'||tool==='wand')){beginSelection(event);return;}
       if(event.button!==5&&tool==='fill'){const b=event.currentTarget.getBoundingClientRect(),p=inputPoint(event,event.currentTarget,b);paintRegion(floodSelection(selectionPixels(),p.x,p.y,selectTolerance,selectionBoxes));return;}
       if(!editingMask&&vectorInput(tool,lineKind,layer.kind,event.button===5)){beginVector(event);return;}
@@ -727,6 +756,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   };
   function selectTool(next:PaintTool){
     if(busy||toolSuspended||operation.current)return;
+    setTemporaryLayoutSelection(false);
     interactionRevision.current++;
     if(paintSelectionMode(next,Boolean(requested)&&!textTool&&!zoomTool,hasLayer?layer.kind:undefined,hasLayer&&!layer.guide&&owner.kind!=='original')==='layout'&&(next==='vector-node'?onSelectBubblePath:onSelectLayout)){
       finishGesture();
@@ -743,6 +773,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   }
   function selectRuler(mode:PaintRulerMode|null){
     if(busy||toolSuspended||operation.current||inputActive.current)return;
+    setTemporaryLayoutSelection(false);
     interactionRevision.current++;
     if(mode&&(!requested||textTool||zoomTool)&&!onStartPaint?.())return;
     finishGesture();
@@ -1054,7 +1085,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const layerControls=<PaintLayerPalette {...layerProps}/>;
   const layerHeader=<PaintLayerControls {...layerProps} disabled={!requested||busy||suspended}/>;
   const status=<div class="paint-status">{error&&<p class="paint-error" role="alert">{error}</p>}</div>;
-  const value:PaintWorkspaceState|null=requested?{displayOnly:!paintActive,ruler:paintActive&&!suspended?ruler??undefined:undefined,editingMask:paintTarget??undefined,...(backgroundTarget&&backgroundFrame?{background3d:{ownerKey:backgroundTarget.key,frame:backgroundFrame,setHost:setBackgroundHost,selectedKey:backgroundSelection,select:key=>{setBackgroundSelection(key);const selected=scene.owners.find(o=>o.key===key);if(selected?.kind==='figure')onSelectFigure?.(selected.index);},beginMove:beginBackgroundMove,move:moveBackgroundOwner,endMove:endBackgroundMove}}:{}),page,panelIndex,overlay,scene,owner,images,live:vectorPreview?undefined:rasterPreview?.live,maskPreview:maskPreview?{ownerKey:owner.key,layerId:layer.id}:undefined,guideVisible,onContextMenu:openMenu,selectionTool,directSelection:tool==='vector-node',selectLayout:onSelectLayout,selection:selectionBoxes?{boxes:selectionBoxes,width:owner.paint.width,height:owner.paint.height}:undefined,lasso:lassoPreview,vector:{paths:layer.paths??[],selected:vectorSelected,selectedNodes:tool==='vector-node'?selectedVectorNodes({...vectorState.current,paths:layer.paths??[]}):vectorState.current.selectedNode?[vectorState.current.selectedNode]:undefined,width:owner.paint.width,height:owner.paint.height,handles:['vector-pen','vector-node','vector-add','vector-delete','vector-anchor'].includes(tool),selectionBox:tool==='vector-select'},penCursor:tool==='vector-pen'&&canDraw?penCursor:undefined,cursor:rulerActive?{mode:'crosshair',size,eraserSize}:canDraw&&!selectionTool&&!zoomTool&&!textTool?{mode:!vectorMode&&!['lasso','wand','fill'].includes(tool)?cursorMode:'crosshair',size,eraserSize}:undefined,events,tools:toolControls,layers:layerControls,status,undo,redo,canUndo:!busy&&!suspended&&(sharedHistory?.canUndo??!!history.past.length),canRedo:!busy&&!suspended&&(sharedHistory?.canRedo??!!history.future.length)}:null;
+  const value:PaintWorkspaceState|null=requested?{displayOnly:!paintActive,ruler:paintActive&&!suspended?ruler??undefined:undefined,editingMask:paintTarget??undefined,...(backgroundTarget&&backgroundFrame?{background3d:{ownerKey:backgroundTarget.key,frame:backgroundFrame,setHost:setBackgroundHost,selectedKey:backgroundSelection,select:key=>{setBackgroundSelection(key);const selected=scene.owners.find(o=>o.key===key);if(selected?.kind==='figure')onSelectFigure?.(selected.index);},beginMove:beginBackgroundMove,move:moveBackgroundOwner,endMove:endBackgroundMove}}:{}),page,panelIndex,overlay,scene,owner,images,live:vectorPreview?undefined:rasterPreview?.live,maskPreview:maskPreview?{ownerKey:owner.key,layerId:layer.id}:undefined,guideVisible,onContextMenu:openMenu,selectionTool,directSelection:tool==='vector-node',selectLayout:onSelectLayout?selectLayout:undefined,selection:selectionBoxes?{boxes:selectionBoxes,width:owner.paint.width,height:owner.paint.height}:undefined,lasso:lassoPreview,vector:{paths:layer.paths??[],selected:vectorSelected,selectedNodes:tool==='vector-node'?selectedVectorNodes({...vectorState.current,paths:layer.paths??[]}):vectorState.current.selectedNode?[vectorState.current.selectedNode]:undefined,width:owner.paint.width,height:owner.paint.height,handles:['vector-pen','vector-node','vector-add','vector-delete','vector-anchor'].includes(tool),selectionBox:tool==='vector-select'},penCursor:tool==='vector-pen'&&canDraw?penCursor:undefined,cursor:rulerActive?{mode:'crosshair',size,eraserSize}:canDraw&&!selectionTool&&!zoomTool&&!textTool?{mode:!vectorMode&&!['lasso','wand','fill'].includes(tool)?cursorMode:'crosshair',size,eraserSize}:undefined,events,tools:toolControls,layers:layerControls,status,undo,redo,canUndo:!busy&&!suspended&&(sharedHistory?.canUndo??!!history.past.length),canRedo:!busy&&!suspended&&(sharedHistory?.canRedo??!!history.future.length)}:null;
   const menuOwner=scene.owners.find(o=>o.key===menu?.key);
   const contextMenu=menu&&menuOwner&&createPortal(<><button class="canvas-generation-menu-dismiss" aria-label="操作メニューを閉じる" onClick={()=>setMenu(null)}/><div class="canvas-generation-menu" role="menu" aria-label="あたり・画像の操作" style={{left:Math.max(8,Math.min(menu.x,window.innerWidth-280)),top:Math.max(8,Math.min(menu.y,window.innerHeight-240))}} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setMenu(null);}}}>
     <strong>{menuOwner.label}</strong>
