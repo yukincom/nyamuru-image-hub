@@ -257,10 +257,12 @@ test('replacing a document drops old text indices without cleaning up the incomi
  appHandler('replaceDocument',{createdText,pendingCanvasElementSelection:{current:null},documentRef,setEditingText:value=>editing=value,imageGestureBoundary:()=>{},synchronizeCatalogReferences:()=>{},reconcileSplitOverlapFlags:()=>{},timeline:{current:{clear:()=>{}}},changedHistory:()=>{},paintController:{current:null},paintSessionRef:{current:null},setPaintSession:()=>{},lastHistoryPush:{current:0},setDocumentState:()=>{},setHasDocument:()=>{}})(incoming);
  assert.equal(createdText.current,null);assert.equal(editing,null);assert.equal(documentRef.current,incoming);assert.equal(JSON.stringify(incoming),before);
 });
+// 見込み: 描画sessionのない状態では、別コマの新規文字も共通の選択経路へ進む。
+// 合格: 編集先と選択先が作成コマを指し文字書式を保持する。実handler＋模擬state、実DOMは対象外。
 test('click-created text uses the canonical selection transition when moving to another panel',()=>{
  const documentRef={current:fixture()};documentRef.current.manga.pages[0].panels.push({id:2,shape:{type:'rect',x:10,y:150,w:90,h:100},bg:0,bubbles:[]});
  const createdText={current:null},pendingCanvasElementSelection={current:null};let selection,editing;
- const select=appHandler('selectCanvasElement',{activePage:0,activePanel:0,pendingCanvasElementSelection,setCanvasSelectionScrollRequest:()=>{},setActivePage:()=>{},setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:value=>selection=value});
+ const select=appHandler('selectCanvasElement',{paintSessionRef:{current:null},activePage:0,activePanel:0,pendingCanvasElementSelection,setCanvasSelectionScrollRequest:()=>{},setActivePage:()=>{},setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:value=>selection=value});
  appHandler('createScreenTextAt',{layerTransition:action=>action(),paintSessionRef:{current:null},projectOperation:{current:false},qwenGeneration:null,endTextEdit:()=>{},documentRef,cloneDocument:structuredClone,addCanvasTextAt,textToolStyle:{fontSize:31,orientation:'horizontal'},imageGestureBoundary:()=>{},lastHistoryPush:{current:0},setDocument:next=>documentRef.current=next,createdText,setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{},setSelectedPanels:()=>{},selectCanvasElement:select,setEditingText:value=>editing=value})(0,1,{x:40,y:180});
  assert.equal(editing.panelIndex,1);assert.equal(selection.type,'screen_text');assert.deepEqual(pendingCanvasElementSelection.current,selection);assert.equal(canvasTextAt(documentRef.current,editing).text_style.fontSize,31);
 });

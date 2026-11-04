@@ -460,11 +460,13 @@ test('automatic marks insert directly below their selected sibling and retain it
 });
 
 
+// 見込み: 明示的な選択道具への切替は一時選択を解除し、編集可能なレイヤー種別の既存経路を使う。
+// 合格: 解除false、gesture終了、paint/layout分岐と対象を確認。実handler＋模擬state、実キー入力は別試験。
 test('selection tools keep editable raster moves and vector paths while direct raster uses layout',()=>{
  for(const tool of ['vector-select','vector-node'])for(const kind of ['raster','vector',undefined]){
   const calls=[],state={revision:{current:0}};
   const context={busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:false,zoomTool:false,hasLayer:kind!==undefined,layer:{kind},owner:{key:'figure-0'},tool:'pen',
-   paintSelectionMode,nextPaintLineKind,interactionRevision:state.revision,vectorState:{current:{paths:[],selected:[]}},
+   setTemporaryLayoutSelection:value=>assert.equal(value,false),paintSelectionMode,nextPaintLineKind,interactionRevision:state.revision,vectorState:{current:{paths:[],selected:[]}},
    finishGesture:()=>calls.push('finish'),onSelectLayout:target=>calls.push(['layout',target]),onSelectBubblePath:mode=>calls.push(['native-node',mode]),onStartPaint:()=>assert.fail('No scene allocation on selection'),
    setMaskTarget(){},setTool:next=>calls.push(['paint',next]),setLineKind(){},setPenMenu(){},setEraserMenu(){}};
   editorHandler('selectTool',context)(tool);

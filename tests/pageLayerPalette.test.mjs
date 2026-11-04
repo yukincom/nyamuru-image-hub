@@ -94,7 +94,7 @@ test('owner keys invert the shared canvas mapping without manufacturing missing 
  assert.equal(paintDocument.paintOwnerCanvasSelection(undefined,0,'figure-0'),undefined);
 });
 
-// 見込み: 親見出しは配置へ渡し、子を選ぶと仕上げの複数選択を解除する。
+// 見込み: 通常ペンで⌘を押していない時、親見出しは配置へ渡し、子を選ぶと仕上げの複数選択を解除する。
 // 合格: 子はowner/idとペン種を更新し、陰影を選んだ場合だけトーンを開く。抽出handlerを検証し、実DOMは別試験。
 test('active paint headings leave through the same layout callback without changing the paint layer',()=>{
  const child={id:'child',kind:'raster',visible:true,locked:false};
@@ -103,7 +103,7 @@ test('active paint headings leave through the same layout callback without chang
  let finishSelection=previousSelection,effectsTab='color';
  const source=paintEditorSource.slice(paintEditorSource.indexOf('  function selectOwner('),paintEditorSource.indexOf('  function updateOwnerLayer('));
  const select=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';selectOwner',{
-  operation:{current:false},suspended:false,inputActive:{current:false},pendingContents:{current:null},scene,owner:scene.owners[0],
+  tool:'pen',commandHeld:false,operation:{current:false},suspended:false,inputActive:{current:false},pendingContents:{current:null},scene,owner:scene.owners[0],
   onSelectOwner:key=>calls.push(['layout',key]),onSelectFigure:index=>calls.push(['figure',index]),
   clearVectorSelection:()=>{},setMaskTarget:()=>{},setOwnerKey:key=>calls.push(['paint',key]),setLayerId:id=>calls.push(['layer',id]),setSelection:()=>{},
   matchLayerPen:kind=>calls.push(['pen',kind]),
