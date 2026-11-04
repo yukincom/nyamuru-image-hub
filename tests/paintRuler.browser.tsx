@@ -82,12 +82,22 @@ async function verify(){
   check(document.querySelector('[role="menu"][aria-label="定規の種類"]')!==null&&!!button('集中線')&&!!button('平行線'),'三角定規をクリックして集中線と平行線を選ぶ');
   await click('平行線');
   check(record()===before&&!w().canUndo&&layer().id===layerId,'定規選択でレイヤー・作品・Undoを追加しない');
-  check(button('ペン')?.getAttribute('aria-pressed')==='true'&&document.querySelector('[data-paint-size][aria-pressed="true"]')?.getAttribute('data-paint-size')===size,'選択中のラスターペンと太さを保持');
+  check(button('ペン')?.getAttribute('aria-pressed')==='false'&&button('定規')?.getAttribute('aria-pressed')==='true'&&w().cursor?.mode==='crosshair','平行線を選ぶとペンから基準点設置ツールへ持ち替える');
+  // 通常クリック/ドラッグは紙面上の基準点だけを設置する。作品・選択・Undo・太さを変えなければ合格。
+  await drag({x:31,y:42},{x:31,y:42});
+  check(close(guide().origin.x,31)&&close(guide().origin.y,42)&&record()===before,'修飾キーなしのクリックで平行線の基準点を設置し線を描かない');
+  await drag({x:39,y:41},{x:42,y:47});
+  check(close(guide().origin.x,42)&&close(guide().origin.y,47)&&record()===before&&!w().canUndo&&layer().id===layerId,'設置ドラッグでもレイヤー追加・選択変更・Undo追加をしない');
+  await drag({x:70,y:20},{x:80,y:30},{},'pointercancel');
+  check(close(guide().origin.x,42)&&close(guide().origin.y,47)&&record()===before,'設置の取消しは元の基準点へ戻り描画を汚さない');
+  check(document.querySelector('[data-paint-size][aria-pressed="true"]')?.getAttribute('data-paint-size')===size,'基準点設置はペンの太さを変更しない');
   await controller.current!.flush();check(writes.length===0,'定規選択だけでは保存writerを呼ばない');
   await click('定規');document.activeElement?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));await tick();
   check(!document.querySelector('[aria-label="定規の種類"]')&&closes===0,'Escapeは定規メニューだけを閉じ描画を終了しない');
 
   // 手ぶれを含む一筆を水平に拘束し、筆圧・既存レイヤーを維持する。
+  await click('ペン');
+  check(button('定規')?.getAttribute('aria-pressed')==='false'&&!!guide(),'ペンに持ち替えると設置を終え、定規のスナップは残る');
   await draw([{x:20,y:25,pressure:.2},{x:45,y:35,pressure:.8},{x:75,y:31,pressure:.4}]);
   check(layer().strokes.length===1&&ink().owners[0].paint.layers.length===1&&layer().id===layerId,'一筆は同じレイヤーの通常strokeへ追加');
   check(layer().strokes[0].points.every(p=>close(toPaper(p).y,25)),'手ぶれを含む全サンプルが平行線方向へ吸着');
@@ -118,11 +128,15 @@ async function verify(){
 
   // 集中線の間を掴んで基準点移動。次の線だけが新しい焦点へ向かう。
   await choose('集中線');
+  const beforeRadialPlacement=record();
+  await drag({x:40,y:50},{x:40,y:50});
+  check(button('ペン')?.getAttribute('aria-pressed')==='false'&&button('定規')?.getAttribute('aria-pressed')==='true'&&close(guide().origin.x,40)&&close(guide().origin.y,50)&&record()===beforeRadialPlacement,'集中線へ持ち替えても通常クリックで基準点だけを設置する');
   const beforeMove=record(),oldOrigin={...guide().origin},grab={x:oldOrigin.x+px(11),y:oldOrigin.y+px(7)};
   await drag(grab,{x:grab.x+10,y:grab.y-10},{metaKey:true});
   check(close(guide().origin.x,oldOrigin.x+10)&&close(guide().origin.y,oldOrigin.y-10),'集中線の方向線の内側を⌘ドラッグして基準点移動');
   check(record()===beforeMove,'基準点移動で描画済み線は追従しない');
   const focus={...guide().origin},start={x:85,y:18};
+  await click('ペン');
   await draw([start,{x:72,y:28},{x:64,y:44}]);
   check(layer().strokes.at(-1)!.points.every(p=>{const q=toPaper(p);return close((q.x-focus.x)*(start.y-focus.y),(q.y-focus.y)*(start.x-focus.x));}),'集中線は開始点と基準点を結ぶ直線へ吸着');
 
@@ -157,12 +171,14 @@ async function verify(){
   const saved=structuredClone(ink()),savedJson=JSON.stringify(saved);
   await mount(saved);check(record()===savedJson&&!w().ruler,'再読込で描画済み線を保持し定規は作品に保存しない');
 
-  // ベクターでも専用ラスターレイヤーを作らず、選択ペンとスタイルを保ったまま一本の直線パスになる。
+  // ベクターからも設置ツールへ持ち替える。設置で作品を変えず、ペンへ戻ると既存スタイルの直線になる。
   await mount(makeScene('vector'));await click('ベジェペン');
   await click('線（枠）の色');await click('線（枠）：黒');await click('太さ 12 px');
   const vectorBefore=record(),vectorId=layer().id;
   await choose('平行線');
-  check(record()===vectorBefore&&button('ベジェペン')?.getAttribute('aria-pressed')==='true','ベクターペン選択とレイヤーを定規選択で保持');
+  await drag({x:50,y:50},{x:50,y:50});
+  check(record()===vectorBefore&&button('ベジェペン')?.getAttribute('aria-pressed')==='false'&&button('定規')?.getAttribute('aria-pressed')==='true'&&layer().id===vectorId,'ベクターから基準点設置ツールへ持ち替えてもレイヤーと作品は保持');
+  await click('ベジェペン');
   await rotate(45);await draw([{x:25,y:25},{x:60,y:55}]);
   const path=layer().paths?.at(-1);
   check(ink().owners[0].paint.layers.length===1&&layer().id===vectorId&&layer().strokes.length===0&&path?.nodes.length===2,'ベクターは同じレイヤーへ一本の直線パス');

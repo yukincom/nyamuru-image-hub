@@ -1,7 +1,7 @@
 import type { PaintLayer, PaintStroke } from '../types.ts';
 import type { VectorTool } from './vectorGesture.ts';
 export type PaintLineKind = 'raster' | 'vector';
-export type DrawingTool = PaintStroke['tool'] | VectorTool | 'lasso' | 'wand';
+export type DrawingTool = PaintStroke['tool'] | VectorTool | 'lasso' | 'wand' | 'ruler';
 export type ShapeTool = 'line' | 'rectangle' | 'ellipse';
 export const isShapeTool = (tool:string):tool is ShapeTool => ['line','rectangle','ellipse'].includes(tool);
 /** Layer changes only replace an incompatible drawing pen; other tools stay selected. */
