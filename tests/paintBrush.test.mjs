@@ -24,6 +24,19 @@ test('a click makes a bounded bundle of varied narrow vertical scratches',()=>{
   assert.ok(Math.max(...light.flat().map(p=>Math.abs(p.y-100)))<Math.min(...heights)/2);
 });
 
+// 見込み: 線の芯が途中で曲がり、ほぼ直線の線も混ざる。合格: 100pxの11本中8本以上が端点間の直線から1px超外れ、最大6px未満・左右両方向。範囲: 固定seedの中心線、描き味は画面で確認。
+test('the bundle mixes visible bends in both directions with straighter scratches',()=>{
+  const departures=outlines(stroke).map(outline=>{
+    const count=outline.length/2,centers=outline.slice(0,count).map((p,i)=>({x:(p.x+outline.at(-i-1).x)/2,y:p.y}));
+    const first=centers[0],last=centers.at(-1);
+    return centers.map(p=>p.x-first.x-(last.x-first.x)*(p.y-first.y)/(last.y-first.y));
+  });
+  assert.ok(departures.filter(values=>Math.max(...values.map(Math.abs))>1).length>=8);
+  assert.ok(departures.every(values=>Math.max(...values.map(Math.abs))<6));
+  assert.ok(departures.some(values=>Math.max(...values)>1));
+  assert.ok(departures.some(values=>Math.min(...values)<-1));
+});
+
 // 見込み: 再表示・保存再読込・移動で模様が跳ねない。合格: JSON往復完全一致、平行移動後も局所座標一致、異なるseedは異なる模様。範囲: 保存strokeと本体幾何。
 test('seed survives serialization and translation without reshuffling the ink',()=>{
   const original=outlines(stroke);assert.deepEqual(outlines(JSON.parse(JSON.stringify(stroke))),original);

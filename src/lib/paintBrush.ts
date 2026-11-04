@@ -18,14 +18,22 @@ function randomFor(seed:number,index:number) {
 function hatchStamp(point:PaintPoint,size:number,seed:number,index:number,visit:(outline:Point[])=>void) {
   const random=randomFor(seed,index),diameter=pressureRadius(size,point.pressure)*2;
   const lean=(random()-.5)*.13;
+  const phase=randomFor(seed^0x27d4eb2d,index)()*Math.PI*2;
   for(let line=0;line<11;line++){
-    const x=(line-5)*.075+(random()-.5)*.022;
+    const x=(line-5)*.075,offset=(random()-.5)*.022;
     const top=-.49+random()*.20,bottom=.49-random()*.22;
-    const tilt=lean+(random()-.5)*.055,width=.018+random()*.006;
+    const tilt=(random()-.5)*.055,width=.018+random()*.006;
+    // Separate from edge noise so changing the bend keeps the chosen lengths and tips.
+    const sway=randomFor(seed^0x5bd1e995,index*11+line);
+    const bow=(sway()<.5?-1:1)*(.015+sway()*.02),reverse=(sway()-.5)*.024;
     const left:Point[]=[],right:Point[]=[];
     for(let step=0;step<=18;step++){
       const t=step/18,y=top+(bottom-top)*t;
-      const cx=x+y*tilt+(random()-.5)*.007;
+      const curve=bow*Math.sin(Math.PI*t)+reverse*Math.sin(2*Math.PI*t);
+      const deviation=offset+y*tilt+curve+(random()-.5)*.007;
+      // Nearby strokes share some wrist motion, with their own smaller irregularities.
+      const sweep=.035*Math.sin(phase+line*.4)*Math.sin(Math.PI*t);
+      const cx=x+y*lean+sweep+.01*Math.tanh(deviation/.01);
       const taper=step===0||step===18?.12:Math.min(1,Math.sin(Math.PI*t)*3.5);
       // Keep an opaque core; roughness belongs to the edge, including in binary ink.
       const half=width*taper*(.8+random()*.45)/2;
