@@ -2,7 +2,7 @@ import {connectAgentImageGeneration} from '../lib/localBridge';
 import type {QwenAgentRequest} from '../lib/qwenGeneration';
 import VoiceCommands from './VoiceCommands';
 import { isLanClient } from '../lib/clientRuntime';
-import { browserWorkspaces, isBrowserWorkspace } from '../lib/browserWorkspace';
+import { browserWorkspaces, isBrowserWorkspace, type BrowserDirectoryHandle } from '../lib/browserWorkspace';
 import { chooseBrowserFiles, downloadBrowserBlob, blobRevision } from '../lib/browserFiles';
 import { createPortableProject, restorePortableProject } from '../lib/portableProject';
 import { rememberBrowserCatalog, browserCatalogImageIds } from '../lib/browserCatalog';
@@ -46,7 +46,7 @@ import {getOutputSettings} from '../lib/finishLayout.ts';
 import QwenGenerationDialog, { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from './QwenGenerationDialog';
 import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation, type QwenAdoption } from '../lib/qwenGeneration';
 import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
-import { downloadImageBlob, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
+import { canChooseImageExportDirectory, chooseImageExportDirectory, saveImageExport, flattenedPsd, pageExportIndices, pageExportPixels, safeExportName, uncompressedZip, type ImageExportFormat } from '../lib/pageExport';
 import { humanPoseOwnerImage } from '../lib/humanPoseComposition';
 import {generationMaskBounds,loadPaintImages,renderPaintPng,type PaintImages} from '../lib/paintRenderer';
 import {prepareGuideLayer} from '../lib/paintGuide';
@@ -422,6 +422,9 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const [imageImportBusy, setImageImportBusy] = useState(false);
   const [imageExportDialog,setImageExportDialog]=useState<{mode:'current'|'range'|'all';from:number;to:number;format:ImageExportFormat}|null>(null);
   const [imageExportBusy,setImageExportBusy]=useState(false);
+  const [imageExportDirectory,setImageExportDirectory]=useState<BrowserDirectoryHandle|null>(null);
+  const [imageExportProgress,setImageExportProgress]=useState<{value:number;max:number;label:string}|null>(null);
+  const [imageExportError,setImageExportError]=useState('');
   const [paintSession,setPaintSession]=useState<WorkspacePaintSession|null>(null);
   const paintController=useRef<PaintController|null>(null);
   const paintSessionRef=useRef(paintSession);
@@ -1099,7 +1102,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if(event.isComposing)return;
-      if (qwenGeneration || environmentOpen) return;
+      if (qwenGeneration || environmentOpen || imageExportDialog) return;
       const key = event.key.toLowerCase();
       if ((event.metaKey || event.ctrlKey) && key === 's') {
         event.preventDefault();
@@ -1140,7 +1143,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [document, past, future, paintSession, qwenGeneration, showNewDialog, pendingScannerSession, newLayoutItems.length, newLayoutActiveIndex, newLayoutTask, selectedPanels, selectedElement, activePage, activePanel, tab, environmentOpen]);
+  }, [document, past, future, paintSession, qwenGeneration, showNewDialog, pendingScannerSession, newLayoutItems.length, newLayoutActiveIndex, newLayoutTask, selectedPanels, selectedElement, activePage, activePanel, tab, environmentOpen, imageExportDialog]);
 
   const changeTab = (next: WorkspaceTab) => {
     const change=()=>{
@@ -3687,30 +3690,54 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const openImageExportDialog=()=>{
     endTextEdit();
     const page=activePageRef.current+1;
+    setImageExportError('');
+    setImageExportProgress(null);
     setImageExportDialog({mode:'current',from:page,to:page,format:'png'});
+  };
+  const chooseImageExportFolder=async()=>{
+    if(imageExportBusy)return;
+    setImageExportBusy(true);setImageExportError('');
+    try{const directory=await chooseImageExportDirectory(imageExportDirectory);if(directory)setImageExportDirectory(directory);}
+    catch(error){setImageExportError(error instanceof Error?error.message:'保存先を選べませんでした');}
+    finally{setImageExportBusy(false);}
   };
   const exportPageRange=async()=>{
     const choice=imageExportDialog;if(!choice||imageExportBusy)return;
     endTextEdit();
     const current=documentRef.current;
     try{
-      setImageExportBusy(true);
+      setImageExportBusy(true);setImageExportError('');
       const indices=pageExportIndices(current.manga.pages.length,{...choice,current:activePageRef.current+1}),files:Array<{name:string;bytes:Uint8Array;blob:Blob;page:number}>=[];
+      let directory=imageExportDirectory;
+      if(!directory&&canChooseImageExportDirectory()){
+        directory=await chooseImageExportDirectory();
+        if(!directory)return;
+        setImageExportDirectory(directory);
+      }
+      if(directory?.requestPermission&&await directory.requestPermission({mode:'readwrite'})!=='granted')throw new Error('保存先への書き込みが許可されませんでした。保存先を選び直してください');
+      // Yield after real work milestones so the bar paints before the next canvas/ZIP operation.
+      const progress=async(value:number,label:string)=>{
+        setImageExportProgress({value,max:indices.length+2,label});
+        await new Promise(resolve=>setTimeout(resolve,20));
+      };
       for(let position=0;position<indices.length;position++){
+        await progress(position,`ページを書き出し中 ${position+1} / ${indices.length}`);
         if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
-        setToast(`画像を書き出しています… ${position+1}/${indices.length}`);
         const result=await pageExportBlob(current,indices[position],choice.format);
         files.push({...result,bytes:new Uint8Array(await result.blob.arrayBuffer())});
       }
-      if(files.length===1)downloadImageBlob(files[0].blob,files[0].name);
-      else{
-        const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
-        downloadImageBlob(uncompressedZip(files.map(({name,bytes})=>({name,bytes}))),`${safeExportName(current.manga.meta.title||'manga')}-pages-${first}-${last}-${choice.format}.zip`);
-      }
+      await progress(indices.length,files.length>1?'ZIPにまとめています':'保存の準備中');
+      if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
+      const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
+      const blob=files.length===1?files[0].blob:uncompressedZip(files.map(({name,bytes})=>({name,bytes})));
+      const name=files.length===1?files[0].name:`${safeExportName(current.manga.meta.title||'manga')}-pages-${first}-${last}-${choice.format}.zip`;
+      await progress(indices.length+1,directory?'保存しています':'ダウンロードを準備中');
+      await saveImageExport(blob,name,directory);
+      await progress(indices.length+2,directory?'保存しました':'ダウンロードを開始しました');
       setImageExportDialog(null);
-      setToast(files.length===1?`ページ ${files[0].page} を${choice.format.toUpperCase()}で書き出しました`:`ページ ${files[0].page}〜${files.at(-1)!.page} を${choice.format.toUpperCase()}のZIPで書き出しました`);
-    }catch(error){setToast(error instanceof Error?error.message:'画像を書き出せませんでした');}
-    finally{setImageExportBusy(false);}
+      setToast(directory?`${directory.name} に書き出しました`:'ダウンロードを開始しました');
+    }catch(error){setImageExportError(error instanceof Error?error.message:'画像を書き出せませんでした');}
+    finally{setImageExportBusy(false);setImageExportProgress(null);}
   };
   async function persistPaintResults(current:MangaDocument,batches:Array<{pageIndex:number;panelIndex:number;overlay:boolean;title:string;result:PaintResult}>,publish:(next:MangaDocument)=>void){
     const next=cloneDocument(current), stored=next.manga.image_assets??=[];
@@ -4250,17 +4277,18 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     <input ref={placedImageInput} type="file" accept="image/png,image/jpeg" hidden onChange={event => void importPlacedImage(event.currentTarget.files?.[0])} />
     {imageExportDialog&&<div class="image-export-backdrop" onPointerDown={event=>{if(event.target===event.currentTarget&&!imageExportBusy)setImageExportDialog(null);}}>
       <section class="image-export-dialog" role="dialog" aria-modal="true" aria-labelledby="image-export-title" onKeyDown={event=>{if(event.key==='Escape'&&!imageExportBusy){event.preventDefault();setImageExportDialog(null);}}}>
-        <header><div><h2 id="image-export-title">画像を書き出す</h2><p>ページ範囲と画像形式を選びます。</p></div><button type="button" class="icon-button" aria-label="閉じる" disabled={imageExportBusy} onClick={()=>setImageExportDialog(null)}><X size={18}/></button></header>
-        <fieldset><legend>書き出すページ</legend>
-          <label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='current'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'current'})}/>現在のページ（PAGE {String(activePage+1).padStart(2,'0')}）</label>
-          <label class="image-export-range-choice"><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='range'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'range'})}/><span>範囲</span><span class="image-export-page-input">PAGE <input aria-label="開始ページ" type="number" min="1" max={document.manga.pages.length} value={imageExportDialog.from} disabled={imageExportDialog.mode!=='range'||imageExportBusy} onInput={event=>setImageExportDialog({...imageExportDialog,from:event.currentTarget.valueAsNumber})}/></span><span>〜</span><span class="image-export-page-input">PAGE <input aria-label="終了ページ" type="number" min="1" max={document.manga.pages.length} value={imageExportDialog.to} disabled={imageExportDialog.mode!=='range'||imageExportBusy} onInput={event=>setImageExportDialog({...imageExportDialog,to:event.currentTarget.valueAsNumber})}/></span></label>
-          <label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='all'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'all'})}/>全ページ（{document.manga.pages.length}ページ）</label>
+        <header><h2 id="image-export-title">画像を書き出す</h2><button type="button" class="icon-button" aria-label="閉じる" disabled={imageExportBusy} onClick={()=>setImageExportDialog(null)}><X size={18}/></button></header>
+        <fieldset disabled={imageExportBusy}><legend>ページ</legend>
+          <label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='current'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'current'})}/>現在のページ <span class="image-export-muted">（{activePage+1}）</span></label>
+          <div class="image-export-range-choice"><label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='range'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'range'})}/>範囲</label><input aria-label="開始ページ" type="number" min="1" max={document.manga.pages.length} value={imageExportDialog.from} disabled={imageExportDialog.mode!=='range'||imageExportBusy} onInput={event=>setImageExportDialog({...imageExportDialog,from:event.currentTarget.valueAsNumber})}/><span>〜</span><input aria-label="終了ページ" type="number" min="1" max={document.manga.pages.length} value={imageExportDialog.to} disabled={imageExportDialog.mode!=='range'||imageExportBusy} onInput={event=>setImageExportDialog({...imageExportDialog,to:event.currentTarget.valueAsNumber})}/></div>
+          <label><input type="radio" name="image-export-range" checked={imageExportDialog.mode==='all'} onChange={()=>setImageExportDialog({...imageExportDialog,mode:'all'})}/>全ページ <span class="image-export-muted">（{document.manga.pages.length}ページ）</span></label>
         </fieldset>
-        <fieldset><legend>画像形式</legend><div class="image-export-format" role="radiogroup">
-          {(['png','psd'] as const).map(format=><label><input type="radio" name="image-export-format" checked={imageExportDialog.format===format} disabled={imageExportBusy} onChange={()=>setImageExportDialog({...imageExportDialog,format})}/><strong>{format.toUpperCase()}</strong><span>{format==='png'?'一般的な統合画像':'Photoshop／CLIP STUDIO向け統合画像'}</span></label>)}
-        </div></fieldset>
-        <p class="image-export-note">複数ページは1つのZIPにまとめます。用紙サイズと解像度は作品の印刷設定を使います。</p>
-        <footer><button type="button" class="secondary-button" disabled={imageExportBusy} onClick={()=>setImageExportDialog(null)}>キャンセル</button><button type="button" class="primary-button" disabled={imageExportBusy} onClick={()=>void exportPageRange()}><Download size={17}/>{imageExportBusy?'書き出し中…':'書き出す'}</button></footer>
+        <label class="image-export-field"><span>形式</span><select aria-label="書き出し形式" value={imageExportDialog.format} disabled={imageExportBusy} onChange={event=>setImageExportDialog({...imageExportDialog,format:event.currentTarget.value as ImageExportFormat})}><option value="png">PNG</option><option value="psd">PSD（統合画像）</option></select></label>
+        <div class="image-export-field"><span id="image-export-folder-label">保存先</span><div class="image-export-destination"><span title={imageExportDirectory?.name}>{imageExportDirectory?.name??(canChooseImageExportDirectory()?'未選択':'ブラウザーの保存先')}</span>{canChooseImageExportDirectory()&&<button type="button" class="secondary-button" aria-label="保存先を選択" disabled={imageExportBusy} onClick={()=>void chooseImageExportFolder()}>{imageExportDirectory?'変更':'選ぶ'}</button>}</div></div>
+        <p class="image-export-note">複数ページはZIPにまとめます。{!canChooseImageExportDirectory()&&'保存先の選択にはChrome／Edgeを使ってください。'}</p>
+        {imageExportProgress&&<div class="image-export-progress" role="status" aria-live="polite"><div><span>{imageExportProgress.label}</span><span>{Math.round(imageExportProgress.value/imageExportProgress.max*100)}%</span></div><progress aria-label="書き出しの進行状況" value={imageExportProgress.value} max={imageExportProgress.max}/></div>}
+        {imageExportError&&<p class="image-export-error" role="alert">{imageExportError}</p>}
+        <footer><button type="button" class="secondary-button" disabled={imageExportBusy} onClick={()=>setImageExportDialog(null)}>キャンセル</button><button type="button" class="primary-button" disabled={imageExportBusy} onClick={()=>void exportPageRange()}><Download size={17}/>{imageExportBusy?'処理中…':'書き出す'}</button></footer>
       </section>
     </div>}
     <VoiceCommands onActivity={active=>setAgentWorkTarget(active&&selectedElement?{pageIndex:activePage,panelIndex:activePanel,selection:{...selectedElement}}:null)} generation={qwenGeneration?generationConversation:null} portalTarget={generationConversationHost??(environmentOpen?environmentAgentHost:null)} open={voiceOpen} onToggle={()=>setVoiceOpen(!voiceOpen)} profile={agentProfile} onChangeProfile={changeAgentProfile} revision={voiceRevision} apply={applyVoiceCommand} inspect={inspectAgent} edit={applyAgentBubbleEdit}/>

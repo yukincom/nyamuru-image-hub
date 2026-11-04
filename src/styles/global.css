@@ -122,20 +122,31 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .environment-agent-host .agent-popup.is-collapsed { width:fit-content; margin-left:auto; }
 .header-settings-button:focus-visible { outline: 2px solid var(--accent-dark); outline-offset: 3px; }
 .image-export-backdrop { position: fixed; inset: 0; z-index: 170; display: grid; place-items: center; padding: 20px; background: rgba(34,54,43,.26); }
-.image-export-dialog { width: min(560px, 100%); max-height: calc(100dvh - 40px); overflow: auto; padding: 22px; border: 1px solid var(--accent-border); border-radius: 14px; background: var(--paper); box-shadow: 0 18px 50px rgba(34,54,43,.28); }
-.image-export-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
-.image-export-dialog h2 { margin: 0; font-size: 20px; }
-.image-export-dialog header p, .image-export-note { margin: 5px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
-.image-export-dialog fieldset { display: grid; gap: 10px; margin: 0 0 16px; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 9px; }
-.image-export-dialog legend { padding: 0 5px; color: var(--accent-dark); font-size: 13px; font-weight: 800; }
-.image-export-dialog fieldset > label, .image-export-format label { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 14px; }
-.image-export-range-choice { flex-wrap: wrap; }
-.image-export-page-input { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font: 700 12px/1 ui-monospace, monospace; }
-.image-export-page-input input { width: 70px; padding: 6px 7px; border: 1px solid var(--control-border); border-radius: 6px; background: white; color: var(--ink); font: 700 14px/1.2 ui-monospace, monospace; }
-.image-export-format { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
-.image-export-format label { align-items: flex-start; padding: 10px; border: 1px solid var(--control-border); border-radius: 8px; background: var(--control); }
-.image-export-format label > span { color: var(--muted); font-size: 12px; line-height: 1.4; }
-.image-export-dialog > footer { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+.image-export-dialog { width: min(440px, 100%); max-height: calc(100dvh - 40px); overflow: auto; padding: 18px; border: 1px solid var(--accent-border); border-radius: 12px; background: var(--paper); box-shadow: 0 18px 50px rgba(34,54,43,.28); }
+.image-export-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.image-export-dialog h2 { margin: 0; font-size: 18px; }
+.image-export-dialog fieldset { display: grid; gap: 5px; min-width: 0; margin: 0 0 12px; padding: 7px 12px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.image-export-dialog legend { padding: 0 4px; color: var(--accent-dark); font-size: 12px; font-weight: 700; }
+.image-export-dialog fieldset label { display: flex; align-items: center; gap: 7px; min-height: 29px; font-size: 14px; }
+.image-export-dialog input[type="radio"] { width: 15px; height: 15px; flex: 0 0 15px; margin: 0; padding: 0; accent-color: var(--accent-dark); }
+.image-export-muted, .image-export-note { color: var(--muted); font-size: 12px; }
+.image-export-range-choice { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.image-export-range-choice input[type="number"] { width: 64px; min-width: 0; padding: 3px 6px; border-radius: 5px; font-size: 14px; }
+.image-export-field { display: grid; grid-template-columns: 48px minmax(0,1fr); align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; }
+.image-export-field select { padding: 6px 9px; border-radius: 6px; font-size: 14px; }
+.image-export-destination { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.image-export-destination > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.image-export-destination button { flex: none; padding: 5px 10px; font-size: 13px; }
+.image-export-note { margin: 8px 0 0; line-height: 1.45; }
+.image-export-progress { margin-top: 12px; font-size: 12px; color: var(--accent-dark); }
+.image-export-progress > div { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+.image-export-progress progress { display: block; width: 100%; height: 8px; overflow: hidden; border: 0; border-radius: 99px; background: var(--soft-line); accent-color: var(--accent-dark); }
+.image-export-progress progress::-webkit-progress-bar { background: var(--soft-line); border-radius: 99px; }
+.image-export-progress progress::-webkit-progress-value { background: var(--accent-dark); border-radius: 99px; }
+.image-export-progress progress::-moz-progress-bar { background: var(--accent-dark); border-radius: 99px; }
+.image-export-error { margin: 10px 0 0; color: #a12626; font-size: 13px; }
+.image-export-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.image-export-dialog > footer button { padding: 7px 12px; font-size: 14px; }
 .page-sidebar { position: relative; width: 238px; flex: 0 0 238px; min-height: 0; display: flex; flex-direction: column; padding: 12px 20px 12px 13px; background: white; transition: width .2s, flex-basis .2s, padding .2s; z-index: 20; }
 .page-sidebar.is-collapsed { width: 20px; flex-basis: 20px; padding: 0; }
 .collapse-button { width: 29px; height: 29px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--muted); cursor: pointer; }
@@ -1113,7 +1124,6 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
   .app-header .copy-button, .app-header .new-button, .app-header .import-button, .app-header .header-image-button { width: 34px; height: 34px; justify-content: center; padding: 0; font-size: 0; gap: 0; }
   .app-header .primary-button svg, .app-header .copy-button svg, .app-header .new-button svg, .app-header .import-button svg, .app-header .header-image-button svg { width: 18px; height: 18px; }
   .image-export-dialog { padding: 16px; }
-  .image-export-format { grid-template-columns: 1fr; }
   .workspace-tabs { padding: 0; overflow-x: auto; }
   .workspace-tabs button { flex: 0 0 auto; padding: 0 11px; font-size:12px; }
   .workspace-main.has-mobile-storyboard-tabs { display: grid; grid-template-rows: 44px minmax(0, 1fr); }

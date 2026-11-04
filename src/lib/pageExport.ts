@@ -1,4 +1,6 @@
 import type { PaintColorMode } from '../types.ts';
+import type { BrowserDirectoryHandle } from './browserWorkspace.ts';
+import { downloadBrowserBlob } from './browserFiles.ts';
 
 export type ImageExportFormat = 'png' | 'psd';
 export type PageExportRange = {mode:'current'|'range'|'all';current:number;from:number;to:number};
@@ -61,8 +63,36 @@ export async function blobImageData(blob:Blob):Promise<ImageData>{
 
 export function safeExportName(value:string){return value.trim().replace(/[\\/:*?"<>|\u0000-\u001f]/gu,'-').replace(/\s+/gu,' ').slice(0,100)||'manga';}
 
-export function downloadImageBlob(blob:Blob,name:string){
-  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+type ExportPickerWindow = Window & { showDirectoryPicker?: (options: object) => Promise<BrowserDirectoryHandle> };
+export function canChooseImageExportDirectory():boolean {
+  return typeof window!=='undefined'&&typeof (window as ExportPickerWindow).showDirectoryPicker==='function';
+}
+export async function chooseImageExportDirectory(previous:BrowserDirectoryHandle|null=null):Promise<BrowserDirectoryHandle|null> {
+  const picker=(window as ExportPickerWindow).showDirectoryPicker;
+  if(!picker)throw new Error('保存先の選択にはChromeまたはEdgeを使ってください');
+  try{return await picker.call(window,{id:'nyamuru-image-export',mode:'readwrite',startIn:previous??'downloads'});}
+  catch(error){if(error instanceof DOMException&&error.name==='AbortError')return null;throw error;}
+}
+
+/** Export destinations are separate from the project workspace. Never replace an earlier export. */
+export async function saveImageExport(blob:Blob,name:string,directory:BrowserDirectoryHandle|null):Promise<string> {
+  if(!directory){downloadBrowserBlob(blob,name);return name;}
+  const save=async()=>{
+    const dot=name.lastIndexOf('.'),stem=dot<0?name:name.slice(0,dot),extension=dot<0?'':name.slice(dot);
+    for(let suffix=0;suffix<1000;suffix++){
+      const candidate=suffix?`${stem} (${suffix})${extension}`:name;
+      try{await directory.getFileHandle(candidate);continue;}
+      catch(error){if(!(error instanceof DOMException&&error.name==='NotFoundError'))throw error;}
+      const handle=await directory.getFileHandle(candidate,{create:true});
+      const writable=await handle.createWritable();
+      try{await writable.write(blob);await writable.close();}
+      catch(error){await writable.abort().catch(()=>undefined);throw error;}
+      return candidate;
+    }
+    throw new Error('同名のファイルが多すぎます。別の保存先を選んでください');
+  };
+  // Serialize naming through close across tabs as well as repeated exports in this window.
+  return globalThis.navigator?.locks?navigator.locks.request('nyamuru-image-export',save):save();
 }
 
 type ZipEntry={name:string;bytes:Uint8Array};
