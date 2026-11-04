@@ -25,6 +25,7 @@
     "dev": "node scripts/start-dev.mjs",
     "lan": "node scripts/start-lan.mjs",
     "setup:vision": "node scripts/setup-local-vision.mjs",
+    "setup:clip": "node scripts/build-clip-export.mjs",
     "bridge": "node scripts/start-local-bridge.mjs",
     "bridge:check": "node scripts/start-local-bridge.mjs --check",
     "bridge:check-vlm": "node scripts/start-local-bridge.mjs --check-vlm",

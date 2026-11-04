@@ -1355,6 +1355,17 @@ async function postJson(path: string, body: object, timeoutMs = REQUEST_TIMEOUT_
   return postBridgeJson(path, body, timeoutMs);
 }
 
+/** The local helper returns a native .clip; no project save is performed. */
+export async function requestClipExport(page:import('./clipExport.ts').ClipExportPage):Promise<Blob> {
+  return withNewCreationBridgeSession(async()=>{
+    const value=await postBridgeJson('/api/export/clip',page,270_000) as Record<string,unknown>;
+    if(value.profile!=='nyamuru-clip-v1'||typeof value.clip_data!=='string')throw new Error('CLIP書き出しの応答を確認できませんでした');
+    const binary=atob(value.clip_data);
+    if(!binary.startsWith('CSFCHUNK')||binary.length!==value.byte_length)throw new Error('CLIP書き出しデータが不完全です');
+    return new Blob([Uint8Array.from(binary,c=>c.charCodeAt(0))],{type:'application/octet-stream'});
+  });
+}
+
 async function postBridgeJson(path: string, body: object, timeoutMs: number): Promise<unknown> {
   await verifyBridgeIdentity(Math.min(timeoutMs, 10_000));
   const controller = new AbortController();

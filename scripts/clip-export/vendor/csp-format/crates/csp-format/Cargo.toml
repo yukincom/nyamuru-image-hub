@@ -1,0 +1,28 @@
+[package]
+name = "csp-format"
+description = "Read, verify and write CLIP STUDIO PAINT files (.clip / .cmc)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["clip-studio-paint", "csp", "clip", "manga", "file-format"]
+categories = ["parser-implementations", "multimedia::images", "encoding"]
+include = ["/src", "/assets", "/examples", "/README.md", "/LICENSE"]
+
+[dependencies]
+# CSP compresses with zlib (madler); its exact output is needed to reproduce
+# blocks byte for byte, so the bundled C zlib is used instead of miniz_oxide.
+flate2 = { version = "1.1", default-features = false, features = ["zlib"] }
+libz-sys = { version = "1.1", default-features = false, features = ["static", "libc"] }
+libc = "0.2"
+png = "0.18"
+rusqlite = { version = "0.40", features = ["bundled", "serialize"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+tempfile = "3"

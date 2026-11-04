@@ -1,0 +1,25 @@
+[package]
+name = "csp-assets"
+description = "Read and write CLIP STUDIO PAINT's other files: sub tools (.sut), auto actions, colour sets, gradient sets, material folders"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["clip-studio-paint", "csp", "subtool", "brush", "file-format"]
+categories = ["parser-implementations", "encoding"]
+include = ["/src", "/examples", "/README.md", "/LICENSE"]
+
+[dependencies]
+csp-format.workspace = true
+encoding_rs = "0.8"
+quick-xml = "0.41"
+rusqlite = { version = "0.40", features = ["bundled", "serialize"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+tempfile = "3"

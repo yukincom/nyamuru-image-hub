@@ -1,0 +1,752 @@
+{
+  "formatVersion": 2,
+  "title": "全項目",
+  "storyIndex": 4,
+  "author": "作者",
+  "binding": "left",
+  "pageFormat": {
+    "canvasMm": [
+      210,
+      297
+    ],
+    "trimMm": [
+      182,
+      257
+    ],
+    "basicMm": [
+      150,
+      220
+    ],
+    "basicOffsetMm": [
+      30,
+      38.5
+    ]
+  },
+  "pages": [
+    {
+      "id": "page1",
+      "memo": "ページのメモ",
+      "panels": [
+        {
+          "id": "page1-panel1",
+          "shape": [
+            [
+              10,
+              10
+            ],
+            [
+              100,
+              10
+            ],
+            [
+              100,
+              80
+            ],
+            [
+              10,
+              80
+            ]
+          ],
+          "order": 1,
+          "border": "thick",
+          "openEdges": [
+            2
+          ],
+          "fill": "black",
+          "effect": "speed",
+          "z": 1,
+          "note": "引き",
+          "noteAt": [
+            2.5,
+            3.5
+          ],
+          "spread": "spread1"
+        }
+      ],
+      "lines": [
+        {
+          "id": "page1-line1",
+          "text": "セリフ\n二行目",
+          "kind": "thought",
+          "speaker": "char1",
+          "panel": "page1-panel1",
+          "box": [
+            20,
+            20,
+            40,
+            60
+          ],
+          "fontSizePt": 9.5,
+          "vertical": true,
+          "balloon": [
+            [
+              18,
+              18
+            ],
+            [
+              42,
+              18
+            ],
+            [
+              42,
+              62
+            ]
+          ],
+          "balloonShape": "cloud",
+          "tails": [
+            {
+              "tip": [
+                50,
+                70
+              ],
+              "style": "bubbles",
+              "bend": -1.5
+            }
+          ],
+          "linkTo": "page1-line2",
+          "inverted": true,
+          "emphasis": true,
+          "mask": true
+        }
+      ],
+      "strokes": [
+        {
+          "id": "page1-stroke1",
+          "points": [
+            [
+              1.25,
+              2.5,
+              0.5
+            ],
+            [
+              3.5,
+              4.75,
+              0.625,
+              0.125,
+              0.875
+            ]
+          ],
+          "widthMm": 0.4,
+          "closed": true,
+          "over": true,
+          "brush": "brush1",
+          "cut": [
+            true,
+            false
+          ]
+        }
+      ],
+      "roughs": [
+        {
+          "id": "page1-rough1",
+          "layerId": 12,
+          "layerName": "ラフ",
+          "sheetCrop": [
+            1,
+            2,
+            300,
+            400
+          ],
+          "box": [
+            0,
+            0,
+            182,
+            257
+          ]
+        }
+      ],
+      "breakouts": [
+        {
+          "id": "page1-breakout1",
+          "shape": [
+            [
+              5,
+              5
+            ],
+            [
+              15,
+              5
+            ],
+            [
+              15,
+              15
+            ]
+          ],
+          "note": "はみ出し"
+        }
+      ],
+      "joinNext": true,
+      "stickies": [
+        {
+          "id": "page1-sticky1",
+          "text": "付箋",
+          "at": [
+            30,
+            40
+          ],
+          "color": "pink",
+          "link": {
+            "kind": "line",
+            "id": "page1-line1",
+            "at": [
+              1,
+              2
+            ]
+          }
+        }
+      ],
+      "fills": [
+        {
+          "id": "page1-fill1",
+          "shape": [
+            [
+              0,
+              0
+            ],
+            [
+              10,
+              0
+            ],
+            [
+              10,
+              10
+            ]
+          ],
+          "tone": "gray"
+        }
+      ]
+    }
+  ],
+  "characters": [
+    {
+      "id": "char1",
+      "name": "主人公",
+      "color": "#cc3344",
+      "tone": "です・ます"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene1",
+      "title": "出会い",
+      "summary": "二人が出会う",
+      "firstPage": "page1",
+      "lastPage": "page1",
+      "storyTime": "夏",
+      "storyOrder": 2
+    }
+  ],
+  "emotions": [
+    {
+      "character": "char1",
+      "page": "page1",
+      "value": 0.5,
+      "note": "期待"
+    }
+  ],
+  "source": {
+    "path": "C:/ネーム/第4話.clip",
+    "resolution": 350,
+    "cells": [
+      [
+        0,
+        0,
+        100,
+        140
+      ]
+    ]
+  },
+  "brushes": [
+    {
+      "id": "brush1",
+      "name": "鉛筆",
+      "kind": "eraser",
+      "sizeMm": 0.7,
+      "sizePressure": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "sizeTilt": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "sizeSpeed": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "sizeRandom": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "opacity": 0.9,
+      "opacityPressure": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "opacityTilt": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "opacitySpeed": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "opacityRandom": {
+        "min": 0.25,
+        "curve": [
+          [
+            0.5,
+            0.75
+          ]
+        ]
+      },
+      "hardness": 0.5,
+      "stabilization": 12,
+      "stabilizationBySpeed": true,
+      "postCorrection": 3,
+      "taperInMm": 1.5,
+      "taperOutMm": 2.5,
+      "thickness": 80,
+      "rotation": 30,
+      "tip": {
+        "pngBase64": "iVBORw0KGgo=",
+        "width": 16,
+        "height": 8,
+        "interval": 25,
+        "enabled": true
+      },
+      "erase": "intersection",
+      "source": "鉛筆.sut"
+    }
+  ],
+  "alternatives": [
+    {
+      "id": "alt1",
+      "pageIds": [
+        "page1"
+      ],
+      "active": "option1",
+      "options": [
+        {
+          "id": "option2",
+          "name": "別案",
+          "pages": [
+            {
+              "id": "page9",
+              "memo": "ページのメモ",
+              "panels": [
+                {
+                  "id": "page9-panel1",
+                  "shape": [
+                    [
+                      10,
+                      10
+                    ],
+                    [
+                      100,
+                      10
+                    ],
+                    [
+                      100,
+                      80
+                    ],
+                    [
+                      10,
+                      80
+                    ]
+                  ],
+                  "order": 1,
+                  "border": "thick",
+                  "openEdges": [
+                    2
+                  ],
+                  "fill": "black",
+                  "effect": "speed",
+                  "z": 1,
+                  "note": "引き",
+                  "noteAt": [
+                    2.5,
+                    3.5
+                  ],
+                  "spread": "spread1"
+                }
+              ],
+              "lines": [
+                {
+                  "id": "page9-line1",
+                  "text": "セリフ\n二行目",
+                  "kind": "thought",
+                  "speaker": "char1",
+                  "panel": "page9-panel1",
+                  "box": [
+                    20,
+                    20,
+                    40,
+                    60
+                  ],
+                  "fontSizePt": 9.5,
+                  "vertical": true,
+                  "balloon": [
+                    [
+                      18,
+                      18
+                    ],
+                    [
+                      42,
+                      18
+                    ],
+                    [
+                      42,
+                      62
+                    ]
+                  ],
+                  "balloonShape": "cloud",
+                  "tails": [
+                    {
+                      "tip": [
+                        50,
+                        70
+                      ],
+                      "style": "bubbles",
+                      "bend": -1.5
+                    }
+                  ],
+                  "linkTo": "page9-line2",
+                  "inverted": true,
+                  "emphasis": true,
+                  "mask": true
+                }
+              ],
+              "strokes": [
+                {
+                  "id": "page9-stroke1",
+                  "points": [
+                    [
+                      1.25,
+                      2.5,
+                      0.5
+                    ],
+                    [
+                      3.5,
+                      4.75,
+                      0.625,
+                      0.125,
+                      0.875
+                    ]
+                  ],
+                  "widthMm": 0.4,
+                  "closed": true,
+                  "over": true,
+                  "brush": "brush1",
+                  "cut": [
+                    true,
+                    false
+                  ]
+                }
+              ],
+              "roughs": [
+                {
+                  "id": "page9-rough1",
+                  "layerId": 12,
+                  "layerName": "ラフ",
+                  "sheetCrop": [
+                    1,
+                    2,
+                    300,
+                    400
+                  ],
+                  "box": [
+                    0,
+                    0,
+                    182,
+                    257
+                  ]
+                }
+              ],
+              "breakouts": [
+                {
+                  "id": "page9-breakout1",
+                  "shape": [
+                    [
+                      5,
+                      5
+                    ],
+                    [
+                      15,
+                      5
+                    ],
+                    [
+                      15,
+                      15
+                    ]
+                  ],
+                  "note": "はみ出し"
+                }
+              ],
+              "joinNext": true,
+              "stickies": [
+                {
+                  "id": "page9-sticky1",
+                  "text": "付箋",
+                  "at": [
+                    30,
+                    40
+                  ],
+                  "color": "pink",
+                  "link": {
+                    "kind": "line",
+                    "id": "page9-line1",
+                    "at": [
+                      1,
+                      2
+                    ]
+                  }
+                }
+              ],
+              "fills": [
+                {
+                  "id": "page9-fill1",
+                  "shape": [
+                    [
+                      0,
+                      0
+                    ],
+                    [
+                      10,
+                      0
+                    ],
+                    [
+                      10,
+                      10
+                    ]
+                  ],
+                  "tone": "gray"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "plan": {
+    "targetPages": 24,
+    "structure": "shape1",
+    "shapes": [
+      {
+        "id": "shape1",
+        "label": "自分の型",
+        "parts": [
+          {
+            "name": "導入",
+            "share": 0.25,
+            "color": "#88aa44"
+          }
+        ],
+        "beats": [
+          {
+            "name": "転機",
+            "at": 0.5
+          }
+        ]
+      }
+    ]
+  },
+  "lineShapes": {
+    "speech": "rounded",
+    "thought": "polygon",
+    "narration": "box",
+    "sfx": "none",
+    "aside": "dashed"
+  },
+  "held": [
+    {
+      "id": "held1",
+      "panel": {
+        "id": "page1-panel1",
+        "shape": [
+          [
+            10,
+            10
+          ],
+          [
+            100,
+            10
+          ],
+          [
+            100,
+            80
+          ],
+          [
+            10,
+            80
+          ]
+        ],
+        "order": 1,
+        "border": "thick",
+        "openEdges": [
+          2
+        ],
+        "fill": "black",
+        "effect": "speed",
+        "z": 1,
+        "note": "引き",
+        "noteAt": [
+          2.5,
+          3.5
+        ],
+        "spread": "spread1"
+      },
+      "lines": [
+        {
+          "id": "page1-line1",
+          "text": "セリフ\n二行目",
+          "kind": "thought",
+          "speaker": "char1",
+          "panel": "page1-panel1",
+          "box": [
+            20,
+            20,
+            40,
+            60
+          ],
+          "fontSizePt": 9.5,
+          "vertical": true,
+          "balloon": [
+            [
+              18,
+              18
+            ],
+            [
+              42,
+              18
+            ],
+            [
+              42,
+              62
+            ]
+          ],
+          "balloonShape": "cloud",
+          "tails": [
+            {
+              "tip": [
+                50,
+                70
+              ],
+              "style": "bubbles",
+              "bend": -1.5
+            }
+          ],
+          "linkTo": "page1-line2",
+          "inverted": true,
+          "emphasis": true,
+          "mask": true
+        }
+      ],
+      "strokes": [
+        {
+          "id": "page1-stroke1",
+          "points": [
+            [
+              1.25,
+              2.5,
+              0.5
+            ],
+            [
+              3.5,
+              4.75,
+              0.625,
+              0.125,
+              0.875
+            ]
+          ],
+          "widthMm": 0.4,
+          "closed": true,
+          "over": true,
+          "brush": "brush1",
+          "cut": [
+            true,
+            false
+          ]
+        }
+      ],
+      "fills": [
+        {
+          "id": "page1-fill1",
+          "shape": [
+            [
+              0,
+              0
+            ],
+            [
+              10,
+              0
+            ],
+            [
+              10,
+              10
+            ]
+          ],
+          "tone": "gray"
+        }
+      ],
+      "stickies": [
+        {
+          "id": "page1-sticky1",
+          "text": "付箋",
+          "at": [
+            30,
+            40
+          ],
+          "color": "pink",
+          "link": {
+            "kind": "line",
+            "id": "page1-line1",
+            "at": [
+              1,
+              2
+            ]
+          }
+        }
+      ],
+      "near": "page1",
+      "from": "page2"
+    }
+  ],
+  "nextId": 42
+}

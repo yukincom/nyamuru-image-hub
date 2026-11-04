@@ -1,0 +1,20 @@
+[package]
+name = "name-model"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "ネームデータ（正本）: ページ、コマ、セリフ、線、シーン、登場人物、感情の推移"
+
+[dependencies]
+flate2 = "1.1.10"
+serde_ignored = "0.1.14"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+ts-rs = { version = "12", optional = true }
+
+[features]
+# The TypeScript form of the name data, checked against the app's model.ts (tests/typescript.rs).
+ts = ["dep:ts-rs"]
+
+[dev-dependencies]
+tempfile = "3"

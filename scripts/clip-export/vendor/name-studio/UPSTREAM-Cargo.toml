@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+members = ["crates/clip-core", "crates/name-cli", "app/src-tauri", "crates/name-model"]
+
+[workspace.dependencies]
+# CSP の形式（読む・検査する・書き戻す）。rev を上げるときは csp-format の main を見て。
+csp-format = { git = "https://github.com/nanikasheila/csp-format", rev = "aaa4e3a0cf6080d780a652a40d236d28e5df59a9" }
+csp-assets = { git = "https://github.com/nanikasheila/csp-format", rev = "aaa4e3a0cf6080d780a652a40d236d28e5df59a9" }
+

@@ -1,0 +1,77 @@
+{
+  "binding": [
+    "right",
+    "left"
+  ],
+  "lineKind": [
+    "speech",
+    "thought",
+    "narration",
+    "sfx",
+    "aside"
+  ],
+  "panelBorder": [
+    "solid",
+    "thick",
+    "none",
+    "dashed",
+    "wavy"
+  ],
+  "panelFill": [
+    "none",
+    "white",
+    "black",
+    "gray"
+  ],
+  "panelEffect": [
+    "none",
+    "speed",
+    "focus",
+    "flash",
+    "sparkle"
+  ],
+  "balloonShape": [
+    "auto",
+    "ellipse",
+    "rounded",
+    "box",
+    "polygon",
+    "cloud",
+    "spike",
+    "burst",
+    "wavy",
+    "flash",
+    "electric",
+    "dashed",
+    "none",
+    "custom"
+  ],
+  "tailStyle": [
+    "wedge",
+    "bubbles",
+    "line",
+    "zigzag"
+  ],
+  "brushKind": [
+    "pen",
+    "eraser"
+  ],
+  "eraseMode": [
+    "touched",
+    "intersection",
+    "whole"
+  ],
+  "storyPosition": [
+    "left",
+    "center",
+    "right"
+  ],
+  "nombrePlace": [
+    "top-inner",
+    "top",
+    "top-outer",
+    "bottom-inner",
+    "bottom",
+    "bottom-outer"
+  ]
+}

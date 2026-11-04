@@ -2,6 +2,8 @@ node_modules/
 .venv/
 .local-vision/
 .local-generation/
+.local-clip-export/
+scripts/clip-export/target/
 # 人物素体・出典画像・確認用のローカル素材
 .human_pose/
 __pycache__/

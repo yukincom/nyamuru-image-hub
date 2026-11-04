@@ -118,6 +118,12 @@ test('trusted HTTPS and code-free processing retain origin and workspace/file-sy
   assert.equal(calls.length, 1);
   assert.equal((await send('/__nyamuru/supervisor/api/new-creation/stop', { ...post, headers: { ...post.headers, 'Content-Type': 'text/plain;charset=UTF-8' } })).status, 200);
   assert.equal(calls.length, 2);
+  // 見込み: CLIP変換も既存のOrigin境界内でローカルへ届く。
+  // 合格: JSON本文が同一で転送され、外部Originは403。転送先は模擬、実変換はPython側で確認。
+  const clipBody=JSON.stringify({profile:'nyamuru-clip-v1',layers:[]});
+  assert.equal((await send('/__nyamuru/bridge/api/export/clip',{...post,body:clipBody})).status,200);
+  assert.equal(calls.at(-1).path,'/api/export/clip');assert.equal(calls.at(-1).body,clipBody);
+  assert.equal((await send('/__nyamuru/bridge/api/export/clip',{...post,headers:{...post.headers,Origin:'https://other.test'},body:clipBody})).status,403);
   // 見込み: LANでも生成画面を開き、処理を依頼し、候補を受け取って採用してから閉じられる。
   // 合格: 各本文がHTTPSで対応する処理へ届き、離脱時のtext/plainは停止だけ許可。転送先は模擬、モデルは未使用。
   const token = '0165bcda-37bb-49c7-a0ce-e29591a8f638';

@@ -16,6 +16,7 @@ export const BRIDGE_PATHS = new Set([
   '/api/comfy-workflows/list', '/api/comfy-workflows/save', '/api/comfy-workflows/delete',
   '/api/comfy-workflows/check', '/api/comfy-workflows/info',
   '/api/image-generation/connections',
+  '/api/export/clip',
 ]);
 export const SUPERVISOR_PATHS = new Set([
   '/api/manga-finish',

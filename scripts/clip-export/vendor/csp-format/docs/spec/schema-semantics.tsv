@@ -1,0 +1,435 @@
+# The meaning of each database column, for tools/corpus/schema_doc.py.
+# key<TAB>status<TAB>meaning. key is Table.Column, Table.* (the table itself), or re:REGEX on "Table.Column".
+# Exact keys win; otherwise the first matching re: line. status: 確認済み / 推測 / 未解明.
+# 確認済み: read or written by the library and checked (corpus V1, CSP V6, tests). 推測: from the name and the values.
+#
+# ---- columns every table has
+re:^[A-Za-z0-9]+\._PW_ID$	確認済み	SQLite の行 ID（AUTOINCREMENT）。参照には使われない
+re:^[A-Za-z0-9]+\.MainId$	確認済み	行の ID。ほかの表のリンク列はこの値を指す。ElemScheme.MaxIndex が次の値の上限を持つ（飛び番あり）
+re:^[A-Za-z0-9]+\.CanvasId$	確認済み	属するキャンバス（Canvas.MainId）。.clip ではふつう 1、まれに 2
+re:^[A-Za-z0-9]+\.LayerId$	確認済み	属するレイヤー（Layer.MainId）。0 はキャンバス全体のもの（用紙など）
+re:^[A-Za-z0-9]+\.NextIndex$	確認済み	同じ並びの次の行の MainId（連結リスト、0 で終わり）
+#
+# ---- tables
+ParamScheme.*	確認済み	CSP が知っている全テーブル・全列の登録（列名、DataType 1 整数 2 実数 3 文字列 4 BLOB、リンク先）。使わない表も含む
+ElemScheme.*	確認済み	表ごとの要素の種類と MaxIndex（次に振る MainId の上限）
+ExternalTableAndColumnName.*	確認済み	外部チャンクの ID を持つ列の一覧
+ExternalChunk.*	確認済み	外部チャンク（CHNKExta）の ID と、ファイル内の位置
+ExternalChunk.ExternalID	確認済み	外部チャンクの ID（40 文字の文字列。全 719 件で TEXT）
+ExternalChunk.Offset	確認済み	ファイルの先頭から CHNKExta までのバイト数（V1 で全件一致）
+RemovedExternal.*	推測	削除された外部チャンクの ID。コーパスでは常に空
+Project.*	確認済み	ファイル全体（1 行）。.cmc では作品の設定
+Canvas.*	確認済み	キャンバスの設定（大きさ・解像度・単位・トンボ・作品情報など）
+Layer.*	確認済み	レイヤー。LayerFirstChildIndex と LayerNextIndex で木になる
+Offscreen.*	確認済み	画素の格納（256×256 のブロックの格子）
+VOffscreen.*	確認済み	使われない表。列名は Offscreen.Attribute の値の並びと同じ
+Mipmap.*	確認済み	ミップマップ（縮小画像の段の並び）の先頭
+MipmapInfo.*	確認済み	ミップマップの 1 段（倍率と Offscreen）
+LayerThumbnail.*	確認済み	レイヤーパレットのサムネイル
+CanvasPreview.*	確認済み	ファイル全体の縮小画像（PNG）
+VectorObjectList.*	確認済み	ベクターレイヤーの線・枠線・フキダシのデータ
+LayerObject.*	推測	3D レイヤーのオブジェクト（カメラ・光源・デッサン人形・小物）の並び
+FolderInfo.*	推測	3D オブジェクトのフォルダー
+CameraInfo.*	推測	3D のカメラ
+CameraNodeInfo.*	推測	3D のカメラの節点
+LightInfo.*	推測	3D の光源
+DessinDollInfo.*	推測	3D デッサン人形
+SmallObjectInfo.*	推測	3D の小物
+CharacterInfo.*	推測	3D キャラクター
+RoomInfo.*	推測	3D の背景（部屋）
+PrimitiveInfo.*	推測	3D プリミティブ
+Manager3D.*	推測	3D 空間の管理（旧形式）
+Manager3DOd.*	推測	3D 空間の管理。SceneData は外部チャンク
+ModelData3D.*	推測	3D モデルのデータ（外部チャンク）
+ModelInfo3D.*	推測	3D モデルの情報
+ModelNodeInfo3D.*	推測	3D モデルの節点
+Canvas3DModelBank.*	推測	キャンバスが持つ 3D モデルの保管庫（外部チャンク）
+Canvas3DModelLoader.*	推測	3D モデルの読み込み（外部チャンク）
+CanvasItem.*	推測	素材の保管庫（キャンバスに貼った素材）の項目
+CanvasItemBank.*	推測	素材の保管庫
+CanvasItemBinary.*	推測	素材の中身（外部チャンク）
+CanvasNode.*	確認済み	.cmc のページ（連結リスト）。.clip では使わない
+BrushStyle.*	推測	ブラシの設定（ベクター線の描き方）。VectorData の線がこの MainId を参照する
+BrushStyleManager.*	推測	ブラシ設定の一覧
+BrushEffectorGraphData.*	推測	ブラシの筆圧などの影響のグラフ（制御点）
+BrushPatternImage.*	推測	ブラシ先端の画像
+BrushPatternStyle.*	推測	ブラシ先端の画像の使い方
+BrushFixedSpray.*	推測	スプレーの固定配置
+FillStyle.*	推測	塗りの設定（ベクターの塗り）
+StreamLine.*	推測	流線・集中線の設定
+RulerEmit.*	推測	放射線定規
+RulerParallel.*	推測	平行線定規
+RulerPerspective.*	推測	パース定規
+RulerSymmetry.*	推測	対称定規
+RulerVanishPoint.*	推測	パース定規の消失点
+RulerConcentricCircle.*	推測	同心円定規
+RulerCurveEmit.*	推測	曲線の放射線定規
+RulerCurveParallel.*	推測	曲線の平行線定規
+RulerGuide.*	推測	ガイド
+RulerMultiCurve.*	推測	連続曲線の定規
+SpecialRulerManager.*	推測	特殊定規の一覧
+LayerComp.*	推測	レイヤーカンプ（レイヤーの表示状態の保存）
+LayerCompManager.*	推測	レイヤーカンプの一覧
+TimeLapseManager.*	推測	タイムラプスの記録
+TimeLapseRecord.*	推測	タイムラプスの記録の 1 区切り
+TimeLapseBlob.*	推測	タイムラプスの記録のデータ（外部チャンク）
+AnimationCutBank.*	推測	アニメーションのカット
+Scenario.*	推測	アニメーションのシナリオ
+TimeLine.*	推測	アニメーションのタイムライン
+TimeLineLabel.*	推測	タイムラインのラベル
+Track.*	推測	タイムラインのトラック（外部チャンクのアクション）
+SituationCast.*	推測	アニメーションの登場物
+SituationSet.*	推測	アニメーションの場面
+SpeechSynthesis.*	推測	音声合成（読み上げ）の設定
+#
+# ---- Project
+Project.ProjectInternalVersion	確認済み	CSP の内部版（短い文字列）。新規作成では CSP が保存したファイルと同じ値を書く
+Project.ProjectName	確認済み	プロジェクト名（短い文字列）
+Project.ProjectCanvas	確認済み	キャンバス（Canvas.MainId）
+Project.ProjectItemBank	確認済み	素材の保管庫（CanvasItemBank.MainId）
+Project.ProjectCutBank	確認済み	アニメーションのカット（AnimationCutBank.MainId）
+Project.ProjectLayerCompManager	確認済み	レイヤーカンプの一覧（LayerCompManager.MainId）
+Project.ProjectRootCanvasNode	確認済み	.cmc の最初のページ（CanvasNode.MainId）。.clip では 0
+Project.ProjectProgressStep	推測	作業の進み（企画・ネーム・下描き…）。コーパスでは未設定
+Project.CopiedCanvasIndex	推測	コピーしたキャンバスの番号。コーパスでは未設定
+re:^Project\.WebCooperation	推測	Web 連携（アップロード先と鍵）。コーパスでは未設定
+re:^Project\.ComicStory	確認済み	作品情報（作品名・話数・作者名・ノンブルの書式と位置）の既定値。Canvas の同名の列と同じ意味。新規作成で書く
+re:^Project\.DefaultPage(Width|Height)$	確認済み	作品の既定のページの大きさ（DefaultPageUnit の単位）
+Project.DefaultPageUnit	確認済み	既定のページの単位（0 px、1 cm、2 mm、3 inch、5 pt）
+Project.DefaultPageResolution	確認済み	既定のページの解像度（dpi）
+re:^Project\.DefaultPagePaper(Red|Green|Blue)$	確認済み	既定の用紙の色。32 ビットの値の上位 8 ビットが色の値
+Project.DefaultPageUsePaper	確認済み	既定のページで用紙を作る
+re:^Project\.DefaultPageChannel(Bytes|Order)$	確認済み	既定の画素の形式（Canvas.CanvasChannelBytes / CanvasDefaultChannelOrder と同じ）
+re:^Project\.DefaultPage(ColorType|BlackChecked|WhiteChecked|ToneLine)$	推測	既定の表現色（カラー・グレー・モノクロ）と、モノクロの黒・白、トーンの線数
+re:^Project\.DefaultPageCrop	推測	既定のトンボ（仕上がり・基本枠・裁ち落とし幅、Canvas.CropFrame* と同じ）
+re:^Project\.DefaultPageSafeMargin	推測	既定の安全マージン（上下左右）
+Project.DefaultPageUseCropFrame	推測	既定のページにトンボを付ける
+Project.DefaultPageDoublePage	確認済み	対向ページを見開きにする（新規作成の設定。V8）
+Project.DefaultPageCheckBookBinding	推測	製本の確認（綴じの向き）を使う
+re:^Project\.DefaultPage(Cel)?(UseTemplate|IsUserTemplate|TemplateName|TemplatePath2?|TemplateUUID)$	推測	既定のページ（Cel はセル）に使うテンプレートと、それがユーザーのものか
+Project.DefaultPageSettingType	推測	既定のページの設定の種類（短い文字列）
+Project.DefaultPagePresetID	推測	既定のページのプリセットの ID
+re:^Project\.DefaultPage(RecordTimeLapse|TimeLapseCodec)$	推測	既定のページでタイムラプスを記録するか、その形式
+Project.DefaultPageUseDefaultCoverInfo	確認済み	表紙の既定（DefaultCover*）を使う。表紙ありの作品で 1（V8）
+re:^Project\.DefaultCover	推測	表紙の既定（解像度・用紙・テンプレート・表現色・カラープロファイル）。表紙ありの作品を作ると加わる（V8）
+re:^Project\.Default(Src|Simulate)PageColorProfile$	推測	既定の色の設定（ICC プロファイル）。元と、刷り上がりのシミュレーション
+#
+Project.MaxCanvasFileIndex	確認済み	.cmc のページのファイル名に使った最大の番号。新しいページは + 1
+Project.ComicBindPosition	確認済み	.cmc の綴じる位置（1 右綴じ、0 左綴じ。CSP で作った作品で確認、V8）
+Project.ComicStartPage	確認済み	.cmc の開始ページ（0 左から、1 右から。V8）
+Project.ComicCoverExist	確認済み	.cmc に表紙がある（1。表 1〜表 4 のページと DefaultCover* の列が加わる。V8）
+Project.ComicBindAndStartPageIndeterminate	推測	綴じと開始ページが決まっていない（1。縦スクロールの作品で 1）
+Project.ComicShowStyle	推測	.cmc の作品の種類（0 見開きの本、1 縦スクロール（Webtoon）。1 の作品では製本リストが使えない）
+Project.ComicWebtoonWrapDirection	推測	縦スクロール（Webtoon）の折り返しの向き
+Project.PrintingCompanyID	推測	入稿先の印刷所の ID
+re:^Project\.(Cover[14]|Sentence)(Prefix|Suffix)$	推測	表紙（表 1・表 4）と本文のノンブルの前後の文字。コーパスでは未設定
+# ---- Canvas
+Canvas.CanvasUnit	確認済み	CanvasWidth / CanvasHeight の単位（0 px、1 cm、2 mm、3 inch、5 pt）
+re:^Canvas\.Canvas(Width|Height)$	確認済み	キャンバスの大きさ（CanvasUnit の単位）。画素数は解像度から計算して偶数丸め
+Canvas.CanvasResolution	確認済み	解像度（dpi）
+Canvas.CanvasChannelBytes	確認済み	1 チャンネルのバイト数（常に 1）
+Canvas.CanvasDefaultChannelOrder	確認済み	既定の画素の形式。33 カラー、17 グレー
+re:^Canvas\.CanvasDefaultColor(TypeIndex|BlackChecked|WhiteChecked)$	確認済み	キャンバスの基本の表現色（0 カラー、1 グレー、2 モノクロ）とモノクロの黒・白を使うか
+Canvas.CanvasRootFolder	確認済み	ルートのフォルダー（Layer.MainId）
+Canvas.CanvasCurrentLayer	確認済み	選んでいるレイヤー（Layer.MainId）
+Canvas.CanvasDoublePage	確認済み	見開きのページ
+Canvas.CanvasRenderMipmapForceSaved	推測	表示用ミップマップを常に保存する。コーパスでは 0
+Canvas.CanvasWorkTime	推測	作業時間（秒）
+Canvas.CanvasProgressStep	推測	作業の進み。コーパスでは未設定
+Canvas.BrushStyleManager	確認済み	ブラシ設定の一覧（BrushStyleManager.MainId）
+Canvas.BrushStyleReadProtect070	推測	1.7.0 より前の版で開いたときのブラシ設定の保護
+Canvas.Canvas3DModelDataLoaderIndex	推測	3D モデルの読み込み（ModelData3D.MainId）
+Canvas.BankItemUuid	推測	素材として登録したときの UUID
+Canvas.CanvasDoSimulateColor	推測	カラープロファイルのプレビューをする
+re:^Canvas\.Canvas(Src|Dst)Profile(Name)?$	推測	色の設定。元（Src）と出力（Dst）の ICC プロファイルとその名前
+re:^Canvas\.Canvas(RenderingIntent|UseLibraryType)$	推測	色の変換の意図と、変換に使う色管理の種類
+re:^Canvas\.CanvasSimulate	推測	カラープロファイルのプレビュー（刷り上がりのシミュレーション）の設定
+re:^Canvas\.CanvasUseColorAdjustment$	推測	表示の色の調整（レベル補正・トーンカーブ）を使う
+re:^Canvas\.CanvasColorAdjustment(Level|ToneCurve)$	推測	表示の色の調整の設定（BLOB。FilterLayerInfo のレベル補正・トーンカーブと同じ形と推測）
+Canvas.SafeFrameShow	推測	安全マージンの枠を表示する
+re:^Canvas\.CanvasDefaultToneLine$	推測	既定のトーンの線数
+Canvas.ComicBindPosition	確認済み	綴じる位置（1 右綴じ、0 左綴じ）。.cmc の Project の写しで、CSP はページを開いたときに直す（V8）
+Canvas.ComicPageIndex	確認済み	作品の中のページの位置（0 から、見開きは 2 ページ分）。ノンブルの番号は ComicStoryNombreStart + これ
+Canvas.ComicIsLeftPage	確認済み	左のページ（位置が偶数なら左、右から始まる作品では逆）。CSP はページを開いたときに直す（V8）
+Canvas.ComicHasComicCover	確認済み	作品に表紙がある（表紙ありの作品では本文のページも 1。V8）
+Canvas.ComicHasDoubleCover	推測	表紙が見開き
+Canvas.ComicStoryLayerCreated	確認済み	作品情報のレイヤー（LayerType 800）を作った
+Canvas.ComicStoryRightLayerCreated	推測	見開きの右ページの作品情報のレイヤーを作った
+re:^Canvas\.ComicNombre(Right)?LayerCreated$	推測	ノンブルのレイヤーを作った（Right は見開きの右）
+re:^Canvas\.ComicStoryBackupNombre	推測	ノンブルの設定の控え（Nombre* と同じ書式）。コーパスでは未設定
+Canvas.ComicStoryNeedRefresh	推測	作品情報を描き直す必要がある
+re:^Canvas\.ComicStory(StoryName|SubTitle|AuthorName)$	確認済み	作品名・サブタイトル・作者名（文字列）
+re:^Canvas\.ComicStory(StoryPosition|AuthorPosition|PageNumberPosition|NombrePosition)$	推測	作品名・作者名・ページ番号・ノンブルを置く位置（コーナーの番号）
+re:^Canvas\.ComicStory(StoryIndex|UseStoryIndex)$	推測	話数と、話数を表示するか
+re:^Canvas\.ComicStory(PageNumberStart|UsePageNumber)$	推測	ページ番号の開始と表示
+re:^Canvas\.ComicStoryNombre(Start|Prefix|Suffix)$	推測	ノンブルの開始番号と前後の文字
+re:^Canvas\.ComicStoryNombre(Font|FontPostScriptName|FontSize)$	推測	ノンブルの書体（名前・PostScript 名）と大きさ（pt）
+re:^Canvas\.ComicStoryNombre(Color|UseEdge|EdgeWidth|EdgeUnit)$	推測	ノンブルの色、フチを付けるか、フチの幅と単位
+re:^Canvas\.ComicStoryUse(HiddenNombre|ShownNombre)$	推測	隠しノンブルと見えるノンブルを付けるか
+re:^Canvas\.ComicStory[XY]PageNombreOffset(Unit)?$	推測	ノンブルの仕上がり線からの距離と単位
+Canvas.CropFrameShow	推測	トンボを表示する
+re:^Canvas\.CropFrame(Width|Height)$	確認済み	仕上がりの大きさ（CropFrameUnitKind の単位）
+re:^Canvas\.CropFrameInner(Width|Height)$	確認済み	基本枠の大きさ
+re:^Canvas\.CropFrameInnerOffset(X|Y|BasePosition)$	推測	基本枠の位置（基準の位置とずれ）
+Canvas.CropFrameDitch	確認済み	裁ち落とし幅
+Canvas.CropFrameMergeDitch	推測	見開きの合わせの幅（−1 は既定）
+Canvas.CropFrameUnitKind	確認済み	トンボの単位（CanvasUnit と同じ番号）
+Canvas.CropFrameDesignationType	推測	トンボの指定の方法
+re:^Canvas\.CropFrameCropOffset[XY]$	推測	仕上がりの位置のずれ
+Canvas.CropFrameOptionFlag	確認済み	ページの種類とトンボ（ビット。1 見開き、2 左、4 右、16 トンボを合わせる）。新規作成の見開きは 3、見開きに変更したものは 17。CSP はページを開いたときに直す（V8）
+re:^Canvas\.CropFrameSafeMargin	推測	安全マージン（上下左右）
+re:^Canvas\.Grid	推測	グリッド（間隔・分割数・原点と単位）
+Canvas.ShowGrid	推測	グリッドを表示する
+re:^Canvas\.ShowToneArea	推測	トーン範囲を表示する（画像と一緒に）
+re:^Canvas\.LightTable	推測	ライトテーブル（アニメーション）の設定と回転の中心
+re:^Canvas\.OnionSkin	推測	オニオンスキン（前後のセルの色・数・不透明度）
+re:^Canvas\.RulerRotateCenter[XY]$	推測	定規の回転の中心
+re:^Canvas\.TimeLapse(Codec|ManagerIndex)$	推測	タイムラプスの形式と記録（TimeLapseManager.MainId）
+re:^Canvas\.TimeLine	推測	タイムラインの表示と編集の設定
+#
+# ---- Layer: tree, attributes
+Layer.LayerName	確認済み	レイヤー名
+Layer.LayerType	確認済み	種類のビット。1 画素を持つ、2 マスク付き、256 ルート、800 作品情報、1584 用紙、4096 色調補正。ほかの種類は列の有無で決まる（03 章）
+Layer.LayerFolder	確認済み	フォルダーのビット。1 フォルダー、16 パレットで開いている
+Layer.LayerFirstChildIndex	確認済み	最初（一番下）の子（Layer.MainId、0 でなし）
+Layer.LayerNextIndex	確認済み	1 つ上の兄弟（Layer.MainId、0 で終わり）
+Layer.LayerVisibility	確認済み	ビット 0 表示、ビット 1 マスクを使う、ビット 2 パレットでマスクを選んでいる（推測）
+Layer.LayerOpacity	確認済み	不透明度（0〜256、256 が 100%）
+Layer.LayerComposite	確認済み	合成モード（0 通常、30 通過など。コーパスでは 0〜30）。V6 で 28 モードを CSP と照合
+Layer.LayerClip	確認済み	下のレイヤーでクリッピング
+Layer.LayerLock	確認済み	ロック。0 以外でロック（1 が大半。16 などほかのビットは未確認）
+Layer.LayerMasking	推測	マスクの範囲の表示（ビット）
+Layer.LayerSelect	推測	パレットで選ばれている（ビット。258 などの組み合わせ）
+re:^Layer\.LayerOffset[XY]$	確認済み	レイヤーの移動量（キャンバスの画素）
+re:^Layer\.LayerRenderOffscrOffset[XY]$	確認済み	画素の格納の左上の、移動量からの位置。画素の原点 = 移動量 + これ
+re:^Layer\.LayerMaskOffset[XY]$	確認済み	マスクの移動量（レイヤーの移動量からの相対）
+re:^Layer\.LayerMaskOffscrOffset[XY]$	確認済み	マスクの格納の左上。マスクの原点 = 移動量 + マスクの移動量 + これ
+Layer.LayerUuid	確認済み	レイヤーの UUID（36 文字）
+Layer.LayerRenderMipmap	確認済み	画素（Mipmap.MainId）
+Layer.LayerLayerMaskMipmap	確認済み	マスク（Mipmap.MainId、0 でなし）
+Layer.LayerRenderThumbnail	確認済み	サムネイル（LayerThumbnail.MainId）
+Layer.LayerLayerMaskThumbnail	確認済み	マスクのサムネイル（LayerThumbnail.MainId）
+re:^Layer\.LayerColorType(Index|BlackChecked|WhiteChecked)$	確認済み	レイヤーの表現色（0 カラー、1 グレー、2 モノクロ）とモノクロの黒・白
+re:^Layer\.(LayerUsePaletteColor|LayerNoticeablePaletteColor|LayerPalette(Red|Green|Blue))$	推測	レイヤーカラー（パレットの目印の色）。コーパスでは常に 0
+re:^Layer\.DrawColor(Main|Sub)(Red|Green|Blue)$	確認済み	レイヤーの描画色（メイン・サブ）。32 ビットの値の上位 8 ビットが色の値
+Layer.DrawColorEnable	確認済み	レイヤーカラー（描画色で表示する）を使う
+re:^Layer\.(DrawToRenderOffscreenType|SpecialRenderType|DrawToRenderMipmapType|MoveOffsetAndExpandType|FixOffsetAndExpandType|RenderBoundForLayerMoveType|SetRenderThumbnailInfoType|DrawRenderThumbnailType)$	確認済み	描き方の種類（内部の処理の番号）。レイヤーの種類ごとに決まった組（コーパスでは 30 がグラデーションの数、31 が用紙の数と同じ）。新規作成ではこの組を書く
+re:^Layer\.(DrawToMaskOffscreenType|DrawToMaskMipmapType|MaskBoundForLayerMoveType|SetMaskThumbnailInfoType)$	推測	マスクの描き方の種類（コマ枠フォルダーで 21・10・40）
+re:^Layer\.(UsePreviewColorType|PreviewColorType\w+|UsePreviewMaskColorType|PreviewMask\w+)$	推測	表示の表現色（プレビューの色の変換、しきい値、不透明度の適用）
+Layer.MonochromeFillInfo	確認済み	モノクロの色の設定（BLOB）。2 値の画素の黒・白の色
+Layer.LightTableInfo	確認済み	ライトテーブルの設定（BLOB、15 バイト）。CSP は新しいレイヤーでは NULL にする
+re:^Layer\.(LightTableReferCell|ReferLayer)$	推測	参照レイヤー（塗りの参照先）とライトテーブルの参照
+Layer.OutputAttribute	推測	出力の属性（1〜3、値の意味は未確認）
+re:^Layer\.DrawUpperMipmapFor(Edge|Line|Monochrome|Tone)(Flag|Index|Use)$	推測	フチ・線・モノクロ・トーンを、上の段（縮小）のミップマップで描くかとその段
+Layer.DraftLayer	推測	下描きレイヤー
+Layer.GuideMove	推測	ガイドと一緒に動かす
+Layer.MixSubColorForEveryPlot	推測	ブラシの点ごとにサブ色を混ぜる
+Layer.MaterialContentType	推測	素材の中身の種類（110 など）
+re:^Layer\.(Has1_0_\d+|LayerEffectHas1_0_19|FilterLayerV132|HasNewDessindoll|HasPrimitive|Flag3DOdRelease)$	推測	その版の機能を使ったかの印（版の番号が名前に入っている）
+Layer.BankItemUuid	推測	素材として登録したときの UUID
+Layer.WebCooperationLayerEditable	推測	Web 連携で編集できるレイヤー
+#
+# ---- Layer: kinds
+Layer.TextLayerString	確認済み	テキストの文字列（BLOB）
+Layer.TextLayerStringArray	確認済み	テキストの文字列の配列（複数の文字列）
+Layer.TextLayerAttributes	確認済み	テキストの書式（BLOB）
+Layer.TextLayerAttributesArray	確認済み	テキストの書式の配列
+Layer.TextLayerAddAttributesV01	推測	テキストの書式の追加分（BLOB、版 1）
+re:^Layer\.TextLayer(Version|AttributesVersion|Type|NameAutoChangeEnabled)$	推測	テキストの形式の版、種類（0〜2、値の意味は未確認）、レイヤー名を文字列に合わせる
+re:^Layer\.VectorNormal(Stroke|Fill|Balloon)Index$	確認済み	ベクターの線・塗り・フキダシのデータ（VectorObjectList.MainId）
+re:^Layer\.VectorNormal(Stroke|Fill|Balloon)$	推測	ベクターのデータ（旧形式、BLOB）。コーパスでは未設定
+Layer.VectorNormalType	推測	ベクターレイヤーの種類（0〜3、値の意味は未確認）
+Layer.RulerVectorIndex	推測	定規のベクター（VectorObjectList.MainId）
+Layer.RulerRange	推測	定規の表示範囲（0〜2、値の意味は未確認）
+Layer.SpecialRulerManager	推測	特殊定規（SpecialRulerManager.MainId）
+Layer.StreamLineIndex	推測	流線・集中線（StreamLine.MainId）
+Layer.ComicFrameLineMipmap	確認済み	コマ枠の線の画素（Mipmap.MainId）。あればコマ枠フォルダー
+re:^Layer\.ComicFrame(ColorType|PreviewColorType|UsePreviewColorType)	推測	コマ枠の表現色と表示の色
+re:^Layer\.ComicStoryInfo(Type|ForRightPage)$	推測	作品情報のレイヤーの種類（1 作品名・話数・作者名、2 ノンブル）と見開きの右ページ用か
+Layer.CropFrame	推測	トンボ（BLOB）
+Layer.FilterLayerInfo	確認済み	色調補正の設定（BLOB: u32 種類、u32 大きさ、設定）。V6b で全種類を CSP と照合
+Layer.FilterLayerColorMixingInfo	推測	色調補正の混色の設定
+Layer.GradationFillInfo	確認済み	グラデーション・べた塗りの設定（BLOB）。V6b
+Layer.GradationFillColorMixingInfo	推測	グラデーションの混色の設定（1）
+Layer.LayerEffectInfo	確認済み	レイヤー効果（フチ・トーン・水彩境界など、BLOB）。V6
+Layer.LayerEffectAttached	確認済み	レイヤー効果が付いている（LayerEffectInfo がある行で 1）
+Layer.LayerEffectEdgeNewRender	推測	フチの新しい描き方
+re:^Layer\.(EffectLayerRenderType|EffectOffscreenFixType|EffectOffscreenMoveType|EffectRangeType|EffectReferAreaType|EffectRenderType|EffectSetUpdateRectType)$	推測	効果の描き方の種類（内部の処理の番号、常に 10）
+Layer.ResizableImageInfo	確認済み	画像素材の変形（BLOB: 元の大きさ、変形の行列）
+Layer.ResizableOriginalMipmap	確認済み	画像素材の元の画素（Mipmap.MainId）
+re:^Layer\.Resizable(BlackIndex|LockFlag)$	推測	画像素材の黒の扱いと変形のロック
+re:^Layer\.Camera2D	推測	2D カメラ（アニメーション）
+re:^Layer\.(FirstLayerObject|CurrentLayerObjectUUID|EnableSelectLayerObject)$	確認済み	3D レイヤーのオブジェクト（LayerObject.MainId）と選んでいるもの
+re:^Layer\.Manager3D(Od)?$	推測	3D 空間（Manager3D / Manager3DOd の MainId）
+re:^Layer\.(AnimationFolder|AnimationCelCurrentUuid|AnimationCaption\w+|AudioLayer|VoiceSpeakParam)$	推測	アニメーションのフォルダー・セル・字幕・音声
+re:^Layer\.TimeLine	推測	タイムラインのキーフレームと、変形前の範囲・画素
+re:^Layer\.LinkLayer	推測	リンクしたレイヤー（他のファイルの参照）
+re:^Layer\.ShowImageAreaColor	推測	画像の範囲の表示の色
+#
+# ---- pixels
+Offscreen.Attribute	確認済み	格納の形（BLOB）。Parameter（大きさ・ブロック数・画素の形式）、InitColor（初期の色）、BlockSize。04 章
+Offscreen.BlockData	確認済み	ブロックの外部チャンクの ID（40 文字）
+re:^VOffscreen\.	確認済み	使われない列。名前は Offscreen.Attribute の Parameter / InitColor の値の並びと同じ（04 章）
+Mipmap.MipmapCount	確認済み	段の数
+Mipmap.BaseMipmapInfo	確認済み	最初の段（MipmapInfo.MainId、100%）
+MipmapInfo.ThisScale	確認済み	この段の倍率（%）。100、50、25…と半分ずつ
+MipmapInfo.Offscreen	確認済み	この段の画素（Offscreen.MainId）
+LayerThumbnail.ThumbnailOffscreen	確認済み	サムネイルの画素（Offscreen.MainId）
+re:^LayerThumbnail\.ThumbnailCanvas(Width|Height)$	確認済み	作ったときのキャンバスの大きさ（px）
+re:^LayerThumbnail\.Thumbnail\w+NeedRefresh1?$	確認済み	大きさごとのサムネイルの更新の印（更新の回数）。新規作成では同じ値を書く
+re:^LayerThumbnail\.ThumbnailColorType(Index|Black|White)$	確認済み	表現色（Layer.LayerColorType* と同じ）
+re:^LayerThumbnail\.Thumbnail(Main|Sub)Color(Red|Green|Blue)$	確認済み	描画色（Layer.DrawColor* と同じ）
+LayerThumbnail.ThumbnailUseDrawColor	確認済み	描画色で表示する（Layer.DrawColorEnable と同じ）
+re:^LayerThumbnail\.ThumbnailPrewview	推測	表示の表現色（Layer.PreviewColorType* と同じ）。綴りは CSP のまま
+re:^LayerThumbnail\.ThumbnailDrew(Mode|UseCanvasAspect[01])$	推測	サムネイルの描き方とキャンバスの縦横比を使うか
+LayerThumbnail.ThumbnailFixMode	推測	サムネイルの固定（−1 なし）
+CanvasPreview.ImageType	確認済み	形式（1 PNG）
+CanvasPreview.ImageData	確認済み	ファイル全体の縮小画像（PNG）
+re:^CanvasPreview\.Image(Width|Height)$	確認済み	縮小画像の大きさ（px）。ImageWidth は BLOB 型で登録されているが整数が入る
+VectorObjectList.VectorData	確認済み	線のデータの外部チャンクの ID。中身は 05 章
+#
+# ---- .cmc
+CanvasNode.Type	確認済み	節点の種類（0 ルート、2 ページ）
+CanvasNode.FirstChildIndex	確認済み	ルートの最初のページ（CanvasNode.MainId）
+CanvasNode.SelectedIndex	確認済み	選んでいるページ（CanvasNode.MainId）
+CanvasNode.LinkPath	確認済み	ページのファイル（.cmc のフォルダーからの相対、".:pageNNNN.clip" の形）
+CanvasNode.PageFlag	確認済み	1 で見開きのページ
+re:^CanvasNode\.(Name|CanvasThumbnail)$	推測	ページの名前とサムネイル。コーパスでは未設定
+CanvasNode.CanvasIndex	推測	キャンバスの番号。コーパスでは常に 0
+re:^CanvasNode\.(Memo|BookBindMemo)$	推測	ページのメモと製本のメモ。コーパスと CSP で作った作品のどれでも空（製本リストの「印刷はありません」などは CSP が表示するだけ）
+CanvasNode.BookBindWarning	確認済み	製本リストの確認の印（ビット。2 裁ち落とし幅が基本設定と違う、8 解像度が同人誌印刷所で受け付けられない、16 ノンブルが仕上がりの外、32 テキストが仕上がりの外か近く、1048576 本文ページがカラー。見開きの 2 ページ目の 16・32 は 256・512）。CSP が計算して書く（V8）
+CanvasNode.BookBindWarningDef	推測	製本の確認の既定を使う。CSP が作る作品ではルート 0、ページ 1（V8）
+re:^CanvasNode\.LinkWrite(Year|Month|Day|Hour|Minute|Second)$	確認済み	ページのファイルの保存日時（年月日時分秒、PC の時刻）。新規作成の作品にはなく、作品の基本設定を変えると CSP が列を足して書く。古い形式では値が崩れていることがある（V8）
+CanvasNode.LinkIsFolder	推測	リンク先がフォルダー（CSP が書く作品では 0）
+re:^CanvasNode\.Link(Unit|Width|Height|Resolution)$	確認済み	ページのファイルの単位・大きさ・解像度の控え（LinkWrite* と同時に CSP が書く。V8）
+#
+# ---- brushes (used by vector strokes: VectorData points refer to BrushStyle)
+re:^BrushStyle\.(Size|Opacity)Effector$	推測	サイズ・不透明度への筆圧などの影響（BLOB: u32 フラグ、0x10 筆圧なら f32 最小値と u32 グラフ BrushEffectorGraphData.MainId）。ベクターの描画の近似で使う
+re:^BrushStyle\.Thickness(Base|Effector)$	推測	ブラシサイズの倍率（Base）と、筆圧などの影響（Effector、BLOB）
+re:^BrushStyle\.Flow(Base|Effector)$	推測	インクの不透明度（流量）とその影響
+re:^BrushStyle\.Hardness$	推測	先端の硬さ（0〜1）
+re:^BrushStyle\.(Interval(Base|Effector)|AutoIntervalType)$	推測	ブラシ先端の間隔とその影響、間隔の自動の種類
+re:^BrushStyle\.Rotation(Base|Effector|Random)$	推測	先端の向き、向きの影響（ビット）、ランダムの量
+re:^BrushStyle\.Rotation\w*InSpray\w*$	推測	散布の粒子の向き
+re:^BrushStyle\.Spray\w+$	推測	散布（粒子の大きさ・密度・偏り・設定のビット）とその影響
+re:^BrushStyle\.Texture\w+$	推測	紙質（テクスチャの画像 BrushPatternImage、濃度・倍率・回転・明るさ・コントラスト・合成）
+re:^BrushStyle\.(Hue|Saturation|Value)Change(Base|Effector)$	推測	色の揺らぎ（色相・彩度・明度）とその影響
+re:^BrushStyle\.(MixAlpha|MixColor|SubColor)(Base|Effector)$	推測	混色（下の色を混ぜる量）、色延び、サブ色の混ぜ方とその影響
+re:^BrushStyle\.(ColorExtension|BrushColorMixingMode|BrushLMSLinearity|ChangeDrawColorTarget)$	推測	色延び、混色の方法、描画色を変える対象
+re:^BrushStyle\.Blur(Base|Effector|Kind)$	推測	ぼかしの量・影響・種類
+re:^BrushStyle\.(WaterEdge\w+|WaterColorType|UseWaterColor)$	推測	水彩境界（半径・強さ・透明度と明るさの影響・ぼかし）と水彩の種類
+re:^BrushStyle\.AntiAlias$	推測	アンチエイリアス（0 なし〜3 強）
+re:^BrushStyle\.CompositeMode$	推測	ブラシの合成モード（Layer.LayerComposite と同じ番号と推測）
+re:^BrushStyle\.(DualCompositeMode|DualStyleIndex)$	推測	2 重ブラシの合成モードと、2 つ目のブラシ（BrushStyle.MainId）
+re:^BrushStyle\.(PatternStyle|MipmapIndexToPlot|FixedSpray)$	推測	ブラシ先端の画像（BrushPatternStyle）、点に使うミップマップの段、固定の散布
+re:^BrushStyle\.StyleFlag$	推測	設定のビット（49152〜770048）
+re:^BrushStyle\.PenRadius$	推測	ペンの半径
+re:^BrushStyleManager\.First(\w+)$	推測	各設定の連結リストの先頭（リンク先の表の MainId）
+re:^BrushEffectorGraphData\.(ControlNumber|ControlDataSize|ControlPoints)$	推測	影響のグラフの制御点の数、1 点の大きさ（16 バイト）、制御点（BLOB）
+re:^BrushPatternImage\.(Mipmap|Name|Uuid)$	推測	ブラシ先端・紙質の画像（Mipmap.MainId）、名前、UUID
+re:^BrushPatternStyle\.(ImageIndex|ImageNumber|OrderType|Reverse2?)$	推測	先端の画像の並び（BLOB）・数・使う順・反転
+re:^BrushFixedSpray\.Plot\w+$	推測	固定の散布の点（数・大きさ・点の BLOB）
+re:^FillStyle\.(AntiAlias|CompositeMode|StyleFlag|TextureDensity)$	推測	塗りのアンチエイリアス・合成モード・設定のビット・テクスチャの濃度
+#
+# ---- 流線・集中線
+re:^StreamLine\.(BaseCurve|BasePointType|ShapeCurve)$	推測	基準の線（BLOB）とその種類、線の形（BLOB）
+re:^StreamLine\.(BrushSize|BrushSizeDisturb|UseBrushSizeDisturb|BrushStyleIndex)$	推測	線のブラシの大きさとその乱れ、ブラシ（BrushStyle.MainId）
+re:^StreamLine\.(Main|Sub)(Red|Green|Blue)$	推測	線の色（メイン・サブ。32 ビットの値の上位 8 ビット）
+re:^StreamLine\.(FillOpacity|UseFill)$	推測	塗りを使うかと不透明度
+re:^StreamLine\.(Group\w+|UseGroup\w*)$	推測	まとまり（線の束）の数・間隔・乱れ
+re:^StreamLine\.(In\w+|Out\w+|UseIn|UseOut)$	推測	入り・抜きの長さと割合
+re:^StreamLine\.(Interval\w+|UseInterval\w+|MaxLineNumber|OffsetAngle)$	推測	線の間隔（角度・距離）とその乱れ、線の最大数、角度のずれ
+re:^StreamLine\.(Jag\w+|UseJag)$	推測	ギザギザ（フラッシュ）の数と長さ
+re:^StreamLine\.(LineLength\w*|UseLineLengthDisturb|StartGapDisturb|UseStartGapDisturb)$	推測	線の長さと始点の位置の乱れ
+re:^StreamLine\.(Kind|RandomSeed)$	推測	種類（流線 / 集中線）と乱数の種
+#
+# ---- 定規
+re:^Ruler\w+\.(CenterX|CenterY|Rotate|Snap|LineNumber|LineSymmetry)$	推測	定規の中心・回転・吸着・線の数・線対称
+re:^RulerPerspective\.(PerspectiveType|FirstVanishIndex|Flag)$	推測	パースの種類（1〜3 点）、最初の消失点（RulerVanishPoint）、設定のビット
+re:^RulerPerspective\.(EyeLevelHandle[XY]|MoveHandle[XY]|CameraNear)$	推測	アイレベルと移動のハンドルの位置、視点からの距離
+re:^RulerPerspective\.(Grid\w+)$	推測	パースのグリッドの原点・大きさ・設定
+re:^RulerPerspective\.(Lens\w+|InitializedLens|Distortion\w*)$	推測	魚眼の定規の中心・半径と歪み
+re:^RulerPerspective\.centerGuide\w+$	推測	中心のガイド（数・大きさ・位置の BLOB）
+re:^RulerVanishPoint\.(VanishPoint[XY]|ParallelAngle|Flag|Guide\w*)$	推測	消失点の位置、平行の角度、設定、ガイドの線（数・大きさ・BLOB）
+re:^SpecialRulerManager\.First\w+$	推測	定規の種類ごとの連結リストの先頭
+#
+# ---- 3D
+re:^\w+\.LayerObjectId$	推測	属する 3D オブジェクト（LayerObject.MainId）
+re:^LayerObject\.(Camera|CameraNode3D|Character|Dessindoll|Folder|Light|Room|SmallObject|Primitive3D)$	推測	オブジェクトの中身（各情報の表の MainId）
+re:^LayerObject\.Object(Name|Uuid|Next|Lock|Select|Visibility|Pickmask)$	推測	オブジェクトの名前・UUID・次・ロック・選択・表示・選べるか
+re:^LayerObject\.(IsAudio|BankItemUuid)$	推測	音声のオブジェクトか、素材の UUID
+re:^CameraInfo\.Camera(Position|Target|Up)[XYZ]$	推測	カメラの位置・注視点・上の向き（3D の座標）
+re:^CameraInfo\.(CameraTwist|CameraZoomWithDolly|CameraUuid\w+)$	推測	カメラのひねり、ドリーでズーム、UUID
+re:^CameraInfo\.Frustum\w+$	推測	視錐台（左右上下・近・遠、平行投影）
+re:^CameraInfo\.(Viewport\w+|LayerOpticalAxisPt[XY])$	推測	表示の範囲（キャンバスの画素）と光軸の位置
+re:^\w+\.\w*(GUIOpened|GUIOpenClose|GUIName)$	推測	パレットでの開閉と表示名
+re:^\w+\.\w*(UUID|Uuid)\w*$	推測	UUID
+re:^LightInfo\.(LightIndex|LightType)$	推測	光源の番号と種類
+re:^Manager3DOd\.(CanvasRect\w+|CameraNearFarAutoSet|SceneData)$	推測	3D の表示の範囲、近・遠の自動、シーンのデータ（外部チャンク）
+re:^Manager3DOd\.MultiView\w+$	推測	複数の視点の表示（カメラの位置・回転・視錐台・ズーム）
+re:^Canvas3DModel(Bank|Loader)\.(BankId|FirstLoaderIndex|ModelData|ModelType)$	推測	3D モデルの保管庫の番号、最初の読み込み、モデルのデータ（外部チャンク）、種類
+re:^\w+\.CanvasItemSource\w+$	推測	素材の出どころ（ファイル名、素材の配布の ID・版・所有者）
+re:^CanvasItem\.(BankId|ItemCaption|ItemDataHoldMethod|ItemType|ItemNextItemMainIndex|ItemRegistedDirect|kLabelItem3DDataID)$	推測	素材の項目（保管庫、表示名、データの持ち方、種類、次、直接の登録、3D の ID）
+re:^CanvasItem\.ItemImport\w+$	推測	素材を読み込んだ日時と番号
+re:^CanvasItemBank\.(BankRootItemMainIndex|ModelBankMainIndex)$	推測	最初の素材（CanvasItem）と 3D モデルの保管庫（Canvas3DModelBank）
+#
+# ---- レイヤーカンプ・タイムラプス
+re:^LayerComp\.(BankId|CompLayerInfo|CompName|CompNextIndex|CompUuid)$	推測	レイヤーカンプ（保管の番号、各レイヤーの状態の BLOB、名前、次、UUID）
+re:^LayerCompManager\.(AppliedLayerCompIndex|FirstLayerCompIndex|LastStateLayerCompIndex)$	推測	適用しているカンプ（−1 なし）、最初のカンプ、最後の状態
+re:^TimeLapseBlob\.Blob(Data|Offset|Size|SizeCompressed|Type)$	推測	タイムラプスの動画のデータ（外部チャンク）、位置、大きさ（展開後・圧縮後）、種類
+re:^TimeLapseManager\.RecordFirstIndex$	推測	最初の記録（TimeLapseRecord）
+re:^TimeLapseRecord\.(BlobFirstIndex|EncoderName|EncoderSequence)$	推測	記録の最初のデータ（TimeLapseBlob）、符号化の名前と通し番号
+#
+# ---- tables present in every file but never set
+re:^AnimationCutBank\.(CurrentIndex|Enable|FirstScenario|FirstTimeLine|FlagScenarioV155)$	推測	アニメーションのカット: 選んでいるカット、使うか、最初のシナリオとタイムライン、1.5.5 の機能の印。コーパスでは常に 0
+FolderInfo.FolderChildCount	推測	3D オブジェクトのフォルダーの子の数
+RemovedExternal.ExternalID	推測	削除された外部チャンクの ID。コーパスでは常に空
+SmallObjectInfo.SmallObjectLastAppliedMovableFrame	推測	小物に最後に当てた可動の姿勢（BLOB）
+# Animation (R17, docs/spec/08-animation.md; checked against CSP-made files and image-sequence exports, V6c)
+AnimationCutBank.CurrentIndex	確認済み	今のタイムライン（FirstTimeLine からの連結リストの 0 始まりの位置）
+AnimationCutBank.FirstTimeLine	確認済み	最初のタイムライン（TimeLine.MainId）。アニメーションのないファイルでは 0
+AnimationCutBank.Enable	推測	アニメーションを使うファイルで 1
+TimeLine.TimeLineName	確認済み	タイムラインの名前
+TimeLine.NextTimeLine	確認済み	次のタイムライン（0 で終わり）
+TimeLine.FirstTrack	確認済み	最初のトラック（Track.MainId、TrackNextIndex で続く）
+TimeLine.FrameRate	確認済み	フレームレート。変えると各トラックの TimeClip が 旧/新 倍に伸び、キーはフレームに留まる
+TimeLine.StartFrame	確認済み	再生範囲の最初のフレーム（0 始まり。CSP の表示は +1）
+TimeLine.EndFrame	確認済み	再生範囲の終わり（最後のフレームの次、0 始まり = CSP の表示の最後のフレーム）
+TimeLine.CurrentFrame	確認済み	今のフレーム（0 始まり）。TrackValueMap はこのフレームの値
+TimeLine.SmallestStartFrame	推測	これまでの最小の開始フレーム
+TimeLine.BiggestEndFrame	推測	これまでの最大の終了フレーム（新しいトラックのクリップの長さ）
+TimeLine.GuidelineFrameRate	確認済み	タイムラインの区切り線の間隔（フレーム）
+TimeLine.SceneIndexForName	確認済み	シーン番号（名前の書式用）
+TimeLine.CutIndexForName	確認済み	カット番号（名前の書式用）
+TimeLine.LabelFirstIndex	確認済み	最初のタイムラインラベル（TimeLineLabel.MainId）
+TimeLine.BankId	推測	AnimationCutBank.MainId
+TimeLine.NextScenario	推測	シナリオ機能の連結（観察では 0）
+TimeLineLabel.LabelName	確認済み	ラベルの名前（中割り記号は空）
+TimeLineLabel.LabelFrame	確認済み	フレーム（0 始まり）
+TimeLineLabel.LabelType	確認済み	0 = タイムラインのラベル、1 = 中割り記号（○）、3 = トラックの名前付きラベル（長さあり）
+TimeLineLabel.LabelLength	確認済み	トラックのラベルの長さ（フレーム）
+TimeLineLabel.LabelNextIndex	確認済み	次のラベル（0 で終わり）
+TimeLineLabel.ItemId	確認済み	タイムライン（TimeLine.MainId）
+TimeLineLabel.TrackId	確認済み	トラック（Track.MainId）。タイムラインのラベルは 0
+TimeLineLabel.BankId	推測	AnimationCutBank.MainId
+Track.ItemId	確認済み	タイムライン（TimeLine.MainId）
+Track.TrackNextIndex	確認済み	同じタイムラインの次のトラック（0 で終わり）
+Track.TrackKind	確認済み	2000 セル（アニメーションフォルダー）、2001 レイヤーのキーフレーム、2003 用紙、2005 2D カメラ
+Track.LayerUuidWithTrack	確認済み	対象レイヤーの LayerUuid（16 バイト）
+Track.TrackActionMixer	確認済み	キーの "cmt " 文書（版 0100、単精度）の外部チャンク。08 章
+Track.TrackActionMixer2	確認済み	同じ内容の "cmt " 文書（版 0110、倍精度）の外部チャンク
+Track.TrackActionMixerSize	確認済み	TrackActionMixer の文書の大きさ（展開後のバイト数）
+Track.TrackActionMixer2Size	確認済み	TrackActionMixer2 の文書の大きさ（展開後のバイト数）
+Track.TrackValueMap	確認済み	今のフレームの値（名前・タグ・型・値、ビッグエンディアン）。08 章
+Track.TrackOptionFlag	推測	256、アニメーションフォルダーは 768
+Track.TrackOpen	推測	タイムラインでトラックを開いているか
+Track.TrackContentOpen	推測	トラックの中身を開いているか
+Track.TrackLabelFirstIndex	確認済み	最初のトラックのラベル（TimeLineLabel.MainId）
+Track.BankId	推測	AnimationCutBank.MainId
+re:^Canvas\.OnionSkin	確認済み	オニオンスキン: 有効、前後の枚数、不透明度（開始・減衰）、色（Front = 前のフレーム、Behind = 後のフレーム、各チャンネル c × 0x01010101）、半分の色
+Layer.AnimationFolder	確認済み	アニメーションフォルダー（子のレイヤーがセル）
+Layer.TimeLineLayerKeyFrameEnabled	確認済み	レイヤーのキーフレームが有効（変形は TimeLineOriginalMipmap に掛ける）
+Layer.TimeLineOriginalMipmap	確認済み	キーフレームの変形前の画素（Mipmap.MainId）。LayerRenderMipmap は保存されず CSP が開くときに作る
+Layer.TimeLineOriginalLayerOpacity	推測	キーフレームを有効にする前の不透明度
+Layer.LightTableReferCell	確認済み	ライトテーブルの参照レイヤー（LayerType 10016、パレットに出ない。描かない）の印
+Layer.LinkLayerUUID	推測	ライトテーブルの参照レイヤーが指すレイヤーの LayerUuid

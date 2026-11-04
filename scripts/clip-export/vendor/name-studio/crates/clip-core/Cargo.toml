@@ -1,0 +1,29 @@
+[package]
+name = "clip-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+csp-format.workspace = true
+csp-assets.workspace = true
+name-model = { path = "../name-model" }
+rayon = "1.12.0"
+rusqlite = { version = "0.40.2", features = ["bundled", "serialize"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+uuid = { version = "1", features = ["v4"] }
+
+[features]
+# Builders for synthetic .clip files, for tests in this and other crates.
+fixtures = []
+
+[dev-dependencies]
+# The tests build synthetic CSP files: plain `cargo test` turns the builders on.
+clip-core = { path = ".", features = ["fixtures"] }
+tempfile = "3.27.0"
+
+[[example]]
+name = "fixture_page"
+required-features = ["fixtures"]

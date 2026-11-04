@@ -1,8 +1,9 @@
 import type { PaintColorMode } from '../types.ts';
 import type { BrowserDirectoryHandle } from './browserWorkspace.ts';
 import { downloadBrowserBlob } from './browserFiles.ts';
+import type { ClipExportPage, ClipExportLayer } from './clipExport.ts';
 
-export type ImageExportFormat = 'png' | 'psd';
+export type ImageExportFormat = 'png' | 'psd' | 'clip';
 export type PageExportRange = {mode:'current'|'range'|'all';current:number;from:number;to:number};
 export const MAX_PAGE_EXPORT_PIXELS = 100_000_000;
 
@@ -63,6 +64,11 @@ export async function blobImageData(blob:Blob):Promise<ImageData>{
 
 export function safeExportName(value:string){return value.trim().replace(/[\\/:*?"<>|\u0000-\u001f]/gu,'-').replace(/\s+/gu,' ').slice(0,100)||'manga';}
 
+/** Keep page identity after shortening a long title. */
+export function pageExportStem(title:string,page:number,setup:{width_mm:number;height_mm:number;dpi:number}):string {
+  return `${safeExportName(title).slice(0,50)}-page-${String(page).padStart(3,'0')}-${setup.width_mm}x${setup.height_mm}mm-${setup.dpi}dpi`;
+}
+
 type ExportPickerWindow = Window & { showDirectoryPicker?: (options: object) => Promise<BrowserDirectoryHandle> };
 export function canChooseImageExportDirectory():boolean {
   return typeof window!=='undefined'&&typeof (window as ExportPickerWindow).showDirectoryPicker==='function';
@@ -96,6 +102,39 @@ export async function saveImageExport(blob:Blob,name:string,directory:BrowserDir
 }
 
 type ZipEntry={name:string;bytes:Uint8Array};
+
+/** Keep source data alongside the native document without embedding app-only JSON in CSP. */
+export function clipExportSources(page:ClipExportPage,stem:string):{payload:ClipExportPage;entries:ZipEntry[]} {
+  const entries:ZipEntry[]=[],encoder=new TextEncoder();
+  let next=0;
+  const visit=(layer:ClipExportLayer):ClipExportLayer=>{
+    const {sources,...content}=layer;
+    const sourceFiles=(sources??[]).map(source=>{
+      const suffix=source.name.match(/\.[a-z0-9]{1,8}$/i)?.[0]??'';
+      const sourceName=safeExportName(suffix?source.name.slice(0,-suffix.length):source.name).slice(0,60)+suffix;
+      const name=`${stem}-sources/${String(++next).padStart(4,'0')}-${sourceName}`;
+      let bytes:Uint8Array;
+      if(source.kind==='original-image'){
+        const comma=source.data.indexOf(',');
+        if(comma<0)throw new Error('元画像の形式を確認できませんでした');
+        const header=source.data.slice(0,comma),body=source.data.slice(comma+1);
+        bytes=header.endsWith(';base64')?Uint8Array.from(atob(body),c=>c.charCodeAt(0)):encoder.encode(decodeURIComponent(body));
+      }else bytes=encoder.encode(source.data);
+      entries.push({name,bytes});return {file:name,kind:source.kind,mediaType:source.mediaType};
+    });
+    mapping.push({id:layer.id,name:layer.name,kind:layer.kind,sources:sourceFiles});
+    return layer.kind==='folder'?{...content,kind:'folder',children:layer.children.map(visit)}:content as ClipExportLayer;
+  };
+  const mapping:Array<{id:string;name:string;kind:string;sources:Array<{file:string;kind:string;mediaType:string}>}>=[];
+  const payload={...page,layers:page.layers.map(visit)};
+  entries.push({name:`${stem}-sources/layers.json`,bytes:encoder.encode(JSON.stringify({profile:page.profile,width:page.width,height:page.height,dpi:page.dpi,layers:mapping,warnings:page.warnings},null,2))});
+  const notes=[`${stem}.clip をCLIP STUDIO PAINTで開いてください。`,`文字・画像・線・フォルダーは個別レイヤーです。フォントは開く端末にも必要です。`,
+    `sources内には元のSVG・画像・文字書式・描画データとレイヤー対応表を保存しています。`,
+    `特殊なブラシや部分書式は、見た目を保つ表示用画像と非表示の編集用レイヤーに分かれる場合があります。`,...page.warnings.map(w=>`・${w}`)].join('\n');
+  entries.push({name:`${stem}-sources/お読みください.txt`,bytes:encoder.encode(notes)});
+  return {payload,entries};
+}
+
 const zipEncoder=new TextEncoder();
 function crc32(bytes:Uint8Array):number{
   let value=0xffffffff;
