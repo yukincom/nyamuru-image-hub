@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { parseSeriesTitleText, parseStoryReferenceText } from '../src/lib/settingTextImport.ts';
+import { seriesTitleFromReferences } from '../src/lib/newProjectSettings.ts';
+import { parseStoryReferenceText } from '../src/lib/settingTextImport.ts';
 import { mergeCharacterTextCatalog, parseCharacterText, toCharacterTextMarkdown } from '../src/lib/characterTextCatalog.ts';
 import { seriesReferenceConfirmationState } from '../src/lib/seriesReferenceCandidates.ts';
 import { parseScenario, applyScenarioToNewDocument } from '../src/lib/scenario.ts';
@@ -270,9 +271,6 @@ test('フォルダの選択だけではシリーズ名を入力せず、反映�
 });
 
 const episodeText = '# 星の喫茶室\n\n- サブタイトル：雨の日\n- 話数：第2話\n- 場所：喫茶店\n- 時間帯：夕方\n- 天候：雨\n\n## あらすじ\n主人公が友人を待っている。';
-const seriesTitleFromReferences = handler('seriesTitleFromReferences', {
-  parseSeriesTitleText, detectedSeriesReferenceKind: reference => reference.kind,
-});
 
 async function readEpisode(mode, text = episodeText, references = []) {
   const state = {

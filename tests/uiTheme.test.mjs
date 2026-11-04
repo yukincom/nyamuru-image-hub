@@ -19,7 +19,7 @@ test('新規作成は共通テーマを継承し、現在位置の丸だけを�
   assert.match(rule('.new-creation-steps li.is-active span'), /background: var\(--accent\); color: white/);
   assert.match(rule('.new-creation-steps li span'), /background: var\(--neutral-soft\)/);
   for (const step of ['series', 'characters', 'setting', 'layout']) {
-    assert.ok(read('src/components/App.tsx').includes(`aria-current={newCreationStep === '${step}' ? 'step' : undefined}`));
+    assert.ok(read('src/components/new-project/NewProjectNavigation.tsx').includes(`aria-current={newCreationStep === '${step}' ? 'step' : undefined}`));
   }
 });
 

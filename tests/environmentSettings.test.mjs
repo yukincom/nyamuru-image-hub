@@ -632,8 +632,9 @@ test('環境設定は現在作品のstateへ接続され、非表示タブはCSS
   assert.match(read('src/styles/global.css'), /\.environment-tab-panel\[hidden\] \{ display: none; \}/);
   assert.match(read('src/styles/global.css'), /\.environment-tabs \{[^}]*flex-wrap: wrap/);
   assert.match(app, /id: 'coverage', label: 'シナリオ'/);
-  assert.match(app, /切り出した原画参照をすぐファイル保存/);
-  assert.match(app, /登場人物・背景・小道具の資料保存とは別/);
+  const newLayout = read('src/components/new-project/NewLayoutStep.tsx');
+  assert.match(newLayout, /切り出した原画参照をすぐファイル保存/);
+  assert.match(newLayout, /登場人物・背景・小道具の資料保存とは別/);
   assert.doesNotMatch(app, /sample\.yaml\?raw|サンプル漫画に戻す/);
 });
 

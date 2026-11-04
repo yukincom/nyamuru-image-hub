@@ -4,7 +4,10 @@ import test from 'node:test';
 import ts from 'typescript';
 
 const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
-const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const views = ['NewSeriesStep', 'NewSettingStep', 'NewProjectNavigation'].map(name =>
+  readFileSync(new URL(`../src/components/new-project/${name}.tsx`, import.meta.url), 'utf8')
+).join('\n');
+const ast = ts.createSourceFile('new-project.tsx', views, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const elements = [];
 function visit(node) {
   if (ts.isJsxElement(node)) elements.push(node);

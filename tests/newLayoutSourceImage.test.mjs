@@ -84,7 +84,8 @@ test('ページ切替と再描画で正しいFileとURLを保持する', () => {
 // 合格: 原画サムネイルとフォーカスは両方File所有componentを通り、Appは失効するURLをstateへ保存しない。
 test('全プレビューは元のFileから生成する', () => {
   const app = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
-  assert.match(app, /<NewLayoutSourceImage file=\{item.file\} alt=""/);
-  assert.match(app, /<NewLayoutSourceImage file=\{activeLayoutItem.file\} alt="読み込んだネーム画像のプレビュー"/);
-  assert.doesNotMatch(app, /previewUrl|URL\.createObjectURL|URL\.revokeObjectURL/);
+  const view = readFileSync(new URL('../src/components/new-project/NewLayoutStep.tsx', import.meta.url), 'utf8');
+  assert.match(view, /<NewLayoutSourceImage file=\{item.file\} alt=""/);
+  assert.match(view, /<NewLayoutSourceImage file=\{activeLayoutItem.file\} alt="読み込んだネーム画像のプレビュー"/);
+  assert.doesNotMatch(app + view, /previewUrl|URL\.createObjectURL|URL\.revokeObjectURL/);
 });

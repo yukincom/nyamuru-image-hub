@@ -33,10 +33,9 @@ import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlaceme
 import { fallbackBox, panelBounds } from '../lib/canvasGeometry';
 import { overlayFallbackBox, resizePageCanvas } from '../lib/pageCanvas';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, Download, FilePlus2, Files, FileText, FolderOpen, Images, LayoutPanelTop, ScanLine, Settings2, SlidersHorizontal, Sparkles, Trash2, UsersRound, X } from 'lucide-preact';
+import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, Download, FilePlus2, Files, FolderOpen, LayoutPanelTop, Settings2, SlidersHorizontal, UsersRound, X } from 'lucide-preact';
 import Header from './Header';
-import PrintSettingsEditor from './PrintSettingsEditor';
-import { getPrintSetup, defaultPrintSetup, loadPrintPreferences, printSummary, savePrintPreferences, withPrintSetup, type PrintSetup } from '../lib/printSettings';
+import { getPrintSetup, defaultPrintSetup, loadPrintPreferences, withPrintSetup, type PrintSetup } from '../lib/printSettings';
 import { createProjectSnapshot, restoreProjectSnapshot, type ProjectBinding } from '../lib/projectPersistence';
 import { saveEpisodeProject, loadEpisodeProject } from '../lib/localBridge';
 import PageSidebar from './PageSidebar';
@@ -63,14 +62,12 @@ import ScenarioReview from './ScenarioReview';
 import { applyScenarioToNewDocument, confirmScenarioCorrespondence, detachResolvedScenarioLinks, parseScenario, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
 import { initializePanelBackgrounds } from '../lib/panelContext.ts';
 import { initializeImportedBubbleLineBreaks } from '../lib/initialBubbleLineBreaks.ts';
-import CharacterReadProgress, { type CharacterReadProgressState } from './CharacterReadProgress';
-import NewLayoutAnalysisFeed from './NewLayoutAnalysisFeed';
-import NewLayoutSourceImage from './NewLayoutSourceImage';
+import type { CharacterReadProgressState } from './CharacterReadProgress';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
 import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, parseOmayYaml, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml } from '../lib/manga';
 import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
-import { applyPanelTemplate, mergeSelectedPanels, PANEL_TEMPLATES, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
-import { analyzeFigureCharacterMatchWithLocalVlm, attachDetectedFiguresToPage, attachRecognizedTextToPage, beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, persistAnalogAsset, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type DetectedFigureRegion, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type LayoutRecognitionResult, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
+import { applyPanelTemplate, mergeSelectedPanels, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
+import { analyzeFigureCharacterMatchWithLocalVlm, attachDetectedFiguresToPage, attachRecognizedTextToPage, beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, persistAnalogAsset, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../lib/seriesCatalog';
 import { detectedFigureCrops, detectedFigureImport } from '../lib/analogFigureCrops';
 import { prepareDetectedTextCrops } from '../lib/analogTextCrops';
@@ -82,7 +79,7 @@ import { isPropPlacement, synchronizeCatalogReferences } from '../lib/catalogMod
 import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels';
 import { createSystemMobCharacter } from '../lib/systemCharacters';
 import { applyCharacterReadOutcomes, buildCharacterMatchCandidates, collectUnmatchedCharacterTargets, type CharacterReadOutcome } from '../lib/characterMatching';
-import { parseSeriesSettingText, parseSeriesTitleText, parseStoryReferenceText, type ImportedSeriesSetting, type ImportedStorySetting } from '../lib/settingTextImport.ts';
+import { parseSeriesSettingText, parseStoryReferenceText, type ImportedStorySetting } from '../lib/settingTextImport.ts';
 import { replaceSeriesReferenceCandidate, seriesReferenceConfirmationState } from '../lib/seriesReferenceCandidates.ts';
 import { buildSourceCoverageReport, sha256Hex, type SourceCoverageDecision, type SourceCoverageSource } from '../lib/sourceCoverage.ts';
 import { characterArchiveDocument, mergeCharacterTextCatalog, parseCharacterText, seriesCharacterCatalogIds, toCharacterTextMarkdown } from '../lib/characterTextCatalog.ts';
@@ -93,7 +90,54 @@ import {
   withNewCreationBridgeSession,
 } from '../lib/localBridgeLifecycle.ts';
 import { createEmptyWorkspaceDocument, createInitialWorkspace, type WorkspaceStartupState } from '../lib/workspaceStartup.ts';
-import type { AnalogFigureImport, AnalogTextImport, BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, MangaSeriesSetting, PanelShape, WorkspaceTab } from '../types';
+import type { AnalogFigureImport, AnalogTextImport, BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, WorkspaceTab } from '../types';
+
+import {
+  type NewCreationStep,
+  type NewSeriesMode,
+  type SeriesCatalogPersistOptions,
+  type NewSourceSnapshot,
+  type BoundSourceSnapshot,
+  emptyNewWorkSetting,
+  emptyNewSeriesSetting,
+  seriesSettingFromImported,
+  fillEmptySeriesSetting,
+  seriesSettingSummary,
+  detectedSeriesReferenceKind,
+  seriesTitleFromReferences,
+  withoutSeriesCharacter
+} from '../lib/newProjectSettings';
+import {
+  type NewLayoutTask,
+  type RightAngle,
+  type NewLayoutItem,
+  type DetectedPageLayout,
+  displayedLayoutRotation,
+  nextLayoutIndexFromArrow
+} from '../lib/newLayoutPreview';
+import {
+  INNER_FRAME_SNAP_KEY,
+  PANEL_SYNC_KEY,
+  PANEL_GAP_SNAP_KEY,
+  SHOW_GUIDES_KEY,
+  SPREAD_VIEW_KEY,
+  PERSIST_ANALOG_ASSETS_KEY,
+  storedPcFontCatalog,
+  rememberPcFontCatalog,
+  savedWorkspaceRoot,
+  rememberWorkspaceRoot,
+  initialInnerFrameSnap,
+  initialPanelSync,
+  initialPanelGapSnap,
+  initialShowGuides,
+  initialSpreadView,
+  initialPersistAnalogAssets
+} from '../lib/workspacePreferences';
+
+import NewSeriesStep from './new-project/NewSeriesStep';
+import NewSettingStep from './new-project/NewSettingStep';
+import NewLayoutStep from './new-project/NewLayoutStep';
+import NewProjectNavigation from './new-project/NewProjectNavigation';
 
 const TABS: {
   id: WorkspaceTab;
@@ -109,272 +153,8 @@ const TABS: {
 ];
 
 type MobileStoryboardPane = 'pages' | 'editor' | 'panel';
-type NewLayoutTask = 'idle' | 'scanner' | 'analyzing' | 'creating';
-type NewCreationStep = 'series' | 'characters' | 'setting' | 'layout';
-type NewSeriesMode = '' | 'new' | 'existing' | 'none';
-type NewLayoutSource = 'manual' | 'scanner';
-type RightAngle = 0 | 90 | 180 | 270;
-
-interface NewLayoutItem {
-  id: string;
-  file: File;
-  source: NewLayoutSource;
-  analysis: LayoutRecognitionResult | null;
-  analyzing: boolean;
-  rotationOverride: RightAngle;
-  error?: string;
-}
-
-interface DetectedPageLayout {
-  sourceItemId: string;
-  analysis: LayoutRecognitionResult;
-}
-
-interface SeriesCatalogPersistOptions {
-  deleteMaterialCatalogIds?: readonly string[];
-  deleteCharacterCatalogIds?: readonly string[];
-  seriesSetting?: MangaSeriesSetting;
-  seriesDirectory?: string;
-  seriesReference?: SeriesReferenceTextSelection | null;
-}
 
 type BoundEpisodeWorkspace = ProjectBinding;
-
-interface NewSourceSnapshot {
-  source: SourceCoverageSource;
-  seriesMode: NewSeriesMode;
-  workspaceDirectory: string;
-  selectedByteSize: number;
-  selectedSha256: string | null;
-}
-
-interface BoundSourceSnapshot extends NewSourceSnapshot {
-  episodeId: string;
-}
-
-const NEW_LAYOUT_SPREAD_ORDER = [1, 0, 3, 2, 5, 4, 7, 6, 9, 8] as const;
-
-function emptyNewWorkSetting(): ImportedStorySetting {
-  return { location: '', time: '', weather: '', situation: '' };
-}
-
-function emptyNewSeriesSetting(): MangaSeriesSetting {
-  return {
-    genre: '',
-    target_audience: '',
-    adult_content: false,
-    location: '',
-    time: '',
-    weather: '',
-    situation: '',
-  };
-}
-
-function seriesSettingFromImported(imported: ImportedSeriesSetting): MangaSeriesSetting {
-  return {
-    genre: imported.genre,
-    target_audience: imported.targetAudience,
-    adult_content: imported.adultContent,
-    location: imported.location,
-    time: imported.time,
-    weather: imported.weather,
-    situation: imported.situation,
-  };
-}
-
-function fillEmptySeriesSetting(
-  current: MangaSeriesSetting,
-  incoming: MangaSeriesSetting,
-): MangaSeriesSetting {
-  return {
-    genre: current.genre?.trim() ? current.genre : incoming.genre,
-    target_audience: current.target_audience?.trim() ? current.target_audience : incoming.target_audience,
-    adult_content: current.adult_content === true || incoming.adult_content === true,
-    location: current.location.trim() ? current.location : incoming.location,
-    time: current.time.trim() ? current.time : incoming.time,
-    weather: current.weather.trim() ? current.weather : incoming.weather,
-    situation: current.situation.trim() ? current.situation : incoming.situation,
-  };
-}
-
-function seriesSettingSummary(setting: MangaSeriesSetting): string {
-  return [setting.genre, setting.target_audience, setting.adult_content ? '成人指定' : '', setting.situation]
-    .map((value) => value?.trim())
-    .filter(Boolean)
-    .join('・');
-}
-
-function detectedSeriesReferenceKind(selection: SeriesReferenceTextSelection): SeriesReferenceTextCandidate['kind'] {
-  if (selection.kind) return selection.kind;
-  // 人物の入力エラーは反映時に示し、候補の分類では画面を止めない。
-  try {
-    if (parseCharacterText(selection.text).length) return 'characters';
-  } catch {
-    return 'characters';
-  }
-  const setting = parseSeriesSettingText(selection.text);
-  if (setting.genre || setting.targetAudience || setting.adultContent || setting.location
-    || setting.time || setting.weather || setting.situation) return 'series-setting';
-  return 'series-reference';
-}
-
-const seriesTitleFromReferences = (selections: readonly SeriesReferenceTextSelection[]): string => selections
-  .map((selection) => parseSeriesTitleText(selection.text, detectedSeriesReferenceKind(selection) !== 'characters'))
-  .find((title) => title.trim()) ?? '';
-
-function withoutSeriesCharacter(source: MangaDocument, characterLocalId: string): MangaDocument {
-  const next = cloneDocument(source);
-  const character = next.manga.characters.find((entry) => entry.localId === characterLocalId);
-  if (!character) return next;
-  const catalogId = character.catalog_id;
-  next.manga.characters = next.manga.characters.filter((entry) => entry.localId !== characterLocalId);
-  next.manga.materials = next.manga.materials.filter((material) => (
-    material.characterId !== characterLocalId
-    && (!catalogId || material.character_catalog_id !== catalogId)
-  ));
-  synchronizeCatalogReferences(next);
-  return next;
-}
-
-function displayedLayoutRotation(item: NewLayoutItem): RightAngle {
-  return item.rotationOverride;
-}
-
-function layoutPreviewImageStyle(rotation: RightAngle) {
-  if (rotation % 180 === 0) return { transform: `rotate(${rotation}deg)` };
-  return {
-    width: '141.4214%',
-    height: '70.7107%',
-    transform: `rotate(${rotation}deg)`,
-  };
-}
-
-function nextLayoutIndexFromArrow(current: number, key: string, length: number): number {
-  if (key === 'ArrowLeft' && current % 2 === 0 && current + 1 < length) return current + 1;
-  if (key === 'ArrowRight' && current % 2 === 1) return current - 1;
-  if (key === 'ArrowUp' && current >= 2) return current - 2;
-  if (key === 'ArrowDown' && current + 2 < length) return current + 2;
-  return current;
-}
-
-const INNER_FRAME_SNAP_KEY = 'manga-name-studio.inner-frame-snap.v1';
-const PANEL_SYNC_KEY = 'manga-name-studio.panel-sync.v1';
-const LEGACY_PANEL_SYNC_KEY = 'manga-name-studio.panel-snap.v1';
-const PANEL_GAP_SNAP_KEY = 'manga-name-studio.panel-gap-snap.v1';
-const SHOW_GUIDES_KEY = 'manga-name-studio.show-guides.v1';
-const SPREAD_VIEW_KEY = 'manga-name-studio.spread-view.v2';
-const LEGACY_SPREAD_VIEW_KEY = 'manga-name-studio.spread-view.v1';
-const PERSIST_ANALOG_ASSETS_KEY = 'manga-name-studio.persist-analog-assets.v1';
-const EPISODE_WORKSPACE_ROOTS_KEY = 'manga-name-studio.episode-workspace-roots.v1';
-const PC_FONT_CATALOG_KEY = 'manga-name-studio.pc-font-catalog.v1';
-
-function storedPcFontCatalog(): PcFontFamily[] {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(PC_FONT_CATALOG_KEY) || '[]');
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((value): value is PcFontFamily => Boolean(
-      value && typeof value === 'object'
-      && typeof (value as PcFontFamily).family === 'string'
-      && ((value as PcFontFamily).displayName === undefined || typeof (value as PcFontFamily).displayName === 'string')
-      && ((value as PcFontFamily).weights === undefined || Array.isArray((value as PcFontFamily).weights) && (value as PcFontFamily).weights!.every(option=>option&&typeof option.label==='string'&&Number.isInteger(option.value)&&option.value>=1&&option.value<=1000))
-      && ['japanese', 'other', 'unreadable'].includes((value as PcFontFamily).support),
-    ));
-  } catch { /* private mode or an old malformed value */ }
-  return [];
-}
-
-function rememberPcFontCatalog(families: readonly PcFontFamily[]): void {
-  try { localStorage.setItem(PC_FONT_CATALOG_KEY, JSON.stringify(families)); } catch { /* private mode */ }
-}
-
-function savedWorkspaceRoot(key: string): string {
-  try {
-    const value = JSON.parse(localStorage.getItem(EPISODE_WORKSPACE_ROOTS_KEY) || '{}');
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
-    const roots = value as Record<string, unknown>;
-    const exact = roots[key];
-    return typeof exact === 'string' ? exact : typeof roots._last === 'string' ? roots._last : '';
-  } catch { /* private mode or an old malformed value */ }
-  return '';
-}
-
-function rememberWorkspaceRoot(key: string, directory: string): void {
-  if (!directory) return;
-  try {
-    const value = JSON.parse(localStorage.getItem(EPISODE_WORKSPACE_ROOTS_KEY) || '{}');
-    const roots = value && typeof value === 'object' && !Array.isArray(value)
-      ? value as Record<string, unknown>
-      : {};
-    roots[key] = directory;
-    roots._last = directory;
-    localStorage.setItem(EPISODE_WORKSPACE_ROOTS_KEY, JSON.stringify(roots));
-  } catch { /* private mode */ }
-}
-
-function initialInnerFrameSnap(): boolean {
-  try {
-    return localStorage.getItem(INNER_FRAME_SNAP_KEY) !== '0';
-  } catch { /* private mode */ }
-  return true;
-}
-
-function initialPanelSync(): boolean {
-  try {
-    const saved = localStorage.getItem(PANEL_SYNC_KEY);
-    if (saved !== null) {
-      localStorage.removeItem(LEGACY_PANEL_SYNC_KEY);
-      return saved !== '0';
-    }
-    const legacy = localStorage.getItem(LEGACY_PANEL_SYNC_KEY);
-    const enabled = legacy !== '0';
-    localStorage.setItem(PANEL_SYNC_KEY, enabled ? '1' : '0');
-    localStorage.removeItem(LEGACY_PANEL_SYNC_KEY);
-    return enabled;
-  } catch { /* private mode */ }
-  return true;
-}
-
-function initialPanelGapSnap(): boolean {
-  try {
-    return localStorage.getItem(PANEL_GAP_SNAP_KEY) !== '0';
-  } catch { /* private mode */ }
-  return true;
-}
-
-function initialShowGuides(): boolean {
-  try {
-    return localStorage.getItem(SHOW_GUIDES_KEY) !== '0';
-  } catch { /* private mode */ }
-  return true;
-}
-
-function initialSpreadView(): boolean {
-  try {
-    const saved = localStorage.getItem(SPREAD_VIEW_KEY);
-    if (saved !== null) return saved !== '0';
-    // 旧版は見開きOFFが初期値だったため引き継がず、今回の作品向け初期値へ更新する。
-    localStorage.removeItem(LEGACY_SPREAD_VIEW_KEY);
-  } catch { /* private mode */ }
-  return true;
-}
-
-function initialPersistAnalogAssets(): boolean {
-  try {
-    return localStorage.getItem(PERSIST_ANALOG_ASSETS_KEY) === '1';
-  } catch { /* private mode */ }
-  return false;
-}
-
-
-function TemplateThumb({ shapes, figures = [], frameLineWidthMm }: { shapes: readonly PanelShape[]; figures?: readonly DetectedFigureRegion[]; frameLineWidthMm?: number }) {
-  const frameStyle = frameLineWidthMm === undefined ? undefined : { strokeWidth: Math.max(1, frameLineWidthMm * 4) };
-  return <svg viewBox="0 0 210 297" aria-hidden="true">
-    {shapes.map((shape, index) => shape.type === 'rect'
-      ? <rect key={index} x={shape.x} y={shape.y} width={shape.w} height={shape.h} style={frameStyle} />
-      : <polygon key={index} points={shape.points.map((point) => point.join(',')).join(' ')} style={frameStyle} />)}
-    {figures.map((figure, index) => <rect class="detected-figure-thumb" key={`figure-${index}`} x={figure.bbox.x * 210} y={figure.bbox.y * 297} width={figure.bbox.w * 210} height={figure.bbox.h * 297} rx="2" />)}
-  </svg>;
-}
 
 function initialTab(): WorkspaceTab {
   try {
@@ -4422,108 +4202,30 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
       <button inert={environmentOpen} class="drawer-backdrop" onClick={closeNewDialog} disabled={newLayoutTask === 'creating'} aria-label="新規作成を閉じる" />
       <section inert={environmentOpen} class="new-dialog" role="dialog" aria-modal={!environmentOpen} aria-label="新規作成">
         <div class="drawer-head new-dialog-head"><h2>新規作成</h2><button onClick={closeNewDialog} disabled={newLayoutTask === 'creating'} aria-label="閉じる"><X size={16} /></button></div>
-        <div class="new-dialog-navigation">
-          <ol class="new-creation-steps" aria-label="新規作成の手順">
-            <li class={newCreationStep === 'series' ? 'is-active' : ''} aria-current={newCreationStep === 'series' ? 'step' : undefined}><span>1</span>シリーズ</li>
-            <li class={newCreationStep === 'characters' ? 'is-active' : ''} aria-current={newCreationStep === 'characters' ? 'step' : undefined}><span>2</span>登場人物</li>
-            <li class={newCreationStep === 'setting' ? 'is-active' : ''} aria-current={newCreationStep === 'setting' ? 'step' : undefined}><span>3</span>舞台設定</li>
-            <li class={newCreationStep === 'layout' ? 'is-active' : ''} aria-current={newCreationStep === 'layout' ? 'step' : undefined}><span>4</span>ページ設定</li>
-          </ol>
-          <div class="new-step-toolbar">
-            <div class="new-step-heading">
-              <h3 id="new-creation-step-title">{{ series: 'シリーズ', characters: '登場人物', setting: '舞台設定', layout: 'ページ設定' }[newCreationStep]}</h3>
-              <p>{{ series: '作品の種類・保存先・資料を選びます。', characters: '人物の設定と資料を確認します。', setting: '舞台と今回のあらすじを確認します。', layout: '用紙サイズや印刷条件を設定します。' }[newCreationStep]}</p>
-            </div>
-            <nav class="new-step-navigation" aria-label="作成手順の移動">
-              <button type="button" class="secondary-button" disabled={newCreationStep === 'series' || seriesCatalogSaving || newLayoutTask !== 'idle'} onClick={() => {
-                if (newCreationStep === 'characters') void returnToSeriesSelection();
-                else if (newCreationStep === 'setting') setNewCreationStep('characters');
-                else if (newCreationStep === 'layout') {
-                  if (editingNewPrintSetup && newPrintConfirmed) setEditingNewPrintSetup(false);
-                  else setNewCreationStep('setting');
-                }
-              }}><ChevronLeft size={15} aria-hidden="true" />戻る</button>
-              <div class="new-step-forward">
-                {newCreationStep === 'series' && <button type="submit" form="new-series-form" class="primary-button" disabled={!newSeriesMode || !newEpisodeWorkspace || newSeriesPreparing || newWorkspaceSelecting}>{newSeriesPreparing ? '準備中…' : '次へ'}<ChevronRight size={15} aria-hidden="true" /></button>}
-                {newCreationStep === 'characters' && <button type="button" class="primary-button" disabled={seriesCatalogSaving || characterTextBusy} onClick={() => void continueFromNewCharacters()}>{seriesCatalogSaving ? '保存中…' : '次へ'}<ChevronRight size={15} aria-hidden="true" /></button>}
-                {newCreationStep === 'setting' && <button type="submit" form="new-setting-form" class="primary-button" disabled={seriesCatalogSaving || !newWorkSetting.situation.trim()}>{seriesCatalogSaving ? '保存中…' : '次へ'}<ChevronRight size={15} aria-hidden="true" /></button>}
-                {newCreationStep === 'layout' && editingNewPrintSetup && <button type="submit" form="new-print-form" class="primary-button" disabled={newLayoutTask !== 'idle'}>設定完了</button>}
-              </div>
-            </nav>
-          </div>
-        </div>
+        <NewProjectNavigation {...{
+          newCreationStep, seriesCatalogSaving, newLayoutTask, returnToSeriesSelection,
+          setNewCreationStep, editingNewPrintSetup, newPrintConfirmed, setEditingNewPrintSetup,
+          newSeriesMode, newEpisodeWorkspace, newSeriesPreparing, newWorkspaceSelecting,
+          characterTextBusy, continueFromNewCharacters, newWorkSetting,
+        }} />
         <div class="new-dialog-body" key={newCreationStep}>
           <div class="new-creation-content">
-          {newCreationStep === 'series' && <form id="new-series-form" class="new-series-step" aria-labelledby="new-creation-step-title" onSubmit={(event) => { event.preventDefault(); void continueFromSeriesSelection(); }} onKeyDown={(event) => {
-            const target = event.target as HTMLElement;
-            if (event.key !== 'Enter' || event.isComposing || (target.tagName !== 'INPUT' && target.tagName !== 'SELECT')) return;
-            event.preventDefault();
-            void continueFromSeriesSelection();
-          }}>
-            <div class="new-series-mode-grid">
-              <button type="button" class={newSeriesMode === 'new' ? 'is-selected' : ''} onClick={() => { clearNewReferenceText(); clearNewSeriesReference(); setNewCharacterTextLink(null); setNewSeriesMode('new'); setNewSeriesName(''); setNewSeriesId(crypto.randomUUID()); setNewEpisodeWorkspace(null); setNewWorkspaceMessage(''); setSeriesCatalogMessage(''); }}><FilePlus2 size={18} aria-hidden="true" /><strong>新しいシリーズ</strong></button>
-              <button type="button" class={newSeriesMode === 'existing' ? 'is-selected' : ''} onClick={() => { clearNewReferenceText(); clearNewSeriesReference(); setNewCharacterTextLink(null); setNewSeriesMode('existing'); setNewSeriesName(''); setNewSeriesId(''); setNewEpisodeWorkspace(null); setNewWorkspaceMessage(''); setSeriesCatalogMessage(seriesCatalogs.length ? '' : '保存済みシリーズはまだありません。'); }}><Files size={18} aria-hidden="true" /><strong>既存シリーズ</strong></button>
-              <button type="button" class={newSeriesMode === 'none' ? 'is-selected' : ''} onClick={() => { clearNewReferenceText(); clearNewSeriesReference(); setNewCharacterTextLink(null); setNewSeriesMode('none'); setNewSeriesName(''); setNewSeriesId(''); setNewEpisodeWorkspace(null); setNewWorkspaceMessage(''); setSeriesCatalogMessage(''); }}><FileText size={18} aria-hidden="true" /><strong>読み切り</strong></button>
-            </div>
-            {(newSeriesMode === 'new' || newSeriesMode === 'existing') && <section class="new-creation-topic" aria-labelledby="new-series-topic-title">
-              <h4 id="new-series-topic-title"><span>シリーズ</span>{newSeriesName.trim() && <span class="new-creation-topic-name">{`「　${newSeriesName.trim()}　」`}</span>}</h4>
-              {newSeriesMode === 'existing' && <label class="new-series-field"><span>シリーズ名</span><select value={newSeriesId} onChange={(event) => {
-                void selectExistingSeries(event.currentTarget.value);
-              }}><option value="">選択してください</option>{seriesCatalogs.map((item) => <option value={item.seriesId} key={item.seriesId}>{item.seriesName}</option>)}</select></label>}
-              {isLanClient && newSeriesMode === 'new' && <label class="new-series-field"><span>シリーズ名</span><input value={newSeriesName} onInput={event => setNewSeriesName(event.currentTarget.value)} /></label>}
-              {(newSeriesMode === 'new' || newSeriesId) && <>
-                <div class="new-creation-row" aria-label="シリーズフォルダ">
-                  <strong>保存先</strong>
-                  <span class="new-creation-value" >{newSeriesDirectory.split('/').filter(Boolean).at(-1) || 'フォルダを選択してください。'}</span>
-                  <button class="new-creation-change" type="button" onClick={() => void chooseNewSeriesDirectory()} disabled={newSeriesDirectorySelecting || newSeriesReferenceSelecting || newSeriesPreparing || newWorkspaceSelecting}><FolderOpen size={15} aria-hidden="true" />{newSeriesDirectorySelecting ? '選択中…' : newSeriesDirectory ? '変更' : '選択'}</button>
-                </div>
-                {newSeriesDirectoryMessage && <p class="new-workspace-message" role="status">{newSeriesDirectoryMessage}</p>}
-                {(isLanClient || newSeriesDirectory) && <div class="new-creation-references" aria-label="シリーズの設定資料">
-                  <div class="new-creation-reference-list">
-                  {newSeriesReferenceRows.map((reference) => <div class="new-creation-reference-row" key={reference.relativePath}>
-                    <label class="new-creation-reference-label">
-                      <input
-                        type="checkbox"
-                        aria-label={`${reference.fileName}を選択`}
-                        checked={newSelectedSeriesReferencePaths.includes(reference.relativePath)}
-                        disabled={newSeriesReferenceBusy}
-                        onChange={() => setNewSelectedSeriesReferencePaths((current) => current.includes(reference.relativePath)
-                          ? current.filter((path) => path !== reference.relativePath)
-                          : [...current, reference.relativePath])}
-                      />
-                      <span class="new-creation-file-name" >{reference.fileName}</span>
-                    </label>
-                  </div>)}
-                  </div>
-                  <div class="new-creation-reference-actions">
-                    {newSeriesReferenceMessage && <p class="new-reference-message" role="status">{newSeriesReferenceMessage}</p>}
-                    <button class="new-creation-change" type="button" onClick={() => void chooseNewSeriesReferenceTextFile()} disabled={newSeriesReferenceBusy}><FilePlus2 size={15} aria-hidden="true" />{newSeriesReferenceSelecting ? '選択中…' : newSeriesReferenceRows.length ? '資料を追加' : '資料を選択'}</button>
-                    <button class="new-creation-change" type="button" aria-label="選択した資料を変更"  disabled={newSeriesReferenceBusy || selectedNewSeriesReferenceRows.length !== 1} onClick={() => { if (selectedNewSeriesReferenceRows.length === 1) void chooseNewSeriesReferenceTextFile(selectedNewSeriesReferenceRows[0].relativePath); }}><FileText size={15} aria-hidden="true" />変更</button>
-                    <button class="new-creation-change" type="button" aria-label="選択した資料を削除"  disabled={newSeriesReferenceBusy || !selectedNewSeriesReferenceRows.length} onClick={removeSelectedNewSeriesReferences}><Trash2 size={15} aria-hidden="true" />削除</button>
-                    {newSeriesReferenceCandidates.length > 0 && <button class="primary-button" type="button" disabled={!selectedNewSeriesReferenceRows.length || newSeriesReferenceBusy} onClick={applySelectedNewSeriesReferences}><ClipboardCheck size={15} aria-hidden="true" />選んだ{selectedNewSeriesReferenceRows.length}件を反映</button>}
-                  </div>
-                </div>}
-              </>}
-              {seriesCatalogMessage && <p class="new-reference-message" role="status">{seriesCatalogMessage}</p>}
-            </section>}
-            {newSeriesMode && (newSeriesMode !== 'existing' || newSeriesId) && <section class="new-creation-topic" aria-labelledby="new-episode-topic-title">
-              <h4 id="new-episode-topic-title"><span>今回のエピソード</span>{newWorkTitle.trim() && <span class="new-creation-topic-name">{`「　${newWorkTitle.trim()}　」`}</span>}</h4>
-              <div class="new-creation-row" aria-label="今回のエピソード保存先">
-                <strong>保存先</strong>
-                <span class="new-creation-value" >{newEpisodeWorkspace?.folderName || 'フォルダを選択してください。'}</span>
-                <button class="new-creation-change" type="button" onClick={() => void chooseNewEpisodeWorkspace()} disabled={newWorkspaceSelecting || newReferenceSelecting || newSeriesReferenceSelecting || newSeriesDirectorySelecting || newSeriesPreparing}><FolderOpen size={15} aria-hidden="true" />{newWorkspaceSelecting ? '選択中…' : newEpisodeWorkspace ? '変更' : '選択'}</button>
-              </div>
-              {newWorkspaceMessage && <p class="new-workspace-message" role="status">{newWorkspaceMessage}</p>}
-              {newEpisodeWorkspace && <div class="new-creation-references" aria-label="今回のエピソード資料">
-                <div class="new-creation-source-row">
-                  <div class="new-creation-reference-list"><span class="new-creation-file-name" >{newReferenceFileName || newSuggestedEpisodeReference?.fileName || '資料を指定できます'}</span></div>
-                  <button class="new-creation-change" type="button" onClick={() => void chooseNewReferenceTextFile()} disabled={newReferenceSelecting || newWorkspaceSelecting || newSeriesDirectorySelecting || newSeriesPreparing}><FileText size={15} aria-hidden="true" />{newReferenceSelecting ? '選択中…' : newReferenceFileName || newSuggestedEpisodeReference ? '変更' : '資料を選択'}</button>
-                </div>
-                {newSuggestedEpisodeReference && <div class="new-creation-reference-actions is-end"><button class="primary-button" type="button" disabled={newReferenceSelecting || newWorkspaceSelecting || newSeriesDirectorySelecting || newSeriesPreparing} onClick={() => void applySuggestedReferenceTexts()}><ClipboardCheck size={15} aria-hidden="true" />この資料を反映</button></div>}
-                {newReferenceMessage && <p class="new-reference-message is-file-aligned" role="status">{newReferenceMessage}</p>}
-              </div>}
-            </section>}
-          </form>}
+          {newCreationStep === 'series' && <NewSeriesStep {...{
+            continueFromSeriesSelection, newSeriesMode, clearNewReferenceText,
+            clearNewSeriesReference, setNewCharacterTextLink, setNewSeriesMode, setNewSeriesName,
+            setNewSeriesId, setNewEpisodeWorkspace, setNewWorkspaceMessage, setSeriesCatalogMessage,
+            seriesCatalogs, newSeriesName, newSeriesId, selectExistingSeries, newSeriesDirectory,
+            chooseNewSeriesDirectory, newSeriesDirectorySelecting, newSeriesReferenceSelecting,
+            newSeriesPreparing, newWorkspaceSelecting, newSeriesDirectoryMessage,
+            newSeriesReferenceRows, newSelectedSeriesReferencePaths, newSeriesReferenceBusy,
+            setNewSelectedSeriesReferencePaths, newSeriesReferenceMessage,
+            chooseNewSeriesReferenceTextFile, selectedNewSeriesReferenceRows,
+            removeSelectedNewSeriesReferences, newSeriesReferenceCandidates,
+            applySelectedNewSeriesReferences, seriesCatalogMessage, newWorkTitle,
+            newEpisodeWorkspace, chooseNewEpisodeWorkspace, newReferenceSelecting,
+            newWorkspaceMessage, newReferenceFileName, newSuggestedEpisodeReference,
+            chooseNewReferenceTextFile, applySuggestedReferenceTexts, newReferenceMessage,
+          }} />}
           {newCreationStep === 'characters' && newCharacterDocument && <section class="new-character-step" aria-label="登場人物の登録">
             <CharactersEditor
               document={newCharacterDocument}
@@ -4552,123 +4254,22 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
               }}
             />
           </section>}
-          {newCreationStep === 'setting' && <form id="new-setting-form" class="new-setting-step" aria-labelledby="new-creation-step-title" onSubmit={(event) => { event.preventDefault(); void continueFromNewSetting(); }}>
-            {newSeriesMode !== 'none' && newCharacterDocument && <section class="new-setting-group is-series">
-              <h4>シリーズの舞台</h4>
-              <div class="new-setting-fields">
-                <label><span>ジャンル</span><input value={newCharacterDocument.manga.series_setting.genre ?? ''} placeholder="例：SF・ファンタジー" onInput={(event) => updateNewSeriesSetting('genre', event.currentTarget.value)} /></label>
-                <label><span>対象読者</span><input value={newCharacterDocument.manga.series_setting.target_audience ?? ''} placeholder="例：少年・少女" onInput={(event) => updateNewSeriesSetting('target_audience', event.currentTarget.value)} /></label>
-                <label><span>成人指定</span><input type="checkbox" style={{ width: '18px', height: '18px', margin: '5px 0', padding: 0, accentColor: 'var(--accent)' }} checked={newCharacterDocument.manga.series_setting.adult_content === true} onChange={(event) => {
-                  patchNewCharacterDocument((draft) => { draft.manga.series_setting.adult_content = event.currentTarget.checked; });
-                  setNewSettingMessage('');
-                }} /></label>
-                <label class="is-wide"><span>世界観</span><textarea rows={4} value={newCharacterDocument.manga.series_setting.situation} placeholder="シリーズを通して共通する舞台や世界観" onInput={(event) => updateNewSeriesSetting('situation', event.currentTarget.value)} /></label>
-              </div>
-            </section>}
-            <section class="new-setting-group is-episode">
-              <h4>今回のエピソードの舞台・状況</h4>
-              <div class="new-setting-fields">
-                <label><span>場所</span><input value={newWorkSetting.location} placeholder="例：放課後の教室" onInput={(event) => updateNewWorkSetting('location', event.currentTarget.value)} /></label>
-                <label><span>時間帯</span><input value={newWorkSetting.time} placeholder="例：夕方" onInput={(event) => updateNewWorkSetting('time', event.currentTarget.value)} /></label>
-                <label><span>天候</span><input value={newWorkSetting.weather} placeholder="例：雨" onInput={(event) => updateNewWorkSetting('weather', event.currentTarget.value)} /></label>
-                <label class="is-wide"><span>あらすじ <em>必須</em></span><textarea rows={8} required value={newWorkSetting.situation} placeholder="この話で何が起きるかを入力してください" onInput={(event) => updateNewWorkSetting('situation', event.currentTarget.value)} /></label>
-              </div>
-            </section>
-            <p class="new-setting-message">背景ごとの3Dモデルは、作品作成後に「舞台設定」→「背景作画資料」の各カードから登録できます。シリーズ共通にすると別エピソードでも再利用できます。</p>
-            {newSettingMessage && <p class="new-setting-message" role="status">{newSettingMessage}</p>}
-          </form>}
-          {newCreationStep === 'layout' && <section class="new-layout-step" aria-labelledby="new-creation-step-title">
-          {editingNewPrintSetup ? <PrintSettingsEditor initial={newPrintSetup} externalFormId="new-print-form" onConfirm={setup => {
-            setNewPrintSetup(setup);
-            setNewPrintConfirmed(true);
-            setEditingNewPrintSetup(false);
-            try { savePrintPreferences(localStorage, setup); }
-            catch { setToast('今回の設定は使えますが、本体へ前回設定を保存できませんでした。'); }
-          }} /> : <div class="print-summary"><p>{printSummary(newPrintSetup)}{newPrintSetup.printer && <small>{newPrintSetup.printer}</small>}</p><button type="button" class="secondary-button" disabled={newLayoutTask !== 'idle'} onClick={() => setEditingNewPrintSetup(true)}>変更</button></div>}
-          {newPrintConfirmed && !editingNewPrintSetup && <>
-          <button class="new-blank-button" onClick={() => createNewDocument()} disabled={newLayoutTask !== 'idle'}><FilePlus2 size={16} />まっさらで開始（コマ割りはあとで選べます）</button>
-          <section class="new-layout-import" aria-labelledby="new-layout-import-title">
-            <div class="new-layout-import-head">
-              <div><h3 id="new-layout-import-title">紙のネームからコマを読み取る</h3></div>
-              <div class="new-layout-import-actions">
-                <button type="button" onClick={() => void chooseNewLayoutImageFiles()} disabled={newLayoutTask !== 'idle'}><Images size={15} />画像を読み込む</button>
-                {!isLanClient && (newLayoutTask === 'scanner'
-                  ? <button type="button" class="scanner-finish-button" onClick={requestScannerFinish}><ScanLine size={15} />取り込みを終了{scannerReceivedCount ? `（${scannerReceivedCount}枚）` : ''}</button>
-                  : <button type="button" onClick={launchScanner} disabled={newLayoutTask !== 'idle' || Boolean(pendingScannerSession)}><ScanLine size={15} />スキャナーを起動</button>)}
-              </div>
-            </div>
-            {!isLanClient && <label class="new-layout-persist-row">
-              <input type="checkbox" checked={persistAnalogAssets} disabled={newLayoutTask !== 'idle'} onChange={(event) => changePersistAnalogAssets(event.currentTarget.checked)} />
-              <span><strong>切り出した原画参照をすぐファイル保存</strong><small>紙のネームから抽出した人物の下書きと手書き文字だけを ~/Documents/Image-Hub/&lt;episode_id&gt;/ に保存します。登場人物・背景・小道具の資料保存とは別です。</small></span>
-            </label>}
-            <div class="new-layout-style-controls" role="group" aria-label="取り込み後のコマ枠設定">
-              <label><span>上下の間隔</span><span><input type="number" min="0" max="20" step="0.5" value={newLayoutRowGapMm} disabled={newLayoutTask !== 'idle'} onInput={(event) => updateNewLayoutGutter('row', event.currentTarget.valueAsNumber)} />mm</span></label>
-              <label><span>左右の間隔</span><span><input type="number" min="0" max="20" step="0.5" value={newLayoutColumnGapMm} disabled={newLayoutTask !== 'idle'} onInput={(event) => updateNewLayoutGutter('column', event.currentTarget.valueAsNumber)} />mm</span></label>
-              <label><span>枠線の太さ</span><span><input type="number" min="0.1" max="5" step="0.1" value={newLayoutFrameLineWidthMm} disabled={newLayoutTask !== 'idle'} onInput={(event) => updateNewLayoutFrameLineWidth(event.currentTarget.valueAsNumber)} />mm</span></label>
-              <small>間隔は解析結果の座標へ、枠線幅は新しい作品の作画指定へ保存します。</small>
-            </div>
-            {pendingScannerSession && <div class="new-layout-recovery" role="status">
-              <div><strong>前回のスキャン画像が{pendingScannerSession.count}枚残っています</strong><span>{new Date(pendingScannerSession.startedAt).toLocaleString('ja-JP')} · {pendingScannerSession.directory}</span><p>強制終了などで処理が中断された可能性があります。前回の画像へつなぎ直しますか？</p></div>
-              <div><button type="button" class="primary-button" onClick={resumeScanner} disabled={newLayoutTask !== 'idle'}>つなぎ直す</button><button type="button" onClick={discardRecoveredScans} disabled={newLayoutTask !== 'idle'}>破棄する</button></div>
-            </div>}
-            <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" multiple hidden onChange={(event) => chooseNewLayoutImages(event.currentTarget.files)} />
-            {activeLayoutItem && <div class="new-layout-workbench">
-              <section class="new-layout-thumb-pane" aria-labelledby="new-layout-source-title">
-                <h4 id="new-layout-source-title">原画</h4>
-                <div class="new-layout-spread-grid">
-                  {NEW_LAYOUT_SPREAD_ORDER.map((itemIndex) => {
-                    const item = newLayoutItems[itemIndex];
-                    if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`source-empty-${itemIndex}`} />;
-                    return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''}`} aria-label={`原画 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`source-${item.id}`}>
-                      <span class="new-layout-thumb-media"><NewLayoutSourceImage file={item.file} alt="" style={layoutPreviewImageStyle(displayedLayoutRotation(item))} /></span>
-                      <em>{String(itemIndex + 1).padStart(2, '0')}</em>
-                    </button>;
-                  })}
-                </div>
-              </section>
-              <section class="new-layout-thumb-pane is-analysis" aria-labelledby="new-layout-analysis-title">
-                <h4 id="new-layout-analysis-title">解析結果</h4>
-                <div class="new-layout-spread-grid">
-                  {NEW_LAYOUT_SPREAD_ORDER.map((itemIndex) => {
-                    const item = newLayoutItems[itemIndex];
-                    if (!item) return <span class="new-layout-thumb-card is-empty" aria-hidden="true" key={`analysis-empty-${itemIndex}`} />;
-                    const hasPanels = Boolean(item.analysis?.detectedPanels.length);
-                    return <button type="button" class={`new-layout-thumb-card ${newLayoutActiveIndex === itemIndex ? 'is-active' : ''} ${hasPanels ? 'is-ready' : ''} ${item.analyzing ? 'is-analyzing' : ''} ${item.error ? 'is-error' : ''}`} aria-label={`解析結果 ${itemIndex + 1}ページ目を選択`} onClick={() => setNewLayoutActiveIndex(itemIndex)} key={`analysis-${item.id}`}>
-                      <span class="new-layout-thumb-media">{hasPanels && item.analysis ? <TemplateThumb shapes={item.analysis.detectedPanels} figures={item.analysis.detectedFigures} frameLineWidthMm={newLayoutFrameLineWidthMm} /> : <span class="new-layout-analysis-placeholder">{item.analyzing ? '解析中' : item.error ? '!' : ''}</span>}</span>
-                      <em>{String(itemIndex + 1).padStart(2, '0')}</em>
-                    </button>;
-                  })}
-                </div>
-              </section>
-              <section class="new-layout-focus-pane" aria-labelledby="new-layout-focus-title">
-                <h4 id="new-layout-focus-title">フォーカス中</h4>
-                <div class="new-layout-focus-body">
-                  <div class="new-layout-focus-image"><NewLayoutSourceImage file={activeLayoutItem.file} alt="読み込んだネーム画像のプレビュー" style={layoutPreviewImageStyle(displayedLayoutRotation(activeLayoutItem))} /></div>
-                  <div class="new-layout-focus-controls">
-                    <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
-                    <strong >{activeLayoutItem.file.name}</strong>
-                    <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
-                    <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} ><Sparkles size={15} />{newLayoutTask === 'analyzing' || newLayoutTask === 'creating' ? '解析中…' : '解析開始'}</button>
-                  </div>
-                </div>
-                <NewLayoutAnalysisFeed items={newLayoutItems} message={newLayoutMessage} characterProgress={newCharacterReadProgress} />
-              </section>
-            </div>}
-            {!activeLayoutItem && (newCharacterReadProgress ? <CharacterReadProgress progress={newCharacterReadProgress} /> : newLayoutMessage && <p class="new-layout-message" role="status">{newLayoutMessage}</p>)}
-            {scannerSession && <p class="new-layout-session">開始 {new Date(scannerSession.startedAt).toLocaleTimeString('ja-JP')} · 保存先 {scannerSession.directory}</p>}
-          </section>
-          <details class="new-template-picker">
-          <summary>コマ割りを選んで開始</summary>
-          <div class="new-template-grid">
-            {PANEL_TEMPLATES.map((template) => <button type="button" id={`new-template-${template.id}`} class="new-template-card" key={template.id} disabled={newLayoutTask !== 'idle'} onClick={() => createNewDocument(template, hasScannedLayoutItems)}>
-              <TemplateThumb shapes={template.shapes} />
-              <strong>パターン{template.id} · {template.name}</strong>
-              <small>{template.shapes.length}コマ · {template.usage}</small>
-            </button>)}
-          </div>
-          </details>
-          </>}
-          </section>}
+          {newCreationStep === 'setting' && <NewSettingStep {...{
+            continueFromNewSetting, newSeriesMode, newCharacterDocument, updateNewSeriesSetting,
+            patchNewCharacterDocument, setNewSettingMessage, newWorkSetting, updateNewWorkSetting,
+            newSettingMessage,
+          }} />}
+          {newCreationStep === 'layout' && <NewLayoutStep {...{
+            editingNewPrintSetup, newPrintSetup, setNewPrintSetup, setNewPrintConfirmed,
+            setEditingNewPrintSetup, setToast, newLayoutTask, newPrintConfirmed, createNewDocument,
+            chooseNewLayoutImageFiles, requestScannerFinish, scannerReceivedCount, launchScanner,
+            pendingScannerSession, persistAnalogAssets, changePersistAnalogAssets, newLayoutRowGapMm,
+            updateNewLayoutGutter, newLayoutColumnGapMm, newLayoutFrameLineWidthMm,
+            updateNewLayoutFrameLineWidth, resumeScanner, discardRecoveredScans, newLayoutImageInput,
+            chooseNewLayoutImages, activeLayoutItem, newLayoutItems, newLayoutActiveIndex,
+            setNewLayoutActiveIndex, rotateActiveLayoutImage, analyzeNewLayouts, newLayoutMessage,
+            newCharacterReadProgress, scannerSession, hasScannedLayoutItems,
+          }} />}
           </div>
         </div>
       </section>

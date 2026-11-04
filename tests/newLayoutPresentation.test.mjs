@@ -12,6 +12,8 @@ const { renderToString } = require('preact-render-to-string');
 
 const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const layoutSource = readFileSync(new URL('../src/components/new-project/NewLayoutStep.tsx', import.meta.url), 'utf8');
+const layoutAst = ts.createSourceFile('NewLayoutStep.tsx', layoutSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
 const feedSource = readFileSync(new URL('../src/components/NewLayoutAnalysisFeed.tsx', import.meta.url), 'utf8');
 const progressSource = readFileSync(new URL('../src/components/CharacterReadProgress.tsx', import.meta.url), 'utf8');
@@ -52,12 +54,12 @@ test('コマ割りは初期状態で閉じたネイティブの開閉欄に収�
     if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some(p => p.initializer?.text === 'new-template-picker')) picker = node;
     ts.forEachChild(node, visit);
   }
-  visit(ast);
-  assert.equal(picker.openingElement.tagName.getText(ast), 'details');
-  assert.ok(!picker.openingElement.attributes.properties.some(p => p.name.getText(ast) === 'open'));
-  assert.match(picker.getText(ast), /<summary>コマ割りを選んで開始<\/summary>/);
-  assert.match(picker.getText(ast), /PANEL_TEMPLATES.map/);
-  assert.match(picker.getText(ast), /disabled=\{newLayoutTask !== 'idle'\}/);
+  visit(layoutAst);
+  assert.equal(picker.openingElement.tagName.getText(layoutAst), 'details');
+  assert.ok(!picker.openingElement.attributes.properties.some(p => p.name.getText(layoutAst) === 'open'));
+  assert.match(picker.getText(layoutAst), /<summary>コマ割りを選んで開始<\/summary>/);
+  assert.match(picker.getText(layoutAst), /PANEL_TEMPLATES.map/);
+  assert.match(picker.getText(layoutAst), /disabled=\{newLayoutTask !== 'idle'\}/);
 });
 
 test('進捗と全ページの詳細はフォーカス欄内の画像操作より下、画像なしでも通知を維持する', () => {
@@ -66,12 +68,12 @@ test('進捗と全ページの詳細はフォーカス欄内の画像操作よ�
     if (ts.isJsxElement(node) && node.openingElement.attributes.properties.some(p => p.initializer?.text === 'new-layout-focus-pane')) focus = node;
     ts.forEachChild(node, visit);
   }
-  visit(ast);
-  const text = focus.getText(ast);
+  visit(layoutAst);
+  const text = focus.getText(layoutAst);
   assert.ok(text.indexOf('<NewLayoutAnalysisFeed') > text.indexOf("onClick={analyzeNewLayouts}"));
   assert.doesNotMatch(text, /編集開始<\/button>/);
   assert.match(text, /items=\{newLayoutItems\} message=\{newLayoutMessage\}/);
-  assert.match(source, /!activeLayoutItem && \(newCharacterReadProgress \? <CharacterReadProgress/);
+  assert.match(layoutSource, /!activeLayoutItem && \(newCharacterReadProgress \? <CharacterReadProgress/);
   assert.match(feed([], '人物と演技を読み取っています… 3 / 13'), /role="status">人物と演技を読み取っています… 3 \/ 13/);
   assert.doesNotMatch(feed([]), /<details/);
 });
