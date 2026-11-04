@@ -109,15 +109,16 @@ test('tone from outside selection expands atomically; side/area failure preserve
  }
 });
 
+// 見込み: 同じサイズパレットでも選択中の道具の設定だけ変える。合格: 吹き出し・消しゴム・丸ペン・ハッチング・ベクター各1回へ分岐。範囲: 実handler＋模擬state、画面はブラウザー試験。
 test('the existing size palette routes native bubble edits without touching raster, eraser or vector defaults',()=>{
  const calls=[];
- const context={selectedBubbleStroke:{width:12,disabled:false,onChange:width=>calls.push(['bubble',width])},tool:'eraser',vectorMode:false,
-  setEraserSize:width=>calls.push(['eraser',width]),setRasterSize:width=>calls.push(['raster',width]),changeVectorStyle:patch=>calls.push(['vector',patch.width])};
+ const context={selectedBubbleStroke:{width:12,disabled:false,onChange:width=>calls.push(['bubble',width])},tool:'eraser',vectorMode:false,brush:'round',
+  setEraserSize:width=>calls.push(['eraser',width]),setRasterSize:width=>calls.push(['raster',width]),setHatchingSize:width=>calls.push(['hatching',width]),changeVectorStyle:patch=>calls.push(['vector',patch.width])};
  const change=editorHandler('setCurrentSize',context);
  change(20);assert.deepEqual(calls,[['bubble',20]]);
  context.selectedBubbleStroke.disabled=true;change(30);assert.equal(calls.length,1);
- context.selectedBubbleStroke=undefined;change(20);context.tool='pen';change(8);context.vectorMode=true;change(12);
- assert.deepEqual(calls,[['bubble',20],['eraser',20],['raster',8],['vector',12]]);
+ context.selectedBubbleStroke=undefined;change(20);context.tool='pen';change(8);context.brush='rough-hatching';change(80);context.vectorMode=true;change(12);
+ assert.deepEqual(calls,[['bubble',20],['eraser',20],['raster',8],['hatching',80],['vector',12]]);
 });
 
 test('vector styles preserve same and unselected paths so commit cannot clear redo or save',()=>{

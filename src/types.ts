@@ -292,6 +292,7 @@ export interface ImageAsset {
   byteLength: number;
 }
 export interface PaintPoint { x: number; y: number; pressure: number; time: number }
+export type PaintBrush = 'round' | 'rough-hatching';
 export interface PaintStroke {
   tool: 'pen' | 'eraser' | 'line' | 'rectangle' | 'ellipse' | 'fill' | 'clear';
   color: string | null;
@@ -299,6 +300,8 @@ export interface PaintStroke {
   selection?: BBox[];
   /** Closed shape fill; absent or null keeps existing outline-only artwork. */
   fill?: string | null;
+  /** Fixed for the whole stroke so preview, Undo and saved artwork share the same marks. */
+  brush?: { kind: 'rough-hatching'; seed: number };
   size: number;
   points: PaintPoint[];
 }

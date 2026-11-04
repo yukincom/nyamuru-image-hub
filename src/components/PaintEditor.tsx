@@ -17,6 +17,7 @@ import { newToneLayer } from '../lib/paintTone';
 import { paintColorInk } from '../lib/paintColor';
 import VectorControls, { type VectorDetailTab } from './VectorControls';
 import PaintPenTools from './PaintPenTools';
+import PaintBrushTools from './PaintBrushTools';
 import PaintSelectionTools from './PaintSelectionTools';
 import { nextMonoInk, swapPaintInk, paintInks } from '../lib/paintInk';
 import { alphaSelection, combineSelection, floodSelection, lassoSelection, type SelectionMode } from '../lib/rasterSelection';
@@ -34,7 +35,7 @@ import type {QwenAdoption} from '../lib/qwenGeneration';
 import type { ComponentChildren, ComponentProps, RefObject } from 'preact';
 import { paintCheckpoint, type PaintController, type PaintImagePlacement, type PaintLayerAction, type PaintSessionSnapshot, type SharedPaintHistory } from '../lib/paintSession';
 import { BubblePathToolContext, PaintGeometryContext, PaintInputActivityContext, PaintToolsContext, PaintDetailsContext, PaintLayerControlsContext, PaintWorkspaceContext, paintPaletteScope, usePaintWorkspace, type BubblePathToolMode, type PaintWorkspaceState, type PaintLayoutTarget } from '../lib/paintWorkspace';
-import type { BBox, ImageAsset, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
+import type { BBox, ImageAsset, PaintBrush, PaintLayer, PaintPoint, PaintStroke, VectorPath, VectorStyle } from '../types';
 import { movePaintEntry, paintGenerationOwner, addPaintLayer, addPaintFolder, ensureDirectPaintOwner, paintAddPosition, expandPaintOwnerToBounds, expandPaintOwnerToContent, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, movePaintFolder, newPaintLayer, paintLayerAboveNative, removePaintFolder, removePaintLayer, validatePaintDocument, type PaintAddPosition, type PaintOwner, type PaintScene, paintOwnerShouldClear, paintAssetIds } from '../lib/paintDocument';
 import { decodePaintImage, loadPaintImages, renderPaintPng, readPaintPixels, readPaintMaskPixels, type PaintImages } from '../lib/paintRenderer';
 import { prepareImageAsset, fitImageBox, imageCrop } from '../lib/imagePlacement';
@@ -148,6 +149,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const [colorTarget,setColorTarget]=useState<'stroke'|'fill'>('stroke');
   const [lineKind,setLineKind]=useState<PaintLineKind>('raster');
   const [rasterSize,setRasterSize]=useState(8),[eraserSize,setEraserSize]=useState(8);
+  const [brush,setBrush]=useState<PaintBrush>('round'),[hatchingSize,setHatchingSize]=useState(100);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const input=useRef<HTMLInputElement>(null);
   const imageTarget=useRef<{key:string;replace:boolean}|null>(null);
@@ -176,10 +178,10 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
   const failedImageSignature=useRef('');
   useEffect(()=>{if(images&&pendingContents.current){const p=pendingContents.current;pendingContents.current=null;selectOwner(p.key,p.id,true);}},[images]);
   const selectedBubbleStroke=!requested&&!textTool&&!zoomTool?bubbleStroke:undefined;
-  const size=selectedBubbleStroke?.width??(tool==='eraser'?eraserSize:vectorMode?vectorStyle.width:rasterSize);
+  const size=selectedBubbleStroke?.width??(tool==='eraser'?eraserSize:vectorMode?vectorStyle.width:tool==='pen'&&brush==='rough-hatching'?hatchingSize:rasterSize);
   function setCurrentSize(width:number){
     if(selectedBubbleStroke){if(!selectedBubbleStroke.disabled)selectedBubbleStroke.onChange(width);return;}
-    if(tool==='eraser')setEraserSize(width);else if(vectorMode)changeVectorStyle({width});else setRasterSize(width);
+    if(tool==='eraser')setEraserSize(width);else if(vectorMode)changeVectorStyle({width});else if(tool==='pen'&&brush==='rough-hatching')setHatchingSize(width);else setRasterSize(width);
   }
   const [vectorSelected,setVectorSelected]=useState<string[]>([]);
   const vectorState=useRef<VectorState>({paths:[],selected:[]});
@@ -738,7 +740,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
       const point=(sample:PaintSampleEvent):PaintPoint=>({...paintOwnerPoint(owner,project(paperPoint(sample,target,rect))),pressure:sample.pointerType==='pen'?Math.max(0,Math.min(1,sample.pressure)):1,time:sample.timeStamp});
       const smoother=new PaintSmoother(isShapeTool(tool)?0:smoothing);
       const selectionForMark=selectionBoxes;
-      const next:Live={ownerKey:owner.key,layerId:active.id,space:{frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height},...(paintTarget==='mask'?{target:'mask' as const}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:event.button===5?'eraser':tool as PaintStroke['tool'],color,...(selectionForMark?{selection:selectionForMark}:{}),...(event.button!==5&&(tool==='rectangle'||tool==='ellipse')?{fill:vectorStyle.fill}:{}),size:event.button===5?eraserSize:size,points:[smoother.push(point(event))]}};
+      const next:Live={ownerKey:owner.key,layerId:active.id,space:{frame:{...owner.frame},width:owner.paint.width,height:owner.paint.height},...(paintTarget==='mask'?{target:'mask' as const}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:event.button===5?'eraser':tool as PaintStroke['tool'],color,...(event.button!==5&&tool==='pen'&&brush==='rough-hatching'?{brush:{kind:brush,seed:crypto.getRandomValues(new Uint32Array(1))[0]}}:{}),...(selectionForMark?{selection:selectionForMark}:{}),...(event.button!==5&&(tool==='rectangle'||tool==='ellipse')?{fill:vectorStyle.fill}:{}),size:event.button===5?eraserSize:size,points:[smoother.push(point(event))]}};
       next.bounds=paintStrokeBounds(next.stroke);
       const blur=()=>finishGesture(false);
       const cleanup=()=>{window.removeEventListener('pointermove',movePointer,true);window.removeEventListener('pointerup',endPointer,true);window.removeEventListener('pointercancel',endPointer,true);window.removeEventListener('blur',blur);};
@@ -874,7 +876,7 @@ export default function PaintEditor({onAddOutside,selectedBubbleStroke:bubbleStr
         return <PaintToolButton class={`paint-tool-icon tool-${value}`} label={label} shortcut={toolShortcuts[value]} disabled={busy||toolSuspended} aria-pressed={paintActive?tool===value:layoutSelect?!textTool&&!zoomTool&&!bubblePathTool:bubblePathTool==='node'} onClick={()=>selectTool(value)}><Icon size={23}/></PaintToolButton>;
       })}
       <PaintPenTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended} open={penMenu} setOpen={setPenMenu}/>
-      <PaintToolButton class="paint-tool-icon" label="ペン" shortcut="[ / ]：太さ" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='pen'} onClick={()=>selectTool('pen')}><Pencil size={23}/></PaintToolButton>
+      <PaintBrushTools brush={brush} active={paintActive&&tool==='pen'} select={value=>{if(busy||toolSuspended||operation.current)return;selectTool('pen');setBrush(value);}} disabled={busy||toolSuspended}/>
       <PaintShapeTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>{textTools}
       {panelTools}
       <PaintRulerTools mode={rulerMode} active={paintActive&&tool==='ruler'} select={selectRuler} disabled={busy||toolSuspended||inputActive.current}/>

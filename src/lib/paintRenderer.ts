@@ -7,6 +7,7 @@ import { applyPaintTone } from './paintTone.ts';
 import { maskStroke } from './paintMask.ts';
 import type { PendingPaintStroke } from './paintGesture.ts';
 import { pressureRadius } from './paintStroke.ts';
+import { drawRoughHatching } from './paintBrush.ts';
 import { applyPaintColor, paintColorInk } from './paintColor.ts';
 
 export type PaintImages = Map<string, HTMLImageElement>;
@@ -69,7 +70,8 @@ export function drawPaintStroke(ctx: CanvasRenderingContext2D, stroke: PaintStro
   if(stroke.selection){ctx.beginPath();for(const b of stroke.selection)ctx.rect(b.x,b.y,b.w,b.h);ctx.clip();}
   ctx.lineWidth = stroke.size; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const a = points[0], b = points[points.length-1];
-  if (stroke.tool === 'line' || stroke.tool === 'rectangle' || stroke.tool === 'ellipse') {
+  if(stroke.tool==='pen'&&stroke.brush?.kind==='rough-hatching')drawRoughHatching(ctx,stroke);
+  else if (stroke.tool === 'line' || stroke.tool === 'rectangle' || stroke.tool === 'ellipse') {
     ctx.beginPath();
     if (stroke.tool === 'line') { ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); }
     else if (stroke.tool === 'rectangle') ctx.rect(Math.min(a.x,b.x),Math.min(a.y,b.y),Math.abs(b.x-a.x),Math.abs(b.y-a.y));

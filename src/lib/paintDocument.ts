@@ -364,6 +364,7 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
       if (!stroke || !['pen','eraser','line','rectangle','ellipse','fill','clear'].includes(stroke.tool) || (stroke.color!==null&&(typeof stroke.color!=='string'||!/^#[0-9a-f]{6}$/i.test(stroke.color)))
         || !Number.isFinite(stroke.size) || stroke.size <= 0 || !Array.isArray(stroke.points) || !stroke.points.length) fail();
       if(stroke.fill!==undefined&&!validPaintInk(stroke.fill))fail();
+      if(stroke.brush!==undefined&&(!stroke.brush||stroke.tool!=='pen'||stroke.brush.kind!=='rough-hatching'||!Number.isInteger(stroke.brush.seed)||stroke.brush.seed<0||stroke.brush.seed>0xffffffff))fail();
       if(stroke.selection!==undefined&&(!Array.isArray(stroke.selection)||stroke.selection.some(b=>!box(b))))fail();
       if((stroke.tool==='fill'||stroke.tool==='clear')&&!stroke.selection)fail();
       points += stroke.points.length+(stroke.selection?.length??0);
