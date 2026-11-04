@@ -1,70 +1,24 @@
-import { AmbientLight, ArrowHelper, Box3, BoxGeometry, BufferGeometry, CylinderGeometry, DirectionalLight, DoubleSide, Float32BufferAttribute, GridHelper, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Plane, Raycaster, RingGeometry, Scene, SRGBColorSpace, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget } from 'three';
-import { applyBackgroundCameraShift, focusBackgroundCamera } from './background3dCamera.ts';
-import { changeHumanPoseMotion, sampleHumanPoseMotion, type HumanPoseMotionLibrary } from './humanPoseMotion.ts';
-import { loadHumanPoseMotionLibrary } from './humanPoseMotionLibrary.ts';
+import { WebGLRenderer, Scene, PerspectiveCamera, Group, Plane, Vector3, Mesh, GridHelper, ArrowHelper, RingGeometry, MeshBasicMaterial, DoubleSide, AmbientLight, DirectionalLight, Box3, Raycaster, Vector2, WebGLRenderTarget, SRGBColorSpace } from 'three';
 import { HumanPoseSkeleton } from './humanPoseSkeleton.ts';
-import { loadHumanPoseRuntime, type HumanPoseRuntime } from './humanPoseRuntime.ts';
+import { type HumanPoseRuntime, loadHumanPoseRuntime } from './humanPoseRuntime.ts';
+import type { HumanPoseSceneAssets, HumanPoseRig, HumanPoseSceneSettings, HumanPoseData, PoseVector, HumanPoseCameraSubject, HumanPoseSurfaceAnchor } from './humanPoseTypes.ts';
 import { HumanPoseMotionRetarget } from './humanPoseMotionRetarget.ts';
-import { editedHumanPose, humanPoseEdits, humanPoseJointAngles, setHumanPoseJointAngles, HUMAN_POSE_HANDLES } from './humanPoseJoints.ts';
-import { moveHumanPoseHandle, humanPoseLimbFlex, setHumanPoseLimbFlex } from './humanPoseIk.ts';
-import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
-import { humanPoseCameraFacing, humanPoseSceneFrame, sameHumanPoseSource, validateHumanPoseScene } from './humanPoseScene.ts';
+import { type HumanPoseMotionLibrary, sampleHumanPoseMotion, changeHumanPoseMotion } from './humanPoseMotion.ts';
+import { type HumanPoseBackground, bodyPose, poseSupports, poseBackgroundGroup } from './poseSceneObjects.ts';
+import { type BackgroundCutawayModel, prepareBackgroundCutaway, applyBackgroundVisibility, visibleCutawayMeshes } from './background3dCutaway.ts';
+import { type HumanPoseCutFrame, humanPoseFraming, humanPosePreviewWindow, applyHumanPoseFraming } from './humanPoseFraming.ts';
+import { validateHumanPoseScene, sameHumanPoseSource, humanPoseSceneFrame, humanPoseCameraFacing } from './humanPoseScene.ts';
+import { loadHumanPoseMotionLibrary } from './humanPoseMotionLibrary.ts';
+import { editedHumanPose, humanPoseJointAngles, setHumanPoseJointAngles, humanPoseEdits, HUMAN_POSE_HANDLES } from './humanPoseJoints.ts';
+import { focusBackgroundCamera, applyBackgroundCameraShift } from './background3dCamera.ts';
+import { keepHumanPoseHeadPosition, humanPosePlacementScale, humanPoseBodyFacing, humanPoseSurfaceAligned, alignHumanPoseSurface, humanPoseSurfaceFromHit, wrapHumanPoseDegrees } from './humanPoseSurfacePlacement.ts';
 import { disposeThreeObject } from './threeSceneResources.ts';
-import type { HumanPoseCameraSubject, HumanPoseRig, HumanPoseData, HumanPoseSceneAssets, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, PoseVector } from './humanPoseTypes.ts';
-import type { BBox, BackgroundStage, FigureSize } from '../types.ts';
-import { applyHumanPoseFraming, humanPoseFraming, humanPosePreviewWindow, type HumanPoseCutFrame } from './humanPoseFraming.ts';
-import { backgroundFocusContains } from './background3dFocusGeometry.ts';
-import { CUBE_STAGE_ID } from './background3d.ts';
-import { loadBackgroundStage } from './backgroundStageStore.ts';
-import { loadStageShape, stageClipPlanes, type StageShape } from './background3dRenderer.ts';
-import { applyBackgroundVisibility, prepareBackgroundCutaway, visibleCutawayMeshes, type BackgroundCutawayModel } from './background3dCutaway.ts';
+import type { FigureSize, BBox } from '../types.ts';
+import { humanPoseLimbFlex, setHumanPoseLimbFlex, moveHumanPoseHandle } from './humanPoseIk.ts';
 import { pickBackgroundSurface } from './background3dSurfacePick.ts';
-import { alignHumanPoseSurface, humanPoseBodyFacing, humanPosePlacementScale, humanPoseSurfaceAligned, humanPoseSurfaceFromHit, keepHumanPoseHeadPosition, wrapHumanPoseDegrees } from './humanPoseSurfacePlacement.ts';
-
-export interface HumanPoseBackground { sourceId: string; shape: StageShape }
-export async function loadHumanPoseBackground(sourceId: string, stages: BackgroundStage[]): Promise<HumanPoseBackground> {
-  if (sourceId === CUBE_STAGE_ID) return { sourceId, shape: await loadStageShape() };
-  const stage = stages.find(item => item.id === sourceId);
-  if (!stage) throw new Error('保存した3D舞台が見つかりません。舞台を含む作品を開き直してください');
-  return { sourceId, shape: await loadStageShape(stage, await loadBackgroundStage(stage)) };
-}
-
-function poseSupports(pose: HumanPoseData): Mesh[] {
-  const group = new Group(), material = new MeshStandardMaterial({ color: '#b3b3b3', roughness: .9 });
-  try {
-    for (const support of pose.supports) {
-      if (!support.position?.every(Number.isFinite) || support.position.length !== 3) throw new Error('支持物の位置が不正です');
-      let geometry;
-      if (support.kind === 'box' && support.size.length === 3 && support.size.every(v => Number.isFinite(v) && v > 0 && v <= 100)) geometry = new BoxGeometry(...support.size);
-      else if (support.kind === 'cylinder' && Number.isFinite(support.radius) && support.radius > 0 && support.radius <= 100
-        && Number.isFinite(support.height) && support.height > 0 && support.height <= 100) geometry = new CylinderGeometry(support.radius, support.radius, support.height, 24);
-      else throw new Error('支持物の形状が不正です');
-      const mesh = new Mesh(geometry, material); mesh.position.fromArray(support.position); group.add(mesh);
-    }
-    if (!group.children.length) material.dispose();
-    return [...group.children] as Mesh[];
-  } catch (error) { if (!group.children.length) material.dispose(); disposeThreeObject(group); throw error; }
-}
-
-function poseBackgroundGroup(background?: HumanPoseBackground): Group {
-  const group = new Group();
-  try {
-    if (background) {
-      const material = new MeshStandardMaterial({ color: '#ccd5d4', roughness: 1, side: DoubleSide });
-      for (const mesh of background.shape.meshes) {
-        const geometry = new BufferGeometry();
-        geometry.setAttribute('position', new Float32BufferAttribute(mesh.positions, 3)); geometry.setIndex(mesh.indices); geometry.computeVertexNormals();
-        group.add(new Mesh(geometry, material));
-      }
-      if (!group.children.length) material.dispose();
-    }
-    return group;
-  } catch (error) { disposeThreeObject(group); throw error; }
-}
-
-function bodyPose(assets: HumanPoseSceneAssets, source: HumanPoseData, retarget?: HumanPoseMotionRetarget): HumanPoseData {
-  return retarget ? retarget.pose(source, { ...source, rig_signature: assets.body!.rig.rig_signature, base_glb_sha256: assets.body!.rig.base_glb_sha256 }) : source;
-}
+import { humanPoseWorldMatrices } from './humanPoseMirror.ts';
+import { stageClipPlanes } from './background3dRenderer.ts';
+import { backgroundFocusContains } from './background3dFocusGeometry.ts';
 
 /** 1件だけ開き、closeでGPU資源も解放する。体勢は登録姿勢から導出する。 */
 export class HumanPoseSceneRenderer {
@@ -435,3 +389,6 @@ export class HumanPoseSceneRenderer {
     this.renderer?.dispose(); this.renderer?.forceContextLoss(); this.canvas?.remove();
   }
 }
+
+export { loadHumanPoseBackground } from './poseSceneObjects.ts';
+export type { HumanPoseBackground } from './poseSceneObjects.ts';

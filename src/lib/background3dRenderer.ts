@@ -1,91 +1,21 @@
-import { Box3, BoxGeometry, BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Matrix4, Mesh, MeshBasicMaterial, NoBlending, PerspectiveCamera, Raycaster, Scene, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget } from 'three';
-import type { Material, Object3D } from 'three';
-import { disposeThreeObject as disposeObject, embeddedSceneManager, loadEmbeddedGlb } from './threeSceneResources.ts';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import type { BackgroundCapture, BackgroundStage, PaintLayer, VectorPath } from '../types.ts';
-import { type BackgroundEdge, type GeometryMesh } from './background3dGeometry.ts';
-import { BackgroundLineComputer, type BackgroundLineView } from './background3dLines.ts';
-import { applyBackgroundVisibility, prepareBackgroundCutaway, visibleCutawayMeshes, type BackgroundCutawayModel } from './background3dCutaway.ts';
-import { backgroundFocusTargets, keepBackgroundFocusVisible, type BackgroundFocusTarget } from './background3dFocusTarget.ts';
-import { backgroundFocusContains, backgroundFocusRegion } from './background3dFocusGeometry.ts';
-import { applyBackgroundCameraShift, pivotBackgroundCamera, shiftBackgroundCamera } from './background3dCamera.ts';
-import { backgroundSelectionOutline } from './background3dSelection.ts';
+import { WebGLRenderer, Scene, PerspectiveCamera, Group, MeshBasicMaterial, WebGLRenderTarget, DoubleSide, NoBlending, Mesh, BufferGeometry, Float32BufferAttribute, Vector3, Raycaster, Vector2, Matrix4 } from 'three';
 import { BackgroundLighting } from './background3dLighting.ts';
-import { backgroundSurfaceSize, type BackgroundSurfaceInput } from './background3dSurface.ts';
 import { BackgroundSurfaceComputer, type BackgroundSurfaceResult } from './background3dSurfaceComputer.ts';
-import { applyPaintTone } from './paintTone.ts';
-import { newPaintLayer } from './paintDocument.ts';
-import { defaultVectorStyle } from './vectorGeometry.ts';
-import { imageCrop, prepareImageAsset } from './imagePlacement.ts';
+import { type BackgroundSurfaceInput, backgroundSurfaceSize } from './background3dSurface.ts';
+import { type StageShape, stageClipPlanes, backgroundPaths } from './stageShape.ts';
+import { BackgroundLineComputer, type BackgroundLineView } from './background3dLines.ts';
+import { type BackgroundCutawayModel, prepareBackgroundCutaway, visibleCutawayMeshes, applyBackgroundVisibility } from './background3dCutaway.ts';
+import { type BackgroundFocusTarget, backgroundFocusTargets, keepBackgroundFocusVisible } from './background3dFocusTarget.ts';
+import { backgroundFocusContains, backgroundFocusRegion } from './background3dFocusGeometry.ts';
+import type { BackgroundCapture, PaintLayer } from '../types.ts';
+import { shiftBackgroundCamera, applyBackgroundCameraShift, pivotBackgroundCamera } from './background3dCamera.ts';
 import { pickBackgroundSurface } from './background3dSurfacePick.ts';
-
-export interface StageShape { meshes:GeometryMesh[]; bounds:Box3; groups?:number[][]; meshNames?:string[]; groupNames?:string[];windowMeshes?:number[] }
-/** Preserve the original file separately; LT uses a static, opaque geometry snapshot. */
-export async function loadStageShape(stage?:BackgroundStage,blob?:Blob):Promise<StageShape> {
-  let root:Object3D;
-  if(!stage){root=new Mesh(new BoxGeometry(2,2,2));}
-  else {
-    if(!blob)throw new Error('舞台の原本を読み込めませんでした');
-    if(stage.format==='glb'){
-      root=(await loadEmbeddedGlb(await blob.arrayBuffer())).scene;
-    }else{
-      const manager=embeddedSceneManager();
-      const textureLoader=new TextureLoader(manager);
-      textureLoader.load=(url,onLoad)=>{if(url.startsWith('blob:'))URL.revokeObjectURL(url);const texture=new Texture<HTMLImageElement>();queueMicrotask(()=>onLoad?.(texture));return texture;};
-      manager.addHandler(/.*/,textureLoader);
-      root=new FBXLoader(manager).parse(await blob.arrayBuffer(),'');
-    }
-  }
-  try{
-    root.updateMatrixWorld(true);
-    const meshes:GeometryMesh[]=[],meshNames:string[]=[],windowMeshes:number[]=[],bounds=new Box3(),groups=new Map<Object3D,number[]>();
-    root.traverseVisible(object=>{
-      const mesh=object as Mesh & {isInstancedMesh?:boolean;count?:number;getMatrixAt?:(i:number,m:Matrix4)=>void;skeleton?:{update:()=>void}};
-      if(!mesh.isMesh||!mesh.geometry?.getAttribute('position'))return;
-      mesh.skeleton?.update();
-      const geometry=mesh.geometry,index=geometry.getIndex(),count=index?.count??geometry.getAttribute('position').count;
-      const start=Math.max(0,geometry.drawRange.start),end=Math.min(count,start+geometry.drawRange.count);
-      for(let instance=0;instance<(mesh.isInstancedMesh?mesh.count??0:1);instance++){
-        const transform=mesh.matrixWorld.clone();if(mesh.isInstancedMesh){const local=new Matrix4();mesh.getMatrixAt!(instance,local);transform.multiply(local);}
-        const positions:number[]=[],indices:number[]=[],lookup=new Map<number,number>();
-        for(let i=start;i+2<end;i+=3)for(let k=0;k<3;k++){
-          const source=index?index.getX(i+k):i+k;let target=lookup.get(source);
-          if(target===undefined){const point=mesh.getVertexPosition(source,new Vector3()).applyMatrix4(transform);if(!point.toArray().every(Number.isFinite))throw new Error('3Dモデルに不正な座標があります');target=positions.length/3;positions.push(point.x,point.y,point.z);lookup.set(source,target);bounds.expandByPoint(point);}
-          indices.push(target);
-        }
-        if(indices.length){
-          const id=meshes.length;meshes.push({positions,indices});meshNames.push(mesh.name);
-          const names:string[]=[];for(let ancestor:Object3D|null=mesh;ancestor;ancestor=ancestor.parent)names.push(ancestor.name);
-          const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
-          const glass=materials.length>0&&materials.every(material=>{const optical=material as Material&{transmission?:number};return (optical.transmission??0)>.2||optical.opacity<.5;});
-          if(glass&&names.some(name=>/(?:^|[_\s])window(?:[_\s]|$)|窓/i.test(name)))windowMeshes.push(id);
-          // Keep authored furniture assemblies, including Mesh parents with
-          // outline children and GLTF multi-material primitive groups.
-          for(let parent:Object3D|null=mesh;parent&&parent!==root;parent=parent.parent){const children=groups.get(parent)??[];children.push(id);groups.set(parent,children);}
-        }
-      }
-    });
-    if(!meshes.length||bounds.isEmpty())throw new Error('表示できる面がありません。メッシュを含むモデルを選んでください');
-    const assemblies=[...groups.entries()].filter(([,indices])=>indices.length>1);
-    return {meshes,bounds,meshNames,windowMeshes,groups:assemblies.map(([,indices])=>indices),groupNames:assemblies.map(([object])=>object.name)};
-  }finally{disposeObject(root);}
-}
-
-export function fitStageCamera(shape:StageShape):BackgroundCapture['camera'] {
-  const centre=shape.bounds.getCenter(new Vector3()),radius=Math.max(.001,shape.bounds.getSize(new Vector3()).length()/2);
-  return {position:centre.clone().add(new Vector3(4,3,5).normalize().multiplyScalar(radius*3.6)).toArray(),target:centre.toArray(),fov:40};
-}
-/** Tight clip planes retain depth precision even when the camera is far from the stage. */
-export function stageClipPlanes(shape:StageShape,camera:PerspectiveCamera):{near:number;far:number} {
-  const centre=shape.bounds.getCenter(new Vector3()),radius=Math.max(.001,shape.bounds.getSize(new Vector3()).length()/2);
-  const depth=centre.sub(camera.position).dot(camera.getWorldDirection(new Vector3()));
-  const near=Math.max(radius/10000,depth-radius*1.01);
-  return {near,far:Math.max(near+radius*.01,depth+radius*1.01)};
-}
-export function backgroundPaths(edges:BackgroundEdge[],capture:BackgroundCapture,_dpi:number):VectorPath[] {
-  return edges.map(edge=>({id:crypto.randomUUID(),closed:false,nodes:[edge.a,edge.b].map(point=>({x:capture.frame.x+point.x,y:capture.frame.y+point.y})),style:{...defaultVectorStyle(),width:edge.width}}));
-}
+import { backgroundSelectionOutline } from './background3dSelection.ts';
+import type { BackgroundEdge } from './background3dGeometry.ts';
+import { applyPaintTone } from './paintTone.ts';
+import { prepareImageAsset, imageCrop } from './imagePlacement.ts';
+import { newPaintLayer } from './paintDocument.ts';
 
 /** Renderer and controls exist only while the user is adjusting the 3D window. */
 export class Background3dRenderer {
@@ -460,3 +390,6 @@ export class Background3dRenderer {
     for(const child of this.group.children)(child as Mesh).geometry.dispose();this.group.clear();this.shape=null;this.material.dispose();this.target?.dispose();this.target=null;this.renderer.dispose();this.renderer.forceContextLoss();this.canvas.remove();this.scratch.width=this.scratch.height=1;
   }
 }
+
+export { loadStageShape, fitStageCamera, stageClipPlanes, backgroundPaths } from './stageShape.ts';
+export type { StageShape } from './stageShape.ts';
