@@ -55,7 +55,7 @@ test('the toggle hit region follows its visible circular edge at any zoom',()=>{
   }
 });
 
-// 平行線の帯は線そのものに重ならなくても回転操作できる。帯外は掴まず、中央の菱形は移動なら合格。
+// 平行線の帯は線そのものに重ならなくても回転操作できる。帯外は掴まず、中央は移動なら合格。
 test('the entire direction band is grabbable, while the focus moves',()=>{
   const guide=ruler(),scale={x:3,y:3},c=paintRulerScreen(guide,scale).origin;
   assert.equal(hitPaintRuler(guide,c,scale),'move');

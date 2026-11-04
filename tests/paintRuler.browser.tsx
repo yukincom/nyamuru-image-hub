@@ -19,7 +19,7 @@ const tick=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnima
 let workspace:PaintWorkspaceState|null=null,ready=false;
 let controller:{current:PaintController|null}={current:null};
 let writes:PaintResult[]=[];
-let closes=0;
+let closes=0,layoutSelections=0;
 const w=()=>workspace!;
 const button=(label:string)=>document.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
 const click=async(label:string)=>{const b=button(label);if(!b||b.disabled||b.getAttribute('aria-disabled')==='true')throw Error(`Button unavailable: ${label}`);b.click();await tick();};
@@ -61,8 +61,8 @@ const makeScene=(kind:PaintLayer['kind']='raster'):PaintScene=>({frame:{x:0,y:0,
   paint:{version:1,width:640,height:480,dpi:203.2,guideInitialized:true,layers:[newPaintLayer('選択中のインク',kind)]},
 }]});
 async function mount(scene=makeScene()){
-  ready=false;workspace=null;writes=[];closes=0;controller={current:null};
-  render(<PaintEditor key={crypto.randomUUID()} controller={controller} initial={scene} assets={[]} page={1} panelIndex={0} overlay title="定規の検証" onApply={async result=>{writes.push(result);}} onClose={()=>{closes++;}} onReady={()=>{ready=true;}}>
+  ready=false;workspace=null;writes=[];closes=0;layoutSelections=0;controller={current:null};
+  render(<PaintEditor key={crypto.randomUUID()} controller={controller} initial={scene} assets={[]} page={1} panelIndex={0} overlay title="定規の検証" onApply={async result=>{writes.push(result);}} onClose={()=>{closes++;}} onSelectLayout={()=>{layoutSelections++;}} onReady={()=>{ready=true;}}>
     <div style={{display:'flex',gap:'18px',alignItems:'flex-start',marginTop:'12px'}}><Probe/></div>
   </PaintEditor>,document.getElementById('app')!);
   for(let i=0;i<120&&!ready;i++)await tick();if(!ready)throw Error('PaintEditor did not become ready');
@@ -76,6 +76,37 @@ async function rotate(degrees:number){
 }
 
 async function verify(){
+  // 未配置の定規は表示も吸着もしない。背景配下の既存レイヤーを選び直してから紙面クリックで設置する。
+  const selectionScene=makeScene(),first=newPaintLayer('配置先A'),second=newPaintLayer('配置先B');
+  selectionScene.owners[0].kind='background';selectionScene.owners[0].paint.layers=[first,second];
+  await mount(selectionScene);const beforeSelection=record();
+  await choose('集中線');
+  pointer('pointermove',60,30,{buttons:0});await tick();
+  check(!w().ruler&&!document.querySelector('.paint-ruler-overlay'),'定規の選択とカーソル移動だけでは基準点もガイドも表示しない');
+  document.querySelector<HTMLButtonElement>('.layer-select[data-tool-label="配置先A"]')!.click();await tick();
+  check(controller.current!.snapshot().layerId===first.id&&button('定規')?.getAttribute('aria-pressed')==='true'&&layoutSelections===0&&!w().ruler,'設置前に背景の編集レイヤーを選んでも定規ツールを維持');
+  await drag({x:35,y:46},{x:38,y:49},{},'pointercancel');
+  check(!w().ruler&&!document.querySelector('.paint-ruler-overlay')&&record()===beforeSelection&&!w().canUndo,'最初の設置を取消すと未配置へ戻り作品とUndoを変えない');
+  await drag({x:35,y:46},{x:35,y:46});
+  check(close(guide().origin.x,35)&&close(guide().origin.y,46)&&record()===beforeSelection,'最初にクリックした位置で基準点が表示され、レイヤー・描線を追加しない');
+  const rays=Array.from(document.querySelectorAll<SVGLineElement>('[data-ruler-origin] line'));
+  check(rays.length===8&&rays.every((line,i)=>{
+    const dx=line.x2.baseVal.value-line.x1.baseVal.value,dy=line.y2.baseVal.value-line.y1.baseVal.value,length=Math.hypot(dx,dy);
+    // SVGLengthの単精度丸めを許容し、表示長は0.001px以内、向きは単位ベクトルで比較する。
+    return Math.abs(length-25*(i%2?2/3:1))<.001&&Math.hypot(dx/length-Math.cos(i*Math.PI/4),dy/length-Math.sin(i*Math.PI/4))<.0001;
+  })&&!document.querySelector('.paint-ruler-overlay path'),'中央の菱形なし、8方向45度刻みで斜めの線は上下左右の2/3の長さ');
+  await click('ペン');await draw([{x:15,y:20},{x:25,y:32}]);
+  check(ink().owners[0].paint.layers[0].strokes.length===1&&ink().owners[0].paint.layers[1].strokes.length===0,'配置前に選んだレイヤーへ描画し、他のレイヤーを変更しない');
+  const beforeParallel=record();await choose('平行線');
+  check(!w().ruler&&!document.querySelector('.paint-ruler-overlay'),'配置済みでも定規を選び直すと次のクリックまで表示しない');
+  document.querySelector<HTMLButtonElement>('.layer-select[data-tool-label="配置先B"]')!.click();await tick();
+  check(controller.current!.snapshot().layerId===second.id&&button('定規')?.getAttribute('aria-pressed')==='true'&&!w().ruler&&layoutSelections===0,'平行線でも未配置のまま別レイヤーを選べる');
+  await drag({x:51,y:48},{x:51,y:48});
+  check(close(guide().origin.x,51)&&close(guide().origin.y,48)&&record()===beforeParallel,'平行線もクリックした位置で初めて表示し、既存線を変更しない');
+  await controller.current!.flush();const writesAfterDrawing=writes.length;
+  await choose('集中線');await controller.current!.flush();
+  check(!w().ruler&&writes.length===writesAfterDrawing,'未配置の定規選択だけでは保存を増やさない');
+
   await mount();
   const before=record(),layerId=layer().id,size=document.querySelector('[data-paint-size][aria-pressed="true"]')?.getAttribute('data-paint-size');
   await click('定規');

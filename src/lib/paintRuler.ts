@@ -28,7 +28,7 @@ export function hitPaintRuler(ruler:PaintRuler,point:RulerPoint,scale:RulerPoint
   if(Math.hypot(point.x-toggle.x,point.y-toggle.y)<=RULER_TOGGLE_RADIUS)return 'toggle';
   const dx=point.x-origin.x,dy=point.y-origin.y;
   if(ruler.mode==='radial')return Math.hypot(dx,dy)<=RULER_RADIAL_RADIUS?'move':undefined;
-  // The diamond moves the origin; the whole space between the outer lines rotates.
+  // The center moves the origin; the whole space between the outer lines rotates.
   if(Math.abs(dx)+Math.abs(dy)<=RULER_CENTER_RADIUS)return 'move';
   if(Math.abs(dx*direction.y-dy*direction.x)<=RULER_BAND_HALF_WIDTH)return 'rotate';
 }
