@@ -418,6 +418,8 @@ class FigurePerformanceBridgeTest(unittest.TestCase):
         self.assertEqual(result["analysis"]["expression"]["hint_source"]["tags_sha256"], "b" * 64)
         self.assertTrue(result["analysis"]["expression"]["hint_source"]["verified_pinned_artifacts"])
 
+    # 検出器が枠を見つけなくても、レイアウト解析は人物用VLMを起動しない。
+    # 検出結果は模擬し、解析が空のコマ一覧を返し、人物解析workerの呼び出しが0回なら合格。
     def test_layout_analysis_never_invokes_the_vlm_worker(self):
         with tempfile.TemporaryDirectory() as directory_name:
             state = self.make_state(Path(directory_name))
@@ -425,10 +427,10 @@ class FigurePerformanceBridgeTest(unittest.TestCase):
                 patch.object(vision_state, "rotated_image_bytes", return_value=b"upright"),
                 patch.object(vision_state, "run_local_worker", return_value={"detections": {}}),
                 patch.object(vision_state, "detect_panel_boxes", return_value=[]),
-                patch.object(vision_state, "detect_panel_shapes", return_value=[]),
                 patch.object(vision_state, "run_figure_performance_worker") as vlm_worker,
             ):
-                state.analyze(b"analog-page", 0)
+                result = state.analyze(b"analog-page", 0)
+            self.assertEqual(result["panels"], [])
             vlm_worker.assert_not_called()
 
     def test_rejects_an_unknown_current_size_before_model_start(self):
