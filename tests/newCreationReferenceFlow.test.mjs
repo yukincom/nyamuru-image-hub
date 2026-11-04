@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import { buildNewProjectPages } from '../src/components/workspace/newProjectPages.ts';
 import { seriesTitleFromReferences } from '../src/lib/newProjectSettings.ts';
 import { parseStoryReferenceText } from '../src/lib/settingTextImport.ts';
 import { mergeCharacterTextCatalog, parseCharacterText, toCharacterTextMarkdown } from '../src/lib/characterTextCatalog.ts';
@@ -25,7 +26,8 @@ import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
-const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const creation = readFileSync(new URL('../src/components/workspace/newProjectCreation.ts', import.meta.url), 'utf8');
+const ast = ts.createSourceFile('project.tsx', source + '\n' + creation, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
 // Exercise the actual handlers with state setters and bridge calls substituted;
 // this test must not open a folder picker or write a series catalog.
@@ -40,7 +42,7 @@ function handler(name, context) {
   const js = ts.transpileModule(`(${initializer.getText(ast)})`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
   }).outputText;
-  return runInNewContext(js, { isLanClient: false, beginFigureCropImport, ...context });
+  return runInNewContext(js, { buildNewProjectPages, isLanClient: false, beginFigureCropImport, ...context });
 }
 
 function stateSetters(state, names) {
@@ -400,7 +402,6 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
       newWorkTitle: 'テスト', newSeriesName: '', newSeriesId: '', newEpisodeNumber: '',
       newWorkSetting: { location: '', time: '', weather: '', situation: '' },
       inferPanelGutters: () => ({ rowGapMm: 5, columnGapMm: 5 }), DEFAULT_PANEL_GUTTERS: {},
-      applyPanelTemplate: page => { page.panels = [{ id: 1, bg: 1, action: null, shape: { type: 'rect', ...innerFrameBounds(page.canvas) }, bubbles: [] }]; },
       mergeSavedSeriesCatalog: async document => { events.push('merge'); return { document, added: 0 }; },
       collectUnmatchedCharacterTargets: () => mode === 'scan' || mode === 'image' ? [{ sourceRegionId: 'f1', assetId: 'a1' }, { sourceRegionId: 'f2', assetId: 'a2' }] : [], buildCharacterMatchCandidates: () => [],
       loadFigureCropAsset: async () => ({}), analyzeFigureCharacterMatchWithLocalVlm: async () => {
@@ -419,7 +420,7 @@ test('作成の実handlerはOCR配置と人物統合の後に正本を反映し�
       replaceDocument: document => { state.document = document; events.push('replace'); },
       discardNewLayoutItems: () => {}, structuredClone, crypto, toSeparatedMangaYaml,
     });
-    await create(mode === 'scan' || mode === 'image' ? [{ sourceItemId: 'img', analysis: importedAnalysis }] : mode === 'template' ? { id: 'test' } : undefined, mode === 'scan');
+    await create(mode === 'scan' || mode === 'image' ? [{ sourceItemId: 'img', analysis: importedAnalysis }] : mode === 'template' ? { id: 'test', shapes: [{ type: 'rect', x: 10, y: 10, w: 190, h: 277 }] } : undefined, mode === 'scan');
     assert.deepEqual(events, ['merge', 'people', 'scenario', 'linebreaks', 'separate-originals', 'replace']);
     assert.equal(state.document.manga.pages.length, mode === 'scan' || mode === 'image' ? 1 : 4);
     assert.ok(state.document.manga.pages.every(page => page.canvas.w === paper.w && page.canvas.h === paper.h));

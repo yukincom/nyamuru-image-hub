@@ -143,8 +143,8 @@ test('production invocation exists only in createNewDocument, after scenario mat
   const src = new URL('../src/', import.meta.url);
   const users = readdirSync(src, { recursive: true }).filter(path => /\.(tsx?|astro)$/.test(path))
     .filter(path => path !== 'lib/initialBubbleLineBreaks.ts' && readFileSync(new URL(path, src), 'utf8').includes('initializeImportedBubbleLineBreaks('));
-  assert.deepEqual(users, ['components/App.tsx']);
-  const app = readFileSync(new URL('components/App.tsx', src), 'utf8');
+  assert.deepEqual(users, ['components/workspace/newProjectCreation.ts']);
+  const app = readFileSync(new URL('components/workspace/newProjectCreation.ts', src), 'utf8');
   assert.equal(app.match(/initializeImportedBubbleLineBreaks\(/g).length, 1);
   const creation = app.slice(app.indexOf('const createNewDocument = async'));
   assert.ok(creation.indexOf('applyScenarioToNewDocument(') < creation.indexOf('initializeImportedBubbleLineBreaks('));

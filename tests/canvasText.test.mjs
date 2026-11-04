@@ -65,7 +65,8 @@ test('new panel and page text inherit the chosen style instead of returning to 1
 });
 
 const appSource=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
-const appAst=ts.createSourceFile('App.tsx',appSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+const fileActions=['workspaceProjectFiles','workspaceImageExport'].map(name=>readFileSync(new URL(`../src/components/workspace/${name}.ts`,import.meta.url),'utf8')).join('\n');
+const appAst=ts.createSourceFile('App.tsx',appSource+'\n'+fileActions,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 function appHandler(name,context){
  let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(appAst)===name)body=node.initializer?.getText(appAst);if(ts.isFunctionDeclaration(node)&&node.name?.text===name)body=node.getText(appAst);ts.forEachChild(node,visit);}visit(appAst);assert.ok(body,name);
  return runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText,context);

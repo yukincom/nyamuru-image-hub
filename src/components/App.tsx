@@ -2,10 +2,9 @@ import {connectAgentImageGeneration} from '../lib/localBridge';
 import type {QwenAgentRequest} from '../lib/qwenGeneration';
 import VoiceCommands from './VoiceCommands';
 import { isLanClient } from '../lib/clientRuntime';
-import { browserWorkspaces, isBrowserWorkspace, type BrowserDirectoryHandle } from '../lib/browserWorkspace';
-import { chooseBrowserFiles, downloadBrowserBlob, blobRevision } from '../lib/browserFiles';
-import { createPortableProject, restorePortableProject } from '../lib/portableProject';
-import { rememberBrowserCatalog, browserCatalogImageIds } from '../lib/browserCatalog';
+import { browserWorkspaces, type BrowserDirectoryHandle } from '../lib/browserWorkspace';
+import { chooseBrowserFiles, blobRevision } from '../lib/browserFiles';
+import { browserCatalogImageIds } from '../lib/browserCatalog';
 import {textStyleOf,typingTextStyle,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
 import type {Bubble,TextStyle} from '../types';
 import { loadAgentPreferences, saveAgentPreferences, type AgentPreferences } from '../lib/agentPreferences';
@@ -31,22 +30,20 @@ import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
 import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
 import { fallbackBox, panelBounds } from '../lib/canvasGeometry';
-import { overlayFallbackBox, resizePageCanvas } from '../lib/pageCanvas';
+import { overlayFallbackBox } from '../lib/pageCanvas';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, Download, FilePlus2, Files, FolderOpen, LayoutPanelTop, Settings2, SlidersHorizontal, UsersRound, X } from 'lucide-preact';
 import Header from './Header';
-import { getPrintSetup, defaultPrintSetup, loadPrintPreferences, withPrintSetup, type PrintSetup } from '../lib/printSettings';
-import { createProjectSnapshot, restoreProjectSnapshot, type ProjectBinding } from '../lib/projectPersistence';
-import { saveEpisodeProject, loadEpisodeProject } from '../lib/localBridge';
+import { getPrintSetup, defaultPrintSetup, loadPrintPreferences, type PrintSetup } from '../lib/printSettings';
+import { type ProjectBinding } from '../lib/projectPersistence';
 import PageSidebar from './PageSidebar';
 import MangaCanvas from './MangaCanvas';
 import PanelInspector from './PanelInspector';
 import {getOutputSettings} from '../lib/finishLayout.ts';
 import QwenGenerationDialog, { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from './QwenGenerationDialog';
 import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation, type QwenAdoption } from '../lib/qwenGeneration';
-import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas, type QwenCompositionScope } from '../lib/qwenComposition';
-import { canChooseImageExportDirectory, chooseImageExportDirectory, saveImageExport, flattenedPsd, pageExportIndices, pageExportPixels, pageExportStem, safeExportName, uncompressedZip, clipExportSources, type ImageExportFormat } from '../lib/pageExport';
-import { requestClipExport } from '../lib/localBridge';
+import { buildQwenCompositionPlan, captureQwenComposition, type QwenCompositionScope } from '../lib/qwenComposition';
+import { canChooseImageExportDirectory, type ImageExportFormat } from '../lib/pageExport';
 import { humanPoseOwnerImage } from '../lib/humanPoseComposition';
 import {generationMaskBounds,loadPaintImages,renderPaintPng,type PaintImages} from '../lib/paintRenderer';
 import {prepareGuideLayer} from '../lib/paintGuide';
@@ -59,29 +56,23 @@ import type { PaintController, PaintLayerAction, PaintSessionSnapshot } from '..
 import type { BubblePathToolMode, PaintLayoutTarget } from '../lib/paintWorkspace';
 import SourceCoverageReview from './SourceCoverageReview';
 import ScenarioReview from './ScenarioReview';
-import { applyScenarioToNewDocument, confirmScenarioCorrespondence, detachResolvedScenarioLinks, parseScenario, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
-import { initializePanelBackgrounds } from '../lib/panelContext.ts';
-import { initializeImportedBubbleLineBreaks } from '../lib/initialBubbleLineBreaks.ts';
+import { confirmScenarioCorrespondence, detachResolvedScenarioLinks, parseScenario, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
 import type { CharacterReadProgressState } from './CharacterReadProgress';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
-import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, parseOmayYaml, toSeparatedMangaYaml, omnyFileName, toSeriesCatalogMangaYaml } from '../lib/manga';
-import { clamp, DEFAULT_PANEL_GUTTERS, inferPanelGutters, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
-import { applyPanelTemplate, mergeSelectedPanels, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection, type PanelTemplate } from '../lib/panelTemplates';
-import { analyzeFigureCharacterMatchWithLocalVlm, attachDetectedFiguresToPage, attachRecognizedTextToPage, beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, persistAnalogAsset, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
+import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, parseOmayYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml } from '../lib/manga';
+import { clamp, DEFAULT_PANEL_GUTTERS, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
+import { mergeSelectedPanels, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection } from '../lib/panelTemplates';
+import { beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../lib/seriesCatalog';
-import { detectedFigureCrops, detectedFigureImport } from '../lib/analogFigureCrops';
-import { prepareDetectedTextCrops } from '../lib/analogTextCrops';
-import { separateBubbleOriginals } from '../lib/bubbleOriginals';
 import { beginFigureCropImport, onFigureCropAssetsChanged, pruneFigureCropAssets, collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
 import { spreadPartnerIndex as findSpreadPartnerIndex } from '../lib/pageSpread';
 import { setPanelMaterialLink, type PanelMaterialLinkTarget } from '../lib/panelMaterialLinks';
 import { isPropPlacement, synchronizeCatalogReferences } from '../lib/catalogModel';
 import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels';
 import { createSystemMobCharacter } from '../lib/systemCharacters';
-import { applyCharacterReadOutcomes, buildCharacterMatchCandidates, collectUnmatchedCharacterTargets, type CharacterReadOutcome } from '../lib/characterMatching';
 import { parseSeriesSettingText, parseStoryReferenceText, type ImportedStorySetting } from '../lib/settingTextImport.ts';
 import { replaceSeriesReferenceCandidate, seriesReferenceConfirmationState } from '../lib/seriesReferenceCandidates.ts';
-import { buildSourceCoverageReport, sha256Hex, type SourceCoverageDecision, type SourceCoverageSource } from '../lib/sourceCoverage.ts';
+import { sha256Hex, type SourceCoverageDecision, type SourceCoverageSource } from '../lib/sourceCoverage.ts';
 import { characterArchiveDocument, mergeCharacterTextCatalog, parseCharacterText, seriesCharacterCatalogIds, toCharacterTextMarkdown } from '../lib/characterTextCatalog.ts';
 import {
   startNewCreationBridgeSession,
@@ -90,7 +81,7 @@ import {
   withNewCreationBridgeSession,
 } from '../lib/localBridgeLifecycle.ts';
 import { createEmptyWorkspaceDocument, createInitialWorkspace, type WorkspaceStartupState } from '../lib/workspaceStartup.ts';
-import type { AnalogFigureImport, AnalogTextImport, BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, WorkspaceTab } from '../types';
+import type { BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, WorkspaceTab } from '../types';
 
 import {
   type NewCreationStep,
@@ -139,6 +130,11 @@ import NewSettingStep from './new-project/NewSettingStep';
 import NewLayoutStep from './new-project/NewLayoutStep';
 import NewProjectNavigation from './new-project/NewProjectNavigation';
 
+import { createNewProjectAction } from './workspace/newProjectCreation';
+import { createProjectFileActions } from './workspace/workspaceProjectFiles';
+import { createImageExportActions } from './workspace/workspaceImageExport';
+import type { MobileStoryboardPane, WorkspacePaintSession, WorkspaceSnapshot } from './workspace/workspaceTypes';
+
 const TABS: {
   id: WorkspaceTab;
   label: string;
@@ -151,8 +147,6 @@ const TABS: {
   { id: 'props', label: '小道具', icon: Box },
   { id: 'coverage', label: 'シナリオ', icon: ClipboardCheck },
 ];
-
-type MobileStoryboardPane = 'pages' | 'editor' | 'panel';
 
 type BoundEpisodeWorkspace = ProjectBinding;
 
@@ -170,9 +164,6 @@ function initialWorkspace(): WorkspaceStartupState {
   reconcileSplitOverlapFlags(startup.document);
   return startup;
 }
-
-interface WorkspacePaintSession {document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;scene:PaintScene;initialOwner?:string;title:string;resume?:PaintSessionSnapshot;images?:PaintImages}
-interface WorkspaceSnapshot {document:MangaDocument;textSelection?:CanvasTextTarget;paint?:Omit<WorkspacePaintSession,'document'|'scene'|'resume'|'images'>&{state:PaintSessionSnapshot}}
 
 export default function App() {
   const [startupWorkspace] = useState<WorkspaceStartupState>(initialWorkspace);
@@ -2072,177 +2063,14 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }finally{projectOperation.current=false;setProjectBusy(false);finishImageImport();}
   };
 
-  const exportOmny = () => {
-    if (!hasDocument || showNewDialog || projectOperation.current) return;
-    endTextEdit();
-    try {
-      const current = documentRef.current;
-      downloadBrowserBlob(new Blob([toSeparatedMangaYaml(current)], { type: 'application/yaml;charset=utf-8' }), omnyFileName(current.manga.meta.title));
-      setToast('構成データ（YAML）を書き出しました');
-    } catch (error) { setToast(`構成データを書き出せませんでした: ${error instanceof Error ? error.message : String(error)}`); }
-  };
-
-  const saveBrowserProject = async (chooseDestination = false) => {
-    if (!hasDocument || showNewDialog || projectOperation.current) return;
-    endTextEdit();
-    const episodeId = documentRef.current.manga.meta.episode_id;
-    projectOperation.current = true; setProjectBusy(true);
-    try {
-      let workspace = !chooseDestination && boundEpisodeWorkspace?.episodeId === episodeId && isBrowserWorkspace(boundEpisodeWorkspace) ? boundEpisodeWorkspace : null;
-      if (!workspace) {
-        const selected = await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory, '', true);
-        if (!selected) return '保存をキャンセルしました';
-        workspace = { ...selected, episodeId };
-      }
-      const folderTarget = await browserWorkspaces.saveTarget(workspace);
-      if (documentRef.current.manga.meta.episode_id !== episodeId) throw new Error('作品が切り替わったため保存を中止しました');
-      await paintController.current?.flush();
-      const source = documentRef.current;
-      const prepared = source.manga.meta.series.trim() ? await persistSeriesCatalog(source) : source;
-      const file = await createPortableProject(prepared);
-      if (documentRef.current.manga.meta.episode_id !== episodeId) throw new Error('作品が切り替わったため保存を中止しました');
-      const result = await browserWorkspaces.write(file, folderTarget);
-      const newer = documentRef.current !== source;
-      if (documentRef.current.manga.meta.episode_id === episodeId) {
-        const previous = documentRef.current;
-        applyPreparedSeriesIdentifiers(prepared);
-        const paint = paintSessionRef.current;
-        if (paint?.document === previous) { const updated = { ...paint, document: documentRef.current }; paintSessionRef.current = updated; setPaintSession(updated); }
-        const binding = { ...workspace, projectRevision: result.binding.revision };
-        setBoundEpisodeWorkspace(binding);
-      }
-      const outcome = `${workspace.folderName} に保存しました${newer ? '。保存中の追加編集は次回の保存で反映します' : ''}`;
-      setToast(outcome); return outcome;
-    } catch (error) { const outcome = `保存できませんでした: ${error instanceof Error ? error.message : String(error)}`; setToast(outcome); return outcome; }
-    finally { projectOperation.current = false; setProjectBusy(false); }
-  };
-
-  const openBrowserProject = async () => {
-    if (showNewDialog || projectOperation.current) return;
-    if (hasDocument && !confirm('別の作品フォルダを開きます。現在の編集は保存済みですか？')) return;
-    endTextEdit();
-    projectOperation.current = true; setProjectBusy(true);
-    const current = documentRef.current;
-    const finishImageImport=beginFigureCropImport();
-    try {
-      const workspace = await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory);
-      if (!workspace) return;
-      const selected = await browserWorkspaces.open(workspace);
-      if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-      const restored = await separateBubbleOriginals(await restorePortableProject(selected.value));
-      if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-      replaceDocument(restored);
-      const binding = { ...workspace, episodeId: restored.manga.meta.episode_id, projectRevision: selected.binding.revision };
-      setBoundEpisodeWorkspace(binding);
-      setBoundSourceSnapshot(null); setSourceCoverageDecisions([]);
-      setActivePage(0); setActivePanel(0); setSelectedPanels([0]); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor');
-      setToast(`${selected.file.name} から作品と画像を読み込みました`);
-      if (isLanClient) await rememberBrowserCatalog(restored).catch(() => setToast('作品は開きましたが、このブラウザーのシリーズ一覧への登録に失敗しました'));
-    } catch (error) { setToast(`読み込みできませんでした: ${error instanceof Error ? error.message : String(error)}`); }
-    finally { projectOperation.current = false; setProjectBusy(false); finishImageImport(); }
-  };
-
-  const saveProject = async (chooseDestination = false) => {
-    if (isLanClient) return saveBrowserProject(chooseDestination);
-    if (!hasDocument || showNewDialog || projectOperation.current) return;
-    endTextEdit();
-    projectOperation.current = true;
-    setProjectBusy(true);
-    let outcome='保存をキャンセルしました';
-    const bindPaintDocument=(previous:MangaDocument)=>{
-      const session=paintSessionRef.current;
-      if(session?.document===previous){const updated={...session,document:documentRef.current};paintSessionRef.current=updated;setPaintSession(updated);}
-    };
-    try {
-      await paintController.current?.flush();
-      let current = documentRef.current;
-      if (!current.manga.meta.episode_id) {
-        const previous=current;
-        current = cloneDocument(current);
-        current.manga.meta.episode_id = crypto.randomUUID();
-        setDocument(current,false);
-        bindPaintDocument(previous);
-      }
-      await withNewCreationBridgeSession(async () => {
-        let workspace = !chooseDestination && boundEpisodeWorkspace?.episodeId === current.manga.meta.episode_id
-          ? boundEpisodeWorkspace : null;
-        if (!workspace) {
-          const selected = await selectEpisodeWorkspace(boundEpisodeWorkspace?.directory ?? savedWorkspaceRoot(current.manga.meta.series_id || '__one_shot__'));
-          if (!selected) return;
-          workspace = { ...selected, episodeId: current.manga.meta.episode_id, projectRevision: boundEpisodeWorkspace?.episodeId === current.manga.meta.episode_id && boundEpisodeWorkspace.directory === selected.directory ? boundEpisodeWorkspace.projectRevision : undefined };
-        }
-        let prepared = cloneDocument(current);
-        let catalogWarning = '';
-        if (prepared.manga.meta.series.trim()) {
-          try {
-            prepared = await persistSeriesCatalog(prepared, { seriesSetting: structuredClone(prepared.manga.series_setting) });
-          } catch (error) {
-            catalogWarning = error instanceof Error ? error.message : 'シリーズ共通を同期できませんでした';
-          }
-        }
-        const snapshot = await createProjectSnapshot(prepared);
-        const revision = await saveEpisodeProject(workspace.token, snapshot, workspace.projectRevision ?? null);
-        const binding = { ...workspace, episodeId: prepared.manga.meta.episode_id, projectRevision: revision };
-        const newerEdits = documentRef.current !== current && documentRef.current.manga.meta.episode_id === current.manga.meta.episode_id;
-        if (documentRef.current === current) {
-          const previous=documentRef.current;
-          applyPreparedSeriesIdentifiers(prepared);
-          bindPaintDocument(previous);
-          setBoundEpisodeWorkspace(binding);
-        } else if (documentRef.current.manga.meta.episode_id === current.manga.meta.episode_id) {
-          const previous=documentRef.current;
-          applyPreparedSeriesIdentifiers(prepared);
-          bindPaintDocument(previous);
-          setBoundEpisodeWorkspace(binding);
-        }
-        outcome=`${workspace.folderName} に保存しました${newerEdits ? '。保存中の追加編集は次回の保存で反映します' : ''}${catalogWarning ? `。シリーズ共通の同期は未完了: ${catalogWarning}` : ''}`;
-        setToast(outcome);
-      });
-    } catch (error) {
-      outcome=`保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`;
-      setToast(outcome);
-    } finally {
-      projectOperation.current = false;
-      setProjectBusy(false);
-    }
-    return outcome;
-  };
-  saveProjectAction.current = () => saveProject();
-
-  const openProject = async () => {
-    if (isLanClient) return openBrowserProject();
-    if (showNewDialog || projectOperation.current) return;
-    if (hasDocument && !confirm('別の作品フォルダを開きます。現在の編集は保存済みですか？')) return;
-    endTextEdit();
-    projectOperation.current = true;
-    setProjectBusy(true);
-    const current = documentRef.current;
-    const finishImageImport=beginFigureCropImport();
-    try {
-      await withNewCreationBridgeSession(async () => {
-        const workspace = await selectEpisodeWorkspace(boundEpisodeWorkspace?.directory ?? savedWorkspaceRoot('__one_shot__'));
-        if (!workspace) return;
-        const loaded = await loadEpisodeProject(workspace.token);
-        // Do not replace changes made while the picker or disk read was pending.
-        if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-        const restored = await separateBubbleOriginals(await restoreProjectSnapshot(loaded.snapshot));
-        if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
-        replaceDocument(restored);
-        setBoundEpisodeWorkspace({ ...workspace, episodeId: restored.manga.meta.episode_id, projectRevision: loaded.revision });
-        setBoundSourceSnapshot(null);
-        setSourceCoverageDecisions([]);
-        setActivePage(0); setActivePanel(0); setSelectedPanels([0]); setSelectedElement(null);
-        setTab('storyboard'); setMobileStoryboardPane('editor');
-        setToast(`${workspace.folderName} から作品と作画設定を読み込みました`);
-      });
-    } catch (error) {
-      setToast(`読み込みできませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      projectOperation.current = false;
-      setProjectBusy(false);
-      finishImageImport();
-    }
-  };
+  const { saveProject, exportOmny, openProject } = createProjectFileActions({
+    hasDocument, showNewDialog, projectOperation, endTextEdit, documentRef, setToast, setProjectBusy,
+    boundEpisodeWorkspace, paintController, persistSeriesCatalog, applyPreparedSeriesIdentifiers,
+    paintSessionRef, setPaintSession, setBoundEpisodeWorkspace, replaceDocument,
+    setBoundSourceSnapshot, setSourceCoverageDecisions, setActivePage, setActivePanel,
+    setSelectedPanels, setSelectedElement, setTab, setMobileStoryboardPane, setDocument,
+    saveProjectAction,
+  });
 
   const chooseNewLayoutImages = (files?: ArrayLike<File> | Iterable<File> | null) => {
     if (newLayoutTask !== 'idle') return;
@@ -2474,362 +2302,19 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }
   };
 
-  const createNewDocument = async (
-    layout?: PanelTemplate | DetectedPageLayout[],
-    confirmScannedLayouts = false,
-    analysisGeneration?: number,
-  ) => {
-    const continuingAnalysis = analysisGeneration !== undefined;
-    if (newLayoutTaskRef.current !== (continuingAnalysis ? 'analyzing' : 'idle')
-      || (continuingAnalysis && analysisGeneration !== newLayoutOperationGeneration.current)
-      || !newPrintConfirmed || editingNewPrintSetup) return;
-    const finishImageImport=beginFigureCropImport();
-    try {
-    const generation = analysisGeneration ?? ++newLayoutOperationGeneration.current;
-    const isCurrentOperation = () => generation === newLayoutOperationGeneration.current;
-    updateNewLayoutTask('creating');
-    if (!newEpisodeWorkspace) {
-      setNewLayoutMessage('エピソードの保存先をもう一度選んでください。');
-      updateNewLayoutTask('idle');
-      return;
-    }
-    setNewLayoutMessage(isLanClient ? '作品を準備しています…' : '制作フォルダを準備しています…');
-    try {
-      if (isLanClient) await browserWorkspaces.prepare(newEpisodeWorkspace.token);
-      else await prepareEpisodeWorkspace(newEpisodeWorkspace.token);
-    } catch (error) {
-      if (!isCurrentOperation()) return;
-      setNewLayoutMessage(error instanceof Error ? error.message : '制作フォルダを準備できませんでした');
-      updateNewLayoutTask('idle');
-      return;
-    }
-    if (!isCurrentOperation()) return;
-    const analyzedItems = [...newLayoutItemsRef.current];
-    const detectedLayouts = Array.isArray(layout) ? layout : [];
-    const template = layout && !Array.isArray(layout) ? layout : undefined;
-    const characterDraft = newCharacterDocumentRef.current;
-    const freshEpisodeId = characterDraft?.manga.meta.episode_id || crypto.randomUUID();
-    const usedSourceItemIds = new Set(detectedLayouts.map((item) => item.sourceItemId));
-    if (!detectedLayouts.length && template && analyzedItems[0]?.analysis) usedSourceItemIds.add(analyzedItems[0].id);
-    const figureImportsByItem = new Map<string, Map<string, AnalogFigureImport>>();
-    const textImportsByItem = new Map<string, Map<string, AnalogTextImport>>();
-    const savedAssetIds: string[] = [];
-    const discardStaleAssets = async () => {
-      await deleteFigureCropAssets(savedAssetIds).catch(() => undefined);
-    };
-    try {
-      for (const item of analyzedItems) {
-        if (!usedSourceItemIds.has(item.id) || !item.analysis) continue;
-        if (item.analysis.detectedFigures.length) {
-          figureImportsByItem.set(item.id, new Map(item.analysis.detectedFigures.map(
-            region => [region.id, detectedFigureImport(item.id, region)],
-          )));
-        }
-        if (item.analysis.ocrLines.length) {
-          setNewLayoutMessage(`${item.file.name} から手書き文字の参照画像を作っています…`);
-          const prepared = await prepareDetectedTextCrops(item.file, item.rotationOverride, item.id, item.analysis.ocrLines);
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-          await saveFigureCropAssets(prepared.map((crop) => crop.asset));
-          savedAssetIds.push(...prepared.map((crop) => crop.asset.id));
-          if (!isLanClient && persistAnalogAssets) {
-            for (const crop of prepared) {
-              crop.metadata.persistentAsset = await persistAnalogAsset(
-                crop.asset.blob,
-                freshEpisodeId,
-                newWorkTitle.trim(),
-                'texts',
-                crop.asset.id,
-              );
-            }
-          }
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-          textImportsByItem.set(item.id, new Map(prepared.map((crop) => [crop.lineId, crop.metadata])));
-        }
-      }
-    } catch (error) {
-      await deleteFigureCropAssets(savedAssetIds).catch(() => undefined);
-      if (!isCurrentOperation()) return;
-      updateNewLayoutTask('idle');
-      setNewLayoutMessage(`原画参照を保存できなかったため、原画は破棄していません。${error instanceof Error ? error.message : ''}`.trim());
-      return;
-    }
-    const finishScannerImport = async () => {
-      try {
-        if (!isCurrentOperation()) { await discardStaleAssets(); return false; }
-        if (confirmScannedLayouts) await commitActiveScannerSession();
-        else await discardScannerSources();
-        if (!isCurrentOperation()) { await discardStaleAssets(); return false; }
-        return true;
-      } catch (error) {
-        await discardStaleAssets();
-        if (isCurrentOperation()) {
-          updateNewLayoutTask('idle');
-          setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン処理を完了できませんでした');
-        }
-        return false;
-      }
-    };
-    if (!figureImportsByItem.size && !(await finishScannerImport())) return;
-    const empty = createEmptyWorkspaceDocument();
-    let importedFigureCount = 0;
-    let importedTextCount = 0;
-    let reviewTextCount = 0;
-    const pages = detectedLayouts.length ? detectedLayouts.map((detectedLayout, index) => {
-      const page = newPage(index + 1);
-      page.panels = detectedLayout.analysis.detectedPanels.map((shape, panelIndex) => ({
-        id: panelIndex + 1,
-        shape: structuredClone(shape),
-        bg: 1,
-        bubbles: [],
-        action: null,
-      }));
-      const ownerPanels = new Map(detectedLayout.analysis.detectedPanelIds.map((id, panelIndex) => [id, page.panels[panelIndex]]));
-      if (detectedLayout.analysis.detectedFigures.length) {
-        importedFigureCount += attachDetectedFiguresToPage(
-          page,
-          detectedLayout.analysis.detectedFigures,
-          figureImportsByItem.get(detectedLayout.sourceItemId),
-          detectedLayout.analysis.sourceFrame,
-          ownerPanels,
-        ).added;
-      }
-      if (detectedLayout.analysis.ocrLines.length) {
-        const attached = attachRecognizedTextToPage(
-          page,
-          detectedLayout.analysis.ocrLines,
-          textImportsByItem.get(detectedLayout.sourceItemId),
-          detectedLayout.analysis.sourceFrame,
-          ownerPanels,
-        );
-        importedTextCount += attached.added;
-        reviewTextCount += attached.needsReview;
-      }
-      return page;
-    }) : Array.from({ length: newPrintSetup.purpose === 'illustration' ? 1 : newPrintSetup.body_pages }, (_, index) => newPage(index + 1, analyzedItems[0]?.analysis ? undefined : { w: newPrintSetup.width_mm, h: newPrintSetup.height_mm }));
-    if (!detectedLayouts.length) {
-      if (template) {
-        for (const page of pages) {
-          page.panels = [];
-          applyPanelTemplate(page, template);
-        }
-        const analysis = analyzedItems[0]?.analysis;
-        if (analysis?.detectedFigures.length) {
-          importedFigureCount += attachDetectedFiguresToPage(
-            pages[0],
-            analysis.detectedFigures,
-            figureImportsByItem.get(analyzedItems[0].id),
-            analysis.sourceFrame,
-          ).added;
-        }
-        if (analysis?.ocrLines.length) {
-          const attached = attachRecognizedTextToPage(
-            pages[0],
-            analysis.ocrLines,
-            textImportsByItem.get(analyzedItems[0].id),
-            analysis.sourceFrame,
-          );
-          importedTextCount += attached.added;
-          reviewTextCount += attached.needsReview;
-        }
-      } else {
-        for (const page of pages) page.panels[0].bubbles = [];
-      }
-    }
-    // Imported positions are in the analysis canvas, including OCR retained with a template.
-    // Map them together before print setup; pages already created at the target size are unchanged.
-    for (const page of pages) resizePageCanvas(page, { w: newPrintSetup.width_mm, h: newPrintSetup.height_mm }, 'inner-frame');
-    const creationGutters = detectedLayouts.length
-      ? { rowGapMm: newLayoutRowGapMm, columnGapMm: newLayoutColumnGapMm }
-      : inferPanelGutters(
-        pages[0].panels.map((item) => item.shape),
-        template ? { rowGapMm: 5, columnGapMm: 5 } : DEFAULT_PANEL_GUTTERS,
-      );
-    const fresh: MangaDocument = {
-      manga: {
-        schema_name: empty.manga.schema_name,
-        schema_version: empty.manga.schema_version,
-        meta: {
-          document_type: 'story',
-          title: newWorkTitle.trim(),
-          series: newSeriesName.trim(),
-          series_id: newSeriesName.trim() ? (newSeriesId || crypto.randomUUID()) : '',
-          episode_number: newEpisodeNumber.trim(),
-          episode_id: freshEpisodeId,
-          author: '', format: empty.manga.meta.format, page_count: pages.length,
-          reading_direction: empty.manga.meta.reading_direction,
-          text_orientation: empty.manga.meta.text_orientation,
-          font: empty.manga.meta.font,
-          bubble_line_width_mm: empty.manga.meta.bubble_line_width_mm,
-          panel_frame_width_mm: newLayoutFrameLineWidthMm,
-          panel_gutter_row_mm: creationGutters.rowGapMm,
-          panel_gutter_column_mm: creationGutters.columnGapMm,
-          style_notes: [],
-        },
-        layout_spec: '',
-        series_setting: characterDraft
-          ? structuredClone(characterDraft.manga.series_setting)
-          : emptyNewSeriesSetting(),
-        setting: structuredClone(newWorkSetting),
-        characters: characterDraft
-          ? structuredClone(characterDraft.manga.characters)
-          : [createSystemMobCharacter()],
-        materials: characterDraft
-          ? structuredClone(characterDraft.manga.materials)
-          : [],
-        pages,
-      },
-    };
-    const seriesMerge = await mergeSavedSeriesCatalog(withPrintSetup(fresh, newPrintSetup));
-    if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-    const characterReadTargets = collectUnmatchedCharacterTargets(seriesMerge.document);
-    initializePanelBackgrounds(seriesMerge.document);
-    const characterCandidates = buildCharacterMatchCandidates(seriesMerge.document.manga.characters);
-    const characterReadOutcomes = new Map<string, CharacterReadOutcome>();
-    const readTargetsByRegion = new Map(characterReadTargets.map(target => [target.sourceRegionId, target]));
-    const persistedFigures = new Map<string, NonNullable<AnalogFigureImport['persistentAsset']>>();
-    try {
-      for (const item of analyzedItems) {
-        const imports = figureImportsByItem.get(item.id);
-        if (!imports || !item.analysis) continue;
-        for await (const crop of detectedFigureCrops(item.file, item.rotationOverride, item.analysis.detectedFigures)) {
-          const metadata = imports.get(crop.regionId)!;
-          const target = readTargetsByRegion.get(metadata.sourceRegionId);
-          if (target) {
-            setNewLayoutMessage('人物と演技を読み取っています…');
-            setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
-            try {
-              const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(
-                await crop.original(), characterCandidates, target.currentSize, await crop.face(),
-              );
-              const { candidateId, confidence, action, suggestedSize, reason, expressionReading } = suggestion;
-              characterReadOutcomes.set(target.sourceRegionId, { ok: true, candidateId, confidence, action, suggestedSize, reason, expressionReading });
-            } catch (error) {
-              characterReadOutcomes.set(target.sourceRegionId, {
-                ok: false,
-                error: error instanceof Error ? error.message : '人物と演技を読み取れませんでした',
-              });
-            }
-          }
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-          const blob = await crop.forStorage();
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-          await saveFigureCropAssets([{ id: metadata.assetId, blob }]);
-          savedAssetIds.push(metadata.assetId);
-          if (!isLanClient && persistAnalogAssets) {
-            persistedFigures.set(metadata.assetId, await persistAnalogAsset(blob, freshEpisodeId, newWorkTitle.trim(), 'figures', metadata.assetId));
-          }
-          if (!isCurrentOperation()) { await discardStaleAssets(); return; }
-        }
-      }
-    } catch (error) {
-      await discardStaleAssets();
-      if (!isCurrentOperation()) return;
-      updateNewLayoutTask('idle');
-      setNewLayoutMessage(`原画参照を保存できなかったため、原画は破棄していません。${error instanceof Error ? error.message : ''}`.trim());
-      return;
-    }
-    if (figureImportsByItem.size && !(await finishScannerImport())) return;
-    if (persistedFigures.size) {
-      for (const page of seriesMerge.document.manga.pages) {
-        for (const owner of [...page.panels, page.page_overlay]) {
-          for (const figure of owner?.figures ?? []) {
-            const metadata = figure.analogImport;
-            const ref = metadata && persistedFigures.get(metadata.assetId);
-            if (metadata && ref) metadata.persistentAsset = ref;
-          }
-        }
-      }
-    }
-    setNewCharacterReadProgress(characterReadTargets.length ? { completed: characterReadTargets.length, total: characterReadTargets.length, startedAt: Date.now() } : null);
-    const characterRead = applyCharacterReadOutcomes(seriesMerge.document, characterReadOutcomes);
-    const scenarioResult = newSourceSnapshot
-      && (isLanClient || newSourceSnapshot.workspaceDirectory === newEpisodeWorkspace?.directory)
-      ? applyScenarioToNewDocument(seriesMerge.document, {
-        version: 1, fileName: newSourceSnapshot.source.fileName, text: newSourceSnapshot.source.text,
-      }) : null;
-    if (seriesMerge.document.manga.scenario) reviewTextCount = scenarioResult?.review ?? 0;
-    initializeImportedBubbleLineBreaks(seriesMerge.document);
-    setNewLayoutMessage('原本ラスターとベクターの吹き出しを分離しています…');
-    try {
-      seriesMerge.document=await separateBubbleOriginals(seriesMerge.document);
-      if(!isCurrentOperation()){await discardStaleAssets();return;}
-    }catch(error){
-      updateNewLayoutTask('idle');
-      setNewLayoutMessage(error instanceof Error?error.message:'原本レイヤーを作成できませんでした');
-      return;
-    }
-    setNewLayoutMessage('人物データの保存を確定しています…');
-    try {
-      if (newCharacterTextLink?.linked && characterDraft) {
-        const synced = await syncCharacterText(characterDraft);
-        if (synced) setNewCharacterTextLink(synced);
-      }
-      await commitNewCharacterDraft();
-    } catch (error) {
-      await discardStaleAssets();
-      updateNewLayoutTask('idle');
-      setNewLayoutMessage(`人物データの保存を確定できませんでした。${error instanceof Error ? error.message : ''}`.trim());
-      return;
-    }
-    let coverageSaveWarning = '';
-    if (!isLanClient && newEpisodeWorkspace && newSourceSnapshot && !seriesMerge.document.manga.scenario) {
-      try {
-        if (newSourceSnapshot.workspaceDirectory !== newEpisodeWorkspace.directory) {
-          throw new Error('原文を選んだ保存先と現在のエピソード保存先が一致しません');
-        }
-        const initialCoverage = await buildSourceCoverageReport(
-          newSourceSnapshot.source,
-          seriesMerge.document,
-          { omnyYaml: toSeparatedMangaYaml(seriesMerge.document) },
-        );
-        await saveSourceCoverageReport(
-          newEpisodeWorkspace.token,
-          seriesMerge.document.manga.meta.episode_id,
-          initialCoverage,
-        );
-      } catch (error) {
-        coverageSaveWarning = `原文確認reportは自動保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`;
-      }
-    }
-    let bridgeStopWarning = '';
-    setNewLayoutMessage('ローカル連携を終了しています…');
-    try {
-      await endNewCreationBridgeSession();
-    } catch (error) {
-      bridgeStopWarning = `ローカル連携を終了できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`;
-    }
-    lastHistoryPush.current = 0;
-    replaceDocument(seriesMerge.document);
-    setBoundEpisodeWorkspace({ ...newEpisodeWorkspace, episodeId: seriesMerge.document.manga.meta.episode_id });
-    setBoundSourceSnapshot(newSourceSnapshot ? {
-      ...newSourceSnapshot,
-      episodeId: seriesMerge.document.manga.meta.episode_id,
-      workspaceDirectory: newEpisodeWorkspace?.directory ?? '',
-    } : null);
-    setSourceCoverageDecisions([]);
-    setCharacterTextLink(newCharacterTextLink);
-    setActivePage(0); setActivePanel(0); setSelectedPanels([0]); setSelectedElement(null); setTab('storyboard'); setMobileStoryboardPane('editor'); setShowNewDialog(false);
-    setNewCharacterDocument(null);
-    discardNewLayoutItems();
-    updateNewLayoutTask('idle');
-    const creationMessage = detectedLayouts.length
-      ? `検出したコマ領域から${detectedLayouts.length}ページを新規作成しました`
-      : template ? `パターン${template.id}で新規作成しました` : 'まっさらな漫画を作成しました';
-    const importedDetails = [
-      importedFigureCount ? `人物あたり${importedFigureCount}件` : '',
-      importedTextCount ? `文字候補${importedTextCount}件` : '',
-      characterReadTargets.length ? `人物・演技${characterReadTargets.length}件` : '',
-      seriesMerge.added ? `シリーズ共通人物・資料${seriesMerge.added}件` : '',
-      scenarioResult?.matched ? `シナリオのセリフ${scenarioResult.matched}件` : '',
-      scenarioResult?.actions ? `ト書き${scenarioResult.actions}コマ` : '',
-    ].filter(Boolean).join('、');
-    const completedMessage = importedDetails
-      ? `${creationMessage}。${importedDetails}を配置しました${reviewTextCount || characterRead.needsReview ? `（${[reviewTextCount ? `OCR仮入力${reviewTextCount}件` : '', characterRead.needsReview ? `人物要確認${characterRead.needsReview}件` : ''].filter(Boolean).join('、')}）` : ''}${seriesMerge.warning ? `。${seriesMerge.warning}` : ''}`
-      : `${creationMessage}${seriesMerge.warning ? `。${seriesMerge.warning}` : ''}`;
-    const completionWarnings = [coverageSaveWarning, bridgeStopWarning].filter(Boolean).join('。');
-    setToast(completionWarnings ? `${completedMessage}。${completionWarnings}` : completedMessage);
-    } finally { finishImageImport(); }
-  };
+  const { createNewDocument } = createNewProjectAction({
+    newLayoutTaskRef, newLayoutOperationGeneration, newPrintConfirmed, editingNewPrintSetup,
+    updateNewLayoutTask, newEpisodeWorkspace, setNewLayoutMessage, newLayoutItemsRef,
+    newCharacterDocumentRef, persistAnalogAssets, newWorkTitle, commitActiveScannerSession,
+    discardScannerSources, newPrintSetup, newLayoutRowGapMm, newLayoutColumnGapMm, newSeriesName,
+    newSeriesId, newEpisodeNumber, newLayoutFrameLineWidthMm, newWorkSetting, mergeSavedSeriesCatalog,
+    setNewCharacterReadProgress, newSourceSnapshot, newCharacterTextLink, syncCharacterText,
+    setNewCharacterTextLink, commitNewCharacterDraft, endNewCreationBridgeSession, lastHistoryPush,
+    replaceDocument, setBoundEpisodeWorkspace, setBoundSourceSnapshot, setSourceCoverageDecisions,
+    setCharacterTextLink, setActivePage, setActivePanel, setSelectedPanels, setSelectedElement,
+    setTab, setMobileStoryboardPane, setShowNewDialog, setNewCharacterDocument, discardNewLayoutItems,
+    setToast,
+  });
 
   const addPage = () => {endTextEdit();mutate((draft) => { const index = draft.manga.pages.length; const setup = getPrintSetup(draft.manga); draft.manga.pages.push(newPage(index + 1, { w: setup.width_mm, h: setup.height_mm })); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });};
   const duplicatePage = () => {
@@ -3451,82 +2936,11 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     }catch(error){setToast(error instanceof Error?error.message:'全体生成を準備できませんでした');}
     finally{qwenPreparing.current=false;}
   };
-  const pageExportBlob = async(current:MangaDocument,pageIndex:number,format:ImageExportFormat) => {
-    const page=current.manga.pages[pageIndex];
-    if(!page)throw new Error('書き出すページが見つかりません');
-    const setup=getPrintSetup(current.manga),size=pageExportPixels(setup.width_mm,setup.height_mm,setup.dpi),guides:Record<string,boolean>={};
-    const name=pageExportStem(current.manga.meta.title||'manga',page.page,setup);
-    if(format==='clip'){
-      const {buildClipExportPage}=await import('../lib/clipExport');
-      const {payload,entries}=clipExportSources(await buildClipExportPage(current.manga,pageIndex),name);
-      const blob=await requestClipExport(payload);
-      return {blob,name:`${name}.clip`,page:page.page,sources:entries};
-    }
-    page.panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=false;}));
-    const overlay=page.page_overlay;[...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=false;});
-    const canvas=await captureQwenCompositionCanvas(current.manga,pageIndex,Math.min(activePanelRef.current,Math.max(0,page.panels.length-1)),'page',guides,{...size,includeGenerated:true});
-    try{
-      let blob:Blob;
-      if(format==='psd'){
-        const context=canvas.getContext('2d',{willReadFrequently:true});if(!context)throw new Error('ページ画像を読み出せませんでした');
-        blob=flattenedPsd(context.getImageData(0,0,canvas.width,canvas.height),setup.dpi,paintColorMode(setup.format));
-      }else blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('PNGを書き出せませんでした')),'image/png'));
-      return {blob,name:`${name}.${format}`,page:page.page,sources:[] as Array<{name:string;bytes:Uint8Array}>};
-    }finally{canvas.width=canvas.height=1;}
-  };
-  const openImageExportDialog=()=>{
-    endTextEdit();
-    const page=activePageRef.current+1;
-    setImageExportError('');
-    setImageExportProgress(null);
-    setImageExportDialog({mode:'current',from:page,to:page,format:'png'});
-  };
-  const chooseImageExportFolder=async()=>{
-    if(imageExportBusy)return;
-    setImageExportBusy(true);setImageExportError('');
-    try{const directory=await chooseImageExportDirectory(imageExportDirectory);if(directory)setImageExportDirectory(directory);}
-    catch(error){setImageExportError(error instanceof Error?error.message:'保存先を選べませんでした');}
-    finally{setImageExportBusy(false);}
-  };
-  const exportPageRange=async()=>{
-    const choice=imageExportDialog;if(!choice||imageExportBusy)return;
-    endTextEdit();
-    const current=documentRef.current;
-    try{
-      setImageExportBusy(true);setImageExportError('');
-      const indices=pageExportIndices(current.manga.pages.length,{...choice,current:activePageRef.current+1}),files:Array<{name:string;bytes:Uint8Array;blob:Blob;page:number;sources:Array<{name:string;bytes:Uint8Array}>}>=[];
-      let directory=imageExportDirectory;
-      if(!directory&&canChooseImageExportDirectory()){
-        directory=await chooseImageExportDirectory();
-        if(!directory)return;
-        setImageExportDirectory(directory);
-      }
-      if(directory?.requestPermission&&await directory.requestPermission({mode:'readwrite'})!=='granted')throw new Error('保存先への書き込みが許可されませんでした。保存先を選び直してください');
-      // Yield after real work milestones so the bar paints before the next canvas/ZIP operation.
-      const progress=async(value:number,label:string)=>{
-        setImageExportProgress({value,max:indices.length+2,label});
-        await new Promise(resolve=>setTimeout(resolve,20));
-      };
-      for(let position=0;position<indices.length;position++){
-        await progress(position,`ページを書き出し中 ${position+1} / ${indices.length}`);
-        if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
-        const result=await pageExportBlob(current,indices[position],choice.format);
-        files.push({...result,bytes:new Uint8Array(await result.blob.arrayBuffer())});
-      }
-      await progress(indices.length,files.length>1?'ZIPにまとめています':'保存の準備中');
-      if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
-      const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
-      const zip=files.length>1||files.some(file=>file.sources.length);
-      const blob=zip?uncompressedZip(files.flatMap(({name,bytes,sources})=>[{name,bytes},...sources])):files[0].blob;
-      const name=zip?`${safeExportName(current.manga.meta.title||'manga').slice(0,50)}-pages-${first}-${last}-${choice.format}.zip`:files[0].name;
-      await progress(indices.length+1,directory?'保存しています':'ダウンロードを準備中');
-      await saveImageExport(blob,name,directory);
-      await progress(indices.length+2,directory?'保存しました':'ダウンロードを開始しました');
-      setImageExportDialog(null);
-      setToast(directory?`${directory.name} に書き出しました`:'ダウンロードを開始しました');
-    }catch(error){setImageExportError(error instanceof Error?error.message:'画像を書き出せませんでした');}
-    finally{setImageExportBusy(false);setImageExportProgress(null);}
-  };
+  const { openImageExportDialog, chooseImageExportFolder, exportPageRange } = createImageExportActions({
+    activePanelRef, endTextEdit, activePageRef, setImageExportError, setImageExportProgress,
+    setImageExportDialog, imageExportBusy, setImageExportBusy, imageExportDirectory,
+    setImageExportDirectory, imageExportDialog, documentRef, setToast,
+  });
   async function persistPaintResults(current:MangaDocument,batches:Array<{pageIndex:number;panelIndex:number;overlay:boolean;title:string;result:PaintResult}>,publish:(next:MangaDocument)=>void){
     const next=cloneDocument(current), stored=next.manga.image_assets??=[];
     const writes:Array<{id:string;blob:Blob}>=[];

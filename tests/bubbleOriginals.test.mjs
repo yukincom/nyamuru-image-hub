@@ -292,10 +292,12 @@ test('selecting a page original then drawing opens the page scene with the origi
   assert.equal(run(),true);assert.equal(session.overlay,true);assert.equal(session.initialOwner,original.key);
 });
 test('every UI opening boundary runs separation before exposing the editor',()=>{
-  const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../src/components/workspace/workspaceProjectFiles.ts',import.meta.url),'utf8');
   assert.match(source,/separateBubbleOriginals\(await restorePortableProject\(selected.value\)\)/);
   assert.match(source,/separateBubbleOriginals\(await restoreProjectSnapshot\(loaded.snapshot\)\)/);
-  assert.ok(source.indexOf('seriesMerge.document=await separateBubbleOriginals')<source.indexOf('replaceDocument(seriesMerge.document)'));
+  const creation=readFileSync(new URL('../src/components/workspace/newProjectCreation.ts',import.meta.url),'utf8');
+  assert.ok(creation.includes('seriesMerge.document=await separateBubbleOriginals'));
+  assert.ok(creation.indexOf('seriesMerge.document=await separateBubbleOriginals')<creation.indexOf('replaceDocument(seriesMerge.document)'));
   const view=readFileSync(new URL('../src/components/PaintSceneView.tsx',import.meta.url),'utf8');
   assert.doesNotMatch(view.slice(view.indexOf('if(owner.bubble)'),view.indexOf('const level=')),/SourceImage/);
 });

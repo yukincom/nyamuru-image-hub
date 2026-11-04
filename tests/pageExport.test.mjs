@@ -58,8 +58,9 @@ test('export names are portable and the header dialog owns page range and image 
   const editor=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
   const palette=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
   const header=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
-  assert.match(app,/captureQwenCompositionCanvas\([^;]+includeGenerated:true/);
-  assert.match(app,/pageExportIndices\(current\.manga\.pages\.length,\{\.\.\.choice,current:activePageRef\.current\+1\}\)/);
+  const actions=readFileSync(new URL('../src/components/workspace/workspaceImageExport.ts',import.meta.url),'utf8');
+  assert.match(actions,/captureQwenCompositionCanvas\([^;]+includeGenerated:true/);
+  assert.match(actions,/pageExportIndices\(current\.manga\.pages\.length,\{\.\.\.choice,current:activePageRef\.current\+1\}\)/);
   assert.match(app,/複数ページはZIPにまとめます/);
   assert.match(app,/開始ページ/);assert.match(app,/終了ページ/);assert.match(app,/全ページ/);
   assert.match(app,/<select aria-label="書き出し形式"/);

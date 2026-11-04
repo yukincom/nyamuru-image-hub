@@ -84,7 +84,7 @@ test('overlapping flush requests serialize writes and deduplicate a shared scene
 });
 
 // Exercise the actual app save handler, including cancellation and failure, with no bridge or disk writes.
-const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+const source=['App.tsx','workspace/workspaceProjectFiles.ts'].map(file => readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8')).join('\n');
 const ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 let expression;
 function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='saveProject')expression=node.initializer.getText(ast);ts.forEachChild(node,visit);}

@@ -48,7 +48,7 @@ test('figure, text and overlay images are deduplicated, portable and restored wi
 });
 
 import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
-const app = read('src/components/App.tsx');
+const app = read('src/components/App.tsx') + '\n' + read('src/components/workspace/workspaceProjectFiles.ts');
 const ast = ts.createSourceFile('App.tsx', app, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 function handler(name, overrides = {}) {
   const original = sample();
