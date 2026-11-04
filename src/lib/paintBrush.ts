@@ -20,7 +20,7 @@ function hatchStamp(point:PaintPoint,size:number,seed:number,index:number,visit:
   const lean=(random()-.5)*.13;
   for(let line=0;line<11;line++){
     const x=(line-5)*.075+(random()-.5)*.022;
-    const top=-.47+random()*.075,bottom=.47-random()*.09;
+    const top=-.49+random()*.20,bottom=.49-random()*.22;
     const tilt=lean+(random()-.5)*.055,width=.018+random()*.006;
     const left:Point[]=[],right:Point[]=[];
     for(let step=0;step<=18;step++){

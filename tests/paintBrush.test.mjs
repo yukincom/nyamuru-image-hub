@@ -10,11 +10,12 @@ const stroke={tool:'pen',color:'#000000',size:100,brush:{kind:'rough-hatching',s
 const outlines=s=>{const result=[];forEachRoughHatch(s,p=>result.push(p));return result;};
 const rounded=lines=>lines.map(line=>line.map(p=>({x:Math.round(p.x*1e7),y:Math.round(p.y*1e7)})));
 
-// 見込み: 1クリックは長短と傾きの異なる細線の束。合格: 11本・縦長・線端が既存bounds内で、筆圧低下時は全体が縮小。範囲: 本体の幾何、描き味の視覚判定は別。
+// 見込み: 線端の振幅を広げると長短が目に見えて混ざる。合格: 100pxの束は11本、最長と最短の差20px超、上下端も各12px超の差、bounds内。範囲: 固定seedの幾何、見た目は別。
 test('a click makes a bounded bundle of varied narrow vertical scratches',()=>{
   const lines=outlines(stroke),bounds=paintStrokeBounds(stroke);assert.equal(lines.length,11);
   const heights=lines.map(line=>Math.max(...line.map(p=>p.y))-Math.min(...line.map(p=>p.y)));
-  assert.ok(Math.min(...heights)>75&&Math.max(...heights)<100);assert.ok(new Set(heights).size>8);
+  assert.ok(Math.min(...heights)>50&&Math.max(...heights)<100);assert.ok(Math.max(...heights)-Math.min(...heights)>20);
+  for(const edge of [Math.min,Math.max]){const ends=lines.map(line=>edge(...line.map(p=>p.y)));assert.ok(Math.max(...ends)-Math.min(...ends)>12);}
   for(const line of lines){
     assert.ok(Math.max(...line.map(p=>p.x))-Math.min(...line.map(p=>p.x))<12);
     assert.ok(line.every(p=>p.x>=bounds.x&&p.y>=bounds.y&&p.x<=bounds.x+bounds.w&&p.y<=bounds.y+bounds.h));

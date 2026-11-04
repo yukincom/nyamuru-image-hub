@@ -84,17 +84,17 @@ async function verify(){
   drawPaintStroke(tc,{tool:'eraser',color:'#000000',size:150,points:mark.points});
   check(tc.getImageData(0,0,300,200).data.every((v,i)=>i%4!==3||v===0),'通常の消しゴムで線束を消せる');
 
-  // 見込み/合格: 2値化しても縁の凹凸を残した黒い芯が続く。中央50行すべて11本、alphaは0/255のみ。範囲: 100px・筆圧1の本体2値描画、全サイズの保証ではない。
+  // 見込み/合格: 長短を増やしても線の芯は2値でつながる。短い線の先端を除いた中央30行すべて11本、alphaは0/255のみ。範囲: 100px・筆圧1、全サイズの保証ではない。
   const monoLayer={...newPaintLayer('2値'),colorMode:'monochrome' as const,strokes:[{...mark,selection:undefined}]};
   const mono=readPaintPixels({version:1,width:300,height:200,dpi:100,layers:[monoLayer]},monoLayer,new Map());
   check(mono.data.every((v,i)=>i%4!==3||v===0||v===255),'2値描画の透明度は0/255のみ');
   let continuous=true;
-  for(let y=75;y<125;y++){
+  for(let y=85;y<115;y++){
     let runs=0,last=false;
     for(let x=80;x<220;x++){const ink=mono.data[(y*300+x)*4+3]>0;if(ink&&!last)runs++;last=ink;}
     if(runs!==11)continuous=false;
   }
-  check(continuous,'2値100pxの中央50行で11本の黒い芯を途切れず保持');
+  check(continuous,'長短のある2値100pxの中央30行で11本の黒い芯を途切れず保持');
   const enlarged=document.createElement('canvas');enlarged.id='binary-detail';enlarged.width=600;enlarged.height=500;const ec=enlarged.getContext('2d')!;
   const native=document.createElement('canvas');native.width=300;native.height=200;native.getContext('2d')!.putImageData(mono,0,0);
   ec.fillStyle='#fff';ec.fillRect(0,0,600,500);ec.imageSmoothingEnabled=false;ec.drawImage(native,120,75,60,50,0,0,600,500);
