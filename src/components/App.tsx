@@ -2,8 +2,7 @@ import {connectAgentImageGeneration} from '../lib/localBridge';
 import type {QwenAgentRequest} from '../lib/qwenGeneration';
 import VoiceCommands from './VoiceCommands';
 import { isLanClient } from '../lib/clientRuntime';
-import { browserWorkspaces, type BrowserDirectoryHandle } from '../lib/browserWorkspace';
-import { chooseBrowserFiles, blobRevision } from '../lib/browserFiles';
+import { type BrowserDirectoryHandle } from '../lib/browserWorkspace';
 import { browserCatalogImageIds } from '../lib/browserCatalog';
 import {textStyleOf,typingTextStyle,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
 import type {Bubble,TextStyle} from '../types';
@@ -22,8 +21,7 @@ import {availableFontWeights,classifyPcFontFamilies,queryPcFontFamilies,type PcF
 import PageLayerPalette from './PageLayerPalette';
 import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, reorderPanelArt, toggleBubbleVisibility, unlockPanelDescendants, type BubbleTextTarget } from '../lib/panelLayers';
 import PanelControls from './PanelControls';
-import { namedBackgroundStages, prepareBackgroundStage, verifyBackgroundStage } from '../lib/background3d';
-import { persistSeriesBackgroundModels } from '../lib/backgroundStageStore';
+import { namedBackgroundStages, verifyBackgroundStage } from '../lib/background3d';
 import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
 import { paintGenerationOwner, applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
@@ -34,7 +32,7 @@ import { overlayFallbackBox } from '../lib/pageCanvas';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, Download, FilePlus2, Files, FolderOpen, LayoutPanelTop, Settings2, SlidersHorizontal, UsersRound, X } from 'lucide-preact';
 import Header from './Header';
-import { getPrintSetup, defaultPrintSetup, loadPrintPreferences, type PrintSetup } from '../lib/printSettings';
+import { getPrintSetup, defaultPrintSetup, type PrintSetup } from '../lib/printSettings';
 import { type ProjectBinding } from '../lib/projectPersistence';
 import PageSidebar from './PageSidebar';
 import MangaCanvas from './MangaCanvas';
@@ -56,74 +54,28 @@ import type { PaintController, PaintLayerAction, PaintSessionSnapshot } from '..
 import type { BubblePathToolMode, PaintLayoutTarget } from '../lib/paintWorkspace';
 import SourceCoverageReview from './SourceCoverageReview';
 import ScenarioReview from './ScenarioReview';
-import { confirmScenarioCorrespondence, detachResolvedScenarioLinks, parseScenario, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
+import { confirmScenarioCorrespondence, detachResolvedScenarioLinks, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
 import type { CharacterReadProgressState } from './CharacterReadProgress';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
-import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseMangaYaml, parseOmayYaml, toSeparatedMangaYaml, toSeriesCatalogMangaYaml } from '../lib/manga';
-import { clamp, DEFAULT_PANEL_GUTTERS, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, roundMm, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
+import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseOmayYaml, toSeparatedMangaYaml } from '../lib/manga';
+import { clamp, DEFAULT_PANEL_GUTTERS, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
 import { mergeSelectedPanels, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection } from '../lib/panelTemplates';
-import { beginSeriesCatalogDraft, cancelScannerSession, chooseEpisodeWorkspaceImages, chooseEpisodeWorkspaceSource, chooseSeriesDirectory, chooseSeriesReferenceText, collectScannerImages, commitScannerSession, commitSeriesCatalogDraft, discardPendingScannerSession, discardSeriesCatalogDraft, discardSeriesCatalogDraftOnPageExit, finishScannerSession, getPendingScannerSession, getSeriesCharacterTextStatus, linkSeriesCharacterText, listSeriesCatalogs, loadSeriesCatalog, openMacScanner, prepareEpisodeWorkspace, recognizePanelLayout, restoreSeriesCharacterText, resumePendingScannerSession, saveSeriesCatalog, saveSourceCoverageReport, selectEpisodeWorkspace, suggestEpisodeWorkspaceText, syncSeriesCharacterText, type EpisodeWorkspace, type EpisodeWorkspaceTextSelection, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
-import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries, prepareDocumentForSeriesSave, removeCharactersFromSeriesCatalog, removeMaterialsFromSeriesCatalog, upsertEpisodeIntoSeriesCatalog } from '../lib/seriesCatalog';
+import { discardSeriesCatalogDraftOnPageExit, getPendingScannerSession, getSeriesCharacterTextStatus, type EpisodeWorkspace, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
+import { removeMaterialsFromSeriesCatalog } from '../lib/seriesCatalog';
 import { beginFigureCropImport, onFigureCropAssetsChanged, pruneFigureCropAssets, collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
 import { spreadPartnerIndex as findSpreadPartnerIndex } from '../lib/pageSpread';
 import { setPanelMaterialLink, type PanelMaterialLinkTarget } from '../lib/panelMaterialLinks';
 import { isPropPlacement, synchronizeCatalogReferences } from '../lib/catalogModel';
 import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels';
-import { createSystemMobCharacter } from '../lib/systemCharacters';
-import { parseSeriesSettingText, parseStoryReferenceText, type ImportedStorySetting } from '../lib/settingTextImport.ts';
-import { replaceSeriesReferenceCandidate, seriesReferenceConfirmationState } from '../lib/seriesReferenceCandidates.ts';
-import { sha256Hex, type SourceCoverageDecision, type SourceCoverageSource } from '../lib/sourceCoverage.ts';
-import { characterArchiveDocument, mergeCharacterTextCatalog, parseCharacterText, seriesCharacterCatalogIds, toCharacterTextMarkdown } from '../lib/characterTextCatalog.ts';
-import {
-  startNewCreationBridgeSession,
-  stopNewCreationBridgeSession,
-  stopNewCreationBridgeSessionOnPageExit,
-  withNewCreationBridgeSession,
-} from '../lib/localBridgeLifecycle.ts';
-import { createEmptyWorkspaceDocument, createInitialWorkspace, type WorkspaceStartupState } from '../lib/workspaceStartup.ts';
+import { type ImportedStorySetting } from '../lib/settingTextImport.ts';
+import { type SourceCoverageDecision } from '../lib/sourceCoverage.ts';
+import { startNewCreationBridgeSession, stopNewCreationBridgeSession, stopNewCreationBridgeSessionOnPageExit } from '../lib/localBridgeLifecycle.ts';
+import { createInitialWorkspace, type WorkspaceStartupState } from '../lib/workspaceStartup.ts';
 import type { BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, WorkspaceTab } from '../types';
 
-import {
-  type NewCreationStep,
-  type NewSeriesMode,
-  type SeriesCatalogPersistOptions,
-  type NewSourceSnapshot,
-  type BoundSourceSnapshot,
-  emptyNewWorkSetting,
-  emptyNewSeriesSetting,
-  seriesSettingFromImported,
-  fillEmptySeriesSetting,
-  seriesSettingSummary,
-  detectedSeriesReferenceKind,
-  seriesTitleFromReferences,
-  withoutSeriesCharacter
-} from '../lib/newProjectSettings';
-import {
-  type NewLayoutTask,
-  type RightAngle,
-  type NewLayoutItem,
-  type DetectedPageLayout,
-  displayedLayoutRotation,
-  nextLayoutIndexFromArrow
-} from '../lib/newLayoutPreview';
-import {
-  INNER_FRAME_SNAP_KEY,
-  PANEL_SYNC_KEY,
-  PANEL_GAP_SNAP_KEY,
-  SHOW_GUIDES_KEY,
-  SPREAD_VIEW_KEY,
-  PERSIST_ANALOG_ASSETS_KEY,
-  storedPcFontCatalog,
-  rememberPcFontCatalog,
-  savedWorkspaceRoot,
-  rememberWorkspaceRoot,
-  initialInnerFrameSnap,
-  initialPanelSync,
-  initialPanelGapSnap,
-  initialShowGuides,
-  initialSpreadView,
-  initialPersistAnalogAssets
-} from '../lib/workspacePreferences';
+import { type NewCreationStep, type NewSeriesMode, type NewSourceSnapshot, type BoundSourceSnapshot, emptyNewWorkSetting } from '../lib/newProjectSettings';
+import { type NewLayoutTask, type NewLayoutItem, nextLayoutIndexFromArrow } from '../lib/newLayoutPreview';
+import { INNER_FRAME_SNAP_KEY, PANEL_SYNC_KEY, PANEL_GAP_SNAP_KEY, SHOW_GUIDES_KEY, SPREAD_VIEW_KEY, PERSIST_ANALOG_ASSETS_KEY, storedPcFontCatalog, rememberPcFontCatalog, initialInnerFrameSnap, initialPanelSync, initialPanelGapSnap, initialShowGuides, initialSpreadView, initialPersistAnalogAssets } from '../lib/workspacePreferences';
 
 import NewSeriesStep from './new-project/NewSeriesStep';
 import NewSettingStep from './new-project/NewSettingStep';
@@ -134,6 +86,16 @@ import { createNewProjectAction } from './workspace/newProjectCreation';
 import { createProjectFileActions } from './workspace/workspaceProjectFiles';
 import { createImageExportActions } from './workspace/workspaceImageExport';
 import type { MobileStoryboardPane, WorkspacePaintSession, WorkspaceSnapshot } from './workspace/workspaceTypes';
+
+import { createNewProjectSessions } from './workspace/newProjectSessions';
+import { createSeriesSelection } from './workspace/newSeriesSelection';
+import { createSeriesReferenceActions } from './workspace/newSeriesReferences';
+import { createWorkspaceSourceActions } from './workspace/episodeWorkspaceSources';
+import { createSeriesPreparation } from './workspace/newSeriesPreparation';
+import { createSeriesCatalogActions } from './workspace/seriesCatalogActions';
+import { createEpisodeSettingActions } from './workspace/newEpisodeSettings';
+import { createWorkspaceCatalogActions } from './workspace/workspaceCatalog';
+import { createNewLayoutImportActions } from './workspace/newLayoutImportActions';
 
 const TABS: {
   id: WorkspaceTab;
@@ -550,191 +512,19 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     restoreWorkspace(target);setToast('作業をやり直しました');
   };
 
-  const discardNewLayoutItems = () => {
-    newLayoutItemsRef.current = [];
-    setNewLayoutItems([]);
-    setNewLayoutActiveIndex(0);
-    setNewLayoutMessage(null);
-    setScannerReceivedCount(0);
-    if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
-  };
-
-  const cancelActiveScannerSession = async () => {
-    const session = scannerSessionRef.current;
-    scannerSessionRef.current = null;
-    setScannerSession(null);
-    setPendingScannerSession(null);
-    if (session) await cancelScannerSession(session.id);
-  };
-
-  const detachActiveScannerSession = () => {
-    scannerSessionRef.current = null;
-    setScannerSession(null);
-  };
-
-  const discardPendingScannerRecovery = async () => {
-    await discardPendingScannerSession();
-    setPendingScannerSession(null);
-  };
-
-  const discardScannerSources = async () => {
-    if (isLanClient) return;
-    if (scannerSessionRef.current) await cancelActiveScannerSession();
-    else await discardPendingScannerRecovery();
-  };
-
-  const commitActiveScannerSession = async () => {
-    const session = scannerSessionRef.current;
-    if (!session) return;
-    await commitScannerSession(session.id);
-    scannerSessionRef.current = null;
-    setScannerSession(null);
-    setPendingScannerSession(null);
-  };
-
-  const finishScannerWatching = async () => {
-    const session = scannerSessionRef.current;
-    if (session) await finishScannerSession(session.id);
-  };
-
-  const endNewCreationBridgeSession = async () => {
-    const token = newCreationBridgeToken.current;
-    if (!token) return;
-    newCreationBridgeToken.current = null;
-    try {
-      await stopNewCreationBridgeSession(token);
-    } catch (error) {
-      stopNewCreationBridgeSessionOnPageExit(token);
-      throw error;
-    }
-  };
-
-  const discardNewCharacterDraft = async () => {
-    const session = newCharacterDraftSession.current;
-    if (!session) return;
-    await seriesCatalogSaveQueue.current;
-    await discardSeriesCatalogDraft(session.token);
-    if (newCharacterDraftSession.current?.token === session.token) newCharacterDraftSession.current = null;
-  };
-
-  const commitNewCharacterDraft = async () => {
-    const session = newCharacterDraftSession.current;
-    if (!session) return;
-    await seriesCatalogSaveQueue.current;
-    await commitSeriesCatalogDraft(session.token);
-    if (newCharacterDraftSession.current?.token === session.token) newCharacterDraftSession.current = null;
-  };
-
-  const closeNewDialog = async () => {
-    if (newLayoutTaskRef.current === 'creating') return;
-    const generation = ++newLayoutOperationGeneration.current;
-    scannerStopRequested.current = true;
-    updateNewLayoutTask('scanner');
-    setNewLayoutMessage('取り込みを中止し、スキャン元を破棄しています…');
-    try {
-      await discardScannerSources();
-    } catch (error) {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      scannerStopRequested.current = false;
-      updateNewLayoutTask('idle');
-      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン元を破棄できませんでした');
-      return;
-    }
-    if (generation !== newLayoutOperationGeneration.current) return;
-    if (newCharacterDraftSession.current) {
-      setNewLayoutMessage('保存していない人物データを破棄しています…');
-      try {
-        await discardNewCharacterDraft();
-      } catch (error) {
-        scannerStopRequested.current = false;
-        updateNewLayoutTask('idle');
-        setNewLayoutMessage(error instanceof Error ? error.message : '保存していない人物データを破棄できませんでした');
-        return;
-      }
-    }
-    setNewLayoutMessage('ローカル連携を終了しています…');
-    try {
-      await endNewCreationBridgeSession();
-    } catch (error) {
-      setToast(`ローカル連携を終了できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-    discardNewLayoutItems();
-    updateNewLayoutTask('idle');
-    setNewCharacterDocument(null);
-    newCharacterDraftSession.current = null;
-    setShowNewDialog(false);
-  };
-
-  const openNewDialog = () => {
-    endTextEdit();
-    const generation = ++newLayoutOperationGeneration.current;
-    scannerStopRequested.current = false;
-    updateNewLayoutTask('idle');
-    setNewWorkTitle('');
-    setNewWorkSetting(emptyNewWorkSetting());
-    setNewSettingMessage('');
-    setNewSeriesName('');
-    setNewSeriesId('');
-    clearNewSeriesReference();
-    setNewEpisodeWorkspace(null);
-    setNewWorkspaceSelecting(false);
-    setNewWorkspaceMessage('');
-    setNewReferenceSelecting(false);
-    setNewSourceSnapshot(null);
-    setNewReferenceFileName('');
-    setNewReferenceMessage('');
-    setNewCharacterTextLink(null);
-    setCharacterTextBusy(false);
-    setNewSeriesMode('');
-    setNewCreationStep('series');
-    let rememberedPrint: PrintSetup | null = null;
-    try { rememberedPrint = loadPrintPreferences(localStorage); } catch { /* storage unavailable */ }
-    setNewPrintSetup(rememberedPrint ?? defaultPrintSetup());
-    setEditingNewPrintSetup(!rememberedPrint);
-    setNewPrintConfirmed(Boolean(rememberedPrint));
-    setNewCharacterDocument(null);
-    newCharacterDraftSession.current = null;
-    setNewSeriesPreparing(false);
-    setSeriesCatalogMessage(isLanClient ? '' : 'ローカル連携を起動しています…');
-    setNewEpisodeNumber('');
-    setShowNewDialog(true);
-    void (async () => {
-      if (isLanClient) {
-        const items = await listSeriesCatalogs().catch(() => []);
-        if (generation !== newLayoutOperationGeneration.current) return;
-        setSeriesCatalogs(items); setPendingScannerSession(null); setSeriesCatalogMessage('');
-        return;
-      }
-      let supervisorError: unknown = null;
-      try {
-        const session = await startNewCreationBridgeSession();
-        if (generation !== newLayoutOperationGeneration.current) {
-          await stopNewCreationBridgeSession(session.token).catch(() => undefined);
-          return;
-        }
-        newCreationBridgeToken.current = session.token;
-      } catch (error) {
-        if (generation !== newLayoutOperationGeneration.current) return;
-        supervisorError = error;
-      }
-      try {
-        const [items, pending] = await Promise.all([
-          listSeriesCatalogs(),
-          getPendingScannerSession().catch(() => null),
-        ]);
-        if (generation !== newLayoutOperationGeneration.current) return;
-        setSeriesCatalogs(items);
-        setPendingScannerSession(pending);
-        setSeriesCatalogMessage(items.length ? '' : '保存済みシリーズはまだありません。');
-      } catch {
-        if (generation !== newLayoutOperationGeneration.current) return;
-        setSeriesCatalogs([]);
-        setSeriesCatalogMessage(supervisorError
-          ? `ローカル連携を自動起動できませんでした。${supervisorError instanceof Error ? supervisorError.message : ''}`.trim()
-          : '保存済みシリーズを読み込めませんでした。シリーズ名は手入力できます。');
-      }
-    })();
-  };
+  const { closeNewDialog, discardNewCharacterDraft, commitNewCharacterDraft, discardScannerSources, discardNewLayoutItems, finishScannerWatching, detachActiveScannerSession, discardPendingScannerRecovery, commitActiveScannerSession, endNewCreationBridgeSession, openNewDialog } = createNewProjectSessions({
+    newLayoutItemsRef, setNewLayoutItems, setNewLayoutActiveIndex, setNewLayoutMessage,
+    setScannerReceivedCount, newLayoutImageInput, scannerSessionRef, setScannerSession,
+    setPendingScannerSession, newCreationBridgeToken, newCharacterDraftSession,
+    seriesCatalogSaveQueue, newLayoutTaskRef, newLayoutOperationGeneration, scannerStopRequested,
+    updateNewLayoutTask, setToast, setNewCharacterDocument, setShowNewDialog, endTextEdit,
+    setNewWorkTitle, setNewWorkSetting, setNewSettingMessage, setNewSeriesName, setNewSeriesId,
+    clearNewSeriesReference, setNewEpisodeWorkspace, setNewWorkspaceSelecting, setNewWorkspaceMessage,
+    setNewReferenceSelecting, setNewSourceSnapshot, setNewReferenceFileName, setNewReferenceMessage,
+    setNewCharacterTextLink, setCharacterTextBusy, setNewSeriesMode, setNewCreationStep,
+    setNewPrintSetup, setEditingNewPrintSetup, setNewPrintConfirmed, setNewSeriesPreparing,
+    setSeriesCatalogMessage, setNewEpisodeNumber, setSeriesCatalogs,
+  });
 
   const selectCanvasPanel = (index: number, additive = false) => {
     endTextEdit();
@@ -987,798 +777,51 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setMobileStoryboardPane('panel');
   };
 
-  const mergeSavedSeriesCatalog = async (source: MangaDocument) => {
-    const seriesName = source.manga.meta.series.trim();
-    if (!seriesName) return { document: source, added: 0, warning: '', seriesSetting: emptyNewSeriesSetting() };
-    try {
-      const loaded = await loadSeriesCatalog(seriesName, source.manga.meta.series_id);
-      const next = cloneDocument(source);
-      next.manga.meta.series_id ||= loaded.seriesId || crypto.randomUUID();
-      if (!loaded.found || !loaded.omnyYaml) {
-        return { document: next, added: 0, warning: '', seriesSetting: emptyNewSeriesSetting() };
-      }
-      next.manga.meta.series_id = loaded.seriesId;
-      const catalog = parseMangaYaml(loaded.omnyYaml);
-      const merged = mergeSeriesCatalog(next, catalog);
-      const warning = merged.conflicts.length
-        ? `同名のエピソード素材を優先しました: ${merged.conflicts.join('、')}`
-        : '';
-      return {
-        document: merged.document,
-        added: merged.added,
-        warning,
-        seriesSetting: structuredClone(catalog.manga.series_setting),
-      };
-    } catch (error) {
-      const next = cloneDocument(source);
-      next.manga.meta.series_id ||= crypto.randomUUID();
-      return {
-        document: next,
-        added: 0,
-        seriesSetting: emptyNewSeriesSetting(),
-        warning: `シリーズ共通を読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`,
-      };
-    }
-  };
+  const { workspaceRootKey, createNewCharacterDraft, mergeSavedSeriesCatalog, selectExistingSeries } = createSeriesSelection({
+    newWorkTitle, newEpisodeNumber, newLayoutFrameLineWidthMm, newLayoutRowGapMm,
+    newLayoutColumnGapMm, newSeriesMode, newSeriesId, newSeriesSelectionGeneration, seriesCatalogs,
+    clearNewReferenceText, setNewEpisodeWorkspace, setNewWorkspaceMessage, setNewSeriesId,
+    setNewSeriesName, setNewSeriesDirectory, setNewSeriesReference, setNewSeriesReferences,
+    setNewSeriesReferenceCandidates, setNewSelectedSeriesReferencePaths, setNewSeriesReferenceMessage,
+    setNewCharacterTextLink, setSeriesCatalogMessage, setNewSeriesPreparing, setNewWorkSetting,
+  });
 
-  const createNewCharacterDraft = (seriesName: string, seriesId: string): MangaDocument => {
-    const empty = createEmptyWorkspaceDocument();
-    return {
-      manga: {
-        schema_name: empty.manga.schema_name,
-        schema_version: empty.manga.schema_version,
-        meta: {
-          ...structuredClone(empty.manga.meta),
-          document_type: 'story',
-          title: newWorkTitle.trim(),
-          series: seriesName,
-          series_id: seriesId,
-          episode_number: newEpisodeNumber.trim(),
-          episode_id: crypto.randomUUID(),
-          author: '',
-          page_count: 1,
-          panel_frame_width_mm: newLayoutFrameLineWidthMm,
-          panel_gutter_row_mm: newLayoutRowGapMm,
-          panel_gutter_column_mm: newLayoutColumnGapMm,
-        },
-        layout_spec: '',
-        series_setting: emptyNewSeriesSetting(),
-        setting: emptyNewWorkSetting(),
-        characters: [createSystemMobCharacter()],
-        materials: [],
-        pages: [newPage(1)],
-      },
-    };
-  };
+  const { chooseLocalText, chooseNewSeriesDirectory, chooseNewSeriesReferenceTextFile, removeSelectedNewSeriesReferences, applySelectedNewSeriesReferences, chooseNewEpisodeWorkspace } = createSeriesReferenceActions({
+    setNewSeriesReferenceMessage, newSeriesMode, setNewSeriesName, newSourceSnapshot, newSeriesName,
+    setNewSeriesDirectory, setNewSeriesReference, setNewSeriesReferences,
+    setNewSeriesReferenceCandidates, setNewSelectedSeriesReferencePaths, workspaceRootKey,
+    newSelectedSeriesReferencePaths, newSeriesReferenceCandidates, newSeriesReferenceSelecting,
+    newSeriesDirectorySelecting, newSeriesPreparing, newWorkspaceSelecting, newSeriesReferences,
+    newSeriesReference, setNewCharacterTextLink, newSeriesId, setNewSeriesDirectorySelecting,
+    setNewSeriesDirectoryMessage, newSeriesDirectory, newEpisodeWorkspace, setNewEpisodeWorkspace,
+    clearNewReferenceText, newSeriesSelectionGeneration, setNewSeriesReferenceSelecting,
+    setNewWorkspaceSelecting, setNewWorkspaceMessage, newReferenceFileName,
+    setNewSuggestedEpisodeReference, setNewReferenceMessage,
+  });
 
-  const workspaceRootKey = () => newSeriesMode === 'none' ? '__one_shot__' : newSeriesId || '__new_series__';
+  const { choosePanelDraftWorkspace, setCoverageSource, chooseCoverageWorkspaceSource, chooseCoverageWorkspace, saveCoverageReport, chooseNewReferenceTextFile, chooseNewCharacterImageFiles, chooseNewLayoutImageFiles } = createWorkspaceSourceActions({
+    setToast, documentRef, setBoundEpisodeWorkspace, boundEpisodeWorkspace, setBoundSourceSnapshot,
+    boundSourceSnapshot, setSourceCoverageDecisions, coverageWorkspace, newCreationBridgeToken,
+    characterEditorBridgeToken, newEpisodeWorkspace, setNewReferenceMessage, setNewReferenceSelecting,
+    readNewReferenceFile: selection => readNewReferenceFile(selection), newReferenceFileName, newLayoutTask,
+    newLayoutImageInput, chooseNewLayoutImages: files => chooseNewLayoutImages(files), setNewLayoutMessage,
+  });
 
-  const selectExistingSeries = async (seriesId: string) => {
-    const generation = ++newSeriesSelectionGeneration.current;
-    const selected = seriesCatalogs.find((item) => item.seriesId === seriesId);
-    clearNewReferenceText();
-    setNewEpisodeWorkspace(null);
-    setNewWorkspaceMessage('');
-    setNewSeriesId(seriesId);
-    setNewSeriesName(selected?.seriesName ?? '');
-    setNewSeriesDirectory(selected?.seriesDirectory ?? '');
-    setNewSeriesReference(null);
-    setNewSeriesReferences([]);
-    setNewSeriesReferenceCandidates([]);
-    setNewSelectedSeriesReferencePaths([]);
-    setNewSeriesReferenceMessage('');
-    setNewCharacterTextLink(null);
-    if (!seriesId || !selected) {
-      setSeriesCatalogMessage(seriesCatalogs.length ? '' : '保存済みシリーズはまだありません。');
-      return;
-    }
-    setNewSeriesPreparing(true);
-    setSeriesCatalogMessage('シリーズ資料を読み込んでいます…');
-    try {
-      const [loaded, textStatus] = await Promise.all([
-        loadSeriesCatalog(selected.seriesName, selected.seriesId),
-        isLanClient ? null : getSeriesCharacterTextStatus(selected.seriesId).catch(() => null),
-      ]);
-      if (generation !== newSeriesSelectionGeneration.current) return;
-      const catalog = loaded.found && loaded.omnyYaml ? parseMangaYaml(loaded.omnyYaml) : null;
-      const catalogSetting = catalog?.manga.series_setting ?? emptyNewSeriesSetting();
-      const seriesSetting = fillEmptySeriesSetting(
-        catalogSetting,
-        textStatus?.linked
-          ? seriesSettingFromImported(parseSeriesSettingText(textStatus.text))
-          : emptyNewSeriesSetting(),
-      );
-      const seriesDirectory = textStatus?.seriesDirectory || selected.seriesDirectory;
-      setNewSeriesDirectory(seriesDirectory);
-      setNewWorkSetting((current) => prefillEpisodeSettingFromSeries(current, seriesSetting));
-      if (textStatus?.linked && textStatus.seriesDirectory && textStatus.relativePath && textStatus.fileName) {
-        const reference: SeriesReferenceTextSelection = {
-          seriesDirectory: textStatus.seriesDirectory,
-          relativePath: textStatus.relativePath,
-          fileName: textStatus.fileName,
-          text: textStatus.text,
-          kind: 'characters',
-        };
-        setNewSeriesReference(reference);
-        setNewSeriesReferences([reference]);
-        setNewSeriesReferenceMessage(`${textStatus.fileName}を参照します。`);
-      }
-      setNewCharacterTextLink(textStatus?.linked || textStatus?.needsRelink || textStatus?.deletedCharacters.length ? textStatus : null);
-      setSeriesCatalogMessage(seriesSettingSummary(seriesSetting) ? 'シリーズの舞台を読み込みました。' : '');
-    } catch (error) {
-      if (generation !== newSeriesSelectionGeneration.current) return;
-      setSeriesCatalogMessage(error instanceof Error ? error.message : 'シリーズ資料を読み込めませんでした。');
-    } finally {
-      if (generation === newSeriesSelectionGeneration.current) setNewSeriesPreparing(false);
-    }
-  };
+  const { patchNewCharacterDocument, returnToSeriesSelection, continueFromSeriesSelection } = createSeriesPreparation({
+    newSeriesPreparing, newEpisodeWorkspace, setNewWorkspaceMessage, newSeriesMode,
+    createNewCharacterDraft, setNewSeriesName, setNewSeriesId, setNewCharacterDocument,
+    setNewCharacterTextLink, setNewCreationStep, newSeriesName, setSeriesCatalogMessage, newSeriesId,
+    seriesCatalogs, setNewSeriesPreparing, mergeSavedSeriesCatalog, newSeriesReferences,
+    newSeriesReference, setNewWorkSetting, newCharacterDraftSession, newCharacterDocumentRef,
+    seriesCatalogSaving, discardNewCharacterDraft, setToast,
+  });
 
-  const applyNewSeriesReferenceSelections = (selections: readonly SeriesReferenceTextSelection[], messagePrefix = '') => {
-    if (!selections.length) {
-      setNewSeriesReferenceMessage('反映するシリーズ資料へチェックを入れてください。');
-      return;
-    }
-    let characterCount = 0;
-    try {
-      characterCount = selections.reduce((count, selection) => count + parseCharacterText(selection.text).length, 0);
-    } catch (error) {
-      setNewSeriesReferenceMessage(error instanceof Error ? error.message : '人物設定を読み取れませんでした。');
-      return;
-    }
-    const normalized = selections.map((selection) => ({ ...selection, kind: detectedSeriesReferenceKind(selection) }));
-    const characterReference = normalized.find((selection) => selection.kind === 'characters') ?? null;
-    const seriesSettingCount = normalized.filter((selection) => selection.kind === 'series-setting').length;
-    const seriesTitle = seriesTitleFromReferences(normalized);
-    if (newSeriesMode === 'new') {
-      setNewSeriesName(seriesTitle || (newSourceSnapshot ? parseStoryReferenceText(newSourceSnapshot.source.text).seriesTitle : '') || (isLanClient ? newSeriesName : ''));
-    }
-    const seriesDirectory = normalized[0].seriesDirectory;
-    setNewSeriesDirectory(seriesDirectory);
-    setNewSeriesReference(characterReference);
-    setNewSeriesReferences(normalized);
-    setNewSeriesReferenceCandidates([]);
-    setNewSelectedSeriesReferencePaths([]);
-    rememberWorkspaceRoot(workspaceRootKey(), seriesDirectory);
-    const details = [
-      newSeriesMode === 'new' && seriesTitle ? 'シリーズ名' : '',
-      characterCount ? `登場人物${characterCount}人` : '',
-      seriesSettingCount ? `シリーズ設定${seriesSettingCount}件` : '',
-    ].filter(Boolean).join('・');
-    setNewSeriesReferenceMessage(details
-      ? `${messagePrefix}${details}を反映しました。`
-      : `${messagePrefix}${normalized.length}件の資料を反映しました。`);
-  };
-
-  const applySelectedNewSeriesReferences = () => {
-    const selectedPaths = new Set(newSelectedSeriesReferencePaths);
-    applyNewSeriesReferenceSelections(newSeriesReferenceCandidates
-      .filter((candidate) => selectedPaths.has(candidate.relativePath))
-      .map((candidate) => ({
-        seriesDirectory: candidate.seriesDirectory,
-        relativePath: candidate.relativePath,
-        fileName: candidate.fileName,
-        text: candidate.text,
-        kind: candidate.kind,
-      })));
-  };
-
-  const removeSelectedNewSeriesReferences = () => {
-    if (newSeriesReferenceSelecting || newSeriesDirectorySelecting || newSeriesPreparing || newWorkspaceSelecting) return;
-    const rows = newSeriesReferenceCandidates.length ? newSeriesReferenceCandidates : newSeriesReferences;
-    const selected = new Set(rows.filter(reference => newSelectedSeriesReferencePaths.includes(reference.relativePath))
-      .map(reference => reference.relativePath));
-    if (!selected.size) return;
-    const remainingPaths = new Set(rows.filter(reference => !selected.has(reference.relativePath)).map(reference => reference.relativePath));
-    const remaining = newSeriesReferences.filter(reference => remainingPaths.has(reference.relativePath));
-    setNewSeriesReferenceCandidates(newSeriesReferenceCandidates.filter(reference => !selected.has(reference.relativePath)));
-    setNewSeriesReferences(remaining);
-    if (newSeriesReference && !remainingPaths.has(newSeriesReference.relativePath)) {
-      setNewSeriesReference(remaining.find(reference => detectedSeriesReferenceKind(reference) === 'characters') ?? null);
-      setNewCharacterTextLink(null);
-    }
-    setNewSelectedSeriesReferencePaths([]);
-    setNewSeriesReferenceMessage(`${selected.size}件の資料を一覧から外しました。`);
-  };
-
-  const chooseNewSeriesDirectory = async () => {
-    if (newSeriesDirectorySelecting || newSeriesMode === 'none' || (newSeriesMode === 'existing' && !newSeriesId)) return;
-    setNewSeriesDirectorySelecting(true);
-    setNewSeriesDirectoryMessage('シリーズフォルダを開いています…');
-    try {
-      const selection = await (isLanClient ? browserWorkspaces.chooseSeries(newSeriesDirectory || savedWorkspaceRoot(workspaceRootKey())) : chooseSeriesDirectory(newSeriesDirectory || savedWorkspaceRoot(workspaceRootKey())));
-      if (!selection) {
-        setNewSeriesDirectoryMessage(newSeriesDirectory ? '' : 'シリーズフォルダはまだ選ばれていません。');
-        return;
-      }
-      if (newEpisodeWorkspace && newEpisodeWorkspace.seriesDirectory !== selection.seriesDirectory) {
-        setNewEpisodeWorkspace(null);
-        clearNewReferenceText();
-      }
-      setNewSeriesDirectory(selection.seriesDirectory);
-      setNewSeriesReference(null);
-      setNewSeriesReferences([]);
-      const candidates = selection.candidates.length ? selection.candidates.map((candidate) => ({
-        ...candidate,
-        seriesDirectory: selection.seriesDirectory,
-      })) : selection.suggestion ? [{
-        seriesDirectory: selection.seriesDirectory,
-        relativePath: selection.suggestion.relativePath,
-        fileName: selection.suggestion.fileName,
-        text: selection.suggestion.text,
-        kind: detectedSeriesReferenceKind({
-          seriesDirectory: selection.seriesDirectory,
-          relativePath: selection.suggestion.relativePath,
-          fileName: selection.suggestion.fileName,
-          text: selection.suggestion.text,
-        }),
-        confidence: selection.suggestion.confidence,
-        recommended: true,
-      } satisfies SeriesReferenceTextCandidate & { seriesDirectory: string }] : [];
-      const confirmation = seriesReferenceConfirmationState(candidates);
-      setNewSeriesReferenceCandidates(candidates);
-      setNewSelectedSeriesReferencePaths(confirmation.selectedPaths);
-      rememberWorkspaceRoot(workspaceRootKey(), selection.seriesDirectory);
-      setNewSeriesDirectoryMessage('');
-      if (confirmation.requiresConfirmation) {
-        setNewSeriesReferenceMessage('');
-      } else if (selection.ambiguous) {
-        setNewSeriesReferenceMessage('資料を絞れませんでした。「資料を選択」から指定できます。');
-      } else {
-        setNewSeriesReferenceMessage('');
-      }
-    } catch (error) {
-      setNewSeriesDirectoryMessage(error instanceof Error ? error.message : 'シリーズフォルダを選べませんでした。');
-    } finally {
-      setNewSeriesDirectorySelecting(false);
-    }
-  };
-
-  const chooseLocalText = async (): Promise<EpisodeWorkspaceTextSelection | null> => {
-    const [file] = await chooseBrowserFiles('.md,.markdown,.txt,.text,text/plain,text/markdown');
-    if (!file) return null;
-    if (file.size > 5 * 1024 * 1024) throw new Error('文章ファイルは5MiBまで選べます');
-    const bytes = await file.arrayBuffer();
-    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    return { file, relativePath: null, byteSize: file.size, sha256: await blobRevision(file) };
-  };
-
-  const chooseNewSeriesReferenceTextFile = async (replacedPath?: string) => {
-    if (newSeriesReferenceSelecting || newSeriesMode === 'none' || !newSeriesId || (!isLanClient && !newSeriesDirectory)) return;
-    const generation = newSeriesSelectionGeneration.current;
-    setNewSeriesReferenceSelecting(true);
-    setNewSeriesReferenceMessage('シリーズ資料を開いています…');
-    try {
-      const local = isLanClient ? await (newSeriesDirectory ? browserWorkspaces.chooseText(newSeriesDirectory, true) : chooseLocalText()) : null;
-      const selection = isLanClient ? (local ? { seriesDirectory: newSeriesDirectory, relativePath: local.relativePath || local.file.name, fileName: local.file.name, text: await local.file.text() } : null)
-        : await chooseSeriesReferenceText(newSeriesId, newSeriesDirectory || savedWorkspaceRoot(workspaceRootKey()));
-      if (generation !== newSeriesSelectionGeneration.current) return;
-      if (!selection) {
-        setNewSeriesReferenceMessage('');
-        return;
-      }
-      if (selection.seriesDirectory !== newSeriesDirectory) throw new Error('同じシリーズフォルダ内の資料を選んでください。');
-      const candidates = newSeriesReferenceCandidates.length ? newSeriesReferenceCandidates : newSeriesReferences.map((reference) => ({
-        ...reference, kind: detectedSeriesReferenceKind(reference), confidence: 'high' as const, recommended: true,
-      }));
-      const next = replaceSeriesReferenceCandidate(candidates,
-        newSeriesReferenceCandidates.length ? newSelectedSeriesReferencePaths : candidates.map((candidate) => candidate.relativePath),
-        { ...selection, kind: detectedSeriesReferenceKind(selection), confidence: 'high' as const, recommended: true }, replacedPath);
-      setNewSeriesReferenceCandidates(next.candidates);
-      setNewSelectedSeriesReferencePaths(next.selectedPaths);
-      setNewSeriesReferenceMessage('');
-    } catch (error) {
-      if (generation === newSeriesSelectionGeneration.current) setNewSeriesReferenceMessage(`読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      if (generation === newSeriesSelectionGeneration.current) setNewSeriesReferenceSelecting(false);
-    }
-  };
-
-  const chooseNewEpisodeWorkspace = async () => {
-    if (newWorkspaceSelecting || !newSeriesMode) return;
-    setNewWorkspaceSelecting(true);
-    setNewWorkspaceMessage('保存先を開いています…');
-    try {
-      const workspace = await (isLanClient ? browserWorkspaces.chooseEpisode(newSeriesDirectory || savedWorkspaceRoot(workspaceRootKey()), newSeriesMode === 'none' ? '' : newSeriesDirectory, true) : selectEpisodeWorkspace(newSeriesDirectory || savedWorkspaceRoot(workspaceRootKey())));
-      if (!workspace) {
-        setNewWorkspaceMessage(newEpisodeWorkspace ? '' : '保存先はまだ選ばれていません。');
-        return;
-      }
-      if (newSeriesMode !== 'none' && newSeriesDirectory && workspace.seriesDirectory !== newSeriesDirectory) {
-        setNewWorkspaceMessage('シリーズフォルダ内のエピソード保存先を選んでください。');
-        return;
-      }
-      const workspaceChanged = Boolean(newEpisodeWorkspace?.directory && newEpisodeWorkspace.directory !== workspace.directory);
-      if (workspaceChanged) clearNewReferenceText();
-      setNewEpisodeWorkspace(workspace);
-      if (newSeriesMode !== 'none' && !isLanClient) setNewSeriesDirectory(workspace.seriesDirectory);
-      rememberWorkspaceRoot(workspaceRootKey(), newSeriesMode === 'none' ? workspace.directory : workspace.seriesDirectory);
-      setNewWorkspaceMessage('');
-      if (!newReferenceFileName || workspaceChanged) {
-        const discovery = await (isLanClient ? browserWorkspaces.suggest(workspace.token) : suggestEpisodeWorkspaceText(workspace.token));
-        setNewSuggestedEpisodeReference(discovery.suggestion);
-        if (discovery.suggestion) {
-          setNewReferenceMessage('');
-        } else if (discovery.ambiguous) {
-          setNewReferenceMessage('資料を絞れませんでした。「資料を選択」から指定できます。');
-        } else {
-          setNewReferenceMessage('');
-        }
-      }
-    } catch (error) {
-      setNewWorkspaceMessage(error instanceof Error ? error.message : '保存先を選べませんでした。');
-    } finally {
-      setNewWorkspaceSelecting(false);
-    }
-  };
-
-  const choosePanelDraftWorkspace = async (): Promise<void> => {
-    if (isLanClient) { setToast('作画用ラフの制作台帳はMac側フォルダを使う機能です。LANではレイヤーの画像生成を使ってください'); return; }
-    const current = documentRef.current;
-    const episodeId = current.manga.meta.episode_id;
-    if (!episodeId) throw new Error('エピソードIDがないため制作台帳を関連付けられません');
-    const workspaceKey = current.manga.meta.series_id || '__one_shot__';
-    const workspace = await selectEpisodeWorkspace(savedWorkspaceRoot(workspaceKey));
-    if (!workspace) return;
-    await prepareEpisodeWorkspace(workspace.token);
-    rememberWorkspaceRoot(workspaceKey, current.manga.meta.series_id ? workspace.seriesDirectory : workspace.directory);
-    setBoundEpisodeWorkspace({ ...workspace, episodeId, projectRevision: boundEpisodeWorkspace?.directory === workspace.directory ? boundEpisodeWorkspace.projectRevision : undefined });
-    setToast(`${workspace.folderName}を作画用ラフの自動保存先にしました`);
-  };
-
-  const chooseCoverageWorkspace = async (): Promise<void> => {
-    if (isLanClient) { setToast('原文確認の結果は「JSONをダウンロード」でこのPCに保存できます'); return; }
-    const current = documentRef.current;
-    const episodeId = current.manga.meta.episode_id;
-    if (!episodeId) throw new Error('エピソードIDがないため原文確認reportを関連付けられません');
-    const workspaceKey = current.manga.meta.series_id || '__one_shot__';
-    const workspace = await selectEpisodeWorkspace(savedWorkspaceRoot(workspaceKey));
-    if (!workspace) return;
-    await prepareEpisodeWorkspace(workspace.token);
-    rememberWorkspaceRoot(workspaceKey, current.manga.meta.series_id ? workspace.seriesDirectory : workspace.directory);
-    setBoundEpisodeWorkspace({ ...workspace, episodeId, projectRevision: boundEpisodeWorkspace?.directory === workspace.directory ? boundEpisodeWorkspace.projectRevision : undefined });
-    setBoundSourceSnapshot((snapshot) => snapshot?.episodeId === episodeId
-      && snapshot.source.relativePath === null
-      ? { ...snapshot, workspaceDirectory: workspace.directory }
-      : snapshot);
-    const sourceNeedsReselect = boundSourceSnapshot?.episodeId === episodeId
-      && boundSourceSnapshot.source.relativePath !== null
-      && boundSourceSnapshot.workspaceDirectory !== workspace.directory;
-    setToast(sourceNeedsReselect
-      ? `${workspace.folderName}を保存先にしました。作品フォルダ内の原文を選び直してください`
-      : `${workspace.folderName}を原文確認reportの保存先にしました`);
-  };
-
-  const chooseCoverageWorkspaceSource = async (): Promise<void> => {
-    const episodeId = documentRef.current.manga.meta.episode_id;
-    const workspace = boundEpisodeWorkspace?.episodeId === episodeId ? boundEpisodeWorkspace : null;
-    if (!workspace) throw new Error('先にこの作品のエピソード保存先を関連付けてください');
-    const selection = await (isLanClient ? browserWorkspaces.chooseText(workspace.token) : chooseEpisodeWorkspaceSource(workspace.token));
-    if (!selection) return;
-    setBoundSourceSnapshot({
-      episodeId,
-      source: { fileName: selection.file.name, relativePath: selection.relativePath, text: await selection.file.text() },
-      seriesMode: documentRef.current.manga.meta.series_id ? 'existing' : 'none',
-      workspaceDirectory: workspace.directory,
-      selectedByteSize: selection.byteSize,
-      selectedSha256: selection.sha256,
-    });
-    setSourceCoverageDecisions([]);
-    setToast(`${selection.file.name}を原文確認へ読み込みました`);
-  };
-
-  const setCoverageSource = (source: SourceCoverageSource): void => {
-    const current = documentRef.current;
-    const workspace = boundEpisodeWorkspace?.episodeId === current.manga.meta.episode_id ? boundEpisodeWorkspace : null;
-    setBoundSourceSnapshot({
-      episodeId: current.manga.meta.episode_id,
-      source,
-      seriesMode: current.manga.meta.series_id ? 'existing' : 'none',
-      workspaceDirectory: workspace?.directory ?? '',
-      selectedByteSize: new TextEncoder().encode(source.text).byteLength,
-      selectedSha256: null,
-    });
-    setSourceCoverageDecisions([]);
-  };
-
-  const saveCoverageReport = async (report: Parameters<typeof saveSourceCoverageReport>[2]) => {
-    if (!coverageWorkspace || !boundSourceSnapshot
-      || boundSourceSnapshot.episodeId !== documentRef.current.manga.meta.episode_id
-      || boundSourceSnapshot.workspaceDirectory !== coverageWorkspace.directory) {
-      throw new Error('この作品のエピソード保存先をもう一度関連付けてください');
-    }
-    const save = () => saveSourceCoverageReport(
-      coverageWorkspace.token,
-      documentRef.current.manga.meta.episode_id,
-      report,
-    );
-    if (newCreationBridgeToken.current || characterEditorBridgeToken.current) return save();
-    return withNewCreationBridgeSession(save);
-  };
-
-  const chooseNewCharacterImageFiles = async (): Promise<File[]> => {
-    if (!newEpisodeWorkspace) throw new Error('先にエピソードの保存先を選んでください');
-    return chooseEpisodeWorkspaceImages(newEpisodeWorkspace.token, 12);
-  };
-
-  const chooseNewReferenceTextFile = async () => {
-    if (!newEpisodeWorkspace) {
-      setNewReferenceMessage('先に保存先を選んでください。');
-      return;
-    }
-    setNewReferenceSelecting(true);
-    setNewReferenceMessage('参照テキストを開いています…');
-    try {
-      const selection = isLanClient ? await browserWorkspaces.chooseText(newEpisodeWorkspace.token) : await chooseEpisodeWorkspaceSource(newEpisodeWorkspace.token);
-      if (selection) await readNewReferenceFile(selection);
-      else setNewReferenceMessage(newReferenceFileName ? '' : '参照テキストはまだ選ばれていません。');
-    } catch (error) {
-      setNewReferenceMessage(`読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      setNewReferenceSelecting(false);
-    }
-  };
-
-  const chooseNewLayoutImageFiles = async () => {
-    if (newLayoutTask !== 'idle') return;
-    if (isLanClient) { newLayoutImageInput.current?.click(); return; }
-    if (!newEpisodeWorkspace) return;
-    try {
-      const files = await chooseEpisodeWorkspaceImages(newEpisodeWorkspace.token, 10);
-      chooseNewLayoutImages(files);
-    } catch (error) {
-      setNewLayoutMessage(error instanceof Error ? error.message : '画像を読み込めませんでした');
-    }
-  };
-
-  const continueFromSeriesSelection = async () => {
-    if (newSeriesPreparing) return;
-    if (!newEpisodeWorkspace) {
-      setNewWorkspaceMessage('このエピソードの保存先を選んでください。');
-      return;
-    }
-    if (newSeriesMode === 'none') {
-      const draft = createNewCharacterDraft('', '');
-      setNewSeriesName('');
-      setNewSeriesId('');
-      setNewCharacterDocument(draft);
-      setNewCharacterTextLink(null);
-      setNewCreationStep('characters');
-      return;
-    }
-    if (newSeriesMode === 'new' && !newSeriesName.trim()) {
-      setSeriesCatalogMessage(isLanClient ? 'シリーズ名を入力してください。' : 'シリーズ名を含む資料（例：シリーズ名：作品名）を反映してください。');
-      return;
-    }
-    if (newSeriesMode === 'existing' && !newSeriesId) {
-      setSeriesCatalogMessage('追加先のシリーズを選んでください。');
-      return;
-    }
-    const selected = newSeriesMode === 'existing'
-      ? seriesCatalogs.find((item) => item.seriesId === newSeriesId)
-      : undefined;
-    const seriesName = selected?.seriesName ?? newSeriesName.trim();
-    const seriesId = selected?.seriesId ?? (newSeriesId || crypto.randomUUID());
-    setNewSeriesPreparing(true);
-    setSeriesCatalogMessage('登場人物を準備しています…');
-    let draftSession: SeriesCatalogDraftSession | null = null;
-    try {
-      const draft = createNewCharacterDraft(seriesName, seriesId);
-      const merged = await mergeSavedSeriesCatalog(draft);
-      let preparedDocument = merged.document;
-      const references = newSeriesReferences.length
-        ? newSeriesReferences
-        : newSeriesReference ? [newSeriesReference] : [];
-      for (const reference of references) {
-        preparedDocument = mergeCharacterTextCatalog(
-          preparedDocument,
-          parseCharacterText(reference.text),
-        ).document;
-        preparedDocument.manga.series_setting = fillEmptySeriesSetting(
-          preparedDocument.manga.series_setting,
-          seriesSettingFromImported(parseSeriesSettingText(reference.text)),
-        );
-      }
-      setNewWorkSetting((current) => prefillEpisodeSettingFromSeries(current, preparedDocument.manga.series_setting));
-      const resolvedSeriesId = preparedDocument.manga.meta.series_id || seriesId;
-      if (!isLanClient) draftSession = await beginSeriesCatalogDraft(seriesName, resolvedSeriesId, draft.manga.meta.episode_id);
-      newCharacterDraftSession.current = draftSession;
-      setNewSeriesName(seriesName);
-      setNewSeriesId(resolvedSeriesId);
-      setNewCharacterDocument(preparedDocument);
-      if (isLanClient) { setNewCharacterTextLink(null); }
-      else if (newSeriesMode === 'existing') {
-        const status = await getSeriesCharacterTextStatus(preparedDocument.manga.meta.series_id || seriesId).catch(() => null);
-        setNewCharacterTextLink(status?.linked || status?.needsRelink || status?.deletedCharacters.length ? status : null);
-      } else if (newSeriesReference) {
-        setNewCharacterTextLink({
-          linked: true,
-          needsRelink: false,
-          seriesId: resolvedSeriesId,
-          seriesDirectory: newSeriesReference.seriesDirectory,
-          relativePath: newSeriesReference.relativePath,
-          fileName: newSeriesReference.fileName,
-          text: newSeriesReference.text,
-          deletedCharacters: [],
-        });
-      } else {
-        setNewCharacterTextLink(null);
-      }
-      setSeriesCatalogMessage(merged.warning || '');
-      setNewCreationStep('characters');
-    } catch (error) {
-      if (draftSession) {
-        await discardSeriesCatalogDraft(draftSession.token).catch(() => undefined);
-        if (newCharacterDraftSession.current?.token === draftSession.token) newCharacterDraftSession.current = null;
-      }
-      setSeriesCatalogMessage(error instanceof Error ? error.message : '登場人物を準備できませんでした。');
-    } finally {
-      setNewSeriesPreparing(false);
-    }
-  };
-
-  const patchNewCharacterDocument = (recipe: (draft: MangaDocument) => boolean | void): MangaDocument => {
-    const latest = newCharacterDocumentRef.current;
-    if (!latest) throw new Error('新規作成中の人物台帳がありません');
-    const next = cloneDocument(latest);
-    if (recipe(next) === false) return latest;
-    synchronizeCatalogReferences(next);
-    setNewCharacterDocument(next);
-    return next;
-  };
-
-  const returnToSeriesSelection = async () => {
-    if (seriesCatalogSaving) return;
-    setSeriesCatalogMessage('保存していない人物データを破棄しています…');
-    try {
-      await discardNewCharacterDraft();
-      setNewCharacterDocument(null);
-      setNewCharacterTextLink(null);
-      setSeriesCatalogMessage('');
-      setNewCreationStep('series');
-    } catch (error) {
-      setToast(`保存していない人物データを破棄できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
-
-  const persistSeriesCatalogNow = async (
-    source: MangaDocument,
-    options: SeriesCatalogPersistOptions = {},
-  ): Promise<MangaDocument> => {
-    let prepared = prepareDocumentForSeriesSave(source);
-    if (isLanClient && showNewDialog) return prepared;
-    const seriesName = prepared.manga.meta.series.trim();
-    if (!seriesName) return prepared;
-    const loaded = await loadSeriesCatalog(seriesName, prepared.manga.meta.series_id);
-    if (loaded.seriesId) prepared.manga.meta.series_id = loaded.seriesId;
-    let catalogSource = prepared;
-    if (loaded.found && loaded.omnyYaml) {
-      const withoutMaterials = removeMaterialsFromSeriesCatalog(
-        parseMangaYaml(loaded.omnyYaml),
-        options.deleteMaterialCatalogIds ?? [],
-      );
-      const existing = removeCharactersFromSeriesCatalog(
-        withoutMaterials,
-        options.deleteCharacterCatalogIds ?? [],
-      );
-      const upserted = upsertEpisodeIntoSeriesCatalog(existing, prepared);
-      if (upserted.conflicts.length) {
-        throw new Error(`同名で別IDのシリーズ項目があります: ${upserted.conflicts.join('、')}`);
-      }
-      catalogSource = upserted.document;
-    }
-    if (options.seriesSetting) catalogSource.manga.series_setting = structuredClone(options.seriesSetting);
-    if (!isLanClient) await persistSeriesBackgroundModels(catalogSource,prepared.manga.meta.series_id);
-    for(const stage of prepared.manga.background_stages??[]){const saved=catalogSource.manga.background_stages?.find(item=>item.id===stage.id);if(saved?.seriesId)stage.seriesId=saved.seriesId;}
-    const saved = await saveSeriesCatalog(
-      seriesName,
-      prepared.manga.meta.series_id,
-      toSeriesCatalogMangaYaml(catalogSource, { seriesSetting: options.seriesSetting }),
-      loaded.revision,
-      {
-        seriesDirectory: options.seriesDirectory,
-        seriesTextRelativePath: options.seriesReference?.relativePath,
-      },
-    );
-    prepared.manga.meta.series_id = saved.seriesId;
-    return prepared;
-  };
-
-  const persistSeriesCatalog = async (
-    source: MangaDocument,
-    options: SeriesCatalogPersistOptions = {},
-  ): Promise<MangaDocument> => {
-    seriesCatalogPendingCount.current += 1;
-    setSeriesCatalogSaving(true);
-    const task = seriesCatalogSaveQueue.current.then(() => {
-      const latest = documentRef.current;
-      const sameEpisode = latest.manga.meta.episode_id && source.manga.meta.episode_id
-        ? latest.manga.meta.episode_id === source.manga.meta.episode_id
-        : latest.manga.meta.title.trim() === source.manga.meta.title.trim();
-      const sameOpenEpisode = latest.manga.meta.series.trim() === source.manga.meta.series.trim()
-        && sameEpisode;
-      const selected = sameOpenEpisode ? latest : source;
-      const catalogIdsToDelete = options.deleteMaterialCatalogIds ?? [];
-      const characterIdsToDelete = options.deleteCharacterCatalogIds ?? [];
-      const withoutMaterials = catalogIdsToDelete.length
-        ? removeMaterialsFromSeriesCatalog(selected, catalogIdsToDelete)
-        : selected;
-      const preparedSource = characterIdsToDelete.length
-        ? removeCharactersFromSeriesCatalog(withoutMaterials, characterIdsToDelete)
-        : withoutMaterials;
-      return persistSeriesCatalogNow(preparedSource, options);
-    });
-    seriesCatalogSaveQueue.current = task.then(() => undefined, () => undefined);
-    try {
-      return await task;
-    } finally {
-      seriesCatalogPendingCount.current = Math.max(0, seriesCatalogPendingCount.current - 1);
-      setSeriesCatalogSaving(seriesCatalogPendingCount.current > 0);
-    }
-  };
-
-  const persistNewCharacterCatalog = async (
-    source: MangaDocument,
-    options: Omit<SeriesCatalogPersistOptions, 'seriesSetting'> = {},
-  ): Promise<MangaDocument> => {
-    const prepared = await persistSeriesCatalog(source, {
-      ...options,
-      seriesSetting: structuredClone(source.manga.series_setting),
-      seriesDirectory: newSeriesDirectory || newEpisodeWorkspace?.seriesDirectory,
-      seriesReference: newSeriesReference,
-    });
-    setNewCharacterDocument(prepared);
-    return prepared;
-  };
-
-  const withCharacterTextBridge = async <T,>(task: () => Promise<T>): Promise<T> => {
-    if (isLanClient) return task();
-    if (newCreationBridgeToken.current || characterEditorBridgeToken.current) return task();
-    const session = await startNewCreationBridgeSession();
-    try {
-      return await task();
-    } finally {
-      await stopNewCreationBridgeSession(session.token).catch(() => undefined);
-    }
-  };
-
-  const syncCharacterText = async (
-    source: MangaDocument,
-    archive?: { characterCatalogId: string; characterName: string; omnyYaml: string },
-  ): Promise<SeriesCharacterTextLink | null> => {
-    const seriesId = source.manga.meta.series_id;
-    if (isLanClient || !source.manga.meta.series.trim() || !seriesId) return null;
-    return withCharacterTextBridge(() => syncSeriesCharacterText(
-      seriesId,
-      toCharacterTextMarkdown(source),
-      seriesCharacterCatalogIds(source),
-      archive,
-    ));
-  };
-
-  const linkCharacterText = async (
-    source: MangaDocument,
-    defaultDirectory: string,
-    apply: (next: MangaDocument) => void,
-    applyLink: (next: SeriesCharacterTextLink | null) => void,
-  ) => {
-    if (!source.manga.meta.series.trim()) {
-      setToast('シリーズ共通人物だけが人物テキストと連携できます');
-      return;
-    }
-    if (isLanClient) {
-      try {
-        const selected = await chooseLocalText();
-        if (!selected) return;
-        const merged = mergeCharacterTextCatalog(source, parseCharacterText(await selected.file.text()));
-        apply(await (showNewDialog ? persistNewCharacterCatalog : persistSeriesCatalogNow)(merged.document));
-        applyLink(null); setToast(`${selected.file.name}から人物を読み込みました。作品を保存すると反映されます`);
-      } catch (error) { setToast(`人物を読み込めませんでした: ${error instanceof Error ? error.message : String(error)}`); }
-      return;
-    }
-    setCharacterTextBusy(true);
-    try {
-      await withCharacterTextBridge(async () => {
-        const persistForCurrentFlow = showNewDialog
-          ? persistNewCharacterCatalog
-          : persistSeriesCatalogNow;
-        const prepared = await persistForCurrentFlow(source);
-        const seriesId = prepared.manga.meta.series_id;
-        if (!seriesId) throw new Error('シリーズの保存先を準備できませんでした');
-        const linked = await linkSeriesCharacterText(prepared.manga.meta.series, seriesId, defaultDirectory);
-        if (!linked) return;
-        const imported = parseCharacterText(linked.text);
-        const merged = mergeCharacterTextCatalog(prepared, imported);
-        const saved = await persistForCurrentFlow(merged.document);
-        const synced = showNewDialog ? linked : await syncSeriesCharacterText(
-          saved.manga.meta.series_id,
-          toCharacterTextMarkdown(saved),
-          seriesCharacterCatalogIds(saved),
-        );
-        apply(saved);
-        applyLink(synced);
-        setToast(imported.length
-          ? `${linked.fileName}から人物${imported.length}名を読み込み、シリーズ人物台帳と連携しました`
-          : `${linked.fileName}をシリーズ人物台帳として連携しました`);
-      });
-    } catch (error) {
-      setToast(`人物テキストを連携できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      setCharacterTextBusy(false);
-    }
-  };
-
-  const deleteSeriesCharacter = async (
-    source: MangaDocument,
-    characterLocalId: string,
-    apply: (next: MangaDocument) => void,
-    applyLink: (next: SeriesCharacterTextLink | null) => void,
-  ) => {
-    const character = source.manga.characters.find((entry) => entry.localId === characterLocalId);
-    if (!character?.catalog_id || !source.manga.meta.series_id) return;
-    setCharacterTextBusy(true);
-    try {
-      await withCharacterTextBridge(async () => {
-        const archiveDocument = characterArchiveDocument(source, character.catalog_id!);
-        const next = withoutSeriesCharacter(source, characterLocalId);
-        if (showNewDialog || isLanClient) {
-          const saved = await (showNewDialog ? persistNewCharacterCatalog : persistSeriesCatalogNow)(next, { deleteCharacterCatalogIds: [character.catalog_id!] });
-          apply(saved);
-          setToast(`「${character.name}」を削除しました。保存しなければ元に戻ります`);
-          return;
-        }
-        const synced = await syncSeriesCharacterText(
-          source.manga.meta.series_id,
-          toCharacterTextMarkdown(next),
-          seriesCharacterCatalogIds(next),
-          {
-            characterCatalogId: character.catalog_id!,
-            characterName: character.name,
-            omnyYaml: toSeriesCatalogMangaYaml(archiveDocument),
-          },
-        );
-        const saved = await persistSeriesCatalogNow(next, { deleteCharacterCatalogIds: [character.catalog_id!] });
-        apply(saved);
-        applyLink(synced);
-        setToast(`「${character.name}」を削除しました。30日以内なら復元できます`);
-      });
-    } catch (error) {
-      setToast(`人物を削除できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      setCharacterTextBusy(false);
-    }
-  };
-
-  const restoreDeletedCharacter = async (
-    source: MangaDocument,
-    deletionId: string,
-    apply: (next: MangaDocument) => void,
-    applyLink: (next: SeriesCharacterTextLink | null) => void,
-  ) => {
-    const seriesId = source.manga.meta.series_id;
-    if (!seriesId) return;
-    setCharacterTextBusy(true);
-    try {
-      await withCharacterTextBridge(async () => {
-        const restored = await restoreSeriesCharacterText(seriesId, deletionId);
-        if (!restored.found) throw new Error('復元期限を過ぎたか、復元データが見つかりません');
-        const archived = parseMangaYaml(restored.omnyYaml);
-        const merged = mergeSeriesCatalog(source, archived).document;
-        const saved = await persistSeriesCatalogNow(merged);
-        const synced = await syncSeriesCharacterText(
-          saved.manga.meta.series_id,
-          toCharacterTextMarkdown(saved),
-          seriesCharacterCatalogIds(saved),
-        );
-        apply(saved);
-        applyLink(synced);
-        setToast(`「${restored.characterName}」を復元しました`);
-      });
-    } catch (error) {
-      setToast(`人物を復元できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    } finally {
-      setCharacterTextBusy(false);
-    }
-  };
+  const { syncCharacterText, persistNewCharacterCatalog, persistSeriesCatalog, linkCharacterText, deleteSeriesCharacter, restoreDeletedCharacter } = createSeriesCatalogActions({
+    showNewDialog, seriesCatalogPendingCount, setSeriesCatalogSaving, seriesCatalogSaveQueue,
+    documentRef, newSeriesDirectory, newEpisodeWorkspace, newSeriesReference, setNewCharacterDocument,
+    newCreationBridgeToken, characterEditorBridgeToken, setToast, chooseLocalText,
+    setCharacterTextBusy,
+  });
 
   useEffect(() => {
     if (isLanClient || showNewDialog || tab !== 'characters') return;
@@ -1829,239 +872,21 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     return () => window.clearTimeout(characterTextSyncTimer.current);
   }, [document, characterTextLink?.linked, characterTextLink?.seriesId, showNewDialog, tab, characterTextBusy]);
 
-  const saveNewCharacters = async () => {
-    const latest = newCharacterDocumentRef.current;
-    if (!latest) return;
-    try {
-      const prepared = await persistNewCharacterCatalog(latest);
-      if (newCharacterTextLink?.linked) {
-        const synced = await syncCharacterText(prepared);
-        if (synced) setNewCharacterTextLink(synced);
-      }
-      await commitNewCharacterDraft();
-      if (!isLanClient && prepared.manga.meta.series.trim() && prepared.manga.meta.series_id) {
-        try {
-          newCharacterDraftSession.current = await beginSeriesCatalogDraft(
-            prepared.manga.meta.series,
-            prepared.manga.meta.series_id,
-            prepared.manga.meta.episode_id,
-          );
-        } catch (error) {
-          setToast(`登場人物は保存しましたが、続きの仮編集を準備できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-          return;
-        }
-      }
-      setToast('登場人物を保存しました');
-    } catch (error) {
-      setToast(`登場人物を保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
+  const { readNewReferenceFile, continueFromNewCharacters, applySuggestedReferenceTexts, saveNewCharacters, continueFromNewSetting, updateNewSeriesSetting, updateNewWorkSetting } = createEpisodeSettingActions({
+    newCharacterDocumentRef, persistNewCharacterCatalog, newCharacterTextLink, syncCharacterText,
+    setNewCharacterTextLink, commitNewCharacterDraft, newCharacterDraftSession, setToast,
+    seriesCatalogSaving, setNewCharacterDocument, newSeriesMode, setNewWorkSetting,
+    setNewCreationStep, setNewSettingMessage, patchNewCharacterDocument, setNewSourceSnapshot,
+    newEpisodeWorkspace, setNewReferenceFileName, setNewSuggestedEpisodeReference,
+    setNewReferenceMessage, setNewSeriesName, newSeriesReferences, setNewWorkTitle,
+    setNewEpisodeNumber, newSuggestedEpisodeReference, newWorkSetting,
+  });
 
-  const continueFromNewCharacters = async () => {
-    const latest = newCharacterDocumentRef.current;
-    if (!latest || seriesCatalogSaving) return;
-    try {
-      const prepared = await persistNewCharacterCatalog(latest);
-      setNewCharacterDocument(prepared);
-      if (newCharacterTextLink?.linked) {
-        const synced = await syncCharacterText(prepared);
-        if (synced) setNewCharacterTextLink(synced);
-      }
-      if (newSeriesMode !== 'none') {
-        setNewWorkSetting((current) => prefillEpisodeSettingFromSeries(current, prepared.manga.series_setting));
-      }
-      setNewCreationStep('setting');
-    } catch (error) {
-      setToast(`登場人物を保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
-
-  const updateNewWorkSetting = (key: keyof ImportedStorySetting, value: string) => {
-    setNewWorkSetting((current) => ({ ...current, [key]: value }));
-    setNewSettingMessage('');
-  };
-
-  const updateNewSeriesSetting = (key: 'genre' | 'target_audience' | 'situation', value: string) => {
-    patchNewCharacterDocument((draft) => {
-      draft.manga.series_setting[key] = value;
-    });
-    setNewSettingMessage('');
-  };
-
-  const readNewReferenceFile = async (selection?: EpisodeWorkspaceTextSelection) => {
-    if (!selection) return;
-    const { file } = selection;
-    try {
-      const text = await file.text();
-      setNewSourceSnapshot({
-        source: { fileName: file.name, relativePath: selection.relativePath, text },
-        seriesMode: newSeriesMode,
-        workspaceDirectory: newEpisodeWorkspace?.directory ?? '',
-        selectedByteSize: selection.byteSize,
-        selectedSha256: selection.sha256,
-      });
-      setNewReferenceFileName(file.name);
-      setNewSuggestedEpisodeReference(null);
-      const imported = parseStoryReferenceText(text);
-      const scenario = parseScenario(text);
-      const applied = [
-        imported.seriesTitle,
-        imported.subtitle,
-        imported.episodeNumber,
-        ...Object.values(imported.setting),
-      ].filter((value) => value.trim()).length;
-      if (!applied && !scenario) {
-        setNewReferenceMessage(`${file.name}を資料テキストとして保持します。シナリオは「# シナリオ」の下にページ・コマごとに記載してください。`);
-        return;
-      }
-      if (newSeriesMode === 'new' && imported.seriesTitle) {
-        setNewSeriesName(seriesTitleFromReferences(newSeriesReferences) || imported.seriesTitle);
-      }
-      if (newSeriesMode === 'none') setNewWorkTitle(imported.subtitle || imported.seriesTitle);
-      else if (imported.subtitle) setNewWorkTitle(imported.subtitle);
-      if (imported.episodeNumber) setNewEpisodeNumber(imported.episodeNumber);
-      setNewWorkSetting((current) => ({
-        location: imported.setting.location || current.location,
-        time: imported.setting.time || current.time,
-        weather: imported.setting.weather || current.weather,
-        situation: imported.setting.situation || current.situation,
-      }));
-      const fields = [
-        imported.seriesTitle ? 'タイトル' : '',
-        imported.subtitle ? 'サブタイトル' : '',
-        imported.episodeNumber ? '話数' : '',
-        Object.values(imported.setting).some((value) => value.trim()) ? '舞台設定' : '',
-        scenario ? `シナリオ（${scenario.panels.length}コマ・セリフ${scenario.panels.reduce((sum, panel) => sum + panel.dialogues.length, 0)}件）` : '',
-      ].filter(Boolean).join('・');
-      setNewReferenceMessage(`${file.name}から${fields}を読み込みました。`);
-      setNewSettingMessage('');
-    } catch (error) {
-      setNewReferenceMessage(`読み込めませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
-
-  const applySuggestedReferenceTexts = async () => {
-    if (newSuggestedEpisodeReference) {
-      const mediaType = /\.(?:md|markdown)$/iu.test(newSuggestedEpisodeReference.fileName) ? 'text/markdown' : 'text/plain';
-      const bytes = new TextEncoder().encode(newSuggestedEpisodeReference.text);
-      await readNewReferenceFile({
-        file: new File([bytes], newSuggestedEpisodeReference.fileName, { type: mediaType }),
-        relativePath: newSuggestedEpisodeReference.relativePath,
-        byteSize: bytes.byteLength,
-        sha256: await sha256Hex(bytes),
-      });
-    }
-  };
-
-  const continueFromNewSetting = async () => {
-    if (!newWorkSetting.situation.trim()) {
-      setNewSettingMessage('あらすじを入力してください。');
-      return;
-    }
-    try {
-      if (newSeriesMode !== 'none') {
-        const latest = newCharacterDocumentRef.current;
-        if (!latest) throw new Error('シリーズの舞台を確認できません');
-        await persistNewCharacterCatalog(latest);
-      }
-      setNewSettingMessage('');
-      setNewCreationStep('layout');
-    } catch (error) {
-      setNewSettingMessage(`シリーズの舞台を保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
-
-  const applyPreparedSeriesIdentifiers = (prepared: MangaDocument): MangaDocument | null => {
-    const latest = documentRef.current;
-    const sameEpisode = latest.manga.meta.episode_id && prepared.manga.meta.episode_id
-      ? latest.manga.meta.episode_id === prepared.manga.meta.episode_id
-      : latest.manga.meta.title.trim() === prepared.manga.meta.title.trim();
-    if (latest.manga.meta.series.trim() !== prepared.manga.meta.series.trim() || !sameEpisode) return null;
-    const next = cloneDocument(latest);
-    let changed = false;
-    const assign = <T extends object, K extends keyof T>(target: T, key: K, value: T[K]) => {
-      if (value !== undefined && target[key] !== value) {
-        target[key] = value;
-        changed = true;
-      }
-    };
-    assign(next.manga.meta, 'series_id', prepared.manga.meta.series_id);
-    assign(next.manga.meta, 'episode_id', prepared.manga.meta.episode_id);
-    for(const stage of prepared.manga.background_stages??[]){const target=next.manga.background_stages?.find(item=>item.id===stage.id);if(target&&stage.seriesId)assign(target,'seriesId',stage.seriesId);}
-    prepared.manga.characters.filter((entry) => entry.scope === 'series').forEach((entry) => {
-      const target = next.manga.characters.find((candidate) => (
-        (entry.localId && candidate.localId === entry.localId)
-        || (entry.catalog_id && candidate.catalog_id === entry.catalog_id)
-      ));
-      if (target) assign(target, 'catalog_id', entry.catalog_id);
-    });
-    prepared.manga.materials.filter((entry) => entry.scope === 'series').forEach((entry) => {
-      const target = next.manga.materials.find((candidate) => (
-        (entry.localId && candidate.localId === entry.localId)
-        || (entry.catalog_id && candidate.catalog_id === entry.catalog_id)
-      ));
-      if (!target) return;
-      assign(target, 'catalog_id', entry.catalog_id);
-      assign(target, 'character_catalog_id', entry.character_catalog_id);
-      if (entry.origin && JSON.stringify(target.origin) !== JSON.stringify(entry.origin)) {
-        target.origin = structuredClone(entry.origin);
-        changed = true;
-      }
-    });
-    if (changed) setDocument(next);
-    return changed ? next : latest;
-  };
-
-  const saveCatalogFromEditor = async (label:string) => {
-    endTextEdit();
-    const source=documentRef.current;
-    if (isLanClient || !source.manga.meta.series.trim()) {
-      await saveProjectAction.current();
-      return;
-    }
-    try {
-      const persist=()=>persistSeriesCatalog(source, {
-        seriesSetting: structuredClone(source.manga.series_setting),
-      });
-      const prepared=!isLanClient&&label==='舞台設定'?await withNewCreationBridgeSession(persist):await persist();
-      const applied = applyPreparedSeriesIdentifiers(prepared);
-      const savedDocument = applied ?? documentRef.current;
-      if (label==='人物設定'&&characterTextLink?.linked) {
-        const synced = await syncCharacterText(savedDocument);
-        if (synced) setCharacterTextLink(synced);
-      }
-      setToast(`${label}を保存しました`);
-    } catch (error) {
-      setToast(`${label}を保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`);
-    }
-  };
-
-  const saveCharactersFromEditor=()=>saveCatalogFromEditor('人物設定');
-  const saveBackgroundsFromEditor=()=>saveCatalogFromEditor('舞台設定');
-  const importBackgroundModel=async(materialId:string,file:File)=>{
-    if(projectOperation.current)throw new Error('保存・読み込みが終わってから登録してください');
-    const episodeId=documentRef.current.manga.meta.episode_id;
-    projectOperation.current=true;setProjectBusy(true);
-    const finishImageImport=beginFigureCropImport();
-    try{
-      const item=await prepareBackgroundStage(file);
-      const {loadStageShape}=await import('../lib/background3dRenderer');
-      await loadStageShape(item.stage,item.blob);
-      const current=documentRef.current;
-      if(current.manga.meta.episode_id!==episodeId||!current.manga.materials.some(material=>material.localId===materialId&&material.type==='background'))throw new Error('登録先の背景が変更されたため読み込みを中止しました');
-      const existing=current.manga.background_stages?.find(stage=>stage.id===item.stage.id);
-      await saveFigureCropAssets([{id:existing?.storageId??item.stage.storageId,blob:item.blob}]);
-      patchLatestDocument(draft=>{
-        if(draft.manga.meta.episode_id!==episodeId)throw new Error('登録先の作品が変わりました');
-        const material=draft.manga.materials.find(entry=>entry.localId===materialId&&entry.type==='background');
-        if(!material)throw new Error('登録先の背景が見つかりません');
-        const stages=draft.manga.background_stages??=[];
-        if(!stages.some(stage=>stage.id===item.stage.id))stages.push(item.stage);
-        material.source_stage_id=item.stage.id;
-      });
-      setToast('背景の3Dモデルを登録しました');
-    }finally{projectOperation.current=false;setProjectBusy(false);finishImageImport();}
-  };
+  const { applyPreparedSeriesIdentifiers, importBackgroundModel, saveBackgroundsFromEditor, saveCharactersFromEditor } = createWorkspaceCatalogActions({
+    documentRef, setDocument, endTextEdit, saveProjectAction, persistSeriesCatalog, characterTextLink,
+    syncCharacterText, setCharacterTextLink, setToast, projectOperation, setProjectBusy,
+    patchLatestDocument,
+  });
 
   const { saveProject, exportOmny, openProject } = createProjectFileActions({
     hasDocument, showNewDialog, projectOperation, endTextEdit, documentRef, setToast, setProjectBusy,
@@ -2072,235 +897,16 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     saveProjectAction,
   });
 
-  const chooseNewLayoutImages = (files?: ArrayLike<File> | Iterable<File> | null) => {
-    if (newLayoutTask !== 'idle') return;
-    const selected = Array.from(files ?? [])
-      .sort((a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true }))
-      .slice(0, 10);
-    if (!selected.length) return;
-    newLayoutOperationGeneration.current += 1;
-    updateNewLayoutTask('idle');
-    // スキャンから手動ファイルへ切り替える操作は明示的な破棄として扱う。
-    void discardScannerSources().catch(() => undefined);
-    discardNewLayoutItems();
-    const items = selected.map((file) => ({
-      id: crypto.randomUUID(), file, source: 'manual' as const,
-      analysis: null, analyzing: false, rotationOverride: 0 as const,
-    }));
-    newLayoutItemsRef.current = items;
-    setNewLayoutItems(items);
-    setNewLayoutActiveIndex(0);
-    setNewLayoutMessage(`${items.length}枚を読み込みました。`);
-    if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
-  };
-
-  const updateNewLayoutGutter = (axis: 'row' | 'column', value: number) => {
-    if (newLayoutTask !== 'idle' || !Number.isFinite(value)) return;
-    const nextValue = roundMm(clamp(value, 0, 20));
-    if (axis === 'row') setNewLayoutRowGapMm(nextValue);
-    else setNewLayoutColumnGapMm(nextValue);
-    const hasAnalysis = newLayoutItemsRef.current.some((item) => item.analysis || item.error);
-    if (!hasAnalysis) return;
-    newLayoutOperationGeneration.current += 1;
-    updateNewLayoutTask('idle');
-    const working = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
-    newLayoutItemsRef.current = working;
-    setNewLayoutItems(working);
-    setNewLayoutMessage('コマ間隔を変更しました。「解析開始」で解析結果へ反映してください。');
-  };
-
-  const updateNewLayoutFrameLineWidth = (value: number) => {
-    if (newLayoutTask !== 'idle' || !Number.isFinite(value)) return;
-    setNewLayoutFrameLineWidthMm(roundMm(clamp(value, 0.1, 5)));
-  };
-
-  const analyzeNewLayouts = async () => {
-    if (!newLayoutItemsRef.current.length || newLayoutTaskRef.current !== 'idle') return;
-    const generation = ++newLayoutOperationGeneration.current;
-    updateNewLayoutTask('analyzing');
-    let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
-    setNewLayoutItems(working);
-    for (let index = 0; index < working.length; index += 1) {
-      setNewLayoutActiveIndex(index);
-      working = working.map((item, itemIndex) => ({ ...item, analyzing: itemIndex === index }));
-      newLayoutItemsRef.current = working;
-      setNewLayoutItems(working);
-      setNewLayoutMessage(`${index + 1} / ${working.length}枚目：RT-DETRでコマ・文字・顔・身体を検出し、Baberu OCRで文字候補を読んでいます…`);
-      try {
-        const result = await recognizePanelLayout(
-          working[index].file,
-          working[index].rotationOverride,
-          { rowGapMm: newLayoutRowGapMm, columnGapMm: newLayoutColumnGapMm },
-        );
-        if (generation !== newLayoutOperationGeneration.current) return;
-        working = working.map((item, itemIndex) => itemIndex === index
-          ? { ...item, analysis: result, analyzing: false, error: undefined }
-          : item);
-      } catch (error) {
-        if (generation !== newLayoutOperationGeneration.current) return;
-        const message = error instanceof Error ? error.message : 'コマの検出に失敗しました';
-        working = working.map((item, itemIndex) => itemIndex === index
-          ? { ...item, analysis: null, analyzing: false, error: message }
-          : item);
-      }
-      newLayoutItemsRef.current = working;
-      setNewLayoutItems(working);
-    }
-    if (generation !== newLayoutOperationGeneration.current) return;
-    const matched = working.filter((item) => item.analysis?.detectedPanels.length).length;
-    const recognized = working.reduce((total, item) => total + (item.analysis?.ocrLines.length ?? 0), 0);
-    setNewLayoutMessage(`${working.length}枚の解析が終わりました。${matched}枚でコマ領域、${recognized}件の文字候補を取得しました。`);
-    const layouts = working.flatMap((item): DetectedPageLayout[] => item.analysis?.detectedPanels.length
-      ? [{ sourceItemId: item.id, analysis: item.analysis }]
-      : []);
-    if (layouts.length !== working.length) {
-      updateNewLayoutTask('idle');
-      return;
-    }
-    await createNewDocument(layouts, working.some((item) => item.source === 'scanner'), generation);
-  };
-
-  const setActiveLayoutRotation = (rotation: RightAngle) => {
-    if (newLayoutTask !== 'idle') return;
-    newLayoutOperationGeneration.current += 1;
-    updateNewLayoutTask('idle');
-    const index = newLayoutActiveIndex;
-    const working = newLayoutItemsRef.current.map((item, itemIndex) => itemIndex === index
-      ? { ...item, rotationOverride: rotation, analysis: null, analyzing: false, error: undefined }
-      : item);
-    newLayoutItemsRef.current = working;
-    setNewLayoutItems(working);
-    setNewLayoutMessage(`${index + 1}枚目を時計回り${rotation}°の向きにしました。このまま解析できます。`);
-  };
-
-  const rotateActiveLayoutImage = (delta: 90 | 180 | 270) => {
-    const item = newLayoutItemsRef.current[newLayoutActiveIndex];
-    if (!item) return;
-    setActiveLayoutRotation(((displayedLayoutRotation(item) + delta) % 360) as RightAngle);
-  };
-
-  const launchScanner = async () => {
-    if (newLayoutTask !== 'idle') return;
-    const generation = ++newLayoutOperationGeneration.current;
-    await discardScannerSources().catch(() => undefined);
-    if (generation !== newLayoutOperationGeneration.current) return;
-    discardNewLayoutItems();
-    scannerStopRequested.current = false;
-    updateNewLayoutTask('scanner');
-    setNewLayoutMessage('macOSのスキャナーアプリを起動しています…');
-    try {
-      const session = await openMacScanner();
-      if (generation !== newLayoutOperationGeneration.current) {
-        await cancelScannerSession(session.id).catch(() => undefined);
-        return;
-      }
-      scannerSessionRef.current = session;
-      setScannerSession(session);
-      setNewLayoutMessage(`スキャン画像を自動待機中です（最大${session.maxFiles}枚・5分）。続けてスキャンし、終わったら「取り込みを終了」を押してください。`);
-      while (generation === newLayoutOperationGeneration.current && scannerSessionRef.current?.id === session.id) {
-        if (scannerStopRequested.current) break;
-        const batch = await collectScannerImages(session.id);
-        if (generation !== newLayoutOperationGeneration.current) return;
-        if (scannerSessionRef.current?.id !== session.id) break;
-        if (batch.files.length) {
-          const additions = batch.files.map(({ id, file }) => ({
-            id, file, source: 'scanner' as const,
-            analysis: null, analyzing: false, rotationOverride: 0 as const,
-          }));
-          const existing = newLayoutItemsRef.current;
-          const known = new Set(existing.map((item) => item.id));
-          const next = [...existing, ...additions.filter((item) => !known.has(item.id))].slice(0, session.maxFiles);
-          newLayoutItemsRef.current = next;
-          setNewLayoutItems(next);
-          setNewLayoutActiveIndex(Math.max(0, next.length - 1));
-          setScannerReceivedCount(next.length);
-          setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。`);
-        }
-        if (batch.complete || scannerStopRequested.current) break;
-        await new Promise((resolve) => window.setTimeout(resolve, 1200));
-      }
-      if (scannerSessionRef.current?.id !== session.id) return;
-      if (scannerSessionRef.current?.id === session.id) await finishScannerWatching();
-      const count = newLayoutItemsRef.current.length;
-      setNewLayoutMessage(count
-        ? `${count}枚の取り込みを完了しました。スキャン元とNyamuru Image Hubの一時画像は、ページ作成の確定または画面を閉じた時に破棄します。`
-        : '5分以内に新しいスキャン画像が見つかりませんでした。');
-    } catch (error) {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャナーアプリを起動できませんでした');
-      // 予期しない切断では元画像を消さず、次回の復旧候補として残す。
-      detachActiveScannerSession();
-      void getPendingScannerSession().then(setPendingScannerSession).catch(() => undefined);
-    } finally {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      scannerStopRequested.current = false;
-      updateNewLayoutTask('idle');
-    }
-  };
-
-  const resumeScanner = async () => {
-    if (newLayoutTask !== 'idle') return;
-    const generation = ++newLayoutOperationGeneration.current;
-    updateNewLayoutTask('scanner');
-    setNewLayoutMessage('前回のスキャン画像へつなぎ直しています…');
-    try {
-      discardNewLayoutItems();
-      const resumed = await resumePendingScannerSession();
-      if (generation !== newLayoutOperationGeneration.current) {
-        await cancelScannerSession(resumed.session.id).catch(() => undefined);
-        return;
-      }
-      scannerSessionRef.current = resumed.session;
-      setScannerSession(resumed.session);
-      setPendingScannerSession(null);
-      const items = resumed.files.map(({ id, file }) => ({
-        id, file, source: 'scanner' as const,
-        analysis: null, analyzing: false, rotationOverride: 0 as const,
-      }));
-      newLayoutItemsRef.current = items;
-      setNewLayoutItems(items);
-      setNewLayoutActiveIndex(0);
-      setScannerReceivedCount(items.length);
-      setNewLayoutMessage(`${items.length}枚へつなぎ直しました。`);
-    } catch (error) {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');
-    } finally {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      updateNewLayoutTask('idle');
-    }
-  };
-
-  const discardRecoveredScans = async () => {
-    if (newLayoutTask !== 'idle') return;
-    const generation = ++newLayoutOperationGeneration.current;
-    updateNewLayoutTask('scanner');
-    try {
-      await discardPendingScannerRecovery();
-      if (generation !== newLayoutOperationGeneration.current) return;
-      setNewLayoutMessage('前回残ったスキャン画像を破棄しました。');
-    } catch (error) {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      setNewLayoutMessage(error instanceof Error ? error.message : '残っているスキャン画像を破棄できませんでした');
-    } finally {
-      if (generation !== newLayoutOperationGeneration.current) return;
-      updateNewLayoutTask('idle');
-    }
-  };
-
-  const requestScannerFinish = async () => {
-    if (scannerStopRequested.current) return;
-    scannerStopRequested.current = true;
-    setNewLayoutMessage('現在の取り込みを確認して終了しています…');
-    const session = scannerSessionRef.current;
-    if (!session) return;
-    try {
-      await finishScannerSession(session.id);
-    } catch (error) {
-      scannerStopRequested.current = false;
-      setNewLayoutMessage(error instanceof Error ? error.message : 'スキャン待機を終了できませんでした');
-    }
-  };
+  const { chooseNewLayoutImages, requestScannerFinish, launchScanner, updateNewLayoutGutter, updateNewLayoutFrameLineWidth, resumeScanner, discardRecoveredScans, rotateActiveLayoutImage, analyzeNewLayouts } = createNewLayoutImportActions({
+    newLayoutTask, newLayoutOperationGeneration, updateNewLayoutTask, discardScannerSources,
+    discardNewLayoutItems, newLayoutItemsRef, setNewLayoutItems, setNewLayoutActiveIndex,
+    setNewLayoutMessage, newLayoutImageInput, setNewLayoutRowGapMm, setNewLayoutColumnGapMm,
+    setNewLayoutFrameLineWidthMm, newLayoutTaskRef, newLayoutRowGapMm, newLayoutColumnGapMm,
+    createNewDocument: (...args) => createNewDocument(...args), newLayoutActiveIndex,
+    scannerStopRequested, scannerSessionRef, setScannerSession, setScannerReceivedCount,
+    finishScannerWatching, detachActiveScannerSession, setPendingScannerSession,
+    discardPendingScannerRecovery,
+  });
 
   const { createNewDocument } = createNewProjectAction({
     newLayoutTaskRef, newLayoutOperationGeneration, newPrintConfirmed, editingNewPrintSetup,

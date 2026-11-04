@@ -10,7 +10,9 @@ const require = createRequire(import.meta.url);
 const { h } = require('preact');
 const { renderToString } = require('preact-render-to-string');
 
-const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
+const source = ['App.tsx', 'workspace/newLayoutImportActions.ts'].map(path =>
+  readFileSync(new URL('../src/components/' + path, import.meta.url), 'utf8')
+).join('\n');
 const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const layoutSource = readFileSync(new URL('../src/components/new-project/NewLayoutStep.tsx', import.meta.url), 'utf8');
 const layoutAst = ts.createSourceFile('NewLayoutStep.tsx', layoutSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

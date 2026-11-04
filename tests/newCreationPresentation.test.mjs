@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
 
-const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
+const source = ['newSeriesPreparation', 'newSeriesReferences'].map(name =>
+  readFileSync(new URL(`../src/components/workspace/${name}.ts`, import.meta.url), 'utf8')
+).join('\n');
 const views = ['NewSeriesStep', 'NewSettingStep', 'NewProjectNavigation'].map(name =>
   readFileSync(new URL(`../src/components/new-project/${name}.tsx`, import.meta.url), 'utf8')
 ).join('\n');

@@ -26,7 +26,10 @@ import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
 const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
-const creation = readFileSync(new URL('../src/components/workspace/newProjectCreation.ts', import.meta.url), 'utf8');
+const creation = ['newProjectCreation', 'newLayoutImportActions', 'newSeriesSelection', 'newSeriesPreparation',
+  'newSeriesReferences', 'newEpisodeSettings'].map(name =>
+  readFileSync(new URL(`../src/components/workspace/${name}.ts`, import.meta.url), 'utf8')
+).join('\n');
 const ast = ts.createSourceFile('project.tsx', source + '\n' + creation, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
 // Exercise the actual handlers with state setters and bridge calls substituted;
