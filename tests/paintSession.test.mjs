@@ -134,18 +134,22 @@ test('point text keeps its P to T editing target in panel and page overlay',asyn
   handler('App.tsx','chooseTextTool',context)();await Promise.all(transitions);assert.deepEqual(calls,['close',selected]);
  }
 });
+// 見込み: 通常の道具選択は一時選択を解除してから既存の描画再開へ進む。
+// 合格: 一時選択falseと再開/gesture/道具順を確認。実handler＋模擬state、実キー入力はbrowser試験。
 test('resuming a paint tool clears the other UI mode through the existing start callback',()=>{
- const calls=[],context={paintSelectionMode,hasLayer:false,busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:true,zoomTool:false,onStartPaint:()=>{calls.push('resume');return true;},interactionRevision:{current:0},finishGesture:()=>calls.push('gesture'),setMaskTarget:()=>{},setTool:tool=>calls.push(tool),setLineKind:()=>{},setPenMenu:()=>{},setEraserMenu:()=>{},tool:'pen',vectorState:{current:{}}};
- handler('PaintEditor.tsx','selectTool',context)('pen');assert.deepEqual(calls,['resume','gesture','pen']);
+ const calls=[],context={setTemporaryLayoutSelection:value=>calls.push(['temporary',value]),paintSelectionMode,hasLayer:false,busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:true,zoomTool:false,onStartPaint:()=>{calls.push('resume');return true;},interactionRevision:{current:0},finishGesture:()=>calls.push('gesture'),setMaskTarget:()=>{},setTool:tool=>calls.push(tool),setLineKind:()=>{},setPenMenu:()=>{},setEraserMenu:()=>{},tool:'pen',vectorState:{current:{}}};
+ handler('PaintEditor.tsx','selectTool',context)('pen');assert.deepEqual(calls,[['temporary',false],'resume','gesture','pen']);
 });
+// 見込み: T/zoom中も明示的な道具選択で一時選択を解き、非描画操作の経路を維持する。
+// 合格: layout/node/penの既存順と解除を確認。実handler＋模擬state、ブラウザー操作は別試験。
 test('T/zoom shortcuts preserve layout dispatch without a session and suppress hidden paint edits',()=>{
  for(const requested of [undefined,{}]){
-  const calls=[],context={Element:class{},HTMLElement:class{},paintToolShortcut,paintSelectionMode,hasLayer:false,owner:{key:'figure-0'},requested,textTool:true,zoomTool:false,gesture:{current:null},vectorPointer:{current:null},busy:false,toolSuspended:false,operation:{current:false},interactionRevision:{current:0},
+  const calls=[],context={setTemporaryLayoutSelection:value=>calls.push(['temporary',value]),Element:class{},HTMLElement:class{},paintToolShortcut,paintSelectionMode,hasLayer:false,owner:{key:'figure-0'},requested,textTool:true,zoomTool:false,gesture:{current:null},vectorPointer:{current:null},busy:false,toolSuspended:false,operation:{current:false},interactionRevision:{current:0},
    onSelectLayout:target=>calls.push(target?.direct?'bubble-node':'layout'),onSelectBubblePath:()=>calls.push('bubble-node'),onStartPaint:()=>{calls.push('resume');return true;},finishGesture(){},setTool:value=>calls.push(value),setMaskTarget(){},setLineKind(){},setPenMenu(){},setEraserMenu(){},tool:'pen',vectorState:{current:{}},undo:()=>calls.push('undo'),redo:()=>calls.push('redo')};
   context.selectTool=handler('PaintEditor.tsx','selectTool',context);
   const keydown=handler('PaintEditor.tsx','keydown',context);
   for(const key of ['v','a','p','Delete','f','x',']'])keydown({key,preventDefault(){},stopPropagation(){}});
-  assert.deepEqual(calls,['layout','bubble-node','resume','vector-pen']);
+  assert.deepEqual(calls,[['temporary',false],'layout',['temporary',false],'bubble-node',['temporary',false],'resume','vector-pen']);
   assert.equal(context.interactionRevision.current,3);
  }
 });

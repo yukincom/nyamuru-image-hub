@@ -16,6 +16,7 @@ import PaintCursor from './PaintCursor';
 import PaintRulerOverlay from './PaintRulerOverlay';
 import {bubbleTextPosition} from '../lib/bubbleClip.ts';
 import {figureDisplayLabel} from '../lib/displayLabels.ts';
+import {figureCanvasClass} from '../lib/figurePresentation.ts';
 
 function SourceImage({id, persistent}: {id:string; persistent?:PersistentAnalogAssetRef}) {
   const [url,setUrl]=useState(''),[failed,setFailed]=useState(false);
@@ -72,6 +73,7 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false,nativeBand}:
   return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey} data-native-band={nativeBand}>
     {!inkOnly&&showGuide&&<div class={fullGuide?'paint-reference':'paint-reference is-underlay'} style={relativeStyle(reference,owner.frame)}><PaintOriginal owner={owner}/></div>}
     {state.images&&<PaintPreviewCanvas paint={owner.paint} images={state.images} live={live} includeGeneration={!state.displayOnly} maskPreviewId={!state.displayOnly&&state.maskPreview?.ownerKey===owner.key?state.maskPreview.layerId:undefined}/>}
+    {!inkOnly&&owner.figure&&(showGuide||hasInk)&&<span class={`paint-figure-status ${figureCanvasClass(owner.figure)}`} style={relativeStyle(reference,owner.frame)} aria-hidden="true"/>}
   </div>;
 }
 

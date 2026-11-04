@@ -1,19 +1,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
-import ts from 'typescript';
-import { isPropPlacement } from '../src/lib/catalogModel.ts';
+import {figureCanvasClass as presentation} from '../src/lib/figurePresentation.ts';
 import { DETECTED_FIGURE_NAME } from '../src/lib/systemCharacters.ts';
 
 const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '');
 const canvas = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
 
+// 見込み: 共有判定で通常表示と描画プレビューの未確定/要確認状態が一致する。
+// 合格: 同じ人物入力で既定classを返し、確定/小道具に注意色を付けない。純粋判定とCSS、実表示はbrowser試験。
 test('confirmed people have neutral frames with or without artwork, while attention uses existing fields',()=>{
  assert.match(css,/\.figure-guide\.is-confirmed-person\s*\{[^}]*display:flex;[^}]*border:0;[^}]*background:transparent;/);
- const source=canvas.slice(canvas.indexOf('function figureCanvasClass('),canvas.indexOf('function StoredCropImage('));
- const presentation=runInNewContext(ts.transpile(source,{target:ts.ScriptTarget.ES2022})+';figureCanvasClass',{isPropPlacement,DETECTED_FIGURE_NAME});
+ const source=readFileSync(new URL('../src/lib/figurePresentation.ts',import.meta.url),'utf8');
  const confirmed={name:'確定人物',refId:'person-a',analogImport:{draft:true}};
  assert.equal(presentation(confirmed),'is-confirmed-person');
  assert.equal(presentation({...confirmed,artwork:{}}),'is-confirmed-person');

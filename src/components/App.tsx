@@ -978,6 +978,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   };
 
   const selectCanvasElement = (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex = activePage, revealDetails = true) => {
+    if(paintSessionRef.current&&pageIndex!==paintSessionRef.current.pageIndex){
+      void layerTransition(async()=>{
+        await paintController.current?.close();
+        if(!paintSessionRef.current)selectCanvasElement(selection,panelIndex,pageIndex,revealDetails);
+      });
+      return;
+    }
     if (selection) {
       setCanvasSelectionScrollRequest((current) => current + 1);
       const selectedBubble=selection.type==='bubble'?(selection.scope==='page_overlay'?documentRef.current.manga.pages[pageIndex]?.page_overlay:documentRef.current.manga.pages[pageIndex]?.panels[panelIndex??activePanel])?.bubbles?.[selection.index]:undefined;

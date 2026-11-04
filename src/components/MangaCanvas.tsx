@@ -31,7 +31,7 @@ import { loadFigureCropAsset } from '../lib/figureCropStore';
 import { bubbleCssFontFamily, type PcFontFamily } from '../lib/bubbleFonts';
 import { resolveBubbleSpeakerFigureIndex, letteringFigureIndex } from '../lib/bubbleRelations';
 import { isPropPlacement } from '../lib/catalogModel.ts';
-import { DETECTED_FIGURE_NAME } from '../lib/systemCharacters.ts';
+import { figureCanvasClass } from '../lib/figurePresentation.ts';
 import { bubbleJoinGeometry, bubbleTailComposite, bubbleTailDisabled, bubbleTailGeometry, bubbleTailTargetPoint, monologueTailEllipses, normalizedBubbleTailRoot, normalizedBubbleTailTarget, type BubbleSeamMask, type BubbleTailComposite } from '../lib/bubbleTail.ts';
 import { bubbleUsesMonologueTail, bubbleStrokeWidthMm } from '../lib/bubblePresentation.ts';
 import { bubbleTextFrame, bubbleTextPosition, compatibleBubbleClips } from '../lib/bubbleClip.ts';
@@ -150,13 +150,6 @@ function FigureName({ name, boxW, boxH, fitEpoch }: { name: string; boxW: number
     }
   }, [name, boxW, boxH, fitEpoch]);
   return <span class="figure-name-layer"><small ref={ref} class="figure-name">{name}</small></span>;
-}
-
-function figureCanvasClass(figure: Figure): string {
-  if(isPropPlacement(figure))return 'is-object';
-  if(figure.analogImport?.analysisReview)return 'is-analysis-review';
-  return !figure.refId || figure.name.normalize('NFKC').trim() === DETECTED_FIGURE_NAME
-    ?'is-unassigned':'is-confirmed-person';
 }
 
 function StoredCropImage({ assetId, persistentAsset, className }: { assetId: string; persistentAsset?: PersistentAnalogAssetRef; className: string }) {

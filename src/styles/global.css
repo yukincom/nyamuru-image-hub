@@ -363,8 +363,8 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .figure-guide.is-confirmed-person { display:flex; border:0; background:transparent; }
 .figure-guide.is-object { color: #9b7625; border-color: rgba(201,158,50,.85); background: rgba(247,233,197,.3); }
 .figure-guide.is-analysis-review { color: #725510; border-color: #dcaa27; background: rgba(255,255,186,.58); box-shadow: inset 0 0 0 max(2px, .55cqh) rgba(255,217,63,.36); }
-.figure-guide.is-analysis-review::after, .placed-image.is-analysis-review::after { position: absolute; z-index: 1; inset: 0; background: rgba(255,225,69,.24); content: ""; pointer-events: none; }
-.placed-image.is-unassigned::after, .placed-image.is-analysis-review::after { position:absolute; z-index:1; inset:0; border:max(1.5px,.5cqh) solid #dcaa27; content:""; pointer-events:none; }
+.figure-guide.is-analysis-review::after, .placed-image.is-analysis-review::after, .paint-figure-status.is-analysis-review::after { position: absolute; z-index: 1; inset: 0; background: rgba(255,225,69,.24); content: ""; pointer-events: none; }
+.placed-image.is-unassigned::after, .placed-image.is-analysis-review::after, .paint-figure-status.is-unassigned::after, .paint-figure-status.is-analysis-review::after { position:absolute; z-index:1; inset:0; border:max(1.5px,.5cqh) solid #dcaa27; content:""; pointer-events:none; }
 .figure-guide.is-analysis-review .figure-crop-image { filter: sepia(.45) saturate(1.25); }
 .figure-guide.is-unassigned { color: #765410; border-color: rgba(255,201,51,.95); }
 .figure-guide.is-element-selected { z-index: 6; }
@@ -1352,6 +1352,7 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .manga-page-content { position:absolute; z-index:1; inset:0; overflow:hidden; }
 .manga-paper.has-paint-surface { overflow:visible; }
 .paint-owner { position:absolute; pointer-events:none; }
+.paint-figure-status { position:absolute; pointer-events:none; }
 .paint-owner canvas,.paint-reference,.paint-original { position:absolute; inset:0; width:100%; height:100%; }
 .paint-reference.is-underlay { opacity:.2; }
 .paint-original { overflow:hidden; }
