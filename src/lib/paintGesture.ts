@@ -112,7 +112,7 @@ export interface PaintSampleEvent {
 }
 
 /** Preserve the release position even when the device supplies no final move. */
-export function appendPaintSamples(stroke: PaintStroke, smoother: PaintSmoother, event: PaintSampleEvent, point: (sample: PaintSampleEvent)=>PaintPoint): void {
+export function appendPaintSamples(stroke: PaintStroke, smoother: PaintSmoother, event: PaintSampleEvent, point: (sample: PaintSampleEvent)=>PaintPoint, shift=event.shiftKey??false): void {
   const samples=event.getCoalescedEvents?.()??[];
   const last=samples.at(-1);
   if(!last||last.clientX!==event.clientX||last.clientY!==event.clientY||last.timeStamp!==event.timeStamp||event.type==='pointerup')samples.push(event);
@@ -121,7 +121,7 @@ export function appendPaintSamples(stroke: PaintStroke, smoother: PaintSmoother,
     if(sample.type==='pointerup'&&sample.pointerType==='pen'&&sample.pressure===0)raw.pressure=stroke.points.at(-1)?.pressure??raw.pressure;
     const p=smoother.push(raw);
     if(stroke.tool==='pen'||stroke.tool==='eraser')stroke.points.push(p);
-    else stroke.points=[stroke.points[0],constrainPaintPoint(stroke.tool,stroke.points[0],p,event.shiftKey??false)];
+    else stroke.points=[stroke.points[0],constrainPaintPoint(stroke.tool,stroke.points[0],p,shift)];
   }
 }
 

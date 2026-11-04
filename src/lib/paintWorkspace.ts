@@ -6,6 +6,7 @@ import { paintGenerationOwner, type PaintOwner, type PaintScene } from './paintD
 import type { PaintImages } from './paintRenderer';
 import type { PendingPaintStroke } from './paintGesture';
 import type { PaintCursorMode } from './paintPreferences';
+import type { PaintRuler } from './paintRuler';
 
 export type PaintPointerEvent = PointerEvent & {currentTarget: HTMLDivElement};
 export interface PaintLayoutTarget {key?:string;selection?:CanvasElementSelection|null;panelIndex?:number;additive?:boolean;direct?:boolean}
@@ -33,6 +34,7 @@ export interface PaintWorkspaceState {
   vector?:VectorOverlayState;
   penCursor?:'pen'|'resume'|'close'|'join';
   cursor?: {mode:PaintCursorMode;size:number;eraserSize:number};
+  ruler?:PaintRuler;
   events: {
     onPointerDown: (event:PaintPointerEvent,onSelectionMiss?:(behindOwnerKey?:string,aboveNative?:boolean)=>boolean)=>void;
     onPointerMove: (event:PaintPointerEvent)=>void;

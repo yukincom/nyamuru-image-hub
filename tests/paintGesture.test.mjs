@@ -56,6 +56,8 @@ test('actual layer move keeps redo for round trips and interrupted gestures',()=
  }
 });
 
+// ラスターの終了だけを実処理で検査し、定規・背景・ベクターの終了は模擬する。
+// 成功時だけ新レイヤーを確定し、取消し・容量超過では元の選択と作品を保てば合格。
 test('actual raster finish selects a draft layer only after success, retaining selection on error or cancel',()=>{
   for(const ending of ['success','capacity','cancel']){
     const scene=initial(),owner=scene.owners[0],oldId=owner.paint.layers[0].id,added=newPaintLayer();
@@ -63,7 +65,7 @@ test('actual raster finish selects a draft layer only after success, retaining s
     const mark={tool:'pen',color:'#000000',size:2,points:[{x:ending==='capacity'?20000:5,y:5,pressure:1,time:0}]};
     const historyRef={current:{initial:scene,present:scene}},inputActive={current:true},rasterPreviewRef={current:{}};
     const gesture={current:{pointerId:7,live:{ownerKey:owner.key,layerId:added.id,addedLayer:added,stroke:mark},cleanup:()=>cleared++,target:{hasPointerCapture:()=>true,releasePointerCapture:()=>cleared++}}};
-    editorHandler('finishGesture',{initial:scene,historyRef,gesture,inputActive,rasterPreviewRef,selectionPointer:{current:null},raf:{current:1},endBackgroundMove(){},finishLayerMove(){},finishVector(){},setLassoPreview(){},cancelAnimationFrame(){},commitPaintStroke,
+    editorHandler('finishGesture',{initial:scene,historyRef,gesture,inputActive,rasterPreviewRef,selectionPointer:{current:null},raf:{current:1},finishRuler(){},endBackgroundMove(){},finishLayerMove(){},finishVector(){},setLassoPreview(){},cancelAnimationFrame(){},commitPaintStroke,
       commit:next=>{commits++;historyRef.current.present=next;},setLayerId:id=>selected=id,setError:value=>error=value,setLive:value=>assert.equal(value,undefined)})(ending!=='cancel');
     assert.equal(commits,ending==='success'?1:0);assert.equal(selected,ending==='success'?added.id:oldId);
     assert.equal(gesture.current,null);assert.equal(inputActive.current,false);assert.equal(rasterPreviewRef.current,undefined);assert.equal(cleared,2);

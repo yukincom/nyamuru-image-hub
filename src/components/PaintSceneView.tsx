@@ -13,6 +13,7 @@ import FigureSizeSvg from './FigureSizeSvg';
 import BubbleShapeSvg from './BubbleShapeSvg';
 import {textStyleCss,textStyleOf,textStyleSegments,textInlineStyleCss} from '../lib/textStyle';
 import PaintCursor from './PaintCursor';
+import PaintRulerOverlay from './PaintRulerOverlay';
 import {bubbleTextPosition} from '../lib/bubbleClip.ts';
 import {figureDisplayLabel} from '../lib/displayLabels.ts';
 
@@ -84,5 +85,6 @@ export default function PaintInputSurface({canvas,onSelectionMiss}:{canvas:{w:nu
     aria-label={`${owner.label}の描画面（紙面全体）`} {...events} onPointerDown={event=>events.onPointerDown(event,(key,above)=>onSelectionMiss?.(event,key,above)??false)} onContextMenu={event=>state.onContextMenu(event,owner.key)} onClick={event=>event.stopPropagation()}>
     {state.cursor&&<PaintCursor surface={surface} owner={owner} canvas={canvas} cursor={state.cursor}/>}
     <span class="paint-frame" style={relativeStyle(owner.frame,area)}>{state.vector&&<VectorOverlay state={state.vector}/>}<RasterSelectionOverlay boxes={state.selection?.boxes} points={state.lasso} width={owner.paint.width} height={owner.paint.height}/></span>
+    {state.ruler&&<PaintRulerOverlay surface={surface} canvas={canvas} ruler={state.ruler}/>}
   </div>;
 }
