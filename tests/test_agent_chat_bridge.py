@@ -289,7 +289,8 @@ class AgentToolSchemaTests(unittest.TestCase):
         self.assertEqual(nodes['items']['properties']['handleIn']['properties']['x'], {'type': 'number', 'minimum': -100, 'maximum': 100})
 
     def test_shape_enum_tracks_current_editor_types(self):
-        source = (Path(__file__).resolve().parents[1] / 'src/types.ts').read_text()
+        """AI編集の形状候補はエディターと同じ種類・順序を持つ。型宣言と公開候補を直接照合する。"""
+        source = (Path(__file__).resolve().parents[1] / 'src/types/page.ts').read_text()
         declaration = next(line for line in source.splitlines() if line.startswith('export type BubbleShape = '))
         values = [part.strip(" ';") for part in declaration.split('=', 1)[1].split('|')]
         self.assertEqual(list(BUBBLE_SHAPES), values)

@@ -1,2 +1,7 @@
 # Preserve byte-identical historical evaluation reports, including their final blank line.
 docs/ModernBERT/archive/artifacts/**/misclassifications.md whitespace=-blank-at-eof
+
+# Keep the verified CLIP converter inputs byte-for-byte identical to upstream.
+scripts/clip-export/vendor/csp-format/crates/csp-format/src/data/cmc_param_scheme.tsv whitespace=-blank-at-eol
+scripts/clip-export/vendor/csp-format/crates/csp-format/src/data/param_scheme.tsv whitespace=-blank-at-eol
+scripts/clip-export/vendor/name-studio/UPSTREAM-Cargo.toml whitespace=-blank-at-eof
