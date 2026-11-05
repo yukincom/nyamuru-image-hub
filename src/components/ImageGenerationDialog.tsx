@@ -1,3 +1,5 @@
+import {runGenerationConversation,type GenerationConversationInput} from '../lib/generationConversation.ts';
+import {requestAgentReply,withAgentServices} from '../lib/localBridge.ts';
 import ProjectFileInput, { useProjectFilePicker } from './ProjectFileInput';
 export { qwenInputImage, qwenLayerImage } from './generation/inputImages.ts';
 import type { ComponentProps } from 'preact';
@@ -161,10 +163,14 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   function prepareNewGeneration(){
     attempted.current=null;submitted.current=false;setAttempt(null);setJob(null);setSelectedCandidate(null);setSelectedCandidates([]);insertedBatch.current=null;setError('');setNotice('');
   }
-  const updatePrompt=(value:string)=>{
-    if(working.current||!canPrepareNewGeneration||draft.current.prompt===value)return;
+  function applyPrompt(value:string){
+    if(draft.current.prompt===value)return;
     if(attempted.current)prepareNewGeneration();
     draft.current.prompt=value;setPrompt(value);
+  }
+  const updatePrompt=(value:string)=>{
+    if(working.current||!canPrepareNewGeneration)return;
+    applyPrompt(value);
   };
   async function operation<T>(task:()=>Promise<T>,propagate=false):Promise<T|undefined>{
     if(working.current){if(propagate)throw new Error('処理が終わるまでお待ちください');return;}working.current=true;setBusy(true);setError('');setNotice('');
@@ -174,17 +180,20 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   const { selectLayer, addFiles } = useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection });
   const chooseFiles = useProjectFilePicker();
   const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ chooseFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession });
-  async function conversationSend(text:string,isCurrent:()=>boolean){
+  async function conversationSend(text:string,isCurrent:()=>boolean,input?:GenerationConversationInput){
     if(!alive.current||!isCurrent())return '生成の会話を終了しました';
     const intent=qwenConversationIntent(text);
-    if(intent==='hold')return '新しい生成は開始していません。指示を整えてから「生成して」と送ってください。';
-    if(intent==='help')return '追加の指示を送れます。「生成して」と送ると、シードを変えた5枚を表示します。画面で採用する画像を選んでください。';
-    if(intent==='instruction'){
-      if(working.current)throw new Error('処理が終わるまでお待ちください');
-      if(attempted.current)throw new Error('この生成は開始済みです');
-      if(draft.current.prompt.length+text.length>12000)throw new Error('追加の指示が長すぎます。生成指示を整理してください');
-      updatePrompt(`${draft.current.prompt}\n\n${text.trim()}`);
-      return '追加の指示を生成指示に反映しました。「生成して」で5枚を生成します。採用する画像は画面で選んでください。';
+    if(intent!=='generate'){
+      return (await operation(()=>runGenerationConversation({text,input:input??{history:[],profile:{name:'にゃむる',tone:''}},
+        isCurrent:()=>alive.current&&!closing.current&&isCurrent(),
+        snapshot:()=>({prompt:draft.current.prompt,label:plan.label,mode:workflow?.binding.prompt_mode??'cloud',
+          status:job?.status??'draft',editable:canPrepareNewGeneration&&job?.status!=='outcome_unknown',generatedPrompt:job?.generationPrompt}),
+        update:(value,expected)=>{
+          if(draft.current.prompt!==expected)throw new Error('生成指示が変わりました');
+          if(value===expected)return;
+          if(!canPrepareNewGeneration||job?.status==='outcome_unknown')throw new Error('生成の終了を確認してから変更してください');
+          applyPrompt(value);
+        },reply:requestAgentReply,services:withAgentServices}),true))!;
     }
     const result=await generate(true,isCurrent);
     if(cloud)return '指示と参照画像のZIPを保存しました。指定のエージェントへ渡し、完成したPNGをこの画面で読み込んでください。';

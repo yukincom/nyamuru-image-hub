@@ -1,3 +1,4 @@
+import type {GenerationConversationInput} from '../generationConversation.ts';
 import { type QwenGenerationPlan, qwenGenerationPayload } from './ownerPlan.ts';
 
 export interface QwenJob {
@@ -27,7 +28,7 @@ export interface QwenAgentRequest {
 
 export interface QwenGenerationConversation {
   label:string; busy:boolean; locked:boolean; phase:string;
-  send:(text:string,isCurrent:()=>boolean)=>Promise<string>;
+  send:(text:string,isCurrent:()=>boolean,input?:GenerationConversationInput)=>Promise<string>;
 }
 
 /** The dialog owns the ready controller; reuse it for a single agent request. */

@@ -124,8 +124,10 @@ _MODEL_CONNECTIONS = {
 }
 
 
-def agent_tools(allow_edits: bool = True):
+def agent_tools(allow_edits: bool = True, *, generation: bool = False):
     """Return fresh schemas so one request cannot change later requests."""
+    if generation:
+        return deepcopy([_GENERATION_PROMPT_EDIT] if allow_edits else [])
     return deepcopy([_INSPECT, _BUBBLE_EDIT, _MODEL_CONNECTIONS, _IMAGE_GENERATION] if allow_edits else [_INSPECT, _MODEL_CONNECTIONS])
 
 
@@ -136,5 +138,17 @@ _IMAGE_GENERATION = {
         'description': '利用者がローカル画像生成をつなぐよう依頼したらconnectで設定済みのQwen Turboを内蔵エージェントの生成先に接続します。選択対象への明示的な「生成して」にはgenerateで既存生成処理を実行し元のあたりへ差し込みます。質問や相談だけでは実行しません。文章LLMの会話終了後に処理されるので、このツールを一つだけ呼び出します。',
         'parameters': {'type': 'object', 'properties': {'action': {'type': 'string', 'enum': ['connect', 'generate']}},
                        'required': ['action'], 'additionalProperties': False},
+    },
+}
+
+
+_GENERATION_PROMPT_EDIT = {
+    "type": "function",
+    "function": {
+        "name": "generation_prompt_edit",
+        "description": "現在の生成指示を修正または英訳した全文へ置き換えます。依頼されていない要素と参照画像の役割を保持します。画像生成は開始しません。相談だけなら使いません。",
+        "parameters": {"type": "object", "properties": {
+            "prompt": {"type": "string", "minLength": 1, "maxLength": 12000}},
+            "required": ["prompt"], "additionalProperties": False},
     },
 }

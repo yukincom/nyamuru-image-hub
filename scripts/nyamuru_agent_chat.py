@@ -153,7 +153,9 @@ class AgentChatService:
         try:
             # Read bytes rather than universal-newline text, preserving the
             # approved prompt exactly, including its final newline.
-            prompt = SYSTEM_PROMPT_PATH.read_bytes().decode("utf-8")
+            generation = isinstance(data["context"].get("generation"), dict)
+            prompt_path = Path(__file__).with_name("generation_conversation_prompt.txt") if generation else SYSTEM_PROMPT_PATH
+            prompt = prompt_path.read_bytes().decode("utf-8")
         except (OSError, UnicodeError):
             raise AgentChatUnavailable("エージェントの設定を読み込めませんでした") from None
         payload = {
@@ -163,7 +165,7 @@ class AgentChatService:
                 *messages,
             ],
             "temperature": 0.2, "max_tokens": 4096, "stream": False,
-            "tools": agent_tools(allow_edits), "tool_choice": "auto",
+            "tools": agent_tools(allow_edits, generation=generation), "tool_choice": "auto",
         }
         if self.request_model is not None:
             payload["model"] = self.request_model
