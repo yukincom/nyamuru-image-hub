@@ -8,9 +8,9 @@ import { isBalloonText } from '../../lib/bubblePresentation';
 import { isPropPlacement } from '../../lib/catalogModel';
 import { parseOmayYaml, cloneDocument } from '../../lib/manga';
 import standardArtworkSource from '../../content/standard-settings.yaml?raw';
-import { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from '../QwenGenerationDialog';
+import { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from '../ImageGenerationDialog';
 import { getOutputSettings } from '../../lib/finishLayout.ts';
-import { type QwenCompositionScope, buildQwenCompositionPlan, captureQwenComposition } from '../../lib/qwenComposition';
+import { type QwenCompositionScope, buildQwenCompositionPlan, captureQwenComposition } from '../../lib/pageComposition';
 
 interface Context {
   setDocument: (next: MangaDocument, record?: boolean) => void;

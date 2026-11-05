@@ -17,7 +17,7 @@ import { getPrintSetup } from '../../lib/printSettings';
 import PageSidebar from '../PageSidebar';
 import MangaCanvas from '../MangaCanvas';
 import PanelInspector from '../PanelInspector';
-import QwenGenerationDialog from '../QwenGenerationDialog';
+import ImageGenerationDialog from '../ImageGenerationDialog';
 import { canChooseImageExportDirectory, type ImageExportFormat } from '../../lib/pageExport';
 import PageOverlayInspector from '../PageOverlayInspector';
 import EnvironmentSettings from '../EnvironmentSettings';
@@ -360,7 +360,7 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
         </div>
       </section>
     </>}
-    {qwenGeneration&&<QwenGenerationDialog onOpenSettings={()=>{qwenGeneration.agentRequest?.reject(new Error('環境設定へ移動しました'));setQwenGeneration(null);void showEnvironmentSettings();}} adultContent={Boolean(document.manga.series_setting?.adult_content)} agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} poseEditorContext={qwenGeneration.poseEditorContext} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
+    {qwenGeneration&&<ImageGenerationDialog onOpenSettings={()=>{qwenGeneration.agentRequest?.reject(new Error('環境設定へ移動しました'));setQwenGeneration(null);void showEnvironmentSettings();}} adultContent={Boolean(document.manga.series_setting?.adult_content)} agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} poseEditorContext={qwenGeneration.poseEditorContext} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
     {toast && <div class="toast"><span>{toast}</span><button onClick={() => setToast(null)}><X size={15} /></button></div>}
   </div></PaintEditor>;
 }

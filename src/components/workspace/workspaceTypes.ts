@@ -1,6 +1,6 @@
 import type { BBox, Bubble } from '../../types';
 import type { QwenAdoption, QwenAgentRequest, QwenGenerationPlan, QwenLayerCandidate } from '../../lib/qwenGeneration';
-import type { GenerationPoseEditorContext } from '../QwenGenerationDialog';
+import type { GenerationPoseEditorContext } from '../ImageGenerationDialog';
 import type { PaintOwner, PaintScene } from '../../lib/paintDocument';
 import type { PaintImages } from '../../lib/paintRenderer';
 import type { MangaDocument } from '../../types';

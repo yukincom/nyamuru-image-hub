@@ -7,7 +7,7 @@ import {
 } from '../../lib/pageExport';
 import { getPrintSetup } from '../../lib/printSettings';
 import { requestClipExport } from '../../lib/localBridge';
-import { captureQwenCompositionCanvas } from '../../lib/qwenComposition';
+import { captureQwenCompositionCanvas } from '../../lib/pageComposition';
 import { paintColorMode } from '../../lib/paintColor';
 
 interface Context {
