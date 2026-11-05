@@ -5,12 +5,18 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# Keep sibling modules available when this file is loaded through the scripts package.
+_script_directory = str(Path(__file__).resolve().parent)
+if _script_directory not in sys.path:
+    sys.path.insert(0, _script_directory)
 
 from scanner_files import (
     SCANNER_EXTENSIONS,

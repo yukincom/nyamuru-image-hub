@@ -12,23 +12,23 @@ import hashlib
 import io
 import os
 import stat
+import sys
 import warnings
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
+# Keep sibling modules available when this file is loaded through the scripts package.
+_script_directory = str(Path(__file__).resolve().parent)
+if _script_directory not in sys.path:
+    sys.path.insert(0, _script_directory)
+
 from generation_qa_contract import (
-    REPORT_SCHEMA_NAME,
-    REPORT_SCHEMA_VERSION,
-    COMPARISON_SCHEMA_NAME,
-    COMPARISON_SCHEMA_VERSION,
-    RUBRIC_ID,
-    RUBRIC_VERSION,
-    IMPLEMENTATION_NAME,
-    IMPLEMENTATION_VERSION,
-    MANGA_BASE_PROFILE,
-    MANGA_BASE_ROLE,
-    MANGA_BASE_PALETTE_VERSION,
+    REPORT_SCHEMA_NAME, REPORT_SCHEMA_VERSION,
+    COMPARISON_SCHEMA_NAME, COMPARISON_SCHEMA_VERSION,
+    RUBRIC_ID, RUBRIC_VERSION,
+    IMPLEMENTATION_NAME, IMPLEMENTATION_VERSION,
+    MANGA_BASE_PROFILE, MANGA_BASE_ROLE, MANGA_BASE_PALETTE_VERSION,
     PNG_MEDIA_TYPE,
     PNG_SIGNATURE,
     MAX_ARTIFACT_BYTES,

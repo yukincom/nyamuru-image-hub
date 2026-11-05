@@ -5,10 +5,16 @@ from __future__ import annotations
 import json
 import re
 import sys
+from pathlib import Path
 from typing import Any
 from urllib import request as urllib_request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
+
+# Keep sibling modules available when this file is loaded through the scripts package.
+_script_directory = str(Path(__file__).resolve().parent)
+if _script_directory not in sys.path:
+    sys.path.insert(0, _script_directory)
 
 from panel_action_request import PanelActionRequest
 
