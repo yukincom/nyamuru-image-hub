@@ -10,12 +10,26 @@ import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry.ts';
 import {vectorResizeHandleAt,vectorAnchorAt} from '../src/lib/vectorGesture.ts';
 import {paintSelectionMode,nextPaintLineKind,paintToolForLayer} from '../src/lib/paintToolMode.ts';
 import {readFileSync} from 'node:fs';
+import {paintEditorSource} from './editorModuleSources.mjs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 
-const editorSource=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+const editorSource=paintEditorSource();
 const editorAst=ts.createSourceFile('PaintEditor.tsx',editorSource,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-function editorHandler(name,context){let source;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text===name)source=node.getText(editorAst);ts.forEachChild(node,visit);}visit(editorAst);assert.ok(source,name);return runInNewContext(ts.transpileModule(`(${source})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);}
+function editorFunction(name) {
+  let source;
+  function visit(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === name) source = node.getText(editorAst);
+    ts.forEachChild(node, visit);
+  }
+  visit(editorAst);
+  assert.ok(source, name);
+  return source;
+}
+function editorHandler(name, context) {
+  const source = ts.transpileModule(`(${editorFunction(name)})`, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
+  return runInNewContext(source, context);
+}
 test('only an explicit pointerup commits the pending raster mark',()=>{
   for(const type of ['pointerup','pointercancel','lostpointercapture']){
     let kept,points=0;
@@ -24,7 +38,7 @@ test('only an explicit pointerup commits the pending raster mark',()=>{
   }
 });
 test('vector draft allocation is committed only by the same path preview/finish route',()=>{
-  const begin=editorSource.slice(editorSource.indexOf('  function beginVector('),editorSource.indexOf('  function changePaths('));
+  const begin=editorFunction('beginVector');
   assert.doesNotMatch(begin,/changeLayers\(/,'pointerdown must not checkpoint a blank vector layer');
   assert.match(begin,/addedLayer,addedBelow:addedLayer\?existing\?\.id:undefined,target,point,cleanup/);
   assert.match(begin,/finishVector\(e.type==='pointerup'\)/);

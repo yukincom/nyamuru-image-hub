@@ -11,3 +11,11 @@ export function mangaCanvasSource() {
     'canvas/usePanelArtwork.tsx', 'canvas/usePageOverlayArtwork.tsx', 'MangaCanvas.tsx',
   ]);
 }
+
+export function paintEditorSource() {
+  return componentSources([
+    'paint/paintEditorState.ts', 'paint/paintAssets.ts', 'paint/paintGestures.ts',
+    'PaintEditor.tsx', 'paint/paintBackground.ts', 'paint/paintLayerActions.ts',
+    'paint/paintToolActions.tsx',
+  ]);
+}
