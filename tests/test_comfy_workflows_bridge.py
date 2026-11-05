@@ -14,6 +14,7 @@ from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import comfy_workflows as workflows
+import workflow_graph
 
 
 def sink(node, name):
@@ -167,10 +168,10 @@ class DefinitionTests(unittest.TestCase):
     def test_five_candidate_bindings_do_not_repeat_definition_validation(self):
         body = workflows.validate_definition(definition())
         before = deepcopy(body)
-        with patch.object(workflows, 'validate_definition', side_effect=AssertionError('定義再検証')) as validate, \
-                patch.object(workflows, '_json_copy', side_effect=AssertionError('JSON再検証')) as json_copy, \
-                patch.object(workflows, 'validate_runtime', side_effect=AssertionError('runtime再検証')) as runtime, \
-                patch.object(workflows, 'deepcopy', wraps=deepcopy) as copy_graph:
+        with patch.object(workflow_graph, 'validate_definition', side_effect=AssertionError('定義再検証')) as validate, \
+                patch.object(workflow_graph, '_json_copy', side_effect=AssertionError('JSON再検証')) as json_copy, \
+                patch.object(workflow_graph, 'validate_runtime', side_effect=AssertionError('runtime再検証')) as runtime, \
+                patch.object(workflow_graph, 'deepcopy', wraps=deepcopy) as copy_graph:
             workflows.validate_request(body, 1)
             candidates = [workflows.bind_graph(body, '指示', ['uploaded.png'], seed, 480, 320) for seed in range(5)]
         validate.assert_not_called()
