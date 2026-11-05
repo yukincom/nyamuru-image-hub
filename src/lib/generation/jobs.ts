@@ -28,6 +28,7 @@ export interface QwenAgentRequest {
 
 export interface QwenGenerationConversation {
   label:string; busy:boolean; locked:boolean; phase:string;
+  pendingStatus?:()=>string|null;
   send:(text:string,isCurrent:()=>boolean,input?:GenerationConversationInput)=>Promise<string>;
 }
 

@@ -84,7 +84,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
   async function generate(autoInsert=false,inputIsCurrent:()=>boolean=()=>true){return operation(async()=>{
     if(attempted.current)throw new Error('この生成は開始済みです');
     if(targetError)throw new Error(targetError);
-    const {prompt,references,reference,correction}=draft.current;
+    const capturedDraft=draft.current,{references,correction}=capturedDraft;
     if(plan.characterKeys?.length && plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key))))throw new Error('人物に紐づく設定画を読み込めません');
     if(threeImages&&!usesPoseImage)throw new Error('image1で3Dモデルを調整してください');
     if(plan.humanPose)requireHumanPoseGenerationReady(plan.humanPose.selection);
@@ -93,9 +93,8 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     if(usesPoseImage)setPhase('3Dポーズの撮影を確認中');
     const capturedPose=usesPoseImage?await posePending.current:undefined;
     if(!isCurrent())throw new Error('生成を中止しました');
-    const sketch=!threeImages&&reference?.kind==='sketch'&&!correction;
     const target=qwenGenerationTarget(plan,Boolean(correction));
-    const payload=qwenGenerationPayload({...plan,prompt,...(plan.handwrittenPrompt?{handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:qwenGenerationPrompt(plan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,capturedPose,workflow?.binding.fixed_size??undefined);
+    const payload=validateGenerationInputs(plan,capturedDraft,threeImages,cloud?null:workflow,capturedPose);
     if(cloud){
       if(execution.cloud.method!=='agent')throw new Error('API実行は未接続です。環境設定でエージェントを選んでください');
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
@@ -107,8 +106,6 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
       return {inserted:false};
     }
     if(!workflow)throw new Error(missingWorkflow||'ワークフローを確認しています');
-    const inputCount=payload.references.length+Number('paint_image' in payload)+Number('sketch_image' in payload)+Number('correction_image' in payload);
-    if(inputCount!==workflow.binding.images.length)throw new Error(`${workflow.name}は参照画像${workflow.binding.images.length}枚の定義です。現在は${inputCount}枚です。環境設定で対応する定義を選んでください`);
     const workflowPayload={...payload,workflow_id:workflow.id,workflow_version:workflow.version,comfyui_url:connection.comfyuiUrl,
       ...(defaultNegative!==undefined?{negative_prompt:negative}:{}),
       ...(figureChroma?{chroma_key_color:chromaKeyColor,candidate_cutout:true}:{})};
@@ -136,3 +133,14 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
 }
 
 export type Cell<T> = { current: T };
+
+/** Readiness and submission validate the same payload, without starting services. */
+export function validateGenerationInputs(plan: QwenGenerationPlan, draft: CreateGenerationActionsInputs['draft']['current'],
+  threeImages: boolean, workflow: ComfyWorkflowDefinition | null, poseImage?: string) {
+  const {prompt,references,reference,correction}=draft;
+  const sketch=!threeImages&&reference?.kind==='sketch'&&!correction;
+  const payload=qwenGenerationPayload({...plan,prompt,...(plan.handwrittenPrompt?{handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:qwenGenerationPrompt(plan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,poseImage,workflow?.binding.fixed_size??undefined);
+  const inputCount=payload.references.length+Number('paint_image' in payload)+Number('sketch_image' in payload)+Number('correction_image' in payload);
+  if(workflow&&inputCount!==workflow.binding.images.length)throw new Error(`${workflow.name}は参照画像${workflow.binding.images.length}枚の定義です。現在は${inputCount}枚です。環境設定で対応する定義を選んでください`);
+  return payload;
+}

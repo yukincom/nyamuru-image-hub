@@ -72,18 +72,26 @@ function AgentConversation(props:Props){
       if(recordingMode.current===mode){recorder.stop(mode==='quick');if(mode==='quick')setStatus('軽量対話をオフにしました');}
       return;
     }
-    if(pending.current||processing||latest.current.generation?.busy)return;
+    if(pending.current&&!latest.current.generation?.pendingStatus?.()||processing)return;
     try{
       latest.current.onChangeProfile({...latest.current.profile,voiceInputMode:mode});
       recordingMode.current=mode;void recorder.start();
     }catch(error){setStatus(error instanceof Error?error.message:'音声入力を開始できませんでした');}
   }
   async function submit(event:Event){
-    event.preventDefault();if(pending.current||recording||processing||latest.current.generation?.busy||!text.trim())return;
+    event.preventDefault();if(pending.current&&!latest.current.generation?.pendingStatus?.()||recording||processing||!text.trim())return;
     const original=text;setText('');await send(original);
   }
   async function send(original:string,inputIsCurrent:()=>boolean=()=>true){
-    if(pending.current||!original.trim()||!inputIsCurrent())return;
+    if(!original.trim()||!inputIsCurrent())return;
+    if(pending.current){
+      const currentStatus=latest.current.generation?.pendingStatus?.();
+      if(currentStatus){
+        session.current.append({role:'user',content:original});
+        setMessages(session.current.append({role:'assistant',content:currentStatus}));
+      }
+      return;
+    }
     const ticket=session.current.ticket(),conversationIsCurrent=()=>session.current.isCurrent(ticket);
     const isCurrent=()=>conversationIsCurrent()&&inputIsCurrent();
     pending.current=true;setBusy(true);setStatus('');
@@ -120,7 +128,7 @@ function AgentConversation(props:Props){
       if(isCurrent())setMessages(session.current.append({role:'assistant',content:[operation?.message,error instanceof Error?error.message:'応答できませんでした'].filter(Boolean).join('\n')}));
     }finally{pending.current=false;if(conversationIsCurrent())setBusy(false);}
   }
-  const generationBusy=busy||Boolean(props.generation?.busy);
+  const conversationBusy=busy&&!props.generation?.pendingStatus?.();
   return <div id="agent-popup-body" class="agent-popup-body">
     {(messages.length>0||props.generation?.phase)&&<div ref={log} class="agent-history" role="log" aria-label="会話履歴" aria-live="polite">
       {messages.map((message,index)=><p key={index} class={`agent-message is-${message.role}`}>{message.content}</p>)}
@@ -128,14 +136,14 @@ function AgentConversation(props:Props){
     </div>}
     {!props.generation&&<p class={`agent-voice-hint ${quickActive?'is-handsfree':''}`}>{quickActive?`軽量対話オン · 無音${silenceMs/1000}秒で自動送信`:manualActive?'手動入力 · 停止してから確認・送信':'軽量対話は自動送信 · 手動入力は確認して送信'}</p>}
     <div class="agent-composer-row"><AgentAvatar profile={props.profile}/><form class="agent-composer" onSubmit={submit}>
-      <textarea aria-label="メッセージ" rows={2} maxLength={4000} value={text} disabled={generationBusy} placeholder={props.generation?'プロンプトの相談・修正・英訳、または「生成して」':'話しかける…'} onInput={e=>setText(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void submit(e);}}}/>
+      <textarea aria-label="メッセージ" rows={2} maxLength={4000} value={text} disabled={conversationBusy} placeholder={props.generation?'プロンプトの相談・修正・英訳、または「生成して」':'話しかける…'} onInput={e=>setText(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void submit(e);}}}/>
       <div class="agent-composer-footer"><small class="agent-model" >{model}</small>
-        <button type="button" class={`agent-mic agent-handsfree ${quickActive?'is-active':''}`} disabled={!quickActive&&(generationBusy||recording||processing)} aria-label={quickActive?'軽量対話をオフ':'軽量対話をオン（自動送信）'}  aria-pressed={quickActive} onClick={()=>toggleVoice('quick')}><VoiceInputIcon mode="quick"/></button>
-        <button type="button" class={`agent-mic ${manualActive?'is-active':''}`} disabled={quickActive||generationBusy||(!manualActive&&processing)} aria-label={manualActive?'手動入力を停止して文字起こし':'手動入力を開始'}  aria-pressed={manualActive} onClick={()=>toggleVoice('manual')}>{manualActive?<Square size={14}/>:<VoiceInputIcon mode="manual"/>}</button>
-        <button type="submit" class="agent-send" aria-label="送信"  disabled={generationBusy||recording||processing||!text.trim()}><ArrowUp size={18}/></button>
+        <button type="button" class={`agent-mic agent-handsfree ${quickActive?'is-active':''}`} disabled={!quickActive&&(conversationBusy||recording||processing)} aria-label={quickActive?'軽量対話をオフ':'軽量対話をオン（自動送信）'}  aria-pressed={quickActive} onClick={()=>toggleVoice('quick')}><VoiceInputIcon mode="quick"/></button>
+        <button type="button" class={`agent-mic ${manualActive?'is-active':''}`} disabled={quickActive||conversationBusy||(!manualActive&&processing)} aria-label={manualActive?'手動入力を停止して文字起こし':'手動入力を開始'}  aria-pressed={manualActive} onClick={()=>toggleVoice('manual')}>{manualActive?<Square size={14}/>:<VoiceInputIcon mode="manual"/>}</button>
+        <button type="submit" class="agent-send" aria-label="送信"  disabled={conversationBusy||recording||processing||!text.trim()}><ArrowUp size={18}/></button>
       </div>
     </form></div>
-    {(!props.generation&&generationBusy||processing||recording||status)&&<p class="agent-status" role="status">{busy?'考え中…':recording&&recordingMode.current==='manual'&&status!=='マイクの使用を確認しています…'
+    {(!props.generation&&conversationBusy||processing||recording||status)&&<p class="agent-status" role="status">{busy?'考え中…':recording&&recordingMode.current==='manual'&&status!=='マイクの使用を確認しています…'
       ?<>じっくり入力中<span class="agent-listening-dots" aria-hidden="true">{Array.from({length:9},(_,index)=><span key={index} style={{animationDelay:`${index*.13}s`}}>.</span>)}</span></>
       :processing?'文字起こし中…':recording?(status||'録音中…'):status}</p>}
   </div>;

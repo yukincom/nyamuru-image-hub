@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runGenerationConversation} from '../src/lib/generationConversation.ts';
+import {generationReadinessMessage} from '../src/lib/generation/readiness.ts';
 const answer=content=>({model:'fixture',message:{role:'assistant',content}});
 const tool=(args,name='generation_prompt_edit')=>({model:'fixture',message:{role:'assistant',content:null,tool_calls:[{id:'edit',type:'function',function:{name,arguments:JSON.stringify(args)}}]}});
 function setup(replies){
@@ -46,5 +47,33 @@ test('late replies cannot edit a closed dialog or overwrite a changed prompt',as
 test('unsupported tools and malformed prompt arguments cannot mutate',async()=>{
   for(const reply of [tool({action:'generate'},'image_generation'),tool({prompt:''}),tool({prompt:'a'.repeat(12001)}),tool({prompt:'valid',extra:true})]){
     const f=setup([reply,answer('変更できました')]);assert.match(await runGenerationConversation(f.options),/適用できませんでした/);assert.equal(f.updates,0);
+  }
+});
+
+// 見込み/合格: 未準備の生成依頼はコードの理由をLLMへ渡し、編集権限なしで案内を返す。応答は固定、実LLMの表現は別確認。
+test('not-ready generation forwards authoritative blockers to the agent without edit tools',async()=>{
+  const notice={ready:false,message:'準備が整っていません',blockers:[{code:'workflow',label:'ワークフロー',state:'waiting',detail:'一覧を読み込んでいます'}]};
+  const f=setup([answer('準備が整っていません。ワークフローの一覧を読み込んでいます。完了後にもう一度依頼してください。')]);
+  f.options.text='生成して';f.options.notice=notice;
+  const result=await runGenerationConversation(f.options);
+  assert.match(result,/ワークフロー/);assert.equal(f.updates,0);assert.equal(f.requests.length,1);
+  assert.equal(f.requests[0].allow_edits,false);
+  assert.deepEqual(f.requests[0].context.generation.readiness,notice);
+  assert.equal(f.requests[0].context.generation.requestAccepted,false);
+  assert.equal(f.requests[0].context.generation.editable,false);
+  assert.equal(f.requests[0].messages.at(-1).content,'生成して');
+});
+
+// 見込み/合格: 案内でLLMが編集を要求/失敗しても状態説明を返し変更0件。終了後の遅延応答は成功にしない。応答/失敗は模擬。
+test('not-ready notice falls back to code facts on tools or model failure and respects closure',async()=>{
+  const notice={ready:false,message:'準備が整っていません',blockers:[{code:'characters',label:'設定画',state:'action_required',detail:'設定画が見つかりません'}]};
+  for(const mode of ['tool','unavailable','empty','closed']){
+    const f=setup([tool({prompt:'should not be applied'})]);f.options.notice=notice;
+    if(mode==='unavailable')f.options.reply=async()=>{throw Error('LLM未接続');};
+    if(mode==='empty')f.options.reply=async()=>answer('');
+    if(mode==='closed')f.options.reply=async()=>{f.cancel();return answer('遅延した案内');};
+    if(mode==='closed')await assert.rejects(runGenerationConversation(f.options),/終了/);
+    else assert.equal(await runGenerationConversation(f.options),generationReadinessMessage(notice));
+    assert.equal(f.updates,0);
   }
 });

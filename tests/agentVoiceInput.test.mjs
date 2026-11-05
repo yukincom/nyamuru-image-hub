@@ -119,14 +119,75 @@ test('active generation conversation receives text and hands-free commands witho
  button(f.render(),'軽量対話をオン（自動送信）').props.onClick();await f.utterance('生成して');
  assert.deepEqual(sent,['笑顔にする','生成して']);assert.equal(f.classified,0);assert.equal(f.applied,0);assert.match(text(f.render()),/差し込みました/);f.view.dispose();
 });
-test('generation busy state blocks typed submission but preserves the active hands-free off button',async()=>{
- const generation={label:'小雪',busy:false,locked:false,phase:'画像生成中',character:true,references:[],addFiles:async()=>{},send:async()=>''};
- const f=voiceFixture({generation});button(f.render(),'軽量対話をオン（自動送信）').props.onClick();generation.busy=true;
- let tree=f.render();assert.equal(button(tree,'送信').props.disabled,true);assert.equal(button(tree,'軽量対話をオフ').props.disabled,false);assert.match(text(tree),/画像生成中/);f.view.dispose();
+// 見込み: 生成の準備中も会話は受け付け、案内を通常の履歴へ戻せる。
+// 合格: typed送信は1回、返答前の連打は0回追加、未準備案内と進捗を表示。範囲: 実UI処理と固定send応答。準備判定・LLMは別試験。
+test('generation preparation accepts typed requests and retains conversation submission exclusion',async()=>{
+ let resolve;const sent=[];
+ const generation={label:'小雪',busy:true,locked:false,phase:'人物資料を読み込み中',send:(value,isCurrent)=>{
+  assert.equal(isCurrent(),true);sent.push(value);return new Promise(done=>{resolve=done;});
+ }};
+ const f=voiceFixture({generation});let tree=f.render();
+ assert.equal(find(tree,n=>n.type==='textarea').props.disabled,false);
+ find(tree,n=>n.type==='textarea').props.onInput({currentTarget:{value:'生成して'}});tree=f.render();
+ assert.equal(button(tree,'送信').props.disabled,false);
+ const submit=()=>find(f.render(),n=>n.type==='form').props.onSubmit({preventDefault(){}});
+ const pending=submit();tree=f.render();
+ assert.equal(find(tree,n=>n.type==='textarea').props.disabled,true);
+ assert.equal(button(tree,'送信').props.disabled,true);
+ assert.equal(button(tree,'軽量対話をオン（自動送信）').props.disabled,true);
+ find(tree,n=>n.type==='textarea').props.onInput({currentTarget:{value:'もう一度生成して'}});
+ await submit();assert.deepEqual(sent,['生成して']);assert.match(text(f.render()),/人物資料を読み込み中/);
+ resolve('準備が整っていません。人物資料を読み込み中です。');await pending;tree=f.render();
+ const messages=nodes(tree).filter(n=>n.props?.class?.startsWith('agent-message is-')&&!n.props['data-generation-progress']);
+ assert.deepEqual(messages.map(text),['生成して','準備が整っていません。人物資料を読み込み中です。']);
+ assert.equal(find(tree,n=>n.type==='textarea').props.disabled,false);
+ assert.equal(find(tree,n=>n.type==='textarea').props.value,'もう一度生成して');
+ assert.equal(f.classified,0);assert.equal(f.applied,0);assert.deepEqual(sent,['生成して']);f.view.dispose();
+});
+// 見込み: 生成busy中も軽量対話を開始し、同じsenderから未準備案内を得る。
+// 合格: 同時発話はsend1回、処理中も音声オフ可能。範囲: 実受付処理、録音・sendは模擬。実ASR/LLMは確認しない。
+test('generation preparation accepts voice requests without overlapping conversation sends',async()=>{
+ let resolve;const sent=[];
+ const generation={label:'小雪',busy:true,locked:false,phase:'画像生成中',send:value=>{
+  sent.push(value);return new Promise(done=>{resolve=done;});
+ }};
+ const f=voiceFixture({generation});let tree=f.render();
+ assert.equal(button(tree,'手動入力を開始').props.disabled,false);
+ assert.equal(button(tree,'軽量対話をオン（自動送信）').props.disabled,false);
+ button(tree,'軽量対話をオン（自動送信）').props.onClick();
+ const pending=f.utterance('生成して');await f.utterance('もう一度生成して');tree=f.render();
+ assert.deepEqual(sent,['生成して']);assert.equal(button(tree,'軽量対話をオフ').props.disabled,false);
+ assert.match(text(tree),/画像生成中/);
+ resolve('準備が整っていません。現在の画像生成が終わるまでお待ちください。');await pending;
+ assert.match(text(f.render()),/準備が整っていません。現在の画像生成が終わるまでお待ちください。/);
+ button(f.render(),'軽量対話をオフ').props.onClick();assert.equal(f.recorder.active,false);
+ assert.equal(f.classified,0);assert.equal(f.applied,0);assert.deepEqual(sent,['生成して']);f.view.dispose();
 });
 // 見込み: 生成の資料操作は左側に集約する。合格: 会話入力と送信はあり、資料用のselect/file/buttonはない。範囲: 生成時の実コンポーネント、音声機器なし。
 test('generation conversation keeps its composer and has no parallel attachment controls',()=>{
  const f=voiceFixture({generation:{label:'小雪',busy:false,phase:'',send:async()=>''}}),tree=f.render();
  assert.ok(find(tree,n=>n.type==='textarea'&&n.props['aria-label']==='メッセージ'));assert.ok(button(tree,'送信'));
  assert.equal(nodes(tree).some(n=>n.type==='select'||n.type==='input'&&n.props.type==='file'||text(n)==='登録資料を使う'),false);f.view.dispose();
+});
+
+// 見込み: 会話から生成開始しても、状況確認は実行中の処理へ追加送信せず即答できる。
+// 合格: typed/音声の追加入力に状況を返しsendは1回、完了も履歴へ1回。実受付処理、生成/録音は模擬。
+test('a generation started from the composer accepts status queries while awaiting its result',async()=>{
+ let resolve,working=false;const sent=[];
+ const generation={label:'人物',busy:false,locked:false,phase:'',
+  pendingStatus:()=>working?'準備が整っていません。ComfyUIを起動中です。':null,
+  send:value=>{sent.push(value);working=true;return new Promise(done=>{resolve=done;});}};
+ const f=voiceFixture({generation});
+ const type=value=>{find(f.render(),n=>n.type==='textarea').props.onInput({currentTarget:{value}});};
+ const submit=()=>find(f.render(),n=>n.type==='form').props.onSubmit({preventDefault(){}});
+ type('生成して');const pending=submit();
+ assert.equal(find(f.render(),n=>n.type==='textarea').props.disabled,false);
+ type('いまどうなっている？');await submit();
+ button(f.render(),'軽量対話をオン（自動送信）').props.onClick();await f.utterance('生成して');
+ button(f.render(),'軽量対話をオフ').props.onClick();
+ assert.deepEqual(sent,['生成して']);
+ const messages=()=>nodes(f.render()).filter(n=>n.props?.class?.startsWith('agent-message is-')).map(text);
+ assert.deepEqual(messages(),['生成して','いまどうなっている？','準備が整っていません。ComfyUIを起動中です。','生成して','準備が整っていません。ComfyUIを起動中です。']);
+ working=false;resolve('候補を5枚生成しました');await pending;
+ assert.equal(messages().at(-1),'候補を5枚生成しました');assert.equal(sent.length,1);f.view.dispose();
 });

@@ -1,10 +1,12 @@
 import type {AgentPreferences} from './agentPreferences.ts';
 import type {AgentMessage} from './agentSession.ts';
 import type {AgentRequest,AgentReply,AgentWireMessage} from './agentChat.ts';
+import {generationReadinessMessage,type GenerationReadiness} from './generation/readiness.ts';
 
 export interface GenerationConversationContext {
   prompt:string; label:string; mode:string; status:string; editable:boolean;
   generatedPrompt?:string;
+  readiness?:GenerationReadiness;
 }
 export interface GenerationConversationInput {
   history:AgentMessage[];
@@ -18,6 +20,7 @@ export async function runGenerationConversation(o:{
   update:(prompt:string,expected:string)=>void;
   reply:(request:AgentRequest)=>Promise<AgentReply>;
   services:<T>(task:()=>Promise<T>,isCurrent:()=>boolean)=>Promise<T|undefined>;
+  notice?:GenerationReadiness;
 }):Promise<string>{
   const initial=o.snapshot().prompt;
   let expected=initial,changed=false,lastError='';
@@ -28,10 +31,12 @@ export async function runGenerationConversation(o:{
   const messages:AgentWireMessage[]=o.input.history.slice(-15).map(m=>({...m}));
   while(messages.length&&messages[0].role!=='user')messages.shift();
   if(messages.at(-1)?.role!=='user'||messages.at(-1)?.content!==o.text)messages.push({role:'user',content:o.text});
+  try {
   const result=await o.services(async()=>{
     for(let round=0;round<5;round++){
       guard();
-      const reply=await o.reply({profile:{name:o.input.profile.name,tone:o.input.profile.tone},messages,context:{generation:o.snapshot()},allow_edits:true});
+      const generation={...o.snapshot(),...(o.notice?{readiness:o.notice,editable:false,requestAccepted:false}:{})};
+      const reply=await o.reply({profile:{name:o.input.profile.name,tone:o.input.profile.tone},messages,context:{generation},allow_edits:!o.notice});
       guard();
       const response=reply.message,calls=response.tool_calls??[];
       if(!calls.length){
@@ -39,6 +44,7 @@ export async function runGenerationConversation(o:{
         if(!response.content?.trim())throw Error('LLMから返答がありませんでした');
         return `${changed?'生成指示に反映しました。\n':''}${response.content}`;
       }
+      if(o.notice)return generationReadinessMessage(o.notice);
       if(calls.length!==1)throw Error('生成指示の変更は一度に一つずつ指定してください');
       messages.push(response);
       const call=calls[0];let result:object;
@@ -58,4 +64,8 @@ export async function runGenerationConversation(o:{
   },o.isCurrent);
   if(!result)throw Error('生成の会話を終了しました');
   return result;
+  } catch(error) {
+    if(o.notice&&o.isCurrent())return generationReadinessMessage(o.notice);
+    throw error;
+  }
 }

@@ -14,8 +14,9 @@ import { stopImageGenerationSessionOnPageExit, startImageGenerationSession, stop
 import { loadFigureCropAsset } from '../lib/figureCropStore.ts';
 import { posePreviewSize } from '../lib/humanPoseFraming.ts';
 import { useGenerationReferences } from './generation/useGenerationReferences.ts';
-import { createGenerationActions } from './generation/createGenerationActions.ts';
-import { createGenerationConversation } from './generation/createGenerationConversation.ts';
+import { createGenerationActions, validateGenerationInputs } from './generation/createGenerationActions.ts';
+import { useGenerationConversation } from './generation/useGenerationConversation.ts';
+import { generationReadiness } from '../lib/generation/readiness.ts';
 import GenerationCandidates, { generationStatusLabel } from './generation/GenerationCandidates.tsx';
 import { createPortal } from 'preact/compat';
 
@@ -178,13 +179,25 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   const { selectLayer, addFiles } = useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection });
   const chooseFiles = useProjectFilePicker();
   const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ chooseFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession });
-  const conversationSend = createGenerationConversation({
+  const getReadiness = () => generationReadiness({
+    working: working.current, phase: comfyPhase || phase, attempted: Boolean(attempted.current),
+    cloud, hasWorkflow: Boolean(workflow), workflowError: missingWorkflow, plan, threeImages,
+    usesPoseImage, targetError, poseImage, poseError, characterLoading, sketchLoading, sourceErrors,
+    references: draft.current.references, reference: draft.current.reference,
+    validateInputs: () => validateGenerationInputs(plan, draft.current, threeImages, cloud ? null : workflow, poseImage || undefined),
+  });
+  const readiness = getReadiness();
+  const conversationSend = useGenerationConversation({
+    label: `${plan.pageNumber}ページ・${plan.overlay ? 'ページ前景' : `コマ ${plan.panelId}`}・${plan.label}`,
+    busy: busy || characterLoading || sketchLoading, locked: Boolean(attempt), phase: comfyPhase || phase,
+  }, onConversation, {
     isAlive: () => alive.current,
     isCurrent: () => alive.current && !closing.current,
+    isWorking: () => working.current, readiness: getReadiness,
     snapshot: () => ({
-      prompt: draft.current.prompt, label: plan.label, mode: workflow?.binding.prompt_mode ?? 'cloud',
+      prompt: draft.current.prompt, label: plan.label, mode: cloud ? 'cloud' : workflow?.binding.prompt_mode ?? 'pending',
       status: job?.status ?? 'draft', editable: canPrepareNewGeneration && job?.status !== 'outcome_unknown',
-      generatedPrompt: job?.generationPrompt,
+      generatedPrompt: job?.generationPrompt, readiness: getReadiness(),
     }),
     update: (value, expected) => {
       if (draft.current.prompt !== expected) throw new Error('生成指示が変わりました');
@@ -194,22 +207,12 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
     },
     operation, generate, cloud, label: plan.label,
   });
-  useEffect(()=>{
-    onConversation?.({label:`${plan.pageNumber}ページ・${plan.overlay?'ページ前景':`コマ ${plan.panelId}`}・${plan.label}`,
-      busy:busy||characterLoading||sketchLoading,locked:Boolean(attempt),phase:comfyPhase||phase,send:conversationSend});
-  },[onConversation,busy,attempt,phase,comfyPhase,prompt,references,reference,correction,job,workflow,workflowError,chromaKeyColor,negative,characterLoading,sketchLoading,poseImage,plan]);
-  useEffect(()=>()=>onConversation?.(null),[onConversation]);
   const agentStarted=useRef(false);
   useEffect(()=>{
     if(!agentRequest||agentStarted.current)return;
-    if(!cloud&&!workflow){
-      if(workflowError){agentStarted.current=true;agentRequest.reject(new Error(workflowError));}
-      return;
-    }
-    if(characterLoading||sketchLoading||threeImages&&sourcePlan.expressionSource&&!reference&&!sourceErrors.expression)return;
     agentStarted.current=true;
     void runQwenAgentRequest(agentRequest,async()=>{},conversationSend);
-  },[agentRequest,workflow,workflowError,characterLoading,sketchLoading,threeImages,reference,sourceErrors]);
+  },[agentRequest,conversationSend]);
   async function check(id:string){await operation(async()=>{
     const expected=job?.jobId===id?job:history.find(item=>item.jobId===id);
     const result=await withNewCreationBridgeSession(()=>reconcileQwenJob(id,expected?.requestSha256));
@@ -360,7 +363,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
       {threeImages&&<output class="qwen-prompt">Uniform solid {chromaKeyColor} background.</output>}
       {defaultNegative!==undefined&&<label class="qwen-prompt">ネガティブプロンプト<textarea rows={3} maxLength={12000} value={negative} disabled={busy||!canPrepareNewGeneration} onInput={e=>{if(attempted.current)prepareNewGeneration();setNegative(e.currentTarget.value);}}/></label>}
       <div class="paint-entry-actions">
-        <button class="primary-button" disabled={busy||Boolean(attempt)||characterLoading||Boolean(sourceErrors.character)||usesPoseImage&&!poseImage||!cloud&&!workflow||threeImages&&(!!targetError||!reference||!poseImage||references.length!==1)} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'5枚を生成する'}</button>
+        <button class="primary-button" disabled={!readiness.ready} onClick={()=>void generate()}>{cloud?'指示と参照画像を書き出す':'5枚を生成する'}</button>
         {cloud&&<button disabled={busy} onClick={()=>void importGenerated()}>生成画像を読み込む</button>}
         {!cloud&&<><button disabled={busy} aria-pressed={historyScope==='owner'} onClick={()=>void loadHistory('owner')}>生成履歴</button>
         <button disabled={busy} aria-pressed={historyScope==='work'} onClick={()=>void loadHistory('work')}>作品の生成履歴</button></>}

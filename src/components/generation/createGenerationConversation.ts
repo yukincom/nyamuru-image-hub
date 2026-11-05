@@ -6,10 +6,13 @@ import {
 import { requestAgentReply, withAgentServices } from '../../lib/localBridge.ts';
 import { qwenConversationIntent } from '../../lib/qwenGeneration.ts';
 import type { createGenerationActions } from './createGenerationActions.ts';
+import { generationReadinessMessage, type GenerationReadiness } from '../../lib/generation/readiness.ts';
 
 interface GenerationConversationOptions {
   isAlive: () => boolean;
   isCurrent: () => boolean;
+  isWorking: () => boolean;
+  readiness: () => GenerationReadiness;
   snapshot: () => GenerationConversationContext;
   update: (value: string, expected: string) => void;
   operation: <T>(task: () => Promise<T>, propagate?: boolean) => Promise<T | undefined>;
@@ -25,9 +28,12 @@ export function createGenerationConversation(options: GenerationConversationOpti
     isCurrent: () => boolean,
     input?: GenerationConversationInput,
   ): Promise<string> {
-    if (!options.isAlive() || !isCurrent()) return '生成の会話を終了しました';
+    if (!options.isAlive() || !options.isCurrent() || !isCurrent()) return '生成の会話を終了しました';
+    const readiness = options.readiness();
+    // Image execution owns the model lease. Report facts without another LLM or generation request.
+    if (options.isWorking()) return generationReadinessMessage(readiness);
     const intent = qwenConversationIntent(text);
-    if (intent !== 'generate') {
+    if (intent !== 'generate' || !readiness.ready) {
       return (await options.operation(() => runGenerationConversation({
         text,
         input: input ?? { history: [], profile: { name: 'にゃむる', tone: '' } },
@@ -36,6 +42,7 @@ export function createGenerationConversation(options: GenerationConversationOpti
         update: options.update,
         reply: requestAgentReply,
         services: withAgentServices,
+        ...(intent === 'generate' ? { notice: readiness } : {}),
       }), true))!;
     }
     const result = await options.generate(true, isCurrent);
