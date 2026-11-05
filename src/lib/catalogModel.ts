@@ -8,7 +8,7 @@ import type {
   PlacementKind,
 } from '../types.ts';
 import { ensureSystemMobCharacter, isDetectedFigureCharacter } from './systemCharacters.ts';
-import { paintReferenceBox } from './paintDocument.ts';
+import { paintReferenceBox } from './paint/ownerEdits.ts';
 
 type CatalogIdKind = 'person' | 'character' | 'material';
 
