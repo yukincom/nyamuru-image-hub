@@ -48,7 +48,7 @@ test('候補選択は既存カードと一緒に情報タブへ移し、紙面�
 });
 
 test('本文だけの移動は原画ラスターレイヤーの固定と独立し、形状移動は固定を守る', () => {
-  const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/components/workspace/workspaceCanvasActions.ts', import.meta.url), 'utf8');
   assert.match(source, /const textOnly=!!patch\?\.textPosition&&!tail&&!patch\.bezier&&!patch\.tailRoot/);
   assert.match(source, /const contentLocked=textOnly\?bubble\?\.paint_overlay\?\.locked===true:artworkLocked\(bubble\?\.paint_overlay\)/);
 });

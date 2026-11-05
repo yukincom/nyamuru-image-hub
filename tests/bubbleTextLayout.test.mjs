@@ -144,7 +144,7 @@ test('only text requiring review is red and the ambiguous page badge is absent',
 
 test('entering text edit keeps authored line breaks and leaves the rest of the bubble clickable',()=>{
   const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
-  const app=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../src/components/workspace/workspaceTextActions.ts',import.meta.url),'utf8');
   const bubbleTextSource=component.getText(ast);
   assert.match(bubbleTextSource,/onPointerDown=\{interactive\?event=>event\.stopPropagation\(\):undefined\}/);
   assert.match(bubbleTextSource,/onClick=\{interactive\?event=>\{event\.stopPropagation\(\);onEdit\?\.\(\);\}:undefined\}/);
@@ -201,7 +201,7 @@ test('inspector keeps authored data while hiding internal and duplicate controls
   const pageOverlayInspector = readFileSync(new URL('../src/components/PageOverlayInspector.tsx', import.meta.url), 'utf8');
   const poseEditor = readFileSync(new URL('../src/components/FigureHumanPoseEditor.tsx', import.meta.url), 'utf8');
   const layerEffects = readFileSync(new URL('../src/components/PaintLayerEffects.tsx', import.meta.url), 'utf8');
-  const app = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
+  const app = readFileSync(new URL('../src/components/workspace/layerPaletteActions.ts', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
   for (const inspector of [panelInspector, pageOverlayInspector]) {
     assert.doesNotMatch(inspector, /文字を編集|素材から入れ替え|bubble-direct-actions/);

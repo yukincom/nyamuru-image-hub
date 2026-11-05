@@ -1,3 +1,4 @@
+import { workspaceSources } from './helpers/workspaceSources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -28,7 +29,7 @@ test('canvas selections resolve only their existing paint owner and never defaul
 const paintLayerSource=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
 const globalCss=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
 const pageLayerSource=readFileSync(new URL('../src/components/PageLayerPalette.tsx',import.meta.url),'utf8');
-const appSource=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+const appSource=workspaceSources('workspacePaintSession', 'pageEditActions', 'workspacePaintResults', 'workspaceTextActions', 'layerPaletteActions', 'workspaceVoiceActions');
 const paintEditorSource=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
 const paintRendererSource=readFileSync(new URL('../src/lib/paintRenderer.ts',import.meta.url),'utf8');
 const mangaCanvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
@@ -37,7 +38,7 @@ const lockIconSource=readFileSync(new URL('../src/components/LayerLockIcon.tsx',
 const headerSource=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
 
 test('voice edits keep manual locks while accepting shape and text commands',async()=>{
- const source=appSource.slice(appSource.indexOf('  async function applyVoiceCommand('),appSource.indexOf('  const activeLayoutItem'));
+ const source=appSource.slice(appSource.indexOf('  async function applyVoiceCommand('),appSource.indexOf('  return { applyVoiceCommand,', appSource.indexOf('  async function applyVoiceCommand(')));
  for(const overlay of [false,true])for(const lock of ['folder','native','panel']){
   if(overlay&&lock==='panel')continue;
   const bubble={text:'原文',shape:'normal',bbox:{x:5,y:5,w:30,h:30}},panel={shape:{type:'rect',x:0,y:0,w:100,h:100},bubbles:[bubble]},page={canvas:{w:100,h:100},panels:[panel],...(overlay?{page_overlay:{bubbles:[bubble]}}:{})};

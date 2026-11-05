@@ -1,34 +1,24 @@
-import {connectAgentImageGeneration} from '../lib/localBridge';
-import type {QwenAgentRequest} from '../lib/qwenGeneration';
 import VoiceCommands from './VoiceCommands';
 import { isLanClient } from '../lib/clientRuntime';
 import { type BrowserDirectoryHandle } from '../lib/browserWorkspace';
 import { browserCatalogImageIds } from '../lib/browserCatalog';
-import {textStyleOf,typingTextStyle,updateTextStyle,type TextStylePatch,type TextSelection} from '../lib/textStyle';
 import type {Bubble,TextStyle} from '../types';
 import { loadAgentPreferences, saveAgentPreferences, type AgentPreferences } from '../lib/agentPreferences';
-import {agentEditorSnapshot,createAgentRevision,prepareAgentBubbleEdit,selectedAgentBubble} from '../lib/agentTools';
-import {resolveVoiceGenerationTarget,type VoiceCommand} from '../lib/voiceCommands';
-import { applyArtworkSettings, getArtworkSettings } from '../lib/artworkRules';
-import standardArtworkSource from '../content/standard-settings.yaml?raw';
-import {artworkLocked,paintFolderChain,paintOwnerPlacementLocked} from '../lib/paintLock';
+import { createAgentRevision } from '../lib/agentTools';
 import PaintTextTools, {type TextPaletteTab} from './PaintTextTools';
 import BubbleMaterialPicker from './BubbleMaterialPicker';
 import PaintToolHelp from './PaintToolHelp';
-import { addCanvasTextAt, ensureCanvasTextOwner, canvasTextAt, canvasTextCategory, changeCanvasTextCategory, type TextCategory, canvasTextEditable, canvasBubbleLineWidthEditable, changeCanvasDefaultBubbleLineWidth, editCanvasBubbleLineWidth, convertScreenTextToBubble, editCanvasText, editCanvasTextStyle, editCanvasBubbleMaterial, removeCanvasText, screenTextCoveredByBubble, toggleCanvasTextVisibility, type CanvasTextTarget } from '../lib/canvasText';
-import {bubbleStrokeWidthMm,isHandwrittenText,isBalloonText} from '../lib/bubblePresentation';
-import {availableFontWeights,classifyPcFontFamilies,queryPcFontFamilies,type PcFontFamily} from '../lib/bubbleFonts';
+import { canvasTextAt, canvasTextEditable, canvasBubbleLineWidthEditable, type CanvasTextTarget } from '../lib/canvasText';
+import { bubbleStrokeWidthMm, isHandwrittenText } from '../lib/bubblePresentation';
+import { type PcFontFamily } from '../lib/bubbleFonts';
 import PageLayerPalette from './PageLayerPalette';
-import { ownerItemLocked, bubbleVisible, panelGeometryLocked, panelLocked, panelVisible, reorderPanelArt, toggleBubbleVisibility, unlockPanelDescendants, type BubbleTextTarget } from '../lib/panelLayers';
+import { ownerItemLocked, panelGeometryLocked, panelLocked } from '../lib/panelLayers';
 import PanelControls from './PanelControls';
-import { namedBackgroundStages, verifyBackgroundStage } from '../lib/background3d';
-import PaintEditor, { PaintTools, PaintDetails, PaintStatus, type PaintResult } from './PaintEditor';
-import { paintGenerationOwner, applyPaintAnchorIds, paintOwnerShouldClear, ensureDirectPaintOwner, movePaintEntry, validatePaintDocument, applyOwnerPaint, applyPaintOwnerLock, canvasPaintOwnerKey, clearOwnerPaint, figurePaintVisible, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, paintAssetIds, paintOwnerCanvasSelection, paintScene, withPaintBleed, type PaintScene, type PaintOwner } from '../lib/paintDocument';
+import { namedBackgroundStages } from '../lib/background3d';
+import PaintEditor, { PaintTools, PaintDetails, PaintStatus } from './PaintEditor';
+import { paintAssetIds } from '../lib/paintDocument';
 import { paintColorMode } from '../lib/paintColor';
 import PlacedImageList from './PlacedImageList';
-import { imageAssetIds, setFigureArtwork, createFrameArtwork, createImagePlacement, prepareImageAsset, validateImagePlacements, validImageBox } from '../lib/imagePlacement';
-import { fallbackBox, panelBounds } from '../lib/canvasGeometry';
-import { overlayFallbackBox } from '../lib/pageCanvas';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { BookOpen, Box, ChevronLeft, ChevronRight, ClipboardCheck, Download, FilePlus2, Files, FolderOpen, LayoutPanelTop, Settings2, SlidersHorizontal, UsersRound, X } from 'lucide-preact';
 import Header from './Header';
@@ -37,45 +27,39 @@ import { type ProjectBinding } from '../lib/projectPersistence';
 import PageSidebar from './PageSidebar';
 import MangaCanvas from './MangaCanvas';
 import PanelInspector from './PanelInspector';
-import {getOutputSettings} from '../lib/finishLayout.ts';
-import QwenGenerationDialog, { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from './QwenGenerationDialog';
-import { buildQwenGenerationPlan, qwenLayerCandidates, type QwenGenerationPlan, type QwenLayerCandidate, type QwenGenerationConversation, type QwenAdoption } from '../lib/qwenGeneration';
-import { buildQwenCompositionPlan, captureQwenComposition, type QwenCompositionScope } from '../lib/qwenComposition';
+import QwenGenerationDialog from './QwenGenerationDialog';
+import { type QwenLayerCandidate, type QwenGenerationConversation } from '../lib/qwenGeneration';
 import { canChooseImageExportDirectory, type ImageExportFormat } from '../lib/pageExport';
-import { humanPoseOwnerImage } from '../lib/humanPoseComposition';
-import {generationMaskBounds,loadPaintImages,renderPaintPng,type PaintImages} from '../lib/paintRenderer';
-import {prepareGuideLayer} from '../lib/paintGuide';
 import PageOverlayInspector from './PageOverlayInspector';
 import EnvironmentSettings from './EnvironmentSettings';
 import { loadEditGuide, saveEditGuide, loadPaintBleed, savePaintBleed, loadPaintSmoothing, savePaintSmoothing, loadPaintCursor, savePaintCursor, type PaintCursorMode } from '../lib/paintPreferences';
 import { workspaceHistory } from '../lib/workspaceHistory';
 import { loadHistorySteps, saveHistorySteps } from '../lib/historyPreferences';
 import type { PaintController, PaintLayerAction, PaintSessionSnapshot } from '../lib/paintSession';
-import type { BubblePathToolMode, PaintLayoutTarget } from '../lib/paintWorkspace';
+import type { BubblePathToolMode } from '../lib/paintWorkspace';
 import SourceCoverageReview from './SourceCoverageReview';
 import ScenarioReview from './ScenarioReview';
 import { confirmScenarioCorrespondence, detachResolvedScenarioLinks, rejectScenarioCorrespondence, restoreProvisionalScenarioText, type ScenarioBubbleLocation } from '../lib/scenario.ts';
 import type { CharacterReadProgressState } from './CharacterReadProgress';
 import { CharactersEditor, MetaEditor, PropsEditor, SettingEditor } from './DocumentEditors';
-import { cloneDocument, MAX_PANELS_PER_PAGE, newPage, newPanel, parseOmayYaml, toSeparatedMangaYaml } from '../lib/manga';
-import { clamp, DEFAULT_PANEL_GUTTERS, movePanelEdge as movePanelEdgeGeometry, movePanelVertexWithSnap, resizePanelToBounds, syncPanelBleedAtTrim, translatePanel, type PanelEdgeReference } from '../lib/canvasGeometry';
+import { cloneDocument, toSeparatedMangaYaml } from '../lib/manga';
+import { DEFAULT_PANEL_GUTTERS } from '../lib/canvasGeometry';
 import { mergeSelectedPanels, reconcileSplitOverlapFlags, splitPanel, type PanelSplitDirection } from '../lib/panelTemplates';
 import { discardSeriesCatalogDraftOnPageExit, getPendingScannerSession, getSeriesCharacterTextStatus, type EpisodeWorkspace, type PendingScannerSession, type ReferenceTextSuggestion, type ScannerSession, type SeriesCatalogDraftSession, type SeriesCatalogSummary, type SeriesCharacterTextLink, type SeriesReferenceTextCandidate, type SeriesReferenceTextSelection } from '../lib/localBridge';
 import { removeMaterialsFromSeriesCatalog } from '../lib/seriesCatalog';
-import { beginFigureCropImport, onFigureCropAssetsChanged, pruneFigureCropAssets, collectFigureCropAssetIds, deleteFigureCropAssets, loadFigureCropAsset, saveFigureCropAssets } from '../lib/figureCropStore';
+import { onFigureCropAssetsChanged, pruneFigureCropAssets, collectFigureCropAssetIds } from '../lib/figureCropStore';
 import { spreadPartnerIndex as findSpreadPartnerIndex } from '../lib/pageSpread';
 import { setPanelMaterialLink, type PanelMaterialLinkTarget } from '../lib/panelMaterialLinks';
 import { isPropPlacement, synchronizeCatalogReferences } from '../lib/catalogModel';
-import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels';
 import { type ImportedStorySetting } from '../lib/settingTextImport.ts';
 import { type SourceCoverageDecision } from '../lib/sourceCoverage.ts';
 import { startNewCreationBridgeSession, stopNewCreationBridgeSession, stopNewCreationBridgeSessionOnPageExit } from '../lib/localBridgeLifecycle.ts';
 import { createInitialWorkspace, type WorkspaceStartupState } from '../lib/workspaceStartup.ts';
-import type { BBox, ImageAsset, BubbleTailTarget, CanvasElementSelection, MangaDocument, WorkspaceTab } from '../types';
+import type { CanvasElementSelection, MangaDocument, WorkspaceTab } from '../types';
 
 import { type NewCreationStep, type NewSeriesMode, type NewSourceSnapshot, type BoundSourceSnapshot, emptyNewWorkSetting } from '../lib/newProjectSettings';
 import { type NewLayoutTask, type NewLayoutItem, nextLayoutIndexFromArrow } from '../lib/newLayoutPreview';
-import { INNER_FRAME_SNAP_KEY, PANEL_SYNC_KEY, PANEL_GAP_SNAP_KEY, SHOW_GUIDES_KEY, SPREAD_VIEW_KEY, PERSIST_ANALOG_ASSETS_KEY, storedPcFontCatalog, rememberPcFontCatalog, initialInnerFrameSnap, initialPanelSync, initialPanelGapSnap, initialShowGuides, initialSpreadView, initialPersistAnalogAssets } from '../lib/workspacePreferences';
+import { storedPcFontCatalog, initialInnerFrameSnap, initialPanelSync, initialPanelGapSnap, initialShowGuides, initialSpreadView, initialPersistAnalogAssets } from '../lib/workspacePreferences';
 
 import NewSeriesStep from './new-project/NewSeriesStep';
 import NewSettingStep from './new-project/NewSettingStep';
@@ -85,7 +69,7 @@ import NewProjectNavigation from './new-project/NewProjectNavigation';
 import { createNewProjectAction } from './workspace/newProjectCreation';
 import { createProjectFileActions } from './workspace/workspaceProjectFiles';
 import { createImageExportActions } from './workspace/workspaceImageExport';
-import type { MobileStoryboardPane, WorkspacePaintSession, WorkspaceSnapshot } from './workspace/workspaceTypes';
+import type { MobileStoryboardPane, WorkspacePaintSession, WorkspaceSnapshot, WorkspaceGeneration, WorkspaceImageTarget } from './workspace/workspaceTypes';
 
 import { createNewProjectSessions } from './workspace/newProjectSessions';
 import { createSeriesSelection } from './workspace/newSeriesSelection';
@@ -96,6 +80,16 @@ import { createSeriesCatalogActions } from './workspace/seriesCatalogActions';
 import { createEpisodeSettingActions } from './workspace/newEpisodeSettings';
 import { createWorkspaceCatalogActions } from './workspace/workspaceCatalog';
 import { createNewLayoutImportActions } from './workspace/newLayoutImportActions';
+
+import { createPageEditActions } from './workspace/pageEditActions';
+import { createWorkspacePaintSession } from './workspace/workspacePaintSession';
+import { useWorkspaceTextActions } from './workspace/workspaceTextActions';
+import { createLayerPaletteActions } from './workspace/layerPaletteActions';
+import { createWorkspaceGeneration } from './workspace/workspaceGeneration';
+import { createWorkspacePaintResults } from './workspace/workspacePaintResults';
+import { createImagePlacementActions } from './workspace/workspaceImagePlacement';
+import { createWorkspaceCanvasActions } from './workspace/workspaceCanvasActions';
+import { createWorkspaceVoiceActions } from './workspace/workspaceVoiceActions';
 
 const TABS: {
   id: WorkspaceTab;
@@ -146,13 +140,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const qwenPreparing=useRef(false);
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
-  const [qwenGeneration,setQwenGeneration]=useState<{id:string;plan:QwenGenerationPlan;poseEditorContext?:GenerationPoseEditorContext;layers:QwenLayerCandidate[];loadLayer:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>;document:MangaDocument;pageIndex:number;panelIndex:number;overlay:boolean;owner?:PaintOwner;agentRequest?:QwenAgentRequest;textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}}|null>(null);
+  const [qwenGeneration,setQwenGeneration]=useState<WorkspaceGeneration | null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
   const [selectedElement, setSelectedElement] = useState<CanvasElementSelection | null>(null);
   const placedImageInput = useRef<HTMLInputElement>(null);
-  const imageImportTarget = useRef<{ document: MangaDocument; pageIndex: number; panelIndex: number; scope: 'page' | 'panel' | 'page_overlay'; figureIndex?: number; bubbleIndex?: number; box: BBox; generatedOwner?:PaintOwner; generatedAdoption?:QwenAdoption; generatedFolderId?:string; textSource?:{target:CanvasTextTarget;position?:Bubble['text_position']}; generationScope?:'page'|'panel' } | null>(null);
+  const imageImportTarget = useRef<WorkspaceImageTarget | null>(null);
   const [imageImportBusy, setImageImportBusy] = useState(false);
   const [imageExportDialog,setImageExportDialog]=useState<{mode:'current'|'range'|'all';from:number;to:number;format:ImageExportFormat}|null>(null);
   const [imageExportBusy,setImageExportBusy]=useState(false);
@@ -394,7 +388,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   const selectedBubble=selectedBubbleTarget?canvasTextAt(document,selectedBubbleTarget) as Bubble|undefined:undefined;
   const selectedBubbleStroke=selectedBubble&&selectedBubbleTarget?{
     width:bubbleStrokeWidthMm(selectedBubble,bubbleLineWidthMm)*getPrintSetup(document.manga).dpi/25.4,
-    disabled:layerSwitchBusy||!canvasBubbleLineWidthEditable(document,selectedBubbleTarget),onChange:changeSelectedBubbleLineWidth,
+    disabled:layerSwitchBusy||!canvasBubbleLineWidthEditable(document,selectedBubbleTarget),onChange:(width:number)=>changeSelectedBubbleLineWidth(width),
   }:undefined;
   const panelGutters = {
     rowGapMm: document.manga.meta.panel_gutter_row_mm,
@@ -517,7 +511,7 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setScannerReceivedCount, newLayoutImageInput, scannerSessionRef, setScannerSession,
     setPendingScannerSession, newCreationBridgeToken, newCharacterDraftSession,
     seriesCatalogSaveQueue, newLayoutTaskRef, newLayoutOperationGeneration, scannerStopRequested,
-    updateNewLayoutTask, setToast, setNewCharacterDocument, setShowNewDialog, endTextEdit,
+    updateNewLayoutTask, setToast, setNewCharacterDocument, setShowNewDialog, endTextEdit: () => endTextEdit(),
     setNewWorkTitle, setNewWorkSetting, setNewSettingMessage, setNewSeriesName, setNewSeriesId,
     clearNewSeriesReference, setNewEpisodeWorkspace, setNewWorkspaceSelecting, setNewWorkspaceMessage,
     setNewReferenceSelecting, setNewSourceSnapshot, setNewReferenceFileName, setNewReferenceMessage,
@@ -883,13 +877,13 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
   });
 
   const { applyPreparedSeriesIdentifiers, importBackgroundModel, saveBackgroundsFromEditor, saveCharactersFromEditor } = createWorkspaceCatalogActions({
-    documentRef, setDocument, endTextEdit, saveProjectAction, persistSeriesCatalog, characterTextLink,
+    documentRef, setDocument, endTextEdit: () => endTextEdit(), saveProjectAction, persistSeriesCatalog, characterTextLink,
     syncCharacterText, setCharacterTextLink, setToast, projectOperation, setProjectBusy,
     patchLatestDocument,
   });
 
   const { saveProject, exportOmny, openProject } = createProjectFileActions({
-    hasDocument, showNewDialog, projectOperation, endTextEdit, documentRef, setToast, setProjectBusy,
+    hasDocument, showNewDialog, projectOperation, endTextEdit: () => endTextEdit(), documentRef, setToast, setProjectBusy,
     boundEpisodeWorkspace, paintController, persistSeriesCatalog, applyPreparedSeriesIdentifiers,
     paintSessionRef, setPaintSession, setBoundEpisodeWorkspace, replaceDocument,
     setBoundSourceSnapshot, setSourceCoverageDecisions, setActivePage, setActivePanel,
@@ -922,1084 +916,80 @@ function EditorApp({startupWorkspace}:{startupWorkspace:WorkspaceStartupState}) 
     setToast,
   });
 
-  const addPage = () => {endTextEdit();mutate((draft) => { const index = draft.manga.pages.length; const setup = getPrintSetup(draft.manga); draft.manga.pages.push(newPage(index + 1, { w: setup.width_mm, h: setup.height_mm })); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });};
-  const duplicatePage = () => {
-    if (!page) return;
-    endTextEdit();
-    mutate((draft) => { const copy = structuredClone(draft.manga.pages[activePage]); draft.manga.pages.splice(activePage + 1, 0, copy); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(activePage + 1); setSelectedPanels([activePanel]); });
-  };
-  const deletePage = () => {
-    if (document.manga.pages.length <= 1 || !confirm(`ページ ${activePage + 1} を削除しますか？`)) return;
-    endTextEdit();
-    mutate((draft) => { draft.manga.pages.splice(activePage, 1); draft.manga.pages.forEach((item, index) => { item.page = index + 1; }); setActivePage(Math.max(0, activePage - 1)); setActivePanel(0); setSelectedPanels([0]); });
-  };
-  const reorderPage = (from: number, to: number) => {
-    if (from === to) return;
-    endTextEdit();
-    mutate((draft) => {
-      const pages = draft.manga.pages;
-      const [moved] = pages.splice(from, 1);
-      pages.splice(to, 0, moved);
-      pages.forEach((item, index) => { item.page = index + 1; });
-    });
-    // 表示中のページが移動後どこへ行ったかを追従する
-    const next = activePage === from ? to
-      : activePage > from && activePage <= to ? activePage - 1
-      : activePage < from && activePage >= to ? activePage + 1
-      : activePage;
-    setActivePage(next);
-    setActivePanel(0);
-    setSelectedPanels([0]);
-    setToast(`ページ ${from + 1} を ${to + 1} 番目へ移動しました`);
-  };
-  const addPanel = () => {
-    if (!page || page.panels.length >= MAX_PANELS_PER_PAGE) { setToast(`1ページに追加できるのは${MAX_PANELS_PER_PAGE}コマまでです`); return; }
-    endTextEdit();
-    mutate((draft) => { const page = draft.manga.pages[activePage]; const panels = page.panels; panels.push(newPanel(panels.length + 1, panels.length * 45, page.canvas)); setActivePanel(panels.length - 1); setSelectedPanels([panels.length - 1]); });
-  };
-  const deletePanelAt = (index:number) => {
-    const target=document.manga.pages[activePage]?.panels[index];
-    if (!target || panelLocked(target) || !confirm(`${panelDisplayLabel(target.id)} を削除しますか？`)) return;
-    endTextEdit();
-    autoPaintResume.current=null;
-    mutate((draft) => { const panels = draft.manga.pages[activePage].panels; panels.splice(index, 1); panels.forEach((item, panelIndex) => { item.id = panelIndex + 1; }); const nextIndex = Math.max(0, Math.min(index - 1, panels.length - 1)); setActivePanel(nextIndex); setSelectedPanels(panels.length?[nextIndex]:[]);setSelectedElement(null); });
-  };
-  const deletePanel = () => deletePanelAt(activePanel);
-  const deleteScreenTextAt=(panelIndex:number,index:number,overlay:boolean)=>{
-    const target:CanvasTextTarget={pageIndex:activePage,panelIndex,index,overlay,kind:'screen_text'};
-    if(!canvasTextEditable(documentRef.current,target))return;
-    void layerTransition(async()=>{
-      autoPaintResume.current=null;
-      if(paintSessionRef.current)await paintController.current?.close();
-      createdText.current=null;endTextEdit();
-      const next=cloneDocument(documentRef.current);
-      if(!removeCanvasText(next,target))return;
-      lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;setSelectedElement(null);
-    });
-  };
-  const deleteBubbleAt=(panelIndex:number,bubbleIndex:number,overlay=false)=>{
-    const target:CanvasTextTarget={pageIndex:activePage,panelIndex,index:bubbleIndex,overlay,kind:'bubble'};
-    const bubble=canvasTextAt(documentRef.current,target);
-    const targetPanel=!overlay?documentRef.current.manga.pages[activePage]?.panels[panelIndex]:undefined;
-    if(!bubble||ownerItemLocked(bubble)||('paint_overlay' in bubble&&artworkLocked(bubble.paint_overlay))||targetPanel&&panelLocked(targetPanel)||!confirm(`${overlay?'ページ前景':'コマ'}の${textDisplayLabel(bubbleIndex)}を削除しますか？`))return;
-    void layerTransition(async()=>{
-      autoPaintResume.current=null;
-      if(paintSessionRef.current)await paintController.current?.close();
-      endTextEdit();
-      const next=cloneDocument(documentRef.current);
-      if(!removeCanvasText(next,target))return;
-      lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-      setSelectedElement(null);
-    });
-  };
-  const makePaintScene = (current:MangaDocument,panelIndex:number,pageIndex:number,overlay:boolean) => {
-    const targetPage=current.manga.pages[pageIndex],targetPanel=targetPage?.panels[panelIndex];
-    if(!targetPage||(!overlay&&!targetPanel))throw new Error('対象のあたりが見つかりません');
-    validateImagePlacements(current);
-    const source=overlay?{id:0,shape:{type:'rect' as const,x:0,y:0,...targetPage.canvas},bg:0 as const,action:null,
-      layer:targetPage.layer,screen_text:targetPage.page_overlay?.screen_text,
-      images:targetPage.images?.filter(image=>image.paintScope==='page'||image.bubbleOriginal),
-      figures:targetPage.page_overlay?.figures?.map((figure,index)=>({...figure,bbox:figure.bbox??overlayFallbackBox(targetPage.canvas,'figure',index)})),
-      bubbles:(targetPage.page_overlay?.bubbles??[]).map((bubble,index)=>({...bubble,bbox:bubble.bbox??overlayFallbackBox(targetPage.canvas,'bubble',index)}))}:targetPanel;
-    const setup=getPrintSetup(current.manga);
-    const scene=paintScene(source,setup.dpi,current.manga.image_assets??[],paintColorMode(setup.format),overlay?'page':'panel',overlay?targetPage.panels:undefined);
-    if(overlay)scene.owners=scene.owners.filter(owner=>owner.kind!=='background');
-    if(!scene.owners.length)throw new Error('描画先を選んでください');
-    return {...scene,generatedImageSequence:current.manga.generated_image_sequence??0};
-  };
-  const artworkGuideVisible=(key:string,panelIndex=activePanel,pageIndex=activePage,overlay=false,source=document):boolean=>{
-    if(key.startsWith('bubble-'))return false;
-    const page=source.manga.pages[pageIndex],target=overlay?page?.page_overlay:page?.panels[panelIndex];
-    const index=Number(key.split('-')[1]);
-    const figure=key.startsWith('figure-')?target?.figures?.[index]:undefined,bubble=key.startsWith('bubble-')?target?.bubbles?.[index]:undefined;
-    const paint=key==='background'?page?.panels[panelIndex]?.background_images?.[0]?.paint:figure?.artwork?.paint??bubble?.paint_overlay?.paint;
-    if(paint?.guideInitialized){
-      if(figure)return figurePaintVisible(figure);
-      return paint.layers.some(layer=>layer.guide&&layer.visible&&layer.opacity>0);
-    }
-    if(key==='background')return !page?.panels[panelIndex]?.background_images?.length;
-    return key.startsWith('figure-')?!target?.figures?.[index]?.artwork:!target?.bubbles?.[index]?.paint_overlay;
-  };
-  const toggleArtworkGuide=(key:string,panelIndex=activePanel,pageIndex=activePage,overlay=false)=>{
-    if(key.startsWith('bubble-'))return;
-    const session=paintSessionRef.current;
-    if(!key.startsWith('bubble-')&&session?.pageIndex===pageIndex&&session.panelIndex===panelIndex&&session.overlay===overlay){paintController.current?.layerAction({type:'guide',key});return;}
-    if(!key.startsWith('bubble-')){void layerTransition(async()=>{
-      if(paintSessionRef.current)await paintController.current?.close();
-      const source=makePaintScene(documentRef.current,panelIndex,pageIndex,overlay),owner=source.owners.find(o=>o.key===key);
-      if(!owner?.paint.guideInitialized)return;
-      pendingLayerAction.current={type:'guide',key};
-      if(!openPaint(key,panelIndex,pageIndex,overlay,source))pendingLayerAction.current=null;
-    });return;}
-  };
-  const selectedPaintOwner = () => canvasPaintOwnerKey(documentRef.current.manga.pages[activePage],activePanel,selectedElement)??'background';
-  const openPaint = (initialOwner?:string,panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay'||selectedElement?.scope==='page', preview?:PaintScene) => {
-    if(imageImportBusy||paintSessionRef.current||qwenPreparing.current)return false;
-    endTextEdit();
-    const current=documentRef.current;
-    try {
-      if(!overlay&&!panelVisible(current.manga.pages[pageIndex].panels[panelIndex]))throw new Error('レイヤーの目を押してコマを表示してください');
-      setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-      const scene={...(preview??makePaintScene(current,panelIndex,pageIndex,overlay)),layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,generatedImageSequence:preview?.generatedImageSequence??current.manga.generated_image_sequence??0};
-      scene.owners=scene.owners.map(owner=>withPaintBleed(owner,paintBleedPx));
-      setMobileStoryboardPane('editor');setPaintToolsCollapsed(false);setPaintLayersCollapsed(false);
-      const ownerKey=initialOwner??selectedPaintOwner();
-      const session={document:current,pageIndex,panelIndex,overlay,scene,initialOwner:ownerKey,title:overlay?'ページ前景':panelDisplayLabel(current.manga.pages[pageIndex].panels[panelIndex].id)};
-      autoPaintResume.current=null;paintSessionRef.current=session;setPaintSession(session);return true;
-    }catch(error){setToast(error instanceof Error?error.message:'ペイントを開けませんでした');return false;}
-  };
-  async function layerTransition(action:()=>void|Promise<void>){
-    if(layerSwitch.current||projectOperation.current||imageImportBusy||qwenGeneration)return;
-    layerSwitch.current=true;setLayerSwitchBusy(true);
-    try{await action();}catch(error){setToast(error instanceof Error?error.message:'レイヤーを切り替えられません');}
-    finally{layerSwitch.current=false;setLayerSwitchBusy(false);}
-  }
-  function requestPcFonts(){
-    if(localFontQuery.current)return localFontQuery.current;
-    if(localFontSynced.current)return Promise.resolve();
-    const request=queryPcFontFamilies()
-      .then(names=>{
-        if(names.length!==localFontCatalog.current.length||names.some((name,index)=>{
-          const old=localFontCatalog.current[index],weights=name.weights??[],oldWeights=old.weights??[];
-          return name.family!==old.family||(name.displayName??name.family)!==(old.displayName??old.family)||weights.length!==oldWeights.length||weights.some((option,i)=>option.value!==oldWeights[i].value||option.label!==oldWeights[i].label);
-        })){
-          const families=classifyPcFontFamilies(names);
-          localFontCatalog.current=families;
-          setLocalFontFamilies(families);
-          rememberPcFontCatalog(families);
-        }
-        localFontSynced.current=true;
-      })
-      .catch(()=>{/* Startup may lack permission; opening the selected-text picker retries inside a user gesture. */})
-      .finally(()=>{localFontQuery.current=null;});
-    localFontQuery.current=request;
-    return request;
-  }
-  useEffect(()=>{void requestPcFonts();},[]);
-  function endTextEdit(){
-    const created=createdText.current;
-    createdText.current=null;
-    if(created){
-      const item=canvasTextAt(documentRef.current,created);
-      if(item&&!item.text.trim()){
-        const next=cloneDocument(documentRef.current);
-        if(removeCanvasText(next,created)){
-          setDocument(next);
-          const selected=selectedElement;
-          if(selected?.type===created.kind&&selected.index===created.index&&(selected.scope==='page_overlay')===created.overlay)setSelectedElement(null);
-        }
-      }
-    }
-    setEditingText(null);imageGestureBoundary('end');
-  }
-  function startBubbleEdit(target:BubbleTextTarget){startTextEdit({...target,index:target.bubbleIndex,kind:'bubble'});}
-  function startTextEdit(target:CanvasTextTarget){
-    autoPaintResume.current=null;
-    if(canvasTextAt(documentRef.current,target)?.hidden){
-      void layerTransition(async()=>{
-        if(paintSessionRef.current)await paintController.current?.close();
-        endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-        selectCanvasElement({type:target.kind,index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})},target.panelIndex,target.pageIndex,false);
-      });return;
-    }
-    setTextPaletteRequest(value=>({id:value.id+1,tab:'text'}));
-    if(editingText&&editingText.pageIndex===target.pageIndex&&editingText.panelIndex===target.panelIndex&&editingText.index===target.index&&editingText.kind===target.kind&&editingText.overlay===target.overlay)return;
-    void requestPcFonts();
-    void layerTransition(async()=>{
-      if(paintSessionRef.current)await paintController.current?.close();
-      const current=documentRef.current;
-      if(!canvasTextEditable(current,target))return;
-      endTextEdit();setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);setSelectedPanels([target.panelIndex]);
-      selectCanvasElement({type:target.kind,index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})},target.panelIndex,target.pageIndex,false);
-      imageGestureBoundary('start');setEditingText(target);
-    });
-  }
-  function changeCanvasText(target:CanvasTextTarget,text:string,edit?:TextSelection){
-    const next=cloneDocument(documentRef.current);
-    if(editCanvasText(next,target,text,edit,'manual',typingTextStyle(textToolStyle))){imageGesture.current.pushed=false;lastHistoryPush.current=0;setDocument(next);}
-  }
-  function changeTextToolStyle(patch:TextStylePatch){
-    setTextToolStyle(current=>{
-      const item={text:'',orientation:current.orientation??'vertical',text_style:{...current}};
-      return updateTextStyle(item,'screen_text',patch,undefined,patch.font?availableFontWeights(patch.font,localFontCatalog.current):undefined)?textStyleOf(item,'screen_text'):current;
-    });
-  }
-  function changeCanvasTextStyle(target:CanvasTextTarget,patch:TextStylePatch,selection?:TextSelection){
-    if(paintSessionRef.current||projectOperation.current||qwenGeneration)return;
-    try{const next=editCanvasTextStyle(documentRef.current,target,patch,selection,patch.font?availableFontWeights(patch.font,localFontCatalog.current):undefined);if(next!==documentRef.current){changeTextToolStyle(patch);if(imageGesture.current.source!=='text-size'){imageGesture.current.pushed=false;lastHistoryPush.current=0;}setDocument(next);}}
-    catch(error){setToast(error instanceof Error?error.message:'文字設定を変更できません');}
-  }
-  function changeSelectedBubbleLineWidth(width:number){
-    if(!selectedBubbleTarget||textTool||zoomTool||paintSessionRef.current||projectOperation.current||layerSwitch.current||qwenGeneration)return;
-    const current=documentRef.current,next=editCanvasBubbleLineWidth(current,selectedBubbleTarget,width*25.4/getPrintSetup(current.manga).dpi);
-    if(next===current)return;
-    imageGestureBoundary('end');lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-  }
-  function canvasTextHistory(direction:'undo'|'redo'){
-    const target=editingText;
-    (direction==='undo'?undo:redo)();
-    if(target&&canvasTextEditable(documentRef.current,target)&&canvasTextAt(documentRef.current,target)?.text_style?.fontSize!==undefined){
-      imageGestureBoundary('start');setEditingText(target);
-      setSelectedElement({type:target.kind,index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})});
-    }
-  }
-  function applyBubbleMaterial(target:CanvasTextTarget,id:string){
-    void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    try{
-      const next=cloneDocument(documentRef.current);
-      if(!editCanvasBubbleMaterial(next,target,id))return;
-      endTextEdit();lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-      setActivePage(target.pageIndex);setActivePanel(target.panelIndex);setSelectedElement({type:'bubble',index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})});
-      setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-      setToast('文字・大きさ・位置を保って、吹き出しの輪郭を入れ替えました');
-    }catch(error){setToast(error instanceof Error?error.message:'素材を適用できません');}
-    });
-  }
-  function openBubbleMaterials(){endTextEdit();setBubbleMaterialsOpen(true);setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);setTextPaletteRequest(value=>({id:value.id+1,tab:'bubble'}));}
-  function chooseTextTool(){void requestPcFonts();void layerTransition(async()=>{
-    setTextPaletteRequest(value=>({id:value.id+1,tab:'text'}));
-    autoPaintResume.current=null;
-    const session=paintSessionRef.current;
-    if(session){
-      const snapshot=paintController.current?.snapshot(),scene=snapshot?.scene??session.scene;
-      const key=snapshot?.ownerKey??session.initialOwner;
-      const owner=key?paintGenerationOwner(scene,key):undefined;
-      let selection=owner?.kind==='bubble'?paintOwnerCanvasSelection(documentRef.current.manga.pages[session.pageIndex],session.panelIndex,owner.key,session.overlay):undefined;
-      // Point text has no paint owner; preserve its existing P -> T editing route.
-      if(!selection&&selectedElement?.type==='screen_text'&&session.pageIndex===activePage&&session.panelIndex===activePanel&&(selectedElement.scope==='page_overlay')===session.overlay
-        &&canvasTextAt(documentRef.current,{pageIndex:session.pageIndex,panelIndex:session.panelIndex,index:selectedElement.index,kind:'screen_text',overlay:session.overlay}))selection=selectedElement;
-      if(selection){
-        await paintController.current?.close();
-        selectCanvasElement(selection,session.panelIndex,session.pageIndex,false);
-      }else{
-        await paintController.current?.pause();
-        setSelectedElement(null);
-      }
-    }
-    setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
-  });}
-  function closeTextTool(){
-    endTextEdit();setTextTool(false);
-  }
-  function chooseBubblePathTool(mode:Exclude<BubblePathToolMode,false>){void layerTransition(async()=>{
-    autoPaintResume.current=null;
-    if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(mode);setPaintToolsCollapsed(false);
-  });}
-  function chooseLayoutTool(target?:PaintLayoutTarget){
-    const session=paintSessionRef.current;
-    const select=()=>{
-      autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(target?.direct?'node':false);
-      if(!target){setSelectedElement(null);return;}
-      const pageIndex=session?.pageIndex??activePage,panelIndex=target.panelIndex??session?.panelIndex??activePanel;
-      const selection=target.key?paintOwnerCanvasSelection(documentRef.current.manga.pages[pageIndex],panelIndex,target.key,session?.overlay):target.selection;
-      if(selection)selectCanvasElement(selection,panelIndex,pageIndex);
-      else {selectCanvasPanel(panelIndex,target.additive);setSelectedElement(null);}
-    };
-    if(target&&session)void layerTransition(async()=>{await paintController.current?.close();select();});
-    else select();
-  }
-  function chooseZoomTool(){void layerTransition(async()=>{
-    autoPaintResume.current=null;
-    if(paintSessionRef.current)await paintController.current?.pause();
-    endTextEdit();setTextTool(false);setZoomTool(true);setBubblePathTool(false);setPaintToolsCollapsed(false);
-  });}
-  function createScreenTextAt(pageIndex:number,panelIndex:number|null,point:{x:number;y:number}){
-    void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();
-    const next=cloneDocument(documentRef.current),target=addCanvasTextAt(next,pageIndex,panelIndex,point,textToolStyle);
-    if(!target)return;
-    imageGestureBoundary('start');lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-    createdText.current=target;
-    setTextTool(true);setZoomTool(false);setBubblePathTool(false);setPaintToolsCollapsed(false);
-    setSelectedPanels([target.panelIndex]);
-    selectCanvasElement({type:'screen_text',index:target.index,...(target.overlay?{scope:'page_overlay' as const}:{})},target.panelIndex,pageIndex,false);
-    setEditingText(target);
-    });
-  }
-  function changeSelectedTextBody(text:string){
-    if(selectedElement?.type!=='bubble'&&selectedElement?.type!=='screen_text')return;
-    changeCanvasText({pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,overlay:selectedElement.scope==='page_overlay',kind:selectedElement.type},text);
-  }
-  function screenTextPosition(target:CanvasTextTarget):Bubble['text_position']{
-    if(target.kind!=='screen_text')return;
-    const element=window.document.querySelector<HTMLElement>(`[data-content-kind="screen_text"][data-content-index="${target.index}"].is-element-selected${target.overlay?'[data-content-overlay]':`[data-content-panel="${target.panelIndex}"]`}`);
-    const frame=element?.getBoundingClientRect(),body=element?.querySelector('.screen-text-body');
-    if(frame?.width&&frame.height&&body){
-      // Match BubbleText's content-block range, including glyph overhang beyond its line box.
-      const range=window.document.createRange();range.selectNode(body);
-      const content=range.getBoundingClientRect();
-      return {x:(content.x+content.width/2-frame.x)/frame.width,y:(content.y+content.height/2-frame.y)/frame.height};
-    }
-  }
-  function changeSelectedTextCategory(category:TextCategory){
-    if(selectedElement?.type!=='bubble'&&selectedElement?.type!=='screen_text')return;
-    const target:CanvasTextTarget={pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,overlay:selectedElement.scope==='page_overlay',kind:selectedElement.type};
-    const item=canvasTextAt(documentRef.current,target);
-    if(!item||!canvasTextEditable(documentRef.current,target)||canvasTextCategory(item,target.kind)===category)return;
-    // Point text starts at an edge; native balloon text is centered on text_position.
-    // Keep the visible text center even when its authored box has spare space.
-    const screenPosition=screenTextPosition(target);
-    void layerTransition(async()=>{
-      if(paintSessionRef.current)await paintController.current?.close();
-      const next=cloneDocument(documentRef.current),converted=changeCanvasTextCategory(next,target,category,screenPosition);
-      if(!converted)return;
-      createdText.current=null;setEditingText(null);imageGestureBoundary('end');
-      lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-      setSelectedElement({type:converted.kind,index:converted.index,...(converted.overlay?{scope:'page_overlay' as const}:{})});
-      setTextPaletteRequest(value=>({id:value.id+1,tab:'info'}));
-    });
-  }
-  function wrapScreenText(target:CanvasTextTarget,materialId:string){
-    void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    createdText.current=null;setEditingText(null);imageGestureBoundary('end');
-    const next=cloneDocument(documentRef.current);
-    const converted=convertScreenTextToBubble(next,{screenText:target,materialId});
-    if(!converted)return;
-    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-    setActivePage(converted.pageIndex);setActivePanel(converted.panelIndex);setSelectedPanels([converted.panelIndex]);
-    setSelectedElement({type:'bubble',index:converted.index,...(converted.overlay?{scope:'page_overlay' as const}:{})});
-    setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-    setToast('写植文字を吹き出しの中央へ入れ、文字量に合わせて一度だけサイズを調整しました');
-    });
-  }
-  function finishElementMove(pageIndex:number,selection:CanvasElementSelection,panelIndex:number|null){
-    if(selection.type!=='bubble')return;
-    const bubbleTarget:CanvasTextTarget={pageIndex,panelIndex:panelIndex??0,index:selection.index,overlay:selection.scope==='page_overlay',kind:'bubble'};
-    const covered=screenTextCoveredByBubble(documentRef.current,bubbleTarget);
-    if(!covered)return;
-    createdText.current=null;setEditingText(null);imageGestureBoundary('end');
-    const next=cloneDocument(documentRef.current),converted=convertScreenTextToBubble(next,{screenText:covered,bubble:bubbleTarget});
-    if(!converted)return;
-    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-    setSelectedElement({type:'bubble',index:converted.index,...(converted.overlay?{scope:'page_overlay' as const}:{})});
-    setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-    setToast('文字を吹き出しの中央へ入れ、文字量に合わせて一度だけサイズを調整しました');
-  }
-  function selectLayerOwner(key:string,panelIndex:number,pageIndex=activePage,overlay=false,native=false){void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    const page=documentRef.current.manga.pages[pageIndex],selection=paintOwnerCanvasSelection(page,panelIndex,key,overlay);
-    if(!selection)return;
-    if(selection.type==='bubble'&&!bubbleVisible((overlay?page.page_overlay:page.panels[panelIndex])!.bubbles![selection.index]))return;
-    autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-    selectCanvasElement(native?{...selection,part:'native'}:selection,panelIndex,pageIndex);
-  });}
-  function toggleTextLayer(target:CanvasTextTarget,group=false){void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();const next=cloneDocument(documentRef.current);if(!(target.kind==='bubble'?toggleBubbleVisibility(next,{...target,bubbleIndex:target.index},group):toggleCanvasTextVisibility(next,target)))return;
-    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-  });}
-  function selectLayerPanel(index:number,frame=false){void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    autoPaintResume.current=null;endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);
-    setSelectedPanels([index]);selectCanvasElement(frame?{type:'panel_frame',index}:null,index);
-  });}
-  function togglePanelLayer(index:number,frame:boolean){void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();const next=cloneDocument(documentRef.current),panel=next.manga.pages[activePage]?.panels[index];if(!panel)return;
-    panel.layer??={};if(frame)panel.layer.frameHidden=!panel.layer.frameHidden;else panel.layer.hidden=!panel.layer.hidden;
-    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-  });}
-  function togglePanelLock(index:number,frame=false){void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();const next=cloneDocument(documentRef.current),panel=next.manga.pages[activePage]?.panels[index];if(!panel)return;
-    panel.layer??={};if(frame)panel.layer.frameLocked=!panel.layer.frameLocked;else if(panelLocked(panel))unlockPanelDescendants(panel);else panel.layer.locked=true;
-    lastHistoryPush.current=0;setDocument(next);lastHistoryPush.current=0;
-  });}
-  function reorderOwnerLayers(index:number,key:string,target:string,after:boolean,overlay=false){void layerTransition(async()=>{
-    if(paintSessionRef.current)await paintController.current?.pause();
-    const session=paintSessionRef.current,controller=paintController.current,before=workspaceSnapshot();
-    const validate=()=>{
-      const next=cloneDocument(documentRef.current),page=next.manga.pages[activePage],panel=page?.panels[index],owner=overlay?page?.page_overlay:panel;
-      if(!owner||(!overlay&&(!panelVisible(panel)||panelLocked(panel))))return;
-      const moved=makePaintScene(next,index,activePage,overlay).owners.find(item=>item.key===key);
-      if(!moved||paintOwnerPlacementLocked(moved)||!reorderPanelArt(owner,key,target,after,overlay?(page.layer??={}):undefined))return;
-      return next;
-    };
-    if(!validate())return;
-    if(session)await controller?.flush();
-    const next=validate();if(!next)return;
-    setDocument(next,false);timeline.current.record(before);lastHistoryPush.current=0;changedHistory();
-    if(session){
-      const live=controller?.snapshot(),active=session.pageIndex===activePage&&session.overlay===overlay&&(overlay||session.panelIndex===index);
-      if(live&&active){
-        const layout=makePaintScene(next,index,activePage,overlay);
-        const scene={...live.scene,anchorIds:layout.anchorIds,owners:layout.owners.map(owner=>{
-          const original=live.scene.owners.find(item=>item.key===owner.key);
-          return original?{...original,bubble:owner.bubble,figure:owner.figure}:owner;
-        })};
-        const updated={...session,document:next,scene,resume:{...live,scene,saved:scene},images:new Map(controller?.images())};
-        paintSessionRef.current=updated;setPaintSession(updated);
-      }else{const updated={...session,document:next};paintSessionRef.current=updated;setPaintSession(updated);}
-    }
-  });}
-  function actOnLayer(index:number,action:PaintLayerAction,preview:PaintScene,overlay=false){
-    if(action.type==='select'&&!action.mask&&!action.id&&paintOwnerCanvasSelection(documentRef.current.manga.pages[activePage],index,action.key,overlay)){selectLayerOwner(action.key,index,activePage,overlay,action.native);return;}
-    void layerTransition(async()=>{
-    const session=paintSessionRef.current;
-    if((action.type==='move-layer'||action.type==='move-folder')&&action.destination){
-      const destination=action.destination;
-      if(session?.pageIndex===activePage&&session.overlay===overlay&&(overlay||session.panelIndex===index)
-        &&destination.overlay===overlay&&(overlay||destination.panelIndex===index)){
-        paintController.current?.layerAction(action);return;
-      }
-      await movePaletteEntry(index,overlay,preview,action);return;
-    }
-    if(session?.pageIndex===activePage&&session.panelIndex===index&&session.overlay===overlay){paintController.current?.layerAction(action);return;}
-    if(session)await paintController.current?.close();
-    setActivePanel(index);setSelectedPanels([index]);
-    // Locking uses paint persistence, but its native owner remains the information target after close.
-    setSelectedElement(action.type==='owner-lock'?paintOwnerCanvasSelection(documentRef.current.manga.pages[activePage],index,action.key,overlay)??null:null);
-    pendingLayerAction.current=action;
-    // Use the preview's layer IDs; untouched empty layers do not exist in the document yet.
-    if(!openPaint(action.key,index,activePage,overlay,preview))pendingLayerAction.current=null;
-  });}
-  async function movePaletteEntry(index:number,overlay:boolean,preview:PaintScene,action:Extract<PaintLayerAction,{type:'move-layer'|'move-folder'}>){
-    const destination=action.destination;if(!destination)return;
-    const pageIndex=activePage;
-    if(paintSessionRef.current)await paintController.current?.pause();
-    const session=paintSessionRef.current,controller=paintController.current;
-    const liveSnapshot=controller?.snapshot(),live=liveSnapshot?.scene;
-    const sourceLive=session?.pageIndex===pageIndex&&session.overlay===overlay&&(overlay||session.panelIndex===index);
-    const targetLive=session?.pageIndex===pageIndex&&session.overlay===destination.overlay&&(destination.overlay||session.panelIndex===destination.panelIndex);
-    const sameScope=overlay===destination.overlay&&(overlay||index===destination.panelIndex);
-    let sourceScene=sourceLive&&live?live:preview;
-    let targetScene=sameScope?sourceScene:targetLive&&live?live:destination.scene??makePaintScene(documentRef.current,destination.panelIndex,pageIndex,destination.overlay);
-    let targetKey=destination.key;
-    if(destination.stack){const direct=ensureDirectPaintOwner(targetScene,destination.stack);if(!direct)return;targetScene=direct.scene;targetKey=direct.key;if(sameScope)sourceScene=targetScene;}
-    let source=sourceScene.owners.find(owner=>owner.key===action.key),target=targetScene.owners.find(owner=>owner.key===targetKey);
-    if(!source||!target)return;
-    const kind=action.type==='move-folder'?'folder':'layer';
-    if(!movePaintEntry(source,target,kind,action.id,action.target))return;
-    const before=workspaceSnapshot();
-    if(session)await controller?.flush();
-    const current=documentRef.current,imports:PaintResult['imports']=[...(liveSnapshot?.imports??[])];
-    const borrowed=controller?.images()??new Map();
-    const prepare=async(owner:PaintOwner)=>{
-      let paint=owner.paint;
-      for(const layer of paint.layers)if(layer.guide&&!layer.image){
-        const prepared=await prepareGuideLayer(owner,layer);imports.push(prepared);
-        paint={...paint,layers:paint.layers.map(item=>item.id===layer.id?{...prepared.layer,locked:layer.locked}:item)};
-      }
-      return paint===owner.paint?owner:{...owner,paint};
-    };
-    const sameOwner=source===target;
-    source=await prepare(source);target=sameOwner?source:await prepare(target);
-    const moved=movePaintEntry(source,target,kind,action.id,action.target);if(!moved)return;
-    const owners=sameOwner?[moved.destination]:[moved.source,moved.destination];
-    const replace=(scene:PaintScene,changed:PaintOwner[])=>({...scene,layerSequence:current.manga.pages[pageIndex].paint_layer_sequence??0,generatedImageSequence:liveSnapshot?.scene.generatedImageSequence??current.manga.generated_image_sequence??0,owners:scene.owners.map(owner=>changed.find(item=>item.key===owner.key)??owner)});
-    const sourceAfter=replace(sourceScene,sameScope?owners:[moved.source]),targetAfter=sameScope?sourceAfter:replace(targetScene,[moved.destination]);
-    const selectedMoves=sourceLive&&liveSnapshot?.ownerKey===action.key&&(liveSnapshot?.layerId===action.id||kind==='folder'&&paintFolderChain(source.paint,source.paint.layers.find(layer=>layer.id===liveSnapshot.layerId)?.folderId??liveSnapshot.layerId).some(folder=>folder.id===action.id));
-    let resumeScene=selectedMoves?targetAfter:sourceLive?sourceAfter:targetLive?targetAfter:liveSnapshot?.scene;
-    if(resumeScene){
-      const prepared:PaintOwner[]=[];for(const owner of resumeScene.owners)prepared.push(await prepare(withPaintBleed(owner,paintBleedPx)));
-      resumeScene={...resumeScene,owners:prepared};
-    }
-    const assets=[...(current.manga.image_assets??[]),...imports.map(item=>item.asset)];
-    const images=await loadPaintImages([...owners,...(resumeScene?.owners??[])].map(owner=>owner.paint),assets,new Map(imports.map(item=>[item.asset.id,item.blob])),borrowed);
-    let handedOff=false;
-    try{
-      const resultFor=async(scene:PaintScene,changed:PaintOwner[]):Promise<PaintResult>=>{
-        const result:PaintResult={scene,owners:[],imports,stageImports:liveSnapshot?.stageImports};
-        for(const owner of changed){
-          if(paintOwnerShouldClear(owner))result.owners.push({owner,blob:new Blob(),remove:true});
-          else {validatePaintDocument(owner.paint,assets);result.owners.push({owner,blob:await renderPaintPng(owner.paint,images)});}
-        }
-        return result;
-      };
-      const batches=sameScope
-        ?[{pageIndex,panelIndex:index,overlay,title:current.manga.meta.title,result:await resultFor(targetScene,owners)}]
-        :[{pageIndex,panelIndex:index,overlay,title:current.manga.meta.title,result:await resultFor(sourceScene,[moved.source])},
-          {pageIndex,panelIndex:destination.panelIndex,overlay:destination.overlay,title:current.manga.meta.title,result:await resultFor(targetScene,[moved.destination])}];
-      await persistPaintResults(current,batches,next=>{
-        setDocument(next,false);timeline.current.record(before);lastHistoryPush.current=0;changedHistory();
-        if(session&&liveSnapshot&&resumeScene){
-          const scene=resumeScene;
-          const panelIndex=selectedMoves?destination.panelIndex:session.panelIndex,overlay=selectedMoves?destination.overlay:session.overlay;
-          const maskTarget=selectedMoves&&liveSnapshot.maskTarget?{...liveSnapshot.maskTarget,key:targetKey}:liveSnapshot.maskTarget;
-          const resume={...liveSnapshot,scene,saved:scene,imports,stageImports:[],maskTarget,...(selectedMoves?{ownerKey:targetKey}:{})};
-          const updated={...session,document:next,panelIndex,overlay,scene,resume,images:new Map([...borrowed,...images]),title:overlay?'ページ前景':panelDisplayLabel(next.manga.pages[pageIndex].panels[panelIndex].id)};
-          paintSessionRef.current=updated;setPaintSession(updated);handedOff=true;
-          if(selectedMoves){setActivePanel(panelIndex);setSelectedPanels([panelIndex]);}
-        }
-      });
-    }finally{if(!handedOff)images.forEach((image,id)=>{if(image!==borrowed.get(id))image.src='';});}
-  }
-  function addDirectFolder(index:number,overlay=false,position?:import('../lib/paintDocument').PaintAddPosition){
-    try{const scene=makePaintScene(documentRef.current,index,activePage,overlay);actOnLayer(index,{type:'add-folder',key:overlay?'page':'panel',position:position??{}},scene,overlay);}
-    catch(error){setToast(error instanceof Error?error.message:'フォルダーを追加できませんでした');}
-  }
-  function openPanelBackground3d(index:number){
-    const target=documentRef.current.manga.pages[activePage]?.panels[index];
-    if(!target||panelLocked(target)){setToast('コマフォルダが固定されています');return;}
-    try{actOnLayer(index,{type:'background3d',key:'background'},makePaintScene(documentRef.current,index,activePage,false));}
-    catch(error){setToast(error instanceof Error?error.message:'背景の3D編集を開けません');}
-  }
-  const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
-    const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
-    if (captured.figure) {
-      const sourcePage=current.manga.pages[pageIndex];
-      const figure=(overlay?sourcePage.page_overlay:sourcePage.panels[panelIndex])?.figures?.[captured.index];
-      if (figure) { captured.figure.human_pose=figure.human_pose; captured.figure.size=figure.size; }
-    }
-    const needsMask=(captured.kind==='bubble'&&captured.bubble&&!isBalloonText(captured.bubble))
-      || (captured.figure&&!isPropPlacement(captured.figure));
-    const area=needsMask?generationMaskBounds(captured.paint):undefined;
-    const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area,Boolean(captured.figure&&!isPropPlacement(captured.figure)));
-    const selected=paintController.current?.snapshot();
-    if(selected?.ownerKey===captured.key){
-      plan.folderId=captured.paint.layers.find(layer=>layer.id===selected.layerId)?.folderId
-        ??captured.paint.folders?.find(folder=>folder.id===selected.layerId)?.id;
-    }
-    const loadLayer=async(id:string,correction:boolean,crop?:BBox,native=false)=>{
-      if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
-      const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop,native);
-      if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
-      return result.image;
-    };
-    setVoiceOpen(true);
-    const panel=current.manga.pages[pageIndex]?.panels[panelIndex];
-    const poseEditorContext:GenerationPoseEditorContext|undefined=captured.figure?{
-      onConfirmed:(selection, framing)=>{
-        const opened=qwenGenerationRef.current;
-        if (!opened || opened.document!==current || documentRef.current!==current) throw new Error('作品が変更されました。生成対象を選び直してください');
-        const updated=cloneDocument(current), page=updated.manga.pages[pageIndex];
-        const figure=(overlay?page.page_overlay:page.panels[panelIndex])?.figures?.[captured.index];
-        if (!figure) throw new Error('対象の人物が見つかりません');
-        figure.human_pose=selection;
-        figure.size=framing;
-        const session=paintSessionRef.current;
-        if (session?.document===current) {
-          const refreshed={...session,document:updated};
-          paintSessionRef.current=refreshed;setPaintSession(refreshed);
-        }
-        current=updated;
-        lastHistoryPush.current=0;
-        setDocument(updated);
-        const generation={...opened,document:updated};
-        qwenGenerationRef.current=generation;setQwenGeneration(generation);
-      },
-      stages:current.manga.background_stages,
-      ...(!overlay&&panel?{panelContext:{panel,selectedIndex:captured.index,assets,dpi:getOutputSettings(current.manga).dpi,
-        guides:Object.fromEntries((panel.figures??[]).map((_,i)=>[`figure-${i}`,artworkGuideVisible(`figure-${i}`,panelIndex,pageIndex,false,current)]))},
-        backgroundCaptures:(panel.background_images??[]).flatMap((item,i)=>item.paint?.background3d?[{label:`このコマの背景 ${i+1}`,capture:item.paint.background3d}]:[])}:{}),
-    }:undefined;
-    const next={id:crypto.randomUUID(),plan,poseEditorContext,layers:qwenLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest,...(textSource?{textSource:{target:textSource.target,position:textSource.position}}:{})};
-    qwenGenerationRef.current=next;setQwenGeneration(next);
-  };
-  const requestOwnerGeneration = async(key?:string,overlay=selectedElement?.scope==='page_overlay',panelIndex=activePanel,pageIndex=activePage,agentRequest?:QwenAgentRequest) => {
-    if(qwenGenerationRef.current||qwenPreparing.current||imageImportBusy||projectOperation.current)return;
-    const session=paintSessionRef.current;
-    if(session){
-      if(session.pageIndex===pageIndex&&session.panelIndex===panelIndex&&session.overlay===Boolean(overlay)){await paintController.current?.generate(key);return;}
-      try{await paintController.current?.close();}catch{return;}
-    }
-    qwenPreparing.current=true;
-    const current=documentRef.current;
-    try {
-      const scene=makePaintScene(current,panelIndex,pageIndex,overlay),owner=scene.owners.find(o=>o.key===(key??selectedPaintOwner()));
-      if(!owner)throw new Error('生成対象のフォルダが見つかりません');
-      if(agentRequest&&(owner.kind==='figure'||owner.kind==='bubble'))setAgentWorkTarget({pageIndex,panelIndex,selection:{type:owner.kind,index:owner.index,scope:overlay?'page_overlay':'panel'}});
-      await prepareQwen(current,pageIndex,panelIndex,overlay,owner,undefined,[],agentRequest);
-      return true;
-    }catch(error){setToast(error instanceof Error?error.message:'生成の準備ができませんでした');return false;}finally{qwenPreparing.current=false;}
-  };
-  async function requestTextGeneration(kind:'bubble'|'screen_text',index:number,overlay:boolean,panelIndex:number,pageIndex=activePage){
-    endTextEdit();
-    if(kind==='bubble')return requestOwnerGeneration(`bubble-${index}`,overlay,panelIndex,pageIndex);
-    if(qwenGenerationRef.current||qwenPreparing.current||imageImportBusy||projectOperation.current)return;
-    qwenPreparing.current=true;
-    try{
-      if(paintSessionRef.current)await paintController.current?.close();
-      const current=documentRef.current,target:CanvasTextTarget={pageIndex,panelIndex,index,overlay,kind},position=screenTextPosition(target),preview=cloneDocument(current);
-      const converted=ensureCanvasTextOwner(preview,target,position);
-      if(!converted)throw new Error('生成する写植文字が見つかりません');
-      const owner=makePaintScene(preview,panelIndex,pageIndex,overlay).owners.find(item=>item.key===`bubble-${converted.index}`);
-      if(!owner)throw new Error('生成する文字のフォルダが見つかりません');
-      await prepareQwen(current,pageIndex,panelIndex,overlay,owner,undefined,[],undefined,{target,position,document:preview});
-    }catch(error){setToast(error instanceof Error?error.message:'文字の生成を準備できませんでした');}
-    finally{qwenPreparing.current=false;}
-  }
-  const requestCompositionGeneration = async(scope:QwenCompositionScope,panelIndex:number,pageIndex:number) => {
-    if(qwenGenerationRef.current||qwenPreparing.current||imageImportBusy||projectOperation.current)return;
-    qwenPreparing.current=true;
-    try {
-      if(paintSessionRef.current)await paintController.current?.close();
-      const current=documentRef.current;
-      const guides:Record<string,boolean>={};
-      current.manga.pages[pageIndex].panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=artworkGuideVisible(key,index,pageIndex,false,current);}));
-      const overlay=current.manga.pages[pageIndex].page_overlay;
-      [...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=artworkGuideVisible(key,0,pageIndex,true,current);});
-      const plan=buildQwenCompositionPlan(current.manga,pageIndex,panelIndex,scope,guides);
-      setToast('生成用の紙面を準備しています…');
-      plan.compositionImage=await captureQwenComposition(current.manga,pageIndex,panelIndex,scope,guides);
-      if(documentRef.current!==current)throw new Error('作品が変更されました。生成する範囲を選び直してください');
-      const next={id:crypto.randomUUID(),plan,layers:[],loadLayer:async()=>{throw new Error('全体生成では紙面を参照します');},document:current,pageIndex,panelIndex,overlay:false};
-      qwenGenerationRef.current=next;setQwenGeneration(next);setVoiceOpen(true);setToast('');
-    }catch(error){setToast(error instanceof Error?error.message:'全体生成を準備できませんでした');}
-    finally{qwenPreparing.current=false;}
-  };
+  const { deleteBubbleAt, deletePanelAt, addPanel, addPage, duplicatePage, deletePage, reorderPage, deleteScreenTextAt, deletePanel } = createPageEditActions({
+    endTextEdit: () => endTextEdit(), mutate, setActivePage, setActivePanel, setSelectedPanels, setTab,
+    setMobileStoryboardPane, page, activePage, activePanel, document, setToast, autoPaintResume,
+    setSelectedElement, documentRef, layerTransition: action => layerTransition(action), paintSessionRef, paintController, createdText,
+    lastHistoryPush, setDocument,
+  });
+  const { layerTransition, makePaintScene, openPaint, artworkGuideVisible, selectedPaintOwner, toggleArtworkGuide } = createWorkspacePaintSession({
+    activePanel, activePage, document, paintSessionRef, paintController, documentRef,
+    pendingLayerAction, selectedElement, imageImportBusy, qwenPreparing, endTextEdit: () => endTextEdit(), setTextTool,
+    setZoomTool, setBubblePathTool, paintBleedPx, setMobileStoryboardPane, setPaintToolsCollapsed,
+    setPaintLayersCollapsed, autoPaintResume, setPaintSession, setToast, layerSwitch,
+    projectOperation, qwenGeneration, setLayerSwitchBusy,
+  });
+  const { endTextEdit, changeSelectedBubbleLineWidth, chooseZoomTool, chooseTextTool, screenTextPosition, openBubbleMaterials, requestPcFonts, chooseBubblePathTool, closeTextTool, chooseLayoutTool, startBubbleEdit, applyBubbleMaterial, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt, wrapScreenText, finishElementMove, changeCanvasText, canvasTextHistory, changeSelectedTextCategory, changeSelectedTextBody } = useWorkspaceTextActions({
+    localFontQuery, localFontSynced, localFontCatalog, setLocalFontFamilies, createdText, documentRef,
+    setDocument, selectedElement, setSelectedElement, setEditingText,
+    imageGestureBoundary: (...args) => imageGestureBoundary(...args), autoPaintResume,
+    layerTransition, paintSessionRef, paintController, setTextTool, setZoomTool, setBubblePathTool,
+    selectCanvasElement, setTextPaletteRequest, editingText, setPaintToolsCollapsed,
+    setSelectedPanels, textToolStyle, imageGesture, lastHistoryPush, setTextToolStyle,
+    projectOperation, qwenGeneration, setToast, selectedBubbleTarget, textTool, zoomTool, layerSwitch,
+    undo, redo, setActivePage, setActivePanel, setBubbleMaterialsOpen, activePage, activePanel,
+    selectCanvasPanel,
+  });
+  const { addDirectFolder, actOnLayer, toggleTextLayer, selectLayerOwner, reorderOwnerLayers, selectLayerPanel, togglePanelLayer, togglePanelLock, openPanelBackground3d } = createLayerPaletteActions({
+    activePage, layerTransition, paintSessionRef, paintController, documentRef, autoPaintResume,
+    endTextEdit, setTextTool, setZoomTool, setBubblePathTool, selectCanvasElement, lastHistoryPush,
+    setDocument, setSelectedPanels, workspaceSnapshot, makePaintScene, timeline, changedHistory,
+    setPaintSession, setActivePanel, setSelectedElement, pendingLayerAction, openPaint, paintBleedPx,
+    persistPaintResults: (...args) => persistPaintResults(...args), setToast,
+  });
+  const { requestOwnerGeneration, prepareQwen, requestCompositionGeneration, requestTextGeneration } = createWorkspaceGeneration({
+    paintController, documentRef, setVoiceOpen, qwenGenerationRef, paintSessionRef, setPaintSession,
+    lastHistoryPush, setDocument, setQwenGeneration, artworkGuideVisible, selectedElement,
+    activePanel, activePage, qwenPreparing, imageImportBusy, projectOperation, makePaintScene,
+    selectedPaintOwner, setAgentWorkTarget, setToast, endTextEdit, screenTextPosition,
+  });
   const { openImageExportDialog, chooseImageExportFolder, exportPageRange } = createImageExportActions({
     activePanelRef, endTextEdit, activePageRef, setImageExportError, setImageExportProgress,
     setImageExportDialog, imageExportBusy, setImageExportBusy, imageExportDirectory,
     setImageExportDirectory, imageExportDialog, documentRef, setToast,
   });
-  async function persistPaintResults(current:MangaDocument,batches:Array<{pageIndex:number;panelIndex:number;overlay:boolean;title:string;result:PaintResult}>,publish:(next:MangaDocument)=>void){
-    const next=cloneDocument(current), stored=next.manga.image_assets??=[];
-    const writes:Array<{id:string;blob:Blob}>=[];
-    let committed=false;
-    const finishImageImport=beginFigureCropImport();
-    try {
-      const register=async(prepared:ImageAsset,blob:Blob):Promise<ImageAsset>=>{
-        const existing=stored.find(a=>a.id===prepared.id);
-        if(existing&&writes.some(item=>item.id===existing.storageId))return existing;
-        const cached=existing?await loadFigureCropAsset(existing.storageId):null;
-        if(existing&&cached)return existing;
-        const asset={...prepared,storageId:`paint-${crypto.randomUUID()}`};
-        if(existing)stored.splice(stored.indexOf(existing),1,asset);else stored.push(asset);
-        writes.push({id:asset.storageId,blob});pendingPaintAssets.current.add(asset.storageId);return asset;
-      };
-      for(const batch of batches){
-      const {result}=batch;
-      if(result.stageImports?.length){
-        const stages=next.manga.background_stages??=[];
-        for(const {stage,blob} of result.stageImports){
-          await verifyBackgroundStage(stage,blob);
-          const existing=stages.find(item=>item.id===stage.id);
-          if(existing&&await loadFigureCropAsset(existing.storageId))continue;
-          const saved={...stage,storageId:`original-stage-${crypto.randomUUID()}`};
-          if(existing)stages.splice(stages.indexOf(existing),1,saved);else stages.push(saved);
-          writes.push({id:saved.storageId,blob});
-        }
-      }
-      const needed=new Set(result.owners.flatMap(({owner})=>paintAssetIds(owner.paint)));
-      for(const item of result.imports)if(needed.has(item.asset.id))await register(item.asset,item.blob);
-      const targetPage=next.manga.pages[batch.pageIndex];
-      if(!targetPage)throw new Error('描画先が見つかりません');
-      applyPaintAnchorIds(targetPage,batch.panelIndex,batch.overlay,result.scene?.anchorIds);
-      if(result.scene?.layerSequence!==undefined)targetPage.paint_layer_sequence=result.scene.layerSequence;
-      if(result.scene?.generatedImageSequence!==undefined)next.manga.generated_image_sequence=result.scene.generatedImageSequence;
-      for(const {owner,blob,remove,metadataOnly} of result.owners){
-        const target=owner.kind==='page'||(owner.kind==='original'&&batch.overlay)?targetPage:batch.overlay?targetPage.page_overlay:targetPage.panels[batch.panelIndex];
-        if(!target)throw new Error('描画先が見つかりません');
-        applyPaintOwnerLock(target,owner);
-        if(metadataOnly)continue;
-        if(remove){clearOwnerPaint(target,owner);continue;}
-        if(!blob)throw new Error('描画画像が見つかりません');
-        const prepared=await prepareImageAsset(new File([blob],`${batch.title}-${owner.label}.png`,{type:'image/png'}));
-        const asset=await register(prepared,blob);
-        const image={...createFrameArtwork(asset,owner.frame),paint:owner.paint};
-        applyOwnerPaint(target,owner,image);
-      }
-      }
-      const used=imageAssetIds(next);
-      next.manga.image_assets=stored.filter(asset=>!asset.storageId.startsWith('paint-')||used.has(asset.id));
-      validateImagePlacements(next);
-      await saveFigureCropAssets(writes);
-      if(documentRef.current!==current)throw new Error('保存中に作品が変更されました。描画内容はこの画面に残っています');
-      publish(next);committed=true;
-    }finally{
-      writes.forEach(item=>pendingPaintAssets.current.delete(item.id));
-      if(!committed&&writes.length)await deleteFigureCropAssets(writes.map(item=>item.id)).catch(()=>undefined);
-      finishImageImport();
-    }
-  }
-  const applyPaint = async (result:PaintResult) => {
-    const session=paintSessionRef.current;
-    if(!session)throw new Error('描画先が見つかりません');
-    if(documentRef.current!==session.document)throw new Error('作品が変更されています。ペイントを閉じて配置を確認してください');
-    await persistPaintResults(session.document,[{...session,result}],next=>{
-      setDocument(next,false);
-      const live=paintController.current?.snapshot();
-      const updated={...session,document:next,...(result.rebase&&result.scene&&live?{scene:result.scene,resume:{...live,scene:result.scene,saved:result.scene}}:{})};paintSessionRef.current=updated;setPaintSession(updated);
-    });
-  };
-  const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
-    const page = documentRef.current.manga.pages[pageIndex];
-    const panel = page?.panels[panelIndex];
-    if (!page || imageImportBusy || (scope === 'panel' && (!panel||panelLocked(panel)))) return;
-    let box: BBox = scope === 'panel' ? panelBounds(panel!) : { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h };
-    if (figureIndex !== undefined) {
-      const figure = scope === 'page_overlay' ? page.page_overlay?.figures?.[figureIndex] : panel?.figures?.[figureIndex];
-      if (!figure || figure.locked||artworkLocked(figure.artwork)) return;
-      box = figure.bbox ?? (scope === 'page_overlay' ? overlayFallbackBox(page.canvas, 'figure', figureIndex) : fallbackBox(panel!, 'figure', figureIndex));
-    } else if (bubbleIndex !== undefined) {
-      const bubble = scope === 'page_overlay' ? page.page_overlay?.bubbles?.[bubbleIndex] : panel?.bubbles[bubbleIndex];
-      if (!bubble || ownerItemLocked(bubble)) return;
-      box = bubble.bbox ?? (scope === 'page_overlay' ? overlayFallbackBox(page.canvas, 'bubble', bubbleIndex) : fallbackBox(panel!, 'bubble', bubbleIndex));
-    } else if (scope === 'page_overlay') return;
-    imageImportTarget.current = { document: documentRef.current, pageIndex, panelIndex, scope, figureIndex, bubbleIndex, box: { ...box } };
-    setActivePage(pageIndex);
-    setActivePanel(panelIndex);
-    setSelectedPanels([panelIndex]);
-    placedImageInput.current?.click();
-  };
-  const chooseOwnerImage = (key=selectedPaintOwner(),panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay'||selectedElement?.scope==='page') => {
-    if(imageImportBusy||projectOperation.current||qwenGeneration)return;
-    const session=paintSessionRef.current;
-    if(session){
-      if(session.pageIndex===pageIndex&&session.panelIndex===panelIndex&&session.overlay===Boolean(overlay)){paintController.current?.chooseImage(key);return;}
-      void paintController.current?.close().then(()=>chooseOwnerImage(key,panelIndex,pageIndex,overlay)).catch(()=>{});return;
-    }
-    choosePlacedImage(overlay?'page_overlay':'panel',key.startsWith('figure-')?Number(key.slice(7)):undefined,panelIndex,pageIndex,key.startsWith('bubble-')?Number(key.slice(7)):undefined);
-  };
-  const importPlacedImage = async (inputFile?: File|File[], explicitTarget?:NonNullable<typeof imageImportTarget.current>) => {
-    if (placedImageInput.current) placedImageInput.current.value = '';
-    const files=inputFile?(Array.isArray(inputFile)?inputFile:[inputFile]):[],file=files[0];
-    const target = explicitTarget??imageImportTarget.current;
-    imageImportTarget.current = null;
-    if (!file || !target) return;
-    if(target.generatedOwner&&target.generatedAdoption&&hasAdoptedPaintImages(target.generatedOwner,target.generatedAdoption.jobId,target.generatedAdoption.indices))return;
-    setImageImportBusy(true);
-    const newStorageIds:string[]=[];
-    const finishImageImport=beginFigureCropImport();
-    try {
-      const prepared = await prepareImageAsset(file);
-      if (documentRef.current !== target.document) throw new Error('取り込み中に作品が変更されたため、配置先を選んでやり直してください');
-      const next = cloneDocument(documentRef.current);
-      if(target.textSource){
-        const converted=ensureCanvasTextOwner(next,target.textSource.target,target.textSource.position);
-        if(!converted||converted.index!==target.bubbleIndex)throw new Error('生成する写植文字の差し込み先が変わりました');
-      }
-      const register=async(prepared:ImageAsset,blob:Blob)=>{
-        const existing=next.manga.image_assets?.find(asset=>asset.sha256===prepared.sha256);
-        const cached=existing?await loadFigureCropAsset(existing.storageId):null;
-        // A fresh cache ID also reloads already-mounted missing-image views.
-        const asset=existing&&cached?existing:existing?{...existing,storageId:prepared.storageId}:prepared;
-        if(!cached){newStorageIds.push(asset.storageId);await saveFigureCropAssets([{id:asset.storageId,blob:blob.slice(0,blob.size,asset.mediaType)}]);}
-        if(!existing)(next.manga.image_assets??=[]).push(asset);
-        else next.manga.image_assets=next.manga.image_assets?.map(item=>item.id===asset.id?asset:item);
-        return asset;
-      };
-      const asset=await register(prepared,file);
-      const targetPage = next.manga.pages[target.pageIndex];
-      let placement = target.scope === 'page' && !target.generationScope ? createImagePlacement(asset, target.box) : createFrameArtwork(asset, target.box);
-      if(target.generatedOwner){
-        const adoption=target.generatedAdoption;
-        if(target.generatedOwner.paint.layers.length+files.length>64)throw new Error('1つのグループには64レイヤーまで追加できます');
-        let generated=target.generatedOwner,sequence=next.manga.generated_image_sequence??0;
-        for(const [index,source] of files.entries()){
-          const image=index===0?asset:await register(await prepareImageAsset(source),source);
-          generated=insertGeneratedPaintImage(generated,image,generatedPaintName(sequence++),target.box,
-            {folderId:target.generatedFolderId,...(adoption?{generation:{jobId:adoption.jobId,candidateIndex:adoption.indices[index]}}:{})}).owner;
-        }
-        next.manga.generated_image_sequence=sequence;
-        const composite=await humanPoseOwnerImage(generated,next.manga.image_assets??[]);
-        const flat=await register(await prepareImageAsset(new File([composite],`${file.name}-layers.png`,{type:'image/png'})),composite);
-        placement={...createFrameArtwork(flat,generated.frame),paint:generated.paint};
-      }
-      if (documentRef.current !== target.document) throw new Error('取り込み中に作品が変更されたため、配置先を選んでやり直してください');
-      if(target.generationScope)placement.generationScope=target.generationScope;
-      let selection: CanvasElementSelection | null;
-      if(target.generationScope){
-        const images=target.generationScope==='page'?(targetPage.images??=[]):(targetPage.panels[target.panelIndex].images??=[]);
-        images.push(placement);selection={type:'image',index:images.length-1,scope:target.generationScope};
-      } else if (target.figureIndex !== undefined) {
-        const owner = target.scope === 'page_overlay' ? targetPage.page_overlay : targetPage.panels[target.panelIndex];
-        const figure = owner?.figures?.[target.figureIndex];
-        if (!figure) throw new Error('差し替えるあたりが見つかりません');
-        if(target.generatedOwner)placement.locked=figure.artwork?.locked===true;
-        setFigureArtwork(figure, placement);
-        selection = { type: 'figure', index: target.figureIndex, scope: target.scope };
-      } else if (target.bubbleIndex !== undefined) {
-        const owner = target.scope === 'page_overlay' ? targetPage.page_overlay : targetPage.panels[target.panelIndex];
-        const bubble = owner?.bubbles?.[target.bubbleIndex];
-        if (!bubble) throw new Error('読み込み先のあたりが見つかりません');
-        if(target.generatedOwner)placement.locked=bubble.paint_overlay?.locked===true;
-        const { id, bbox, ...artwork } = placement;
-        bubble.bbox = bbox; bubble.paint_overlay = artwork;
-        selection = { type: 'bubble', index: target.bubbleIndex, scope: target.scope };
-      } else if (target.scope === 'panel') {
-        if(target.generatedOwner)placement.locked=target.generatedOwner.locked===true;
-        targetPage.panels[target.panelIndex].background_images = [placement];
-        selection = null;
-      } else {
-        const owner = targetPage;
-        const images = owner.images ??= [];
-        images.push(placement);
-        selection = { type: 'image', index: images.length - 1, scope: target.scope };
-      }
-      lastHistoryPush.current = 0;
-      setDocument(next);
-      newStorageIds.length=0;
-      lastHistoryPush.current = 0;
-      if (activePageRef.current === target.pageIndex && (target.scope !== 'panel' || activePanelRef.current === target.panelIndex)) setSelectedElement(selection);
-      setToast(`${file.name} を読み込みました`);
-    } catch (error) {
-      if (newStorageIds.length) void deleteFigureCropAssets(newStorageIds).catch(() => undefined);
-      setToast(error instanceof Error ? error.message : '画像を取り込めませんでした');
-      if(explicitTarget)throw error;
-    } finally { setImageImportBusy(false); finishImageImport(); }
-  };
-  const insertQwenImage = async(file:File|File[],generationPlan?:QwenGenerationPlan,adoption?:QwenAdoption) => {
-    const target=qwenGeneration;
-    if(!target||documentRef.current!==target.document||projectOperation.current||imageImportBusy)throw new Error('作品が変更されました。差し込み先を選び直してください');
-    const {pageIndex,panelIndex,overlay,owner}=target,plan=generationPlan??target.plan,session=paintSessionRef.current;
-    if(plan.scope){
-      await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:plan.scope,generationScope:plan.scope,box:plan.outputFrame!});
-      setQwenGeneration(null);setToast(`${plan.label}の生成画像を配置しました`);return;
-    }
-    if(!owner)throw new Error('生成対象がありません');
-    const placement=plan.outputFrame&&plan.referenceFrame?{frame:plan.outputFrame,referenceFrame:plan.referenceFrame,...(plan.folderId?{folderId:plan.folderId}:{})}:plan.folderId?{frame:owner.frame,referenceFrame:owner.frame,folderId:plan.folderId}:undefined;
-    if(session){
-      if(session.pageIndex!==pageIndex||session.panelIndex!==panelIndex||session.overlay!==overlay||!paintController.current)throw new Error('描画先が変更されています。差し込み先を選び直してください');
-      await paintController.current.insertImage(file,owner.key,placement,adoption);
-    }else{
-      await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
-        figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner,generatedAdoption:adoption,generatedFolderId:plan.folderId,...(target.textSource?{textSource:target.textSource}:{})});
-    }
-    if(!adoption)setQwenGeneration(null);
-    setToast(`${Array.isArray(file)?file.length+'枚の生成画像':file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);
-  };
-  const imageGestureBoundary = (phase: 'start' | 'end', source?:'text-size') => {
-    if(source&&(phase==='start'?imageGesture.current.source===source:imageGesture.current.source!==source))return;
-    imageGesture.current = { active: phase === 'start', pushed: false, ...(phase==='start'&&source?{source}:{}) };
-    lastHistoryPush.current = 0;
-  };
-  const movePageImageToPanel = (index: number) => {
-    if (!panel || panelLocked(panel) || page?.images?.[index]?.locked) return;
-    lastHistoryPush.current = 0;
-    mutate(draft => {
-      const targetPage = draft.manga.pages[activePage];
-      const image = targetPage.images?.splice(index, 1)[0];
-      if (!image) return;
-      const images = targetPage.panels[activePanel].images ??= [];
-      if (images.some(item => item.id === image.id)) image.id = crypto.randomUUID();
-      images.push(image);
-      setSelectedElement({ type: 'image', scope: 'panel', index: images.length - 1 });
-    });
-    lastHistoryPush.current = 0;
-  };
-  const changeElementBBox = (selection: CanvasElementSelection, bbox: BBox) => {
-    if(selection.type==='panel_frame')return;
-    mutate((draft) => {
-      const targetPage = draft.manga.pages[activePage];
-      if (selection.type === 'image') {
-        const image = (selection.scope === 'page' ? targetPage?.images : targetPage?.panels[activePanel]?.images)?.[selection.index];
-        if (image && !artworkLocked(image,(selection.scope==='page'?targetPage.page_overlay:targetPage.panels[activePanel])?.bubbles) && validImageBox(bbox)) image.bbox = bbox;
-        return;
-      }
-      if (selection.scope === 'page_overlay') {
-        const overlay = targetPage?.page_overlay;
-        if (!overlay) return;
-        if (selection.type === 'figure') {
-          const figure = overlay.figures?.[selection.index];
-          if (figure && !figure.locked&&!artworkLocked(figure.artwork)) {
-            figure.bbox = bbox;
-            if (figure.analogImport) figure.analogImport.userEdited = true;
-          }
-        } else if (selection.type === 'bubble') {
-          const bubble = overlay.bubbles?.[selection.index];
-          if (bubble&&!ownerItemLocked(bubble)&&!artworkLocked(bubble.paint_overlay)) bubble.bbox = bbox;
-        } else if (selection.type === 'screen_text') {
-          const screenText=overlay.screen_text?.[selection.index];
-          if(screenText)screenText.bbox=bbox;
-        }
-        return;
-      }
-      const targetPanel = targetPage?.panels[activePanel];
-      if (!targetPanel||panelLocked(targetPanel)) return;
-      if (selection.type === 'figure') {
-        const figure = targetPanel.figures?.[selection.index];
-        if (figure && !figure.locked&&!artworkLocked(figure.artwork)) {
-          figure.bbox = bbox;
-          if (figure.analogImport) figure.analogImport.userEdited = true;
-        }
-      } else if (selection.type === 'screen_text') {
-        const screenText = targetPanel.screen_text?.[selection.index];
-        if (screenText) screenText.bbox = bbox;
-      } else {
-        const bubble = targetPanel.bubbles[selection.index];
-        if (bubble&&!ownerItemLocked(bubble)&&!artworkLocked(bubble.paint_overlay)) bubble.bbox = bbox;
-      }
-    });
-  };
-  const toggleInnerFrameSnap = () => {
-    const next = !innerFrameSnap;
-    setInnerFrameSnap(next);
-    try { localStorage.setItem(INNER_FRAME_SNAP_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-  const togglePanelGapSnap = () => {
-    const next = !panelGapSnap;
-    setPanelGapSnap(next);
-    try { localStorage.setItem(PANEL_GAP_SNAP_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-  const togglePanelSync = () => {
-    const next = !panelSync;
-    setPanelSync(next);
-    try { localStorage.setItem(PANEL_SYNC_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-  const changeShowGuides = (next: boolean) => {
-    setShowGuides(next);
-    try { localStorage.setItem(SHOW_GUIDES_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-  const changeSpreadView = (next: boolean) => {
-    setSpreadView(next);
-    try { localStorage.setItem(SPREAD_VIEW_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-  const changePersistAnalogAssets = (next: boolean) => {
-    setPersistAnalogAssets(next);
-    try { localStorage.setItem(PERSIST_ANALOG_ASSETS_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-  const changePanelStyleNumber = (
-    key: 'bubble_line_width_mm' | 'panel_frame_width_mm' | 'panel_gutter_row_mm' | 'panel_gutter_column_mm',
-    value: number,
-  ) => {
-    if (!Number.isFinite(value)) return;
-    const maximum = key === 'bubble_line_width_mm' ? 2 : key === 'panel_frame_width_mm' ? 5 : 20;
-    const minimum = key === 'bubble_line_width_mm' || key === 'panel_frame_width_mm' ? 0.1 : 0;
-    const normalized = Math.round(clamp(value, minimum, maximum) * 10) / 10;
-    if (documentRef.current.manga.meta[key] === normalized) return;
-    const apply=()=>{
-      const next = cloneDocument(documentRef.current);
-      if(key==='bubble_line_width_mm'){
-        if(!changeCanvasDefaultBubbleLineWidth(next,normalized))return;
-      }else next.manga.meta[key] = normalized;
-      setDocument(next);
-    };
-    if(paintSessionRef.current){void layerTransition(async()=>{await paintController.current?.close();apply();});}
-    else apply();
-  };
-  const changeBubbleTail = (selection: CanvasElementSelection, tail?: BubbleTailTarget, patch?:{bezier?:NonNullable<import('../types').Bubble['bezier']>;tailRoot?:import('../types').BubbleTailRoot;textPosition?:import('../types').BubbleTextPosition}) => {
-    if (selection.type !== 'bubble') return;
-    const textOnly=!!patch?.textPosition&&!tail&&!patch.bezier&&!patch.tailRoot;
-    mutate((draft) => {
-      const draftPage = draft.manga.pages[activePage];
-      const bubble = selection.scope === 'page_overlay'
-        ? draftPage?.page_overlay?.bubbles?.[selection.index]
-        : draftPage?.panels[activePanel]?.bubbles[selection.index];
-      const enclosingPanel=selection.scope==='page_overlay'?undefined:draftPage?.panels[activePanel];
-      const contentLocked=textOnly?bubble?.paint_overlay?.locked===true:artworkLocked(bubble?.paint_overlay);
-      if (bubble&&!ownerItemLocked(bubble)&&!(enclosingPanel&&panelLocked(enclosingPanel))&&!contentLocked) {
-        if(tail)bubble.tail=tail;
-        if(patch?.bezier)bubble.bezier=structuredClone(patch.bezier);
-        if(patch?.tailRoot)bubble.tail_root={...patch.tailRoot};
-        if(patch?.textPosition)bubble.text_position={...patch.textPosition};
-      }
-    });
-  };
-  const movePanel = (panelIndex: number, deltaX: number, deltaY: number) => {
-    mutate((draft) => {
-      const targetPage = draft.manga.pages[activePage];
-      const targetPanel = targetPage?.panels[panelIndex];
-      if (!targetPanel || panelGeometryLocked(targetPanel)) return;
-      translatePanel(targetPanel, deltaX, deltaY);
-      syncPanelBleedAtTrim(targetPanel, targetPage.canvas, getPrintSetup(draft.manga).bleed_mm);
-    });
-  };
-  const resizePanel = (panelIndex: number, bounds: BBox) => {
-    mutate((draft) => {
-      const targetPage = draft.manga.pages[activePage];
-      const targetPanel = targetPage?.panels[panelIndex];
-      if (targetPanel && !panelGeometryLocked(targetPanel)) {
-        resizePanelToBounds(targetPanel, bounds);
-        syncPanelBleedAtTrim(targetPanel, targetPage.canvas, getPrintSetup(draft.manga).bleed_mm);
-      }
-    });
-  };
-  const movePanelVertex = (panelIndex: number, vertexIndex: number, x: number, y: number, linkPanels = false) => {
-    mutate((draft) => {
-      const panels = draft.manga.pages[activePage]?.panels;
-      const targetPage = draft.manga.pages[activePage];
-      if (panels && !panelGeometryLocked(panels[panelIndex])) {
-        movePanelVertexWithSnap(panels, panelIndex, vertexIndex, x, y, linkPanels, targetPage.canvas);
-        panels.forEach(panel=>syncPanelBleedAtTrim(panel,targetPage.canvas,getPrintSetup(draft.manga).bleed_mm));
-      }
-    });
-  };
-  const movePanelEdge = (panelIndex: number, edgeIndex: number, deltaX: number, deltaY: number, linkPanels = false, excludedEdge?: PanelEdgeReference) => {
-    mutate((draft) => {
-      const targetPage = draft.manga.pages[activePage];
-      const panels = targetPage?.panels;
-      if (panels && !panelGeometryLocked(panels[panelIndex])) {
-        const bleedMm=getPrintSetup(draft.manga).bleed_mm;
-        movePanelEdgeGeometry(panels, panelIndex, edgeIndex, deltaX, deltaY, linkPanels, excludedEdge, targetPage.canvas, bleedMm);
-        panels.forEach(panel=>syncPanelBleedAtTrim(panel,targetPage.canvas,bleedMm));
-      }
-    });
-  };
-  const selectPage=(index:number,panelIndex=0)=>layerTransition(async()=>{
-    if(index===activePage){setTab('storyboard');setMobileStoryboardPane('editor');return;}
-    if(paintSessionRef.current)await paintController.current?.close();
-    endTextEdit();autoPaintResume.current=null;setActivePage(index);setActivePanel(panelIndex);setSelectedPanels([panelIndex]);setSelectedElement(null);setTab('storyboard');setMobileStoryboardPane('editor');
+  const { persistPaintResults, applyPaint } = createWorkspacePaintResults({
+    pendingPaintAssets, documentRef, paintSessionRef, setDocument, paintController, setPaintSession,
+  });
+  const { choosePlacedImage, importPlacedImage, chooseOwnerImage, insertQwenImage } = createImagePlacementActions({
+    activePanel, activePage, documentRef, imageImportBusy, imageImportTarget, setActivePage,
+    setActivePanel, setSelectedPanels, placedImageInput, selectedPaintOwner, selectedElement,
+    projectOperation, qwenGeneration, paintSessionRef, paintController, setImageImportBusy,
+    lastHistoryPush, setDocument, activePageRef, activePanelRef, setSelectedElement, setToast,
+    setQwenGeneration,
+  });
+  const { imageGestureBoundary, togglePanelSync, toggleInnerFrameSnap, togglePanelGapSnap, changeShowGuides, changeSpreadView, selectPage, changePanelStyleNumber, changeElementBBox, changeBubbleTail, movePanel, resizePanel, movePanelVertex, movePanelEdge, movePageImageToPanel, changePersistAnalogAssets } = createWorkspaceCanvasActions({
+    imageGesture, lastHistoryPush, panel, page, mutate, activePage, activePanel, setSelectedElement,
+    innerFrameSnap, setInnerFrameSnap, panelGapSnap, setPanelGapSnap, panelSync, setPanelSync,
+    setShowGuides, setSpreadView, setPersistAnalogAssets, documentRef, setDocument, paintSessionRef,
+    layerTransition, paintController, setTab, setMobileStoryboardPane, endTextEdit, autoPaintResume,
+    setActivePage, setActivePanel, setSelectedPanels,
   });
   const voiceRevision=(withHistory=true)=>JSON.stringify({document:documentRef.current,activePage,activePanel,selectedElement,selectedPanels,tab,
     innerFrameSnap,panelGapSnap,panelSync,showGuides,spreadView,showNewDialog,projectBusy,qwenGeneration:Boolean(qwenGeneration),textTool,zoomTool,editingText,canvasZoomPercent,
     paint:paintController.current?.snapshot(),paintInteraction:paintController.current?.interactionRevision?.(),dragging:imageGesture.current.active,
     past:withHistory?past.length:undefined,future:withHistory?future.length:undefined});
   const latestVoiceRevision=useRef(voiceRevision);latestVoiceRevision.current=voiceRevision;
-  const agentBlocked=()=>!hasDocument?'原稿を開いてください':showNewDialog||!historyAvailable()?'現在の処理を終えてください':
-    paintSessionRef.current?'配置へ戻ってから操作してください':editingText||imageGesture.current.active?'現在の文字入力やドラッグを終えてください':null;
-  const inspectAgent=()=>agentEditorSnapshot(hasDocument?documentRef.current:null,
-    agentRevision.current(JSON.stringify({editor:voiceRevision(false),blocked:agentBlocked()})),
-    activePage,selectedAgentBubble(activePage,activePanel,selectedElement),agentBlocked(),{panelIndex:activePanel,selection:selectedElement});
-  const applyAgentBubbleEdit=(value:unknown)=>{
-    const blocked=agentBlocked();if(blocked)throw Error(blocked);
-    const snapshot=inspectAgent(),next=prepareAgentBubbleEdit(documentRef.current,selectedAgentBubble(activePage,activePanel,selectedElement),snapshot.revision,value);
-    if(JSON.stringify(next)!==JSON.stringify(documentRef.current)){
-      const before=workspaceSnapshot();setDocument(next,false);timeline.current.record(before);lastHistoryPush.current=0;changedHistory();
-    }
-    return inspectAgent();
-  };
-  async function applyVoiceCommand(command:VoiceCommand,isCurrent:()=>boolean=()=>true):Promise<string>{
-    if(!hasDocument||showNewDialog||projectOperation.current||layerSwitch.current||imageImportBusy||qwenGeneration||
-       (paintController.current&&!paintController.current.canRestore()))throw new Error('現在の処理が終わってから操作してください');
-    if(command.op==='open_bubble_materials'){openBubbleMaterials();return '吹き出し素材を開きました';}
-    if(command.op==='save')return await saveProject()??'保存を開始できませんでした';
-    if(command.op==='undo'||command.op==='redo'){
-      if(!(command.op==='undo'?past:future).length)return '対象の編集履歴がありません';
-      if(!historyAvailable())throw new Error('現在の状態では編集履歴を変更できません');
-      (command.op==='undo'?undo:redo)();return command.op==='undo'?'作業を元に戻しました':'作業をやり直しました';
-    }
-    if(command.op==='setting'){
-      const state={panel_sync:panelSync,inner_frame_snap:innerFrameSnap,panel_gap_snap:panelGapSnap,guides:showGuides,spread:spreadView};
-      if(state[command.key]===command.enabled)return 'すでに指定された設定です';
-      if(command.key==='panel_sync')togglePanelSync();else if(command.key==='inner_frame_snap')toggleInnerFrameSnap();
-      else if(command.key==='panel_gap_snap')togglePanelGapSnap();else if(command.key==='guides')changeShowGuides(command.enabled);else changeSpreadView(command.enabled);
-      return '指定された表示・編集設定に変更しました';
-    }
-    if(command.op==='paint_tool'){
-      if(!paintController.current?.selectTool)throw new Error('描画対象を選んでペイントを開いてから、ペンを切り替えてください');
-      paintController.current.selectTool(command.tool);return command.tool==='pen'?'ラスターペンに切り替えました':'ベクターペンに切り替えました';
-    }
-    if(command.op==='generate_selected'){
-      if(paintSessionRef.current)throw new Error('配置へ戻ってから操作してください');
-      const target=resolveVoiceGenerationTarget(documentRef.current,activePage,activePanel,selectedElement,command);
-      const captured=documentRef.current,revision=latestVoiceRevision.current();
-      await connectAgentImageGeneration(isCurrent);
-      if(!isCurrent()||documentRef.current!==captured||latestVoiceRevision.current()!==revision)throw new Error('作品や選択が変更されたため生成を中止しました');
-      if(environmentOpen)closeEnvironmentSettings();
-      return new Promise<string>((resolve,reject)=>{
-        const agentRequest={isCurrent,resolve,reject};
-        void requestOwnerGeneration(`${target.kind}-${target.index}`,target.overlay,target.panelIndex,target.pageIndex,agentRequest)
-          .then(opened=>{if(!opened)reject(new Error('生成の準備を開けませんでした。通知を確認してください'));},reject);
-      });
-    }
-    if(paintSessionRef.current)throw new Error('配置へ戻ってから操作してください');
-    if(command.op==='page'){
-      const target=command.target;
-      const index=typeof target==='number'?document.manga.pages.findIndex(p=>p.page===target):target==='next'?activePage+1:target==='previous'?activePage-1:target==='first'?0:document.manga.pages.length-1;
-      if(index<0||index>=document.manga.pages.length)throw new Error('指定されたページがありません');
-      selectPage(index);return `${document.manga.pages[index].page}ページを表示しました`;
-    }
-    if(command.op==='artwork'){
-      mutate(draft=>applyArtworkSettings(draft.manga,{...getArtworkSettings(draft.manga),mode:command.mode}));
-      return command.mode==='draft'?'作画方式を下書き生成に変更しました':'作画方式を一体生成に変更しました';
-    }
-    if(command.op==='bubble_shape'||command.op==='bubble_text'){
-      if(selectedElement?.type!=='bubble')throw new Error('変更するフキダシを一つ選択してください');
-      const target:CanvasTextTarget={pageIndex:activePage,panelIndex:activePanel,index:selectedElement.index,kind:'bubble',overlay:selectedElement.scope==='page_overlay'};
-      if(!canvasTextEditable(documentRef.current,target,'agent'))throw new Error('対象のフキダシが非表示、または見つかりません');
-      mutate(draft=>{if(command.op==='bubble_text')editCanvasText(draft,target,command.text,undefined,'agent');else{
-        const bubble=canvasTextAt(draft,target) as import('../types').Bubble;bubble.shape=command.shape;delete bubble.bezier;
-      }});
-      return command.op==='bubble_text'?'フキダシの本文を変更しました':'フキダシの形を変更しました';
-    }
-    throw new Error('この操作の実行先がありません');
-  }
+  const { applyVoiceCommand, inspectAgent, applyAgentBubbleEdit } = createWorkspaceVoiceActions({
+    hasDocument, showNewDialog, historyAvailable, paintSessionRef, editingText, imageGesture,
+    documentRef, agentRevision, voiceRevision, activePage, activePanel, selectedElement,
+    workspaceSnapshot, setDocument, timeline, lastHistoryPush, changedHistory, projectOperation,
+    layerSwitch, imageImportBusy, qwenGeneration, paintController, openBubbleMaterials, saveProject,
+    past, future, undo, redo, panelSync, innerFrameSnap, panelGapSnap, showGuides, spreadView,
+    togglePanelSync, toggleInnerFrameSnap, togglePanelGapSnap, changeShowGuides, changeSpreadView,
+    latestVoiceRevision, environmentOpen, closeEnvironmentSettings, requestOwnerGeneration, document,
+    selectPage, mutate,
+  });
   const activeLayoutItem = newLayoutItems[newLayoutActiveIndex] ?? null;
   const newSeriesReferenceRows = newSeriesReferenceCandidates.length ? newSeriesReferenceCandidates : newSeriesReferences;
   const selectedNewSeriesReferenceRows = newSeriesReferenceRows.filter(reference => newSelectedSeriesReferencePaths.includes(reference.relativePath));

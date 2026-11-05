@@ -134,7 +134,7 @@ test('saving only includes used originals while keeping editor and Undo assets i
 
 
 function importHandler(context) {
-  const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/components/workspace/workspaceImagePlacement.ts', import.meta.url), 'utf8');
   const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let initializer;
   function visit(node) {
@@ -433,7 +433,7 @@ test('context menus hit the top visible person even in a passive panel, with bac
 
 
 function componentHandler(file, name, context) {
-  const source=readFileSync(new URL(`../src/components/${file}.tsx`,import.meta.url),'utf8');
+  const source=readFileSync(new URL(`../src/components/${file}`,import.meta.url),'utf8');
   const ast=ts.createSourceFile(`${file}.tsx`,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let expression;
   function visit(node){
@@ -448,7 +448,7 @@ function componentHandler(file, name, context) {
 test('central image entry follows the selected owner or the active paint controller',()=>{
   const calls=[];
   const context={imageImportBusy:false,projectOperation:{current:false},qwenGeneration:null,paintSessionRef:{current:null},paintController:{current:{chooseImage:key=>calls.push(key)}},selectedPaintOwner:()=>context.selectedElement?.type==='figure'?`figure-${context.selectedElement.index}`:context.selectedElement?.type==='bubble'?`bubble-${context.selectedElement.index}`:'background',selectedElement:null,activePanel:2,activePage:1,choosePlacedImage:(...args)=>calls.push(args)};
-  const choose=componentHandler('App','chooseOwnerImage',context);
+  const choose=componentHandler('workspace/workspaceImagePlacement.ts','chooseOwnerImage',context);
   choose();context.selectedElement={type:'figure',index:3};choose();
   context.selectedElement={scope:'page_overlay',type:'bubble',index:4};choose();
   context.paintSessionRef.current={pageIndex:1,panelIndex:2,overlay:true};choose();
@@ -478,17 +478,17 @@ test('manual replacement uses its latched owner and generation adds above the re
   const before=structuredClone(scene),target=scene.owners[1],history=[];
   const asset=(await documentWithImage()).manga.image_assets[0];
   const context={insertGeneratedPaintImage,paintLayerEditable,paintOwnerLocked,images:new Map(),operation:{current:false},inputActive:{current:false},backgroundOwner:null,suspended:false,locked:false,owner:target,finishGesture(){},imageTarget:{current:null},input:{current:{value:'',click(){}}},historyRef:{current:{present:scene}},assets:[],imports:[],setBusy(){},setError:message=>{assert.equal(message,'');},prepareImageAsset:async()=>asset,decodePaintImage:async()=>({}),Map,imagesRef:{current:null},setImages(){},setImports(){},newPaintLayer,imageCrop,fitImageBox,commit:next=>{history.push(context.historyRef.current.present);context.historyRef.current.present=next;},setOwnerKey(){},setLayerId(){}};
-  componentHandler('PaintEditor','chooseImage',context)(true);
+  componentHandler('PaintEditor.tsx','chooseImage',context)(true);
   context.owner=scene.owners[0]; // Selection can change while the picker is open.
-  await componentHandler('PaintEditor','importImage',context)(new File([original],'原本.png',{type:original.type}));
+  await componentHandler('PaintEditor.tsx','importImage',context)(new File([original],'原本.png',{type:original.type}));
   const result=context.historyRef.current.present;
   assert.equal(result.owners[0],scene.owners[0]);assert.equal(result.owners[1].paint.layers.length,1);assert.equal(result.owners[1].paint.layers[0].image.assetId,asset.id);
   assert.deepEqual(structuredClone(result.owners[1].paint.referenceFrame),before.owners[1].paint.referenceFrame);
   assert.deepEqual(result.owners[1].frame,target.frame);assert.equal(result.owners[1].figure,target.figure);
   assert.equal(history[0],scene);assert.deepEqual(scene,before);
   target.locked=true;target.paint.layers[0].locked=true;context.historyRef.current.present=scene;
-  componentHandler('PaintEditor','chooseImage',context)(true,target.key);assert.equal(context.imageTarget.current,null,'manual replacement remains blocked');
-  await componentHandler('PaintEditor','importImage',context)(new File([original],'生成.png',{type:original.type}),{key:target.key,replace:false},true);
+  componentHandler('PaintEditor.tsx','chooseImage',context)(true,target.key);assert.equal(context.imageTarget.current,null,'manual replacement remains blocked');
+  await componentHandler('PaintEditor.tsx','importImage',context)(new File([original],'生成.png',{type:original.type}),{key:target.key,replace:false},true);
   const generated=context.historyRef.current.present.owners.find(owner=>owner.key===target.key);
   assert.equal(generated.locked,true);assert.equal(generated.paint.layers[0].locked,true);assert.deepEqual(generated.paint.layers[0],target.paint.layers[0]);assert.equal(generated.paint.layers.length,target.paint.layers.length+1);assert.equal(generated.paint.layers[1].image.assetId,asset.id);assert.equal(generated.paint.layers[1].locked,false);
 });
@@ -496,7 +496,7 @@ test('manual replacement uses its latched owner and generation adds above the re
 test('guide display belongs to one object and OCR rasters never gate bubble text',()=>{
  const panel={background_images:[{}],figures:[{artwork:{paint:{guideInitialized:true,layers:[{guide:true,visible:false}]}}},{artwork:{}}],bubbles:[{analogTextImport:{assetId:'original',referenceHidden:false}}]};
  const context={activePanel:0,activePage:0,figurePaintVisible:figure=>figure.artwork.paint.layers.some(layer=>layer.guide&&layer.visible),document:{manga:{pages:[{panels:[panel]}]}}};
- const visible=componentHandler('App','artworkGuideVisible',context);
+ const visible=componentHandler('workspace/workspacePaintSession.ts','artworkGuideVisible',context);
  assert.equal(visible('background'),false);assert.equal(visible('figure-0'),false);
  context.document.manga.pages[0].panels[0].figures[0].artwork.paint.layers[0].visible=true;
  assert.equal(visible('figure-0'),true);assert.equal(visible('figure-1'),false);assert.equal(visible('background'),false);

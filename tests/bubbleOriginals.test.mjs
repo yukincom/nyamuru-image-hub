@@ -279,7 +279,7 @@ test('folder lock is inherited, rejects child unlocks, and native child lock sta
   assert.equal(artworkLocked(restored.manga.pages[0].panels[0].images[0],restored.manga.pages[0].panels[0].bubbles),false);
 });
 test('selecting a page original then drawing opens the page scene with the original owner',()=>{
-  const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../src/components/workspace/workspacePaintSession.ts',import.meta.url),'utf8');
   const ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let declaration;const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='openPaint')declaration=node;ts.forEachChild(node,visit);};visit(ast);
   let session;const original={key:'original-raw',kind:'original',paint:{layers:[]}};

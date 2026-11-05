@@ -1,3 +1,4 @@
+import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
@@ -9,7 +10,7 @@ const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 // 見込み: 説明popupの削除後もTとふきだしタブは残る。合格: タブ・既存設定経路が存在しhelp属性はない。範囲: ソース契約、実操作はbrowser fixtureで確認。
 test('T primary click and shortcut open a compact tabbed persistent settings window',()=>{
-  const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=read('src/components/App.tsx'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
+  const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=workspaceSources('workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
   assert.doesNotMatch(tools,/写植文字を追加|text-settings-icon-action/);
   assert.doesNotMatch(app,/function addText\(|add=\{addText\}/);
   assert.match(app,/addCanvasTextAt\(next,pageIndex,panelIndex,point,textToolStyle\)/);
@@ -36,7 +37,7 @@ test('T primary click and shortcut open a compact tabbed persistent settings win
 });
 
 test('吹き出し素材を適用した後は選択ツールへ戻す',()=>{
-  const app=read('src/components/App.tsx');
+  const app=workspaceSources('workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions');
   for(const name of ['applyBubbleMaterial','wrapScreenText','finishElementMove']){
     const start=app.indexOf(`function ${name}`),end=app.indexOf('\n  function ',start+10),body=app.slice(start,end<0?undefined:end);
     assert.ok(start>=0,`${name} must exist`);
@@ -77,7 +78,7 @@ test('font picker has categories, full names and four-column live previews',()=>
 });
 
 test('PCフォントの構成が同じでも日本語名をキャッシュへ反映し、作品履歴には触れない',async()=>{
-  const source=read('src/components/App.tsx'),ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const source=workspaceSources('workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions'),ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let handler;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text==='requestPcFonts')handler=node.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(handler);
   const old=[{family:'Example',support:'japanese'}],names=[{family:'Example',displayName:'例文'}];let updates=0,writes=0,queries=0;
   const context={localFontCatalog:{current:old},localFontQuery:{current:null},localFontSynced:{current:false},queryPcFontFamilies:async()=>{queries++;return names;},classifyPcFontFamilies:rows=>rows.map(font=>({...font,support:'japanese'})),setLocalFontFamilies:rows=>{updates++;assert.equal(rows[0].family,'Example');assert.equal(rows[0].displayName,'例文');},rememberPcFontCatalog:()=>writes++};
@@ -274,5 +275,5 @@ test('文字パレットはレイヤーと道具の変更で開閉せず、×で
  const canvas=read('src/components/MangaCanvas.tsx');
  assert.match(canvas,/textSettingsOwner&&textToolbarHost&&createPortal\(/,'text controls stay mounted when changing tools');
  assert.doesNotMatch(canvas,/<CanvasTextToolbar key=/,'selection changes do not replace the settings component');
- assert.doesNotMatch(read('src/components/App.tsx'),/<PaintTextTools[^>]+selectionVisible=/,'layer selection does not own window visibility');
+ assert.doesNotMatch(workspaceSources('workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions'),/<PaintTextTools[^>]+selectionVisible=/,'layer selection does not own window visibility');
 });

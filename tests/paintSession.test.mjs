@@ -84,7 +84,7 @@ test('overlapping flush requests serialize writes and deduplicate a shared scene
 });
 
 // Exercise the actual app save handler, including cancellation and failure, with no bridge or disk writes.
-const source=['App.tsx','workspace/workspaceProjectFiles.ts'].map(file => readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8')).join('\n');
+const source=['workspace/workspaceImagePlacement.ts','workspace/workspaceProjectFiles.ts'].map(file => readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8')).join('\n');
 const ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 let expression;
 function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='saveProject')expression=node.initializer.getText(ast);ts.forEachChild(node,visit);}
@@ -115,7 +115,7 @@ test('T resolves the live text owner while zoom and non-text selections retain p
   const context={paintGenerationOwner,paintOwnerCanvasSelection,documentRef:{current:{manga:{pages:[page]}}},selectedElement:{type:'bubble',index:99},paintSessionRef:{current:session},
    paintController:{current:{snapshot:()=>({scene,ownerKey:key}),pause:async()=>calls.push('pause'),close:async()=>calls.push('close')}},
    requestPcFonts:()=>{},layerTransition:fn=>{const task=fn();transitions.push(task);return task;},setTextPaletteRequest:()=>{},autoPaintResume:{current:null},endTextEdit:()=>{},setSelectedElement:value=>selections.push(value),selectCanvasElement:value=>selections.push(value),setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setPaintToolsCollapsed:()=>{}};
-  handler('App.tsx',name,context)();await Promise.all(transitions);
+  handler('workspace/workspaceTextActions.ts',name,context)();await Promise.all(transitions);
   const opensText=name==='chooseTextTool'&&key!=='background';
   assert.deepEqual(calls,[opensText?'close':'pause']);
   if(opensText)assert.deepEqual(JSON.parse(JSON.stringify(selections)),[{type:'bubble',index:0}]);
@@ -131,7 +131,7 @@ test('point text keeps its P to T editing target in panel and page overlay',asyn
   const context={paintGenerationOwner,paintOwnerCanvasSelection,canvasTextAt,documentRef:{current:{manga:{pages:[page]}}},activePage:0,activePanel:0,selectedElement:selected,paintSessionRef:{current:{pageIndex:0,panelIndex:0,overlay,scene}},
    paintController:{current:{snapshot:()=>({scene,ownerKey:'background'}),pause:async()=>calls.push('pause'),close:async()=>calls.push('close')}},
    requestPcFonts(){},layerTransition:fn=>{const task=fn();transitions.push(task);return task;},setTextPaletteRequest(){},autoPaintResume:{current:null},setSelectedElement:value=>calls.push(value),selectCanvasElement:value=>calls.push(value),setTextTool(){},setZoomTool(){},setBubblePathTool(){},setPaintToolsCollapsed(){}};
-  handler('App.tsx','chooseTextTool',context)();await Promise.all(transitions);assert.deepEqual(calls,['close',selected]);
+  handler('workspace/workspaceTextActions.ts','chooseTextTool',context)();await Promise.all(transitions);assert.deepEqual(calls,['close',selected]);
  }
 });
 // 見込み: 通常の道具選択は一時選択を解除してから既存の描画再開へ進む。
@@ -156,7 +156,7 @@ test('T/zoom shortcuts preserve layout dispatch without a session and suppress h
 test('page switches wait for paint and do not discard the current page on close failure',async()=>{
  for(const fail of [false,true]){
   const calls=[],context={Error,activePage:0,paintSessionRef:{current:{}},paintController:{current:{close:async()=>{calls.push('close');if(fail)throw Error('save failed');}}},layerTransition:fn=>fn(),endTextEdit:()=>calls.push('end-text'),autoPaintResume:{current:{}},setActivePage:value=>calls.push(['page',value]),setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:()=>{},setTab:()=>{},setMobileStoryboardPane:()=>{}};
-  const select=handler('App.tsx','selectPage',context);
+  const select=handler('workspace/workspaceCanvasActions.ts','selectPage',context);
   await select(0);assert.deepEqual(calls,[]);
   if(fail){await assert.rejects(select(1),/save failed/);assert.deepEqual(calls,['close']);}
   else{await select(1);assert.deepEqual(calls,['close','end-text',['page',1]]);}
@@ -176,7 +176,7 @@ test('material drop and text wrapping materialize paint before their existing do
   const context={Error,documentRef,paintSessionRef:{current:{}},layerTransition:fn=>{const task=fn();tasks.push(task);return task;},
    paintController:{current:{close:async()=>{calls.push('close');if(fail)throw Error('save failed');documentRef.current={paint:1};}}},cloneDocument:structuredClone,editCanvasBubbleMaterial:edit,convertScreenTextToBubble:edit,
    createdText:{current:null},setEditingText:()=>{},imageGestureBoundary:()=>{},endTextEdit:()=>{},lastHistoryPush:{current:0},setDocument:doc=>{calls.push('document');documentRef.current=doc;},setActivePage:()=>{},setActivePanel:()=>{},setSelectedPanels:()=>{},setSelectedElement:()=>{},setTextTool:()=>{},setZoomTool:()=>{},setBubblePathTool:()=>{},setToast:()=>{}};
-  handler('App.tsx',name,context)(target,'material');
+  handler('workspace/workspaceTextActions.ts',name,context)(target,'material');
   if(fail){await assert.rejects(Promise.all(tasks),/save failed/);assert.deepEqual(calls,['close']);}
   else{await Promise.all(tasks);assert.deepEqual(calls,['close','edit','document']);assert.equal(documentRef.current.paint,1);}
  }
@@ -295,7 +295,7 @@ test('owner stack changes retain pending guide imports and the selected generati
  const context={Map,cloneDocument:structuredClone,documentRef:{current:doc},activePage:0,paintSessionRef:{current:session},paintController:{current:{pause:async()=>calls.push('pause'),flush:async()=>calls.push('flush'),snapshot:()=>state,images:()=>new Map()}},
   layerTransition:action=>tasks.push(action()),workspaceSnapshot:()=>state,panelVisible:()=>true,panelLocked:()=>false,paintOwnerPlacementLocked:()=>false,reorderPanelArt:()=>true,makePaintScene:()=>scene,
   setDocument:next=>{context.documentRef.current=next;},timeline:{current:{record:()=>calls.push('history')}},lastHistoryPush:{current:0},changedHistory:()=>{},setPaintSession:()=>{}};
- handler('App.tsx','reorderOwnerLayers',context)(0,'background','figure-0',true);await Promise.all(tasks);
+ handler('workspace/layerPaletteActions.ts','reorderOwnerLayers',context)(0,'background','figure-0',true);await Promise.all(tasks);
  const resumed=context.paintSessionRef.current.resume;
  assert.equal(resumed.imports,state.imports);assert.equal(resumed.stageImports,state.stageImports);assert.equal(resumed.maskTarget,state.maskTarget);
  assert.equal(resumed.scene.owners[0].paint,state.scene.owners[0].paint);assert.deepEqual(calls,['pause','flush','history']);

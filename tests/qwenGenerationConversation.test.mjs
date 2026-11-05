@@ -80,7 +80,7 @@ test('missing registered references or cancelled handoff never submits an image 
 });
 
 
-function appFunction(name,context,file='App.tsx'){
+function appFunction(name,context,file=name==='applyVoiceCommand'?'workspace/workspaceVoiceActions.ts':'workspace/workspaceGeneration.ts'){
  const ast=ts.createSourceFile(file,readFileSync(new URL('../src/components/'+file,import.meta.url),'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  let expression;
  const visit=node=>{if(ts.isVariableDeclaration(node)&&node.name.getText(ast)===name)expression=node.initializer.getText(ast);
