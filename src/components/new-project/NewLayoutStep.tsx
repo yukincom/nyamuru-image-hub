@@ -64,6 +64,7 @@ export default function NewLayoutStep({
   setNewLayoutActiveIndex, rotateActiveLayoutImage, analyzeNewLayouts, newLayoutMessage,
   newCharacterReadProgress, scannerSession, hasScannedLayoutItems,
 }: Props) {
+  const resumeAnalysis = isLanClient && newLayoutItems.length > 0 && newLayoutItems.every(item => item.analysis?.detectedPanels.length);
   return (
     <section class="new-layout-step" aria-labelledby="new-creation-step-title">
     {editingNewPrintSetup ? <PrintSettingsEditor initial={newPrintSetup} externalFormId="new-print-form" onConfirm={setup => {
@@ -136,7 +137,7 @@ export default function NewLayoutStep({
               <span class="new-layout-page-number">PAGE {String(newLayoutActiveIndex + 1).padStart(2, '0')} / {String(newLayoutItems.length).padStart(2, '0')}</span>
               <strong >{activeLayoutItem.file.name}</strong>
               <div class="new-layout-rotation-controls" aria-label="画像の向きを手動指定"><button type="button" onClick={() => rotateActiveLayoutImage(270)} disabled={newLayoutTask !== 'idle'}>左90°</button><button type="button" onClick={() => rotateActiveLayoutImage(180)} disabled={newLayoutTask !== 'idle'}>180°</button><button type="button" onClick={() => rotateActiveLayoutImage(90)} disabled={newLayoutTask !== 'idle'}>右90°</button></div>
-              <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} ><Sparkles size={15} />{newLayoutTask === 'analyzing' || newLayoutTask === 'creating' ? '解析中…' : '解析開始'}</button>
+              <button type="button" class="primary-button" onClick={analyzeNewLayouts} disabled={newLayoutTask !== 'idle'} ><Sparkles size={15} />{newLayoutTask === 'analyzing' || newLayoutTask === 'creating' ? '解析中…' : resumeAnalysis ? '解析結果で編集を開始' : '解析開始'}</button>
             </div>
           </div>
           <NewLayoutAnalysisFeed items={newLayoutItems} message={newLayoutMessage} characterProgress={newCharacterReadProgress} />

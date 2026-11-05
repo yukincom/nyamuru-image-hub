@@ -1,7 +1,7 @@
 import type { WorkspaceState } from './useWorkspaceState';
 import { downloadBrowserBlob } from '../../lib/browserFiles';
 import { toSeparatedMangaYaml, omnyFileName, cloneDocument } from '../../lib/manga';
-import { isBrowserWorkspace, browserWorkspaces } from '../../lib/browserWorkspace';
+import { isBrowserWorkspace, browserWorkspaces, type BrowserDirectoryHandle } from '../../lib/browserWorkspace';
 import { createPortableProject, restorePortableProject } from '../../lib/portableProject';
 import { beginFigureCropImport } from '../../lib/figureCropStore';
 import { separateBubbleOriginals } from '../../lib/bubbleOriginals';
@@ -75,7 +75,7 @@ export function createProjectFileActions({
     finally { projectOperation.current = false; setProjectBusy(false); }
   };
 
-  const openBrowserProject = async () => {
+  const openBrowserProject = async (recent?: BrowserDirectoryHandle) => {
     if (showNewDialog || projectOperation.current) return;
     if (hasDocument && !confirm('別の作品フォルダを開きます。現在の編集は保存済みですか？')) return;
     endTextEdit();
@@ -83,7 +83,7 @@ export function createProjectFileActions({
     const current = documentRef.current;
     const finishImageImport=beginFigureCropImport();
     try {
-      const workspace = await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory);
+      const workspace = recent ? await browserWorkspaces.resumeEpisode(recent) : await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory);
       if (!workspace) return;
       const selected = await browserWorkspaces.open(workspace);
       if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
@@ -202,5 +202,5 @@ export function createProjectFileActions({
     }
   };
 
-  return { saveProject, exportOmny, openProject };
+  return { saveProject, exportOmny, openProject, openRecentProject: openBrowserProject };
 }

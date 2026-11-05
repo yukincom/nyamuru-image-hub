@@ -1,4 +1,5 @@
 import { beginFigureCropImport } from '../src/lib/figureCropStore.ts';
+import { BrowserWorkspaces } from '../src/lib/browserWorkspace.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -106,6 +107,48 @@ function automaticImportFixture(sourceKind = 'manual') {
   // Forward both handlers through the same context so task refs remain current across awaits.
   context.createNewDocument = (...args) => handler('createNewDocument', context)(...args);
   return { context, state, tasks, progress, events };
+}
+
+// フォルダー選択で許可済みの原稿は、解析から編集まで許可ダイアログが0回。
+// 解析中に失効した場合だけ再開ボタンで再許可し、OCRはどちらも1回。権限・推論・ディスクは模擬。
+for (const revokeDuringAnalysis of [false, true]) {
+  test(`LAN解析は最初の許可を引き継ぐ（解析中の権限失効: ${revokeDuringAnalysis}）`, async () => {
+    const { context, state, events } = automaticImportFixture();
+    let active = true, granted = true, prompts = 0, writes = 0;
+    const handle = {
+      queryPermission: async () => granted ? 'granted' : 'prompt',
+      requestPermission: async () => {
+        prompts++;
+        assert.ok(active, '再許可は明示的なクリックのみ');
+        granted = true;
+        return 'granted';
+      },
+      getDirectoryHandle: async () => { assert.ok(granted); writes++; },
+    };
+    context.isLanClient = true;
+    context.browserWorkspaces = new BrowserWorkspaces({ all: async () => [{ id: 'fixture', handle }] });
+    const recognize = context.recognizePanelLayout;
+    context.recognizePanelLayout = async () => {
+      active = false;
+      if (revokeDuringAnalysis) granted = false;
+      return recognize();
+    };
+    const click = handler('analyzeNewLayouts', context);
+    await click();
+    assert.equal(prompts, 0);
+    if (revokeDuringAnalysis) {
+      assert.equal(state.ShowNewDialog, true);
+      assert.ok(context.newLayoutItemsRef.current[0].analysis);
+      assert.equal(writes, 0);
+      active = true;
+      await click();
+      assert.equal(prompts, 1);
+    }
+    assert.equal(events.filter(event => event === 'panels').length, 1);
+    assert.equal(events.filter(event => event === 'editor').length, 1);
+    assert.equal(state.ShowNewDialog, false);
+    assert.equal(writes, 4);
+  });
 }
 
 for (const sourceKind of ['manual', 'scanner']) {

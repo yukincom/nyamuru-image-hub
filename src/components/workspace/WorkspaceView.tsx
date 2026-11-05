@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'preact/hooks';
+import type { BrowserDirectoryHandle } from '../../lib/browserWorkspace';
+import { recentBrowserFolder } from '../../lib/recentBrowserFolder';
 import VoiceCommands from '../VoiceCommands';
 import { isLanClient } from '../../lib/clientRuntime';
 import PaintTextTools from '../PaintTextTools';
@@ -42,7 +45,7 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
     endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement,
     reorderOwnerLayers, startBubbleEdit, artworkGuideVisible, toggleArtworkGuide, prepareQwen,
     applyPaint, autoPaintBoundary, guardDuringPaint, layerTransition, choosePlacedImage,
-    openImageExportDialog, openNewDialog, openProject, importPlacedImage, chooseImageExportFolder,
+    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, chooseImageExportFolder,
     exportPageRange, voiceRevision, applyVoiceCommand, inspectAgent, applyAgentBubbleEdit,
     applyBubbleMaterial, changeTab, selectPage, addPage, duplicatePage, deletePage, reorderPage, page,
     spreadPartnerIndex, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt,
@@ -141,6 +144,14 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
     onChangePaintBleed={value=>{try{setPaintBleedPx(savePaintBleed(localStorage,value));}catch(error){setToast(error instanceof Error?error.message:'ぬりたしを保存できません');}}}
     onChangeSaveDirectory={() => saveProject(true)}
   />;
+
+  const [recentFolder, setRecentFolder] = useState<BrowserDirectoryHandle | null>(null);
+  useEffect(() => {
+    if (!isLanClient || hasDocument) return;
+    let current = true;
+    void recentBrowserFolder().then(folder => { if (current) setRecentFolder(folder); });
+    return () => { current = false; };
+  }, [hasDocument]);
 
   return <PaintEditor onAddOutside={action=>{const s=paintSessionRef.current;if(!s)return;const page=documentRef.current.manga.pages[s.pageIndex],panel=page.panels[s.panelIndex];if(!panel)return;actOnLayer(s.panelIndex,{...action,key:'page',position:{stack:{beforePanel:`panel-${panel.id}`}}},makePaintScene(documentRef.current,s.panelIndex,s.pageIndex,true),true);}} selectedBubbleStroke={selectedBubbleStroke} resume={paintSession?.resume} resumeImages={paintSession?.images} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} onClose={closeTextTool} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} panelTools={<PanelControls disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} hasPanel={Boolean(panel)} onAdd={addPanel} painting={Boolean(paintSession)} innerFrameSnap={innerFrameSnap} panelGapSnap={panelGapSnap} panelSync={panelSync} onToggleInnerFrameSnap={toggleInnerFrameSnap} onTogglePanelGapSnap={togglePanelGapSnap} onTogglePanelSync={togglePanelSync} selectedCount={selectedPanels.length} onMerge={mergeSelectedPanelGroup} splitDirection={panelSplitDirection} onSplitDirection={setPanelSplitDirection} onSplit={splitActivePanel}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={chooseLayoutTool} onToggleBubble={(index,group)=>{const s=paintSessionRef.current;if(s)toggleTextLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,index,overlay:s.overlay,kind:'bubble'},group);}} onSelectOwner={(key,native)=>{const s=paintSessionRef.current;if(s)selectLayerOwner(key,s.panelIndex,s.pageIndex,s.overlay,native);}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session)reorderOwnerLayers(session.panelIndex,key,target,after,session.overlay);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen||layerSwitchBusy} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
     <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onPointerOverCapture={autoPaintBoundary} onFocusCapture={autoPaintBoundary} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
@@ -271,6 +282,7 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
       <section class="startup-card" aria-label="起動メニュー">
         <div class="startup-actions">
           <button type="button" class="primary-button" onClick={openNewDialog}><FilePlus2 size={19} />新規作成</button>
+          {recentFolder && <button type="button" class="secondary-button" disabled={projectBusy} onClick={() => openRecentProject(recentFolder)}><FolderOpen size={19} />「{recentFolder.name}」を再開</button>}
           <button type="button" class="secondary-button" disabled={projectBusy} onClick={openProject}><FolderOpen size={19} />作品フォルダを開く</button>
         </div>
       </section>

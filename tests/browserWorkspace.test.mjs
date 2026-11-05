@@ -104,6 +104,35 @@ test('save writes a real project file in the selected folder; a fresh client rec
   assert.notEqual(first.binding.revision, second.binding.revision);
   assert.equal(title(await fresh.open(workspace)), 'project B');
 });
+// 選択時のみ許可を求める。模擬フォルダーの閲覧・作成・保存・再開を通して要求回数を数える。
+test('initial selection obtains a single write grant and a resumed grant needs no picker or second prompt', async () => {
+  const f = fixture();
+  let prompts = 0, allow = false;
+  f.episode.permission = 'prompt';
+  f.episode.requestPermission = async ({ mode }) => {
+    assert.equal(mode, 'readwrite');
+    prompts++;
+    return f.episode.permission = allow ? 'granted' : 'denied';
+  };
+  await assert.rejects(f.client.chooseEpisode('', '', true), /許可されません/);
+  assert.equal(f.episode.entries.size, 0);
+  allow = true;
+  const workspace = await f.client.chooseEpisode('', '', true);
+  const atSelection = prompts;
+  assert.equal(atSelection, 2, 'one refused and one approved selection');
+  await f.client.suggest(workspace.token);
+  await f.client.prepare(workspace.token);
+  await f.client.write(project('saved'), await f.client.saveTarget(workspace));
+  globalThis.window.showDirectoryPicker = () => assert.fail('resume should not open a picker');
+  const reopened = new BrowserWorkspaces(f.storage);
+  const recent = await reopened.resumeEpisode(f.episode);
+  assert.equal(title(await reopened.open(recent)), 'saved');
+  assert.equal(prompts, atSelection);
+  f.episode.permission = 'prompt';
+  await reopened.resumeEpisode(f.episode);
+  assert.equal(prompts, atSelection + 1);
+});
+
 test('existing portable or native work cannot be chosen as a new project destination', async () => {
   const f = fixture(); await f.episode.add('作品.nyamuru', json('existing'));
   await assert.rejects(f.client.chooseEpisode('', '', true), /保存されています/);
@@ -274,10 +303,10 @@ test('same-folder concurrent new saves and migrations have exactly one winner', 
   }
 });
 
-test('default folder handles stay in page memory and require selection again in a fresh page', async () => {
+test('when browser storage is unavailable the selected folder still works for the session', async () => {
   const f=fixture(),client=new BrowserWorkspaces();
   const descriptor=Object.getOwnPropertyDescriptor(globalThis,'indexedDB');
-  Object.defineProperty(globalThis,'indexedDB',{configurable:true,get:()=>assert.fail('must not access IndexedDB')});
+  Object.defineProperty(globalThis,'indexedDB',{configurable:true,get:()=>{throw new DOMException('Storage unavailable', 'SecurityError');}});
   try {
     const workspace=await client.chooseEpisode();
     assert.equal(f.episode.entries.size,0,'selection alone writes no project');

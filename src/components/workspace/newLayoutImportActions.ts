@@ -1,6 +1,8 @@
 import type { WorkspaceState } from './useWorkspaceState';
 import type { PanelTemplate } from '../../lib/panelTemplates';
 import { roundMm, clamp } from '../../lib/canvasGeometry';
+import { browserWorkspaces } from '../../lib/browserWorkspace';
+import { isLanClient } from '../../lib/clientRuntime';
 import {
   type NewLayoutItem, type DetectedPageLayout, type RightAngle, displayedLayoutRotation,
   type NewLayoutTask,
@@ -18,7 +20,7 @@ interface Context {
 }
 
 export function createNewLayoutImportActions({
-  newLayoutTask, newLayoutOperationGeneration, newLayoutItemsRef, setNewLayoutItems,
+  newLayoutTask, newLayoutOperationGeneration, newLayoutItemsRef, setNewLayoutItems, newEpisodeWorkspace,
   setNewLayoutActiveIndex, setNewLayoutMessage, newLayoutImageInput, setNewLayoutRowGapMm,
   setNewLayoutColumnGapMm, setNewLayoutFrameLineWidthMm, newLayoutTaskRef, newLayoutRowGapMm,
   newLayoutColumnGapMm, newLayoutActiveIndex, scannerStopRequested, scannerSessionRef, setScannerSession,
@@ -73,9 +75,26 @@ export function createNewLayoutImportActions({
     if (!newLayoutItemsRef.current.length || newLayoutTaskRef.current !== 'idle') return;
     const generation = ++newLayoutOperationGeneration.current;
     updateNewLayoutTask('analyzing');
-    let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({ ...item, analysis: null, analyzing: false, error: undefined }));
+    const resumeAnalysis = isLanClient && newLayoutItemsRef.current.every(item => item.analysis?.detectedPanels.length);
+    if (resumeAnalysis) {
+      try {
+        if (!newEpisodeWorkspace) throw new Error('エピソードの保存先をもう一度選んでください。');
+        await browserWorkspaces.requestWriteAccess(newEpisodeWorkspace.token);
+      } catch (error) {
+        if (generation === newLayoutOperationGeneration.current) {
+          setNewLayoutMessage(error instanceof Error ? error.message : '作品フォルダーへの書き込みを許可してください。');
+          updateNewLayoutTask('idle');
+        }
+        return;
+      }
+      if (generation !== newLayoutOperationGeneration.current) return;
+    }
+    let working: NewLayoutItem[] = newLayoutItemsRef.current.map((item) => ({
+      ...item, analysis: resumeAnalysis ? item.analysis : null, analyzing: false, error: undefined,
+    }));
     setNewLayoutItems(working);
     for (let index = 0; index < working.length; index += 1) {
+      if (working[index].analysis) continue;
       setNewLayoutActiveIndex(index);
       working = working.map((item, itemIndex) => ({ ...item, analyzing: itemIndex === index }));
       newLayoutItemsRef.current = working;

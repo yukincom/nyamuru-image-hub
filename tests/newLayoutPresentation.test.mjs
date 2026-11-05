@@ -139,7 +139,7 @@ test('実解析ハンドラは進捗を逐次表示し、最新の全件結果�
   const state = { items: [item('first', analysis('前回の結果')), item('second')], message: '' };
   const itemsRef = { current: state.items };
   const run = handler('analyzeNewLayouts', {
-    newLayoutItemsRef: itemsRef, newLayoutTaskRef: { current: 'idle' }, newLayoutOperationGeneration: { current: 0 },
+    isLanClient: false, newLayoutItemsRef: itemsRef, newLayoutTaskRef: { current: 'idle' }, newLayoutOperationGeneration: { current: 0 },
     updateNewLayoutTask: () => {}, setNewLayoutItems: items => { state.items = items; },
     setNewLayoutActiveIndex: () => {}, setNewLayoutMessage: message => { state.message = message; },
     newLayoutRowGapMm: 5, newLayoutColumnGapMm: 5,

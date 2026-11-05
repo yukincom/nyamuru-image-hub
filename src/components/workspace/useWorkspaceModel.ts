@@ -156,7 +156,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     patchLatestDocument,
   });
 
-  const { saveProject, exportOmny, openProject } = createProjectFileActions(workspace, {
+  const { saveProject, exportOmny, openProject, openRecentProject } = createProjectFileActions(workspace, {
     endTextEdit: () => endTextEdit(), persistSeriesCatalog, applyPreparedSeriesIdentifiers,
     replaceDocument, setDocument,
   });
@@ -261,7 +261,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement,
     reorderOwnerLayers, startBubbleEdit, artworkGuideVisible, toggleArtworkGuide, prepareQwen,
     applyPaint, autoPaintBoundary, guardDuringPaint, layerTransition, choosePlacedImage,
-    openImageExportDialog, openNewDialog, openProject, importPlacedImage, chooseImageExportFolder,
+    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, chooseImageExportFolder,
     exportPageRange, voiceRevision, applyVoiceCommand, inspectAgent, applyAgentBubbleEdit,
     applyBubbleMaterial, changeTab, selectPage, addPage, duplicatePage, deletePage, reorderPage, page,
     spreadPartnerIndex, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt,

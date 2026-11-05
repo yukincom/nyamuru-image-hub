@@ -1,3 +1,4 @@
+import { rememberRecentBrowserFolder } from './recentBrowserFolder.ts';
 import { blobRevision, writeProjectFile, MAX_PROJECT_FILE_BYTES, type ProjectFileBinding, type ProjectFileHandle } from './browserFiles.ts';
 import { readPortableProject, portableProjectBlob, type PortableProject, type LegacyProjectSource } from './portableProject.ts';
 import type { EpisodeWorkspace, EpisodeWorkspaceTextSelection, ReferenceTextSuggestionResult, SeriesDirectorySelection, SeriesReferenceTextCandidate } from './localBridge.ts';
@@ -89,7 +90,14 @@ export async function browserReferenceCandidates(directory: BrowserDirectoryHand
   return found.sort((a, b) => Number(b.recommended) - Number(a.recommended) || a.relativePath.localeCompare(b.relativePath, 'ja')).slice(0, 20);
 }
 
-/** FileSystem handles stay in page memory until it closes, never in browser storage. */
+async function ensureFolderAccess(handle: BrowserDirectoryHandle, mode: 'read' | 'readwrite', prompt: boolean): Promise<void> {
+  if (!handle.queryPermission || await handle.queryPermission({ mode }) === 'granted') return;
+  if (!prompt) throw new Error('作品フォルダーへの書き込み許可が必要です。解析済みの場合は「解析結果で編集を開始」を押してください。それ以外の場合は保存先を選び直してください。');
+  if (await handle.requestPermission?.({ mode }) !== 'granted') {
+    throw new Error('作品フォルダーへのアクセスが許可されませんでした。読み書きするフォルダーを選び直してください。');
+  }
+}
+
 export class BrowserWorkspaces {
   private storage: BrowserFolderStorage;
   private records = new Map<string, FolderRecord>();
@@ -109,35 +117,28 @@ export class BrowserWorkspaces {
     await this.storage.put(record); this.records.set(record.id, record);
     return record;
   }
-  private async authorize(key: string, mode: 'read' | 'readwrite' = 'read'): Promise<FolderRecord> {
-    const record = await this.record(key);
-    if (record.handle.queryPermission && await record.handle.queryPermission({ mode }) !== 'granted'
-      && (!record.handle.requestPermission || await record.handle.requestPermission({ mode }) !== 'granted')) {
-      throw new Error('このPCの作品フォルダーへのアクセスが許可されませんでした。フォルダーを選び直してください');
-    }
-    return record;
-  }
-  private async pick(startIn = ''): Promise<FolderRecord | null> {
+  private async pick(startIn: string, mode: 'read' | 'readwrite'): Promise<FolderRecord | null> {
     const picker = typeof window !== 'undefined' && (window as PickerWindow).showDirectoryPicker;
     if (!picker) throw new Error('このブラウザーではフォルダーを選べません。フォルダー選択に対応したChromeで開いてください');
     const previous = startIn ? await this.record(startIn).catch(() => null) : null;
     try {
-      const handle = await picker.call(window, { mode: 'readwrite', ...(previous ? { startIn: previous.handle } : {}) });
+      const handle = await picker.call(window, { mode, ...(previous ? { startIn: previous.handle } : {}) });
+      await ensureFolderAccess(handle, mode, true);
       return await this.remember(handle);
     } catch (error) { if (cancelled(error)) return null; throw error; }
   }
   async chooseSeries(startIn = ''): Promise<SeriesDirectorySelection | null> {
-    const record = await this.pick(startIn);
+    const record = await this.pick(startIn, 'read');
     if (!record) return null;
     const candidates = await browserReferenceCandidates(record.handle);
     return { seriesDirectory: displayDirectory(record), candidates, candidateCount: candidates.length, ambiguous: candidates.length > 1, suggestion: null };
   }
   async chooseEpisode(startIn = '', seriesDirectory = '', forNew = false): Promise<EpisodeWorkspace | null> {
-    const record = await this.pick(startIn || seriesDirectory);
+    const record = await this.pick(startIn || seriesDirectory, 'readwrite');
     if (!record) return null;
     let parent = displayDirectory(record);
     if (seriesDirectory) {
-      const series = await this.authorize(seriesDirectory);
+      const series = await this.record(seriesDirectory);
       const relative = await series.handle.resolve(record.handle);
       if (!relative || !relative.length) throw new Error('シリーズフォルダー内の、今回のエピソード用フォルダーを選んでください');
       parent = seriesDirectory;
@@ -152,8 +153,14 @@ export class BrowserWorkspaces {
     }
     return { token: record.id, directory: displayDirectory(record), folderName: record.handle.name, seriesDirectory: parent };
   }
+  async resumeEpisode(handle: BrowserDirectoryHandle): Promise<EpisodeWorkspace> {
+    await ensureFolderAccess(handle, 'readwrite', true);
+    const record = await this.remember(handle);
+    const directory = displayDirectory(record);
+    return { token: record.id, directory, folderName: handle.name, seriesDirectory: directory };
+  }
   async suggest(token: string): Promise<ReferenceTextSuggestionResult> {
-    const record = await this.authorize(token);
+    const record = await this.record(token);
     const candidates = await browserReferenceCandidates(record.handle);
     const preferred = candidates.filter(item => /原作|台本|シナリオ|プロット|脚本|scenario|script|plot/i.test(item.relativePath));
     const pool = preferred.length ? preferred : candidates;
@@ -161,7 +168,7 @@ export class BrowserWorkspaces {
     return { candidateCount: candidates.length, ambiguous: pool.length > 1, suggestion: item ? { ...item, selectedBy: 'rules', confidence: 'high' } : null };
   }
   async chooseText(key: string, inFolder = false): Promise<EpisodeWorkspaceTextSelection | null> {
-    const record = await this.authorize(key);
+    const record = await this.record(key);
     const picker = (window as PickerWindow).showOpenFilePicker;
     if (!picker) throw new Error('このブラウザーではフォルダー内の資料を選べません。Chromeで開いてください');
     try {
@@ -173,8 +180,12 @@ export class BrowserWorkspaces {
       return { file, relativePath: relative?.join('/') ?? null, byteSize: file.size, sha256: await blobRevision(file) };
     } catch (error) { if (cancelled(error)) return null; throw error; }
   }
+  async requestWriteAccess(token: string): Promise<void> {
+    await ensureFolderAccess((await this.record(token)).handle, 'readwrite', true);
+  }
   async prepare(token: string): Promise<string[]> {
-    const record = await this.authorize(token, 'readwrite');
+    const record = await this.record(token);
+    await ensureFolderAccess(record.handle, 'readwrite', false);
     for (const name of MANAGED_DIRECTORIES) await record.handle.getDirectoryHandle(name, { create: true });
     return [...MANAGED_DIRECTORIES];
   }
@@ -197,14 +208,16 @@ export class BrowserWorkspaces {
     return { saved, value, legacySource, currentRevision: current?.revision ?? null, legacyRevision: legacy?.revision ?? null };
   }
   async open(workspace: EpisodeWorkspace): Promise<{ file: File; value: PortableProject; binding: ProjectFileBinding }> {
-    const record = await this.authorize(workspace.token);
+    const record = await this.record(workspace.token);
     const { saved, value } = await this.projectFile(record);
     if (!saved || !value) throw new Error('このフォルダーに作品ファイル（project.json）がありません');
+    await rememberRecentBrowserFolder(record.handle);
     return { file: saved.file, value, binding: { handle: saved.handle, revision: saved.revision } };
   }
   /** Acquire permission while the Save click is still active, before encoding the images. */
   async saveTarget(workspace: BrowserProjectWorkspace): Promise<FolderSaveTarget> {
-    const record = await this.authorize(workspace.token, 'readwrite');
+    const record = await this.record(workspace.token);
+    await ensureFolderAccess(record.handle, 'readwrite', true);
     const { saved, legacySource, currentRevision, legacyRevision } = await this.projectFile(record);
     const expected = workspace.projectRevision ?? null;
     if (saved?.file.size && expected === null) throw new Error('保存先に別の作品があります。別のフォルダーを選ぶか、保存済みの作品を開いてください');
@@ -222,7 +235,7 @@ export class BrowserWorkspaces {
       const legacy = await projectEntry(target.directory, LEGACY_PROJECT_NAME);
       if ((current?.revision ?? null) !== currentRevision || (legacy?.revision ?? null) !== target.legacyRevision) throw projectConflict();
     };
-    return writeProjectFile(blob, {
+    const result = await writeProjectFile(blob, {
       name: PROJECT_NAME, check,
       resolve: async () => {
         await check();
@@ -235,6 +248,8 @@ export class BrowserWorkspaces {
         return { handle, revision: currentRevision };
       },
     });
+    await rememberRecentBrowserFolder(target.directory);
+    return result;
   }
 }
 export const browserWorkspaces = new BrowserWorkspaces();
