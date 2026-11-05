@@ -1,6 +1,6 @@
 # UI配色ルール
 
-Nyamuruの操作画面は低彩度のセージ＋サンド、文字は墨黒を基本とする。正本は `src/styles/global.css` の `:root`。画面ごとの色値再定義や装飾用の鮮やかなピンクは追加しない。
+Nyamuruの操作画面は低彩度のセージ＋サンド、文字は墨黒を基本とする。共通の配色は `src/styles/global/workspace-and-page.css` の `:root` で定義し、`src/styles/global.css` から読み込む。画面ごとの色値再定義や装飾用の鮮やかなピンクは追加しない。
 
 | 用途 | CSS token | 色 |
 |---|---|---|

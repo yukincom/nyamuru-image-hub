@@ -223,28 +223,31 @@ npm run dev
 
 ## 開発時のmodule構成
 
-起動入口は[`scripts/nyamuru_local_bridge.py`](../scripts/nyamuru_local_bridge.py)です。`start-local-bridge.mjs`、supervisor、setupからも同じ入口を使用します。内部の担当は次のとおりです。
+起動入口は[`scripts/nyamuru_local_bridge.py`](../scripts/nyamuru_local_bridge.py)です。起動管理では `local-bridge-supervisor.mjs` がHTTP要求を受け、`bridge-lease-controller.mjs` が利用中のセッションを追跡し、`bridge-process.mjs` がbridgeプロセスの起動・終了を扱います。
 
 | `scripts/`内のmodule | 担当 |
 |---|---|
-| `nyamuru_local_bridge.py` | CLI、loopback bind検査、signal・親PID監視、worker終了、互換公開名の再export |
+| `nyamuru_local_bridge.py` / `bridge_options.py` | 本体はHTTPサーバーの開始、signal・親PID監視、worker終了、公開名の再export。引数とloopbackアドレスの検査は `bridge_options.py` |
 | `nyamuru_bridge_constants.py` | HTTP body上限・Origin regex、LLMモード、解析のsize/view候補 |
 | `nyamuru_bridge_identity.py` | サービス名・レイアウトprotocol version |
-| `nyamuru_vision_state.py` | store/serviceの生成と共有、画像・人物・資料の解析パイプライン |
-| `nyamuru_bridge_http.py` | Origin/JSON/HTTP status、既存ルートの委譲、解析lock・生成leaseとの接続 |
-| `nyamuru_layout_geometry.py` | コマ・人物領域の選別、読み順、輪郭とshape |
+| `nyamuru_vision_state.py` / `vision_character_analysis.py` | store/serviceの生成とページ画像の解析。人物資料の特徴抽出・照合と原画の演技分析は `vision_character_analysis.py` |
+| `nyamuru_bridge_http.py` / `workspace_routes.py` | Origin・JSONの検査、HTTP応答とルーティング。シリーズ・作品フォルダー・アナログ素材のPOSTは `workspace_routes.py` |
+| `nyamuru_clip_export.py` | `/api/export/clip` のページデータを変換器に渡してCLIPファイルを返す |
+| `nyamuru_layout_geometry.py` | ページのコマ配置。検出領域の選別は `nyamuru_detector_regions.py`、コマ列の境界と欠落補完は `nyamuru_panel_rows.py`、輪郭と読み順は `nyamuru_panel_shapes.py` |
 | `nyamuru_worker_runtime.py` | workerプロセスの所有・終了、runtime/path解決、worker呼出し |
 | `nyamuru_ocr_util.py` | 画像decode・回転、OCR候補の整形 |
-| `nyamuru_macos_picker.py` / `nyamuru_scanner_sessions.py` | macOSの選択UI、スキャンsessionと取り込み状態 |
+| `nyamuru_macos_picker.py` / `nyamuru_scanner_sessions.py` / `scanner_files.py` | macOSの選択UI、スキャンsessionの管理、取り込みファイルの検出・プレビュー |
 | `nyamuru_analog_asset_store.py` | アナログ画像素材の保存・読込 |
-| `nyamuru_series_catalog_store.py` | シリーズ・人物台帳、人物資料・画像、下書きと履歴 |
-| `nyamuru_episode_workspace.py` | エピソードworkspaceと参照素材・原作coverageの管理 |
-| `nyamuru_panel_actions.py` | 人物アクション提案と関連テキスト処理のLLM接続 |
-| `nyamuru_panel_draft_ledger.py` | 下書きattempt・artifact・reviewのSQLite/ファイル台帳 |
-| `nyamuru_comfy_draft.py` | 固定下書きworkflow、ComfyUI通信・監視、画像変換 |
+| `nyamuru_series_catalog_store.py` | シリーズ台帳。資料の選別は `series_reference_sources.py`、人物の文章・画像は `series_character_text.py`・`series_character_images.py`、下書きは `series_catalog_drafts.py` |
+| `nyamuru_episode_workspace.py` | エピソードフォルダーと参照素材の管理。原作対応表の検証は `source_coverage_contract.py`、保存は `source_coverage_files.py` |
+| `nyamuru_panel_actions.py` / `panel_action_request.py` | 人物アクション提案と関連テキスト処理のLLM接続、要求の組み立て |
+| `nyamuru_panel_draft_ledger.py` | 下書きの生成履歴。成果物の検証・保存は `draft_ledger_artifacts.py`、状態遷移とレビュー記録は `draft_ledger_events.py` |
+| `nyamuru_comfy_draft.py` | 下書き生成のComfyUI通信・監視。固定workflowは `panel_draft_workflow.py`、画像変換は `panel_draft_images.py` |
 | `nyamuru_panel_draft_jobs.py` | 下書きの生成・再照合・一覧・reviewの仲介 |
 | `nyamuru_project_store.py` / `nyamuru_series_background_store.py` | プロジェクトsnapshotとシリーズ背景モデルの保存・読込 |
-| `qwen_generation.py` / `generation_store.py` | Qwen Turboのjob・通信処理と生成データの保存・cache管理 |
+| `qwen_generation.py` | Qwenの生成ジョブを管理。入力準備は `generation_prompt_inputs.py`、結果処理は `generation_job_results.py` |
+| `comfy_workflows.py` / `comfy_client.py` | ワークフローの登録とComfyUIへの依頼。グラフの処理は `workflow_graph.py`、接続先の検査と通信エラーの定義は `comfy_protocol.py` |
+| `generation_store.py` / `generation_cache_store.py` | 生成ジョブの保存とキャッシュ管理 |
 
 入口からHTTP・stateを参照し、HTTPはstateと各機能moduleへ依存します。stateやHTTPから入口を逆importしません。サービス識別値はidentity、機能固有の定数は担当moduleに置きます。
 
