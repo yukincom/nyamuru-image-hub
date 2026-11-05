@@ -60,16 +60,42 @@ function loadComponent(file, globals = {}) {
     './ArtworkSettings': { __esModule: true, default: 'ArtworkSettings' },
     '../content/standard-settings.yaml?raw': { __esModule: true, default: read('src/content/standard-settings.yaml') },
   };
-  const compiled = ts.transpileModule(read(file), { compilerOptions: {
-    module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
-    jsx: ts.JsxEmit.ReactJSX, jsxImportSource: 'preact',
-  } }).outputText;
-  runInNewContext(compiled, {
-    exports, require: name => imports[name] ?? imports[name.replace(/\.ts$/u, '')] ?? stub,
-    structuredClone, window, Blob, URL, Error, confirm: () => true, ...globals,
-  });
+  // 見込み: 抽出したpanel/hookも同じ本体を通し、状態と保存の検査を維持する。
+  // 合格・範囲: hookは親の状態配列、panelは実TSXを使う。実DOMのmountはbrowser fixtureで確認する。
+  const modules = new Map();
+  const extracted = {
+    './settings/useModelSettings': 'src/components/settings/useModelSettings.ts',
+    './settings/ModelSettingsPanel': 'src/components/settings/ModelSettingsPanel.tsx',
+  };
+  function evaluate(path, result = {}) {
+    const compiled = ts.transpileModule(read(path), { compilerOptions: {
+      module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX, jsxImportSource: 'preact',
+    } }).outputText;
+    runInNewContext(compiled, {
+      exports: result, require: name => {
+        if (extracted[name]) {
+          if (!modules.has(name)) modules.set(name, evaluate(extracted[name]));
+          return modules.get(name);
+        }
+        return imports[name] ?? imports[name.replace(/^\.\.\/\.\.\//u, '../').replace(/\.ts$/u, '')] ?? stub;
+      },
+      structuredClone, window, Blob, URL, Error, confirm: () => true, ...globals,
+    });
+    return result;
+  }
+  evaluate(file, exports);
+  // The extracted panel is stateless; expand only it, leaving existing child stubs intact.
+  function expandModelPanel(tree) {
+    if (Array.isArray(tree)) return tree.map(expandModelPanel);
+    if (!tree || typeof tree !== 'object') return tree;
+    const modelPanel = modules.get('./settings/ModelSettingsPanel')?.default;
+    if (modelPanel && tree.type === modelPanel) return expandModelPanel(modelPanel(tree.props));
+    if (tree.props?.children) tree.props.children = expandModelPanel(tree.props.children);
+    return tree;
+  }
   return {
-    render: (props, name = 'default') => { cursor = 0; return exports[name](props); },
+    render: (props, name = 'default') => { cursor = 0; return expandModelPanel(exports[name](props)); },
     writes,
   };
 }
