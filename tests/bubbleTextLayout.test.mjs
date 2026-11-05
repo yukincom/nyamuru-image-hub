@@ -1,3 +1,5 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
+import {mangaCanvasSource as readMangaCanvasSource} from './editorModuleSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -6,7 +8,7 @@ import ts from 'typescript';
 import * as bubbleBezier from '../src/lib/bubbleBezier.ts';
 import {textStyleSegments,textInlineStyleCss} from '../src/lib/textStyle.ts';
 
-const source = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
+const source = readMangaCanvasSource();
 const shapeSource = readFileSync(new URL('../src/components/BubbleShapeSvg.tsx', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('MangaCanvas.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const component = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'BubbleText');
@@ -46,7 +48,7 @@ test('text content alone is centered at each zoom; move chrome, top alignment an
 test('both panel and page overlay text share the centering component; CSS centers the block not each column', () => {
   assert.equal(source.match(/<BubbleText text=\{bubble.text\}/g).length, 2);
   assert.equal(source.match(/shape=\{bubble.shape\} lengthClass/g).length, 2);
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   const rule = css.match(/\.bubble-guide \.bubble-text \{[^}]+\}/)[0];
   assert.match(rule, /top: 50%/);
   assert.match(rule, /z-index: 36/);
@@ -103,7 +105,7 @@ test('paper direct selection omits the reference rectangle but retains anchors a
   assert.equal(paper.filter(node=>node.props?.class==='bubble-bezier-node-hit').length,outline.nodes.length);
   assert.equal(nodes(exports.BubbleBezierHandles({outline,onChange(){}})).filter(node=>node.props?.class==='bubble-bezier-box').length,1);
   assert.equal(nodes(exports.BubbleBezierSelection({outline})).filter(node=>node.props?.class==='bubble-bezier-box').length,1);
-  const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+  const css=readGlobalStyles();
   assert.match(css,/\.paint-reference \.paint-bubble-original \{ overflow:visible; \}/);
 });
 
@@ -132,7 +134,7 @@ test('paper anchor editing commits once, while cancellation only discards its dr
 });
 
 test('only text requiring review is red and the ambiguous page badge is absent',()=>{
-  const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+  const css=readGlobalStyles();
   const sidebar=readFileSync(new URL('../src/components/PageSidebar.tsx',import.meta.url),'utf8');
   const text=component.getText(ast);
   assert.match(text,/review\?'is-text-review'/);
@@ -143,7 +145,7 @@ test('only text requiring review is red and the ambiguous page badge is absent',
 });
 
 test('entering text edit keeps authored line breaks and leaves the rest of the bubble clickable',()=>{
-  const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+  const css=readGlobalStyles();
   const app=readFileSync(new URL('../src/components/workspace/workspaceTextActions.ts',import.meta.url),'utf8');
   const bubbleTextSource=component.getText(ast);
   assert.match(bubbleTextSource,/onPointerDown=\{interactive\?event=>event\.stopPropagation\(\):undefined\}/);
@@ -202,7 +204,7 @@ test('inspector keeps authored data while hiding internal and duplicate controls
   const poseEditor = readFileSync(new URL('../src/components/FigureHumanPoseEditor.tsx', import.meta.url), 'utf8');
   const layerEffects = readFileSync(new URL('../src/components/PaintLayerEffects.tsx', import.meta.url), 'utf8');
   const app = readFileSync(new URL('../src/components/workspace/layerPaletteActions.ts', import.meta.url), 'utf8');
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   for (const inspector of [panelInspector, pageOverlayInspector]) {
     assert.doesNotMatch(inspector, /文字を編集|素材から入れ替え|bubble-direct-actions/);
   }
@@ -221,7 +223,7 @@ test('inspector keeps authored data while hiding internal and duplicate controls
 });
 
 test('vector bubble outlines and tails are not clipped by the editable bubble box', () => {
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   const hiddenOverflowSelectors = [...css.matchAll(/([^{}]+)\{[^{}]*overflow:\s*hidden;[^{}]*\}/g)]
     .map(match => match[1]);
   assert.ok(hiddenOverflowSelectors.every(selector => !selector.split(',').map(part => part.trim()).includes('.bubble-guide')));
@@ -232,7 +234,7 @@ test('character names use the whole figure box and stay at its lower-right corne
   assert.equal(source.match(/<FigureName name=\{figureDisplayLabel\(figure,figureIndex\)\} boxW=\{box\.w\} boxH=\{box\.h\}/g)?.length, 2);
   assert.match(component.parent.getText(ast), /<span class="figure-name-layer"><small ref=\{ref\} class="figure-name">/);
   assert.doesNotMatch(source, /<FigureName name=\{figure\.name\} boxW=\{referenceBox\.w\}/);
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   assert.match(css, /\.figure-name-layer \{[^}]*position:absolute;[^}]*inset:0;[^}]*display:flex;[^}]*align-items:flex-end;[^}]*justify-content:flex-end;[^}]*overflow:hidden;/);
   assert.match(css, /\.figure-guide \.figure-name \{[^}]*position:static;[^}]*width:max-content;[^}]*max-width:100%;[^}]*overflow:hidden;[^}]*text-align:right;/);
   assert.doesNotMatch(css, /\.figure-guide \.figure-name \{[^}]*text-align:center;/);

@@ -1,3 +1,4 @@
+import {mangaCanvasSource as readMangaCanvasSource} from './editorModuleSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -38,7 +39,7 @@ test('候補選択は既存カードと一緒に情報タブへ移し、紙面�
     assert.match(source, /<BubbleInfoPortal[\s\S]*?<ScenarioBubbleNotice[\s\S]*?<\/BubbleInfoPortal>/);
     assert.doesNotMatch(source, /label="所属"|onMoveBubble/, 'ownership is controlled only by the layer palette');
   }
-  const canvas = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
+  const canvas = readMangaCanvasSource();
   assert.doesNotMatch(canvas, /ScenarioBubbleNotice|bubbleOriginalState|referenceHidden|has-source-reference/);
   assert.equal((canvas.match(/review=\{scenarioBubbleNeedsReview\(bubble\)\}/g) ?? []).length, 2);
   const review = readFileSync(new URL('../src/components/ScenarioReview.tsx', import.meta.url), 'utf8');

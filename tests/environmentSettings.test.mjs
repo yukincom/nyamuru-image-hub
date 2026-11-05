@@ -1,3 +1,5 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
+import { mutateDocument } from '../src/components/document/editing.ts';
 import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -32,6 +34,7 @@ function loadComponent(file, globals = {}) {
   const exports = {};
   const imports = {
     'preact/jsx-runtime': jsxRuntime,
+    './document/editing.ts': { mutateDocument },
     'preact/hooks': {
       useState: initial => {
         const index = cursor++;
@@ -115,7 +118,7 @@ test('データ管理は作品フォルダと構成データの書き出しを�
   assert.equal(find(data, node => node.type === 'FilePenLine').props['aria-hidden'], 'true');
   assert.match(text(data), /オリジンデータ.*作品フォルダ.*\/test\/episode.*保存先フォルダを変更/s);
   assert.doesNotMatch(text(data), /作品の保存先|保存先を変更して保存|選び直した参照先に現在の内容を保存|⌘S|Ctrl\+S/);
-  const css = read('src/styles/global.css');
+  const css = readGlobalStyles();
   assert.match(css, /\.origin-data-row \{[^}]*justify-content: flex-start/);
   assert.match(css, /\.origin-data-current \{[^}]*flex: 0 1 400px/);
   assert.match(css, /\.generation-cache-current-size > :first-child, \.generation-cache-delete-row > :first-child \{[^}]*flex: none/);
@@ -630,8 +633,8 @@ test('形式情報の更新はデータ管理に残り、サンプル操作は�
 test('環境設定は現在作品のstateへ接続され、非表示タブはCSSでも確実に隠れる', () => {
   const app = workspaceSources('workspaceTabs');
   assert.match(app, /document=\{document\}\s+onChangeDocument=\{setDocument\}\s+onNotify=\{setToast\}/);
-  assert.match(read('src/styles/global.css'), /\.environment-tab-panel\[hidden\] \{ display: none; \}/);
-  assert.match(read('src/styles/global.css'), /\.environment-tabs \{[^}]*flex-wrap: wrap/);
+  assert.match(readGlobalStyles(), /\.environment-tab-panel\[hidden\] \{ display: none; \}/);
+  assert.match(readGlobalStyles(), /\.environment-tabs \{[^}]*flex-wrap: wrap/);
   assert.match(app, /id: 'coverage', label: 'シナリオ'/);
   const newLayout = read('src/components/new-project/NewLayoutStep.tsx');
   assert.match(newLayout, /切り出した原画参照をすぐファイル保存/);

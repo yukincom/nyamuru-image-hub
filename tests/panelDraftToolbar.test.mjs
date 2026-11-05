@@ -1,3 +1,5 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
+import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
@@ -6,9 +8,9 @@ import ts from 'typescript';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const inspector = read('../src/components/PanelInspector.tsx');
-const app = read('../src/components/App.tsx');
-const css = read('../src/styles/global.css');
-const ast = ts.createSourceFile('PanelInspector.tsx', inspector, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const app = workspaceSources('workspaceSelectionDetails');
+const css = readGlobalStyles();
+const ast = ts.createSourceFile('PanelInspector.tsx', inspector + '\n' + read('../src/components/inspector/panelDraftActions.ts'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let portal, open, request;
 function visit(node) {
   if (ts.isCallExpression(node) && node.expression.getText(ast) === 'createPortal'
@@ -76,7 +78,7 @@ test('ordinary owner generation is Qwen and separate from panel splitting and ac
   assert.doesNotMatch(toolbar, /コマ分割|コマ合体/);
   assert.doesNotMatch(toolbar, /canvas-generation-slot|Animagine|Krea2/);
   assert.match(app, /<PanelInspector[\s\S]*?panelDraftToolbarTarget=\{null\}/);
-  assert.match(app, /QwenGenerationDialog/);
+  assert.match(app, /ImageGenerationDialog/);
   for(const component of ['MangaCanvas','PaintEditor']){
     const source=read(`../src/components/${component}.tsx`);
     assert.match(source, component==='MangaCanvas' ? /人物単品を生成/ : /canGeneratePaintOwner\(menuOwner\)[^\n]*role="menuitem"[^\n]*\{menuOwner.kind==='bubble'\?'描き文字を生成':'生成'\}/);

@@ -1,3 +1,6 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
+import {paintEditorSource as readPaintEditorSource} from './editorModuleSources.mjs';
+import {mangaCanvasSource as readMangaCanvasSource} from './editorModuleSources.mjs';
 import { workspaceSources } from './helpers/workspaceSources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -221,7 +224,7 @@ test('size notifications share the existing gesture history until commit, but no
  boundary('start');boundary('end','text-size');assert.equal(imageGesture.current.active,true,'stale palette cleanup must not terminate a new non-size gesture');
 });
 test('the actual canvas route edits on a normal double click or T single click, never creates on a blank double click',()=>{
- const source=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
+ const source=readMangaCanvasSource();
  const ast=ts.createSourceFile('MangaCanvas.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='createTextAt')body=node.initializer.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(body);
  class Element {closest(){return null;}}
@@ -281,7 +284,7 @@ test('export settles the current text before taking its snapshot, while style co
  for(const name of ['saveProject','saveBrowserProject','openProject','openBrowserProject','exportPageRange']){
   let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(appAst)===name)body=node.initializer.getText(appAst);ts.forEachChild(node,visit);}visit(appAst);assert.ok(body.includes('endTextEdit();'),name);assert.ok(body.indexOf('endTextEdit();')<body.indexOf('documentRef.current'),name);
  }
- const canvas=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
+ const canvas=readMangaCanvasSource();
  assert.doesNotMatch(canvas,/item\.text_style\?\.fontSize===undefined\)onTextStyle/,'opening implicit-size legacy text must not reset the next-text style');
  const editor=readFileSync(new URL('../src/components/NativeTextEditor.tsx',import.meta.url),'utf8');
  assert.doesNotMatch(editor,/onBlur=\{[^\n]*onEnd/,'palette focus must not end the current selection');
@@ -409,10 +412,10 @@ test('moving an empty native bubble over ordinary text detects one eligible sour
 
 test('T uses one click for existing text or point text and keeps a settings toolbar without a selection',()=>{
  const app=workspaceSources('workspaceSelectionDetails', 'workspaceHistoryActions', 'workspacePanelSelection', 'workspaceTextActions', 'workspaceCanvasActions', 'pageEditActions', 'workspacePaintSession');
- const canvas=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
- const editor=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+ const canvas=readMangaCanvasSource();
+ const editor=readPaintEditorSource();
  const toolbar=readFileSync(new URL('../src/components/CanvasTextToolbar.tsx',import.meta.url),'utf8');
- const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+ const css=readGlobalStyles();
  assert.match(app,/function chooseTextTool\(\)\{void requestPcFonts\(\);void layerTransition\(async\(\)=>\{/);
  assert.doesNotMatch(app,/function chooseTextTool\(\)[\s\S]{0,500}addText\('screen_text'\)/);
  assert.match(app,/function createScreenTextAt\([\s\S]*?createdText\.current=target/);
@@ -450,7 +453,7 @@ test('T uses one click for existing text or point text and keeps a settings tool
 });
 
 test('paint cursor lives in drawing settings and the fill tool uses a recognisable upright bucket',()=>{
- const editor=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+ const editor=readPaintEditorSource();
  const settings=readFileSync(new URL('../src/components/EnvironmentSettings.tsx',import.meta.url),'utf8');
  assert.doesNotMatch(editor,/paint-cursor-choice|ラスターのカーソル/);
  assert.match(settings,/Field label="ペンカーソル"/);
@@ -493,7 +496,7 @@ test('実Appの入力待ちスタイルは部分書式・別の文字設定を�
 });
 
 test('実キャンバスは選択のないスタイル操作を本文編集・履歴へ送らない',()=>{
- const source=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8'),ast=ts.createSourceFile('MangaCanvas.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+ const source=readMangaCanvasSource(),ast=ts.createSourceFile('MangaCanvas.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='changeStyle')body=node.initializer.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(body);
  const calls=[],context={toolbarTarget:{kind:'bubble'},toolbarItem:{text:'ABC'},textTarget:{kind:'bubble'},textSelection:{start:1,end:1},onTextToolStyle:patch=>calls.push(['typing',{...patch}]),onTextStyle:(target,patch,selection)=>calls.push(['document',{...patch},{...selection}])};
  const change=runInNewContext(ts.transpileModule(`(${body})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,context);

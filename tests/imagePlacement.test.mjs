@@ -1,3 +1,4 @@
+import {paintEditorSource as readPaintEditorSource} from './editorModuleSources.mjs';
 import {paintLayerEditable,paintOwnerLocked} from '../src/lib/paintLock.ts';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
@@ -232,9 +233,9 @@ test('import completion, failure and stale targets release pending protection wi
 
 // 見込み: 不要な復号画像を履歴用に抱え続けない。合格: commit後は未使用Imageのsrcと所有Setを解放し、使用中の画像を保持。範囲: 実PaintEditor関数、Imageは模擬。
 test('paint commit releases discarded decoded images from the ownership set', () => {
-  const source=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8'),ast=ts.createSourceFile('PaintEditor.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
-  const editor=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='PaintEditor');
-  const code=editor.body.statements.filter(node=>ts.isFunctionDeclaration(node)&&['releaseImages','commit'].includes(node.name?.text)).map(node=>node.getText(ast)).join('\n');
+  const source=readPaintEditorSource(),ast=ts.createSourceFile('PaintEditor.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const editor=ast.statements.filter(node=>ts.isFunctionDeclaration(node)&&['PaintEditor','usePaintEditorState'].includes(node.name?.text));
+  const code=editor.flatMap(fn=>fn.body.statements).filter(node=>ts.isFunctionDeclaration(node)&&['releaseImages','commit'].includes(node.name?.text)).map(node=>node.getText(ast)).join('\n');
   const keep={src:'keep'},discard={src:'discard'},before={owners:[]},next={owners:[{key:'background',paint:{layers:[{image:{assetId:'keep'}}]}}]};
   const ownedImages={current:new Set([keep,discard])},imagesRef={current:new Map([['keep',keep],['discard',discard]])},historyRef={current:{past:[],present:before}};
   const context={ownedImages,imagesRef,historyRef,initial:before,ownerKey:'background',selection:null,sharedHistory:{checkpoint(){}},

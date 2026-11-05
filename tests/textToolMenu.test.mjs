@@ -1,3 +1,6 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
+import {paintEditorSource as readPaintEditorSource} from './editorModuleSources.mjs';
+import {mangaCanvasSource as readMangaCanvasSource} from './editorModuleSources.mjs';
 import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -10,7 +13,7 @@ const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
 
 // 見込み: 説明popupの削除後もTとふきだしタブは残る。合格: タブ・既存設定経路が存在しhelp属性はない。範囲: ソース契約、実操作はbrowser fixtureで確認。
 test('T primary click and shortcut open a compact tabbed persistent settings window',()=>{
-  const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=workspaceSources('useWorkspaceState', 'workspaceSelectionDetails', 'workspaceLifecycle', 'workspacePanelSelection', 'workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions'),editor=read('src/components/PaintEditor.tsx'),canvasText=read('src/lib/canvasText.ts');
+  const tools=read('src/components/PaintTextTools.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),app=workspaceSources('useWorkspaceState', 'workspaceSelectionDetails', 'workspaceLifecycle', 'workspacePanelSelection', 'workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions'),editor=readPaintEditorSource(),canvasText=read('src/lib/canvasText.ts');
   assert.doesNotMatch(tools,/写植文字を追加|text-settings-icon-action/);
   assert.doesNotMatch(app,/function addText\(|add=\{addText\}/);
   assert.match(app,/addCanvasTextAt\(next,pageIndex,panelIndex,point,textToolStyle\)/);
@@ -46,7 +49,7 @@ test('吹き出し素材を適用した後は選択ツールへ戻す',()=>{
 });
 
 test('ordinary point text grows from its start and never shows an area frame or size badge',()=>{
-  const canvas=read('src/components/MangaCanvas.tsx'),toolbar=read('src/components/CanvasTextToolbar.tsx'),canvasText=read('src/lib/canvasText.ts'),css=read('src/styles/global.css');
+  const canvas=readMangaCanvasSource(),toolbar=read('src/components/CanvasTextToolbar.tsx'),canvasText=read('src/lib/canvasText.ts'),css=readGlobalStyles();
   assert.match(canvasText,/vertical columns grow left, horizontal lines grow down/);
   assert.match(canvasText,/fitCanvasScreenTextToText\(document,t,start,origin\)/);
   assert.match(toolbar,/aria-label="文字サイズ pt"[\s\S]*?onInput=/);
@@ -60,7 +63,7 @@ test('ordinary point text grows from its start and never shows an area frame or 
 });
 
 test('font picker has categories, full names and four-column live previews',()=>{
-  const picker=read('src/components/FontFamilyPicker.tsx'),css=read('src/styles/global.css');
+  const picker=read('src/components/FontFamilyPicker.tsx'),css=readGlobalStyles();
   assert.match(picker,/日本語対応（\{counts\.japanese\}）/);
   assert.match(picker,/すべて（\{counts\.all\}）/);
   assert.match(picker,/読めないフォント（\{counts\.unreadable\}）/);
@@ -115,7 +118,7 @@ test('文字の太さは実在ウェイトのみを表示し、単一・未取�
 
 // 見込み: popupを消しても線幅の入力と単位は残る。合格: 数値とmmの隣接、説明属性なし。範囲: ソースとCSSの構造。
 test('吹き出し線幅は数値とmmを隣接させる',()=>{
-  const tools=read('src/components/PaintTextTools.tsx'),css=read('src/styles/global.css');
+  const tools=read('src/components/PaintTextTools.tsx'),css=readGlobalStyles();
   assert.doesNotMatch(tools,/<strong>吹き出し設定<\/strong>/);
   assert.doesNotMatch(tools,/data-tool-help=/);
   assert.doesNotMatch(tools,/作品内の全吹き出しに適用/);
@@ -139,13 +142,13 @@ test('行揃えはスタイルの下に3アイコンを置き、領域全体へ�
 });
 
 test('pen size rows and bubble text movement target are compact and forgiving',()=>{
-  const css=read('src/styles/global.css');
+  const css=readGlobalStyles();
   assert.match(css,/\.paint-size-palette \{ --paint-size-row:34px;/);
   assert.match(css,/\.bubble-text-move-frame \{[^}]*inset:-12px;/);
 });
 
 test('all-material view reserves a scrollbar and includes the cloud category',()=>{
-  const picker=read('src/components/BubbleMaterialPicker.tsx'),css=read('src/styles/global.css');
+  const picker=read('src/components/BubbleMaterialPicker.tsx'),css=readGlobalStyles();
   assert.match(picker,/layer==='thought'\?'雲形'/);
   assert.match(picker,/すべて（\{BUBBLE_PRESETS\.length\}）/);
   assert.match(css,/\.bubble-material-window-grid \{[^}]*overflow-y:scroll;[^}]*overscroll-behavior:contain;[^}]*scrollbar-gutter:stable;/);
@@ -161,7 +164,7 @@ test('all-material view reserves a scrollbar and includes the cloud category',()
 });
 
 test('V uses the one layout selection route and A direct selection edits the selected bubble path',()=>{
-  const editor=read('src/components/PaintEditor.tsx'),canvas=read('src/components/MangaCanvas.tsx'),bezier=read('src/components/BubbleBezierEditor.tsx'),css=read('src/styles/bubbleBezier.css'),globalCss=read('src/styles/global.css');
+  const editor=readPaintEditorSource(),canvas=readMangaCanvasSource(),bezier=read('src/components/BubbleBezierEditor.tsx'),css=read('src/styles/bubbleBezier.css'),globalCss=readGlobalStyles();
   assert.match(editor,/event\.stopPropagation\(\);selectTool\(nextTool\)/);
   assert.match(editor,/onClick=\{\(\)=>selectTool\(value\)\}/);
   assert.match(editor,/const layoutSelect=value==='vector-select'/);
@@ -220,13 +223,13 @@ test('V uses the one layout selection route and A direct selection edits the sel
 });
 
 test('panel corners use screen-fixed seven-pixel visuals and fourteen-pixel hit targets',()=>{
-  const canvas=read('src/components/MangaCanvas.tsx');
+  const canvas=readMangaCanvasSource();
   assert.match(canvas,/class="panel-resize-handle"[^>]+width=\{7\*screenUnit\} height=\{7\*screenUnit\}/);
   assert.match(canvas,/class="panel-resize-hit"[^>]+width=\{14\*screenUnit\} height=\{14\*screenUnit\}/);
 });
 
 test('a selected artwork outline cannot cover a visually higher bubble hit target',()=>{
-  const canvas=read('src/components/MangaCanvas.tsx');
+  const canvas=readMangaCanvasSource();
   assert.match(canvas,/class="artwork-selection-layer"[^>]+pointerEvents:'none'/);
   assert.match(canvas,/CanvasContentSelection[^>]+selected interactive=\{false\}/);
 });
@@ -272,7 +275,7 @@ test('文字パレットはレイヤーと道具の変更で開閉せず、×で
  render({openRequest:{id:2,tab:'text'}});assert.equal(dialog().props.hidden,false,'a new explicit T request reopens');assert.equal(button('文字').props['aria-selected'],true);
  render({openRequest:{id:3,tab:'info'}});assert.equal(button('情報').props['aria-selected'],true,'explicit scenario navigation opens information even when the palette was open');
  render({active:true});click('文字ツールの設定を閉じる');assert.equal(dialog().props.hidden,true);assert.equal(closedTools,1,'T中の×はAppへ終了を通知する');
- const canvas=read('src/components/MangaCanvas.tsx');
+ const canvas=readMangaCanvasSource();
  assert.match(canvas,/textSettingsOwner&&textToolbarHost&&createPortal\(/,'text controls stay mounted when changing tools');
  assert.doesNotMatch(canvas,/<CanvasTextToolbar key=/,'selection changes do not replace the settings component');
  assert.doesNotMatch(workspaceSources('useWorkspaceState', 'workspaceSelectionDetails', 'workspaceLifecycle', 'workspacePanelSelection', 'workspaceTextActions', 'workspaceCanvasActions', 'workspacePaintSession', 'layerPaletteActions'),/<PaintTextTools[^>]+selectionVisible=/,'layer selection does not own window visibility');

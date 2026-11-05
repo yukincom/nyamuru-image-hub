@@ -1,3 +1,4 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
 import {mangaCanvasSource} from './editorModuleSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -5,7 +6,7 @@ import test from 'node:test';
 import {figureCanvasClass as presentation} from '../src/lib/figurePresentation.ts';
 import { DETECTED_FIGURE_NAME } from '../src/lib/systemCharacters.ts';
 
-const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8')
+const css = readGlobalStyles()
   .replace(/\/\*[\s\S]*?\*\//g, '');
 const canvas = mangaCanvasSource();
 

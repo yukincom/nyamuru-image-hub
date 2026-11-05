@@ -1,3 +1,4 @@
+import {paintEditorSource as readPaintEditorSource} from './editorModuleSources.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -256,7 +257,7 @@ test('validator rejects cross-owner, ordinary-image and multiply claimed origina
 
 test('folder lock is inherited, rejects child unlocks, and native child lock stays independent',async()=>{
   const doc=await separateBubbleOriginals(imported(),deps),panel=doc.manga.pages[0].panels[0];
-  const source=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+  const source=readPaintEditorSource();
   const ast=ts.createSourceFile('PaintEditor.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let declaration;const visit=node=>{if(ts.isFunctionDeclaration(node)&&node.name?.text==='layerAction')declaration=node;ts.forEachChild(node,visit);};visit(ast);
   const historyRef={current:{present:paintScene(panel,100,doc.manga.image_assets)}},commits=[];

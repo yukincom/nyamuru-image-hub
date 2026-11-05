@@ -69,7 +69,7 @@ test('通常のしっぽは本体と同じ外周へunionし、紙面と生成画
   assert.equal((composite.path.match(/m/gi)??[]).length,1);
   assert.ok(composite.bounds.x<0||composite.bounds.y<0||composite.bounds.x+composite.bounds.w>100||composite.bounds.y+composite.bounds.h>100);
   const canvas=mangaCanvasSource();
-  const composition=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+  const composition=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
   assert.match(canvas,/bubbleTailComposite\(bubbleBox, target,[^\n]+bubble\.tail_root\)/);
   assert.match(canvas,/composite=\{presentation\?\.composites\[bubbleIndex\]/);
   assert.match(composition,/tail\.bubbleTailComposite\(bubbleBox\(index\),target,[^\n]+bubble\.tail_root\)/);

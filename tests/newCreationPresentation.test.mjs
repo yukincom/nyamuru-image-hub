@@ -1,3 +1,4 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -46,7 +47,7 @@ test('反映操作は資料の後ろに置き、次へから呼ばない', () =>
   assert.match(actions[1].getText(ast), /applySuggestedReferenceTexts/);
   const continuation = source.slice(source.indexOf('const continueFromSeriesSelection ='), source.indexOf('const continueFromSeriesSelection =') + 5500);
   assert.doesNotMatch(continuation, /applySelectedNewSeriesReferences\(|applySuggestedReferenceTexts\(/);
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   assert.match(css, /\.new-creation-reference-actions\s*\{[^}]*justify-content: flex-end/);
   assert.doesNotMatch(css, /\.new-creation-reference-actions > \.primary-button\s*\{[^}]*margin-left: auto/);
 });
@@ -84,7 +85,7 @@ test('両見出しは名前がある時だけ中央にかぎ括弧付きで表�
     assert.ok(heading.getText(ast).includes(`${value}.trim() && <span class="new-creation-topic-name">`));
     assert.ok(heading.getText(ast).includes('「　${' + value + '.trim()}　」'));
   }
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   assert.match(css, /\.new-creation-topic h4\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 2fr\) minmax\(0, 1fr\)/);
   assert.match(css, /\.new-creation-topic-name\s*\{[^}]*text-align: center;[^}]*overflow-wrap: anywhere/);
 });
@@ -92,7 +93,7 @@ test('両見出しは名前がある時だけ中央にかぎ括弧付きで表�
 test('エピソードの読み込み通知も原稿ファイル名の列へ揃える', () => {
   const message = elements.find(node => node.getText(ast).includes('{newReferenceMessage}') && attr(node, 'role') === 'status');
   assert.equal(attr(message, 'class'), 'new-reference-message is-file-aligned');
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   assert.match(css, /\.new-reference-message.is-file-aligned \{ margin-inline: 0;/);
 });
 
@@ -104,7 +105,7 @@ test('シリーズ資料の反映結果は追加ボタンと同じ行の左側�
   while (!ts.isJsxElement(parent)) parent = parent.parent;
   assert.equal(parent, actions);
   assert.ok(actions.getText(ast).indexOf('{newSeriesReferenceMessage}') < actions.getText(ast).indexOf('<button'));
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   assert.match(css, /\.new-creation-reference-actions\s*\{[^}]*flex-wrap: wrap/);
   assert.match(css, /\.new-creation-reference-actions > \.new-reference-message\s*\{[^}]*flex: 1 1 240px;[^}]*min-width: 0;[^}]*margin: 0;[^}]*overflow-wrap: anywhere/);
 });
@@ -131,7 +132,7 @@ test('フォルダ案内と選択ボタンを指定の簡潔な文言で表示�
 });
 
 test('二枠の見出しと操作ボタンは黒文字のセージ・サンド配色で輪郭を持つ', () => {
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   const heading = css.match(/\.new-creation-topic h4\s*\{([^}]+)\}/)[1];
   assert.match(heading, /background: var\(--accent-fill\)/);
   assert.match(heading, /color: var\(--ink\)/);
@@ -147,7 +148,7 @@ test('二枠の見出しと操作ボタンは黒文字のセージ・サンド�
 });
 
 test('C配色は文字4.5:1以上、操作枠3:1以上の明暗差を持つ', () => {
-  const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+  const css = readGlobalStyles();
   const palette = css.match(/:root\s*\{([^}]+)\}/)[1];
   const color = name => palette.match(new RegExp(`--${name}: (#[0-9a-f]{6});`))[1];
   assert.equal(color('accent-fill'), '#dce9df');

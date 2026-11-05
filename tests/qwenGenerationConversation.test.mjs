@@ -98,7 +98,7 @@ test('cloud handoff rechecks current execution and adult consent after pending c
    alive:{current:true},AbortController,generationAbort:{current:undefined},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
    cloud:true,workflow:null,threeImages:false,targetError:'',execution,adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,
    generationHandoff:()=>{calls.push('zip');return 'archive';},downloadBrowserBlob:()=>calls.push('download'),setNotice:()=>{}};
-  const pending=appFunction('generate',context,'QwenGenerationDialog.tsx')();
+  const pending=appFunction('generate',context,'generation/createGenerationActions.ts')();
   const current=loadGenerationPreferences(storage);
   if(revoked==='execution')current.execution='local';
   if(revoked==='consent')current.cloud.adultTermsConfirmed=false;

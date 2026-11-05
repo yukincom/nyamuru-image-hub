@@ -1,3 +1,4 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
 import {mangaCanvasSource} from './editorModuleSources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +9,7 @@ import {pixelZoomWidth,canvasZoomPercent,clampCanvasZoom,canvasZoomShortcut} fro
 import {paintPreviewSize} from '../src/lib/paintPreviewSize.ts';
 
 const canvasSource=mangaCanvasSource();
-const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+const css=readGlobalStyles();
 
 // Use the actual Space-pan effect with DOM/event doubles; it does not render a browser.
 function spacePanFixture(spread=false){

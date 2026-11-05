@@ -6,7 +6,7 @@ import ts from 'typescript';
 import {bubbleStrokeWidthMm,bubbleUsesMonologueTail,isBalloonText} from '../src/lib/bubblePresentation.ts';
 import {changeCanvasTextCategory} from '../src/lib/canvasText.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
-import { buildQwenCompositionPlan, qwenCompositionLayout, qwenCompositionTextRuns, qwenPanelImageLayers } from '../src/lib/qwenComposition.ts';
+import { buildQwenCompositionPlan, qwenCompositionLayout, qwenCompositionTextRuns, qwenPanelImageLayers } from '../src/lib/pageComposition.ts';
 import { selectHumanPose } from '../src/lib/humanPoseSelection.ts';
 import { confirmHumanPoseCameraPrompt } from '../src/lib/humanPoseScene.ts';
 import { panelShapePoints } from '../src/lib/canvasGeometry.ts';
@@ -20,7 +20,7 @@ import {bubbleArtIndices} from '../src/lib/panelLayers.ts';
 import {letteringFigureIndex} from '../src/lib/bubbleRelations.ts';
 
 function compositionTextRenderer(){
- const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+ const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='drawText');assert.ok(declaration);
  return runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,qwenCompositionTextRuns,isBalloonText});
 }
@@ -100,7 +100,7 @@ test('種類を切り替えた写植文字と描き文字は狭いbboxでも明�
 });
 
 test('export composition draws native OCR text independently and above visible raster layers',()=>{
- const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
  assert.doesNotMatch(source,/analog\.referenceHidden|loadFigureCropAsset\(analog\.assetId/);
  const start=source.indexOf('if (bubble.paint_overlay && !bubble.paint_overlay.hidden)');
  assert.ok(start>=0);
@@ -204,7 +204,7 @@ test('composition snapshot preserves polygon, positions, order and text while ex
 });
 
 test('panel bubbles precede frames and foreground; page work layers cover foreground text',()=>{
-  const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
   const ordinary=source.indexOf("layout.images.filter(image=>!image.paintScope&&!image.bubbleOriginal&&!image.generationScope)");
   const localBubbles=source.indexOf('await drawBubbles(entry)',ordinary);
   const frames=source.indexOf("panelFrameVisible(entry.panel)");
@@ -221,7 +221,7 @@ test('panel direct drawing covers text and remains below its frame regardless of
   assert.deepEqual(layers.ordinary.map(item=>item.id),['ordinary-a','ordinary-b']);
   assert.deepEqual(layers.direct.map(item=>item.id),['direct-a','direct-b']);
   assert.deepEqual(layers.generated.map(item=>item.id),['generated']);
-  const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
   const ordinary=source.indexOf('await drawImages(imageLayers.ordinary)');
   const direct=source.indexOf('await drawDirect(entry)');
   const screenText=source.indexOf('entry.panel.screen_text',ordinary);
@@ -230,7 +230,7 @@ test('panel direct drawing covers text and remains below its frame regardless of
 });
 
 test('completed compositions cover native bubble folders and remain below unlinked original crops',()=>{
-  const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+  const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
   const overlayText=source.indexOf("overlayTextFallbackBox(layout.frame, index)");
   const bubbles=source.indexOf('await drawBubbles(entry)',overlayText);
   const generated=source.indexOf('await drawImages(qwenPanelImageLayers(entry.panel.images).generated)');
@@ -300,7 +300,7 @@ test('hidden panel and overlay text are omitted from generation literal text',()
 
 // Inspect the SVG sent to the rasterizer by the real per-owner export routine.
 test('composition export uses each bubble width for its body, thought tail and join',async()=>{
- const source=readFileSync(new URL('../src/lib/qwenComposition.ts',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
  const ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  let body;function visit(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ast)==='drawBubbles')body=node.initializer.getText(ast);ts.forEachChild(node,visit);}visit(ast);assert.ok(body);
  class Element {

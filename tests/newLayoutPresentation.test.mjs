@@ -1,3 +1,4 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -16,7 +17,7 @@ const source = ['workspace/newProjectDraft.ts', 'workspace/newLayoutImportAction
 const ast = ts.createSourceFile('App.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const layoutSource = readFileSync(new URL('../src/components/new-project/NewLayoutStep.tsx', import.meta.url), 'utf8');
 const layoutAst = ts.createSourceFile('NewLayoutStep.tsx', layoutSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8');
+const css = readGlobalStyles();
 const feedSource = readFileSync(new URL('../src/components/NewLayoutAnalysisFeed.tsx', import.meta.url), 'utf8');
 const progressSource = readFileSync(new URL('../src/components/CharacterReadProgress.tsx', import.meta.url), 'utf8');
 const progressExports = {};

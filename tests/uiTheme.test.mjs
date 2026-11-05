@@ -1,3 +1,4 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
 // 見込み: 共通テーマと欄の順序を固定すれば、依頼したUIの意味を維持できる。
 // 合格: CSSと表示部品の契約が一致。ここは静的検査で、実際の位置・寸法は画面で確認する。
 import test from 'node:test';
@@ -5,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
-const css = read('src/styles/global.css');
+const css = readGlobalStyles();
 const rule = selector => {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = css.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]+)\\}`));
@@ -40,7 +41,7 @@ test('通常の大きい操作面は淡色と墨黒、エラーや削除は独�
 test('通常UIとドキュメントには旧ピンクの直書きや旧テーマ変数を残さない', () => {
   const files = ['src/styles/global.css', 'src/styles/sourceCoverage.css', 'src/layouts/DocsLayout.astro', 'src/pages/docs/index.astro', 'src/pages/licenses.astro', 'src/pages/changelog.astro', 'src/pages/404.astro'];
   for (const file of files) {
-    const ui = read(file).split('\n').filter(line => !line.includes('--panel-bg-')).join('\n');
+    const ui = (file === 'src/styles/global.css' ? css : read(file)).split('\n').filter(line => !line.includes('--panel-bg-')).join('\n');
     assert.doesNotMatch(ui, /#(?:ff6b81|ff8899|ffb3ba|e64f68|d94661)\b|rgba\(255,\s*(?:107,\s*129|179,\s*186),|--retro-(?:pink|blue)/i, file);
   }
 });

@@ -1,3 +1,6 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
+import {paintEditorSource as readPaintEditorSource} from './editorModuleSources.mjs';
+import {mangaCanvasSource as readMangaCanvasSource} from './editorModuleSources.mjs';
 import { workspaceSources } from './helpers/workspaceSources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,12 +30,12 @@ test('canvas selections resolve only their existing paint owner and never defaul
 });
 
 const paintLayerSource=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
-const globalCss=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
+const globalCss=readGlobalStyles();
 const pageLayerSource=readFileSync(new URL('../src/components/PageLayerPalette.tsx',import.meta.url),'utf8');
 const appSource=workspaceSources('workspacePaintGuard', 'workspacePanelSelection', 'workspaceLifecycle', 'workspacePaintSession', 'pageEditActions', 'workspacePaintResults', 'workspaceTextActions', 'layerPaletteActions', 'workspaceVoiceActions');
-const paintEditorSource=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+const paintEditorSource=readPaintEditorSource();
 const paintRendererSource=readFileSync(new URL('../src/lib/paintRenderer.ts',import.meta.url),'utf8');
-const mangaCanvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
+const mangaCanvasSource=readMangaCanvasSource();
 const selectionSource=readFileSync(new URL('../src/components/CanvasContentSelection.tsx',import.meta.url),'utf8');
 const lockIconSource=readFileSync(new URL('../src/components/LayerLockIcon.tsx',import.meta.url),'utf8');
 const headerSource=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');

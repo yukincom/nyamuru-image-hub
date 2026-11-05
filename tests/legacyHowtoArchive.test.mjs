@@ -1,3 +1,4 @@
+import {readGlobalStyles} from './helpers/globalStyles.mjs';
 import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -71,7 +72,7 @@ test('旧版表示のJSXとCSSを保管し、現行から分離した説明と�
   assert.match(read(archive + 'startup-intro.tsx.txt'), /使い方を見てみる？/);
   assert.match(read(archive + 'startup-intro.tsx.txt'), /class="manga-viewer"/);
   assert.match(read(archive + 'styles.css'), /@media \(max-width: 800px\)/);
-  assert.doesNotMatch(read('src/styles/global.css'), /\.howto-intro|\.manga-viewer/);
+  assert.doesNotMatch(readGlobalStyles(), /\.howto-intro|\.manga-viewer/);
   const readme = read(archive + 'README.md');
   assert.match(readme, /現在のニャムルの操作手順ではありません/);
   assert.match(readme, /CC BY 4.0/);

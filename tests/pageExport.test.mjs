@@ -1,3 +1,4 @@
+import {paintEditorSource as readPaintEditorSource} from './editorModuleSources.mjs';
 // 見込み: ページ画像・保存先選択・書込みを既存の出力経路で扱える。
 // 範囲: 画像/ZIPのbyte検査と保存APIの模擬検査。実UIと実ファイル書込みはpageExport.browser.tsx。
 import assert from 'node:assert/strict';
@@ -55,7 +56,7 @@ test('multi-page archives are valid stored ZIPs',async()=>{
 test('export names are portable and the header dialog owns page range and image format',()=>{
   assert.equal(safeExportName(' A/B:C*D?  E '),'A-B-C-D- E');
   const app=readFileSync(new URL('../src/components/workspace/WorkspaceView.tsx',import.meta.url),'utf8');
-  const editor=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
+  const editor=readPaintEditorSource();
   const palette=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
   const header=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
   const actions=readFileSync(new URL('../src/components/workspace/workspaceImageExport.ts',import.meta.url),'utf8');

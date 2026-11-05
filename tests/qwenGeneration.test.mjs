@@ -177,7 +177,7 @@ test('only work style and the bound reviewed features reach preparation; legacy 
  assert.ok(!plan.prompt.includes('人物像'));
  assert.ok(!plan.prompt.includes('赤い帽子の巨人'));
  assert.ok(!plan.prompt.includes('使わない旧ビジュアル文'));
- const editor=readFileSync(new URL('../src/components/DocumentEditors.tsx',import.meta.url),'utf8');
+ const editor=readFileSync(new URL('../src/components/document/CharactersEditor.tsx',import.meta.url),'utf8');
  assert.doesNotMatch(editor,/画像生成用ビジュアルプロンプト|character\.visual_prompt/);
  const background=buildQwenGenerationPlan(manga,0,0,false,scene.owners[0]);
  assert.ok(background.prompt.includes(style));assert.ok(!background.prompt.includes(profile));
