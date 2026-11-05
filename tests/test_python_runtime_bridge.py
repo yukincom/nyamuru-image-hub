@@ -15,6 +15,26 @@ import nyamuru_local_bridge as bridge
 import nyamuru_vision_state as vision_state
 
 
+class ModuleEntryPointTest(unittest.TestCase):
+    def test_shared_modules_load_from_package_and_script_entry_points(self):
+        """各ツールは単独でも橋経由でも同じモジュールを読める。新しいPythonで各入口のimport成功を確認し、推論は起動しない。"""
+        root = Path(__file__).resolve().parents[1]
+        modules = (
+            'generation_store', 'generation_qa', 'local_character_reference_worker',
+            'local_figure_performance_worker', 'nyamuru_comfy_draft', 'nyamuru_layout_geometry',
+            'nyamuru_panel_actions', 'nyamuru_scanner_sessions',
+        )
+        for module in modules:
+            for directory, name in ((root, 'scripts.' + module), (root / 'scripts', module)):
+                with self.subTest(name=name):
+                    # Each process starts without a sibling path injected by another imported module.
+                    result = subprocess.run(
+                        [sys.executable, '-E', '-B', '-S', '-c', 'import ' + name],
+                        cwd=directory, capture_output=True, text=True, timeout=15,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
+
 class WorkerRuntimeTest(unittest.TestCase):
     def tearDown(self):
         bridge.WORKER_SHUTDOWN_EVENT.clear()
