@@ -25,7 +25,7 @@ import { createSystemMobCharacter } from '../src/lib/systemCharacters.ts';
 import { separateBubbleOriginals } from '../src/lib/bubbleOriginals.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
-const source = readFileSync(new URL('../src/components/App.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../src/components/workspace/newProjectDraft.ts', import.meta.url), 'utf8');
 const creation = ['newProjectCreation', 'newLayoutImportActions', 'newSeriesSelection', 'newSeriesPreparation',
   'newSeriesReferences', 'newEpisodeSettings'].map(name =>
   readFileSync(new URL(`../src/components/workspace/${name}.ts`, import.meta.url), 'utf8')

@@ -1,4 +1,5 @@
-import type { MangaDocument, ImageAsset, Bubble, BBox, CanvasElementSelection } from '../../types';
+import type { WorkspaceState } from './useWorkspaceState';
+import type { MangaDocument, ImageAsset, Bubble, BBox } from '../../types';
 import type { PaintOwner, PaintScene } from '../../lib/paintDocument';
 import { type PaintImages, generationMaskBounds } from '../../lib/paintRenderer';
 import { type QwenAgentRequest, buildQwenGenerationPlan, qwenLayerCandidates } from '../../lib/qwenGeneration';
@@ -10,40 +11,22 @@ import standardArtworkSource from '../../content/standard-settings.yaml?raw';
 import { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from '../QwenGenerationDialog';
 import { getOutputSettings } from '../../lib/finishLayout.ts';
 import { type QwenCompositionScope, buildQwenCompositionPlan, captureQwenComposition } from '../../lib/qwenComposition';
-import type { MutableRef, WorkspaceGeneration, WorkspacePaintSession } from './workspaceTypes';
-import type { PaintController } from '../../lib/paintSession';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
 
 interface Context {
-  paintController: MutableRef<PaintController | null>;
-  documentRef: MutableRef<MangaDocument>;
-  setVoiceOpen: Dispatch<StateUpdater<boolean>>;
-  qwenGenerationRef: MutableRef<WorkspaceGeneration | null>;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  setPaintSession: Dispatch<StateUpdater<WorkspacePaintSession | null>>;
-  lastHistoryPush: MutableRef<number>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  setQwenGeneration: Dispatch<StateUpdater<WorkspaceGeneration | null>>;
   artworkGuideVisible: (key: string, panelIndex?: number, pageIndex?: number, overlay?: boolean, source?: MangaDocument) => boolean;
-  selectedElement: CanvasElementSelection | null;
-  activePanel: number;
-  activePage: number;
-  qwenPreparing: MutableRef<boolean>;
-  imageImportBusy: boolean;
-  projectOperation: MutableRef<boolean>;
   makePaintScene: (current: MangaDocument, panelIndex: number, pageIndex: number, overlay: boolean) => PaintScene & { generatedImageSequence: number };
   selectedPaintOwner: () => string;
-  setAgentWorkTarget: Dispatch<StateUpdater<{ pageIndex: number; panelIndex: number; selection: CanvasElementSelection; } | null>>;
-  setToast: Dispatch<StateUpdater<string | null>>;
   endTextEdit: () => void;
   screenTextPosition: (target: CanvasTextTarget) => Bubble['text_position'];
 }
 
 export function createWorkspaceGeneration({
   paintController, documentRef, setVoiceOpen, qwenGenerationRef, paintSessionRef, setPaintSession,
-  lastHistoryPush, setDocument, setQwenGeneration, artworkGuideVisible, selectedElement, activePanel,
-  activePage, qwenPreparing, imageImportBusy, projectOperation, makePaintScene, selectedPaintOwner,
-  setAgentWorkTarget, setToast, endTextEdit, screenTextPosition,
+  lastHistoryPush, setQwenGeneration, selectedElement, activePanel, activePage, qwenPreparing,
+  imageImportBusy, projectOperation, setAgentWorkTarget, setToast,
+}: WorkspaceState, {
+  setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition,
 }: Context) {
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];

@@ -1,58 +1,30 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { isLanClient } from '../../lib/clientRuntime';
-import {
-  beginSeriesCatalogDraft, type EpisodeWorkspaceTextSelection, type SeriesCharacterTextLink,
-  type SeriesCatalogDraftSession, type EpisodeWorkspace, type ReferenceTextSuggestion,
-  type SeriesReferenceTextSelection,
-} from '../../lib/localBridge';
+import { beginSeriesCatalogDraft, type EpisodeWorkspaceTextSelection, type SeriesCharacterTextLink } from '../../lib/localBridge';
 import { prefillEpisodeSettingFromSeries } from '../../lib/seriesCatalog';
 import { type ImportedStorySetting, parseStoryReferenceText } from '../../lib/settingTextImport.ts';
 import { parseScenario } from '../../lib/scenario.ts';
-import {
-  seriesTitleFromReferences, type SeriesCatalogPersistOptions, type NewSeriesMode,
-  type NewCreationStep, type NewSourceSnapshot,
-} from '../../lib/newProjectSettings';
+import { seriesTitleFromReferences, type SeriesCatalogPersistOptions } from '../../lib/newProjectSettings';
 import { sha256Hex } from '../../lib/sourceCoverage.ts';
-import type { MutableRef } from './workspaceTypes';
 import type { MangaDocument } from '../../types';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
 
 interface Context {
-  newCharacterDocumentRef: MutableRef<MangaDocument | null>;
   persistNewCharacterCatalog: (source: MangaDocument, options?: Omit<SeriesCatalogPersistOptions, 'seriesSetting'>) => Promise<MangaDocument>;
-  newCharacterTextLink: SeriesCharacterTextLink | null;
   syncCharacterText: (source: MangaDocument, archive?: { characterCatalogId: string; characterName: string; omnyYaml: string; }) => Promise<SeriesCharacterTextLink | null>;
-  setNewCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
   commitNewCharacterDraft: () => Promise<void>;
-  newCharacterDraftSession: MutableRef<SeriesCatalogDraftSession | null>;
-  setToast: Dispatch<StateUpdater<string | null>>;
-  seriesCatalogSaving: boolean;
   setNewCharacterDocument: (next: MangaDocument | null) => void;
-  newSeriesMode: NewSeriesMode;
-  setNewWorkSetting: Dispatch<StateUpdater<ImportedStorySetting>>;
-  setNewCreationStep: Dispatch<StateUpdater<NewCreationStep>>;
-  setNewSettingMessage: Dispatch<StateUpdater<string>>;
   patchNewCharacterDocument: (recipe: (draft: MangaDocument) => boolean | void) => MangaDocument;
-  setNewSourceSnapshot: Dispatch<StateUpdater<NewSourceSnapshot | null>>;
-  newEpisodeWorkspace: EpisodeWorkspace | null;
-  setNewReferenceFileName: Dispatch<StateUpdater<string>>;
-  setNewSuggestedEpisodeReference: Dispatch<StateUpdater<ReferenceTextSuggestion | null>>;
-  setNewReferenceMessage: Dispatch<StateUpdater<string>>;
-  setNewSeriesName: Dispatch<StateUpdater<string>>;
-  newSeriesReferences: SeriesReferenceTextSelection[];
-  setNewWorkTitle: Dispatch<StateUpdater<string>>;
-  setNewEpisodeNumber: Dispatch<StateUpdater<string>>;
-  newSuggestedEpisodeReference: ReferenceTextSuggestion | null;
-  newWorkSetting: ImportedStorySetting;
 }
 
 export function createEpisodeSettingActions({
-  newCharacterDocumentRef, persistNewCharacterCatalog, newCharacterTextLink, syncCharacterText,
-  setNewCharacterTextLink, commitNewCharacterDraft, newCharacterDraftSession, setToast,
-  seriesCatalogSaving, setNewCharacterDocument, newSeriesMode, setNewWorkSetting, setNewCreationStep,
-  setNewSettingMessage, patchNewCharacterDocument, setNewSourceSnapshot, newEpisodeWorkspace,
-  setNewReferenceFileName, setNewSuggestedEpisodeReference, setNewReferenceMessage, setNewSeriesName,
-  newSeriesReferences, setNewWorkTitle, setNewEpisodeNumber, newSuggestedEpisodeReference,
-  newWorkSetting,
+  newCharacterDocumentRef, newCharacterTextLink, setNewCharacterTextLink, newCharacterDraftSession,
+  setToast, seriesCatalogSaving, newSeriesMode, setNewWorkSetting, setNewCreationStep,
+  setNewSettingMessage, setNewSourceSnapshot, newEpisodeWorkspace, setNewReferenceFileName,
+  setNewSuggestedEpisodeReference, setNewReferenceMessage, setNewSeriesName, newSeriesReferences,
+  setNewWorkTitle, setNewEpisodeNumber, newSuggestedEpisodeReference, newWorkSetting,
+}: WorkspaceState, {
+  persistNewCharacterCatalog, syncCharacterText, commitNewCharacterDraft, setNewCharacterDocument,
+  patchNewCharacterDocument,
 }: Context) {
   const saveNewCharacters = async () => {
     const latest = newCharacterDocumentRef.current;

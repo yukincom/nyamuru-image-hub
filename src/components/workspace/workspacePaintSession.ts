@@ -1,4 +1,5 @@
-import type { MangaDocument, CanvasElementSelection } from '../../types';
+import type { WorkspaceState } from './useWorkspaceState';
+import type { MangaDocument } from '../../types';
 import { validateImagePlacements } from '../../lib/imagePlacement';
 import { overlayFallbackBox } from '../../lib/pageCanvas';
 import { getPrintSetup } from '../../lib/printSettings';
@@ -6,45 +7,18 @@ import { paintScene, figurePaintVisible, canvasPaintOwnerKey, type PaintScene, w
 import { paintColorMode } from '../../lib/paintColor';
 import { panelVisible } from '../../lib/panelLayers';
 import { panelDisplayLabel } from '../../lib/displayLabels';
-import type { MutableRef, WorkspacePaintSession, MobileStoryboardPane, WorkspaceGeneration } from './workspaceTypes';
-import type { PaintController, PaintLayerAction } from '../../lib/paintSession';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { BubblePathToolMode } from '../../lib/paintWorkspace';
 
 interface Context {
-  activePanel: number;
-  activePage: number;
-  document: MangaDocument;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  paintController: MutableRef<PaintController | null>;
-  documentRef: MutableRef<MangaDocument>;
-  pendingLayerAction: MutableRef<PaintLayerAction | null>;
-  selectedElement: CanvasElementSelection | null;
-  imageImportBusy: boolean;
-  qwenPreparing: MutableRef<boolean>;
   endTextEdit: () => void;
-  setTextTool: Dispatch<StateUpdater<boolean>>;
-  setZoomTool: Dispatch<StateUpdater<boolean>>;
-  setBubblePathTool: Dispatch<StateUpdater<BubblePathToolMode>>;
-  paintBleedPx: number;
-  setMobileStoryboardPane: (value: MobileStoryboardPane) => void;
-  setPaintToolsCollapsed: Dispatch<StateUpdater<boolean>>;
-  setPaintLayersCollapsed: Dispatch<StateUpdater<boolean>>;
-  autoPaintResume: MutableRef<{ pageIndex: number; panelIndex: number; overlay: boolean; ownerKey: string; } | null>;
-  setPaintSession: Dispatch<StateUpdater<WorkspacePaintSession | null>>;
-  setToast: Dispatch<StateUpdater<string | null>>;
-  layerSwitch: MutableRef<boolean>;
-  projectOperation: MutableRef<boolean>;
-  qwenGeneration: WorkspaceGeneration | null;
-  setLayerSwitchBusy: Dispatch<StateUpdater<boolean>>;
 }
 
 export function createWorkspacePaintSession({
-  activePanel, activePage, document, paintSessionRef, paintController, documentRef,
-  pendingLayerAction, selectedElement, imageImportBusy, qwenPreparing, endTextEdit, setTextTool,
-  setZoomTool, setBubblePathTool, paintBleedPx, setMobileStoryboardPane, setPaintToolsCollapsed,
-  setPaintLayersCollapsed, autoPaintResume, setPaintSession, setToast, layerSwitch, projectOperation,
-  qwenGeneration, setLayerSwitchBusy,
+  activePanel, activePage, document, paintSessionRef, paintController, documentRef, pendingLayerAction,
+  selectedElement, imageImportBusy, qwenPreparing, setTextTool, setZoomTool, setBubblePathTool,
+  paintBleedPx, setMobileStoryboardPane, setPaintToolsCollapsed, setPaintLayersCollapsed, autoPaintResume,
+  setPaintSession, setToast, layerSwitch, projectOperation, qwenGeneration, setLayerSwitchBusy,
+}: WorkspaceState, {
+  endTextEdit,
 }: Context) {
   const makePaintScene = (current:MangaDocument,panelIndex:number,pageIndex:number,overlay:boolean) => {
     const targetPage=current.manga.pages[pageIndex],targetPanel=targetPage?.panels[panelIndex];

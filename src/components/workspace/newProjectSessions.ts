@@ -1,81 +1,34 @@
-import {
-  cancelScannerSession, discardPendingScannerSession, commitScannerSession, finishScannerSession,
-  discardSeriesCatalogDraft, commitSeriesCatalogDraft, listSeriesCatalogs, getPendingScannerSession,
-  type ScannerSession, type PendingScannerSession, type SeriesCatalogDraftSession,
-  type EpisodeWorkspace, type SeriesCharacterTextLink, type SeriesCatalogSummary,
-} from '../../lib/localBridge';
+import type { WorkspaceState } from './useWorkspaceState';
+import { cancelScannerSession, discardPendingScannerSession, commitScannerSession, finishScannerSession, discardSeriesCatalogDraft, commitSeriesCatalogDraft, listSeriesCatalogs, getPendingScannerSession } from '../../lib/localBridge';
 import { isLanClient } from '../../lib/clientRuntime';
 import {
   stopNewCreationBridgeSession, stopNewCreationBridgeSessionOnPageExit, startNewCreationBridgeSession,
 } from '../../lib/localBridgeLifecycle.ts';
-import { emptyNewWorkSetting, type NewSourceSnapshot, type NewSeriesMode, type NewCreationStep } from '../../lib/newProjectSettings';
+import { emptyNewWorkSetting } from '../../lib/newProjectSettings';
 import { type PrintSetup, loadPrintPreferences, defaultPrintSetup } from '../../lib/printSettings';
-import type { MutableRef } from './workspaceTypes';
-import type { NewLayoutItem, NewLayoutTask } from '../../lib/newLayoutPreview';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { RefObject } from 'preact';
+import type { NewLayoutTask } from '../../lib/newLayoutPreview';
 import type { MangaDocument } from '../../types';
-import type { ImportedStorySetting } from '../../lib/settingTextImport.ts';
 
 interface Context {
-  newLayoutItemsRef: MutableRef<NewLayoutItem[]>;
-  setNewLayoutItems: Dispatch<StateUpdater<NewLayoutItem[]>>;
-  setNewLayoutActiveIndex: Dispatch<StateUpdater<number>>;
-  setNewLayoutMessage: Dispatch<StateUpdater<string | null>>;
-  setScannerReceivedCount: Dispatch<StateUpdater<number>>;
-  newLayoutImageInput: RefObject<HTMLInputElement>;
-  scannerSessionRef: MutableRef<ScannerSession | null>;
-  setScannerSession: Dispatch<StateUpdater<ScannerSession | null>>;
-  setPendingScannerSession: Dispatch<StateUpdater<PendingScannerSession | null>>;
-  newCreationBridgeToken: MutableRef<string | null>;
-  newCharacterDraftSession: MutableRef<SeriesCatalogDraftSession | null>;
-  seriesCatalogSaveQueue: MutableRef<Promise<void>>;
-  newLayoutTaskRef: MutableRef<NewLayoutTask>;
-  newLayoutOperationGeneration: MutableRef<number>;
-  scannerStopRequested: MutableRef<boolean>;
   updateNewLayoutTask: (task: NewLayoutTask) => void;
-  setToast: Dispatch<StateUpdater<string | null>>;
   setNewCharacterDocument: (next: MangaDocument | null) => void;
-  setShowNewDialog: Dispatch<StateUpdater<boolean>>;
   endTextEdit: () => void;
-  setNewWorkTitle: Dispatch<StateUpdater<string>>;
-  setNewWorkSetting: Dispatch<StateUpdater<ImportedStorySetting>>;
-  setNewSettingMessage: Dispatch<StateUpdater<string>>;
-  setNewSeriesName: Dispatch<StateUpdater<string>>;
-  setNewSeriesId: Dispatch<StateUpdater<string>>;
   clearNewSeriesReference: () => void;
-  setNewEpisodeWorkspace: Dispatch<StateUpdater<EpisodeWorkspace | null>>;
-  setNewWorkspaceSelecting: Dispatch<StateUpdater<boolean>>;
-  setNewWorkspaceMessage: Dispatch<StateUpdater<string>>;
-  setNewReferenceSelecting: Dispatch<StateUpdater<boolean>>;
-  setNewSourceSnapshot: Dispatch<StateUpdater<NewSourceSnapshot | null>>;
-  setNewReferenceFileName: Dispatch<StateUpdater<string>>;
-  setNewReferenceMessage: Dispatch<StateUpdater<string>>;
-  setNewCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
-  setCharacterTextBusy: Dispatch<StateUpdater<boolean>>;
-  setNewSeriesMode: Dispatch<StateUpdater<NewSeriesMode>>;
-  setNewCreationStep: Dispatch<StateUpdater<NewCreationStep>>;
-  setNewPrintSetup: Dispatch<StateUpdater<PrintSetup>>;
-  setEditingNewPrintSetup: Dispatch<StateUpdater<boolean>>;
-  setNewPrintConfirmed: Dispatch<StateUpdater<boolean>>;
-  setNewSeriesPreparing: Dispatch<StateUpdater<boolean>>;
-  setSeriesCatalogMessage: Dispatch<StateUpdater<string>>;
-  setNewEpisodeNumber: Dispatch<StateUpdater<string>>;
-  setSeriesCatalogs: Dispatch<StateUpdater<SeriesCatalogSummary[]>>;
 }
 
 export function createNewProjectSessions({
   newLayoutItemsRef, setNewLayoutItems, setNewLayoutActiveIndex, setNewLayoutMessage,
   setScannerReceivedCount, newLayoutImageInput, scannerSessionRef, setScannerSession,
   setPendingScannerSession, newCreationBridgeToken, newCharacterDraftSession, seriesCatalogSaveQueue,
-  newLayoutTaskRef, newLayoutOperationGeneration, scannerStopRequested, updateNewLayoutTask, setToast,
-  setNewCharacterDocument, setShowNewDialog, endTextEdit, setNewWorkTitle, setNewWorkSetting,
-  setNewSettingMessage, setNewSeriesName, setNewSeriesId, clearNewSeriesReference,
+  newLayoutTaskRef, newLayoutOperationGeneration, scannerStopRequested, setToast, setShowNewDialog,
+  setNewWorkTitle, setNewWorkSetting, setNewSettingMessage, setNewSeriesName, setNewSeriesId,
   setNewEpisodeWorkspace, setNewWorkspaceSelecting, setNewWorkspaceMessage, setNewReferenceSelecting,
   setNewSourceSnapshot, setNewReferenceFileName, setNewReferenceMessage, setNewCharacterTextLink,
-  setCharacterTextBusy, setNewSeriesMode, setNewCreationStep, setNewPrintSetup,
-  setEditingNewPrintSetup, setNewPrintConfirmed, setNewSeriesPreparing, setSeriesCatalogMessage,
-  setNewEpisodeNumber, setSeriesCatalogs,
+  setCharacterTextBusy, setNewSeriesMode, setNewCreationStep, setNewPrintSetup, setEditingNewPrintSetup,
+  setNewPrintConfirmed, setNewSeriesPreparing, setSeriesCatalogMessage, setNewEpisodeNumber,
+  setSeriesCatalogs,
+}: WorkspaceState, {
+  updateNewLayoutTask, setNewCharacterDocument, endTextEdit, clearNewSeriesReference,
 }: Context) {
   const discardNewLayoutItems = () => {
     newLayoutItemsRef.current = [];

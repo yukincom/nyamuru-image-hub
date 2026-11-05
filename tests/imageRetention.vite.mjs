@@ -11,8 +11,8 @@ export default defineConfig({
     else if(path.endsWith('/src/lib/figureCropStore.ts')){
       replace('items.forEach(asset => assets.set(asset.id, asset.blob));','items.forEach(asset => assets.set(asset.id, asset.blob));\n  await window.__retentionFixture.afterStore(items);');
       code+='\nexport function retentionStoreSnapshot(){return {importing, assets:[...assets].map(([id,blob])=>({id,bytes:blob.size}))};}\n';
-    }else if(path.endsWith('/src/components/App.tsx'))
-      replace('useEffect(() => onFigureCropAssetsChanged(prunePaintAssets), []);',`window.__retentionFixture.workspace=()=>({document:documentRef.current,past:timeline.current.past,future:timeline.current.future});
+    }else if(path.endsWith('/src/components/workspace/workspaceLifecycle.ts'))
+      replace('useEffect(() => onFigureCropAssetsChanged(prunePaintAssets), []);',`window.__retentionFixture.workspace=()=>({document:workspaceSnapshot().document,past:timeline.current.past,future:timeline.current.future});
   window.__retentionFixture.prune=prunePaintAssets;
   useEffect(() => onFigureCropAssetsChanged(prunePaintAssets), []);`);
     else return;

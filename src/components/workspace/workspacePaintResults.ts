@@ -1,3 +1,4 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import type { MangaDocument, ImageAsset } from '../../types';
 import type { PaintResult } from '../PaintEditor';
 import { cloneDocument } from '../../lib/manga';
@@ -5,21 +6,15 @@ import { beginFigureCropImport, loadFigureCropAsset, saveFigureCropAssets, delet
 import { verifyBackgroundStage } from '../../lib/background3d';
 import { paintAssetIds, applyPaintAnchorIds, applyPaintOwnerLock, clearOwnerPaint, applyOwnerPaint } from '../../lib/paintDocument';
 import { prepareImageAsset, createFrameArtwork, imageAssetIds, validateImagePlacements } from '../../lib/imagePlacement';
-import type { MutableRef, WorkspacePaintSession } from './workspaceTypes';
-import type { PaintController } from '../../lib/paintSession';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
 
 interface Context {
-  pendingPaintAssets: MutableRef<Set<string>>;
-  documentRef: MutableRef<MangaDocument>;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  paintController: MutableRef<PaintController | null>;
-  setPaintSession: Dispatch<StateUpdater<WorkspacePaintSession | null>>;
 }
 
 export function createWorkspacePaintResults({
-  pendingPaintAssets, documentRef, paintSessionRef, setDocument, paintController, setPaintSession,
+  pendingPaintAssets, documentRef, paintSessionRef, paintController, setPaintSession,
+}: WorkspaceState, {
+  setDocument,
 }: Context) {
   async function persistPaintResults(current:MangaDocument,batches:Array<{pageIndex:number;panelIndex:number;overlay:boolean;title:string;result:PaintResult}>,publish:(next:MangaDocument)=>void){
     const next=cloneDocument(current), stored=next.manga.image_assets??=[];

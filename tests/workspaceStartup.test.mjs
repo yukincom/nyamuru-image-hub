@@ -1,3 +1,4 @@
+import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import ts from 'typescript';
 import { STORAGE_KEY, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { createEmptyWorkspaceDocument, createInitialWorkspace, isUnstartedDocument } from '../src/lib/workspaceStartup.ts';
 
-const source=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+const source=workspaceSources('useWorkspaceState','workspaceLifecycle');
 const ast=ts.createSourceFile('App.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 
 test('startup always opens an empty workspace, with no shared mutable document', () => {
@@ -41,7 +42,7 @@ test('artwork-only and character-only documents still count as edited work', () 
 
 // 見込み: 回収は常に最新の作品・履歴・未確定描画・資料を読む。合格: 参照集合に必要IDだけを含み、終了通知でも再回収する。範囲: 実Appの関数・effectを抽出、保存先と画面は模擬。
 test('editing and Undo/Redo collect only memory assets without saving or consulting browser storage', () => {
-  const editor=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='EditorApp');
+  const editor=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='useWorkspaceLifecycle');
   const statements=editor.body.statements.filter(node=>{
     const text=node.getText(ast);
     return text.startsWith('const prunePaintAssets =') || (text.startsWith('useEffect(')&&(text.includes('prunePaintAssets();')||text.includes('onFigureCropAssetsChanged')));

@@ -1,53 +1,28 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { isLanClient } from '../../lib/clientRuntime';
-import {
-  type SeriesCatalogDraftSession, beginSeriesCatalogDraft, getSeriesCharacterTextStatus,
-  discardSeriesCatalogDraft, type EpisodeWorkspace, type SeriesCharacterTextLink,
-  type SeriesCatalogSummary, type SeriesReferenceTextSelection,
-} from '../../lib/localBridge';
+import { type SeriesCatalogDraftSession, beginSeriesCatalogDraft, getSeriesCharacterTextStatus, discardSeriesCatalogDraft } from '../../lib/localBridge';
 import { mergeCharacterTextCatalog, parseCharacterText } from '../../lib/characterTextCatalog.ts';
-import { fillEmptySeriesSetting, seriesSettingFromImported, type NewSeriesMode, type NewCreationStep } from '../../lib/newProjectSettings';
-import { parseSeriesSettingText, type ImportedStorySetting } from '../../lib/settingTextImport.ts';
+import { fillEmptySeriesSetting, seriesSettingFromImported } from '../../lib/newProjectSettings';
+import { parseSeriesSettingText } from '../../lib/settingTextImport.ts';
 import { prefillEpisodeSettingFromSeries } from '../../lib/seriesCatalog';
 import type { MangaDocument, MangaSeriesSetting } from '../../types';
 import { cloneDocument } from '../../lib/manga';
 import { synchronizeCatalogReferences } from '../../lib/catalogModel';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { MutableRef } from './workspaceTypes';
 
 interface Context {
-  newSeriesPreparing: boolean;
-  newEpisodeWorkspace: EpisodeWorkspace | null;
-  setNewWorkspaceMessage: Dispatch<StateUpdater<string>>;
-  newSeriesMode: NewSeriesMode;
   createNewCharacterDraft: (seriesName: string, seriesId: string) => MangaDocument;
-  setNewSeriesName: Dispatch<StateUpdater<string>>;
-  setNewSeriesId: Dispatch<StateUpdater<string>>;
   setNewCharacterDocument: (next: MangaDocument | null) => void;
-  setNewCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
-  setNewCreationStep: Dispatch<StateUpdater<NewCreationStep>>;
-  newSeriesName: string;
-  setSeriesCatalogMessage: Dispatch<StateUpdater<string>>;
-  newSeriesId: string;
-  seriesCatalogs: SeriesCatalogSummary[];
-  setNewSeriesPreparing: Dispatch<StateUpdater<boolean>>;
   mergeSavedSeriesCatalog: (source: MangaDocument) => Promise<{ document: MangaDocument; added: number; warning: string; seriesSetting: MangaSeriesSetting; }>;
-  newSeriesReferences: SeriesReferenceTextSelection[];
-  newSeriesReference: SeriesReferenceTextSelection | null;
-  setNewWorkSetting: Dispatch<StateUpdater<ImportedStorySetting>>;
-  newCharacterDraftSession: MutableRef<SeriesCatalogDraftSession | null>;
-  newCharacterDocumentRef: MutableRef<MangaDocument | null>;
-  seriesCatalogSaving: boolean;
   discardNewCharacterDraft: () => Promise<void>;
-  setToast: Dispatch<StateUpdater<string | null>>;
 }
 
 export function createSeriesPreparation({
-  newSeriesPreparing, newEpisodeWorkspace, setNewWorkspaceMessage, newSeriesMode,
-  createNewCharacterDraft, setNewSeriesName, setNewSeriesId, setNewCharacterDocument,
-  setNewCharacterTextLink, setNewCreationStep, newSeriesName, setSeriesCatalogMessage, newSeriesId,
-  seriesCatalogs, setNewSeriesPreparing, mergeSavedSeriesCatalog, newSeriesReferences,
-  newSeriesReference, setNewWorkSetting, newCharacterDraftSession, newCharacterDocumentRef,
-  seriesCatalogSaving, discardNewCharacterDraft, setToast,
+  newSeriesPreparing, newEpisodeWorkspace, setNewWorkspaceMessage, newSeriesMode, setNewSeriesName,
+  setNewSeriesId, setNewCharacterTextLink, setNewCreationStep, newSeriesName, setSeriesCatalogMessage,
+  newSeriesId, seriesCatalogs, setNewSeriesPreparing, newSeriesReferences, newSeriesReference,
+  setNewWorkSetting, newCharacterDraftSession, newCharacterDocumentRef, seriesCatalogSaving, setToast,
+}: WorkspaceState, {
+  createNewCharacterDraft, setNewCharacterDocument, mergeSavedSeriesCatalog, discardNewCharacterDraft,
 }: Context) {
   const continueFromSeriesSelection = async () => {
     if (newSeriesPreparing) return;

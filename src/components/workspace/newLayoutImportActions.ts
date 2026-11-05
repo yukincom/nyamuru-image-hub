@@ -1,55 +1,31 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import type { PanelTemplate } from '../../lib/panelTemplates';
 import { roundMm, clamp } from '../../lib/canvasGeometry';
 import {
   type NewLayoutItem, type DetectedPageLayout, type RightAngle, displayedLayoutRotation,
   type NewLayoutTask,
 } from '../../lib/newLayoutPreview';
-import {
-  recognizePanelLayout, openMacScanner, cancelScannerSession, collectScannerImages,
-  getPendingScannerSession, resumePendingScannerSession, finishScannerSession, type ScannerSession,
-  type PendingScannerSession,
-} from '../../lib/localBridge';
-import type { MutableRef } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { RefObject } from 'preact';
+import { recognizePanelLayout, openMacScanner, cancelScannerSession, collectScannerImages, getPendingScannerSession, resumePendingScannerSession, finishScannerSession } from '../../lib/localBridge';
 
 interface Context {
-  newLayoutTask: NewLayoutTask;
-  newLayoutOperationGeneration: MutableRef<number>;
   updateNewLayoutTask: (task: NewLayoutTask) => void;
   discardScannerSources: () => Promise<void>;
   discardNewLayoutItems: () => void;
-  newLayoutItemsRef: MutableRef<NewLayoutItem[]>;
-  setNewLayoutItems: Dispatch<StateUpdater<NewLayoutItem[]>>;
-  setNewLayoutActiveIndex: Dispatch<StateUpdater<number>>;
-  setNewLayoutMessage: Dispatch<StateUpdater<string | null>>;
-  newLayoutImageInput: RefObject<HTMLInputElement>;
-  setNewLayoutRowGapMm: Dispatch<StateUpdater<number>>;
-  setNewLayoutColumnGapMm: Dispatch<StateUpdater<number>>;
-  setNewLayoutFrameLineWidthMm: Dispatch<StateUpdater<number>>;
-  newLayoutTaskRef: MutableRef<NewLayoutTask>;
-  newLayoutRowGapMm: number;
-  newLayoutColumnGapMm: number;
   createNewDocument: (layout?: PanelTemplate | DetectedPageLayout[], confirmScannedLayouts?: boolean, analysisGeneration?: number) => Promise<void>;
-  newLayoutActiveIndex: number;
-  scannerStopRequested: MutableRef<boolean>;
-  scannerSessionRef: MutableRef<ScannerSession | null>;
-  setScannerSession: Dispatch<StateUpdater<ScannerSession | null>>;
-  setScannerReceivedCount: Dispatch<StateUpdater<number>>;
   finishScannerWatching: () => Promise<void>;
   detachActiveScannerSession: () => void;
-  setPendingScannerSession: Dispatch<StateUpdater<PendingScannerSession | null>>;
   discardPendingScannerRecovery: () => Promise<void>;
 }
 
 export function createNewLayoutImportActions({
-  newLayoutTask, newLayoutOperationGeneration, updateNewLayoutTask, discardScannerSources,
-  discardNewLayoutItems, newLayoutItemsRef, setNewLayoutItems, setNewLayoutActiveIndex,
-  setNewLayoutMessage, newLayoutImageInput, setNewLayoutRowGapMm, setNewLayoutColumnGapMm,
-  setNewLayoutFrameLineWidthMm, newLayoutTaskRef, newLayoutRowGapMm, newLayoutColumnGapMm,
-  createNewDocument, newLayoutActiveIndex, scannerStopRequested, scannerSessionRef, setScannerSession,
-  setScannerReceivedCount, finishScannerWatching, detachActiveScannerSession,
-  setPendingScannerSession, discardPendingScannerRecovery,
+  newLayoutTask, newLayoutOperationGeneration, newLayoutItemsRef, setNewLayoutItems,
+  setNewLayoutActiveIndex, setNewLayoutMessage, newLayoutImageInput, setNewLayoutRowGapMm,
+  setNewLayoutColumnGapMm, setNewLayoutFrameLineWidthMm, newLayoutTaskRef, newLayoutRowGapMm,
+  newLayoutColumnGapMm, newLayoutActiveIndex, scannerStopRequested, scannerSessionRef, setScannerSession,
+  setScannerReceivedCount, setPendingScannerSession,
+}: WorkspaceState, {
+  updateNewLayoutTask, discardScannerSources, discardNewLayoutItems, createNewDocument,
+  finishScannerWatching, detachActiveScannerSession, discardPendingScannerRecovery,
 }: Context) {
   const chooseNewLayoutImages = (files?: ArrayLike<File> | Iterable<File> | null) => {
     if (newLayoutTask !== 'idle') return;

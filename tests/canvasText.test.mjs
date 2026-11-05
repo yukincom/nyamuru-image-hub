@@ -65,7 +65,7 @@ test('new panel and page text inherit the chosen style instead of returning to 1
  targets.forEach(target=>{assert.equal(canvasTextAt(restored,target).text_style.fontSize,29);assert.equal(canvasTextAt(restored,target).text_style.textAlign,'right');});
 });
 
-const appSource=workspaceSources('workspaceTextActions', 'workspaceCanvasActions', 'pageEditActions', 'workspacePaintSession');
+const appSource=workspaceSources('workspaceSelectionDetails', 'workspaceHistoryActions', 'workspacePanelSelection', 'workspaceTextActions', 'workspaceCanvasActions', 'pageEditActions', 'workspacePaintSession');
 const fileActions=['workspaceProjectFiles','workspaceImageExport'].map(name=>readFileSync(new URL(`../src/components/workspace/${name}.ts`,import.meta.url),'utf8')).join('\n');
 const appAst=ts.createSourceFile('App.tsx',appSource+'\n'+fileActions,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
 function appHandler(name,context){
@@ -408,7 +408,7 @@ test('moving an empty native bubble over ordinary text detects one eligible sour
 });
 
 test('T uses one click for existing text or point text and keeps a settings toolbar without a selection',()=>{
- const app=workspaceSources('workspaceTextActions', 'workspaceCanvasActions', 'pageEditActions', 'workspacePaintSession');
+ const app=workspaceSources('workspaceSelectionDetails', 'workspaceHistoryActions', 'workspacePanelSelection', 'workspaceTextActions', 'workspaceCanvasActions', 'pageEditActions', 'workspacePaintSession');
  const canvas=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
  const editor=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
  const toolbar=readFileSync(new URL('../src/components/CanvasTextToolbar.tsx',import.meta.url),'utf8');

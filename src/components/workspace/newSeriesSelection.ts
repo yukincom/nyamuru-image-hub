@@ -1,56 +1,27 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import type { MangaDocument } from '../../types';
-import {
-  emptyNewSeriesSetting, emptyNewWorkSetting, fillEmptySeriesSetting, seriesSettingFromImported,
-  seriesSettingSummary, type NewSeriesMode,
-} from '../../lib/newProjectSettings';
-import {
-  loadSeriesCatalog, getSeriesCharacterTextStatus, type SeriesReferenceTextSelection,
-  type SeriesCatalogSummary, type EpisodeWorkspace, type SeriesReferenceTextCandidate,
-  type SeriesCharacterTextLink,
-} from '../../lib/localBridge';
+import { emptyNewSeriesSetting, emptyNewWorkSetting, fillEmptySeriesSetting, seriesSettingFromImported, seriesSettingSummary } from '../../lib/newProjectSettings';
+import { loadSeriesCatalog, getSeriesCharacterTextStatus, type SeriesReferenceTextSelection } from '../../lib/localBridge';
 import { cloneDocument, parseMangaYaml, newPage } from '../../lib/manga';
 import { mergeSeriesCatalog, prefillEpisodeSettingFromSeries } from '../../lib/seriesCatalog';
 import { createEmptyWorkspaceDocument } from '../../lib/workspaceStartup.ts';
 import { createSystemMobCharacter } from '../../lib/systemCharacters';
 import { isLanClient } from '../../lib/clientRuntime';
-import { parseSeriesSettingText, type ImportedStorySetting } from '../../lib/settingTextImport.ts';
-import type { MutableRef } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
+import { parseSeriesSettingText } from '../../lib/settingTextImport.ts';
 
 interface Context {
-  newWorkTitle: string;
-  newEpisodeNumber: string;
-  newLayoutFrameLineWidthMm: number;
-  newLayoutRowGapMm: number;
-  newLayoutColumnGapMm: number;
-  newSeriesMode: NewSeriesMode;
-  newSeriesId: string;
-  newSeriesSelectionGeneration: MutableRef<number>;
-  seriesCatalogs: SeriesCatalogSummary[];
   clearNewReferenceText: () => void;
-  setNewEpisodeWorkspace: Dispatch<StateUpdater<EpisodeWorkspace | null>>;
-  setNewWorkspaceMessage: Dispatch<StateUpdater<string>>;
-  setNewSeriesId: Dispatch<StateUpdater<string>>;
-  setNewSeriesName: Dispatch<StateUpdater<string>>;
-  setNewSeriesDirectory: Dispatch<StateUpdater<string>>;
-  setNewSeriesReference: Dispatch<StateUpdater<SeriesReferenceTextSelection | null>>;
-  setNewSeriesReferences: Dispatch<StateUpdater<SeriesReferenceTextSelection[]>>;
-  setNewSeriesReferenceCandidates: Dispatch<StateUpdater<(SeriesReferenceTextCandidate & { seriesDirectory: string; })[]>>;
-  setNewSelectedSeriesReferencePaths: Dispatch<StateUpdater<string[]>>;
-  setNewSeriesReferenceMessage: Dispatch<StateUpdater<string>>;
-  setNewCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
-  setSeriesCatalogMessage: Dispatch<StateUpdater<string>>;
-  setNewSeriesPreparing: Dispatch<StateUpdater<boolean>>;
-  setNewWorkSetting: Dispatch<StateUpdater<ImportedStorySetting>>;
 }
 
 export function createSeriesSelection({
   newWorkTitle, newEpisodeNumber, newLayoutFrameLineWidthMm, newLayoutRowGapMm, newLayoutColumnGapMm,
-  newSeriesMode, newSeriesId, newSeriesSelectionGeneration, seriesCatalogs, clearNewReferenceText,
-  setNewEpisodeWorkspace, setNewWorkspaceMessage, setNewSeriesId, setNewSeriesName,
-  setNewSeriesDirectory, setNewSeriesReference, setNewSeriesReferences,
-  setNewSeriesReferenceCandidates, setNewSelectedSeriesReferencePaths, setNewSeriesReferenceMessage,
-  setNewCharacterTextLink, setSeriesCatalogMessage, setNewSeriesPreparing, setNewWorkSetting,
+  newSeriesMode, newSeriesId, newSeriesSelectionGeneration, seriesCatalogs, setNewEpisodeWorkspace,
+  setNewWorkspaceMessage, setNewSeriesId, setNewSeriesName, setNewSeriesDirectory, setNewSeriesReference,
+  setNewSeriesReferences, setNewSeriesReferenceCandidates, setNewSelectedSeriesReferencePaths,
+  setNewSeriesReferenceMessage, setNewCharacterTextLink, setSeriesCatalogMessage, setNewSeriesPreparing,
+  setNewWorkSetting,
+}: WorkspaceState, {
+  clearNewReferenceText,
 }: Context) {
   const mergeSavedSeriesCatalog = async (source: MangaDocument) => {
     const seriesName = source.manga.meta.series.trim();

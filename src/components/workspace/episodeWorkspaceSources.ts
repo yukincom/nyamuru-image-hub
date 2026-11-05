@@ -1,49 +1,25 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { isLanClient } from '../../lib/clientRuntime';
-import {
-  selectEpisodeWorkspace, prepareEpisodeWorkspace, chooseEpisodeWorkspaceSource,
-  saveSourceCoverageReport, chooseEpisodeWorkspaceImages, type EpisodeWorkspace,
-  type EpisodeWorkspaceTextSelection,
-} from '../../lib/localBridge';
+import { selectEpisodeWorkspace, prepareEpisodeWorkspace, chooseEpisodeWorkspaceSource, saveSourceCoverageReport, chooseEpisodeWorkspaceImages, type EpisodeWorkspaceTextSelection } from '../../lib/localBridge';
 import { savedWorkspaceRoot, rememberWorkspaceRoot } from '../../lib/workspacePreferences';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
-import type { SourceCoverageSource, SourceCoverageDecision } from '../../lib/sourceCoverage.ts';
+import type { SourceCoverageSource } from '../../lib/sourceCoverage.ts';
 import { withNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { MutableRef } from './workspaceTypes';
-import type { MangaDocument } from '../../types';
 import type { ProjectBinding } from '../../lib/projectPersistence';
-import type { BoundSourceSnapshot } from '../../lib/newProjectSettings';
-import type { NewLayoutTask } from '../../lib/newLayoutPreview';
-import type { RefObject } from 'preact';
 
 interface Context {
-  setToast: Dispatch<StateUpdater<string | null>>;
-  documentRef: MutableRef<MangaDocument>;
-  setBoundEpisodeWorkspace: Dispatch<StateUpdater<ProjectBinding | null>>;
-  boundEpisodeWorkspace: ProjectBinding | null;
-  setBoundSourceSnapshot: Dispatch<StateUpdater<BoundSourceSnapshot | null>>;
-  boundSourceSnapshot: BoundSourceSnapshot | null;
-  setSourceCoverageDecisions: Dispatch<StateUpdater<SourceCoverageDecision[]>>;
   coverageWorkspace: ProjectBinding | null;
-  newCreationBridgeToken: MutableRef<string | null>;
-  characterEditorBridgeToken: MutableRef<string | null>;
-  newEpisodeWorkspace: EpisodeWorkspace | null;
-  setNewReferenceMessage: Dispatch<StateUpdater<string>>;
-  setNewReferenceSelecting: Dispatch<StateUpdater<boolean>>;
   readNewReferenceFile: (selection?: EpisodeWorkspaceTextSelection) => Promise<void>;
-  newReferenceFileName: string;
-  newLayoutTask: NewLayoutTask;
-  newLayoutImageInput: RefObject<HTMLInputElement>;
   chooseNewLayoutImages: (files?: ArrayLike<File> | Iterable<File> | null) => void;
-  setNewLayoutMessage: Dispatch<StateUpdater<string | null>>;
 }
 
 export function createWorkspaceSourceActions({
   setToast, documentRef, setBoundEpisodeWorkspace, boundEpisodeWorkspace, setBoundSourceSnapshot,
-  boundSourceSnapshot, setSourceCoverageDecisions, coverageWorkspace, newCreationBridgeToken,
-  characterEditorBridgeToken, newEpisodeWorkspace, setNewReferenceMessage, setNewReferenceSelecting,
-  readNewReferenceFile, newReferenceFileName, newLayoutTask, newLayoutImageInput,
-  chooseNewLayoutImages, setNewLayoutMessage,
+  boundSourceSnapshot, setSourceCoverageDecisions, newCreationBridgeToken, characterEditorBridgeToken,
+  newEpisodeWorkspace, setNewReferenceMessage, setNewReferenceSelecting, newReferenceFileName,
+  newLayoutTask, newLayoutImageInput, setNewLayoutMessage,
+}: WorkspaceState, {
+  coverageWorkspace, readNewReferenceFile, chooseNewLayoutImages,
 }: Context) {
   const choosePanelDraftWorkspace = async (): Promise<void> => {
     if (isLanClient) { setToast('作画用ラフの制作台帳はMac側フォルダを使う機能です。LANではレイヤーの画像生成を使ってください'); return; }

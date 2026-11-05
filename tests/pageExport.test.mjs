@@ -54,7 +54,7 @@ test('multi-page archives are valid stored ZIPs',async()=>{
 // 見込み: 保存UIはヘッダーの一箇所に集約。合格: 形式selectとページ範囲があり、ペン画面に別の書出入口がない。範囲: ソース構造のみ。
 test('export names are portable and the header dialog owns page range and image format',()=>{
   assert.equal(safeExportName(' A/B:C*D?  E '),'A-B-C-D- E');
-  const app=readFileSync(new URL('../src/components/App.tsx',import.meta.url),'utf8');
+  const app=readFileSync(new URL('../src/components/workspace/WorkspaceView.tsx',import.meta.url),'utf8');
   const editor=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
   const palette=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
   const header=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');

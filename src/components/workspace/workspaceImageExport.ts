@@ -1,3 +1,4 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import type { MangaDocument } from '../../types';
 import {
   type ImageExportFormat, pageExportPixels, pageExportStem, clipExportSources, flattenedPsd,
@@ -8,30 +9,17 @@ import { getPrintSetup } from '../../lib/printSettings';
 import { requestClipExport } from '../../lib/localBridge';
 import { captureQwenCompositionCanvas } from '../../lib/qwenComposition';
 import { paintColorMode } from '../../lib/paintColor';
-import type { MutableRef } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { BrowserDirectoryHandle } from '../../lib/browserWorkspace';
 
 interface Context {
-  activePanelRef: MutableRef<number>;
   endTextEdit: () => void;
-  activePageRef: MutableRef<number>;
-  setImageExportError: Dispatch<StateUpdater<string>>;
-  setImageExportProgress: Dispatch<StateUpdater<{ value: number; max: number; label: string; } | null>>;
-  setImageExportDialog: Dispatch<StateUpdater<{ mode: 'current' | 'range' | 'all'; from: number; to: number; format: ImageExportFormat; } | null>>;
-  imageExportBusy: boolean;
-  setImageExportBusy: Dispatch<StateUpdater<boolean>>;
-  imageExportDirectory: BrowserDirectoryHandle | null;
-  setImageExportDirectory: Dispatch<StateUpdater<BrowserDirectoryHandle | null>>;
-  imageExportDialog: { mode: 'current' | 'range' | 'all'; from: number; to: number; format: ImageExportFormat; } | null;
-  documentRef: MutableRef<MangaDocument>;
-  setToast: Dispatch<StateUpdater<string | null>>;
 }
 
 export function createImageExportActions({
-  activePanelRef, endTextEdit, activePageRef, setImageExportError, setImageExportProgress,
-  setImageExportDialog, imageExportBusy, setImageExportBusy, imageExportDirectory,
-  setImageExportDirectory, imageExportDialog, documentRef, setToast,
+  activePanelRef, activePageRef, setImageExportError, setImageExportProgress, setImageExportDialog,
+  imageExportBusy, setImageExportBusy, imageExportDirectory, setImageExportDirectory, imageExportDialog,
+  documentRef, setToast,
+}: WorkspaceState, {
+  endTextEdit,
 }: Context) {
   const pageExportBlob = async(current:MangaDocument,pageIndex:number,format:ImageExportFormat) => {
     const page=current.manga.pages[pageIndex];

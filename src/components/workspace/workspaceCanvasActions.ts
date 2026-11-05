@@ -1,5 +1,6 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { panelLocked, ownerItemLocked, panelGeometryLocked } from '../../lib/panelLayers';
-import type { CanvasElementSelection, BBox, BubbleTailTarget, Panel, MangaPage, MangaDocument, WorkspaceTab } from '../../types';
+import type { CanvasElementSelection, BBox, BubbleTailTarget, Panel, MangaPage, MangaDocument } from '../../types';
 import { artworkLocked } from '../../lib/paintLock';
 import { validImageBox } from '../../lib/imagePlacement';
 import {
@@ -13,48 +14,23 @@ import {
 import { cloneDocument } from '../../lib/manga';
 import { changeCanvasDefaultBubbleLineWidth } from '../../lib/canvasText';
 import { getPrintSetup } from '../../lib/printSettings';
-import type { MutableRef, WorkspacePaintSession, MobileStoryboardPane } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { PaintController } from '../../lib/paintSession';
 
 interface Context {
-  imageGesture: MutableRef<{ active: boolean; pushed: boolean; source?: 'text-size'; }>;
-  lastHistoryPush: MutableRef<number>;
   panel: Panel;
   page: MangaPage;
   mutate: (recipe: (draft: MangaDocument) => void) => void;
-  activePage: number;
-  activePanel: number;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  innerFrameSnap: boolean;
-  setInnerFrameSnap: Dispatch<StateUpdater<boolean>>;
-  panelGapSnap: boolean;
-  setPanelGapSnap: Dispatch<StateUpdater<boolean>>;
-  panelSync: boolean;
-  setPanelSync: Dispatch<StateUpdater<boolean>>;
-  setShowGuides: Dispatch<StateUpdater<boolean>>;
-  setSpreadView: Dispatch<StateUpdater<boolean>>;
-  setPersistAnalogAssets: Dispatch<StateUpdater<boolean>>;
-  documentRef: MutableRef<MangaDocument>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
   layerTransition: (action: () => void | Promise<void>) => Promise<void>;
-  paintController: MutableRef<PaintController | null>;
-  setTab: Dispatch<StateUpdater<WorkspaceTab>>;
-  setMobileStoryboardPane: (value: MobileStoryboardPane) => void;
   endTextEdit: () => void;
-  autoPaintResume: MutableRef<{ pageIndex: number; panelIndex: number; overlay: boolean; ownerKey: string; } | null>;
-  setActivePage: Dispatch<StateUpdater<number>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
 }
 
 export function createWorkspaceCanvasActions({
-  imageGesture, lastHistoryPush, panel, page, mutate, activePage, activePanel, setSelectedElement,
-  innerFrameSnap, setInnerFrameSnap, panelGapSnap, setPanelGapSnap, panelSync, setPanelSync,
-  setShowGuides, setSpreadView, setPersistAnalogAssets, documentRef, setDocument, paintSessionRef,
-  layerTransition, paintController, setTab, setMobileStoryboardPane, endTextEdit, autoPaintResume,
-  setActivePage, setActivePanel, setSelectedPanels,
+  imageGesture, lastHistoryPush, activePage, activePanel, setSelectedElement, innerFrameSnap,
+  setInnerFrameSnap, panelGapSnap, setPanelGapSnap, panelSync, setPanelSync, setShowGuides, setSpreadView,
+  setPersistAnalogAssets, documentRef, paintSessionRef, paintController, setTab, setMobileStoryboardPane,
+  autoPaintResume, setActivePage, setActivePanel, setSelectedPanels,
+}: WorkspaceState, {
+  panel, page, mutate, setDocument, layerTransition, endTextEdit,
 }: Context) {
   const imageGestureBoundary = (phase: 'start' | 'end', source?:'text-size') => {
     if(source&&(phase==='start'?imageGesture.current.source===source:imageGesture.current.source!==source))return;

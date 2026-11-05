@@ -29,7 +29,7 @@ test('canvas selections resolve only their existing paint owner and never defaul
 const paintLayerSource=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
 const globalCss=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
 const pageLayerSource=readFileSync(new URL('../src/components/PageLayerPalette.tsx',import.meta.url),'utf8');
-const appSource=workspaceSources('workspacePaintSession', 'pageEditActions', 'workspacePaintResults', 'workspaceTextActions', 'layerPaletteActions', 'workspaceVoiceActions');
+const appSource=workspaceSources('workspacePaintGuard', 'workspacePanelSelection', 'workspaceLifecycle', 'workspacePaintSession', 'pageEditActions', 'workspacePaintResults', 'workspaceTextActions', 'layerPaletteActions', 'workspaceVoiceActions');
 const paintEditorSource=readFileSync(new URL('../src/components/PaintEditor.tsx',import.meta.url),'utf8');
 const paintRendererSource=readFileSync(new URL('../src/lib/paintRenderer.ts',import.meta.url),'utf8');
 const mangaCanvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');

@@ -1,33 +1,26 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import type { MangaDocument } from '../../types';
 import { cloneDocument } from '../../lib/manga';
 import { isLanClient } from '../../lib/clientRuntime';
 import { withNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts';
 import { beginFigureCropImport, saveFigureCropAssets } from '../../lib/figureCropStore';
 import { prepareBackgroundStage } from '../../lib/background3d';
-import type { MutableRef } from './workspaceTypes';
 import type { SeriesCatalogPersistOptions } from '../../lib/newProjectSettings';
 import type { SeriesCharacterTextLink } from '../../lib/localBridge';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
 
 interface Context {
-  documentRef: MutableRef<MangaDocument>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
   endTextEdit: () => void;
-  saveProjectAction: MutableRef<() => Promise<unknown>>;
   persistSeriesCatalog: (source: MangaDocument, options?: SeriesCatalogPersistOptions) => Promise<MangaDocument>;
-  characterTextLink: SeriesCharacterTextLink | null;
   syncCharacterText: (source: MangaDocument, archive?: { characterCatalogId: string; characterName: string; omnyYaml: string; }) => Promise<SeriesCharacterTextLink | null>;
-  setCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
-  setToast: Dispatch<StateUpdater<string | null>>;
-  projectOperation: MutableRef<boolean>;
-  setProjectBusy: Dispatch<StateUpdater<boolean>>;
   patchLatestDocument: (recipe: (draft: MangaDocument) => boolean | void) => MangaDocument;
 }
 
 export function createWorkspaceCatalogActions({
-  documentRef, setDocument, endTextEdit, saveProjectAction, persistSeriesCatalog, characterTextLink,
-  syncCharacterText, setCharacterTextLink, setToast, projectOperation, setProjectBusy,
-  patchLatestDocument,
+  documentRef, saveProjectAction, characterTextLink, setCharacterTextLink, setToast, projectOperation,
+  setProjectBusy,
+}: WorkspaceState, {
+  setDocument, endTextEdit, persistSeriesCatalog, syncCharacterText, patchLatestDocument,
 }: Context) {
   const applyPreparedSeriesIdentifiers = (prepared: MangaDocument): MangaDocument | null => {
     const latest = documentRef.current;

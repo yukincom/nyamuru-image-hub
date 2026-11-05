@@ -1,23 +1,16 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { buildNewProjectPages } from './newProjectPages';
 import type { PanelTemplate } from '../../lib/panelTemplates';
-import type { DetectedPageLayout, NewLayoutTask, NewLayoutItem } from '../../lib/newLayoutPreview';
+import type { DetectedPageLayout, NewLayoutTask } from '../../lib/newLayoutPreview';
 import { beginFigureCropImport, deleteFigureCropAssets, saveFigureCropAssets } from '../../lib/figureCropStore';
 import { isLanClient } from '../../lib/clientRuntime';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
-import {
-  prepareEpisodeWorkspace, persistAnalogAsset,
-  analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport,
-  type EpisodeWorkspace, type SeriesCharacterTextLink,
-} from '../../lib/localBridge';
-import type {
-  AnalogFigureImport, AnalogTextImport, MangaDocument, MangaSeriesSetting, CanvasElementSelection,
-  WorkspaceTab,
-} from '../../types';
+import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport, type SeriesCharacterTextLink } from '../../lib/localBridge';
+import type { AnalogFigureImport, AnalogTextImport, MangaDocument, MangaSeriesSetting } from '../../types';
 import { detectedFigureImport, detectedFigureCrops } from '../../lib/analogFigureCrops';
 import { prepareDetectedTextCrops } from '../../lib/analogTextCrops';
 import { toSeparatedMangaYaml } from '../../lib/manga';
-import type { NewSourceSnapshot, BoundSourceSnapshot } from '../../lib/newProjectSettings';
-import { withPrintSetup, type PrintSetup } from '../../lib/printSettings';
+import { withPrintSetup } from '../../lib/printSettings';
 import {
   collectUnmatchedCharacterTargets, buildCharacterMatchCandidates, type CharacterReadOutcome,
   applyCharacterReadOutcomes,
@@ -26,72 +19,34 @@ import { initializePanelBackgrounds } from '../../lib/panelContext.ts';
 import { applyScenarioToNewDocument } from '../../lib/scenario.ts';
 import { initializeImportedBubbleLineBreaks } from '../../lib/initialBubbleLineBreaks.ts';
 import { separateBubbleOriginals } from '../../lib/bubbleOriginals';
-import { buildSourceCoverageReport, type SourceCoverageDecision } from '../../lib/sourceCoverage.ts';
-import type { MutableRef, MobileStoryboardPane } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { ImportedStorySetting } from '../../lib/settingTextImport.ts';
-import type { CharacterReadProgressState } from '../CharacterReadProgress';
-import type { ProjectBinding } from '../../lib/projectPersistence';
+import { buildSourceCoverageReport } from '../../lib/sourceCoverage.ts';
 
 interface Context {
-  newLayoutTaskRef: MutableRef<NewLayoutTask>;
-  newLayoutOperationGeneration: MutableRef<number>;
-  newPrintConfirmed: boolean;
-  editingNewPrintSetup: boolean;
   updateNewLayoutTask: (task: NewLayoutTask) => void;
-  newEpisodeWorkspace: EpisodeWorkspace | null;
-  setNewLayoutMessage: Dispatch<StateUpdater<string | null>>;
-  newLayoutItemsRef: MutableRef<NewLayoutItem[]>;
-  newCharacterDocumentRef: MutableRef<MangaDocument | null>;
-  persistAnalogAssets: boolean;
-  newWorkTitle: string;
   commitActiveScannerSession: () => Promise<void>;
   discardScannerSources: () => Promise<void>;
-  newPrintSetup: PrintSetup;
-  newLayoutRowGapMm: number;
-  newLayoutColumnGapMm: number;
-  newSeriesName: string;
-  newSeriesId: string;
-  newEpisodeNumber: string;
-  newLayoutFrameLineWidthMm: number;
-  newWorkSetting: ImportedStorySetting;
   mergeSavedSeriesCatalog: (source: MangaDocument) => Promise<{ document: MangaDocument; added: number; warning: string; seriesSetting: MangaSeriesSetting; }>;
-  setNewCharacterReadProgress: Dispatch<StateUpdater<CharacterReadProgressState | null>>;
-  newSourceSnapshot: NewSourceSnapshot | null;
-  newCharacterTextLink: SeriesCharacterTextLink | null;
   syncCharacterText: (source: MangaDocument, archive?: { characterCatalogId: string; characterName: string; omnyYaml: string; }) => Promise<SeriesCharacterTextLink | null>;
-  setNewCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
   commitNewCharacterDraft: () => Promise<void>;
   endNewCreationBridgeSession: () => Promise<void>;
-  lastHistoryPush: MutableRef<number>;
   replaceDocument: (next: MangaDocument) => void;
-  setBoundEpisodeWorkspace: Dispatch<StateUpdater<ProjectBinding | null>>;
-  setBoundSourceSnapshot: Dispatch<StateUpdater<BoundSourceSnapshot | null>>;
-  setSourceCoverageDecisions: Dispatch<StateUpdater<SourceCoverageDecision[]>>;
-  setCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
-  setActivePage: Dispatch<StateUpdater<number>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  setTab: Dispatch<StateUpdater<WorkspaceTab>>;
-  setMobileStoryboardPane: (value: MobileStoryboardPane) => void;
-  setShowNewDialog: Dispatch<StateUpdater<boolean>>;
   setNewCharacterDocument: (next: MangaDocument | null) => void;
   discardNewLayoutItems: () => void;
-  setToast: Dispatch<StateUpdater<string | null>>;
 }
 
 export function createNewProjectAction({
   newLayoutTaskRef, newLayoutOperationGeneration, newPrintConfirmed, editingNewPrintSetup,
-  updateNewLayoutTask, newEpisodeWorkspace, setNewLayoutMessage, newLayoutItemsRef,
-  newCharacterDocumentRef, persistAnalogAssets, newWorkTitle, commitActiveScannerSession,
-  discardScannerSources, newPrintSetup, newLayoutRowGapMm, newLayoutColumnGapMm, newSeriesName,
-  newSeriesId, newEpisodeNumber, newLayoutFrameLineWidthMm, newWorkSetting, mergeSavedSeriesCatalog,
-  setNewCharacterReadProgress, newSourceSnapshot, newCharacterTextLink, syncCharacterText,
-  setNewCharacterTextLink, commitNewCharacterDraft, endNewCreationBridgeSession, lastHistoryPush,
-  replaceDocument, setBoundEpisodeWorkspace, setBoundSourceSnapshot, setSourceCoverageDecisions,
-  setCharacterTextLink, setActivePage, setActivePanel, setSelectedPanels, setSelectedElement, setTab,
-  setMobileStoryboardPane, setShowNewDialog, setNewCharacterDocument, discardNewLayoutItems, setToast,
+  newEpisodeWorkspace, setNewLayoutMessage, newLayoutItemsRef, newCharacterDocumentRef,
+  persistAnalogAssets, newWorkTitle, newPrintSetup, newLayoutRowGapMm, newLayoutColumnGapMm, newSeriesName,
+  newSeriesId, newEpisodeNumber, newLayoutFrameLineWidthMm, newWorkSetting, setNewCharacterReadProgress,
+  newSourceSnapshot, newCharacterTextLink, setNewCharacterTextLink, lastHistoryPush,
+  setBoundEpisodeWorkspace, setBoundSourceSnapshot, setSourceCoverageDecisions, setCharacterTextLink,
+  setActivePage, setActivePanel, setSelectedPanels, setSelectedElement, setTab, setMobileStoryboardPane,
+  setShowNewDialog, setToast,
+}: WorkspaceState, {
+  updateNewLayoutTask, commitActiveScannerSession, discardScannerSources, mergeSavedSeriesCatalog,
+  syncCharacterText, commitNewCharacterDraft, endNewCreationBridgeSession, replaceDocument,
+  setNewCharacterDocument, discardNewLayoutItems,
 }: Context) {
   const createNewDocument = async (
     layout?: PanelTemplate | DetectedPageLayout[],

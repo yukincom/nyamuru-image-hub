@@ -1,3 +1,4 @@
+import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -8,7 +9,7 @@ import ts from 'typescript';
 const root = new URL('../', import.meta.url);
 const archive = 'archive/legacy-howto-2026-09-05/';
 const read = path => readFileSync(new URL(path, root), 'utf8');
-const app = read('src/components/App.tsx');
+const app = workspaceSources('workspaceTabs');
 
 test('service-worker activation expires the cache that could contain removed story images', async () => {
   const events={},deleted=[];let completion,claimed=false;
@@ -41,7 +42,7 @@ test('旧使い方へのURLは空画面にせず通常のネームタブへ戻�
   const declaration = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === 'initialTab');
   const tabsDeclaration = ast.statements.filter(ts.isVariableStatement).flatMap(node => [...node.declarationList.declarations]).find(node => node.name.getText(ast) === 'TABS');
   const tabs = tabsDeclaration.initializer.elements.map(element => ({ id: element.properties.find(property => property.name.getText(ast) === 'id').initializer.text }));
-  const js = ts.transpileModule(declaration.getText(ast) + '\ninitialTab();', {
+  const js = ts.transpileModule(declaration.getText(ast).replace(/^export\s+/, '') + '\ninitialTab();', {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   }).outputText;
   for (const [requested, expected] of [['howto', 'storyboard'], ['', 'storyboard'], ['materials', 'props'], ['environment', 'storyboard'], ['characters', 'characters']]) {

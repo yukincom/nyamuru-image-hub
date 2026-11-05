@@ -1,6 +1,7 @@
-import { queryPcFontFamilies, classifyPcFontFamilies, availableFontWeights, type PcFontFamily } from '../../lib/bubbleFonts';
+import type { WorkspaceState } from './useWorkspaceState';
+import { queryPcFontFamilies, classifyPcFontFamilies, availableFontWeights } from '../../lib/bubbleFonts';
 import { rememberPcFontCatalog } from '../../lib/workspacePreferences';
-import { useEffect, type Dispatch, type StateUpdater } from 'preact/hooks';
+import { useEffect } from 'preact/hooks';
 import {
   canvasTextAt, removeCanvasText, type CanvasTextTarget, canvasTextEditable, editCanvasText,
   editCanvasTextStyle, editCanvasBubbleLineWidth, editCanvasBubbleMaterial, addCanvasTextAt,
@@ -13,64 +14,29 @@ import { type TextSelection, typingTextStyle, type TextStylePatch, updateTextSty
 import { getPrintSetup } from '../../lib/printSettings';
 import { paintGenerationOwner, paintOwnerCanvasSelection } from '../../lib/paintDocument';
 import type { BubblePathToolMode, PaintLayoutTarget } from '../../lib/paintWorkspace';
-import type { Bubble, CanvasElementSelection, MangaDocument, TextStyle } from '../../types';
-import type { MutableRef, WorkspacePaintSession, WorkspaceGeneration } from './workspaceTypes';
-import type { PaintController } from '../../lib/paintSession';
-import type { TextPaletteTab } from '../PaintTextTools';
+import type { Bubble, CanvasElementSelection, MangaDocument } from '../../types';
 
 interface Context {
-  localFontQuery: MutableRef<Promise<void> | null>;
-  localFontSynced: MutableRef<boolean>;
-  localFontCatalog: MutableRef<PcFontFamily[]>;
-  setLocalFontFamilies: Dispatch<StateUpdater<PcFontFamily[]>>;
-  createdText: MutableRef<CanvasTextTarget | null>;
-  documentRef: MutableRef<MangaDocument>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  selectedElement: CanvasElementSelection | null;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  setEditingText: Dispatch<StateUpdater<CanvasTextTarget | null>>;
   imageGestureBoundary: (phase: 'start' | 'end', source?: 'text-size') => void;
-  autoPaintResume: MutableRef<{ pageIndex: number; panelIndex: number; overlay: boolean; ownerKey: string; } | null>;
   layerTransition: (action: () => void | Promise<void>) => Promise<void>;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  paintController: MutableRef<PaintController | null>;
-  setTextTool: Dispatch<StateUpdater<boolean>>;
-  setZoomTool: Dispatch<StateUpdater<boolean>>;
-  setBubblePathTool: Dispatch<StateUpdater<BubblePathToolMode>>;
   selectCanvasElement: (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex?: number, revealDetails?: boolean) => void;
-  setTextPaletteRequest: Dispatch<StateUpdater<{ id: number; tab: TextPaletteTab; }>>;
-  editingText: CanvasTextTarget | null;
-  setPaintToolsCollapsed: Dispatch<StateUpdater<boolean>>;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
-  textToolStyle: TextStyle;
-  imageGesture: MutableRef<{ active: boolean; pushed: boolean; source?: 'text-size'; }>;
-  lastHistoryPush: MutableRef<number>;
-  setTextToolStyle: Dispatch<StateUpdater<TextStyle>>;
-  projectOperation: MutableRef<boolean>;
-  qwenGeneration: WorkspaceGeneration | null;
-  setToast: Dispatch<StateUpdater<string | null>>;
   selectedBubbleTarget: CanvasTextTarget | undefined;
-  textTool: boolean;
-  zoomTool: boolean;
-  layerSwitch: MutableRef<boolean>;
   undo: () => void;
   redo: () => void;
-  setActivePage: Dispatch<StateUpdater<number>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setBubbleMaterialsOpen: Dispatch<StateUpdater<boolean>>;
-  activePage: number;
-  activePanel: number;
   selectCanvasPanel: (index: number, additive?: boolean) => void;
 }
 
 export function useWorkspaceTextActions({
   localFontQuery, localFontSynced, localFontCatalog, setLocalFontFamilies, createdText, documentRef,
-  setDocument, selectedElement, setSelectedElement, setEditingText, imageGestureBoundary,
-  autoPaintResume, layerTransition, paintSessionRef, paintController, setTextTool, setZoomTool,
-  setBubblePathTool, selectCanvasElement, setTextPaletteRequest, editingText, setPaintToolsCollapsed,
+  selectedElement, setSelectedElement, setEditingText, autoPaintResume, paintSessionRef, paintController,
+  setTextTool, setZoomTool, setBubblePathTool, setTextPaletteRequest, editingText, setPaintToolsCollapsed,
   setSelectedPanels, textToolStyle, imageGesture, lastHistoryPush, setTextToolStyle, projectOperation,
-  qwenGeneration, setToast, selectedBubbleTarget, textTool, zoomTool, layerSwitch, undo, redo,
-  setActivePage, setActivePanel, setBubbleMaterialsOpen, activePage, activePanel, selectCanvasPanel,
+  qwenGeneration, setToast, textTool, zoomTool, layerSwitch, setActivePage, setActivePanel,
+  setBubbleMaterialsOpen, activePage, activePanel,
+}: WorkspaceState, {
+  setDocument, imageGestureBoundary, layerTransition, selectCanvasElement, selectedBubbleTarget, undo,
+  redo, selectCanvasPanel,
 }: Context) {
   function requestPcFonts(){
     if(localFontQuery.current)return localFontQuery.current;

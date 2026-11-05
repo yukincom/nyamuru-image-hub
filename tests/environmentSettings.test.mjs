@@ -1,3 +1,4 @@
+import { workspaceSources } from './helpers/workspaceSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -627,7 +628,7 @@ test('形式情報の更新はデータ管理に残り、サンプル操作は�
 });
 
 test('環境設定は現在作品のstateへ接続され、非表示タブはCSSでも確実に隠れる', () => {
-  const app = read('src/components/App.tsx');
+  const app = workspaceSources('workspaceTabs');
   assert.match(app, /document=\{document\}\s+onChangeDocument=\{setDocument\}\s+onNotify=\{setToast\}/);
   assert.match(read('src/styles/global.css'), /\.environment-tab-panel\[hidden\] \{ display: none; \}/);
   assert.match(read('src/styles/global.css'), /\.environment-tabs \{[^}]*flex-wrap: wrap/);
@@ -670,7 +671,7 @@ test('OMNY export is available for an opened project and disabled while busy', (
 });
 
 function appHandler(name, context) {
-  const ast = ts.createSourceFile('App.tsx', read('src/components/App.tsx'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const ast = ts.createSourceFile('useWorkspaceState.ts', read('src/components/workspace/useWorkspaceState.ts'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let declaration;
   function visit(node) {
     if (ts.isVariableDeclaration(node) && node.name.getText(ast) === name) declaration = node;

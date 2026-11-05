@@ -1,3 +1,4 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { downloadBrowserBlob } from '../../lib/browserFiles';
 import { toSeparatedMangaYaml, omnyFileName, cloneDocument } from '../../lib/manga';
 import { isBrowserWorkspace, browserWorkspaces } from '../../lib/browserWorkspace';
@@ -6,51 +7,28 @@ import { beginFigureCropImport } from '../../lib/figureCropStore';
 import { separateBubbleOriginals } from '../../lib/bubbleOriginals';
 import { isLanClient } from '../../lib/clientRuntime';
 import { rememberBrowserCatalog } from '../../lib/browserCatalog';
-import type { MangaDocument, CanvasElementSelection, WorkspaceTab } from '../../types';
+import type { MangaDocument } from '../../types';
 import { withNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts';
 import { selectEpisodeWorkspace, saveEpisodeProject, loadEpisodeProject } from '../../lib/localBridge';
 import { savedWorkspaceRoot } from '../../lib/workspacePreferences';
-import { createProjectSnapshot, restoreProjectSnapshot, type ProjectBinding } from '../../lib/projectPersistence';
-import type { MutableRef, WorkspacePaintSession, MobileStoryboardPane } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { PaintController } from '../../lib/paintSession';
-import type { SeriesCatalogPersistOptions, BoundSourceSnapshot } from '../../lib/newProjectSettings';
-import type { SourceCoverageDecision } from '../../lib/sourceCoverage.ts';
+import { createProjectSnapshot, restoreProjectSnapshot } from '../../lib/projectPersistence';
+import type { SeriesCatalogPersistOptions } from '../../lib/newProjectSettings';
 
 interface Context {
-  hasDocument: boolean;
-  showNewDialog: boolean;
-  projectOperation: MutableRef<boolean>;
   endTextEdit: () => void;
-  documentRef: MutableRef<MangaDocument>;
-  setToast: Dispatch<StateUpdater<string | null>>;
-  setProjectBusy: Dispatch<StateUpdater<boolean>>;
-  boundEpisodeWorkspace: ProjectBinding | null;
-  paintController: MutableRef<PaintController | null>;
   persistSeriesCatalog: (source: MangaDocument, options?: SeriesCatalogPersistOptions) => Promise<MangaDocument>;
   applyPreparedSeriesIdentifiers: (prepared: MangaDocument) => MangaDocument | null;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  setPaintSession: Dispatch<StateUpdater<WorkspacePaintSession | null>>;
-  setBoundEpisodeWorkspace: Dispatch<StateUpdater<ProjectBinding | null>>;
   replaceDocument: (next: MangaDocument) => void;
-  setBoundSourceSnapshot: Dispatch<StateUpdater<BoundSourceSnapshot | null>>;
-  setSourceCoverageDecisions: Dispatch<StateUpdater<SourceCoverageDecision[]>>;
-  setActivePage: Dispatch<StateUpdater<number>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  setTab: Dispatch<StateUpdater<WorkspaceTab>>;
-  setMobileStoryboardPane: (value: MobileStoryboardPane) => void;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  saveProjectAction: MutableRef<() => Promise<unknown>>;
 }
 
 export function createProjectFileActions({
-  hasDocument, showNewDialog, projectOperation, endTextEdit, documentRef, setToast, setProjectBusy,
-  boundEpisodeWorkspace, paintController, persistSeriesCatalog, applyPreparedSeriesIdentifiers,
-  paintSessionRef, setPaintSession, setBoundEpisodeWorkspace, replaceDocument, setBoundSourceSnapshot,
-  setSourceCoverageDecisions, setActivePage, setActivePanel, setSelectedPanels, setSelectedElement,
-  setTab, setMobileStoryboardPane, setDocument, saveProjectAction,
+  hasDocument, showNewDialog, projectOperation, documentRef, setToast, setProjectBusy,
+  boundEpisodeWorkspace, paintController, paintSessionRef, setPaintSession, setBoundEpisodeWorkspace,
+  setBoundSourceSnapshot, setSourceCoverageDecisions, setActivePage, setActivePanel, setSelectedPanels,
+  setSelectedElement, setTab, setMobileStoryboardPane, saveProjectAction,
+}: WorkspaceState, {
+  endTextEdit, persistSeriesCatalog, applyPreparedSeriesIdentifiers, replaceDocument, setDocument,
 }: Context) {
   const exportOmny = () => {
     if (!hasDocument || showNewDialog || projectOperation.current) return;

@@ -1,7 +1,6 @@
 import type { BBox, Bubble } from '../../types';
 import type { QwenAdoption, QwenAgentRequest, QwenGenerationPlan, QwenLayerCandidate } from '../../lib/qwenGeneration';
 import type { GenerationPoseEditorContext } from '../QwenGenerationDialog';
-import type { workspaceHistory } from '../../lib/workspaceHistory';
 import type { PaintOwner, PaintScene } from '../../lib/paintDocument';
 import type { PaintImages } from '../../lib/paintRenderer';
 import type { MangaDocument } from '../../types';
@@ -31,8 +30,6 @@ export interface WorkspaceSnapshot {
     state: PaintSessionSnapshot;
   };
 }
-
-export type EditorTimeline = ReturnType<typeof workspaceHistory<WorkspaceSnapshot>>;
 
 interface TextGenerationSource {
   target: CanvasTextTarget;

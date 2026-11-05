@@ -1,3 +1,4 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import {
   paintOwnerCanvasSelection, type PaintScene, ensureDirectPaintOwner, movePaintEntry, type PaintOwner,
   withPaintBleed, paintOwnerShouldClear, validatePaintDocument,
@@ -9,51 +10,30 @@ import {
 import { type CanvasTextTarget, toggleCanvasTextVisibility } from '../../lib/canvasText';
 import { cloneDocument } from '../../lib/manga';
 import { paintOwnerPlacementLocked, paintFolderChain } from '../../lib/paintLock';
-import type { PaintLayerAction, PaintController, PaintSessionSnapshot } from '../../lib/paintSession';
+import type { PaintLayerAction } from '../../lib/paintSession';
 import type { PaintResult } from '../PaintEditor';
 import { prepareGuideLayer } from '../../lib/paintGuide';
 import { loadPaintImages, renderPaintPng } from '../../lib/paintRenderer';
 import { panelDisplayLabel } from '../../lib/displayLabels';
-import type { MutableRef, WorkspacePaintSession, WorkspaceSnapshot, EditorTimeline } from './workspaceTypes';
 import type { MangaDocument, CanvasElementSelection } from '../../types';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { BubblePathToolMode } from '../../lib/paintWorkspace';
 
 interface Context {
-  activePage: number;
   layerTransition: (action: () => void | Promise<void>) => Promise<void>;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  paintController: MutableRef<PaintController | null>;
-  documentRef: MutableRef<MangaDocument>;
-  autoPaintResume: MutableRef<{ pageIndex: number; panelIndex: number; overlay: boolean; ownerKey: string; } | null>;
   endTextEdit: () => void;
-  setTextTool: Dispatch<StateUpdater<boolean>>;
-  setZoomTool: Dispatch<StateUpdater<boolean>>;
-  setBubblePathTool: Dispatch<StateUpdater<BubblePathToolMode>>;
   selectCanvasElement: (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex?: number, revealDetails?: boolean) => void;
-  lastHistoryPush: MutableRef<number>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
-  workspaceSnapshot: (state?: PaintSessionSnapshot) => WorkspaceSnapshot;
   makePaintScene: (current: MangaDocument, panelIndex: number, pageIndex: number, overlay: boolean) => PaintScene & { generatedImageSequence: number };
-  timeline: MutableRef<EditorTimeline>;
-  changedHistory: () => void;
-  setPaintSession: Dispatch<StateUpdater<WorkspacePaintSession | null>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  pendingLayerAction: MutableRef<PaintLayerAction | null>;
   openPaint: (initialOwner?: string, panelIndex?: number, pageIndex?: number, overlay?: boolean, preview?: PaintScene) => boolean;
-  paintBleedPx: number;
   persistPaintResults: (current: MangaDocument, batches: Array<{ pageIndex: number; panelIndex: number; overlay: boolean; title: string; result: PaintResult; }>, publish: (next: MangaDocument) => void) => Promise<void>;
-  setToast: Dispatch<StateUpdater<string | null>>;
 }
 
 export function createLayerPaletteActions({
-  activePage, layerTransition, paintSessionRef, paintController, documentRef, autoPaintResume,
-  endTextEdit, setTextTool, setZoomTool, setBubblePathTool, selectCanvasElement, lastHistoryPush,
-  setDocument, setSelectedPanels, workspaceSnapshot, makePaintScene, timeline, changedHistory,
-  setPaintSession, setActivePanel, setSelectedElement, pendingLayerAction, openPaint, paintBleedPx,
-  persistPaintResults, setToast,
+  activePage, paintSessionRef, paintController, documentRef, autoPaintResume, setTextTool, setZoomTool,
+  setBubblePathTool, lastHistoryPush, setSelectedPanels, workspaceSnapshot, timeline, changedHistory,
+  setPaintSession, setActivePanel, setSelectedElement, pendingLayerAction, paintBleedPx, setToast,
+}: WorkspaceState, {
+  layerTransition, endTextEdit, selectCanvasElement, setDocument, makePaintScene, openPaint,
+  persistPaintResults,
 }: Context) {
   function selectLayerOwner(key:string,panelIndex:number,pageIndex=activePage,overlay=false,native=false){void layerTransition(async()=>{
     if(paintSessionRef.current)await paintController.current?.close();

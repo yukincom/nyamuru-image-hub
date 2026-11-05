@@ -1,43 +1,26 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { getPrintSetup } from '../../lib/printSettings';
 import { newPage, MAX_PANELS_PER_PAGE, newPanel, cloneDocument } from '../../lib/manga';
 import { panelLocked, ownerItemLocked } from '../../lib/panelLayers';
 import { panelDisplayLabel, textDisplayLabel } from '../../lib/displayLabels';
 import { type CanvasTextTarget, canvasTextEditable, removeCanvasText, canvasTextAt } from '../../lib/canvasText';
 import { artworkLocked } from '../../lib/paintLock';
-import type { MangaDocument, WorkspaceTab, MangaPage, CanvasElementSelection } from '../../types';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { MobileStoryboardPane, MutableRef, WorkspacePaintSession } from './workspaceTypes';
-import type { PaintController } from '../../lib/paintSession';
+import type { MangaDocument, MangaPage } from '../../types';
 
 interface Context {
   endTextEdit: () => void;
   mutate: (recipe: (draft: MangaDocument) => void) => void;
-  setActivePage: Dispatch<StateUpdater<number>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
-  setTab: Dispatch<StateUpdater<WorkspaceTab>>;
-  setMobileStoryboardPane: (value: MobileStoryboardPane) => void;
   page: MangaPage;
-  activePage: number;
-  activePanel: number;
-  document: MangaDocument;
-  setToast: Dispatch<StateUpdater<string | null>>;
-  autoPaintResume: MutableRef<{ pageIndex: number; panelIndex: number; overlay: boolean; ownerKey: string; } | null>;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  documentRef: MutableRef<MangaDocument>;
   layerTransition: (action: () => void | Promise<void>) => Promise<void>;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  paintController: MutableRef<PaintController | null>;
-  createdText: MutableRef<CanvasTextTarget | null>;
-  lastHistoryPush: MutableRef<number>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
 }
 
 export function createPageEditActions({
-  endTextEdit, mutate, setActivePage, setActivePanel, setSelectedPanels, setTab,
-  setMobileStoryboardPane, page, activePage, activePanel, document, setToast, autoPaintResume,
-  setSelectedElement, documentRef, layerTransition, paintSessionRef, paintController, createdText,
-  lastHistoryPush, setDocument,
+  setActivePage, setActivePanel, setSelectedPanels, setTab, setMobileStoryboardPane, activePage,
+  activePanel, document, setToast, autoPaintResume, setSelectedElement, documentRef, paintSessionRef,
+  paintController, createdText, lastHistoryPush,
+}: WorkspaceState, {
+  endTextEdit, mutate, page, layerTransition, setDocument,
 }: Context) {
   const addPage = () => {endTextEdit();mutate((draft) => { const index = draft.manga.pages.length; const setup = getPrintSetup(draft.manga); draft.manga.pages.push(newPage(index + 1, { w: setup.width_mm, h: setup.height_mm })); setActivePage(index); setActivePanel(0); setSelectedPanels([0]); setTab('storyboard'); setMobileStoryboardPane('editor'); });};
   const duplicatePage = () => {

@@ -1,3 +1,4 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import type { MangaDocument } from '../../types';
 import { type SeriesCatalogPersistOptions, withoutSeriesCharacter } from '../../lib/newProjectSettings';
 import {
@@ -5,11 +6,7 @@ import {
   upsertEpisodeIntoSeriesCatalog, mergeSeriesCatalog,
 } from '../../lib/seriesCatalog';
 import { isLanClient } from '../../lib/clientRuntime';
-import {
-  loadSeriesCatalog, saveSeriesCatalog, type SeriesCharacterTextLink, syncSeriesCharacterText,
-  linkSeriesCharacterText, restoreSeriesCharacterText, type EpisodeWorkspace,
-  type SeriesReferenceTextSelection, type EpisodeWorkspaceTextSelection,
-} from '../../lib/localBridge';
+import { loadSeriesCatalog, saveSeriesCatalog, type SeriesCharacterTextLink, syncSeriesCharacterText, linkSeriesCharacterText, restoreSeriesCharacterText, type EpisodeWorkspaceTextSelection } from '../../lib/localBridge';
 import { parseMangaYaml, toSeriesCatalogMangaYaml } from '../../lib/manga';
 import { persistSeriesBackgroundModels } from '../../lib/backgroundStageStore';
 import { startNewCreationBridgeSession, stopNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts';
@@ -17,30 +14,18 @@ import {
   toCharacterTextMarkdown, seriesCharacterCatalogIds, mergeCharacterTextCatalog, parseCharacterText,
   characterArchiveDocument,
 } from '../../lib/characterTextCatalog.ts';
-import type { MutableRef } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
 
 interface Context {
-  showNewDialog: boolean;
-  seriesCatalogPendingCount: MutableRef<number>;
-  setSeriesCatalogSaving: Dispatch<StateUpdater<boolean>>;
-  seriesCatalogSaveQueue: MutableRef<Promise<void>>;
-  documentRef: MutableRef<MangaDocument>;
-  newSeriesDirectory: string;
-  newEpisodeWorkspace: EpisodeWorkspace | null;
-  newSeriesReference: SeriesReferenceTextSelection | null;
   setNewCharacterDocument: (next: MangaDocument | null) => void;
-  newCreationBridgeToken: MutableRef<string | null>;
-  characterEditorBridgeToken: MutableRef<string | null>;
-  setToast: Dispatch<StateUpdater<string | null>>;
   chooseLocalText: () => Promise<EpisodeWorkspaceTextSelection | null>;
-  setCharacterTextBusy: Dispatch<StateUpdater<boolean>>;
 }
 
 export function createSeriesCatalogActions({
-  showNewDialog, seriesCatalogPendingCount, setSeriesCatalogSaving, seriesCatalogSaveQueue,
-  documentRef, newSeriesDirectory, newEpisodeWorkspace, newSeriesReference, setNewCharacterDocument,
-  newCreationBridgeToken, characterEditorBridgeToken, setToast, chooseLocalText, setCharacterTextBusy,
+  showNewDialog, seriesCatalogPendingCount, setSeriesCatalogSaving, seriesCatalogSaveQueue, documentRef,
+  newSeriesDirectory, newEpisodeWorkspace, newSeriesReference, newCreationBridgeToken,
+  characterEditorBridgeToken, setToast, setCharacterTextBusy,
+}: WorkspaceState, {
+  setNewCharacterDocument, chooseLocalText,
 }: Context) {
   const persistSeriesCatalogNow = async (
     source: MangaDocument,

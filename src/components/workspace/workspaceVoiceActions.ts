@@ -1,70 +1,42 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { agentEditorSnapshot, selectedAgentBubble, prepareAgentBubbleEdit } from '../../lib/agentTools';
 import { type VoiceCommand, resolveVoiceGenerationTarget } from '../../lib/voiceCommands';
 import { connectAgentImageGeneration } from '../../lib/localBridge';
 import { applyArtworkSettings, getArtworkSettings } from '../../lib/artworkRules';
 import { type CanvasTextTarget, canvasTextEditable, editCanvasText, canvasTextAt } from '../../lib/canvasText';
-import type { MutableRef, WorkspacePaintSession, WorkspaceSnapshot, EditorTimeline, WorkspaceGeneration } from './workspaceTypes';
-import type { MangaDocument, CanvasElementSelection } from '../../types';
-import type { PaintSessionSnapshot, PaintController } from '../../lib/paintSession';
+import type { MutableRef } from './workspaceTypes';
+import type { MangaDocument } from '../../types';
 import type { QwenAgentRequest } from '../../lib/qwenGeneration';
 
 interface Context {
-  hasDocument: boolean;
-  showNewDialog: boolean;
   historyAvailable: () => boolean;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  editingText: CanvasTextTarget | null;
-  imageGesture: MutableRef<{ active: boolean; pushed: boolean; source?: 'text-size'; }>;
-  documentRef: MutableRef<MangaDocument>;
-  agentRevision: MutableRef<(current: string) => string>;
   voiceRevision: (withHistory?: boolean) => string;
-  activePage: number;
-  activePanel: number;
-  selectedElement: CanvasElementSelection | null;
-  workspaceSnapshot: (state?: PaintSessionSnapshot) => WorkspaceSnapshot;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  timeline: MutableRef<EditorTimeline>;
-  lastHistoryPush: MutableRef<number>;
-  changedHistory: () => void;
-  projectOperation: MutableRef<boolean>;
-  layerSwitch: MutableRef<boolean>;
-  imageImportBusy: boolean;
-  qwenGeneration: WorkspaceGeneration | null;
-  paintController: MutableRef<PaintController | null>;
   openBubbleMaterials: () => void;
   saveProject: (chooseDestination?: boolean) => Promise<string | undefined>;
-  past: WorkspaceSnapshot[];
-  future: WorkspaceSnapshot[];
   undo: () => void;
   redo: () => void;
-  panelSync: boolean;
-  innerFrameSnap: boolean;
-  panelGapSnap: boolean;
-  showGuides: boolean;
-  spreadView: boolean;
   togglePanelSync: () => void;
   toggleInnerFrameSnap: () => void;
   togglePanelGapSnap: () => void;
   changeShowGuides: (next: boolean) => void;
   changeSpreadView: (next: boolean) => void;
   latestVoiceRevision: MutableRef<(withHistory?: boolean) => string>;
-  environmentOpen: boolean;
-  closeEnvironmentSettings: () => void;
   requestOwnerGeneration: (key?: string, overlay?: boolean, panelIndex?: number, pageIndex?: number, agentRequest?: QwenAgentRequest) => Promise<boolean | undefined>;
-  document: MangaDocument;
   selectPage: (index: number, panelIndex?: number) => Promise<void>;
   mutate: (recipe: (draft: MangaDocument) => void) => void;
 }
 
 export function createWorkspaceVoiceActions({
-  hasDocument, showNewDialog, historyAvailable, paintSessionRef, editingText, imageGesture,
-  documentRef, agentRevision, voiceRevision, activePage, activePanel, selectedElement,
-  workspaceSnapshot, setDocument, timeline, lastHistoryPush, changedHistory, projectOperation,
-  layerSwitch, imageImportBusy, qwenGeneration, paintController, openBubbleMaterials, saveProject,
-  past, future, undo, redo, panelSync, innerFrameSnap, panelGapSnap, showGuides, spreadView,
+  hasDocument, showNewDialog, paintSessionRef, editingText, imageGesture, documentRef, agentRevision,
+  activePage, activePanel, selectedElement, workspaceSnapshot, timeline, lastHistoryPush, changedHistory,
+  projectOperation, layerSwitch, imageImportBusy, qwenGeneration, paintController, past, future, panelSync,
+  innerFrameSnap, panelGapSnap, showGuides, spreadView, environmentOpen, closeEnvironmentSettings,
+  document,
+}: WorkspaceState, {
+  historyAvailable, voiceRevision, setDocument, openBubbleMaterials, saveProject, undo, redo,
   togglePanelSync, toggleInnerFrameSnap, togglePanelGapSnap, changeShowGuides, changeSpreadView,
-  latestVoiceRevision, environmentOpen, closeEnvironmentSettings, requestOwnerGeneration, document,
-  selectPage, mutate,
+  latestVoiceRevision, requestOwnerGeneration, selectPage, mutate,
 }: Context) {
   const agentBlocked=()=>!hasDocument?'原稿を開いてください':showNewDialog||!historyAvailable()?'現在の処理を終えてください':
     paintSessionRef.current?'配置へ戻ってから操作してください':editingText||imageGesture.current.active?'現在の文字入力やドラッグを終えてください':null;

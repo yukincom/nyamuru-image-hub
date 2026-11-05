@@ -1,70 +1,31 @@
-import {
-  type SeriesReferenceTextSelection, chooseSeriesDirectory, type SeriesReferenceTextCandidate,
-  type EpisodeWorkspaceTextSelection, chooseSeriesReferenceText, selectEpisodeWorkspace,
-  suggestEpisodeWorkspaceText, type SeriesCharacterTextLink, type EpisodeWorkspace,
-  type ReferenceTextSuggestion,
-} from '../../lib/localBridge';
+import type { WorkspaceState } from './useWorkspaceState';
+import { type SeriesReferenceTextSelection, chooseSeriesDirectory, type SeriesReferenceTextCandidate, type EpisodeWorkspaceTextSelection, chooseSeriesReferenceText, selectEpisodeWorkspace, suggestEpisodeWorkspaceText } from '../../lib/localBridge';
 import { parseCharacterText } from '../../lib/characterTextCatalog.ts';
-import {
-  detectedSeriesReferenceKind, seriesTitleFromReferences, type NewSeriesMode, type NewSourceSnapshot,
-} from '../../lib/newProjectSettings';
+import { detectedSeriesReferenceKind, seriesTitleFromReferences } from '../../lib/newProjectSettings';
 import { parseStoryReferenceText } from '../../lib/settingTextImport.ts';
 import { isLanClient } from '../../lib/clientRuntime';
 import { rememberWorkspaceRoot, savedWorkspaceRoot } from '../../lib/workspacePreferences';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
 import { seriesReferenceConfirmationState, replaceSeriesReferenceCandidate } from '../../lib/seriesReferenceCandidates.ts';
 import { chooseBrowserFiles, blobRevision } from '../../lib/browserFiles';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { MutableRef } from './workspaceTypes';
 
 interface Context {
-  setNewSeriesReferenceMessage: Dispatch<StateUpdater<string>>;
-  newSeriesMode: NewSeriesMode;
-  setNewSeriesName: Dispatch<StateUpdater<string>>;
-  newSourceSnapshot: NewSourceSnapshot | null;
-  newSeriesName: string;
-  setNewSeriesDirectory: Dispatch<StateUpdater<string>>;
-  setNewSeriesReference: Dispatch<StateUpdater<SeriesReferenceTextSelection | null>>;
-  setNewSeriesReferences: Dispatch<StateUpdater<SeriesReferenceTextSelection[]>>;
-  setNewSeriesReferenceCandidates: Dispatch<StateUpdater<(SeriesReferenceTextCandidate & { seriesDirectory: string; })[]>>;
-  setNewSelectedSeriesReferencePaths: Dispatch<StateUpdater<string[]>>;
   workspaceRootKey: () => string;
-  newSelectedSeriesReferencePaths: string[];
-  newSeriesReferenceCandidates: (SeriesReferenceTextCandidate & { seriesDirectory: string; })[];
-  newSeriesReferenceSelecting: boolean;
-  newSeriesDirectorySelecting: boolean;
-  newSeriesPreparing: boolean;
-  newWorkspaceSelecting: boolean;
-  newSeriesReferences: SeriesReferenceTextSelection[];
-  newSeriesReference: SeriesReferenceTextSelection | null;
-  setNewCharacterTextLink: Dispatch<StateUpdater<SeriesCharacterTextLink | null>>;
-  newSeriesId: string;
-  setNewSeriesDirectorySelecting: Dispatch<StateUpdater<boolean>>;
-  setNewSeriesDirectoryMessage: Dispatch<StateUpdater<string>>;
-  newSeriesDirectory: string;
-  newEpisodeWorkspace: EpisodeWorkspace | null;
-  setNewEpisodeWorkspace: Dispatch<StateUpdater<EpisodeWorkspace | null>>;
   clearNewReferenceText: () => void;
-  newSeriesSelectionGeneration: MutableRef<number>;
-  setNewSeriesReferenceSelecting: Dispatch<StateUpdater<boolean>>;
-  setNewWorkspaceSelecting: Dispatch<StateUpdater<boolean>>;
-  setNewWorkspaceMessage: Dispatch<StateUpdater<string>>;
-  newReferenceFileName: string;
-  setNewSuggestedEpisodeReference: Dispatch<StateUpdater<ReferenceTextSuggestion | null>>;
-  setNewReferenceMessage: Dispatch<StateUpdater<string>>;
 }
 
 export function createSeriesReferenceActions({
   setNewSeriesReferenceMessage, newSeriesMode, setNewSeriesName, newSourceSnapshot, newSeriesName,
-  setNewSeriesDirectory, setNewSeriesReference, setNewSeriesReferences,
-  setNewSeriesReferenceCandidates, setNewSelectedSeriesReferencePaths, workspaceRootKey,
-  newSelectedSeriesReferencePaths, newSeriesReferenceCandidates, newSeriesReferenceSelecting,
-  newSeriesDirectorySelecting, newSeriesPreparing, newWorkspaceSelecting, newSeriesReferences,
-  newSeriesReference, setNewCharacterTextLink, newSeriesId, setNewSeriesDirectorySelecting,
-  setNewSeriesDirectoryMessage, newSeriesDirectory, newEpisodeWorkspace, setNewEpisodeWorkspace,
-  clearNewReferenceText, newSeriesSelectionGeneration, setNewSeriesReferenceSelecting,
-  setNewWorkspaceSelecting, setNewWorkspaceMessage, newReferenceFileName,
-  setNewSuggestedEpisodeReference, setNewReferenceMessage,
+  setNewSeriesDirectory, setNewSeriesReference, setNewSeriesReferences, setNewSeriesReferenceCandidates,
+  setNewSelectedSeriesReferencePaths, newSelectedSeriesReferencePaths, newSeriesReferenceCandidates,
+  newSeriesReferenceSelecting, newSeriesDirectorySelecting, newSeriesPreparing, newWorkspaceSelecting,
+  newSeriesReferences, newSeriesReference, setNewCharacterTextLink, newSeriesId,
+  setNewSeriesDirectorySelecting, setNewSeriesDirectoryMessage, newSeriesDirectory, newEpisodeWorkspace,
+  setNewEpisodeWorkspace, newSeriesSelectionGeneration, setNewSeriesReferenceSelecting,
+  setNewWorkspaceSelecting, setNewWorkspaceMessage, newReferenceFileName, setNewSuggestedEpisodeReference,
+  setNewReferenceMessage,
+}: WorkspaceState, {
+  workspaceRootKey, clearNewReferenceText,
 }: Context) {
   const applyNewSeriesReferenceSelections = (selections: readonly SeriesReferenceTextSelection[], messagePrefix = '') => {
     if (!selections.length) {

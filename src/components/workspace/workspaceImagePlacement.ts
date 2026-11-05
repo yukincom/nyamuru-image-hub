@@ -1,3 +1,4 @@
+import type { WorkspaceState } from './useWorkspaceState';
 import { panelLocked, ownerItemLocked } from '../../lib/panelLayers';
 import type { BBox, ImageAsset, CanvasElementSelection, MangaDocument } from '../../types';
 import { panelBounds, fallbackBox } from '../../lib/canvasGeometry';
@@ -10,43 +11,19 @@ import { cloneDocument } from '../../lib/manga';
 import { ensureCanvasTextOwner } from '../../lib/canvasText';
 import { humanPoseOwnerImage } from '../../lib/humanPoseComposition';
 import type { QwenGenerationPlan, QwenAdoption } from '../../lib/qwenGeneration';
-import type { MutableRef, WorkspaceImageTarget, WorkspaceGeneration, WorkspacePaintSession } from './workspaceTypes';
-import type { Dispatch, StateUpdater } from 'preact/hooks';
-import type { RefObject } from 'preact';
-import type { PaintController } from '../../lib/paintSession';
 
 interface Context {
-  activePanel: number;
-  activePage: number;
-  documentRef: MutableRef<MangaDocument>;
-  imageImportBusy: boolean;
-  imageImportTarget: MutableRef<WorkspaceImageTarget | null>;
-  setActivePage: Dispatch<StateUpdater<number>>;
-  setActivePanel: Dispatch<StateUpdater<number>>;
-  setSelectedPanels: Dispatch<StateUpdater<number[]>>;
-  placedImageInput: RefObject<HTMLInputElement>;
   selectedPaintOwner: () => string;
-  selectedElement: CanvasElementSelection | null;
-  projectOperation: MutableRef<boolean>;
-  qwenGeneration: WorkspaceGeneration | null;
-  paintSessionRef: MutableRef<WorkspacePaintSession | null>;
-  paintController: MutableRef<PaintController | null>;
-  setImageImportBusy: Dispatch<StateUpdater<boolean>>;
-  lastHistoryPush: MutableRef<number>;
   setDocument: (next: MangaDocument, record?: boolean) => void;
-  activePageRef: MutableRef<number>;
-  activePanelRef: MutableRef<number>;
-  setSelectedElement: Dispatch<StateUpdater<CanvasElementSelection | null>>;
-  setToast: Dispatch<StateUpdater<string | null>>;
-  setQwenGeneration: Dispatch<StateUpdater<WorkspaceGeneration | null>>;
 }
 
 export function createImagePlacementActions({
-  activePanel, activePage, documentRef, imageImportBusy, imageImportTarget, setActivePage,
-  setActivePanel, setSelectedPanels, placedImageInput, selectedPaintOwner, selectedElement,
-  projectOperation, qwenGeneration, paintSessionRef, paintController, setImageImportBusy,
-  lastHistoryPush, setDocument, activePageRef, activePanelRef, setSelectedElement, setToast,
-  setQwenGeneration,
+  activePanel, activePage, documentRef, imageImportBusy, imageImportTarget, setActivePage, setActivePanel,
+  setSelectedPanels, placedImageInput, selectedElement, projectOperation, qwenGeneration, paintSessionRef,
+  paintController, setImageImportBusy, lastHistoryPush, activePageRef, activePanelRef, setSelectedElement,
+  setToast, setQwenGeneration,
+}: WorkspaceState, {
+  selectedPaintOwner, setDocument,
 }: Context) {
   const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
     const page = documentRef.current.manga.pages[pageIndex];
