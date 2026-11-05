@@ -1,3 +1,4 @@
+import ProjectFileInput, { useProjectFilePicker } from './ProjectFileInput';
 export { qwenInputImage, qwenLayerImage } from './generation/inputImages.ts';
 import type { ComponentProps } from 'preact';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
@@ -171,7 +172,8 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
     finally{working.current=false;if(alive.current){setBusy(false);setPhase('');}}
   }
   const { selectLayer, addFiles } = useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection });
-  const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession });
+  const chooseFiles = useProjectFilePicker();
+  const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ chooseFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession });
   async function conversationSend(text:string,isCurrent:()=>boolean){
     if(!alive.current||!isCurrent())return '生成の会話を終了しました';
     const intent=qwenConversationIntent(text);
@@ -342,7 +344,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
       {plan.characterKeys.length>0&&<fieldset disabled={busy||Boolean(attempt)}><legend>{threeImages?'image2 · キャラクター設定画':'キャラクター設定画'}</legend>
         {sourceErrors.character&&<><p role="alert">{sourceErrors.character}</p><button onClick={()=>retryCharacter(x=>x+1)}>設定画の読み込みを再試行</button></>}
         <div class="qwen-reference-list">{linked.map(ref=><figure key={ref.characterKeys.join()}><img src={ref.image} alt={threeImages?`image2 キャラクター設定画：${ref.label}`:ref.label}/><figcaption>{ref.label}</figcaption></figure>)}</div>
-        {!threeImages&&<><label class="qwen-file-label">参考画像を追加<input type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={e=>{const files=Array.from(e.currentTarget.files??[]);e.currentTarget.value='';void addFiles(files);}}/></label>
+        {!threeImages&&<><label class="qwen-file-label">参考画像を追加<ProjectFileInput accept="image/png,image/jpeg,image/webp" multiple onFiles={addFiles}/></label>
           {extra.map((ref,index)=><figure class="qwen-paint-reference"><img src={ref.image} alt={ref.label}/><button onClick={()=>setExtra(previous=>previous.filter((_,i)=>i!==index))}>外す</button></figure>)}</>}
       </fieldset>}
       {threeImages&&<fieldset disabled={busy||Boolean(attempt)}><legend>image3 · ネームの表情</legend>

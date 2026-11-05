@@ -30,13 +30,13 @@ export function rememberPcFontCatalog(families: readonly PcFontFamily[]): void {
   try { localStorage.setItem(PC_FONT_CATALOG_KEY, JSON.stringify(families)); } catch { /* private mode */ }
 }
 
-export function savedWorkspaceRoot(key: string): string {
+export function savedWorkspaceRoot(key: string, useLast = true): string {
   try {
     const value = JSON.parse(localStorage.getItem(EPISODE_WORKSPACE_ROOTS_KEY) || '{}');
     if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
     const roots = value as Record<string, unknown>;
     const exact = roots[key];
-    return typeof exact === 'string' ? exact : typeof roots._last === 'string' ? roots._last : '';
+    return typeof exact === 'string' ? exact : useLast && typeof roots._last === 'string' ? roots._last : '';
   } catch { /* private mode or an old malformed value */ }
   return '';
 }

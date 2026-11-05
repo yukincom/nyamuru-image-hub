@@ -5,11 +5,23 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from nyamuru_ocr_util import decode_image_data
+from project_file_picker import choose_project_files
 from nyamuru_project_store import load_project, save_project
 from nyamuru_series_catalog_store import discover_reference_text_candidates
 
 if TYPE_CHECKING:
     from nyamuru_bridge_http import BridgeHandler
+
+
+def file_picker_directory(handler: BridgeHandler, body: dict[str, Any]) -> object:
+    if body.get("series_id"):
+        catalogs = handler.state.series_catalogs
+        metadata = catalogs.metadata_for(catalogs.checked_id(body["series_id"])) or {}
+        reference = catalogs.character_text_reference(metadata)
+        registered = reference.get("series_directory") or metadata.get("series_directory")
+        if registered and Path(registered).is_dir():
+            return registered
+    return body.get("default_directory")
 
 
 def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any]) -> None:
@@ -24,7 +36,7 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
         handler.send_json(200, result)
         return
     if path == "/api/episode-workspace/select":
-        handler.send_json(200, handler.state.episode_workspaces.select(body.get("default_directory")))
+        handler.send_json(200, handler.state.episode_workspaces.select(file_picker_directory(handler, body)))
         return
     if path == "/api/episode-workspace/project/save":
         directory = handler.state.episode_workspaces.directory(body.get("workspace_token"))
@@ -44,8 +56,13 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
     if path == "/api/episode-workspace/prepare":
         handler.send_json(200, handler.state.episode_workspaces.prepare(body.get("workspace_token")))
         return
+    if path == "/api/episode-workspace/choose-files":
+        handler.send_json(200, choose_project_files(
+            file_picker_directory(handler, body), body.get("accept", ""), body.get("multiple") is True,
+        ))
+        return
     if path == "/api/episode-workspace/choose-text":
-        handler.send_json(200, handler.state.episode_workspaces.choose_text(body.get("workspace_token")))
+        handler.send_json(200, handler.state.episode_workspaces.choose_text(body.get("workspace_token"), file_picker_directory(handler, body)))
         return
     if path == "/api/episode-workspace/source-coverage/save":
         handler.send_json(200, handler.state.episode_workspaces.save_source_coverage(
@@ -58,6 +75,7 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
         handler.send_json(200, handler.state.episode_workspaces.choose_images(
             body.get("workspace_token"),
             body.get("max_files"),
+            body.get("default_directory"),
         ))
         return
     if path == "/api/series/reference-text/choose":

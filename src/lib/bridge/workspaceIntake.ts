@@ -145,9 +145,10 @@ function dataUrlFile(dataUrl: unknown, filename: unknown): File {
   return new File([bytes], safeName, { type: mimeType });
 }
 
-export async function selectEpisodeWorkspace(defaultDirectory = ''): Promise<EpisodeWorkspace | null> {
+export async function selectEpisodeWorkspace(defaultDirectory = '', seriesId = ''): Promise<EpisodeWorkspace | null> {
   const payload = await postJson('/api/episode-workspace/select', {
     default_directory: defaultDirectory,
+    series_id: seriesId,
   }, 5 * 60_000) as Record<string, unknown>;
   if (payload.cancelled === true) return null;
   const token = typeof payload.workspace_token === 'string' ? payload.workspace_token : '';
@@ -230,9 +231,11 @@ export async function prepareEpisodeWorkspace(token: string): Promise<string[]> 
   return payload.managed_directories as string[];
 }
 
-export async function chooseEpisodeWorkspaceSource(token: string): Promise<EpisodeWorkspaceTextSelection | null> {
+export async function chooseEpisodeWorkspaceSource(token: string, defaultDirectory = '', seriesId = ''): Promise<EpisodeWorkspaceTextSelection | null> {
   const payload = await postJson('/api/episode-workspace/choose-text', {
     workspace_token: token,
+    default_directory: defaultDirectory,
+    series_id: seriesId,
   }, 5 * 60_000) as Record<string, unknown>;
   if (payload.cancelled === true) return null;
   const byteSize = Number(payload.byte_size);
@@ -286,10 +289,11 @@ export async function saveSourceCoverageReport(
   return { relativePath, sha256, byteSize, created: payload.created };
 }
 
-export async function chooseEpisodeWorkspaceImages(token: string, maxFiles: number): Promise<File[]> {
+export async function chooseEpisodeWorkspaceImages(token: string, maxFiles: number, defaultDirectory = ''): Promise<File[]> {
   const payload = await postJson('/api/episode-workspace/choose-images', {
     workspace_token: token,
     max_files: maxFiles,
+    default_directory: defaultDirectory,
   }, 5 * 60_000) as Record<string, unknown>;
   if (payload.cancelled === true) return [];
   if (!Array.isArray(payload.files)) throw new Error('選択した画像を読み込めませんでした');

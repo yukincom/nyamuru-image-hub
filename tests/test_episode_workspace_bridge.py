@@ -147,6 +147,26 @@ class EpisodeWorkspaceManagerTest(unittest.TestCase):
             encoded = image_result["files"][0]["image"].split(",", 1)[1]
             self.assertEqual(base64.b64decode(encoded), image_file.read_bytes())
 
+    # 合格: シリーズを開始場所にしても、原文の相対位置は作品フォルダー基準で保つ。選択画面を模擬。
+    def test_registered_series_is_picker_start_without_changing_source_identity(self):
+        with tempfile.TemporaryDirectory() as directory_name:
+            series = Path(directory_name)
+            episode = series / "第1話"
+            episode.mkdir()
+            source = episode / "台本.md"
+            source.write_text("本文", encoding="utf-8")
+            manager = bridge.EpisodeWorkspaceManager(series / "state.json")
+            with patch.object(episode_workspace, "choose_episode_directory", return_value=episode):
+                token = manager.select(series)["workspace_token"]
+            with patch.object(episode_workspace, "choose_workspace_files", return_value=[source.resolve()]) as picker:
+                result = manager.choose_text(token, str(series))
+            picker.assert_called_once_with(series.resolve(), "text", False)
+            self.assertEqual(result["relative_path"], "台本.md")
+            with patch.object(episode_workspace, "choose_workspace_files", return_value=None) as picker:
+                result = manager.choose_images(token, 10, str(series))
+            picker.assert_called_once_with(series.resolve(), "image", True)
+            self.assertTrue(result["cancelled"])
+
     def test_name_collision_does_not_leave_partially_created_directories(self):
         with tempfile.TemporaryDirectory() as directory_name:
             episode = Path(directory_name) / "episode"

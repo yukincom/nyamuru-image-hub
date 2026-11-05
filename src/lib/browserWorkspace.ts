@@ -1,5 +1,5 @@
-import { rememberRecentBrowserFolder } from './recentBrowserFolder.ts';
-import { blobRevision, writeProjectFile, MAX_PROJECT_FILE_BYTES, type ProjectFileBinding, type ProjectFileHandle } from './browserFiles.ts';
+import { rememberRecentBrowserFolder, rememberBrowserSeriesFolder, savedBrowserSeriesFolders } from './recentBrowserFolder.ts';
+import { browserFileTypes, blobRevision, writeProjectFile, MAX_PROJECT_FILE_BYTES, type ProjectFileBinding, type ProjectFileHandle } from './browserFiles.ts';
 import { readPortableProject, portableProjectBlob, type PortableProject, type LegacyProjectSource } from './portableProject.ts';
 import type { EpisodeWorkspace, EpisodeWorkspaceTextSelection, ReferenceTextSuggestionResult, SeriesDirectorySelection, SeriesReferenceTextCandidate } from './localBridge.ts';
 
@@ -14,7 +14,7 @@ export interface BrowserDirectoryHandle {
   queryPermission?(options: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
   requestPermission?(options: { mode: 'read' | 'readwrite' }): Promise<PermissionState>;
 }
-interface FolderRecord { id: string; handle: BrowserDirectoryHandle }
+interface FolderRecord { id: string; handle: BrowserDirectoryHandle; series?: boolean }
 export interface BrowserFolderStorage {
   all(): Promise<FolderRecord[]>;
   put(record: FolderRecord): Promise<void>;
@@ -43,6 +43,7 @@ const displayDirectory = (record: FolderRecord) => `${record.id}/${record.handle
 const folders = new Map<string, FolderRecord>();
 const folderStorage: BrowserFolderStorage = {
   async all() {
+    for (const record of await savedBrowserSeriesFolders()) if (!folders.has(record.id)) folders.set(record.id, record);
     return [...folders.values()];
   },
   async put(record) {
@@ -130,13 +131,26 @@ export class BrowserWorkspaces {
   async chooseSeries(startIn = ''): Promise<SeriesDirectorySelection | null> {
     const record = await this.pick(startIn, 'read');
     if (!record) return null;
+    record.series = true;
+    await this.storage.put(record);
+    await rememberBrowserSeriesFolder({ id: record.id, handle: record.handle, series: true });
     const candidates = await browserReferenceCandidates(record.handle);
     return { seriesDirectory: displayDirectory(record), candidates, candidateCount: candidates.length, ambiguous: candidates.length > 1, suggestion: null };
   }
+  private async seriesFor(handle: BrowserDirectoryHandle): Promise<string> {
+    for (const record of await this.storage.all()) {
+      if (record.series && (await record.handle.resolve(handle).catch(() => null))?.length) {
+        this.records.set(record.id, record);
+        return displayDirectory(record);
+      }
+    }
+    return '';
+  }
   async chooseEpisode(startIn = '', seriesDirectory = '', forNew = false): Promise<EpisodeWorkspace | null> {
-    const record = await this.pick(startIn || seriesDirectory, 'readwrite');
+    const record = await this.pick(seriesDirectory || startIn, 'readwrite');
     if (!record) return null;
     let parent = displayDirectory(record);
+    if (!seriesDirectory && !forNew) seriesDirectory = await this.seriesFor(record.handle);
     if (seriesDirectory) {
       const series = await this.record(seriesDirectory);
       const relative = await series.handle.resolve(record.handle);
@@ -157,7 +171,8 @@ export class BrowserWorkspaces {
     await ensureFolderAccess(handle, 'readwrite', true);
     const record = await this.remember(handle);
     const directory = displayDirectory(record);
-    return { token: record.id, directory, folderName: handle.name, seriesDirectory: directory };
+    const seriesDirectory = await this.seriesFor(handle) || directory;
+    return { token: record.id, directory, folderName: handle.name, seriesDirectory };
   }
   async suggest(token: string): Promise<ReferenceTextSuggestionResult> {
     const record = await this.record(token);
@@ -167,12 +182,22 @@ export class BrowserWorkspaces {
     const item = pool.length === 1 ? pool[0] : null;
     return { candidateCount: candidates.length, ambiguous: pool.length > 1, suggestion: item ? { ...item, selectedBy: 'rules', confidence: 'high' } : null };
   }
-  async chooseText(key: string, inFolder = false): Promise<EpisodeWorkspaceTextSelection | null> {
+  async chooseFiles(startIn: string, accept: string, multiple = false): Promise<File[]> {
+    const record = await this.record(startIn);
+    const picker = (window as PickerWindow).showOpenFilePicker;
+    if (!picker) throw new Error('このブラウザーではフォルダーからのファイル選択に対応していません。Chromeで開いてください');
+    try {
+      const handles = await picker.call(window, { startIn: record.handle, multiple, types: browserFileTypes(accept) });
+      return await Promise.all(handles.map(handle => handle.getFile()));
+    } catch (error) { if (cancelled(error)) return []; throw error; }
+  }
+  async chooseText(key: string, inFolder = false, startIn = key): Promise<EpisodeWorkspaceTextSelection | null> {
     const record = await this.record(key);
+    const start = await this.record(startIn);
     const picker = (window as PickerWindow).showOpenFilePicker;
     if (!picker) throw new Error('このブラウザーではフォルダー内の資料を選べません。Chromeで開いてください');
     try {
-      const [handle] = await picker.call(window, { startIn: record.handle, multiple: false, types: [{ description: '原作・台本・設定資料', accept: { 'text/plain': ['.md', '.markdown', '.txt', '.text'] } }] });
+      const [handle] = await picker.call(window, { startIn: start.handle, multiple: false, types: [{ description: '原作・台本・設定資料', accept: { 'text/plain': ['.md', '.markdown', '.txt', '.text'] } }] });
       const relative = await record.handle.resolve(handle);
       if (inFolder && !relative) throw new Error('同じシリーズフォルダー内の資料を選んでください');
       const file = await handle.getFile();

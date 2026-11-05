@@ -1,3 +1,4 @@
+import type { ProjectFilePicker } from '../../lib/projectFilePicker';
 import { type QwenGenerationPlan, type QwenReference, type QwenLayerReference, type QwenAdoption, type QwenJob, qwenGenerationTarget, qwenGenerationPayload, qwenGenerationPrompt, executeQwenGeneration } from '../../lib/qwenGeneration.ts';
 import type { Dispatch, StateUpdater } from 'preact/hooks';
 import type { ComfyWorkflowDefinition } from '../../lib/comfyWorkflows.ts';
@@ -11,6 +12,7 @@ import { prepareQwenJob, submitQwenJob, reconcileQwenJob } from '../../lib/local
 import { withImageGenerationServices } from '../../lib/localBridgeLifecycle.ts';
 
 interface CreateGenerationActionsInputs {
+  chooseFiles?: ProjectFilePicker;
   generatedTarget: Cell<{ jobId?: string; plan: QwenGenerationPlan; } | undefined>;
   plan: QwenGenerationPlan;
   draft: Cell<{ prompt: string; references: QwenReference[]; reference: QwenLayerReference | undefined; correction: QwenLayerReference | undefined; }>;
@@ -42,7 +44,7 @@ interface CreateGenerationActionsInputs {
   comfySession: Cell<string | null>;
 }
 
-export function createGenerationActions({ generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession }: CreateGenerationActionsInputs) {
+export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession }: CreateGenerationActionsInputs) {
   async function insertResult(result:QwenJob){
     if(!result.image||!result.fileName)throw new Error('差し込む画像がありません');
     const bytes=Uint8Array.from(atob(result.image.split(',')[1]),char=>char.charCodeAt(0));
@@ -76,7 +78,7 @@ export function createGenerationActions({ generatedTarget, plan, draft, onInsert
     await onInsert(Array.isArray(file)?prepared:prepared[0],target,adoption);
   }
   async function importGenerated(){
-    const files=await chooseBrowserFiles('image/png,image/jpeg');
+    const files=await chooseFiles('image/png,image/jpeg');
     if(files[0])await operation(()=>insertImage(files[0],generatedTarget.current?.plan));
   }
   async function generate(autoInsert=false,inputIsCurrent:()=>boolean=()=>true){return operation(async()=>{

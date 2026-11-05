@@ -1,3 +1,4 @@
+import ProjectFileInput from './ProjectFileInput';
 import { Download, FileUp, Plus } from 'lucide-preact';
 import { useRef } from 'preact/hooks';
 import standardOmaySource from '../content/standard-settings.yaml?raw';
@@ -100,7 +101,7 @@ export default function ArtworkSettings({ document, onChange, onNotify, section 
         <button type="button" class="secondary-button" onClick={() => download(false)}><Download size={16} />生成用を書き出す</button>
       </div>
       <p class="environment-settings-note">生成用には作品の作画設定と仕上がり仕様を含めます。作画設定の控えにはOFFの原本も含めます。画像生成やPSD書き出しの実行ではありません。</p>
-      <input ref={omayInput} type="file" accept=".yaml,.yml,text/yaml,application/yaml" hidden onChange={event => importOmayFile(event.currentTarget.files?.[0])} />
+      <ProjectFileInput inputRef={omayInput} accept=".yaml,.yml,text/yaml,application/yaml" hidden onFiles={files => importOmayFile(files[0])} />
     </details>}
   </div>;
 }

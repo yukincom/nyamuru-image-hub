@@ -66,8 +66,8 @@ function handler(name, overrides = {}) {
     setProjectBusy: value => calls.push(['busy', value]),
     setToast: value => notices.push(value),
     withNewCreationBridgeSession: operation => operation(),
-    savedWorkspaceRoot: () => '/test',
-    selectEpisodeWorkspace: async () => { calls.push(['pick']); return binding; },
+    savedWorkspaceRoot: () => '/test', filePickerDirectory: '/test/registered-series',
+    selectEpisodeWorkspace: async directory => { calls.push(['pick', directory]); return binding; },
     saveEpisodeProject: async (token, snapshot, revision) => { calls.push(['save', token, snapshot, revision]); return 'saved-revision'; },
     persistSeriesCatalog: async value => value,
     setDocument: value => { context.documentRef.current = value; },
@@ -193,6 +193,7 @@ test('actual Open handler restores folder snapshot and binding, cancellation/err
   await h.run();
   assert.equal(h.calls.filter(x => x[0] === 'replace').length, 1);
   assert.equal(h.context.boundEpisodeWorkspace.projectRevision, 'loaded-revision');
+  assert.equal(h.calls.find(call => call[0] === 'pick')?.[1], h.context.filePickerDirectory);
   assert.deepEqual(h.context.documentRef.current, h.original);
   for (const overrides of [{ confirm: () => false }, { loadEpisodeProject: async () => { throw new Error('invalid project'); } }]) {
     const failed = handler('openProject', overrides);
@@ -278,7 +279,7 @@ test('opening a browser folder replaces the episode binding with that selected f
   const h = handler('openBrowserProject', {
     isLanClient: true,
     browserWorkspaces: {
-      chooseEpisode: async () => workspace,
+      chooseEpisode: async directory => { assert.equal(directory, '/test/registered-series'); return workspace; },
       open: async value => { assert.equal(value, workspace); return { file: { name: 'project.json' }, value: { parsed: true }, binding: { revision: 'loaded' } }; },
     },
     restorePortableProject: async value => { assert.deepEqual(value, { parsed: true }); return h.original; },

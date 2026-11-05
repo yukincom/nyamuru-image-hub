@@ -63,3 +63,18 @@ export async function writeProjectFile(blob: Blob, target: ProjectFileBinding | 
     return { binding: { handle: binding.handle, revision } };
   });
 }
+
+export function browserFileTypes(accept: string): { accept: Record<string, string[]> }[] {
+  const extensions = accept.split(',').filter(value => value.startsWith('.'));
+  const mimeTypes = accept.split(',').filter(value => value.includes('/'));
+  const known: Record<string, string[]> = {
+    'image/png': ['.png'], 'image/jpeg': ['.jpg', '.jpeg'], 'image/webp': ['.webp'],
+    'image/heic': ['.heic'], 'image/heif': ['.heif'], 'image/tiff': ['.tif', '.tiff'],
+    'text/plain': ['.txt', '.text'], 'text/markdown': ['.md', '.markdown'],
+    'text/yaml': ['.yaml', '.yml'], 'application/yaml': ['.yaml', '.yml'],
+  };
+  const types: Record<string, string[]> = {};
+  for (const mime of mimeTypes) types[mime] = extensions.length ? extensions : known[mime] ?? [];
+  if (!mimeTypes.length && extensions.length) types['application/octet-stream'] = extensions;
+  return Object.keys(types).length ? [{ accept: types }] : [];
+}

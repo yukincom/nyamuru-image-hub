@@ -104,6 +104,32 @@ test('save writes a real project file in the selected folder; a fresh client rec
   assert.notEqual(first.binding.revision, second.binding.revision);
   assert.equal(title(await fresh.open(workspace)), 'project B');
 });
+// 各選択は登録済みシリーズから始める。別の下位フォルダーを選んだ次回も開始位置が戻る。
+// OSのダイアログだけ模擬し、選択した画像・文章の読込と文章の相対位置は本体で検証する。
+test('all file types start at the registered series or the selected episode on every invocation', async () => {
+  const f = fixture(); f.pick(f.series);
+  const series = await f.client.chooseSeries(); f.pick(f.episode);
+  const workspace = await f.client.chooseEpisode('', series.seriesDirectory, true);
+  const sub = await f.series.getDirectoryHandle('画像', { create: true });
+  let chosen = await sub.add('reference.png', 'image'), calls = [];
+  window.showOpenFilePicker = async options => { calls.push(options); return [chosen]; };
+  for (const [accept, name] of [['image/png,image/jpeg', 'reference.png'], ['.yaml,.yml', 'settings.yaml'], ['.glb,.fbx', 'stage.glb']]) {
+    chosen = await sub.add(name, name);
+    assert.equal((await f.client.chooseFiles(series.seriesDirectory, accept))[0].name, name);
+  }
+  assert.ok(calls.every(call => call.startIn === f.series));
+  assert.deepEqual(calls[0].types[0].accept['image/png'], ['.png']);
+  await f.client.chooseFiles(workspace.directory, 'image/png', true);
+  assert.equal(calls.at(-1).startIn, f.episode);
+  assert.equal(calls.at(-1).multiple, true);
+  chosen = await f.episode.add('台本.md', '本文');
+  const text = await f.client.chooseText(workspace.token, false, series.seriesDirectory);
+  assert.equal(calls.at(-1).startIn, f.series);
+  assert.equal(text.relativePath, '台本.md');
+  window.showOpenFilePicker = async () => { throw new DOMException('cancel', 'AbortError'); };
+  assert.deepEqual(await f.client.chooseFiles(series.seriesDirectory, '.glb'), []);
+});
+
 // 選択時のみ許可を求める。模擬フォルダーの閲覧・作成・保存・再開を通して要求回数を数える。
 test('initial selection obtains a single write grant and a resumed grant needs no picker or second prompt', async () => {
   const f = fixture();

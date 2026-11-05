@@ -176,9 +176,9 @@ class EpisodeWorkspaceManager(SourceCoverageContract, SourceCoverageFiles):
             raise ValueError("Nyamuruの制作台帳保存先がエピソード外を参照しています") from exc
         return episode, resolved_root
 
-    def choose_text(self, token_value: object) -> dict[str, Any]:
+    def choose_text(self, token_value: object, default_directory: object = None) -> dict[str, Any]:
         directory = self.directory(token_value)
-        selected = choose_workspace_files(directory, "text", False)
+        selected = choose_workspace_files(default_picker_directory(default_directory or directory), "text", False)
         if selected is None:
             return {"ok": True, "cancelled": True}
         if len(selected) != 1:
@@ -230,13 +230,13 @@ class EpisodeWorkspaceManager(SourceCoverageContract, SourceCoverageFiles):
     def reference_candidates(self, token_value: object) -> list[dict[str, Any]]:
         return discover_reference_text_candidates(self.directory(token_value), "episode")
 
-    def choose_images(self, token_value: object, max_files_value: object) -> dict[str, Any]:
+    def choose_images(self, token_value: object, max_files_value: object, default_directory: object = None) -> dict[str, Any]:
         directory = self.directory(token_value)
         try:
             max_files = min(12, max(1, int(max_files_value)))
         except (TypeError, ValueError):
             max_files = 10
-        selected = choose_workspace_files(directory, "image", True)
+        selected = choose_workspace_files(default_picker_directory(default_directory or directory), "image", True)
         if selected is None:
             return {"ok": True, "cancelled": True, "files": []}
         files: list[dict[str, Any]] = []

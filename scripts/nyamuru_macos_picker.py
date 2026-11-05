@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import json
+import mimetypes
 import subprocess
 import sys
 from pathlib import Path
@@ -75,8 +77,8 @@ function run(argv) {
     return Path(selected).expanduser().resolve() if selected else None
 
 
-def choose_workspace_files(default_directory: Path, kind: str, multiple: bool) -> list[Path] | None:
-    if kind not in {"image", "text", "character-text"}:
+def choose_workspace_files(default_directory: Path, kind: str, multiple: bool, accept: str = "") -> list[Path] | None:
+    if kind not in {"image", "text", "character-text", "file"}:
         raise ValueError("選択するファイルの種類が正しくありません")
     type_name = "public.image" if kind == "image" else "public.text"
     prompt = (
@@ -84,6 +86,13 @@ def choose_workspace_files(default_directory: Path, kind: str, multiple: bool) -
         else "人物設定の参照テキストを選んでください" if kind == "character-text"
         else "作品情報・舞台設定の参照テキストを選んでください"
     )
+    file_types = [type_name]
+    if kind == "file":
+        extensions = [value[1:] for value in accept.split(",") if value.startswith(".")]
+        mime_types = [value for value in accept.split(",") if "/" in value]
+        guessed = [extension[1:] for value in mime_types for extension in mimetypes.guess_all_extensions(value)]
+        file_types = extensions or list(dict.fromkeys(guessed)) or ["public.item"]
+        prompt = "作品に読み込むファイルを選んでください"
     script = """
 function run(argv) {
   const app = Application.currentApplication();
@@ -91,14 +100,14 @@ function run(argv) {
   const picked = app.chooseFile({
     withPrompt: argv[0],
     defaultLocation: Path(argv[1]),
-    ofType: [argv[2]],
+    ofType: JSON.parse(argv[2]),
     multipleSelectionsAllowed: argv[3] === "true",
   });
   const files = Array.isArray(picked) ? picked : [picked];
-  return files.map((file) => file.toString()).join("\\n");
+  return JSON.stringify(files.map((file) => file.toString()));
 }
 """
-    selected = run_macos_picker(script, prompt, str(default_directory), type_name, "true" if multiple else "false")
+    selected = run_macos_picker(script, prompt, str(default_directory), json.dumps(file_types), "true" if multiple else "false")
     if selected is None:
         return None
-    return [Path(value).expanduser().resolve() for value in selected.splitlines() if value.strip()]
+    return [Path(value).expanduser().resolve() for value in json.loads(selected)]

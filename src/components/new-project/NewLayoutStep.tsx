@@ -1,3 +1,4 @@
+import ProjectFileInput from '../ProjectFileInput';
 import PrintSettingsEditor from '../PrintSettingsEditor';
 import NewLayoutSourceImage from '../NewLayoutSourceImage';
 import TemplateThumb from '../PanelTemplateThumb';
@@ -100,7 +101,7 @@ export default function NewLayoutStep({
         <div><strong>前回のスキャン画像が{pendingScannerSession.count}枚残っています</strong><span>{new Date(pendingScannerSession.startedAt).toLocaleString('ja-JP')} · {pendingScannerSession.directory}</span><p>強制終了などで処理が中断された可能性があります。前回の画像へつなぎ直しますか？</p></div>
         <div><button type="button" class="primary-button" onClick={resumeScanner} disabled={newLayoutTask !== 'idle'}>つなぎ直す</button><button type="button" onClick={discardRecoveredScans} disabled={newLayoutTask !== 'idle'}>破棄する</button></div>
       </div>}
-      <input ref={newLayoutImageInput} type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" multiple hidden onChange={(event) => chooseNewLayoutImages(event.currentTarget.files)} />
+      <ProjectFileInput inputRef={newLayoutImageInput} accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff" multiple hidden onFiles={chooseNewLayoutImages} />
       {activeLayoutItem && <div class="new-layout-workbench">
         <section class="new-layout-thumb-pane" aria-labelledby="new-layout-source-title">
           <h4 id="new-layout-source-title">原画</h4>

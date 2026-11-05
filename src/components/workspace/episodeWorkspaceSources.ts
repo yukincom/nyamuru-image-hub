@@ -1,3 +1,4 @@
+import type { ProjectFilePicker } from '../../lib/projectFilePicker';
 import type { WorkspaceState } from './useWorkspaceState';
 import { isLanClient } from '../../lib/clientRuntime';
 import { selectEpisodeWorkspace, prepareEpisodeWorkspace, chooseEpisodeWorkspaceSource, saveSourceCoverageReport, chooseEpisodeWorkspaceImages, type EpisodeWorkspaceTextSelection } from '../../lib/localBridge';
@@ -8,6 +9,8 @@ import { withNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts'
 import type { ProjectBinding } from '../../lib/projectPersistence';
 
 interface Context {
+  filePickerDirectory: string;
+  chooseFiles: ProjectFilePicker;
   coverageWorkspace: ProjectBinding | null;
   readNewReferenceFile: (selection?: EpisodeWorkspaceTextSelection) => Promise<void>;
   chooseNewLayoutImages: (files?: ArrayLike<File> | Iterable<File> | null) => void;
@@ -17,9 +20,9 @@ export function createWorkspaceSourceActions({
   setToast, documentRef, setBoundEpisodeWorkspace, boundEpisodeWorkspace, setBoundSourceSnapshot,
   boundSourceSnapshot, setSourceCoverageDecisions, newCreationBridgeToken, characterEditorBridgeToken,
   newEpisodeWorkspace, setNewReferenceMessage, setNewReferenceSelecting, newReferenceFileName,
-  newLayoutTask, newLayoutImageInput, setNewLayoutMessage,
+  newLayoutTask, setNewLayoutMessage,
 }: WorkspaceState, {
-  coverageWorkspace, readNewReferenceFile, chooseNewLayoutImages,
+  coverageWorkspace, readNewReferenceFile, chooseNewLayoutImages, filePickerDirectory, chooseFiles,
 }: Context) {
   const choosePanelDraftWorkspace = async (): Promise<void> => {
     if (isLanClient) { setToast('作画用ラフの制作台帳はMac側フォルダを使う機能です。LANではレイヤーの画像生成を使ってください'); return; }
@@ -62,7 +65,7 @@ export function createWorkspaceSourceActions({
     const episodeId = documentRef.current.manga.meta.episode_id;
     const workspace = boundEpisodeWorkspace?.episodeId === episodeId ? boundEpisodeWorkspace : null;
     if (!workspace) throw new Error('先にこの作品のエピソード保存先を関連付けてください');
-    const selection = await (isLanClient ? browserWorkspaces.chooseText(workspace.token) : chooseEpisodeWorkspaceSource(workspace.token));
+    const selection = await (isLanClient ? browserWorkspaces.chooseText(workspace.token, false, filePickerDirectory) : chooseEpisodeWorkspaceSource(workspace.token, filePickerDirectory, documentRef.current.manga.meta.series_id));
     if (!selection) return;
     setBoundSourceSnapshot({
       episodeId,
@@ -107,7 +110,8 @@ export function createWorkspaceSourceActions({
 
   const chooseNewCharacterImageFiles = async (): Promise<File[]> => {
     if (!newEpisodeWorkspace) throw new Error('先にエピソードの保存先を選んでください');
-    return chooseEpisodeWorkspaceImages(newEpisodeWorkspace.token, 12);
+    return isLanClient ? chooseFiles('image/png,image/jpeg,image/webp', true)
+      : chooseEpisodeWorkspaceImages(newEpisodeWorkspace.token, 12, filePickerDirectory);
   };
 
   const chooseNewReferenceTextFile = async () => {
@@ -118,7 +122,7 @@ export function createWorkspaceSourceActions({
     setNewReferenceSelecting(true);
     setNewReferenceMessage('参照テキストを開いています…');
     try {
-      const selection = isLanClient ? await browserWorkspaces.chooseText(newEpisodeWorkspace.token) : await chooseEpisodeWorkspaceSource(newEpisodeWorkspace.token);
+      const selection = isLanClient ? await browserWorkspaces.chooseText(newEpisodeWorkspace.token, false, filePickerDirectory) : await chooseEpisodeWorkspaceSource(newEpisodeWorkspace.token, filePickerDirectory);
       if (selection) await readNewReferenceFile(selection);
       else setNewReferenceMessage(newReferenceFileName ? '' : '参照テキストはまだ選ばれていません。');
     } catch (error) {
@@ -130,10 +134,10 @@ export function createWorkspaceSourceActions({
 
   const chooseNewLayoutImageFiles = async () => {
     if (newLayoutTask !== 'idle') return;
-    if (isLanClient) { newLayoutImageInput.current?.click(); return; }
     if (!newEpisodeWorkspace) return;
     try {
-      const files = await chooseEpisodeWorkspaceImages(newEpisodeWorkspace.token, 10);
+      const files = isLanClient ? await chooseFiles('image/png,image/jpeg,image/webp,image/heic,image/heif,image/tiff', true)
+        : await chooseEpisodeWorkspaceImages(newEpisodeWorkspace.token, 10, filePickerDirectory);
       chooseNewLayoutImages(files);
     } catch (error) {
       setNewLayoutMessage(error instanceof Error ? error.message : '画像を読み込めませんでした');

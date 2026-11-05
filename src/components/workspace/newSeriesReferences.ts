@@ -1,3 +1,4 @@
+import type { ProjectFilePicker } from '../../lib/projectFilePicker';
 import type { WorkspaceState } from './useWorkspaceState';
 import { type SeriesReferenceTextSelection, chooseSeriesDirectory, type SeriesReferenceTextCandidate, type EpisodeWorkspaceTextSelection, chooseSeriesReferenceText, selectEpisodeWorkspace, suggestEpisodeWorkspaceText } from '../../lib/localBridge';
 import { parseCharacterText } from '../../lib/characterTextCatalog.ts';
@@ -7,9 +8,10 @@ import { isLanClient } from '../../lib/clientRuntime';
 import { rememberWorkspaceRoot, savedWorkspaceRoot } from '../../lib/workspacePreferences';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
 import { seriesReferenceConfirmationState, replaceSeriesReferenceCandidate } from '../../lib/seriesReferenceCandidates.ts';
-import { chooseBrowserFiles, blobRevision } from '../../lib/browserFiles';
+import { blobRevision } from '../../lib/browserFiles';
 
 interface Context {
+  chooseFiles: ProjectFilePicker;
   workspaceRootKey: () => string;
   clearNewReferenceText: () => void;
 }
@@ -26,6 +28,7 @@ export function createSeriesReferenceActions({
   setNewReferenceMessage,
 }: WorkspaceState, {
   workspaceRootKey, clearNewReferenceText,
+  chooseFiles,
 }: Context) {
   const applyNewSeriesReferenceSelections = (selections: readonly SeriesReferenceTextSelection[], messagePrefix = '') => {
     if (!selections.length) {
@@ -148,7 +151,7 @@ export function createSeriesReferenceActions({
   };
 
   const chooseLocalText = async (): Promise<EpisodeWorkspaceTextSelection | null> => {
-    const [file] = await chooseBrowserFiles('.md,.markdown,.txt,.text,text/plain,text/markdown');
+    const [file] = await chooseFiles('.md,.markdown,.txt,.text,text/plain,text/markdown');
     if (!file) return null;
     if (file.size > 5 * 1024 * 1024) throw new Error('文章ファイルは5MiBまで選べます');
     const bytes = await file.arrayBuffer();

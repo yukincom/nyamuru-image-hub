@@ -15,6 +15,7 @@ import { createProjectSnapshot, restoreProjectSnapshot } from '../../lib/project
 import type { SeriesCatalogPersistOptions } from '../../lib/newProjectSettings';
 
 interface Context {
+  filePickerDirectory: string;
   endTextEdit: () => void;
   persistSeriesCatalog: (source: MangaDocument, options?: SeriesCatalogPersistOptions) => Promise<MangaDocument>;
   applyPreparedSeriesIdentifiers: (prepared: MangaDocument) => MangaDocument | null;
@@ -28,7 +29,7 @@ export function createProjectFileActions({
   setBoundSourceSnapshot, setSourceCoverageDecisions, setActivePage, setActivePanel, setSelectedPanels,
   setSelectedElement, setTab, setMobileStoryboardPane, saveProjectAction,
 }: WorkspaceState, {
-  endTextEdit, persistSeriesCatalog, applyPreparedSeriesIdentifiers, replaceDocument, setDocument,
+  endTextEdit, persistSeriesCatalog, applyPreparedSeriesIdentifiers, replaceDocument, setDocument, filePickerDirectory,
 }: Context) {
   const exportOmny = () => {
     if (!hasDocument || showNewDialog || projectOperation.current) return;
@@ -83,7 +84,7 @@ export function createProjectFileActions({
     const current = documentRef.current;
     const finishImageImport=beginFigureCropImport();
     try {
-      const workspace = recent ? await browserWorkspaces.resumeEpisode(recent) : await browserWorkspaces.chooseEpisode(boundEpisodeWorkspace?.directory);
+      const workspace = recent ? await browserWorkspaces.resumeEpisode(recent) : await browserWorkspaces.chooseEpisode(filePickerDirectory);
       if (!workspace) return;
       const selected = await browserWorkspaces.open(workspace);
       if (documentRef.current !== current) throw new Error('現在の作品が編集されたため読み込みを中止しました');
@@ -178,7 +179,7 @@ export function createProjectFileActions({
     const finishImageImport=beginFigureCropImport();
     try {
       await withNewCreationBridgeSession(async () => {
-        const workspace = await selectEpisodeWorkspace(boundEpisodeWorkspace?.directory ?? savedWorkspaceRoot('__one_shot__'));
+        const workspace = await selectEpisodeWorkspace(filePickerDirectory, current.manga.meta.series_id);
         if (!workspace) return;
         const loaded = await loadEpisodeProject(workspace.token);
         // Do not replace changes made while the picker or disk read was pending.

@@ -1,3 +1,4 @@
+import ProjectFileInput from './ProjectFileInput';
 import type { MangaDocument, Character, Material } from '../types.ts';
 import { useRef, useState, useEffect } from 'preact/hooks';
 import { CHARACTER_RECOGNITION_FIELDS, imageFileToPng, prepareCharacterReferenceDestination, CHARACTER_REFERENCE_LONG_EDGE, CHARACTER_REFERENCE_SHORT_EDGE, applySuggestedReferenceView, CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
@@ -322,7 +323,7 @@ export default function CharacterReferences({ document, character, onChange, onN
       <button type="button" class="inline-add" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady} onClick={() => void chooseImages()}><Upload size={14} />{saving ? '保存中…' : '画像を追加'}</button>
       <button type="button" class="character-extract-all" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady || !imageVisuals.length} onClick={() => void analyzeAll()}><ScanSearch size={14} />{analyzingId ? '...抽出中' : 'まとめて特徴を抽出'}</button>
     </div></div>
-    <input ref={input} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={(event) => addImages(event.currentTarget.files)} />
+    <ProjectFileInput inputRef={input} accept="image/png,image/jpeg,image/webp" multiple hidden onFiles={addImages} />
     {fileErrors.length > 0 && <div role="alert">{fileErrors.map((message, index) => <p key={index}>{message}</p>)}</div>}
     {character.scope !== 'series' && <p class="muted-message">画像資料と照合特徴は、シリーズ共通人物にすると登録できます。</p>}
     {character.scope === 'series' && (!document.manga.meta.series.trim() || !document.manga.meta.series_id) && <p class="muted-message">シリーズ名を入力して保存すると画像を登録できます。</p>}

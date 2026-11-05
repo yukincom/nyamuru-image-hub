@@ -1,3 +1,4 @@
+import ProjectFileInput from './ProjectFileInput';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { isLanClient } from '../lib/clientRuntime.ts';
 import type { MangaDocument } from '../types';
@@ -192,7 +193,7 @@ export default function SourceCoverageReview({
         <p>原作・台本の各行が現在のOMNYに残っている証拠を一覧化します。未一致を自動で「欠落」とは断定せず、作品内容も変更しません。</p>
       </div>
       <div class="source-coverage-source-actions">
-        <input ref={uploadInput} type="file" accept=".md,.markdown,.txt,.text,text/plain,text/markdown" hidden onChange={(event) => void uploadSource(event.currentTarget.files?.[0])} />
+        <ProjectFileInput inputRef={uploadInput} accept=".md,.markdown,.txt,.text,text/plain,text/markdown" hidden onFiles={files => uploadSource(files[0])} />
         <button type="button" class="secondary-button" onClick={() => uploadInput.current?.click()}>端末から選択</button>
         {!isLanClient && <button type="button" class="secondary-button" disabled={!canChooseWorkspaceSource || busy === 'source'} onClick={() => void chooseWorkspaceSource()}>
           {busy === 'source' ? '選択中…' : '作品フォルダから選択'}

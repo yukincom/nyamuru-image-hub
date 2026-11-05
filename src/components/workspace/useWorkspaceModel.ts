@@ -1,3 +1,6 @@
+import { isBrowserWorkspace } from '../../lib/browserWorkspace';
+import { chooseProjectFiles } from '../../lib/projectFilePicker';
+import { savedWorkspaceRoot } from '../../lib/workspacePreferences';
 import { createDraftActions } from './newProjectDraft';
 import { useSelectionDetails } from './workspaceSelectionDetails';
 import { createHistoryActions } from './workspaceHistoryActions';
@@ -42,6 +45,15 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     newSeriesReferences, newSeriesReferenceCandidates, newSelectedSeriesReferencePaths,
     newSeriesReferenceSelecting, projectBusy, newWorkspaceSelecting, past, future,
   } = workspace;
+
+  const episodeWorkspace = showNewDialog ? workspace.newEpisodeWorkspace : workspace.boundEpisodeWorkspace;
+  const seriesId = showNewDialog ? workspace.newSeriesId : documentRef.current.manga.meta.series_id;
+  const seriesDirectory = showNewDialog
+    ? (workspace.newSeriesMode === 'none' ? '' : workspace.newSeriesDirectory)
+    : (seriesId ? workspace.seriesCatalogs.find(item => item.seriesId === seriesId)?.seriesDirectory
+      || savedWorkspaceRoot(seriesId, false) || (isBrowserWorkspace(episodeWorkspace) ? episodeWorkspace?.seriesDirectory : '') || '' : '');
+  const filePickerDirectory = seriesDirectory || episodeWorkspace?.directory || '';
+  const chooseFiles = (accept: string, multiple = false) => chooseProjectFiles(filePickerDirectory, accept, multiple, showNewDialog ? '' : seriesId);
 
   useEffect(() => {
     if (!materialLinkTarget) return;
@@ -111,6 +123,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     chooseLocalText, chooseNewSeriesDirectory, chooseNewSeriesReferenceTextFile,
     removeSelectedNewSeriesReferences, applySelectedNewSeriesReferences, chooseNewEpisodeWorkspace,
   } = createSeriesReferenceActions(workspace, {
+    chooseFiles,
     workspaceRootKey, clearNewReferenceText,
   });
 
@@ -119,6 +132,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     saveCoverageReport, chooseNewReferenceTextFile, chooseNewCharacterImageFiles,
     chooseNewLayoutImageFiles,
   } = createWorkspaceSourceActions(workspace, {
+    filePickerDirectory, chooseFiles,
     coverageWorkspace, readNewReferenceFile: selection => readNewReferenceFile(selection),
     chooseNewLayoutImages: files => chooseNewLayoutImages(files),
   });
@@ -157,6 +171,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
   });
 
   const { saveProject, exportOmny, openProject, openRecentProject } = createProjectFileActions(workspace, {
+    filePickerDirectory,
     endTextEdit: () => endTextEdit(), persistSeriesCatalog, applyPreparedSeriesIdentifiers,
     replaceDocument, setDocument,
   });
@@ -253,7 +268,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
   });
 
   return {
-    workspace,
+    workspace, filePickerDirectory, chooseFiles,
     setDocument, exportOmny, changeShowGuides, changeSpreadView, changePanelStyleNumber, requestPcFonts,
     saveProject, actOnLayer, makePaintScene, selectedBubbleStroke, undo, redo, chooseBubblePathTool,
     chooseTextTool, closeTextTool, openBubbleMaterials, bubbleLineWidthMm, panel, addPanel,
