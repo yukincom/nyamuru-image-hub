@@ -1,3 +1,4 @@
+import {mangaCanvasSource} from './editorModuleSources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -34,7 +35,7 @@ test('selection measurement does not upscale small artwork or rerasterize on eve
  assert.match(source,/scale=Math\.min\(1,768\/side\)/);
  assert.doesNotMatch(source,/256\/side/);
  assert.match(source,/const schedule=\(\)=>\{version\+\+;cancelAnimationFrame\(raf\);clearTimeout\(timer\);timer=window\.setTimeout\(measure,120\);\}/);
- const canvas=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
+ const canvas=mangaCanvasSource();
  assert.match(canvas,/const panelBubblePresentations = useMemo\(/);
  assert.match(canvas,/const overlayBubblePresentation = useMemo\(/);
  for(const match of canvas.matchAll(/const (?:panelBubblePresentations|overlayBubblePresentation) = useMemo\([\s\S]+?\),\[([^\]]+)\]\);/g))assert.doesNotMatch(match[1],/zoom|fitEpoch/);

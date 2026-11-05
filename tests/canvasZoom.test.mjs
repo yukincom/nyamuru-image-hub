@@ -1,3 +1,4 @@
+import {mangaCanvasSource} from './editorModuleSources.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -6,7 +7,7 @@ import ts from 'typescript';
 import {pixelZoomWidth,canvasZoomPercent,clampCanvasZoom,canvasZoomShortcut} from '../src/lib/canvasZoom.ts';
 import {paintPreviewSize} from '../src/lib/paintPreviewSize.ts';
 
-const canvasSource=readFileSync(new URL('../src/components/MangaCanvas.tsx',import.meta.url),'utf8');
+const canvasSource=mangaCanvasSource();
 const css=readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8');
 
 // Use the actual Space-pan effect with DOM/event doubles; it does not render a browser.

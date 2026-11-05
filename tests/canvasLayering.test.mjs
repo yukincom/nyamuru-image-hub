@@ -1,3 +1,4 @@
+import {mangaCanvasSource} from './editorModuleSources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -6,7 +7,7 @@ import { DETECTED_FIGURE_NAME } from '../src/lib/systemCharacters.ts';
 
 const css = readFileSync(new URL('../src/styles/global.css', import.meta.url), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '');
-const canvas = readFileSync(new URL('../src/components/MangaCanvas.tsx', import.meta.url), 'utf8');
+const canvas = mangaCanvasSource();
 
 // 見込み: 共有判定で通常表示と描画プレビューの未確定/要確認状態が一致する。
 // 合格: 同じ人物入力で既定classを返し、確定/小道具に注意色を付けない。純粋判定とCSS、実表示はbrowser試験。
