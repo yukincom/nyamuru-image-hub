@@ -1,12 +1,10 @@
-import {runGenerationConversation,type GenerationConversationInput} from '../lib/generationConversation.ts';
-import {requestAgentReply,withAgentServices} from '../lib/localBridge.ts';
 import ProjectFileInput, { useProjectFilePicker } from './ProjectFileInput';
 export { qwenInputImage, qwenLayerImage } from './generation/inputImages.ts';
 import type { ComponentProps } from 'preact';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
 import type { HumanPoseTextSelection } from '../lib/humanPoseTypes.ts';
 import type { FigureSize, BBox } from '../types.ts';
-import { type QwenGenerationPlan, type QwenAgentRequest, type QwenLayerCandidate, type QwenAdoption, type QwenGenerationConversation, type QwenLayerReference, type QwenReference, qwenPlanForWorkflow, figureBackgroundPrompt, type QwenJob, type QwenHistoryScope, qwenConversationIntent, runQwenAgentRequest, canDeleteQwenJob, qwenGenerationSizePrompt, qwenJobLocation } from '../lib/qwenGeneration.ts';
+import { type QwenGenerationPlan, type QwenAgentRequest, type QwenLayerCandidate, type QwenAdoption, type QwenGenerationConversation, type QwenLayerReference, type QwenReference, qwenPlanForWorkflow, figureBackgroundPrompt, type QwenJob, type QwenHistoryScope, runQwenAgentRequest, canDeleteQwenJob, qwenGenerationSizePrompt, qwenJobLocation } from '../lib/qwenGeneration.ts';
 import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { currentLocalModelPreferences } from '../lib/localModelPreferences.ts';
@@ -17,6 +15,8 @@ import { loadFigureCropAsset } from '../lib/figureCropStore.ts';
 import { posePreviewSize } from '../lib/humanPoseFraming.ts';
 import { useGenerationReferences } from './generation/useGenerationReferences.ts';
 import { createGenerationActions } from './generation/createGenerationActions.ts';
+import { createGenerationConversation } from './generation/createGenerationConversation.ts';
+import GenerationCandidates, { generationStatusLabel } from './generation/GenerationCandidates.tsx';
 import { createPortal } from 'preact/compat';
 
 export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPoseEditor>,'panelContext'|'stages'|'backgroundCaptures'> & {
@@ -24,8 +24,6 @@ export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPo
 };
 
 interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File|File[],target:QwenGenerationPlan,adoption?:QwenAdoption)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
-
-const statusLabel={preparing:'入力を準備中',prepared:'生成準備済み',queued:'生成待ち',running:'生成中',succeeded:'生成完了',failed:'失敗',outcome_unknown:'結果未確定'};
 
 export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,plan:sourcePlan,adultContent=false,agentRequest,layers=[],loadLayer,onClose,onInsert,onConversation,onConversationHost}:Props){
   const [execution]=useState(currentGenerationPreferences);
@@ -180,29 +178,22 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   const { selectLayer, addFiles } = useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection });
   const chooseFiles = useProjectFilePicker();
   const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ chooseFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession });
-  async function conversationSend(text:string,isCurrent:()=>boolean,input?:GenerationConversationInput){
-    if(!alive.current||!isCurrent())return '生成の会話を終了しました';
-    const intent=qwenConversationIntent(text);
-    if(intent!=='generate'){
-      return (await operation(()=>runGenerationConversation({text,input:input??{history:[],profile:{name:'にゃむる',tone:''}},
-        isCurrent:()=>alive.current&&!closing.current&&isCurrent(),
-        snapshot:()=>({prompt:draft.current.prompt,label:plan.label,mode:workflow?.binding.prompt_mode??'cloud',
-          status:job?.status??'draft',editable:canPrepareNewGeneration&&job?.status!=='outcome_unknown',generatedPrompt:job?.generationPrompt}),
-        update:(value,expected)=>{
-          if(draft.current.prompt!==expected)throw new Error('生成指示が変わりました');
-          if(value===expected)return;
-          if(!canPrepareNewGeneration||job?.status==='outcome_unknown')throw new Error('生成の終了を確認してから変更してください');
-          applyPrompt(value);
-        },reply:requestAgentReply,services:withAgentServices}),true))!;
-    }
-    const result=await generate(true,isCurrent);
-    if(cloud)return '指示と参照画像のZIPを保存しました。指定のエージェントへ渡し、完成したPNGをこの画面で読み込んでください。';
-    if(result?.job?.candidates?.length){
-      if(result.job.status==='succeeded'&&result.job.candidates.length===5)return `${plan.label}の候補を5枚生成しました。画面で採用する画像を選んでください。`;
-      return `候補${result.job.candidates.length}枚を保持しています。${result.job.error||'生成は完了していません。状態を自動で確認しています。'}`;
-    }
-    return result?.inserted?`${plan.label}を生成し、新規レイヤーとして追加しました。元に戻す操作も使えます。`:'自動差し込みは中止しました。';
-  }
+  const conversationSend = createGenerationConversation({
+    isAlive: () => alive.current,
+    isCurrent: () => alive.current && !closing.current,
+    snapshot: () => ({
+      prompt: draft.current.prompt, label: plan.label, mode: workflow?.binding.prompt_mode ?? 'cloud',
+      status: job?.status ?? 'draft', editable: canPrepareNewGeneration && job?.status !== 'outcome_unknown',
+      generatedPrompt: job?.generationPrompt,
+    }),
+    update: (value, expected) => {
+      if (draft.current.prompt !== expected) throw new Error('生成指示が変わりました');
+      if (value === expected) return;
+      if (!canPrepareNewGeneration || job?.status === 'outcome_unknown') throw new Error('生成の終了を確認してから変更してください');
+      applyPrompt(value);
+    },
+    operation, generate, cloud, label: plan.label,
+  });
   useEffect(()=>{
     onConversation?.({label:`${plan.pageNumber}ページ・${plan.overlay?'ページ前景':`コマ ${plan.panelId}`}・${plan.label}`,
       busy:busy||characterLoading||sketchLoading,locked:Boolean(attempt),phase:comfyPhase||phase,send:conversationSend});
@@ -378,22 +369,12 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
       {notice&&<p role="status">{notice}</p>}
       {attempt&&!busy&&!job&&canPrepareNewGeneration&&<button onClick={prepareNewGeneration}>新しい生成を準備</button>}
       {error&&<p role="alert">{error}{attempt&&((submitted.current&&!job)||job?.status==='outcome_unknown')?' 送信済みの可能性があるため、自動で照合しています。':''}</p>}
-      {job&&<section class="qwen-result" aria-live="polite"><strong>{statusLabel[job.status]}</strong>{job.error&&<p>{job.error}</p>}
-        {job.workflowName&&<p>{job.workflowName} · 版{job.workflowVersion} · {job.width} × {job.height} px</p>}
-        {job.generationPrompt&&<details><summary>送信した指示とシード</summary><pre style={{whiteSpace:'pre-wrap'}}>{job.generationPrompt}</pre><p>{job.candidateSeeds?.join(', ')}</p></details>}
-        {job.documentKey&&<small>{qwenJobLocation(job)}</small>}
-        {job.candidates?.length&&!job.image&&<>
-          <div class="qwen-candidates" role="group" aria-label="生成候補">
-            {job.candidates.map(candidate=><button type="button" class="qwen-candidate" disabled={busy} aria-pressed={job.candidateCutout?(job.selectedCandidates??selectedCandidates).includes(candidate.index):selectedCandidate===candidate.index} onClick={()=>chooseCandidate(candidate.index)} key={candidate.index}>
-              <img src={candidate.image} alt={`候補${candidate.index}・シード${candidate.seed}`}/><span>候補{candidate.index} · seed {candidate.seed}</span>
-            </button>)}
-          </div>
-          {selectedCandidate!==null&&<img class="qwen-candidate-preview" src={job.candidates.find(candidate=>candidate.index===selectedCandidate)?.image} alt={`選択中の候補${selectedCandidate}`}/>}
-          <button class="primary-button" disabled={busy||job.status!=='succeeded'||(job.candidateCutout?!(job.selectedCandidates??selectedCandidates).length||job.candidates.length!==5&&!job.selectedCandidates:selectedCandidate===null)} onClick={()=>void selectCandidate()}>{job.candidateCutout?(insertedBatch.current===job.jobId?'未採用画像の削除を再試行':`選択した${(job.selectedCandidates??selectedCandidates).length}枚を追加`):job.requiresCutout?'選んだ1枚の背景を透過する':'選んだ1枚を採用する'}</button>
-        </>}
-        {job.image&&<><img src={job.image} alt={`${job.label}の生成結果`}/><div class="paint-entry-actions"><a href={job.image} download={job.fileName}>生成画像を保存</a><button disabled={busy} onClick={()=>void insert()}>新規レイヤーとして追加</button><button disabled={busy} onClick={()=>void remove([job])}>破棄する</button></div></>}
-        {canPrepareNewGeneration&&<button disabled={busy} onClick={prepareNewGeneration}>新しい生成を準備</button>}
-      </section>}
+      {job && <GenerationCandidates
+        job={job} busy={busy} selectedCandidate={selectedCandidate} selectedCandidates={selectedCandidates}
+        inserted={insertedBatch.current === job.jobId} canPrepareNewGeneration={canPrepareNewGeneration}
+        onChoose={chooseCandidate} onSelect={selectCandidate} onInsert={insert}
+        onRemove={() => remove([job])} onPrepare={prepareNewGeneration}
+      />}
       {historyScope&&<section class="qwen-history" aria-label={historyScope==='work'?'作品の生成履歴':'生成履歴'}>
         <h3>{historyScope==='work'?'作品の生成履歴':'生成履歴'}</h3>
         <p>{historyScope==='work'?'作品内の全ページ・全コマの生成画像です。ファイル名を押すと画像を確認し、現在の対象へ新規レイヤーとして追加できます。':'現在のあたりで生成した画像です。'} チェックした履歴は「削除」でまとめて消せます。</p>
@@ -401,7 +382,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
           <div class="paint-entry-actions"><label><input type="checkbox" disabled={busy||!history.some(canDeleteQwenJob)} checked={history.filter(canDeleteQwenJob).length>0&&history.filter(canDeleteQwenJob).every(item=>selectedJobs.includes(item.jobId))} onChange={e=>setSelectedJobs(e.currentTarget.checked?history.filter(canDeleteQwenJob).map(item=>item.jobId):[])}/> 全て選択</label><button disabled={busy||selectedJobs.length===0} onClick={()=>void remove(history.filter(item=>selectedJobs.includes(item.jobId)))}>削除</button><span>{selectedJobs.length}件を選択</span></div>
           <ul>{history.map(item=><li key={item.jobId}>
             <input type="checkbox" aria-label={`${item.fileName??item.jobId}を削除対象に選ぶ`} disabled={busy||!canDeleteQwenJob(item)} checked={selectedJobs.includes(item.jobId)} onChange={e=>setSelectedJobs(ids=>e.currentTarget.checked?[...ids,item.jobId]:ids.filter(id=>id!==item.jobId))}/>
-            <div><button class="qwen-history-file" disabled={busy} onClick={()=>void check(item.jobId)}>{item.fileName??item.jobId}</button><small>{qwenJobLocation(item)} · {statusLabel[item.status]}</small></div>
+            <div><button class="qwen-history-file" disabled={busy} onClick={()=>void check(item.jobId)}>{item.fileName??item.jobId}</button><small>{qwenJobLocation(item)} · {generationStatusLabel[item.status]}</small></div>
           </li>)}</ul>
         </>}
       </section>}
