@@ -6,7 +6,6 @@ import json
 import subprocess
 import sys
 from http.server import BaseHTTPRequestHandler
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -15,16 +14,16 @@ from nyamuru_bridge_identity import BRIDGE_SERVICE_NAME, LAYOUT_PROTOCOL_VERSION
 from nyamuru_vision_state import LocalVisionState
 from nyamuru_ocr_util import decode_image_data, normalized_rotation_override
 from nyamuru_scanner_sessions import quit_image_capture
-from nyamuru_series_catalog_store import SeriesCatalogConflict, discover_reference_text_candidates
+from nyamuru_series_catalog_store import SeriesCatalogConflict
 from nyamuru_episode_workspace import CoverageReportConflict
 from nyamuru_panel_actions import PanelActionLLMUnavailable
 from nyamuru_comfy_draft import ComfyUIUnavailable
-from nyamuru_project_store import load_project, save_project
 from nyamuru_editor_voice import EditorVoiceError
 from nyamuru_agent_connection import connection_status
 from nyamuru_agent_chat import AgentChatUnavailable
 from nyamuru_model_connections import image_generation_connections, workflow_operation
 from nyamuru_clip_export import export_clip
+from workspace_routes import handle_workspace_post
 
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -146,58 +145,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if path == "/api/human-pose/scene":
                 self.send_json(200, self.state.human_poses.scene(body.get("pose_id"), body.get("catalog_sha256"), body.get("include_base", True), body_model=body.get('body_model')))
                 return
-            if path == "/api/series/directory/choose":
-                result = self.state.series_catalogs.choose_directory(body.get("default_directory"))
-                if result.get("cancelled") is not True:
-                    directory = Path(str(result["series_directory"]))
-                    result["reference"] = self.state.panel_actions.suggest_reference_text(
-                        discover_reference_text_candidates(directory, "series"),
-                        "series",
-                    )
-                self.send_json(200, result)
-                return
-            if path == "/api/episode-workspace/select":
-                self.send_json(200, self.state.episode_workspaces.select(body.get("default_directory")))
-                return
-            if path == "/api/episode-workspace/project/save":
-                directory = self.state.episode_workspaces.directory(body.get("workspace_token"))
-                self.send_json(200, save_project(directory, body.get("snapshot"), body.get("expected_revision")))
-                return
-            if path == "/api/episode-workspace/project/load":
-                directory = self.state.episode_workspaces.directory(body.get("workspace_token"))
-                self.send_json(200, load_project(directory))
-                return
-            if path == "/api/episode-workspace/reference-suggest":
-                candidates = self.state.episode_workspaces.reference_candidates(body.get("workspace_token"))
-                self.send_json(200, {
-                    "ok": True,
-                    **self.state.panel_actions.suggest_reference_text(candidates, "episode"),
-                })
-                return
-            if path == "/api/episode-workspace/prepare":
-                self.send_json(200, self.state.episode_workspaces.prepare(body.get("workspace_token")))
-                return
-            if path == "/api/episode-workspace/choose-text":
-                self.send_json(200, self.state.episode_workspaces.choose_text(body.get("workspace_token")))
-                return
-            if path == "/api/episode-workspace/source-coverage/save":
-                self.send_json(200, self.state.episode_workspaces.save_source_coverage(
-                    body.get("workspace_token"),
-                    body.get("episode_id"),
-                    body.get("report"),
-                ))
-                return
-            if path == "/api/episode-workspace/choose-images":
-                self.send_json(200, self.state.episode_workspaces.choose_images(
-                    body.get("workspace_token"),
-                    body.get("max_files"),
-                ))
-                return
-            if path == "/api/series/reference-text/choose":
-                self.send_json(200, self.state.series_catalogs.choose_reference_text(
-                    body.get("series_id"),
-                    body.get("default_directory"),
-                ))
+            if path.startswith(("/api/series/", "/api/episode-workspace/", "/api/analog-assets/")):
+                handle_workspace_post(self, path, body)
                 return
             if path == "/api/scanner/open":
                 session = self.state.scanners.start()
@@ -327,115 +276,6 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/panel-draft/review":
                 self.send_json(200, self.state.panel_draft_jobs.review(body))
-                return
-            if path == "/api/series/load":
-                self.send_json(200, self.state.series_catalogs.load(body.get("series_name"), body.get("series_id")))
-                return
-            if path == "/api/series/list":
-                self.send_json(200, self.state.series_catalogs.list_catalogs())
-                return
-            if path == "/api/series/draft/begin":
-                self.send_json(200, self.state.series_catalogs.begin_draft(
-                    body.get("series_name"),
-                    body.get("series_id"),
-                    body.get("episode_id"),
-                ))
-                return
-            if path == "/api/series/draft/discard":
-                self.send_json(200, self.state.series_catalogs.discard_draft(body.get("draft_token")))
-                return
-            if path == "/api/series/draft/commit":
-                self.send_json(200, self.state.series_catalogs.commit_draft(body.get("draft_token")))
-                return
-            if path == "/api/series/save":
-                self.send_json(200, self.state.series_catalogs.save(
-                    body.get("series_name"),
-                    body.get("series_id"),
-                    body.get("omny_yaml"),
-                    body.get("expected_revision"),
-                    body.get("series_directory"),
-                    body.get("series_text_relative_path"),
-                ))
-                return
-            if path == "/api/series/discard-unsaved":
-                self.send_json(200, self.state.series_catalogs.discard_unsaved(
-                    body.get("series_name"),
-                    body.get("series_id"),
-                    body.get("episode_id"),
-                ))
-                return
-            if path == "/api/series/character-text/status":
-                self.send_json(200, self.state.series_catalogs.character_text_status(body.get("series_id")))
-                return
-            if path == "/api/series/character-text/link":
-                self.send_json(200, self.state.series_catalogs.link_character_text(
-                    body.get("series_name"),
-                    body.get("series_id"),
-                    body.get("default_directory"),
-                ))
-                return
-            if path == "/api/series/character-text/sync":
-                self.send_json(200, self.state.series_catalogs.sync_character_text(
-                    body.get("series_id"),
-                    body.get("markdown"),
-                    body.get("active_character_ids"),
-                    body.get("archive"),
-                ))
-                return
-            if path == "/api/series/character-text/restore":
-                self.send_json(200, self.state.series_catalogs.restore_character_text(
-                    body.get("series_id"),
-                    body.get("deletion_id"),
-                ))
-                return
-            if path == "/api/series/character-images/save":
-                self.send_json(200, self.state.series_catalogs.save_character_image(
-                    body.get("series_id"),
-                    body.get("character_catalog_id"),
-                    body.get("original_name"),
-                    decode_image_data(body.pop("image", None)),
-                ))
-                return
-            if path == "/api/series/background-models/save":
-                self.send_json(200, self.state.series_catalogs.save_background_model(
-                    body.get("series_id"), body.get("stage"), body.pop("model_data", None),
-                ))
-                return
-            if path == "/api/series/background-models/load":
-                self.send_json(200, self.state.series_catalogs.load_background_model(
-                    body.get("series_id"), body.get("stage_id"), body.get("format"),
-                    body.get("verify_only", False),
-                ))
-                return
-            if path == "/api/series/character-images/load":
-                self.send_json(200, self.state.series_catalogs.load_character_image(
-                    body.get("series_id"),
-                    body.get("character_catalog_id"),
-                    body.get("asset_id"),
-                ))
-                return
-            if path == "/api/series/character-images/delete":
-                self.send_json(200, self.state.series_catalogs.delete_character_image(
-                    body.get("series_id"),
-                    body.get("character_catalog_id"),
-                    body.get("asset_id"),
-                ))
-                return
-            if path == "/api/analog-assets/save":
-                self.send_json(200, self.state.analog_assets.save(
-                    body.get("episode_id"),
-                    body.get("work_title"),
-                    body.get("kind"),
-                    body.get("asset_id"),
-                    decode_image_data(body.pop("image", None)),
-                ))
-                return
-            if path == "/api/analog-assets/load":
-                self.send_json(200, self.state.analog_assets.load(
-                    body.get("work_key"),
-                    body.get("kind"),
-                    body.get("file_name"),
-                ))
                 return
             self.send_json(404, {"error": "Not found"})
         except (SeriesCatalogConflict, CoverageReportConflict) as exc:
