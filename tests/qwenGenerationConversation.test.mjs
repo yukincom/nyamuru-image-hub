@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {runQwenAgentRequest,qwenConversationIntent,executeQwenGeneration,qwenGenerationPayload,qwenGenerationTarget,requireQwenInsertionTarget} from '../src/lib/qwenGeneration.ts';
 import {loadGenerationPreferences,saveGenerationPreferences} from '../src/lib/generationPreferences.ts';
 import {cloudModelAccess} from '../src/lib/modelPrivacy.ts';
+import {resolveGenerationRoute} from '../src/lib/modelRouting.ts';
 import {validateGenerationInputs} from '../src/components/generation/createGenerationActions.ts';
 
 const plan={profile:'qwen-image-2.1-owner-v1',documentKey:'work',pageNumber:2,panelId:3,overlay:false,ownerKey:'figure-1',label:'小雪',width:320,height:480,prompt:'人物を描く',characterKeys:['koyuki'],candidates:[]};
@@ -97,7 +98,7 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   let finishCapture;const calls=[];
   const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
    alive:{current:true},AbortController,generationAbort:{current:undefined},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
-   cloud:true,workflow:null,threeImages:false,targetError:'',execution,adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,validateGenerationInputs,
+   cloud:true,workflow:null,threeImages:false,targetError:'',execution,connection:{},adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,resolveGenerationRoute,validateGenerationInputs,
    generationHandoff:()=>{calls.push('zip');return 'archive';},downloadBrowserBlob:()=>calls.push('download'),setNotice:()=>{}};
   const pending=appFunction('generate',context,'generation/createGenerationActions.ts')();
   const current=loadGenerationPreferences(storage);

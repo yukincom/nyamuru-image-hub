@@ -5,14 +5,20 @@ export interface CloudModelAccess {
   reason: 'disabled' | 'adult-terms-required' | 'allowed';
 }
 
-/** 実行先と成人指定作品への同意は別条件。永続化の正本はgenerationPreferences。 */
+/** 共通の作品条件。用途ごとの実行先は呼び出し側で判定する。 */
+export function cloudContentAccess(
+  preferences: Pick<GenerationPreferences['cloud'], 'adultTermsConfirmed'>,
+  adultContent: boolean,
+): CloudModelAccess {
+  if (adultContent && !preferences.adultTermsConfirmed) return { allowed: false, reason: 'adult-terms-required' };
+  return { allowed: true, reason: 'allowed' };
+}
+
+/** 画像生成用の既存入口。会話の実行先には流用しない。 */
 export function cloudModelAccess(
   preferences: Pick<GenerationPreferences, 'execution'> & { cloud: Pick<GenerationPreferences['cloud'], 'adultTermsConfirmed'> },
   adultContent: boolean,
 ): CloudModelAccess {
   if (preferences.execution !== 'cloud') return { allowed: false, reason: 'disabled' };
-  if (adultContent && !preferences.cloud.adultTermsConfirmed) {
-    return { allowed: false, reason: 'adult-terms-required' };
-  }
-  return { allowed: true, reason: 'allowed' };
+  return cloudContentAccess(preferences.cloud, adultContent);
 }

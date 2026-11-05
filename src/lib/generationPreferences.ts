@@ -4,6 +4,7 @@ export const LEGACY_CLOUD_MODEL_PREFERENCES_KEY = 'manga-name-studio.cloud-model
 
 export interface GenerationPreferences {
   execution: 'local' | 'cloud';
+  skipTranslationConfirmation: boolean;
   cloud: {
     adultTermsConfirmed: boolean;
     method: 'api' | 'agent';
@@ -17,6 +18,7 @@ export interface GenerationPreferences {
 
 export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = Object.freeze({
   execution: 'local',
+  skipTranslationConfirmation: false,
   cloud: Object.freeze({ adultTermsConfirmed: false, method: 'agent', apiEndpoint: '', apiModel: '', agent: 'codex', agentName: '' }),
   local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: QWEN_FIGURE_WORKFLOW }),
 });
@@ -46,6 +48,7 @@ function normalize(value: unknown): GenerationPreferences {
   } catch { /* An unfinished endpoint can be retained while the user types. */ }
   return {
     execution: source.execution === 'cloud' ? 'cloud' : 'local',
+    skipTranslationConfirmation: source.skipTranslationConfirmation === true,
     cloud: {
       adultTermsConfirmed: cloud.adultTermsConfirmed === true,
       method: cloud.method === 'api' ? 'api' : 'agent',

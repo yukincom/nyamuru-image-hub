@@ -3,6 +3,8 @@ import { type QwenGenerationPlan, type QwenReference, type QwenLayerReference, t
 import type { Dispatch, StateUpdater } from 'preact/hooks';
 import type { ComfyWorkflowDefinition } from '../../lib/comfyWorkflows.ts';
 import { type GenerationPreferences, currentGenerationPreferences } from '../../lib/generationPreferences.ts';
+import { currentConversationPreferences } from '../../lib/conversationPreferences.ts';
+import { resolveConversationRoute, resolveGenerationRoute } from '../../lib/modelRouting.ts';
 import type { LocalModelPreferences } from '../../lib/localModelPreferences.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../../lib/browserFiles.ts';
 import { requireHumanPoseGenerationReady } from '../../lib/humanPoseSelection.ts';
@@ -84,6 +86,11 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
   async function generate(autoInsert=false,inputIsCurrent:()=>boolean=()=>true){return operation(async()=>{
     if(attempted.current)throw new Error('この生成は開始済みです');
     if(targetError)throw new Error(targetError);
+    const route=resolveGenerationRoute(execution,connection,adultContent);
+    if(route.kind==='unavailable')throw new Error(route.message);
+    const requiresLlm=route.kind==='local'&&workflow?.binding.prompt_mode==='qwen'&&!plan.contentKind;
+    const translationRoute=requiresLlm?resolveConversationRoute(currentConversationPreferences(),connection,execution.cloud,adultContent):undefined;
+    if(translationRoute?.kind==='unavailable')throw new Error(translationRoute.message);
     const capturedDraft=draft.current,{references,correction}=capturedDraft;
     if(plan.characterKeys?.length && plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key))))throw new Error('人物に紐づく設定画を読み込めません');
     if(threeImages&&!usesPoseImage)throw new Error('image1で3Dモデルを調整してください');
@@ -96,10 +103,11 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     const target=qwenGenerationTarget(plan,Boolean(correction));
     const payload=validateGenerationInputs(plan,capturedDraft,threeImages,cloud?null:workflow,capturedPose);
     if(cloud){
-      if(execution.cloud.method!=='agent')throw new Error('API実行は未接続です。環境設定でエージェントを選んでください');
+      if(route.kind!=='external-agent')throw new Error('画像生成の実行先を確認してください');
+      // A withdrawal during capture cancels handoff; it never selects a different destination.
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
       if(!access.allowed)throw new Error(access.reason==='adult-terms-required'?'環境設定でクラウドの成人向け利用条件を確認してください':'環境設定でクラウドを選んでください');
-      const agent=execution.cloud.agent==='codex'?'Codex':execution.cloud.agentName||'指定のエージェント';
+      const agent=route.label;
       downloadBrowserBlob(generationHandoff(target,payload,agent),`generation-${plan.pageNumber}-${plan.ownerKey}.zip`);
       generatedTarget.current={plan:target};
       setNotice(`${agent}へ渡す指示と参照画像を保存しました。生成したPNGを「生成画像を読み込む」で戻せます。`);
@@ -124,7 +132,8 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
       submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
       onJob:current=>{if(alive.current)setJob(current);},
       ...(autoInsert?{insert:insertResult}:{}),
-      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm:workflow.binding.prompt_mode==='qwen'&&!plan.contentKind,onPhase:value=>{
+      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm,
+        ...(translationRoute?.kind==='local'?{llmModelAlias:translationRoute.llmAlias}:{}),onPhase:value=>{
         if(alive.current)setPhase({bridge:'準備中',llm:'英訳の準備中',translate:Boolean(plan.contentKind)?'生成指示を保存中':'英訳を保存中',suspend:'文章LLMを停止中',generate:'5枚の画像を生成中',restore:'生成後の復帰を確認中'}[value]);
       }}),
     });

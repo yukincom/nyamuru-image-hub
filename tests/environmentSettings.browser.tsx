@@ -4,6 +4,7 @@ import EnvironmentSettings from '../src/components/EnvironmentSettings';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import { GENERATION_PREFERENCES_STORAGE_KEY, LEGACY_CLOUD_MODEL_PREFERENCES_KEY, loadGenerationPreferences } from '../src/lib/generationPreferences';
 import { LOCAL_MODEL_PREFERENCES_STORAGE_KEY, loadLocalModelPreferences } from '../src/lib/localModelPreferences';
+import { CONVERSATION_PREFERENCES_STORAGE_KEY, loadConversationPreferences } from '../src/lib/conversationPreferences';
 import { getOutputSettings } from '../src/lib/finishLayout';
 import '../src/styles/global.css';
 
@@ -12,6 +13,7 @@ let requests = 0;
 window.fetch = async input => { requests++; throw new Error(`Fixture blocked a model request: ${String(input)}`); };
 const saved = () => JSON.stringify({
   generation: loadGenerationPreferences(localStorage),
+  conversation: loadConversationPreferences(localStorage),
   local: loadLocalModelPreferences(localStorage),
   requests,
 }, null, 2);
@@ -26,7 +28,7 @@ function Fixture() {
       <strong>環境設定のブラウザー検証</strong>
       <button type="button" onClick={() => { setRevision(value => value + 1); setSummary(saved()); }}>保存済みの設定で再表示</button>
       <button type="button" onClick={() => {
-        [GENERATION_PREFERENCES_STORAGE_KEY, LOCAL_MODEL_PREFERENCES_STORAGE_KEY, LEGACY_CLOUD_MODEL_PREFERENCES_KEY].forEach(key => localStorage.removeItem(key));
+        [GENERATION_PREFERENCES_STORAGE_KEY, CONVERSATION_PREFERENCES_STORAGE_KEY, LOCAL_MODEL_PREFERENCES_STORAGE_KEY, LEGACY_CLOUD_MODEL_PREFERENCES_KEY].forEach(key => localStorage.removeItem(key));
         requests = 0; setRevision(value => value + 1); setSummary(saved());
       }}>検証データを初期化</button>
       <details><summary>保存内容</summary><pre id="settings-persistence" style="position:absolute;right:12px;top:55px;z-index:100;background:white;padding:16px;border:1px solid #888;max-width:80vw;overflow:auto;">{summary}</pre></details>

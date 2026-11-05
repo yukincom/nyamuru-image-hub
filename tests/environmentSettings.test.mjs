@@ -12,6 +12,7 @@ import ts from 'typescript';
 import * as manga from '../src/lib/manga.ts';
 import * as localModels from '../src/lib/localModelPreferences.ts';
 import * as generation from '../src/lib/generationPreferences.ts';
+import * as conversation from '../src/lib/conversationPreferences.ts';
 import * as artwork from '../src/lib/artworkRules.ts';
 import * as finish from '../src/lib/finishLayout.ts';
 import * as print from '../src/lib/printSettings.ts';
@@ -55,11 +56,13 @@ function loadComponent(file, globals = {}) {
     '../lib/canvasText': canvasText,
     '../lib/localModelPreferences': localModels,
     '../lib/generationPreferences': generation,
+    '../lib/conversationPreferences': conversation,
     '../lib/localBridge': globals.localBridge ?? stub,
     '../lib/bubbleFonts': { BUBBLE_FONT_PRESETS: ['アンチック体'] },
     './FontFamilyPicker': { __esModule: true, default: 'FontFamilyPicker' },
     './FinishLayoutSettings': { __esModule: true, default: 'FinishLayoutSettings', FinishTextSettings: 'FinishTextSettings' },
     './ArtworkSettings': { __esModule: true, default: 'ArtworkSettings' },
+    '../AgentSettings': { __esModule: true, default: 'AgentSettings' },
     './ProjectFileInput': { __esModule: true, default: 'ProjectFileInput' },
     '../content/standard-settings.yaml?raw': { __esModule: true, default: read('src/content/standard-settings.yaml') },
   };
@@ -250,7 +253,7 @@ test('環境設定はテキスト専用タブを廃止して7分類で1枚だけ
   assert.equal(props.document.manga.meta.text_orientation, 'vertical');
   assert.equal(nodes(panel(tree, 'display')).filter(node => node.props?.type === 'checkbox').length, 3);
   assert.equal(nodes(panel(tree, 'data')).filter(node => node.props?.type === 'checkbox').length, 0);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 0);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 1, 'disabled prompt confirmation preference');
   assert.equal(nodes(panel(tree, 'page')).filter(node => node.type === 'FinishLayoutSettings').length, 1);
   assert.equal(nodes(panel(tree, 'page')).some(node => node.type === 'ArtworkSettings'), false);
   for(const [id,section] of [['generation','rules'],['omay','omay']]){
@@ -380,9 +383,9 @@ test('表示・モデルの端末設定は作品自体を書き換えない', ()
   display[1].props.onChange({ currentTarget: { checked: false } });
   display[2].props.onChange({ currentTarget: { checked: true } });
   assert.deepEqual(calls, [['editGuide', false], ['guides', false], ['spread', true]]);
-  find(panel(tree, 'ai'), node => node.props?.name === 'generation-execution' && node.props.value === 'cloud').props.onChange({ currentTarget: { checked: true } });
+  find(panel(tree, 'ai'), node => node.props?.name === 'generation-execution' && node.props.value === 'agent').props.onChange({ currentTarget: { checked: true } });
   tree = component.render(props);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 1);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 2);
   assert.equal(component.writes.length, 1);
   assert.equal(component.writes[0][0], generation.GENERATION_PREFERENCES_STORAGE_KEY);
   assert.equal(JSON.parse(component.writes[0][1]).execution, 'cloud');
@@ -417,61 +420,82 @@ test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存�
   assert.deepEqual(document, before);
 });
 
-test('クラウドとローカルは選択した設定だけを表示し、各利用方法を自動保存する', () => {
+// 見込み: 用途別の区画は互いの実行先を変えず、未接続APIを有効にしない。
+// 合格・範囲: 実TSXで外部受け渡し保存/復元、API/確認省略無効、プロフィール/作品保持を確認。hookは模擬。
+test('用途別の設定は外部エージェントを保存・復元し、会話と解析設定を保持する', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
-  const props = settingsProps();
+  const props = { ...settingsProps(), agentProfile: {name:'にゃむる',avatar:'',tone:'丁寧'}, onChangeAgentProfile: () => assert.fail('must keep profile') };
   props.onChangeDocument = () => assert.fail('generation preferences are device-local');
-  const choose = (name, value) => {
-    find(panel(component.render(props), 'ai'), node => node.props?.name === name && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
-  };
-  let ai = panel(component.render(props), 'ai');
-  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'クラウドモデル設定'), false);
-  assert.equal(nodes(ai).filter(node => node.props?.name === 'generation-execution' && node.props.checked).length, 1);
-  choose('generation-execution', 'cloud');
-  ai = panel(component.render(props), 'ai');
-  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'ローカルモデル設定'), false);
-  assert.equal(nodes(ai).some(node => node.type === 'Field' && node.props.label === '文章LLM'), false);
-  assert.equal(find(ai, node => node.props?.['aria-label'] === 'クラウドエージェント').props.value, 'codex');
-  choose('cloud-generation-method', 'api');
-  ai = panel(component.render(props), 'ai');
-  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'クラウドエージェント'), false);
-  input(field(ai, 'API接続先')).props.onInput({ currentTarget: { value: 'https://images.example.test/v1' } });
-  ai = panel(component.render(props), 'ai');
-  input(field(ai, 'APIモデル')).props.onInput({ currentTarget: { value: 'image-v1' } });
-  choose('generation-execution', 'local');
-  ai = panel(component.render(props), 'ai');
-  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'クラウドモデル設定'), false);
-  choose('generation-execution', 'cloud');
-  ai = panel(component.render(props), 'ai');
-  assert.equal(input(field(ai, 'API接続先')).props.value, 'https://images.example.test/v1');
-  assert.equal(input(field(ai, 'APIモデル')).props.value, 'image-v1');
-  const saved = JSON.parse(component.writes.filter(([key]) => key === generation.GENERATION_PREFERENCES_STORAGE_KEY).at(-1)[1]);
-  assert.equal(saved.cloud.method, 'api');
-  assert.equal(saved.cloud.apiModel, 'image-v1');
-  assert.equal(saved.execution, 'cloud');
-  assert.equal(nodes(ai).some(node => node.type === 'button' && /保存/.test(text(node))), false);
-  choose('cloud-generation-method', 'agent');
-  ai = panel(component.render(props), 'ai');
-  find(ai, node => node.props?.['aria-label'] === 'クラウドエージェント').props.onChange({ currentTarget: { value: 'other' } });
-  ai = panel(component.render(props), 'ai');
-  input(field(ai, 'エージェント名')).props.onInput({ currentTarget: { value: 'Example agent' } });
-  const agent = JSON.parse(component.writes.at(-1)[1]);
-  assert.equal(agent.cloud.agent, 'other');
-  assert.equal(agent.cloud.agentName, 'Example agent');
+  const ai = () => panel(component.render(props), 'ai');
+  const choose = value => find(ai(), node => node.props?.name === 'generation-execution' && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
+  for (const name of ['conversation-execution','generation-execution']) {
+    assert.equal(find(ai(), node => node.props?.name === name && node.props.value === 'api').props.disabled, true);
+    assert.equal(find(ai(), node => node.props?.name === name && node.props.checked).props.value, 'local');
+  }
+  const confirmation = find(ai(), node => node.props?.['aria-label'] === '英訳後の確認を省略して生成する');
+  assert.equal(confirmation.props.disabled, true);
+  assert.equal(confirmation.props.checked, false);
+  choose('agent');
+  assert.equal(nodes(ai()).some(node => node.props?.['aria-label'] === 'ローカルモデル設定'), false);
+  assert.equal(input(field(ai(), '文章LLM')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmAlias);
+  assert.equal(input(field(ai(), '画像VLM')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.vlmModelId);
+  assert.deepEqual(find(ai(), node => node.type === 'AgentSettings').props.profile, props.agentProfile);
+  find(ai(), node => node.props?.['aria-label'] === 'クラウドエージェント').props.onChange({ currentTarget: { value: 'other' } });
+  input(field(ai(), 'エージェント名')).props.onInput({ currentTarget: { value: 'Example agent' } });
+  choose('local'); choose('agent');
   const reloaded = loadComponent('src/components/EnvironmentSettings.tsx', { initialStorage: component.writes });
   const restored = panel(reloaded.render(props), 'ai');
-  assert.equal(find(restored, node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'cloud');
-  assert.equal(find(restored, node => node.props?.name === 'cloud-generation-method' && node.props.checked).props.value, 'agent');
+  assert.equal(find(restored, node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'agent');
+  assert.equal(find(restored, node => node.props?.name === 'conversation-execution' && node.props.checked).props.value, 'local');
   assert.equal(input(field(restored, 'エージェント名')).props.value, 'Example agent');
   assert.equal(reloaded.writes.length, 0, 'restoring settings must not write or run a model');
-  assert.ok(component.writes.every(([key]) => key === generation.GENERATION_PREFERENCES_STORAGE_KEY), 'execution and cloud details have one writer');
+  assert.ok(component.writes.every(([key]) => key === generation.GENERATION_PREFERENCES_STORAGE_KEY));
+});
+
+// 見込み: 未接続の保存値は黙ってlocalにせず、利用者がlocalを選ぶまで保持する。
+// 合格・範囲: 模擬Storage失敗2回ともAPI維持、その後の成功と再表示でlocal。作品変更0。
+test('会話の保存失敗はAPI選択を維持し、保存成功したローカルだけを確定する', () => {
+  const values = new Map([[conversation.CONVERSATION_PREFERENCES_STORAGE_KEY, JSON.stringify({version:1,execution:'api',connectionId:'service',model:'text-model'})]]);
+  let failing = true;
+  const component = loadComponent('src/components/EnvironmentSettings.tsx', { window: {localStorage: {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key,value) => {if(failing)throw new Error('quota'); values.set(key,value);},
+  }}});
+  const props = {...settingsProps(), onChangeDocument: () => assert.fail('no document edit')};
+  const ai = () => panel(component.render(props), 'ai');
+  const choose = () => find(ai(), node => node.props?.name === 'conversation-execution' && node.props.value === 'local').props.onChange({currentTarget:{checked:true}});
+  for(let attempt=0;attempt<2;attempt++) {
+    choose();
+    assert.equal(find(ai(), node => node.props?.name === 'conversation-execution' && node.props.checked).props.value, 'api');
+    assert.match(text(ai()), /会話・翻訳の設定を保存できません/);
+    assert.equal(conversation.loadConversationPreferences({getItem:key=>values.get(key)}).execution,'api');
+  }
+  failing=false;choose();
+  assert.equal(find(ai(), node => node.props?.name === 'conversation-execution' && node.props.checked).props.value,'local');
+  assert.equal(conversation.loadConversationPreferences({getItem:key=>values.get(key)}).execution,'local');
+  assert.doesNotMatch(text(ai()),/設定を保存できません/);
+  const restored=panel(loadComponent('src/components/EnvironmentSettings.tsx',{initialStorage:values}).render(props),'ai');
+  assert.equal(find(restored,node=>node.props?.name==='conversation-execution'&&node.props.checked).props.value,'local');
+});
+
+// 見込み: 未保存入力は実行用の組み合わせ表示へ入らない。合格: draftは残るが組み合わせ表示は保存済みalias。hook/Storageを模擬。
+test('ローカルモデルの保存失敗は入力draftを残し実行用表示を変えない', () => {
+  const component=loadComponent('src/components/EnvironmentSettings.tsx',{window:{localStorage:{getItem:()=>null,setItem:()=>{throw Error('quota');}}}});
+  const props=settingsProps();
+  input(field(panel(component.render(props),'ai'),'文章LLM')).props.onInput({currentTarget:{value:'new-model'}});
+  const ai=panel(component.render(props),'ai');
+  assert.equal(input(field(ai,'文章LLM')).props.value,'new-model');
+  const summary=text(find(ai,node=>node.props?.['aria-label']==='モデル設定の組み合わせ'));
+  assert.ok(summary.includes(localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmAlias));
+  assert.ok(!summary.includes('new-model'));
+  assert.match(text(ai),/直前の有効な設定/);
 });
 
 test('保存失敗は設定画面へ表示し、保存成功として通知しない', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx', { window: { localStorage: { getItem: () => null, setItem: () => { throw new Error('Storage unavailable'); } } } });
   const props = { ...settingsProps(), onNotify: () => assert.fail('no success notification') };
   const ai = panel(component.render(props), 'ai');
-  find(ai, node => node.props?.name === 'generation-execution' && node.props.value === 'cloud').props.onChange({ currentTarget: { checked: true } });
+  find(ai, node => node.props?.name === 'generation-execution' && node.props.value === 'agent').props.onChange({ currentTarget: { checked: true } });
   assert.match(text(panel(component.render(props), 'ai')), /設定を保存できませんでした/);
   assert.equal(find(panel(component.render(props), 'ai'), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'local');
 });
@@ -484,18 +508,18 @@ test('成人同意は一回の保存で確定し、切替で保持、保存失�
   } } });
   const props = { ...settingsProps(), onChangeDocument: () => assert.fail('device preferences are not document edits') };
   const ai = () => panel(component.render(props), 'ai');
-  const execution = value => find(ai(), node => node.props?.name === 'generation-execution' && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
+  const execution = value => find(ai(), node => node.props?.name === 'generation-execution' && node.props.value === (value === 'cloud' ? 'agent' : value)).props.onChange({ currentTarget: { checked: true } });
   execution('cloud');
-  find(ai(), node => node.props?.type === 'checkbox').props.onChange({ currentTarget: { checked: true } });
+  find(ai(), node => node.props?.['aria-label'] === '成人指定作品での利用規約を確認済み').props.onChange({ currentTarget: { checked: true } });
   execution('local'); execution('cloud');
-  assert.equal(find(ai(), node => node.props?.type === 'checkbox').props.checked, true);
+  assert.equal(find(ai(), node => node.props?.['aria-label'] === '成人指定作品での利用規約を確認済み').props.checked, true);
   assert.equal(storage.size, 1);
   failing = true;
   for (let attempt = 0; attempt < 2; attempt++) {
     execution('local');
-    assert.equal(find(ai(), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'cloud');
-    find(ai(), node => node.props?.type === 'checkbox').props.onChange({ currentTarget: { checked: false } });
-    assert.equal(find(ai(), node => node.props?.type === 'checkbox').props.checked, true);
+    assert.equal(find(ai(), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'agent');
+    find(ai(), node => node.props?.['aria-label'] === '成人指定作品での利用規約を確認済み').props.onChange({ currentTarget: { checked: false } });
+    assert.equal(find(ai(), node => node.props?.['aria-label'] === '成人指定作品での利用規約を確認済み').props.checked, true);
   }
   const saved = generation.loadGenerationPreferences({ getItem: key => storage.get(key) ?? null });
   assert.equal(saved.execution, 'cloud');

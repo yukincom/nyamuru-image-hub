@@ -3,6 +3,8 @@ import { postBridgeJson, postJson, verifiedPngSha256 } from './transport.ts';
 import { currentLocalModelPreferences, normalizeComfyuiUrl } from '../localModelPreferences.ts';
 import { decodeImageGenerationConnections } from '../modelConnections.ts';
 import { currentGenerationPreferences } from '../generationPreferences.ts';
+import { currentConversationPreferences } from '../conversationPreferences.ts';
+import { resolveConversationRoute } from '../modelRouting.ts';
 import type { HumanPoseCatalog } from '../humanPoseTypes.ts';
 import { parseHumanPoseCatalog, humanPoseSelectable } from '../humanPoseSelection.ts';
 import { decodeHumanPoseScene } from '../humanPoseSceneAssets.ts';
@@ -77,7 +79,11 @@ export async function getAgentConnection():Promise<{connected:boolean;model:stri
   return {connected:value.connected,model:value.model};
 }
 
-export function withAgentServices<T>(task:()=>Promise<T>,isCurrent:()=>boolean){return withPanelActionServices(task,{isCurrent});}
+export function withAgentServices<T>(task:()=>Promise<T>,isCurrent:()=>boolean){
+  const route=resolveConversationRoute(currentConversationPreferences(),currentLocalModelPreferences(),currentGenerationPreferences().cloud);
+  if(route.kind==='unavailable')throw new Error(route.message);
+  return withPanelActionServices(task,{isCurrent,llmModelAlias:route.llmAlias});
+}
 export async function requestAgentReply(body:AgentRequest):Promise<AgentReply>{
   const value=await postJson('/api/agent/chat',body,210_000) as AgentReply;
   if(!value?.message||value.message.role!=='assistant'||typeof value.model!=='string'||
