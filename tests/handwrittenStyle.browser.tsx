@@ -145,13 +145,18 @@ const toolActive=(name:string)=>button(name)?.getAttribute('aria-pressed')==='tr
 const clickNode=async(node:HTMLButtonElement|null)=>{if(!node||node.disabled||node.getAttribute('aria-disabled')==='true')throw Error('Layer control unavailable: '+(node?.outerHTML??'missing element'));node.click();await tick();};
 const palette=(overlay:boolean)=>document.querySelector<HTMLElement>(`.page-layer-palette .paint-layer-palette[data-paint-panel="0"][data-paint-overlay="${overlay}"]`)!;
 const textRow=(overlay:boolean)=>palette(overlay).querySelector<HTMLElement>('[data-owner-group="bubble-0"]')!;
+async function addGenerationMask(owner:'bubble-0'|'background'){
+ // The owner preview canvas is mounted once the active paint session has loaded its source images.
+ await wait(()=>!!document.querySelector(`.paint-owner[data-paint-owner="${owner}"] > canvas.paint-preview-canvas`),'生成マスクを追加する原画の読み込み');
+ await click('生成マスク化');
+}
 
 // 見込み: 子レイヤー選択でもownerの文字情報を表示し、Tで既存フォームを編集できる。
 // 合格: コマ/前景の生成マスク・通常層・サブフォルダ・親見出しで本文一致。本文編集の保存/Undo/Redoも一致。範囲: 実App＋隔離フォルダ、モデルなし。
 async function verifyTextFolderInfo(){
  for(const overlay of [false,true]){
   const label=overlay?'前景':'コマ',expected=bubble(overlay).text;
-  await select(overlay);await click('文字ツールの設定を閉じる');await click('ペン');await click('生成マスク化');
+  await select(overlay);await click('文字ツールの設定を閉じる');await click('ペン');await addGenerationMask('bubble-0');
   await click('写植文字');await click('情報');await wait(()=>infoBody()?.value===expected&&!infoBody()?.disabled,`${label}マスクから文字情報`);
   await check(()=>true,`${label}: 生成マスクから正しい文字情報を編集できる`);
   await click('ペン');
@@ -187,7 +192,7 @@ async function verifyTextFolderInfo(){
 async function verifyTextToolRecovery(){
  await select(false);await click('文字ツールの設定を閉じる');await click('選択');
  await clickNode(palette(false).querySelector('[data-owner-group="background"] .layer-group-select'));
- await click('生成マスク化');
+ await addGenerationMask('background');
  await clickNode(palette(false).querySelector('[data-generation-mask="background"] .layer-select'));
  await wait(()=>palette(false).querySelector('[data-generation-mask="background"]')?.getAttribute('aria-selected')==='true','生成マスクを描画対象に選択');
  await click('投げ縄');
