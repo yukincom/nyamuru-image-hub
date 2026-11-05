@@ -1,5 +1,5 @@
 import type { Manga, BBox, ImageAsset, PaintDocument, PaintLayer, ImageContent, Bubble, ScreenText, Panel } from '../types.ts';
-import { type ClipExportPage, type ClipExportRaster, type ClipExportMask, clipExportLocalFonts, clipExportFont, bounds, type ClipExportSource, base, type ClipExportLayer, folder, jsonSource, clipExportVectorLines, type ClipExportVector, clipExportPlacementFrame, boxPoints, clipExportTextStyle, type ClipExportText, type ClipExportFolder, type ClipExportLine } from './clip/layerData.ts';
+import { type ClipFontMetadataCache, type ClipExportPage, type ClipExportRaster, type ClipExportMask, clipExportLocalFonts, clipExportFont, bounds, type ClipExportSource, base, type ClipExportLayer, folder, jsonSource, clipExportVectorLines, type ClipExportVector, clipExportPlacementFrame, boxPoints, clipExportTextStyle, type ClipExportText, type ClipExportFolder, type ClipExportLine } from './clip/layerData.ts';
 import { getPrintSetup } from './printSettings.ts';
 import { pageExportPixels } from './pageExport.ts';
 import { browserFontGlyphProbe, bubbleCssFontFamily } from './bubbleFonts.ts';
@@ -43,6 +43,7 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
   const warn=(message:string)=>{if(!output.warnings.includes(message))output.warnings.push(message);};
   const previewImages=new Map<string,ClipExportRaster>(),maskCache=new Map<string,ClipExportMask>(),originals=new Set<string>();
   if(document.fonts)await document.fonts.ready;
+  const fontMetadata:ClipFontMetadataCache=new WeakMap();
   const fontProbe=browserFontGlyphProbe(),localFonts=await clipExportLocalFonts(),resolvedFonts=new Map<string,Promise<Awaited<ReturnType<typeof clipExportFont>>>>();
 
   const polygonMask=(points:Array<[number,number]>):ClipExportMask=>{
@@ -165,7 +166,7 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
       const native:ClipExportText={...base(id,name),kind:'text',text:item.text,frame:[Math.floor(x),Math.floor(y),Math.ceil(x+width),Math.ceil(y+height)],...metadata,color:[17,17,17],font:{name:fontFamily,postscript:fontFamily},visible:item.hidden!==true&&(kind!=='bubble'||letteringGuideVisible(item as Bubble)),locked:kind==='bubble'&&(item as Bubble).nativeLocked===true,
         sources:[jsonSource('nyamuru-text',name,{kind,box,item})]};
       const fontKey=JSON.stringify([fontFamily,style.fontWeight,style.italic,item.text]);
-      let resolved=resolvedFonts.get(fontKey);if(!resolved){resolved=clipExportFont(fontFamily,item.text,style.fontWeight,style.italic,fontProbe,localFonts);resolvedFonts.set(fontKey,resolved);}
+      let resolved=resolvedFonts.get(fontKey);if(!resolved){resolved=clipExportFont(fontFamily,item.text,style.fontWeight,style.italic,fontProbe,localFonts,fontMetadata);resolvedFonts.set(fontKey,resolved);}
       const resolvedFont=await resolved;native.font=resolvedFont.font;if(resolvedFont.warning)warn(resolvedFont.warning);
       previewImages.set(id,preview);
       if(item.text_runs?.length||style.underline||style.strikethrough){

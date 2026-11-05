@@ -112,12 +112,24 @@ export async function clipExportLocalFonts(target:Window=window,permissions:Pick
   try{if((await permissions.query({name:'local-fonts' as PermissionName})).state!=='granted')return [];return await query.call(target);}catch{return [];}
 }
 
+export type ClipFontMetadataCache = WeakMap<ClipExportLocalFont, Promise<FontFaceMetadata>>;
+
+async function metadataForFace(face:ClipExportLocalFont, cache?:ClipFontMetadataCache):Promise<FontFaceMetadata> {
+  if (!face.blob) return {};
+  const previous = cache?.get(face);
+  if (previous) return previous;
+  const result = face.blob().then(blob => readFontFaceMetadata(blob, face.family, face.postscriptName));
+  cache?.set(face, result);
+  try { return await result; }
+  catch (error) { cache?.delete(face); throw error; }
+}
+
 /** Use glyph evidence for CSS aliases; an absent family also passes fonts.check(). */
-export async function clipExportFont(font:string,text:string,weight:number,italic:boolean,probe:FontGlyphProbe,faces:readonly ClipExportLocalFont[]=[]):Promise<{font:NonNullable<ClipExportText['font']>;warning?:string}> {
+export async function clipExportFont(font:string,text:string,weight:number,italic:boolean,probe:FontGlyphProbe,faces:readonly ClipExportLocalFont[]=[],metadataCache?:ClipFontMetadataCache):Promise<{font:NonNullable<ClipExportText['font']>;warning?:string}> {
   const candidates=[...bubbleCssFontFamily(font).matchAll(/"([^"\\]+)"/g)].map(match=>match[1]);
   const sample=text.replace(/\s/g,'').slice(0,32)||'あ',family=candidates.find(candidate=>probe(candidate,sample))??font;
   const related=faces.filter(face=>face.family===family||face.fullName===family),read=await Promise.all(related.map(async face=>{
-    let metadata:FontFaceMetadata={};try{if(face.blob)metadata=await readFontFaceMetadata(await face.blob(),face.family,face.postscriptName);}catch{/* Keep the family when a face cannot be read. */}
+    let metadata:FontFaceMetadata={};try{metadata=await metadataForFace(face,metadataCache);}catch{/* Keep the family when a face cannot be read. */}
     const style=face.style??'',fallbackWeight=/black|heavy/i.test(style)?900:/extra.?bold|ultra.?bold/i.test(style)?800:/semi.?bold|demi/i.test(style)?600:/bold/i.test(style)?700:/extra.?light|ultra.?light/i.test(style)?200:/light/i.test(style)?300:/thin/i.test(style)?100:400;
     return {face,weight:metadata.weight??fallbackWeight,italic:metadata.italic??/italic|oblique/i.test(style),width:metadata.width??5};
   }));
