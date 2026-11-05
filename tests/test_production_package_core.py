@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 import unittest
@@ -24,16 +25,26 @@ def file_hash(path, algorithm):
     return digest.hexdigest()
 
 
-def refresh_fake_payload_manifests(package):
+def refresh_fixture_bag_metadata(package):
     package = Path(package)
     payload_files = sorted(path for path in (package / "data").rglob("*") if path.is_file())
+    # A fixture payload edit changes both the bag's byte total and its checksums.
+    bag_info = package / "bag-info.txt"
+    payload_bytes = sum(path.stat().st_size for path in payload_files)
+    info = re.sub(
+        r"^Payload-Oxum: [0-9]+\.[0-9]+$",
+        f"Payload-Oxum: {payload_bytes}.{len(payload_files)}",
+        bag_info.read_text(encoding="utf-8"),
+        flags=re.MULTILINE,
+    )
+    bag_info.write_text(info, encoding="utf-8")
     for algorithm in ("sha256", "sha512"):
         lines = [
             f"{file_hash(path, algorithm)}  {path.relative_to(package).as_posix()}"
             for path in payload_files
         ]
         (package / f"manifest-{algorithm}.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    # Both payload manifests are tag files; update them before either tag hash.
+    # bag-info.txt and both payload manifests must be final before either tag hash.
     for algorithm in ("sha256", "sha512"):
         tag_manifest = package / f"tagmanifest-{algorithm}.txt"
         tag_paths = [line.split("  ", 1)[1] for line in tag_manifest.read_text(encoding="utf-8").splitlines()]
@@ -49,7 +60,7 @@ def legacy_snapshot_paths(package):
         manifest["document"][key] = old_path
         next(payload for payload in manifest["payloads"] if payload["path"] == current)["path"] = old_path
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
-    refresh_fake_payload_manifests(package)
+    refresh_fixture_bag_metadata(package)
     return manifest
 
 
@@ -545,7 +556,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
         _, package = self.export_once(core)
         extra = package / "data" / "workspace" / "draft_data" / "unlisted.psd"
         extra.write_bytes(b"unlisted")
-        refresh_fake_payload_manifests(package)
+        refresh_fixture_bag_metadata(package)
         with self.assertRaisesRegex(package_core.BagItValidationError, "一覧が一致"):
             core.validate(package)
 
@@ -560,7 +571,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
             json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
             encoding="utf-8",
         )
-        refresh_fake_payload_manifests(package)
+        refresh_fixture_bag_metadata(package)
         with self.assertRaisesRegex(package_core.BagItValidationError, "source_relative_path"):
             core.validate(package)
 
@@ -568,6 +579,7 @@ class ProductionPackageCoreTest(unittest.TestCase):
 @unittest.skipUnless(importlib.util.find_spec("bagit"), "bagit-python is not installed")
 class RealBagItIntegrationTest(unittest.TestCase):
     def test_real_bagit_round_trip_when_preinstalled(self):
+        """The real validator must accept synthetic bags using either supported snapshot naming scheme."""
         with tempfile.TemporaryDirectory() as temp:
             workspace = Path(temp) / "workspace"
             (workspace / "draft_data").mkdir(parents=True)
