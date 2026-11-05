@@ -1,3 +1,4 @@
+import type { EnvironmentSettingsProps as Props } from './environmentSettingsTypes';
 import AgentSettings from './AgentSettings';
 import LocalImageModelSettings from './LocalImageModelSettings';
 import type { AgentPreferences } from '../lib/agentPreferences';
@@ -25,7 +26,7 @@ const SETTINGS_TABS = [
   { id: 'ai', label: 'モデル設定', icon: Bot },
   { id: 'data', label: 'データ管理', icon: FolderArchive },
 ] as const;
-type SettingsTab = typeof SETTINGS_TABS[number]['id'];
+export type SettingsTab = typeof SETTINGS_TABS[number]['id'];
 type CacheDeleteTarget = { scope: 'owner'; ownerKind: 'series' | 'one-shot'; ownerId: string; label: string }
   | { scope: 'profile'; profileId: string; label: string };
 
@@ -38,40 +39,6 @@ function formatCacheSize(bytes: number) {
 
 function formatCacheDate(value: string) {
   return new Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium' }).format(new Date(value));
-}
-
-interface Props {
-  initialTab?: SettingsTab;
-  prepareDocumentSettings?: () => Promise<void>;
-  onOpenAgent?:()=>void;
-  hasDocument?: boolean;
-  onExportOmny?: () => void;
-  agentProfile?:AgentPreferences; onChangeAgentProfile?:(profile:AgentPreferences)=>void;
-  historySteps?:number;onChangeHistorySteps?:(value:number)=>void;
-  editGuide?:boolean; onChangeEditGuide?:(enabled:boolean)=>void;
-  paintSmoothing?:number; onChangePaintSmoothing?:(value:number)=>void;
-  paintCursorMode?:PaintCursorMode; onChangePaintCursorMode?:(value:PaintCursorMode)=>void;
-  paintBleedPx?: number;
-  onChangePaintBleed?: (value:number)=>void;
-  document: MangaDocument;
-  onChangeDocument: (document: MangaDocument) => void;
-  onNotify: (message: string) => void;
-  showGuides: boolean;
-  spreadView: boolean;
-  pageCount: number;
-  frameLineWidthMm: number;
-  rowGapMm: number;
-  columnGapMm: number;
-  onChangeShowGuides: (enabled: boolean) => void;
-  onChangeSpreadView: (enabled: boolean) => void;
-  onChangeFrameLineWidth: (value: number) => void;
-  onChangeRowGap: (value: number) => void;
-  onChangeColumnGap: (value: number) => void;
-  fontFamilies?: readonly PcFontFamily[];
-  onRequestFonts?: () => void;
-  saveDirectory?: string;
-  projectBusy?: boolean;
-  onChangeSaveDirectory?: () => void;
 }
 
 export default function EnvironmentSettings({ initialTab, prepareDocumentSettings, onOpenAgent, hasDocument = true, onExportOmny, agentProfile,onChangeAgentProfile,historySteps=50,onChangeHistorySteps,editGuide=true,onChangeEditGuide,paintSmoothing=0,onChangePaintSmoothing,paintCursorMode='circle',onChangePaintCursorMode,paintBleedPx=200, onChangePaintBleed, document, onChangeDocument, onNotify, showGuides, spreadView, pageCount, frameLineWidthMm, rowGapMm, columnGapMm, onChangeShowGuides, onChangeSpreadView, onChangeFrameLineWidth, onChangeRowGap, onChangeColumnGap, fontFamilies=[], onRequestFonts, saveDirectory, projectBusy, onChangeSaveDirectory }: Props) {

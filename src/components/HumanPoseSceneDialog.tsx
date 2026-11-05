@@ -1,41 +1,24 @@
-import { createPortal } from 'preact/compat';
-import { useEffect, useId, useRef, useState } from 'preact/hooks';
-import { loadHumanPoseCatalog, loadHumanPoseScene } from '../lib/localBridge.ts';
-import { withNewCreationBridgeSession } from '../lib/localBridgeLifecycle.ts';
-import { dollyBackgroundCamera, shiftBackgroundCamera } from '../lib/background3dCamera.ts';
+import type { Props, PoseSnapshot, Camera } from './pose/poseDialogTypes.ts';
+import { useId, useRef, useState, useEffect } from 'preact/hooks';
 import { HumanPoseSceneRenderer, loadHumanPoseBackground } from '../lib/humanPoseSceneRenderer.ts';
-import { humanPoseCameraParts, humanPoseSceneFrame, humanPoseSceneForPreset, useHumanPoseBackgroundCamera } from '../lib/humanPoseScene.ts';
+import type { HumanPoseSceneSettings, HumanPoseCatalog, HumanPoseSurfaceAnchor, PoseVector, HumanPoseCatalogEntry, HumanPoseBodyModel, HumanPoseSurfacePlacement } from '../lib/humanPoseTypes.ts';
 import { humanPoseSelectable, selectHumanPose } from '../lib/humanPoseSelection.ts';
 import { searchHumanPoses } from '../lib/humanPoseSearch.ts';
-import { HUMAN_POSE_PREVIEW_ART } from '../lib/humanPosePreviewArt.ts';
-import { CUBE_STAGE_ID } from '../lib/background3d.ts';
-import type { BackgroundCapture, BackgroundStage, FigureSize } from '../types.ts';
-import { HUMAN_POSE_PREVIEW_MARGIN, humanPoseCutOutline, humanPosePreviewWindow, MANUAL_HUMAN_POSE_FRAMING, type HumanPoseCutFrame } from '../lib/humanPoseFraming.ts';
-import type { HumanPosePanelContext } from '../lib/humanPoseComposition.ts';
-import type { HumanPoseBodyModel, HumanPoseCameraSubject, HumanPoseCatalog, HumanPoseCatalogEntry, HumanPoseSceneSettings, HumanPoseSurfaceAnchor, HumanPoseSurfacePlacement, HumanPoseTextSelection, PoseVector } from '../lib/humanPoseTypes.ts';
-import HumanPoseMotionControls from './HumanPoseMotionControls.tsx';
-import HumanPoseSurfaceControls, { type HumanPoseSurfacePickMode } from './HumanPoseSurfaceControls.tsx';
+import HumanPoseSurfaceControls from './HumanPoseSurfaceControls.tsx';
+import type { HumanPoseSurfacePickMode } from './HumanPoseSurfaceControls.tsx';
+import { humanPoseSceneFrame, humanPoseSceneForPreset, humanPoseCameraParts, useHumanPoseBackgroundCamera } from '../lib/humanPoseScene.ts';
+import { humanPosePreviewWindow, HUMAN_POSE_PREVIEW_MARGIN, humanPoseCutOutline } from '../lib/humanPoseFraming.ts';
+import { withNewCreationBridgeSession } from '../lib/localBridgeLifecycle.ts';
+import { loadHumanPoseCatalog, loadHumanPoseScene } from '../lib/localBridge.ts';
+import { createPoseMotionControls } from './pose/poseMotionControls.ts';
+import { humanPoseJoint, HUMAN_POSE_HANDLES } from '../lib/humanPoseJoints.ts';
+import { createPortal } from 'preact/compat';
+import { dollyBackgroundCamera, shiftBackgroundCamera } from '../lib/background3dCamera.ts';
 import BackgroundCameraGizmo from './BackgroundCameraGizmo.tsx';
-import FigureSizePicker from './FigureSizePicker.tsx';
-import { FIGURE_SIZE_LABELS } from '../lib/manga.ts';
+import { renderPoseCatalog, renderBodyPlacement, renderCameraSettings } from './pose/poseSetupFields.tsx';
+import HumanPoseMotionControls from './HumanPoseMotionControls.tsx';
+import { CUBE_STAGE_ID } from '../lib/background3d.ts';
 import './HumanPoseSceneDialog.css';
-import { HUMAN_POSE_HANDLES, humanPoseJoint } from '../lib/humanPoseJoints.ts';
-
-interface Props {
-  value: HumanPoseTextSelection;
-  aspect?: number;
-  framingLabel?: string;
-  framingSize?: FigureSize;
-  cutFrame?: HumanPoseCutFrame;
-  panelContext?: HumanPosePanelContext;
-  stages?: BackgroundStage[];
-  backgroundCaptures?: Array<{ label: string; capture: BackgroundCapture }>;
-  previewSize?: {width:number;height:number};
-  onConfirm: (scene: HumanPoseSceneSettings, subject: HumanPoseCameraSubject, selection: HumanPoseTextSelection, previewPng?:string) => void | Promise<void>;
-  onClose: () => void;
-}
-type Camera = HumanPoseSceneSettings['camera'];
-type PoseSnapshot = { selection: HumanPoseTextSelection; scene: HumanPoseSceneSettings };
 
 export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, framingSize: initialFramingSize = 'bust-up', cutFrame, panelContext, stages = [], backgroundCaptures = [], previewSize, onConfirm, onClose }: Props) {
   const aspect = cutFrame?.aspect ?? figureAspect;
@@ -167,40 +150,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
       if (remember && before && JSON.stringify(before) !== JSON.stringify(next)) { undo.current.push(snapshot(before)!); redo.current = []; setHistoryVersion(v => v + 1); } setDraft(structuredClone(next)); setPreview(''); setError(''); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '撮影設定を変更できません'); }
   };
-  const beginMotion = () => { motionStart.current ??= renderer.current?.snapshot() ?? null; };
-  const endMotion = () => {
-    const before = motionStart.current; motionStart.current = null;
-    if (before && renderer.current && JSON.stringify(before) !== JSON.stringify(renderer.current.snapshot())) {
-      remember(before);
-    }
-  };
-  const stopMotion = () => {
-    if (motionRun.current !== null) cancelAnimationFrame(motionRun.current);
-    motionRun.current = null; setPlaying(false); endMotion();
-  };
-  const scrubMotion = (phase: number) => {
-    const active = renderer.current, scene = motionStart.current ?? active?.snapshot();
-    if (!active || !scene?.motion) return;
-    try { update(active.changeMotion(scene.motion.clip_id, phase, scene), false); }
-    catch (cause) { stopMotion(); setError(cause instanceof Error ? cause.message : '動きを変更できません'); }
-  };
-  const playMotion = () => {
-    stopMotion(); setSurfacePicking(null); const active = renderer.current, scene = active?.snapshot();
-    if (!active || !scene?.motion) return;
-    const clip = active.motionClips.find(item => item.id === scene.motion!.clip_id); if (!clip) return;
-    beginMotion(); setPlaying(true); const start = performance.now(), phase = scene.motion.phase === 1 ? 0 : scene.motion.phase;
-    const tick = (now: number) => {
-      if (renderer.current !== active || !motionStart.current) return;
-      scrubMotion((phase + (now - start) / (clip.duration * 1000)) % 1);
-      if (motionStart.current) motionRun.current = requestAnimationFrame(tick);
-    };
-    motionRun.current = requestAnimationFrame(tick);
-  };
-  const changeMotion = (clipId: string) => {
-    stopMotion(); setSurfacePicking(null);
-    try { if (renderer.current) update(renderer.current.changeMotion(clipId, 0)); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '動きを変更できません'); }
-  };
+  const { stopMotion, changeMotion, scrubMotion, playMotion, beginMotion, endMotion } = createPoseMotionControls({ motionStart, renderer, remember, motionRun, setPlaying, update, setError, setSurfacePicking });
   const changeJoint = (id: string, detail = details) => { setSelected(id); renderer.current?.selectJoint(id, detail); };
   const jointDefinition = humanPoseJoint(selected);
   const hinge = /^(lowerarm|lowerleg)/u.test(selected);
@@ -369,20 +319,7 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
           {preview && <figure class="human-pose-scene-preview"><img src={preview} alt={previewSize?'image1の撮影プレビュー':previewBackground ? '背景と人物を同じカメラで撮影したPNG' : '現在の設定で撮影した透過PNG'} /><figcaption>{previewSize?'image1':previewBackground ? '背景と人物' : '人物のみ・透過PNG'}（{outputFrame.width}×{outputFrame.height}）。設定を変更すると再撮影が必要です。</figcaption></figure>}
         </div>
         <aside aria-label="配置・撮影設定">
-          <fieldset class="human-pose-presets" disabled={loading || backgroundBusy}><legend>登録ポーズ</legend>
-            <label for={`${id}-search`}>番号・ポーズ・動作で検索</label>
-            <input id={`${id}-search`} type="search" value={query} onInput={event => setQuery(event.currentTarget.value)} />
-            {catalogError && <div role="alert">{catalogError}<button type="button" onClick={() => setCatalogAttempt(v => v + 1)}>再読込</button></div>}
-            {catalog && <><output>{matches.length}件 / {ready.length}件</output>
-              {matches.length === 0 && <p>条件に合うポーズがありません。</p>}
-              <div class="human-pose-grid" aria-label="ポーズ候補">
-                {matches.map(pose => <button key={pose.id} type="button" data-pose-id={pose.id} class={`human-pose-card ${poseValue.pose_id === pose.id ? 'is-selected' : ''}`}
-                  aria-pressed={poseValue.pose_id === pose.id} onClick={() => choosePose(pose)}>
-                  {HUMAN_POSE_PREVIEW_ART[pose.id] && <img src={HUMAN_POSE_PREVIEW_ART[pose.id]} alt="" width={100} height={100} loading="lazy" />}
-                  <span>{pose.display_number} {pose.label_ja}</span>
-                </button>)}
-              </div></>}
-          </fieldset>
+          {renderPoseCatalog({ loading, backgroundBusy, id, query, setQuery, catalogError, setCatalogAttempt, catalog, matches, ready, poseValue, choosePose })}
           {draft && <>
           <HumanPoseMotionControls clips={renderer.current?.motionClips ?? []} value={draft.motion} playing={playing} disabled={loading || backgroundBusy}
             onClip={changeMotion} onPhase={scrubMotion} onPlay={playMotion} onPause={stopMotion} onBegin={beginMotion} onEnd={endMotion} />
@@ -431,39 +368,8 @@ export default function HumanPoseSceneDialog({ value, aspect: figureAspect = 1, 
             onAnchor={anchor => { setSurfaceAnchor(anchor); setSurfacePicking(null); if (draft.background?.surface) update({ ...draft, background: { ...draft.background, surface: { ...draft.background.surface, anchor } } }); }}
             onAlign={alignSurface} onClear={() => { setSurfacePicking(null); update({ ...draft, background: { ...draft.background!, surface: undefined } }); }}
             onClearFacing={() => { setSurfacePicking(null); update({ ...draft, background: { ...draft.background!, surface: { ...draft.background!.surface!, facing_degrees: undefined } } }); }} />}
-          <fieldset disabled={loading || backgroundBusy}><legend>人物全体の配置</legend>
-            <p class="field-note">{draft.background ? '背景の座標に合わせて位置と大きさを調整します。' : '位置の単位はm。'}Yが高さ、素材の正面は＋Zです。</p>
-            <div class="human-pose-scene-coordinates">{['X', 'Y', 'Z'].map((axis, index) => <label key={axis}>{axis}
-              <input type="number" step="0.05" min="-10000" max="10000" value={draft.placement.position[index]} onInput={event => {
-                const number = event.currentTarget.valueAsNumber; if (!Number.isFinite(number) || Math.abs(number) > 10000) return;
-                const position = [...draft.placement.position] as PoseVector; position[index] = number;
-                update({ ...draft, placement: { ...draft.placement, position } });
-              }} /></label>)}</div>
-            <label>人物の向き {draft.placement.yaw_degrees}°<input type="range" min="-180" max="180" step="1" value={draft.placement.yaw_degrees}
-              onInput={event => update({ ...draft, placement: { ...draft.placement, yaw_degrees: event.currentTarget.valueAsNumber } })} /></label>
-            <label>基準身長（cm）<input type="number" min="30" max="300" step="1" value={draft.stature_m ? Math.round(draft.stature_m * 100) : ''} placeholder="素材の身長" onInput={event => {
-              const value = event.currentTarget.valueAsNumber; if (Number.isFinite(value) && value >= 30 && value <= 300) update({ ...draft, stature_m: value / 100 });
-            }} /></label>
-            <label>人物の大きさ（倍率）<input type="number" min="0.001" max="1000" step="0.1" value={draft.placement.scale ?? 1} onInput={event => {
-              const scale = event.currentTarget.valueAsNumber; if (Number.isFinite(scale) && scale >= .001 && scale <= 1000) update({ ...draft, placement: { ...draft.placement, scale } });
-            }} /></label>
-            {draft.background && <><p class="field-note">倍率1では素体の1mが背景の1単位に対応します。背景の寸法が合わない場合は倍率を調整してください。</p>
-              <button type="button" class="secondary-button" onClick={() => { if (renderer.current) update(renderer.current.placeAtBackgroundCentre()); }}>背景の中央へ移動（高さは維持）</button></>}
-            <label><input type="checkbox" disabled={Boolean(draft.motion)} checked={!draft.motion && draft.show_supports !== false} onChange={event => update({ ...draft, show_supports: event.currentTarget.checked })} />ポーズ付属の台・椅子を表示</label>
-          </fieldset>
-          <fieldset disabled={loading || backgroundBusy}><legend>撮影カメラ</legend>
-            <label>撮影範囲プリセット</label>
-            <FigureSizePicker value={framingSize} onChange={size => { if (renderer.current) update(renderer.current.frameFor(size, aspect)); }} />
-            <p class="field-note">プリセットで最初の範囲を合わせ、画面を見ながら移動・拡大で調整できます。画像で送る場合は、最後に確定した構図を使います。</p>
-            <label>垂直画角 {draft.camera.fov}°<input type="range" min="10" max="100" step="1" value={draft.camera.fov}
-              onInput={event => camera({ ...draft.camera, fov: event.currentTarget.valueAsNumber })} /></label>
-            <div class="human-pose-scene-buttons">
-              <button type="button" class="secondary-button" onClick={() => { if (renderer.current) update(renderer.current.focus()); }}>全体を収める</button>
-            </div>
-            <p>撮影寸法：{outputFrame.width}×{outputFrame.height}</p>
-            <button type="button" class="secondary-button" onClick={() => { if (renderer.current) update(renderer.current.frameFor(framingSize, aspect)); }}>{cutFrame ? '描写範囲とコマ枠に合わせる' : '描写範囲と人物枠に合わせる'}</button>
-            <p class="field-note">プリセット：{FIGURE_SIZE_LABELS[framingSize]}。{MANUAL_HUMAN_POSE_FRAMING.includes(framingSize) ? '使いたい部位を選び、拡大と移動で撮影範囲を調整してください。' : 'カメラの角度を保って切り取り、移動・拡大で映り方を調整できます。'}</p>
-          </fieldset>
+          {renderBodyPlacement({ loading, backgroundBusy, draft, update, renderer })}
+          {renderCameraSettings({ loading, backgroundBusy, framingSize, renderer, update, aspect, draft, camera, outputFrame, cutFrame })}
           {description && <section class="human-pose-scene-description"><strong>撮影設定からの説明</strong>
             <p>アングル：{description.angle.ja || '判定できません'}</p><p>レンズ：{description.lens.ja}</p>
             <p lang="en">{[description.angle.en, description.lens.en].filter(Boolean).join(', ')}.</p>
