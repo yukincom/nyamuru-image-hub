@@ -29,7 +29,9 @@ def delete_outputs(queue, roots, outputs):
                 actual = history['outputs'][node]['images'][index]
             except (TypeError, KeyError, IndexError):
                 raise ValueError('completed prompt output is unavailable') from None
-            if actual != image:
+            # ComfyUI enriches history entries with media/asset metadata. The
+            # collector retains the file identity; the digest below checks bytes.
+            if not isinstance(actual, dict) or {key: actual.get(key) for key in ('filename', 'subfolder', 'type')} != image:
                 raise ValueError('output does not match completed prompt')
         elif digest is None:
             raise ValueError('completed prompt output is unavailable')

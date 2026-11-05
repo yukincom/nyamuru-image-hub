@@ -141,6 +141,38 @@ class MemoryReleaseTests(unittest.TestCase):
             self.assertEqual({p.name: p.read_bytes() for p in root.iterdir()}, {
                 'candidate-2.png': b'image-2', 'candidate-4.png': b'image-4', 'reference.png': b'original reference'})
 
+    # 見込み: ComfyUIの画像付加情報は出力の同一性を変えないため、場所と内容の照合で採用後の削除を完了できる。
+    # 合格: metadata/asset_id付き履歴でも未採用だけ削除・再試行成功、場所違い/内容違いは保持。
+    # 範囲: 実ファイルと削除route、ComfyUIの履歴応答は模擬。画面の終了と推論は対象外。
+    def test_enriched_history_matches_only_the_saved_output_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / 'nyamuru').mkdir()
+            unused = root / 'nyamuru' / 'unused.png'; unused.write_bytes(b'unused image')
+            adopted = root / 'nyamuru' / 'adopted.png'; adopted.write_bytes(b'adopted image')
+            image = {'filename': unused.name, 'subfolder': 'nyamuru', 'type': 'output'}
+            enriched = {**image, 'metadata': {'kind': 'image', 'width': 64, 'height': 64}, 'asset_id': 'asset-1'}
+            output = {'prompt_id': TOKEN, 'node': 'out', 'index': 0, 'image': image,
+                      'sha256': hashlib.sha256(unused.read_bytes()).hexdigest()}
+            self.queue.get_history = lambda key: {key: {'outputs': {'out': {'images': [enriched]}}}}
+            paths = SimpleNamespace(get_output_directory=lambda: root, get_temp_directory=lambda: root)
+            with patch.dict(sys.modules, {'folder_paths': paths}):
+                for field, different in [('filename', 'adopted.png'), ('subfolder', 'other'), ('type', 'temp')]:
+                    with self.subTest(field=field):
+                        enriched[field] = different
+                        self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [output]}).status, 400)
+                        self.assertEqual(unused.read_bytes(), b'unused image')
+                        enriched[field] = image[field]
+                unused.write_bytes(b'changed image')
+                self.assertEqual(self.call('POST', '/nyamuru/outputs/delete', {'outputs': [output]}).status, 400)
+                self.assertEqual(unused.read_bytes(), b'changed image')
+                unused.write_bytes(b'unused image')
+                for _ in range(2):
+                    reply = self.call('POST', '/nyamuru/outputs/delete', {'outputs': [output]})
+                    self.assertEqual(reply.status, 200)
+                    self.assertEqual(reply.body['deleted'], [output])
+            self.assertFalse(unused.exists())
+            self.assertEqual(adopted.read_bytes(), b'adopted image')
+
     # 見込み: 履歴・pathが不一致なら要求全体を拒否し、所有外のファイルを削除しない。
     # 合格: 別出力や親参照を400で拒否し元ファイル不変。範囲: 実削除routeと模擬履歴。
     def test_output_mismatch_and_parent_path_leave_files_untouched(self):
