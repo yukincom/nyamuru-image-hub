@@ -1,3 +1,5 @@
+// 見込み: 設定操作を実TSX経由で検証し、端末設定と作品編集の境界を保つ。
+// 合格・範囲: 保存値・変更件数・本文/NDMの保持を比較。hookと子部品は模擬、OS選択画面は対象外。
 import {readGlobalStyles} from './helpers/globalStyles.mjs';
 import { mutateDocument } from '../src/components/document/editing.ts';
 import { workspaceSources } from './helpers/workspaceSources.mjs';
@@ -58,6 +60,7 @@ function loadComponent(file, globals = {}) {
     './FontFamilyPicker': { __esModule: true, default: 'FontFamilyPicker' },
     './FinishLayoutSettings': { __esModule: true, default: 'FinishLayoutSettings', FinishTextSettings: 'FinishTextSettings' },
     './ArtworkSettings': { __esModule: true, default: 'ArtworkSettings' },
+    './ProjectFileInput': { __esModule: true, default: 'ProjectFileInput' },
     '../content/standard-settings.yaml?raw': { __esModule: true, default: read('src/content/standard-settings.yaml') },
   };
   // 見込み: 抽出したpanel/hookも同じ本体を通し、状態と保存の検査を維持する。
@@ -613,6 +616,8 @@ test('旧draft作品の生成用はintegratedで書き出し、控えと編集�
   assert.deepEqual(document, before);
 });
 
+// 見込み: 現行のファイル選択完了callbackから、候補追加の実処理を通せる。
+// 合格: 有効YAMLだけ1回追加しOFFを維持、不正入力では変更0回、本文/NDMを保持。選択部品は模擬、解析・更新は実装。
 test('ファイルと標準設定はOFFの候補を追加し、現在のルール・NDM・本文を上書きしない', async () => {
   let changes = 0;
   let changed;
@@ -621,8 +626,8 @@ test('ファイルと標準設定はOFFの候補を追加し、現在のルー�
   const document = sample();
   const props = { document, onChange: value => { changed = value; changes++; }, onNotify: value => notifications.push(value) };
   const tree = component.render(props);
-  const upload = find(tree, node => node.props?.type === 'file');
-  await upload.props.onChange({ currentTarget: { files: [{ name: 'custom.omay.yaml', text: async () => 'spec_name: Open Manga Artwork YAML\nspec_version: 1\nstyle_notes: [custom]\nlayout_spec: custom-layout\n' }] } });
+  const upload = find(tree, node => node.type === 'ProjectFileInput');
+  await upload.props.onFiles([{ name: 'custom.omay.yaml', text: async () => 'spec_name: Open Manga Artwork YAML\nspec_version: 1\nstyle_notes: [custom]\nlayout_spec: custom-layout\n' }]);
   assert.equal(changes, 1);
   const withoutSettings = structuredClone(changed);
   delete withoutSettings.manga.artwork_settings;
@@ -630,7 +635,7 @@ test('ファイルと標準設定はOFFの候補を追加し、現在のルー�
   assert.equal(changed.manga.artwork_settings.groups.at(-1).enabled, false);
   assert.equal(changed.manga.artwork_settings.fragments.at(-1).text, 'custom-layout');
   assert.match(notifications.at(-1), /候補に追加しました/);
-  await upload.props.onChange({ currentTarget: { files: [{ name: 'bad.yaml', text: async () => 'not a valid config' }] } });
+  await upload.props.onFiles([{ name: 'bad.yaml', text: async () => 'not a valid config' }]);
   assert.equal(changes, 1);
   assert.match(notifications.at(-1), /読み込めませんでした/);
   button(tree, '標準設定を候補に追加').props.onClick();

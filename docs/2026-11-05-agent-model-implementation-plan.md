@@ -284,7 +284,7 @@ P9で最初に対応するAPI/通信方式、実行Macでの資格情報保管�
 | 区切り | 状態 | commit | 関連試験 | 利用者UI確認 | 実モデル/API/LANの未確認事項 |
 |---|---|---|---|---|---|
 | P0 基準確認 | 正本統合・関連確認済み | `69087fc` | Node73・Python23成功、変更TS5file診断0、会話browser成功 | 待ち | 実モデルの応答品質・別LAN端末は未確認 |
-| P1a 設定の抽出 | 実装済み、既存試験1件の対応提案待ち | `027ae20` | 関連Node42件中41成功・変更前からの失敗1件、設定browser確認 | 待ち | 設定保存は実localStorage、接続要求はfixtureで遮断 |
+| P1a 設定の抽出 | 実装・設定試験の追従・関連確認済み | `027ae20`＋下記の試験追従 | 設定/作画設定のNode45件全成功、抽出時の設定browser確認済み | 待ち | ファイル選択完了は模擬callback。実OS選択画面は対象外 |
 | P1b 会話・候補表示の抽出 | 実装・準備案内の補修・関連確認済み | `116db67`＋下記の補修 | 補修後Node93成功、会話browser成功、候補browser7ケース・38検査成功 | 待ち | 生成・LLM・PNGは模擬。実ComfyUI起動・実モデル応答は未確認 |
 | P1c 英訳の抽出 | 実装・関連確認済み | `764640f` | Python48成功、翻訳本体AST一致、package/standalone import確認 | 対象画面の変更なし | 実LLMの英訳品質は未確認 |
 | P2 用途別設定 | 未着手 | — | — | — | — |
@@ -321,3 +321,9 @@ P9で最初に対応するAPI/通信方式、実行Macでの資格情報保管�
 - 関連Node93件・Python23件が成功し、変更TS9ファイルの構文/型診断は0件。正本Chromeで、未準備理由をLLMへ渡すこと、読込完了だけでは生成0回、会話からの明示再送、ComfyUI起動中の追加入力、古いsender、生成後相談・英訳・再生成・編集画面復帰を確認した。`qwenCandidates.browser.html` は変更せずに7ケース・38検査成功。いずれもHTTP/LLM/PNGは模擬で、実モデルの案内品質・実ComfyUI起動・実マイク・別端末は未確認。
 - 独立レビューの2指摘（会話開始時のpendingと参照枚数の判定）を修正後、再レビューで重大な指摘なし。`ImageGenerationDialog.tsx` は395行。`README.md`・`Header.tsx`・`workspace-and-page.css` の既存差分はSHA-256一致で保持。
 - 検証Vite（正本cwd、PID15931、ポート4348）は終了・待受解放、検証2タブの終了を確認。ユーザー所有サーバーは操作していない。音声workerの専用worktree `Comic_image_Hub-generation-readiness-voice-20261105` は統合前の控えとして保持し、追加修正を含む正本を現行とする。未統合の製品機能はない。全体build・全件試験は利用者UI確認後、pushは未実施。
+
+### 2026-11-05 設定試験のファイル選択部品への追従
+
+- 利用者の指定により、`c021160` を基点に `environmentSettings.test.mjs` の既存失敗を修正。浅いコンポーネント検証で、生の `input[type=file]` を探していたため、`ProjectFileInput` 導入後の選択完了へ到達できなかった。
+- 子部品を名前付きで模擬化し、現在の `onFiles` callbackへ有効/不正YAMLを渡す形に変更。実際の解析・候補追加処理を通し、更新件数、OFF状態、不正入力時の非変更、本文・NDM保持の既存assertはすべて維持した。テストの見込み・合格条件・模擬範囲を明記。
+- `environmentSettings.test.mjs` と `artworkRules.test.mjs` の関連45件全成功、差分check成功。製品コード変更・サーバー起動・実OS選択画面・全体build/全件試験・pushは行っていない。P1時点で残した設定試験と候補browserの2件は、今回までの局所確認で解消した。
