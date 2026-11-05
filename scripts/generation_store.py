@@ -12,24 +12,23 @@ import time
 from pathlib import Path
 from uuid import uuid4
 
-from generation_cache_store import (
-    CACHE_SCHEMA_VERSION,
-    ONE_SHOT_CACHE_TTL,
-    DEFAULT_CACHE_ROOT,
-    CACHE_ID_RE,
-    valid_cache_owner_id,
-    parse_utc,
-    GenerationCacheStore,
-)
-from generation_files import (
-    canonical,
-    sha256,
-    text,
-    directory_fd,
-    read_regular_at,
-    open_child_directory,
-    remove_tree_at,
-)
+# The bridge imports top-level modules. Pose tools import the same code as scripts.*.
+if __package__:
+    from .generation_cache_store import (
+        CACHE_SCHEMA_VERSION, ONE_SHOT_CACHE_TTL, DEFAULT_CACHE_ROOT, CACHE_ID_RE,
+        valid_cache_owner_id, parse_utc, GenerationCacheStore,
+    )
+    from .generation_files import (
+        canonical, sha256, text, directory_fd, read_regular_at, open_child_directory, remove_tree_at,
+    )
+else:
+    from generation_cache_store import (
+        CACHE_SCHEMA_VERSION, ONE_SHOT_CACHE_TTL, DEFAULT_CACHE_ROOT, CACHE_ID_RE,
+        valid_cache_owner_id, parse_utc, GenerationCacheStore,
+    )
+    from generation_files import (
+        canonical, sha256, text, directory_fd, read_regular_at, open_child_directory, remove_tree_at,
+    )
 
 
 UUID_RE = re.compile(r"[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}\Z")

@@ -10,15 +10,15 @@ import re
 import stat
 from pathlib import Path
 
-from generation_files import (
-    canonical,
-    sha256,
-    text,
-    directory_fd,
-    read_regular_at,
-    open_child_directory,
-    remove_tree_at,
-)
+# The bridge imports top-level modules. Pose tools import the same code as scripts.*.
+if __package__:
+    from .generation_files import (
+        canonical, sha256, text, directory_fd, read_regular_at, open_child_directory, remove_tree_at,
+    )
+else:
+    from generation_files import (
+        canonical, sha256, text, directory_fd, read_regular_at, open_child_directory, remove_tree_at,
+    )
 
 
 CACHE_SCHEMA_VERSION = 1
