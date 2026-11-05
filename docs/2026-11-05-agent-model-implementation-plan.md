@@ -1,6 +1,6 @@
 # 会話モデル・生成前確認・受信画像の段階別実装計画
 
-作成日: 2026-11-05。状態: 計画のみ、各段階は未着手。
+作成日: 2026-11-05。状態: P0を正本へ統合、P1a〜P1cの抽出を実装。変更前にも再現する試験の問題を確認し、P2以降は提案待ち。
 
 [採用仕様](AGENT_MODEL_SPEC.md)を、既存の編集・画像生成・保存を維持しながら実装するための計画。まず振る舞いを変えずに責務を分け、ローカルで翻訳と送信確認を完成させる。受信画像を保持・採用できる状態を作ってからAPI利用を有効化する。各段階は、関連試験と確認可能な成果を伴う小さなコミットに分ける。
 
@@ -283,11 +283,31 @@ P9で最初に対応するAPI/通信方式、実行Macでの資格情報保管�
 
 | 区切り | 状態 | commit | 関連試験 | 利用者UI確認 | 実モデル/API/LANの未確認事項 |
 |---|---|---|---|---|---|
-| P0 基準確認 | 未着手 | — | — | — | 生成会話修正の正本統合待ち |
-| P1〜P2 分割・設定 | 未着手 | — | — | — | — |
+| P0 基準確認 | 正本統合・関連確認済み | `69087fc` | Node73・Python23成功、変更TS5file診断0、会話browser成功 | 待ち | 実モデルの応答品質・別LAN端末は未確認 |
+| P1a 設定の抽出 | 実装済み、既存試験1件の対応提案待ち | `027ae20` | 関連Node42件中41成功・変更前からの失敗1件、設定browser確認 | 待ち | 設定保存は実localStorage、接続要求はfixtureで遮断 |
+| P1b 会話・候補表示の抽出 | 実装済み、候補browserの再検証待ち | `116db67` | Node73成功、会話browser成功。候補browserは変更前後とも同じ失敗 | 待ち | 生成・LLM・PNGは模擬。候補採用の連続試験は未合格 |
+| P1c 英訳の抽出 | 実装・関連確認済み | `764640f` | Python48成功、翻訳本体AST一致、package/standalone import確認 | 対象画面の変更なし | 実LLMの英訳品質は未確認 |
+| P2 用途別設定 | 未着手 | — | — | — | — |
 | P3〜P6 ローカル英訳・確認 | 未着手 | — | — | — | — |
 | P7〜P8 画像受信・採用 | 未着手 | — | — | — | — |
 | P9〜P10 API利用 | 未着手 | — | — | — | — |
 | P11 統合受入 | 未着手 | — | — | — | — |
+
+### 2026-11-05 P0〜P1の実施記録
+
+- 正本の開始点は `42232e9`。会話修正 `9078540` を `69087fc` として統合してから分割。設定と英訳は別worktreeのSol・medium担当へ分業し、親が全差分を読み、正本へ反映・関連確認・責務別commitを行った。
+- 設定は既存reader/writerとhookの状態寿命を保持。`EnvironmentSettings.tsx` は379→290行、抽出先のpanel79行・hook37行。テストは既存loaderを抽出先へ接続し、assertは変えていない。既存テストファイルは781→807行で、責務別分割は今回に混ぜていない。
+- 会話は既存の `runGenerationConversation` と `createGenerationActions` へ接続する `createGenerationConversation.ts` に抽出。effectの依存と登録・解除は親に残し、hookや別の状態正本を増やしていない。候補表示はstateを持たない `GenerationCandidates.tsx` へ移し、状態表示の文言を履歴と共用。`ImageGenerationDialog.tsx` は411→392行。採用・削除・終了・履歴の処理本体は抽出前と文字列一致、別担当の読取専用レビューでも動作変更の指摘なし。
+- 英訳本体を `prompt_translation.py`（88行）へ移し、`PanelActionSuggester` は既存JSON通信をcallbackとして渡す。定型文・文字保護・検査・例外は変更していない。`nyamuru_panel_actions.py` は369→298行。親でもcallback参照の置換を除くAST一致を確認した。
+- 正本の関連確認は、会話/生成/agentのNode73件、英訳・文字保護のPython28件、人物アクション20件が成功。変更TS6fileの型・構文診断0件。`generationConversation.browser.html` は生成→相談→5候補保持→英訳反映→再生成→閉じる→編集会話の成功表示を確認。`environmentSettings.browser.html` はLLM名変更、別タブ往復、保存値で再表示、クラウド区画表示、作品変更0回を確認。ブラウザーはLAN環境指定のVite fixtureであり、別の物理LAN端末や実モデルの試験ではない。
+
+次の2件は利用者の「疑問・気になる点は区切りで止めて提案」という指示に従って未修正とし、P2へ進む前の提案事項にする。
+
+1. `environmentSettings.test.mjs` の「ファイルと標準設定はOFFの候補を追加し…」は、`ArtworkSettings` が `ProjectFileInput` を使う一方で、試験が生の `input[type=file]` を探して失敗する。変更前のloaderでも同じ失敗を確認。現行のファイル選択callbackへ試験を接続し、既存の本文・NDM非変更のassertを維持する修正を提案する。
+2. `qwenCandidates.browser.html` は分割前 `69087fc` と分割後の両方で「ワークフローを確認しています」で失敗。生成ボタンの有効化を待ったあと会話callbackを直接呼ぶ箇所と、effectでのcallback更新タイミングの調査を提案する。現時点では試験だけの問題か製品側にも影響するかは未確定。候補採用・削除再試行・Undo/Redoを今回すべて合格したとは扱わない。
+
+全体build・全件試験は未実行。上記の局所確認を解決し、利用者の画面確認後に全体検証を提案する。API実呼出、モデル取得、ユーザー所有サーバーの再起動、pushは行っていない。自起動ViteのPID42250（4348）・PID51625（4349）は終了し、待受ポートの解放と検証4タブの終了を確認した。
+
+`README.md`・`Header.tsx`・`workspace-and-page.css` の別作業差分はSHA-256一致で保持。専用worktree `Comic_image_Hub-model-settings-20261105` と `Comic_image_Hub-prompt-translation-20261105` は統合済み差分の控えとして残る。正本との全対象file一致を確認しており、そこに未統合の製品変更はない。
 
 関連: [会話・生成の採用仕様](AGENT_MODEL_SPEC.md)／[ComfyUI接続仕様](COMFYUI_WORKFLOW_SPEC.md)／[生成画像と既存レイヤーの独立](2026-10-29-generation-layer-independence.md)／[開発データ方針](2026-10-27-development-data-policy.md)
