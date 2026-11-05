@@ -15,6 +15,7 @@ assert BRIDGE_SPEC and BRIDGE_SPEC.loader
 sys.modules[BRIDGE_SPEC.name] = bridge
 BRIDGE_SPEC.loader.exec_module(bridge)
 import nyamuru_vision_state as vision_state
+import vision_character_analysis as character_analysis
 
 WORKER_PATH = Path(__file__).parents[1] / "scripts" / "local_figure_performance_worker.py"
 WORKER_SPEC = importlib.util.spec_from_file_location("local_figure_performance_worker", WORKER_PATH)
@@ -347,7 +348,7 @@ class FigurePerformanceBridgeTest(unittest.TestCase):
                 "analysis": {"pose": {"base": "standing"}},
                 "prompt_version": "figure-performance-v1",
             }
-            with patch.object(vision_state, "run_figure_performance_worker", return_value=worker_result):
+            with patch.object(character_analysis, "run_figure_performance_worker", return_value=worker_result):
                 result = state.analyze_figure_performance(b"one-figure", "bust-up")
 
         self.assertEqual(result["action"], "立っている。顔は正面向き。")
@@ -369,7 +370,7 @@ class FigurePerformanceBridgeTest(unittest.TestCase):
             (snapshot / "config.json").write_text("{}", encoding="utf-8")
             (snapshot / "model.safetensors").write_text("weights", encoding="utf-8")
             worker_result = {"suggested_action": "正面を見る。", "suggested_size": "face", "analysis": {}}
-            with patch.object(vision_state, "run_figure_performance_worker", return_value=worker_result) as vlm_worker:
+            with patch.object(character_analysis, "run_figure_performance_worker", return_value=worker_result) as vlm_worker:
                 result = state.analyze_figure_performance(b"crop", "face", "owner/small-vlm")
             self.assertEqual(vlm_worker.call_args.kwargs["model"], snapshot)
             self.assertEqual(result["analyzer"]["model"], "owner/small-vlm")
@@ -406,7 +407,7 @@ class FigurePerformanceBridgeTest(unittest.TestCase):
             }
             with (
                 patch.object(state, "expression_tagging", return_value=tagging),
-                patch.object(vision_state, "run_figure_performance_worker", return_value=worker_result) as vlm_worker,
+                patch.object(character_analysis, "run_figure_performance_worker", return_value=worker_result) as vlm_worker,
             ):
                 result = state.analyze_figure_performance(b"one-person-crop", "face", face_bbox=[0, 0, 1, 1])
 
@@ -427,7 +428,7 @@ class FigurePerformanceBridgeTest(unittest.TestCase):
                 patch.object(vision_state, "rotated_image_bytes", return_value=b"upright"),
                 patch.object(vision_state, "run_local_worker", return_value={"detections": {}}),
                 patch.object(vision_state, "detect_panel_boxes", return_value=[]),
-                patch.object(vision_state, "run_figure_performance_worker") as vlm_worker,
+                patch.object(character_analysis, "run_figure_performance_worker") as vlm_worker,
             ):
                 result = state.analyze(b"analog-page", 0)
             self.assertEqual(result["panels"], [])

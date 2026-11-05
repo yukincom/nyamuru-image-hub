@@ -17,7 +17,7 @@ bridge = importlib.util.module_from_spec(BRIDGE_SPEC)
 assert BRIDGE_SPEC and BRIDGE_SPEC.loader
 sys.modules[BRIDGE_SPEC.name] = bridge
 BRIDGE_SPEC.loader.exec_module(bridge)
-import nyamuru_vision_state as vision_state
+import vision_character_analysis as character_analysis
 
 WORKER_PATH = ROOT / "scripts" / "local_character_match_worker.py"
 WORKER_SPEC = importlib.util.spec_from_file_location("local_character_match_worker", WORKER_PATH)
@@ -181,7 +181,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
     def test_analysis_returns_only_supplied_candidate_with_local_analyzer(self):
         with tempfile.TemporaryDirectory() as directory_name:
             state = self.make_state(Path(directory_name))
-            with patch.object(vision_state, "run_character_match_worker", return_value={
+            with patch.object(character_analysis, "run_character_match_worker", return_value={
                 "candidate_id": "person-a",
                 "confidence": "medium",
                 "observed": ["短いボブ"],
@@ -215,7 +215,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
             incoming = [{"id": "person-a", "name": "unneeded", "aliases": ["also unneeded"],
                          "observed_traits": ["jaw-length bob"]}]
             with patch.object(state, "expression_tagging", return_value={}), patch.object(
-                vision_state, "run_character_match_worker", return_value=result
+                character_analysis, "run_character_match_worker", return_value=result
             ) as runner:
                 data = state.analyze_character_match(b"crop", incoming, "face")
                 self.assertEqual(runner.call_args.kwargs["candidates"],
@@ -228,7 +228,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
     def test_unknown_worker_candidate_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory_name:
             state = self.make_state(Path(directory_name))
-            with patch.object(vision_state, "run_character_match_worker", return_value={
+            with patch.object(character_analysis, "run_character_match_worker", return_value={
                 "candidate_id": "invented",
                 "confidence": "high",
                 "observed": [],
@@ -250,7 +250,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
     def test_empty_candidates_still_returns_performance(self):
         with tempfile.TemporaryDirectory() as directory_name:
             state = self.make_state(Path(directory_name))
-            with patch.object(vision_state, "run_character_match_worker", return_value={
+            with patch.object(character_analysis, "run_character_match_worker", return_value={
                 "candidate_id": "",
                 "confidence": "none",
                 "observed": [],
@@ -283,7 +283,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
             }
             with (
                 patch.object(state, "expression_tagging", return_value=tagging),
-                patch.object(vision_state, "run_character_match_worker", return_value={
+                patch.object(character_analysis, "run_character_match_worker", return_value={
                     "candidate_id": "person-a",
                     "confidence": "medium",
                     "observed": ["短いボブ"],

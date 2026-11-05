@@ -20,6 +20,7 @@ assert BRIDGE_SPEC and BRIDGE_SPEC.loader
 sys.modules[BRIDGE_SPEC.name] = bridge
 BRIDGE_SPEC.loader.exec_module(bridge)
 import nyamuru_vision_state as vision_state
+import vision_character_analysis as character_analysis
 
 WORKER_PATH = Path(__file__).parents[1] / "scripts" / "local_character_reference_worker.py"
 WORKER_SPEC = importlib.util.spec_from_file_location("local_character_reference_worker", WORKER_PATH)
@@ -423,7 +424,7 @@ class CharacterReferenceBridgeTest(unittest.TestCase):
             }
             with (
                 patch.object(vision_state, "run_local_worker") as local_worker,
-                patch.object(vision_state, "run_character_reference_worker", return_value=worker_result) as reference_worker,
+                patch.object(character_analysis, "run_character_reference_worker", return_value=worker_result) as reference_worker,
             ):
                 result = state.analyze_character_reference(b"reference", "グレー")
 
@@ -447,7 +448,7 @@ class CharacterReferenceBridgeTest(unittest.TestCase):
             with (
                 patch.object(state.series_catalogs, "read_character_image", side_effect=lambda *_: {"found": True, "image_bytes": b"image"}),
                 patch.object(vision_state, "run_local_worker") as local_worker,
-                patch.object(vision_state, "run_character_reference_set_worker", return_value=worker_result) as set_worker,
+                patch.object(character_analysis, "run_character_reference_set_worker", return_value=worker_result) as set_worker,
             ):
                 result = state.analyze_character_reference_set(
                     "series-one",
@@ -474,7 +475,7 @@ class CharacterReferenceBridgeTest(unittest.TestCase):
             with (
                 patch.object(state.series_catalogs, "read_character_image", side_effect=AssertionError("must use client image")),
                 patch.object(vision_state, "run_local_worker") as local_worker,
-                patch.object(vision_state, "run_character_reference_set_worker", return_value={"recognition": {}, "reference_views": ["turnaround"]}) as set_worker,
+                patch.object(character_analysis, "run_character_reference_set_worker", return_value={"recognition": {}, "reference_views": ["turnaround"]}) as set_worker,
             ):
                 result = state.analyze_character_reference_set("client-series", "client-character", [asset_id], "テスト", supplied_images_value=[data])
                 local_worker.assert_not_called()
