@@ -31,10 +31,11 @@ from pathlib import Path
 # 設定 (ここだけ自分の環境に合わせて書き換える。コマンドライン引数でも上書き可)
 # =====================================================================
 HERE = Path(__file__).resolve().parent
+TOOLS_ROOT = HERE.parents[2]  # この専用runnerはDesktop/tools/Comic_image_Hub/dev_tools配下に置く
 
 COMFY_URL     = "http://127.0.0.1:8188"
-WORKFLOW_API  = HERE / "workflow_api.json"  # 新しいワークフローをComfyUIから「エクスポート(API)」したもの
-CHARACTER_IMG = HERE / "nyamuruテスト用シリーズフォルダ" / "character_data" / "できたやつ" / "koyuki_pin.png"  # image_1 (キャラ画像)
+WORKFLOW_API  = TOOLS_ROOT / "workflow_api.json"  # 新しいワークフローをComfyUIから「エクスポート(API)」したもの
+CHARACTER_IMG = TOOLS_ROOT / "nyamuruテスト用シリーズフォルダ" / "character_data" / "できたやつ" / "koyuki_pin.png"  # image_1 (キャラ画像)
 POSES_DIR     = Path("/Users/yukin_co/Desktop/pose")  # image_2 (ポーズ画像)
 OUT_DIR       = Path("/Users/yukin_co/Desktop/test")  # 生成結果の保存先
 
@@ -49,6 +50,7 @@ REQUEST = (
 OUT_SUFFIX    = "_gen"    # page01_1_1.png -> page01_1_1_gen.png
 POLL_SEC      = 5         # 完了確認の間隔
 TIMEOUT_SEC   = 40 * 60   # 1枚あたりの待ち時間の上限
+RELEASE_TIMEOUT_SEC = 15 * 60  # 解放確認の待ち時間の上限
 PREVIEW_ONLY  = True      # True: ComfyUI側の output フォルダには保存せず、このスクリプトの保存先だけに残す
 
 # ワークフロー(API形式)のノードID。ワークフローを改造したらここを合わせる
@@ -115,6 +117,42 @@ def wait_for_result(prompt_id: str) -> dict:
             return hist[prompt_id]
         time.sleep(POLL_SEC)
     raise TimeoutError(f"{TIMEOUT_SEC // 60}分待っても完了しませんでした")
+
+
+def require_memory_release_extension() -> None:
+    """処理を始める前に、完了確認対応のNyamuru拡張が使えることを確認"""
+    result = http_json("GET", "/nyamuru/memory/capabilities")
+    if type(result.get("protocol")) is not int or result["protocol"] != 1:
+        raise RuntimeError("Nyamuruメモリ解放拡張のprotocol 1に対応していません")
+
+
+def release_models_and_wait() -> None:
+    """同じtokenで解放を依頼・確認し、worker側で全モデル解放するまで待つ"""
+    token = str(uuid.uuid4())
+    deadline = time.monotonic() + RELEASE_TIMEOUT_SEC
+    last_state = None
+    while time.monotonic() < deadline:
+        result = http_json("POST", "/nyamuru/memory/release", {"token": token})
+        if type(result.get("protocol")) is not int or result["protocol"] != 1 \
+                or result.get("token") != token:
+            raise RuntimeError("メモリ解放APIのprotocolまたはtokenが一致しません")
+
+        state = result.get("state")
+        if state != last_state:
+            log(f"メモリ解放: {state}")
+            last_state = state
+        if state == "released":
+            if result.get("queue_idle") is not True \
+                    or type(result.get("loaded_model_count")) is not int \
+                    or result["loaded_model_count"] != 0:
+                raise RuntimeError("APIはreleasedを返しましたが、idleまたは全モデル解放を確認できません")
+            return
+        if state == "failed":
+            raise RuntimeError(f"ComfyUI側のメモリ解放に失敗しました: {result.get('error', '不明')}")
+        if state not in {"pending", "busy"}:
+            raise RuntimeError(f"メモリ解放APIから不明なstateが返りました: {state!r}")
+        time.sleep(POLL_SEC)
+    raise TimeoutError(f"{RELEASE_TIMEOUT_SEC // 60}分待ってもメモリ解放を確認できませんでした")
 
 
 # =====================================================================
@@ -229,9 +267,12 @@ def main():
 
     base_wf = load_workflow()
     try:
+        require_memory_release_extension()
         char_name = upload_image(CHARACTER_IMG)
     except urllib.error.URLError as e:
-        sys.exit(f"ComfyUI に接続できません ({COMFY_URL})。起動しているか確認してください: {e}")
+        sys.exit(f"ComfyUIまたはNyamuruメモリ解放拡張に接続できません ({COMFY_URL}): {e}")
+    except Exception as e:
+        sys.exit(f"Nyamuruメモリ解放拡張を確認できません。生成前に配置と再起動を確認してください: {e}")
 
     failed_txt = OUT_DIR / "failed.txt"
     log_csv = OUT_DIR / "generation_log.csv"
@@ -251,17 +292,26 @@ def main():
                 log(f"  失敗: {e}")
                 with failed_txt.open("a", encoding="utf-8") as f:
                     f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S}\t{pose.name}\t{e}\n")
-                continue
-            sec = time.time() - t0
-            done += 1
-            log(f"  保存: {out_path.name} ({sec / 60:.1f}分, seed={seed})")
-            with log_csv.open("a", newline="", encoding="utf-8") as f:
-                w = csv.writer(f)
-                if new_log:
-                    w.writerow(["time", "pose", "output", "seed", "megapixels", "seconds"])
-                    new_log = False
-                w.writerow([datetime.now().isoformat(timespec="seconds"), pose.name,
-                            out_path.name, seed, MEGAPIXELS, round(sec)])
+            else:
+                sec = time.time() - t0
+                done += 1
+                log(f"  保存: {out_path.name} ({sec / 60:.1f}分, seed={seed})")
+                with log_csv.open("a", newline="", encoding="utf-8") as f:
+                    w = csv.writer(f)
+                    if new_log:
+                        w.writerow(["time", "pose", "output", "seed", "megapixels", "seconds"])
+                        new_log = False
+                    w.writerow([datetime.now().isoformat(timespec="seconds"), pose.name,
+                                out_path.name, seed, MEGAPIXELS, round(sec)])
+
+            # 成功・失敗にかかわらず、次の画像を送る前にworker側の解放完了を待つ。
+            try:
+                release_models_and_wait()
+            except Exception as e:
+                log(f"メモリ解放を確認できないため、次の画像は送らず停止します: {e}")
+                with (OUT_DIR / "memory_release_failed.txt").open("a", encoding="utf-8") as f:
+                    f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S}\t{pose.name}\t{e}\n")
+                sys.exit(1)
     except KeyboardInterrupt:
         log("中断します。ComfyUI側の生成も止めます...")
         try:
