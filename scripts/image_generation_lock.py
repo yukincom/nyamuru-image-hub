@@ -162,13 +162,13 @@ def record_api_submission(fd, endpoint, correlation_id, *, prompt_id=None, termi
 
 
 def await_api_release(records, *, client_factory=None, sleep=None, on_wait=None,
-                      should_shutdown=lambda: False, now=time.monotonic, timeout=60):
+                      should_shutdown=lambda: False, now=time.monotonic, timeout=120):
     """FD closure is only the start: external jobs and cache release must also finish."""
     if not records:
         return
     if client_factory is None:
         from comfy_client import ComfyClient
-        client_factory = lambda endpoint: ComfyClient(endpoint, timeout=3)
+        client_factory = lambda endpoint: ComfyClient(endpoint, timeout=10)
     if sleep is None:
         from time import sleep
     clients = {item['endpoint']: client_factory(item['endpoint']) for item in records}

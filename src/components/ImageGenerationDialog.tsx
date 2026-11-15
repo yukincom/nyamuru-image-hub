@@ -15,6 +15,7 @@ import { loadFigureCropAsset } from '../lib/figureCropStore.ts';
 import { posePreviewSize } from '../lib/humanPoseFraming.ts';
 import { useGenerationReferences } from './generation/useGenerationReferences.ts';
 import { createGenerationActions, validateGenerationInputs } from './generation/createGenerationActions.ts';
+import { candidateFilesFromJob } from '../lib/generation/insertion.ts';
 import { useGenerationConversation } from './generation/useGenerationConversation.ts';
 import { generationReadiness } from '../lib/generation/readiness.ts';
 import { CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
@@ -284,11 +285,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
         const result=job.selectedCandidates?job:await withNewCreationBridgeSession(()=>selectQwenCandidate(job,indices));
         if(alive.current)setJob(result);
         if(insertedBatch.current!==job.jobId){
-          const files=indices.map(index=>{
-            const image=result.candidates?.find(candidate=>candidate.index===index)?.image;
-            if(!image)throw new Error('採用する候補を読み込めません');
-            return new File([Uint8Array.from(atob(image.split(',')[1]),char=>char.charCodeAt(0))],`qwen_${job.jobId}_${index}.png`,{type:'image/png'});
-          });
+          const files=candidateFilesFromJob(result,indices);
           await insertImage(files,generatedTarget.current?.jobId===job.jobId?generatedTarget.current.plan:undefined,true,{jobId:job.jobId,indices});
           insertedBatch.current=job.jobId;
         }

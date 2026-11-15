@@ -136,6 +136,7 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
   }
   function beginLayerSelection(event:PointerEvent&{currentTarget:HTMLDivElement},onSelectionMiss?:(behindOwnerKey?:string,aboveNative?:boolean)=>boolean,selectionMode:PaintTool=tool){
     const target=event.currentTarget,rect=target.getBoundingClientRect();if(!rect.width||!rect.height||!coverage)return;
+    if(event.shiftKey&&onSelectionMiss?.()){clearVectorSelection();return;}
     const local=inputPoint(event,target,rect),tolerance=inputTolerance(target,rect);
     // Handles can be outside the visible stroke. Only the active editable layer owns them.
     if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)){

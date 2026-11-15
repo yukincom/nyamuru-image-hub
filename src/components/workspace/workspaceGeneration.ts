@@ -22,7 +22,8 @@ interface Context {
   selectedPaintOwner: () => string;
   endTextEdit: () => void;
   screenTextPosition: (target: CanvasTextTarget) => Bubble['text_position'];
-  insertBatchFigureImage?: (file: File | File[], target: WorkspaceImageTarget) => Promise<void>;
+  insertBatchFigureImage?: (file: File | File[], target: WorkspaceImageTarget) => Promise<string | void>;
+  openInsertedGeneratedLayer?: (ownerKey: string, insertedLayerId: string | undefined, panelIndex: number, pageIndex: number, overlay: boolean) => void;
 }
 
 export function createWorkspaceGeneration({
@@ -30,7 +31,7 @@ export function createWorkspaceGeneration({
   lastHistoryPush, setQwenGeneration, setMultiFigureGeneration, selectedElement, activePanel, activePage, qwenPreparing,
   imageImportBusy, projectOperation, setAgentWorkTarget, setToast,
 }: WorkspaceState, {
-  setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition, insertBatchFigureImage,
+  setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition, insertBatchFigureImage, openInsertedGeneratedLayer,
 }: Context) {
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
@@ -147,6 +148,7 @@ export function createWorkspaceGeneration({
       const current = documentRef.current;
       const standardYaml = parseOmayYaml(standardArtworkSource);
       const items: MultiFigureDialogItem[] = [];
+      let lastInserted: { ownerKey: string; layerId: string; panelIndex: number; pageIndex: number; overlay: boolean } | null = null;
       for (const target of targets) {
         try {
           const scene = makePaintScene(current, target.panelIndex, pageIndex, target.overlay);
@@ -177,10 +179,10 @@ export function createWorkspaceGeneration({
             plan,
             layers: qwenLayerCandidates(captured),
             loadLayer,
-            insert: async (files, generatedPlan) => {
+            insert: async (files, generatedPlan, adoption) => {
               if (!insertBatchFigureImage || !files[0]) return;
               const liveDoc = documentRef.current;
-              await insertBatchFigureImage(files[0], {
+              const insertedLayerId = await insertBatchFigureImage(files[0], {
                 document: liveDoc,
                 pageIndex,
                 panelIndex: target.panelIndex,
@@ -188,8 +190,18 @@ export function createWorkspaceGeneration({
                 figureIndex: target.figureIndex,
                 box: { ...(generatedPlan.outputFrame ?? owner.frame) },
                 generatedOwner: owner,
+                generatedAdoption: adoption,
                 generatedFolderId: generatedPlan.folderId,
               });
+              if (typeof insertedLayerId === 'string' && insertedLayerId) {
+                lastInserted = {
+                  ownerKey: owner.key,
+                  layerId: insertedLayerId,
+                  panelIndex: target.panelIndex,
+                  pageIndex,
+                  overlay: target.overlay,
+                };
+              }
             },
           });
         } catch {
@@ -200,7 +212,22 @@ export function createWorkspaceGeneration({
         setToast('生成可能な人物が見つかりませんでした（人物以外は自動除外されます）');
         return;
       }
-      setMultiFigureGeneration({ id: crypto.randomUUID(), pageIndex, items });
+      setMultiFigureGeneration({
+        id: crypto.randomUUID(),
+        pageIndex,
+        items,
+        onClose: () => {
+          if (lastInserted) {
+            openInsertedGeneratedLayer?.(
+              lastInserted.ownerKey,
+              lastInserted.layerId,
+              lastInserted.panelIndex,
+              lastInserted.pageIndex,
+              lastInserted.overlay,
+            );
+          }
+        },
+      });
     } catch (error) {
       setToast(error instanceof Error ? error.message : '複数人物生成を準備できませんでした');
     } finally {

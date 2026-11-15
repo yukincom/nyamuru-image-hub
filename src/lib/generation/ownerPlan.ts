@@ -282,7 +282,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const referenceFrame=owner.paint.referenceFrame?paintReferenceBox(owner.paint,owner.frame):owner.figure?humanPoseFigureFrame({...owner.figure,bbox:owner.frame},owner.frame):owner.frame;
   const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
   const outputFrame=lettering?{...owner.frame}:cutFrame?panelBounds(panel):undefined;
-  const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):{width:owner.paint.width,height:owner.paint.height};
+  const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):owner.paint.referenceFrame?{width:Math.max(1,Math.round(owner.paint.referenceFrame.w)),height:Math.max(1,Math.round(owner.paint.referenceFrame.h))}:{width:owner.paint.width,height:owner.paint.height};
   const figureTarget=person?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea,getPrintSetup(manga).dpi):undefined;
   if(generationArea&&((!lettering&&!figureTarget)||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { commitPaintStroke, commitVectorPaths, canStartPaintMark, preparePaintMarkLayer, appendPaintSamples, constrainPaintPoint, paintStrokeBounds, previewPaintStroke } from '../src/lib/paintGesture.ts';
-import { paintScene, newPaintLayer, expandPaintOwnerToBounds, expandPaintOwnerToContent, validatePaintDocument } from '../src/lib/paintDocument.ts';
+import { paintScene, newPaintLayer, expandPaintOwnerToBounds, expandPaintOwnerToContent, shrinkPaintOwnerToContent, removePaintLayer, validatePaintDocument } from '../src/lib/paintDocument.ts';
 import {translatePaintLayer} from '../src/lib/paintLayerPicking.ts';
 import {newToneLayer} from '../src/lib/paintTone.ts';
 import {lassoSelection,combineSelection} from '../src/lib/rasterSelection.ts';
@@ -515,6 +515,16 @@ test('a missed paint selection delegates to native selection before starting a m
  begin(event,()=>false);assert.equal(marquee,1,'Empty paper still supports vector marquee');
 });
 
+test('shift-clicking while paint editor is open delegates to additive canvas selection without layer hijacking',()=>{
+ let missCalls=[],clear=0,move=0;
+ const layer={...newPaintLayer('layer','raster')},owner={key:'figure-0',paint:{width:100,height:100,layers:[layer]},frame:{x:0,y:0,w:100,h:100}};
+ const begin=editorHandler('beginLayerSelection',{tool:'vector-select',owner,layer,layerVisible:true,paintLayerEditable:()=>true,vectorState:{current:{selected:[]}},vectorResizeHandleAt,
+  inputPoint:()=>({x:10,y:10}),inputTolerance:()=>2,coverage:()=>true,pickPaintLayer:()=>({owner,layer}),beginLayerMove:()=>move++,clearVectorSelection:()=>clear++,historyRef:{current:{present:{owners:[owner]}}}});
+ const event={shiftKey:true,clientX:10,clientY:10,currentTarget:{dataset:{paperWidth:'100',paperHeight:'100'},getBoundingClientRect:()=>({left:0,top:0,width:100,height:100})}};
+ begin(event,(behindOwnerKey)=>{missCalls.push(behindOwnerKey);return true;});
+ assert.deepEqual(missCalls,[undefined]);assert.equal(clear,1);assert.equal(move,0);
+});
+
 
 test('independent layers ignore native text visibility and lock but retain folder locks',()=>{
  const scene=initial(),owner=scene.owners[0],layer=owner.paint.layers[0];layer.generationMask=true;owner.bubble={nativeLocked:true,hidden:true};
@@ -523,4 +533,16 @@ test('independent layers ignore native text visibility and lock but retain folde
  assert.equal(next.owners[0].paint.layers[0].strokes.length,1);assert.equal(layer.strokes.length,0);
  owner.locked=true;assert.equal(commitPaintStroke(scene,pending),scene);owner.locked=false;
  layer.folderId='f';owner.paint.folders=[{id:'f',name:'folder',position:0,locked:true}];assert.equal(commitPaintStroke(scene,pending),scene);
+});
+
+test('deleting an expanded generated image layer trims unused margin back to referenceFrame',()=>{
+ const base=initial().owners[0];
+ const generated={...newPaintLayer('生成 01'),image:{assetId:'asset-1',crop:{x:0,y:0,w:100,h:100},bbox:{x:-30,y:-20,w:160,h:140}}};
+ const expanded=expandPaintOwnerToContent({...base,paint:{...base.paint,layers:[...base.paint.layers,generated]}});
+ assert.ok(expanded.paint.width>base.paint.width&&expanded.paint.height>base.paint.height);
+ const trimmed=shrinkPaintOwnerToContent({...expanded,paint:removePaintLayer(expanded.paint,generated.id)});
+ assert.equal(trimmed.paint.width,base.paint.width);
+ assert.equal(trimmed.paint.height,base.paint.height);
+ assert.deepEqual(trimmed.frame,base.frame);
+ assert.deepEqual(trimmed.paint.referenceFrame,{x:0,y:0,w:base.paint.width,h:base.paint.height});
 });

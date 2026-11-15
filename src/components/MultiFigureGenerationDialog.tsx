@@ -3,13 +3,19 @@ import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { currentLocalModelPreferences } from '../lib/localModelPreferences.ts';
 import { parseComfyWorkflowList, type ComfyWorkflowDefinition, workflowNegativePrompt, workflowPromptUpsampler } from '../lib/comfyWorkflows.ts';
 import { loadCharacterReferenceImage, requestComfyWorkflows } from '../lib/localBridge.ts';
-import { withNewCreationBridgeSession } from '../lib/localBridgeLifecycle.ts';
+import {
+  startImageGenerationSession,
+  stopImageGenerationSession,
+  stopImageGenerationSessionOnPageExit,
+  withNewCreationBridgeSession,
+} from '../lib/localBridgeLifecycle.ts';
 import { CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
 import { resolveConversationRoute, resolveGenerationRoute } from '../lib/modelRouting.ts';
 import { currentConversationPreferences } from '../lib/conversationPreferences.ts';
 import type { AgentWorkflowYamlFile } from '../lib/generationHandoff.ts';
 import { qwenInputImage } from './generation/inputImages.ts';
 import {
+  type QwenAdoption,
   type QwenGenerationPlan,
   type QwenLayerCandidate,
   type QwenLayerReference,
@@ -32,7 +38,7 @@ export interface MultiFigureDialogItem {
   plan: QwenGenerationPlan;
   layers: QwenLayerCandidate[];
   loadLayer: (id: string, correction: boolean) => Promise<string>;
-  insert: (files: File[], plan: QwenGenerationPlan) => Promise<void>;
+  insert: (files: File[], plan: QwenGenerationPlan, adoption?: QwenAdoption) => Promise<void>;
 }
 
 interface Props {
@@ -80,10 +86,23 @@ export default function MultiFigureGenerationDialog({
   const [batchRunning, setBatchRunning] = useState(false);
   const [summaryMessage, setSummaryMessage] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+  const comfySessionRef = useRef<string | null>(null);
   const aliveRef = useRef(true);
-  useEffect(() => () => {
-    aliveRef.current = false;
-    abortRef.current?.abort();
+  useEffect(() => {
+    aliveRef.current = true;
+    const release = () => {
+      if (comfySessionRef.current) {
+        stopImageGenerationSessionOnPageExit(comfySessionRef.current);
+        comfySessionRef.current = null;
+      }
+    };
+    window.addEventListener('pagehide', release);
+    return () => {
+      aliveRef.current = false;
+      abortRef.current?.abort();
+      window.removeEventListener('pagehide', release);
+      release();
+    };
   }, []);
 
   useEffect(() => {
@@ -236,19 +255,26 @@ export default function MultiFigureGenerationDialog({
         prompt: twoImagesPromptless ? '' : (sharedPrompt.trim() || effectivePlan.prompt),
         ...(defaultNegative !== undefined ? { negativePrompt: defaultNegative } : {}),
         ...(defaultUpsampler !== undefined ? { usePromptUpsampler: Boolean(usePromptUpsampler) } : {}),
-        figureChroma: true,
-        chromaKeyColor: '#00FF00',
+        figureChroma: !twoImagesPromptless,
+        ...(twoImagesPromptless ? {} : { chromaKeyColor: '#00FF00' }),
         insert: item.insert,
       };
     });
 
     try {
+      setSummaryMessage('ComfyUIを起動中...');
+      const runtimeToken = comfySessionRef.current ?? crypto.randomUUID();
+      comfySessionRef.current = runtimeToken;
+      await startImageGenerationSession(runtimeToken, connection.comfyuiUrl);
+      if (!aliveRef.current || abort.signal.aborted) return;
+      setSummaryMessage('');
       const result = await runMultiFigureBatch({
         tasks,
         workflow,
         comfyuiUrl: connection.comfyuiUrl,
         requiresLlm,
         llmModelAlias: connection.llmAlias,
+        runtimeToken,
         signal: abort.signal,
         onUpdate: (update) => {
           if (!aliveRef.current) return;
@@ -269,6 +295,9 @@ export default function MultiFigureGenerationDialog({
         setSummaryMessage(`メモリ解放を確認できないため停止しました（完了 ${result.succeeded}件 / 失敗 ${result.failed}件）`);
       } else {
         setSummaryMessage(`一括生成が完了しました（成功 ${result.succeeded}件 / 失敗 ${result.failed}件）`);
+        if (result.succeeded > 0 && result.failed === 0 && !abort.signal.aborted) {
+          handleClose();
+        }
       }
     } catch (error) {
       if (aliveRef.current) {
@@ -282,6 +311,9 @@ export default function MultiFigureGenerationDialog({
 
   const handleClose = () => {
     abortRef.current?.abort();
+    const token = comfySessionRef.current;
+    comfySessionRef.current = null;
+    if (token) void stopImageGenerationSession(token).catch(() => undefined);
     onClose();
   };
 

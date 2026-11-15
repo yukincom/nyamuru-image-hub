@@ -20,7 +20,7 @@ interface Context {
   setDocument: (next: MangaDocument, record?: boolean) => void;
   imageGestureBoundary: (phase: 'start' | 'end', source?: 'text-size') => void;
   layerTransition: (action: () => void | Promise<void>) => Promise<void>;
-  selectCanvasElement: (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex?: number, revealDetails?: boolean) => void;
+  selectCanvasElement: (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex?: number, revealDetails?: boolean, additive?: boolean) => void;
   selectedBubbleTarget: CanvasTextTarget | undefined;
   undo: () => void;
   redo: () => void;
@@ -178,7 +178,7 @@ export function useWorkspaceTextActions({
       if(!target){setSelectedElement(null);return;}
       const pageIndex=session?.pageIndex??activePage,panelIndex=target.panelIndex??session?.panelIndex??activePanel;
       const selection=target.key?paintOwnerCanvasSelection(documentRef.current.manga.pages[pageIndex],panelIndex,target.key,session?.overlay):target.selection;
-      if(selection)selectCanvasElement(selection,panelIndex,pageIndex);
+      if(selection)selectCanvasElement(selection,panelIndex,pageIndex,true,target.additive);
       else {selectCanvasPanel(panelIndex,target.additive);setSelectedElement(null);}
     };
     if(target&&session)void layerTransition(async()=>{await paintController.current?.close();select();});

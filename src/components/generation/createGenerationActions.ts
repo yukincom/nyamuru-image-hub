@@ -12,6 +12,7 @@ import { cloudModelAccess } from '../../lib/modelPrivacy.ts';
 import type { AgentWorkflowYamlFile } from '../../lib/generationHandoff.ts';
 import { prepareQwenJob, submitQwenJob, reconcileQwenJob } from '../../lib/localBridge.ts';
 import { withImageGenerationServices } from '../../lib/localBridgeLifecycle.ts';
+import { dataUrlToPngFile, prepareGeneratedInsertionFile } from '../../lib/generation/insertion.ts';
 
 interface CreateGenerationActionsInputs {
   chooseFiles?: ProjectFilePicker;
@@ -52,33 +53,11 @@ interface CreateGenerationActionsInputs {
 export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml }: CreateGenerationActionsInputs) {
   async function insertResult(result:QwenJob){
     if(!result.image||!result.fileName)throw new Error('差し込む画像がありません');
-    const bytes=Uint8Array.from(atob(result.image.split(',')[1]),char=>char.charCodeAt(0));
-    await insertImage(new File([bytes],result.fileName,{type:'image/png'}),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined,Boolean(result.workflowId));
-  }
-  async function insertionFile(file:File,target:QwenGenerationPlan,preserveAspect=false):Promise<File>{
-    if(!target.outputFrame)return file;
-    const bitmap=await createImageBitmap(file);
-    try{
-      if(target.threeImages && preserveAspect && bitmap.width===target.width && bitmap.height===target.height){
-        return file; // Preserve the print DPI and pixels of the adopted PNG.
-      }
-      const canvas=document.createElement('canvas');canvas.width=target.width;canvas.height=target.height;
-      const context=canvas.getContext('2d');if(!context)throw new Error('生成画像を配置できません');
-      const cut=target.humanPose?.cutFrame;
-      if(cut){context.beginPath();cut.points.forEach(([x,y],index)=>{const px=(x-cut.bounds.x)/cut.bounds.w*canvas.width,py=(y-cut.bounds.y)/cut.bounds.h*canvas.height;if(index)context.lineTo(px,py);else context.moveTo(px,py);});context.closePath();context.clip();}
-      if(plan.scope){context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);}
-      if(preserveAspect){
-        const scale=Math.min(canvas.width/bitmap.width,canvas.height/bitmap.height);
-        const width=bitmap.width*scale,height=bitmap.height*scale;
-        context.drawImage(bitmap,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
-      }else context.drawImage(bitmap,0,0,canvas.width,canvas.height);
-      const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('生成画像を保存できません')),'image/png'));
-      return new File([blob],file.name,{type:'image/png'});
-    }finally{bitmap.close();}
+    await insertImage(dataUrlToPngFile(result.image,result.fileName),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined,Boolean(result.workflowId));
   }
   async function insertImage(file:File|File[],capturedTarget?:QwenGenerationPlan,preserveAspect=false,adoption?:QwenAdoption){
     const target=capturedTarget??qwenGenerationTarget(plan,Boolean(draft.current.correction)),files=Array.isArray(file)?file:[file],prepared:File[]=[];
-    for(const item of files)prepared.push(await insertionFile(item,target,preserveAspect));
+    for(const item of files)prepared.push(await prepareGeneratedInsertionFile(item,target,preserveAspect));
     await onInsert(Array.isArray(file)?prepared:prepared[0],target,adoption);
   }
   async function importGenerated(){

@@ -28,25 +28,29 @@ export function scalePaintOwner(owner: PaintOwner, factor: number): PaintOwner {
   return {...owner,frame:{x:b.x+(b.w-w)/2,y:b.y+(b.h-h)/2,w,h}};
 }
 
+function shiftPaintOwner(owner: PaintOwner, width: number, height: number, dx: number, dy: number): PaintOwner {
+  const old = owner.paint, b = owner.frame;
+  const frame = { x: b.x - dx * b.w / old.width, y: b.y - dy * b.h / old.height, w: width * b.w / old.width, h: height * b.h / old.height };
+  const referenceFrame = old.referenceFrame ?? { x: 0, y: 0, w: old.width, h: old.height };
+  if (!dx && !dy) return { ...owner, frame, paint: { ...old, width, height, referenceFrame } };
+  const shift = (box: BBox): BBox => ({ ...box, x: box.x + dx, y: box.y + dy });
+  const shiftStroke = (stroke: PaintLayer['strokes'][number]) => ({ ...stroke, ...(stroke.selection ? { selection: stroke.selection.map(shift) } : {}), points: stroke.points.map(p => ({ ...p, x: p.x + dx, y: p.y + dy })) });
+  return { ...owner, frame,
+    paint: { ...old, width, height, ...(old.background3d ? { background3d: mapBackgroundCapture(old.background3d, shift) } : {}), referenceFrame: shift(referenceFrame), layers: old.layers.map(layer => ({ ...layer,
+      ...(layer.clip ? { clip: shift(layer.clip) } : {}), ...(layer.image ? { image: { ...layer.image, bbox: shift(layer.image.bbox) } } : {}),
+      ...(layer.paths ? { paths: layer.paths.map(path => transformVector(path, dx, dy)) } : {}),
+      ...(layer.mask ? { mask: { ...layer.mask, strokes: layer.mask.strokes.map(shiftStroke) } } : {}),
+      ...(layer.tone ? { tone: { ...layer.tone, origin: { x: (layer.tone.origin?.x ?? 0) + dx, y: (layer.tone.origin?.y ?? 0) + dy } } } : {}),
+      strokes: layer.strokes.map(shiftStroke) })) } };
+}
+
 /** Add integer pixels around the canvas while retaining ink and guide positions on the page. */
 export function expandPaintOwner(owner: PaintOwner, padding: {left:number;right:number;top:number;bottom:number}): PaintOwner {
-  const {left,right,top,bottom}=padding,old=owner.paint,b=owner.frame;
+  const {left,right,top,bottom}=padding,old=owner.paint;
   if (!Object.values(padding).every(n=>Number.isSafeInteger(n)&&n>=0)) throw new Error('余白は0以上の整数pxで指定してください');
   const width=old.width+left+right,height=old.height+top+bottom;
   if(width>16384||height>16384||width*height>100_000_000)throw new Error('描画範囲は各辺16384px・合計1億px以内です');
-  const frame={x:b.x-left*b.w/old.width,y:b.y-top*b.h/old.height,w:width*b.w/old.width,h:height*b.h/old.height};
-  const referenceFrame=old.referenceFrame??{x:0,y:0,w:old.width,h:old.height};
-  // Right/bottom growth changes the canvas size, not a single ink coordinate.
-  if(!left&&!top)return {...owner,frame,paint:{...old,width,height,referenceFrame}};
-  const shift=(box:BBox):BBox=>({...box,x:box.x+left,y:box.y+top});
-  const shiftStroke=(stroke:PaintLayer['strokes'][number])=>({...stroke,...(stroke.selection?{selection:stroke.selection.map(shift)}:{}),points:stroke.points.map(p=>({...p,x:p.x+left,y:p.y+top}))});
-  return {...owner,frame,
-    paint:{...old,width,height,...(old.background3d?{background3d:mapBackgroundCapture(old.background3d,shift)}:{}),referenceFrame:shift(referenceFrame),layers:old.layers.map(layer=>({...layer,
-      ...(layer.clip?{clip:shift(layer.clip)}:{}),...(layer.image?{image:{...layer.image,bbox:shift(layer.image.bbox)}}:{}),
-      ...(layer.paths?{paths:layer.paths.map(path=>transformVector(path,left,top))}:{}),
-      ...(layer.mask?{mask:{...layer.mask,strokes:layer.mask.strokes.map(shiftStroke)}}:{}),
-      ...(layer.tone?{tone:{...layer.tone,origin:{x:(layer.tone.origin?.x??0)+left,y:(layer.tone.origin?.y??0)+top}}}:{}),
-      strokes:layer.strokes.map(shiftStroke)}))}};
+  return shiftPaintOwner(owner, width, height, left, top);
 }
 
 /** Reuse already measured ink bounds; no traversal of layers or points. */
@@ -80,6 +84,21 @@ export function insertGeneratedPaintImage(owner:PaintOwner,asset:ImageAsset,name
   return {owner:{...expanded,paint:placed},layer:placed.layers.find(item=>item.id===layer.id)!};
 }
 
+function includePaintLayerBounds(layer: PaintLayer, include: (x: number, y: number, w?: number, h?: number, margin?: number) => void) {
+  // Explicit source crops stay attached to their source layer.
+  if (layer.clip) { include(layer.clip.x, layer.clip.y, layer.clip.w, layer.clip.h); return; }
+  if (layer.image) include(layer.image.bbox.x, layer.image.bbox.y, layer.image.bbox.w, layer.image.bbox.h);
+  for (const path of layer.paths ?? []) {
+    const style = path.style, half = style.width * (path.closed && style.alignment !== 'center' ? 1 : .5);
+    const margin = style.stroke ? Math.max(half * (style.join === 'miter' ? style.miterLimit : 1), !path.closed && (style.arrowStart !== 'none' || style.arrowEnd !== 'none') ? Math.max(5, style.width * 3) : 0) + 2 : 0;
+    for (const node of path.nodes) { include(node.x, node.y, 0, 0, margin); for (const key of ['handleIn', 'handleOut'] as const) { const handle = node[key]; if (handle) include(node.x + handle.x, node.y + handle.y, 0, 0, margin); } }
+  }
+  for (const stroke of layer.strokes) {
+    const bounds = paintStrokeContentBounds(stroke);
+    if (bounds) include(bounds.x, bounds.y, bounds.w, bounds.h);
+  }
+}
+
 /** Grow the backing raster only when editable content reaches beyond it.
  * The original frame is a reference, never an editing boundary. Integer padding
  * reuses the same world-position-preserving transform as manual canvas growth.
@@ -89,21 +108,24 @@ export function expandPaintOwnerToContent(owner:PaintOwner,contents=owner.paint.
   const include=(x:number,y:number,w=0,h=0,margin=0)=>{
     left=Math.min(left,x-margin);top=Math.min(top,y-margin);right=Math.max(right,x+w+margin);bottom=Math.max(bottom,y+h+margin);
   };
-  for(const layer of contents){
-    // Explicit source crops stay attached to their source layer.
-    if(layer.clip){include(layer.clip.x,layer.clip.y,layer.clip.w,layer.clip.h);continue;}
-    if(layer.image)include(layer.image.bbox.x,layer.image.bbox.y,layer.image.bbox.w,layer.image.bbox.h);
-    for(const path of layer.paths??[]){
-      const style=path.style,half=style.width*(path.closed&&style.alignment!=='center'?1:.5);
-      const margin=style.stroke?Math.max(half*(style.join==='miter'?style.miterLimit:1),!path.closed&&(style.arrowStart!=='none'||style.arrowEnd!=='none')?Math.max(5,style.width*3):0)+2:0;
-      for(const node of path.nodes){include(node.x,node.y,0,0,margin);for(const key of ['handleIn','handleOut'] as const){const handle=node[key];if(handle)include(node.x+handle.x,node.y+handle.y,0,0,margin);}}
-    }
-    for(const stroke of layer.strokes){
-      const bounds=paintStrokeContentBounds(stroke);
-      if(bounds)include(bounds.x,bounds.y,bounds.w,bounds.h);
-    }
-  }
+  for(const layer of contents)includePaintLayerBounds(layer,include);
   return expandPaintOwnerToBounds(owner,{x:left,y:top,w:right-left,h:bottom-top});
+}
+
+/** Trim unused expanded margins back down to referenceFrame and remaining layer content. */
+export function shrinkPaintOwnerToContent(owner: PaintOwner): PaintOwner {
+  const ref = owner.paint.referenceFrame ?? { x: 0, y: 0, w: owner.paint.width, h: owner.paint.height };
+  let left = ref.x, top = ref.y, right = ref.x + ref.w, bottom = ref.y + ref.h;
+  const include = (x: number, y: number, w = 0, h = 0, margin = 0) => {
+    left = Math.min(left, x - margin); top = Math.min(top, y - margin); right = Math.max(right, x + w + margin); bottom = Math.max(bottom, y + h + margin);
+  };
+  if (owner.paint.background3d) include(owner.paint.background3d.frame.x, owner.paint.background3d.frame.y, owner.paint.background3d.frame.w, owner.paint.background3d.frame.h);
+  for (const layer of owner.paint.layers) includePaintLayerBounds(layer, include);
+  const trimLeft = Math.max(0, Math.floor(left)), trimTop = Math.max(0, Math.floor(top));
+  const nextRight = Math.min(owner.paint.width, Math.ceil(right)), nextBottom = Math.min(owner.paint.height, Math.ceil(bottom));
+  const width = Math.max(1, nextRight - trimLeft), height = Math.max(1, nextBottom - trimTop);
+  if (trimLeft === 0 && trimTop === 0 && width === owner.paint.width && height === owner.paint.height) return owner;
+  return shiftPaintOwner(owner, width, height, -trimLeft, -trimTop);
 }
 
 /** Ensure a minimum margin; reopening never adds the same margin twice. */

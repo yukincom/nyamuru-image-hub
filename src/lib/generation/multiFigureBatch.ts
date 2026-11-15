@@ -1,8 +1,9 @@
-import type { QwenGenerationPlan, QwenJob, QwenLayerReference, QwenReference } from '../qwenGeneration.ts';
+import type { QwenAdoption, QwenGenerationPlan, QwenJob, QwenLayerReference, QwenReference } from '../qwenGeneration.ts';
 import { executeQwenGeneration, qwenGenerationPayload, qwenGenerationTarget } from '../qwenGeneration.ts';
 import type { ComfyWorkflowDefinition } from '../comfyWorkflows.ts';
-import { prepareQwenJob, reconcileQwenJob, submitQwenJob } from '../bridge/generationJobs.ts';
-import { withImageGenerationServices } from '../localBridgeLifecycle.ts';
+import { prepareQwenJob, reconcileQwenJob, selectQwenCandidate, submitQwenJob } from '../bridge/generationJobs.ts';
+import { withImageGenerationServices, withNewCreationBridgeSession } from '../localBridgeLifecycle.ts';
+import { adoptAndInsertCandidates, dataUrlToPngFile, prepareGeneratedInsertionFile } from './insertion.ts';
 
 export type BatchItemStatus = 'pending' | 'running' | 'releasing' | 'succeeded' | 'failed' | 'cancelled';
 
@@ -17,7 +18,7 @@ export interface MultiFigureBatchTask {
   usePromptUpsampler?: boolean;
   chromaKeyColor?: string;
   figureChroma?: boolean;
-  insert: (files: File[], plan: QwenGenerationPlan) => Promise<void>;
+  insert: (files: File[], plan: QwenGenerationPlan, adoption?: QwenAdoption) => Promise<void>;
 }
 
 export interface MultiFigureBatchUpdate {
@@ -40,9 +41,7 @@ export function isMemoryReleaseFailure(error: unknown): boolean {
 
 function jobToFile(job: QwenJob): File {
   if (!job.image || !job.fileName) throw new Error('差し込む画像がありません');
-  const base64 = job.image.includes(',') ? job.image.split(',')[1] : job.image;
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-  return new File([bytes], job.fileName, { type: 'image/png' });
+  return dataUrlToPngFile(job.image, job.fileName);
 }
 
 /**
@@ -57,10 +56,11 @@ export async function runMultiFigureBatch(options: {
   comfyuiUrl: string;
   requiresLlm: boolean;
   llmModelAlias?: string;
+  runtimeToken?: string;
   signal: AbortSignal;
   onUpdate: (update: MultiFigureBatchUpdate) => void;
 }): Promise<{ succeeded: number; failed: number; memoryReleaseAborted: boolean }> {
-  const { tasks, workflow, comfyuiUrl, requiresLlm, llmModelAlias, signal, onUpdate } = options;
+  const { tasks, workflow, comfyuiUrl, requiresLlm, llmModelAlias, runtimeToken, signal, onUpdate } = options;
   let succeeded = 0;
   let failed = 0;
   let memoryReleaseAborted = false;
@@ -72,34 +72,34 @@ export async function runMultiFigureBatch(options: {
     }
 
     const startedAt = Date.now();
-    const targetPlan = qwenGenerationTarget(task.plan, false);
-    const twoImagesPromptless = workflow.binding.prompt_mode === 'promptless-two-images';
-    const effectivePlan: QwenGenerationPlan = {
-      ...task.plan,
-      prompt: twoImagesPromptless ? '' : (task.prompt ?? task.plan.prompt),
-      promptlessTwoImages: twoImagesPromptless,
-    };
-    const basePayload = qwenGenerationPayload(
-      effectivePlan,
-      task.references,
-      task.reference?.kind === 'paint' ? task.reference.image : undefined,
-      task.reference?.kind === 'sketch' ? task.reference.image : undefined,
-    );
-    const workflowPayload = {
-      ...basePayload,
-      workflow_id: workflow.id,
-      workflow_version: workflow.version,
-      comfyui_url: comfyuiUrl,
-      ...(task.negativePrompt !== undefined ? { negative_prompt: task.negativePrompt } : {}),
-      ...(task.usePromptUpsampler !== undefined ? { use_prompt_upsampler: task.usePromptUpsampler } : {}),
-      ...(task.figureChroma ? { chroma_key_color: task.chromaKeyColor, candidate_cutout: true } : { candidate_cutout: true }),
-    };
-
     onUpdate({ id: task.id, status: 'running', phase: '準備中' });
 
     try {
+      const targetPlan = qwenGenerationTarget(task.plan, false);
+      const twoImagesPromptless = workflow.binding.prompt_mode === 'promptless-two-images';
+      const effectivePlan: QwenGenerationPlan = {
+        ...task.plan,
+        prompt: twoImagesPromptless ? '' : (task.prompt ?? task.plan.prompt),
+        promptlessTwoImages: twoImagesPromptless,
+      };
+      const basePayload = qwenGenerationPayload(
+        effectivePlan,
+        task.references,
+        task.reference?.kind === 'paint' ? task.reference.image : undefined,
+        task.reference?.kind === 'sketch' ? task.reference.image : undefined,
+      );
+      const workflowPayload = {
+        ...basePayload,
+        workflow_id: workflow.id,
+        workflow_version: workflow.version,
+        comfyui_url: comfyuiUrl,
+        ...(task.negativePrompt !== undefined ? { negative_prompt: task.negativePrompt } : {}),
+        ...(task.usePromptUpsampler !== undefined ? { use_prompt_upsampler: task.usePromptUpsampler } : {}),
+        ...(task.figureChroma ? { chroma_key_color: task.chromaKeyColor, candidate_cutout: true } : { candidate_cutout: true }),
+      };
+
       let currentJob: QwenJob | undefined;
-      await executeQwenGeneration({
+      const execution = await executeQwenGeneration({
         id: crypto.randomUUID(),
         payload: workflowPayload,
         plan: targetPlan,
@@ -112,10 +112,12 @@ export async function runMultiFigureBatch(options: {
           onUpdate({ id: task.id, status: 'running', job });
         },
         insert: async (job) => {
-          await task.insert([jobToFile(job)], targetPlan);
+          const preparedFile = await prepareGeneratedInsertionFile(jobToFile(job), targetPlan, Boolean(job.workflowId));
+          await task.insert([preparedFile], targetPlan);
         },
         services: (prepare, generate, serviceOptions) => withImageGenerationServices(prepare, generate, {
           ...serviceOptions,
+          ...(runtimeToken ? { runtimeToken } : {}),
           signal,
           requiresLlm,
           ...(llmModelAlias ? { llmModelAlias } : {}),
@@ -137,6 +139,22 @@ export async function runMultiFigureBatch(options: {
           },
         }),
       });
+      if (signal.aborted) {
+        onUpdate({ id: task.id, status: 'cancelled' });
+        continue;
+      }
+      if (!execution.inserted && execution.job?.candidates?.length) {
+        onUpdate({ id: task.id, status: 'running', phase: 'レイヤーへ配置中', job: execution.job });
+        const finished = await adoptAndInsertCandidates({
+          job: execution.job,
+          indices: [execution.job.candidates[0].index],
+          target: targetPlan,
+          selectCandidate: (job, indices, adopted) =>
+            withNewCreationBridgeSession(() => selectQwenCandidate(job, indices, adopted)),
+          insertFiles: (files, adoption) => task.insert(files, targetPlan, adoption),
+        });
+        currentJob = finished;
+      }
       if (signal.aborted) {
         onUpdate({ id: task.id, status: 'cancelled' });
         continue;

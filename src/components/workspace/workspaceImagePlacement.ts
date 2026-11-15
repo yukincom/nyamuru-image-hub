@@ -22,7 +22,7 @@ export function createImagePlacementActions({
   activePanel, activePage, documentRef, imageImportBusy, imageImportTarget, setActivePage, setActivePanel,
   setSelectedPanels, placedImageInput, selectedElement, projectOperation, qwenGeneration, paintSessionRef,
   paintController, setImageImportBusy, lastHistoryPush, activePageRef, activePanelRef, setSelectedElement,
-  setToast, setQwenGeneration, pendingLayerAction, setBubblePathTool,
+  setToast, setQwenGeneration, pendingLayerAction, setBubblePathTool, setTextTool, setZoomTool,
 }: WorkspaceState, {
   selectedPaintOwner, setDocument, openPaint,
 }: Context) {
@@ -147,12 +147,25 @@ export function createImagePlacementActions({
       if(explicitTarget)throw error;
     } finally { setImageImportBusy(false); finishImageImport(); }
   };
+  const openInsertedGeneratedLayer = (
+    ownerKey: string,
+    insertedLayerId: string | undefined,
+    panelIndex: number,
+    pageIndex: number,
+    overlay: boolean,
+  ) => {
+    if (!insertedLayerId || typeof openPaint !== 'function') return;
+    pendingLayerAction.current = { type: 'select', key: ownerKey, id: insertedLayerId, directSelection: true };
+    if (!openPaint(ownerKey, panelIndex, pageIndex, overlay)) pendingLayerAction.current = null;
+  };
   const insertQwenImage = async(file:File|File[],generationPlan?:QwenGenerationPlan,adoption?:QwenAdoption) => {
     const target=qwenGeneration;
     if(!target||documentRef.current!==target.document||projectOperation.current||imageImportBusy)throw new Error('作品が変更されました。差し込み先を選び直してください');
     const {pageIndex,panelIndex,overlay,owner}=target,plan=generationPlan??target.plan,session=paintSessionRef.current;
     if(plan.scope){
       await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:plan.scope,generationScope:plan.scope,box:plan.outputFrame!});
+      if(typeof setTextTool==='function')setTextTool(false);
+      if(typeof setZoomTool==='function')setZoomTool(false);
       if(typeof setBubblePathTool==='function')setBubblePathTool('node');
       setQwenGeneration(null);setToast(`${plan.label}の生成画像を配置しました`);return;
     }
@@ -164,14 +177,11 @@ export function createImagePlacementActions({
     }else{
       const insertedLayerId=await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
         figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner,generatedAdoption:adoption,generatedFolderId:plan.folderId,...(target.textSource?{textSource:target.textSource}:{})});
-      if(insertedLayerId&&openPaint){
-        pendingLayerAction.current={type:'select',key:owner.key,id:insertedLayerId,directSelection:true};
-        if(!openPaint(owner.key,panelIndex,pageIndex,overlay))pendingLayerAction.current=null;
-      }
+      if(typeof openInsertedGeneratedLayer==='function')openInsertedGeneratedLayer(owner.key,insertedLayerId,panelIndex,pageIndex,overlay);
     }
     if(!adoption)setQwenGeneration(null);
     setToast(`${Array.isArray(file)?file.length+'枚の生成画像':file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);
   };
 
-  return { choosePlacedImage, importPlacedImage, chooseOwnerImage, insertQwenImage };
+  return { choosePlacedImage, importPlacedImage, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
 }

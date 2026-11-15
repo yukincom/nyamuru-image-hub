@@ -230,7 +230,7 @@ export function useElementGestures(options: CanvasProps, state: CanvasSurface) {
     if(hit){
       const overlay=hit.hasAttribute('data-content-overlay')||hit.dataset.contentScope==='page_overlay';
       const selection:CanvasElementSelection={type:hit.dataset.contentKind as CanvasElementSelection['type'],index:Number(hit.dataset.contentIndex),...(overlay?{scope:'page_overlay' as const}:hit.dataset.contentScope==='page'?{scope:'page' as const}:{})};
-      select({selection,panelIndex:Number.isFinite(panelIndex)&&panelIndex>=0?panelIndex:undefined,direct:paintWorkspace?.directSelection});return true;
+      select({selection,panelIndex:Number.isFinite(panelIndex)&&panelIndex>=0?panelIndex:undefined,additive:event.shiftKey,direct:paintWorkspace?.directSelection});return true;
     }
     if(behindOwnerKey||panelIndex<0)return false;
     select({selection:null,panelIndex:resolveOverlapClick(page.panels,panelIndex,activePanel,point.x,point.y),additive:event.shiftKey,direct:paintWorkspace?.directSelection});return true;

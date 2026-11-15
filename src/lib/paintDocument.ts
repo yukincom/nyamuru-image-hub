@@ -51,6 +51,7 @@ export {
   hasAdoptedPaintImages,
   insertGeneratedPaintImage,
   expandPaintOwnerToContent,
+  shrinkPaintOwnerToContent,
   withPaintBleed,
   paintInputBox,
   paintInputPoint,

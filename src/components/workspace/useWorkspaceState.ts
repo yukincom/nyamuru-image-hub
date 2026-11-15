@@ -45,7 +45,7 @@ export function useWorkspaceState(startupWorkspace: WorkspaceStartupState, initi
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
   const [qwenGeneration,setQwenGeneration]=useState<WorkspaceGeneration | null>(null);
-  const [multiFigureGeneration,setMultiFigureGeneration]=useState<{id:string;pageIndex:number;items:MultiFigureDialogItem[]}|null>(null);
+  const [multiFigureGeneration,setMultiFigureGeneration]=useState<{id:string;pageIndex:number;items:MultiFigureDialogItem[];onClose?:()=>void}|null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);

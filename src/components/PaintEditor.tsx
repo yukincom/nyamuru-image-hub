@@ -25,7 +25,7 @@ import {
 import type { ImageAsset, PaintLayer, VectorPath, VectorStyle } from '../types';
 import {
   paintGenerationOwner, insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages,
-  newPaintLayer, removePaintLayer, validatePaintDocument, type PaintScene, paintOwnerShouldClear,
+  newPaintLayer, removePaintLayer, shrinkPaintOwnerToContent, validatePaintDocument, type PaintScene, paintOwnerShouldClear,
   paintAssetIds,
 } from '../lib/paintDocument';
 import { decodePaintImage, renderPaintPng, readPaintPixels } from '../lib/paintRenderer';
@@ -342,7 +342,7 @@ export default function PaintEditor(props: PaintEditorProps) {
     addVector:()=>layerAction({type:'add',key:owner.key,kind:'vector'}),
     importImage:()=>chooseImage(),reorder:(key,id,target,after)=>layerAction({type:'reorder',key,id,target,after}),moveLayer:(key,id,target,destination)=>layerAction({type:'move-layer',key,id,target,destination}),moveFolder:(key,id,target,destination)=>layerAction({type:'move-folder',key,id,target,destination}),updateFolder:(key,id,patch)=>layerAction({type:'update-folder',key,id,patch}),renameFolder:(key,id,name)=>layerAction({type:'rename-folder',key,id,name}),
     duplicate:()=>{if(!hasLayer)return;const added={...layer,id:crypto.randomUUID(),name:`${layer.name} 複製`};changeLayers([...owner.paint.layers,added]);setLayerId(added.id);setMaskTarget(selectedMask==='mask'?{key:owner.key,id:added.id,kind:'mask'}:null);},
-    remove:()=>{if(selectedFolder){layerAction({type:'remove-folder',key:owner.key,id:selectedFolder.id});setLayerId('');return;}if(!hasLayer||!paintLayerEditable(owner,layer))return;{if(locked||busy||suspended||operation.current||inputActive.current)return;const paint=removePaintLayer(owner.paint,layer.id);commit({...scene,owners:scene.owners.map(o=>o===owner?{...o,paint}:o)});setLayerId(paint.layers.findLast(l=>!l.locked)?.id??paint.layers.at(-1)?.id??'');}setMaskTarget(null);clearVectorSelection();setSelection(null);},
+    remove:()=>{if(selectedFolder){layerAction({type:'remove-folder',key:owner.key,id:selectedFolder.id});setLayerId('');return;}if(!hasLayer||!paintLayerEditable(owner,layer))return;{if(locked||busy||suspended||operation.current||inputActive.current)return;const nextOwner=shrinkPaintOwnerToContent({...owner,paint:removePaintLayer(owner.paint,layer.id)});commit({...scene,owners:scene.owners.map(o=>o===owner?nextOwner:o)});setLayerId(nextOwner.paint.layers.findLast(l=>!l.locked)?.id??nextOwner.paint.layers.at(-1)?.id??'');}setMaskTarget(null);clearVectorSelection();setSelection(null);},
   };
   const layerControls=<PaintLayerPalette {...layerProps}/>;
   const layerHeader=<PaintLayerControls {...layerProps} disabled={!requested||busy||suspended}/>;

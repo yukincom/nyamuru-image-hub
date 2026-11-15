@@ -36,6 +36,13 @@ export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsse
     validatePaintDocument(paint,assets);
     const retained=images??new Map(),loaded=await loadPaintImages([paint],assets,new Map(),retained);
     loaded.forEach((image,id)=>{if(image!==retained.get(id))owned.push(image);});images=loaded;
-    return await renderPaintPng(paint,images,includeGeneration);
+    const rendered=await renderPaintPng(paint,images,includeGeneration);
+    const targetLayer=owner.paint.layers.find(item=>item.id===id);
+    const ref=paint.referenceFrame;
+    if(!includeGeneration&&targetLayer?.guide&&ref&&(ref.x>0||ref.y>0||ref.w<paint.width||ref.h<paint.height)){
+      const cropped=await qwenInputImage(rendered,ref,true);
+      return await (await fetch(cropped.image)).blob();
+    }
+    return rendered;
   } finally { owned.forEach(image=>{image.src='';}); }
 }
