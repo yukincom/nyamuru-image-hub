@@ -15,15 +15,16 @@ import type { QwenGenerationPlan, QwenAdoption } from '../../lib/qwenGeneration'
 interface Context {
   selectedPaintOwner: () => string;
   setDocument: (next: MangaDocument, record?: boolean) => void;
+  openPaint?: (initialOwner?: string, panelIndex?: number, pageIndex?: number, overlay?: boolean) => boolean;
 }
 
 export function createImagePlacementActions({
   activePanel, activePage, documentRef, imageImportBusy, imageImportTarget, setActivePage, setActivePanel,
   setSelectedPanels, placedImageInput, selectedElement, projectOperation, qwenGeneration, paintSessionRef,
   paintController, setImageImportBusy, lastHistoryPush, activePageRef, activePanelRef, setSelectedElement,
-  setToast, setQwenGeneration,
+  setToast, setQwenGeneration, pendingLayerAction, setBubblePathTool,
 }: WorkspaceState, {
-  selectedPaintOwner, setDocument,
+  selectedPaintOwner, setDocument, openPaint,
 }: Context) {
   const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
     const page = documentRef.current.manga.pages[pageIndex];
@@ -85,14 +86,17 @@ export function createImagePlacementActions({
       const asset=await register(prepared,file);
       const targetPage = next.manga.pages[target.pageIndex];
       let placement = target.scope === 'page' && !target.generationScope ? createImagePlacement(asset, target.box) : createFrameArtwork(asset, target.box);
+      let insertedGeneratedLayerId: string | undefined;
       if(target.generatedOwner){
         const adoption=target.generatedAdoption;
         if(target.generatedOwner.paint.layers.length+files.length>64)throw new Error('1つのグループには64レイヤーまで追加できます');
         let generated=target.generatedOwner,sequence=next.manga.generated_image_sequence??0;
         for(const [index,source] of files.entries()){
           const image=index===0?asset:await register(await prepareImageAsset(source),source);
-          generated=insertGeneratedPaintImage(generated,image,generatedPaintName(sequence++),target.box,
-            {folderId:target.generatedFolderId,...(adoption?{generation:{jobId:adoption.jobId,candidateIndex:adoption.indices[index]}}:{})}).owner;
+          const inserted=insertGeneratedPaintImage(generated,image,generatedPaintName(sequence++),target.box,
+            {folderId:target.generatedFolderId,...(adoption?{generation:{jobId:adoption.jobId,candidateIndex:adoption.indices[index]}}:{})});
+          generated=inserted.owner;
+          insertedGeneratedLayerId=inserted.layer.id;
         }
         next.manga.generated_image_sequence=sequence;
         const composite=await humanPoseOwnerImage(generated,next.manga.image_assets??[]);
@@ -136,6 +140,7 @@ export function createImagePlacementActions({
       lastHistoryPush.current = 0;
       if (activePageRef.current === target.pageIndex && (target.scope !== 'panel' || activePanelRef.current === target.panelIndex)) setSelectedElement(selection);
       setToast(`${file.name} を読み込みました`);
+      return insertedGeneratedLayerId;
     } catch (error) {
       if (newStorageIds.length) void deleteFigureCropAssets(newStorageIds).catch(() => undefined);
       setToast(error instanceof Error ? error.message : '画像を取り込めませんでした');
@@ -148,6 +153,7 @@ export function createImagePlacementActions({
     const {pageIndex,panelIndex,overlay,owner}=target,plan=generationPlan??target.plan,session=paintSessionRef.current;
     if(plan.scope){
       await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:plan.scope,generationScope:plan.scope,box:plan.outputFrame!});
+      if(typeof setBubblePathTool==='function')setBubblePathTool('node');
       setQwenGeneration(null);setToast(`${plan.label}の生成画像を配置しました`);return;
     }
     if(!owner)throw new Error('生成対象がありません');
@@ -156,8 +162,12 @@ export function createImagePlacementActions({
       if(session.pageIndex!==pageIndex||session.panelIndex!==panelIndex||session.overlay!==overlay||!paintController.current)throw new Error('描画先が変更されています。差し込み先を選び直してください');
       await paintController.current.insertImage(file,owner.key,placement,adoption);
     }else{
-      await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
+      const insertedLayerId=await importPlacedImage(file,{document:target.document,pageIndex,panelIndex,scope:overlay?'page_overlay':'panel',
         figureIndex:owner.kind==='figure'?owner.index:undefined,bubbleIndex:owner.kind==='bubble'?owner.index:undefined,box:{...(placement?.frame??owner.frame)},generatedOwner:owner,generatedAdoption:adoption,generatedFolderId:plan.folderId,...(target.textSource?{textSource:target.textSource}:{})});
+      if(insertedLayerId&&openPaint){
+        pendingLayerAction.current={type:'select',key:owner.key,id:insertedLayerId,directSelection:true};
+        if(!openPaint(owner.key,panelIndex,pageIndex,overlay))pendingLayerAction.current=null;
+      }
     }
     if(!adoption)setQwenGeneration(null);
     setToast(`${Array.isArray(file)?file.length+'枚の生成画像':file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);

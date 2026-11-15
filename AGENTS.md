@@ -38,3 +38,18 @@
 ## 利用者確認と検証の順序
 
 - 修正と必要最小限の確認を先に行い、利用者のチェックが済んでからビルド・全件テストを実行する。チェック前に全体検証を先回りして回さない。
+
+## 使用モデル一覧
+
+各機能で使用するモデルは以下の通り（モデル重み自体は Git リポジトリに含めず、ローカル環境へ配置する）。
+
+| 用途 | モデル / ファイル名 | 備考・接続先 |
+|---|---|---|
+| コマ・人物・文字領域検出 | `rtdetrv4-x-manga109s_v2` (`model.onnx`) | `tori29umai/rtdetrv4-x-manga109s_v2`（`npm run setup:vision`） |
+| 漫画文字 OCR | `baberu-ocr` | `genshiai-daichi/baberu-ocr`（`npm run setup:vision`） |
+| 表情補助タグ抽出 | `wd-vit-tagger-v3` (`model.onnx`) | `SmilingWolf/wd-vit-tagger-v3`（`npm run setup:vision`） |
+| ローカル VLM（設定画・表情解析） | `lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit` | Apple Silicon / MLX（`NYAMURU_VLM_MODEL` で変更可） |
+| 画像生成（既定・2画像参照 / P-H3-Image） | `P-H3-Image-AD-Q6_K.gguf` | UNet（`AtomicChat/P-H3-Image-GGUF`、`ComfyUI-GGUF` `UnetLoaderGGUF`） |
+| 画像生成（P-H3-Image 付随） | `p-h3-image_text_encoder_bf16.safetensors` / `p-h3-image_prompt_upsampler_bf16.safetensors` / `p-h3-image_vae_bf16.safetensors` | Text Encoder・Prompt Upsampler・VAE（`examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json`） |
+| 画像生成（3枚参照 / Qwen Image 2.1 Turbo） | `qwen_image_2.1_turbo_int8_convrot.safetensors` / `qwen3vl_8b_int8_convrot.safetensors` / `qwen_image_2.1_vae_bf16.safetensors` | UNet・Text Encoder・VAE（`examples/comfyui/nyamuru_qwen_turbo_3images.api.json` 等） |
+| 操作意図分類 | ModernBERT | 同梱 tokenizer ＋ Release 配布重み |

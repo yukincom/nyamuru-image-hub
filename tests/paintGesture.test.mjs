@@ -477,7 +477,7 @@ test('automatic marks insert directly below their selected sibling and retain it
 
 // 見込み: 明示的な選択道具への切替は一時選択を解除し、編集可能なレイヤー種別の既存経路を使う。
 // 合格: 解除false、gesture終了、paint/layout分岐と対象を確認。実handler＋模擬state、実キー入力は別試験。
-test('selection tools keep editable raster moves and vector paths while direct raster uses layout',()=>{
+test('selection tools keep editable raster moves and vector paths in paint mode',()=>{
  for(const tool of ['vector-select','vector-node'])for(const kind of ['raster','vector',undefined]){
   const calls=[],state={revision:{current:0}};
   const context={busy:false,toolSuspended:false,operation:{current:false},requested:{},textTool:false,zoomTool:false,hasLayer:kind!==undefined,layer:{kind},owner:{key:'figure-0'},tool:'pen',
@@ -486,7 +486,7 @@ test('selection tools keep editable raster moves and vector paths while direct r
    setMaskTarget(){},setTool:next=>calls.push(['paint',next]),setLineKind(){},setPenMenu(){},setEraserMenu(){}};
   editorHandler('selectTool',context)(tool);
   assert.equal(state.revision.current,1);assert.equal(calls[0],'finish');
-  const paints=kind==='vector'||kind==='raster'&&tool==='vector-select';
+  const paints=kind==='vector'||kind==='raster';
   assert.equal(calls[1][0],paints?'paint':'layout');
   if(!paints)assert.equal(calls[1][1].direct,tool==='vector-node');
   if(!paints&&tool==='vector-select')assert.equal(calls[1][1].key,'figure-0');

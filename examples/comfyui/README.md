@@ -1,4 +1,16 @@
-# Qwen Image 2.1 Turboの登録例
+# ComfyUI ワークフロー登録例
+
+## p_h3_image_edit_mac_bf16_v2（ローカル既定・2画像参照）
+
+`p_h3_image_edit_mac_bf16_v2.api.json` と `p_h3_image_edit_mac_bf16_v2.binding.json` は、プロンプト不要（`prompt_mode: "promptless-two-images"`）で2枚の画像から人物を生成するローカル既定ワークフローです。
+
+| 順番 | 資料の役割 | 受渡し先 |
+|---|---|---|
+| 画像1 (`image_1 (edited)`) | キャラクター設定画などの元画像 | `4.image` |
+| 画像2 (`image_2 (reference)`) | 3Dポーズ・カメラ・構図参照 | `5.image` |
+
+- 出力ノード: `13`（index `0`）、シード: `10.noise_seed`
+- 必要モデル: `P-H3-Image-AD-Q6_K.gguf`（`UnetLoaderGGUF`、ComfyUI-GGUF 使用）、`p-h3-image_text_encoder_bf16.safetensors`、`p-h3-image_prompt_upsampler_bf16.safetensors`、`p-h3-image_vae_bf16.safetensors`
 
 ## nyamuru_qwen_turbo_3images
 

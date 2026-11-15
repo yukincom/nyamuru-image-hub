@@ -2,6 +2,7 @@ import { paintAssetIds, validatePaintDocument } from './paintDocument.ts';
 import { CUBE_STAGE_ID, validateBackgroundStages } from './background3d.ts';
 import type { BBox, Figure, ImageAsset, ImageContent, MangaDocument, Panel, PlacedImage } from '../types.ts';
 import type { InteractionGeometry } from './canvasGeometry.ts';
+import type { VectorResizeHandle } from './vectorGesture.ts';
 
 export function fitImageBox(source: { w: number; h: number }, target: BBox): BBox {
   const scale = Math.min(target.w / source.w, target.h / source.h);
@@ -164,17 +165,17 @@ export async function verifyOriginal(asset: ImageAsset, blob: Blob): Promise<voi
   }
 }
 
-/** Corner resizing keeps the opposite corner fixed and preserves aspect ratio. */
-export function resizeImageBox(interaction: InteractionGeometry, clientX: number, clientY: number): BBox {
+/** Corner and edge resizing keeps the opposite side fixed and preserves aspect ratio. */
+export function resizeImageBox(interaction: Omit<InteractionGeometry, 'mode'> & { mode: InteractionGeometry['mode'] | VectorResizeHandle }, clientX: number, clientY: number): BBox {
   const { startBox: box, mode, paperRect, canvas } = interaction;
   if (!canvas) return { ...box };
   const dx = (clientX - interaction.startClientX) * canvas.w / paperRect.width;
   const dy = (clientY - interaction.startClientY) * canvas.h / paperRect.height;
   if (dx === 0 && dy === 0) return { ...box };
   if (mode === 'move') return { ...box, x:box.x+dx, y:box.y+dy };
-  const west = mode.includes('w'), north = mode.includes('n');
+  const west = mode.includes('w'), east = mode.includes('e'), north = mode.includes('n'), south = mode.includes('s');
   const anchorX = west ? box.x + box.w : box.x, anchorY = north ? box.y + box.h : box.y;
-  const sx = (west ? -dx : dx) / box.w, sy = (north ? -dy : dy) / box.h;
+  const sx = west || east ? (west ? -dx : dx) / box.w : 0, sy = north || south ? (north ? -dy : dy) / box.h : 0;
   const desired = 1 + (Math.abs(sx) > Math.abs(sy) ? sx : sy);
   const scale = Math.max(1/Math.max(box.w,box.h),desired);
   const w = box.w * scale, h = box.h * scale;

@@ -45,7 +45,7 @@ export function useElementGestures(options: CanvasProps, state: CanvasSurface) {
       return;
     }
     if(textTool)return;
-    if(bubblePathTool==='node'&&mode==='move')return;
+    if(bubblePathTool==='node'&&mode==='move'&&selection.type!=='image')return;
     const pageOverlay = selection.scope === 'page_overlay' || selection.scope === 'page';
     if ((!pageOverlay && panelIndex !== activePanel) || !paperRef.current) return;
     const figure = selection.type === 'figure' ? (selection.scope === 'page_overlay' ? overlay?.figures : page.panels[panelIndex!]?.figures)?.[selection.index] : undefined;

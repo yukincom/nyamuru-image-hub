@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { VectorPath } from '../types';
+import type { BBox, VectorPath } from '../types';
 import { vectorPathData } from '../lib/vectorGeometry';
 import {vectorSelectionBounds,type VectorResizeHandle} from '../lib/vectorGesture';
-export interface VectorOverlayState {paths:VectorPath[];selected:string[];selectedNodes?:Array<{pathId:string;node:number}>;width:number;height:number;handles:boolean;selectionBox?:boolean}
+export interface VectorOverlayState {paths:VectorPath[];selected:string[];selectedNodes?:Array<{pathId:string;node:number}>;width:number;height:number;handles:boolean;selectionBox?:boolean;imageBounds?:BBox}
 export default function VectorOverlay({state}:{state:VectorOverlayState}){
   const svg=useRef<SVGSVGElement>(null),[unit,setUnit]=useState(1);
   useLayoutEffect(()=>{if(!svg.current)return;const update=()=>{const width=svg.current?.getBoundingClientRect().width;if(width)setUnit(state.width/width);};update();const observer=new ResizeObserver(update);observer.observe(svg.current);return()=>observer.disconnect();},[state.width]);
-  const bounds=state.selectionBox?vectorSelectionBounds(state.paths,state.selected):undefined;
+  const bounds=state.imageBounds??(state.selectionBox?vectorSelectionBounds(state.paths,state.selected):undefined);
   const resizeHandles:Array<[VectorResizeHandle,number,number]>=bounds?[
     ['nw',bounds.x,bounds.y],['n',bounds.x+bounds.w/2,bounds.y],['ne',bounds.x+bounds.w,bounds.y],['e',bounds.x+bounds.w,bounds.y+bounds.h/2],
     ['se',bounds.x+bounds.w,bounds.y+bounds.h],['s',bounds.x+bounds.w/2,bounds.y+bounds.h],['sw',bounds.x,bounds.y+bounds.h],['w',bounds.x,bounds.y+bounds.h/2],

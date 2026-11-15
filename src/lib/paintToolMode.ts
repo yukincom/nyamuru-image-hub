@@ -18,8 +18,8 @@ export function vectorInput(tool:DrawingTool,lineKind:PaintLineKind,layerKind:Pa
   if(eraserEnd||tool==='eraser')return layerKind==='vector';
   return tool.startsWith('vector-')||(isShapeTool(tool)&&lineKind==='vector');
 }
-/** V moves ordinary raster children; native guides keep layout handles and vectors keep path editing. */
+/** A/V keep editable raster and vector layers selectable in paint; native guides keep layout handles. */
 export function paintSelectionMode(tool:DrawingTool,painting:boolean,layerKind?:PaintLayer['kind'],editableRaster=false):'paint'|'layout'|undefined {
   if(tool!=='vector-select'&&tool!=='vector-node')return;
-  return painting&&(layerKind==='vector'||tool==='vector-select'&&editableRaster)?'paint':'layout';
+  return painting&&(layerKind==='vector'||editableRaster)?'paint':'layout';
 }

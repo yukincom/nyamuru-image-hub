@@ -53,7 +53,7 @@ test('raster rectangle on vector artwork inserts an independent layer with its c
 test('V moves selected raster paint while guides and direct selection retain native layout',()=>{
  assert.equal(paintSelectionMode('vector-select',true,'raster',true),'paint');
  assert.equal(paintSelectionMode('vector-select',true,'raster',false),'layout');
- assert.equal(paintSelectionMode('vector-node',true,'raster',true),'layout');
+ assert.equal(paintSelectionMode('vector-node',true,'raster',true),'paint');
  assert.equal(paintSelectionMode('vector-node',true,'vector',true),'paint');
  assert.equal(paintSelectionMode('vector-select',false,'raster',true),'layout');
 });

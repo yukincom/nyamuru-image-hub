@@ -30,7 +30,7 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
     setFinishSelection, toolSuspended, operation, setMenu, setFinishOpen, alive, historyRef,
     inputActive, imagesRef, setImages, setImports, setOwnerKey, setLayerId, setEffectsTab,
     setMaskTarget, setSelection, setPaletteFolded, ownerKey, layerId, selectedFolder, maskTarget,
-    paletteFolded, owner, inkColor, setInkColor, selectedMask, images, locked, selectionBoxes, setError,
+    paletteFolded, owner, inkColor, setInkColor, selectedMask, images, locked, selectionBoxes, setError, setTool,
   } = state;
   const {
     finishGesture, commit, selectOwner, updateOwnerLayer, createGenerationMask, clearVectorSelection,
@@ -69,7 +69,7 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
     if(action.type==='background3d'){openBackground3d(action.key);return;}
     if(action.type==='guide'){toggleGuide(action.key);return;}
     if(action.type==='menu'){setMenu({key:action.key,x:action.x,y:action.y});return;}
-    if(action.type==='select'){if(action.mask&&(action.id!==undefined||action.mask==='generationMask'))selectMask(action.key,action.id??'',action.mask);else selectOwner(action.key,action.id,action.contents,action.native);return;}
+    if(action.type==='select'){if(action.mask&&(action.id!==undefined||action.mask==='generationMask'))selectMask(action.key,action.id??'',action.mask);else selectOwner(action.key,action.id,action.contents,action.native);if(action.directSelection)setTool('vector-node');return;}
     if(action.type==='update'){updateOwnerLayer(action.key,action.id,action.patch);return;}
     if(action.type==='generation-mask'){const target=createGenerationMask(action.key);if(action.select&&target)selectMask(target.owner.key,target.layer.id,'generationMask');return;}
     const moving=action.type==='move-layer'||action.type==='move-folder';

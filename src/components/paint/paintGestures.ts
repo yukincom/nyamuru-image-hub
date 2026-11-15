@@ -4,9 +4,10 @@ import { combineSelection, floodSelection, lassoSelection, type SelectionMode } 
 import { hitPaintRuler, paintRulerAngle, paintRulerProjection } from '../../lib/paintRuler';
 import { isShapeTool, vectorInput } from '../../lib/paintToolMode';
 import {
-  beginVectorDrag, updateVectorDrag, vectorAnchorAt, vectorResizeHandleAt, vectorPenEndpoint,
-  type VectorTool,
+  beginVectorDrag, boxResizeHandleAt, updateVectorDrag, vectorAnchorAt, vectorResizeHandleAt, vectorPenEndpoint,
+  type VectorResizeHandle, type VectorTool,
 } from '../../lib/vectorGesture';
+import { resizeImageBox } from '../../lib/imagePlacement';
 import type { PaintWorkspaceState, PaintLayoutTarget } from '../../lib/paintWorkspace';
 import type { BBox, PaintLayer, PaintPoint, PaintStroke } from '../../types';
 import { expandPaintOwnerToContent, paintLayerAboveNative, type PaintOwner, type PaintScene } from '../../lib/paintDocument';
@@ -137,19 +138,24 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
     const target=event.currentTarget,rect=target.getBoundingClientRect();if(!rect.width||!rect.height||!coverage)return;
     const local=inputPoint(event,target,rect),tolerance=inputTolerance(target,rect);
     // Handles can be outside the visible stroke. Only the active editable layer owns them.
-    if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&(selectionMode==='vector-node'
-      ?vectorAnchorAt(layer.paths??[],vectorState.current.selected,local,tolerance)
-      :selectionMode==='vector-select'&&vectorResizeHandleAt(layer.paths??[],vectorState.current.selected,local,tolerance))){
-      beginVector(event,owner,layer,selectionMode);return;
+    if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)){
+      if(layer.kind==='vector'&&(selectionMode==='vector-node'
+        ?vectorAnchorAt(layer.paths??[],vectorState.current.selected,local,tolerance)
+        :selectionMode==='vector-select'&&vectorResizeHandleAt(layer.paths??[],vectorState.current.selected,local,tolerance))){
+        beginVector(event,owner,layer,selectionMode);return;
+      }
+      if(layer.image&&!layer.guide&&(selectionMode==='vector-select'||selectionMode==='vector-node')){
+        const imageHandle=boxResizeHandleAt(layer.image.bbox,local,tolerance);
+        if(imageHandle){beginImageResize(event,owner,layer,imageHandle);return;}
+      }
     }
     const point={x:(event.clientX-rect.left)*Number(target.dataset.paperWidth)/rect.width,y:(event.clientY-rect.top)*Number(target.dataset.paperHeight)/rect.height};
     const hit=pickPaintLayer(historyRef.current.present,point,7*Number(target.dataset.paperWidth)/rect.width,coverage);
     if(hit){
       if(onSelectionMiss?.(hit.owner.key,hit.owner.kind==='bubble'&&paintLayerAboveNative(hit.owner.paint,hit.layer))){clearVectorSelection();return;}
-      if(selectionMode==='vector-node'&&hit.layer.kind!=='vector'&&onSelectLayout){selectLayout({key:hit.owner.key,direct:true});return;}
       if(hit.pathId){beginVector(event,hit.owner,hit.layer,selectionMode);return;}
       clearVectorSelection();setOwnerKey(hit.owner.key);setLayerId(hit.layer.id);setMaskTarget(null);setSelection(null);
-      if(selectionMode==='vector-select')beginLayerMove(event,hit.owner,hit.layer);
+      if(selectionMode==='vector-select'||selectionMode==='vector-node')beginLayerMove(event,hit.owner,hit.layer);
     }else if(onSelectionMiss?.())clearVectorSelection();
     else if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&layer.kind==='vector')beginVector(event,owner,layer,selectionMode);
     else clearVectorSelection();
@@ -169,6 +175,34 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
       const moved=translatePaintLayer(targetLayer,dx,dy);
       try{move.current=moved===targetLayer?before:{...before,owners:before.owners.map(o=>{if(o.key!==targetOwner.key)return o;
         return expandPaintOwnerToContent({...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===targetLayer.id?moved:l)}},[moved]);})};}
+      catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
+      setVectorPreview(move.current);
+    };
+    const move=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(!e.buttons){finishLayerMove(false);return;}update(e);};
+    const end=(e:PointerEvent)=>{if(layerMove.current?.pointerId!==e.pointerId)return;e.preventDefault();e.stopPropagation();if(e.type==='pointerup')update(e);finishLayerMove(e.type==='pointerup');};
+    const blur=()=>finishLayerMove(false);
+    const cleanup=()=>{window.removeEventListener('pointermove',move,true);window.removeEventListener('pointerup',end,true);window.removeEventListener('pointercancel',end,true);window.removeEventListener('blur',blur);target.removeEventListener('lostpointercapture',end);};
+    layerMove.current={pointerId:event.pointerId,before,current:before,cleanup,target};inputActive.current=true;
+    window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',blur);target.addEventListener('lostpointercapture',end);
+    try{target.setPointerCapture(event.pointerId);}catch{}
+  }
+  function beginImageResize(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner:PaintOwner,targetLayer:PaintLayer,handle:VectorResizeHandle){
+    if(!targetLayer.image||targetLayer.locked)return;
+    const target=event.currentTarget,rect=target.getBoundingClientRect(),start=inputPoint(event,target,rect,targetOwner),before=historyRef.current.present;
+    const startBox={...targetLayer.image.bbox};
+    const update=(e:PointerEvent)=>{
+      const move=layerMove.current;if(!move||move.pointerId!==e.pointerId)return;
+      const point=inputPoint(e,target,rect,targetOwner),dx=point.x-start.x,dy=point.y-start.y;
+      if(Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY)<2&&move.current===before)return;
+      const nextBox=resizeImageBox({
+        canvas:{w:targetOwner.paint.width,h:targetOwner.paint.height},
+        paperRect:{width:targetOwner.paint.width,height:targetOwner.paint.height},
+        bounds:{x:0,y:0,w:targetOwner.paint.width,h:targetOwner.paint.height},
+        startBox,mode:handle,startClientX:0,startClientY:0,unbounded:true,
+      },dx,dy);
+      const resized:PaintLayer={...targetLayer,image:{...targetLayer.image!,bbox:nextBox}};
+      try{move.current={...before,owners:before.owners.map(o=>{if(o.key!==targetOwner.key)return o;
+        return expandPaintOwnerToContent({...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===targetLayer.id?resized:l)}},[resized]);})};}
       catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
       setVectorPreview(move.current);
     };

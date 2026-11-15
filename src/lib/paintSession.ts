@@ -13,7 +13,7 @@ export type PaintLayerAction =
   | {type:'move-folder';key:string;id:string;target:PaintLayerDropTarget;destination?:PaintLayerDestination}
   | {type:'move-layer';key:string;id:string;target:PaintLayerDropTarget;destination?:PaintLayerDestination}
   | {type:'generation-mask';key:string;select?:boolean}
-  | {type:'select';key:string;id?:string;contents?:boolean;native?:boolean;mask?:'mask'|'generationMask'}
+  | {type:'select';key:string;id?:string;contents?:boolean;native?:boolean;mask?:'mask'|'generationMask';directSelection?:boolean}
   | {type:'menu';key:string;x:number;y:number}
   | {type:'update';key:string;id:string;patch:Partial<PaintLayer>}
   | {type:'owner-lock';key:string;locked:boolean;group?:boolean}

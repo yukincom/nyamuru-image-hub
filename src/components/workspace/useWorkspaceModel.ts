@@ -226,7 +226,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     requestOwnerGeneration, prepareQwen, requestCompositionGeneration, requestTextGeneration, requestMultiFigureGeneration,
   } = createWorkspaceGeneration(workspace, {
     setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition,
-    insertBatchFigureImage: (file, target) => importPlacedImage(file, target),
+    insertBatchFigureImage: async (file, target) => { await importPlacedImage(file, target); },
   });
   const {
     openImageExportDialog, chooseImageExportFolder, exportPageRange,
@@ -239,7 +239,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
   const {
     choosePlacedImage, importPlacedImage, chooseOwnerImage, insertQwenImage,
   } = createImagePlacementActions(workspace, {
-    selectedPaintOwner, setDocument,
+    selectedPaintOwner, setDocument, openPaint,
   });
   const {
     imageGestureBoundary, togglePanelSync, toggleInnerFrameSnap, togglePanelGapSnap, changeShowGuides,

@@ -20,13 +20,16 @@ export function vectorSelectionBounds(paths:VectorPath[],ids:string[]):BBox|unde
   const x=Math.min(...boxes.map(box=>box.x)),y=Math.min(...boxes.map(box=>box.y));
   return {x,y,w:Math.max(...boxes.map(box=>box.x+box.w))-x,h:Math.max(...boxes.map(box=>box.y+box.h))-y};
 }
-export function vectorResizeHandleAt(paths:VectorPath[],ids:string[],point:VectorPoint,tolerance:number):VectorResizeHandle|undefined{
-  const box=vectorSelectionBounds(paths,ids);if(!box)return;
+export function boxResizeHandleAt(box:BBox,point:VectorPoint,tolerance:number):VectorResizeHandle|undefined{
   const handles:Array<[VectorResizeHandle,number,number]>=[
     ['nw',box.x,box.y],['n',box.x+box.w/2,box.y],['ne',box.x+box.w,box.y],['e',box.x+box.w,box.y+box.h/2],
     ['se',box.x+box.w,box.y+box.h],['s',box.x+box.w/2,box.y+box.h],['sw',box.x,box.y+box.h],['w',box.x,box.y+box.h/2],
   ];
   return handles.find(([,x,y])=>Math.hypot(x-point.x,y-point.y)<=tolerance)?.[0];
+}
+export function vectorResizeHandleAt(paths:VectorPath[],ids:string[],point:VectorPoint,tolerance:number):VectorResizeHandle|undefined{
+  const box=vectorSelectionBounds(paths,ids);if(!box)return;
+  return boxResizeHandleAt(box,point,tolerance);
 }
 export function vectorAnchorAt(paths:VectorPath[],ids:string[],point:VectorPoint,tolerance:number,handles=true){
   for(const path of [...paths].reverse())if(ids.includes(path.id)){
