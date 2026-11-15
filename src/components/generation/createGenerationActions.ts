@@ -9,7 +9,7 @@ import type { LocalModelPreferences } from '../../lib/localModelPreferences.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../../lib/browserFiles.ts';
 import { requireHumanPoseGenerationReady } from '../../lib/humanPoseSelection.ts';
 import { cloudModelAccess } from '../../lib/modelPrivacy.ts';
-import { generationHandoff } from '../../lib/generationHandoff.ts';
+import type { AgentWorkflowYamlFile } from '../../lib/generationHandoff.ts';
 import { prepareQwenJob, submitQwenJob, reconcileQwenJob } from '../../lib/localBridge.ts';
 import { withImageGenerationServices } from '../../lib/localBridgeLifecycle.ts';
 
@@ -37,6 +37,8 @@ interface CreateGenerationActionsInputs {
   connection: LocalModelPreferences;
   defaultNegative: string | undefined;
   negative: string | undefined;
+  defaultUpsampler?: boolean;
+  usePromptUpsampler?: boolean;
   figureChroma: boolean;
   chromaKeyColor: string;
   ensureComfy: (endpoint?: string) => Promise<void>;
@@ -44,9 +46,10 @@ interface CreateGenerationActionsInputs {
   setAttempt: Dispatch<StateUpdater<string | null>>;
   setJob: Dispatch<StateUpdater<QwenJob | null>>;
   comfySession: Cell<string | null>;
+  exportAgentYaml?: () => AgentWorkflowYamlFile[];
 }
 
-export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession }: CreateGenerationActionsInputs) {
+export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml }: CreateGenerationActionsInputs) {
   async function insertResult(result:QwenJob){
     if(!result.image||!result.fileName)throw new Error('差し込む画像がありません');
     const bytes=Uint8Array.from(atob(result.image.split(',')[1]),char=>char.charCodeAt(0));
@@ -56,8 +59,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     if(!target.outputFrame)return file;
     const bitmap=await createImageBitmap(file);
     try{
-      if(target.threeImages && preserveAspect){
-        if(bitmap.width!==target.width || bitmap.height!==target.height)throw new Error('生成画像の寸法がコマと一致しません');
+      if(target.threeImages && preserveAspect && bitmap.width===target.width && bitmap.height===target.height){
         return file; // Preserve the print DPI and pixels of the adopted PNG.
       }
       const canvas=document.createElement('canvas');canvas.width=target.width;canvas.height=target.height;
@@ -92,7 +94,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     const translationRoute=requiresLlm?resolveConversationRoute(currentConversationPreferences(),connection,execution.cloud,adultContent):undefined;
     if(translationRoute?.kind==='unavailable')throw new Error(translationRoute.message);
     const capturedDraft=draft.current,{references,correction}=capturedDraft;
-    if(plan.characterKeys?.length && plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key))))throw new Error('人物に紐づく設定画を読み込めません');
+    if(plan.characterKeys?.length && (plan.promptlessTwoImages ? !references.length : plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key)))))throw new Error('人物に紐づく設定画を読み込めません');
     if(threeImages&&!usesPoseImage)throw new Error('image1で3Dモデルを調整してください');
     if(plan.humanPose)requireHumanPoseGenerationReady(plan.humanPose.selection);
     const abort=new AbortController();generationAbort.current=abort;
@@ -101,22 +103,28 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     const capturedPose=usesPoseImage?await posePending.current:undefined;
     if(!isCurrent())throw new Error('生成を中止しました');
     const target=qwenGenerationTarget(plan,Boolean(correction));
-    const payload=validateGenerationInputs(plan,capturedDraft,threeImages,cloud?null:workflow,capturedPose);
     if(cloud){
       if(route.kind!=='external-agent')throw new Error('画像生成の実行先を確認してください');
       // A withdrawal during capture cancels handoff; it never selects a different destination.
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
       if(!access.allowed)throw new Error(access.reason==='adult-terms-required'?'環境設定でクラウドの成人向け利用条件を確認してください':'環境設定でクラウドを選んでください');
+      if(!exportAgentYaml)throw new Error('OMNY（YAML）の書き出し先が接続されていません');
       const agent=route.label;
-      downloadBrowserBlob(generationHandoff(target,payload,agent),`generation-${plan.pageNumber}-${plan.ownerKey}.zip`);
+      const files=exportAgentYaml();
+      if(!files.length)throw new Error('書き出すOMNY（YAML）がありません');
+      for(const file of files){
+        downloadBrowserBlob(new Blob([file.yaml],{type:'application/yaml;charset=utf-8'}),file.fileName);
+      }
       generatedTarget.current={plan:target};
-      setNotice(`${agent}へ渡す指示と参照画像を保存しました。生成したPNGを「生成画像を読み込む」で戻せます。`);
+      setNotice(`${agent}へ渡すOMNY（${files.map(file=>file.fileName).join('、')}）を書き出しました。標準ワークフロー・OMAYとキャラクター資料を使って生成し、完成したPNGを「生成画像を読み込む」で戻してください。`);
       return {inserted:false};
     }
+    const payload=validateGenerationInputs(plan,capturedDraft,threeImages,workflow,capturedPose);
     if(!workflow)throw new Error(missingWorkflow||'ワークフローを確認しています');
     const workflowPayload={...payload,workflow_id:workflow.id,workflow_version:workflow.version,comfyui_url:connection.comfyuiUrl,
       ...(defaultNegative!==undefined?{negative_prompt:negative}:{}),
-      ...(figureChroma?{chroma_key_color:chromaKeyColor,candidate_cutout:true}:{})};
+      ...(defaultUpsampler!==undefined?{use_prompt_upsampler:Boolean(usePromptUpsampler)}:{}),
+      ...(figureChroma?{chroma_key_color:chromaKeyColor,candidate_cutout:true}:plan.ownerKey.startsWith('figure-')?{candidate_cutout:true}:{})};
     await ensureComfy();
     if(!isCurrent())return;
     const id=crypto.randomUUID();
@@ -134,7 +142,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
       ...(autoInsert?{insert:insertResult}:{}),
       services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm,
         ...(translationRoute?.kind==='local'?{llmModelAlias:translationRoute.llmAlias}:{}),onPhase:value=>{
-        if(alive.current)setPhase({bridge:'準備中',llm:'英訳の準備中',translate:Boolean(plan.contentKind)?'生成指示を保存中':'英訳を保存中',suspend:'文章LLMを停止中',generate:'5枚の画像を生成中',restore:'生成後の復帰を確認中'}[value]);
+        if(alive.current)setPhase({bridge:'準備中',llm:'英訳の準備中',translate:Boolean(plan.contentKind)?'生成指示を保存中':'英訳を保存中',suspend:'文章LLMを停止中',generate:'画像を生成中',restore:'生成後の復帰を確認中'}[value]);
       }}),
     });
   },autoInsert);}

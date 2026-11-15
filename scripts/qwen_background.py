@@ -45,7 +45,7 @@ def remove_chroma_background(raw, settings, *, dpi=None, polygon=None):
     return output.getvalue()
 
 
-def remove_white_background(raw):
+def remove_white_background(raw, *, dpi=None):
     """Keep enclosed white areas. Feather only the exterior antialiased edge."""
     with Image.open(io.BytesIO(raw)) as source:
         image = source.convert('RGBA')
@@ -77,5 +77,5 @@ def remove_white_background(raw):
                     opacity[x, y] = round(opacity[x, y] * coverage / 255)
     image.putalpha(alpha)
     output = io.BytesIO()
-    image.save(output, format='PNG')
+    image.save(output, format='PNG', **({'dpi': (dpi, dpi)} if dpi else {}))
     return output.getvalue()

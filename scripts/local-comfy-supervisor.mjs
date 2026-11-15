@@ -173,7 +173,8 @@ export class LocalComfyController {
   }
   release(token) {
     this.cancelled.add(token); // Reach a pending acquire before its serial queue finishes.
-    this.observers.get(token)?.socket.close(); this.observers.delete(token);
+    const observer = this.observers.get(token);
+    if (observer) { clearTimeout(observer.idleTimer); observer.socket.close(); this.observers.delete(token); }
     return this.exclusive(async () => {
       const released = this.leases.delete(token);
       let stopped;
@@ -204,6 +205,14 @@ export class LocalComfyController {
       });
       this.observers.set(token,entry);
     }
+    clearTimeout(entry.idleTimer);
+    entry.idleTimer = setTimeout(() => {
+      if (this.observers.get(token) === entry) {
+        entry.socket.close();
+        this.observers.delete(token);
+      }
+    }, 6_000);
+    entry.idleTimer.unref?.();
     if(prompt_id) { if(entry.promptId && entry.promptId !== prompt_id) entry.node = null; entry.promptId = prompt_id; }
     return {node:entry.node,connected:entry.socket.readyState === 1};
   }

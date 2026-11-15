@@ -63,7 +63,7 @@ export function usePageOverlayArtwork(options: CanvasProps, state: CanvasSurface
       data-content-target data-content-overlay data-content-kind="figure" data-content-index={figureIndex} data-agent-working={agentWorking(selection)||undefined} class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
       onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
-      onClick={(event) => { event.stopPropagation(); onSelectElement(selection); }}
+      onClick={(event) => { event.stopPropagation(); onSelectElement(selection, undefined, true, event.shiftKey); }}
       onContextMenu={event => openGenerationMenu(event, 0, figureIndex, true)}
       onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, 0, figureIndex, true); else nudgeElement(event, paperBounds, selection, box); }}
       key={figure.analogImport?.sourceRegionId ?? `page-overlay-figure-${figureIndex}`}
@@ -88,7 +88,7 @@ export function usePageOverlayArtwork(options: CanvasProps, state: CanvasSurface
       data-content-target data-content-overlay data-content-kind="screen_text" data-content-index={index}
       class={`canvas-element screen-text-guide page-overlay-element ${screenText.orientation==='vertical'?'is-vertical':''} ${isSelected?'is-element-selected':''}`}
       style={{...paperBoxStyle(box),'--text-tool-cursor':textToolCursor(textStyleOf(screenText,'screen_text'))}} onPointerDown={event=>startInteraction(event,null,selection,box,'move')}
-      onClick={event=>{event.stopPropagation();onSelectElement(selection);if(textTool)onEditScreenText?.(0,index,true);}}
+      onClick={event=>{event.stopPropagation();onSelectElement(selection, undefined, true, event.shiftKey);if(textTool)onEditScreenText?.(0,index,true);}}
       onKeyDown={event=>{nudgeElement(event,paperBounds,selection,box);}}
       aria-label={textDisplayLabel((overlay?.bubbles?.length??0)+index)} tabIndex={activePanel>=0?0:-1}>
       <span class={`screen-text-body ${screenText.orientation==='vertical'?'vertical-text':''}`} style={textStyleCss(textStyleOf(screenText,'screen_text'),canvas.w,defaultBubbleFont)}>{textStyleSegments(screenText).map((part,i)=><span key={i} style={textInlineStyleCss(part)}>{part.text}</span>)}</span>
@@ -115,7 +115,7 @@ export function usePageOverlayArtwork(options: CanvasProps, state: CanvasSurface
       data-content-target data-agent-working={agentWorking(selection)||undefined} class={`canvas-element bubble-guide page-overlay-element bubble-${bubble.shape ?? 'normal'} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto','--text-tool-cursor':textToolCursor(textStyleOf(bubble,'bubble'))}} data-artwork-locked={elementLocked(selection)||undefined}
       onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
-      onClick={(event) => { event.stopPropagation(); onSelectElement(selection);if(textTool)onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}); }}
+      onClick={(event) => { event.stopPropagation(); onSelectElement(selection, undefined, true, event.shiftKey);if(textTool)onEditBubble?.({panelIndex:0,bubbleIndex,overlay:true}); }}
       onContextMenu={event=>openGenerationMenu(event,0,undefined,true,bubbleIndex)}
       onKeyDown={event=>{if(elementLocked(selection))return;if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,0,undefined,true,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
       aria-label={textDisplayLabel(bubbleIndex)}

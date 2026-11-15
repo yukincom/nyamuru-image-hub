@@ -13,6 +13,8 @@ interface UseGenerationReferencesInputs {
   sourcePlan: QwenGenerationPlan;
   setSourceErrors: Dispatch<StateUpdater<{ expression: string; character: string; }>>;
   threeImages: boolean;
+  twoImagesPromptless?: boolean;
+  selectedCharacterAssetId?: string;
   characterRetry: number;
   setSketchLoading: Dispatch<StateUpdater<boolean>>;
   setReference: Dispatch<StateUpdater<QwenLayerReference | undefined>>;
@@ -34,22 +36,31 @@ interface UseGenerationReferencesInputs {
   setCorrection: Dispatch<StateUpdater<QwenLayerReference | undefined>>;
 }
 
-export function useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection }: UseGenerationReferencesInputs) {
+export function useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, twoImagesPromptless = false, selectedCharacterAssetId, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection }: UseGenerationReferencesInputs) {
   useEffect(()=>{
     let current=true;
     setLinked([]);setCharacterLoading(Boolean(sourcePlan.characterKeys.length));
     setSourceErrors(old=>({...old,character:''}));
     if(!sourcePlan.characterKeys.length)return;
-    void withNewCreationBridgeSession(async()=>Promise.all(sourcePlan.characterKeys.map(async key=>{
-      const candidate=sourcePlan.candidates.find(item=>item.characterKeys?.includes(key) || !item.characterKeys&&sourcePlan.characterKeys.length===1);
-      if(!candidate)throw new Error('この人物に紐づくキャラクター設定画がありません');
-      const blob=await loadCharacterReferenceImage(candidate.seriesId,candidate.characterCatalogId,candidate.source.asset_id);
-      if(!blob)throw new Error(`${candidate.label}の設定画が見つかりません`);
-      return {label:candidate.label,characterKeys:[key],image:(await qwenInputImage(blob,undefined,threeImages)).image};
-    }))).then(result=>{if(current)setLinked(result);}).catch(cause=>{if(current)setSourceErrors(old=>({...old,character:String(cause.message??cause)}));})
+    const native = threeImages || twoImagesPromptless;
+    void withNewCreationBridgeSession(async()=>{
+      if(twoImagesPromptless&&sourcePlan.candidates.length){
+        const chosen=(selectedCharacterAssetId&&sourcePlan.candidates.find(item=>item.source.asset_id===selectedCharacterAssetId))||sourcePlan.candidates[0];
+        const blob=await loadCharacterReferenceImage(chosen.seriesId,chosen.characterCatalogId,chosen.source.asset_id);
+        if(!blob)throw new Error(`${chosen.label}の設定画が見つかりません`);
+        return [{label:chosen.label,characterKeys:chosen.characterKeys??[sourcePlan.characterKeys[0]],image:(await qwenInputImage(blob,undefined,true)).image}];
+      }
+      return Promise.all(sourcePlan.characterKeys.map(async key=>{
+        const candidate=sourcePlan.candidates.find(item=>item.characterKeys?.includes(key) || !item.characterKeys&&sourcePlan.characterKeys.length===1);
+        if(!candidate)throw new Error('この人物に紐づくキャラクター設定画がありません');
+        const blob=await loadCharacterReferenceImage(candidate.seriesId,candidate.characterCatalogId,candidate.source.asset_id);
+        if(!blob)throw new Error(`${candidate.label}の設定画が見つかりません`);
+        return {label:candidate.label,characterKeys:[key],image:(await qwenInputImage(blob,undefined,native)).image};
+      }));
+    }).then(result=>{if(current)setLinked(result);}).catch(cause=>{if(current)setSourceErrors(old=>({...old,character:String(cause.message??cause)}));})
       .finally(()=>{if(current)setCharacterLoading(false);});
     return()=>{current=false;};
-  },[sourcePlan,characterRetry,threeImages]);
+  },[sourcePlan,characterRetry,threeImages,twoImagesPromptless,selectedCharacterAssetId]);
   useEffect(()=>{
     let current=true;
     const source=sourcePlan.expressionSource;
@@ -69,7 +80,7 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
     if(attempted.current)throw new Error('生成を開始した資料は変更できません');
     if(draft.current.references.length+files.length>referenceLimit)throw new Error(`参照資料は最大${referenceLimit}枚です${usesPoseImage?'（3Dポーズ画像を別に1枚送ります）':''}`);
     const loaded:QwenReference[]=[];
-    for(const file of files)loaded.push({label:file.name,characterKeys:[],image:(await qwenInputImage(file)).image});
+    for(const file of files)loaded.push({label:file.name,characterKeys:[],image:(await qwenInputImage(file,undefined,twoImagesPromptless)).image});
     if(alive.current)setExtra(previous=>[...previous,...loaded]);
   });}
   async function selectLayer(slot:'reference'|'correction',id:string){await operation(async()=>{
@@ -77,7 +88,7 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
     if(id&&(!candidate||candidate.empty||!loadLayer))throw new Error('参照できるレイヤーを選んでください');
     const referenceCandidate=slot==='reference'?candidate:reference,correctionCandidate=slot==='correction'?candidate:correction;
     const crop=Boolean(plan.contentKind)&&!correctionCandidate?plan.generationArea:undefined;
-    const nextReference=referenceCandidate?{...referenceCandidate,image:await loadLayer!(referenceCandidate.id,false,crop,threeImages)}:undefined;
+    const nextReference=referenceCandidate?{...referenceCandidate,image:await loadLayer!(referenceCandidate.id,false,crop,threeImages||twoImagesPromptless)}:undefined;
     const nextCorrection=correctionCandidate?{...correctionCandidate,image:await loadLayer!(correctionCandidate.id,true)}:undefined;
     if(!alive.current)return;
     const nextPrompt=!threeImages&&draft.current.prompt===qwenGenerationPrompt(plan,reference,correction)

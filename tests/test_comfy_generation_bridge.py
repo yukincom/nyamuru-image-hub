@@ -124,7 +124,7 @@ class IntegrationTests(unittest.TestCase):
         return {'job_id': str(uuid4()), 'workflow_id': workflow['id'], 'workflow_version': workflow['version'],
                 'comfyui_url': self.api.endpoint, 'profile': PROFILE, 'document_key': 'fixture-work',
                 'page_number': 1, 'panel_id': 1, 'overlay': False, 'owner_key': 'figure-1',
-                'label': 'Subject', 'mode': 'new', 'width': 64, 'height': 64, 'prompt': 'Keep this exact.\n日本語本文',
+                'label': 'Subject', 'mode': 'new', 'width': 64, 'height': 64, 'candidate_count': 5, 'prompt': 'Keep this exact.\n日本語本文',
                 'character_keys': [], 'references': [{'label': f'ref-{i}', 'character_keys': [],
                     'image': 'data:image/png;base64,' + base64.b64encode(png((i, 0, 0))).decode()} for i in range(count)]}
 
@@ -235,11 +235,22 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.service.store.read(body['job_id'], 'candidate-1.png'), raw)
         jpeg = io.BytesIO()
         Image.new('RGB', tuple(value['output_size'])).save(jpeg, format='JPEG')
-        for index, bad in enumerate((jpeg.getvalue(), png('white', (32, 32))), 2):
+        for index, bad in enumerate((jpeg.getvalue(), png('white', (32, 32)), png('white', (1024, 256))), 2):
             with self.subTest(index=index), patch.object(self.api, 'get_image', return_value=bad):
                 with self.assertRaises(ComfyOutputError):
                     collect_candidate(self.service, body['job_id'], index, self.api, submission=submission, value=value)
                 self.assertFalse((self.service.store.root / body['job_id'] / f'candidate-{index}.png').exists())
+        scaled = png('white', (round(value['output_size'][0] * 0.6), round(value['output_size'][1] * 0.6)))
+        with patch.object(self.api, 'get_image', return_value=scaled):
+            self.assertEqual(collect_candidate(self.service, body['job_id'], 5, self.api, submission=submission, value=value), 'succeeded')
+        self.assertEqual(self.service.store.read(body['job_id'], 'candidate-5.png'), scaled)
+
+    def test_single_candidate_workflow_succeeds_without_output_png(self):
+        body = {**self.body(), 'candidate_count': 1}
+        self.prepare(body)
+        result = self.run_job(body)
+        self.assertEqual(result['status'], 'succeeded')
+        self.assertTrue(result['image'].startswith('data:image/png;base64,'))
 
     # 見込み: 途中拒否は完成候補を残し、選択へ進まない。
     # 合格: 候補1だけ保存、失敗、採用拒否、候補3以降のPOST無し。範囲: 2回目HTTP拒否の模擬。

@@ -252,7 +252,7 @@ async function verifyTextInfoGeneration(){
   await click('閉じる');
   await savedWait(()=>JSON.stringify(saved())===JSON.stringify(before),'取消しで文書を変えない');
   await check(()=>history('元に戻す').disabled===beforeUndo,`${name}: 取消しで本文/配置/履歴を変えない`);
-  await click(generateLabel);await wait(()=>!!document.querySelector('.qwen-generation-dialog'),'再確認');await wait(()=>Array.from(document.querySelectorAll<HTMLButtonElement>('button')).some(b=>b.textContent?.trim()==='5枚を生成する'&&!b.disabled),'ワークフロー確認');await click('5枚を生成する');
+  await click(generateLabel);await wait(()=>!!document.querySelector('.qwen-generation-dialog'),'再確認');await wait(()=>Array.from(document.querySelectorAll<HTMLButtonElement>('button')).some(b=>b.textContent?.trim()==='生成'&&!b.disabled),'ワークフロー確認');await click('生成');
   await wait(()=>document.querySelectorAll('.qwen-candidate').length===5,'5候補');document.querySelectorAll<HTMLButtonElement>('.qwen-candidate')[2].click();await tick();await click('選んだ1枚を採用する');
   await wait(()=>!!button('新規レイヤーとして追加')&&!button('新規レイヤーとして追加').disabled,'模擬生成完了');
   const request=generationRequests.at(-1)!;await check(()=>request.content_kind===(sourceKind==='handwritten'?'handwritten':'typeset')&&(request.literal_text as string[])?.[0]===literal,`${name}: 正しい種類と本文で送信`);

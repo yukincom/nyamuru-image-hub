@@ -1,7 +1,7 @@
 import ProjectFileInput from './ProjectFileInput';
 import type { MangaDocument, Character, Material } from '../types.ts';
 import { useRef, useState, useEffect } from 'preact/hooks';
-import { CHARACTER_RECOGNITION_FIELDS, imageFileToPng, prepareCharacterReferenceDestination, CHARACTER_REFERENCE_LONG_EDGE, CHARACTER_REFERENCE_SHORT_EDGE, applySuggestedReferenceView, CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
+import { CHARACTER_RECOGNITION_FIELDS, imageFileToPng, prepareCharacterReferenceDestination, applySuggestedReferenceView, CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
 import { type CharacterReferenceSetSuggestion, saveCharacterReferenceImage, deleteCharacterReferenceImage, analyzeCharacterReferenceSetWithLocalVlm } from '../lib/localBridge.ts';
 import { beginFigureCropImport } from '../lib/figureCropStore';
 import { guessedView, uniqueMaterialName, emptyRecognition, ReferenceThumbnail, CandidateEvidence, emptyEvidence } from './referenceDetails.tsx';
@@ -209,11 +209,7 @@ export default function CharacterReferences({ document, character, onChange, onN
       await addImages(await onChooseImageFiles());
     } catch (error) {
       const message = error instanceof Error ? error.message : '人物資料画像を選べませんでした';
-      if (/MBを超え/.test(message)) {
-        setFileErrors([`${message}。設定画は長辺${CHARACTER_REFERENCE_LONG_EDGE} px・短辺${CHARACTER_REFERENCE_SHORT_EDGE} px以内に縮小して選び直してください。`]);
-      } else {
-        notify(message);
-      }
+      notify(message);
     }
   };
 

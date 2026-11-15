@@ -2,6 +2,7 @@ import type {
   CanvasElementSelection, TextStyle, ImageAsset, MangaPage, BBox, BubbleTailTarget, BubbleTailRoot,
   BubbleTextPosition, Bubble, Panel, PersistentAnalogAssetRef, TextStyleRange,
 } from '../../types';
+import type { MultiFigureTarget } from '../../lib/canvasSelection';
 import {
   type TextStylePatch, type TextSelection, textStyleCss, textStyleSegments, textInlineStyleCss,
 } from '../../lib/textStyle';
@@ -46,6 +47,7 @@ export interface MangaCanvasProps {
   guideVisible:(key:string,panelIndex:number,overlay?:boolean)=>boolean;
   onToggleGuide:(key:string,panelIndex:number,overlay?:boolean)=>void;
   onGenerateArtwork:(key:string,panelIndex:number,overlay?:boolean)=>void;
+  onGenerateMultiFigures?:(targets:MultiFigureTarget[])=>void;
   onGenerateComposition?:(scope:'page'|'panel',panelIndex:number)=>void;
   onReplaceArtwork?: (panelIndex: number, figureIndex?: number, overlay?: boolean, bubbleIndex?:number) => void;
   imageAssets?: ImageAsset[];
@@ -64,13 +66,15 @@ export interface MangaCanvasProps {
   activePanel: number;
   selectedPanels: readonly number[];
   selectedElement: CanvasElementSelection | null;
+  selectedElements?: readonly CanvasElementSelection[];
   showGuides: boolean;
   innerFrameSnap: boolean;
   panelGutters: PanelGutterSettings;
   panelGapSnap: boolean;
   panelSync: boolean;
   onSelectPanel: (index: number, additive?: boolean) => void;
-  onSelectElement: (selection: CanvasElementSelection | null, panelIndex?: number, revealDetails?: boolean) => void;
+  onSelectElement: (selection: CanvasElementSelection | null, panelIndex?: number, revealDetails?: boolean, additive?: boolean) => void;
+  onSelectElements?: (selections: readonly CanvasElementSelection[], additive?: boolean) => void;
   onChangeElementBBox: (selection: CanvasElementSelection, bbox: BBox) => void;
   onChangeBubbleTail: (selection: CanvasElementSelection, tail?: BubbleTailTarget, patch?:{bezier?:BubbleBezier;tailRoot?:BubbleTailRoot;textPosition?:BubbleTextPosition}) => void;
   onMovePanel: (panelIndex: number, deltaX: number, deltaY: number) => void;

@@ -10,11 +10,12 @@ import { innerFrameBounds, type ResizeHandle, fallbackBox, panelBounds } from '.
 import { pageBoxStyle, type CanvasProps } from './CanvasElements';
 import { overlayFallbackBox as pageOverlayFallbackBox } from '../../lib/pageCanvas.ts';
 import { artworkPixelSize, copyArtworkSize } from '../../lib/artworkClipboard';
+import { extractFigureTargets, sameCanvasSelection } from '../../lib/canvasSelection';
 
 export function useCanvasSurface(options: CanvasProps) {
   const {
     paintTarget, page, activePanel, textTool, onSelectNativeElement, spreadSide, outputSize, dpi,
-    zoomPercent, painting, onSelectPanel, onNotify, selectedElement,
+    zoomPercent, painting, onSelectPanel, onNotify, selectedElement, selectedElements = [],
   } = options;
   const bubblePathTool=useContext(BubblePathToolContext);
   const paintGeometry=useContext(PaintGeometryContext);
@@ -33,13 +34,13 @@ export function useCanvasSurface(options: CanvasProps) {
     if(selection.type==='figure'){const figure=target?.figures?.[selection.index];return Boolean(figure?.locked)||artworkLocked(figure?.artwork);}
     const bubble=target?.bubbles?.[selection.index];return Boolean(bubble&&ownerItemLocked(bubble))||(!textTool&&artworkLocked(bubble?.paint_overlay));
   };
-  const onSelectElement=(selection:CanvasElementSelection|null,panelIndex?:number,revealDetails=true)=>{
+  const onSelectElement=(selection:CanvasElementSelection|null,panelIndex?:number,revealDetails=true,additive=false)=>{
     if(selection&&elementLocked(selection,panelIndex))return;
     if(backgroundEdit){
       if(selection&&(panelIndex===undefined||panelIndex===paintTarget?.panelIndex)&&selection.scope!=='page_overlay'&&(selection.type==='figure'||selection.type==='bubble'))backgroundEdit.select(`${selection.type}-${selection.index}`);
       return;
     }
-    onSelectNativeElement(selection,panelIndex,revealDetails);
+    onSelectNativeElement(selection,panelIndex,revealDetails,additive);
   };
   const previewOwner=(key:string,index:number,overlay=false)=>paintTarget&&paintTarget.overlay===overlay&&(overlay||paintTarget.panelIndex===index)?paintGeometry?.owners.find(o=>o.key===key):undefined;
   const nativeBox=(item:Figure|Bubble,box:BBox,key:string,index:number,overlay=false)=>{
@@ -116,6 +117,8 @@ export function useCanvasSurface(options: CanvasProps) {
   const generationMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setGenerationMenu(null); }, [page]);
   useEffect(() => { generationMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus(); }, [generationMenu]);
+  const isMultiSelection = selectedElements.length > 1;
+  const multiFigureTargets = isMultiSelection ? extractFigureTargets(selectedElements, page, activePanel) : [];
   const openGenerationMenu = (event: MouseEvent | KeyboardEvent, panelIndex: number, figureIndex?: number, isOverlay = false, bubbleIndex?:number) => {
     event.preventDefault(); event.stopPropagation();
     if(backgroundEdit)return;
@@ -123,8 +126,17 @@ export function useCanvasSurface(options: CanvasProps) {
     const x = 'clientX' in event && event.clientX ? event.clientX : rect.left;
     const y = 'clientY' in event && event.clientY ? event.clientY : rect.bottom;
     setGenerationMenu({ x, y, panelIndex, figureIndex, bubbleIndex, overlay: isOverlay });
+    const targetSelection: CanvasElementSelection | undefined = bubbleIndex !== undefined
+      ? { type: 'bubble', index: bubbleIndex, ...(isOverlay ? { scope: 'page_overlay' as const } : { panelIndex }) }
+      : figureIndex !== undefined
+        ? { type: 'figure', index: figureIndex, ...(isOverlay ? { scope: 'page_overlay' as const } : { panelIndex }) }
+        : undefined;
+    const keepMultiSelection = isMultiSelection && (
+      !targetSelection
+      || selectedElements.some(entry => sameCanvasSelection(entry, targetSelection, activePanel))
+    );
     // The passive facing-page canvas must stay mounted until an action is chosen.
-    if (activePanel >= 0&&panelIndex>=0&&!painting) {
+    if (!keepMultiSelection && activePanel >= 0&&panelIndex>=0&&!painting) {
       if(bubbleIndex!==undefined)onSelectElement({type:'bubble',index:bubbleIndex,...(isOverlay?{scope:'page_overlay' as const}:{})},isOverlay?undefined:panelIndex);
       else if (figureIndex === undefined) onSelectPanel(panelIndex);
       else onSelectElement({ type: 'figure', index: figureIndex, ...(isOverlay ? { scope: 'page_overlay' as const } : {}) }, isOverlay ? undefined : panelIndex);
@@ -171,7 +183,7 @@ export function useCanvasSurface(options: CanvasProps) {
     fitEpoch, setFitEpoch, basePaperWidth, layoutPaperWidth, screenUnit, fitPercent, setFitPercent,
     outputWidth, outputHeight, bleedMm, cropMarks, printMarginMm, printGuideWidthMm, renderPrintGuides,
     printGuideStyle, cropMarkPath, zoomPercentRef, spacePressedRef, generationMenu, setGenerationMenu,
-    generationMenuRef, openGenerationMenu, menuPanel, menuFigure, menuBubble, menuKey, menuBox,
+    generationMenuRef, openGenerationMenu, isMultiSelection, multiFigureTargets, menuPanel, menuFigure, menuBubble, menuKey, menuBox,
     menuScope, menuSize, copyMenuSize, paperBounds, overlayFallbackBox, overlay, overlayBubbles,
     panelSelectionVisible, selectedPanel, selectedBounds, selectedItem, selectedAnchor,
   } as const;

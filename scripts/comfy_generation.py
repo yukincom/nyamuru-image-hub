@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 import io
 import json
+import os
 from hashlib import sha256
 from pathlib import Path
 from uuid import UUID, uuid5
@@ -46,6 +47,19 @@ def missing_candidate(store, job_id, index):
     return 'unknown'
 
 
+def valid_output_dimensions(actual_size, expected_size):
+    """Accept static PNGs with sane bounds and aspect ratio matching expected dimensions."""
+    actual_w, actual_h = actual_size
+    expected_w, expected_h = expected_size
+    if not (64 <= actual_w <= 16384 and 64 <= actual_h <= 16384):
+        return False
+    if expected_w <= 0 or expected_h <= 0:
+        return False
+    actual_ratio = actual_w / actual_h
+    expected_ratio = expected_w / expected_h
+    return max(actual_ratio / expected_ratio, expected_ratio / actual_ratio) <= 1.25
+
+
 def collect_candidate(service, job_id, index, client, *, submission=None, value=None):
     """Reconcile only an already submitted candidate. Never sends a prompt."""
     store = service.store
@@ -83,8 +97,8 @@ def collect_candidate(service, job_id, index, client, *, submission=None, value=
             from PIL import Image
             try:
                 with Image.open(io.BytesIO(raw)) as image:
-                    if image.format != 'PNG' or getattr(image, 'is_animated', False) or list(image.size) != value['output_size']:
-                        raise ComfyOutputError('ワークフローの完成画像は準備した寸法の静止PNGにしてください')
+                    if image.format != 'PNG' or getattr(image, 'is_animated', False) or not valid_output_dimensions(image.size, value['output_size']):
+                        raise ComfyOutputError('ワークフローの完成画像は静止PNGで、極端な寸法・縦横比のずれがない画像にしてください')
                     if 'dpi' in value:
                         density = image.info.get('dpi')
                         if not isinstance(density,tuple) or len(density)!=2 or not all(
@@ -152,21 +166,77 @@ def desktop_workflow_for_job(definition, graph):
     return workflow
 
 
+def _comfy_output_dir():
+    """Return local ComfyUI output directory if discoverable, else None."""
+    explicit = os.environ.get('NYAMURU_COMFYUI_OUTPUT_DIR')
+    if explicit:
+        path = Path(explicit)
+        return path if path.is_dir() else None
+    config_root = Path(os.environ.get('NYAMURU_COMFY_DESKTOP_CONFIG') or (Path.home() / 'Library' / 'Application Support' / 'Comfy Desktop'))
+    try:
+        settings = json.loads((config_root / 'settings.json').read_text(encoding='utf-8'))
+        output_dir = settings.get('outputDir')
+        if isinstance(output_dir, str) and output_dir:
+            path = Path(output_dir)
+            if path.is_dir():
+                return path
+    except (OSError, ValueError):
+        pass
+    comfy_dir = os.environ.get('NYAMURU_COMFYUI_DIR')
+    if comfy_dir:
+        path = Path(comfy_dir) / 'output'
+        if path.is_dir():
+            return path
+    return None
+
+
+def _dir_mtime_ns(path):
+    try:
+        return path.stat().st_mtime_ns
+    except OSError:
+        return None
+
+
+def _flatten_alpha_to_white(raw):
+    """Composite transparent PNGs onto white so ComfyUI LoadImage does not expose black RGB."""
+    from PIL import Image
+    with Image.open(io.BytesIO(raw)) as source:
+        has_alpha = 'A' in source.getbands() or 'transparency' in source.info
+        if not has_alpha:
+            return raw
+        rgba = source.convert('RGBA')
+        alpha = rgba.getchannel('A')
+        if alpha.getextrema()[0] == 255:
+            return raw
+        white = Image.new('RGBA', rgba.size, (255, 255, 255, 255))
+        composited = Image.alpha_composite(white, rgba).convert('RGB')
+        dpi = source.info.get('dpi')
+        output = io.BytesIO()
+        composited.save(output, format='PNG', **({'dpi': dpi} if isinstance(dpi, tuple) and len(dpi) == 2 else {}))
+        return output.getvalue()
+
+
 def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.monotonic):
     store, value = service.store, service.load(job_id)
     client = service.client_factory(value['comfyui_url'])
     uploads = read_optional(store, job_id, 'api-uploads.json')
     if uploads is None:
         # A single ordered upload is reused by all five executions.
-        uploads = [client.upload_image(store.read(job_id, ref['file']), f'nyamuru-{job_id}-{ref["file"]}')
-                   for ref in value['references']]
+        flatten_white = (
+            value['workflow']['binding'].get('prompt_mode') == 'promptless-two-images'
+            or value['settings'].get('transparency_mode') == 'code-white-v1'
+        )
+        uploads = [client.upload_image(
+            _flatten_alpha_to_white(store.read(job_id, ref['file'])) if flatten_white else store.read(job_id, ref['file']),
+            f'nyamuru-{job_id}-{ref["file"]}',
+        ) for ref in value['references']]
         store.write_once(job_id, 'api-uploads.json', canonical(uploads))
     prompt = store.read(job_id, 'conditioning-prompt.txt').decode('utf-8')
     for index, seed in enumerate(value['candidate_seeds'], 1):
         if (store.root / job_id / 'cancel-request.json').exists():
             raise ValueError('生成を取り消しました。取得済みの候補は保持しています')
         correlation = submission_id(job_id, index)
-        graph = bind_graph(value['workflow'], prompt, uploads, seed, *value['output_size'], negative_prompt=value.get('negative_prompt'), dpi=value.get('dpi'))
+        graph = bind_graph(value['workflow'], prompt, uploads, seed, *value['output_size'], negative_prompt=value.get('negative_prompt'), dpi=value.get('dpi'), use_prompt_upsampler=value.get('use_prompt_upsampler'))
         # Both intent records precede POST. A lost reply is never an excuse to replay.
         intent = {'correlation_id': correlation, 'seed': seed}
         submission = dict(intent)
@@ -191,9 +261,13 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
         except ComfySubmissionUnknown:
             store.event(job_id, 'outcome_unknown', '受付応答を確認できません。送信済みIDを照合しています。再送はしません')
         deadline = now() + 7200
+        output_dir = _comfy_output_dir() if type(client) is ComfyClient else None
+        last_mtime = _dir_mtime_ns(output_dir) if output_dir else None
+        last_poll = deadline - 7200
         while True:
             try:
-                if (store.root / job_id / 'cancel-request.json').exists():
+                cancel_requested = (store.root / job_id / 'cancel-request.json').exists()
+                if cancel_requested:
                     if not submission.get('prompt_id'):
                         # The guardian reconciles an ambiguous POST using its persisted correlation ID.
                         raise ComfySubmissionUnknown(correlation, '生成の取消しを要求しました')
@@ -205,6 +279,15 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
                                 store.write_once(job_id, f'api-cancelled-{index}.json', canonical(cancelled))
                             except FileExistsError:
                                 pass
+                if output_dir is not None and not cancel_requested:
+                    current_mtime = _dir_mtime_ns(output_dir)
+                    if current_mtime == last_mtime and now() - last_poll < 30:
+                        if now() >= deadline:
+                            raise ComfySubmissionUnknown(correlation)
+                        sleep(4)
+                        continue
+                    last_mtime = current_mtime
+                last_poll = now()
                 state = collect_candidate(service, job_id, index, client, submission=submission, value=value)
                 if submission.get('prompt_id') != recorded_prompt_id:
                     recorded_prompt_id = submission['prompt_id']
@@ -232,5 +315,5 @@ def run_candidates(service, job_id, lease_fd, *, sleep=time.sleep, now=time.mono
                 break
             if now() >= deadline:
                 raise ComfySubmissionUnknown(correlation)
-            sleep(1)
+            sleep(4)
     save_candidates_manifest(store, job_id, len(value['candidate_seeds']))

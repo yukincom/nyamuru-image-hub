@@ -10,17 +10,12 @@ import { linkedTestDocument, PROP_A } from './fixtures/emptyTestDocument.ts';
 
 const sample = linkedTestDocument;
 
-// 選択画像の寸法判定。縦横どちらでも境界値を通し、一辺だけ超える場合も実寸と比率を保つ推奨値を返す。
-test('設定画の登録上限と推奨寸法は選択画像の向きに従う', () => {
-  for (const [width, height] of [[351, 248], [248, 351], [248, 248], [100, 50]]) {
+test('設定画の登録寸法は大きい画像も許可し、0以下の不正寸法だけ拒否する', () => {
+  for (const [width, height] of [[351, 248], [248, 351], [1024, 1536], [2048, 2048], [100, 50]]) {
     assert.doesNotThrow(() => checkCharacterReferenceSize(width, height));
   }
-  for (const [width, height, target] of [
-    [354, 189, '351 × 187'], [189, 354, '187 × 351'],
-    [300, 249, '299 × 248'], [249, 300, '248 × 299'], [249, 249, '248 × 248'],
-  ]) {
-    assert.throws(() => checkCharacterReferenceSize(width, height), error =>
-      error.message.includes(`${width} × ${height} px`) && error.message.includes(`推奨寸法 ${target} px`));
+  for (const [width, height] of [[0, 100], [100, 0], [0, 0]]) {
+    assert.throws(() => checkCharacterReferenceSize(width, height), /寸法を確認できません/);
   }
 });
 

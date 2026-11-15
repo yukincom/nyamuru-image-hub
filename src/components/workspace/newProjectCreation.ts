@@ -5,7 +5,9 @@ import type { DetectedPageLayout, NewLayoutTask } from '../../lib/newLayoutPrevi
 import { beginFigureCropImport, deleteFigureCropAssets, saveFigureCropAssets } from '../../lib/figureCropStore';
 import { isLanClient } from '../../lib/clientRuntime';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
-import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport, type SeriesCharacterTextLink } from '../../lib/localBridge';
+import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport, saveEpisodeProject, type SeriesCharacterTextLink } from '../../lib/localBridge';
+import { createProjectSnapshot } from '../../lib/projectPersistence';
+import { createPortableProject } from '../../lib/portableProject';
 import type { AnalogFigureImport, AnalogTextImport, MangaDocument, MangaSeriesSetting } from '../../types';
 import { detectedFigureImport, detectedFigureCrops } from '../../lib/analogFigureCrops';
 import { prepareDetectedTextCrops } from '../../lib/analogTextCrops';
@@ -263,6 +265,25 @@ export function createNewProjectAction({
         coverageSaveWarning = `原文確認reportは自動保存できませんでした: ${error instanceof Error ? error.message : '不明なエラー'}`;
       }
     }
+    let initialProjectRevision: string | undefined;
+    let projectSaveWarning = '';
+    setNewLayoutMessage('作品データを保存しています…');
+    try {
+      if (isLanClient) {
+        const folderTarget = await browserWorkspaces.saveTarget({
+          ...newEpisodeWorkspace,
+          projectRevision: null,
+        });
+        const portable = await createPortableProject(seriesMerge.document);
+        const written = await browserWorkspaces.write(portable, folderTarget);
+        initialProjectRevision = written.binding.revision;
+      } else {
+        const snapshot = await createProjectSnapshot(seriesMerge.document);
+        initialProjectRevision = await saveEpisodeProject(newEpisodeWorkspace.token, snapshot, null);
+      }
+    } catch (error) {
+      projectSaveWarning = `作品の自動保存に失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`;
+    }
     let bridgeStopWarning = '';
     setNewLayoutMessage('ローカル連携を終了しています…');
     try {
@@ -272,7 +293,11 @@ export function createNewProjectAction({
     }
     lastHistoryPush.current = 0;
     replaceDocument(seriesMerge.document);
-    setBoundEpisodeWorkspace({ ...newEpisodeWorkspace, episodeId: seriesMerge.document.manga.meta.episode_id });
+    setBoundEpisodeWorkspace({
+      ...newEpisodeWorkspace,
+      episodeId: seriesMerge.document.manga.meta.episode_id,
+      ...(initialProjectRevision !== undefined ? { projectRevision: initialProjectRevision } : {}),
+    });
     setBoundSourceSnapshot(newSourceSnapshot ? {
       ...newSourceSnapshot,
       episodeId: seriesMerge.document.manga.meta.episode_id,
@@ -298,7 +323,7 @@ export function createNewProjectAction({
     const completedMessage = importedDetails
       ? `${creationMessage}。${importedDetails}を配置しました${reviewTextCount || characterRead.needsReview ? `（${[reviewTextCount ? `OCR仮入力${reviewTextCount}件` : '', characterRead.needsReview ? `人物要確認${characterRead.needsReview}件` : ''].filter(Boolean).join('、')}）` : ''}${seriesMerge.warning ? `。${seriesMerge.warning}` : ''}`
       : `${creationMessage}${seriesMerge.warning ? `。${seriesMerge.warning}` : ''}`;
-    const completionWarnings = [coverageSaveWarning, bridgeStopWarning].filter(Boolean).join('。');
+    const completionWarnings = [coverageSaveWarning, projectSaveWarning, bridgeStopWarning].filter(Boolean).join('。');
     setToast(completionWarnings ? `${completedMessage}。${completionWarnings}` : completedMessage);
     } finally { finishImageImport(); }
   };

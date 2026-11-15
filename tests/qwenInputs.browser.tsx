@@ -107,13 +107,13 @@ async function run(){
  if(m.characters[0].recognition!.outfit.observed.length!==3||reopened.manga.characters[0].recognition!.outfit.observed.length!==3)throw Error('元の特徴一覧を変更しました');
  const editedPrompt=initialPrompt+'\npositive test';
  edit('ポジティブ',editedPrompt);edit('ネガティブ','negative test');
- (await wait(()=>button('5枚を生成する'),'生成ボタン')).click();
+ (await wait(()=>button('生成'),'生成ボタン')).click();
  const req=await wait(()=>submitted,'送信内容');
  if(req.width!==Math.round(plan.threeImageTarget!.width*.6)||req.height!==Math.round(plan.threeImageTarget!.height*.6))throw Error('完成画像が原稿60%の寸法ではありません');
  if(req.prompt!==editedPrompt||req.negative_prompt!=='negative test'||req.workflow_id!==QWEN_FIGURE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
  if(JSON.stringify(req.references.map((x:{image:string})=>x.image))!==JSON.stringify([addr(first),addr(second),addr(third)]))throw Error('送信画像の役割');
  // 見込み: 準備で拒否されれば生成は未送信。合格: 再実行可・照合ボタンなし・原因だけを表示。HTTPは模擬。
- await wait(()=>button('5枚を生成する')&&document.querySelector('.qwen-generation-dialog [role=alert]'),'準備失敗後の再試行');
+ await wait(()=>button('生成')&&document.querySelector('.qwen-generation-dialog [role=alert]'),'準備失敗後の再試行');
  const alert=document.querySelector('.qwen-generation-dialog [role=alert]')!.textContent;
  if(!alert?.includes('モデル解放確認拡張')||alert.includes('送信済み')||button('生成状況を確認'))throw Error('送信前に受付済みと誤表示');
  report.textContent='PASS：元の特徴保持・全身→顔の生成文切替・3画像・20%参照/60%出力・手動編集の送信';

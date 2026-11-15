@@ -37,6 +37,18 @@ class SeriesCharacterImages:
             raise ValueError("先にシリーズ資料を保存してください")
         return series_id, character_id, self.root / series_id / "characters" / character_id
 
+    @staticmethod
+    def _validate_character_png(image_bytes: bytes, *, for_saved_file: bool) -> tuple[int, int]:
+        if not image_bytes or len(image_bytes) > MAX_CHARACTER_REFERENCE_BYTES:
+            raise ValueError("保存済みの人物資料画像が正しくありません" if for_saved_file else "人物資料画像は40MB以内にしてください")
+        if len(image_bytes) < 24 or not image_bytes.startswith(b"\x89PNG\r\n\x1a\n") or image_bytes[12:16] != b"IHDR":
+            raise ValueError("保存済みの人物資料画像が正しくありません" if for_saved_file else "人物資料画像はPNG形式で保存してください")
+        width = int.from_bytes(image_bytes[16:20], "big")
+        height = int.from_bytes(image_bytes[20:24], "big")
+        if width < 1 or height < 1 or width > 12000 or height > 12000 or width * height > 60_000_000:
+            raise ValueError("保存済みの人物資料画像の寸法が正しくありません" if for_saved_file else "設定画の寸法を確認できません")
+        return width, height
+
     def save_character_image(
         self,
         series_id_value: object,
@@ -47,23 +59,7 @@ class SeriesCharacterImages:
         series_id, character_id, directory = self.character_directory(series_id_value, character_id_value)
         original_name = str(original_name_value).strip()[:255] if isinstance(original_name_value, str) else "reference.png"
         original_name = original_name.replace("\\", "/").rsplit("/", 1)[-1].strip() or "reference.png"
-        if len(image_bytes) < 24 or not image_bytes.startswith(b"\x89PNG\r\n\x1a\n") or image_bytes[12:16] != b"IHDR":
-            raise ValueError("人物資料画像はPNG形式で保存してください")
-        width = int.from_bytes(image_bytes[16:20], "big")
-        height = int.from_bytes(image_bytes[20:24], "big")
-        if width < 1 or height < 1:
-            raise ValueError("設定画の寸法を確認できません")
-        max_width, max_height = (351, 248) if width >= height else (248, 351)
-        if width > max_width or height > max_height:
-            scale = min(max_width / width, max_height / height)
-            target_width = max(1, int(width * scale + 0.5))
-            target_height = max(1, int(height * scale + 0.5))
-            raise ValueError(
-                f"設定画は {width} × {height} px です（上限 {max_width} × {max_height} px）。"
-                f"推奨寸法 {target_width} × {target_height} px に縮小して選び直してください。"
-            )
-        if len(image_bytes) > MAX_CHARACTER_REFERENCE_BYTES:
-            raise ValueError("人物資料画像は40MB以内にしてください")
+        width, height = self._validate_character_png(image_bytes, for_saved_file=False)
         png_bytes = image_bytes
 
         sha256 = hashlib.sha256(png_bytes).hexdigest()
@@ -129,14 +125,7 @@ class SeriesCharacterImages:
                 "character_catalog_id": _character_id,
                 "asset_id": asset_id,
             }
-        if not image_bytes or len(image_bytes) > MAX_CHARACTER_REFERENCE_BYTES:
-            raise ValueError("保存済みの人物資料画像が正しくありません")
-        if len(image_bytes) < 24 or not image_bytes.startswith(b"\x89PNG\r\n\x1a\n") or image_bytes[12:16] != b"IHDR":
-            raise ValueError("保存済みの人物資料画像が正しくありません")
-        width = int.from_bytes(image_bytes[16:20], "big")
-        height = int.from_bytes(image_bytes[20:24], "big")
-        if width < 1 or height < 1 or width > 12000 or height > 12000 or width * height > 60_000_000:
-            raise ValueError("保存済みの人物資料画像の寸法が正しくありません")
+        self._validate_character_png(image_bytes, for_saved_file=True)
         if f"image-{hashlib.sha256(image_bytes).hexdigest()}" != asset_id:
             raise ValueError("保存済みの人物資料画像とIDのハッシュが一致しません")
         return {

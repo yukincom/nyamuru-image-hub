@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { insertGeneratedPaintImage } from '../src/lib/paintDocument.ts';
 import { threeImageFigureTarget } from '../src/lib/humanPoseFraming.ts';
+import { promptUpsamplerNodeIds, workflowPromptUpsampler, withPromptUpsampler } from '../src/lib/comfyWorkflows.ts';
 
 const owner = { frame: { x: 0, y: 0, w: 50, h: 30 }, paint: { width: 200, height: 150, dpi: 254 } };
 const camera = { x: 10, y: 0, w: 20, h: 20 };
@@ -154,7 +155,7 @@ test('only the dedicated workflow sends the sketch as expression reference at pa
   assert.equal(plan.humanPose.selection,source.humanPose.selection);assert.deepEqual(plan.referenceFrame,camera);
   assert.deepEqual(plan.outputFrame,{x:0,y:0,w:30,h:40});
   const payload=qwenGenerationPayload(plan,[ref],'expression',undefined,undefined,'pose');
-  assert.deepEqual([payload.width,payload.height,payload.candidate_count,payload.mode,payload.dpi],[180,240,5,'new',254]);
+  assert.deepEqual([payload.width,payload.height,payload.candidate_count,payload.mode,payload.dpi],[180,240,1,'new',254]);
   assert.equal(payload.prompt+'\nUniform solid #00FF00 background.',workflow.graph['6'].inputs.prompt);assert.ok(!('sketch_image' in payload));
   assert.deepEqual(payload.references.map(r=>[r.image,r.character_keys]),[['pose',[]],['identity',['id']],['expression',[]]]);
   assert.throws(()=>qwenGenerationPayload(plan,[ref],undefined,'expression',undefined,'pose'),/ネーム/);
@@ -185,4 +186,14 @@ test('sixty-percent output keeps the manuscript placement and twenty-percent pos
   const original=insertGeneratedPaintImage({...owner,kind:'figure',paint:{...owner.paint,layers:[]}},
     {id:'full',widthPx:1793,heightPx:880},'原寸',frame).layer.image.bbox;
   assert.ok(Math.abs(bbox.w-original.w)<1 && Math.abs(bbox.h-original.h)<1);
+});
+
+test('p-h3 workflow defaults prompt upsampler to off and toggles it cleanly',()=>{
+  const example=ext=>JSON.parse(readFileSync(new URL('../examples/comfyui/p_h3_image_edit_mac_bf16_v2.'+ext+'.json',import.meta.url)));
+  const workflow={id:'2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01',name:'P-H3-Image_Edit_Mac_bf16_v2',version:1,graph:example('api'),binding:example('binding')};
+  assert.deepEqual(promptUpsamplerNodeIds(workflow.graph),['24']);
+  assert.equal(workflowPromptUpsampler(workflow),false);
+  const enabled={...workflow,graph:withPromptUpsampler(workflow.graph,true)};
+  assert.equal(workflowPromptUpsampler(enabled),true);
+  assert.equal(workflowPromptUpsampler(workflow),false);
 });

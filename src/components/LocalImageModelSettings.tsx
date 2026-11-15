@@ -4,6 +4,7 @@ import { normalizeComfyuiUrl } from '../lib/localModelPreferences';
 import {
   QWEN_FIGURE_WORKFLOW, isStandardQwenVariant, comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding, parseComfyWorkflowCheck,
   parseComfyWorkflowFile, parseComfyWorkflowInfo, parseComfyWorkflowList, parseSavedComfyWorkflow,
+  promptUpsamplerNodeIds, withPromptUpsampler, workflowPromptUpsampler,
   type ComfyApiGraph, type ComfyInputBinding, type ComfyWorkflowBinding, type ComfyWorkflowCheck,
   type ComfyWorkflowDefinition, type ComfyWorkflowInfo, type ComfyWorkflowSave,
 } from '../lib/comfyWorkflows';
@@ -179,7 +180,7 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
       onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; loadFile(file); }} />
     {!draft && <>
       {loaded && !workflows.length && <p class="environment-settings-note">ComfyUIで書き出したAPI形式JSONを追加してください。</p>}
-      {selected && <p class="environment-settings-note">{selected.name} · 版 {selected.version} · 参照画像 {selected.binding.images.length}枚{selected.binding.fixed_size && ` · ${selected.binding.fixed_size[0]} × ${selected.binding.fixed_size[1]}px`}</p>}
+      {selected && <p class="environment-settings-note">{selected.name} · 版 {selected.version} · 参照画像 {selected.binding.images.length}枚{selected.binding.fixed_size && ` · ${selected.binding.fixed_size[0]} × ${selected.binding.fixed_size[1]}px`}{workflowPromptUpsampler(selected) !== undefined && ` · 自動補強 ${workflowPromptUpsampler(selected) ? 'ON' : 'OFF'}`}</p>}
       <div class="paint-entry-actions">
         <button type="button" class="secondary-button" disabled={busy || !selected} onClick={() => void operation(async current => {
           if (!selected) return;
@@ -206,12 +207,26 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
         onInput={event => changeDraft({ name: event.currentTarget.value })} /></Field>
       <Field label="指示文の扱い" wide><select aria-label="指示文の扱い" value={draft.binding.prompt_mode} disabled={busy}
         onChange={event => changeBinding({ prompt_mode: event.currentTarget.value as ComfyWorkflowBinding['prompt_mode'] })}>
+        <option value="promptless-two-images">2画像参照・プロンプト不要（P-H3等）</option>
         <option value="plain">確認した指示文をそのまま渡す</option>
         <option value="qwen">Qwen用の指示・英訳・文字定型を使う</option>
         <option value="qwen-three-images">Qwen人物3枚参照（ネーム・設定画・3D）</option>
       </select></Field>
       <p class="environment-settings-note">入力の対応先を選択して保存してください。対応先以外のグラフは保持されます。</p>
-      {bindingEditor('指示文', 'prompt', 'string')}
+      {draft.binding.prompt_mode === 'promptless-two-images'
+        ? <p class="environment-settings-note">にゃむる側からプロンプトは送信しません（ワークフロー内の固定指示を使用します）。</p>
+        : bindingEditor('指示文', 'prompt', 'string')}
+      {promptUpsamplerNodeIds(draft.graph).length > 0 && (
+        <label class="qwen-checkbox">
+          <input
+            type="checkbox"
+            checked={Boolean(draft.graph[promptUpsamplerNodeIds(draft.graph)[0]].inputs.switch)}
+            disabled={busy}
+            onChange={event => changeDraft({ graph: withPromptUpsampler(draft.graph, event.currentTarget.checked) })}
+          />
+          プロンプト自動補強（Prompt Upsampler）を既定でオンにする
+        </label>
+      )}
       {bindingEditor('シード', 'seed', 'number')}
       <Field label="出力寸法" wide><select aria-label="出力寸法の指定" value={draft.sizeMode} disabled={busy}
         onChange={event => changeDraft({ sizeMode: event.currentTarget.value === 'fixed' ? 'fixed' : 'mapped' })}>

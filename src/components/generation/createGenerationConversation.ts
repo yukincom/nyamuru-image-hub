@@ -46,10 +46,10 @@ export function createGenerationConversation(options: GenerationConversationOpti
       }), true))!;
     }
     const result = await options.generate(true, isCurrent);
-    if (options.cloud) return '指示と参照画像のZIPを保存しました。指定のエージェントへ渡し、完成したPNGをこの画面で読み込んでください。';
+    if (options.cloud) return 'OMNY（YAML）を書き出しました。標準ワークフロー・OMAYとキャラクター資料を使って指定のエージェントで生成し、完成したPNGをこの画面で読み込んでください。';
     if (result?.job?.candidates?.length) {
       if (result.job.status === 'succeeded' && result.job.candidates.length === 5) {
-        return `${options.label}の候補を5枚生成しました。画面で採用する画像を選んでください。`;
+        return `${options.label}の画像を生成しました。画面で採用する画像を選んでください。`;
       }
       return `候補${result.job.candidates.length}枚を保持しています。${result.job.error || '生成は完了していません。状態を自動で確認しています。'}`;
     }

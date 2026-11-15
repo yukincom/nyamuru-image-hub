@@ -72,7 +72,7 @@ export async function executeQwenGeneration({id,payload,plan,services,prepare,su
     if(!isCurrent())return prepared;
     let current=await submit(prepared,token);onJob(current);
     while(isCurrent()&&['queued','running'].includes(current.status)){
-      await (wait??(()=>new Promise(resolve=>setTimeout(resolve,2000))))();
+      await (wait??(()=>new Promise(resolve=>setTimeout(resolve,5000))))();
       if(!isCurrent())break;
       current=await reconcile(id,prepared.requestSha256);onJob(current);
     }

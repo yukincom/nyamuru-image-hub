@@ -30,6 +30,7 @@ from workflow_graph import (
     validate_definition,
     validate_request,
     negative_prompt_nodes,
+    prompt_upsampler_nodes,
     bind_graph,
     _declared_inputs,
     validate_runtime,
@@ -151,10 +152,12 @@ class WorkflowStore:
 
 # Stable identities let the normal client use the supplied graphs without a browser setup step.
 QWEN_FIGURE_ID = '132c3a87-8f0a-4591-b2e0-4a28a7b7b002'
+P_H3_TWO_IMAGE_ID = '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01'
 QWEN_STANDARD_PREFIX = 'c7b07cf5-7e69-43e4-b380-'
 
 def install_qwen_defaults(store):
     marker = '.bundled-qwen-1'
+    ph3_marker = '.bundled-p-h3-4'
     with store._lock(create=True) as directory:
         try:
             if not stat.S_ISREG(os.stat(marker, dir_fd=directory, follow_symlinks=False).st_mode):
@@ -162,10 +165,28 @@ def install_qwen_defaults(store):
             installed = True
         except FileNotFoundError:
             installed = False
+        try:
+            if not stat.S_ISREG(os.stat(ph3_marker, dir_fd=directory, follow_symlinks=False).st_mode):
+                raise ValueError("既定ワークフローの登録記録が不正です")
+            ph3_installed = True
+        except FileNotFoundError:
+            ph3_installed = False
     examples = Path(__file__).resolve().parents[1] / 'examples' / 'comfyui'
 
     def read(name, kind):
         return json.loads((examples / f'{name}.{kind}.json').read_text(encoding='utf-8'))
+
+    if not ph3_installed:
+        ph3_name = 'p_h3_image_edit_mac_bf16_v2'
+        ph3_def = dict(name='P-H3-Image_Edit_Mac_bf16_v2', graph=read(ph3_name, 'api'), binding=read(ph3_name, 'binding'))
+        try:
+            current_ph3 = store.get(P_H3_TWO_IMAGE_ID)
+            store.save({**ph3_def, 'name': current_ph3['name'], 'id': current_ph3['id'], 'expected_version': current_ph3['version']})
+        except FileNotFoundError:
+            store.save(ph3_def, initial_id=P_H3_TWO_IMAGE_ID)
+        with store._lock() as directory:
+            fd = os.open(ph3_marker, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=directory)
+            os.close(fd)
 
     name = 'nyamuru_qwen_turbo_3images'
     figure = dict(name=name, graph=read(name, 'api'), binding=read(name, 'binding'))

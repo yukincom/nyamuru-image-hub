@@ -43,7 +43,7 @@ export default function MangaCanvas(props: MangaCanvasProps) {
     defaultBubbleFont, fontFamilies, onImageGesture, onTextHistory, onRequestFonts, paintTarget,
     showGuides, bubbleLineWidthMm, author, page, activePanel, selectedPanels, onSelectPanel,
     imageAssets, selectedElement, frameLineWidthMm, onText, zoomPercent, onZoomPercentChange,
-    onGenerateComposition, dpi, onReplaceArtwork, guideVisible, onToggleGuide, onGenerateArtwork,
+    onGenerateComposition, dpi, onReplaceArtwork, guideVisible, onToggleGuide, onGenerateArtwork, onGenerateMultiFigures,
   } = options;
   const {
     backgroundEdit, bubblePathTool, spacePressedRef, paperRef, elementLocked, scrollRef,
@@ -52,13 +52,13 @@ export default function MangaCanvas(props: MangaCanvasProps) {
     effectiveSpreadSide, bleedMm, cropMarks, cropMarkPath, paperBoxStyle, inner, editingPanel,
     panelSelectionVisible, previewOwner, selectedPanel, overlay, paintWorkspace, paperBounds,
     editingOverlay, selectedBounds, activeEdgeIndex, screenUnit, zoomPercentRef, fitPercent,
-    generationMenu, setGenerationMenu, generationMenuRef, menuScope, menuPanel, menuFigure,
+    generationMenu, setGenerationMenu, generationMenuRef, isMultiSelection, multiFigureTargets, menuScope, menuPanel, menuFigure,
     menuBubble, menuSize, menuBox, copyMenuSize, menuKey,
   } = state;
   const { fitPaper, zoomAt, resetZoom } = viewport;
   const {
     createTextAt, bubbleTextDragged, selectPanelAt, openPanelArtworkMenu, startInteraction,
-    nudgeElement, renderHandles, selectFromPaint,
+    nudgeElement, renderHandles, selectFromPaint, lassoPoints, lassoJustFinishedRef, startLassoSelection,
   } = elements;
   const { startPanelMove, startPanelEdgeDrag, startVertexDrag, startPanelResize } = panelDrag;
   const {
@@ -80,7 +80,7 @@ export default function MangaCanvas(props: MangaCanvasProps) {
       )}
       <div ref={scrollRef} class="canvas-scroll">
         <div ref={paperZoomFrameRef} class="manga-paper-zoom-frame" style={{aspectRatio:`${outputWidth} / ${outputHeight}`}}>
-        <div ref={paperRef} class={`manga-paper ${paintTarget?'has-paint-surface':''} ${showGuides ? 'show-guides' : ''} ${showGuides&&printMarginMm>0&&renderPrintGuides?'has-print-sheet':''} ${interactionMode ? 'is-interacting' : ''}`} style={{ aspectRatio: `${outputWidth} / ${outputHeight}`, '--bubble-line-width': canvasLengthCss(Math.max(0.1,bubbleLineWidthMm),canvas.w), '--text-tool-cursor':textToolCursor(textToolStyle) }} onContextMenu={event=>openGenerationMenu(event,-1)} onPointerDown={(event) => { if (event.target === event.currentTarget) onSelectElement(null); }}>
+        <div ref={paperRef} class={`manga-paper ${paintTarget?'has-paint-surface':''} ${showGuides ? 'show-guides' : ''} ${showGuides&&printMarginMm>0&&renderPrintGuides?'has-print-sheet':''} ${interactionMode ? 'is-interacting' : ''}`} style={{ aspectRatio: `${outputWidth} / ${outputHeight}`, '--bubble-line-width': canvasLengthCss(Math.max(0.1,bubbleLineWidthMm),canvas.w), '--text-tool-cursor':textToolCursor(textToolStyle) }} onContextMenu={event=>openGenerationMenu(event,-1)} onPointerDown={(event) => { startLassoSelection(event); if (event.target === event.currentTarget && !event.shiftKey) onSelectElement(null); }}>
       {showGuides&&printMarginMm>0&&renderPrintGuides&&<div class="page-print-sheet" style={printGuideStyle} aria-hidden="true" />}
       {showGuides&&printMarginMm>0&&renderPrintGuides&&<svg class="page-print-guides" style={printGuideStyle} viewBox={`${-printMarginMm} ${-printMarginMm} ${printGuideWidthMm+printMarginMm*2} ${canvas.h+printMarginMm*2}`} preserveAspectRatio="none" aria-label={`${effectiveSpreadSide==='left'?'見開き':'単ページ'}原稿ガイド：塗り足し線${bleedMm}mm、裁ち切り線、内枠線、トンボ${cropMarks?'あり':'なし'}`}>
         <path class="page-print-sheet-fill" d={`M${-printMarginMm} ${-printMarginMm}H${printGuideWidthMm+printMarginMm}V${canvas.h+printMarginMm}H${-printMarginMm}ZM0 0V${canvas.h}H${printGuideWidthMm}V0Z`} fill-rule="evenodd" />
@@ -98,7 +98,7 @@ export default function MangaCanvas(props: MangaCanvasProps) {
         <div
           class={`manga-panel ${editingPanel(panelIndex)||!originalGuideVisible('background',panelIndex) ? 'has-background-artwork' : ''} panel-bg-${panel.bg} ${panelSelectionVisible&&activePanel === panelIndex ? 'is-selected' : ''} ${panelSelectionVisible&&selectedPanels.includes(panelIndex) ? 'is-group-selected' : ''}`}
           style={panelStyle(panel, canvas)}
-          onClick={(event) => {if(!createTextAt(event,panelIndex))selectPanelAt(event, panelIndex);}}
+          onClick={(event) => {if(!lassoJustFinishedRef.current && !createTextAt(event,panelIndex))selectPanelAt(event, panelIndex);}}
           onContextMenu={(event) => openPanelArtworkMenu(event, panelIndex)}
           onKeyDown={(event) => {
             if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, panelIndex);
@@ -257,6 +257,15 @@ export default function MangaCanvas(props: MangaCanvasProps) {
         </g>)}
         {renderAnchorIndicator()}
       </svg>}
+      {lassoPoints && lassoPoints.length >= 2 && <svg class="canvas-lasso-overlay" viewBox={`0 0 ${canvas.w} ${canvas.h}`} aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40 }}>
+        <polygon
+          points={lassoPoints.map(p => `${p.x},${p.y}`).join(' ')}
+          fill="rgba(37, 99, 235, 0.12)"
+          stroke="rgba(37, 99, 235, 0.85)"
+          stroke-width={1.5 * screenUnit}
+          stroke-dasharray={`${4 * screenUnit} ${3 * screenUnit}`}
+        />
+      </svg>}
       </div>
       {painting&&paintTarget&&<PaintInputSurface canvas={canvas} onSelectionMiss={selectFromPaint}/>}
       {textTarget&&textValue!==undefined&&textBox&&(!textBubble||bubbleVisible(textBubble))&&screenText?.hidden!==true&&!painting&&<div class={`bubble-inline-editor is-${textTarget.kind==='screen_text'?'screen-text':'bubble'} ${screenText?(textStyleOf(screenText,'screen_text').orientation==='vertical'?'is-vertical':'is-horizontal'):''}`} style={{...paperBoxStyle(textBox),...(textBubble&&!textTarget.overlay?elementPanelClipStyle(textPanel!,textBox):{}),...(textPosition?{'--bubble-text-x':`${textPosition.x*100}%`,'--bubble-text-y':`${textPosition.y*100}%`}:{})}}>
@@ -289,14 +298,15 @@ export default function MangaCanvas(props: MangaCanvasProps) {
               buttons[(index + (event.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length]?.focus();
             }
           }}>
-          <strong>{menuScope==='page'?'ページ全体':`${generationMenu.overlay ? 'ページ前景' : panelDisplayLabel(menuPanel?.id ?? 0)}${menuScope?'':` · ${menuFigure?.name ?? (menuBubble?isHandwrittenText(menuBubble)?'描き文字':'吹き出し':'背景')}`}`}</strong>
+          <strong>{isMultiSelection?`複数選択中（人物 ${multiFigureTargets.length}人）`:menuScope==='page'?'ページ全体':`${generationMenu.overlay ? 'ページ前景' : panelDisplayLabel(menuPanel?.id ?? 0)}${menuScope?'':` · ${menuFigure?.name ?? (menuBubble?isHandwrittenText(menuBubble)?'描き文字':'吹き出し':'背景')}`}`}</strong>
+          {isMultiSelection&&multiFigureTargets.length>0&&onGenerateMultiFigures&&<button role="menuitem" onClick={()=>{onGenerateMultiFigures(multiFigureTargets);setGenerationMenu(null);}}>複数人物生成（{multiFigureTargets.length}人）</button>}
           {menuScope&&onGenerateComposition&&<button role="menuitem" onClick={()=>{onGenerateComposition(menuScope,generationMenu.panelIndex);setGenerationMenu(null);}}>{menuScope==='page'?'ページ全体を生成':'このコマを生成'}</button>}
           {menuScope!=='page'&&<>
           {menuSize && <small>{menuSize.width} × {menuSize.height} px（{dpi} dpi換算）</small>}
           <button role="menuitem" disabled={!menuBox} onClick={copyMenuSize}>サイズコピー</button>
           {onReplaceArtwork && <button role="menuitem" disabled={Boolean(menuFigure&&artworkLocked(menuFigure.artwork))} onClick={() => { onReplaceArtwork(generationMenu.panelIndex, generationMenu.figureIndex, generationMenu.overlay,generationMenu.bubbleIndex); setGenerationMenu(null); }}>画像を読み込む</button>}
           {!menuFigure&&!menuBubble&&<button role="menuitemcheckbox" aria-checked={guideVisible(menuKey,generationMenu.panelIndex,generationMenu.overlay)} onClick={()=>{onToggleGuide(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>あたり画像表示</button>}
-          {(!menuBubble||isHandwrittenText(menuBubble))&&<button role="menuitem" onClick={()=>{onGenerateArtwork(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>{menuFigure?'人物単品を生成':menuBubble?'描き文字を生成':'背景だけ生成'}</button>}</>}
+          {(!menuBubble||isHandwrittenText(menuBubble))&&<button role="menuitem" disabled={Boolean(menuFigure&&isMultiSelection)} onClick={()=>{onGenerateArtwork(menuKey,generationMenu.panelIndex,generationMenu.overlay);setGenerationMenu(null);}}>{menuFigure?'人物単品を生成':menuBubble?'描き文字を生成':'背景だけ生成'}</button>}</>}
         </div>
       </>, window.document.body)}
     </div>

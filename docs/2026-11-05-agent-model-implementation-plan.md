@@ -2,7 +2,7 @@
 
 作成日: 2026-11-05。状態: P0・P1と準備案内の補修を正本へ統合。P2の用途別設定を実装・関連確認済み。P3以降は未着手。
 
-[採用仕様](AGENT_MODEL_SPEC.md)を、既存の編集・画像生成・保存を維持しながら実装するための計画。まず振る舞いを変えずに責務を分け、ローカルで翻訳と送信確認を完成させる。受信画像を保持・採用できる状態を作ってからAPI利用を有効化する。各段階は、関連試験と確認可能な成果を伴う小さなコミットに分ける。
+[採用仕様](AGENT_MODEL_SPEC.md)を、既存の編集・画像生成・保存を維持しながら実装するための計画。まず振る舞いを変えずに責務を分け、ローカルで翻訳と送信確認を完成させる。受信画像を保持・採用できる状態を作り、外部エージェントには本家と同じOMNY/OMAY YAMLを直接使う。API接続は会話・翻訳用に限り、画像生成APIは計画に含めない。各段階は、関連試験と確認可能な成果を伴う小さなコミットに分ける。
 
 本計画の更新と実装結果はこの文書へ集約する。計画に書いたファイル・関数は新設予定を含み、存在・実装済みを意味しない。各段階が完了したら、実際の変更、コミット、検証結果、未確認事項を末尾へ記録する。
 
@@ -47,11 +47,13 @@
 
 ```text
 設定UI → 既存設定reader/writer＋会話用設定 → 用途別の実行先解決
-生成UI／会話 → 共通の編集中入力 → bridgeの正規化・必要な英訳・検査
-                                          ↓
-                           送信内容のプレビュー／任意編集
-                                          ↓ 明示送信または確認省略ON
-                           確定入力 → 選択した生成先adapter
+生成UI ─┬→ P-H3既定：edited/referenceの2画像 → prompt reviewを通さずComfyUI
+        └→ 文章入力workflow：編集中入力 → bridgeの正規化・必要な英訳・検査
+                                               ↓
+                                送信内容のプレビュー／任意編集
+                                               ↓ 明示送信または確認省略ON
+                                確定入力 → 選択した生成先adapter
+会話 → 文章入力workflowのdraft編集／相談、または生成先選択の明示依頼
 
 会話API／翻訳API／手動画像読込 → 共通の画像候補 → 同じ会話欄のカード
                                                       ↓ ユーザー採用
@@ -63,15 +65,15 @@
 | ローカルモデル・VLM・ComfyUI接続 | `localModelPreferences.ts` の既存reader/writer | 作品clone、Undo、ディスク保存、モデル自動取得 |
 | 画像生成の方式・確認省略 | `generationPreferences.ts` の既存reader/writerを拡張 | 作品変更、設定保存だけで生成開始 |
 | 会話・翻訳の方式 | 小さな `conversationPreferences.ts`。ローカルモデル値は既存設定を参照 | llmAliasの二重保存、画像生成方式との一括切替 |
-| 接続・認証 | bridge側の登録台帳と資格情報保管。ブラウザーは接続ID・表示名・利用可能な機能を参照 | キーの作品/ZIP/localStorage/ログへの混入、用途ごとの二重登録 |
-| プロンプト編集 | `useGenerationPromptReview` の一つのdraft。手入力・会話ツールが同じ更新関数を使う | 古い会話応答による上書き、相談だけで生成、原文の破壊 |
-| 確認済み入力 | bridgeで検査したsnapshot。入力revisionと内容hashを持つ | 確認後の再翻訳、日本語の追記、別対象への承認流用 |
+| 接続・認証 | 会話・翻訳API用のbridge側登録台帳と資格情報保管。ブラウザーは接続ID・表示名・利用可能な機能を参照 | キーの作品/OMNY/OMAY/localStorage/ログへの混入、用途ごとの二重登録 |
+| プロンプト編集 | 文章入力が必要なworkflowだけ `useGenerationPromptReview` のdraftを使う。手入力・会話ツールが同じ更新関数を使う | P-H3は入力欄・確認draftなし。古い会話応答による上書き、相談だけで生成、原文の破壊 |
+| 確認済み入力 | 文章入力が必要な場合のみbridgeでsnapshotを検査し、入力revisionと内容hashを持つ | P-H3では不要。確認後の再翻訳、日本語の追記、別対象への承認流用 |
 | 受信画像候補 | 会話コンポーネント外のworkspace側store。Blobと受信IDを保持 | 受信だけで原稿変更、会話履歴の切り詰めによる画像消去 |
 | 採用した画像 | 既存の画像資産store＋document／paint更新関数 | 別Undo、候補終了による採用資産の削除 |
 
 正規化・翻訳・最終検査の正本はbridgeに置く。ブラウザーにも別の翻訳判定・正規化実装を作らず、表示・編集・取消しを担当させる。純粋関数はHTTP・UI・モデル起動を参照しない。
 
-設定の読み書きは既存形式へ必要最小限の追加を行う。新規設定の既定は会話ローカル・確認省略OFF。既存設定を推測してAPI利用へ切り替えない。作品データの移行、複数形式への二重書き込み、開発用の古い設定を守るための汎用migrationは追加しない。
+設定の読み書きは既存形式へ必要最小限の追加を行う。新規設定の既定は会話ローカル・画像生成はP-H3二画像・確認省略OFF。P-H3は利用者プロンプト不要のため確認省略設定の対象外とする。既存設定を推測してAPI利用へ切り替えない。作品データの移行、複数形式への二重書き込み、開発用の古い設定を守るための汎用migrationは追加しない。
 
 ### 作成・抽出するモジュールの候補
 
@@ -114,23 +116,22 @@
 | P1a | P0 | `Extract model settings panel`。モデル区画・既存設定更新だけ抽出 | 選択・入力・保存失敗の表示が同じ。他タブ・作品・Undoに変更なし |
 | P1b | P0 | `Extract generation conversation and candidate views`。会話接続・候補表示を抽出 | 会話、5候補、複数採用、履歴削除、取消しの結果が同じ |
 | P1c | P0 | `Extract generation prompt translation`。生成英訳を人物アクションから抽出 | 固定応答に対する入力/出力・文字保護・エラーが同じ。人物アクションの呼出は不変 |
-| P2 | P1a | `Separate conversation and image execution settings`。用途別の保存契約と実行先解決、設定区画を接続 | ローカル既定、既存の外部受け渡しが維持される。APIは対応完了まで利用不可。保存失敗で実行先を変えない |
-| P3 | P1c | `Normalize and protect generation prompt segments`。共通の保護・正規化・検査を作る | 記号だけなら翻訳0回。英文・描画文字・識別子を保持。不正な翻訳は送信不可 |
-| P4a | P3 | `Prepare immutable prompt review snapshots`。最終指示を作る確認APIとsnapshot | 準備だけで画像生成0件。編集・対象変更で古いsnapshotを拒否 |
-| P4b | P4a | `Separate prompt review from generation submission`。確定入力を既存ジョブへ接続し、利用セッションを分離 | 再翻訳なし、表示した最終指示と送信値一致。結果不明の照合と取消しを維持 |
-| P5 | P1b・P2・P4b | `Add editable prompt confirmation`。確認UI・共通draft・会話編集・省略設定を接続 | ON/OFF、はい/いいえ/閉じる、相談、遅延応答、連打を実UIで確認 |
-| P6a | P5 | `Apply prompt review to reference workflows`。3枚参照・汎用ワークフロー・negativeを接続 | 各送信payloadに未翻訳指示の抜けなし。参照枚数・順序・画像bytesは保持 |
-| P6b | P6a | `Apply prompt review to lettering and handoff`。描き文字・写植・作画用ラフ・外部受け渡しへ接続 | 描く文字は原文、自由指示は英語。ZIP内の実行指示も確定文と一致 |
+| P2 | P1a | `Separate conversation and image execution settings`。用途別の保存契約と実行先解決、設定区画を接続 | ローカル既定をP-H3二画像にする。空の利用者プロンプトを許可し、外部エージェントのYAML受け渡しを維持。画像生成APIは選択肢にしない |
+| P3 | P1c | `Normalize and protect generation prompt segments`。文章入力を要求するワークフロー用に共通処理を作る | 入力がある場合に記号だけなら翻訳0回。空プロンプトを許可するP-H3経路は翻訳・LLM呼出0回 |
+| P4a | P3 | `Prepare immutable prompt review snapshots`。文章入力がある場合だけ確認snapshotを作る | P-H3はprompt reviewなしで準備可能。文章入力経路は準備だけで生成0件、編集・対象変更で古いsnapshotを拒否 |
+| P4b | P4a | `Separate prompt review from generation submission`。promptful経路の確定入力を既存ジョブへ接続し、利用セッションを分離 | 再翻訳なし、表示した最終指示と送信値一致。P-H3空プロンプトは直接送信。結果不明の照合と取消しを維持 |
+| P5 | P1b・P2・P4b | `Add optional prompt confirmation`。文章入力を要求する経路の確認UI・共通draft・会話編集を接続 | ON/OFF、はい/いいえ/閉じる、相談、遅延応答、連打を確認。P-H3ではprompt UI/確認を表示しない |
+| P6a | P5 | `Apply prompt review to prompt-bearing workflows`。人物3枚参照・汎用ワークフロー・文字入力・negativeを接続 | 対象経路で未翻訳指示の抜けなし。P-H3既定の2画像参照順・画像bytesは保持 |
+| P6b | P6a | `Apply prompt review to lettering workflows` | 描き文字・写植・作画用ラフのローカル経路を接続。描く文字は原文、自由指示は英語を維持。外部エージェント経路はprompt reviewを通さずOMNY/OMAY YAMLとキャラクター資料を本家ワークフローで直接参照する |
 | P7a | P1b | `Share image layer insertion`。現在対応している対象の新規追加を、振る舞いを変えずに抽出 | 通常画像読込の既存仕様を維持し、生成画像は元絵を置き換えない |
 | P7b | P7a | `Retain received image candidates`。候補store・共通応答契約・手動読込入口 | 画像のみ/混在/複数枚を保持。重複通知1候補、原稿変更0回 |
 | P7c | P7b | `Display received image cards`。同じ会話欄で表示・拡大・保存 | 折りたたみ・履歴上限・生成画面close後も候補を表示可能。採用は接続完了まで無効 |
 | P8 | P7c | `Adopt received images through workspace history`。取り込み先確認と明示採用 | ペイント開閉両方で新規追加。連打1回、1回のUndo/Redo、保存再読込、失敗時保持 |
-| P9a | P2・P8 | `Register reusable model connections`。接続台帳・資格情報保管・選択欄の登録を接続 | 同一接続を両用途で再利用。設定保存からモデル呼出なし、秘密値の返却なし |
+| P9a | P2・P8 | `Register reusable conversation model connections`。会話・翻訳用の接続台帳・資格情報保管・選択欄を接続 | 会話・翻訳の同一接続を再利用。画像生成接続は登録しない。P-H3空プロンプトで会話APIを呼ばない。設定保存からモデル呼出なし、秘密値の返却なし |
 | P9b | P6b・P9a | `Route conversation and translation through selected connection`。まず一通信方式のadapterを有効化 | 会話・翻訳は指定先だけ。API時のローカル文章LLM起動0回。画像応答は候補へ渡る |
-| P10 | P9b | `Submit approved prompts to image APIs`。明示画像API生成と共通候補へ接続 | 確認済み入力を1回だけ送信。既存ComfyUIの候補数・削除規則を流用しない |
-| P11 | P10 | `Record model routing acceptance checks`。実利用確認と最終仕様・結果更新 | 利用者UI確認後に既存の全体検証。模擬/実API/実モデル/LANを分けて記録 |
+| P10 | P9b | `Record conversation and agent routing acceptance checks`。会話API・YAMLを使う外部エージェント・ローカル生成の実利用確認と最終仕様更新 | 利用者UI確認後に既存の全体検証。会話API・実モデル・LANの確認範囲を分けて記録。画像生成APIへ送信しない |
 
-P1a〜P1cは変更とテストの抽出だけに限定する。振る舞いの修正が必要なら、抽出commitに混ぜず次の段階で扱う。APIを実際に有効にするP9bより前に、画像のみの返答を失わないP7・P8を完了させる。
+P1a〜P1cは変更とテストの抽出だけに限定する。振る舞いの修正が必要なら、抽出commitに混ぜず次の段階で扱う。会話APIを有効にするP9bより前に、画像のみの返答を失わないP7・P8を完了させる。画像生成APIを追加する段階は設けない。
 
 ## 5. 段階ごとの実装上の要点
 
@@ -161,9 +162,9 @@ P2では未接続APIを対応済みに見せない。確認省略欄もP5で動�
 
 snapshotのhashは確定・再検査時に計算し、毎入力で作品全体をserialize/hashしない。確認済み値は既存ジョブstoreへ引き継ぎ、ジョブの不変入力保存と照合を再利用する。同じjob IDへ編集後の別内容を書き戻さない。送信前draftを生成ジョブの実行済み状態と混同しない。
 
-現行の `withImageGenerationServices` の内部で確認ダイアログを待ち続けない。翻訳利用を終えて確認待ちへ入り、承認後に必要な生成利用を開始する。確認待ち中はLLMを休止させず、単語相談に使える状態を保つ。画像生成開始前の接続・メモリ確認と、終了時の復帰・所有者判定は既存経路を通す。
+現行の `withImageGenerationServices` の内部で確認ダイアログを待ち続けない。文章入力workflowでは翻訳利用を終えて確認待ちへ入り、承認後に必要な生成利用を開始する。確認待ち中はLLMを休止させず、単語相談に使える状態を保つ。P-H3既定は確認待ちを挟まず、空のユーザープロンプトと2枚の参照から既存の画像生成利用経路を開始する。画像生成開始前の接続・メモリ確認と、終了時の復帰・所有者判定は既存経路を通す。
 
-P4bは入力snapshotと既存送信処理を接続する段階であり、候補選択・出力削除・ComfyUI取消しを作り直す段階ではない。通常のローカル経路で固定入力の送信一致を確認してからP6で対象を広げる。
+P4bは文章入力workflowのsnapshotと既存送信処理を接続する段階であり、候補選択・出力削除・ComfyUI取消しを作り直す段階ではない。P-H3のpromptless経路はP2で選択・保存・2画像payload・LLM未呼出を確認する。
 
 ### P5〜P6 確認画面、編集、全経路への適用
 
@@ -185,8 +186,7 @@ P4bは入力snapshotと既存送信処理を接続する段階であり、候補
 | 取り込みワークフロー | `plain`のまま検査を迂回しない。固有の画像トークンを無断で追加しない |
 | 描き文字・写植 | 描く文字は日本語のまま。描き方の自由記述とnegativeを翻訳 |
 | 作画用ラフ | 独立している送信入口にも同じ確定処理を接続 |
-| 外部エージェントへのZIP | 確定した実行指示を収録。送信確認の完了操作はZIP書き出しとし、外部チャットへ自動送信しない |
-| 画像API | P10で同じsnapshotを使う。provider固有の要求への変換で指示を書き換えない |
+| 外部エージェントの漫画生成 | 本家の標準ワークフローを使い、OMNY YAML、標準/作品別OMAY YAML、キャラクター立ち絵を元ファイルのまま直接参照する。ZIPや平文プロンプトの代替物を作らず、ページごとに画像を生成する |
 
 ### P7〜P8 受信候補と既存画像追加の接続
 
@@ -213,7 +213,7 @@ P7aは既存対象の不変抽出に限定し、対象種類を増やす判断�
 
 「画像を保存」は画像ファイルの保存だけで、原稿を変更しない。候補の破棄・終了でobject URL等を解放しても、採用済み資産やUndo/Redoが参照する原本を消さない。初期版ではアプリ終了・再読込後の未採用候補復元は実装しない。
 
-### P9〜P10 API接続と実行
+### P9 会話・翻訳API接続
 
 最初に対応するサービス・通信方式を一つ決め、実装時の公式仕様で認証、ツール、画像応答、結果照合の方法を確認する。計画段階では特定のモデル名や対応済みサービスを固定しない。多機能なAPIを登録禁止にせず、用途ごとに実際の要求を組み立てる。
 
@@ -223,7 +223,7 @@ P7aは既存対象の不変抽出に限定し、対象種類を増やす判断�
 
 各adapterは共通応答へ変換し、会話・翻訳の画像partをP7の候補へ渡す。英訳を頼んで画像だけ返ったら、候補を表示して翻訳未完了を示し、後続生成は0件。画像取得の再試行は取得要求だけに限定し、生成や会話の依頼全体を再送しない。
 
-明示画像API生成も、接続ID・モデル・確定入力・送信IDを固定する。応答が失われた場合は対応APIの照合機能を使い、照合できなければ結果不明を示す。自動再送・別サービスへの切替はしない。ComfyUI固有の5候補・透過・出力削除はAPI候補へ適用しない。
+画像生成APIへ指示や画像を送る経路は設けない。画像生成はローカルComfyUIまたは、OMNY/OMAY YAMLとキャラクター資料を読む外部エージェントで行う。会話APIが返した画像は会話の受信候補として扱い、生成APIの結果と混同しない。
 
 ## 6. 検証の組み立てと合否
 
@@ -232,9 +232,9 @@ P7aは既存対象の不変抽出に限定し、対象種類を増やす判断�
 | 段階 | 再利用する主な試験 | 追加する観測 |
 |---|---|---|
 | P0〜P2 | `environmentSettings.test.mjs`、同browser fixture、`generationPreferences.test.mjs`、`localModelPreferences.test.mjs`、`modelPrivacy.test.mjs`、統合後の生成会話試験 | 保存再読込・失敗、区画選択、作品更新/Undoが0回、生成後相談の候補保持 |
-| P3〜P6 | `test_qwen_generation_bridge.py`、`test_nyamuru_three_image_workflow.py`、`generationHandoff.test.mjs`、`localBridgeLifecycle.test.mjs`、既存生成browser fixture | 保護領域比較、翻訳/送信件数、実payload、待機中のleaseと取消し |
+| P3〜P6 | `test_qwen_generation_bridge.py`、`test_nyamuru_three_image_workflow.py`、外部エージェント入力のfixture、`localBridgeLifecycle.test.mjs`、既存生成browser fixture | 保護領域比較、翻訳/送信件数、実payload、OMNY/OMAY・キャラクター資料の対応、待機中のleaseと取消し。ZIP handoff試験は追加しない |
 | P7〜P8 | `agentSession.test.mjs`、`imagePlacement.test.mjs`、`workspaceHistory.test.mjs`、`projectPersistence.test.mjs`、`portableProject.test.mjs` | 新規追加/非置換、資産寿命、1回のUndo、保存往復、失敗回収 |
-| P9〜P10 | `agentChat.test.mjs`、`test_agent_chat_bridge.py`、`localBridgeLifecycle.test.mjs`、`lanServer.test.mjs` | 単一送信先、toolの権限、秘密値非返却、API応答の画像、非対応機能の表示 |
+| P9〜P10 | `agentChat.test.mjs`、`test_agent_chat_bridge.py`、`localBridgeLifecycle.test.mjs`、`lanServer.test.mjs` | 会話APIの単一送信先、tool権限、秘密値非返却、会話API応答の画像、外部エージェントのOMNY/OMAYと人物資料の対応、画像生成APIへ送信しないこと |
 
 新しいケース群は `promptReview`、`promptNormalization`、`receivedImages`、`imageAdoption` 等、役割名で分ける。既存のモデル名付き試験を全面改名する作業はここへ混ぜない。
 
@@ -242,6 +242,7 @@ P7aは既存対象の不変抽出に限定し、対象種類を増やす判断�
 
 | 見込み・入力 | 合格条件 | 確認範囲 |
 |---|---|---|
+| P-H3二画像はユーザープロンプトなしで実行できる | 2枚を `image_1 (edited)` / `image_2 (reference)` へ対応付ける。入力欄は空のまま生成でき、prompt review・翻訳LLM・会話APIの呼出0回。旧pose専用REQUESTは混入しない | 設定再読込、実ComfyUI payload、固定モデルでの実行。模擬応答と画質確認を区別 |
 | 抽出だけなら挙動を維持できる | 既存の会話・手動画像読込・5候補採用・削除再試行・閉じるの結果が同じ | 既存の本体試験＋該当UI。外部処理は固定応答 |
 | 全角記号だけの指示はコードで整う | 指示の指定文字だけ置換、翻訳0回。セリフ・ファイル名・構文は不変 | 正規化の入出力比較 |
 | 混在言語は一部だけ翻訳できる | 日本語部分を翻訳し、既存英文/繰返しセリフ/識別子を保持。欠落・重複で送信0件 | 固定翻訳応答、各builderと実送信payload |
@@ -262,24 +263,24 @@ P7aは既存対象の不変抽出に限定し、対象種類を増やす判断�
 ### 実行する順序
 
 1. 各commitで、変更したmoduleの型/構文と関連するNode/Python試験を実行する。テスト入口は現行ファイルを確認し、関連ケースに絞る。
-2. UI段階は既存browser fixtureで実コンポーネントを操作する。LLM/画像APIを模擬した場合は、その範囲を結果に明記する。
+2. UI段階は既存browser fixtureで実コンポーネントを操作する。LLM/会話APIを模擬した場合は、その範囲を結果に明記する。画像生成APIのmockや接続確認は行わない。
 3. 利用者が新しい設定・確認・画像採用の画面をチェックする。通常とLANの両方で確認し、実際の別端末確認は模擬LAN成功から推定しない。
 4. 実サービスの接続先・モデル・使用画像/指示が決まってから、最小限の実API/実モデル確認を行う。料金や必要な認証設定は実行前に確認する。設定保存の試し打ちで生成しない。
 5. 利用者UI確認後に `npm run verify`（型チェック・既存全件試験・通常/standaloneビルド）を正本で実行する。新たな失敗/変更がなければ全体検証を反復しない。
 
 ## 7. Git運用と戻し方
 
-一つのcommitに「一つの責務の変更＋関連試験＋必要な仕様記録」を含める。抽出、設定、翻訳規則、UI、API adapter、画像採用をまとめてcommitしない。P1〜P6をローカル機能の確認区切り、P7〜P8を受信・採用の確認区切り、P9〜P10をAPI利用の確認区切りとする。
+一つのcommitに「一つの責務の変更＋関連試験＋必要な仕様記録」を含める。抽出、設定、翻訳規則、UI、会話API adapter、画像採用をまとめてcommitしない。P1〜P6をローカル/外部エージェント機能の確認区切り、P7〜P8を受信・採用の確認区切り、P9〜P10を会話APIと統合受入の確認区切りとする。
 
 - 各段階の開始前に、既知の回復点となるHEADと未commit差分を確認する。失敗があれば次段階へ進めず、その段階で修正する。
 - `git status --short`、unstaged全差分、staged差分を確認し、担当pathだけをstageする。全件stageや他作業のstash/resetはしない。
 - 分離worktreeの変更はレビュー済みcommit単位で正本へ統合する。正本での関連確認結果も記録する。push・公開は別の依頼時だけ行う。
 - 不具合時は該当機能の利用を止め、依存する後続commitから逆順にrevertする。共有履歴のresetや、設定/原稿の一括巻き戻しで対処しない。
-- 受信候補や原稿資産を破壊して戻す設計にしない。API接続の無効化と資格情報の削除、画像採用のUndoと生成結果の削除を別操作として扱う。
+- 受信候補や原稿資産を破壊して戻す設計にしない。会話API接続の無効化と資格情報の削除、画像採用のUndoと生成結果の削除を別操作として扱う。
 
 ## 8. 実装時に決める事項と完了記録
 
-P9で最初に対応するAPI/通信方式、実行Macでの資格情報保管方式、P7での画像対応形式と単体/総容量/画素数上限は、実装前に現環境と正式な仕様を確認して確定する。未決定のまま「汎用API対応済み」としない。これらの確定待ちでも、P1〜P8のローカル実装・模擬検証は進められる。
+P9で最初に対応する会話API/通信方式、実行Macでの資格情報保管方式、P7での会話受信画像の形式と単体/総容量/画素数上限は、実装前に現環境と正式な仕様を確認して確定する。画像生成APIは対応対象に含めない。これらの確定待ちでも、P1〜P8のローカル生成・外部エージェント経路の実装・模擬検証は進められる。
 
 | 区切り | 状態 | commit | 関連試験 | 利用者UI確認 | 実モデル/API/LANの未確認事項 |
 |---|---|---|---|---|---|
@@ -288,10 +289,10 @@ P9で最初に対応するAPI/通信方式、実行Macでの資格情報保管�
 | P1b 会話・候補表示の抽出 | 実装・準備案内の補修・関連確認済み | `116db67`＋下記の補修 | 補修後Node93成功、会話browser成功、候補browser7ケース・38検査成功 | 待ち | 生成・LLM・PNGは模擬。実ComfyUI起動・実モデル応答は未確認 |
 | P1c 英訳の抽出 | 実装・関連確認済み | `764640f` | Python48成功、翻訳本体AST一致、package/standalone import確認 | 対象画面の変更なし | 実LLMの英訳品質は未確認 |
 | P2 用途別設定 | 実装・関連確認済み | 下記のP2実施記録 | 関連Node122件成功、変更TS9file診断0、設定/会話browser確認 | 待ち | APIは無効。実モデル・別LAN端末は未確認 |
-| P3〜P6 ローカル英訳・確認 | 未着手 | — | — | — | — |
+| P3〜P6 文章入力workflowの英訳・確認 | 未着手 | — | — | — | — |
 | P7〜P8 画像受信・採用 | 未着手 | — | — | — | — |
-| P9〜P10 API利用 | 未着手 | — | — | — | — |
-| P11 統合受入 | 未着手 | — | — | — | — |
+| P9 会話・翻訳API | 未着手 | — | — | — | — |
+| P10 統合受入・外部エージェント経路 | 未着手 | — | — | — | — |
 
 ### 2026-11-05 P0〜P1の実施記録
 

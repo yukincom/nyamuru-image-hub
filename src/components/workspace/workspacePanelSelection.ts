@@ -1,6 +1,7 @@
 import type { CanvasElementSelection, MangaPage, MangaDocument, Panel } from '../../types';
 import { panelGeometryLocked } from '../../lib/panelLayers';
 import { cloneDocument } from '../../lib/manga';
+import { normalizeCanvasSelection, sameCanvasSelection, toggleCanvasSelection } from '../../lib/canvasSelection';
 import { mergeSelectedPanels, splitPanel } from '../../lib/panelTemplates';
 import type { WorkspaceState } from './useWorkspaceState';
 
@@ -14,7 +15,7 @@ interface Actions {
 }
 
 export function createPanelSelection({
-  setActivePanel, setSelectedPanels, activePanel, setSelectedElement, selectedPanels, activePage,
+  setActivePanel, setSelectedPanels, activePanel, selectedElement, setSelectedElement, selectedElements, setSelectedElements, selectedPanels, activePage,
   paintSessionRef, paintController, setCanvasSelectionScrollRequest, documentRef, setInspectorCollapsed,
   setMobileStoryboardPane, pendingCanvasElementSelection, setActivePage, setToast, panelSplitDirection,
 }: WorkspaceState, {
@@ -36,12 +37,30 @@ export function createPanelSelection({
     setSelectedElement(null);
   };
 
-  const selectCanvasElement = (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex = activePage, revealDetails = true) => {
+  const selectCanvasElement = (selection: CanvasElementSelection | null, panelIndex?: number, pageIndex = activePage, revealDetails = true, additive = false) => {
     if(paintSessionRef.current&&pageIndex!==paintSessionRef.current.pageIndex){
       void layerTransition(async()=>{
         await paintController.current?.close();
-        if(!paintSessionRef.current)selectCanvasElement(selection,panelIndex,pageIndex,revealDetails);
+        if(!paintSessionRef.current)selectCanvasElement(selection,panelIndex,pageIndex,revealDetails,additive);
       });
+      return;
+    }
+    if (additive && selection && pageIndex === activePage) {
+      const baseList = selectedElements.length
+        ? selectedElements
+        : selectedElement
+          ? [normalizeCanvasSelection(selectedElement, activePanel)]
+          : [];
+      const targetPanel = selection.scope === 'page_overlay' || selection.scope === 'page' ? activePanel : (panelIndex ?? activePanel);
+      const item = normalizeCanvasSelection({ ...selection, ...(panelIndex !== undefined && selection.scope !== 'page_overlay' && selection.scope !== 'page' ? { panelIndex } : {}) }, targetPanel);
+      const nextList = toggleCanvasSelection(baseList, item, activePanel);
+      setSelectedElements(nextList);
+      const last = nextList[nextList.length - 1] ?? null;
+      if (last && last.scope !== 'page_overlay' && last.scope !== 'page' && last.panelIndex !== undefined && last.panelIndex !== activePanel) {
+        setActivePanel(last.panelIndex);
+        setSelectedPanels([last.panelIndex]);
+      }
+      setSelectedElement(last, false);
       return;
     }
     if (selection) {
@@ -58,7 +77,31 @@ export function createPanelSelection({
       setActivePanel(panelIndex ?? 0);
       setSelectedPanels([panelIndex ?? 0]);
     }
-    setSelectedElement(selection);
+    if (selection) {
+      const normalized = normalizeCanvasSelection({ ...selection, ...(panelIndex !== undefined && selection.scope !== 'page_overlay' && selection.scope !== 'page' ? { panelIndex } : {}) }, panelIndex ?? activePanel);
+      setSelectedElements([normalized]);
+      setSelectedElement(selection, false);
+    } else {
+      setSelectedElement(null);
+    }
+  };
+
+  const selectCanvasElements = (selections: readonly CanvasElementSelection[], additive = false) => {
+    const baseList = additive
+      ? (selectedElements.length ? selectedElements : selectedElement ? [normalizeCanvasSelection(selectedElement, activePanel)] : [])
+      : [];
+    const merged = [...baseList];
+    for (const entry of selections) {
+      const normalized = normalizeCanvasSelection(entry, activePanel);
+      if (!merged.some((item) => sameCanvasSelection(item, normalized, activePanel))) merged.push(normalized);
+    }
+    setSelectedElements(merged);
+    const last = merged[merged.length - 1] ?? null;
+    if (last && last.scope !== 'page_overlay' && last.scope !== 'page' && last.panelIndex !== undefined && last.panelIndex !== activePanel) {
+      setActivePanel(last.panelIndex);
+      setSelectedPanels([last.panelIndex]);
+    }
+    setSelectedElement(last, false);
   };
 
   const mergeSelectedPanelGroup = () => {
@@ -97,5 +140,5 @@ export function createPanelSelection({
     setSelectedElement(null);
     setToast(panelSplitDirection === 'vertical' ? 'コマをタテに分割しました' : 'コマをヨコに分割しました');
   };
-  return { selectCanvasElement, mergeSelectedPanelGroup, selectCanvasPanel, splitActivePanel };
+  return { selectCanvasElement, selectCanvasElements, mergeSelectedPanelGroup, selectCanvasPanel, splitActivePanel };
 }

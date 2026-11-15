@@ -5,20 +5,23 @@ import type { Interaction, CanvasProps } from './CanvasElements';
 import { resizeImageBox } from '../../lib/imagePlacement';
 import { frameFromContentEdit } from '../../lib/canvasContentGeometry';
 import { normalizedBubbleTailTarget, normalizedBubbleTailRoot } from '../../lib/bubbleTail.ts';
-import { useRef } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import { panelVisible, panelLocked } from '../../lib/panelLayers';
+import { selectionsInLasso, type LassoPoint } from '../../lib/canvasSelection';
 import type { CanvasSurface } from './useCanvasSurface';
 
 export function useElementGestures(options: CanvasProps, state: CanvasSurface) {
   const {
     activePanel, paintTarget, textTool, page, onChangeElementBBox, onImageGesture,
     onFinishElementMove, onChangeBubbleTail, onSelectPanel, painting, zoomTool, onCreateScreenTextAt,
-    onEditBubble, onEditScreenText,
+    onEditBubble, onEditScreenText, onSelectElements,
   } = options;
   const {
     elementLocked, backgroundEdit, paperRef, cleanupRef, canvas, bubblePathTool, overlay,
     onSelectElement, setInteractionMode, paintWorkspace, spacePressedRef, openGenerationMenu,
   } = state;
+  const [lassoPoints, setLassoPoints] = useState<LassoPoint[] | null>(null);
+  const lassoJustFinishedRef = useRef(false);
   const startInteraction = (
     event: PointerEvent,
     panelIndex: number | null,
@@ -52,7 +55,7 @@ export function useElementGestures(options: CanvasProps, state: CanvasSurface) {
     const visible=visibleBox??elementContentBox(event.currentTarget as Element,box);
     event.preventDefault();
     event.stopPropagation();
-    onSelectElement(selection, panelIndex ?? undefined, false);
+    if (!event.shiftKey) onSelectElement(selection, panelIndex ?? undefined, false);
     const interaction: Interaction = {
       canvas, selection, mode, unbounded:true, startClientX: event.clientX, startClientY: event.clientY,
       startBox: { ...visible },
@@ -276,10 +279,72 @@ export function useElementGestures(options: CanvasProps, state: CanvasSurface) {
     openGenerationMenu(event, panelIndex, figureIndex);
   };
 
+  const startLassoSelection = (event: PointerEvent) => {
+    lassoJustFinishedRef.current = false;
+    if (event.button !== 0 || painting || textTool || zoomTool || bubblePathTool || backgroundEdit || spacePressedRef.current || !paperRef.current || !onSelectElements) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest('[data-content-target],.panel-resize-hit,.panel-edge-hit,.panel-vertex-handle,.element-resize-handle,.bubble-tail-target-hit,.bubble-tail-root-hit,.bubble-inline-editor,.canvas-text-toolbar,.background3d-window,.font-family-popover')) return;
+    if (!event.shiftKey && target.closest('.panel-selection-hit-area')) return;
+
+    const paperRect = paperRef.current.getBoundingClientRect();
+    const toPoint = (pointer: PointerEvent): LassoPoint => ({
+      x: (pointer.clientX - paperRect.left) * (canvas.w / paperRect.width),
+      y: (pointer.clientY - paperRect.top) * (canvas.h / paperRect.height),
+    });
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const points: LassoPoint[] = [toPoint(event)];
+    let active = false;
+    const additive = event.shiftKey;
+
+    const move = (pointerEvent: PointerEvent) => {
+      const dx = pointerEvent.clientX - startX;
+      const dy = pointerEvent.clientY - startY;
+      if (!active && Math.hypot(dx, dy) < 4) return;
+      if (!active) {
+        active = true;
+        setInteractionMode('panel');
+      }
+      pointerEvent.preventDefault();
+      const next = toPoint(pointerEvent);
+      const prev = points[points.length - 1];
+      if (!prev || Math.hypot(next.x - prev.x, next.y - prev.y) >= 1) {
+        points.push(next);
+        setLassoPoints([...points]);
+      }
+    };
+    const finish = (pointerEvent: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      cleanupRef.current = null;
+      if (active) {
+        lassoJustFinishedRef.current = true;
+        setInteractionMode(null);
+        setLassoPoints(null);
+        const hits = selectionsInLasso(page, points);
+        onSelectElements(hits, additive || pointerEvent.shiftKey);
+        setTimeout(() => { lassoJustFinishedRef.current = false; }, 0);
+      }
+    };
+    cleanupRef.current?.();
+    cleanupRef.current = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+      setInteractionMode(null);
+      setLassoPoints(null);
+    };
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  };
+
   return {
     startInteraction, startBubbleTailDrag, startBubbleTailRootDrag, bubbleTextDragged,
     startBubbleTextDrag, nudgeElement, renderHandles, selectPanelAt, selectFromPaint, createTextAt,
-    openPanelArtworkMenu,
+    openPanelArtworkMenu, lassoPoints, lassoJustFinishedRef, startLassoSelection,
   };
 }
 

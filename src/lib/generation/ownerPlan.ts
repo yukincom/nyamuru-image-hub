@@ -1,4 +1,4 @@
-import type { CharacterReferenceSourceImage, BBox, AnalogFigureImport, FigureSize, Manga } from '../../types.ts';
+import type { CharacterReferenceSourceImage, CharacterReferenceView, BBox, AnalogFigureImport, FigureSize, Manga } from '../../types.ts';
 import { CHARACTER_RECOGNITION_FIELDS } from '../characterReferences.ts';
 import { threeImageFigureTarget, type HumanPoseCutFrame, humanPoseFigureFrame, humanPosePanelCutFrame } from '../humanPoseFraming.ts';
 import type { HumanPoseTextSelection } from '../humanPoseTypes.ts';
@@ -19,6 +19,7 @@ import { getPrintSetup } from '../printSettings.ts';
 export interface QwenReferenceCandidate {
   label: string; seriesId: string; characterCatalogId: string; source: CharacterReferenceSourceImage;
   characterKeys?: string[];
+  view?: CharacterReferenceView;
 }
 
 export const QWEN_GENERATION_PROFILE = 'qwen-image-2.1-owner-v1' as const;
@@ -32,6 +33,7 @@ export interface QwenGenerationPlan {
   prompt: string; characterKeys: string[]; candidates: QwenReferenceCandidate[];
   threeImageTarget?: NonNullable<ReturnType<typeof threeImageFigureTarget>> & { referenceFrame:BBox };
   threeImages?: boolean;
+  promptlessTwoImages?: boolean;
   dpi?: number;
   artworkStyle?: string[];
   figureAction?: string;
@@ -165,6 +167,7 @@ export function figureBackgroundPrompt(prompt:string,color:string):string {
 }
 
 export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null, outputScale = 0.6):QwenGenerationPlan {
+  if(workflow?.binding.prompt_mode==='promptless-two-images')return {...plan,promptlessTwoImages:true};
   if(workflow?.binding.prompt_mode!=='qwen-three-images')return plan;
   const slot=workflow.binding.prompt[0];
   // The colour selector supplies this last line; keep the artwork text editable.
@@ -214,7 +217,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     ? manga.materials.filter(m=>m.type==='character'&&m.source_image&&(
       m.characterId ? m.characterId===character.localId : m.character_catalog_id===character.catalog_id))
       .sort((a,b)=>Number(b.catalog_id===character.primary_material_catalog_id)-Number(a.catalog_id===character.primary_material_catalog_id))
-      .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!,characterKeys})) : [];
+      .map(m=>({label:m.key,seriesId:manga.meta.series_id,characterCatalogId:character.catalog_id!,source:m.source_image!,characterKeys,...(m.view?{view:m.view}:{})})) : [];
   const artwork=compileArtworkRules(getArtworkSettings(manga),lettering?'handwritten':'character',standardArtwork);
   const style=artwork.style_notes;
   const letteringContext=lettering?[
@@ -296,6 +299,24 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
 }
 
 export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string,outputSize?:readonly [number,number]){
+  if(plan.promptlessTwoImages){
+    const image1=references[0];
+    const image2Source=paintImage||plan.compositionImage||sketchImage||poseImage;
+    const image2=image2Source
+      ? {label:plan.scope?'紙面・コマの参照':poseImage?'3Dポーズ参照':'参照レイヤー',characterKeys:[],image:image2Source}
+      : references[1];
+    if(!image1||!image2)throw new Error('image_1（キャラクター設定画）とimage_2（ポーズ・紙面・参照画像）の2枚を指定してください');
+    return {
+      candidate_count:1,profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
+      overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
+      ...(plan.scope?{literal_text:plan.literalText??[]}:{}),
+      prompt:'',character_keys:image1.characterKeys,mode:'new' as const,
+      references:[
+        {label:image1.label,character_keys:image1.characterKeys,image:image1.image},
+        {label:image2.label,character_keys:image2.characterKeys,image:image2.image},
+      ],
+    };
+  }
   if(!plan.prompt.trim())throw new Error('生成指示を入力してください');
   const sizePrompt=qwenGenerationSizePrompt(plan,Boolean(correctionImage),outputSize);
   plan={...qwenGenerationTarget(plan,Boolean(correctionImage)),prompt:[plan.prompt,sizePrompt].filter(Boolean).join('\n\n')};
@@ -328,7 +349,7 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
   const offset=Number(Boolean(sourcePaint||sketchImage))+Number(Boolean(correctionImage));
   const roles=plan.humanPose&&sketchImage?allReferences.map((ref,index)=>`<image${offset+index+1}>：${ref.characterKeys.length?'キャラクター設定画（人物の外見・画風）':ref.label}。`).join('\n'):'';
   const cut=plan.threeImages?plan.humanPose?.cutFrame:undefined;
-  return {candidate_count:5,profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
+  return {candidate_count:1,profile:plan.profile,document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,
     overlay:plan.overlay,owner_key:plan.ownerKey,label:plan.label,width:plan.width,height:plan.height,
     ...(cut?{dpi:plan.dpi,clip_polygon:cut.points.map(([x,y])=>[(x-cut.bounds.x)/cut.bounds.w,(y-cut.bounds.y)/cut.bounds.h])}:{}),
     ...(plan.scope||plan.contentKind?{literal_text:plan.literalText??[]}:{}),

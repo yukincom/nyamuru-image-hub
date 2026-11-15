@@ -121,7 +121,7 @@ test('workflow selection survives reload, execution changes and other device pre
   const storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
   const id = 'c556af83-d9bb-42b0-ae40-67e999130180';
   const initial = loadGenerationPreferences(storage);
-  assert.equal(initial.local.workflowId, '132c3a87-8f0a-4591-b2e0-4a28a7b7b002');
+  assert.equal(initial.local.workflowId, '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01');
   const selected = { ...initial, local: { ...initial.local, workflowId: id } };
   saveGenerationPreferences(storage, selected);
   assert.deepEqual(loadGenerationPreferences(storage), selected);

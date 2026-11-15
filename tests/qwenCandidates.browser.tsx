@@ -199,7 +199,7 @@ async function mount(status: Scenario) {
       connection={async()=>({connected:false,model:''})} generation={view} portalTarget={host}/></>;
   }
   render(<Room/>,root);
-  await wait(() => ready&&Boolean(conversation) && button('5枚を生成する')?.disabled === false, `${status}: 登録ワークフロー読込`);
+  await wait(() => ready&&Boolean(conversation) && button('生成')?.disabled === false, `${status}: 登録ワークフロー読込`);
 }
 async function generate(status: Scenario) {
   await mount(status);

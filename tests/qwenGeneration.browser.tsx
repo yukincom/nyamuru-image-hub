@@ -109,7 +109,7 @@ else{
     check(!textarea.value.includes('Lettering expression:')&&!textarea.value.includes('Lettering style:'),'英語の表現指定を表示しない');
     check(textarea.value.includes('かぁぁ')&&!textarea.value.includes('描き方：細く、柔らかく'),'本文を確認し旧描き方は表示しない');
     textarea.value+='\n\n余韻を残す';textarea.dispatchEvent(new Event('input',{bubbles:true}));await tick();
-    const generate=Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button=>button.textContent?.trim()==='5枚を生成する')!;
+    const generate=Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button=>button.textContent?.trim()==='生成')!;
     if(!generate||generate.disabled)throw Error('生成開始ボタン');generate.click();
     await wait(()=>document.querySelectorAll('.qwen-candidate').length===5,'5候補');
     document.querySelectorAll<HTMLButtonElement>('.qwen-candidate')[2].click();await tick();

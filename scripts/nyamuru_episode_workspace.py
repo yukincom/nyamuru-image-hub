@@ -47,6 +47,16 @@ MAX_WORKSPACE_IMAGE_BYTES = 40 * 1024 * 1024
 MAX_WORKSPACE_IMAGE_TOTAL_BYTES = 96 * 1024 * 1024
 WORKSPACE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".tif", ".tiff"}
 
+def _hide_directory_on_macos(path: Path) -> None:
+    """Mark a newly created internal directory hidden in macOS Finder."""
+    if not hasattr(os, "chflags") or not hasattr(stat, "UF_HIDDEN"):
+        return
+    try:
+        os.chflags(path, os.stat(path, follow_symlinks=False).st_flags | stat.UF_HIDDEN)
+    except OSError:
+        pass
+
+
 class EpisodeWorkspaceManager(SourceCoverageContract, SourceCoverageFiles):
     def __init__(self, state_path: Path | None = None):
         self.lock = threading.Lock()
@@ -145,6 +155,7 @@ class EpisodeWorkspaceManager(SourceCoverageContract, SourceCoverageFiles):
                 target = directory / name
                 if not target.exists():
                     target.mkdir()
+                    _hide_directory_on_macos(target)
                     created.append(name)
         return {
             "ok": True,

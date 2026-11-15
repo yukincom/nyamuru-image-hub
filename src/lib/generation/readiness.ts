@@ -55,8 +55,9 @@ export function generationReadiness(input: ReadinessInput): GenerationReadiness 
   }
   if (input.characterLoading) {
     add('characters', 'キャラクター設定画', 'waiting', '人物に紐づく設定画を読み込んでいます');
-  } else if (input.sourceErrors.character || input.plan.characterKeys.some(key =>
-    !input.references.some(reference => reference.characterKeys.includes(key)))) {
+  } else if (input.sourceErrors.character || (input.plan.promptlessTwoImages
+    ? input.plan.characterKeys.length > 0 && input.references.length === 0
+    : input.plan.characterKeys.some(key => !input.references.some(reference => reference.characterKeys.includes(key))))) {
     add('characters', 'キャラクター設定画', 'action_required',
       input.sourceErrors.character || '人物に紐づく設定画を読み込めません');
   }

@@ -85,7 +85,6 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .icon-button { width: 34px; height: 34px; background: var(--control); border-color: var(--control-border); color: var(--ink); }
 .icon-button:disabled { opacity: .35; cursor: default; pointer-events: none; }
 .secondary-button { min-height: 34px; padding: 7px 12px; background: var(--control); border-color: var(--control-border); color: var(--ink); font-size:14px; font-weight: 700; }
-.app-header .secondary-button { color: var(--ink); background: var(--control); border-color: var(--control-border); }
 .primary-button { min-height: 34px; padding: 7px 13px; background: var(--accent-fill); color: var(--ink); font-size:14px; font-weight: 800; box-shadow: none; border: 1.5px solid var(--accent); }
 .primary-button:hover { background: var(--accent-fill-hover); color: var(--ink); box-shadow: none; border-color: var(--accent); }
 .secondary-button:hover:not(:disabled), .icon-button:hover:not(:disabled) { background: var(--control-hover); }
@@ -106,10 +105,9 @@ input:disabled, textarea:disabled, select:disabled { background: var(--canvas); 
 .startup-actions { width: min(280px, 100%); display: grid; gap: 14px; }
 .startup-actions button { width: 100%; min-height: 64px; border-radius: 14px; font-size: 16px; }
 .startup-actions .secondary-button { border-color: var(--control-border); color: var(--ink); }
-.app-header .header-settings-button { background: var(--accent-fill); color: var(--accent-dark); border-color: var(--accent); }
-.app-header .header-settings-button:hover:not(:disabled) { background: var(--accent-fill-hover); }
-.app-header .header-settings-button[aria-expanded="true"] { background: var(--control); color: var(--control-border); border-color: var(--control-border); }
-.app-header .header-settings-button[aria-expanded="true"]:hover { background: var(--control-hover); }
+.app-header .header-actions > button { background: var(--accent-fill); color: var(--accent-dark); border-color: var(--accent); }
+.app-header .header-actions > button:hover:not(:disabled) { background: var(--accent-fill-hover); }
+.app-header .header-settings-button[aria-expanded="true"] { background: var(--accent-fill-hover); color: var(--accent-dark); border-color: var(--accent-dark); }
 .is-creating > .app-header { z-index: 120; }
 .is-environment-open > .app-header { z-index: 150; }
 .environment-backdrop { position: absolute; inset: 0; z-index: 130; background: rgba(34, 54, 43, .22); }

@@ -1,4 +1,4 @@
-import {QWEN_FIGURE_WORKFLOW} from './comfyWorkflows.ts';
+import { P_H3_TWO_IMAGE_WORKFLOW, QWEN_FIGURE_WORKFLOW } from './comfyWorkflows.ts';
 export const GENERATION_PREFERENCES_STORAGE_KEY = 'nyamuru.generation-preferences.v1';
 export const LEGACY_CLOUD_MODEL_PREFERENCES_KEY = 'manga-name-studio.cloud-model-preferences.v1';
 
@@ -20,7 +20,7 @@ export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = O
   execution: 'local',
   skipTranslationConfirmation: false,
   cloud: Object.freeze({ adultTermsConfirmed: false, method: 'agent', apiEndpoint: '', apiModel: '', agent: 'codex', agentName: '' }),
-  local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: QWEN_FIGURE_WORKFLOW }),
+  local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: P_H3_TWO_IMAGE_WORKFLOW }),
 });
 
 function defaults(): GenerationPreferences {
@@ -69,7 +69,7 @@ export function loadGenerationPreferences(storage?: Pick<Storage, 'getItem'>): G
     if (source?.version === 3) return typeof record(source.local).workflowId === 'string' ? normalize(source) : defaults();
     if (source?.version === 2) {
       const prefs = normalize(source);
-      if (!record(source.local).workflowId) prefs.local.workflowId = QWEN_FIGURE_WORKFLOW;
+      if (!record(source.local).workflowId) prefs.local.workflowId = P_H3_TWO_IMAGE_WORKFLOW;
       return prefs;
     }
     if (source?.version !== undefined) return defaults();
@@ -78,7 +78,7 @@ export function loadGenerationPreferences(storage?: Pick<Storage, 'getItem'>): G
     try { legacy = record(JSON.parse(storage.getItem(LEGACY_CLOUD_MODEL_PREFERENCES_KEY) || 'null')); }
     catch { /* A missing or unreadable legacy grant is not consent. */ }
     const next = source ? normalize(source) : defaults();
-    if (!record(source?.local).workflowId) next.local.workflowId = QWEN_FIGURE_WORKFLOW;
+    if (!record(source?.local).workflowId) next.local.workflowId = P_H3_TWO_IMAGE_WORKFLOW;
     next.execution = legacy.enabled === true && (!source || source.execution === 'cloud') ? 'cloud' : 'local';
     next.cloud.adultTermsConfirmed = legacy.adultTermsConfirmed === true;
     return next;

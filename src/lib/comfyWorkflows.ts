@@ -13,7 +13,7 @@ export interface ComfyWorkflowBinding {
   height: ComfyInputBinding[];
   images: ComfyInputBinding[][];
   output: { node: string; index: number };
-  prompt_mode: 'qwen' | 'plain' | 'qwen-three-images';
+  prompt_mode: 'qwen' | 'plain' | 'qwen-three-images' | 'promptless-two-images';
   fixed_size: [number, number] | null;
 }
 export interface ComfyWorkflowDefinition {
@@ -84,7 +84,7 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
       return { node: sink.node, input: sink.input };
     });
   };
-  const prompt = sinks(value.prompt, '指示文', 'string', true);
+  const prompt = sinks(value.prompt, '指示文', 'string', value.prompt_mode !== 'promptless-two-images');
   const seed = sinks(value.seed, 'シード', 'number', true);
   const width = sinks(value.width, '幅', 'number');
   const height = sinks(value.height, '高さ', 'number');
@@ -97,7 +97,7 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
       throw new Error('固定寸法は幅と高さを正の整数で指定し、寸法の受け渡し先は外してください');
     }
     fixed_size = [fixed[0], fixed[1]];
-  } else if ((!width.length || !height.length) && !(value.prompt_mode === 'qwen-three-images' && !width.length && !height.length)) {
+  } else if ((!width.length || !height.length) && !((value.prompt_mode === 'qwen-three-images' || value.prompt_mode === 'promptless-two-images') && !width.length && !height.length)) {
     throw new Error('幅・高さの両方に受け渡し先を設定するか、固定寸法を指定してください');
   }
   const output = value.output;
@@ -105,11 +105,14 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
     || typeof output.index !== 'number' || !Number.isSafeInteger(output.index) || output.index < 0 || output.index > 63) {
     throw new Error('完成画像の出力ノードと画像位置を選択してください');
   }
-  if (value.prompt_mode !== 'qwen' && value.prompt_mode !== 'plain' && value.prompt_mode !== 'qwen-three-images') {
+  if (value.prompt_mode !== 'qwen' && value.prompt_mode !== 'plain' && value.prompt_mode !== 'qwen-three-images' && value.prompt_mode !== 'promptless-two-images') {
     throw new Error('指示文の扱いを選択してください');
   }
   if (value.prompt_mode === 'qwen-three-images' && (images.length !== 3 || fixed_size !== null)) {
     throw new Error('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください');
+  }
+  if (value.prompt_mode === 'promptless-two-images' && images.length !== 2) {
+    throw new Error('2画像参照・プロンプト不要には参照画像2枚を指定してください');
   }
   return { prompt, seed, width, height, images, output: { node: output.node, index: output.index },
     prompt_mode: value.prompt_mode, fixed_size };
@@ -153,6 +156,7 @@ export function parseComfyWorkflowInfo(value: unknown): ComfyWorkflowInfo {
 
 
 export const QWEN_FIGURE_WORKFLOW = '132c3a87-8f0a-4591-b2e0-4a28a7b7b002';
+export const P_H3_TWO_IMAGE_WORKFLOW = '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01';
 const standardQwenPrefix='c7b07cf5-7e69-43e4-b380-';
 export function standardQwenWorkflowId(inputs:number) {
   return standardQwenPrefix+String(inputs).padStart(12,'0');
@@ -168,4 +172,31 @@ export function workflowNegativePrompt(workflow:ComfyWorkflowDefinition|null) {
     if(input==='prompt'&&encoder.class_type==='TextEncodeQwenImage21'&&typeof encoder.inputs.negative_prompt==='string')return encoder.inputs.negative_prompt;
   }
   return undefined;
+}
+
+export function promptUpsamplerNodeIds(graph: ComfyApiGraph): string[] {
+  return Object.entries(graph)
+    .filter(([, node]) => {
+      if (node.class_type !== 'ComfySwitchNode' || typeof node.inputs.switch !== 'boolean') return false;
+      const title = typeof node._meta?.title === 'string' ? node._meta.title.toLowerCase() : '';
+      const onTrue = node.inputs.on_true;
+      const targetId = Array.isArray(onTrue) && typeof onTrue[0] === 'string' ? onTrue[0] : '';
+      return title.includes('upsampler') || (targetId !== '' && graph[targetId]?.class_type === 'TextGenerate');
+    })
+    .map(([id]) => id);
+}
+
+export function workflowPromptUpsampler(workflow: ComfyWorkflowDefinition | null): boolean | undefined {
+  if (!workflow) return undefined;
+  const ids = promptUpsamplerNodeIds(workflow.graph);
+  if (!ids.length) return undefined;
+  return Boolean(workflow.graph[ids[0]].inputs.switch);
+}
+
+export function withPromptUpsampler(graph: ComfyApiGraph, enabled: boolean): ComfyApiGraph {
+  const ids = promptUpsamplerNodeIds(graph);
+  if (!ids.length) return graph;
+  const next = structuredClone(graph);
+  for (const id of ids) next[id].inputs.switch = enabled;
+  return next;
 }

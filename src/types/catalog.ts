@@ -207,6 +207,8 @@ export interface CanvasElementSelection {
   index: number;
   /** 省略時は選択中コマ。ページ画像は page を明示する。 */
   scope?: 'panel' | 'page_overlay' | 'page';
+  /** 複数選択時に要素が属するコマ番号（page_overlay / page では省略可）。 */
+  panelIndex?: number;
   /** Native text row inside a text folder, rather than the folder heading. */
   part?: 'native';
 }

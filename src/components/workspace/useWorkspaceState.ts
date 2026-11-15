@@ -9,6 +9,7 @@ import { type PcFontFamily } from '../../lib/bubbleFonts';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { defaultPrintSetup, type PrintSetup } from '../../lib/printSettings';
 import { type QwenGenerationConversation } from '../../lib/qwenGeneration';
+import type { MultiFigureDialogItem } from '../MultiFigureGenerationDialog';
 import { type ImageExportFormat } from '../../lib/pageExport';
 import { loadEditGuide, loadPaintBleed, loadPaintSmoothing, loadPaintCursor, type PaintCursorMode } from '../../lib/paintPreferences';
 import { workspaceHistory } from '../../lib/workspaceHistory';
@@ -44,10 +45,16 @@ export function useWorkspaceState(startupWorkspace: WorkspaceStartupState, initi
   const [generationConversation,setGenerationConversation]=useState<QwenGenerationConversation|null>(null);
   const [generationConversationHost,setGenerationConversationHost]=useState<HTMLElement|null>(null);
   const [qwenGeneration,setQwenGeneration]=useState<WorkspaceGeneration | null>(null);
+  const [multiFigureGeneration,setMultiFigureGeneration]=useState<{id:string;pageIndex:number;items:MultiFigureDialogItem[]}|null>(null);
   const [agentWorkTarget,setAgentWorkTarget]=useState<{pageIndex:number;panelIndex:number;selection:CanvasElementSelection}|null>(null);
   const qwenGenerationRef=useRef(qwenGeneration);qwenGenerationRef.current=qwenGeneration;
   const [selectedPanels, setSelectedPanels] = useState<number[]>([0]);
-  const [selectedElement, setSelectedElement] = useState<CanvasElementSelection | null>(null);
+  const [selectedElement, setSelectedElementState] = useState<CanvasElementSelection | null>(null);
+  const [selectedElements, setSelectedElements] = useState<CanvasElementSelection[]>([]);
+  const setSelectedElement = (next: CanvasElementSelection | null, syncMulti = true) => {
+    setSelectedElementState(next);
+    if (syncMulti) setSelectedElements(next ? [next] : []);
+  };
   const placedImageInput = useRef<HTMLInputElement>(null);
   const imageImportTarget = useRef<WorkspaceImageTarget | null>(null);
   const [imageImportBusy, setImageImportBusy] = useState(false);
@@ -234,8 +241,8 @@ export function useWorkspaceState(startupWorkspace: WorkspaceStartupState, initi
     document, setDocumentState, hasDocument, setHasDocument, documentRef, activePage, setActivePage,
     activePageRef, activePanel, setActivePanel, activePanelRef, qwenPreparing, generationConversation,
     setGenerationConversation, generationConversationHost, setGenerationConversationHost, qwenGeneration,
-    setQwenGeneration, agentWorkTarget, setAgentWorkTarget, qwenGenerationRef, selectedPanels,
-    setSelectedPanels, selectedElement, setSelectedElement, placedImageInput, imageImportTarget,
+    setQwenGeneration, multiFigureGeneration, setMultiFigureGeneration, agentWorkTarget, setAgentWorkTarget, qwenGenerationRef, selectedPanels,
+    setSelectedPanels, selectedElement, setSelectedElement, selectedElements, setSelectedElements, placedImageInput, imageImportTarget,
     imageImportBusy, setImageImportBusy, imageExportDialog, setImageExportDialog, imageExportBusy,
     setImageExportBusy, imageExportDirectory, setImageExportDirectory, imageExportProgress,
     setImageExportProgress, imageExportError, setImageExportError, paintSession, setPaintSession,

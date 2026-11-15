@@ -91,7 +91,7 @@ async function run(){
   await send('生成して');
   check(noticeChats===1&&submits===0&&runtimeStarts===0&&prepares===0,'未準備案内だけで画像処理を開始しない');
   check(document.querySelector('[aria-label="会話履歴"]')?.textContent?.includes('準備が整っていません。ワークフロー'),'案内を既存のassistant履歴へ表示');
-  releaseWorkflow();await wait(()=>Array.from(document.querySelectorAll<HTMLButtonElement>('.qwen-generation-dialog button')).some(button=>button.textContent==='5枚を生成する'&&!button.disabled));
+  releaseWorkflow();await wait(()=>Array.from(document.querySelectorAll<HTMLButtonElement>('.qwen-generation-dialog button')).some(button=>button.textContent==='生成'&&!button.disabled));
   check(submits===0&&runtimeStarts===0&&prepares===0,'準備完了だけでは再実行しない');
   // 見込み/合格: 会話UIから明示再送でき、古いsenderも最新工程を読む。Comfy起動中の別依頼はLLMも追加生成も0回。
   await send('生成して');
@@ -103,7 +103,7 @@ async function run(){
   check(document.querySelector('[aria-label="会話履歴"]')?.textContent?.includes('ComfyUI：ComfyUIを起動中'),'起動中の箇所をassistant履歴へ表示');
   releaseComfy();
   await wait(()=>!conversation?.busy&&document.querySelectorAll('.qwen-candidate').length===5);
-  await wait(()=>document.querySelector('[aria-label="会話履歴"]')?.textContent?.includes('候補を5枚生成しました')??false);
+  await wait(()=>document.querySelector('[aria-label="会話履歴"]')?.textContent?.includes('画像を生成しました')??false);
   check(submits===1&&prepares===1,'起動完了後も未準備時の依頼を再送しない');
   await send('表情が強すぎるのですが、どう直す？');check(chatCount===1&&document.querySelectorAll('.qwen-candidate').length===5,'相談は候補を保持');
   await send('表情を柔らかくして英訳して');check(chatCount===3&&document.querySelectorAll('.qwen-candidate').length===0,'英訳で次の生成を準備');

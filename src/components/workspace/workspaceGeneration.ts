@@ -11,6 +11,9 @@ import standardArtworkSource from '../../content/standard-settings.yaml?raw';
 import { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from '../ImageGenerationDialog';
 import { getOutputSettings } from '../../lib/finishLayout.ts';
 import { type QwenCompositionScope, buildQwenCompositionPlan, captureQwenComposition } from '../../lib/pageComposition';
+import type { MultiFigureTarget } from '../../lib/canvasSelection';
+import type { MultiFigureDialogItem } from '../MultiFigureGenerationDialog';
+import type { WorkspaceImageTarget } from './workspaceTypes';
 
 interface Context {
   setDocument: (next: MangaDocument, record?: boolean) => void;
@@ -19,14 +22,15 @@ interface Context {
   selectedPaintOwner: () => string;
   endTextEdit: () => void;
   screenTextPosition: (target: CanvasTextTarget) => Bubble['text_position'];
+  insertBatchFigureImage?: (file: File | File[], target: WorkspaceImageTarget) => Promise<void>;
 }
 
 export function createWorkspaceGeneration({
   paintController, documentRef, setVoiceOpen, qwenGenerationRef, paintSessionRef, setPaintSession,
-  lastHistoryPush, setQwenGeneration, selectedElement, activePanel, activePage, qwenPreparing,
+  lastHistoryPush, setQwenGeneration, setMultiFigureGeneration, selectedElement, activePanel, activePage, qwenPreparing,
   imageImportBusy, projectOperation, setAgentWorkTarget, setToast,
 }: WorkspaceState, {
-  setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition,
+  setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition, insertBatchFigureImage,
 }: Context) {
   const prepareQwen = async(current:MangaDocument,pageIndex:number,panelIndex:number,overlay:boolean,owner:PaintOwner,images?:PaintImages,pendingAssets:ImageAsset[]=[],agentRequest?:QwenAgentRequest,textSource?:{target:CanvasTextTarget;position?:Bubble['text_position'];document:MangaDocument}) => {
     const captured=structuredClone(owner),assets=[...pendingAssets,...(current.manga.image_assets??[])];
@@ -133,5 +137,76 @@ export function createWorkspaceGeneration({
     finally{qwenPreparing.current=false;}
   };
 
-  return { requestOwnerGeneration, prepareQwen, requestCompositionGeneration, requestTextGeneration };
+  const requestMultiFigureGeneration = async (targets: MultiFigureTarget[], pageIndex = activePage) => {
+    if (qwenGenerationRef.current || qwenPreparing.current || imageImportBusy || projectOperation.current) return;
+    if (paintSessionRef.current) {
+      try { await paintController.current?.close(); } catch { return; }
+    }
+    qwenPreparing.current = true;
+    try {
+      const current = documentRef.current;
+      const standardYaml = parseOmayYaml(standardArtworkSource);
+      const items: MultiFigureDialogItem[] = [];
+      for (const target of targets) {
+        try {
+          const scene = makePaintScene(current, target.panelIndex, pageIndex, target.overlay);
+          const owner = scene.owners.find((o) => o.key === target.ownerKey);
+          if (!owner || owner.kind !== 'figure' || !owner.figure || isPropPlacement(owner.figure)) continue;
+          const captured = structuredClone(owner);
+          const sourcePage = current.manga.pages[pageIndex];
+          const liveFigure = (target.overlay ? sourcePage?.page_overlay : sourcePage?.panels[target.panelIndex])?.figures?.[captured.index];
+          if (liveFigure) {
+            captured.figure!.human_pose = liveFigure.human_pose;
+            captured.figure!.size = liveFigure.size;
+          }
+          const area = generationMaskBounds(captured.paint);
+          const plan = buildQwenGenerationPlan(current.manga, pageIndex, target.panelIndex, target.overlay, captured, standardYaml, area, true);
+          const assets = [...(current.manga.image_assets ?? [])];
+          const loadLayer = async (id: string, correction: boolean) => {
+            const result = await qwenInputImage(await qwenLayerImage(captured, id, assets, undefined, correction));
+            return result.image;
+          };
+          const panelId = target.overlay ? 0 : (sourcePage?.panels[target.panelIndex]?.id ?? target.panelIndex + 1);
+          items.push({
+            id: `${target.overlay ? 'overlay' : `panel-${target.panelIndex}`}:figure-${target.figureIndex}`,
+            panelIndex: target.panelIndex,
+            panelId,
+            figureIndex: target.figureIndex,
+            overlay: target.overlay,
+            label: owner.label,
+            plan,
+            layers: qwenLayerCandidates(captured),
+            loadLayer,
+            insert: async (files, generatedPlan) => {
+              if (!insertBatchFigureImage || !files[0]) return;
+              const liveDoc = documentRef.current;
+              await insertBatchFigureImage(files[0], {
+                document: liveDoc,
+                pageIndex,
+                panelIndex: target.panelIndex,
+                scope: target.overlay ? 'page_overlay' : 'panel',
+                figureIndex: target.figureIndex,
+                box: { ...(generatedPlan.outputFrame ?? owner.frame) },
+                generatedOwner: owner,
+                generatedFolderId: generatedPlan.folderId,
+              });
+            },
+          });
+        } catch {
+          // 人物以外の不正ターゲットや欠損要素はスキップして止めない
+        }
+      }
+      if (!items.length) {
+        setToast('生成可能な人物が見つかりませんでした（人物以外は自動除外されます）');
+        return;
+      }
+      setMultiFigureGeneration({ id: crypto.randomUUID(), pageIndex, items });
+    } catch (error) {
+      setToast(error instanceof Error ? error.message : '複数人物生成を準備できませんでした');
+    } finally {
+      qwenPreparing.current = false;
+    }
+  };
+
+  return { requestOwnerGeneration, prepareQwen, requestCompositionGeneration, requestTextGeneration, requestMultiFigureGeneration };
 }

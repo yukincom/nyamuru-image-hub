@@ -79,7 +79,7 @@ def validate_definition(body):
         raise ValueError('ComfyUIのAPI形式JSON（ノードIDごとのclass_typeとinputs）を書き出してください')
     if not isinstance(binding, dict) or set(binding) != _BINDING_KEYS:
         raise ValueError('指示・シード・寸法・参照画像・完成画像・プロンプト処理の対応付けを指定してください')
-    if binding['prompt_mode'] not in ('qwen', 'plain', 'qwen-three-images'):
+    if binding['prompt_mode'] not in ('qwen', 'plain', 'qwen-three-images', 'promptless-two-images'):
         raise ValueError('指示文の扱いを選択してください')
     assigned = set()
 
@@ -99,8 +99,9 @@ def validate_definition(body):
                 raise ValueError(f'受け渡し先{node_id}.{key}が重複しています')
             assigned.add((node_id, key))
 
+    prompt_required = binding['prompt_mode'] != 'promptless-two-images'
     for field in _FIELDS:
-        sinks(binding[field], field, field in ('prompt', 'seed'))
+        sinks(binding[field], field, field == 'seed' or (field == 'prompt' and prompt_required))
     images = binding['images']
     if not isinstance(images, list) or len(images) > MAX_REFERENCES:
         raise ValueError('参照画像の対応は0〜10枚で指定してください')
@@ -111,11 +112,13 @@ def validate_definition(body):
     fixed = binding['fixed_size']
     if binding['prompt_mode'] == 'qwen-three-images' and (len(images) != 3 or fixed is not None):
         raise ValueError('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください')
+    if binding['prompt_mode'] == 'promptless-two-images' and len(images) != 2:
+        raise ValueError('2画像参照・プロンプト不要には参照画像2枚を指定してください')
     if binding['width']:
         if fixed is not None:
             raise ValueError('寸法の受け渡し先と固定寸法は同時に指定できません')
-    elif binding['prompt_mode'] == 'qwen-three-images' and fixed is None:
-        pass  # The panel-sized pose drives both the native latent and the final crop.
+    elif binding['prompt_mode'] in ('qwen-three-images', 'promptless-two-images') and fixed is None:
+        pass  # The workflow computes output dimensions from the input images.
     elif not isinstance(fixed, list) or len(fixed) != 2:
         raise ValueError('寸法の受け渡し先がない場合はfixed_sizeに幅と高さを指定してください')
     else:
@@ -150,7 +153,25 @@ def negative_prompt_nodes(definition):
             and isinstance(definition['graph'][sink['node']]['inputs'].get('negative_prompt'), str)]
 
 
-def bind_graph(definition, prompt, images, seed, width, height, *, negative_prompt=None, dpi=None):
+def prompt_upsampler_nodes(definition):
+    """Return ComfySwitchNode IDs controlling prompt upsampling in a workflow graph."""
+    graph = definition['graph']
+    nodes = []
+    for node_id, node in graph.items():
+        if node.get('class_type') != 'ComfySwitchNode':
+            continue
+        inputs = node.get('inputs', {})
+        if not isinstance(inputs.get('switch'), bool):
+            continue
+        title = str(node.get('_meta', {}).get('title', '')).lower()
+        on_true = inputs.get('on_true')
+        target_id = on_true[0] if isinstance(on_true, list) and on_true and isinstance(on_true[0], str) else ''
+        if 'upsampler' in title or (target_id and graph.get(target_id, {}).get('class_type') == 'TextGenerate'):
+            nodes.append(node_id)
+    return nodes
+
+
+def bind_graph(definition, prompt, images, seed, width, height, *, negative_prompt=None, dpi=None, use_prompt_upsampler=None):
     """Bind request values to a previously validated definition, copying its graph once."""
     if not isinstance(prompt, str):
         raise ValueError('指示文は文字列で指定してください')
@@ -173,10 +194,14 @@ def bind_graph(definition, prompt, images, seed, width, height, *, negative_prom
         if save['class_type'] != 'NyamuruSavePrintPNG':
             raise ValueError('コマの解像度を受け取る保存ノードを指定してください')
         save['inputs']['dpi'] = dpi
-    put(binding['prompt'], prompt)
+    if binding['prompt']:
+        put(binding['prompt'], prompt)
     if negative_prompt is not None:
         for node_id in negative_prompt_nodes(definition):
             graph[node_id]['inputs']['negative_prompt'] = negative_prompt
+    if use_prompt_upsampler is not None:
+        for node_id in prompt_upsampler_nodes(definition):
+            graph[node_id]['inputs']['switch'] = bool(use_prompt_upsampler)
     put(binding['seed'], seed)
     if binding['width']:
         put(binding['width'], width)

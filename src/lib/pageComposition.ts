@@ -95,7 +95,7 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
       const identity = JSON.stringify(material.source_image);
       if (unique.has(identity)) return []; unique.add(identity);
       return [{ label: `Character ${index + 1}「${character.name}」: ${material.key}`, seriesId: manga.meta.series_id,
-        characterCatalogId: character.catalog_id!, source: structuredClone(material.source_image!), characterKeys: [key] }];
+        characterCatalogId: character.catalog_id!, source: structuredClone(material.source_image!), characterKeys: [key], ...(material.view ? { view: material.view } : {}) }];
     });
     if (!candidates.length) throw new Error(`Character ${index + 1}「${character.name}」の登録済み人物資料がありません`);
     return candidates;

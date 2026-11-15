@@ -92,7 +92,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
   });
 
   const {
-    selectCanvasElement, mergeSelectedPanelGroup, selectCanvasPanel, splitActivePanel,
+    selectCanvasElement, selectCanvasElements, mergeSelectedPanelGroup, selectCanvasPanel, splitActivePanel,
   } = createPanelSelection(workspace, {
     endTextEdit: (...args) => endTextEdit(...args), layerTransition: (...args) => layerTransition(...args),
     page, setDocument, panel, panelGutters,
@@ -223,9 +223,10 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     persistPaintResults: (...args) => persistPaintResults(...args),
   });
   const {
-    requestOwnerGeneration, prepareQwen, requestCompositionGeneration, requestTextGeneration,
+    requestOwnerGeneration, prepareQwen, requestCompositionGeneration, requestTextGeneration, requestMultiFigureGeneration,
   } = createWorkspaceGeneration(workspace, {
     setDocument, artworkGuideVisible, makePaintScene, selectedPaintOwner, endTextEdit, screenTextPosition,
+    insertBatchFigureImage: (file, target) => importPlacedImage(file, target),
   });
   const {
     openImageExportDialog, chooseImageExportFolder, exportPageRange,
@@ -273,7 +274,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     saveProject, actOnLayer, makePaintScene, selectedBubbleStroke, undo, redo, chooseBubblePathTool,
     chooseTextTool, closeTextTool, openBubbleMaterials, bubbleLineWidthMm, panel, addPanel,
     toggleInnerFrameSnap, togglePanelGapSnap, togglePanelSync, mergeSelectedPanelGroup, splitActivePanel,
-    endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement,
+    endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement, selectCanvasElements,
     reorderOwnerLayers, startBubbleEdit, artworkGuideVisible, toggleArtworkGuide, prepareQwen,
     applyPaint, autoPaintBoundary, guardDuringPaint, layerTransition, choosePlacedImage,
     openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, chooseImageExportFolder,
@@ -281,7 +282,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     applyBubbleMaterial, changeTab, selectPage, addPage, duplicatePage, deletePage, reorderPage, page,
     spreadPartnerIndex, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt,
     wrapScreenText, finishElementMove, changeCanvasText, canvasTextHistory, requestCompositionGeneration,
-    requestOwnerGeneration, chooseOwnerImage, imageGestureBoundary, panelFrameLineWidthMm, panelGutters,
+    requestOwnerGeneration, requestMultiFigureGeneration, chooseOwnerImage, imageGestureBoundary, panelFrameLineWidthMm, panelGutters,
     selectCanvasPanel, changeElementBBox, changeBubbleTail, movePanel, resizePanel, movePanelVertex,
     movePanelEdge, deleteScreenTextAt, deleteBubbleAt, selectLayerPanel, togglePanelLayer,
     togglePanelLock, deletePanelAt, addDirectFolder, mutate, movePageImageToPanel,

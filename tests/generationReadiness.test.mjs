@@ -74,7 +74,7 @@ test('failed assets and unconfirmed poses keep their concrete correction message
 
 // 見込み/合格: 起動・実行中は現在の工程をそのまま返し、生成/LLM/排他operationを一切呼ばない。
 test('queries during ComfyUI startup or image work return facts without waking an LLM or generating again', async () => {
-  for (const phase of ['ComfyUIを起動中', '5枚の画像を生成中', '生成後の復帰を確認中']) {
+  for (const phase of ['ComfyUIを起動中', '画像を生成中', '生成後の復帰を確認中']) {
     const readiness = generationReadiness(input({working: true, phase}));
     const send = createGenerationConversation({isAlive: () => true, isCurrent: () => true,
       isWorking: () => true, readiness: () => readiness,

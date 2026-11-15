@@ -1,0 +1,422 @@
+{
+  "4": {
+    "inputs": {
+      "image": "koyuki_pin.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "image_1 (edited)",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "5": {
+    "inputs": {
+      "image": "pose3.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "image_2 (reference)",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "7": {
+    "inputs": {
+      "sigmas": "1.0, 0.984753, 0.967905, 0.951688, 0.925372, 0.881923, 0.810083, 0.528718, 0.0"
+    },
+    "class_type": "ManualSigmas",
+    "_meta": {
+      "title": "マニュアルシグマ",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "8": {
+    "inputs": {
+      "model": [
+        "27",
+        0
+      ],
+      "conditioning": [
+        "30",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "基本ガイダー",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "9": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "Kサンプラー選択",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "10": {
+    "inputs": {
+      "noise_seed": 895091199748737
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "ランダムノイズ",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "11": {
+    "inputs": {
+      "noise": [
+        "10",
+        0
+      ],
+      "guider": [
+        "8",
+        0
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "30",
+        1
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "カスタムサンプラー（高度）",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "12": {
+    "inputs": {
+      "samples": [
+        "11",
+        0
+      ],
+      "vae": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAEデコード",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "13": {
+    "inputs": {
+      "filename_prefix": "P-H3-Image_Edit_Mac",
+      "images": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "画像を保存",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "14": {
+    "inputs": {
+      "clip_name": "p-h3-image_prompt_upsampler_bf16.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "p-h3-image prompt upsampler",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "16": {
+    "inputs": {
+      "source": [
+        "24",
+        0
+      ]
+    },
+    "class_type": "PreviewAny",
+    "_meta": {
+      "title": "Upsampled prompt",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
+    }
+  },
+  "17": {
+    "inputs": {
+      "value": "Change the pose and the facial expression of the character in <Picture 1> to match <Picture 2>. Keep the character's face shape, eyes, nose, hairstyle, headband, clothes, and drawing style from <Picture 1> exactly the same. Only the pose and the expression should change."
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Request"
+    }
+  },
+  "18": {
+    "inputs": {
+      "f_string": "<|im_start|>user\n<Picture 1>: <|vision_start|><|image_pad|><|vision_end|><Picture 2>: <|vision_start|><|image_pad|><|vision_end|>Edit <Picture 1>. {a}<|im_end|>\n<|im_start|>assistant\n<think>\n",
+      "values.a": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "StringFormat",
+    "_meta": {
+      "title": "Upsampler input"
+    }
+  },
+  "19": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "image_1 at 1 MP"
+    }
+  },
+  "20": {
+    "inputs": {
+      "image": [
+        "19",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "画像サイズ取得"
+    }
+  },
+  "21": {
+    "inputs": {
+      "target_width": [
+        "20",
+        0
+      ],
+      "target_height": [
+        "20",
+        1
+      ],
+      "padding_color": "white",
+      "interpolation": "lanczos",
+      "image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ResizeAndPadImage",
+    "_meta": {
+      "title": "image_2 padded to image_1"
+    }
+  },
+  "22": {
+    "inputs": {
+      "images.image0": [
+        "19",
+        0
+      ],
+      "images.image1": [
+        "21",
+        0
+      ]
+    },
+    "class_type": "BatchImagesNode",
+    "_meta": {
+      "title": "画像をバッチ処理"
+    }
+  },
+  "23": {
+    "inputs": {
+      "prompt": [
+        "18",
+        0
+      ],
+      "max_length": 2048,
+      "sampling_mode": "off",
+      "thinking": false,
+      "use_default_template": true,
+      "mtp": "auto",
+      "clip": [
+        "14",
+        0
+      ],
+      "image": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "TextGenerate",
+    "_meta": {
+      "title": "Prompt upsampler"
+    }
+  },
+  "24": {
+    "inputs": {
+      "switch": false,
+      "on_false": [
+        "17",
+        0
+      ],
+      "on_true": [
+        "23",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Use prompt upsampler"
+    }
+  },
+  "26": {
+    "inputs": {
+      "unet_name": "P-H3-Image-AD-Q6_K.gguf"
+    },
+    "class_type": "UnetLoaderGGUF",
+    "_meta": {
+      "title": "Unet Loader (GGUF)"
+    }
+  },
+  "27": {
+    "inputs": {
+      "shift_video": 1,
+      "shift_audio": 1,
+      "model": [
+        "26",
+        0
+      ]
+    },
+    "class_type": "MiniMaxH3SigmaShift",
+    "_meta": {
+      "title": "MiniMax H3 Sigma Shift"
+    }
+  },
+  "28": {
+    "inputs": {
+      "clip_name": "p-h3-image_text_encoder_bf16.safetensors",
+      "type": "minimax",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "p-h3-image text encoder"
+    }
+  },
+  "29": {
+    "inputs": {
+      "vae_name": "p-h3-image_vae_bf16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAEを読み込む"
+    }
+  },
+  "30": {
+    "inputs": {
+      "prompt": [
+        "24",
+        0
+      ],
+      "width": [
+        "33",
+        0
+      ],
+      "height": [
+        "33",
+        1
+      ],
+      "clip": [
+        "28",
+        0
+      ],
+      "vae": [
+        "29",
+        0
+      ],
+      "images.image_1": [
+        "34",
+        0
+      ],
+      "images.image_2": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "PH3ImageConditioning",
+    "_meta": {
+      "title": "p-h3-image Conditioning"
+    }
+  },
+  "31": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 0.7,
+      "resolution_steps": 32,
+      "image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "出力サイズ: image_2 at 1 MP (ここを 2 / 4 に上げる)"
+    }
+  },
+  "33": {
+    "inputs": {
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "出力サイズ (image_2 基準)"
+    }
+  },
+  "34": {
+    "inputs": {
+      "target_width": [
+        "33",
+        0
+      ],
+      "target_height": [
+        "33",
+        1
+      ],
+      "padding_color": "white",
+      "interpolation": "lanczos",
+      "image": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "ResizeAndPadImage",
+    "_meta": {
+      "title": "image_1 padded to 出力サイズ"
+    }
+  }
+}

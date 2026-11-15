@@ -194,6 +194,30 @@ class DefinitionTests(unittest.TestCase):
             with self.subTest(width=width, height=height), self.assertRaises(ValueError):
                 workflows.bind_graph(definition(0), '指示', [], 1, width, height)
 
+    def test_promptless_two_images_validates_and_preserves_embedded_prompt(self):
+        root = Path(__file__).resolve().parent.parent / 'examples' / 'comfyui'
+        graph = json.loads((root / 'p_h3_image_edit_mac_bf16_v2.api.json').read_text(encoding='utf-8'))
+        binding = json.loads((root / 'p_h3_image_edit_mac_bf16_v2.binding.json').read_text(encoding='utf-8'))
+        body = workflows.validate_definition({
+            'id': workflows.P_H3_TWO_IMAGE_ID,
+            'name': 'P-H3 2画像参照',
+            'version': 1,
+            'graph': graph,
+            'binding': binding,
+        })
+        workflows.validate_request(body, 2)
+        bound = workflows.bind_graph(body, '', ['char.png', 'pose.png'], 12345, 512, 768)
+        self.assertEqual(bound['4']['inputs']['image'], 'char.png')
+        self.assertEqual(bound['5']['inputs']['image'], 'pose.png')
+        self.assertEqual(bound['10']['inputs']['noise_seed'], 12345)
+        self.assertIn('<Picture 1>', bound['17']['inputs']['value'])
+        self.assertIn('<Picture 2>', bound['17']['inputs']['value'])
+        self.assertEqual(bound['31']['inputs']['megapixels'], 0.7)
+        self.assertEqual(workflows.prompt_upsampler_nodes(body), ['24'])
+        self.assertIs(bound['24']['inputs']['switch'], False)
+        bound_upsampled = workflows.bind_graph(body, '', ['char.png', 'pose.png'], 12345, 512, 768, use_prompt_upsampler=True)
+        self.assertIs(bound_upsampled['24']['inputs']['switch'], True)
+
 
 class RuntimeTests(unittest.TestCase):
     # 見込み: アップロード予定名は現在の画像一覧になくても利用できる。合格: 2形式の画像enumで事前拒否せず通信0回。範囲: 模擬object_info、実uploadは未実施。

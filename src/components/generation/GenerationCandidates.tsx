@@ -54,7 +54,7 @@ export default function GenerationCandidates({
       <button
         class="primary-button"
         disabled={busy || job.status !== 'succeeded' || (job.candidateCutout
-          ? !chosen.length || job.candidates.length !== 5 && !job.selectedCandidates
+          ? !chosen.length || !job.candidates.length && !job.selectedCandidates
           : selectedCandidate === null)}
         onClick={() => void onSelect()}
       >{job.candidateCutout

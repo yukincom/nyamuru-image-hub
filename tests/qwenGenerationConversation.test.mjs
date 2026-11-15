@@ -89,8 +89,8 @@ function appFunction(name,context,file=name==='applyVoiceCommand'?'workspace/wor
    if(ts.isFunctionDeclaration(node)&&node.name?.getText(ast)===name)expression=node.getText(ast);ts.forEachChild(node,visit);};visit(ast);
  assert.ok(expression);return runInNewContext(ts.transpileModule(`(${expression})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{Error,...context});
 }
-// 見込み: 撮影待ちの間にクラウド設定・同意が撤回されたら送信資料を作らない。合格: 許可時だけZIPとdownload各1回、撤回時は両方0回。範囲: 実generate関数と模擬撮影待ち、生成範囲helperは実装を使用。
-test('cloud handoff rechecks current execution and adult consent after pending capture, before ZIP creation',async()=>{
+// 見込み: 撮影待ちの間にクラウド設定・同意が撤回されたらYAMLを書き出さない。合格: 許可時だけYAML生成とdownload各1回、撤回時は両方0回。範囲: 実generate関数と模擬撮影待ち、生成範囲helperは実装を使用。
+test('cloud handoff rechecks current execution and adult consent after pending capture, before YAML export',async()=>{
  for(const revoked of ['none','execution','consent']){
   const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value)};
   const execution=loadGenerationPreferences(storage);execution.execution='cloud';execution.cloud.adultTermsConfirmed=true;
@@ -99,13 +99,13 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
    alive:{current:true},AbortController,generationAbort:{current:undefined},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
    cloud:true,workflow:null,threeImages:false,targetError:'',execution,connection:{},adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,resolveGenerationRoute,validateGenerationInputs,
-   generationHandoff:()=>{calls.push('zip');return 'archive';},downloadBrowserBlob:()=>calls.push('download'),setNotice:()=>{}};
+   Blob,exportAgentYaml:()=>{calls.push('yaml');return [{fileName:'work.yaml',yaml:'title: work'}];},downloadBrowserBlob:(_blob,name)=>calls.push(['download',name]),setNotice:()=>{}};
   const pending=appFunction('generate',context,'generation/createGenerationActions.ts')();
   const current=loadGenerationPreferences(storage);
   if(revoked==='execution')current.execution='local';
   if(revoked==='consent')current.cloud.adultTermsConfirmed=false;
   saveGenerationPreferences(storage,current);finishCapture(undefined);
-  if(revoked==='none'){assert.equal((await pending).inserted,false);assert.deepEqual(calls,['zip','download']);}
+  if(revoked==='none'){assert.equal((await pending).inserted,false);assert.deepEqual(calls,['yaml',['download','work.yaml']]);}
   else {await assert.rejects(pending,/環境設定でクラウド/);assert.deepEqual(calls,[]);}
  }
 });
@@ -140,4 +140,20 @@ test('composition planning reads guide visibility from the document saved when p
    captureQwenComposition:async()=> 'data:composite',crypto:{randomUUID:()=> 'job'},setToast:()=>{},setVoiceOpen:()=>{},setQwenGeneration:value=>calls.push(value)};
  await appFunction('requestCompositionGeneration',context)('page',-1,0);
  assert.equal(calls.at(-1).document,after);assert.equal(calls.at(-1).plan.compositionImage,'data:composite');assert.equal(context.qwenPreparing.current,false);
+});
+
+test('promptless-two-images workflow allows empty prompt and orders image_1 (character) then image_2 (reference)',async()=>{
+ const { qwenPlanForWorkflow } = await import('../src/lib/generation/ownerPlan.ts');
+ const workflow={id:'2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01',name:'P-H3-Image_Edit_Mac_bf16_v2',version:1,
+  graph:{'4':{class_type:'LoadImage',inputs:{image:'a.png'}},'5':{class_type:'LoadImage',inputs:{image:'b.png'}},'10':{class_type:'RandomNoise',inputs:{noise_seed:1}},'13':{class_type:'SaveImage',inputs:{images:['12',0]}}},
+  binding:{prompt:[],seed:[{node:'10',input:'noise_seed'}],width:[],height:[],images:[[{node:'4',input:'image'}],[{node:'5',input:'image'}]],output:{node:'13',index:0},prompt_mode:'promptless-two-images',fixed_size:null}};
+ const twoImagePlan=qwenPlanForWorkflow({...plan,prompt:'',scope:'page',characterKeys:['koyuki','other'],compositionImage:'data:image/png;base64,BBB'},workflow);
+ assert.equal(twoImagePlan.promptlessTwoImages,true);
+ const payload=qwenGenerationPayload(twoImagePlan,[{label:'こゆき（横）',characterKeys:['koyuki'],image:'data:image/png;base64,AAA'}]);
+ assert.equal(payload.mode,'new');
+ assert.equal(payload.prompt,'');
+ assert.deepEqual(payload.character_keys,['koyuki']);
+ assert.equal(payload.references.length,2);
+ assert.equal(payload.references[0].image,'data:image/png;base64,AAA');
+ assert.equal(payload.references[1].image,'data:image/png;base64,BBB');
 });

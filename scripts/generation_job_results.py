@@ -129,7 +129,10 @@ class GenerationJobResults:
                 result.update(width=value['width'], height=value['height'])
             if not include_image:
                 return result
-            raw = self.read_output(job_id) if output is None else output
+            if output is None and 'workflow' in value and not (self.store.root / job_id / 'output.png').exists():
+                raw = self.store.read(job_id, 'candidate-1.png')
+            else:
+                raw = self.read_output(job_id) if output is None else output
             result.update(image='data:image/png;base64,' + base64.b64encode(raw).decode())
         return result
 
@@ -168,30 +171,36 @@ class GenerationJobResults:
             return
         name = f'candidate-{index}-cutout.png'
         if not (self.store.root / job_id / name).exists():
-            from qwen_background import remove_chroma_background
-            raw = remove_chroma_background(self.store.read(job_id, f'candidate-{index}.png'),
-                value['settings']['chroma_key'], dpi=value.get('dpi'), polygon=value.get('clip_polygon'))
+            source = self.store.read(job_id, f'candidate-{index}.png')
+            if value['settings'].get('transparency_mode') == 'code-white-v1':
+                from qwen_background import remove_white_background
+                raw = remove_white_background(source, dpi=value.get('dpi'))
+            else:
+                from qwen_background import remove_chroma_background
+                raw = remove_chroma_background(source,
+                    value['settings']['chroma_key'], dpi=value.get('dpi'), polygon=value.get('clip_polygon'))
             self.store.write_once(job_id, name, raw)
 
     def select_candidates(self, job_id, body, value):
         indices = body.get('candidate_indices')
+        count = value['settings'].get('candidate_count', 1)
         if self._latest(job_id)['status'] != 'succeeded' or not isinstance(indices, list) or not indices \
-                or any(type(i) is not int or i < 1 or i > 5 for i in indices) or len(set(indices)) != len(indices):
-            raise ValueError('完成した5候補から1枚以上選んでください')
+                or any(type(i) is not int or i < 1 or i > count for i in indices) or len(set(indices)) != len(indices):
+            raise ValueError(f'完成した{count}候補から1枚以上選んでください')
         indices = sorted(indices)
         selection = {'indices': indices}
         try:
             if self.store.json(job_id, 'selection.json') != selection:
                 raise ValueError('この生成では採用する画像を決定済みです')
         except FileNotFoundError:
-            for i in range(1, 6):
+            for i in range(1, count + 1):
                 self.store.read(job_id, f'candidate-{i}-cutout.png')
             self.store.write_once(job_id, 'selection.json', canonical(selection))
         if body.get('adopted') is True:
             if not (self.store.root / job_id / 'adoption.json').exists():
                 self.store.write_once(job_id, 'adoption.json', canonical(selection))
             if not (self.store.root / job_id / 'discarded.json').exists():
-                discarded = [i for i in range(1, 6) if i not in indices]
+                discarded = [i for i in range(1, count + 1) if i not in indices]
                 outputs = [self.store.json(job_id, f'candidate-output-{i}.json') for i in discarded]
                 self.client_factory(value['comfyui_url']).delete_outputs(outputs)
                 with directory_fd(self.store.root / job_id) as job_fd:
@@ -225,9 +234,10 @@ class GenerationJobResults:
                 self.store.write_once(job_id, name, raw)
             self.store.event(job_id, 'preparing')
             try:
-                if workflow['binding']['prompt_mode'] in ('plain', 'qwen-three-images'):
+                prompt_mode = workflow['binding']['prompt_mode']
+                if prompt_mode in ('plain', 'qwen-three-images', 'promptless-two-images'):
                     english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
-                    final_prompt = direct_workflow_prompt(value)
+                    final_prompt = '' if prompt_mode == 'promptless-two-images' else direct_workflow_prompt(value)
                 else:
                     english = prepare_handwritten_prompt(value) if value.get('content_kind') in ('handwritten', 'typeset') else translate(value)
                     from qwen_generation_phase import generation_prompt

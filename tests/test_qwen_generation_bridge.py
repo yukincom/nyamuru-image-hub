@@ -152,7 +152,7 @@ class QwenJobsTest(unittest.TestCase):
                 value = self.service.load(prepared['job_id'])
                 self.assertEqual(value['output_size'], [512, 768])
                 self.assertEqual([value['width'], value['height']], [8000, 100])
-                self.assertEqual(value['candidate_seeds'], list(range(SETTINGS['seed'], SETTINGS['seed'] + 5)))
+                self.assertEqual(value['candidate_seeds'], [SETTINGS['seed']])
                 self.assertEqual(value['settings']['transparency_mode'], 'chroma-key-v1')
                 self.assertEqual(value['settings']['chroma_key']['color'], '#00FF00')
                 with self.assertRaisesRegex(ValueError, 'キャンバスの寸法が不正'):
@@ -170,8 +170,8 @@ class QwenJobsTest(unittest.TestCase):
                 prepared = self.prepare()
                 value = self.service.load(prepared['job_id'])
                 self.assertEqual(value['workflow'], self.workflows.get(self.request['workflow_id']))
-                self.assertEqual(value['settings']['candidate_count'], 5)
-                self.assertEqual(value['candidate_seeds'], list(range(SETTINGS['seed'], SETTINGS['seed'] + 5)))
+                self.assertEqual(value['settings']['candidate_count'], 1)
+                self.assertEqual(value['candidate_seeds'], [SETTINGS['seed']])
                 self.assertNotIn('diffusion_model', value['settings'])
                 self.assertNotIn('steps', value['settings'])
                 self.assertEqual(value['output_size'], dimensions(540, 1000, 768 if mode == 'sketch' else 1024))
@@ -233,7 +233,7 @@ class QwenJobsTest(unittest.TestCase):
         self.assertEqual(prepared['status'], 'prepared')
         saved = self.service.load(self.request['job_id'])
         self.assertEqual(saved['output_size'], [800, 736])
-        self.assertEqual(saved['settings']['candidate_count'], 5)
+        self.assertEqual(saved['settings']['candidate_count'], 1)
         self.assertEqual(saved['settings']['transparency_mode'], 'chroma-key-v1')
         self.assertEqual(self.submit(prepared)['status'], 'queued')
 

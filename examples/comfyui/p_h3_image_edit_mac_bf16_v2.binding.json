@@ -1,0 +1,31 @@
+{
+  "prompt": [],
+  "seed": [
+    {
+      "node": "10",
+      "input": "noise_seed"
+    }
+  ],
+  "width": [],
+  "height": [],
+  "images": [
+    [
+      {
+        "node": "4",
+        "input": "image"
+      }
+    ],
+    [
+      {
+        "node": "5",
+        "input": "image"
+      }
+    ]
+  ],
+  "output": {
+    "node": "13",
+    "index": 0
+  },
+  "prompt_mode": "promptless-two-images",
+  "fixed_size": null
+}

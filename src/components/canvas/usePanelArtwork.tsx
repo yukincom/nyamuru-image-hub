@@ -1,5 +1,6 @@
 import type { CanvasElementSelection, PlacedImage, BBox, Bubble, Panel, Figure } from '../../types';
 import { paintLayerHasContent } from '../../lib/paintLock';
+import { sameCanvasSelection } from '../../lib/canvasSelection';
 import { figureCanvasClass } from '../../lib/figurePresentation.ts';
 import PlacedImageView from '../PlacedImageView';
 import CanvasContentSelection from '../CanvasContentSelection';
@@ -35,7 +36,7 @@ import type { ElementGestures } from './useElementGestures';
 
 export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elements: ElementGestures) {
   const {
-    activePanel, agentWorkTarget, selectedElement, page, imageAssets, guideVisible, onWrapScreenText,
+    activePanel, agentWorkTarget, selectedElement, selectedElements = [], page, imageAssets, guideVisible, onWrapScreenText,
     pageIndex, textTool, onEditScreenText, defaultBubbleFont, paintTarget, bubbleLineWidthMm,
     painting, onBubbleMaterial, onEditBubble,
   } = options;
@@ -48,23 +49,33 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
   // 非選択パネルはパネル内（パネル基準%・クリップあり）、選択中パネルは最前面のエレメント
   // レイヤー（紙面基準%）に描くため、配置スタイルを引数で差し替える
   const agentWorking=(selection:CanvasElementSelection,panelIndex=activePanel)=>Boolean(agentWorkTarget&&agentWorkTarget.selection.type===selection.type&&agentWorkTarget.selection.index===selection.index&&(agentWorkTarget.selection.scope??'panel')===(selection.scope??'panel')&&(selection.scope==='page_overlay'||selection.scope==='page'||agentWorkTarget.panelIndex===panelIndex));
-  const isSelectedElement = (selection: CanvasElementSelection) => backgroundEdit?backgroundEdit.selectedKey===`${selection.type}-${selection.index}`:selectedElement?.type === selection.type
-    && selectedElement.index === selection.index
-    && (selectedElement.scope ?? 'panel') === (selection.scope ?? 'panel');
+  const isSelectedElement = (selection: CanvasElementSelection, panelIndex: number | null = activePanel) => {
+    if (backgroundEdit) return backgroundEdit.selectedKey === `${selection.type}-${selection.index}`;
+    const candidate = panelIndex !== null && selection.scope !== 'page_overlay' && selection.scope !== 'page'
+      ? { ...selection, panelIndex }
+      : selection;
+    if (selectedElements.length > 0) {
+      return selectedElements.some(entry => sameCanvasSelection(entry, candidate, activePanel));
+    }
+    return selectedElement?.type === selection.type
+      && selectedElement.index === selection.index
+      && (selectedElement.scope ?? 'panel') === (selection.scope ?? 'panel')
+      && (panelIndex === null || panelIndex === activePanel);
+  };
   const contentSource=(selection:CanvasElementSelection,panelIndex:number|null)=>`${page.page}-${panelIndex??'page'}-${selection.scope??'panel'}-${selection.type}-${selection.index}`;
   const renderArtwork = (image: PlacedImage, selection: CanvasElementSelection, panelIndex: number | null, boxStyle: (box: BBox) => Record<string, string>, label?: string) => {
     if (image.hidden) return null;
     const hiddenOriginal=image.bubbleOriginal&&image.paint&&!image.paint.layers.some(layer=>layer.visible&&layer.opacity>0&&paintLayerHasContent(layer));
     const isLocked=elementLocked(selection,panelIndex??activePanel);
     const asset = imageAssets.find(item => item.id === image.assetId);
-    const selected = (panelIndex === null || activePanel === panelIndex) && isSelectedElement(selection)&&!agentWorking(selection,panelIndex??activePanel);
+    const selected = (panelIndex === null || activePanel === panelIndex || selectedElements.length > 1) && isSelectedElement(selection, panelIndex)&&!agentWorking(selection,panelIndex??activePanel);
     const figure=selection.type==='figure'?(selection.scope==='page_overlay'?page.page_overlay:page.panels[panelIndex??-1])?.figures?.[selection.index]:undefined;
     const figureClass=figure?figureCanvasClass(figure):'';
     const bounds = {x:0,y:0,w:canvas.w,h:canvas.h};
-    return <button type="button" data-content-target data-agent-working={agentWorking(selection,panelIndex??activePanel)||undefined} data-content-panel={panelIndex??undefined} data-content-scope={selection.scope} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && panelIndex === null && selection.scope !== 'page' ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
+    return <button type="button" data-content-target data-agent-working={agentWorking(selection,panelIndex??activePanel)||undefined} data-content-panel={panelIndex??undefined} data-content-scope={selection.scope} data-content-kind={selection.type} data-content-index={selection.index} data-content-source={contentSource(selection,panelIndex)} class={`placed-image ${figureClass} ${selected && ((panelIndex === null && selection.scope !== 'page') || selectedElements.length > 1) ? 'is-element-selected' : ''}`} key={`${selection.type}-${selection.index}`}
       style={{...boxStyle(image.bbox),pointerEvents:isLocked||hiddenOriginal?'none':'auto'}} data-artwork-locked={isLocked||undefined} aria-label={`${label ?? '配置画像'} ${asset?.originalName ?? ''}`}
       tabIndex={!isLocked&&!hiddenOriginal&&(panelIndex === null || activePanel === panelIndex) ? 0 : -1}
-      onClick={event => { event.stopPropagation(); onSelectElement(selection, panelIndex ?? undefined); }}
+      onClick={event => { event.stopPropagation(); onSelectElement(selection, panelIndex ?? undefined, true, event.shiftKey); }}
       onPointerDown={event => { if (!isLocked) startInteraction(event, panelIndex, selection, image.bbox, 'move'); }}
       onContextMenu={event => { if(image.generationScope)openGenerationMenu(event,image.generationScope==='page'?-1:panelIndex??0);else if (selection.type === 'figure') openGenerationMenu(event, panelIndex ?? 0, selection.index, selection.scope === 'page_overlay'); }}
       onKeyDown={event => {
@@ -101,7 +112,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
       const box = figure.bbox ?? fallbackBox(panel, 'figure', figureIndex);
       const referenceBox=paintReferenceBox(figure.artwork?.paint,box,figure.artwork?.crop);
       if(editingPanel(panelIndex))return null;
-      const isSelected = activePanel === panelIndex && isSelectedElement(selection)&&!agentWorking(selection,panelIndex);
+      const isSelected = (activePanel === panelIndex || selectedElements.length > 1) && isSelectedElement(selection, panelIndex)&&!agentWorking(selection,panelIndex);
       const isLocked=elementLocked(selection,panelIndex);
       const cropAssetId = figure.analogImport?.assetId;
       const figureClass = figureCanvasClass(figure);
@@ -109,7 +120,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
         data-content-target data-agent-working={agentWorking(selection,panelIndex)||undefined} data-content-panel={panelIndex} data-content-kind="figure" data-content-index={figureIndex} class={`canvas-element figure-guide ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
         style={{...boxStyle(box),pointerEvents:isLocked?'none':'auto'}} data-artwork-locked={isLocked||undefined}
         onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
-        onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex); }}
+        onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex, true, event.shiftKey); }}
         onContextMenu={(event) => openGenerationMenu(event, panelIndex, figureIndex)}
         onKeyDown={(event) => {
           if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, panelIndex, figureIndex);
@@ -130,7 +141,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
       const selection: CanvasElementSelection = { type: 'screen_text', index: screenTextIndex };
       const box = screenText.bbox ?? fallbackBox(panel, 'screen_text', screenTextIndex);
       const isLocked=elementLocked(selection,panelIndex);
-      const isSelected = !isLocked&&activePanel === panelIndex && isSelectedElement(selection);
+      const isSelected = !isLocked&&(activePanel === panelIndex || selectedElements.length > 1) && isSelectedElement(selection, panelIndex);
       return <div class="native-text-stack-item" key={`screen-text-${screenTextIndex}`}>{renderDirectPaint(panelIndex,{below:`screen-text-${screenTextIndex}`})}<button
         onDragEnter={event=>{if(!isLocked&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
         onDragOver={event=>{if(!isLocked&&event.dataTransfer?.types.includes(BUBBLE_MATERIAL_DRAG_TYPE)){event.preventDefault();event.dataTransfer.dropEffect='copy';event.currentTarget.classList.add('is-material-drop-target');}}}
@@ -139,7 +150,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
         data-content-target data-content-panel={panelIndex} data-content-kind="screen_text" data-content-index={screenTextIndex} data-artwork-locked={isLocked||undefined} class={`canvas-element screen-text-guide ${screenText.orientation === 'vertical' ? 'is-vertical' : ''} ${isSelected ? 'is-element-selected' : ''}`}
         style={{...boxStyle(box),pointerEvents:isLocked?'none':'auto','--text-tool-cursor':textToolCursor(textStyleOf(screenText,'screen_text'))}}
         onPointerDown={(event) => {if(!isLocked)startInteraction(event, panelIndex, selection, box, 'move');}}
-        onClick={(event) => { event.stopPropagation(); if(!isLocked){onSelectElement(selection, panelIndex);if(textTool)onEditScreenText?.(panelIndex,screenTextIndex);} }}
+        onClick={(event) => { event.stopPropagation(); if(!isLocked){onSelectElement(selection, panelIndex, true, event.shiftKey);if(textTool)onEditScreenText?.(panelIndex,screenTextIndex);} }}
         onKeyDown={event=>{if(isLocked)return;nudgeElement(event,panelBounds(panel),selection,box);}}
         key={`screen-text-${screenTextIndex}`}
         aria-label={textDisplayLabel(panel.bubbles.length+screenTextIndex)}
@@ -251,7 +262,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
     const referenceStyle={left:`${(referenceBox.x-box.x)/box.w*100}%`,top:`${(referenceBox.y-box.y)/box.h*100}%`,width:`${referenceBox.w/box.w*100}%`,height:`${referenceBox.h/box.h*100}%`};
     const textFrame=bubbleTextFrame(referenceBox,panel,bubble);
     const textFrameStyle={left:`${(textFrame.x-referenceBox.x)/referenceBox.w*100}%`,top:`${(textFrame.y-referenceBox.y)/referenceBox.h*100}%`,width:`${textFrame.w/referenceBox.w*100}%`,height:`${textFrame.h/referenceBox.h*100}%`};
-    const isSelected = activePanel === panelIndex && isSelectedElement(selection)&&!agentWorking(selection,panelIndex);
+    const isSelected = (activePanel === panelIndex || selectedElements.length > 1) && isSelectedElement(selection, panelIndex)&&!agentWorking(selection,panelIndex);
     const textLengthClass = bubble.text.length > 24 ? 'is-very-long' : bubble.text.length > 14 ? 'is-long' : '';
     const presentation=panelBubblePresentations[panelIndex];
     return <div class="panel-bubble-clip" style={{...layerClipStyle(panel,canvas),'--bubble-line-width':canvasLengthCss(bubbleStrokeWidthMm(bubble,bubbleLineWidthMm),canvas.w)}} key={`panel-${panelIndex}-bubble-${bubbleIndex}`}>
@@ -266,7 +277,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
       data-background3d-owner={backgroundEdit&&editingPanel(panelIndex)?`bubble-${bubbleIndex}`:undefined}
       style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection,panelIndex)?'none':'auto','--text-tool-cursor':textToolCursor(textStyleOf(bubble,'bubble'))}} data-artwork-locked={elementLocked(selection,panelIndex)||undefined}
       onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
-      onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex);if(textTool&&!backgroundEdit)onEditBubble?.({panelIndex,bubbleIndex,overlay:false}); }}
+      onClick={(event) => { event.stopPropagation(); onSelectElement(selection, panelIndex, true, event.shiftKey);if(textTool&&!backgroundEdit)onEditBubble?.({panelIndex,bubbleIndex,overlay:false}); }}
       onContextMenu={event=>openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex)}
       onKeyDown={event=>{if(elementLocked(selection,panelIndex))return;if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10'))openGenerationMenu(event,panelIndex,undefined,false,bubbleIndex);else nudgeElement(event,paperBounds,selection,box);}}
       aria-label={textDisplayLabel(bubbleIndex)}

@@ -16,7 +16,7 @@ from image_generation_lock import hold_generation_lease, validate_generation_fd,
 from shared_llm_process import identity
 from comfy_client import ComfyClient, ComfyOutputError, ComfySubmissionUnknown
 from comfy_generation import ComfySaveError
-from comfy_workflows import WorkflowStore, install_qwen_defaults, negative_prompt_nodes, validate_request
+from comfy_workflows import WorkflowStore, install_qwen_defaults, negative_prompt_nodes, prompt_upsampler_nodes, validate_request
 
 from generation_job_results import PROFILE, SAVE_FAILURE_EXIT_CODE, DEFAULT_ROOT, GenerationJobResults
 from generation_prompt_inputs import (
@@ -59,7 +59,7 @@ def png(encoded, *, native_size=False):
     return raw, validate_png(raw, native_size=native_size)
 
 
-def normalize(body, *, fixed_size=None, native_size=False):
+def normalize(body, *, fixed_size=None, native_size=False, allow_empty_prompt=False):
     if body.get('profile') != PROFILE or body.get('mode') not in ('new', 'paint', 'sketch'):
         raise ValueError('Qwen生成の指定が不正です')
     owner = text(body.get('owner_key'), '描画対象', 100)
@@ -142,7 +142,7 @@ def normalize(body, *, fixed_size=None, native_size=False):
              'page_number': page, 'panel_id': panel, 'overlay': overlay, 'owner_key': owner,
              'label': text(body.get('label'), '対象名', 500), 'mode': body['mode'],
              'width': width, 'height': height, 'input_size': input_size, 'output_size': output_size,
-             'prompt': text(body.get('prompt'), '生成指示'), 'character_keys': character_keys,
+             'prompt': text(body.get('prompt'), '生成指示', required=not allow_empty_prompt), 'character_keys': character_keys,
              'references': refs, 'settings': json.loads(json.dumps(settings))}
     if owner in ('page', 'panel') or handwritten:
         value['literal_text'] = literal_text
@@ -182,7 +182,13 @@ class QwenGenerationService(GenerationJobResults):
         workflow = previous['workflow'] if previous and previous.get('workflow', {}).get('id') == workflow_id else self.workflows.get(workflow_id)
         if body.get('workflow_version') is not None and body['workflow_version'] != workflow['version']:
             raise ValueError('ワークフローが更新されました。生成画面を開き直してください')
-        value, images = normalize(body, fixed_size=workflow['binding']['fixed_size'], native_size=workflow['binding']['prompt_mode']=='qwen-three-images')
+        prompt_mode = workflow['binding']['prompt_mode']
+        value, images = normalize(
+            body,
+            fixed_size=workflow['binding']['fixed_size'],
+            native_size=prompt_mode in ('qwen-three-images', 'promptless-two-images'),
+            allow_empty_prompt=prompt_mode == 'promptless-two-images',
+        )
         validate_request(workflow, len(value['references']))
         endpoint = body.get('comfyui_url') or self.endpoint
         endpoint = self.client_factory(endpoint).endpoint
@@ -194,8 +200,16 @@ class QwenGenerationService(GenerationJobResults):
             if not negative_prompt_nodes(workflow):
                 raise ValueError('このワークフローにネガティブプロンプトの入力はありません')
             value['negative_prompt'] = negative
-        value['settings'] = {'seed': SETTINGS['seed'], 'candidate_count': 5}
-        value['candidate_seeds'] = [SETTINGS['seed'] + i for i in range(5)]
+        if 'use_prompt_upsampler' in body and body['use_prompt_upsampler'] is not None:
+            upsampler = body['use_prompt_upsampler']
+            if not isinstance(upsampler, bool):
+                raise ValueError('プロンプト自動補強の指定が不正です')
+            if not prompt_upsampler_nodes(workflow):
+                raise ValueError('このワークフローにプロンプト自動補強の切り替えはありません')
+            value['use_prompt_upsampler'] = upsampler
+        candidate_count = value['settings'].get('candidate_count', 1)
+        value['settings'] = {'seed': SETTINGS['seed'], 'candidate_count': candidate_count}
+        value['candidate_seeds'] = [SETTINGS['seed'] + i for i in range(candidate_count)]
         if three_image_workflow(value):
             if not value['owner_key'].startswith('figure-') or value['mode'] != 'new' or len(value['character_keys']) != 1 or [
                 ref['role'] for ref in value['references']
@@ -232,6 +246,8 @@ class QwenGenerationService(GenerationJobResults):
                 value['settings']['candidate_cutout'] = True
         elif body.get('chroma_key_color') is not None:
             raise ValueError('クロマキー背景色はQwen用の人物ワークフローだけに指定できます')
+        elif value['owner_key'].startswith('figure-') and body.get('candidate_cutout') is True:
+            value['settings'].update(transparency_mode='code-white-v1', candidate_cutout=True)
         return value, images
 
     def submit(self, body):
@@ -272,7 +288,7 @@ class QwenGenerationService(GenerationJobResults):
         event = self._latest(job_id)
         if event['status'] in ('queued', 'running', 'outcome_unknown'):
             try:
-                if value['settings'].get('candidate_count', 1) > 1:
+                if value['settings'].get('candidate_count', 1) > 1 or ('workflow' in value and (self.store.root / job_id / 'candidates.json').exists()):
                     self.store.read(job_id, 'candidates.json')
                     output = None
                 else:

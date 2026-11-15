@@ -1,5 +1,7 @@
 import base64
 import importlib.util
+import os
+import stat
 import sys
 import tempfile
 import unittest
@@ -76,6 +78,10 @@ class EpisodeWorkspaceManagerTest(unittest.TestCase):
             self.assertEqual(source.read_bytes(), b"original")
             for name in bridge.EPISODE_WORKSPACE_DIRECTORIES:
                 self.assertTrue((episode / name).is_dir())
+            if hasattr(os, "chflags") and hasattr(stat, "UF_HIDDEN"):
+                for name in ("name_data", "manuscript_data", "export_data"):
+                    self.assertTrue(bool(os.stat(episode / name).st_flags & stat.UF_HIDDEN))
+                self.assertFalse(bool(os.stat(episode / "draft_data").st_flags & stat.UF_HIDDEN))
 
     def test_reselect_and_symlink_reuse_tokens_across_restart_without_rewriting_registry(self):
         with tempfile.TemporaryDirectory() as directory_name:
