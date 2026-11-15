@@ -72,7 +72,7 @@ export function PaintOwnerPreview({ownerKey,container,inkOnly=false,nativeBand}:
   }
   return <div class="paint-owner" style={relativeStyle(owner.frame,container)} data-paint-owner={ownerKey} data-native-band={nativeBand}>
     {!inkOnly&&showGuide&&<div class={fullGuide?'paint-reference':'paint-reference is-underlay'} style={relativeStyle(reference,owner.frame)}><PaintOriginal owner={owner}/></div>}
-    {state.images&&<PaintPreviewCanvas paint={owner.paint} images={state.images} live={live} includeGeneration={!state.displayOnly} maskPreviewId={!state.displayOnly&&state.maskPreview?.ownerKey===owner.key?state.maskPreview.layerId:undefined}/>}
+    {state.images&&<PaintPreviewCanvas paint={owner.paint} images={state.images} live={live} includeGeneration={!state.displayOnly} retainCache={!state.displayOnly&&state.owner.key===owner.key} maskPreviewId={!state.displayOnly&&state.maskPreview?.ownerKey===owner.key?state.maskPreview.layerId:undefined}/>}
     {!inkOnly&&owner.figure&&(showGuide||hasInk)&&<span class={`paint-figure-status ${figureCanvasClass(owner.figure)}`} style={relativeStyle(reference,owner.frame)} aria-hidden="true"/>}
   </div>;
 }

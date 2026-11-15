@@ -62,7 +62,7 @@ function SelectionControls({addFolder,addRaster,addVector,addGenerationMask,remo
 }
 const PaletteScenes=createContext<Map<string,PaintScene>>(new Map());
 const emptyLayer:PaintLayer={id:'',name:'',visible:false,locked:false,opacity:1,blend:'normal',strokes:[]};
-function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,activeLayers,directPanel,nativeTextLayers}:{panel:Panel;index:number;p:Props;overlay?:boolean;frameLayer?:ComponentChildren;selectedOwner?:string;activeLayers?:VNode<ComponentProps<typeof PaintLayerPalette>>;directPanel?:number;nativeTextLayers?:ComponentProps<typeof PaintLayerPalette>['nativeTextLayers']}) {
+function PanelPaintLayers({panel,index,p,overlay=false,collapsed=false,frameLayer,selectedOwner,activeLayers,directPanel,nativeTextLayers}:{panel:Panel;index:number;p:Props;overlay?:boolean;collapsed?:boolean;frameLayer?:ComponentChildren;selectedOwner?:string;activeLayers?:VNode<ComponentProps<typeof PaintLayerPalette>>;directPanel?:number;nativeTextLayers?:ComponentProps<typeof PaintLayerPalette>['nativeTextLayers']}) {
   const paletteScope=paintPaletteScope(p.page.page,index,overlay),scenes=useContext(PaletteScenes);
   const result=useMemo(()=>{try{const scene=paintScene(panel,p.dpi,p.assets,p.colorMode,overlay?'page':'panel',overlay?p.page.panels:undefined);if(overlay)scene.owners=scene.owners.filter(o=>o.kind!=='background');return {scene};}catch(error){return {error:error instanceof Error?error.message:'画像を読み込めません'};}},[panel,p.dpi,p.assets,p.colorMode,overlay,p.page.panels]);
   const sourceEntries=[...new Set(result.scene?.owners.flatMap(owner=>paintAssetIds(owner.paint))??[])].sort().map(id=>{
@@ -72,11 +72,17 @@ function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,
   const source=JSON.stringify(sourceEntries),signatures=new Map(sourceEntries.map(entry=>[entry[0],JSON.stringify(entry)]));
   type Decoded={source:string;images:PaintImages;signatures:Map<string,string>};
   const [decoded,setDecoded]=useState<Decoded|null>(null),decodedRef=useRef<Decoded|null>(null);
+  const shouldLoadImages=p.expanded&&!collapsed&&!activeLayers?.props.images;
   // A changed layer list keeps compatible thumbnails; only new or changed assets are decoded.
-  const reusable=new Map([...(decoded?.images??[])].filter(([id])=>signatures.has(id)&&decoded?.signatures.get(id)===signatures.get(id)));
-  const images=decoded?.source===source?decoded.images:reusable.size?reusable:null;
+  const reusable=shouldLoadImages?new Map([...(decoded?.images??[])].filter(([id])=>signatures.has(id)&&decoded?.signatures.get(id)===signatures.get(id))):new Map();
+  const images=shouldLoadImages?(decoded?.source===source?decoded.images:reusable.size?reusable:null):null;
   useEffect(()=>{
-    if(!result.scene)return;
+    if(!result.scene||!shouldLoadImages){
+      decodedRef.current?.images.forEach(image=>{image.src='';});
+      decodedRef.current=null;
+      setDecoded(null);
+      return;
+    }
     const retained=new Set(reusable.values());decodedRef.current?.images.forEach(image=>{if(!retained.has(image))image.src='';});
     let cancelled=false;
     void loadPaintImagesBestEffort(result.scene.owners.map(o=>o.paint),p.assets,new Map(),reusable).then(value=>{
@@ -85,7 +91,7 @@ function PanelPaintLayers({panel,index,p,overlay=false,frameLayer,selectedOwner,
       const next={source,images:value,signatures};decodedRef.current=next;setDecoded(next);
     });
     return()=>{cancelled=true;};
-  },[source]);
+  },[source,shouldLoadImages]);
   useEffect(()=>()=>{decodedRef.current?.images.forEach(image=>{image.src='';});},[]);
   useLayoutEffect(()=>{const scene=activeLayers?.props.scene??result.scene;if(!scene)return;scenes.set(paletteScope,scene);return()=>{if(scenes.get(paletteScope)===scene)scenes.delete(paletteScope);};},[scenes,paletteScope,activeLayers?.props.scene,result.scene]);
   const destinationScene=(destination:import('../lib/paintDocument').PaintLayerDestination|undefined)=>destination?{...destination,scene:scenes.get(paintPaletteScope(p.page.page,destination.panelIndex,destination.overlay))}:undefined;
@@ -224,7 +230,7 @@ export default function PageLayerPalette(p:Props) {
             <button type="button" class={`palette-icon layer-row-lock ${panelLocked(panel)?'is-locked':'is-unlocked'}`} aria-label={panelLocked(panel)?`${title}全体の固定を解除`:`${title}全体を固定`} aria-pressed={panelLocked(panel)} disabled={p.disabled} onClick={event=>{event.stopPropagation();p.onLock(index);}}><LayerLockIcon size={16} locked={panelLocked(panel)}/></button>
           </div>
           <div class="panel-layer-children" role="group" hidden={collapsed}>
-            <PanelPaintLayers panel={panel} index={index} p={p} nativeTextLayers={textLayers(panel.screen_text,index).map((node,i)=>({key:`screen-text-${i}`,node}))} frameLayer={frameLayer} selectedOwner={!selectedOverlay&&index===p.activePanel?selectedOwner:undefined} activeLayers={active?paint.layers as VNode<ComponentProps<typeof PaintLayerPalette>>:undefined}/>
+            <PanelPaintLayers panel={panel} index={index} p={p} collapsed={collapsed} nativeTextLayers={textLayers(panel.screen_text,index).map((node,i)=>({key:`screen-text-${i}`,node}))} frameLayer={frameLayer} selectedOwner={!selectedOverlay&&index===p.activePanel?selectedOwner:undefined} activeLayers={active?paint.layers as VNode<ComponentProps<typeof PaintLayerPalette>>:undefined}/>
           </div>
         </div></Fragment>;
       })}

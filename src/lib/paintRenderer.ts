@@ -183,7 +183,8 @@ export function paintPreviewRenderer() {
   // A live stroke can move between color modes; keep its rasterizer stable.
   context(scratch,true);
   return {
-    draw(canvas:HTMLCanvasElement, paint:PaintDocument, images:PaintImages, live?:LiveStroke, maskPreviewId?:string,includeGeneration=true,view:BBox={x:0,y:0,w:paint.width,h:paint.height}) {
+    draw(canvas:HTMLCanvasElement, paint:PaintDocument, images:PaintImages, live?:LiveStroke, maskPreviewId?:string,includeGeneration=true,view:BBox={x:0,y:0,w:paint.width,h:paint.height},retainCache=true) {
+      if(!retainCache)clear();
       const nextDimensions=[canvas.width,canvas.height,paint.width,paint.height,paint.dpi,includeGeneration,view.x,view.y,view.w,view.h].join(':');
       if(dimensions!==nextDimensions){clear();dimensions=nextDimensions;}
       for(const id of cache.keys())if(!paint.layers.some(layer=>layer.id===id&&paintLayerVisible(paint,layer)))release(id);
@@ -193,12 +194,12 @@ export function paintPreviewRenderer() {
         // Show coverage instead of dots while editing an independent tone.
         if(layer.id===maskPreviewId&&layer.tone?.fill&&layer.mask?.enabled)continue;
         if(cache.get(layer.id)?.layer.colorMode!==layer.colorMode)release(layer.id);
-        const cached=cache.get(layer.id);
+        const cached=retainCache?cache.get(layer.id):undefined;
         let source=cached?.canvas ?? document.createElement('canvas');
         if(cached?.layer!==layer){source.width=canvas.width;source.height=canvas.height;
           renderLayer(source,paint,layer,images,mask,undefined,true,view);
           const pixels=canvas.width*canvas.height;
-          if(pixels<=maxCachePixels){
+          if(retainCache&&pixels<=maxCachePixels){
             if(!cached){while(cachePixels+pixels>maxCachePixels)release(cache.keys().next().value!);cachePixels+=pixels;}
             cache.set(layer.id,{layer,canvas:source});
           }
@@ -227,6 +228,7 @@ export function paintPreviewRenderer() {
         if(coverage.clip){const b=coverage.clip,sx=canvas.width/view.w,sy=canvas.height/view.h;out.beginPath();out.rect((b.x-view.x)*sx,(b.y-view.y)*sy,b.w*sx,b.h*sy);out.clip();}
         out.drawImage(mask,0,0);out.restore();
       }
+      if(!retainCache){scratch.width=mask.width=1;scratch.height=mask.height=1;}
     },
     dispose(){clear();scratch.width=mask.width=1;scratch.height=mask.height=1;},
   };

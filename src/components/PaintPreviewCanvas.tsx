@@ -5,8 +5,8 @@ import { paintPreviewRenderer, type PaintImages } from '../lib/paintRenderer';
 import { movePaintLayer } from '../lib/paintDocument';
 import { paintPreviewSize } from '../lib/paintPreviewSize';
 
-export default function PaintPreviewCanvas({paint,images,live,maskPreviewId,includeGeneration=true,style}:{
-  paint:PaintDocument;images:PaintImages;live?:PendingPaintStroke;maskPreviewId?:string;includeGeneration?:boolean;
+export default function PaintPreviewCanvas({paint,images,live,maskPreviewId,includeGeneration=true,retainCache=false,style}:{
+  paint:PaintDocument;images:PaintImages;live?:PendingPaintStroke;maskPreviewId?:string;includeGeneration?:boolean;retainCache?:boolean;
   style?:{width:string;height:string;left:string;top:string};
 }){
   const ref=useRef<HTMLCanvasElement>(null),renderer=useRef<ReturnType<typeof paintPreviewRenderer>|null>(null);
@@ -24,9 +24,9 @@ export default function PaintPreviewCanvas({paint,images,live,maskPreviewId,incl
     if(!ref.current)return;renderer.current??=paintPreviewRenderer();
     let preview=live?.addedLayer?{...paint,layers:[...paint.layers,live.addedLayer]}:paint;
     if(live?.addedLayer&&live.addedBelow)preview=movePaintLayer(preview,live.addedLayer.id,{kind:'layer',id:live.addedBelow,after:true});
-    renderer.current.draw(ref.current,preview,images,live,maskPreviewId,includeGeneration);
+    renderer.current.draw(ref.current,preview,images,live,maskPreviewId,includeGeneration,undefined,retainCache);
     ref.current.dispatchEvent(new Event('paint-preview-rendered',{bubbles:true}));
-  },[paint,images,live,maskPreviewId,includeGeneration,size]);
+  },[paint,images,live,maskPreviewId,includeGeneration,retainCache,size]);
   useEffect(()=>()=>{renderer.current?.dispose();},[]);
   return <canvas ref={ref} class="paint-preview-canvas" width={size.width} height={size.height} style={style}/>;
 }

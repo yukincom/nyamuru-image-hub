@@ -86,7 +86,7 @@ export const noPaintLayer:PaintLayer={id:'',name:'',visible:false,locked:false,o
 
 export function paintEditorOptions({
   selectedBubbleStroke: bubbleStroke, suspended: externalSuspended = false, initial: requested,
-  historySteps = 50, stages = [], zoomTool = false, bubblePathTool = false, toolPaletteEnabled = true,
+  historySteps = 10, stages = [], zoomTool = false, bubblePathTool = false, toolPaletteEnabled = true,
   textTool = false, guideVisible = () => true, onToggleGuide = () => {}, smoothing = 0,
   cursorMode = 'circle', embeddedLayers = false, ...options
 }: PaintEditorProps) {

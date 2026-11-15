@@ -20,7 +20,7 @@ function Thumbnail({owner,layer,images}:{owner:PaintOwner;layer:PaintLayer;image
   // Working bleed is not part of the layer's thumbnail framing.
   const view=owner.paint.referenceFrame??{x:0,y:0,w:owner.paint.width,h:owner.paint.height};
   useEffect(()=>()=>renderer.current?.dispose(),[]);
-  useLayoutEffect(()=>{if(!canvas.current||!images)return;const context=canvas.current.getContext('2d',{willReadFrequently:true});if(layer.image&&!images.has(layer.image.assetId)){context?.clearRect(0,0,canvas.current.width,canvas.current.height);return;}renderer.current??=paintPreviewRenderer();try{renderer.current.draw(canvas.current,{...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true,opacity:1}]},images,undefined,undefined,true,view);}catch{context?.clearRect(0,0,canvas.current.width,canvas.current.height);}},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer,images]);
+  useLayoutEffect(()=>{if(!canvas.current||!images)return;const context=canvas.current.getContext('2d',{willReadFrequently:true});if(layer.image&&!images.has(layer.image.assetId)){context?.clearRect(0,0,canvas.current.width,canvas.current.height);return;}renderer.current??=paintPreviewRenderer();try{renderer.current.draw(canvas.current,{...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true,opacity:1}]},images,undefined,undefined,true,view,false);}catch{context?.clearRect(0,0,canvas.current.width,canvas.current.height);}},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer,images]);
   const scale=40/Math.max(view.w,view.h);
   return <canvas ref={canvas} width={Math.max(1,Math.round(view.w*scale))} height={Math.max(1,Math.round(view.h*scale))}/>;
 }

@@ -1,5 +1,5 @@
 const KEY='nyamuru.history-steps.v1';
-export const DEFAULT_HISTORY_STEPS=50;
+export const DEFAULT_HISTORY_STEPS=10;
 export function normalizeHistorySteps(value:unknown):number {
   if(typeof value!=='number'||!Number.isSafeInteger(value)||value<1||value>1000)throw new Error('履歴の保持数は1〜1000の整数で指定してください');
   return value;
