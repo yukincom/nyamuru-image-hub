@@ -11,7 +11,7 @@ export function elementContentBox(element:Element,frame:BBox):BBox {
 export function elementContentHit(target:HTMLElement,x:number,y:number):boolean {
   const box=target.getBoundingClientRect();
   if(!box.width||!box.height)return false;
-  if(!target.hasAttribute('data-content-target'))return x>=box.left&&x<=box.right&&y>=box.top&&y<=box.bottom&&getComputedStyle(target).visibility!=='hidden';
+  if(!target.hasAttribute('data-content-target')||target.hasAttribute('data-editing-figure'))return x>=box.left&&x<=box.right&&y>=box.top&&y<=box.bottom&&getComputedStyle(target).visibility!=='hidden';
   const geometry=geometryByTarget.get(target),path=target.querySelector<SVGPathElement>('.canvas-content-hit path');
   return !!geometry&&!!path&&path.isPointInFill(new DOMPoint((x-box.x)/box.width*geometry.width,(y-box.y)/box.height*geometry.height));
 }

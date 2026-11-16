@@ -117,7 +117,7 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
     const figureClass = figureCanvasClass(figure);
     const nudgeBounds = overlay ? paperBounds : { x: 0, y: 0, w: canvas.w, h: canvas.h };
     return <button
-      data-content-target data-content-overlay={overlay || undefined} data-agent-working={agentWorking(selection, panelIndex ?? activePanel) || undefined} data-content-panel={panelIndex ?? undefined} data-content-kind="figure" data-content-index={figureIndex}
+      data-content-target data-content-overlay={overlay || undefined} data-editing-figure={isEditing || undefined} data-agent-working={agentWorking(selection, panelIndex ?? activePanel) || undefined} data-content-panel={panelIndex ?? undefined} data-content-kind="figure" data-content-index={figureIndex}
       class={`canvas-element figure-guide ${overlay ? 'page-overlay-element ' : ''}${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
       style={{...boxStyle(box), pointerEvents: isLocked || isEditing ? 'none' : 'auto', ...(isEditing ? {background: 'transparent', borderColor: 'transparent'} : {})}} data-artwork-locked={isLocked || undefined}
       onPointerDown={(event) => startInteraction(event, panelIndex, selection, box, 'move')}
