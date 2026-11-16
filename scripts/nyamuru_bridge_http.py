@@ -22,7 +22,7 @@ from nyamuru_editor_voice import EditorVoiceError
 from nyamuru_agent_connection import connection_status
 from nyamuru_agent_chat import AgentChatUnavailable
 from nyamuru_model_connections import image_generation_connections, workflow_operation
-from nyamuru_clip_export import export_clip
+from nyamuru_clip_export import export_clip, export_cmc
 from workspace_routes import handle_workspace_post
 
 
@@ -117,6 +117,9 @@ class BridgeHandler(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             if path == "/api/export/clip":
                 self.send_json(200, export_clip(body))
+                return
+            if path == "/api/export/cmc":
+                self.send_json(200, export_cmc(body))
                 return
             if path.startswith('/api/comfy-workflows/'):
                 self.send_json(200, workflow_operation(path.rsplit('/', 1)[1], body, self.state.qwen_jobs, self.state.panel_drafts.endpoint))

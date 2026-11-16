@@ -6,7 +6,7 @@ import {
   safeExportName, saveImageExport,
 } from '../../lib/pageExport';
 import { getPrintSetup } from '../../lib/printSettings';
-import { requestClipExport } from '../../lib/localBridge';
+import { requestClipExport, requestCmcExport } from '../../lib/localBridge';
 import { captureQwenCompositionCanvas } from '../../lib/pageComposition';
 import { paintColorMode } from '../../lib/paintColor';
 
@@ -86,8 +86,32 @@ export function createImageExportActions({
       await progress(indices.length,files.length>1&&!directory?'ZIPにまとめています':'保存の準備中');
       if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
       await progress(indices.length+1,directory?'保存しています':'ダウンロードを準備中');
-      if(directory&&files.length>1&&choice.format==='clip'){
-        for(const file of files)await saveImageExport(file.blob,file.name,directory);
+      if(files.length>1&&choice.format==='clip'){
+        const setup=getPrintSetup(current.manga);
+        const workTitle=safeExportName(current.manga.meta.title||'manga').slice(0,50);
+        const cmcBlob=await requestCmcExport({
+          title:current.manga.meta.title||'manga',
+          trimMm:[setup.width_mm,setup.height_mm],
+          bleedMm:setup.crop_marks?setup.bleed_mm:0,
+          dpi:setup.dpi,
+          pages:files.length,
+          rightBinding:setup.binding==='right',
+        });
+        const cmcName=`${workTitle}.cmc`;
+        const pageFiles=files.map((file,idx)=>({name:`page${String(idx+1).padStart(4,'0')}.clip`,blob:file.blob,bytes:file.bytes}));
+        if(directory){
+          const dirHandle=directory as typeof directory & {getDirectoryHandle?:(name:string,options?:{create?:boolean})=>Promise<typeof directory>};
+          const targetDir=typeof dirHandle.getDirectoryHandle==='function'
+            ?await dirHandle.getDirectoryHandle(workTitle,{create:true})
+            :directory;
+          await saveImageExport(cmcBlob,cmcName,targetDir);
+          for(const pageFile of pageFiles)await saveImageExport(pageFile.blob,pageFile.name,targetDir);
+        }else{
+          const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
+          const cmcBytes=new Uint8Array(await cmcBlob.arrayBuffer());
+          const blob=uncompressedZip([{name:`${workTitle}/${cmcName}`,bytes:cmcBytes},...pageFiles.map(f=>({name:`${workTitle}/${f.name}`,bytes:f.bytes}))]);
+          await saveImageExport(blob,`${workTitle}-pages-${first}-${last}-cmc.zip`,directory);
+        }
       }else{
         const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
         const zip=files.length>1||files.some(file=>file.sources.length);

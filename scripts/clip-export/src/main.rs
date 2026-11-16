@@ -4,7 +4,8 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use clip_core::{ClipDocument, text::{FontName, NewText, retarget_add_attributes, retarget_text_attributes}, vector::NewVectorLine,
     write::{layers::set_layer_mask, raster_page::{PartDonors, prepare_for, add_text_layer, add_vector_layer}}};
 use csp_format::{ClipFile, GrayImage, RgbaImage, blank::{PageSetup, StoryLayout, blank_page, blank_parts},
-    copy::CopyLayer, database::{Row, select}, edit::NewLayer, render::BlendMode, vector::VectorData};
+    copy::CopyLayer, database::{Row, select}, edit::NewLayer, render::BlendMode, vector::VectorData,
+    work::{Binding, NewWork, StartSide}};
 use rusqlite::types::Value;
 use serde::Deserialize;
 use serde_json::json;
@@ -453,14 +454,52 @@ fn inspect(data: Vec<u8>) -> Result<serde_json::Value> {
     Ok(json!({"width":file.canvas.width_px,"height":file.canvas.height_px,"dpi":file.canvas.resolution,"layers":layers}))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CmcRequest {
+    title: String,
+    trim_mm: [f64; 2],
+    bleed_mm: f64,
+    dpi: f64,
+    pages: usize,
+    #[serde(default = "default_true")]
+    right_binding: bool,
+}
+
+fn encode_cmc(req: &CmcRequest) -> Result<Vec<u8>> {
+    if req.pages == 0 || req.pages > 1000 || !req.dpi.is_finite() || !(72.0..=1200.0).contains(&req.dpi)
+        || !req.trim_mm[0].is_finite() || req.trim_mm[0] <= 0.0 || !req.trim_mm[1].is_finite() || req.trim_mm[1] <= 0.0
+        || !req.bleed_mm.is_finite() || req.bleed_mm < 0.0 || req.title.len() > 4096 {
+        return Err("CMC書き出しの設定が不正です".into());
+    }
+    let work = NewWork {
+        trim_width: req.trim_mm[0],
+        trim_height: req.trim_mm[1],
+        bleed: req.bleed_mm,
+        resolution: req.dpi,
+        pages: req.pages,
+        spreads: false,
+        binding: if req.right_binding { Binding::Right } else { Binding::Left },
+        start: if req.right_binding { StartSide::Left } else { StartSide::Right },
+        title: req.title.clone(),
+        author: String::new(),
+    };
+    Ok(work.build()?.cmc)
+}
+
 fn run() -> Result<()> {
     let mut bytes=Vec::new();std::io::stdin().take(MAX_INPUT+1).read_to_end(&mut bytes)?;
     if bytes.len() as u64>MAX_INPUT {return Err("入力サイズが上限を超えています".into());}
-    if std::env::args().nth(1).as_deref()==Some("--inspect") {
-        serde_json::to_writer(std::io::stdout(),&inspect(bytes)?)?;
-    } else {
-        let page:Page=serde_json::from_slice(&bytes)?;
-        std::io::stdout().write_all(&encode(&page)?)?;
+    match std::env::args().nth(1).as_deref() {
+        Some("--inspect") => serde_json::to_writer(std::io::stdout(),&inspect(bytes)?)?,
+        Some("--cmc") => {
+            let req: CmcRequest = serde_json::from_slice(&bytes)?;
+            std::io::stdout().write_all(&encode_cmc(&req)?)?;
+        }
+        _ => {
+            let page:Page=serde_json::from_slice(&bytes)?;
+            std::io::stdout().write_all(&encode(&page)?)?;
+        }
     }
     Ok(())
 }
@@ -616,6 +655,29 @@ mod tests {
         assert!(c255 > 0 && c0 > 0, "expected non-empty mask, got c255={c255}, c0={c0}");
         let report=csp_format::verify::check_clip(bytes,csp_format::verify::CheckOptions::default());
         assert!(report.ok(),"{}",serde_json::to_string_pretty(&report).unwrap());
+    }
+    #[test]
+    fn cmc_builds_valid_story_index_for_multiple_pages() {
+        let req = CmcRequest {
+            title: "複数ページテスト".into(),
+            trim_mm: [182.0, 257.0],
+            bleed_mm: 3.0,
+            dpi: 600.0,
+            pages: 3,
+            right_binding: true,
+        };
+        let bytes = encode_cmc(&req).unwrap();
+        assert!(bytes.starts_with(b"SQLite format 3\0"));
+        let tmp = std::env::temp_dir().join("nyamuru_test_cmc.sqlite");
+        std::fs::write(&tmp, &bytes).unwrap();
+        let conn = rusqlite::Connection::open(&tmp).unwrap();
+        let links: Vec<String> = select(&conn, "SELECT LinkPath FROM CanvasNode WHERE LinkPath IS NOT NULL ORDER BY MainId", [])
+            .unwrap()
+            .into_iter()
+            .filter_map(|r| r.text("LinkPath"))
+            .collect();
+        let _ = std::fs::remove_file(&tmp);
+        assert_eq!(links, vec![".:page0001.clip", ".:page0002.clip", ".:page0003.clip"]);
     }
     // 見込み: 無効な寸法・ID重複・壊れた画像は完成ファイルとして返さない。
     // 合格: encoderがErrを返す。外部サービスやUIは通さない。

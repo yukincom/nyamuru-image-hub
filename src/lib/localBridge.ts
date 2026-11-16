@@ -99,6 +99,7 @@ export { ensureDetectedPanelGutters } from './recognition/panelGutters.ts';
 export { attachDetectedFiguresToPage, attachRecognizedTextToPage } from './recognition/pageElements.ts';
 export {
   requestClipExport,
+  requestCmcExport,
   getImageGenerationConnections,
   connectAgentImageGeneration,
   requestComfyWorkflows,

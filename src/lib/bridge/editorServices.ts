@@ -21,6 +21,16 @@ export async function requestClipExport(page:import('../clipExport.ts').ClipExpo
   });
 }
 
+export async function requestCmcExport(request:{title:string;trimMm:[number,number];bleedMm:number;dpi:number;pages:number;rightBinding:boolean}):Promise<Blob> {
+  return withNewCreationBridgeSession(async()=>{
+    const value=await postBridgeJson('/api/export/cmc',{profile:'nyamuru-cmc-v1',...request},60_000) as Record<string,unknown>;
+    if(value.profile!=='nyamuru-cmc-v1'||typeof value.cmc_data!=='string')throw new Error('CMC書き出しの応答を確認できませんでした');
+    const binary=atob(value.cmc_data);
+    if(!binary.startsWith('SQLite format 3\0')||binary.length!==value.byte_length)throw new Error('CMC書き出しデータが不完全です');
+    return new Blob([Uint8Array.from(binary,c=>c.charCodeAt(0))],{type:'application/octet-stream'});
+  });
+}
+
 export async function getImageGenerationConnections(comfyuiUrl = currentLocalModelPreferences().comfyuiUrl, checkComfyui = false) {
   const endpoint = normalizeComfyuiUrl(comfyuiUrl);
   return withNewCreationBridgeSession(async () => decodeImageGenerationConnections(await postBridgeJson('/api/image-generation/connections', {
