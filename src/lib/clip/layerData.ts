@@ -19,26 +19,41 @@ export interface ClipExportFolder extends ClipExportLayerBase { kind:'folder'; c
 
 export interface ClipExportRaster extends ClipExportLayerBase { kind:'raster'; png:string; x:number; y:number }
 
+export interface ClipExportBalloon {
+  points:Array<[number,number]>; isTail?:boolean; spline?:boolean; widthPx:number;
+  color:[number,number,number]; fill?:[number,number,number];
+}
+
 export interface ClipExportText extends ClipExportLayerBase, TextInlineStyle {
   kind:'text'; text:string; frame:[number,number,number,number]; fontSizePt:number; vertical:boolean;
   color:[number,number,number]; font?:{name:string;postscript:string;syntheticBold?:boolean;syntheticItalic?:boolean}; lineSpacing?:number;
   styleRuns?:TextStyleRange[]; textAlign?:'left'|'center'|'right';
+  balloons?:ClipExportBalloon[];
 }
 
 export interface ClipExportLine { points:Array<[number,number,number]>; closed:boolean; widthPx:number; color:[number,number,number] }
 
 export interface ClipExportVector extends ClipExportLayerBase { kind:'vector'; lines:ClipExportLine[] }
 
-export type ClipExportLayer = ClipExportFolder|ClipExportRaster|ClipExportText|ClipExportVector;
+export interface ClipExportFrame { points:Array<[number,number]>; widthPx:number }
+
+export interface ClipExportFrameFolder extends ClipExportLayerBase {
+  kind:'frame_folder'; frames:ClipExportFrame[]; children:ClipExportLayer[]; passThrough?:boolean;
+}
+
+export type ClipExportLayer = ClipExportFolder|ClipExportFrameFolder|ClipExportRaster|ClipExportText|ClipExportVector;
 
 export interface ClipExportPage {
   profile:'nyamuru-clip-v1'; width:number; height:number; dpi:number; title:string; page:number;
+  trimMm?:[number,number]; bleedMm?:number; basicMm?:[number,number]; rightBinding?:boolean;
   layers:ClipExportLayer[]; preview?:string; warnings:string[];
 }
 
 export const base=(id:string,name:string):ClipExportLayerBase=>({id,name,visible:true,locked:false,opacity:1,blend:'normal'});
 
 export const folder=(id:string,name:string,children:ClipExportLayer[],extra:Partial<ClipExportFolder>={}):ClipExportFolder=>({...base(id,name),kind:'folder',children,passThrough:true,...extra});
+
+export const frameFolder=(id:string,name:string,frames:ClipExportFrame[],children:ClipExportLayer[],extra:Partial<ClipExportFrameFolder>={}):ClipExportFrameFolder=>({...base(id,name),kind:'frame_folder',frames,children,passThrough:false,...extra});
 
 export const jsonSource=(kind:'nyamuru-paint'|'nyamuru-text',name:string,value:unknown):ClipExportSource=>({kind,name:`${name}.json`,data:JSON.stringify(value),mediaType:'application/json'});
 

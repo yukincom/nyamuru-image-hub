@@ -1,5 +1,9 @@
 import type { Manga, BBox, ImageAsset, PaintDocument, PaintLayer, ImageContent, Bubble, ScreenText, Panel } from '../types.ts';
-import { type ClipFontMetadataCache, type ClipExportPage, type ClipExportRaster, type ClipExportMask, clipExportLocalFonts, clipExportFont, bounds, type ClipExportSource, base, type ClipExportLayer, folder, jsonSource, clipExportVectorLines, type ClipExportVector, clipExportPlacementFrame, boxPoints, clipExportTextStyle, type ClipExportText, type ClipExportFolder, type ClipExportLine } from './clip/layerData.ts';
+import { type ClipFontMetadataCache, type ClipExportPage, type ClipExportRaster, type ClipExportMask, clipExportLocalFonts, clipExportFont, bounds, type ClipExportSource, base, type ClipExportLayer, folder, frameFolder, type ClipExportFrame, jsonSource, clipExportVectorLines, type ClipExportVector, clipExportPlacementFrame, boxPoints, clipExportTextStyle, type ClipExportText, type ClipExportBalloon, type ClipExportFolder, type ClipExportLine } from './clip/layerData.ts';
+import { clipPolylinesByMasks, polylinesToClipLines, svgEllipseToPolyline, svgPathToPolylines, svgRectToPolyline, type SvgPolyline } from './clip/svgPath.ts';
+import { bubbleBezierData, isBubbleBezier } from './bubbleBezier.ts';
+import { materialBubbleBezier } from './bubblePresetData.ts';
+import { EXTRACTED_BUBBLE_ASSETS } from '../data/extractedBubbleAssets.ts';
 import { getPrintSetup } from './printSettings.ts';
 import { pageExportPixels } from './pageExport.ts';
 import { browserFontGlyphProbe, bubbleCssFontFamily } from './bubbleFonts.ts';
@@ -10,10 +14,10 @@ import { textStyleSegments } from './textStyle.ts';
 import { bubbleTextPosition, compatibleBubbleClips } from './bubbleClip.ts';
 import { letteringGuideVisible, bubbleStrokeWidthMm, bubbleUsesMonologueTail } from './bubblePresentation.ts';
 import { paintColorMode } from './paintColor.ts';
-import { panelShapePoints, fallbackBox } from './canvasGeometry.ts';
+import { panelShapePoints, fallbackBox, innerFrameBounds } from './canvasGeometry.ts';
 import { overlayFallbackBox, overlayTextFallbackBox } from './pageCanvas.ts';
 import { resolveBubbleSpeakerFigureIndex, letteringFigureIndex } from './bubbleRelations.ts';
-import { bubbleArtIndices, panelArtKeys, panelFrameSegments } from './panelLayers.ts';
+import { bubbleArtIndices, panelArtKeys } from './panelLayers.ts';
 
 function canvas(width:number,height:number):HTMLCanvasElement {
   width=Math.max(1,Math.ceil(width));height=Math.max(1,Math.ceil(height));
@@ -35,11 +39,16 @@ async function loadUrl(url:string):Promise<HTMLImageElement>{const image=new Ima
 export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<ClipExportPage> {
   const page=structuredClone(manga.pages[pageIndex]);
   if(!page||![page.canvas.w,page.canvas.h].every(value=>Number.isFinite(value)&&value>0))throw new Error('書き出すページが見つかりません');
-  const setup=getPrintSetup(manga),size=pageExportPixels(setup.width_mm,setup.height_mm,setup.dpi),assets=manga.image_assets??[];
-  const output:ClipExportPage={profile:'nyamuru-clip-v1',...size,dpi:setup.dpi,title:manga.meta.title||'manga',page:page.page,layers:[],warnings:[]};
-  const sx=size.width/page.canvas.w,sy=size.height/page.canvas.h;
-  const point=([x,y]:readonly number[]):[number,number]=>[x*sx,y*sy];
-  const toPixelBox=(box:BBox):BBox=>({x:box.x*sx,y:box.y*sy,w:box.w*sx,h:box.h*sy});
+  const setup=getPrintSetup(manga),trimSize=pageExportPixels(setup.width_mm,setup.height_mm,setup.dpi),assets=manga.image_assets??[];
+  const bleedMm=setup.crop_marks?setup.bleed_mm:0;
+  const marginMm=setup.crop_marks?bleedMm+20:0;
+  const marginPx=Math.round(marginMm*setup.dpi/25.4);
+  const size={width:trimSize.width+marginPx*2,height:trimSize.height+marginPx*2};
+  const inner=innerFrameBounds({w:setup.width_mm,h:setup.height_mm});
+  const output:ClipExportPage={profile:'nyamuru-clip-v1',...size,dpi:setup.dpi,title:manga.meta.title||'manga',page:page.page,trimMm:[setup.width_mm,setup.height_mm],bleedMm,basicMm:[inner.w,inner.h],rightBinding:setup.binding==='right',layers:[],warnings:[]};
+  const sx=trimSize.width/page.canvas.w,sy=trimSize.height/page.canvas.h,pxPerMm=setup.dpi/25.4;
+  const point=([x,y]:readonly number[]):[number,number]=>[x*sx+marginPx,y*sy+marginPx];
+  const toPixelBox=(box:BBox):BBox=>({x:box.x*sx+marginPx,y:box.y*sy+marginPx,w:box.w*sx,h:box.h*sy});
   const warn=(message:string)=>{if(!output.warnings.includes(message))output.warnings.push(message);};
   const previewImages=new Map<string,ClipExportRaster>(),maskCache=new Map<string,ClipExportMask>(),originals=new Set<string>();
   if(document.fonts)await document.fonts.ready;
@@ -140,10 +149,16 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
     }
     const sources=[jsonSource('nyamuru-paint',name,{frame:box,image})];
     if(!sourcePaint)sources.push(...await sourceImage(asset));
-    return folder(id,name,children,{visible:!image.hidden,locked:image.locked,opacity:image.opacity,mask:polygonMask(boxPoints(placement.crop).map(point)),sources,passThrough:false});
+    const cropped=Boolean(sourcePaint)&&(
+      Math.abs(placement.crop.x-placement.frame.x)>1e-3||
+      Math.abs(placement.crop.y-placement.frame.y)>1e-3||
+      Math.abs(placement.crop.w-placement.frame.w)>1e-3||
+      Math.abs(placement.crop.h-placement.frame.h)>1e-3
+    );
+    return folder(id,name,children,{visible:!image.hidden,locked:image.locked,opacity:image.opacity,...(cropped?{mask:polygonMask(boxPoints(placement.crop).map(point))}:{}),sources,passThrough:false});
   };
 
-  const emitText=async(item:Bubble|ScreenText,kind:'bubble'|'screen_text',box:BBox,id:string,name:string):Promise<ClipExportLayer>=>{
+  const emitText=async(item:Bubble|ScreenText,kind:'bubble'|'screen_text',box:BBox,id:string,name:string,balloons?:ClipExportBalloon[]):Promise<ClipExportLayer>=>{
     const style=clipExportTextStyle(item,kind,manga.meta.font),fontSize=style.fontSizePt*setup.dpi/72;
     // Match BubbleText: explicit line breaks, fixed size, no fitting/wrapping.
     const host=document.createElement('div');Object.assign(host.style,{position:'fixed',left:'-100000px',top:'0',pointerEvents:'none',visibility:'hidden'});
@@ -163,13 +178,19 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
       try{context(surface).drawImage(image,0,0);preview={...base(`${id}/display`,`表示用 ${name}`),kind:'raster',png:surface.toDataURL('image/png'),x:Math.floor(x-2),y:Math.floor(y-2)};}
       finally{image.src='';release(surface);}
       const {fontFamily,...metadata}=style;
-      const native:ClipExportText={...base(id,name),kind:'text',text:item.text,frame:[Math.floor(x),Math.floor(y),Math.ceil(x+width),Math.ceil(y+height)],...metadata,color:[17,17,17],font:{name:fontFamily,postscript:fontFamily},visible:item.hidden!==true&&(kind!=='bubble'||letteringGuideVisible(item as Bubble)),locked:kind==='bubble'&&(item as Bubble).nativeLocked===true,
+      const padX=Math.ceil(fontSize*2),padY=Math.ceil(fontSize*2);
+      const frame:[number,number,number,number]=style.vertical
+        ?[Math.floor(x-padX),Math.floor(y),Math.ceil(x+width),Math.ceil(y+height+padY)]
+        :[Math.floor(x),Math.floor(y),Math.ceil(x+width+padX),Math.ceil(y+height+padY)];
+      const native:ClipExportText={...base(id,name),kind:'text',text:item.text,frame,...metadata,color:[17,17,17],font:{name:fontFamily,postscript:fontFamily},visible:item.hidden!==true&&(kind!=='bubble'||letteringGuideVisible(item as Bubble)),locked:kind==='bubble'&&(item as Bubble).nativeLocked===true,
+        ...(balloons?.length?{balloons}:{}),
         sources:[jsonSource('nyamuru-text',name,{kind,box,item})]};
       const fontKey=JSON.stringify([fontFamily,style.fontWeight,style.italic,item.text]);
       let resolved=resolvedFonts.get(fontKey);if(!resolved){resolved=clipExportFont(fontFamily,item.text,style.fontWeight,style.italic,fontProbe,localFonts,fontMetadata);resolvedFonts.set(fontKey,resolved);}
       const resolvedFont=await resolved;native.font=resolvedFont.font;if(resolvedFont.warning)warn(resolvedFont.warning);
       previewImages.set(id,preview);
-      if(item.text_runs?.length||style.underline||style.strikethrough){
+      const hasInlineStyle=Boolean(style.underline||style.strikethrough||item.text_runs?.some(run=>(run.fontWeight!==undefined&&run.fontWeight!==style.fontWeight)||(run.italic!==undefined&&run.italic!==style.italic)||run.underline===true||run.strikethrough===true));
+      if(hasInlineStyle){
         warn('部分書式・下線・取り消し線を含む文字は表示用画像と非表示の編集用文字に分け、書式つき元テキストを同梱しました。');
         return folder(id,name,[preview,{...native,id:`${id}/editable`,name:`編集用 ${name}`,visible:false}],{visible:native.visible,locked:native.locked,sources:native.sources,passThrough:false});
       }
@@ -204,54 +225,140 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
     const bubble=scope.panel.bubbles[index],box=itemBox(scope,'bubble',index),stroke=bubbleStrokeWidthMm(bubble,manga.meta.bubble_line_width_mm),id=`${scope.prefix}/bubble-${index}/shape`;
     if(bubble.shape==='typeset')return;
     let composite:import('./bubbleTail.ts').BubbleTailComposite|null=null;
-    const seamMasks:import('./bubbleTail.ts').BubbleSeamMask[]=[],connections:string[]=[],boxes=[box];
+    const seamMasks:import('./bubbleTail.ts').BubbleSeamMask[]=[],fillConnections:string[]=[],strokeConnections:string[]=[],boxes=[box];
+    const extraPolylines:SvgPolyline[]=[];
+    const mapPage=(x:number,y:number):[number,number]=>[x*sx+marginPx,y*sy+marginPx];
     const speaker=resolveBubbleSpeakerFigureIndex(scope.panel,bubble);
     if(!tail.bubbleTailDisabled(bubble)&&speaker!==null){
       const target=tail.bubbleTailTargetPoint(itemBox(scope,'figure',speaker),bubble.tail);boxes.push({x:target.x,y:target.y,w:1,h:1});
-      if(bubbleUsesMonologueTail(bubble))for(const ellipse of tail.monologueTailEllipses(box,target,bubble.bezier,bubble.tail_root))connections.push(`<ellipse cx="${ellipse.cx}" cy="${ellipse.cy}" rx="${ellipse.rx}" ry="${ellipse.ry}" fill="white" stroke="#111111" stroke-width="${stroke}"/>`);
-      else composite=tail.bubbleTailComposite(box,target,bubble.shape??'normal',bubble.bezier,bubble.tail_root);
+      if(bubbleUsesMonologueTail(bubble))for(const ellipse of tail.monologueTailEllipses(box,target,bubble.bezier,bubble.tail_root)){
+        fillConnections.push(`<ellipse cx="${ellipse.cx}" cy="${ellipse.cy}" rx="${ellipse.rx}" ry="${ellipse.ry}" fill="white" stroke="none"/>`);
+        strokeConnections.push(`<ellipse cx="${ellipse.cx}" cy="${ellipse.cy}" rx="${ellipse.rx}" ry="${ellipse.ry}" fill="white" stroke="#111111" stroke-width="${stroke}"/>`);
+        extraPolylines.push(svgEllipseToPolyline(ellipse.cx,ellipse.cy,ellipse.rx,ellipse.ry,mapPage));
+      }else composite=tail.bubbleTailComposite(box,target,bubble.shape??'normal',bubble.bezier,bubble.tail_root);
     }
     for(let other=0;other<scope.panel.bubbles.length;other++){
       const first=scope.panel.bubbles[other],target=Number(first.join_to)-1;
       if(!Number.isInteger(target)||target<0||target>=other||first.hidden||scope.panel.bubbles[target].hidden||!compatibleBubbleClips(first,scope.panel.bubbles[target]))continue;
       const join=tail.bubbleJoinGeometry(itemBox(scope,'bubble',other),first.shape??'normal',itemBox(scope,'bubble',target),scope.panel.bubbles[target].shape??'normal',first.bezier,scope.panel.bubbles[target].bezier);
       if(!join)continue;
-      if(index===other){seamMasks.push(join.firstSeamMask);boxes.push(itemBox(scope,'bubble',target));if(join.fillPath)connections.push(`<path d="${join.fillPath}" fill="white"/>`);connections.push(...join.outlinePaths.map(d=>`<path d="${d}" fill="none" stroke="#111111" stroke-width="${stroke}"/>`));}
+      if(index===other){
+        seamMasks.push(join.firstSeamMask);boxes.push(itemBox(scope,'bubble',target));
+        if(join.fillPath)fillConnections.push(`<path d="${join.fillPath}" fill="white"/>`);
+        strokeConnections.push(...join.outlinePaths.map(d=>`<path d="${d}" fill="none" stroke="#111111" stroke-width="${stroke}"/>`));
+        for(const d of join.outlinePaths)extraPolylines.push(...svgPathToPolylines(d,mapPage));
+      }
       if(index===target)seamMasks.push(join.secondSeamMask);
     }
+    const shape=bubble.shape??'normal';
+    const materialOutline=materialBubbleBezier(shape),sourcePath=bubbleBezierData(bubble.bezier??materialOutline),customPath=composite?.path??sourcePath;
+    if(shape==='handwritten'&&!customPath)return;
+    const extracted=!customPath&&shape in EXTRACTED_BUBBLE_ASSETS?EXTRACTED_BUBBLE_ASSETS[shape as keyof typeof EXTRACTED_BUBBLE_ASSETS]:null;
+    const viewBoxParts=(extracted?.viewBox??'0 0 100 100').trim().split(/\s+/).map(Number);
+    const [vx,vy,vw,vh]=viewBoxParts.length===4&&viewBoxParts.every(Number.isFinite)?viewBoxParts:[0,0,100,100];
+    const mapView=(x:number,y:number):[number,number]=>[(box.x+(x-vx)/vw*box.w)*sx+marginPx,(box.y+(y-vy)/vh*box.h)*sy+marginPx];
+    let mainPolylines:SvgPolyline[]=[];
+    if(customPath)mainPolylines=svgPathToPolylines(customPath,mapView);
+    else if(shape==='normal')mainPolylines=[svgEllipseToPolyline(50,50,50,50,mapView)];
+    else if(shape==='square'||shape==='caption'){
+      mainPolylines=[svgRectToPolyline(0,0,100,100,1,mapView)];
+      if(shape==='caption'&&!sourcePath)mainPolylines.push(...svgPathToPolylines('M5 6H95M5 94H95',mapView));
+    }else if(extracted?.type==='path')mainPolylines=svgPathToPolylines(extracted.d,mapView);
+    else if(extracted?.type==='ellipse')mainPolylines=[svgEllipseToPolyline(Number(extracted.cx),Number(extracted.cy),Number(extracted.rx),Number(extracted.ry),mapView)];
+    const seamPolys=seamMasks.map(seam=>seam.points.map(([px,py])=>mapView(vx+px*vw,vy+py*vh)));
+    const lines=polylinesToClipLines([...clipPolylinesByMasks(mainPolylines,seamPolys),...extraPolylines],stroke*pxPerMm,[17,17,17]);
+
     const host=document.createElement('div');
     try{
       render(h(BubbleShapeSvg,{shape:bubble.shape,bezier:bubble.bezier,composite:composite??undefined,seamMasks,maskId:`clip-${scope.prefix}-${index}`}),host);
       const body=host.querySelector('svg');if(!body)return;
       body.setAttribute('x',String(box.x));body.setAttribute('y',String(box.y));body.setAttribute('width',String(box.w));body.setAttribute('height',String(box.h));body.setAttribute('overflow','visible');
-      body.querySelectorAll('.bubble-svg-surface').forEach(element=>{element.setAttribute('fill','white');element.setAttribute('stroke','none');});
-      body.querySelectorAll('.bubble-svg-outline-surface,.bubble-svg-detail').forEach(element=>{element.setAttribute('fill','none');element.setAttribute('stroke','#111111');element.setAttribute('stroke-width',String(stroke*sx));element.setAttribute('vector-effect','non-scaling-stroke');});
       if(composite){const b=composite.bounds;boxes.push({x:box.x+b.x/100*box.w,y:box.y+b.y/100*box.h,w:b.w/100*box.w,h:b.h/100*box.h});}
       const union=bounds(boxes.flatMap(boxPoints)),frame={x:union.x-stroke,y:union.y-stroke,w:union.w+stroke*2,h:union.h+stroke*2};
       const width=Math.max(1,Math.ceil(frame.w*sx)),height=Math.max(1,Math.ceil(frame.h*sy));
-      const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${frame.x} ${frame.y} ${frame.w} ${frame.h}">${connections.join('')}${new XMLSerializer().serializeToString(body)}</svg>`;
-      const image=await decodePaintImage(new Blob([svg],{type:'image/svg+xml'})),surface=canvas(width,height);
-      try{context(surface).drawImage(image,0,0);const raster=rasterFromPixels(context(surface).getImageData(0,0,width,height),frame,id,'フキダシの形');
-        raster.visible=!bubble.hidden;raster.locked=bubble.nativeLocked===true;raster.sources=[{kind:'svg',name:`${scope.prefix}-bubble-${index}.svg`,data:svg,mediaType:'image/svg+xml'}];
-        warn('フキダシの塗り・しっぽ・結合は表示用画像として保持し、編集原本のSVGを同梱しました。');return raster;
+      body.querySelectorAll('.bubble-svg-surface').forEach(element=>{element.setAttribute('fill','white');element.setAttribute('stroke','none');});
+      body.querySelectorAll('.bubble-svg-outline-surface,.bubble-svg-detail').forEach(element=>{element.setAttribute('fill','none');element.setAttribute('stroke','none');});
+      const fillSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${frame.x} ${frame.y} ${frame.w} ${frame.h}">${fillConnections.join('')}${new XMLSerializer().serializeToString(body)}</svg>`;
+      body.querySelectorAll('.bubble-svg-outline-surface,.bubble-svg-detail').forEach(element=>{element.setAttribute('fill','none');element.setAttribute('stroke','#111111');element.setAttribute('stroke-width',String(stroke*sx));element.setAttribute('vector-effect','non-scaling-stroke');});
+      const sourceSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${frame.x} ${frame.y} ${frame.w} ${frame.h}">${strokeConnections.join('')}${new XMLSerializer().serializeToString(body)}</svg>`;
+      const image=await decodePaintImage(new Blob([fillSvg],{type:'image/svg+xml'})),surface=canvas(width,height);
+      try{context(surface).drawImage(image,0,0);const fillRaster=rasterFromPixels(context(surface).getImageData(0,0,width,height),frame,`${id}/fill`,'フキダシの塗り');
+        fillRaster.visible=!bubble.hidden;fillRaster.locked=bubble.nativeLocked===true;
+        const svgSource:ClipExportSource={kind:'svg',name:`${scope.prefix}-bubble-${index}.svg`,data:sourceSvg,mediaType:'image/svg+xml'};
+        if(!lines.length){fillRaster.sources=[svgSource];return fillRaster;}
+        const vectorLayer:ClipExportVector={...base(`${id}/vector`,'フキダシの枠'),kind:'vector',lines,visible:!bubble.hidden,locked:bubble.nativeLocked===true};
+        return folder(id,'フキダシの形',[fillRaster,vectorLayer],{visible:!bubble.hidden,locked:bubble.nativeLocked===true,sources:[svgSource],passThrough:false});
       }finally{image.src='';release(surface);}
     }finally{render(null,host);}
+  };
+  const emitBubbleBalloons=(scope:Scope,index:number):ClipExportBalloon[]=>{
+    const bubble=scope.panel.bubbles[index],box=itemBox(scope,'bubble',index),strokePx=bubbleStrokeWidthMm(bubble,manga.meta.bubble_line_width_mm)*pxPerMm;
+    const shape=bubble.shape??'normal';
+    if(shape==='typeset')return [];
+    const materialOutline=materialBubbleBezier(shape),outline=bubble.bezier??materialOutline;
+    if(shape==='handwritten'&&!outline)return [];
+    const extracted=!outline&&shape in EXTRACTED_BUBBLE_ASSETS?EXTRACTED_BUBBLE_ASSETS[shape as keyof typeof EXTRACTED_BUBBLE_ASSETS]:null;
+    const viewBoxParts=(extracted?.viewBox??'0 0 100 100').trim().split(/\s+/).map(Number);
+    const [vx,vy,vw,vh]=viewBoxParts.length===4&&viewBoxParts.every(Number.isFinite)?viewBoxParts:[0,0,100,100];
+    const mapView=(x:number,y:number):[number,number]=>[(box.x+(x-vx)/vw*box.w)*sx+marginPx,(box.y+(y-vy)/vh*box.h)*sy+marginPx];
+    const mapPage=(x:number,y:number):[number,number]=>[x*sx+marginPx,y*sy+marginPx];
+    const balloons:ClipExportBalloon[]=[];
+    const pushEllipse=(cx:number,cy:number,rx:number,ry:number,map:(x:number,y:number)=>[number,number],isTail=false)=>{
+      balloons.push({points:[map(cx,cy-ry),map(cx+rx,cy),map(cx,cy+ry),map(cx-rx,cy)],isTail,spline:true,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
+    };
+    if(isBubbleBezier(outline)){
+      const spline=outline.nodes.some(n=>Boolean(n.handleIn||n.handleOut));
+      balloons.push({points:outline.nodes.map(n=>mapView(n.x,n.y)),isTail:false,spline,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
+    }else if(shape==='normal'){
+      pushEllipse(50,50,50,50,mapView,false);
+    }else if(shape==='square'||shape==='caption'){
+      balloons.push({points:[mapView(0,0),mapView(100,0),mapView(100,100),mapView(0,100)],isTail:false,spline:false,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
+    }else if(extracted?.type==='ellipse'){
+      pushEllipse(Number(extracted.cx),Number(extracted.cy),Number(extracted.rx),Number(extracted.ry),mapView,false);
+    }else if(extracted?.type==='path'){
+      for(const poly of svgPathToPolylines(extracted.d,mapView)){
+        if(poly.points.length>=3)balloons.push({points:poly.points.map(([x,y])=>[x,y]),isTail:false,spline:false,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
+      }
+    }
+    const speaker=resolveBubbleSpeakerFigureIndex(scope.panel,bubble);
+    if(balloons.length&&!tail.bubbleTailDisabled(bubble)&&speaker!==null){
+      const target=tail.bubbleTailTargetPoint(itemBox(scope,'figure',speaker),bubble.tail);
+      if(bubbleUsesMonologueTail(bubble)){
+        for(const ellipse of tail.monologueTailEllipses(box,target,bubble.bezier,bubble.tail_root)){
+          pushEllipse(ellipse.cx,ellipse.cy,ellipse.rx,ellipse.ry,mapPage,true);
+        }
+      }else{
+        const geom=tail.bubbleTailGeometry(box,target,shape,bubble.bezier,bubble.tail_root);
+        if(geom){
+          const poly=svgPathToPolylines(geom.fillPath,mapView)[0];
+          if(poly&&poly.points.length>=3)balloons.push({points:poly.points.map(([x,y])=>[x,y]),isTail:true,spline:false,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
+        }
+      }
+    }
+    return balloons;
   };
   const emitBubbles=async(scope:Scope,related:number|null=null,depth:'front'|'behind'='front'):Promise<ClipExportLayer[]>=>{
     const result:ClipExportLayer[]=[];
     for(const index of bubbleArtIndices(scope.panel)){
       const bubble=scope.panel.bubbles[index];if(letteringFigureIndex(scope.panel,bubble)!==related||related!==null&&(bubble.lettering_depth??'front')!==depth)continue;
       result.push(...await emitDirect(scope,{below:`bubble-${index}`}));
-      const id=`${scope.prefix}/bubble-${index}`,children:ClipExportLayer[]=[],box=itemBox(scope,'bubble',index),shape=await emitBubbleShape(scope,index);
-      if(shape)children.push(shape);
+      const id=`${scope.prefix}/bubble-${index}`,children:ClipExportLayer[]=[],box=itemBox(scope,'bubble',index);
+      const balloons=emitBubbleBalloons(scope,index);
+      if(!balloons.length){const shape=await emitBubbleShape(scope,index);if(shape)children.push(shape);}
       const owner=scope.owners.find(owner=>owner.key===`bubble-${index}`)!;
       if(bubble.paint_overlay)children.push(await emitPlacement(bubble.paint_overlay,bubble.bbox??fallbackBox(scope.panel,'bubble',index),`${id}/below`,'文字の下の描画',false,owner));
       else if(owner.paint.layers.length)children.push(...await emitPaint(owner.paint,owner.frame,`${id}/source`,owner));
-      children.push(await emitText(bubble,'bubble',box,`${id}/text`,`本文 ${index+1}`));
+      const textLayer=await emitText(bubble,'bubble',box,`${id}/text`,`本文 ${index+1}`,balloons);
       const original=scope.panel.images?.find(image=>image.id===bubble.analogTextImport?.originalImageId);
       if(original){children.push(...await emitDirect(scope,{below:`original-${original.id}`}));children.push(await emitPlacement(original,original.bbox,`${id}/original`,original.bubbleOriginal?.name??'文字原本'));}
       if(bubble.paint_overlay)children.push(await emitPlacement(bubble.paint_overlay,bubble.bbox??fallbackBox(scope.panel,'bubble',index),`${id}/above`,'文字の上の描画',true,owner));
-      result.push(folder(id,`テキスト ${index+1}`,children,{locked:bubble.locked===true,sources:[jsonSource('nyamuru-text',id,bubble)]}));
+      if(!children.length&&!bubble.paint_overlay&&!owner.paint.layers.length&&!original){
+        textLayer.locked=bubble.locked===true||bubble.nativeLocked===true;
+        result.push(textLayer);
+      }else{
+        children.push(textLayer);
+        result.push(folder(id,`テキスト ${index+1}`,children,{locked:bubble.locked===true,sources:[jsonSource('nyamuru-text',id,bubble)]}));
+      }
     }
     return result;
   };
@@ -269,40 +376,62 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
     }
     return result;
   };
-  // Preserve the editor's global phases. A single folder per panel would move its
-  // frame below a later overlapping panel's artwork and change the picture.
+  const panelFrame=(panel:Panel):ClipExportFrame=>{
+    const widthPx=(manga.meta.panel_frame_width_mm||.5)*pxPerMm;
+    if(panel.shape.type==='polygon')return {points:panel.shape.points.map(point),widthPx};
+    const {x,y,w,h}=panel.shape,bleed=panel.bleed??[];
+    const left=bleed.includes('left')?Math.min(x*sx+marginPx,-widthPx*2):x*sx+marginPx;
+    const top=bleed.includes('top')?Math.min(y*sy+marginPx,-widthPx*2):y*sy+marginPx;
+    const right=bleed.includes('right')?Math.max((x+w)*sx+marginPx,size.width+widthPx*2):(x+w)*sx+marginPx;
+    const bottom=bleed.includes('bottom')?Math.max((y+h)*sy+marginPx,size.height+widthPx*2):(y+h)*sy+marginPx;
+    return {points:[[left,top],[right,top],[right,bottom],[left,bottom]],widthPx};
+  };
+  // Each panel is a CSP FrameFolder pairing its connected border with its masked layers.
   for(const scope of scopes){
-    const children:ClipExportLayer[]=[];
+    const artChildren:ClipExportLayer[]=[];
     for(const key of panelArtKeys(scope.panel)){
       if(key==='background'){
-        children.push(...await emitDirect(scope,{below:key}));const images=scope.panel.background_images??[];
+        artChildren.push(...await emitDirect(scope,{below:key}));const images=scope.panel.background_images??[];
         const background:ClipExportLayer[]=[];
         for(const image of images)background.push(await emitPlacement(image,image.bbox,`${scope.prefix}/background/${image.id}`,'背景画像',undefined,scope.owners.find(owner=>owner.kind==='background')));
         if(!images.length){const owner=scope.owners.find(owner=>owner.kind==='background')!;background.push(...await emitPaint(owner.paint,owner.frame,`${scope.prefix}/background`,owner));}
-        children.push(folder(`${scope.prefix}/background`,'背景あたり',background,{locked:scope.panel.layer?.backgroundLocked===true}));
-      }else children.push(...await emitFigure(scope,Number(key.slice(7))));
+        artChildren.push(folder(`${scope.prefix}/background`,'背景あたり',background,{locked:scope.panel.layer?.backgroundLocked===true}));
+      }else artChildren.push(...await emitFigure(scope,Number(key.slice(7))));
     }
-    for(const image of scope.panel.images??[])if(!image.paintScope&&!image.bubbleOriginal&&!image.generationScope)children.push(await emitPlacement(image,image.bbox,`${scope.prefix}/image-${image.id}`,'配置画像'));
-    children.push(...await emitScreenText(scope));output.layers.push(scopeFolder(scope,'作画',children));
+    for(const image of scope.panel.images??[])if(!image.paintScope&&!image.bubbleOriginal&&!image.generationScope)artChildren.push(await emitPlacement(image,image.bbox,`${scope.prefix}/image-${image.id}`,'配置画像'));
+    artChildren.push(...await emitScreenText(scope));
+    const panelChildren:ClipExportLayer[]=[];
+    if(artChildren.length)panelChildren.push(folder(`${scope.prefix}/作画`,'作画',artChildren));
+    const bubbleChildren=await emitBubbles(scope);
+    if(bubbleChildren.length)panelChildren.push(folder(`${scope.prefix}/フキダシ`,'フキダシ',bubbleChildren));
+    const directChildren=await emitDirect(scope);
+    if(directChildren.length)panelChildren.push(folder(`${scope.prefix}/描画`,'描画',directChildren));
+    const genChildren:ClipExportLayer[]=[];
+    for(const image of scope.panel.images??[])if(image.generationScope&&!image.paintScope&&!image.bubbleOriginal)genChildren.push(await emitPlacement(image,image.bbox,`${scope.prefix}/generated-${image.id}`,'コマ生成画像'));
+    if(genChildren.length)panelChildren.push(folder(`${scope.prefix}/生成画像`,'生成画像',genChildren));
+    const origChildren:ClipExportLayer[]=[];
+    for(const image of scope.panel.images??[])if(image.bubbleOriginal&&!scope.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)){
+      origChildren.push(...await emitDirect(scope,{below:`original-${image.id}`}));origChildren.push(await emitPlacement(image,image.bbox,`${scope.prefix}/original-${image.id}`,image.bubbleOriginal.name));
+    }
+    if(origChildren.length)panelChildren.push(folder(`${scope.prefix}/原本`,'原本',origChildren));
+    const panelAttrs={visible:scope.panel.layer?.hidden!==true,locked:scope.panel.layer?.locked===true};
+    if(scope.panel.layer?.frameHidden===true){
+      output.layers.push(folder(scope.prefix,`コマ ${scope.panel.id}`,panelChildren,{...panelAttrs,...(scope.mask?{mask:scope.mask}:{}),passThrough:false}));
+    }else{
+      output.layers.push(frameFolder(scope.prefix,`コマ ${scope.panel.id}`,[panelFrame(scope.panel)],panelChildren,{...panelAttrs,...(scope.mask?{mask:scope.mask}:{})}));
+    }
   }
   for(const image of page.images??[])if(!image.paintScope&&!image.bubbleOriginal&&!image.generationScope)output.layers.push(await emitPlacement(image,image.bbox,`page/image-${image.id}`,'ページ配置画像'));
-  for(const scope of scopes)output.layers.push(scopeFolder(scope,'フキダシ',await emitBubbles(scope)));
-  for(const scope of scopes)output.layers.push(scopeFolder(scope,'描画',await emitDirect(scope)));
-  for(const scope of scopes){
-    const lines:ClipExportLine[]=panelFrameSegments(scope.panel).map(segment=>({points:[[segment.x1*sx,segment.y1*sy,1],[segment.x2*sx,segment.y2*sy,1]],closed:false,widthPx:(manga.meta.panel_frame_width_mm||.5)*sx,color:[17,17,17]}));
-    output.layers.push(folder(`${scope.prefix}/frame` ,`コマ ${scope.panel.id} · 枠`,[{...base(`${scope.prefix}/frame/lines`,'枠線'),kind:'vector',lines,visible:scope.panel.layer?.frameHidden!==true,locked:scope.panel.layer?.frameLocked===true}],{visible:scope.panel.layer?.hidden!==true,locked:scope.panel.layer?.locked===true}));
-  }
   for(const panel of page.panels)output.layers.push(...await emitDirect(overlay,{beforePanel:`panel-${panel.id}`}));
   for(const key of panelArtKeys(overlay.panel))if(key.startsWith('figure-'))output.layers.push(...await emitFigure(overlay,Number(key.slice(7))));
   output.layers.push(...await emitScreenText(overlay),...await emitBubbles(overlay),...await emitDirect(overlay));
-  for(const scope of scopes){const children:ClipExportLayer[]=[];for(const image of scope.panel.images??[])if(image.generationScope&&!image.paintScope&&!image.bubbleOriginal)children.push(await emitPlacement(image,image.bbox,`${scope.prefix}/generated-${image.id}`,'コマ生成画像'));if(children.length)output.layers.push(scopeFolder(scope,'生成画像',children));}
   for(const image of page.images??[])if(image.generationScope&&!image.paintScope&&!image.bubbleOriginal)output.layers.push(await emitPlacement(image,image.bbox,`page/generated-${image.id}`,'ページ生成画像'));
-  for(const scope of [...scopes,overlay]){
+  {
     const children:ClipExportLayer[]=[];
-    for(const image of scope.panel.images??[])if(image.bubbleOriginal&&!scope.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)){
-      children.push(...await emitDirect(scope,{below:`original-${image.id}`}));children.push(await emitPlacement(image,image.bbox,`${scope.prefix}/original-${image.id}`,image.bubbleOriginal.name));
+    for(const image of overlay.panel.images??[])if(image.bubbleOriginal&&!overlay.panel.bubbles.some(bubble=>bubble.analogTextImport?.originalImageId===image.id)){
+      children.push(...await emitDirect(overlay,{below:`original-${image.id}`}));children.push(await emitPlacement(image,image.bbox,`${overlay.prefix}/original-${image.id}`,image.bubbleOriginal.name));
     }
-    if(children.length)output.layers.push(scopeFolder(scope,'原本',children));
+    if(children.length)output.layers.push(scopeFolder(overlay,'原本',children));
   }
   output.preview=await previewClipExport(output,previewImages);
   return output;
@@ -319,7 +448,16 @@ async function previewClipExport(page:ClipExportPage,textImages:Map<string,ClipE
       const local=canvas(width,height),out=context(local);
       try{
         if(layer.kind==='folder')await draw(out,layer.children);
-        else if(layer.kind==='raster'||layer.kind==='text'){
+        else if(layer.kind==='frame_folder'){
+          out.save();
+          out.beginPath();
+          for(const frame of layer.frames){frame.points.forEach((p,i)=>i?out.lineTo(p[0]*scale,p[1]*scale):out.moveTo(p[0]*scale,p[1]*scale));out.closePath();}
+          out.clip();
+          await draw(out,layer.children);
+          out.restore();
+          out.strokeStyle='#111111';out.lineCap='butt';out.lineJoin='miter';
+          for(const frame of layer.frames){out.lineWidth=frame.widthPx*scale;out.beginPath();frame.points.forEach((p,i)=>i?out.lineTo(p[0]*scale,p[1]*scale):out.moveTo(p[0]*scale,p[1]*scale));out.closePath();out.stroke();}
+        }else if(layer.kind==='raster'||layer.kind==='text'){
           const source=layer.kind==='raster'?layer:textImages.get(layer.id);if(source){const image=await loadUrl(source.png);try{out.drawImage(image,source.x*scale,source.y*scale,image.naturalWidth*scale,image.naturalHeight*scale);}finally{image.src='';}}
         }else for(const line of layer.lines){out.strokeStyle=`rgb(${line.color.join(',')})`;out.fillStyle=out.strokeStyle;out.lineWidth=line.widthPx*scale;out.lineCap='round';out.lineJoin='round';out.beginPath();line.points.forEach((p,i)=>i?out.lineTo(p[0]*scale,p[1]*scale):out.moveTo(p[0]*scale,p[1]*scale));if(line.closed)out.closePath();if(line.points.length===1){const p=line.points[0];out.arc(p[0]*scale,p[1]*scale,line.widthPx*scale/2,0,2*Math.PI);out.fill();}else out.stroke();}
         if(layer.mask){const image=await loadUrl(layer.mask.png);try{out.globalCompositeOperation='destination-in';const mask=canvas(width,height);try{context(mask).drawImage(image,layer.mask.x*scale,layer.mask.y*scale,image.naturalWidth*scale,image.naturalHeight*scale);out.drawImage(mask,0,0);}finally{release(mask);}}finally{image.src='';}}
@@ -337,14 +475,18 @@ export {
   clipExportTextStyle,
   clipExportLocalFonts,
   clipExportFont,
+  frameFolder,
 } from './clip/layerData.ts';
 export type {
   ClipExportSource,
   ClipExportMask,
   ClipExportLayerBase,
   ClipExportFolder,
+  ClipExportFrame,
+  ClipExportFrameFolder,
   ClipExportRaster,
   ClipExportText,
+  ClipExportBalloon,
   ClipExportLine,
   ClipExportVector,
   ClipExportLayer,

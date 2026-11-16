@@ -123,7 +123,7 @@ export function clipExportSources(page:ClipExportPage,stem:string):{payload:Clip
       entries.push({name,bytes});return {file:name,kind:source.kind,mediaType:source.mediaType};
     });
     mapping.push({id:layer.id,name:layer.name,kind:layer.kind,sources:sourceFiles});
-    return layer.kind==='folder'?{...content,kind:'folder',children:layer.children.map(visit)}:content as ClipExportLayer;
+    return layer.kind==='folder'||layer.kind==='frame_folder'?{...content,kind:layer.kind,children:layer.children.map(visit)} as ClipExportLayer:content as ClipExportLayer;
   };
   const mapping:Array<{id:string;name:string;kind:string;sources:Array<{file:string;kind:string;mediaType:string}>}>=[];
   const payload={...page,layers:page.layers.map(visit)};

@@ -2,7 +2,8 @@
 // 範囲: 実変換関数の数値・不変性。実画素・ブラウザー字体はclipExportAdapter.browser.tsx、CLIP読込は親側の試験。
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { clipExportPoint, clipExportVectorLines, clipExportPlacementFrame, clipExportTextStyle, clipExportFont, clipExportLocalFonts } from '../src/lib/clipExport.ts';
+import { clipExportPoint, clipExportVectorLines, clipExportPlacementFrame, clipExportTextStyle, clipExportFont, clipExportLocalFonts, frameFolder } from '../src/lib/clipExport.ts';
+import { svgPathToPolylines, svgEllipseToPolyline, svgRectToPolyline, clipPolylinesByMasks, polylinesToClipLines } from '../src/lib/clip/svgPath.ts';
 import { defaultVectorStyle } from '../src/lib/vectorGeometry.ts';
 
 // 見込み: 元paintの解像度が用紙と異なっても、配置枠を介して位置を保持する。
@@ -81,4 +82,32 @@ test('collinear control points preserve the curve beyond both end points',()=>{
   const path={id:'fold',closed:false,style:defaultVectorStyle(),nodes:[{x:0,y:0,handleOut:{x:100,y:0}},{x:10,y:0,handleIn:{x:-110,y:0}}]};
   const [line]=clipExportVectorLines([path],{width:100,height:100},{x:0,y:0,w:100,h:100},{w:100,h:100},{width:100,height:100});
   const xs=line.points.map(p=>p[0]);assert.ok(Math.abs(Math.min(...xs)+24.125)<.2);assert.ok(Math.abs(Math.max(...xs)-28.963)<.2);
+});
+
+test('svgPathToPolylines and svgEllipseToPolyline preserve closed bubble vector outlines',()=>{
+  const id=(x,y)=>[x,y];
+  const ellipse=svgEllipseToPolyline(50,50,40,30,id);
+  assert.equal(ellipse.closed,true);
+  assert.ok(ellipse.points.length>=8&&ellipse.points.length<=32);
+  const xs=ellipse.points.map(p=>p[0]),ys=ellipse.points.map(p=>p[1]);
+  assert.ok(Math.abs(Math.min(...xs)-10)<.2);assert.ok(Math.abs(Math.max(...xs)-90)<.2);
+  assert.ok(Math.abs(Math.min(...ys)-20)<.2);assert.ok(Math.abs(Math.max(...ys)-80)<.2);
+
+  const path=svgPathToPolylines('M 0 0 L 100 0 C 100 50 50 100 0 100 Z',id);
+  assert.equal(path.length,1);assert.equal(path[0].closed,true);
+  assert.ok(path[0].points.length>4);
+
+  const rect=svgRectToPolyline(10,20,80,40,0,id);
+  assert.equal(rect.closed,true);assert.equal(rect.points.length,4);
+
+  const clipped=clipPolylinesByMasks([rect],[[[0,0],[50,0],[50,100],[0,100]]]);
+  const lines=polylinesToClipLines(clipped,3,[17,17,17]);
+  assert.ok(lines.length>=1);assert.equal(lines[0].closed,false);assert.equal(lines[0].widthPx,3);
+});
+
+test('frameFolder keeps connected frame border vertices and children together',()=>{
+  const ff=frameFolder('panel-0','コマ 1',[{points:[[10,10],[100,10],[100,140],[10,140]],widthPx:6}],[]);
+  assert.equal(ff.kind,'frame_folder');
+  assert.equal(ff.frames.length,1);
+  assert.deepEqual(ff.frames[0].points,[[10,10],[100,10],[100,140],[10,140]]);
 });

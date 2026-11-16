@@ -28,9 +28,9 @@ export function createImageExportActions({
     const name=pageExportStem(current.manga.meta.title||'manga',page.page,setup);
     if(format==='clip'){
       const {buildClipExportPage}=await import('../../lib/clipExport');
-      const {payload,entries}=clipExportSources(await buildClipExportPage(current.manga,pageIndex),name);
+      const {payload}=clipExportSources(await buildClipExportPage(current.manga,pageIndex),name);
       const blob=await requestClipExport(payload);
-      return {blob,name:`${name}.clip`,page:page.page,sources:entries};
+      return {blob,name:`${name}.clip`,page:page.page,sources:[] as Array<{name:string;bytes:Uint8Array}>};
     }
     page.panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=false;}));
     const overlay=page.page_overlay;[...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=false;});
@@ -83,14 +83,18 @@ export function createImageExportActions({
         const result=await pageExportBlob(current,indices[position],choice.format);
         files.push({...result,bytes:new Uint8Array(await result.blob.arrayBuffer())});
       }
-      await progress(indices.length,files.length>1?'ZIPにまとめています':'保存の準備中');
+      await progress(indices.length,files.length>1&&!directory?'ZIPにまとめています':'保存の準備中');
       if(documentRef.current!==current)throw new Error('作品が変更されました。ページ範囲を選び直してください');
-      const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
-      const zip=files.length>1||files.some(file=>file.sources.length);
-      const blob=zip?uncompressedZip(files.flatMap(({name,bytes,sources})=>[{name,bytes},...sources])):files[0].blob;
-      const name=zip?`${safeExportName(current.manga.meta.title||'manga').slice(0,50)}-pages-${first}-${last}-${choice.format}.zip`:files[0].name;
       await progress(indices.length+1,directory?'保存しています':'ダウンロードを準備中');
-      await saveImageExport(blob,name,directory);
+      if(directory&&files.length>1&&choice.format==='clip'){
+        for(const file of files)await saveImageExport(file.blob,file.name,directory);
+      }else{
+        const first=String(files[0].page).padStart(3,'0'),last=String(files.at(-1)!.page).padStart(3,'0');
+        const zip=files.length>1||files.some(file=>file.sources.length);
+        const blob=zip?uncompressedZip(files.flatMap(({name,bytes,sources})=>[{name,bytes},...sources])):files[0].blob;
+        const name=zip?`${safeExportName(current.manga.meta.title||'manga').slice(0,50)}-pages-${first}-${last}-${choice.format}.zip`:files[0].name;
+        await saveImageExport(blob,name,directory);
+      }
       await progress(indices.length+2,directory?'保存しました':'ダウンロードを開始しました');
       setImageExportDialog(null);
       setToast(directory?`${directory.name} に書き出しました`:'ダウンロードを開始しました');
