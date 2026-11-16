@@ -24,7 +24,7 @@ export default function PaintBrushTools({brush,active,select,disabled}:{brush:Pa
     return()=>{document.removeEventListener('pointerdown',dismiss,true);window.removeEventListener('keydown',key,true);window.removeEventListener('resize',close);};
   },[open]);
   return <div ref={root} class="paint-pen-family" onContextMenu={event=>{event.preventDefault();if(!disabled)setOpen(value=>!value);}}>
-    <PaintToolButton class="paint-tool-icon" label={label} shortcut="[ / ]：太さ" disabled={disabled} aria-pressed={active} onClick={()=>{setOpen(false);select(brush);}}><BrushIcon brush={brush}/></PaintToolButton>
+    <PaintToolButton class="paint-tool-icon" label={label} shortcut="B" disabled={disabled} aria-pressed={active} onClick={()=>{setOpen(false);select(brush);}}><BrushIcon brush={brush}/></PaintToolButton>
     <PaintToolButton class="pen-family-toggle" label="ラスターペンのブラシ一覧" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={()=>setOpen(value=>!value)}><ChevronDown size={12}/></PaintToolButton>
     {open&&createPortal(<div ref={popup} class="paint-dock pen-family-menu" role="menu" aria-label="ラスターペンのブラシ" style={position}>{choices.map(([value,name])=><PaintToolButton key={value} role="menuitemradio" label={name} aria-checked={brush===value} aria-pressed={brush===value} disabled={disabled} onClick={()=>{setOpen(false);select(value);}}><BrushIcon brush={value}/><span>{name}</span></PaintToolButton>)}</div>,document.body)}
   </div>;

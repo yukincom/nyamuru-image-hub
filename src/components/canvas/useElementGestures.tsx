@@ -211,6 +211,7 @@ export function useElementGestures(options: CanvasProps, state: CanvasSurface) {
     if(point.x<0||point.y<0||point.x>canvas.w||point.y>canvas.h)return false;
     const preview=behindOwnerKey?paper.querySelector<HTMLElement>(`[data-paint-owner="${CSS.escape(behindOwnerKey)}"]${aboveNative?'[data-native-band="above"]':''}`):null;
     const hit=Array.from(paper.querySelectorAll<HTMLElement>('[data-content-target][data-content-kind][data-content-index]')).reverse().find(element=>{
+      if(behindOwnerKey&&element.dataset.contentKind==='figure'&&behindOwnerKey===`figure-${element.dataset.contentIndex}`)return false;
       if(preview&&(element.contains(preview)?aboveNative:!(preview.compareDocumentPosition(element)&Node.DOCUMENT_POSITION_FOLLOWING)))return false;
       const overlay=element.hasAttribute('data-content-overlay')||element.dataset.contentScope==='page_overlay'||element.dataset.contentScope==='page',panelIndex=Number(element.dataset.contentPanel);
       if(element.hasAttribute('data-artwork-locked')||!overlay&&Number.isFinite(panelIndex)&&(!panelVisible(page.panels[panelIndex])||!pointInPanel(page.panels[panelIndex],point.x,point.y)))return false;

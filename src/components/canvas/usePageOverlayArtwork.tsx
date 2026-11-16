@@ -39,7 +39,7 @@ export function usePageOverlayArtwork(options: CanvasProps, state: CanvasSurface
   } = state;
   const { startInteraction, nudgeElement, renderHandles, startBubbleTextDrag } = elements;
   const {
-    buildBubbleConnections, isSelectedElement, agentWorking, renderArtwork, renderDirectPaint,
+    buildBubbleConnections, isSelectedElement, agentWorking, renderArtwork, renderFigureGuide, renderDirectPaint,
     renderBubblePaint, renderBubbleOriginal,
   } = panelArt;
   const overlayBubblePresentation = useMemo(()=>buildBubbleConnections(
@@ -52,29 +52,11 @@ export function usePageOverlayArtwork(options: CanvasProps, state: CanvasSurface
   const renderPageOverlayFigures = () => (overlay?.figures ?? []).map((figure, figureIndex) => {
     const selection: CanvasElementSelection = { scope: 'page_overlay', type: 'figure', index: figureIndex };
     const box = figure.bbox ?? overlayFallbackBox('figure', figureIndex);
-    if(editingOverlay)return <PaintOwnerPreview key={`paint-figure-${figureIndex}`} ownerKey={`figure-${figureIndex}`} container={paperBounds}/>;
-    const referenceBox=paintReferenceBox(figure.artwork?.paint,box,figure.artwork?.crop);
-    const isSelected = isSelectedElement(selection)&&!agentWorking(selection);
     const artwork = figureArtwork(figure);
-    if (artwork) return renderArtwork(artwork, selection, null, paperBoxStyle, `${figureDisplayLabel(figure,figureIndex)}の画像`);
-    const cropAssetId = figure.analogImport?.assetId;
-    const figureClass = figureCanvasClass(figure);
-    return <button
-      data-content-target data-content-overlay data-content-kind="figure" data-content-index={figureIndex} data-agent-working={agentWorking(selection)||undefined} class={`canvas-element figure-guide page-overlay-element ${figureClass} ${cropAssetId ? 'has-source-crop' : ''} ${isSelected ? 'is-element-selected' : ''}`}
-      style={{...paperBoxStyle(box),pointerEvents:elementLocked(selection)?'none':'auto'}} data-artwork-locked={elementLocked(selection)||undefined}
-      onPointerDown={(event) => startInteraction(event, null, selection, box, 'move')}
-      onClick={(event) => { event.stopPropagation(); onSelectElement(selection, undefined, true, event.shiftKey); }}
-      onContextMenu={event => openGenerationMenu(event, 0, figureIndex, true)}
-      onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) openGenerationMenu(event, 0, figureIndex, true); else nudgeElement(event, paperBounds, selection, box); }}
-      key={figure.analogImport?.sourceRegionId ?? `page-overlay-figure-${figureIndex}`}
-      aria-label={figureDisplayLabel(figure,figureIndex)}
-      tabIndex={!elementLocked(selection)&&activePanel >= 0 ? 0 : -1}
-    >
-      <span class="figure-native-reference" style={nativeStyle(box,referenceBox)}>{cropAssetId && <StoredCropImage assetId={cropAssetId} persistentAsset={figure.analogImport?.persistentAsset} className="figure-crop-image" />}
-      {!cropAssetId && (figure.size ? <FigureSizeSvg size={figure.size} /> : isPropPlacement(figure) ? <Box size={12} /> : <UserRound size={12} />)}</span>
-      <FigureName name={figureDisplayLabel(figure,figureIndex)} boxW={box.w} boxH={box.h} fitEpoch={fitEpoch} />
-      <CanvasContentSelection frame={box} revision={figure} selected={isSelected&&!elementLocked(selection)} handles={visible=>renderHandles(null,selection,box,visible)}/>
-    </button>;
+    if (!editingOverlay && artwork) return renderArtwork(artwork, selection, null, paperBoxStyle, `${figureDisplayLabel(figure,figureIndex)}の画像`);
+    const guideButton = renderFigureGuide(figure, figureIndex, box, null, paperBoxStyle);
+    if(editingOverlay)return <>{<PaintOwnerPreview key={`paint-figure-${figureIndex}`} ownerKey={`figure-${figureIndex}`} container={paperBounds}/>}{guideButton}</>;
+    return guideButton;
   });
   const renderPageOverlayText=()=>(overlay?.screen_text??[]).map((screenText,index)=>{
     if(screenText.hidden===true)return renderDirectPaint(null,{below:`screen-text-${index}`});

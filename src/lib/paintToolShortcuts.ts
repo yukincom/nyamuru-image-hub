@@ -1,14 +1,16 @@
-import type { VectorTool } from './vectorGesture.ts';
+import type { DrawingTool } from './paintToolMode.ts';
+
+type PaintShortcutTool = Exclude<DrawingTool, 'clear'>;
 
 interface ShortcutInput {key:string;shiftKey?:boolean;altKey?:boolean;metaKey?:boolean;ctrlKey?:boolean;isComposing?:boolean}
 /** Leave text editing, IME and application/browser chords alone. */
-export function paintToolShortcut(event:ShortcutInput,editing=false):VectorTool|undefined {
+export function paintToolShortcut(event:ShortcutInput,editing=false):PaintShortcutTool|undefined {
   if(editing||event.isComposing||event.altKey||event.metaKey||event.ctrlKey)return;
   const key=event.key.toLowerCase();
   if(key==='c'&&event.shiftKey)return 'vector-anchor';
   if(key==='+'||(key==='='&&event.shiftKey))return 'vector-add';
   if(event.shiftKey)return;
-  return ({v:'vector-select',a:'vector-node',p:'vector-pen','-':'vector-delete',m:'rectangle',l:'ellipse'} as Record<string,VectorTool>)[key];
+  return ({b:'pen',e:'eraser',w:'wand',m:'lasso',g:'fill',v:'vector-select',a:'vector-node',p:'vector-pen','-':'vector-delete',l:'ellipse'} as Record<string,PaintShortcutTool>)[key];
 }
 
 /** X toggles monochrome ink, leaving cut and text input untouched. */

@@ -291,7 +291,7 @@ html[data-paint-tool="pen"] .app-shell.is-painting .canvas-scroll,html[data-pain
 .paint-tools .paint-aa { display:grid; gap:6px; font-size:14px; }
 .paint-tools input[type=number] { background:#fff; color:var(--ink); border:1px solid var(--line); font-size:14px; }
 .paint-tools input[type=number]:focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
-.paint-tool-help { position:fixed; z-index:10000; width:min(260px,calc(100vw - 16px)); padding:8px 10px; border:1px solid #ddd9d1; border-radius:5px; background:#fffefa; color:#49463f; box-shadow:0 2px 6px #182d3614; font-size:14px; font-weight:400; line-height:1.5; pointer-events:none; animation:paint-help-appear .16s ease-out; }
+.paint-tool-help { position:fixed; z-index:10000; width:max-content; max-width:calc(100vw - 16px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:6px 10px; border:1px solid #ddd9d1; border-radius:5px; background:#fffefa; color:#49463f; box-shadow:0 2px 6px #182d3614; font-size:14px; font-weight:400; line-height:1.4; pointer-events:none; animation:paint-help-appear .16s ease-out; }
 .paint-tool-help strong { display:block; margin-bottom:3px; font-size:14px; font-weight:400; color:#34312c; }
 .paint-tool-help p { margin:0; }
 .paint-tool-help ul { margin:0; padding-left:18px; }

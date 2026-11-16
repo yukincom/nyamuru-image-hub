@@ -14,7 +14,7 @@ interface Context {
 
 export function createWorkspacePaintSession({
   activePanel, activePage, document, paintSessionRef, paintController, documentRef, pendingLayerAction,
-  selectedElement, imageImportBusy, qwenPreparing, setTextTool, setZoomTool, setBubblePathTool,
+  selectedElement, selectedElements, imageImportBusy, qwenPreparing, setTextTool, setZoomTool, setBubblePathTool,
   paintBleedPx, setMobileStoryboardPane, setPaintToolsCollapsed, setPaintLayersCollapsed, autoPaintResume,
   setPaintSession, setToast, layerSwitch, projectOperation, qwenGeneration, setLayerSwitchBusy,
 }: WorkspaceState, {
@@ -60,7 +60,22 @@ export function createWorkspacePaintSession({
       if(!openPaint(key,panelIndex,pageIndex,overlay,source))pendingLayerAction.current=null;
     });return;}
   };
-  const selectedPaintOwner = () => canvasPaintOwnerKey(documentRef.current.manga.pages[activePage],activePanel,selectedElement)??'background';
+  const selectedPaintOwner = () => {
+    const page = documentRef.current.manga.pages[activePage];
+    if (selectedElements.length > 1) {
+      const overlay = selectedElement?.scope === 'page_overlay' || selectedElement?.scope === 'page';
+      const scene = makePaintScene(documentRef.current, activePanel, activePage, overlay);
+      const keys = new Set(
+        selectedElements
+          .filter(entry => (entry.panelIndex ?? activePanel) === activePanel || entry.scope === 'page_overlay' || entry.scope === 'page')
+          .map(entry => canvasPaintOwnerKey(page, entry.panelIndex ?? activePanel, entry))
+          .filter((key): key is string => Boolean(key)),
+      );
+      const topmost = scene.owners.findLast(owner => keys.has(owner.key));
+      if (topmost) return topmost.key;
+    }
+    return canvasPaintOwnerKey(page, activePanel, selectedElement) ?? 'background';
+  };
   const openPaint = (initialOwner?:string,panelIndex=activePanel,pageIndex=activePage,overlay=selectedElement?.scope==='page_overlay'||selectedElement?.scope==='page', preview?:PaintScene) => {
     if(imageImportBusy||paintSessionRef.current||qwenPreparing.current)return false;
     endTextEdit();

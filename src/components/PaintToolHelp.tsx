@@ -50,5 +50,6 @@ export default function PaintToolHelp({enabled=true}:{enabled?:boolean}){
   },[hint]);
   if(!enabled||!hint||typeof document==='undefined')return null;
   const items=paintHelpItems(hint.text);
-  return createPortal(<div ref={popup} id="paint-tool-description" role="tooltip" class="paint-tool-help" style={position}><strong>{hint.label}</strong>{items.length>1?<ul>{items.map(item=><li>{item}</li>)}</ul>:<p>{items[0]??hint.text}</p>}</div>,document.body);
+  const inlineText=items.length?items.join(' / '):hint.text;
+  return createPortal(<div ref={popup} id="paint-tool-description" role="tooltip" class="paint-tool-help" style={position}><span>{hint.label}{inlineText?`（${inlineText}）`:''}</span></div>,document.body);
 }
