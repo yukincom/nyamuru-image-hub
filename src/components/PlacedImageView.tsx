@@ -7,38 +7,42 @@ import { paintAssetIds, paintNativeBand } from '../lib/paintDocument';
 import PaintPreviewCanvas from './PaintPreviewCanvas';
 
 const EMPTY_ASSETS:ImageAsset[]=[];
+const EMPTY_IMAGES:PaintImages=new Map();
 
 export default function PlacedImageView({ asset, image, assets=EMPTY_ASSETS, nativeBand }: { asset?: ImageAsset; image: PlacedImage; assets?:ImageAsset[];nativeBand?:'above'|'below' }) {
   const [storedSource, setSource] = useState<{key:string;url:string|null} | null>(null);
   const paint=nativeBand&&image.paint?paintNativeBand(image.paint,nativeBand==='above'):image.paint;
   const hasTone=paint&&(Boolean(nativeBand)||Boolean(image.bubbleOriginal)||paint.layers.some(layer=>layer.visible&&layer.tone?.enabled));
+  const visibleLayers=paint?paint.layers.filter(layer=>layer.visible&&layer.opacity!==0):[];
   // Document edits clone paint/asset objects. Only a source or its validation
   // metadata changing requires another decode; composition still uses live paint.
-  const sources=hasTone?JSON.stringify([...new Set(paintAssetIds(paint))].sort().map(id=>{
+  const sources=hasTone?visibleLayers.length?JSON.stringify([...new Set(paintAssetIds({...paint!,layers:visibleLayers}))].sort().map(id=>{
     const item=assets.find(asset=>asset.id===id);
     return [id,item?.storageId,item?.byteLength,item?.sha256,item?.mediaType,item?.widthPx,item?.heightPx];
-  })):null;
+  })):'':null;
   const [toneImages,setToneImages]=useState<{key:string;images:PaintImages|null}|null>(null);
   useEffect(()=>{
     let ignored=false,owned:PaintImages|undefined;
     setToneImages(null);
-    if(sources!==null&&paint)void loadPaintImages([paint],assets).then(images=>{
+    if(sources==='')setToneImages({key:sources,images:EMPTY_IMAGES});
+    else if(sources!==null&&paint)void loadPaintImages([paint],assets).then(images=>{
       if(ignored){images.forEach(image=>{image.src='';});return;}
       owned=images;setToneImages({key:sources,images});
     }).catch(()=>{if(!ignored)setToneImages({key:sources,images:null});/* Ordinary artwork can use its saved composite. */});
     return()=>{ignored=true;owned?.forEach(image=>{image.src='';});};
   },[sources]);
+  const skipCompositeImg=Boolean((nativeBand&&paint)||(image.bubbleOriginal&&paint));
   useEffect(() => {
     let ignored = false, url: string | null = null;
     setSource(null);
-    if (!asset) return;
+    if (!asset || skipCompositeImg) return;
     void loadFigureCropAsset(asset.storageId).then(blob => {
       if (ignored) return;
       if (!blob) { setSource({key:asset.storageId,url:null}); return; }
       url = URL.createObjectURL(blob); setSource({key:asset.storageId,url});
     }).catch(() => { if (!ignored) setSource({key:asset.storageId,url:null}); });
     return () => { ignored = true; if (url) URL.revokeObjectURL(url); };
-  }, [asset?.storageId]);
+  }, [asset?.storageId, skipCompositeImg]);
   const crop = image.crop;
   const fit = fitImageBox(crop, { x: 0, y: 0, w: image.bbox.w, h: image.bbox.h });
   const contentStyle = { left: `${fit.x / image.bbox.w * 100}%`, top: `${fit.y / image.bbox.h * 100}%`, width: `${fit.w / image.bbox.w * 100}%`, height: `${fit.h / image.bbox.h * 100}%` };

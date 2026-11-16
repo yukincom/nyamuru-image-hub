@@ -81,7 +81,7 @@ async function measureContent(target:HTMLElement):Promise<ContentGeometry>{
         // The SVG is already positioned here; its page CSS must not offset it again.
         clone.style.position='static';clone.style.width=`${box.w}px`;clone.style.height=`${box.h}px`;clone.style.opacity='1';
         const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)],{type:'image/svg+xml'})),image=new Image();
-        try{image.src=url;await image.decode();ctx.drawImage(image,box.x,box.y,box.w,box.h);}finally{URL.revokeObjectURL(url);}
+        try{image.src=url;await image.decode();ctx.drawImage(image,box.x,box.y,box.w,box.h);}finally{image.src='';URL.revokeObjectURL(url);}
       }else{
         ctx.fillStyle='#000';
         const background=getComputedStyle(element).backgroundColor;
@@ -98,7 +98,11 @@ async function measureContent(target:HTMLElement):Promise<ContentGeometry>{
       }
     }finally{ctx.restore();}
   }
-  return alphaContentGeometry(ctx.getImageData(0,0,canvas.width,canvas.height),{x:(measuredFrame.x-frame.x)*sx,y:(measuredFrame.y-frame.y)*sy,width:frame.w*sx,height:frame.h*sy});
+  try{
+    return alphaContentGeometry(ctx.getImageData(0,0,canvas.width,canvas.height),{x:(measuredFrame.x-frame.x)*sx,y:(measuredFrame.y-frame.y)*sy,width:frame.w*sx,height:frame.h*sy});
+  }finally{
+    canvas.width=canvas.height=1;
+  }
 }
 
 /** A separate SVG hit surface lets native pointer targeting pass through alpha gaps. */
@@ -109,6 +113,7 @@ export default function CanvasContentSelection({frame,selected,interactive=true,
   const [geometry,setGeometry]=useState<ContentGeometry|null>(null);
   useLayoutEffect(()=>{
     const root=marker.current?.parentElement;if(!root)return;
+    if(!interactive&&!selected){geometryByTarget.delete(root);setGeometry(null);scheduleRef.current=()=>{};return;}
     const target=source?root.closest('.manga-paper')?.querySelector<HTMLElement>(`[data-content-source="${source}"]`):root;
     if(!target)return;
     let disposed=false,raf=0,timer=0,version=0;
@@ -132,7 +137,7 @@ export default function CanvasContentSelection({frame,selected,interactive=true,
     target.addEventListener('load',schedule,true);target.addEventListener('paint-preview-rendered',schedule);
     measure();
     return()=>{disposed=true;version++;cancelAnimationFrame(raf);clearTimeout(timer);observer.disconnect();resize.disconnect();target.removeEventListener('load',schedule,true);target.removeEventListener('paint-preview-rendered',schedule);geometryByTarget.delete(root);scheduleRef.current=()=>{};};
-  },[source]);
+  },[source,interactive,selected]);
   useEffect(()=>scheduleRef.current(),[revision]);
   const bounds=geometry?.bounds,pending=geometry===null,measured=Boolean(bounds&&geometry),visible=pending?frame:measured?contentBox(frame,geometry!):null;
   return <span ref={marker} class="canvas-content-selection" aria-hidden="true">

@@ -1,4 +1,5 @@
-import { pruneFigureCropAssets, collectFigureCropAssetIds, onFigureCropAssetsChanged } from '../../lib/figureCropStore';
+import { pruneFigureCropAssets, collectFigureCropAssetIds, evictOffpagePersistedCropAssets, onFigureCropAssetsChanged } from '../../lib/figureCropStore';
+import { spreadPartnerIndex as findSpreadPartnerIndex } from '../../lib/pageSpread';
 import type { WorkspaceSnapshot } from './workspaceTypes';
 import { browserCatalogImageIds } from '../../lib/browserCatalog';
 import { paintAssetIds } from '../../lib/paintDocument';
@@ -27,7 +28,7 @@ export function useWorkspaceLifecycle({
   scannerSessionRef, pendingScannerSession, setPendingScannerSession, newLayoutOperationGeneration,
   characterTextSyncTimer, newCharacterDraftSession, newCreationBridgeToken, characterEditorBridgeToken,
   toast, setToast, qwenGeneration, environmentOpen, imageExportDialog, saveProjectAction, hasDocument, tab,
-  selectedElement, newLayoutTask, newLayoutActiveIndex, setNewLayoutActiveIndex, selectedPanels,
+  selectedElement, newLayoutTask, newLayoutActiveIndex, setNewLayoutActiveIndex, selectedPanels, spreadView,
 }: WorkspaceState, {
   chooseZoomTool, chooseTextTool, closeNewDialog, deleteBubbleAt, deletePanelAt, addDirectFolder,
   mergeSelectedPanelGroup, redo, undo,
@@ -48,6 +49,11 @@ export function useWorkspaceLifecycle({
   useEffect(() => {
     prunePaintAssets();
   }, [document, past, future, newCharacterDocument, paintSession, seriesCatalogSaving]);
+
+  useEffect(() => {
+    const partner = findSpreadPartnerIndex(activePage, document.manga.pages.length, spreadView);
+    evictOffpagePersistedCropAssets(document, partner === null ? [activePage] : [activePage, partner]);
+  }, [document, activePage, spreadView]);
 
 
   useEffect(() => {

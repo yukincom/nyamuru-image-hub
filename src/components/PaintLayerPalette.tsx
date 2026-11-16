@@ -19,7 +19,7 @@ function Thumbnail({owner,layer,images}:{owner:PaintOwner;layer:PaintLayer;image
   const canvas=useRef<HTMLCanvasElement>(null),renderer=useRef<ReturnType<typeof paintPreviewRenderer>|null>(null);
   // Working bleed is not part of the layer's thumbnail framing.
   const view=owner.paint.referenceFrame??{x:0,y:0,w:owner.paint.width,h:owner.paint.height};
-  useEffect(()=>()=>renderer.current?.dispose(),[]);
+  useEffect(()=>()=>{renderer.current?.dispose();if(canvas.current)canvas.current.width=canvas.current.height=1;},[]);
   useLayoutEffect(()=>{if(!canvas.current||!images)return;const context=canvas.current.getContext('2d',{willReadFrequently:true});if(layer.image&&!images.has(layer.image.assetId)){context?.clearRect(0,0,canvas.current.width,canvas.current.height);return;}renderer.current??=paintPreviewRenderer();try{renderer.current.draw(canvas.current,{...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true,opacity:1}]},images,undefined,undefined,true,view,false);}catch{context?.clearRect(0,0,canvas.current.width,canvas.current.height);}},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer,images]);
   const scale=40/Math.max(view.w,view.h);
   return <canvas ref={canvas} width={Math.max(1,Math.round(view.w*scale))} height={Math.max(1,Math.round(view.h*scale))}/>;
@@ -27,6 +27,7 @@ function Thumbnail({owner,layer,images}:{owner:PaintOwner;layer:PaintLayer;image
 function MaskThumbnail({owner,layer}:{owner:PaintOwner;layer:PaintLayer}){
   const ref=useRef<HTMLCanvasElement>(null);
   const view=owner.paint.referenceFrame??{x:0,y:0,w:owner.paint.width,h:owner.paint.height},scale=32/Math.max(view.w,view.h);
+  useEffect(()=>()=>{if(ref.current)ref.current.width=ref.current.height=1;},[]);
   useLayoutEffect(()=>{if(ref.current)drawPaintMask(ref.current,owner.paint,layer,undefined,view);},[owner.paint.width,owner.paint.height,view.x,view.y,view.w,view.h,layer.mask]);
   return <span class="layer-mask-thumbnail"><canvas ref={ref} width={Math.max(1,Math.round(view.w*scale))} height={Math.max(1,Math.round(view.h*scale))}/></span>;
 }

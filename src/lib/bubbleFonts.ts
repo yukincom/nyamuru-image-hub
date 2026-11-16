@@ -21,17 +21,43 @@ export function mergeBubbleFontFamilies(...groups:ReadonlyArray<readonly string[
   return [...new Set(groups.flat().map(font=>font.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
 }
 
+const PC_FONT_CATALOG_STORAGE_KEY='manga-name-studio.pc-font-catalog.v1';
+
+function readCachedPcFontNames():ReadonlyMap<string,PcFontName> {
+  const map=new Map<string,PcFontName>();
+  try{
+    if(typeof localStorage==='undefined')return map;
+    const parsed:unknown=JSON.parse(localStorage.getItem(PC_FONT_CATALOG_STORAGE_KEY)||'[]');
+    if(!Array.isArray(parsed))return map;
+    for(const item of parsed){
+      if(item&&typeof item==='object'&&typeof (item as PcFontName).family==='string'
+        &&typeof (item as PcFontName).displayName==='string'&&Array.isArray((item as PcFontName).weights)){
+        map.set((item as PcFontName).family,{
+          family:(item as PcFontName).family,
+          displayName:(item as PcFontName).displayName,
+          weights:(item as PcFontName).weights,
+        });
+      }
+    }
+  }catch{/* Ignore storage errors. */}
+  return map;
+}
+
 /** Local Font Access requires this call to begin inside a user gesture. */
 export async function queryPcFontFamilies(target:Window=window):Promise<PcFontName[]> {
   const query=(target as Window&{queryLocalFonts?:()=>Promise<Array<{family:string;style?:string;postscriptName?:string;blob?:()=>Promise<Blob>}>>}).queryLocalFonts;
   if(!query)throw new Error('このブラウザではPC内フォントの自動読み込みに対応していません');
   const faces=await query.call(target),groups=new Map<string,typeof faces>();
   for(const face of faces){const family=face.family.trim();if(family)groups.set(family,[...(groups.get(family)??[]),face]);}
+  const cached=target===globalThis.window?readCachedPcFontNames():new Map<string,PcFontName>();
   const entries=[...groups.entries()],catalog:PcFontName[]=new Array(entries.length);
   let next=0;
   await Promise.all(Array.from({length:Math.min(4,entries.length)},async()=>{
     while(next<entries.length){
-      const index=next++,[family,group]=entries[index],metadata:FontFaceMetadata[]=[];
+      const index=next++,[family,group]=entries[index];
+      const hit=cached.get(family);
+      if(hit){catalog[index]=hit;continue;}
+      const metadata:FontFaceMetadata[]=[];
       for(const face of group){
         try{if(face.blob){const info=await readFontFaceMetadata(await face.blob(),family,face.postscriptName);metadata.push({...info,styleName:info.styleName??face.style});}}catch{/* Keep the usable family if its metadata cannot be read. */}
       }

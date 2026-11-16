@@ -127,3 +127,25 @@ test('太さ候補は書体・日本語表示名・既存プリセットの描�
   assert.equal(matchingFontWeight(100,weights),300);
   assert.equal(matchingFontWeight(600,[]),undefined);
 });
+
+test('ブラウザ起動時にキャッシュ済みフォントはface.blob()を再読込せずメタデータを再利用する',async()=>{
+  const prevWindow=globalThis.window,prevStorage=globalThis.localStorage;
+  let blobCalls=0;
+  const fakeWindow={queryLocalFonts:async()=>[
+    {family:'CachedFont',blob:async()=>{blobCalls++;throw new Error('must not read cached font blob');}},
+    {family:'NewFont',blob:async()=>{blobCalls++;return fontBlob([{id:1,text:'NewFont'},{id:1,language:0x411,text:'新書体'}],{weight:400});}},
+  ]};
+  globalThis.window=fakeWindow;
+  globalThis.localStorage={getItem:()=>JSON.stringify([{family:'CachedFont',displayName:'キャッシュ書体',weights:[{value:400,label:'Regular'}],support:'japanese'}])};
+  try{
+    const result=await queryPcFontFamilies(fakeWindow);
+    assert.equal(blobCalls,1);
+    assert.deepEqual(result,[
+      {family:'CachedFont',displayName:'キャッシュ書体',weights:[{value:400,label:'Regular'}]},
+      {family:'NewFont',displayName:'新書体',weights:[]},
+    ]);
+  }finally{
+    if(prevWindow===undefined)delete globalThis.window;else globalThis.window=prevWindow;
+    if(prevStorage===undefined)delete globalThis.localStorage;else globalThis.localStorage=prevStorage;
+  }
+});

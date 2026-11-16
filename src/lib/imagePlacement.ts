@@ -28,9 +28,11 @@ export async function prepareImageAsset(file: File): Promise<ImageAsset> {
   if (!png && !jpeg) throw new Error('PNG/JPEG画像を選んでください');
   const mediaType = png ? 'image/png' : 'image/jpeg';
   const url = URL.createObjectURL(file);
+  let decoded: HTMLImageElement | undefined;
   try {
     const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
       const img = new Image();
+      decoded = img;
       img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
       img.onerror = () => reject(new Error('画像を読み込めませんでした'));
       img.src = url;
@@ -39,7 +41,10 @@ export async function prepareImageAsset(file: File): Promise<ImageAsset> {
     const sha256 = await imageSha256(file);
     return { id: `image-${sha256}`, storageId: `original-${crypto.randomUUID()}`, sha256, mediaType,
       originalName: file.name, widthPx: size.width, heightPx: size.height, byteLength: file.size };
-  } finally { URL.revokeObjectURL(url); }
+  } finally {
+    if (decoded) decoded.src = '';
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function createImagePlacement(asset: ImageAsset, target: BBox): PlacedImage {

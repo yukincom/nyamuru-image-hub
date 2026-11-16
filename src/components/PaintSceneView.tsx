@@ -20,12 +20,13 @@ import {figureCanvasClass} from '../lib/figurePresentation.ts';
 
 function SourceImage({id, persistent}: {id:string; persistent?:PersistentAnalogAssetRef}) {
   const [url,setUrl]=useState(''),[failed,setFailed]=useState(false);
+  const imgRef=useRef<HTMLImageElement>(null);
   useEffect(()=>{
     let disposed=false,source='';
     void loadFigureCropAsset(id,persistent).then(blob=>{if(disposed)return;if(blob){source=URL.createObjectURL(blob);setUrl(source);}else setFailed(true);}).catch(()=>{if(!disposed)setFailed(true);});
-    return()=>{disposed=true;if(source)URL.revokeObjectURL(source);};
+    return()=>{disposed=true;if(imgRef.current)imgRef.current.src='';if(source)URL.revokeObjectURL(source);};
   },[id,persistent]);
-  return url?<img src={url} alt="元のあたり" draggable={false}/>:failed?<span>元画像を読み込めません。作品フォルダから開き直してください。</span>:null;
+  return url?<img ref={imgRef} src={url} alt="元のあたり" draggable={false}/>:failed?<span>元画像を読み込めません。作品フォルダから開き直してください。</span>:null;
 }
 export function PaintOriginal({owner}: {owner:PaintOwner}) {
   const textHost=useRef<HTMLDivElement>(null);

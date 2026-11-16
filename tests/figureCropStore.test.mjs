@@ -43,7 +43,7 @@ test('編集中の作品から人物と文字のローカル参照画像IDを重
   ]);
 });
 
-import { saveFigureCropAssets, loadFigureCropAsset, deleteFigureCropAssets, pruneFigureCropAssets } from '../src/lib/figureCropStore.ts';
+import { saveFigureCropAssets, loadFigureCropAsset, deleteFigureCropAssets, pruneFigureCropAssets, markFigureCropAssetPersisted, evictOffpagePersistedCropAssets } from '../src/lib/figureCropStore.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
 
@@ -181,4 +181,38 @@ test('registered series images stay usable until the catalog stops referring to 
     doc.manga.materials=[];await saveBrowserCatalog('series','retention-series',toSeriesCatalogMangaYaml(doc),saved.revision);
     await pruneFigureCropAssets(browserCatalogImageIds());assert.equal(await loadFigureCropAsset(id),null);assert.equal(await loadFigureCropAsset(stage.storageId),null);
   }finally{await deleteFigureCropAssets([id,stage.storageId]);}
+});
+
+test('off-page persisted crop assets are evicted while visible-page and unpersisted assets stay in memory', async () => {
+  const page0Persisted = 'analog-figure:page0', page1Persisted = 'analog-figure:page1', page1MemoryOnly = 'analog-figure:page1-mem';
+  const ref0 = { schemaVersion: 1, workKey: 'w', kind: 'figures', fileName: 'p0.png' };
+  const ref1 = { schemaVersion: 1, workKey: 'w', kind: 'figures', fileName: 'p1.png' };
+  const doc = createEmptyWorkspaceDocument();
+  doc.manga.pages = [
+    { page: 1, canvas: { w: 210, h: 297 }, panels: [{ id: 1, shape: { type: 'rect', x: 0, y: 0, w: 100, h: 100 }, bg: 0, action: null, bubbles: [], figures: [{ name: 'A', analogImport: { schemaVersion: 1, assetId: page0Persisted, sourceRegionId: 'r0', sourceBBox: { x: 0, y: 0, w: 1, h: 1 }, detectionSource: 'body', draft: true, persistentAsset: ref0 } }] }] },
+    { page: 2, canvas: { w: 210, h: 297 }, panels: [{ id: 1, shape: { type: 'rect', x: 0, y: 0, w: 100, h: 100 }, bg: 0, action: null, bubbles: [], figures: [
+      { name: 'B', analogImport: { schemaVersion: 1, assetId: page1Persisted, sourceRegionId: 'r1', sourceBBox: { x: 0, y: 0, w: 1, h: 1 }, detectionSource: 'body', draft: true, persistentAsset: ref1 } },
+      { name: 'C', analogImport: { schemaVersion: 1, assetId: page1MemoryOnly, sourceRegionId: 'r2', sourceBBox: { x: 0, y: 0, w: 1, h: 1 }, detectionSource: 'body', draft: true } },
+    ] }] },
+  ];
+  try {
+    await saveFigureCropAssets([
+      { id: page0Persisted, blob: new Blob(['p0']) },
+      { id: page1Persisted, blob: new Blob(['p1']) },
+      { id: page1MemoryOnly, blob: new Blob(['p1-mem']) },
+    ]);
+    markFigureCropAssetPersisted(page0Persisted, ref0);
+    markFigureCropAssetPersisted(page1Persisted, ref1);
+    assert.equal(evictOffpagePersistedCropAssets(doc, [0]), 1);
+    assert.ok(await loadFigureCropAsset(page0Persisted));
+    assert.ok(await loadFigureCropAsset(page1MemoryOnly));
+    assert.equal(await loadFigureCropAsset(page1Persisted, undefined, async () => null), null);
+    const reloaded = new Blob(['p1-reloaded']);
+    assert.equal(await loadFigureCropAsset(page1Persisted, undefined, async (ref) => {
+      assert.deepEqual(ref, ref1);
+      return reloaded;
+    }), reloaded);
+  } finally {
+    await deleteFigureCropAssets([page0Persisted, page1Persisted, page1MemoryOnly]);
+  }
 });

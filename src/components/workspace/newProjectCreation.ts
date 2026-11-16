@@ -2,7 +2,7 @@ import type { WorkspaceState } from './useWorkspaceState';
 import { buildNewProjectPages } from './newProjectPages';
 import type { PanelTemplate } from '../../lib/panelTemplates';
 import type { DetectedPageLayout, NewLayoutTask } from '../../lib/newLayoutPreview';
-import { beginFigureCropImport, deleteFigureCropAssets, saveFigureCropAssets } from '../../lib/figureCropStore';
+import { beginFigureCropImport, deleteFigureCropAssets, markFigureCropAssetPersisted, saveFigureCropAssets } from '../../lib/figureCropStore';
 import { isLanClient } from '../../lib/clientRuntime';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
 import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport, saveEpisodeProject, type SeriesCharacterTextLink } from '../../lib/localBridge';
@@ -116,6 +116,7 @@ export function createNewProjectAction({
                 'texts',
                 crop.asset.id,
               );
+              markFigureCropAssetPersisted(crop.asset.id, crop.metadata.persistentAsset);
             }
           }
           if (!isCurrentOperation()) { await discardStaleAssets(); return; }
@@ -190,7 +191,9 @@ export function createNewProjectAction({
           await saveFigureCropAssets([{ id: metadata.assetId, blob }]);
           savedAssetIds.push(metadata.assetId);
           if (!isLanClient && persistAnalogAssets) {
-            persistedFigures.set(metadata.assetId, await persistAnalogAsset(blob, freshEpisodeId, newWorkTitle.trim(), 'figures', metadata.assetId));
+            const persistedRef = await persistAnalogAsset(blob, freshEpisodeId, newWorkTitle.trim(), 'figures', metadata.assetId);
+            persistedFigures.set(metadata.assetId, persistedRef);
+            markFigureCropAssetPersisted(metadata.assetId, persistedRef);
           }
           if (!isCurrentOperation()) { await discardStaleAssets(); return; }
         }

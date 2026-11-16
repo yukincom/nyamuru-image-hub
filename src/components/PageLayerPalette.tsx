@@ -72,7 +72,7 @@ function PanelPaintLayers({panel,index,p,overlay=false,collapsed=false,frameLaye
   const source=JSON.stringify(sourceEntries),signatures=new Map(sourceEntries.map(entry=>[entry[0],JSON.stringify(entry)]));
   type Decoded={source:string;images:PaintImages;signatures:Map<string,string>};
   const [decoded,setDecoded]=useState<Decoded|null>(null),decodedRef=useRef<Decoded|null>(null);
-  const shouldLoadImages=p.expanded&&!collapsed&&!activeLayers?.props.images;
+  const shouldLoadImages=p.expanded!==false&&!collapsed&&!activeLayers?.props.images;
   // A changed layer list keeps compatible thumbnails; only new or changed assets are decoded.
   const reusable=shouldLoadImages?new Map([...(decoded?.images??[])].filter(([id])=>signatures.has(id)&&decoded?.signatures.get(id)===signatures.get(id))):new Map();
   const images=shouldLoadImages?(decoded?.source===source?decoded.images:reusable.size?reusable:null):null;

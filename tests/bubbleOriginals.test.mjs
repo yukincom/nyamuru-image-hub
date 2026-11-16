@@ -51,6 +51,16 @@ test('placed original retains decoded resources across a whole-document clone an
   assert.equal(f.render(next,assets).canvas.props.paint,next.paint);f.flush();assert.equal(f.requests.length,0,'paint composition changes reuse source pixels');
   f.dispose();assert.equal(images.get('source').src,'');
 });
+test('hidden placed original skips decoding until its layer becomes visible',async()=>{
+  const f=placedImageFixture(),image=placedOriginal();image.paint.layers[0].visible=false;
+  f.render(image);f.flush();assert.equal(f.requests.length,0,'hidden original must not decode bitmap');
+  assert.equal(f.render(image).canvas?.props.images.size,0);
+  const visible=structuredClone(image);visible.paint.layers[0].visible=true;
+  f.render(visible);f.flush();assert.equal(f.requests.length,1);
+  const images=decoded();f.requests.shift().resolve(images);await Promise.resolve();
+  assert.equal(f.render(visible).canvas.props.images,images);
+  f.dispose();assert.equal(images.get('source').src,'');
+});
 test('placed original invalidates changed storage metadata and discards abandoned A-B-A loads',async()=>{
   const f=placedImageFixture(),image=placedOriginal();f.render(image);f.flush();
   const first=decoded('first');f.requests.shift().resolve(first);await Promise.resolve();f.render(image);

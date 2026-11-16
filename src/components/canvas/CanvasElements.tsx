@@ -136,6 +136,7 @@ export function FigureName({ name, boxW, boxH, fitEpoch }: { name: string; boxW:
 
 export function StoredCropImage({ assetId, persistentAsset, className }: { assetId: string; persistentAsset?: PersistentAnalogAssetRef; className: string }) {
   const [source, setSource] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   useEffect(() => {
     let ignored = false;
     let objectUrl: string | null = null;
@@ -149,10 +150,11 @@ export function StoredCropImage({ assetId, persistentAsset, className }: { asset
       .catch(() => undefined);
     return () => {
       ignored = true;
+      if (imgRef.current) imgRef.current.src = '';
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [assetId, persistentAsset?.workKey, persistentAsset?.kind, persistentAsset?.fileName]);
-  return source ? <img class={className} src={source} alt="" draggable={false} /> : null;
+  return source ? <img ref={imgRef} class={className} src={source} alt="" draggable={false} /> : null;
 }
 
 // フキダシ内テキスト。自動改行や文字縮小をせず、入力された改行をそのまま表示する。
