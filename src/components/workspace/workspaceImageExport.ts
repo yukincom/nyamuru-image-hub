@@ -49,7 +49,7 @@ export function createImageExportActions({
     const page=activePageRef.current+1;
     setImageExportError('');
     setImageExportProgress(null);
-    setImageExportDialog({mode:'current',from:page,to:page,format:'png'});
+    setImageExportDialog({mode:'current',from:page,to:page,format:'clip'});
   };
   const chooseImageExportFolder=async()=>{
     if(imageExportBusy)return;

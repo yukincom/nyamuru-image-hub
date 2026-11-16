@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { createPortal } from 'preact/compat';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { currentLocalModelPreferences } from '../lib/localModelPreferences.ts';
 import { parseComfyWorkflowList, type ComfyWorkflowDefinition, workflowNegativePrompt, workflowPromptUpsampler } from '../lib/comfyWorkflows.ts';
@@ -84,7 +85,17 @@ export default function MultiFigureGenerationDialog({
   const [workflowError, setWorkflowError] = useState('');
   const [sharedPrompt, setSharedPrompt] = useState('');
   const [batchRunning, setBatchRunning] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [summaryMessage, setSummaryMessage] = useState('');
+  useEffect(() => {
+    if (!batchRunning) return;
+    const startedAt = Date.now();
+    setElapsedSeconds(0);
+    const timer = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [batchRunning]);
   const abortRef = useRef<AbortController | null>(null);
   const comfySessionRef = useRef<string | null>(null);
   const aliveRef = useRef(true);
@@ -135,7 +146,7 @@ export default function MultiFigureGenerationDialog({
   const defaultNegative = workflow ? workflowNegativePrompt(workflow) : undefined;
   const defaultUpsampler = workflow ? workflowPromptUpsampler(workflow) : undefined;
   const [editedUpsampler, setUpsampler] = useState<boolean>();
-  const usePromptUpsampler = editedUpsampler ?? defaultUpsampler;
+  const usePromptUpsampler = editedUpsampler ?? (defaultUpsampler !== undefined ? true : undefined);
 
   const [itemStates, setItemStates] = useState<Record<string, ItemState>>(() =>
     Object.fromEntries(items.map((item) => [item.id, {
@@ -322,24 +333,21 @@ export default function MultiFigureGenerationDialog({
     return s === 'failed' || s === 'cancelled';
   });
 
-  return (
-    <section
-      class="layer-generation-dialog qwen-generation-dialog"
-      style={{ maxWidth: '860px', width: 'min(860px, 95vw)', maxHeight: '90vh', overflowY: 'auto' }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="multi-figure-generation-title"
-    >
-      <header>
-        <div>
-          <h2 id="multi-figure-generation-title">複数人物生成（{items.length}人）</h2>
-          <p>
-            {cloud ? '外部エージェント（OMNY / OMAY）' : (workflow?.name ?? 'ワークフロー読込中')}
-            {' · '}1人ずつ生成し、各画像ごとにモデルを解放してから次の人物へ進みます
-          </p>
-        </div>
-        <button type="button" onClick={handleClose}>閉じる</button>
-      </header>
+  return createPortal(
+    <div class="layer-generation-backdrop" onKeyDown={(e) => { if (e.key === 'Escape') handleClose(); }}>
+      <section
+        class="layer-generation-dialog qwen-generation-dialog"
+        style={{ maxWidth: '860px', width: 'min(860px, 95vw)', maxHeight: '90vh', overflowY: 'auto' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="multi-figure-generation-title"
+      >
+        <header>
+          <div>
+            <h2 id="multi-figure-generation-title">複数人物生成（{items.length}人）</h2>
+          </div>
+          <button type="button" onClick={handleClose}>閉じる</button>
+        </header>
 
       {workflowError && (
         <p class="dialog-error">
@@ -386,23 +394,6 @@ export default function MultiFigureGenerationDialog({
             onInput={(e) => setSharedPrompt(e.currentTarget.value)}
             placeholder="例: キャラクターの表情やポーズの補足"
           />
-        </label>
-      )}
-
-      {!cloud && twoImagesPromptless && (
-        <p class="dialog-hint" style={{ margin: '8px 0' }}>
-          ワークフロー内蔵のプロンプトを使用します。各人物の「image_1（キャラ設定画のアングル）」と「image_2（ポーズ・あたり）」を確認して一括生成してください。
-        </p>
-      )}
-      {!cloud && defaultUpsampler !== undefined && (
-        <label class="qwen-checkbox" style={{ margin: '8px 0', display: 'flex', gap: '6px', alignItems: 'center' }}>
-          <input
-            type="checkbox"
-            checked={Boolean(usePromptUpsampler)}
-            disabled={batchRunning}
-            onChange={(e) => setUpsampler(e.currentTarget.checked)}
-          />
-          <span>プロンプト自動補強（Prompt Upsampler）を使う（負荷が増えます）</span>
         </label>
       )}
 
@@ -491,9 +482,24 @@ export default function MultiFigureGenerationDialog({
         })}
       </div>
 
-      {summaryMessage && <p style={{ fontWeight: 600 }}>{summaryMessage}</p>}
+      {(batchRunning || summaryMessage) && (
+        <p style={{ fontWeight: 600 }} role="status" aria-live="polite">
+          {batchRunning ? `生成中… 経過時間 ${elapsedSeconds}秒` : summaryMessage}
+        </p>
+      )}
 
-      <footer style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      <footer style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        {!cloud && defaultUpsampler !== undefined && (
+          <label class="qwen-checkbox" style={{ marginRight: 'auto', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={Boolean(usePromptUpsampler)}
+              disabled={batchRunning}
+              onChange={(e) => setUpsampler(e.currentTarget.checked)}
+            />
+            <span>プロンプト自動補強（Prompt Upsampler）を使う（負荷が増えます）</span>
+          </label>
+        )}
         {!cloud && !batchRunning && (
           <button
             type="button"
@@ -518,8 +524,9 @@ export default function MultiFigureGenerationDialog({
             生成を中断
           </button>
         )}
-        <button type="button" onClick={handleClose}>閉じる</button>
       </footer>
-    </section>
+      </section>
+    </div>,
+    document.body,
   );
 }
