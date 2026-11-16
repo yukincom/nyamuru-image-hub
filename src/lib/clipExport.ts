@@ -178,10 +178,8 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
       try{context(surface).drawImage(image,0,0);preview={...base(`${id}/display`,`表示用 ${name}`),kind:'raster',png:surface.toDataURL('image/png'),x:Math.floor(x-2),y:Math.floor(y-2)};}
       finally{image.src='';release(surface);}
       const {fontFamily,...metadata}=style;
-      const padX=Math.ceil(fontSize*2),padY=Math.ceil(fontSize*2);
-      const frame:[number,number,number,number]=style.vertical
-        ?[Math.floor(x-padX),Math.floor(y),Math.ceil(x+width),Math.ceil(y+height+padY)]
-        :[Math.floor(x),Math.floor(y),Math.ceil(x+width+padX),Math.ceil(y+height+padY)];
+      const pad=Math.ceil(fontSize*0.5);
+      const frame:[number,number,number,number]=[Math.floor(x-pad),Math.floor(y-pad),Math.ceil(x+width+pad),Math.ceil(y+height+pad)];
       const native:ClipExportText={...base(id,name),kind:'text',text:item.text,frame,...metadata,color:[17,17,17],font:{name:fontFamily,postscript:fontFamily},visible:item.hidden!==true&&(kind!=='bubble'||letteringGuideVisible(item as Bubble)),locked:kind==='bubble'&&(item as Bubble).nativeLocked===true,
         ...(balloons?.length?{balloons}:{}),
         sources:[jsonSource('nyamuru-text',name,{kind,box,item})]};
@@ -304,7 +302,10 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
     const mapPage=(x:number,y:number):[number,number]=>[x*sx+marginPx,y*sy+marginPx];
     const balloons:ClipExportBalloon[]=[];
     const pushEllipse=(cx:number,cy:number,rx:number,ry:number,map:(x:number,y:number)=>[number,number],isTail=false)=>{
-      balloons.push({points:[map(cx,cy-ry),map(cx+rx,cy),map(cx,cy+ry),map(cx-rx,cy)],isTail,spline:true,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
+      const pts:Array<[number,number]>=[];
+      const count=isTail?8:12;
+      for(let i=0;i<count;i++){const a=(i/count)*Math.PI*2-Math.PI/2;pts.push(map(cx+rx*Math.cos(a),cy+ry*Math.sin(a)));}
+      balloons.push({points:pts,isTail,spline:true,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
     };
     if(isBubbleBezier(outline)){
       const spline=outline.nodes.some(n=>Boolean(n.handleIn||n.handleOut));
@@ -330,7 +331,7 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
       }else{
         const geom=tail.bubbleTailGeometry(box,target,shape,bubble.bezier,bubble.tail_root);
         if(geom){
-          const poly=svgPathToPolylines(geom.fillPath,mapView)[0];
+          const poly=svgPathToPolylines(geom.fillPath,mapPage)[0];
           if(poly&&poly.points.length>=3)balloons.push({points:poly.points.map(([x,y])=>[x,y]),isTail:true,spline:false,widthPx:strokePx,color:[17,17,17],fill:[255,255,255]});
         }
       }

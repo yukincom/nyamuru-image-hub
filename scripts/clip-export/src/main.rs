@@ -188,7 +188,7 @@ fn build_balloon_vector_data(balloons: &[Balloon], brush_style: u32) -> (VectorD
         let bbox = balloon_bbox(&balloon.points, radius);
         let mut header = if balloon.is_tail && !balloon.spline { TAIL_HEADER.to_vec() } else { BALLOON_HEADER.to_vec() };
         header[16..20].copy_from_slice(&(balloon.points.len() as u32).to_be_bytes());
-        let flags: u32 = if balloon.is_tail && !balloon.spline { 0x1118 } else if balloon.spline { 0x2188 } else { 0x3118 };
+        let flags: u32 = if balloon.is_tail && !balloon.spline { 0x1118 } else if balloon.spline { 0x188 } else { 0x3118 };
         header[20..24].copy_from_slice(&flags.to_be_bytes());
         for (i, v) in bbox.iter().enumerate() { header[24 + 4 * i..28 + 4 * i].copy_from_slice(&v.to_be_bytes()); }
         let fill = balloon.fill.unwrap_or([255, 255, 255]);
