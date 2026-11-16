@@ -276,10 +276,11 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
     selectionPointer.current={pointerId:event.pointerId,points,cleanup};inputActive.current=true;
     window.addEventListener('pointermove',move,{capture:true,passive:false});window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);window.addEventListener('blur',cancel);target.addEventListener('lostpointercapture',cancel);try{target.setPointerCapture(event.pointerId);}catch{}
   }
+  const canEditFigureRaster = owner.kind === 'figure' && canEditLayer && !editingMask && layer.kind === 'raster';
   function paintRegion(boxes:BBox[],clear=false){
     if(!canDraw||operation.current||gesture.current||vectorPointer.current||selectionPointer.current||!boxes.length)return;
     if(clear&&(!canEditLayer||!editingMask&&layer.kind==='vector'))return;
-    const active=editingMask||clear?layer:preparePaintMarkLayer(owner,hasLayer?layer:undefined,'raster',scene.colorMode,scene.layerSequence);
+    const active=editingMask||clear||canEditFigureRaster?layer:preparePaintMarkLayer(owner,hasLayer?layer:undefined,'raster',scene.colorMode,scene.layerSequence);
     if(!active)return;if(active!==layer)setLayerId(active.id);
     const next=commitPaintStroke(historyRef.current.present,{ownerKey:owner.key,layerId:active.id,...(paintTarget==='mask'?{target:'mask' as const}:{}),...(active!==layer?{addedLayer:active,addedBelow:hasLayer?layer.id:undefined}:{}),stroke:{tool:clear?'clear':'fill',color:inkColor,size:1,points:[{x:0,y:0,pressure:1,time:0}],selection:boxes}});commit(next);
   }
@@ -307,7 +308,7 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
       const erasing=tool==='eraser'||event.button===5;
       if(erasing&&!canEditLayer)return;
       // Preview the added layer now, but commit it atomically with its first mark.
-      const active=editingMask||erasing?layer:preparePaintMarkLayer(owner,hasLayer?layer:undefined,'raster',scene.colorMode,scene.layerSequence);
+      const active=editingMask||erasing||canEditFigureRaster?layer:preparePaintMarkLayer(owner,hasLayer?layer:undefined,'raster',scene.colorMode,scene.layerSequence);
       if(!active)return;
       const target=event.currentTarget,rect=target.getBoundingClientRect();
       if(rect.width<=0||rect.height<=0)return;
