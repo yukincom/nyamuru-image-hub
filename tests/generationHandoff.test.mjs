@@ -75,9 +75,11 @@ manga:
   assert.equal(bubble.kind, 'thought');
   assert.equal('bezier' in bubble, false);
   assert.equal('text_runs' in bubble, false);
+  assert.equal(spec.pages[0].guide_image, '01.png');
   assert.deepEqual(buildCloudGenerationSpec(doc).pages[0].panels[0].bubbles[0].kind, 'thought');
   const omitted = buildCloudGenerationSpec(doc, { includeBackground: false, includeBubbles: false, exportReferenceImages: false });
   assert.deepEqual(omitted.render_options, { include_background: false, include_bubbles: false, export_reference_images: false });
   assert.equal(omitted.pages[0].panels[0].background.mode, 'omitted');
   assert.deepEqual(omitted.pages[0].panels[0].bubbles, []);
+  assert.equal('guide_image' in omitted.pages[0], false);
 });

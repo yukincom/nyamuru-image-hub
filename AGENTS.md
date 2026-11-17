@@ -43,8 +43,9 @@
 
 - 作品の保存本体は、選択した作品フォルダ配下の `.nyamuru/project.json` と `.nyamuru/assets/` に格納される（「開く」は `.nyamuru/project.json` を参照する）。
 - 環境設定で画像生成の実行先が「外部エージェント」の状態で保存するか、生成ダイアログの「生成用JSONを書き出す」を実行すると、作品フォルダ直下へ軽量なクラウド生成用 JSON（`<タイトル>-cloud.json`）が書き出される。
-- `<タイトル>-cloud.json` にはベジェ座標等の描画用詳細を除き、コマ割り、自己説明的な背景指定（`background.mode` / `description`）、フキダシ種別（`kind`: `speech` / `thought` / `monologue` / `narration` / `sfx` / `handwritten`）、登場人物の特徴と `reference_images`、および作品別 `artwork_rules` をまとめている。
-- 外部エージェントで漫画を生成する際は、[agent-manga-generation-workflow.md](src/content/agent-manga-generation-workflow.md) と標準作画設定（[standard-settings.yaml](src/content/standard-settings.yaml)）、作品フォルダ直下の `<タイトル>-cloud.json`、およびシリーズ内のキャラクター資料を参照する。生成完了後、フォルダ直下の `<タイトル>-cloud.json` は削除してよい。
+- `<タイトル>-cloud.json` にはベジェ座標等の描画用詳細を除き、コマ割り、自己説明的な背景指定（`background.mode` / `description`）、フキダシ種別（`kind`: `speech` / `thought` / `monologue` / `narration` / `handwritten`）、登場人物の特徴と `reference_images`、および作品別 `artwork_rules` をまとめている。
+- 「画像参照を使う」が有効な場合、同じ作品フォルダ直下へ各ページの細い水色カットラインガイド（`01.png`, `02.png`, ...、`pages[].guide_image` と対応）が自動書き出しされる。外部エージェントはこのカットライン画像とキャラクター資料を参照してキャラクター／コマを描画し、生成後にカットライン基準でコマ分割・取り込みを行える。
+- 外部エージェントで漫画を生成する際は、[agent-manga-generation-workflow.md](src/content/agent-manga-generation-workflow.md) と標準作画設定（[standard-settings.yaml](src/content/standard-settings.yaml)）、作品フォルダ直下の `<タイトル>-cloud.json`、対応する `01.png` 等のカットラインガイド、およびシリーズ内のキャラクター資料を参照する。生成完了後、フォルダ直下の `<タイトル>-cloud.json` とガイド画像は削除してよい。
 
 ## 使用モデル一覧
 

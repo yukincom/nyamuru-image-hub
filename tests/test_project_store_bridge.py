@@ -464,11 +464,14 @@ class ProjectStoreTests(unittest.TestCase):
 
         status, exported = post("/api/episode-workspace/export-yaml", {
             "workspace_token": token,
-            "files": [{"fileName": "第1話-cloud.json", "yaml": "{\"title\":\"第1話\"}"}],
+            "files": [{"fileName": "第1話-cloud.json", "yaml": json.dumps({
+                "render_options": {"export_reference_images": True},
+                "pages": [{"page": 1, "guide_image": "01.png", "canvas": {"w": 182, "h": 257}, "panels": [{"id": 1, "shape": {"type": "rect", "x": 16, "y": 18.5, "w": 150, "h": 87.2}}]}],
+            })}],
         })
         self.assertEqual(status, 200, exported)
-        self.assertEqual(exported["files"], ["第1話-cloud.json"])
-        self.assertEqual((self.root / "第1話-cloud.json").read_text(encoding="utf-8"), "{\"title\":\"第1話\"}")
+        self.assertEqual(exported["files"], ["第1話-cloud.json", "01.png"])
+        self.assertTrue((self.root / "01.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
 
     def test_export_yaml_rejects_unsafe_filenames(self):
         for bad_name in ["../escape.yaml", "sub/file.yaml", ".hidden.yaml", "notes.txt", ""]:

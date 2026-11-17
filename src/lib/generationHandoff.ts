@@ -99,6 +99,7 @@ export function buildCloudGenerationSpec(source: MangaDocument, options?: CloudR
 
   const pages = (manga.pages ?? []).map(page => ({
     page: page.page,
+    ...(exportReferenceImages ? { guide_image: `${String(page.page).padStart(2, '0')}.png` } : {}),
     canvas: page.canvas,
     panels: (page.panels ?? []).map(panel => ({
       id: panel.id,
