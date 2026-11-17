@@ -7,6 +7,9 @@ import { cloudGenerationFileName, omayFileName, omnyFileName, toOmayYaml, toSepa
 export interface CloudRenderOptions {
   includeBackground?: boolean;
   includeBubbles?: boolean;
+  includeHandwritten?: boolean;
+  includeScreenText?: boolean;
+  includePanelBorders?: boolean;
   exportReferenceImages?: boolean;
 }
 
@@ -44,7 +47,7 @@ function cloudPanelBackground(panel: Panel, location: string): Record<string, un
   let description = '';
   if (panel.bg === -1) {
     mode = 'plain';
-    description = 'plain flat background (no scene)';
+    description = 'plain pure white background only (no scenery, no tone, no shading)';
   } else if (panel.bg === 0) {
     mode = 'abstract';
     description = custom || 'abstract emotional background (no concrete scenery)';
@@ -70,6 +73,9 @@ export function buildCloudGenerationSpec(source: MangaDocument, options?: CloudR
   const cloudPrefs = currentGenerationPreferences().cloud;
   const includeBackground = options?.includeBackground ?? cloudPrefs.includeBackground;
   const includeBubbles = options?.includeBubbles ?? cloudPrefs.includeBubbles;
+  const includeHandwritten = options?.includeHandwritten ?? cloudPrefs.includeHandwritten;
+  const includeScreenText = options?.includeScreenText ?? cloudPrefs.includeScreenText;
+  const includePanelBorders = options?.includePanelBorders ?? cloudPrefs.includePanelBorders;
   const exportReferenceImages = options?.exportReferenceImages ?? cloudPrefs.exportReferenceImages;
   const prepared = toOmnyCatalogDocument(source);
   const { manga } = prepared;
@@ -117,16 +123,32 @@ export function buildCloudGenerationSpec(source: MangaDocument, options?: CloudR
         ...(figure.kind ? { kind: figure.kind } : {}),
         ...(figure.bbox ? { bbox: compactBox(figure.bbox) } : {}),
       })),
-      bubbles: includeBubbles ? (panel.bubbles ?? []).map(bubble => ({
-        text: bubble.text,
-        kind: cloudBubbleKind(bubble),
-        ...(bubble.speaker ? { speaker: bubble.speaker } : {}),
-        ...(bubble.shape && bubble.shape !== 'normal' ? { shape: bubble.shape } : {}),
-        ...(bubble.offscreen ? { offscreen: true } : {}),
-        ...(bubble.emphasis ? { emphasis: bubble.emphasis } : {}),
-        ...(bubble.lettering_description ? { lettering_description: bubble.lettering_description } : {}),
-        ...(bubble.bbox ? { bbox: compactBox(bubble.bbox) } : {}),
-      })) : [],
+      bubbles: (panel.bubbles ?? []).flatMap(bubble => {
+        const kind = cloudBubbleKind(bubble);
+        const allowed = kind === 'handwritten' ? includeHandwritten : includeBubbles;
+        if (!allowed) return [];
+        return [{
+          text: bubble.text,
+          kind,
+          ...(bubble.speaker ? { speaker: bubble.speaker } : {}),
+          ...(bubble.shape && bubble.shape !== 'normal' ? { shape: bubble.shape } : {}),
+          ...(bubble.offscreen ? { offscreen: true } : {}),
+          ...(bubble.emphasis ? { emphasis: bubble.emphasis } : {}),
+          ...(bubble.lettering_description ? { lettering_description: bubble.lettering_description } : {}),
+          ...(bubble.bbox ? { bbox: compactBox(bubble.bbox) } : {}),
+        }];
+      }),
+      ...(includeScreenText && panel.screen_text?.some(item => !item.hidden && item.text.trim())
+        ? {
+            screen_text: panel.screen_text
+              .filter(item => !item.hidden && item.text.trim())
+              .map(item => ({
+                text: item.text,
+                ...(item.orientation ? { orientation: item.orientation } : {}),
+                ...(item.bbox ? { bbox: compactBox(item.bbox) } : {}),
+              })),
+          }
+        : {}),
     })),
   }));
 
@@ -135,6 +157,10 @@ export function buildCloudGenerationSpec(source: MangaDocument, options?: CloudR
     render_options: {
       include_background: includeBackground,
       include_bubbles: includeBubbles,
+      include_handwritten: includeHandwritten,
+      include_screen_text: includeScreenText,
+      include_panel_borders: includePanelBorders,
+      panel_border_mode: includePanelBorders ? 'black-gutter-frames' : 'light-blue-cutlines-no-black-borders',
       export_reference_images: exportReferenceImages,
     },
     meta: manga.meta,

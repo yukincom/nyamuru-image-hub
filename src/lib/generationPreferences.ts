@@ -14,6 +14,9 @@ export interface GenerationPreferences {
     agentName: string;
     includeBackground: boolean;
     includeBubbles: boolean;
+    includeHandwritten: boolean;
+    includeScreenText: boolean;
+    includePanelBorders: boolean;
     exportReferenceImages: boolean;
   };
   local: { imageModel: 'qwen-image-2.1-turbo'; workflowId: string };
@@ -31,6 +34,9 @@ export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = O
     agentName: '',
     includeBackground: true,
     includeBubbles: true,
+    includeHandwritten: true,
+    includeScreenText: true,
+    includePanelBorders: false,
     exportReferenceImages: true,
   }),
   local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: P_H3_TWO_IMAGE_WORKFLOW }),
@@ -71,6 +77,9 @@ function normalize(value: unknown): GenerationPreferences {
       agentName: text(cloud.agentName, 120),
       includeBackground: cloud.includeBackground !== false,
       includeBubbles: cloud.includeBubbles !== false,
+      includeHandwritten: cloud.includeHandwritten !== false,
+      includeScreenText: cloud.includeScreenText !== false,
+      includePanelBorders: cloud.includePanelBorders === true,
       exportReferenceImages: cloud.exportReferenceImages !== false,
     },
     local: { imageModel: 'qwen-image-2.1-turbo', workflowId },

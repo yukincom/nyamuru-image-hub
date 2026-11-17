@@ -41,9 +41,27 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
         </label>
         <label class="environment-setting-row">
           <span class="environment-setting-icon"><MessageSquareText size={20} /></span>
-          <span><strong>吹き出しを含める</strong></span>
-          <input aria-label="吹き出しを含める" type="checkbox" checked={generationPreferences.cloud.includeBubbles}
+          <span><strong>フキダシを含める</strong></span>
+          <input aria-label="フキダシを含める" type="checkbox" checked={generationPreferences.cloud.includeBubbles}
             onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, includeBubbles: event.currentTarget.checked } })} />
+        </label>
+        <label class="environment-setting-row">
+          <span class="environment-setting-icon"><MessageSquareText size={20} /></span>
+          <span><strong>描き文字を含める</strong></span>
+          <input aria-label="描き文字を含める" type="checkbox" checked={generationPreferences.cloud.includeHandwritten}
+            onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, includeHandwritten: event.currentTarget.checked } })} />
+        </label>
+        <label class="environment-setting-row">
+          <span class="environment-setting-icon"><MessageSquareText size={20} /></span>
+          <span><strong>写植文字を含める</strong></span>
+          <input aria-label="写植文字を含める" type="checkbox" checked={generationPreferences.cloud.includeScreenText}
+            onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, includeScreenText: event.currentTarget.checked } })} />
+        </label>
+        <label class="environment-setting-row">
+          <span class="environment-setting-icon"><Image size={20} /></span>
+          <span><strong>枠線を生成する</strong></span>
+          <input aria-label="枠線を生成する" type="checkbox" checked={generationPreferences.cloud.includePanelBorders}
+            onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, includePanelBorders: event.currentTarget.checked } })} />
         </label>
         <label class="environment-setting-row">
           <span class="environment-setting-icon"><Image size={20} /></span>

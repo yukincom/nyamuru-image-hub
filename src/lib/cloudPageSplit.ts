@@ -20,6 +20,12 @@ export interface SplitCharacterResult {
   frameMm?: BBox;
 }
 
+export interface SplitBackgroundResult {
+  panelIndex: number;
+  file: File;
+  frameMm: BBox;
+}
+
 const naturalCompare = (a: string, b: string) => a.localeCompare(b, 'ja', { numeric: true, sensitivity: 'base' });
 
 export function extractPageNumberFromFileName(fileName: string): number | null {
@@ -96,14 +102,42 @@ export function detectCutlinePanelCrops(
   const mmW = Math.max(1, maxMmX - minMmX);
   const mmH = Math.max(1, maxMmY - minMmY);
 
-  // Use detected outer cut lines if they span a plausible frame; otherwise map full image or canvas ratio.
-  const hasOuterBox = hLines.length >= 2 && vLines.length >= 2
-    && (hLines[hLines.length - 1] - hLines[0]) > height * 0.5
-    && (vLines[vLines.length - 1] - vLines[0]) > width * 0.5;
-  const frameX0 = hasOuterBox ? vLines[0] : (minMmX / Math.max(1, canvasMm.w)) * width;
-  const frameY0 = hasOuterBox ? hLines[0] : (minMmY / Math.max(1, canvasMm.h)) * height;
-  const frameW = hasOuterBox ? (vLines[vLines.length - 1] - vLines[0]) : (mmW / Math.max(1, canvasMm.w)) * width;
-  const frameH = hasOuterBox ? (hLines[hLines.length - 1] - hLines[0]) : (mmH / Math.max(1, canvasMm.h)) * height;
+  // Use detected outer cut lines if they span a plausible frame; otherwise detect full-bleed vs canvas margins.
+  const hasOuterV = vLines.length >= 2 && (vLines[vLines.length - 1] - vLines[0]) > width * 0.7;
+  const hasOuterH = hLines.length >= 2 && (hLines[hLines.length - 1] - hLines[0]) > height * 0.7;
+  const hasCutlines = hLines.length > 0 || vLines.length > 0;
+  let fullBleedX = false;
+  let fullBleedY = false;
+  if (hasCutlines && (!hasOuterV || !hasOuterH)) {
+    const edgeBandX = Math.max(2, Math.floor(width * 0.02));
+    const edgeBandY = Math.max(2, Math.floor(height * 0.02));
+    for (let y = 0; y < height && !fullBleedX; y += 4) {
+      for (let x = 0; x < edgeBandX; x++) {
+        const iL = (y * width + x) * 4;
+        const iR = (y * width + (width - 1 - x)) * 4;
+        if (!isNearWhite(rgba[iL], rgba[iL + 1], rgba[iL + 2], rgba[iL + 3])
+          || !isNearWhite(rgba[iR], rgba[iR + 1], rgba[iR + 2], rgba[iR + 3])) {
+          fullBleedX = true;
+          break;
+        }
+      }
+    }
+    for (let x = 0; x < width && !fullBleedY; x += 4) {
+      for (let y = 0; y < edgeBandY; y++) {
+        const iT = (y * width + x) * 4;
+        const iB = ((height - 1 - y) * width + x) * 4;
+        if (!isNearWhite(rgba[iT], rgba[iT + 1], rgba[iT + 2], rgba[iT + 3])
+          || !isNearWhite(rgba[iB], rgba[iB + 1], rgba[iB + 2], rgba[iB + 3])) {
+          fullBleedY = true;
+          break;
+        }
+      }
+    }
+  }
+  const frameX0 = hasOuterV ? vLines[0] : fullBleedX ? 0 : (minMmX / Math.max(1, canvasMm.w)) * width;
+  const frameY0 = hasOuterH ? hLines[0] : fullBleedY ? 0 : (minMmY / Math.max(1, canvasMm.h)) * height;
+  const frameW = hasOuterV ? (vLines[vLines.length - 1] - vLines[0]) : fullBleedX ? width : (mmW / Math.max(1, canvasMm.w)) * width;
+  const frameH = hasOuterH ? (hLines[hLines.length - 1] - hLines[0]) : fullBleedY ? height : (mmH / Math.max(1, canvasMm.h)) * height;
 
   const snap = (target: number, candidates: number[], tolerance: number) => {
     let best = target;
@@ -365,11 +399,11 @@ async function rgbaToPngFile(rgba: Uint8ClampedArray, width: number, height: num
   return new File([blob], fileName, { type: 'image/png' });
 }
 
-export async function splitPageImageForDocument(
+async function withPageCutlinePanels<T>(
   file: File,
   page: MangaPage,
-  transparentWhite: boolean,
-): Promise<SplitCharacterResult[]> {
+  run: (ctx: CanvasRenderingContext2D, crops: PixelCrop[]) => Promise<T>,
+): Promise<T> {
   const bitmap = await createImageBitmap(file);
   try {
     const canvas = document.createElement('canvas');
@@ -380,6 +414,18 @@ export async function splitPageImageForDocument(
     ctx.drawImage(bitmap, 0, 0);
     const full = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
     const crops = detectCutlinePanelCrops(full.data, bitmap.width, bitmap.height, page.panels, page.canvas);
+    return await run(ctx, crops);
+  } finally {
+    bitmap.close();
+  }
+}
+
+export async function splitPageImageForDocument(
+  file: File,
+  page: MangaPage,
+  transparentWhite: boolean,
+): Promise<SplitCharacterResult[]> {
+  return withPageCutlinePanels(file, page, async (ctx, crops) => {
     const results: SplitCharacterResult[] = [];
     for (let panelIndex = 0; panelIndex < page.panels.length; panelIndex++) {
       const panel = page.panels[panelIndex];
@@ -406,7 +452,29 @@ export async function splitPageImageForDocument(
       }
     }
     return results;
-  } finally {
-    bitmap.close();
-  }
+  });
+}
+
+export async function splitPageBackgroundsForDocument(
+  file: File,
+  page: MangaPage,
+): Promise<SplitBackgroundResult[]> {
+  return withPageCutlinePanels(file, page, async (ctx, crops) => {
+    const results: SplitBackgroundResult[] = [];
+    for (let panelIndex = 0; panelIndex < page.panels.length; panelIndex++) {
+      const panel = page.panels[panelIndex];
+      const crop = crops[panelIndex];
+      if (!crop) continue;
+      const panelData = ctx.getImageData(crop.x, crop.y, crop.w, crop.h);
+      const cleaned = stripCutlinesAndFloodWhite(panelData.data, crop.w, crop.h, false);
+      const pngFile = await rgbaToPngFile(
+        cleaned,
+        crop.w,
+        crop.h,
+        `p${String(page.page).padStart(2, '0')}_panel${panel.id}_bg.png`,
+      );
+      results.push({ panelIndex, file: pngFile, frameMm: panelBounds(panel) });
+    }
+    return results;
+  });
 }

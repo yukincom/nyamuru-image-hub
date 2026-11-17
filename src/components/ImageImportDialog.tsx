@@ -3,7 +3,7 @@ import { X } from 'lucide-preact';
 import { useProjectFilePicker } from './ProjectFileInput';
 import type { MangaPage } from '../types';
 import type { SplitPanelCharacterPlacement } from './workspace/workspaceImagePlacement';
-import { matchFilesToPages, splitPageImageForDocument, type PageFileMatch } from '../lib/cloudPageSplit';
+import { matchFilesToPages, splitPageBackgroundsForDocument, splitPageImageForDocument, type PageFileMatch } from '../lib/cloudPageSplit';
 
 interface Props {
   pages: MangaPage[];
@@ -24,6 +24,7 @@ export function ImageImportDialog({
 }: Props) {
   const chooseFiles = useProjectFilePicker();
   const [splitByPanels, setSplitByPanels] = useState(false);
+  const [splitTarget, setSplitTarget] = useState<'figure' | 'background'>('figure');
   const [transparentWhite, setTransparentWhite] = useState(true);
   const [matches, setMatches] = useState<PageFileMatch[]>([]);
   const [splitting, setSplitting] = useState(false);
@@ -62,19 +63,33 @@ export function ImageImportDialog({
       for (const match of activeMatches) {
         const page = pages[match.pageIndex];
         if (!page) continue;
-        const splitResults = await splitPageImageForDocument(match.file, page, transparentWhite);
-        for (const result of splitResults) {
-          placements.push({
-            pageIndex: match.pageIndex,
-            panelIndex: result.panelIndex,
-            figureIndex: result.figureIndex,
-            file: result.file,
-            frameMm: result.frameMm,
-          });
+        if (splitTarget === 'background') {
+          const splitBgs = await splitPageBackgroundsForDocument(match.file, page);
+          for (const result of splitBgs) {
+            placements.push({
+              pageIndex: match.pageIndex,
+              panelIndex: result.panelIndex,
+              targetKind: 'background',
+              file: result.file,
+              frameMm: result.frameMm,
+            });
+          }
+        } else {
+          const splitResults = await splitPageImageForDocument(match.file, page, transparentWhite);
+          for (const result of splitResults) {
+            placements.push({
+              pageIndex: match.pageIndex,
+              panelIndex: result.panelIndex,
+              targetKind: 'figure',
+              figureIndex: result.figureIndex,
+              file: result.file,
+              frameMm: result.frameMm,
+            });
+          }
         }
       }
       if (!placements.length) {
-        setError('対応するキャラクター枠が見つかりませんでした');
+        setError(splitTarget === 'background' ? '対応するコマが見つかりませんでした' : '対応するキャラクター枠が見つかりませんでした');
         return;
       }
       await onSplitImport(placements);
@@ -111,15 +126,39 @@ export function ImageImportDialog({
             <span>コマで分ける（クラウド生成画像を自動分割して配置）</span>
           </label>
           {splitByPanels && (
-            <label>
-              <input
-                type="checkbox"
-                checked={transparentWhite}
-                disabled={running}
-                onChange={event => setTransparentWhite(event.currentTarget.checked)}
-              />
-              <span>白背景を透過する（外側の白を透明化）</span>
-            </label>
+            <>
+              <label>
+                <input
+                  type="radio"
+                  name="split-target"
+                  checked={splitTarget === 'figure'}
+                  disabled={running}
+                  onChange={() => setSplitTarget('figure')}
+                />
+                <span>キャラクターへ配置（コマ内のキャラを左右分割）</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="split-target"
+                  checked={splitTarget === 'background'}
+                  disabled={running}
+                  onChange={() => setSplitTarget('background')}
+                />
+                <span>背景へ配置（水色枠で切って各コマの背景あたりへ）</span>
+              </label>
+              {splitTarget === 'figure' && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={transparentWhite}
+                    disabled={running}
+                    onChange={event => setTransparentWhite(event.currentTarget.checked)}
+                  />
+                  <span>白背景を透過する（外側の白を透明化）</span>
+                </label>
+              )}
+            </>
           )}
         </fieldset>
 

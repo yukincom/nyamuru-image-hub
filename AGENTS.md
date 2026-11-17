@@ -46,6 +46,9 @@
 - `<タイトル>-cloud.json` にはベジェ座標等の描画用詳細を除き、コマ割り、自己説明的な背景指定（`background.mode` / `description`）、フキダシ種別（`kind`: `speech` / `thought` / `monologue` / `narration` / `handwritten`）、登場人物の特徴と `reference_images`、および作品別 `artwork_rules` をまとめている。
 - 「画像参照を使う」が有効な場合、同じ作品フォルダ直下へ各ページの細い水色カットラインガイド（`01.png`, `02.png`, ...、`pages[].guide_image` と対応）が自動書き出しされる。外部エージェントはこのカットライン画像とキャラクター資料を参照してキャラクター／コマを描画し、生成後にカットライン基準でコマ分割・取り込みを行える。
 - 外部エージェントで漫画を生成する際は、[agent-manga-generation-workflow.md](src/content/agent-manga-generation-workflow.md) と標準作画設定（[standard-settings.yaml](src/content/standard-settings.yaml)）、作品フォルダ直下の `<タイトル>-cloud.json`、対応する `01.png` 等のカットラインガイド、およびシリーズ内のキャラクター資料を参照する。生成完了後、フォルダ直下の `<タイトル>-cloud.json` とガイド画像は削除してよい。
+- `<タイトル>-cloud.json` の `render_options` で、`include_background`・`include_bubbles`（フキダシ）・`include_handwritten`（描き文字）・`include_screen_text`（写植文字）・`include_panel_borders`（黒枠線＋溝の生成有無）を個別に制御できる。`include_panel_borders: false`（`light-blue-cutlines-no-black-borders`）のときは黒枠線や溝を作らず、`01.png` 等の細い水色ラインに沿って描く（プロンプトでは否定形を避け、水色グリッドに沿う肯定表現を使う）。
+- クラウド画像生成はコストとページ内の一貫性のため、**原則として「1ページ一括生成 ＋ 必要時のみ最大1〜2回の編集リテイク」** を基本とし、コマごとのバラバラ生成は行わない（1コマだけ厳密に作り込みたい場合のみ個別生成を使う）。
+- 生成画像の取り込みはヘッダーの「画像読込 → コマで分ける」からキャラクター単位・背景単位で行え、水色ライン基準で切り出して拡縮せず原寸配置し、既存のアタリ／ガイドレイヤーは非表示化する。
 
 ## 使用モデル一覧
 

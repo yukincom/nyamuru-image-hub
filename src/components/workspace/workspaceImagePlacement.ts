@@ -23,7 +23,8 @@ interface Context {
 export interface SplitPanelCharacterPlacement {
   pageIndex: number;
   panelIndex: number;
-  figureIndex: number;
+  targetKind?: 'figure' | 'background';
+  figureIndex?: number;
   file: File;
   frameMm?: BBox;
 }
@@ -223,8 +224,40 @@ export function createImagePlacementActions({
       for (const item of items) {
         const targetPage = next.manga.pages[item.pageIndex];
         const targetPanel = targetPage?.panels[item.panelIndex];
-        const figure = targetPanel?.figures?.[item.figureIndex];
-        if (!targetPage || !targetPanel || !figure) continue;
+        if (!targetPage || !targetPanel) continue;
+        if (item.targetKind === 'background') {
+          if (panelLocked(targetPanel) || targetPanel.layer?.backgroundLocked === true || targetPanel.background_images?.some(image => image.locked)) {
+            skippedLocked += 1;
+            continue;
+          }
+          const scene = makePaintScene(next, item.panelIndex, item.pageIndex, false);
+          const owner = scene.owners.find(entry => entry.kind === 'background');
+          if (!owner) continue;
+          if (owner.paint.layers.length + 1 > 64) throw new Error('1つのグループには64レイヤーまで追加できます');
+          const prepared = await prepareImageAsset(item.file);
+          const asset = await registerAsset(next, newStorageIds, prepared, item.file);
+          const inserted = insertGeneratedPaintImage(owner, asset, generatedPaintName(sequence++), item.frameMm ?? owner.frame);
+          const hiddenGuideOwner = {
+            ...inserted.owner,
+            paint: {
+              ...inserted.owner.paint,
+              layers: inserted.owner.paint.layers.map(layer =>
+                layer.id !== inserted.layer.id && (layer.guide || layer.name === 'あたり · 背景')
+                  ? { ...layer, visible: false }
+                  : layer,
+              ),
+            },
+          };
+          const composite = await humanPoseOwnerImage(hiddenGuideOwner, next.manga.image_assets ?? []);
+          const flatFile = new File([composite], `${item.file.name}-layers.png`, { type: 'image/png' });
+          const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
+          const placement = { ...createFrameArtwork(flat, hiddenGuideOwner.frame), paint: hiddenGuideOwner.paint };
+          targetPanel.background_images = [placement];
+          placed += 1;
+          continue;
+        }
+        const figure = item.figureIndex !== undefined ? targetPanel.figures?.[item.figureIndex] : undefined;
+        if (!figure) continue;
         if (panelLocked(targetPanel) || figure.locked || artworkLocked(figure.artwork)) {
           skippedLocked += 1;
           continue;
