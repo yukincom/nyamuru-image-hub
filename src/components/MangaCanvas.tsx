@@ -140,7 +140,7 @@ export default function MangaCanvas(props: MangaCanvasProps) {
         if (!image || image.hidden||elementLocked(selectedElement)||agentWorking(selectedElement)) return null;
         const panelIndex = pageImage ? null : activePanel;
         return <div class="artwork-selection-layer" style={{pointerEvents:'none'}}>
-          <div data-content-target class="placed-image-selection" style={{...paperBoxStyle(image.bbox),pointerEvents:'none'}}
+          <div data-content-target class="placed-image-selection" style={{...paperBoxStyle(image.bbox),pointerEvents:'auto'}}
             onContextMenu={event => { if(image.generationScope)openGenerationMenu(event,image.generationScope==='page'?-1:activePanel);else if (selectedElement.type === 'figure') openGenerationMenu(event, activePanel, selectedElement.index); }}
             onPointerDown={event => { if (!elementLocked(selectedElement)) startInteraction(event, panelIndex, selectedElement, image.bbox, 'move'); }}>
             <CanvasContentSelection frame={image.bbox} source={contentSource(selectedElement,panelIndex)} revision={image} selected interactive={false} handles={visible=>renderHandles(panelIndex,selectedElement,image.bbox,visible)}/>

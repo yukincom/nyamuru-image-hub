@@ -22,6 +22,7 @@ import PageSidebar from '../PageSidebar';
 import MangaCanvas from '../MangaCanvas';
 import PanelInspector from '../PanelInspector';
 import ImageGenerationDialog from '../ImageGenerationDialog';
+import { ImageImportDialog } from '../ImageImportDialog';
 import MultiFigureGenerationDialog from '../MultiFigureGenerationDialog';
 import { type AgentWorkflowYamlFile, agentWorkflowCloudFiles } from '../../lib/generationHandoff';
 import { exportEpisodeYamlFiles } from '../../lib/localBridge';
@@ -49,7 +50,7 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
     endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement,
     reorderOwnerLayers, startBubbleEdit, artworkGuideVisible, toggleArtworkGuide, prepareQwen,
     applyPaint, autoPaintBoundary, guardDuringPaint, layerTransition, choosePlacedImage,
-    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, chooseImageExportFolder,
+    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, importSplitPanelCharacters, chooseImageExportFolder,
     exportPageRange, voiceRevision, applyVoiceCommand, inspectAgent, applyAgentBubbleEdit,
     applyBubbleMaterial, changeTab, selectPage, addPage, duplicatePage, deletePage, reorderPage, page,
     spreadPartnerIndex, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt,
@@ -149,6 +150,7 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
     onChangeSaveDirectory={() => saveProject(true)}
   />;
 
+  const [imageImportDialogOpen, setImageImportDialogOpen] = useState(false);
   const [recentFolder, setRecentFolder] = useState<BrowserDirectoryHandle | null>(null);
   useEffect(() => {
     if (!isLanClient || hasDocument) return;
@@ -159,8 +161,8 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
 
   return <ProjectFileContext.Provider value={{ chooseFiles: model.chooseFiles, onError: setToast }}><PaintEditor onAddOutside={action=>{const s=paintSessionRef.current;if(!s)return;const page=documentRef.current.manga.pages[s.pageIndex],panel=page.panels[s.panelIndex];if(!panel)return;actOnLayer(s.panelIndex,{...action,key:'page',position:{stack:{beforePanel:`panel-${panel.id}`}}},makePaintScene(documentRef.current,s.panelIndex,s.pageIndex,true),true);}} selectedBubbleStroke={selectedBubbleStroke} resume={paintSession?.resume} resumeImages={paintSession?.images} historySteps={historySteps} sharedHistory={{checkpoint:recordPaint,undo,redo,canUndo:past.length>0,canRedo:future.length>0}} stages={namedBackgroundStages(document)} zoomTool={zoomTool} bubblePathTool={bubblePathTool} onSelectBubblePath={chooseBubblePathTool} toolPaletteEnabled={hasDocument&&tab==='storyboard'&&!showNewDialog} textTool={textTool} textTools={<PaintTextTools active={textTool} openRequest={textPaletteRequest} disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} select={chooseTextTool} onClose={closeTextTool} onMaterials={openBubbleMaterials} bubbleLineWidthMm={bubbleLineWidthMm} onChangeBubbleLineWidth={value=>changePanelStyleNumber('bubble_line_width_mm',value)}/>} panelTools={<PanelControls disabled={layerSwitchBusy||projectBusy||Boolean(qwenGeneration)} hasPanel={Boolean(panel)} onAdd={addPanel} painting={Boolean(paintSession)} innerFrameSnap={innerFrameSnap} panelGapSnap={panelGapSnap} panelSync={panelSync} onToggleInnerFrameSnap={toggleInnerFrameSnap} onTogglePanelGapSnap={togglePanelGapSnap} onTogglePanelSync={togglePanelSync} selectedCount={selectedPanels.length} onMerge={mergeSelectedPanelGroup} splitDirection={panelSplitDirection} onSplitDirection={setPanelSplitDirection} onSplit={splitActivePanel}/>} onStartPaint={()=>{endTextEdit();setTextTool(false);setZoomTool(false);setBubblePathTool(false);return Boolean(paintSessionRef.current)||openPaint();}} onSelectLayout={chooseLayoutTool} onToggleBubble={(index,group)=>{const s=paintSessionRef.current;if(s)toggleTextLayer({pageIndex:s.pageIndex,panelIndex:s.panelIndex,index,overlay:s.overlay,kind:'bubble'},group);}} onSelectOwner={(key,native)=>{const s=paintSessionRef.current;if(s)selectLayerOwner(key,s.panelIndex,s.pageIndex,s.overlay,native);}} onSelectFigure={index=>{const s=paintSessionRef.current;if(s)selectCanvasElement({type:'figure',index,...(s.overlay?{scope:'page_overlay' as const}:{})},s.panelIndex,s.pageIndex);}} onReorderOwners={(key,target,after)=>{const session=paintSessionRef.current;if(session)reorderOwnerLayers(session.panelIndex,key,target,after,session.overlay);}} embeddedLayers onReady={()=>{const action=pendingLayerAction.current;pendingLayerAction.current=null;if(action)paintController.current?.layerAction(action);}} onEditText={index=>{const s=paintSessionRef.current;if(s)startBubbleEdit({pageIndex:s.pageIndex,panelIndex:s.panelIndex,bubbleIndex:index,overlay:s.overlay});}} controller={paintController} smoothing={paintSmoothing} cursorMode={paintCursorMode} guideVisible={key=>artworkGuideVisible(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} onToggleGuide={key=>toggleArtworkGuide(key,paintSession?.panelIndex,paintSession?.pageIndex,paintSession?.overlay)} initial={paintSession?.scene} initialOwner={paintSession?.initialOwner} assets={document.manga.image_assets??[]} title={paintSession?.title??''} page={paintSession?document.manga.pages[paintSession.pageIndex].page:0} panelIndex={paintSession?.panelIndex??-1} overlay={paintSession?.overlay??false} suspended={Boolean(qwenGeneration)||projectBusy||environmentOpen||layerSwitchBusy} onGenerate={(owner,images,pendingAssets)=>{const session=paintSessionRef.current;return session?prepareQwen(session.document,session.pageIndex,session.panelIndex,session.overlay,owner,images,pendingAssets):Promise.reject(new Error('描画先が見つかりません'));}} onApply={applyPaint} onClose={()=>{pendingLayerAction.current=null;paintSessionRef.current=null;setPaintSession(null);}}>
     <PaintToolHelp enabled={editGuide}/><div class={`app-shell ${hasDocument ? '' : 'is-startup'} ${paintSession?'is-painting':''} ${showNewDialog ? 'is-creating' : ''} ${environmentOpen ? 'is-environment-open' : ''}`} onPointerOverCapture={autoPaintBoundary} onFocusCapture={autoPaintBoundary} onKeyDown={environmentKeyDown} onClickCapture={guardDuringPaint} onPointerDownCapture={guardDuringPaint} onKeyDownCapture={guardDuringPaint} onInputCapture={guardDuringPaint} onPasteCapture={guardDuringPaint}>
-    <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog || Boolean(imageExportDialog)} hasDocument={hasDocument} busy={projectBusy||imageImportBusy||imageExportBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo}
-      onImportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();choosePlacedImage('page');});}}
+    <Header onSettings={toggleEnvironmentSettings} settingsOpen={environmentOpen} workspaceBlocked={environmentOpen || showNewDialog || Boolean(imageExportDialog) || imageImportDialogOpen} hasDocument={hasDocument} busy={projectBusy||imageImportBusy||imageExportBusy} saveDirectory={isLanClient ? boundEpisodeWorkspace?.folderName : boundEpisodeWorkspace?.directory} canUndo={hasDocument && past.length > 0} canRedo={hasDocument && future.length > 0} onUndo={undo} onRedo={redo}
+      onImportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();setImageImportDialogOpen(true);});}}
       onExportImage={()=>{void layerTransition(async()=>{if(paintSessionRef.current)await paintController.current?.close();endTextEdit();openImageExportDialog();});}}
       onNew={openNewDialog} onOpen={openProject} onSave={() => saveProject()} />
     <ProjectFileInput inputRef={placedImageInput} accept="image/png,image/jpeg" hidden onFiles={files => importPlacedImage(files[0])} />
@@ -376,6 +378,19 @@ export default function WorkspaceView({ model }: { model: ReturnType<typeof useW
         </div>
       </section>
     </>}
+    {imageImportDialogOpen && hasDocument && (
+      <ImageImportDialog
+        pages={document.manga.pages}
+        activePageIndex={activePage}
+        busy={imageImportBusy || projectBusy}
+        onSinglePageImport={() => {
+          setImageImportDialogOpen(false);
+          choosePlacedImage('page');
+        }}
+        onSplitImport={importSplitPanelCharacters}
+        onClose={() => setImageImportDialogOpen(false)}
+      />
+    )}
     {qwenGeneration&&<ImageGenerationDialog onOpenSettings={()=>{qwenGeneration.agentRequest?.reject(new Error('環境設定へ移動しました'));setQwenGeneration(null);void showEnvironmentSettings();}} onExportAgentYaml={()=>agentWorkflowCloudFiles(document)} onSaveAgentYaml={!isLanClient && boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? async files => { await exportEpisodeYamlFiles(boundEpisodeWorkspace.token, files); return boundEpisodeWorkspace.folderName; } : undefined} adultContent={Boolean(document.manga.series_setting?.adult_content)} agentRequest={qwenGeneration.agentRequest} onConversation={setGenerationConversation} onConversationHost={setGenerationConversationHost} key={qwenGeneration.id} plan={qwenGeneration.plan} poseEditorContext={qwenGeneration.poseEditorContext} layers={qwenGeneration.layers} loadLayer={qwenGeneration.loadLayer} onInsert={insertQwenImage} onClose={()=>{qwenGeneration.agentRequest?.reject(new Error('生成を中止しました'));setQwenGeneration(null);}}/>}
     {multiFigureGeneration&&<MultiFigureGenerationDialog key={multiFigureGeneration.id} items={multiFigureGeneration.items} adultContent={Boolean(document.manga.series_setting?.adult_content)} onOpenSettings={()=>{setMultiFigureGeneration(null);void showEnvironmentSettings();}} onExportAgentYaml={()=>agentWorkflowCloudFiles(document)} onSaveAgentYaml={!isLanClient && boundEpisodeWorkspace?.episodeId === document.manga.meta.episode_id ? async files => { await exportEpisodeYamlFiles(boundEpisodeWorkspace.token, files); return boundEpisodeWorkspace.folderName; } : undefined} onClose={()=>{multiFigureGeneration.onClose?.();setMultiFigureGeneration(null);}}/>}
     {toast && <div class="toast"><span>{toast}</span><button onClick={() => setToast(null)}><X size={15} /></button></div>}

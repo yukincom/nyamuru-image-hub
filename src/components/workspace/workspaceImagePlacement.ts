@@ -4,6 +4,7 @@ import type { BBox, ImageAsset, CanvasElementSelection, MangaDocument } from '..
 import { panelBounds, fallbackBox } from '../../lib/canvasGeometry';
 import { artworkLocked } from '../../lib/paintLock';
 import { overlayFallbackBox } from '../../lib/pageCanvas';
+import type { PaintScene } from '../../lib/paintDocument';
 import { hasAdoptedPaintImages, insertGeneratedPaintImage, generatedPaintName } from '../../lib/paintDocument';
 import { beginFigureCropImport, loadFigureCropAsset, saveFigureCropAssets, deleteFigureCropAssets } from '../../lib/figureCropStore';
 import { prepareImageAsset, createImagePlacement, createFrameArtwork, setFigureArtwork } from '../../lib/imagePlacement';
@@ -16,6 +17,14 @@ interface Context {
   selectedPaintOwner: () => string;
   setDocument: (next: MangaDocument, record?: boolean) => void;
   openPaint?: (initialOwner?: string, panelIndex?: number, pageIndex?: number, overlay?: boolean) => boolean;
+  makePaintScene?: (current: MangaDocument, panelIndex: number, pageIndex: number, overlay: boolean) => PaintScene & { generatedImageSequence: number };
+}
+
+export interface SplitPanelCharacterPlacement {
+  pageIndex: number;
+  panelIndex: number;
+  figureIndex: number;
+  file: File;
 }
 
 export function createImagePlacementActions({
@@ -24,8 +33,21 @@ export function createImagePlacementActions({
   paintController, setImageImportBusy, lastHistoryPush, activePageRef, activePanelRef, setSelectedElement,
   setToast, setQwenGeneration, pendingLayerAction, setBubblePathTool, setTextTool, setZoomTool,
 }: WorkspaceState, {
-  selectedPaintOwner, setDocument, openPaint,
+  selectedPaintOwner, setDocument, openPaint, makePaintScene,
 }: Context) {
+  const registerAsset = async (next: MangaDocument, newStorageIds: string[], prepared: ImageAsset, blob: Blob) => {
+    const existing = next.manga.image_assets?.find(asset => asset.sha256 === prepared.sha256);
+    const cached = existing ? await loadFigureCropAsset(existing.storageId) : null;
+    // A fresh cache ID also reloads already-mounted missing-image views.
+    const asset = existing && cached ? existing : existing ? { ...existing, storageId: prepared.storageId } : prepared;
+    if (!cached) {
+      newStorageIds.push(asset.storageId);
+      await saveFigureCropAssets([{ id: asset.storageId, blob: blob.slice(0, blob.size, asset.mediaType) }]);
+    }
+    if (!existing) (next.manga.image_assets ??= []).push(asset);
+    else next.manga.image_assets = next.manga.image_assets?.map(item => item.id === asset.id ? asset : item);
+    return asset;
+  };
   const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
     const page = documentRef.current.manga.pages[pageIndex];
     const panel = page?.panels[panelIndex];
@@ -73,14 +95,17 @@ export function createImagePlacementActions({
         const converted=ensureCanvasTextOwner(next,target.textSource.target,target.textSource.position);
         if(!converted||converted.index!==target.bubbleIndex)throw new Error('生成する写植文字の差し込み先が変わりました');
       }
-      const register=async(prepared:ImageAsset,blob:Blob)=>{
-        const existing=next.manga.image_assets?.find(asset=>asset.sha256===prepared.sha256);
-        const cached=existing?await loadFigureCropAsset(existing.storageId):null;
+      const register = async (prepared: ImageAsset, blob: Blob) => {
+        const existing = next.manga.image_assets?.find(asset => asset.sha256 === prepared.sha256);
+        const cached = existing ? await loadFigureCropAsset(existing.storageId) : null;
         // A fresh cache ID also reloads already-mounted missing-image views.
-        const asset=existing&&cached?existing:existing?{...existing,storageId:prepared.storageId}:prepared;
-        if(!cached){newStorageIds.push(asset.storageId);await saveFigureCropAssets([{id:asset.storageId,blob:blob.slice(0,blob.size,asset.mediaType)}]);}
-        if(!existing)(next.manga.image_assets??=[]).push(asset);
-        else next.manga.image_assets=next.manga.image_assets?.map(item=>item.id===asset.id?asset:item);
+        const asset = existing && cached ? existing : existing ? { ...existing, storageId: prepared.storageId } : prepared;
+        if (!cached) {
+          newStorageIds.push(asset.storageId);
+          await saveFigureCropAssets([{ id: asset.storageId, blob: blob.slice(0, blob.size, asset.mediaType) }]);
+        }
+        if (!existing) (next.manga.image_assets ??= []).push(asset);
+        else next.manga.image_assets = next.manga.image_assets?.map(item => item.id === asset.id ? asset : item);
         return asset;
       };
       const asset=await register(prepared,file);
@@ -183,5 +208,67 @@ export function createImagePlacementActions({
     setToast(`${Array.isArray(file)?file.length+'枚の生成画像':file.name} を${owner.label}のあたりの上に新規レイヤーとして追加しました`);
   };
 
-  return { choosePlacedImage, importPlacedImage, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
+  const importSplitPanelCharacters = async (items: SplitPanelCharacterPlacement[]) => {
+    if (!items.length || projectOperation.current || imageImportBusy || !makePaintScene) return { placed: 0, skippedLocked: 0 };
+    const initialDocument = documentRef.current;
+    setImageImportBusy(true);
+    const newStorageIds: string[] = [];
+    const finishImageImport = beginFigureCropImport();
+    try {
+      const next = cloneDocument(initialDocument);
+      let sequence = next.manga.generated_image_sequence ?? 0;
+      let placed = 0;
+      let skippedLocked = 0;
+      for (const item of items) {
+        const targetPage = next.manga.pages[item.pageIndex];
+        const targetPanel = targetPage?.panels[item.panelIndex];
+        const figure = targetPanel?.figures?.[item.figureIndex];
+        if (!targetPage || !targetPanel || !figure) continue;
+        if (panelLocked(targetPanel) || figure.locked || artworkLocked(figure.artwork)) {
+          skippedLocked += 1;
+          continue;
+        }
+        const scene = makePaintScene(next, item.panelIndex, item.pageIndex, false);
+        const owner = scene.owners.find(entry => entry.kind === 'figure' && entry.index === item.figureIndex);
+        if (!owner) continue;
+        if (owner.paint.layers.length + 1 > 64) throw new Error('1つのグループには64レイヤーまで追加できます');
+        const prepared = await prepareImageAsset(item.file);
+        const asset = await registerAsset(next, newStorageIds, prepared, item.file);
+        const inserted = insertGeneratedPaintImage(owner, asset, generatedPaintName(sequence++), owner.frame);
+        const composite = await humanPoseOwnerImage(inserted.owner, next.manga.image_assets ?? []);
+        const flatFile = new File([composite], `${item.file.name}-layers.png`, { type: 'image/png' });
+        const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
+        const placement = { ...createFrameArtwork(flat, inserted.owner.frame), paint: inserted.owner.paint };
+        setFigureArtwork(figure, placement);
+        placed += 1;
+      }
+      if (documentRef.current !== initialDocument) throw new Error('取り込み中に作品が変更されたため、やり直してください');
+      next.manga.generated_image_sequence = sequence;
+      if (placed > 0) {
+        lastHistoryPush.current = 0;
+        setDocument(next);
+        newStorageIds.length = 0;
+        lastHistoryPush.current = 0;
+      }
+      setToast(
+        placed > 0
+          ? skippedLocked > 0
+            ? `${placed}人のキャラクターを配置しました（ロック中${skippedLocked}件をスキップ）`
+            : `${placed}人のキャラクターを配置しました`
+          : skippedLocked > 0
+            ? `配置先がロックされているため配置できませんでした（${skippedLocked}件）`
+            : '配置できるキャラクターが見つかりませんでした',
+      );
+      return { placed, skippedLocked };
+    } catch (error) {
+      if (newStorageIds.length) void deleteFigureCropAssets(newStorageIds).catch(() => undefined);
+      setToast(error instanceof Error ? error.message : '分割画像を取り込めませんでした');
+      throw error;
+    } finally {
+      setImageImportBusy(false);
+      finishImageImport();
+    }
+  };
+
+  return { choosePlacedImage, importPlacedImage, importSplitPanelCharacters, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
 }

@@ -1,4 +1,4 @@
-import { paintLayerEditable } from '../../lib/paintLock';
+import { paintFolderChain, paintLayerEditable, paintOwnerLocked } from '../../lib/paintLock';
 import { pickPaintLayer, paintOwnerPoint, translatePaintLayer } from '../../lib/paintLayerPicking';
 import { combineSelection, floodSelection, lassoSelection, type SelectionMode } from '../../lib/rasterSelection';
 import { hitPaintRuler, paintRulerAngle, paintRulerProjection } from '../../lib/paintRuler';
@@ -38,7 +38,7 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
     ruler, rulerState, coverage, layerVisible, layer, setOwnerKey, setMaskTarget, setSelection,
     layerMove, penHover, setPenCursor, scene, eraserSize, size, vectorStyle, eraseMode, paintTarget,
     images, selectionBoxes, selectTolerance, operation, editingMask, hasLayer, inkColor, busy,
-    suspended, selectionTool, lineKind, color, brush,
+    suspended, selectionTool, lineKind, color, brush, selectedFolder,
   } = state;
   const {
     endBackgroundMove, commit, clearVectorSelection, selectLayout, canDraw, canEditLayer, paintActive,
@@ -148,15 +148,33 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
       if(layer.image&&!layer.guide&&(selectionMode==='vector-select'||selectionMode==='vector-node')){
         const imageHandle=boxResizeHandleAt(layer.image.bbox,local,tolerance);
         if(imageHandle){beginImageResize(event,owner,layer,imageHandle);return;}
+        const b=layer.image.bbox;
+        if(local.x>=b.x&&local.x<=b.x+b.w&&local.y>=b.y&&local.y<=b.y+b.h){
+          beginLayersMove(event,owner,[layer]);return;
+        }
       }
+    }
+    const folderLayers=selectedFolder&&(selectionMode==='vector-select'||selectionMode==='vector-node')
+      &&!paintOwnerLocked(owner)&&!paintFolderChain(owner.paint,selectedFolder.id).some(folder=>folder.locked)
+      ?owner.paint.layers.filter(item=>paintLayerEditable(owner,item)&&paintFolderChain(owner.paint,item.folderId).some(folder=>folder.id===selectedFolder.id))
+      :[];
+    if(folderLayers.length&&folderLayers.some(item=>{
+      if(item.image&&!item.guide){const b=item.image.bbox;if(local.x>=b.x&&local.x<=b.x+b.w&&local.y>=b.y&&local.y<=b.y+b.h)return true;}
+      if(item.clip){const c=item.clip;if(local.x>=c.x&&local.x<=c.x+c.w&&local.y>=c.y&&local.y<=c.y+c.h)return true;}
+      return false;
+    })){
+      beginLayersMove(event,owner,folderLayers);return;
     }
     const point={x:(event.clientX-rect.left)*Number(target.dataset.paperWidth)/rect.width,y:(event.clientY-rect.top)*Number(target.dataset.paperHeight)/rect.height};
     const hit=pickPaintLayer(historyRef.current.present,point,7*Number(target.dataset.paperWidth)/rect.width,coverage);
     if(hit){
+      if(folderLayers.length&&hit.owner.key===owner.key&&folderLayers.some(item=>item.id===hit.layer.id)){
+        beginLayersMove(event,owner,folderLayers);return;
+      }
       if(onSelectionMiss?.(hit.owner.key,hit.owner.kind==='bubble'&&paintLayerAboveNative(hit.owner.paint,hit.layer))){clearVectorSelection();return;}
       if(hit.pathId){beginVector(event,hit.owner,hit.layer,selectionMode);return;}
       clearVectorSelection();setOwnerKey(hit.owner.key);setLayerId(hit.layer.id);setMaskTarget(null);setSelection(null);
-      if(selectionMode==='vector-select'||selectionMode==='vector-node')beginLayerMove(event,hit.owner,hit.layer);
+      if(selectionMode==='vector-select'||selectionMode==='vector-node')beginLayersMove(event,hit.owner,[hit.layer]);
     }else if(onSelectionMiss?.())clearVectorSelection();
     else if(layerVisible&&layer.opacity>0&&paintLayerEditable(owner,layer)&&layer.kind==='vector')beginVector(event,owner,layer,selectionMode);
     else clearVectorSelection();
@@ -167,15 +185,25 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
     if(keep&&move.current!==move.before)commit(move.current);
     try{if(move.target.hasPointerCapture(move.pointerId))move.target.releasePointerCapture(move.pointerId);}catch{}
   }
-  function beginLayerMove(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner:PaintOwner,targetLayer:PaintLayer){
+  function beginLayersMove(event:PointerEvent&{currentTarget:HTMLDivElement},targetOwner:PaintOwner,targetLayers:PaintLayer[]){
+    if(!targetLayers.length)return;
+    const targetIds=new Set(targetLayers.map(item=>item.id));
     const target=event.currentTarget,rect=target.getBoundingClientRect(),start=inputPoint(event,target,rect,targetOwner),before=historyRef.current.present;
     const update=(e:PointerEvent)=>{
       const move=layerMove.current;if(!move||move.pointerId!==e.pointerId)return;
       const point=inputPoint(e,target,rect,targetOwner),dx=point.x-start.x,dy=point.y-start.y;
       if(Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY)<2&&move.current===before)return;
-      const moved=translatePaintLayer(targetLayer,dx,dy);
-      try{move.current=moved===targetLayer?before:{...before,owners:before.owners.map(o=>{if(o.key!==targetOwner.key)return o;
-        return expandPaintOwnerToContent({...o,paint:{...o.paint,layers:o.paint.layers.map(l=>l.id===targetLayer.id?moved:l)}},[moved]);})};}
+      const movedLayers:PaintLayer[]=[];
+      let changed=false;
+      const nextLayers=targetOwner.paint.layers.map(item=>{
+        if(!targetIds.has(item.id))return item;
+        const moved=translatePaintLayer(item,dx,dy);
+        if(moved!==item)changed=true;
+        movedLayers.push(moved);
+        return moved;
+      });
+      try{move.current=!changed?before:{...before,owners:before.owners.map(o=>{if(o.key!==targetOwner.key)return o;
+        return expandPaintOwnerToContent({...o,paint:{...o.paint,layers:nextLayers}},movedLayers);})};}
       catch(error){setError(error instanceof Error?error.message:'描画範囲を拡張できませんでした');return;}
       setVectorPreview(move.current);
     };
