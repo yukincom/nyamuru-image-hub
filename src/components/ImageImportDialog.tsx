@@ -69,6 +69,7 @@ export function ImageImportDialog({
             panelIndex: result.panelIndex,
             figureIndex: result.figureIndex,
             file: result.file,
+            frameMm: result.frameMm,
           });
         }
       }

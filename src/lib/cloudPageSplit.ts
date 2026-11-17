@@ -1,5 +1,5 @@
 import { panelBounds } from './canvasGeometry.ts';
-import type { Figure, MangaPage, Panel } from '../types.ts';
+import type { BBox, Figure, MangaPage, Panel } from '../types.ts';
 
 export interface PageFileMatch {
   file: File;
@@ -17,6 +17,7 @@ export interface SplitCharacterResult {
   panelIndex: number;
   figureIndex: number;
   file: File;
+  frameMm?: BBox;
 }
 
 const naturalCompare = (a: string, b: string) => a.localeCompare(b, 'ja', { numeric: true, sensitivity: 'base' });
@@ -298,7 +299,7 @@ export function splitPanelCharacters(
   height: number,
   figures: Figure[],
   transparentWhite: boolean,
-): Array<{ figureIndex: number; width: number; height: number; rgba: Uint8ClampedArray }> {
+): Array<{ figureIndex: number; width: number; height: number; crop: PixelCrop; rgba: Uint8ClampedArray }> {
   if (!figures.length || width < 1 || height < 1) return [];
   const cleaned = stripCutlinesAndFloodWhite(panelRgba, width, height, transparentWhite);
   const indexed = figures
@@ -334,7 +335,7 @@ export function splitPanelCharacters(
   }
   cuts.push(width);
 
-  const results: Array<{ figureIndex: number; width: number; height: number; rgba: Uint8ClampedArray }> = [];
+  const results: Array<{ figureIndex: number; width: number; height: number; crop: PixelCrop; rgba: Uint8ClampedArray }> = [];
   for (let i = 0; i < indexed.length; i++) {
     const trimmed = trimNonTransparent(cleaned, width, height, cuts[i], cuts[i + 1], transparentWhite);
     if (!trimmed) continue;
@@ -342,6 +343,7 @@ export function splitPanelCharacters(
       figureIndex: indexed[i].figureIndex,
       width: trimmed.crop.w,
       height: trimmed.crop.h,
+      crop: trimmed.crop,
       rgba: trimmed.data,
     });
   }
@@ -385,6 +387,7 @@ export async function splitPageImageForDocument(
       const figures = panel.figures ?? [];
       if (!crop || !figures.length) continue;
       const panelData = ctx.getImageData(crop.x, crop.y, crop.w, crop.h);
+      const panelBox = panelBounds(panel);
       const splitChars = splitPanelCharacters(panelData.data, crop.w, crop.h, figures, transparentWhite);
       for (const item of splitChars) {
         const pngFile = await rgbaToPngFile(
@@ -393,7 +396,13 @@ export async function splitPageImageForDocument(
           item.height,
           `p${String(page.page).padStart(2, '0')}_panel${panel.id}_fig${item.figureIndex + 1}.png`,
         );
-        results.push({ panelIndex, figureIndex: item.figureIndex, file: pngFile });
+        const frameMm: BBox = {
+          x: panelBox.x + (item.crop.x / crop.w) * panelBox.w,
+          y: panelBox.y + (item.crop.y / crop.h) * panelBox.h,
+          w: (item.crop.w / crop.w) * panelBox.w,
+          h: (item.crop.h / crop.h) * panelBox.h,
+        };
+        results.push({ panelIndex, figureIndex: item.figureIndex, file: pngFile, frameMm });
       }
     }
     return results;

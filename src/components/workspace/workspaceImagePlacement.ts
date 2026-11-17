@@ -25,6 +25,7 @@ export interface SplitPanelCharacterPlacement {
   panelIndex: number;
   figureIndex: number;
   file: File;
+  frameMm?: BBox;
 }
 
 export function createImagePlacementActions({
@@ -234,7 +235,7 @@ export function createImagePlacementActions({
         if (owner.paint.layers.length + 1 > 64) throw new Error('1つのグループには64レイヤーまで追加できます');
         const prepared = await prepareImageAsset(item.file);
         const asset = await registerAsset(next, newStorageIds, prepared, item.file);
-        const inserted = insertGeneratedPaintImage(owner, asset, generatedPaintName(sequence++), owner.frame);
+        const inserted = insertGeneratedPaintImage(owner, asset, generatedPaintName(sequence++), item.frameMm ?? owner.frame);
         const composite = await humanPoseOwnerImage(inserted.owner, next.manga.image_assets ?? []);
         const flatFile = new File([composite], `${item.file.name}-layers.png`, { type: 'image/png' });
         const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
