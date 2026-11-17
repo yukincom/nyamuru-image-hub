@@ -236,10 +236,21 @@ export function createImagePlacementActions({
         const prepared = await prepareImageAsset(item.file);
         const asset = await registerAsset(next, newStorageIds, prepared, item.file);
         const inserted = insertGeneratedPaintImage(owner, asset, generatedPaintName(sequence++), item.frameMm ?? owner.frame);
-        const composite = await humanPoseOwnerImage(inserted.owner, next.manga.image_assets ?? []);
+        const hiddenGuideOwner = {
+          ...inserted.owner,
+          paint: {
+            ...inserted.owner.paint,
+            layers: inserted.owner.paint.layers.map(layer =>
+              layer.id !== inserted.layer.id && (layer.guide || layer.name === 'キャラクターあたり')
+                ? { ...layer, visible: false }
+                : layer,
+            ),
+          },
+        };
+        const composite = await humanPoseOwnerImage(hiddenGuideOwner, next.manga.image_assets ?? []);
         const flatFile = new File([composite], `${item.file.name}-layers.png`, { type: 'image/png' });
         const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
-        const placement = { ...createFrameArtwork(flat, inserted.owner.frame), paint: inserted.owner.paint };
+        const placement = { ...createFrameArtwork(flat, hiddenGuideOwner.frame), paint: hiddenGuideOwner.paint };
         setFigureArtwork(figure, placement);
         placed += 1;
       }
