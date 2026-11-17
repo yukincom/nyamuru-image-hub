@@ -13,6 +13,7 @@ MAX_REFERENCES = 10
 MAX_SEED = 2**53 - 1
 _FIELDS = ('prompt', 'seed', 'width', 'height')
 _BINDING_KEYS = {*_FIELDS, 'images', 'output', 'prompt_mode', 'fixed_size'}
+_OPTIONAL_BINDING_KEYS = {'size_source'}
 
 def _identifier(value):
     try:
@@ -77,7 +78,7 @@ def validate_definition(body):
             or not isinstance(node.get('class_type'), str) or not node['class_type'].strip()
             for node in graph.values()):
         raise ValueError('ComfyUIのAPI形式JSON（ノードIDごとのclass_typeとinputs）を書き出してください')
-    if not isinstance(binding, dict) or set(binding) != _BINDING_KEYS:
+    if not isinstance(binding, dict) or not _BINDING_KEYS.issubset(binding) or not set(binding).issubset(_BINDING_KEYS | _OPTIONAL_BINDING_KEYS):
         raise ValueError('指示・シード・寸法・参照画像・完成画像・プロンプト処理の対応付けを指定してください')
     if binding['prompt_mode'] not in ('qwen', 'plain', 'qwen-three-images', 'promptless-two-images'):
         raise ValueError('指示文の扱いを選択してください')
@@ -114,11 +115,13 @@ def validate_definition(body):
         raise ValueError('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください')
     if binding['prompt_mode'] == 'promptless-two-images' and len(images) != 2:
         raise ValueError('2画像参照・プロンプト不要には参照画像2枚を指定してください')
+    if 'size_source' in binding and binding['size_source'] not in ('atari', 'panel'):
+        raise ValueError('出力サイズの参照先が不正です')
     if binding['width']:
         if fixed is not None:
             raise ValueError('寸法の受け渡し先と固定寸法は同時に指定できません')
-    elif binding['prompt_mode'] in ('qwen-three-images', 'promptless-two-images') and fixed is None:
-        pass  # The workflow computes output dimensions from the input images.
+    elif fixed is None:
+        pass  # Output dimensions are computed from the atari/panel image size.
     elif not isinstance(fixed, list) or len(fixed) != 2:
         raise ValueError('寸法の受け渡し先がない場合はfixed_sizeに幅と高さを指定してください')
     else:

@@ -48,7 +48,7 @@ const DECISION_LABELS: Record<SourceCoverageDecisionValue, string> = {
 };
 
 const WARNING_LABELS: Record<string, string> = {
-  unstable_episode_identity: 'エピソードIDが空のため、対象IDは今回のOMNY内容に依存します。',
+  unstable_episode_identity: 'エピソードIDが空のため、対象IDは今回の構成YAML内容に依存します。',
   source_contains_control_or_bidi_characters: '原文に制御文字または表示方向制御文字があります。表示を目視確認してください。',
   context_only_matches_require_storyboard_review: '舞台設定などに残っていても、コマ・台詞へ反映された証拠がない行があります。',
   substring_matching_skipped_due_to_volume: '入力規模が大きいためsubstring候補だけを省略しました。完全一致は全件確認済みです。',
@@ -190,7 +190,7 @@ export default function SourceCoverageReview({
       <div>
         <span class="source-coverage-eyebrow">LOCAL / DETERMINISTIC / NO LLM</span>
         <h2 id="source-coverage-title">原文の反映確認</h2>
-        <p>原作・台本の各行が現在のOMNYに残っている証拠を一覧化します。未一致を自動で「欠落」とは断定せず、作品内容も変更しません。</p>
+        <p>原作・台本の各行が現在の構成YAMLに残っている証拠を一覧化します。未一致を自動で「欠落」とは断定せず、作品内容も変更しません。</p>
       </div>
       <div class="source-coverage-source-actions">
         <ProjectFileInput inputRef={uploadInput} accept=".md,.markdown,.txt,.text,text/plain,text/markdown" hidden onFiles={files => uploadSource(files[0])} />
@@ -209,10 +209,10 @@ export default function SourceCoverageReview({
     {source && <>
       <section class="source-coverage-source-card">
         <div><strong>{source.fileName}</strong><span>{source.relativePath ?? '作品フォルダ外・相対pathなし'}</span></div>
-        <div><strong>{workspaceFolder || '保存先未関連付け'}</strong><span>原文は表示と照合にだけ使い、OMNYへ埋め込みません</span></div>
+        <div><strong>{workspaceFolder || '保存先未関連付け'}</strong><span>原文は表示と照合にだけ使い、構成YAMLへ埋め込みません</span></div>
       </section>
       {error && <p class="source-coverage-error" role="alert">{error}</p>}
-      {!error && !report && <p class="source-coverage-loading" role="status">原文と現在のOMNYを照合しています…</p>}
+      {!error && !report && <p class="source-coverage-loading" role="status">原文と現在の構成YAMLを照合しています…</p>}
       {report && <>
         <section class="source-coverage-summary" aria-label="照合結果の件数">
           <div><span>決定的な対応</span><strong>{report.summary.confirmed}</strong></div>
@@ -263,7 +263,7 @@ export default function SourceCoverageReview({
                 <span>L{unit.start_line}</span>
                 <strong>{STATUS_LABELS[unit.status]}</strong>
                 {unit.context_retained && <em>舞台・台帳にのみ保持</em>}
-                {recorded?.stale && <em class="is-stale">以前の人間判断はOMNY変更後のため再確認</em>}
+                {recorded?.stale && <em class="is-stale">以前の人間判断は構成YAML変更後のため再確認</em>}
               </div>
               <pre>{unit.excerpt}</pre>
               {candidates.length > 0 && <div class="source-coverage-candidates">

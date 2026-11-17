@@ -15,6 +15,7 @@ export interface ComfyWorkflowBinding {
   output: { node: string; index: number };
   prompt_mode: 'qwen' | 'plain' | 'qwen-three-images' | 'promptless-two-images';
   fixed_size: [number, number] | null;
+  size_source?: 'atari' | 'panel';
 }
 export interface ComfyWorkflowDefinition {
   id: string;
@@ -97,9 +98,10 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
       throw new Error('固定寸法は幅と高さを正の整数で指定し、寸法の受け渡し先は外してください');
     }
     fixed_size = [fixed[0], fixed[1]];
-  } else if ((!width.length || !height.length) && !((value.prompt_mode === 'qwen-three-images' || value.prompt_mode === 'promptless-two-images') && !width.length && !height.length)) {
-    throw new Error('幅・高さの両方に受け渡し先を設定するか、固定寸法を指定してください');
+  } else if (Boolean(width.length) !== Boolean(height.length)) {
+    throw new Error('幅・高さの両方に受け渡し先を設定してください');
   }
+  const size_source = value.size_source === 'panel' ? 'panel' : value.size_source === 'atari' ? 'atari' : undefined;
   const output = value.output;
   if (!object(output) || typeof output.node !== 'string' || !Object.hasOwn(graph, output.node)
     || typeof output.index !== 'number' || !Number.isSafeInteger(output.index) || output.index < 0 || output.index > 63) {
@@ -115,7 +117,7 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
     throw new Error('2画像参照・プロンプト不要には参照画像2枚を指定してください');
   }
   return { prompt, seed, width, height, images, output: { node: output.node, index: output.index },
-    prompt_mode: value.prompt_mode, fixed_size };
+    prompt_mode: value.prompt_mode, fixed_size, ...(size_source ? { size_source } : {}) };
 }
 
 export function parseComfyWorkflowDefinition(value: unknown): ComfyWorkflowDefinition {

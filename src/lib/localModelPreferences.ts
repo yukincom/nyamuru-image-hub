@@ -2,6 +2,7 @@ export const LOCAL_MODEL_PREFERENCES_STORAGE_KEY = 'nyamuru.local-model-preferen
 
 export interface LocalModelPreferences {
   llmAlias: string;
+  llmUrl: string;
   vlmModelId: string;
   comfyuiUrl: string;
 }
@@ -9,6 +10,7 @@ export interface LocalModelPreferences {
 /** Existing product defaults. Changing a preference is always an explicit device-local action. */
 export const DEFAULT_LOCAL_MODEL_PREFERENCES: Readonly<LocalModelPreferences> = Object.freeze({
   llmAlias: 'Qwen3.8-27B-8bit',
+  llmUrl: 'http://127.0.0.1:8080',
   vlmModelId: 'lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit',
   comfyuiUrl: 'http://127.0.0.1:8188',
 });
@@ -29,7 +31,7 @@ function normalizedVlmModelId(value: unknown): string {
   return modelId;
 }
 
-export function normalizeComfyuiUrl(value: unknown): string {
+export function normalizeLocalHttpUrl(value: unknown, label = '接続先'): string {
   if (value === undefined || value === '') return '';
   const endpoint = typeof value === 'string' ? value.trim() : '';
   try {
@@ -39,8 +41,16 @@ export function normalizeComfyuiUrl(value: unknown): string {
       || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error();
     return url.origin;
   } catch {
-    throw new Error('ComfyUI接続先はlocalhost上のHTTP URLとポートを指定してください');
+    throw new Error(`${label}はlocalhost上のHTTP URLとポートを指定してください`);
   }
+}
+
+export function normalizeComfyuiUrl(value: unknown): string {
+  return normalizeLocalHttpUrl(value, 'ComfyUI接続先');
+}
+
+export function normalizeLlmUrl(value: unknown): string {
+  return normalizeLocalHttpUrl(value, 'LLM接続先');
 }
 
 export function normalizeLocalModelPreferences(value: unknown): LocalModelPreferences {
@@ -49,7 +59,8 @@ export function normalizeLocalModelPreferences(value: unknown): LocalModelPrefer
   }
   const record = value as Record<string, unknown>;
   return {
-    llmAlias: normalizedLlmAlias(record.llmAlias),
+    llmAlias: record.llmAlias === undefined ? DEFAULT_LOCAL_MODEL_PREFERENCES.llmAlias : normalizedLlmAlias(record.llmAlias),
+    llmUrl: normalizeLlmUrl(record.llmUrl) || DEFAULT_LOCAL_MODEL_PREFERENCES.llmUrl,
     vlmModelId: normalizedVlmModelId(record.vlmModelId),
     comfyuiUrl: normalizeComfyuiUrl(record.comfyuiUrl) || DEFAULT_LOCAL_MODEL_PREFERENCES.comfyuiUrl,
   };

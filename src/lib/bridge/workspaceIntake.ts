@@ -175,6 +175,18 @@ export async function loadEpisodeProject(token: string): Promise<{ snapshot: unk
   return { snapshot: payload.snapshot, revision: payload.revision };
 }
 
+export async function exportEpisodeYamlFiles(
+  token: string,
+  files: Array<{ fileName: string; yaml: string }>,
+): Promise<string[]> {
+  const payload = await postJson('/api/episode-workspace/export-yaml', {
+    workspace_token: token,
+    files,
+  }) as Record<string, unknown>;
+  if (!Array.isArray(payload.files)) throw new Error('YAMLの書き出し結果を確認できませんでした');
+  return payload.files.filter((item): item is string => typeof item === 'string');
+}
+
 function referenceTextSuggestionResult(payload: Record<string, unknown>): ReferenceTextSuggestionResult {
   const candidateCount = Math.max(0, Number(payload.candidate_count) || 0);
   const rawSuggestion = payload.suggestion;

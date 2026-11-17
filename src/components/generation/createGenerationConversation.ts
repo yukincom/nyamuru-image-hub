@@ -46,7 +46,7 @@ export function createGenerationConversation(options: GenerationConversationOpti
       }), true))!;
     }
     const result = await options.generate(true, isCurrent);
-    if (options.cloud) return 'OMNY（YAML）を書き出しました。標準ワークフロー・OMAYとキャラクター資料を使って指定のエージェントで生成し、完成したPNGをこの画面で読み込んでください。';
+    if (options.cloud) return '生成用JSONを書き出しました。標準ワークフローとキャラクター資料を使って指定のエージェントで生成し、完成したPNGをこの画面で読み込んでください。';
     if (result?.job?.candidates?.length) {
       if (result.job.status === 'succeeded' && result.job.candidates.length === 5) {
         return `${options.label}の画像を生成しました。画面で採用する画像を選んでください。`;

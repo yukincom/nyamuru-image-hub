@@ -66,6 +66,7 @@ export {
   selectEpisodeWorkspace,
   saveEpisodeProject,
   loadEpisodeProject,
+  exportEpisodeYamlFiles,
   chooseSeriesDirectory,
   suggestEpisodeWorkspaceText,
   prepareEpisodeWorkspace,

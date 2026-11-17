@@ -114,7 +114,7 @@ class DefinitionTests(unittest.TestCase):
             body['binding'].update(changes)
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 workflows.validate_definition(body)
-        for fixed in (None, [31, 512], [512, 4097], [512.0, 768], [True, 768]):
+        for fixed in ([31, 512], [512, 4097], [512.0, 768], [True, 768]):
             body = definition(fixed=True)
             body['binding']['fixed_size'] = fixed
             with self.subTest(fixed=fixed), self.assertRaises(ValueError):

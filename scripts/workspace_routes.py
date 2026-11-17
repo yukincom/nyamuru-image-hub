@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from nyamuru_ocr_util import decode_image_data
 from project_file_picker import choose_project_files
-from nyamuru_project_store import load_project, save_project
+from nyamuru_project_store import export_yaml_files, load_project, save_project
 from nyamuru_series_catalog_store import discover_reference_text_candidates
 
 if TYPE_CHECKING:
@@ -45,6 +45,10 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
     if path == "/api/episode-workspace/project/load":
         directory = handler.state.episode_workspaces.directory(body.get("workspace_token"))
         handler.send_json(200, load_project(directory))
+        return
+    if path == "/api/episode-workspace/export-yaml":
+        directory = handler.state.episode_workspaces.directory(body.get("workspace_token"))
+        handler.send_json(200, export_yaml_files(directory, body.get("files")))
         return
     if path == "/api/episode-workspace/reference-suggest":
         candidates = handler.state.episode_workspaces.reference_candidates(body.get("workspace_token"))

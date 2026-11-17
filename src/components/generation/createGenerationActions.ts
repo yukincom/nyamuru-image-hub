@@ -9,7 +9,7 @@ import type { LocalModelPreferences } from '../../lib/localModelPreferences.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../../lib/browserFiles.ts';
 import { requireHumanPoseGenerationReady } from '../../lib/humanPoseSelection.ts';
 import { cloudModelAccess } from '../../lib/modelPrivacy.ts';
-import type { AgentWorkflowYamlFile } from '../../lib/generationHandoff.ts';
+import { type AgentWorkflowYamlFile, deliverAgentWorkflowYamlFiles } from '../../lib/generationHandoff.ts';
 import { prepareQwenJob, submitQwenJob, reconcileQwenJob } from '../../lib/localBridge.ts';
 import { withImageGenerationServices } from '../../lib/localBridgeLifecycle.ts';
 import { dataUrlToPngFile, prepareGeneratedInsertionFile } from '../../lib/generation/insertion.ts';
@@ -48,9 +48,10 @@ interface CreateGenerationActionsInputs {
   setJob: Dispatch<StateUpdater<QwenJob | null>>;
   comfySession: Cell<string | null>;
   exportAgentYaml?: () => AgentWorkflowYamlFile[];
+  saveAgentYaml?: (files: AgentWorkflowYamlFile[]) => Promise<string | null>;
 }
 
-export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml }: CreateGenerationActionsInputs) {
+export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml, saveAgentYaml }: CreateGenerationActionsInputs) {
   async function insertResult(result:QwenJob){
     if(!result.image||!result.fileName)throw new Error('差し込む画像がありません');
     await insertImage(dataUrlToPngFile(result.image,result.fileName),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined,Boolean(result.workflowId));
@@ -87,15 +88,16 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
       // A withdrawal during capture cancels handoff; it never selects a different destination.
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
       if(!access.allowed)throw new Error(access.reason==='adult-terms-required'?'環境設定でクラウドの成人向け利用条件を確認してください':'環境設定でクラウドを選んでください');
-      if(!exportAgentYaml)throw new Error('OMNY（YAML）の書き出し先が接続されていません');
+      if(!exportAgentYaml)throw new Error('生成用JSONの書き出し先が接続されていません');
       const agent=route.label;
-      const files=exportAgentYaml();
-      if(!files.length)throw new Error('書き出すOMNY（YAML）がありません');
-      for(const file of files){
-        downloadBrowserBlob(new Blob([file.yaml],{type:'application/yaml;charset=utf-8'}),file.fileName);
-      }
+      const { folderName, fileNames }=await deliverAgentWorkflowYamlFiles(
+        exportAgentYaml(),
+        saveAgentYaml,
+        file => downloadBrowserBlob(new Blob([file.yaml],{type:file.mimeType ?? 'application/json;charset=utf-8'}),file.fileName),
+      );
       generatedTarget.current={plan:target};
-      setNotice(`${agent}へ渡すOMNY（${files.map(file=>file.fileName).join('、')}）を書き出しました。標準ワークフロー・OMAYとキャラクター資料を使って生成し、完成したPNGを「生成画像を読み込む」で戻してください。`);
+      const destination = folderName ? `作品フォルダ（${folderName}）に` : `${agent}へ渡す`;
+      setNotice(`${destination}生成用JSON（${fileNames.join('、')}）を書き出しました。標準ワークフローとキャラクター資料を使って生成し、完成したPNGを「生成画像を読み込む」で戻してください。生成が終わったらJSONは削除して問題ありません。`);
       return {inserted:false};
     }
     const payload=validateGenerationInputs(plan,capturedDraft,threeImages,workflow,capturedPose);
@@ -135,7 +137,13 @@ export function validateGenerationInputs(plan: QwenGenerationPlan, draft: Create
   threeImages: boolean, workflow: ComfyWorkflowDefinition | null, poseImage?: string) {
   const {prompt,references,reference,correction}=draft;
   const sketch=!threeImages&&reference?.kind==='sketch'&&!correction;
-  const payload=qwenGenerationPayload({...plan,prompt,...(plan.handwrittenPrompt?{handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:qwenGenerationPrompt(plan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,poseImage,workflow?.binding.fixed_size??undefined);
+  const effectivePlan = workflow?.binding.size_source === 'panel' && plan.panelSize
+    ? { ...plan, width: plan.panelSize.width, height: plan.panelSize.height }
+    : plan;
+  const outputSize = workflow?.binding.fixed_size ?? (workflow?.binding.size_source === 'panel' && plan.panelSize
+    ? [plan.panelSize.width, plan.panelSize.height] as const
+    : undefined);
+  const payload=qwenGenerationPayload({...effectivePlan,prompt,...(effectivePlan.handwrittenPrompt?{handwrittenPrompt:{...effectivePlan.handwrittenPrompt,confirmation:qwenGenerationPrompt(effectivePlan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,poseImage,outputSize);
   const inputCount=payload.references.length+Number('paint_image' in payload)+Number('sketch_image' in payload)+Number('correction_image' in payload);
   if(workflow&&inputCount!==workflow.binding.images.length)throw new Error(`${workflow.name}は参照画像${workflow.binding.images.length}枚の定義です。現在は${inputCount}枚です。環境設定で対応する定義を選んでください`);
   return payload;

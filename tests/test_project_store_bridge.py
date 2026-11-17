@@ -462,6 +462,19 @@ class ProjectStoreTests(unittest.TestCase):
         status, _ = post("/api/episode-workspace/project/load", {"workspace_token": token}, "https://example.com")
         self.assertEqual(status, 403)
 
+        status, exported = post("/api/episode-workspace/export-yaml", {
+            "workspace_token": token,
+            "files": [{"fileName": "第1話-cloud.json", "yaml": "{\"title\":\"第1話\"}"}],
+        })
+        self.assertEqual(status, 200, exported)
+        self.assertEqual(exported["files"], ["第1話-cloud.json"])
+        self.assertEqual((self.root / "第1話-cloud.json").read_text(encoding="utf-8"), "{\"title\":\"第1話\"}")
+
+    def test_export_yaml_rejects_unsafe_filenames(self):
+        for bad_name in ["../escape.yaml", "sub/file.yaml", ".hidden.yaml", "notes.txt", ""]:
+            with self.assertRaises(ValueError):
+                store.export_yaml_files(self.root, [{"fileName": bad_name, "yaml": "a: 1"}])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,7 @@ import {loadGenerationPreferences,saveGenerationPreferences} from '../src/lib/ge
 import {cloudModelAccess} from '../src/lib/modelPrivacy.ts';
 import {resolveGenerationRoute} from '../src/lib/modelRouting.ts';
 import {validateGenerationInputs} from '../src/components/generation/createGenerationActions.ts';
+import {deliverAgentWorkflowYamlFiles} from '../src/lib/generationHandoff.ts';
 
 const plan={profile:'qwen-image-2.1-owner-v1',documentKey:'work',pageNumber:2,panelId:3,overlay:false,ownerKey:'figure-1',label:'小雪',width:320,height:480,prompt:'人物を描く',characterKeys:['koyuki'],candidates:[]};
 function fixture({status='succeeded',change={},cancelAt='',failRestore=false}={}){
@@ -99,7 +100,7 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
    alive:{current:true},AbortController,generationAbort:{current:undefined},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
    cloud:true,workflow:null,threeImages:false,targetError:'',execution,connection:{},adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,resolveGenerationRoute,validateGenerationInputs,
-   Blob,exportAgentYaml:()=>{calls.push('yaml');return [{fileName:'work.yaml',yaml:'title: work'}];},downloadBrowserBlob:(_blob,name)=>calls.push(['download',name]),setNotice:()=>{}};
+   Blob,deliverAgentWorkflowYamlFiles,saveAgentYaml:undefined,exportAgentYaml:()=>{calls.push('yaml');return [{fileName:'work.yaml',yaml:'title: work'}];},downloadBrowserBlob:(_blob,name)=>calls.push(['download',name]),setNotice:()=>{}};
   const pending=appFunction('generate',context,'generation/createGenerationActions.ts')();
   const current=loadGenerationPreferences(storage);
   if(revoked==='execution')current.execution='local';
@@ -108,6 +109,17 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   if(revoked==='none'){assert.equal((await pending).inserted,false);assert.deepEqual(calls,['yaml',['download','work.yaml']]);}
   else {await assert.rejects(pending,/環境設定でクラウド/);assert.deepEqual(calls,[]);}
  }
+});
+test('deliverAgentWorkflowYamlFiles writes to bound workspace when available and falls back to download',async()=>{
+ const saved=[];const downloaded=[];
+ const files=[{fileName:'第1話.yaml',yaml:'title: 第1話'}];
+ const wsResult=await deliverAgentWorkflowYamlFiles(files,async items=>{saved.push(items);return 'ep01';},file=>downloaded.push(file.fileName));
+ assert.deepEqual(wsResult,{folderName:'ep01',fileNames:['第1話.yaml']});
+ assert.equal(saved.length,1);
+ assert.deepEqual(downloaded,[]);
+ const dlResult=await deliverAgentWorkflowYamlFiles(files,undefined,file=>downloaded.push(file.fileName));
+ assert.deepEqual(dlResult,{folderName:null,fileNames:['第1話.yaml']});
+ assert.deepEqual(downloaded,['第1話.yaml']);
 });
 test('App awaits actual generation and aborts if selection or another generation changes during preflight',async()=>{
  for(const change of ['none','selection','document','other-generation']){

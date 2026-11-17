@@ -30,6 +30,7 @@ export interface QwenGenerationPlan {
   profile: typeof QWEN_GENERATION_PROFILE;
   documentKey: string; pageNumber: number; panelId: number; overlay: boolean;
   ownerKey: string; label: string; width: number; height: number;
+  panelSize?: { width: number; height: number };
   prompt: string; characterKeys: string[]; candidates: QwenReferenceCandidate[];
   threeImageTarget?: NonNullable<ReturnType<typeof threeImageFigureTarget>> & { referenceFrame:BBox };
   threeImages?: boolean;
@@ -283,11 +284,16 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
   const cutFrame=pose?.input_mode==='image'&&!overlay?humanPosePanelCutFrame(panel,referenceFrame):undefined;
   const outputFrame=lettering?{...owner.frame}:cutFrame?panelBounds(panel):undefined;
   const dimensions=cutFrame?humanPoseSceneFrame(outputFrame!.w/outputFrame!.h):owner.paint.referenceFrame?{width:Math.max(1,Math.round(owner.paint.referenceFrame.w)),height:Math.max(1,Math.round(owner.paint.referenceFrame.h))}:{width:owner.paint.width,height:owner.paint.height};
-  const figureTarget=person?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea,getPrintSetup(manga).dpi):undefined;
+  const dpi = getPrintSetup(manga).dpi;
+  const panelRect = !overlay ? panelBounds(panel) : undefined;
+  const panelSize = panelRect
+    ? { width: Math.max(1, Math.round((panelRect.w * dpi) / 25.4)), height: Math.max(1, Math.round((panelRect.h * dpi) / 25.4)) }
+    : undefined;
+  const figureTarget=person?threeImageFigureTarget(owner,referenceFrame,overlay?undefined:panel,generationArea,dpi):undefined;
   if(generationArea&&((!lettering&&!figureTarget)||![generationArea.x,generationArea.y,generationArea.w,generationArea.h].every(Number.isSafeInteger)||generationArea.x<0||generationArea.y<0||generationArea.w<1||generationArea.h<1||generationArea.x+generationArea.w>owner.paint.width||generationArea.y+generationArea.h>owner.paint.height))throw new Error('生成マスクの範囲が不正です');
   return {profile:QWEN_GENERATION_PROFILE,documentKey:JSON.stringify([manga.meta.series_id,manga.meta.episode_id]),
     pageNumber:page.page,panelId:overlay?0:panel.id,overlay,ownerKey:owner.key,label:owner.label,
-    ...dimensions,prompt,characterKeys,candidates,
+    ...dimensions,...(panelSize?{panelSize}:{}),prompt,characterKeys,candidates,
     ...(characterFeatures.length?{characterFeatures}:{}),
     ...(lettering?{contentKind:lettering.shape as 'handwritten'|'typeset',literalText:[lettering.text],letteringContext,handwrittenPrompt:{confirmation:prompt}}:{}),
     ...(outputFrame?{outputFrame,referenceFrame}:{}),

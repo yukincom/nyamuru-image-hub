@@ -39,6 +39,13 @@
 
 - 修正と必要最小限の確認を先に行い、利用者のチェックが済んでからビルド・全件テストを実行する。チェック前に全体検証を先回りして回さない。
 
+## 外部エージェント（Codex等）での画像生成・参照データ
+
+- 作品の保存本体は、選択した作品フォルダ配下の `.nyamuru/project.json` と `.nyamuru/assets/` に格納される（「開く」は `.nyamuru/project.json` を参照する）。
+- 環境設定で画像生成の実行先が「外部エージェント」の状態で保存するか、生成ダイアログの「生成用JSONを書き出す」を実行すると、作品フォルダ直下へ軽量なクラウド生成用 JSON（`<タイトル>-cloud.json`）が書き出される。
+- `<タイトル>-cloud.json` にはベジェ座標等の描画用詳細を除き、コマ割り、自己説明的な背景指定（`background.mode` / `description`）、フキダシ種別（`kind`: `speech` / `thought` / `monologue` / `narration` / `sfx` / `handwritten`）、登場人物の特徴と `reference_images`、および作品別 `artwork_rules` をまとめている。
+- 外部エージェントで漫画を生成する際は、[agent-manga-generation-workflow.md](src/content/agent-manga-generation-workflow.md) と標準作画設定（[standard-settings.yaml](src/content/standard-settings.yaml)）、作品フォルダ直下の `<タイトル>-cloud.json`、およびシリーズ内のキャラクター資料を参照する。生成完了後、フォルダ直下の `<タイトル>-cloud.json` は削除してよい。
+
 ## 使用モデル一覧
 
 各機能で使用するモデルは以下の通り（モデル重み自体は Git リポジトリに含めず、ローカル環境へ配置する）。

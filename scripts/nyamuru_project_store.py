@@ -221,3 +221,53 @@ def save_project(directory: Path, snapshot: object, expected_revision: object) -
             except FileNotFoundError:
                 pass
     return {"ok": True, "revision": hashlib.sha256(raw).hexdigest()}
+
+
+MAX_EXPORT_YAML_FILES = 10
+MAX_EXPORT_YAML_BYTES = 16 * 1024 * 1024
+
+
+def _validated_yaml_file(entry: object) -> tuple[str, bytes]:
+    if not isinstance(entry, dict):
+        raise ValueError("書き出しデータの形式が不正です")
+    file_name = entry.get("fileName")
+    text = entry.get("content") if "content" in entry else entry.get("yaml")
+    if not isinstance(file_name, str) or not isinstance(text, str):
+        raise ValueError("ファイル名または本文が不正です")
+    if not file_name or len(file_name) > 255 or "/" in file_name or "\\" in file_name or "\x00" in file_name:
+        raise ValueError("ファイル名が不正です")
+    if file_name.startswith(".") or not file_name.endswith((".yaml", ".json")):
+        raise ValueError("ファイル名は .yaml または .json で終わる通常ファイル名のみ許可されます")
+    raw = text.encode("utf-8")
+    if len(raw) > MAX_EXPORT_YAML_BYTES:
+        raise ValueError("書き出しサイズが上限の16MiBを超えています")
+    return file_name, raw
+
+
+def export_yaml_files(directory: Path, files: object) -> dict:
+    """Write validated .yaml files atomically into the episode directory root."""
+    if not isinstance(files, list) or not files or len(files) > MAX_EXPORT_YAML_FILES:
+        raise ValueError("書き出すYAMLファイル一覧が不正です")
+    validated = [_validated_yaml_file(entry) for entry in files]
+    root = os.open(directory, DIRECTORY_FLAGS)
+    try:
+        written: list[str] = []
+        for file_name, raw in validated:
+            temp_name = f".yaml-{secrets.token_hex(12)}.tmp"
+            try:
+                fd = os.open(temp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=root)
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(raw)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                os.replace(temp_name, file_name, src_dir_fd=root, dst_dir_fd=root)
+                written.append(file_name)
+            finally:
+                try:
+                    os.unlink(temp_name, dir_fd=root)
+                except FileNotFoundError:
+                    pass
+        os.fsync(root)
+    finally:
+        os.close(root)
+    return {"ok": True, "files": written}

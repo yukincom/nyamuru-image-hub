@@ -12,6 +12,9 @@ export interface GenerationPreferences {
     apiModel: string;
     agent: 'codex' | 'other';
     agentName: string;
+    includeBackground: boolean;
+    includeBubbles: boolean;
+    exportReferenceImages: boolean;
   };
   local: { imageModel: 'qwen-image-2.1-turbo'; workflowId: string };
 }
@@ -19,7 +22,17 @@ export interface GenerationPreferences {
 export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = Object.freeze({
   execution: 'local',
   skipTranslationConfirmation: false,
-  cloud: Object.freeze({ adultTermsConfirmed: false, method: 'agent', apiEndpoint: '', apiModel: '', agent: 'codex', agentName: '' }),
+  cloud: Object.freeze({
+    adultTermsConfirmed: false,
+    method: 'agent',
+    apiEndpoint: '',
+    apiModel: '',
+    agent: 'codex',
+    agentName: '',
+    includeBackground: true,
+    includeBubbles: true,
+    exportReferenceImages: true,
+  }),
   local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: P_H3_TWO_IMAGE_WORKFLOW }),
 });
 
@@ -56,6 +69,9 @@ function normalize(value: unknown): GenerationPreferences {
       apiModel: text(cloud.apiModel, 200),
       agent: cloud.agent === 'other' ? 'other' : 'codex',
       agentName: text(cloud.agentName, 120),
+      includeBackground: cloud.includeBackground !== false,
+      includeBubbles: cloud.includeBubbles !== false,
+      exportReferenceImages: cloud.exportReferenceImages !== false,
     },
     local: { imageModel: 'qwen-image-2.1-turbo', workflowId },
   };

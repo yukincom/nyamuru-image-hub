@@ -77,6 +77,7 @@ function handler(name, overrides = {}) {
     setBoundSourceSnapshot: () => {}, setSourceCoverageDecisions: () => {},
     setActivePage: () => {}, setActivePanel: () => {}, setSelectedPanels: () => {}, setSelectedElement: () => {},
     setTab: () => {}, setMobileStoryboardPane: () => {}, confirm: () => true,
+    currentGenerationPreferences: () => ({ execution: 'local' }), agentWorkflowCloudFiles: () => [], exportEpisodeYamlFiles: async () => [],
     ...overrides,
   };
   function compile(symbol) {

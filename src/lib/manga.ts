@@ -175,6 +175,10 @@ export function omayFileName(title: string, purpose: 'settings' | 'generation' =
   return `${safeBaseName(title)}-${purpose}.yaml`;
 }
 
+export function cloudGenerationFileName(title: string): string {
+  return `${safeBaseName(title)}-cloud.json`;
+}
+
 export {
   STORAGE_KEY,
   NDM_SCHEMA_NAME,

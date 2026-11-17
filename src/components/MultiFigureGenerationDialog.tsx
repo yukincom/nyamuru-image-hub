@@ -13,7 +13,8 @@ import {
 import { CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
 import { resolveConversationRoute, resolveGenerationRoute } from '../lib/modelRouting.ts';
 import { currentConversationPreferences } from '../lib/conversationPreferences.ts';
-import type { AgentWorkflowYamlFile } from '../lib/generationHandoff.ts';
+import { type AgentWorkflowYamlFile, deliverAgentWorkflowYamlFiles } from '../lib/generationHandoff.ts';
+import { downloadBrowserBlob } from '../lib/browserFiles.ts';
 import { qwenInputImage } from './generation/inputImages.ts';
 import {
   type QwenAdoption,
@@ -47,6 +48,7 @@ interface Props {
   adultContent?: boolean;
   onOpenSettings?: () => void;
   onExportAgentYaml?: () => AgentWorkflowYamlFile[];
+  onSaveAgentYaml?: (files: AgentWorkflowYamlFile[]) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -76,6 +78,7 @@ export default function MultiFigureGenerationDialog({
   adultContent = false,
   onOpenSettings,
   onExportAgentYaml,
+  onSaveAgentYaml,
   onClose,
 }: Props) {
   const [execution] = useState(currentGenerationPreferences);
@@ -360,25 +363,28 @@ export default function MultiFigureGenerationDialog({
 
       {cloud && (
         <div class="qwen-cloud-box" style={{ margin: '12px 0' }}>
-          <p>外部エージェント設定時は、OMNY / OMAY（YAML）を書き出してエージェントで生成してください。</p>
+          <p>外部エージェント設定時は、生成用JSONを書き出してエージェントで生成してください。</p>
           {onExportAgentYaml && (
             <button
               type="button"
               class="primary-button"
               onClick={() => {
-                const files = onExportAgentYaml();
-                for (const file of files) {
-                  const url = URL.createObjectURL(new Blob([file.yaml], { type: 'application/yaml;charset=utf-8' }));
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = file.fileName;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }
-                setSummaryMessage(`${files.map((f) => f.fileName).join('、')} を書き出しました`);
+                void (async () => {
+                  try {
+                    const { folderName, fileNames } = await deliverAgentWorkflowYamlFiles(
+                      onExportAgentYaml(),
+                      onSaveAgentYaml,
+                      file => downloadBrowserBlob(new Blob([file.yaml], { type: file.mimeType ?? 'application/json;charset=utf-8' }), file.fileName),
+                    );
+                    const prefix = folderName ? `作品フォルダ（${folderName}）に ` : '';
+                    setSummaryMessage(`${prefix}${fileNames.join('、')} を書き出しました（生成が終わったら JSON は削除して問題ありません）`);
+                  } catch (error) {
+                    setSummaryMessage(error instanceof Error ? error.message : '生成用JSONを書き出せませんでした');
+                  }
+                })();
               }}
             >
-              OMNY（YAML）を書き出す
+              生成用JSONを書き出す
             </button>
           )}
         </div>

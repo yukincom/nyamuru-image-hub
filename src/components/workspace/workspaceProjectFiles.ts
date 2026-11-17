@@ -9,10 +9,12 @@ import { isLanClient } from '../../lib/clientRuntime';
 import { rememberBrowserCatalog } from '../../lib/browserCatalog';
 import type { MangaDocument } from '../../types';
 import { withNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts';
-import { selectEpisodeWorkspace, saveEpisodeProject, loadEpisodeProject } from '../../lib/localBridge';
+import { selectEpisodeWorkspace, saveEpisodeProject, loadEpisodeProject, exportEpisodeYamlFiles } from '../../lib/localBridge';
 import { savedWorkspaceRoot } from '../../lib/workspacePreferences';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../../lib/projectPersistence';
 import type { SeriesCatalogPersistOptions } from '../../lib/newProjectSettings';
+import { currentGenerationPreferences } from '../../lib/generationPreferences';
+import { agentWorkflowCloudFiles } from '../../lib/generationHandoff';
 
 interface Context {
   filePickerDirectory: string;
@@ -141,6 +143,15 @@ export function createProjectFileActions({
         }
         const snapshot = await createProjectSnapshot(prepared);
         const revision = await saveEpisodeProject(workspace.token, snapshot, workspace.projectRevision ?? null);
+        let cloudWarning = '';
+        if (currentGenerationPreferences().execution === 'cloud') {
+          try {
+            const cloudFiles = agentWorkflowCloudFiles(prepared);
+            if (cloudFiles.length) await exportEpisodeYamlFiles(workspace.token, cloudFiles);
+          } catch (error) {
+            cloudWarning = error instanceof Error ? error.message : 'クラウド生成用JSONを書き出せませんでした';
+          }
+        }
         const binding = { ...workspace, episodeId: prepared.manga.meta.episode_id, projectRevision: revision };
         const newerEdits = documentRef.current !== current && documentRef.current.manga.meta.episode_id === current.manga.meta.episode_id;
         if (documentRef.current === current) {
@@ -154,7 +165,7 @@ export function createProjectFileActions({
           bindPaintDocument(previous);
           setBoundEpisodeWorkspace(binding);
         }
-        outcome=`${workspace.folderName} に保存しました${newerEdits ? '。保存中の追加編集は次回の保存で反映します' : ''}${catalogWarning ? `。シリーズ共通の同期は未完了: ${catalogWarning}` : ''}`;
+        outcome=`${workspace.folderName} に保存しました${newerEdits ? '。保存中の追加編集は次回の保存で反映します' : ''}${catalogWarning ? `。シリーズ共通の同期は未完了: ${catalogWarning}` : ''}${cloudWarning ? `。生成用JSON書き出しは未完了: ${cloudWarning}` : ''}`;
         setToast(outcome);
       });
     } catch (error) {

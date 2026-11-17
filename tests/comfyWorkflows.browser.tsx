@@ -81,7 +81,7 @@ function upload(graph: unknown, name: string) {
   input.files = files.files; input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 async function mapping(label: string, node: string, input: string, index = 1) {
-  await click(`${label}の受け渡し先を追加`);
+  await click(`+ ${label}の接続先を追加`);
   await change(`${label} ${index} ノード`, node);
   await change(`${label} ${index} 入力`, input);
 }
@@ -90,66 +90,62 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 async function run() {
   mount();
-  await wait(() => field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3 && !button('一覧を読み直す')?.disabled, '初期一覧');
+  await wait(() => field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3 && !button('一覧を更新')?.disabled, '初期一覧');
 
   // 見込み: 選択IDは保存済み端末設定から再読込できる。合格: B選択後の再mountもB、登録API書込0。範囲: 実selectと模擬Storage。
   await change('使用するワークフロー', WORKFLOW_B);
   check(loadGenerationPreferences(storage).local.workflowId === WORKFLOW_B, 'Bの選択を端末設定へ保存');
   render(null, root); await tick(); mount();
-  await wait(() => selection() === WORKFLOW_B && field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3 && !button('一覧を読み直す')?.disabled, 'Bを再表示');
+  await wait(() => selection() === WORKFLOW_B && field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3 && !button('一覧を更新')?.disabled, 'Bを再表示');
   check(selection() === WORKFLOW_B && comfyFixture.snapshot().writes === 0, '再表示後もB、選択だけでは登録を書き換えない');
-
-  // 見込み: 接続と利用可否確認は生成・登録保存を起こさない。合格: info/checkのみ、書込0件。範囲: 実buttonsと模擬API。
-  await click('接続を確認'); await wait(() => !isBusy(), '接続確認');
-  await click('利用可否を確認'); await wait(() => !isBusy(), '利用可否確認');
-  check(comfyFixture.snapshot().calls.some(call => call.action === 'info') && comfyFixture.snapshot().calls.some(call => call.action === 'check')
-    && comfyFixture.snapshot().writes === 0, '接続・利用可否確認は登録保存も生成も行わない');
 
   // 見込み: OSファイル選択の取消しはdraftを作らない。合格: cancel後はAPI/端末書込増分0、選択B不変。範囲: file cancelイベントを模擬。
   const beforeCancel = comfyFixture.snapshot(), beforeStorage = storageWrites, beforeChooser = fileChooserRequests;
-  await click('ファイルから更新');
+  const details = Array.from(root.querySelectorAll('details')).find(element => element.querySelector('summary')?.textContent === 'ワークフローの詳細設定');
+  if (!details) throw new Error('Workflow details missing');
+  if (!details.open) details.querySelector('summary')!.click(); await tick();
+  await click('JSONファイルを差し替える');
   field<HTMLInputElement>('API形式のワークフローJSON')!.dispatchEvent(new Event('cancel', { bubbles: true })); await tick();
+  await click('元に戻す');
   check(fileChooserRequests === beforeChooser + 1 && comfyFixture.snapshot().calls.length === beforeCancel.calls.length
     && comfyFixture.snapshot().writes === beforeCancel.writes && storageWrites === beforeStorage
     && selection() === WORKFLOW_B && !field('ワークフロー名'), 'ファイル取消しは書込0件・B保持');
 
   // 見込み: APIファイル読込だけでは対応を推測保存しない。合格: 空mapping draftと書込0、取消しでB維持。範囲: File読込と実draft UI。
-  await click('ファイルから追加'); upload(importGraph, 'cancelled-import.json');
+  await click('追加'); upload(importGraph, 'cancelled-import.json');
   await wait(() => Boolean(field('ワークフロー名')) && !isBusy(), '追加draft');
   check(!field('指示文 1 ノード') && comfyFixture.snapshot().writes === 0, 'ファイル読込だけでは対応付け・登録を自動確定しない');
-  await click('取消し');
+  await click('元に戻す');
   check(selection() === WORKFLOW_B && comfyFixture.snapshot().writes === 0, '登録draftの取消しで既存選択と一覧を保持');
 
   // 見込み: 明示対応だけを保存すれば原グラフと参照順が維持される。合格: 複数prompt/1画像/寸法/outputが一致、graph不変。範囲: 実UI→模擬save。
-  await click('ファイルから追加'); upload(importGraph, 'new-workflow.json');
+  await click('追加'); upload(importGraph, 'new-workflow.json');
   await wait(() => Boolean(field('ワークフロー名')) && !isBusy(), '登録draft');
   await change('ワークフロー名', '明示して登録したC', 'input');
-  await change('指示文の扱い', 'qwen');
+  await change('パイプラインの定義', 'qwen');
   await mapping('指示文', 'text', 'text'); await mapping('指示文', 'text', 'extra', 2);
-  await mapping('シード', 'sampler', 'seed'); await mapping('幅', 'size', 'width'); await mapping('高さ', 'size', 'height');
-  const referenceDetails = Array.from(root.querySelectorAll('details')).find(element => element.querySelector('summary')?.textContent?.startsWith('参照画像'));
-  if (!referenceDetails) throw new Error('Reference details missing');
-  if (!referenceDetails.open) referenceDetails.querySelector('summary')!.click(); await tick();
-  await click('参照画像の枠を追加'); await mapping('参照画像1', 'reference', 'image');
-  await change('完成画像の出力ノード', 'output'); await change('出力ノード内の画像', '1');
+  await mapping('シード', 'sampler', 'seed');
+  await change('出力サイズ', 'panel');
   await click('登録する'); await wait(() => !field('ワークフロー名') && !isBusy(), '登録完了');
   const created = comfyFixture.get(WORKFLOW_C);
   check(created.name === '明示して登録したC' && created.version === 1
     && same(created.binding.prompt, [{ node: 'text', input: 'text' }, { node: 'text', input: 'extra' }])
     && same(created.binding.images, [[{ node: 'reference', input: 'image' }]])
-    && same(created.binding.width, [{ node: 'size', input: 'width' }])
-    && same(created.binding.height, [{ node: 'size', input: 'height' }])
+    && created.binding.size_source === 'panel'
     && created.binding.fixed_size === null && created.binding.output.node === 'output' && created.binding.output.index === 1
     && created.binding.prompt_mode === 'qwen' && same(created.graph, importGraph), '明示した複数対応・参照順・寸法・出力位置を原グラフとともに保存');
   check(selection() === WORKFLOW_B && loadGenerationPreferences(storage).local.workflowId === WORKFLOW_B, '新規登録で選択Bを勝手に変更しない');
 
   // 見込み: 更新版の照合失敗は保存済み定義を壊さない。合格: 元ID/版で送信、競合後のserver不変、draft保持、取消しでC選択維持。範囲: 実file更新と模擬競合。
   await change('使用するワークフロー', WORKFLOW_C);
-  await click('ファイルから更新');
+  const detailsC = Array.from(root.querySelectorAll('details')).find(element => element.querySelector('summary')?.textContent === 'ワークフローの詳細設定');
+  if (!detailsC) throw new Error('Workflow details missing');
+  if (!detailsC.open) detailsC.querySelector('summary')!.click(); await tick();
+  await click('JSONファイルを差し替える');
   const updatedGraph = structuredClone(importGraph); updatedGraph.sampler.inputs.steps = 12;
   upload(updatedGraph, 'updated-workflow.json'); await wait(() => Boolean(field('ワークフロー名')) && !isBusy(), '更新draft');
   await change('ワークフロー名', '保存しない更新案', 'input');
-  await change('出力寸法の指定', 'fixed'); await change('固定幅', '512', 'input'); await change('固定高さ', '768', 'input');
+  await change('出力サイズ', 'atari');
   comfyFixture.advanceVersion(WORKFLOW_C);
   const beforeConflict = comfyFixture.get(WORKFLOW_C), beforeConflictWrites = comfyFixture.snapshot().writes;
   await click('変更を保存');
@@ -159,18 +155,18 @@ async function run() {
     && same(comfyFixture.get(WORKFLOW_C), beforeConflict) && comfyFixture.snapshot().writes === beforeConflictWrites
     && field<HTMLInputElement>('ワークフロー名')?.value === '保存しない更新案' && selection() === WORKFLOW_C,
   '版競合時は保存済み定義・選択を維持して更新draftを残す');
-  await click('取消し');
+  await click('元に戻す');
   check(selection() === WORKFLOW_C && loadGenerationPreferences(storage).local.workflowId === WORKFLOW_C, '競合後の取消しでもCの選択を保持');
 
   // 見込み: 確認した版だけを解除すれば他の登録を保持できる。合格: 最新版でCのみ削除、選択空、A/B不変、再表示も未選択。範囲: 実解除UIと模擬保存。
-  await click('一覧を読み直す'); await wait(() => !isBusy(), '最新一覧');
+  await click('一覧を更新'); await wait(() => !isBusy(), '最新一覧');
   const kept = [comfyFixture.get(WORKFLOW_A), comfyFixture.get(WORKFLOW_B)];
-  await click('登録解除'); await click('登録を解除する'); await wait(() => selection() === '' && !isBusy(), '解除完了');
+  await click('このワークフローを削除'); await click('削除する'); await wait(() => selection() === '' && !isBusy(), '解除完了');
   const afterDelete = comfyFixture.snapshot();
   check(afterDelete.workflows.length === 2 && same(afterDelete.workflows, kept)
     && loadGenerationPreferences(storage).local.workflowId === '', 'Cの解除だけが保存され、選択を未選択へ戻す');
   render(null, root); await tick(); mount();
-  await wait(() => selection() === '' && field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3 && !button('一覧を読み直す')?.disabled, '解除後再表示');
+  await wait(() => selection() === '' && field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3 && !button('一覧を更新')?.disabled, '解除後再表示');
   check(selection() === '' && field<HTMLSelectElement>('使用するワークフロー')?.options.length === 3, '解除後もA/Bを保持して未選択で再表示');
   check(blockedRequests === 0, '実ネットワーク・生成API呼出し0件');
 }

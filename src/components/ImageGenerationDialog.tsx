@@ -27,9 +27,9 @@ export type GenerationPoseEditorContext=Pick<ComponentProps<typeof FigureHumanPo
   onConfirmed?: (value: HumanPoseTextSelection, framing: FigureSize) => void;
 };
 
-interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; onExportAgentYaml?:()=>AgentWorkflowYamlFile[]; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File|File[],target:QwenGenerationPlan,adoption?:QwenAdoption)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
+interface Props { poseEditorContext?:GenerationPoseEditorContext; onOpenSettings?:()=>void; onExportAgentYaml?:()=>AgentWorkflowYamlFile[]; onSaveAgentYaml?:(files:AgentWorkflowYamlFile[])=>Promise<string|null>; plan:QwenGenerationPlan; adultContent?:boolean; agentRequest?:QwenAgentRequest; layers?:QwenLayerCandidate[]; loadLayer?:(id:string,correction:boolean,crop?:BBox,native?:boolean)=>Promise<string>; onClose:()=>void; onInsert:(file:File|File[],target:QwenGenerationPlan,adoption?:QwenAdoption)=>Promise<void>; onConversation?:(value:QwenGenerationConversation|null)=>void; onConversationHost?:(host:HTMLElement|null)=>void }
 
-export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,onExportAgentYaml,plan:sourcePlan,adultContent=false,agentRequest,layers=[],loadLayer,onClose,onInsert,onConversation,onConversationHost}:Props){
+export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,onExportAgentYaml,onSaveAgentYaml,plan:sourcePlan,adultContent=false,agentRequest,layers=[],loadLayer,onClose,onInsert,onConversation,onConversationHost}:Props){
   const [execution]=useState(currentGenerationPreferences);
   const cloud=execution.execution==='cloud';
   const [connection]=useState(currentLocalModelPreferences);
@@ -204,7 +204,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   }
   const { selectLayer, addFiles } = useGenerationReferences({ setLinked, setCharacterLoading, sourcePlan, setSourceErrors, threeImages, twoImagesPromptless, selectedCharacterAssetId, characterRetry, setSketchLoading, setReference, expressionRetry, operation, attempted, draft, referenceLimit, usesPoseImage, alive, setExtra, layers, loadLayer, reference, correction, plan, prompt, setPrompt, setCorrection });
   const chooseFiles = useProjectFilePicker();
-  const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ chooseFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml: onExportAgentYaml });
+  const { generate, insertImage, insertResult, importGenerated } = createGenerationActions({ chooseFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml: onExportAgentYaml, saveAgentYaml: onSaveAgentYaml });
   const getReadiness = () => generationReadiness({
     working: working.current, phase: comfyPhase || phase, attempted: Boolean(attempted.current),
     cloud, hasWorkflow: Boolean(workflow), workflowError: missingWorkflow, plan, threeImages,
@@ -319,7 +319,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   }
   return createPortal(<div class="layer-generation-backdrop" onKeyDown={keydown}>
     <section ref={dialog} class="layer-generation-dialog qwen-generation-dialog qwen-with-conversation" role="dialog" aria-modal="true" aria-labelledby="qwen-generation-title">
-      <header><div><h2 id="qwen-generation-title">生成</h2><p>{cloud?'外部エージェント（OMNY / OMAY）で生成':workflow?.name??'ComfyUIワークフロー'} · {plan.scope==='page'?'ページ全体':plan.overlay?'ページ前景':`コマ ${plan.panelId}`} · {plan.label}</p></div><button ref={close} onClick={()=>void closeDialog()}>閉じる</button></header>
+      <header><div><h2 id="qwen-generation-title">生成</h2><p>{cloud?'外部エージェント（JSON）で生成':workflow?.name??'ComfyUIワークフロー'} · {plan.scope==='page'?'ページ全体':plan.overlay?'ページ前景':`コマ ${plan.panelId}`} · {plan.label}</p></div><button ref={close} onClick={()=>void closeDialog()}>閉じる</button></header>
       <div class="qwen-conversation-layout"><div class="qwen-generation-controls">
       {!cloud&&<div class="qwen-output-size">
         {workflow?<p>ワークフロー：{workflow.name} · 版{workflow.version} · 参照画像{workflow.binding.images.length}枚
@@ -408,7 +408,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
       {threeImages&&<output class="qwen-prompt">Uniform solid {chromaKeyColor} background.</output>}
       {!twoImagesPromptless&&defaultNegative!==undefined&&<label class="qwen-prompt">ネガティブプロンプト<textarea rows={3} maxLength={12000} value={negative} disabled={busy||!canPrepareNewGeneration} onInput={e=>{if(attempted.current)prepareNewGeneration();setNegative(e.currentTarget.value);}}/></label>}
       <div class="paint-entry-actions">
-        <button class="primary-button" disabled={!readiness.ready} onClick={()=>void generate()}>{cloud?'OMNY（YAML）を書き出す':'生成'}</button>
+        <button class="primary-button" disabled={!readiness.ready} onClick={()=>void generate()}>{cloud?'生成用JSONを書き出す':'生成'}</button>
         {cloud&&<button disabled={busy} onClick={()=>void importGenerated()}>生成画像を読み込む</button>}
         {!cloud&&<><button disabled={busy} aria-pressed={historyScope==='owner'} onClick={()=>void loadHistory('owner')}>生成履歴</button>
         <button disabled={busy} aria-pressed={historyScope==='work'} onClick={()=>void loadHistory('work')}>作品の生成履歴</button></>}

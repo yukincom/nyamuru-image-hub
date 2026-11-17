@@ -18,7 +18,6 @@ import { changeCanvasDefaultFont } from '../lib/canvasText';
 const SETTINGS_TABS = [
   { id: 'page', label: 'レイアウト', icon: BookOpen },
   { id: 'drawing', label: '手描き・編集', icon: Paintbrush },
-  { id: 'generation', label: '生成ルール', icon: RefreshCw },
   { id: 'omay', label: '作画設定（YAML）', icon: FilePenLine },
   { id: 'display', label: '表示', icon: Eye },
   { id: 'ai', label: 'モデル設定', icon: Bot },
@@ -66,7 +65,7 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
     if(tabChanging.current)return;
     tabChanging.current=true;setPreparingTab(true);
     try {
-      if(prepareDocumentSettings&&['page','generation','omay','data'].includes(tab))await prepareDocumentSettings();
+      if(prepareDocumentSettings&&['page','omay','data'].includes(tab))await prepareDocumentSettings();
       setActiveTab(tab);
       focus?.querySelector<HTMLButtonElement>(`#environment-tab-${tab}`)?.focus();
       if (tab === 'data' && !generationCaches && !generationCacheBusy) void refreshGenerationCaches();
@@ -90,7 +89,7 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
       setGenerationCacheBusy(false);
     }
   };
-  const availableTabs = SETTINGS_TABS.filter(item => hasDocument || !['page','generation','omay'].includes(item.id));
+  const availableTabs = SETTINGS_TABS.filter(item => hasDocument || !['page','omay'].includes(item.id));
   const currentOwnerKind = document.manga.meta.series_id ? 'series' as const : 'one-shot' as const;
   const currentOwnerId = document.manga.meta.series_id || document.manga.meta.episode_id;
   const currentCacheOwners = generationCaches?.profiles.flatMap(profile => profile.owners)
@@ -146,6 +145,7 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
           <Field label="上下のコマ間隔" hint="mm"><input type="number" min="0" max="20" step="0.5" value={rowGapMm} onInput={(event) => onChangeRowGap(Number(event.currentTarget.value))} /></Field>
           <Field label="左右のコマ間隔" hint="mm"><input type="number" min="0" max="20" step="0.5" value={columnGapMm} onInput={(event) => onChangeColumnGap(Number(event.currentTarget.value))} /></Field>
         </div>
+        <FinishTextSettings document={document} onChange={onChangeDocument} onNotify={onNotify}/>
       </section>}
       <section class="environment-tab-panel" id="environment-panel-drawing" role="tabpanel" aria-labelledby="environment-tab-drawing" tabIndex={0} hidden={activeTab !== 'drawing'}>
         <SectionTitle title="手描き・編集" />
@@ -165,11 +165,6 @@ export default function EnvironmentSettings({ initialTab, prepareDocumentSetting
         <Field label="履歴の保持ステップ数"><input aria-label="履歴の保持ステップ数" type="number" min="1" max="1000" step="1" value={historySteps} onChange={event=>{const value=event.currentTarget.valueAsNumber;if(Number.isSafeInteger(value)&&value>=1&&value<=1000)onChangeHistorySteps?.(value);else{event.currentTarget.value=String(historySteps);onNotify('履歴の保持数は1〜1000の整数で指定してください');}}}/></Field>
         <p class="environment-settings-note">撮影・ペン・配置の操作で共通の履歴です。既定は50段階。古い履歴から消え、作品を閉じるとリセットされます。</p>
       </section>
-      {hasDocument&&<section class="environment-tab-panel" id="environment-panel-generation" role="tabpanel" aria-labelledby="environment-tab-generation" tabIndex={0} hidden={activeTab!=='generation'}>
-        <SectionTitle title="生成ルール" />
-        <ArtworkSettings section="rules" document={document} onChange={onChangeDocument} onNotify={onNotify}/>
-        <FinishTextSettings document={document} onChange={onChangeDocument} onNotify={onNotify}/>
-      </section>}
       {hasDocument&&<section class="environment-tab-panel" id="environment-panel-omay" role="tabpanel" aria-labelledby="environment-tab-omay" tabIndex={0} hidden={activeTab!=='omay'}>
         <SectionTitle title="作画設定の受け渡し（YAML）" />
         <p class="environment-settings-note">生成ルールの候補・控えをYAMLで受け渡します。データ管理にある作品の構成・セリフの書き出しとは別です。</p>

@@ -313,7 +313,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
         {panelDraftDialog.result
           ? <div class="panel-draft-result">
             <img src={panelDraftDialog.result.imageDataUrl} alt={`ページ${panelDraftDialog.plan.pageNumber} ${panelDisplayLabel(panelDraftDialog.plan.panelId)}の作画用4値ラフ`} />
-            <p>Animagine XL 3.1の生成結果を4値へ正規化し、不変artifactとして自動保存しました。OMNY本文やコマ画像は自動更新していません。</p>
+            <p>Animagine XL 3.1の生成結果を4値へ正規化し、不変artifactとして自動保存しました。構成YAMLやコマ画像は自動更新していません。</p>
             <dl class="panel-draft-provenance">
               <div><dt>Version</dt><dd>{panelDraftDialog.result.attemptNumber}</dd></div>
               <div><dt>Job</dt><dd>{panelDraftDialog.result.jobId}</dd></div>
@@ -328,7 +328,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
             </div>
           </div>
           : <>
-            <p>選択中のコマだけを作画用ラフとして生成します。押すたびに新しいattemptを明示作成し、入力OMNY・plan・workflow・生成PNGを自動保存します。</p>
+            <p>選択中のコマだけを作画用ラフとして生成します。押すたびに新しいattemptを明示作成し、入力YAML・plan・workflow・生成PNGを自動保存します。</p>
             <dl class="panel-draft-settings">
               <div><dt>プロファイル</dt><dd>{panelDraftDialog.plan.profile}</dd></div>
               <div><dt>モデル</dt><dd>{panelDraftDialog.plan.checkpoint}</dd></div>

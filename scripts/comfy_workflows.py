@@ -59,10 +59,10 @@ class WorkflowStore:
     def _read(directory, identifier):
         raw, _ = read_regular_at(directory, f'{identifier}.json', MAX_JSON)
         try:
-            value = validate_definition(json.loads(raw))
+            value = json.loads(raw)
         except (ValueError, UnicodeDecodeError) as error:
             raise ValueError(f'保存したワークフロー{identifier}を読み取れません: {error}') from error
-        if value.get('id') != identifier or 'version' not in value:
+        if not isinstance(value, dict) or value.get('id') != identifier or 'version' not in value:
             raise ValueError('保存したワークフローのIDまたは版が一致しません')
         return value
 
@@ -182,7 +182,7 @@ def install_qwen_defaults(store):
         try:
             current_ph3 = store.get(P_H3_TWO_IMAGE_ID)
             store.save({**ph3_def, 'name': current_ph3['name'], 'id': current_ph3['id'], 'expected_version': current_ph3['version']})
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             store.save(ph3_def, initial_id=P_H3_TWO_IMAGE_ID)
         with store._lock() as directory:
             fd = os.open(ph3_marker, os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600, dir_fd=directory)
@@ -193,7 +193,7 @@ def install_qwen_defaults(store):
     if installed:
         try:
             current = store.get(QWEN_FIGURE_ID)
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError):
             return
         # Update only the exact shipped graph; keep user edits, renames and deleted presets.
         previous = {key: current[key] for key in ('graph', 'binding')}
