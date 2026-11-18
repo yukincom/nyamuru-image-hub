@@ -1,5 +1,5 @@
 import type { BBox, Bubble, MangaDocument, Panel, PanelShape } from '../types.ts';
-import { compileArtworkRules } from './artworkRules.ts';
+import { compileArtworkRules, getWorkNegativePrompt } from './artworkRules.ts';
 import { toOmnyCatalogDocument } from './catalogModel.ts';
 import { currentGenerationPreferences } from './generationPreferences.ts';
 import { cloudGenerationFileName, omayFileName, omnyFileName, toOmayYaml, toSeparatedMangaYaml } from './manga.ts';
@@ -152,6 +152,8 @@ export function buildCloudGenerationSpec(source: MangaDocument, options?: CloudR
     })),
   }));
 
+  const workNegativePrompt = getWorkNegativePrompt(source.manga).trim();
+
   return {
     format: 'nyamuru-cloud-generation-v1',
     render_options: {
@@ -171,6 +173,7 @@ export function buildCloudGenerationSpec(source: MangaDocument, options?: CloudR
       situation: manga.setting.situation,
       ...(manga.series_setting?.situation ? { series_situation: manga.series_setting.situation } : {}),
     },
+    ...(workNegativePrompt ? { negative_prompt: workNegativePrompt } : {}),
     ...(manga.artwork_settings ? { artwork_rules: compileArtworkRules(manga.artwork_settings, 'integrated') } : {}),
     characters,
     pages,

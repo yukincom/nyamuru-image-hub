@@ -1,7 +1,7 @@
 import type { ArtworkMode, ArtworkRuleGroup, ArtworkSettingsData, Manga } from '../types.ts';
 
 export type ArtworkTarget = 'integrated' | 'character' | 'handwritten';
-export interface ArtworkSource { style_notes: string[]; layout_spec: string }
+export interface ArtworkSource { style_notes: string[]; layout_spec: string; negative_prompt?: string }
 
 const TONE = '[style] 作品の出力形式はOMNYの meta.format に従う。カラー漫画は線画＋ベタ塗り（必要に応じてグラデーション）、モノクロ漫画は白黒線画＋ベタ・スクリーントーン、グレースケール漫画は灰色階調で描く';
 // 共通へ自動移行するのは既知の本文だけ。独自の追記を見出しだけで共通扱いしない。
@@ -65,7 +65,7 @@ export function parseArtworkSettings(value: unknown): ArtworkSettingsData {
     ids.add(group.id);
   }
   for (const part of data.fragments) {
-    if (!part || !ids.has(part.groupId) || !['style', 'layout'].includes(part.kind) || typeof part.text !== 'string') throw new Error('作画ルールの本文が不正です');
+    if (!part || !ids.has(part.groupId) || !['style', 'layout', 'negative'].includes(part.kind) || typeof part.text !== 'string') throw new Error('作画ルールの本文が不正です');
   }
   return structuredClone(data);
 }
@@ -135,9 +135,11 @@ export function compileArtworkRules(settings: ArtworkSettingsData, target: Artwo
   }
   const active = new Set(settings.groups.filter(group => group.enabled && (group.scope === 'common' || target === 'integrated')).map(group => group.id));
   const parts = settings.fragments.filter(part => active.has(part.groupId));
+  const negativePrompt = parts.filter(part => part.kind === 'negative').map(part => part.text.trim()).filter(Boolean).join(', ');
   return {
     style_notes: parts.filter(part => part.kind === 'style').map(part => part.text),
     layout_spec: parts.filter(part => part.kind === 'layout').reduce((text, part) => text + (text && !text.endsWith('\n') && !part.text.startsWith('\n') ? '\n\n' : '') + part.text, ''),
+    ...(negativePrompt ? { negative_prompt: negativePrompt } : {}),
   };
 }
 
@@ -150,21 +152,37 @@ export function applyArtworkSettings(manga: Manga, settings: ArtworkSettingsData
 
 const WORK_STYLE_GROUP = 'work-style';
 
-/** 作品情報も既存の作画設定を編集し、生成用の別保存先は作らない。 */
-export function getWorkStylePrompt(manga: Manga): string {
+function getWorkFragment(manga: Manga, kind: 'style' | 'negative'): string {
   return getArtworkSettings(manga).fragments
-    .filter(part => part.groupId === WORK_STYLE_GROUP && part.kind === 'style')
+    .filter(part => part.groupId === WORK_STYLE_GROUP && part.kind === kind)
     .map(part => part.text).join('\n\n');
 }
 
-export function setWorkStylePrompt(manga: Manga, prompt: string): void {
+function setWorkFragment(manga: Manga, kind: 'style' | 'negative', prompt: string): void {
   const settings = getArtworkSettings(manga);
   const group = settings.groups.find(group => group.id === WORK_STYLE_GROUP);
   if (group) Object.assign(group, { scope: 'common', enabled: true });
   else settings.groups.push({ id: WORK_STYLE_GROUP, label: '作品の画風', scope: 'common', enabled: true });
-  settings.fragments = settings.fragments.filter(part => part.groupId !== WORK_STYLE_GROUP || part.kind !== 'style');
-  if (prompt) settings.fragments.push({ groupId: WORK_STYLE_GROUP, kind: 'style', text: prompt });
+  settings.fragments = settings.fragments.filter(part => part.groupId !== WORK_STYLE_GROUP || part.kind !== kind);
+  if (prompt) settings.fragments.push({ groupId: WORK_STYLE_GROUP, kind, text: prompt });
   applyArtworkSettings(manga, settings);
+}
+
+/** 作品情報も既存の作画設定を編集し、生成用の別保存先は作らない。 */
+export function getWorkStylePrompt(manga: Manga): string {
+  return getWorkFragment(manga, 'style');
+}
+
+export function setWorkStylePrompt(manga: Manga, prompt: string): void {
+  setWorkFragment(manga, 'style', prompt);
+}
+
+export function getWorkNegativePrompt(manga: Manga): string {
+  return getWorkFragment(manga, 'negative');
+}
+
+export function setWorkNegativePrompt(manga: Manga, prompt: string): void {
+  setWorkFragment(manga, 'negative', prompt);
 }
 
 /** 読み込みは追加のみ。同じ原本は重複追加も再ONもしない。 */

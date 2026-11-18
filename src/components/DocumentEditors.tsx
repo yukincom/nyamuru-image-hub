@@ -2,12 +2,11 @@ import { type BaseProps, mutateDocument, type MaterialPanelLinkMode, createMater
 import type { MangaDocument, MaterialScope } from '../types';
 import { EditorShell } from './document/EditorShell.tsx';
 import { SectionTitle, Field } from './Fields';
-import { getWorkStylePrompt, setWorkStylePrompt } from '../lib/artworkRules.ts';
+import { getWorkNegativePrompt, getWorkStylePrompt, setWorkNegativePrompt, setWorkStylePrompt } from '../lib/artworkRules.ts';
 import { Plus, Building2, Check, Copy, Trash2, Save, ArrowLeft, Box } from 'lucide-preact';
 import { renameMaterial } from '../lib/catalogModel.ts';
 import BackgroundModelPicker from './BackgroundModelPicker';
 import { panelDisplayLabel } from '../lib/displayLabels.ts';
-import { cloudGenerationFileName } from '../lib/manga.ts';
 
 interface MetaEditorProps extends BaseProps {
   yamlDirectory?: string;
@@ -16,10 +15,9 @@ interface MetaEditorProps extends BaseProps {
   projectBusy?: boolean;
 }
 
-export function MetaEditor({ document, onChange, yamlDirectory, onSaveProject, onNotify, projectBusy = false }: MetaEditorProps) {
+export function MetaEditor({ document, onChange }: MetaEditorProps) {
   const { manga } = document;
   const update = (recipe: (draft: MangaDocument) => void) => mutateDocument(document, onChange, recipe);
-  const cloudJsonPath = yamlDirectory ? `${yamlDirectory}/${cloudGenerationFileName(manga.meta.title)}` : '';
 
   return <EditorShell eyebrow="DOCUMENT" title="作品情報" description="シリーズ名やエピソードタイトルなど、この作品の基本情報を管理します。">
     <section class="content-card">
@@ -42,26 +40,11 @@ export function MetaEditor({ document, onChange, yamlDirectory, onSaveProject, o
           setWorkStylePrompt(draft.manga, event.currentTarget.value);
         })} />
       </Field>
-    </section>
-    <section class="content-card">
-      <SectionTitle title="生成用JSON（外部エージェント・クラウドAPI向け）" />
-      {yamlDirectory ? <div class="form-grid-wide">
-        <p class="environment-settings-note">外部エージェント設定時の保存、または生成画面の「生成用JSONを書き出す」で作品フォルダ直下へ出力されます。生成後は削除して問題ありません。</p>
-        <Field label="クラウド生成用JSON" wide>
-          <input value={cloudJsonPath} readOnly />
-        </Field>
-        <div>
-          <button type="button" class="secondary-button" onClick={() => {
-            void navigator.clipboard?.writeText(cloudJsonPath).then(
-              () => onNotify?.('生成用JSONの場所をコピーしました'),
-              () => onNotify?.('クリップボードへコピーできませんでした'),
-            );
-          }}><Copy size={15} />場所をコピー</button>
-        </div>
-      </div> : <div>
-        <p class="environment-settings-note">生成用JSON：未保存（作品フォルダが未選択です）</p>
-        {onSaveProject && <button type="button" class="secondary-button" disabled={projectBusy} onClick={onSaveProject}><Save size={15} />保存してフォルダを選択</button>}
-      </div>}
+      <Field label="ネガティブプロンプト" hint="画像生成時に避けたい要素" wide>
+        <textarea rows={4} value={getWorkNegativePrompt(manga)} onInput={(event) => update((draft) => {
+          setWorkNegativePrompt(draft.manga, event.currentTarget.value);
+        })} />
+      </Field>
     </section>
   </EditorShell>;
 }

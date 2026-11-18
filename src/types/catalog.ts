@@ -154,7 +154,7 @@ export interface ArtworkSettingsData {
   version: 1;
   mode?: ArtworkMode;
   groups: ArtworkRuleGroup[];
-  fragments: { groupId: string; kind: 'style' | 'layout'; text: string }[];
+  fragments: { groupId: string; kind: 'style' | 'layout' | 'negative'; text: string }[];
 }
 
 export interface Manga {
