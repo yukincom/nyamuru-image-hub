@@ -45,6 +45,7 @@ function loadComponent(file, globals = {}) {
         return [state[index], next => { state[index] = typeof next === 'function' ? next(state[index]) : next; }];
       },
       useRef: initial => {const index=cursor++;return state[index]??=( {current:initial} );},
+      useEffect: () => {},
     },
     '../lib/manga': manga,
     '../lib/paintWorkspace': { usePaintWorkspace: () => null },
@@ -217,7 +218,7 @@ test('作品情報は基本情報と画風を表示し、編集後も内部形�
   let changed;
   const tree = component.render({ document, onChange: value => { changed = value; } }, 'MetaEditor');
   const labels = nodes(tree).filter(node => node.type === 'Field').map(node => node.props.label);
-  assert.deepEqual(labels, ['作品タイトル（シリーズ名）', 'サブタイトル', '話数', '作者名', 'ページ数', '画風プロンプト']);
+  assert.deepEqual(labels, ['作品タイトル（シリーズ名）', 'サブタイトル', '話数', '作者名', 'ページ数', '画風プロンプト', 'ネガティブプロンプト']);
   input(field(tree, 'サブタイトル')).props.onInput({ currentTarget: { value: '変更したタイトル' } });
   const expected = structuredClone(before);
   expected.manga.meta.title = '変更したタイトル';
@@ -382,7 +383,7 @@ test('表示・モデルの端末設定は作品自体を書き換えない', ()
   assert.deepEqual(calls, [['editGuide', false], ['guides', false], ['spread', true]]);
   find(panel(tree, 'ai'), node => node.props?.name === 'generation-execution' && node.props.value === 'agent').props.onChange({ currentTarget: { checked: true } });
   tree = component.render(props);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 4);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 7);
   assert.equal(component.writes.length, 1);
   assert.equal(component.writes[0][0], generation.GENERATION_PREFERENCES_STORAGE_KEY);
   assert.equal(JSON.parse(component.writes[0][1]).execution, 'cloud');
@@ -431,7 +432,7 @@ test('用途別の設定は外部エージェントを保存・復元し、会�
   assert.deepEqual(find(ai(), node => node.type === 'AgentSettings').props.profile, props.agentProfile);
   choose('agent');
   assert.equal(find(ai(), node => node.props?.['aria-label'] === '背景を含める').props.checked, true);
-  assert.equal(find(ai(), node => node.props?.['aria-label'] === '吹き出しを含める').props.checked, true);
+  assert.equal(find(ai(), node => node.props?.['aria-label'] === 'フキダシを含める').props.checked, true);
   assert.equal(find(ai(), node => node.props?.['aria-label'] === '画像参照を使う').props.checked, true);
   assert.equal(nodes(ai()).some(node => node.props?.['aria-label'] === 'ローカルモデル設定'), false);
   assert.equal(nodes(ai()).some(node => node.props?.['aria-label'] === '言語モデル設定'), false);

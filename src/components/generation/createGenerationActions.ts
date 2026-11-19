@@ -70,6 +70,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     if(targetError)throw new Error(targetError);
     const route=resolveGenerationRoute(execution,connection,adultContent);
     if(route.kind==='unavailable')throw new Error(route.message);
+    if(route.kind==='cloud-api')throw new Error('クラウドAPIはページ一括生成に対応しています。にゃむるちゃんから生成してください');
     const requiresLlm=route.kind==='local'&&workflow?.binding.prompt_mode==='qwen'&&!plan.contentKind;
     const translationRoute=requiresLlm?resolveConversationRoute(currentConversationPreferences(),connection,execution.cloud,adultContent):undefined;
     if(translationRoute?.kind==='unavailable')throw new Error(translationRoute.message);

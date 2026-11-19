@@ -5,6 +5,9 @@ import {runInNewContext} from 'node:vm';
 import * as jsxRuntime from 'preact/jsx-runtime';
 import ts from 'typescript';
 import * as preferences from '../src/lib/agentPreferences.ts';
+import * as generationPreferences from '../src/lib/generationPreferences.ts';
+import * as localModelPreferences from '../src/lib/localModelPreferences.ts';
+import * as modelRouting from '../src/lib/modelRouting.ts';
 import * as voiceCommands from '../src/lib/voiceCommands.ts';
 import * as agentSession from '../src/lib/agentSession.ts';
 
@@ -20,7 +23,7 @@ function component(path,imports={}){
   const hooks={useRef,useState:initial=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;
     return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}]},
     useEffect:(run,deps)=>{const i=cursor++,previous=slots[i];if(!previous||deps.some((v,j)=>v!==previous.deps[j])){slots[i]={deps};effects.push(()=>{previous?.cleanup?.();slots[i].cleanup=run()})}}};
-  const modules={'preact/compat':{createPortal:tree=>tree},'preact/jsx-runtime':jsxRuntime,'preact/hooks':hooks,'../lib/agentPreferences':preferences,'../lib/voiceCommands':voiceCommands,'../lib/agentSession':agentSession,
+  const modules={'preact/compat':{createPortal:tree=>tree},'preact/jsx-runtime':jsxRuntime,'preact/hooks':hooks,'../lib/agentPreferences':preferences,'../lib/generationPreferences':generationPreferences,'../lib/localModelPreferences':localModelPreferences,'../lib/modelRouting':modelRouting,'../lib/voiceCommands':voiceCommands,'../lib/agentSession':agentSession,
     '../lib/localBridge':{},'../lib/agentChat':{},'./AgentAvatar':{__esModule:true,default:'AgentAvatar'},'./Fields':{Field:'Field',SectionTitle:'SectionTitle'},
     'lucide-preact':new Proxy({},{get:(_,name)=>String(name)}),...imports};
   const source=readFileSync(new URL('../'+path,import.meta.url),'utf8');

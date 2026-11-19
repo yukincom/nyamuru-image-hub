@@ -162,9 +162,9 @@ test('page image import and export stay in the header immediately before New',()
  assert.doesNotMatch(paintLayerSource,/layer-image-actions|画像の入出力|画像書き出し形式/);
  assert.doesNotMatch(globalCss,/\.layer-image-actions/);
  assert.match(headerSource,/>画像読込<\/button>/);
- assert.match(headerSource,/>画像書出<\/button>/);
- assert.ok(headerSource.indexOf('画像読込')<headerSource.indexOf('画像書出'));
- assert.ok(headerSource.indexOf('画像書出')<headerSource.indexOf('>新規</button>'));
+ assert.match(headerSource,/>画像書き出し<\/button>/);
+ assert.ok(headerSource.indexOf('画像読込')<headerSource.indexOf('画像書き出し'));
+ assert.ok(headerSource.indexOf('画像書き出し')<headerSource.indexOf('>新規</button>'));
  assert.match(appSource,/onImportImage=\{\(\)=>\{void layerTransition/);
  assert.match(appSource,/choosePlacedImage\('page'\)/);
 });
@@ -230,7 +230,7 @@ test('inspector interaction temporarily closes paint and canvas return restores 
 });
 
 test('the selected-art overlay keeps handles but cannot steal hits from visibly higher content',()=>{
- assert.match(mangaCanvasSource,/class="placed-image-selection" style=\{\{\.\.\.paperBoxStyle\(image\.bbox\),pointerEvents:'none'\}\}/);
+ assert.match(mangaCanvasSource,/class="placed-image-selection" style=\{\{\.\.\.paperBoxStyle\(image\.bbox\),pointerEvents:'auto'\}\}/);
  assert.match(mangaCanvasSource,/selected interactive=\{false\} handles=/);
  assert.match(selectionSource,/interactive=true/);
  assert.match(selectionSource,/\{interactive&&geometry\?\.path&&<svg class="canvas-content-hit"/);

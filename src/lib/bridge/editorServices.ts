@@ -101,3 +101,68 @@ export async function requestAgentReply(body:AgentRequest):Promise<AgentReply>{
     (value.message.tool_calls!==undefined&&(!Array.isArray(value.message.tool_calls)||value.message.tool_calls.some(c=>!c||c.type!=='function'||typeof c.id!=='string'||typeof c.function?.name!=='string'||typeof c.function?.arguments!=='string'))))throw Error('エージェントの応答形式を確認できません');
   return value;
 }
+
+export async function getGeminiApiKeyStatus(): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
+  const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/status', {}, 15_000)) as Record<string, unknown>;
+  const models = Array.isArray(value.models)
+    ? value.models
+        .filter((entry): entry is { id: string; label: string } => Boolean(entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>).id === 'string'))
+        .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }))
+    : [];
+  return {
+    configured: value.configured === true,
+    source: value.source === 'env' || value.source === 'local' ? value.source : 'none',
+    models,
+  };
+}
+
+export async function saveGeminiApiKey(apiKey: string): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
+  const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/key', { api_key: apiKey }, 15_000)) as Record<string, unknown>;
+  const models = Array.isArray(value.models)
+    ? value.models
+        .filter((entry): entry is { id: string; label: string } => Boolean(entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>).id === 'string'))
+        .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }))
+    : [];
+  return {
+    configured: value.configured === true,
+    source: value.source === 'env' || value.source === 'local' ? value.source : 'none',
+    models,
+  };
+}
+
+export async function listGeminiImageModels(): Promise<Array<{ id: string; label: string }>> {
+  const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/models', {}, 15_000)) as Record<string, unknown>;
+  const list = Array.isArray(value.models) ? value.models : [];
+  return list
+    .filter((entry): entry is { id: string; label: string } => Boolean(entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>).id === 'string'))
+    .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }));
+}
+
+export async function generateCloudPageWithGemini(params: {
+  workspaceToken?: string;
+  seriesId?: string;
+  pageNumber: number;
+  model: string;
+  cloudSpec: Record<string, unknown>;
+}): Promise<{ file: File; model: string; usedReferences: string[] }> {
+  const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/generate-page', {
+    ...(params.workspaceToken ? { workspace_token: params.workspaceToken } : {}),
+    ...(params.seriesId ? { series_id: params.seriesId } : {}),
+    page_number: params.pageNumber,
+    model: params.model,
+    cloud_spec: params.cloudSpec,
+  }, 190_000)) as Record<string, unknown>;
+  const b64 = typeof value.image_base64 === 'string' ? value.image_base64 : '';
+  if (!b64) throw new Error('クラウドAPIから画像を受け取れませんでした');
+  const mimeType = typeof value.mime_type === 'string' && value.mime_type ? value.mime_type : 'image/png';
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const ext = mimeType.includes('jpeg') ? 'jpg' : mimeType.includes('webp') ? 'webp' : 'png';
+  const file = new File([bytes], `cloud_page_${String(params.pageNumber).padStart(2, '0')}.${ext}`, { type: mimeType });
+  return {
+    file,
+    model: typeof value.model === 'string' ? value.model : params.model,
+    usedReferences: Array.isArray(value.used_references) ? value.used_references.map(String) : [],
+  };
+}

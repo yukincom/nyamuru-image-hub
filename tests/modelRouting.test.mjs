@@ -59,7 +59,7 @@ test('each purpose resolves independently while both cloud uses enforce the comm
   assert.equal(resolveGenerationRoute(g,local,true).kind,'local');
   g.execution='cloud';g.cloud.method='api';g.cloud.adultTermsConfirmed=false;
   assert.equal(resolveGenerationRoute(g,local,true).reason,'adult-terms-required');
-  assert.equal(resolveGenerationRoute(g,local,false).reason,'api-unavailable');
+  assert.deepEqual(resolveGenerationRoute(g,local,false),{kind:'cloud-api',model:'gemini-3.1-flash-image'});
   assert.deepEqual(resolveConversationRoute(c,local,g.cloud,true),{kind:'local',llmAlias:local.llmAlias});
   g.cloud.method='agent';g.cloud.adultTermsConfirmed=true;g.cloud.agent='other';g.cloud.agentName='External';
   assert.deepEqual(resolveGenerationRoute(g,local,true),{kind:'external-agent',agent:'other',label:'External'});
@@ -97,7 +97,7 @@ test('generation rejects unsupported image or translation routes before starting
       const actions=createGenerationActions({operation:task=>task(),attempted:{current:null},targetError:'',
         execution,connection,adultContent:false,workflow:{binding:{prompt_mode:'qwen'}},plan:{},
         ensureComfy:()=>assert.fail('must not start ComfyUI')});
-      await assert.rejects(actions.generate(),/APIは未接続/);
+      await assert.rejects(actions.generate(), purpose === 'image' ? /クラウドAPI/ : /APIは未接続/);
     }
   } finally {globalThis.window=previousWindow;}
 });

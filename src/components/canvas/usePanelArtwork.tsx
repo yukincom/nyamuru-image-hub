@@ -83,7 +83,6 @@ export function usePanelArtwork(options: CanvasProps, state: CanvasSurface, elem
         else if (!isLocked) nudgeElement(event, bounds, selection, image.bbox);
       }}>
       <PlacedImageView assets={imageAssets} asset={asset} image={image} />
-      {figure&&<FigureName name={figureDisplayLabel(figure,selection.index)} boxW={image.bbox.w} boxH={image.bbox.h} fitEpoch={fitEpoch} />}
       <CanvasContentSelection frame={image.bbox} revision={image} interactive={!isLocked&&!hiddenOriginal} selected={selected&&(panelIndex===null&&selection.scope!=='page'||selectedElements.length>1)&&!isLocked&&!hiddenOriginal} handles={visible=>renderHandles(panelIndex,selection,image.bbox,visible)}/>
     </button>;
   };

@@ -62,10 +62,10 @@ test('export names are portable and the header dialog owns page range and image 
   const actions=readFileSync(new URL('../src/components/workspace/workspaceImageExport.ts',import.meta.url),'utf8');
   assert.match(actions,/captureQwenCompositionCanvas\([^;]+includeGenerated:true/);
   assert.match(actions,/pageExportIndices\(current\.manga\.pages\.length,\{\.\.\.choice,current:activePageRef\.current\+1\}\)/);
-  assert.match(app,/複数ページはZIPにまとめます/);
+  assert.match(actions,/ZIPにまとめています/);
   assert.match(app,/開始ページ/);assert.match(app,/終了ページ/);assert.match(app,/全ページ/);
   assert.match(app,/<select aria-label="書き出し形式"/);
-  assert.match(header,/>画像書出<\/button>/);
+  assert.match(header,/>画像書き出し<\/button>/);
   assert.doesNotMatch(editor,/exportWholePage|onExportPage|exportImage/);
   assert.doesNotMatch(palette,/画像書き出し形式|layer-image-actions/);
 });

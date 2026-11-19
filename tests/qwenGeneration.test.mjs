@@ -314,7 +314,7 @@ test('Qwen preparation persists English before a hash-bound supervisor submissio
   };
   const prepared=await prepareQwenJob(id,{prompt:'日本語の元入力'});
   await submitQwenJob(prepared,'prepared-session');
-  assert.deepEqual(calls,[['/api/qwen-generation/prepare',{workflow_id:'132c3a87-8f0a-4591-b2e0-4a28a7b7b002',comfyui_url:'http://127.0.0.1:8188',prompt:'日本語の元入力',job_id:id}],
+  assert.deepEqual(calls,[['/api/qwen-generation/prepare',{workflow_id:'2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01',comfyui_url:'http://127.0.0.1:8188',prompt:'日本語の元入力',job_id:id}],
     ['/api/image-generation/submit',{lease_token:'prepared-session',payload:{job_id:id,request_sha256:'a'.repeat(64)}}]]);
 });
 

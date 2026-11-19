@@ -7,6 +7,11 @@ import { type CanvasTextTarget, canvasTextEditable, editCanvasText, canvasTextAt
 import type { MutableRef } from './workspaceTypes';
 import type { MangaDocument } from '../../types';
 import type { QwenAgentRequest } from '../../lib/qwenGeneration';
+import { currentGenerationPreferences } from '../../lib/generationPreferences';
+import { currentLocalModelPreferences } from '../../lib/localModelPreferences';
+import { resolveGenerationRoute } from '../../lib/modelRouting';
+import { isPropPlacement } from '../../lib/catalogModel';
+import type { MultiFigureTarget } from '../../lib/canvasSelection';
 
 interface Context {
   historyAvailable: () => boolean;
@@ -23,6 +28,8 @@ interface Context {
   changeSpreadView: (next: boolean) => void;
   latestVoiceRevision: MutableRef<(withHistory?: boolean) => string>;
   requestOwnerGeneration: (key?: string, overlay?: boolean, panelIndex?: number, pageIndex?: number, agentRequest?: QwenAgentRequest) => Promise<boolean | undefined>;
+  requestMultiFigureGeneration?: (targets: MultiFigureTarget[], pageIndex?: number) => Promise<void>;
+  generatePageWithCloudApi?: (pageIndex?: number, isCurrent?: () => boolean) => Promise<{ pageNumber: number; placed: number; skippedLocked: number }>;
   selectPage: (index: number, panelIndex?: number) => Promise<void>;
   mutate: (recipe: (draft: MangaDocument) => void) => void;
 }
@@ -36,7 +43,7 @@ export function createWorkspaceVoiceActions({
 }: WorkspaceState, {
   historyAvailable, voiceRevision, setDocument, openBubbleMaterials, saveProject, undo, redo,
   togglePanelSync, toggleInnerFrameSnap, togglePanelGapSnap, changeShowGuides, changeSpreadView,
-  latestVoiceRevision, requestOwnerGeneration, selectPage, mutate,
+  latestVoiceRevision, requestOwnerGeneration, requestMultiFigureGeneration, generatePageWithCloudApi, selectPage, mutate,
 }: Context) {
   const agentBlocked=()=>!hasDocument?'原稿を開いてください':showNewDialog||!historyAvailable()?'現在の処理を終えてください':
     paintSessionRef.current?'配置へ戻ってから操作してください':editingText||imageGesture.current.active?'現在の文字入力やドラッグを終えてください':null;
@@ -74,6 +81,29 @@ export function createWorkspaceVoiceActions({
     }
     if(command.op==='generate_selected'){
       if(paintSessionRef.current)throw new Error('配置へ戻ってから操作してください');
+      const route=resolveGenerationRoute(currentGenerationPreferences(),currentLocalModelPreferences(),Boolean(documentRef.current.manga.series_setting?.adult_content));
+      if(route.kind==='unavailable')throw new Error(route.message);
+      if(route.kind==='cloud-api'&&generatePageWithCloudApi){
+        if(environmentOpen)closeEnvironmentSettings();
+        const result=await generatePageWithCloudApi(activePage,isCurrent);
+        return `${result.pageNumber}ページ目をクラウドAPIで生成し、${result.placed}件を自動配置しました`;
+      }
+      if(route.kind==='local'&&(command.kind==='page'||(command.kind==='selected'&&(!selectedElement||selectedElement.type==='panel_frame'||selectedElement.type==='image')))&&requestMultiFigureGeneration){
+        const page=documentRef.current.manga.pages[activePage];
+        if(!page)throw new Error('表示中のページが見つかりません');
+        const targets:MultiFigureTarget[]=[];
+        page.panels.forEach((panel,panelIndex)=>{
+          (panel.figures??[]).forEach((figure,figureIndex)=>{
+            if(!isPropPlacement(figure))targets.push({panelIndex,figureIndex,overlay:false,figure,ownerKey:`figure-${figureIndex}`});
+          });
+        });
+        if(!targets.length)throw new Error('このページに生成できる人物がありません');
+        await connectAgentImageGeneration(isCurrent);
+        if(!isCurrent())throw new Error('会話を終了しました');
+        if(environmentOpen)closeEnvironmentSettings();
+        await requestMultiFigureGeneration(targets,activePage);
+        return `${page.page}ページ目の人物${targets.length}人分のローカル複数生成画面を開きました`;
+      }
       const target=resolveVoiceGenerationTarget(documentRef.current,activePage,activePanel,selectedElement,command);
       const captured=documentRef.current,revision=latestVoiceRevision.current();
       await connectAgentImageGeneration(isCurrent);

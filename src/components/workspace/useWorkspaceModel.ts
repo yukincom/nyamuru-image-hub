@@ -238,7 +238,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     setDocument,
   });
   const {
-    choosePlacedImage, importPlacedImage, importSplitPanelCharacters, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer,
+    choosePlacedImage, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer,
   } = createImagePlacementActions(workspace, {
     selectedPaintOwner, setDocument, openPaint, makePaintScene,
   });
@@ -257,7 +257,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
   const { applyVoiceCommand, inspectAgent, applyAgentBubbleEdit } = createWorkspaceVoiceActions(workspace, {
     historyAvailable, voiceRevision, setDocument, openBubbleMaterials, saveProject, undo, redo,
     togglePanelSync, toggleInnerFrameSnap, togglePanelGapSnap, changeShowGuides, changeSpreadView,
-    latestVoiceRevision, requestOwnerGeneration, selectPage, mutate,
+    latestVoiceRevision, requestOwnerGeneration, requestMultiFigureGeneration, generatePageWithCloudApi, selectPage, mutate,
   });
   const activeLayoutItem = newLayoutItems[newLayoutActiveIndex] ?? null;
   const newSeriesReferenceRows = newSeriesReferenceCandidates.length ? newSeriesReferenceCandidates : newSeriesReferences;
@@ -278,7 +278,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement, selectCanvasElements,
     reorderOwnerLayers, startBubbleEdit, artworkGuideVisible, toggleArtworkGuide, prepareQwen,
     applyPaint, autoPaintBoundary, guardDuringPaint, layerTransition, choosePlacedImage,
-    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, importSplitPanelCharacters, chooseImageExportFolder,
+    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, chooseImageExportFolder,
     exportPageRange, voiceRevision, applyVoiceCommand, inspectAgent, applyAgentBubbleEdit,
     applyBubbleMaterial, changeTab, selectPage, addPage, duplicatePage, deletePage, reorderPage, page,
     spreadPartnerIndex, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt,

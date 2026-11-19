@@ -22,7 +22,8 @@ test('confirmed people have neutral frames with or without artwork, while attent
  assert.equal(presentation({...confirmed,refId:undefined}),'is-unassigned');
  assert.equal(presentation({...confirmed,name:`　${DETECTED_FIGURE_NAME}　`}),'is-unassigned');
  for(const prop of [{kind:'prop'},{object:true}])assert.equal(presentation({...confirmed,...prop,refId:undefined,analogImport:{analysisReview:'error'}}),'is-object');
- assert.equal((canvas.match(/figureCanvasClass\(figure\)/g)??[]).length,3,'panel / foreground / artwork share the same display status');
+ assert.equal((canvas.match(/figureCanvasClass\(figure\)/g)??[]).length,2,'shared figure guide and artwork share the same display status');
+ assert.match(canvas,/renderFigureGuide\(figure,\s*figureIndex,\s*box,\s*null,\s*paperBoxStyle\)/);
  assert.match(css,/\.placed-image\.is-unassigned::after/);
  assert.match(css,/\.placed-image\.is-analysis-review::after/);
  assert.doesNotMatch(source,/artwork|userEdited|\.draft/);

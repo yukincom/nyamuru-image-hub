@@ -158,6 +158,7 @@ class HermesQwenTests(unittest.TestCase):
     # 合格: 選択前は候補5path/selection_required、選択3後はoutputのみ。範囲: 実保存/選択、PNGは固定。
     def test_completed_candidates_require_selection_before_returning_output_path(self):
         body = self.request(self.root)
+        body['candidate_count'] = 5
         prepared = self.service.prepare(body, supplied_english)
         job_id = prepared['job_id']
         for index in range(1, 6):

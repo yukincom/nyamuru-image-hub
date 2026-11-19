@@ -921,7 +921,7 @@ test('エピソード保存先を選び、管理対象の4フォルダだけを�
     });
     assert.deepEqual(await prepareEpisodeWorkspace('workspace-1'), ['name_data', 'draft_data', 'manuscript_data', 'export_data']);
     assert.deepEqual(requests, [
-      { url: 'http://127.0.0.1:8787/api/episode-workspace/select', body: { default_directory: '/作品' } },
+      { url: 'http://127.0.0.1:8787/api/episode-workspace/select', body: { default_directory: '/作品', series_id: '' } },
       { url: 'http://127.0.0.1:8787/api/episode-workspace/prepare', body: { workspace_token: 'workspace-1' } },
     ]);
   } finally {

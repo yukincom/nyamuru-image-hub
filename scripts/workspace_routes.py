@@ -8,6 +8,7 @@ from nyamuru_ocr_util import decode_image_data
 from project_file_picker import choose_project_files
 from nyamuru_project_store import export_yaml_files, load_project, save_project
 from nyamuru_series_catalog_store import discover_reference_text_candidates
+from image_generation import generate_cloud_page_image, get_cloud_api_key_status, list_cloud_image_models, save_cloud_api_key
 
 if TYPE_CHECKING:
     from nyamuru_bridge_http import BridgeHandler
@@ -195,6 +196,42 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
             body.get("work_key"),
             body.get("kind"),
             body.get("file_name"),
+        ))
+        return
+    if path == "/api/cloud/gemini/status":
+        status = get_cloud_api_key_status()
+        models = []
+        if status.get("configured"):
+            try:
+                models = list_cloud_image_models().get("models", [])
+            except Exception:
+                models = []
+        handler.send_json(200, {"ok": True, **status, "models": models})
+        return
+    if path == "/api/cloud/gemini/key":
+        saved = save_cloud_api_key(body.get("api_key"))
+        models = []
+        if saved.get("configured"):
+            try:
+                models = list_cloud_image_models().get("models", [])
+            except Exception:
+                models = []
+        handler.send_json(200, {**saved, "models": models})
+        return
+    if path == "/api/cloud/gemini/models":
+        handler.send_json(200, list_cloud_image_models())
+        return
+    if path == "/api/cloud/gemini/generate-page":
+        ws_token = body.get("workspace_token")
+        episode_dir = handler.state.episode_workspaces.directory(ws_token) if ws_token else None
+        series_dir_raw = file_picker_directory(handler, body)
+        series_dir = Path(str(series_dir_raw)) if series_dir_raw else None
+        handler.send_json(200, generate_cloud_page_image(
+            episode_dir=episode_dir,
+            series_dir=series_dir,
+            page_number=int(body.get("page_number") or 1),
+            model=str(body.get("model") or ""),
+            cloud_spec=body.get("cloud_spec") if isinstance(body.get("cloud_spec"), dict) else {},
         ))
         return
     handler.send_json(404, {"error": "Not found"})

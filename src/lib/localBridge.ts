@@ -110,6 +110,10 @@ export {
   getAgentConnection,
   withAgentServices,
   requestAgentReply,
+  getGeminiApiKeyStatus,
+  saveGeminiApiKey,
+  listGeminiImageModels,
+  generateCloudPageWithGemini,
 } from './bridge/editorServices.ts';
 export {
   listSeriesCatalogs,

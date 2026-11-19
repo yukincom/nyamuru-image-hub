@@ -148,7 +148,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             if path == "/api/human-pose/scene":
                 self.send_json(200, self.state.human_poses.scene(body.get("pose_id"), body.get("catalog_sha256"), body.get("include_base", True), body_model=body.get('body_model')))
                 return
-            if path.startswith(("/api/series/", "/api/episode-workspace/", "/api/analog-assets/")):
+            if path.startswith(("/api/series/", "/api/episode-workspace/", "/api/analog-assets/", "/api/cloud/")):
                 handle_workspace_post(self, path, body)
                 return
             if path == "/api/scanner/open":

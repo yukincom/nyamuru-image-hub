@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { paintToolShortcut, paintInkShortcut, paintSizeShortcut, stepPaintSize, PAINT_SIZE_PRESETS } from '../src/lib/paintToolShortcuts.ts';
 test('Illustrator tool keys accept Japanese and US plus key representations',()=>{
-  for(const [key,tool] of [['v','vector-select'],['a','vector-node'],['p','vector-pen'],['m','rectangle'],['l','ellipse'],['-','vector-delete'],['+','vector-add']])assert.equal(paintToolShortcut({key}),tool);
+  for(const [key,tool] of [['v','vector-select'],['a','vector-node'],['p','vector-pen'],['m','lasso'],['l','ellipse'],['-','vector-delete'],['+','vector-add']])assert.equal(paintToolShortcut({key}),tool);
   assert.equal(paintToolShortcut({key:'=',shiftKey:true}),'vector-add');
   assert.equal(paintToolShortcut({key:'+',shiftKey:true}),'vector-add');
   assert.equal(paintToolShortcut({key:'C',shiftKey:true}),'vector-anchor');

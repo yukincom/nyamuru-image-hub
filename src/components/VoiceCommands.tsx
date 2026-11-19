@@ -4,6 +4,9 @@ import type {QwenGenerationConversation} from '../lib/qwenGeneration';
 import { ArrowUp, Clock, Mic, Square } from 'lucide-preact';
 import { createEditorDictation } from '../lib/editorVoice';
 import { connectAgentImageGeneration, getAgentConnection, getImageGenerationConnections, requestVoiceCommand,requestAgentReply,withAgentServices } from '../lib/localBridge';
+import { currentGenerationPreferences } from '../lib/generationPreferences';
+import { currentLocalModelPreferences } from '../lib/localModelPreferences';
+import { resolveGenerationRoute } from '../lib/modelRouting';
 import { runVoiceCommand, type VoiceCommand } from '../lib/voiceCommands';
 import { createAgentSession, type AgentMessage } from '../lib/agentSession';
 import { normalizeVoiceSilenceMs, type AgentPreferences, type VoiceInputMode } from '../lib/agentPreferences';
@@ -112,6 +115,8 @@ function AgentConversation(props:Props){
           modelConnections:()=>getImageGenerationConnections(undefined,true),
           imageGeneration:async action=>{
             if(action==='generate')return latest.current.apply({op:'generate_selected',kind:'selected'},isCurrent);
+            const route=resolveGenerationRoute(currentGenerationPreferences(),currentLocalModelPreferences());
+            if(route.kind==='cloud-api')return latest.current.apply({op:'generate_selected',kind:'page'},isCurrent);
             await connectAgentImageGeneration(isCurrent);
             return 'Qwen Turboをエージェントの画像生成先に接続しました。生成する人物や吹き出しを選び「生成して」と送ってください。';
           }});

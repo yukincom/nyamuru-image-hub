@@ -59,7 +59,7 @@ test('actual layer move keeps redo for round trips and interrupted gestures',()=
    window:{addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:type=>listeners.delete(type)}};
   context.finishLayerMove=editorHandler('finishLayerMove',context);
   const event=(type,x,y,buttons=1)=>({type,currentTarget:target,pointerId:7,clientX:x,clientY:y,buttons,preventDefault(){},stopPropagation(){}});
-  editorHandler('beginLayerMove',context)(event('pointerdown',10,10),owner,layer);
+  editorHandler('beginLayersMove',context)(event('pointerdown',10,10),owner,[layer]);
   listeners.get('pointermove')(event('pointermove',15,17));assert.notEqual(preview,before);
   if(ending==='round-trip')listeners.get('pointerup')(event('pointerup',10,10,0));
   else if(ending==='blur')listeners.get('blur')();
@@ -508,7 +508,7 @@ test('selected vector resize handles take priority even outside the painted path
 test('a missed paint selection delegates to native selection before starting a marquee',()=>{
  let native=0,marquee=0,clear=0;
  const layer={...newPaintLayer('path','vector'),paths:[]},owner={key:'panel',paint:{width:100,height:100,layers:[layer]},frame:{x:0,y:0,w:100,h:100}};
- const begin=editorHandler('beginLayerSelection',{tool:'vector-select',owner,layer,layerVisible:true,paintLayerEditable:()=>true,vectorState:{current:{selected:[]}},vectorResizeHandleAt,
+ const begin=editorHandler('beginLayerSelection',{tool:'vector-select',owner,layer,layerVisible:true,selectedFolder:undefined,paintLayerEditable:()=>true,vectorState:{current:{selected:[]}},vectorResizeHandleAt,
   inputPoint:()=>({x:10,y:10}),inputTolerance:()=>2,coverage:()=>false,pickPaintLayer:()=>undefined,beginVector:()=>marquee++,clearVectorSelection:()=>clear++,historyRef:{current:{present:{owners:[owner]}}}});
  const event={clientX:10,clientY:10,currentTarget:{dataset:{paperWidth:'100',paperHeight:'100'},getBoundingClientRect:()=>({left:0,top:0,width:100,height:100})}};
  begin(event,()=>{native++;return true;});assert.equal(native,1);assert.equal(clear,1);assert.equal(marquee,0);
@@ -518,7 +518,7 @@ test('a missed paint selection delegates to native selection before starting a m
 test('shift-clicking while paint editor is open delegates to additive canvas selection without layer hijacking',()=>{
  let missCalls=[],clear=0,move=0;
  const layer={...newPaintLayer('layer','raster')},owner={key:'figure-0',paint:{width:100,height:100,layers:[layer]},frame:{x:0,y:0,w:100,h:100}};
- const begin=editorHandler('beginLayerSelection',{tool:'vector-select',owner,layer,layerVisible:true,paintLayerEditable:()=>true,vectorState:{current:{selected:[]}},vectorResizeHandleAt,
+ const begin=editorHandler('beginLayerSelection',{tool:'vector-select',owner,layer,layerVisible:true,selectedFolder:undefined,paintLayerEditable:()=>true,vectorState:{current:{selected:[]}},vectorResizeHandleAt,
   inputPoint:()=>({x:10,y:10}),inputTolerance:()=>2,coverage:()=>true,pickPaintLayer:()=>({owner,layer}),beginLayerMove:()=>move++,clearVectorSelection:()=>clear++,historyRef:{current:{present:{owners:[owner]}}}});
  const event={shiftKey:true,clientX:10,clientY:10,currentTarget:{dataset:{paperWidth:'100',paperHeight:'100'},getBoundingClientRect:()=>({left:0,top:0,width:100,height:100})}};
  begin(event,(behindOwnerKey)=>{missCalls.push(behindOwnerKey);return true;});

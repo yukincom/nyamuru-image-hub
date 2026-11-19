@@ -31,7 +31,7 @@ test('cloud method, provider and local model survive reload and execution switch
   const storage = memoryStorage();
   const preferences = loadGenerationPreferences(storage);
   preferences.execution = 'cloud';
-  preferences.cloud = { adultTermsConfirmed: true, method: 'api', apiEndpoint: 'https://images.example.test/v1', apiModel: 'image-model', agent: 'other', agentName: 'External agent', includeBackground: true, includeBubbles: true, exportReferenceImages: true };
+  preferences.cloud = { adultTermsConfirmed: true, method: 'api', apiEndpoint: 'https://images.example.test/v1', apiModel: 'image-model', agent: 'other', agentName: 'External agent', includeBackground: true, includeBubbles: true, includeHandwritten: true, includeScreenText: true, includePanelBorders: false, exportReferenceImages: true };
   saveGenerationPreferences(storage, preferences);
   assert.deepEqual(loadGenerationPreferences(storage), preferences);
   saveGenerationPreferences(storage, { ...preferences, execution: 'local' });

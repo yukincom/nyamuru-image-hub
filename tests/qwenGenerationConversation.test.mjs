@@ -126,6 +126,7 @@ test('App awaits actual generation and aborts if selection or another generation
    let finishProbe,revision='initial',opened=0;
    const document={manga:{}},context={hasDocument:true,showNewDialog:false,projectOperation:{current:false},layerSwitch:{current:false},imageImportBusy:false,qwenGeneration:null,
      paintController:{current:null},paintSessionRef:{current:null},documentRef:{current:document},activePage:0,activePanel:0,selectedElement:null,environmentOpen:false,
+     currentGenerationPreferences:()=>({}),currentLocalModelPreferences:()=>({}),resolveGenerationRoute:()=>({kind:'local'}),generatePageWithCloudApi:undefined,requestMultiFigureGeneration:undefined,
      latestVoiceRevision:{current:()=>revision},resolveVoiceGenerationTarget:()=>({kind:'figure',index:0,overlay:false,panelIndex:0,pageIndex:0}),
      connectAgentImageGeneration:()=>new Promise(resolve=>{finishProbe=resolve;}),
      requestOwnerGeneration:async(key,overlay,panel,page,request)=>{opened++;assert.equal(key,'figure-0');request.resolve('生成して差し込みました');return true;}};

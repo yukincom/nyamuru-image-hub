@@ -6,7 +6,9 @@ import { cloudContentAccess } from './modelPrivacy.ts';
 type UnavailableRoute = { kind: 'unavailable'; reason: 'adult-terms-required' | 'api-unavailable'; message: string };
 export type ConversationRoute = { kind: 'local'; llmAlias: string } | UnavailableRoute;
 export type GenerationRoute = { kind: 'local'; workflowId: string; comfyuiUrl: string }
-  | { kind: 'external-agent'; agent: 'codex' | 'other'; label: string } | UnavailableRoute;
+  | { kind: 'external-agent'; agent: 'codex' | 'other'; label: string }
+  | { kind: 'cloud-api'; model: string }
+  | UnavailableRoute;
 
 function contentRestriction(cloud: GenerationPreferences['cloud'], adultContent: boolean): UnavailableRoute | undefined {
   if (!cloudContentAccess(cloud, adultContent).allowed) return {
@@ -32,7 +34,8 @@ export function resolveGenerationRoute(
   const restriction = contentRestriction(preferences.cloud, adultContent);
   if (restriction) return restriction;
   if (preferences.cloud.method === 'api') return {
-    kind: 'unavailable', reason: 'api-unavailable', message: '画像生成のAPIは未接続です。環境設定でローカルまたは外部エージェントを選んでください',
+    kind: 'cloud-api',
+    model: preferences.cloud.apiModel.trim() || 'gemini-3.1-flash-image',
   };
   return { kind: 'external-agent', agent: preferences.cloud.agent,
     label: preferences.cloud.agent === 'codex' ? 'Codex' : preferences.cloud.agentName || '指定のエージェント' };

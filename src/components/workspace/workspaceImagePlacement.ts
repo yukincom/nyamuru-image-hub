@@ -12,6 +12,12 @@ import { cloneDocument } from '../../lib/manga';
 import { ensureCanvasTextOwner } from '../../lib/canvasText';
 import { humanPoseOwnerImage } from '../../lib/humanPoseComposition';
 import type { QwenGenerationPlan, QwenAdoption } from '../../lib/qwenGeneration';
+import { currentGenerationPreferences } from '../../lib/generationPreferences';
+import { currentLocalModelPreferences } from '../../lib/localModelPreferences';
+import { resolveGenerationRoute } from '../../lib/modelRouting';
+import { buildCloudGenerationSpec } from '../../lib/generationHandoff';
+import { generateCloudPageWithGemini } from '../../lib/localBridge';
+import { splitPageBackgroundsForDocument, splitPageImageForDocument } from '../../lib/cloudPageSplit';
 
 interface Context {
   selectedPaintOwner: () => string;
@@ -33,7 +39,7 @@ export function createImagePlacementActions({
   activePanel, activePage, documentRef, imageImportBusy, imageImportTarget, setActivePage, setActivePanel,
   setSelectedPanels, placedImageInput, selectedElement, projectOperation, qwenGeneration, paintSessionRef,
   paintController, setImageImportBusy, lastHistoryPush, activePageRef, activePanelRef, setSelectedElement,
-  setToast, setQwenGeneration, pendingLayerAction, setBubblePathTool, setTextTool, setZoomTool,
+  setToast, setQwenGeneration, pendingLayerAction, setBubblePathTool, setTextTool, setZoomTool, boundEpisodeWorkspace,
 }: WorkspaceState, {
   selectedPaintOwner, setDocument, openPaint, makePaintScene,
 }: Context) {
@@ -315,5 +321,55 @@ export function createImagePlacementActions({
     }
   };
 
-  return { choosePlacedImage, importPlacedImage, importSplitPanelCharacters, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
+  const generatePageWithCloudApi = async (pageIndex = activePage, isCurrent?: () => boolean) => {
+    const currentDoc = documentRef.current;
+    const page = currentDoc.manga.pages[pageIndex];
+    if (!page) throw new Error('対象のページが見つかりません');
+    const prefs = currentGenerationPreferences();
+    const route = resolveGenerationRoute(prefs, currentLocalModelPreferences(), Boolean(currentDoc.manga.series_setting?.adult_content));
+    if (route.kind === 'unavailable') throw new Error(route.message);
+    if (route.kind !== 'cloud-api') throw new Error('環境設定の画像生成先を「クラウドAPI」に設定してください');
+    setToast(`${page.page}ページ目をクラウドAPIで生成中…`);
+    const cloudSpec = buildCloudGenerationSpec(currentDoc);
+    const workspaceToken = boundEpisodeWorkspace?.episodeId === currentDoc.manga.meta.episode_id ? boundEpisodeWorkspace.token : undefined;
+    const { file } = await generateCloudPageWithGemini({
+      workspaceToken,
+      seriesId: currentDoc.manga.meta.series_id,
+      pageNumber: page.page,
+      model: route.model,
+      cloudSpec,
+    });
+    if (isCurrent && !isCurrent()) throw new Error('操作が中断されました');
+    const placements: SplitPanelCharacterPlacement[] = [];
+    const splitChars = await splitPageImageForDocument(file, page, true);
+    for (const item of splitChars) {
+      placements.push({
+        pageIndex,
+        panelIndex: item.panelIndex,
+        targetKind: 'figure',
+        figureIndex: item.figureIndex,
+        file: item.file,
+        frameMm: item.frameMm,
+      });
+    }
+    if (prefs.cloud.includeBackground) {
+      const splitBgs = await splitPageBackgroundsForDocument(file, page);
+      for (const item of splitBgs) {
+        if ((page.panels[item.panelIndex]?.figures?.length ?? 0) === 0) {
+          placements.push({
+            pageIndex,
+            panelIndex: item.panelIndex,
+            targetKind: 'background',
+            file: item.file,
+            frameMm: item.frameMm,
+          });
+        }
+      }
+    }
+    if (!placements.length) throw new Error('配置できるキャラクターまたはコマが見つかりませんでした');
+    const result = await importSplitPanelCharacters(placements);
+    return { pageNumber: page.page, ...result };
+  };
+
+  return { choosePlacedImage, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
 }

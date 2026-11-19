@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'preact/hooks';
 import { Image, MessageSquareText, ShieldCheck } from 'lucide-preact';
 import AgentSettings from '../AgentSettings';
 import LocalImageModelSettings from '../LocalImageModelSettings';
 import { Field, SectionTitle } from '../Fields';
+import { getGeminiApiKeyStatus, saveGeminiApiKey } from '../../lib/localBridge';
 import type { EnvironmentSettingsProps } from '../environmentSettingsTypes';
 import type { useModelSettings } from './useModelSettings';
 
@@ -14,24 +16,108 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
     conversationSettingsError, modelSettingsError, localModelError,
     updateConversationPreferences, updateGenerationPreferences, updateLocalModelPreferences } = settings;
   const isCloud = generationPreferences.execution === 'cloud';
-  const executionValue = isCloud ? 'agent' : 'local';
+  const executionValue = isCloud ? (generationPreferences.cloud.method === 'api' ? 'api' : 'agent') : 'local';
+  const [apiKeyDraft, setApiKeyDraft] = useState('');
+  const [apiKeyStatus, setApiKeyStatus] = useState<{ configured: boolean; source: 'env' | 'local' | 'none' } | null>(null);
+  const [apiKeyMessage, setApiKeyMessage] = useState('');
+  const [apiKeySaving, setApiKeySaving] = useState(false);
+  const [geminiModels, setGeminiModels] = useState<Array<{ id: string; label: string }>>([]);
+
+  useEffect(() => {
+    if (executionValue !== 'api') return;
+    let active = true;
+    void getGeminiApiKeyStatus()
+      .then(status => {
+        if (!active) return;
+        setApiKeyStatus(status);
+        setGeminiModels(status.models);
+      })
+      .catch(err => {
+        if (!active) return;
+        setApiKeyStatus(null);
+        setApiKeyMessage(err instanceof Error ? err.message : 'ローカル連携に接続できません');
+      });
+    return () => { active = false; };
+  }, [executionValue]);
+
+  const handleSaveApiKey = async () => {
+    if (apiKeySaving) return;
+    setApiKeySaving(true);
+    setApiKeyMessage('');
+    try {
+      const nextStatus = await saveGeminiApiKey(apiKeyDraft);
+      setApiKeyStatus(nextStatus);
+      setGeminiModels(nextStatus.models);
+      setApiKeyDraft('');
+      setApiKeyMessage(nextStatus.configured ? 'APIキーをローカルに保存しました' : '保存済みAPIキーを削除しました');
+    } catch (err) {
+      setApiKeyMessage(err instanceof Error ? err.message : 'APIキーを保存できませんでした');
+    } finally {
+      setApiKeySaving(false);
+    }
+  };
+
   return <>
     <section aria-label="実行先の切り替え">
       <fieldset class="artwork-mode-options">
         <legend>画像生成の実行先</legend>
-        {([{ value: 'local', label: 'ローカル' }, { value: 'agent', label: 'クラウドエージェント' }] as const).map(option => <label class="artwork-mode-option" key={option.value}>
+        {([{ value: 'local', label: 'ローカル' }, { value: 'agent', label: 'クラウドエージェント' }, { value: 'api', label: 'クラウドAPI' }] as const).map(option => <label class="artwork-mode-option" key={option.value}>
           <input type="radio" name="generation-execution" value={option.value} checked={executionValue === option.value}
             onChange={event => {
               if (!event.currentTarget.checked) return;
               updateGenerationPreferences({ ...generationPreferences, execution: option.value === 'local' ? 'local' : 'cloud',
-                cloud: { ...generationPreferences.cloud, ...(option.value === 'agent' ? { method: 'agent' } : {}) } });
+                cloud: { ...generationPreferences.cloud, ...(option.value !== 'local' ? { method: option.value } : {}) } });
             }} />
           <span><strong>{option.label}</strong></span>
         </label>)}
       </fieldset>
     </section>
-    {isCloud ? <section aria-label="クラウドエージェント設定">
-      <SectionTitle title="クラウドエージェント" />
+    {isCloud ? <section aria-label="クラウド設定">
+      <SectionTitle title={executionValue === 'api' ? 'クラウドAPI' : 'クラウドエージェント'} />
+      {executionValue === 'api' && (
+        <div class="field-grid" style={{ marginBottom: '12px' }}>
+          <Field label="モデル名" hint="自由入力（候補からも選択できます）">
+            <input
+              type="text"
+              list="gemini-image-models"
+              value={generationPreferences.cloud.apiModel}
+              placeholder="例：gemini-3.1-flash-image"
+              onInput={event => updateGenerationPreferences({
+                ...generationPreferences,
+                cloud: { ...generationPreferences.cloud, apiModel: event.currentTarget.value },
+              })}
+            />
+            <datalist id="gemini-image-models">
+              {(geminiModels.length > 0 ? geminiModels : [
+                { id: 'gemini-nano-banana-2.1', label: 'Nano Banana 2.1' },
+                { id: 'gemini-3.1-flash-image', label: 'Nano Banana 2' },
+                { id: 'gemini-3.1-flash-lite-image', label: 'Nano Banana 2 Lite' },
+              ]).map(model => (
+                <option key={model.id} value={model.id}>{model.label}</option>
+              ))}
+            </datalist>
+          </Field>
+          <Field
+            label="APIキー"
+            hint={apiKeyStatus?.configured ? '設定済み（ローカルに保存されます）' : '未設定（ローカルに保存されます）'}
+            wide
+          >
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="password"
+                value={apiKeyDraft}
+                placeholder={apiKeyStatus?.configured ? '更新する場合のみ新しいキーを入力' : 'APIキーを入力'}
+                onInput={event => setApiKeyDraft(event.currentTarget.value)}
+                style={{ flex: 1 }}
+              />
+              <button type="button" class="secondary-button" disabled={apiKeySaving} onClick={() => void handleSaveApiKey()}>
+                {apiKeySaving ? '保存中…' : '保存'}
+              </button>
+            </div>
+            {apiKeyMessage && <p class="environment-settings-note">{apiKeyMessage}</p>}
+          </Field>
+        </div>
+      )}
       <div class="environment-setting-list">
         <label class="environment-setting-row">
           <span class="environment-setting-icon"><Image size={20} /></span>

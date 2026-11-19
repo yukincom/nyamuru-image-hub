@@ -154,8 +154,8 @@ test('entering text edit keeps authored line breaks and leaves the rest of the b
   assert.match(bubbleTextSource,/class=\{`bubble-text-move-frame \$\{moveFrameActive\?'is-active':''\}`\}[^>]+onPointerDown=\{event=>\{event\.stopPropagation\(\);onMoveFrame\(event\);\}\}/);
   assert.match(bubbleTextSource,/class=\{`bubble-text-move-edge is-\$\{side\}`\}/);
   assert.doesNotMatch(source,/editOnClick/);
-  assert.match(source,/data-content-target data-content-panel=\{panelIndex\} data-content-kind="bubble"[\s\S]*?onClick=\{\(event\) => \{ event\.stopPropagation\(\);[^\n]*onSelectElement\(selection, panelIndex\);[^\n]*textTool[^\n]*onEditBubble/);
-  assert.match(source,/data-content-overlay data-content-kind="bubble"[\s\S]*?onClick=\{\(event\) => \{ event\.stopPropagation\(\);[^\n]*onSelectElement\(selection\);[^\n]*textTool[^\n]*onEditBubble/);
+  assert.match(source,/data-content-target data-content-panel=\{panelIndex\} data-content-kind="bubble"[\s\S]*?onClick=\{\(event\) => \{ event\.stopPropagation\(\);[^\n]*onSelectElement\(selection, panelIndex(?:, true, event\.shiftKey)?\);[^\n]*textTool[^\n]*onEditBubble/);
+  assert.match(source,/data-content-overlay data-content-kind="bubble"[\s\S]*?onClick=\{\(event\) => \{ event\.stopPropagation\(\);[^\n]*onSelectElement\(selection(?:, undefined, true, event\.shiftKey)?\);[^\n]*textTool[^\n]*onEditBubble/);
   assert.match(css,/\.bubble-guide \.bubble-text\.is-interactive \.bubble-text-content \{[^}]*pointer-events:auto;[^}]*cursor:text;/);
   assert.match(css,/\.bubble-guide \.bubble-text-content \{[^}]*position:relative;[^}]*z-index:3;/);
   assert.match(css,/\.bubble-text-move-frame \{[^}]*border:1px solid transparent;[^}]*pointer-events:auto;[^}]*cursor:default;/);
@@ -231,12 +231,14 @@ test('vector bubble outlines and tails are not clipped by the editable bubble bo
 });
 
 test('character names use the whole figure box and stay at its lower-right corner', () => {
-  assert.equal(source.match(/<FigureName name=\{figureDisplayLabel\(figure,figureIndex\)\} boxW=\{box\.w\} boxH=\{box\.h\}/g)?.length, 2);
+  assert.equal(source.match(/<FigureName name=\{figureDisplayLabel\(figure,\s*figureIndex\)\} boxW=\{box\.w\} boxH=\{box\.h\}/g)?.length, 1);
+  assert.match(source, /renderFigureGuide\(figure,\s*figureIndex,\s*box,\s*panelIndex,\s*boxStyle\)/);
+  assert.match(source, /renderFigureGuide\(figure,\s*figureIndex,\s*box,\s*null,\s*paperBoxStyle\)/);
   assert.match(component.parent.getText(ast), /<span class="figure-name-layer"><small ref=\{ref\} class="figure-name">/);
   assert.doesNotMatch(source, /<FigureName name=\{figure\.name\} boxW=\{referenceBox\.w\}/);
   const css = readGlobalStyles();
   assert.match(css, /\.figure-name-layer \{[^}]*position:absolute;[^}]*inset:0;[^}]*display:flex;[^}]*align-items:flex-end;[^}]*justify-content:flex-end;[^}]*overflow:hidden;/);
-  assert.match(css, /\.figure-guide \.figure-name \{[^}]*position:static;[^}]*width:max-content;[^}]*max-width:100%;[^}]*overflow:hidden;[^}]*text-align:right;/);
+  assert.match(css, /\.figure-guide \.figure-name(?:,\s*\.placed-image \.figure-name)? \{[^}]*position:static;[^}]*width:max-content;[^}]*max-width:100%;[^}]*overflow:hidden;[^}]*text-align:right;/);
   assert.doesNotMatch(css, /\.figure-guide \.figure-name \{[^}]*text-align:center;/);
   assert.doesNotMatch(css, /\.figure-guide:not\(\.is-object\) \.figure-name/);
 });

@@ -17,7 +17,7 @@ export type VoiceCommand =
   | {op:'paint_tool'; tool:'pen'|'vector-pen'}
   | {op:'bubble_shape'; shape:'normal'|'square'|'caption'|'toge'}
   | {op:'bubble_text'; text:string}
-  | {op:'generate_selected';kind:'selected'|'figure'|'bubble';locator?:{panel:number;name:string}};
+  | {op:'generate_selected';kind:'selected'|'figure'|'bubble'|'page';locator?:{panel:number;name:string}};
 export type VoiceResolution = {command:VoiceCommand; message?:never;localOnly?:never}|{command?:never;message:string;localOnly?:true};
 
 export function parseVoicePrediction(value:unknown, text:string):VoicePrediction {
@@ -109,6 +109,7 @@ export function resolveVoiceCommand(prediction:VoicePrediction):VoiceResolution 
     if(target)return {command:{op:'generate_selected',kind:!target[2]?'selected':['描き文字','書き文字'].includes(target[2])?'bubble':'figure'}};
     const named=match(text,'([0-9〇一二三四五六七八九十]+)コマ(?:目)?の([^「」\\n]{1,80})を(?:画像)?生成して');
     if(named){const panel=number(named[1]);if(Number.isSafeInteger(panel)&&panel>0)return {command:{op:'generate_selected',kind:'figure',locator:{panel,name:named[2].trim()}}};}
+    if(match(text,'(?:(?:この|今の)?ページ(?:全体)?|全コマ|全体)?を?(?:画像)?生成して'))return {command:{op:'generate_selected',kind:'page'}};
   }
   return refuse();
 }
