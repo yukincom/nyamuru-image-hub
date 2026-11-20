@@ -63,3 +63,83 @@
 | 画像生成（既定・2画像参照 / P-H3-Image） | `P-H3-Image-AD-Q6_K.gguf` | UNet（`AtomicChat/P-H3-Image-GGUF`、`ComfyUI-GGUF` `UnetLoaderGGUF`） |
 | 画像生成（P-H3-Image 付随） | `p-h3-image_text_encoder_bf16.safetensors` / `p-h3-image_prompt_upsampler_bf16.safetensors` / `p-h3-image_vae_bf16.safetensors` | Text Encoder・Prompt Upsampler・VAE（`examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json`） |
 | 操作意図分類 | ModernBERT | 同梱 tokenizer ＋ Release 配布重み |
+
+## セットアップ・起動手順（エージェント向け）
+
+`README.md` にはセットアップ手順や技術詳細を載せていない。利用者からセットアップ・起動を依頼された場合、エージェントは以下の手順と上記の「ローカルVision Language Model（VLM）の接続・導入」「使用モデル一覧」に従って環境構築・確認を行うこと。
+
+### 1. 基本セットアップと起動
+
+- 前提: **Node.js 22.12.0 以上**
+- 初回のみ、このリポジトリ直下で依存パッケージを導入する:
+  ```bash
+  npm ci
+  ```
+- 起動コマンド（画像生成やローカル解析を行う PC で実行する）:
+  | 用途 | コマンド | 備考 |
+  |---|---|---|
+  | 同じ PC で直接編集する | `npm run dev` | 開発サーバーを起動。画像解析等の利用時にローカル連携サービス（bridge）を自動起動する |
+  | 別 PC から LAN 経由で編集する | `npm run lan` | 起動時に表示される `https://` URL を編集 PC のブラウザーで開く（OS X El Capitan 等でも動作確認済み）。初回証明書登録は [docs/LAN_EDITING.md](docs/LAN_EDITING.md) を参照 |
+  | bridge 単体の動作確認 | `npm run bridge` / `npm run bridge:check` | ローカル bridge 単体の起動・状態確認 |
+- 終了時は作品を保存したうえで、起動したターミナルで `Ctrl+C` を押す。
+
+### 2. ローカル画像解析（OCR・コマ／人物検出）のセットアップ
+
+- 前提: **Python 3.10〜3.13** と初回セットアップ時のインターネット接続。
+- 初回のみ以下を実行する（取得対象・容量・ライセンス・保存先を表示して同意を求めるため、利用者の了承を得て進めること）:
+  ```bash
+  npm run setup:vision
+  ```
+- 同意後、Git 対象外の `.local-vision/` に専用仮想環境および検証済みの RT-DETR・Baberu OCR・WD ViT Tagger v3 モデルが導入される（アプリを起動しただけではダウンロードされない）。
+- 導入確認:
+  ```bash
+  npm run bridge:check
+  ```
+- 保存先変更・トラブルシュートは [docs/LOCAL_VISION_BRIDGE.md](docs/LOCAL_VISION_BRIDGE.md)、コンポーネント一覧・ライセンスは [docs/LOCAL_VISION_COMPONENTS.md](docs/LOCAL_VISION_COMPONENTS.md) を参照。
+
+### 3. CLIP STUDIO PAINT（`.clip`）書き出しのセットアップ
+
+- 前提: **Rust 1.88 以上** と C コンパイラー。
+- 初回のみ、にゃむるを起動する PC で変換器をビルドする:
+  ```bash
+  npm run setup:clip
+  ```
+- ビルド済みバイナリは `.local-clip-export/` に配置され、以後は通常版・LAN 版のローカル bridge から自動呼び出しされる。
+- 書き出し手順の詳細は [docs/USAGE.md](docs/USAGE.md#ページを画像に書き出す) を参照。
+
+### 4. ローカル AI（VLM・文章 LLM・ComfyUI 画像生成）の構成と接続
+
+| 機能 | 主なローカル構成 |
+|---|---|
+| コマ・人物・文字領域の解析 | RT-DETR、OpenCV、Baberu OCR |
+| 人物・姿勢・表情・設定画の読み取り | Qwen3-VL／MLX（導入・検証手順は「ローカルVision Language Model（VLM）の接続・導入」に従う） |
+| 文章処理と生成プロンプト | ローカル MLX サーバー（port 8080 で起動済みなら `npm run dev` が自動共用） |
+| 画像生成 | ComfyUI、P-H3-Image（2画像編集・既定）／Qwen Image 2.1 Turbo 対応ワークフロー（[examples/comfyui/README.md](examples/comfyui/README.md) 同梱） |
+| 操作分類 | 同梱の ModernBERT tokenizer と Release 配布の重み |
+
+- **既定のローカル画像生成ワークフロー**: `P-H3-Image_Edit_Mac_bf16_v2`（[examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json](examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json) / [binding.json](examples/comfyui/p_h3_image_edit_mac_bf16_v2.binding.json)）。プロンプト入力や英訳なしで 2 枚の画像（`image_1 (edited)`: キャラクター設定画、`image_2 (reference)`: 3D ポーズ・構図参照）から人物を生成する。環境設定の「使用するワークフロー」から従来の 3 枚参照ワークフローへ切替可能。
+- **ComfyUI 接続先**: 既定は `http://127.0.0.1:8188`。変更する場合は loopback（`localhost` / `127.0.0.1` / `::1`）の URL のみを環境変数 `NYAMURU_COMFYUI_URL` または「環境設定 → モデル設定 → ローカル」で指定する。
+- **ローカルメモリ共用**: 画像生成時は必要に応じて文章 LLM を一時停止して ComfyUI を使用し、終了後に元から起動していた LLM を同じ設定で復帰する。複数人物の直列生成時は各生成のあいだで ComfyUI の `/nyamuru/memory/release` によりモデルメモリを解放する。
+- **モデル・原稿データの扱い**: モデル重み・原稿データ・生成ジョブは Git リポジトリへ含めない。
+
+### 5. 技術的な制限事項
+
+- 手書き OCR は画像品質や字形に左右されるため、原画を見ながらの修正を前提とする。
+- 原稿の向きは解析前に人が確認する（自動回転は行わない）。
+- スキャナーの直接起動（macOS イメージキャプチャ連携）は macOS 専用。
+- 公開 Web サイトからローカル解析 bridge を呼び出す構成はサポートしない（loopback のみ許可）。
+- VLM・文章 LLM・ComfyUI の機能には対応するローカル環境とモデルが必要。第三者モデルや一部の 3D 素材はリポジトリに同梱しない。
+- 画像生成の品質と処理時間は、選択した ComfyUI ワークフロー・モデル・参照画像・実行環境に依存する。
+
+### 6. 詳細ドキュメント
+
+- [使い方](docs/USAGE.md)
+- [別のPCから使う手順（LAN編集）](docs/LAN_EDITING.md)
+- [このフォークの機能と既知の制限](docs/FORK_FEATURES.md)
+- [ローカル画像解析の詳細](docs/LOCAL_VISION_BRIDGE.md)
+- [シリーズ人物資料と照合特徴](docs/SERIES_CHARACTER_CATALOG.md)
+- [ComfyUIワークフロー接続仕様](docs/COMFYUI_WORKFLOW_SPEC.md)
+- [外部コンポーネントとライセンス](docs/LOCAL_VISION_COMPONENTS.md)
+- [本家更新の取り込み方](docs/UPSTREAM_SYNC.md)
+- [変更履歴](docs/FORK_CHANGELOG.md)
+- [ModernBERT分類器の導入と検証](docs/2026-10-24-classifier-bundle.md)・[研究Release](https://github.com/yukincom/nyamuru-image-hub/releases/tag/nyamuru-modernbert-research-2026-10-24)
