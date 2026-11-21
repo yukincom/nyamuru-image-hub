@@ -28,52 +28,12 @@ import {
   reviewPanelDraftAttempt,
   selectEpisodeWorkspace,
   suggestEpisodeWorkspaceText,
-  suggestPanelFigureActions,
   openMacScanner,
   saveSeriesCatalog,
   saveSourceCoverageReport,
   restoreSeriesCharacterText,
   syncSeriesCharacterText,
 } from '../src/lib/localBridge.ts';
-
-test('人物アクションは完成文の通信形式と全対象IDを確認し、古い補足応答や部分回答を拒否する', async () => {
-  const originalWindow = globalThis.window;
-  const originalFetch = globalThis.fetch;
-  globalThis.window = { setTimeout, clearTimeout };
-  const request = {
-    work: {}, characters: [], previousPanel: null, nextPanel: null,
-    currentPanel: { pageNumber: 1, panelId: 2, panelAction: 'アキは怪訝な表情。', people: ['アキ', 'ユキ'], dialogues: [{ speaker: 'アキ', text: '本当に？' }] },
-    figures: [{ id: 'figure-0', name: 'アキ', currentAction: '顔は右向き。困惑や驚きの可能性あり。' }, { id: 'figure-2', name: 'ユキ', currentAction: '立っている。' }],
-  };
-  const complete = '顔は右向き。怪訝な表情。' + '姿勢の描写。'.repeat(100);
-  const actions = [{ id: 'figure-0', action: complete }, { id: 'figure-2', action: '' }];
-  let response = { action_mode: 'reconcile', actions, model: 'test-model' };
-  let sent;
-  globalThis.fetch = async (url, options) => {
-    const common = { service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3, ok: true };
-    if (String(url).endsWith('/api/health')) return Response.json(common);
-    assert.ok(String(url).endsWith('/api/panel-actions/suggest'));
-    sent = JSON.parse(options.body);
-    return Response.json({ ...common, ...response });
-  };
-  try {
-    assert.deepEqual(await suggestPanelFigureActions(request), { actions, model: 'test-model' });
-    assert.equal(sent.action_mode, 'reconcile');
-    assert.equal(sent.current_panel.panel_action, request.currentPanel.panelAction);
-    assert.equal(sent.current_panel.dialogues[0].text, '本当に？');
-    assert.equal(sent.figures[0].current_action, request.figures[0].currentAction);
-    response = { actions };
-    await assert.rejects(() => suggestPanelFigureActions(request), /応答形式が一致/);
-    for (const invalid of [actions.slice(0, 1), [...actions, { id: 'figure-99', action: '追加人物' }], [actions[0], actions[0]], [null, actions[1]], [{ id: 'figure-0', action: 3 }, actions[1]], [{ id: 'figure-0', action: 'a'.repeat(4001) }, actions[1]]]) {
-      response = { action_mode: 'reconcile', actions: invalid };
-      await assert.rejects(() => suggestPanelFigureActions(request));
-    }
-  } finally {
-    if (originalWindow === undefined) delete globalThis.window;
-    else globalThis.window = originalWindow;
-    globalThis.fetch = originalFetch;
-  }
-});
 
 test('エピソード資料選択はworkspace内相対pathと検証済みidentityを保持する', async () => {
   const originalWindow = globalThis.window;
@@ -153,7 +113,15 @@ test('coverage report保存clientはcaller pathを送らずstrictな相対path�
 test('人物資料の一括解析は安定特徴と画像ごとの分類を受け取る', async () => {
   const originalWindow = globalThis.window;
   const originalFetch = globalThis.fetch;
-  globalThis.window = { setTimeout, clearTimeout };
+  globalThis.window = {
+    setTimeout,
+    clearTimeout,
+    localStorage: {
+      getItem: (key) => key === 'nyamuru.generation-preferences.v1'
+        ? JSON.stringify({ version: 3, execution: 'local', local: { workflowId: '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01' }, vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } })
+        : null,
+    },
+  };
   const first = `image-${'a'.repeat(64)}`;
   const second = `image-${'b'.repeat(64)}`;
   let requestBody;

@@ -242,6 +242,10 @@ class GenerationJobResults:
                     english = prepare_handwritten_prompt(value)
                     from qwen_generation_phase import generation_prompt
                     final_prompt = generation_prompt(value, english)
+                elif prompt_mode == 'qwen':
+                    english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
+                    from qwen_generation_phase import generation_prompt
+                    final_prompt = generation_prompt(value, english)
                 else:
                     english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
                     final_prompt = direct_workflow_prompt(value)

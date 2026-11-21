@@ -84,12 +84,7 @@ test('ordinary owner generation is Qwen and separate from panel splitting and ac
     assert.match(source, component==='MangaCanvas' ? /人物単品を生成/ : /canGeneratePaintOwner\(menuOwner\)[^\n]*role="menuitem"[^\n]*\{menuOwner.kind==='bubble'\?'描き文字を生成':'生成'\}/);
     assert.doesNotMatch(source, /この画像を参照して生成する|ネームの人物ラフから生成/);
   }
-  const lower = inspector.slice(inspector.indexOf('<div class="panel-generation-assistant">'), inspector.indexOf('{panelDraftToolbarTarget &&'));
-  assert.doesNotMatch(lower, /openPanelDraftDialog|ラフを生成/);
-  assert.match(lower, /panelDisplayLabel\(panel.id\).*の人物へ注入/);
-  const action = inspector.slice(inspector.indexOf('class=\"editor-section inspector-category-section panel-action-section\"'), inspector.indexOf('class=\"editor-section inspector-category-section panel-background-section\"'));
-  assert.match(action, /class=\"panel-generation-assistant\"/);
-  assert.equal((inspector.match(/class=\"panel-generation-assistant\"/g) ?? []).length, 1);
+  assert.doesNotMatch(inspector, /の人物へ注入|panel-generation-assistant/);
   // The mobile editor hides the inspector pane. Its dialog must render outside
   // that pane and outside the toolbar's backdrop-filter containing block.
   assert.match(inspector, /panelDraftDialog && typeof window !== 'undefined' && createPortal\(<>/);

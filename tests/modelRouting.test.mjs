@@ -17,7 +17,7 @@ function storage() {
 // 見込み/合格: 新規既定は会話local・確認省略OFF。読込0書込、会話更新は画像/解析設定のbyte不変、再読込一致。
 test('conversation and generation preferences have independent device-local writers',()=>{
   const s=storage(),g=loadGenerationPreferences(s),c=loadConversationPreferences(s),local=loadLocalModelPreferences(s);
-  assert.equal(c.execution,'local');assert.equal(g.skipTranslationConfirmation,false);assert.equal(s.values.size,0);
+  assert.equal(c.execution,'local');assert.equal(g.vision.enabled,false);assert.equal(s.values.size,0);
   saveGenerationPreferences(s,{...g,execution:'cloud',cloud:{...g.cloud,agent:'other',agentName:'Art agent'}});
   saveLocalModelPreferences(s,local);const before=new Map(s.values);
   const api={execution:'api',connectionId:'shared-connection',model:'multi-model'};
@@ -40,13 +40,15 @@ test('invalid conversation values cannot select a connection or replace saved pr
   assert.deepEqual(loadConversationPreferences({getItem:()=>{throw Error('denied');}}),base);
 });
 
-// 見込み/合格: 確認省略は既存画像writerにだけ保存、読込で副作用なし。実際の確認UIはP5で接続する。
-test('translation review preference defaults off and round-trips through the image writer',()=>{
+test('vision preference defaults off and round-trips through the generation writer',()=>{
   const s=storage(),g=loadGenerationPreferences();
-  saveGenerationPreferences(s,{...g,skipTranslationConfirmation:true});
-  assert.equal(loadGenerationPreferences(s).skipTranslationConfirmation,true);
+  assert.equal(g.vision.enabled,false);
+  assert.equal(g.vision.execution,'cloud');
+  assert.equal(g.vision.cloudModel,'gemini-2.5-flash-lite');
+  saveGenerationPreferences(s,{...g,vision:{enabled:true,execution:'local',cloudModel:'gemini-2.5-flash'}});
+  assert.deepEqual(loadGenerationPreferences(s).vision,{enabled:true,execution:'local',cloudModel:'gemini-2.5-flash'});
   assert.deepEqual([...s.values.keys()],[GENERATION_PREFERENCES_STORAGE_KEY]);
-  assert.equal(loadGenerationPreferences({getItem:()=>JSON.stringify({...g,version:3,skipTranslationConfirmation:'true'})}).skipTranslationConfirmation,false);
+  assert.equal(loadGenerationPreferences({getItem:()=>JSON.stringify({...g,version:3,vision:{enabled:'true'}})}).vision.enabled,false);
 });
 
 // 見込み/合格: 会話API＋画像localでも同意が必要、同意後は未対応理由で停止。画像localはそのまま、逆の組合せも独立。
@@ -85,20 +87,16 @@ test('unavailable conversation API never starts local services or runs the task'
   finally {globalThis.window=previousWindow;globalThis.fetch=previousFetch;}
 });
 
-// 見込み/合格: 画像API/翻訳APIの未接続はComfy起動・prepare前に拒否。実generate入口、保存値のみ模擬。
-test('generation rejects unsupported image or translation routes before starting image services',async()=>{
+test('generation rejects unconfigured cloud API route before starting image services',async()=>{
   const previousWindow=globalThis.window,s=storage(),connection=loadLocalModelPreferences();
   globalThis.window={localStorage:s};
   try {
-    for(const purpose of ['image','translation']) {
-      const execution=loadGenerationPreferences();
-      if(purpose==='image'){execution.execution='cloud';execution.cloud.method='api';}
-      else saveConversationPreferences(s,{execution:'api',connectionId:'future',model:'multi'});
-      const actions=createGenerationActions({operation:task=>task(),attempted:{current:null},targetError:'',
-        execution,connection,adultContent:false,workflow:{binding:{prompt_mode:'qwen'}},plan:{},
-        ensureComfy:()=>assert.fail('must not start ComfyUI')});
-      await assert.rejects(actions.generate(), purpose === 'image' ? /クラウドAPI/ : /APIは未接続/);
-    }
+    const execution=loadGenerationPreferences();
+    execution.execution='cloud';execution.cloud.method='api';
+    const actions=createGenerationActions({operation:task=>task(),attempted:{current:null},targetError:'',
+      execution,connection,adultContent:false,workflow:{binding:{prompt_mode:'qwen'}},plan:{},
+      ensureComfy:()=>assert.fail('must not start ComfyUI')});
+    await assert.rejects(actions.generate(), /クラウドAPI/);
   } finally {globalThis.window=previousWindow;}
 });
 

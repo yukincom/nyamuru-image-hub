@@ -109,7 +109,7 @@ class HermesQwenTests(unittest.TestCase):
                 patch('hermes_qwen.generation_prompt', compiler), \
                 patch('qwen_generation_phase.generation_prompt', compiler):
             output = self.cli('prepare')
-        prepare.assert_called_once_with(body, supplied_english)
+        prepare.assert_called_once_with(body)
         normalize.assert_called_once_with(body)
         inspect_png.assert_called_once()
         compiler.assert_called_once()
@@ -126,11 +126,11 @@ class HermesQwenTests(unittest.TestCase):
             service = self.service
             body = self.request(folder)
             with patch.object(service, 'preflight'):
-                first = service.prepare(body, supplied_english)
+                first = service.prepare(body)
                 self.assertEqual(first['status'], 'prepared')
-                self.assertEqual(service.prepare(body, supplied_english)['job_id'], first['job_id'])
+                self.assertEqual(service.prepare(body)['job_id'], first['job_id'])
                 with self.assertRaisesRegex(ValueError, '異なる入力'):
-                    service.prepare({**body, 'prompt': 'A red teapot.'}, supplied_english)
+                    service.prepare({**body, 'prompt': 'A red teapot.'})
 
     # 見込み: 準備済み以外のjobはCLIから再送しない。
     # 合格: 実行中/受付済み/不確定/失敗の全状態でsubmitゼロ。範囲: service固定応答。
@@ -159,7 +159,7 @@ class HermesQwenTests(unittest.TestCase):
     def test_completed_candidates_require_selection_before_returning_output_path(self):
         body = self.request(self.root)
         body['candidate_count'] = 5
-        prepared = self.service.prepare(body, supplied_english)
+        prepared = self.service.prepare(body)
         job_id = prepared['job_id']
         for index in range(1, 6):
             self.service.store.write_once(job_id, f'candidate-{index}.png', png((index, 0, 0)))

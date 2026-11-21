@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { applyCharacterMatchAssignments, applyCharacterReadOutcomes, buildCharacterMatchCandidates, collectUnmatchedCharacterTargets } from '../src/lib/characterMatching.ts';
 
-import { analyzeFigureCharacterMatchWithLocalVlm, analyzeFigurePerformanceWithLocalVlm } from '../src/lib/localBridge.ts';
+import { analyzeFigureCharacterMatchWithLocalVlm } from '../src/lib/localBridge.ts';
+import { GENERATION_PREFERENCES_STORAGE_KEY, DEFAULT_GENERATION_PREFERENCES } from '../src/lib/generationPreferences.ts';
 import { parseMangaYaml, toMangaYaml, toStoredMangaYaml } from '../src/lib/manga.ts';
 import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
@@ -100,7 +101,12 @@ test('人物・演技の読み取り失敗を黄色表示用のエラーとし�
 // 画像の役割やタグは再送せず、顔がないときも照合結果は残す。模擬HTTPと画像変換で実際の送信欄・応答の選別を確認。VLMは使わない。
 test('照合要求は人物の観察語とIDだけを送り、空の演技と顔なしを受け取る', async t => {
   const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
-  globalThis.window = { setTimeout, clearTimeout };
+  const visionStorage = {
+    getItem: (key) => key === GENERATION_PREFERENCES_STORAGE_KEY
+      ? JSON.stringify({ version: 3, ...DEFAULT_GENERATION_PREFERENCES, vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } })
+      : null,
+  };
+  globalThis.window = { setTimeout, clearTimeout, localStorage: visionStorage };
   globalThis.FileReader = class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } };
   t.after(() => {
     if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
@@ -131,7 +137,12 @@ test('照合要求は人物の観察語とIDだけを送り、空の演技と顔
 // 同じ顔は再送せず、別に切り抜いた顔だけ2枚目にする。模擬HTTPで両入口の画像・顔位置を直接確認する。
 test('人物切り抜きと顔原画を既存の演技・照合APIへ必要な画像数だけ送る', async t => {
   const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
-  globalThis.window = { setTimeout, clearTimeout };
+  const visionStorage = {
+    getItem: (key) => key === GENERATION_PREFERENCES_STORAGE_KEY
+      ? JSON.stringify({ version: 3, ...DEFAULT_GENERATION_PREFERENCES, vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } })
+      : null,
+  };
+  globalThis.window = { setTimeout, clearTimeout, localStorage: visionStorage };
   globalThis.FileReader = class {
     async readAsDataURL(blob) { this.result = 'data:image/png;base64,' + Buffer.from(await blob.arrayBuffer()).toString('base64'); this.onload(); }
   };
@@ -151,7 +162,6 @@ test('人物切り抜きと顔原画を既存の演技・照合APIへ必要な�
   const faceBox = {bbox:[0, 0.1, 0.75, 0.5], image:faceImage};
   for (const read of [
     (input, face) => analyzeFigureCharacterMatchWithLocalVlm(input, [], 'bust-up', face),
-    (input, face) => analyzeFigurePerformanceWithLocalVlm(input, 'face', face),
   ]) {
     await read(figure, faceBox);
     await read(faceImage, {bbox:[0,0,1,1]});

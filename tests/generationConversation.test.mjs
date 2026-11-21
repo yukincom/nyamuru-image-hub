@@ -15,7 +15,7 @@ function setup(replies){
 }
 // 見込み/合格: 両workflowで同じ現行指示をLLMへ送り、英訳全文だけ反映。応答は固定で翻訳品質は判定しない。
 test('post-generation editing and translation use the current draft for normal and three-image modes',async()=>{
-  for(const mode of ['qwen','qwen-three-images']){
+  for(const mode of ['qwen','promptless-two-images']){
     const translated='Black-haired person with a gentle expression. Green background.';
     const f=setup([tool({prompt:translated}),answer('表情を整え、英訳しました。')]);f.state.mode=mode;
     assert.match(await runGenerationConversation(f.options),/反映しました/);

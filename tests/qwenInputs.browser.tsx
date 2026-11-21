@@ -7,7 +7,7 @@ import VoiceCommands from '../src/components/VoiceCommands';
 import {loadAgentPreferences} from '../src/lib/agentPreferences';
 import {paintScene} from '../src/lib/paintDocument';
 import {buildQwenGenerationPlan,type QwenGenerationConversation} from '../src/lib/qwenGeneration';
-import {QWEN_FIGURE_WORKFLOW} from '../src/lib/comfyWorkflows';
+import {P_H3_TWO_IMAGE_WORKFLOW} from '../src/lib/comfyWorkflows';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {saveFigureCropAssets} from '../src/lib/figureCropStore';
 import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence';
@@ -50,7 +50,7 @@ async function run(){
    if(path==='/api/new-creation/stop')return Response.json({...supervisor,released:true});
    if(path==='/api/health')return Response.json(common);
    if(path==='/api/agent/status')return Response.json({...common,connected:false});
-   if(path==='/api/comfy-workflows/list')return Response.json({...common,workflows:[{id:QWEN_FIGURE_WORKFLOW,name:'nyamuru_qwen_turbo_3images',version:1,graph,binding}]});
+   if(path==='/api/comfy-workflows/list')return Response.json({...common,workflows:[{id:P_H3_TWO_IMAGE_WORKFLOW,name:'P-H3-Image-GGUF',version:1,graph,binding}]});
    if(path==='/api/human-pose/catalog')return Response.json({...common,...fixture.catalog});
    if(path==='/api/human-pose/scene')return Response.json({...common,...fixture.scene});
    if(path==='/api/qwen-generation/prepare'){submitted=body;return Response.json({error:'モデル解放確認拡張がありません'},{status:400});}
@@ -110,7 +110,7 @@ async function run(){
  (await wait(()=>button('生成'),'生成ボタン')).click();
  const req=await wait(()=>submitted,'送信内容');
  if(req.width!==Math.round(plan.threeImageTarget!.width*.6)||req.height!==Math.round(plan.threeImageTarget!.height*.6))throw Error('完成画像が原稿60%の寸法ではありません');
- if(req.prompt!==editedPrompt||req.negative_prompt!=='negative test'||req.workflow_id!==QWEN_FIGURE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
+ if(req.prompt!==editedPrompt||req.negative_prompt!=='negative test'||req.workflow_id!==P_H3_TWO_IMAGE_WORKFLOW||req.comfyui_url!=='http://127.0.0.1:8188')throw Error('接続・正負の送信');
  if(JSON.stringify(req.references.map((x:{image:string})=>x.image))!==JSON.stringify([addr(first),addr(second),addr(third)]))throw Error('送信画像の役割');
  // 見込み: 準備で拒否されれば生成は未送信。合格: 再実行可・照合ボタンなし・原因だけを表示。HTTPは模擬。
  await wait(()=>button('生成')&&document.querySelector('.qwen-generation-dialog [role=alert]'),'準備失敗後の再試行');

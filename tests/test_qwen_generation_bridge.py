@@ -104,7 +104,7 @@ class QwenJobsTest(unittest.TestCase):
 
     def prepare(self):
         self.bind_workflow()
-        return self.service.prepare(self.request, translate)
+        return self.service.prepare(self.request)
 
     def submit(self, prepared=None):
         prepared = prepared or self.prepare()
@@ -455,7 +455,7 @@ class QwenJobsTest(unittest.TestCase):
         self.assertEqual(prepared['status'], 'prepared')
         self.spawn.assert_not_called()
         english = self.service.load_english(self.request['job_id'])
-        self.assertEqual(english['prompt'], 'A person facing forward.')
+        self.assertEqual(english['prompt'], '正面を向く人物')
         self.assertEqual(self.service.load(self.request['job_id'])['prompt'], self.request['prompt'])
         result = self.submit(prepared)
         self.assertEqual(result['status'], 'queued')
@@ -468,18 +468,15 @@ class QwenJobsTest(unittest.TestCase):
         self.request['prompt'] = 'Other'
         with self.assertRaises(ValueError): self.prepare()
 
-    def test_failed_translation_or_disk_write_never_launches_and_never_retries(self):
-        for failed_step in ('translation', 'storage'):
-            self.request['job_id'] = str(uuid4())
-            translator = Mock(side_effect=ValueError('translation failed')) if failed_step == 'translation' else Mock(side_effect=translate)
-            original = self.service.store.write_once
-            def write(job, name, raw):
-                if failed_step == 'storage' and name == 'generation-prompt.json': raise OSError('disk full')
-                original(job, name, raw)
-            with patch.object(self.service.store, 'write_once', side_effect=write):
-                with self.assertRaises((ValueError, OSError)): self.service.prepare(self.request, translator)
-            self.assertEqual(self.service.prepare(self.request, translator)['status'], 'failed')
-            self.assertEqual(translator.call_count, 1)
+    def test_failed_disk_write_never_launches_and_never_retries(self):
+        self.request['job_id'] = str(uuid4())
+        original = self.service.store.write_once
+        def write(job, name, raw):
+            if name == 'generation-prompt.json': raise OSError('disk full')
+            original(job, name, raw)
+        with patch.object(self.service.store, 'write_once', side_effect=write):
+            with self.assertRaises(OSError): self.service.prepare(self.request)
+        self.assertEqual(self.service.prepare(self.request)['status'], 'failed')
         self.spawn.assert_not_called()
 
     # 見込み: UIの実行状態と保存した準備完了状態で開始を管理する。
@@ -681,10 +678,8 @@ console.log(JSON.stringify(results));
         result = subprocess.run(['node', '--no-warnings', '--experimental-strip-types', '--input-type=module', '-e', program], cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True, check=True)
         for source in json.loads(result.stdout):
             self.request = {**source, 'job_id': str(uuid4()), 'workflow_id': self.workflow['id'], 'workflow_version': self.workflow['version']}
-            translator = Mock(side_effect=AssertionError('Gemma must not be called'))
-            prepared = self.service.prepare(self.request, translator)
+            prepared = self.service.prepare(self.request)
             english = self.service.load_english(prepared['job_id'])
-            translator.assert_not_called()
             if source['content_kind'] == 'handwritten':
                 self.assertIn('Lettering pen: 0.1 mm fineliner.', english['prompt'])
                 self.assertIn('Lettering style: freehand strokes; energetic strokes.', english['prompt'])

@@ -91,6 +91,7 @@ function automaticImportFixture(sourceKind = 'manual') {
       yield { regionId: region.id, original: async () => 'original-body', face: async () => 'original-face', forStorage: async () => ({}) };
     },
     mergeSavedSeriesCatalog: async document => ({ document, added: 0 }),
+    currentGenerationPreferences: () => ({ vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } }),
     analyzeFigureCharacterMatchWithLocalVlm: async (original, candidates, size, face) => {
       assert.equal(original, 'original-body');
       assert.equal(face, 'original-face');

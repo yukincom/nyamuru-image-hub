@@ -129,9 +129,7 @@ class IntegrationTests(unittest.TestCase):
                     'image': 'data:image/png;base64,' + base64.b64encode(png((i, 0, 0))).decode()} for i in range(count)]}
 
     def prepare(self, body):
-        def translate(value):
-            return {'prompt': 'Draw a person.', 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
-        return self.service.prepare(body, translate)
+        return self.service.prepare(body)
 
     def run_job(self, body):
         job_id = body['job_id']
@@ -546,10 +544,10 @@ class IntegrationTests(unittest.TestCase):
                                    ({**body, 'references': [{'label': 'extra', 'character_keys': [], 'image': 'data:image/png;base64,' + base64.b64encode(png()).decode()}]}, '参照')]:
             with patch('builtins.print'):
                 with self.assertRaisesRegex(ValueError, expected):
-                    self.service.prepare(modified, lambda value: self.fail('must not translate'))
+                    self.service.prepare(modified)
         self.api.extension = False
         with self.assertRaisesRegex(ValueError, '拡張'):
-            self.service.prepare(body, lambda value: self.fail('must not translate'))
+            self.service.prepare(body)
         self.assertEqual(self.api.calls, [])
 
 

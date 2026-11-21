@@ -32,7 +32,8 @@ test('pose, action, angle, framing and identity survive normal, sketch and corre
  for(const mode of ['prompt','image']){
   const {manga,plan}=posePlan(mode),before=structuredClone(manga);
   for(const prompt of [plan.prompt,plan.sketchPrompt,qwenGenerationPrompt(plan,{kind:'paint'}, {kind:'paint'})]){
-   for(const text of ['確認用','驚いた表情で左を見る','左斜め前から少し見下ろす','細い眉と短い黒髪'])assert.ok(prompt.includes(text),text);
+   for(const text of ['確認用','驚いた表情で左を見る','左斜め前から少し見下ろす'])assert.ok(prompt.includes(text),text);
+   assert.ok(!prompt.includes('細い眉と短い黒髪'));
    assert.equal(prompt.includes('胸から上'),mode==='prompt');
    assert.ok(prompt.includes(mode==='image'?'3Dポーズ参照':'右腕を上げ、左膝を曲げる。'));
    if(mode==='image')assert.ok(!prompt.includes('右腕を上げ、左膝を曲げる。'));
@@ -144,9 +145,8 @@ test('framing uses the visible body range, separately from output pixel size and
   assert.ok(plan.prompt.includes(`描写範囲は${label}。`));
   assert.ok(plan.prompt.includes('顔を右に向ける'));
   assert.doesNotMatch(plan.prompt,/画角：|Camera angle:|bust-up|waist-up/);
-  // 手・足・任意の部分では、この顔の特徴は撮影範囲外なので生成文に入れない。
-  if(['hand','foot','part'].includes(size))assert.doesNotMatch(plan.prompt,/細い眉/);
-  else assert.ok(plan.prompt.indexOf('描写範囲')<plan.prompt.indexOf('人物のビジュアル指定'));
+  // VLM特徴テキストはプロンプトへ自動流し込みしない。
+  assert.doesNotMatch(plan.prompt,/細い眉|人物のビジュアル指定/);
   if(size==='bust-up')assert.ok(plan.prompt.includes('頭頂から胸までを画面に収めた構図で描く。'));
   const payload=qwenGenerationPayload(plan,[{label:'資料',characterKeys:['person-id'],image:'data:ref'}]);
   assert.equal(payload.width,scene.owners[1].paint.width);
@@ -172,7 +172,7 @@ test('only work style and the bound reviewed features reach preparation; legacy 
  manga.characters.push({localId:'other',name:'別人',role:'陽気な性格',visual_prompt:'赤い帽子の巨人'});
  const scene=paintScene(manga.pages[0].panels[0],100,[]);
  const plan=buildQwenGenerationPlan(manga,0,0,false,scene.owners[1]);
- assert.ok(plan.prompt.includes(style));assert.ok(plan.prompt.includes(profile));
+ assert.ok(plan.prompt.includes(style));assert.ok(!plan.prompt.includes(profile));
  assert.ok(!plan.prompt.includes(manga.characters[0].role));
  assert.ok(!plan.prompt.includes('人物像'));
  assert.ok(!plan.prompt.includes('赤い帽子の巨人'));

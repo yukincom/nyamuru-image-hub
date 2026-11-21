@@ -127,7 +127,7 @@ def main():
         if args.command == 'preview':
             output = preview(body, service)
         else:
-            service.prepare(body, supplied_english)
+            service.prepare(body)
             output = result(service, body['job_id'])
     else:
         job_id = checked_id(args.job)

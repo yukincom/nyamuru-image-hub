@@ -104,6 +104,99 @@ class CloudSingleImageTests(unittest.TestCase):
         self.assertEqual(len(parts), 3)
         self.assertEqual(body["generationConfig"]["imageConfig"]["aspectRatio"], "3:4")
 
+    def test_list_cloud_vision_models_filters_and_prioritizes_flash_lite(self) -> None:
+        fake_models = json.dumps({
+            "models": [
+                {"name": "models/gemini-3.1-flash-image", "displayName": "Image", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.5-flash", "displayName": "Gemini 2.5 Flash", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/gemini-2.5-flash-lite", "displayName": "Gemini 2.5 Flash-Lite", "supportedGenerationMethods": ["generateContent"]},
+                {"name": "models/text-embedding-004", "displayName": "Embed", "supportedGenerationMethods": ["embedContent"]},
+            ]
+        }).encode("utf-8")
+
+        class _FakeResp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return fake_models
+
+        with mock.patch.object(ig, "resolve_cloud_api_key", return_value="test-key"), \
+             mock.patch.object(ig.urllib.request, "urlopen", return_value=_FakeResp()):
+            result = ig.list_cloud_vision_models()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual([m["id"] for m in result["models"]], ["gemini-2.5-flash-lite", "gemini-2.5-flash"])
+
+    def test_extract_and_match_cloud_vision(self) -> None:
+        fake_png = base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode("ascii")
+        sample_data_url = f"data:image/png;base64,{fake_png}"
+        extract_resp = json.dumps({
+            "candidates": [{
+                "content": {
+                    "parts": [{
+                        "text": json.dumps({
+                            "hair": {"observed": ["黒いショートヘア"], "inferred": []},
+                            "face": {"observed": ["丸い目"], "inferred": []},
+                            "silhouette": {"observed": [], "inferred": []},
+                            "outfit": {"observed": ["セーラー服"], "inferred": []},
+                            "accessories": {"observed": ["カチューシャ"], "inferred": []},
+                            "ambiguous_design": {"observed": [], "inferred": []},
+                        }, ensure_ascii=False)
+                    }]
+                }
+            }]
+        }).encode("utf-8")
+        match_resp = json.dumps({
+            "candidates": [{
+                "content": {
+                    "parts": [{
+                        "text": json.dumps({
+                            "matched_character_id": "char-1",
+                            "confidence": "high",
+                            "reason": "髪型とカチューシャが一致",
+                        }, ensure_ascii=False)
+                    }]
+                }
+            }]
+        }).encode("utf-8")
+
+        responses = [extract_resp, match_resp]
+
+        class _FakeResp:
+            def __init__(self, data):
+                self._data = data
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return self._data
+
+        with mock.patch.object(ig, "resolve_cloud_api_key", return_value="test-key"), \
+             mock.patch.object(ig.urllib.request, "urlopen", side_effect=lambda req, timeout=None: _FakeResp(responses.pop(0))):
+            extracted = ig.extract_cloud_character_features(
+                model="gemini-2.5-flash-lite",
+                images=[{"image": sample_data_url}],
+                character_name="小雪",
+            )
+            matched = ig.match_cloud_character(
+                model="gemini-2.5-flash-lite",
+                image=sample_data_url,
+                candidates=[{"id": "char-1", "name": "小雪", "recognition": extracted["recognition"]}],
+            )
+
+        self.assertEqual(extracted["recognition"]["hair"]["observed"], ["黒いショートヘア"])
+        self.assertEqual(extracted["analyzer"]["provider"], "cloud")
+        self.assertEqual(matched["matched_character_id"], "char-1")
+        self.assertEqual(matched["confidence"], "high")
+
 
 if __name__ == "__main__":
     unittest.main()
