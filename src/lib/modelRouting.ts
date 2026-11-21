@@ -17,6 +17,7 @@ function contentRestriction(cloud: GenerationPreferences['cloud'], adultContent:
 }
 
 /** Pure snapshots: later setting edits cannot change an in-flight route. No automatic fallback. */
+// 旧: 会話・翻訳ルート（英訳にも使用） -> 新: 会話専用ルート（英訳機能は廃止）。
 export function resolveConversationRoute(
   preferences: ConversationPreferences, local: LocalModelPreferences,
   cloud: GenerationPreferences['cloud'], adultContent = false,

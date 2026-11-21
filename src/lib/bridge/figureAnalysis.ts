@@ -89,7 +89,7 @@ async function figureImagePayload(figure: Blob, face?: FigureFaceInput) {
   };
 }
 
-/** 明示操作時だけ、保存済みの人物切り抜き1枚をlocalhostのVLMへ渡す。 */
+/** 仕様変更のため廃止: ローカルVLMによる単体人物の演技解析。 */
 export async function analyzeFigurePerformanceWithLocalVlm(
   blob: Blob,
   currentSize: FigureSize,
@@ -142,7 +142,7 @@ function normalizedEvidence(value: unknown): VisualEvidence {
   return { observed: strings(record.observed), inferred: strings(record.inferred) };
 }
 
-/** 明示操作時だけ、保存済みの人物資料1枚をlocalhostのVLMへ渡す。 */
+/** 旧: localhostのVLM固定 -> 新: ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐。 */
 export async function analyzeCharacterReferenceWithLocalVlm(
   blob: Blob,
   targetCharacter: string,
@@ -240,7 +240,7 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
   return { recognition, analyzer: normalizedAnalyzer, referenceViews };
 }
 
-/** 明示操作時だけ、ネームから切り抜いた人物1人をlocalhostのVLMへ渡して登録人物と照合する。 */
+/** 旧: localhostのVLM固定 -> 新: ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐。 */
 export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,
   candidates: readonly CharacterMatchCandidate[],
@@ -299,6 +299,7 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
   };
 }
 
+// 仕様変更のため廃止: コマ人物演技のVLM/LLM自動提案。
 export async function suggestPanelFigureActions(
   request: PanelActionSuggestionRequest,
 ): Promise<PanelActionSuggestionResponse> {

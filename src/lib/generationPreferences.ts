@@ -4,6 +4,7 @@ export const LEGACY_CLOUD_MODEL_PREFERENCES_KEY = 'manga-name-studio.cloud-model
 
 export interface GenerationPreferences {
   execution: 'local' | 'cloud';
+  // 仕様変更のため廃止: 英訳確認省略フラグ。
   skipTranslationConfirmation: boolean;
   cloud: {
     adultTermsConfirmed: boolean;

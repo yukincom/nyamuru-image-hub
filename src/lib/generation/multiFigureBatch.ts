@@ -124,6 +124,7 @@ export async function runMultiFigureBatch(options: {
           onPhase: (value) => {
             const label = {
               bridge: '準備中',
+              // 旧: llm: '英訳の準備中' -> 新: 英訳表現を削除。
               llm: '英訳の準備中',
               translate: '指示を保存中',
               suspend: 'LLMを停止中',

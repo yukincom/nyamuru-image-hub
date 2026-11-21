@@ -173,6 +173,7 @@ export function createNewProjectAction({
             setNewLayoutMessage('人物と演技を読み取っています…');
             setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
             try {
+              // 旧: 取り込み時にローカルVLMキャラ照合を直接呼び出し -> 新: ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐。
               const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(
                 await crop.original(), characterCandidates, target.currentSize, await crop.face(),
               );

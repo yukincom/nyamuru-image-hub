@@ -8,7 +8,13 @@ from nyamuru_ocr_util import decode_image_data
 from project_file_picker import choose_project_files
 from nyamuru_project_store import export_yaml_files, load_project, save_project
 from nyamuru_series_catalog_store import discover_reference_text_candidates
-from image_generation import generate_cloud_page_image, get_cloud_api_key_status, list_cloud_image_models, save_cloud_api_key
+from image_generation import (
+    generate_cloud_page_image,
+    generate_cloud_single_image,
+    get_cloud_api_key_status,
+    list_cloud_image_models,
+    save_cloud_api_key,
+)
 
 if TYPE_CHECKING:
     from nyamuru_bridge_http import BridgeHandler
@@ -232,6 +238,28 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
             page_number=int(body.get("page_number") or 1),
             model=str(body.get("model") or ""),
             cloud_spec=body.get("cloud_spec") if isinstance(body.get("cloud_spec"), dict) else {},
+        ))
+        return
+    if path == "/api/cloud/gemini/generate-single":
+        handler.send_json(200, generate_cloud_single_image(
+            model=str(body.get("model") or ""),
+            target_kind=str(body.get("target_kind") or "figure"),
+            label=str(body.get("label") or ""),
+            character_name=str(body.get("character_name") or ""),
+            action=str(body.get("action") or ""),
+            background_description=str(body.get("background_description") or ""),
+            literal_text=body.get("literal_text") if isinstance(body.get("literal_text"), list) else None,
+            output_format=str(body.get("output_format") or ""),
+            style_notes=body.get("style_notes") if isinstance(body.get("style_notes"), list) else None,
+            negative_prompt=str(body.get("negative_prompt") or ""),
+            width=body.get("width"),
+            height=body.get("height"),
+            cutout_white_background=body.get("cutout_white_background") is True,
+            character_references=body.get("character_references") if isinstance(body.get("character_references"), list) else None,
+            reference_image=body.get("reference_image") if isinstance(body.get("reference_image"), str) else None,
+            pose_image=body.get("pose_image") if isinstance(body.get("pose_image"), str) else None,
+            correction_image=body.get("correction_image") if isinstance(body.get("correction_image"), str) else None,
+            composition_image=body.get("composition_image") if isinstance(body.get("composition_image"), str) else None,
         ))
         return
     handler.send_json(404, {"error": "Not found"})

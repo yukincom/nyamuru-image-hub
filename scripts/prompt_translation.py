@@ -1,3 +1,4 @@
+# 仕様変更のため廃止: 文章LLMによる画像生成プロンプトの英訳パイプライン。
 """Image-generation prompt translation through the caller's JSON completion pipeline."""
 
 from __future__ import annotations

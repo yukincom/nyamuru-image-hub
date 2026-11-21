@@ -11,6 +11,7 @@ export const DEFAULT_CONVERSATION_PREFERENCES: Readonly<ConversationPreferences>
   execution: 'local', connectionId: '', model: '',
 });
 
+// 旧: 会話・翻訳の設定 -> 新: 会話のみ（英訳機能は廃止）。
 function normalize(value: unknown): ConversationPreferences {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('会話・翻訳の設定を読み取れません');
   const source = value as Record<string, unknown>;

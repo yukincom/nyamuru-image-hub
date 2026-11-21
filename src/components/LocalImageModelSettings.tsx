@@ -299,6 +299,7 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
           else setSendPrompt(true);
         }}>
         <option value="promptless-two-images">2画像参照（1:設定画、2:ポーズ）</option>
+        {/* 仕様変更のため廃止: 人物3枚参照（1:表情、2:設定画、3:3Dポーズ）。3画像は部分修正のみに限定 */}
         <option value="qwen-three-images">3画像参照（1:表情、2:設定画、3:3Dポーズ）</option>
         <option value="qwen">プロンプト生成</option>
         {draft.binding.prompt_mode === 'plain' && <option value="plain">プロンプト生成（そのまま渡す）</option>}

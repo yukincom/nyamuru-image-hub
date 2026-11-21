@@ -16,7 +16,9 @@ import { currentGenerationPreferences } from '../../lib/generationPreferences';
 import { currentLocalModelPreferences } from '../../lib/localModelPreferences';
 import { resolveGenerationRoute } from '../../lib/modelRouting';
 import { buildCloudGenerationSpec } from '../../lib/generationHandoff';
-import { generateCloudPageWithGemini } from '../../lib/localBridge';
+import { generateCloudPageWithGemini, generateCloudSingleWithGemini } from '../../lib/localBridge';
+import { compileArtworkRules, getArtworkSettings, getWorkNegativePrompt } from '../../lib/artworkRules';
+import type { CloudSingleGenerationStart } from '../generation/createGenerationActions';
 import { splitPageBackgroundsForDocument, splitPageImageForDocument } from '../../lib/cloudPageSplit';
 
 interface Context {
@@ -371,5 +373,160 @@ export function createImagePlacementActions({
     return { pageNumber: page.page, ...result };
   };
 
-  return { choosePlacedImage, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
+  const startCloudSingleGeneration = async (params: CloudSingleGenerationStart) => {
+    const target = qwenGeneration;
+    if (!target) throw new Error('生成対象が見つかりません');
+    const { pageIndex, panelIndex, overlay, owner, textSource } = target;
+    const sourceManga = target.document.manga;
+    const episodeId = sourceManga.meta.episode_id;
+    const plan = params.plan;
+    const targetKind = plan.scope === 'page'
+      ? 'page'
+      : plan.scope === 'panel'
+        ? 'panel'
+        : plan.contentKind
+          ? plan.contentKind
+          : owner?.kind === 'background'
+            ? 'background'
+            : owner?.figure && !plan.characterKeys.length
+              ? 'prop'
+              : 'figure';
+    const artwork = compileArtworkRules(getArtworkSettings(sourceManga), plan.contentKind ? 'handwritten' : 'character');
+    const negativePrompt = getWorkNegativePrompt(sourceManga);
+    const panel = sourceManga.pages[pageIndex]?.panels[panelIndex];
+    const backgroundDescription = owner?.kind === 'background'
+      ? (owner.description || panel?.background_description || sourceManga.setting.location || '')
+      : '';
+    const cutoutWhiteBackground = targetKind === 'figure' || targetKind === 'prop' || targetKind === 'handwritten' || targetKind === 'typeset';
+    const ownerKey = owner?.key ?? plan.ownerKey;
+    const placementFrame = plan.outputFrame ?? owner?.frame;
+    const referenceFrame = plan.referenceFrame ?? owner?.frame;
+
+    setToast(`「${plan.label}」をクラウドAPIへ送信しました。完了後に自動配置します…`);
+
+    void (async () => {
+      try {
+        const { file } = await generateCloudSingleWithGemini({
+          model: params.model,
+          targetKind,
+          label: plan.label,
+          characterName: owner?.figure?.name || plan.label,
+          action: plan.figureAction,
+          backgroundDescription,
+          literalText: plan.literalText,
+          outputFormat: sourceManga.meta.format,
+          styleNotes: artwork.style_notes,
+          negativePrompt,
+          width: plan.width,
+          height: plan.height,
+          cutoutWhiteBackground,
+          characterReferences: params.references.map(ref => ({ label: ref.label, image: ref.image })),
+          referenceImage: params.reference?.image,
+          poseImage: params.poseImage,
+          correctionImage: params.correction?.image,
+          compositionImage: plan.compositionImage,
+        });
+        const liveDoc = documentRef.current;
+        if (liveDoc.manga.meta.episode_id !== episodeId) {
+          setToast(`別の作品に切り替わったため、「${plan.label}」の自動配置を中止しました`);
+          return;
+        }
+        if (plan.scope) {
+          await importPlacedImage(file, {
+            document: liveDoc,
+            pageIndex,
+            panelIndex,
+            scope: plan.scope,
+            generationScope: plan.scope,
+            box: plan.outputFrame!,
+          });
+          setToast(`「${plan.label}」の生成画像を配置しました`);
+          return;
+        }
+        if (!owner || !placementFrame || !referenceFrame) return;
+        const session = paintSessionRef.current;
+        if (session && session.pageIndex === pageIndex && session.panelIndex === panelIndex && session.overlay === overlay && paintController.current) {
+          await paintController.current.insertImage(file, ownerKey, {
+            frame: placementFrame,
+            referenceFrame,
+            ...(plan.folderId ? { folderId: plan.folderId } : {}),
+            hideGuides: true,
+          });
+          setToast(`「${plan.label}」の生成画像を配置し、あたりを非表示にしました`);
+          return;
+        }
+        if (!makePaintScene) return;
+        const newStorageIds: string[] = [];
+        const finishImageImport = beginFigureCropImport();
+        setImageImportBusy(true);
+        try {
+          const next = cloneDocument(liveDoc);
+          if (textSource) {
+            ensureCanvasTextOwner(next, textSource.target, textSource.position);
+          }
+          const scene = makePaintScene(next, panelIndex, pageIndex, overlay);
+          const liveOwner = scene.owners.find(entry => entry.key === ownerKey);
+          if (!liveOwner) throw new Error('差し込み先のあたりが見つかりません');
+          if (liveOwner.paint.layers.length + 1 > 64) throw new Error('1つのグループには64レイヤーまで追加できます');
+          const prepared = await prepareImageAsset(file);
+          const asset = await registerAsset(next, newStorageIds, prepared, file);
+          let sequence = next.manga.generated_image_sequence ?? 0;
+          const inserted = insertGeneratedPaintImage(liveOwner, asset, generatedPaintName(sequence++), placementFrame, {
+            ...(plan.folderId ? { folderId: plan.folderId } : {}),
+          });
+          const hiddenGuideOwner = {
+            ...inserted.owner,
+            paint: {
+              ...inserted.owner.paint,
+              layers: inserted.owner.paint.layers.map(layer =>
+                layer.id !== inserted.layer.id && (layer.guide || layer.name === 'キャラクターあたり' || layer.name === 'あたり · 背景')
+                  ? { ...layer, visible: false }
+                  : layer,
+              ),
+            },
+          };
+          next.manga.generated_image_sequence = sequence;
+          const composite = await humanPoseOwnerImage(hiddenGuideOwner, next.manga.image_assets ?? []);
+          const flatFile = new File([composite], `${file.name}-layers.png`, { type: 'image/png' });
+          const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
+          const placement = { ...createFrameArtwork(flat, hiddenGuideOwner.frame), paint: hiddenGuideOwner.paint };
+          const targetPage = next.manga.pages[pageIndex];
+          if (liveOwner.kind === 'figure') {
+            const container = overlay ? targetPage.page_overlay : targetPage.panels[panelIndex];
+            const figure = container?.figures?.[liveOwner.index];
+            if (!figure) throw new Error('差し替えるあたりが見つかりません');
+            placement.locked = figure.artwork?.locked === true;
+            setFigureArtwork(figure, placement);
+          } else if (liveOwner.kind === 'bubble') {
+            const container = overlay ? targetPage.page_overlay : targetPage.panels[panelIndex];
+            const bubble = container?.bubbles?.[liveOwner.index];
+            if (!bubble) throw new Error('読み込み先のあたりが見つかりません');
+            placement.locked = bubble.paint_overlay?.locked === true;
+            const { id: _id, bbox, ...artworkPart } = placement;
+            bubble.bbox = bbox;
+            bubble.paint_overlay = artworkPart;
+          } else {
+            placement.locked = liveOwner.locked === true;
+            targetPage.panels[panelIndex].background_images = [placement];
+          }
+          if (documentRef.current.manga.meta.episode_id !== episodeId) return;
+          lastHistoryPush.current = 0;
+          setDocument(next);
+          newStorageIds.length = 0;
+          lastHistoryPush.current = 0;
+          setToast(`「${plan.label}」の生成画像を配置し、あたりを非表示にしました`);
+        } catch (placementError) {
+          if (newStorageIds.length) void deleteFigureCropAssets(newStorageIds).catch(() => undefined);
+          throw placementError;
+        } finally {
+          setImageImportBusy(false);
+          finishImageImport();
+        }
+      } catch (error) {
+        setToast(`クラウドAPI生成に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    })();
+  };
+
+  return { choosePlacedImage, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
 }

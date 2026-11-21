@@ -14,12 +14,23 @@ import { prepareQwenJob, submitQwenJob, reconcileQwenJob } from '../../lib/local
 import { withImageGenerationServices } from '../../lib/localBridgeLifecycle.ts';
 import { dataUrlToPngFile, prepareGeneratedInsertionFile } from '../../lib/generation/insertion.ts';
 
+export interface CloudSingleGenerationStart {
+  model: string;
+  plan: QwenGenerationPlan;
+  references: QwenReference[];
+  reference?: QwenLayerReference;
+  correction?: QwenLayerReference;
+  poseImage?: string;
+}
+
 interface CreateGenerationActionsInputs {
   chooseFiles?: ProjectFilePicker;
   generatedTarget: Cell<{ jobId?: string; plan: QwenGenerationPlan; } | undefined>;
   plan: QwenGenerationPlan;
   draft: Cell<{ prompt: string; references: QwenReference[]; reference: QwenLayerReference | undefined; correction: QwenLayerReference | undefined; }>;
   onInsert: (file: File | File[], target: QwenGenerationPlan, adoption?: QwenAdoption) => Promise<void>;
+  onStartCloudSingle?: (params: CloudSingleGenerationStart) => Promise<void>;
+  onClose?: () => void;
   operation: <T>(task: () => Promise<T>, propagate?: boolean) => Promise<T | undefined>;
   attempted: Cell<string | null>;
   targetError: string;
@@ -51,7 +62,7 @@ interface CreateGenerationActionsInputs {
   saveAgentYaml?: (files: AgentWorkflowYamlFile[]) => Promise<string | null>;
 }
 
-export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml, saveAgentYaml }: CreateGenerationActionsInputs) {
+export function createGenerationActions({ chooseFiles = chooseBrowserFiles, generatedTarget, plan, draft, onInsert, onStartCloudSingle, onClose, operation, attempted, targetError, threeImages, usesPoseImage, generationAbort, alive, setPhase, posePending, workflow, cloud, execution, adultContent, setNotice, missingWorkflow, connection, defaultNegative, negative, defaultUpsampler, usePromptUpsampler, figureChroma, chromaKeyColor, ensureComfy, submitted, setAttempt, setJob, comfySession, exportAgentYaml, saveAgentYaml }: CreateGenerationActionsInputs) {
   async function insertResult(result:QwenJob){
     if(!result.image||!result.fileName)throw new Error('差し込む画像がありません');
     await insertImage(dataUrlToPngFile(result.image,result.fileName),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined,Boolean(result.workflowId));
@@ -70,12 +81,13 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     if(targetError)throw new Error(targetError);
     const route=resolveGenerationRoute(execution,connection,adultContent);
     if(route.kind==='unavailable')throw new Error(route.message);
-    if(route.kind==='cloud-api')throw new Error('クラウドAPIはページ一括生成に対応しています。にゃむるちゃんから生成してください');
+    if(route.kind==='cloud-api'&&!onStartCloudSingle)throw new Error('クラウドAPI単画像生成が接続されていません');
+    // 仕様変更のため廃止: 文章LLMによる生成指示の英訳ルート解決。
     const requiresLlm=route.kind==='local'&&workflow?.binding.prompt_mode==='qwen'&&!plan.contentKind;
     const translationRoute=requiresLlm?resolveConversationRoute(currentConversationPreferences(),connection,execution.cloud,adultContent):undefined;
     if(translationRoute?.kind==='unavailable')throw new Error(translationRoute.message);
     const capturedDraft=draft.current,{references,correction}=capturedDraft;
-    if(plan.characterKeys?.length && (plan.promptlessTwoImages ? !references.length : plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key)))))throw new Error('人物に紐づく設定画を読み込めません');
+    if(plan.characterKeys?.length && (plan.promptlessTwoImages || route.kind==='cloud-api' ? !references.length : plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key)))))throw new Error('人物に紐づく設定画を読み込めません');
     if(threeImages&&!usesPoseImage)throw new Error('image1で3Dモデルを調整してください');
     if(plan.humanPose)requireHumanPoseGenerationReady(plan.humanPose.selection);
     const abort=new AbortController();generationAbort.current=abort;
@@ -84,6 +96,21 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     const capturedPose=usesPoseImage?await posePending.current:undefined;
     if(!isCurrent())throw new Error('生成を中止しました');
     const target=qwenGenerationTarget(plan,Boolean(correction));
+    if(route.kind==='cloud-api'){
+      if(!onStartCloudSingle)throw new Error('クラウドAPI単画像生成が接続されていません');
+      const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
+      if(!access.allowed)throw new Error(access.reason==='adult-terms-required'?'環境設定でクラウドの成人向け利用条件を確認してください':'環境設定でクラウドを選んでください');
+      await onStartCloudSingle({
+        model:route.model,
+        plan:target,
+        references,
+        reference:capturedDraft.reference,
+        correction,
+        poseImage:capturedPose,
+      });
+      onClose?.();
+      return {inserted:false};
+    }
     if(cloud){
       if(route.kind!=='external-agent')throw new Error('画像生成の実行先を確認してください');
       // A withdrawal during capture cancels handoff; it never selects a different destination.

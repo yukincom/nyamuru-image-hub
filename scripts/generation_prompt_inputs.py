@@ -249,6 +249,7 @@ def split_fixed_generation_prompt(prompt, *, extract_framing=True):
 
 
 def three_image_workflow(value):
+    # 仕様変更のため廃止: 人物3枚参照判定。
     return value.get('workflow', {}).get('binding', {}).get('prompt_mode') == 'qwen-three-images'
 
 

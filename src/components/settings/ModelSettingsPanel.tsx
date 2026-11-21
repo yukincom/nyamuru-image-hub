@@ -172,6 +172,7 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
             <small>その時点で起動している言語モデルを使用します。</small>
           </Field>
         </div> : <>
+          {/* 旧: 会話・翻訳のAPIは未接続 -> 新: 会話のみ（英訳機能は廃止） */}
           <p class="environment-settings-note">会話・翻訳のAPIは未接続です。利用するにはローカルを選んでください。</p>
           <div class="paint-entry-actions"><button type="button" class="secondary-button" onClick={() => updateConversationPreferences({ ...conversationPreferences, execution: 'local' })}>ローカルを使う</button></div>
         </>}

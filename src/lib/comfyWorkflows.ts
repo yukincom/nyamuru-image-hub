@@ -13,6 +13,7 @@ export interface ComfyWorkflowBinding {
   height: ComfyInputBinding[];
   images: ComfyInputBinding[][];
   output: { node: string; index: number };
+  // 旧: 'qwen-three-images'（3D＋設定画＋ネーム表情）を含む -> 新: 仕様変更のため廃止。3画像は部分修正のみに限定。
   prompt_mode: 'qwen' | 'plain' | 'qwen-three-images' | 'promptless-two-images';
   fixed_size: [number, number] | null;
   size_source?: 'atari' | 'panel';

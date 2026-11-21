@@ -111,6 +111,7 @@ def validate_definition(body):
     if bool(binding['width']) != bool(binding['height']):
         raise ValueError('幅と高さの受け渡し先を両方指定してください')
     fixed = binding['fixed_size']
+    # 仕様変更のため廃止: 人物3枚参照（3D＋設定画＋ネーム表情）。3画像は部分修正のみに限定。
     if binding['prompt_mode'] == 'qwen-three-images' and (len(images) != 3 or fixed is not None):
         raise ValueError('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください')
     if binding['prompt_mode'] == 'promptless-two-images' and len(images) != 2:

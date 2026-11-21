@@ -166,3 +166,60 @@ export async function generateCloudPageWithGemini(params: {
     usedReferences: Array.isArray(value.used_references) ? value.used_references.map(String) : [],
   };
 }
+
+export interface CloudSingleImageRequest {
+  model: string;
+  targetKind: 'figure' | 'background' | 'prop' | 'handwritten' | 'typeset' | 'panel' | 'page';
+  label: string;
+  characterName?: string;
+  action?: string;
+  backgroundDescription?: string;
+  literalText?: string[];
+  outputFormat?: string;
+  styleNotes?: string[];
+  negativePrompt?: string;
+  width?: number;
+  height?: number;
+  cutoutWhiteBackground?: boolean;
+  characterReferences?: Array<{ label: string; image: string }>;
+  referenceImage?: string;
+  poseImage?: string;
+  correctionImage?: string;
+  compositionImage?: string;
+}
+
+export async function generateCloudSingleWithGemini(params: CloudSingleImageRequest): Promise<{ file: File; model: string }> {
+  const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/generate-single', {
+    model: params.model,
+    target_kind: params.targetKind,
+    label: params.label,
+    ...(params.characterName ? { character_name: params.characterName } : {}),
+    ...(params.action ? { action: params.action } : {}),
+    ...(params.backgroundDescription ? { background_description: params.backgroundDescription } : {}),
+    ...(params.literalText?.length ? { literal_text: params.literalText } : {}),
+    ...(params.outputFormat ? { output_format: params.outputFormat } : {}),
+    ...(params.styleNotes?.length ? { style_notes: params.styleNotes } : {}),
+    ...(params.negativePrompt ? { negative_prompt: params.negativePrompt } : {}),
+    ...(params.width ? { width: params.width } : {}),
+    ...(params.height ? { height: params.height } : {}),
+    cutout_white_background: params.cutoutWhiteBackground === true,
+    ...(params.characterReferences?.length ? { character_references: params.characterReferences } : {}),
+    ...(params.referenceImage ? { reference_image: params.referenceImage } : {}),
+    ...(params.poseImage ? { pose_image: params.poseImage } : {}),
+    ...(params.correctionImage ? { correction_image: params.correctionImage } : {}),
+    ...(params.compositionImage ? { composition_image: params.compositionImage } : {}),
+  }, 190_000)) as Record<string, unknown>;
+  const b64 = typeof value.image_base64 === 'string' ? value.image_base64 : '';
+  if (!b64) throw new Error('クラウドAPIから画像を受け取れませんでした');
+  const mimeType = typeof value.mime_type === 'string' && value.mime_type ? value.mime_type : 'image/png';
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const ext = mimeType.includes('jpeg') ? 'jpg' : mimeType.includes('webp') ? 'webp' : 'png';
+  const safeLabel = (params.label || params.targetKind).replace(/[^\w\u3040-\u30ff\u4e00-\u9fff-]+/g, '_').slice(0, 40) || 'cloud';
+  const file = new File([bytes], `cloud_${safeLabel}.${ext}`, { type: mimeType });
+  return {
+    file,
+    model: typeof value.model === 'string' ? value.model : params.model,
+  };
+}

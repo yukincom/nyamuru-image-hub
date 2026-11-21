@@ -19,6 +19,7 @@ interface ReadinessInput {
   phase: string;
   attempted: boolean;
   cloud: boolean;
+  cloudApi?: boolean;
   hasWorkflow: boolean;
   workflowError: string;
   plan: QwenGenerationPlan;
@@ -55,7 +56,7 @@ export function generationReadiness(input: ReadinessInput): GenerationReadiness 
   }
   if (input.characterLoading) {
     add('characters', 'キャラクター設定画', 'waiting', '人物に紐づく設定画を読み込んでいます');
-  } else if (input.sourceErrors.character || (input.plan.promptlessTwoImages
+  } else if (input.sourceErrors.character || (input.plan.promptlessTwoImages || input.cloudApi
     ? input.plan.characterKeys.length > 0 && input.references.length === 0
     : input.plan.characterKeys.some(key => !input.references.some(reference => reference.characterKeys.includes(key))))) {
     add('characters', 'キャラクター設定画', 'action_required',

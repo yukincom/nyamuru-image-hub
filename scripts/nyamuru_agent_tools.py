@@ -146,6 +146,7 @@ _GENERATION_PROMPT_EDIT = {
     "type": "function",
     "function": {
         "name": "generation_prompt_edit",
+        # 旧: 修正または英訳した全文へ置き換えます -> 新: 英訳の記述を削除。
         "description": "現在の生成指示を修正または英訳した全文へ置き換えます。依頼されていない要素と参照画像の役割を保持します。画像生成は開始しません。相談だけなら使いません。",
         "parameters": {"type": "object", "properties": {
             "prompt": {"type": "string", "minLength": 1, "maxLength": 12000}},

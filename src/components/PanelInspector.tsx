@@ -102,6 +102,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
     };
     try {
       const result = await withPanelActionServices(
+        // 仕様変更のため廃止: コマ人物演技のVLM/LLM自動提案。
         () => suggestPanelFigureActions(buildPanelActionSuggestionRequest(manga, pageIndex, panelIndex)),
         {
           onPhase: (phase) => { if (requestId === generationRequest.current) setGenerationStatus({ kind: 'loading', message: phaseMessages[phase] }); },

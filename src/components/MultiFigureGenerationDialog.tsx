@@ -16,6 +16,7 @@ import { currentConversationPreferences } from '../lib/conversationPreferences.t
 import { type AgentWorkflowYamlFile, deliverAgentWorkflowYamlFiles } from '../lib/generationHandoff.ts';
 import { downloadBrowserBlob } from '../lib/browserFiles.ts';
 import { qwenInputImage } from './generation/inputImages.ts';
+import { defaultAtariLayer } from './generation/useGenerationReferences.ts';
 import {
   type QwenAdoption,
   type QwenGenerationPlan,
@@ -154,7 +155,7 @@ export default function MultiFigureGenerationDialog({
   const [itemStates, setItemStates] = useState<Record<string, ItemState>>(() =>
     Object.fromEntries(items.map((item) => [item.id, {
       characterAssetId: item.plan.candidates?.[0]?.source.asset_id ?? '',
-      layerId: item.layers[0]?.id ?? '',
+      layerId: defaultAtariLayer(item.layers)?.id ?? item.layers.find((layer) => !layer.empty)?.id ?? item.layers[0]?.id ?? '',
       status: 'pending' as const,
     }])),
   );

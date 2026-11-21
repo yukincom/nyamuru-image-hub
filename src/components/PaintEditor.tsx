@@ -272,7 +272,13 @@ export default function PaintEditor(props: PaintEditorProps) {
         const generated=fromDialog?insertGeneratedPaintImage(updated,asset,generatedPaintName(sequence++),placement?.frame,
           {folderId:placement?.folderId,...(adoption?{generation:{jobId:adoption.jobId,candidateIndex:adoption.indices[index]}}:{})}):undefined;
         const added=generated?.layer??{...newPaintLayer(file.name),image:{assetId:asset.id,crop:imageCrop(asset),bbox:fitImageBox({w:asset.widthPx,h:asset.heightPx},{x:0,y:0,w:paint.width,h:paint.height})}};
-        updated=generated?.owner??{...updated,paint:{...paint,layers:target.replace?[added]:[...paint.layers,added]}};lastId=added.id;
+        updated=generated?.owner??{...updated,paint:{...paint,layers:target.replace?[added]:[...paint.layers,added]}};
+        if(placement?.hideGuides){
+          updated={...updated,paint:{...updated.paint,layers:updated.paint.layers.map(layer=>
+            layer.id!==added.id&&(layer.guide||layer.name==='キャラクターあたり'||layer.name==='あたり · 背景')
+              ?{...layer,visible:false}:layer)}};
+        }
+        lastId=added.id;
       }
       if(historyRef.current.present!==snapshot)throw new Error('差し込み先が変更されました。生成対象を選び直してください');
       if(images){imagesRef.current=map;setImages(map);}

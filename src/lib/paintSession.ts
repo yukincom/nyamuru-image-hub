@@ -1,7 +1,7 @@
 import type { PaintAddPosition, PaintLayerDestination, PaintLayerDropTarget, PaintOwner, PaintScene } from './paintDocument.ts';
 import type { BackgroundStage, BBox, ImageAsset, PaintFolder, PaintLayer } from '../types.ts';
 import type {QwenAdoption} from './qwenGeneration.ts';
-export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox; folderId?:string }
+export interface PaintImagePlacement { frame: BBox; referenceFrame: BBox; folderId?:string; hideGuides?:boolean }
 
 export type PaintLayerAction =
   | {type:'background3d';key:'background'}

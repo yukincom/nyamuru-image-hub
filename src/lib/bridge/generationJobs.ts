@@ -165,6 +165,7 @@ export async function prepareQwenJob(jobId:string,payload:ReturnType<typeof impo
   const job=await decodeQwenJob(await postJson('/api/qwen-generation/prepare',{
     workflow_id:currentGenerationPreferences().local.workflowId,comfyui_url:currentLocalModelPreferences().comfyuiUrl,
     ...payload,job_id:jobId},320_000),jobId);
+  // 旧: 英訳の保存を確認できません -> 新: 英訳表現を削除。
   if(job.status!=='prepared')throw new Error(job.error||'英訳の保存を確認できません。生成履歴を確認してください');
   return job;
 }

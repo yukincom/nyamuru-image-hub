@@ -59,9 +59,10 @@
 | コマ・人物・文字領域検出 | `rtdetrv4-x-manga109s_v2` (`model.onnx`) | `tori29umai/rtdetrv4-x-manga109s_v2`（`npm run setup:vision`） |
 | 漫画文字 OCR | `baberu-ocr` | `genshiai-daichi/baberu-ocr`（`npm run setup:vision`） |
 | 表情補助タグ抽出 | `wd-vit-tagger-v3` (`model.onnx`) | `SmilingWolf/wd-vit-tagger-v3`（`npm run setup:vision`） |
-| ローカル VLM（設定画・表情解析） | `lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit` | Apple Silicon / MLX（`NYAMURU_VLM_MODEL` で変更可） |
-| 画像生成（既定・2画像参照 / P-H3-Image） | `P-H3-Image-AD-Q6_K.gguf` | UNet（`AtomicChat/P-H3-Image-GGUF`、`ComfyUI-GGUF` `UnetLoaderGGUF`） |
+| キャラ照合・ビジョン（オプション・既定OFF） | ローカル VLM `lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit` または クラウド Vision API（Gemini Flash-Lite / Flash 系） | ビジョンON時のみ使用。OFF時は設定画の登録・管理のみで特徴入力はグレーアウト |
+| 画像生成（ローカル既定・2画像参照 / P-H3-Image） | `P-H3-Image-AD-Q6_K.gguf` | UNet（`AtomicChat/P-H3-Image-GGUF`、`ComfyUI-GGUF` `UnetLoaderGGUF`） |
 | 画像生成（P-H3-Image 付随） | `p-h3-image_text_encoder_bf16.safetensors` / `p-h3-image_prompt_upsampler_bf16.safetensors` / `p-h3-image_vae_bf16.safetensors` | Text Encoder・Prompt Upsampler・VAE（`examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json`） |
+| 画像生成（クラウドAPI・ページ一括／単画像） | Gemini Image 系（既定 `gemini-3.1-flash-image`） | 環境設定のクラウドAPIキーを使用（Vision APIとキー共通） |
 | 操作意図分類 | ModernBERT | 同梱 tokenizer ＋ Release 配布重み |
 
 ## セットアップ・起動手順（エージェント向け）
@@ -109,15 +110,16 @@
 
 ### 4. ローカル AI（VLM・文章 LLM・ComfyUI 画像生成）の構成と接続
 
-| 機能 | 主なローカル構成 |
+| 機能 | 主な構成 |
 |---|---|
 | コマ・人物・文字領域の解析 | RT-DETR、OpenCV、Baberu OCR |
-| 人物・姿勢・表情・設定画の読み取り | Qwen3-VL／MLX（導入・検証手順は「ローカルVision Language Model（VLM）の接続・導入」に従う） |
-| 文章処理と生成プロンプト | ローカル MLX サーバー（port 8080 で起動済みなら `npm run dev` が自動共用） |
-| 画像生成 | ComfyUI、P-H3-Image（2画像編集・既定）／Qwen Image 2.1 Turbo 対応ワークフロー（[examples/comfyui/README.md](examples/comfyui/README.md) 同梱） |
+| キャラ照合・ビジョン（オプション・既定OFF） | ローカル VLM（Qwen3-VL／MLX）またはクラウド Vision API（Gemini Flash-Lite / Flash 系） |
+| 会話・編集支援 | ローカル MLX サーバー（port 8080 で起動済みなら `npm run dev` が自動共用）。プロンプト英訳機能は持たない |
+| 画像生成 | ローカル ComfyUI（P-H3-Image 2画像編集・既定、[examples/comfyui/README.md](examples/comfyui/README.md) 同梱）、クラウドAPI（Gemini Image・ページ一括／単画像）、または外部エージェント |
 | 操作分類 | 同梱の ModernBERT tokenizer と Release 配布の重み |
 
-- **既定のローカル画像生成ワークフロー**: `P-H3-Image_Edit_Mac_bf16_v2`（[examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json](examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json) / [binding.json](examples/comfyui/p_h3_image_edit_mac_bf16_v2.binding.json)）。プロンプト入力や英訳なしで 2 枚の画像（`image_1 (edited)`: キャラクター設定画、`image_2 (reference)`: 3D ポーズ・構図参照）から人物を生成する。環境設定の「使用するワークフロー」から従来の 3 枚参照ワークフローへ切替可能。
+- **既定の画像生成方針（2画像参照・プロンプト流し込みなし）**: ローカル既定ワークフローは `P-H3-Image_Edit_Mac_bf16_v2`（[examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json](examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json) / [binding.json](examples/comfyui/p_h3_image_edit_mac_bf16_v2.binding.json)）。プロンプト入力や英訳なしで 2 枚の画像（`image_1 (edited)`: キャラクター設定画、`image_2 (reference)`: キャラクターあたり／3Dポーズ参照、既定はキャラクターあたり）から人物を生成する。3画像構成は部分修正（元絵＋修正マスク／赤入れ＋設定画）の用途に限定する。
+- **クラウドAPI単画像生成**: 送信完了と同時に生成ダイアログを閉じて編集画面へ戻り、完了時にあたりレイヤーの最上段へ自動配置＋あたりレイヤーを自動非表示（レイヤー保持・不可視オン）にし、応答取得後にクラウド接続を閉じる。
 - **ComfyUI 接続先**: 既定は `http://127.0.0.1:8188`。変更する場合は loopback（`localhost` / `127.0.0.1` / `::1`）の URL のみを環境変数 `NYAMURU_COMFYUI_URL` または「環境設定 → モデル設定 → ローカル」で指定する。
 - **ローカルメモリ共用**: 画像生成時は必要に応じて文章 LLM を一時停止して ComfyUI を使用し、終了後に元から起動していた LLM を同じ設定で復帰する。複数人物の直列生成時は各生成のあいだで ComfyUI の `/nyamuru/memory/release` によりモデルメモリを解放する。
 - **モデル・原稿データの扱い**: モデル重み・原稿データ・生成ジョブは Git リポジトリへ含めない。

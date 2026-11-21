@@ -23,6 +23,7 @@ function normalizedLlmAlias(value: unknown): string {
   return alias;
 }
 
+// 旧: VLMモデルはローカルHugging Face ID固定で常時有効 -> 新: ビジョン（キャラ照合）はチェックボックスでON/OFF（既定OFF）、ON時はローカルVLMまたはクラウドVision APIを選択。
 function normalizedVlmModelId(value: unknown): string {
   const modelId = typeof value === 'string' ? value.trim() : '';
   if (!modelId || modelId.length > 200 || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/u.test(modelId)) {

@@ -317,6 +317,7 @@ export default function CharacterReferences({ document, character, onChange, onN
   return <div class="character-reference-manager">
     <div class="character-visuals-head"><strong>キャラクターデザイン画像</strong><div class="character-visuals-actions">
       <button type="button" class="inline-add" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady} onClick={() => void chooseImages()}><Upload size={14} />{saving ? '保存中…' : '画像を追加'}</button>
+      {/* 旧: 特徴抽出・特徴入力は常時有効 -> 新: ビジョンOFF時は設定画の登録・管理のみで特徴欄・抽出ボタンをグレーアウト */}
       <button type="button" class="character-extract-all" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady || !imageVisuals.length} onClick={() => void analyzeAll()}><ScanSearch size={14} />{analyzingId ? '...抽出中' : 'まとめて特徴を抽出'}</button>
     </div></div>
     <ProjectFileInput inputRef={input} accept="image/png,image/jpeg,image/webp" multiple hidden onFiles={addImages} />

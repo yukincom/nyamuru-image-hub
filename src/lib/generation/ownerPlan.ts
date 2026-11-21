@@ -76,6 +76,7 @@ const FEATURE_PARTS = {
 
 const UPPER_BODY_FEATURE = /\b(?:torso|chest|shoulders?|upper[ -]body)\b|胴|胸|肩|上半身/iu;
 
+// 仕様変更のため廃止: VLM特徴テキストのプロンプト自動流し込み（characterFeatureVisible / characterAppearanceForFraming）。
 function characterFeatureVisible(feature:QwenCharacterFeature,framing:FigureSize|undefined):boolean {
   if(!framing||framing==='long'||framing==='full')return true;
   const has=(...parts:(keyof typeof FEATURE_PARTS)[])=>parts.some(part=>FEATURE_PARTS[part].test(feature.text));
@@ -169,6 +170,7 @@ export function figureBackgroundPrompt(prompt:string,color:string):string {
 
 export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null, outputScale = 0.6):QwenGenerationPlan {
   if(workflow?.binding.prompt_mode==='promptless-two-images')return {...plan,promptlessTwoImages:true};
+  // 仕様変更のため廃止: 人物3枚参照（3Dポーズ＋設定画＋ネーム表情）のプロンプト自動組立。
   if(workflow?.binding.prompt_mode!=='qwen-three-images')return plan;
   const slot=workflow.binding.prompt[0];
   // The colour selector supplies this last line; keep the artwork text editable.

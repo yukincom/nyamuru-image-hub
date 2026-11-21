@@ -214,6 +214,7 @@ class QwenGenerationService(GenerationJobResults):
             if not value['owner_key'].startswith('figure-') or value['mode'] != 'new' or len(value['character_keys']) != 1 or [
                 ref['role'] for ref in value['references']
             ] != ['style', 'identity', 'style']:
+                # 仕様変更のため廃止: 人物3枚参照（3D＋設定画＋ネーム表情）。
                 raise ValueError('人物3枚参照には、3Dポーズ・人物設定画1枚・ネームを順に指定してください')
             dpi = body.get('dpi')
             if isinstance(dpi, bool) or not isinstance(dpi, (float,int)) or not math.isfinite(dpi) or not 1 <= dpi <= 10000:

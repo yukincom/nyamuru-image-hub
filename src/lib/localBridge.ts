@@ -114,6 +114,8 @@ export {
   saveGeminiApiKey,
   listGeminiImageModels,
   generateCloudPageWithGemini,
+  generateCloudSingleWithGemini,
+  type CloudSingleImageRequest,
 } from './bridge/editorServices.ts';
 export {
   listSeriesCatalogs,
