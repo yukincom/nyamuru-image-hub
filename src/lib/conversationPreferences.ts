@@ -11,16 +11,15 @@ export const DEFAULT_CONVERSATION_PREFERENCES: Readonly<ConversationPreferences>
   execution: 'local', connectionId: '', model: '',
 });
 
-// 旧: 会話・翻訳の設定 -> 新: 会話のみ（英訳機能は廃止）。
 function normalize(value: unknown): ConversationPreferences {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('会話・翻訳の設定を読み取れません');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('会話の設定を読み取れません');
   const source = value as Record<string, unknown>;
-  if (source.execution !== 'local' && source.execution !== 'api') throw new Error('会話・翻訳の実行先を選択してください');
+  if (source.execution !== 'local' && source.execution !== 'api') throw new Error('会話の実行先を選択してください');
   if (typeof source.connectionId !== 'string' || !/^[A-Za-z0-9_-]{0,120}$/u.test(source.connectionId)) {
     throw new Error('登録済みの接続を選択してください');
   }
   if (typeof source.model !== 'string' || source.model.length > 200 || /[\u0000-\u001f]/u.test(source.model)) {
-    throw new Error('会話・翻訳のモデル名を確認してください');
+    throw new Error('会話のモデル名を確認してください');
   }
   return { execution: source.execution as ConversationPreferences['execution'], connectionId: source.connectionId, model: source.model };
 }

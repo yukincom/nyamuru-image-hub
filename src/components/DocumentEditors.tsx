@@ -35,8 +35,7 @@ export function MetaEditor({ document, onChange }: MetaEditorProps) {
     </section>
     <section class="content-card">
       <SectionTitle title="画風" />
-      {/* 旧: 画像生成時に英訳して使います -> 新: 英訳表現を削除 */}
-      <Field label="画風プロンプト" hint="画像生成時に英訳して使います" wide>
+      <Field label="画風プロンプト" hint="作品の画風メモとして生成時に参照します" wide>
         <textarea rows={7} value={getWorkStylePrompt(manga)} onInput={(event) => update((draft) => {
           setWorkStylePrompt(draft.manga, event.currentTarget.value);
         })} />

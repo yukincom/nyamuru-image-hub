@@ -13,8 +13,7 @@ export interface ComfyWorkflowBinding {
   height: ComfyInputBinding[];
   images: ComfyInputBinding[][];
   output: { node: string; index: number };
-  // 旧: 'qwen-three-images'（3D＋設定画＋ネーム表情）を含む -> 新: 仕様変更のため廃止。3画像は部分修正のみに限定。
-  prompt_mode: 'qwen' | 'plain' | 'qwen-three-images' | 'promptless-two-images';
+  prompt_mode: 'qwen' | 'plain' | 'promptless-two-images';
   fixed_size: [number, number] | null;
   size_source?: 'atari' | 'panel';
 }
@@ -108,11 +107,8 @@ export function parseComfyWorkflowBinding(value: unknown, graph: ComfyApiGraph):
     || typeof output.index !== 'number' || !Number.isSafeInteger(output.index) || output.index < 0 || output.index > 63) {
     throw new Error('完成画像の出力ノードと画像位置を選択してください');
   }
-  if (value.prompt_mode !== 'qwen' && value.prompt_mode !== 'plain' && value.prompt_mode !== 'qwen-three-images' && value.prompt_mode !== 'promptless-two-images') {
+  if (value.prompt_mode !== 'qwen' && value.prompt_mode !== 'plain' && value.prompt_mode !== 'promptless-two-images') {
     throw new Error('指示文の扱いを選択してください');
-  }
-  if (value.prompt_mode === 'qwen-three-images' && (images.length !== 3 || fixed_size !== null)) {
-    throw new Error('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください');
   }
   if (value.prompt_mode === 'promptless-two-images' && images.length !== 2) {
     throw new Error('2画像参照・プロンプト不要には参照画像2枚を指定してください');
@@ -158,7 +154,6 @@ export function parseComfyWorkflowInfo(value: unknown): ComfyWorkflowInfo {
 }
 
 
-export const QWEN_FIGURE_WORKFLOW = '132c3a87-8f0a-4591-b2e0-4a28a7b7b002';
 export const P_H3_TWO_IMAGE_WORKFLOW = '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01';
 const standardQwenPrefix='c7b07cf5-7e69-43e4-b380-';
 export function standardQwenWorkflowId(inputs:number) {

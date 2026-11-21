@@ -9,6 +9,7 @@ import type {
 } from '../../types';
 import { blobDataUrl, postJson } from './transport.ts';
 import { currentLocalModelPreferences } from '../localModelPreferences.ts';
+import { currentGenerationPreferences } from '../generationPreferences.ts';
 import { FIGURE_SIZES } from '../manga.ts';
 import { isLanClient } from '../clientRuntime.ts';
 import { loadCharacterReferenceImage } from './assetStorage.ts';
@@ -89,47 +90,6 @@ async function figureImagePayload(figure: Blob, face?: FigureFaceInput) {
   };
 }
 
-/** 仕様変更のため廃止: ローカルVLMによる単体人物の演技解析。 */
-export async function analyzeFigurePerformanceWithLocalVlm(
-  blob: Blob,
-  currentSize: FigureSize,
-  face?: FigureFaceInput,
-): Promise<FigurePerformanceSuggestion> {
-  const payload = await postJson('/api/figure-performance/analyze', {
-    ...await figureImagePayload(blob, face),
-    current_size: currentSize,
-    vlm_model: currentLocalModelPreferences().vlmModelId,
-  }, 650_000) as Record<string, unknown>;
-  const figureSizes = new Set<FigureSize>(FIGURE_SIZES);
-  const action = typeof payload.action === 'string' ? payload.action.trim() : '';
-  const suggestedSize = typeof payload.suggested_size === 'string' && figureSizes.has(payload.suggested_size as FigureSize)
-    ? payload.suggested_size as FigureSize
-    : currentSize;
-  const analysis = payload.analysis && typeof payload.analysis === 'object' && !Array.isArray(payload.analysis)
-    ? payload.analysis as Record<string, unknown>
-    : null;
-  const analyzer = payload.analyzer && typeof payload.analyzer === 'object' && !Array.isArray(payload.analyzer)
-    ? payload.analyzer as Record<string, unknown>
-    : null;
-  if (typeof payload.action !== 'string' || action.length > 800 || !analysis || !analyzer
-    || analyzer.provider !== 'local' || analyzer.runtime !== 'mlx-vlm') {
-    throw new Error('人物演技の解析結果形式が正しくありません');
-  }
-  if (!action) expressionReadingFromAnalysis(analysis);
-  return {
-    action,
-    suggestedSize,
-    analysis,
-    analyzer: {
-      provider: 'local',
-      runtime: 'mlx-vlm',
-      model: typeof analyzer.model === 'string' ? analyzer.model : '',
-      promptVersion: typeof analyzer.prompt_version === 'string' ? analyzer.prompt_version : '',
-      analyzedAt: typeof analyzer.analyzed_at === 'string' ? analyzer.analyzed_at : '',
-    },
-  };
-}
-
 const CHARACTER_RECOGNITION_FIELDS = ['hair', 'face', 'silhouette', 'outfit', 'accessories', 'ambiguous_design'] as const;
 
 function normalizedEvidence(value: unknown): VisualEvidence {
@@ -142,7 +102,7 @@ function normalizedEvidence(value: unknown): VisualEvidence {
   return { observed: strings(record.observed), inferred: strings(record.inferred) };
 }
 
-/** 旧: localhostのVLM固定 -> 新: ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐。 */
+/** ビジョンON時のみ、保存済みの人物資料1枚を解析する。 */
 export async function analyzeCharacterReferenceWithLocalVlm(
   blob: Blob,
   targetCharacter: string,
@@ -179,17 +139,56 @@ export async function analyzeCharacterReferenceWithLocalVlm(
   return { recognition, analyzer: normalizedAnalyzer, referenceView };
 }
 
-/** 登録済みの人物資料群を同時に比較し、安定特徴と各画像の用途を抽出する。 */
+/** 登録済みの人物資料群を比較し、安定特徴を抽出する（ビジョンON時のみ実行）。 */
 export async function analyzeCharacterReferenceSetWithLocalVlm(
   seriesId: string,
   characterCatalogId: string,
   assetIds: readonly string[],
   targetCharacter: string,
 ): Promise<CharacterReferenceSetSuggestion> {
+  const vision = currentGenerationPreferences().vision;
+  if (!vision.enabled) {
+    throw new Error('キャラ照合（ビジョン）がオフになっています。環境設定 → モデル設定でオンにしてください');
+  }
   const uniqueAssetIds = [...new Set(assetIds)];
   if (!seriesId || !characterCatalogId || !uniqueAssetIds.length || uniqueAssetIds.length > 12
     || uniqueAssetIds.some((assetId) => !/^image-[a-f0-9]{64}$/.test(assetId))) {
     throw new Error('一括解析する人物資料画像が正しくありません');
+  }
+  if (vision.execution === 'cloud') {
+    const images = await Promise.all(uniqueAssetIds.map(async (assetId) => {
+      const blob = await loadCharacterReferenceImage(seriesId, characterCatalogId, assetId);
+      if (!blob) throw new Error('一括解析する人物資料画像が見つかりません');
+      return { asset_id: assetId, image: await blobDataUrl(blob) };
+    }));
+    const payload = await postJson('/api/cloud/gemini/extract-character-features', {
+      model: vision.cloudModel,
+      images,
+      character_name: targetCharacter.trim(),
+    }, 100_000) as Record<string, unknown>;
+    const rawRecognition = payload.recognition && typeof payload.recognition === 'object' && !Array.isArray(payload.recognition)
+      ? payload.recognition as Record<string, unknown>
+      : null;
+    const analyzer = payload.analyzer && typeof payload.analyzer === 'object' && !Array.isArray(payload.analyzer)
+      ? payload.analyzer as Record<string, unknown>
+      : null;
+    if (!rawRecognition || !analyzer) throw new Error('クラウドVisionの特徴抽出結果形式が正しくありません');
+    const recognition = Object.fromEntries(
+      CHARACTER_RECOGNITION_FIELDS.map((field) => [field, normalizedEvidence(rawRecognition[field])]),
+    ) as unknown as CharacterRecognitionProfile;
+    const normalizedAnalyzer: LocalVlmAnalyzer = {
+      provider: 'cloud',
+      runtime: 'gemini-vision',
+      model: typeof analyzer.model === 'string' ? analyzer.model : vision.cloudModel,
+      prompt_version: typeof analyzer.prompt_version === 'string' ? analyzer.prompt_version : 'cloud-vision-v1',
+      analyzed_at: typeof analyzer.analyzed_at === 'string' ? analyzer.analyzed_at : '',
+    };
+    recognition.analyzer = normalizedAnalyzer;
+    return {
+      recognition,
+      analyzer: normalizedAnalyzer,
+      referenceViews: uniqueAssetIds.map((assetId) => ({ assetId, referenceView: 'other' as CharacterReferenceView, confidence: 'low' as const })),
+    };
   }
   const payload = await postJson('/api/character-reference/analyze-set', {
     series_id: seriesId,
@@ -240,13 +239,53 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
   return { recognition, analyzer: normalizedAnalyzer, referenceViews };
 }
 
-/** 旧: localhostのVLM固定 -> 新: ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐。 */
+/** ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐して登録人物と照合する。 */
 export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,
   candidates: readonly CharacterMatchCandidate[],
   currentSize: FigureSize,
   face?: FigureFaceInput,
 ): Promise<CharacterMatchSuggestion> {
+  const vision = currentGenerationPreferences().vision;
+  if (!vision.enabled) {
+    throw new Error('キャラ照合（ビジョン）がオフになっています。環境設定 → モデル設定でオンにしてください');
+  }
+  if (vision.execution === 'cloud') {
+    const payload = await postJson('/api/cloud/gemini/match-character', {
+      model: vision.cloudModel,
+      image: await blobDataUrl(blob),
+      candidates: candidates.map((candidate) => ({
+        id: candidate.id,
+        name: candidate.id,
+        recognition: { observed: candidate.observedTraits },
+      })),
+    }, 100_000) as Record<string, unknown>;
+    const confidenceValues = new Set(['high', 'medium', 'low', 'none']);
+    const confidence = typeof payload.confidence === 'string' && confidenceValues.has(payload.confidence)
+      ? payload.confidence as CharacterMatchSuggestion['confidence']
+      : 'none';
+    const analyzer = payload.analyzer && typeof payload.analyzer === 'object' && !Array.isArray(payload.analyzer)
+      ? payload.analyzer as Record<string, unknown>
+      : {};
+    const matchedId = typeof payload.matched_character_id === 'string' ? payload.matched_character_id : '';
+    return {
+      candidateId: confidence === 'none' ? '' : matchedId,
+      confidence,
+      observed: [],
+      reason: typeof payload.reason === 'string' ? payload.reason.trim() : '',
+      action: '',
+      suggestedSize: currentSize,
+      analysis: { source: 'cloud-vision' },
+      expressionReading: expressionReadingFromAnalysis({}),
+      analyzer: {
+        provider: 'cloud',
+        runtime: 'gemini-vision',
+        model: typeof analyzer.model === 'string' ? analyzer.model : vision.cloudModel,
+        prompt_version: typeof analyzer.prompt_version === 'string' ? analyzer.prompt_version : 'cloud-vision-match-v1',
+        analyzed_at: typeof analyzer.analyzed_at === 'string' ? analyzer.analyzed_at : '',
+      },
+    };
+  }
   const payload = await postJson('/api/character-match/analyze', {
     ...await figureImagePayload(blob, face),
     candidates: candidates.map((candidate) => ({
@@ -296,63 +335,5 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
       prompt_version: typeof analyzer.prompt_version === 'string' ? analyzer.prompt_version : '',
       analyzed_at: typeof analyzer.analyzed_at === 'string' ? analyzer.analyzed_at : '',
     },
-  };
-}
-
-// 仕様変更のため廃止: コマ人物演技のVLM/LLM自動提案。
-export async function suggestPanelFigureActions(
-  request: PanelActionSuggestionRequest,
-): Promise<PanelActionSuggestionResponse> {
-  const mapPanel = (panel: PanelActionSuggestionRequest['currentPanel']) => ({
-    page_number: panel.pageNumber,
-    panel_id: panel.panelId,
-    panel_action: panel.panelAction,
-    people: panel.people,
-    dialogues: panel.dialogues,
-  });
-  const payload = await postJson('/api/panel-actions/suggest', {
-    action_mode: 'reconcile',
-    work: {
-      series_title: request.work.seriesTitle,
-      subtitle: request.work.subtitle,
-      episode_number: request.work.episodeNumber,
-      synopsis: request.work.synopsis,
-      setting: {
-        location: request.work.location,
-        time: request.work.time,
-        weather: request.work.weather,
-      },
-    },
-    characters: request.characters,
-    current_panel: mapPanel(request.currentPanel),
-    ...(request.previousPanel ? { previous_panel: mapPanel(request.previousPanel) } : {}),
-    ...(request.nextPanel ? { next_panel: mapPanel(request.nextPanel) } : {}),
-    figures: request.figures.map((figure) => ({
-      id: figure.id,
-      name: figure.name,
-      description: figure.description,
-      current_action: figure.currentAction,
-      size: figure.size,
-      role: figure.role,
-    })),
-  }, 180_000) as Record<string, unknown>;
-  if (payload.action_mode !== 'reconcile') throw new Error('アクション統合の応答形式が一致しないため変更しませんでした。画面を再読み込みして再実行してください。');
-  if (!Array.isArray(payload.actions)) throw new Error('人物アクションの応答形式が正しくありません');
-  const knownIds = new Set(request.figures.map((figure) => figure.id));
-  const seen = new Set<string>();
-  const actions = payload.actions.map((entry) => {
-    if (!entry || typeof entry !== 'object') throw new Error('人物アクションの応答形式が正しくありません');
-    const item = entry as Record<string, unknown>;
-    if (typeof item.id !== 'string' || typeof item.action !== 'string') throw new Error('人物アクションの応答形式が正しくありません');
-    if (!knownIds.has(item.id) || seen.has(item.id)) throw new Error('人物アクションのIDが入力人物と一致しません');
-    const action = item.action.trim();
-    if (item.action.length > 4000) throw new Error('統合後のアクションが4000文字を超えています');
-    seen.add(item.id);
-    return { id: item.id, action };
-  });
-  if (seen.size !== knownIds.size) throw new Error('対象人物のアクションが不足しています');
-  return {
-    actions,
-    model: typeof payload.model === 'string' ? payload.model : undefined,
   };
 }

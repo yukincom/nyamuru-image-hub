@@ -2,15 +2,13 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { requestComfyWorkflows } from '../lib/localBridge';
 import { normalizeComfyuiUrl } from '../lib/localModelPreferences';
 import {
-  QWEN_FIGURE_WORKFLOW, isStandardQwenVariant, comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding,
+  isStandardQwenVariant, comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding,
   parseComfyWorkflowFile, parseComfyWorkflowList, parseSavedComfyWorkflow,
   promptUpsamplerNodeIds, withPromptUpsampler, workflowPromptUpsampler,
   type ComfyApiGraph, type ComfyInputBinding, type ComfyWorkflowBinding,
   type ComfyWorkflowDefinition, type ComfyWorkflowSave,
 } from '../lib/comfyWorkflows';
 import { Field, SectionTitle } from './Fields';
-import threeImageGraph from '../../examples/comfyui/nyamuru_qwen_turbo_3images.api.json';
-import threeImageBinding from '../../examples/comfyui/nyamuru_qwen_turbo_3images.binding.json';
 
 interface Props {
   endpoint: string;
@@ -299,8 +297,6 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
           else setSendPrompt(true);
         }}>
         <option value="promptless-two-images">2画像参照（1:設定画、2:ポーズ）</option>
-        {/* 仕様変更のため廃止: 人物3枚参照（1:表情、2:設定画、3:3Dポーズ）。3画像は部分修正のみに限定 */}
-        <option value="qwen-three-images">3画像参照（1:表情、2:設定画、3:3Dポーズ）</option>
         <option value="qwen">プロンプト生成</option>
         {draft.binding.prompt_mode === 'plain' && <option value="plain">プロンプト生成（そのまま渡す）</option>}
       </select></Field>
@@ -348,12 +344,6 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft) || !selected} onClick={() => setRemovePending(true)}>このワークフローを削除</button>
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => void refresh()}>一覧を更新</button>
       <button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => chooseFile(null)}>追加</button>
-      {loaded&&!workflows.some(item=>item.id===QWEN_FIGURE_WORKFLOW)&&<button type="button" class="secondary-button" disabled={busy || Boolean(draft)} onClick={() => {
-        const graph = structuredClone(threeImageGraph);
-        setDraft({ name: 'nyamuru_qwen_turbo_3images', graph, binding: parseComfyWorkflowBinding(threeImageBinding, graph) });
-        setSendPrompt(true);
-        setRemovePending(false);
-      }}>人物3枚参照を追加</button>}
     </div>
     <input ref={fileInput} type="file" accept="application/json,.json" hidden aria-label="API形式のワークフローJSON"
       onChange={event => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; loadFile(file); }} />

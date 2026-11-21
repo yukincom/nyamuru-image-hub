@@ -80,7 +80,7 @@ def validate_definition(body):
         raise ValueError('ComfyUIのAPI形式JSON（ノードIDごとのclass_typeとinputs）を書き出してください')
     if not isinstance(binding, dict) or not _BINDING_KEYS.issubset(binding) or not set(binding).issubset(_BINDING_KEYS | _OPTIONAL_BINDING_KEYS):
         raise ValueError('指示・シード・寸法・参照画像・完成画像・プロンプト処理の対応付けを指定してください')
-    if binding['prompt_mode'] not in ('qwen', 'plain', 'qwen-three-images', 'promptless-two-images'):
+    if binding['prompt_mode'] not in ('qwen', 'plain', 'promptless-two-images'):
         raise ValueError('指示文の扱いを選択してください')
     assigned = set()
 
@@ -111,9 +111,6 @@ def validate_definition(body):
     if bool(binding['width']) != bool(binding['height']):
         raise ValueError('幅と高さの受け渡し先を両方指定してください')
     fixed = binding['fixed_size']
-    # 仕様変更のため廃止: 人物3枚参照（3D＋設定画＋ネーム表情）。3画像は部分修正のみに限定。
-    if binding['prompt_mode'] == 'qwen-three-images' and (len(images) != 3 or fixed is not None):
-        raise ValueError('人物3枚参照には参照画像3枚と可変の出力寸法を指定してください')
     if binding['prompt_mode'] == 'promptless-two-images' and len(images) != 2:
         raise ValueError('2画像参照・プロンプト不要には参照画像2枚を指定してください')
     if 'size_source' in binding and binding['size_source'] not in ('atari', 'panel'):

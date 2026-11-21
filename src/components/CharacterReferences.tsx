@@ -3,6 +3,7 @@ import type { MangaDocument, Character, Material } from '../types.ts';
 import { useRef, useState, useEffect } from 'preact/hooks';
 import { CHARACTER_RECOGNITION_FIELDS, imageFileToPng, prepareCharacterReferenceDestination, applySuggestedReferenceView, CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
 import { type CharacterReferenceSetSuggestion, saveCharacterReferenceImage, deleteCharacterReferenceImage, analyzeCharacterReferenceSetWithLocalVlm } from '../lib/localBridge.ts';
+import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { beginFigureCropImport } from '../lib/figureCropStore';
 import { guessedView, uniqueMaterialName, emptyRecognition, ReferenceThumbnail, CandidateEvidence, emptyEvidence } from './referenceDetails.tsx';
 import { newCatalogId } from '../lib/catalogModel.ts';
@@ -314,11 +315,11 @@ export default function CharacterReferences({ document, character, onChange, onN
     return next;
   });
 
+  const visionEnabled = currentGenerationPreferences().vision.enabled;
   return <div class="character-reference-manager">
     <div class="character-visuals-head"><strong>キャラクターデザイン画像</strong><div class="character-visuals-actions">
       <button type="button" class="inline-add" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady} onClick={() => void chooseImages()}><Upload size={14} />{saving ? '保存中…' : '画像を追加'}</button>
-      {/* 旧: 特徴抽出・特徴入力は常時有効 -> 新: ビジョンOFF時は設定画の登録・管理のみで特徴欄・抽出ボタンをグレーアウト */}
-      <button type="button" class="character-extract-all" disabled={saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady || !imageVisuals.length} onClick={() => void analyzeAll()}><ScanSearch size={14} />{analyzingId ? '...抽出中' : 'まとめて特徴を抽出'}</button>
+      <button type="button" class="character-extract-all" disabled={!visionEnabled || saving || Boolean(analyzingId) || Boolean(deletingId) || !catalogReady || !imageVisuals.length} onClick={() => void analyzeAll()}><ScanSearch size={14} />{analyzingId ? '...抽出中' : 'まとめて特徴を抽出'}</button>
     </div></div>
     <ProjectFileInput inputRef={input} accept="image/png,image/jpeg,image/webp" multiple hidden onFiles={addImages} />
     {fileErrors.length > 0 && <div role="alert">{fileErrors.map((message, index) => <p key={index}>{message}</p>)}</div>}
@@ -380,13 +381,16 @@ export default function CharacterReferences({ document, character, onChange, onN
       open={recognitionEditorOpen}
       onToggle={(event) => setRecognitionEditorOpen(event.currentTarget.open)}
     >
-      <summary>キャラクターの特徴を確認・再編集</summary>
-      <div class="character-recognition-fields">{CHARACTER_RECOGNITION_FIELDS.map(({ key, label }) => {
-        const evidence = character.recognition?.[key] ?? emptyEvidence();
-        return <section key={key}><h4>{label}</h4>
-          <TextListEditor compactAdd values={evidence.observed} placeholder={`${label}の特徴`} onChange={(values) => updateRecognition(key, values)} />
-        </section>;
-      })}</div>
+      <summary>キャラクターの特徴を確認・再編集{!visionEnabled ? '（ビジョンオフ時は無効）' : ''}</summary>
+      {!visionEnabled && <p class="muted-message">キャラ照合（ビジョン）がオフのため、設定画の登録・管理のみ有効です。環境設定 → モデル設定でビジョンをオンにすると特徴を編集できます。</p>}
+      <fieldset disabled={!visionEnabled} style={{ border: 0, padding: 0, margin: 0, opacity: visionEnabled ? 1 : 0.5 }}>
+        <div class="character-recognition-fields">{CHARACTER_RECOGNITION_FIELDS.map(({ key, label }) => {
+          const evidence = character.recognition?.[key] ?? emptyEvidence();
+          return <section key={key}><h4>{label}</h4>
+            <TextListEditor compactAdd values={evidence.observed} placeholder={`${label}の特徴`} onChange={(values) => updateRecognition(key, values)} />
+          </section>;
+        })}</div>
+      </fieldset>
     </details>
   </div>;
 }

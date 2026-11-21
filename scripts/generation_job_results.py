@@ -217,8 +217,8 @@ class GenerationJobResults:
     def read_output(self, job_id):
         return self.store.read(job_id, 'output.png')
 
-    def prepare(self, body, translate):
-        """Keep the immutable source and final prompt before allowing LLM suspension."""
+    def prepare(self, body):
+        """Keep the immutable source and final prompt before generation submission."""
         job_id = checked_id(body.get('job_id'))
         value, images = self.normalize_request(body)
         workflow = value['workflow']
@@ -235,13 +235,16 @@ class GenerationJobResults:
             self.store.event(job_id, 'preparing')
             try:
                 prompt_mode = workflow['binding']['prompt_mode']
-                if prompt_mode in ('plain', 'qwen-three-images', 'promptless-two-images'):
-                    english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
-                    final_prompt = '' if prompt_mode == 'promptless-two-images' else direct_workflow_prompt(value)
-                else:
-                    english = prepare_handwritten_prompt(value) if value.get('content_kind') in ('handwritten', 'typeset') else translate(value)
+                if prompt_mode == 'promptless-two-images':
+                    english = {'prompt': '', 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
+                    final_prompt = ''
+                elif value.get('content_kind') in ('handwritten', 'typeset'):
+                    english = prepare_handwritten_prompt(value)
                     from qwen_generation_phase import generation_prompt
                     final_prompt = generation_prompt(value, english)
+                else:
+                    english = {'prompt': value['prompt'], 'references': [{'file': r['file'], 'label': r['label']} for r in value['references']]}
+                    final_prompt = direct_workflow_prompt(value)
                 raw = canonical(english)
                 self.store.write_once(job_id, 'generation-prompt.json', raw)
                 self.store.write_once(job_id, 'conditioning-prompt.txt', final_prompt.encode('utf-8'))

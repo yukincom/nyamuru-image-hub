@@ -141,8 +141,7 @@ function AgentConversation(props:Props){
     </div>}
     {!props.generation&&<p class={`agent-voice-hint ${quickActive?'is-handsfree':''}`}>{quickActive?`軽量対話オン · 無音${silenceMs/1000}秒で自動送信`:manualActive?'手動入力 · 停止してから確認・送信':'軽量対話は自動送信 · 手動入力は確認して送信'}</p>}
     <div class="agent-composer-row"><AgentAvatar profile={props.profile}/><form class="agent-composer" onSubmit={submit}>
-      {/* 旧: プロンプトの相談・修正・英訳 -> 新: 英訳を削除 */}
-      <textarea aria-label="メッセージ" rows={2} maxLength={4000} value={text} disabled={conversationBusy} placeholder={props.generation?'プロンプトの相談・修正・英訳、または「生成して」':'話しかける…'} onInput={e=>setText(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void submit(e);}}}/>
+      <textarea aria-label="メッセージ" rows={2} maxLength={4000} value={text} disabled={conversationBusy} placeholder={props.generation?'生成の相談・修正、または「生成して」':'話しかける…'} onInput={e=>setText(e.currentTarget.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void submit(e);}}}/>
       <div class="agent-composer-footer"><small class="agent-model" >{model}</small>
         <button type="button" class={`agent-mic agent-handsfree ${quickActive?'is-active':''}`} disabled={!quickActive&&(conversationBusy||recording||processing)} aria-label={quickActive?'軽量対話をオフ':'軽量対話をオン（自動送信）'}  aria-pressed={quickActive} onClick={()=>toggleVoice('quick')}><VoiceInputIcon mode="quick"/></button>
         <button type="button" class={`agent-mic ${manualActive?'is-active':''}`} disabled={quickActive||conversationBusy||(!manualActive&&processing)} aria-label={manualActive?'手動入力を停止して文字起こし':'手動入力を開始'}  aria-pressed={manualActive} onClick={()=>toggleVoice('manual')}>{manualActive?<Square size={14}/>:<VoiceInputIcon mode="manual"/>}</button>

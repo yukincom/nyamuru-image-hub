@@ -11,8 +11,7 @@ import {
   withNewCreationBridgeSession,
 } from '../lib/localBridgeLifecycle.ts';
 import { CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
-import { resolveConversationRoute, resolveGenerationRoute } from '../lib/modelRouting.ts';
-import { currentConversationPreferences } from '../lib/conversationPreferences.ts';
+import { resolveGenerationRoute } from '../lib/modelRouting.ts';
 import { type AgentWorkflowYamlFile, deliverAgentWorkflowYamlFiles } from '../lib/generationHandoff.ts';
 import { downloadBrowserBlob } from '../lib/browserFiles.ts';
 import { qwenInputImage } from './generation/inputImages.ts';
@@ -231,14 +230,7 @@ export default function MultiFigureGenerationDialog({
       setSummaryMessage(route.message);
       return;
     }
-    const requiresLlm = workflow.binding.prompt_mode === 'qwen';
-    if (requiresLlm) {
-      const convRoute = resolveConversationRoute(currentConversationPreferences(), connection, execution.cloud, adultContent);
-      if (convRoute.kind === 'unavailable') {
-        setSummaryMessage(convRoute.message);
-        return;
-      }
-    }
+    const requiresLlm = false;
 
     const targets = items.filter((item) => {
       const state = itemStates[item.id];

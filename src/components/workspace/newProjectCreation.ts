@@ -6,6 +6,7 @@ import { beginFigureCropImport, deleteFigureCropAssets, markFigureCropAssetPersi
 import { isLanClient } from '../../lib/clientRuntime';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
 import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport, saveEpisodeProject, type SeriesCharacterTextLink } from '../../lib/localBridge';
+import { currentGenerationPreferences } from '../../lib/generationPreferences';
 import { createProjectSnapshot } from '../../lib/projectPersistence';
 import { createPortableProject } from '../../lib/portableProject';
 import type { AnalogFigureImport, AnalogTextImport, MangaDocument, MangaSeriesSetting } from '../../types';
@@ -169,11 +170,10 @@ export function createNewProjectAction({
         for await (const crop of detectedFigureCrops(item.file, item.rotationOverride, item.analysis.detectedFigures)) {
           const metadata = imports.get(crop.regionId)!;
           const target = readTargetsByRegion.get(metadata.sourceRegionId);
-          if (target) {
-            setNewLayoutMessage('人物と演技を読み取っています…');
+          if (target && currentGenerationPreferences().vision.enabled) {
+            setNewLayoutMessage('人物を照合しています…');
             setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
             try {
-              // 旧: 取り込み時にローカルVLMキャラ照合を直接呼び出し -> 新: ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐。
               const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(
                 await crop.original(), characterCandidates, target.currentSize, await crop.face(),
               );
@@ -182,7 +182,7 @@ export function createNewProjectAction({
             } catch (error) {
               characterReadOutcomes.set(target.sourceRegionId, {
                 ok: false,
-                error: error instanceof Error ? error.message : '人物と演技を読み取れませんでした',
+                error: error instanceof Error ? error.message : '人物を照合できませんでした',
               });
             }
           }

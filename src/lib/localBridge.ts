@@ -31,12 +31,9 @@ export {
   type PanelDraftGenerationContext,
 } from './bridge/panelDrafts.ts';
 export {
-  analyzeFigurePerformanceWithLocalVlm,
   analyzeCharacterReferenceWithLocalVlm,
   analyzeCharacterReferenceSetWithLocalVlm,
   analyzeFigureCharacterMatchWithLocalVlm,
-  suggestPanelFigureActions,
-  type FigurePerformanceSuggestion,
   type CharacterReferenceSuggestion,
   type CharacterReferenceSetSuggestion,
   type CharacterMatchSuggestion,
@@ -113,6 +110,7 @@ export {
   getGeminiApiKeyStatus,
   saveGeminiApiKey,
   listGeminiImageModels,
+  listGeminiVisionModels,
   generateCloudPageWithGemini,
   generateCloudSingleWithGemini,
   type CloudSingleImageRequest,

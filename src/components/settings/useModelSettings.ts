@@ -24,8 +24,7 @@ export function useModelSettings() {
       setConversationSettingsError('');
     } catch (error) {
       setConversationPreferences(current => ({ ...current }));
-      // 旧: 会話・翻訳の設定 -> 新: 会話の設定（英訳機能は廃止）。
-      setConversationSettingsError(error instanceof Error ? error.message : '会話・翻訳の設定を保存できませんでした');
+      setConversationSettingsError(error instanceof Error ? error.message : '会話の設定を保存できませんでした');
     }
   };
   const updateGenerationPreferences = (next: GenerationPreferences) => {

@@ -1,11 +1,9 @@
-import { P_H3_TWO_IMAGE_WORKFLOW, QWEN_FIGURE_WORKFLOW } from './comfyWorkflows.ts';
+import { P_H3_TWO_IMAGE_WORKFLOW } from './comfyWorkflows.ts';
 export const GENERATION_PREFERENCES_STORAGE_KEY = 'nyamuru.generation-preferences.v1';
 export const LEGACY_CLOUD_MODEL_PREFERENCES_KEY = 'manga-name-studio.cloud-model-preferences.v1';
 
 export interface GenerationPreferences {
   execution: 'local' | 'cloud';
-  // 仕様変更のため廃止: 英訳確認省略フラグ。
-  skipTranslationConfirmation: boolean;
   cloud: {
     adultTermsConfirmed: boolean;
     method: 'api' | 'agent';
@@ -21,11 +19,17 @@ export interface GenerationPreferences {
     exportReferenceImages: boolean;
   };
   local: { imageModel: 'qwen-image-2.1-turbo'; workflowId: string };
+  vision: {
+    enabled: boolean;
+    execution: 'local' | 'cloud';
+    cloudModel: string;
+  };
 }
+
+export const DEFAULT_CLOUD_VISION_MODEL = 'gemini-2.5-flash-lite';
 
 export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = Object.freeze({
   execution: 'local',
-  skipTranslationConfirmation: false,
   cloud: Object.freeze({
     adultTermsConfirmed: false,
     method: 'agent',
@@ -41,10 +45,16 @@ export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = O
     exportReferenceImages: true,
   }),
   local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: P_H3_TWO_IMAGE_WORKFLOW }),
+  vision: Object.freeze({ enabled: false, execution: 'cloud', cloudModel: DEFAULT_CLOUD_VISION_MODEL }),
 });
 
 function defaults(): GenerationPreferences {
-  return { ...DEFAULT_GENERATION_PREFERENCES, cloud: { ...DEFAULT_GENERATION_PREFERENCES.cloud }, local: { ...DEFAULT_GENERATION_PREFERENCES.local } };
+  return {
+    ...DEFAULT_GENERATION_PREFERENCES,
+    cloud: { ...DEFAULT_GENERATION_PREFERENCES.cloud },
+    local: { ...DEFAULT_GENERATION_PREFERENCES.local },
+    vision: { ...DEFAULT_GENERATION_PREFERENCES.vision },
+  };
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -57,7 +67,7 @@ function text(value: unknown, maximum: number): string {
 
 /** Only connection descriptions are stored here. Credentials belong to the chosen provider. */
 function normalize(value: unknown): GenerationPreferences {
-  const source = record(value), cloud = record(source.cloud), local = record(source.local);
+  const source = record(value), cloud = record(source.cloud), local = record(source.local), vision = record(source.vision);
   const workflowId = typeof local.workflowId === 'string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(local.workflowId) ? local.workflowId : '';
   let apiEndpoint = text(cloud.apiEndpoint, 500);
@@ -68,7 +78,6 @@ function normalize(value: unknown): GenerationPreferences {
   } catch { /* An unfinished endpoint can be retained while the user types. */ }
   return {
     execution: source.execution === 'cloud' ? 'cloud' : 'local',
-    skipTranslationConfirmation: source.skipTranslationConfirmation === true,
     cloud: {
       adultTermsConfirmed: cloud.adultTermsConfirmed === true,
       method: cloud.method === 'api' ? 'api' : 'agent',
@@ -84,6 +93,11 @@ function normalize(value: unknown): GenerationPreferences {
       exportReferenceImages: cloud.exportReferenceImages !== false,
     },
     local: { imageModel: 'qwen-image-2.1-turbo', workflowId },
+    vision: {
+      enabled: vision.enabled === true,
+      execution: vision.execution === 'local' ? 'local' : 'cloud',
+      cloudModel: text(vision.cloudModel, 200).trim() || DEFAULT_CLOUD_VISION_MODEL,
+    },
   };
 }
 

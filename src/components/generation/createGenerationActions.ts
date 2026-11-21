@@ -3,8 +3,7 @@ import { type QwenGenerationPlan, type QwenReference, type QwenLayerReference, t
 import type { Dispatch, StateUpdater } from 'preact/hooks';
 import type { ComfyWorkflowDefinition } from '../../lib/comfyWorkflows.ts';
 import { type GenerationPreferences, currentGenerationPreferences } from '../../lib/generationPreferences.ts';
-import { currentConversationPreferences } from '../../lib/conversationPreferences.ts';
-import { resolveConversationRoute, resolveGenerationRoute } from '../../lib/modelRouting.ts';
+import { resolveGenerationRoute } from '../../lib/modelRouting.ts';
 import type { LocalModelPreferences } from '../../lib/localModelPreferences.ts';
 import { chooseBrowserFiles, downloadBrowserBlob } from '../../lib/browserFiles.ts';
 import { requireHumanPoseGenerationReady } from '../../lib/humanPoseSelection.ts';
@@ -82,10 +81,6 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     const route=resolveGenerationRoute(execution,connection,adultContent);
     if(route.kind==='unavailable')throw new Error(route.message);
     if(route.kind==='cloud-api'&&!onStartCloudSingle)throw new Error('クラウドAPI単画像生成が接続されていません');
-    // 仕様変更のため廃止: 文章LLMによる生成指示の英訳ルート解決。
-    const requiresLlm=route.kind==='local'&&workflow?.binding.prompt_mode==='qwen'&&!plan.contentKind;
-    const translationRoute=requiresLlm?resolveConversationRoute(currentConversationPreferences(),connection,execution.cloud,adultContent):undefined;
-    if(translationRoute?.kind==='unavailable')throw new Error(translationRoute.message);
     const capturedDraft=draft.current,{references,correction}=capturedDraft;
     if(plan.characterKeys?.length && (plan.promptlessTwoImages || route.kind==='cloud-api' ? !references.length : plan.characterKeys.some(key=>!references.some(ref=>ref.characterKeys.includes(key)))))throw new Error('人物に紐づく設定画を読み込めません');
     if(threeImages&&!usesPoseImage)throw new Error('image1で3Dモデルを調整してください');
@@ -149,9 +144,9 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
       submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
       onJob:current=>{if(alive.current)setJob(current);},
       ...(autoInsert?{insert:insertResult}:{}),
-      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm,
-        ...(translationRoute?.kind==='local'?{llmModelAlias:translationRoute.llmAlias}:{}),onPhase:value=>{
-        if(alive.current)setPhase({bridge:'準備中',llm:'英訳の準備中',translate:Boolean(plan.contentKind)?'生成指示を保存中':'英訳を保存中',suspend:'文章LLMを停止中',generate:'画像を生成中',restore:'生成後の復帰を確認中'}[value]);
+      services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm:false,
+        onPhase:value=>{
+        if(alive.current)setPhase({bridge:'準備中',llm:'準備中',translate:'生成指示を保存中',suspend:'文章LLMを停止中',generate:'画像を生成中',restore:'生成後の復帰を確認中'}[value]);
       }}),
     });
   },autoInsert);}

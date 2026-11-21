@@ -138,6 +138,14 @@ export async function listGeminiImageModels(): Promise<Array<{ id: string; label
     .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }));
 }
 
+export async function listGeminiVisionModels(): Promise<Array<{ id: string; label: string }>> {
+  const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/vision-models', {}, 15_000)) as Record<string, unknown>;
+  const list = Array.isArray(value.models) ? value.models : [];
+  return list
+    .filter((entry): entry is { id: string; label: string } => Boolean(entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>).id === 'string'))
+    .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }));
+}
+
 export async function generateCloudPageWithGemini(params: {
   workspaceToken?: string;
   seriesId?: string;

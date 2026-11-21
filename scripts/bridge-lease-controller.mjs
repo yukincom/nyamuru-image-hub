@@ -131,8 +131,7 @@ export class PanelActionLeaseController {
   async suspendForImages(token, { requiresLlm = true } = {}) {
     return this.exclusive(async () => {
       if (this.closed || !this.bridgeLeases.has(token) || requiresLlm && !this.leases.has(token)) {
-        // 旧: 先に画像生成指示の英訳を準備してください -> 新: 英訳の表現を削除。
-        throw new Error('先に画像生成指示の英訳を準備してください');
+        throw new Error('先に画像生成指示を準備してください');
       }
       if (this.imageToken === token) return;
       if (this.imageToken || this.leases.size !== Number(this.leases.has(token))) throw new Error('別の文章処理が実行中です。完了後に生成してください');

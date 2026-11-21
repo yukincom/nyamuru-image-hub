@@ -9,10 +9,13 @@ from project_file_picker import choose_project_files
 from nyamuru_project_store import export_yaml_files, load_project, save_project
 from nyamuru_series_catalog_store import discover_reference_text_candidates
 from image_generation import (
+    extract_cloud_character_features,
     generate_cloud_page_image,
     generate_cloud_single_image,
     get_cloud_api_key_status,
     list_cloud_image_models,
+    list_cloud_vision_models,
+    match_cloud_character,
     save_cloud_api_key,
 )
 
@@ -226,6 +229,24 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
         return
     if path == "/api/cloud/gemini/models":
         handler.send_json(200, list_cloud_image_models())
+        return
+    if path == "/api/cloud/gemini/vision-models":
+        handler.send_json(200, list_cloud_vision_models())
+        return
+    if path == "/api/cloud/gemini/extract-character-features":
+        handler.send_json(200, extract_cloud_character_features(
+            model=str(body.get("model") or ""),
+            images=body.get("images") if isinstance(body.get("images"), list) else [],
+            character_name=str(body.get("character_name") or ""),
+            character_role=str(body.get("character_role") or ""),
+        ))
+        return
+    if path == "/api/cloud/gemini/match-character":
+        handler.send_json(200, match_cloud_character(
+            model=str(body.get("model") or ""),
+            image=str(body.get("image") or ""),
+            candidates=body.get("candidates") if isinstance(body.get("candidates"), list) else [],
+        ))
         return
     if path == "/api/cloud/gemini/generate-page":
         ws_token = body.get("workspace_token")

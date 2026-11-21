@@ -244,7 +244,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/qwen-generation/prepare":
                 with self.state.panel_action_lock:
-                    result = self.state.qwen_jobs.prepare(body, self.state.panel_actions.translate_image_generation_prompt)
+                    result = self.state.qwen_jobs.prepare(body)
                 self.send_json(200, result)
                 return
             if path == "/api/qwen-generation/submit":

@@ -146,10 +146,6 @@ class PanelActionSuggester(PanelActionRequest):
             } for item in candidates]
         return result
 
-    def translate_image_generation_prompt(self, value: dict[str, Any]) -> dict[str, Any]:
-        from prompt_translation import translate_image_generation_prompt
-        return translate_image_generation_prompt(value, self.request_json_completion)
-
     @staticmethod
     def action_identity_error(
         request_value: dict[str, Any], raw_actions: list[Any], reason: str, message: str,

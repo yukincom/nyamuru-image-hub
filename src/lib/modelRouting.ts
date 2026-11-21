@@ -17,14 +17,13 @@ function contentRestriction(cloud: GenerationPreferences['cloud'], adultContent:
 }
 
 /** Pure snapshots: later setting edits cannot change an in-flight route. No automatic fallback. */
-// 旧: 会話・翻訳ルート（英訳にも使用） -> 新: 会話専用ルート（英訳機能は廃止）。
 export function resolveConversationRoute(
   preferences: ConversationPreferences, local: LocalModelPreferences,
   cloud: GenerationPreferences['cloud'], adultContent = false,
 ): ConversationRoute {
   if (preferences.execution === 'local') return { kind: 'local', llmAlias: local.llmAlias };
   return contentRestriction(cloud, adultContent) ?? {
-    kind: 'unavailable', reason: 'api-unavailable', message: '会話・翻訳のAPIは未接続です。環境設定でローカルを選んでください',
+    kind: 'unavailable', reason: 'api-unavailable', message: '会話のAPIは未接続です。環境設定でローカルを選んでください',
   };
 }
 

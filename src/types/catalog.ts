@@ -9,7 +9,7 @@ export interface Character {
   role: string;
   /** 人間が指定した性別。未設定では保存値を補完しない。 */
   gender?: CharacterGender;
-  /** 旧: 人物像とは分けて画像生成時に英訳して使う、人間が指定した外見・描き方。 -> 新: 人間が指定した外見・描き方のメモ（自動英訳は行わない）。 */
+  /** 人間が指定した外見・描き方のメモ。 */
   visual_prompt?: string;
   /** この話だけの人物か、シリーズ台帳で再利用する人物か。 */
   scope: MaterialScope;
@@ -41,8 +41,8 @@ export interface CharacterRecognitionProfile {
 }
 
 export interface LocalVlmAnalyzer {
-  provider: 'local';
-  runtime: 'mlx-vlm';
+  provider: 'local' | 'cloud';
+  runtime: 'mlx-vlm' | 'gemini-vision';
   model: string;
   prompt_version: string;
   analyzed_at: string;

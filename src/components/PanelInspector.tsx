@@ -7,9 +7,6 @@ import { type PanelDraftDialogState, createPanelDraftActions } from './inspector
 import { Plus, Trash2, WandSparkles, Box, UserPlus, Image as ImageIcon, X, FolderOpen, Check, Ban, RefreshCw, Download } from 'lucide-preact';
 import { preservesLockedItems, ownerItemLocked } from '../lib/panelLayers.ts';
 import { isPropPlacement } from '../lib/catalogModel.ts';
-import { withPanelActionServices } from '../lib/localBridgeLifecycle.ts';
-import { suggestPanelFigureActions } from '../lib/localBridge.ts';
-import { buildPanelActionSuggestionRequest, applyReconciledPanelActions } from '../lib/panelActions.ts';
 import { panelDisplayLabel, textDisplayLabel } from '../lib/displayLabels.ts';
 import { SectionTitle, Field } from './Fields';
 import { panelBackgroundDescription } from '../lib/panelContext.ts';
@@ -89,47 +86,6 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
   const backgroundMaterials = manga.materials.filter((material) => material.type === 'background');
   const propMaterials = manga.materials.filter((material) => material.type === 'prop');
   const selectCard = (_event: MouseEvent, selection: CanvasElementSelection) => onSelectElement(selection);
-  const requestPanelGeneration = async () => {
-    if (generationInFlight.current || !panel.action?.trim() || !hasPersonFigures) return;
-    generationInFlight.current = true;
-    const requestId = generationRequest.current + 1;
-    const panelRevision = JSON.stringify(panel);
-    generationRequest.current = requestId;
-    const phaseMessages = {
-      bridge: 'ローカル連携を準備しています…（未起動なら自動で起動します）',
-      llm: 'ト書き用LLMを準備しています…（初回はモデルの読み込みに時間がかかります）',
-      ready: '現在のアクションとト書きをすり合わせ、人物ごとの文章を整えています…',
-    };
-    try {
-      const result = await withPanelActionServices(
-        // 仕様変更のため廃止: コマ人物演技のVLM/LLM自動提案。
-        () => suggestPanelFigureActions(buildPanelActionSuggestionRequest(manga, pageIndex, panelIndex)),
-        {
-          onPhase: (phase) => { if (requestId === generationRequest.current) setGenerationStatus({ kind: 'loading', message: phaseMessages[phase] }); },
-          isCurrent: () => requestId === generationRequest.current && JSON.stringify(latestPanel.current) === panelRevision,
-        },
-      );
-      if (requestId !== generationRequest.current) return;
-      const currentPanel = latestPanel.current;
-      if (!currentPanel || JSON.stringify(currentPanel) !== panelRevision) {
-        setGenerationStatus({ kind: 'error', message: '処理中にコマが編集されたため、自動入力を適用しませんでした。もう一度実行してください。' });
-        return;
-      }
-      if (!result) return;
-      const next = structuredClone(currentPanel);
-      const applied = applyReconciledPanelActions(next, result.actions);
-      if (applied) latestOnChange.current(next,'agent');
-      setGenerationStatus({ kind: 'success', message: applied ? `人物${applied}人のアクションをト書きとすり合わせて整えました。` : '変更する内容はありませんでした。現在のアクションを保持しています。' });
-    } catch (error) {
-      if (requestId !== generationRequest.current) return;
-      setGenerationStatus({
-        kind: 'error',
-        message: error instanceof Error ? error.message : 'ト書きをアクションに注入できませんでした。',
-      });
-    } finally {
-      if (requestId === generationRequest.current) generationInFlight.current = false;
-    }
-  };
   const { openPanelDraftDialog, closePanelDraftDialog, choosePanelDraftWorkspace, reviewPanelDraft, resolvePanelDraftReview, reconcilePanelDraft, requestPanelDraft } = createPanelDraftActions({ episodeWorkspaceToken, panelDraftHistoryRequest, setPanelDraftDialog, manga, pageIndex, panelIndex, setGenerationStatus, panelDraftDialog, panelDraftRequest, panelDraftReviewRequest, onChooseEpisodeWorkspace, seriesId, episodeId, getOmnySnapshot });
   return <><div ref={inspectorRef} class={`panel-inspector ${locked?'is-locked':''}`}>
     <div class="inspector-sticky-head">
@@ -142,12 +98,7 @@ export default function PanelInspector({ onTextCategory, onSelectedText, onHandw
     <section class="editor-section inspector-category-section panel-action-section">
       <SectionTitle title="ト書き" />
       <textarea rows={5} value={panel.action ?? ''} placeholder="キャラクターの表情や動作、カメラの指示を入力" aria-label="ト書き" onInput={(event) => update((draft) => { draft.action = event.currentTarget.value || null; })} />
-      <div class="panel-generation-assistant">
-        <button type="button" class="panel-generation-button" disabled={generationStatus?.kind === 'loading' || !hasPersonFigures || !panel.action?.trim()}  onClick={() => void requestPanelGeneration()}>
-          <WandSparkles size={17} />{generationStatus?.kind === 'loading' ? 'ト書きとすり合わせ中…' : `${panelDisplayLabel(panel.id)}の人物へ注入`}
-        </button>
-        {generationStatus && <p class={`panel-generation-status is-${generationStatus.kind}`} role={generationStatus.kind === 'error' ? 'alert' : 'status'}>{generationStatus.message}</p>}
-      </div>
+      {generationStatus && <p class={`panel-generation-status is-${generationStatus.kind}`} role={generationStatus.kind === 'error' ? 'alert' : 'status'}>{generationStatus.message}</p>}
     </section>
 
     <section class="editor-section inspector-category-section panel-background-section">

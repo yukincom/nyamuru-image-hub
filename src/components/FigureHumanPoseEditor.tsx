@@ -107,8 +107,7 @@ export default function FigureHumanPoseEditor({ value, imageSlot=false, previewS
         {cameraPrompt.review_required && <p role="status">撮影設定を変更したため、残してある手修正文を見直してください。
           <button type="button" class="secondary-button" disabled={!cameraCurrent} onClick={() => onChange({ ...value, camera_prompt: { ...cameraPrompt, review_required: false } })}>手修正文を確認した</button></p>}
         {aspectMismatch && <p role="status">保存した撮影と現在の{cutFrame ? 'コマ枠' : '人物枠'}で縦横比が異なります。3D画面で枠に合わせて確認してください。</p>}
-        {/* 旧: 生成時に英訳して送ります -> 新: 英訳表現を削除 */}
-        {cameraText.en === null ? <p class="field-note">手修正文は日本語で保存し、生成時に英訳して送ります。</p>
+        {cameraText.en === null ? <p class="field-note">手修正文は日本語のまま保存します。</p>
           : <details><summary>確定時の英語文面</summary><p lang="en">{cameraText.en}</p></details>}
         {value.input_mode === 'image' && cameraText.edited && <p role="status">文面の修正では撮影画像は変わりません。画像を使う場合は3D設定も合わせるか、プロンプトで送る方法に切り替えてください。</p>}
       </fieldset> : value.scene && <p class="field-note">撮影設定の説明を保存するには「3D編集」で確定してください。</p>}

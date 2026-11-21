@@ -186,7 +186,7 @@ class QwenGenerationService(GenerationJobResults):
         value, images = normalize(
             body,
             fixed_size=workflow['binding']['fixed_size'],
-            native_size=prompt_mode in ('qwen-three-images', 'promptless-two-images'),
+            native_size=prompt_mode == 'promptless-two-images',
             allow_empty_prompt=prompt_mode == 'promptless-two-images',
         )
         validate_request(workflow, len(value['references']))
@@ -210,34 +210,7 @@ class QwenGenerationService(GenerationJobResults):
         candidate_count = value['settings'].get('candidate_count', 1)
         value['settings'] = {'seed': SETTINGS['seed'], 'candidate_count': candidate_count}
         value['candidate_seeds'] = [SETTINGS['seed'] + i for i in range(candidate_count)]
-        if three_image_workflow(value):
-            if not value['owner_key'].startswith('figure-') or value['mode'] != 'new' or len(value['character_keys']) != 1 or [
-                ref['role'] for ref in value['references']
-            ] != ['style', 'identity', 'style']:
-                # 仕様変更のため廃止: 人物3枚参照（3D＋設定画＋ネーム表情）。
-                raise ValueError('人物3枚参照には、3Dポーズ・人物設定画1枚・ネームを順に指定してください')
-            dpi = body.get('dpi')
-            if isinstance(dpi, bool) or not isinstance(dpi, (float,int)) or not math.isfinite(dpi) or not 1 <= dpi <= 10000:
-                raise ValueError('原稿のdpiを指定してください')
-            value['dpi'] = dpi
-            from PIL import Image
-            import io
-            with Image.open(io.BytesIO(images[value['references'][0]['file']])) as pose:
-                has_alpha = 'A' in pose.getbands() or 'transparency' in pose.info
-                frame_size = tuple(value['output_size'])
-                # Output is 60% of the manuscript, while image1 remains the 20% reference.
-                preview_size = tuple(max(1, round(side / 3)) for side in frame_size)
-                if pose.size not in (frame_size, preview_size) or (has_alpha and pose.convert('RGBA').getchannel('A').getextrema()[0] != 255):
-                    raise ValueError('image1にはコマに対応する不透明な3Dプレビューを指定してください')
-            polygon = body.get('clip_polygon')
-            if polygon is not None:
-                if not isinstance(polygon,list) or not 3 <= len(polygon) <= 1024 or any(
-                    not isinstance(pt,list) or len(pt)!=2 or any(type(x) not in (float,int) or not math.isfinite(x) or abs(x)>2 for x in pt) for pt in polygon):
-                    raise ValueError('生成対象のコマ枠が不正です')
-                value['clip_polygon'] = polygon
-            if value['width'] * value['height'] > 100_000_000:
-                raise ValueError('採用する画像の寸法が大きすぎます')
-        if value['owner_key'].startswith('figure-') and workflow['binding']['prompt_mode'] in ('qwen', 'qwen-three-images'):
+        if value['owner_key'].startswith('figure-') and workflow['binding']['prompt_mode'] == 'qwen':
             color = body.get('chroma_key_color', '#00FF00')
             if color not in ('#00FF00', '#0000FF', '#FF00FF'):
                 raise ValueError('背景色は緑・青・マゼンタから選んでください')

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_CLOUD_IMAGE_MODEL = "gemini-3.1-flash-image"
+DEFAULT_CLOUD_VISION_MODEL = "gemini-2.5-flash-lite"
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 LOCAL_KEY_PATH = Path.home() / ".nyamuru" / "cloud_api_key"
 LEGACY_KEY_PATH = Path.home() / ".nyamuru" / "gemini_api_key"
@@ -117,6 +118,200 @@ def list_cloud_image_models() -> dict[str, Any]:
                 "label": str(entry.get("displayName") or short_id),
             })
     return {"ok": True, "models": models}
+
+
+def list_cloud_vision_models() -> dict[str, Any]:
+    api_key = resolve_cloud_api_key()
+    req = urllib.request.Request(
+        GEMINI_API_BASE,
+        headers={"x-goog-api-key": api_key, "Connection": "close"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Visionモデル一覧取得エラー ({exc.code}): {detail[:300]}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"クラウドAPIへの接続に失敗しました: {exc.reason}") from exc
+
+    excluded = ("image", "banana", "embedding", "tts", "robotics", "aqa", "imagen", "veo")
+    models: list[dict[str, str]] = []
+    for entry in raw.get("models") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "")
+        short_id = name.removeprefix("models/")
+        methods = entry.get("supportedGenerationMethods") or []
+        if "generateContent" not in methods:
+            continue
+        lower = short_id.lower()
+        if not lower.startswith("gemini") or any(token in lower for token in excluded):
+            continue
+        if "flash" not in lower:
+            continue
+        models.append({
+            "id": short_id,
+            "label": str(entry.get("displayName") or short_id),
+        })
+    models.sort(key=lambda item: (0 if "flash-lite" in item["id"].lower() else 1, item["id"]))
+    return {"ok": True, "models": models}
+
+
+def _call_cloud_vision_json(
+    *,
+    api_key: str,
+    chosen_model: str,
+    parts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "temperature": 0.1,
+        },
+    }
+    url = f"{GEMINI_API_BASE}/{chosen_model}:generateContent"
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key,
+            "Connection": "close",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            raw_resp = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"クラウドVision APIエラー ({exc.code}): {detail[:400]}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"クラウドVision APIへの接続に失敗しました: {exc.reason}") from exc
+
+    for candidate in raw_resp.get("candidates") or []:
+        content = candidate.get("content") or {}
+        for part in content.get("parts") or []:
+            text_val = part.get("text")
+            if isinstance(text_val, str) and text_val.strip():
+                cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text_val.strip(), flags=re.IGNORECASE)
+                parsed = json.loads(cleaned)
+                if isinstance(parsed, dict):
+                    return parsed
+    raise RuntimeError("クラウドVision APIからJSON応答を取得できませんでした")
+
+
+def extract_cloud_character_features(
+    *,
+    model: str,
+    images: list[dict[str, Any]],
+    character_name: str = "",
+    character_role: str = "",
+) -> dict[str, Any]:
+    from datetime import datetime, timezone
+    api_key = resolve_cloud_api_key()
+    chosen_model = (model or DEFAULT_CLOUD_VISION_MODEL).strip()
+    parts: list[dict[str, Any]] = []
+    for item in images:
+        if not isinstance(item, dict):
+            continue
+        decoded = _decode_data_url_part(item.get("image"))
+        if decoded:
+            parts.append(decoded)
+    if not parts:
+        raise ValueError("解析するキャラクター設定画がありません")
+
+    prompt = (
+        "You are inspecting character reference sheet image(s) for manga character matching.\n"
+        f"Character name: {character_name or 'Unknown'} / Role: {character_role or 'N/A'}.\n"
+        "Extract ONLY stable visual design traits (do NOT include pose, expression, camera angle, or art style).\n"
+        "Return a JSON object with keys: hair, face, silhouette, outfit, accessories, ambiguous_design.\n"
+        "Each key must map to {\"observed\": [string, ...], \"inferred\": [string, ...]} in concise Japanese."
+    )
+    parts.append({"text": prompt})
+    parsed = _call_cloud_vision_json(api_key=api_key, chosen_model=chosen_model, parts=parts)
+
+    fields = ("hair", "face", "silhouette", "outfit", "accessories", "ambiguous_design")
+    recognition: dict[str, dict[str, list[str]]] = {}
+    for key in fields:
+        entry = parsed.get(key) if isinstance(parsed.get(key), dict) else {}
+        obs = [str(v).strip() for v in (entry.get("observed") or []) if str(v).strip()][:16]
+        inf = [str(v).strip() for v in (entry.get("inferred") or []) if str(v).strip()][:16]
+        recognition[key] = {"observed": obs, "inferred": inf}
+
+    return {
+        "ok": True,
+        "recognition": recognition,
+        "analysis": {"source": "cloud-vision", "image_count": len(parts) - 1},
+        "analyzer": {
+            "provider": "cloud",
+            "runtime": "gemini-vision",
+            "model": chosen_model,
+            "prompt_version": "cloud-vision-v1",
+            "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+
+
+def match_cloud_character(
+    *,
+    model: str,
+    image: str,
+    candidates: list[dict[str, Any]],
+) -> dict[str, Any]:
+    from datetime import datetime, timezone
+    api_key = resolve_cloud_api_key()
+    chosen_model = (model or DEFAULT_CLOUD_VISION_MODEL).strip()
+    img_part = _decode_data_url_part(image)
+    if not img_part:
+        raise ValueError("照合する人物画像がありません")
+    if not candidates:
+        raise ValueError("照合候補のキャラクターがありません")
+
+    candidate_summary = [
+        {
+            "id": str(c.get("id") or ""),
+            "name": str(c.get("name") or ""),
+            "role": str(c.get("role") or ""),
+            "recognition": c.get("recognition") or {},
+        }
+        for c in candidates
+        if isinstance(c, dict) and c.get("id")
+    ]
+    prompt = (
+        "Identify which registered character best matches the attached manga rough figure crop.\n"
+        "Candidates:\n" + json.dumps(candidate_summary, ensure_ascii=False) + "\n"
+        "Return JSON: {\"matched_character_id\": string or null, \"confidence\": \"high\"|\"medium\"|\"low\", \"reason\": string (Japanese)}."
+    )
+    parsed = _call_cloud_vision_json(
+        api_key=api_key,
+        chosen_model=chosen_model,
+        parts=[img_part, {"text": prompt}],
+    )
+    matched_id = parsed.get("matched_character_id")
+    valid_ids = {c["id"] for c in candidate_summary}
+    if not isinstance(matched_id, str) or matched_id not in valid_ids:
+        matched_id = None
+    confidence = str(parsed.get("confidence") or "low").lower()
+    if confidence not in {"high", "medium", "low"}:
+        confidence = "low"
+    reason = str(parsed.get("reason") or "").strip()[:300]
+    return {
+        "ok": True,
+        "matched_character_id": matched_id,
+        "confidence": confidence,
+        "reason": reason,
+        "analyzer": {
+            "provider": "cloud",
+            "runtime": "gemini-vision",
+            "model": chosen_model,
+            "prompt_version": "cloud-vision-match-v1",
+            "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        },
+    }
 
 
 def _mime_type_for_path(path: Path) -> str:
