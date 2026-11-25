@@ -219,3 +219,33 @@ test('複数顔の要確認と部位記録を作品で保持し、公開OMNYに�
   assert.match(omny, /手動で口を閉じる/);
   assert.doesNotMatch(omny, /S050|face_02|short straight closed mouth|catalog_sha256/i);
 });
+
+test('ローカル照合クライアントは共有軽量エンコーダ系のランタイム応答も正常受理する', async t => {
+  const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
+  globalThis.window = { setTimeout, clearTimeout, localStorage: { getItem: () => null } };
+  globalThis.FileReader = class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } };
+  t.after(() => {
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+    if (originalReader === undefined) delete globalThis.FileReader; else globalThis.FileReader = originalReader;
+  });
+  for (const runtime of ['onnx-character-encoder', 'lightweight-descriptor-fallback']) {
+    t.mock.method(globalThis, 'fetch', async (url) => {
+      const common = { ok: true, service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3 };
+      if (String(url).endsWith('/api/health')) return Response.json(common);
+      return Response.json({
+        ...common,
+        analyzer: { provider: 'local', runtime, model: 'descriptor-fallback-v1', prompt_version: 'lightweight-character-encoder-v1', analyzed_at: '2026-11-25T00:00:00Z' },
+        action: '',
+        analysis: { expression: noFace, source: 'lightweight-character-encoder' },
+        candidate_id: 'a',
+        confidence: 'medium',
+        suggested_size: 'bust-up',
+      });
+    });
+    const result = await analyzeFigureCharacterMatchWithLocalVlm(new Blob([]), [{ id: 'a', name: '名前', aliases: [], observedTraits: [] }], 'bust-up');
+    assert.equal(result.candidateId, 'a');
+    assert.equal(result.confidence, 'medium');
+    assert.equal(result.analyzer.runtime, runtime);
+    t.mock.restoreAll();
+  }
+});

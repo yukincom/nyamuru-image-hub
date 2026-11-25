@@ -7,9 +7,10 @@ import { extname, resolve, sep } from 'node:path';
 // Only processing APIs are exposed. Workspace, catalog and native file-picker APIs stay on the Mac.
 export const BRIDGE_PATHS = new Set([
   '/api/health', '/api/agent/chat', '/api/agent/status', '/api/voice/transcribe', '/api/voice/classify',
-  '/api/human-pose/catalog', '/api/human-pose/scene', '/api/layout/analyze',
+  '/api/human-pose/catalog', '/api/human-pose/scene', '/api/layout/analyze', '/api/layout/orientation',
   '/api/figure-performance/analyze', '/api/character-reference/analyze',
-  '/api/character-reference/analyze-set', '/api/character-match/analyze', '/api/panel-actions/suggest',
+  '/api/character-reference/analyze-set', '/api/character-match/analyze',
+  '/api/character-match/lightweight', '/api/figure-reference/recommend-view', '/api/panel-actions/suggest',
   '/api/qwen-generation/prepare', '/api/qwen-generation/reconcile', '/api/qwen-generation/list',
   '/api/qwen-generation/delete', '/api/layer-generation/cache/list', '/api/layer-generation/cache/delete',
   '/api/qwen-generation/select', '/api/qwen-generation/cancel',

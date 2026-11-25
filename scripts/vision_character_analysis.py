@@ -248,9 +248,34 @@ class VisionCharacterAnalysis:
             })
         selected_model, selected_label = self.resolve_vlm_model(requested_vlm_model)
         if not self.vlm_available(selected_model):
-            raise FileNotFoundError(
-                "Qwen3-VL/MLXのローカル環境が見つかりません。`npm run bridge:check-vlm`で配置を確認してください"
-            )
+            lightweight = self.analyze_character_match_lightweight(image_bytes, candidates_value, current_size)
+            from figure_observations import CATALOG as EXPRESSION_CATALOG
+            return {
+                "candidate_id": lightweight["candidate_id"],
+                "confidence": lightweight["confidence"],
+                "observed": [],
+                "reason": "" if lightweight["candidate_id"] else "軽量ローカルエンコーダで一致候補を確定できませんでした",
+                "action": "",
+                "suggested_size": lightweight["suggested_size"],
+                "analysis": {
+                    "source": "lightweight-character-encoder",
+                    "recommended_view": lightweight["recommended_view"],
+                    "score": lightweight["score"],
+                    "margin": lightweight["margin"],
+                    "expression": {
+                        "read_status": "no_face",
+                        "catalog_version": EXPRESSION_CATALOG["version"],
+                        "catalog_sha256": EXPRESSION_CATALOG["source_sha256"],
+                        "target_face_id": None,
+                        "target_evidence_en": None,
+                        "faces": [],
+                    },
+                },
+                "analyzer": {
+                    **lightweight["analyzer"],
+                    "prompt_version": "lightweight-character-encoder-v1",
+                },
+            }
         try:
             result = run_character_match_worker(
                 python=self.vlm_python,

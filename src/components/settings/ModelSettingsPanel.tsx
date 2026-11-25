@@ -211,7 +211,7 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
               vision: { ...generationPreferences.vision, execution: event.currentTarget.value === 'local' ? 'local' : 'cloud' },
             })}>
             <option value="cloud">クラウドAPI（Gemini Vision）</option>
-            <option value="local">ローカルVLM</option>
+            <option value="local">ローカル（軽量エンコーダ／VLM）</option>
           </select>
         </Field>
         {generationPreferences.vision.execution === 'cloud' ? (
@@ -239,7 +239,7 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
         ) : (
           <Field label="ローカルVLM" hint="保存済みのHugging FaceモデルID" wide>
             <input aria-label="画像VLM" value={localModelDraft.vlmModelId} spellcheck={false} onInput={event => updateLocalModelPreferences({ vlmModelId: event.currentTarget.value })} />
-            <small>ローカルVLMでキャラ照合や特徴抽出を行います。</small>
+            <small>既定では軽量ローカルエンコーダでキャラ照合・アングル推薦を行います。特徴抽出や詳細VLM解析を使う場合のみローカルVLMを指定します。</small>
           </Field>
         )}
       </div>}

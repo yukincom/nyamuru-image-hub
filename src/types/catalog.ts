@@ -42,7 +42,7 @@ export interface CharacterRecognitionProfile {
 
 export interface LocalVlmAnalyzer {
   provider: 'local' | 'cloud';
-  runtime: 'mlx-vlm' | 'gemini-vision';
+  runtime: 'mlx-vlm' | 'gemini-vision' | 'onnx-character-encoder' | 'lightweight-descriptor-fallback';
   model: string;
   prompt_version: string;
   analyzed_at: string;

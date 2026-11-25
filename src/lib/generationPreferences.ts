@@ -45,7 +45,7 @@ export const DEFAULT_GENERATION_PREFERENCES: Readonly<GenerationPreferences> = O
     exportReferenceImages: true,
   }),
   local: Object.freeze({ imageModel: 'qwen-image-2.1-turbo', workflowId: P_H3_TWO_IMAGE_WORKFLOW }),
-  vision: Object.freeze({ enabled: false, execution: 'cloud', cloudModel: DEFAULT_CLOUD_VISION_MODEL }),
+  vision: Object.freeze({ enabled: true, execution: 'local', cloudModel: DEFAULT_CLOUD_VISION_MODEL }),
 });
 
 function defaults(): GenerationPreferences {
@@ -94,8 +94,8 @@ function normalize(value: unknown): GenerationPreferences {
     },
     local: { imageModel: 'qwen-image-2.1-turbo', workflowId },
     vision: {
-      enabled: vision.enabled === true,
-      execution: vision.execution === 'local' ? 'local' : 'cloud',
+      enabled: typeof vision.enabled === 'boolean' ? vision.enabled : DEFAULT_GENERATION_PREFERENCES.vision.enabled,
+      execution: vision.execution === 'cloud' ? 'cloud' : 'local',
       cloudModel: text(vision.cloudModel, 200).trim() || DEFAULT_CLOUD_VISION_MODEL,
     },
   };

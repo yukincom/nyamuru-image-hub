@@ -100,6 +100,31 @@ class CharacterEncoderTests(unittest.TestCase):
         )
         self.assertEqual(rec["asset_id"], "img-1")
 
+    def test_analyze_character_match_falls_back_to_lightweight_encoder_without_vlm(self):
+        class NoVlmAnalysis(VisionCharacterAnalysis):
+            character_encoder_model = Path("/nonexistent/model.onnx")
+
+            def resolve_vlm_model(self, requested):
+                return Path("/nonexistent/vlm"), "missing-vlm"
+
+            def vlm_available(self, selected_model=None):
+                return False
+
+        stub = NoVlmAnalysis()
+        img = _png_bytes(size=(160, 260), draw_rect=(40, 20, 120, 240))
+        result = stub.analyze_character_match(
+            img,
+            [{"id": "char-a", "observed_traits": ["黒髪ショート"]}],
+            "bust-up",
+        )
+        self.assertEqual(result["analyzer"]["provider"], "local")
+        self.assertEqual(result["analyzer"]["runtime"], "lightweight-descriptor-fallback")
+        self.assertEqual(result["confidence"], "none")
+        expr = result["analysis"]["expression"]
+        self.assertEqual(expr["read_status"], "no_face")
+        self.assertTrue(expr["catalog_version"])
+        self.assertRegex(expr["catalog_sha256"], r"^[0-9a-f]{64}$")
+
     def test_short_lived_worker_cli_executes_offline(self):
         img = _png_bytes(size=(128, 128), draw_rect=(32, 20, 96, 110))
         with tempfile.TemporaryDirectory() as directory:

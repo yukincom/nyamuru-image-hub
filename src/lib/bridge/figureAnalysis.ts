@@ -303,9 +303,17 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
   const analyzer = payload.analyzer && typeof payload.analyzer === 'object' && !Array.isArray(payload.analyzer)
     ? payload.analyzer as Record<string, unknown>
     : null;
-  if (!analyzer || analyzer.provider !== 'local' || analyzer.runtime !== 'mlx-vlm') {
+  const localRuntimes = new Set<LocalVlmAnalyzer['runtime']>([
+    'mlx-vlm',
+    'onnx-character-encoder',
+    'lightweight-descriptor-fallback',
+  ]);
+  if (!analyzer || analyzer.provider !== 'local'
+    || typeof analyzer.runtime !== 'string'
+    || !localRuntimes.has(analyzer.runtime as LocalVlmAnalyzer['runtime'])) {
     throw new Error('人物照合の解析結果形式が正しくありません');
   }
+  const localRuntime = analyzer.runtime as LocalVlmAnalyzer['runtime'];
   const figureSizes = new Set<FigureSize>(FIGURE_SIZES);
   const action = typeof payload.action === 'string' ? payload.action.trim() : '';
   const suggestedSize = typeof payload.suggested_size === 'string' && figureSizes.has(payload.suggested_size as FigureSize)
@@ -331,7 +339,7 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
     expressionReading: expressionReadingFromAnalysis(analysis),
     analyzer: {
       provider: 'local',
-      runtime: 'mlx-vlm',
+      runtime: localRuntime,
       model: typeof analyzer.model === 'string' ? analyzer.model : '',
       prompt_version: typeof analyzer.prompt_version === 'string' ? analyzer.prompt_version : '',
       analyzed_at: typeof analyzer.analyzed_at === 'string' ? analyzer.analyzed_at : '',
