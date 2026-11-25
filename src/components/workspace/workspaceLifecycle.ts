@@ -1,5 +1,4 @@
-import { pruneFigureCropAssets, collectFigureCropAssetIds, evictOffpagePersistedCropAssets, onFigureCropAssetsChanged } from '../../lib/figureCropStore';
-import { spreadPartnerIndex as findSpreadPartnerIndex } from '../../lib/pageSpread';
+import { pruneFigureCropAssets, collectFigureCropAssetIds, onFigureCropAssetsChanged } from '../../lib/figureCropStore';
 import type { WorkspaceSnapshot } from './workspaceTypes';
 import { browserCatalogImageIds } from '../../lib/browserCatalog';
 import { paintAssetIds } from '../../lib/paintDocument';
@@ -49,12 +48,6 @@ export function useWorkspaceLifecycle({
   useEffect(() => {
     prunePaintAssets();
   }, [document, past, future, newCharacterDocument, paintSession, seriesCatalogSaving]);
-
-  useEffect(() => {
-    const partner = findSpreadPartnerIndex(activePage, document.manga.pages.length, spreadView);
-    evictOffpagePersistedCropAssets(document, partner === null ? [activePage] : [activePage, partner]);
-  }, [document, activePage, spreadView]);
-
 
   useEffect(() => {
     const pending = pendingCanvasElementSelection.current;

@@ -397,15 +397,12 @@ test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存�
   const props = { ...settingsProps(document), onChangeDocument: () => assert.fail('model preferences must not mutate document'), onNotify: message => notices.push(message) };
   let ai = panel(component.render(props), 'ai');
   assert.equal(input(field(ai, 'LLM接続先')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmUrl);
-  // ビジョンは既定ON（ローカル軽量エンコーダ既定）。ローカルVLM欄が初期表示され、OFF→ON切替も保持される。
-  assert.equal(find(ai, node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.checked, true);
-  assert.equal(find(ai, node => node.props?.['aria-label'] === 'キャラ照合の実行先').props.value, 'local');
-  assert.equal(input(field(ai, 'ローカルVLM')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.vlmModelId);
-  find(ai, node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.onChange({ currentTarget: { checked: false } });
-  ai = panel(component.render(props), 'ai');
-  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'キャラ照合の実行先'), false);
+  // ビジョンは既定OFF。ONにすると既定のローカル実行先でローカルVLM欄が表示される。
+  assert.equal(find(ai, node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.checked, false);
   find(ai, node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.onChange({ currentTarget: { checked: true } });
   ai = panel(component.render(props), 'ai');
+  assert.equal(find(ai, node => node.props?.['aria-label'] === 'キャラ照合の実行先').props.value, 'local');
+  assert.equal(input(field(ai, 'ローカルVLM')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.vlmModelId);
   const writesBeforeLocal = component.writes.length;
   input(field(ai, 'LLM接続先')).props.onInput({ currentTarget: { value: 'http://127.0.0.1:8081' } });
   ai = panel(component.render(props), 'ai');
@@ -437,7 +434,7 @@ test('用途別の設定は外部エージェントを保存・復元し、会�
   const choose = value => find(ai(), node => node.props?.name === 'generation-execution' && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
   assert.equal(find(ai(), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'local');
   assert.equal(input(field(ai(), 'LLM接続先')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmUrl);
-  assert.equal(find(ai(), node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.checked, true);
+  assert.equal(find(ai(), node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.checked, false);
   assert.deepEqual(find(ai(), node => node.type === 'AgentSettings').props.profile, props.agentProfile);
   choose('agent');
   assert.equal(find(ai(), node => node.props?.['aria-label'] === '背景を含める').props.checked, true);

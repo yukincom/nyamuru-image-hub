@@ -74,6 +74,9 @@ class CharacterEncoderTests(unittest.TestCase):
         self.assertEqual(rec["matched_view"], "front")
 
     def test_vision_character_analysis_lightweight_match_and_recommend(self):
+        from unittest.mock import patch
+        import vision_character_analysis as analysis_mod
+
         class StubAnalysis(VisionCharacterAnalysis):
             character_encoder_model = Path("/nonexistent/model.onnx")
 
@@ -81,7 +84,8 @@ class CharacterEncoderTests(unittest.TestCase):
         img_a = _png_bytes(size=(160, 260), draw_rect=(40, 20, 120, 240))
         img_b = _png_bytes(size=(160, 260), draw_rect=(10, 180, 150, 250))
 
-        matched = stub.analyze_character_match_lightweight(
+        # Without trained M1 ONNX weights, fallback descriptor must abstain rather than misassign.
+        untrained = stub.analyze_character_match_lightweight(
             img_a,
             [
                 {"id": "char-a", "reference_images": [_data_url(img_a)]},
@@ -89,9 +93,43 @@ class CharacterEncoderTests(unittest.TestCase):
             ],
             current_size="waist-up",
         )
+        self.assertEqual(untrained["candidate_id"], "")
+        self.assertEqual(untrained["confidence"], "none")
+        self.assertEqual(untrained["analyzer"]["runtime"], "lightweight-descriptor-fallback")
+
+        # When trained ONNX file is present, embedding match selects char-a.
+        with tempfile.NamedTemporaryFile(suffix=".onnx") as dummy_onnx:
+            class OnnxStubAnalysis(VisionCharacterAnalysis):
+                character_encoder_model = Path(dummy_onnx.name)
+
+            onnx_stub = OnnxStubAnalysis()
+            with (
+                patch.object(
+                    analysis_mod,
+                    "embed_character_image",
+                    side_effect=lambda raw, model_path=None: {
+                        "embedding": [1.0, 0.0] if raw == img_a else [0.0, 1.0],
+                        "runtime": "onnx-character-encoder",
+                        "model": "m1-test",
+                    },
+                ),
+                patch.object(
+                    analysis_mod,
+                    "predict_figure_view_and_size",
+                    return_value={"recommended_view": "front", "suggested_size": "waist-up", "confidence": 0.9},
+                ),
+            ):
+                matched = onnx_stub.analyze_character_match_lightweight(
+                    img_a,
+                    [
+                        {"id": "char-a", "reference_images": [_data_url(img_a)]},
+                        {"id": "char-b", "reference_images": [_data_url(img_b)]},
+                    ],
+                    current_size="waist-up",
+                )
         self.assertEqual(matched["candidate_id"], "char-a")
-        self.assertIn(matched["confidence"], ("high", "medium", "low"))
-        self.assertEqual(matched["analyzer"]["runtime"], "lightweight-descriptor-fallback")
+        self.assertEqual(matched["confidence"], "high")
+        self.assertEqual(matched["analyzer"]["runtime"], "onnx-character-encoder")
 
         rec = stub.recommend_figure_reference_view(
             img_a,
@@ -130,36 +168,53 @@ class CharacterEncoderTests(unittest.TestCase):
         from unittest.mock import patch
         import vision_character_analysis as analysis_mod
 
-        class CachedVlmAndCatalog(VisionCharacterAnalysis):
-            character_encoder_model = Path("/nonexistent/model.onnx")
-
-            def resolve_vlm_model(self, requested=None):
-                raise AssertionError("default lightweight mode must not resolve 8B VLM")
-
-            def vlm_available(self, selected_model=None):
-                return True
-
         img_a = _png_bytes(size=(160, 260), draw_rect=(40, 20, 120, 240))
         img_b = _png_bytes(size=(160, 260), draw_rect=(10, 180, 150, 250))
 
-        def read_image(series_id, char_cat_id, asset_id):
-            self.assertEqual(series_id, "series-1")
-            if asset_id == "image-" + ("a" * 64):
-                return {"found": True, "image_bytes": img_a}
-            if asset_id == "image-" + ("b" * 64):
-                return {"found": True, "image_bytes": img_b}
-            return {"found": False}
+        with tempfile.NamedTemporaryFile(suffix=".onnx") as dummy_onnx:
+            class CachedVlmAndCatalog(VisionCharacterAnalysis):
+                character_encoder_model = Path(dummy_onnx.name)
 
-        stub = CachedVlmAndCatalog()
-        stub.series_catalogs = SimpleNamespace(read_character_image=read_image)
-        candidates = [
-            {"id": "char-a", "character_catalog_id": "cat-a", "reference_asset_ids": ["image-" + ("a" * 64)]},
-            {"id": "char-b", "character_catalog_id": "cat-b", "reference_asset_ids": ["image-" + ("b" * 64)]},
-        ]
-        with patch.object(analysis_mod, "run_character_match_worker", side_effect=AssertionError("8B VLM worker must not run")):
-            result = stub.analyze_character_match(img_a, candidates, "bust-up", series_id="series-1")
+                def resolve_vlm_model(self, requested=None):
+                    raise AssertionError("default lightweight mode must not resolve 8B VLM")
+
+                def vlm_available(self, selected_model=None):
+                    return True
+
+            def read_image(series_id, char_cat_id, asset_id):
+                self.assertEqual(series_id, "series-1")
+                if asset_id == "image-" + ("a" * 64):
+                    return {"found": True, "image_bytes": img_a}
+                if asset_id == "image-" + ("b" * 64):
+                    return {"found": True, "image_bytes": img_b}
+                return {"found": False}
+
+            stub = CachedVlmAndCatalog()
+            stub.series_catalogs = SimpleNamespace(read_character_image=read_image)
+            candidates = [
+                {"id": "char-a", "character_catalog_id": "cat-a", "reference_asset_ids": ["image-" + ("a" * 64)]},
+                {"id": "char-b", "character_catalog_id": "cat-b", "reference_asset_ids": ["image-" + ("b" * 64)]},
+            ]
+            with (
+                patch.object(analysis_mod, "run_character_match_worker", side_effect=AssertionError("8B VLM worker must not run")),
+                patch.object(
+                    analysis_mod,
+                    "embed_character_image",
+                    side_effect=lambda raw, model_path=None: {
+                        "embedding": [1.0, 0.0] if raw == img_a else [0.0, 1.0],
+                        "runtime": "onnx-character-encoder",
+                        "model": "m1-test",
+                    },
+                ),
+                patch.object(
+                    analysis_mod,
+                    "predict_figure_view_and_size",
+                    return_value={"recommended_view": "front", "suggested_size": "bust-up", "confidence": 0.9},
+                ),
+            ):
+                result = stub.analyze_character_match(img_a, candidates, "bust-up", series_id="series-1")
         self.assertEqual(result["candidate_id"], "char-a")
-        self.assertEqual(result["analyzer"]["runtime"], "lightweight-descriptor-fallback")
+        self.assertEqual(result["analyzer"]["runtime"], "onnx-character-encoder")
 
     def test_short_lived_worker_cli_executes_offline(self):
         img = _png_bytes(size=(128, 128), draw_rect=(32, 20, 96, 110))

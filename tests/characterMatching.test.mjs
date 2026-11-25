@@ -222,7 +222,12 @@ test('複数顔の要確認と部位記録を作品で保持し、公開OMNYに�
 
 test('ローカル照合クライアントは共有軽量エンコーダ系のランタイム応答も正常受理する', async t => {
   const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
-  globalThis.window = { setTimeout, clearTimeout, localStorage: { getItem: () => null } };
+  const visionStorage = {
+    getItem: (key) => key === GENERATION_PREFERENCES_STORAGE_KEY
+      ? JSON.stringify({ version: 3, ...DEFAULT_GENERATION_PREFERENCES, vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } })
+      : null,
+  };
+  globalThis.window = { setTimeout, clearTimeout, localStorage: visionStorage };
   globalThis.FileReader = class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } };
   t.after(() => {
     if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
@@ -265,7 +270,12 @@ test('buildCharacterMatchCandidatesは設定画ありキャラを特徴なしで
     referenceAssetIds: [`image-${'2'.repeat(64)}`, `image-${'1'.repeat(64)}`],
   }]);
   const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
-  globalThis.window = { setTimeout, clearTimeout, localStorage: { getItem: () => null } };
+  const visionStorage = {
+    getItem: (key) => key === GENERATION_PREFERENCES_STORAGE_KEY
+      ? JSON.stringify({ version: 3, ...DEFAULT_GENERATION_PREFERENCES, vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } })
+      : null,
+  };
+  globalThis.window = { setTimeout, clearTimeout, localStorage: visionStorage };
   globalThis.FileReader = class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } };
   t.after(() => {
     if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;

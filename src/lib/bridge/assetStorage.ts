@@ -5,6 +5,7 @@ import { characterImageCacheId } from '../browserCatalog.ts';
 import { checkCharacterReferenceSize } from '../characterReferences.ts';
 import type { BackgroundStage } from '../../types.ts';
 import { verifyBackgroundStage, stageMediaType } from '../background3d.ts';
+import { withNewCreationBridgeSession } from '../localBridgeLifecycle.ts';
 
 export interface SavedCharacterReferenceImage {
   sourceImage: CharacterReferenceSourceImage;
@@ -154,11 +155,18 @@ export async function persistAnalogAsset(
 }
 
 export async function loadPersistedAnalogAsset(reference: PersistentAnalogAssetRef): Promise<Blob | null> {
-  const payload = await postJson('/api/analog-assets/load', {
+  const fetchPayload = () => postJson('/api/analog-assets/load', {
     work_key: reference.workKey,
     kind: reference.kind,
     file_name: reference.fileName,
-  }, 15_000) as Record<string, unknown>;
+  }, 15_000) as Promise<Record<string, unknown>>;
+  let payload: Record<string, unknown>;
+  try {
+    payload = await fetchPayload();
+  } catch (error) {
+    if (isLanClient) throw error;
+    payload = await withNewCreationBridgeSession(() => fetchPayload());
+  }
   if (payload.found !== true) return null;
   const blob = dataUrlBlob(payload.image);
   if (!blob) throw new Error('保存済みの原画参照画像を読み込めませんでした');

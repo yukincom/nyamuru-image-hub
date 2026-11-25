@@ -2,7 +2,7 @@
 
 - 作成日: 2026-11-25
 - 対象リポジトリ: `Comic_image_Hub`
-- 状態: **段階実装済み（グループ1〜3導入後、ビジョン既定 ON・ローカル軽量エンコーダ既定化済み）**
+- 状態: **段階実装済み（グループ1〜3コード・推論枠組導入済み、M1 ONNX 学習済み重み導入まではビジョン既定 OFF・ローカル軽量エンコーダ実行先既定）**
 
 ## 1. 目的と設計原則
 
@@ -13,11 +13,11 @@
 1. **既存モデルの差し替え・ヘッド相乗りで追加コストをほぼゼロにする（グループ2）**
    すでに毎回動作している `rtdetrv4-x-manga109s_v2`・`baberu-ocr`・`ModernBERT` の重み差し替えまたは軽量ヘッド追加に留め、推論回数や常駐プロセスを増やさない。
 2. **重い 8B VLM を 1つの共有軽量画像エンコーダへ置換する（グループ1）**
-   従来は重いためオプション（既定 OFF）だったローカル 8B VLM（`Qwen3-VL-8B-Instruct-MLX-4bit`）の役割のうち、「キャラ照合」と「向き・撮影サイズ・最適設定画アングル判定」を1つの軽量エンコーダ＋2ヘッドへ蒸留・置換し、数GB・数秒〜十数秒の処理を数十〜数百MB・数十ms へ落とすことで、キャラ照合（ビジョン）をローカル既定 ON で常用可能にする。
+   従来は重いためオプション（既定 OFF）だったローカル 8B VLM（`Qwen3-VL-8B-Instruct-MLX-4bit`）の役割のうち、「キャラ照合」と「向き・撮影サイズ・最適設定画アングル判定」を1つの軽量エンコーダ＋2ヘッドへ蒸留・置換し、数GB・数秒〜十数秒の処理を数十〜数百MB・数十ms へ落とす。学習済み M1 ONNX 重みが未配置の間はビジョン既定 OFF かつ自動照合を安全棄却し、重み導入後に精度検証を経て既定 ON 化できる構成にする。
 3. **新規追加は「座標数値のみ（<1ms）」と「縮小サムネイルのみ（5〜10ms）」に限定する（グループ3）**
    新規モデルを追加する場合も、画像を使わない表形式モデル（BBox 座標等の数値のみ）と取り込み時1回だけの極小サムネイル分類器に限定する。
 4. **ComfyUI とのメモリ共存とローカル完結・再現性規約を守る**
-   ローカル既定の画像生成（`P-H3-Image` 2画像参照・プロンプト流し込みなし）や ComfyUI とのメモリ共存を阻害しないよう、モデル重みは Git に含めず、既存の Release＋SHA-256 検証＋`provenance.json`＋オフライン実行（`HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1`）の規約（[ModernBERT同梱記録](2026-10-24-classifier-bundle.md)・[ローカル画像解析](LOCAL_VISION_BRIDGE.md)）に統一する。また、2画像生成・プロンプト流し込み廃止方針（[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md)）と矛盾させず、M1+M2 導入後はキャラ照合（ビジョン）をローカル軽量エンコーダ既定 ON（OFF 切替可）へ移行する。
+   ローカル既定の画像生成（`P-H3-Image` 2画像参照・プロンプト流し込みなし）や ComfyUI とのメモリ共存を阻害しないよう、モデル重みは Git に含めず、既存の Release＋SHA-256 検証＋`provenance.json`＋オフライン実行（`HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1`）の規約（[ModernBERT同梱記録](2026-10-24-classifier-bundle.md)・[ローカル画像解析](LOCAL_VISION_BRIDGE.md)）に統一する。また、2画像生成・プロンプト流し込み廃止・キャラ照合（ビジョン）既定 OFF 方針（[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md)）と矛盾させない。
 
 ### 対象外（モデル化しない境界）
 
@@ -98,7 +98,7 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
 ### グループ1：既存の重い 8B VLM を置換する共有エンコーダ（M1＋M2）
 
 #### 現状と課題
-- 従来の [local_character_match_worker.py](../scripts/local_character_match_worker.py) と [local_figure_performance_worker.py](../scripts/local_figure_performance_worker.py) は `Qwen3-VL-8B-Instruct-MLX-4bit`（数GB・数秒〜十数秒）に依存していたため、導入当初の [AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md) では既定 OFF のオプトイン扱いだったが、M1+M2 の共有軽量エンコーダ置換によりローカル既定 ON（8B VLM 未導入でも軽量フォールバック動作）へ切り替える。
+- 従来の [local_character_match_worker.py](../scripts/local_character_match_worker.py) と [local_figure_performance_worker.py](../scripts/local_figure_performance_worker.py) は `Qwen3-VL-8B-Instruct-MLX-4bit`（数GB・数秒〜十数秒）に依存していたため、[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md) でも既定 OFF のオプトイン扱いになっている。M1+M2 の共有軽量エンコーダ経路では学習済み ONNX 重み導入まで未学習フォールバックでの候補確定を禁止し、学習・精度評価完了後に既定 ON 化できる構成とする。
 - [vision_character_analysis.py](../scripts/vision_character_analysis.py) では、キャラ照合（テキスト特徴経由）と演技/撮影範囲読み取りを別々に VLM 呼び出ししている。
 
 #### 統合アーキテクチャ（1バックボーン＋2ヘッド）

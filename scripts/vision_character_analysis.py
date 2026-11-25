@@ -254,11 +254,16 @@ class VisionCharacterAnalysis:
                 image_bytes, candidates_value, current_size, series_id=series_id,
             )
             from figure_observations import CATALOG as EXPRESSION_CATALOG
+            fallback_reason = (
+                "軽量キャラ照合モデル（ONNX）が未導入のため自動照合をスキップしました"
+                if lightweight["analyzer"]["runtime"] != "onnx-character-encoder"
+                else "軽量ローカルエンコーダで一致候補を確定できませんでした"
+            )
             return {
                 "candidate_id": lightweight["candidate_id"],
                 "confidence": lightweight["confidence"],
                 "observed": [],
-                "reason": "" if lightweight["candidate_id"] else "軽量ローカルエンコーダで一致候補を確定できませんでした",
+                "reason": "" if lightweight["candidate_id"] else fallback_reason,
                 "action": "",
                 "suggested_size": lightweight["suggested_size"],
                 "analysis": {
@@ -347,33 +352,44 @@ class VisionCharacterAnalysis:
         model_path = getattr(self, "character_encoder_model", None)
         active_model = model_path if isinstance(model_path, Path) and model_path.is_file() else None
         query = embed_character_image(image_bytes, model_path=active_model)
-        catalogs = getattr(self, "series_catalogs", None)
-        reference_embeddings: list[dict[str, Any]] = []
-        for raw_candidate in candidates_value[:50]:
-            if not isinstance(raw_candidate, dict):
-                continue
-            cid = raw_candidate.get("id")
-            if not isinstance(cid, str) or not cid.strip() or len(cid) > 160:
-                continue
-            raw_images = raw_candidate.get("reference_images")
-            if isinstance(raw_images, list):
-                for encoded in raw_images[:8]:
-                    ref_bytes = decode_image_data(encoded)
-                    ref_emb = embed_character_image(ref_bytes, model_path=active_model)["embedding"]
-                    reference_embeddings.append({"id": cid.strip(), "embedding": ref_emb})
-            char_cat_id = raw_candidate.get("character_catalog_id")
-            asset_ids = raw_candidate.get("reference_asset_ids")
-            if (catalogs and isinstance(series_id, str) and series_id.strip()
-                    and isinstance(char_cat_id, str) and char_cat_id.strip() and isinstance(asset_ids, list)):
-                for asset_id in asset_ids[:8]:
-                    try:
-                        loaded = catalogs.read_character_image(series_id.strip(), char_cat_id.strip(), asset_id)
-                        if loaded.get("found") is True and isinstance(loaded.get("image_bytes"), (bytes, bytearray)):
-                            ref_emb = embed_character_image(bytes(loaded["image_bytes"]), model_path=active_model)["embedding"]
-                            reference_embeddings.append({"id": cid.strip(), "embedding": ref_emb})
-                    except Exception:
-                        continue
-        matched = match_character_embeddings(query["embedding"], reference_embeddings)
+        # 未学習フォールバック記述子（グレースケール特徴）は漫画線画・白背景の類似度が高く誤割当を起こすため、
+        # 学習済み ONNX モデルが導入されていない場合は候補確定を行わず安全に棄却する。
+        if active_model is None:
+            matched: dict[str, Any] = {
+                "candidate_id": "",
+                "confidence": "none",
+                "score": 0.0,
+                "margin": 0.0,
+                "rankings": [],
+            }
+        else:
+            catalogs = getattr(self, "series_catalogs", None)
+            reference_embeddings: list[dict[str, Any]] = []
+            for raw_candidate in candidates_value[:50]:
+                if not isinstance(raw_candidate, dict):
+                    continue
+                cid = raw_candidate.get("id")
+                if not isinstance(cid, str) or not cid.strip() or len(cid) > 160:
+                    continue
+                raw_images = raw_candidate.get("reference_images")
+                if isinstance(raw_images, list):
+                    for encoded in raw_images[:8]:
+                        ref_bytes = decode_image_data(encoded)
+                        ref_emb = embed_character_image(ref_bytes, model_path=active_model)["embedding"]
+                        reference_embeddings.append({"id": cid.strip(), "embedding": ref_emb})
+                char_cat_id = raw_candidate.get("character_catalog_id")
+                asset_ids = raw_candidate.get("reference_asset_ids")
+                if (catalogs and isinstance(series_id, str) and series_id.strip()
+                        and isinstance(char_cat_id, str) and char_cat_id.strip() and isinstance(asset_ids, list)):
+                    for asset_id in asset_ids[:8]:
+                        try:
+                            loaded = catalogs.read_character_image(series_id.strip(), char_cat_id.strip(), asset_id)
+                            if loaded.get("found") is True and isinstance(loaded.get("image_bytes"), (bytes, bytearray)):
+                                ref_emb = embed_character_image(bytes(loaded["image_bytes"]), model_path=active_model)["embedding"]
+                                reference_embeddings.append({"id": cid.strip(), "embedding": ref_emb})
+                        except Exception:
+                            continue
+            matched = match_character_embeddings(query["embedding"], reference_embeddings)
         view_info = predict_figure_view_and_size(image_bytes, current_size=safe_size, model_path=active_model)
         return {
             **matched,

@@ -59,7 +59,7 @@
 | コマ・人物・文字領域検出 | `rtdetrv4-x-manga109s_v2` (`model.onnx`) | `tori29umai/rtdetrv4-x-manga109s_v2`（`npm run setup:vision`） |
 | 漫画文字 OCR | `baberu-ocr` | `genshiai-daichi/baberu-ocr`（`npm run setup:vision`） |
 | 表情補助タグ抽出 | `wd-vit-tagger-v3` (`model.onnx`) | `SmilingWolf/wd-vit-tagger-v3`（`npm run setup:vision`） |
-| キャラ照合・ビジョン（既定ON・ローカル軽量エンコーダ既定） | 共有軽量ローカル画像エンコーダ（`character_vision_encoder.py`）、詳細特徴抽出時はローカル VLM `lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit` または クラウド Vision API（Gemini Flash-Lite / Flash 系） | 既定ON（設定でOFF切替可）。OFF時は設定画の登録・管理のみで特徴入力はグレーアウト |
+| キャラ照合・ビジョン（オプション・既定OFF） | ローカル軽量画像エンコーダ（学習済み M1 ONNX 導入時）、ローカル VLM `lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit`、または クラウド Vision API（Gemini Flash-Lite / Flash 系） | 学習済み M1 ONNX モデル導入までは既定OFF（未導入時は自動照合をスキップして誤割当を防止）。OFF時は設定画の登録・管理のみで特徴入力はグレーアウト |
 | 画像生成（ローカル既定・2画像参照 / P-H3-Image） | `P-H3-Image-AD-Q6_K.gguf` | UNet（`AtomicChat/P-H3-Image-GGUF`、`ComfyUI-GGUF` `UnetLoaderGGUF`） |
 | 画像生成（P-H3-Image 付随） | `p-h3-image_text_encoder_bf16.safetensors` / `p-h3-image_prompt_upsampler_bf16.safetensors` / `p-h3-image_vae_bf16.safetensors` | Text Encoder・Prompt Upsampler・VAE（`examples/comfyui/p_h3_image_edit_mac_bf16_v2.api.json`） |
 | 画像生成（クラウドAPI・ページ一括／単画像） | Gemini Image 系（既定 `gemini-3.1-flash-image`） | 環境設定のクラウドAPIキーを使用（Vision APIとキー共通） |
@@ -113,7 +113,7 @@
 | 機能 | 主な構成 |
 |---|---|
 | コマ・人物・文字領域の解析 | RT-DETR、OpenCV、Baberu OCR |
-| キャラ照合・ビジョン（既定ON・OFF切替可） | ローカル共有軽量画像エンコーダ（既定）／ローカル VLM（Qwen3-VL／MLX）／クラウド Vision API（Gemini Flash-Lite / Flash 系） |
+| キャラ照合・ビジョン（オプション・既定OFF） | ローカル（学習済み共有軽量画像エンコーダ／任意VLM）またはクラウド Vision API（Gemini Flash-Lite / Flash 系） |
 | 会話・編集支援 | ローカル MLX サーバー（port 8080 で起動済みなら `npm run dev` が自動共用）。プロンプト英訳機能は持たない |
 | 画像生成 | ローカル ComfyUI（P-H3-Image 2画像編集・既定、[examples/comfyui/README.md](examples/comfyui/README.md) 同梱）、クラウドAPI（Gemini Image・ページ一括／単画像）、または外部エージェント |
 | 操作分類 | 同梱の ModernBERT tokenizer と Release 配布の重み |

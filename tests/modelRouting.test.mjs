@@ -17,7 +17,7 @@ function storage() {
 // 見込み/合格: 新規既定は会話local・確認省略OFF。読込0書込、会話更新は画像/解析設定のbyte不変、再読込一致。
 test('conversation and generation preferences have independent device-local writers',()=>{
   const s=storage(),g=loadGenerationPreferences(s),c=loadConversationPreferences(s),local=loadLocalModelPreferences(s);
-  assert.equal(c.execution,'local');assert.equal(g.vision.enabled,true);assert.equal(s.values.size,0);
+  assert.equal(c.execution,'local');assert.equal(g.vision.enabled,false);assert.equal(s.values.size,0);
   saveGenerationPreferences(s,{...g,execution:'cloud',cloud:{...g.cloud,agent:'other',agentName:'Art agent'}});
   saveLocalModelPreferences(s,local);const before=new Map(s.values);
   const api={execution:'api',connectionId:'shared-connection',model:'multi-model'};
@@ -40,15 +40,15 @@ test('invalid conversation values cannot select a connection or replace saved pr
   assert.deepEqual(loadConversationPreferences({getItem:()=>{throw Error('denied');}}),base);
 });
 
-test('vision preference defaults on with local encoder and round-trips through the generation writer',()=>{
+test('vision preference defaults off with local execution and round-trips through the generation writer',()=>{
   const s=storage(),g=loadGenerationPreferences();
-  assert.equal(g.vision.enabled,true);
+  assert.equal(g.vision.enabled,false);
   assert.equal(g.vision.execution,'local');
   assert.equal(g.vision.cloudModel,'gemini-2.5-flash-lite');
-  saveGenerationPreferences(s,{...g,vision:{enabled:false,execution:'cloud',cloudModel:'gemini-2.5-flash'}});
-  assert.deepEqual(loadGenerationPreferences(s).vision,{enabled:false,execution:'cloud',cloudModel:'gemini-2.5-flash'});
+  saveGenerationPreferences(s,{...g,vision:{enabled:true,execution:'cloud',cloudModel:'gemini-2.5-flash'}});
+  assert.deepEqual(loadGenerationPreferences(s).vision,{enabled:true,execution:'cloud',cloudModel:'gemini-2.5-flash'});
   assert.deepEqual([...s.values.keys()],[GENERATION_PREFERENCES_STORAGE_KEY]);
-  assert.equal(loadGenerationPreferences({getItem:()=>JSON.stringify({...g,version:3,vision:{enabled:'false'}})}).vision.enabled,true);
+  assert.equal(loadGenerationPreferences({getItem:()=>JSON.stringify({...g,version:3,vision:{enabled:'true'}})}).vision.enabled,false);
 });
 
 // 見込み/合格: 会話API＋画像localでも同意が必要、同意後は未対応理由で停止。画像localはそのまま、逆の組合せも独立。

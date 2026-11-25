@@ -216,3 +216,9 @@ test('off-page persisted crop assets are evicted while visible-page and unpersis
     await deleteFigureCropAssets([page0Persisted, page1Persisted, page1MemoryOnly]);
   }
 });
+
+test('workspaceLifecycle does not evict off-page storyboard crop assets on page switch', async () => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../src/components/workspace/workspaceLifecycle.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /evictOffpagePersistedCropAssets/);
+});
