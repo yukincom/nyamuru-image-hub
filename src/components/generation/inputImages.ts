@@ -2,12 +2,12 @@ import type { BBox, ImageAsset, PaintDocument } from '../../types.ts';
 import { blobDataUrl } from '../../lib/localBridge.ts';
 import { type PaintOwner, validatePaintDocument } from '../../lib/paintDocument.ts';
 import { type PaintImages, decodePaintImage, loadPaintImages, renderPaintPng } from '../../lib/paintRenderer.ts';
-import { qwenLayerPaint } from '../../lib/qwenGeneration.ts';
+import { buildGenerationLayerPaint } from '../../lib/qwenGeneration.ts';
 import { prepareGuideLayer } from '../../lib/paintGuide.ts';
 
 // 旧->新: 旧=qwenInputImage/qwenLayerImage(特定モデル名) -> 新=encodeGenerationInputImage/renderGenerationLayerImage(機能体現名)へ統一
 /** Crop only an explicitly selected area; references retain their native pixel grid. */
-export async function qwenInputImage(blob:Blob,crop?:BBox,native=false):Promise<{image:string;width:number;height:number}> {
+export async function encodeGenerationInputImage(blob:Blob,crop?:BBox,native=false):Promise<{image:string;width:number;height:number}> {
   if(!blob.type.startsWith('image/')||blob.size>40*1024*1024)throw new Error('40MiB以内の画像を選んでください');
   const bitmap=await createImageBitmap(blob);
   try{
@@ -23,8 +23,8 @@ export async function qwenInputImage(blob:Blob,crop?:BBox,native=false):Promise<
 }
 
 /** Export a single captured owner layer using the editor's existing renderer. */
-export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsset[],liveImages?:PaintImages,includeGeneration=false):Promise<Blob> {
-  let paint:PaintDocument=qwenLayerPaint(owner,id,includeGeneration);
+export async function renderGenerationLayerImage(owner:PaintOwner,id:string,assets:ImageAsset[],liveImages?:PaintImages,includeGeneration=false):Promise<Blob> {
+  let paint:PaintDocument=buildGenerationLayerPaint(owner,id,includeGeneration);
   const owned:HTMLImageElement[]=[];
   let images=liveImages;
   try {
@@ -41,7 +41,7 @@ export async function qwenLayerImage(owner:PaintOwner,id:string,assets:ImageAsse
     const targetLayer=owner.paint.layers.find(item=>item.id===id);
     const ref=paint.referenceFrame;
     if(!includeGeneration&&targetLayer?.guide&&ref&&(ref.x>0||ref.y>0||ref.w<paint.width||ref.h<paint.height)){
-      const cropped=await qwenInputImage(rendered,ref,true);
+      const cropped=await encodeGenerationInputImage(rendered,ref,true);
       return await (await fetch(cropped.image)).blob();
     }
     return rendered;

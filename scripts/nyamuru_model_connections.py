@@ -7,20 +7,20 @@ def comfy_endpoint(value):
     return ComfyClient(value).endpoint
 
 
-def image_generation_connections(body, qwen, comfy):
+def image_generation_connections(body, generation_service, comfy):
     if set(body) - {'comfyui_url', 'check_comfyui', 'workflow_id'}:
         raise ValueError('画像生成の接続確認に不明な項目があります')
     if type(body.get('check_comfyui', False)) is not bool:
         raise ValueError('接続確認の指定は真偽値にしてください')
     if 'comfyui_url' in body and not isinstance(body['comfyui_url'], str):
         raise ValueError('ComfyUI接続先を文字列で指定してください')
-    client = qwen.client_factory(body.get('comfyui_url') or comfy.endpoint)
+    client = generation_service.client_factory(body.get('comfyui_url') or comfy.endpoint)
     connection = {'endpoint': client.endpoint, 'status': 'unchecked', 'version': '',
                   'message': '接続はまだ確認していません'}
     selected = None
     memory_release = False
     if body.get('workflow_id'):
-        definition = qwen.workflows.get(body['workflow_id'])
+        definition = generation_service.workflows.get(body['workflow_id'])
         selected = {key: definition[key] for key in ('id', 'name', 'version')}
         selected.update(available=False, message='利用可否はまだ確認していません')
     if body.get('check_comfyui', False):

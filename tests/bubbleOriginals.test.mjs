@@ -15,7 +15,7 @@ import { pickPaintLayer } from '../src/lib/paintLayerPicking.ts';
 import { parseMangaYaml, toStoredMangaYaml, toSeparatedMangaYaml } from '../src/lib/manga.ts';
 import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projectPersistence.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
-import { qwenPanelImageLayers } from '../src/lib/qwenComposition.ts';
+import { collectCompositionPanelImageLayers } from '../src/lib/qwenComposition.ts';
 import { moveBubbleToOwner, splitPanel, mergeSelectedPanels } from '../src/lib/panelTemplates.ts';
 import { toggleBubbleVisibility } from '../src/lib/panelLayers.ts';
 
@@ -98,7 +98,7 @@ test('explicitly visible OCR compatibility data becomes independent raster place
   }
   const scene=paintScene(panel,100,doc.manga.image_assets,'color','panel');
   assert.equal(scene.owners.find(owner=>owner.kind==='original').kind,'original');assert.equal(scene.owners.find(o=>o.kind==='bubble').paint.layers.length,0);
-  assert.equal(qwenPanelImageLayers(panel.images).ordinary.length,0);
+  assert.equal(collectCompositionPanelImageLayers(panel.images).ordinary.length,0);
   assert.equal(doc.manga.image_assets.length,1);validateImagePlacements(doc);
   assert.doesNotMatch(toSeparatedMangaYaml(doc),/bubbleOriginal|analogTextImport|image_assets/);
 });

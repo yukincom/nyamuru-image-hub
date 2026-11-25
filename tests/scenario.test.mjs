@@ -6,7 +6,7 @@ import { createProjectSnapshot, restoreProjectSnapshot } from '../src/lib/projec
 import { attachRecognizedTextToPage } from '../src/lib/localBridge.ts';
 import { detachResolvedScenarioLinks, rejectScenarioCorrespondence, scenarioBubbleNeedsReview, scenarioOriginIds } from '../src/lib/scenario.ts';
 import { editCanvasText, editCanvasTextStyle } from '../src/lib/canvasText.ts';
-import { buildQwenCompositionPlan } from '../src/lib/qwenComposition.ts';
+import { buildPageCompositionPlan } from '../src/lib/qwenComposition.ts';
 import { SCENARIO_MATCH_THRESHOLD, parseScenario, scenarioSimilarity, applyScenarioToNewDocument, availableScenarioCandidates, confirmScenarioCorrespondence, releaseScenarioCorrespondence, linkScenarioSpeaker, scenarioCharacter, restoreProvisionalScenarioText, useScenarioBubbleText } from '../src/lib/scenario.ts';
 import { emptyTestDocument } from './fixtures/emptyTestDocument.ts';
 
@@ -410,7 +410,7 @@ test('detached confirmation is free text and exports the edited master without e
   }
   const restored=await restoreProjectSnapshot(await createProjectSnapshot(document));
   assert.equal(bubbles(restored)[0].text,before.text);
-  assert.deepEqual(buildQwenCompositionPlan(document.manga,0,0,'panel').literalText,[before.text]);
+  assert.deepEqual(buildPageCompositionPlan(document.manga,0,0,'panel').literalText,[before.text]);
   editCanvasText(document,target,'');
   assert.equal(bubbles(parseMangaYaml(toSeparatedMangaYaml(document)))[0].text,'');
   assert.equal(bubbles(parseMangaYaml(toStoredMangaYaml(document)))[0].text,'');

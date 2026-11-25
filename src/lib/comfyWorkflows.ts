@@ -157,11 +157,11 @@ export function parseComfyWorkflowInfo(value: unknown): ComfyWorkflowInfo {
 export const P_H3_TWO_IMAGE_WORKFLOW = '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01';
 const standardQwenPrefix='c7b07cf5-7e69-43e4-b380-';
 // 旧->新: 旧=standardQwenWorkflowId/isStandardQwenVariant -> 新=standardGenerationWorkflowId/isStandardGenerationWorkflowVariantへ統一
-export function standardQwenWorkflowId(inputs:number) {
+export function standardGenerationWorkflowId(inputs:number) {
   return standardQwenPrefix+String(inputs).padStart(12,'0');
 }
-const standardQwenIds=new Set(Array.from({length:11},(_,i)=>standardQwenWorkflowId(i)));
-export function isStandardQwenVariant(id:string) {
+const standardQwenIds=new Set(Array.from({length:11},(_,i)=>standardGenerationWorkflowId(i)));
+export function isStandardGenerationWorkflowVariant(id:string) {
   return standardQwenIds.has(id);
 }
 export function workflowNegativePrompt(workflow:ComfyWorkflowDefinition|null) {

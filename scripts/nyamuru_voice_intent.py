@@ -7,6 +7,8 @@ import subprocess
 import sys
 import threading
 
+from voice_command_slots import validate_slot_spans
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MODEL_NAME = 'nyamuru-voice-v04-seed43'
 LABELS = ['save', 'undo', 'redo', 'page_navigate', 'view_change', 'artwork_mode_set',
@@ -54,6 +56,10 @@ class VoiceIntentService:
                 type(value.get('elapsed_ms')) not in (int,float) or not math.isfinite(value['elapsed_ms']) or value['elapsed_ms'] < 0 or
                 value['label'] != LABELS[max(range(len(scores)), key=scores.__getitem__)]):
                 raise ValueError('分類器の応答が不正です')
+            if 'slots' in value:
+                value['slots'] = validate_slot_spans(original, value['slots'])
+            else:
+                value['slots'] = []
             return value
         except subprocess.TimeoutExpired:
             raise ValueError('分類が時間内に終わりませんでした。操作は実行していません') from None

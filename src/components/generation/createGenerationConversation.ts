@@ -4,7 +4,7 @@ import {
   type GenerationConversationInput,
 } from '../../lib/generationConversation.ts';
 import { requestAgentReply, withAgentServices } from '../../lib/localBridge.ts';
-import { qwenConversationIntent } from '../../lib/qwenGeneration.ts';
+import { classifyGenerationConversationIntent } from '../../lib/qwenGeneration.ts';
 import type { createGenerationActions } from './createGenerationActions.ts';
 import { generationReadinessMessage, type GenerationReadiness } from '../../lib/generation/readiness.ts';
 
@@ -32,7 +32,7 @@ export function createGenerationConversation(options: GenerationConversationOpti
     const readiness = options.readiness();
     // Image execution owns the model lease. Report facts without another LLM or generation request.
     if (options.isWorking()) return generationReadinessMessage(readiness);
-    const intent = qwenConversationIntent(text);
+    const intent = classifyGenerationConversationIntent(text);
     if (intent !== 'generate' || !readiness.ready) {
       return (await options.operation(() => runGenerationConversation({
         text,

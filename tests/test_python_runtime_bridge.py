@@ -138,14 +138,14 @@ class BridgeMemoryTest(unittest.TestCase):
     def test_wd_uses_one_shot_child_with_the_same_python_as_its_availability_probe(self):
         with tempfile.TemporaryDirectory() as directory:
             state = self.state(Path(directory))
-            with patch.object(state, 'wd_expression_available', return_value=True), \
+            with patch.object(state, 'expression_tagger_available', return_value=True), \
                     patch.object(vision_state, 'run_local_worker', return_value={'hints': []}) as worker:
                 self.assertEqual(state.expression_tagging(b'image'), {'hints': []})
                 self.assertEqual(worker.call_args.kwargs['python'], Path(sys.executable))
-                self.assertEqual(worker.call_args.kwargs['engine'], 'wd-expression')
+                self.assertEqual(worker.call_args.kwargs['engine'], 'expression-tagger')
                 self.assertEqual(worker.call_args.kwargs['image_bytes'], b'image')
             self.assertFalse(hasattr(state, '_wd_expression_tagger'))
-            with patch.object(state, 'wd_expression_available', return_value=True), \
+            with patch.object(state, 'expression_tagger_available', return_value=True), \
                     patch.object(vision_state, 'run_local_worker', side_effect=RuntimeError('optional model unavailable')), \
                     patch.object(bridge.sys, 'stderr', io.StringIO()):
                 self.assertEqual(state.expression_tagging(b'image'), {})

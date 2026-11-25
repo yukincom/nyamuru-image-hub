@@ -28,7 +28,7 @@ const figureVisible = (entry: CompositionPanel, index: number, guides?: Record<s
 
 /** Match the editor stack even when storage order interleaves direct paint and placed images. */
 // 旧->新: 旧=qwenPanelImageLayers/buildQwenCompositionPlan/captureQwenComposition等 -> 新=collectCompositionPanelImageLayers/buildPageCompositionPlan/capturePageComposition等へ統一
-export function qwenPanelImageLayers(images: PlacedImage[] = []) {
+export function collectCompositionPanelImageLayers(images: PlacedImage[] = []) {
   return {
     ordinary: images.filter(image => !image.paintScope&&!image.bubbleOriginal&&!image.generationScope),
     direct: images.filter(image => image.paintScope === 'panel'),
@@ -37,7 +37,7 @@ export function qwenPanelImageLayers(images: PlacedImage[] = []) {
 }
 
 /** A detached rendering snapshot. Generated whole-page/panel outputs never become their own input. */
-export function qwenCompositionLayout(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope,includeGenerated=false) {
+export function buildCompositionLayout(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope,includeGenerated=false) {
   const page = manga.pages[pageIndex];
   if (!page || !['page', 'panel'].includes(scope) || (scope === 'panel' && !page.panels[panelIndex])) throw new Error('生成対象のページまたはコマが見つかりません');
   const bounds = scope === 'page' ? { x: 0, y: 0, w: page.canvas.w, h: page.canvas.h } : panelBounds(page.panels[panelIndex]);
@@ -73,8 +73,8 @@ function typesetTextInstruction(item:Bubble|ScreenText,kind:'bubble'|'screen_tex
   return `写植の書式：${JSON.stringify({font:style.font??defaultFont,fontSizePt:style.fontSize,orientation:style.orientation,lineHeight:style.lineHeight??1.35,textAlign:style.textAlign??'left',...inline(style),...(ranges?{rangeOffsets:'UTF-16, start inclusive / end exclusive',ranges}:{})})}。参照画像の書体・サイズ・配置・装飾を保ってください。`;
 }
 
-export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>): QwenGenerationPlan {
-  const layout = qwenCompositionLayout(manga, pageIndex, panelIndex, scope), page = manga.pages[pageIndex];
+export function buildPageCompositionPlan(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>): QwenGenerationPlan {
+  const layout = buildCompositionLayout(manga, pageIndex, panelIndex, scope), page = manga.pages[pageIndex];
   const characterKeys: string[] = [], literalText: string[] = [], instructions: string[] = [];
   const figures = layout.panels.flatMap(entry => (entry.panel.figures ?? []).filter((_, index) => figureVisible(entry, index, guides)));
   for (const figure of figures) {
@@ -152,7 +152,7 @@ export function buildQwenCompositionPlan(manga: Manga, pageIndex: number, panelI
 }
 
 /** Keep Unicode characters, explicit line breaks and per-range emphasis during rasterization. */
-export function qwenCompositionTextRuns(item: Bubble | ScreenText) {
+export function extractCompositionTextRuns(item: Bubble | ScreenText) {
   return textStyleSegments(item).flatMap(({text,...style}) => Array.from(text, character => ({ text:character, ...style })));
 }
 
@@ -163,7 +163,7 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
   const scale = context.canvas.width / viewport.w, padding = balloon ? .16 : 0;
   const x = (box.x - viewport.x + box.w * padding) * scale, y = (box.y - viewport.y + box.h * padding) * context.canvas.height / viewport.h;
   const width = box.w * (1 - padding * 2) * scale, height = box.h * (1 - padding * 2) * context.canvas.height / viewport.h;
-  const family = bubbleCssFontFamily(style.font ?? defaultFont), runs = qwenCompositionTextRuns(item);
+  const family = bubbleCssFontFamily(style.font ?? defaultFont), runs = extractCompositionTextRuns(item);
   let size = style.fontSize ? style.fontSize * 25.4 / 72 * scale : Math.min(5 * scale, Math.max(2 * scale, Math.min(width, height) / 3));
   const setFont = (run:TextInlineStyle) => { context.font = `${run.italic?'italic':'normal'} ${run.fontWeight ?? style.fontWeight ?? 600} ${size}px ${family}`; };
   const layout = () => {
@@ -210,8 +210,8 @@ function drawText(context: CanvasRenderingContext2D, item: Bubble | ScreenText, 
 export interface CompositionCaptureOptions {width?:number;height?:number;includeGenerated?:boolean}
 
 /** Render only manuscript content; no live editor DOM or selection chrome. */
-export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>,options:CompositionCaptureOptions={}): Promise<HTMLCanvasElement> {
-  const layout = qwenCompositionLayout(manga, pageIndex, panelIndex, scope,options.includeGenerated), assets = manga.image_assets ?? [];
+export async function capturePageCompositionCanvas(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>,options:CompositionCaptureOptions={}): Promise<HTMLCanvasElement> {
+  const layout = buildCompositionLayout(manga, pageIndex, panelIndex, scope,options.includeGenerated), assets = manga.image_assets ?? [];
   const [{ paintScene, paintForFrame, paintReferenceBox, paintNativeBand, paintAnchorIds, paintStackMatches, directPaintImages }, { humanPoseFigureImage, humanPoseOwnerImage, drawHumanPoseImage }, { decodePaintImage },
     { h, render }, { default: BubbleShapeSvg }, tail, { bubbleUsesMonologueTail }, { resolveBubbleSpeakerFigureIndex }, { bubbleTextFrame, compatibleBubbleClips }] = await Promise.all([
     import('./paintDocument.ts'), import('./humanPoseComposition.ts'), import('./paintRenderer.ts'), import('preact'), import('../components/BubbleShapeSvg'),
@@ -330,7 +330,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
         await drawBubbles(entry,owner.index,'front');
       } else {await drawDirect(entry,{below:owner.key});await drawHumanPoseImage(context, await humanPoseOwnerImage(owner, assets, guide, entry.panel.background_images?.some(image => image.paint?.guideInitialized)), owner.frame, frame);}
     }
-    const imageLayers = qwenPanelImageLayers(entry.panel.images);
+    const imageLayers = collectCompositionPanelImageLayers(entry.panel.images);
     await drawImages(imageLayers.ordinary);
     for (const [index, text] of (entry.panel.screen_text ?? []).entries()) {await drawDirect(entry,{below:`screen-text-${index}`});drawText(context, text, text.bbox ?? fallbackBox(entry.panel, 'screen_text', index), frame, 'screen_text', manga.meta.font);}
     context.restore();
@@ -373,7 +373,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
   // Completed page/panel images cover editable content, just as in MangaCanvas.
   for(const entry of layout.panels.filter(entry=>!entry.overlay)){
     context.save();outline(entry.panel);context.clip();
-    await drawImages(qwenPanelImageLayers(entry.panel.images).generated);
+    await drawImages(collectCompositionPanelImageLayers(entry.panel.images).generated);
     context.restore();
   }
   await drawImages(layout.images.filter(image=>image.generationScope&&!image.paintScope&&!image.bubbleOriginal));
@@ -390,7 +390,7 @@ export async function captureQwenCompositionCanvas(manga: Manga, pageIndex: numb
 }
 
 /** Qwen keeps its existing compact PNG and excludes prior generated whole images. */
-export async function captureQwenComposition(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>): Promise<string> {
-  const canvas=await captureQwenCompositionCanvas(manga,pageIndex,panelIndex,scope,guides);
+export async function capturePageComposition(manga: Manga, pageIndex: number, panelIndex: number, scope: QwenCompositionScope, guides?: Record<string, boolean>): Promise<string> {
+  const canvas=await capturePageCompositionCanvas(manga,pageIndex,panelIndex,scope,guides);
   try{return canvas.toDataURL('image/png');}finally{canvas.width=canvas.height=1;}
 }

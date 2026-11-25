@@ -102,7 +102,7 @@ export async function deleteGenerationCache(target:
 }
 
 // 旧->新: 旧=decodeQwenJob/prepareQwenJob等 -> 新=decodeImageGenerationJob/prepareImageGenerationJob等の機能名へ統一
-export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:string):Promise<import('../qwenGeneration.ts').QwenJob>{
+export async function decodeImageGenerationJob(raw:unknown,jobId?:string,requestSha256?:string):Promise<import('../qwenGeneration.ts').QwenJob>{
   const value=raw as Record<string,unknown>;
   const selectedWorkflow=Boolean(value&&typeof value.workflow_id==='string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.workflow_id)
@@ -162,38 +162,38 @@ export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:str
   if(Array.isArray(value.candidate_seeds)&&value.candidate_seeds.every(Number.isSafeInteger))job.candidateSeeds=value.candidate_seeds as number[];
   return job;
 }
-export async function prepareQwenJob(jobId:string,payload:ReturnType<typeof import('../qwenGeneration.ts').qwenGenerationPayload>){
-  const job=await decodeQwenJob(await postJson('/api/qwen-generation/prepare',{
+export async function prepareImageGenerationJob(jobId:string,payload:ReturnType<typeof import('../qwenGeneration.ts').buildImageGenerationPayload>){
+  const job=await decodeImageGenerationJob(await postJson('/api/qwen-generation/prepare',{
     workflow_id:currentGenerationPreferences().local.workflowId,comfyui_url:currentLocalModelPreferences().comfyuiUrl,
     ...payload,job_id:jobId},320_000),jobId);
   if(job.status!=='prepared')throw new Error(job.error||'生成指示の保存を確認できません。生成履歴を確認してください');
   return job;
 }
-export async function submitQwenJob(prepared:import('../qwenGeneration.ts').QwenJob,token:string){
-  return decodeQwenJob(await (await import('../localBridgeLifecycle.ts')).submitImageGenerationRequest(token,{job_id:prepared.jobId,request_sha256:prepared.requestSha256}),prepared.jobId,prepared.requestSha256);
+export async function submitImageGenerationJob(prepared:import('../qwenGeneration.ts').QwenJob,token:string){
+  return decodeImageGenerationJob(await (await import('../localBridgeLifecycle.ts')).submitImageGenerationRequest(token,{job_id:prepared.jobId,request_sha256:prepared.requestSha256}),prepared.jobId,prepared.requestSha256);
 }
-export async function reconcileQwenJob(jobId:string,requestSha256?:string){
-  return decodeQwenJob(await postJson('/api/qwen-generation/reconcile',{job_id:jobId},30_000),jobId,requestSha256);
+export async function reconcileImageGenerationJob(jobId:string,requestSha256?:string){
+  return decodeImageGenerationJob(await postJson('/api/qwen-generation/reconcile',{job_id:jobId},30_000),jobId,requestSha256);
 }
-export async function cancelQwenJob(jobId:string){
-  return withNewCreationBridgeSession(async()=>decodeQwenJob(await postJson('/api/qwen-generation/cancel',{job_id:jobId},30_000),jobId));
+export async function cancelImageGenerationJob(jobId:string){
+  return withNewCreationBridgeSession(async()=>decodeImageGenerationJob(await postJson('/api/qwen-generation/cancel',{job_id:jobId},30_000),jobId));
 }
-export async function selectQwenCandidate(job:import('../qwenGeneration.ts').QwenJob,index:number|number[],adopted=false){
-  const result=await decodeQwenJob(await postJson('/api/qwen-generation/select',{job_id:job.jobId,...(Array.isArray(index)?{candidate_indices:index,adopted}:{candidate_index:index})},30_000),job.jobId,job.requestSha256);
+export async function selectImageGenerationCandidate(job:import('../qwenGeneration.ts').QwenJob,index:number|number[],adopted=false){
+  const result=await decodeImageGenerationJob(await postJson('/api/qwen-generation/select',{job_id:job.jobId,...(Array.isArray(index)?{candidate_indices:index,adopted}:{candidate_index:index})},30_000),job.jobId,job.requestSha256);
   if(Array.isArray(index)&&(JSON.stringify(result.selectedCandidates)!==JSON.stringify([...index].sort((a,b)=>a-b))||adopted&&!result.candidatesDiscarded))throw new Error('候補の採用・削除結果を確認できません');
   return result;
 }
-export async function deleteQwenJobs(plan:import('../qwenGeneration.ts').QwenGenerationPlan,jobs:import('../qwenGeneration.ts').QwenJob[]){
+export async function deleteImageGenerationJobs(plan:import('../qwenGeneration.ts').QwenGenerationPlan,jobs:import('../qwenGeneration.ts').QwenJob[]){
   if(!jobs.length||jobs.some(job=>job.documentKey!==plan.documentKey))throw new Error('削除する生成履歴の作品が一致しません');
   const ids=jobs.map(job=>job.jobId);
   const result=await postJson('/api/qwen-generation/delete',{document_key:plan.documentKey,jobs:jobs.map(job=>({job_id:job.jobId,request_sha256:job.requestSha256}))},30_000) as {document_key?:unknown;deleted_job_ids?:unknown};
   if(result.document_key!==plan.documentKey||!Array.isArray(result.deleted_job_ids)||result.deleted_job_ids.length!==ids.length
     ||new Set(result.deleted_job_ids).size!==ids.length||result.deleted_job_ids.some(id=>!ids.includes(id)))throw new Error('生成履歴の削除結果を確認できません。履歴を読み直してください');
 }
-export async function listQwenJobs(plan:import('../qwenGeneration.ts').QwenGenerationPlan,scope:import('../qwenGeneration.ts').QwenHistoryScope='owner'){
+export async function listImageGenerationJobs(plan:import('../qwenGeneration.ts').QwenGenerationPlan,scope:import('../qwenGeneration.ts').QwenHistoryScope='owner'){
   const payload=await postJson('/api/qwen-generation/list',{document_key:plan.documentKey,page_number:plan.pageNumber,panel_id:plan.panelId,overlay:plan.overlay,owner_key:plan.ownerKey,scope}) as {jobs?:unknown[]};
   if(!Array.isArray(payload.jobs))throw new Error('Qwen生成履歴を確認できません');
-  const jobs=await Promise.all(payload.jobs.map(raw=>decodeQwenJob(raw)));
+  const jobs=await Promise.all(payload.jobs.map(raw=>decodeImageGenerationJob(raw)));
   if(jobs.some(job=>job.documentKey!==plan.documentKey||(scope==='owner'&&(job.pageNumber!==plan.pageNumber||job.panelId!==plan.panelId||job.overlay!==plan.overlay||job.ownerKey!==plan.ownerKey))))throw new Error('生成履歴の対象が一致しません');
   return jobs;
 }

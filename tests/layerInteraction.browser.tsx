@@ -13,7 +13,7 @@ import {deleteFigureCropAssets,loadFigureCropAsset,saveFigureCropAssets} from '.
 import {prepareDetectedTextCrops} from '../src/lib/analogTextCrops';
 import {attachRecognizedTextToPage,type RecognizedTextLine} from '../src/lib/localBridge';
 import {separateBubbleOriginals} from '../src/lib/bubbleOriginals';
-import {captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
+import {capturePageCompositionCanvas} from '../src/lib/qwenComposition';
 import {createProjectSnapshot,restoreProjectSnapshot} from '../src/lib/projectPersistence';
 import App from '../src/components/App';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
@@ -375,7 +375,7 @@ async function verifyOriginalVisibility(){
   orderPanel.bubbles[0].text='';orderPanel.bubbles[0].shape='square';orderPanel.bubbles[0].tail=false;
   orderPanel.bubbles[0].bbox={x:40,y:50,w:40,h:40};orderPanel.images![0].bbox={x:40,y:50,w:40,h:40};orderPanel.images![0].paint!.layers[0].visible=true;
   orderPanel.bubbles.push({text:'',shape:'square',tail:false,bbox:{x:60,y:60,w:40,h:40}});
-  const output=await captureQwenCompositionCanvas(drawOrder,0,0,'page'),read=(x:number,y:number)=>{
+  const output=await capturePageCompositionCanvas(drawOrder,0,0,'page'),read=(x:number,y:number)=>{
    const context=output.getContext('2d')!,w=drawOrder.pages[0].canvas.w,h=drawOrder.pages[0].canvas.h;
    return Array.from(context.getImageData(Math.floor(x/w*output.width),Math.floor(y/h*output.height),1,1).data).join(',');
   };

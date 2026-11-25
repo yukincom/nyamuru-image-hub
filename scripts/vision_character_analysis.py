@@ -6,6 +6,7 @@ import hashlib
 import re
 import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from nyamuru_bridge_constants import FIGURE_PERFORMANCE_SIZES, CHARACTER_REFERENCE_VIEWS
 from nyamuru_worker_runtime import (
@@ -15,6 +16,12 @@ from nyamuru_worker_runtime import (
     run_character_match_worker,
 )
 from nyamuru_ocr_util import decode_image_data
+from character_vision_encoder import (
+    embed_character_image,
+    match_character_embeddings,
+    predict_figure_view_and_size,
+    recommend_reference_view,
+)
 
 
 def valid_performance_action(action: object, analysis: object) -> bool:
@@ -295,3 +302,63 @@ class VisionCharacterAnalysis:
                 "analyzed_at": datetime.now(timezone.utc).isoformat(),
             },
         }
+
+    def analyze_character_match_lightweight(
+        self,
+        image_bytes: bytes,
+        candidates_value: object,
+        current_size: object = "bust-up",
+    ) -> dict[str, Any]:
+        """M1+M2: Match figure crop against candidate reference images with a shared lightweight encoder."""
+        if not isinstance(candidates_value, list):
+            raise ValueError("照合候補が正しくありません")
+        safe_size = current_size if isinstance(current_size, str) and current_size in FIGURE_PERFORMANCE_SIZES else "bust-up"
+        model_path = getattr(self, "character_encoder_model", None)
+        active_model = model_path if isinstance(model_path, Path) and model_path.is_file() else None
+        query = embed_character_image(image_bytes, model_path=active_model)
+        reference_embeddings: list[dict[str, Any]] = []
+        for raw_candidate in candidates_value[:50]:
+            if not isinstance(raw_candidate, dict):
+                continue
+            cid = raw_candidate.get("id")
+            if not isinstance(cid, str) or not cid.strip() or len(cid) > 160:
+                continue
+            raw_images = raw_candidate.get("reference_images")
+            if not isinstance(raw_images, list):
+                continue
+            for encoded in raw_images[:8]:
+                ref_bytes = decode_image_data(encoded)
+                ref_emb = embed_character_image(ref_bytes, model_path=active_model)["embedding"]
+                reference_embeddings.append({"id": cid.strip(), "embedding": ref_emb})
+        matched = match_character_embeddings(query["embedding"], reference_embeddings)
+        view_info = predict_figure_view_and_size(image_bytes, current_size=safe_size, model_path=active_model)
+        return {
+            **matched,
+            "recommended_view": view_info["recommended_view"],
+            "suggested_size": view_info["suggested_size"],
+            "analyzer": {
+                "provider": "local",
+                "runtime": query["runtime"],
+                "model": query["model"],
+                "analyzed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+
+    def recommend_figure_reference_view(
+        self,
+        image_bytes: bytes,
+        assets_value: object,
+        current_size: object = "bust-up",
+    ) -> dict[str, Any]:
+        """M2: Recommend the best matching reference sheet view/asset for a figure crop."""
+        if not isinstance(assets_value, list):
+            raise ValueError("人物資料一覧が正しくありません")
+        safe_size = current_size if isinstance(current_size, str) and current_size in FIGURE_PERFORMANCE_SIZES else "bust-up"
+        model_path = getattr(self, "character_encoder_model", None)
+        active_model = model_path if isinstance(model_path, Path) and model_path.is_file() else None
+        return recommend_reference_view(
+            image_bytes,
+            [item for item in assets_value[:32] if isinstance(item, dict)],
+            current_size=safe_size,
+            model_path=active_model,
+        )

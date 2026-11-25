@@ -1,10 +1,10 @@
 import { type Dispatch, type StateUpdater, useEffect, useRef } from 'preact/hooks';
-import { type QwenReference, type QwenGenerationPlan, type QwenLayerReference, type QwenLayerCandidate, qwenGenerationPrompt } from '../../lib/qwenGeneration.ts';
+import { type QwenReference, type QwenGenerationPlan, type QwenLayerReference, type QwenLayerCandidate, formatGenerationPrompt } from '../../lib/qwenGeneration.ts';
 import type { Cell } from './createGenerationActions.ts';
 import type { BBox } from '../../types.ts';
 import { withNewCreationBridgeSession } from '../../lib/localBridgeLifecycle.ts';
 import { loadCharacterReferenceImage } from '../../lib/localBridge.ts';
-import { qwenInputImage } from './inputImages.ts';
+import { encodeGenerationInputImage } from './inputImages.ts';
 import { loadFigureCropAsset } from '../../lib/figureCropStore.ts';
 
 export function defaultAtariLayer(layers: readonly QwenLayerCandidate[]): QwenLayerCandidate | undefined {
@@ -56,14 +56,14 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
         const chosen=(selectedCharacterAssetId&&sourcePlan.candidates.find(item=>item.source.asset_id===selectedCharacterAssetId))||sourcePlan.candidates[0];
         const blob=await loadCharacterReferenceImage(chosen.seriesId,chosen.characterCatalogId,chosen.source.asset_id);
         if(!blob)throw new Error(`${chosen.label}の設定画が見つかりません`);
-        return [{label:chosen.label,characterKeys:chosen.characterKeys??[sourcePlan.characterKeys[0]],image:(await qwenInputImage(blob,undefined,true)).image}];
+        return [{label:chosen.label,characterKeys:chosen.characterKeys??[sourcePlan.characterKeys[0]],image:(await encodeGenerationInputImage(blob,undefined,true)).image}];
       }
       return Promise.all(sourcePlan.characterKeys.map(async key=>{
         const candidate=sourcePlan.candidates.find(item=>item.characterKeys?.includes(key) || !item.characterKeys&&sourcePlan.characterKeys.length===1);
         if(!candidate)throw new Error('この人物に紐づくキャラクター設定画がありません');
         const blob=await loadCharacterReferenceImage(candidate.seriesId,candidate.characterCatalogId,candidate.source.asset_id);
         if(!blob)throw new Error(`${candidate.label}の設定画が見つかりません`);
-        return {label:candidate.label,characterKeys:[key],image:(await qwenInputImage(blob,undefined,native)).image};
+        return {label:candidate.label,characterKeys:[key],image:(await encodeGenerationInputImage(blob,undefined,native)).image};
       }));
     }).then(result=>{if(current)setLinked(result);}).catch(cause=>{if(current)setSourceErrors(old=>({...old,character:String(cause.message??cause)}));})
       .finally(()=>{if(current)setCharacterLoading(false);});
@@ -81,8 +81,8 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
       if(!current||!alive.current||draft.current.reference)return;
       const nextReference:QwenLayerReference={...initial,image};
       const previousPrompt=draft.current.prompt;
-      const nextPrompt=previousPrompt===qwenGenerationPrompt(plan,undefined,draft.current.correction)
-        ? qwenGenerationPrompt(plan,nextReference,draft.current.correction):previousPrompt;
+      const nextPrompt=previousPrompt===formatGenerationPrompt(plan,undefined,draft.current.correction)
+        ? formatGenerationPrompt(plan,nextReference,draft.current.correction):previousPrompt;
       draft.current={...draft.current,prompt:nextPrompt,reference:nextReference};
       if(nextPrompt!==previousPrompt)setPrompt(nextPrompt);
       setReference(nextReference);
@@ -98,7 +98,7 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
     void withNewCreationBridgeSession(async()=>{
       const blob=await loadFigureCropAsset(source.assetId,source.persistentAsset);
       if(!blob)throw new Error('この人物のネーム原画が見つかりません');
-      return (await qwenInputImage(blob,undefined,true)).image;
+      return (await encodeGenerationInputImage(blob,undefined,true)).image;
     }).then(image=>{if(current)setReference({id:source.assetId,label:'ネームの表情',image,kind:'sketch',hidden:false,empty:false});})
       .catch(cause=>{if(current)setSourceErrors(old=>({...old,expression:String(cause.message??cause)}));})
       .finally(()=>{if(current)setSketchLoading(false);});
@@ -108,7 +108,7 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
     if(attempted.current)throw new Error('生成を開始した資料は変更できません');
     if(draft.current.references.length+files.length>referenceLimit)throw new Error(`参照資料は最大${referenceLimit}枚です${usesPoseImage?'（3Dポーズ画像を別に1枚送ります）':''}`);
     const loaded:QwenReference[]=[];
-    for(const file of files)loaded.push({label:file.name,characterKeys:[],image:(await qwenInputImage(file,undefined,twoImagesPromptless||cloudApi)).image});
+    for(const file of files)loaded.push({label:file.name,characterKeys:[],image:(await encodeGenerationInputImage(file,undefined,twoImagesPromptless||cloudApi)).image});
     if(alive.current)setExtra(previous=>[...previous,...loaded]);
   });}
   async function selectLayer(slot:'reference'|'correction',id:string){await operation(async()=>{
@@ -119,8 +119,8 @@ export function useGenerationReferences({ setLinked, setCharacterLoading, source
     const nextReference=referenceCandidate?{...referenceCandidate,image:await loadLayer!(referenceCandidate.id,false,crop,threeImages||twoImagesPromptless||cloudApi)}:undefined;
     const nextCorrection=correctionCandidate?{...correctionCandidate,image:await loadLayer!(correctionCandidate.id,true)}:undefined;
     if(!alive.current)return;
-    const nextPrompt=!threeImages&&draft.current.prompt===qwenGenerationPrompt(plan,reference,correction)
-      ? qwenGenerationPrompt(plan,nextReference,nextCorrection):draft.current.prompt;
+    const nextPrompt=!threeImages&&draft.current.prompt===formatGenerationPrompt(plan,reference,correction)
+      ? formatGenerationPrompt(plan,nextReference,nextCorrection):draft.current.prompt;
     draft.current={...draft.current,prompt:nextPrompt,reference:nextReference,correction:nextCorrection};
     if(nextPrompt!==prompt)setPrompt(nextPrompt);setReference(nextReference);setCorrection(nextCorrection);
   });}

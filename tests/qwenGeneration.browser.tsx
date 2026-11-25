@@ -14,7 +14,7 @@ import { usePaintWorkspace } from '../src/lib/paintWorkspace';
 import { paintScene } from '../src/lib/paintDocument';
 import type { PaintController } from '../src/lib/paintSession';
 import { imageSha256 } from '../src/lib/imagePlacement';
-import { QWEN_GENERATION_PROFILE, buildQwenGenerationPlan, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
+import { QWEN_GENERATION_PROFILE, buildImageGenerationPlan, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import '../src/styles/global.css';
 
@@ -96,7 +96,7 @@ else{
   const {manga}=createEmptyWorkspaceDocument();
   manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[{text:'かぁぁ',shape:'handwritten',bbox:{x:10,y:10,w:40,h:25},lettering_pen:'fineliner-01',lettering_expressions:['freehand','energetic'],lettering_description:'細く、柔らかく'}]}];
   const owner=paintScene(manga.pages[0].panels[0],100,[]).owners.find(o=>o.kind==='bubble')!;
-  const letteringPlan=buildQwenGenerationPlan(manga,0,0,false,owner);
+  const letteringPlan=buildImageGenerationPlan(manga,0,0,false,owner);
   render(<QwenGenerationDialog plan={letteringPlan} onClose={()=>{}} onInsert={async()=>{}}/>,document.getElementById('test-root')!);
   const report=document.createElement('output');report.setAttribute('aria-label','描き文字生成の検証結果');report.style.cssText='position:fixed;bottom:8px;left:8px;z-index:99999;background:white;color:black;padding:8px;max-width:80vw';document.body.append(report);
   const tick=()=>new Promise(resolve=>setTimeout(resolve,40)),checks:string[]=[];

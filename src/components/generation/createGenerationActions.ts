@@ -1,5 +1,5 @@
 import type { ProjectFilePicker } from '../../lib/projectFilePicker';
-import { type QwenGenerationPlan, type QwenReference, type QwenLayerReference, type QwenAdoption, type QwenJob, qwenGenerationTarget, qwenGenerationPayload, qwenGenerationPrompt, executeQwenGeneration } from '../../lib/qwenGeneration.ts';
+import { type QwenGenerationPlan, type QwenReference, type QwenLayerReference, type QwenAdoption, type QwenJob, resolveGenerationTarget, buildImageGenerationPayload, formatGenerationPrompt, executeImageGeneration } from '../../lib/qwenGeneration.ts';
 import type { Dispatch, StateUpdater } from 'preact/hooks';
 import type { ComfyWorkflowDefinition } from '../../lib/comfyWorkflows.ts';
 import { type GenerationPreferences, currentGenerationPreferences } from '../../lib/generationPreferences.ts';
@@ -9,7 +9,7 @@ import { chooseBrowserFiles, downloadBrowserBlob } from '../../lib/browserFiles.
 import { requireHumanPoseGenerationReady } from '../../lib/humanPoseSelection.ts';
 import { cloudModelAccess } from '../../lib/modelPrivacy.ts';
 import { type AgentWorkflowYamlFile, deliverAgentWorkflowYamlFiles } from '../../lib/generationHandoff.ts';
-import { prepareQwenJob, submitQwenJob, reconcileQwenJob } from '../../lib/localBridge.ts';
+import { prepareImageGenerationJob, submitImageGenerationJob, reconcileImageGenerationJob } from '../../lib/localBridge.ts';
 import { withImageGenerationServices } from '../../lib/localBridgeLifecycle.ts';
 import { dataUrlToPngFile, prepareGeneratedInsertionFile } from '../../lib/generation/insertion.ts';
 
@@ -67,7 +67,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     await insertImage(dataUrlToPngFile(result.image,result.fileName),generatedTarget.current?.jobId===result.jobId?generatedTarget.current.plan:undefined,Boolean(result.workflowId));
   }
   async function insertImage(file:File|File[],capturedTarget?:QwenGenerationPlan,preserveAspect=false,adoption?:QwenAdoption){
-    const target=capturedTarget??qwenGenerationTarget(plan,Boolean(draft.current.correction)),files=Array.isArray(file)?file:[file],prepared:File[]=[];
+    const target=capturedTarget??resolveGenerationTarget(plan,Boolean(draft.current.correction)),files=Array.isArray(file)?file:[file],prepared:File[]=[];
     for(const item of files)prepared.push(await prepareGeneratedInsertionFile(item,target,preserveAspect));
     await onInsert(Array.isArray(file)?prepared:prepared[0],target,adoption);
   }
@@ -90,7 +90,7 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     if(usesPoseImage)setPhase('3Dポーズの撮影を確認中');
     const capturedPose=usesPoseImage?await posePending.current:undefined;
     if(!isCurrent())throw new Error('生成を中止しました');
-    const target=qwenGenerationTarget(plan,Boolean(correction));
+    const target=resolveGenerationTarget(plan,Boolean(correction));
     if(route.kind==='cloud-api'){
       if(!onStartCloudSingle)throw new Error('クラウドAPI単画像生成が接続されていません');
       const access=cloudModelAccess(currentGenerationPreferences(),adultContent);
@@ -134,14 +134,14 @@ export function createGenerationActions({ chooseFiles = chooseBrowserFiles, gene
     const id=crypto.randomUUID();
     generatedTarget.current={jobId:id,plan:target};
     submitted.current=false;
-    return executeQwenGeneration({id,payload:workflowPayload,plan:target,isCurrent,
+    return executeImageGeneration({id,payload:workflowPayload,plan:target,isCurrent,
       prepare:async(id,payload)=>{
-        const prepared=await prepareQwenJob(id,payload);
+        const prepared=await prepareImageGenerationJob(id,payload);
         attempted.current=id;
         if(alive.current)setAttempt(id);
         return prepared;
       },
-      submit:(prepared,token)=>{submitted.current=true;return submitQwenJob(prepared,token);},reconcile:reconcileQwenJob,
+      submit:(prepared,token)=>{submitted.current=true;return submitImageGenerationJob(prepared,token);},reconcile:reconcileImageGenerationJob,
       onJob:current=>{if(alive.current)setJob(current);},
       ...(autoInsert?{insert:insertResult}:{}),
       services:(prepare,generate,options)=>withImageGenerationServices(prepare,generate,{...options,runtimeToken:comfySession.current??undefined,signal:abort.signal,requiresLlm:false,
@@ -166,7 +166,7 @@ export function validateGenerationInputs(plan: QwenGenerationPlan, draft: Create
   const outputSize = workflow?.binding.fixed_size ?? (workflow?.binding.size_source === 'panel' && plan.panelSize
     ? [plan.panelSize.width, plan.panelSize.height] as const
     : undefined);
-  const payload=qwenGenerationPayload({...effectivePlan,prompt,...(effectivePlan.handwrittenPrompt?{handwrittenPrompt:{...effectivePlan.handwrittenPrompt,confirmation:qwenGenerationPrompt(effectivePlan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,poseImage,outputSize);
+  const payload=buildImageGenerationPayload({...effectivePlan,prompt,...(effectivePlan.handwrittenPrompt?{handwrittenPrompt:{...effectivePlan.handwrittenPrompt,confirmation:formatGenerationPrompt(effectivePlan,reference,correction)}}:{})},references,sketch?undefined:reference?.image,sketch?reference?.image:undefined,correction?.image,poseImage,outputSize);
   const inputCount=payload.references.length+Number('paint_image' in payload)+Number('sketch_image' in payload)+Number('correction_image' in payload);
   if(workflow&&inputCount!==workflow.binding.images.length)throw new Error(`${workflow.name}は参照画像${workflow.binding.images.length}枚の定義です。現在は${inputCount}枚です。環境設定で対応する定義を選んでください`);
   return payload;

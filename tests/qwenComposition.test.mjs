@@ -6,7 +6,7 @@ import ts from 'typescript';
 import {bubbleStrokeWidthMm,bubbleUsesMonologueTail,isBalloonText} from '../src/lib/bubblePresentation.ts';
 import {changeCanvasTextCategory} from '../src/lib/canvasText.ts';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup.ts';
-import { buildQwenCompositionPlan, qwenCompositionLayout, qwenCompositionTextRuns, qwenPanelImageLayers } from '../src/lib/pageComposition.ts';
+import { buildPageCompositionPlan, buildCompositionLayout, extractCompositionTextRuns, collectCompositionPanelImageLayers } from '../src/lib/pageComposition.ts';
 import { selectHumanPose } from '../src/lib/humanPoseSelection.ts';
 import { confirmHumanPoseCameraPrompt } from '../src/lib/humanPoseScene.ts';
 import { panelShapePoints } from '../src/lib/canvasGeometry.ts';
@@ -22,14 +22,14 @@ import {letteringFigureIndex} from '../src/lib/bubbleRelations.ts';
 function compositionTextRenderer(){
  const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8'),ast=ts.createSourceFile('qwenComposition.ts',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
  const declaration=ast.statements.find(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='drawText');assert.ok(declaration);
- return runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,qwenCompositionTextRuns,isBalloonText});
+ return runInNewContext(ts.transpileModule(`(${declaration.getText(ast)})`,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,{textStyleOf,bubbleCssFontFamily,bubbleTextPosition,extractCompositionTextRuns,isBalloonText});
 }
 
 test('描き文字の対応キャラクターをコマと前景の指示へ渡し、対応なしも区別する',()=>{
  const {manga}=createEmptyWorkspaceDocument();manga.characters=[{localId:'aki',name:'アキ'}];
  manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[{text:'かぁぁ',shape:'handwritten',speakerId:'aki',speaker:'古い名前',lettering_depth:'behind'}]}];
  manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'ドン',shape:'handwritten'},{text:'ふわっ',shape:'handwritten',speaker:'アキ'}]};
- const before=structuredClone(manga),plan=buildQwenCompositionPlan(manga,0,0,'page');
+ const before=structuredClone(manga),plan=buildPageCompositionPlan(manga,0,0,'page');
  assert.match(plan.prompt,/描き文字、対応キャラクター：アキ）：「かぁぁ」/);
  assert.match(plan.prompt,/描き文字、対応キャラクター：なし）：「ドン」/);
  assert.match(plan.prompt,/描き文字、対応キャラクター：アキ）：「ふわっ」/);
@@ -47,7 +47,7 @@ test('写植の個別書体と既定書体・部分装飾をコマと前景の�
  manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',bubbles:[{text:'前景の写植',shape:'typeset'}],screen_text:[{...structuredClone(text),orientation:'horizontal'}]};
  const before=structuredClone(manga);
  for(const scope of ['panel','page']){
-  const plan=buildQwenCompositionPlan(manga,0,0,scope);
+  const plan=buildPageCompositionPlan(manga,0,0,scope);
   const formats=[...plan.prompt.matchAll(/写植の書式：(\{[^\n]*\})。参照画像/g)].map(match=>JSON.parse(match[1]));
   assert.equal(formats.length,scope==='page'?4:2);
   const explicit=formats[0];assert.equal(explicit.font,'Yu Gothic');assert.equal(explicit.fontSizePt,24);assert.equal(explicit.orientation,'horizontal');assert.equal(explicit.textAlign,'center');
@@ -139,12 +139,12 @@ test('generated composition images and their layer marker survive document save 
 
 test('panel and page plans have exact scope, stable character order and individual reference bindings', () => {
   const manga = fixture(), before = structuredClone(manga);
-  const panel = buildQwenCompositionPlan(manga, 0, 0, 'panel');
+  const panel = buildPageCompositionPlan(manga, 0, 0, 'panel');
   assert.equal(panel.scope, 'panel'); assert.equal(panel.ownerKey, 'panel'); assert.equal(panel.panelId, 1); assert.equal(panel.overlay, false);
   assert.deepEqual(panel.characterKeys, ['a', 'b']); assert.deepEqual(panel.candidates.map(candidate => candidate.characterKeys), [['a'], ['b']]);
   assert.deepEqual(panel.outputFrame, { x: 10, y: 10, w: 100, h: 80 }); assert.equal(panel.width, 1024); assert.equal(panel.height, 819);
   assert.match(panel.prompt, /Character 1「人物a」/); assert.match(panel.prompt, /Character 2「人物b」/); assert.doesNotMatch(panel.prompt, /人物c|前景の台詞/);
-  const page = buildQwenCompositionPlan(manga, 0, 1, 'page');
+  const page = buildPageCompositionPlan(manga, 0, 1, 'page');
   assert.equal(page.ownerKey, 'page'); assert.equal(page.panelId, 0); assert.deepEqual(page.characterKeys, ['a', 'b', 'c', 'd']);
   assert.deepEqual(page.candidates.map(candidate => candidate.characterKeys), [['a'], ['b'], ['c'], ['d']]);
   assert.deepEqual(page.literalText, ['「日本語」\nそのまま！', 'ドン！', '二コマ目', '前景の台詞']);
@@ -156,7 +156,7 @@ test('all people get a primary reference before extra sheets fill the nine avail
   const manga = fixture();
   for (let index = 0; index < 12; index++) manga.materials.unshift({ type: 'character', key: `追加${index}`, characterId: 'a', catalog_id: `material-${index}`, source_image: { asset_id: `extra-${index}` } });
   manga.characters[0].primary_material_catalog_id = 'material-5';
-  const plan = buildQwenCompositionPlan(manga, 0, 0, 'page');
+  const plan = buildPageCompositionPlan(manga, 0, 0, 'page');
   assert.equal(plan.candidates.length, 9); assert.equal(plan.candidates[0].source.asset_id, 'extra-5');
   assert.deepEqual(plan.candidates.slice(0, 4).map(candidate => candidate.characterKeys), [['a'], ['b'], ['c'], ['d']]);
   assert.ok(plan.candidates.every(candidate => candidate.characterKeys.length === 1));
@@ -166,21 +166,21 @@ test('reference identity never falls back to names or to a conflicting local cha
   const manga = fixture();
   manga.materials.unshift({ type: 'character', key: '紛らわしい資料', characterId: 'c', character_catalog_id: 'catalog-a', source_image: { asset_id: 'wrong' } });
   manga.materials.push({ type: 'character', key: '旧形式のa資料', character_catalog_id: 'catalog-a', source_image: { asset_id: 'legacy-a' } });
-  const plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
+  const plan = buildPageCompositionPlan(manga, 0, 0, 'panel');
   assert.ok(!plan.candidates.some(candidate => candidate.source.asset_id === 'wrong'));
   assert.deepEqual(plan.candidates.find(candidate => candidate.source.asset_id === 'legacy-a').characterKeys, ['a']);
   delete manga.pages[0].panels[0].figures[0].refId;
   manga.characters.push({ name: '人物a', catalog_id: 'unnamed-id' });
-  assert.throws(() => buildQwenCompositionPlan(manga, 0, 0, 'panel'), /登場人物を指定/);
+  assert.throws(() => buildPageCompositionPlan(manga, 0, 0, 'panel'), /登場人物を指定/);
 });
 
 test('missing registered sources or catalog binding and too many people fail explicitly', () => {
   for (const change of [manga => { manga.materials = []; }, manga => { delete manga.characters[0].catalog_id; }, manga => { manga.materials[0].source_image = {}; }]) {
-    const manga = fixture(); change(manga); assert.throws(() => buildQwenCompositionPlan(manga, 0, 0, 'panel'), /資料/);
+    const manga = fixture(); change(manga); assert.throws(() => buildPageCompositionPlan(manga, 0, 0, 'panel'), /資料/);
   }
   const manga = fixture();
   for (let index = 0; index < 8; index++) { const key = `extra-${index}`; manga.characters.push({ localId: key, catalog_id: key, name: key }); manga.pages[0].panels[0].figures.push({ refId: key, name: key }); }
-  assert.throws(() => buildQwenCompositionPlan(manga, 0, 0, 'panel'), /9人以下/);
+  assert.throws(() => buildPageCompositionPlan(manga, 0, 0, 'panel'), /9人以下/);
 });
 
 test('composition snapshot preserves polygon, positions, order and text while excluding generated whole-image results', () => {
@@ -189,12 +189,12 @@ test('composition snapshot preserves polygon, positions, order and text while ex
   panel.images = [image('user-image'), image('old-panel', 'panel')]; panel.background_images = [image('user-background'), image('old-page', 'page')];
   manga.pages[0].images = [image('user-page'), image('old-full', 'page')];
   delete manga.pages[0].page_overlay.figures[0].bbox;
-  const before = structuredClone(manga), layout = qwenCompositionLayout(manga, 0, 0, 'page');
+  const before = structuredClone(manga), layout = buildCompositionLayout(manga, 0, 0, 'page');
   assert.deepEqual(panelShapePoints(layout.panels[0].panel), panel.shape.points);
   assert.deepEqual(layout.panels[0].panel.images.map(image => image.id), ['user-image']);
   assert.deepEqual(layout.panels[0].panel.background_images.map(image => image.id), ['user-background']);
   assert.deepEqual(layout.images.map(image => image.id), ['user-page']);
-  const exportLayout=qwenCompositionLayout(manga,0,0,'page',true);
+  const exportLayout=buildCompositionLayout(manga,0,0,'page',true);
   assert.deepEqual(exportLayout.panels[0].panel.images.map(image=>image.id),['user-image','old-panel']);
   assert.deepEqual(exportLayout.panels[0].panel.background_images.map(image=>image.id),['user-background','old-page']);
   assert.deepEqual(exportLayout.images.map(image=>image.id),['user-page','old-full']);
@@ -217,7 +217,7 @@ test('panel bubbles precede frames and foreground; page work layers cover foregr
 
 test('panel direct drawing covers text and remains below its frame regardless of storage order',()=>{
   const image=(id,paintScope)=>({id,paintScope,assetId:id,bbox:{x:0,y:0,w:10,h:10},opacity:1,crop:{x:0,y:0,w:10,h:10},hidden:false,locked:false});
-  const layers=qwenPanelImageLayers([image('direct-a','panel'),image('ordinary-a'),{...image('generated'),generationScope:'panel'},image('wrong-scope','page'),image('ordinary-b'),image('direct-b','panel')]);
+  const layers=collectCompositionPanelImageLayers([image('direct-a','panel'),image('ordinary-a'),{...image('generated'),generationScope:'panel'},image('wrong-scope','page'),image('ordinary-b'),image('direct-b','panel')]);
   assert.deepEqual(layers.ordinary.map(item=>item.id),['ordinary-a','ordinary-b']);
   assert.deepEqual(layers.direct.map(item=>item.id),['direct-a','direct-b']);
   assert.deepEqual(layers.generated.map(item=>item.id),['generated']);
@@ -233,7 +233,7 @@ test('completed compositions cover native bubble folders and remain below unlink
   const source=readFileSync(new URL('../src/lib/pageComposition.ts',import.meta.url),'utf8');
   const overlayText=source.indexOf("overlayTextFallbackBox(layout.frame, index)");
   const bubbles=source.indexOf('await drawBubbles(entry)',overlayText);
-  const generated=source.indexOf('await drawImages(qwenPanelImageLayers(entry.panel.images).generated)');
+  const generated=source.indexOf('await drawImages(collectCompositionPanelImageLayers(entry.panel.images).generated)');
   const original=source.indexOf('for(const image of (entry.panel.images??[]).filter(image=>image.bubbleOriginal&&!entry.panel.bubbles.some');
   assert.ok(overlayText>0&&overlayText<bubbles&&bubbles<generated&&generated<original);
   assert.match(source,/await drawImages\(\(panel.images\?\?\[\]\).filter\(image=>image.id===bubble.analogTextImport\?\.originalImageId\)\)/);
@@ -242,23 +242,23 @@ test('completed compositions cover native bubble folders and remain below unlink
 
 test('hidden panels and bubbles do not enter page literals, while invalid selection and dimensions fail', () => {
   const manga = fixture(); manga.pages[0].panels[1].layer = { hidden: true }; manga.pages[0].panels[0].bubbles[0].hidden = true;
-  const plan = buildQwenCompositionPlan(manga, 0, 0, 'page');
+  const plan = buildPageCompositionPlan(manga, 0, 0, 'page');
   assert.deepEqual(plan.characterKeys, ['a', 'b', 'd']); assert.deepEqual(plan.literalText, ['ドン！', '前景の台詞']);
-  assert.throws(() => qwenCompositionLayout(manga, 0, 1, 'panel'), /非表示/);
-  assert.throws(() => qwenCompositionLayout(manga, 9, 0, 'page'), /見つかりません/);
-  assert.throws(() => qwenCompositionLayout(manga, 0, 9, 'panel'), /見つかりません/);
-  manga.pages[0].canvas.w = 0; assert.throws(() => qwenCompositionLayout(manga, 0, 0, 'page'), /範囲が不正/);
+  assert.throws(() => buildCompositionLayout(manga, 0, 1, 'panel'), /非表示/);
+  assert.throws(() => buildCompositionLayout(manga, 9, 0, 'page'), /見つかりません/);
+  assert.throws(() => buildCompositionLayout(manga, 0, 9, 'panel'), /見つかりません/);
+  manga.pages[0].canvas.w = 0; assert.throws(() => buildCompositionLayout(manga, 0, 0, 'page'), /範囲が不正/);
 });
 
 test('integrated artwork settings, backgrounds, exact text and Unicode emphasis survive planning', () => {
   const manga = fixture();
   applyArtworkSettings(manga, { version: 1, groups: [{ id: 'common', label: '共通', scope: 'common', enabled: true }, { id: 'full', label: '全体', scope: 'integrated', enabled: true }],
     fragments: [{ groupId: 'common', kind: 'style', text: '独自の線の指定' }, { groupId: 'full', kind: 'layout', text: '独自のページ指定' }] });
-  const plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
+  const plan = buildPageCompositionPlan(manga, 0, 0, 'panel');
   for (const text of ['独自の線の指定', '独自のページ指定', '窓のある室内', 'ドン！', 'aの表情', 'aの服装']) assert.ok(plan.prompt.includes(text), text);
   for (const literal of plan.literalText) assert.ok(plan.prompt.includes(literal), literal);
   const item = { text: 'A𠮷\n句読点。', text_runs: [{ start: 1, end: 3, fontWeight: 800 }] };
-  const runs = qwenCompositionTextRuns(item); assert.equal(runs.map(run => run.text).join(''), item.text);
+  const runs = extractCompositionTextRuns(item); assert.equal(runs.map(run => run.text).join(''), item.text);
   assert.deepEqual(runs[1], { text: '𠮷', fontWeight: 800 }); assert.equal(runs[2].text, '\n');
 });
 
@@ -266,12 +266,12 @@ test('hidden figures are omitted from identity and instructions unless their ori
   const manga = fixture();
   manga.pages[0].panels[0].figures[1].artwork = { hidden: true };
   manga.pages[0].page_overlay.figures[0].artwork = { hidden: true };
-  let plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
+  let plan = buildPageCompositionPlan(manga, 0, 0, 'panel');
   assert.deepEqual(plan.characterKeys, ['a']); assert.doesNotMatch(plan.prompt, /bの表情|bの服装/);
-  plan = buildQwenCompositionPlan(manga, 0, 0, 'panel', { '0:figure-1': true });
+  plan = buildPageCompositionPlan(manga, 0, 0, 'panel', { '0:figure-1': true });
   assert.deepEqual(plan.characterKeys, ['a', 'b']); assert.match(plan.prompt, /bの表情/);
-  plan = buildQwenCompositionPlan(manga, 0, 0, 'page'); assert.deepEqual(plan.characterKeys, ['a', 'b', 'c']);
-  plan = buildQwenCompositionPlan(manga, 0, 0, 'page', { 'overlay:figure-0': true }); assert.deepEqual(plan.characterKeys, ['a', 'b', 'c', 'd']);
+  plan = buildPageCompositionPlan(manga, 0, 0, 'page'); assert.deepEqual(plan.characterKeys, ['a', 'b', 'c']);
+  plan = buildPageCompositionPlan(manga, 0, 0, 'page', { 'overlay:figure-0': true }); assert.deepEqual(plan.characterKeys, ['a', 'b', 'c', 'd']);
 });
 
 test('3D image pose preserves the image crop without adding conflicting drawing-range words', () => {
@@ -284,9 +284,9 @@ test('3D image pose preserves the image crop without adding conflicting drawing-
     placement: { position: [0, 0, 0], yaw_degrees: 0 }, camera: { position: [3, 2, 5], target: [0, 1, 0], fov: 40 }, projection: 'perspective', up: [0, 1, 0], frame: { width: 512, height: 1024 } } });
   figure.human_pose.camera_prompt = confirmHumanPoseCameraPrompt(figure.human_pose.scene, { centre: [0, 1, 0], world_facing_degrees: 0 });
   manga.pages[0].panels[0].figures[1].size = 'full';
-  let plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
+  let plan = buildPageCompositionPlan(manga, 0, 0, 'panel');
   assert.match(plan.prompt, /3Dポーズの姿勢・視点・切り取り/); assert.doesNotMatch(plan.prompt, /胸から上|古いポーズ文/);
-  figure.human_pose.input_mode = 'prompt'; plan = buildQwenCompositionPlan(manga, 0, 0, 'panel');
+  figure.human_pose.input_mode = 'prompt'; plan = buildPageCompositionPlan(manga, 0, 0, 'panel');
   assert.match(plan.prompt, /描写範囲は胸から上/); assert.match(plan.prompt, /古いポーズ文/);
 });
 
@@ -294,7 +294,7 @@ test('3D image pose preserves the image crop without adding conflicting drawing-
 test('hidden panel and overlay text are omitted from generation literal text',()=>{
  const manga=fixture();manga.pages[0].panels[0].screen_text[0].hidden=true;
  manga.pages[0].page_overlay.screen_text=[{text:'隠した前景文字',hidden:true},{text:'見える前景文字'}];
- const plan=buildQwenCompositionPlan(manga,0,0,'page');
+ const plan=buildPageCompositionPlan(manga,0,0,'page');
  assert.ok(!plan.literalText.includes('ドン！'));assert.ok(!plan.literalText.includes('隠した前景文字'));assert.ok(plan.literalText.includes('見える前景文字'));
 });
 

@@ -14,7 +14,7 @@ import { CHARACTER_REFERENCE_VIEWS } from '../lib/characterReferences.ts';
 import { resolveGenerationRoute } from '../lib/modelRouting.ts';
 import { type AgentWorkflowYamlFile, deliverAgentWorkflowYamlFiles } from '../lib/generationHandoff.ts';
 import { downloadBrowserBlob } from '../lib/browserFiles.ts';
-import { qwenInputImage } from './generation/inputImages.ts';
+import { encodeGenerationInputImage } from './generation/inputImages.ts';
 import { defaultAtariLayer } from './generation/useGenerationReferences.ts';
 import {
   type QwenAdoption,
@@ -22,7 +22,7 @@ import {
   type QwenLayerCandidate,
   type QwenLayerReference,
   type QwenReference,
-  qwenPlanForWorkflow,
+  adaptGenerationPlanForWorkflow,
 } from '../lib/qwenGeneration.ts';
 import {
   runMultiFigureBatch,
@@ -179,7 +179,7 @@ export default function MultiFigureGenerationDialog({
             const blob = await withNewCreationBridgeSession(() =>
               loadCharacterReferenceImage(candidate.seriesId, candidate.characterCatalogId, candidate.source.asset_id));
             if (!blob) throw new Error(`${candidate.label}の設定画が見つかりません`);
-            const encoded = await qwenInputImage(blob, undefined, true);
+            const encoded = await encodeGenerationInputImage(blob, undefined, true);
             charRef = {
               assetId: candidate.source.asset_id,
               label: candidate.label,
@@ -250,7 +250,7 @@ export default function MultiFigureGenerationDialog({
 
     const tasks: MultiFigureBatchTask[] = targets.map((item) => {
       const state = itemStates[item.id];
-      const effectivePlan = qwenPlanForWorkflow(item.plan, workflow);
+      const effectivePlan = adaptGenerationPlanForWorkflow(item.plan, workflow);
       return {
         id: item.id,
         label: item.label,

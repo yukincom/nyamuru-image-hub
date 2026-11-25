@@ -66,15 +66,15 @@ export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): 
 }
 
 // 旧->新: 旧=qwenLayerCandidates/buildQwenGenerationPlan等(特定モデル名) -> 新=collectGenerationLayerCandidates/buildImageGenerationPlan等の機能名へ統一
-export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
+export function collectGenerationLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
   return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
     kind:layer.guide&&owner.figure?.analogImport?'sketch' as const:'paint' as const,hidden:!paintLayerVisible(owner.paint,layer),
     empty:layer.opacity<=0||!(layer.guide||layer.image||layer.strokes.length||layer.paths?.length||layer.tone?.enabled&&layer.tone.fill)}));
 }
 
 /** Select only inside the captured owner; the export copy can reveal the chosen layer. */
-export function qwenLayerPaint(owner:PaintOwner,id:string,includeGeneration=false) {
-  const candidate=qwenLayerCandidates(owner).find(layer=>layer.id===id);
+export function buildGenerationLayerPaint(owner:PaintOwner,id:string,includeGeneration=false) {
+  const candidate=collectGenerationLayerCandidates(owner).find(layer=>layer.id===id);
   if(!candidate)throw new Error('選択したレイヤーがこのフォルダにありません');
   if(candidate.empty)throw new Error('空または濃度0%のレイヤーは参照できません');
   const layer=owner.paint.layers.find(layer=>layer.id===id)!;
@@ -85,7 +85,7 @@ export function qwenLayerPaint(owner:PaintOwner,id:string,includeGeneration=fals
   return {...owner.paint,folders:undefined,layers:[{...layer,folderId:undefined,visible:true}]};
 }
 
-export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLayerReference,correction?:QwenLayerReference) {
+export function formatGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLayerReference,correction?:QwenLayerReference) {
   if(correction)return [
     '修正用レイヤーの印・塗り・書き込みが示す箇所を、今回の修正指示に従って編集してください。',
     reference?'参照画像の構図と、修正対象以外の内容を保ってください。':'書き込み付き画像の構図と、修正対象以外の内容を保ってください。',
@@ -99,7 +99,7 @@ export function qwenGenerationPrompt(plan:QwenGenerationPlan,reference?:QwenLaye
 }
 
 /** A correction keeps the full captured canvas; a new lettering image uses its marker bounds. */
-export function qwenGenerationTarget(plan:QwenGenerationPlan,correction=false):QwenGenerationPlan {
+export function resolveGenerationTarget(plan:QwenGenerationPlan,correction=false):QwenGenerationPlan {
   const area=Boolean(plan.contentKind)&&!correction?plan.generationArea:undefined,frame=plan.outputFrame;
   if(!area||!frame)return plan;
   return {...plan,generationArea:undefined,width:area.w,height:area.h,outputFrame:{
@@ -120,19 +120,19 @@ export function figureBackgroundPrompt(prompt:string,color:string):string {
   return prompt;
 }
 
-export function qwenPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null, _outputScale = 0.6):QwenGenerationPlan {
+export function adaptGenerationPlanForWorkflow(plan:QwenGenerationPlan,workflow:ComfyWorkflowDefinition|null, _outputScale = 0.6):QwenGenerationPlan {
   if(workflow?.binding.prompt_mode==='promptless-two-images')return {...plan,promptlessTwoImages:true};
   return plan;
 }
 
-export function qwenGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
+export function formatGenerationSizePrompt(plan:QwenGenerationPlan,correction=false,outputSize?:readonly [number,number]):string {
   if(!plan.contentKind)return '';
-  const target=qwenGenerationTarget(plan,correction),frame=target.outputFrame;
+  const target=resolveGenerationTarget(plan,correction),frame=target.outputFrame;
   return `出力キャンバス：幅${outputSize?.[0]??target.width} × 高さ${outputSize?.[1]??target.height} px。${frame?`原稿上の配置サイズ：幅${Number(frame.w.toFixed(2))} × 高さ${Number(frame.h.toFixed(2))} mm。`:''}文字全体をこの縦横比の範囲内に収めてください。`;
 }
 
 /** The owner is resolved by the editor, never inferred from a name or a filename. */
-export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource,generationArea?:BBox,editPoseInDialog=false):QwenGenerationPlan {
+export function buildImageGenerationPlan(manga:Manga, pageIndex:number, panelIndex:number, overlay:boolean, owner:PaintOwner, standardArtwork?:ArtworkSource,generationArea?:BBox,editPoseInDialog=false):QwenGenerationPlan {
   const page=manga.pages[pageIndex], panel=page?.panels[panelIndex];
   if(!page||(!overlay&&!panel))throw new Error('生成対象が見つかりません');
   if(!canGeneratePaintOwner(owner))throw new Error('単品生成は人物・小道具・背景・描き文字・写植文字が対象です');
@@ -239,7 +239,7 @@ export function buildQwenGenerationPlan(manga:Manga, pageIndex:number, panelInde
     ...(sketchPrompt?{sketchPrompt}:{}), ...(pose ? {humanPose:{selection:structuredClone(pose),framing,aspect:referenceFrame.w/referenceFrame.h,...(cutFrame?{cutFrame}:{})},poseContext} : {})};
 }
 
-export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string,outputSize?:readonly [number,number]){
+export function buildImageGenerationPayload(plan:QwenGenerationPlan,references:QwenReference[],paintImage?:string,sketchImage?:string,correctionImage?:string,poseImage?:string,outputSize?:readonly [number,number]){
   if(plan.promptlessTwoImages){
     const image1=references[0];
     const image2Source=paintImage||plan.compositionImage||sketchImage||poseImage;
@@ -259,8 +259,8 @@ export function qwenGenerationPayload(plan:QwenGenerationPlan,references:QwenRef
     };
   }
   if(!plan.prompt.trim())throw new Error('生成指示を入力してください');
-  const sizePrompt=qwenGenerationSizePrompt(plan,Boolean(correctionImage),outputSize);
-  plan={...qwenGenerationTarget(plan,Boolean(correctionImage)),prompt:[plan.prompt,sizePrompt].filter(Boolean).join('\n\n')};
+  const sizePrompt=formatGenerationSizePrompt(plan,Boolean(correctionImage),outputSize);
+  plan={...resolveGenerationTarget(plan,Boolean(correctionImage)),prompt:[plan.prompt,sizePrompt].filter(Boolean).join('\n\n')};
   if(plan.ownerKey.startsWith('bubble-')&&(!plan.contentKind||plan.literalText?.length!==1||!plan.literalText[0].trim()))throw new Error('吹き出し単品は生成できません。描き文字を選択してください');
   if(plan.contentKind&&(!plan.ownerKey.startsWith('bubble-')||plan.scope))throw new Error('描き文字の生成対象が不正です');
   if(plan.scope){

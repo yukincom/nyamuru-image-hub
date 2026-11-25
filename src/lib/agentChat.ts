@@ -3,7 +3,7 @@ import type {AgentPreferences} from './agentPreferences.ts';
 import type {AgentMessage} from './agentSession.ts';
 import type {AgentEditorSnapshot} from './agentTools.ts';
 import {imageConnectionSummary} from './modelConnections.ts';
-import {qwenConversationIntent} from './qwenGeneration.ts';
+import {classifyGenerationConversationIntent} from './qwenGeneration.ts';
 
 export interface AgentToolCall {id:string;type:'function';function:{name:string;arguments:string}}
 export type AgentWireMessage={role:'user'|'assistant';content:string|null;tool_calls?:AgentToolCall[]}|{role:'tool';tool_call_id:string;content:string};
@@ -88,7 +88,7 @@ export async function runAgentConversation(o:Options):Promise<{text:string;model
             }else if(call.function.name==='image_generation'){
               if(!allowEdits||calls.length!==1||!args||typeof args!=='object'||Array.isArray(args)||Object.keys(args).length!==1||!['connect','generate'].includes(args.action))throw Error('画像生成は接続または実行を一つずつ指定してください');
               if(!o.imageGeneration)throw Error('画像生成の接続を利用できません');
-              if(args.action==='generate'&&qwenConversationIntent(o.text)!=='generate')throw Error('生成対象を選び「生成して」と送ってください');
+              if(args.action==='generate'&&classifyGenerationConversationIntent(o.text)!=='generate')throw Error('生成対象を選び「生成して」と送ってください');
               // Return the intent, release the conversation LLM lease, then run the existing executor.
               return {text:'',model:reply.model,edits,imageAction:args.action as 'connect'|'generate'};
             }else if(call.function.name==='editor_bubble_edit'){

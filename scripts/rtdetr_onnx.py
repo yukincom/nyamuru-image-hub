@@ -10,14 +10,33 @@ from pathlib import Path
 from typing import Any
 
 
-CLASS_NAMES = {0: "body", 1: "text", 2: "frame", 3: "face"}
+CLASS_NAMES = {
+    0: "body",
+    1: "text",
+    2: "frame",
+    3: "face",
+    4: "bubble_normal",
+    5: "bubble_square",
+    6: "bubble_toge",
+    7: "bubble_thought",
+    8: "text_handwritten",
+    9: "bubble_tail",
+}
 BUCKET_NAMES = {
     "body": "bodies",
     "text": "texts",
     "frame": "frames",
     "face": "faces",
+    "bubble_tail": "tails",
 }
-ID_PREFIXES = {"body": "b", "text": "t", "frame": "f", "face": "face"}
+BUBBLE_SHAPE_HINTS = {
+    "bubble_normal": "normal",
+    "bubble_square": "square",
+    "bubble_toge": "toge",
+    "bubble_thought": "thought",
+    "text_handwritten": "handwritten",
+}
+ID_PREFIXES = {"body": "b", "text": "t", "frame": "f", "face": "face", "bubble_tail": "tail"}
 INPUT_SIZE = 1280
 SCHEMA_VERSION = 1
 
@@ -49,29 +68,33 @@ def detection_buckets(labels, boxes, scores, conf_threshold: float) -> dict[str,
         "texts": [],
         "frames": [],
         "faces": [],
+        "tails": [],
     }
     counters = {name: 0 for name in BUCKET_NAMES}
     for class_id, box, score in zip(labels, boxes, scores):
         if float(score) < conf_threshold:
             continue
-        name = CLASS_NAMES.get(int(class_id))
-        if name is None:
+        raw_name = CLASS_NAMES.get(int(class_id))
+        if raw_name is None:
             continue
+        shape_hint = BUBBLE_SHAPE_HINTS.get(raw_name)
+        name = "text" if shape_hint is not None else raw_name
         index = counters[name]
         counters[name] += 1
         x1, y1, x2, y2 = (float(value) for value in box)
-        buckets[BUCKET_NAMES[name]].append(
-            {
-                "id": f"{ID_PREFIXES[name]}{index}",
-                "bbox": [round(x1, 2), round(y1, 2), round(x2, 2), round(y2, 2)],
-                "score": round(float(score), 4),
-            }
-        )
+        entry: dict[str, Any] = {
+            "id": f"{ID_PREFIXES[name]}{index}",
+            "bbox": [round(x1, 2), round(y1, 2), round(x2, 2), round(y2, 2)],
+            "score": round(float(score), 4),
+        }
+        if shape_hint is not None:
+            entry["bubble_shape_hint"] = shape_hint
+        buckets[BUCKET_NAMES[name]].append(entry)
     return buckets
 
 
 # 旧->新: 旧=4クラス固定のdetect_page -> 新=機能名detect_manga_page_elementsへ変更しアナログネーム向け拡張フキダシ/しっぽクラス対応＋4クラス互換維持
-def detect_page(
+def detect_manga_page_elements(
     image_path: str | Path,
     *,
     model_path: str | Path,

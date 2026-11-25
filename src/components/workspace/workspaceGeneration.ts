@@ -2,15 +2,15 @@ import type { WorkspaceState } from './useWorkspaceState';
 import type { MangaDocument, ImageAsset, Bubble, BBox } from '../../types';
 import type { PaintOwner, PaintScene } from '../../lib/paintDocument';
 import { type PaintImages, generationMaskBounds } from '../../lib/paintRenderer';
-import { type QwenAgentRequest, buildQwenGenerationPlan, qwenLayerCandidates } from '../../lib/qwenGeneration';
+import { type QwenAgentRequest, buildImageGenerationPlan, collectGenerationLayerCandidates } from '../../lib/qwenGeneration';
 import { type CanvasTextTarget, ensureCanvasTextOwner } from '../../lib/canvasText';
 import { isBalloonText } from '../../lib/bubblePresentation';
 import { isPropPlacement } from '../../lib/catalogModel';
 import { parseOmayYaml, cloneDocument } from '../../lib/manga';
 import standardArtworkSource from '../../content/standard-settings.yaml?raw';
-import { qwenInputImage, qwenLayerImage, type GenerationPoseEditorContext } from '../ImageGenerationDialog';
+import { encodeGenerationInputImage, renderGenerationLayerImage, type GenerationPoseEditorContext } from '../ImageGenerationDialog';
 import { getOutputSettings } from '../../lib/finishLayout.ts';
-import { type QwenCompositionScope, buildQwenCompositionPlan, captureQwenComposition } from '../../lib/pageComposition';
+import { type QwenCompositionScope, buildPageCompositionPlan, capturePageComposition } from '../../lib/pageComposition';
 import type { MultiFigureTarget } from '../../lib/canvasSelection';
 import type { MultiFigureDialogItem } from '../MultiFigureGenerationDialog';
 import type { WorkspaceImageTarget } from './workspaceTypes';
@@ -43,7 +43,7 @@ export function createWorkspaceGeneration({
     const needsMask=(captured.kind==='bubble'&&captured.bubble&&!isBalloonText(captured.bubble))
       || (captured.figure&&!isPropPlacement(captured.figure));
     const area=needsMask?generationMaskBounds(captured.paint):undefined;
-    const plan=buildQwenGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area,Boolean(captured.figure&&!isPropPlacement(captured.figure)));
+    const plan=buildImageGenerationPlan(textSource?.document.manga??current.manga,pageIndex,panelIndex,overlay,captured,parseOmayYaml(standardArtworkSource),area,Boolean(captured.figure&&!isPropPlacement(captured.figure)));
     const selected=paintController.current?.snapshot();
     if(selected?.ownerKey===captured.key){
       plan.folderId=captured.paint.layers.find(layer=>layer.id===selected.layerId)?.folderId
@@ -51,7 +51,7 @@ export function createWorkspaceGeneration({
     }
     const loadLayer=async(id:string,correction:boolean,crop?:BBox,native=false)=>{
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
-      const result=await qwenInputImage(await qwenLayerImage(captured,id,assets,images,correction),crop,native);
+      const result=await encodeGenerationInputImage(await renderGenerationLayerImage(captured,id,assets,images,correction),crop,native);
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成対象を選び直してください');
       return result.image;
     };
@@ -82,7 +82,7 @@ export function createWorkspaceGeneration({
         guides:Object.fromEntries((panel.figures??[]).map((_,i)=>[`figure-${i}`,artworkGuideVisible(`figure-${i}`,panelIndex,pageIndex,false,current)]))},
         backgroundCaptures:(panel.background_images??[]).flatMap((item,i)=>item.paint?.background3d?[{label:`このコマの背景 ${i+1}`,capture:item.paint.background3d}]:[])}:{}),
     }:undefined;
-    const next={id:crypto.randomUUID(),plan,poseEditorContext,layers:qwenLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest,...(textSource?{textSource:{target:textSource.target,position:textSource.position}}:{})};
+    const next={id:crypto.randomUUID(),plan,poseEditorContext,layers:collectGenerationLayerCandidates(captured),loadLayer,document:current,pageIndex,panelIndex,overlay,owner,agentRequest,...(textSource?{textSource:{target:textSource.target,position:textSource.position}}:{})};
     qwenGenerationRef.current=next;setQwenGeneration(next);
   };
   const requestOwnerGeneration = async(key?:string,overlay=selectedElement?.scope==='page_overlay',panelIndex=activePanel,pageIndex=activePage,agentRequest?:QwenAgentRequest) => {
@@ -128,9 +128,9 @@ export function createWorkspaceGeneration({
       current.manga.pages[pageIndex].panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=artworkGuideVisible(key,index,pageIndex,false,current);}));
       const overlay=current.manga.pages[pageIndex].page_overlay;
       [...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=artworkGuideVisible(key,0,pageIndex,true,current);});
-      const plan=buildQwenCompositionPlan(current.manga,pageIndex,panelIndex,scope,guides);
+      const plan=buildPageCompositionPlan(current.manga,pageIndex,panelIndex,scope,guides);
       setToast('生成用の紙面を準備しています…');
-      plan.compositionImage=await captureQwenComposition(current.manga,pageIndex,panelIndex,scope,guides);
+      plan.compositionImage=await capturePageComposition(current.manga,pageIndex,panelIndex,scope,guides);
       if(documentRef.current!==current)throw new Error('作品が変更されました。生成する範囲を選び直してください');
       const next={id:crypto.randomUUID(),plan,layers:[],loadLayer:async()=>{throw new Error('全体生成では紙面を参照します');},document:current,pageIndex,panelIndex,overlay:false};
       qwenGenerationRef.current=next;setQwenGeneration(next);setVoiceOpen(true);setToast('');
@@ -162,10 +162,10 @@ export function createWorkspaceGeneration({
             captured.figure!.size = liveFigure.size;
           }
           const area = generationMaskBounds(captured.paint);
-          const plan = buildQwenGenerationPlan(current.manga, pageIndex, target.panelIndex, target.overlay, captured, standardYaml, area, true);
+          const plan = buildImageGenerationPlan(current.manga, pageIndex, target.panelIndex, target.overlay, captured, standardYaml, area, true);
           const assets = [...(current.manga.image_assets ?? [])];
           const loadLayer = async (id: string, correction: boolean) => {
-            const result = await qwenInputImage(await qwenLayerImage(captured, id, assets, undefined, correction));
+            const result = await encodeGenerationInputImage(await renderGenerationLayerImage(captured, id, assets, undefined, correction));
             return result.image;
           };
           const panelId = target.overlay ? 0 : (sourcePage?.panels[target.panelIndex]?.id ?? target.panelIndex + 1);
@@ -177,7 +177,7 @@ export function createWorkspaceGeneration({
             overlay: target.overlay,
             label: owner.label,
             plan,
-            layers: qwenLayerCandidates(captured),
+            layers: collectGenerationLayerCandidates(captured),
             loadLayer,
             insert: async (files, generatedPlan, adoption) => {
               if (!insertBatchFigureImage || !files[0]) return;

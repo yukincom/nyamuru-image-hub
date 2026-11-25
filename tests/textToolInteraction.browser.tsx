@@ -4,7 +4,7 @@ import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {parseMangaYaml,STORAGE_KEY,toStoredMangaYaml,validateManga} from '../src/lib/manga';
 import {createBubbleBezier} from '../src/lib/bubbleBezier';
-import {captureQwenComposition,captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
+import {capturePageComposition,capturePageCompositionCanvas} from '../src/lib/qwenComposition';
 import {blobImageData,flattenedPsd} from '../src/lib/pageExport';
 import '../src/styles/global.css';
 const expandedChecks=new URLSearchParams(location.search).has('expanded-text-check');
@@ -66,7 +66,7 @@ async function verifyExpandedText(){
   const historyButton=(name:string)=>document.querySelector<HTMLButtonElement>(`.app-header [aria-label^="${name}"]`)!;
   const textCenter=(overlay:boolean)=>{const range=document.createRange();range.selectNode(element(overlay).querySelector('.bubble-text-content')!);const b=range.getBoundingClientRect(),p=active<HTMLElement>('.manga-paper').getBoundingClientRect();return {x:(b.x+b.width/2-p.x)*182/p.width,y:(b.y+b.height/2-p.y)*257/p.height};};
   const close=(a:number,b:number,tolerance=.15)=>Math.abs(a-b)<tolerance;
-  const captured=async(manga:ReturnType<typeof stored>['manga'])=>{const canvas=await captureQwenCompositionCanvas(manga,0,0,'page',{'0:background':false,'1:background':false});canvases.push(canvas);return canvas;};
+  const captured=async(manga:ReturnType<typeof stored>['manga'])=>{const canvas=await capturePageCompositionCanvas(manga,0,0,'page',{'0:background':false,'1:background':false});canvases.push(canvas);return canvas;};
   let mounted=false;
   button.disabled=true;report.textContent='拡張本文を検証中';
   try{
@@ -123,7 +123,7 @@ async function verifyExpandedText(){
     for(const overlay of [false,true]){const before=inkCenter(beforeCanvas,overlay),after=inkCenter(afterCanvas,overlay),dom=textCenter(overlay),start=centers[Number(overlay)];
       check(close(after.x-before.x,dom.x-start.x,.4)&&close(after.y-before.y,dom.y-start.y,.4),`${overlay?'縦':'横'}本文の合成PNG上の移動量が実画面と一致`);}
     const pixels=afterCanvas.getContext('2d')!.getImageData(0,0,afterCanvas.width,afterCanvas.height);
-    const generation=await blobImageData(await(await fetch(await captureQwenComposition(changed.manga,0,0,'page',{'0:background':false,'1:background':false}))).blob());
+    const generation=await blobImageData(await(await fetch(await capturePageComposition(changed.manga,0,0,'page',{'0:background':false,'1:background':false}))).blob());
     check(generation.width===pixels.width&&generation.height===pixels.height&&generation.data.every((value,index)=>value===pixels.data[index]),'生成入力PNGも同じ枠外本文の全画素を保持（モデルなし）');
     const psd=new Uint8Array(await flattenedPsd(pixels,100,'color').arrayBuffer()),view=new DataView(psd.buffer);let offset=26;
     for(let i=0;i<3;i++)offset+=4+view.getUint32(offset);offset+=2;const count=pixels.width*pixels.height;

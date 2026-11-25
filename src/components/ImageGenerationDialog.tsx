@@ -1,15 +1,15 @@
 import ProjectFileInput, { useProjectFilePicker } from './ProjectFileInput';
-export { qwenInputImage, qwenLayerImage } from './generation/inputImages.ts';
+export { encodeGenerationInputImage, renderGenerationLayerImage } from './generation/inputImages.ts';
 import type { ComponentProps } from 'preact';
 import FigureHumanPoseEditor from './FigureHumanPoseEditor';
 import type { HumanPoseTextSelection } from '../lib/humanPoseTypes.ts';
 import type { FigureSize, BBox } from '../types.ts';
-import { type QwenGenerationPlan, type QwenAgentRequest, type QwenLayerCandidate, type QwenAdoption, type QwenGenerationConversation, type QwenLayerReference, type QwenReference, qwenPlanForWorkflow, figureBackgroundPrompt, type QwenJob, type QwenHistoryScope, runQwenAgentRequest, canDeleteQwenJob, qwenGenerationSizePrompt, qwenJobLocation } from '../lib/qwenGeneration.ts';
+import { type QwenGenerationPlan, type QwenAgentRequest, type QwenLayerCandidate, type QwenAdoption, type QwenGenerationConversation, type QwenLayerReference, type QwenReference, adaptGenerationPlanForWorkflow, figureBackgroundPrompt, type QwenJob, type QwenHistoryScope, runGenerationAgentRequest, canDeleteGenerationJob, formatGenerationSizePrompt, formatGenerationJobLocation } from '../lib/qwenGeneration.ts';
 import { useState, useEffect, useMemo, useRef } from 'preact/hooks';
 import { currentGenerationPreferences } from '../lib/generationPreferences.ts';
 import { currentLocalModelPreferences } from '../lib/localModelPreferences.ts';
 import { type ComfyWorkflowDefinition, parseComfyWorkflowList, workflowNegativePrompt, workflowPromptUpsampler } from '../lib/comfyWorkflows.ts';
-import { requestComfyWorkflows, cancelQwenJob, blobDataUrl, reconcileQwenJob, listQwenJobs, deleteQwenJobs, selectQwenCandidate } from '../lib/localBridge.ts';
+import { requestComfyWorkflows, cancelImageGenerationJob, blobDataUrl, reconcileImageGenerationJob, listImageGenerationJobs, deleteImageGenerationJobs, selectImageGenerationCandidate } from '../lib/localBridge.ts';
 import { stopImageGenerationSessionOnPageExit, startImageGenerationSession, stopImageGenerationSession, imageGenerationProgress, withNewCreationBridgeSession } from '../lib/localBridgeLifecycle.ts';
 import { loadFigureCropAsset } from '../lib/figureCropStore.ts';
 import { posePreviewSize } from '../lib/humanPoseFraming.ts';
@@ -65,7 +65,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   const usesPoseImage=basePlan.humanPose?.selection.input_mode==='image';
   const workflow=chosen??null;
   const missingWorkflow=workflowError;
-  const plan=useMemo(()=>qwenPlanForWorkflow(basePlan,workflow),[basePlan,workflow]);
+  const plan=useMemo(()=>adaptGenerationPlanForWorkflow(basePlan,workflow),[basePlan,workflow]);
   const targetError='';
   const waitingForWorkflow=!cloud&&!chosen;
   const figureChroma=plan.ownerKey.startsWith('figure-')&&workflow?.binding.prompt_mode==='qwen';
@@ -114,7 +114,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   async function cancelGeneration(){
     generationAbort.current?.abort();setPhase('生成の取消しと終了を確認中');
     try{
-      if(attempted.current)await cancelQwenJob(attempted.current);
+      if(attempted.current)await cancelImageGenerationJob(attempted.current);
     }catch(cause){if(alive.current)setError(String(cause));}
     finally{await releaseComfy().catch(cause=>{if(alive.current)setError(String(cause));});}
   }
@@ -223,11 +223,11 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
   useEffect(()=>{
     if(!agentRequest||agentStarted.current)return;
     agentStarted.current=true;
-    void runQwenAgentRequest(agentRequest,async()=>{},conversationSend);
+    void runGenerationAgentRequest(agentRequest,async()=>{},conversationSend);
   },[agentRequest,conversationSend]);
   async function check(id:string){await operation(async()=>{
     const expected=job?.jobId===id?job:history.find(item=>item.jobId===id);
-    const result=await withNewCreationBridgeSession(()=>reconcileQwenJob(id,expected?.requestSha256));
+    const result=await withNewCreationBridgeSession(()=>reconcileImageGenerationJob(id,expected?.requestSha256));
     if(alive.current){setJob(result);setAttempt(id);setSelectedCandidate(result.selectedCandidate??result.selectedCandidates?.[0]??null);setSelectedCandidates(result.selectedCandidates??[]);if(insertedBatch.current!==id)insertedBatch.current=null;}
   });}
   useEffect(()=>{
@@ -235,7 +235,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
     let current=true,timer:ReturnType<typeof setTimeout>;
     const poll=async()=>{
       try{
-        const value=await withNewCreationBridgeSession(()=>reconcileQwenJob(attempt,job.requestSha256));
+        const value=await withNewCreationBridgeSession(()=>reconcileImageGenerationJob(attempt,job.requestSha256));
         if(current)setJob(value);
       }catch(cause){if(current)setError(String(cause));}
       if(current)timer=setTimeout(poll,5000);
@@ -244,14 +244,14 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
     return()=>{current=false;clearTimeout(timer);};
   },[busy,job?.jobId,job?.status,job?.requestSha256,attempt]);
   async function loadHistory(scope:QwenHistoryScope){await operation(async()=>{
-    const jobs=await withNewCreationBridgeSession(()=>listQwenJobs(plan,scope));
+    const jobs=await withNewCreationBridgeSession(()=>listImageGenerationJobs(plan,scope));
     if(alive.current){setHistory(jobs);setHistoryScope(scope);setSelectedJobs([]);}
   });}
   async function remove(jobs:QwenJob[]){
-    if(working.current||!jobs.length||jobs.some(item=>!canDeleteQwenJob(item)))return;
+    if(working.current||!jobs.length||jobs.some(item=>!canDeleteGenerationJob(item)))return;
     if(!window.confirm(`本当に削除しますか？\n\n${jobs.length}件の生成画像・中間データ・履歴をすべて削除します。この操作は取り消せません。`))return;
     await operation(async()=>{
-      await withNewCreationBridgeSession(()=>deleteQwenJobs(plan,jobs));
+      await withNewCreationBridgeSession(()=>deleteImageGenerationJobs(plan,jobs));
       if(!alive.current)return;
       const ids=new Set(jobs.map(item=>item.jobId));
       setHistory(items=>items.filter(item=>!ids.has(item.jobId)));setSelectedJobs(items=>items.filter(id=>!ids.has(id)));
@@ -268,7 +268,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
       if(!indices.length)return;
       await operation(async()=>{
         await ensureComfy(job.comfyuiUrl??connection.comfyuiUrl);
-        const result=job.selectedCandidates?job:await withNewCreationBridgeSession(()=>selectQwenCandidate(job,indices));
+        const result=job.selectedCandidates?job:await withNewCreationBridgeSession(()=>selectImageGenerationCandidate(job,indices));
         if(alive.current)setJob(result);
         if(insertedBatch.current!==job.jobId){
           const files=candidateFilesFromJob(result,indices);
@@ -276,7 +276,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
           insertedBatch.current=job.jobId;
         }
         setPhase('未採用画像を削除中');
-        const finished=await withNewCreationBridgeSession(()=>selectQwenCandidate(result,indices,true));
+        const finished=await withNewCreationBridgeSession(()=>selectImageGenerationCandidate(result,indices,true));
         if(alive.current){setJob(finished);await releaseComfy();onClose();}
       });
       return;
@@ -284,7 +284,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
     if(selectedCandidate===null)return;
     await operation(async()=>{
       setPhase(job.requiresCutout?'選んだ画像の背景を透過中':'選んだ画像を準備中');
-      const result=await withNewCreationBridgeSession(()=>selectQwenCandidate(job,selectedCandidate));
+      const result=await withNewCreationBridgeSession(()=>selectImageGenerationCandidate(job,selectedCandidate));
       if(alive.current)setJob(result);
     });
   }
@@ -358,7 +358,7 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
         {!threeImages&&<><label class="qwen-file-label">参考画像を追加<ProjectFileInput accept="image/png,image/jpeg,image/webp" multiple onFiles={addFiles}/></label>
           {extra.map((ref,index)=><figure class="qwen-paint-reference"><img src={ref.image} alt={ref.label}/><button onClick={()=>setExtra(previous=>previous.filter((_,i)=>i!==index))}>外す</button></figure>)}</>}
       </fieldset>}
-      {Boolean(plan.contentKind)&&<div class="qwen-output-size"><output>{qwenGenerationSizePrompt(plan,Boolean(correction),workflow?.binding.fixed_size??undefined)}</output><div>生成範囲：{plan.generationArea&&!correction?'生成マスクの外接矩形':'フォルダーのキャンバス全体'} · 生成解像度：{cloud?'指定サイズ':workflow?.binding.fixed_size?workflow.binding.fixed_size.join(' × '):'縦横比に合わせて調整'}</div></div>}
+      {Boolean(plan.contentKind)&&<div class="qwen-output-size"><output>{formatGenerationSizePrompt(plan,Boolean(correction),workflow?.binding.fixed_size??undefined)}</output><div>生成範囲：{plan.generationArea&&!correction?'生成マスクの外接矩形':'フォルダーのキャンバス全体'} · 生成解像度：{cloud?'指定サイズ':workflow?.binding.fixed_size?workflow.binding.fixed_size.join(' × '):'縦横比に合わせて調整'}</div></div>}
       {!cloud&&!twoImagesPromptless&&<label class="qwen-prompt">{defaultNegative!==undefined?'ポジティブプロンプト':'生成指示'}<textarea rows={8} value={waitingForWorkflow?'':prompt} disabled={busy||!canPrepareNewGeneration||waitingForWorkflow} onInput={e=>updatePrompt(e.currentTarget.value)}/></label>}
       {twoImagesPromptless&&<p class="environment-settings-note">このワークフローはにゃむる側からプロンプトを送信しません（ワークフロー内の固定指示を使用します）。</p>}
       {!cloud&&defaultUpsampler!==undefined&&<label class="qwen-checkbox"><input type="checkbox" checked={Boolean(usePromptUpsampler)} disabled={busy||!canPrepareNewGeneration} onChange={e=>{if(attempted.current)prepareNewGeneration();setUpsampler(e.currentTarget.checked);}}/>プロンプト自動補強（Prompt Upsampler）を使う（負荷が増えます）</label>}
@@ -384,10 +384,10 @@ export default function ImageGenerationDialog({poseEditorContext,onOpenSettings,
         <h3>{historyScope==='work'?'作品の生成履歴':'生成履歴'}</h3>
         <p>{historyScope==='work'?'作品内の全ページ・全コマの生成画像です。ファイル名を押すと画像を確認し、現在の対象へ新規レイヤーとして追加できます。':'現在のあたりで生成した画像です。'} チェックした履歴は「削除」でまとめて消せます。</p>
         {history.length===0?<p>生成履歴はありません。</p>:<>
-          <div class="paint-entry-actions"><label><input type="checkbox" disabled={busy||!history.some(canDeleteQwenJob)} checked={history.filter(canDeleteQwenJob).length>0&&history.filter(canDeleteQwenJob).every(item=>selectedJobs.includes(item.jobId))} onChange={e=>setSelectedJobs(e.currentTarget.checked?history.filter(canDeleteQwenJob).map(item=>item.jobId):[])}/> 全て選択</label><button disabled={busy||selectedJobs.length===0} onClick={()=>void remove(history.filter(item=>selectedJobs.includes(item.jobId)))}>削除</button><span>{selectedJobs.length}件を選択</span></div>
+          <div class="paint-entry-actions"><label><input type="checkbox" disabled={busy||!history.some(canDeleteGenerationJob)} checked={history.filter(canDeleteGenerationJob).length>0&&history.filter(canDeleteGenerationJob).every(item=>selectedJobs.includes(item.jobId))} onChange={e=>setSelectedJobs(e.currentTarget.checked?history.filter(canDeleteGenerationJob).map(item=>item.jobId):[])}/> 全て選択</label><button disabled={busy||selectedJobs.length===0} onClick={()=>void remove(history.filter(item=>selectedJobs.includes(item.jobId)))}>削除</button><span>{selectedJobs.length}件を選択</span></div>
           <ul>{history.map(item=><li key={item.jobId}>
-            <input type="checkbox" aria-label={`${item.fileName??item.jobId}を削除対象に選ぶ`} disabled={busy||!canDeleteQwenJob(item)} checked={selectedJobs.includes(item.jobId)} onChange={e=>setSelectedJobs(ids=>e.currentTarget.checked?[...ids,item.jobId]:ids.filter(id=>id!==item.jobId))}/>
-            <div><button class="qwen-history-file" disabled={busy} onClick={()=>void check(item.jobId)}>{item.fileName??item.jobId}</button><small>{qwenJobLocation(item)} · {generationStatusLabel[item.status]}</small></div>
+            <input type="checkbox" aria-label={`${item.fileName??item.jobId}を削除対象に選ぶ`} disabled={busy||!canDeleteGenerationJob(item)} checked={selectedJobs.includes(item.jobId)} onChange={e=>setSelectedJobs(ids=>e.currentTarget.checked?[...ids,item.jobId]:ids.filter(id=>id!==item.jobId))}/>
+            <div><button class="qwen-history-file" disabled={busy} onClick={()=>void check(item.jobId)}>{item.fileName??item.jobId}</button><small>{formatGenerationJobLocation(item)} · {generationStatusLabel[item.status]}</small></div>
           </li>)}</ul>
         </>}
       </section>}

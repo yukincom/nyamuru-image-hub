@@ -8,7 +8,7 @@ import { bubbleAt, bubbleVisible, toggleBubbleVisibility, editBubbleText, normal
 import { panelHasElementAt } from '../src/lib/canvasGeometry.ts';
 import { paintScene } from '../src/lib/paintDocument.ts';
 import { bubbleArtIndices, canReorderBubbleLayers } from '../src/lib/panelLayers.ts';
-import { qwenCompositionLayout } from '../src/lib/qwenComposition.ts';
+import { buildCompositionLayout } from '../src/lib/qwenComposition.ts';
 
 const textStack = owner => bubbleArtIndices(owner).reverse().map(index=>owner.bubbles[index].text);
 
@@ -50,7 +50,7 @@ test('page foreground text order uses page layer state and survives both persist
   assert.equal(next.layer.directLocked,true);
   assert.deepEqual(textStack({...next.page_overlay,layer:next.layer}),['3','1','2']);
   assert.equal(next.panels[0].layer,undefined);
-  assert.deepEqual(textStack(qwenCompositionLayout(restored.manga,0,0,'page').panels.find(entry=>entry.overlay).panel),['3','1','2']);
+  assert.deepEqual(textStack(buildCompositionLayout(restored.manga,0,0,'page').panels.find(entry=>entry.overlay).panel),['3','1','2']);
  }
 });
 

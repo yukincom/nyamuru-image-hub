@@ -37,6 +37,14 @@ from nyamuru_worker_runtime import (
     default_vlm_paths,
     run_local_worker,
 )
+from vision_model_paths import (
+    is_valid_text_ocr_dir,
+    resolve_character_encoder_model,
+    resolve_layout_relation_model,
+    resolve_orientation_model,
+)
+from page_orientation_classifier import estimate_page_orientation as classify_page_orientation
+from layout_relation_scorer import classify_page_overlay_candidates, link_bubble_speakers
 from nyamuru_ocr_util import usable_ocr_lines, rotated_image_bytes
 from nyamuru_scanner_sessions import ScannerSessions
 from nyamuru_analog_asset_store import DEFAULT_IMAGE_HUB_ROOT, AnalogAssetStore
@@ -105,6 +113,10 @@ class LocalVisionState(VisionCharacterAnalysis):
             wd_expression_tags or self.vision_root / "models" / "wd-vit-tagger-v3" / "selected_tags.csv"
         ).expanduser().absolute()
         self.wd_expression_threshold = max(0.0, min(1.0, float(wd_expression_threshold)))
+        self.orientation_model = resolve_orientation_model(self.vision_root).expanduser().absolute()
+        self.layout_relation_model = resolve_layout_relation_model(self.vision_root).expanduser().absolute()
+        self.character_encoder_model = resolve_character_encoder_model(self.vision_root).expanduser().absolute()
+        self.personal_ocr_active = (self.baberu_model == (self.vision_root / "models" / "ocr-personal").absolute())
         self.editor_voice = EditorVoiceService()
         self.voice_intent = VoiceIntentService()
         self.scanners = ScannerSessions()
@@ -175,7 +187,7 @@ class LocalVisionState(VisionCharacterAnalysis):
         )
 
     # 旧->新: 旧=wd_expression_available(固定モデル名) -> 新=expression_tagger_available(機能名)へ改名しM1+M2共有エンコーダ/M7/M6の状態確認を追加
-    def wd_expression_available(self) -> bool:
+    def expression_tagger_available(self) -> bool:
         return (
             self.wd_expression_model.is_file()
             and self.wd_expression_tags.is_file()
@@ -183,13 +195,16 @@ class LocalVisionState(VisionCharacterAnalysis):
             and importlib.util.find_spec("onnxruntime") is not None
         )
 
+    def character_encoder_available(self) -> bool:
+        return self.character_encoder_model.is_file() and importlib.util.find_spec("onnxruntime") is not None
+
     def expression_tagging(self, image_bytes: bytes) -> dict[str, Any]:
-        if not self.wd_expression_available():
+        if not self.expression_tagger_available():
             return {}
         try:
-            # WDのONNX sessionも短命workerに所有させ、VLM起動前にプロセスごと解放する。
+            # 表情タグ付けONNXも短命workerに所有させ、起動後にプロセスごと解放する。
             return run_local_worker(
-                python=Path(sys.executable), engine="wd-expression", root=self.vision_root,
+                python=Path(sys.executable), engine="expression-tagger", root=self.vision_root,
                 image_bytes=image_bytes, model=self.wd_expression_model,
                 request={"tags_path": str(self.wd_expression_tags), "threshold": self.wd_expression_threshold},
             )
@@ -204,21 +219,20 @@ class LocalVisionState(VisionCharacterAnalysis):
             "rtdetr_available": self.rtdetr_python.is_file() and self.rtdetr_model.is_file(),
             "vision_python": str(self.rtdetr_python),
             "rtdetr_model": str(self.rtdetr_model),
-            "baberu_available": (
-                self.rtdetr_python.is_file()
-                and (self.baberu_model / "onnx_infer.py").is_file()
-                and (self.baberu_model / "onnx" / "vision_int4.onnx").is_file()
-                and (self.baberu_model / "onnx" / "decoder_prefill_int8.onnx").is_file()
-                and (self.baberu_model / "onnx" / "decoder_step_int8.onnx").is_file()
-                and (self.baberu_model / "tokenizer" / "vocab.json").is_file()
-            ),
+            "baberu_available": self.rtdetr_python.is_file() and is_valid_text_ocr_dir(self.baberu_model),
             "baberu_model": str(self.baberu_model),
+            "text_ocr_model": str(self.baberu_model),
+            "personal_ocr_active": self.personal_ocr_active,
+            "orientation_classifier_available": self.orientation_model.is_file(),
+            "layout_relation_model_available": self.layout_relation_model.is_file(),
+            "character_encoder_available": self.character_encoder_available(),
             "vlm_available": self.vlm_available(),
             "vlm_python": str(self.vlm_python),
             "vlm_model": str(self.vlm_model),
             "vlm_model_label": self.vlm_model_label,
             "vlm_external_network": False,
-            "wd_expression_available": self.wd_expression_available(),
+            "expression_tagger_available": self.expression_tagger_available(),
+            "wd_expression_available": self.expression_tagger_available(),
             "wd_expression_model": str(self.wd_expression_model),
             "wd_expression_tags": str(self.wd_expression_tags),
             "wd_expression_threshold": self.wd_expression_threshold,
@@ -229,6 +243,10 @@ class LocalVisionState(VisionCharacterAnalysis):
             "image_generation_lifecycle_version": 2,
             "comfyui_url": self.panel_drafts.endpoint,
         }
+
+    def estimate_page_orientation(self, image_bytes: bytes) -> dict[str, Any]:
+        model_path = self.orientation_model if self.orientation_model.is_file() else None
+        return classify_page_orientation(image_bytes, model_path=model_path)
 
     # 旧->新: 旧=固定幾何ルールのみ・rotation_override必須 -> 新=M7原稿向き推定とM6座標関係スコア(読み順・話者リンク・page_overlay)を統合し後方互換を維持
     def analyze(
@@ -242,7 +260,7 @@ class LocalVisionState(VisionCharacterAnalysis):
 
         detection = run_local_worker(
             python=self.rtdetr_python,
-            engine="rtdetr",
+            engine="page-detector",
             root=self.vision_root,
             image_bytes=upright_bytes,
             model=self.rtdetr_model,
@@ -312,7 +330,7 @@ class LocalVisionState(VisionCharacterAnalysis):
         if text_regions and page_role != "title":
             ocr_payload = run_local_worker(
                 python=self.rtdetr_python,
-                engine="baberu",
+                engine="text-ocr",
                 root=self.vision_root,
                 image_bytes=upright_bytes,
                 model=self.baberu_model,
@@ -359,6 +377,18 @@ class LocalVisionState(VisionCharacterAnalysis):
             "body_region_count": len(detector_boxes(detection, "bodies", max_area_ratio=0.82)),
             "polygon_panel_count": sum(1 for shape in panel_shapes if shape.get("type") == "polygon"),
         }
+        person_regions = detected_person_regions(detection)
+        tails = buckets.get("tails") if isinstance(buckets.get("tails"), list) else []
+        relation_model = self.layout_relation_model if self.layout_relation_model.is_file() else None
+        if ocr_lines:
+            ocr_lines = link_bubble_speakers(
+                ocr_lines, person_regions, panel_boxes=layout_boxes, tails=tails, model_path=relation_model,
+            )
+        if person_regions and layout_boxes:
+            person_regions = classify_page_overlay_candidates(
+                person_regions, layout_boxes, model_path=relation_model,
+            )
+        result["structure"]["layout_relation_model_used"] = bool(relation_model)
         result["ocr"] = {
             "engine": "Baberu OCR",
             "lines": ocr_lines,
@@ -366,6 +396,6 @@ class LocalVisionState(VisionCharacterAnalysis):
         if printed_strips:
             result["structure"]["independent_four_panel_strips"] = True
         result["people"] = {
-            "regions": detected_person_regions(detection),
+            "regions": person_regions,
         }
         return result

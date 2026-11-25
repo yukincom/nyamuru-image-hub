@@ -16,7 +16,7 @@ from image_generation_lock import hold_generation_lease, validate_generation_fd,
 from shared_llm_process import identity
 from comfy_client import ComfyClient, ComfyOutputError, ComfySubmissionUnknown
 from comfy_generation import ComfySaveError
-from comfy_workflows import WorkflowStore, install_qwen_defaults, negative_prompt_nodes, prompt_upsampler_nodes, validate_request
+from comfy_workflows import WorkflowStore, install_default_generation_workflows, negative_prompt_nodes, prompt_upsampler_nodes, validate_request
 
 from generation_job_results import PROFILE, SAVE_FAILURE_EXIT_CODE, DEFAULT_ROOT, GenerationJobResults
 from generation_prompt_inputs import (
@@ -163,7 +163,7 @@ class QwenGenerationService(GenerationJobResults):
         self.store = JobStore(Path(root or DEFAULT_ROOT))
         self.workflows = workflows or WorkflowStore()
         if workflows is None and root is None:
-            install_qwen_defaults(self.workflows)
+            install_default_generation_workflows(self.workflows)
         self.endpoint = endpoint or os.environ.get('NYAMURU_COMFYUI_URL', 'http://127.0.0.1:8188')
         self.client_factory = client_factory
         self._workers = {}

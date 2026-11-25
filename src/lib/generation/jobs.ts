@@ -1,5 +1,5 @@
 import type {GenerationConversationInput} from '../generationConversation.ts';
-import { type QwenGenerationPlan, qwenGenerationPayload } from './ownerPlan.ts';
+import { type QwenGenerationPlan, buildImageGenerationPayload } from './ownerPlan.ts';
 
 export interface QwenJob {
   jobId: string; status: 'preparing'|'prepared'|'queued'|'running'|'succeeded'|'failed'|'outcome_unknown';
@@ -17,9 +17,9 @@ export interface QwenAdoption { jobId:string; indices:number[] }
 export type QwenHistoryScope = 'owner'|'work';
 
 // 旧->新: 旧=canDeleteQwenJob/executeQwenGeneration等 -> 新=canDeleteGenerationJob/executeImageGeneration等の機能名へ統一
-export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','failed'].includes(job.status);}
+export function canDeleteGenerationJob(job:QwenJob){return ['prepared','succeeded','failed'].includes(job.status);}
 
-export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
+export function formatGenerationJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}
 
 export interface QwenAgentRequest {
   isCurrent:()=>boolean;
@@ -34,7 +34,7 @@ export interface QwenGenerationConversation {
 }
 
 /** The dialog owns the ready controller; reuse it for a single agent request. */
-export async function runQwenAgentRequest(request:QwenAgentRequest, load:()=>Promise<void>, send:(text:string,isCurrent:()=>boolean)=>Promise<string>) {
+export async function runGenerationAgentRequest(request:QwenAgentRequest, load:()=>Promise<void>, send:(text:string,isCurrent:()=>boolean)=>Promise<string>) {
   try {
     if(!request.isCurrent())throw new Error('生成を中止しました');
     await load();
@@ -44,7 +44,7 @@ export async function runQwenAgentRequest(request:QwenAgentRequest, load:()=>Pro
 }
 
 /** Only an unambiguous complete command starts generation. Other text remains draft input. */
-export function qwenConversationIntent(text:string):'generate'|'hold'|'help'|'instruction' {
+export function classifyGenerationConversationIntent(text:string):'generate'|'hold'|'help'|'instruction' {
   const value=text.normalize('NFKC').trim().replace(/[\s、,。.!！]/g,'');
   if(/^(?:まだ|ちょっと)?(?:やめて|止めて|ストップ|キャンセル|待って)(?:ください)?$/u.test(value)||/生成/u.test(value)&&/(?:やめ|止め|キャンセル|待って|まだ|しない|しなく|しません|せず|不要)/u.test(value))return 'hold';
   if(/^(?:(?:この|今の)(?:画像|設定|条件|内容|指示)で|これで|そのまま)?(?:画像を)?生成(?:して(?:ください)?|を開始(?:して(?:ください)?)?)$/u.test(value))return 'generate';
@@ -52,7 +52,7 @@ export function qwenConversationIntent(text:string):'generate'|'hold'|'help'|'in
   return 'instruction';
 }
 
-export function requireQwenInsertionTarget(job:QwenJob,plan:QwenGenerationPlan) {
+export function requireGenerationInsertionTarget(job:QwenJob,plan:QwenGenerationPlan) {
   if(job.documentKey!==plan.documentKey||job.pageNumber!==plan.pageNumber||
     job.panelId!==plan.panelId||job.overlay!==plan.overlay||job.ownerKey!==plan.ownerKey)
     throw new Error('生成結果と差し込み先が一致しません。生成履歴を確認してください');
@@ -60,10 +60,10 @@ export function requireQwenInsertionTarget(job:QwenJob,plan:QwenGenerationPlan) 
 }
 
 /** Shared by the existing button and conversation; service restoration precedes insertion. */
-export async function executeQwenGeneration({id,payload,plan,services,prepare,submit,reconcile,isCurrent,onJob,insert,wait}: {
-  id:string;payload:ReturnType<typeof qwenGenerationPayload>;plan:QwenGenerationPlan;
+export async function executeImageGeneration({id,payload,plan,services,prepare,submit,reconcile,isCurrent,onJob,insert,wait}: {
+  id:string;payload:ReturnType<typeof buildImageGenerationPayload>;plan:QwenGenerationPlan;
   services:(prepare:()=>Promise<QwenJob>,generate:(prepared:QwenJob,token:string)=>Promise<QwenJob>,options:{isCurrent:()=>boolean})=>Promise<QwenJob|undefined>;
-  prepare:(id:string,payload:ReturnType<typeof qwenGenerationPayload>)=>Promise<QwenJob>;
+  prepare:(id:string,payload:ReturnType<typeof buildImageGenerationPayload>)=>Promise<QwenJob>;
   submit:(prepared:QwenJob,token:string)=>Promise<QwenJob>;
   reconcile:(id:string,sha:string)=>Promise<QwenJob>;
   isCurrent:()=>boolean;onJob:(job:QwenJob)=>void;
@@ -80,7 +80,7 @@ export async function executeQwenGeneration({id,payload,plan,services,prepare,su
     return current;
   },{isCurrent});
   if(insert&&isCurrent()&&result&&!result.candidates?.length){
-    requireQwenInsertionTarget(result,plan);
+    requireGenerationInsertionTarget(result,plan);
     await insert(result);return {job:result,inserted:true};
   }
   return {job:result,inserted:false};

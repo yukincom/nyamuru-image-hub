@@ -1,4 +1,4 @@
-import { qwenJobLocation, type QwenJob } from '../../lib/qwenGeneration.ts';
+import { formatGenerationJobLocation, type QwenJob } from '../../lib/qwenGeneration.ts';
 
 export const generationStatusLabel = {
   preparing: '入力を準備中', prepared: '生成準備済み', queued: '生成待ち', running: '生成中',
@@ -34,7 +34,7 @@ export default function GenerationCandidates({
       <pre style={{ whiteSpace: 'pre-wrap' }}>{job.generationPrompt}</pre>
       <p>{job.candidateSeeds?.join(', ')}</p>
     </details>}
-    {job.documentKey && <small>{qwenJobLocation(job)}</small>}
+    {job.documentKey && <small>{formatGenerationJobLocation(job)}</small>}
     {job.candidates?.length && !job.image && <>
       <div class="qwen-candidates" role="group" aria-label="生成候補">
         {job.candidates.map(candidate => <button

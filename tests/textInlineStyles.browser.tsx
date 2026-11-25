@@ -5,7 +5,7 @@ import App from '../src/components/App';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {createPortableProject} from '../src/lib/portableProject';
 import {textStyleSegments} from '../src/lib/textStyle';
-import {captureQwenCompositionCanvas} from '../src/lib/qwenComposition';
+import {capturePageCompositionCanvas} from '../src/lib/qwenComposition';
 import {prepareImageAsset,createFrameArtwork} from '../src/lib/imagePlacement';
 import {saveFigureCropAssets} from '../src/lib/figureCropStore';
 import {paintForFrame,newPaintLayer,paintReferenceBox} from '../src/lib/paintDocument';
@@ -174,10 +174,10 @@ async function verifyBubbleInfo(){
     check(category().value==='typeset'&&body().value==='追加した文字','Tの空き位置クリックで文字を追加できる');
     await change('handwritten');await save();check((await stored()).manga.pages[0].panels[0].bubbles.at(-1)?.text==='追加した文字','Tで新規追加した文字も同じ種類切替に合流');
     button('選択').click();await settle();await choose(0);await change('typeset');await save();
-    const saved=await stored(),out=await captureQwenCompositionCanvas(saved.manga,0,0,'page',{}, {width:364,height:514});
+    const saved=await stored(),out=await capturePageCompositionCanvas(saved.manga,0,0,'page',{}, {width:364,height:514});
     check(out.width===364&&out.height===514,'原字・描画レイヤーを持つ写植文字を実Canvasへ書き出し');
     const asBalloon=structuredClone(saved);asBalloon.manga.pages[0].panels[0].bubbles[0].shape='normal';
-    const withOutline=await captureQwenCompositionCanvas(asBalloon.manga,0,0,'page',{}, {width:364,height:514});
+    const withOutline=await capturePageCompositionCanvas(asBalloon.manga,0,0,'page',{}, {width:364,height:514});
     const pixels=out.getContext('2d')!.getImageData(0,0,out.width,out.height).data,outlined=withOutline.getContext('2d')!.getImageData(0,0,withOutline.width,withOutline.height).data;
     check(pixels.some((value,index)=>value!==outlined[index]),'書き出しでも写植文字は吹き出しの輪郭を描かない');
     out.width=out.height=withOutline.width=withOutline.height=1;
@@ -247,7 +247,7 @@ async function verifyLetteringDepth(){
         check(order.indexOf('bubble-1')<order.indexOf('figure-0'),`${label}：別の文字を番号順へ入れ替えない`);
         const nativeStack=node(overlay).closest(overlay?'.page-overlay-bubble-stack-item':'.panel-bubble-clip')!,figureStack=overlay?nativeStack.parentElement!.querySelector('.page-overlay-figure-artwork')!:nativeStack.parentElement!.querySelector('[data-art-owner="figure-0"]')!;
         check(Boolean(nativeStack.compareDocumentPosition(figureStack)&Node.DOCUMENT_POSITION_FOLLOWING)===(depth==='behind'),`${label}：DOMも人物の直前/直後に同期`);
-        const canvas=await captureQwenCompositionCanvas(current.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200}),ctx=canvas.getContext('2d')!;
+        const canvas=await capturePageCompositionCanvas(current.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200}),ctx=canvas.getContext('2d')!;
         const pixel=(x:number,y:number)=>[...ctx.getImageData(x*2,y*2,1,1).data].slice(0,3).join(',');
         check(pixel(42,42)===(depth==='behind'?'221,34,34':'34,68,221'),`${label}：${depth}で人物と描き文字の画素が一致`);
         check(pixel(55,55)===(depth==='behind'?'221,34,34':'34,221,68'),`${label}：${depth}で原字も同じ重なり`);
@@ -305,7 +305,7 @@ async function verifyTextOrder(){
         check(dom===order,`${label}：${stage}のDOM描画順`);
         await save();const saved=await stored(),storedOwner=overlay?saved.manga.pages[0].page_overlay!:saved.manga.pages[0].panels[0];
         check(storedOwner.bubbles!.map(item=>item.text).join(',')==='1,2,3',`${label}：${stage}でも本文番号を維持`);
-        const canvas=await captureQwenCompositionCanvas(saved.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200});
+        const canvas=await capturePageCompositionCanvas(saved.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200});
         check([...canvas.getContext('2d')!.getImageData(100,100,1,1).data].slice(0,3).join(',')===pixel,`${label}：${stage}の書出画素`);canvas.width=canvas.height=1;
       };
       await verifyOrder('bubble-0,bubble-1,bubble-2','221,34,34','初期1・2・3');
@@ -370,7 +370,7 @@ async function verify(){
     for(const decoration of ['plain','italic','underline','strikethrough','fontWeight']){
       const doc=structuredClone(snapshots);doc.manga.pages[0].panels[0].screen_text=[];delete doc.manga.pages[0].page_overlay;
       doc.manga.pages[0].panels[0].bubbles=[{text:'文字AB',shape:'normal',bbox:{x:50,y:35,w:90,h:50},text_style:{font:'Hiragino Sans',fontWeight:decoration==='fontWeight'?700:400,fontSize:24,orientation,...(decoration==='italic'?{italic:true}:{}),...(decoration==='underline'?{underline:true}:{}),...(decoration==='strikethrough'?{strikethrough:true}:{})}}];
-      const canvas=await captureQwenCompositionCanvas(doc.manga,0,0,'page',{}, {width:364,height:514});let hash=2166136261;
+      const canvas=await capturePageCompositionCanvas(doc.manga,0,0,'page',{}, {width:364,height:514});let hash=2166136261;
       for(const byte of canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data){hash^=byte;hash=Math.imul(hash,16777619);}hashes.add(hash>>>0);canvas.width=canvas.height=1;
     }
     check(hashes.size===5,`${orientation==='horizontal'?'横':'縦'}書きの実Canvas画素でも4種がそれぞれ装飾なしの文字と異なる`);
@@ -432,7 +432,7 @@ async function verifyAlignment(){
       for(const textAlign of ['left','center','right'] as const){
         const doc=structuredClone(saved);doc.manga.pages[0].panels[0].screen_text=[];delete doc.manga.pages[0].page_overlay;
         const text=doc.manga.pages[0].panels[0].bubbles[0];text.text_style={...text.text_style,orientation,textAlign};
-        const canvas=await captureQwenCompositionCanvas(doc.manga,0,0,'page',{}, {width:364,height:514});let hash=2166136261;
+        const canvas=await capturePageCompositionCanvas(doc.manga,0,0,'page',{}, {width:364,height:514});let hash=2166136261;
         for(const byte of canvas.getContext('2d')!.getImageData(0,0,canvas.width,canvas.height).data){hash^=byte;hash=Math.imul(hash,16777619);}hashes.add(hash>>>0);canvas.width=canvas.height=1;
       }
       check(hashes.size===3,`${orientation==='horizontal'?'横':'縦'}書きの実Canvasでも3種の行揃えを描き分ける`);
@@ -544,7 +544,7 @@ async function verifyLayerPaintOrder(){
       if(overlay)page.images=[sibling];else page.panels[0].images=[sibling];
       for(const band of ['outside','below','above']){
         ink.layers[0].visible=band!=='outside';ink.layers[1].visible=band==='above';
-        const canvas=await captureQwenCompositionCanvas(doc.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200});
+        const canvas=await capturePageCompositionCanvas(doc.manga,0,0,overlay?'page':'panel',{}, {width:200,height:200});
         const ctx=canvas.getContext('2d')!,pixel=(x:number,y:number)=>[...ctx.getImageData(x*2,y*2,1,1).data].slice(0,3).join(',');
         check(pixel(15,15)==='34,221,68',`${label}：${band}の外側直下は文字の外に表示`);
         check(pixel(30,30)===(band==='outside'?'255,255,255':band==='below'?'221,34,34':'34,68,221'),`${label}：${band}の文字内の画素順`);

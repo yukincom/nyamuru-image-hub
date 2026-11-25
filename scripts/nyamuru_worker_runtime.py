@@ -11,17 +11,17 @@ import time
 from pathlib import Path
 from typing import Any
 
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-TOOLS_ROOT = REPO_ROOT.parent
-DEFAULT_VISION_ROOT = REPO_ROOT / ".local-vision"
-DEFAULT_VLM_MODEL_LABEL = "lmstudio-community/Qwen3-VL-8B-Instruct-MLX-4bit"
-DEFAULT_VLM_CACHE = (
-    Path.home()
-    / ".cache"
-    / "huggingface"
-    / "hub"
-    / "models--lmstudio-community--Qwen3-VL-8B-Instruct-MLX-4bit"
+from vision_model_paths import (
+    DEFAULT_VISION_ROOT,
+    DEFAULT_VLM_CACHE,
+    DEFAULT_VLM_MODEL_LABEL,
+    REPO_ROOT,
+    TOOLS_ROOT,
+    cached_model_snapshot,
+    default_vision_paths,
+    default_vlm_paths,
+    huggingface_hub_cache,
+    venv_python,
 )
 
 ACTIVE_WORKERS_LOCK = threading.Lock()
@@ -88,81 +88,60 @@ def terminate_active_workers(grace_seconds: float = 2.0) -> None:
             temporary_path.unlink(missing_ok=True)
 
 
-def venv_python(venv_root: Path) -> Path:
-    if os.name == "nt":
-        return venv_root / "Scripts" / "python.exe"
-    return venv_root / "bin" / "python"
-
-
 # 旧->新: 旧=検出/OCR/VLMパス解決を当ファイルに混在 -> 新=vision_model_paths.pyへ分離しM1+M2/M7短命ワーカーを追加
-def default_vision_paths() -> dict[str, Path]:
-    vision_root = Path(os.environ.get("NYAMURU_VISION_ROOT", DEFAULT_VISION_ROOT)).expanduser()
-    primary_python = venv_python(vision_root / ".venv")
-    vision_python = Path(
-        os.environ.get(
-            "NYAMURU_VISION_PYTHON",
-            primary_python,
-        )
-    ).expanduser()
-    primary_model = vision_root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
-    rtdetr_model = Path(
-        os.environ.get(
-            "NYAMURU_RTDETR_MODEL",
-            primary_model,
-        )
-    ).expanduser()
-    preferred_baberu_model = vision_root / "models" / "baberu-ocr"
-    baberu_model = Path(os.environ.get("NYAMURU_BABERU_MODEL", preferred_baberu_model)).expanduser()
-    preferred_wd_expression_root = vision_root / "models" / "wd-vit-tagger-v3"
-    wd_expression_model = Path(
-        os.environ.get("NYAMURU_WD_EXPRESSION_MODEL", preferred_wd_expression_root / "model.onnx")
-    ).expanduser()
-    wd_expression_tags = Path(
-        os.environ.get("NYAMURU_WD_EXPRESSION_TAGS", preferred_wd_expression_root / "selected_tags.csv")
-    ).expanduser()
-    return {
-        "vision_root": vision_root,
-        "vision_python": vision_python,
-        "rtdetr_model": rtdetr_model,
-        "baberu_model": baberu_model,
-        "wd_expression_model": wd_expression_model,
-        "wd_expression_tags": wd_expression_tags,
-    }
-
-
-def cached_model_snapshot(cache_root: Path) -> Path:
-    reference = cache_root / "refs" / "main"
+def run_orientation_worker(
+    *,
+    python: Path,
+    image_bytes: bytes,
+    model: Path | None = None,
+    min_confidence: float = 0.80,
+) -> dict[str, Any]:
+    worker = Path(__file__).with_name("local_orientation_worker.py")
+    if WORKER_SHUTDOWN_EVENT.is_set():
+        raise RuntimeError("bridgeの終了処理中のためモデルワーカーを起動しません")
+    if not python.is_file() or not worker.is_file():
+        raise FileNotFoundError("原稿向き判定のローカル実行環境が見つかりません")
+    temporary_path: Path | None = None
     try:
-        revision = reference.read_text(encoding="utf-8").strip()
-    except OSError:
-        return cache_root / "snapshots" / "missing"
-    return cache_root / "snapshots" / revision
+        with tempfile.NamedTemporaryFile(prefix="nyamuru-orient-", suffix=".image", delete=False) as temporary:
+            temporary_path = Path(temporary.name)
+            temporary.write(image_bytes)
+        command = [str(python), str(worker), "--image", str(temporary_path), "--min-confidence", str(min_confidence)]
+        if model is not None:
+            command.extend(("--model", str(model)))
+        return run_worker_process(
+            command, request={}, temporary_paths=[temporary_path],
+            engine="page-orientation", timeout_seconds=30,
+        )
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
-def huggingface_hub_cache() -> Path:
-    configured = os.environ.get("HF_HUB_CACHE", "").strip()
-    if configured:
-        return Path(configured).expanduser().absolute()
-    hf_home = os.environ.get("HF_HOME", "").strip()
-    if hf_home:
-        return (Path(hf_home).expanduser() / "hub").absolute()
-    xdg_cache = os.environ.get("XDG_CACHE_HOME", "").strip()
-    if xdg_cache:
-        return (Path(xdg_cache).expanduser() / "huggingface" / "hub").absolute()
-    return (Path.home() / ".cache" / "huggingface" / "hub").absolute()
-
-
-def default_vlm_paths() -> dict[str, Path | str]:
-    configured_model = os.environ.get("NYAMURU_VLM_MODEL", "").strip()
-    model = Path(configured_model).expanduser() if configured_model else cached_model_snapshot(DEFAULT_VLM_CACHE)
-    configured_python = os.environ.get("NYAMURU_VLM_PYTHON", "").strip()
-    python = Path(configured_python).expanduser() if configured_python else venv_python(TOOLS_ROOT / "ComfyUI" / ".venv")
-    return {
-        "vlm_python": python,
-        "vlm_model": model,
-        "vlm_model_label": os.environ.get("NYAMURU_VLM_MODEL_LABEL", DEFAULT_VLM_MODEL_LABEL).strip()
-        or DEFAULT_VLM_MODEL_LABEL,
-    }
+def run_character_encoder_worker(
+    *,
+    python: Path,
+    worker_args: list[str],
+    request_payload: dict[str, Any],
+    temporary_paths: list[Path],
+    timeout_seconds: int = 60,
+) -> dict[str, Any]:
+    worker = Path(__file__).with_name("local_character_encoder_worker.py")
+    if WORKER_SHUTDOWN_EVENT.is_set():
+        raise RuntimeError("bridgeの終了処理中のためモデルワーカーを起動しません")
+    if not python.is_file() or not worker.is_file():
+        raise FileNotFoundError("軽量キャラエンコーダのローカル実行環境が見つかりません")
+    return run_worker_process(
+        [str(python), str(worker), *worker_args],
+        request=request_payload,
+        temporary_paths=temporary_paths,
+        engine="character-encoder",
+        timeout_seconds=timeout_seconds,
+        environment={
+            **os.environ, "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1",
+            "HF_DATASETS_OFFLINE": "1", "TOKENIZERS_PARALLELISM": "false",
+        },
+    )
 
 
 def run_worker_process(

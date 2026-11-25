@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {runQwenAgentRequest,qwenConversationIntent,executeQwenGeneration,qwenGenerationPayload,qwenGenerationTarget,requireQwenInsertionTarget} from '../src/lib/qwenGeneration.ts';
+import {runGenerationAgentRequest,classifyGenerationConversationIntent,executeImageGeneration,buildImageGenerationPayload,resolveGenerationTarget,requireGenerationInsertionTarget} from '../src/lib/qwenGeneration.ts';
 import {loadGenerationPreferences,saveGenerationPreferences} from '../src/lib/generationPreferences.ts';
 import {cloudModelAccess} from '../src/lib/modelPrivacy.ts';
 import {resolveGenerationRoute} from '../src/lib/modelRouting.ts';
@@ -15,7 +15,7 @@ function fixture({status='succeeded',change={},cancelAt='',failRestore=false}={}
  const calls=[];let current=true;
  const prepared={...plan,jobId:'job',requestSha256:'a'.repeat(64),status:'prepared'};
  const result={...prepared,status,image:'data:image/png;base64,AA==',fileName:'result.png',...change};
- const options={id:'job',plan,payload:qwenGenerationPayload(plan,[{label:'資料',characterKeys:['koyuki'],image:'data:ref'}]),
+ const options={id:'job',plan,payload:buildImageGenerationPayload(plan,[{label:'資料',characterKeys:['koyuki'],image:'data:ref'}]),
   prepare:async()=>{calls.push('prepare');return prepared},submit:async()=>{calls.push('submit');if(cancelAt==='submit')current=false;return result},
   reconcile:async()=>{calls.push('reconcile');return {...result,status:'succeeded'}},onJob:()=>calls.push('job'),isCurrent:()=>current,
   wait:async()=>{calls.push('wait');if(cancelAt==='wait')current=false},insert:async()=>calls.push('insert'),
@@ -26,57 +26,57 @@ function fixture({status='succeeded',change={},cancelAt='',failRestore=false}={}
  return {calls,options,result};
 }
 test('only complete affirmative generation commands execute; holds, quotes and questions cannot execute',()=>{
- for(const text of ['生成して','生成してください。','この画像で生成して','今の条件で生成してください','これで画像を生成して','そのまま生成を開始して'])assert.equal(qwenConversationIntent(text),'generate',text);
- for(const text of ['生成しないで','まだ生成してほしくない','生成せず待って','生成して、いややめて'])assert.equal(qwenConversationIntent(text),'hold',text);
- for(const text of ['「生成して」と言えばいい？','生成してくださいと言われた','生成できますか','この画像を説明して？'])assert.equal(qwenConversationIntent(text),'help',text);
- for(const text of ['顔は笑顔で、右を見る','背景は不要です','笑顔にはしないでください','別人の顔にしないで','目に「星」を入れて','待っている姿'])assert.equal(qwenConversationIntent(text),'instruction',text);
+ for(const text of ['生成して','生成してください。','この画像で生成して','今の条件で生成してください','これで画像を生成して','そのまま生成を開始して'])assert.equal(classifyGenerationConversationIntent(text),'generate',text);
+ for(const text of ['生成しないで','まだ生成してほしくない','生成せず待って','生成して、いややめて'])assert.equal(classifyGenerationConversationIntent(text),'hold',text);
+ for(const text of ['「生成して」と言えばいい？','生成してくださいと言われた','生成できますか','この画像を説明して？'])assert.equal(classifyGenerationConversationIntent(text),'help',text);
+ for(const text of ['顔は笑顔で、右を見る','背景は不要です','笑顔にはしないでください','別人の顔にしないで','目に「星」を入れて','待っている姿'])assert.equal(classifyGenerationConversationIntent(text),'instruction',text);
 });
 test('conversation executes once and inserts after service restoration into the captured owner',async()=>{
- const f=fixture();const result=await executeQwenGeneration(f.options);
+ const f=fixture();const result=await executeImageGeneration(f.options);
  assert.equal(result.inserted,true);assert.deepEqual(f.calls,['prepare','submit','job','restore','insert']);
 });
 test('queued generation polls using the prepared job and inserts only the succeeded result',async()=>{
  const f=fixture({status:'queued'});f.options.reconcile=async(id,sha)=>{assert.equal(id,'job');assert.equal(sha,'a'.repeat(64));f.calls.push('reconcile');return {...f.result,status:'succeeded'}};
- assert.equal((await executeQwenGeneration(f.options)).inserted,true);
+ assert.equal((await executeImageGeneration(f.options)).inserted,true);
  assert.deepEqual(f.calls,['prepare','submit','job','wait','reconcile','job','restore','insert']);
 });
 test('button generation shares the pipeline while leaving insertion to its existing button',async()=>{
- const f=fixture();delete f.options.insert;assert.equal((await executeQwenGeneration(f.options)).inserted,false);assert.ok(!f.calls.includes('insert'));
+ const f=fixture();delete f.options.insert;assert.equal((await executeImageGeneration(f.options)).inserted,false);assert.ok(!f.calls.includes('insert'));
 });
 test('cancellation before submission, during generation, or after restoration prevents insertion',async()=>{
  for(const cancelAt of ['prepare','submit','wait','restore']){
-  const f=fixture({status:cancelAt==='wait'?'running':'succeeded',cancelAt});assert.equal((await executeQwenGeneration(f.options)).inserted,false);
+  const f=fixture({status:cancelAt==='wait'?'running':'succeeded',cancelAt});assert.equal((await executeImageGeneration(f.options)).inserted,false);
   assert.ok(!f.calls.includes('insert'));assert.ok(f.calls.includes('restore'));if(cancelAt==='prepare')assert.ok(!f.calls.includes('submit'));
  }
 });
 // 見込み/合格: APIで照合済みの結果も、未完了または挿入先不一致なら挿入しない。範囲: 実workflow、通信は模擬。
 test('failed, unknown and mismatched jobs never insert or automatically submit again',async()=>{
  for(const option of [{status:'failed'},{status:'outcome_unknown'},...Object.entries({documentKey:'other',pageNumber:9,panelId:9,overlay:true,ownerKey:'figure-2'}).map(([key,value])=>({change:{[key]:value}}))]){
-  const f=fixture(option);await assert.rejects(executeQwenGeneration(f.options));assert.equal(f.calls.filter(x=>x==='submit').length,1);assert.ok(!f.calls.includes('insert'));
+  const f=fixture(option);await assert.rejects(executeImageGeneration(f.options));assert.equal(f.calls.filter(x=>x==='submit').length,1);assert.ok(!f.calls.includes('insert'));
  }
 });
 test('restoration failure leaves the result available but never inserts',async()=>{
- const f=fixture({failRestore:true});await assert.rejects(executeQwenGeneration(f.options),/restore failed/);assert.ok(!f.calls.includes('insert'));assert.ok(f.calls.includes('job'));
+ const f=fixture({failRestore:true});await assert.rejects(executeImageGeneration(f.options),/restore failed/);assert.ok(!f.calls.includes('insert'));assert.ok(f.calls.includes('job'));
 });
 test('character reference and drawing reference roles remain separate in the existing payload',()=>{
  const refs=[{label:'設定画',characterKeys:['koyuki'],image:'data:character'},{label:'服の参考',characterKeys:[],image:'data:drawing'}];
- assert.deepEqual(qwenGenerationPayload(plan,refs).references.map(r=>r.character_keys),[['koyuki'],[]]);
- assert.throws(()=>qwenGenerationPayload(plan,[refs[1]]),/参照資料を選んで/);
- assert.throws(()=>requireQwenInsertionTarget({...fixture().result,image:undefined},plan),/完了していません/);
+ assert.deepEqual(buildImageGenerationPayload(plan,refs).references.map(r=>r.character_keys),[['koyuki'],[]]);
+ assert.throws(()=>buildImageGenerationPayload(plan,[refs[1]]),/参照資料を選んで/);
+ assert.throws(()=>requireGenerationInsertionTarget({...fixture().result,image:undefined},plan),/完了していません/);
 });
 
 
 test('agent handoff loads registered references then uses the same generator and insertion pipeline',async()=>{
  const f=fixture(),events=[];let resolved;
- await runQwenAgentRequest({isCurrent:()=>true,resolve:value=>{resolved=value;},reject:assert.fail},
-   async()=>events.push('references'),async(text,isCurrent)=>{assert.equal(text,'生成して');assert.equal(isCurrent(),true);events.push('generate');return (await executeQwenGeneration(f.options)).inserted?'差し込みました':'中止';});
+ await runGenerationAgentRequest({isCurrent:()=>true,resolve:value=>{resolved=value;},reject:assert.fail},
+   async()=>events.push('references'),async(text,isCurrent)=>{assert.equal(text,'生成して');assert.equal(isCurrent(),true);events.push('generate');return (await executeImageGeneration(f.options)).inserted?'差し込みました':'中止';});
  assert.deepEqual(events,['references','generate']);assert.equal(resolved,'差し込みました');
  assert.deepEqual(f.calls,['prepare','submit','job','restore','insert']);
 });
 test('missing registered references or cancelled handoff never submits an image job',async()=>{
  for(const condition of ['missing','cancelled','cancel-after-load']){
    let current=condition!=='cancelled',rejected;
-   await runQwenAgentRequest({isCurrent:()=>current,resolve:assert.fail,reject:error=>{rejected=error;}},
+   await runGenerationAgentRequest({isCurrent:()=>current,resolve:assert.fail,reject:error=>{rejected=error;}},
      async()=>{if(condition==='missing')throw Error('登録済みの人物資料がありません');current=false;},async()=>assert.fail('must not generate'));
    assert.match(rejected.message,/資料|中止/);
  }
@@ -98,7 +98,7 @@ test('cloud handoff rechecks current execution and adult consent after pending c
   saveGenerationPreferences(storage,execution);
   let finishCapture;const calls=[];
   const context={operation:task=>task(),attempted:{current:null},draft:{current:{prompt:plan.prompt,references:[{label:'資料',characterKeys:['koyuki'],image:'data:reference'}]}},
-   alive:{current:true},AbortController,generationAbort:{current:undefined},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,qwenGenerationPayload,qwenGenerationTarget,generatedTarget:{current:undefined},
+   alive:{current:true},AbortController,generationAbort:{current:undefined},usesPoseImage:true,setPhase:()=>{},posePending:{current:new Promise(resolve=>{finishCapture=resolve;})},plan,buildImageGenerationPayload,resolveGenerationTarget,generatedTarget:{current:undefined},
    cloud:true,workflow:null,threeImages:false,targetError:'',execution,connection:{},adultContent:true,currentGenerationPreferences:()=>loadGenerationPreferences(storage),cloudModelAccess,resolveGenerationRoute,validateGenerationInputs,
    Blob,deliverAgentWorkflowYamlFiles,saveAgentYaml:undefined,exportAgentYaml:()=>{calls.push('yaml');return [{fileName:'work.yaml',yaml:'title: work'}];},downloadBrowserBlob:(_blob,name)=>calls.push(['download',name]),setNotice:()=>{}};
   const pending=appFunction('generate',context,'generation/createGenerationActions.ts')();
@@ -149,20 +149,20 @@ test('composition planning reads guide visibility from the document saved when p
  const context={documentRef:{current:before},qwenGenerationRef:{current:null},qwenPreparing:{current:false},imageImportBusy:false,projectOperation:{current:false},
    paintSessionRef:{current:{}},paintController:{current:{close:async()=>{context.documentRef.current=after;}}},
    artworkGuideVisible:(key,panel,page,overlay,current)=>{assert.equal(current,after);calls.push(key);return false;},
-   buildQwenCompositionPlan:(manga,page,panel,scope,guides)=>{assert.equal(manga,after.manga);assert.equal(guides['0:figure-0'],false);return {scope};},
-   captureQwenComposition:async()=> 'data:composite',crypto:{randomUUID:()=> 'job'},setToast:()=>{},setVoiceOpen:()=>{},setQwenGeneration:value=>calls.push(value)};
+   buildPageCompositionPlan:(manga,page,panel,scope,guides)=>{assert.equal(manga,after.manga);assert.equal(guides['0:figure-0'],false);return {scope};},
+   capturePageComposition:async()=> 'data:composite',crypto:{randomUUID:()=> 'job'},setToast:()=>{},setVoiceOpen:()=>{},setQwenGeneration:value=>calls.push(value)};
  await appFunction('requestCompositionGeneration',context)('page',-1,0);
  assert.equal(calls.at(-1).document,after);assert.equal(calls.at(-1).plan.compositionImage,'data:composite');assert.equal(context.qwenPreparing.current,false);
 });
 
 test('promptless-two-images workflow allows empty prompt and orders image_1 (character) then image_2 (reference)',async()=>{
- const { qwenPlanForWorkflow } = await import('../src/lib/generation/ownerPlan.ts');
+ const { adaptGenerationPlanForWorkflow } = await import('../src/lib/generation/ownerPlan.ts');
  const workflow={id:'2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01',name:'P-H3-Image_Edit_Mac_bf16_v2',version:1,
   graph:{'4':{class_type:'LoadImage',inputs:{image:'a.png'}},'5':{class_type:'LoadImage',inputs:{image:'b.png'}},'10':{class_type:'RandomNoise',inputs:{noise_seed:1}},'13':{class_type:'SaveImage',inputs:{images:['12',0]}}},
   binding:{prompt:[],seed:[{node:'10',input:'noise_seed'}],width:[],height:[],images:[[{node:'4',input:'image'}],[{node:'5',input:'image'}]],output:{node:'13',index:0},prompt_mode:'promptless-two-images',fixed_size:null}};
- const twoImagePlan=qwenPlanForWorkflow({...plan,prompt:'',scope:'page',characterKeys:['koyuki','other'],compositionImage:'data:image/png;base64,BBB'},workflow);
+ const twoImagePlan=adaptGenerationPlanForWorkflow({...plan,prompt:'',scope:'page',characterKeys:['koyuki','other'],compositionImage:'data:image/png;base64,BBB'},workflow);
  assert.equal(twoImagePlan.promptlessTwoImages,true);
- const payload=qwenGenerationPayload(twoImagePlan,[{label:'こゆき（横）',characterKeys:['koyuki'],image:'data:image/png;base64,AAA'}]);
+ const payload=buildImageGenerationPayload(twoImagePlan,[{label:'こゆき（横）',characterKeys:['koyuki'],image:'data:image/png;base64,AAA'}]);
  assert.equal(payload.mode,'new');
  assert.equal(payload.prompt,'');
  assert.deepEqual(payload.character_keys,['koyuki']);

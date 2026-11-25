@@ -13,7 +13,11 @@ from typing import Any
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--engine", choices=("rtdetr", "baberu", "wd-expression"), required=True)
+    parser.add_argument(
+        "--engine",
+        choices=("page-detector", "text-ocr", "expression-tagger", "rtdetr", "baberu", "wd-expression"),
+        required=True,
+    )
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
     parser.add_argument("--model", type=Path)
@@ -22,18 +26,18 @@ def parse_args() -> argparse.Namespace:
 
 
 # 旧->新: 旧=run_rtdetr/load_baberu/run_baberu(モデル名固定) -> 新=detect_page_elements/load_text_ocr_engine/recognize_page_text_regions(機能名)＋M4個人筆跡OCR優先読込・shape_hint引継
-def run_rtdetr(root: Path, image: Path, model: Path | None, confidence: float) -> dict[str, Any]:
-    from rtdetr_onnx import detect_page
+def detect_page_elements(root: Path, image: Path, model: Path | None, confidence: float) -> dict[str, Any]:
+    from rtdetr_onnx import detect_manga_page_elements
 
     model_path = model or root / "models" / "rtdetrv4-x-manga109s_v2" / "model.onnx"
-    return detect_page(image, model_path=model_path, conf_threshold=confidence)
+    return detect_manga_page_elements(image, model_path=model_path, conf_threshold=confidence)
 
 
-def load_baberu(model_dir: Path):
+def load_text_ocr_engine(model_dir: Path):
     module_path = model_dir / "onnx_infer.py"
     spec = importlib.util.spec_from_file_location("nyamuru_baberu", module_path)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"Baberu OCRを読み込めません: {module_path}")
+        raise RuntimeError(f"OCRエンジンを読み込めません: {module_path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.BaberuOnnxOCR(
@@ -43,13 +47,13 @@ def load_baberu(model_dir: Path):
     )
 
 
-def run_baberu(root: Path, image: Path, regions: list[dict[str, Any]], model: Path | None) -> dict[str, Any]:
-    """Recognize each RT-DETR text region without changing its placement box."""
+def recognize_page_text_regions(root: Path, image: Path, regions: list[dict[str, Any]], model: Path | None) -> dict[str, Any]:
+    """Recognize each detected text region without changing its placement box."""
 
     from PIL import Image, ImageOps
 
     model_dir = (model or root / "models" / "baberu-ocr").resolve()
-    engine = load_baberu(model_dir)
+    engine = load_text_ocr_engine(model_dir)
     with Image.open(image) as opened:
         page = ImageOps.exif_transpose(opened).convert("RGB")
     lines: list[dict[str, Any]] = []
@@ -78,7 +82,7 @@ def run_baberu(root: Path, image: Path, regions: list[dict[str, Any]], model: Pa
         ))
         text = str(engine(crop)).strip()
         region_id = str(region.get("id", index))
-        lines.append({
+        line_entry: dict[str, Any] = {
             "id": f"rtdetr-{region_id}",
             "text": text,
             "bbox": [left, top, right - left, bottom - top],
@@ -87,7 +91,11 @@ def run_baberu(root: Path, image: Path, regions: list[dict[str, Any]], model: Pa
             "detection_source": "rtdetr-text",
             "group_id": f"rtdetr-text-{region_id}",
             "unreadable": not bool(text),
-        })
+        }
+        shape_hint = region.get("bubble_shape_hint")
+        if isinstance(shape_hint, str) and shape_hint.strip():
+            line_entry["bubble_shape_hint"] = shape_hint.strip()
+        lines.append(line_entry)
     return {
         "engine": "Baberu OCR",
         "width": page.width,
@@ -105,12 +113,12 @@ def main() -> int:
             value = json.loads(raw_request)
             if isinstance(value, dict):
                 request = value
-        if args.engine == "rtdetr":
-            result = run_rtdetr(args.root.resolve(), args.image.resolve(), args.model, args.confidence)
-        elif args.engine == "baberu":
+        if args.engine in ("page-detector", "rtdetr"):
+            result = detect_page_elements(args.root.resolve(), args.image.resolve(), args.model, args.confidence)
+        elif args.engine in ("text-ocr", "baberu"):
             regions = request.get("regions") if isinstance(request.get("regions"), list) else []
-            result = run_baberu(args.root.resolve(), args.image.resolve(), regions, args.model)
-        elif args.engine == "wd-expression":
+            result = recognize_page_text_regions(args.root.resolve(), args.image.resolve(), regions, args.model)
+        elif args.engine in ("expression-tagger", "wd-expression"):
             from local_wd_expression_tagger import WdExpressionTagger
 
             if args.model is None:

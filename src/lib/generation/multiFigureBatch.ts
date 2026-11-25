@@ -1,7 +1,7 @@
 import type { QwenAdoption, QwenGenerationPlan, QwenJob, QwenLayerReference, QwenReference } from '../qwenGeneration.ts';
-import { executeQwenGeneration, qwenGenerationPayload, qwenGenerationTarget } from '../qwenGeneration.ts';
+import { executeImageGeneration, buildImageGenerationPayload, resolveGenerationTarget } from '../qwenGeneration.ts';
 import type { ComfyWorkflowDefinition } from '../comfyWorkflows.ts';
-import { prepareQwenJob, reconcileQwenJob, selectQwenCandidate, submitQwenJob } from '../bridge/generationJobs.ts';
+import { prepareImageGenerationJob, reconcileImageGenerationJob, selectImageGenerationCandidate, submitImageGenerationJob } from '../bridge/generationJobs.ts';
 import { withImageGenerationServices, withNewCreationBridgeSession } from '../localBridgeLifecycle.ts';
 import { adoptAndInsertCandidates, dataUrlToPngFile, prepareGeneratedInsertionFile } from './insertion.ts';
 
@@ -75,14 +75,14 @@ export async function runMultiFigureBatch(options: {
     onUpdate({ id: task.id, status: 'running', phase: '準備中' });
 
     try {
-      const targetPlan = qwenGenerationTarget(task.plan, false);
+      const targetPlan = resolveGenerationTarget(task.plan, false);
       const twoImagesPromptless = workflow.binding.prompt_mode === 'promptless-two-images';
       const effectivePlan: QwenGenerationPlan = {
         ...task.plan,
         prompt: twoImagesPromptless ? '' : (task.prompt ?? task.plan.prompt),
         promptlessTwoImages: twoImagesPromptless,
       };
-      const basePayload = qwenGenerationPayload(
+      const basePayload = buildImageGenerationPayload(
         effectivePlan,
         task.references,
         task.reference?.kind === 'paint' ? task.reference.image : undefined,
@@ -99,14 +99,14 @@ export async function runMultiFigureBatch(options: {
       };
 
       let currentJob: QwenJob | undefined;
-      const execution = await executeQwenGeneration({
+      const execution = await executeImageGeneration({
         id: crypto.randomUUID(),
         payload: workflowPayload,
         plan: targetPlan,
         isCurrent: () => !signal.aborted,
-        prepare: async (id, payload) => prepareQwenJob(id, payload),
-        submit: (prepared, token) => submitQwenJob(prepared, token),
-        reconcile: reconcileQwenJob,
+        prepare: async (id, payload) => prepareImageGenerationJob(id, payload),
+        submit: (prepared, token) => submitImageGenerationJob(prepared, token),
+        reconcile: reconcileImageGenerationJob,
         onJob: (job) => {
           currentJob = job;
           onUpdate({ id: task.id, status: 'running', job });
@@ -150,7 +150,7 @@ export async function runMultiFigureBatch(options: {
           indices: [execution.job.candidates[0].index],
           target: targetPlan,
           selectCandidate: (job, indices, adopted) =>
-            withNewCreationBridgeSession(() => selectQwenCandidate(job, indices, adopted)),
+            withNewCreationBridgeSession(() => selectImageGenerationCandidate(job, indices, adopted)),
           insertFiles: (files, adoption) => task.insert(files, targetPlan, adoption),
         });
         currentJob = finished;

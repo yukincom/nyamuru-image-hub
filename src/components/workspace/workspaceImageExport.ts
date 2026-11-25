@@ -7,7 +7,7 @@ import {
 } from '../../lib/pageExport';
 import { getPrintSetup } from '../../lib/printSettings';
 import { requestClipExport, requestCmcExport } from '../../lib/localBridge';
-import { captureQwenCompositionCanvas } from '../../lib/pageComposition';
+import { capturePageCompositionCanvas } from '../../lib/pageComposition';
 import { paintColorMode } from '../../lib/paintColor';
 
 interface Context {
@@ -34,7 +34,7 @@ export function createImageExportActions({
     }
     page.panels.forEach((panel,index)=>['background',...(panel.figures??[]).map((_,i)=>`figure-${i}`),...panel.bubbles.map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`${index}:${key}`]=false;}));
     const overlay=page.page_overlay;[...(overlay?.figures??[]).map((_,i)=>`figure-${i}`),...(overlay?.bubbles??[]).map((_,i)=>`bubble-${i}`)].forEach(key=>{guides[`overlay:${key}`]=false;});
-    const canvas=await captureQwenCompositionCanvas(current.manga,pageIndex,Math.min(activePanelRef.current,Math.max(0,page.panels.length-1)),'page',guides,{...size,includeGenerated:true});
+    const canvas=await capturePageCompositionCanvas(current.manga,pageIndex,Math.min(activePanelRef.current,Math.max(0,page.panels.length-1)),'page',guides,{...size,includeGenerated:true});
     try{
       let blob:Blob;
       if(format==='psd'){

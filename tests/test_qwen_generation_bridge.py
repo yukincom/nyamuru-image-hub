@@ -662,7 +662,7 @@ class HandwrittenPromptPreparationTest(unittest.TestCase):
         program = """
 import {createEmptyWorkspaceDocument} from './src/lib/workspaceStartup.ts';
 import {paintScene} from './src/lib/paintDocument.ts';
-import {buildQwenGenerationPlan,qwenGenerationPrompt,qwenGenerationPayload} from './src/lib/qwenGeneration.ts';
+import {buildImageGenerationPlan,formatGenerationPrompt,buildImageGenerationPayload} from './src/lib/qwenGeneration.ts';
 const {manga}=createEmptyWorkspaceDocument();
 manga.pages[0].panels=[{id:1,shape:{type:'rect',x:0,y:0,w:100,h:100},bg:0,action:null,bubbles:[{text:'かぁぁ',shape:'handwritten',bbox:{x:10,y:10,w:30,h:20},lettering_pen:'fineliner-01',lettering_expressions:['freehand','energetic']}]}];
 const results=[];
@@ -670,8 +670,8 @@ for(const shape of ['handwritten','typeset']){
 manga.pages[0].panels[0].bubbles[0].shape=shape;
 manga.pages[0].panels[0].bubbles[0].text_style={font:'Test Serif',fontWeight:700};
 const owner=paintScene(manga.pages[0].panels[0],100,[]).owners.find(o=>o.kind==='bubble');
-const plan=buildQwenGenerationPlan(manga,0,0,false,owner);
-results.push(...[false,true].map(correction=>qwenGenerationPayload({...plan,prompt:qwenGenerationPrompt(plan,undefined,correction?{kind:'paint'}:undefined),handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:qwenGenerationPrompt(plan,undefined,correction?{kind:'paint'}:undefined)}},[])));
+const plan=buildImageGenerationPlan(manga,0,0,false,owner);
+results.push(...[false,true].map(correction=>buildImageGenerationPayload({...plan,prompt:formatGenerationPrompt(plan,undefined,correction?{kind:'paint'}:undefined),handwrittenPrompt:{...plan.handwrittenPrompt,confirmation:formatGenerationPrompt(plan,undefined,correction?{kind:'paint'}:undefined)}},[])));
 }
 console.log(JSON.stringify(results));
 """

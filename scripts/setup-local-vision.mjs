@@ -253,7 +253,7 @@ async function downloadVerifiedFile(url, destination, expectedHash, label) {
 
 
 // 旧->新: 旧=downloadBaberuModel(モデル名固定) -> 新=downloadTextOcrModel(機能体現名)へ統一
-async function downloadBaberuModel(directory) {
+async function downloadTextOcrModel(directory) {
   console.log('Baberu OCRの小型ONNXモデルを検査・取得します（約116MB）...');
   for (const file of BABERU_FILES) {
     await downloadVerifiedFile(
@@ -342,7 +342,7 @@ export async function setup(options, { updateCertificates = updatePythonCertific
   console.log('画像解析・操作分類用Python依存を導入します...');
   await run(layout.python, ['-m', 'pip', 'install', '-r', resolve(REPO_ROOT, 'requirements-vision.txt')]);
   await downloadModel(layout.model);
-  await downloadBaberuModel(layout.baberu);
+  await downloadTextOcrModel(layout.baberu);
   await downloadWdExpressionModel(layout.wdExpression);
 
   console.log('導入状態を検査します...');

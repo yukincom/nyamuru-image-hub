@@ -3,7 +3,7 @@ import { Image, MessageSquareText, ShieldCheck } from 'lucide-preact';
 import AgentSettings from '../AgentSettings';
 import LocalImageModelSettings from '../LocalImageModelSettings';
 import { Field, SectionTitle } from '../Fields';
-import { getGeminiApiKeyStatus, listGeminiVisionModels, saveGeminiApiKey } from '../../lib/localBridge';
+import { getCloudApiKeyStatus, listCloudVisionModels, saveCloudApiKey } from '../../lib/localBridge';
 import { DEFAULT_CLOUD_VISION_MODEL } from '../../lib/generationPreferences';
 import type { EnvironmentSettingsProps } from '../environmentSettingsTypes';
 import type { useModelSettings } from './useModelSettings';
@@ -29,13 +29,13 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
   useEffect(() => {
     if (executionValue !== 'api' && !visionCloudActive) return;
     let active = true;
-    void getGeminiApiKeyStatus()
+    void getCloudApiKeyStatus()
       .then(status => {
         if (!active) return;
         setApiKeyStatus(status);
         setGeminiModels(status.models);
         if (status.configured && visionCloudActive) {
-          void listGeminiVisionModels()
+          void listCloudVisionModels()
             .then(models => { if (active) setGeminiVisionModels(models); })
             .catch(() => undefined);
         }
@@ -53,7 +53,7 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
     setApiKeySaving(true);
     setApiKeyMessage('');
     try {
-      const nextStatus = await saveGeminiApiKey(apiKeyDraft);
+      const nextStatus = await saveCloudApiKey(apiKeyDraft);
       setApiKeyStatus(nextStatus);
       setGeminiModels(nextStatus.models);
       setApiKeyDraft('');

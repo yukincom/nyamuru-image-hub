@@ -10,6 +10,7 @@ from unittest.mock import ANY, Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from nyamuru_voice_intent import LABELS, VoiceIntentService, validate_text
+from voice_command_slots import extract_command_slots_from_bio, validate_slot_spans
 import install_voice_intent as installer
 
 class VoiceIntentTests(unittest.TestCase):
@@ -212,5 +213,26 @@ class VoiceIntentTests(unittest.TestCase):
 
     def test_repository_bundle_matches_approved_model(self):
         self.assertEqual(installer.verify_bundle().name,'nyamuru-voice-v04-seed43')
+
+    def test_slot_extraction_and_fail_closed_validation(self):
+        utterance = '3ページ目へ移って'
+        slots = extract_command_slots_from_bio(
+            utterance,
+            [(0, 0), (0, 1), (1, 4), (4, 8), (0, 0)],
+            [0, 1, 2, 0, 0],
+            [0.99, 0.96, 0.94, 0.98, 0.99],
+            {0: 'O', 1: 'B-PAGE_NUM', 2: 'I-PAGE_NUM'},
+        )
+        self.assertEqual(len(slots), 1)
+        self.assertEqual((slots[0]['type'], slots[0]['text'], slots[0]['start'], slots[0]['end']), ('PAGE_NUM', '3ページ', 0, 4))
+        with self.assertRaises(ValueError):
+            validate_slot_spans(utterance, [{'type': 'PAGE_NUM', 'text': '9', 'start': 0, 'end': 1, 'score': 0.95}])
+        with patch('nyamuru_voice_intent.subprocess.run', return_value=self.result(
+            text=utterance, label='page_navigate', confidence=0.985,
+            probabilities=[0.0]*3 + [0.985] + [0.001]*15,
+            slots=slots,
+        )):
+            classified = self.service.classify({'text': utterance})
+        self.assertEqual(classified['slots'][0]['type'], 'PAGE_NUM')
 
 if __name__=='__main__':unittest.main()

@@ -187,6 +187,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 self.send_json(200, self.state.scanners.cancel(session_id))
                 return
             # 旧->新: 旧=既存レイアウト/VLMルートのみ -> 新=M7(/api/layout/orientation)・M1+M2(/api/character-match/lightweight, /api/figure-reference/recommend-view)を追加
+            if path == "/api/layout/orientation":
+                with self.state.analysis_lock:
+                    result = self.state.estimate_page_orientation(decode_image_data(body.pop("image", None)))
+                self.send_json(200, result)
+                return
             if path == "/api/layout/analyze":
                 rotation_override = normalized_rotation_override(body.get("rotation_override_degrees"))
                 with self.state.analysis_lock:
@@ -221,6 +226,24 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         body.get("target_character"),
                         body.get("vlm_model"),
                         supplied_images_value=body.get("images"),
+                    )
+                self.send_json(200, result)
+                return
+            if path == "/api/character-match/lightweight":
+                with self.state.analysis_lock:
+                    result = self.state.analyze_character_match_lightweight(
+                        decode_image_data(body.pop("image", None)),
+                        body.get("candidates"),
+                        body.get("current_size", "bust-up"),
+                    )
+                self.send_json(200, result)
+                return
+            if path == "/api/figure-reference/recommend-view":
+                with self.state.analysis_lock:
+                    result = self.state.recommend_figure_reference_view(
+                        decode_image_data(body.pop("image", None)),
+                        body.get("available_assets"),
+                        body.get("current_size", "bust-up"),
                     )
                 self.send_json(200, result)
                 return

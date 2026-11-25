@@ -13,6 +13,7 @@ import {
   DETECTED_FIGURE_NAME,
   discardUnsavedSeriesCatalog,
   discardSeriesCatalogDraft,
+  estimatePageOrientation,
   groupRecognizedTextLines,
   generatePanelDraftWithComfyUI,
   getSeriesCharacterTextStatus,
@@ -1607,6 +1608,76 @@ test('制作履歴・再照合・reviewはopaque tokenとattempt IDだけをbrid
       },
     ]);
     assert.equal(requests.some(({ body }) => 'image' in body || 'path' in body), false);
+  } finally {
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Group 3: 拡張フキダシ形状・話者リンク・page_overlay推奨と原稿向き推定を正規化する', async () => {
+  const normalized = normalizeCurrentLayoutRecognition({
+    layout_protocol_version: 3,
+    panels: [{ id: 'panel-001', detector_box: [0.05, 0.05, 0.9, 0.9], shape: { type: 'rect', x: 0.05, y: 0.05, w: 0.9, h: 0.9 } }],
+    structure: { engine: 'RT-DETR' },
+    people: {
+      regions: [
+        { id: 'fig-1', source: 'body', confidence: 0.9, bbox: [0.2, 0.2, 0.3, 0.5], page_overlay_recommended: true },
+      ],
+    },
+    ocr: {
+      engine: 'Baberu OCR',
+      lines: [
+        {
+          id: 'ocr-1',
+          text: '叫び',
+          bbox: [0.6, 0.1, 0.2, 0.2],
+          confidence: 0.95,
+          vertical: true,
+          bubble_shape_hint: 'toge',
+          speaker_figure_id: 'fig-1',
+          speaker_confidence: 0.88,
+        },
+      ],
+    },
+  });
+  assert.equal(normalized.detectedFigures[0].pageOverlayRecommended, true);
+  assert.equal(normalized.ocrLines[0].bubbleShapeHint, 'toge');
+  assert.equal(normalized.ocrLines[0].speakerFigureId, 'fig-1');
+  assert.equal(normalized.ocrLines[0].speakerConfidence, 0.88);
+
+  const page = {
+    page: 1,
+    canvas: { w: 210, h: 297 },
+    panels: [{ id: 1, shape: { type: 'rect', x: 10, y: 10, w: 190, h: 277 }, bg: 0, bubbles: [], action: null }],
+  };
+  const ownerPanels = new Map([['panel-001', page.panels[0]]]);
+  attachRecognizedTextToPage(page, normalized.ocrLines, undefined, null, ownerPanels);
+  assert.equal(page.panels[0].bubbles[0].shape, 'toge');
+
+  const originalWindow = globalThis.window;
+  const originalFetch = globalThis.fetch;
+  globalThis.window = { setTimeout, clearTimeout };
+  globalThis.fetch = async (url) => {
+    const common = { service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3 };
+    if (String(url).endsWith('/api/health')) {
+      return new Response(JSON.stringify({ ...common, ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return new Response(JSON.stringify({
+      ...common,
+      recommended_degrees: 90,
+      raw_degrees: 90,
+      confidence: 0.96,
+      applied: true,
+      model: 'page-orientation',
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  };
+  try {
+    const blob = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+    const orient = await estimatePageOrientation(blob);
+    assert.equal(orient.recommendedDegrees, 90);
+    assert.equal(orient.applied, true);
+    assert.equal(orient.confidence, 0.96);
   } finally {
     if (originalWindow === undefined) delete globalThis.window;
     else globalThis.window = originalWindow;

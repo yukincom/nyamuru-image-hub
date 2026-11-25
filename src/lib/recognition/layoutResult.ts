@@ -1,4 +1,4 @@
-import type { PanelShape, BBox, Panel } from '../../types';
+import type { PanelShape, BBox, Panel, BubbleShape } from '../../types';
 import { DEFAULT_PANEL_GUTTERS, roundMm, clamp, type PanelGutterSettings } from '../canvasGeometry.ts';
 import {
   normalizedPanelBox,
@@ -46,6 +46,9 @@ export interface RecognizedTextLine {
   needsReview: boolean;
   unreadable?: boolean;
   groupId?: string;
+  bubbleShapeHint?: BubbleShape;
+  speakerFigureId?: string;
+  speakerConfidence?: number;
   /** 編集用の整形後も変わらない、検出時点の所属コマID。 */
   sourcePanelId?: string;
   /** 特定コマへ閉じ込めず、コマ枠より上のページ前景へ置く。 */
@@ -59,6 +62,7 @@ export interface DetectedFigureRegion {
   faceBBox?: BBox;
   source: 'body' | 'face';
   confidence?: number;
+  pageOverlayRecommended?: boolean;
   /** 編集用の整形後も変わらない、検出時点の所属コマID。 */
   sourcePanelId?: string;
   /** 特定コマへ閉じ込めず、コマ枠より上のページ前景へ置く。 */
@@ -194,8 +198,17 @@ export function normalizeLayoutRecognition(
     const text = typeof item.text === 'string' ? item.text.trim() : '';
     const unreadable = item.unreadable === true;
     if (!text && !unreadable) return [];
+const RECOGNIZED_BUBBLE_SHAPES = new Set<BubbleShape>([
+  'normal', 'thought', 'square', 'caption', 'flash', 'uniflash', 'wobbly', 'whisper',
+  'handwritten', 'typeset', 'critical', 'tense', 'toge', 'announce', 'toge_natural',
+]);
+
     const [x, y, w, h] = rawBox;
     const rawLineConfidence = Number(item.confidence);
+    const shapeHint = typeof item.bubble_shape_hint === 'string' && RECOGNIZED_BUBBLE_SHAPES.has(item.bubble_shape_hint as BubbleShape)
+      ? item.bubble_shape_hint as BubbleShape
+      : undefined;
+    const speakerConfidence = Number(item.speaker_confidence);
     return [{
       id: typeof item.id === 'string' && item.id ? item.id : `ocr-${index}`,
       text,
@@ -211,6 +224,9 @@ export function normalizeLayoutRecognition(
       needsReview: item.needs_review !== false,
       ...(unreadable ? { unreadable: true } : {}),
       ...(typeof item.group_id === 'string' && item.group_id.trim() ? { groupId: item.group_id.trim() } : {}),
+      ...(shapeHint ? { bubbleShapeHint: shapeHint } : {}),
+      ...(typeof item.speaker_figure_id === 'string' && item.speaker_figure_id.trim() ? { speakerFigureId: item.speaker_figure_id.trim() } : {}),
+      ...(Number.isFinite(speakerConfidence) ? { speakerConfidence: clamp(speakerConfidence, 0, 1) } : {}),
     }];
   });
   const normalizedFigureRegions = (Array.isArray(people.regions) ? people.regions : []).flatMap((entry): DetectedFigureRegion[] => {
@@ -228,6 +244,7 @@ export function normalizeLayoutRecognition(
         w: Number(regionBox.w.toFixed(6)), h: Number(regionBox.h.toFixed(6)) },
       ...(faceBBox ? { faceBBox } : {}),
       ...(Number.isFinite(rawConfidence) ? { confidence: clamp(rawConfidence, 0, 1) } : {}),
+      ...(typeof item.page_overlay_recommended === 'boolean' ? { pageOverlayRecommended: item.page_overlay_recommended } : {}),
     }];
   }).sort((left, right) => Number(left.source === 'face') - Number(right.source === 'face')
     || left.bbox.y - right.bbox.y || right.bbox.x - left.bbox.x);

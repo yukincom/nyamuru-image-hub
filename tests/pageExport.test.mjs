@@ -60,7 +60,7 @@ test('export names are portable and the header dialog owns page range and image 
   const palette=readFileSync(new URL('../src/components/PaintLayerPalette.tsx',import.meta.url),'utf8');
   const header=readFileSync(new URL('../src/components/Header.tsx',import.meta.url),'utf8');
   const actions=readFileSync(new URL('../src/components/workspace/workspaceImageExport.ts',import.meta.url),'utf8');
-  assert.match(actions,/captureQwenCompositionCanvas\([^;]+includeGenerated:true/);
+  assert.match(actions,/capturePageCompositionCanvas\([^;]+includeGenerated:true/);
   assert.match(actions,/pageExportIndices\(current\.manga\.pages\.length,\{\.\.\.choice,current:activePageRef\.current\+1\}\)/);
   assert.match(actions,/ZIPにまとめています/);
   assert.match(app,/開始ページ/);assert.match(app,/終了ページ/);assert.match(app,/全ページ/);

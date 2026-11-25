@@ -124,3 +124,59 @@ test('generic voice generation rejects balloons and resolves handwritten letteri
   assert.equal(page.panels[0].bubbles[1].locked,true);
   assert.equal(resolveVoiceGenerationTarget(document,0,0,{type:'bubble',index:0,scope:'page_overlay'},command).overlay,true);
 });
+
+test('Group 2 M5: high-confidence slots resolve paraphrases while preserving safety guards', () => {
+  const paraphrase = '3ページ目へ移って';
+  const pred = parseVoicePrediction({
+    text: paraphrase,
+    label: 'page_navigate',
+    confidence: 0.97,
+    model: 'nyamuru-voice-v05',
+    elapsed_ms: 8,
+    slots: [{ type: 'PAGE_NUM', text: '3ページ', start: 0, end: 4, score: 0.95 }],
+  }, paraphrase);
+  assert.deepEqual(resolveVoiceCommand(pred).command, { op: 'page', target: 3 });
+
+  const genParaphrase = '2コマ目の小雪だけ描いて';
+  const genPred = parseVoicePrediction({
+    text: genParaphrase,
+    label: 'generate_request',
+    confidence: 0.96,
+    model: 'nyamuru-voice-v05',
+    elapsed_ms: 9,
+    slots: [
+      { type: 'PANEL_NUM', text: '2コマ', start: 0, end: 3, score: 0.94 },
+      { type: 'CHAR_NAME', text: '小雪', start: 5, end: 7, score: 0.93 },
+    ],
+  }, genParaphrase);
+  assert.deepEqual(resolveVoiceCommand(genPred).command, {
+    op: 'generate_selected',
+    kind: 'figure',
+    locator: { panel: 2, name: '小雪' },
+  });
+
+  // Low slot score or disallowed negative/deferred modifier must still fail closed.
+  assert.equal(resolveVoiceCommand({
+    ...pred,
+    slots: [{ type: 'PAGE_NUM', text: '3ページ', start: 0, end: 4, score: 0.70 }],
+  }).command, undefined);
+
+  const negated = '3ページ目へ移らないで待って';
+  assert.equal(resolveVoiceCommand(parseVoicePrediction({
+    text: negated,
+    label: 'page_navigate',
+    confidence: 0.96,
+    model: 'nyamuru-voice-v05',
+    elapsed_ms: 8,
+    slots: [{ type: 'PAGE_NUM', text: '3ページ', start: 0, end: 4, score: 0.95 }],
+  }, negated)).command, undefined);
+
+  assert.throws(() => parseVoicePrediction({
+    text: paraphrase,
+    label: 'page_navigate',
+    confidence: 0.97,
+    model: 'nyamuru-voice-v05',
+    elapsed_ms: 8,
+    slots: [{ type: 'PAGE_NUM', text: '9ページ', start: 0, end: 4, score: 0.95 }],
+  }, paraphrase), /一致/);
+});

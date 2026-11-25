@@ -6,7 +6,7 @@ import QwenGenerationDialog from '../src/components/QwenGenerationDialog';
 import VoiceCommands from '../src/components/VoiceCommands';
 import {loadAgentPreferences} from '../src/lib/agentPreferences';
 import {paintScene} from '../src/lib/paintDocument';
-import {buildQwenGenerationPlan,type QwenGenerationConversation} from '../src/lib/qwenGeneration';
+import {buildImageGenerationPlan,type QwenGenerationConversation} from '../src/lib/qwenGeneration';
 import {P_H3_TWO_IMAGE_WORKFLOW} from '../src/lib/comfyWorkflows';
 import {createEmptyWorkspaceDocument} from '../src/lib/workspaceStartup';
 import {saveFigureCropAssets} from '../src/lib/figureCropStore';
@@ -37,7 +37,7 @@ async function run(){
  m.pages[0].panels=[{id:1,shape:{type:'rect',x:1,y:1,w:25,h:40},bg:0,action:null,bubbles:[],figures:[{refId:'who',name:'テスト人物',size:'full',bbox:{x:4,y:4,w:12,h:25},analogImport:{schemaVersion:1,assetId:'rough',sourceRegionId:'r',sourceBBox:{x:0,y:0,w:64,h:64},detectionSource:'body',draft:true}}]}];
  await saveFigureCropAssets([{id:'rough',blob:rough},{id:characterImageCacheId('fixture','catalog',id),blob:sheet}]);
  const owner=paintScene(m.pages[0].panels[0],144,[]).owners.find(o=>o.key==='figure-0')!;
- let plan=buildQwenGenerationPlan(m,0,0,false,owner);
+ let plan=buildImageGenerationPlan(m,0,0,false,owner);
  const common={service:'nyamuru-image-hub-local-bridge',layout_protocol_version:3},supervisor={service:'nyamuru-image-hub-bridge-supervisor',protocol_version:1};
  let submitted:Record<string,any>|undefined;
  window.fetch=async(input,options)=>{
@@ -96,7 +96,7 @@ async function run(){
  const figureFrame = reopened.manga.pages[0].panels[0].figures![0].bbox!;
  if(figureFrame.x!==4||figureFrame.y!==4||figureFrame.w!==12||figureFrame.h!==25)throw Error('コマ内の人物配置が変化');
  const storedOwner=paintScene(reopened.manga.pages[0].panels[0],144,[]).owners.find(o=>o.key==='figure-0')!;
- plan=buildQwenGenerationPlan(reopened.manga,0,0,false,storedOwner);
+ plan=buildImageGenerationPlan(reopened.manga,0,0,false,storedOwner);
  render(null,document.querySelector('#test-root')!);
  render(<Room/>,document.querySelector('#test-root')!);
  const restored=await wait(()=>img(1),'作品を開き直したimage1');

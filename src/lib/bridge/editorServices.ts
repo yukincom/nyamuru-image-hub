@@ -103,7 +103,7 @@ export async function requestAgentReply(body:AgentRequest):Promise<AgentReply>{
 }
 
 // 旧->新: 旧=getGeminiApiKeyStatus/generateCloud*WithGemini等 -> 新=getCloudApiKeyStatus/generateCloudPageImage/generateCloudSingleImage等の機能名へ統一
-export async function getGeminiApiKeyStatus(): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
+export async function getCloudApiKeyStatus(): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
   const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/status', {}, 15_000)) as Record<string, unknown>;
   const models = Array.isArray(value.models)
     ? value.models
@@ -117,7 +117,7 @@ export async function getGeminiApiKeyStatus(): Promise<{ configured: boolean; so
   };
 }
 
-export async function saveGeminiApiKey(apiKey: string): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
+export async function saveCloudApiKey(apiKey: string): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
   const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/key', { api_key: apiKey }, 15_000)) as Record<string, unknown>;
   const models = Array.isArray(value.models)
     ? value.models
@@ -131,7 +131,7 @@ export async function saveGeminiApiKey(apiKey: string): Promise<{ configured: bo
   };
 }
 
-export async function listGeminiImageModels(): Promise<Array<{ id: string; label: string }>> {
+export async function listCloudImageModels(): Promise<Array<{ id: string; label: string }>> {
   const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/models', {}, 15_000)) as Record<string, unknown>;
   const list = Array.isArray(value.models) ? value.models : [];
   return list
@@ -139,7 +139,7 @@ export async function listGeminiImageModels(): Promise<Array<{ id: string; label
     .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }));
 }
 
-export async function listGeminiVisionModels(): Promise<Array<{ id: string; label: string }>> {
+export async function listCloudVisionModels(): Promise<Array<{ id: string; label: string }>> {
   const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/vision-models', {}, 15_000)) as Record<string, unknown>;
   const list = Array.isArray(value.models) ? value.models : [];
   return list
@@ -147,7 +147,7 @@ export async function listGeminiVisionModels(): Promise<Array<{ id: string; labe
     .map(entry => ({ id: entry.id, label: typeof entry.label === 'string' && entry.label ? entry.label : entry.id }));
 }
 
-export async function generateCloudPageWithGemini(params: {
+export async function generateCloudPageImage(params: {
   workspaceToken?: string;
   seriesId?: string;
   pageNumber: number;
@@ -197,7 +197,7 @@ export interface CloudSingleImageRequest {
   compositionImage?: string;
 }
 
-export async function generateCloudSingleWithGemini(params: CloudSingleImageRequest): Promise<{ file: File; model: string }> {
+export async function generateCloudSingleImage(params: CloudSingleImageRequest): Promise<{ file: File; model: string }> {
   const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/generate-single', {
     model: params.model,
     target_kind: params.targetKind,

@@ -16,7 +16,7 @@ import { currentGenerationPreferences } from '../../lib/generationPreferences';
 import { currentLocalModelPreferences } from '../../lib/localModelPreferences';
 import { resolveGenerationRoute } from '../../lib/modelRouting';
 import { buildCloudGenerationSpec } from '../../lib/generationHandoff';
-import { generateCloudPageWithGemini, generateCloudSingleWithGemini } from '../../lib/localBridge';
+import { generateCloudPageImage, generateCloudSingleImage } from '../../lib/localBridge';
 import { compileArtworkRules, getArtworkSettings, getWorkNegativePrompt } from '../../lib/artworkRules';
 import type { CloudSingleGenerationStart } from '../generation/createGenerationActions';
 import { splitPageBackgroundsForDocument, splitPageImageForDocument } from '../../lib/cloudPageSplit';
@@ -334,7 +334,7 @@ export function createImagePlacementActions({
     setToast(`${page.page}ページ目をクラウドAPIで生成中…`);
     const cloudSpec = buildCloudGenerationSpec(currentDoc);
     const workspaceToken = boundEpisodeWorkspace?.episodeId === currentDoc.manga.meta.episode_id ? boundEpisodeWorkspace.token : undefined;
-    const { file } = await generateCloudPageWithGemini({
+    const { file } = await generateCloudPageImage({
       workspaceToken,
       seriesId: currentDoc.manga.meta.series_id,
       pageNumber: page.page,
@@ -406,7 +406,7 @@ export function createImagePlacementActions({
 
     void (async () => {
       try {
-        const { file } = await generateCloudSingleWithGemini({
+        const { file } = await generateCloudSingleImage({
           model: params.model,
           targetKind,
           label: plan.label,

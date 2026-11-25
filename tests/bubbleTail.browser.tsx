@@ -3,7 +3,7 @@ import { render } from 'preact';
 import BubbleShapeSvg from '../src/components/BubbleShapeSvg';
 import MangaCanvas from '../src/components/MangaCanvas';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
-import { captureQwenComposition, captureQwenCompositionCanvas } from '../src/lib/qwenComposition';
+import { capturePageComposition, capturePageCompositionCanvas } from '../src/lib/qwenComposition';
 import { createFrameArtwork, prepareImageAsset } from '../src/lib/imagePlacement';
 import { saveFigureCropAssets, deleteFigureCropAssets } from '../src/lib/figureCropStore';
 import { blobImageData, flattenedPsd } from '../src/lib/pageExport';
@@ -81,7 +81,7 @@ async function verifyLayers(){
     element.dispatchEvent(new MouseEvent('click',{button:0,detail:1,clientX,clientY,bubbles:true,cancelable:true}));
   };
   const captured=async(manga:Manga)=>{
-    const canvas=await captureQwenCompositionCanvas(manga,0,0,'page',{'0:background':false},{width:400,height:400,includeGenerated:true});canvases.push(canvas);return canvas;
+    const canvas=await capturePageCompositionCanvas(manga,0,0,'page',{'0:background':false},{width:400,height:400,includeGenerated:true});canvases.push(canvas);return canvas;
   };
   const pixel=(canvas:HTMLCanvasElement,x:number,y:number)=>Array.from(canvas.getContext('2d')!.getImageData(Math.floor(x/100*canvas.width),Math.floor(y/100*canvas.height),1,1).data);
   const dark=(rgba:number[])=>rgba.slice(0,3).every(value=>value<50)&&rgba[3]===255;
@@ -115,7 +115,7 @@ async function verifyLayers(){
     for(let section=0;section<3;section++)offset+=4+view.getUint32(offset);
     check(view.getUint16(offset)===0&&view.getUint32(14)===400&&view.getUint32(18)===400,'PSDの寸法と非圧縮画像を確認');offset+=2;
     check(rgba.data.every((value,index)=>index%4===3||value===psd[offset+(index%4)*160000+Math.floor(index/4)]),'PSDのRGB各面が同じ合成canvas全画素と一致');
-    const input=await (await fetch(await captureQwenComposition(manga,0,0,'page',{'0:background':false}))).blob(),inputPixels=await blobImageData(input);
+    const input=await (await fetch(await capturePageComposition(manga,0,0,'page',{'0:background':false}))).blob(),inputPixels=await blobImageData(input);
     const inputSample=(x:number)=>{const n=(Math.floor(.4*inputPixels.height)*inputPixels.width+Math.floor(x/100*inputPixels.width))*4;return Array.from(inputPixels.data.slice(n,n+4));};
     check(dark(inputSample(9.25))&&dark(inputSample(10.75)),'生成入力PNGも同じ枠前面順（モデル実行なし）');
     const bleed=structuredClone(manga);bleed.pages[0].panels[0].bleed=['left'];

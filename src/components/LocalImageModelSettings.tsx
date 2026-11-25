@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { requestComfyWorkflows } from '../lib/localBridge';
 import { normalizeComfyuiUrl } from '../lib/localModelPreferences';
 import {
-  isStandardQwenVariant, comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding,
+  isStandardGenerationWorkflowVariant, comfyLiteralInputs, comfyNodeLabel, parseComfyWorkflowBinding,
   parseComfyWorkflowFile, parseComfyWorkflowList, parseSavedComfyWorkflow,
   promptUpsamplerNodeIds, withPromptUpsampler, workflowPromptUpsampler,
   type ComfyApiGraph, type ComfyInputBinding, type ComfyWorkflowBinding,
@@ -278,7 +278,7 @@ export default function LocalImageModelSettings({ endpoint, onChange, workflowId
       onChange={event => { setNotice(''); onWorkflowChange(event.currentTarget.value); }}>
       <option value="">未選択</option>
       {workflowId && !selected && <option value={workflowId}>{loaded ? '選択した登録が見つかりません' : '登録を読み込んでいます'}</option>}
-      {workflows.filter(item=>item.id===workflowId||!isStandardQwenVariant(item.id)).map(workflow => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
+      {workflows.filter(item=>item.id===workflowId||!isStandardGenerationWorkflowVariant(item.id)).map(workflow => <option key={workflow.id} value={workflow.id}>{workflow.name}</option>)}
     </select></Field>
     {(selected || draft) && <details class="environment-settings-details" style="border-top:none;padding-top:0;margin-top:8px;margin-bottom:14px;" open={Boolean(draft)}
       onToggle={event => {

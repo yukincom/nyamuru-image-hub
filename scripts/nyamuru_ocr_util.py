@@ -112,6 +112,8 @@ def usable_ocr_lines(payload: dict[str, Any], *, borderless: bool = False) -> li
         }
         if item.get("group_id"):
             normalized["group_id"] = str(item["group_id"])
+        if isinstance(item.get("bubble_shape_hint"), str) and item["bubble_shape_hint"].strip():
+            normalized["bubble_shape_hint"] = item["bubble_shape_hint"].strip()
         candidates.append(normalized)
     if borderless:
         candidates = _borderless_dialogue(candidates)

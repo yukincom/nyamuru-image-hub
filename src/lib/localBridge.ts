@@ -3,14 +3,14 @@ export {
   decodeGenerationCacheSummary,
   listGenerationCaches,
   deleteGenerationCache,
-  decodeQwenJob,
-  prepareQwenJob,
-  submitQwenJob,
-  reconcileQwenJob,
-  cancelQwenJob,
-  selectQwenCandidate,
-  deleteQwenJobs,
-  listQwenJobs,
+  decodeImageGenerationJob,
+  prepareImageGenerationJob,
+  submitImageGenerationJob,
+  reconcileImageGenerationJob,
+  cancelImageGenerationJob,
+  selectImageGenerationCandidate,
+  deleteImageGenerationJobs,
+  listImageGenerationJobs,
   type GenerationCacheOwnerSummary,
   type GenerationCacheProfileSummary,
   type GenerationCacheSummary,
@@ -39,6 +39,13 @@ export {
   type CharacterMatchSuggestion,
   type FigureFaceInput,
 } from './bridge/figureAnalysis.ts';
+export {
+  matchCharacterWithLightweightEncoder,
+  recommendCharacterReferenceView,
+  type LightweightCharacterMatchCandidate,
+  type LightweightCharacterMatchResult,
+  type ReferenceViewRecommendation,
+} from './bridge/characterEncoder.ts';
 export {
   saveCharacterReferenceImage,
   loadCharacterReferenceImage,
@@ -95,6 +102,7 @@ export {
 export { isLoopbackBridgeUrl, blobDataUrl, dataUrlBlob } from './bridge/transport.ts';
 export { ensureDetectedPanelGutters } from './recognition/panelGutters.ts';
 export { attachDetectedFiguresToPage, attachRecognizedTextToPage } from './recognition/pageElements.ts';
+export { estimatePageOrientation, type PageOrientationSuggestion } from './bridge/pageOrientation.ts';
 export {
   requestClipExport,
   requestCmcExport,
@@ -107,12 +115,12 @@ export {
   getAgentConnection,
   withAgentServices,
   requestAgentReply,
-  getGeminiApiKeyStatus,
-  saveGeminiApiKey,
-  listGeminiImageModels,
-  listGeminiVisionModels,
-  generateCloudPageWithGemini,
-  generateCloudSingleWithGemini,
+  getCloudApiKeyStatus,
+  saveCloudApiKey,
+  listCloudImageModels,
+  listCloudVisionModels,
+  generateCloudPageImage,
+  generateCloudSingleImage,
   type CloudSingleImageRequest,
 } from './bridge/editorServices.ts';
 export {

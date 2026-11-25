@@ -3,10 +3,10 @@
  * 合格条件は各検証関数に記載。確認範囲は実UIと模擬APIで、実モデル・作品保存は含まない。 */
 import { render } from 'preact';
 import { useState } from 'preact/hooks';
-import QwenGenerationDialog, { qwenInputImage, qwenLayerImage } from '../src/components/QwenGenerationDialog';
+import QwenGenerationDialog, { encodeGenerationInputImage, renderGenerationLayerImage } from '../src/components/QwenGenerationDialog';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import { paintScene, insertGeneratedPaintImage, newPaintLayer, type PaintScene } from '../src/lib/paintDocument';
-import { buildQwenGenerationPlan, qwenLayerCandidates, QWEN_GENERATION_PROFILE, type QwenGenerationConversation } from '../src/lib/qwenGeneration';
+import { buildImageGenerationPlan, collectGenerationLayerCandidates, QWEN_GENERATION_PROFILE, type QwenGenerationConversation } from '../src/lib/qwenGeneration';
 import { imageSha256, prepareImageAsset, createFrameArtwork } from '../src/lib/imagePlacement';
 import { decodePaintImage, generationMaskBounds } from '../src/lib/paintRenderer';
 import type { BBox, PaintLayer, PaintDocument } from '../src/types';
@@ -36,17 +36,17 @@ const base:PaintLayer={id:'rough',name:'人物ラフ',visible:false,locked:true,
  image:{assetId:roughAsset.id,crop:{x:0,y:0,w:320,h:224},bbox:{x:0,y:0,w:320,h:224}}};
 owner.paint={...owner.paint,width:320,height:224,referenceFrame:{x:0,y:0,w:320,h:224},
  layers:[base,{...base,id:'empty',name:'空のレイヤー',guide:false,image:undefined},{...newPaintLayer('生成マスク'),id:'generation-mask',generationMask:true,strokes:[{tool:'rectangle',color:'#ff0000',size:10,points:[{x:180,y:80,pressure:.5,time:0},{x:220,y:120,pressure:.5,time:1}]}]}]};
-const plan=buildQwenGenerationPlan(manga,0,0,false,owner),before=JSON.stringify(owner);
+const plan=buildImageGenerationPlan(manga,0,0,false,owner),before=JSON.stringify(owner);
 const borrowed=await decodePaintImage(sketchBlob),borrowedSrc=borrowed.src,live=new Map([[roughAsset.id,borrowed]]);
-const layerImage=async(id:string,correction:boolean)=>(await qwenInputImage(await qwenLayerImage(owner,id,[roughAsset],live,correction))).image;
+const layerImage=async(id:string,correction:boolean)=>(await encodeGenerationInputImage(await renderGenerationLayerImage(owner,id,[roughAsset],live,correction))).image;
 const clean=await layerImage('rough',false),marked=await layerImage('rough',true),mask=await layerImage('generation-mask',true);
 if(clean!==sketch||marked!==clean||mask===marked||borrowed.src!==borrowedSrc||JSON.stringify(owner)!==before)throw new Error('レイヤー分離・マーカー・借用画像・原本保持の検証に失敗');
 try{await layerImage('different-owner-layer',false);throw new Error('対象外レイヤーを許可しました');}catch(error){if(!String(error).includes('このフォルダ'))throw error;}
 const native=structuredClone(owner);delete native.figure!.analogImport;native.paint.layers=[{...base,image:undefined}];
-await qwenLayerImage(native,'rough',[]); // Virtual guide uses the existing materialization path.
+await renderGenerationLayerImage(native,'rough',[]); // Virtual guide uses the existing materialization path.
 const nativeMarker={...newPaintLayer('生成マスク'),generationMask:true,strokes:owner.paint.layers.find(layer=>layer.generationMask)!.strokes};
 native.paint.layers=[{...base,image:undefined,visible:true},nativeMarker];
-const nativeCorrection=await decodePaintImage(await qwenLayerImage(native,nativeMarker.id,[],undefined,true));
+const nativeCorrection=await decodePaintImage(await renderGenerationLayerImage(native,nativeMarker.id,[],undefined,true));
 const nativeCheck=document.createElement('canvas');nativeCheck.width=320;nativeCheck.height=224;nativeCheck.getContext('2d')!.drawImage(nativeCorrection,0,0);nativeCorrection.src='';
 if(!nativeCheck.getContext('2d')!.getImageData(0,0,320,224).data.some((value,index,data)=>index%4===0&&value>data[index+1]&&data[index+3]>0))throw Error('あたりを画像化しても選択マーカーを保持');
 
@@ -65,12 +65,12 @@ async function checkGenerationArea(){
  check(JSON.stringify(generationMaskBounds({...paint,layers:[{...marker,locked:true}]}))===JSON.stringify(area),'固定したマスクの生成範囲を保持');
  check(JSON.stringify(generationMaskBounds({...paint,layers:[{...marker,clip:original.clip}]}))===JSON.stringify({x:70,y:40,w:90,h:60}),'マスク自身のclipを尊重');
  check(generationMaskBounds({...paint,layers:[{...marker,strokes:[...marker.strokes,fill(0,0,320,224,'clear')]}]})===undefined,'すべて消した範囲は未指定');
- const cropped=await qwenInputImage(sketchBlob,area);
+ const cropped=await encodeGenerationInputImage(sketchBlob,area);
  check(cropped.width===110&&cropped.height===60,'参照画像も同じ範囲へ切出し');
  const expected=document.createElement('canvas');expected.width=110;expected.height=60;
  expected.getContext('2d')!.drawImage(borrowed,70,40,110,60,0,0,110,60);
  check(cropped.image===expected.toDataURL('image/png'),'切出し画素一致');
- check((await qwenInputImage(sketchBlob)).image===clean,'修正用はキャンバス全体を保持');
+ check((await encodeGenerationInputImage(sketchBlob)).image===clean,'修正用はキャンバス全体を保持');
  check(JSON.stringify(paint)===before&&borrowed.src===borrowedSrc,'元マスクと借用画像を保持');
  return `${checks}項目成功：フォルダーの範囲・消去・レイヤー状態からの独立・参照画像・原本保持`;
 }
@@ -166,7 +166,7 @@ async function checkLetteringDialog(){
  const letterOwner=paintScene(source.pages[0].panels[0],100,[]).owners.find(owner=>owner.kind==='bubble')!;
  const area:BBox={x:70,y:40,w:90,h:60},frame:BBox={x:27.5,y:30,w:22.5,h:15};
  letterOwner.paint={...letterOwner.paint,width:320,height:224,layers:[{...base,visible:true,guide:false},{...newPaintLayer('生成マスク'),id:'generation-mask',generationMask:true,antialias:0,strokes:[{tool:'fill',color:'#ff0000',size:1,points:[{x:70,y:40,pressure:.5,time:0}],selection:[area]}]}]};
- const captured=JSON.stringify(letterOwner),letterPlan=buildQwenGenerationPlan(source,0,0,false,letterOwner,undefined,generationMaskBounds(letterOwner.paint));
+ const captured=JSON.stringify(letterOwner),letterPlan=buildImageGenerationPlan(source,0,0,false,letterOwner,undefined,generationMaskBounds(letterOwner.paint));
  const host=document.createElement('div');document.body.append(host);
  const setting=localStorage.getItem(GENERATION_PREFERENCES_STORAGE_KEY);
  const anchorClick=HTMLAnchorElement.prototype.click,inputClick=HTMLInputElement.prototype.click;
@@ -177,8 +177,8 @@ async function checkLetteringDialog(){
   for(const cloud of [false,true])for(const repair of [false,true]){
    saveGenerationPreferences(localStorage,{...DEFAULT_GENERATION_PREFERENCES,execution:cloud?'cloud':'local'});
    let inserted:{file:File;target:typeof letterPlan}|undefined;
-   render(<QwenGenerationDialog plan={letterPlan} layers={qwenLayerCandidates(letterOwner)}
-    loadLayer={async(id,correction,crop)=>(await qwenInputImage(await qwenLayerImage(letterOwner,id,[roughAsset],live,correction),crop)).image}
+   render(<QwenGenerationDialog plan={letterPlan} layers={collectGenerationLayerCandidates(letterOwner)}
+    loadLayer={async(id,correction,crop)=>(await encodeGenerationInputImage(await renderGenerationLayerImage(letterOwner,id,[roughAsset],live,correction),crop)).image}
     onClose={()=>{}} onInsert={async(inputFile,target)=>{const file=Array.isArray(inputFile)?inputFile[0]:inputFile;inserted={file,target};}}/>,host);await settle();
    const dialog=()=>document.querySelector<HTMLElement>('.qwen-generation-dialog')!;
    const button=(name:string)=>{const buttons=[...dialog().querySelectorAll<HTMLButtonElement>('button')],found=buttons.find(button=>button.textContent?.trim()===name);if(!found)throw new Error(`検証操作のボタンがありません：${name} / ${buttons.map(button=>button.textContent?.trim()).join(',')}`);return found;};
@@ -285,7 +285,7 @@ function Fixture(){
    <button onClick={()=>{setSession(value=>value+1);setOpen(true);}}>生成画面を開く</button>
    <pre aria-label="検証結果">{summary}</pre>
    {inserted&&<section class="qwen-result"><p>差し込み済み・透過PNGのSHA一致</p><img src={image} alt="差し込み後の透過画像"/></section>}
-   {open&&<QwenGenerationDialog key={session} plan={plan} layers={qwenLayerCandidates(owner)} loadLayer={layerImage} onClose={()=>setOpen(false)} onInsert={async inputFile=>{const file=Array.isArray(inputFile)?inputFile[0]:inputFile;
+   {open&&<QwenGenerationDialog key={session} plan={plan} layers={collectGenerationLayerCandidates(owner)} loadLayer={layerImage} onClose={()=>setOpen(false)} onInsert={async inputFile=>{const file=Array.isArray(inputFile)?inputFile[0]:inputFile;
      if(await imageSha256(file)!==digest)throw new Error('差し込みでPNGが変更されました');
      setInserted(true);setOpen(false);
    }}/>}

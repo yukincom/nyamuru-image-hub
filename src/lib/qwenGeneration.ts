@@ -1,15 +1,15 @@
 export {
   QWEN_GENERATION_PROFILE,
   canGeneratePaintOwner,
-  qwenLayerCandidates,
-  qwenLayerPaint,
-  qwenGenerationPrompt,
-  qwenGenerationTarget,
+  collectGenerationLayerCandidates,
+  buildGenerationLayerPaint,
+  formatGenerationPrompt,
+  resolveGenerationTarget,
   figureBackgroundPrompt,
-  qwenPlanForWorkflow,
-  qwenGenerationSizePrompt,
-  buildQwenGenerationPlan,
-  qwenGenerationPayload,
+  adaptGenerationPlanForWorkflow,
+  formatGenerationSizePrompt,
+  buildImageGenerationPlan,
+  buildImageGenerationPayload,
 } from './generation/ownerPlan.ts';
 export type {
   QwenReferenceCandidate,
@@ -19,12 +19,12 @@ export type {
   QwenLayerReference,
 } from './generation/ownerPlan.ts';
 export {
-  canDeleteQwenJob,
-  qwenJobLocation,
-  runQwenAgentRequest,
-  qwenConversationIntent,
-  requireQwenInsertionTarget,
-  executeQwenGeneration,
+  canDeleteGenerationJob,
+  formatGenerationJobLocation,
+  runGenerationAgentRequest,
+  classifyGenerationConversationIntent,
+  requireGenerationInsertionTarget,
+  executeImageGeneration,
 } from './generation/jobs.ts';
 export type {
   QwenJob,

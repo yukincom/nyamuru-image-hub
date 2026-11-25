@@ -3,13 +3,13 @@ import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import MangaCanvas from '../src/components/MangaCanvas';
 import { humanPosePanelCutFrame } from '../src/lib/humanPoseFraming';
-import { buildQwenCompositionPlan, captureQwenComposition, captureQwenCompositionCanvas } from '../src/lib/qwenComposition';
+import { buildPageCompositionPlan, capturePageComposition, capturePageCompositionCanvas } from '../src/lib/qwenComposition';
 import FigureHumanPoseEditor from '../src/components/FigureHumanPoseEditor';
 import FigureSizePicker from '../src/components/FigureSizePicker';
 import QwenGenerationDialog from '../src/components/QwenGenerationDialog';
 import { createEmptyWorkspaceDocument } from '../src/lib/workspaceStartup';
 import { paintScene } from '../src/lib/paintDocument';
-import { buildQwenGenerationPlan, QWEN_GENERATION_PROFILE, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
+import { buildImageGenerationPlan, QWEN_GENERATION_PROFILE, type QwenGenerationPlan } from '../src/lib/qwenGeneration';
 import { decodeHumanPoseScene } from '../src/lib/humanPoseSceneAssets';
 import { HumanPoseSceneRenderer } from '../src/lib/humanPoseSceneRenderer';
 import { captureHumanPoseReference } from '../src/lib/humanPoseGeneration';
@@ -250,7 +250,7 @@ function Fixture(){
       setDoc(next);setShots(pictures);setSummary('7種類の実PNGを撮影・保存値の不変を確認');
     }catch(cause){setError(String(cause));}finally{renderer?.dispose();host.remove();}
   };
-  const openComposition=async(scope:'page'|'panel',index:number)=>{try{const next=buildQwenCompositionPlan(doc.manga,0,index,scope);next.compositionImage=await captureQwenComposition(doc.manga,0,index,scope);setPlan(next);setError('');}catch(cause){setError(String(cause));}};
+  const openComposition=async(scope:'page'|'panel',index:number)=>{try{const next=buildPageCompositionPlan(doc.manga,0,index,scope);next.compositionImage=await capturePageComposition(doc.manga,0,index,scope);setPlan(next);setError('');}catch(cause){setError(String(cause));}};
   const verifyExport=async()=>{
     const stored:string[]=[],checks:string[]=[],canvases:HTMLCanvasElement[]=[];
     const check=(ok:boolean,label:string)=>{if(!ok)throw new Error(label);checks.push(label);};
@@ -265,7 +265,7 @@ function Fixture(){
       const sharp=createEmptyWorkspaceDocument(),frame:BBox={x:0,y:0,w:2048/600*25.4,h:64/600*25.4};
       sharp.manga.pages[0].canvas={w:frame.w,h:frame.h,unit:'mm'};sharp.manga.pages[0].panels=[];
       sharp.manga.image_assets=[stripes];sharp.manga.pages[0].images=[createFrameArtwork(stripes,frame)];
-      const sharpImage=await captureQwenCompositionCanvas(sharp.manga,0,0,'page',undefined,{width:2048,height:64,includeGenerated:true});canvases.push(sharpImage);
+      const sharpImage=await capturePageCompositionCanvas(sharp.manga,0,0,'page',undefined,{width:2048,height:64,includeGenerated:true});canvases.push(sharpImage);
       const row=sharpImage.getContext('2d')!.getImageData(100,32,2,1).data;
       check(row[0]<10&&row[4]>245,'600dpi書き出しは2048px原本の1px白黒線を保持');
       const red=await source(32,32,ctx=>{ctx.fillStyle='#f00';ctx.fillRect(0,0,32,32);});
@@ -275,7 +275,7 @@ function Fixture(){
       layered.manga.image_assets=[red,blue,green];layered.manga.pages[0].canvas={w:25.4,h:25.4,unit:'mm'};
       layered.manga.pages[0].panels=[{id:1,shape:{type:'rect',...full},bg:0,action:null,bubbles:[{text:'文字',shape:'square',bbox:{x:4,y:4,w:16,h:16}}],
         images:[{...createFrameArtwork(red,full),generationScope:'panel'},{...createFrameArtwork(green,{x:11,y:11,w:2,h:2}),bubbleOriginal:{sourceRegionId:'export-fixture',name:'検証原本'}}]}];
-      const capture=async()=>{const c=await captureQwenCompositionCanvas(layered.manga,0,0,'page',undefined,{width:600,height:600,includeGenerated:true});canvases.push(c);return c;};
+      const capture=async()=>{const c=await capturePageCompositionCanvas(layered.manga,0,0,'page',undefined,{width:600,height:600,includeGenerated:true});canvases.push(c);return c;};
       const pixel=(c:HTMLCanvasElement,x:number,y:number)=>c.getContext('2d')!.getImageData(Math.round(x/25.4*600),Math.round(y/25.4*600),1,1).data;
       let composite=await capture(),p=pixel(composite,8,8);
       check(p[0]===255&&p[1]===0&&p[2]===0,'コマ生成画像は編集可能な吹き出し・文字より上');
@@ -283,7 +283,7 @@ function Fixture(){
       composite=await capture();p=pixel(composite,8,8);
       check(p[0]===0&&p[1]===0&&p[2]===255,'ページ生成画像はコマ生成画像より上');
       p=pixel(composite,12,12);check(p[0]===0&&p[1]===255&&p[2]===0,'原本切り出しは生成画像より上');
-      const compact=await captureQwenComposition(layered.manga,0,0,'page');
+      const compact=await capturePageComposition(layered.manga,0,0,'page');
       check(compact.startsWith('data:image/png;base64,'),'生成入力の既存PNG経路を維持');
       layered.manga.pages[0].images=[];layered.manga.pages[0].panels=[];
       layered.manga.pages[0].page_overlay={frame:false,layer:'above_panel_frames',screen_text:[{text:'TEST',orientation:'horizontal',text_style:{fontSize:12},bbox:{x:2,y:2,w:20,h:15}}]};
@@ -309,11 +309,11 @@ function Fixture(){
         activePanel={active} selectedPanels={[active]} selectedElement={selection} showGuides={true} innerFrameSnap={false} panelGapSnap={false} panelSync={false}
         panelGutters={{rowGapMm:5,columnGapMm:3}} frameLineWidthMm={.6} bubbleLineWidthMm={.3} defaultBubbleFont={doc.manga.meta.font}
         guideVisible={()=>true} onToggleGuide={noChange} onGenerateComposition={(scope,index)=>void openComposition(scope,index)}
-        onGenerateArtwork={(key,index)=>{try{const owner=paintScene(doc.manga.pages[0].panels[index],100,[]).owners.find(owner=>owner.key===key)!;setPlan(buildQwenGenerationPlan(doc.manga,0,index,false,owner));setError('');}catch(cause){setError(String(cause));}}}
+        onGenerateArtwork={(key,index)=>{try{const owner=paintScene(doc.manga.pages[0].panels[index],100,[]).owners.find(owner=>owner.key===key)!;setPlan(buildImageGenerationPlan(doc.manga,0,index,false,owner));setError('');}catch(cause){setError(String(cause));}}}
         onSelectPanel={setActive} onSelectElement={setSelection} onChangeElementBBox={noChange} onChangeBubbleTail={noChange} onMovePanel={noChange}
         onResizePanel={noChange} onMoveVertex={noChange} onMovePanelEdge={noChange}/>
     </div>
-    <button onClick={()=>{try{setPlan(buildQwenGenerationPlan(doc.manga,0,0,false,paintScene(doc.manga.pages[0].panels[0],100,[]).owners[1]));setError('');}catch(cause){setError(String(cause));}}}>生成画面を開く</button>
+    <button onClick={()=>{try{setPlan(buildImageGenerationPlan(doc.manga,0,0,false,paintScene(doc.manga.pages[0].panels[0],100,[]).owners[1]));setError('');}catch(cause){setError(String(cause));}}}>生成画面を開く</button>
     <pre aria-label="検証結果" style="white-space:pre-wrap">{summary}</pre>{error&&<p role="alert">{error}</p>}
     <div style="display:flex;flex-wrap:wrap;gap:12px">{shots.map(shot=><figure style="width:180px"><img src={shot.image} alt={shot.label} style="width:100%;background:#ddd"/><figcaption>{shot.label}</figcaption></figure>)}</div>
     {plan&&<QwenGenerationDialog plan={plan} onClose={()=>setPlan(null)} onInsert={async()=>{setSummary('模擬生成画像を差し込み');setPlan(null);}}/>}
