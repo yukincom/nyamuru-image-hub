@@ -5,6 +5,7 @@ import { type PaintImages, decodePaintImage, loadPaintImages, renderPaintPng } f
 import { qwenLayerPaint } from '../../lib/qwenGeneration.ts';
 import { prepareGuideLayer } from '../../lib/paintGuide.ts';
 
+// 旧->新: 旧=qwenInputImage/qwenLayerImage(特定モデル名) -> 新=encodeGenerationInputImage/renderGenerationLayerImage(機能体現名)へ統一
 /** Crop only an explicitly selected area; references retain their native pixel grid. */
 export async function qwenInputImage(blob:Blob,crop?:BBox,native=false):Promise<{image:string;width:number;height:number}> {
   if(!blob.type.startsWith('image/')||blob.size>40*1024*1024)throw new Error('40MiB以内の画像を選んでください');

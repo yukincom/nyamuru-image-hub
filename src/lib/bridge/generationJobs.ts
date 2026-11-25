@@ -101,6 +101,7 @@ export async function deleteGenerationCache(target:
   return { deleted: payload.deleted, summary: decodeGenerationCacheSummary(payload.summary) };
 }
 
+// 旧->新: 旧=decodeQwenJob/prepareQwenJob等 -> 新=decodeImageGenerationJob/prepareImageGenerationJob等の機能名へ統一
 export async function decodeQwenJob(raw:unknown,jobId?:string,requestSha256?:string):Promise<import('../qwenGeneration.ts').QwenJob>{
   const value=raw as Record<string,unknown>;
   const selectedWorkflow=Boolean(value&&typeof value.workflow_id==='string'

@@ -16,6 +16,7 @@ export interface QwenAdoption { jobId:string; indices:number[] }
 
 export type QwenHistoryScope = 'owner'|'work';
 
+// 旧->新: 旧=canDeleteQwenJob/executeQwenGeneration等 -> 新=canDeleteGenerationJob/executeImageGeneration等の機能名へ統一
 export function canDeleteQwenJob(job:QwenJob){return ['prepared','succeeded','failed'].includes(job.status);}
 
 export function qwenJobLocation(job:QwenJob){return `${job.pageNumber??'?'}ページ · ${job.ownerKey==='page'?'ページ全体':job.overlay?'ページ前景':`コマ ${job.panelId??'?'}`} · ${job.label}`;}

@@ -94,6 +94,7 @@ def venv_python(venv_root: Path) -> Path:
     return venv_root / "bin" / "python"
 
 
+# 旧->新: 旧=検出/OCR/VLMパス解決を当ファイルに混在 -> 新=vision_model_paths.pyへ分離しM1+M2/M7短命ワーカーを追加
 def default_vision_paths() -> dict[str, Path]:
     vision_root = Path(os.environ.get("NYAMURU_VISION_ROOT", DEFAULT_VISION_ROOT)).expanduser()
     primary_python = venv_python(vision_root / ".venv")

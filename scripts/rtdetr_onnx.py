@@ -70,6 +70,7 @@ def detection_buckets(labels, boxes, scores, conf_threshold: float) -> dict[str,
     return buckets
 
 
+# 旧->新: 旧=4クラス固定のdetect_page -> 新=機能名detect_manga_page_elementsへ変更しアナログネーム向け拡張フキダシ/しっぽクラス対応＋4クラス互換維持
 def detect_page(
     image_path: str | Path,
     *,

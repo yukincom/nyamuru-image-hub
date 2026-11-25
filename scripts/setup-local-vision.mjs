@@ -252,6 +252,7 @@ async function downloadVerifiedFile(url, destination, expectedHash, label) {
 }
 
 
+// 旧->新: 旧=downloadBaberuModel(モデル名固定) -> 新=downloadTextOcrModel(機能体現名)へ統一
 async function downloadBaberuModel(directory) {
   console.log('Baberu OCRの小型ONNXモデルを検査・取得します（約116MB）...');
   for (const file of BABERU_FILES) {

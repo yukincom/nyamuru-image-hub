@@ -102,6 +102,7 @@ export async function requestAgentReply(body:AgentRequest):Promise<AgentReply>{
   return value;
 }
 
+// 旧->新: 旧=getGeminiApiKeyStatus/generateCloud*WithGemini等 -> 新=getCloudApiKeyStatus/generateCloudPageImage/generateCloudSingleImage等の機能名へ統一
 export async function getGeminiApiKeyStatus(): Promise<{ configured: boolean; source: 'env' | 'local' | 'none'; models: Array<{ id: string; label: string }> }> {
   const value = await withNewCreationBridgeSession(() => postJson('/api/cloud/gemini/status', {}, 15_000)) as Record<string, unknown>;
   const models = Array.isArray(value.models)

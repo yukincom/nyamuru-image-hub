@@ -9,6 +9,7 @@ os.environ['HF_HUB_OFFLINE'] = '1'
 os.environ['TRANSFORMERS_OFFLINE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
+# 旧->新: 旧=SequenceClassification単体推論のみ -> 新=slot_id2label保持モデルでM5意図分類＋BIOスロット抽出を同時推論(v04互換維持)
 def classify(text, model_path):
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer

@@ -239,6 +239,7 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
   return { recognition, analyzer: normalizedAnalyzer, referenceViews };
 }
 
+// 旧->新: 旧=ローカル8B VLM/クラウド専用クライアントのみ -> 新=M1+M2共有軽量画像エンコーダ照合・設定画アングル推薦クライアントを追加
 /** ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐して登録人物と照合する。 */
 export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,

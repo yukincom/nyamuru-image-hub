@@ -92,6 +92,7 @@ export function attachRecognizedTextToPage(
     };
     const analogImport = analogImports?.get(recognizedTextOwnerKey(line));
     const targetBubbles = line.pageOverlay ? (ensurePageOverlay(page).bubbles ??= []) : panel!.bubbles;
+    // 旧->新: 旧=全フキダシ一律shape:'normal'・話者未紐づけ -> 新=M3拡張クラスのbubbleShapeHintとM6話者リンク・pageOverlay候補を反映
     const bubble: Bubble = {
       text: line.text.trim(),
       shape: 'normal',

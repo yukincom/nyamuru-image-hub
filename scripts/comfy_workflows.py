@@ -155,6 +155,7 @@ QWEN_FIGURE_ID = '132c3a87-8f0a-4591-b2e0-4a28a7b7b002'
 P_H3_TWO_IMAGE_ID = '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01'
 QWEN_STANDARD_PREFIX = 'c7b07cf5-7e69-43e4-b380-'
 
+# 旧->新: 旧=install_qwen_defaults(特定モデル名) -> 新=install_default_generation_workflows(機能体現名)へ統一
 def install_qwen_defaults(store):
     marker = '.bundled-qwen-1'
     ph3_marker = '.bundled-p-h3-4'

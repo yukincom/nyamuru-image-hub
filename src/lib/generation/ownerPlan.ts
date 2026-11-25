@@ -65,6 +65,7 @@ export function canGeneratePaintOwner(owner: Pick<PaintOwner,'kind'|'bubble'>): 
   return owner.kind==='figure'||owner.kind==='background'||owner.kind==='bubble'&&Boolean(owner.bubble&&['handwritten','typeset'].includes(owner.bubble.shape??''));
 }
 
+// 旧->新: 旧=qwenLayerCandidates/buildQwenGenerationPlan等(特定モデル名) -> 新=collectGenerationLayerCandidates/buildImageGenerationPlan等の機能名へ統一
 export function qwenLayerCandidates(owner:PaintOwner):QwenLayerCandidate[] {
   return [...owner.paint.layers].reverse().map(layer=>({id:layer.id,label:layer.name,
     kind:layer.guide&&owner.figure?.analogImport?'sketch' as const:'paint' as const,hidden:!paintLayerVisible(owner.paint,layer),

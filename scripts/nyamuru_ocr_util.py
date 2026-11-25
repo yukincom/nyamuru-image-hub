@@ -19,6 +19,7 @@ def decode_image_data(value: object) -> bytes:
         raise ValueError("画像データをデコードできませんでした") from exc
 
 
+# 旧->新: 旧=手動回転角のみ検証・適用 -> 新=M7原稿向き4クラス推定(0/90/180/270°)の推奨角取得を併用し低信頼度時は0°を維持
 def normalized_rotation_override(value: object) -> int | None:
     if value is None:
         return None

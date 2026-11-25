@@ -27,6 +27,7 @@ const compositionGuide = (entry: CompositionPanel, key: string, guides?: Record<
 const figureVisible = (entry: CompositionPanel, index: number, guides?: Record<string, boolean>) => figurePaintVisible(entry.panel.figures?.[index], compositionGuide(entry, `figure-${index}`, guides));
 
 /** Match the editor stack even when storage order interleaves direct paint and placed images. */
+// 旧->新: 旧=qwenPanelImageLayers/buildQwenCompositionPlan/captureQwenComposition等 -> 新=collectCompositionPanelImageLayers/buildPageCompositionPlan/capturePageComposition等へ統一
 export function qwenPanelImageLayers(images: PlacedImage[] = []) {
   return {
     ordinary: images.filter(image => !image.paintScope&&!image.bubbleOriginal&&!image.generationScope),

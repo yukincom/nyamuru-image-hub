@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+# 旧->新: 旧=run_rtdetr/load_baberu/run_baberu(モデル名固定) -> 新=detect_page_elements/load_text_ocr_engine/recognize_page_text_regions(機能名)＋M4個人筆跡OCR優先読込・shape_hint引継
 def run_rtdetr(root: Path, image: Path, model: Path | None, confidence: float) -> dict[str, Any]:
     from rtdetr_onnx import detect_page
 

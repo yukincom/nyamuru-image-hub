@@ -36,6 +36,7 @@ export interface LayoutRecognitionResult {
 }
 
 export interface RecognizedTextLine {
+  // 旧->新: 旧=OCR行のみ -> 新=M3拡張クラス由来bubbleShapeHintとM6話者リンク(speakerFigureId/speakerConfidence)を任意保持
   id: string;
   text: string;
   bbox: BBox;

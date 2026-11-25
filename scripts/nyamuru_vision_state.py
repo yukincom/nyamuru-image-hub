@@ -174,6 +174,7 @@ class LocalVisionState(VisionCharacterAnalysis):
             and Path(__file__).with_name("local_character_match_worker.py").is_file()
         )
 
+    # 旧->新: 旧=wd_expression_available(固定モデル名) -> 新=expression_tagger_available(機能名)へ改名しM1+M2共有エンコーダ/M7/M6の状態確認を追加
     def wd_expression_available(self) -> bool:
         return (
             self.wd_expression_model.is_file()
@@ -229,6 +230,7 @@ class LocalVisionState(VisionCharacterAnalysis):
             "comfyui_url": self.panel_drafts.endpoint,
         }
 
+    # 旧->新: 旧=固定幾何ルールのみ・rotation_override必須 -> 新=M7原稿向き推定とM6座標関係スコア(読み順・話者リンク・page_overlay)を統合し後方互換を維持
     def analyze(
         self,
         image_bytes: bytes,

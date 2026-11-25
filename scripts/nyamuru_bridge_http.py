@@ -186,6 +186,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 quit_image_capture()
                 self.send_json(200, self.state.scanners.cancel(session_id))
                 return
+            # 旧->新: 旧=既存レイアウト/VLMルートのみ -> 新=M7(/api/layout/orientation)・M1+M2(/api/character-match/lightweight, /api/figure-reference/recommend-view)を追加
             if path == "/api/layout/analyze":
                 rotation_override = normalized_rotation_override(body.get("rotation_override_degrees"))
                 with self.state.analysis_lock:

@@ -209,6 +209,7 @@ class VisionCharacterAnalysis:
             },
         }
 
+    # 旧->新: 旧=8B VLM(analyze_character_match)のみ -> 新=M1+M2共有軽量画像エンコーダによるキャラ照合・設定画アングル/サイズ推薦を追加
     def analyze_character_match(
         self,
         image_bytes: bytes,

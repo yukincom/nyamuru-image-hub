@@ -30,6 +30,7 @@ class VoiceIntentService:
         self.model = Path(os.environ.get('NYAMURU_VOICE_INTENT_MODEL', ROOT / 'models' / DEFAULT_MODEL_NAME)).expanduser()
         self.lock = threading.Lock()
 
+    # 旧->新: 旧=19意図分類のみ -> 新=M5意図分類＋BIOスロット抽出出力の厳格検証に対応
     def classify(self, body):
         original = validate_text(body)
         for path in (self.python, self.model):

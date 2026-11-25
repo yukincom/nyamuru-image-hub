@@ -53,6 +53,7 @@ function quotedBubbleText(value:string):string|undefined {
   }
 }
 
+// 旧->新: 旧=正規表現全文一致のみで引数解決 -> 新=M5高信頼度スロット抽出による言い換え吸収を併用＋安全拒否契約を維持
 export function resolveVoiceCommand(prediction:VoicePrediction):VoiceResolution {
   const {label,confidence}=prediction;
   // Whole-utterance matches prevent quoted, deferred, withdrawn or compound
