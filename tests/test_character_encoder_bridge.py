@@ -125,6 +125,42 @@ class CharacterEncoderTests(unittest.TestCase):
         self.assertTrue(expr["catalog_version"])
         self.assertRegex(expr["catalog_sha256"], r"^[0-9a-f]{64}$")
 
+    def test_analyze_character_match_ignores_cached_vlm_unless_explicitly_requested(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import vision_character_analysis as analysis_mod
+
+        class CachedVlmAndCatalog(VisionCharacterAnalysis):
+            character_encoder_model = Path("/nonexistent/model.onnx")
+
+            def resolve_vlm_model(self, requested=None):
+                raise AssertionError("default lightweight mode must not resolve 8B VLM")
+
+            def vlm_available(self, selected_model=None):
+                return True
+
+        img_a = _png_bytes(size=(160, 260), draw_rect=(40, 20, 120, 240))
+        img_b = _png_bytes(size=(160, 260), draw_rect=(10, 180, 150, 250))
+
+        def read_image(series_id, char_cat_id, asset_id):
+            self.assertEqual(series_id, "series-1")
+            if asset_id == "image-" + ("a" * 64):
+                return {"found": True, "image_bytes": img_a}
+            if asset_id == "image-" + ("b" * 64):
+                return {"found": True, "image_bytes": img_b}
+            return {"found": False}
+
+        stub = CachedVlmAndCatalog()
+        stub.series_catalogs = SimpleNamespace(read_character_image=read_image)
+        candidates = [
+            {"id": "char-a", "character_catalog_id": "cat-a", "reference_asset_ids": ["image-" + ("a" * 64)]},
+            {"id": "char-b", "character_catalog_id": "cat-b", "reference_asset_ids": ["image-" + ("b" * 64)]},
+        ]
+        with patch.object(analysis_mod, "run_character_match_worker", side_effect=AssertionError("8B VLM worker must not run")):
+            result = stub.analyze_character_match(img_a, candidates, "bust-up", series_id="series-1")
+        self.assertEqual(result["candidate_id"], "char-a")
+        self.assertEqual(result["analyzer"]["runtime"], "lightweight-descriptor-fallback")
+
     def test_short_lived_worker_cli_executes_offline(self):
         img = _png_bytes(size=(128, 128), draw_rect=(32, 20, 96, 110))
         with tempfile.TemporaryDirectory() as directory:

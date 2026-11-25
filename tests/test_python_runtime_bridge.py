@@ -169,6 +169,8 @@ class BridgeMemoryTest(unittest.TestCase):
                                              (full, None, [b"person"]), (None, None, [b"person"])]:
                     with self.subTest(reader=reader, bbox=bbox):
                         request = {"image": image_data(b"person"), "current_size": "bust-up", "candidates": []}
+                        if reader == "character-match":
+                            request["engine"] = "vlm"
                         if bbox is not None:
                             request["face_bbox"] = bbox
                         if face is not None:
@@ -230,7 +232,7 @@ class BridgeMemoryTest(unittest.TestCase):
                              ('character-reference', 'analyze_character_reference'), ('character-match', 'analyze_character_match')]:
             with self.subTest(path=path):
                 body = {'image': 'data:image/png;base64,aW1hZ2U=', 'rotation_override_degrees': 0}
-                def inference(*args):
+                def inference(*args, **kwargs):
                     self.assertTrue(lock.locked())
                     self.assertNotIn('image', body)
                     self.assertEqual(args[0], b'image')

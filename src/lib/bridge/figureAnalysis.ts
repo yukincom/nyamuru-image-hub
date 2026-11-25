@@ -240,12 +240,13 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
 }
 
 // 旧->新: 旧=ローカル8B VLM/クラウド専用クライアントのみ -> 新=M1+M2共有軽量画像エンコーダ照合・設定画アングル推薦クライアントを追加
-/** ビジョンON時のみ実行し、ローカルVLMまたはクラウドVision APIへ分岐して登録人物と照合する。 */
+/** ビジョンON時のみ実行し、ローカル軽量エンコーダまたはクラウドVision APIへ分岐して登録人物と照合する。 */
 export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,
   candidates: readonly CharacterMatchCandidate[],
   currentSize: FigureSize,
   face?: FigureFaceInput,
+  seriesId?: string,
 ): Promise<CharacterMatchSuggestion> {
   const vision = currentGenerationPreferences().vision;
   if (!vision.enabled) {
@@ -289,9 +290,13 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
   }
   const payload = await postJson('/api/character-match/analyze', {
     ...await figureImagePayload(blob, face),
+    engine: 'lightweight',
+    ...(seriesId ? { series_id: seriesId } : {}),
     candidates: candidates.map((candidate) => ({
       id: candidate.id,
       observed_traits: candidate.observedTraits,
+      ...(candidate.characterCatalogId ? { character_catalog_id: candidate.characterCatalogId } : {}),
+      ...(candidate.referenceAssetIds?.length ? { reference_asset_ids: candidate.referenceAssetIds } : {}),
     })),
     current_size: currentSize,
     vlm_model: currentLocalModelPreferences().vlmModelId,

@@ -235,6 +235,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         decode_image_data(body.pop("image", None)),
                         body.get("candidates"),
                         body.get("current_size", "bust-up"),
+                        series_id=body.get("series_id"),
                     )
                 self.send_json(200, result)
                 return
@@ -254,6 +255,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                         body.get("candidates"),
                         body.get("current_size"),
                         body.get("vlm_model"),
+                        engine=body.get("engine", "lightweight"),
+                        series_id=body.get("series_id"),
                         **self.expression_face_fields(body),
                     )
                 self.send_json(200, result)

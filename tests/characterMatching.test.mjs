@@ -249,3 +249,46 @@ test('ローカル照合クライアントは共有軽量エンコーダ系の�
     t.mock.restoreAll();
   }
 });
+
+test('buildCharacterMatchCandidatesは設定画ありキャラを特徴なしでも候補化し、軽量エンジン指定で送信する', async t => {
+  const candidates = buildCharacterMatchCandidates(
+    [{ localId: 'c1', name: '春', catalog_id: 'cat-1', primary_material_catalog_id: 'mat-2' }],
+    [
+      { catalog_id: 'mat-1', type: 'character', characterId: 'c1', character_catalog_id: 'cat-1', source_image: { asset_id: `image-${'1'.repeat(64)}` } },
+      { catalog_id: 'mat-2', type: 'character', characterId: 'c1', character_catalog_id: 'cat-1', source_image: { asset_id: `image-${'2'.repeat(64)}` } },
+    ],
+  );
+  assert.deepEqual(candidates, [{
+    id: 'c1',
+    observedTraits: [],
+    characterCatalogId: 'cat-1',
+    referenceAssetIds: [`image-${'2'.repeat(64)}`, `image-${'1'.repeat(64)}`],
+  }]);
+  const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
+  globalThis.window = { setTimeout, clearTimeout, localStorage: { getItem: () => null } };
+  globalThis.FileReader = class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } };
+  t.after(() => {
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+    if (originalReader === undefined) delete globalThis.FileReader; else globalThis.FileReader = originalReader;
+  });
+  let sentBody = null;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const common = { ok: true, service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3 };
+    if (String(url).endsWith('/api/health')) return Response.json(common);
+    sentBody = JSON.parse(options.body);
+    return Response.json({
+      ...common,
+      analyzer: { provider: 'local', runtime: 'lightweight-descriptor-fallback', model: 'descriptor-fallback-v1', prompt_version: 'lightweight-character-encoder-v1' },
+      action: '',
+      analysis: { expression: noFace, source: 'lightweight-character-encoder' },
+      candidate_id: 'c1',
+      confidence: 'high',
+      suggested_size: 'bust-up',
+    });
+  });
+  await analyzeFigureCharacterMatchWithLocalVlm(new Blob([]), candidates, 'bust-up', undefined, 'series-1');
+  assert.equal(sentBody.engine, 'lightweight');
+  assert.equal(sentBody.series_id, 'series-1');
+  assert.equal(sentBody.candidates[0].character_catalog_id, 'cat-1');
+  assert.deepEqual(sentBody.candidates[0].reference_asset_ids, [`image-${'2'.repeat(64)}`, `image-${'1'.repeat(64)}`]);
+});

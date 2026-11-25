@@ -159,7 +159,10 @@ export function createNewProjectAction({
     if (!isCurrentOperation()) { await discardStaleAssets(); return; }
     const characterReadTargets = collectUnmatchedCharacterTargets(seriesMerge.document);
     initializePanelBackgrounds(seriesMerge.document);
-    const characterCandidates = buildCharacterMatchCandidates(seriesMerge.document.manga.characters);
+    const characterCandidates = buildCharacterMatchCandidates(
+      seriesMerge.document.manga.characters,
+      seriesMerge.document.manga.materials,
+    );
     const characterReadOutcomes = new Map<string, CharacterReadOutcome>();
     const readTargetsByRegion = new Map(characterReadTargets.map(target => [target.sourceRegionId, target]));
     const persistedFigures = new Map<string, NonNullable<AnalogFigureImport['persistentAsset']>>();
@@ -175,7 +178,11 @@ export function createNewProjectAction({
             setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
             try {
               const suggestion = await analyzeFigureCharacterMatchWithLocalVlm(
-                await crop.original(), characterCandidates, target.currentSize, await crop.face(),
+                await crop.original(),
+                characterCandidates,
+                target.currentSize,
+                await crop.face(),
+                seriesMerge.document.manga.meta.series_id,
               );
               const { candidateId, confidence, action, suggestedSize, reason, expressionReading } = suggestion;
               characterReadOutcomes.set(target.sourceRegionId, { ok: true, candidateId, confidence, action, suggestedSize, reason, expressionReading });

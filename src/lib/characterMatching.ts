@@ -1,4 +1,4 @@
-import type { Character, Figure, FigureSize, FigureExpressionReading, MangaDocument, PersistentAnalogAssetRef } from '../types.ts';
+import type { Character, Figure, FigureSize, FigureExpressionReading, MangaDocument, Material, PersistentAnalogAssetRef } from '../types.ts';
 import { CHARACTER_RECOGNITION_FIELDS } from './characterReferences.ts';
 import { DETECTED_FIGURE_NAME, isDetectedFigureCharacter, isSystemMobCharacter } from './systemCharacters.ts';
 
@@ -13,6 +13,8 @@ export interface CharacterMatchTarget {
 export interface CharacterMatchCandidate {
   id: string;
   observedTraits: string[];
+  characterCatalogId?: string;
+  referenceAssetIds?: string[];
 }
 
 export type CharacterReadOutcome = {
@@ -71,13 +73,33 @@ export function collectUnmatchedCharacterTargets(document: MangaDocument): Chara
   return [...targets.values()];
 }
 
-export function buildCharacterMatchCandidates(characters: readonly Character[]): CharacterMatchCandidate[] {
+export function buildCharacterMatchCandidates(
+  characters: readonly Character[],
+  materials: readonly Material[] = [],
+): CharacterMatchCandidate[] {
   return characters.flatMap((character) => {
     if (!character.localId || isDetectedFigureCharacter(character) || isSystemMobCharacter(character)) return [];
     const observedTraits = CHARACTER_RECOGNITION_FIELDS.flatMap(({ key }) =>
       character.recognition?.[key]?.observed ?? []);
     const traits = [...new Set(observedTraits.map(value => value.trim()).filter(Boolean))].slice(0, 64);
-    return traits.length ? [{ id: character.localId, observedTraits: traits }] : [];
+    const matchingMaterials = materials
+      .filter((material) => material.type === 'character' && material.source_image?.asset_id
+        && (material.characterId === character.localId
+          || Boolean(character.catalog_id && material.character_catalog_id === character.catalog_id)))
+      .sort((left, right) => (
+        Number(right.catalog_id === character.primary_material_catalog_id)
+        - Number(left.catalog_id === character.primary_material_catalog_id)
+      ));
+    const referenceAssetIds = [...new Set(
+      matchingMaterials.map((material) => material.source_image!.asset_id).filter(Boolean),
+    )].slice(0, 8);
+    if (!traits.length && !referenceAssetIds.length) return [];
+    return [{
+      id: character.localId,
+      observedTraits: traits,
+      ...(character.catalog_id ? { characterCatalogId: character.catalog_id } : {}),
+      ...(referenceAssetIds.length ? { referenceAssetIds } : {}),
+    }];
   });
 }
 

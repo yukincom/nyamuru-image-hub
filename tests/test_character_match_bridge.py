@@ -196,7 +196,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
                     "name": "A",
                     "aliases": [],
                     "observed_traits": ["短いボブ"],
-                }], "bust-up")
+                }], "bust-up", engine="vlm")
 
         self.assertEqual(result["candidate_id"], "person-a")
         self.assertEqual(result["confidence"], "medium")
@@ -217,13 +217,13 @@ class CharacterMatchBridgeTest(unittest.TestCase):
             with patch.object(state, "expression_tagging", return_value={}), patch.object(
                 character_analysis, "run_character_match_worker", return_value=result
             ) as runner:
-                data = state.analyze_character_match(b"crop", incoming, "face")
+                data = state.analyze_character_match(b"crop", incoming, "face", engine="vlm")
                 self.assertEqual(runner.call_args.kwargs["candidates"],
                                  [{"id": "person-a", "observed_traits": ["jaw-length bob"]}])
                 self.assertEqual((data["candidate_id"], data["action"], data["analysis"]), ("person-a", "", result["analysis"]))
                 result["analysis"] = {}
                 with self.assertRaises(RuntimeError):
-                    state.analyze_character_match(b"crop", incoming, "face")
+                    state.analyze_character_match(b"crop", incoming, "face", engine="vlm")
 
     def test_unknown_worker_candidate_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory_name:
@@ -242,7 +242,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
                     "name": "A",
                     "aliases": [],
                     "observed_traits": [],
-                }], "bust-up")
+                }], "bust-up", engine="vlm")
 
         self.assertEqual(result["candidate_id"], "")
         self.assertEqual(result["confidence"], "none")
@@ -259,7 +259,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
                 "suggested_size": "full",
                 "analysis": {"pose": {"base": "sitting"}},
             }):
-                result = state.analyze_character_match(b"crop", [], "bust-up")
+                result = state.analyze_character_match(b"crop", [], "bust-up", engine="vlm")
 
         self.assertEqual(result["candidate_id"], "")
         self.assertEqual(result["action"], "座っている。")
@@ -302,7 +302,7 @@ class CharacterMatchBridgeTest(unittest.TestCase):
                     "name": "A",
                     "aliases": [],
                     "observed_traits": ["短いボブ"],
-                }], "face", face_bbox=[0, 0, 1, 1])
+                }], "face", face_bbox=[0, 0, 1, 1], engine="vlm")
 
         self.assertEqual(vlm_worker.call_args.kwargs["candidates"][0]["id"], "person-a")
         self.assertEqual(vlm_worker.call_args.kwargs["expression_tagging"], tagging)
