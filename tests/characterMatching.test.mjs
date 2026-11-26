@@ -1,5 +1,6 @@
 // 模擬した解析結果を作品へ反映し、取込領域・人間の編集・生成用の本文を区別する。実画像の認識精度は後日に確認。
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { applyCharacterMatchAssignments, applyCharacterReadOutcomes, buildCharacterMatchCandidates, collectUnmatchedCharacterTargets } from '../src/lib/characterMatching.ts';
 
@@ -301,4 +302,66 @@ test('buildCharacterMatchCandidatesは設定画ありキャラを特徴なしで
   assert.equal(sentBody.series_id, 'series-1');
   assert.equal(sentBody.candidates[0].character_catalog_id, 'cat-1');
   assert.deepEqual(sentBody.candidates[0].reference_asset_ids, [`image-${'2'.repeat(64)}`, `image-${'1'.repeat(64)}`]);
+});
+
+test('常時オン仕様により未設定・旧オフ/クラウド設定でも軽量照合経路で実行される', async t => {
+  const originalWindow = globalThis.window, originalReader = globalThis.FileReader;
+  globalThis.FileReader = class { readAsDataURL() { this.result = 'data:image/png;base64,iVBORw0KGgo='; this.onload(); } };
+  t.after(() => {
+    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
+    if (originalReader === undefined) delete globalThis.FileReader; else globalThis.FileReader = originalReader;
+  });
+
+  const legacyOffCloud = JSON.stringify({
+    version: 3,
+    ...DEFAULT_GENERATION_PREFERENCES,
+    vision: { enabled: false, execution: 'cloud', cloudModel: 'gemini-2.5-flash-lite' },
+  });
+
+  for (const storedValue of [null, legacyOffCloud]) {
+    globalThis.window = {
+      setTimeout,
+      clearTimeout,
+      localStorage: { getItem: (key) => (key === GENERATION_PREFERENCES_STORAGE_KEY ? storedValue : null) },
+    };
+    const requestedUrls = [];
+    let sentBody = null;
+    t.mock.method(globalThis, 'fetch', async (url, options) => {
+      const urlString = String(url);
+      requestedUrls.push(urlString);
+      const common = { ok: true, service: 'nyamuru-image-hub-local-bridge', layout_protocol_version: 3 };
+      if (urlString.endsWith('/api/health')) return Response.json(common);
+      assert.ok(urlString.endsWith('/api/character-match/analyze'));
+      assert.equal(urlString.includes('/api/cloud/gemini/match-character'), false);
+      sentBody = JSON.parse(options.body);
+      return Response.json({
+        ...common,
+        analyzer: { provider: 'local', runtime: 'onnx-character-encoder', model: 'siglip2-base', prompt_version: 'lightweight-character-encoder-v1' },
+        action: '',
+        analysis: { expression: noFace, source: 'lightweight-character-encoder' },
+        candidate_id: 'c1',
+        confidence: 'high',
+        suggested_size: 'bust-up',
+      });
+    });
+
+    const result = await analyzeFigureCharacterMatchWithLocalVlm(
+      new Blob([]),
+      [{ id: 'c1', name: '春', aliases: [], observedTraits: [] }],
+      'bust-up',
+    );
+    assert.equal(sentBody?.engine, 'lightweight');
+    assert.equal(result.candidateId, 'c1');
+    assert.equal(result.analyzer.provider, 'local');
+    assert.equal(requestedUrls.some((url) => url.includes('/api/cloud/gemini/match-character')), false);
+    t.mock.restoreAll();
+  }
+});
+
+test('CharacterReferencesとCharactersEditorからvisionオフ制限と無効化UIが削除されている', () => {
+  const characterReferences = readFileSync(new URL('../src/components/CharacterReferences.tsx', import.meta.url), 'utf8');
+  const charactersEditor = readFileSync(new URL('../src/components/document/CharactersEditor.tsx', import.meta.url), 'utf8');
+  for (const source of [characterReferences, charactersEditor]) {
+    assert.doesNotMatch(source, /visionEnabled|キャラ照合（ビジョン）がオフ/);
+  }
 });

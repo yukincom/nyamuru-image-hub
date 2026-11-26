@@ -114,15 +114,7 @@ test('coverage report保存clientはcaller pathを送らずstrictな相対path�
 test('人物資料の一括解析は安定特徴と画像ごとの分類を受け取る', async () => {
   const originalWindow = globalThis.window;
   const originalFetch = globalThis.fetch;
-  globalThis.window = {
-    setTimeout,
-    clearTimeout,
-    localStorage: {
-      getItem: (key) => key === 'nyamuru.generation-preferences.v1'
-        ? JSON.stringify({ version: 3, execution: 'local', local: { workflowId: '2a8f4c1e-7b3d-4e9a-9c1f-5d6e7f8a9b01' }, vision: { enabled: true, execution: 'local', cloudModel: 'gemini-2.5-flash-lite' } })
-        : null,
-    },
-  };
+  globalThis.window = { setTimeout, clearTimeout };
   const first = `image-${'a'.repeat(64)}`;
   const second = `image-${'b'.repeat(64)}`;
   let requestBody;
