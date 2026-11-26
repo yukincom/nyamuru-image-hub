@@ -148,10 +148,6 @@ export function createPaintGestures(options: PaintEditorOptions, state: PaintEdi
       if(layer.image&&!layer.guide&&(selectionMode==='vector-select'||selectionMode==='vector-node')){
         const imageHandle=boxResizeHandleAt(layer.image.bbox,local,tolerance);
         if(imageHandle){beginImageResize(event,owner,layer,imageHandle);return;}
-        const b=layer.image.bbox;
-        if(local.x>=b.x&&local.x<=b.x+b.w&&local.y>=b.y&&local.y<=b.y+b.h){
-          beginLayersMove(event,owner,[layer]);return;
-        }
       }
     }
     const folderLayers=selectedFolder&&(selectionMode==='vector-select'||selectionMode==='vector-node')

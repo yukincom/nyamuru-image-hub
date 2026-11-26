@@ -62,7 +62,16 @@ enum Content {
 struct Font { name: String, postscript: String, synthetic_bold: Option<bool>, synthetic_italic: Option<bool> }
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Line { points: Vec<(f64, f64, f64)>, closed: bool, width_px: f64, color: [u8; 3] }
+struct Line {
+    points: Vec<(f64, f64, f64)>,
+    closed: bool,
+    width_px: f64,
+    color: [u8; 3],
+    #[serde(default)]
+    curve: Option<String>,
+    #[serde(default)]
+    corners: Vec<usize>,
+}
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Frame { points: Vec<(f64, f64)>, width_px: f64 }
@@ -115,6 +124,8 @@ fn validate_layers(layers: &[Layer], depth: usize, ids: &mut HashSet<String>) ->
             },
             Content::Vector { lines } => {
                 if lines.len()>100_000 || lines.iter().any(|line| line.points.len()<2 || line.points.len()>1_000_000 || !line.width_px.is_finite() || !(0.0..=30_000.0).contains(&line.width_px)
+                    || line.curve.as_deref().is_some_and(|c| c != "straight" && c != "spline")
+                    || line.corners.iter().any(|&i| i >= line.points.len())
                     || line.points.iter().any(|&(x,y,p)| !x.is_finite() || !y.is_finite() || x.abs()>1_000_000.0 || y.abs()>1_000_000.0 || !p.is_finite() || !(0.0..=1.0).contains(&p))) { return Err("ベクター線の座標が不正です".into()); }
             },
             Content::Raster { x, y, .. } => if x.unsigned_abs()>1_000_000 || y.unsigned_abs()>1_000_000 { return Err("画像の位置が不正です".into()); },
@@ -134,6 +145,44 @@ fn vector_colors(file: &mut ClipFile, id: i64, lines: &[Line]) -> Result<()> {
         for (object, line) in data.objects.iter_mut().zip(lines) {
             for (channel, value) in line.color.iter().enumerate() {
                 object.header[40+channel*4..44+channel*4].copy_from_slice(&(u32::from(*value)*0x01010101).to_be_bytes());
+            }
+            if line.curve.as_deref() == Some("spline") {
+                // CSP native Catmull-Rom spline (NORMAL 0x1 | SPLINE 0x80 | FREEHAND 0x2000 | optional CLOSED 0x100).
+                let flags: u32 = if line.closed { 0x2181 } else { 0x2081 };
+                object.header[20..24].copy_from_slice(&flags.to_be_bytes());
+                let margin = (line.width_px / 2.0).max(0.5) * 1.6 + 2.0;
+                let n = line.points.len();
+                let mut sx0 = i32::MAX; let mut sy0 = i32::MAX;
+                let mut sx1 = i32::MIN; let mut sy1 = i32::MIN;
+                for (idx, pt_bytes) in object.points.iter_mut().enumerate() {
+                    let (x0, y0, w_factor) = line.points[idx];
+                    let (x1, y1) = if idx + 1 < n {
+                        (line.points[idx + 1].0, line.points[idx + 1].1)
+                    } else if line.closed {
+                        (line.points[0].0, line.points[0].1)
+                    } else {
+                        (x0, y0)
+                    };
+                    let seg = [
+                        (x0.min(x1) - margin).floor() as i32,
+                        (y0.min(y1) - margin).floor() as i32,
+                        (x0.max(x1) + margin).ceil() as i32,
+                        (y0.max(y1) + margin).ceil() as i32,
+                    ];
+                    sx0 = sx0.min(seg[0]); sy0 = sy0.min(seg[1]);
+                    sx1 = sx1.max(seg[2]); sy1 = sy1.max(seg[3]);
+                    for (bi, bv) in seg.iter().enumerate() {
+                        pt_bytes[16 + bi * 4..20 + bi * 4].copy_from_slice(&bv.to_be_bytes());
+                    }
+                    let pflags: u32 = if line.corners.contains(&idx) { 1 } else { 0 };
+                    pt_bytes[32..36].copy_from_slice(&pflags.to_be_bytes());
+                    // Fix tablet pressure at 1.0 (neutral) and store exact relative width at +56 (`width_factor`).
+                    pt_bytes[36..40].copy_from_slice(&1.0f32.to_be_bytes());
+                    pt_bytes[56..60].copy_from_slice(&(w_factor as f32).to_be_bytes());
+                }
+                for (bi, bv) in [sx0, sy0, sx1, sy1].iter().enumerate() {
+                    object.header[24 + bi * 4..28 + bi * 4].copy_from_slice(&bv.to_be_bytes());
+                }
             }
         }
         file.set_external(&external, data.to_bytes());
@@ -312,11 +361,13 @@ fn add(file: &mut ClipFile, parent: i64, layers: &[Layer], donor: &PartDonors, e
                     closed: true,
                     width_px: f.width_px,
                 }).collect();
-                let color_lines: Vec<Line> = frames.iter().map(|f| Line {
+                    let color_lines: Vec<Line> = frames.iter().map(|f| Line {
                     points: f.points.iter().map(|&(x, y)| (x, y, 1.0)).collect(),
                     closed: true,
                     width_px: f.width_px,
                     color: [17, 17, 17],
+                    curve: None,
+                    corners: Vec::new(),
                 }).collect();
                 let border_id = add_vector_layer(file, donor, "コマ枠", &border_lines, id)?;
                 vector_colors(file, border_id, &color_lines)?;
@@ -678,6 +729,37 @@ mod tests {
             .collect();
         let _ = std::fs::remove_file(&tmp);
         assert_eq!(links, vec![".:page0001.clip", ".:page0002.clip", ".:page0003.clip"]);
+    }
+    #[test]
+    fn spline_vector_line_preserves_width_factors_and_corners_and_passes_verify() {
+        let mut page = fixture();
+        page.layers = vec![serde_json::from_value(json!({
+            "kind": "vector", "id": "traced", "name": "線画", "visible": true, "locked": false, "opacity": 1.0, "blend": "normal",
+            "lines": [{
+                "points": [[12.5, 18.5, 0.25], [40.0, 42.0, 1.0], [88.0, 30.0, 0.5]],
+                "closed": false,
+                "widthPx": 8.0,
+                "color": [0, 0, 0],
+                "curve": "spline",
+                "corners": [1]
+            }]
+        })).unwrap()];
+        let bytes = encode(&page).unwrap();
+        let file = ClipFile::from_bytes(bytes.clone()).unwrap();
+        let layer = file.layers.flatten().into_iter().find(|(l, _)| l.name == "線画").unwrap().0;
+        let reference = select(file.database(), "SELECT VectorData FROM VectorObjectList WHERE LayerId = ?1", [layer.main_id]).unwrap()[0].text("VectorData").unwrap();
+        let data = VectorData::parse(file.external(&reference).unwrap()).unwrap();
+        assert_eq!(data.objects.len(), 1);
+        assert_eq!(data.objects[0].flags(), 0x2081);
+        let p0 = &data.objects[0].points[0];
+        let p1 = &data.objects[0].points[1];
+        assert_eq!(u32::from_be_bytes(p0[32..36].try_into().unwrap()), 0);
+        assert_eq!(u32::from_be_bytes(p1[32..36].try_into().unwrap()), 1);
+        assert_eq!(f32::from_be_bytes(p0[36..40].try_into().unwrap()), 1.0);
+        assert!((f32::from_be_bytes(p0[56..60].try_into().unwrap()) - 0.25).abs() < 1e-6);
+        assert!((f32::from_be_bytes(p1[56..60].try_into().unwrap()) - 1.0).abs() < 1e-6);
+        let report = csp_format::verify::check_clip(bytes, csp_format::verify::CheckOptions::default());
+        assert!(report.ok(), "{}", serde_json::to_string_pretty(&report).unwrap());
     }
     // 見込み: 無効な寸法・ID重複・壊れた画像は完成ファイルとして返さない。
     // 合格: encoderがErrを返す。外部サービスやUIは通さない。

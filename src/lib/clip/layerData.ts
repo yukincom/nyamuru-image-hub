@@ -31,7 +31,14 @@ export interface ClipExportText extends ClipExportLayerBase, TextInlineStyle {
   balloons?:ClipExportBalloon[];
 }
 
-export interface ClipExportLine { points:Array<[number,number,number]>; closed:boolean; widthPx:number; color:[number,number,number] }
+export interface ClipExportLine {
+  points:Array<[number,number,number]>;
+  closed:boolean;
+  widthPx:number;
+  color:[number,number,number];
+  curve?:'straight'|'spline';
+  corners?:number[];
+}
 
 export interface ClipExportVector extends ClipExportLayerBase { kind:'vector'; lines:ClipExportLine[] }
 
@@ -83,6 +90,19 @@ export function clipExportVectorLines(paths:readonly VectorPath[],paint:Pick<Pai
   };
   for(const path of paths){
     if(!path.style.stroke||!path.nodes.length)continue;
+    const sx=frame.w/paint.width*output.width/page.w,sy=frame.h/paint.height*output.height/page.h;
+    const widthPx=path.style.width*Math.sqrt(Math.abs(sx*sy)),strokeColor=color(paintColorInk(path.style.stroke,mode)!);
+    if(path.style.profile==='variable'){
+      const corners:number[]=[];
+      const points:Array<[number,number,number]>=path.nodes.map((node,index)=>{
+        const [x,y]=map(node);
+        if(node.corner)corners.push(index);
+        return [x,y,Math.max(0.01,Math.min(1,node.width??1))];
+      });
+      if(points.length===1)points.push([...points[0]]);
+      result.push({points,closed:path.closed,widthPx,color:strokeColor,curve:'spline',...(corners.length?{corners}:{})});
+      continue;
+    }
     const points:Array<[number,number,number]>=[],first=map(path.nodes[0]);points.push([...first,1]);
     const flatten=(a:number[],b:number[],c:number[],d:number[],depth=0)=>{
       if(points.length>=65535)throw new Error('CLIPへ書き出す曲線が複雑すぎます');
@@ -96,8 +116,7 @@ export function clipExportVectorLines(paths:readonly VectorPath[],paint:Pick<Pai
       flatten(map(a),map({x:a.x+(a.handleOut?.x??0),y:a.y+(a.handleOut?.y??0)}),map({x:b.x+(b.handleIn?.x??0),y:b.y+(b.handleIn?.y??0)}),map(b));
     }
     if(points.length===1)points.push([...points[0]]);
-    const sx=frame.w/paint.width*output.width/page.w,sy=frame.h/paint.height*output.height/page.h;
-    result.push({points,closed:path.closed,widthPx:path.style.width*Math.sqrt(Math.abs(sx*sy)),color:color(paintColorInk(path.style.stroke,mode)!)});
+    result.push({points,closed:path.closed,widthPx,color:strokeColor});
   }
   return result;
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import {
-  Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, ArrowLeftRight, Sparkles,
+  Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, ArrowLeftRight, Sparkles, Spline,
 } from 'lucide-preact';
 import VectorControls from '../VectorControls';
 import PaintPenTools from '../PaintPenTools';
@@ -46,6 +46,7 @@ interface PaintToolActionsBindings {
   updateOwnerLayer: (key: string, id: string, patch: Partial<PaintLayer>) => void;
   layerAction: (action: PaintLayerAction) => void;
   openFinish: () => void;
+  openLineTrace: () => void;
 }
 
 export function usePaintToolActions(options: PaintEditorOptions, state: PaintEditorState, bindings: PaintToolActionsBindings) {
@@ -66,7 +67,7 @@ export function usePaintToolActions(options: PaintEditorOptions, state: PaintEdi
   const {
     finishGesture, paintRegion, redo, undo, setCurrentSize, changeVectorStyle, clearVectorSelection,
     toggleInk, requestClose, deleteVectorSelection, changePaths, paintActive, swapInk, chooseInk,
-    updateOwnerLayer, layerAction, openFinish,
+    updateOwnerLayer, layerAction, openFinish, openLineTrace,
   } = bindings;
   function selectTool(next:PaintTool){
     if(busy||toolSuspended||operation.current)return;
@@ -165,6 +166,7 @@ export function usePaintToolActions(options: PaintEditorOptions, state: PaintEdi
       <PaintRulerTools mode={rulerMode} active={paintActive&&tool==='ruler'} select={selectRuler} disabled={busy||toolSuspended||inputActive.current}/>
       <PaintToolButton class="paint-tool-icon" label="消しゴム" shortcut="E" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||toolSuspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>
       <PaintToolButton class="paint-tool-icon" label="漫画仕上げ" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openFinish}><Sparkles size={23}/></PaintToolButton>
+      <PaintToolButton class="paint-tool-icon" label="ベクター線画化" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openLineTrace}><Spline size={23}/></PaintToolButton>
       <PaintToolButton class="paint-tool-icon" label="バケツ" shortcut="G" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
     </div>
     <div class={`paint-ink-controls ${brushInk?'is-brush-ink':''}`}>

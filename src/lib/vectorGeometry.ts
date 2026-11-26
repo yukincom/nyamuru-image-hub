@@ -40,12 +40,12 @@ export function insertVectorAnchor(path:VectorPath,point:VectorPoint):VectorPath
 export function moveVectorNode(path:VectorPath,index:number,point:VectorPoint,handle?:'handleIn'|'handleOut',independent=false):VectorPath {
   return {...path,nodes:path.nodes.map((n,i)=>{if(i!==index)return n;if(!handle)return {...n,x:point.x,y:point.y};const vector={x:point.x-n.x,y:point.y-n.y};return {...n,[handle]:vector,...(!independent?{[handle==='handleIn'?'handleOut':'handleIn']:{x:-vector.x||0,y:-vector.y||0}}:{})};})};
 }
-export function cornerVectorNode(path:VectorPath,index:number):VectorPath {return {...path,nodes:path.nodes.map((n,i)=>i===index?{x:n.x,y:n.y}:n)};}
+export function cornerVectorNode(path:VectorPath,index:number):VectorPath {return {...path,nodes:path.nodes.map((n,i)=>i===index?{x:n.x,y:n.y,...(n.width!==undefined?{width:n.width}:{}),corner:true}:n)};}
 /** Convert only the chosen anchor, or the selected path when no point is chosen. */
 export function convertVectorNodes(path:VectorPath,smooth:boolean,index?:number):VectorPath {
   let nodes:VectorNode[];
-  if(smooth&&path.nodes.length>1){const curve=paperPath(path);curve.smooth({type:'continuous'});nodes=fromPaper(curve,path).nodes;curve.remove();}
-  else nodes=path.nodes.map(n=>({x:n.x,y:n.y}));
+  if(smooth&&path.nodes.length>1){const curve=paperPath(path);curve.smooth({type:'continuous'});nodes=fromPaper(curve,path).nodes.map((node,i)=>({...node,...(path.nodes[i]?.width!==undefined?{width:path.nodes[i].width}:{})}));curve.remove();}
+  else nodes=path.nodes.map(n=>({x:n.x,y:n.y,...(n.width!==undefined?{width:n.width}:{}),...(n.corner?{corner:true}:{})}));
   return {...path,nodes:path.nodes.map((n,i)=>index===undefined||i===index?nodes[i]:n)};
 }
 export function reverseVector(path:VectorPath):VectorPath {return {...path,nodes:[...path.nodes].reverse().map(n=>({...n,handleIn:n.handleOut,handleOut:n.handleIn}))};}

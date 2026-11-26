@@ -7,7 +7,7 @@ import {newToneLayer} from '../src/lib/paintTone.ts';
 import {lassoSelection,combineSelection} from '../src/lib/rasterSelection.ts';
 import { PaintSmoother } from '../src/lib/paintStroke.ts';
 import {defaultVectorStyle,vectorShape} from '../src/lib/vectorGeometry.ts';
-import {vectorResizeHandleAt,vectorAnchorAt} from '../src/lib/vectorGesture.ts';
+import {vectorResizeHandleAt,vectorAnchorAt,boxResizeHandleAt} from '../src/lib/vectorGesture.ts';
 import {paintSelectionMode,nextPaintLineKind,paintToolForLayer} from '../src/lib/paintToolMode.ts';
 import {readFileSync} from 'node:fs';
 import {paintEditorSource} from './editorModuleSources.mjs';
@@ -545,4 +545,31 @@ test('deleting an expanded generated image layer trims unused margin back to ref
  assert.equal(trimmed.paint.height,base.paint.height);
  assert.deepEqual(trimmed.frame,base.frame);
  assert.deepEqual(trimmed.paint.referenceFrame,{x:0,y:0,w:base.paint.width,h:base.paint.height});
+});
+
+test('active image layer yields interior clicks to pickPaintLayer while keeping resize handles',()=>{
+  const betaLayer={...newPaintLayer('ベタ塗り','raster'),image:{assetId:'beta-asset',crop:{x:0,y:0,w:100,h:100},bbox:{x:0,y:0,w:100,h:100}}};
+  const path=vectorShape('ellipse',{x:20,y:20},{x:80,y:70},defaultVectorStyle());
+  const vecLayer={...newPaintLayer('線画','vector'),paths:[path]};
+  const owner={key:'panel',paint:{width:100,height:100,layers:[betaLayer,vecLayer]},frame:{x:0,y:0,w:100,h:100}};
+
+  let picks=0,vectors=0,resizes=0,moves=0;
+  const pick=()=>({owner,layer:vecLayer,point:{x:50,y:20},pathId:path.id});
+  const makeBegin=(pt)=>editorHandler('beginLayerSelection',{
+    tool:'vector-select',owner,layer:betaLayer,layerVisible:true,selectedFolder:undefined,paintLayerEditable:()=>true,
+    vectorState:{current:{selected:[]}},vectorResizeHandleAt,boxResizeHandleAt,
+    inputPoint:()=>pt,inputTolerance:()=>3,coverage:()=>true,
+    pickPaintLayer:()=>{picks++;return pick();},
+    beginVector:()=>vectors++,beginImageResize:()=>resizes++,beginLayersMove:()=>moves++,
+    historyRef:{current:{present:{owners:[owner]}}},
+  });
+
+  const event={button:0,clientX:50,clientY:20,currentTarget:{dataset:{paperWidth:'100',paperHeight:'100'},getBoundingClientRect:()=>({left:0,top:0,width:100,height:100})}};
+  makeBegin({x:50,y:20})(event);
+  assert.equal(picks,1);
+  assert.equal(vectors,1,'Clicking vector path over active image layer selects vector path');
+  assert.equal(moves,0);
+
+  makeBegin({x:0,y:0})(event);
+  assert.equal(resizes,1,'Resize handle on active image layer still begins image resize');
 });

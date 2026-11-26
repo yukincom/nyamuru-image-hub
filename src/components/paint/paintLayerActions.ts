@@ -27,7 +27,7 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
   const { overlay, requested, textTool, zoomTool, onStartPaint, onAddOutside, onToggleGuide } = options;
   const {
     scene, busy, suspended, finishSelection, anchor, paletteScope, finishKeys, hasLayer, layer,
-    setFinishSelection, toolSuspended, operation, setMenu, setFinishOpen, alive, historyRef,
+    setFinishSelection, toolSuspended, operation, setMenu, setFinishOpen, setLineTraceOpen, alive, historyRef,
     inputActive, imagesRef, setImages, setImports, setOwnerKey, setLayerId, setEffectsTab,
     setMaskTarget, setSelection, setPaletteFolded, ownerKey, layerId, selectedFolder, maskTarget,
     paletteFolded, owner, inkColor, setInkColor, selectedMask, images, locked, selectionBoxes, setError, setTool,
@@ -47,6 +47,29 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
     if(overlay||busy||toolSuspended||operation.current)return;
     if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
     finishGesture();setMenu(null);setFinishOpen(true);
+  }
+  function openLineTrace(){
+    if(overlay||busy||toolSuspended||operation.current)return;
+    if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
+    finishGesture();setMenu(null);setLineTraceOpen(true);
+  }
+  function acceptLineTrace(batch:FinishBatch){
+    if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。ベクター線画化を開き直してください');
+    imagesRef.current=batch.images;setImages(batch.images);
+    setImports(items=>[...items,...batch.imports.filter(add=>!items.some(item=>item.asset.id===add.asset.id))]);
+    const {ownerKey,folderId}=batch.focus;
+    const target=batch.scene.owners.find(item=>item.key===ownerKey)!;
+    commit(batch.scene);
+    setFinishSelection(null);setOwnerKey(ownerKey);setLayerId(folderId);
+    setMaskTarget(null);setSelection(null);setLineTraceOpen(false);
+    const created=target.paint.layers.find(item=>item.id===folderId);
+    if(created?.kind==='vector')matchLayerPen('vector');
+    setPaletteFolded(current=>{
+      const next={...current,[paletteScope]:false,[`${paletteScope}/owner/${ownerKey}`]:false};
+      if(target.parentKey)next[`${paletteScope}/owner/${target.parentKey}`]=false;
+      for(const folder of paintFolderChain(target.paint,created?.folderId??folderId))next[`${paletteScope}/folder/${folder.id}`]=false;
+      return next;
+    });
   }
   function acceptFinish(batch:FinishBatch){
     if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。仕上げを開き直してください');
@@ -199,6 +222,6 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
 
   return {
     layerAction, toggleFinishLayer, selectMask, addToneMask, addGenerationMask, toggleGuide,
-    acceptFinish, openFinish,
+    acceptFinish, openFinish, acceptLineTrace, openLineTrace,
   };
 }

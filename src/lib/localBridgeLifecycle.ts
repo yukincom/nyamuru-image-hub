@@ -85,6 +85,59 @@ export async function stopNewCreationBridgeSession(
   };
 }
 
+export interface LineTraceStroke {
+  closed: boolean;
+  role?: string;
+  points: Array<[number, number, number]>;
+  corners: number[];
+}
+
+export interface LineTraceOptions {
+  threshold?: number;
+  invert?: boolean;
+  tol?: number;
+  epsR?: number;
+  detectBeta?: boolean;
+  betaDepth?: number;
+  minRegionArea?: number;
+  chainMode?: 'model' | 'heuristic' | 'none';
+  pruneMaxPoints?: number;
+}
+
+export interface LineTraceResponse {
+  width: number;
+  height: number;
+  strokes: LineTraceStroke[];
+  betaPng?: string;
+  stats?: {
+    final_strokes: number;
+    final_points: number;
+    junction_links: number;
+    collapsed_bridges: number;
+    beta_regions: number;
+    timings?: { total_ms: number };
+  };
+}
+
+export async function requestLineTrace(
+  image: string,
+  options: LineTraceOptions = {},
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch,
+): Promise<LineTraceResponse> {
+  const payload = await lifecycleRequest('/api/line-trace', { image, ...options }, fetchImpl, 60_000, signal);
+  if (!Array.isArray(payload.strokes) || typeof payload.width !== 'number' || typeof payload.height !== 'number') {
+    throw new Error('ベクター線画化の結果を受信できませんでした');
+  }
+  return {
+    width: payload.width,
+    height: payload.height,
+    strokes: payload.strokes as LineTraceStroke[],
+    ...(typeof payload.betaPng === 'string' ? { betaPng: payload.betaPng } : {}),
+    ...(payload.stats && typeof payload.stats === 'object' ? { stats: payload.stats as LineTraceResponse['stats'] } : {}),
+  };
+}
+
 export async function requestMangaFinish(image: string, longEdge: number, signal: AbortSignal) {
   const payload = await lifecycleRequest('/api/manga-finish', {image, long_edge: longEdge}, fetch, 120_000, signal);
   if (!payload.layers || typeof payload.layers !== 'object') throw new Error('仕上げ画像を受信できませんでした');

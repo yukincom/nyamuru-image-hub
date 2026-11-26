@@ -19,14 +19,21 @@ export interface PaintStroke {
 
 export interface VectorPoint { x:number; y:number }
 
-export interface VectorNode extends VectorPoint { handleIn?:VectorPoint; handleOut?:VectorPoint }
+export interface VectorNode extends VectorPoint {
+  handleIn?:VectorPoint;
+  handleOut?:VectorPoint;
+  /** Per-node relative width multiplier (0..1 of `style.width`) for traced variable-width strokes. */
+  width?:number;
+  /** Hard corner flag preserved when exporting native CSP spline strokes. */
+  corner?:boolean;
+}
 
 export interface VectorStyle {
   stroke:string|null; fill:string|null; width:number;
   cap:'butt'|'round'|'square'; join:'miter'|'round'|'bevel'; miterLimit:number;
   dash:number[]; dashOffset:number; alignment:'center'|'inside'|'outside';
   arrowStart:'none'|'triangle'|'open'|'circle'; arrowEnd:'none'|'triangle'|'open'|'circle';
-  profile:'uniform'|'taper'|'spindle';
+  profile:'uniform'|'taper'|'spindle'|'variable';
 }
 
 export interface VectorPath { id:string; nodes:VectorNode[]; closed:boolean; style:VectorStyle }

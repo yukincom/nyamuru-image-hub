@@ -1,4 +1,5 @@
 import { existingComfyLauncher, LocalComfyController } from './local-comfy-supervisor.mjs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { DEFAULT_BRIDGE_PORT, DEFAULT_BRIDGE_HOST, DEFAULT_LLM_URL, checkBridgeState, launchBridgeProcess, waitForBridgeProcess, stopBridgeProcess, bridgeProcessIsRunning } from './bridge-process.mjs';
@@ -53,6 +54,34 @@ async function finishMangaRaster(repoRoot, body, signal) {
   });
 }
 
+function resolveLineTraceBinary(repoRoot) {
+  const ext = process.platform === 'win32' ? '.exe' : '';
+  const candidates = [
+    process.env.NYAMURU_LINE_TRACE_BIN,
+    resolve(repoRoot, `.local-clip-export/bin/nyamuru-line-trace${ext}`),
+    resolve(repoRoot, `../line-trace-strokes/target/release/line-trace-rs${ext}`),
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error('ベクター線画化のバイナリが見つかりません。npm run setup:clip を実行してください');
+}
+
+async function traceMangaLineArt(repoRoot, body, signal) {
+  const binary = resolveLineTraceBinary(repoRoot);
+  signal.throwIfAborted();
+  return new Promise((done, fail) => {
+    const child = execFile(binary, ['--bridge-stdin'], {
+      signal, timeout: 60_000, maxBuffer: 96 * 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) return fail(new Error(stderr.trim() || 'ベクター線画化の実行に失敗しました'));
+      try { done(JSON.parse(stdout)); } catch { fail(new Error('ベクター線画化の結果を読み込めませんでした')); }
+    });
+    child.stdin.on('error', fail);
+    child.stdin.end(JSON.stringify(body));
+  });
+}
+
 export async function startLocalBridgeSupervisor({
   repoRoot,
   host = '127.0.0.1',
@@ -81,6 +110,7 @@ export async function startLocalBridgeSupervisor({
   const comfy = comfyController ?? new LocalComfyController({repoRoot,busy:()=>Boolean(panelActions.imageToken)});
   const runtimeOperations = new Map();
   let mangaFinish = null;
+  let lineTrace = null;
   const forgetOperation = token => {
     for(const operations of runtimeOperations.values()) operations.delete(token);
   };
@@ -112,6 +142,25 @@ export async function startLocalBridgeSupervisor({
           protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
           comfy_lifecycle_version: 1,
         }, origin);
+        return;
+      }
+      if (request.method === 'POST' && pathname === '/api/line-trace') {
+        if (lineTrace) {
+          jsonResponse(response, 409, { ok: false, error: '別のベクター線画化の完了をお待ちください' }, origin);
+          return;
+        }
+        const operation = new AbortController();
+        lineTrace = operation;
+        response.once('close', () => operation.abort());
+        try {
+          const body = await jsonBody(request, 96 * 1024 * 1024);
+          const result = await traceMangaLineArt(repoRoot, body, operation.signal);
+          if (!response.destroyed) jsonResponse(response, 200, {
+            ...result, ok: true, service: BRIDGE_SUPERVISOR_SERVICE, protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
+          }, origin);
+        } finally {
+          lineTrace = null;
+        }
         return;
       }
       if (request.method === 'POST' && pathname === '/api/manga-finish') {

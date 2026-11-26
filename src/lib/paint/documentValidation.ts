@@ -66,8 +66,8 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
       if(!validPaintInk(style.stroke)||!validPaintInk(style.fill)||!Number.isFinite(style.width)||style.width<=0||style.width>10000
         ||!['butt','round','square'].includes(style.cap)||!['miter','round','bevel'].includes(style.join)||!Number.isFinite(style.miterLimit)||style.miterLimit<1||style.miterLimit>1000
         ||!Array.isArray(style.dash)||style.dash.length>6||style.dash.some(n=>!Number.isFinite(n)||n<=0)||!Number.isFinite(style.dashOffset)
-        ||!['center','inside','outside'].includes(style.alignment)||![style.arrowStart,style.arrowEnd].every(a=>['none','triangle','open','circle'].includes(a))||!['uniform','taper','spindle'].includes(style.profile))fail();
-      for(const node of path.nodes)if(!point(node)||(node.handleIn!==undefined&&!point(node.handleIn))||(node.handleOut!==undefined&&!point(node.handleOut)))fail();
+        ||!['center','inside','outside'].includes(style.alignment)||![style.arrowStart,style.arrowEnd].every(a=>['none','triangle','open','circle'].includes(a))||!['uniform','taper','spindle','variable'].includes(style.profile))fail();
+      for(const node of path.nodes)if(!point(node)||(node.handleIn!==undefined&&!point(node.handleIn))||(node.handleOut!==undefined&&!point(node.handleOut))||(node.width!==undefined&&(!Number.isFinite(node.width)||node.width<=0||node.width>4))||(node.corner!==undefined&&typeof node.corner!=='boolean'))fail();
     }
     ids.add(layer.id);
     if (layer.image) {

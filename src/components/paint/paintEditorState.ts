@@ -144,11 +144,12 @@ export function usePaintEditorState(options: PaintEditorOptions, selectOwner: (k
   const owner=scene.owners.find(o=>o.key===ownerKey)??scene.owners[0];
   const [layerId,setLayerId]=useState(owner.paint.layers.findLast(layer=>!layer.locked)?.id??owner.paint.layers[0]?.id??'');
   const [finishOpen,setFinishOpen]=useState(false);
+  const [lineTraceOpen,setLineTraceOpen]=useState(false);
   const [finishSelection,setFinishSelection]=useState<{anchor:string;scope:string;keys:string[]}|null>(null);
   const anchor=finishLayerKey(owner.key,layerId);
   const finishKeys=finishSelection?.anchor===anchor&&finishSelection.scope===paletteScope?finishSelection.keys:[anchor];
   useEffect(()=>{
-    if(requested)return ()=>setFinishOpen(false);
+    if(requested)return ()=>{setFinishOpen(false);setLineTraceOpen(false);};
   },[requested]);
   const selectedFolder=owner.paint.folders?.find(folder=>folder.id===layerId);
   const layer=selectedFolder||!layerId?noPaintLayer:owner.paint.layers.find(l=>l.id===layerId)??owner.paint.layers[owner.paint.layers.length-1]??noPaintLayer;
@@ -250,7 +251,7 @@ if(requested)lastToolbarLayer.current=layer;
     finishKeys, backgroundCaptureReady, error, ruler, setBackgroundHost, backgroundSelection,
     setBackgroundSelection, vectorPreview, rasterPreview, maskPreview, selectionTool, selectionBoxes,
     lassoPreview, penCursor, size, eraserSize, history, menu, paletteFolded, setPaletteFolded,
-    finishOpen, setFinishOpen, BackgroundEditor, setBackgroundCaptureReady, stageImports,
+    finishOpen, setFinishOpen, lineTraceOpen, setLineTraceOpen, BackgroundEditor, setBackgroundCaptureReady, stageImports,
     backgroundHost, backgroundLoadError, retryBackgroundLoad, selectionPointer, setLassoPreview, raf,
     rasterPreviewRef, setLive, rulerPointer, setRulerState, rulerMode, rulerState, coverage, eraseMode,
     selectTolerance, lineKind, color, failedImageSignature, setPenMenu, dirty, toolbarLayer, penMenu,
