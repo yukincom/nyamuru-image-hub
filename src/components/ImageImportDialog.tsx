@@ -8,6 +8,7 @@ import { matchFilesToPages, splitPageBackgroundsForDocument, splitPageImageForDo
 interface Props {
   pages: MangaPage[];
   activePageIndex: number;
+  targetPanelNumber?: number | null;
   busy: boolean;
   onSinglePageImport: () => void;
   onSplitImport: (items: SplitPanelCharacterPlacement[]) => Promise<{ placed: number; skippedLocked: number }>;
@@ -17,6 +18,7 @@ interface Props {
 export function ImageImportDialog({
   pages,
   activePageIndex,
+  targetPanelNumber = null,
   busy,
   onSinglePageImport,
   onSplitImport,
@@ -164,7 +166,9 @@ export function ImageImportDialog({
 
         {!splitByPanels ? (
           <p class="image-export-note">
-            現在のページ（{activePageIndex + 1}ページ目）に1枚の画像をそのまま読み込みます。
+            {targetPanelNumber != null
+              ? `現在のコマ（コマ ${targetPanelNumber}）の最上位に独立レイヤーとして読み込みます。`
+              : `コマの外（${activePageIndex + 1}ページ目の最上位）に独立レイヤーとして読み込みます。`}
           </p>
         ) : (
           <div>

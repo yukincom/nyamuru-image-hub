@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, createShiftAxisSession, fallbackBox, findLinkedPanelEdges, inferPanelGutters, innerFrameBounds, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, resolveShiftAxisSession, resolveVertexDragStartZone, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, syncPanelBleedAtTrim, translatePanel } from '../src/lib/canvasGeometry.ts';
+import { anchorPoint, clampedPanelDelta, constrainDragDeltaToAxis, convertPanelShape, createShiftAxisSession, fallbackBox, findLinkedPanelEdges, inferPanelGutters, innerFrameBounds, movePanelEdge, movePanelVertexWithSnap, nearestAnchor, panelBounds, panelShapePoints, pointInPanel, resizedBox, reshapePanelToBounds, resizePanelToBounds, resolveOverlapClick, resolveShiftAxisDrag, resolveShiftAxisSession, resolveVertexDragStartZone, snapEdgeDeltaToInnerFrame, snapPanelDeltaToInnerFrame, snapPanelEdgeDeltaToGutter, snapPanelEdgeDeltaToNeighbor, snapPanelResizeToInnerFrame, snapPanelVertexPointToGutter, snapPointToInnerFrame, syncPanelBleedAtTrim, translatePanel } from '../src/lib/canvasGeometry.ts';
 
 const rectPanel = {
   id: 1,
@@ -817,4 +817,39 @@ test('overlap selection accepts rendered-content coverage instead of the paint f
  const panels=[make(),make()];
  assert.equal(resolveOverlapClick(panels,1,-1,50,50,(_panel,index)=>index===0),0);
  assert.equal(resolveOverlapClick(panels,1,-1,50,50,(_panel,index)=>index===1),1);
+});
+
+test('コマ変形では枠形状のみ変わり内部レイヤー群の位置・サイズは引きずられない', () => {
+  const mkImage = (id, bbox) => ({
+    id, assetId: id, crop: { x: 0, y: 0, w: 100, h: 100 }, bbox: { ...bbox }, opacity: 1, hidden: false,
+  });
+  const panel = {
+    id: 1,
+    shape: { type: 'rect', x: 10, y: 10, w: 100, h: 100 },
+    bg: 1,
+    action: null,
+    images: [mkImage('img', { x: 20, y: 20, w: 30, h: 40 })],
+    background_images: [mkImage('bg', { x: 10, y: 10, w: 100, h: 100 })],
+    figures: [{ name: '人物', bbox: { x: 25, y: 25, w: 20, h: 40 }, artwork: { ...mkImage('fig', { x: 25, y: 25, w: 20, h: 40 }), id: undefined } }],
+    bubbles: [{ text: 'セリフ', bbox: { x: 70, y: 30, w: 20, h: 20 } }],
+    screen_text: [{ text: '書き文字', bbox: { x: 40, y: 80, w: 30, h: 10 } }],
+  };
+  const before = {
+    img: structuredClone(panel.images[0].bbox),
+    bg: structuredClone(panel.background_images[0].bbox),
+    fig: structuredClone(panel.figures[0].bbox),
+    bub: structuredClone(panel.bubbles[0].bbox),
+    scr: structuredClone(panel.screen_text[0].bbox),
+  };
+
+  reshapePanelToBounds(panel, { x: 20, y: 15, w: 140, h: 70 });
+  assert.deepEqual(panel.shape, { type: 'rect', x: 20, y: 15, w: 140, h: 70 });
+  movePanelEdge([panel], 0, 1, -20, 0, false);
+  movePanelVertexWithSnap([panel], 0, 1, 130, 15, false);
+
+  assert.deepEqual(panel.images[0].bbox, before.img);
+  assert.deepEqual(panel.background_images[0].bbox, before.bg);
+  assert.deepEqual(panel.figures[0].bbox, before.fig);
+  assert.deepEqual(panel.bubbles[0].bbox, before.bub);
+  assert.deepEqual(panel.screen_text[0].bbox, before.scr);
 });

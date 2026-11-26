@@ -26,6 +26,31 @@ export function translatePanel(panel: Panel, deltaX: number, deltaY: number): vo
   });
 }
 
+function applyPanelShapeBounds(panel: Panel, original: BBox, next: BBox): void {
+  const scaleX = original.w ? next.w / original.w : 1;
+  const scaleY = original.h ? next.h / original.h : 1;
+  if (panel.shape.type === 'rect') {
+    panel.shape = { type: 'rect', ...next };
+  } else {
+    panel.shape.points = panel.shape.points.map(([x, y]) => [
+      roundMm(next.x + (x - original.x) * scaleX),
+      roundMm(next.y + (y - original.y) * scaleY),
+    ]);
+  }
+}
+
+/** Deform only the panel frame shape without stretching or moving inner artwork layers. */
+export function reshapePanelToBounds(panel: Panel, requestedBounds: BBox): void {
+  const original = panelBounds(panel);
+  const next = {
+    x: roundMm(requestedBounds.x),
+    y: roundMm(requestedBounds.y),
+    w: Math.max(1, roundMm(requestedBounds.w)),
+    h: Math.max(1, roundMm(requestedBounds.h)),
+  };
+  applyPanelShapeBounds(panel, original, next);
+}
+
 export function resizePanelToBounds(panel: Panel, requestedBounds: BBox): void {
   const original = panelBounds(panel);
   const next = {
@@ -43,14 +68,7 @@ export function resizePanelToBounds(panel: Panel, requestedBounds: BBox): void {
     box.h = roundMm(box.h * scaleY);
   };
 
-  if (panel.shape.type === 'rect') {
-    panel.shape = { type: 'rect', ...next };
-  } else {
-    panel.shape.points = panel.shape.points.map(([x, y]) => [
-      roundMm(next.x + (x - original.x) * scaleX),
-      roundMm(next.y + (y - original.y) * scaleY),
-    ]);
-  }
+  applyPanelShapeBounds(panel, original, next);
   // Map the centre into the resized panel, but preserve artwork proportions.
   const transformArtwork = (box: BBox) => {
     const cx = next.x + (box.x + box.w / 2 - original.x) * scaleX;
@@ -93,7 +111,7 @@ export function syncPanelBleedAtTrim(panel: Panel, canvas: CanvasSize, bleedMm: 
     || Math.abs(normalized.y - original.y) > epsilon
     || Math.abs(normalized.w - original.w) > epsilon
     || Math.abs(normalized.h - original.h) > epsilon;
-  if (geometryChanged) resizePanelToBounds(panel, normalized);
+  if (geometryChanged) reshapePanelToBounds(panel, normalized);
   const previous = panel.bleed ?? [];
   const bleedChanged = previous.length !== edges.length || previous.some((edge, index) => edge !== edges[index]);
   if (edges.length) panel.bleed = [...edges];

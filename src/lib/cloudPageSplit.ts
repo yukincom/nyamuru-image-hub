@@ -1,4 +1,4 @@
-import { panelBounds } from './canvasGeometry.ts';
+import { panelBounds, panelShapePoints } from './canvasGeometry.ts';
 import type { BBox, Figure, MangaPage, Panel } from '../types.ts';
 
 export interface PageFileMatch {
@@ -53,7 +53,7 @@ export function matchFilesToPages(files: File[], pageCount: number): PageFileMat
 
 function isCutlinePixel(r: number, g: number, b: number, a: number): boolean {
   if (a < 128) return false;
-  return b - r >= 12 && b >= 165 && g >= 150 && r <= 230;
+  return b - r >= 28 && b >= 175 && g >= 155 && b >= g && r <= 220;
 }
 
 function isNearWhite(r: number, g: number, b: number, a: number): boolean {
@@ -111,27 +111,37 @@ export function detectCutlinePanelCrops(
   if (hasCutlines && (!hasOuterV || !hasOuterH)) {
     const edgeBandX = Math.max(2, Math.floor(width * 0.02));
     const edgeBandY = Math.max(2, Math.floor(height * 0.02));
-    for (let y = 0; y < height && !fullBleedX; y += 4) {
-      for (let x = 0; x < edgeBandX; x++) {
-        const iL = (y * width + x) * 4;
-        const iR = (y * width + (width - 1 - x)) * 4;
-        if (!isNearWhite(rgba[iL], rgba[iL + 1], rgba[iL + 2], rgba[iL + 3])
-          || !isNearWhite(rgba[iR], rgba[iR + 1], rgba[iR + 2], rgba[iR + 3])) {
-          fullBleedX = true;
-          break;
+    if (!hasOuterV) {
+      let leftHits = 0;
+      let rightHits = 0;
+      let xSamples = 0;
+      for (let y = 0; y < height; y += 4) {
+        for (let x = 0; x < edgeBandX; x++) {
+          xSamples++;
+          const iL = (y * width + x) * 4;
+          const iR = (y * width + (width - 1 - x)) * 4;
+          if (!isNearWhite(rgba[iL], rgba[iL + 1], rgba[iL + 2], rgba[iL + 3])) leftHits++;
+          if (!isNearWhite(rgba[iR], rgba[iR + 1], rgba[iR + 2], rgba[iR + 3])) rightHits++;
         }
       }
+      const need = Math.max(1, Math.ceil(xSamples * 0.15));
+      fullBleedX = leftHits >= need && rightHits >= need;
     }
-    for (let x = 0; x < width && !fullBleedY; x += 4) {
-      for (let y = 0; y < edgeBandY; y++) {
-        const iT = (y * width + x) * 4;
-        const iB = ((height - 1 - y) * width + x) * 4;
-        if (!isNearWhite(rgba[iT], rgba[iT + 1], rgba[iT + 2], rgba[iT + 3])
-          || !isNearWhite(rgba[iB], rgba[iB + 1], rgba[iB + 2], rgba[iB + 3])) {
-          fullBleedY = true;
-          break;
+    if (!hasOuterH) {
+      let topHits = 0;
+      let bottomHits = 0;
+      let ySamples = 0;
+      for (let x = 0; x < width; x += 4) {
+        for (let y = 0; y < edgeBandY; y++) {
+          ySamples++;
+          const iT = (y * width + x) * 4;
+          const iB = ((height - 1 - y) * width + x) * 4;
+          if (!isNearWhite(rgba[iT], rgba[iT + 1], rgba[iT + 2], rgba[iT + 3])) topHits++;
+          if (!isNearWhite(rgba[iB], rgba[iB + 1], rgba[iB + 2], rgba[iB + 3])) bottomHits++;
         }
       }
+      const need = Math.max(1, Math.ceil(ySamples * 0.15));
+      fullBleedY = topHits >= need && bottomHits >= need;
     }
   }
   const frameX0 = hasOuterV ? vLines[0] : fullBleedX ? 0 : (minMmX / Math.max(1, canvasMm.w)) * width;
@@ -152,10 +162,7 @@ export function detectCutlinePanelCrops(
     return best;
   };
 
-  const tolX = Math.max(8, Math.round(width * 0.12));
-  const tolY = Math.max(8, Math.round(height * 0.12));
-
-  const findLocalHorizontalEdge = (targetY: number, xStart: number, xEnd: number): number | null => {
+  const findLocalHorizontalEdge = (targetY: number, xStart: number, xEnd: number, tolY: number): number | null => {
     const yMin = Math.max(0, Math.round(targetY - tolY));
     const yMax = Math.min(height - 1, Math.round(targetY + tolY));
     const spanW = Math.max(1, xEnd - xStart);
@@ -180,7 +187,7 @@ export function detectCutlinePanelCrops(
     return bestY;
   };
 
-  const findLocalVerticalEdge = (targetX: number, yStart: number, yEnd: number): number | null => {
+  const findLocalVerticalEdge = (targetX: number, yStart: number, yEnd: number, tolX: number): number | null => {
     const xMin = Math.max(0, Math.round(targetX - tolX));
     const xMax = Math.min(width - 1, Math.round(targetX + tolX));
     const spanH = Math.max(1, yEnd - yStart);
@@ -210,14 +217,16 @@ export function detectCutlinePanelCrops(
     const rawY0 = frameY0 + ((rect.y - minMmY) / mmH) * frameH;
     const rawX1 = frameX0 + ((rect.x + rect.w - minMmX) / mmW) * frameW;
     const rawY1 = frameY0 + ((rect.y + rect.h - minMmY) / mmH) * frameH;
+    const panelTolX = Math.min(Math.max(4, Math.round(width * 0.04)), Math.max(4, Math.round((rawX1 - rawX0) * 0.18)));
+    const panelTolY = Math.min(Math.max(4, Math.round(height * 0.04)), Math.max(4, Math.round((rawY1 - rawY0) * 0.18)));
     const spanX0 = Math.max(0, Math.round(rawX0));
     const spanX1 = Math.min(width, Math.round(rawX1));
     const spanY0 = Math.max(0, Math.round(rawY0));
     const spanY1 = Math.min(height, Math.round(rawY1));
-    const x0 = Math.max(0, Math.round(findLocalVerticalEdge(rawX0, spanY0, spanY1) ?? snap(rawX0, vLines, tolX)));
-    const y0 = Math.max(0, Math.round(findLocalHorizontalEdge(rawY0, spanX0, spanX1) ?? snap(rawY0, hLines, tolY)));
-    const x1 = Math.min(width, Math.round(findLocalVerticalEdge(rawX1, spanY0, spanY1) ?? snap(rawX1, vLines, tolX)));
-    const y1 = Math.min(height, Math.round(findLocalHorizontalEdge(rawY1, spanX0, spanX1) ?? snap(rawY1, hLines, tolY)));
+    const x0 = Math.max(0, Math.min(width - 1, Math.round(findLocalVerticalEdge(rawX0, spanY0, spanY1, panelTolX) ?? snap(rawX0, vLines, panelTolX))));
+    const y0 = Math.max(0, Math.min(height - 1, Math.round(findLocalHorizontalEdge(rawY0, spanX0, spanX1, panelTolY) ?? snap(rawY0, hLines, panelTolY))));
+    const x1 = Math.max(x0 + 1, Math.min(width, Math.round(findLocalVerticalEdge(rawX1, spanY0, spanY1, panelTolX) ?? snap(rawX1, vLines, panelTolX))));
+    const y1 = Math.max(y0 + 1, Math.min(height, Math.round(findLocalHorizontalEdge(rawY1, spanX0, spanX1, panelTolY) ?? snap(rawY1, hLines, panelTolY))));
     return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
   });
 }
@@ -323,6 +332,53 @@ function trimNonTransparent(
   return { crop: { x: cx0, y: cy0, w: cw, h: ch }, data: sliced };
 }
 
+/** Clear pixels outside non-rectangular polygon panels so cropped panel images stay inside the panel frame. */
+export function maskOutsidePanelPolygon(
+  rgba: Uint8ClampedArray,
+  cropW: number,
+  cropH: number,
+  panel: Panel,
+  transparentOutside: boolean,
+): Uint8ClampedArray {
+  if (panel.shape.type !== 'polygon' || cropW < 1 || cropH < 1) return rgba;
+  const bounds = panelBounds(panel);
+  const poly = panelShapePoints(panel).map(([px, py]) => [
+    ((px - bounds.x) / Math.max(1e-6, bounds.w)) * cropW,
+    ((py - bounds.y) / Math.max(1e-6, bounds.h)) * cropH,
+  ] as const);
+  if (poly.length < 3) return rgba;
+  const out = new Uint8ClampedArray(rgba);
+  for (let y = 0; y < cropH; y++) {
+    const py = y + 0.5;
+    for (let x = 0; x < cropW; x++) {
+      const px = x + 0.5;
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [xi, yi] = poly[i];
+        const [xj, yj] = poly[j];
+        if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+          inside = !inside;
+        }
+      }
+      if (!inside) {
+        const idx = (y * cropW + x) * 4;
+        if (transparentOutside) {
+          out[idx] = 0;
+          out[idx + 1] = 0;
+          out[idx + 2] = 0;
+          out[idx + 3] = 0;
+        } else {
+          out[idx] = 255;
+          out[idx + 1] = 255;
+          out[idx + 2] = 255;
+          out[idx + 3] = 255;
+        }
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Split a panel's RGBA pixels into per-figure RGBA crops ordered left-to-right
  * matching `figures[].bbox.x`, finding the deepest whitespace valley between adjacent characters.
@@ -333,11 +389,12 @@ export function splitPanelCharacters(
   height: number,
   figures: Figure[],
   transparentWhite: boolean,
+  panelBox?: BBox,
 ): Array<{ figureIndex: number; width: number; height: number; crop: PixelCrop; rgba: Uint8ClampedArray }> {
   if (!figures.length || width < 1 || height < 1) return [];
   const cleaned = stripCutlinesAndFloodWhite(panelRgba, width, height, transparentWhite);
   const indexed = figures
-    .map((figure, figureIndex) => ({ figureIndex, x: figure.bbox?.x ?? figureIndex }))
+    .map((figure, figureIndex) => ({ figureIndex, bbox: figure.bbox, x: figure.bbox?.x ?? figureIndex }))
     .sort((a, b) => a.x - b.x);
 
   const colInk = new Int32Array(width);
@@ -354,7 +411,12 @@ export function splitPanelCharacters(
 
   const cuts: number[] = [0];
   for (let i = 1; i < indexed.length; i++) {
-    const expected = Math.round((i / indexed.length) * width);
+    const prevBBox = indexed[i - 1].bbox;
+    const currBBox = indexed[i].bbox;
+    const rawExpected = panelBox && panelBox.w > 0 && prevBBox && currBBox
+      ? Math.round((((prevBBox.x + prevBBox.w + currBBox.x) / 2 - panelBox.x) / panelBox.w) * width)
+      : Math.round((i / indexed.length) * width);
+    const expected = Math.max(cuts[i - 1] + 1, Math.min(width - 1, rawExpected));
     const searchStart = Math.max(cuts[i - 1] + 1, Math.round(expected - width * 0.2));
     const searchEnd = Math.min(width - 1, Math.round(expected + width * 0.2));
     let bestX = expected;
@@ -433,8 +495,9 @@ export async function splitPageImageForDocument(
       const figures = panel.figures ?? [];
       if (!crop || !figures.length) continue;
       const panelData = ctx.getImageData(crop.x, crop.y, crop.w, crop.h);
+      const maskedPanelData = maskOutsidePanelPolygon(panelData.data, crop.w, crop.h, panel, transparentWhite);
       const panelBox = panelBounds(panel);
-      const splitChars = splitPanelCharacters(panelData.data, crop.w, crop.h, figures, transparentWhite);
+      const splitChars = splitPanelCharacters(maskedPanelData, crop.w, crop.h, figures, transparentWhite, panelBox);
       for (const item of splitChars) {
         const pngFile = await rgbaToPngFile(
           item.rgba,
@@ -466,7 +529,8 @@ export async function splitPageBackgroundsForDocument(
       const crop = crops[panelIndex];
       if (!crop) continue;
       const panelData = ctx.getImageData(crop.x, crop.y, crop.w, crop.h);
-      const cleaned = stripCutlinesAndFloodWhite(panelData.data, crop.w, crop.h, false);
+      const maskedPanelData = maskOutsidePanelPolygon(panelData.data, crop.w, crop.h, panel, false);
+      const cleaned = stripCutlinesAndFloodWhite(maskedPanelData, crop.w, crop.h, false);
       const pngFile = await rgbaToPngFile(
         cleaned,
         crop.w,

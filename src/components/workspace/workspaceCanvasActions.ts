@@ -8,7 +8,7 @@ import {
   PERSIST_ANALOG_ASSETS_KEY,
 } from '../../lib/workspacePreferences';
 import {
-  clamp, translatePanel, syncPanelBleedAtTrim, resizePanelToBounds, movePanelVertexWithSnap,
+  clamp, translatePanel, syncPanelBleedAtTrim, reshapePanelToBounds, movePanelVertexWithSnap,
   type PanelEdgeReference, movePanelEdge as movePanelEdgeGeometry,
 } from '../../lib/canvasGeometry';
 import { cloneDocument } from '../../lib/manga';
@@ -173,7 +173,7 @@ export function createWorkspaceCanvasActions({
       const targetPage = draft.manga.pages[activePage];
       const targetPanel = targetPage?.panels[panelIndex];
       if (targetPanel && !panelGeometryLocked(targetPanel)) {
-        resizePanelToBounds(targetPanel, bounds);
+        reshapePanelToBounds(targetPanel, bounds);
         syncPanelBleedAtTrim(targetPanel, targetPage.canvas, getPrintSetup(draft.manga).bleed_mm);
       }
     });

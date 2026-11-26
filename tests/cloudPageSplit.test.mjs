@@ -4,6 +4,7 @@ import {
   extractPageNumberFromFileName,
   matchFilesToPages,
   detectCutlinePanelCrops,
+  maskOutsidePanelPolygon,
   splitPanelCharacters,
 } from '../src/lib/cloudPageSplit.ts';
 
@@ -113,4 +114,50 @@ test('splitPanelCharacters separates two characters left-to-right and makes oute
   const centerIdx = (Math.floor(leftResult.height / 2) * leftResult.width + Math.floor(leftResult.width / 2)) * 4;
   assert.equal(leftResult.rgba[centerIdx + 3], 255);
   assert.equal(leftResult.rgba[centerIdx], 255);
+});
+
+test('cool-gray art and stray edge pixels stay strictly inside panel bounds and polygon mask clears outside', () => {
+  const width = 100;
+  const height = 120;
+  const canvasMm = { w: 100, h: 120 };
+  const panels = [
+    { id: 1, shape: { type: 'rect', x: 10, y: 10, w: 80, h: 45 } },
+    { id: 2, shape: { type: 'rect', x: 10, y: 65, w: 80, h: 45 } },
+  ];
+
+  const img = makeSolidRgba(width, height);
+  // Cool gray shadow inside panel 1 (b - r = 18 < 28): must NOT trigger cutline detection or shift crops
+  drawRect(img, width, 15, 20, 85, 35, 175, 180, 193);
+  // A single stray blue-tinted cutline mark at top edge (x=0,y=0): must NOT trigger fullBleedX
+  drawRect(img, width, 0, 0, 1, 1, 80, 80, 80);
+  // Actual light-blue borders around panel 1 only at (x=10..90, y=10..55)
+  drawRect(img, width, 10, 10, 90, 11, 140, 200, 245);
+  drawRect(img, width, 10, 54, 90, 55, 140, 200, 245);
+
+  const crops = detectCutlinePanelCrops(img, width, height, panels, canvasMm);
+  assert.deepEqual(crops[0], { x: 10, y: 10, w: 80, h: 44 });
+  assert.deepEqual(crops[1], { x: 10, y: 65, w: 80, h: 45 });
+
+  // Asymmetric figure bboxes with panelBox keep right-shifted split boundary
+  const asymRgba = makeSolidRgba(100, 50, 255, 255, 255, 255);
+  drawRect(asymRgba, 100, 5, 10, 65, 45, 20, 20, 20, 255); // wide left character
+  drawRect(asymRgba, 100, 78, 10, 95, 45, 20, 20, 20, 255); // right character
+  const split = splitPanelCharacters(
+    asymRgba, 100, 50,
+    [
+      { id: 'left', name: 'Left', bbox: { x: 10, y: 10, w: 55, h: 35 } },
+      { id: 'right', name: 'Right', bbox: { x: 75, y: 10, w: 15, h: 35 } },
+    ],
+    true,
+    { x: 10, y: 10, w: 80, h: 35 },
+  );
+  assert.equal(split.length, 2);
+  assert.ok(split.find(item => item.figureIndex === 0).crop.w > 50);
+
+  // Polygon mask clears pixels outside slanted polygon panel
+  const polyRgba = makeSolidRgba(20, 20, 30, 30, 30, 255);
+  const triangle = { id: 3, shape: { type: 'polygon', points: [[0, 0], [20, 0], [0, 20]] } };
+  const masked = maskOutsidePanelPolygon(polyRgba, 20, 20, triangle, true);
+  assert.equal(masked[(18 * 20 + 18) * 4 + 3], 0);
+  assert.equal(masked[(2 * 20 + 2) * 4 + 3], 255);
 });

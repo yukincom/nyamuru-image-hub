@@ -5,7 +5,7 @@ import { panelBounds, fallbackBox } from '../../lib/canvasGeometry';
 import { artworkLocked } from '../../lib/paintLock';
 import { overlayFallbackBox } from '../../lib/pageCanvas';
 import type { PaintScene } from '../../lib/paintDocument';
-import { hasAdoptedPaintImages, insertGeneratedPaintImage, generatedPaintName } from '../../lib/paintDocument';
+import { hasAdoptedPaintImages, insertGeneratedPaintImage, generatedPaintName, applyOwnerPaint } from '../../lib/paintDocument';
 import { beginFigureCropImport, loadFigureCropAsset, saveFigureCropAssets, deleteFigureCropAssets } from '../../lib/figureCropStore';
 import { prepareImageAsset, createImagePlacement, createFrameArtwork, setFigureArtwork } from '../../lib/imagePlacement';
 import { cloneDocument } from '../../lib/manga';
@@ -58,7 +58,7 @@ export function createImagePlacementActions({
     else next.manga.image_assets = next.manga.image_assets?.map(item => item.id === asset.id ? asset : item);
     return asset;
   };
-  const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number) => {
+  const choosePlacedImage = (scope: 'page' | 'panel' | 'page_overlay', figureIndex?: number, panelIndex = activePanel, pageIndex = activePage, bubbleIndex?: number, standaloneLayer = scope === 'page' && figureIndex === undefined && bubbleIndex === undefined) => {
     const page = documentRef.current.manga.pages[pageIndex];
     const panel = page?.panels[panelIndex];
     if (!page || imageImportBusy || (scope === 'panel' && (!panel||panelLocked(panel)))) return;
@@ -72,7 +72,7 @@ export function createImagePlacementActions({
       if (!bubble || ownerItemLocked(bubble)) return;
       box = bubble.bbox ?? (scope === 'page_overlay' ? overlayFallbackBox(page.canvas, 'bubble', bubbleIndex) : fallbackBox(panel!, 'bubble', bubbleIndex));
     } else if (scope === 'page_overlay') return;
-    imageImportTarget.current = { document: documentRef.current, pageIndex, panelIndex, scope, figureIndex, bubbleIndex, box: { ...box } };
+    imageImportTarget.current = { document: documentRef.current, pageIndex, panelIndex, scope, figureIndex, bubbleIndex, box: { ...box }, ...(standaloneLayer ? { standaloneLayer: true } : {}) };
     setActivePage(pageIndex);
     setActivePanel(panelIndex);
     setSelectedPanels([panelIndex]);
@@ -120,6 +120,30 @@ export function createImagePlacementActions({
       };
       const asset=await register(prepared,file);
       const targetPage = next.manga.pages[target.pageIndex];
+      if (target.standaloneLayer) {
+        const overlay = target.scope === 'page';
+        const targetPanel = overlay ? undefined : targetPage.panels[target.panelIndex];
+        if (!overlay && (!targetPanel || panelLocked(targetPanel))) throw new Error('配置先のコマがロックされているため読み込めません');
+        if (!makePaintScene) throw new Error('独立レイヤーの作成先を初期化できません');
+        const scene = makePaintScene(next, target.panelIndex, target.pageIndex, overlay);
+        const owner = scene.owners.find(item => item.kind === target.scope && !item.stack);
+        if (!owner || owner.locked || owner.inheritedLocked) throw new Error('配置先のレイヤーがロックされているため読み込めません');
+        const layerName = file.name.trim() || asset.originalName || '画像';
+        const inserted = insertGeneratedPaintImage(owner, asset, layerName, target.box);
+        const composite = await humanPoseOwnerImage(inserted.owner, next.manga.image_assets ?? []);
+        const flat = await register(await prepareImageAsset(new File([composite], `${file.name}-layers.png`, { type: 'image/png' })), composite);
+        const placement = { ...createFrameArtwork(flat, inserted.owner.frame), paint: inserted.owner.paint };
+        applyOwnerPaint(overlay ? targetPage : targetPanel!, inserted.owner, placement);
+        if (documentRef.current !== target.document) throw new Error('取り込み中に作品が変更されたため、配置先を選んでやり直してください');
+        lastHistoryPush.current = 0;
+        setDocument(next);
+        newStorageIds.length = 0;
+        lastHistoryPush.current = 0;
+        if (activePageRef.current === target.pageIndex && (target.scope !== 'panel' || activePanelRef.current === target.panelIndex)) setSelectedElement(null);
+        setToast(`${file.name} を読み込みました`);
+        if (typeof openInsertedGeneratedLayer === 'function') openInsertedGeneratedLayer(inserted.owner.key, inserted.layer.id, target.panelIndex, target.pageIndex, overlay);
+        return inserted.layer.id;
+      }
       let placement = target.scope === 'page' && !target.generationScope ? createImagePlacement(asset, target.box) : createFrameArtwork(asset, target.box);
       let insertedGeneratedLayerId: string | undefined;
       if(target.generatedOwner){

@@ -64,4 +64,5 @@ export interface WorkspaceImageTarget {
   generatedFolderId?: string;
   textSource?: TextGenerationSource;
   generationScope?: 'page' | 'panel';
+  standaloneLayer?: boolean;
 }

@@ -2,7 +2,7 @@ import type { Panel } from '../../types';
 import { type CanvasSize, DEFAULT_CANVAS, panelShapePoints, roundMm, PANEL_EDGE_ALIGNMENT_TOLERANCE_MM, PANEL_VERTEX_JUNCTION_CORNER_MM, PANEL_VERTEX_JUNCTION_ALONG_GAP_MM, PANEL_VERTEX_WALL_OFFSET_TOLERANCE_MM, MIN_SIZE_MM } from './canvasBounds.ts';
 import { constrainedSelectedPoint, type VertexJunctionReference, type VertexSplitDeformation, type VertexEdgeCandidate, vertexEdgeCandidates, nearestOriginWallLayer, splitWallGroups, sameNormalSide, type LineConstraint, lineIntersection, constrainedPointOnLine, pointOnLineWithinBounds } from './vertexConstraints.ts';
 import { edgePoints, constrainedJunctionPoint, pointBoundaryLocks, pointLegalBounds, pointWithinLegalBounds } from './panelBoundaries.ts';
-import { resizePanelToBounds } from './panelTransforms.ts';
+import { reshapePanelToBounds } from './panelTransforms.ts';
 
 /**
  * 多角形の1頂点を動かす。linkPanels=true のA+連動は開始配置から直接見える
@@ -228,7 +228,7 @@ export function movePanelVertexWithSnap(
       && nextPoints[1][0] - nextPoints[0][0] >= MIN_SIZE_MM
       && nextPoints[3][1] - nextPoints[0][1] >= MIN_SIZE_MM;
     if (remainsRect) {
-      resizePanelToBounds(panel, {
+      reshapePanelToBounds(panel, {
         x: nextPoints[0][0],
         y: nextPoints[0][1],
         w: nextPoints[1][0] - nextPoints[0][0],

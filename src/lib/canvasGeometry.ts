@@ -49,4 +49,4 @@ export {
 } from './geometry/frameSnapping.ts';
 export { movePanelEdge } from './geometry/edgeMovement.ts';
 export { movePanelVertexWithSnap } from './geometry/vertexMovement.ts';
-export { translatePanel, resizePanelToBounds, syncPanelBleedAtTrim, convertPanelShape } from './geometry/panelTransforms.ts';
+export { translatePanel, reshapePanelToBounds, resizePanelToBounds, syncPanelBleedAtTrim, convertPanelShape } from './geometry/panelTransforms.ts';

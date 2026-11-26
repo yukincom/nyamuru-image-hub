@@ -1,7 +1,7 @@
 import type { Panel } from '../../types';
 import { type PanelEdgeReference, type CanvasSize, DEFAULT_CANVAS, roundMm, clamp } from './canvasBounds.ts';
 import { findLinkedPanelEdges, edgePoints } from './panelBoundaries.ts';
-import { resizePanelToBounds } from './panelTransforms.ts';
+import { reshapePanelToBounds } from './panelTransforms.ts';
 
 function edgeReferences(
   panels: Panel[],
@@ -86,7 +86,7 @@ function applyEdgeDelta(panel: Panel, edgeIndex: number, deltaX: number, deltaY:
   if (edgeIndex === 1) next.w += deltaX;
   if (edgeIndex === 2) next.h += deltaY;
   if (edgeIndex === 3) { next.x += deltaX; next.w -= deltaX; }
-  resizePanelToBounds(panel, next);
+  reshapePanelToBounds(panel, next);
 }
 
 /**

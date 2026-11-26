@@ -12,7 +12,7 @@ import { beginFigureCropImport, collectFigureCropAssetIds, saveFigureCropAssets,
 import { resizePanelToBounds, translatePanel, panelFigureAt, panelHasElementAt } from '../src/lib/canvasGeometry.ts';
 import { applyPanelTemplate, mergeSelectedPanels, splitPanel } from '../src/lib/panelTemplates.ts';
 import { resizePageCanvas } from '../src/lib/pageCanvas.ts';
-import { insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, newPaintLayer, paintScene, withPaintBleed } from '../src/lib/paintDocument.ts';
+import { insertGeneratedPaintImage, generatedPaintName, hasAdoptedPaintImages, newPaintLayer, paintScene, withPaintBleed, applyOwnerPaint } from '../src/lib/paintDocument.ts';
 import { imageCrop } from '../src/lib/imagePlacement.ts';
 import { linkedTestDocument } from './fixtures/emptyTestDocument.ts';
 
@@ -502,4 +502,72 @@ test('guide display belongs to one object and OCR rasters never gate bubble text
  context.document.manga.pages[0].panels[0].figures[0].artwork.paint.layers[0].visible=true;
  assert.equal(visible('figure-0'),true);assert.equal(visible('figure-1'),false);assert.equal(visible('background'),false);
  assert.equal(visible('bubble-0'),false);
+});
+
+test('non-split standalone image import adds an editable named layer at top of selected panel or page', async () => {
+  for (const scope of ['panel', 'page']) {
+    const doc = await documentWithImage();
+    delete doc.manga.pages[0].images;
+    const panel = doc.manga.pages[0].panels[0];
+    const overlay = scope === 'page';
+    const sceneFor = (currentDoc) => {
+      const page = currentDoc.manga.pages[0];
+      const source = overlay
+        ? { id: 0, shape: { type: 'rect', x: 0, y: 0, ...page.canvas }, bg: 0, action: null, figures: [], bubbles: [], images: page.images?.filter(item => item.paintScope === 'page') }
+        : page.panels[0];
+      const scene = paintScene(source, 100, currentDoc.manga.image_assets ?? [], 'color', scope);
+      if (overlay) scene.owners = scene.owners.filter(item => item.kind !== 'background');
+      return scene;
+    };
+
+    const opened = [];
+    const context = {
+      placedImageInput: { current: { value: '' } },
+      imageImportTarget: { current: { document: doc, pageIndex: 0, panelIndex: 0, scope, standaloneLayer: true, box: overlay ? { x: 0, y: 0, w: 210, h: 297 } : { x: panel.shape.x, y: panel.shape.y, w: panel.shape.w, h: panel.shape.h } } },
+      documentRef: { current: doc },
+      activePageRef: { current: 0 },
+      activePanelRef: { current: 0 },
+      lastHistoryPush: { current: 0 },
+      setImageImportBusy() {},
+      panelLocked: () => false,
+      makePaintScene: sceneFor,
+      applyOwnerPaint,
+      insertGeneratedPaintImage,
+      humanPoseOwnerImage: async () => original,
+      prepareImageAsset: async file => ({
+        id: file.name === '取り込みテスト.png' ? 'imported-art' : 'flat-art',
+        storageId: file.name === '取り込みテスト.png' ? 'imported-storage' : 'flat-storage',
+        sha256: (file.name === '取り込みテスト.png' ? '1' : '2').repeat(64),
+        mediaType: 'image/png',
+        originalName: file.name,
+        widthPx: 1,
+        heightPx: 1,
+        byteLength: file.size,
+      }),
+      loadFigureCropAsset: async () => null,
+      saveFigureCropAssets: async () => {},
+      deleteFigureCropAssets: async () => {},
+      cloneDocument: structuredClone,
+      createFrameArtwork,
+      createImagePlacement,
+      setFigureArtwork,
+      setDocument: next => { context.documentRef.current = next; },
+      setSelectedElement() {},
+      setToast() {},
+      openInsertedGeneratedLayer: (key, id, pi, pgi, ov) => opened.push({ key, id, pi, pgi, ov }),
+      File,
+      Error,
+    };
+
+    const insertedId = await importHandler(context)(new File([original], '取り込みテスト.png', { type: 'image/png' }));
+    const updatedPage = context.documentRef.current.manga.pages[0];
+    const placements = overlay ? updatedPage.images : updatedPage.panels[0].images;
+    const direct = placements.find(item => item.paintScope === scope);
+    assert.ok(direct, `${scope} scope standalone import creates direct paint placement`);
+    assert.equal(direct.paint.layers.length, 1);
+    assert.equal(direct.paint.layers[0].id, insertedId);
+    assert.equal(direct.paint.layers[0].name, '取り込みテスト.png');
+    assert.equal(direct.paint.layers[0].locked, false);
+    assert.deepEqual(opened, [{ key: scope, id: insertedId, pi: 0, pgi: 0, ov: overlay }]);
+  }
 });
