@@ -51,11 +51,87 @@ class CharacterEncoderTests(unittest.TestCase):
             [1.0, 0.0],
             [
                 {"id": "a", "embedding": [0.85, 0.52]},
-                {"id": "b", "embedding": [0.84, 0.54]},
+                {"id": "b", "embedding": [0.83, 0.55]},
             ],
         )
         self.assertEqual(ambiguous["candidate_id"], "")
         self.assertEqual(ambiguous["confidence"], "none")
+
+        clear_margin = encoder.match_character_embeddings(
+            [1.0, 0.0],
+            [
+                {"id": "a", "embedding": [0.85, 0.52]},
+                {"id": "b", "embedding": [0.81, 0.58]},
+            ],
+        )
+        self.assertEqual(clear_margin["candidate_id"], "a")
+        self.assertEqual(clear_margin["confidence"], "medium")
+
+    def test_rgba_compositing_and_siglip2_onnx_metadata_and_cache(self):
+        import numpy as np
+        from PIL import Image
+        from unittest.mock import patch
+
+        transparent = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+        buf = io.BytesIO()
+        transparent.save(buf, format="PNG")
+        arr, width, height = encoder._load_rgb_array(buf.getvalue(), size=16)
+        self.assertEqual((width, height), (32, 32))
+        self.assertTrue(np.allclose(arr, 1.0))
+
+        class FakeTensorInfo:
+            def __init__(self, name, shape):
+                self.name = name
+                self.shape = shape
+
+        class FakeSession:
+            def __init__(self):
+                self.calls = []
+
+            def get_inputs(self):
+                return [FakeTensorInfo("pixel_values", ["batch", 3, 224, 224])]
+
+            def get_outputs(self):
+                return [
+                    FakeTensorInfo("last_hidden_state", ["batch", 196, 768]),
+                    FakeTensorInfo("pooler_output", ["batch", 768]),
+                ]
+
+            def run(self, _outputs, feed):
+                x = feed["pixel_values"]
+                self.calls.append((x.shape, float(x.min()), float(x.max())))
+                return [
+                    np.zeros((1, 196, 768), dtype=np.float32),
+                    np.array([[3.0, 4.0] + [0.0] * 766], dtype=np.float32),
+                ]
+
+        encoder._session_cache.clear()
+        encoder._metadata_cache.clear()
+        encoder._embedding_cache.clear()
+        with tempfile.TemporaryDirectory() as directory:
+            model_dir = Path(directory) / "character-encoder"
+            model_dir.mkdir(parents=True)
+            model_file = model_dir / "model.onnx"
+            model_file.write_bytes(b"onnx")
+            (model_dir / "provenance.json").write_text(
+                json.dumps({
+                    "preprocess": {"mean": [0.5, 0.5, 0.5], "std": [0.5, 0.5, 0.5]},
+                    "output_name": "pooler_output",
+                }),
+                encoding="utf-8",
+            )
+            fake_session = FakeSession()
+            with patch.object(encoder, "_get_session", return_value=fake_session):
+                first = encoder.embed_character_image(buf.getvalue(), model_path=model_file)
+                second = encoder.embed_character_image(buf.getvalue(), model_path=model_file)
+            self.assertEqual(len(fake_session.calls), 1)
+            shape, vmin, vmax = fake_session.calls[0]
+            self.assertEqual(shape, (1, 3, 224, 224))
+            self.assertAlmostEqual(vmin, 1.0, places=5)
+            self.assertAlmostEqual(vmax, 1.0, places=5)
+            self.assertAlmostEqual(first["embedding"][0], 0.6, places=5)
+            self.assertAlmostEqual(first["embedding"][1], 0.8, places=5)
+            self.assertEqual(second["embedding"][:2], first["embedding"][:2])
 
     def test_view_and_size_prediction_plus_asset_recommendation(self):
         centered = _png_bytes(size=(180, 180), draw_rect=(50, 25, 130, 155))

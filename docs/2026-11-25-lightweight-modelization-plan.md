@@ -2,7 +2,7 @@
 
 - 作成日: 2026-11-25
 - 対象リポジトリ: `Comic_image_Hub`
-- 状態: **段階実装・一部実配置済み（グループ1〜3コード・推論枠組導入済み、M7 は Colab GPU 学習・ONNX 実配置・新規作成 UI 接続完了、M4 個人筆跡 Baberu OCR 微調整は現行精度十分なため中止・除外、M1 ONNX 学習済み重み導入まではビジョン既定 OFF・ローカル軽量エンコーダ実行先既定）**
+- 状態: **段階実装・M7＋M1 実配置済み（グループ1〜3コード・推論枠組導入済み、M7 は 384px 4向き正立スキャン ONNX 実配置・新規作成 UI 接続完了、M1 は `SigLIP2-Base` 画像 ONNX 実配置・実測 Precision 100% 検証完了、M4 個人筆跡 Baberu OCR 微調整は現行精度十分なため中止・除外、キャラ照合（ビジョン）は安全運用方針に従い既定 OFF・ローカル軽量エンコーダ実行先既定）**
 
 ## 1. 目的と設計原則
 
@@ -33,7 +33,7 @@
 
 | ID | グループ | 対象機能・置換対象 | モデル種別 | 想定モデルサイズ | 目標推論時間（CPU / Apple Silicon） | メモリ増減（対現行） | 導入フェーズ |
 |---|---|---|---|---|---|---|---|
-| **M1** | G1（重い8B置換） | キャラ照合（`local_character_match_worker.py` の 8B VLM 置換） | 共有軽量画像エンコーダ＋埋め込み射影（Head 1） | M1+M2合計 80〜250MB（量子化 ONNX） | 15〜40ms / 人物 | **大幅減**（数GB → 百数十MB） | Phase 3 |
+| **M1** | G1（重い8B置換） | キャラ照合（`local_character_match_worker.py` の 8B VLM 置換） | `SigLIP2-Base` 画像エンコーダ＋コサイン類似度照合（**実配置済み**・学習ゼロ初期導入） | 354.58 MiB（FP32 ONNX） | 約 **46.8 ms** / 人物（キャッシュ後数 ms） | **大幅減**（Peak 492.5MB・8B比数GB減） | **Phase 3 M1 完了**（M2 は未学習・フォールバック） |
 | **M2** | G1（重い8B蒸留） | キャラ向き・撮影サイズ・最適設定画アングル自動選択（`local_figure_performance_worker.py` 蒸留） | M1 と同一エンコーダ共有＋多タスク分類ヘッド（Head 2） | M1 と共有（＋数MBヘッド） | +1〜2ms（M1 と同時計算） | **大幅減**（単一推論に統合） | Phase 3 |
 | **M3** | G2（既存差し替え） | RT-DETR アナログネーム微調整＋フキダシ種別/しっぽ拡張（`rtdetr_onnx.py`） | RT-DETRv4-X ONNX 微調整 | 現行同等（差し替え） | 現行同等（+0ms 相当） | **±0** | Phase 5 |
 | **M4** | G2（対象外・中止） | Baberu OCR 自分の筆跡向け微調整（`local_vision_worker.py`） | 現行 `baberu-ocr` で実用十分なため **中止・除外**（微調整なし） | 現行そのまま | 現行そのまま | **±0** | **中止** |
@@ -104,10 +104,12 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
 #### 統合アーキテクチャ（1バックボーン＋2ヘッド）
 1枚の人物クロップ画像（224×224 または 256×256）を **1つの共有軽量ビジョンエンコーダ**（候補: `SigLIP-Base / So400m` より軽い `MobileCLIP-S0/S1` または `DINOv2-Small` / `ConvNeXt-Tiny` の INT8/FP16 ONNX）に 1回だけ通し、2つの軽量ヘッドを分岐させる。
 
-- **M1（Head 1：キャラ照合 / Cross-Domain Metric Learning）**:
-  - **仕組み**: 256〜512次元のL2正規化済み埋め込みベクトルを出力。シリーズ人物設定画（`front / three-quarter / side / back` 等、登録時に事前ベクトル化してキャッシュ）とコサイン類似度を比較する。
-  - **メリット**: 新キャラや新衣装を増やしても **再学習ゼロ**。設定画を登録した瞬間に埋め込みが計算され、推論時はベクトル内積だけで照合できる。また特徴テキスト入力に依存しないため、ビジョン（キャラ照合）の簡素化方針とも噛み合う。
-  - **学習**: ArcFace / InfoNCE（対照学習）を用い、「ネームの人物クロップ（Anchor）↔ 同一キャラの設定画（Positive）↔ 別キャラ・別作品の設定画（Negative）」のドメインギャップを埋める。
+- **M1（キャラ照合エンコーダ：案 A 初期実配置・2026-11-26）**:
+  - **配置モデル**: `onnx-community/siglip2-base-patch16-224-ONNX`（`onnx/vision_model.onnx`, FP32, **354.58 MiB**, Apache-2.0, `pooler_output` 768次元 L2正規化、`pixel_values` 224×224 `(x - 0.5) / 0.5`、透過PNGは白背景合成、`provenance.json` + SHA-256 検証付きで `.local-vision/models/character-encoder/` へ配置。なお `vision_model_int8.onnx` は Apple Silicon `onnxruntime` CPU EP で `ConvInteger(10)` 未実装のため FP32 版を採用）。
+  - **実クロップ検証結果**（`no.1.5` 正解ラベル付き 15 枚：小雪 8・ジプト 7 ＋ 攪乱候補 `Claude.jpg` / `Grok.jpg`）:
+    - Top-1 正答率: `2-way` / `4-way` ともに **13/15（86.7%）**（誤答2件は髪省略の強デフォルメ顔で形状が酷似）。
+    - 安全棄却閾値（`DEFAULT_MATCH_MIN_SCORE = 0.68`, `DEFAULT_MATCH_MIN_MARGIN = 0.035`）適用時の `VisionCharacterAnalysis.analyze_character_match` エンドツーエンド実測: **`2-way` / `4-way` ともに確定 11/15（Precision 11/11 = 100.0%、誤割当 0 件、曖昧 4 件安全棄却）**、設定画 SHA-256 キャッシュ併用時 平均 **46.84 ms / 枚**（全ヒット時は数 ms）、Peak RSS **492.5 MB**（8B VLM 非起動確認済み）。
+  - **メリット**: 新キャラや新衣装を増やしても **再学習ゼロ**。設定画の SHA-256 埋め込みをインメモリキャッシュし、推論時はベクトル内積だけで照合できる。また特徴テキスト入力に依存しないため、ビジョン（キャラ照合）の簡素化方針とも噛み合う。
 - **M2（Head 2：向き・撮影サイズ・最適設定画アングル判定）**:
   - **仕組み**: 同じ特徴マップから、`nyamuru_bridge_constants.py` で定義済みの語彙へマッピングする軽量マルチタスク分類ヘッドを分岐させる。
     - `view_angle / facing`: `CHARACTER_REFERENCE_VIEWS`（`front`, `three-quarter`, `side`, `back` 等）および左右向き
@@ -196,7 +198,7 @@ flowchart LR
 | **Phase 0**（共通基盤） | `dev_tools/` 配下のプロジェクト差分データ抽出スクリプト、ベンチマーク評価ハーネス、ONNX 検証テンプレート | 既存 `.nyamuru/project.json` から個人情報・原稿画像を漏らさず教師データセットとベースラインスコアを自動算出できる |
 | **Phase 1**（M7：向き判定・**完了**） | 384px 4クラス `MobileNetV3-Large` ONNX（16.04MB）・4向き最大正立スキャン推論、`estimatePageOrientation` API（512px サムネ）、新規作成UI自動初期プリセット | Colab GPU 学習完了（未見単発 43/48=89.58%・4向き正立スキャン 48/48=100.0%）、ローカル CPU 平均 30.26ms・0° 誤回転 0、UI接続・全テスト通過 |
 | **Phase 2**（M5：音声スロット） | `nyamuru-voice-v05`（Intent+Slot）、`voice_intent_worker.py` / `voiceCommands.ts` 拡張 | 既存19意図精度維持、スロット抽出 ≥ 95%、言い回しテスト追加通過、`install_voice_intent.py --check` 通過 |
-| **Phase 3**（M1+M2：共有エンコーダ） | 共有軽量エンコーダ ONNX（キャラ照合＋アングル/サイズ）、2画像生成のアングル初期推薦接続 | 8B VLM 比でメモリ・速度を 10倍以上軽量化、Top-1/Precision 基準達成、キャラ照合 OFF 時の無影響確認 |
+| **Phase 3**（M1 実配置済み・M2 残） | **M1**: `SigLIP2-Base` 画像 ONNX（354.58 MiB）実配置＋`character_vision_encoder.py` 接続完了。**M2**（アングル・サイズヘッド）は未学習・既存フォールバック | M1 実測 2-way/4-way とも確定時 Precision 11/11（100%）・約46.8ms・Peak 492.5MB・キャラ照合 OFF 時無影響確認 |
 | **Phase 4**（M6：座標モデル） | LightGBM/MLP ONNX（話者リンク・`page_overlay`・読み順）、`layout_geometry` 統合 | 1ms 未満推論、既存幾何テスト全通過＋変則コマ評価セットでの改善確認 |
 | **Phase 5**（M3：検出微調整／~~M4~~中止） | M3 拡張クラス対応 RT-DETR ONNX（Release 配布）。**M4 は現行 `baberu-ocr` で精度十分なため中止・除外** | M3: mAP@50 改善＋フキダシ種別連携 |
 
