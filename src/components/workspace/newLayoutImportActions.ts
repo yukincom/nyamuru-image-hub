@@ -7,7 +7,7 @@ import {
   type NewLayoutItem, type DetectedPageLayout, type RightAngle, displayedLayoutRotation,
   type NewLayoutTask,
 } from '../../lib/newLayoutPreview';
-import { recognizePanelLayout, openMacScanner, cancelScannerSession, collectScannerImages, getPendingScannerSession, resumePendingScannerSession, finishScannerSession } from '../../lib/localBridge';
+import { estimatePageOrientation, recognizePanelLayout, openMacScanner, cancelScannerSession, collectScannerImages, getPendingScannerSession, resumePendingScannerSession, finishScannerSession } from '../../lib/localBridge';
 
 interface Context {
   updateNewLayoutTask: (task: NewLayoutTask) => void;
@@ -29,13 +29,56 @@ export function createNewLayoutImportActions({
   updateNewLayoutTask, discardScannerSources, discardNewLayoutItems, createNewDocument,
   finishScannerWatching, detachActiveScannerSession, discardPendingScannerRecovery,
 }: Context) {
+  const applyEstimatedOrientations = async (
+    targets: readonly NewLayoutItem[],
+    generation: number,
+    allowMessage: boolean,
+  ) => {
+    if (typeof estimatePageOrientation !== 'function' || !targets.length) return;
+    let adjusted = 0;
+    for (const target of targets) {
+      if (generation !== newLayoutOperationGeneration.current) return;
+      let suggestion;
+      try {
+        suggestion = await estimatePageOrientation(target.file);
+      } catch {
+        continue;
+      }
+      if (generation !== newLayoutOperationGeneration.current) return;
+      if (!suggestion?.applied || suggestion.recommendedDegrees === 0) continue;
+      const current = newLayoutItemsRef.current;
+      const index = current.findIndex((item) => item.id === target.id);
+      if (index < 0) continue;
+      const existing = current[index];
+      if (existing.analysis || existing.analyzing || existing.rotationOverride !== 0) continue;
+      const updated = current.map((item, itemIndex) => (
+        itemIndex === index
+          ? { ...item, rotationOverride: suggestion.recommendedDegrees }
+          : item
+      ));
+      newLayoutItemsRef.current = updated;
+      setNewLayoutItems(updated);
+      adjusted += 1;
+    }
+    if (
+      allowMessage
+      && adjusted > 0
+      && generation === newLayoutOperationGeneration.current
+      && newLayoutTaskRef.current === 'idle'
+    ) {
+      setNewLayoutMessage(
+        `${newLayoutItemsRef.current.length}枚を読み込みました（自動向き判定で${adjusted}枚を補正・手動で変更できます）。`,
+      );
+    }
+  };
+
   const chooseNewLayoutImages = (files?: ArrayLike<File> | Iterable<File> | null) => {
     if (newLayoutTask !== 'idle') return;
     const selected = Array.from(files ?? [])
       .sort((a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true }))
       .slice(0, 10);
     if (!selected.length) return;
-    newLayoutOperationGeneration.current += 1;
+    const generation = ++newLayoutOperationGeneration.current;
     updateNewLayoutTask('idle');
     // スキャンから手動ファイルへ切り替える操作は明示的な破棄として扱う。
     void discardScannerSources().catch(() => undefined);
@@ -49,6 +92,9 @@ export function createNewLayoutImportActions({
     setNewLayoutActiveIndex(0);
     setNewLayoutMessage(`${items.length}枚を読み込みました。`);
     if (newLayoutImageInput.current) newLayoutImageInput.current.value = '';
+    if (typeof applyEstimatedOrientations === 'function') {
+      void applyEstimatedOrientations(items, generation, true);
+    }
   };
 
   const updateNewLayoutGutter = (axis: 'row' | 'column', value: number) => {
@@ -183,12 +229,17 @@ export function createNewLayoutImportActions({
           }));
           const existing = newLayoutItemsRef.current;
           const known = new Set(existing.map((item) => item.id));
-          const next = [...existing, ...additions.filter((item) => !known.has(item.id))].slice(0, session.maxFiles);
+          const uniqueAdditions = additions.filter((item) => !known.has(item.id));
+          const next = [...existing, ...uniqueAdditions].slice(0, session.maxFiles);
+          const accepted = next.slice(existing.length);
           newLayoutItemsRef.current = next;
           setNewLayoutItems(next);
           setNewLayoutActiveIndex(Math.max(0, next.length - 1));
           setScannerReceivedCount(next.length);
           setNewLayoutMessage(`${next.length}枚を取り込みました。スキャン元は検出コマからページ作成を確定するまで保持します。`);
+          if (accepted.length && typeof applyEstimatedOrientations === 'function') {
+            void applyEstimatedOrientations(accepted, generation, false);
+          }
         }
         if (batch.complete || scannerStopRequested.current) break;
         await new Promise((resolve) => window.setTimeout(resolve, 1200));
@@ -236,6 +287,9 @@ export function createNewLayoutImportActions({
       setNewLayoutActiveIndex(0);
       setScannerReceivedCount(items.length);
       setNewLayoutMessage(`${items.length}枚へつなぎ直しました。`);
+      if (items.length && typeof applyEstimatedOrientations === 'function') {
+        void applyEstimatedOrientations(items, generation, false);
+      }
     } catch (error) {
       if (generation !== newLayoutOperationGeneration.current) return;
       setNewLayoutMessage(error instanceof Error ? error.message : '前回のスキャン画像へつなぎ直せませんでした');

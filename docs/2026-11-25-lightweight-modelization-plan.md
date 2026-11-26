@@ -2,7 +2,7 @@
 
 - 作成日: 2026-11-25
 - 対象リポジトリ: `Comic_image_Hub`
-- 状態: **段階実装済み（グループ1〜3コード・推論枠組導入済み、M1 ONNX 学習済み重み導入まではビジョン既定 OFF・ローカル軽量エンコーダ実行先既定）**
+- 状態: **段階実装・一部実配置済み（グループ1〜3コード・推論枠組導入済み、M7 は Colab GPU 学習・ONNX 実配置・新規作成 UI 接続完了、M4 個人筆跡 Baberu OCR 微調整は現行精度十分なため中止・除外、M1 ONNX 学習済み重み導入まではビジョン既定 OFF・ローカル軽量エンコーダ実行先既定）**
 
 ## 1. 目的と設計原則
 
@@ -36,10 +36,10 @@
 | **M1** | G1（重い8B置換） | キャラ照合（`local_character_match_worker.py` の 8B VLM 置換） | 共有軽量画像エンコーダ＋埋め込み射影（Head 1） | M1+M2合計 80〜250MB（量子化 ONNX） | 15〜40ms / 人物 | **大幅減**（数GB → 百数十MB） | Phase 3 |
 | **M2** | G1（重い8B蒸留） | キャラ向き・撮影サイズ・最適設定画アングル自動選択（`local_figure_performance_worker.py` 蒸留） | M1 と同一エンコーダ共有＋多タスク分類ヘッド（Head 2） | M1 と共有（＋数MBヘッド） | +1〜2ms（M1 と同時計算） | **大幅減**（単一推論に統合） | Phase 3 |
 | **M3** | G2（既存差し替え） | RT-DETR アナログネーム微調整＋フキダシ種別/しっぽ拡張（`rtdetr_onnx.py`） | RT-DETRv4-X ONNX 微調整 | 現行同等（差し替え） | 現行同等（+0ms 相当） | **±0** | Phase 5 |
-| **M4** | G2（既存差し替え） | Baberu OCR 自分の筆跡向け微調整（`local_vision_worker.py`） | Baberu OCR ONNX（LoRA 統合済み重み・ローカル専用） | 現行同等（差し替え） | 現行同等（+0ms 相当） | **±0** | Phase 5 |
+| **M4** | G2（対象外・中止） | Baberu OCR 自分の筆跡向け微調整（`local_vision_worker.py`） | 現行 `baberu-ocr` で実用十分なため **中止・除外**（微調整なし） | 現行そのまま | 現行そのまま | **±0** | **中止** |
 | **M5** | G2（既存ヘッド追加） | ModernBERT 意図分類＋スロット抽出統合（`nyamuru_voice_intent.py`・`voiceCommands.ts`） | ModernBERT 19意図分類＋BIO トークン分類 | 現行約150MB（＋線形層数MB） | +1〜2ms（現行内） | **+数MB** | Phase 2 |
 | **M6** | G3（座標数値のみ） | コマ読み順・話者紐づけ・`page_overlay` 判定（`nyamuru_layout_geometry.py`・`pageElements.ts`） | LightGBM / 小型 MLP（ONNX） | 0.5〜3MB | **1ms 未満 / ページ** | **ほぼ0** | Phase 4 |
-| **M7** | G3（極小サムネのみ） | 原稿の向き自動判定 0/90/180/270°（`nyamuru_ocr_util.py`） | 超軽量 CNN（MobileNetV3-Small / ConvNeXt-Tiny 級 ONNX） | 3〜10MB | 5〜10ms / ページ | **+20〜40MB（一時）** | Phase 1 |
+| **M7** | G3（極小サムネのみ） | 原稿の向き自動判定 0/90/180/270°（`nyamuru_ocr_util.py`・`page_orientation_classifier.py`） | MobileNetV3-Large ONNX（実配置済み） | 約 16.04MB | 平均約 10ms / 枚（CPU実測） | **+20〜40MB（一時）** | **Phase 1 完了** |
 
 ---
 
@@ -53,7 +53,7 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
 
 | 普段の編集操作 | 抽出元データ | 生成される教師データ | 活用先 |
 |---|---|---|---|
-| OCR の誤読を修正する | `analogTextImport` の原画切り抜き × 確定した `bubble.text` | `(文字領域クロップ画像, 正解文字列)` | **M4**（筆跡 OCR） |
+| OCR の誤読を修正する | `analogTextImport` の原画切り抜き × 確定した `bubble.text` | `(文字領域クロップ画像, 正解文字列)` | ※将来の参考蓄積（**M4 は現行 Baberu OCR 精度十分なため中止**） |
 | フキダシ形状を変更する | `analogTextImport` 周辺画像 × 確定した `bubble.shape` | `(フキダシ領域画像, 形状クラス)` | **M3**（フキダシ種別） |
 | コマ枠・人物あたりを直す | 取込原画 × 確定した `panel.shape` / `figure.bbox` | `(原画, 修正後 BBox/クラス)` | **M3**（ネーム検出）、**M6**（読み順・飛び出し） |
 | 人物にキャラを割り当てる | `analogImport` の人物クロップ × 確定 `figure.refId` | `(ネーム人物クロップ, 設定画群, 正解キャラID)` | **M1**（キャラ照合） |
@@ -135,13 +135,9 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
 - **受入基準**:
   - 既存テスト（`tests/test_scanner_bridge.py` 等）をすべて満たした上で、アナログネーム評価セットでのコマ・人物・文字検出 mAP@50 をベースライン比 +5pt 以上改善、推論時間・メモリは現行と±5%以内。
 
-#### M4：Baberu OCR の個人筆跡向け微調整（ローカル専用）
-- **現状と対象**: [local_vision_worker.py](../scripts/local_vision_worker.py) の `load_baberu()` が `vision_int4.onnx` + `decoder_prefill_int8.onnx` + `decoder_step_int8.onnx` を実行。汎用印刷・汎用手書き向けのため、作家特有のくせ字・略字・勢いのあるセリフで誤読が残り、[nyamuru_ocr_util.py](../scripts/nyamuru_ocr_util.py) の文字種スコアで `needs_review` 判定している。
-- **モデル化方針**:
-  - Data Flywheel で溜まった `(文字切り抜き画像, 人間が直した正解テキスト)` ペアを使い、Baberu OCR のデコーダ／ビジョン射影層を LoRA 微調整し、元の重みへマージして同じ INT4/INT8 ONNX 構成へ再エクスポートする。
-  - **個人専用モデルの扱い**: 特定ユーザーの筆跡データ・重みは公開リポジトリ／公開 Release には含めず、`.local-vision/models/baberu-ocr-custom/`（または `NYAMURU_BABERU_MODEL_DIR` 環境変数）があればそちらを優先読み込みし、無ければ標準 `baberu-ocr` を使う。
-- **受入基準**:
-  - 同一テストセット上で CER（文字誤り率）をベースラインから 30% 以上削減。推論速度・メモリ使用量は標準 `baberu-ocr` と完全同等。
+#### M4：Baberu OCR の個人筆跡向け微調整（中止・除外）
+- **判断結果**: ユーザー確認により現行標準の `baberu-ocr`（[local_vision_worker.py](../scripts/local_vision_worker.py)）で実使用上の手書き認識精度が十分であると判断されたため、**M4 の追加学習・LoRA 微調整は中止し、本計画から除外**する。
+- **現行運用**: 標準 `baberu-ocr`（`vision_int4.onnx` + `decoder_prefill_int8.onnx` + `decoder_step_int8.onnx`）および [nyamuru_ocr_util.py](../scripts/nyamuru_ocr_util.py) の `needs_review` 判定をそのまま維持する。
 
 #### M5：ModernBERT の「意図分類＋スロット（引数）抽出」統合
 - **現状と対象**: [nyamuru_voice_intent.py](../scripts/nyamuru_voice_intent.py) と [voice_intent_worker.py](../scripts/voice_intent_worker.py) で ModernBERT による 19 クラス意図分類を行い、その後 [voiceCommands.ts](../src/lib/voiceCommands.ts) で正規表現の全文一致（`match(text, ...)`）により引数（ページ番号、コマ番号、キャラ名、ON/OFF、`normal/square/caption/toge`、引用テキスト等）を抽出している。そのため「ちょっと表現が変わった」「語順が違う」だけで弾かれる。
@@ -168,14 +164,14 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
   - 低信頼度時は既存の距離・IoUルールへフォールバックし、話者も「推定」ではなく確認可能な候補として提示する。
   - 推論時間 < 1ms / ページ、モデル合計サイズ ≤ 3MB。話者ペア精度 Top-1 ≥ 88%、`page_overlay` F1 ≥ 90%。
 
-#### M7：原稿の向き自動判定（0° / 90° / 180° / 270°）
-- **現状と対象**: [FORK_FEATURES.md](FORK_FEATURES.md) および [AGENTS.md](../AGENTS.md) 記載の通り、現在は取り込み時に利用者が手動で回転ボタンを押して正立させており、自動回転を行っていない。[nyamuru_ocr_util.py](../scripts/nyamuru_ocr_util.py) には `normalized_rotation_override()` と `rotated_image_bytes()` が用意されている。
-- **モデル化方針**:
-  - `MobileNetV3-Small` 相当（または `EfficientNet-Lite0` / `ShuffleNetV2`）を 224×224 グレースケール/RGB 縮小サムネイル入力・4クラス出力（`0, 90, 180, 270`）で学習し、INT8/FP32 ONNX（3〜10MB）として組み込む。
-  - **UI 連携方針**: いきなり強制確定するのではなく、「解析前の画像確認画面で **初期回転角の自動プリセット（推奨マーク付き）** として適用」し、利用者が目視確認・ワンクリック修正できる状態を保つ（安全第一）。特にスキャナー連続取り込みやスマホ撮影の横向き混在に大きく効く。
-- **学習データ**: 既存漫画ページ・アナログネーム画像（正立が確認されたもの）を 0/90/180/270° に回転し、明度揺らぎ・影・余白トリム違いを増強して学習（手作業ラベルほぼ不要）。
-- **受入基準**:
-  - 4クラス分類精度 ≥ 98%（縦書き文字・人物の天地が視認できる原稿対象）、極端な抽象・白紙ページでは無理に回転せず `0°`（信頼度閾値未満は回転提案なし）へフォールバック。CPU 推論 ≤ 10ms / 枚。
+#### M7：原稿の向き自動判定（0° / 90° / 180° / 270°）— 学習・実配置・UI 接続済み
+- **構成**: [page_orientation_classifier.py](../scripts/page_orientation_classifier.py) / [train_page_orientation.py](../dev_tools/model_lab/train_page_orientation.py) / [newLayoutImportActions.ts](../src/components/workspace/newLayoutImportActions.ts) / [nyamuru_ocr_util.py](../scripts/nyamuru_ocr_util.py)
+- **学習・配置結果（2026-11-26）**:
+  - **学習環境・モデル**: Google Colab（Tesla T4）にて 37 枚の正立確認済みネーム画像を 4 向き（0/90/180/270° CW 要正立回転角）＋領域クロップ・アスペクト・明暗増強で学習。`MobileNetV3-Small`（未見グループ分割 48 サンプル正答率 75.00%）と `MobileNetV3-Large`（同 **81.25%** [39/48]、**0° 正答率 100%** [12/12]、誤判定の主因は 90°↔270° の5件）を比較し、`MobileNetV3-Large` を採用して全37枚で最終学習・ONNX 書き出し（PyTorch との最大誤差 `1.10e-5`、**16.04MB**、`model.onnx` を `.local-vision/models/page-orientation/` へ配置、SHA-256 検証済み）。
+  - **ローカル CPU 実測**: `.local-vision/.venv/bin/python` による実画像11枚×4向き=44サンプル検証で 44/44 正答、0° 誤回転 0 件、信頼度閾値 `0.80` 以上での自動回転適用率 33/44（非0向きの 33/33 を誤適用なしで補正）、平均推論レイテンシ **10.07 ms / 枚**（画像読込含む）。
+- **UI 連携と安全設計**:
+  - 新規作成プレビューで手動選択／スキャナー取り込み完了時に非同期で初期 `rotationOverride` を自動提案（信頼度 `0.80` 以上のみ非0角を適用、未配置または低信頼度・白紙等は `0°` 維持）。利用者がすでに手動回転・解析開始した世代へは上書きせず、常にワンクリックで手動修正できる。
+  - 現状は 37 枚学習で 90°↔270° 間の取りこぼしが残るため、今後ネーム枚数が増えた際は追加再学習で未見精度をさらに引き上げられる（次回 Colab 学習時は Google Drive マウントを経由せずローカル直アップロード／直ダウンロードまたはローカル学習で実行する方針）。
 
 ---
 
@@ -189,17 +185,17 @@ flowchart LR
   P0 --> P2["Phase 2: M5 ModernBERT スロット抽出"]
   P0 --> P3["Phase 3: M1+M2 共有軽量エンコーダ (8B VLM置換)"]
   P3 --> P4["Phase 4: M6 座標ベース読み順・話者モデル"]
-  P0 --> P5["Phase 5: M3 RT-DETR微調整 / M4 Baberu筆跡OCR"]
+  P0 --> P5["Phase 5: M3 RT-DETR微調整 (M4は中止)"]
 ```
 
 | フェーズ | 主な成果物 | 完了条件（Go/No-Go ゲート） |
 |---|---|---|
 | **Phase 0**（共通基盤） | `dev_tools/` 配下のプロジェクト差分データ抽出スクリプト、ベンチマーク評価ハーネス、ONNX 検証テンプレート | 既存 `.nyamuru/project.json` から個人情報・原稿画像を漏らさず教師データセットとベースラインスコアを自動算出できる |
-| **Phase 1**（M7：向き判定） | 224px 4クラス ONNX モデル、bridge API 応答への推奨回転角付与、取込UIの自動プリセット | CPU 推論 ≤ 10ms、精度 ≥ 98%、低信頼度時 0° フォールバック、`test:bridge` 既存テスト全通過 |
+| **Phase 1**（M7：向き判定・**完了**） | 224px 4クラス `MobileNetV3-Large` ONNX（16.04MB）実配置、`estimatePageOrientation` API、新規作成UI自動初期プリセット | Colab GPU 学習完了（未見39/48=81.25%、0°=100%）、ローカル CPU 平均10.07ms・0°誤回転0、UI接続・全テスト通過 |
 | **Phase 2**（M5：音声スロット） | `nyamuru-voice-v05`（Intent+Slot）、`voice_intent_worker.py` / `voiceCommands.ts` 拡張 | 既存19意図精度維持、スロット抽出 ≥ 95%、言い回しテスト追加通過、`install_voice_intent.py --check` 通過 |
 | **Phase 3**（M1+M2：共有エンコーダ） | 共有軽量エンコーダ ONNX（キャラ照合＋アングル/サイズ）、2画像生成のアングル初期推薦接続 | 8B VLM 比でメモリ・速度を 10倍以上軽量化、Top-1/Precision 基準達成、キャラ照合 OFF 時の無影響確認 |
 | **Phase 4**（M6：座標モデル） | LightGBM/MLP ONNX（話者リンク・`page_overlay`・読み順）、`layout_geometry` 統合 | 1ms 未満推論、既存幾何テスト全通過＋変則コマ評価セットでの改善確認 |
-| **Phase 5**（M3・M4：検出＆筆跡OCR） | M3 拡張クラス対応 RT-DETR ONNX（Release 配布）、M4 個人筆跡 Baberu ローカル学習レシピ（非配布） | M3: mAP@50 改善＋フキダシ種別連携、M4: CER 30% 以上削減、速度・メモリ増加なし |
+| **Phase 5**（M3：検出微調整／~~M4~~中止） | M3 拡張クラス対応 RT-DETR ONNX（Release 配布）。**M4 は現行 `baberu-ocr` で精度十分なため中止・除外** | M3: mAP@50 改善＋フキダシ種別連携 |
 
 ---
 

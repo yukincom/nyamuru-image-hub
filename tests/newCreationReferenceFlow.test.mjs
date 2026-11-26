@@ -246,6 +246,71 @@ test('手動のネーム画像は選択順によらずファイル名の数字�
   }
 });
 
+test('自動向き判定が初期回転角を反映し失敗や手動変更を妨げない', async () => {
+  const files = ['page1.png', 'page2.png', 'page3.png'].map(name => new File(['fixture'], name));
+  const state = {};
+  const itemsRef = { current: [] };
+  let calls = 0;
+  const context = {
+    newLayoutTask: 'idle',
+    newLayoutTaskRef: { current: 'idle' },
+    newLayoutOperationGeneration: { current: 0 },
+    updateNewLayoutTask: () => {},
+    discardScannerSources: async () => {},
+    discardNewLayoutItems: () => {},
+    crypto,
+    newLayoutItemsRef: itemsRef,
+    newLayoutImageInput: { current: null },
+    ...stateSetters(state, ['NewLayoutItems', 'NewLayoutActiveIndex', 'NewLayoutMessage']),
+    estimatePageOrientation: async (file) => {
+      calls += 1;
+      if (file.name === 'page1.png') {
+        return { recommendedDegrees: 90, rawDegrees: 90, confidence: 0.96, applied: true, model: 'page-orientation' };
+      }
+      if (file.name === 'page2.png') {
+        throw new Error('bridge offline');
+      }
+      return { recommendedDegrees: 0, rawDegrees: 0, confidence: 0.98, applied: false, model: 'page-orientation' };
+    },
+  };
+  context.applyEstimatedOrientations = (...args) => handler('applyEstimatedOrientations', context)(...args);
+  handler('chooseNewLayoutImages', context)(files);
+  for (let attempt = 0; attempt < 100 && calls < 3; attempt += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(calls, 3);
+  assert.deepEqual(Array.from(state.NewLayoutItems, item => item.rotationOverride), [90, 0, 0]);
+  assert.match(state.NewLayoutMessage, /自動向き判定で1枚を補正/);
+
+  let releaseStale;
+  const staleItemsRef = { current: [] };
+  const staleState = {};
+  const staleContext = {
+    newLayoutTask: 'idle',
+    newLayoutTaskRef: { current: 'idle' },
+    newLayoutOperationGeneration: { current: 0 },
+    updateNewLayoutTask: () => {},
+    discardScannerSources: async () => {},
+    discardNewLayoutItems: () => {},
+    crypto,
+    newLayoutItemsRef: staleItemsRef,
+    newLayoutImageInput: { current: null },
+    ...stateSetters(staleState, ['NewLayoutItems', 'NewLayoutActiveIndex', 'NewLayoutMessage']),
+    estimatePageOrientation: () => new Promise(resolve => { releaseStale = resolve; }),
+  };
+  staleContext.applyEstimatedOrientations = (...args) => handler('applyEstimatedOrientations', staleContext)(...args);
+  handler('chooseNewLayoutImages', staleContext)([new File(['fixture'], 'page1.png')]);
+  for (let attempt = 0; attempt < 50 && !releaseStale; attempt += 1) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.ok(releaseStale);
+  staleContext.newLayoutOperationGeneration.current += 1;
+  releaseStale({ recommendedDegrees: 180, rawDegrees: 180, confidence: 0.99, applied: true, model: 'page-orientation' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(staleItemsRef.current[0].rotationOverride, 0);
+});
+
 test('新規作成でも同じシリーズの人物画像を既存IDで引き継ぐ', async () => {
   const catalog = createEmptyWorkspaceDocument();
   catalog.manga.meta.series = '共通シリーズ';
