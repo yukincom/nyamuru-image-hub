@@ -2,7 +2,7 @@
 
 - 作成日: 2026-11-25
 - 対象リポジトリ: `Comic_image_Hub`
-- 状態: **段階実装・M7＋M1 実配置済み（グループ1〜3コード・推論枠組導入済み、M7 は 384px 4向き正立スキャン ONNX 実配置・新規作成 UI 接続完了、M1 は `SigLIP2-Base` 画像 ONNX 実配置・実測 Precision 100% 検証完了、M4 個人筆跡 Baberu OCR 微調整は現行精度十分なため中止・除外、キャラ照合（ビジョン）は安全運用方針に従い既定 OFF・ローカル軽量エンコーダ実行先既定）**
+- 状態: **段階実装・M7＋M1 実配置済み・キャラ照合常時オン化済み（グループ1〜3コード・推論枠組導入済み、M7 は 384px 4向き正立スキャン ONNX 実配置・新規作成 UI 接続完了、M1 は `SigLIP2-Base` 画像 ONNX 実配置・実測 Precision 100% 検証完了に伴いオフモードと設定画面ビジョン／ローカルVLM欄を廃止し常時オン化、M4 個人筆跡 Baberu OCR 微調整は現行精度十分なため中止・除外）**
 
 ## 1. 目的と設計原則
 
@@ -13,11 +13,11 @@
 1. **既存モデルの差し替え・ヘッド相乗りで追加コストをほぼゼロにする（グループ2）**
    すでに毎回動作している `rtdetrv4-x-manga109s_v2`・`baberu-ocr`・`ModernBERT` の重み差し替えまたは軽量ヘッド追加に留め、推論回数や常駐プロセスを増やさない。
 2. **重い 8B VLM を 1つの共有軽量画像エンコーダへ置換する（グループ1）**
-   従来は重いためオプション（既定 OFF）だったローカル 8B VLM（`Qwen3-VL-8B-Instruct-MLX-4bit`）の役割のうち、「キャラ照合」と「向き・撮影サイズ・最適設定画アングル判定」を1つの軽量エンコーダ＋2ヘッドへ蒸留・置換し、数GB・数秒〜十数秒の処理を数十〜数百MB・数十ms へ落とす。学習済み M1 ONNX 重みが未配置の間はビジョン既定 OFF かつ自動照合を安全棄却し、重み導入後に精度検証を経て既定 ON 化できる構成にする。
+   従来は重いためオプション（既定 OFF）だったローカル 8B VLM（`Qwen3-VL-8B-Instruct-MLX-4bit`）の役割のうち、「キャラ照合」と「向き・撮影サイズ・最適設定画アングル判定」を1つの軽量エンコーダ＋2ヘッドへ置換し、数GB・数秒〜十数秒の処理を数百MB・数十ms へ落とす。M1 ONNX 実配置に伴いキャラ照合は常時オン化し、未配置時のみ安全棄却する構成にする。
 3. **新規追加は「座標数値のみ（<1ms）」と「縮小サムネイルのみ（5〜10ms）」に限定する（グループ3）**
    新規モデルを追加する場合も、画像を使わない表形式モデル（BBox 座標等の数値のみ）と取り込み時1回だけの極小サムネイル分類器に限定する。
 4. **ComfyUI とのメモリ共存とローカル完結・再現性規約を守る**
-   ローカル既定の画像生成（`P-H3-Image` 2画像参照・プロンプト流し込みなし）や ComfyUI とのメモリ共存を阻害しないよう、モデル重みは Git に含めず、既存の Release＋SHA-256 検証＋`provenance.json`＋オフライン実行（`HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1`）の規約（[ModernBERT同梱記録](2026-10-24-classifier-bundle.md)・[ローカル画像解析](LOCAL_VISION_BRIDGE.md)）に統一する。また、2画像生成・プロンプト流し込み廃止・キャラ照合（ビジョン）既定 OFF 方針（[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md)）と矛盾させない。
+   ローカル既定の画像生成（`P-H3-Image` 2画像参照・プロンプト流し込みなし）や ComfyUI とのメモリ共存を阻害しないよう、モデル重みは Git に含めず、既存の Release＋SHA-256 検証＋`provenance.json`＋オフライン実行（`HF_HUB_OFFLINE=1` / `TRANSFORMERS_OFFLINE=1`）の規約（[ModernBERT同梱記録](2026-10-24-classifier-bundle.md)・[ローカル画像解析](LOCAL_VISION_BRIDGE.md)）に統一する。また、2画像生成・プロンプト流し込み廃止・キャラ照合常時オン方針（[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md)）と矛盾させない。
 
 ### 対象外（モデル化しない境界）
 
@@ -98,7 +98,7 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
 ### グループ1：既存の重い 8B VLM を置換する共有エンコーダ（M1＋M2）
 
 #### 現状と課題
-- 従来の [local_character_match_worker.py](../scripts/local_character_match_worker.py) と [local_figure_performance_worker.py](../scripts/local_figure_performance_worker.py) は `Qwen3-VL-8B-Instruct-MLX-4bit`（数GB・数秒〜十数秒）に依存していたため、[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md) でも既定 OFF のオプトイン扱いになっている。M1+M2 の共有軽量エンコーダ経路では学習済み ONNX 重み導入まで未学習フォールバックでの候補確定を禁止し、学習・精度評価完了後に既定 ON 化できる構成とする。
+- 従来の [local_character_match_worker.py](../scripts/local_character_match_worker.py) と [local_figure_performance_worker.py](../scripts/local_figure_performance_worker.py) は `Qwen3-VL-8B-Instruct-MLX-4bit`（数GB・数秒〜十数秒）に依存していた。M1 ONNX 実配置の完了により、[AGENT_MODEL_SPEC.md](AGENT_MODEL_SPEC.md) のキャラ照合は常時オン（設定画面 UI・ローカル VLM 欄廃止）へ移行し、未配置時は安全棄却を保つ構成とする。
 - [vision_character_analysis.py](../scripts/vision_character_analysis.py) では、キャラ照合（テキスト特徴経由）と演技/撮影範囲読み取りを別々に VLM 呼び出ししている。
 
 #### 統合アーキテクチャ（1バックボーン＋2ヘッド）
@@ -117,7 +117,7 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
   - **活用**: 2画像生成ダイアログを開いた瞬間、ネームの人物あたりに対して「どの設定画アングル（例：`three-quarter`）を `image_1` に初期選択すべきか」を自動提案する（プロンプト注入は行わず、設定画の初期選択補助に限定する）。
 
 #### 安全設計と評価基準
-- **安全設計**: M1 の Top-1 類似度と Top-2 とのマージンが閾値未満の場合はキャラ名を確定せず未割り当て（候補提示のみ）とし、誤紐づけを防ぐ。既存の「設定画を登録するだけの運用（キャラ照合 OFF）」や「クラウド Vision API 選択」はそのまま保持する。
+- **安全設計**: M1 の Top-1 類似度と Top-2 とのマージンが閾値未満の場合はキャラ名を確定せず未割り当て（候補提示のみ）とし、誤紐づけを防ぐ。M1 ONNX 未配置時や特徴確認の手動操作への安全フォールバックはそのまま保持する。
 - **受入基準**:
   - M1: 同一シリーズ 5〜10 キャラ間での Top-1 照合精度 ≥ 85% / Top-3 ≥ 95%（低信頼度棄却を除く確定時 Precision ≥ 95%）。
   - M2: アングル分類（正・斜・横・背の4群）精度 ≥ 90%、撮影サイズ（隣接クラス許容 Top-1±1）≥ 92%。

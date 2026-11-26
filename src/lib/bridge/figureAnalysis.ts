@@ -139,7 +139,7 @@ export async function analyzeCharacterReferenceWithLocalVlm(
   return { recognition, analyzer: normalizedAnalyzer, referenceView };
 }
 
-/** 登録済みの人物資料群を比較し、安定特徴を抽出する（ビジョンON時のみ実行）。 */
+/** 登録済みの人物資料群を比較し、安定特徴を抽出する。 */
 export async function analyzeCharacterReferenceSetWithLocalVlm(
   seriesId: string,
   characterCatalogId: string,
@@ -147,9 +147,6 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
   targetCharacter: string,
 ): Promise<CharacterReferenceSetSuggestion> {
   const vision = currentGenerationPreferences().vision;
-  if (!vision.enabled) {
-    throw new Error('キャラ照合（ビジョン）がオフになっています。環境設定 → モデル設定でオンにしてください');
-  }
   const uniqueAssetIds = [...new Set(assetIds)];
   if (!seriesId || !characterCatalogId || !uniqueAssetIds.length || uniqueAssetIds.length > 12
     || uniqueAssetIds.some((assetId) => !/^image-[a-f0-9]{64}$/.test(assetId))) {
@@ -240,7 +237,7 @@ export async function analyzeCharacterReferenceSetWithLocalVlm(
 }
 
 // 旧->新: 旧=ローカル8B VLM/クラウド専用クライアントのみ -> 新=M1+M2共有軽量画像エンコーダ照合・設定画アングル推薦クライアントを追加
-/** ビジョンON時のみ実行し、ローカル軽量エンコーダまたはクラウドVision APIへ分岐して登録人物と照合する。 */
+/** ローカル軽量エンコーダ（または設定された実行先）で登録人物と照合する。 */
 export async function analyzeFigureCharacterMatchWithLocalVlm(
   blob: Blob,
   candidates: readonly CharacterMatchCandidate[],
@@ -249,9 +246,6 @@ export async function analyzeFigureCharacterMatchWithLocalVlm(
   seriesId?: string,
 ): Promise<CharacterMatchSuggestion> {
   const vision = currentGenerationPreferences().vision;
-  if (!vision.enabled) {
-    throw new Error('キャラ照合（ビジョン）がオフになっています。環境設定 → モデル設定でオンにしてください');
-  }
   if (vision.execution === 'cloud') {
     const payload = await postJson('/api/cloud/gemini/match-character', {
       model: vision.cloudModel,

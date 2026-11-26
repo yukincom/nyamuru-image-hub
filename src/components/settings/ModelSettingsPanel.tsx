@@ -3,8 +3,7 @@ import { Image, MessageSquareText, ShieldCheck } from 'lucide-preact';
 import AgentSettings from '../AgentSettings';
 import LocalImageModelSettings from '../LocalImageModelSettings';
 import { Field, SectionTitle } from '../Fields';
-import { getCloudApiKeyStatus, listCloudVisionModels, saveCloudApiKey } from '../../lib/localBridge';
-import { DEFAULT_CLOUD_VISION_MODEL } from '../../lib/generationPreferences';
+import { getCloudApiKeyStatus, saveCloudApiKey } from '../../lib/localBridge';
 import type { EnvironmentSettingsProps } from '../environmentSettingsTypes';
 import type { useModelSettings } from './useModelSettings';
 
@@ -13,7 +12,7 @@ type Props = Pick<EnvironmentSettingsProps, 'onOpenAgent' | 'agentProfile' | 'on
 };
 
 export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile, onChangeAgentProfile }: Props) {
-  const { localModelPreferences, localModelDraft, conversationPreferences, generationPreferences,
+  const { localModelDraft, conversationPreferences, generationPreferences,
     conversationSettingsError, modelSettingsError, localModelError,
     updateConversationPreferences, updateGenerationPreferences, updateLocalModelPreferences } = settings;
   const isCloud = generationPreferences.execution === 'cloud';
@@ -23,22 +22,15 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
   const [apiKeyMessage, setApiKeyMessage] = useState('');
   const [apiKeySaving, setApiKeySaving] = useState(false);
   const [geminiModels, setGeminiModels] = useState<Array<{ id: string; label: string }>>([]);
-  const [geminiVisionModels, setGeminiVisionModels] = useState<Array<{ id: string; label: string }>>([]);
-  const visionCloudActive = generationPreferences.vision.enabled && generationPreferences.vision.execution === 'cloud';
 
   useEffect(() => {
-    if (executionValue !== 'api' && !visionCloudActive) return;
+    if (executionValue !== 'api') return;
     let active = true;
     void getCloudApiKeyStatus()
       .then(status => {
         if (!active) return;
         setApiKeyStatus(status);
         setGeminiModels(status.models);
-        if (status.configured && visionCloudActive) {
-          void listCloudVisionModels()
-            .then(models => { if (active) setGeminiVisionModels(models); })
-            .catch(() => undefined);
-        }
       })
       .catch(err => {
         if (!active) return;
@@ -46,7 +38,7 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
         setApiKeyMessage(err instanceof Error ? err.message : 'ローカル連携に接続できません');
       });
     return () => { active = false; };
-  }, [executionValue, visionCloudActive]);
+  }, [executionValue]);
 
   const handleSaveApiKey = async () => {
     if (apiKeySaving) return;
@@ -192,58 +184,6 @@ export default function ModelSettingsPanel({ settings, onOpenAgent, agentProfile
       <input aria-label="成人指定作品での利用規約を確認済み" type="checkbox" checked={generationPreferences.cloud.adultTermsConfirmed}
         onChange={event => updateGenerationPreferences({ ...generationPreferences, cloud: { ...generationPreferences.cloud, adultTermsConfirmed: event.currentTarget.checked } })} />
     </label>}
-    <section aria-label="キャラ照合（ビジョン）設定">
-      <SectionTitle title="キャラ照合（ビジョン）" />
-      <label class="environment-setting-row">
-        <span class="environment-setting-icon"><Image size={20} /></span>
-        <span><strong>キャラ照合（ビジョン）を使う</strong><small>オフのときはキャラクター設定画の登録・管理のみ有効になり、特徴入力欄はグレーアウトします。</small></span>
-        <input aria-label="キャラ照合（ビジョン）を使う" type="checkbox" checked={generationPreferences.vision.enabled}
-          onChange={event => updateGenerationPreferences({
-            ...generationPreferences,
-            vision: { ...generationPreferences.vision, enabled: event.currentTarget.checked },
-          })} />
-      </label>
-      {generationPreferences.vision.enabled && <div class="field-grid">
-        <Field label="照合の実行先" wide>
-          <select aria-label="キャラ照合の実行先" value={generationPreferences.vision.execution}
-            onChange={event => updateGenerationPreferences({
-              ...generationPreferences,
-              vision: { ...generationPreferences.vision, execution: event.currentTarget.value === 'local' ? 'local' : 'cloud' },
-            })}>
-            <option value="cloud">クラウドAPI（Gemini Vision）</option>
-            <option value="local">ローカル（軽量エンコーダ／VLM）</option>
-          </select>
-        </Field>
-        {generationPreferences.vision.execution === 'cloud' ? (
-          <Field label="Visionモデル" hint="画像生成と共通のクラウドAPIキーを使用（Flash-Lite系推奨）" wide>
-            {geminiVisionModels.length > 0 ? (
-              <select aria-label="Visionモデル" value={generationPreferences.vision.cloudModel || DEFAULT_CLOUD_VISION_MODEL}
-                onChange={event => updateGenerationPreferences({
-                  ...generationPreferences,
-                  vision: { ...generationPreferences.vision, cloudModel: event.currentTarget.value },
-                })}>
-                {!geminiVisionModels.some(m => m.id === (generationPreferences.vision.cloudModel || DEFAULT_CLOUD_VISION_MODEL)) && (
-                  <option value={generationPreferences.vision.cloudModel || DEFAULT_CLOUD_VISION_MODEL}>{generationPreferences.vision.cloudModel || DEFAULT_CLOUD_VISION_MODEL}</option>
-                )}
-                {geminiVisionModels.map(m => <option key={m.id} value={m.id}>{m.label} ({m.id})</option>)}
-              </select>
-            ) : (
-              <input aria-label="Visionモデル" value={generationPreferences.vision.cloudModel || DEFAULT_CLOUD_VISION_MODEL} spellcheck={false}
-                placeholder={DEFAULT_CLOUD_VISION_MODEL}
-                onInput={event => updateGenerationPreferences({
-                  ...generationPreferences,
-                  vision: { ...generationPreferences.vision, cloudModel: event.currentTarget.value },
-                })} />
-            )}
-          </Field>
-        ) : (
-          <Field label="ローカルVLM" hint="保存済みのHugging FaceモデルID" wide>
-            <input aria-label="画像VLM" value={localModelDraft.vlmModelId} spellcheck={false} onInput={event => updateLocalModelPreferences({ vlmModelId: event.currentTarget.value })} />
-            <small>既定では軽量ローカルエンコーダでキャラ照合・アングル推薦を行います。特徴抽出や詳細VLM解析を使う場合のみローカルVLMを指定します。</small>
-          </Field>
-        )}
-      </div>}
-    </section>
     {localModelError && <p role="alert">入力を確認してください。直前の有効な設定を保持しています。{localModelError}</p>}
     {modelSettingsError && <p role="alert">設定を保存できませんでした。{modelSettingsError}</p>}
   </>;

@@ -6,7 +6,6 @@ import { beginFigureCropImport, deleteFigureCropAssets, markFigureCropAssetPersi
 import { isLanClient } from '../../lib/clientRuntime';
 import { browserWorkspaces } from '../../lib/browserWorkspace';
 import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatchWithLocalVlm, saveSourceCoverageReport, saveEpisodeProject, type SeriesCharacterTextLink } from '../../lib/localBridge';
-import { currentGenerationPreferences } from '../../lib/generationPreferences';
 import { createProjectSnapshot } from '../../lib/projectPersistence';
 import { createPortableProject } from '../../lib/portableProject';
 import type { AnalogFigureImport, AnalogTextImport, MangaDocument, MangaSeriesSetting } from '../../types';
@@ -173,7 +172,7 @@ export function createNewProjectAction({
         for await (const crop of detectedFigureCrops(item.file, item.rotationOverride, item.analysis.detectedFigures)) {
           const metadata = imports.get(crop.regionId)!;
           const target = readTargetsByRegion.get(metadata.sourceRegionId);
-          if (target && currentGenerationPreferences().vision.enabled) {
+          if (target) {
             setNewLayoutMessage('人物を照合しています…');
             setNewCharacterReadProgress({ completed: characterReadOutcomes.size, total: characterReadTargets.length, startedAt: Date.now() });
             try {

@@ -254,7 +254,7 @@ test('環境設定はテキスト専用タブと生成ルールタブを整理�
   assert.equal(props.document.manga.meta.text_orientation, 'vertical');
   assert.equal(nodes(panel(tree, 'display')).filter(node => node.props?.type === 'checkbox').length, 3);
   assert.equal(nodes(panel(tree, 'data')).filter(node => node.props?.type === 'checkbox').length, 0);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 1);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 0);
   assert.equal(nodes(panel(tree, 'page')).filter(node => node.type === 'FinishLayoutSettings').length, 1);
   assert.equal(nodes(panel(tree, 'page')).some(node => node.type === 'ArtworkSettings'), false);
   const artwork = find(panel(tree, 'omay'), node => node.props?.section === 'omay');
@@ -383,13 +383,13 @@ test('表示・モデルの端末設定は作品自体を書き換えない', ()
   assert.deepEqual(calls, [['editGuide', false], ['guides', false], ['spread', true]]);
   find(panel(tree, 'ai'), node => node.props?.name === 'generation-execution' && node.props.value === 'agent').props.onChange({ currentTarget: { checked: true } });
   tree = component.render(props);
-  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 8);
+  assert.equal(nodes(panel(tree, 'ai')).filter(node => node.props?.type === 'checkbox').length, 7);
   assert.equal(component.writes.length, 1);
   assert.equal(component.writes[0][0], generation.GENERATION_PREFERENCES_STORAGE_KEY);
   assert.equal(JSON.parse(component.writes[0][1]).execution, 'cloud');
 });
 
-test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存し、不完全な入力で既存設定を失わない', () => {
+test('モデル欄は文章LLMを入力時に端末設定へ保存し、不完全な入力で既存設定を失わない（キャラ照合・ローカルVLM欄は表示しない）', () => {
   const component = loadComponent('src/components/EnvironmentSettings.tsx');
   const document = sample();
   const before = structuredClone(document);
@@ -397,29 +397,26 @@ test('モデル欄は文章LLMと画像VLMを入力時に端末設定へ保存�
   const props = { ...settingsProps(document), onChangeDocument: () => assert.fail('model preferences must not mutate document'), onNotify: message => notices.push(message) };
   let ai = panel(component.render(props), 'ai');
   assert.equal(input(field(ai, 'LLM接続先')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmUrl);
-  // ビジョンは既定OFF。ONにすると既定のローカル実行先でローカルVLM欄が表示される。
-  assert.equal(find(ai, node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.checked, false);
-  find(ai, node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.onChange({ currentTarget: { checked: true } });
-  ai = panel(component.render(props), 'ai');
-  assert.equal(find(ai, node => node.props?.['aria-label'] === 'キャラ照合の実行先').props.value, 'local');
-  assert.equal(input(field(ai, 'ローカルVLM')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.vlmModelId);
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）設定'), false);
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う'), false);
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === 'キャラ照合の実行先'), false);
+  assert.equal(nodes(ai).some(node => node.props?.['aria-label'] === '画像VLM'), false);
+  assert.equal(nodes(ai).some(node => node.type === 'Field' && node.props.label === 'ローカルVLM'), false);
   const writesBeforeLocal = component.writes.length;
   input(field(ai, 'LLM接続先')).props.onInput({ currentTarget: { value: 'http://127.0.0.1:8081' } });
   ai = panel(component.render(props), 'ai');
   assert.equal(component.writes.length, writesBeforeLocal + 1, 'no blur or save button is required');
-  input(field(ai, 'ローカルVLM')).props.onInput({ currentTarget: { value: 'local-owner/vision-model-4bit' } });
-  ai = panel(component.render(props), 'ai');
   const saved = JSON.parse(component.writes.at(-1)[1]);
-  assert.deepEqual(saved, { llmAlias: localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmAlias, llmUrl: 'http://127.0.0.1:8081', vlmModelId: 'local-owner/vision-model-4bit', comfyuiUrl: 'http://127.0.0.1:8188' });
+  assert.deepEqual(saved, { llmAlias: localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmAlias, llmUrl: 'http://127.0.0.1:8081', vlmModelId: localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.vlmModelId, comfyuiUrl: 'http://127.0.0.1:8188' });
   assert.equal(notices.length, 0, 'typing should not produce save notifications');
-  input(field(ai, 'ローカルVLM')).props.onInput({ currentTarget: { value: 'new-owner/' } });
+  input(field(ai, 'LLM接続先')).props.onInput({ currentTarget: { value: 'https://example.com' } });
   ai = panel(component.render(props), 'ai');
-  assert.equal(input(field(ai, 'ローカルVLM')).props.value, 'new-owner/');
-  assert.equal(component.writes.length, writesBeforeLocal + 2);
+  assert.equal(input(field(ai, 'LLM接続先')).props.value, 'https://example.com');
+  assert.equal(component.writes.length, writesBeforeLocal + 1);
   assert.match(text(ai), /直前の有効な設定を保持/);
-  input(field(ai, 'ローカルVLM')).props.onInput({ currentTarget: { value: 'new-owner/new-model' } });
+  input(field(ai, 'LLM接続先')).props.onInput({ currentTarget: { value: 'http://127.0.0.1:8082' } });
   ai = panel(component.render(props), 'ai');
-  assert.equal(JSON.parse(component.writes.at(-1)[1]).vlmModelId, 'new-owner/new-model');
+  assert.equal(JSON.parse(component.writes.at(-1)[1]).llmUrl, 'http://127.0.0.1:8082');
   assert.doesNotMatch(text(ai), /直前の有効な設定を保持/);
   assert.deepEqual(document, before);
 });
@@ -434,7 +431,7 @@ test('用途別の設定は外部エージェントを保存・復元し、会�
   const choose = value => find(ai(), node => node.props?.name === 'generation-execution' && node.props.value === value).props.onChange({ currentTarget: { checked: true } });
   assert.equal(find(ai(), node => node.props?.name === 'generation-execution' && node.props.checked).props.value, 'local');
   assert.equal(input(field(ai(), 'LLM接続先')).props.value, localModels.DEFAULT_LOCAL_MODEL_PREFERENCES.llmUrl);
-  assert.equal(find(ai(), node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）を使う').props.checked, false);
+  assert.equal(nodes(ai()).some(node => node.props?.['aria-label'] === 'キャラ照合（ビジョン）設定'), false);
   assert.deepEqual(find(ai(), node => node.type === 'AgentSettings').props.profile, props.agentProfile);
   choose('agent');
   assert.equal(find(ai(), node => node.props?.['aria-label'] === '背景を含める').props.checked, true);
