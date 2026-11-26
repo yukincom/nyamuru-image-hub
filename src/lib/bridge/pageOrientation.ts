@@ -17,7 +17,7 @@ async function thumbnailDataUrl(file: Blob): Promise<string> {
   if (typeof createImageBitmap === 'function') {
     try {
       const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 256 / Math.max(bitmap.width, bitmap.height, 1));
+      const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height, 1));
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(bitmap.width * scale));
       canvas.height = Math.max(1, Math.round(bitmap.height * scale));

@@ -39,7 +39,7 @@
 | **M4** | G2（対象外・中止） | Baberu OCR 自分の筆跡向け微調整（`local_vision_worker.py`） | 現行 `baberu-ocr` で実用十分なため **中止・除外**（微調整なし） | 現行そのまま | 現行そのまま | **±0** | **中止** |
 | **M5** | G2（既存ヘッド追加） | ModernBERT 意図分類＋スロット抽出統合（`nyamuru_voice_intent.py`・`voiceCommands.ts`） | ModernBERT 19意図分類＋BIO トークン分類 | 現行約150MB（＋線形層数MB） | +1〜2ms（現行内） | **+数MB** | Phase 2 |
 | **M6** | G3（座標数値のみ） | コマ読み順・話者紐づけ・`page_overlay` 判定（`nyamuru_layout_geometry.py`・`pageElements.ts`） | LightGBM / 小型 MLP（ONNX） | 0.5〜3MB | **1ms 未満 / ページ** | **ほぼ0** | Phase 4 |
-| **M7** | G3（極小サムネのみ） | 原稿の向き自動判定 0/90/180/270°（`nyamuru_ocr_util.py`・`page_orientation_classifier.py`） | MobileNetV3-Large ONNX（実配置済み） | 約 16.04MB | 平均約 10ms / 枚（CPU実測） | **+20〜40MB（一時）** | **Phase 1 完了** |
+| **M7** | G3（極小サムネのみ） | 原稿の向き自動判定 0/90/180/270°（`nyamuru_ocr_util.py`・`page_orientation_classifier.py`） | MobileNetV3-Large ONNX（384×384・4向き正立スキャン、実配置済み） | 約 16.04MB | 平均 **30.26 ms** / 枚（CPU 4向きバッチ実測） | **+20〜40MB（一時）** | **Phase 1 完了** |
 
 ---
 
@@ -164,14 +164,17 @@ Nyamuru は「自動解析 → 人間が直して完成させる」構造を持�
   - 低信頼度時は既存の距離・IoUルールへフォールバックし、話者も「推定」ではなく確認可能な候補として提示する。
   - 推論時間 < 1ms / ページ、モデル合計サイズ ≤ 3MB。話者ペア精度 Top-1 ≥ 88%、`page_overlay` F1 ≥ 90%。
 
-#### M7：原稿の向き自動判定（0° / 90° / 180° / 270°）— 学習・実配置・UI 接続済み
-- **構成**: [page_orientation_classifier.py](../scripts/page_orientation_classifier.py) / [train_page_orientation.py](../dev_tools/model_lab/train_page_orientation.py) / [newLayoutImportActions.ts](../src/components/workspace/newLayoutImportActions.ts) / [nyamuru_ocr_util.py](../scripts/nyamuru_ocr_util.py)
-- **学習・配置結果（2026-11-26）**:
-  - **学習環境・モデル**: Google Colab（Tesla T4）にて 37 枚の正立確認済みネーム画像を 4 向き（0/90/180/270° CW 要正立回転角）＋領域クロップ・アスペクト・明暗増強で学習。`MobileNetV3-Small`（未見グループ分割 48 サンプル正答率 75.00%）と `MobileNetV3-Large`（同 **81.25%** [39/48]、**0° 正答率 100%** [12/12]、誤判定の主因は 90°↔270° の5件）を比較し、`MobileNetV3-Large` を採用して全37枚で最終学習・ONNX 書き出し（PyTorch との最大誤差 `1.10e-5`、**16.04MB**、`model.onnx` を `.local-vision/models/page-orientation/` へ配置、SHA-256 検証済み）。
-  - **ローカル CPU 実測**: `.local-vision/.venv/bin/python` による実画像11枚×4向き=44サンプル検証で 44/44 正答、0° 誤回転 0 件、信頼度閾値 `0.80` 以上での自動回転適用率 33/44（非0向きの 33/33 を誤適用なしで補正）、平均推論レイテンシ **10.07 ms / 枚**（画像読込含む）。
+#### M7：原稿の向き自動判定（0° / 90° / 180° / 270°）— 384×384 学習・4向き正立スキャン実配置・UI 接続済み
+- **構成**: [page_orientation_classifier.py](../scripts/page_orientation_classifier.py) / [pageOrientation.ts](../src/lib/bridge/pageOrientation.ts) / [train_page_orientation.py](../dev_tools/model_lab/train_page_orientation.py) / [newLayoutImportActions.ts](../src/components/workspace/newLayoutImportActions.ts) / [nyamuru_ocr_util.py](../scripts/nyamuru_ocr_util.py)
+- **学習・配置結果（2026-11-26・384×384 版）**:
+  - **学習環境・モデル**: Google Colab（Tesla T4）にて 37 枚の正立確認済みネーム画像を 4 向き（0/90/180/270° CW 要正立回転角）＋領域クロップ・アスペクト・明暗増強、入力解像度 **384×384**（ブラウザ送信サムネ上限 **512px**）で `MobileNetV3-Large` を再学習・ONNX 書き出し（PyTorch との最大誤差 `8.34e-6`、**16.04MB**、`model.onnx` を `.local-vision/models/page-orientation/` へ配置、SHA-256 検証済み）。
+  - **未見グループ分割検証**（未見 12 枚 × 4 向き = 48 サンプル）:
+    - 単発判定: 224×224 時の 81.25%（39/48）から **89.58%（43/48）** へ改善し、`90°↔270°` の混同は **0 件** になった。
+    - **4 向き最大正立スキャン（`upright_scan`）**: 1 枚の画像を `0/90/180/270°` に回した 4 向きバッチを 1 回の ONNX 推論へ通し、**最も「正立（0°）」確率が高い 1 箇所だけを選んで即停止（ループしない）** 方式では、未見 48 サンプルで **100.0%（48/48・全 4 向き 12/12）** を達成。
+  - **ローカル CPU 実測**: `.local-vision/.venv/bin/python` による実画像 11 枚 × 4 向き = 44 サンプル検証で 44/44 正答、0° 誤回転 0 件、信頼度閾値 `0.80` 以上での自動回転適用 33/44（非 0 向きの 33/33 を誤適用なしで補正）、4 向きバッチ推論＋画像デコード込み平均レイテンシ **30.26 ms / 枚**（min 23.37 ms / max 37.99 ms）。
 - **UI 連携と安全設計**:
-  - 新規作成プレビューで手動選択／スキャナー取り込み完了時に非同期で初期 `rotationOverride` を自動提案（信頼度 `0.80` 以上のみ非0角を適用、未配置または低信頼度・白紙等は `0°` 維持）。利用者がすでに手動回転・解析開始した世代へは上書きせず、常にワンクリックで手動修正できる。
-  - 現状は 37 枚学習で 90°↔270° 間の取りこぼしが残るため、今後ネーム枚数が増えた際は追加再学習で未見精度をさらに引き上げられる（次回 Colab 学習時は Google Drive マウントを経由せずローカル直アップロード／直ダウンロードまたはローカル学習で実行する方針）。
+  - 新規作成プレビューで手動選択／スキャナー取り込み完了時に非同期で初期 `rotationOverride` を自動提案（単体正立確率と 4 向き間の正規化比率の両方が `0.80` 以上のみ非 0 角を適用し、迷い・拮抗時・未配置・白紙等は `0°` 維持）。利用者がすでに手動回転・解析開始した世代へは上書きせず、常にワンクリックで手動修正できる。
+  - なお今回の検証では、224px 時と異なり 384px + `upright_scan` では Colab セッション上での Drive マウントおよび再ファイルアップロードを行わず、スクリプト直接展開＋Colab からの直接ダウンロードで完結させた。
 
 ---
 
@@ -191,7 +194,7 @@ flowchart LR
 | フェーズ | 主な成果物 | 完了条件（Go/No-Go ゲート） |
 |---|---|---|
 | **Phase 0**（共通基盤） | `dev_tools/` 配下のプロジェクト差分データ抽出スクリプト、ベンチマーク評価ハーネス、ONNX 検証テンプレート | 既存 `.nyamuru/project.json` から個人情報・原稿画像を漏らさず教師データセットとベースラインスコアを自動算出できる |
-| **Phase 1**（M7：向き判定・**完了**） | 224px 4クラス `MobileNetV3-Large` ONNX（16.04MB）実配置、`estimatePageOrientation` API、新規作成UI自動初期プリセット | Colab GPU 学習完了（未見39/48=81.25%、0°=100%）、ローカル CPU 平均10.07ms・0°誤回転0、UI接続・全テスト通過 |
+| **Phase 1**（M7：向き判定・**完了**） | 384px 4クラス `MobileNetV3-Large` ONNX（16.04MB）・4向き最大正立スキャン推論、`estimatePageOrientation` API（512px サムネ）、新規作成UI自動初期プリセット | Colab GPU 学習完了（未見単発 43/48=89.58%・4向き正立スキャン 48/48=100.0%）、ローカル CPU 平均 30.26ms・0° 誤回転 0、UI接続・全テスト通過 |
 | **Phase 2**（M5：音声スロット） | `nyamuru-voice-v05`（Intent+Slot）、`voice_intent_worker.py` / `voiceCommands.ts` 拡張 | 既存19意図精度維持、スロット抽出 ≥ 95%、言い回しテスト追加通過、`install_voice_intent.py --check` 通過 |
 | **Phase 3**（M1+M2：共有エンコーダ） | 共有軽量エンコーダ ONNX（キャラ照合＋アングル/サイズ）、2画像生成のアングル初期推薦接続 | 8B VLM 比でメモリ・速度を 10倍以上軽量化、Top-1/Precision 基準達成、キャラ照合 OFF 時の無影響確認 |
 | **Phase 4**（M6：座標モデル） | LightGBM/MLP ONNX（話者リンク・`page_overlay`・読み順）、`layout_geometry` 統合 | 1ms 未満推論、既存幾何テスト全通過＋変則コマ評価セットでの改善確認 |

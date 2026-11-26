@@ -21,7 +21,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import models
 
 ORIENTATION_CLASSES = (0, 90, 180, 270)
-INPUT_SIZE = 224
+DEFAULT_INPUT_SIZE = 384
 DEFAULT_VAL_GROUPS = ("yunchan", "scan", "one")
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -31,6 +31,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train M7 manga storyboard orientation ONNX classifier")
     parser.add_argument("--data-dir", type=Path, required=True, help="Root folder containing grouped upright pages")
     parser.add_argument("--output-dir", type=Path, required=True, help="Output directory for model.onnx and metrics")
+    parser.add_argument("--input-size", type=int, default=DEFAULT_INPUT_SIZE, help="Model square input size in pixels")
+    parser.add_argument(
+        "--arch",
+        choices=("auto", "mobilenet_v3_large", "mobilenet_v3_small"),
+        default="mobilenet_v3_large",
+        help="Backbone architecture to train or auto-select",
+    )
     parser.add_argument("--epochs", type=int, default=25)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=6e-4)
@@ -111,21 +118,33 @@ def augment_page_image(image: Image.Image, rng: random.Random) -> Image.Image:
     return image
 
 
-def image_to_tensor(image: Image.Image) -> torch.Tensor:
-    resized = image.resize((INPUT_SIZE, INPUT_SIZE), Image.Resampling.BILINEAR)
+def image_to_tensor(image: Image.Image, input_size: int) -> torch.Tensor:
+    resized = image.resize((input_size, input_size), Image.Resampling.BILINEAR)
     arr = np.asarray(resized, dtype=np.float32) / 255.0
     return torch.from_numpy(arr.transpose(2, 0, 1))
 
 
 class OrientationDataset(Dataset):
-    def __init__(self, page_paths: list[Path], *, augment: bool, repeats: int = 1, seed: int = 42):
+    def __init__(
+        self,
+        page_paths: list[Path],
+        *,
+        augment: bool,
+        repeats: int = 1,
+        seed: int = 42,
+        input_size: int = DEFAULT_INPUT_SIZE,
+    ):
+        max_side = max(768, input_size * 2)
         self.base_images: list[Image.Image] = []
         for path in page_paths:
             with Image.open(path) as src:
-                self.base_images.append(ImageOps.exif_transpose(src).convert("RGB"))
+                img = ImageOps.exif_transpose(src).convert("RGB")
+                img.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+                self.base_images.append(img)
         self.augment = augment
         self.repeats = max(1, repeats)
         self.seed = seed
+        self.input_size = input_size
 
     def __len__(self) -> int:
         return len(self.base_images) * len(ORIENTATION_CLASSES) * self.repeats
@@ -138,7 +157,7 @@ class OrientationDataset(Dataset):
         if self.augment:
             rng = random.Random(idx * 1000003 + self.seed + random.randint(0, 999999))
             img = augment_page_image(img, rng)
-        return image_to_tensor(img), label
+        return image_to_tensor(img, self.input_size), label
 
 
 class OrientationModelWrapper(nn.Module):
@@ -204,11 +223,62 @@ def evaluate_model(model: nn.Module, loader: DataLoader, device: torch.device) -
     }
 
 
+def evaluate_model_upright_scan(
+    model: nn.Module,
+    val_paths: list[Path],
+    input_size: int,
+    device: torch.device,
+) -> dict[str, Any]:
+    """Evaluate 4-way max-upright scan (same strategy as production ONNX inference)."""
+    model.eval()
+    val_ds = OrientationDataset(val_paths, augment=False, repeats=1, input_size=input_size)
+    correct = 0
+    total = 0
+    per_class_correct = [0, 0, 0, 0]
+    per_class_total = [0, 0, 0, 0]
+    confidences: list[float] = []
+    confusion = [[0] * 4 for _ in range(4)]
+    with torch.no_grad():
+        for idx in range(len(val_ds)):
+            tensor, target = val_ds[idx]
+            candidates = torch.stack(
+                [
+                    tensor,
+                    torch.rot90(tensor, k=-1, dims=(1, 2)),
+                    torch.rot90(tensor, k=2, dims=(1, 2)),
+                    torch.rot90(tensor, k=1, dims=(1, 2)),
+                ],
+                dim=0,
+            ).to(device)
+            probs = torch.softmax(model(candidates), dim=1)[:, 0].cpu().tolist()
+            total_prob = sum(probs) or 1.0
+            best_idx = max(range(4), key=probs.__getitem__)
+            conf = min(probs[best_idx], probs[best_idx] / total_prob)
+            total += 1
+            per_class_total[target] += 1
+            confusion[target][best_idx] += 1
+            if best_idx == target:
+                correct += 1
+                per_class_correct[target] += 1
+            confidences.append(conf)
+    return {
+        "upright_scan_accuracy": round(correct / max(1, total), 4),
+        "upright_scan_correct": correct,
+        "upright_scan_per_class_accuracy": {
+            str(ORIENTATION_CLASSES[i]): round(per_class_correct[i] / max(1, per_class_total[i]), 4)
+            for i in range(4)
+        },
+        "upright_scan_mean_confidence": round(sum(confidences) / max(1, len(confidences)), 4),
+        "upright_scan_confusion_matrix": confusion,
+    }
+
+
 def train_one_run(
     arch: str,
     train_paths: list[Path],
     val_paths: list[Path] | None,
     *,
+    input_size: int,
     epochs: int,
     batch_size: int,
     lr: float,
@@ -217,11 +287,11 @@ def train_one_run(
     device: torch.device,
 ) -> tuple[nn.Module, dict[str, Any]]:
     set_seed(seed)
-    train_ds = OrientationDataset(train_paths, augment=True, repeats=repeats, seed=seed)
+    train_ds = OrientationDataset(train_paths, augment=True, repeats=repeats, seed=seed, input_size=input_size)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=2, pin_memory=device.type == "cuda")
     val_loader = None
     if val_paths:
-        val_ds = OrientationDataset(val_paths, augment=False, repeats=1, seed=seed)
+        val_ds = OrientationDataset(val_paths, augment=False, repeats=1, seed=seed, input_size=input_size)
         val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
 
     model = OrientationModelWrapper(arch).to(device)
@@ -263,12 +333,16 @@ def train_one_run(
 
     if best_state is not None:
         model.load_state_dict(best_state)
-    return model.cpu(), {"best_epoch": best_epoch, **best_metrics}
+    scan_metrics: dict[str, Any] = {}
+    if val_paths:
+        scan_metrics = evaluate_model_upright_scan(model, val_paths, input_size, device)
+        print(f"[{arch}] upright_scan val_acc={scan_metrics['upright_scan_accuracy']:.4f} conf={scan_metrics['upright_scan_mean_confidence']:.3f}")
+    return model.cpu(), {"best_epoch": best_epoch, **best_metrics, **scan_metrics}
 
 
-def export_and_verify_onnx(model: nn.Module, sample_paths: list[Path], output_path: Path) -> float:
+def export_and_verify_onnx(model: nn.Module, sample_paths: list[Path], output_path: Path, input_size: int) -> float:
     model.eval()
-    dummy = torch.randn(1, 3, INPUT_SIZE, INPUT_SIZE, dtype=torch.float32)
+    dummy = torch.randn(1, 3, input_size, input_size, dtype=torch.float32)
     tmp_path = output_path.with_suffix(".tmp.onnx")
     torch.onnx.export(
         model,
@@ -290,7 +364,7 @@ def export_and_verify_onnx(model: nn.Module, sample_paths: list[Path], output_pa
     session = ort.InferenceSession(str(output_path), providers=["CPUExecutionProvider"])
     input_name = session.get_inputs()[0].name
     max_diff = 0.0
-    test_ds = OrientationDataset(sample_paths[:6], augment=False, repeats=1)
+    test_ds = OrientationDataset(sample_paths[:6], augment=False, repeats=1, input_size=input_size)
     with torch.no_grad():
         for idx in range(len(test_ds)):
             tensor, label = test_ds[idx]
@@ -326,36 +400,43 @@ def main() -> None:
         train_paths = [p for _, p in all_pages[:-split]]
     print(f"Pages: total={len(all_pages)}, train={len(train_paths)}, val={len(val_paths)}")
 
+    arches = ("mobilenet_v3_small", "mobilenet_v3_large") if args.arch == "auto" else (args.arch,)
     candidates: dict[str, dict[str, Any]] = {}
-    for arch in ("mobilenet_v3_small", "mobilenet_v3_large"):
+    for arch in arches:
         _, val_info = train_one_run(
             arch, train_paths, val_paths,
-            epochs=args.epochs, batch_size=args.batch_size, lr=args.lr,
+            input_size=args.input_size, epochs=args.epochs, batch_size=args.batch_size, lr=args.lr,
             repeats=args.repeats, seed=args.seed, device=device,
         )
         candidates[arch] = val_info
 
-    # Prefer highest accuracy; tie-break toward smaller model (mobilenet_v3_small)
+    # Prefer highest upright-scan accuracy; tie-break toward smaller model
     best_arch = max(
-        ("mobilenet_v3_small", "mobilenet_v3_large"),
-        key=lambda a: (candidates[a]["accuracy"], candidates[a]["mean_pred_confidence"], 1 if a == "mobilenet_v3_small" else 0),
+        arches,
+        key=lambda a: (
+            candidates[a].get("upright_scan_accuracy", candidates[a]["accuracy"]),
+            candidates[a]["accuracy"],
+            candidates[a]["mean_pred_confidence"],
+            1 if a == "mobilenet_v3_small" else 0,
+        ),
     )
     final_epochs = max(12, min(args.epochs, int(candidates[best_arch]["best_epoch"])))
-    print(f"Selected best architecture: {best_arch} (val_acc={candidates[best_arch]['accuracy']}, final_epochs={final_epochs})")
+    print(f"Selected best architecture: {best_arch} (input_size={args.input_size}, val_acc={candidates[best_arch]['accuracy']}, upright_scan={candidates[best_arch].get('upright_scan_accuracy')}, final_epochs={final_epochs})")
 
     all_paths = [p for _, p in all_pages]
     final_model, _ = train_one_run(
         best_arch, all_paths, None,
-        epochs=final_epochs, batch_size=args.batch_size, lr=args.lr,
+        input_size=args.input_size, epochs=final_epochs, batch_size=args.batch_size, lr=args.lr,
         repeats=args.repeats, seed=args.seed, device=device,
     )
     model_out = args.output_dir / "model.onnx"
-    max_diff = export_and_verify_onnx(final_model, val_paths, model_out)
+    max_diff = export_and_verify_onnx(final_model, val_paths, model_out, input_size=args.input_size)
     model_sha256 = sha256_file(model_out)
     size_mb = round(model_out.stat().st_size / (1024 * 1024), 3)
 
     metrics = {
         "selected_arch": best_arch,
+        "input_size": args.input_size,
         "total_pages": len(all_pages),
         "train_pages": len(train_paths),
         "val_pages": len(val_paths),
@@ -371,10 +452,11 @@ def main() -> None:
         "backbone": best_arch,
         "license_notice": "Weights trained from torchvision ImageNet-1K MobileNetV3 backbone (BSD-3-Clause).",
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "input_spec": {"name": "input", "shape": ["batch", 3, INPUT_SIZE, INPUT_SIZE], "range": "[0.0, 1.0]", "color": "RGB"},
+        "input_spec": {"name": "input", "shape": ["batch", 3, args.input_size, args.input_size], "range": "[0.0, 1.0]", "color": "RGB"},
         "output_spec": {"name": "logits", "classes_cw_degrees": list(ORIENTATION_CLASSES)},
         "dataset_pages": len(all_pages),
         "val_accuracy": candidates[best_arch]["accuracy"],
+        "upright_scan_val_accuracy": candidates[best_arch].get("upright_scan_accuracy"),
         "sha256": model_sha256,
         "size_bytes": model_out.stat().st_size,
     }

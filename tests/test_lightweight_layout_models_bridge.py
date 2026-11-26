@@ -120,6 +120,77 @@ class Group3OrientationAndRelationTests(unittest.TestCase):
         self.assertEqual(high_conf["recommended_degrees"], 90)
         self.assertTrue(high_conf["applied"])
 
+    def test_upright_scan_rotations_and_single_pass_selection(self):
+        import io
+        import numpy as np
+        from PIL import Image
+
+        # Create an asymmetric RGB test image (unique corner colors)
+        base = Image.new("RGB", (64, 64), (255, 255, 255))
+        for y in range(20):
+            for x in range(20):
+                base.putpixel((x, y), (255, 0, 0))       # top-left: red
+                base.putpixel((44 + x, y), (0, 255, 0))  # top-right: green
+                base.putpixel((x, 44 + y), (0, 0, 255))  # bottom-left: blue
+        buf = io.BytesIO()
+        base.save(buf, format="PNG")
+        candidates = orientation_classifier.prepare_orientation_candidates(buf.getvalue(), input_size=64)
+        self.assertEqual(candidates.shape, (4, 3, 64, 64))
+        for idx, deg in enumerate((0, 90, 180, 270)):
+            expected_img = base.rotate(-deg, expand=False)
+            expected_arr = np.asarray(expected_img, dtype=np.float32).transpose(2, 0, 1) / 255.0
+            self.assertTrue(np.allclose(candidates[idx], expected_arr, atol=1e-5))
+
+        picked = orientation_classifier.interpret_upright_scan_probabilities(
+            [0.05, 0.94, 0.02, 0.03], min_confidence=0.80, model_name="page-orientation"
+        )
+        self.assertEqual(picked["strategy"], "upright_scan")
+        self.assertEqual(picked["recommended_degrees"], 90)
+        self.assertTrue(picked["applied"])
+
+        tied = orientation_classifier.interpret_upright_scan_probabilities(
+            [0.85, 0.01, 0.84, 0.01], min_confidence=0.80
+        )
+        self.assertEqual(tied["recommended_degrees"], 0)
+        self.assertEqual(tied["fallback_reason"], "low_confidence")
+        self.assertFalse(tied["applied"])
+
+        class FakeInput:
+            def __init__(self, shape):
+                self.name = "input"
+                self.shape = shape
+
+        class FakeSession:
+            def __init__(self, input_size):
+                self._input = FakeInput(["batch", 3, input_size, input_size])
+                self.calls = []
+
+            def get_inputs(self):
+                return [self._input]
+
+            def run(self, _outputs, feed):
+                batch = feed["input"]
+                self.calls.append(batch.shape)
+                # Return logits where index 3 (270 CW) gives highest upright probability
+                return [np.array([
+                    [0.0, 2.0, 1.0, 4.0],
+                    [0.0, 1.0, 4.0, 1.0],
+                    [0.0, 4.0, 1.0, 1.0],
+                    [6.0, 0.0, 0.0, 0.0],
+                ], dtype=np.float32)]
+
+        with tempfile.TemporaryDirectory() as directory:
+            model_file = Path(directory) / "page-orientation" / "model.onnx"
+            model_file.parent.mkdir(parents=True)
+            model_file.write_bytes(b"onnx")
+            for size in (384, 224):
+                fake_session = FakeSession(size)
+                with patch.object(orientation_classifier, "_get_session", return_value=fake_session):
+                    res = orientation_classifier.estimate_page_orientation(buf.getvalue(), model_path=model_file)
+                self.assertEqual(fake_session.calls, [(4, 3, size, size)])
+                self.assertEqual(res["recommended_degrees"], 270)
+                self.assertTrue(res["applied"])
+
     def test_layout_relation_scorer_links_speakers_and_flags_page_overlay(self):
         panels = [(0.52, 0.05, 0.42, 0.40), (0.06, 0.05, 0.42, 0.40)]
         order = relation_scorer.score_panel_reading_order(panels)
