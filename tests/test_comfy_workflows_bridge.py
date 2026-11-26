@@ -443,6 +443,40 @@ class StoreTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'IDまたは版'):
                 operation()
 
+    def test_install_default_generation_workflows_fresh_store_and_legacy_upgrade(self):
+        workflows.install_default_generation_workflows(self.store)
+        installed = self.store.list()
+        self.assertEqual(len(installed), 13)
+        by_id = {entry['id']: entry for entry in installed}
+        self.assertEqual(by_id[workflows.P_H3_TWO_IMAGE_ID]['binding']['prompt_mode'], 'promptless-two-images')
+        self.assertEqual(by_id[workflows.QWEN_FIGURE_ID]['binding']['prompt_mode'], 'qwen')
+        for count in range(11):
+            self.assertIn(f'{workflows.QWEN_STANDARD_PREFIX}{count:012d}', by_id)
+
+        with tempfile.TemporaryDirectory() as legacy_dir:
+            legacy_root = Path(legacy_dir).resolve() / 'workflows'
+            legacy_store = workflows.WorkflowStore(legacy_root)
+            examples = Path(__file__).resolve().parents[1] / 'examples' / 'comfyui'
+            graph = json.loads((examples / 'nyamuru_qwen_turbo_3images.api.json').read_text(encoding='utf-8'))
+            legacy_binding = json.loads((examples / 'nyamuru_qwen_turbo_3images.binding.json').read_text(encoding='utf-8'))
+            legacy_binding['prompt_mode'] = 'qwen-three-images'
+            legacy_store.root.mkdir(parents=True)
+            (legacy_store.root / '.bundled-qwen-1').write_text('', encoding='utf-8')
+            (legacy_store.root / f'{workflows.QWEN_FIGURE_ID}.json').write_text(
+                json.dumps({
+                    'id': workflows.QWEN_FIGURE_ID,
+                    'name': 'nyamuru_qwen_turbo_3images',
+                    'version': 1,
+                    'graph': graph,
+                    'binding': legacy_binding,
+                }),
+                encoding='utf-8',
+            )
+            workflows.install_default_generation_workflows(legacy_store)
+            upgraded = legacy_store.get(workflows.QWEN_FIGURE_ID)
+            self.assertEqual(upgraded['version'], 2)
+            self.assertEqual(upgraded['binding']['prompt_mode'], 'qwen')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -47,6 +47,6 @@
     "node": "12",
     "index": 0
   },
-  "prompt_mode": "qwen-three-images",
+  "prompt_mode": "qwen",
   "fixed_size": null
 }
