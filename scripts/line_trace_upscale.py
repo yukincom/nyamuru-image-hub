@@ -124,7 +124,7 @@ def main() -> None:
 
     out_img = None
     mode_used = mode
-    if mode == "ai2x":
+    if mode in ("ai2x", "ai4x"):
         model_path = resolve_model_path(vision_root)
         if model_path is not None:
             try:
@@ -133,6 +133,16 @@ def main() -> None:
                 out_img = None
         if out_img is None:
             mode_used = "lanczos2x"
+        elif mode == "ai4x":
+            ow, oh = out_img.size
+            target_w = min(max_edge, ow * 2)
+            target_h = min(max_edge, oh * 2)
+            scale_fit = min(target_w / ow, target_h / oh)
+            if scale_fit > 1.01:
+                out_img = out_img.resize(
+                    (max(1, round(ow * scale_fit)), max(1, round(oh * scale_fit))),
+                    Image.Resampling.LANCZOS,
+                )
 
     if out_img is None:
         target_w = min(max_edge, w * 2)

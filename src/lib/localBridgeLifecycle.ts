@@ -112,7 +112,7 @@ export interface LineTraceOptions {
   minRegionArea?: number;
   chainMode?: 'model' | 'heuristic' | 'none';
   pruneMaxPoints?: number;
-  preprocess?: 'ai2x' | 'lanczos2x' | 'none';
+  preprocess?: 'ai4x' | 'ai2x' | 'lanczos2x' | 'none';
 }
 
 export interface LineTraceResponse {

@@ -97,7 +97,7 @@ function releaseOwnedImages(set: Set<HTMLImageElement>) {
 export default function LineTraceDialog({ scene, images, assets, selectedKeys, loadError, onApply, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [edge, setEdge] = useState(1536);
-  const [preprocess, setPreprocess] = useState<'ai2x' | 'lanczos2x' | 'none'>('ai2x');
+  const [preprocess, setPreprocess] = useState<'ai4x' | 'ai2x' | 'lanczos2x' | 'none'>('ai4x');
   const [threshold, setThreshold] = useState(180);
   const [tol, setTol] = useState(0.3);
   const [detectBeta, setDetectBeta] = useState(true);
@@ -343,9 +343,10 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
         高精細化（縦横サイズ固定）
         <select
           value={preprocess}
-          onChange={event => setPreprocess(event.currentTarget.value as 'ai2x' | 'lanczos2x' | 'none')}
+          onChange={event => setPreprocess(event.currentTarget.value as 'ai4x' | 'ai2x' | 'lanczos2x' | 'none')}
         >
-          <option value="ai2x">AIくっきり 2x（JaNai V3 SPAN・おすすめ）</option>
+          <option value="ai4x">AIくっきり 4x（JaNai V3 SPAN 2x→4x・最高画質）</option>
+          <option value="ai2x">AIくっきり 2x（JaNai V3 SPAN・軽量パス）</option>
           <option value="lanczos2x">2x 高精細（Lanczos・AIなし）</option>
           <option value="none">原寸（前処理なし）</option>
         </select>
