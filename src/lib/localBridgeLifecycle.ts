@@ -138,7 +138,7 @@ export async function requestLineTrace(
 ): Promise<LineTraceResponse> {
   const payload = await lifecycleRequest('/api/line-trace', { image, ...options }, fetchImpl, 60_000, signal);
   if (!Array.isArray(payload.strokes) || typeof payload.width !== 'number' || typeof payload.height !== 'number') {
-    throw new Error('ベクター線画化の結果を受信できませんでした');
+    throw new Error('ベクター変換の結果を受信できませんでした');
   }
   return {
     width: payload.width,

@@ -7,3 +7,10 @@
 .manga-finish-comparison figure { margin: 0; }
 .manga-finish-comparison figcaption { margin-bottom: 4px; font-size: 13px; }
 .manga-finish-comparison canvas, .manga-finish-comparison img { display: block; width: 100%; height: auto; max-height: 30vh; object-fit: contain; background: white; border: 1px solid var(--line); }
+.line-trace-preview-single > div { grid-template-columns: minmax(0, 1fr); }
+.line-trace-preview-single canvas { max-height: 46vh; }
+.line-trace-controls { display: grid; gap: 10px; }
+.line-trace-dialog .line-trace-row { display: grid; grid-template-columns: 11.5em minmax(0, 1fr); align-items: center; gap: 12px; margin: 0; }
+.line-trace-dialog .line-trace-row > span { white-space: nowrap; }
+.line-trace-dialog .line-trace-row > select,
+.line-trace-dialog .line-trace-row > input[type="range"] { width: 100%; min-width: 0; margin: 0; }

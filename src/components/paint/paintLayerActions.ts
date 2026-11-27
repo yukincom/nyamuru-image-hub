@@ -54,7 +54,7 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
     finishGesture();setMenu(null);setLineTraceOpen(true);
   }
   function acceptLineTrace(batch:FinishBatch){
-    if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。ベクター線画化を開き直してください');
+    if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。ベクター変換を開き直してください');
     imagesRef.current=batch.images;setImages(batch.images);
     setImports(items=>[...items,...batch.imports.filter(add=>!items.some(item=>item.asset.id===add.asset.id))]);
     const {ownerKey,folderId}=batch.focus;

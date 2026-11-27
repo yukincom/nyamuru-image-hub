@@ -14,17 +14,14 @@ import { blobDataUrl, dataUrlBlob } from '../lib/localBridge';
 import { requestLineTrace } from '../lib/localBridgeLifecycle';
 import './MangaFinishDialog.css';
 
-interface Comparison {
+const CAPTURE_EDGE = 1536;
+
+interface PreviewEntry {
   label: string;
-  before: Blob;
   after: PaintDocument;
   bbox: BBox;
   width: number;
   height: number;
-  strokes: number;
-  points: number;
-  betaRegions: number;
-  elapsedMs: number;
 }
 
 interface Props {
@@ -38,19 +35,9 @@ interface Props {
   onClose: () => void;
 }
 
-function Original({ blob }: { blob: Blob }) {
-  const image = useRef<HTMLImageElement>(null);
-  useLayoutEffect(() => {
-    const url = URL.createObjectURL(blob);
-    image.current!.src = url;
-    return () => URL.revokeObjectURL(url);
-  }, [blob]);
-  return <img ref={image} alt="ベクター線画化に渡した元画像" />;
-}
-
 function Preview({ paint, images, bbox, width, height }: { paint: PaintDocument; images: PaintImages; bbox: BBox; width: number; height: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const scale = Math.min(1, 512 / Math.max(width, height));
+  const scale = Math.min(1, 560 / Math.max(width, height));
   useLayoutEffect(() => {
     const renderer = paintPreviewRenderer();
     try {
@@ -69,7 +56,6 @@ interface SelectedTraceLayer {
 }
 
 interface CapturedTraceLayer extends SelectedTraceLayer {
-  blob: Blob;
   bbox: BBox;
   dataUrl: string;
 }
@@ -96,15 +82,14 @@ function releaseOwnedImages(set: Set<HTMLImageElement>) {
 
 export default function LineTraceDialog({ scene, images, assets, selectedKeys, loadError, onApply, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [edge, setEdge] = useState(1536);
-  const [preprocess, setPreprocess] = useState<'ai4x' | 'ai2x' | 'lanczos2x' | 'none'>('ai4x');
+  const [preprocess, setPreprocess] = useState<'ai4x' | 'ai2x'>('ai4x');
   const [threshold, setThreshold] = useState(180);
   const [tol, setTol] = useState(0.3);
-  const [detectBeta, setDetectBeta] = useState(true);
-  const [chainMode, setChainMode] = useState<'model' | 'heuristic' | 'none'>('model');
+  const [chainMode, setChainMode] = useState<'model' | 'none'>('model');
   const [busy, setBusy] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [error, setError] = useState('');
-  const [preview, setPreview] = useState<{ batch: FinishBatch; comparisons: Comparison[] } | null>(null);
+  const [preview, setPreview] = useState<{ batch: FinishBatch; entries: PreviewEntry[]; mode: 'ai4x' | 'ai2x' } | null>(null);
   const [index, setIndex] = useState(0);
   const current = useRef(true);
   const request = useRef<AbortController | null>(null);
@@ -127,14 +112,18 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
     };
   }, []);
 
-  async function runTrace(id: number, controller: AbortController, targets: SelectedTraceLayer[]) {
-    if (!images || !targets.length) return;
-    setBusy(true);
+  async function executeTrace(
+    id: number,
+    controller: AbortController,
+    targets: SelectedTraceLayer[],
+    runMode: 'ai4x' | 'ai2x',
+  ): Promise<{ batch: FinishBatch; entries: PreviewEntry[]; batchOwned: Set<HTMLImageElement> } | null> {
+    if (!images || !targets.length) return null;
     const batchOwned = new Set<HTMLImageElement>();
     const isStale = () => controller.signal.aborted || id !== runId.current || !current.current;
 
     try {
-      const cacheKey = `${edge}|${selectedKeys.join(',')}`;
+      const cacheKey = `${CAPTURE_EDGE}|${selectedKeys.join(',')}`;
       const cached = captureCache.current;
       let capturedEntries: CapturedTraceLayer[];
 
@@ -145,19 +134,19 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
         for (const target of targets) {
           if (isStale()) {
             releaseOwnedImages(batchOwned);
-            return;
+            return null;
           }
-          const { blob, bbox } = await captureLineTraceLayer(target.owner, target.layer, images, edge);
+          const { blob, bbox } = await captureLineTraceLayer(target.owner, target.layer, images, CAPTURE_EDGE);
           if (isStale()) {
             releaseOwnedImages(batchOwned);
-            return;
+            return null;
           }
           const dataUrl = await blobDataUrl(blob);
           if (isStale()) {
             releaseOwnedImages(batchOwned);
-            return;
+            return null;
           }
-          capturedEntries.push({ ...target, blob, bbox, dataUrl });
+          capturedEntries.push({ ...target, bbox, dataUrl });
         }
         captureCache.current = { key: cacheKey, scene, images, entries: capturedEntries };
       }
@@ -165,12 +154,12 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
       const map = new Map(images);
       const pending = new Map<string, { asset: ImageAsset; blob: Blob }>();
       const results: LineTraceLayerResult[] = [];
-      const comparisons: Comparison[] = [];
+      const entries: PreviewEntry[] = [];
 
-      for (const { owner, layer, label, blob, bbox, dataUrl } of capturedEntries) {
+      for (const { owner, layer, label, bbox, dataUrl } of capturedEntries) {
         if (isStale()) {
           releaseOwnedImages(batchOwned);
-          return;
+          return null;
         }
         const traced = await requestLineTrace(
           dataUrl,
@@ -178,15 +167,15 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
             threshold,
             tol,
             epsR: Math.max(0.08, Math.round(tol * 50) / 100),
-            detectBeta,
+            detectBeta: true,
             chainMode,
-            preprocess,
+            preprocess: runMode,
           },
           controller.signal,
         );
         if (isStale()) {
           releaseOwnedImages(batchOwned);
-          return;
+          return null;
         }
         const paths = tracedStrokesToVectorPaths(traced.strokes, traced.width, traced.height, bbox);
         let betaAsset: ImageAsset | undefined;
@@ -196,7 +185,7 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
             const prepared = await prepareImageAsset(new File([png], 'ベタ塗り.png', { type: 'image/png' }));
             if (isStale()) {
               releaseOwnedImages(batchOwned);
-              return;
+              return null;
             }
             betaAsset = pending.get(prepared.id)?.asset ?? assets.find(item => item.id === prepared.id) ?? prepared;
             if (!map.has(betaAsset.id)) {
@@ -204,7 +193,7 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
               if (isStale()) {
                 decoded.src = '';
                 releaseOwnedImages(batchOwned);
-                return;
+                return null;
               }
               batchOwned.add(decoded);
               map.set(betaAsset.id, decoded);
@@ -216,17 +205,12 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
           throw new Error(`「${layer.name}」からトレースできる線が見つかりませんでした（しきい値を上げてください）`);
         }
         results.push({ owner, layer, bbox, paths, betaAsset });
-        comparisons.push({
+        entries.push({
           label,
           bbox,
           width: traced.width,
           height: traced.height,
-          before: blob,
           after: owner.paint,
-          strokes: paths.length,
-          points: traced.stats?.final_points ?? paths.reduce((sum, p) => sum + p.nodes.length, 0),
-          betaRegions: traced.stats?.beta_regions ?? (betaAsset ? 1 : 0),
-          elapsedMs: Math.round(traced.stats?.timings?.total_ms ?? 0),
         });
       }
 
@@ -239,27 +223,40 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
         const children = paint.layers.filter(item => item.folderId === folderId);
         const vecId = children.find(item => item.kind === 'vector')?.id;
         if (!focus) focus = { ownerKey: owner.key, folderId: vecId ?? folderId };
-        comparisons[i].after = { ...paint, folders: undefined, layers: children };
+        entries[i].after = { ...paint, folders: undefined, layers: children };
       });
 
       if (isStale() || !focus) {
         releaseOwnedImages(batchOwned);
-        return;
+        return null;
       }
 
-      const previousOwned = owned.current;
-      owned.current = batchOwned;
-      releaseOwnedImages(previousOwned);
-      setError('');
-      setIndex(prev => Math.min(prev, Math.max(0, comparisons.length - 1)));
-      setPreview({
+      return {
         batch: { source: scene, scene: tracedScene, images: map, imports: [...pending.values()], focus },
-        comparisons,
-      });
+        entries,
+        batchOwned,
+      };
     } catch (cause) {
       releaseOwnedImages(batchOwned);
+      throw cause;
+    }
+  }
+
+  async function runPreview(id: number, controller: AbortController, targets: SelectedTraceLayer[]) {
+    setBusy(true);
+    try {
+      // プレビューは常に高速(ai2x)で即時表示し、「高品質(ai4x)」選択時は適用時のみ本変換する
+      const out = await executeTrace(id, controller, targets, 'ai2x');
+      if (!out) return;
+      const previousOwned = owned.current;
+      owned.current = out.batchOwned;
+      releaseOwnedImages(previousOwned);
+      setError('');
+      setIndex(prev => Math.min(prev, Math.max(0, out.entries.length - 1)));
+      setPreview({ batch: out.batch, entries: out.entries, mode: 'ai2x' });
+    } catch (cause) {
       if (id === runId.current && current.current && !controller.signal.aborted) {
-        setError(cause instanceof Error ? cause.message : 'ベクター線画化に失敗しました');
+        setError(cause instanceof Error ? cause.message : 'ベクター変換に失敗しました');
       }
     } finally {
       if (request.current === controller) {
@@ -288,29 +285,64 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
     const delay = hasRunOnce.current ? 120 : 0;
     hasRunOnce.current = true;
     const timer = window.setTimeout(() => {
-      void runTrace(id, controller, targets);
+      void runPreview(id, controller, targets);
     }, delay);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [scene, images, assets, selectedKeys, edge, preprocess, threshold, tol, detectBeta, chainMode]);
+  }, [scene, images, assets, selectedKeys, threshold, tol, chainMode]);
 
-  function apply() {
-    if (!preview) return;
+  async function apply() {
+    if (!preview || applying) return;
+    if (preprocess === preview.mode) {
+      try {
+        onApply(preview.batch);
+        owned.current.clear();
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'ベクター変換を適用できません');
+      }
+      return;
+    }
+
+    // 高品質(ai4x)選択時は適用押下時に本変換して適用
+    const targets = selectTraceLayers(scene, selectedKeys);
+    if (!images || !targets.length) return;
+    setApplying(true);
+    setBusy(true);
+    runId.current += 1;
+    const id = runId.current;
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     try {
-      onApply(preview.batch);
+      const out = await executeTrace(id, controller, targets, preprocess);
+      if (!out) return;
+      const previousOwned = owned.current;
+      owned.current = out.batchOwned;
+      releaseOwnedImages(previousOwned);
+      onApply(out.batch);
       owned.current.clear();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'ベクター線画を適用できません');
+      if (id === runId.current && current.current && !controller.signal.aborted) {
+        setError(cause instanceof Error ? cause.message : 'ベクター変換を適用できません');
+      }
+    } finally {
+      if (request.current === controller) {
+        request.current = null;
+      }
+      if (current.current) {
+        setApplying(false);
+        setBusy(false);
+      }
     }
   }
 
-  const shown = preview?.comparisons[index];
+  const shown = preview?.entries[index];
   return (
     <dialog
-      class="image-export-dialog manga-finish-dialog"
+      class="image-export-dialog manga-finish-dialog line-trace-dialog"
       ref={dialog}
       aria-labelledby="line-trace-title"
       onCancel={event => {
@@ -320,112 +352,80 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
       onKeyDown={event => event.stopPropagation()}
     >
       <header>
-        <h2 id="line-trace-title">ベクター線画化</h2>
+        <h2 id="line-trace-title">ベクター変換</h2>
         <button type="button" class="icon-button" aria-label="閉じる" onClick={onClose}>
           <X size={18} />
         </button>
       </header>
-      <p class="manga-finish-target">
-        {selected.length ? selected.map(item => item.label).join('、') : '原稿でベクター線画にしたい画像・描画レイヤーを選んでください。'}
-      </p>
-      <label class="manga-finish-size">
-        解析の長辺
-        <select
-          value={edge}
-          onChange={event => setEdge(Number(event.currentTarget.value))}
-        >
-          {[512, 1024, 1536, 2048].map(s => (
-            <option key={s} value={s}>{s} px</option>
-          ))}
-        </select>
-      </label>
-      <label class="manga-finish-size">
-        高精細化（縦横サイズ固定）
-        <select
-          value={preprocess}
-          onChange={event => setPreprocess(event.currentTarget.value as 'ai4x' | 'ai2x' | 'lanczos2x' | 'none')}
-        >
-          <option value="ai4x">AIくっきり 4x（JaNai V3 SPAN 2x→4x・最高画質）</option>
-          <option value="ai2x">AIくっきり 2x（JaNai V3 SPAN・軽量パス）</option>
-          <option value="lanczos2x">2x 高精細（Lanczos・AIなし）</option>
-          <option value="none">原寸（前処理なし）</option>
-        </select>
-      </label>
-      <label class="manga-finish-size">
-        二値化しきい値（{threshold}）
-        <input
-          type="range"
-          min="60"
-          max="240"
-          step="5"
-          value={threshold}
-          onInput={event => setThreshold(Number(event.currentTarget.value))}
-        />
-      </label>
-      <label class="manga-finish-size">
-        線の滑らかさ（間引き許容）
-        <select
-          value={String(tol)}
-          onChange={event => setTol(Number(event.currentTarget.value))}
-        >
-          <option value="0.15">0.15 px（高精細）</option>
-          <option value="0.3">0.3 px（標準・元絵忠実）</option>
-          <option value="0.75">0.75 px（編集向け整理）</option>
-          <option value="1.5">1.5 px（なめらか補正）</option>
-          <option value="2.5">2.5 px（強め平滑化）</option>
-        </select>
-      </label>
-      <label class="manga-finish-size">
-        交差点の連結
-        <select
-          value={chainMode}
-          onChange={event => setChainMode(event.currentTarget.value as 'model' | 'heuristic' | 'none')}
-        >
-          <option value="model">AIモデル（X字・Y分裂・T字判定）</option>
-          <option value="heuristic">角度ルール（従来方式）</option>
-          <option value="none">連結しない（交点で分割）</option>
-        </select>
-      </label>
-      <label class="manga-finish-size">
-        <span>黒ベタ領域を分離して「ベタ塗り」レイヤーを同梱</span>
-        <input
-          type="checkbox"
-          checked={detectBeta}
-          onChange={event => setDetectBeta(event.currentTarget.checked)}
-        />
-      </label>
+      {!selected.length && (
+        <p class="manga-finish-target">
+          原稿でベクター変換したい画像・描画レイヤーを選んでください。
+        </p>
+      )}
+      <div class="line-trace-controls">
+        <label class="line-trace-row">
+          <span>処理モード</span>
+          <select
+            value={preprocess}
+            onChange={event => setPreprocess(event.currentTarget.value as 'ai4x' | 'ai2x')}
+          >
+            <option value="ai2x">高速</option>
+            <option value="ai4x">高品質</option>
+          </select>
+        </label>
+        <label class="line-trace-row">
+          <span>二値化しきい値（{threshold}）</span>
+          <input
+            type="range"
+            min="60"
+            max="240"
+            step="5"
+            value={threshold}
+            onInput={event => setThreshold(Number(event.currentTarget.value))}
+          />
+        </label>
+        <label class="line-trace-row">
+          <span>間引き許容</span>
+          <select
+            value={String(tol)}
+            onChange={event => setTol(Number(event.currentTarget.value))}
+          >
+            <option value="0.15">0.15 px（高精細）</option>
+            <option value="0.3">0.3 px（標準・元絵忠実）</option>
+            <option value="0.75">0.75 px（編集向け整理）</option>
+          </select>
+        </label>
+        <label class="line-trace-row">
+          <span>交点処理</span>
+          <select
+            value={chainMode}
+            onChange={event => setChainMode(event.currentTarget.value as 'model' | 'none')}
+          >
+            <option value="model">連結</option>
+            <option value="none">連結しない</option>
+          </select>
+        </label>
+      </div>
       {preview && shown && (
-        <section class="manga-finish-comparison">
-          {preview.comparisons.length > 1 ? (
-            <select aria-label="比較するレイヤー" value={index} onChange={e => setIndex(Number(e.currentTarget.value))}>
-              {preview.comparisons.map((item, i) => (
+        <section class="manga-finish-comparison line-trace-preview-single">
+          {preview.entries.length > 1 && (
+            <select aria-label="プレビューするレイヤー" value={index} onChange={e => setIndex(Number(e.currentTarget.value))}>
+              {preview.entries.map((item, i) => (
                 <option value={i}>{item.label}</option>
               ))}
             </select>
-          ) : (
-            <strong>{shown.label}</strong>
           )}
           <div>
             <figure>
-              <figcaption>元画像</figcaption>
-              <Original blob={shown.before} />
-            </figure>
-            <figure>
-              <figcaption>ベクター線画{shown.betaRegions > 0 ? '＋ベタ塗り' : ''}</figcaption>
               <Preview paint={shown.after} images={preview.batch.images} bbox={shown.bbox} width={shown.width} height={shown.height} />
             </figure>
           </div>
-          <small>
-            {shown.strokes.toLocaleString()} ストローク · {shown.points.toLocaleString()} 制御点
-            {shown.betaRegions > 0 ? ` · ベタ ${shown.betaRegions} 領域` : ''}
-            {shown.elapsedMs > 0 ? ` · ${shown.elapsedMs} ms` : ''}（CLIP書き出し時はネイティブスプライン＋線幅保持）
-          </small>
         </section>
       )}
       {(error || loadError) && <p role="alert">{error || loadError}</p>}
       <footer>
-        <button type="button" class="primary-button" disabled={!preview || busy} onClick={apply}>
-          原稿に適用
+        <button type="button" class="primary-button" disabled={!preview || busy || applying} onClick={() => void apply()}>
+          適用
         </button>
       </footer>
     </dialog>
