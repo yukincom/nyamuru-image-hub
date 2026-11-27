@@ -43,7 +43,7 @@ test('pen can pull handles while closing at the first anchor; a click alone pres
  assert.deepEqual(before,saved);
  const corner=beginVectorDrag(before,'vector-pen',point(0,0,{alt:true}),style,2);
  assert.equal(corner.state.paths[0].closed,false);assert.equal(corner.state.activePath,before.activePath);
- assert.deepEqual(corner.state.paths[0].nodes[0],{x:0,y:0});
+ assert.deepEqual(corner.state.paths[0].nodes[0],{x:0,y:0,corner:true});
 });
 test('pen drags a visible handle without adding an anchor; Option preserves the opposite handle',()=>{
  let d=beginVectorDrag({paths:[],selected:[]},'vector-pen',point(0,0),style,2);
@@ -65,7 +65,7 @@ test('temporary Option conversion continues, while dedicated anchor tools finish
  d=beginVectorDrag(d.state,'vector-pen',point(50,50),style,2);updateVectorDrag(d,point(65,60));
  const before=d.state,id=before.activePath,saved=structuredClone(before);
  const converted=beginVectorDrag(before,'vector-pen',point(50,50,{alt:true}),style,2).state;
- assert.deepEqual(converted.paths[0].nodes[1],{x:50,y:50});assert.equal(converted.activePath,id);
+ assert.deepEqual(converted.paths[0].nodes[1],{x:50,y:50,corner:true});assert.equal(converted.activePath,id);
  const next=beginVectorDrag(converted,'vector-pen',point(100,0),style,2).state;
  assert.equal(next.paths.length,1);assert.equal(next.paths[0].id,id);assert.equal(next.paths[0].nodes.length,3);
  const temporaryDrag=beginVectorDrag(converted,'vector-pen',point(50,50,{alt:true}),style,2);
@@ -74,7 +74,7 @@ test('temporary Option conversion continues, while dedicated anchor tools finish
  assert.deepEqual(temporaryDrag.state.paths[0].nodes[1].handleIn,{x:-20,y:-10});
  assert.equal(temporaryDrag.state.activePath,id);
  const separate=beginVectorDrag(before,'vector-anchor',point(50,50),style,2).state;
- assert.equal(separate.activePath,undefined);assert.deepEqual(separate.paths[0].nodes[1],{x:50,y:50});
+ assert.equal(separate.activePath,undefined);assert.deepEqual(separate.paths[0].nodes[1],{x:50,y:50,corner:true});
  const newPath=beginVectorDrag(separate,'vector-pen',point(150,150),style,2).state;
  assert.equal(newPath.paths.length,2);assert.equal(newPath.paths[0].nodes.length,2);
  assert.notEqual(newPath.activePath,id);assert.deepEqual(before,saved);
@@ -156,7 +156,7 @@ test('anchor point tool converts corners and curves without moving the anchor an
  let d=beginVectorDrag(before,'vector-anchor',point(0,0),style,2);updateVectorDrag(d,point(15,20));
  const node=d.state.paths[0].nodes[0];assert.equal(node.x,0);assert.equal(node.y,0);assert.deepEqual(node.handleOut,{x:15,y:20});assert.deepEqual(node.handleIn,{x:-15,y:-20});
  const adjusted=beginVectorDrag(d.state,'vector-anchor',point(15,20),style,2);updateVectorDrag(adjusted,point(25,30));assert.deepEqual(adjusted.state.paths[0].nodes[0].handleIn,node.handleIn);
- const corner=beginVectorDrag(adjusted.state,'vector-anchor',point(0,0),style,2);assert.deepEqual(corner.state.paths[0].nodes[0],{x:0,y:0});assert.equal(corner.state.selectedNode.node,0);
+ const corner=beginVectorDrag(adjusted.state,'vector-anchor',point(0,0),style,2);assert.deepEqual(corner.state.paths[0].nodes[0],{x:0,y:0,corner:true});assert.equal(corner.state.selectedNode.node,0);
  const last={...path,nodes:[path.nodes[0]]};assert.deepEqual(beginVectorDrag({paths:[last],selected:[last.id]},'vector-delete',point(0,0),style,2).state,{paths:[],selected:[]});
 });
 

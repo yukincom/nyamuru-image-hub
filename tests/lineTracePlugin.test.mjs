@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
@@ -113,12 +113,16 @@ test('applyLineTraceLayers non-destructively hides source layer and inserts vect
   assert.doesNotThrow(() => validatePaintDocument(updatedPaint, [betaAsset]));
 });
 
-test('LAN server exposes /api/line-trace supervisor route and binary bridge processes real PNG', () => {
+test('LAN server exposes /api/line-trace supervisor route and binary bridge processes real PNG', (t) => {
   assert.ok(SUPERVISOR_PATHS.has('/api/line-trace'));
 
   const repoRoot = resolve(import.meta.dirname, '..');
   const binPath = resolve(repoRoot, '.local-clip-export/bin/nyamuru-line-trace');
   const sampleImg = resolve(repoRoot, '../line-trace-strokes/examples/anime/anime_input.png');
+  if (!existsSync(binPath) || !existsSync(sampleImg)) {
+    t.skip('local nyamuru-line-trace binary or sibling line-trace-strokes sample not present');
+    return;
+  }
   const b64 = readFileSync(sampleImg).toString('base64');
 
   const stdout = execFileSync(binPath, ['--bridge-stdin'], {
@@ -204,12 +208,20 @@ test('validatePaintDocument accepts valid VectorStyle.wobble and rejects invalid
   );
 });
 
-test('line_trace_upscale.py ai2x upscales 2x with JaNai V3 SPAN while preserving logical bbox', () => {
+test('line_trace_upscale.py ai2x upscales 2x with JaNai V3 SPAN while preserving logical bbox', (t) => {
   const repoRoot = resolve(import.meta.dirname, '..');
   const python = resolve(repoRoot, '.local-vision/.venv/bin/python');
   const script = resolve(repoRoot, 'scripts/line_trace_upscale.py');
   const visionRoot = resolve(repoRoot, '.local-vision');
   const binPath = resolve(repoRoot, '.local-clip-export/bin/nyamuru-line-trace');
+  const modelPath = resolve(
+    visionRoot,
+    'models/janai-v3-span/2x_IllustrationJaNai_V3denoise_SPAN_S_30k_fp16_1x3xHxW_dyn-HW_strong_fp16_op23.onnx',
+  );
+  if (!existsSync(python) || !existsSync(binPath) || !existsSync(modelPath)) {
+    t.skip('local .local-vision venv, JaNai V3 SPAN ONNX model, or nyamuru-line-trace binary not present');
+    return;
+  }
 
   // Synthesize a crisp 80x40 test PNG via python PIL
   const sampleUrl = execFileSync(python, [
