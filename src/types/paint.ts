@@ -28,12 +28,15 @@ export interface VectorNode extends VectorPoint {
   corner?:boolean;
 }
 
+export interface VectorWobble { amount:number; scale:number; seed?:number }
+
 export interface VectorStyle {
   stroke:string|null; fill:string|null; width:number;
   cap:'butt'|'round'|'square'; join:'miter'|'round'|'bevel'; miterLimit:number;
   dash:number[]; dashOffset:number; alignment:'center'|'inside'|'outside';
   arrowStart:'none'|'triangle'|'open'|'circle'; arrowEnd:'none'|'triangle'|'open'|'circle';
   profile:'uniform'|'taper'|'spindle'|'variable';
+  wobble?:VectorWobble;
 }
 
 export interface VectorPath { id:string; nodes:VectorNode[]; closed:boolean; style:VectorStyle }

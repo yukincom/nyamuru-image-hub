@@ -67,9 +67,41 @@ function resolveLineTraceBinary(repoRoot) {
   throw new Error('ベクター線画化のバイナリが見つかりません。npm run setup:clip を実行してください');
 }
 
+async function preprocessLineTraceImage(repoRoot, image, mode, signal) {
+  if (!mode || mode === 'none') return { image, modeUsed: 'none' };
+  const visionRoot = process.env.NYAMURU_VISION_ROOT || resolve(repoRoot, '.local-vision');
+  const python = process.env.NYAMURU_BRIDGE_PYTHON || resolve(
+    visionRoot,
+    process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python',
+  );
+  const script = resolve(repoRoot, 'scripts/line_trace_upscale.py');
+  if (!existsSync(python) || !existsSync(script)) {
+    return { image, modeUsed: 'none' };
+  }
+  signal.throwIfAborted();
+  return new Promise((done, fail) => {
+    const child = execFile(python, ['-B', script, visionRoot], {
+      signal, timeout: 60_000, maxBuffer: 96 * 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) return fail(new Error(stderr.trim() || '線画前処理の実行に失敗しました'));
+      try { done(JSON.parse(stdout)); } catch { fail(new Error('線画前処理の結果を読み込めませんでした')); }
+    });
+    child.stdin.on('error', fail);
+    child.stdin.end(JSON.stringify({ image, mode, maxEdge: 4096 }));
+  });
+}
+
 async function traceMangaLineArt(repoRoot, body, signal) {
   const binary = resolveLineTraceBinary(repoRoot);
   signal.throwIfAborted();
+  let payload = body;
+  const preprocess = typeof body?.preprocess === 'string' ? body.preprocess : 'none';
+  if (preprocess !== 'none' && typeof body?.image === 'string') {
+    const pre = await preprocessLineTraceImage(repoRoot, body.image, preprocess, signal);
+    if (typeof pre?.image === 'string' && pre.image) {
+      payload = { ...body, image: pre.image };
+    }
+  }
   return new Promise((done, fail) => {
     const child = execFile(binary, ['--bridge-stdin'], {
       signal, timeout: 60_000, maxBuffer: 96 * 1024 * 1024,
@@ -78,7 +110,7 @@ async function traceMangaLineArt(repoRoot, body, signal) {
       try { done(JSON.parse(stdout)); } catch { fail(new Error('ベクター線画化の結果を読み込めませんでした')); }
     });
     child.stdin.on('error', fail);
-    child.stdin.end(JSON.stringify(body));
+    child.stdin.end(JSON.stringify(payload));
   });
 }
 

@@ -42,6 +42,28 @@ export default function VectorControls(p:Props){
       {choices('線の位置',p.style.alignment,'position',[
         ['center','中央'],['inside','内側'],['outside','外側'],
       ],v=>p.change({alignment:v as VectorStyle['alignment']}))}
+      <div class="vector-choice-row">
+        <span>手描き揺らぎ</span>
+        <div style={{display:'flex',flexWrap:'wrap',gap:'6px',alignItems:'center'}}>
+          <label style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+            <span>強さ</span>
+            <input type="range" aria-label="揺らぎの強さ" min="0" max="1" step="0.05" value={p.style.wobble?.amount??0} disabled={p.disabled}
+              onInput={e=>{const amount=e.currentTarget.valueAsNumber;p.change({wobble:amount>0?{amount,scale:p.style.wobble?.scale??14,...(p.style.wobble?.seed!==undefined?{seed:p.style.wobble.seed}:{})}:undefined});}}/>
+            <span>{Math.round((p.style.wobble?.amount??0)*100)}%</span>
+          </label>
+          {(p.style.wobble?.amount??0)>0&&<>
+            <label style={{display:'inline-flex',alignItems:'center',gap:'4px'}}>
+              <span>細かさ</span>
+              <input type="range" aria-label="揺らぎの細かさ" min="4" max="48" step="1" value={p.style.wobble?.scale??14} disabled={p.disabled}
+                onInput={e=>{const scale=Math.max(2,Math.min(200,e.currentTarget.valueAsNumber||14));p.change({wobble:{amount:p.style.wobble?.amount??0.3,scale,...(p.style.wobble?.seed!==undefined?{seed:p.style.wobble.seed}:{})}});}}/>
+            </label>
+            <button type="button" disabled={p.disabled} title="揺らぎのランダムパターンを変更"
+              onClick={()=>p.change({wobble:{amount:p.style.wobble?.amount??0.3,scale:p.style.wobble?.scale??14,seed:Math.floor(Math.random()*0xffffffff)}})}>
+              🎲 別パターン
+            </button>
+          </>}
+        </div>
+      </div>
     </div>}
     {active==='dash'&&<div class="vector-properties">
       {choices('線種',p.style.dash.length?'on':'off','dash',[

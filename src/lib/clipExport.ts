@@ -118,7 +118,7 @@ export async function buildClipExportPage(manga:Manga,pageIndex:number):Promise<
         if(layer.generationMask)warn('生成範囲の作業レイヤーは、原稿へ重ならないよう非表示で保持しました。');
         const paths=layer.paths??[],lines=clipExportVectorLines(paths,detached,frame,page.canvas,size,layer.colorMode);
         const simple=layer.kind==='vector'&&lines.length===paths.length&&!layer.image&&!layer.strokes.length&&!layer.tone?.enabled&&!layer.tone?.fill
-          &&paths.every(path=>!path.style.fill&&(path.style.profile==='uniform'||path.style.profile==='variable')&&path.style.alignment==='center'&&!path.style.dash.length&&path.style.cap==='round'&&path.style.join==='round'&&path.style.arrowStart==='none'&&path.style.arrowEnd==='none');
+          &&paths.every(path=>!path.style.fill&&(path.style.profile==='uniform'||path.style.profile==='variable')&&path.style.alignment==='center'&&!path.style.dash.length&&!(path.style.wobble&&path.style.wobble.amount>0)&&path.style.cap==='round'&&path.style.join==='round'&&path.style.arrowStart==='none'&&path.style.arrowEnd==='none');
         const mask=paintMask(detached,layer,frame);
         if(simple){result.push({...attributes,kind:'vector',lines,...(mask?{mask}:{}),sources});continue;}
         const raster=rasterFromPixels(readPaintPixels(detached,{...layer,mask:undefined,clip:undefined},images),frame,`${id}/pixels`,layer.name);

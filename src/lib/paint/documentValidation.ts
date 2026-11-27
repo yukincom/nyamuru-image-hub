@@ -67,6 +67,12 @@ export function validatePaintDocument(value: PaintDocument, assets: readonly Ima
         ||!['butt','round','square'].includes(style.cap)||!['miter','round','bevel'].includes(style.join)||!Number.isFinite(style.miterLimit)||style.miterLimit<1||style.miterLimit>1000
         ||!Array.isArray(style.dash)||style.dash.length>6||style.dash.some(n=>!Number.isFinite(n)||n<=0)||!Number.isFinite(style.dashOffset)
         ||!['center','inside','outside'].includes(style.alignment)||![style.arrowStart,style.arrowEnd].every(a=>['none','triangle','open','circle'].includes(a))||!['uniform','taper','spindle','variable'].includes(style.profile))fail();
+      if(style.wobble!==undefined){
+        const w=style.wobble;
+        if(!w||typeof w!=='object'||!Number.isFinite(w.amount)||w.amount<0||w.amount>1
+          ||!Number.isFinite(w.scale)||w.scale<2||w.scale>200
+          ||(w.seed!==undefined&&(!Number.isInteger(w.seed)||w.seed<0||w.seed>0xffffffff)))fail();
+      }
       for(const node of path.nodes)if(!point(node)||(node.handleIn!==undefined&&!point(node.handleIn))||(node.handleOut!==undefined&&!point(node.handleOut))||(node.width!==undefined&&(!Number.isFinite(node.width)||node.width<=0||node.width>4))||(node.corner!==undefined&&typeof node.corner!=='boolean'))fail();
     }
     ids.add(layer.id);

@@ -32,6 +32,42 @@ export function tracedStrokesToVectorPaths(
   const out: VectorPath[] = [];
 
   for (const stroke of strokes) {
+    if (stroke.nodes?.length) {
+      const mapped = stroke.nodes.map((n) => ({
+        x: bbox.x + n.x * sx,
+        y: bbox.y + n.y * sy,
+        r: Math.max(0.15, n.r * rScale),
+        hi: n.hi ? { x: n.hi[0] * sx, y: n.hi[1] * sy } : undefined,
+        ho: n.ho ? { x: n.ho[0] * sx, y: n.ho[1] * sy } : undefined,
+        c: Boolean(n.c),
+      }));
+      let rMax = 0.15;
+      for (const p of mapped) if (p.r > rMax) rMax = p.r;
+      const nodes: VectorNode[] = mapped.map((p) => ({
+        x: p.x,
+        y: p.y,
+        width: Math.max(0.02, Math.min(1, p.r / rMax)),
+        ...(p.hi ? { handleIn: p.hi } : {}),
+        ...(p.ho ? { handleOut: p.ho } : {}),
+        ...(p.c ? { corner: true } : {}),
+      }));
+      out.push({
+        id: crypto.randomUUID(),
+        closed: Boolean(stroke.closed),
+        nodes,
+        style: {
+          ...baseStyle,
+          stroke: strokeColor,
+          fill: null,
+          width: Math.max(0.3, rMax * 2),
+          cap: 'round',
+          join: 'round',
+          profile: 'variable',
+        },
+      });
+      continue;
+    }
+
     const pts = stroke.points;
     if (!pts.length) continue;
     const cornerSet = new Set(stroke.corners ?? []);

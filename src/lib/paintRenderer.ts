@@ -109,7 +109,14 @@ function drawLayer(ctx: CanvasRenderingContext2D, layer: PaintLayer, images: Pai
     const c=layer.image.crop,b=layer.image.bbox;ctx.drawImage(image,c.x,c.y,c.w,c.h,b.x,b.y,b.w,b.h);}
   const mono=layer.colorMode==='monochrome'&&!layer.tone?.enabled;
   for(const stroke of layer.strokes)drawPaintStroke(ctx,mono?monochromeStroke(stroke):stroke);
-  for(const path of layer.paths??[])drawVectorPath(ctx,mono?{...path,style:{...path.style,stroke:paintColorInk(path.style.stroke,'monochrome'),fill:paintColorInk(path.style.fill,'monochrome')}}:path);
+  const paths=layer.paths??[];
+  const minPathRadius=(()=>{
+    if(!paths.length||(layer.antialias!==0&&!mono))return 0;
+    const m=typeof ctx.getTransform==='function'?ctx.getTransform():{a:1,b:0,c:0,d:1};
+    const sx=Math.hypot(m.a,m.b)||1,sy=Math.hypot(m.c,m.d)||1;
+    return 0.65/Math.max(0.1,Math.min(sx,sy));
+  })();
+  for(const path of paths)drawVectorPath(ctx,mono?{...path,style:{...path.style,stroke:paintColorInk(path.style.stroke,'monochrome'),fill:paintColorInk(path.style.fill,'monochrome')}}:path,minPathRadius);
   ctx.restore();
 }
 

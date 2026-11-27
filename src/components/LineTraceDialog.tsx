@@ -97,6 +97,7 @@ function releaseOwnedImages(set: Set<HTMLImageElement>) {
 export default function LineTraceDialog({ scene, images, assets, selectedKeys, loadError, onApply, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [edge, setEdge] = useState(1536);
+  const [preprocess, setPreprocess] = useState<'ai2x' | 'lanczos2x' | 'none'>('ai2x');
   const [threshold, setThreshold] = useState(180);
   const [tol, setTol] = useState(0.3);
   const [detectBeta, setDetectBeta] = useState(true);
@@ -179,6 +180,7 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
             epsR: Math.max(0.08, Math.round(tol * 50) / 100),
             detectBeta,
             chainMode,
+            preprocess,
           },
           controller.signal,
         );
@@ -293,7 +295,7 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [scene, images, assets, selectedKeys, edge, threshold, tol, detectBeta, chainMode]);
+  }, [scene, images, assets, selectedKeys, edge, preprocess, threshold, tol, detectBeta, chainMode]);
 
   function apply() {
     if (!preview) return;
@@ -335,6 +337,17 @@ export default function LineTraceDialog({ scene, images, assets, selectedKeys, l
           {[512, 1024, 1536, 2048].map(s => (
             <option key={s} value={s}>{s} px</option>
           ))}
+        </select>
+      </label>
+      <label class="manga-finish-size">
+        高精細化（縦横サイズ固定）
+        <select
+          value={preprocess}
+          onChange={event => setPreprocess(event.currentTarget.value as 'ai2x' | 'lanczos2x' | 'none')}
+        >
+          <option value="ai2x">AIくっきり 2x（JaNai V3 SPAN・おすすめ）</option>
+          <option value="lanczos2x">2x 高精細（Lanczos・AIなし）</option>
+          <option value="none">原寸（前処理なし）</option>
         </select>
       </label>
       <label class="manga-finish-size">

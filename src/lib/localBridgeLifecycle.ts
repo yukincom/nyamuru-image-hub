@@ -85,10 +85,20 @@ export async function stopNewCreationBridgeSession(
   };
 }
 
+export interface LineTraceBezierNode {
+  x: number;
+  y: number;
+  r: number;
+  hi?: [number, number];
+  ho?: [number, number];
+  c?: boolean;
+}
+
 export interface LineTraceStroke {
   closed: boolean;
   role?: string;
   points: Array<[number, number, number]>;
+  nodes?: LineTraceBezierNode[];
   corners: number[];
 }
 
@@ -102,6 +112,7 @@ export interface LineTraceOptions {
   minRegionArea?: number;
   chainMode?: 'model' | 'heuristic' | 'none';
   pruneMaxPoints?: number;
+  preprocess?: 'ai2x' | 'lanczos2x' | 'none';
 }
 
 export interface LineTraceResponse {

@@ -93,12 +93,38 @@ export function clipExportVectorLines(paths:readonly VectorPath[],paint:Pick<Pai
     const sx=frame.w/paint.width*output.width/page.w,sy=frame.h/paint.height*output.height/page.h;
     const widthPx=path.style.width*Math.sqrt(Math.abs(sx*sy)),strokeColor=color(paintColorInk(path.style.stroke,mode)!);
     if(path.style.profile==='variable'){
-      const corners:number[]=[];
-      const points:Array<[number,number,number]>=path.nodes.map((node,index)=>{
-        const [x,y]=map(node);
-        if(node.corner)corners.push(index);
-        return [x,y,Math.max(0.01,Math.min(1,node.width??1))];
-      });
+      const n=path.nodes.length,corners:number[]=[],points:Array<[number,number,number]>=[];
+      const clampW=(w?:number)=>Math.max(0.01,Math.min(1,w??1));
+      const p0Mapped=map(path.nodes[0]);
+      if(path.nodes[0].corner)corners.push(0);
+      points.push([p0Mapped[0],p0Mapped[1],clampW(path.nodes[0].width)]);
+      const segCount=path.closed?n:n-1;
+      const flattenVar=(a:number[],b:number[],c:number[],d:number[],wa:number,wd:number,depth=0)=>{
+        if(points.length>=65535)throw new Error('CLIPへ書き出す曲線が複雑すぎます');
+        if(depth>=10||Math.max(distance(b,a,d),distance(c,a,d))<=0.45){points.push([d[0],d[1],wd]);return;}
+        const ab=middle(a,b),bc=middle(b,c),cd=middle(c,d),abc=middle(ab,bc),bcd=middle(bc,cd),mid=middle(abc,bcd),wmid=(wa+wd)/2;
+        flattenVar(a,ab,abc,mid,wa,wmid,depth+1);flattenVar(mid,bcd,cd,d,wmid,wd,depth+1);
+      };
+      for(let i=0;i<segCount;i++){
+        const a=path.nodes[i],b=path.nodes[(i+1)%n],nextIdx=(i+1)%n;
+        const pa=map(a),pb=map(b),wa=clampW(a.width),wb=clampW(b.width);
+        const c1=map({x:a.x+(a.handleOut?.x??0),y:a.y+(a.handleOut?.y??0)});
+        const c2=map({x:b.x+(b.handleIn?.x??0),y:b.y+(b.handleIn?.y??0)});
+        // Compare against Catmull-Rom spline handles so sparse true cubic Beziers subdivide cleanly
+        // while Catmull-Rom node chains stay 1:1.
+        const crValidOut=n>=3&&!a.corner&&(path.closed||i>0);
+        const crValidIn=n>=3&&!b.corner&&(path.closed||nextIdx<n-1);
+        const prevA=path.nodes[(i+n-1)%n],nextA=path.nodes[(i+1)%n];
+        const prevB=path.nodes[(nextIdx+n-1)%n],nextB=path.nodes[(nextIdx+1)%n];
+        const crC1=crValidOut?map({x:a.x+(nextA.x-prevA.x)/6,y:a.y+(nextA.y-prevA.y)/6}):pa;
+        const crC2=crValidIn?map({x:b.x-(nextB.x-prevB.x)/6,y:b.y-(nextB.y-prevB.y)/6}):pb;
+        const handleDiff=Math.max(Math.hypot(c1[0]-crC1[0],c1[1]-crC1[1]),Math.hypot(c2[0]-crC2[0],c2[1]-crC2[1]));
+        const hasCubicDev=handleDiff>0.75&&Math.max(distance(c1,pa,pb),distance(c2,pa,pb))>0.45;
+        if(hasCubicDev){flattenVar(pa,c1,c2,pb,wa,wb,0);}
+        else{points.push([pb[0],pb[1],wb]);}
+        if(nextIdx>0&&b.corner)corners.push(points.length-1);
+      }
+      if(path.closed&&points.length>1)points.pop();
       if(points.length===1)points.push([...points[0]]);
       result.push({points,closed:path.closed,widthPx,color:strokeColor,curve:'spline',...(corners.length?{corners}:{})});
       continue;

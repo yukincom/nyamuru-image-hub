@@ -140,3 +140,113 @@ test('LAN server exposes /api/line-trace supervisor route and binary bridge proc
   assert.ok(parsed.strokes.length > 1000);
   assert.ok(typeof parsed.betaPng === 'string' && parsed.betaPng.startsWith('data:image/png;base64,'));
 });
+
+test('tracedStrokesToVectorPaths imports minimal-anchor cubic Bezier handles and adaptive clipExportVectorLines', () => {
+  const paths = tracedStrokesToVectorPaths(
+    [
+      {
+        closed: false,
+        points: [],
+        corners: [],
+        nodes: [
+          { x: 0, y: 0, r: 2.0, ho: [0, 30] },
+          { x: 50, y: 50, r: 4.0, hi: [-30, 0] },
+          { x: 80, y: 50, r: 2.0, c: true },
+        ],
+      },
+    ],
+    100,
+    100,
+    { x: 0, y: 0, w: 100, h: 100 },
+  );
+
+  assert.equal(paths.length, 1);
+  assert.equal(paths[0].nodes.length, 3);
+  assert.deepEqual(paths[0].nodes[0].handleOut, { x: 0, y: 30 });
+  assert.deepEqual(paths[0].nodes[1].handleIn, { x: -30, y: 0 });
+  assert.equal(paths[0].nodes[2].corner, true);
+
+  const clipLines = clipExportVectorLines(
+    paths,
+    { width: 100, height: 100 },
+    { x: 0, y: 0, w: 100, h: 100 },
+    { w: 100, h: 100 },
+    { width: 100, height: 100 },
+  );
+  assert.equal(clipLines.length, 1);
+  assert.ok(clipLines[0].points.length > 3, `curved cubic segment must subdivide, got ${clipLines[0].points.length}`);
+  assert.deepEqual(clipLines[0].corners, [clipLines[0].points.length - 1]);
+});
+
+test('validatePaintDocument accepts valid VectorStyle.wobble and rejects invalid bounds', () => {
+  const paths = tracedStrokesToVectorPaths(
+    [{ closed: false, points: [[10, 10, 2], [90, 10, 2]], corners: [] }],
+    100,
+    100,
+    { x: 0, y: 0, w: 100, h: 100 },
+  );
+  paths[0].style.wobble = { amount: 0.35, scale: 14, seed: 42 };
+  const validLayer = { ...newPaintLayer('線画', 'vector'), kind: 'vector', paths };
+  assert.doesNotThrow(() =>
+    validatePaintDocument({ version: 1, width: 100, height: 100, dpi: 300, layers: [validLayer] }, []),
+  );
+
+  const badAmountLayer = structuredClone(validLayer);
+  badAmountLayer.paths[0].style.wobble.amount = 1.5;
+  assert.throws(() =>
+    validatePaintDocument({ version: 1, width: 100, height: 100, dpi: 300, layers: [badAmountLayer] }, []),
+  );
+
+  const badScaleLayer = structuredClone(validLayer);
+  badScaleLayer.paths[0].style.wobble.scale = 1;
+  assert.throws(() =>
+    validatePaintDocument({ version: 1, width: 100, height: 100, dpi: 300, layers: [badScaleLayer] }, []),
+  );
+});
+
+test('line_trace_upscale.py ai2x upscales 2x with JaNai V3 SPAN while preserving logical bbox', () => {
+  const repoRoot = resolve(import.meta.dirname, '..');
+  const python = resolve(repoRoot, '.local-vision/.venv/bin/python');
+  const script = resolve(repoRoot, 'scripts/line_trace_upscale.py');
+  const visionRoot = resolve(repoRoot, '.local-vision');
+  const binPath = resolve(repoRoot, '.local-clip-export/bin/nyamuru-line-trace');
+
+  // Synthesize a crisp 80x40 test PNG via python PIL
+  const sampleUrl = execFileSync(python, [
+    '-c',
+    'import base64, io; from PIL import Image, ImageDraw; '
+    + 'im=Image.new("RGB",(80,40),(255,255,255)); d=ImageDraw.Draw(im); '
+    + 'd.line([(10,20),(70,20)], fill=(0,0,0), width=3); '
+    + 'b=io.BytesIO(); im.save(b,"PNG"); print("data:image/png;base64,"+base64.b64encode(b.getvalue()).decode())',
+  ]).toString('utf8').trim();
+
+  const preOut = JSON.parse(
+    execFileSync(python, ['-B', script, visionRoot], {
+      input: JSON.stringify({ image: sampleUrl, mode: 'ai2x', maxEdge: 4096 }),
+      maxBuffer: 32 * 1024 * 1024,
+    }).toString('utf8'),
+  );
+  assert.equal(preOut.modeUsed, 'ai2x');
+  assert.equal(preOut.width, 160);
+  assert.equal(preOut.height, 80);
+
+  const traced = JSON.parse(
+    execFileSync(binPath, ['--bridge-stdin'], {
+      input: JSON.stringify({ image: preOut.image, threshold: 180, tol: 0.3, detectBeta: false }),
+      maxBuffer: 32 * 1024 * 1024,
+    }).toString('utf8'),
+  );
+  assert.equal(traced.width, 160);
+  assert.equal(traced.height, 80);
+  assert.ok(traced.strokes.length >= 1);
+
+  const bbox = { x: 100, y: 50, w: 80, h: 40 };
+  const paths = tracedStrokesToVectorPaths(traced.strokes, traced.width, traced.height, bbox);
+  assert.ok(paths.length >= 1);
+  for (const p of paths) {
+    for (const n of p.nodes) {
+      assert.ok(n.x >= bbox.x - 1 && n.x <= bbox.x + bbox.w + 1, `node x out of logical bbox: ${n.x}`);
+      assert.ok(n.y >= bbox.y - 1 && n.y <= bbox.y + bbox.h + 1, `node y out of logical bbox: ${n.y}`);
+    }
+  }
+});
