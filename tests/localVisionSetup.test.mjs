@@ -7,6 +7,10 @@ import test from 'node:test';
 import {
   BABERU_FILES,
   BABERU_REVISION,
+  JANAI_V3_SPAN_FILENAME,
+  JANAI_V3_SPAN_SHA256,
+  JANAI_V3_SPAN_ZIP_SHA256,
+  JANAI_V3_SPAN_ZIP_URL,
   MODEL_REVISION,
   MODEL_SHA256,
   WD_EXPRESSION_FILES,
@@ -26,6 +30,7 @@ test('vision setup keeps RT-DETR and Baberu under one ignored root', () => {
   assert.ok(layout.model.startsWith(root));
   assert.ok(layout.baberu.startsWith(root));
   assert.ok(layout.wdExpression.startsWith(root));
+  assert.ok(layout.janaiSpan.startsWith(root));
   assert.match(layout.python, /\.venv/);
 });
 
@@ -189,4 +194,9 @@ test('model download is pinned and verified', () => {
   for (const file of WD_EXPRESSION_FILES.filter((entry) => entry.path !== 'README.md')) {
     assert.ok(wdRuntime.includes(file.sha256), `${file.path}のruntime provenance SHAがsetupと一致しません`);
   }
+  assert.ok(JANAI_V3_SPAN_ZIP_URL.startsWith('https://github.com/the-database/MangaJaNai/releases/download/'));
+  assert.match(JANAI_V3_SPAN_ZIP_SHA256, /^[0-9a-f]{64}$/);
+  assert.match(JANAI_V3_SPAN_SHA256, /^[0-9a-f]{64}$/);
+  const upscaleRuntime = readFileSync(new URL('../scripts/line_trace_upscale.py', import.meta.url), 'utf8');
+  assert.ok(upscaleRuntime.includes(JANAI_V3_SPAN_FILENAME));
 });

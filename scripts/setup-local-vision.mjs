@@ -38,6 +38,10 @@ export const WD_EXPRESSION_FILES = [
   { path: 'selected_tags.csv', sha256: '298633d94d0031d2081c0893f29c82eab7f0df00b08483ba8f29d1e979441217' },
   { path: 'README.md', sha256: 'edad0e80dcbebef5ae595387ff33d410c86589ae99e115670f6abea8888bc613' },
 ];
+export const JANAI_V3_SPAN_ZIP_URL = 'https://github.com/the-database/MangaJaNai/releases/download/3.0.0/IllustrationJaNai_V3denoise_onnx.zip';
+export const JANAI_V3_SPAN_ZIP_SHA256 = '86d393d5c55a7ac0df986cd42e79a0351ecf89b370752f79d4fd0a9cf3f2aa58';
+export const JANAI_V3_SPAN_FILENAME = '2x_IllustrationJaNai_V3denoise_SPAN_S_30k_fp16_1x3xHxW_dyn-HW_strong_fp16_op23.onnx';
+export const JANAI_V3_SPAN_SHA256 = 'cd0344ebae36281206827954b730e0f944ce961dbbe059a41a083014f3e7c03a';
 
 
 export function visionLayout(visionRoot) {
@@ -49,6 +53,7 @@ export function visionLayout(visionRoot) {
     model: resolve(visionRoot, 'models', 'rtdetrv4-x-manga109s_v2', 'model.onnx'),
     baberu: resolve(visionRoot, 'models', 'baberu-ocr'),
     wdExpression: resolve(visionRoot, 'models', 'wd-vit-tagger-v3'),
+    janaiSpan: resolve(visionRoot, 'models', 'janai-v3-span', JANAI_V3_SPAN_FILENAME),
   };
 }
 
@@ -279,6 +284,54 @@ async function downloadWdExpressionModel(directory) {
 }
 
 
+async function downloadJanaiSpanModel(destination, python) {
+  try {
+    await access(destination);
+    const existingHash = await sha256(destination);
+    if (existingHash !== JANAI_V3_SPAN_SHA256) {
+      throw new Error(`既存モデルのSHA-256が一致しません: ${destination}`);
+    }
+    console.log('IllustrationJaNai V3 SPANモデル: 検証済みの既存ファイルを使用します。');
+    return;
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+
+  await mkdir(dirname(destination), { recursive: true });
+  const zipPart = `${destination}.zip.part`;
+  const onnxPart = `${destination}.part`;
+  await rm(zipPart, { force: true });
+  await rm(onnxPart, { force: true });
+  console.log('IllustrationJaNai V3 SPANモデルを公式配布アーカイブから取得・抽出します（約72MB取得→832KB抽出）...');
+  try {
+    await downloadVerifiedFile(
+      JANAI_V3_SPAN_ZIP_URL,
+      zipPart,
+      JANAI_V3_SPAN_ZIP_SHA256,
+      'IllustrationJaNai V3denoise_onnx.zip',
+    );
+    await run(python, [
+      '-I',
+      '-c',
+      'import sys, zipfile\nwith zipfile.ZipFile(sys.argv[1]) as zf, open(sys.argv[3], "wb") as out:\n    out.write(zf.read(sys.argv[2]))\n',
+      zipPart,
+      JANAI_V3_SPAN_FILENAME,
+      onnxPart,
+    ]);
+    const extractedHash = await sha256(onnxPart);
+    if (extractedHash !== JANAI_V3_SPAN_SHA256) {
+      throw new Error(`抽出したIllustrationJaNai V3 SPANモデルのSHA-256が一致しません: ${extractedHash}`);
+    }
+    await rename(onnxPart, destination);
+  } catch (error) {
+    await rm(onnxPart, { force: true });
+    throw error;
+  } finally {
+    await rm(zipPart, { force: true });
+  }
+}
+
+
 async function confirmSetup(layout, assumeYes, updateCertificates) {
   console.log(updateCertificates ? `
 既存Python環境のpip・certifiを更新します。
@@ -295,6 +348,8 @@ async function confirmSetup(layout, assumeYes, updateCertificates) {
   ${BABERU_REPOSITORY}
 - WD ViT Tagger v3（Apache-2.0、ONNXモデルと表情語彙 約379MB）
   ${WD_EXPRESSION_REPOSITORY}
+- IllustrationJaNai V3denoise SPAN_S（線画ベクター変換前処理用 ONNX モデル約832KB・配布アーカイブ約72MBから抽出）
+  https://github.com/the-database/MangaJaNai/releases/tag/3.0.0
 - Python依存パッケージ（操作分類器のPyTorch・Transformersを含む）
 - 採用操作分類モデルを検証し、不足時だけこのリポジトリのReleaseから重み約147MBを取得
   保存先: ${resolve(REPO_ROOT, 'models', 'nyamuru-voice-v04-seed43')}
@@ -344,6 +399,7 @@ export async function setup(options, { updateCertificates = updatePythonCertific
   await downloadModel(layout.model);
   await downloadTextOcrModel(layout.baberu);
   await downloadWdExpressionModel(layout.wdExpression);
+  await downloadJanaiSpanModel(layout.janaiSpan, layout.python);
 
   console.log('導入状態を検査します...');
   await run(layout.python, [

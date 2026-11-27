@@ -1,5 +1,5 @@
 -r requirements-qa.txt
-onnxruntime>=1.17,<2
+onnxruntime>=1.32.0,<2
 certifi>=2026.10.19
 # Adopted offline voice classifier; same versions used for the 185-case parity check.
 torch==2.11.0
