@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from nyamuru_ocr_util import decode_image_data
-from project_file_picker import choose_project_files
+from project_file_picker import choose_import_images, choose_project_files, list_project_images, read_project_images
 from nyamuru_project_store import export_yaml_files, load_project, save_project
 from nyamuru_series_catalog_store import discover_reference_text_candidates
 from image_generation import (
@@ -73,6 +73,17 @@ def handle_workspace_post(handler: BridgeHandler, path: str, body: dict[str, Any
     if path == "/api/episode-workspace/choose-files":
         handler.send_json(200, choose_project_files(
             file_picker_directory(handler, body), body.get("accept", ""), body.get("multiple") is True,
+        ))
+        return
+    if path == "/api/episode-workspace/choose-import-images":
+        handler.send_json(200, choose_import_images(file_picker_directory(handler, body)))
+        return
+    if path == "/api/episode-workspace/list-images":
+        handler.send_json(200, list_project_images(file_picker_directory(handler, body)))
+        return
+    if path == "/api/episode-workspace/read-images":
+        handler.send_json(200, read_project_images(
+            file_picker_directory(handler, body), body.get("rel_paths", []),
         ))
         return
     if path == "/api/episode-workspace/choose-text":

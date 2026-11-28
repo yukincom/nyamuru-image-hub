@@ -1,5 +1,8 @@
-import type { AnalogFigureImport, BBox } from '../types.ts';
+import type { AnalogFigureImport, BBox, MangaPage, PanelShape } from '../types.ts';
 import type { DetectedFigureRegion, FigureFaceInput } from './localBridge.ts';
+import { INNER_FRAME_BOUNDS } from './canvasGeometry.ts';
+import { extractPanelBackgroundWithCutout, type PixelCrop } from './cloudPageSplit.ts';
+import { shapeBounds } from './recognition/panelGeometry.ts';
 
 interface DecodedImage {
   source: CanvasImageSource;
@@ -142,6 +145,118 @@ export async function* detectedFigureCrops(
         forStorage: () => analogCropPng(page, bounds, '人物切り抜き'),
       };
     }
+  } finally {
+    if (upright) {
+      upright.width = 1;
+      upright.height = 1;
+    }
+    decoded.dispose();
+  }
+}
+
+function panelBoundsToNormalized(shape: PanelShape, sourceFrame: BBox | null): BBox {
+  const bounds = shapeBounds(shape);
+  if (!sourceFrame || sourceFrame.w <= 0 || sourceFrame.h <= 0) {
+    return {
+      x: bounds.x / 210,
+      y: bounds.y / 297,
+      w: bounds.w / 210,
+      h: bounds.h / 297,
+    };
+  }
+  return {
+    x: sourceFrame.x + ((bounds.x - INNER_FRAME_BOUNDS.x) / INNER_FRAME_BOUNDS.w) * sourceFrame.w,
+    y: sourceFrame.y + ((bounds.y - INNER_FRAME_BOUNDS.y) / INNER_FRAME_BOUNDS.h) * sourceFrame.h,
+    w: (bounds.w / INNER_FRAME_BOUNDS.w) * sourceFrame.w,
+    h: (bounds.h / INNER_FRAME_BOUNDS.h) * sourceFrame.h,
+  };
+}
+
+/** ネーム原画の各コマから人物領域を白抜きし、背景が描かれているコマだけ背景画像を切り出す。 */
+export async function extractDetectedPanelBackgrounds(
+  file: File,
+  rotation: 0 | 90 | 180 | 270,
+  analysis: {
+    detectedPanels: readonly PanelShape[];
+    detectedPanelIds?: readonly string[];
+    detectedFigures: readonly DetectedFigureRegion[];
+    sourceFrame: BBox | null;
+  },
+  page: MangaPage,
+): Promise<Array<{ panelIndex: number; blob: Blob }>> {
+  if (!analysis.detectedPanels.length) return [];
+  const decoded = await decodeImage(file);
+  let upright: HTMLCanvasElement | null = null;
+  try {
+    const canvas = uprightCanvas(decoded, rotation);
+    upright = canvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return [];
+    const results: Array<{ panelIndex: number; blob: Blob }> = [];
+
+    for (let panelIndex = 0; panelIndex < analysis.detectedPanels.length; panelIndex++) {
+      const panelShape = analysis.detectedPanels[panelIndex];
+      const pagePanel = page.panels[panelIndex];
+      if (!panelShape || !pagePanel) continue;
+      const panelPx = cropPixelBounds(panelBoundsToNormalized(panelShape, analysis.sourceFrame), canvas.width, canvas.height);
+      if (panelPx.w < 4 || panelPx.h < 4) continue;
+
+      const sourcePanelId = analysis.detectedPanelIds?.[panelIndex];
+      const cutoutRects: PixelCrop[] = [];
+      for (const region of analysis.detectedFigures) {
+        if (region.pageOverlay) continue;
+        const figPx = cropPixelBounds(region.bbox, canvas.width, canvas.height);
+        const ix0 = Math.max(panelPx.x, figPx.x);
+        const iy0 = Math.max(panelPx.y, figPx.y);
+        const ix1 = Math.min(panelPx.x + panelPx.w, figPx.x + figPx.w);
+        const iy1 = Math.min(panelPx.y + panelPx.h, figPx.y + figPx.h);
+        if (ix1 <= ix0 || iy1 <= iy0) continue;
+        if (sourcePanelId && region.sourcePanelId && region.sourcePanelId !== sourcePanelId) continue;
+        cutoutRects.push({
+          x: ix0 - panelPx.x,
+          y: iy0 - panelPx.y,
+          w: ix1 - ix0,
+          h: iy1 - iy0,
+        });
+      }
+
+      const raw = ctx.getImageData(panelPx.x, panelPx.y, panelPx.w, panelPx.h);
+      const { rgba, hasBackground } = extractPanelBackgroundWithCutout(raw.data, panelPx.w, panelPx.h, cutoutRects, pagePanel);
+      if (!hasBackground) continue;
+
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = panelPx.w;
+      srcCanvas.height = panelPx.h;
+      const sctx = srcCanvas.getContext('2d');
+      if (!sctx) continue;
+      const imgData = sctx.createImageData(panelPx.w, panelPx.h);
+      imgData.data.set(rgba);
+      sctx.putImageData(imgData, 0, 0);
+
+      const scale = Math.min(1, 1536 / Math.max(panelPx.w, panelPx.h));
+      const outW = Math.max(1, Math.round(panelPx.w * scale));
+      const outH = Math.max(1, Math.round(panelPx.h * scale));
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = outW;
+      outCanvas.height = outH;
+      const octx = outCanvas.getContext('2d');
+      try {
+        if (!octx) continue;
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, outW, outH);
+        octx.imageSmoothingEnabled = true;
+        octx.imageSmoothingQuality = 'high';
+        octx.drawImage(srcCanvas, 0, 0, outW, outH);
+        const blob = await new Promise<Blob>((resolve, reject) =>
+          outCanvas.toBlob(result => (result ? resolve(result) : reject(new Error('背景切り出し画像を作成できませんでした'))), 'image/png'),
+        );
+        results.push({ panelIndex, blob });
+      } finally {
+        srcCanvas.width = srcCanvas.height = 1;
+        outCanvas.width = outCanvas.height = 1;
+      }
+    }
+    return results;
   } finally {
     if (upright) {
       upright.width = 1;

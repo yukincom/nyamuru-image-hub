@@ -111,3 +111,113 @@ function run(argv) {
     if selected is None:
         return None
     return [Path(value).expanduser().resolve() for value in json.loads(selected)]
+
+
+def choose_import_images_with_options(default_directory: Path) -> dict | None:
+    if sys.platform != "darwin":
+        return None
+    script = """
+function run(argv) {
+  ObjC.import("AppKit");
+  ObjC.import("Foundation");
+
+  const app = $.NSApplication.sharedApplication;
+  app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
+  app.activateIgnoringOtherApps(true);
+
+  const panel = $.NSOpenPanel.openPanel;
+  panel.canChooseFiles = true;
+  panel.canChooseDirectories = false;
+  panel.allowsMultipleSelection = true;
+  panel.message = "作品に読み込む画像を選んでください";
+  panel.prompt = "選択";
+  panel.directoryURL = $.NSURL.fileURLWithPathIsDirectory(argv[0], true);
+  panel.allowedFileTypes = $.NSArray.arrayWithArray(["png", "jpg", "jpeg", "webp"]);
+
+  let cbSplit, cbTrans, rbFig, rbBg;
+  function syncState() {
+    const splitOn = cbSplit.state === $.NSControlStateValueOn;
+    const figOn = rbFig.state === $.NSControlStateValueOn;
+    rbFig.enabled = splitOn;
+    rbBg.enabled = splitOn;
+    cbTrans.enabled = splitOn && figOn;
+  }
+
+  ObjC.registerSubclass({
+    name: "NyamuruImportAccessoryTarget",
+    superclass: "NSObject",
+    methods: {
+      "onCheck:": {
+        types: ["void", ["id"]],
+        implementation: function(_sender) {
+          syncState();
+        }
+      },
+      "onRadio:": {
+        types: ["void", ["id"]],
+        implementation: function(sender) {
+          if (sender === rbFig) {
+            rbFig.state = $.NSControlStateValueOn;
+            rbBg.state = $.NSControlStateValueOff;
+          } else {
+            rbFig.state = $.NSControlStateValueOff;
+            rbBg.state = $.NSControlStateValueOn;
+          }
+          syncState();
+        }
+      }
+    }
+  });
+
+  const target = $.NyamuruImportAccessoryTarget.alloc.init;
+  const view = $.NSView.alloc.initWithFrame($.NSMakeRect(0, 0, 440, 68));
+
+  cbSplit = $.NSButton.checkboxWithTitleTargetAction("コマで分ける", target, "onCheck:");
+  cbSplit.frame = $.NSMakeRect(12, 38, 190, 22);
+  cbSplit.state = $.NSControlStateValueOff;
+
+  cbTrans = $.NSButton.checkboxWithTitleTargetAction("白背景を透過する", target, "onCheck:");
+  cbTrans.frame = $.NSMakeRect(220, 38, 200, 22);
+  cbTrans.state = $.NSControlStateValueOn;
+
+  rbFig = $.NSButton.radioButtonWithTitleTargetAction("キャラクターへ配置", target, "onRadio:");
+  rbFig.frame = $.NSMakeRect(12, 10, 190, 22);
+  rbFig.state = $.NSControlStateValueOn;
+
+  rbBg = $.NSButton.radioButtonWithTitleTargetAction("背景へ配置", target, "onRadio:");
+  rbBg.frame = $.NSMakeRect(220, 10, 200, 22);
+  rbBg.state = $.NSControlStateValueOff;
+
+  syncState();
+  view.addSubview(cbSplit);
+  view.addSubview(cbTrans);
+  view.addSubview(rbFig);
+  view.addSubview(rbBg);
+
+  panel.accessoryView = view;
+  panel.accessoryViewDisclosed = true;
+
+  if (panel.runModal !== $.NSModalResponseOK) {
+    return JSON.stringify({ cancelled: true, paths: [] });
+  }
+
+  const urls = panel.URLs;
+  const paths = [];
+  for (let i = 0; i < urls.count; i++) {
+    paths.push(ObjC.unwrap(urls.objectAtIndex(i).path));
+  }
+  return JSON.stringify({
+    cancelled: false,
+    paths,
+    options: {
+      splitByPanels: cbSplit.state === $.NSControlStateValueOn,
+      splitTarget: rbBg.state === $.NSControlStateValueOn ? "background" : "figure",
+      transparentWhite: cbTrans.state === $.NSControlStateValueOn,
+    },
+  });
+}
+"""
+    raw = run_macos_picker(script, str(default_directory))
+    if raw is None:
+        return {"cancelled": True, "paths": [], "options": None}
+    return json.loads(raw)

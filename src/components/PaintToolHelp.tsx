@@ -27,10 +27,16 @@ export default function PaintToolHelp({enabled=true}:{enabled?:boolean}){
     if(!enabled)return;
     let timer:ReturnType<typeof setTimeout>|undefined,target:HTMLElement|null=null;
     const clear=()=>{clearTimeout(timer);timer=undefined;target?.removeAttribute('aria-describedby');target=null;setHint(null);};
-    const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tool-shortcut]'):null;
+    const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tool-shortcut], .paint-tools-dock [data-tool-label], .pen-family-menu [data-tool-label]'):null;
     const schedule=(next:HTMLElement|null)=>{
       if(next===target)return;clear();if(!next)return;target=next;
-      timer=setTimeout(()=>{if(target!==next||!next.isConnected)return;next.setAttribute('aria-describedby','paint-tool-description');setHint({target:next,label:next.dataset.toolLabel??next.getAttribute('aria-label')??'',text:next.dataset.toolShortcut??''});},1000);
+      timer=setTimeout(()=>{
+        if(target!==next||!next.isConnected)return;
+        const label=next.dataset.toolLabel??next.getAttribute('aria-label')??'',text=next.dataset.toolShortcut??'';
+        if(!label&&!text)return;
+        next.setAttribute('aria-describedby','paint-tool-description');
+        setHint({target:next,label,text});
+      },1000);
     };
     const over=(event:PointerEvent)=>{if(event.pointerType!=='touch'&&!event.buttons)schedule(find(event.target));};
     const out=(event:PointerEvent)=>{if(find(event.relatedTarget)!==target)clear();};

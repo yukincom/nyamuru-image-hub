@@ -21,20 +21,21 @@ interface PaintLayerActionsBindings {
   clearVectorSelection: () => void;
   matchLayerPen: (kind: PaintLayer["kind"]) => void;
   openBackground3d: (key?: string) => void;
+  requestClose: () => Promise<void>;
 }
 
 export function createPaintLayerActions(options: PaintEditorOptions, state: PaintEditorState, bindings: PaintLayerActionsBindings) {
   const { overlay, requested, textTool, zoomTool, onStartPaint, onAddOutside, onToggleGuide } = options;
   const {
     scene, busy, suspended, finishSelection, anchor, paletteScope, finishKeys, hasLayer, layer,
-    setFinishSelection, toolSuspended, operation, setMenu, setFinishOpen, setLineTraceOpen, alive, historyRef,
+    setFinishSelection, toolSuspended, operation, setMenu, setFinishOpen, setLineTraceOpen, setRasterUpscaleOpen, dialogAutoPaint, dirty, alive, historyRef,
     inputActive, imagesRef, setImages, setImports, setOwnerKey, setLayerId, setEffectsTab,
     setMaskTarget, setSelection, setPaletteFolded, ownerKey, layerId, selectedFolder, maskTarget,
     paletteFolded, owner, inkColor, setInkColor, selectedMask, images, locked, selectionBoxes, setError, setTool,
   } = state;
   const {
     finishGesture, commit, selectOwner, updateOwnerLayer, createGenerationMask, clearVectorSelection,
-    matchLayerPen, openBackground3d,
+    matchLayerPen, openBackground3d, requestClose,
   } = bindings;
   function toggleFinishLayer(key:string,id:string){
     const target=scene.owners.find(item=>item.key===key)?.paint.layers.find(item=>item.id===id);
@@ -45,16 +46,58 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
   }
   function openFinish(){
     if(overlay||busy||toolSuspended||operation.current)return;
+    const autoStart=!requested;
     if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
+    if(autoStart)dialogAutoPaint.current=true;
     finishGesture();setMenu(null);setFinishOpen(true);
   }
   function openLineTrace(){
     if(overlay||busy||toolSuspended||operation.current)return;
+    const autoStart=!requested;
     if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
+    if(autoStart)dialogAutoPaint.current=true;
     finishGesture();setMenu(null);setLineTraceOpen(true);
+  }
+  function openRasterUpscale(){
+    if(overlay||busy||toolSuspended||operation.current)return;
+    const autoStart=!requested;
+    if((!requested||textTool||zoomTool)&&!onStartPaint?.())return;
+    if(autoStart)dialogAutoPaint.current=true;
+    finishGesture();setMenu(null);setRasterUpscaleOpen(true);
+  }
+  function closeTransformDialog(kind:'finish'|'lineTrace'|'rasterUpscale'){
+    if(kind==='finish')setFinishOpen(false);
+    else if(kind==='lineTrace')setLineTraceOpen(false);
+    else setRasterUpscaleOpen(false);
+    if(dialogAutoPaint.current){
+      dialogAutoPaint.current=false;
+      if(!dirty)void requestClose().catch(()=>{});
+    }
+  }
+  function acceptRasterUpscale(batch:FinishBatch){
+    if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。高精細化を開き直してください');
+    dialogAutoPaint.current=false;
+    imagesRef.current=batch.images;setImages(batch.images);
+    setImports(items=>[...items,...batch.imports.filter(add=>!items.some(item=>item.asset.id===add.asset.id))]);
+    const {ownerKey,folderId}=batch.focus;
+    const target=batch.scene.owners.find(item=>item.key===ownerKey)!;
+    commit(batch.scene);
+    setFinishSelection(null);setOwnerKey(ownerKey);setLayerId(folderId);
+    setMaskTarget(null);setSelection(null);setRasterUpscaleOpen(false);
+    matchLayerPen('raster');
+    setPaletteFolded(current=>{
+      const next={...current,[paletteScope]:false,[`${paletteScope}/owner/${ownerKey}`]:false};
+      if(target.parentKey)next[`${paletteScope}/owner/${target.parentKey}`]=false;
+      const created=target.paint.layers.find(item=>item.id===folderId);
+      if(created?.folderId){
+        for(const folder of paintFolderChain(target.paint,created.folderId))next[`${paletteScope}/folder/${folder.id}`]=false;
+      }
+      return next;
+    });
   }
   function acceptLineTrace(batch:FinishBatch){
     if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。ベクター変換を開き直してください');
+    dialogAutoPaint.current=false;
     imagesRef.current=batch.images;setImages(batch.images);
     setImports(items=>[...items,...batch.imports.filter(add=>!items.some(item=>item.asset.id===add.asset.id))]);
     const {ownerKey,folderId}=batch.focus;
@@ -73,6 +116,7 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
   }
   function acceptFinish(batch:FinishBatch){
     if(!alive.current||historyRef.current.present!==batch.source||operation.current||inputActive.current)throw new Error('選択したコマが変わりました。仕上げを開き直してください');
+    dialogAutoPaint.current=false;
     imagesRef.current=batch.images;setImages(batch.images);
     setImports(items=>[...items,...batch.imports.filter(add=>!items.some(item=>item.asset.id===add.asset.id))]);
     const {ownerKey,folderId,shadeId}=batch.focus;
@@ -222,6 +266,6 @@ export function createPaintLayerActions(options: PaintEditorOptions, state: Pain
 
   return {
     layerAction, toggleFinishLayer, selectMask, addToneMask, addGenerationMask, toggleGuide,
-    acceptFinish, openFinish, acceptLineTrace, openLineTrace,
+    acceptFinish, openFinish, acceptLineTrace, openLineTrace, acceptRasterUpscale, openRasterUpscale, closeTransformDialog,
   };
 }

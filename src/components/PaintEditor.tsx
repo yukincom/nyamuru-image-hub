@@ -9,6 +9,7 @@ import {
 import PaintLayerPalette, { PaintLayerControls } from './PaintLayerPalette';
 import MangaFinishDialog from './MangaFinishDialog';
 import LineTraceDialog from './LineTraceDialog';
+import RasterUpscaleDialog from './RasterUpscaleDialog';
 import PaintLayerEffects from './PaintLayerEffects';
 import { nextMonoInk, swapPaintInk } from '../lib/paintInk';
 import { alphaSelection } from '../lib/rasterSelection';
@@ -70,7 +71,7 @@ export default function PaintEditor(props: PaintEditorProps) {
     finishKeys, backgroundCaptureReady, error, ruler, setBackgroundHost, backgroundSelection,
     setBackgroundSelection, vectorPreview, rasterPreview, maskPreview, selectionTool, selectionBoxes,
     lassoPreview, penCursor, size, eraserSize, history, menu, paletteFolded, setPaletteFolded,
-    finishOpen, setFinishOpen, lineTraceOpen, setLineTraceOpen, BackgroundEditor, setBackgroundCaptureReady, stageImports,
+    finishOpen, lineTraceOpen, rasterUpscaleOpen, BackgroundEditor, setBackgroundCaptureReady, stageImports,
     backgroundHost, backgroundLoadError, retryBackgroundLoad,
   } = state;
   function setCurrentSize(width:number){
@@ -136,15 +137,15 @@ export default function PaintEditor(props: PaintEditorProps) {
   } = createPaintBackgroundActions(options, state, { finishGesture, clearVectorSelection, endBackgroundMove, commit, flush });
   const {
     layerAction, toggleFinishLayer, selectMask, addToneMask, addGenerationMask, toggleGuide,
-    acceptFinish, openFinish, acceptLineTrace, openLineTrace,
+    acceptFinish, openFinish, acceptLineTrace, openLineTrace, acceptRasterUpscale, openRasterUpscale, closeTransformDialog,
   } = createPaintLayerActions(options, state, {
     finishGesture, commit, selectOwner, updateOwnerLayer, createGenerationMask, clearVectorSelection,
-    matchLayerPen, openBackground3d,
+    matchLayerPen, openBackground3d, requestClose,
   });
   const { selectTool, toolControls, detailControls, eraseModeMenu } = usePaintToolActions(options, state, {
     finishGesture, paintRegion, redo, undo, setCurrentSize, changeVectorStyle, clearVectorSelection,
     toggleInk, requestClose, deleteVectorSelection, changePaths, paintActive, swapInk, chooseInk,
-    updateOwnerLayer, layerAction, openFinish, openLineTrace,
+    updateOwnerLayer, layerAction, openFinish, openLineTrace, openRasterUpscale,
   });
 
   function snapshot(scene=historyRef.current.present):PaintSessionSnapshot {
@@ -367,5 +368,5 @@ export default function PaintEditor(props: PaintEditorProps) {
   </div></>,window.document.body);
   const geometryKey=scene.owners.map(o=>JSON.stringify([o.frame,o.paint.width,o.paint.height,o.paint.referenceFrame])).join('|');
   const geometry=useMemo(()=>requested?scene:null,[requested,geometryKey]);
-  return <PaintLayerControlsContext.Provider value={{controls:layerHeader,folded:paletteFolded,setFolded:(key,value)=>setPaletteFolded(current=>({...current,[key]:value}))}}><PaintDetailsContext.Provider value={<>{detailControls}{effects}</>}><PaintToolsContext.Provider value={toolControls}><BubblePathToolContext.Provider value={bubblePathTool}><PaintInputActivityContext.Provider value={inputActive}><PaintWorkspaceContext.Provider value={value}><PaintGeometryContext.Provider value={geometry}>{children}{finishOpen&&requested&&!overlay&&<MangaFinishDialog loadError={images?'':error} scene={historyRef.current.present} images={images} assets={[...assets,...imports.map(item=>item.asset)]} selectedKeys={finishKeys} panel={panelIndex+1} onApply={acceptFinish} onClose={()=>setFinishOpen(false)}/>}{lineTraceOpen&&requested&&!overlay&&<LineTraceDialog loadError={images?'':error} scene={historyRef.current.present} images={images} assets={[...assets,...imports.map(item=>item.asset)]} selectedKeys={finishKeys} panel={panelIndex+1} onApply={acceptLineTrace} onClose={()=>setLineTraceOpen(false)}/>} {contextMenu}{eraseModeMenu}{backgroundTarget&&(BackgroundEditor?<BackgroundEditor onCaptureReady={setBackgroundCaptureReady} controller={backgroundController} disabled={busy||externalSuspended} pendingStages={stageImports} host={backgroundHost} paint={backgroundTarget.paint} stages={[...stages,...stageImports.map(i=>i.stage).filter(s=>!stages.some(saved=>saved.id===s.id))]} onCapture={captureBackground3d} onCancel={closeBackground3d}/>:<section class="background3d-controls" role="dialog" aria-label="3D背景の読み込み"><header><strong>3D背景</strong><button onClick={()=>setBackgroundOwner(null)}>保存せずに閉じる</button></header>{backgroundLoadError?<><p role="alert">3D機能を読み込めませんでした。{backgroundLoadError}</p><button onClick={()=>retryBackgroundLoad(value=>value+1)}>再試行</button></>:null}</section>)}<ProjectFileInput hidden inputRef={input} accept="image/png,image/jpeg" onFiles={files=>importImage(files[0])}/></PaintGeometryContext.Provider></PaintWorkspaceContext.Provider></PaintInputActivityContext.Provider></BubblePathToolContext.Provider></PaintToolsContext.Provider></PaintDetailsContext.Provider></PaintLayerControlsContext.Provider>;
+  return <PaintLayerControlsContext.Provider value={{controls:layerHeader,folded:paletteFolded,setFolded:(key,value)=>setPaletteFolded(current=>({...current,[key]:value}))}}><PaintDetailsContext.Provider value={<>{detailControls}{effects}</>}><PaintToolsContext.Provider value={toolControls}><BubblePathToolContext.Provider value={bubblePathTool}><PaintInputActivityContext.Provider value={inputActive}><PaintWorkspaceContext.Provider value={value}><PaintGeometryContext.Provider value={geometry}>{children}{finishOpen&&requested&&!overlay&&<MangaFinishDialog loadError={images?'':error} scene={historyRef.current.present} images={images} assets={[...assets,...imports.map(item=>item.asset)]} selectedKeys={finishKeys} panel={panelIndex+1} onApply={acceptFinish} onClose={()=>closeTransformDialog('finish')}/>}{lineTraceOpen&&requested&&!overlay&&<LineTraceDialog loadError={images?'':error} scene={historyRef.current.present} images={images} assets={[...assets,...imports.map(item=>item.asset)]} selectedKeys={finishKeys} panel={panelIndex+1} onApply={acceptLineTrace} onClose={()=>closeTransformDialog('lineTrace')}/>}{rasterUpscaleOpen&&requested&&!overlay&&<RasterUpscaleDialog loadError={images?'':error} scene={historyRef.current.present} images={images} assets={[...assets,...imports.map(item=>item.asset)]} selectedKeys={finishKeys} panel={panelIndex+1} onApply={acceptRasterUpscale} onClose={()=>closeTransformDialog('rasterUpscale')}/>} {contextMenu}{eraseModeMenu}{backgroundTarget&&(BackgroundEditor?<BackgroundEditor onCaptureReady={setBackgroundCaptureReady} controller={backgroundController} disabled={busy||externalSuspended} pendingStages={stageImports} host={backgroundHost} paint={backgroundTarget.paint} stages={[...stages,...stageImports.map(i=>i.stage).filter(s=>!stages.some(saved=>saved.id===s.id))]} onCapture={captureBackground3d} onCancel={closeBackground3d}/>:<section class="background3d-controls" role="dialog" aria-label="3D背景の読み込み"><header><strong>3D背景</strong><button onClick={()=>setBackgroundOwner(null)}>保存せずに閉じる</button></header>{backgroundLoadError?<><p role="alert">3D機能を読み込めませんでした。{backgroundLoadError}</p><button onClick={()=>retryBackgroundLoad(value=>value+1)}>再試行</button></>:null}</section>)}<ProjectFileInput hidden inputRef={input} accept="image/png,image/jpeg" onFiles={files=>importImage(files[0])}/></PaintGeometryContext.Provider></PaintWorkspaceContext.Provider></PaintInputActivityContext.Provider></BubblePathToolContext.Provider></PaintToolsContext.Provider></PaintDetailsContext.Provider></PaintLayerControlsContext.Provider>;
 }

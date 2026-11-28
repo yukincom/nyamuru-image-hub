@@ -1,7 +1,7 @@
 import { useEffect } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import {
-  Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, ArrowLeftRight, Sparkles, Spline,
+  Pencil, Eraser, Minus, Square, Circle, MousePointer2, MousePointer, PenTool, ArrowLeftRight, Layers, Spline, ImageUpscale,
 } from 'lucide-preact';
 import VectorControls from '../VectorControls';
 import PaintPenTools from '../PaintPenTools';
@@ -47,6 +47,7 @@ interface PaintToolActionsBindings {
   layerAction: (action: PaintLayerAction) => void;
   openFinish: () => void;
   openLineTrace: () => void;
+  openRasterUpscale: () => void;
 }
 
 export function usePaintToolActions(options: PaintEditorOptions, state: PaintEditorState, bindings: PaintToolActionsBindings) {
@@ -67,7 +68,7 @@ export function usePaintToolActions(options: PaintEditorOptions, state: PaintEdi
   const {
     finishGesture, paintRegion, redo, undo, setCurrentSize, changeVectorStyle, clearVectorSelection,
     toggleInk, requestClose, deleteVectorSelection, changePaths, paintActive, swapInk, chooseInk,
-    updateOwnerLayer, layerAction, openFinish, openLineTrace,
+    updateOwnerLayer, layerAction, openFinish, openLineTrace, openRasterUpscale,
   } = bindings;
   function selectTool(next:PaintTool){
     if(busy||toolSuspended||operation.current)return;
@@ -161,13 +162,17 @@ export function usePaintToolActions(options: PaintEditorOptions, state: PaintEdi
       })}
       <PaintPenTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended} open={penMenu} setOpen={setPenMenu}/>
       <PaintBrushTools brush={brush} active={paintActive&&tool==='pen'} select={value=>{if(busy||toolSuspended||operation.current)return;selectTool('pen');setBrush(value);}} disabled={busy||toolSuspended}/>
+      <PaintToolButton class="paint-tool-icon" label="消しゴム" shortcut="E" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||toolSuspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton>
+      <PaintToolButton class="paint-tool-icon" label="バケツ" shortcut="G" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
       <PaintShapeTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>{textTools}
       {panelTools}
       <PaintRulerTools mode={rulerMode} active={paintActive&&tool==='ruler'} select={selectRuler} disabled={busy||toolSuspended||inputActive.current}/>
-      <PaintToolButton class="paint-tool-icon" label="消しゴム" shortcut="E" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='eraser'} aria-haspopup="menu" aria-expanded={Boolean(eraserMenu)} onClick={()=>selectTool('eraser')} onContextMenu={event=>{event.preventDefault();event.stopPropagation();if(busy||toolSuspended)return;const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX||rect.left,y=event.clientY||rect.bottom;setEraserMenu({x:Math.max(8,Math.min(x,window.innerWidth-210)),y:Math.max(8,Math.min(y,window.innerHeight-150))});}}><Eraser size={23}/></PaintToolButton><PaintSelectionTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>
-      <PaintToolButton class="paint-tool-icon" label="漫画仕上げ" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openFinish}><Sparkles size={23}/></PaintToolButton>
+      <PaintSelectionTools tool={paintActive?tool:''} select={selectTool} disabled={busy||toolSuspended}/>
+    </div>
+    <div class="paint-tool-icons paint-tool-icons-convert">
+      <PaintToolButton class="paint-tool-icon" label="高精細化" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openRasterUpscale}><ImageUpscale size={23}/></PaintToolButton>
       <PaintToolButton class="paint-tool-icon" label="ベクター変換" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openLineTrace}><Spline size={23}/></PaintToolButton>
-      <PaintToolButton class="paint-tool-icon" label="バケツ" shortcut="G" disabled={busy||toolSuspended} aria-pressed={paintActive&&tool==='fill'} onClick={()=>selectTool('fill')}><UprightPaintBucketIcon/></PaintToolButton>
+      <PaintToolButton class="paint-tool-icon" label="レイヤー分解" disabled={!toolPaletteEnabled||overlay||busy||toolSuspended} aria-haspopup="dialog" onClick={openFinish}><Layers size={23}/></PaintToolButton>
     </div>
     <div class={`paint-ink-controls ${brushInk?'is-brush-ink':''}`}>
       <div class="paint-ink-targets" role="group" aria-label={brushInk?'ブラシの描画色':'塗りと線'}>

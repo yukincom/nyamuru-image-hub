@@ -518,6 +518,130 @@ export async function splitPageImageForDocument(
   });
 }
 
+export function extractPanelBackgroundWithCutout(
+  panelRgba: Uint8ClampedArray,
+  width: number,
+  height: number,
+  cutoutRects: readonly PixelCrop[],
+  panel?: Panel,
+): { rgba: Uint8ClampedArray; hasBackground: boolean } {
+  if (width < 1 || height < 1) {
+    return { rgba: new Uint8ClampedArray(panelRgba), hasBackground: false };
+  }
+  const masked = panel ? maskOutsidePanelPolygon(panelRgba, width, height, panel, false) : panelRgba;
+  const rgba = stripCutlinesAndFloodWhite(masked, width, height, false);
+  const cutMask = new Uint8Array(width * height);
+  const pad = 2;
+
+  for (const rect of cutoutRects) {
+    const x0 = Math.max(0, Math.floor(rect.x - pad));
+    const y0 = Math.max(0, Math.floor(rect.y - pad));
+    const x1 = Math.min(width, Math.ceil(rect.x + rect.w + pad));
+    const y1 = Math.min(height, Math.ceil(rect.y + rect.h + pad));
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const pos = y * width + x;
+        cutMask[pos] = 1;
+        const idx = pos * 4;
+        rgba[idx] = 255;
+        rgba[idx + 1] = 255;
+        rgba[idx + 2] = 255;
+        rgba[idx + 3] = 255;
+      }
+    }
+  }
+
+  const margin = Math.min(4, Math.floor(Math.min(width, height) / 6));
+  let remainingPixels = 0;
+  let inkCount = 0;
+  for (let y = margin; y < height - margin; y++) {
+    for (let x = margin; x < width - margin; x++) {
+      const pos = y * width + x;
+      if (cutMask[pos]) continue;
+      remainingPixels++;
+      const idx = pos * 4;
+      if (!isNearWhite(rgba[idx], rgba[idx + 1], rgba[idx + 2], rgba[idx + 3])) {
+        inkCount++;
+      }
+    }
+  }
+
+  const hasBackground = remainingPixels > 0 && inkCount >= 40 && inkCount / remainingPixels >= 0.004;
+  return { rgba, hasBackground };
+}
+
+export async function splitPageCharactersAndBackgrounds(
+  file: File,
+  page: MangaPage,
+  transparentWhite: boolean,
+): Promise<{ characters: SplitCharacterResult[]; backgrounds: SplitBackgroundResult[] }> {
+  return withPageCutlinePanels(file, page, async (ctx, crops) => {
+    const characters: SplitCharacterResult[] = [];
+    const backgrounds: SplitBackgroundResult[] = [];
+    for (let panelIndex = 0; panelIndex < page.panels.length; panelIndex++) {
+      const panel = page.panels[panelIndex];
+      const crop = crops[panelIndex];
+      if (!crop) continue;
+      const panelData = ctx.getImageData(crop.x, crop.y, crop.w, crop.h);
+      const maskedPanelData = maskOutsidePanelPolygon(panelData.data, crop.w, crop.h, panel, transparentWhite);
+      const panelBox = panelBounds(panel);
+      const figures = panel.figures ?? [];
+      const splitChars = figures.length
+        ? splitPanelCharacters(maskedPanelData, crop.w, crop.h, figures, transparentWhite, panelBox)
+        : [];
+      for (const item of splitChars) {
+        const pngFile = await rgbaToPngFile(
+          item.rgba,
+          item.width,
+          item.height,
+          `p${String(page.page).padStart(2, '0')}_panel${panel.id}_fig${item.figureIndex + 1}.png`,
+        );
+        const frameMm: BBox = {
+          x: panelBox.x + (item.crop.x / crop.w) * panelBox.w,
+          y: panelBox.y + (item.crop.y / crop.h) * panelBox.h,
+          w: (item.crop.w / crop.w) * panelBox.w,
+          h: (item.crop.h / crop.h) * panelBox.h,
+        };
+        characters.push({ panelIndex, figureIndex: item.figureIndex, file: pngFile, frameMm });
+      }
+
+      const splitByFigure = new Map(splitChars.map(item => [item.figureIndex, item.crop]));
+      const cutoutRects: PixelCrop[] = [];
+      for (let figureIndex = 0; figureIndex < figures.length; figureIndex++) {
+        const fig = figures[figureIndex];
+        if (fig.bbox && panelBox.w > 0 && panelBox.h > 0) {
+          const x0 = ((fig.bbox.x - panelBox.x) / panelBox.w) * crop.w;
+          const y0 = ((fig.bbox.y - panelBox.y) / panelBox.h) * crop.h;
+          const wPx = (fig.bbox.w / panelBox.w) * crop.w;
+          const hPx = (fig.bbox.h / panelBox.h) * crop.h;
+          const clampedX0 = Math.max(0, Math.floor(x0));
+          const clampedY0 = Math.max(0, Math.floor(y0));
+          const clampedX1 = Math.min(crop.w, Math.ceil(x0 + wPx));
+          const clampedY1 = Math.min(crop.h, Math.ceil(y0 + hPx));
+          if (clampedX1 > clampedX0 && clampedY1 > clampedY0) {
+            cutoutRects.push({ x: clampedX0, y: clampedY0, w: clampedX1 - clampedX0, h: clampedY1 - clampedY0 });
+            continue;
+          }
+        }
+        const matchedCrop = splitByFigure.get(figureIndex);
+        if (matchedCrop) cutoutRects.push(matchedCrop);
+      }
+
+      const bg = extractPanelBackgroundWithCutout(panelData.data, crop.w, crop.h, cutoutRects, panel);
+      if (bg.hasBackground) {
+        const pngFile = await rgbaToPngFile(
+          bg.rgba,
+          crop.w,
+          crop.h,
+          `p${String(page.page).padStart(2, '0')}_panel${panel.id}_bg.png`,
+        );
+        backgrounds.push({ panelIndex, file: pngFile, frameMm: panelBox });
+      }
+    }
+    return { characters, backgrounds };
+  });
+}
+
 export async function splitPageBackgroundsForDocument(
   file: File,
   page: MangaPage,

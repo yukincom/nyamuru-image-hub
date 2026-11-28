@@ -114,6 +114,40 @@ async function traceMangaLineArt(repoRoot, body, signal) {
   });
 }
 
+async function upscaleMangaRaster(repoRoot, body, signal) {
+  if (typeof body?.image !== 'string' || !body.image) {
+    throw new Error('高精細化する画像がありません');
+  }
+  const visionRoot = process.env.NYAMURU_VISION_ROOT || resolve(repoRoot, '.local-vision');
+  const python = process.env.NYAMURU_BRIDGE_PYTHON || resolve(
+    visionRoot,
+    process.platform === 'win32' ? '.venv/Scripts/python.exe' : '.venv/bin/python',
+  );
+  const script = resolve(repoRoot, 'scripts/line_trace_upscale.py');
+  if (!existsSync(python) || !existsSync(script)) {
+    throw new Error('高精細化の実行環境が見つかりません。npm run setup:vision を実行してください');
+  }
+  signal.throwIfAborted();
+  const payload = {
+    image: body.image,
+    mode: typeof body?.mode === 'string' && body.mode ? body.mode : 'ai2x',
+    maxEdge: Number.isFinite(body?.maxEdge) ? body.maxEdge : 4096,
+    preserveAlpha: body?.preserveAlpha !== false,
+    outputMode: body?.outputMode === 'monochrome' ? 'monochrome' : 'color',
+    threshold: Number.isFinite(body?.threshold) ? body.threshold : 180,
+  };
+  return new Promise((done, fail) => {
+    const child = execFile(python, ['-B', script, visionRoot], {
+      signal, timeout: 90_000, maxBuffer: 96 * 1024 * 1024,
+    }, (error, stdout, stderr) => {
+      if (error) return fail(new Error(stderr.trim() || '高精細化の実行に失敗しました'));
+      try { done(JSON.parse(stdout)); } catch { fail(new Error('高精細化の結果を読み込めませんでした')); }
+    });
+    child.stdin.on('error', fail);
+    child.stdin.end(JSON.stringify(payload));
+  });
+}
+
 export async function startLocalBridgeSupervisor({
   repoRoot,
   host = '127.0.0.1',
@@ -143,6 +177,7 @@ export async function startLocalBridgeSupervisor({
   const runtimeOperations = new Map();
   let mangaFinish = null;
   let lineTrace = null;
+  let rasterUpscale = null;
   const forgetOperation = token => {
     for(const operations of runtimeOperations.values()) operations.delete(token);
   };
@@ -192,6 +227,25 @@ export async function startLocalBridgeSupervisor({
           }, origin);
         } finally {
           lineTrace = null;
+        }
+        return;
+      }
+      if (request.method === 'POST' && pathname === '/api/raster-upscale') {
+        if (rasterUpscale) {
+          jsonResponse(response, 409, { ok: false, error: '別の高精細化処理の完了をお待ちください' }, origin);
+          return;
+        }
+        const operation = new AbortController();
+        rasterUpscale = operation;
+        response.once('close', () => operation.abort());
+        try {
+          const body = await jsonBody(request, 96 * 1024 * 1024);
+          const result = await upscaleMangaRaster(repoRoot, body, operation.signal);
+          if (!response.destroyed) jsonResponse(response, 200, {
+            ...result, ok: true, service: BRIDGE_SUPERVISOR_SERVICE, protocol_version: BRIDGE_SUPERVISOR_PROTOCOL_VERSION,
+          }, origin);
+        } finally {
+          rasterUpscale = null;
         }
         return;
       }

@@ -109,7 +109,7 @@ export default function MangaFinishDialog({scene,images,assets,panel,selectedKey
       });
       if(current.current&&focus)setPreview({batch:{source:scene,scene:finished,images:map,imports:[...pending.values()],focus},comparisons});
     }catch(cause){
-      release();if(current.current)setError(cause instanceof Error?cause.message:'漫画仕上げに失敗しました');
+      release();if(current.current)setError(cause instanceof Error?cause.message:'レイヤー分解に失敗しました');
     }finally{request.current=null;if(current.current)setProgress('');}
   }
   function apply(){
@@ -120,7 +120,7 @@ export default function MangaFinishDialog({scene,images,assets,panel,selectedKey
   const shown=preview?.comparisons[index];
   return <dialog class="image-export-dialog manga-finish-dialog" ref={dialog} aria-labelledby="manga-finish-title"
     onCancel={event=>{event.preventDefault();onClose();}} onKeyDown={event=>event.stopPropagation()}>
-    <header><div><h2 id="manga-finish-title">漫画仕上げ</h2><p>MangaScreen · コマ {panel}</p></div>
+    <header><div><h2 id="manga-finish-title">レイヤー分解</h2><p>MangaScreen · コマ {panel}</p></div>
       <button type="button" class="icon-button" aria-label="閉じる" onClick={onClose}><X size={18}/></button></header>
     <p class="manga-finish-target">{selected.length?selected.map(item=>item.label).join('、'):'原稿で仕上げたい画像レイヤーを選んでください。'}</p>
     <label class="manga-finish-size">出力の長辺<select value={edge} disabled={Boolean(progress)} onChange={event=>{resetPreview();setEdge(Number(event.currentTarget.value));}}>

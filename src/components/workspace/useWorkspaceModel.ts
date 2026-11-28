@@ -238,7 +238,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     setDocument,
   });
   const {
-    choosePlacedImage, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer,
+    choosePlacedImage, importPlacedImage, importDirectStandaloneImages, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer,
   } = createImagePlacementActions(workspace, {
     selectedPaintOwner, setDocument, openPaint, makePaintScene,
   });
@@ -278,7 +278,7 @@ export function useWorkspaceModel(startupWorkspace: WorkspaceStartupState) {
     endTextEdit, openPaint, chooseLayoutTool, toggleTextLayer, selectLayerOwner, selectCanvasElement, selectCanvasElements,
     reorderOwnerLayers, startBubbleEdit, artworkGuideVisible, toggleArtworkGuide, prepareQwen,
     applyPaint, autoPaintBoundary, guardDuringPaint, layerTransition, choosePlacedImage,
-    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseImageExportFolder,
+    openImageExportDialog, openNewDialog, openProject, openRecentProject, importPlacedImage, importDirectStandaloneImages, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseImageExportFolder,
     exportPageRange, voiceRevision, applyVoiceCommand, inspectAgent, applyAgentBubbleEdit,
     applyBubbleMaterial, changeTab, selectPage, addPage, duplicatePage, deletePage, reorderPage, page,
     spreadPartnerIndex, changeTextToolStyle, changeCanvasTextStyle, startTextEdit, createScreenTextAt,

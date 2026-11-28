@@ -9,7 +9,9 @@ import { prepareEpisodeWorkspace, persistAnalogAsset, analyzeFigureCharacterMatc
 import { createProjectSnapshot } from '../../lib/projectPersistence';
 import { createPortableProject } from '../../lib/portableProject';
 import type { AnalogFigureImport, AnalogTextImport, MangaDocument, MangaSeriesSetting } from '../../types';
-import { detectedFigureImport, detectedFigureCrops } from '../../lib/analogFigureCrops';
+import { detectedFigureImport, detectedFigureCrops, extractDetectedPanelBackgrounds } from '../../lib/analogFigureCrops';
+import { createFrameArtwork, prepareImageAsset } from '../../lib/imagePlacement';
+import { panelBounds } from '../../lib/canvasGeometry';
 import { prepareDetectedTextCrops } from '../../lib/analogTextCrops';
 import { toSeparatedMangaYaml } from '../../lib/manga';
 import { withPrintSetup } from '../../lib/printSettings';
@@ -211,6 +213,35 @@ export function createNewProjectAction({
       updateNewLayoutTask('idle');
       setNewLayoutMessage(`原画参照を保存できなかったため、原画は破棄していません。${error instanceof Error ? error.message : ''}`.trim());
       return;
+    }
+    try {
+      const itemsById = new Map(analyzedItems.map(item => [item.id, item]));
+      for (let pageIndex = 0; pageIndex < detectedLayouts.length; pageIndex++) {
+        const detectedLayout = detectedLayouts[pageIndex];
+        const sourceItem = itemsById.get(detectedLayout.sourceItemId);
+        const page = seriesMerge.document.manga.pages[pageIndex];
+        if (!sourceItem || !page) continue;
+        const extracted = await extractDetectedPanelBackgrounds(
+          sourceItem.file,
+          sourceItem.rotationOverride,
+          detectedLayout.analysis,
+          page,
+        );
+        if (!isCurrentOperation()) { await discardStaleAssets(); return; }
+        for (const { panelIndex, blob } of extracted) {
+          const panel = page.panels[panelIndex];
+          if (!panel) continue;
+          const file = new File([blob], `p${String(page.page).padStart(2, '0')}_panel${panel.id}_bg.png`, { type: 'image/png' });
+          const asset = await prepareImageAsset(file);
+          await saveFigureCropAssets([{ id: asset.storageId, blob }]);
+          savedAssetIds.push(asset.storageId);
+          (seriesMerge.document.manga.image_assets ??= []).push(asset);
+          panel.background_images = [createFrameArtwork(asset, panelBounds(panel))];
+          if (panel.bg === -1) panel.bg = 1;
+        }
+      }
+    } catch {
+      // Preserve figure/text import even if optional background cutout extraction cannot complete in a test environment.
     }
     if (figureImportsByItem.size && !(await finishScannerImport())) return;
     if (persistedFigures.size) {

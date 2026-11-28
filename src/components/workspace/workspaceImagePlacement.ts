@@ -19,7 +19,7 @@ import { buildCloudGenerationSpec } from '../../lib/generationHandoff';
 import { generateCloudPageImage, generateCloudSingleImage } from '../../lib/localBridge';
 import { compileArtworkRules, getArtworkSettings, getWorkNegativePrompt } from '../../lib/artworkRules';
 import type { CloudSingleGenerationStart } from '../generation/createGenerationActions';
-import { splitPageBackgroundsForDocument, splitPageImageForDocument } from '../../lib/cloudPageSplit';
+import { splitPageCharactersAndBackgrounds } from '../../lib/cloudPageSplit';
 
 interface Context {
   selectedPaintOwner: () => string;
@@ -251,7 +251,8 @@ export function createImagePlacementActions({
     try {
       const next = cloneDocument(initialDocument);
       let sequence = next.manga.generated_image_sequence ?? 0;
-      let placed = 0;
+      let placedFigures = 0;
+      let placedBackgrounds = 0;
       let skippedLocked = 0;
       for (const item of items) {
         const targetPage = next.manga.pages[item.pageIndex];
@@ -285,7 +286,8 @@ export function createImagePlacementActions({
           const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
           const placement = { ...createFrameArtwork(flat, hiddenGuideOwner.frame), paint: hiddenGuideOwner.paint };
           targetPanel.background_images = [placement];
-          placed += 1;
+          if (targetPanel.bg === -1) targetPanel.bg = 1;
+          placedBackgrounds += 1;
           continue;
         }
         const figure = item.figureIndex !== undefined ? targetPanel.figures?.[item.figureIndex] : undefined;
@@ -317,8 +319,9 @@ export function createImagePlacementActions({
         const flat = await registerAsset(next, newStorageIds, await prepareImageAsset(flatFile), composite);
         const placement = { ...createFrameArtwork(flat, hiddenGuideOwner.frame), paint: hiddenGuideOwner.paint };
         setFigureArtwork(figure, placement);
-        placed += 1;
+        placedFigures += 1;
       }
+      const placed = placedFigures + placedBackgrounds;
       if (documentRef.current !== initialDocument) throw new Error('取り込み中に作品が変更されたため、やり直してください');
       next.manga.generated_image_sequence = sequence;
       if (placed > 0) {
@@ -327,14 +330,19 @@ export function createImagePlacementActions({
         newStorageIds.length = 0;
         lastHistoryPush.current = 0;
       }
+      const summary = placedFigures > 0 && placedBackgrounds > 0
+        ? `キャラクター${placedFigures}件・背景${placedBackgrounds}件を配置しました`
+        : placedBackgrounds > 0
+          ? `${placedBackgrounds}コマの背景を配置しました`
+          : `${placedFigures}人のキャラクターを配置しました`;
       setToast(
         placed > 0
           ? skippedLocked > 0
-            ? `${placed}人のキャラクターを配置しました（ロック中${skippedLocked}件をスキップ）`
-            : `${placed}人のキャラクターを配置しました`
+            ? `${summary}（ロック中${skippedLocked}件をスキップ）`
+            : summary
           : skippedLocked > 0
             ? `配置先がロックされているため配置できませんでした（${skippedLocked}件）`
-            : '配置できるキャラクターが見つかりませんでした',
+            : '配置できる画像が見つかりませんでした',
       );
       return { placed, skippedLocked };
     } catch (error) {
@@ -367,7 +375,7 @@ export function createImagePlacementActions({
     });
     if (isCurrent && !isCurrent()) throw new Error('操作が中断されました');
     const placements: SplitPanelCharacterPlacement[] = [];
-    const splitChars = await splitPageImageForDocument(file, page, true);
+    const { characters: splitChars, backgrounds: splitBgs } = await splitPageCharactersAndBackgrounds(file, page, true);
     for (const item of splitChars) {
       placements.push({
         pageIndex,
@@ -379,17 +387,14 @@ export function createImagePlacementActions({
       });
     }
     if (prefs.cloud.includeBackground) {
-      const splitBgs = await splitPageBackgroundsForDocument(file, page);
       for (const item of splitBgs) {
-        if ((page.panels[item.panelIndex]?.figures?.length ?? 0) === 0) {
-          placements.push({
-            pageIndex,
-            panelIndex: item.panelIndex,
-            targetKind: 'background',
-            file: item.file,
-            frameMm: item.frameMm,
-          });
-        }
+        placements.push({
+          pageIndex,
+          panelIndex: item.panelIndex,
+          targetKind: 'background',
+          file: item.file,
+          frameMm: item.frameMm,
+        });
       }
     }
     if (!placements.length) throw new Error('配置できるキャラクターまたはコマが見つかりませんでした');
@@ -552,5 +557,25 @@ export function createImagePlacementActions({
     })();
   };
 
-  return { choosePlacedImage, importPlacedImage, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
+  const importDirectStandaloneImages = async (files: File[], panelIndex: number | null, pageIndex = activePage) => {
+    for (const file of files) {
+      const currentDoc = documentRef.current;
+      const targetPage = currentDoc.manga.pages[pageIndex];
+      if (!targetPage) break;
+      const scope = panelIndex !== null && targetPage.panels[panelIndex] ? 'panel' : 'page';
+      const box = scope === 'panel'
+        ? panelBounds(targetPage.panels[panelIndex!])
+        : { x: 0, y: 0, w: targetPage.canvas.w, h: targetPage.canvas.h };
+      await importPlacedImage(file, {
+        document: currentDoc,
+        pageIndex,
+        panelIndex: panelIndex ?? 0,
+        scope,
+        box,
+        standaloneLayer: true,
+      });
+    }
+  };
+
+  return { choosePlacedImage, importPlacedImage, importDirectStandaloneImages, importSplitPanelCharacters, generatePageWithCloudApi, startCloudSingleGeneration, chooseOwnerImage, insertQwenImage, openInsertedGeneratedLayer };
 }

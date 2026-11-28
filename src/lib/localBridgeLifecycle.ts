@@ -149,6 +149,41 @@ export async function requestLineTrace(
   };
 }
 
+export interface RasterUpscaleOptions {
+  mode?: 'ai2x' | 'ai4x' | 'lanczos2x';
+  maxEdge?: number;
+  preserveAlpha?: boolean;
+  outputMode?: 'color' | 'monochrome';
+  threshold?: number;
+}
+
+export interface RasterUpscaleResponse {
+  image: string;
+  modeUsed: string;
+  scale: number;
+  width: number;
+  height: number;
+}
+
+export async function requestRasterUpscale(
+  image: string,
+  options: RasterUpscaleOptions = {},
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RasterUpscaleResponse> {
+  const payload = await lifecycleRequest('/api/raster-upscale', { image, ...options }, fetchImpl, 90_000, signal);
+  if (typeof payload.image !== 'string' || typeof payload.width !== 'number' || typeof payload.height !== 'number') {
+    throw new Error('高精細化の結果を受信できませんでした');
+  }
+  return {
+    image: payload.image,
+    modeUsed: typeof payload.modeUsed === 'string' ? payload.modeUsed : 'none',
+    scale: typeof payload.scale === 'number' ? payload.scale : 1,
+    width: payload.width,
+    height: payload.height,
+  };
+}
+
 export async function requestMangaFinish(image: string, longEdge: number, signal: AbortSignal) {
   const payload = await lifecycleRequest('/api/manga-finish', {image, long_edge: longEdge}, fetch, 120_000, signal);
   if (!payload.layers || typeof payload.layers !== 'object') throw new Error('仕上げ画像を受信できませんでした');

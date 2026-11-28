@@ -162,11 +162,13 @@ test('page image import and export stay in the header immediately before New',()
  assert.doesNotMatch(paintLayerSource,/layer-image-actions|画像の入出力|画像書き出し形式/);
  assert.doesNotMatch(globalCss,/\.layer-image-actions/);
  assert.match(headerSource,/>画像読込<\/button>/);
+ assert.match(headerSource,/data-image-import[\s\S]*?<ImagePlus[^>]*\/>画像読込<\/button>/);
  assert.match(headerSource,/>画像書き出し<\/button>/);
  assert.ok(headerSource.indexOf('画像読込')<headerSource.indexOf('画像書き出し'));
  assert.ok(headerSource.indexOf('画像書き出し')<headerSource.indexOf('>新規</button>'));
  assert.match(appSource,/onImportImage=\{\(\)=>\{void layerTransition/);
- assert.match(appSource,/choosePlacedImage\('page'\)/);
+ assert.match(appSource,/event\.target\.closest\('\[data-image-import\]'\)/);
+ assert.match(appSource,/importDirectStandaloneImages\(files, imageImportPanelTarget, activePage\)/);
 });
 
 test('panel, page and bubble selections expose their own actions and direct drawing routes',()=>{

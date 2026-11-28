@@ -161,3 +161,28 @@ test('cool-gray art and stray edge pixels stay strictly inside panel bounds and 
   assert.equal(masked[(18 * 20 + 18) * 4 + 3], 0);
   assert.equal(masked[(2 * 20 + 2) * 4 + 3], 255);
 });
+
+test('extractPanelBackgroundWithCutout returns false for blank white and preserves drawn background with whited-out cutout', async () => {
+  const { extractPanelBackgroundWithCutout } = await import('../src/lib/cloudPageSplit.ts');
+  const width = 100;
+  const height = 100;
+
+  // 1. Only a character inside (20..50, 20..80) on plain white paper -> no background
+  const plainPanel = makeSolidRgba(width, height, 255, 255, 255, 255);
+  drawRect(plainPanel, width, 24, 24, 46, 76, 15, 15, 15, 255);
+  const blankBg = extractPanelBackgroundWithCutout(plainPanel, width, height, [{ x: 20, y: 20, w: 30, h: 60 }]);
+  assert.equal(blankBg.hasBackground, false);
+
+  // 2. Character inside (20..50, 20..80) + drawn background building lines outside (60..90, 20..90)
+  const drawnPanel = makeSolidRgba(width, height, 255, 255, 255, 255);
+  drawRect(drawnPanel, width, 24, 24, 46, 76, 15, 15, 15, 255);
+  drawRect(drawnPanel, width, 60, 20, 90, 70, 30, 30, 30, 255);
+  const keptBg = extractPanelBackgroundWithCutout(drawnPanel, width, height, [{ x: 20, y: 20, w: 30, h: 60 }]);
+  assert.equal(keptBg.hasBackground, true);
+  // Character bbox pixel is whited out for clean background regeneration
+  const charPixelIdx = (50 * width + 35) * 4;
+  assert.deepEqual([...keptBg.rgba.subarray(charPixelIdx, charPixelIdx + 4)], [255, 255, 255, 255]);
+  // Drawn background pixel outside cutout is preserved
+  const bgPixelIdx = (40 * width + 75) * 4;
+  assert.deepEqual([...keptBg.rgba.subarray(bgPixelIdx, bgPixelIdx + 4)], [30, 30, 30, 255]);
+});

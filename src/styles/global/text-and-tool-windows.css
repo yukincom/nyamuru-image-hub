@@ -52,6 +52,7 @@
 
 /* Fixed two-column tools; line details live above the page layer tree. */
 .paint-tools-dock .paint-tool-icons { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.paint-tools-dock .paint-tool-icons-convert { border-top:1px solid var(--line); padding-top:8px; }
 .paint-tools-dock .paint-tool-icon { min-height:34px; padding:5px 2px; }
 .paint-tools .paint-colors { padding-block:8px; border-block:1px solid var(--line); gap:5px; }
 .paint-tools .paint-color { width:34px; min-width:0; }
